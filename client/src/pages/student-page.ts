@@ -1,4 +1,5 @@
 import { StudentEquipment } from '../equipment/student-equipment';
+import { syncStoreWithEquipment } from '../storage';
 import { html } from '../utils';
 import { AbstractPage } from './abstract-page';
 
@@ -36,5 +37,7 @@ export class StudentPage extends AbstractPage {
 
   private initEquipment(): void {
     this.equipment = new StudentEquipment('student-equipment-container');
+
+    syncStoreWithEquipment(this.equipment);
   }
 }

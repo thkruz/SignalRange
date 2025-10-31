@@ -5,6 +5,7 @@
     "knex": "^2.0.0"
   },
   "devDependencies": {
-    "@types/jest": "^30.0.0"
+    "@types/jest": "^30.0.0",
+    "@types/webpack-env": "^1.18.8"
   }
 }

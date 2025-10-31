@@ -50,6 +50,7 @@ module.exports = {
     compress: false,
     port: 3000,
     hot: true,
-    historyApiFallback: true
+    historyApiFallback: true,
+    liveReload: false
   }
 };

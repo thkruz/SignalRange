@@ -1,5 +1,8 @@
 import { html } from '../utils';
+import { Antenna } from './antenna/antenna';
+import { Receiver } from './receiver/receiver';
 import { SpectrumAnalyzer } from './spectrum-analyzer/spectrum-analyzer';
+import { Transmitter } from './transmitter/transmitter';
 
 /**
  * StudentEquipment - Orchestrates all equipment on student page
@@ -8,12 +11,13 @@ import { SpectrumAnalyzer } from './spectrum-analyzer/spectrum-analyzer';
 export class StudentEquipment {
   private readonly element: HTMLElement;
   private spectrumAnalyzers: SpectrumAnalyzer[] = [];
+  private antennas: Antenna[] = [];
+  private transmitters: Transmitter[] = [];
+  private receivers: Receiver[] = [];
 
   constructor(parentId: string) {
     const parent = document.getElementById(parentId);
     if (!parent) throw new Error(`Parent element ${parentId} not found`);
-
-    console.log(parentId);
 
     this.element = parent;
     this.render();
@@ -71,20 +75,35 @@ export class StudentEquipment {
 
   private addListeners(): void {
     // Add any equipment-level listeners here
+    // Could listen to global events and coordinate between equipment
   }
 
   private initEquipment(): void {
     // Initialize 4 spectrum analyzers
+    // First two use antenna 1, next two use antenna 2
     for (let i = 1; i <= 4; i++) {
-      const antennaId = i <= 2 ? 1 : 2; // First two specA use antenna 1, next two use antenna 2
+      const antennaId = i <= 2 ? 1 : 2;
       const specA = new SpectrumAnalyzer(`specA${i}-container`, i, 1, antennaId);
       this.spectrumAnalyzers.push(specA);
     }
 
-    // TODO: Initialize antennas, transmitters, receivers
-    // const antenna1 = new Antenna('antenna1-container', 1);
-    // const tx1 = new TxCase('tx1-container', 1);
-    // const rx1 = new RxCase('rx1-container', 1);
+    // Initialize 2 antennas
+    for (let i = 1; i <= 2; i++) {
+      const antenna = new Antenna(`antenna${i}-container`, i, 1, 1);
+      this.antennas.push(antenna);
+    }
+
+    // Initialize 4 transmitter cases (each with 4 modems)
+    for (let i = 1; i <= 4; i++) {
+      const tx = new Transmitter(`tx${i}-container`, i, 1, 1);
+      this.transmitters.push(tx);
+    }
+
+    // Initialize 4 receiver cases (each with 4 modems)
+    for (let i = 1; i <= 4; i++) {
+      const rx = new Receiver(`rx${i}-container`, i, 1, 1);
+      this.receivers.push(rx);
+    }
   }
 
   /**
@@ -92,14 +111,43 @@ export class StudentEquipment {
    */
   public updateEquipment(data: {
     signals?: any[];
-    target_id?: number;
-    locked?: boolean;
-    operational?: boolean;
+    antennas?: any[];
+    transmitters?: any[];
+    receivers?: any[];
   }): void {
-    // Update all spectrum analyzers with new signal data
-    this.spectrumAnalyzers.forEach(specA => {
-      specA.update(data);
-    });
+    // Update spectrum analyzers with signal data
+    if (data.signals) {
+      this.spectrumAnalyzers.forEach(specA => {
+        specA.update({ signals: data.signals });
+      });
+    }
+
+    // Update antennas
+    if (data.antennas) {
+      data.antennas.forEach((antennaData, index) => {
+        if (this.antennas[index]) {
+          this.antennas[index].update(antennaData);
+        }
+      });
+    }
+
+    // Update transmitters
+    if (data.transmitters) {
+      data.transmitters.forEach((txData, index) => {
+        if (this.transmitters[index]) {
+          this.transmitters[index].update(txData);
+        }
+      });
+    }
+
+    // Update receivers
+    if (data.receivers) {
+      data.receivers.forEach((rxData, index) => {
+        if (this.receivers[index]) {
+          this.receivers[index].update(rxData);
+        }
+      });
+    }
   }
 
   /**
@@ -108,7 +156,9 @@ export class StudentEquipment {
   public getAllConfigs(): any {
     return {
       spectrumAnalyzers: this.spectrumAnalyzers.map(sa => sa.getConfig()),
-      // Add other equipment configs here
+      antennas: this.antennas.map(a => a.getConfig()),
+      transmitters: this.transmitters.map(tx => tx.getConfig()),
+      receivers: this.receivers.map(rx => rx.getConfig())
     };
   }
 }

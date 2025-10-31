@@ -189,7 +189,7 @@ export class SpectrumAnalyzer extends Equipment {
     });
 
     // Listen for antenna changes
-    this.on(Events.ANTENNA_FREQUENCY_CHANGED, (data) => {
+    this.on(Events.ANTENNA_CONFIG_CHANGED, (data) => {
       if (data.antennaId === this.config.antenna_id) {
         this.updateFrequency(data.frequency);
       }

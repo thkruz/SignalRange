@@ -7,7 +7,7 @@ import { SpectrumAnalyzer } from './spectrum-analyzer/spectrum-analyzer';
  */
 export class StudentEquipment {
   private readonly element: HTMLElement;
-  private readonly spectrumAnalyzers: SpectrumAnalyzer[] = [];
+  private spectrumAnalyzers: SpectrumAnalyzer[] = [];
 
   constructor(parentId: string) {
     const parent = document.getElementById(parentId);
@@ -87,7 +87,38 @@ export class StudentEquipment {
     // const rx1 = new RxCase('rx1-container', 1);
   }
 
+  /**
+   * Update all equipment with new data from server/simulation
+   */
+  public updateEquipment(data: {
+    signals?: any[];
+    target_id?: number;
+    locked?: boolean;
+    operational?: boolean;
+  }): void {
+    // Update all spectrum analyzers with new signal data
+    this.spectrumAnalyzers.forEach(specA => {
+      specA.update(data);
+    });
+  }
+
+  /**
+   * Get configuration from all equipment
+   */
+  public getAllConfigs(): any {
+    return {
+      spectrumAnalyzers: this.spectrumAnalyzers.map(sa => sa.getConfig()),
+      // Add other equipment configs here
+    };
+  }
+
+  /**
+   * Cleanup all equipment
+   */
   public destroy(): void {
     this.spectrumAnalyzers.forEach(specA => specA.destroy());
+    this.spectrumAnalyzers = [];
+
+    // TODO: Destroy other equipment
   }
 }

@@ -12,8 +12,7 @@ module.exports = {
   resolve: {
     extensions: ['.ts', '.js'],
     alias: {
-      '@': path.resolve(__dirname, 'src'),
-      '@components': path.resolve(__dirname, 'src/components'),
+      '@src': path.resolve(__dirname, 'src'),
     }
   },
   devtool: 'source-map',

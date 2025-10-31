@@ -262,6 +262,7 @@ export class SpectrumAnalyzer extends Equipment {
     this.maxFreq = freqBandInfo.maxFreq;
     this.bw = this.maxFreq - this.minFreq;
     this.centerFreq = this.minFreq + this.bw / 2;
+    this.config.frequency = this.centerFreq / 1e6; // Convert to MHz for display
 
     // Update offsets based on band
     if (band === 'c') {

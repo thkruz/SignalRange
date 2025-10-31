@@ -7,7 +7,8 @@
     "build": "webpack --mode production",
     "dev": "webpack serve --mode development",
     "type-check": "tsc --noEmit",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "test": "npx jest --config jest.config.js"
   },
   "keywords": [
     "space",
@@ -17,10 +18,15 @@
   "author": "Theodore Kruczek",
   "license": "AGPL-3.0",
   "devDependencies": {
+    "@babel/preset-env": "^7.28.5",
+    "@babel/preset-typescript": "^7.28.5",
     "@types/node": "^20.19.24",
+    "babel-jest": "^30.2.0",
     "css-loader": "^6.8.1",
     "file-loader": "^6.2.0",
     "html-webpack-plugin": "^5.5.3",
+    "jest-canvas-mock": "^2.5.2",
+    "jest-environment-jsdom": "^30.2.0",
     "style-loader": "^3.3.3",
     "ts-loader": "^9.5.1",
     "typescript": "^5.3.3",

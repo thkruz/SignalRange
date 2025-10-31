@@ -1,0 +1,34 @@
+{
+  "name": "iris-client-ts",
+  "version": "1.0.0",
+  "description": "IRIS Space Electronic Warfare Sandbox - TypeScript Rewrite",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "webpack --mode production",
+    "dev": "webpack serve --mode development",
+    "type-check": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "space",
+    "electronic-warfare",
+    "spectrum-analyzer"
+  ],
+  "author": "Theodore Kruczek",
+  "license": "AGPL-3.0",
+  "devDependencies": {
+    "@types/node": "^20.19.24",
+    "css-loader": "^6.8.1",
+    "file-loader": "^6.2.0",
+    "html-webpack-plugin": "^5.5.3",
+    "style-loader": "^3.3.3",
+    "ts-loader": "^9.5.1",
+    "typescript": "^5.3.3",
+    "webpack": "^5.89.0",
+    "webpack-cli": "^5.1.4",
+    "webpack-dev-server": "^4.15.1"
+  },
+  "dependencies": {
+    "socket.io-client": "^4.5.4"
+  }
+}

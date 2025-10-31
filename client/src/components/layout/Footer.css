@@ -1,0 +1,31 @@
+.footer {
+  width: 100%;
+  background-color: #172635;
+  color: white;
+  box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.8);
+}
+
+.footer-toolbar {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 16px;
+  min-height: 64px;
+}
+
+.footer-text {
+  text-align: center;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.footer-text a {
+  color: white;
+  text-decoration: none;
+  transition: opacity 0.2s;
+}
+
+.footer-text a:hover {
+  opacity: 0.8;
+  text-decoration: underline;
+}

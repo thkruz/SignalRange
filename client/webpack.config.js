@@ -1,0 +1,61 @@
+const path = require('path');
+const HtmlWebpackPlugin = require('html-webpack-plugin');
+
+module.exports = {
+  entry: './src/index.ts',
+  output: {
+    filename: 'bundle.[contenthash].js',
+    path: path.resolve(__dirname, 'dist'),
+    clean: true,
+    publicPath: '/'
+  },
+  resolve: {
+    extensions: ['.ts', '.js'],
+    alias: {
+      '@': path.resolve(__dirname, 'src'),
+      '@components': path.resolve(__dirname, 'src/components'),
+      '@models': path.resolve(__dirname, 'src/models'),
+      '@services': path.resolve(__dirname, 'src/services'),
+      '@utils': path.resolve(__dirname, 'src/utils'),
+      '@styles': path.resolve(__dirname, 'src/styles'),
+      '@constants': path.resolve(__dirname, 'src/constants')
+    }
+  },
+  devtool: 'source-map',
+  module: {
+    rules: [
+      {
+        test: /\.ts$/,
+        use: 'ts-loader',
+        exclude: /node_modules/
+      },
+      {
+        test: /\.css$/,
+        use: ['style-loader', 'css-loader']
+      },
+      {
+        test: /\.(png|jpg|jpeg|gif|svg|otf|ttf|woff|woff2)$/,
+        type: 'asset/resource'
+      },
+      {
+        test: /\.(mp3|wav)$/,
+        type: 'asset/resource'
+      }
+    ]
+  },
+  plugins: [
+    new HtmlWebpackPlugin({
+      template: './public/index.html',
+      // favicon: './public/favicon.ico'
+    })
+  ],
+  devServer: {
+    static: {
+      directory: path.join(__dirname, 'public')
+    },
+    compress: false,
+    port: 3000,
+    hot: true,
+    historyApiFallback: true
+  }
+};

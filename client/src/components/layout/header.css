@@ -5,7 +5,7 @@
 
 .header {
   width: 100%;
-  background-color: #172635;
+  background-color: var(--color-dark-background);
   box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.8);
 }
 
@@ -14,7 +14,7 @@
   align-items: center;
   padding: 0 16px;
   min-height: 100px;
-  color: white;
+  color: var(--color-dark-text-muted);
 }
 
 .header-logo-section {
@@ -46,12 +46,13 @@
   line-height: 1;
   margin-top: -8px;
   margin-bottom: -24px;
+  color: var(--color-primary);
 }
 
 .header-subtitle {
   font-family: 'Nasa', sans-serif;
   font-size: 24px;
-  color: #52667a;
+  color: var(--color-dark-text-muted);
 }
 
 .header-actions {
@@ -63,7 +64,7 @@
 .header-icon-button {
   background: transparent;
   border: none;
-  color: white;
+  color: var(--color-text-accent);
   font-size: 24px;
   width: 48px;
   height: 48px;
@@ -76,7 +77,8 @@
 }
 
 .header-icon-button:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+  /* subtle hover using a low-opacity primary color */
+  background-color: rgba(186, 22, 12, 0.06);
 }
 
 .header-icon-button .icon {

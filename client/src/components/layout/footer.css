@@ -1,7 +1,7 @@
 .footer {
   width: 100%;
-  background-color: #172635;
-  color: white;
+  background-color: var(--color-dark-background);
+  color: var(--color-dark-text-muted);
   box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.8);
 }
 
@@ -20,7 +20,7 @@
 }
 
 .footer-text a {
-  color: white;
+  color: var(--color-text-accent);
   text-decoration: none;
   transition: opacity 0.2s;
 }

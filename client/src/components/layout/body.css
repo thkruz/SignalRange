@@ -5,7 +5,7 @@
   height: 100%;
   width: 100%;
   flex-grow: 1;
-  background-color: #52667a;
+  background-color: var(--color-dark-border);
 }
 
 .body-content {

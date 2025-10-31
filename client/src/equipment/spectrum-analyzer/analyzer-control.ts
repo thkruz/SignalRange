@@ -211,11 +211,11 @@ export class AnalyzerControl extends BaseElement {
     const currentValue = this.controlSelection === 'freq' ? config.centerFrequency : config.span;
 
     if (unit === 'ghz') {
-      this.ghz = (currentValue / 1000).toFixed(6);
+      this.ghz = (currentValue / 1e9).toFixed(6);
     } else if (unit === 'mhz') {
-      this.mhz = currentValue.toFixed(3);
+      this.mhz = (currentValue / 1e6).toFixed(3);
     } else if (unit === 'khz') {
-      this.khz = (currentValue * 1000).toFixed(0);
+      this.khz = (currentValue / 1e3).toFixed(0);
     }
 
     this.updateDisplay();
@@ -325,7 +325,7 @@ export class AnalyzerControl extends BaseElement {
     }
   }
 
-  private convertToHz(value: Hertz): Hertz {
+  convertToHz(value: Hertz): Hertz {
     if (this.numberSelection === 'ghz') return value * 1e9 as Hertz;
     if (this.numberSelection === 'mhz') return value * 1e6 as Hertz;
     if (this.numberSelection === 'khz') return value * 1e3 as Hertz;

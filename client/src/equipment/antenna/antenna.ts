@@ -138,10 +138,10 @@ export class Antenna extends Equipment {
             <div class="config-row">
               <label>Satellite</label>
               <select class="input-target" data-param="target_id">
-                <option value="1" ${this.inputData.targetId === 1 ? 'selected' : ''}>Satellite 1</option>
-                <option value="2" ${this.inputData.targetId === 2 ? 'selected' : ''}>Satellite 2</option>
-                <option value="3" ${this.inputData.targetId === 3 ? 'selected' : ''}>Satellite 3</option>
-                <option value="4" ${this.inputData.targetId === 4 ? 'selected' : ''}>Satellite 4</option>
+                <option value="1" ${this.inputData.targetId === 1 ? 'selected' : ''}>ARKE 3G</option>
+                <option value="2" ${this.inputData.targetId === 2 ? 'selected' : ''}>AURORA 2B</option>
+                <option value="3" ${this.inputData.targetId === 3 ? 'selected' : ''}>AUXO STAR</option>
+                <option value="4" ${this.inputData.targetId === 4 ? 'selected' : ''}>ENYO</option>
               </select>
               <span class="current-value">${this.config.targetId}</span>
             </div>

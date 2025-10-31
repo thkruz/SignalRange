@@ -7,6 +7,22 @@ body {
   font-family: 'Roboto', sans-serif !important;
 }
 
+:root {
+  --colorTertiary: #4a4a4a !important;
+  --color-dark-background: #1f1f1f !important;
+  --color-dark-border: #3a3a3a !important;
+  --color-dark-text-accent: #dd382f !important;
+  --color-dark-text-muted: #6b6b6b !important;
+  /* International Orange Engineering */
+  --color-primary: #ba160c !important;
+  /* Brighter version of International Orange Engineering for icons */
+  --color-text-accent: #ff2827;
+  /* Lighter shade of International Orange Engineering */
+  --color-primary-light: #e01a0e !important;
+  /* Darker shade of International Orange Engineering */
+  --color-primary-dark: #860f08 !important;
+}
+
 body {
   display: flex;
   flex-direction: column;

@@ -34,15 +34,15 @@ export class StudentEquipment {
     this.element.innerHTML = html`
       <div class="student-equipment">
         <!-- Antennas -->
-          <div class="antenna-grid">
+          <div id="antenna-spec-a-grid1" class="antenna-spec-a-grid">
             <div id="antenna1-container" class="antenna-container"></div>
-            <div id="antenna2-container" class="antenna-container"></div>
+            <div id="specA1-container" class="spec-a-container"></div>
+            <div id="specA2-container" class="spec-a-container"></div>
           </div>
 
         <!-- Spectrum Analyzers Grid -->
-          <div class="spec-a-grid">
-            <div id="specA1-container" class="spec-a-container"></div>
-            <div id="specA2-container" class="spec-a-container"></div>
+          <div id="antenna-spec-a-grid2" class="antenna-spec-a-grid">
+            <div id="antenna2-container" class="antenna-container"></div>
             <div id="specA3-container" class="spec-a-container"></div>
             <div id="specA4-container" class="spec-a-container"></div>
           </div>
@@ -84,7 +84,7 @@ export class StudentEquipment {
 
     if (!this.isFullEquipmentSuite) {
       // Hide the second antenna container if not full suite
-      const antenna2Container = document.getElementById('antenna2-container');
+      const antenna2Container = document.getElementById('antenna-spec-a-grid2');
       if (antenna2Container) {
         antenna2Container.style.display = 'none';
       }

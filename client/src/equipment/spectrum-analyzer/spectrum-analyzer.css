@@ -51,8 +51,7 @@
 .spec-a-canvas-container canvas {
   display: block;
   width: 100%;
-  height: 300px;
-  max-width: 100%;
+  height: 280px;
 }
 
 /* Info Section */

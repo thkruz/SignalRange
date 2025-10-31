@@ -19,14 +19,9 @@ export class Footer extends Component {
 
   private generateCopyrightInfo(): any {
     return `
-      Copyright © 2022-2025
-      <a href="https://github.com/thkruz/" target="_blank" rel="noopener noreferrer">
-        Theodore Kruczek
-      </a>.
-      All rights reserved. Source Code licensed under
-      <a href="https://raw.githubusercontent.com/thkruz/iris/dev/LICENSE.md" target="_blank" rel="noopener noreferrer">
-        AGPLv3
-      </a>.
+      This instance is licensed under the GNU AGPL v3.0. Attribution, source access, and this notice must remain visible.<br>
+      Unauthorized use, rebranding, or removal of attribution may violate trademark and open source license terms.<br>
+      © 2025 Kruczek Labs LLC. All rights reserved. See <a href="https://raw.githubusercontent.com/thkruz/iris/dev/LICENSE.md" target="_blank" rel="noopener noreferrer">LICENSE</a> for full terms.
     `;
   }
 }

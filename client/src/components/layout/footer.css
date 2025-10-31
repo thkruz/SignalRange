@@ -2,7 +2,6 @@
   width: 100%;
   background-color: var(--color-dark-background);
   color: var(--color-dark-text-muted);
-  box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.8);
 }
 
 .footer-toolbar {

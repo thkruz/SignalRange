@@ -18,15 +18,20 @@ export interface SpectrumAnalyzerConfig {
 }
 
 interface Signal {
+  rf: any;
   freq: number;
   bw: number;
   amp: number;
+  id: number;
+  server_id: number;
   target_id: number;
-  rf?: boolean;
-  feed?: string;
+  frequency: number;
   power?: number;
+  bandwidth: number;
   modulation?: string;
   fec?: string;
+  feed?: string;
+  operational: boolean;
 }
 
 /**
@@ -191,10 +196,32 @@ export class SpectrumAnalyzer extends Equipment {
 
     // Listen for antenna changes
     this.on(Events.ANTENNA_CONFIG_CHANGED, (data) => {
-      if (data.unit === this.config.unit) {
-        this.config = { ...this.config, ...data };
-        this.updateFrequency(data.frequency);
-      }
+      this.updateConfigChange(data);
+    });
+
+    this.on(Events.ANTENNA_ERROR, (data) => {
+      this.updateConfigChange(data);
+    });
+
+    this.on(Events.ANTENNA_HPA_CHANGED, (data) => {
+      this.updateConfigChange(data);
+    });
+
+    this.on(Events.ANTENNA_LOCKED, (data) => {
+      this.locked = data.locked ?? false;
+      this.updateConfigChange(data);
+    });
+
+    this.on(Events.ANTENNA_LOOPBACK_CHANGED, (data) => {
+      this.updateConfigChange(data);
+    });
+
+    this.on(Events.ANTENNA_POWER_CHANGED, (data) => {
+      this.updateConfigChange(data);
+    });
+
+    this.on(Events.ANTENNA_TRACK_CHANGED, (data) => {
+      this.updateConfigChange(data);
     });
 
     // Window resize handler
@@ -209,7 +236,18 @@ export class SpectrumAnalyzer extends Equipment {
     window.addEventListener('resize', this.resizeHandler);
   }
 
+  private updateConfigChange(data: any) {
+    if (data.unit === this.config.unit) {
+      this.config = { ...this.config, ...data };
+
+      if (data.frequency) {
+        this.updateFrequency(data.frequency);
+      }
+    }
+  }
+
   protected initialize(): void {
+    // this.signals = defaultSignalData as Signal[];
     this.start();
   }
 

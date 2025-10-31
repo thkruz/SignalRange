@@ -1,10 +1,8 @@
 import { Events } from "../../events/events";
+import { ModulationType, FECType } from "../../types";
 import { html, qs } from '../../utils';
 import { Equipment } from '../equipment';
 import './receiver.css';
-
-export type ModulationType = 'BPSK' | 'QPSK' | '8QAM' | '16QAM';
-export type FECType = '1/2' | '2/3' | '3/4' | '5/6' | '7/8';
 
 export interface ReceiverModem {
   modem_number: number; // 1-4

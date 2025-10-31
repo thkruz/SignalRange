@@ -1,13 +1,9 @@
-import { AntennaConfig, Satellite, Team } from './types';
+import { FECType, Hertz, ModulationType, RfFrequency, Satellite, Team } from './types';
 
 /**
  * Application Constants
  */
 
-export const ANTENNAS: AntennaConfig[] = [
-  { band: 'C', upconvert: 3350e6, downconvert: 3500e6 },
-  { band: 'Ku', upconvert: 14400e6, downconvert: 14250e6 },
-];
 
 export const SATELLITES: Satellite[] = [
   { id: 1, name: 'ARKE 3G', offset: 400e6 },
@@ -41,3 +37,78 @@ export const DEFAULT_SPEC_A = {
   refreshRate: 10, // per second
   noiseFloor: -115,
 };
+
+export const defaultSignalData = [
+  {
+    id: 1,
+    serverId: 1,
+    targetId: 1,
+    frequency: 4810e6 as RfFrequency,
+    power: -100,
+    bandwidth: 10e6 as Hertz,
+    modulation: '8QAM' as ModulationType,
+    fec: '3/4' as FECType,
+    feed: 'red 1.mp4',
+    isActive: false,
+  },
+  {
+    id: 2,
+    serverId: 1,
+    targetId: 1,
+    frequency: 4798e6 as RfFrequency,
+    power: -96,
+    bandwidth: 10e6 as Hertz,
+    modulation: '8QAM' as ModulationType,
+    fec: '3/4' as FECType,
+    feed: 'blue 1.mp4',
+    isActive: false,
+  },
+  {
+    id: 3,
+    serverId: 1,
+    targetId: 1,
+    frequency: 4817e6 as RfFrequency,
+    power: -93,
+    bandwidth: 2e6 as Hertz,
+    modulation: '8QAM' as ModulationType,
+    fec: '3/4' as FECType,
+    feed: 'blue 1.mp4',
+    isActive: false,
+  },
+  {
+    id: 4,
+    serverId: 1,
+    targetId: 1,
+    frequency: 4826e6 as RfFrequency,
+    power: -86,
+    bandwidth: 1e6 as Hertz,
+    modulation: '8QAM' as ModulationType,
+    fec: '3/4' as FECType,
+    feed: 'blue 1.mp4',
+    isActive: false,
+  },
+  {
+    id: 5,
+    serverId: 1,
+    targetId: 1,
+    frequency: 4785e6 as RfFrequency,
+    power: -90,
+    bandwidth: 4e6 as Hertz,
+    modulation: '8QAM' as ModulationType,
+    fec: '3/4' as FECType,
+    feed: 'blue 1.mp4',
+    isActive: false,
+  },
+  {
+    id: 6,
+    serverId: 1,
+    targetId: 1,
+    frequency: 4833e6 as RfFrequency,
+    power: -110,
+    bandwidth: 10e6 as Hertz,
+    modulation: 'BPSK' as ModulationType,
+    fec: '1/4' as FECType,
+    feed: 'blue 1.mp4',
+    isActive: false,
+  },
+];

@@ -195,7 +195,7 @@ export class SpectrumAnalyzer extends Equipment {
 
     // Window resize handler
     this.resizeHandler = () => {
-      if (this.canvas && this.canvas.parentElement) {
+      if (this.canvas?.parentElement) {
         const newWidth = this.canvas.parentElement.offsetWidth - 6;
         if (newWidth !== this.canvas.width) {
           this.resize();
@@ -392,35 +392,34 @@ export class SpectrumAnalyzer extends Equipment {
               const rfDownSignal = { ...signal };
               const ifDownSignal = { ...signal, freq: signal.freq - this.downconvertOffset };
 
-              if (!this.isRfMode) {
-                this.drawSignal(this.ctx!, color, ifDownSignal);
-              } else {
+              if (this.isRfMode) {
                 this.drawSignal(this.ctx!, color, rfDownSignal);
+              } else {
+                this.drawSignal(this.ctx!, color, ifDownSignal);
               }
+            } else if (this.isRfMode) {
+              // Draw RF signals
+              const rfUpSignal = { ...signal, freq: signal.freq + this.upconvertOffset };
+              const rfDownSignal = { ...signal, freq: signal.freq + this.upconvertOffset };
+              rfDownSignal.freq += this.loopback ? +this.antennaOffset : this.targetOffset;
+              rfDownSignal.amp = !this.loopback && !this.hpa ? -1000 : rfDownSignal.amp;
+
+              this.drawSignal(this.ctx!, color, rfUpSignal);
+              this.drawSignal(this.ctx!, color, rfDownSignal);
             } else {
               // Student mode - signal is in IF, needs upconversion
-              if (!this.isRfMode) {
-                // Draw IF signals
-                const ifUpSignal = signal;
-                const ifDownSignal = {
-                  ...signal,
-                  freq: signal.freq + this.upconvertOffset - this.downconvertOffset,
-                };
-                ifDownSignal.freq += this.loopback ? +this.antennaOffset : this.targetOffset;
-                ifDownSignal.amp = !this.loopback && !this.hpa ? -1000 : ifDownSignal.amp;
 
-                this.drawSignal(this.ctx!, color, ifUpSignal);
-                this.drawSignal(this.ctx!, color, ifDownSignal);
-              } else {
-                // Draw RF signals
-                const rfUpSignal = { ...signal, freq: signal.freq + this.upconvertOffset };
-                const rfDownSignal = { ...signal, freq: signal.freq + this.upconvertOffset };
-                rfDownSignal.freq += this.loopback ? +this.antennaOffset : this.targetOffset;
-                rfDownSignal.amp = !this.loopback && !this.hpa ? -1000 : rfDownSignal.amp;
+              // Draw IF signals
+              const ifUpSignal = signal;
+              const ifDownSignal = {
+                ...signal,
+                freq: signal.freq + this.upconvertOffset - this.downconvertOffset,
+              };
+              ifDownSignal.freq += this.loopback ? +this.antennaOffset : this.targetOffset;
+              ifDownSignal.amp = !this.loopback && !this.hpa ? -1000 : ifDownSignal.amp;
 
-                this.drawSignal(this.ctx!, color, rfUpSignal);
-                this.drawSignal(this.ctx!, color, rfDownSignal);
-              }
+              this.drawSignal(this.ctx!, color, ifUpSignal);
+              this.drawSignal(this.ctx!, color, ifDownSignal);
             }
           });
 
@@ -521,7 +520,7 @@ export class SpectrumAnalyzer extends Equipment {
 
       maxSignalFreq = y < maxY ? lowestSignal : maxSignalFreq;
       maxX = y < maxY ? x : maxX;
-      maxY = y < maxY ? y : maxY;
+      maxY = Math.min(y, maxY);
 
       if (x === 0) {
         ctx.moveTo(x, this.height * y);
@@ -652,16 +651,9 @@ export class SpectrumAnalyzer extends Equipment {
         }
       }
 
-      // Zero out signal far outside the band
-      if (x > center + outOfBandWidth || x < center - outOfBandWidth) {
+      // Zero out signal far outside the band and handle out-of-band regions
+      if (x > center + outOfBandWidth || x < center - outOfBandWidth || x < center - inBandWidth || x > center + inBandWidth) {
         y = 0;
-      } else {
-        // Handle out-of-band regions
-        if (x < center - inBandWidth) {
-          y = 0;
-        } else if (x > center + inBandWidth) {
-          y = 0;
-        }
       }
 
       // Update max hold
@@ -674,7 +666,7 @@ export class SpectrumAnalyzer extends Equipment {
         this.noiseData[x] = y;
       }
 
-      data[x] = y > 0 ? y : 0;
+      data[x] = Math.max(y, 0);
     }
 
     return data;
@@ -685,7 +677,7 @@ export class SpectrumAnalyzer extends Equipment {
    */
 
   private resize(): void {
-    if (!this.canvas || !this.canvas.parentElement) return;
+    if (!this.canvas?.parentElement) return;
 
     const newWidth = Math.max(this.canvas.parentElement.offsetWidth - 6, 10);
     const newHeight = Math.max(newWidth, 10); // Square aspect ratio

@@ -1,5 +1,6 @@
 import { BaseElement } from '../components/base-element';
-import { EventBus } from '../events/event-bus';
+import { EventBus, EventMap } from '../events/event-bus';
+import { Events } from '../events/events';
 import './equipment.css';
 
 /**
@@ -24,18 +25,9 @@ export abstract class Equipment extends BaseElement {
 
   // Standard initialization sequence
   protected build(): void {
-    this.loadCSS();
     this.render();
     this.addListeners();
     this.initialize();
-  }
-
-  /**
-   * Load equipment-specific CSS
-   * Override to load custom CSS files
-   */
-  protected loadCSS(): void {
-    // Base implementation - equipment can override
   }
 
   /**
@@ -64,14 +56,14 @@ export abstract class Equipment extends BaseElement {
   /**
    * Helper to emit equipment events
    */
-  protected emit(event: string, data?: any): void {
-    EventBus.getInstance().emit(event, { unit: this.unit, teamId: this.teamId, ...data });
+  protected emit<T extends Events>(event: T, ...args: EventMap[T]): void {
+    EventBus.getInstance().emit(event, ...args);
   }
 
   /**
    * Helper to listen to events
    */
-  protected on(event: string, callback: (data: any) => void): () => void {
-    return EventBus.getInstance().on(event, callback);
+  protected on<T extends Events>(event: T, callback: (...args: EventMap[T]) => void): void {
+    EventBus.getInstance().on(event, callback);
   }
 }

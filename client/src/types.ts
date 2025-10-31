@@ -13,6 +13,8 @@ type Distinct<T, DistinctName> = T & { __TYPE__: DistinctName };
 
 /** Frequency in Hz */
 export type Hertz = Distinct<number, 'Hertz'>;
+/** Frequency in Mhz */
+export type MHz = Distinct<number, 'MHz'>;
 /** Radio Frequency in Hz */
 export type RfFrequency = Distinct<Hertz, 'RfFrequency'>;
 /** Intermediate Frequency in Hz */

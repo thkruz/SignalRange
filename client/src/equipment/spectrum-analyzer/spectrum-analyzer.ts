@@ -88,7 +88,7 @@ export class SpectrumAnalyzer extends Equipment {
       team_id: this.teamId,
       antenna_id: 1,
       rf: false,
-      frequency: 4700, // MHz
+      frequency: 4810, // 4700, // MHz
       span: 100, // MHz
       hold: false,
       minDecibels: this.minDecibels,
@@ -107,10 +107,6 @@ export class SpectrumAnalyzer extends Equipment {
     this.centerFreq = this.minFreq + this.bw / 2;
 
     this.build();
-  }
-
-  protected loadCSS(): void {
-    // CSS is imported at the top of the file
   }
 
   render(): HTMLElement {
@@ -173,6 +169,21 @@ export class SpectrumAnalyzer extends Equipment {
     });
 
     // Listen for antenna changes
+    this.subscribeToAntennaEvents();
+
+    // Window resize handler
+    this.resizeHandler = () => {
+      if (this.canvas?.parentElement) {
+        const newWidth = this.canvas.parentElement.offsetWidth - 6;
+        if (newWidth !== this.canvas.width) {
+          this.resize();
+        }
+      }
+    };
+    window.addEventListener('resize', this.resizeHandler);
+  }
+
+  private subscribeToAntennaEvents() {
     this.on(Events.ANTENNA_CONFIG_CHANGED, (data) => {
       this.updateConfigChange(data);
     });
@@ -200,17 +211,6 @@ export class SpectrumAnalyzer extends Equipment {
     this.on(Events.ANTENNA_TRACK_CHANGED, (data) => {
       this.updateConfigChange(data);
     });
-
-    // Window resize handler
-    this.resizeHandler = () => {
-      if (this.canvas?.parentElement) {
-        const newWidth = this.canvas.parentElement.offsetWidth - 6;
-        if (newWidth !== this.canvas.width) {
-          this.resize();
-        }
-      }
-    };
-    window.addEventListener('resize', this.resizeHandler);
   }
 
   private updateConfigChange(data: any) {
@@ -310,7 +310,7 @@ export class SpectrumAnalyzer extends Equipment {
 
     this.emit(Events.SPEC_A_MODE_CHANGED, {
       unit: this.unit,
-      mode: this.isRfMode ? 'RF' : 'IF'
+      rf: this.isRfMode,
     });
   }
 

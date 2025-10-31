@@ -19,6 +19,23 @@ export interface TransmitterConfig {
   modems: TransmitterModem[];
 }
 
+// TX Event specific interfaces
+export interface TxConfigChangedData {
+  unit: number;
+  modem: number;
+  config: TransmitterModem;
+}
+
+export interface TxTransmitChangedData {
+  unit: number;
+  modem: number;
+  transmitting: boolean;
+}
+
+export interface TxErrorData {
+  message: string;
+}
+
 /**
  * Transmitter - Single transmitter case containing 4 modems
  * Manages modem configuration and transmission state
@@ -58,10 +75,6 @@ export class Transmitter extends Equipment {
 
     this.inputData = { ...this.getActiveModem() };
     this.build();
-  }
-
-  protected loadCSS(): void {
-    // CSS is imported at the top of the file
   }
 
   render(): HTMLElement {

@@ -1,5 +1,4 @@
 import { defaultSignalData } from "../../constants";
-import { EventBus } from "../../events/event-bus";
 import { Events } from "../../events/events";
 import { RfFrequency, RfSignal } from "../../types";
 import { html, qs } from '../../utils';
@@ -29,6 +28,31 @@ export interface AntennaConfig {
   isAutoTrackEnabled: boolean;
   /** is antenna operational */
   isOperational: boolean;
+}
+
+// Antenna Event specific interfaces
+export interface AntennaLoopbackChangedData {
+  loopback: boolean;
+}
+
+export interface AntennaHpaChangedData {
+  hpa: boolean;
+}
+
+export interface AntennaTrackChangedData {
+  track: boolean;
+}
+
+export interface AntennaLockedData {
+  locked: boolean;
+}
+
+export interface AntennaPowerChangedData {
+  operational: boolean;
+}
+
+export interface AntennaErrorData {
+  message: string;
 }
 
 /**
@@ -70,10 +94,6 @@ export class Antenna extends Equipment {
 
     this.inputData = { ...this.config };
     this.build();
-  }
-
-  protected loadCSS(): void {
-    // CSS is imported at the top of the file
   }
 
   render(): HTMLElement {
@@ -208,7 +228,7 @@ export class Antenna extends Equipment {
     const trackSwitch = qs('.input-track', this.element) as HTMLInputElement;
     trackSwitch?.addEventListener('change', () => this.handleTrackChange());
 
-    EventBus.getInstance().on(Events.ANTENNA_LOCKED, (data: { locked: boolean; antennaId: number }) => {
+    this.on(Events.ANTENNA_LOCKED, () => (data: { locked: boolean; antennaId: number }) => {
       if (data.antennaId === this.unit) {
         this.config.isLocked = data.locked;
         this.updateSignalStatus();
@@ -338,6 +358,7 @@ export class Antenna extends Equipment {
 
   private handleTrackChange(): void {
     if (!this.config.isOperational) {
+      this.signals = [];
       this.emit(Events.ANTENNA_ERROR, { message: 'Antenna is not operational' });
       // Reset the switch
       const trackSwitch = qs('.input-track', this.element) as HTMLInputElement;
@@ -358,6 +379,7 @@ export class Antenna extends Equipment {
       }, 3000); // 3 second delay to acquire lock
     } else {
       this.config.isLocked = false;
+      this.signals = [];
       this.emit(Events.ANTENNA_LOCKED, { locked: false });
     }
 
@@ -375,6 +397,12 @@ export class Antenna extends Equipment {
     // Update signal active status based on antenna config
     this.signals = defaultSignalData.filter((signal) => {
       console.log(signal);
+
+      // Can't receive signals if not locked
+      if (!this.config.isLocked) {
+        return false;
+      }
+
       const downlinkFrequency = this.getDownlinkFrequency();
       const isCurrentServer = signal.serverId === this.config.serverId;
       const isCurrentSatellite = signal.targetId === this.config.targetId;

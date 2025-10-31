@@ -1,4 +1,32 @@
+import { AntennaConfig, AntennaErrorData, AntennaHpaChangedData, AntennaLockedData, AntennaLoopbackChangedData, AntennaPowerChangedData, AntennaTrackChangedData } from "../equipment/antenna/antenna";
+import { RxConfigChangedData, RxSignalFoundData, RxSignalLostData } from "../equipment/receiver/receiver";
+import { SpectrumAnalyzerConfig } from "../equipment/spectrum-analyzer/spectrum-analyzer";
+import { TxConfigChangedData, TxErrorData, TxTransmitChangedData } from "../equipment/transmitter/transmitter";
 import { Logger } from "../logging/logger";
+import { Events } from "./events";
+
+export interface EventMap {
+  [Events.ANTENNA_CONFIG_CHANGED]: [AntennaConfig];
+  [Events.ANTENNA_LOOPBACK_CHANGED]: [AntennaLoopbackChangedData];
+  [Events.ANTENNA_HPA_CHANGED]: [AntennaHpaChangedData];
+  [Events.ANTENNA_TRACK_CHANGED]: [AntennaTrackChangedData];
+  [Events.ANTENNA_LOCKED]: [AntennaLockedData];
+  [Events.ANTENNA_POWER_CHANGED]: [AntennaPowerChangedData];
+  [Events.ANTENNA_ERROR]: [AntennaErrorData];
+
+  [Events.TX_CONFIG_CHANGED]: [TxConfigChangedData];
+  [Events.TX_TRANSMIT_CHANGED]: [TxTransmitChangedData];
+  [Events.TX_ERROR]: [TxErrorData];
+
+  [Events.RX_CONFIG_CHANGED]: [RxConfigChangedData];
+  [Events.RX_SIGNAL_FOUND]: [RxSignalFoundData];
+  [Events.RX_SIGNAL_LOST]: [RxSignalLostData];
+
+  [Events.SPEC_A_CONFIG_CHANGED]: [Partial<SpectrumAnalyzerConfig>];
+  [Events.SPEC_A_MODE_CHANGED]: [Partial<SpectrumAnalyzerConfig>];
+
+  [Events.ROUTE_CHANGED]: [{ path: string }];
+}
 
 /**
  * EventBus - Simple pub/sub for cross-component communication
@@ -6,7 +34,9 @@ import { Logger } from "../logging/logger";
  */
 export class EventBus {
   private static instance: EventBus;
-  private readonly events: Map<string, Array<(data?: any) => void>> = new Map();
+  private readonly events: {
+    [K in Events]?: Array<(...args: EventMap[K]) => void>;
+  } = {};
 
   private constructor() { }
 
@@ -20,58 +50,23 @@ export class EventBus {
   /**
    * Subscribe to an event
    */
-  public on(event: string, callback: (data?: any) => void): () => void {
-    if (!this.events.has(event)) {
-      this.events.set(event, []);
+  public on<T extends Events>(event: T, cb: (...args: EventMap[T]) => void) {
+    if (!this.events[event]) {
+      this.events[event] = [];
     }
-
-    this.events.get(event)!.push(callback);
-
-    // Return unsubscribe function
-    return () => this.off(event, callback);
+    this.events[event]!.push(cb);
   }
 
   /**
-   * Unsubscribe from an event
-   */
-  public off(event: string, callback: (data?: any) => void): void {
-    const callbacks = this.events.get(event);
-    if (callbacks) {
-      const index = callbacks.indexOf(callback);
-      if (index > -1) {
-        callbacks.splice(index, 1);
-      }
-    }
-  }
-
-  /**
-   * Emit an event
-   */
-  public emit(event: string, data?: any): void {
-    Logger.log(`EventBus: Emitting event '${event}' with data:`, data);
-    const callbacks = this.events.get(event);
+ * Emit an event
+ */
+  public emit<T extends Events>(event: T, ...args: EventMap[T]): void {
+    Logger.log(`EventBus: Emitting event '${event}' with args:`, args);
+    const callbacks = this.events[event];
     if (callbacks) {
       for (const callback of callbacks) {
-        callback(data);
+        callback(...args);
       }
     }
-  }
-
-  /**
-   * Clear all listeners for an event
-   */
-  public clear(event?: string): void {
-    if (event) {
-      this.events.delete(event);
-    } else {
-      this.events.clear();
-    }
-  }
-
-  /**
-   * Get all registered events (for debugging)
-   */
-  public getEvents(): string[] {
-    return Array.from(this.events.keys());
   }
 }

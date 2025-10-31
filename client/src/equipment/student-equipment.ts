@@ -85,6 +85,9 @@ export class StudentEquipment {
     // Initialize 2 antennas
     for (let i = 1; i <= 2; i++) {
       const antenna = new Antenna(`antenna${i}-container`, i, 1, 1);
+      antenna.update({
+        offset: 1310,
+      })
       this.antennas.push(antenna);
     }
 
@@ -104,7 +107,7 @@ export class StudentEquipment {
 
     // Initialize 4 receiver cases (each with 4 modems)
     for (let i = 1; i <= 4; i++) {
-      const rx = new Receiver(`rx${i}-container`, i, 1, 1);
+      const rx = new Receiver(`rx${i}-container`, i, this.antennas, 1, 1);
       this.receivers.push(rx);
     }
   }

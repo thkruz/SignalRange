@@ -49,7 +49,7 @@ export const defaultSignalData = [
     modulation: '8QAM' as ModulationType,
     fec: '3/4' as FECType,
     feed: 'red 1.mp4',
-    isActive: false,
+    isActive: true,
   },
   {
     id: 2,
@@ -61,7 +61,7 @@ export const defaultSignalData = [
     modulation: '8QAM' as ModulationType,
     fec: '3/4' as FECType,
     feed: 'blue 1.mp4',
-    isActive: false,
+    isActive: true,
   },
   {
     id: 3,
@@ -73,7 +73,7 @@ export const defaultSignalData = [
     modulation: '8QAM' as ModulationType,
     fec: '3/4' as FECType,
     feed: 'blue 1.mp4',
-    isActive: false,
+    isActive: true,
   },
   {
     id: 4,
@@ -85,7 +85,7 @@ export const defaultSignalData = [
     modulation: '8QAM' as ModulationType,
     fec: '3/4' as FECType,
     feed: 'blue 1.mp4',
-    isActive: false,
+    isActive: true,
   },
   {
     id: 5,
@@ -97,7 +97,7 @@ export const defaultSignalData = [
     modulation: '8QAM' as ModulationType,
     fec: '3/4' as FECType,
     feed: 'blue 1.mp4',
-    isActive: false,
+    isActive: true,
   },
   {
     id: 6,
@@ -109,6 +109,6 @@ export const defaultSignalData = [
     modulation: 'BPSK' as ModulationType,
     fec: '1/4' as FECType,
     feed: 'blue 1.mp4',
-    isActive: false,
+    isActive: true,
   },
 ];

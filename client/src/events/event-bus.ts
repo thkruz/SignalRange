@@ -1,3 +1,5 @@
+import { Logger } from "../logging/logger";
+
 /**
  * EventBus - Simple pub/sub for cross-component communication
  * Replaces the need for prop drilling or complex state management
@@ -46,6 +48,7 @@ export class EventBus {
    * Emit an event
    */
   public emit(event: string, data?: any): void {
+    Logger.log(`EventBus: Emitting event '${event}' with data:`, data);
     const callbacks = this.events.get(event);
     if (callbacks) {
       for (const callback of callbacks) {

@@ -1,0 +1,144 @@
+/* SpectrumAnalyzer.css - Styles specific to Spectrum Analyzer equipment */
+.spectrum-analyzer-box {
+  display: flex;
+  flex-direction: column;
+  background-color: #2a2a2a;
+  border: 1px solid #444;
+  border-radius: 10px;
+  padding: 16px;
+  box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.5);
+  height: 100%;
+  min-width: 300px;
+}
+
+/* Header */
+.spec-a-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #444;
+}
+
+.spec-a-title {
+  color: #fff;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.spec-a-span {
+  color: #aaa;
+  font-size: 14px;
+}
+
+/* Canvas Container */
+.spec-a-canvas-container {
+  position: relative;
+  border: 8px solid transparent;
+  border-image-source: url(./bezel.png);
+  border-image-slice: 30 fill;
+  border-image-outset: 0;
+  overflow: hidden;
+  box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);
+  background-color: #282a2b;
+  border-radius: 10px;
+  margin-bottom: 12px;
+  flex-grow: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.spec-a-canvas-container canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+}
+
+/* Info Section */
+.spec-a-info {
+  display: flex;
+  justify-content: space-around;
+  margin-bottom: 12px;
+  padding: 8px;
+  background-color: #1a1a1a;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 14px;
+}
+
+.spec-a-info div {
+  padding: 4px 8px;
+}
+
+/* Controls */
+.spec-a-controls {
+  display: flex;
+  gap: 8px;
+  justify-content: space-around;
+}
+
+.spec-a-controls button {
+  flex: 1;
+  padding: 10px;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.btn-config {
+  background-color: #ff9800;
+  color: #000;
+}
+
+.btn-config:hover {
+  background-color: #fb8c00;
+}
+
+.btn-mode {
+  background-color: #2196f3;
+  color: #fff;
+}
+
+.btn-mode:hover {
+  background-color: #1976d2;
+}
+
+.btn-mode.active {
+  background-color: #4caf50;
+}
+
+.btn-pause {
+  background-color: #9e9e9e;
+  color: #fff;
+}
+
+.btn-pause:hover {
+  background-color: #757575;
+}
+
+.btn-pause.active {
+  background-color: #f44336;
+  color: #fff;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .spectrum-analyzer-box {
+    min-width: 250px;
+  }
+
+  .spec-a-title {
+    font-size: 14px;
+  }
+
+  .spec-a-span {
+    font-size: 12px;
+  }
+
+  .spec-a-controls button {
+    font-size: 12px;
+    padding: 8px;
+  }
+}

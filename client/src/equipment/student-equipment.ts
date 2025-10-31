@@ -1,13 +1,13 @@
 import { html } from '../utils';
-import { SpectrumAnalyzer } from './SpectrumAnalyzer';
+import { SpectrumAnalyzer } from './spectrum-analyzer/spectrum-analyzer';
 
 /**
  * StudentEquipment - Orchestrates all equipment on student page
  * Creates the layout and instantiates all equipment classes
  */
 export class StudentEquipment {
-  private element: HTMLElement;
-  private spectrumAnalyzers: SpectrumAnalyzer[] = [];
+  private readonly element: HTMLElement;
+  private readonly spectrumAnalyzers: SpectrumAnalyzer[] = [];
 
   constructor(parentId: string) {
     const parent = document.getElementById(parentId);
@@ -76,7 +76,8 @@ export class StudentEquipment {
   private initEquipment(): void {
     // Initialize 4 spectrum analyzers
     for (let i = 1; i <= 4; i++) {
-      const specA = new SpectrumAnalyzer(`specA${i}-container`, i);
+      const antennaId = i <= 2 ? 1 : 2; // First two specA use antenna 1, next two use antenna 2
+      const specA = new SpectrumAnalyzer(`specA${i}-container`, i, 1, antennaId);
       this.spectrumAnalyzers.push(specA);
     }
 

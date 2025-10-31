@@ -1,4 +1,4 @@
-import { StudentEquipment } from '../equipment/StudentEquipment';
+import { StudentEquipment } from '../equipment/student-equipment';
 import { html } from '../utils';
 
 /**

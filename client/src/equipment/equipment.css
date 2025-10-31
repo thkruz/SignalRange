@@ -1,0 +1,90 @@
+/* Equipment.css - Common styles for all equipment */
+
+.equipment-section {
+  margin-bottom: 2rem;
+}
+
+.equipment-section h2 {
+  color: #fff;
+  margin-bottom: 1rem;
+  font-size: 1.5rem;
+}
+
+/* Grid layouts for equipment */
+.spec-a-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1rem;
+}
+
+.antenna-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 1rem;
+}
+
+.tx-grid,
+.rx-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 1rem;
+}
+
+/* Container classes */
+.spec-a-container,
+.antenna-container,
+.tx-container,
+.rx-container {
+  position: relative;
+}
+
+/* Common button styles */
+button {
+  font-family: 'Roboto', 'Helvetica', 'Arial', sans-serif;
+  cursor: pointer;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 16px;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+button:active {
+  transform: translateY(0);
+}
+
+button.active {
+  background-color: #4caf50;
+  color: white;
+}
+
+/* Common input styles */
+input,
+select {
+  font-family: 'Roboto', 'Helvetica', 'Arial', sans-serif;
+  padding: 8px;
+  border: 1px solid #555;
+  border-radius: 4px;
+  background-color: #2a2a2a;
+  color: #fff;
+  font-size: 14px;
+}
+
+input:focus,
+select:focus {
+  outline: none;
+  border-color: #4caf50;
+}
+
+/* Common label styles */
+label {
+  color: #fff;
+  font-size: 14px;
+  margin-bottom: 4px;
+  display: block;
+}

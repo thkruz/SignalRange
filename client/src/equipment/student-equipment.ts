@@ -10,10 +10,10 @@ import { Transmitter } from './transmitter/transmitter';
  */
 export class StudentEquipment {
   private readonly element: HTMLElement;
-  private spectrumAnalyzers: SpectrumAnalyzer[] = [];
-  private antennas: Antenna[] = [];
-  private transmitters: Transmitter[] = [];
-  private receivers: Receiver[] = [];
+  private readonly spectrumAnalyzers: SpectrumAnalyzer[] = [];
+  private readonly antennas: Antenna[] = [];
+  private readonly transmitters: Transmitter[] = [];
+  private readonly receivers: Receiver[] = [];
 
   constructor(parentId: string) {
     const parent = document.getElementById(parentId);
@@ -23,6 +23,8 @@ export class StudentEquipment {
     this.render();
     this.addListeners();
     this.initEquipment();
+
+    (globalThis as any).equipment = this; // For debugging
   }
 
   private render(): void {

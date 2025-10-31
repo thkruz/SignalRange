@@ -1,5 +1,5 @@
 import { EventBus } from "./events/event-bus";
-import { Events } from "./events/Events";
+import { Events } from "./events/events";
 
 /**
  * Simple Router for 3 pages: login, student, instructor

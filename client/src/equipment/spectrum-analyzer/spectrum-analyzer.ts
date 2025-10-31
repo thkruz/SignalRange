@@ -1,6 +1,7 @@
-import { Events } from "../../events/Events";
+import { Events } from "../../events/events";
 import { html, qs } from '../../utils';
 import { Equipment } from '../equipment';
+import { AnalyzerControl } from "./analyzer-control";
 import './spectrum-analyzer.css';
 
 export interface SpectrumAnalyzerConfig {
@@ -39,7 +40,7 @@ export class SpectrumAnalyzer extends Equipment {
   private ctx: CanvasRenderingContext2D | null = null;
 
   // State
-  private readonly config: SpectrumAnalyzerConfig;
+  private config: SpectrumAnalyzerConfig;
   private isRfMode: boolean = false;
   private isPaused: boolean = false;
   private isDrawHold: boolean = false;
@@ -190,7 +191,8 @@ export class SpectrumAnalyzer extends Equipment {
 
     // Listen for antenna changes
     this.on(Events.ANTENNA_CONFIG_CHANGED, (data) => {
-      if (data.antennaId === this.config.antenna_id) {
+      if (data.unit === this.config.unit) {
+        this.config = { ...this.config, ...data };
         this.updateFrequency(data.frequency);
       }
     });
@@ -209,6 +211,19 @@ export class SpectrumAnalyzer extends Equipment {
 
   protected initialize(): void {
     this.start();
+  }
+
+  // In your SpectrumAnalyzer class or where you manage it:
+  private openConfigPanel(): void {
+    const control = new AnalyzerControl({
+      spectrumAnalyzer: this,
+      onClose: () => {
+        console.log('Control panel closed');
+      }
+    });
+
+    control.init();
+    control.show();
   }
 
   /**
@@ -275,6 +290,7 @@ export class SpectrumAnalyzer extends Equipment {
    */
 
   private openConfig(): void {
+    this.openConfigPanel();
     this.emit(Events.SPEC_A_CONFIG_CHANGED, { unit: this.unit });
   }
 

@@ -48,7 +48,7 @@ export const defaultSignalData = [
     bandwidth: 10e6 as Hertz,
     modulation: '8QAM' as ModulationType,
     fec: '3/4' as FECType,
-    feed: 'red 1.mp4',
+    feed: 'red-1.mp4',
     isActive: true,
   },
   {
@@ -60,7 +60,7 @@ export const defaultSignalData = [
     bandwidth: 10e6 as Hertz,
     modulation: '8QAM' as ModulationType,
     fec: '3/4' as FECType,
-    feed: 'blue 1.mp4',
+    feed: 'blue-1.mp4',
     isActive: true,
   },
   {
@@ -72,7 +72,7 @@ export const defaultSignalData = [
     bandwidth: 2e6 as Hertz,
     modulation: '8QAM' as ModulationType,
     fec: '3/4' as FECType,
-    feed: 'blue 1.mp4',
+    feed: 'blue-1.mp4',
     isActive: true,
   },
   {
@@ -84,7 +84,7 @@ export const defaultSignalData = [
     bandwidth: 1e6 as Hertz,
     modulation: '8QAM' as ModulationType,
     fec: '3/4' as FECType,
-    feed: 'blue 1.mp4',
+    feed: 'blue-1.mp4',
     isActive: true,
   },
   {
@@ -96,7 +96,7 @@ export const defaultSignalData = [
     bandwidth: 4e6 as Hertz,
     modulation: '8QAM' as ModulationType,
     fec: '3/4' as FECType,
-    feed: 'blue 1.mp4',
+    feed: 'blue-1.mp4',
     isActive: true,
   },
   {
@@ -108,7 +108,7 @@ export const defaultSignalData = [
     bandwidth: 10e6 as Hertz,
     modulation: 'BPSK' as ModulationType,
     fec: '1/4' as FECType,
-    feed: 'blue 1.mp4',
+    feed: 'blue-1.mp4',
     isActive: true,
   },
 ];

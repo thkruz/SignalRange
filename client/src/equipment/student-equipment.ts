@@ -2,6 +2,7 @@ import { html } from '../utils';
 import { Antenna } from './antenna/antenna';
 import { Receiver } from './receiver/receiver';
 import { SpectrumAnalyzer } from './spectrum-analyzer/spectrum-analyzer';
+import './student-equipment.css';
 import { Transmitter } from './transmitter/transmitter';
 
 /**
@@ -15,6 +16,8 @@ export class StudentEquipment {
   readonly transmitters: Transmitter[] = [];
   readonly receivers: Receiver[] = [];
 
+  readonly isFullEquipmentSuite: boolean = false;
+
   constructor(parentId: string) {
     const parent = document.getElementById(parentId);
     if (!parent) throw new Error(`Parent element ${parentId} not found`);
@@ -27,12 +30,21 @@ export class StudentEquipment {
     (globalThis as any).equipment = this; // For debugging
   }
 
-  private render(): void {
+  render(): void {
     this.element.innerHTML = html`
       <div class="student-equipment">
+        <!-- Antennas -->
+        <div class="equipment-section">
+          <div class="antenna-grid">
+            <div id="antenna1-container" class="antenna-container"></div>
+            <div id="antenna2-container" class="antenna-container"></div>
+          </div>
+        </div>
+
+        <div class="spacer"></div>
+
         <!-- Spectrum Analyzers Grid -->
         <div class="equipment-section">
-          <h2>Spectrum Analyzers</h2>
           <div class="spec-a-grid">
             <div id="specA1-container" class="spec-a-container"></div>
             <div id="specA2-container" class="spec-a-container"></div>
@@ -41,18 +53,10 @@ export class StudentEquipment {
           </div>
         </div>
 
-        <!-- Antennas -->
-        <div class="equipment-section">
-          <h2>Antennas</h2>
-          <div class="antenna-grid">
-            <div id="antenna1-container" class="antenna-container"></div>
-            <div id="antenna2-container" class="antenna-container"></div>
-          </div>
-        </div>
+        <div class="spacer"></div>
 
         <!-- Transmitters -->
         <div class="equipment-section">
-          <h2>Transmitters</h2>
           <div class="tx-grid">
             <div id="tx1-container" class="tx-container"></div>
             <div id="tx2-container" class="tx-container"></div>
@@ -61,9 +65,10 @@ export class StudentEquipment {
           </div>
         </div>
 
+        <div class="spacer"></div>
+
         <!-- Receivers -->
         <div class="equipment-section">
-          <h2>Receivers</h2>
           <div class="rx-grid">
             <div id="rx1-container" class="rx-container"></div>
             <div id="rx2-container" class="rx-container"></div>
@@ -83,7 +88,7 @@ export class StudentEquipment {
   private initEquipment(): void {
 
     // Initialize 2 antennas
-    for (let i = 1; i <= 2; i++) {
+    for (let i = 1; i <= (this.isFullEquipmentSuite ? 2 : 1); i++) {
       const antenna = new Antenna(`antenna${i}-container`, i, 1, 1);
       antenna.update({
         offset: 1310,
@@ -91,22 +96,30 @@ export class StudentEquipment {
       this.antennas.push(antenna);
     }
 
+    if (!this.isFullEquipmentSuite) {
+      // Hide the second antenna container if not full suite
+      const antenna2Container = document.getElementById('antenna2-container');
+      if (antenna2Container) {
+        antenna2Container.style.display = 'none';
+      }
+    }
+
     // Initialize 4 spectrum analyzers
     // First two use antenna 1, next two use antenna 2
-    for (let i = 1; i <= 4; i++) {
+    for (let i = 1; i <= (this.isFullEquipmentSuite ? 4 : 2); i++) {
       const antennaId = i <= 2 ? 1 : 2;
       const specA = new SpectrumAnalyzer(`specA${i}-container`, i, 1, this.antennas[antennaId - 1]);
       this.spectrumAnalyzers.push(specA);
     }
 
     // Initialize 4 transmitter cases (each with 4 modems)
-    for (let i = 1; i <= 4; i++) {
+    for (let i = 1; i <= (this.isFullEquipmentSuite ? 4 : 2); i++) {
       const tx = new Transmitter(`tx${i}-container`, i, 1, 1);
       this.transmitters.push(tx);
     }
 
     // Initialize 4 receiver cases (each with 4 modems)
-    for (let i = 1; i <= 4; i++) {
+    for (let i = 1; i <= (this.isFullEquipmentSuite ? 4 : 2); i++) {
       const rx = new Receiver(`rx${i}-container`, i, this.antennas, 1, 1);
       this.receivers.push(rx);
     }

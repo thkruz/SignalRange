@@ -40,5 +40,9 @@ export class StudentPage extends AbstractPage {
 
     // Sync with storage (automatically uses LocalStorage)
     await syncEquipmentWithStore(this.equipment);
+
+    for (const receiver of this.equipment.receivers) {
+      receiver.syncInputToConfig();
+    }
   }
 }

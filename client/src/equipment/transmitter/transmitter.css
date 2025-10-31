@@ -48,7 +48,6 @@
 .transmitter-controls {
   display: flex;
   gap: 16px;
-  flex-grow: 1;
 }
 
 /* Modem Selection Buttons */

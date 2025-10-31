@@ -79,6 +79,13 @@ export class Receiver extends Equipment {
     this.build();
   }
 
+  syncInputToConfig(): void {
+    const activeModem = this.getActiveModem();
+    Object.assign(this.inputData, activeModem);
+
+    this.updateDisplay();
+  }
+
   render(): HTMLElement {
     const activeModemData = this.getActiveModem();
     const signalStatus = this.getSignalStatus();
@@ -110,10 +117,10 @@ export class Receiver extends Equipment {
             <div class="config-row">
               <label>Antenna</label>
               <select class="input-antenna" data-param="antenna">
-                <option value="1" ${this.inputData.antenna?.config.id === this.antennas[0].config.id ? 'selected' : ''}>1</option>
-                <option value="2" ${this.inputData.antenna?.config.id === this.antennas[1].config.id ? 'selected' : ''}>2</option>
+                <option value="1" ${this.inputData.antenna?.config.id === this.antennas[0]?.config.id ? 'selected' : ''}>1</option>
+                <option value="2" ${this.inputData.antenna?.config.id === this.antennas[1]?.config.id ? 'selected' : ''}>2</option>
               </select>
-              <span class="current-value">${activeModemData.antenna.config.id}</span>
+              <span class="current-value">${activeModemData?.antenna.config.id}</span>
             </div>
 
             <div class="config-row">
@@ -122,9 +129,9 @@ export class Receiver extends Equipment {
                 type="text"
                 class="input-frequency"
                 data-param="frequency"
-                value="${this.inputData.frequency ?? activeModemData.frequency}"
+                value="${this.inputData.frequency ?? activeModemData?.frequency}"
               />
-              <span class="current-value">${activeModemData.frequency} MHz</span>
+              <span class="current-value">${activeModemData?.frequency} MHz</span>
             </div>
 
             <div class="config-row">
@@ -133,9 +140,9 @@ export class Receiver extends Equipment {
                 type="text"
                 class="input-bandwidth"
                 data-param="bandwidth"
-                value="${this.inputData.bandwidth ?? activeModemData.bandwidth}"
+                value="${this.inputData.bandwidth ?? activeModemData?.bandwidth}"
               />
-              <span class="current-value">${activeModemData.bandwidth} MHz</span>
+              <span class="current-value">${activeModemData?.bandwidth} MHz</span>
             </div>
 
             <div class="config-row">
@@ -146,7 +153,7 @@ export class Receiver extends Equipment {
                 <option value="8QAM" ${this.inputData.modulation === '8QAM' ? 'selected' : ''}>8QAM</option>
                 <option value="16QAM" ${this.inputData.modulation === '16QAM' ? 'selected' : ''}>16QAM</option>
               </select>
-              <span class="current-value">${activeModemData.modulation}</span>
+              <span class="current-value">${activeModemData?.modulation}</span>
             </div>
 
             <div class="config-row">
@@ -158,7 +165,7 @@ export class Receiver extends Equipment {
                 <option value="5/6" ${this.inputData.fec === '5/6' ? 'selected' : ''}>5/6</option>
                 <option value="7/8" ${this.inputData.fec === '7/8' ? 'selected' : ''}>7/8</option>
               </select>
-              <span class="current-value">${activeModemData.fec}</span>
+              <span class="current-value">${activeModemData?.fec}</span>
             </div>
 
             <!-- Video Monitor Placeholder -->
@@ -166,8 +173,7 @@ export class Receiver extends Equipment {
               <div class="monitor-screen ${feedUrl.length > 0 ? 'signal-found' : 'no-signal'}">
                 ${feedUrl.length > 0
         ? html`<div class="signal-indicator">
-                      <div class="signal-bars"></div>
-                      <span>SIGNAL ACQUIRED</span>
+                      <video class="video-feed" src="/videos/${feedUrl}" alt="Video Feed" autoplay muted loop />
                     </div>`
         : html`<span class="no-signal-text">NO SIGNAL</span>`
       }
@@ -258,7 +264,7 @@ export class Receiver extends Equipment {
    * Private Methods
    */
 
-  private getActiveModem(): ReceiverModem {
+  private getActiveModem(): ReceiverModem | undefined {
     return this.config.modems.find(m => m.modemNumber === this.activeModem) || this.config.modems[0];
   }
 
@@ -299,6 +305,8 @@ export class Receiver extends Equipment {
     const activeModem = this.getActiveModem();
     const modemIndex = this.config.modems.findIndex(m => m.modemNumber === this.activeModem);
 
+    if (!activeModem || modemIndex === -1) return;
+
     // Update the modem configuration
     this.config.modems[modemIndex] = {
       ...activeModem,
@@ -338,7 +346,11 @@ export class Receiver extends Equipment {
   }
 
   private getVisibleSignals(activeModemData = this.getActiveModem()) {
+    if (!activeModemData) return [];
+
     const activeAntenna = activeModemData.antenna;
+
+    if (!activeAntenna) return [];
 
     // Figure out which signals match the receiver settings
     const visibleSignals = activeAntenna.signals.filter((s) => {
@@ -351,6 +363,7 @@ export class Receiver extends Equipment {
       if (s.frequency - (s.bandwidth * 1e6 as Hertz) / 2 > activeModemData.frequency + activeModemData.bandwidth / 2) {
         return false;
       }
+
       if (s.modulation !== activeModemData.modulation) {
         return false;
       }
@@ -360,7 +373,31 @@ export class Receiver extends Equipment {
       return true;
     });
 
-    return visibleSignals;
+    return visibleSignals
+      .filter((s) => {
+        const frequencyMhz = s.frequency / 1e6 as MHz;
+        const freqTolerance50 = activeModemData.bandwidth * 0.5;
+        const lowerBound50 = activeModemData.frequency - freqTolerance50;
+        const upperBound50 = activeModemData.frequency + freqTolerance50;
+        // Filter out signals more than 50% outside center frequency
+        return frequencyMhz >= lowerBound50 && frequencyMhz <= upperBound50;
+      })
+      .map((s) => {
+        const frequencyMhz = s.frequency / 1e6 as MHz;
+        const freqTolerance10 = activeModemData.bandwidth * 0.1;
+        const lowerBound10 = activeModemData.frequency - freqTolerance10;
+        const upperBound10 = activeModemData.frequency + freqTolerance10;
+        // Within 10%: no prefix
+        if (frequencyMhz >= lowerBound10 && frequencyMhz <= upperBound10) {
+          s.feed = s.feed.replace(/^degraded-/, '');
+        } else {
+          // Outside 10% but within 50%: degraded-
+          if (!s.feed.startsWith('degraded-')) {
+            s.feed = `degraded-${s.feed.replace(/^degraded-/, '')}`;
+          }
+        }
+        return s;
+      });
   }
 
   private getModemStatusClass(modem: ReceiverModem): string {
@@ -378,7 +415,7 @@ export class Receiver extends Equipment {
     return '';
   }
 
-  private updateDisplay(): void {
+  updateDisplay(): void {
     this.render();
 
     // Re-attach listeners after render

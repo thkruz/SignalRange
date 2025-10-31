@@ -12,22 +12,35 @@
 
 /* Grid layouts for equipment */
 .spec-a-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 1rem;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: space-evenly;
+  row-gap: 4rem;
 }
 
 .antenna-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-  gap: 1rem;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: space-evenly;
+  row-gap: 2rem;
 }
 
 .tx-grid,
 .rx-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-  gap: 1rem;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: space-evenly;
+}
+
+.tx-grid {
+  row-gap: 4rem;
+}
+
+.rx-grid {
+  row-gap: 2rem;
 }
 
 /* Container classes */
@@ -36,6 +49,8 @@
 .tx-container,
 .rx-container {
   position: relative;
+  min-height: min-content;
+  width: 45em;
 }
 
 /* Common button styles */

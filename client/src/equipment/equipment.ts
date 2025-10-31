@@ -1,5 +1,5 @@
 import { BaseElement } from '../components/base-element';
-import { eventBus } from '../events/event-bus';
+import { EventBus } from '../events/event-bus';
 import './equipment.css';
 
 /**
@@ -65,13 +65,13 @@ export abstract class Equipment extends BaseElement {
    * Helper to emit equipment events
    */
   protected emit(event: string, data?: any): void {
-    eventBus.emit(event, { unit: this.unit, teamId: this.teamId, ...data });
+    EventBus.getInstance().emit(event, { unit: this.unit, teamId: this.teamId, ...data });
   }
 
   /**
    * Helper to listen to events
    */
   protected on(event: string, callback: (data: any) => void): () => void {
-    return eventBus.on(event, callback);
+    return EventBus.getInstance().on(event, callback);
   }
 }

@@ -1,4 +1,5 @@
-import { eventBus, Events } from './events/event-bus';
+import { EventBus } from "./events/event-bus";
+import { Events } from "./events/Events";
 
 /**
  * Simple Router for 3 pages: login, student, instructor
@@ -52,7 +53,7 @@ export class Router {
     }
 
     // Emit route change event
-    eventBus.emit(Events.ROUTE_CHANGED, { path });
+    EventBus.getInstance().emit(Events.ROUTE_CHANGED, { path });
   }
 
   private hideAll(): void {

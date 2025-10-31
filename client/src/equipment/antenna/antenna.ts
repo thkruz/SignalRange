@@ -1,4 +1,4 @@
-import { Events } from '../../events/event-bus';
+import { Events } from "../../events/Events";
 import { html, qs } from '../../utils';
 import { Equipment } from '../equipment';
 import './antenna.css';

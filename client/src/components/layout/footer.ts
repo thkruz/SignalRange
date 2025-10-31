@@ -19,9 +19,9 @@ export class Footer extends Component {
 
   private generateCopyrightInfo(): any {
     return `
-      This instance is licensed under the GNU AGPL v3.0. Attribution, source access, and this notice must remain visible.<br>
-      Unauthorized use, rebranding, or removal of attribution may violate trademark and open source license terms.<br>
-      © 2025 Kruczek Labs LLC. All rights reserved. See <a href="https://raw.githubusercontent.com/thkruz/iris/dev/LICENSE.md" target="_blank" rel="noopener noreferrer">LICENSE</a> for full terms.
+      © 2025 Kruczek Labs LLC. All rights reserved. SignalRange&#8482; is a trademark.<br>
+      Licensed under GNU AGPL v3.0. Attribution and this notice required.
+      <a href="https://raw.githubusercontent.com/thkruz/iris/dev/LICENSE.md" target="_blank" rel="noopener noreferrer">LICENSE</a>
     `;
   }
 }

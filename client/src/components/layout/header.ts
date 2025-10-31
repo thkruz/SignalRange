@@ -11,13 +11,11 @@ export class Header extends Component {
     <header class="header">
       <div class="header-toolbar">
         <div class="header-logo-section">
-          <button class="header-logo-button" title="Home">
-            <img src="./patch.png" alt="IRIS Logo" height="80" />
-          </button>
+          <img src="./logo.png" alt="IRIS Logo" height="80" />
         </div>
         <div class="header-title-section">
-          <div class="header-main-title">IRIS</div>
-          <div class="header-subtitle">Space Electronic Warfare Sandbox</div>
+          <div class="header-main-title">SignalRange</div>
+          <div class="header-subtitle">Space Electronic Warfare Lab</div>
         </div>
         <div class="header-actions">
           <button class="header-icon-button" title="View Code on Github">

@@ -16,21 +16,24 @@
 
 .tx-grid,
 .rx-grid {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  column-gap: 1em;
+  width: 100%;
 }
 
 /* Container classes */
 .spec-a-container,
-.antenna-container,
-.tx-container,
-.rx-container {
+.antenna-container {
   position: relative;
   min-height: min-content;
   width: 780px;
   height: fit-content;
+}
+
+.tx-container,
+.rx-container {
+  /* Grid of 50% width */
 }
 
 /* Common button styles */

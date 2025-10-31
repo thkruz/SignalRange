@@ -20,6 +20,7 @@
 .header-logo-section {
   display: flex;
   align-items: center;
+  padding-right: 16px;
 }
 
 .header-logo-button {
@@ -42,10 +43,8 @@
 
 .header-main-title {
   font-family: 'Nasa', sans-serif;
-  font-size: 64px;
+  font-size: 50px;
   line-height: 1;
-  margin-top: -8px;
-  margin-bottom: -24px;
   color: var(--color-primary);
 }
 

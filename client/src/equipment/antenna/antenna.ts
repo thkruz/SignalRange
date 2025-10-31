@@ -1,7 +1,7 @@
 import { defaultSignalData } from "../../constants";
 import { EventBus } from "../../events/event-bus";
 import { Events } from "../../events/events";
-import { RfSignal, RfFrequency } from "../../types";
+import { RfFrequency, RfSignal } from "../../types";
 import { html, qs } from '../../utils';
 import { Equipment } from '../equipment';
 import './antenna.css';
@@ -38,7 +38,7 @@ export interface AntennaConfig {
  */
 export class Antenna extends Equipment {
   /** Current antenna configuration */
-  private config: AntennaConfig;
+  config: AntennaConfig;
   /** Input data being edited in the UI before applying changes */
   private inputData: Partial<AntennaConfig> = {};
   /** Currently received signals based on antenna config */

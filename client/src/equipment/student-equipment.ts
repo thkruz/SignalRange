@@ -81,18 +81,19 @@ export class StudentEquipment {
   }
 
   private initEquipment(): void {
-    // Initialize 4 spectrum analyzers
-    // First two use antenna 1, next two use antenna 2
-    for (let i = 1; i <= 4; i++) {
-      const antennaId = i <= 2 ? 1 : 2;
-      const specA = new SpectrumAnalyzer(`specA${i}-container`, i, 1, antennaId);
-      this.spectrumAnalyzers.push(specA);
-    }
 
     // Initialize 2 antennas
     for (let i = 1; i <= 2; i++) {
       const antenna = new Antenna(`antenna${i}-container`, i, 1, 1);
       this.antennas.push(antenna);
+    }
+
+    // Initialize 4 spectrum analyzers
+    // First two use antenna 1, next two use antenna 2
+    for (let i = 1; i <= 4; i++) {
+      const antennaId = i <= 2 ? 1 : 2;
+      const specA = new SpectrumAnalyzer(`specA${i}-container`, i, 1, this.antennas[antennaId - 1]);
+      this.spectrumAnalyzers.push(specA);
     }
 
     // Initialize 4 transmitter cases (each with 4 modems)
@@ -120,7 +121,7 @@ export class StudentEquipment {
     // Update spectrum analyzers with signal data
     if (data.signals) {
       this.spectrumAnalyzers.forEach(specA => {
-        specA.update({ signals: data.signals });
+        specA.update();
       });
     }
 

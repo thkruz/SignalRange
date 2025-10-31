@@ -16,7 +16,7 @@ export interface AnalyzerControlOptions {
  * Numbers must be "pressed" rather than typed, mimicking physical equipment
  */
 export class AnalyzerControl extends BaseElement {
-  private spectrumAnalyzer: SpectrumAnalyzer;
+  private readonly spectrumAnalyzer: SpectrumAnalyzer;
   private onCloseCallback?: () => void;
 
   // Display state
@@ -27,8 +27,6 @@ export class AnalyzerControl extends BaseElement {
   // Control state
   private controlSelection: 'freq' | 'span' | null = null;
   private numberSelection: 'ghz' | 'mhz' | 'khz' | null = null;
-  private isTraceOn: boolean = false;
-  private isMarkerOn: boolean = false;
 
   constructor(options: AnalyzerControlOptions) {
     super();
@@ -47,8 +45,6 @@ export class AnalyzerControl extends BaseElement {
     this.ghz = '0';
     this.khz = '0';
     this.controlSelection = 'freq';
-    this.isTraceOn = this.spectrumAnalyzer.getConfig().hold;
-
     this.updateDisplay();
   }
 
@@ -246,20 +242,17 @@ export class AnalyzerControl extends BaseElement {
   }
 
   private handleTraceClick(): void {
-    this.isTraceOn = !this.isTraceOn;
+    this.spectrumAnalyzer.isTraceOn = !this.spectrumAnalyzer.isTraceOn;
 
     // Update spectrum analyzer
     this.spectrumAnalyzer.resetHoldData();
-    // Toggle hold drawing on the spectrum analyzer
-    const config = this.spectrumAnalyzer.getConfig();
-    config.hold = this.isTraceOn;
 
     this.updateDisplay();
     this.playSound();
   }
 
   private handleMarkerClick(): void {
-    this.isMarkerOn = !this.isMarkerOn;
+    this.spectrumAnalyzer.isMarkerOn = !this.spectrumAnalyzer.isMarkerOn;
 
     // Update spectrum analyzer marker state
     this.spectrumAnalyzer.getConfig();
@@ -358,8 +351,8 @@ export class AnalyzerControl extends BaseElement {
     // Update button states - control selection
     this.updateButtonState('#freq-button', this.controlSelection === 'freq');
     this.updateButtonState('#span-button', this.controlSelection === 'span');
-    this.updateButtonState('#trace-button', this.isTraceOn);
-    this.updateButtonState('#marker-button', this.isMarkerOn);
+    this.updateButtonState('#trace-button', this.spectrumAnalyzer.isTraceOn);
+    this.updateButtonState('#marker-button', this.spectrumAnalyzer.isMarkerOn);
 
     EventBus.getInstance().emit(Events.SPEC_A_CONFIG_CHANGED, this.spectrumAnalyzer.getConfig());
   }

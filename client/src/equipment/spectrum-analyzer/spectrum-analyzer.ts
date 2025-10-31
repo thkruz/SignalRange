@@ -1,5 +1,8 @@
+import { SATELLITES } from "../../constants";
 import { Events } from "../../events/events";
+import { IfFrequency, IfSignal, RfFrequency, RfSignal } from "../../types";
 import { html, qs } from '../../utils';
+import { Antenna } from '../antenna/antenna';
 import { Equipment } from '../equipment';
 import { AnalyzerControl } from "./analyzer-control";
 import './spectrum-analyzer.css';
@@ -17,23 +20,6 @@ export interface SpectrumAnalyzerConfig {
   noiseFloor: number;
 }
 
-interface Signal {
-  rf: any;
-  freq: number;
-  bw: number;
-  amp: number;
-  id: number;
-  server_id: number;
-  target_id: number;
-  frequency: number;
-  power?: number;
-  bandwidth: number;
-  modulation?: string;
-  fec?: string;
-  feed?: string;
-  operational: boolean;
-}
-
 /**
  * SpectrumAnalyzer - Single analyzer unit
  * Manages its own state, canvas rendering, and signal processing
@@ -45,12 +31,12 @@ export class SpectrumAnalyzer extends Equipment {
   private ctx: CanvasRenderingContext2D | null = null;
 
   // State
-  private config: SpectrumAnalyzerConfig;
+  config: SpectrumAnalyzerConfig;
   private isRfMode: boolean = false;
   private isPaused: boolean = false;
-  private isDrawHold: boolean = false;
-  private isDrawMarker: boolean = false;
-  private isShowSignals: boolean = false;
+  isTraceOn: boolean = false;
+  isMarkerOn: boolean = false;
+  private isShowSignals: boolean = true;
 
   // Canvas dimensions
   private width: number = 600;
@@ -59,14 +45,13 @@ export class SpectrumAnalyzer extends Equipment {
   // Animation
   private animationId: number | null = null;
   private running: boolean = false;
-  private refreshRate: number = 10; // FPS
+  private readonly refreshRate: number = 10; // FPS
   private lastDrawTime: number = 0;
 
   // Signal processing
   private data: Float32Array;
   private noiseData: Float32Array;
   private maxHoldData: Float32Array;
-  private signals: Signal[] = [];
 
   // Frequency management
   private minFreq: number = 420e6; // Hz
@@ -75,23 +60,16 @@ export class SpectrumAnalyzer extends Equipment {
   private centerFreq: number = 435e6; // Hz
 
   // Decibel management
-  private minDecibels: number = -120;
-  private maxDecibels: number = -20;
-  private decibelShift: number = 120; // Shift to make 0 the min
-  private range: number = -100; // maxDecibels - minDecibels
-  private noiseFloor: number = 5;
+  private readonly minDecibels: number = -120;
+  private readonly maxDecibels: number = -80;
+  private readonly range = this.minDecibels - this.maxDecibels;
+  private readonly decibelShift = 0 - this.minDecibels;
+  private readonly noiseFloor: number = -115;
 
   // Antenna and satellite
-  private antenna_id: number = 1;
-  private target_id: number | null = null;
-  private antennaOffset: number = 0;
-  private targetOffset: number = 400e6;
+  private antenna: Antenna;
   private upconvertOffset: number = 3350e6; // C Band default
   private downconvertOffset: number = 3500e6; // C Band default
-  private hpa: boolean = false;
-  private loopback: boolean = false;
-  private locked: boolean = false;
-  private operational: boolean = false;
 
   // Colors
   private noiseColor: string = '#0bf';
@@ -99,16 +77,16 @@ export class SpectrumAnalyzer extends Equipment {
   // Resize handler reference
   private resizeHandler: (() => void) | null = null;
 
-  constructor(parentId: string, unit: number, teamId: number = 1, antennaId: number = 1) {
+  constructor(parentId: string, unit: number, teamId: number = 1, antenna: Antenna) {
     super(parentId, unit, teamId);
 
-    this.antenna_id = antennaId;
+    this.antenna = antenna;
 
     // Initialize config
     this.config = {
       unit: this.unit,
       team_id: this.teamId,
-      antenna_id: this.antenna_id,
+      antenna_id: 1,
       rf: false,
       frequency: 4700, // MHz
       span: 100, // MHz
@@ -208,7 +186,6 @@ export class SpectrumAnalyzer extends Equipment {
     });
 
     this.on(Events.ANTENNA_LOCKED, (data) => {
-      this.locked = data.locked ?? false;
       this.updateConfigChange(data);
     });
 
@@ -247,7 +224,6 @@ export class SpectrumAnalyzer extends Equipment {
   }
 
   protected initialize(): void {
-    // this.signals = defaultSignalData as Signal[];
     this.start();
   }
 
@@ -264,19 +240,8 @@ export class SpectrumAnalyzer extends Equipment {
     control.show();
   }
 
-  /**
-   * Public API Methods
-   */
-
-  public update(data: any): void {
-    // Update configuration from external source
-    if (data.signals) this.signals = data.signals;
-    if (data.target_id !== undefined) this.target_id = data.target_id;
-    if (data.locked !== undefined) this.locked = data.locked;
-    if (data.operational !== undefined) this.operational = data.operational;
-    if (data.hpa !== undefined) this.hpa = data.hpa;
-    if (data.loopback !== undefined) this.loopback = data.loopback;
-    if (data.antennaOffset !== undefined) this.antennaOffset = data.antennaOffset;
+  public update(): void {
+    // Do nothing, signals are processed in the animation loop
   }
 
   public getConfig(): SpectrumAnalyzerConfig {
@@ -427,46 +392,32 @@ export class SpectrumAnalyzer extends Equipment {
         this.drawNoise(this.ctx!);
 
         // Draw signals
-        this.signals
-          .filter((signal) => signal.target_id === this.target_id)
+        this.antenna.signals
           .forEach((signal, i) => {
             let color = this.noiseColor;
-            if (!this.locked || !this.operational) return;
+            if (!this.antenna.config.isLocked || !this.antenna.config.isOperational) return;
             if (this.isShowSignals) {
               color = SpectrumAnalyzer.getRandomRgb(i);
             }
 
-            // Process signal based on RF/IF mode
-            if (signal.rf) {
-              // Instructor mode - signal is already in RF
-              const rfDownSignal = { ...signal };
-              const ifDownSignal = { ...signal, freq: signal.freq - this.downconvertOffset };
-
-              if (this.isRfMode) {
-                this.drawSignal(this.ctx!, color, rfDownSignal);
-              } else {
-                this.drawSignal(this.ctx!, color, ifDownSignal);
-              }
-            } else if (this.isRfMode) {
+            if (this.isRfMode) {
               // Draw RF signals
-              const rfUpSignal = { ...signal, freq: signal.freq + this.upconvertOffset };
-              const rfDownSignal = { ...signal, freq: signal.freq + this.upconvertOffset };
-              rfDownSignal.freq += this.loopback ? +this.antennaOffset : this.targetOffset;
-              rfDownSignal.amp = !this.loopback && !this.hpa ? -1000 : rfDownSignal.amp;
+              const rfUpSignal: RfSignal = { ...signal, frequency: (signal.frequency + this.upconvertOffset) as RfFrequency };
+              const rfDownSignal: RfSignal = { ...signal, frequency: (signal.frequency + this.upconvertOffset) as RfFrequency };
+              rfDownSignal.frequency = rfDownSignal.frequency + (this.antenna.config.isLoopbackEnabled ? this.antenna.config.offset * 1e6 : SATELLITES[this.antenna.config.targetId].offset) as RfFrequency;
+              rfDownSignal.power = !this.antenna.config.isLoopbackEnabled && !this.antenna.config.isHpaEnabled ? -1000 : rfDownSignal.power;
 
               this.drawSignal(this.ctx!, color, rfUpSignal);
               this.drawSignal(this.ctx!, color, rfDownSignal);
             } else {
-              // Student mode - signal is in IF, needs upconversion
-
               // Draw IF signals
-              const ifUpSignal = signal;
-              const ifDownSignal = {
+              const ifUpSignal: IfSignal = signal;
+              const ifDownSignal: IfSignal = {
                 ...signal,
-                freq: signal.freq + this.upconvertOffset - this.downconvertOffset,
+                frequency: (signal.frequency + this.upconvertOffset - this.downconvertOffset) as IfFrequency
               };
-              ifDownSignal.freq += this.loopback ? +this.antennaOffset : this.targetOffset;
-              ifDownSignal.amp = !this.loopback && !this.hpa ? -1000 : ifDownSignal.amp;
+              ifDownSignal.frequency = (ifDownSignal.frequency + (this.antenna.config.isLoopbackEnabled ? this.antenna.config.offset * 1e6 : SATELLITES[this.antenna.config.targetId].offset)) as IfFrequency;
+              ifDownSignal.power = !this.antenna.config.isLoopbackEnabled && !this.antenna.config.isHpaEnabled ? -1000 : ifDownSignal.power;
 
               this.drawSignal(this.ctx!, color, ifUpSignal);
               this.drawSignal(this.ctx!, color, ifDownSignal);
@@ -474,7 +425,7 @@ export class SpectrumAnalyzer extends Equipment {
           });
 
         // Draw max hold if enabled
-        if (this.isDrawHold) {
+        if (this.isTraceOn) {
           this.drawMaxHold(this.ctx!);
         }
 
@@ -549,12 +500,12 @@ export class SpectrumAnalyzer extends Equipment {
     ctx.fill();
   }
 
-  private drawSignal(ctx: CanvasRenderingContext2D, color: string, signal: Signal): void {
-    const center = ((signal.freq - this.minFreq) / (this.maxFreq - this.minFreq)) * this.width;
-    const inBandWidth = ((signal.bw / (this.maxFreq - this.minFreq)) * this.width) / 2;
-    const outOfBandWidth = ((signal.bw / (this.maxFreq - this.minFreq)) * this.width) / 1.8;
+  private drawSignal(ctx: CanvasRenderingContext2D, color: string, signal: RfSignal | IfSignal): void {
+    const center = ((signal.frequency - this.minFreq) / (this.maxFreq - this.minFreq)) * this.width;
+    const inBandWidth = ((signal.bandwidth / (this.maxFreq - this.minFreq)) * this.width) / 2;
+    const outOfBandWidth = ((signal.bandwidth / (this.maxFreq - this.minFreq)) * this.width) / 1.8;
 
-    this.data = this.createSignal(this.data, center, signal.amp, inBandWidth, outOfBandWidth);
+    this.data = this.createSignal(this.data, center, signal.power, inBandWidth, outOfBandWidth);
 
     let maxX = 0;
     let maxY = 1;
@@ -570,7 +521,7 @@ export class SpectrumAnalyzer extends Equipment {
 
       maxSignalFreq = y < maxY ? lowestSignal : maxSignalFreq;
       maxX = y < maxY ? x : maxX;
-      maxY = Math.min(y, maxY);
+      maxY = y < maxY ? y : maxY;
 
       if (x === 0) {
         ctx.moveTo(x, this.height * y);
@@ -582,7 +533,7 @@ export class SpectrumAnalyzer extends Equipment {
     ctx.stroke();
 
     // Draw marker if enabled
-    if (this.isDrawMarker) {
+    if (this.isMarkerOn) {
       this.drawMarker(maxX, maxY, ctx, maxSignalFreq);
     }
   }
@@ -777,17 +728,26 @@ export class SpectrumAnalyzer extends Equipment {
     }).join('');
   }
 
-  public static getRandomRgb(seed?: number): string {
-    // Generate consistent colors based on seed
-    if (seed !== undefined) {
-      const hue = (seed * 137.508) % 360; // Golden angle for good color distribution
-      return `hsl(${hue}, 70%, 50%)`;
+  static getRandomRgb(i: number): string {
+    let rgb = [255, 0, 0];
+    if (i % 3 === 0) {
+      rgb[0] = 255;
+      rgb[1] = (i * 32) % 255;
+      rgb[2] = (i * 64) % 255;
+    } else if (i % 3 === 1) {
+      rgb[0] = (i * 64) % 255;
+      rgb[1] = (i * 32) % 255;
+      rgb[2] = 255;
+    } else if (i % 3 === 2) {
+      rgb[0] = (i * 32) % 255;
+      rgb[1] = 255;
+      rgb[2] = (i * 64) % 255;
+    } else {
+      rgb[0] = 255;
+      rgb[1] = 255;
+      rgb[2] = 255;
     }
-
-    // Random color
-    const r = Math.floor(Math.random() * 256);
-    const g = Math.floor(Math.random() * 256);
-    const b = Math.floor(Math.random() * 256);
-    return SpectrumAnalyzer.rgb2hex([r, g, b]);
+    const hex = SpectrumAnalyzer.rgb2hex(rgb);
+    return hex;
   }
 }

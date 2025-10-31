@@ -41,6 +41,29 @@ export interface RfSignal {
   isActive: boolean;
 }
 
+export interface IfSignal {
+  /** Signal ID */
+  id: number;
+  /** Server ID */
+  serverId: number;
+  /** Target satellite ID */
+  targetId: number;
+  /** RF frequency */
+  frequency: IfFrequency;
+  /** Signal power in dBm */
+  power: number;
+  /** Bandwidth in Hz */
+  bandwidth: Hertz;
+  /** Modulation type */
+  modulation: ModulationType;
+  /** Forward Error Correction type */
+  fec: FECType;
+  /** url of the video feed */
+  feed: string;
+  /** Is the signal currently being transmitted and valid for the antenna */
+  isActive: boolean;
+}
+
 export interface Satellite {
   id: number;
   name: string;

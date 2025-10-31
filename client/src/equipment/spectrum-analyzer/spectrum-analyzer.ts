@@ -38,7 +38,7 @@ export class SpectrumAnalyzer extends Equipment {
   private ctx: CanvasRenderingContext2D | null = null;
 
   // Canvas dimensions
-  private width: number = 1600;
+  private width: number = 400;
   private height: number = 400;
 
   // Animation

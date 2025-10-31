@@ -61,7 +61,7 @@ export class Transmitter extends Equipment {
         antenna_id: 1,
         frequency: 1000, // MHz (L-Band)
         bandwidth: 10, // MHz
-        power: -50, // dBm
+        power: -97, // dBm
         transmitting: false
       });
     }
@@ -102,70 +102,74 @@ export class Transmitter extends Equipment {
             `).join('')}
           </div>
 
-          <!-- Active Modem Configuration -->
-          <div class="modem-config">
-            <div class="config-row">
-              <label>Antenna</label>
-              <select class="input-antenna" data-param="antenna_id">
-                <option value="1" ${this.inputData.antenna_id === 1 ? 'selected' : ''}>1</option>
-                <option value="2" ${this.inputData.antenna_id === 2 ? 'selected' : ''}>2</option>
-              </select>
-              <span class="current-value">${activeModemData.antenna_id}</span>
-            </div>
+          <div class="transmitter-main-content">
 
-            <div class="config-row">
-              <label>Freq (MHz)</label>
-              <input
-                type="text"
-                class="input-frequency"
-                data-param="frequency"
-                value="${this.inputData.frequency ?? activeModemData.frequency}"
-              />
-              <span class="current-value">${activeModemData.frequency} MHz</span>
-            </div>
+            <!-- Active Modem Configuration -->
+            <div class="tx-modem-config">
+              <div class="config-row">
+                <label>Antenna</label>
+                <select class="input-tx-antenna" data-param="antenna_id">
+                  <option value="1" ${this.inputData.antenna_id === 1 ? 'selected' : ''}>1</option>
+                  <option value="2" ${this.inputData.antenna_id === 2 ? 'selected' : ''}>2</option>
+                </select>
+                <span class="current-value">${activeModemData.antenna_id}</span>
+              </div>
 
-            <div class="config-row">
-              <label>BW (MHz)</label>
-              <input
-                type="text"
-                class="input-bandwidth"
-                data-param="bandwidth"
-                value="${this.inputData.bandwidth ?? activeModemData.bandwidth}"
-              />
-              <span class="current-value">${activeModemData.bandwidth} MHz</span>
-            </div>
+              <div class="config-row">
+                <label>Freq (MHz)</label>
+                <input
+                  type="text"
+                  class="input-tx-frequency"
+                  data-param="frequency"
+                  value="${this.inputData.frequency ?? activeModemData.frequency}"
+                />
+                <span class="current-value">${activeModemData.frequency} MHz</span>
+              </div>
 
-            <div class="config-row">
-              <label>Power (dBm)</label>
-              <input
-                type="text"
-                class="input-power"
-                data-param="power"
-                value="${this.inputData.power ?? activeModemData.power}"
-              />
-              <span class="current-value">${activeModemData.power} dBm</span>
-            </div>
+              <div class="config-row">
+                <label>BW (MHz)</label>
+                <input
+                  type="text"
+                  class="input-tx-bandwidth"
+                  data-param="bandwidth"
+                  value="${this.inputData.bandwidth ?? activeModemData.bandwidth}"
+                />
+                <span class="current-value">${activeModemData.bandwidth} MHz</span>
+              </div>
 
-            <div class="config-row power-meter">
-              <label>Power %</label>
-              <div class="power-bar-container">
-                <div
-                  class="power-bar ${this.getPowerPercentage() > 100 ? 'over-budget' : ''}"
-                  style="width: ${Math.min(this.getPowerPercentage(), 100)}%">
-                </div>
-                <span class="power-percentage">${Math.round(this.getPowerPercentage())}%</span>
+              <div class="config-row">
+                <label>Power (dBm)</label>
+                <input
+                  type="text"
+                  class="input-tx-power"
+                  data-param="power"
+                  value="${this.inputData.power ?? activeModemData.power}"
+                />
+                <span class="current-value">${activeModemData.power} dBm</span>
+              </div>
+
+              <div class="config-actions">
+                <button class="btn-apply" data-action="apply">Apply</button>
               </div>
             </div>
 
-            <div class="config-actions">
-              <button class="btn-apply" data-action="apply">Apply</button>
+            <div class="transmitter-power-content">
+              <div class="config-row power-meter">
+                <label>Power %</label>
+                <div class="power-bar-container">
+                  <div
+                    class="power-bar ${this.getPowerPercentage() > 100 ? 'over-budget' : ''}"
+                    style="width: ${Math.min(this.getPowerPercentage(), 100)}%">
+                  </div>
+                  <span class="power-percentage">${Math.round(this.getPowerPercentage())}%</span>
+                </div>
+              </div>
               <button
                 class="btn-transmit ${activeModemData.transmitting ? 'active' : ''}"
                 data-action="transmit">
                 TX
               </button>
             </div>
-          </div>
         </div>
       </div>
     `;
@@ -313,8 +317,8 @@ export class Transmitter extends Equipment {
   private getPowerPercentage(): number {
     const activeModem = this.getActiveModem();
     const modemPower = this.calculateModemPower(
-      this.inputData.bandwidth ?? activeModem.bandwidth,
-      this.inputData.power ?? activeModem.power
+      activeModem.bandwidth,
+      activeModem.power
     );
     return Math.round((100 * modemPower) / this.powerBudget);
   }

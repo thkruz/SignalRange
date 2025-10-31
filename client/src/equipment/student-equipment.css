@@ -1,3 +1,11 @@
+.student-equipment {
+  display: flex;
+  row-gap: 1em;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  padding: 1em;
+}
+
 .spacer {
   height: 2rem;
 }

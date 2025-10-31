@@ -22,10 +22,10 @@ export class StudentPage extends AbstractPage {
     this.container.innerHTML = html`
       <div class="student-page-container">
         <!-- Team Info Bar -->
-        <div class="team-info">
+        <!-- <div class="team-info">
           <div class="team-name">Team: Persephone</div>
           <div class="server-name">Server: Server 1</div>
-        </div>
+        </div> -->
 
         <!-- Equipment Container -->
         <div id="student-equipment-container"></div>

@@ -34,48 +34,34 @@ export class StudentEquipment {
     this.element.innerHTML = html`
       <div class="student-equipment">
         <!-- Antennas -->
-        <div class="equipment-section">
           <div class="antenna-grid">
             <div id="antenna1-container" class="antenna-container"></div>
             <div id="antenna2-container" class="antenna-container"></div>
           </div>
-        </div>
-
-        <div class="spacer"></div>
 
         <!-- Spectrum Analyzers Grid -->
-        <div class="equipment-section">
           <div class="spec-a-grid">
             <div id="specA1-container" class="spec-a-container"></div>
             <div id="specA2-container" class="spec-a-container"></div>
             <div id="specA3-container" class="spec-a-container"></div>
             <div id="specA4-container" class="spec-a-container"></div>
           </div>
-        </div>
-
-        <div class="spacer"></div>
 
         <!-- Transmitters -->
-        <div class="equipment-section">
           <div class="tx-grid">
             <div id="tx1-container" class="tx-container"></div>
             <div id="tx2-container" class="tx-container"></div>
             <div id="tx3-container" class="tx-container"></div>
             <div id="tx4-container" class="tx-container"></div>
           </div>
-        </div>
-
-        <div class="spacer"></div>
 
         <!-- Receivers -->
-        <div class="equipment-section">
           <div class="rx-grid">
             <div id="rx1-container" class="rx-container"></div>
             <div id="rx2-container" class="rx-container"></div>
             <div id="rx3-container" class="rx-container"></div>
             <div id="rx4-container" class="rx-container"></div>
           </div>
-        </div>
       </div>
     `;
   }

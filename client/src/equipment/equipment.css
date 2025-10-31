@@ -1,9 +1,5 @@
 /* Equipment.css - Common styles for all equipment */
 
-.equipment-section {
-  margin-bottom: 2rem;
-}
-
 .equipment-section h2 {
   color: #fff;
   margin-bottom: 1rem;
@@ -16,7 +12,6 @@
   flex-direction: row;
   flex-wrap: wrap;
   justify-content: space-evenly;
-  row-gap: 4rem;
 }
 
 .antenna-grid {
@@ -24,7 +19,6 @@
   flex-direction: row;
   flex-wrap: wrap;
   justify-content: space-evenly;
-  row-gap: 2rem;
 }
 
 .tx-grid,
@@ -35,14 +29,6 @@
   justify-content: space-evenly;
 }
 
-.tx-grid {
-  row-gap: 4rem;
-}
-
-.rx-grid {
-  row-gap: 2rem;
-}
-
 /* Container classes */
 .spec-a-container,
 .antenna-container,
@@ -50,7 +36,8 @@
 .rx-container {
   position: relative;
   min-height: min-content;
-  width: 45em;
+  width: 780px;
+  height: fit-content;
 }
 
 /* Common button styles */

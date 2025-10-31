@@ -7,11 +7,9 @@
   border-radius: 10px;
   padding: 16px;
   box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.5);
-  /* Allow the box to size to content so inner elements don't overflow their siblings */
-  height: auto;
-  min-width: 350px;
+  height: 100%;
+  min-width: 600px;
   box-sizing: border-box;
-  max-width: 100%;
 }
 
 /* Header */
@@ -37,43 +35,44 @@
   font-weight: bold;
 }
 
-.status-found {
+.status-found,
+.status-signal-found {
   background-color: #4caf50;
   color: #fff;
 }
 
-.status-degraded {
+.status-degraded,
+.status-signal-degraded {
   background-color: #ff9800;
   color: #fff;
 }
 
-.status-denied {
+.status-denied,
+.status-signal-denied {
   background-color: #f44336;
   color: #fff;
 }
 
-.status-standby {
+.status-standby,
+.status-no-signal {
   background-color: #757575;
   color: #fff;
 }
 
-/* Controls Container */
+/* Controls Container - now horizontal layout */
 .receiver-controls {
   display: flex;
   gap: 16px;
   flex-grow: 1;
-  align-items: flex-start;
-  /* keep children aligned to top so tall config panels don't overlap siblings */
 }
 
-/* Modem Selection Buttons */
+/* Modem Selection Buttons - vertical on left */
 .modem-buttons {
   display: flex;
   flex-direction: column;
   gap: 8px;
   min-width: 60px;
   flex: 0 0 60px;
-  /* fixed-ish column to avoid layout collapse */
 }
 
 .btn-modem {
@@ -129,23 +128,28 @@
   border-color: #f44336;
 }
 
-/* Modem Configuration */
-.modem-config {
+/* Main content area - split into config and video side by side */
+.receiver-main-content {
+  flex: 1;
+  display: flex;
+  gap: 16px;
+}
+
+/* Modem Configuration - left side */
+.rx-modem-config {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 5px;
   padding: 12px;
   background-color: #1a1a1a;
   border-radius: 8px;
-  /* Prevent this panel from overflowing and causing overlap: allow internal scrolling when needed */
-  max-width: 100%;
-  overflow: auto;
+  width: 250px;
 }
 
 .config-row {
   display: grid;
-  grid-template-columns: 100px 1fr 100px;
+  grid-template-columns: 85px 1fr 110px;
   align-items: center;
   gap: 12px;
 }
@@ -172,6 +176,14 @@
   border-color: #2196f3;
 }
 
+.input-rx-antennac,
+.input-rx-frequency,
+.input-rx-bandwidth,
+.input-rx-modulation,
+.input-rx-fec {
+  width: 110px;
+}
+
 .current-value {
   color: #2196f3;
   font-size: 14px;
@@ -179,18 +191,20 @@
   text-align: center;
 }
 
-/* Video Monitor */
+/* Video Monitor - right side, more compact */
 .video-monitor {
-  margin: 12px 0;
+  flex: 0 0 280px;
   padding: 8px;
   background-color: #000;
   border: 4px solid #333;
   border-radius: 8px;
   box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.8);
+  display: flex;
+  flex-direction: column;
 }
 
 .monitor-screen {
-  height: 300px;
+  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -198,6 +212,7 @@
   border-radius: 4px;
   position: relative;
   overflow: hidden;
+  min-height: 180px;
 }
 
 .monitor-screen.no-signal {
@@ -289,9 +304,24 @@
 }
 
 /* Responsive adjustments */
+@media (max-width: 1024px) {
+  .receiver-box {
+    min-width: 500px;
+  }
+
+  .receiver-main-content {
+    flex-direction: column;
+  }
+
+  .video-monitor {
+    flex: 0 0 auto;
+    width: 100%;
+  }
+}
+
 @media (max-width: 768px) {
   .receiver-box {
-    min-width: 300px;
+    min-width: 350px;
   }
 
   .receiver-controls {
@@ -307,12 +337,19 @@
     grid-template-columns: 80px 1fr 80px;
     gap: 8px;
   }
+
+  .video-monitor {
+    flex: 0 0 auto;
+  }
+
+  .monitor-screen {
+    min-height: 200px;
+  }
 }
 
-/* Extra small-screen tweaks so the Receiver can shrink more gracefully */
 @media (max-width: 480px) {
   .receiver-box {
-    min-width: 240px;
+    min-width: 300px;
     padding: 12px;
   }
 
@@ -335,9 +372,7 @@
   }
 
   .modem-buttons {
-    flex-direction: row;
     gap: 6px;
-    min-width: unset;
   }
 
   .btn-modem {
@@ -355,12 +390,7 @@
   }
 
   .monitor-screen {
-    height: 200px;
-  }
-
-  .signal-bars {
-    width: 60px;
-    height: 30px;
+    min-height: 150px;
   }
 
   .btn-apply {

@@ -112,63 +112,70 @@ export class Receiver extends Equipment {
             `).join('')}
           </div>
 
-          <!-- Active Modem Configuration -->
-          <div class="modem-config">
-            <div class="config-row">
-              <label>Antenna</label>
-              <select class="input-antenna" data-param="antenna">
-                <option value="1" ${this.inputData.antenna?.config.id === this.antennas[0]?.config.id ? 'selected' : ''}>1</option>
-                <option value="2" ${this.inputData.antenna?.config.id === this.antennas[1]?.config.id ? 'selected' : ''}>2</option>
-              </select>
-              <span class="current-value">${activeModemData?.antenna.config.id}</span>
+          <!-- Main content area with config and video side by side -->
+          <div class="receiver-main-content">
+            <!-- Active Modem Configuration -->
+            <div class="rx-modem-config">
+              <div class="config-row">
+                <label>Antenna</label>
+                <select class="input-rx-antenna" data-param="antenna">
+                  <option value="1" ${this.inputData.antenna?.config.id === this.antennas[0]?.config.id ? 'selected' : ''}>1</option>
+                  <option value="2" ${this.inputData.antenna?.config.id === this.antennas[1]?.config.id ? 'selected' : ''}>2</option>
+                </select>
+                <span class="current-value">${activeModemData?.antenna.config.id}</span>
+              </div>
+
+              <div class="config-row">
+                <label>Freq (MHz)</label>
+                <input
+                  type="text"
+                  class="input-rx-frequency"
+                  data-param="frequency"
+                  value="${this.inputData.frequency ?? activeModemData?.frequency}"
+                />
+                <span class="current-value">${activeModemData?.frequency} MHz</span>
+              </div>
+
+              <div class="config-row">
+                <label>BW (MHz)</label>
+                <input
+                  type="text"
+                  class="input-rx-bandwidth"
+                  data-param="bandwidth"
+                  value="${this.inputData.bandwidth ?? activeModemData?.bandwidth}"
+                />
+                <span class="current-value">${activeModemData?.bandwidth} MHz</span>
+              </div>
+
+              <div class="config-row">
+                <label>Modulation</label>
+                <select class="input-rx-modulation" data-param="modulation">
+                  <option value="BPSK" ${this.inputData.modulation === 'BPSK' ? 'selected' : ''}>BPSK</option>
+                  <option value="QPSK" ${this.inputData.modulation === 'QPSK' ? 'selected' : ''}>QPSK</option>
+                  <option value="8QAM" ${this.inputData.modulation === '8QAM' ? 'selected' : ''}>8QAM</option>
+                  <option value="16QAM" ${this.inputData.modulation === '16QAM' ? 'selected' : ''}>16QAM</option>
+                </select>
+                <span class="current-value">${activeModemData?.modulation}</span>
+              </div>
+
+              <div class="config-row">
+                <label>FEC</label>
+                <select class="input-rx-fec" data-param="fec">
+                  <option value="1/2" ${this.inputData.fec === '1/2' ? 'selected' : ''}>1/2</option>
+                  <option value="2/3" ${this.inputData.fec === '2/3' ? 'selected' : ''}>2/3</option>
+                  <option value="3/4" ${this.inputData.fec === '3/4' ? 'selected' : ''}>3/4</option>
+                  <option value="5/6" ${this.inputData.fec === '5/6' ? 'selected' : ''}>5/6</option>
+                  <option value="7/8" ${this.inputData.fec === '7/8' ? 'selected' : ''}>7/8</option>
+                </select>
+                <span class="current-value">${activeModemData?.fec}</span>
+              </div>
+
+              <div class="config-actions">
+                <button class="btn-apply" data-action="apply">Apply</button>
+              </div>
             </div>
 
-            <div class="config-row">
-              <label>Freq (MHz)</label>
-              <input
-                type="text"
-                class="input-frequency"
-                data-param="frequency"
-                value="${this.inputData.frequency ?? activeModemData?.frequency}"
-              />
-              <span class="current-value">${activeModemData?.frequency} MHz</span>
-            </div>
-
-            <div class="config-row">
-              <label>BW (MHz)</label>
-              <input
-                type="text"
-                class="input-bandwidth"
-                data-param="bandwidth"
-                value="${this.inputData.bandwidth ?? activeModemData?.bandwidth}"
-              />
-              <span class="current-value">${activeModemData?.bandwidth} MHz</span>
-            </div>
-
-            <div class="config-row">
-              <label>Modulation</label>
-              <select class="input-modulation" data-param="modulation">
-                <option value="BPSK" ${this.inputData.modulation === 'BPSK' ? 'selected' : ''}>BPSK</option>
-                <option value="QPSK" ${this.inputData.modulation === 'QPSK' ? 'selected' : ''}>QPSK</option>
-                <option value="8QAM" ${this.inputData.modulation === '8QAM' ? 'selected' : ''}>8QAM</option>
-                <option value="16QAM" ${this.inputData.modulation === '16QAM' ? 'selected' : ''}>16QAM</option>
-              </select>
-              <span class="current-value">${activeModemData?.modulation}</span>
-            </div>
-
-            <div class="config-row">
-              <label>FEC</label>
-              <select class="input-fec" data-param="fec">
-                <option value="1/2" ${this.inputData.fec === '1/2' ? 'selected' : ''}>1/2</option>
-                <option value="2/3" ${this.inputData.fec === '2/3' ? 'selected' : ''}>2/3</option>
-                <option value="3/4" ${this.inputData.fec === '3/4' ? 'selected' : ''}>3/4</option>
-                <option value="5/6" ${this.inputData.fec === '5/6' ? 'selected' : ''}>5/6</option>
-                <option value="7/8" ${this.inputData.fec === '7/8' ? 'selected' : ''}>7/8</option>
-              </select>
-              <span class="current-value">${activeModemData?.fec}</span>
-            </div>
-
-            <!-- Video Monitor Placeholder -->
+            <!-- Video Monitor -->
             <div class="video-monitor">
               <div class="monitor-screen ${feedUrl.length > 0 ? 'signal-found' : 'no-signal'}">
                 ${feedUrl.length > 0
@@ -178,10 +185,6 @@ export class Receiver extends Equipment {
         : html`<span class="no-signal-text">NO SIGNAL</span>`
       }
               </div>
-            </div>
-
-            <div class="config-actions">
-              <button class="btn-apply" data-action="apply">Apply</button>
             </div>
           </div>
         </div>
@@ -324,8 +327,6 @@ export class Receiver extends Equipment {
 
   private getSignalStatus(): { text: string; class: string } {
     const visibleSignals = this.getVisibleSignals();
-
-    // TODO: This logic is wrong, but will work for now!
 
     // If 1 then good signal
     if (visibleSignals.length === 1) {

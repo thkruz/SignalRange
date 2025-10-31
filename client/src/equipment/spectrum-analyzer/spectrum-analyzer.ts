@@ -1,11 +1,11 @@
-import { SATELLITES } from "../../constants";
 import { Events } from "../../events/events";
-import { Hertz, IfFrequency, IfSignal, MHz, RfFrequency, RfSignal } from "../../types";
+import { Hertz } from "../../types";
 import { html, qs } from '../../utils';
 import { Antenna } from '../antenna/antenna';
 import { Equipment } from '../equipment';
 import { AnalyzerControl } from "./analyzer-control";
 import './spectrum-analyzer.css';
+import { SpectrumScreen, SpectrumScreenConfig } from './spectrum-screen';
 
 export interface SpectrumAnalyzerConfig {
   unit: number; // 1-4
@@ -24,58 +24,28 @@ export interface SpectrumAnalyzerConfig {
 }
 
 /**
- * SpectrumAnalyzer - Single analyzer unit
- * Manages its own state, canvas rendering, and signal processing
- * Extends Equipment base class for standard lifecycle
+ * SpectrumAnalyzer - Configuration and settings manager
+ * Delegates all rendering to SpectrumScreen for separation of concerns
  */
 export class SpectrumAnalyzer extends Equipment {
   config: SpectrumAnalyzerConfig;
-  /** Debugging feature to highlight real signals versus noise */
-  private readonly isShowSignals: boolean = true;
 
-  // Canvas elements
+  // Screen renderer
+  screen: SpectrumScreen | null = null;
+
+  // Canvas reference
   private canvas: HTMLCanvasElement | null = null;
-  private ctx: CanvasRenderingContext2D | null = null;
 
-  // Canvas dimensions
-  private width: number = 400;
-  private height: number = 400;
-
-  // Animation
-  private animationId: number | null = null;
-  private running: boolean = false;
-  private readonly refreshRate: number = 10; // FPS
-  private lastDrawTime: number = 0;
-
-  // Signal processing
-  /** This is the y data used for rendering the spectrum */
-  private data: Float32Array;
-  /** This is the y data used for rendering the noise floor */
-  private noiseData: Float32Array;
-  /** This is the y data used for rendering the max hold trace */
-  private maxHoldData: Float32Array;
-
-  // Frequency management
-  private minFreq_: Hertz = 0 as Hertz;
-  private maxFreq_: Hertz = 0 as Hertz;
+  // Antenna reference
+  private readonly antenna: Antenna;
 
   // Decibel management
   private readonly minDecibels: number = -120;
   private readonly maxDecibels: number = -80;
-  private readonly range = this.minDecibels - this.maxDecibels;
-  private readonly decibelShift = 0 - this.minDecibels;
   private readonly noiseFloor: number = -115;
 
-  // Antenna and satellite
-  private readonly antenna: Antenna;
-  private upconvertOffset: number = 3350e6; // C Band default
-  private downconvertOffset: number = 3500e6; // C Band default
-
-  // Colors
-  private noiseColor: string = '#0bf';
-
-  // Resize handler reference
-  private resizeHandler: (() => void) | null = null;
+  // Debugging feature
+  private readonly isShowSignals: boolean = true;
 
   constructor(parentId: string, unit: number, teamId: number = 1, antenna: Antenna) {
     super(parentId, unit, teamId);
@@ -91,21 +61,13 @@ export class SpectrumAnalyzer extends Equipment {
       isPaused: false,
       isTraceOn: false,
       isMarkerOn: false,
-      centerFrequency: 4810e6 as Hertz, // 4700, // Hz
-      span: 100e6 as Hertz, //Hz
+      centerFrequency: 4810e6 as Hertz,
+      span: 100e6 as Hertz,
       hold: false,
       minDecibels: this.minDecibels,
       maxDecibels: this.maxDecibels,
       noiseFloor: this.noiseFloor,
     };
-
-    // Initialize typed arrays
-    this.data = new Float32Array(this.width);
-    this.noiseData = new Float32Array(this.width);
-    this.maxHoldData = new Float32Array(this.width);
-
-    // Calculate range
-    this.range = this.minDecibels - this.maxDecibels;
 
     this.build();
   }
@@ -119,7 +81,7 @@ export class SpectrumAnalyzer extends Equipment {
         </div>
 
         <div class="spec-a-canvas-container">
-          <canvas id="specA${this.unit}" width="${this.width}" height="${this.height}"></canvas>
+          <canvas id="specA${this.unit}" width="1600" height="400"></canvas>
         </div>
 
         <div class="spec-a-info">
@@ -139,12 +101,10 @@ export class SpectrumAnalyzer extends Equipment {
       </div>
     `;
 
-    // Get canvas reference
+    // Get canvas reference and initialize screen
     this.canvas = qs<HTMLCanvasElement>(`#specA${this.unit}`, this.element);
     if (this.canvas) {
-      this.ctx = this.canvas.getContext('2d');
-      // Initial resize to fit container
-      this.resize();
+      this.initializeScreen();
     }
 
     return this.element;
@@ -171,20 +131,9 @@ export class SpectrumAnalyzer extends Equipment {
 
     // Listen for antenna changes
     this.subscribeToAntennaEvents();
-
-    // Window resize handler
-    this.resizeHandler = () => {
-      if (this.canvas?.parentElement) {
-        const newWidth = this.canvas.parentElement.offsetWidth - 6;
-        if (newWidth !== this.canvas.width) {
-          this.resize();
-        }
-      }
-    };
-    window.addEventListener('resize', this.resizeHandler);
   }
 
-  private subscribeToAntennaEvents() {
+  private subscribeToAntennaEvents(): void {
     this.on(Events.ANTENNA_CONFIG_CHANGED, (data) => {
       this.updateConfigChange(data);
     });
@@ -214,7 +163,7 @@ export class SpectrumAnalyzer extends Equipment {
     });
   }
 
-  private updateConfigChange(data: any) {
+  private updateConfigChange(data: any): void {
     if (data.unit === this.config.unit) {
       this.config = { ...this.config, ...data };
 
@@ -225,10 +174,87 @@ export class SpectrumAnalyzer extends Equipment {
   }
 
   protected initialize(): void {
-    this.start();
+    if (this.screen) {
+      this.screen.start();
+    }
   }
 
-  // In your SpectrumAnalyzer class or where you manage it:
+  /**
+   * Initialize the screen renderer
+   */
+  private initializeScreen(): void {
+    if (!this.canvas) return;
+
+    const screenConfig: SpectrumScreenConfig = {
+      minDecibels: this.config.minDecibels,
+      maxDecibels: this.config.maxDecibels,
+      noiseFloor: this.config.noiseFloor,
+      refreshRate: 10,
+      isShowSignals: this.isShowSignals,
+    };
+
+    this.screen = new SpectrumScreen(this.canvas, this.antenna, screenConfig);
+
+    // Set initial state
+    this.updateScreenState();
+  }
+
+  /**
+   * Update screen with current configuration
+   */
+  private updateScreenState(): void {
+    if (!this.screen) return;
+
+    // Update frequency range
+    const minFreq = (this.config.centerFrequency - this.config.span / 2) as Hertz;
+    const maxFreq = (this.config.centerFrequency + this.config.span / 2) as Hertz;
+    this.screen.setFrequencyRange(minFreq, maxFreq);
+
+    // Update display modes
+    this.screen.setMode(this.config.rf);
+    this.screen.setTraceEnabled(this.config.isTraceOn);
+    this.screen.setMarkerEnabled(this.config.isMarkerOn);
+  }
+
+  /**
+   * Public API Methods
+   */
+
+  public update(): void {
+    this.updateDisplay();
+  }
+
+  public getConfig(): SpectrumAnalyzerConfig {
+    return { ...this.config };
+  }
+
+  public changeCenterFreq(freq: number): void {
+    this.config.centerFrequency = freq as Hertz;
+    this.updateScreenState();
+    this.updateDisplay();
+  }
+
+  public changeBandwidth(freqSpan: number): void {
+    this.config.span = freqSpan as Hertz;
+    this.updateScreenState();
+    this.updateDisplay();
+  }
+
+  public resetHoldData(): void {
+    if (this.screen) {
+      this.screen.resetMaxHold();
+    }
+  }
+
+  /**
+   * Control Methods
+   */
+
+  private openConfig(): void {
+    this.openConfigPanel();
+    this.emit(Events.SPEC_A_CONFIG_CHANGED, { unit: this.unit });
+  }
+
   private openConfigPanel(): void {
     const control = new AnalyzerControl({
       spectrumAnalyzer: this,
@@ -241,41 +267,12 @@ export class SpectrumAnalyzer extends Equipment {
     control.show();
   }
 
-  public update(): void {
-    this.updateDisplay();
-  }
-
-  public getConfig(): SpectrumAnalyzerConfig {
-    return { ...this.config };
-  }
-
-  public changeCenterFreq(freq: number): void {
-    this.config.centerFrequency = freq as Hertz;
-
-    this.updateDisplay();
-  }
-
-  public changeBandwidth(freqSpan: number): void {
-    this.config.span = freqSpan as Hertz;
-
-    this.updateDisplay();
-  }
-
-  public resetHoldData(): void {
-    this.maxHoldData = new Float32Array(this.width);
-  }
-
-  /**
-   * Private Methods
-   */
-
-  private openConfig(): void {
-    this.openConfigPanel();
-    this.emit(Events.SPEC_A_CONFIG_CHANGED, { unit: this.unit });
-  }
-
   private toggleMode(): void {
     this.config.rf = !this.config.rf;
+
+    if (this.screen) {
+      this.screen.setMode(this.config.rf);
+    }
 
     this.updateModeButton();
 
@@ -285,8 +282,7 @@ export class SpectrumAnalyzer extends Equipment {
     });
   }
 
-  // Update button state
-  private updateModeButton() {
+  private updateModeButton(): void {
     const btn = qs('.btn-mode', this.element);
     if (btn) {
       btn.textContent = this.config.rf ? 'RF' : 'IF';
@@ -297,13 +293,15 @@ export class SpectrumAnalyzer extends Equipment {
   private togglePause(): void {
     this.config.isPaused = !this.config.isPaused;
 
-    this.updatePauseButton();
-
-    if (this.config.isPaused) {
-      this.stop();
-    } else {
-      this.start();
+    if (this.screen) {
+      if (this.config.isPaused) {
+        this.screen.pause();
+      } else {
+        this.screen.resume();
+      }
     }
+
+    this.updatePauseButton();
 
     this.emit(Events.SPEC_A_MODE_CHANGED, {
       unit: this.unit,
@@ -311,8 +309,7 @@ export class SpectrumAnalyzer extends Equipment {
     });
   }
 
-  // Update button state
-  private updatePauseButton() {
+  private updatePauseButton(): void {
     const btn = qs('.btn-pause', this.element);
     if (btn) {
       btn.classList.toggle('active', this.config.isPaused);
@@ -321,6 +318,7 @@ export class SpectrumAnalyzer extends Equipment {
 
   private updateFrequency(frequency: Hertz): void {
     this.config.centerFrequency = frequency;
+    this.updateScreenState();
     this.updateDisplay();
   }
 
@@ -345,355 +343,7 @@ export class SpectrumAnalyzer extends Equipment {
   }
 
   /**
-   * Animation Methods
-   */
-
-  private start(): void {
-    if (this.running) return;
-    this.running = true;
-
-    // Start after a random delay to stagger multiple analyzers
-    setTimeout(() => {
-      this.draw();
-    }, Math.random() * 1000);
-  }
-
-  private stop(): void {
-    if (this.animationId) {
-      cancelAnimationFrame(this.animationId);
-      this.animationId = null;
-    }
-    this.running = false;
-  }
-
-  private draw(): void {
-    this.animationId = requestAnimationFrame(() => this.animate());
-  }
-
-  private animate(): void {
-    if (!this.config.isPaused && this.running) {
-      // Calculate minFreq and maxFreq from centerFrequency and bandwidth
-      this.minFreq_ = this.config.centerFrequency - this.config.span / 2 as Hertz;
-      this.maxFreq_ = this.config.centerFrequency + this.config.span / 2 as Hertz;
-
-      const now = Date.now();
-      if (now - this.lastDrawTime > 1000 / this.refreshRate) {
-        this.clearCanvas(this.ctx!);
-        if (this.ctx) {
-          this.ctx.globalAlpha = 1.0;
-        }
-
-        // Create and draw noise
-        this.noiseData = this.createNoise(this.noiseData);
-        this.drawNoise(this.ctx!);
-
-        // Draw signals
-        this.antenna.signals
-          .forEach((signal, i) => {
-            let color = this.noiseColor;
-            if (!this.antenna.config.isLocked || !this.antenna.config.isOperational) return;
-            if (this.isShowSignals) {
-              color = SpectrumAnalyzer.getRandomRgb(i);
-            }
-
-            if (this.config.rf) {
-              // Draw RF signals
-              const rfUpSignal: RfSignal = { ...signal, frequency: (signal.frequency + this.upconvertOffset) as RfFrequency };
-              const rfDownSignal: RfSignal = { ...signal, frequency: (signal.frequency + this.upconvertOffset) as RfFrequency };
-              rfDownSignal.frequency = rfDownSignal.frequency + (this.antenna.config.isLoopbackEnabled ? this.antenna.config.offset * 1e6 : SATELLITES[this.antenna.config.targetId].offset) as RfFrequency;
-              rfDownSignal.power = !this.antenna.config.isLoopbackEnabled && !this.antenna.config.isHpaEnabled ? -1000 : rfDownSignal.power;
-
-              this.drawSignal(this.ctx!, color, rfUpSignal);
-              this.drawSignal(this.ctx!, color, rfDownSignal);
-            } else {
-              // Draw IF signals
-              const ifUpSignal: IfSignal = signal;
-              const ifDownSignal: IfSignal = {
-                ...signal,
-                frequency: (signal.frequency + this.upconvertOffset - this.downconvertOffset) as IfFrequency
-              };
-              ifDownSignal.frequency = (ifDownSignal.frequency + (this.antenna.config.isLoopbackEnabled ? this.antenna.config.offset * 1e6 : SATELLITES[this.antenna.config.targetId].offset)) as IfFrequency;
-              ifDownSignal.power = !this.antenna.config.isLoopbackEnabled && !this.antenna.config.isHpaEnabled ? -1000 : ifDownSignal.power;
-
-              this.drawSignal(this.ctx!, color, ifUpSignal);
-              this.drawSignal(this.ctx!, color, ifDownSignal);
-            }
-          });
-
-        // Draw max hold if enabled
-        if (this.config.isTraceOn) {
-          this.drawMaxHold(this.ctx!);
-        }
-
-        // Hide below noise floor
-        this.hideBelowNoiseFloor(this.ctx!);
-
-        // Draw grid overlay
-        this.drawGridOverlay(this.ctx!);
-
-        this.lastDrawTime = now;
-      }
-    }
-
-    // Continue animation loop
-    this.draw();
-  }
-
-  /**
-   * Canvas Drawing Methods
-   */
-
-  private clearCanvas(ctx: CanvasRenderingContext2D): void {
-    ctx.fillStyle = '#000';
-    ctx.fillRect(0, 0, this.width, this.height);
-  }
-
-  private drawGridOverlay(ctx: CanvasRenderingContext2D): void {
-    ctx.globalAlpha = 0.1;
-    ctx.fillStyle = 'white';
-
-    // Vertical lines
-    for (let x = 0; x < this.width; x += this.width / 10) {
-      ctx.fillRect(x, 0, 1, this.height);
-    }
-
-    // Horizontal lines
-    for (let y = 0; y < this.height; y += this.height / 10) {
-      ctx.fillRect(0, y, this.width, 1);
-    }
-
-    ctx.globalAlpha = 1.0;
-  }
-
-  private drawNoise(ctx: CanvasRenderingContext2D): void {
-    ctx.strokeStyle = this.noiseColor;
-    ctx.beginPath();
-
-    for (let x = 0, len = this.noiseData.length; x < len; x++) {
-      const y = (this.noiseData[x] - this.maxDecibels - this.decibelShift) / this.range;
-      if (x === 0) {
-        ctx.moveTo(x, this.height * y);
-      } else {
-        ctx.lineTo(x, this.height * y);
-      }
-    }
-
-    ctx.stroke();
-  }
-
-  private hideBelowNoiseFloor(ctx: CanvasRenderingContext2D): void {
-    ctx.beginPath();
-    ctx.fillStyle = '#000';
-    ctx.moveTo(0, this.height);
-
-    for (let x = 0; x < this.width; x++) {
-      const y = (this.noiseData[x] - this.maxDecibels - this.decibelShift) / this.range;
-      ctx.lineTo(x, this.height * y);
-    }
-
-    ctx.lineTo(this.width, this.height);
-    ctx.closePath();
-    ctx.fill();
-  }
-
-  private drawSignal(ctx: CanvasRenderingContext2D, color: string, signal: RfSignal | IfSignal): void {
-    const center = ((signal.frequency - this.minFreq_) / (this.maxFreq_ - this.minFreq_)) * this.width;
-    const inBandWidth = ((signal.bandwidth / (this.maxFreq_ - this.minFreq_)) * this.width) / 2;
-    const outOfBandWidth = ((signal.bandwidth / (this.maxFreq_ - this.minFreq_)) * this.width) / 1.8;
-
-    this.data = this.createSignal(this.data, center, signal.power, inBandWidth, outOfBandWidth);
-
-    let maxX = 0;
-    let maxY = 1;
-    let maxSignalFreq = 0;
-
-    ctx.strokeStyle = color;
-    ctx.beginPath();
-
-    const len = this.data.length;
-    for (let x = 0; x < len; x++) {
-      const lowestSignal = this.data[x] >= this.noiseData[x] ? this.data[x] : 0;
-      const y = (lowestSignal - this.maxDecibels - this.decibelShift) / this.range;
-
-      maxSignalFreq = y < maxY ? lowestSignal : maxSignalFreq;
-      maxX = y < maxY ? x : maxX;
-      maxY = y < maxY ? y : maxY;
-
-      if (x === 0) {
-        ctx.moveTo(x, this.height * y);
-      } else {
-        ctx.lineTo(x, this.height * y);
-      }
-    }
-
-    ctx.stroke();
-
-    // Draw marker if enabled
-    if (this.config.isMarkerOn) {
-      this.drawMarker(maxX, maxY, ctx, maxSignalFreq);
-    }
-  }
-
-  private drawMarker(maxX: number, maxY: number, ctx: CanvasRenderingContext2D, maxSignalFreq: number): void {
-    if (maxX > 0) {
-      maxY -= 0.025;
-
-      // Draw diamond marker
-      ctx.beginPath();
-      ctx.fillStyle = '#f00';
-      ctx.moveTo(maxX, this.height * maxY);
-      ctx.lineTo(maxX - 5, this.height * maxY - 5);
-      ctx.lineTo(maxX, this.height * maxY - 10);
-      ctx.lineTo(maxX + 5, this.height * maxY - 5);
-      ctx.lineTo(maxX, this.height * maxY);
-      ctx.fill();
-
-      // Draw frequency label
-      ctx.fillStyle = '#fff';
-      ctx.font = '10px Arial';
-      const freqMhz = (this.minFreq_ + (maxX * (this.maxFreq_ - this.minFreq_)) / this.width) / 1e6 as MHz;
-      ctx.fillText(`${freqMhz.toFixed(1)} MHz`, maxX - 20, this.height * maxY - 30);
-      ctx.fillText(`${(maxSignalFreq + this.minDecibels).toFixed(1)} dB`, maxX - 20, this.height * maxY - 20);
-    }
-  }
-
-  private drawMaxHold(ctx: CanvasRenderingContext2D, color: string = '#ff0'): void {
-    ctx.strokeStyle = color;
-    ctx.beginPath();
-
-    const len = this.data.length;
-    for (let x = 0; x < len; x++) {
-      const y = (this.maxHoldData[x] - this.maxDecibels - this.decibelShift) / this.range;
-      if (x === 0) {
-        ctx.moveTo(x, this.height * y);
-      } else {
-        ctx.lineTo(x, this.height * y);
-      }
-    }
-
-    ctx.stroke();
-  }
-
-  /**
-   * Signal Processing Methods
-   */
-
-  private createNoise(data: Float32Array): Float32Array {
-    for (let x = 0; x < data.length; x++) {
-      data[x] = (0.5 + (5 * Math.random()) / 10) * (this.noiseFloor + this.decibelShift);
-
-      // Random spikes
-      if (Math.random() > 0.999) {
-        data[x] *= 1 + Math.random();
-      }
-
-      // Update max hold
-      if (this.maxHoldData[x] < data[x]) {
-        this.maxHoldData[x] = data[x];
-      }
-    }
-
-    return data;
-  }
-
-  private createSignal(
-    data: Float32Array,
-    center: number,
-    amplitude: number,
-    inBandWidth: number,
-    outOfBandWidth: number
-  ): Float32Array {
-    for (let x = 0; x < data.length; x++) {
-      let y = 0;
-
-      // Check if we're within the signal bandwidth
-      if (x > center - outOfBandWidth && x < center + outOfBandWidth) {
-        y = (0.75 + Math.random() / 4) * (amplitude + this.decibelShift);
-      }
-
-      // Simulate drop near edge of band (multiple stages for realistic rolloff)
-      if (x < center - inBandWidth * 0.5) {
-        if (Math.random() < 0.95) {
-          const distanceFromCenter = Math.abs(x - center - inBandWidth);
-          y -= Math.pow(distanceFromCenter / inBandWidth / 1.5, 6.5 + Math.random());
-        }
-      } else if (x > center + inBandWidth * 0.5) {
-        if (Math.random() < 0.95) {
-          const distanceFromCenter = Math.abs(x - center + inBandWidth);
-          y -= Math.pow(distanceFromCenter / inBandWidth / 1.5, 6.5 + Math.random());
-        }
-      }
-
-      if (x < center - inBandWidth * 0.75) {
-        if (Math.random() < 0.93) {
-          const distanceFromCenter = Math.abs(x - center - inBandWidth);
-          y -= Math.pow(distanceFromCenter / inBandWidth, 1.5 + Math.random());
-        }
-      } else if (x > center + inBandWidth * 0.75) {
-        if (Math.random() < 0.93) {
-          const distanceFromCenter = Math.abs(x - center + inBandWidth);
-          y -= Math.pow(distanceFromCenter / inBandWidth, 1.5 + Math.random());
-        }
-      }
-
-      if (x < center - inBandWidth * 0.9) {
-        if (Math.random() < 0.9) {
-          const distanceFromCenter = Math.abs(x - center - inBandWidth);
-          y -= Math.pow(distanceFromCenter / inBandWidth, 2.5 + Math.random());
-        }
-      } else if (x > center + inBandWidth * 0.9) {
-        if (Math.random() < 0.9) {
-          const distanceFromCenter = Math.abs(x - center + inBandWidth);
-          y -= Math.pow(distanceFromCenter / inBandWidth, 2.5 + Math.random());
-        }
-      }
-
-      // Zero out signal far outside the band and handle out-of-band regions
-      if (x > center + outOfBandWidth || x < center - outOfBandWidth || x < center - inBandWidth || x > center + inBandWidth) {
-        y = 0;
-      }
-
-      // Update max hold
-      if (this.maxHoldData[x] < y) {
-        this.maxHoldData[x] = y;
-      }
-
-      // Update noise floor
-      if (this.noiseData[x] < y) {
-        this.noiseData[x] = y;
-      }
-
-      data[x] = Math.max(y, 0);
-    }
-
-    return data;
-  }
-
-  /**
-   * Canvas Management
-   */
-
-  private resize(): void {
-    if (!this.canvas?.parentElement) return;
-
-    const newWidth = Math.max(this.canvas.parentElement.offsetWidth - 6, 10);
-    const newHeight = Math.max(newWidth, 10); // Square aspect ratio
-
-    if (newWidth !== this.width || newHeight !== this.height) {
-      this.width = newWidth;
-      this.height = newHeight;
-      this.canvas.width = this.width;
-      this.canvas.height = this.height;
-
-      // Reallocate typed arrays
-      this.data = new Float32Array(this.width);
-      this.noiseData = new Float32Array(this.width);
-      this.maxHoldData = new Float32Array(this.width);
-    }
-  }
-
-  /**
-   * Static Utility Methods
+   * Static Utility Methods (kept for backward compatibility)
    */
 
   public static getFreqBandInfo(band: string): { minFreq: number; maxFreq: number } {
@@ -717,33 +367,13 @@ export class SpectrumAnalyzer extends Equipment {
     return freqBands[band];
   }
 
-  public static rgb2hex(rgb: number[]): string {
-    return '#' + rgb.map(x => {
-      const hex = x.toString(16);
-      return hex.length === 1 ? '0' + hex : hex;
-    }).join('');
-  }
-
-  static getRandomRgb(i: number): string {
-    let rgb = [255, 0, 0];
-    if (i % 3 === 0) {
-      rgb[0] = 255;
-      rgb[1] = (i * 32) % 255;
-      rgb[2] = (i * 64) % 255;
-    } else if (i % 3 === 1) {
-      rgb[0] = (i * 64) % 255;
-      rgb[1] = (i * 32) % 255;
-      rgb[2] = 255;
-    } else if (i % 3 === 2) {
-      rgb[0] = (i * 32) % 255;
-      rgb[1] = 255;
-      rgb[2] = (i * 64) % 255;
-    } else {
-      rgb[0] = 255;
-      rgb[1] = 255;
-      rgb[2] = 255;
+  /**
+   * Cleanup
+   */
+  public dispose(): void {
+    if (this.screen) {
+      this.screen.dispose();
+      this.screen = null;
     }
-    const hex = SpectrumAnalyzer.rgb2hex(rgb);
-    return hex;
   }
 }

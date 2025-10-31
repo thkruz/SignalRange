@@ -1,5 +1,5 @@
 import { StudentEquipment } from '../equipment/student-equipment';
-import { syncStoreWithEquipment } from '../storage';
+import { syncEquipmentWithStore } from '../sync/storage';
 import { html } from '../utils';
 import { AbstractPage } from './abstract-page';
 
@@ -35,9 +35,10 @@ export class StudentPage extends AbstractPage {
     return this.container;
   }
 
-  private initEquipment(): void {
+  private async initEquipment(): Promise<void> {
     this.equipment = new StudentEquipment('student-equipment-container');
 
-    syncStoreWithEquipment(this.equipment);
+    // Sync with storage (automatically uses LocalStorage)
+    await syncEquipmentWithStore(this.equipment);
   }
 }

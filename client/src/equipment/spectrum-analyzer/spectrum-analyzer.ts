@@ -1,6 +1,6 @@
 import { SATELLITES } from "../../constants";
 import { Events } from "../../events/events";
-import { IfFrequency, IfSignal, RfFrequency, RfSignal } from "../../types";
+import { Hertz, IfFrequency, IfSignal, MHz, RfFrequency, RfSignal } from "../../types";
 import { html, qs } from '../../utils';
 import { Antenna } from '../antenna/antenna';
 import { Equipment } from '../equipment';
@@ -12,8 +12,11 @@ export interface SpectrumAnalyzerConfig {
   team_id: number;
   antenna_id: number;
   rf: boolean; // true = RF mode, false = IF mode
-  frequency: number; // MHz - center frequency
-  span: number; // MHz - bandwidth
+  isPaused: boolean;
+  isTraceOn: boolean;
+  isMarkerOn: boolean;
+  centerFrequency: Hertz; // Hz - center frequency
+  span: Hertz; // Hz - bandwidth
   hold: boolean; // Hold max amplitude
   minDecibels: number;
   maxDecibels: number;
@@ -26,20 +29,16 @@ export interface SpectrumAnalyzerConfig {
  * Extends Equipment base class for standard lifecycle
  */
 export class SpectrumAnalyzer extends Equipment {
+  config: SpectrumAnalyzerConfig;
+  /** Debugging feature to highlight real signals versus noise */
+  private readonly isShowSignals: boolean = true;
+
   // Canvas elements
   private canvas: HTMLCanvasElement | null = null;
   private ctx: CanvasRenderingContext2D | null = null;
 
-  // State
-  config: SpectrumAnalyzerConfig;
-  private isRfMode: boolean = false;
-  private isPaused: boolean = false;
-  isTraceOn: boolean = false;
-  isMarkerOn: boolean = false;
-  private isShowSignals: boolean = true;
-
   // Canvas dimensions
-  private width: number = 600;
+  private width: number = 1600;
   private height: number = 400;
 
   // Animation
@@ -49,15 +48,16 @@ export class SpectrumAnalyzer extends Equipment {
   private lastDrawTime: number = 0;
 
   // Signal processing
+  /** This is the y data used for rendering the spectrum */
   private data: Float32Array;
+  /** This is the y data used for rendering the noise floor */
   private noiseData: Float32Array;
+  /** This is the y data used for rendering the max hold trace */
   private maxHoldData: Float32Array;
 
   // Frequency management
-  private minFreq: number = 420e6; // Hz
-  private maxFreq: number = 450e6; // Hz
-  private bw: number = 30e6; // Hz
-  private centerFreq: number = 435e6; // Hz
+  private minFreq_: Hertz = 0 as Hertz;
+  private maxFreq_: Hertz = 0 as Hertz;
 
   // Decibel management
   private readonly minDecibels: number = -120;
@@ -67,7 +67,7 @@ export class SpectrumAnalyzer extends Equipment {
   private readonly noiseFloor: number = -115;
 
   // Antenna and satellite
-  private antenna: Antenna;
+  private readonly antenna: Antenna;
   private upconvertOffset: number = 3350e6; // C Band default
   private downconvertOffset: number = 3500e6; // C Band default
 
@@ -88,8 +88,11 @@ export class SpectrumAnalyzer extends Equipment {
       team_id: this.teamId,
       antenna_id: 1,
       rf: false,
-      frequency: 4810, // 4700, // MHz
-      span: 100, // MHz
+      isPaused: false,
+      isTraceOn: false,
+      isMarkerOn: false,
+      centerFrequency: 4810e6 as Hertz, // 4700, // Hz
+      span: 100e6 as Hertz, //Hz
       hold: false,
       minDecibels: this.minDecibels,
       maxDecibels: this.maxDecibels,
@@ -103,8 +106,6 @@ export class SpectrumAnalyzer extends Equipment {
 
     // Calculate range
     this.range = this.minDecibels - this.maxDecibels;
-    this.bw = this.maxFreq - this.minFreq;
-    this.centerFreq = this.minFreq + this.bw / 2;
 
     this.build();
   }
@@ -114,7 +115,7 @@ export class SpectrumAnalyzer extends Equipment {
       <div class="spectrum-analyzer-box">
         <div class="spec-a-header">
           <div class="spec-a-title">Spectrum Analyzer ${this.unit}</div>
-          <div class="spec-a-span">Span: ${this.config.span} MHz</div>
+          <div class="spec-a-span">Span: ${this.config.span / 1e6} MHz</div>
         </div>
 
         <div class="spec-a-canvas-container">
@@ -122,16 +123,16 @@ export class SpectrumAnalyzer extends Equipment {
         </div>
 
         <div class="spec-a-info">
-          <div>CF: ${this.config.frequency} MHz</div>
+          <div>CF: ${this.config.centerFrequency / 1e6} MHz</div>
           <div>Ant: ${this.config.antenna_id}</div>
         </div>
 
         <div class="spec-a-controls">
           <button class="btn-config" data-action="config">Config</button>
-          <button class="btn-mode ${this.isRfMode ? 'active' : ''}" data-action="mode">
-            ${this.isRfMode ? 'RF' : 'IF'}
+          <button class="btn-mode ${this.config.rf ? 'active' : ''}" data-action="mode">
+            ${this.config.rf ? 'RF' : 'IF'}
           </button>
-          <button class="btn-pause ${this.isPaused ? 'active' : ''}" data-action="pause">
+          <button class="btn-pause ${this.config.isPaused ? 'active' : ''}" data-action="pause">
             Pause
           </button>
         </div>
@@ -241,7 +242,7 @@ export class SpectrumAnalyzer extends Equipment {
   }
 
   public update(): void {
-    // Do nothing, signals are processed in the animation loop
+    this.updateDisplay();
   }
 
   public getConfig(): SpectrumAnalyzerConfig {
@@ -249,43 +250,19 @@ export class SpectrumAnalyzer extends Equipment {
   }
 
   public changeCenterFreq(freq: number): void {
-    this.centerFreq = freq;
-    this.minFreq = freq - this.bw / 2;
-    this.maxFreq = freq + this.bw / 2;
-    this.config.frequency = freq / 1e6; // Convert to MHz for display
+    this.config.centerFrequency = freq as Hertz;
 
     this.updateDisplay();
   }
 
   public changeBandwidth(freqSpan: number): void {
-    this.bw = freqSpan;
-    this.minFreq = this.centerFreq - this.bw / 2;
-    this.maxFreq = this.centerFreq + this.bw / 2;
-    this.config.span = freqSpan / 1e6; // Convert to MHz for display
+    this.config.span = freqSpan as Hertz;
 
     this.updateDisplay();
   }
 
   public resetHoldData(): void {
     this.maxHoldData = new Float32Array(this.width);
-  }
-
-  public setBand(band: string): void {
-    const freqBandInfo = SpectrumAnalyzer.getFreqBandInfo(band);
-    this.minFreq = freqBandInfo.minFreq;
-    this.maxFreq = freqBandInfo.maxFreq;
-    this.bw = this.maxFreq - this.minFreq;
-    this.centerFreq = this.minFreq + this.bw / 2;
-    this.config.frequency = this.centerFreq / 1e6; // Convert to MHz for display
-
-    // Update offsets based on band
-    if (band === 'c') {
-      this.upconvertOffset = 3350e6;
-      this.downconvertOffset = 3500e6;
-    } else if (band === 'ku') {
-      this.upconvertOffset = 12750e6;
-      this.downconvertOffset = 10950e6;
-    }
   }
 
   /**
@@ -298,40 +275,52 @@ export class SpectrumAnalyzer extends Equipment {
   }
 
   private toggleMode(): void {
-    this.isRfMode = !this.isRfMode;
-    this.config.rf = this.isRfMode;
+    this.config.rf = !this.config.rf;
 
-    // Update button state
-    const btn = qs('.btn-mode', this.element);
-    if (btn) {
-      btn.textContent = this.isRfMode ? 'RF' : 'IF';
-      btn.classList.toggle('active', this.isRfMode);
-    }
+    this.updateModeButton();
 
     this.emit(Events.SPEC_A_MODE_CHANGED, {
       unit: this.unit,
-      rf: this.isRfMode,
+      rf: this.config.rf,
     });
   }
 
-  private togglePause(): void {
-    this.isPaused = !this.isPaused;
-
-    // Update button state
-    const btn = qs('.btn-pause', this.element);
+  // Update button state
+  private updateModeButton() {
+    const btn = qs('.btn-mode', this.element);
     if (btn) {
-      btn.classList.toggle('active', this.isPaused);
+      btn.textContent = this.config.rf ? 'RF' : 'IF';
+      btn.classList.toggle('active', this.config.rf);
     }
+  }
 
-    if (this.isPaused) {
+  private togglePause(): void {
+    this.config.isPaused = !this.config.isPaused;
+
+    this.updatePauseButton();
+
+    if (this.config.isPaused) {
       this.stop();
     } else {
       this.start();
     }
+
+    this.emit(Events.SPEC_A_MODE_CHANGED, {
+      unit: this.unit,
+      isPaused: this.config.isPaused,
+    });
   }
 
-  private updateFrequency(frequency: number): void {
-    this.config.frequency = frequency;
+  // Update button state
+  private updatePauseButton() {
+    const btn = qs('.btn-pause', this.element);
+    if (btn) {
+      btn.classList.toggle('active', this.config.isPaused);
+    }
+  }
+
+  private updateFrequency(frequency: Hertz): void {
+    this.config.centerFrequency = frequency;
     this.updateDisplay();
   }
 
@@ -339,17 +328,20 @@ export class SpectrumAnalyzer extends Equipment {
     // Update header span
     const spanEl = qs('.spec-a-span', this.element);
     if (spanEl) {
-      spanEl.textContent = `Span: ${this.config.span} MHz`;
+      spanEl.textContent = `Span: ${this.config.span / 1e6} MHz`;
     }
 
     // Update info display
     const infoEl = qs('.spec-a-info', this.element);
     if (infoEl) {
       infoEl.innerHTML = html`
-        <div>CF: ${this.config.frequency} MHz</div>
+        <div>CF: ${this.config.centerFrequency / 1e6} MHz</div>
         <div>Ant: ${this.config.antenna_id}</div>
       `;
     }
+
+    this.updateModeButton();
+    this.updatePauseButton();
   }
 
   /**
@@ -379,7 +371,11 @@ export class SpectrumAnalyzer extends Equipment {
   }
 
   private animate(): void {
-    if (!this.isPaused && this.running) {
+    if (!this.config.isPaused && this.running) {
+      // Calculate minFreq and maxFreq from centerFrequency and bandwidth
+      this.minFreq_ = this.config.centerFrequency - this.config.span / 2 as Hertz;
+      this.maxFreq_ = this.config.centerFrequency + this.config.span / 2 as Hertz;
+
       const now = Date.now();
       if (now - this.lastDrawTime > 1000 / this.refreshRate) {
         this.clearCanvas(this.ctx!);
@@ -400,7 +396,7 @@ export class SpectrumAnalyzer extends Equipment {
               color = SpectrumAnalyzer.getRandomRgb(i);
             }
 
-            if (this.isRfMode) {
+            if (this.config.rf) {
               // Draw RF signals
               const rfUpSignal: RfSignal = { ...signal, frequency: (signal.frequency + this.upconvertOffset) as RfFrequency };
               const rfDownSignal: RfSignal = { ...signal, frequency: (signal.frequency + this.upconvertOffset) as RfFrequency };
@@ -425,7 +421,7 @@ export class SpectrumAnalyzer extends Equipment {
           });
 
         // Draw max hold if enabled
-        if (this.isTraceOn) {
+        if (this.config.isTraceOn) {
           this.drawMaxHold(this.ctx!);
         }
 
@@ -501,9 +497,9 @@ export class SpectrumAnalyzer extends Equipment {
   }
 
   private drawSignal(ctx: CanvasRenderingContext2D, color: string, signal: RfSignal | IfSignal): void {
-    const center = ((signal.frequency - this.minFreq) / (this.maxFreq - this.minFreq)) * this.width;
-    const inBandWidth = ((signal.bandwidth / (this.maxFreq - this.minFreq)) * this.width) / 2;
-    const outOfBandWidth = ((signal.bandwidth / (this.maxFreq - this.minFreq)) * this.width) / 1.8;
+    const center = ((signal.frequency - this.minFreq_) / (this.maxFreq_ - this.minFreq_)) * this.width;
+    const inBandWidth = ((signal.bandwidth / (this.maxFreq_ - this.minFreq_)) * this.width) / 2;
+    const outOfBandWidth = ((signal.bandwidth / (this.maxFreq_ - this.minFreq_)) * this.width) / 1.8;
 
     this.data = this.createSignal(this.data, center, signal.power, inBandWidth, outOfBandWidth);
 
@@ -533,7 +529,7 @@ export class SpectrumAnalyzer extends Equipment {
     ctx.stroke();
 
     // Draw marker if enabled
-    if (this.isMarkerOn) {
+    if (this.config.isMarkerOn) {
       this.drawMarker(maxX, maxY, ctx, maxSignalFreq);
     }
   }
@@ -555,8 +551,8 @@ export class SpectrumAnalyzer extends Equipment {
       // Draw frequency label
       ctx.fillStyle = '#fff';
       ctx.font = '10px Arial';
-      const freq = (this.minFreq + (maxX * (this.maxFreq - this.minFreq)) / this.width) / 1e6;
-      ctx.fillText(`${freq.toFixed(1)} MHz`, maxX - 20, this.height * maxY - 30);
+      const freqMhz = (this.minFreq_ + (maxX * (this.maxFreq_ - this.minFreq_)) / this.width) / 1e6 as MHz;
+      ctx.fillText(`${freqMhz.toFixed(1)} MHz`, maxX - 20, this.height * maxY - 30);
       ctx.fillText(`${(maxSignalFreq + this.minDecibels).toFixed(1)} dB`, maxX - 20, this.height * maxY - 20);
     }
   }

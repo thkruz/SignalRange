@@ -26,6 +26,8 @@ export interface EventMap {
   [Events.SPEC_A_MODE_CHANGED]: [Partial<SpectrumAnalyzerConfig>];
 
   [Events.ROUTE_CHANGED]: [{ path: string }];
+
+  [Events.STORAGE_ERROR]: [Error];
 }
 
 /**

@@ -1,6 +1,7 @@
 import { BaseElement } from '../../components/base-element';
 import { EventBus } from '../../events/event-bus';
 import { Events } from '../../events/events';
+import { Hertz } from '../../types';
 import { html, qs, qsa } from '../../utils';
 import './analyzer-control.css';
 import { SpectrumAnalyzer } from './spectrum-analyzer';
@@ -41,7 +42,7 @@ export class AnalyzerControl extends BaseElement {
   private initializeValues(): void {
     // Initialize with current center frequency in MHz
     this.numberSelection = 'mhz';
-    this.mhz = (this.spectrumAnalyzer.getConfig().frequency).toFixed(3);
+    this.mhz = (this.spectrumAnalyzer.getConfig().centerFrequency / 1e6).toFixed(3);
     this.ghz = '0';
     this.khz = '0';
     this.controlSelection = 'freq';
@@ -207,7 +208,7 @@ export class AnalyzerControl extends BaseElement {
 
     // Set the selected unit to the current value
     const config = this.spectrumAnalyzer.getConfig();
-    const currentValue = this.controlSelection === 'freq' ? config.frequency : config.span;
+    const currentValue = this.controlSelection === 'freq' ? config.centerFrequency : config.span;
 
     if (unit === 'ghz') {
       this.ghz = (currentValue / 1000).toFixed(6);
@@ -225,7 +226,7 @@ export class AnalyzerControl extends BaseElement {
     this.controlSelection = 'freq';
 
     // Update the display with current center frequency
-    const centerFreq = this.spectrumAnalyzer.getConfig().frequency;
+    const centerFreq = this.spectrumAnalyzer.getConfig().centerFrequency;
     this.updateValueForSelection(centerFreq);
     this.updateDisplay();
     this.playSound();
@@ -242,7 +243,7 @@ export class AnalyzerControl extends BaseElement {
   }
 
   private handleTraceClick(): void {
-    this.spectrumAnalyzer.isTraceOn = !this.spectrumAnalyzer.isTraceOn;
+    this.spectrumAnalyzer.config.isTraceOn = !this.spectrumAnalyzer.config.isTraceOn;
 
     // Update spectrum analyzer
     this.spectrumAnalyzer.resetHoldData();
@@ -252,7 +253,7 @@ export class AnalyzerControl extends BaseElement {
   }
 
   private handleMarkerClick(): void {
-    this.spectrumAnalyzer.isMarkerOn = !this.spectrumAnalyzer.isMarkerOn;
+    this.spectrumAnalyzer.config.isMarkerOn = !this.spectrumAnalyzer.config.isMarkerOn;
 
     // Update spectrum analyzer marker state
     this.spectrumAnalyzer.getConfig();
@@ -288,7 +289,7 @@ export class AnalyzerControl extends BaseElement {
     this.setCurrentValue(currentValue);
 
     // Update the spectrum analyzer
-    const numValue = parseFloat(currentValue) || 0;
+    const numValue = (Number.parseFloat(currentValue) || 0) as Hertz;
     const hzValue = this.convertToHz(numValue);
 
     if (this.controlSelection === 'freq') {
@@ -314,20 +315,21 @@ export class AnalyzerControl extends BaseElement {
     else if (this.numberSelection === 'khz') this.khz = value;
   }
 
-  private updateValueForSelection(mhzValue: number): void {
+  private updateValueForSelection(hertzValue: Hertz): void {
     if (this.numberSelection === 'ghz') {
-      this.ghz = (mhzValue / 1000).toFixed(6);
+      this.ghz = (hertzValue / 1e9).toFixed(6);
     } else if (this.numberSelection === 'mhz') {
-      this.mhz = mhzValue.toFixed(3);
+      this.mhz = (hertzValue / 1e6).toFixed(3);
     } else if (this.numberSelection === 'khz') {
-      this.khz = (mhzValue * 1000).toFixed(0);
+      this.khz = (hertzValue / 1e3).toFixed(0);
     }
   }
 
-  private convertToHz(value: number): number {
-    if (this.numberSelection === 'ghz') return value * 1e9;
-    if (this.numberSelection === 'mhz') return value * 1e6;
-    if (this.numberSelection === 'khz') return value * 1e3;
+  private convertToHz(value: Hertz): Hertz {
+    if (this.numberSelection === 'ghz') return value * 1e9 as Hertz;
+    if (this.numberSelection === 'mhz') return value * 1e6 as Hertz;
+    if (this.numberSelection === 'khz') return value * 1e3 as Hertz;
+
     return value;
   }
 
@@ -351,8 +353,8 @@ export class AnalyzerControl extends BaseElement {
     // Update button states - control selection
     this.updateButtonState('#freq-button', this.controlSelection === 'freq');
     this.updateButtonState('#span-button', this.controlSelection === 'span');
-    this.updateButtonState('#trace-button', this.spectrumAnalyzer.isTraceOn);
-    this.updateButtonState('#marker-button', this.spectrumAnalyzer.isMarkerOn);
+    this.updateButtonState('#trace-button', this.spectrumAnalyzer.config.isTraceOn);
+    this.updateButtonState('#marker-button', this.spectrumAnalyzer.config.isMarkerOn);
 
     EventBus.getInstance().emit(Events.SPEC_A_CONFIG_CHANGED, this.spectrumAnalyzer.getConfig());
   }

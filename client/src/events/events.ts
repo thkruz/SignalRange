@@ -26,4 +26,5 @@ export enum Events {
 
   // Router events
   ROUTE_CHANGED = 'route:changed',
+  STORAGE_ERROR = "STORAGE_ERROR",
 }

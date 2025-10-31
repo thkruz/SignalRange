@@ -1,4 +1,3 @@
-import { getStore, updateStore } from '../storage';
 import { html } from '../utils';
 import { Antenna } from './antenna/antenna';
 import { Receiver } from './receiver/receiver';
@@ -111,30 +110,6 @@ export class StudentEquipment {
       const rx = new Receiver(`rx${i}-container`, i, this.antennas, 1, 1);
       this.receivers.push(rx);
     }
-
-    const localStore = getStore();
-
-    // Add all equipment to the global AppState for debugging and persist it
-    if (!localStore.equipment) {
-      updateStore({
-        equipment: {
-          spectrumAnalyzers: this.spectrumAnalyzers,
-        }
-      });
-    }
-
-    if (module.hot)
-
-      // Update all equipment to initial state
-      localStore.equipment?.spectrumAnalyzers?.forEach((globalSa) => {
-        // Find matching local instance and update
-        const localSa = this.spectrumAnalyzers.find(sa => sa.config.unit === globalSa.config.unit);
-
-        if (localSa) {
-          localSa.config = { ...globalSa.config };
-          localSa.update();
-        }
-      });
   }
 
   /**

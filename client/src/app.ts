@@ -1,8 +1,8 @@
 import { Body } from './components/layout/body';
 import { Footer } from './components/layout/footer';
 import { Header } from './components/layout/header';
-import { Login } from './pages/login-page';
-import { Student } from './pages/student-page';
+import { LoginPage } from './pages/login-page';
+import { StudentPage } from './pages/student-page';
 import { Router } from './router';
 import { html } from './utils';
 
@@ -11,13 +11,13 @@ import { html } from './utils';
  * Orchestrates the entire application lifecycle
  */
 export class App {
-  private router!: Router;
+  router!: Router;
   private readonly header: Header;
   private readonly body: Body;
   private readonly footer: Footer;
   pages: {
-    login: Login | null;
-    student: Student | null;
+    login: LoginPage | null;
+    student: StudentPage | null;
   } = {
       login: null,
       student: null,
@@ -51,12 +51,12 @@ export class App {
 
     // Initialize router after the page placeholders exist
     this.router = new Router();
-    this.pages.login = new Login('login-page', this.router);
-    this.pages.student = new Student('student-page');
+    this.pages.login = new LoginPage();
+    this.pages.student = new StudentPage();
 
     // Initialize the router to set up routes and navigation
-    this.pages.login.initialize();
-    this.pages.student.initialize();
+    this.pages.login.init();
+    this.pages.student.init();
     this.setupEventListeners();
   }
 

@@ -69,7 +69,11 @@ export class Router {
 
   private showPage(id: string): void {
     const el = document.getElementById(id);
-    if (el) el.style.display = 'block';
+    if (el) {
+      el.style.display = 'block';
+    } else {
+      alert(`Page with id '${id}' not found`);
+    }
   }
 
   public getCurrentPath(): string {

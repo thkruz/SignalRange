@@ -1,29 +1,28 @@
 import { StudentEquipment } from '../equipment/student-equipment';
 import { html } from '../utils';
+import { AbstractPage } from './abstract-page';
 
 /**
- * Student Page
+ * Student page implementation
  */
-export class Student {
-  private readonly element: HTMLElement;
-  readonly elementId: string = 'student';
-  private equipment: StudentEquipment | null = null;
+export class StudentPage extends AbstractPage {
+  equipment: StudentEquipment | undefined;
 
-  constructor(parentId: string) {
-    const parent = document.getElementById(parentId);
-    if (!parent) throw new Error(`Parent element ${parentId} not found`);
-
-    this.element = parent;
+  constructor() {
+    super('student-page');
   }
 
-  initialize(): void {
+  init(): void {
+    // Initialize the page
     this.render();
-    this.addListeners();
+    this.setupEventListeners();
     this.initEquipment();
   }
 
-  private render(): void {
-    this.element.innerHTML = html`
+  render(): void {
+    if (!this.container) return;
+
+    this.container.innerHTML = html`
       <div class="student-page-container">
         <!-- Team Info Bar -->
         <div class="team-info">
@@ -37,17 +36,11 @@ export class Student {
     `;
   }
 
-  private addListeners(): void {
-    // Add page-level listeners
+  private setupEventListeners(): void {
+    // Add event listeners specific to the student page here
   }
 
   private initEquipment(): void {
     this.equipment = new StudentEquipment('student-equipment-container');
-  }
-
-  public destroy(): void {
-    if (this.equipment) {
-      this.equipment.destroy();
-    }
   }
 }

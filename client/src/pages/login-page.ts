@@ -1,94 +1,96 @@
-import { TEAMS } from '../constants';
-import { Router } from '../router';
-import { html, qs } from '../utils';
+import { AbstractPage } from './abstract-page';
 
 /**
- * Login Page
+ * Login page implementation
  */
-export class Login {
-  private readonly element: HTMLElement;
-  private readonly router: Router;
-  readonly elementId: string = 'login';
-  private selectedTeam: number = 1;
-  private selectedServer: number = 1;
-  parentId: string = `${this.elementId}-page`;
+export class LoginPage extends AbstractPage {
+  private loginForm: HTMLFormElement | null = null;
 
-  constructor(parentId: string, router: Router) {
-    const parent = document.getElementById(parentId);
-    if (!parent) throw new Error(`Parent element ${parentId} not found`);
-
-    this.element = parent;
-    this.router = router;
-
+  constructor() {
+    super('login-page');
   }
 
-  initialize(): void {
+  init(): void {
     this.render();
-    this.addListeners();
+    this.setupEventListeners();
   }
 
-  private render(): void {
-    this.element.innerHTML = html`
-      <div class="login-container">
-        <div class="login-box">
-          <h1>IRIS</h1>
-          <p>Space Electronic Warfare Sandbox</p>
+  render(): void {
+    if (!this.container) return;
 
-          <div class="login-form">
-            <div class="form-group">
-              <label for="team-select">Team:</label>
-              <select id="team-select">
-                ${TEAMS.map(team => html`
-                  <option value="${team.id}">${team.name}</option>
-                `).join('')}
-              </select>
-            </div>
-
-            <div class="form-group">
-              <label for="server-select">Server:</label>
-              <select id="server-select">
-                <option value="1">Server 1</option>
-                <option value="2">Server 2</option>
-              </select>
-            </div>
-
-            <button id="join-btn" class="btn-primary">Join</button>
+    this.container.innerHTML = `
+      <div class="login-page">
+        <h1>Login</h1>
+        <form id="login-form" class="login-form">
+          <div class="form-group">
+            <label for="username">Username:</label>
+            <input type="text" id="username" name="username" required>
           </div>
-        </div>
+          <div class="form-group">
+            <label for="password">Password:</label>
+            <input type="password" id="password" name="password" required>
+          </div>
+          <button type="submit" class="btn-primary">Login</button>
+        </form>
       </div>
     `;
+
+    this.loginForm = this.container.querySelector('#login-form');
   }
 
-  private addListeners(): void {
-    const joinBtn = qs('#join-btn', this.element);
-    const teamSelect = qs<HTMLSelectElement>('#team-select', this.element);
-    const serverSelect = qs<HTMLSelectElement>('#server-select', this.element);
-
-    if (teamSelect) {
-      teamSelect.addEventListener('change', () => {
-        this.selectedTeam = parseInt(teamSelect.value);
-      });
-    }
-
-    if (serverSelect) {
-      serverSelect.addEventListener('change', () => {
-        this.selectedServer = parseInt(serverSelect.value);
-      });
-    }
-
-    if (joinBtn) {
-      joinBtn.addEventListener('click', () => {
-        this.handleJoin();
-      });
+  private setupEventListeners(): void {
+    if (this.loginForm) {
+      this.loginForm.addEventListener('submit', this.handleLogin.bind(this));
     }
   }
 
-  private handleJoin(): void {
-    // Store user selection (could use localStorage)
-    localStorage.setItem('teamId', this.selectedTeam.toString());
-    localStorage.setItem('serverId', this.selectedServer.toString());
+  private async handleLogin(event: Event): Promise<void> {
+    event.preventDefault();
+    this.clearErrors();
 
-    // Navigate to student page
-    this.router.navigate('/student');
+    const formData = this.getFormData('#login-form');
+    if (!formData) return;
+
+    const username = formData.get('username') as string;
+    const password = formData.get('password') as string;
+
+    // Validate
+    if (!this.validateRequired(username, 'Username')) return;
+    if (!this.validateRequired(password, 'Password')) return;
+
+    try {
+      this.showLoading('Logging in...');
+
+      // Simulate API call
+      const response = await this.performLogin(username, password);
+
+      this.hideLoading();
+
+      if (response.success) {
+        // Navigate to student page
+        globalThis.location.hash = '/#/student';
+      } else {
+        this.showError('Invalid credentials');
+      }
+    } catch (error) {
+      this.hideLoading();
+      this.showError('Login failed. Please try again: ' + (error as Error).message);
+    }
+  }
+
+  private async performLogin(username: string, password: string): Promise<any> {
+    // Replace with actual API call
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve({ success: username === 'admin' && password === 'password' });
+      }, 1000);
+    });
+  }
+
+  destroy(): void {
+    if (this.loginForm) {
+      this.loginForm.removeEventListener('submit', this.handleLogin.bind(this));
+    }
+    super.destroy();
   }
 }

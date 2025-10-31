@@ -1,4 +1,4 @@
-import { eventBus, Events } from './EventBus';
+import { eventBus, Events } from './events/event-bus';
 
 /**
  * Simple Router for 3 pages: login, student, instructor

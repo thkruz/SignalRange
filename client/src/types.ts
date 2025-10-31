@@ -81,19 +81,6 @@ export interface SignalState {
   transmitting: boolean;
 }
 
-export interface SpectrumAnalyzerConfig {
-  unit: number; // 1-4
-  team_id: number;
-  antenna_id: number;
-  rf: boolean; // true = RF mode, false = IF mode
-  frequency: number; // MHz - center frequency
-  span: number; // MHz - bandwidth
-  hold: boolean; // Hold max amplitude
-  minDecibels: number;
-  maxDecibels: number;
-  noiseFloor: number;
-}
-
 export type ModulationType = 'BPSK' | 'QPSK' | '8QAM' | '16QAM';
 export type FECType = '1/2' | '2/3' | '3/4' | '5/6' | '7/8';
 

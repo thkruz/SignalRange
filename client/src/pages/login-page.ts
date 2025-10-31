@@ -1,25 +1,28 @@
-import { html, qs } from '../utils';
-import { Router } from '../Router';
 import { TEAMS } from '../constants';
+import { Router } from '../router';
+import { html, qs } from '../utils';
 
 /**
  * Login Page
  */
 export class Login {
-  private element: HTMLElement;
-  private router: Router;
+  private readonly element: HTMLElement;
+  private readonly router: Router;
+  readonly elementId: string = 'login';
   private selectedTeam: number = 1;
   private selectedServer: number = 1;
+  parentId: string = `${this.elementId}-page`;
 
   constructor(parentId: string, router: Router) {
     const parent = document.getElementById(parentId);
     if (!parent) throw new Error(`Parent element ${parentId} not found`);
 
-    console.log(parentId);
-
     this.element = parent;
     this.router = router;
 
+  }
+
+  initialize(): void {
     this.render();
     this.addListeners();
   }

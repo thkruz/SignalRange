@@ -1,7 +1,19 @@
 import { html, qs } from '../utils';
-import { eventBus, Events } from '../EventBus';
-import { SpectrumAnalyzerConfig } from '../types';
+import { eventBus, Events } from '../events/event-bus';
 import { DEFAULT_SPEC_A } from '../constants';
+
+export interface SpectrumAnalyzerConfig {
+  unit: number; // 1-4
+  team_id: number;
+  antenna_id: number;
+  rf: boolean; // true = RF mode, false = IF mode
+  frequency: number; // MHz - center frequency
+  span: number; // MHz - bandwidth
+  hold: boolean; // Hold max amplitude
+  minDecibels: number;
+  maxDecibels: number;
+  noiseFloor: number;
+}
 
 /**
  * SpectrumAnalyzer - Single analyzer unit

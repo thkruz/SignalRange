@@ -1,11 +1,12 @@
-import { html } from '../utils';
 import { StudentEquipment } from '../equipment/StudentEquipment';
+import { html } from '../utils';
 
 /**
  * Student Page
  */
 export class Student {
-  private element: HTMLElement;
+  private readonly element: HTMLElement;
+  readonly elementId: string = 'student';
   private equipment: StudentEquipment | null = null;
 
   constructor(parentId: string) {
@@ -13,7 +14,9 @@ export class Student {
     if (!parent) throw new Error(`Parent element ${parentId} not found`);
 
     this.element = parent;
+  }
 
+  initialize(): void {
     this.render();
     this.addListeners();
     this.initEquipment();

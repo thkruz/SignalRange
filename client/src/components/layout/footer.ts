@@ -20,7 +20,7 @@ export class Footer extends Component {
     });
 
     copyrightText.innerHTML = `
-      Copyright © 2022
+      Copyright © 2022-2025
       <a href="https://github.com/thkruz/" target="_blank" rel="noopener noreferrer">
         Theodore Kruczek
       </a>.

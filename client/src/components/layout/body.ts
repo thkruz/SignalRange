@@ -11,13 +11,12 @@ export class Body extends Component {
       className: 'body'
     });
 
-    const contentArea = this.createElement('div', {
-      className: 'body-content'
-    });
+    body.innerHTML = `
+    <div class="body-content">
+    </div>
+    `;
 
-    body.appendChild(contentArea);
     this.element = body;
-
     return body;
   }
 }

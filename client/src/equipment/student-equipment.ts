@@ -111,14 +111,4 @@ export class StudentEquipment {
       // Add other equipment configs here
     };
   }
-
-  /**
-   * Cleanup all equipment
-   */
-  public destroy(): void {
-    this.spectrumAnalyzers.forEach(specA => specA.destroy());
-    this.spectrumAnalyzers = [];
-
-    // TODO: Destroy other equipment
-  }
 }

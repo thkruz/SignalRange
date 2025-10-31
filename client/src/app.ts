@@ -1,6 +1,8 @@
+import { BaseElement } from './components/base-element';
 import { Body } from './components/layout/body';
 import { Footer } from './components/layout/footer';
 import { Header } from './components/layout/header';
+import { AbstractPage } from './pages/abstract-page';
 import { LoginPage } from './pages/login-page';
 import { StudentPage } from './pages/student-page';
 import { Router } from './router';
@@ -10,23 +12,25 @@ import { html } from './utils';
  * Main Application Class
  * Orchestrates the entire application lifecycle
  */
-export class App {
-  router!: Router;
-  private readonly header: Header;
-  private readonly body: Body;
-  private readonly footer: Footer;
-  pages: {
-    login: LoginPage | null;
-    student: StudentPage | null;
-  } = {
-      login: null,
-      student: null,
-    };
+export class App extends BaseElement {
+  private readonly rootElement: HTMLElement;
+  private readonly router = new Router();
+  private readonly header = new Header();
+  private readonly body = new Body();
+  private readonly footer = new Footer();
+  pages: { [key: string]: AbstractPage } = {};
+  pagesConstructors: Array<new (...args: any[]) => AbstractPage> = [
+    LoginPage,
+    StudentPage,
+  ];
 
-  constructor(private readonly rootElement: HTMLElement) {
-    this.header = new Header();
-    this.body = new Body();
-    this.footer = new Footer();
+  constructor() {
+    super();
+    const root = document.getElementById('root');
+    if (!root) {
+      throw new Error('Root element not found');
+    }
+    this.rootElement = root;
   }
 
   /**
@@ -36,53 +40,35 @@ export class App {
     // First render main layout so we have DOM containers available
     this.render();
 
-    // Create page containers inside the body content area
-    const contentArea = this.rootElement.querySelector('.body-content');
-    if (contentArea) {
-      const pageKeys: Array<keyof typeof this.pages> = ['login', 'student'];
-      for (const key of pageKeys) {
-        // Use a default id if the page is not yet instantiated
-        const id = `${key}-page`;
-        const pageEl = document.createElement('div');
-        pageEl.id = id;
-        contentArea.appendChild(pageEl);
-      }
+    for (const PageClass of this.pagesConstructors) {
+      this.pages[PageClass.name] = new PageClass();
+      this.pages[PageClass.name].init();
     }
 
-    // Initialize router after the page placeholders exist
-    this.router = new Router();
-    this.pages.login = new LoginPage();
-    this.pages.student = new StudentPage();
+    this.router.init();
 
     // Initialize the router to set up routes and navigation
-    this.pages.login.init();
-    this.pages.student.init();
     this.setupEventListeners();
   }
 
   /**
    * Render the main application structure
    */
-  private render(): void {
+  render(): HTMLElement {
     this.rootElement.innerHTML = html`
       ${this.header.render().outerHTML}
       ${this.body.render().outerHTML}
       ${this.footer.render().outerHTML}
     `;
+
+    return this.rootElement;
   }
 
   /**
    * Setup global event listeners
    */
-  private setupEventListeners(): void {
+  protected setupEventListeners(): void {
     // Prevent context menu
     document.addEventListener('contextmenu', (event) => event.preventDefault());
-  }
-
-  /**
-   * Cleanup and destroy the application
-   */
-  public destroy(): void {
-    this.rootElement.innerHTML = '';
   }
 }

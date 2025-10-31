@@ -129,7 +129,7 @@ export class SpectrumAnalyzer extends Equipment {
     // CSS is imported at the top of the file
   }
 
-  protected render(): void {
+  render(): HTMLElement {
     this.element.innerHTML = html`
       <div class="spectrum-analyzer-box">
         <div class="spec-a-header">
@@ -165,6 +165,8 @@ export class SpectrumAnalyzer extends Equipment {
       // Initial resize to fit container
       this.resize();
     }
+
+    return this.element;
   }
 
   protected addListeners(): void {
@@ -207,12 +209,6 @@ export class SpectrumAnalyzer extends Equipment {
 
   protected initialize(): void {
     this.start();
-  }
-
-  protected removeListeners(): void {
-    if (this.resizeHandler) {
-      window.removeEventListener('resize', this.resizeHandler);
-    }
   }
 
   /**
@@ -739,14 +735,5 @@ export class SpectrumAnalyzer extends Equipment {
     const g = Math.floor(Math.random() * 256);
     const b = Math.floor(Math.random() * 256);
     return SpectrumAnalyzer.rgb2hex([r, g, b]);
-  }
-
-  /**
-   * Cleanup
-   */
-
-  public destroy(): void {
-    this.stop();
-    super.destroy();
   }
 }

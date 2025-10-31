@@ -1,27 +1,29 @@
+import { BaseElement } from "../components/base-element";
+
 /**
  * Abstract base class for page components
  * Contains common functionality shared across different pages
  */
-export abstract class AbstractPage {
-  protected container: HTMLElement | null = null;
+export abstract class AbstractPage extends BaseElement {
+  protected container: HTMLElement;
   protected isInitialized: boolean = false;
 
   constructor(protected containerId: string) {
-    this.container = document.getElementById(containerId);
+    super();
+
+    this.container = document.getElementById(containerId)!;
+
     if (!this.container) {
-      throw new Error(`Container with id '${containerId}' not found`);
+      const bodyContent = document.getElementsByClassName('body-content')[0];
+      if (bodyContent) {
+        this.container = document.createElement('div');
+        this.container.id = containerId;
+        bodyContent.appendChild(this.container);
+      } else {
+        throw new Error('Body content container not found');
+      }
     }
   }
-
-  /**
-   * Initialize the page - must be implemented by subclasses
-   */
-  abstract init(): void;
-
-  /**
-   * Render the page content - must be implemented by subclasses
-   */
-  abstract render(): void;
 
   /**
    * Clean up resources when page is destroyed
@@ -53,22 +55,6 @@ export abstract class AbstractPage {
     if (this.container) {
       this.container.style.display = 'none';
     }
-  }
-
-  /**
-   * Common method to attach event listeners
-   */
-  protected attachEventListeners(
-    selector: string,
-    event: string,
-    handler: EventListener
-  ): void {
-    if (!this.container) return;
-
-    const elements = this.container.querySelectorAll(selector);
-    elements.forEach(element => {
-      element.addEventListener(event, handler);
-    });
   }
 
   /**

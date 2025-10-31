@@ -13,15 +13,11 @@ export class StudentPage extends AbstractPage {
   }
 
   init(): void {
-    // Initialize the page
-    this.render();
-    this.setupEventListeners();
+    super.init();
     this.initEquipment();
   }
 
-  render(): void {
-    if (!this.container) return;
-
+  render(): HTMLElement {
     this.container.innerHTML = html`
       <div class="student-page-container">
         <!-- Team Info Bar -->
@@ -34,10 +30,8 @@ export class StudentPage extends AbstractPage {
         <div id="student-equipment-container"></div>
       </div>
     `;
-  }
 
-  private setupEventListeners(): void {
-    // Add event listeners specific to the student page here
+    return this.container;
   }
 
   private initEquipment(): void {

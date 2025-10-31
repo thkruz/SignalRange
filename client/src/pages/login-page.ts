@@ -10,14 +10,7 @@ export class LoginPage extends AbstractPage {
     super('login-page');
   }
 
-  init(): void {
-    this.render();
-    this.setupEventListeners();
-  }
-
-  render(): void {
-    if (!this.container) return;
-
+  render(): HTMLElement {
     this.container.innerHTML = `
       <div class="login-page">
         <h1>Login</h1>
@@ -36,9 +29,11 @@ export class LoginPage extends AbstractPage {
     `;
 
     this.loginForm = this.container.querySelector('#login-form');
+
+    return this.container;
   }
 
-  private setupEventListeners(): void {
+  protected setupEventListeners(): void {
     if (this.loginForm) {
       this.loginForm.addEventListener('submit', this.handleLogin.bind(this));
     }
@@ -68,7 +63,7 @@ export class LoginPage extends AbstractPage {
 
       if (response.success) {
         // Navigate to student page
-        globalThis.location.hash = '/#/student';
+        globalThis.location.href = '/student';
       } else {
         this.showError('Invalid credentials');
       }

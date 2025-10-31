@@ -6,11 +6,7 @@ import { eventBus, Events } from './events/event-bus';
 export class Router {
   private currentPath: string = '/';
 
-  constructor() {
-    this.init();
-  }
-
-  private init(): void {
+  init(): void {
     // Listen for popstate (back/forward buttons)
     globalThis.addEventListener('popstate', () => this.handleRoute());
 

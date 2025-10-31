@@ -1,3 +1,4 @@
+import { html } from '../../utils';
 import { Component } from '../component';
 import './Body.css';
 
@@ -6,17 +7,10 @@ import './Body.css';
  * Main content area container
  */
 export class Body extends Component {
-  public render(): HTMLElement {
-    const body = this.createElement('main', {
-      className: 'body'
-    });
-
-    body.innerHTML = `
-    <div class="body-content">
-    </div>
+  protected readonly html = html`
+      <main class="body">
+        <div class="body-content">
+        </div>
+      </main>
     `;
-
-    this.element = body;
-    return body;
-  }
 }

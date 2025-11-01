@@ -1,6 +1,6 @@
 import { Events } from "../../events/events";
 import { Hertz } from "../../types";
-import { html, qs } from '../../utils';
+import { html } from '../../utils';
 import { Antenna } from '../antenna/antenna';
 import { Equipment } from '../equipment';
 import { AnalyzerControl } from "./analyzer-control";
@@ -38,9 +38,6 @@ export class SpectrumAnalyzer extends Equipment {
   // Screen renderer
   screen: SpectrumScreen | null = null;
 
-  // Canvas reference
-  private canvas: HTMLCanvasElement | null = null;
-
   // Antenna reference
   private readonly antenna: Antenna;
 
@@ -73,11 +70,13 @@ export class SpectrumAnalyzer extends Equipment {
       refreshRate: 10,
     };
 
-    this.build();
+    this.build(parentId);
   }
 
-  initializeDom(): HTMLElement {
-    this.element.innerHTML = html`
+  initializeDom(parentId: string): HTMLElement {
+    const parentDom = super.initializeDom(parentId);
+
+    parentDom.innerHTML = html`
       <div class="spectrum-analyzer-box">
         <div class="spec-a-header">
           <div class="spec-a-title">Spectrum Analyzer ${this.unit}</div>
@@ -105,18 +104,25 @@ export class SpectrumAnalyzer extends Equipment {
       </div>
     `;
 
-    // Get canvas reference and initialize screen
-    this.canvas = qs<HTMLCanvasElement>(`#specA${this.unit}`, this.element);
-    if (this.canvas) {
-      this.initializeScreen();
-    }
+    // Cache all DOM references that might be needed later
+    this.domCache['container'] = parentDom.querySelector('.spectrum-analyzer-box') as HTMLElement;
+    this.domCache['header'] = parentDom.querySelector('.spec-a-header') as HTMLElement;
+    this.domCache['info'] = parentDom.querySelector('.spec-a-info') as HTMLElement;
+    this.domCache['controls'] = parentDom.querySelector('.spec-a-controls') as HTMLElement;
+    this.domCache['canvas'] = parentDom.querySelector(`#specA${this.unit}`) as HTMLCanvasElement;
+    this.domCache['span'] = parentDom.querySelector('.spec-a-span') as HTMLElement;
+    this.domCache['modeButton'] = parentDom.querySelector('.btn-mode') as HTMLElement;
+    this.domCache['pauseButton'] = parentDom.querySelector('.btn-pause') as HTMLElement;
 
-    return this.element;
+    // initialize screen
+    this.initializeScreen();
+
+    return parentDom;
   }
 
-  protected addListeners(): void {
+  protected addListeners(parentDom: HTMLElement): void {
     // Button clicks
-    this.element.addEventListener('click', (e) => {
+    parentDom.addEventListener('click', (e) => {
       const target = e.target as HTMLElement;
       const action = target.dataset.action;
 
@@ -187,9 +193,9 @@ export class SpectrumAnalyzer extends Equipment {
    * Initialize the screen renderer
    */
   private initializeScreen(): void {
-    if (!this.canvas) return;
+    if (!this.domCache['canvas']) throw new Error('Canvas element not found for Spectrum Analyzer');
 
-    this.screen = new SpectrumScreen(this.canvas, this.antenna, this);
+    this.screen = new SpectrumScreen(this.domCache['canvas'] as HTMLCanvasElement, this.antenna, this);
 
     // Set initial state
     this.updateScreenState();
@@ -278,11 +284,8 @@ export class SpectrumAnalyzer extends Equipment {
   }
 
   private updateModeButton(): void {
-    const btn = qs('.btn-mode', this.element);
-    if (btn) {
-      btn.textContent = this.state.isRfMode ? 'RF' : 'IF';
-      btn.classList.toggle('active', this.state.isRfMode);
-    }
+    this.domCache['modeButton'].textContent = this.state.isRfMode ? 'RF' : 'IF';
+    this.domCache['modeButton'].classList.toggle('active', this.state.isRfMode);
   }
 
   private togglePause(): void {
@@ -297,10 +300,7 @@ export class SpectrumAnalyzer extends Equipment {
   }
 
   private updatePauseButton(): void {
-    const btn = qs('.btn-pause', this.element);
-    if (btn) {
-      btn.classList.toggle('active', this.state.isPaused);
-    }
+    this.domCache['pauseButton'].classList.toggle('active', this.state.isPaused);
   }
 
   private updateFrequency(frequency: Hertz): void {
@@ -311,19 +311,13 @@ export class SpectrumAnalyzer extends Equipment {
 
   private updateDisplay(): void {
     // Update header span
-    const spanEl = qs('.spec-a-span', this.element);
-    if (spanEl) {
-      spanEl.textContent = `Span: ${this.state.span / 1e6} MHz`;
-    }
+    this.domCache['span'].textContent = `Span: ${this.state.span / 1e6} MHz`;
 
     // Update info display
-    const infoEl = qs('.spec-a-info', this.element);
-    if (infoEl) {
-      infoEl.innerHTML = html`
-        <div>CF: ${this.state.centerFrequency / 1e6} MHz</div>
-        <div>Ant: ${this.state.antenna_id}</div>
-      `;
-    }
+    this.domCache['info'].innerHTML = html`
+      <div>CF: ${this.state.centerFrequency / 1e6} MHz</div>
+      <div>Ant: ${this.state.antenna_id}</div>
+    `;
 
     this.updateModeButton();
     this.updatePauseButton();

@@ -60,18 +60,22 @@ export class Transmitter extends Equipment {
     };
 
     this.inputData = { ...this.getActiveModem() };
-    this.build();
+    const parentDom = this.initializeDom(parentId);
+    // this.lastRenderState = { ...this.state_ };
+    this.addListeners(parentDom);
   }
 
   public update(): void {
     // No periodic updates needed for transmitter at this time
   }
 
-  initializeDom(): HTMLElement {
+  initializeDom(parentId: string): HTMLElement {
+    const parentDom = super.initializeDom(parentId);
+
     const activeModemData = this.getActiveModem();
     const isTransmitting = this.state_.modems.some(m => m.transmitting);
 
-    this.element.innerHTML = html`
+    parentDom.innerHTML = html`
       <div class="transmitter-box">
         <div class="transmitter-header">
           <div class="transmitter-title">Transmitter Case ${this.unit}</div>
@@ -164,12 +168,12 @@ export class Transmitter extends Equipment {
       </div>
     `;
 
-    return this.element;
+    return parentDom;
   }
 
-  protected addListeners(): void {
+  protected addListeners(parentDom: HTMLElement): void {
     // Modem selection buttons
-    const modemButtons = this.element.querySelectorAll('.btn-modem');
+    const modemButtons = parentDom.querySelectorAll('.btn-modem');
     modemButtons.forEach(btn => {
       btn.addEventListener('click', (e) => {
         const modemNum = parseInt((e.target as HTMLElement).getAttribute('data-modem') || '1');
@@ -178,17 +182,17 @@ export class Transmitter extends Equipment {
     });
 
     // Input changes
-    const inputs = this.element.querySelectorAll('input, select');
+    const inputs = parentDom.querySelectorAll('input, select');
     inputs.forEach(input => {
       input.addEventListener('change', (e) => this.handleInputChange(e));
     });
 
     // Apply button
-    const btnApply = qs('.btn-apply', this.element);
+    const btnApply = qs('.btn-apply', parentDom);
     btnApply?.addEventListener('click', () => this.applyChanges());
 
     // Transmit button
-    const btnTransmit = qs('.btn-transmit', this.element);
+    const btnTransmit = qs('.btn-transmit', parentDom);
     btnTransmit?.addEventListener('click', () => this.toggleTransmit());
   }
 
@@ -318,9 +322,9 @@ export class Transmitter extends Equipment {
   }
 
   private updateDisplay(): void {
-    this.initializeDom();
+    // this.initializeDom();
 
-    // Re-attach listeners after render
-    this.addListeners();
+    // // Re-attach listeners after render
+    // this.addListeners();
   }
 }

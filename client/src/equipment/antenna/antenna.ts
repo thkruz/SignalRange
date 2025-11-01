@@ -45,8 +45,6 @@ export class Antenna extends Equipment {
   }
   /** Input state being edited in the UI before applying changes */
   private inputState: AntennaState;
-  private isInitialized: boolean = false;
-  private domCache: { [key: string]: HTMLElement } = {};
   private lastRenderState: AntennaState;
 
   constructor(parentId: string, unit: number, teamId: number = 1, serverId: number = 1) {
@@ -69,17 +67,13 @@ export class Antenna extends Equipment {
     };
 
     // Input state starts as a copy of current state
-    this.inputState = { ...this.state_ };
+    this.inputState = structuredClone(this.state_);
     const parentDom = this.initializeDom(parentId);
-    this.lastRenderState = { ...this.state_ };
+    this.lastRenderState = structuredClone(this.state_);
     this.addListeners(parentDom);
   }
 
   initializeDom(parentId: string): HTMLElement {
-    if (this.isInitialized) {
-      throw new Error('Antenna DOM already initialized');
-    }
-    this.isInitialized = true;
     const parentDom = super.initializeDom(parentId);
 
     const band = this.state.freqBand === FrequencyBand.C ? 'c' : 'ku';
@@ -466,7 +460,7 @@ export class Antenna extends Equipment {
     this.domCache['labelOffset'].textContent = `${this.state.offset} MHz`;
 
     // Save last render state
-    this.lastRenderState = { ...this.state };
+    this.lastRenderState = structuredClone(this.state_);
   }
 
   private getStatusClass(): string {

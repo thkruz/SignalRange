@@ -1,4 +1,3 @@
-import { BaseElement } from '../components/base-element';
 import { EventBus, EventMap } from '../events/event-bus';
 import { Events } from '../events/events';
 import { AntennaState } from './antenna/antenna';
@@ -12,36 +11,50 @@ import { TransmitterState } from './transmitter/transmitter';
  * All physical equipment should extend this class
  * Provides standard lifecycle methods and shared functionality
  */
-export abstract class Equipment extends BaseElement {
-  protected element: HTMLElement;
+export abstract class Equipment {
   protected readonly unit: number;
   protected readonly teamId: number;
   protected abstract state_: AntennaState | ReceiverState | TransmitterState | SpectrumAnalyzerState;
   /** Current equipment state. Should be a public getter referencing the private state variable */
   abstract state: AntennaState | ReceiverState | TransmitterState | SpectrumAnalyzerState;
 
+  private isInitialized: boolean = false;
+  protected domCache: { [key: string]: HTMLElement } = {};
+
   constructor(parentId: string, unit: number, teamId: number = 1) {
-    super();
     const parentDom = document.getElementById(parentId);
     if (!parentDom) throw new Error(`Parent element ${parentId} not found`);
 
-    this.element = parentDom;
     this.unit = unit;
     this.teamId = teamId;
   }
 
   // Standard initialization sequence
-  protected build(): void {
-    this.initializeDom();
-    this.addListeners();
+  protected build(parentId: string): void {
+    const parentDom = this.initializeDom(parentId);
+    this.addListeners(parentDom);
     this.initialize();
+  }
+
+  initializeDom(parentId: string): HTMLElement {
+    if (this.isInitialized) {
+      throw new Error('DOM already initialized');
+    }
+    this.isInitialized = true;
+
+    const parentDom = parentId ? document.getElementById(parentId) : null;
+    if (!parentId || !parentDom) {
+      throw new Error(`Parent element ${parentId} not found`);
+    }
+
+    return parentDom;
   }
 
   /**
    * Add event listeners
    * MUST be implemented by child classes
    */
-  protected abstract addListeners(parentDom?: HTMLElement): void;
+  protected abstract addListeners(parentDom: HTMLElement): void;
 
   /**
    * Initialize equipment state and start operations

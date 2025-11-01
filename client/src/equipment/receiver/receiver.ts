@@ -34,6 +34,7 @@ export class Receiver extends Equipment {
   }
   private inputData: Partial<ReceiverModemState> = {};
   private readonly antennas: Antenna[];
+  private lastRenderState: ReceiverState | null = null;
 
   constructor(parentId: string, unit: number, antennas: Antenna[], teamId: number = 1, serverId: number = 1) {
     super(parentId, unit, teamId);
@@ -61,27 +62,24 @@ export class Receiver extends Equipment {
       activeModem: 1,
     };
 
-    this.inputData = { ...this.getActiveModem() };
-    this.build();
+    this.build(parentId);
   }
 
   syncInputToConfig(): void {
-    const activeModem = this.getActiveModem();
-    Object.assign(this.inputData, activeModem);
-
-    this.updateDisplay();
+    this.syncDomWithState();
   }
 
   update(): void {
     // No periodic updates needed for receiver at this time
   }
 
-  initializeDom(): HTMLElement {
+  initializeDom(parentId: string): HTMLElement {
+    const parentDom = super.initializeDom(parentId);
     const activeModemData = this.getActiveModem();
     const signalStatus = this.getSignalStatus();
     const feedUrl = this.getVisibleSignals()[0]?.feed || '';
 
-    this.element.innerHTML = html`
+    parentDom.innerHTML = html`
       <div class="receiver-box">
         <div class="receiver-header">
           <div class="receiver-title">Receiver Case ${this.unit}</div>
@@ -94,7 +92,7 @@ export class Receiver extends Equipment {
           <!-- Modem Selection Buttons -->
           <div class="modem-buttons">
             ${this.state.modems.map(modem => html`
-              <button
+              <button id="modem-${modem.modemNumber}"
                 class="btn-modem ${modem.modemNumber === this.state.activeModem ? 'active' : ''} ${this.getModemStatusClass(modem)}"
                 data-modem="${modem.modemNumber}">
                 ${modem.modemNumber}
@@ -181,62 +179,85 @@ export class Receiver extends Equipment {
       </div>
     `;
 
-    return this.element;
+    // Cache frequently used DOM nodes for efficient updates
+    this.domCache['parent'] = parentDom;
+    this.domCache['status'] = qs('.receiver-status', parentDom) as HTMLElement;
+    this.state.modems.forEach(modem => {
+      this.domCache[`modemButton${modem.modemNumber}`] = qs(`#modem-${modem.modemNumber}`, parentDom) as HTMLElement;
+    });
+    this.domCache['inputAntenna'] = qs('.input-rx-antenna', parentDom) as HTMLSelectElement;
+    this.domCache['inputFrequency'] = qs('.input-rx-frequency', parentDom) as HTMLInputElement;
+    this.domCache['inputBandwidth'] = qs('.input-rx-bandwidth', parentDom) as HTMLInputElement;
+    this.domCache['inputModulation'] = qs('.input-rx-modulation', parentDom) as HTMLSelectElement;
+    this.domCache['inputFec'] = qs('.input-rx-fec', parentDom) as HTMLSelectElement;
+    this.domCache['btnApply'] = qs('.btn-apply', parentDom) as HTMLElement;
+    this.domCache['monitorScreen'] = qs('.monitor-screen', parentDom) as HTMLElement;
+
+    const currentValueEls = parentDom.querySelectorAll('.current-value');
+    this.domCache['currentValueAntenna'] = currentValueEls[0] as HTMLElement;
+    this.domCache['currentValueFrequency'] = currentValueEls[1] as HTMLElement;
+    this.domCache['currentValueBandwidth'] = currentValueEls[2] as HTMLElement;
+    this.domCache['currentValueModulation'] = currentValueEls[3] as HTMLElement;
+    this.domCache['currentValueFec'] = currentValueEls[4] as HTMLElement;
+    // Initialize lastRenderState so first render always updates
+    this.lastRenderState = structuredClone(this.state_);
+
+    return parentDom;
   }
 
-  protected addListeners(): void {
+  protected addListeners(parentDom: HTMLElement): void {
     // Modem selection buttons
-    const modemButtons = this.element.querySelectorAll('.btn-modem');
+    const modemButtons = parentDom.querySelectorAll('.btn-modem');
     modemButtons.forEach(btn => {
       btn.addEventListener('click', (e) => {
-        const modemNum = parseInt((e.target as HTMLElement).getAttribute('data-modem') || '1');
+        const modemNum = Number.parseInt((e.target as HTMLElement).dataset.modem || '1');
         this.setActiveModem(modemNum);
       });
     });
 
     // Input changes
-    const inputs = this.element.querySelectorAll('input, select');
+    const inputs = parentDom.querySelectorAll('input, select');
     inputs.forEach(input => {
       input.addEventListener('change', (e) => this.handleInputChange(e));
     });
 
     // Apply button
-    const btnApply = qs('.btn-apply', this.element);
+    const btnApply = qs('.btn-apply', parentDom);
     btnApply?.addEventListener('click', () => this.applyChanges());
   }
 
   private subscribeToAntennaEvents() {
     this.on(Events.ANTENNA_CONFIG_CHANGED, () => {
-      this.updateDisplay();
+      this.syncDomWithState();
     });
 
     this.on(Events.ANTENNA_ERROR, () => {
-      this.updateDisplay();
+      this.syncDomWithState();
     });
 
     this.on(Events.ANTENNA_HPA_CHANGED, () => {
-      this.updateDisplay();
+      this.syncDomWithState();
     });
 
     this.on(Events.ANTENNA_LOCKED, () => {
-      this.updateDisplay();
+      this.syncDomWithState();
     });
 
     this.on(Events.ANTENNA_LOOPBACK_CHANGED, () => {
-      this.updateDisplay();
+      this.syncDomWithState();
     });
 
     this.on(Events.ANTENNA_POWER_CHANGED, () => {
-      this.updateDisplay();
+      this.syncDomWithState();
     });
 
     this.on(Events.ANTENNA_TRACK_CHANGED, () => {
-      this.updateDisplay();
+      this.syncDomWithState();
     });
   }
 
   protected initialize(): void {
-    this.updateDisplay();
+    this.syncDomWithState();
 
     // Listen for antenna changes
     this.subscribeToAntennaEvents();
@@ -247,7 +268,7 @@ export class Receiver extends Equipment {
       this.state_.modems = data.modems;
     }
     this.state.activeModem = data.activeModem ?? this.state_.activeModem;
-    this.updateDisplay();
+    this.syncDomWithState();
   }
 
   public getConfig(): ReceiverState {
@@ -258,14 +279,14 @@ export class Receiver extends Equipment {
    * Private Methods
    */
 
-  private getActiveModem(): ReceiverModemState | undefined {
-    return this.state_.modems.find(m => m.modemNumber === this.state.activeModem) || this.state_.modems[0];
+  private getActiveModem(): ReceiverModemState {
+    return this.state_.modems.find(m => m.modemNumber === this.state.activeModem) ?? this.state_.modems[0];
   }
 
   private setActiveModem(modemNumber: number): void {
     this.state_.activeModem = modemNumber;
     this.inputData = { ...this.getActiveModem() };
-    this.updateDisplay();
+    this.syncDomWithState();
 
     // Emit event for modem change
     this.emit(Events.RX_ACTIVE_MODEM_CHANGED, {
@@ -319,7 +340,7 @@ export class Receiver extends Equipment {
       config: this.state_.modems[modemIndex]
     });
 
-    this.updateDisplay();
+    this.syncDomWithState();
   }
 
   private getSignalStatus(): { text: string; class: string } {
@@ -388,11 +409,9 @@ export class Receiver extends Equipment {
         // Within 10%: no prefix
         if (frequencyMhz >= lowerBound10 && frequencyMhz <= upperBound10) {
           s.feed = s.feed.replace(/^degraded-/, '');
-        } else {
           // Outside 10% but within 50%: degraded-
-          if (!s.feed.startsWith('degraded-')) {
-            s.feed = `degraded-${s.feed.replace(/^degraded-/, '')}`;
-          }
+        } else if (!s.feed.startsWith('degraded-')) {
+          s.feed = `degraded-${s.feed.replace(/^degraded-/, '')}`;
         }
         return s;
       });
@@ -413,10 +432,71 @@ export class Receiver extends Equipment {
     return '';
   }
 
-  updateDisplay(): void {
-    this.initializeDom();
+  private syncDomWithState(): void {
+    // Avoid unnecessary DOM updates by shallow comparing serialized state
+    if (JSON.stringify(this.state) === JSON.stringify(this.lastRenderState)) {
+      return; // No changes, skip update
+    }
 
-    // Re-attach listeners after render
-    this.addListeners();
+    const parentDom = this.domCache['parent'];
+
+    // Update status banner
+    const signalStatus = this.getSignalStatus();
+    if (this.domCache['status']) {
+      (this.domCache['status']).className = `receiver-status ${signalStatus.class}`;
+      (this.domCache['status']).textContent = signalStatus.text;
+    }
+
+    // Update modem buttons active & status classes
+    const modemButtons = parentDom.querySelectorAll('.btn-modem');
+    modemButtons.forEach((btn) => {
+      const modemNum = Number((btn as HTMLElement).dataset.modem);
+      const modem = this.state_.modems.find(m => m.modemNumber === modemNum);
+      const isActive = modemNum === this.state_.activeModem;
+      const statusClass = modem ? this.getModemStatusClass(modem) : '';
+      btn.className = `btn-modem ${isActive ? 'active' : ''} ${statusClass}`.trim();
+    });
+
+    // Sync active modem display and inputs
+    const activeModem = this.getActiveModem();
+
+    if (this.domCache['inputAntenna']) {
+      const sel = this.domCache['inputAntenna'] as HTMLSelectElement;
+      // Try to select the option matching antenna id
+      for (const option of sel.options) {
+        option.selected = Number(option.value) === (this.inputData.antennaId ?? activeModem?.antennaId);
+      }
+    }
+
+    (this.domCache['inputFrequency'] as HTMLInputElement).value = String(this.inputData.frequency ?? activeModem?.frequency ?? '');
+    (this.domCache['inputBandwidth'] as HTMLInputElement).value = String(this.inputData.bandwidth ?? activeModem?.bandwidth ?? '');
+    (this.domCache['inputModulation'] as HTMLSelectElement).value = String(this.inputData.modulation ?? activeModem?.modulation ?? '');
+    (this.domCache['inputFec'] as HTMLSelectElement).value = String(this.inputData.fec ?? activeModem?.fec ?? '');
+
+    (this.domCache['currentValueAntenna']).textContent = String(activeModem.antennaId);
+    (this.domCache['currentValueFrequency']).textContent = `${activeModem.frequency} MHz`;
+    (this.domCache['currentValueBandwidth']).textContent = `${activeModem.bandwidth} MHz`;
+    (this.domCache['currentValueModulation']).textContent = String(activeModem.modulation);
+    (this.domCache['currentValueFec']).textContent = String(activeModem.fec);
+
+    // Update monitor / video feed
+    const feedUrl = this.getVisibleSignals()[0]?.feed || '';
+    const monitor = this.domCache['monitorScreen'];
+    if (monitor) {
+      monitor.className = `monitor-screen ${feedUrl.length > 0 ? 'signal-found' : 'no-signal'}`;
+      if (feedUrl.length > 0) {
+        const videoEl = qs('.video-feed', monitor) as HTMLVideoElement;
+        if (videoEl) {
+          videoEl.src = `/videos/${feedUrl}`;
+        } else {
+          monitor.innerHTML = `<div class="signal-indicator"><video class="video-feed" src="/videos/${feedUrl}" alt="Video Feed" autoplay muted loop></video></div>`;
+        }
+      } else {
+        monitor.innerHTML = `<span class="no-signal-text">NO SIGNAL</span>`;
+      }
+    }
+
+    // Save render snapshot
+    this.lastRenderState = structuredClone(this.state_);
   }
 }

@@ -77,6 +77,10 @@ export class Transmitter extends Equipment {
     this.build();
   }
 
+  public update(): void {
+    // No periodic updates needed for transmitter at this time
+  }
+
   render(): HTMLElement {
     const activeModemData = this.getActiveModem();
     const isTransmitting = this.config.modems.some(m => m.transmitting);
@@ -206,7 +210,7 @@ export class Transmitter extends Equipment {
     this.updateDisplay();
   }
 
-  public update(data: Partial<TransmitterConfig>): void {
+  public sync(data: Partial<TransmitterConfig>): void {
     if (data.modems) {
       this.config.modems = data.modems;
     }

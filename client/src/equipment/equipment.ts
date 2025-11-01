@@ -44,9 +44,15 @@ export abstract class Equipment extends BaseElement {
 
   /**
    * Update equipment state
+   * Can be called in a game loop or on-demand
+   */
+  public abstract update(): void;
+
+  /**
+   * Sync equipment state
    * Can be used for hot-reloading or external state changes
    */
-  public abstract update(data: any): void;
+  public abstract sync(data: any): void;
 
   /**
    * Get current equipment configuration

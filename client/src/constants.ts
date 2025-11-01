@@ -44,7 +44,7 @@ export const defaultSignalData = [
     serverId: 1,
     targetId: 1,
     frequency: 4810e6 as RfFrequency,
-    power: -100,
+    power: -110,
     bandwidth: 10e6 as Hertz,
     modulation: '8QAM' as ModulationType,
     fec: '3/4' as FECType,

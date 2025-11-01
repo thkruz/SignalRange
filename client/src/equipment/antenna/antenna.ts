@@ -243,7 +243,12 @@ export class Antenna extends Equipment {
     this.updateDisplay();
   }
 
-  public update(data: Partial<AntennaConfig>): void {
+  public update(): void {
+    this.updateSignalStatus();
+    this.updateDisplay();
+  }
+
+  public sync(data: Partial<AntennaConfig>): void {
     this.config = { ...this.config, ...data };
     this.inputData = { ...this.config };
     this.updateSignalStatus();
@@ -392,14 +397,14 @@ export class Antenna extends Equipment {
   }
 
   private updateSignalStatus(): void {
-    console.log(defaultSignalData);
-
     // Update signal active status based on antenna config
     this.signals = defaultSignalData.filter((signal) => {
-      console.log(signal);
-
       // Can't receive signals if not locked
       if (!this.config.isLocked) {
+        return false;
+      }
+
+      if (Math.random() < 0.8) {
         return false;
       }
 

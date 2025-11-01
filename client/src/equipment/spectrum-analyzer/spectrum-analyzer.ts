@@ -5,16 +5,18 @@ import { Antenna } from '../antenna/antenna';
 import { Equipment } from '../equipment';
 import { AnalyzerControl } from "./analyzer-control";
 import './spectrum-analyzer.css';
-import { SpectrumScreen, SpectrumScreenConfig } from './spectrum-screen';
+import { SpectrumScreen } from './spectrum-screen';
 
 export interface SpectrumAnalyzerConfig {
   unit: number; // 1-4
   team_id: number;
   antenna_id: number;
-  rf: boolean; // true = RF mode, false = IF mode
+  isRfMode: boolean; // true = RF mode, false = IF mode
   isPaused: boolean;
   isTraceOn: boolean;
   isMarkerOn: boolean;
+  isShowSignals: boolean;
+  refreshRate: number; // in Hz
   centerFrequency: Hertz; // Hz - center frequency
   span: Hertz; // Hz - bandwidth
   hold: boolean; // Hold max amplitude
@@ -44,9 +46,6 @@ export class SpectrumAnalyzer extends Equipment {
   private readonly maxDecibels: number = -80;
   private readonly noiseFloor: number = -115;
 
-  // Debugging feature
-  private readonly isShowSignals: boolean = true;
-
   constructor(parentId: string, unit: number, teamId: number = 1, antenna: Antenna) {
     super(parentId, unit, teamId);
 
@@ -57,7 +56,7 @@ export class SpectrumAnalyzer extends Equipment {
       unit: this.unit,
       team_id: this.teamId,
       antenna_id: 1,
-      rf: false,
+      isRfMode: false,
       isPaused: false,
       isTraceOn: false,
       isMarkerOn: false,
@@ -67,6 +66,8 @@ export class SpectrumAnalyzer extends Equipment {
       minDecibels: this.minDecibels,
       maxDecibels: this.maxDecibels,
       noiseFloor: this.noiseFloor,
+      isShowSignals: true,
+      refreshRate: 4,
     };
 
     this.build();
@@ -91,8 +92,8 @@ export class SpectrumAnalyzer extends Equipment {
 
         <div class="spec-a-controls">
           <button class="btn-config" data-action="config">Config</button>
-          <button class="btn-mode ${this.config.rf ? 'active' : ''}" data-action="mode">
-            ${this.config.rf ? 'RF' : 'IF'}
+          <button class="btn-mode ${this.config.isRfMode ? 'active' : ''}" data-action="mode">
+            ${this.config.isRfMode ? 'RF' : 'IF'}
           </button>
           <button class="btn-pause ${this.config.isPaused ? 'active' : ''}" data-action="pause">
             Pause
@@ -185,15 +186,7 @@ export class SpectrumAnalyzer extends Equipment {
   private initializeScreen(): void {
     if (!this.canvas) return;
 
-    const screenConfig: SpectrumScreenConfig = {
-      minDecibels: this.config.minDecibels,
-      maxDecibels: this.config.maxDecibels,
-      noiseFloor: this.config.noiseFloor,
-      refreshRate: 10,
-      isShowSignals: this.isShowSignals,
-    };
-
-    this.screen = new SpectrumScreen(this.canvas, this.antenna, screenConfig);
+    this.screen = new SpectrumScreen(this.canvas, this.antenna, this);
 
     // Set initial state
     this.updateScreenState();
@@ -209,19 +202,20 @@ export class SpectrumAnalyzer extends Equipment {
     const minFreq = (this.config.centerFrequency - this.config.span / 2) as Hertz;
     const maxFreq = (this.config.centerFrequency + this.config.span / 2) as Hertz;
     this.screen.setFrequencyRange(minFreq, maxFreq);
-
-    // Update display modes
-    this.screen.setMode(this.config.rf);
-    this.screen.setTraceEnabled(this.config.isTraceOn);
-    this.screen.setMarkerEnabled(this.config.isMarkerOn);
   }
 
   /**
    * Public API Methods
    */
 
-  public update(): void {
+  public sync(): void {
     this.updateDisplay();
+  }
+
+  public update(): void {
+    if (this.screen && !this.config.isPaused) {
+      this.screen.update();
+    }
   }
 
   public getConfig(): SpectrumAnalyzerConfig {
@@ -268,38 +262,26 @@ export class SpectrumAnalyzer extends Equipment {
   }
 
   private toggleMode(): void {
-    this.config.rf = !this.config.rf;
-
-    if (this.screen) {
-      this.screen.setMode(this.config.rf);
-    }
+    this.config.isRfMode = !this.config.isRfMode;
 
     this.updateModeButton();
 
     this.emit(Events.SPEC_A_MODE_CHANGED, {
       unit: this.unit,
-      rf: this.config.rf,
+      isRfMode: this.config.isRfMode,
     });
   }
 
   private updateModeButton(): void {
     const btn = qs('.btn-mode', this.element);
     if (btn) {
-      btn.textContent = this.config.rf ? 'RF' : 'IF';
-      btn.classList.toggle('active', this.config.rf);
+      btn.textContent = this.config.isRfMode ? 'RF' : 'IF';
+      btn.classList.toggle('active', this.config.isRfMode);
     }
   }
 
   private togglePause(): void {
     this.config.isPaused = !this.config.isPaused;
-
-    if (this.screen) {
-      if (this.config.isPaused) {
-        this.screen.pause();
-      } else {
-        this.screen.resume();
-      }
-    }
 
     this.updatePauseButton();
 

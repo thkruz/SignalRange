@@ -26,8 +26,17 @@ export class StudentEquipment {
     this.render();
     this.addListeners();
     this.initEquipment();
+    this.gameLoop();
 
     (globalThis as any).equipment = this; // For debugging
+  }
+
+  gameLoop(): void {
+    requestAnimationFrame(() => this.gameLoop());
+    this.updateEquipment();
+    this.spectrumAnalyzers.forEach(specA => {
+      specA.screen?.draw();
+    });
   }
 
   render(): void {
@@ -76,7 +85,7 @@ export class StudentEquipment {
     // Initialize 2 antennas
     for (let i = 1; i <= (this.isFullEquipmentSuite ? 2 : 1); i++) {
       const antenna = new Antenna(`antenna${i}-container`, i, 1, 1);
-      antenna.update({
+      antenna.sync({
         offset: 1310,
       })
       this.antennas.push(antenna);
@@ -114,45 +123,26 @@ export class StudentEquipment {
   /**
    * Update all equipment with new data from server/simulation
    */
-  public updateEquipment(data: {
-    signals?: any[];
-    antennas?: any[];
-    transmitters?: any[];
-    receivers?: any[];
-  }): void {
+  public updateEquipment(): void {
     // Update spectrum analyzers with signal data
-    if (data.signals) {
-      this.spectrumAnalyzers.forEach(specA => {
-        specA.update();
-      });
-    }
+    this.spectrumAnalyzers.forEach(specA => {
+      specA.update();
+    });
 
     // Update antennas
-    if (data.antennas) {
-      data.antennas.forEach((antennaData, index) => {
-        if (this.antennas[index]) {
-          this.antennas[index].update(antennaData);
-        }
-      });
-    }
+    this.antennas.forEach((antenna) => {
+      antenna.update();
+    });
 
     // Update transmitters
-    if (data.transmitters) {
-      data.transmitters.forEach((txData, index) => {
-        if (this.transmitters[index]) {
-          this.transmitters[index].update(txData);
-        }
-      });
-    }
+    this.transmitters.forEach((tx) => {
+      tx.update();
+    });
 
     // Update receivers
-    if (data.receivers) {
-      data.receivers.forEach((rxData, index) => {
-        if (this.receivers[index]) {
-          this.receivers[index].update(rxData);
-        }
-      });
-    }
+    this.receivers.forEach((rx) => {
+      rx.update();
+    });
   }
 
   /**

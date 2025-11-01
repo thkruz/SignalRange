@@ -86,6 +86,10 @@ export class Receiver extends Equipment {
     this.updateDisplay();
   }
 
+  update(): void {
+    // No periodic updates needed for receiver at this time
+  }
+
   render(): HTMLElement {
     const activeModemData = this.getActiveModem();
     const signalStatus = this.getSignalStatus();
@@ -252,7 +256,7 @@ export class Receiver extends Equipment {
     this.subscribeToAntennaEvents();
   }
 
-  public update(data: Partial<ReceiverConfig>): void {
+  public sync(data: Partial<ReceiverConfig>): void {
     if (data.modems) {
       this.config.modems = data.modems;
     }

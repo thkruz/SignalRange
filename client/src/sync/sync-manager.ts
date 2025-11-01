@@ -172,7 +172,7 @@ export class SyncManager {
         );
         if (localSa) {
           localSa.config = { ...storedSa.config };
-          localSa.update();
+          localSa.sync();
         }
       });
     }
@@ -181,7 +181,7 @@ export class SyncManager {
     if (state.equipment.antennas) {
       state.equipment.antennas.forEach((antennaData: any, index: number) => {
         if (this.equipment!.antennas[index]) {
-          this.equipment!.antennas[index].update(antennaData);
+          this.equipment!.antennas[index].sync(antennaData);
         }
       });
     }
@@ -190,7 +190,7 @@ export class SyncManager {
     if (state.equipment.transmitters) {
       state.equipment.transmitters.forEach((txData: any, index: number) => {
         if (this.equipment!.transmitters[index]) {
-          this.equipment!.transmitters[index].update(txData);
+          this.equipment!.transmitters[index].sync(txData);
         }
       });
     }
@@ -199,7 +199,7 @@ export class SyncManager {
     if (state.equipment.receivers) {
       state.equipment.receivers.forEach((rxData: any, index: number) => {
         if (this.equipment!.receivers[index]) {
-          this.equipment!.receivers[index].update(rxData);
+          this.equipment!.receivers[index].sync(rxData);
         }
       });
     }

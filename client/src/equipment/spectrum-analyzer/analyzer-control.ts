@@ -17,7 +17,7 @@ export interface AnalyzerControlOptions {
  * Numbers must be "pressed" rather than typed, mimicking physical equipment
  */
 export class AnalyzerControl extends BaseElement {
-  private readonly spectrumAnalyzer: SpectrumAnalyzer;
+  private readonly specA: SpectrumAnalyzer;
   private onCloseCallback?: () => void;
 
   // Display state
@@ -31,7 +31,7 @@ export class AnalyzerControl extends BaseElement {
 
   constructor(options: AnalyzerControlOptions) {
     super();
-    this.spectrumAnalyzer = options.spectrumAnalyzer;
+    this.specA = options.spectrumAnalyzer;
     this.onCloseCallback = options.onClose;
   }
 
@@ -42,7 +42,7 @@ export class AnalyzerControl extends BaseElement {
   private initializeValues(): void {
     // Initialize with current center frequency in MHz
     this.numberSelection = 'mhz';
-    this.mhz = (this.spectrumAnalyzer.getConfig().centerFrequency / 1e6).toFixed(3);
+    this.mhz = (this.specA.getConfig().centerFrequency / 1e6).toFixed(3);
     this.ghz = '0';
     this.khz = '0';
     this.controlSelection = 'freq';
@@ -207,7 +207,7 @@ export class AnalyzerControl extends BaseElement {
     this.khz = '0';
 
     // Set the selected unit to the current value
-    const config = this.spectrumAnalyzer.getConfig();
+    const config = this.specA.getConfig();
     const currentValue = this.controlSelection === 'freq' ? config.centerFrequency : config.span;
 
     if (unit === 'ghz') {
@@ -226,7 +226,7 @@ export class AnalyzerControl extends BaseElement {
     this.controlSelection = 'freq';
 
     // Update the display with current center frequency
-    const centerFreq = this.spectrumAnalyzer.getConfig().centerFrequency;
+    const centerFreq = this.specA.getConfig().centerFrequency;
     this.updateValueForSelection(centerFreq);
     this.updateDisplay();
     this.playSound();
@@ -236,27 +236,27 @@ export class AnalyzerControl extends BaseElement {
     this.controlSelection = 'span';
 
     // Update the display with current span
-    const span = this.spectrumAnalyzer.getConfig().span;
+    const span = this.specA.getConfig().span;
     this.updateValueForSelection(span);
     this.updateDisplay();
     this.playSound();
   }
 
   private handleTraceClick(): void {
-    this.spectrumAnalyzer.config.isTraceOn = !this.spectrumAnalyzer.config.isTraceOn;
+    this.specA.config.isTraceOn = !this.specA.config.isTraceOn;
 
     // Update spectrum analyzer
-    this.spectrumAnalyzer.resetHoldData();
+    this.specA.resetHoldData();
 
     this.updateDisplay();
     this.playSound();
   }
 
   private handleMarkerClick(): void {
-    this.spectrumAnalyzer.config.isMarkerOn = !this.spectrumAnalyzer.config.isMarkerOn;
+    this.specA.config.isMarkerOn = !this.specA.config.isMarkerOn;
 
     // Update spectrum analyzer marker state
-    this.spectrumAnalyzer.getConfig();
+    this.specA.getConfig();
 
     // Note: Marker drawing would need to be implemented in SpectrumAnalyzer
     this.updateDisplay();
@@ -293,9 +293,9 @@ export class AnalyzerControl extends BaseElement {
     const hzValue = this.convertToHz(numValue);
 
     if (this.controlSelection === 'freq') {
-      this.spectrumAnalyzer.changeCenterFreq(hzValue);
+      this.specA.changeCenterFreq(hzValue);
     } else if (this.controlSelection === 'span') {
-      this.spectrumAnalyzer.changeBandwidth(hzValue);
+      this.specA.changeBandwidth(hzValue);
     }
 
     this.updateDisplay();
@@ -353,10 +353,10 @@ export class AnalyzerControl extends BaseElement {
     // Update button states - control selection
     this.updateButtonState('#freq-button', this.controlSelection === 'freq');
     this.updateButtonState('#span-button', this.controlSelection === 'span');
-    this.updateButtonState('#trace-button', this.spectrumAnalyzer.config.isTraceOn);
-    this.updateButtonState('#marker-button', this.spectrumAnalyzer.config.isMarkerOn);
+    this.updateButtonState('#trace-button', this.specA.config.isTraceOn);
+    this.updateButtonState('#marker-button', this.specA.config.isMarkerOn);
 
-    EventBus.getInstance().emit(Events.SPEC_A_CONFIG_CHANGED, this.spectrumAnalyzer.getConfig());
+    EventBus.getInstance().emit(Events.SPEC_A_CONFIG_CHANGED, this.specA.getConfig());
   }
 
   private updateButtonState(selector: string, isActive: boolean): void {

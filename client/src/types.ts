@@ -22,7 +22,7 @@ export type IfFrequency = Distinct<Hertz, 'IfFrequency'>;
 
 export interface RfSignal {
   /** Signal ID */
-  id: number;
+  id: string;
   /** Server ID */
   serverId: number;
   /** Target satellite ID */
@@ -39,13 +39,11 @@ export interface RfSignal {
   fec: FECType;
   /** url of the video feed */
   feed: string;
-  /** Is the signal currently being transmitted and valid for the antenna */
-  isActive: boolean;
 }
 
 export interface IfSignal {
   /** Signal ID */
-  id: number;
+  id: string;
   /** Server ID */
   serverId: number;
   /** Target satellite ID */
@@ -62,8 +60,6 @@ export interface IfSignal {
   fec: FECType;
   /** url of the video feed */
   feed: string;
-  /** Is the signal currently being transmitted and valid for the antenna */
-  isActive: boolean;
 }
 
 export interface Satellite {
@@ -82,8 +78,8 @@ export interface Server {
   name: string;
 }
 
-export type ModulationType = 'BPSK' | 'QPSK' | '8QAM' | '16QAM';
-export type FECType = '1/2' | '2/3' | '3/4' | '5/6' | '7/8';
+export type ModulationType = 'BPSK' | 'QPSK' | '8QAM' | '16QAM' | 'null';
+export type FECType = '1/2' | '2/3' | '3/4' | '5/6' | '7/8' | 'null';
 
 export interface User {
   id: number;

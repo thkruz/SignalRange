@@ -1,8 +1,10 @@
-import { bandInformation, defaultSignalData, FrequencyBand } from "../../constants";
+import { bandInformation, FrequencyBand } from "../../constants";
 import { Events } from "../../events/events";
+import { SimulationManager } from "../../simulation/simulation-manager";
 import { RfFrequency, RfSignal } from "../../types";
 import { html, qs } from '../../utils';
 import { Equipment } from '../equipment';
+import { Transmitter } from "../transmitter/transmitter";
 import './antenna.css';
 
 export interface AntennaState {
@@ -43,6 +45,7 @@ export class Antenna extends Equipment {
   /** Input state being edited in the UI before applying changes */
   private inputState: AntennaState;
   private lastRenderState: AntennaState;
+  transmitters: Transmitter[] = [];
 
   constructor(parentId: string, unit: number, teamId: number = 1, serverId: number = 1) {
     super(parentId, unit, teamId);
@@ -394,32 +397,46 @@ export class Antenna extends Equipment {
   }
 
   private updateSignalStatus(): void {
-    // Update signal active status based on antenna config
-    this.state.signals = defaultSignalData.filter((signal) => {
-      // Can't receive signals if not locked
-      if (!this.state.isLocked) {
-        return false;
+    // Can't receive signals if Not locked or Not operational
+    if (!this.state.isLocked || !this.state.isOperational) {
+      this.state.signals = [];
+      return;
+    }
+
+    for (const tx of this.transmitters) {
+      for (const modem of tx.state.modems) {
+        if (modem.antenna_id === this.state.id) {
+          const rfSignal = {
+            id: `tx${tx.state.unit}-modem${modem.modem_number}`,
+            serverId: this.state.serverId,
+            targetId: this.state.targetId,
+            frequency: modem.ifSignal.frequency,
+            bandwidth: modem.ifSignal.bandwidth,
+            power: modem.ifSignal.power,
+            modulation: modem.ifSignal.modulation,
+            fec: modem.ifSignal.fec,
+            feed: modem.ifSignal.feed,
+          }
+          if (modem.transmitting && !this.state.isLoopbackEnabled && this.state.isHpaEnabled) {
+            // Pass the signal to the SimulationManager
+            SimulationManager.getInstance().addSignal(rfSignal);
+          } else {
+            // Remove any old version of this signal
+            SimulationManager.getInstance().removeSignal(rfSignal);
+          }
+        }
       }
+    }
 
-      // Make signals intermittent
-      // if (Math.random() < 0.8) {
-      //   return false;
-      // }
-
-      const downlinkFrequency = this.getDownlinkFrequency();
-      const isCurrentServer = signal.serverId === this.state.serverId;
-      const isCurrentSatellite = signal.targetId === this.state.targetId;
-      const minAllowedFreq = downlinkFrequency - signal.bandwidth / 2;
-      const maxAllowedFreq = downlinkFrequency + signal.bandwidth / 2;
-      const isAboveMinFreq = signal.frequency >= minAllowedFreq;
-      const isBelowMaxFreq = signal.frequency <= maxAllowedFreq;
-
-      return isCurrentServer && isCurrentSatellite && isAboveMinFreq && isBelowMaxFreq;
-    });
+    // Update signal active status based on antenna config
+    this.state.signals = SimulationManager.getInstance().getVisibleSignals(
+      this.state.serverId,
+      this.state.targetId
+    );
   }
 
   getDownlinkFrequency(): RfFrequency {
-    const band = this.state.freqBand === 0 ? 'c' : 'ku';
+    const band = this.state.freqBand === FrequencyBand.C ? 'c' : 'ku';
     const bandInfo = bandInformation[band];
     const downlinkFreq = bandInfo.downconvert + (this.state.offset * 1e6); // MHz to Hz
     return downlinkFreq as RfFrequency;

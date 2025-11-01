@@ -63,7 +63,7 @@ export class Receiver extends Equipment {
   }
 
   update(): void {
-    // No periodic updates needed for receiver at this time
+    this.syncDomWithState();
   }
 
   initializeDom(parentId: string): HTMLElement {
@@ -408,17 +408,15 @@ export class Receiver extends Equipment {
   }
 
   private getModemStatusClass(modem: ReceiverModemState): string {
-    for (const signal of this.getVisibleSignals(modem)) {
-      if (signal.isActive) {
-        if (signal.feed.includes('DENIED')) {
-          return 'modem-denied';
-        } else if (signal.feed.includes('DEGRADED')) {
-          return 'modem-degraded';
-        } else {
-          return 'modem-found';
-        }
-      }
-    }
+    const signals = this.getVisibleSignals(modem);
+    const denied = signals.find(signal => signal.feed.includes('DENIED'));
+    if (denied) return 'modem-denied';
+
+    const degraded = signals.find(signal => signal.feed.includes('DEGRADED'));
+    if (degraded) return 'modem-degraded';
+
+    if (signals.length > 0) return 'modem-found';
+
     return '';
   }
 

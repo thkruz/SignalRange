@@ -113,6 +113,13 @@ export class StudentEquipment {
       this.transmitters.push(tx);
     }
 
+    // Add all transmitters to all antennas
+    this.antennas.forEach((antenna) => {
+      this.transmitters.forEach((tx) => {
+        antenna.transmitters.push(tx);
+      });
+    });
+
     // Initialize 4 receiver cases (each with 4 modems)
     for (let i = 1; i <= (this.isFullEquipmentSuite ? 4 : 2); i++) {
       const rx = new Receiver(`rx${i}-container`, i, this.antennas, 1, 1);

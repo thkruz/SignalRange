@@ -1,4 +1,5 @@
 import { Events } from "../../events/events";
+import { Hertz, IfFrequency, IfSignal } from "../../types";
 import { html, qs } from '../../utils';
 import { Equipment } from "../equipment";
 import './transmitter.css';
@@ -6,10 +7,8 @@ import './transmitter.css';
 export interface TransmitterModem {
   modem_number: number; // 1-4
   antenna_id: number;
-  frequency: number; // MHz
-  bandwidth: number; // MHz
-  power: number; // dBm
   transmitting: boolean;
+  ifSignal: IfSignal;
 }
 
 export interface TransmitterState {
@@ -28,7 +27,9 @@ export interface TransmitterState {
 export class Transmitter extends Equipment {
   // State
   state: TransmitterState;
-  private inputData: Partial<TransmitterModem> = {};
+  private inputData: Partial<TransmitterModem> = {
+    ifSignal: {} as IfSignal
+  };
   private lastRenderState: TransmitterState | null = null;
 
   // Power management
@@ -43,9 +44,17 @@ export class Transmitter extends Equipment {
       modems.push({
         modem_number: i,
         antenna_id: 1,
-        frequency: 1000, // MHz (L-Band)
-        bandwidth: 10, // MHz
-        power: -97, // dBm
+        ifSignal: {
+          id: `${unit}-${i}-default`,
+          serverId: serverId,
+          targetId: 1,
+          frequency: 1000 * 1e6 as IfFrequency, // MHz (L-Band)
+          power: -97, // dBm
+          bandwidth: 10 * 1e6 as Hertz, // MHz
+          modulation: 'null',
+          fec: 'null',
+          feed: '',
+        },
         transmitting: false
       });
     }
@@ -112,9 +121,9 @@ export class Transmitter extends Equipment {
                   type="text"
                   class="input-tx-frequency"
                   data-param="frequency"
-                  value="${this.inputData.frequency ?? activeModemData.frequency}"
+                  value="${this.inputData.ifSignal?.frequency ?? activeModemData.ifSignal.frequency}"
                 />
-                <span class="current-value">${activeModemData.frequency} MHz</span>
+                <span class="current-value">${activeModemData.ifSignal.frequency / 1e6} MHz</span>
               </div>
 
               <div class="config-row">
@@ -123,9 +132,9 @@ export class Transmitter extends Equipment {
                   type="text"
                   class="input-tx-bandwidth"
                   data-param="bandwidth"
-                  value="${this.inputData.bandwidth ?? activeModemData.bandwidth}"
+                  value="${this.inputData.ifSignal?.bandwidth ?? activeModemData.ifSignal.bandwidth}"
                 />
-                <span class="current-value">${activeModemData.bandwidth} MHz</span>
+                <span class="current-value">${activeModemData.ifSignal.bandwidth / 1e6} MHz</span>
               </div>
 
               <div class="config-row">
@@ -134,9 +143,9 @@ export class Transmitter extends Equipment {
                   type="text"
                   class="input-tx-power"
                   data-param="power"
-                  value="${this.inputData.power ?? activeModemData.power}"
+                  value="${this.inputData.ifSignal?.power ?? activeModemData.ifSignal.power}"
                 />
-                <span class="current-value">${activeModemData.power} dBm</span>
+                <span class="current-value">${activeModemData.ifSignal.power} dBm</span>
               </div>
 
               <div class="config-actions">
@@ -250,18 +259,29 @@ export class Transmitter extends Equipment {
 
     let value: any = target.value;
 
-    // Parse based on parameter type
-    if (param === 'power') {
-      // Allow negative numbers for power
-      if (value.match(/[^0-9-]/g)) return;
-      value = Number.parseInt(value) || 0;
-    } else if (param === 'frequency' || param === 'bandwidth') {
-      value = Number.parseInt(value) || 0;
-    } else if (param === 'antenna_id') {
-      value = Number.parseInt(value);
+    // Parse based on parameter type using switch
+    switch (param) {
+      case 'power':
+        // Allow negative numbers for power
+        if (value.match(/[^0-9-]/g)) return;
+        this.inputData.ifSignal!.power = Number.parseInt(value) || 0;
+        break;
+      case 'frequency':
+        value = Number.parseInt(value) || 0;
+        // Convert MHz to Hertz
+        this.inputData.ifSignal!.frequency = value * 1e6 as IfFrequency;
+        break;
+      case 'bandwidth':
+        value = Number.parseInt(value) || 0;
+        // Convert MHz to Hertz
+        this.inputData.ifSignal!.bandwidth = value * 1e6 as IfFrequency;
+        break;
+      case 'antenna_id':
+        this.inputData.antenna_id = Number.parseInt(value);
+        break;
+      default:
+        throw new Error(`Unknown parameter '${param}' in transmitter input change`);
     }
-
-    this.inputData[param as keyof TransmitterModem] = value;
   }
 
   private applyChanges(): void {
@@ -270,8 +290,8 @@ export class Transmitter extends Equipment {
 
     // Calculate power consumption
     const newPower = this.calculateModemPower(
-      this.inputData.bandwidth ?? activeModem.bandwidth,
-      this.inputData.power ?? activeModem.power
+      this.inputData.ifSignal?.bandwidth ?? activeModem.ifSignal.bandwidth,
+      this.inputData.ifSignal?.power ?? activeModem.ifSignal.power
     );
 
     // Check if over budget while transmitting
@@ -303,7 +323,7 @@ export class Transmitter extends Equipment {
 
     // Check power budget if turning on
     if (newTransmittingState) {
-      const modemPower = this.calculateModemPower(activeModem.bandwidth, activeModem.power);
+      const modemPower = this.calculateModemPower(activeModem.ifSignal.bandwidth, activeModem.ifSignal.power);
       if (!this.validatePowerConsumption(modemPower)) {
         this.emit(Events.TX_ERROR, { message: 'Power consumption exceeds budget' });
         return;
@@ -312,25 +332,19 @@ export class Transmitter extends Equipment {
 
     this.state.modems[modemIndex].transmitting = newTransmittingState;
 
-    this.emit(Events.TX_TRANSMIT_CHANGED, {
-      unit: this.unit,
-      modem: this.state.activeModem,
-      transmitting: newTransmittingState
-    });
-
     this.syncDomWithState();
   }
 
-  private calculateModemPower(bandwidth: number, powerDbm: number): number {
+  private calculateModemPower(bandwidth: Hertz, powerDbm: number): number {
     // Power calculation: bandwidth (MHz) * 10^((120 + power) / 10)
-    return bandwidth * Math.pow(10, (120 + powerDbm) / 10);
+    return bandwidth / 1e6 * Math.pow(10, (120 + powerDbm) / 10);
   }
 
   private getPowerPercentage(): number {
     const activeModem = this.getActiveModem();
     const modemPower = this.calculateModemPower(
-      activeModem.bandwidth,
-      activeModem.power
+      activeModem.ifSignal.bandwidth,
+      activeModem.ifSignal.power
     );
     return Math.round((100 * modemPower) / this.powerBudget);
   }
@@ -374,25 +388,23 @@ export class Transmitter extends Equipment {
       }
     }
 
-    if (this.domCache['inputFrequency']) {
-      (this.domCache['inputFrequency'] as HTMLInputElement).value = String(this.inputData.frequency ?? activeModem.frequency ?? '');
-    }
+    // Convert Hertz to MHz for display
+    const freqHz = (this.inputData.ifSignal?.frequency) ?? activeModem.ifSignal.frequency ?? 0;
+    (this.domCache['inputFrequency'] as HTMLInputElement).value = freqHz ? String(freqHz / 1e6) : '';
 
-    if (this.domCache['inputBandwidth']) {
-      (this.domCache['inputBandwidth'] as HTMLInputElement).value = String(this.inputData.bandwidth ?? activeModem.bandwidth ?? '');
-    }
+    // Convert Hertz to MHz for display
+    const bwHz = this.inputData.ifSignal?.bandwidth ?? activeModem.ifSignal.bandwidth ?? 0;
+    (this.domCache['inputBandwidth'] as HTMLInputElement).value = bwHz ? String(bwHz / 1e6) : '';
 
-    if (this.domCache['inputPower']) {
-      (this.domCache['inputPower'] as HTMLInputElement).value = String(this.inputData.power ?? activeModem.power ?? '');
-    }
+    (this.domCache['inputPower'] as HTMLInputElement).value = String(this.inputData.ifSignal?.power ?? activeModem.ifSignal.power ?? '');
 
     // Update current-value labels (antenna, freq, bw, power)
     const currentValueEls = parentDom.querySelectorAll('.tx-modem-config .current-value');
     if (activeModem && currentValueEls.length >= 4) {
       (currentValueEls[0] as HTMLElement).textContent = String(activeModem.antenna_id);
-      (currentValueEls[1] as HTMLElement).textContent = `${activeModem.frequency} MHz`;
-      (currentValueEls[2] as HTMLElement).textContent = `${activeModem.bandwidth} MHz`;
-      (currentValueEls[3] as HTMLElement).textContent = `${activeModem.power} dBm`;
+      (currentValueEls[1] as HTMLElement).textContent = `${activeModem.ifSignal.frequency / 1e6} MHz`;
+      (currentValueEls[2] as HTMLElement).textContent = `${activeModem.ifSignal.bandwidth / 1e6} MHz`;
+      (currentValueEls[3] as HTMLElement).textContent = `${activeModem.ifSignal.power} dBm`;
     }
 
     // Update power meter

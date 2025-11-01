@@ -1,5 +1,6 @@
 import { ReceiverModemState } from "../equipment/receiver/receiver";
 import { TransmitterModem } from "../equipment/transmitter/transmitter";
+import { RfSignal } from "../types";
 
 // Antenna Event specific interfaces
 export interface AntennaLoopbackChangedData {
@@ -42,6 +43,7 @@ export interface TxTransmitChangedData {
   unit: number;
   modem: number;
   transmitting: boolean;
+  rfSignal: RfSignal;
 }
 
 export interface TxErrorData {

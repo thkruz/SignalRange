@@ -33,6 +33,11 @@ export interface TxConfigChangedData {
   config: TransmitterModem;
 }
 
+export interface TxActiveModemChangedData {
+  unit: number;
+  activeModem: number;
+}
+
 export interface TxTransmitChangedData {
   unit: number;
   modem: number;
@@ -77,6 +82,7 @@ export enum Events {
 
   // Transmitter events
   TX_CONFIG_CHANGED = 'tx:config:changed',
+  TX_ACTIVE_MODEM_CHANGED = 'tx:activeModem:changed',
   TX_TRANSMIT_CHANGED = 'tx:transmit:changed',
   TX_ERROR = 'tx:error',
 

@@ -1,7 +1,7 @@
 import { AntennaState } from "../equipment/antenna/antenna";
 import { SpectrumAnalyzerState } from "../equipment/spectrum-analyzer/spectrum-analyzer";
 import { Logger } from "../logging/logger";
-import { AntennaErrorData, AntennaHpaChangedData, AntennaLockedData, AntennaLoopbackChangedData, AntennaPowerChangedData, AntennaTrackChangedData, Events, RxActiveModemChangedData, RxConfigChangedData, RxSignalFoundData, RxSignalLostData, TxConfigChangedData, TxErrorData, TxTransmitChangedData } from "./events";
+import { AntennaErrorData, AntennaHpaChangedData, AntennaLockedData, AntennaLoopbackChangedData, AntennaPowerChangedData, AntennaTrackChangedData, Events, RxActiveModemChangedData, RxConfigChangedData, RxSignalFoundData, RxSignalLostData, TxActiveModemChangedData, TxConfigChangedData, TxErrorData, TxTransmitChangedData } from "./events";
 
 export interface EventMap {
   [Events.ANTENNA_CONFIG_CHANGED]: [AntennaState];
@@ -13,6 +13,7 @@ export interface EventMap {
   [Events.ANTENNA_ERROR]: [AntennaErrorData];
 
   [Events.TX_CONFIG_CHANGED]: [TxConfigChangedData];
+  [Events.TX_ACTIVE_MODEM_CHANGED]: [TxActiveModemChangedData];
   [Events.TX_TRANSMIT_CHANGED]: [TxTransmitChangedData];
   [Events.TX_ERROR]: [TxErrorData];
 

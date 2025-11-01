@@ -1,7 +1,7 @@
 import { Events } from "../../events/events";
 import { FECType, Hertz, MHz, ModulationType } from "../../types";
 import { html, qs } from '../../utils';
-import { Equipment } from '../equipment';
+import { Equipment } from "../equipment";
 import { Antenna } from './../antenna/antenna';
 import './receiver.css';
 
@@ -28,10 +28,7 @@ export interface ReceiverState {
  * Extends Equipment base class for standard lifecycle
  */
 export class Receiver extends Equipment {
-  protected state_: ReceiverState;
-  get state(): ReceiverState {
-    return this.state_;
-  }
+  state: ReceiverState;
   private inputData: Partial<ReceiverModemState> = {};
   private readonly antennas: Antenna[];
   private lastRenderState: ReceiverState | null = null;
@@ -54,7 +51,7 @@ export class Receiver extends Equipment {
       });
     }
 
-    this.state_ = {
+    this.state = {
       unit: this.unit,
       team_id: this.teamId,
       server_id: serverId,
@@ -63,10 +60,6 @@ export class Receiver extends Equipment {
     };
 
     this.build(parentId);
-  }
-
-  syncInputToConfig(): void {
-    this.syncDomWithState();
   }
 
   update(): void {
@@ -199,8 +192,9 @@ export class Receiver extends Equipment {
     this.domCache['currentValueBandwidth'] = currentValueEls[2] as HTMLElement;
     this.domCache['currentValueModulation'] = currentValueEls[3] as HTMLElement;
     this.domCache['currentValueFec'] = currentValueEls[4] as HTMLElement;
+
     // Initialize lastRenderState so first render always updates
-    this.lastRenderState = structuredClone(this.state_);
+    this.lastRenderState = structuredClone(this.state);
 
     return parentDom;
   }
@@ -224,6 +218,13 @@ export class Receiver extends Equipment {
     // Apply button
     const btnApply = qs('.btn-apply', parentDom);
     btnApply?.addEventListener('click', () => this.applyChanges());
+  }
+
+  protected initialize(): void {
+    this.syncDomWithState();
+
+    // Listen for antenna changes
+    this.subscribeToAntennaEvents();
   }
 
   private subscribeToAntennaEvents() {
@@ -256,23 +257,12 @@ export class Receiver extends Equipment {
     });
   }
 
-  protected initialize(): void {
-    this.syncDomWithState();
-
-    // Listen for antenna changes
-    this.subscribeToAntennaEvents();
-  }
-
   public sync(data: Partial<ReceiverState>): void {
     if (data.modems) {
-      this.state_.modems = data.modems;
+      this.state.modems = data.modems;
     }
-    this.state.activeModem = data.activeModem ?? this.state_.activeModem;
+    this.state.activeModem = data.activeModem ?? this.state.activeModem;
     this.syncDomWithState();
-  }
-
-  public getConfig(): ReceiverState {
-    return { ...this.state_ };
   }
 
   /**
@@ -280,11 +270,11 @@ export class Receiver extends Equipment {
    */
 
   private getActiveModem(): ReceiverModemState {
-    return this.state_.modems.find(m => m.modemNumber === this.state.activeModem) ?? this.state_.modems[0];
+    return this.state.modems.find(m => m.modemNumber === this.state.activeModem) ?? this.state.modems[0];
   }
 
   private setActiveModem(modemNumber: number): void {
-    this.state_.activeModem = modemNumber;
+    this.state.activeModem = modemNumber;
     this.inputData = { ...this.getActiveModem() };
     this.syncDomWithState();
 
@@ -324,20 +314,20 @@ export class Receiver extends Equipment {
 
   private applyChanges(): void {
     const activeModem = this.getActiveModem();
-    const modemIndex = this.state_.modems.findIndex(m => m.modemNumber === this.state_.activeModem);
+    const modemIndex = this.state.modems.findIndex(m => m.modemNumber === this.state.activeModem);
 
     if (!activeModem || modemIndex === -1) return;
 
     // Update the modem configuration
-    this.state_.modems[modemIndex] = {
+    this.state.modems[modemIndex] = {
       ...activeModem,
       ...this.inputData,
     };
 
     this.emit(Events.RX_CONFIG_CHANGED, {
       unit: this.unit,
-      modem: this.state_.activeModem,
-      config: this.state_.modems[modemIndex]
+      modem: this.state.activeModem,
+      config: this.state.modems[modemIndex]
     });
 
     this.syncDomWithState();
@@ -432,7 +422,7 @@ export class Receiver extends Equipment {
     return '';
   }
 
-  private syncDomWithState(): void {
+  syncDomWithState(): void {
     // Avoid unnecessary DOM updates by shallow comparing serialized state
     if (JSON.stringify(this.state) === JSON.stringify(this.lastRenderState)) {
       return; // No changes, skip update
@@ -451,8 +441,8 @@ export class Receiver extends Equipment {
     const modemButtons = parentDom.querySelectorAll('.btn-modem');
     modemButtons.forEach((btn) => {
       const modemNum = Number((btn as HTMLElement).dataset.modem);
-      const modem = this.state_.modems.find(m => m.modemNumber === modemNum);
-      const isActive = modemNum === this.state_.activeModem;
+      const modem = this.state.modems.find(m => m.modemNumber === modemNum);
+      const isActive = modemNum === this.state.activeModem;
       const statusClass = modem ? this.getModemStatusClass(modem) : '';
       btn.className = `btn-modem ${isActive ? 'active' : ''} ${statusClass}`.trim();
     });
@@ -497,6 +487,6 @@ export class Receiver extends Equipment {
     }
 
     // Save render snapshot
-    this.lastRenderState = structuredClone(this.state_);
+    this.lastRenderState = structuredClone(this.state);
   }
 }

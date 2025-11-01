@@ -106,6 +106,7 @@ function setupEquipmentListeners(_studentEquipment: StudentEquipment): void {
   eventBus.on(Events.SPEC_A_MODE_CHANGED, debouncedSave);
   eventBus.on(Events.ANTENNA_CONFIG_CHANGED, debouncedSave);
   eventBus.on(Events.TX_CONFIG_CHANGED, debouncedSave);
+  eventBus.on(Events.TX_ACTIVE_MODEM_CHANGED, debouncedSave);
   eventBus.on(Events.RX_CONFIG_CHANGED, debouncedSave);
   eventBus.on(Events.RX_ACTIVE_MODEM_CHANGED, debouncedSave);
 }

@@ -14,8 +14,7 @@ import { TransmitterState } from './transmitter/transmitter';
 export abstract class Equipment {
   protected readonly unit: number;
   protected readonly teamId: number;
-  protected abstract state_: AntennaState | ReceiverState | TransmitterState | SpectrumAnalyzerState;
-  /** Current equipment state. Should be a public getter referencing the private state variable */
+  /** Current equipment state.*/
   abstract state: AntennaState | ReceiverState | TransmitterState | SpectrumAnalyzerState;
 
   private isInitialized: boolean = false;

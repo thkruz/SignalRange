@@ -39,10 +39,7 @@ export interface AntennaState {
  */
 export class Antenna extends Equipment {
   /** Current antenna state */
-  protected state_: AntennaState;
-  get state(): AntennaState {
-    return this.state_;
-  }
+  state: AntennaState;
   /** Input state being edited in the UI before applying changes */
   private inputState: AntennaState;
   private lastRenderState: AntennaState;
@@ -51,7 +48,7 @@ export class Antenna extends Equipment {
     super(parentId, unit, teamId);
 
     // Initialize status with defaults
-    this.state_ = {
+    this.state = {
       id: this.unit,
       teamId: this.teamId,
       serverId: serverId,
@@ -67,9 +64,9 @@ export class Antenna extends Equipment {
     };
 
     // Input state starts as a copy of current state
-    this.inputState = structuredClone(this.state_);
+    this.inputState = structuredClone(this.state);
     const parentDom = this.initializeDom(parentId);
-    this.lastRenderState = structuredClone(this.state_);
+    this.lastRenderState = structuredClone(this.state);
     this.addListeners(parentDom);
   }
 
@@ -225,7 +222,7 @@ export class Antenna extends Equipment {
 
     this.on(Events.ANTENNA_LOCKED, () => (data: { locked: boolean; antennaId: number }) => {
       if (data.antennaId === this.unit) {
-        this.state_.isLocked = data.locked;
+        this.state.isLocked = data.locked;
         this.updateSignalStatus();
         this.syncDomWithState();
       }
@@ -244,8 +241,8 @@ export class Antenna extends Equipment {
   }
 
   public sync(data: Partial<AntennaState>): void {
-    this.state_ = { ...this.state_, ...data };
-    this.inputState = { ...this.state_ };
+    this.state = { ...this.state, ...data };
+    this.inputState = { ...this.state };
     this.updateSignalStatus();
     this.syncDomWithState();
   }
@@ -277,45 +274,45 @@ export class Antenna extends Equipment {
 
   private applyChanges(): void {
     // Validate operational state_
-    if (!this.state_.isOperational) {
+    if (!this.state.isOperational) {
       this.emit(Events.ANTENNA_ERROR, { message: 'Antenna is not operational' });
       return;
     }
 
-    if (this.inputState.targetId !== this.state_.targetId) {
+    if (this.inputState.targetId !== this.state.targetId) {
       // Reset lock and tracking on target change
-      this.state_.isLocked = false;
-      this.state_.isAutoTrackEnabled = false;
+      this.state.isLocked = false;
+      this.state.isAutoTrackEnabled = false;
       this.emit(Events.ANTENNA_LOCKED, { locked: false });
     }
 
     // Update config with input data
     this.inputState.isAutoTrackEnabled = this.state.isAutoTrackEnabled;
     this.inputState.isLocked = this.state.isLocked;
-    this.state_ = { ...this.state_, ...this.inputState };
+    this.state = { ...this.state, ...this.inputState };
 
     // Emit configuration change event
-    this.emit(Events.ANTENNA_CONFIG_CHANGED, this.state_);
+    this.emit(Events.ANTENNA_CONFIG_CHANGED, this.state);
 
     this.updateSignalStatus();
     this.syncDomWithState();
   }
 
   private toggleLoopback(): void {
-    if (!this.state_.isOperational) {
+    if (!this.state.isOperational) {
       this.emit(Events.ANTENNA_ERROR, { message: 'Antenna is not operational' });
       return;
     }
 
-    this.state_.isLoopbackEnabled = !this.state_.isLoopbackEnabled;
+    this.state.isLoopbackEnabled = !this.state.isLoopbackEnabled;
 
     // If switching to antenna mode, disable HPA if it was on
-    if (!this.state_.isLoopbackEnabled && this.state_.isHpaEnabled) {
+    if (!this.state.isLoopbackEnabled && this.state.isHpaEnabled) {
       // Keep HPA on when going to antenna mode
     }
 
     this.emit(Events.ANTENNA_LOOPBACK_CHANGED, {
-      loopback: this.state_.isLoopbackEnabled
+      loopback: this.state.isLoopbackEnabled
     });
 
     this.updateSignalStatus();
@@ -323,21 +320,21 @@ export class Antenna extends Equipment {
   }
 
   private toggleHpa(): void {
-    if (!this.state_.isOperational) {
+    if (!this.state.isOperational) {
       this.emit(Events.ANTENNA_ERROR, { message: 'Antenna is not operational' });
       return;
     }
 
     // Can only enable HPA when not in loopback mode
-    if (this.state_.isLoopbackEnabled && !this.state_.isHpaEnabled) {
+    if (this.state.isLoopbackEnabled && !this.state.isHpaEnabled) {
       this.emit(Events.ANTENNA_ERROR, { message: 'Cannot enable HPA in loopback mode' });
       return;
     }
 
-    this.state_.isHpaEnabled = !this.state_.isHpaEnabled;
+    this.state.isHpaEnabled = !this.state.isHpaEnabled;
 
     this.emit(Events.ANTENNA_HPA_CHANGED, {
-      hpa: this.state_.isHpaEnabled
+      hpa: this.state.isHpaEnabled
     });
 
     this.updateSignalStatus();
@@ -345,16 +342,16 @@ export class Antenna extends Equipment {
   }
 
   private togglePower(): void {
-    this.state_.isOperational = !this.state_.isOperational;
+    this.state.isOperational = !this.state.isOperational;
 
     // If turning off, also turn off track and locked
-    if (!this.state_.isOperational) {
-      this.state_.isLocked = false;
-      this.state_.isAutoTrackEnabled = false;
+    if (!this.state.isOperational) {
+      this.state.isLocked = false;
+      this.state.isAutoTrackEnabled = false;
     }
 
     this.emit(Events.ANTENNA_POWER_CHANGED, {
-      operational: this.state_.isOperational
+      operational: this.state.isOperational
     });
 
     this.updateSignalStatus();
@@ -362,8 +359,8 @@ export class Antenna extends Equipment {
   }
 
   private handleTrackChange(parentDom: HTMLElement): void {
-    if (!this.state_.isOperational) {
-      this.state_.signals = [];
+    if (!this.state.isOperational) {
+      this.state.signals = [];
       this.emit(Events.ANTENNA_ERROR, { message: 'Antenna is not operational' });
       // Reset the switch
       const trackSwitch = qs('.input-track', parentDom) as HTMLInputElement;
@@ -371,25 +368,25 @@ export class Antenna extends Equipment {
       return;
     }
 
-    const newTrackValue = !this.state_.isAutoTrackEnabled;
-    this.state_.isAutoTrackEnabled = newTrackValue;
+    const newTrackValue = !this.state.isAutoTrackEnabled;
+    this.state.isAutoTrackEnabled = newTrackValue;
 
     // Simulate lock acquisition delay
     if (newTrackValue) {
       setTimeout(() => {
-        this.state_.isLocked = true;
+        this.state.isLocked = true;
         this.updateSignalStatus();
         this.syncDomWithState();
         this.emit(Events.ANTENNA_LOCKED, { locked: true });
       }, 3000); // 3 second delay to acquire lock
     } else {
-      this.state_.isLocked = false;
-      this.state_.signals = [];
+      this.state.isLocked = false;
+      this.state.signals = [];
       this.emit(Events.ANTENNA_LOCKED, { locked: false });
     }
 
     this.emit(Events.ANTENNA_TRACK_CHANGED, {
-      track: this.state_.isAutoTrackEnabled
+      track: this.state.isAutoTrackEnabled
     });
 
     this.updateSignalStatus();
@@ -398,9 +395,9 @@ export class Antenna extends Equipment {
 
   private updateSignalStatus(): void {
     // Update signal active status based on antenna config
-    this.state_.signals = defaultSignalData.filter((signal) => {
+    this.state.signals = defaultSignalData.filter((signal) => {
       // Can't receive signals if not locked
-      if (!this.state_.isLocked) {
+      if (!this.state.isLocked) {
         return false;
       }
 
@@ -410,8 +407,8 @@ export class Antenna extends Equipment {
       // }
 
       const downlinkFrequency = this.getDownlinkFrequency();
-      const isCurrentServer = signal.serverId === this.state_.serverId;
-      const isCurrentSatellite = signal.targetId === this.state_.targetId;
+      const isCurrentServer = signal.serverId === this.state.serverId;
+      const isCurrentSatellite = signal.targetId === this.state.targetId;
       const minAllowedFreq = downlinkFrequency - signal.bandwidth / 2;
       const maxAllowedFreq = downlinkFrequency + signal.bandwidth / 2;
       const isAboveMinFreq = signal.frequency >= minAllowedFreq;
@@ -422,9 +419,9 @@ export class Antenna extends Equipment {
   }
 
   getDownlinkFrequency(): RfFrequency {
-    const band = this.state_.freqBand === 0 ? 'c' : 'ku';
+    const band = this.state.freqBand === 0 ? 'c' : 'ku';
     const bandInfo = bandInformation[band];
-    const downlinkFreq = bandInfo.downconvert + (this.state_.offset * 1e6); // MHz to Hz
+    const downlinkFreq = bandInfo.downconvert + (this.state.offset * 1e6); // MHz to Hz
     return downlinkFreq as RfFrequency;
   }
 
@@ -460,21 +457,21 @@ export class Antenna extends Equipment {
     this.domCache['labelOffset'].textContent = `${this.state.offset} MHz`;
 
     // Save last render state
-    this.lastRenderState = structuredClone(this.state_);
+    this.lastRenderState = structuredClone(this.state);
   }
 
   private getStatusClass(): string {
-    if (!this.state_.isOperational) return 'status-disabled';
-    if (this.state_.isLoopbackEnabled || (!this.state_.isLoopbackEnabled && this.state_.isHpaEnabled)) {
+    if (!this.state.isOperational) return 'status-disabled';
+    if (this.state.isLoopbackEnabled || (!this.state.isLoopbackEnabled && this.state.isHpaEnabled)) {
       return 'status-active';
     }
     return 'status-error';
   }
 
   private getStatusText(): string {
-    if (!this.state_.isOperational) return 'Not Operational';
-    if (this.state_.isLoopbackEnabled) return 'Loopback';
-    if (!this.state_.isLoopbackEnabled && this.state_.isHpaEnabled) return 'Transmitting';
+    if (!this.state.isOperational) return 'Not Operational';
+    if (this.state.isLoopbackEnabled) return 'Loopback';
+    if (!this.state.isLoopbackEnabled && this.state.isHpaEnabled) return 'Transmitting';
     return 'Rx Only';
   }
 }

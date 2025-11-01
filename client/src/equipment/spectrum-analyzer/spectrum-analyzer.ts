@@ -30,10 +30,7 @@ export interface SpectrumAnalyzerState {
  * Delegates all rendering to SpectrumScreen for separation of concerns
  */
 export class SpectrumAnalyzer extends Equipment {
-  protected state_: SpectrumAnalyzerState;
-  get state(): SpectrumAnalyzerState {
-    return this.state_;
-  }
+  state: SpectrumAnalyzerState;
 
   // Screen renderer
   screen: SpectrumScreen | null = null;
@@ -52,7 +49,7 @@ export class SpectrumAnalyzer extends Equipment {
     this.antenna = antenna;
 
     // Initialize config
-    this.state_ = {
+    this.state = {
       unit: this.unit,
       team_id: this.teamId,
       antenna_id: 1,
@@ -175,7 +172,7 @@ export class SpectrumAnalyzer extends Equipment {
 
   private updateConfigChange(data: any): void {
     if (data.unit === this.state.unit) {
-      this.state_ = { ...this.state, ...data };
+      this.state = { ...this.state, ...data };
 
       if (data.frequency) {
         this.updateFrequency(data.frequency);
@@ -218,7 +215,7 @@ export class SpectrumAnalyzer extends Equipment {
    */
 
   public sync(spectrumAnalyzerState: SpectrumAnalyzerState): void {
-    this.state_ = { ...this.state, ...spectrumAnalyzerState };
+    this.state = { ...this.state, ...spectrumAnalyzerState };
     this.updateScreenState();
     this.updateDisplay();
   }

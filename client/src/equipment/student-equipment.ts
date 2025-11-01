@@ -152,8 +152,8 @@ export class StudentEquipment {
     return {
       spectrumAnalyzers: this.spectrumAnalyzers.map(sa => sa.getConfig()),
       antennas: this.antennas.map(a => a.state),
-      transmitters: this.transmitters.map(tx => tx.getConfig()),
-      receivers: this.receivers.map(rx => rx.getConfig())
+      transmitters: this.transmitters.map(tx => tx.state),
+      receivers: this.receivers.map(rx => rx.state)
     };
   }
 }

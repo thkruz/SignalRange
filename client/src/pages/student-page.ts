@@ -42,7 +42,10 @@ export class StudentPage extends AbstractPage {
     await syncEquipmentWithStore(this.equipment);
 
     for (const receiver of this.equipment.receivers) {
-      receiver.syncInputToConfig();
+      receiver.syncDomWithState();
+    }
+    for (const transmitter of this.equipment.transmitters) {
+      transmitter.syncDomWithState();
     }
 
     console.log(this.equipment.getAllConfigs());

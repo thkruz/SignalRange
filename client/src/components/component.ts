@@ -19,7 +19,7 @@ export abstract class Component<T = any> extends BaseElement {
   public update(newProps: Partial<T>): void {
     this.props = { ...this.props, ...newProps };
     if (this.element?.parentElement) {
-      const newElement = this.render();
+      const newElement = this.initializeDom();
       this.element.parentElement.replaceChild(newElement, this.element);
     }
   }

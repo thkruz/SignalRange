@@ -12,38 +12,24 @@ export interface TransmitterModem {
   transmitting: boolean;
 }
 
-export interface TransmitterConfig {
+export interface TransmitterState {
   unit: number; // Case number 1-4
   team_id: number;
   server_id: number;
   modems: TransmitterModem[];
 }
 
-// TX Event specific interfaces
-export interface TxConfigChangedData {
-  unit: number;
-  modem: number;
-  config: TransmitterModem;
-}
-
-export interface TxTransmitChangedData {
-  unit: number;
-  modem: number;
-  transmitting: boolean;
-}
-
-export interface TxErrorData {
-  message: string;
-}
-
 /**
  * Transmitter - Single transmitter case containing 4 modems
- * Manages modem configuration and transmission state
+ * Manages modem configuration and transmission state_
  * Extends Equipment base class for standard lifecycle
  */
 export class Transmitter extends Equipment {
   // State
-  private config: TransmitterConfig;
+  protected state_: TransmitterState;
+  get state(): TransmitterState {
+    return this.state_;
+  }
   private activeModem: number = 1;
   private inputData: Partial<TransmitterModem> = {};
 
@@ -66,7 +52,7 @@ export class Transmitter extends Equipment {
       });
     }
 
-    this.config = {
+    this.state_ = {
       unit: this.unit,
       team_id: this.teamId,
       server_id: serverId,
@@ -81,9 +67,9 @@ export class Transmitter extends Equipment {
     // No periodic updates needed for transmitter at this time
   }
 
-  render(): HTMLElement {
+  initializeDom(): HTMLElement {
     const activeModemData = this.getActiveModem();
-    const isTransmitting = this.config.modems.some(m => m.transmitting);
+    const isTransmitting = this.state_.modems.some(m => m.transmitting);
 
     this.element.innerHTML = html`
       <div class="transmitter-box">
@@ -97,7 +83,7 @@ export class Transmitter extends Equipment {
         <div class="transmitter-controls">
           <!-- Modem Selection Buttons -->
           <div class="modem-buttons">
-            ${this.config.modems.map(modem => html`
+            ${this.state_.modems.map(modem => html`
               <button
                 class="btn-modem ${modem.modem_number === this.activeModem ? 'active' : ''} ${modem.transmitting ? 'transmitting' : ''}"
                 data-modem="${modem.modem_number}">
@@ -210,15 +196,15 @@ export class Transmitter extends Equipment {
     this.updateDisplay();
   }
 
-  public sync(data: Partial<TransmitterConfig>): void {
+  public sync(data: Partial<TransmitterState>): void {
     if (data.modems) {
-      this.config.modems = data.modems;
+      this.state_.modems = data.modems;
     }
     this.updateDisplay();
   }
 
-  public getConfig(): TransmitterConfig {
-    return { ...this.config };
+  public getConfig(): TransmitterState {
+    return { ...this.state_ };
   }
 
   /**
@@ -226,7 +212,7 @@ export class Transmitter extends Equipment {
    */
 
   private getActiveModem(): TransmitterModem {
-    return this.config.modems.find(m => m.modem_number === this.activeModem) || this.config.modems[0];
+    return this.state_.modems.find(m => m.modem_number === this.activeModem) || this.state_.modems[0];
   }
 
   private setActiveModem(modemNumber: number): void {
@@ -258,7 +244,7 @@ export class Transmitter extends Equipment {
 
   private applyChanges(): void {
     const activeModem = this.getActiveModem();
-    const modemIndex = this.config.modems.findIndex(m => m.modem_number === this.activeModem);
+    const modemIndex = this.state_.modems.findIndex(m => m.modem_number === this.activeModem);
 
     // Calculate power consumption
     const newPower = this.calculateModemPower(
@@ -273,7 +259,7 @@ export class Transmitter extends Equipment {
     }
 
     // Update the modem configuration
-    this.config.modems[modemIndex] = {
+    this.state_.modems[modemIndex] = {
       ...activeModem,
       ...this.inputData
     };
@@ -281,7 +267,7 @@ export class Transmitter extends Equipment {
     this.emit(Events.TX_CONFIG_CHANGED, {
       unit: this.unit,
       modem: this.activeModem,
-      config: this.config.modems[modemIndex]
+      config: this.state_.modems[modemIndex]
     });
 
     this.updateDisplay();
@@ -289,7 +275,7 @@ export class Transmitter extends Equipment {
 
   private toggleTransmit(): void {
     const activeModem = this.getActiveModem();
-    const modemIndex = this.config.modems.findIndex(m => m.modem_number === this.activeModem);
+    const modemIndex = this.state_.modems.findIndex(m => m.modem_number === this.activeModem);
 
     const newTransmittingState = !activeModem.transmitting;
 
@@ -302,7 +288,7 @@ export class Transmitter extends Equipment {
       }
     }
 
-    this.config.modems[modemIndex].transmitting = newTransmittingState;
+    this.state_.modems[modemIndex].transmitting = newTransmittingState;
 
     this.emit(Events.TX_TRANSMIT_CHANGED, {
       unit: this.unit,
@@ -332,7 +318,7 @@ export class Transmitter extends Equipment {
   }
 
   private updateDisplay(): void {
-    this.render();
+    this.initializeDom();
 
     // Re-attach listeners after render
     this.addListeners();

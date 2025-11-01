@@ -1,7 +1,11 @@
 import { BaseElement } from '../components/base-element';
 import { EventBus, EventMap } from '../events/event-bus';
 import { Events } from '../events/events';
+import { AntennaState } from './antenna/antenna';
 import './equipment.css';
+import { ReceiverState } from './receiver/receiver';
+import { SpectrumAnalyzerState } from './spectrum-analyzer/spectrum-analyzer';
+import { TransmitterState } from './transmitter/transmitter';
 
 /**
  * Base Equipment Class
@@ -12,20 +16,23 @@ export abstract class Equipment extends BaseElement {
   protected element: HTMLElement;
   protected readonly unit: number;
   protected readonly teamId: number;
+  protected abstract state_: AntennaState | ReceiverState | TransmitterState | SpectrumAnalyzerState;
+  /** Current equipment state. Should be a public getter referencing the private state variable */
+  abstract state: AntennaState | ReceiverState | TransmitterState | SpectrumAnalyzerState;
 
   constructor(parentId: string, unit: number, teamId: number = 1) {
     super();
-    const parent = document.getElementById(parentId);
-    if (!parent) throw new Error(`Parent element ${parentId} not found`);
+    const parentDom = document.getElementById(parentId);
+    if (!parentDom) throw new Error(`Parent element ${parentId} not found`);
 
-    this.element = parent;
+    this.element = parentDom;
     this.unit = unit;
     this.teamId = teamId;
   }
 
   // Standard initialization sequence
   protected build(): void {
-    this.render();
+    this.initializeDom();
     this.addListeners();
     this.initialize();
   }
@@ -34,7 +41,7 @@ export abstract class Equipment extends BaseElement {
    * Add event listeners
    * MUST be implemented by child classes
    */
-  protected abstract addListeners(): void;
+  protected abstract addListeners(parentDom?: HTMLElement): void;
 
   /**
    * Initialize equipment state and start operations
@@ -44,7 +51,7 @@ export abstract class Equipment extends BaseElement {
 
   /**
    * Update equipment state
-   * Can be called in a game loop or on-demand
+   * called in game loop
    */
   public abstract update(): void;
 
@@ -53,11 +60,6 @@ export abstract class Equipment extends BaseElement {
    * Can be used for hot-reloading or external state changes
    */
   public abstract sync(data: any): void;
-
-  /**
-   * Get current equipment configuration
-   */
-  public abstract getConfig(): any;
 
   /**
    * Helper to emit equipment events

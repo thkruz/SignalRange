@@ -1,12 +1,10 @@
-import { AntennaConfig, AntennaErrorData, AntennaHpaChangedData, AntennaLockedData, AntennaLoopbackChangedData, AntennaPowerChangedData, AntennaTrackChangedData } from "../equipment/antenna/antenna";
-import { RxConfigChangedData, RxSignalFoundData, RxSignalLostData } from "../equipment/receiver/receiver";
-import { SpectrumAnalyzerConfig } from "../equipment/spectrum-analyzer/spectrum-analyzer";
-import { TxConfigChangedData, TxErrorData, TxTransmitChangedData } from "../equipment/transmitter/transmitter";
+import { AntennaState } from "../equipment/antenna/antenna";
+import { SpectrumAnalyzerState } from "../equipment/spectrum-analyzer/spectrum-analyzer";
 import { Logger } from "../logging/logger";
-import { Events } from "./events";
+import { AntennaErrorData, AntennaHpaChangedData, AntennaLockedData, AntennaLoopbackChangedData, AntennaPowerChangedData, AntennaTrackChangedData, Events, RxActiveModemChangedData, RxConfigChangedData, RxSignalFoundData, RxSignalLostData, TxConfigChangedData, TxErrorData, TxTransmitChangedData } from "./events";
 
 export interface EventMap {
-  [Events.ANTENNA_CONFIG_CHANGED]: [AntennaConfig];
+  [Events.ANTENNA_CONFIG_CHANGED]: [AntennaState];
   [Events.ANTENNA_LOOPBACK_CHANGED]: [AntennaLoopbackChangedData];
   [Events.ANTENNA_HPA_CHANGED]: [AntennaHpaChangedData];
   [Events.ANTENNA_TRACK_CHANGED]: [AntennaTrackChangedData];
@@ -21,9 +19,10 @@ export interface EventMap {
   [Events.RX_CONFIG_CHANGED]: [RxConfigChangedData];
   [Events.RX_SIGNAL_FOUND]: [RxSignalFoundData];
   [Events.RX_SIGNAL_LOST]: [RxSignalLostData];
+  [Events.RX_ACTIVE_MODEM_CHANGED]: [RxActiveModemChangedData];
 
-  [Events.SPEC_A_CONFIG_CHANGED]: [Partial<SpectrumAnalyzerConfig>];
-  [Events.SPEC_A_MODE_CHANGED]: [Partial<SpectrumAnalyzerConfig>];
+  [Events.SPEC_A_CONFIG_CHANGED]: [Partial<SpectrumAnalyzerState>];
+  [Events.SPEC_A_MODE_CHANGED]: [Partial<SpectrumAnalyzerState>];
 
   [Events.ROUTE_CHANGED]: [{ path: string }];
 

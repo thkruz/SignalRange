@@ -1,4 +1,69 @@
-// Common event names (can be extended)
+import { ReceiverModemState } from "../equipment/receiver/receiver";
+import { TransmitterModem } from "../equipment/transmitter/transmitter";
+
+// Antenna Event specific interfaces
+export interface AntennaLoopbackChangedData {
+  loopback: boolean;
+}
+
+export interface AntennaHpaChangedData {
+  hpa: boolean;
+}
+
+export interface AntennaTrackChangedData {
+  track: boolean;
+}
+
+export interface AntennaLockedData {
+  locked: boolean;
+}
+
+export interface AntennaPowerChangedData {
+  operational: boolean;
+}
+
+export interface AntennaErrorData {
+  message: string;
+}
+
+// TX Event specific interfaces
+export interface TxConfigChangedData {
+  unit: number;
+  modem: number;
+  config: TransmitterModem;
+}
+
+export interface TxTransmitChangedData {
+  unit: number;
+  modem: number;
+  transmitting: boolean;
+}
+
+export interface TxErrorData {
+  message: string;
+}
+
+// RX Event specific interfaces
+export interface RxConfigChangedData {
+  unit: number;
+  modem: number;
+  config: ReceiverModemState;
+}
+
+export interface RxActiveModemChangedData {
+  unit: number;
+  activeModem: number;
+}
+
+export interface RxSignalFoundData {
+  unit: number;
+  modem: number;
+}
+
+export interface RxSignalLostData {
+  unit: number;
+  modem: number;
+}
 
 export enum Events {
   // Antenna events
@@ -17,6 +82,7 @@ export enum Events {
 
   // Receiver events
   RX_CONFIG_CHANGED = 'rx:config:changed',
+  RX_ACTIVE_MODEM_CHANGED = "rx:activeModem:changed",
   RX_SIGNAL_FOUND = 'rx:signal:found',
   RX_SIGNAL_LOST = 'rx:signal:lost',
 

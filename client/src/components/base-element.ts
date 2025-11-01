@@ -5,14 +5,23 @@ export abstract class BaseElement {
   protected element: HTMLElement | null = null;
 
   init(): void {
-    this.render();
+    this.initializeDom();
     this.setupEventListeners();
   }
 
   /**
    * Render the component and return the DOM element
    */
-  render(): HTMLElement {
+  initializeDom(parentId?: string): HTMLElement {
+    if (parentId) {
+      const parentDom = document.getElementById(parentId);
+      if (!parentDom) throw new Error(`Parent element ${parentId} not found`);
+
+      parentDom.innerHTML = this.html;
+
+      return parentDom;
+    }
+
     if (!this.element) {
       const template = document.createElement('template');
       template.innerHTML = this.html.trim();

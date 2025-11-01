@@ -18,7 +18,7 @@ export class StudentPage extends AbstractPage {
     this.initEquipment();
   }
 
-  render(): HTMLElement {
+  initializeDom(): HTMLElement {
     this.container.innerHTML = html`
       <div class="student-page-container">
         <!-- Team Info Bar -->
@@ -44,5 +44,7 @@ export class StudentPage extends AbstractPage {
     for (const receiver of this.equipment.receivers) {
       receiver.syncInputToConfig();
     }
+
+    console.log(this.equipment.getAllConfigs());
   }
 }

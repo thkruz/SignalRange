@@ -10,7 +10,7 @@ export class LoginPage extends AbstractPage {
     super('login-page');
   }
 
-  render(): HTMLElement {
+  initializeDom(): HTMLElement {
     this.container.innerHTML = `
       <div class="login-page">
       <h1>Login</h1>

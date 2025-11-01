@@ -36,7 +36,7 @@ export class AnalyzerControl extends BaseElement {
   }
 
   init(): void {
-    this.render();
+    this.initializeDom();
   }
 
   private initializeValues(): void {
@@ -49,7 +49,7 @@ export class AnalyzerControl extends BaseElement {
     this.updateDisplay();
   }
 
-  render(): HTMLElement {
+  initializeDom(): HTMLElement {
     this.html = html`
       <div class="analyzer-control-overlay" id="analyzer-control-overlay">
         <div class="analyzer-control-popup">
@@ -161,7 +161,7 @@ export class AnalyzerControl extends BaseElement {
       </div>
     `;
 
-    return super.render();
+    return super.initializeDom();
   }
 
   protected setupEventListeners(): void {
@@ -243,7 +243,7 @@ export class AnalyzerControl extends BaseElement {
   }
 
   private handleTraceClick(): void {
-    this.specA.config.isTraceOn = !this.specA.config.isTraceOn;
+    this.specA.state.isTraceOn = !this.specA.state.isTraceOn;
 
     // Update spectrum analyzer
     this.specA.resetHoldData();
@@ -253,7 +253,7 @@ export class AnalyzerControl extends BaseElement {
   }
 
   private handleMarkerClick(): void {
-    this.specA.config.isMarkerOn = !this.specA.config.isMarkerOn;
+    this.specA.state.isMarkerOn = !this.specA.state.isMarkerOn;
 
     // Update spectrum analyzer marker state
     this.specA.getConfig();
@@ -353,8 +353,8 @@ export class AnalyzerControl extends BaseElement {
     // Update button states - control selection
     this.updateButtonState('#freq-button', this.controlSelection === 'freq');
     this.updateButtonState('#span-button', this.controlSelection === 'span');
-    this.updateButtonState('#trace-button', this.specA.config.isTraceOn);
-    this.updateButtonState('#marker-button', this.specA.config.isMarkerOn);
+    this.updateButtonState('#trace-button', this.specA.state.isTraceOn);
+    this.updateButtonState('#marker-button', this.specA.state.isMarkerOn);
 
     EventBus.getInstance().emit(Events.SPEC_A_CONFIG_CHANGED, this.specA.getConfig());
   }

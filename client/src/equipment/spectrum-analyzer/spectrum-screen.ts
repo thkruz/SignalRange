@@ -65,8 +65,8 @@ export class SpectrumScreen {
     this.maxHoldData = new Float32Array(this.width);
 
     // Calculate range
-    this.range = this.specA.config.minDecibels - this.specA.config.maxDecibels;
-    this.decibelShift = 0 - this.specA.config.minDecibels;
+    this.range = this.specA.state.minDecibels - this.specA.state.maxDecibels;
+    this.decibelShift = 0 - this.specA.state.minDecibels;
 
     this.setupResizeHandler();
     this.resize();
@@ -115,18 +115,18 @@ export class SpectrumScreen {
    */
 
   public update(): void {
-    if (!this.specA.config.isPaused && this.running) {
+    if (!this.specA.state.isPaused && this.running) {
       const now = Date.now();
-      if (now - this.lastDrawTime > 1000 / this.specA.config.refreshRate) {
+      if (now - this.lastDrawTime > 1000 / this.specA.state.refreshRate) {
         this.noiseData = this.createNoise(this.noiseData);
       }
     }
   }
 
   public draw(): void {
-    if (!this.specA.config.isPaused && this.running) {
+    if (!this.specA.state.isPaused && this.running) {
       const now = Date.now();
-      if (now - this.lastDrawTime > 1000 / this.specA.config.refreshRate) {
+      if (now - this.lastDrawTime > 1000 / this.specA.state.refreshRate) {
         this.clearCanvas(this.ctx);
         this.ctx.globalAlpha = 1.0;
 
@@ -137,7 +137,7 @@ export class SpectrumScreen {
         this.drawSignals();
 
         // Draw max hold if enabled
-        if (this.specA.config.isTraceOn) {
+        if (this.specA.state.isTraceOn) {
           this.drawMaxHold(this.ctx);
         }
 
@@ -157,15 +157,15 @@ export class SpectrumScreen {
    */
 
   private drawSignals(): void {
-    this.antenna.signals.forEach((signal, i) => {
+    this.antenna.state.signals.forEach((signal, i) => {
       let color = this.noiseColor;
-      if (!this.antenna.config.isLocked || !this.antenna.config.isOperational) return;
+      if (!this.antenna.state.isLocked || !this.antenna.state.isOperational) return;
 
-      if (this.specA.config.isShowSignals) {
+      if (this.specA.state.isShowSignals) {
         color = SpectrumScreen.getRandomRgb(i);
       }
 
-      if (this.specA.config.isRfMode) {
+      if (this.specA.state.isRfMode) {
         // Draw RF signals
         const rfUpSignal: RfSignal = {
           ...signal,
@@ -176,10 +176,10 @@ export class SpectrumScreen {
           frequency: (signal.frequency + this.upconvertOffset) as RfFrequency
         };
         rfDownSignal.frequency = (rfDownSignal.frequency +
-          (this.antenna.config.isLoopbackEnabled
-            ? this.antenna.config.offset * 1e6
-            : SATELLITES[this.antenna.config.targetId].offset)) as RfFrequency;
-        rfDownSignal.power = !this.antenna.config.isLoopbackEnabled && !this.antenna.config.isHpaEnabled
+          (this.antenna.state.isLoopbackEnabled
+            ? this.antenna.state.offset * 1e6
+            : SATELLITES[this.antenna.state.targetId].offset)) as RfFrequency;
+        rfDownSignal.power = !this.antenna.state.isLoopbackEnabled && !this.antenna.state.isHpaEnabled
           ? -1000
           : rfDownSignal.power;
 
@@ -193,10 +193,10 @@ export class SpectrumScreen {
           frequency: (signal.frequency + this.upconvertOffset - this.downconvertOffset) as IfFrequency
         };
         ifDownSignal.frequency = (ifDownSignal.frequency +
-          (this.antenna.config.isLoopbackEnabled
-            ? this.antenna.config.offset * 1e6
-            : SATELLITES[this.antenna.config.targetId].offset)) as IfFrequency;
-        ifDownSignal.power = !this.antenna.config.isLoopbackEnabled && !this.antenna.config.isHpaEnabled
+          (this.antenna.state.isLoopbackEnabled
+            ? this.antenna.state.offset * 1e6
+            : SATELLITES[this.antenna.state.targetId].offset)) as IfFrequency;
+        ifDownSignal.power = !this.antenna.state.isLoopbackEnabled && !this.antenna.state.isHpaEnabled
           ? -1000
           : ifDownSignal.power;
 
@@ -237,7 +237,7 @@ export class SpectrumScreen {
     ctx.beginPath();
 
     for (let x = 0, len = this.noiseData.length; x < len; x++) {
-      const y = (this.noiseData[x] - this.specA.config.maxDecibels - this.decibelShift) / this.range;
+      const y = (this.noiseData[x] - this.specA.state.maxDecibels - this.decibelShift) / this.range;
       if (x === 0) {
         ctx.moveTo(x, this.height * y);
       } else {
@@ -254,7 +254,7 @@ export class SpectrumScreen {
     ctx.moveTo(0, this.height);
 
     for (let x = 0; x < this.width; x++) {
-      const y = (this.noiseData[x] - this.specA.config.maxDecibels - this.decibelShift) / this.range;
+      const y = (this.noiseData[x] - this.specA.state.maxDecibels - this.decibelShift) / this.range;
       ctx.lineTo(x, this.height * y);
     }
 
@@ -280,7 +280,7 @@ export class SpectrumScreen {
     const len = this.data.length;
     for (let x = 0; x < len; x++) {
       const lowestSignal = this.data[x] >= this.noiseData[x] ? this.data[x] : 0;
-      const y = (lowestSignal - this.specA.config.maxDecibels - this.decibelShift) / this.range;
+      const y = (lowestSignal - this.specA.state.maxDecibels - this.decibelShift) / this.range;
 
       maxSignalFreq = y < maxY ? lowestSignal : maxSignalFreq;
       maxX = y < maxY ? x : maxX;
@@ -296,7 +296,7 @@ export class SpectrumScreen {
     ctx.stroke();
 
     // Draw marker if enabled
-    if (this.specA.config.isMarkerOn) {
+    if (this.specA.state.isMarkerOn) {
       this.drawMarker(maxX, maxY, ctx, maxSignalFreq);
     }
   }
@@ -320,7 +320,7 @@ export class SpectrumScreen {
       ctx.font = '18px Arial';
       const freqMhz = (this.minFreq + (maxX * (this.maxFreq - this.minFreq)) / this.width) / 1e6 as MHz;
       ctx.fillText(`${freqMhz.toFixed(1)} MHz`, maxX - 20, this.height * maxY - 30);
-      ctx.fillText(`${(maxSignalFreq + this.specA.config.minDecibels).toFixed(1)} dB`, maxX - 20, this.height * maxY - 15);
+      ctx.fillText(`${(maxSignalFreq + this.specA.state.minDecibels).toFixed(1)} dB`, maxX - 20, this.height * maxY - 15);
     }
   }
 
@@ -330,7 +330,7 @@ export class SpectrumScreen {
 
     const len = this.data.length;
     for (let x = 0; x < len; x++) {
-      const y = (this.maxHoldData[x] - this.specA.config.maxDecibels - this.decibelShift) / this.range;
+      const y = (this.maxHoldData[x] - this.specA.state.maxDecibels - this.decibelShift) / this.range;
       if (x === 0) {
         ctx.moveTo(x, this.height * y);
       } else {
@@ -347,7 +347,7 @@ export class SpectrumScreen {
 
   private createNoise(data: Float32Array): Float32Array {
     // Parameters for noise complexity
-    const base = this.specA.config.noiseFloor + this.decibelShift;
+    const base = this.specA.state.noiseFloor + this.decibelShift;
     const len = data.length;
     const time = performance.now() / 1000;
 

@@ -38,7 +38,7 @@ export class App extends BaseElement {
    */
   public init(): void {
     // First render main layout so we have DOM containers available
-    this.render();
+    this.initializeDom();
 
     for (const PageClass of this.pagesConstructors) {
       this.pages[PageClass.name] = new PageClass();
@@ -54,11 +54,11 @@ export class App extends BaseElement {
   /**
    * Render the main application structure
    */
-  render(): HTMLElement {
+  initializeDom(): HTMLElement {
     this.rootElement.innerHTML = html`
-      ${this.header.render().outerHTML}
-      ${this.body.render().outerHTML}
-      ${this.footer.render().outerHTML}
+      ${this.header.initializeDom().outerHTML}
+      ${this.body.initializeDom().outerHTML}
+      ${this.footer.initializeDom().outerHTML}
     `;
 
     return this.rootElement;

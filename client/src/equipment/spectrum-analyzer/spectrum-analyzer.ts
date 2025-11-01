@@ -7,7 +7,7 @@ import { AnalyzerControl } from "./analyzer-control";
 import './spectrum-analyzer.css';
 import { SpectrumScreen } from './spectrum-screen';
 
-export interface SpectrumAnalyzerConfig {
+export interface SpectrumAnalyzerState {
   unit: number; // 1-4
   team_id: number;
   antenna_id: number;
@@ -30,7 +30,10 @@ export interface SpectrumAnalyzerConfig {
  * Delegates all rendering to SpectrumScreen for separation of concerns
  */
 export class SpectrumAnalyzer extends Equipment {
-  config: SpectrumAnalyzerConfig;
+  protected state_: SpectrumAnalyzerState;
+  get state(): SpectrumAnalyzerState {
+    return this.state_;
+  }
 
   // Screen renderer
   screen: SpectrumScreen | null = null;
@@ -52,7 +55,7 @@ export class SpectrumAnalyzer extends Equipment {
     this.antenna = antenna;
 
     // Initialize config
-    this.config = {
+    this.state_ = {
       unit: this.unit,
       team_id: this.teamId,
       antenna_id: 1,
@@ -67,18 +70,18 @@ export class SpectrumAnalyzer extends Equipment {
       maxDecibels: this.maxDecibels,
       noiseFloor: this.noiseFloor,
       isShowSignals: true,
-      refreshRate: 4,
+      refreshRate: 10,
     };
 
     this.build();
   }
 
-  render(): HTMLElement {
+  initializeDom(): HTMLElement {
     this.element.innerHTML = html`
       <div class="spectrum-analyzer-box">
         <div class="spec-a-header">
           <div class="spec-a-title">Spectrum Analyzer ${this.unit}</div>
-          <div class="spec-a-span">Span: ${this.config.span / 1e6} MHz</div>
+          <div class="spec-a-span">Span: ${this.state.span / 1e6} MHz</div>
         </div>
 
         <div class="spec-a-canvas-container">
@@ -86,16 +89,16 @@ export class SpectrumAnalyzer extends Equipment {
         </div>
 
         <div class="spec-a-info">
-          <div>CF: ${this.config.centerFrequency / 1e6} MHz</div>
-          <div>Ant: ${this.config.antenna_id}</div>
+          <div>CF: ${this.state.centerFrequency / 1e6} MHz</div>
+          <div>Ant: ${this.state.antenna_id}</div>
         </div>
 
         <div class="spec-a-controls">
           <button class="btn-config" data-action="config">Config</button>
-          <button class="btn-mode ${this.config.isRfMode ? 'active' : ''}" data-action="mode">
-            ${this.config.isRfMode ? 'RF' : 'IF'}
+          <button class="btn-mode ${this.state.isRfMode ? 'active' : ''}" data-action="mode">
+            ${this.state.isRfMode ? 'RF' : 'IF'}
           </button>
-          <button class="btn-pause ${this.config.isPaused ? 'active' : ''}" data-action="pause">
+          <button class="btn-pause ${this.state.isPaused ? 'active' : ''}" data-action="pause">
             Pause
           </button>
         </div>
@@ -165,8 +168,8 @@ export class SpectrumAnalyzer extends Equipment {
   }
 
   private updateConfigChange(data: any): void {
-    if (data.unit === this.config.unit) {
-      this.config = { ...this.config, ...data };
+    if (data.unit === this.state.unit) {
+      this.state_ = { ...this.state, ...data };
 
       if (data.frequency) {
         this.updateFrequency(data.frequency);
@@ -199,8 +202,8 @@ export class SpectrumAnalyzer extends Equipment {
     if (!this.screen) return;
 
     // Update frequency range
-    const minFreq = (this.config.centerFrequency - this.config.span / 2) as Hertz;
-    const maxFreq = (this.config.centerFrequency + this.config.span / 2) as Hertz;
+    const minFreq = (this.state.centerFrequency - this.state.span / 2) as Hertz;
+    const maxFreq = (this.state.centerFrequency + this.state.span / 2) as Hertz;
     this.screen.setFrequencyRange(minFreq, maxFreq);
   }
 
@@ -208,28 +211,30 @@ export class SpectrumAnalyzer extends Equipment {
    * Public API Methods
    */
 
-  public sync(): void {
+  public sync(spectrumAnalyzerState: SpectrumAnalyzerState): void {
+    this.state_ = { ...this.state, ...spectrumAnalyzerState };
+    this.updateScreenState();
     this.updateDisplay();
   }
 
   public update(): void {
-    if (this.screen && !this.config.isPaused) {
+    if (this.screen && !this.state.isPaused) {
       this.screen.update();
     }
   }
 
-  public getConfig(): SpectrumAnalyzerConfig {
-    return { ...this.config };
+  public getConfig(): SpectrumAnalyzerState {
+    return { ...this.state };
   }
 
   public changeCenterFreq(freq: number): void {
-    this.config.centerFrequency = freq as Hertz;
+    this.state.centerFrequency = freq as Hertz;
     this.updateScreenState();
     this.updateDisplay();
   }
 
   public changeBandwidth(freqSpan: number): void {
-    this.config.span = freqSpan as Hertz;
+    this.state.span = freqSpan as Hertz;
     this.updateScreenState();
     this.updateDisplay();
   }
@@ -262,44 +267,44 @@ export class SpectrumAnalyzer extends Equipment {
   }
 
   private toggleMode(): void {
-    this.config.isRfMode = !this.config.isRfMode;
+    this.state.isRfMode = !this.state.isRfMode;
 
     this.updateModeButton();
 
     this.emit(Events.SPEC_A_MODE_CHANGED, {
       unit: this.unit,
-      isRfMode: this.config.isRfMode,
+      isRfMode: this.state.isRfMode,
     });
   }
 
   private updateModeButton(): void {
     const btn = qs('.btn-mode', this.element);
     if (btn) {
-      btn.textContent = this.config.isRfMode ? 'RF' : 'IF';
-      btn.classList.toggle('active', this.config.isRfMode);
+      btn.textContent = this.state.isRfMode ? 'RF' : 'IF';
+      btn.classList.toggle('active', this.state.isRfMode);
     }
   }
 
   private togglePause(): void {
-    this.config.isPaused = !this.config.isPaused;
+    this.state.isPaused = !this.state.isPaused;
 
     this.updatePauseButton();
 
     this.emit(Events.SPEC_A_MODE_CHANGED, {
       unit: this.unit,
-      isPaused: this.config.isPaused,
+      isPaused: this.state.isPaused,
     });
   }
 
   private updatePauseButton(): void {
     const btn = qs('.btn-pause', this.element);
     if (btn) {
-      btn.classList.toggle('active', this.config.isPaused);
+      btn.classList.toggle('active', this.state.isPaused);
     }
   }
 
   private updateFrequency(frequency: Hertz): void {
-    this.config.centerFrequency = frequency;
+    this.state.centerFrequency = frequency;
     this.updateScreenState();
     this.updateDisplay();
   }
@@ -308,15 +313,15 @@ export class SpectrumAnalyzer extends Equipment {
     // Update header span
     const spanEl = qs('.spec-a-span', this.element);
     if (spanEl) {
-      spanEl.textContent = `Span: ${this.config.span / 1e6} MHz`;
+      spanEl.textContent = `Span: ${this.state.span / 1e6} MHz`;
     }
 
     // Update info display
     const infoEl = qs('.spec-a-info', this.element);
     if (infoEl) {
       infoEl.innerHTML = html`
-        <div>CF: ${this.config.centerFrequency / 1e6} MHz</div>
-        <div>Ant: ${this.config.antenna_id}</div>
+        <div>CF: ${this.state.centerFrequency / 1e6} MHz</div>
+        <div>Ant: ${this.state.antenna_id}</div>
       `;
     }
 

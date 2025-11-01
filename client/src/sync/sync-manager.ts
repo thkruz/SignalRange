@@ -1,4 +1,8 @@
+import { AntennaState } from '../equipment/antenna/antenna';
+import { ReceiverState } from '../equipment/receiver/receiver';
+import { SpectrumAnalyzerState } from '../equipment/spectrum-analyzer/spectrum-analyzer';
 import type { StudentEquipment } from '../equipment/student-equipment';
+import { TransmitterState } from '../equipment/transmitter/transmitter';
 import { Logger } from '../logging/logger';
 import type { StorageProvider } from './storage-provider';
 
@@ -145,13 +149,10 @@ export class SyncManager {
 
     return {
       equipment: {
-        spectrumAnalyzers: this.equipment.spectrumAnalyzers.map(sa => ({
-          config: sa.config,
-          // Add any other relevant state
-        })),
-        antennas: this.equipment.antennas.map(a => a.getConfig()),
-        transmitters: this.equipment.transmitters.map(tx => tx.getConfig()),
-        receivers: this.equipment.receivers.map(rx => rx.getConfig()),
+        spectrumAnalyzersState: this.equipment.spectrumAnalyzers.map(sa => sa.state),
+        antennasState: this.equipment.antennas.map(a => a.state),
+        transmittersState: this.equipment.transmitters.map(tx => tx.state),
+        receiversState: this.equipment.receivers.map(rx => rx.state),
       }
     };
   }
@@ -165,21 +166,20 @@ export class SyncManager {
     }
 
     // Sync Spectrum Analyzers
-    if (state.equipment.spectrumAnalyzers) {
-      state.equipment.spectrumAnalyzers.forEach((storedSa: any) => {
+    if (state.equipment.spectrumAnalyzersState) {
+      state.equipment.spectrumAnalyzersState.forEach((storedSa: SpectrumAnalyzerState) => {
         const localSa = this.equipment!.spectrumAnalyzers.find(
-          sa => sa.config.unit === storedSa.config.unit
+          sa => sa.state.unit === storedSa.unit
         );
         if (localSa) {
-          localSa.config = { ...storedSa.config };
-          localSa.sync();
+          localSa.sync({ ...storedSa });
         }
       });
     }
 
     // Sync Antennas
-    if (state.equipment.antennas) {
-      state.equipment.antennas.forEach((antennaData: any, index: number) => {
+    if (state.equipment.antennasState) {
+      state.equipment.antennasState.forEach((antennaData: any, index: number) => {
         if (this.equipment!.antennas[index]) {
           this.equipment!.antennas[index].sync(antennaData);
         }
@@ -187,8 +187,8 @@ export class SyncManager {
     }
 
     // Sync Transmitters
-    if (state.equipment.transmitters) {
-      state.equipment.transmitters.forEach((txData: any, index: number) => {
+    if (state.equipment.transmittersState) {
+      state.equipment.transmittersState.forEach((txData: any, index: number) => {
         if (this.equipment!.transmitters[index]) {
           this.equipment!.transmitters[index].sync(txData);
         }
@@ -196,8 +196,8 @@ export class SyncManager {
     }
 
     // Sync Receivers
-    if (state.equipment.receivers) {
-      state.equipment.receivers.forEach((rxData: any, index: number) => {
+    if (state.equipment.receiversState) {
+      state.equipment.receiversState.forEach((rxData: any, index: number) => {
         if (this.equipment!.receivers[index]) {
           this.equipment!.receivers[index].sync(rxData);
         }
@@ -211,9 +211,9 @@ export class SyncManager {
  */
 export interface AppState {
   equipment?: {
-    spectrumAnalyzers?: any[];
-    antennas?: any[];
-    transmitters?: any[];
-    receivers?: any[];
+    spectrumAnalyzersState?: SpectrumAnalyzerState[];
+    antennasState?: AntennaState[];
+    transmittersState?: TransmitterState[];
+    receiversState?: ReceiverState[];
   };
 }

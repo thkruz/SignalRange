@@ -38,6 +38,16 @@ export const DEFAULT_SPEC_A = {
   noiseFloor: -115,
 };
 
+export enum FrequencyBand {
+  C = 0,
+  Ku = 1
+}
+
+export const bandInformation = {
+  c: { name: 'C Band', upconvert: 3350e6, downconvert: 3500e6 },
+  ku: { name: 'Ku Band', upconvert: 12750e6, downconvert: 10950e6 }
+}
+
 export const defaultSignalData = [
   {
     id: 1,

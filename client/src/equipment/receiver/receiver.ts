@@ -5,37 +5,21 @@ import { Equipment } from '../equipment';
 import { Antenna } from './../antenna/antenna';
 import './receiver.css';
 
-export interface ReceiverModem {
+export interface ReceiverModemState {
   modemNumber: number; // 1-4
-  antenna: Antenna;
+  antennaId: number;
   frequency: MHz; // MHz
   bandwidth: MHz; // MHz
   modulation: ModulationType;
   fec: FECType;
 }
 
-export interface ReceiverConfig {
+export interface ReceiverState {
   unit: number; // Case number 1-4
   team_id: number;
   server_id: number;
-  modems: ReceiverModem[];
-}
-
-// RX Event specific interfaces
-export interface RxConfigChangedData {
-  unit: number;
-  modem: number;
-  config: ReceiverModem;
-}
-
-export interface RxSignalFoundData {
-  unit: number;
-  modem: number;
-}
-
-export interface RxSignalLostData {
-  unit: number;
-  modem: number;
+  modems: ReceiverModemState[];
+  activeModem: number;
 }
 
 /**
@@ -44,10 +28,11 @@ export interface RxSignalLostData {
  * Extends Equipment base class for standard lifecycle
  */
 export class Receiver extends Equipment {
-  // State
-  private readonly config: ReceiverConfig;
-  private activeModem: number = 1;
-  private inputData: Partial<ReceiverModem> = {};
+  protected state_: ReceiverState;
+  get state(): ReceiverState {
+    return this.state_;
+  }
+  private inputData: Partial<ReceiverModemState> = {};
   private readonly antennas: Antenna[];
 
   constructor(parentId: string, unit: number, antennas: Antenna[], teamId: number = 1, serverId: number = 1) {
@@ -56,11 +41,11 @@ export class Receiver extends Equipment {
     this.antennas = antennas;
 
     // Initialize config with 4 modems
-    const modems: ReceiverModem[] = [];
+    const modems: ReceiverModemState[] = [];
     for (let i = 1; i <= 4; i++) {
       modems.push({
         modemNumber: i,
-        antenna: i <= 2 ? antennas[0] : antennas[1],
+        antennaId: i <= 2 ? antennas[0].state.id : antennas[1]?.state.id ?? antennas[0].state.id,
         frequency: 4700 as MHz, // (IF Band after downconversion)
         bandwidth: 50 as MHz,
         modulation: 'QPSK' as ModulationType,
@@ -68,11 +53,12 @@ export class Receiver extends Equipment {
       });
     }
 
-    this.config = {
+    this.state_ = {
       unit: this.unit,
       team_id: this.teamId,
       server_id: serverId,
-      modems
+      modems,
+      activeModem: 1,
     };
 
     this.inputData = { ...this.getActiveModem() };
@@ -90,7 +76,7 @@ export class Receiver extends Equipment {
     // No periodic updates needed for receiver at this time
   }
 
-  render(): HTMLElement {
+  initializeDom(): HTMLElement {
     const activeModemData = this.getActiveModem();
     const signalStatus = this.getSignalStatus();
     const feedUrl = this.getVisibleSignals()[0]?.feed || '';
@@ -107,9 +93,9 @@ export class Receiver extends Equipment {
         <div class="receiver-controls">
           <!-- Modem Selection Buttons -->
           <div class="modem-buttons">
-            ${this.config.modems.map(modem => html`
+            ${this.state.modems.map(modem => html`
               <button
-                class="btn-modem ${modem.modemNumber === this.activeModem ? 'active' : ''} ${this.getModemStatusClass(modem)}"
+                class="btn-modem ${modem.modemNumber === this.state.activeModem ? 'active' : ''} ${this.getModemStatusClass(modem)}"
                 data-modem="${modem.modemNumber}">
                 ${modem.modemNumber}
               </button>
@@ -122,11 +108,11 @@ export class Receiver extends Equipment {
             <div class="rx-modem-config">
               <div class="config-row">
                 <label>Antenna</label>
-                <select class="input-rx-antenna" data-param="antenna">
-                  <option value="1" ${this.inputData.antenna?.config.id === this.antennas[0]?.config.id ? 'selected' : ''}>1</option>
-                  <option value="2" ${this.inputData.antenna?.config.id === this.antennas[1]?.config.id ? 'selected' : ''}>2</option>
+                <select class="input-rx-antenna" data-param="antennaId">
+                  <option value="1" ${this.inputData.antennaId === this.antennas[0]?.state.id ? 'selected' : ''}>1</option>
+                  <option value="2" ${this.inputData.antennaId === this.antennas[1]?.state.id ? 'selected' : ''}>2</option>
                 </select>
-                <span class="current-value">${activeModemData?.antenna.config.id}</span>
+                <span class="current-value">${activeModemData?.antennaId}</span>
               </div>
 
               <div class="config-row">
@@ -256,29 +242,36 @@ export class Receiver extends Equipment {
     this.subscribeToAntennaEvents();
   }
 
-  public sync(data: Partial<ReceiverConfig>): void {
+  public sync(data: Partial<ReceiverState>): void {
     if (data.modems) {
-      this.config.modems = data.modems;
+      this.state_.modems = data.modems;
     }
+    this.state.activeModem = data.activeModem ?? this.state_.activeModem;
     this.updateDisplay();
   }
 
-  public getConfig(): ReceiverConfig {
-    return { ...this.config };
+  public getConfig(): ReceiverState {
+    return { ...this.state_ };
   }
 
   /**
    * Private Methods
    */
 
-  private getActiveModem(): ReceiverModem | undefined {
-    return this.config.modems.find(m => m.modemNumber === this.activeModem) || this.config.modems[0];
+  private getActiveModem(): ReceiverModemState | undefined {
+    return this.state_.modems.find(m => m.modemNumber === this.state.activeModem) || this.state_.modems[0];
   }
 
   private setActiveModem(modemNumber: number): void {
-    this.activeModem = modemNumber;
+    this.state_.activeModem = modemNumber;
     this.inputData = { ...this.getActiveModem() };
     this.updateDisplay();
+
+    // Emit event for modem change
+    this.emit(Events.RX_ACTIVE_MODEM_CHANGED, {
+      unit: this.unit,
+      activeModem: modemNumber
+    });
   }
 
   private handleInputChange(e: Event): void {
@@ -297,7 +290,7 @@ export class Receiver extends Equipment {
         this.inputData.bandwidth = (Number.parseInt(inputValue) as MHz) || 0 as MHz;
         break;
       case 'antenna':
-        this.inputData.antenna = this.antennas.find(a => a.config.id === Number.parseInt(inputValue)) as Antenna;
+        this.inputData.antennaId = this.antennas.find(a => a.state.id === Number.parseInt(inputValue))?.state.id;
         break;
       case 'modulation':
         this.inputData.modulation = inputValue as ModulationType;
@@ -310,20 +303,20 @@ export class Receiver extends Equipment {
 
   private applyChanges(): void {
     const activeModem = this.getActiveModem();
-    const modemIndex = this.config.modems.findIndex(m => m.modemNumber === this.activeModem);
+    const modemIndex = this.state_.modems.findIndex(m => m.modemNumber === this.state_.activeModem);
 
     if (!activeModem || modemIndex === -1) return;
 
     // Update the modem configuration
-    this.config.modems[modemIndex] = {
+    this.state_.modems[modemIndex] = {
       ...activeModem,
       ...this.inputData,
     };
 
     this.emit(Events.RX_CONFIG_CHANGED, {
       unit: this.unit,
-      modem: this.activeModem,
-      config: this.config.modems[modemIndex]
+      modem: this.state_.activeModem,
+      config: this.state_.modems[modemIndex]
     });
 
     this.updateDisplay();
@@ -353,12 +346,12 @@ export class Receiver extends Equipment {
   private getVisibleSignals(activeModemData = this.getActiveModem()) {
     if (!activeModemData) return [];
 
-    const activeAntenna = activeModemData.antenna;
+    const activeAntenna = this.antennas.find(a => a.state.id === activeModemData.antennaId);
 
     if (!activeAntenna) return [];
 
     // Figure out which signals match the receiver settings
-    const visibleSignals = activeAntenna.signals.filter((s) => {
+    const visibleSignals = activeAntenna.state.signals.filter((s) => {
       if (s.bandwidth > (activeModemData.bandwidth * 1e6 as Hertz)) {
         return false;
       }
@@ -405,7 +398,7 @@ export class Receiver extends Equipment {
       });
   }
 
-  private getModemStatusClass(modem: ReceiverModem): string {
+  private getModemStatusClass(modem: ReceiverModemState): string {
     for (const signal of this.getVisibleSignals(modem)) {
       if (signal.isActive) {
         if (signal.feed.includes('DENIED')) {
@@ -421,7 +414,7 @@ export class Receiver extends Equipment {
   }
 
   updateDisplay(): void {
-    this.render();
+    this.initializeDom();
 
     // Re-attach listeners after render
     this.addListeners();

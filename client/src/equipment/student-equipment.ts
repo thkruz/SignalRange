@@ -151,7 +151,7 @@ export class StudentEquipment {
   public getAllConfigs(): any {
     return {
       spectrumAnalyzers: this.spectrumAnalyzers.map(sa => sa.getConfig()),
-      antennas: this.antennas.map(a => a.getConfig()),
+      antennas: this.antennas.map(a => a.state),
       transmitters: this.transmitters.map(tx => tx.getConfig()),
       receivers: this.receivers.map(rx => rx.getConfig())
     };

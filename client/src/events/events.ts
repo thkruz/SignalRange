@@ -96,7 +96,7 @@ export enum Events {
 
   // Spectrum Analyzer events
   SPEC_A_CONFIG_CHANGED = 'specA:config:changed',
-  SPEC_A_MODE_CHANGED = 'specA:mode:changed',
+  SPEC_A_IF_RF_MODE_CHANGED = 'specA:mode:changed',
 
   // Router events
   ROUTE_CHANGED = 'route:changed',

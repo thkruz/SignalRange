@@ -24,6 +24,7 @@ export interface RealTimeSpectrumAnalyzerState {
   minDecibels: number;
   maxDecibels: number;
   noiseFloor: number;
+  screenMode: 'spectralDensity' | 'waterfall' | 'both';
 }
 
 /**
@@ -69,6 +70,7 @@ export class RealTimeSpectrumAnalyzer extends Equipment {
       noiseFloor: this.noiseFloor,
       isShowSignals: true,
       refreshRate: 10,
+      screenMode: 'spectralDensity',
     };
 
     this.build(parentId);
@@ -95,8 +97,11 @@ export class RealTimeSpectrumAnalyzer extends Equipment {
 
         <div class="spec-a-controls">
           <button class="btn-config" data-action="config">Config</button>
-          <button class="btn-mode ${this.state.isRfMode ? 'active' : ''}" data-action="mode">
+          <button id="btn-mode-if-rf" class="btn-mode ${this.state.isRfMode ? 'active' : ''}" data-action="ifRfMode">
             ${this.state.isRfMode ? 'RF' : 'IF'}
+          </button>
+          <button id="btn-mode-screen" class="btn-mode ${this.state.screenMode === 'spectralDensity' ? 'active' : ''}" data-action="screenMode">
+            ${this.state.screenMode === 'spectralDensity' ? 'Spectral Density' : 'Waterfall'}
           </button>
           <button class="btn-pause ${this.state.isPaused ? 'active' : ''}" data-action="pause">
             Pause
@@ -112,7 +117,8 @@ export class RealTimeSpectrumAnalyzer extends Equipment {
     this.domCache['controls'] = parentDom.querySelector('.spec-a-controls') as HTMLElement;
     this.domCache['canvas'] = parentDom.querySelector(`#specA${this.unit}`) as HTMLCanvasElement;
     this.domCache['span'] = parentDom.querySelector('.spec-a-span') as HTMLElement;
-    this.domCache['modeButton'] = parentDom.querySelector('.btn-mode') as HTMLElement;
+    this.domCache['ifRfModeButton'] = parentDom.querySelector(`#btn-mode-if-rf`) as HTMLCanvasElement;
+    this.domCache['screenModeButton'] = parentDom.querySelector('#btn-mode-screen') as HTMLCanvasElement;
     this.domCache['pauseButton'] = parentDom.querySelector('.btn-pause') as HTMLElement;
 
     return parentDom;
@@ -128,8 +134,11 @@ export class RealTimeSpectrumAnalyzer extends Equipment {
         case 'config':
           this.openConfig();
           break;
-        case 'mode':
-          this.toggleMode();
+        case 'ifRfMode':
+          this.toggleIfRfMode();
+          break;
+        case 'screenMode':
+          this.toggleScreenMode();
           break;
         case 'pause':
           this.togglePause();
@@ -186,7 +195,19 @@ export class RealTimeSpectrumAnalyzer extends Equipment {
 
     this.spectralDensity = new SpectralDensityPlot(this.domCache['canvas'] as HTMLCanvasElement, this.antenna, this);
     this.waterfall = new WaterfallDisplay(this.domCache['canvas'] as HTMLCanvasElement, this.antenna, this);
-    this.screen = this.waterfall;
+
+    switch (this.state.screenMode) {
+      case 'spectralDensity':
+        this.screen = this.spectralDensity;
+        break;
+      case 'waterfall':
+        this.screen = this.waterfall;
+        break;
+      case 'both':
+        // For simplicity, default to spectralDensity if both is selected
+        this.screen = this.spectralDensity;
+        break;
+    }
 
     // Set initial state
     this.updateScreenState();
@@ -260,20 +281,50 @@ export class RealTimeSpectrumAnalyzer extends Equipment {
     this.configPanel.open();
   }
 
-  private toggleMode(): void {
+  private toggleIfRfMode(): void {
     this.state.isRfMode = !this.state.isRfMode;
 
-    this.updateModeButton();
+    this.updateIfRfModeButton();
 
-    this.emit(Events.SPEC_A_MODE_CHANGED, {
+    this.emit(Events.SPEC_A_IF_RF_MODE_CHANGED, {
       unit: this.unit,
       isRfMode: this.state.isRfMode,
     });
   }
 
-  private updateModeButton(): void {
-    this.domCache['modeButton'].textContent = this.state.isRfMode ? 'RF' : 'IF';
-    this.domCache['modeButton'].classList.toggle('active', this.state.isRfMode);
+  private updateIfRfModeButton(): void {
+    this.domCache['ifRfModeButton'].textContent = this.state.isRfMode ? 'RF' : 'IF';
+    this.domCache['ifRfModeButton'].classList.toggle('active', this.state.isRfMode);
+  }
+
+  private toggleScreenMode(): void {
+    const currentScreenMode = this.state.screenMode;
+    if (currentScreenMode === 'spectralDensity') {
+      this.state.screenMode = 'waterfall';
+      this.screen = this.waterfall;
+    } else if (currentScreenMode === 'waterfall') {
+      this.state.screenMode = 'both';
+      this.screen = this.spectralDensity; // Default to spectralDensity for simplicity
+    } else {
+      this.state.screenMode = 'spectralDensity';
+      this.screen = this.spectralDensity;
+    }
+
+    this.updateScreenModeButton();
+  }
+
+  private updateScreenModeButton(): void {
+    switch (this.state.screenMode) {
+      case 'spectralDensity':
+        this.domCache['screenModeButton'].textContent = 'Spectral Density';
+        break;
+      case 'waterfall':
+        this.domCache['screenModeButton'].textContent = 'Waterfall';
+        break;
+      case 'both':
+        this.domCache['screenModeButton'].textContent = 'Both';
+        break;
+    }
   }
 
   private togglePause(): void {
@@ -281,7 +332,7 @@ export class RealTimeSpectrumAnalyzer extends Equipment {
 
     this.updatePauseButton();
 
-    this.emit(Events.SPEC_A_MODE_CHANGED, {
+    this.emit(Events.SPEC_A_IF_RF_MODE_CHANGED, {
       unit: this.unit,
       isPaused: this.state.isPaused,
     });
@@ -306,7 +357,7 @@ export class RealTimeSpectrumAnalyzer extends Equipment {
       <div>Ant: ${this.state.antenna_id}</div>
     `;
 
-    this.updateModeButton();
+    this.updateIfRfModeButton();
     this.updatePauseButton();
   }
 }

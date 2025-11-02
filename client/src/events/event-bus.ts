@@ -23,7 +23,7 @@ export interface EventMap {
   [Events.RX_ACTIVE_MODEM_CHANGED]: [RxActiveModemChangedData];
 
   [Events.SPEC_A_CONFIG_CHANGED]: [Partial<RealTimeSpectrumAnalyzerState>];
-  [Events.SPEC_A_MODE_CHANGED]: [Partial<RealTimeSpectrumAnalyzerState>];
+  [Events.SPEC_A_IF_RF_MODE_CHANGED]: [Partial<RealTimeSpectrumAnalyzerState>];
 
   [Events.ROUTE_CHANGED]: [{ path: string }];
 

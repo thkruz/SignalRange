@@ -2,8 +2,8 @@ import { EventBus, EventMap } from '../events/event-bus';
 import { Events } from '../events/events';
 import { AntennaState } from './antenna/antenna';
 import './equipment.css';
+import { RealTimeSpectrumAnalyzerState } from './real-time-spectrum-analyzer/real-time-spectrum-analyzer';
 import { ReceiverState } from './receiver/receiver';
-import { SpectrumAnalyzerState } from './spectrum-analyzer/spectrum-analyzer';
 import { TransmitterState } from './transmitter/transmitter';
 
 /**
@@ -15,7 +15,7 @@ export abstract class Equipment {
   protected readonly unit: number;
   protected readonly teamId: number;
   /** Current equipment state.*/
-  abstract state: AntennaState | ReceiverState | TransmitterState | SpectrumAnalyzerState;
+  abstract state: AntennaState | ReceiverState | TransmitterState | RealTimeSpectrumAnalyzerState;
 
   private isInitialized: boolean = false;
   protected domCache: { [key: string]: HTMLElement } = {};

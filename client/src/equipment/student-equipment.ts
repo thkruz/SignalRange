@@ -1,7 +1,7 @@
 import { html } from '../utils';
 import { Antenna } from './antenna/antenna';
+import { RealTimeSpectrumAnalyzer } from './real-time-spectrum-analyzer/real-time-spectrum-analyzer';
 import { Receiver } from './receiver/receiver';
-import { SpectrumAnalyzer } from './spectrum-analyzer/spectrum-analyzer';
 import './student-equipment.css';
 import { Transmitter } from './transmitter/transmitter';
 
@@ -11,7 +11,7 @@ import { Transmitter } from './transmitter/transmitter';
  */
 export class StudentEquipment {
   private readonly element: HTMLElement;
-  readonly spectrumAnalyzers: SpectrumAnalyzer[] = [];
+  readonly spectrumAnalyzers: RealTimeSpectrumAnalyzer[] = [];
   readonly antennas: Antenna[] = [];
   readonly transmitters: Transmitter[] = [];
   readonly receivers: Receiver[] = [];
@@ -35,7 +35,7 @@ export class StudentEquipment {
     requestAnimationFrame(() => this.gameLoop());
     this.updateEquipment();
     this.spectrumAnalyzers.forEach(specA => {
-      specA.screen?.draw();
+      specA.draw();
     });
   }
 
@@ -103,7 +103,7 @@ export class StudentEquipment {
     // First two use antenna 1, next two use antenna 2
     for (let i = 1; i <= (this.isFullEquipmentSuite ? 4 : 2); i++) {
       const antennaId = i <= 2 ? 1 : 2;
-      const specA = new SpectrumAnalyzer(`specA${i}-container`, i, 1, this.antennas[antennaId - 1]);
+      const specA = new RealTimeSpectrumAnalyzer(`specA${i}-container`, i, 1, this.antennas[antennaId - 1]);
       this.spectrumAnalyzers.push(specA);
     }
 

@@ -4,10 +4,11 @@ import { html } from '../../utils';
 import { Antenna } from '../antenna/antenna';
 import { Equipment } from '../equipment';
 import { AnalyzerControl } from "./analyzer-control";
-import './spectrum-analyzer.css';
-import { SpectrumScreen } from './spectrum-screen';
+import './real-time-spectrum-analyzer.css';
+import { SpectralDensityPlot } from './rtsa-screen/spectral-density-plot';
+import { WaterfallDisplay } from "./rtsa-screen/waterfall-display";
 
-export interface SpectrumAnalyzerState {
+export interface RealTimeSpectrumAnalyzerState {
   unit: number; // 1-4
   team_id: number;
   antenna_id: number;
@@ -29,11 +30,11 @@ export interface SpectrumAnalyzerState {
  * SpectrumAnalyzer - Configuration and settings manager
  * Delegates all rendering to SpectrumScreen for separation of concerns
  */
-export class SpectrumAnalyzer extends Equipment {
-  state: SpectrumAnalyzerState;
+export class RealTimeSpectrumAnalyzer extends Equipment {
+  state: RealTimeSpectrumAnalyzerState;
 
   // Screen renderer
-  screen: SpectrumScreen | null = null;
+  screen: SpectralDensityPlot | WaterfallDisplay | null = null;
 
   // Antenna reference
   private readonly antenna: Antenna;
@@ -42,6 +43,8 @@ export class SpectrumAnalyzer extends Equipment {
   private readonly minDecibels: number = -120;
   private readonly maxDecibels: number = -80;
   private readonly noiseFloor: number = -115;
+  spectralDensity: SpectralDensityPlot | null = null;
+  waterfall: WaterfallDisplay | null = null;
 
   constructor(parentId: string, unit: number, teamId: number = 1, antenna: Antenna) {
     super(parentId, unit, teamId);
@@ -111,9 +114,6 @@ export class SpectrumAnalyzer extends Equipment {
     this.domCache['modeButton'] = parentDom.querySelector('.btn-mode') as HTMLElement;
     this.domCache['pauseButton'] = parentDom.querySelector('.btn-pause') as HTMLElement;
 
-    // initialize screen
-    this.initializeScreen();
-
     return parentDom;
   }
 
@@ -181,18 +181,11 @@ export class SpectrumAnalyzer extends Equipment {
   }
 
   protected initialize(): void {
-    if (this.screen) {
-      this.screen.start();
-    }
-  }
-
-  /**
-   * Initialize the screen renderer
-   */
-  private initializeScreen(): void {
     if (!this.domCache['canvas']) throw new Error('Canvas element not found for Spectrum Analyzer');
 
-    this.screen = new SpectrumScreen(this.domCache['canvas'] as HTMLCanvasElement, this.antenna, this);
+    this.spectralDensity = new SpectralDensityPlot(this.domCache['canvas'] as HTMLCanvasElement, this.antenna, this);
+    this.waterfall = new WaterfallDisplay(this.domCache['canvas'] as HTMLCanvasElement, this.antenna, this);
+    this.screen = this.waterfall;
 
     // Set initial state
     this.updateScreenState();
@@ -214,32 +207,36 @@ export class SpectrumAnalyzer extends Equipment {
    * Public API Methods
    */
 
-  public sync(spectrumAnalyzerState: SpectrumAnalyzerState): void {
+  public sync(spectrumAnalyzerState: RealTimeSpectrumAnalyzerState): void {
     this.state = { ...this.state, ...spectrumAnalyzerState };
-    this.updateScreenState();
-    this.updateDisplay();
+    this.syncDomWithState();
   }
 
   public update(): void {
-    if (this.screen && !this.state.isPaused) {
-      this.screen.update();
+    this.updateScreenState();
+    if (!this.state.isPaused) {
+      this.screen!.update();
     }
   }
 
-  public getConfig(): SpectrumAnalyzerState {
+  public draw(): void {
+    if (!this.state.isPaused) {
+      this.screen!.draw();
+    }
+  }
+
+  public getConfig(): RealTimeSpectrumAnalyzerState {
     return { ...this.state };
   }
 
   public changeCenterFreq(freq: number): void {
     this.state.centerFrequency = freq as Hertz;
-    this.updateScreenState();
-    this.updateDisplay();
+    this.syncDomWithState();
   }
 
   public changeBandwidth(freqSpan: number): void {
     this.state.span = freqSpan as Hertz;
-    this.updateScreenState();
-    this.updateDisplay();
+    this.syncDomWithState();
   }
 
   public resetHoldData(): void {
@@ -302,11 +299,10 @@ export class SpectrumAnalyzer extends Equipment {
 
   private updateFrequency(frequency: Hertz): void {
     this.state.centerFrequency = frequency;
-    this.updateScreenState();
-    this.updateDisplay();
+    this.syncDomWithState();
   }
 
-  private updateDisplay(): void {
+  private syncDomWithState(): void {
     // Update header span
     this.domCache['span'].textContent = `Span: ${this.state.span / 1e6} MHz`;
 
@@ -318,40 +314,5 @@ export class SpectrumAnalyzer extends Equipment {
 
     this.updateModeButton();
     this.updatePauseButton();
-  }
-
-  /**
-   * Static Utility Methods (kept for backward compatibility)
-   */
-
-  public static getFreqBandInfo(band: string): { minFreq: number; maxFreq: number } {
-    const freqBands: Record<string, { minFreq: number; maxFreq: number }> = {
-      hf: { minFreq: 3e6, maxFreq: 30e6 },
-      vhf: { minFreq: 30e6, maxFreq: 300e6 },
-      uhf: { minFreq: 300e6, maxFreq: 3e9 },
-      l: { minFreq: 1e9, maxFreq: 2e9 },
-      s: { minFreq: 2e9, maxFreq: 4e9 },
-      c: { minFreq: 4e9, maxFreq: 8e9 },
-      x: { minFreq: 8e9, maxFreq: 12e9 },
-      ku: { minFreq: 12e9, maxFreq: 18e9 },
-      k: { minFreq: 18e9, maxFreq: 27e9 },
-      ka: { minFreq: 27e9, maxFreq: 40e9 },
-    };
-
-    if (!freqBands[band]) {
-      throw new Error(`Invalid frequency band: ${band}`);
-    }
-
-    return freqBands[band];
-  }
-
-  /**
-   * Cleanup
-   */
-  public dispose(): void {
-    if (this.screen) {
-      this.screen.dispose();
-      this.screen = null;
-    }
   }
 }

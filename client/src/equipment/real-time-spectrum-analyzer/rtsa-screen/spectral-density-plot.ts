@@ -1,23 +1,15 @@
-import { SATELLITES } from "../../constants";
-import { Hertz, IfFrequency, IfSignal, MHz, RfFrequency, RfSignal } from "../../types";
-import { Antenna } from '../antenna/antenna';
-import { SpectrumAnalyzer } from "./spectrum-analyzer";
+import { SATELLITES } from "../../../constants";
+import { Hertz, IfFrequency, IfSignal, MHz, RfFrequency, RfSignal } from "../../../types";
+import { Antenna } from '../../antenna/antenna';
+import { RealTimeSpectrumAnalyzer } from "../real-time-spectrum-analyzer";
+import { RTSAScreen } from "./rtsa-screen";
 
 /**
  * SpectrumScreen - Handles all canvas rendering and signal visualization
  * Separated from SpectrumAnalyzer to maintain single responsibility
  */
-export class SpectrumScreen {
-  // Canvas elements
-  private readonly canvas: HTMLCanvasElement;
-  private readonly ctx: CanvasRenderingContext2D;
-
-  // Canvas dimensions
-  private width: number = 1600;
-  private height: number = 400;
-
+export class SpectralDensityPlot extends RTSAScreen {
   // Animation
-  private animationId: number | null = null;
   private running: boolean = false;
   private lastDrawTime: number = 0;
 
@@ -34,30 +26,15 @@ export class SpectrumScreen {
   private readonly range: number;
   private readonly decibelShift: number;
 
-  // Spectrum Analyzer
-  private readonly specA: SpectrumAnalyzer;
-
   // Antenna reference
-  private readonly antenna: Antenna;
   private readonly upconvertOffset: number = 3350e6;
   private readonly downconvertOffset: number = 3500e6;
 
   // Colors
   private readonly noiseColor: string = '#0bf';
 
-  // Resize handler
-  private resizeHandler: (() => void) | null = null;
-
-  constructor(canvas: HTMLCanvasElement, antenna: Antenna, specA: SpectrumAnalyzer) {
-    this.canvas = canvas;
-    this.antenna = antenna;
-    this.specA = specA;
-
-    const context = this.canvas.getContext('2d');
-    if (!context) {
-      throw new Error('Failed to get canvas 2D context');
-    }
-    this.ctx = context;
+  constructor(canvas: HTMLCanvasElement, antenna: Antenna, specA: RealTimeSpectrumAnalyzer) {
+    super(canvas, antenna, specA);
 
     // Initialize typed arrays
     this.data = new Float32Array(this.width);
@@ -70,27 +47,21 @@ export class SpectrumScreen {
 
     this.setupResizeHandler();
     this.resize();
-  }
 
-  /**
-   * Public API Methods
-   */
+    // Reallocate typed arrays
+    this.data = new Float32Array(this.width);
+    this.noiseData = new Float32Array(this.width);
+    this.maxHoldData = new Float32Array(this.width);
 
-  public start(): void {
-    if (this.running) return;
+    // Reallocate typed arrays
+    this.data = new Float32Array(this.width);
+    this.noiseData = new Float32Array(this.width);
+    this.maxHoldData = new Float32Array(this.width);
 
     // Start after a random delay to stagger multiple analyzers
     setTimeout(() => {
       this.running = true;
     }, Math.random() * 1000);
-  }
-
-  public stop(): void {
-    if (this.animationId) {
-      cancelAnimationFrame(this.animationId);
-      this.animationId = null;
-    }
-    this.running = false;
   }
 
   public setFrequencyRange(minFreq: Hertz, maxFreq: Hertz): void {
@@ -100,14 +71,6 @@ export class SpectrumScreen {
 
   public resetMaxHold(): void {
     this.maxHoldData = new Float32Array(this.width);
-  }
-
-  public dispose(): void {
-    this.stop();
-    if (this.resizeHandler) {
-      window.removeEventListener('resize', this.resizeHandler);
-      this.resizeHandler = null;
-    }
   }
 
   /**
@@ -162,7 +125,7 @@ export class SpectrumScreen {
       if (!this.antenna.state.isLocked || !this.antenna.state.isOperational) return;
 
       if (this.specA.state.isShowSignals) {
-        color = SpectrumScreen.getRandomRgb(i);
+        color = SpectralDensityPlot.getRandomRgb(i);
       }
 
       if (this.specA.state.isRfMode) {
@@ -454,73 +417,5 @@ export class SpectrumScreen {
       y = 0;
     }
     return y;
-  }
-
-  /**
-   * Canvas Management
-   */
-
-  private setupResizeHandler(): void {
-    this.resizeHandler = () => {
-      if (this.canvas.parentElement) {
-        const newWidth = this.canvas.parentElement.offsetWidth - 6;
-        if (newWidth !== this.canvas.width) {
-          this.resize();
-        }
-      }
-    };
-    window.addEventListener('resize', this.resizeHandler);
-  }
-
-  private resize(): void {
-    if (!this.canvas.parentElement) return;
-
-    const newWidth = Math.max(this.canvas.parentElement.offsetWidth - 6, 10);
-    const newHeight = Math.max(newWidth, 10); // Square aspect ratio
-
-    if (newWidth !== this.width || newHeight !== this.height) {
-      this.width = newWidth;
-      this.height = newHeight;
-      this.canvas.width = this.width;
-      this.canvas.height = this.height;
-
-      // Reallocate typed arrays
-      this.data = new Float32Array(this.width);
-      this.noiseData = new Float32Array(this.width);
-      this.maxHoldData = new Float32Array(this.width);
-    }
-  }
-
-  /**
-   * Static Utility Methods
-   */
-
-  public static rgb2hex(rgb: number[]): string {
-    return '#' + rgb.map(x => {
-      const hex = x.toString(16);
-      return hex.length === 1 ? '0' + hex : hex;
-    }).join('');
-  }
-
-  public static getRandomRgb(i: number): string {
-    let rgb = [255, 0, 0];
-    if (i % 3 === 0) {
-      rgb[0] = 255;
-      rgb[1] = (i * 32) % 255;
-      rgb[2] = (i * 64) % 255;
-    } else if (i % 3 === 1) {
-      rgb[0] = (i * 64) % 255;
-      rgb[1] = (i * 32) % 255;
-      rgb[2] = 255;
-    } else if (i % 3 === 2) {
-      rgb[0] = (i * 32) % 255;
-      rgb[1] = 255;
-      rgb[2] = (i * 64) % 255;
-    } else {
-      rgb[0] = 255;
-      rgb[1] = 255;
-      rgb[2] = 255;
-    }
-    return SpectrumScreen.rgb2hex(rgb);
   }
 }

@@ -1,5 +1,5 @@
 import { AntennaState } from "../equipment/antenna/antenna";
-import { SpectrumAnalyzerState } from "../equipment/spectrum-analyzer/spectrum-analyzer";
+import { RealTimeSpectrumAnalyzerState } from "../equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer";
 import { Logger } from "../logging/logger";
 import { AntennaErrorData, AntennaHpaChangedData, AntennaLockedData, AntennaLoopbackChangedData, AntennaPowerChangedData, AntennaTrackChangedData, Events, RxActiveModemChangedData, RxConfigChangedData, RxSignalFoundData, RxSignalLostData, TxActiveModemChangedData, TxConfigChangedData, TxErrorData, TxTransmitChangedData } from "./events";
 
@@ -22,8 +22,8 @@ export interface EventMap {
   [Events.RX_SIGNAL_LOST]: [RxSignalLostData];
   [Events.RX_ACTIVE_MODEM_CHANGED]: [RxActiveModemChangedData];
 
-  [Events.SPEC_A_CONFIG_CHANGED]: [Partial<SpectrumAnalyzerState>];
-  [Events.SPEC_A_MODE_CHANGED]: [Partial<SpectrumAnalyzerState>];
+  [Events.SPEC_A_CONFIG_CHANGED]: [Partial<RealTimeSpectrumAnalyzerState>];
+  [Events.SPEC_A_MODE_CHANGED]: [Partial<RealTimeSpectrumAnalyzerState>];
 
   [Events.ROUTE_CHANGED]: [{ path: string }];
 

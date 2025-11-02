@@ -1,6 +1,6 @@
 import { AntennaState } from '../equipment/antenna/antenna';
+import { RealTimeSpectrumAnalyzerState } from '../equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer';
 import { ReceiverState } from '../equipment/receiver/receiver';
-import { SpectrumAnalyzerState } from '../equipment/spectrum-analyzer/spectrum-analyzer';
 import type { StudentEquipment } from '../equipment/student-equipment';
 import { TransmitterState } from '../equipment/transmitter/transmitter';
 import { Logger } from '../logging/logger';
@@ -167,7 +167,7 @@ export class SyncManager {
 
     // Sync Spectrum Analyzers
     if (state.equipment.spectrumAnalyzersState) {
-      state.equipment.spectrumAnalyzersState.forEach((storedSa: SpectrumAnalyzerState) => {
+      state.equipment.spectrumAnalyzersState.forEach((storedSa: RealTimeSpectrumAnalyzerState) => {
         const localSa = this.equipment!.spectrumAnalyzers.find(
           sa => sa.state.unit === storedSa.unit
         );
@@ -211,7 +211,7 @@ export class SyncManager {
  */
 export interface AppState {
   equipment?: {
-    spectrumAnalyzersState?: SpectrumAnalyzerState[];
+    spectrumAnalyzersState?: RealTimeSpectrumAnalyzerState[];
     antennasState?: AntennaState[];
     transmittersState?: TransmitterState[];
     receiversState?: ReceiverState[];

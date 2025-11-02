@@ -4,10 +4,10 @@ import { Events } from '../../events/events';
 import { Hertz } from '../../types';
 import { html, qs, qsa } from '../../utils';
 import './analyzer-control.css';
-import { SpectrumAnalyzer } from './spectrum-analyzer';
+import { RealTimeSpectrumAnalyzer } from './real-time-spectrum-analyzer';
 
 export interface AnalyzerControlOptions {
-  spectrumAnalyzer: SpectrumAnalyzer;
+  spectrumAnalyzer: RealTimeSpectrumAnalyzer;
   onClose?: () => void;
 }
 
@@ -17,7 +17,7 @@ export interface AnalyzerControlOptions {
  * Numbers must be "pressed" rather than typed, mimicking physical equipment
  */
 export class AnalyzerControl extends BaseElement {
-  private readonly specA: SpectrumAnalyzer;
+  private readonly specA: RealTimeSpectrumAnalyzer;
   private onCloseCallback?: () => void;
 
   // Display state

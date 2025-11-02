@@ -1,5 +1,6 @@
 import { RfSignal } from './../types';
 import { defaultSignalData } from "./default-signal-data";
+import { PerlinNoise } from './perlin-noise';
 
 export class SimulationManager {
   private static instance: SimulationManager;
@@ -40,11 +41,19 @@ export class SimulationManager {
     // Return signals within the specified frequency range
     const satelliteSignals = this.satelliteSignals.filter(() => {
       // Make signals intermittent
-      if (Math.random() < 0.2) {
+      if (Math.random() < 0.01) {
         return false;
       }
 
       return true;
+    }).map(signal => {
+      // Slightly vary signal amplitude
+      const time = Date.now() / 1000 + Math.random() * 1000;
+      const variation = (PerlinNoise.getInstance(signal.id.toString()).get(time) * 2 - 1) * 2; // +/-2 dB, smoother variation
+      return {
+        ...signal,
+        power: signal.power + variation
+      };
     });
 
     const allSignals = [...satelliteSignals, ...this.userSignals];

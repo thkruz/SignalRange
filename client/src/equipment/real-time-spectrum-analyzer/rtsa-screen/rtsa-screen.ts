@@ -9,8 +9,8 @@ export abstract class RTSAScreen {
   protected readonly specA: RealTimeSpectrumAnalyzer;
 
   // Canvas dimensions
-  protected width: number = 1600;
-  protected height: number = 400;
+  protected width: number = 600;
+  protected height: number = 300;
 
   constructor(canvas: HTMLCanvasElement, antenna: Antenna, specA: RealTimeSpectrumAnalyzer) {
     this.canvas = canvas;
@@ -32,37 +32,7 @@ export abstract class RTSAScreen {
    * Canvas Management
    */
 
-  protected setupResizeHandler(): void {
-    this.resizeHandler = () => {
-      if (this.canvas.parentElement) {
-        const newWidth = this.canvas.parentElement.offsetWidth - 6;
-        if (newWidth !== this.canvas.width) {
-          this.resize();
-        }
-      }
-    };
-    window.addEventListener('resize', this.resizeHandler);
-  }
-
-  // Resize handler
-  private resizeHandler: (() => void) | null = null;
-
-  protected resize(): boolean {
-    if (!this.canvas.parentElement) return false;
-
-    const newWidth = Math.max(this.canvas.parentElement.offsetWidth - 6, 10);
-    const newHeight = Math.max(newWidth, 10); // Square aspect ratio
-
-    if (newWidth !== this.width || newHeight !== this.height) {
-      this.width = newWidth;
-      this.height = newHeight;
-      this.canvas.width = this.width;
-      this.canvas.height = this.height;
-      return true;
-    }
-
-    return false;
-  }
+  protected abstract resize(): void;
 
   /**
    * Static Utility Methods

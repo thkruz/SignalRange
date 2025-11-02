@@ -45,7 +45,7 @@ export class SpectralDensityPlot extends RTSAScreen {
     this.range = this.specA.state.minDecibels - this.specA.state.maxDecibels;
     this.decibelShift = 0 - this.specA.state.minDecibels;
 
-    this.setupResizeHandler();
+    window.addEventListener('resize', this.resize.bind(this));
     this.resize();
 
     // Reallocate typed arrays
@@ -417,5 +417,24 @@ export class SpectralDensityPlot extends RTSAScreen {
       y = 0;
     }
     return y;
+  }
+
+  protected resize(): void {
+    if (!this.canvas.parentElement) return;
+
+    const newWidth = Math.max(this.canvas.parentElement.offsetWidth - 6, 10);
+    const newHeight = Math.max(newWidth, 10); // Square aspect ratio
+
+    if (newWidth !== this.width || newHeight !== this.height) {
+      this.width = newWidth;
+      this.height = newHeight;
+      this.canvas.width = this.width;
+      this.canvas.height = this.height;
+
+      // Reallocate buffers to match new dimensions
+      this.data = new Float32Array(this.width);
+      this.noiseData = new Float32Array(this.width);
+      this.maxHoldData = new Float32Array(this.width);
+    }
   }
 }

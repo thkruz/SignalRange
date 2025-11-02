@@ -9,7 +9,7 @@ export class WaterfallDisplay extends RTSAScreen {
   private lastDrawTime: number = 0;
 
   // Waterfall buffer: each row is a Float32Array of amplitudes
-  private readonly buffer: Float32Array[] = [];
+  private buffer: Float32Array[] = [];
   private readonly bufferSize: number;
 
   // ImageData for efficient pixel manipulation
@@ -27,7 +27,7 @@ export class WaterfallDisplay extends RTSAScreen {
   maxFreq: Hertz = 0 as Hertz;
 
   // Color cache for performance
-  private colorCache: Map<number, [number, number, number]> = new Map();
+  private readonly colorCache: Map<number, [number, number, number]> = new Map();
   private readonly COLOR_CACHE_STEPS = 256;
 
   constructor(canvas: HTMLCanvasElement, antenna: Antenna, specA: RealTimeSpectrumAnalyzer) {
@@ -48,7 +48,7 @@ export class WaterfallDisplay extends RTSAScreen {
     // Pre-compute color lookup table
     this.initializeColorCache();
 
-    this.setupResizeHandler();
+    window.addEventListener('resize', this.resize.bind(this));
     this.resize();
 
     setTimeout(() => {
@@ -66,16 +66,23 @@ export class WaterfallDisplay extends RTSAScreen {
     }
   }
 
+  private initializeBuffer(): void {
+    // Create buffer with exact height rows
+    this.buffer = [];
+    for (let i = 0; i < this.height; i++) {
+      const row = new Float32Array(this.width);
+      // Initialize with noise floor instead of min decibels so it shows something
+      row.fill(this.specA.state.noiseFloor);
+      this.buffer.push(row);
+    }
+  }
+
   public setFrequencyRange(minFreq: Hertz, maxFreq: Hertz): void {
     this.minFreq = minFreq;
     this.maxFreq = maxFreq;
   }
 
   public update(): void {
-    // Empty - we do everything in draw() for waterfall
-  }
-
-  public draw(): void {
     if (!this.specA.state.isPaused && this.running) {
       const now = Date.now();
       if (now - this.lastDrawTime > 1000 / this.specA.state.refreshRate) {
@@ -90,16 +97,20 @@ export class WaterfallDisplay extends RTSAScreen {
           row[x] = Math.max(this.noiseData[x], this.data[x]);
         }
 
-        // Scroll buffer up, add new row at bottom
-        this.buffer.shift();
-        this.buffer.push(row);
+        // Scroll buffer DOWN: remove oldest (bottom), add newest (top)
+        this.buffer.pop();      // Remove oldest from bottom
+        this.buffer.unshift(row); // Add newest to top
+      }
+    }
+  }
 
+  public draw(): void {
+    if (!this.specA.state.isPaused && this.running) {
+      const now = Date.now();
+      if (now - this.lastDrawTime > 1000 / this.specA.state.refreshRate) {
         // Draw the entire waterfall using ImageData
         this.renderWaterfallToImageData();
         this.ctx.putImageData(this.imageData, 0, 0);
-
-        // Draw grid overlay
-        this.drawGridOverlay(this.ctx);
 
         this.lastDrawTime = now;
       }
@@ -111,7 +122,10 @@ export class WaterfallDisplay extends RTSAScreen {
     const maxDb = this.specA.state.maxDecibels;
     const range = maxDb - minDb;
 
-    for (let y = 0; y < this.bufferSize; y++) {
+    // Make sure we're rendering exactly height rows
+    const rowsToRender = Math.min(this.buffer.length, this.height);
+
+    for (let y = 0; y < rowsToRender; y++) {
       const rowData = this.buffer[y];
       const rowOffset = y * this.width * 4; // 4 bytes per pixel (RGBA)
 
@@ -128,6 +142,18 @@ export class WaterfallDisplay extends RTSAScreen {
         this.pixels[pixelOffset + 1] = color[1]; // G
         this.pixels[pixelOffset + 2] = color[2]; // B
         this.pixels[pixelOffset + 3] = 255;      // A
+      }
+    }
+
+    // Fill any remaining rows (shouldn't happen, but just in case)
+    for (let y = rowsToRender; y < this.height; y++) {
+      const rowOffset = y * this.width * 4;
+      for (let x = 0; x < this.width; x++) {
+        const pixelOffset = rowOffset + x * 4;
+        this.pixels[pixelOffset] = 0;     // R
+        this.pixels[pixelOffset + 1] = 0; // G
+        this.pixels[pixelOffset + 2] = 0; // B
+        this.pixels[pixelOffset + 3] = 255; // A
       }
     }
   }
@@ -192,40 +218,24 @@ export class WaterfallDisplay extends RTSAScreen {
     return ((bw / (maxFreq - minFreq)) * this.width) / 2;
   }
 
-  private drawGridOverlay(ctx: CanvasRenderingContext2D): void {
-    ctx.globalAlpha = 0.1;
-    ctx.strokeStyle = 'white';
-    ctx.lineWidth = 1;
-
-    // Vertical lines
-    ctx.beginPath();
-    for (let x = 0; x < this.width; x += this.width / 10) {
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, this.height);
-    }
-    ctx.stroke();
-
-    // Horizontal lines
-    ctx.beginPath();
-    for (let y = 0; y < this.height; y += this.height / 10) {
-      ctx.moveTo(0, y);
-      ctx.lineTo(this.width, y);
-    }
-    ctx.stroke();
-
-    ctx.globalAlpha = 1.0;
-  }
-
   private createNoise(data: Float32Array): Float32Array {
     const base = this.specA.state.noiseFloor;
     const len = data.length;
     const time = performance.now() / 1000;
 
     for (let x = 0; x < len; x++) {
+      // Add more randomness to phase and amplitude for each iteration
+      const randPhase1 = Math.random() * Math.PI * 2;
+      const randPhase2 = Math.random() * Math.PI * 2;
+      const randPhase3 = Math.random() * Math.PI * 2;
+      const randAmp1 = 0.8 + Math.random() * 0.4;
+      const randAmp2 = 1.2 + Math.random() * 0.6;
+      const randAmp3 = 0.2 + Math.random() * 0.4;
+
       let noise = base + (Math.random() - 0.5) * 3;
-      noise += Math.sin((x / 50) + time) * 1.0;
-      noise += Math.sin((x / 400) + time / 10) * 1.5;
-      noise += Math.sin((x * 2 + time * 10)) * 0.3;
+      noise += Math.sin((x / 50) + time + randPhase1) * randAmp1;
+      noise += Math.sin((x / 400) + time / 10 + randPhase2) * randAmp2;
+      noise += Math.sin((x * 2 + time * 10 + randPhase3)) * randAmp3;
 
       if (Math.random() > 0.999) {
         noise += 3 + Math.random() * 3;
@@ -278,24 +288,23 @@ export class WaterfallDisplay extends RTSAScreen {
 
     let norm = (amplitude - minDb) / (maxDb - minDb);
     norm = Math.max(0, Math.min(1, norm));
-    norm = Math.pow(norm, 0.8);
 
-    const brightness = 0.85;
+    const brightness = 1;
 
-    if (norm < 0.2) {
+    if (norm < 0.1) {
       const t = norm / 0.2;
       return [0, 0, Math.floor((20 + 80 * t) * brightness)];
     } else if (norm < 0.4) {
       const t = (norm - 0.2) / 0.2;
       return [0, Math.floor(100 * t * brightness), Math.floor((100 + 100 * t) * brightness)];
-    } else if (norm < 0.6) {
+    } else if (norm < 0.3) {
       const t = (norm - 0.4) / 0.2;
       return [
         Math.floor(128 * t * brightness),
         Math.floor((100 + 155 * t) * brightness),
         Math.floor(200 * (1 - t) * brightness)
       ];
-    } else if (norm < 0.8) {
+    } else if (norm < 0.6) {
       const t = (norm - 0.6) / 0.2;
       return [
         Math.floor((128 + 127 * t) * brightness),
@@ -312,13 +321,22 @@ export class WaterfallDisplay extends RTSAScreen {
     }
   }
 
-  // Update resize handler to recreate ImageData
   protected override resize(): boolean {
-    const isResizing = super.resize();
+    if (!this.canvas.parentElement) return false;
 
-    if (!isResizing) {
-      return false;
+    const newWidth = Math.max(this.canvas.parentElement.offsetWidth - 6, 10);
+    const newHeight = Math.max(newWidth, 10); // Square aspect ratio
+
+    if (newWidth !== this.width || newHeight !== this.height) {
+      this.width = newWidth;
+      this.height = newHeight;
+      this.canvas.width = this.width;
+      this.canvas.height = this.height;
     }
+
+    const oldWidth = this.width;
+    const oldHeight = this.height;
+    const oldBuffer = this.buffer;
 
     // Recreate ImageData with new dimensions
     this.imageData = this.ctx.createImageData(this.width, this.height);
@@ -328,18 +346,48 @@ export class WaterfallDisplay extends RTSAScreen {
     this.data = new Float32Array(this.width);
     this.noiseData = new Float32Array(this.width);
 
-    // Resize buffer
-    while (this.buffer.length < this.height) {
-      const row = new Float32Array(this.width);
-      row.fill(this.specA.state.minDecibels);
-      this.buffer.push(row);
-    }
-    while (this.buffer.length > this.height) {
-      this.buffer.shift();
+    // Handle buffer resize intelligently
+    if (oldWidth !== this.width || oldHeight !== this.height) {
+      this.buffer = [];
+
+      // Copy and resize existing rows
+      for (let y = 0; y < this.height; y++) {
+        const newRow = new Float32Array(this.width);
+
+        if (y < oldBuffer.length && oldBuffer[y]) {
+          const oldRow = oldBuffer[y];
+
+          // If width changed, interpolate or sample the old data
+          if (oldWidth === this.width) {
+            // Same width, just copy
+            newRow.set(oldRow);
+          } else {
+            // Width changed, resample the data
+            for (let x = 0; x < this.width; x++) {
+              const oldX = (x / this.width) * oldWidth;
+              const oldXFloor = Math.floor(oldX);
+              const oldXCeil = Math.min(oldXFloor + 1, oldWidth - 1);
+              const t = oldX - oldXFloor;
+
+              // Linear interpolation between adjacent pixels
+              newRow[x] = oldRow[oldXFloor] * (1 - t) + oldRow[oldXCeil] * t;
+            }
+          }
+        } else {
+          // New row beyond old buffer, fill with noise floor
+          newRow.fill(this.specA.state.noiseFloor);
+        }
+
+        this.buffer.push(newRow);
+      }
+    } else {
+      // Dimensions unchanged, keep buffer as-is
+      this.initializeBuffer();
     }
 
     // Reinitialize color cache in case state changed
     this.initializeColorCache();
+
     return true;
   }
 }

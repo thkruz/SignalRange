@@ -85,7 +85,7 @@ export class WaterfallDisplay extends RTSAScreen {
   public update(): void {
     if (!this.specA.state.isPaused && this.running) {
       const now = Date.now();
-      if (now - this.lastDrawTime > 1000 / this.specA.state.refreshRate) {
+      if (now - this.lastDrawTime > 1000 / (this.specA.state.refreshRate * 2)) {
         // Create new row of data
         this.noiseData = this.createNoise(this.noiseData);
         this.data.fill(this.specA.state.minDecibels);
@@ -107,7 +107,7 @@ export class WaterfallDisplay extends RTSAScreen {
   public draw(): void {
     if (!this.specA.state.isPaused && this.running) {
       const now = Date.now();
-      if (now - this.lastDrawTime > 1000 / this.specA.state.refreshRate) {
+      if (now - this.lastDrawTime > 1000 / (this.specA.state.refreshRate * 2)) {
         // Draw the entire waterfall using ImageData
         this.renderWaterfallToImageData();
         this.ctx.putImageData(this.imageData, 0, 0);

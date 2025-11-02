@@ -1,6 +1,6 @@
+import { html } from "../engine/ui/utils/development/formatter";
 import { StudentEquipment } from '../equipment/student-equipment';
 import { syncEquipmentWithStore } from '../sync/storage';
-import { html } from '../utils';
 import { AbstractPage } from './abstract-page';
 
 /**

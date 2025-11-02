@@ -1,9 +1,9 @@
+import { html } from "../../engine/ui/utils/development/formatter";
 import { Events } from "../../events/events";
 import { Hertz } from "../../types";
-import { html } from '../../utils';
 import { Antenna } from '../antenna/antenna';
 import { Equipment } from '../equipment';
-import { AnalyzerControl } from "./analyzer-control";
+import { AnalyzerControlBox } from "./layers-box";
 import './real-time-spectrum-analyzer.css';
 import { SpectralDensityPlot } from './rtsa-screen/spectral-density-plot';
 import { WaterfallDisplay } from "./rtsa-screen/waterfall-display";
@@ -45,6 +45,7 @@ export class RealTimeSpectrumAnalyzer extends Equipment {
   private readonly noiseFloor: number = -115;
   spectralDensity: SpectralDensityPlot | null = null;
   waterfall: WaterfallDisplay | null = null;
+  configPanel: AnalyzerControlBox | null = null;
 
   constructor(parentId: string, unit: number, teamId: number = 1, antenna: Antenna) {
     super(parentId, unit, teamId);
@@ -255,15 +256,8 @@ export class RealTimeSpectrumAnalyzer extends Equipment {
   }
 
   private openConfigPanel(): void {
-    const control = new AnalyzerControl({
-      spectrumAnalyzer: this,
-      onClose: () => {
-        console.log('Control panel closed');
-      }
-    });
-
-    control.init();
-    control.show();
+    this.configPanel ??= new AnalyzerControlBox(this);
+    this.configPanel.open();
   }
 
   private toggleMode(): void {

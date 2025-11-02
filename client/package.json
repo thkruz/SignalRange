@@ -20,6 +20,7 @@
   "devDependencies": {
     "@babel/preset-env": "^7.28.5",
     "@babel/preset-typescript": "^7.28.5",
+    "@types/draggabilly": "^3.0.0",
     "@types/node": "^20.19.24",
     "babel-jest": "^30.2.0",
     "css-loader": "^6.8.1",
@@ -35,6 +36,7 @@
     "webpack-dev-server": "^4.15.1"
   },
   "dependencies": {
+    "draggabilly": "^3.0.0",
     "socket.io-client": "^4.5.4"
   }
 }

@@ -1,14 +1,15 @@
 import { BaseElement } from '../../components/base-element';
+import { html } from "../../engine/ui/utils/development/formatter";
+import { qs, qsa } from "../../engine/ui/utils/query-selector";
 import { EventBus } from '../../events/event-bus';
 import { Events } from '../../events/events';
 import { Hertz } from '../../types';
-import { html, qs, qsa } from '../../utils';
 import './analyzer-control.css';
 import { RealTimeSpectrumAnalyzer } from './real-time-spectrum-analyzer';
 
 export interface AnalyzerControlOptions {
+  element: HTMLElement;
   spectrumAnalyzer: RealTimeSpectrumAnalyzer;
-  onClose?: () => void;
 }
 
 /**
@@ -18,7 +19,6 @@ export interface AnalyzerControlOptions {
  */
 export class AnalyzerControl extends BaseElement {
   private readonly specA: RealTimeSpectrumAnalyzer;
-  private onCloseCallback?: () => void;
 
   // Display state
   private ghz: string = '0';
@@ -32,11 +32,13 @@ export class AnalyzerControl extends BaseElement {
   constructor(options: AnalyzerControlOptions) {
     super();
     this.specA = options.spectrumAnalyzer;
-    this.onCloseCallback = options.onClose;
+    this.element = options.element;
   }
 
   init(): void {
     this.initializeDom();
+    this.setupEventListeners();
+    this.initializeValues();
   }
 
   private initializeValues(): void {
@@ -51,141 +53,129 @@ export class AnalyzerControl extends BaseElement {
 
   initializeDom(): HTMLElement {
     this.html = html`
-      <div class="analyzer-control-overlay" id="analyzer-control-overlay">
-      <div class="analyzer-control-popup">
-        <div class="analyzer-control-grid">
-        <!-- Left Column: Display and Unit Selection -->
-        <div class="analyzer-control-display-section">
-          <div class="analyzer-control-display">
-          <div class="analyzer-control-display-values">
-            <div class="analyzer-control-display-row">
-            <span class="value" id="ghz-display">0</span>
-            <span class="unit">GHz</span>
-            </div>
-            <div class="analyzer-control-display-row">
-            <span class="value" id="mhz-display">0</span>
-            <span class="unit">MHz</span>
-            </div>
-            <div class="analyzer-control-display-row">
-            <span class="value" id="khz-display">0</span>
-            <span class="unit">KHz</span>
-            </div>
+    <div class="analyzer-control-grid">
+      <!-- Left Column: Display and Unit Selection -->
+      <div class="analyzer-control-display-section">
+        <div class="analyzer-control-display">
+        <div class="analyzer-control-display-values">
+          <div class="analyzer-control-display-row">
+          <span class="value" id="ghz-display">0</span>
+          <span class="unit">GHz</span>
           </div>
+          <div class="analyzer-control-display-row">
+          <span class="value" id="mhz-display">0</span>
+          <span class="unit">MHz</span>
           </div>
-          <div class="analyzer-control-unit-buttons">
-          <button class="physical-button unit-button" id="ghz-select" aria-label="Select GHz">
-            <span class="button-text">‹</span>
-          </button>
-          <button class="physical-button unit-button" id="mhz-select" aria-label="Select MHz">
-            <span class="button-text">‹</span>
-          </button>
-          <button class="physical-button unit-button" id="khz-select" aria-label="Select KHz">
-            <span class="button-text">‹</span>
-          </button>
+          <div class="analyzer-control-display-row">
+          <span class="value" id="khz-display">0</span>
+          <span class="unit">KHz</span>
           </div>
         </div>
-
-        <!-- Middle Column: Control Buttons (3 rows of 2) -->
-        <div class="analyzer-control-buttons">
-          <div class="control-row">
-            <button class="physical-button control-button" id="freq-button" aria-label="Frequency">
-              <span class="button-text">Freq</span>
-            </button>
-            <button class="physical-button control-button" id="span-button" aria-label="Span">
-              <span class="button-text">Span</span>
-            </button>
-          </div>
-          <div class="control-row">
-            <button class="physical-button control-button" id="trace-button" aria-label="Trace">
-              <span class="button-text">Trace</span>
-            </button>
-            <button class="physical-button control-button" id="marker-button" aria-label="Marker">
-              <span class="button-text">Marker</span>
-            </button>
-          </div>
-          <div class="control-row">
-            <button class="physical-button control-button" id="max-amp-button" aria-label="Max Amplitude">
-              <span class="button-text">Max Amp</span>
-            </button>
-            <button class="physical-button control-button" id="min-amp-button" aria-label="Min Amplitude">
-              <span class="button-text">Min Amp</span>
-            </button>
-          </div>
         </div>
-
-        <!-- Right Column: Number Pad -->
-        <div class="analyzer-control-numpad">
-          <div class="numpad-row">
-          <button class="physical-button num-button" data-value="7">
-            <span class="button-text">7</span>
-          </button>
-          <button class="physical-button num-button" data-value="8">
-            <span class="button-text">8</span>
-          </button>
-          <button class="physical-button num-button" data-value="9">
-            <span class="button-text">9</span>
-          </button>
-          </div>
-          <div class="numpad-row">
-          <button class="physical-button num-button" data-value="4">
-            <span class="button-text">4</span>
-          </button>
-          <button class="physical-button num-button" data-value="5">
-            <span class="button-text">5</span>
-          </button>
-          <button class="physical-button num-button" data-value="6">
-            <span class="button-text">6</span>
-          </button>
-          </div>
-          <div class="numpad-row">
-          <button class="physical-button num-button" data-value="1">
-            <span class="button-text">1</span>
-          </button>
-          <button class="physical-button num-button" data-value="2">
-            <span class="button-text">2</span>
-          </button>
-          <button class="physical-button num-button" data-value="3">
-            <span class="button-text">3</span>
-          </button>
-          </div>
-          <div class="numpad-row">
-          <button class="physical-button num-button" data-value="-">
-            <span class="button-text">-</span>
-          </button>
-          <button class="physical-button num-button" data-value="0">
-            <span class="button-text">0</span>
-          </button>
-          <button class="physical-button num-button" data-value=".">
-            <span class="button-text">.</span>
-          </button>
-          </div>
-          <div class="numpad-row">
-          <button class="physical-button num-button special-button" data-value="bksp">
-            <span class="button-text">bksp</span>
-          </button>
-          <button class="physical-button num-button special-button" data-value="C">
-            <span class="button-text">C</span>
-          </button>
-          </div>
-        </div>
+        <div class="analyzer-control-unit-buttons">
+        <button class="physical-button unit-button" id="ghz-select" aria-label="Select GHz">
+          <span class="button-text">‹</span>
+        </button>
+        <button class="physical-button unit-button" id="mhz-select" aria-label="Select MHz">
+          <span class="button-text">‹</span>
+        </button>
+        <button class="physical-button unit-button" id="khz-select" aria-label="Select KHz">
+          <span class="button-text">‹</span>
+        </button>
         </div>
       </div>
+
+      <!-- Middle Column: Control Buttons (3 rows of 2) -->
+      <div class="analyzer-control-buttons">
+        <div class="control-row">
+          <button class="physical-button control-button" id="freq-button" aria-label="Frequency">
+            <span class="button-text">Freq</span>
+          </button>
+          <button class="physical-button control-button" id="span-button" aria-label="Span">
+            <span class="button-text">Span</span>
+          </button>
+        </div>
+        <div class="control-row">
+          <button class="physical-button control-button" id="trace-button" aria-label="Trace">
+            <span class="button-text">Trace</span>
+          </button>
+          <button class="physical-button control-button" id="marker-button" aria-label="Marker">
+            <span class="button-text">Marker</span>
+          </button>
+        </div>
+        <div class="control-row">
+          <button class="physical-button control-button" id="max-amp-button" aria-label="Max Amplitude">
+            <span class="button-text">Max Amp</span>
+          </button>
+          <button class="physical-button control-button" id="min-amp-button" aria-label="Min Amplitude">
+            <span class="button-text">Min Amp</span>
+          </button>
+        </div>
       </div>
+
+      <!-- Right Column: Number Pad -->
+      <div class="analyzer-control-numpad">
+        <div class="numpad-row">
+        <button class="physical-button num-button" data-value="7">
+          <span class="button-text">7</span>
+        </button>
+        <button class="physical-button num-button" data-value="8">
+          <span class="button-text">8</span>
+        </button>
+        <button class="physical-button num-button" data-value="9">
+          <span class="button-text">9</span>
+        </button>
+        </div>
+        <div class="numpad-row">
+        <button class="physical-button num-button" data-value="4">
+          <span class="button-text">4</span>
+        </button>
+        <button class="physical-button num-button" data-value="5">
+          <span class="button-text">5</span>
+        </button>
+        <button class="physical-button num-button" data-value="6">
+          <span class="button-text">6</span>
+        </button>
+        </div>
+        <div class="numpad-row">
+        <button class="physical-button num-button" data-value="1">
+          <span class="button-text">1</span>
+        </button>
+        <button class="physical-button num-button" data-value="2">
+          <span class="button-text">2</span>
+        </button>
+        <button class="physical-button num-button" data-value="3">
+          <span class="button-text">3</span>
+        </button>
+        </div>
+        <div class="numpad-row">
+        <button class="physical-button num-button" data-value="-">
+          <span class="button-text">-</span>
+        </button>
+        <button class="physical-button num-button" data-value="0">
+          <span class="button-text">0</span>
+        </button>
+        <button class="physical-button num-button" data-value=".">
+          <span class="button-text">.</span>
+        </button>
+        </div>
+        <div class="numpad-row">
+        <button class="physical-button num-button special-button" data-value="bksp">
+          <span class="button-text">bksp</span>
+        </button>
+        <button class="physical-button num-button special-button" data-value="C">
+          <span class="button-text">C</span>
+        </button>
+        </div>
+      </div>
+    </div>
     `;
 
-    return super.initializeDom();
+    return super.initializeDom(this.element?.id);
   }
 
   protected setupEventListeners(): void {
     if (!this.element) return;
-
-    // Overlay click to close
-    const overlay = document.getElementById('analyzer-control-overlay');
-    overlay?.addEventListener('click', (e) => {
-      if (e.target === overlay) {
-        this.close();
-      }
-    });
 
     // Unit selection buttons (GHz, MHz, KHz)
     qs('#ghz-select', this.element)?.addEventListener('click', () => this.handleUnitSelect('ghz'));
@@ -403,22 +393,5 @@ export class AnalyzerControl extends BaseElement {
   private playSound(): void {
     // TODO: Integrate sound system when available
     // For now, this is a placeholder for the select sound
-  }
-
-  public close(): void {
-    if (this.element) {
-      this.element.remove();
-    }
-
-    if (this.onCloseCallback) {
-      this.onCloseCallback();
-    }
-  }
-
-  public show(): void {
-    // Append to body
-    document.body.appendChild(this.element!);
-    this.setupEventListeners();
-    this.initializeValues();
   }
 }

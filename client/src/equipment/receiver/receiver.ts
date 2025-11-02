@@ -1,6 +1,7 @@
+import { html } from "../../engine/ui/utils/development/formatter";
+import { qs } from "../../engine/ui/utils/query-selector";
 import { Events } from "../../events/events";
 import { FECType, Hertz, MHz, ModulationType } from "../../types";
-import { html, qs } from '../../utils';
 import { Equipment } from "../equipment";
 import { Antenna } from './../antenna/antenna';
 import './receiver.css';

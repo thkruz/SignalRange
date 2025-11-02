@@ -33,7 +33,7 @@
 /* Main Grid Layout */
 .analyzer-control-grid {
   display: flex;
-  background-color: #5a6c7d;
+  background-color: var(--colorTertiary);
   padding: 10px;
   justify-content: space-around;
   align-items: center;
@@ -51,7 +51,7 @@
 .analyzer-control-display {
   background-color: white;
   color: black;
-  border: 2px solid #3d4f5d;
+  border: 2px solid var(--color-dark-border);
   padding: 16px;
   border-radius: 4px;
   min-width: 200px;
@@ -146,7 +146,7 @@
 .physical-button {
   font-family: 'Roboto', 'Helvetica', 'Arial', sans-serif;
   cursor: pointer;
-  border: 2px solid #3d4f5d;
+  border: 2px solid var(--color-dark-border);
   border-radius: 6px;
   background: linear-gradient(180deg, #f0f0f0 0%, #c8c8c8 100%);
   color: #000;

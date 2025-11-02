@@ -1,4 +1,4 @@
-import { html } from '../utils';
+import { html } from "../engine/ui/utils/development/formatter";
 import { Antenna } from './antenna/antenna';
 import { RealTimeSpectrumAnalyzer } from './real-time-spectrum-analyzer/real-time-spectrum-analyzer';
 import { Receiver } from './receiver/receiver';

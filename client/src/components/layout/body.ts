@@ -1,4 +1,4 @@
-import { html } from '../../utils';
+import { html } from "../../engine/ui/utils/development/formatter";
 import { Component } from '../component';
 import './Body.css';
 

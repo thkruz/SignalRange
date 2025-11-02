@@ -45,6 +45,11 @@ export class WaterfallDisplay extends RTSAScreen {
     this.imageData = this.ctx.createImageData(this.width, this.height);
     this.pixels = this.imageData.data;
 
+    // Set all alpha values to 255 (opaque)
+    for (let i = 3; i < this.pixels.length; i += 4) {
+      this.pixels[i] = 255;
+    }
+
     // Pre-compute color lookup table
     this.initializeColorCache();
 
@@ -85,7 +90,7 @@ export class WaterfallDisplay extends RTSAScreen {
   public update(): void {
     if (!this.specA.state.isPaused && this.running) {
       const now = Date.now();
-      if (now - this.lastDrawTime > 1000 / (this.specA.state.refreshRate * 2)) {
+      if (now - this.lastDrawTime > 1000 / (this.specA.state.refreshRate)) {
         // Create new row of data
         this.noiseData = this.createNoise(this.noiseData);
         this.data.fill(this.specA.state.minDecibels);
@@ -107,55 +112,61 @@ export class WaterfallDisplay extends RTSAScreen {
   public draw(): void {
     if (!this.specA.state.isPaused && this.running) {
       const now = Date.now();
-      if (now - this.lastDrawTime > 1000 / (this.specA.state.refreshRate * 2)) {
+      if (now - this.lastDrawTime > 1000 / (this.specA.state.refreshRate)) {
         // Draw the entire waterfall using ImageData
-        this.renderWaterfallToImageData();
+        this.renderWaterfallToImageData(Math.floor((this.height * 3) / 4), this.height);
         this.ctx.putImageData(this.imageData, 0, 0);
 
         this.lastDrawTime = now;
+
+        // Schedule update of each quarter in sequence for smoother updates
+        const quarters = [
+          [0, Math.floor(this.height / 4)],
+          [Math.floor(this.height / 4), Math.floor(this.height / 2)],
+          [Math.floor(this.height / 2), Math.floor((this.height * 3) / 4)]
+        ];
+
+        const renderQuarter = (index: number) => {
+          if (index < quarters.length) {
+            const [start, end] = quarters[index];
+            this.renderWaterfallToImageData(start, end);
+            requestAnimationFrame(() => renderQuarter(index + 1));
+          }
+        };
+
+        requestAnimationFrame(() => renderQuarter(0));
       }
     }
+
   }
 
-  private renderWaterfallToImageData(): void {
+  private renderWaterfallToImageData(start: number = 0, end: number = this.height): void {
     const minDb = this.specA.state.minDecibels;
     const maxDb = this.specA.state.maxDecibels;
     const range = maxDb - minDb;
 
+    // Clamp start and end to valid range
+    start = Math.max(0, Math.min(start, this.height));
+    end = Math.max(start, Math.min(end, this.height));
+
     // Make sure we're rendering exactly height rows
     const rowsToRender = Math.min(this.buffer.length, this.height);
 
-    for (let y = 0; y < rowsToRender; y++) {
+    for (let y = start; y < end && y < rowsToRender; y++) {
       const rowData = this.buffer[y];
       const rowOffset = y * this.width * 4; // 4 bytes per pixel (RGBA)
 
       for (let x = 0; x < this.width; x++) {
-        const amplitude = rowData[x];
-
         // Map amplitude to color cache index
-        const norm = Math.max(0, Math.min(1, (amplitude - minDb) / range));
+        const norm = Math.max(0, Math.min(1, (rowData[x] - minDb) / range));
         let cacheIndex = Math.floor(norm * (this.COLOR_CACHE_STEPS - 1));
-        // ensure index is a number
-        if (isNaN(cacheIndex)) cacheIndex = 0;
-        const color = this.colorCache.get(cacheIndex)!;
+        const color = this.colorCache.get(cacheIndex) || [0, 0, 0];
 
         const pixelOffset = rowOffset + x * 4;
-        this.pixels[pixelOffset] = color[0];     // R
-        this.pixels[pixelOffset + 1] = color[1]; // G
-        this.pixels[pixelOffset + 2] = color[2]; // B
-        this.pixels[pixelOffset + 3] = 255;      // A
-      }
-    }
-
-    // Fill any remaining rows (shouldn't happen, but just in case)
-    for (let y = rowsToRender; y < this.height; y++) {
-      const rowOffset = y * this.width * 4;
-      for (let x = 0; x < this.width; x++) {
-        const pixelOffset = rowOffset + x * 4;
-        this.pixels[pixelOffset] = 0;     // R
-        this.pixels[pixelOffset + 1] = 0; // G
-        this.pixels[pixelOffset + 2] = 0; // B
-        this.pixels[pixelOffset + 3] = 255; // A
+        this.pixels[pixelOffset] = color[0];
+        this.pixels[pixelOffset + 1] = color[1];
+        this.pixels[pixelOffset + 2] = color[2];
+        // Alpha channel is already set to 255 in constructor/resize
       }
     }
   }
@@ -220,12 +231,22 @@ export class WaterfallDisplay extends RTSAScreen {
     return ((bw / (maxFreq - minFreq)) * this.width) / 2;
   }
 
+  noiseCacheRow: number = 0;
+  noiseCache: Float32Array = new Float32Array(this.height * this.width);
+
   private createNoise(data: Float32Array): Float32Array {
     const base = this.specA.state.noiseFloor;
     const len = data.length;
     const time = performance.now() / 1000;
 
     for (let x = 0; x < len; x++) {
+      // If Noise Cache is full, reuse old noise values for stability
+      if (this.noiseCacheRow >= this.height / 4) {
+        // Pick a random row from the cache to reuse
+        data[x] = this.noiseCache[(Math.floor(Math.random() * this.height / 4) * this.width) + x];
+        continue;
+      }
+
       // Add more randomness to phase and amplitude for each iteration
       const randPhase1 = Math.random() * Math.PI * 2;
       const randPhase2 = Math.random() * Math.PI * 2;
@@ -244,6 +265,12 @@ export class WaterfallDisplay extends RTSAScreen {
       }
 
       data[x] = noise;
+
+      this.noiseCache[this.noiseCacheRow * this.width + x] = noise;
+    }
+
+    if (this.noiseCacheRow < this.height / 4) {
+      this.noiseCacheRow++;
     }
     return data;
   }
@@ -344,9 +371,16 @@ export class WaterfallDisplay extends RTSAScreen {
     this.imageData = this.ctx.createImageData(this.width, this.height);
     this.pixels = this.imageData.data;
 
+    // Set all alpha values to 255 (opaque)
+    for (let i = 3; i < this.pixels.length; i += 4) {
+      this.pixels[i] = 255;
+    }
+
     // Reallocate arrays
     this.data = new Float32Array(this.width);
     this.noiseData = new Float32Array(this.width);
+    this.noiseCacheRow = 0;
+    this.noiseCache = new Float32Array(this.height * this.width);
 
     // Handle buffer resize intelligently
     if (oldWidth !== this.width || oldHeight !== this.height) {

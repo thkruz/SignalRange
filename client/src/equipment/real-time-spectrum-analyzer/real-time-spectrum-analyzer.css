@@ -44,14 +44,29 @@
   margin-bottom: 12px;
   flex-grow: 1;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
 }
 
-.spec-a-canvas-container canvas {
+/* Single canvas mode (default for spectralDensity and waterfall) */
+.spec-a-canvas-container canvas.spec-a-canvas-single {
   display: block;
   width: 100%;
   height: 280px;
+}
+
+/* Both mode canvases */
+.spec-a-canvas-container canvas.spec-a-canvas-spectral {
+  display: none;
+  width: 100%;
+  height: 84px;
+}
+
+.spec-a-canvas-container canvas.spec-a-canvas-waterfall {
+  display: none;
+  width: 100%;
+  height: 196px;
 }
 
 /* Info Section */
@@ -78,41 +93,24 @@
 }
 
 .spec-a-controls button {
-  flex: 1;
+  flex: auto;
   padding: 10px;
   font-size: 14px;
   font-weight: bold;
-}
-
-.btn-config {
-  background-color: #ff9800;
-  color: #000;
-}
-
-.btn-config:hover {
-  background-color: #fb8c00;
-}
-
-.btn-mode {
-  background-color: #2196f3;
+  background-color: var(--color-dark-text-muted);
   color: #fff;
 }
 
-.btn-mode:hover {
-  background-color: #1976d2;
+.spec-a-controls button:hover {
+  filter: brightness(1.1);
 }
 
-.btn-mode.active {
-  background-color: #4caf50;
+.btn-mode-screen {
+  min-width: 160px;
 }
 
-.btn-pause {
-  background-color: #9e9e9e;
-  color: #fff;
-}
-
-.btn-pause:hover {
-  background-color: #757575;
+.btn-mode-if-rf {
+  width: 65px;
 }
 
 .btn-pause.active {

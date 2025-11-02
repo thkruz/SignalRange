@@ -23,8 +23,8 @@ export class SpectralDensityPlot extends RTSAScreen {
   private maxFreq: Hertz = 0 as Hertz;
 
   // Configuration
-  private readonly range: number;
-  private readonly decibelShift: number;
+  private range: number;
+  private decibelShift: number;
 
   // Antenna reference
   private readonly upconvertOffset: number = 3350e6;
@@ -81,6 +81,10 @@ export class SpectralDensityPlot extends RTSAScreen {
     if (!this.specA.state.isPaused && this.running) {
       const now = Date.now();
       if (now - this.lastDrawTime > 1000 / this.specA.state.refreshRate) {
+        // Calculate range
+        this.range = this.specA.state.minDecibels - this.specA.state.maxDecibels;
+        this.decibelShift = 0 - this.specA.state.minDecibels;
+
         this.noiseData = this.createNoise(this.noiseData);
       }
     }

@@ -134,7 +134,9 @@ export class WaterfallDisplay extends RTSAScreen {
 
         // Map amplitude to color cache index
         const norm = Math.max(0, Math.min(1, (amplitude - minDb) / range));
-        const cacheIndex = Math.floor(norm * (this.COLOR_CACHE_STEPS - 1));
+        let cacheIndex = Math.floor(norm * (this.COLOR_CACHE_STEPS - 1));
+        // ensure index is a number
+        if (isNaN(cacheIndex)) cacheIndex = 0;
         const color = this.colorCache.get(cacheIndex)!;
 
         const pixelOffset = rowOffset + x * 4;

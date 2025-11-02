@@ -52,112 +52,124 @@ export class AnalyzerControl extends BaseElement {
   initializeDom(): HTMLElement {
     this.html = html`
       <div class="analyzer-control-overlay" id="analyzer-control-overlay">
-        <div class="analyzer-control-popup">
-          <div class="analyzer-control-grid">
-            <!-- Left Column: Display and Unit Selection -->
-            <div class="analyzer-control-display-section">
-              <div class="analyzer-control-display">
-                <div class="analyzer-control-display-values">
-                  <div class="analyzer-control-display-row">
-                    <span class="value" id="ghz-display">0</span>
-                    <span class="unit">GHz</span>
-                  </div>
-                  <div class="analyzer-control-display-row">
-                    <span class="value" id="mhz-display">0</span>
-                    <span class="unit">MHz</span>
-                  </div>
-                  <div class="analyzer-control-display-row">
-                    <span class="value" id="khz-display">0</span>
-                    <span class="unit">KHz</span>
-                  </div>
-                </div>
-              </div>
-              <div class="analyzer-control-unit-buttons">
-                <button class="physical-button unit-button" id="ghz-select" aria-label="Select GHz">
-                  <span class="button-text">‹</span>
-                </button>
-                <button class="physical-button unit-button" id="mhz-select" aria-label="Select MHz">
-                  <span class="button-text">‹</span>
-                </button>
-                <button class="physical-button unit-button" id="khz-select" aria-label="Select KHz">
-                  <span class="button-text">‹</span>
-                </button>
-              </div>
+      <div class="analyzer-control-popup">
+        <div class="analyzer-control-grid">
+        <!-- Left Column: Display and Unit Selection -->
+        <div class="analyzer-control-display-section">
+          <div class="analyzer-control-display">
+          <div class="analyzer-control-display-values">
+            <div class="analyzer-control-display-row">
+            <span class="value" id="ghz-display">0</span>
+            <span class="unit">GHz</span>
             </div>
-
-            <!-- Middle Column: Control Buttons -->
-            <div class="analyzer-control-buttons">
-              <button class="physical-button control-button" id="freq-button" aria-label="Frequency">
-                <span class="button-text">Freq</span>
-              </button>
-              <button class="physical-button control-button" id="span-button" aria-label="Span">
-                <span class="button-text">Span</span>
-              </button>
-              <button class="physical-button control-button" id="trace-button" aria-label="Trace">
-                <span class="button-text">Trace</span>
-              </button>
-              <button class="physical-button control-button" id="marker-button" aria-label="Marker">
-                <span class="button-text">Marker</span>
-              </button>
+            <div class="analyzer-control-display-row">
+            <span class="value" id="mhz-display">0</span>
+            <span class="unit">MHz</span>
             </div>
-
-            <!-- Right Column: Number Pad -->
-            <div class="analyzer-control-numpad">
-              <div class="numpad-row">
-                <button class="physical-button num-button" data-value="7">
-                  <span class="button-text">7</span>
-                </button>
-                <button class="physical-button num-button" data-value="8">
-                  <span class="button-text">8</span>
-                </button>
-                <button class="physical-button num-button" data-value="9">
-                  <span class="button-text">9</span>
-                </button>
-              </div>
-              <div class="numpad-row">
-                <button class="physical-button num-button" data-value="4">
-                  <span class="button-text">4</span>
-                </button>
-                <button class="physical-button num-button" data-value="5">
-                  <span class="button-text">5</span>
-                </button>
-                <button class="physical-button num-button" data-value="6">
-                  <span class="button-text">6</span>
-                </button>
-              </div>
-              <div class="numpad-row">
-                <button class="physical-button num-button" data-value="1">
-                  <span class="button-text">1</span>
-                </button>
-                <button class="physical-button num-button" data-value="2">
-                  <span class="button-text">2</span>
-                </button>
-                <button class="physical-button num-button" data-value="3">
-                  <span class="button-text">3</span>
-                </button>
-              </div>
-              <div class="numpad-row">
-                <button class="physical-button num-button" data-value="-">
-                  <span class="button-text">-</span>
-                </button>
-                <button class="physical-button num-button" data-value="0">
-                  <span class="button-text">0</span>
-                </button>
-                <button class="physical-button num-button" data-value=".">
-                  <span class="button-text">.</span>
-                </button>
-              </div>
-              <div class="numpad-row">
-                <button class="physical-button num-button special-button" data-value="bksp">
-                  <span class="button-text">bksp</span>
-                </button>
-                <button class="physical-button num-button special-button" data-value="C">
-                  <span class="button-text">C</span>
-                </button>
-              </div>
+            <div class="analyzer-control-display-row">
+            <span class="value" id="khz-display">0</span>
+            <span class="unit">KHz</span>
             </div>
           </div>
+          </div>
+          <div class="analyzer-control-unit-buttons">
+          <button class="physical-button unit-button" id="ghz-select" aria-label="Select GHz">
+            <span class="button-text">‹</span>
+          </button>
+          <button class="physical-button unit-button" id="mhz-select" aria-label="Select MHz">
+            <span class="button-text">‹</span>
+          </button>
+          <button class="physical-button unit-button" id="khz-select" aria-label="Select KHz">
+            <span class="button-text">‹</span>
+          </button>
+          </div>
         </div>
+
+        <!-- Middle Column: Control Buttons (3 rows of 2) -->
+        <div class="analyzer-control-buttons">
+          <div class="control-row">
+            <button class="physical-button control-button" id="freq-button" aria-label="Frequency">
+              <span class="button-text">Freq</span>
+            </button>
+            <button class="physical-button control-button" id="span-button" aria-label="Span">
+              <span class="button-text">Span</span>
+            </button>
+          </div>
+          <div class="control-row">
+            <button class="physical-button control-button" id="trace-button" aria-label="Trace">
+              <span class="button-text">Trace</span>
+            </button>
+            <button class="physical-button control-button" id="marker-button" aria-label="Marker">
+              <span class="button-text">Marker</span>
+            </button>
+          </div>
+          <div class="control-row">
+            <button class="physical-button control-button" id="max-amp-button" aria-label="Max Amplitude">
+              <span class="button-text">Max Amp</span>
+            </button>
+            <button class="physical-button control-button" id="min-amp-button" aria-label="Min Amplitude">
+              <span class="button-text">Min Amp</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Right Column: Number Pad -->
+        <div class="analyzer-control-numpad">
+          <div class="numpad-row">
+          <button class="physical-button num-button" data-value="7">
+            <span class="button-text">7</span>
+          </button>
+          <button class="physical-button num-button" data-value="8">
+            <span class="button-text">8</span>
+          </button>
+          <button class="physical-button num-button" data-value="9">
+            <span class="button-text">9</span>
+          </button>
+          </div>
+          <div class="numpad-row">
+          <button class="physical-button num-button" data-value="4">
+            <span class="button-text">4</span>
+          </button>
+          <button class="physical-button num-button" data-value="5">
+            <span class="button-text">5</span>
+          </button>
+          <button class="physical-button num-button" data-value="6">
+            <span class="button-text">6</span>
+          </button>
+          </div>
+          <div class="numpad-row">
+          <button class="physical-button num-button" data-value="1">
+            <span class="button-text">1</span>
+          </button>
+          <button class="physical-button num-button" data-value="2">
+            <span class="button-text">2</span>
+          </button>
+          <button class="physical-button num-button" data-value="3">
+            <span class="button-text">3</span>
+          </button>
+          </div>
+          <div class="numpad-row">
+          <button class="physical-button num-button" data-value="-">
+            <span class="button-text">-</span>
+          </button>
+          <button class="physical-button num-button" data-value="0">
+            <span class="button-text">0</span>
+          </button>
+          <button class="physical-button num-button" data-value=".">
+            <span class="button-text">.</span>
+          </button>
+          </div>
+          <div class="numpad-row">
+          <button class="physical-button num-button special-button" data-value="bksp">
+            <span class="button-text">bksp</span>
+          </button>
+          <button class="physical-button num-button special-button" data-value="C">
+            <span class="button-text">C</span>
+          </button>
+          </div>
+        </div>
+        </div>
+      </div>
       </div>
     `;
 
@@ -183,6 +195,8 @@ export class AnalyzerControl extends BaseElement {
     // Control buttons (Freq, Span, Trace, Marker)
     qs('#freq-button', this.element)?.addEventListener('click', () => this.handleFreqClick());
     qs('#span-button', this.element)?.addEventListener('click', () => this.handleSpanClick());
+    qs('#max-amp-button', this.element)?.addEventListener('click', () => this.handleMaxAmpClick());
+    qs('#min-amp-button', this.element)?.addEventListener('click', () => this.handleMinAmpClick());
     qs('#trace-button', this.element)?.addEventListener('click', () => this.handleTraceClick());
     qs('#marker-button', this.element)?.addEventListener('click', () => this.handleMarkerClick());
 
@@ -196,6 +210,20 @@ export class AnalyzerControl extends BaseElement {
         }
       });
     });
+  }
+
+  private handleMaxAmpClick(): void {
+    // Increase maxDecibels by 5dB (or set a step as needed)
+    this.specA.state.maxDecibels += 5;
+    this.updateDisplay();
+    this.playSound();
+  }
+
+  private handleMinAmpClick(): void {
+    // Decrease minDecibels by 5dB (or set a step as needed)
+    this.specA.state.minDecibels -= 5;
+    this.updateDisplay();
+    this.playSound();
   }
 
   private handleUnitSelect(unit: 'ghz' | 'mhz' | 'khz'): void {
@@ -353,6 +381,8 @@ export class AnalyzerControl extends BaseElement {
     // Update button states - control selection
     this.updateButtonState('#freq-button', this.controlSelection === 'freq');
     this.updateButtonState('#span-button', this.controlSelection === 'span');
+    this.updateButtonState('#max-amp-button', false);
+    this.updateButtonState('#min-amp-button', false);
     this.updateButtonState('#trace-button', this.specA.state.isTraceOn);
     this.updateButtonState('#marker-button', this.specA.state.isMarkerOn);
 

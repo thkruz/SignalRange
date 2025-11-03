@@ -8,7 +8,6 @@
   padding: 16px;
   box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.5);
   height: 100%;
-  min-width: 600px;
   box-sizing: border-box;
 }
 
@@ -71,8 +70,7 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  min-width: 60px;
-  flex: 0 0 60px;
+  width: 60px;
 }
 
 .btn-modem {
@@ -130,21 +128,22 @@
 
 /* Main content area - split into config and video side by side */
 .receiver-main-content {
-  flex: 1;
   display: flex;
+  align-items: center;
+  flex: 1;
+  justify-content: space-between;
   gap: 16px;
 }
 
 /* Modem Configuration - left side */
 .rx-modem-config {
-  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 5px;
   padding: 12px;
   background-color: #1a1a1a;
   border-radius: 8px;
-  width: 250px;
+  width: 310px;
 }
 
 .config-row {
@@ -193,7 +192,6 @@
 
 /* Video Monitor - right side, more compact */
 .video-monitor {
-  flex: 0 0 280px;
   padding: 8px;
   background-color: #000;
   border: 4px solid #333;
@@ -201,6 +199,8 @@
   box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.8);
   display: flex;
   flex-direction: column;
+  height: 255px;
+  width: 255px;
 }
 
 .monitor-screen {
@@ -213,6 +213,7 @@
   position: relative;
   overflow: hidden;
   min-height: 180px;
+  min-width: 250px;
 }
 
 .monitor-screen.no-signal {
@@ -225,9 +226,10 @@
 
 .video-feed {
   width: 100%;
-  height: 100%;
+  max-height: 250px;
   border-radius: 4px;
   object-fit: cover;
+  aspect-ratio: 1;
 }
 
 .no-signal-text {
@@ -240,6 +242,7 @@
 
 .signal-indicator {
   display: flex;
+  width: 100%;
   flex-direction: column;
   align-items: center;
   gap: 12px;
@@ -314,7 +317,6 @@
   }
 
   .video-monitor {
-    flex: 0 0 auto;
     width: 100%;
   }
 }

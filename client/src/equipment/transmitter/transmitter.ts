@@ -61,7 +61,7 @@ export class Transmitter extends Equipment {
     }
 
     this.state = {
-      unit: this.unit,
+      unit: this.id,
       team_id: this.teamId,
       server_id: serverId,
       modems,
@@ -84,7 +84,7 @@ export class Transmitter extends Equipment {
     parentDom.innerHTML = html`
       <div class="transmitter-box">
         <div class="transmitter-header">
-          <div class="transmitter-title">Transmitter Case ${this.unit}</div>
+          <div class="transmitter-title">Transmitter Case ${this.id}</div>
           <div class="transmitter-status ${isTransmitting ? 'status-active' : 'status-standby'}">
             ${isTransmitting ? 'TRANSMITTING' : 'STANDBY'}
           </div>
@@ -248,7 +248,7 @@ export class Transmitter extends Equipment {
 
     // Emit event for modem change
     this.emit(Events.TX_ACTIVE_MODEM_CHANGED, {
-      unit: this.unit,
+      unit: this.id,
       activeModem: modemNumber
     });
   }
@@ -308,7 +308,7 @@ export class Transmitter extends Equipment {
     };
 
     this.emit(Events.TX_CONFIG_CHANGED, {
-      unit: this.unit,
+      unit: this.id,
       modem: this.state.activeModem,
       config: this.state.modems[modemIndex]
     });

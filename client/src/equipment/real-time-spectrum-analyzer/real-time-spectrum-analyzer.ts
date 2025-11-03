@@ -9,7 +9,7 @@ import { SpectralDensityPlot } from './rtsa-screen/spectral-density-plot';
 import { WaterfallDisplay } from "./rtsa-screen/waterfall-display";
 
 export interface RealTimeSpectrumAnalyzerState {
-  unit: number; // 1-4
+  id: number; // 1-4
   team_id: number;
   antenna_id: number;
   isRfMode: boolean; // true = RF mode, false = IF mode
@@ -49,16 +49,16 @@ export class RealTimeSpectrumAnalyzer extends Equipment {
 
   configPanel: AnalyzerControlBox | null = null;
 
-  constructor(parentId: string, unit: number, teamId: number = 1, antenna: Antenna) {
-    super(parentId, unit, teamId);
+  constructor(parentId: string, id: number, antenna: Antenna, teamId: number = 1) {
+    super(parentId, id, teamId);
 
     this.antenna = antenna;
 
     // Initialize config
     this.state = {
-      unit: this.unit,
+      id: this.id,
       team_id: this.teamId,
-      antenna_id: 1,
+      antenna_id: this.antenna.state.id,
       isRfMode: false,
       isPaused: false,
       isTraceOn: false,
@@ -83,14 +83,14 @@ export class RealTimeSpectrumAnalyzer extends Equipment {
     parentDom.innerHTML = html`
       <div class="spectrum-analyzer-box">
         <div class="spec-a-header">
-          <div class="spec-a-title">Spectrum Analyzer ${this.unit}</div>
+          <div class="spec-a-title">Spectrum Analyzer ${this.id}</div>
           <div class="spec-a-span">Span: ${this.state.span / 1e6} MHz</div>
         </div>
 
         <div class="spec-a-canvas-container">
-          <canvas id="specA${this.unit}" width="1600" height="400" class="spec-a-canvas-single"></canvas>
-          <canvas id="specA${this.unit}-spectral" width="1600" height="120" class="spec-a-canvas-spectral"></canvas>
-          <canvas id="specA${this.unit}-waterfall" width="1600" height="280" class="spec-a-canvas-waterfall"></canvas>
+          <canvas id="specA${this.id}" width="1600" height="400" class="spec-a-canvas-single"></canvas>
+          <canvas id="specA${this.id}-spectral" width="1600" height="120" class="spec-a-canvas-spectral"></canvas>
+          <canvas id="specA${this.id}-waterfall" width="1600" height="280" class="spec-a-canvas-waterfall"></canvas>
         </div>
 
         <div class="spec-a-info">
@@ -118,9 +118,9 @@ export class RealTimeSpectrumAnalyzer extends Equipment {
     this.domCache['header'] = parentDom.querySelector('.spec-a-header') as HTMLElement;
     this.domCache['info'] = parentDom.querySelector('.spec-a-info') as HTMLElement;
     this.domCache['controls'] = parentDom.querySelector('.spec-a-controls') as HTMLElement;
-    this.domCache['canvas'] = parentDom.querySelector(`#specA${this.unit}`) as HTMLCanvasElement;
-    this.domCache['canvasSpectral'] = parentDom.querySelector(`#specA${this.unit}-spectral`) as HTMLCanvasElement;
-    this.domCache['canvasWaterfall'] = parentDom.querySelector(`#specA${this.unit}-waterfall`) as HTMLCanvasElement;
+    this.domCache['canvas'] = parentDom.querySelector(`#specA${this.id}`) as HTMLCanvasElement;
+    this.domCache['canvasSpectral'] = parentDom.querySelector(`#specA${this.id}-spectral`) as HTMLCanvasElement;
+    this.domCache['canvasWaterfall'] = parentDom.querySelector(`#specA${this.id}-waterfall`) as HTMLCanvasElement;
     this.domCache['span'] = parentDom.querySelector('.spec-a-span') as HTMLElement;
     this.domCache['configButton'] = parentDom.querySelector('.btn-config') as HTMLButtonElement;
     this.domCache['ifRfModeButton'] = parentDom.querySelector('.btn-mode-if-rf') as HTMLButtonElement;
@@ -187,7 +187,7 @@ export class RealTimeSpectrumAnalyzer extends Equipment {
   }
 
   private updateConfigChange(data: any): void {
-    if (data.unit === this.state.unit) {
+    if (data.unit === this.state.id) {
       this.state = { ...this.state, ...data };
 
       if (data.frequency) {
@@ -343,7 +343,7 @@ export class RealTimeSpectrumAnalyzer extends Equipment {
 
   private openConfig(): void {
     this.openConfigPanel();
-    this.emit(Events.SPEC_A_CONFIG_CHANGED, { unit: this.unit });
+    this.emit(Events.SPEC_A_CONFIG_CHANGED, { id: this.id });
   }
 
   private openConfigPanel(): void {
@@ -357,7 +357,7 @@ export class RealTimeSpectrumAnalyzer extends Equipment {
     this.updateIfRfModeButton();
 
     this.emit(Events.SPEC_A_IF_RF_MODE_CHANGED, {
-      unit: this.unit,
+      id: this.id,
       isRfMode: this.state.isRfMode,
     });
   }
@@ -404,7 +404,7 @@ export class RealTimeSpectrumAnalyzer extends Equipment {
     this.updatePauseButton();
 
     this.emit(Events.SPEC_A_IF_RF_MODE_CHANGED, {
-      unit: this.unit,
+      id: this.id,
       isPaused: this.state.isPaused,
     });
   }

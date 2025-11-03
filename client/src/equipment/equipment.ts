@@ -12,7 +12,7 @@ import { TransmitterState } from './transmitter/transmitter';
  * Provides standard lifecycle methods and shared functionality
  */
 export abstract class Equipment {
-  protected readonly unit: number;
+  protected readonly id: number;
   protected readonly teamId: number;
   /** Current equipment state.*/
   abstract state: AntennaState | ReceiverState | TransmitterState | RealTimeSpectrumAnalyzerState;
@@ -24,7 +24,7 @@ export abstract class Equipment {
     const parentDom = document.getElementById(parentId);
     if (!parentDom) throw new Error(`Parent element ${parentId} not found`);
 
-    this.unit = unit;
+    this.id = unit;
     this.teamId = teamId;
   }
 

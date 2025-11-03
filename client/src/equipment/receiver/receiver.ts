@@ -53,7 +53,7 @@ export class Receiver extends Equipment {
     }
 
     this.state = {
-      unit: this.unit,
+      unit: this.id,
       team_id: this.teamId,
       server_id: serverId,
       modems,
@@ -76,7 +76,7 @@ export class Receiver extends Equipment {
     parentDom.innerHTML = html`
       <div class="receiver-box">
         <div class="receiver-header">
-          <div class="receiver-title">Receiver Case ${this.unit}</div>
+          <div class="receiver-title">Receiver Case ${this.id}</div>
           <div class="receiver-status ${signalStatus.class}">
             ${signalStatus.text}
           </div>
@@ -281,7 +281,7 @@ export class Receiver extends Equipment {
 
     // Emit event for modem change
     this.emit(Events.RX_ACTIVE_MODEM_CHANGED, {
-      unit: this.unit,
+      unit: this.id,
       activeModem: modemNumber
     });
   }
@@ -326,7 +326,7 @@ export class Receiver extends Equipment {
     };
 
     this.emit(Events.RX_CONFIG_CHANGED, {
-      unit: this.unit,
+      unit: this.id,
       modem: this.state.activeModem,
       config: this.state.modems[modemIndex]
     });

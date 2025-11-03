@@ -44,32 +44,46 @@ export class StudentEquipment {
       <div class="student-equipment">
         <!-- Antennas -->
           <div id="antenna-spec-a-grid1" class="antenna-spec-a-grid">
-            <div id="antenna1-container" class="antenna-container"></div>
-            <div id="specA1-container" class="spec-a-container"></div>
-            <div id="specA2-container" class="spec-a-container"></div>
+            <div class="paired-equipment-container">
+              <div id="antenna1-container" class="antenna-container"></div>
+              <div id="antenna2-container" class="antenna-container"></div>
+            </div>
+            <div class="paired-equipment-container">
+              <div id="specA1-container" class="spec-a-container"></div>
+              <div id="specA2-container" class="spec-a-container"></div>
+            </div>
           </div>
 
         <!-- Spectrum Analyzers Grid -->
           <div id="antenna-spec-a-grid2" class="antenna-spec-a-grid">
-            <div id="antenna2-container" class="antenna-container"></div>
-            <div id="specA3-container" class="spec-a-container"></div>
-            <div id="specA4-container" class="spec-a-container"></div>
+            <div class="paired-equipment-container">
+              <div id="specA3-container" class="spec-a-container"></div>
+              <div id="specA4-container" class="spec-a-container"></div>
+            </div>
           </div>
 
         <!-- Transmitters -->
           <div class="tx-grid">
-            <div id="tx1-container" class="tx-container"></div>
-            <div id="tx2-container" class="tx-container"></div>
-            <div id="tx3-container" class="tx-container"></div>
-            <div id="tx4-container" class="tx-container"></div>
+            <div class="paired-equipment-container">
+              <div id="tx1-container" class="tx-container"></div>
+              <div id="tx2-container" class="tx-container"></div>
+            </div>
+            <div class="paired-equipment-container">
+              <div id="tx3-container" class="tx-container"></div>
+              <div id="tx4-container" class="tx-container"></div>
+            </div>
           </div>
 
         <!-- Receivers -->
           <div class="rx-grid">
-            <div id="rx1-container" class="rx-container"></div>
-            <div id="rx2-container" class="rx-container"></div>
-            <div id="rx3-container" class="rx-container"></div>
-            <div id="rx4-container" class="rx-container"></div>
+            <div class="paired-equipment-container">
+              <div id="rx1-container" class="rx-container"></div>
+              <div id="rx2-container" class="rx-container"></div>
+            </div>
+            <div class="paired-equipment-container">
+              <div id="rx3-container" class="rx-container"></div>
+              <div id="rx4-container" class="rx-container"></div>
+            </div>
           </div>
       </div>
     `;
@@ -103,7 +117,7 @@ export class StudentEquipment {
     // First two use antenna 1, next two use antenna 2
     for (let i = 1; i <= (this.isFullEquipmentSuite ? 4 : 2); i++) {
       const antennaId = i <= 2 ? 1 : 2;
-      const specA = new RealTimeSpectrumAnalyzer(`specA${i}-container`, i, 1, this.antennas[antennaId - 1]);
+      const specA = new RealTimeSpectrumAnalyzer(`specA${i}-container`, i, this.antennas[antennaId - 1]);
       this.spectrumAnalyzers.push(specA);
     }
 

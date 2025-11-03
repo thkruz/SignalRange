@@ -53,7 +53,7 @@ export class Antenna extends Equipment {
 
     // Initialize status with defaults
     this.state = {
-      id: this.unit,
+      id: this.id,
       teamId: this.teamId,
       serverId: serverId,
       targetId: 1,
@@ -83,7 +83,7 @@ export class Antenna extends Equipment {
     parentDom.innerHTML = html`
       <div class="antenna-box">
         <div class="antenna-header">
-          <div class="antenna-title">Antenna ${this.unit}</div>
+          <div class="antenna-title">Antenna ${this.id}</div>
           <div class="antenna-status ${this.getStatusClass()}">
             ${this.getStatusText()}
           </div>
@@ -225,7 +225,7 @@ export class Antenna extends Equipment {
     trackSwitch?.addEventListener('change', () => this.handleTrackChange(parentDom));
 
     this.on(Events.ANTENNA_LOCKED, () => (data: { locked: boolean; antennaId: number }) => {
-      if (data.antennaId === this.unit) {
+      if (data.antennaId === this.id) {
         this.state.isLocked = data.locked;
         this.updateSignalStatus();
         this.syncDomWithState();

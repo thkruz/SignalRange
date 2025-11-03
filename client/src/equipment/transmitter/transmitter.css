@@ -1,13 +1,13 @@
 /* Transmitter.css - Styles specific to Transmitter equipment */
 .transmitter-box {
   display: flex;
+  flex: 1;
   flex-direction: column;
   background-color: #2a2a2a;
   border: 1px solid #444;
   border-radius: 10px;
   padding: 16px;
   box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.5);
-  min-width: 350px;
 }
 
 /* Header */
@@ -54,7 +54,7 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  min-width: 60px;
+  width: 60px;
 }
 
 .btn-modem {
@@ -102,18 +102,18 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
+  width: 255px;
 }
 
 /* Modem Configuration */
 .tx-modem-config {
-  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 5px;
   padding: 12px;
   background-color: #1a1a1a;
   border-radius: 8px;
-  width: 250px;
+  width: 310px;
 }
 
 .input-tx-antenna,

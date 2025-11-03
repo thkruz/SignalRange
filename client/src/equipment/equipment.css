@@ -7,19 +7,24 @@
 }
 
 /* Grid layouts for equipment */
+.paired-equipment-container,
 .antenna-spec-a-grid {
   display: flex;
   flex-direction: row;
-  justify-content: space-evenly;
+  flex-wrap: wrap;
+  justify-content: center;
   column-gap: 1em;
+  row-gap: 1em;
 }
 
 .tx-grid,
 .rx-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  justify-content: space-evenly;
   column-gap: 1em;
-  width: 100%;
+  row-gap: 1em;
 }
 
 /* Container classes */
@@ -33,7 +38,8 @@
 
 .tx-container,
 .rx-container {
-  /* Grid of 50% width */
+  flex-grow: 1;
+  max-width: 780px;
 }
 
 /* Common button styles */

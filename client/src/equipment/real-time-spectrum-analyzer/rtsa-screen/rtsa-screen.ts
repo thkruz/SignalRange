@@ -9,13 +9,15 @@ export abstract class RTSAScreen {
   protected readonly specA: RealTimeSpectrumAnalyzer;
 
   // Canvas dimensions
-  protected width: number = 600;
-  protected height: number = 300;
+  protected width: number = 800;
+  protected height: number = 400;
 
   constructor(canvas: HTMLCanvasElement, antenna: Antenna, specA: RealTimeSpectrumAnalyzer) {
     this.canvas = canvas;
     this.antenna = antenna;
     this.specA = specA;
+    this.width = canvas.width;
+    this.height = canvas.height;
 
     const context = this.canvas.getContext('2d');
     if (!context) {

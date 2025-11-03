@@ -172,10 +172,6 @@ export class Transmitter extends Equipment {
                 </div>
               </div>
               <div class="unit-status-indicators">
-                <div class="status-indicator online">
-                  <span id="tx-active-power-light" class="indicator-light ${activeModemData.isPowered ? 'on' : 'off'}"></span>
-                  <span class="indicator-label">Online</span>
-                </div>
                 <div class="status-indicator transmitting">
                   <span id="tx-transmitting-light" class="indicator-light ${activeModemData.isTransmitting ? 'on' : 'off'}"></span>
                   <span class="indicator-label">TX</span>
@@ -187,6 +183,10 @@ export class Transmitter extends Equipment {
                 <div class="status-indicator test-mode">
                   <span id="tx-test-mode-light" class="indicator-light ${activeModemData.isTestMode ? 'on' : 'off'}"></span>
                   <span class="indicator-label">Test</span>
+                </div>
+                <div class="status-indicator online">
+                  <span id="tx-active-power-light" class="indicator-light ${activeModemData.isPowered ? 'on' : 'off'}"></span>
+                  <span class="indicator-label">Online</span>
                 </div>
               </div>
               <div class="unit-status-indicators">

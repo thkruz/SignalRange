@@ -14,7 +14,8 @@ export interface RealTimeSpectrumAnalyzerState {
   antenna_id: number;
   isRfMode: boolean; // true = RF mode, false = IF mode
   isPaused: boolean;
-  isTraceOn: boolean;
+  isMaxHold: boolean;
+  isMinHold: boolean;
   isMarkerOn: boolean;
   isShowSignals: boolean;
   refreshRate: number; // in Hz
@@ -61,7 +62,8 @@ export class RealTimeSpectrumAnalyzer extends Equipment {
       antenna_id: this.antenna.state.id,
       isRfMode: false,
       isPaused: false,
-      isTraceOn: false,
+      isMaxHold: false,
+      isMinHold: false,
       isMarkerOn: false,
       centerFrequency: 4810e6 as Hertz,
       span: 100e6 as Hertz,
@@ -88,9 +90,9 @@ export class RealTimeSpectrumAnalyzer extends Equipment {
         </div>
 
         <div class="spec-a-canvas-container">
-          <canvas id="specA${this.id}" width="1600" height="400" class="spec-a-canvas-single"></canvas>
-          <canvas id="specA${this.id}-spectral" width="1600" height="120" class="spec-a-canvas-spectral"></canvas>
-          <canvas id="specA${this.id}-waterfall" width="1600" height="280" class="spec-a-canvas-waterfall"></canvas>
+          <canvas id="specA${this.id}" width="740" height="740" class="spec-a-canvas-single"></canvas>
+          <canvas id="specA${this.id}-spectral" width="740" height="200" class="spec-a-canvas-spectral"></canvas>
+          <canvas id="specA${this.id}-waterfall" width="740" height="200" class="spec-a-canvas-waterfall"></canvas>
         </div>
 
         <div class="spec-a-info">

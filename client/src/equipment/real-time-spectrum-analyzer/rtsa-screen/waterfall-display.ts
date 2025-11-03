@@ -282,7 +282,7 @@ export class WaterfallDisplay extends RTSAScreen {
     inBandWidth: number,
     outOfBandWidth: number
   ): Float32Array {
-    const sigma = inBandWidth / 2.5;
+    const sigma = inBandWidth / 1.75;
 
     for (let x = 0; x < data.length; x++) {
       const distance = x - center;

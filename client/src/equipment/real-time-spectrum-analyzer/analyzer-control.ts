@@ -96,8 +96,11 @@ export class AnalyzerControl extends BaseElement {
           </button>
         </div>
         <div class="control-row">
-          <button class="physical-button control-button" id="trace-button" aria-label="Trace">
-            <span class="button-text">Trace</span>
+          <button class="physical-button control-button" id="max-hold-button" aria-label="Max Hold">
+            <span class="button-text">Max Hold</span>
+          </button>
+          <button class="physical-button control-button" id="min-hold-button" aria-label="Min Hold">
+            <span class="button-text">Min Hold</span>
           </button>
           <button class="physical-button control-button" id="marker-button" aria-label="Marker">
             <span class="button-text">Marker</span>
@@ -182,12 +185,13 @@ export class AnalyzerControl extends BaseElement {
     qs('#mhz-select', this.element)?.addEventListener('click', () => this.handleUnitSelect('mhz'));
     qs('#khz-select', this.element)?.addEventListener('click', () => this.handleUnitSelect('khz'));
 
-    // Control buttons (Freq, Span, Trace, Marker)
+    // Control buttons (Freq, Span, Max Hold, Marker)
     qs('#freq-button', this.element)?.addEventListener('click', () => this.handleFreqClick());
     qs('#span-button', this.element)?.addEventListener('click', () => this.handleSpanClick());
     qs('#max-amp-button', this.element)?.addEventListener('click', () => this.handleMaxAmpClick());
     qs('#min-amp-button', this.element)?.addEventListener('click', () => this.handleMinAmpClick());
-    qs('#trace-button', this.element)?.addEventListener('click', () => this.handleTraceClick());
+    qs('#max-hold-button', this.element)?.addEventListener('click', () => this.handleMaxHoldClick());
+    qs('#min-hold-button', this.element)?.addEventListener('click', () => this.handleMinHoldClick());
     qs('#marker-button', this.element)?.addEventListener('click', () => this.handleMarkerClick());
 
     // Number pad buttons
@@ -201,25 +205,26 @@ export class AnalyzerControl extends BaseElement {
       });
     });
 
-    document.addEventListener('keydown', (e) => {
-      if (!this.element) return;
+    // TODO: Need to validate the user is trying to interact with the control
+    // document.addEventListener('keydown', (e) => {
+    //   if (!this.element) return;
 
-      // Only handle if control/unit is selected
-      if (!this.numberSelection || !this.controlSelection) return;
+    //   // Only handle if control/unit is selected
+    //   if (!this.numberSelection || !this.controlSelection) return;
 
-      // Map key to numpad value
-      let value: string | undefined;
-      if (e.key >= '0' && e.key <= '9') value = e.key;
-      else if (e.key === '.') value = '.';
-      else if (e.key === '-') value = '-';
-      else if (e.key === 'Backspace') value = 'bksp';
-      else if (e.key.toLowerCase() === 'c') value = 'C';
+    //   // Map key to numpad value
+    //   let value: string | undefined;
+    //   if (e.key >= '0' && e.key <= '9') value = e.key;
+    //   else if (e.key === '.') value = '.';
+    //   else if (e.key === '-') value = '-';
+    //   else if (e.key === 'Backspace') value = 'bksp';
+    //   else if (e.key.toLowerCase() === 'c') value = 'C';
 
-      if (value) {
-        e.preventDefault();
-        this.handleNumberClick(value);
-      }
-    });
+    //   if (value) {
+    //     e.preventDefault();
+    //     this.handleNumberClick(value);
+    //   }
+    // });
   }
 
   private handleMaxAmpClick(): void {
@@ -280,8 +285,18 @@ export class AnalyzerControl extends BaseElement {
     this.playSound();
   }
 
-  private handleTraceClick(): void {
-    this.specA.state.isTraceOn = !this.specA.state.isTraceOn;
+  private handleMaxHoldClick(): void {
+    this.specA.state.isMaxHold = !this.specA.state.isMaxHold;
+
+    // Update spectrum analyzer
+    this.specA.resetHoldData();
+
+    this.updateDisplay();
+    this.playSound();
+  }
+
+  private handleMinHoldClick(): void {
+    this.specA.state.isMinHold = !this.specA.state.isMinHold;
 
     // Update spectrum analyzer
     this.specA.resetHoldData();
@@ -393,7 +408,8 @@ export class AnalyzerControl extends BaseElement {
     this.updateButtonState('#span-button', this.controlSelection === 'span');
     this.updateButtonState('#max-amp-button', false);
     this.updateButtonState('#min-amp-button', false);
-    this.updateButtonState('#trace-button', this.specA.state.isTraceOn);
+    this.updateButtonState('#max-hold-button', this.specA.state.isMaxHold);
+    this.updateButtonState('#min-hold-button', this.specA.state.isMinHold);
     this.updateButtonState('#marker-button', this.specA.state.isMarkerOn);
 
     EventBus.getInstance().emit(Events.SPEC_A_CONFIG_CHANGED, this.specA.getConfig());

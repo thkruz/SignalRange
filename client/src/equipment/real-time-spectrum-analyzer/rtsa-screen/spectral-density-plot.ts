@@ -14,9 +14,11 @@ export class SpectralDensityPlot extends RTSAScreen {
   private lastDrawTime: number = 0;
 
   // Signal processing
-  private data: Float32Array;
+  private allData: Float32Array;
+  private signalData: Float32Array;
   private noiseData: Float32Array;
   private maxHoldData: Float32Array;
+  private minHoldData: Float32Array;
 
   // Frequency range (set by parent)
   private minFreq: Hertz = 0 as Hertz;
@@ -38,9 +40,11 @@ export class SpectralDensityPlot extends RTSAScreen {
     super(canvas, antenna, specA);
 
     // Initialize typed arrays
-    this.data = new Float32Array(this.width);
+    this.allData = new Float32Array(this.width);
+    this.signalData = new Float32Array(this.width);
     this.noiseData = new Float32Array(this.width);
     this.maxHoldData = new Float32Array(this.width);
+    this.minHoldData = new Float32Array(this.width);
 
     // Calculate range
     this.range = this.specA.state.minDecibels - this.specA.state.maxDecibels;
@@ -50,14 +54,11 @@ export class SpectralDensityPlot extends RTSAScreen {
     this.resize();
 
     // Reallocate typed arrays
-    this.data = new Float32Array(this.width);
+    this.allData = new Float32Array(this.width);
+    this.signalData = new Float32Array(this.width);
     this.noiseData = new Float32Array(this.width);
     this.maxHoldData = new Float32Array(this.width);
-
-    // Reallocate typed arrays
-    this.data = new Float32Array(this.width);
-    this.noiseData = new Float32Array(this.width);
-    this.maxHoldData = new Float32Array(this.width);
+    this.minHoldData = new Float32Array(this.width);
 
     // Start after a random delay to stagger multiple analyzers
     setTimeout(() => {
@@ -74,6 +75,10 @@ export class SpectralDensityPlot extends RTSAScreen {
     this.maxHoldData = new Float32Array(this.width);
   }
 
+  public resetMinHold(): void {
+    this.minHoldData = new Float32Array(this.width);
+  }
+
   /**
    * Animation Methods
    */
@@ -82,11 +87,17 @@ export class SpectralDensityPlot extends RTSAScreen {
     if (!this.specA.state.isPaused && this.running) {
       const now = Date.now();
       if (now - this.lastDrawTime > 1000 / this.specA.state.refreshRate) {
+        // Update min hold
+        if (!this.specA.state.isMinHold) {
+          this.minHoldData = new Float32Array(this.width);
+        }
         // Calculate range
         this.range = this.specA.state.minDecibels - this.specA.state.maxDecibels;
         this.decibelShift = 0 - this.specA.state.minDecibels;
 
         this.noiseData = this.createNoise(this.noiseData);
+        // Initially fill allData with noise
+        this.allData = this.noiseData;
       }
     }
   }
@@ -105,15 +116,35 @@ export class SpectralDensityPlot extends RTSAScreen {
         this.drawSignals();
 
         // Draw max hold if enabled
-        if (this.specA.state.isTraceOn) {
+        if (this.specA.state.isMaxHold) {
           this.drawMaxHold(this.ctx);
         }
 
         // Hide below noise floor
         this.hideBelowNoiseFloor(this.ctx);
 
+        // Calculate min hold based on all data
+        for (let x = 0; x < this.width; x++) {
+          if (this.allData[x] > 0) {
+            if (this.minHoldData[x] === 0 || this.allData[x] < this.minHoldData[x]) {
+              this.minHoldData[x] = this.allData[x];
+            }
+          }
+        }
+
+        // Draw min hold if enabled
+        if (this.specA.state.isMinHold) {
+          this.drawMinHold(this.ctx);
+        }
+
+        const isDualScreenMode = this.canvas.id.endsWith('-spectral');
+
         // Draw grid overlay
-        this.drawGridOverlay(this.ctx);
+        this.drawGridOverlay(this.ctx, isDualScreenMode);
+
+        // Draw frequency and power labels
+        this.drawFrequencyLabels(this.ctx, isDualScreenMode);
+        this.drawPowerLabels(this.ctx, isDualScreenMode);
 
         this.lastDrawTime = now;
       }
@@ -179,6 +210,39 @@ export class SpectralDensityPlot extends RTSAScreen {
     });
   }
 
+  private drawFrequencyLabels(ctx: CanvasRenderingContext2D, isDualScreenMode: boolean): void {
+    ctx.save();
+    ctx.fillStyle = '#fff';
+    ctx.font = isDualScreenMode ? '14px Arial' : '20px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+
+    const numLabels = 10;
+    for (let i = 1; i <= numLabels - 1; i++) {
+      const x = (i / numLabels) * this.width;
+      const freq = this.minFreq + ((this.maxFreq - this.minFreq) * i) / numLabels;
+      const freqMHz = freq / 1e6;
+      ctx.fillText(`${freqMHz.toFixed(1)}`, x, isDualScreenMode ? 5 : this.height - 20);
+    }
+    ctx.restore();
+  }
+
+  private drawPowerLabels(ctx: CanvasRenderingContext2D, isDualScreenMode: boolean): void {
+    ctx.save();
+    ctx.fillStyle = '#fff';
+    ctx.font = isDualScreenMode ? '14px Arial' : '20px Arial';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+
+    const numLabels = isDualScreenMode ? 5 : 10;
+    for (let i = 0; i <= numLabels - 1; i++) {
+      const y = (i / numLabels) * this.height;
+      const power = this.specA.state.maxDecibels + ((this.specA.state.minDecibels - this.specA.state.maxDecibels) * i) / numLabels;
+      ctx.fillText(`${power.toFixed(0)}`, 35, y);
+    }
+    ctx.restore();
+  }
+
   /**
    * Canvas Drawing Methods
    */
@@ -188,7 +252,7 @@ export class SpectralDensityPlot extends RTSAScreen {
     ctx.fillRect(0, 0, this.width, this.height);
   }
 
-  private drawGridOverlay(ctx: CanvasRenderingContext2D): void {
+  private drawGridOverlay(ctx: CanvasRenderingContext2D, isDualScreenMode: boolean): void {
     ctx.globalAlpha = 0.1;
     ctx.fillStyle = 'white';
 
@@ -198,7 +262,9 @@ export class SpectralDensityPlot extends RTSAScreen {
     }
 
     // Horizontal lines
-    for (let y = 0; y < this.height; y += this.height / 10) {
+    const numLines = isDualScreenMode ? 5 : 10;
+    for (let i = 0; i < numLines; i++) {
+      const y = (i / numLines) * this.height;
       ctx.fillRect(0, y, this.width, 1);
     }
 
@@ -241,7 +307,7 @@ export class SpectralDensityPlot extends RTSAScreen {
     const inBandWidth = ((signal.bandwidth / (this.maxFreq - this.minFreq)) * this.width) / 2;
     const outOfBandWidth = ((signal.bandwidth / (this.maxFreq - this.minFreq)) * this.width) / 1.8;
 
-    this.data = this.createSignal(this.data, center, signal.power, inBandWidth, outOfBandWidth);
+    this.signalData = this.createSignal(this.signalData, center, signal.power, inBandWidth, outOfBandWidth);
 
     let maxX = 0;
     let maxY = 1;
@@ -250,14 +316,14 @@ export class SpectralDensityPlot extends RTSAScreen {
     ctx.strokeStyle = color;
     ctx.beginPath();
 
-    const len = this.data.length;
+    const len = this.signalData.length;
     for (let x = 0; x < len; x++) {
-      const lowestSignal = this.data[x] >= this.noiseData[x] ? this.data[x] : 0;
+      const lowestSignal = this.signalData[x] >= this.noiseData[x] ? this.signalData[x] : 0;
       const y = (lowestSignal - this.specA.state.maxDecibels - this.decibelShift) / this.range;
 
       maxSignalFreq = y < maxY ? lowestSignal : maxSignalFreq;
       maxX = y < maxY ? x : maxX;
-      maxY = y < maxY ? y : maxY;
+      maxY = Math.min(y, maxY);
 
       if (x === 0) {
         ctx.moveTo(x, this.height * y);
@@ -301,9 +367,26 @@ export class SpectralDensityPlot extends RTSAScreen {
     ctx.strokeStyle = color;
     ctx.beginPath();
 
-    const len = this.data.length;
+    const len = this.signalData.length;
     for (let x = 0; x < len; x++) {
       const y = (this.maxHoldData[x] - this.specA.state.maxDecibels - this.decibelShift) / this.range;
+      if (x === 0) {
+        ctx.moveTo(x, this.height * y);
+      } else {
+        ctx.lineTo(x, this.height * y);
+      }
+    }
+
+    ctx.stroke();
+  }
+
+  private drawMinHold(ctx: CanvasRenderingContext2D, color: string = '#0f0'): void {
+    ctx.strokeStyle = color;
+    ctx.beginPath();
+
+    const len = this.signalData.length;
+    for (let x = 0; x < len; x++) {
+      const y = (this.minHoldData[x] - this.specA.state.maxDecibels - this.decibelShift) / this.range;
       if (x === 0) {
         ctx.moveTo(x, this.height * y);
       } else {
@@ -386,6 +469,9 @@ export class SpectralDensityPlot extends RTSAScreen {
         this.noiseData[x] = y;
       }
 
+      // Update all data with the largest value at that frequency
+      this.allData[x] = Math.max(this.allData[x], y);
+
       data[x] = Math.max(y, 0);
     }
 
@@ -394,7 +480,7 @@ export class SpectralDensityPlot extends RTSAScreen {
 
   private createRealSignal(inBandWidth: number, x: number, center: number, amplitude: number, outOfBandWidth: number) {
     let y = 0;
-    const sigma = inBandWidth / 2.5; // Controls sharpness of main lobe
+    const sigma = inBandWidth / 1.75; // Controls sharpness of main lobe
     const distance = x - center;
     const gaussian = Math.exp(-0.5 * Math.pow(distance / sigma, 2));
 
@@ -430,21 +516,7 @@ export class SpectralDensityPlot extends RTSAScreen {
   }
 
   protected resize(): void {
-    if (!this.canvas.parentElement) return;
-
-    const newWidth = Math.max(this.canvas.parentElement.offsetWidth - 6, 10);
-    const newHeight = Math.max(newWidth, 10); // Square aspect ratio
-
-    if (newWidth !== this.width || newHeight !== this.height) {
-      this.width = newWidth;
-      this.height = newHeight;
-      this.canvas.width = this.width;
-      this.canvas.height = this.height;
-
-      // Reallocate buffers to match new dimensions
-      this.data = new Float32Array(this.width);
-      this.noiseData = new Float32Array(this.width);
-      this.maxHoldData = new Float32Array(this.width);
-    }
+    // Fixed size for consistency
+    return;
   }
 }

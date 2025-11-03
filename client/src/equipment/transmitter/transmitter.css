@@ -97,9 +97,10 @@
   gap: 16px;
 }
 
-.transmitter-power-content {
+.transmitter-right-content {
   flex: 1;
   display: flex;
+  justify-content: space-between;
   flex-direction: column;
   gap: 16px;
   width: 255px;

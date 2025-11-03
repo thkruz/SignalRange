@@ -418,7 +418,7 @@ export class Antenna extends Equipment {
             fec: modem.ifSignal.fec,
             feed: modem.ifSignal.feed,
           }
-          if (modem.transmitting && !this.state.isLoopbackEnabled && this.state.isHpaEnabled) {
+          if (modem.isTransmitting && !this.state.isLoopbackEnabled && this.state.isHpaEnabled) {
             // Pass the signal to the SimulationManager
             SimulationManager.getInstance().addSignal(rfSignal);
           } else {

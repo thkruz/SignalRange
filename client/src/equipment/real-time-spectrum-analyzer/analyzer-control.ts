@@ -200,6 +200,26 @@ export class AnalyzerControl extends BaseElement {
         }
       });
     });
+
+    document.addEventListener('keydown', (e) => {
+      if (!this.element) return;
+
+      // Only handle if control/unit is selected
+      if (!this.numberSelection || !this.controlSelection) return;
+
+      // Map key to numpad value
+      let value: string | undefined;
+      if (e.key >= '0' && e.key <= '9') value = e.key;
+      else if (e.key === '.') value = '.';
+      else if (e.key === '-') value = '-';
+      else if (e.key === 'Backspace') value = 'bksp';
+      else if (e.key.toLowerCase() === 'c') value = 'C';
+
+      if (value) {
+        e.preventDefault();
+        this.handleNumberClick(value);
+      }
+    });
   }
 
   private handleMaxAmpClick(): void {

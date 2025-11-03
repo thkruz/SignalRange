@@ -195,16 +195,16 @@ export class Transmitter extends Equipment {
                   data-action="transmit">
                   TX
                 </button>
-                <div class="transmitter-switch-container">
-                  <input type="checkbox" id="transmitterPowerSwitch${this.state.unit}${activeModemData.modem_number}" class="transmitter-power-switch" checked="${activeModemData.isPowered ? 'checked' : ''}" />
-                  <label for="transmitterPowerSwitch${this.state.unit}${activeModemData.modem_number}" class="transmitter-switch">
-                      <div class="transmitter-switch-track">
-                          <div class="transmitter-switch-rocker">
-                              <div class="transmitter-switch-light"></div>
-                              <div class="transmitter-switch-dots"></div>
-                              <div class="transmitter-switch-characters"></div>
-                              <div class="transmitter-switch-shine"></div>
-                              <div class="transmitter-switch-shadow"></div>
+                <div class="physical-switch-container">
+                  <input type="checkbox" id="transmitterPowerSwitch${this.state.unit}${activeModemData.modem_number}" class="physical-power-switch" checked="${activeModemData.isPowered ? 'checked' : ''}" />
+                  <label for="transmitterPowerSwitch${this.state.unit}${activeModemData.modem_number}" class="physical-switch">
+                      <div class="physical-switch-track">
+                          <div class="physical-switch-rocker">
+                              <div class="physical-switch-light"></div>
+                              <div class="physical-switch-dots"></div>
+                              <div class="physical-switch-characters"></div>
+                              <div class="physical-switch-shine"></div>
+                              <div class="physical-switch-shadow"></div>
                           </div>
                       </div>
                   </label>

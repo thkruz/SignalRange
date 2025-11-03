@@ -32,6 +32,7 @@ export class SpectralDensityPlot extends RTSAScreen {
 
   // Colors
   private readonly noiseColor: string = '#0bf';
+  signalColorCache: Map<string, string> = new Map();
 
   constructor(canvas: HTMLCanvasElement, antenna: Antenna, specA: RealTimeSpectrumAnalyzer) {
     super(canvas, antenna, specA);
@@ -129,7 +130,12 @@ export class SpectralDensityPlot extends RTSAScreen {
       if (!this.antenna.state.isLocked || !this.antenna.state.isOperational) return;
 
       if (this.specA.state.isShowSignals) {
-        color = SpectralDensityPlot.getRandomRgb(i);
+        // Check if we have cached a color for this signal id
+        color = this.signalColorCache.get(signal.id)!;
+        if (!color) {
+          color = SpectralDensityPlot.getRandomRgb(i);
+          this.signalColorCache.set(signal.id, color);
+        }
       }
 
       if (this.specA.state.isRfMode) {

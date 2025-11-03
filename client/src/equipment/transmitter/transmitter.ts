@@ -122,7 +122,7 @@ export class Transmitter extends Equipment {
                   type="text"
                   class="input-tx-frequency"
                   data-param="frequency"
-                  value="${this.inputData.ifSignal?.frequency ?? activeModemData.ifSignal.frequency}"
+                  value="${(this.inputData.ifSignal?.frequency ?? activeModemData.ifSignal.frequency) / 1e6}"
                 />
                 <span class="current-value">${activeModemData.ifSignal.frequency / 1e6} MHz</span>
               </div>
@@ -133,7 +133,7 @@ export class Transmitter extends Equipment {
                   type="text"
                   class="input-tx-bandwidth"
                   data-param="bandwidth"
-                  value="${this.inputData.ifSignal?.bandwidth ?? activeModemData.ifSignal.bandwidth}"
+                  value="${(this.inputData.ifSignal?.bandwidth ?? activeModemData.ifSignal.bandwidth) / 1e6}"
                 />
                 <span class="current-value">${activeModemData.ifSignal.bandwidth / 1e6} MHz</span>
               </div>

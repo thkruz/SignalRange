@@ -356,7 +356,7 @@ export class RealTimeSpectrumAnalyzer extends Equipment {
 
     this.updateIfRfModeButton();
 
-    this.emit(Events.SPEC_A_IF_RF_MODE_CHANGED, {
+    this.emit(Events.SPEC_A_CONFIG_CHANGED, {
       id: this.id,
       isRfMode: this.state.isRfMode,
     });
@@ -379,6 +379,11 @@ export class RealTimeSpectrumAnalyzer extends Equipment {
       this.state.screenMode = 'spectralDensity';
       this.screen = this.spectralDensity;
     }
+
+    this.emit(Events.SPEC_A_CONFIG_CHANGED, {
+      id: this.id,
+      screenMode: this.state.screenMode,
+    });
 
     this.updateScreenVisibility();
     this.updateScreenModeButton();
@@ -403,7 +408,7 @@ export class RealTimeSpectrumAnalyzer extends Equipment {
 
     this.updatePauseButton();
 
-    this.emit(Events.SPEC_A_IF_RF_MODE_CHANGED, {
+    this.emit(Events.SPEC_A_CONFIG_CHANGED, {
       id: this.id,
       isPaused: this.state.isPaused,
     });
@@ -429,6 +434,7 @@ export class RealTimeSpectrumAnalyzer extends Equipment {
     `;
 
     this.updateIfRfModeButton();
+    this.updateScreenModeButton();
     this.updatePauseButton();
     this.updateScreenVisibility();
   }

@@ -1,100 +1,77 @@
 /* AnalyzerControl.css - Modal control panel for Spectrum Analyzer */
 
-/* Overlay */
-.analyzer-control-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.4);
-  z-index: 9998;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* Popup Container */
-.analyzer-control-popup {
-  background-color: #282a2b;
-  min-width: 60%;
-  max-width: 90%;
-  border: 8px solid transparent;
-  border-image-source: url(./bezel.png);
-  border-image-slice: 30 fill;
-  border-image-outset: 0;
-  border-radius: 10px;
-  box-shadow: 0px 0px 12px 5px rgba(0, 0, 0, 1);
-  color: white;
-  text-align: center;
-  z-index: 9999;
-}
-
 /* Main Grid Layout */
-.analyzer-control-grid {
+.analyzer-control-content {
   display: flex;
+  flex-direction: row;
   background-color: var(--colorTertiary);
   padding: 10px;
   justify-content: space-around;
   align-items: center;
   gap: 20px;
+  height: 100%;
 }
 
-/* Left Column: Display Section */
-.analyzer-control-display-section {
+/* Sub-Menu Selection on Left Side */
+.analyzer-control-content-left {
   display: flex;
   flex-direction: row;
-  gap: 8px;
-  flex: 0 0 auto;
-}
-
-.analyzer-control-display {
-  background-color: white;
-  color: black;
-  border: 2px solid var(--color-dark-border);
-  padding: 16px;
-  border-radius: 4px;
-  min-width: 200px;
-}
-
-.analyzer-control-display-values {
-  display: flex;
-  flex-direction: column;
+  justify-content: space-around;
   gap: 12px;
+  height: 500px;
 }
 
-.analyzer-control-display-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 1.5rem;
-  font-weight: bold;
-}
-
-.analyzer-control-display-row .value {
-  flex: 1;
-  text-align: right;
-  margin-right: 16px;
-  font-family: 'Courier New', monospace;
-}
-
-.analyzer-control-display-row .unit {
-  flex: 0 0 auto;
-  text-align: left;
-  font-size: 1.5rem;
-}
-
-.analyzer-control-unit-buttons {
+.sub-menu-column {
   display: flex;
   flex-direction: column;
   gap: 12px;
   justify-content: space-around;
 }
 
-.analyzer-control-unit-buttons .unit-button {
-  min-width: 60px;
-  height: 40px;
-  font-size: 1.5rem;
+.sub-menu-labels {
+  background: #6a7b85;
+  width: 100px;
+  border-radius: 8px;
+  box-shadow: inset 0 2px 4px #3a4a55, 0 1px 2px #222;
+  border: 2px solid #5a6a75;
+  padding: 6px 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.sub-menu-labels>.label-cell {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-bottom: 1.5px solid #e0f7fa;
+  color: #e0f7fa;
+  font-family: 'Share Tech Mono', 'Roboto Mono', monospace;
+  font-size: 0.8rem;
+  padding: 8px 0;
+  text-align: center;
+  height: 35px;
+}
+
+.sub-menu-column.sub-menu-buttons {
+  padding: 6px 0;
+}
+
+.physical-button.label-select-button {
+  width: 35px;
+  height: 35px;
+  background: #1b1b1b !important;
+  font-size: 0.9rem;
+}
+
+/* Input Area on Right of Spectrum Analyzer */
+.analyzer-control-content-right {
+  display: flex;
+  flex-direction: column;
+  background-color: var(--colorTertiary);
+  padding: 10px;
+  justify-content: space-around;
+  align-items: center;
+  gap: 20px;
 }
 
 /* Middle Column: Control Buttons */
@@ -106,9 +83,9 @@
 }
 
 .analyzer-control-buttons .control-button {
-  min-width: 100px;
-  height: 50px;
-  font-size: 1rem;
+  width: 50px;
+  height: 35px;
+  font-size: 0.8rem;
 }
 
 /* Right Column: Number Pad */
@@ -126,13 +103,21 @@
 }
 
 .num-button {
-  min-width: 50px;
+  /* flex column */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
   height: 40px;
-  font-size: 1.2rem;
+  font-size: 1.05rem;
 }
 
 .num-button.special-button {
-  min-width: 50px;
+  background: #1b1b1b !important;
+  color: #fff;
+  font-size: 0.8em;
+  width: 60px;
 }
 
 .control-row {
@@ -148,10 +133,9 @@
   cursor: pointer;
   border: 2px solid var(--color-dark-border);
   border-radius: 6px;
-  background: linear-gradient(180deg, #f0f0f0 0%, #c8c8c8 100%);
-  color: #000;
+  background: linear-gradient(180deg, #f0f0f0 0%, #e2e2e2 100%);
+  color: #1b1b1b;
   font-weight: bold;
-  text-transform: uppercase;
   transition: all 0.15s ease;
   box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3), inset 0 1px 2px rgba(255, 255, 255, 0.5);
   position: relative;
@@ -186,45 +170,21 @@
   pointer-events: none;
 }
 
-/* Responsive adjustments */
-@media (max-width: 1200px) {
-  .analyzer-control-popup {
-    min-width: 80%;
-  }
-
-  .analyzer-control-grid {
-    flex-direction: column;
-  }
-
-  .analyzer-control-display-section,
-  .analyzer-control-buttons,
-  .analyzer-control-numpad {
-    width: 100%;
-  }
+.physical-button .subtext {
+  font-size: 0.5em;
+  color: #115b97;
+  text-align: center;
+  min-height: 1.2em;
 }
 
-@media (max-width: 768px) {
-  .analyzer-control-popup {
-    min-width: 95%;
-  }
-
-  .analyzer-control-display-row {
-    font-size: 1.2rem;
-  }
-
-  .num-button {
-    min-width: 60px;
-    height: 50px;
-    font-size: 1rem;
-  }
-
-  .control-button {
-    height: 45px;
-    font-size: 0.9rem;
-  }
-
-  .unit-button {
-    height: 45px;
-    font-size: 1.2rem;
-  }
+.unit-button {
+  /* flex column */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 40px;
+  height: 40px;
+  font-size: 0.8rem;
+  background: #1b1b1b !important;
+  color: #fff;
 }

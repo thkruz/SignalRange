@@ -7,6 +7,7 @@ import { RealTimeSpectrumAnalyzer } from "./real-time-spectrum-analyzer";
 export class AnalyzerControlBox extends DraggableBox {
   private readonly spectrumAnalyzer: RealTimeSpectrumAnalyzer;
   private popupDom: HTMLElement | null = null;
+  private control: AnalyzerControl | null = null;
 
   constructor(specA: RealTimeSpectrumAnalyzer) {
     super(`spec-a-${specA.state.id}-control-popup-box`, { title: `Spectrum Analyzer ${specA.state.id} Control Panel`, width: 'fit-content' });
@@ -25,12 +26,12 @@ export class AnalyzerControlBox extends DraggableBox {
 
     this.popupDom = getEl(`spec-a-${this.spectrumAnalyzer.state.id}-control-popup-content`)!;
 
-    const control = new AnalyzerControl({
+    this.control ??= new AnalyzerControl({
       element: this.popupDom,
       spectrumAnalyzer: this.spectrumAnalyzer,
     });
 
-    control.init();
+    this.control.init();
   }
 
   close(cb?: () => void): void {

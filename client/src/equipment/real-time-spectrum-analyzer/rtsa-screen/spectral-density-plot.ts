@@ -33,7 +33,7 @@ export class SpectralDensityPlot extends RTSAScreen {
   private readonly downconvertOffset: number = 3500e6;
 
   // Colors
-  private readonly noiseColor: string = '#0bf';
+  private readonly noiseColor: string = '#fff647ff';
   signalColorCache: Map<string, string> = new Map();
 
   constructor(canvas: HTMLCanvasElement, antenna: Antenna, specA: RealTimeSpectrumAnalyzer) {
@@ -363,7 +363,7 @@ export class SpectralDensityPlot extends RTSAScreen {
     }
   }
 
-  private drawMaxHold(ctx: CanvasRenderingContext2D, color: string = '#ff0'): void {
+  private drawMaxHold(ctx: CanvasRenderingContext2D, color: string = '#0f0'): void {
     ctx.strokeStyle = color;
     ctx.beginPath();
 

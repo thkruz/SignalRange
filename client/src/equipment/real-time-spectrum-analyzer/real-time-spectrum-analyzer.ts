@@ -3,7 +3,7 @@ import { Events } from "../../events/events";
 import { Hertz } from "../../types";
 import { Antenna } from '../antenna/antenna';
 import { Equipment } from '../equipment';
-import { AnalyzerControlBox } from "./layers-box";
+import { AnalyzerControlBox } from "./analyzer-control-box";
 import './real-time-spectrum-analyzer.css';
 import { SpectralDensityPlot } from './rtsa-screen/spectral-density-plot';
 import { WaterfallDisplay } from "./rtsa-screen/waterfall-display";

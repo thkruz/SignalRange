@@ -1,7 +1,7 @@
-import { EventBus, EventMap } from '../events/event-bus';
-import { Events } from '../events/events';
+import { EventBus } from '../events/event-bus';
+import { EventMap, Events } from '../events/events';
 import { AntennaState } from './antenna/antenna';
-import './equipment.css';
+import './base-equipment.css';
 import { RealTimeSpectrumAnalyzerState } from './real-time-spectrum-analyzer/real-time-spectrum-analyzer';
 import { ReceiverState } from './receiver/receiver';
 import { TransmitterState } from './transmitter/transmitter';
@@ -11,7 +11,7 @@ import { TransmitterState } from './transmitter/transmitter';
  * All physical equipment should extend this class
  * Provides standard lifecycle methods and shared functionality
  */
-export abstract class Equipment {
+export abstract class BaseEquipment {
   protected readonly id: number;
   protected readonly teamId: number;
   /** Current equipment state.*/

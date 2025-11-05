@@ -1,8 +1,9 @@
+import { EventBus } from "@app/events/event-bus";
 import { html } from "../../engine/utils/development/formatter";
 import { qs } from "../../engine/utils/query-selector";
 import { Events } from "../../events/events";
 import { Hertz, IfFrequency, IfSignal } from "../../types";
-import { Equipment } from "../equipment";
+import { BaseEquipment } from "../base-equipment";
 import './transmitter.css';
 
 export interface TransmitterModem {
@@ -28,7 +29,7 @@ export interface TransmitterState {
  * Manages modem configuration and transmission state_
  * Extends Equipment base class for standard lifecycle
  */
-export class Transmitter extends Equipment {
+export class Transmitter extends BaseEquipment {
   // State
   state: TransmitterState;
   private inputData: Partial<TransmitterModem> = {
@@ -75,6 +76,9 @@ export class Transmitter extends Equipment {
     };
 
     this.build(parentId);
+
+    EventBus.getInstance().on(Events.UPDATE, this.update.bind(this));
+    EventBus.getInstance().on(Events.SYNC, this.syncDomWithState.bind(this));
   }
 
   public update(): void {

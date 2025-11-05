@@ -1,8 +1,9 @@
+import { EventBus } from "@app/events/event-bus";
 import { html } from "../../engine/utils/development/formatter";
 import { Events } from "../../events/events";
 import { Hertz } from "../../types";
 import { Antenna } from '../antenna/antenna';
-import { Equipment } from '../equipment';
+import { BaseEquipment } from '../base-equipment';
 import { AnalyzerControlBox } from "./analyzer-control-box";
 import './real-time-spectrum-analyzer.css';
 import { SpectralDensityPlot } from './rtsa-screen/spectral-density-plot';
@@ -32,7 +33,7 @@ export interface RealTimeSpectrumAnalyzerState {
  * SpectrumAnalyzer - Configuration and settings manager
  * Delegates all rendering to SpectrumScreen for separation of concerns
  */
-export class RealTimeSpectrumAnalyzer extends Equipment {
+export class RealTimeSpectrumAnalyzer extends BaseEquipment {
   state: RealTimeSpectrumAnalyzerState;
 
   // Screen renderer
@@ -77,6 +78,10 @@ export class RealTimeSpectrumAnalyzer extends Equipment {
     };
 
     this.build(parentId);
+
+    EventBus.getInstance().on(Events.UPDATE, this.update.bind(this));
+    EventBus.getInstance().on(Events.SYNC, this.syncDomWithState.bind(this));
+    EventBus.getInstance().on(Events.DRAW, this.draw.bind(this));
   }
 
   initializeDom(parentId: string): HTMLElement {

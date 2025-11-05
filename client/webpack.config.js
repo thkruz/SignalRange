@@ -12,7 +12,9 @@ module.exports = {
   resolve: {
     extensions: ['.ts', '.js'],
     alias: {
-      '@src': path.resolve(__dirname, 'src'),
+      '@app': path.resolve(__dirname, 'src'),
+      '@engine': path.resolve(__dirname, 'src/engine'),
+      '@ootk': path.resolve(__dirname, 'src/engine/ootk')
     }
   },
   devtool: 'source-map',

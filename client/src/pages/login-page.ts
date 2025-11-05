@@ -1,18 +1,37 @@
-import { AbstractPage } from './abstract-page';
+import { qs } from "@app/engine/utils/query-selector";
+import { html } from "../engine/utils/development/formatter";
+import { BasePage } from "./base-page";
 
 /**
  * Login page implementation
  */
-export class LoginPage extends AbstractPage {
-  private loginForm: HTMLFormElement | null = null;
+export class LoginPage extends BasePage {
+  id = 'login-page';
+  private static instance_: LoginPage;
 
-  constructor() {
-    super('login-page');
+  private constructor() {
+    super();
+    this.init_('body-content-container', 'add')
   }
 
-  initializeDom(): HTMLElement {
-    this.container.innerHTML = `
-      <div class="login-page">
+  static create(): void {
+    if (LoginPage.instance_) {
+      throw new Error("LoginPage instance already exists.");
+    }
+
+    LoginPage.instance_ = new LoginPage();
+  }
+
+  static getInstance(): LoginPage {
+    if (!LoginPage.instance_) {
+      throw new Error("LoginPage instance does not exist.");
+    }
+
+    return this.instance_;
+  }
+
+  protected html_ = html`
+    <div id="${this.id}" class="login-page">
       <h1>Login</h1>
       <form id="login-form" class="login-form">
         <div class="form-group">
@@ -25,67 +44,22 @@ export class LoginPage extends AbstractPage {
         </div>
         <button type="submit" class="btn-primary">Login</button>
       </form>
-      </div>
-    `;
+    </div>
+  `;
 
-    this.loginForm = this.container.querySelector('#login-form');
+  protected initDom_(parentId: string, type: 'add' | 'replace' = 'replace'): HTMLElement {
+    const parentDom = super.initDom_(parentId, type);
+    this.dom_ = qs(`#${this.id}`, parentDom);
+    this.domCacehe_['login-form'] = qs('#login-form', parentDom);
 
-    return this.container;
+    return parentDom;
   }
 
-  protected setupEventListeners(): void {
-    if (this.loginForm) {
-      this.loginForm.addEventListener('submit', this.handleLogin.bind(this));
-    }
+  protected addEventListeners_(): void {
+    this.domCacehe_['login-form'].addEventListener('submit', this.handleLogin.bind(this));
   }
 
   private async handleLogin(event: Event): Promise<void> {
     event.preventDefault();
-    this.clearErrors();
-
-    const formData = this.getFormData('#login-form');
-    if (!formData) return;
-
-    const username = formData.get('username') as string;
-    const password = formData.get('password') as string;
-
-    // Validate
-    if (!this.validateRequired(username, 'Username')) return;
-    if (!this.validateRequired(password, 'Password')) return;
-
-    try {
-      this.showLoading('Logging in...');
-
-      // Simulate API call
-      const response = await this.performLogin(username, password);
-
-      this.hideLoading();
-
-      if (response.success) {
-        // Navigate to student page
-        globalThis.location.href = '/student';
-      } else {
-        this.showError('Invalid credentials');
-      }
-    } catch (error) {
-      this.hideLoading();
-      this.showError('Login failed. Please try again: ' + (error as Error).message);
-    }
-  }
-
-  private async performLogin(username: string, password: string): Promise<any> {
-    // Replace with actual API call
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve({ success: username === 'admin' && password === 'password' });
-      }, 1000);
-    });
-  }
-
-  destroy(): void {
-    if (this.loginForm) {
-      this.loginForm.removeEventListener('submit', this.handleLogin.bind(this));
-    }
-    super.destroy();
   }
 }

@@ -1,56 +1,62 @@
+import { getEl } from "@app/engine/utils/get-el";
+import { qs } from "@app/engine/utils/query-selector";
+import { App } from "../app";
 import { html } from "../engine/utils/development/formatter";
-import { StudentEquipment } from '../equipment/student-equipment';
 import { syncEquipmentWithStore } from '../sync/storage';
-import { AbstractPage } from './abstract-page';
+import { BasePage } from "./base-page";
+import { Body } from "./layout/body/body";
+import { StudentEquipment } from './student-page/student-equipment';
 
 /**
  * Student page implementation
  */
-export class StudentPage extends AbstractPage {
-  equipment: StudentEquipment | undefined;
+export class StudentPage extends BasePage {
+  readonly id = 'student-page';
+  static readonly containerId = 'student-page-container';
+  private static instance_: StudentPage;
 
-  constructor() {
-    super('student-page');
+  private constructor() {
+    super();
+    this.init_()
   }
 
-  init(): void {
-    super.init();
-    this.initEquipment();
+  static create(): void {
+    if (StudentPage.instance_) {
+      throw new Error("StudentPage instance already exists.");
+    }
+
+    StudentPage.instance_ = new StudentPage();
   }
 
-  initializeDom(): HTMLElement {
-    this.container.innerHTML = html`
-      <div class="student-page-container">
-        <!-- Team Info Bar -->
-        <!-- <div class="team-info">
-          <div class="team-name">Team: Persephone</div>
-          <div class="server-name">Server: Server 1</div>
-        </div> -->
+  static getInstance(): StudentPage {
+    if (!StudentPage.instance_) {
+      throw new Error("StudentPage instance does not exist.");
+    }
 
-        <!-- Equipment Container -->
-        <div id="student-equipment-container"></div>
+    return this.instance_;
+  }
+
+  protected html_ = html`
+      <div id="${this.id}" class="student-page-container">
+        <div id="${StudentPage.containerId}"></div>
       </div>
     `;
 
-    return this.container;
+  init_(): void {
+    super.init_(Body.containerId, 'add');
+    const parentDom = getEl(Body.containerId);
+    this.dom_ = qs(`#${this.id}`, parentDom);
+    this.initEquipment_();
   }
 
-  private async initEquipment(): Promise<void> {
-    this.equipment = new StudentEquipment('student-equipment-container');
+  protected addEventListeners_(): void {
+    // No event listeners for now
+  }
+
+  private initEquipment_(): void {
+    App.getInstance().equipment = new StudentEquipment();
 
     // Sync with storage (automatically uses LocalStorage)
-    await syncEquipmentWithStore(this.equipment);
-
-    for (const spectrumAnalyzer of this.equipment.spectrumAnalyzers) {
-      spectrumAnalyzer.syncDomWithState();
-    }
-    for (const receiver of this.equipment.receivers) {
-      receiver.syncDomWithState();
-    }
-    for (const transmitter of this.equipment.transmitters) {
-      transmitter.syncDomWithState();
-    }
-
-    console.log(this.equipment.getAllConfigs());
+    syncEquipmentWithStore(App.getInstance().equipment);
   }
 }

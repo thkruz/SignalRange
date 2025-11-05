@@ -1,10 +1,11 @@
+import { EventBus } from "@app/events/event-bus";
 import { bandInformation, FrequencyBand } from "../../constants";
 import { html } from "../../engine/utils/development/formatter";
 import { qs } from "../../engine/utils/query-selector";
 import { Events } from "../../events/events";
 import { SimulationManager } from "../../simulation/simulation-manager";
 import { RfFrequency, RfSignal } from "../../types";
-import { Equipment } from '../equipment';
+import { BaseEquipment } from '../base-equipment';
 import { Transmitter } from "../transmitter/transmitter";
 import './antenna.css';
 
@@ -40,7 +41,7 @@ export interface AntennaState {
  * Manages antenna state, loopback switch, and satellite tracking
  * Extends Equipment base class for standard lifecycle
  */
-export class Antenna extends Equipment {
+export class Antenna extends BaseEquipment {
   /** Current antenna state */
   state: AntennaState;
   /** Input state being edited in the UI before applying changes */
@@ -72,6 +73,9 @@ export class Antenna extends Equipment {
     const parentDom = this.initializeDom(parentId);
     this.lastRenderState = structuredClone(this.state);
     this.addListeners(parentDom);
+
+    EventBus.getInstance().on(Events.UPDATE, this.update.bind(this));
+    EventBus.getInstance().on(Events.SYNC, this.syncDomWithState.bind(this));
   }
 
   initializeDom(parentId: string): HTMLElement {
@@ -443,7 +447,7 @@ export class Antenna extends Equipment {
     return downlinkFreq as RfFrequency;
   }
 
-  private syncDomWithState(): void {
+  syncDomWithState(): void {
     if (JSON.stringify(this.state) === JSON.stringify(this.lastRenderState)) {
       return; // No changes, skip update
     }

@@ -1,9 +1,9 @@
 import { AntennaState } from '../equipment/antenna/antenna';
 import { RealTimeSpectrumAnalyzerState } from '../equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer';
 import { ReceiverState } from '../equipment/receiver/receiver';
-import type { StudentEquipment } from '../equipment/student-equipment';
 import { TransmitterState } from '../equipment/transmitter/transmitter';
 import { Logger } from '../logging/logger';
+import type { StudentEquipment } from '../pages/student-page/student-equipment';
 import type { StorageProvider } from './storage-provider';
 
 /**

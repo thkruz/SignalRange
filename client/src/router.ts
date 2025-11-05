@@ -1,11 +1,13 @@
 import { EventBus } from "./events/event-bus";
 import { Events } from "./events/events";
+import { BasePage } from "./pages/base-page";
 
 /**
  * Simple Router for 3 pages: login, student, instructor
  */
 export class Router {
   private currentPath: string = '/';
+  private pages_: { [key: string]: BasePage } = {};
 
   init(): void {
     // Listen for popstate (back/forward buttons)
@@ -25,7 +27,11 @@ export class Router {
     this.handleRoute();
   }
 
-  public navigate(path: string): void {
+  add(page: BasePage): void {
+    this.pages_[page.id] = page;
+  }
+
+  navigate(path: string): void {
     globalThis.history.pushState({}, '', path);
     this.handleRoute();
   }
@@ -57,23 +63,16 @@ export class Router {
   }
 
   private hideAll(): void {
-    const pages = ['login-page', 'student-page', 'instructor-page'];
-    for (const id of pages) {
-      const el = document.getElementById(id);
-      if (el) el.style.display = 'none';
+    for (const pageName in this.pages_) {
+      this.pages_[pageName].hide();
     }
   }
 
-  private showPage(id: string): void {
-    const el = document.getElementById(id);
-    if (el) {
-      el.style.display = 'block';
-    } else {
-      alert(`Page with id '${id}' not found`);
-    }
+  private showPage(pageName: string): void {
+    this.pages_[pageName].show();
   }
 
-  public getCurrentPath(): string {
+  getCurrentPath(): string {
     return this.currentPath;
   }
 }

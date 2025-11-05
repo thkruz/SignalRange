@@ -1,3 +1,6 @@
+import { Milliseconds } from "@app/engine/ootk/src/main";
+import { AntennaState } from "@app/equipment/antenna/antenna";
+import { RealTimeSpectrumAnalyzerState } from "@app/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer";
 import { ReceiverModemState } from "../equipment/receiver/receiver";
 import { TransmitterModem } from "../equipment/transmitter/transmitter";
 import { RfSignal } from "../types";
@@ -100,4 +103,39 @@ export enum Events {
   // Router events
   ROUTE_CHANGED = 'route:changed',
   STORAGE_ERROR = "STORAGE_ERROR",
+
+  // Game loop events
+  UPDATE = "app:update",
+  DRAW = "app:draw",
+  SYNC = "app:sync",
+}
+
+export interface EventMap {
+  [Events.ANTENNA_CONFIG_CHANGED]: [AntennaState];
+  [Events.ANTENNA_LOOPBACK_CHANGED]: [AntennaLoopbackChangedData];
+  [Events.ANTENNA_HPA_CHANGED]: [AntennaHpaChangedData];
+  [Events.ANTENNA_TRACK_CHANGED]: [AntennaTrackChangedData];
+  [Events.ANTENNA_LOCKED]: [AntennaLockedData];
+  [Events.ANTENNA_POWER_CHANGED]: [AntennaPowerChangedData];
+  [Events.ANTENNA_ERROR]: [AntennaErrorData];
+
+  [Events.TX_CONFIG_CHANGED]: [TxConfigChangedData];
+  [Events.TX_ACTIVE_MODEM_CHANGED]: [TxActiveModemChangedData];
+  [Events.TX_TRANSMIT_CHANGED]: [TxTransmitChangedData];
+  [Events.TX_ERROR]: [TxErrorData];
+
+  [Events.RX_CONFIG_CHANGED]: [RxConfigChangedData];
+  [Events.RX_SIGNAL_FOUND]: [RxSignalFoundData];
+  [Events.RX_SIGNAL_LOST]: [RxSignalLostData];
+  [Events.RX_ACTIVE_MODEM_CHANGED]: [RxActiveModemChangedData];
+
+  [Events.SPEC_A_CONFIG_CHANGED]: [Partial<RealTimeSpectrumAnalyzerState>];
+
+  [Events.ROUTE_CHANGED]: [{ path: string }];
+
+  [Events.STORAGE_ERROR]: [Error];
+
+  [Events.UPDATE]: [Milliseconds];
+  [Events.DRAW]: [Milliseconds];
+  [Events.SYNC]: [];
 }

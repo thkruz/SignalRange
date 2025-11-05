@@ -10,6 +10,10 @@ export class Logger {
   }
 
   static log(message: string, ...optionalParams: any[]): void {
+    // Ignore logs coming from 'app:' namespace due to quantity
+    if (message.includes('app:')) {
+      return;
+    }
     console.log(`%c[LOG] ${message}`, Logger.color('LOG'), ...optionalParams);
   }
 

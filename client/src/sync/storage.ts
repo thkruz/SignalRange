@@ -5,9 +5,10 @@
  * while hiding the complexity of the storage provider.
  */
 
-import type { StudentEquipment } from '../equipment/student-equipment';
+import { App } from '@app/app';
 import { EventBus } from '../events/event-bus';
 import { Events } from '../events/events';
+import type { StudentEquipment } from '../pages/student-page/student-equipment';
 import { StorageProviderFactory, StorageProviderType } from './storage-provider-factory';
 import { SyncManager, type AppState } from './sync-manager';
 
@@ -84,6 +85,8 @@ export async function syncEquipmentWithStore(studentEquipment: StudentEquipment)
 
   // Set up event listeners to save on changes
   setupEquipmentListeners(studentEquipment);
+
+  App.getInstance().sync();
 }
 
 /**

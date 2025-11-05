@@ -31,7 +31,7 @@ export class AnalyzerControlBox extends DraggableBox {
       spectrumAnalyzer: this.spectrumAnalyzer,
     });
 
-    this.control.init();
+    this.control.init_(this.popupDom.id, 'replace');
   }
 
   close(cb?: () => void): void {

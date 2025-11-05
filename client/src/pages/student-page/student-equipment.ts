@@ -1,46 +1,26 @@
-import { html } from "../engine/utils/development/formatter";
-import { Antenna } from './antenna/antenna';
-import { RealTimeSpectrumAnalyzer } from './real-time-spectrum-analyzer/real-time-spectrum-analyzer';
-import { Receiver } from './receiver/receiver';
+import { BaseElement } from "@app/components/base-element";
+import { StudentPage } from "@app/pages/student-page";
+import { html } from "../../engine/utils/development/formatter";
+import { Antenna } from '../../equipment/antenna/antenna';
+import { RealTimeSpectrumAnalyzer } from '../../equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer';
+import { Receiver } from '../../equipment/receiver/receiver';
+import { Transmitter } from '../../equipment/transmitter/transmitter';
 import './student-equipment.css';
-import { Transmitter } from './transmitter/transmitter';
 
 /**
  * StudentEquipment - Orchestrates all equipment on student page
  * Creates the layout and instantiates all equipment classes
  */
-export class StudentEquipment {
-  private readonly element: HTMLElement;
+export class StudentEquipment extends BaseElement {
+  /** Debug flag for full equipment suite */
+  readonly isFullEquipmentSuite: boolean = false;
+
   readonly spectrumAnalyzers: RealTimeSpectrumAnalyzer[] = [];
   readonly antennas: Antenna[] = [];
   readonly transmitters: Transmitter[] = [];
   readonly receivers: Receiver[] = [];
 
-  readonly isFullEquipmentSuite: boolean = false;
-
-  constructor(parentId: string) {
-    const parent = document.getElementById(parentId);
-    if (!parent) throw new Error(`Parent element ${parentId} not found`);
-
-    this.element = parent;
-    this.render();
-    this.addListeners();
-    this.initEquipment();
-    this.gameLoop();
-
-    (globalThis as any).equipment = this; // For debugging
-  }
-
-  gameLoop(): void {
-    requestAnimationFrame(() => this.gameLoop());
-    this.updateEquipment();
-    this.spectrumAnalyzers.forEach(specA => {
-      specA.draw();
-    });
-  }
-
-  render(): void {
-    this.element.innerHTML = html`
+  protected html_ = html`
       <div class="student-equipment">
         <!-- Antennas -->
           <div id="antenna-spec-a-grid1" class="antenna-spec-a-grid">
@@ -87,14 +67,18 @@ export class StudentEquipment {
           </div>
       </div>
     `;
+
+  constructor() {
+    super();
+    this.init_(StudentPage.containerId, 'replace');
+    this.initEquipment_();
   }
 
-  private addListeners(): void {
-    // Add any equipment-level listeners here
-    // Could listen to global events and coordinate between equipment
+  protected addEventListeners_(): void {
+    // No event listeners for now
   }
 
-  private initEquipment(): void {
+  private initEquipment_(): void {
 
     // Initialize 2 antennas
     for (let i = 1; i <= (this.isFullEquipmentSuite ? 2 : 1); i++) {
@@ -139,42 +123,5 @@ export class StudentEquipment {
       const rx = new Receiver(`rx${i}-container`, i, this.antennas, 1, 1);
       this.receivers.push(rx);
     }
-  }
-
-  /**
-   * Update all equipment with new data from server/simulation
-   */
-  public updateEquipment(): void {
-    // Update spectrum analyzers with signal data
-    this.spectrumAnalyzers.forEach(specA => {
-      specA.update();
-    });
-
-    // Update antennas
-    this.antennas.forEach((antenna) => {
-      antenna.update();
-    });
-
-    // Update transmitters
-    this.transmitters.forEach((tx) => {
-      tx.update();
-    });
-
-    // Update receivers
-    this.receivers.forEach((rx) => {
-      rx.update();
-    });
-  }
-
-  /**
-   * Get configuration from all equipment
-   */
-  public getAllConfigs(): any {
-    return {
-      spectrumAnalyzers: this.spectrumAnalyzers.map(sa => sa.getConfig()),
-      antennas: this.antennas.map(a => a.state),
-      transmitters: this.transmitters.map(tx => tx.state),
-      receivers: this.receivers.map(rx => rx.state)
-    };
   }
 }

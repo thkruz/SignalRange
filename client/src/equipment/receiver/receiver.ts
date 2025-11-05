@@ -1,8 +1,9 @@
+import { EventBus } from "@app/events/event-bus";
 import { html } from "../../engine/utils/development/formatter";
 import { qs } from "../../engine/utils/query-selector";
 import { Events } from "../../events/events";
 import { FECType, Hertz, MHz, ModulationType } from "../../types";
-import { Equipment } from "../equipment";
+import { BaseEquipment } from "../base-equipment";
 import { Antenna } from './../antenna/antenna';
 import './receiver.css';
 
@@ -28,7 +29,7 @@ export interface ReceiverState {
  * Manages modem configuration and signal reception state
  * Extends Equipment base class for standard lifecycle
  */
-export class Receiver extends Equipment {
+export class Receiver extends BaseEquipment {
   state: ReceiverState;
   private inputData: Partial<ReceiverModemState> = {};
   private readonly antennas: Antenna[];
@@ -61,6 +62,9 @@ export class Receiver extends Equipment {
     };
 
     this.build(parentId);
+
+    EventBus.getInstance().on(Events.UPDATE, this.update.bind(this));
+    EventBus.getInstance().on(Events.SYNC, this.syncDomWithState.bind(this));
   }
 
   update(): void {

@@ -18,44 +18,7 @@ export interface AnalyzerControlOptions {
  * Numbers must be "pressed" rather than typed, mimicking physical equipment
  */
 export class AnalyzerControl extends BaseElement {
-  private readonly specA: RealTimeSpectrumAnalyzer;
-  private domCache: { [key: string]: HTMLElement } = {};
-
-  // Display state
-  private ghz: string = '0';
-  private mhz: string = '0';
-  private khz: string = '0';
-
-  // Control state
-  private controlSelection: 'freq' | 'span' | null = null;
-  private numberSelection: 'ghz' | 'mhz' | 'khz' | null = null;
-
-  constructor(options: AnalyzerControlOptions) {
-    super();
-    this.specA = options.spectrumAnalyzer;
-    this.element = options.element;
-  }
-
-  init(): void {
-    this.initializeDom();
-    this.setupEventListeners();
-    this.initializeValues();
-  }
-
-  private initializeValues(): void {
-    // Initialize with current center frequency in MHz
-    this.numberSelection = 'mhz';
-    this.mhz = (this.specA.getConfig().centerFrequency / 1e6).toFixed(3);
-    this.ghz = '0';
-    this.khz = '0';
-    this.controlSelection = 'freq';
-    this.updateDisplay();
-  }
-
-  initializeDom(): HTMLElement {
-    const parentDom = super.initializeDom(this.element?.id);
-
-    parentDom.innerHTML = html`
+  protected readonly html_ = html`
     <div class="analyzer-control-content">
 
     <!-- Left Side: Sub-Menu Selection -->
@@ -233,6 +196,42 @@ export class AnalyzerControl extends BaseElement {
     </div>
     `;
 
+  private readonly specA: RealTimeSpectrumAnalyzer;
+  private domCache: { [key: string]: HTMLElement } = {};
+
+  // Display state
+  private ghz: string = '0';
+  private mhz: string = '0';
+  private khz: string = '0';
+
+  // Control state
+  private controlSelection: 'freq' | 'span' | null = null;
+  private numberSelection: 'ghz' | 'mhz' | 'khz' | null = null;
+
+  constructor(options: AnalyzerControlOptions) {
+    super();
+    this.specA = options.spectrumAnalyzer;
+    this.dom_ = options.element;
+  }
+
+  init_(parentId: string, type: 'add' | 'replace' = 'replace'): void {
+    super.init_(parentId, type);
+    this.initializeValues();
+  }
+
+  private initializeValues(): void {
+    // Initialize with current center frequency in MHz
+    this.numberSelection = 'mhz';
+    this.mhz = (this.specA.getConfig().centerFrequency / 1e6).toFixed(3);
+    this.ghz = '0';
+    this.khz = '0';
+    this.controlSelection = 'freq';
+    this.updateDisplay();
+  }
+
+  initDom_(parentId: string, type: 'add' | 'replace' = 'replace'): HTMLElement {
+    const parentDom = super.initDom_(parentId, type);
+
     this.domCache['label-cell-1'] = parentDom.querySelector('#label-cell-1')!;
     this.domCache['label-cell-2'] = parentDom.querySelector('#label-cell-2')!;
     this.domCache['label-cell-3'] = parentDom.querySelector('#label-cell-3')!;
@@ -287,8 +286,8 @@ export class AnalyzerControl extends BaseElement {
     return parentDom;
   }
 
-  protected setupEventListeners(): void {
-    if (!this.element) return;
+  protected addEventListeners_(): void {
+    if (!this.dom_) return;
 
     // Unit selection buttons (GHz, MHz, KHz)
     this.domCache['ghz-select']?.addEventListener('click', () => this.handleUnitSelect('ghz'));
@@ -303,7 +302,7 @@ export class AnalyzerControl extends BaseElement {
     this.domCache['marker-button']?.addEventListener('click', () => this.handleMarkerClick());
 
     // Number pad buttons
-    const numButtons = qsa<HTMLButtonElement>('.num-button', this.element);
+    const numButtons = qsa<HTMLButtonElement>('.num-button', this.dom_);
     numButtons.forEach(button => {
       button.addEventListener('click', () => {
         const value = button.dataset.value;
@@ -524,12 +523,12 @@ export class AnalyzerControl extends BaseElement {
   }
 
   private updateDisplay(): void {
-    if (!this.element) return;
+    if (!this.dom_) return;
 
     // Update display values
-    const ghzDisplay = qs('#ghz-display', this.element);
-    const mhzDisplay = qs('#mhz-display', this.element);
-    const khzDisplay = qs('#khz-display', this.element);
+    const ghzDisplay = qs('#ghz-display', this.dom_);
+    const mhzDisplay = qs('#mhz-display', this.dom_);
+    const khzDisplay = qs('#khz-display', this.dom_);
 
     if (ghzDisplay) ghzDisplay.textContent = this.ghz || '0';
     if (mhzDisplay) mhzDisplay.textContent = this.mhz || '0';
@@ -551,7 +550,7 @@ export class AnalyzerControl extends BaseElement {
   }
 
   private updateButtonState(selector: string, isActive: boolean): void {
-    const button = qs<HTMLButtonElement>(selector, this.element!);
+    const button = qs<HTMLButtonElement>(selector, this.dom_!);
     if (button) {
       if (isActive) {
         button.classList.add('active');

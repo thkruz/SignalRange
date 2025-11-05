@@ -1,0 +1,185 @@
+/* Complex Physical Power Switch Styles */
+.physical-switch-container {
+  position: relative;
+}
+
+/* Hide the actual transmitter power switch checkbox */
+.physical-power-switch {
+  display: none;
+}
+
+.physical-switch {
+  width: 50px;
+  height: 80px;
+  margin: 0px;
+  background-color: black;
+  border-radius: 8px;
+  padding: 5px;
+  box-shadow:
+    0 0 3px 1px rgba(0, 0, 0, 0.15),
+    0 0 1px 1px #222,
+    inset 0 2px 2px -2px #eee,
+    inset 0 0 2px 10px #3a3a3a,
+    inset 0 0 2px 16px #111;
+  position: relative;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.physical-switch-track {
+  width: 100%;
+  height: 100%;
+  background: #0a0a0a;
+  border-radius: 4px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+.physical-switch-rocker {
+  width: calc(100% - 4px);
+  height: calc(100% - 2px);
+  margin: 1px 2px;
+  border-radius: 6px;
+  position: relative;
+  background: linear-gradient(180deg, #8b0000 0%, #6b0000 30%, #6b0000 70%, #8b0000 100%);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+}
+
+/* Top and bottom halves for the symbols (not used in transmitter markup) */
+.physical-switch-rocker-half {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 2;
+}
+
+.physical-switch-shine {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  opacity: 1.0;
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.3), transparent 20%, transparent 50%, rgba(255, 255, 255, 0.0)) 50% 50% / 97% 97%;
+  background-repeat: no-repeat;
+  border-radius: 6px;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.physical-switch-shadow {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  opacity: 1;
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(transparent 90%, rgba(0, 0, 0, 0.8));
+  background-repeat: no-repeat;
+  border-radius: 6px;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.physical-switch-light {
+  opacity: 0;
+  animation: light-off 0.2s;
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background-image: radial-gradient(#ff6b6b, #ff1818 40%, transparent 70%);
+  border-radius: 6px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.physical-switch-dots {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background-image: radial-gradient(transparent 30%, rgba(100, 0, 0, 0.7) 70%);
+  background-size: 10px 10px;
+  border-radius: 6px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.4s;
+  z-index: 2;
+}
+
+.physical-switch-characters {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background:
+    linear-gradient(#ccc, #ccc) 50% 20% / 3% 12%,
+    radial-gradient(circle, transparent 50%, #ccc 52%, #ccc 70%, transparent 72%) 50% 80% / 28% 15%;
+  background-repeat: no-repeat;
+  border-radius: 6px;
+  pointer-events: none;
+  z-index: 4;
+}
+
+.physical-power-switch:not(:checked)+.physical-switch .physical-switch-rocker {
+  box-shadow:
+    0 4px 8px rgba(0, 0, 0, 0.6),
+    inset 0 -30px 40px rgba(0, 0, 0, 0.5),
+    inset 0 30px 40px rgba(255, 255, 255, 0.08),
+    inset 0 2px 4px rgba(255, 255, 255, 0.1);
+  background: linear-gradient(180deg, #a00000 0%, #8b0000 48%, #6b0000 53%, #5b0000 100%);
+}
+
+
+
+.physical-power-switch:checked+.physical-switch .physical-switch-rocker {
+  background: linear-gradient(180deg, #4b0000 0%, #6b0000 30%, #a00000 70%, #cc0000 100%);
+}
+
+.physical-power-switch:checked+.physical-switch .physical-switch-light {
+  animation: flicker 0.2s infinite 0.3s;
+  opacity: 1;
+}
+
+.physical-power-switch:checked+.physical-switch .physical-switch-shine {
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.0), transparent 50%, transparent 80%, rgba(255, 255, 255, 0.5)) 50% 50% / 97% 97%;
+}
+
+.physical-power-switch:checked+.physical-switch .physical-switch-shadow {
+  opacity: 0;
+}
+
+.physical-power-switch:checked+.physical-switch .physical-switch-dots {
+  opacity: 1;
+}
+
+/* Flicker animation for the light */
+@keyframes flicker {
+  0% {
+    opacity: 1;
+  }
+
+  80% {
+    opacity: 0.8;
+  }
+
+  100% {
+    opacity: 1;
+  }
+}
+
+/* Light off animation */
+@keyframes light-off {
+  0% {
+    opacity: 1;
+  }
+
+  80% {
+    opacity: 0;
+  }
+}

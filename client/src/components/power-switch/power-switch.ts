@@ -1,0 +1,77 @@
+import { html } from "@app/engine/utils/development/formatter";
+import { qs } from "@app/engine/utils/query-selector";
+import './power-switch.css';
+
+export class PowerSwitch {
+  protected html_: string;
+  private readonly uniqueId: string;
+  private dom_?: HTMLInputElement;
+  private isOn_: boolean;
+
+  constructor(uniqueId: string, isOn: boolean) {
+    this.html_ = html`
+      <div class="physical-switch-container">
+        <input type="checkbox" id="${uniqueId}" class="physical-power-switch" checked="${isOn ? 'checked' : ''}" />
+        <label for="${uniqueId}" class="physical-switch">
+            <div class="physical-switch-track">
+                <div class="physical-switch-rocker">
+                    <div class="physical-switch-light"></div>
+                    <div class="physical-switch-dots"></div>
+                    <div class="physical-switch-characters"></div>
+                    <div class="physical-switch-shine"></div>
+                    <div class="physical-switch-shadow"></div>
+                </div>
+            </div>
+        </label>
+      </div>
+    `;
+
+    this.isOn_ = isOn;
+    this.uniqueId = uniqueId;
+  }
+
+  static create(domId: string, isOn: boolean): PowerSwitch {
+    return new PowerSwitch(domId, isOn);
+  }
+
+  get html(): string {
+    return this.html_;
+  }
+
+  addEventListeners(cb: (isOn: boolean) => void): void {
+    qs(`#${this.uniqueId}`).addEventListener('change', (e) => {
+      cb((e.target as HTMLInputElement).checked);
+    });
+  }
+
+  get dom(): HTMLInputElement {
+    this.dom_ ??= qs(`#${this.uniqueId}`);
+
+    return this.dom_;
+  }
+
+  on(): void {
+    if (!this.isOn_) {
+      this.dom.checked = true;
+      this.isOn_ = true;
+    }
+  }
+
+  off(): void {
+    if (this.isOn_) {
+      this.dom.checked = false;
+      this.isOn_ = false;
+    }
+  }
+
+  sync(isOn: boolean): void {
+    switch (isOn) {
+      case true:
+        this.on();
+        break;
+      case false:
+        this.off();
+        break;
+    }
+  }
+}

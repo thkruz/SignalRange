@@ -1,3 +1,4 @@
+import { PowerSwitch } from "@app/components/power-switch/power-switch";
 import { EventBus } from "@app/events/event-bus";
 import { bandInformation, FrequencyBand } from "../../constants";
 import { html } from "../../engine/utils/development/formatter";
@@ -10,6 +11,7 @@ import { Transmitter } from "../transmitter/transmitter";
 import './antenna.css';
 
 export interface AntennaState {
+  isPowered: boolean;
   /** Which antenna is this */
   id: number;
   /** If there are multiple teams, which team is this antenna part of */
@@ -48,6 +50,7 @@ export class Antenna extends BaseEquipment {
   private inputState: AntennaState;
   private lastRenderState: AntennaState;
   transmitters: Transmitter[] = [];
+  powerSwitch: PowerSwitch;
 
   constructor(parentId: string, unit: number, teamId: number = 1, serverId: number = 1) {
     super(parentId, unit, teamId);
@@ -65,6 +68,7 @@ export class Antenna extends BaseEquipment {
       isLocked: false,
       isAutoTrackEnabled: false,
       isOperational: true,
+      isPowered: true,
       signals: []
     };
 
@@ -83,6 +87,8 @@ export class Antenna extends BaseEquipment {
 
     const band = this.state.freqBand === FrequencyBand.C ? 'c' : 'ku';
     const bandInfo = bandInformation[band];
+
+    this.powerSwitch = PowerSwitch.create(`antenna-power-switch-${this.state.id}`, this.state.isPowered);
 
     parentDom.innerHTML = html`
       <div class="antenna-box">
@@ -171,11 +177,7 @@ export class Antenna extends BaseEquipment {
 
             <div class="config-actions">
               <button class="btn-apply" data-action="apply">Apply</button>
-              <button
-                class="btn-power ${this.state.isOperational ? 'active' : ''}"
-                data-action="power">
-                Power
-              </button>
+              ${this.powerSwitch.html}
             </div>
           </div>
         </div>
@@ -183,20 +185,19 @@ export class Antenna extends BaseEquipment {
     `;
 
     this.domCache['parent'] = parentDom;
-    this.domCache['status'] = qs('.antenna-status', parentDom) as HTMLElement;
-    this.domCache['btnLoopback'] = qs('.btn-loopback', parentDom) as HTMLElement;
-    this.domCache['btnHpa'] = qs('.btn-hpa', parentDom) as HTMLElement;
-    this.domCache['inputTarget'] = qs('.input-target', parentDom) as HTMLSelectElement;
-    this.domCache['inputBand'] = qs('.input-band', parentDom) as HTMLSelectElement;
-    this.domCache['inputOffset'] = qs('.input-offset', parentDom) as HTMLInputElement;
-    this.domCache['inputTrack'] = qs('.input-track', parentDom) as HTMLInputElement;
-    this.domCache['lockStatus'] = qs('.lock-status', parentDom) as HTMLElement;
-    this.domCache['btnPower'] = qs('.btn-power', parentDom) as HTMLElement;
-    this.domCache['btnApply'] = qs('.btn-apply', parentDom) as HTMLElement;
-    this.domCache['labelTarget'] = qs('#labelTarget', parentDom) as HTMLElement;
-    this.domCache['labelOffset'] = qs('#labelOffset', parentDom) as HTMLElement;
-    this.domCache['labelBand'] = qs('#labelBand', parentDom) as HTMLElement;
-    this.domCache['labelLockStatus'] = qs('#labelLockStatus', parentDom) as HTMLElement;
+    this.domCache['status'] = qs('.antenna-status', parentDom);
+    this.domCache['btnLoopback'] = qs('.btn-loopback', parentDom);
+    this.domCache['btnHpa'] = qs('.btn-hpa', parentDom);
+    this.domCache['inputTarget'] = qs('.input-target', parentDom);
+    this.domCache['inputBand'] = qs('.input-band', parentDom);
+    this.domCache['inputOffset'] = qs('.input-offset', parentDom);
+    this.domCache['inputTrack'] = qs('.input-track', parentDom);
+    this.domCache['lockStatus'] = qs('.lock-status', parentDom);
+    this.domCache['btnApply'] = qs('.btn-apply', parentDom);
+    this.domCache['labelTarget'] = qs('#labelTarget', parentDom);
+    this.domCache['labelOffset'] = qs('#labelOffset', parentDom);
+    this.domCache['labelBand'] = qs('#labelBand', parentDom);
+    this.domCache['labelLockStatus'] = qs('#labelLockStatus', parentDom);
 
     return parentDom;
   }
@@ -220,9 +221,8 @@ export class Antenna extends BaseEquipment {
     const btnApply = qs('.btn-apply', parentDom);
     btnApply?.addEventListener('click', () => this.applyChanges());
 
-    // Power button
-    const btnPower = qs('.btn-power', parentDom);
-    btnPower?.addEventListener('click', () => this.togglePower());
+    // Power switch
+    this.powerSwitch.addEventListeners(this.togglePower.bind(this));
 
     // Track switch special handling
     const trackSwitch = qs('.input-track', parentDom) as HTMLInputElement;
@@ -459,7 +459,8 @@ export class Antenna extends BaseEquipment {
     // Update buttons
     this.domCache['btnLoopback'].className = `btn-loopback ${this.state.isLoopbackEnabled ? 'active' : ''}`;
     this.domCache['btnHpa'].className = `btn-hpa ${this.state.isHpaEnabled ? 'active' : ''}`;
-    this.domCache['btnPower'].className = `btn-power ${this.state.isOperational ? 'active' : ''}`;
+
+    this.powerSwitch.sync(this.state.isPowered);
 
     // Update inputs
     (this.domCache['inputTarget'] as HTMLSelectElement).value = this.inputState.targetId.toString();

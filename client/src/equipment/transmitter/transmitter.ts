@@ -1,4 +1,5 @@
 import { EventBus } from "@app/events/event-bus";
+import { PowerSwitch } from '../../components/power-switch/power-switch';
 import { html } from "../../engine/utils/development/formatter";
 import { qs } from "../../engine/utils/query-selector";
 import { Events } from "../../events/events";
@@ -7,11 +8,14 @@ import { BaseEquipment } from "../base-equipment";
 import './transmitter.css';
 
 export interface TransmitterModem {
+  /** Index in modems array */
+  id: number;
+  /** Unit number */
+  modem_number: number; // 1-4
+  antenna_id: number;
   isPowered: boolean;
   isTestMode: boolean;
   isFaulted: boolean;
-  modem_number: number; // 1-4
-  antenna_id: number;
   isTransmitting: boolean;
   ifSignal: IfSignal;
 }
@@ -39,6 +43,7 @@ export class Transmitter extends BaseEquipment {
 
   // Power management
   private readonly powerBudget = 23886;
+  powerSwitch: PowerSwitch;
 
   constructor(parentId: string, unit: number, teamId: number = 1, serverId: number = 1) {
     super(parentId, unit, teamId);
@@ -47,6 +52,7 @@ export class Transmitter extends BaseEquipment {
     const modems: TransmitterModem[] = [];
     for (let i = 1; i <= 4; i++) {
       modems.push({
+        id: i - 1,
         modem_number: i,
         antenna_id: 1,
         ifSignal: {
@@ -88,8 +94,9 @@ export class Transmitter extends BaseEquipment {
   initializeDom(parentId: string): HTMLElement {
     const parentDom = super.initializeDom(parentId);
 
-    const activeModemData = this.getActiveModem();
     const isTransmitting = this.state.modems.some(m => m.isTransmitting);
+
+    this.powerSwitch = PowerSwitch.create(`tx-power-switch-${this.state.unit}${this.activeModem.modem_number}`, this.activeModem.isPowered);
 
     parentDom.innerHTML = html`
       <div class="transmitter-box">
@@ -123,7 +130,7 @@ export class Transmitter extends BaseEquipment {
                   <option value="1" ${this.inputData.antenna_id === 1 ? 'selected' : ''}>1</option>
                   <option value="2" ${this.inputData.antenna_id === 2 ? 'selected' : ''}>2</option>
                 </select>
-                <span class="current-value">${activeModemData.antenna_id}</span>
+                <span class="current-value">${this.activeModem.antenna_id}</span>
               </div>
 
               <div class="config-row">
@@ -132,9 +139,9 @@ export class Transmitter extends BaseEquipment {
                   type="text"
                   class="input-tx-frequency"
                   data-param="frequency"
-                  value="${(this.inputData.ifSignal?.frequency ?? activeModemData.ifSignal.frequency) / 1e6}"
+                  value="${(this.inputData.ifSignal?.frequency ?? this.activeModem.ifSignal.frequency) / 1e6}"
                 />
-                <span class="current-value">${activeModemData.ifSignal.frequency / 1e6} MHz</span>
+                <span class="current-value">${this.activeModem.ifSignal.frequency / 1e6} MHz</span>
               </div>
 
               <div class="config-row">
@@ -143,9 +150,9 @@ export class Transmitter extends BaseEquipment {
                   type="text"
                   class="input-tx-bandwidth"
                   data-param="bandwidth"
-                  value="${(this.inputData.ifSignal?.bandwidth ?? activeModemData.ifSignal.bandwidth) / 1e6}"
+                  value="${(this.inputData.ifSignal?.bandwidth ?? this.activeModem.ifSignal.bandwidth) / 1e6}"
                 />
-                <span class="current-value">${activeModemData.ifSignal.bandwidth / 1e6} MHz</span>
+                <span class="current-value">${this.activeModem.ifSignal.bandwidth / 1e6} MHz</span>
               </div>
 
               <div class="config-row">
@@ -154,9 +161,9 @@ export class Transmitter extends BaseEquipment {
                   type="text"
                   class="input-tx-power"
                   data-param="power"
-                  value="${this.inputData.ifSignal?.power ?? activeModemData.ifSignal.power}"
+                  value="${this.inputData.ifSignal?.power ?? this.activeModem.ifSignal.power}"
                 />
-                <span class="current-value">${activeModemData.ifSignal.power} dBm</span>
+                <span class="current-value">${this.activeModem.ifSignal.power} dBm</span>
               </div>
 
               <div class="config-actions">
@@ -177,42 +184,29 @@ export class Transmitter extends BaseEquipment {
               </div>
               <div class="unit-status-indicators">
                 <div class="status-indicator transmitting">
-                  <span id="tx-transmitting-light" class="indicator-light ${activeModemData.isTransmitting ? 'on' : 'off'}"></span>
+                  <span id="tx-transmitting-light" class="indicator-light ${this.activeModem.isTransmitting ? 'on' : 'off'}"></span>
                   <span class="indicator-label">TX</span>
                 </div>
-                <div class="status-indicator ${activeModemData.isFaulted ? 'fault' : ''}">
-                  <span id="tx-fault-light" class="indicator-light ${activeModemData.isPowered ? 'on' : 'off'}"></span>
+                <div class="status-indicator ${this.activeModem.isFaulted ? 'fault' : ''}">
+                  <span id="tx-fault-light" class="indicator-light ${this.activeModem.isPowered ? 'on' : 'off'}"></span>
                   <span class="indicator-label">Fault</span>
                 </div>
                 <div class="status-indicator test-mode">
-                  <span id="tx-test-mode-light" class="indicator-light ${activeModemData.isTestMode ? 'on' : 'off'}"></span>
+                  <span id="tx-test-mode-light" class="indicator-light ${this.activeModem.isTestMode ? 'on' : 'off'}"></span>
                   <span class="indicator-label">Test</span>
                 </div>
                 <div class="status-indicator online">
-                  <span id="tx-active-power-light" class="indicator-light ${activeModemData.isPowered ? 'on' : 'off'}"></span>
+                  <span id="tx-active-power-light" class="indicator-light ${this.activeModem.isPowered ? 'on' : 'off'}"></span>
                   <span class="indicator-label">Online</span>
                 </div>
               </div>
               <div class="unit-status-indicators">
                 <button
-                  class="btn-transmit ${activeModemData.isTransmitting ? 'active' : ''}"
+                  class="btn-transmit ${this.activeModem.isTransmitting ? 'active' : ''}"
                   data-action="transmit">
                   TX
                 </button>
-                <div class="physical-switch-container">
-                  <input type="checkbox" id="transmitterPowerSwitch${this.state.unit}${activeModemData.modem_number}" class="physical-power-switch" checked="${activeModemData.isPowered ? 'checked' : ''}" />
-                  <label for="transmitterPowerSwitch${this.state.unit}${activeModemData.modem_number}" class="physical-switch">
-                      <div class="physical-switch-track">
-                          <div class="physical-switch-rocker">
-                              <div class="physical-switch-light"></div>
-                              <div class="physical-switch-dots"></div>
-                              <div class="physical-switch-characters"></div>
-                              <div class="physical-switch-shine"></div>
-                              <div class="physical-switch-shadow"></div>
-                          </div>
-                      </div>
-                  </label>
-                </div>
+                ${this.powerSwitch.html}
               </div>
             </div>
         </div>
@@ -237,11 +231,10 @@ export class Transmitter extends BaseEquipment {
     this.domCache['txFaultLight'] = qs('#tx-fault-light', parentDom);
     this.domCache['txTestModeLight'] = qs('#tx-test-mode-light', parentDom);
     this.domCache['btnTransmit'] = qs('.btn-transmit', parentDom);
-    this.domCache['powerSwitch'] = qs(`#transmitterPowerSwitch${this.state.unit}${this.state.activeModem}`, parentDom);
 
     // If this.inputData is empty, initialize it with active modem data
     if (Object.keys(this.inputData).length === 0) {
-      this.inputData = { ...activeModemData };
+      this.inputData = { ...this.activeModem };
     }
 
     // Initialize lastRenderState so first render always updates
@@ -275,29 +268,21 @@ export class Transmitter extends BaseEquipment {
     btnTransmit?.addEventListener('click', () => this.toggleTransmit());
 
     // Power switch
-    const powerSwitch = qs(`#transmitterPowerSwitch${this.state.unit}${this.state.activeModem}`, parentDom) as HTMLInputElement;
-    if (powerSwitch) {
-      powerSwitch.addEventListener('change', (e) => {
-        this.togglePower((e.target as HTMLInputElement).checked);
-      });
-    }
+    this.powerSwitch.addEventListeners(this.togglePower.bind(this));
   }
 
-  private togglePower(isPowered: boolean): void {
-    const modemIndex = this.state.modems.findIndex(m => m.modem_number === this.state.activeModem);
-    const activeModem = this.state.modems[modemIndex];
-
-    if (!isPowered) {
+  private togglePower(isOn: boolean): void {
+    if (!isOn) {
       // If turning off power, also stop transmission
-      activeModem.isTransmitting = false;
-      activeModem.isFaulted = false;
+      this.activeModem.isTransmitting = false;
+      this.activeModem.isFaulted = false;
     }
 
-    activeModem.isPowered = isPowered;
+    this.activeModem.isPowered = isOn;
     this.emit(Events.TX_CONFIG_CHANGED, {
       unit: this.id,
       modem: this.state.activeModem,
-      config: this.state.modems[modemIndex]
+      config: this.activeModem
     });
     this.syncDomWithState();
   }
@@ -318,13 +303,13 @@ export class Transmitter extends BaseEquipment {
    * Private Methods
    */
 
-  private getActiveModem(): TransmitterModem {
+  get activeModem(): TransmitterModem {
     return this.state.modems.find(m => m.modem_number === this.state.activeModem) ?? this.state.modems[0];
   }
 
   private setActiveModem(modemNumber: number): void {
     this.state.activeModem = modemNumber;
-    this.inputData = { ...this.getActiveModem() };
+    this.inputData = { ...this.activeModem };
     this.syncDomWithState();
 
     // Emit event for modem change
@@ -346,17 +331,17 @@ export class Transmitter extends BaseEquipment {
       case 'power':
         // Allow negative numbers for power
         if (value.match(/[^0-9-]/g)) return;
-        this.inputData.ifSignal!.power = Number.parseInt(value) || 0;
+        this.inputData.ifSignal.power = Number.parseInt(value) || 0;
         break;
       case 'frequency':
         value = Number.parseInt(value) || 0;
         // Convert MHz to Hertz
-        this.inputData.ifSignal!.frequency = value * 1e6 as IfFrequency;
+        this.inputData.ifSignal.frequency = value * 1e6 as IfFrequency;
         break;
       case 'bandwidth':
         value = Number.parseInt(value) || 0;
         // Convert MHz to Hertz
-        this.inputData.ifSignal!.bandwidth = value * 1e6 as IfFrequency;
+        this.inputData.ifSignal.bandwidth = value * 1e6 as IfFrequency;
         break;
       case 'antenna_id':
         this.inputData.antenna_id = Number.parseInt(value);
@@ -367,28 +352,25 @@ export class Transmitter extends BaseEquipment {
   }
 
   private applyChanges(): void {
-    const activeModem = this.getActiveModem();
-    const modemIndex = this.state.modems.findIndex(m => m.modem_number === this.state.activeModem);
-
-    this.updateTransmissionState(activeModem, modemIndex);
+    this.updateTransmissionState();
 
     // Update the modem configuration
-    this.state.modems[modemIndex] = {
-      ...activeModem,
+    this.state.modems[this.activeModem.id] = {
+      ...this.activeModem,
       ...this.inputData
     };
 
     this.emit(Events.TX_CONFIG_CHANGED, {
       unit: this.id,
       modem: this.state.activeModem,
-      config: this.state.modems[modemIndex]
+      config: this.state.modems[this.activeModem.id]
     });
 
     this.syncDomWithState();
   }
 
   private toggleTransmit(): void {
-    const activeModem = this.getActiveModem();
+    const activeModem = this.activeModem;
     const modemIndex = this.state.modems.findIndex(m => m.modem_number === this.state.activeModem);
 
     if (activeModem.isPowered === false) {
@@ -397,21 +379,21 @@ export class Transmitter extends BaseEquipment {
     }
 
     this.state.modems[modemIndex].isTransmitting = !activeModem.isTransmitting;
-    this.updateTransmissionState(activeModem, modemIndex);
+    this.updateTransmissionState();
 
     this.syncDomWithState();
   }
 
-  private updateTransmissionState(activeModem: TransmitterModem, modemIndex: number) {
+  private updateTransmissionState() {
     // Check power budget if turning on
-    if (activeModem.isTransmitting) {
-      const modemPower = this.calculateModemPower(activeModem.ifSignal.bandwidth, activeModem.ifSignal.power);
+    if (this.activeModem.isTransmitting) {
+      const modemPower = this.calculateModemPower(this.activeModem.ifSignal.bandwidth, this.activeModem.ifSignal.power);
       if (this.validatePowerConsumption(modemPower)) {
-        activeModem.isFaulted = false;
-        this.state.modems[modemIndex].isTransmitting = true;
+        this.activeModem.isFaulted = false;
+        this.state.modems[this.activeModem.id].isTransmitting = true;
       } else {
-        activeModem.isFaulted = true;
-        this.state.modems[modemIndex].isTransmitting = false;
+        this.activeModem.isFaulted = true;
+        this.state.modems[this.activeModem.id].isTransmitting = false;
         this.emit(Events.TX_ERROR, { message: 'Power consumption exceeds budget' });
       }
     }
@@ -423,7 +405,7 @@ export class Transmitter extends BaseEquipment {
   }
 
   private getPowerPercentage(): number {
-    const activeModem = this.getActiveModem();
+    const activeModem = this.activeModem;
 
     if (!activeModem.isPowered) return 0;
 
@@ -464,7 +446,7 @@ export class Transmitter extends BaseEquipment {
     });
 
     // Sync active modem inputs
-    const activeModem = this.getActiveModem();
+    const activeModem = this.activeModem;
 
     if (this.domCache['inputAntenna']) {
       const sel = this.domCache['inputAntenna'] as HTMLSelectElement;
@@ -509,17 +491,13 @@ export class Transmitter extends BaseEquipment {
       btn.className = `btn-transmit ${activeModem.isTransmitting ? 'active' : ''}`;
     }
 
-    // Update power switch checked state
-    const powerSwitch = this.domCache['powerSwitch'] as HTMLInputElement;
-    if (powerSwitch) {
-      powerSwitch.checked = !!activeModem.isPowered;
-    }
+    this.powerSwitch.sync(activeModem.isPowered);
 
     // Update physical light indicators
     this.domCache['txActivePowerLight'].className = `indicator-light ${activeModem.isPowered ? 'on' : 'off'}`;
     this.domCache['txTransmittingLight'].className = `indicator-light ${activeModem.isTransmitting ? 'on' : 'off'}`;
     this.domCache['txFaultLight'].className = `indicator-light ${activeModem.isPowered ? 'on' : 'off'}`;
-    this.domCache['txFaultLight'].parentElement!.className = `status-indicator ${activeModem.isFaulted ? 'fault' : ''}`;
+    this.domCache['txFaultLight'].parentElement.className = `status-indicator ${activeModem.isFaulted ? 'fault' : ''}`;
     this.domCache['txTestModeLight'].className = `indicator-light ${activeModem.isTestMode ? 'on' : 'off'}`;
     // Save snapshot
     this.lastRenderState = structuredClone(this.state);

@@ -40,8 +40,8 @@ export class SimulationManager {
   getVisibleSignals(serverId: number, targetId: number): RfSignal[] {
     // Return signals within the specified frequency range
     const satelliteSignals = this.satelliteSignals.filter(() => {
-      // Make signals intermittent
-      if (Math.random() < 0.01) {
+      // Random drop to simulate interference
+      if (Math.random() < 0.001) {
         return false;
       }
 

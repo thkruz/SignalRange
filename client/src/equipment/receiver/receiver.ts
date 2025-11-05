@@ -1,3 +1,4 @@
+import { PowerSwitch } from "@app/components/power-switch/power-switch";
 import { EventBus } from "@app/events/event-bus";
 import { html } from "../../engine/utils/development/formatter";
 import { qs } from "../../engine/utils/query-selector";
@@ -14,6 +15,7 @@ export interface ReceiverModemState {
   bandwidth: MHz; // MHz
   modulation: ModulationType;
   fec: FECType;
+  isPowered: boolean;
 }
 
 export interface ReceiverState {
@@ -22,6 +24,10 @@ export interface ReceiverState {
   server_id: number;
   modems: ReceiverModemState[];
   activeModem: number;
+  availableSignals: {
+    id: string;
+    feed: string;
+  }[];
 }
 
 /**
@@ -34,6 +40,7 @@ export class Receiver extends BaseEquipment {
   private inputData: Partial<ReceiverModemState> = {};
   private readonly antennas: Antenna[];
   private lastRenderState: ReceiverState | null = null;
+  powerSwitch: PowerSwitch;
 
   constructor(parentId: string, unit: number, antennas: Antenna[], teamId: number = 1, serverId: number = 1) {
     super(parentId, unit, teamId);
@@ -50,6 +57,7 @@ export class Receiver extends BaseEquipment {
         bandwidth: 50 as MHz,
         modulation: 'QPSK' as ModulationType,
         fec: '3/4' as FECType,
+        isPowered: true,
       });
     }
 
@@ -59,6 +67,7 @@ export class Receiver extends BaseEquipment {
       server_id: serverId,
       modems,
       activeModem: 1,
+      availableSignals: [],
     };
 
     this.build(parentId);
@@ -73,9 +82,10 @@ export class Receiver extends BaseEquipment {
 
   initializeDom(parentId: string): HTMLElement {
     const parentDom = super.initializeDom(parentId);
-    const activeModemData = this.getActiveModem();
     const signalStatus = this.getSignalStatus();
     const feedUrl = this.getVisibleSignals()[0]?.feed || '';
+
+    this.powerSwitch = PowerSwitch.create(`rx-power-switch-${this.state.unit}${this.activeModem.modemNumber}`, this.activeModem.isPowered);
 
     parentDom.innerHTML = html`
       <div class="receiver-box">
@@ -108,7 +118,7 @@ export class Receiver extends BaseEquipment {
                   <option value="1" ${this.inputData.antennaId === this.antennas[0]?.state.id ? 'selected' : ''}>1</option>
                   <option value="2" ${this.inputData.antennaId === this.antennas[1]?.state.id ? 'selected' : ''}>2</option>
                 </select>
-                <span class="current-value">${activeModemData?.antennaId}</span>
+                <span class="current-value">${this.inputData.antennaId ?? 1}</span>
               </div>
 
               <div class="config-row">
@@ -117,9 +127,9 @@ export class Receiver extends BaseEquipment {
                   type="text"
                   class="input-rx-frequency"
                   data-param="frequency"
-                  value="${this.inputData.frequency ?? activeModemData?.frequency}"
+                  value="${this.inputData.frequency ?? this.activeModem?.frequency}"
                 />
-                <span class="current-value">${activeModemData?.frequency} MHz</span>
+                <span class="current-value">${this.activeModem?.frequency} MHz</span>
               </div>
 
               <div class="config-row">
@@ -128,9 +138,9 @@ export class Receiver extends BaseEquipment {
                   type="text"
                   class="input-rx-bandwidth"
                   data-param="bandwidth"
-                  value="${this.inputData.bandwidth ?? activeModemData?.bandwidth}"
+                  value="${this.inputData.bandwidth ?? this.activeModem?.bandwidth}"
                 />
-                <span class="current-value">${activeModemData?.bandwidth} MHz</span>
+                <span class="current-value">${this.activeModem?.bandwidth} MHz</span>
               </div>
 
               <div class="config-row">
@@ -141,7 +151,7 @@ export class Receiver extends BaseEquipment {
                   <option value="8QAM" ${this.inputData.modulation === '8QAM' ? 'selected' : ''}>8QAM</option>
                   <option value="16QAM" ${this.inputData.modulation === '16QAM' ? 'selected' : ''}>16QAM</option>
                 </select>
-                <span class="current-value">${activeModemData?.modulation}</span>
+                <span class="current-value">${this.activeModem?.modulation}</span>
               </div>
 
               <div class="config-row">
@@ -153,7 +163,7 @@ export class Receiver extends BaseEquipment {
                   <option value="5/6" ${this.inputData.fec === '5/6' ? 'selected' : ''}>5/6</option>
                   <option value="7/8" ${this.inputData.fec === '7/8' ? 'selected' : ''}>7/8</option>
                 </select>
-                <span class="current-value">${activeModemData?.fec}</span>
+                <span class="current-value">${this.activeModem?.fec}</span>
               </div>
 
               <div class="config-actions">
@@ -172,6 +182,10 @@ export class Receiver extends BaseEquipment {
       }
               </div>
             </div>
+
+            <!-- Power Switch -->
+            ${this.powerSwitch.html}
+
           </div>
         </div>
       </div>
@@ -179,17 +193,17 @@ export class Receiver extends BaseEquipment {
 
     // Cache frequently used DOM nodes for efficient updates
     this.domCache['parent'] = parentDom;
-    this.domCache['status'] = qs('.receiver-status', parentDom) as HTMLElement;
+    this.domCache['status'] = qs('.receiver-status', parentDom);
     this.state.modems.forEach(modem => {
-      this.domCache[`modemButton${modem.modemNumber}`] = qs(`#modem-${modem.modemNumber}`, parentDom) as HTMLElement;
+      this.domCache[`modemButton${modem.modemNumber}`] = qs(`#modem-${modem.modemNumber}`, parentDom);
     });
-    this.domCache['inputAntenna'] = qs('.input-rx-antenna', parentDom) as HTMLSelectElement;
-    this.domCache['inputFrequency'] = qs('.input-rx-frequency', parentDom) as HTMLInputElement;
-    this.domCache['inputBandwidth'] = qs('.input-rx-bandwidth', parentDom) as HTMLInputElement;
-    this.domCache['inputModulation'] = qs('.input-rx-modulation', parentDom) as HTMLSelectElement;
-    this.domCache['inputFec'] = qs('.input-rx-fec', parentDom) as HTMLSelectElement;
-    this.domCache['btnApply'] = qs('.btn-apply', parentDom) as HTMLElement;
-    this.domCache['monitorScreen'] = qs('.monitor-screen', parentDom) as HTMLElement;
+    this.domCache['inputAntenna'] = qs('.input-rx-antenna', parentDom);
+    this.domCache['inputFrequency'] = qs('.input-rx-frequency', parentDom);
+    this.domCache['inputBandwidth'] = qs('.input-rx-bandwidth', parentDom);
+    this.domCache['inputModulation'] = qs('.input-rx-modulation', parentDom);
+    this.domCache['inputFec'] = qs('.input-rx-fec', parentDom);
+    this.domCache['btnApply'] = qs('.btn-apply', parentDom);
+    this.domCache['monitorScreen'] = qs('.monitor-screen', parentDom);
 
     const currentValueEls = parentDom.querySelectorAll('.current-value');
     this.domCache['currentValueAntenna'] = currentValueEls[0] as HTMLElement;
@@ -223,6 +237,21 @@ export class Receiver extends BaseEquipment {
     // Apply button
     const btnApply = qs('.btn-apply', parentDom);
     btnApply?.addEventListener('click', () => this.applyChanges());
+
+    this.powerSwitch.addEventListeners(this.togglePower.bind(this));
+  }
+
+  private togglePower(isOn: boolean): void {
+    setTimeout(() => {
+      this.activeModem.isPowered = isOn;
+
+      this.emit(Events.RX_CONFIG_CHANGED, {
+        unit: this.id,
+        modem: this.state.activeModem,
+        config: this.state.modems.find(m => m.modemNumber === this.state.activeModem)
+      });
+      this.syncDomWithState();
+    }, isOn ? 4000 : 250);
   }
 
   protected initialize(): void {
@@ -274,13 +303,13 @@ export class Receiver extends BaseEquipment {
    * Private Methods
    */
 
-  private getActiveModem(): ReceiverModemState {
+  get activeModem(): ReceiverModemState {
     return this.state.modems.find(m => m.modemNumber === this.state.activeModem) ?? this.state.modems[0];
   }
 
   private setActiveModem(modemNumber: number): void {
     this.state.activeModem = modemNumber;
-    this.inputData = { ...this.getActiveModem() };
+    this.inputData = { ...this.activeModem };
     this.syncDomWithState();
 
     // Emit event for modem change
@@ -318,7 +347,7 @@ export class Receiver extends BaseEquipment {
   }
 
   private applyChanges(): void {
-    const activeModem = this.getActiveModem();
+    const activeModem = this.activeModem;
     const modemIndex = this.state.modems.findIndex(m => m.modemNumber === this.state.activeModem);
 
     if (!activeModem || modemIndex === -1) return;
@@ -359,7 +388,7 @@ export class Receiver extends BaseEquipment {
     return { text: 'NO SIGNAL', class: 'status-no-signal' };
   }
 
-  private getVisibleSignals(activeModemData = this.getActiveModem()) {
+  private getVisibleSignals(activeModemData = this.activeModem) {
     if (!activeModemData) return [];
 
     const activeAntenna = this.antennas.find(a => a.state.id === activeModemData.antennaId);
@@ -387,13 +416,13 @@ export class Receiver extends BaseEquipment {
       return true;
     });
 
+    // Only include signals within 50% bandwidth of center frequency
     return visibleSignals
       .filter((s) => {
         const frequencyMhz = s.frequency / 1e6 as MHz;
         const freqTolerance50 = activeModemData.bandwidth * 0.5;
         const lowerBound50 = activeModemData.frequency - freqTolerance50;
         const upperBound50 = activeModemData.frequency + freqTolerance50;
-        // Filter out signals more than 50% outside center frequency
         return frequencyMhz >= lowerBound50 && frequencyMhz <= upperBound50;
       })
       .map((s) => {
@@ -402,11 +431,8 @@ export class Receiver extends BaseEquipment {
         const lowerBound10 = activeModemData.frequency - freqTolerance10;
         const upperBound10 = activeModemData.frequency + freqTolerance10;
         // Within 10%: no prefix
-        if (frequencyMhz >= lowerBound10 && frequencyMhz <= upperBound10) {
-          s.feed = s.feed.replace(/^degraded-/, '');
-          // Outside 10% but within 50%: degraded-
-        } else if (!s.feed.startsWith('degraded-')) {
-          s.feed = `degraded-${s.feed.replace(/^degraded-/, '')}`;
+        if (!(frequencyMhz >= lowerBound10 && frequencyMhz <= upperBound10)) {
+          s.isDegraded = true;
         }
         return s;
       });
@@ -426,6 +452,19 @@ export class Receiver extends BaseEquipment {
   }
 
   syncDomWithState(): void {
+    const visibleSignals = this.getVisibleSignals().map(s => {
+      // Return signal with degraded feed if applicable
+      if (s.isDegraded) {
+        return {
+          ...s,
+          feed: `degraded-${s.feed.replace(/^degraded-/, '')}`
+        };
+      }
+      return s;
+    });
+    const feedUrl = visibleSignals[0]?.feed || '';
+    this.state.availableSignals = visibleSignals.map(s => ({ id: s.id, feed: s.feed }));
+
     // Avoid unnecessary DOM updates by shallow comparing serialized state
     if (JSON.stringify(this.state) === JSON.stringify(this.lastRenderState)) {
       return; // No changes, skip update
@@ -451,7 +490,7 @@ export class Receiver extends BaseEquipment {
     });
 
     // Sync active modem display and inputs
-    const activeModem = this.getActiveModem();
+    const activeModem = this.activeModem;
 
     if (this.domCache['inputAntenna']) {
       const sel = this.domCache['inputAntenna'] as HTMLSelectElement;
@@ -473,9 +512,15 @@ export class Receiver extends BaseEquipment {
     (this.domCache['currentValueFec']).textContent = String(activeModem.fec);
 
     // Update monitor / video feed
-    const feedUrl = this.getVisibleSignals()[0]?.feed || '';
     const monitor = this.domCache['monitorScreen'];
     if (monitor) {
+      if (!this.activeModem.isPowered) {
+        // Remove no-signal-text
+        monitor.innerHTML = `<span></span>`;
+        monitor.className = 'monitor-screen no-power';
+        return;
+      }
+
       monitor.className = `monitor-screen ${feedUrl.length > 0 ? 'signal-found' : 'no-signal'}`;
       if (feedUrl.length > 0) {
         const videoEl = qs('.video-feed', monitor) as HTMLVideoElement;

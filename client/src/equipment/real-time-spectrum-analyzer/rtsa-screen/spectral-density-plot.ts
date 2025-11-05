@@ -183,7 +183,7 @@ export class SpectralDensityPlot extends RTSAScreen {
           (this.antenna.state.isLoopbackEnabled
             ? this.antenna.state.offset * 1e6
             : SATELLITES[this.antenna.state.targetId].offset)) as RfFrequency;
-        rfDownSignal.power = !this.antenna.state.isLoopbackEnabled && !this.antenna.state.isHpaEnabled
+        rfDownSignal.power = !this.antenna.state.isLoopbackEnabled && !this.antenna.state.isHpaSwitchEnabled
           ? -1000
           : rfDownSignal.power;
 
@@ -200,7 +200,7 @@ export class SpectralDensityPlot extends RTSAScreen {
           (this.antenna.state.isLoopbackEnabled
             ? this.antenna.state.offset * 1e6
             : SATELLITES[this.antenna.state.targetId].offset)) as IfFrequency;
-        ifDownSignal.power = !this.antenna.state.isLoopbackEnabled && !this.antenna.state.isHpaEnabled
+        ifDownSignal.power = !this.antenna.state.isLoopbackEnabled && !this.antenna.state.isHpaSwitchEnabled
           ? -1000
           : ifDownSignal.power;
 

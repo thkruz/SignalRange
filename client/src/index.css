@@ -69,7 +69,7 @@ input {
 select:focus,
 input:focus {
   outline: none;
-  border-color: #4a90e2;
+  border-color: rgba(0, 0, 0, 0);
 }
 
 /* Utility classes */

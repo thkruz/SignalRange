@@ -39,6 +39,8 @@ export interface RfSignal {
   fec: FECType;
   /** url of the video feed */
   feed: string;
+  /** whether the signal is degraded */
+  isDegraded: boolean;
 }
 
 export interface IfSignal {
@@ -60,6 +62,8 @@ export interface IfSignal {
   fec: FECType;
   /** url of the video feed */
   feed: string;
+  /** whether the signal is degraded */
+  isDegraded: boolean;
 }
 
 export interface Satellite {

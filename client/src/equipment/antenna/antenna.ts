@@ -1,4 +1,6 @@
 import { PowerSwitch } from "@app/components/power-switch/power-switch";
+import { SecureToggleSwitch } from "@app/components/secure-toggle-switch/secure-toggle-switch";
+import { SecureToggleSwitch2 } from "@app/components/secure-toggle-switch2/secure-toggle-switch2";
 import { EventBus } from "@app/events/event-bus";
 import { bandInformation, FrequencyBand } from "../../constants";
 import { html } from "../../engine/utils/development/formatter";
@@ -26,6 +28,8 @@ export interface AntennaState {
   offset: number; // MHz
   /** is the High Powered Amplifier (HPA) enabled */
   isHpaEnabled: boolean;
+  /** is the HPA switch enabled */
+  isHpaSwitchEnabled: boolean;
   /** is loopback enabled */
   isLoopbackEnabled: boolean;
   /** is antenna locked on a satellite */
@@ -51,6 +55,7 @@ export class Antenna extends BaseEquipment {
   private lastRenderState: AntennaState;
   transmitters: Transmitter[] = [];
   powerSwitch: PowerSwitch;
+  hpaSwitch: SecureToggleSwitch | SecureToggleSwitch2;
 
   constructor(parentId: string, unit: number, teamId: number = 1, serverId: number = 1) {
     super(parentId, unit, teamId);
@@ -64,6 +69,7 @@ export class Antenna extends BaseEquipment {
       freqBand: FrequencyBand.C,
       offset: 0,
       isHpaEnabled: false,
+      isHpaSwitchEnabled: false,
       isLoopbackEnabled: false,
       isLocked: false,
       isAutoTrackEnabled: false,
@@ -88,6 +94,7 @@ export class Antenna extends BaseEquipment {
     const band = this.state.freqBand === FrequencyBand.C ? 'c' : 'ku';
     const bandInfo = bandInformation[band];
 
+    this.hpaSwitch = SecureToggleSwitch.create(`antenna-hpa-switch-${this.state.id}`, this.state.isHpaSwitchEnabled);
     this.powerSwitch = PowerSwitch.create(`antenna-power-switch-${this.state.id}`, this.state.isPowered);
 
     parentDom.innerHTML = html`
@@ -116,11 +123,7 @@ export class Antenna extends BaseEquipment {
               <div class="loopback-label">Antenna</div>
             </div>
 
-            <button
-              class="btn-hpa ${this.state.isHpaEnabled ? 'active' : ''}"
-              data-action="hpa">
-              HPA
-            </button>
+             ${this.hpaSwitch.html}
           </div>
 
           <!-- Antenna Configuration -->
@@ -187,7 +190,6 @@ export class Antenna extends BaseEquipment {
     this.domCache['parent'] = parentDom;
     this.domCache['status'] = qs('.antenna-status', parentDom);
     this.domCache['btnLoopback'] = qs('.btn-loopback', parentDom);
-    this.domCache['btnHpa'] = qs('.btn-hpa', parentDom);
     this.domCache['inputTarget'] = qs('.input-target', parentDom);
     this.domCache['inputBand'] = qs('.input-band', parentDom);
     this.domCache['inputOffset'] = qs('.input-offset', parentDom);
@@ -207,9 +209,8 @@ export class Antenna extends BaseEquipment {
     const btnLoopback = qs('.btn-loopback', parentDom);
     btnLoopback?.addEventListener('click', () => this.toggleLoopback());
 
-    // HPA button
-    const btnHpa = qs('.btn-hpa', parentDom);
-    btnHpa?.addEventListener('click', () => this.toggleHpa());
+    // HPA switch
+    this.hpaSwitch.addEventListeners(this.toggleHpa.bind(this));
 
     // Input changes
     const inputs = parentDom.querySelectorAll('input, select');
@@ -315,7 +316,7 @@ export class Antenna extends BaseEquipment {
     this.state.isLoopbackEnabled = !this.state.isLoopbackEnabled;
 
     // If switching to antenna mode, disable HPA if it was on
-    if (!this.state.isLoopbackEnabled && this.state.isHpaEnabled) {
+    if (!this.state.isLoopbackEnabled && this.state.isHpaSwitchEnabled) {
       // Keep HPA on when going to antenna mode
     }
 
@@ -334,16 +335,18 @@ export class Antenna extends BaseEquipment {
     }
 
     // Can only enable HPA when not in loopback mode
-    if (this.state.isLoopbackEnabled && !this.state.isHpaEnabled) {
+    if (this.state.isLoopbackEnabled && !this.state.isHpaSwitchEnabled) {
       this.emit(Events.ANTENNA_ERROR, { message: 'Cannot enable HPA in loopback mode' });
       return;
     }
 
-    this.state.isHpaEnabled = !this.state.isHpaEnabled;
+    this.state.isHpaSwitchEnabled = !this.state.isHpaSwitchEnabled;
 
-    this.emit(Events.ANTENNA_HPA_CHANGED, {
-      hpa: this.state.isHpaEnabled
-    });
+    if (this.state.isPowered) {
+      this.state.isHpaEnabled = this.state.isHpaSwitchEnabled;
+    }
+
+    this.emit(Events.ANTENNA_CONFIG_CHANGED, this.state);
 
     this.updateSignalStatus();
     this.syncDomWithState();
@@ -421,8 +424,9 @@ export class Antenna extends BaseEquipment {
             modulation: modem.ifSignal.modulation,
             fec: modem.ifSignal.fec,
             feed: modem.ifSignal.feed,
+            isDegraded: modem.ifSignal.isDegraded,
           }
-          if (modem.isTransmitting && !this.state.isLoopbackEnabled && this.state.isHpaEnabled) {
+          if (modem.isTransmitting && !modem.isFaulted && !this.state.isLoopbackEnabled && this.state.isHpaEnabled) {
             // Pass the signal to the SimulationManager
             SimulationManager.getInstance().addSignal(rfSignal);
           } else {
@@ -437,7 +441,45 @@ export class Antenna extends BaseEquipment {
     this.state.signals = SimulationManager.getInstance().getVisibleSignals(
       this.state.serverId,
       this.state.targetId
-    );
+    ).filter((signal) => {
+      // Get the frequency bounds of this signal
+      const halfBandwidth = signal.bandwidth * 0.5;
+      const lowerBound = signal.frequency - halfBandwidth;
+      const upperBound = signal.frequency + halfBandwidth;
+
+      // Find any other signal with higher strength
+      const stronger = this.state.signals.some(
+        (other) => {
+          if (other.id === signal.id) return false;
+
+          const otherHalfBandwidth = other.bandwidth * 0.5;
+          const otherLowerBound = other.frequency - otherHalfBandwidth;
+          const otherUpperBound = other.frequency + otherHalfBandwidth;
+
+          // Calculate how much of the main signal's bandwidth overlaps with the other signal
+          const overlapLower = Math.max(lowerBound, otherLowerBound);
+          const overlapUpper = Math.min(upperBound, otherUpperBound);
+          const overlapBandwidth = Math.max(0, overlapUpper - overlapLower);
+          const overlapPercent = (overlapBandwidth / signal.bandwidth) * 100;
+
+          if (overlapPercent === 0) {
+            return false;
+          }
+
+          if (other.power >= signal.power && overlapPercent >= 50) {
+            // Stronger signal present with significant overlap
+            return true;
+          }
+
+          if (other.power >= signal.power && overlapPercent < 50) {
+            signal.isDegraded = true;
+            return false;
+          }
+
+          return false;
+        });
+      return !stronger;
+    });
   }
 
   getDownlinkFrequency(): RfFrequency {
@@ -458,8 +500,8 @@ export class Antenna extends BaseEquipment {
 
     // Update buttons
     this.domCache['btnLoopback'].className = `btn-loopback ${this.state.isLoopbackEnabled ? 'active' : ''}`;
-    this.domCache['btnHpa'].className = `btn-hpa ${this.state.isHpaEnabled ? 'active' : ''}`;
 
+    this.hpaSwitch.sync(this.state.isHpaSwitchEnabled);
     this.powerSwitch.sync(this.state.isPowered);
 
     // Update inputs

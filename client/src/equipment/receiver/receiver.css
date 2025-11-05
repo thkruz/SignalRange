@@ -143,7 +143,7 @@
   padding: 12px;
   background-color: #1a1a1a;
   border-radius: 8px;
-  width: 310px;
+  width: 255px;
 }
 
 .config-row {
@@ -180,7 +180,7 @@
 .input-rx-bandwidth,
 .input-rx-modulation,
 .input-rx-fec {
-  width: 110px;
+  width: 60px;
 }
 
 .current-value {
@@ -218,10 +218,12 @@
 
 .monitor-screen.no-signal {
   background: repeating-linear-gradient(0deg,
-      #0a0a0a,
-      #0a0a0a 2px,
-      #1a1a1a 2px,
-      #1a1a1a 4px);
+      rgba(10, 10, 10, 0.3),
+      rgba(10, 10, 10, 0.3) 2px,
+      rgba(26, 26, 26, 0.3) 2px,
+      rgba(26, 26, 26, 0.3) 4px);
+  /* flicker */
+  animation: flicker 0.1s infinite;
 }
 
 .video-feed {

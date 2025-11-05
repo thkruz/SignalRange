@@ -114,14 +114,14 @@
   padding: 12px;
   background-color: #1a1a1a;
   border-radius: 8px;
-  width: 310px;
+  width: 255px;
 }
 
 .input-tx-antenna,
 .input-tx-frequency,
 .input-tx-bandwidth,
 .input-tx-power {
-  width: 110px;
+  width: 60px;
 }
 
 .config-row {

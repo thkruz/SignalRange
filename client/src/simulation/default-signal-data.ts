@@ -13,6 +13,7 @@ export const defaultSignalData = [
     fec: '3/4' as FECType,
     feed: 'red-1.mp4',
     isActive: true,
+    isDegraded: false,
   },
   {
     id: '2',
@@ -25,6 +26,7 @@ export const defaultSignalData = [
     fec: '3/4' as FECType,
     feed: 'blue-1.mp4',
     isActive: true,
+    isDegraded: false,
   },
   {
     id: '3',
@@ -37,6 +39,7 @@ export const defaultSignalData = [
     fec: '3/4' as FECType,
     feed: 'blue-1.mp4',
     isActive: true,
+    isDegraded: false,
   },
   {
     id: '4',
@@ -49,6 +52,7 @@ export const defaultSignalData = [
     fec: '3/4' as FECType,
     feed: 'blue-1.mp4',
     isActive: true,
+    isDegraded: false,
   },
   {
     id: '5',
@@ -61,6 +65,7 @@ export const defaultSignalData = [
     fec: '3/4' as FECType,
     feed: 'blue-1.mp4',
     isActive: true,
+    isDegraded: false,
   },
   {
     id: '6',
@@ -73,5 +78,6 @@ export const defaultSignalData = [
     fec: '1/4' as FECType,
     feed: 'blue-1.mp4',
     isActive: true,
+    isDegraded: false
   },
 ];

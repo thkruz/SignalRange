@@ -523,10 +523,14 @@ export class Receiver extends BaseEquipment {
 
       monitor.className = `monitor-screen ${feedUrl.length > 0 ? 'signal-found' : 'no-signal'}`;
       if (feedUrl.length > 0) {
-        const videoEl = qs('.video-feed', monitor) as HTMLVideoElement;
-        if (videoEl) {
-          videoEl.src = `/videos/${feedUrl}`;
-        } else {
+        const signal = visibleSignals[0];
+        if (signal.isImage && !signal.isExternal) { // internal image
+          monitor.innerHTML = `<div class="signal-indicator"><img class="image-feed" src="/images/${feedUrl}" alt="Image Feed" /></div>`;
+        } else if (signal.isImage && signal.isExternal) { // external image
+          monitor.innerHTML = `<div class="signal-indicator"><img class="external-image-feed" src="${feedUrl}" alt="External Image Feed" /></div>`;
+        } else if (signal.isExternal) { // external video
+          monitor.innerHTML = `<div class="signal-indicator"><iframe class="external-feed" src="${feedUrl}" title="External Feed"></iframe></div>`;
+        } else { // internal video
           monitor.innerHTML = `<div class="signal-indicator"><video class="video-feed" src="/videos/${feedUrl}" alt="Video Feed" autoplay muted loop></video></div>`;
         }
       } else {

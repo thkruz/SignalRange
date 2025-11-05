@@ -32,7 +32,7 @@ export class SimulationManager {
   removeSignal(signal: RfSignal): void {
     this.userSignals = this.userSignals.filter(s => {
       return !(s.serverId === signal.serverId &&
-        s.targetId === signal.targetId &&
+        s.noradId === signal.noradId &&
         s.id === signal.id);
     });
   }
@@ -59,7 +59,7 @@ export class SimulationManager {
     const allSignals = [...satelliteSignals, ...this.userSignals];
     const visibleSignals = allSignals.filter((signal) => {
       const isCurrentServer = signal.serverId === serverId;
-      const isCurrentSatellite = signal.targetId === targetId;
+      const isCurrentSatellite = signal.noradId === targetId;
 
       return isCurrentServer && isCurrentSatellite;
     });

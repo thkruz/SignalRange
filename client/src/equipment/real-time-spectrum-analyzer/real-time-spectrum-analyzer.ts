@@ -18,7 +18,6 @@ export interface RealTimeSpectrumAnalyzerState {
   isMaxHold: boolean;
   isMinHold: boolean;
   isMarkerOn: boolean;
-  isShowSignals: boolean;
   refreshRate: number; // in Hz
   centerFrequency: Hertz; // Hz - center frequency
   span: Hertz; // Hz - bandwidth
@@ -72,7 +71,6 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
       minDecibels: -120,
       maxDecibels: -80,
       noiseFloor: -115,
-      isShowSignals: true,
       refreshRate: 10,
       screenMode: 'spectralDensity',
     };

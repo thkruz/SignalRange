@@ -19,6 +19,7 @@ export class App extends BaseElement {
   private static instance_: App;
   protected html_: string = ''; // No direct HTML for App
   equipment: StudentEquipment;
+  isDeveloperMode = false;
   private readonly router = new Router();
   /** Delta time between frames in milliseconds */
   dt = 0 as Milliseconds;

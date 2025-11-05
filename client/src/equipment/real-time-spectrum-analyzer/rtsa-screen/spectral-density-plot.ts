@@ -1,3 +1,4 @@
+import { App } from "@app/app";
 import { SATELLITES } from "../../../constants";
 import { Hertz, IfFrequency, IfSignal, MHz, RfFrequency, RfSignal } from "../../../types";
 import { Antenna } from '../../antenna/antenna';
@@ -160,7 +161,7 @@ export class SpectralDensityPlot extends RTSAScreen {
       let color = this.noiseColor;
       if (!this.antenna.state.isLocked || !this.antenna.state.isOperational) return;
 
-      if (this.specA.state.isShowSignals) {
+      if (App.getInstance().isDeveloperMode) {
         // Check if we have cached a color for this signal id
         color = this.signalColorCache.get(signal.id)!;
         if (!color) {
@@ -182,7 +183,7 @@ export class SpectralDensityPlot extends RTSAScreen {
         rfDownSignal.frequency = (rfDownSignal.frequency +
           (this.antenna.state.isLoopbackEnabled
             ? this.antenna.state.offset * 1e6
-            : SATELLITES[this.antenna.state.targetId].offset)) as RfFrequency;
+            : SATELLITES.find(sat => sat.noradId === this.antenna.state.noradId)?.offset)) as RfFrequency;
         rfDownSignal.power = !this.antenna.state.isLoopbackEnabled && !this.antenna.state.isHpaSwitchEnabled
           ? -1000
           : rfDownSignal.power;
@@ -199,7 +200,7 @@ export class SpectralDensityPlot extends RTSAScreen {
         ifDownSignal.frequency = (ifDownSignal.frequency +
           (this.antenna.state.isLoopbackEnabled
             ? this.antenna.state.offset * 1e6
-            : SATELLITES[this.antenna.state.targetId].offset)) as IfFrequency;
+            : SATELLITES.find(sat => sat.noradId === this.antenna.state.noradId)?.offset)) as IfFrequency;
         ifDownSignal.power = !this.antenna.state.isLoopbackEnabled && !this.antenna.state.isHpaSwitchEnabled
           ? -1000
           : ifDownSignal.power;

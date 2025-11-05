@@ -26,7 +26,7 @@ export interface RfSignal {
   /** Server ID */
   serverId: number;
   /** Target satellite ID */
-  targetId: number;
+  noradId: number;
   /** RF frequency */
   frequency: RfFrequency;
   /** Signal power in dBm */
@@ -39,6 +39,10 @@ export interface RfSignal {
   fec: FECType;
   /** url of the video feed */
   feed: string;
+  /** whether the signal is an image instead of a video */
+  isImage?: boolean;
+  /** whether the signal is from an external source */
+  isExternal?: boolean;
   /** whether the signal is degraded */
   isDegraded: boolean;
 }
@@ -49,7 +53,7 @@ export interface IfSignal {
   /** Server ID */
   serverId: number;
   /** Target satellite ID */
-  targetId: number;
+  noradId: number;
   /** RF frequency */
   frequency: IfFrequency;
   /** Signal power in dBm */
@@ -67,8 +71,11 @@ export interface IfSignal {
 }
 
 export interface Satellite {
-  id: number;
+  /** NORAD Satellite Catalog Id */
+  noradId: number;
+  /** Satellite  Name */
   name: string;
+  /** Frequency offset */
   offset: number; // Hz
 }
 

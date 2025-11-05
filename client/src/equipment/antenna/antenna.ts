@@ -21,7 +21,7 @@ export interface AntennaState {
   /** Which server is this antenna connected to */
   serverId: number;
   /** Which satellite is this antenna targeting */
-  targetId: number;
+  noradId: number;
   /** Frequency band */
   freqBand: FrequencyBand;
   /** Frequency offset */
@@ -65,7 +65,7 @@ export class Antenna extends BaseEquipment {
       id: this.id,
       teamId: this.teamId,
       serverId: serverId,
-      targetId: 1,
+      noradId: 1,
       freqBand: FrequencyBand.C,
       offset: 0,
       isHpaEnabled: false,
@@ -130,13 +130,14 @@ export class Antenna extends BaseEquipment {
           <div class="antenna-config">
             <div class="config-row">
               <label>Satellite</label>
-              <select class="input-target" data-param="targetId">
-                <option value="1" ${this.inputState.targetId === 1 ? 'selected' : ''}>ARKE 3G</option>
-                <option value="2" ${this.inputState.targetId === 2 ? 'selected' : ''}>AURORA 2B</option>
-                <option value="3" ${this.inputState.targetId === 3 ? 'selected' : ''}>AUXO STAR</option>
-                <option value="4" ${this.inputState.targetId === 4 ? 'selected' : ''}>ENYO</option>
+              <select class="input-target" data-param="noradId">
+                <option value="28912" ${this.inputState.noradId === 28912 ? 'selected' : ''}>METEOSAT-9 (MSG-2)</option>
+                <option value="1" ${this.inputState.noradId === 1 ? 'selected' : ''}>ARKE 3G</option>
+                <option value="2" ${this.inputState.noradId === 2 ? 'selected' : ''}>AURORA 2B</option>
+                <option value="3" ${this.inputState.noradId === 3 ? 'selected' : ''}>AUXO STAR</option>
+                <option value="4" ${this.inputState.noradId === 4 ? 'selected' : ''}>ENYO</option>
               </select>
-              <span id="labelTarget" class="current-value">${this.state.targetId}</span>
+              <span id="labelTarget" class="current-value">${this.state.noradId}</span>
             </div>
 
             <div class="config-row">
@@ -272,7 +273,7 @@ export class Antenna extends BaseEquipment {
       // Allow negative numbers
       if (value.match(/[^0-9-]/g)) return;
       value = Number.parseInt(value) || 0;
-    } else if (param === 'targetId' || param === 'freqBand') {
+    } else if (param === 'noradId' || param === 'freqBand') {
       value = Number.parseInt(value);
     } else if (param === 'track') {
       value = (target as HTMLInputElement).checked;
@@ -288,7 +289,7 @@ export class Antenna extends BaseEquipment {
       return;
     }
 
-    if (this.inputState.targetId !== this.state.targetId) {
+    if (this.inputState.noradId !== this.state.noradId) {
       // Reset lock and tracking on target change
       this.state.isLocked = false;
       this.state.isAutoTrackEnabled = false;
@@ -417,7 +418,7 @@ export class Antenna extends BaseEquipment {
           const rfSignal = {
             id: `tx${tx.state.unit}-modem${modem.modem_number}`,
             serverId: this.state.serverId,
-            targetId: this.state.targetId,
+            noradId: this.state.noradId,
             frequency: modem.ifSignal.frequency,
             bandwidth: modem.ifSignal.bandwidth,
             power: modem.ifSignal.power,
@@ -440,7 +441,7 @@ export class Antenna extends BaseEquipment {
     // Update signal active status based on antenna config
     this.state.signals = SimulationManager.getInstance().getVisibleSignals(
       this.state.serverId,
-      this.state.targetId
+      this.state.noradId
     ).filter((signal) => {
       // Get the frequency bounds of this signal
       const halfBandwidth = signal.bandwidth * 0.5;
@@ -505,7 +506,7 @@ export class Antenna extends BaseEquipment {
     this.powerSwitch.sync(this.state.isPowered);
 
     // Update inputs
-    (this.domCache['inputTarget'] as HTMLSelectElement).value = this.inputState.targetId.toString();
+    (this.domCache['inputTarget'] as HTMLSelectElement).value = this.inputState.noradId.toString();
     (this.domCache['inputBand'] as HTMLSelectElement).value = this.inputState.freqBand.toString();
     (this.domCache['inputOffset'] as HTMLInputElement).value = this.inputState.offset.toString();
     (this.domCache['inputTrack'] as HTMLInputElement).checked = this.state.isAutoTrackEnabled;
@@ -515,7 +516,7 @@ export class Antenna extends BaseEquipment {
     this.domCache['lockStatus'].textContent = this.state.isLocked ? 'LOCKED' : this.state.isAutoTrackEnabled ? 'TRACKING' : 'UNLOCKED';
 
     // Update current value labels
-    this.domCache['labelTarget'].textContent = `Satellite ${this.state.targetId}`;
+    this.domCache['labelTarget'].textContent = `Satellite ${this.state.noradId}`;
     const band = this.state.freqBand === FrequencyBand.C ? 'c' : 'ku';
     const bandInfo = bandInformation[band];
     this.domCache['labelBand'].textContent = bandInfo.name;

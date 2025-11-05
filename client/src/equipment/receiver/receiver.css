@@ -244,6 +244,7 @@
 
 .signal-indicator {
   display: flex;
+  height: 100%;
   width: 100%;
   flex-direction: column;
   align-items: center;
@@ -308,97 +309,9 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
-/* Responsive adjustments */
-@media (max-width: 1024px) {
-  .receiver-box {
-    min-width: 500px;
-  }
-
-  .receiver-main-content {
-    flex-direction: column;
-  }
-
-  .video-monitor {
-    width: 100%;
-  }
-}
-
-@media (max-width: 768px) {
-  .receiver-box {
-    min-width: 350px;
-  }
-
-  .receiver-controls {
-    flex-direction: column;
-  }
-
-  .modem-buttons {
-    flex-direction: row;
-    min-width: unset;
-  }
-
-  .config-row {
-    grid-template-columns: 80px 1fr 80px;
-    gap: 8px;
-  }
-
-  .video-monitor {
-    flex: 0 0 auto;
-  }
-
-  .monitor-screen {
-    min-height: 200px;
-  }
-}
-
-@media (max-width: 480px) {
-  .receiver-box {
-    min-width: 300px;
-    padding: 12px;
-  }
-
-  .receiver-header {
-    margin-bottom: 12px;
-    padding-bottom: 8px;
-  }
-
-  .receiver-title {
-    font-size: 16px;
-  }
-
-  .receiver-status {
-    font-size: 11px;
-    padding: 3px 8px;
-  }
-
-  .receiver-controls {
-    gap: 12px;
-  }
-
-  .modem-buttons {
-    gap: 6px;
-  }
-
-  .btn-modem {
-    padding: 8px;
-    font-size: 14px;
-  }
-
-  .modem-config {
-    padding: 8px;
-  }
-
-  .config-row {
-    grid-template-columns: 70px 1fr 70px;
-    gap: 6px;
-  }
-
-  .monitor-screen {
-    min-height: 150px;
-  }
-
-  .btn-apply {
-    padding: 10px;
-    font-size: 13px;
-  }
+.external-image-feed {
+  /* Scale the image down to fit the container */
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }

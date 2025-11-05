@@ -64,7 +64,7 @@ export class Transmitter extends BaseEquipment {
         ifSignal: {
           id: `${unit}-${i}-default`,
           serverId: serverId,
-          targetId: 1,
+          noradId: 1,
           frequency: 1000 * 1e6 as IfFrequency, // MHz (L-Band)
           power: -97, // dBm
           bandwidth: 10 * 1e6 as Hertz, // MHz

@@ -1,4 +1,4 @@
-import { html } from "../../engine/ui/utils/development/formatter";
+import { html } from "../../engine/utils/development/formatter";
 import { Events } from "../../events/events";
 import { Hertz } from "../../types";
 import { Antenna } from '../antenna/antenna';

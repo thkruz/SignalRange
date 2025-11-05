@@ -1,4 +1,4 @@
-import { html } from "../engine/ui/utils/development/formatter";
+import { html } from "../engine/utils/development/formatter";
 
 export abstract class BaseElement {
   protected html = html``;

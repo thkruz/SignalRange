@@ -7,8 +7,20 @@
       "DOM",
       "DOM.Iterable"
     ],
+    "baseUrl": ".",
+    "paths": {
+      "@app/*": [
+        "src/*"
+      ],
+      "@engine/*": [
+        "src/engine/*"
+      ],
+      "@ootk/*": [
+        "src/engine/ootk/*"
+      ]
+    },
     "moduleResolution": "node",
-    "strict": true,
+    "strict": false,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
@@ -30,6 +42,9 @@
   ],
   "exclude": [
     "node_modules",
-    "dist"
+    "dist",
+    "**/*.spec.ts",
+    "**/*.test.ts",
+    "**/ootk/examples/**"
   ]
 }

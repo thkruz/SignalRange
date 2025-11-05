@@ -1,6 +1,6 @@
 import { DraggableBox } from "../../engine/ui/draggable-box";
-import { html } from "../../engine/ui/utils/development/formatter";
-import { getEl } from "../../engine/ui/utils/get-el";
+import { html } from "../../engine/utils/development/formatter";
+import { getEl } from "../../engine/utils/get-el";
 import { AnalyzerControl } from "./analyzer-control";
 import { RealTimeSpectrumAnalyzer } from "./real-time-spectrum-analyzer";
 

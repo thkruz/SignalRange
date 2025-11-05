@@ -1,5 +1,5 @@
-import { html } from "../../engine/ui/utils/development/formatter";
-import { qs } from "../../engine/ui/utils/query-selector";
+import { html } from "../../engine/utils/development/formatter";
+import { qs } from "../../engine/utils/query-selector";
 import { Events } from "../../events/events";
 import { FECType, Hertz, MHz, ModulationType } from "../../types";
 import { Equipment } from "../equipment";

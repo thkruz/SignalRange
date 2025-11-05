@@ -1,5 +1,5 @@
-import { html } from "../../engine/ui/utils/development/formatter";
-import { qs } from "../../engine/ui/utils/query-selector";
+import { html } from "../../engine/utils/development/formatter";
+import { qs } from "../../engine/utils/query-selector";
 import { Events } from "../../events/events";
 import { Hertz, IfFrequency, IfSignal } from "../../types";
 import { Equipment } from "../equipment";
@@ -217,23 +217,23 @@ export class Transmitter extends Equipment {
 
     // Cache commonly used DOM nodes for efficient updates
     this.domCache['parent'] = parentDom;
-    this.domCache['status'] = qs('.transmitter-status', parentDom) as HTMLElement;
+    this.domCache['status'] = qs('.transmitter-status', parentDom);
     this.state.modems.forEach(modem => {
-      this.domCache[`modemButton${modem.modem_number}`] = qs(`#modem-${modem.modem_number}`, parentDom) as HTMLElement;
+      this.domCache[`modemButton${modem.modem_number}`] = qs(`#modem-${modem.modem_number}`, parentDom);
     });
-    this.domCache['inputAntenna'] = qs('.input-tx-antenna', parentDom) as HTMLSelectElement;
-    this.domCache['inputFrequency'] = qs('.input-tx-frequency', parentDom) as HTMLInputElement;
-    this.domCache['inputBandwidth'] = qs('.input-tx-bandwidth', parentDom) as HTMLInputElement;
-    this.domCache['inputPower'] = qs('.input-tx-power', parentDom) as HTMLInputElement;
-    this.domCache['btnApply'] = qs('.btn-apply', parentDom) as HTMLElement;
-    this.domCache['powerBar'] = qs('.power-bar', parentDom) as HTMLElement;
-    this.domCache['powerPercentage'] = qs('.power-percentage', parentDom) as HTMLElement;
-    this.domCache['txActivePowerLight'] = qs('#tx-active-power-light', parentDom) as HTMLElement;
-    this.domCache['txTransmittingLight'] = qs('#tx-transmitting-light', parentDom) as HTMLElement;
-    this.domCache['txFaultLight'] = qs('#tx-fault-light', parentDom) as HTMLElement;
-    this.domCache['txTestModeLight'] = qs('#tx-test-mode-light', parentDom) as HTMLElement;
-    this.domCache['btnTransmit'] = qs('.btn-transmit', parentDom) as HTMLElement;
-    this.domCache['powerSwitch'] = qs(`#transmitterPowerSwitch${this.state.unit}${this.state.activeModem}`, parentDom) as HTMLInputElement;
+    this.domCache['inputAntenna'] = qs('.input-tx-antenna', parentDom);
+    this.domCache['inputFrequency'] = qs('.input-tx-frequency', parentDom);
+    this.domCache['inputBandwidth'] = qs('.input-tx-bandwidth', parentDom);
+    this.domCache['inputPower'] = qs('.input-tx-power', parentDom);
+    this.domCache['btnApply'] = qs('.btn-apply', parentDom);
+    this.domCache['powerBar'] = qs('.power-bar', parentDom);
+    this.domCache['powerPercentage'] = qs('.power-percentage', parentDom);
+    this.domCache['txActivePowerLight'] = qs('#tx-active-power-light', parentDom);
+    this.domCache['txTransmittingLight'] = qs('#tx-transmitting-light', parentDom);
+    this.domCache['txFaultLight'] = qs('#tx-fault-light', parentDom);
+    this.domCache['txTestModeLight'] = qs('#tx-test-mode-light', parentDom);
+    this.domCache['btnTransmit'] = qs('.btn-transmit', parentDom);
+    this.domCache['powerSwitch'] = qs(`#transmitterPowerSwitch${this.state.unit}${this.state.activeModem}`, parentDom);
 
     // If this.inputData is empty, initialize it with active modem data
     if (Object.keys(this.inputData).length === 0) {

@@ -2,7 +2,7 @@ import { BaseElement } from './components/base-element';
 import { Body } from './components/layout/body';
 import { Footer } from './components/layout/footer';
 import { Header } from './components/layout/header';
-import { html } from "./engine/ui/utils/development/formatter";
+import { html } from "./engine/utils/development/formatter";
 import { AbstractPage } from './pages/abstract-page';
 import { LoginPage } from './pages/login-page';
 import { StudentPage } from './pages/student-page';

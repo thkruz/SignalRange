@@ -1,4 +1,4 @@
-import { html } from "../engine/ui/utils/development/formatter";
+import { html } from "../engine/utils/development/formatter";
 import { StudentEquipment } from '../equipment/student-equipment';
 import { syncEquipmentWithStore } from '../sync/storage';
 import { AbstractPage } from './abstract-page';

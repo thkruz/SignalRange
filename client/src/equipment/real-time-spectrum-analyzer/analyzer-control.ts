@@ -1,6 +1,6 @@
 import { BaseElement } from '../../components/base-element';
-import { html } from "../../engine/ui/utils/development/formatter";
-import { qs, qsa } from "../../engine/ui/utils/query-selector";
+import { html } from "../../engine/utils/development/formatter";
+import { qs, qsa } from "../../engine/utils/query-selector";
 import { EventBus } from '../../events/event-bus';
 import { Events } from '../../events/events';
 import { Hertz } from '../../types';

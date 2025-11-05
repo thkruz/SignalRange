@@ -1,6 +1,6 @@
 import { bandInformation, FrequencyBand } from "../../constants";
-import { html } from "../../engine/ui/utils/development/formatter";
-import { qs } from "../../engine/ui/utils/query-selector";
+import { html } from "../../engine/utils/development/formatter";
+import { qs } from "../../engine/utils/query-selector";
 import { Events } from "../../events/events";
 import { SimulationManager } from "../../simulation/simulation-manager";
 import { RfFrequency, RfSignal } from "../../types";

@@ -51,8 +51,8 @@ export class ACFreqBtn extends BaseControlButton {
     this.analyzerControl.controlSelection = this;
 
     // Update the display with current center frequency
-    const centerFreq = this.analyzerControl.specA.state.centerFrequency;
-    this.analyzerControl.updateValueForSelection(centerFreq);
+    // const centerFreq = this.analyzerControl.specA.state.centerFrequency;
+    // this.analyzerControl.updateValueForSelection(centerFreq);
     this.analyzerControl.updateDisplay();
     this.playSound();
   }
@@ -61,8 +61,8 @@ export class ACFreqBtn extends BaseControlButton {
     this.analyzerControl.controlSelection = this;
 
     // Update the display with current start frequency
-    const startFreq = this.analyzerControl.specA.state.startFrequency;
-    this.analyzerControl.updateValueForSelection(startFreq);
+    // const startFreq = this.analyzerControl.specA.state.startFrequency;
+    // this.analyzerControl.updateValueForSelection(startFreq);
     this.analyzerControl.updateDisplay();
     this.playSound();
   }
@@ -71,8 +71,8 @@ export class ACFreqBtn extends BaseControlButton {
     this.analyzerControl.controlSelection = this;
 
     // Update the display with current stop frequency
-    const stopFreq = this.analyzerControl.specA.state.stopFrequency;
-    this.analyzerControl.updateValueForSelection(stopFreq);
+    // const stopFreq = this.analyzerControl.specA.state.stopFrequency;
+    // this.analyzerControl.updateValueForSelection(stopFreq);
     this.analyzerControl.updateDisplay();
     this.playSound();
   }

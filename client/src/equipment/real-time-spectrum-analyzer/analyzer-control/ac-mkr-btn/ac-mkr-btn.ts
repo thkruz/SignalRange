@@ -25,8 +25,12 @@ export class ACMkrBtn extends BaseControlButton {
   }
 
   protected handleClick_(): void {
-    if (this.analyzerControl) {
-      this.analyzerControl.updateSubMenu('mkr');
-    }
+    this.analyzerControl.updateSubMenu('mkr');
+
+    this.analyzerControl.specA.state.isMarkerOn = !this.analyzerControl.specA.state.isMarkerOn;
+
+    // Note: Marker drawing would need to be implemented in SpectrumAnalyzer
+    this.analyzerControl.updateDisplay();
+    this.playSound();
   }
 }

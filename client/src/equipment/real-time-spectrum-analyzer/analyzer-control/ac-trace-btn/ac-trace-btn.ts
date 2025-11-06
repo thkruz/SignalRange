@@ -25,8 +25,12 @@ export class ACTraceBtn extends BaseControlButton {
   }
 
   protected handleClick_(): void {
-    if (this.analyzerControl) {
-      this.analyzerControl.updateSubMenu('trace');
-    }
+    this.analyzerControl.specA.state.isMaxHold = !this.analyzerControl.specA.state.isMaxHold;
+
+    // Update spectrum analyzer
+    this.analyzerControl.specA.resetHoldData();
+
+    this.analyzerControl.updateDisplay();
+    this.playSound();
   }
 }

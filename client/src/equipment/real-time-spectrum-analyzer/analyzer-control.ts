@@ -4,7 +4,6 @@ import { html } from "../../engine/utils/development/formatter";
 import { qs, qsa } from "../../engine/utils/query-selector";
 import { EventBus } from '../../events/event-bus';
 import { Events } from '../../events/events';
-import { Hertz } from '../../types';
 import './analyzer-control.css';
 import { ACAmptBtn } from './analyzer-control/ac-ampt-btn/ac-ampt-btn';
 import { ACBWBtn } from './analyzer-control/ac-bw-btn/ac-bw-btn';
@@ -40,14 +39,9 @@ export class AnalyzerControl extends BaseElement {
   readonly specA: RealTimeSpectrumAnalyzer;
   domCache: { [key: string]: HTMLElement } = {};
 
-  // Display state
-  private ghz: string = '0';
-  private mhz: string = '0';
-  private khz: string = '0';
-
   // Control state
   controlSelection: BaseControlButton | null = null;
-  private numberSelection: 'ghz' | 'mhz' | 'khz' | null = null;
+  panelElements: BaseControlButton[];
 
   constructor(options: AnalyzerControlOptions) {
     super();
@@ -62,16 +56,12 @@ export class AnalyzerControl extends BaseElement {
 
   private initializeValues(): void {
     // Initialize with current center frequency in MHz
-    this.numberSelection = 'mhz';
-    this.mhz = (this.specA.state.centerFrequency / 1e6).toFixed(3);
-    this.ghz = '0';
-    this.khz = '0';
     this.controlSelection = ACFreqBtn.getInstance();
     this.updateDisplay();
   }
 
   initDom_(parentId: string, type: 'add' | 'replace' = 'replace'): HTMLElement {
-    const panelElements = [
+    this.panelElements = [
       ACFreqBtn.create(this),
       ACSpanBtn.create(this),
       ACAmptBtn.create(this),
@@ -161,6 +151,7 @@ export class AnalyzerControl extends BaseElement {
         </button>
         <button class="physical-button unit-button" id="ghz-select" aria-label="Select GHz">
           <span class="button-text">GHz</span>
+          <div class="subtext">dBm</div>
         </button>
         </div>
         <div class="numpad-row">
@@ -204,7 +195,7 @@ export class AnalyzerControl extends BaseElement {
         <button class="physical-button num-button" data-value=".">
           <span class="button-text">.</span>
         </button>
-        <button class="physical-button num-button" data-value="-">
+        <button class="physical-button num-button" data-value="+/-">
           <span class="button-text">+/-</span>
         </button>
         <button class="physical-button unit-button" id="hz-select" aria-label="Select Hz">
@@ -212,7 +203,7 @@ export class AnalyzerControl extends BaseElement {
         </button>
         </div>
         <div class="numpad-row">
-          <button class="physical-button num-button special-button" data-value="C">
+          <button class="physical-button num-button special-button" data-value="esc" aria-label="Escape">
             <span class="button-text">Esc</span>
           </button>
           <button class="physical-button num-button special-button" data-value="bksp" aria-label="Backspace">
@@ -223,8 +214,10 @@ export class AnalyzerControl extends BaseElement {
             </svg>
             </span>
           </button>
-          <button class="physical-button num-button special-button" data-value="C">
-            <span class="button-text">C</span>
+          <button class="physical-button num-button special-button" data-value="enter" aria-label="Enter">
+            <span class="button-text">
+              &#10003;
+            </span>
           </button>
         </div>
       </div>
@@ -240,10 +233,6 @@ export class AnalyzerControl extends BaseElement {
 
     // Reinitialize DOM with final HTML
     const parentDom = super.initDom_(parentId, type);
-
-    for (const element of panelElements) {
-      element.addEventListeners();
-    }
 
     this.domCache['label-cell-1'] = parentDom.querySelector('#label-cell-1')!;
     this.domCache['label-cell-2'] = parentDom.querySelector('#label-cell-2')!;
@@ -301,16 +290,9 @@ export class AnalyzerControl extends BaseElement {
   protected addEventListeners_(): void {
     if (!this.dom_) return;
 
-    // Unit selection buttons (GHz, MHz, KHz)
-    this.domCache['ghz-select']?.addEventListener('click', () => this.handleUnitSelect('ghz'));
-    this.domCache['mhz-select']?.addEventListener('click', () => this.handleUnitSelect('mhz'));
-    this.domCache['khz-select']?.addEventListener('click', () => this.handleUnitSelect('khz'));
-
-    // Control buttons (Freq, Span, Max Hold, Marker)
-    this.domCache['span-button']?.addEventListener('click', () => this.handleSpanClick());
-    this.domCache['max-hold-button']?.addEventListener('click', () => this.handleMaxHoldClick());
-    this.domCache['min-hold-button']?.addEventListener('click', () => this.handleMinHoldClick());
-    this.domCache['marker-button']?.addEventListener('click', () => this.handleMarkerClick());
+    for (const element of this.panelElements) {
+      element.addEventListeners();
+    }
 
     // Number pad buttons
     const numButtons = qsa<HTMLButtonElement>('.num-button', this.dom_);
@@ -324,41 +306,10 @@ export class AnalyzerControl extends BaseElement {
     });
   }
 
-  private handleUnitSelect(unit: 'ghz' | 'mhz' | 'khz'): void {
-    this.numberSelection = unit;
-
-    // Reset other units to 0
-    this.ghz = '0';
-    this.mhz = '0';
-    this.khz = '0';
-
-    // Set the selected unit to the current value
-    const currentValue = this.controlSelection === ACFreqBtn.getInstance() ? this.specA.state.centerFrequency : this.specA.state.span;
-
-    if (unit === 'ghz') {
-      this.ghz = (currentValue / 1e9).toFixed(6);
-    } else if (unit === 'mhz') {
-      this.mhz = (currentValue / 1e6).toFixed(3);
-    } else if (unit === 'khz') {
-      this.khz = (currentValue / 1e3).toFixed(0);
-    }
-
-    this.updateDisplay();
-    this.playSound();
-  }
-
   updateSubMenu(subMenu: string): void {
     this.clearSubMenu();
 
     Logger.info(`AnalyzerControl: Updating sub-menu to ${subMenu}`);
-
-    switch (subMenu) {
-      case 'freq':
-        break;
-      default:
-        // Other sub-menus can be implemented similarly
-        break;
-    }
   }
 
   private clearSubMenu(): void {
@@ -370,130 +321,67 @@ export class AnalyzerControl extends BaseElement {
     }
   }
 
-  private handleSpanClick(): void {
-    this.controlSelection = ACSpanBtn.getInstance();
-
-    // Update the display with current span
-    const span = this.specA.state.span;
-    this.updateValueForSelection(span);
-    this.updateDisplay();
-    this.playSound();
-  }
-
-  private handleMaxHoldClick(): void {
-    this.specA.state.isMaxHold = !this.specA.state.isMaxHold;
-
-    // Update spectrum analyzer
-    this.specA.resetHoldData();
-
-    this.updateDisplay();
-    this.playSound();
-  }
-
-  private handleMinHoldClick(): void {
-    this.specA.state.isMinHold = !this.specA.state.isMinHold;
-
-    // Update spectrum analyzer
-    this.specA.resetHoldData();
-
-    this.updateDisplay();
-    this.playSound();
-  }
-
-  private handleMarkerClick(): void {
-    this.specA.state.isMarkerOn = !this.specA.state.isMarkerOn;
-
-    // Note: Marker drawing would need to be implemented in SpectrumAnalyzer
-    this.updateDisplay();
-    this.playSound();
-  }
-
   private handleNumberClick(value: string): void {
-    if (!this.numberSelection || !this.controlSelection) {
+    Logger.info(`AnalyzerControl: Number button clicked: ${value}`);
+    if (!this.controlSelection) {
       // TODO: Provide user feedback - must select unit and control first
       return;
     }
 
-    let currentValue = this.getCurrentValue();
+    if (value === 'enter') {
+      // Submit input
+      Logger.info(`AnalyzerControl: Submitting input value: ${this.specA.state.inputValue} ${this.specA.state.inputUnit}`);
+      const inputNumber = parseFloat(this.specA.state.inputValue.toString());
+      if (isNaN(inputNumber)) {
+        // Invalid number entered
+        Logger.warn('AnalyzerControl: Invalid number entered');
+        return;
+      }
 
-    // Handle special characters
-    if (value === 'bksp') {
-      currentValue = currentValue.toString().slice(0, -1);
-    } else if (value === 'C') {
-      currentValue = '';
-    } else if (value === '.') {
-      // Only add decimal if there isn't one already
-      if (!currentValue.includes('.')) {
-        currentValue = currentValue + '.';
+      let frequencyHz = inputNumber;
+      switch (this.specA.state.inputUnit) {
+        case 'GHz':
+          frequencyHz *= 1e9;
+          break;
+        case 'MHz':
+          frequencyHz *= 1e6;
+          break;
+        case 'kHz':
+          frequencyHz *= 1e3;
+          break;
+        case 'Hz':
+          // No conversion needed
+          break;
+        default:
+          Logger.warn(`AnalyzerControl: Unknown unit ${this.specA.state.inputUnit}`);
+          return;
+      }
+
+      Logger.info(`AnalyzerControl: Converted frequency: ${frequencyHz} Hz`);
+    } else if (value === 'esc') {
+      // Clear input
+      this.specA.state.inputValue = '';
+    } else if (value === 'bksp') {
+      // Backspace
+      this.specA.state.inputValue = this.specA.state.inputValue.toString().slice(0, -1);
+    } else if (value === '+/-') {
+      // Toggle sign
+      if (this.specA.state.inputValue.toString().startsWith('-')) {
+        this.specA.state.inputValue = this.specA.state.inputValue.toString().slice(1);
+      } else {
+        this.specA.state.inputValue = '-' + this.specA.state.inputValue;
       }
     } else {
-      // Append the number
-      currentValue = `${currentValue}${value}`;
+      // Append number or decimal
+      this.specA.state.inputValue += value;
     }
 
-    this.setCurrentValue(currentValue);
-
-    // Update the spectrum analyzer
-    const numValue = (Number.parseFloat(currentValue) || 0) as Hertz;
-    const hzValue = this.convertToHz(numValue);
-
-    if (this.controlSelection === ACFreqBtn.getInstance()) {
-      this.specA.changeCenterFreq(hzValue);
-    } else if (this.controlSelection === ACSpanBtn.getInstance()) {
-      this.specA.changeBandwidth(hzValue);
-    }
-
-    this.updateDisplay();
+    this.specA.syncDomWithState();
     this.playSound();
-  }
-
-  private getCurrentValue(): string {
-    if (this.numberSelection === 'ghz') return this.ghz;
-    if (this.numberSelection === 'mhz') return this.mhz;
-    if (this.numberSelection === 'khz') return this.khz;
-    return '0';
-  }
-
-  private setCurrentValue(value: string): void {
-    if (this.numberSelection === 'ghz') this.ghz = value;
-    else if (this.numberSelection === 'mhz') this.mhz = value;
-    else if (this.numberSelection === 'khz') this.khz = value;
-  }
-
-  updateValueForSelection(hertzValue: Hertz): void {
-    if (this.numberSelection === 'ghz') {
-      this.ghz = (hertzValue / 1e9).toFixed(6);
-    } else if (this.numberSelection === 'mhz') {
-      this.mhz = (hertzValue / 1e6).toFixed(3);
-    } else if (this.numberSelection === 'khz') {
-      this.khz = (hertzValue / 1e3).toFixed(0);
-    }
-  }
-
-  convertToHz(value: Hertz): Hertz {
-    if (this.numberSelection === 'ghz') return value * 1e9 as Hertz;
-    if (this.numberSelection === 'mhz') return value * 1e6 as Hertz;
-    if (this.numberSelection === 'khz') return value * 1e3 as Hertz;
-
-    return value;
   }
 
   updateDisplay(): void {
     if (!this.dom_) return;
-
-    // Update display values
-    const ghzDisplay = qs('#ghz-display', this.dom_);
-    const mhzDisplay = qs('#mhz-display', this.dom_);
-    const khzDisplay = qs('#khz-display', this.dom_);
-
-    if (ghzDisplay) ghzDisplay.textContent = this.ghz || '0';
-    if (mhzDisplay) mhzDisplay.textContent = this.mhz || '0';
-    if (khzDisplay) khzDisplay.textContent = this.khz || '0';
-
-    // Update button states - unit selection
-    this.updateButtonState('#ghz-select', this.numberSelection === 'ghz');
-    this.updateButtonState('#mhz-select', this.numberSelection === 'mhz');
-    this.updateButtonState('#khz-select', this.numberSelection === 'khz');
 
     // Update button states - control selection
     this.updateButtonState('#freq-button', this.controlSelection === ACFreqBtn.getInstance());

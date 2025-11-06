@@ -10,6 +10,8 @@ import { SpectralDensityPlot } from './rtsa-screen/spectral-density-plot';
 import { WaterfallDisplay } from "./rtsa-screen/waterfall-display";
 
 export interface RealTimeSpectrumAnalyzerState {
+  inputUnit: string | number;
+  inputValue: string | number;
   id: number; // 1-4
   team_id: number;
   antenna_id: number;
@@ -75,6 +77,8 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
       noiseFloor: -115,
       refreshRate: 10,
       screenMode: 'spectralDensity',
+      inputUnit: 'MHz',
+      inputValue: '',
     };
     this.state.startFrequency = (this.state.centerFrequency - this.state.span / 2) as Hertz;
     this.state.stopFrequency = (this.state.centerFrequency + this.state.span / 2) as Hertz;
@@ -104,6 +108,7 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
 
         <div class="spec-a-info">
           <div>CF: ${this.state.centerFrequency / 1e6} MHz</div>
+          <div>Input: ${this.state.inputValue} ${this.state.inputUnit}</div>
           <div>Ant: ${this.state.antenna_id}</div>
         </div>
 
@@ -403,6 +408,7 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
     // Update info display
     this.domCache['info'].innerHTML = html`
       <div>CF: ${(this.state.centerFrequency / 1e6).toFixed(3)} MHz</div>
+      <div>Input: ${this.state.inputValue} ${this.state.inputUnit}</div>
       <div>Ant: ${this.state.antenna_id}</div>
     `;
 

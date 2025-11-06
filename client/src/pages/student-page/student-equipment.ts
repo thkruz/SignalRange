@@ -28,10 +28,12 @@ export class StudentEquipment extends BaseElement {
           <div id="antenna-spec-a-grid1" class="antenna-spec-a-grid">
             <div class="paired-equipment-container">
               <div id="antenna1-container" class="antenna-container"></div>
+              <div id="antenna2-container" class="antenna-container"></div>
+            </div>
+            <div class="paired-equipment-container">
               <div id="rf-front-end1-container" class="rf-front-end-container"></div>
             </div>
             <div class="paired-equipment-container">
-              <div id="antenna2-container" class="antenna-container"></div>
               <div id="rf-front-end2-container" class="rf-front-end-container"></div>
             </div>
             <div class="paired-equipment-container">

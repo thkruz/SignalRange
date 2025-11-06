@@ -119,7 +119,6 @@ export interface RFFrontEndState {
   serverId: number;
   isPowered: boolean;
   isExtRefPresent: boolean;
-  isAdvancedMode: boolean;
   signalFlowDirection: 'TX' | 'RX' | 'IDLE';
 
   omt: OMTState;
@@ -155,7 +154,6 @@ export class RFFrontEnd extends BaseEquipment {
   filterModeToggle: ToggleSwitch;
   lnbPowerSwitch: PowerSwitch;
   couplerTapToggle: ToggleSwitch;
-  advancedModeToggle: ToggleSwitch;
 
   constructor(parentId: string, unit: number, teamId: number = 1, serverId: number = 1) {
     super(parentId, unit, teamId);
@@ -167,7 +165,6 @@ export class RFFrontEnd extends BaseEquipment {
       serverId: serverId,
       isPowered: true,
       isExtRefPresent: true,
-      isAdvancedMode: false,
       signalFlowDirection: 'IDLE',
 
       omt: {
@@ -293,15 +290,10 @@ export class RFFrontEnd extends BaseEquipment {
       this.state.coupler.tapPoint === 'IF_AFTER_LNB'
     );
 
-    this.advancedModeToggle = ToggleSwitch.create(
-      `rf-fe-advanced-mode-${this.state.unit}`,
-      this.state.isAdvancedMode
-    );
-
     parentDom.innerHTML = html`
       <div
         id="rf-fe-box-${this.state.unit}"
-        class="equipment-box" data-unit="${this.state.unit}"
+        class="equipment-box rf-front-end-box" data-unit="${this.state.unit}"
       >
 
         <!-- Top Status Bar -->
@@ -341,122 +333,118 @@ export class RFFrontEnd extends BaseEquipment {
         <!-- Main Module Container -->
         <div class="rf-fe-modules">
 
-          ${this.state.isAdvancedMode ? html`
-            <!-- OMT/Duplexer Module -->
-            <div class="rf-fe-module omt-module">
-              <div class="module-label">OMT/DUPLEXER</div>
-              <div class="module-controls">
-                <div class="control-group">
-                  <label>TX/RX POL</label>
-                  <div id="rf-fe-omt-pol-${this.state.unit}"></div>
-                  <span class="pol-label">${this.state.omt.txPolarization}/${this.state.omt.rxPolarization}</span>
-                </div>
-                <div class="led-indicator">
-                  <span class="indicator-label">X-POL</span>
-                  <div class="led ${this.state.omt.isFaulted ? 'led-red' : 'led-off'}"></div>
-                  <span class="value-readout">${this.state.omt.crossPolIsolation.toFixed(1)} dB</span>
-                </div>
-              </div>
+        <!-- OMT/Duplexer Module -->
+        <div class="rf-fe-module omt-module">
+          <div class="module-label">OMT/DUPLEXER</div>
+          <div class="module-controls">
+            <div class="control-group">
+              <label>TX/RX POL</label>
+              <div id="rf-fe-omt-pol-${this.state.unit}"></div>
+              <span class="pol-label">${this.state.omt.txPolarization}/${this.state.omt.rxPolarization}</span>
             </div>
-          ` : ''}
+            <div class="led-indicator">
+              <span class="indicator-label">X-POL</span>
+              <div class="led ${this.state.omt.isFaulted ? 'led-red' : 'led-off'}"></div>
+              <span class="value-readout">${this.state.omt.crossPolIsolation.toFixed(1)} dB</span>
+            </div>
+          </div>
+        </div>
 
-          <!-- BUC Module -->
-          <div class="rf-fe-module buc-module">
-            <div class="module-label">BUC</div>
+        <!-- BUC Module -->
+        <div class="rf-fe-module buc-module">
+          <div class="module-label">BUC</div>
+          <div class="module-controls">
+            <div class="control-group">
+              <label>POWER</label>
+              <div id="rf-fe-buc-power-${this.state.unit}"></div>
+            </div>
+            <div class="control-group">
+              <label>LO (MHz)</label>
+              <input type="number"
+                      class="input-buc-lo"
+                      data-param="buc.loFrequency"
+                      value="${this.state.buc.loFrequency}"
+                      min="3700" max="4200" step="10" />
+              <div class="digital-display">${this.state.buc.loFrequency}</div>
+            </div>
+            <div class="control-group">
+              <label>GAIN (dB)</label>
+              <input type="range"
+                      class="rotary-knob"
+                      data-param="buc.gain"
+                      value="${this.state.buc.gain}"
+                      min="0" max="70" step="1" />
+              <span class="value-readout">${this.state.buc.gain}</span>
+            </div>
+            <div class="led-indicator">
+              <span class="indicator-label">LOCK</span>
+              <div class="led ${this.state.buc.isExtRefLocked ? 'led-green' : 'led-red'}"></div>
+            </div>
+            <div class="control-group">
+              <label>MUTE</label>
+              <button class="btn-mute ${this.state.buc.isMuted ? 'active' : ''}"
+                      data-action="toggle-buc-mute">
+                ${this.state.buc.isMuted ? 'ON' : 'OFF'}
+              </button>
+            </div>
+          </div>
+        </div>
+
+          <!-- HPA/SSPA Module -->
+          <div class="rf-fe-module hpa-module">
+            <div class="module-label">HPA/SSPA</div>
             <div class="module-controls">
               <div class="control-group">
-                <label>POWER</label>
-                <div id="rf-fe-buc-power-${this.state.unit}"></div>
+                <label>ENABLE</label>
+                <div id="rf-fe-hpa-enable-${this.state.unit}"></div>
               </div>
               <div class="control-group">
-                <label>LO (MHz)</label>
-                <input type="number"
-                       class="input-buc-lo"
-                       data-param="buc.loFrequency"
-                       value="${this.state.buc.loFrequency}"
-                       min="3700" max="4200" step="10" />
-                <div class="digital-display">${this.state.buc.loFrequency}</div>
-              </div>
-              <div class="control-group">
-                <label>GAIN (dB)</label>
+                <label>BACK-OFF (dB)</label>
                 <input type="range"
-                       class="rotary-knob"
-                       data-param="buc.gain"
-                       value="${this.state.buc.gain}"
-                       min="0" max="70" step="1" />
-                <span class="value-readout">${this.state.buc.gain}</span>
+                        class="rotary-knob"
+                        data-param="hpa.backOff"
+                        value="${this.state.hpa.backOff}"
+                        min="0" max="10" step="0.5" />
+                <span class="value-readout">${this.state.hpa.backOff}</span>
+              </div>
+              <div class="power-meter">
+                <div class="meter-label">OUTPUT</div>
+                <div class="led-bar">
+                  ${this.renderPowerMeter(this.state.hpa.outputPower)}
+                </div>
+                <span class="value-readout">${this.state.hpa.outputPower.toFixed(1)} dBW</span>
               </div>
               <div class="led-indicator">
-                <span class="indicator-label">LOCK</span>
-                <div class="led ${this.state.buc.isExtRefLocked ? 'led-green' : 'led-red'}"></div>
-              </div>
-              <div class="control-group">
-                <label>MUTE</label>
-                <button class="btn-mute ${this.state.buc.isMuted ? 'active' : ''}"
-                        data-action="toggle-buc-mute">
-                  ${this.state.buc.isMuted ? 'ON' : 'OFF'}
-                </button>
+                <span class="indicator-label">IMD</span>
+                <div class="led ${this.state.hpa.isOverdriven ? 'led-orange' : 'led-off'}"></div>
+                <span class="value-readout">${this.state.hpa.imdLevel} dBc</span>
               </div>
             </div>
           </div>
 
-          ${this.state.isAdvancedMode ? html`
-            <!-- HPA/SSPA Module -->
-            <div class="rf-fe-module hpa-module">
-              <div class="module-label">HPA/SSPA</div>
-              <div class="module-controls">
-                <div class="control-group">
-                  <label>ENABLE</label>
-                  <div id="rf-fe-hpa-enable-${this.state.unit}"></div>
-                </div>
-                <div class="control-group">
-                  <label>BACK-OFF (dB)</label>
-                  <input type="range"
-                         class="rotary-knob"
-                         data-param="hpa.backOff"
-                         value="${this.state.hpa.backOff}"
-                         min="0" max="10" step="0.5" />
-                  <span class="value-readout">${this.state.hpa.backOff}</span>
-                </div>
-                <div class="power-meter">
-                  <div class="meter-label">OUTPUT</div>
-                  <div class="led-bar">
-                    ${this.renderPowerMeter(this.state.hpa.outputPower)}
-                  </div>
-                  <span class="value-readout">${this.state.hpa.outputPower.toFixed(1)} dBW</span>
-                </div>
-                <div class="led-indicator">
-                  <span class="indicator-label">IMD</span>
-                  <div class="led ${this.state.hpa.isOverdriven ? 'led-orange' : 'led-off'}"></div>
-                  <span class="value-readout">${this.state.hpa.imdLevel} dBc</span>
-                </div>
+          <!-- Filter/Preselector Module -->
+          <div class="rf-fe-module filter-module">
+            <div class="module-label">FILTER</div>
+            <div class="module-controls">
+              <div class="control-group">
+                <label>MODE</label>
+                <select class="input-filter-mode" data-param="filter.mode">
+                  <option value="WIDE" ${this.state.filter.mode === 'WIDE' ? 'selected' : ''}>WIDE</option>
+                  <option value="MEDIUM" ${this.state.filter.mode === 'MEDIUM' ? 'selected' : ''}>MEDIUM</option>
+                  <option value="NARROW" ${this.state.filter.mode === 'NARROW' ? 'selected' : ''}>NARROW</option>
+                </select>
+              </div>
+              <div class="led-indicator">
+                <span class="indicator-label">INSERTION LOSS</span>
+                <div class="led led-orange" style="opacity: ${this.state.filter.insertionLoss / 3}"></div>
+                <span class="value-readout">${this.state.filter.insertionLoss.toFixed(1)} dB</span>
+              </div>
+              <div class="value-display">
+                <span class="display-label">BW:</span>
+                <span class="value-readout">${this.state.filter.bandwidth} MHz</span>
               </div>
             </div>
-
-            <!-- Filter/Preselector Module -->
-            <div class="rf-fe-module filter-module">
-              <div class="module-label">FILTER</div>
-              <div class="module-controls">
-                <div class="control-group">
-                  <label>MODE</label>
-                  <select class="input-filter-mode" data-param="filter.mode">
-                    <option value="WIDE" ${this.state.filter.mode === 'WIDE' ? 'selected' : ''}>WIDE</option>
-                    <option value="MEDIUM" ${this.state.filter.mode === 'MEDIUM' ? 'selected' : ''}>MEDIUM</option>
-                    <option value="NARROW" ${this.state.filter.mode === 'NARROW' ? 'selected' : ''}>NARROW</option>
-                  </select>
-                </div>
-                <div class="led-indicator">
-                  <span class="indicator-label">INSERTION LOSS</span>
-                  <div class="led led-orange" style="opacity: ${this.state.filter.insertionLoss / 3}"></div>
-                  <span class="value-readout">${this.state.filter.insertionLoss.toFixed(1)} dB</span>
-                </div>
-                <div class="value-display">
-                  <span class="display-label">BW:</span>
-                  <span class="value-readout">${this.state.filter.bandwidth} MHz</span>
-                </div>
-              </div>
-            </div>
-          ` : ''}
+          </div>
 
           <!-- LNB Module -->
           <div class="rf-fe-module lnb-module">
@@ -496,31 +484,28 @@ export class RFFrontEnd extends BaseEquipment {
             </div>
           </div>
 
-          ${this.state.isAdvancedMode ? html`
-            <!-- Spec-A Coupler Module -->
-            <div class="rf-fe-module coupler-module">
-              <div class="module-label">SPEC-A TAP</div>
-              <div class="module-controls">
-                <div class="control-group">
-                  <label>TAP POINT</label>
-                  <select class="input-coupler-tap" data-param="coupler.tapPoint">
-                    <option value="RF_PRE_FILTER" ${this.state.coupler.tapPoint === 'RF_PRE_FILTER' ? 'selected' : ''}>RF PRE</option>
-                    <option value="RF_POST_FILTER" ${this.state.coupler.tapPoint === 'RF_POST_FILTER' ? 'selected' : ''}>RF POST</option>
-                    <option value="IF_AFTER_LNB" ${this.state.coupler.tapPoint === 'IF_AFTER_LNB' ? 'selected' : ''}>IF</option>
-                  </select>
-                </div>
-                <div class="led-indicator">
-                  <span class="indicator-label">ACTIVE</span>
-                  <div class="led ${this.state.coupler.isActive ? 'led-green' : 'led-off'}"></div>
-                </div>
-                <div class="value-display">
-                  <span class="display-label">COUPLING:</span>
-                  <span class="value-readout">${this.state.coupler.couplingFactor} dB</span>
-                </div>
+          <!-- Spec-A Coupler Module -->
+          <div class="rf-fe-module coupler-module">
+            <div class="module-label">SPEC-A TAP</div>
+            <div class="module-controls">
+              <div class="control-group">
+                <label>TAP POINT</label>
+                <select class="input-coupler-tap" data-param="coupler.tapPoint">
+                  <option value="RF_PRE_FILTER" ${this.state.coupler.tapPoint === 'RF_PRE_FILTER' ? 'selected' : ''}>RF PRE</option>
+                  <option value="RF_POST_FILTER" ${this.state.coupler.tapPoint === 'RF_POST_FILTER' ? 'selected' : ''}>RF POST</option>
+                  <option value="IF_AFTER_LNB" ${this.state.coupler.tapPoint === 'IF_AFTER_LNB' ? 'selected' : ''}>IF</option>
+                </select>
+              </div>
+              <div class="led-indicator">
+                <span class="indicator-label">ACTIVE</span>
+                <div class="led ${this.state.coupler.isActive ? 'led-green' : 'led-off'}"></div>
+              </div>
+              <div class="value-display">
+                <span class="display-label">COUPLING:</span>
+                <span class="value-readout">${this.state.coupler.couplingFactor} dB</span>
               </div>
             </div>
-          ` : ''}
-
+          </div>
         </div>
 
         <!-- Bottom Status Bar -->
@@ -530,7 +515,7 @@ export class RFFrontEnd extends BaseEquipment {
           </div>
           <div class="mode-toggle">
             <button class="btn-mode-toggle" data-action="toggle-advanced-mode">
-              ${this.state.isAdvancedMode ? 'SIMPLE' : 'ADVANCED'}
+              PLACEHOLDER
             </button>
           </div>
         </div>
@@ -542,7 +527,8 @@ export class RFFrontEnd extends BaseEquipment {
   }
 
   protected addListeners(): void {
-    // No additional listeners for now
+    // Attach event listeners after DOM is created
+    this.attachEventListeners();
   }
 
   protected attachEventListeners(): void {
@@ -614,7 +600,6 @@ export class RFFrontEnd extends BaseEquipment {
     // Update scalar properties
     if (data.isPowered !== undefined) this.state.isPowered = data.isPowered;
     if (data.isExtRefPresent !== undefined) this.state.isExtRefPresent = data.isExtRefPresent;
-    if (data.isAdvancedMode !== undefined) this.state.isAdvancedMode = data.isAdvancedMode;
     if (data.signalFlowDirection !== undefined) this.state.signalFlowDirection = data.signalFlowDirection;
 
     this.syncDomWithState();
@@ -653,94 +638,203 @@ export class RFFrontEnd extends BaseEquipment {
         this.state.buc.isMuted = !this.state.buc.isMuted;
         break;
       case 'toggle-advanced-mode':
-        this.state.isAdvancedMode = !this.state.isAdvancedMode;
-        this.rebuild();
+        // Not sure what this does yet
         break;
     }
 
     this.syncDomWithState();
   }
-  rebuild() {
-    throw new Error('Method not implemented.');
-  }
 
   private calculateSignalPath(): void {
-    // TX Path: IF → BUC (upconvert) → HPA → Filter → Antenna
-    const txIfFreq = 1600; // MHz (example)
-    const txIfPower = -30; // dBm
-
-    // BUC upconversion
-    const txRfFreq = txIfFreq + this.state.buc.loFrequency;
-    let txRfPower = txIfPower + this.state.buc.gain;
-
-    // HPA amplification
-    if (this.state.hpa.isEnabled) {
-      txRfPower += (this.state.hpa.outputPower - txRfPower);
+    if (!this.state.isPowered) {
+      // Zero out all values when powered off
+      this.state.signalPath.txPath = {
+        ifFrequency: 0 as IfFrequency,
+        ifPower: -120,
+        rfFrequency: 0 as RfFrequency,
+        rfPower: -120,
+        totalGain: 0
+      };
+      this.state.signalPath.rxPath = {
+        rfFrequency: 0 as RfFrequency,
+        rfPower: -120,
+        ifFrequency: 0 as IfFrequency,
+        ifPower: -120,
+        totalGain: 0,
+        noiseFigure: 99
+      };
+      return;
     }
 
-    // Filter insertion loss
-    txRfPower -= this.state.filter.insertionLoss;
+    // TX Path: IF → BUC (upconvert) → HPA → Filter → Antenna
+    if (this.state.buc.isPowered && this.state.signalFlowDirection === 'TX') {
+      const txIfFreq = 1600; // MHz (example IF input)
+      const txIfPower = -10; // dBm input to BUC
 
-    this.state.signalPath.txPath = {
-      ifFrequency: txIfFreq * 1e6 as IfFrequency,
-      ifPower: txIfPower,
-      rfFrequency: txRfFreq * 1e6 as RfFrequency,
-      rfPower: txRfPower,
-      totalGain: this.state.buc.gain - this.state.filter.insertionLoss,
-    };
+      // BUC upconversion
+      const txRfFreq = txIfFreq + this.state.buc.loFrequency;
+      let txRfPower = this.state.buc.isMuted ? -120 : txIfPower + this.state.buc.gain;
+
+      // HPA amplification
+      if (this.state.hpa.isEnabled) {
+        const p1db = 50; // dBm (100W) typical P1dB
+        const hpaGain = p1db - this.state.hpa.backOff - txRfPower;
+        txRfPower += hpaGain;
+      }
+
+      // Filter insertion loss
+      const txFilteredPower = txRfPower - this.state.filter.insertionLoss;
+
+      this.state.signalPath.txPath = {
+        ifFrequency: txIfFreq * 1e6 as IfFrequency,
+        ifPower: txIfPower,
+        rfFrequency: txRfFreq * 1e6 as RfFrequency,
+        rfPower: txFilteredPower,
+        totalGain: txFilteredPower - txIfPower,
+      };
+    }
 
     // RX Path: Antenna → Filter → LNB (downconvert) → Receiver
-    const rxRfFreq = 5800; // MHz (example)
-    let rxRfPower = -100; // dBm
+    if (this.state.lnb.isPowered && this.state.signalFlowDirection === 'RX') {
+      const rxRfFreq = 5800; // MHz (example RF input)
+      const rxRfPower = -80; // dBm at antenna feed
 
-    // Filter insertion loss
-    rxRfPower -= this.state.filter.insertionLoss;
+      // Filter insertion loss
+      const rxFilteredPower = rxRfPower - this.state.filter.insertionLoss;
 
-    // LNB downconversion
-    const rxIfFreq = Math.abs(rxRfFreq - this.state.lnb.loFrequency);
-    let rxIfPower = rxRfPower + this.state.lnb.gain;
+      // LNB downconversion
+      const rxIfFreq = Math.abs(rxRfFreq - this.state.lnb.loFrequency);
+      const rxIfPower = rxFilteredPower + this.state.lnb.gain;
 
-    this.state.signalPath.rxPath = {
-      rfFrequency: rxRfFreq * 1e6 as RfFrequency,
-      rfPower: -100,
-      ifFrequency: rxIfFreq * 1e6 as IfFrequency,
-      ifPower: rxIfPower,
-      totalGain: this.state.lnb.gain,
-      noiseFigure: this.state.lnb.noiseFigure,
-    };
+      // Spectrum inversion check (high-side LO injection inverts spectrum)
+      this.state.lnb.isSpectrumInverted = this.state.lnb.loFrequency > rxRfFreq;
+
+      // Calculate cascade noise figure
+      const cascadeNF = this.calculateRxNoiseFigure();
+
+      this.state.signalPath.rxPath = {
+        rfFrequency: rxRfFreq * 1e6 as RfFrequency,
+        rfPower: rxRfPower,
+        ifFrequency: rxIfFreq * 1e6 as IfFrequency,
+        ifPower: rxIfPower,
+        totalGain: rxIfPower - rxRfPower,
+        noiseFigure: cascadeNF,
+      };
+    }
+  }
+
+  private calculateRxNoiseFigure(): number {
+    // Friis formula for cascaded noise figure
+    // F_total = F1 + (F2-1)/G1
+    // For RX: Filter → LNB
+    const filterLossDb = this.state.filter.insertionLoss;
+    const filterNfLinear = Math.pow(10, filterLossDb / 10); // Loss = NF for passive device
+    const filterGainLinear = Math.pow(10, -filterLossDb / 10); // Negative gain
+
+    const lnbNfLinear = Math.pow(10, this.state.lnb.noiseFigure / 10);
+
+    const totalNfLinear = filterNfLinear + (lnbNfLinear - 1) / filterGainLinear;
+    return 10 * Math.log10(totalNfLinear);
   }
 
   private updateComponentStates(): void {
+    // Power sequencing
+    if (!this.state.isPowered) {
+      this.state.buc.isPowered = false;
+      this.state.hpa.isEnabled = false;
+      this.state.lnb.isPowered = false;
+      return;
+    }
+
+    // HPA can only be enabled if BUC is powered
+    if (this.state.hpa.isEnabled && !this.state.buc.isPowered) {
+      this.state.hpa.isEnabled = false;
+    }
+
+    // External reference lock propagation
+    if (!this.state.isExtRefPresent) {
+      this.state.buc.isExtRefLocked = false;
+      this.state.lnb.isExtRefLocked = false;
+    } else {
+      // Simulate lock acquisition (requires both powered and ref present)
+      if (this.state.buc.isPowered && !this.state.buc.isExtRefLocked) {
+        // In real system, this would be time-based (2-5 seconds)
+        this.state.buc.isExtRefLocked = true;
+      }
+      if (this.state.lnb.isPowered && !this.state.lnb.isExtRefLocked) {
+        this.state.lnb.isExtRefLocked = true;
+      }
+    }
+
+    // HPA temperature calculation based on output power
+    if (this.state.hpa.isEnabled) {
+      const powerWatts = Math.pow(10, this.state.hpa.outputPower / 10);
+      const efficiency = 0.5; // 50% typical for SSPA
+      const dissipatedPower = powerWatts * (1 - efficiency);
+      this.state.hpa.temperature = 25 + (dissipatedPower * 10); // Rough thermal model
+    } else {
+      this.state.hpa.temperature = 25; // Ambient
+    }
+
+    // LNB noise temperature calculation
+    const nfLinear = Math.pow(10, this.state.lnb.noiseFigure / 10);
+    this.state.lnb.noiseTemperature = 290 * (nfLinear - 1);
+
+    // BUC output power calculation
+    if (this.state.buc.isPowered && !this.state.buc.isMuted) {
+      const inputPower = -10; // dBm typical IF input
+      this.state.buc.outputPower = inputPower + this.state.buc.gain;
+    } else {
+      this.state.buc.outputPower = -120; // Effectively off
+    }
+
+    // HPA output power and IMD calculation
+    if (this.state.hpa.isEnabled) {
+      const p1db = 50; // dBm (100W) typical P1dB
+      this.state.hpa.outputPower = (p1db - this.state.hpa.backOff) / 10; // Convert to dBW
+
+      // IMD increases as back-off decreases
+      this.state.hpa.imdLevel = -30 - (this.state.hpa.backOff * 2); // dBc
+    } else {
+      this.state.hpa.outputPower = -90; // dBW (effectively off)
+      this.state.hpa.imdLevel = -60; // dBc (very clean when off)
+    }
+
     // Update HPA overdrive status
     this.state.hpa.isOverdriven = this.state.hpa.backOff < 3;
 
     // Update OMT cross-pol fault
     this.state.omt.isFaulted = this.state.omt.crossPolIsolation < 20;
+  }
 
-    // Update external reference lock status
+  private checkAlarms(): void {
+    // OMT cross-polarization isolation check
+    this.state.omt.isFaulted = this.state.omt.crossPolIsolation < 20;
+
+    // HPA overdrive check (back-off < 3 dB is typically considered overdrive)
+    this.state.hpa.isOverdriven = this.state.hpa.backOff < 3;
+
+    // External reference alarms
     if (!this.state.isExtRefPresent) {
+      // No external reference available - both should show unlocked
       this.state.buc.isExtRefLocked = false;
       this.state.lnb.isExtRefLocked = false;
     }
 
-    // Calculate LNB noise temperature from noise figure
-    // T = 290 * (10^(NF/10) - 1)
-    const nfLinear = Math.pow(10, this.state.lnb.noiseFigure / 10);
-    this.state.lnb.noiseTemperature = 290 * (nfLinear - 1);
-  }
-
-  private checkAlarms(): void {
+    // Collect alarm messages
     const alarms: string[] = [];
 
     if (!this.state.isExtRefPresent) {
       alarms.push('External reference lost');
     }
 
-    if (!this.state.buc.isExtRefLocked && this.state.buc.isPowered) {
+    // BUC lock check
+    if (this.state.buc.isPowered && !this.state.buc.isExtRefLocked && this.state.isExtRefPresent) {
       alarms.push('BUC not locked to reference');
     }
 
-    if (!this.state.lnb.isExtRefLocked && this.state.lnb.isPowered) {
+    // LNB lock check
+    if (this.state.lnb.isPowered && !this.state.lnb.isExtRefLocked && this.state.isExtRefPresent) {
       alarms.push('LNB not locked to reference');
     }
 
@@ -752,37 +846,65 @@ export class RFFrontEnd extends BaseEquipment {
       alarms.push('Cross-pol isolation degraded');
     }
 
+    // Temperature alarm for HPA
+    if (this.state.hpa.temperature > 85) {
+      alarms.push(`HPA over-temperature (${this.state.hpa.temperature.toFixed(0)}°C)`);
+    }
+
     if (alarms.length > 0) {
       this.emit(Events.RF_FE_ALARM, { unit: this.id, alarms });
     }
   }
 
   private formatSignalPath(): string {
+    if (!this.state.isPowered) {
+      return 'POWERED OFF';
+    }
+
     const tx = this.state.signalPath.txPath;
     const rx = this.state.signalPath.rxPath;
 
     if (this.state.signalFlowDirection === 'TX') {
-      return `TX: ${(tx.ifFrequency / 1e6).toFixed(0)} MHz IF → [BUC +${this.state.buc.loFrequency}] → ${(tx.rfFrequency / 1e6).toFixed(0)} MHz RF @ ${tx.rfPower.toFixed(1)} dBm`;
-    } else if (this.state.signalFlowDirection === 'RX') {
-      return `RX: ${(rx.rfFrequency / 1e6).toFixed(0)} MHz RF → [LNB -${this.state.lnb.loFrequency}] → ${(rx.ifFrequency / 1e6).toFixed(0)} MHz IF @ ${rx.ifPower.toFixed(1)} dBm`;
-    } else {
-      return 'Signal flow idle';
+      return `TX: ${(tx.ifFrequency / 1e6).toFixed(0)} MHz IF → ` +
+        `[BUC LO +${this.state.buc.loFrequency}] → ` +
+        `${(tx.rfFrequency / 1e6).toFixed(0)} MHz RF ` +
+        `${this.state.hpa.isEnabled ? `→ [HPA ${this.state.hpa.outputPower.toFixed(1)} dBW] ` : ''}` +
+        `→ [Filter -${this.state.filter.insertionLoss.toFixed(1)} dB] ` +
+        `→ ${tx.rfPower.toFixed(1)} dBm`;
     }
+
+    if (this.state.signalFlowDirection === 'RX') {
+      return `RX: ${(rx.rfFrequency / 1e6).toFixed(0)} MHz RF → ` +
+        `[Filter -${this.state.filter.insertionLoss.toFixed(1)} dB] → ` +
+        `[LNB LO -${this.state.lnb.loFrequency}] → ` +
+        `${(rx.ifFrequency / 1e6).toFixed(0)} MHz IF ` +
+        `(G=${rx.totalGain.toFixed(1)} dB, NF=${rx.noiseFigure.toFixed(1)} dB)`;
+    }
+
+    return 'IDLE';
   }
 
   private renderPowerMeter(powerDbW: number): string {
-    // 5-segment LED bar for 0-50 dBW range
-    const segments = 5;
-    const segmentThreshold = 10; // dBW per segment
-    const activeSegments = Math.min(segments, Math.floor(powerDbW / segmentThreshold) + 1);
+    // Convert dBW to percentage (0 dBW = 1W, 53 dBW = 200W for scale)
+    const maxPowerDbW = 53; // 200W = 53 dBW
+    const percentage = Math.max(0, Math.min(100, (powerDbW / maxPowerDbW) * 100));
 
-    let html = '';
-    for (let i = 0; i < segments; i++) {
-      const isActive = i < activeSegments;
-      const color = i < 3 ? 'led-green' : i < 4 ? 'led-orange' : 'led-red';
-      html += `<div class="led ${isActive ? color : 'led-off'}"></div>`;
+    const segments = [];
+    for (let i = 0; i < 5; i++) {
+      const threshold = (i + 1) * 20; // 20%, 40%, 60%, 80%, 100%
+      const isLit = percentage >= threshold;
+
+      let colorClass = 'led-off';
+      if (isLit) {
+        if (i < 3) colorClass = 'led-green';      // 0-60%: green
+        else if (i < 4) colorClass = 'led-yellow'; // 60-80%: yellow
+        else colorClass = 'led-red';                // 80-100%: red
+      }
+
+      segments.push(`<div class="led-segment ${colorClass}"></div>`);
     }
-    return html;
+
+    return segments.join('');
   }
 
   private syncDomWithState(): void {

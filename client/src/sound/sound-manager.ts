@@ -1,10 +1,10 @@
 import { Sfx } from "./sfx-enum";
 
 const SFX_FILE_MAP: Record<Sfx, string> = {
-  [Sfx.POWER_ON]: '/sfx/drone-startup-sound-dji-mavic-air-2-96229.mp3',
-  [Sfx.SWITCH]: '/sfx/light-switch-flip-272436.mp3',
-  [Sfx.TOGGLE_OFF]: '/sfx/toggle-button-off-166328.mp3',
-  [Sfx.TOGGLE_ON]: '/sfx/toggle-button-on-166329.mp3',
+  [Sfx.POWER_ON]: '/sfx/startup-sound.mp3',
+  [Sfx.SWITCH]: '/sfx/light-switch-flip.mp3',
+  [Sfx.TOGGLE_OFF]: '/sfx/toggle-button-off.mp3',
+  [Sfx.TOGGLE_ON]: '/sfx/toggle-button-on.mp3',
 };
 
 class SoundManager {

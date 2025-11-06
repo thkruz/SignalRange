@@ -93,6 +93,7 @@ export class WaterfallDisplay extends RTSAScreen {
   public update(): void {
     if (!this.specA.state.isPaused && this.running) {
       if (this.cacheMaxDb !== this.specA.state.maxAmplitude || this.cacheMinDb !== this.specA.state.minAmplitude) {
+        // TODO: This causes old data to have the wrong colors - low priority but it causes a graphical glitch
         this.cacheMaxDb = this.specA.state.maxAmplitude;
         this.cacheMinDb = this.specA.state.minAmplitude;
         this.noiseData = new Float32Array(this.width);

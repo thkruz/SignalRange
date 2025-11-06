@@ -25,11 +25,17 @@ export class ACFreqBtn extends BaseControlButton {
     return this.instance_;
   }
 
+  init(): void {
+    // Unique because its the default submenu on opening AnalyzerControl
+    this.handleClick_();
+    this.handleCenterFreqClick();
+  }
+
   static getInstance(): ACFreqBtn {
     return this.instance_;
   }
 
-  handleClick(): void {
+  protected handleClick_(): void {
     this.analyzerControl.controlSelection = this;
 
     this.analyzerControl.domCache['label-cell-1'].textContent = 'Center Freq';
@@ -57,8 +63,8 @@ export class ACFreqBtn extends BaseControlButton {
 
     // Update the display with current center frequency
     const centerFreq = this.analyzerControl.specA.state.centerFrequency;
-    this.analyzerControl.specA.state.inputValue = centerFreq.toString();
-    this.analyzerControl.specA.state.inputUnit = 'Hz';
+    this.analyzerControl.specA.state.inputValue = (centerFreq / 1e6).toString();
+    this.analyzerControl.specA.state.inputUnit = 'MHz';
 
     this.analyzerControl.specA.syncDomWithState();
     this.playSound();
@@ -69,8 +75,8 @@ export class ACFreqBtn extends BaseControlButton {
 
     // Update the display with current start frequency
     const startFreq = this.analyzerControl.specA.state.startFrequency;
-    this.analyzerControl.specA.state.inputValue = startFreq.toString();
-    this.analyzerControl.specA.state.inputUnit = 'Hz';
+    this.analyzerControl.specA.state.inputValue = (startFreq / 1e6).toString();
+    this.analyzerControl.specA.state.inputUnit = 'MHz';
 
     this.analyzerControl.specA.syncDomWithState();
     this.playSound();
@@ -81,8 +87,8 @@ export class ACFreqBtn extends BaseControlButton {
 
     // Update the display with current stop frequency
     const stopFreq = this.analyzerControl.specA.state.stopFrequency;
-    this.analyzerControl.specA.state.inputValue = stopFreq.toString();
-    this.analyzerControl.specA.state.inputUnit = 'Hz';
+    this.analyzerControl.specA.state.inputValue = (stopFreq / 1e6).toString();
+    this.analyzerControl.specA.state.inputUnit = 'MHz';
 
     this.analyzerControl.specA.syncDomWithState();
     this.playSound();
@@ -121,9 +127,6 @@ export class ACFreqBtn extends BaseControlButton {
       this.analyzerControl.specA.state.stopFrequency = frequencyInHz as Hertz;
     }
 
-    // Clear input after processing
-    this.analyzerControl.specA.state.inputValue = '';
-    this.analyzerControl.specA.state.inputUnit = 'Hz';
     this.playSound();
   }
 }

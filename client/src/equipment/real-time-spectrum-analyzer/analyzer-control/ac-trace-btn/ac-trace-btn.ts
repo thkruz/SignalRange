@@ -26,7 +26,7 @@ export class ACTraceBtn extends BaseControlButton {
     return this.instance_;
   }
 
-  protected handleClick(): void {
+  protected handleClick_(): void {
     this.analyzerControl.specA.state.isMaxHold = !this.analyzerControl.specA.state.isMaxHold;
 
     // Update spectrum analyzer

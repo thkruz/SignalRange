@@ -58,12 +58,7 @@ export class AnalyzerControl extends BaseElement {
 
   private initializeValues(): void {
     // Initialize with current center frequency in MHz
-    this.controlSelection = ACFreqBtn.getInstance();
-    (this.controlSelection as ACFreqBtn).handleClick(); // Set up sub-menu for frequency
-    const centerFreqMHz = this.specA.state.centerFrequency / 1e6;
-    this.specA.state.inputValue = centerFreqMHz.toString();
-    this.specA.state.inputUnit = 'MHz';
-    this.specA.syncDomWithState();
+    ACFreqBtn.getInstance().init();
   }
 
   initDom_(parentId: string, type: 'add' | 'replace' = 'replace'): HTMLElement {

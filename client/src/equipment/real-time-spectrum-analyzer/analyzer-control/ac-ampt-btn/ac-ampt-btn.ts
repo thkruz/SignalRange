@@ -27,7 +27,7 @@ export class ACAmptBtn extends BaseControlButton {
     return this.instance_;
   }
 
-  protected handleClick(): void {
+  protected handleClick_(): void {
     this.analyzerControl.controlSelection = this;
 
     this.analyzerControl.domCache['label-cell-1'].textContent = 'Max Amplitude';
@@ -81,9 +81,6 @@ export class ACAmptBtn extends BaseControlButton {
         this.analyzerControl.specA.state.maxAmplitude = inputValue;
       }
     }
-
-    // Reset submenu selection after processing
-    this.subMenuSelected = null;
 
     this.playSound();
   }

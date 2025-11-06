@@ -42,10 +42,10 @@ export abstract class BaseControlButton {
   }
 
   addEventListeners(): void {
-    this.dom.addEventListener('click', this.handleClick.bind(this));
+    this.dom.addEventListener('click', this.handleClick_.bind(this));
   }
 
-  protected abstract handleClick(): void;
+  protected abstract handleClick_(): void;
 
   // TODO: This should be an abstract eventually
   onEnterPressed(): void {

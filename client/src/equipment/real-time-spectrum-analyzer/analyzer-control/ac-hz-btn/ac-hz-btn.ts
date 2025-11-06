@@ -28,8 +28,22 @@ export class ACHzBtn extends BaseControlButton {
     return this.instance_;
   }
 
-  protected handleClick(): void {
-    this.analyzerControl.specA.state.inputUnit = 'Hz';
-    this.analyzerControl.specA.syncDomWithState();
+  protected handleClick_(): void {
+    const currentUnit = this.analyzerControl.specA.state.inputUnit;
+    if (currentUnit !== 'Hz') {
+      this.analyzerControl.specA.state.inputUnit = 'Hz';
+
+      // Convert the value to GHz if necessary
+      const currentInputValue = parseFloat(this.analyzerControl.specA.state.inputValue);
+      if (currentUnit === 'kHz') {
+        this.analyzerControl.specA.state.inputValue = (currentInputValue * 1e3).toString();
+      } else if (currentUnit === 'MHz') {
+        this.analyzerControl.specA.state.inputValue = (currentInputValue * 1e6).toString();
+      } else if (currentUnit === 'GHz') {
+        this.analyzerControl.specA.state.inputValue = (currentInputValue * 1e9).toString();
+      }
+
+      this.analyzerControl.specA.syncDomWithState();
+    }
   }
 }

@@ -24,7 +24,7 @@ export class ACFreqBtn extends BaseControlButton {
     return new ACFreqBtn();
   }
 
-  protected handleClick(): void {
+  protected handleClick_(): void {
     if (this.analyzerControl) {
       this.analyzerControl.updateSubMenu('freq');
     }

@@ -60,6 +60,7 @@ export class ACFreqBtn extends BaseControlButton {
     this.analyzerControl.specA.state.inputValue = centerFreq.toString();
     this.analyzerControl.specA.state.inputUnit = 'Hz';
 
+    this.analyzerControl.specA.syncDomWithState();
     this.playSound();
   }
 
@@ -71,6 +72,7 @@ export class ACFreqBtn extends BaseControlButton {
     this.analyzerControl.specA.state.inputValue = startFreq.toString();
     this.analyzerControl.specA.state.inputUnit = 'Hz';
 
+    this.analyzerControl.specA.syncDomWithState();
     this.playSound();
   }
 
@@ -82,6 +84,7 @@ export class ACFreqBtn extends BaseControlButton {
     this.analyzerControl.specA.state.inputValue = stopFreq.toString();
     this.analyzerControl.specA.state.inputUnit = 'Hz';
 
+    this.analyzerControl.specA.syncDomWithState();
     this.playSound();
   }
 

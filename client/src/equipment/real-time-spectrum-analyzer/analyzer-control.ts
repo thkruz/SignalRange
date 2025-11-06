@@ -337,6 +337,7 @@ export class AnalyzerControl extends BaseElement {
           frequencyHz *= 1e3;
           break;
         case 'Hz':
+        case 'dBm':
           // No conversion needed
           break;
         default:

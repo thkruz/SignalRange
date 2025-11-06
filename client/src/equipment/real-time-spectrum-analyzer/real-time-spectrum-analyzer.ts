@@ -26,8 +26,8 @@ export interface RealTimeSpectrumAnalyzerState {
   stopFrequency: Hertz; // Hz - stop frequency
   span: Hertz; // Hz - bandwidth
   hold: boolean; // Hold max amplitude
-  minDecibels: number;
-  maxDecibels: number;
+  minAmplitude: number;
+  maxAmplitude: number;
   noiseFloor: number;
   screenMode: 'spectralDensity' | 'waterfall' | 'both';
 }
@@ -72,8 +72,8 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
       stopFrequency: 4860e6 as Hertz,
       span: 100e6 as Hertz,
       hold: false,
-      minDecibels: -120,
-      maxDecibels: -80,
+      minAmplitude: -120,
+      maxAmplitude: -80,
       noiseFloor: -115,
       refreshRate: 10,
       screenMode: 'spectralDensity',

@@ -48,8 +48,8 @@ export class SpectralDensityPlot extends RTSAScreen {
     this.minHoldData = new Float32Array(this.width);
 
     // Calculate range
-    this.range = this.specA.state.minDecibels - this.specA.state.maxDecibels;
-    this.decibelShift = 0 - this.specA.state.minDecibels;
+    this.range = this.specA.state.minAmplitude - this.specA.state.maxAmplitude;
+    this.decibelShift = 0 - this.specA.state.minAmplitude;
 
     window.addEventListener('resize', this.resize.bind(this));
     this.resize();
@@ -93,8 +93,8 @@ export class SpectralDensityPlot extends RTSAScreen {
           this.minHoldData = new Float32Array(this.width);
         }
         // Calculate range
-        this.range = this.specA.state.minDecibels - this.specA.state.maxDecibels;
-        this.decibelShift = 0 - this.specA.state.minDecibels;
+        this.range = this.specA.state.minAmplitude - this.specA.state.maxAmplitude;
+        this.decibelShift = 0 - this.specA.state.minAmplitude;
 
         this.noiseData = this.createNoise(this.noiseData);
         // Initially fill allData with noise
@@ -238,7 +238,7 @@ export class SpectralDensityPlot extends RTSAScreen {
     const numLabels = isDualScreenMode ? 5 : 10;
     for (let i = 0; i <= numLabels - 1; i++) {
       const y = (i / numLabels) * this.height;
-      const power = this.specA.state.maxDecibels + ((this.specA.state.minDecibels - this.specA.state.maxDecibels) * i) / numLabels;
+      const power = this.specA.state.maxAmplitude + ((this.specA.state.minAmplitude - this.specA.state.maxAmplitude) * i) / numLabels;
       ctx.fillText(`${power.toFixed(0)}`, 35, y);
     }
     ctx.restore();
@@ -277,7 +277,7 @@ export class SpectralDensityPlot extends RTSAScreen {
     ctx.beginPath();
 
     for (let x = 0, len = this.noiseData.length; x < len; x++) {
-      const y = (this.noiseData[x] - this.specA.state.maxDecibels - this.decibelShift) / this.range;
+      const y = (this.noiseData[x] - this.specA.state.maxAmplitude - this.decibelShift) / this.range;
       if (x === 0) {
         ctx.moveTo(x, this.height * y);
       } else {
@@ -294,7 +294,7 @@ export class SpectralDensityPlot extends RTSAScreen {
     ctx.moveTo(0, this.height);
 
     for (let x = 0; x < this.width; x++) {
-      const y = (this.noiseData[x] - this.specA.state.maxDecibels - this.decibelShift) / this.range;
+      const y = (this.noiseData[x] - this.specA.state.maxAmplitude - this.decibelShift) / this.range;
       ctx.lineTo(x, this.height * y);
     }
 
@@ -320,7 +320,7 @@ export class SpectralDensityPlot extends RTSAScreen {
     const len = this.signalData.length;
     for (let x = 0; x < len; x++) {
       const lowestSignal = this.signalData[x] >= this.noiseData[x] ? this.signalData[x] : 0;
-      const y = (lowestSignal - this.specA.state.maxDecibels - this.decibelShift) / this.range;
+      const y = (lowestSignal - this.specA.state.maxAmplitude - this.decibelShift) / this.range;
 
       maxSignalFreq = y < maxY ? lowestSignal : maxSignalFreq;
       maxX = y < maxY ? x : maxX;
@@ -360,7 +360,7 @@ export class SpectralDensityPlot extends RTSAScreen {
       ctx.font = '18px Arial';
       const freqMhz = (this.minFreq + (maxX * (this.maxFreq - this.minFreq)) / this.width) / 1e6 as MHz;
       ctx.fillText(`${freqMhz.toFixed(1)} MHz`, maxX - 20, this.height * maxY - 30);
-      ctx.fillText(`${(maxSignalFreq + this.specA.state.minDecibels).toFixed(1)} dB`, maxX - 20, this.height * maxY - 15);
+      ctx.fillText(`${(maxSignalFreq + this.specA.state.minAmplitude).toFixed(1)} dB`, maxX - 20, this.height * maxY - 15);
     }
   }
 
@@ -370,7 +370,7 @@ export class SpectralDensityPlot extends RTSAScreen {
 
     const len = this.signalData.length;
     for (let x = 0; x < len; x++) {
-      const y = (this.maxHoldData[x] - this.specA.state.maxDecibels - this.decibelShift) / this.range;
+      const y = (this.maxHoldData[x] - this.specA.state.maxAmplitude - this.decibelShift) / this.range;
       if (x === 0) {
         ctx.moveTo(x, this.height * y);
       } else {
@@ -387,7 +387,7 @@ export class SpectralDensityPlot extends RTSAScreen {
 
     const len = this.signalData.length;
     for (let x = 0; x < len; x++) {
-      const y = (this.minHoldData[x] - this.specA.state.maxDecibels - this.decibelShift) / this.range;
+      const y = (this.minHoldData[x] - this.specA.state.maxAmplitude - this.decibelShift) / this.range;
       if (x === 0) {
         ctx.moveTo(x, this.height * y);
       } else {

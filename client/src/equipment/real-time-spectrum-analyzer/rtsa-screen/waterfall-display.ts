@@ -1,7 +1,7 @@
 import { SATELLITES } from "../../../constants";
 import { Hertz, IfFrequency, IfSignal, RfFrequency, RfSignal } from "../../../types";
 import { Antenna } from "../../antenna/antenna";
-import { RealTimeSpectrumAnalyzer } from "../real-time-spectrum-analyzer";
+import { RealTimeSpectrumAnalyzer, RealTimeSpectrumAnalyzerState } from "../real-time-spectrum-analyzer";
 import { RTSAScreen } from "./rtsa-screen";
 
 export class WaterfallDisplay extends RTSAScreen {
@@ -28,7 +28,9 @@ export class WaterfallDisplay extends RTSAScreen {
 
   // Color cache for performance
   private readonly colorCache: Map<number, [number, number, number]> = new Map();
-  private readonly COLOR_CACHE_STEPS = 256;
+  private readonly COLOR_CACHE_STEPS = 1024;
+  cacheMaxDb: number = 0;
+  cacheMinDb: number = 0;
 
   constructor(canvas: HTMLCanvasElement, antenna: Antenna, specA: RealTimeSpectrumAnalyzer) {
     super(canvas, antenna, specA);
@@ -37,7 +39,7 @@ export class WaterfallDisplay extends RTSAScreen {
     this.bufferSize = this.height;
     this.buffer = Array.from({ length: this.bufferSize }, () => {
       const row = new Float32Array(this.width);
-      row.fill(this.specA.state.minDecibels);
+      row.fill(this.specA.state.minAmplitude);
       return row;
     });
 
@@ -62,8 +64,9 @@ export class WaterfallDisplay extends RTSAScreen {
   }
 
   private initializeColorCache(): void {
-    const minDb = this.specA.state.minDecibels;
-    const maxDb = this.specA.state.maxDecibels;
+    this.colorCache.clear();
+    const minDb = this.specA.state.minAmplitude;
+    const maxDb = this.specA.state.maxAmplitude;
 
     for (let i = 0; i < this.COLOR_CACHE_STEPS; i++) {
       const amplitude = minDb + (i / (this.COLOR_CACHE_STEPS - 1)) * (maxDb - minDb);
@@ -89,11 +92,19 @@ export class WaterfallDisplay extends RTSAScreen {
 
   public update(): void {
     if (!this.specA.state.isPaused && this.running) {
+      if (this.cacheMaxDb !== this.specA.state.maxAmplitude || this.cacheMinDb !== this.specA.state.minAmplitude) {
+        this.cacheMaxDb = this.specA.state.maxAmplitude;
+        this.cacheMinDb = this.specA.state.minAmplitude;
+        this.noiseData = new Float32Array(this.width);
+        this.noiseCacheRow = 0;
+        this.noiseCache = new Float32Array(this.height * this.width);
+      }
+
       const now = Date.now();
       if (now - this.lastDrawTime > 1000 / (this.specA.state.refreshRate)) {
         // Create new row of data
         this.noiseData = this.createNoise(this.noiseData);
-        this.data.fill(this.specA.state.minDecibels);
+        this.data.fill(this.specA.state.minAmplitude);
         this.drawSignalsToData(this.minFreq, this.maxFreq);
 
         // Compose noise + signals into one row
@@ -141,8 +152,8 @@ export class WaterfallDisplay extends RTSAScreen {
   }
 
   private renderWaterfallToImageData(start: number = 0, end: number = this.height): void {
-    const minDb = this.specA.state.minDecibels;
-    const maxDb = this.specA.state.maxDecibels;
+    const minDb = this.specA.state.minAmplitude;
+    const maxDb = this.specA.state.maxAmplitude;
     const range = maxDb - minDb;
 
     // Clamp start and end to valid range
@@ -311,9 +322,9 @@ export class WaterfallDisplay extends RTSAScreen {
   }
 
   // Return RGB tuple instead of string for better performance
-  static amplitudeToColorRGB(amplitude: number, state: any): [number, number, number] {
-    const minDb = state.minDecibels;
-    const maxDb = state.maxDecibels;
+  static amplitudeToColorRGB(amplitude: number, state: RealTimeSpectrumAnalyzerState): [number, number, number] {
+    const minDb = state.minAmplitude;
+    const maxDb = state.maxAmplitude;
 
     let norm = (amplitude - minDb) / (maxDb - minDb);
     norm = Math.max(0, Math.min(1, norm));

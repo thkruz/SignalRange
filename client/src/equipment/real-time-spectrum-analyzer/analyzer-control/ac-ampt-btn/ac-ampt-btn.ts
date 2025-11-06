@@ -6,7 +6,7 @@ export class ACAmptBtn extends BaseControlButton {
   private static instance_: ACAmptBtn;
   private readonly analyzerControl: AnalyzerControl;
 
-  private constructor(analyzerControl?: AnalyzerControl) {
+  private constructor(analyzerControl: AnalyzerControl) {
     super({
       uniqueId: 'ac-ampt-btn',
       label: 'Ampt',

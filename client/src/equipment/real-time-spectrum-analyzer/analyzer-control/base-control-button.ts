@@ -12,11 +12,13 @@ export abstract class BaseControlButton {
     label,
     ariaLabel,
     classNames = "physical-button control-button",
+    subtext,
   }: {
     uniqueId: string;
     label: string;
     ariaLabel: string;
     classNames?: string;
+    subtext?: string;
   }) {
     this.uniqueId = uniqueId;
     this.html_ = html`
@@ -25,6 +27,7 @@ export abstract class BaseControlButton {
         class="${classNames}" aria-label="${ariaLabel}"
       >
         <span class="button-text">${label}</span>
+        ${subtext ? `<div class="subtext">${subtext}</div>` : ''}
       </button>
     `;
   }

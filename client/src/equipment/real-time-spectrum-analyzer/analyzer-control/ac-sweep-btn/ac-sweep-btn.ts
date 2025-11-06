@@ -3,9 +3,10 @@ import { BaseControlButton } from "../base-control-button";
 import './ac-sweep-btn.css';
 
 export class ACSweepBtn extends BaseControlButton {
+  private static instance_: ACSweepBtn;
   private readonly analyzerControl: AnalyzerControl;
 
-  private constructor(analyzerControl?: AnalyzerControl) {
+  private constructor(analyzerControl: AnalyzerControl) {
     super({
       uniqueId: 'ac-sweep-btn',
       label: 'Sweep',
@@ -17,11 +18,12 @@ export class ACSweepBtn extends BaseControlButton {
   }
 
   static create(analyzerControl: AnalyzerControl): ACSweepBtn {
-    return new ACSweepBtn(analyzerControl);
+    this.instance_ = new ACSweepBtn(analyzerControl);
+    return this.instance_;
   }
 
   static getInstance(): ACSweepBtn {
-    return new ACSweepBtn();
+    return this.instance_;
   }
 
   protected handleClick(): void {

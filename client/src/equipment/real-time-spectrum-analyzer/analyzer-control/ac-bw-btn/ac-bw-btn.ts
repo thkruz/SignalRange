@@ -3,9 +3,10 @@ import { BaseControlButton } from "../base-control-button";
 import './ac-bw-btn.css';
 
 export class ACBWBtn extends BaseControlButton {
+  private static instance_: ACBWBtn;
   private readonly analyzerControl: AnalyzerControl;
 
-  private constructor(analyzerControl?: AnalyzerControl) {
+  private constructor(analyzerControl: AnalyzerControl) {
     super({
       uniqueId: 'ac-bw-btn',
       label: 'BW',
@@ -17,11 +18,12 @@ export class ACBWBtn extends BaseControlButton {
   }
 
   static create(analyzerControl: AnalyzerControl): ACBWBtn {
-    return new ACBWBtn(analyzerControl);
+    this.instance_ = new ACBWBtn(analyzerControl);
+    return this.instance_;
   }
 
   static getInstance(): ACBWBtn {
-    return new ACBWBtn();
+    return this.instance_;
   }
 
   protected handleClick(): void {

@@ -9,7 +9,7 @@ export class ACFreqBtn extends BaseControlButton {
   private readonly analyzerControl: AnalyzerControl;
   private subMenuSelected: 'center' | 'start' | 'stop' | null = null;
 
-  private constructor(analyzerControl?: AnalyzerControl) {
+  private constructor(analyzerControl: AnalyzerControl) {
     super({
       uniqueId: 'ac-freq-btn',
       label: 'Freq',

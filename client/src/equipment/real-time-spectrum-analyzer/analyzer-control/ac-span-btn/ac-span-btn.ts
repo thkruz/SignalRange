@@ -3,9 +3,10 @@ import { BaseControlButton } from "../base-control-button";
 import './ac-span-btn.css';
 
 export class ACSpanBtn extends BaseControlButton {
+  private static instance_: ACSpanBtn;
   private readonly analyzerControl: AnalyzerControl;
 
-  private constructor(analyzerControl?: AnalyzerControl) {
+  private constructor(analyzerControl: AnalyzerControl) {
     super({
       uniqueId: 'ac-span-btn',
       label: 'Span',
@@ -17,11 +18,12 @@ export class ACSpanBtn extends BaseControlButton {
   }
 
   static create(analyzerControl: AnalyzerControl): ACSpanBtn {
-    return new ACSpanBtn(analyzerControl);
+    this.instance_ = new ACSpanBtn(analyzerControl);
+    return this.instance_;
   }
 
   static getInstance(): ACSpanBtn {
-    return new ACSpanBtn();
+    return this.instance_;
   }
 
   protected handleClick(): void {

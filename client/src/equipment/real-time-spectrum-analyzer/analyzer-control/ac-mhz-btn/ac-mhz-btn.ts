@@ -1,0 +1,35 @@
+import { AnalyzerControl } from "../../analyzer-control";
+import { BaseControlButton } from "../base-control-button";
+import './ac-mhz-btn.css';
+
+export class ACMhzBtn extends BaseControlButton {
+  private static instance_: ACMhzBtn;
+  private readonly analyzerControl: AnalyzerControl;
+
+  private constructor(analyzerControl: AnalyzerControl) {
+    super({
+      uniqueId: 'ac-mhz-btn',
+      classNames: 'physical-button unit-button',
+      subtext: 'dBm',
+      label: 'MHz',
+      ariaLabel: 'MHz',
+    });
+    if (analyzerControl) {
+      this.analyzerControl = analyzerControl;
+    }
+  }
+
+  static create(analyzerControl: AnalyzerControl): ACMhzBtn {
+    this.instance_ = new ACMhzBtn(analyzerControl);
+    return this.instance_;
+  }
+
+  static getInstance(): ACMhzBtn {
+    return this.instance_;
+  }
+
+  protected handleClick(): void {
+    this.analyzerControl.specA.state.inputUnit = 'MHz';
+    this.analyzerControl.specA.syncDomWithState();
+  }
+}

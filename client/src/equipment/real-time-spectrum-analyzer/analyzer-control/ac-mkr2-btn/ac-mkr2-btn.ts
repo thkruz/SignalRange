@@ -3,9 +3,10 @@ import { BaseControlButton } from "../base-control-button";
 import './ac-mkr2-btn.css';
 
 export class ACMkr2Btn extends BaseControlButton {
+  private static instance_: ACMkr2Btn;
   private readonly analyzerControl: AnalyzerControl;
 
-  private constructor(analyzerControl?: AnalyzerControl) {
+  private constructor(analyzerControl: AnalyzerControl) {
     super({
       uniqueId: 'ac-mkr2-btn',
       label: 'Mkr2',
@@ -17,11 +18,12 @@ export class ACMkr2Btn extends BaseControlButton {
   }
 
   static create(analyzerControl: AnalyzerControl): ACMkr2Btn {
-    return new ACMkr2Btn(analyzerControl);
+    this.instance_ = new ACMkr2Btn(analyzerControl);
+    return this.instance_;
   }
 
   static getInstance(): ACMkr2Btn {
-    return new ACMkr2Btn();
+    return this.instance_;
   }
 
   protected handleClick(): void {

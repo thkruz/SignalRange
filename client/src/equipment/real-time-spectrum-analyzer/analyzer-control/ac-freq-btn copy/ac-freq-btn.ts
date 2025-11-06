@@ -5,7 +5,7 @@ import './ac-freq-btn.css';
 export class ACFreqBtn extends BaseControlButton {
   private readonly analyzerControl: AnalyzerControl;
 
-  private constructor(analyzerControl?: AnalyzerControl) {
+  private constructor(analyzerControl: AnalyzerControl) {
     super({
       uniqueId: 'ac-freq-btn',
       label: 'Freq',

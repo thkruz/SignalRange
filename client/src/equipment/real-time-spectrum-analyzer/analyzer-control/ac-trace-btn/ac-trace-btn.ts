@@ -3,9 +3,10 @@ import { BaseControlButton } from "../base-control-button";
 import './ac-trace-btn.css';
 
 export class ACTraceBtn extends BaseControlButton {
+  private static instance_: ACTraceBtn;
   private readonly analyzerControl: AnalyzerControl;
 
-  private constructor(analyzerControl?: AnalyzerControl) {
+  private constructor(analyzerControl: AnalyzerControl) {
     super({
       uniqueId: 'ac-trace-btn',
       label: 'Trace',
@@ -17,11 +18,12 @@ export class ACTraceBtn extends BaseControlButton {
   }
 
   static create(analyzerControl: AnalyzerControl): ACTraceBtn {
-    return new ACTraceBtn(analyzerControl);
+    this.instance_ = new ACTraceBtn(analyzerControl);
+    return this.instance_;
   }
 
   static getInstance(): ACTraceBtn {
-    return new ACTraceBtn();
+    return this.instance_;
   }
 
   protected handleClick(): void {

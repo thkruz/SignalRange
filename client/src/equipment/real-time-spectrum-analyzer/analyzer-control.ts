@@ -9,7 +9,11 @@ import { ACExtra1Btn } from './analyzer-control/ac-extra1-btn/ac-extra1-btn';
 import { ACExtra2Btn } from './analyzer-control/ac-extra2-btn/ac-extra2-btn';
 import { ACExtra3Btn } from './analyzer-control/ac-extra3-btn/ac-extra3-btn';
 import { ACFreqBtn } from './analyzer-control/ac-freq-btn/ac-freq-btn';
+import { ACGhzBtn } from './analyzer-control/ac-ghz-btn/ac-ghz-btn';
+import { ACHzBtn } from './analyzer-control/ac-hz-btn/ac-hz-btn';
+import { ACKhzBtn } from './analyzer-control/ac-khz-btn/ac-khz-btn';
 import { ACMeasBtn } from './analyzer-control/ac-meas-btn/ac-meas-btn';
+import { ACMhzBtn } from './analyzer-control/ac-mhz-btn/ac-mhz-btn';
 import { ACMinHoldBtn } from './analyzer-control/ac-minhold-btn/ac-minhold-btn';
 import { ACMkrBtn } from './analyzer-control/ac-mkr-btn/ac-mkr-btn';
 import { ACMkr2Btn } from './analyzer-control/ac-mkr2-btn/ac-mkr2-btn';
@@ -79,6 +83,10 @@ export class AnalyzerControl extends BaseElement {
       ACExtra1Btn.create(this),
       ACExtra2Btn.create(this),
       ACExtra3Btn.create(this),
+      ACGhzBtn.create(this),
+      ACMhzBtn.create(this),
+      ACKhzBtn.create(this),
+      ACHzBtn.create(this),
     ];
 
     this.html_ = html`
@@ -151,10 +159,7 @@ export class AnalyzerControl extends BaseElement {
           <span class="button-text">9</span>
           <div class="subtext">def</div>
         </button>
-        <button class="physical-button unit-button" id="ghz-select" aria-label="Select GHz">
-          <span class="button-text">GHz</span>
-          <div class="subtext">dBm</div>
-        </button>
+        ${ACGhzBtn.getInstance().html}
         </div>
         <div class="numpad-row">
         <button class="physical-button num-button" data-value="4">
@@ -169,9 +174,7 @@ export class AnalyzerControl extends BaseElement {
           <span class="button-text">6</span>
           <div class="subtext">mno</div>
         </button>
-        <button class="physical-button unit-button" id="mhz-select" aria-label="Select MHz">
-          <span class="button-text">MHz</span>
-        </button>
+        ${ACMhzBtn.getInstance().html}
         </div>
         <div class="numpad-row">
         <button class="physical-button num-button" data-value="1">
@@ -186,9 +189,7 @@ export class AnalyzerControl extends BaseElement {
           <span class="button-text">3</span>
           <div class="subtext">wxyz</div>
         </button>
-        <button class="physical-button unit-button" id="khz-select" aria-label="Select KHz">
-          <span class="button-text">kHz</span>
-        </button>
+        ${ACKhzBtn.getInstance().html}
         </div>
         <div class="numpad-row">
         <button class="physical-button num-button" data-value="0">
@@ -200,9 +201,7 @@ export class AnalyzerControl extends BaseElement {
         <button class="physical-button num-button" data-value="+/-">
           <span class="button-text">+/-</span>
         </button>
-        <button class="physical-button unit-button" id="hz-select" aria-label="Select Hz">
-          <span class="button-text">Hz</span>
-        </button>
+        ${ACHzBtn.getInstance().html}
         </div>
         <div class="numpad-row">
           <button class="physical-button num-button special-button" data-value="esc" aria-label="Escape">

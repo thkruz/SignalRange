@@ -3,9 +3,10 @@ import { BaseControlButton } from "../base-control-button";
 import './ac-mode-btn.css';
 
 export class ACModeBtn extends BaseControlButton {
+  private static instance_: ACModeBtn;
   private readonly analyzerControl: AnalyzerControl;
 
-  private constructor(analyzerControl?: AnalyzerControl) {
+  private constructor(analyzerControl: AnalyzerControl) {
     super({
       uniqueId: 'ac-mode-btn',
       label: 'Mode',
@@ -17,11 +18,12 @@ export class ACModeBtn extends BaseControlButton {
   }
 
   static create(analyzerControl: AnalyzerControl): ACModeBtn {
-    return new ACModeBtn(analyzerControl);
+    this.instance_ = new ACModeBtn(analyzerControl);
+    return this.instance_;
   }
 
   static getInstance(): ACModeBtn {
-    return new ACModeBtn();
+    return this.instance_;
   }
 
   protected handleClick(): void {

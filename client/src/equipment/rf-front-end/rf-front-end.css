@@ -1,0 +1,609 @@
+/* rf-front-end.css - Styles for RF Front-End equipment case */
+
+/* Signal Flow Diagram - 80px height */
+.rf-fe-signal-flow {
+  height: 80px;
+  padding: 0 10px;
+  background: linear-gradient(180deg, #1a1a1a 0%, #1f1f1f 100%);
+  border-bottom: 1px solid #333;
+}
+
+.signal-flow-line {
+  width: 100%;
+  height: 100%;
+}
+
+.flow-line {
+  stroke-width: 2;
+  stroke: #555;
+  transition: stroke 0.3s, filter 0.3s;
+}
+
+.flow-line.active {
+  stroke-width: 3;
+  filter: drop-shadow(0 0 8px currentColor);
+}
+
+.flow-tx {
+  stroke: #ff6b35;
+  /* International Engineering Orange */
+}
+
+.flow-tx.active {
+  stroke: #ff8c5a;
+  animation: flow-pulse-tx 2s ease-in-out infinite;
+}
+
+.flow-rx {
+  stroke: #00bcd4;
+  /* Teal */
+}
+
+.flow-rx.active {
+  stroke: #26c6da;
+  animation: flow-pulse-rx 2s ease-in-out infinite;
+}
+
+.flow-arrow {
+  fill: #555;
+  transition: fill 0.3s;
+}
+
+.flow-tx.active+.flow-arrow.flow-tx {
+  fill: #ff8c5a;
+}
+
+.flow-rx.active+.flow-arrow.flow-rx {
+  fill: #26c6da;
+}
+
+.flow-point {
+  fill: #666;
+  transition: fill 0.3s, r 0.3s;
+}
+
+.flow-line.active~.flow-point {
+  fill: #ff8c5a;
+  r: 4;
+}
+
+@keyframes flow-pulse-tx {
+
+  0%,
+  100% {
+    stroke: #ff8c5a;
+    filter: drop-shadow(0 0 6px #ff6b35);
+  }
+
+  50% {
+    stroke: #ffaa7a;
+    filter: drop-shadow(0 0 12px #ff6b35);
+  }
+}
+
+@keyframes flow-pulse-rx {
+
+  0%,
+  100% {
+    stroke: #26c6da;
+    filter: drop-shadow(0 0 6px #00bcd4);
+  }
+
+  50% {
+    stroke: #4dd0e1;
+    filter: drop-shadow(0 0 12px #00bcd4);
+  }
+}
+
+/* Main Module Container - ~260px height */
+.rf-fe-modules {
+  display: flex;
+  flex: 1;
+  gap: 8px;
+  padding: 12px 10px;
+  align-items: stretch;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+/* Individual Module Styling */
+.rf-fe-module {
+  display: flex;
+  flex-direction: column;
+  min-width: 95px;
+  background: linear-gradient(180deg, #2a2a2a 0%, #1f1f1f 100%);
+  border: 1px solid #444;
+  border-radius: 6px;
+  padding: 8px 6px;
+  box-shadow:
+    inset 0 1px 2px rgba(255, 255, 255, 0.05),
+    0 2px 4px rgba(0, 0, 0, 0.4);
+  transition: box-shadow 0.3s;
+}
+
+.rf-fe-module:hover {
+  box-shadow:
+    inset 0 1px 2px rgba(255, 255, 255, 0.08),
+    0 4px 8px rgba(0, 0, 0, 0.5);
+}
+
+.module-label {
+  color: #ddd;
+  font-size: 9px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  text-align: center;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #444;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.module-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+}
+
+/* Control Groups */
+.control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.control-group label {
+  color: #aaa;
+  font-size: 8px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 2px;
+}
+
+/* Digital Display (7-segment style) */
+.digital-display {
+  background: linear-gradient(180deg, #001a1a 0%, #002626 100%);
+  color: #00ff88;
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  font-weight: bold;
+  text-align: center;
+  padding: 4px 6px;
+  border: 2px solid #003333;
+  border-radius: 3px;
+  box-shadow:
+    inset 0 1px 4px rgba(0, 0, 0, 0.8),
+    0 0 8px rgba(0, 255, 136, 0.3);
+  letter-spacing: 2px;
+  text-shadow: 0 0 4px rgba(0, 255, 136, 0.6);
+}
+
+/* Input Fields */
+.rf-fe-module input[type="number"],
+.rf-fe-module select,
+.input-buc-lo,
+.input-lnb-lo,
+.input-filter-mode,
+.input-coupler-tap {
+  width: 100%;
+  padding: 4px 6px;
+  background-color: #1a1a1a;
+  color: #fff;
+  border: 1px solid #444;
+  border-radius: 3px;
+  font-size: 11px;
+  font-family: 'Roboto', sans-serif;
+}
+
+.rf-fe-module input[type="number"]:focus,
+.rf-fe-module select:focus {
+  outline: none;
+  border-color: #ff6b35;
+  box-shadow: 0 0 4px rgba(255, 107, 53, 0.4);
+}
+
+/* Rotary Knob (Range Input) */
+.rotary-knob {
+  width: 100%;
+  height: 6px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: linear-gradient(90deg, #333 0%, #555 100%);
+  border-radius: 3px;
+  outline: none;
+  border: 1px solid #222;
+}
+
+.rotary-knob::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  background: radial-gradient(circle at 35% 35%, #888 0%, #555 50%, #333 100%);
+  border: 2px solid #666;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.6),
+    inset 0 1px 1px rgba(255, 255, 255, 0.2);
+}
+
+.rotary-knob::-webkit-slider-thumb:hover {
+  background: radial-gradient(circle at 35% 35%, #aaa 0%, #777 50%, #444 100%);
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.7),
+    inset 0 1px 2px rgba(255, 255, 255, 0.3);
+}
+
+.rotary-knob::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  background: radial-gradient(circle at 35% 35%, #888 0%, #555 50%, #333 100%);
+  border: 2px solid #666;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.6),
+    inset 0 1px 1px rgba(255, 255, 255, 0.2);
+}
+
+/* LED Indicators */
+.led-indicator {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 0;
+}
+
+.indicator-label {
+  color: #888;
+  font-size: 7px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  flex: 1;
+}
+
+.led {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1px solid #222;
+  box-shadow:
+    inset 0 1px 1px rgba(0, 0, 0, 0.8),
+    0 1px 2px rgba(0, 0, 0, 0.3);
+  transition: all 0.2s ease;
+}
+
+/* LED Colors */
+.led-off {
+  background: radial-gradient(circle at 40% 40%, #333 0%, #1a1a1a 60%);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.9);
+}
+
+.led-green {
+  background: radial-gradient(circle at 40% 40%, #b6ffb6 0%, #4caf50 40%, #1b5e20 100%);
+  box-shadow:
+    0 0 8px 2px rgba(76, 175, 80, 0.6),
+    inset 0 -1px 2px rgba(27, 94, 32, 0.8);
+}
+
+.led-amber {
+  background: radial-gradient(circle at 40% 40%, #fff4b6 0%, #ffc107 40%, #ff6f00 100%);
+  box-shadow:
+    0 0 8px 2px rgba(255, 193, 7, 0.6),
+    inset 0 -1px 2px rgba(255, 111, 0, 0.8);
+  animation: pulse-amber 1.5s ease-in-out infinite;
+}
+
+.led-red {
+  background: radial-gradient(circle at 40% 40%, #ffb6b6 0%, #f44336 40%, #b71c1c 100%);
+  box-shadow:
+    0 0 8px 2px rgba(244, 67, 54, 0.6),
+    inset 0 -1px 2px rgba(183, 28, 28, 0.8);
+}
+
+.led-orange {
+  background: radial-gradient(circle at 40% 40%, #ffd6b6 0%, #ff6b35 40%, #d84315 100%);
+  box-shadow:
+    0 0 8px 2px rgba(255, 107, 53, 0.6),
+    inset 0 -1px 2px rgba(216, 67, 21, 0.8);
+}
+
+.led-blue {
+  background: radial-gradient(circle at 40% 40%, #b6e0ff 0%, #2196f3 40%, #0d47a1 100%);
+  box-shadow:
+    0 0 8px 2px rgba(33, 150, 243, 0.6),
+    inset 0 -1px 2px rgba(13, 71, 161, 0.8);
+}
+
+@keyframes pulse-amber {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.6;
+  }
+}
+
+/* Value Readouts */
+.value-readout {
+  color: #00bcd4;
+  font-size: 9px;
+  font-weight: bold;
+  font-family: 'Courier New', monospace;
+  white-space: nowrap;
+}
+
+/* Polarization Label */
+.pol-label {
+  color: #ff6b35;
+  font-size: 11px;
+  font-weight: bold;
+  text-align: center;
+  letter-spacing: 1px;
+}
+
+/* Power Meter (HPA Module) */
+.power-meter {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.meter-label {
+  color: #aaa;
+  font-size: 8px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.led-bar {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+  padding: 4px;
+  background-color: #0a0a0a;
+  border: 1px solid #222;
+  border-radius: 3px;
+}
+
+.led-bar .led {
+  width: 10px;
+  height: 20px;
+  border-radius: 2px;
+}
+
+/* Mute Button */
+.btn-mute {
+  padding: 4px 8px;
+  background: linear-gradient(180deg, #444 0%, #333 100%);
+  color: #aaa;
+  border: 1px solid #555;
+  border-radius: 3px;
+  font-size: 9px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.btn-mute:hover {
+  background: linear-gradient(180deg, #555 0%, #444 100%);
+  border-color: #666;
+}
+
+.btn-mute.active {
+  background: linear-gradient(180deg, #f44336 0%, #d32f2f 100%);
+  color: #fff;
+  border-color: #f44336;
+  box-shadow: 0 0 8px rgba(244, 67, 54, 0.4);
+}
+
+/* Value Display (non-editable) */
+.value-display {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 0;
+}
+
+.display-label {
+  color: #888;
+  font-size: 7px;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.signal-path-readout {
+  color: #00bcd4;
+  font-size: 10px;
+  font-family: 'Courier New', monospace;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  text-shadow: 0 0 4px rgba(0, 188, 212, 0.4);
+}
+
+.mode-toggle {
+  flex-shrink: 0;
+}
+
+.btn-mode-toggle {
+  padding: 2px 12px;
+  background: linear-gradient(180deg, #555 0%, #444 100%);
+  color: #fff;
+  border: 1px solid #666;
+  border-radius: 3px;
+  font-size: 9px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.btn-mode-toggle:hover {
+  background: linear-gradient(180deg, #666 0%, #555 100%);
+  border-color: #777;
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.2);
+}
+
+.btn-mode-toggle:active {
+  background: linear-gradient(180deg, #444 0%, #333 100%);
+  transform: translateY(1px);
+}
+
+/* Module-specific sizing */
+.omt-module {
+  min-width: 100px;
+}
+
+.buc-module {
+  min-width: 120px;
+}
+
+.hpa-module {
+  min-width: 120px;
+}
+
+.filter-module {
+  min-width: 100px;
+}
+
+.lnb-module {
+  min-width: 120px;
+}
+
+.coupler-module {
+  min-width: 80px;
+}
+
+/* Hover Tooltips */
+.rf-fe-module:hover .module-label::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 6px 10px;
+  background-color: rgba(0, 0, 0, 0.9);
+  color: #fff;
+  font-size: 11px;
+  white-space: nowrap;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+  z-index: 100;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.rf-fe-module:hover .module-label::after {
+  opacity: 1;
+}
+
+/* Scrollbar styling for module overflow */
+.rf-fe-modules::-webkit-scrollbar {
+  height: 6px;
+}
+
+.rf-fe-modules::-webkit-scrollbar-track {
+  background: #1a1a1a;
+  border-radius: 3px;
+}
+
+.rf-fe-modules::-webkit-scrollbar-thumb {
+  background: #444;
+  border-radius: 3px;
+}
+
+.rf-fe-modules::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* Responsive adjustments */
+@media (max-width: 720px) {
+  .equipment-box {
+    width: 100%;
+    max-width: 700px;
+  }
+
+  .rf-fe-modules {
+    overflow-x: scroll;
+  }
+}
+
+/* Advanced Mode Transitions */
+.rf-fe-module {
+  animation: module-fade-in 0.3s ease-out;
+}
+
+@keyframes module-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Power-off state */
+.equipment-box[data-powered="false"] .rf-fe-modules {
+  filter: brightness(0.3);
+  pointer-events: none;
+}
+
+.equipment-box[data-powered="false"] .led {
+  background: radial-gradient(circle at 40% 40%, #333 0%, #1a1a1a 60%);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.9);
+}
+
+.equipment-box[data-powered="false"] .digital-display {
+  background: #0a0a0a;
+  color: #001a1a;
+  box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.9);
+  text-shadow: none;
+}
+
+.equipment-box[data-powered="false"] .signal-path-readout {
+  color: #333;
+  text-shadow: none;
+}
+
+/* Accessibility */
+.rf-fe-module input:focus,
+.rf-fe-module select:focus,
+.btn-mute:focus,
+.btn-mode-toggle:focus {
+  outline: 2px solid #ff6b35;
+  outline-offset: 2px;
+}
+
+/* Print styles */
+@media print {
+  .equipment-box {
+    break-inside: avoid;
+    box-shadow: none;
+    border: 2px solid #000;
+  }
+
+  .btn-mute,
+  .btn-mode-toggle {
+    display: none;
+  }
+}

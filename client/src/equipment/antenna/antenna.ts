@@ -100,11 +100,15 @@ export class Antenna extends BaseEquipment {
     this.powerSwitch = PowerSwitch.create(`antenna-power-switch-${this.state.id}`, this.state.isPowered);
 
     parentDom.innerHTML = html`
-      <div class="antenna-box">
-        <div class="antenna-header">
-          <div class="antenna-title">Antenna ${this.id}</div>
-          <div class="antenna-status ${this.getStatusClass()}">
-            ${this.getStatusText()}
+      <div class="equipment-box">
+        <div class="equipment-case-header">
+          <div class="equipment-case-title">Antenna ${this.id}</div>
+          <div class="equipment-case-power-controls">
+            <div class="equipment-case-main-power"></div>
+            <div class="equipment-case-status-indicator">
+              <span class="equipment-case-status-label">Status</span>
+              <div class="led ${this.state.isPowered ? 'led-green' : 'led-amber'}"></div>
+            </div>
           </div>
         </div>
 
@@ -187,11 +191,24 @@ export class Antenna extends BaseEquipment {
             </div>
           </div>
         </div>
+
+        <!-- Bottom Status Bar -->
+        <div class="equipment-case-footer">
+          <div class="signal-path-readout">
+            Placeholder for Bottom Status Bar
+          </div>
+          <div class="mode-toggle">
+            <button class="btn-mode-toggle" data-action="toggle-advanced-mode">
+              Placeholder
+            </button>
+          </div>
+        </div>
       </div>
     `;
 
     this.domCache['parent'] = parentDom;
-    this.domCache['status'] = qs('.antenna-status', parentDom);
+    this.domCache['status'] = qs('.equipment-case-status-label', parentDom);
+    this.domCache['led'] = qs('.led', parentDom);
     this.domCache['btnLoopback'] = qs('.btn-loopback', parentDom);
     this.domCache['inputTarget'] = qs('.input-target', parentDom);
     this.domCache['inputBand'] = qs('.input-band', parentDom);
@@ -360,10 +377,10 @@ export class Antenna extends BaseEquipment {
   }
 
   private togglePower(): void {
-    this.state.isOperational = !this.state.isOperational;
+    this.state.isPowered = !this.state.isPowered;
 
     // If turning off, also turn off track and locked
-    if (!this.state.isOperational) {
+    if (!this.state.isPowered) {
       this.state.isLocked = false;
       this.state.isAutoTrackEnabled = false;
     }
@@ -503,8 +520,8 @@ export class Antenna extends BaseEquipment {
     }
 
     // Update status
-    this.domCache['status'].className = `antenna-status ${this.getStatusClass()}`;
-    this.domCache['status'].textContent = this.getStatusText();
+    // this.domCache['status'].textContent = this.getStatusText();
+    this.domCache['led'].className = `led ${this.getLedColor()}`;
 
     // Update buttons
     this.domCache['btnLoopback'].className = `btn-loopback ${this.state.isLoopbackEnabled ? 'active' : ''}`;
@@ -533,18 +550,12 @@ export class Antenna extends BaseEquipment {
     this.lastRenderState = structuredClone(this.state);
   }
 
-  private getStatusClass(): string {
-    if (!this.state.isOperational) return 'status-disabled';
-    if (this.state.isLoopbackEnabled || (!this.state.isLoopbackEnabled && this.state.isHpaEnabled)) {
-      return 'status-active';
-    }
-    return 'status-error';
-  }
-
-  private getStatusText(): string {
-    if (!this.state.isOperational) return 'Not Operational';
-    if (this.state.isLoopbackEnabled) return 'Loopback';
-    if (!this.state.isLoopbackEnabled && this.state.isHpaEnabled) return 'Transmitting';
-    return 'Rx Only';
+  private getLedColor(): string {
+    if (!this.state.isPowered) return '';
+    if (!this.state.isOperational) return 'led-amber';
+    if (this.state.isLoopbackEnabled) return 'led-amber';
+    if (this.state.isLocked && !this.state.isLoopbackEnabled && !this.state.isHpaEnabled) return 'led-green';
+    if (!this.state.isLoopbackEnabled && this.state.isHpaEnabled) return 'led-red';
+    return 'led-amber';
   }
 }

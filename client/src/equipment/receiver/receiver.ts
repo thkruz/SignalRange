@@ -89,17 +89,21 @@ export class Receiver extends BaseEquipment {
 
   initializeDom(parentId: string): HTMLElement {
     const parentDom = super.initializeDom(parentId);
-    const signalStatus = this.getSignalStatus();
+    const ledColor = this.getLedColor();
     const feedUrl = this.getVisibleSignals()[0]?.feed || '';
 
     this.powerSwitch = PowerSwitch.create(`rx-power-switch-${this.state.unit}${this.activeModem.modemNumber}`, this.activeModem.isPowered);
 
     parentDom.innerHTML = html`
-      <div class="receiver-box">
-        <div class="receiver-header">
-          <div class="receiver-title">Receiver Case ${this.id}</div>
-          <div class="receiver-status ${signalStatus.class}">
-            ${signalStatus.text}
+      <div class="equipment-box receiver-box">
+        <div class="equipment-case-header">
+          <div class="equipment-case-title">Receiver Case ${this.id}</div>
+          <div class="equipment-case-power-controls">
+            <div class="equipment-case-main-power"></div>
+            <div class="equipment-case-status-indicator">
+              <span class="equipment-case-status-label">Status</span>
+              <div class="led ${ledColor}"></div>
+            </div>
           </div>
         </div>
 
@@ -204,7 +208,7 @@ export class Receiver extends BaseEquipment {
 
     // Cache frequently used DOM nodes for efficient updates
     this.domCache['parent'] = parentDom;
-    this.domCache['status'] = qs('.receiver-status', parentDom);
+    this.domCache['led'] = qs('.led', parentDom);
     this.state.modems.forEach(modem => {
       this.domCache[`modemButton${modem.modemNumber}`] = qs(`#modem-${modem.modemNumber}`, parentDom);
     });
@@ -387,29 +391,29 @@ export class Receiver extends BaseEquipment {
     this.syncDomWithState();
   }
 
-  private getSignalStatus(): { text: string; class: string } {
+  private getLedColor(): string {
     const visibleSignals = this.getVisibleSignals();
 
     if (this.activeModem.isPowered === false) {
-      return { text: 'NO POWER', class: 'status-no-power' };
+      return 'led-gray';
     }
 
     // If 1 then good signal
-    if (visibleSignals.length === 1) {
-      return { text: 'SIGNAL FOUND', class: 'status-signal-found' };
+    if (visibleSignals.length === 1 && visibleSignals[0].isDegraded === false) {
+      return 'led-green';
     }
 
     // If 2 then degraded
-    if (visibleSignals.length === 2) {
-      return { text: 'SIGNAL DEGRADED', class: 'status-signal-degraded' };
+    if (visibleSignals.length === 2 || (visibleSignals.length === 1 && visibleSignals[0].isDegraded === true)) {
+      return 'led-amber';
     }
 
     // If more than 2 then denied
     if (visibleSignals.length > 2) {
-      return { text: 'SIGNAL DENIED', class: 'status-signal-denied' };
+      return 'led-red';
     }
 
-    return { text: 'NO SIGNAL', class: 'status-no-signal' };
+    return 'led-green';
   }
 
   private getVisibleSignals(activeModemData = this.activeModem) {
@@ -499,11 +503,8 @@ export class Receiver extends BaseEquipment {
     const parentDom = this.domCache['parent'];
 
     // Update status banner
-    const signalStatus = this.getSignalStatus();
-    if (this.domCache['status']) {
-      (this.domCache['status']).className = `receiver-status ${signalStatus.class}`;
-      (this.domCache['status']).textContent = signalStatus.text;
-    }
+    const ledColor = this.getLedColor();
+    (this.domCache['led']).className = `led ${ledColor}`;
 
     // Update modem buttons active & status classes
     const modemButtons = parentDom.querySelectorAll('.btn-modem');

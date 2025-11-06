@@ -1,6 +1,7 @@
 import { Milliseconds } from "@app/engine/ootk/src/main";
 import { AntennaState } from "@app/equipment/antenna/antenna";
 import { RealTimeSpectrumAnalyzerState } from "@app/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer";
+import { RFFrontEndState } from "@app/equipment/rf-front-end/rf-front-end";
 import { ReceiverModemState } from "../equipment/receiver/receiver";
 import { TransmitterModem } from "../equipment/transmitter/transmitter";
 import { RfSignal } from "../types";
@@ -108,6 +109,11 @@ export enum Events {
   UPDATE = "app:update",
   DRAW = "app:draw",
   SYNC = "app:sync",
+  RF_FE_POWER_CHANGED = "rf-fe:power:changed",
+  RF_FE_BUC_CHANGED = "rf-fe:buc:changed",
+  RF_FE_HPA_CHANGED = "rf-fe:hpa:changed",
+  RF_FE_LNB_CHANGED = "rf-fe:lnb:changed",
+  RF_FE_ALARM = "rf-fe:alarm",
 }
 
 export interface EventMap {
@@ -118,6 +124,15 @@ export interface EventMap {
   [Events.ANTENNA_LOCKED]: [AntennaLockedData];
   [Events.ANTENNA_POWER_CHANGED]: [AntennaPowerChangedData];
   [Events.ANTENNA_ERROR]: [AntennaErrorData];
+
+  [Events.RF_FE_POWER_CHANGED]: [Partial<RFFrontEndState>];
+  [Events.RF_FE_BUC_CHANGED]: [Partial<RFFrontEndState>];
+  [Events.RF_FE_HPA_CHANGED]: [Partial<RFFrontEndState>];
+  [Events.RF_FE_LNB_CHANGED]: [Partial<RFFrontEndState>];
+  [Events.RF_FE_ALARM]: [{
+    unit: number;
+    alarms: string[];
+  }];
 
   [Events.TX_CONFIG_CHANGED]: [TxConfigChangedData];
   [Events.TX_ACTIVE_MODEM_CHANGED]: [TxActiveModemChangedData];

@@ -1,4 +1,5 @@
 import { BaseElement } from "@app/components/base-element";
+import { RFFrontEnd } from "@app/equipment/rf-front-end/rf-front-end";
 import { StudentPage } from "@app/pages/student-page";
 import { html } from "../../engine/utils/development/formatter";
 import { Antenna } from '../../equipment/antenna/antenna';
@@ -17,16 +18,21 @@ export class StudentEquipment extends BaseElement {
 
   readonly spectrumAnalyzers: RealTimeSpectrumAnalyzer[] = [];
   readonly antennas: Antenna[] = [];
+  readonly rfFrontEnds: RFFrontEnd[] = [];
   readonly transmitters: Transmitter[] = [];
   readonly receivers: Receiver[] = [];
 
   protected html_ = html`
       <div class="student-equipment">
-        <!-- Antennas -->
+        <!-- Antennas, Front Ends, and Spec Analyzers Grid -->
           <div id="antenna-spec-a-grid1" class="antenna-spec-a-grid">
             <div class="paired-equipment-container">
               <div id="antenna1-container" class="antenna-container"></div>
+              <div id="rf-front-end1-container" class="rf-front-end-container"></div>
+            </div>
+            <div class="paired-equipment-container">
               <div id="antenna2-container" class="antenna-container"></div>
+              <div id="rf-front-end2-container" class="rf-front-end-container"></div>
             </div>
             <div class="paired-equipment-container">
               <div id="specA1-container" class="spec-a-container"></div>
@@ -87,14 +93,9 @@ export class StudentEquipment extends BaseElement {
         offset: 1310,
       })
       this.antennas.push(antenna);
-    }
 
-    if (!this.isFullEquipmentSuite) {
-      // Hide the second antenna container if not full suite
-      const antenna2Container = document.getElementById('antenna-spec-a-grid2');
-      if (antenna2Container) {
-        antenna2Container.style.display = 'none';
-      }
+      const rfFrontEndContainer = new RFFrontEnd(`rf-front-end${i}-container`, i, 1);
+      this.rfFrontEnds.push(rfFrontEndContainer);
     }
 
     // Initialize 4 spectrum analyzers
@@ -103,6 +104,19 @@ export class StudentEquipment extends BaseElement {
       const antennaId = i <= 2 ? 1 : 2;
       const specA = new RealTimeSpectrumAnalyzer(`specA${i}-container`, i, this.antennas[antennaId - 1]);
       this.spectrumAnalyzers.push(specA);
+    }
+
+    if (!this.isFullEquipmentSuite) {
+      // Hide the second antenna container if not full suite
+      const antenna2Container = document.getElementById('antenna-spec-a-grid2');
+      if (antenna2Container) {
+        antenna2Container.style.display = 'none';
+      }
+
+      const rfFrontEnd2Container = document.getElementById('rf-fe-box-2');
+      if (rfFrontEnd2Container) {
+        rfFrontEnd2Container.style.display = 'none';
+      }
     }
 
     // Initialize 4 transmitter cases (each with 4 modems)

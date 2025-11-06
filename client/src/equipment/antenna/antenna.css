@@ -1,38 +1,6 @@
 /* Antenna.css - Styles specific to Antenna equipment */
-.antenna-box {
-  display: flex;
-  flex-direction: column;
-  background-color: #2a2a2a;
-  border: 1px solid #444;
-  border-radius: 10px;
-  padding: 16px;
-  box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.5);
-  height: 100%;
-  min-width: 400px;
-}
 
 /* Header */
-.antenna-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid #444;
-}
-
-.antenna-title {
-  color: #fff;
-  font-size: 18px;
-  font-weight: bold;
-}
-
-.antenna-status {
-  padding: 4px 12px;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: bold;
-}
 
 .status-active {
   background-color: #4caf50;
@@ -54,6 +22,7 @@
   display: flex;
   gap: 20px;
   flex-grow: 1;
+  padding: 16px;
 }
 
 /* Loopback Section */
@@ -293,20 +262,4 @@ input:checked+.slider:before {
 .btn-power.active {
   background-color: #f44336;
   color: #fff;
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-  .antenna-box {
-    min-width: 350px;
-  }
-
-  .antenna-controls {
-    flex-direction: column;
-  }
-
-  .config-row {
-    grid-template-columns: 80px 1fr 80px;
-    gap: 8px;
-  }
 }

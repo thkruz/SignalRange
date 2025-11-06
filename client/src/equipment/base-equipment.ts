@@ -4,6 +4,7 @@ import { AntennaState } from './antenna/antenna';
 import './base-equipment.css';
 import { RealTimeSpectrumAnalyzerState } from './real-time-spectrum-analyzer/real-time-spectrum-analyzer';
 import { ReceiverState } from './receiver/receiver';
+import { RFFrontEndState } from './rf-front-end/rf-front-end';
 import { TransmitterState } from './transmitter/transmitter';
 
 /**
@@ -15,7 +16,7 @@ export abstract class BaseEquipment {
   protected readonly id: number;
   protected readonly teamId: number;
   /** Current equipment state.*/
-  abstract state: AntennaState | ReceiverState | TransmitterState | RealTimeSpectrumAnalyzerState;
+  abstract state: AntennaState | ReceiverState | TransmitterState | RealTimeSpectrumAnalyzerState | RFFrontEndState;
 
   private isInitialized: boolean = false;
   protected domCache: { [key: string]: HTMLElement } = {};

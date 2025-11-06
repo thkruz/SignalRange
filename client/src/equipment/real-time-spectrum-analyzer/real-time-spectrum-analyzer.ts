@@ -92,16 +92,22 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
     const parentDom = super.initializeDom(parentId);
 
     parentDom.innerHTML = html`
-      <div class="spectrum-analyzer-box">
-        <div class="spec-a-header">
-          <div class="spec-a-title">Spectrum Analyzer ${this.id}</div>
-          <div class="spec-a-span">Span: ${this.state.span / 1e6} MHz</div>
+        <div class="equipment-box spectrum-analyzer-box">
+        <div class="equipment-case-header">
+          <div class="equipment-case-title">Spectrum Analyzer ${this.id}</div>
+          <div class="equipment-case-power-controls">
+            <div class="equipment-case-main-power"></div>
+            <div class="equipment-case-status-indicator">
+              <span class="equipment-case-status-label">Status</span>
+              <div class="led ${this.state.isPaused ? 'led-amber' : 'led-green'}"></div>
+            </div>
+          </div>
         </div>
 
         <div class="spec-a-canvas-container">
-          <canvas id="specA${this.id}" width="740" height="740" class="spec-a-canvas-single"></canvas>
-          <canvas id="specA${this.id}-spectral" width="740" height="200" class="spec-a-canvas-spectral"></canvas>
-          <canvas id="specA${this.id}-waterfall" width="740" height="200" class="spec-a-canvas-waterfall"></canvas>
+          <canvas id="specA${this.id}" width="747" height="747" class="spec-a-canvas-single"></canvas>
+          <canvas id="specA${this.id}-spectral" width="747" height="200" class="spec-a-canvas-spectral"></canvas>
+          <canvas id="specA${this.id}-waterfall" width="747" height="200" class="spec-a-canvas-waterfall"></canvas>
         </div>
 
         <div class="spec-a-info">
@@ -127,13 +133,11 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
 
     // Cache all DOM references that might be needed later
     this.domCache['container'] = parentDom.querySelector('.spectrum-analyzer-box') as HTMLElement;
-    this.domCache['header'] = parentDom.querySelector('.spec-a-header') as HTMLElement;
     this.domCache['info'] = parentDom.querySelector('.spec-a-info') as HTMLElement;
     this.domCache['controls'] = parentDom.querySelector('.spec-a-controls') as HTMLElement;
     this.domCache['canvas'] = parentDom.querySelector(`#specA${this.id}`) as HTMLCanvasElement;
     this.domCache['canvasSpectral'] = parentDom.querySelector(`#specA${this.id}-spectral`) as HTMLCanvasElement;
     this.domCache['canvasWaterfall'] = parentDom.querySelector(`#specA${this.id}-waterfall`) as HTMLCanvasElement;
-    this.domCache['span'] = parentDom.querySelector('.spec-a-span') as HTMLElement;
     this.domCache['configButton'] = parentDom.querySelector('.btn-config') as HTMLButtonElement;
     this.domCache['ifRfModeButton'] = parentDom.querySelector('.btn-mode-if-rf') as HTMLButtonElement;
     this.domCache['screenModeButton'] = parentDom.querySelector('.btn-mode-screen') as HTMLButtonElement;
@@ -400,9 +404,6 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
   }
 
   syncDomWithState(): void {
-    // Update header span
-    this.domCache['span'].textContent = `Span: ${this.state.span / 1e6} MHz`;
-
     // Update info display
     this.domCache['info'].innerHTML = html`
       <div>CF: ${(this.state.centerFrequency / 1e6).toFixed(3)} MHz</div>

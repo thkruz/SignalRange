@@ -7,7 +7,6 @@
 }
 
 /* Grid layouts for equipment */
-.paired-equipment-container,
 .antenna-spec-a-grid {
   display: flex;
   flex-direction: row;
@@ -15,6 +14,106 @@
   justify-content: center;
   column-gap: 1em;
   row-gap: 1em;
+}
+
+/* Main Container - 700x400px 19" rack panel aesthetic */
+.equipment-box {
+  display: flex;
+  flex-direction: column;
+  min-width: 400px;
+  height: 400px;
+  background: linear-gradient(135deg, #2a2a2a 0%, #1f1f1f 100%);
+  border: 2px solid #444;
+  border-radius: 8px;
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.6),
+    inset 0 1px 1px rgba(255, 255, 255, 0.1);
+  padding: 0;
+  position: relative;
+  font-family: 'Roboto', 'Arial', sans-serif;
+  overflow: hidden;
+}
+
+/* Rivet corner decorations */
+.equipment-box::before,
+.equipment-box::after {
+  content: '';
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: radial-gradient(circle at center, #666 30%, #444 70%, #222 100%);
+  border-radius: 50%;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.8);
+  z-index: 10;
+}
+
+.equipment-box::before {
+  top: 8px;
+  left: 8px;
+}
+
+.equipment-box::after {
+  top: 8px;
+  right: 8px;
+}
+
+/* Top Status Bar - 40px height */
+.antenna-header,
+.equipment-case-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 40px;
+  padding: 0 20px;
+  background: linear-gradient(180deg, #3a3a3a 0%, #2a2a2a 100%);
+  border-bottom: 2px solid #444;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.antenna-title,
+.equipment-case-title {
+  color: #fff;
+  font-size: 16px;
+  font-weight: bold;
+  letter-spacing: 2px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  text-transform: uppercase;
+}
+
+.equipment-case-power-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.antenna-status,
+.equipment-case-status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background-color: #1a1a1a;
+  border: 1px solid #444;
+  border-radius: 4px;
+}
+
+.equipment-case-status-label {
+  color: #aaa;
+  font-size: 10px;
+  font-weight: bold;
+  letter-spacing: 1px;
+}
+
+/* Bottom Status Bar - 20px height */
+.equipment-case-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 20px;
+  padding: 6px 12px;
+  background: linear-gradient(180deg, #1a1a1a 0%, #0f0f0f 100%);
+  border-top: 1px solid #333;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.6);
 }
 
 .tx-grid,
@@ -29,6 +128,7 @@
 
 /* Container classes */
 .spec-a-container,
+.rf-front-end-container,
 .antenna-container {
   position: relative;
   min-height: min-content;

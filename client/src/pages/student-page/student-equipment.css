@@ -9,3 +9,13 @@
 .spacer {
   height: 2rem;
 }
+
+.paired-equipment-container {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: center;
+  width: 100%;
+  column-gap: 1em;
+  row-gap: 1em;
+}

@@ -110,19 +110,21 @@ export class Transmitter extends BaseEquipment {
   initializeDom(parentId: string): HTMLElement {
     const parentDom = super.initializeDom(parentId);
 
-    const isTransmitting = this.state.modems.some(m => m.isTransmitting);
-
     this.txToggleSwitch = ToggleSwitch.create(`tx-transmit-switch-${this.state.unit}${this.activeModem.modem_number}`, this.activeModem.isTransmittingSwitchUp);
     this.faultResetSwitch = ToggleSwitch.create(`tx-fault-reset-switch-${this.state.unit}${this.activeModem.modem_number}`, this.activeModem.isFaultSwitchUp);
     this.testModeSwitch = ToggleSwitch.create(`tx-test-mode-switch-${this.state.unit}${this.activeModem.modem_number}`, this.activeModem.isTestMode);
     this.powerSwitch = PowerSwitch.create(`tx-power-switch-${this.state.unit}${this.activeModem.modem_number}`, this.activeModem.isPowered);
 
     parentDom.innerHTML = html`
-      <div class="transmitter-box">
-        <div class="transmitter-header">
-          <div class="transmitter-title">Transmitter Case ${this.id}</div>
-          <div class="transmitter-status ${isTransmitting ? 'status-active' : 'status-standby'}">
-            ${isTransmitting ? 'TRANSMITTING' : 'STANDBY'}
+      <div class="equipment-box transmitter-box">
+        <div class="equipment-case-header">
+          <div class="equipment-case-title">Transmitter Case ${this.id}</div>
+          <div class="equipment-case-power-controls">
+            <div class="equipment-case-main-power"></div>
+            <div class="equipment-case-status-indicator">
+              <span class="equipment-case-status-label">Status</span>
+              <div class="led"></div>
+            </div>
           </div>
         </div>
 
@@ -230,7 +232,7 @@ export class Transmitter extends BaseEquipment {
 
     // Cache commonly used DOM nodes for efficient updates
     this.domCache['parent'] = parentDom;
-    this.domCache['status'] = qs('.transmitter-status', parentDom);
+    this.domCache['led'] = qs('.led', parentDom);
     this.state.modems.forEach(modem => {
       this.domCache[`modemButton${modem.modem_number}`] = qs(`#modem-${modem.modem_number}`, parentDom);
     });
@@ -494,9 +496,11 @@ export class Transmitter extends BaseEquipment {
 
     // Update status
     const isTransmitting = this.state.modems.some(m => m.isTransmitting);
-    if (this.domCache['status']) {
-      (this.domCache['status']).className = `transmitter-status ${isTransmitting ? 'status-active' : 'status-standby'}`;
-      (this.domCache['status']).textContent = isTransmitting ? 'TRANSMITTING' : 'STANDBY';
+    const somePower = this.state.modems.some(m => m.isPowered);
+    if (somePower) {
+      (this.domCache['led']).className = `led ${isTransmitting ? 'led-red' : 'led-green'}`;
+    } else {
+      (this.domCache['led']).className = `led`;
     }
 
     // Update modem buttons

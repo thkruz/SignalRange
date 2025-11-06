@@ -3,7 +3,7 @@ import { RealTimeSpectrumAnalyzer } from "../real-time-spectrum-analyzer";
 
 export abstract class RTSAScreen {
   // Canvas elements
-  protected readonly canvas: HTMLCanvasElement;
+  readonly canvas: HTMLCanvasElement;
   protected readonly ctx: CanvasRenderingContext2D;
   protected readonly antenna: Antenna;
   protected readonly specA: RealTimeSpectrumAnalyzer;

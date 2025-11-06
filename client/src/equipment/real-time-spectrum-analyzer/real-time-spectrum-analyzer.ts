@@ -19,7 +19,9 @@ export interface RealTimeSpectrumAnalyzerState {
   isMinHold: boolean;
   isMarkerOn: boolean;
   refreshRate: number; // in Hz
+  startFrequency: Hertz; // Hz - start frequency
   centerFrequency: Hertz; // Hz - center frequency
+  stopFrequency: Hertz; // Hz - stop frequency
   span: Hertz; // Hz - bandwidth
   hold: boolean; // Hold max amplitude
   minDecibels: number;
@@ -37,35 +39,35 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
 
   // Screen renderer
   screen: SpectralDensityPlot | WaterfallDisplay | null = null;
-
-  // Antenna reference
-  private readonly antenna: Antenna;
-
   spectralDensity: SpectralDensityPlot | null = null;
   waterfall: WaterfallDisplay | null = null;
-
   // For "both" mode, we need separate instances
   spectralDensityBoth: SpectralDensityPlot | null = null;
   waterfallBoth: WaterfallDisplay | null = null;
+
+  // Antenna reference
+  private readonly antenna_: Antenna;
 
   configPanel: AnalyzerControlBox | null = null;
 
   constructor(parentId: string, id: number, antenna: Antenna, teamId: number = 1) {
     super(parentId, id, teamId);
 
-    this.antenna = antenna;
+    this.antenna_ = antenna;
 
     // Initialize config
     this.state = {
       id: this.id,
       team_id: this.teamId,
-      antenna_id: this.antenna.state.id,
+      antenna_id: this.antenna_.state.id,
       isRfMode: false,
       isPaused: false,
       isMaxHold: false,
       isMinHold: false,
       isMarkerOn: false,
+      startFrequency: 4760e6 as Hertz,
       centerFrequency: 4810e6 as Hertz,
+      stopFrequency: 4860e6 as Hertz,
       span: 100e6 as Hertz,
       hold: false,
       minDecibels: -120,
@@ -74,6 +76,8 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
       refreshRate: 10,
       screenMode: 'spectralDensity',
     };
+    this.state.startFrequency = (this.state.centerFrequency - this.state.span / 2) as Hertz;
+    this.state.stopFrequency = (this.state.centerFrequency + this.state.span / 2) as Hertz;
 
     this.build(parentId);
 
@@ -143,7 +147,7 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
 
       switch (action) {
         case 'config':
-          this.openConfig();
+          this.openConfigPopupMenu();
           break;
         case 'ifRfMode':
           this.toggleIfRfMode();
@@ -196,9 +200,11 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
       this.state = { ...this.state, ...data };
 
       if (data.frequency) {
-        this.updateFrequency(data.frequency);
+        this.state.centerFrequency = data.frequency;
       }
     }
+
+    this.syncDomWithState();
   }
 
   protected initialize(): void {
@@ -207,12 +213,12 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
     if (!this.domCache['canvasWaterfall']) throw new Error('Waterfall canvas element not found for Spectrum Analyzer');
 
     // Initialize single-mode screens
-    this.spectralDensity = new SpectralDensityPlot(this.domCache['canvas'] as HTMLCanvasElement, this.antenna, this);
-    this.waterfall = new WaterfallDisplay(this.domCache['canvas'] as HTMLCanvasElement, this.antenna, this);
+    this.spectralDensity = new SpectralDensityPlot(this.domCache['canvas'] as HTMLCanvasElement, this.antenna_, this);
+    this.waterfall = new WaterfallDisplay(this.domCache['canvas'] as HTMLCanvasElement, this.antenna_, this);
 
     // Initialize "both" mode screens with their dedicated canvases
-    this.spectralDensityBoth = new SpectralDensityPlot(this.domCache['canvasSpectral'] as HTMLCanvasElement, this.antenna, this);
-    this.waterfallBoth = new WaterfallDisplay(this.domCache['canvasWaterfall'] as HTMLCanvasElement, this.antenna, this);
+    this.spectralDensityBoth = new SpectralDensityPlot(this.domCache['canvasSpectral'] as HTMLCanvasElement, this.antenna_, this);
+    this.waterfallBoth = new WaterfallDisplay(this.domCache['canvasWaterfall'] as HTMLCanvasElement, this.antenna_, this);
 
     // Set initial screen mode
     this.updateScreenVisibility();
@@ -314,10 +320,6 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
     }
   }
 
-  public getConfig(): RealTimeSpectrumAnalyzerState {
-    return { ...this.state };
-  }
-
   public changeCenterFreq(freq: number): void {
     this.state.centerFrequency = freq as Hertz;
     this.syncDomWithState();
@@ -346,30 +348,20 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
    * Control Methods
    */
 
-  private openConfig(): void {
-    this.openConfigPanel();
-    this.emit(Events.SPEC_A_CONFIG_CHANGED, { id: this.id });
-  }
-
-  private openConfigPanel(): void {
+  private openConfigPopupMenu(): void {
     this.configPanel ??= new AnalyzerControlBox(this);
     this.configPanel.open();
+    this.emit(Events.SPEC_A_CONFIG_CHANGED, { id: this.id });
   }
 
   private toggleIfRfMode(): void {
     this.state.isRfMode = !this.state.isRfMode;
 
-    this.updateIfRfModeButton();
-
     this.emit(Events.SPEC_A_CONFIG_CHANGED, {
       id: this.id,
       isRfMode: this.state.isRfMode,
     });
-  }
-
-  private updateIfRfModeButton(): void {
-    this.domCache['ifRfModeButton'].textContent = this.state.isRfMode ? 'RF' : 'IF';
-    this.domCache['ifRfModeButton'].classList.toggle('active', this.state.isRfMode);
+    this.syncDomWithState();
   }
 
   private toggleScreenMode(): void {
@@ -391,10 +383,32 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
     });
 
     this.updateScreenVisibility();
-    this.updateScreenModeButton();
+    this.syncDomWithState();
   }
 
-  private updateScreenModeButton(): void {
+  private togglePause(): void {
+    this.state.isPaused = !this.state.isPaused;
+
+    this.emit(Events.SPEC_A_CONFIG_CHANGED, {
+      id: this.id,
+      isPaused: this.state.isPaused,
+    });
+    this.syncDomWithState();
+  }
+
+  syncDomWithState(): void {
+    // Update header span
+    this.domCache['span'].textContent = `Span: ${this.state.span / 1e6} MHz`;
+
+    // Update info display
+    this.domCache['info'].innerHTML = html`
+      <div>CF: ${(this.state.centerFrequency / 1e6).toFixed(3)} MHz</div>
+      <div>Ant: ${this.state.antenna_id}</div>
+    `;
+
+    this.domCache['ifRfModeButton'].textContent = this.state.isRfMode ? 'RF' : 'IF';
+    this.domCache['ifRfModeButton'].classList.toggle('active', this.state.isRfMode);
+
     switch (this.state.screenMode) {
       case 'spectralDensity':
         this.domCache['screenModeButton'].textContent = 'Spectral Density';
@@ -406,41 +420,8 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
         this.domCache['screenModeButton'].textContent = 'Both';
         break;
     }
-  }
 
-  private togglePause(): void {
-    this.state.isPaused = !this.state.isPaused;
-
-    this.updatePauseButton();
-
-    this.emit(Events.SPEC_A_CONFIG_CHANGED, {
-      id: this.id,
-      isPaused: this.state.isPaused,
-    });
-  }
-
-  private updatePauseButton(): void {
     this.domCache['pauseButton'].classList.toggle('active', this.state.isPaused);
-  }
-
-  private updateFrequency(frequency: Hertz): void {
-    this.state.centerFrequency = frequency;
-    this.syncDomWithState();
-  }
-
-  syncDomWithState(): void {
-    // Update header span
-    this.domCache['span'].textContent = `Span: ${this.state.span / 1e6} MHz`;
-
-    // Update info display
-    this.domCache['info'].innerHTML = html`
-      <div>CF: ${this.state.centerFrequency / 1e6} MHz</div>
-      <div>Ant: ${this.state.antenna_id}</div>
-    `;
-
-    this.updateIfRfModeButton();
-    this.updateScreenModeButton();
-    this.updatePauseButton();
     this.updateScreenVisibility();
   }
 }

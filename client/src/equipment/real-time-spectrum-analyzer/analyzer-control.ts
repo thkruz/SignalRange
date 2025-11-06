@@ -1,3 +1,4 @@
+import { Logger } from '@app/logging/logger';
 import { BaseElement } from '../../components/base-element';
 import { html } from "../../engine/utils/development/formatter";
 import { qs, qsa } from "../../engine/utils/query-selector";
@@ -5,6 +6,22 @@ import { EventBus } from '../../events/event-bus';
 import { Events } from '../../events/events';
 import { Hertz } from '../../types';
 import './analyzer-control.css';
+import { ACAmptBtn } from './analyzer-control/ac-ampt-btn/ac-ampt-btn';
+import { ACBWBtn } from './analyzer-control/ac-bw-btn/ac-bw-btn';
+import { ACExtra1Btn } from './analyzer-control/ac-extra1-btn/ac-extra1-btn';
+import { ACExtra2Btn } from './analyzer-control/ac-extra2-btn/ac-extra2-btn';
+import { ACExtra3Btn } from './analyzer-control/ac-extra3-btn/ac-extra3-btn';
+import { ACFreqBtn } from './analyzer-control/ac-freq-btn/ac-freq-btn';
+import { ACMeasBtn } from './analyzer-control/ac-meas-btn/ac-meas-btn';
+import { ACMinHoldBtn } from './analyzer-control/ac-minhold-btn/ac-minhold-btn';
+import { ACMkrBtn } from './analyzer-control/ac-mkr-btn/ac-mkr-btn';
+import { ACMkr2Btn } from './analyzer-control/ac-mkr2-btn/ac-mkr2-btn';
+import { ACModeBtn } from './analyzer-control/ac-mode-btn/ac-mode-btn';
+import { ACSaveBtn } from './analyzer-control/ac-save-btn/ac-save-btn';
+import { ACSpanBtn } from './analyzer-control/ac-span-btn/ac-span-btn';
+import { ACSweepBtn } from './analyzer-control/ac-sweep-btn/ac-sweep-btn';
+import { ACTraceBtn } from './analyzer-control/ac-trace-btn/ac-trace-btn';
+import { BaseControlButton } from './analyzer-control/base-control-button';
 import { RealTimeSpectrumAnalyzer } from './real-time-spectrum-analyzer';
 
 export interface AnalyzerControlOptions {
@@ -18,7 +35,61 @@ export interface AnalyzerControlOptions {
  * Numbers must be "pressed" rather than typed, mimicking physical equipment
  */
 export class AnalyzerControl extends BaseElement {
-  protected readonly html_ = html`
+  protected html_ = ''; // This needs set dynamically during initDom_
+
+  readonly specA: RealTimeSpectrumAnalyzer;
+  domCache: { [key: string]: HTMLElement } = {};
+
+  // Display state
+  private ghz: string = '0';
+  private mhz: string = '0';
+  private khz: string = '0';
+
+  // Control state
+  controlSelection: BaseControlButton | null = null;
+  private numberSelection: 'ghz' | 'mhz' | 'khz' | null = null;
+
+  constructor(options: AnalyzerControlOptions) {
+    super();
+    this.specA = options.spectrumAnalyzer;
+    this.dom_ = options.element;
+  }
+
+  init_(parentId: string, type: 'add' | 'replace' = 'replace'): void {
+    super.init_(parentId, type);
+    this.initializeValues();
+  }
+
+  private initializeValues(): void {
+    // Initialize with current center frequency in MHz
+    this.numberSelection = 'mhz';
+    this.mhz = (this.specA.state.centerFrequency / 1e6).toFixed(3);
+    this.ghz = '0';
+    this.khz = '0';
+    this.controlSelection = ACFreqBtn.getInstance();
+    this.updateDisplay();
+  }
+
+  initDom_(parentId: string, type: 'add' | 'replace' = 'replace'): HTMLElement {
+    const panelElements = [
+      ACFreqBtn.create(this),
+      ACSpanBtn.create(this),
+      ACAmptBtn.create(this),
+      ACMkrBtn.create(this),
+      ACMkr2Btn.create(this),
+      ACBWBtn.create(this),
+      ACSweepBtn.create(this),
+      ACTraceBtn.create(this),
+      ACMinHoldBtn.create(this),
+      ACSaveBtn.create(this),
+      ACMeasBtn.create(this),
+      ACModeBtn.create(this),
+      ACExtra1Btn.create(this),
+      ACExtra2Btn.create(this),
+      ACExtra3Btn.create(this),
+    ];
+
+    this.html_ = html`
     <div class="analyzer-control-content">
 
     <!-- Left Side: Sub-Menu Selection -->
@@ -50,55 +121,26 @@ export class AnalyzerControl extends BaseElement {
       <!-- Top Row: Menu Selection -->
       <div class="analyzer-control-buttons">
         <div class="control-row">
-          <button class="physical-button control-button" id="freq-button" aria-label="Frequency">
-          <span class="button-text">Freq</span>
-          </button>
-          <button class="physical-button control-button" id="span-button" aria-label="Span">
-          <span class="button-text">Span</span>
-          </button>
-          <button class="physical-button control-button" id="ampt-button" aria-label="Amplitude">
-            <span class="button-text">Ampt</span>
-          </button>
-          <button class="physical-button control-button" id="marker-button" aria-label="Marker">
-            <span class="button-text">Mkr</span>
-          </button>
-          <button class="physical-button control-button" id="mkr2-button" aria-label="Marker2">
-            <span class="button-text">Mkr ></span>
+          ${ACFreqBtn.getInstance().html}
+          ${ACSpanBtn.getInstance().html}
+          ${ACAmptBtn.getInstance().html}
+          ${ACMkrBtn.getInstance().html}
+          ${ACMkr2Btn.getInstance().html}
           </button>
         </div>
         <div class="control-row">
-          <button class="physical-button control-button" id="bw-button" aria-label="Bandwidth">
-            <span class="button-text">BW</span>
-          </button>
-          <button class="physical-button control-button" id="sweep-button" aria-label="Sweep">
-            <span class="button-text">Sweep</span>
-          </button>
-          <button class="physical-button control-button" id="max-hold-button" aria-label="Trace">
-            <span class="button-text">Trace</span>
-          </button>
-          <button class="physical-button control-button" id="min-hold-button" aria-label="Min Hold">
-            <span class="button-text">Min Hold</span>
-          </button>
-          <button class="physical-button control-button" id="save-button" aria-label="Save">
-            <span class="button-text">Save</span>
-          </button>
+          ${ACBWBtn.getInstance().html}
+          ${ACSweepBtn.getInstance().html}
+          ${ACTraceBtn.getInstance().html}
+          ${ACMinHoldBtn.getInstance().html}
+          ${ACSaveBtn.getInstance().html}
         </div>
         <div class="control-row">
-          <button class="physical-button control-button" id="meas-button" aria-label="Measurement">
-            <span class="button-text">Meas</span>
-          </button>
-          <button class="physical-button control-button" id="mode-button" aria-label="Mode">
-            <span class="button-text">Mode</span>
-          </button>
-          <button class="physical-button control-button" id="extra1-button" aria-label="Extra 1">
-            <span class="button-text">?</span>
-          </button>
-          <button class="physical-button control-button" id="extra2-button" aria-label="Extra 2">
-            <span class="button-text">?</span>
-          </button>
-          <button class="physical-button control-button" id="extra3-button" aria-label="Extra 3">
-            <span class="button-text">?</span>
-          </button>
+          ${ACMeasBtn.getInstance().html}
+          ${ACModeBtn.getInstance().html}
+          ${ACExtra1Btn.getInstance().html}
+          ${ACExtra2Btn.getInstance().html}
+          ${ACExtra3Btn.getInstance().html}
         </div>
       </div>
 
@@ -194,43 +236,14 @@ export class AnalyzerControl extends BaseElement {
         </button>
       </div>
     </div>
-    `;
+    `
 
-  private readonly specA: RealTimeSpectrumAnalyzer;
-  private domCache: { [key: string]: HTMLElement } = {};
-
-  // Display state
-  private ghz: string = '0';
-  private mhz: string = '0';
-  private khz: string = '0';
-
-  // Control state
-  private controlSelection: 'freq' | 'span' | null = null;
-  private numberSelection: 'ghz' | 'mhz' | 'khz' | null = null;
-
-  constructor(options: AnalyzerControlOptions) {
-    super();
-    this.specA = options.spectrumAnalyzer;
-    this.dom_ = options.element;
-  }
-
-  init_(parentId: string, type: 'add' | 'replace' = 'replace'): void {
-    super.init_(parentId, type);
-    this.initializeValues();
-  }
-
-  private initializeValues(): void {
-    // Initialize with current center frequency in MHz
-    this.numberSelection = 'mhz';
-    this.mhz = (this.specA.getConfig().centerFrequency / 1e6).toFixed(3);
-    this.ghz = '0';
-    this.khz = '0';
-    this.controlSelection = 'freq';
-    this.updateDisplay();
-  }
-
-  initDom_(parentId: string, type: 'add' | 'replace' = 'replace'): HTMLElement {
+    // Reinitialize DOM with final HTML
     const parentDom = super.initDom_(parentId, type);
+
+    for (const element of panelElements) {
+      element.addEventListeners();
+    }
 
     this.domCache['label-cell-1'] = parentDom.querySelector('#label-cell-1')!;
     this.domCache['label-cell-2'] = parentDom.querySelector('#label-cell-2')!;
@@ -248,7 +261,6 @@ export class AnalyzerControl extends BaseElement {
     this.domCache['label-select-button-6'] = parentDom.querySelector('#label-select-button-6')!;
     this.domCache['label-select-button-7'] = parentDom.querySelector('#label-select-button-7')!;
     this.domCache['label-select-button-8'] = parentDom.querySelector('#label-select-button-8')!;
-    this.domCache['freq-button'] = parentDom.querySelector('#freq-button')!;
     this.domCache['span-button'] = parentDom.querySelector('#span-button')!;
     this.domCache['ampt-button'] = parentDom.querySelector('#ampt-button')!;
     this.domCache['marker-button'] = parentDom.querySelector('#marker-button')!;
@@ -295,7 +307,6 @@ export class AnalyzerControl extends BaseElement {
     this.domCache['khz-select']?.addEventListener('click', () => this.handleUnitSelect('khz'));
 
     // Control buttons (Freq, Span, Max Hold, Marker)
-    this.domCache['freq-button']?.addEventListener('click', () => this.handleFreqSubMenuClick());
     this.domCache['span-button']?.addEventListener('click', () => this.handleSpanClick());
     this.domCache['max-hold-button']?.addEventListener('click', () => this.handleMaxHoldClick());
     this.domCache['min-hold-button']?.addEventListener('click', () => this.handleMinHoldClick());
@@ -322,8 +333,7 @@ export class AnalyzerControl extends BaseElement {
     this.khz = '0';
 
     // Set the selected unit to the current value
-    const config = this.specA.getConfig();
-    const currentValue = this.controlSelection === 'freq' ? config.centerFrequency : config.span;
+    const currentValue = this.controlSelection === ACFreqBtn.getInstance() ? this.specA.state.centerFrequency : this.specA.state.span;
 
     if (unit === 'ghz') {
       this.ghz = (currentValue / 1e9).toFixed(6);
@@ -337,64 +347,13 @@ export class AnalyzerControl extends BaseElement {
     this.playSound();
   }
 
-  private handleFreqSubMenuClick(): void {
-    // Update the sub-menu labels and buttons if needed
-    this.updateSubMenu('freq');
-  }
-
-  private handleCenterFreqClick(): void {
-    this.controlSelection = 'freq';
-
-    // Update the display with current center frequency
-    const centerFreq = this.specA.getConfig().centerFrequency;
-    this.updateValueForSelection(centerFreq);
-    this.updateDisplay();
-    this.playSound();
-  }
-
-  private handleStartFreqClick(): void {
-    this.controlSelection = 'freq';
-
-    // Update the display with current start frequency
-    const startFreq = this.specA.getConfig().centerFrequency;
-    this.updateValueForSelection(startFreq);
-    this.updateDisplay();
-    this.playSound();
-  }
-
-  private handleStopFreqClick(): void {
-    this.controlSelection = 'freq';
-
-    // Update the display with current stop frequency
-    const stopFreq = this.specA.getConfig().centerFrequency;
-    this.updateValueForSelection(stopFreq);
-    this.updateDisplay();
-    this.playSound();
-  }
-
-  private updateSubMenu(subMenu: string): void {
+  updateSubMenu(subMenu: string): void {
     this.clearSubMenu();
+
+    Logger.info(`AnalyzerControl: Updating sub-menu to ${subMenu}`);
 
     switch (subMenu) {
       case 'freq':
-        this.domCache['label-cell-1'].textContent = 'Center Freq';
-        this.domCache['label-cell-2'].textContent = 'Start Freq';
-        this.domCache['label-cell-3'].textContent = 'Stop Freq';
-        this.domCache['label-cell-4'].textContent = '';
-        this.domCache['label-cell-5'].textContent = '';
-        this.domCache['label-cell-6'].textContent = '';
-        this.domCache['label-cell-7'].textContent = '';
-        this.domCache['label-cell-8'].textContent = '';
-
-        this.domCache['label-select-button-1']?.addEventListener('click', () => {
-          this.handleCenterFreqClick();
-        });
-        this.domCache['label-select-button-2']?.addEventListener('click', () => {
-          this.handleStartFreqClick();
-        });
-        this.domCache['label-select-button-3']?.addEventListener('click', () => {
-          this.handleStopFreqClick();
-        });
         break;
       default:
         // Other sub-menus can be implemented similarly
@@ -412,10 +371,10 @@ export class AnalyzerControl extends BaseElement {
   }
 
   private handleSpanClick(): void {
-    this.controlSelection = 'span';
+    this.controlSelection = ACSpanBtn.getInstance();
 
     // Update the display with current span
-    const span = this.specA.getConfig().span;
+    const span = this.specA.state.span;
     this.updateValueForSelection(span);
     this.updateDisplay();
     this.playSound();
@@ -443,9 +402,6 @@ export class AnalyzerControl extends BaseElement {
 
   private handleMarkerClick(): void {
     this.specA.state.isMarkerOn = !this.specA.state.isMarkerOn;
-
-    // Update spectrum analyzer marker state
-    this.specA.getConfig();
 
     // Note: Marker drawing would need to be implemented in SpectrumAnalyzer
     this.updateDisplay();
@@ -481,9 +437,9 @@ export class AnalyzerControl extends BaseElement {
     const numValue = (Number.parseFloat(currentValue) || 0) as Hertz;
     const hzValue = this.convertToHz(numValue);
 
-    if (this.controlSelection === 'freq') {
+    if (this.controlSelection === ACFreqBtn.getInstance()) {
       this.specA.changeCenterFreq(hzValue);
-    } else if (this.controlSelection === 'span') {
+    } else if (this.controlSelection === ACSpanBtn.getInstance()) {
       this.specA.changeBandwidth(hzValue);
     }
 
@@ -504,7 +460,7 @@ export class AnalyzerControl extends BaseElement {
     else if (this.numberSelection === 'khz') this.khz = value;
   }
 
-  private updateValueForSelection(hertzValue: Hertz): void {
+  updateValueForSelection(hertzValue: Hertz): void {
     if (this.numberSelection === 'ghz') {
       this.ghz = (hertzValue / 1e9).toFixed(6);
     } else if (this.numberSelection === 'mhz') {
@@ -522,7 +478,7 @@ export class AnalyzerControl extends BaseElement {
     return value;
   }
 
-  private updateDisplay(): void {
+  updateDisplay(): void {
     if (!this.dom_) return;
 
     // Update display values
@@ -540,17 +496,17 @@ export class AnalyzerControl extends BaseElement {
     this.updateButtonState('#khz-select', this.numberSelection === 'khz');
 
     // Update button states - control selection
-    this.updateButtonState('#freq-button', this.controlSelection === 'freq');
-    this.updateButtonState('#span-button', this.controlSelection === 'span');
+    this.updateButtonState('#freq-button', this.controlSelection === ACFreqBtn.getInstance());
+    this.updateButtonState('#span-button', this.controlSelection === ACSpanBtn.getInstance());
     this.updateButtonState('#max-hold-button', this.specA.state.isMaxHold);
     this.updateButtonState('#min-hold-button', this.specA.state.isMinHold);
     this.updateButtonState('#marker-button', this.specA.state.isMarkerOn);
 
-    EventBus.getInstance().emit(Events.SPEC_A_CONFIG_CHANGED, this.specA.getConfig());
+    EventBus.getInstance().emit(Events.SPEC_A_CONFIG_CHANGED, this.specA.state);
   }
 
   private updateButtonState(selector: string, isActive: boolean): void {
-    const button = qs<HTMLButtonElement>(selector, this.dom_!);
+    const button = qs<HTMLButtonElement>(selector, this.dom_);
     if (button) {
       if (isActive) {
         button.classList.add('active');

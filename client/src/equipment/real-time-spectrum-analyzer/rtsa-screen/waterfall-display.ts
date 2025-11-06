@@ -266,10 +266,14 @@ export class WaterfallDisplay extends RTSAScreen {
       const randAmp2 = 1.2 + Math.random() * 0.6;
       const randAmp3 = 0.2 + Math.random() * 0.4;
 
-      let noise = base + (Math.random() - 0.5) * 3;
-      noise += Math.sin((x / 50) + time + randPhase1) * randAmp1;
-      noise += Math.sin((x / 400) + time / 10 + randPhase2) * randAmp2;
-      noise += Math.sin((x * 2 + time * 10 + randPhase3)) * randAmp3;
+      let noise =
+        base +
+        (Math.random() - 0.5) * 2; // random component within +/-1 dB
+      noise += Math.sin((x / 50) + time + randPhase1) * randAmp1 * 0.5;
+      noise += Math.sin((x / 400) + time / 10 + randPhase2) * randAmp2 * 0.5;
+      noise += Math.sin((x * 2 + time * 10 + randPhase3)) * randAmp3 * 0.5;
+      // Clamp noise to within +/-1 dB of base
+      noise = Math.max(base - 1, Math.min(base + 1, noise));
 
       if (Math.random() > 0.999) {
         noise += 3 + Math.random() * 3;

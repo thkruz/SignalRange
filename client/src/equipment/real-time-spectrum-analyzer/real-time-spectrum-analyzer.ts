@@ -21,10 +21,9 @@ export interface RealTimeSpectrumAnalyzerState {
   isMinHold: boolean;
   isMarkerOn: boolean;
   refreshRate: number; // in Hz
-  startFrequency: Hertz; // Hz - start frequency
   centerFrequency: Hertz; // Hz - center frequency
-  stopFrequency: Hertz; // Hz - stop frequency
   span: Hertz; // Hz - bandwidth
+  lockedControl: 'freq' | 'span';
   hold: boolean; // Hold max amplitude
   minAmplitude: number;
   maxAmplitude: number;
@@ -67,10 +66,9 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
       isMaxHold: false,
       isMinHold: false,
       isMarkerOn: false,
-      startFrequency: 4760e6 as Hertz,
       centerFrequency: 4810e6 as Hertz,
-      stopFrequency: 4860e6 as Hertz,
       span: 100e6 as Hertz,
+      lockedControl: 'freq',
       hold: false,
       minAmplitude: -120,
       maxAmplitude: -80,
@@ -80,8 +78,6 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
       inputUnit: 'MHz',
       inputValue: '',
     };
-    this.state.startFrequency = (this.state.centerFrequency - this.state.span / 2) as Hertz;
-    this.state.stopFrequency = (this.state.centerFrequency + this.state.span / 2) as Hertz;
     this.state.inputValue = (this.state.centerFrequency / 1e6).toString(); // in MHz
     this.state.inputUnit = 'MHz';
 

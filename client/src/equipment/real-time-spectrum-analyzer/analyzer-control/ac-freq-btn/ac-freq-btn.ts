@@ -74,7 +74,7 @@ export class ACFreqBtn extends BaseControlButton {
     this.subMenuSelected = 'start';
 
     // Update the display with current start frequency
-    const startFreq = this.analyzerControl.specA.state.startFrequency;
+    const startFreq = (this.analyzerControl.specA.state.centerFrequency - this.analyzerControl.specA.state.span / 2) as Hertz;
     this.analyzerControl.specA.state.inputValue = (startFreq / 1e6).toString();
     this.analyzerControl.specA.state.inputUnit = 'MHz';
 
@@ -86,7 +86,7 @@ export class ACFreqBtn extends BaseControlButton {
     this.subMenuSelected = 'stop';
 
     // Update the display with current stop frequency
-    const stopFreq = this.analyzerControl.specA.state.stopFrequency;
+    const stopFreq = (this.analyzerControl.specA.state.centerFrequency + this.analyzerControl.specA.state.span / 2) as Hertz;
     this.analyzerControl.specA.state.inputValue = (stopFreq / 1e6).toString();
     this.analyzerControl.specA.state.inputUnit = 'MHz';
 
@@ -97,8 +97,9 @@ export class ACFreqBtn extends BaseControlButton {
   onEnterPressed(): void {
     Logger.info(`Processing frequency input for ${this.subMenuSelected} frequency.`);
 
-    const inputValue = parseFloat(this.analyzerControl.specA.state.inputValue);
-    const inputUnit = this.analyzerControl.specA.state.inputUnit;
+    const analyzerState = this.analyzerControl.specA.state;
+    const inputValue = parseFloat(analyzerState.inputValue);
+    const inputUnit = analyzerState.inputUnit;
     let frequencyInHz: number;
 
     // Convert input value to Hz based on selected unit
@@ -120,12 +121,48 @@ export class ACFreqBtn extends BaseControlButton {
 
     // Update the appropriate frequency based on submenu selection
     if (this.subMenuSelected === 'center') {
-      this.analyzerControl.specA.state.centerFrequency = frequencyInHz as Hertz;
+      analyzerState.centerFrequency = frequencyInHz as Hertz;
     } else if (this.subMenuSelected === 'start') {
-      this.analyzerControl.specA.state.startFrequency = frequencyInHz as Hertz;
+      switch (analyzerState.lockedControl) {
+        case 'freq':
+          {
+            // Adjust the span to meet new start frequency while keeping stop frequency constant
+            const currentStopFreq = (analyzerState.centerFrequency + analyzerState.span / 2) as Hertz;
+
+            analyzerState.span = (currentStopFreq - frequencyInHz) as Hertz;
+            analyzerState.centerFrequency = (frequencyInHz + analyzerState.span / 2) as Hertz;
+          }
+          break;
+        case 'span':
+          {
+            // Update the center frequency based on new start frequency and current span
+            const span = analyzerState.span;
+            analyzerState.centerFrequency = (frequencyInHz + span / 2) as Hertz;
+          }
+          break;
+      }
     } else if (this.subMenuSelected === 'stop') {
-      this.analyzerControl.specA.state.stopFrequency = frequencyInHz as Hertz;
+      switch (analyzerState.lockedControl) {
+        case 'freq':
+          {
+            // Adjust the span to meet new stop frequency while keeping start frequency constant
+            const currentStartFreq = (analyzerState.centerFrequency - analyzerState.span / 2) as Hertz;
+
+            analyzerState.span = (frequencyInHz - currentStartFreq) as Hertz;
+            analyzerState.centerFrequency = (currentStartFreq + analyzerState.span / 2) as Hertz;
+          }
+          break;
+        case 'span':
+          {
+            // Update the center frequency based on new stop frequency and current span
+            const span = analyzerState.span;
+            analyzerState.centerFrequency = (frequencyInHz - span / 2) as Hertz;
+          }
+          break;
+      }
     }
+
+    analyzerState.lockedControl = 'freq';
 
     this.playSound();
   }

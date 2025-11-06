@@ -24,7 +24,7 @@ export class ACMeasBtn extends BaseControlButton {
     return new ACMeasBtn();
   }
 
-  protected handleClick_(): void {
+  protected handleClick(): void {
     if (this.analyzerControl) {
       this.analyzerControl.updateSubMenu('meas');
     }

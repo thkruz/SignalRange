@@ -1,9 +1,7 @@
 import { Logger } from '@app/logging/logger';
 import { BaseElement } from '../../components/base-element';
 import { html } from "../../engine/utils/development/formatter";
-import { qs, qsa } from "../../engine/utils/query-selector";
-import { EventBus } from '../../events/event-bus';
-import { Events } from '../../events/events';
+import { qsa } from "../../engine/utils/query-selector";
 import './analyzer-control.css';
 import { ACAmptBtn } from './analyzer-control/ac-ampt-btn/ac-ampt-btn';
 import { ACBWBtn } from './analyzer-control/ac-bw-btn/ac-bw-btn';
@@ -57,7 +55,11 @@ export class AnalyzerControl extends BaseElement {
   private initializeValues(): void {
     // Initialize with current center frequency in MHz
     this.controlSelection = ACFreqBtn.getInstance();
-    this.updateDisplay();
+    (this.controlSelection as ACFreqBtn).handleClick(); // Set up sub-menu for frequency
+    const centerFreqMHz = this.specA.state.centerFrequency / 1e6;
+    this.specA.state.inputValue = centerFreqMHz.toString();
+    this.specA.state.inputUnit = 'MHz';
+    this.specA.syncDomWithState();
   }
 
   initDom_(parentId: string, type: 'add' | 'replace' = 'replace'): HTMLElement {
@@ -250,20 +252,6 @@ export class AnalyzerControl extends BaseElement {
     this.domCache['label-select-button-6'] = parentDom.querySelector('#label-select-button-6')!;
     this.domCache['label-select-button-7'] = parentDom.querySelector('#label-select-button-7')!;
     this.domCache['label-select-button-8'] = parentDom.querySelector('#label-select-button-8')!;
-    this.domCache['span-button'] = parentDom.querySelector('#span-button')!;
-    this.domCache['ampt-button'] = parentDom.querySelector('#ampt-button')!;
-    this.domCache['marker-button'] = parentDom.querySelector('#marker-button')!;
-    this.domCache['mkr2-button'] = parentDom.querySelector('#mkr2-button')!;
-    this.domCache['bw-button'] = parentDom.querySelector('#bw-button')!;
-    this.domCache['sweep-button'] = parentDom.querySelector('#sweep-button')!;
-    this.domCache['max-hold-button'] = parentDom.querySelector('#max-hold-button')!;
-    this.domCache['min-hold-button'] = parentDom.querySelector('#min-hold-button')!;
-    this.domCache['save-button'] = parentDom.querySelector('#save-button')!;
-    this.domCache['meas-button'] = parentDom.querySelector('#meas-button')!;
-    this.domCache['mode-button'] = parentDom.querySelector('#mode-button')!;
-    this.domCache['extra1-button'] = parentDom.querySelector('#extra1-button')!;
-    this.domCache['extra2-button'] = parentDom.querySelector('#extra2-button')!;
-    this.domCache['extra3-button'] = parentDom.querySelector('#extra3-button')!;
     this.domCache['7-button'] = parentDom.querySelector('.num-button[data-value="7"]')!;
     this.domCache['8-button'] = parentDom.querySelector('.num-button[data-value="8"]')!;
     this.domCache['9-button'] = parentDom.querySelector('.num-button[data-value="9"]')!;
@@ -358,6 +346,8 @@ export class AnalyzerControl extends BaseElement {
       }
 
       Logger.info(`AnalyzerControl: Converted frequency: ${frequencyHz} Hz`);
+
+      this.controlSelection.onEnterPressed();
     } else if (value === 'esc') {
       // Clear input
       this.specA.state.inputValue = '';
@@ -378,30 +368,6 @@ export class AnalyzerControl extends BaseElement {
 
     this.specA.syncDomWithState();
     this.playSound();
-  }
-
-  updateDisplay(): void {
-    if (!this.dom_) return;
-
-    // Update button states - control selection
-    this.updateButtonState('#freq-button', this.controlSelection === ACFreqBtn.getInstance());
-    this.updateButtonState('#span-button', this.controlSelection === ACSpanBtn.getInstance());
-    this.updateButtonState('#max-hold-button', this.specA.state.isMaxHold);
-    this.updateButtonState('#min-hold-button', this.specA.state.isMinHold);
-    this.updateButtonState('#marker-button', this.specA.state.isMarkerOn);
-
-    EventBus.getInstance().emit(Events.SPEC_A_CONFIG_CHANGED, this.specA.state);
-  }
-
-  private updateButtonState(selector: string, isActive: boolean): void {
-    const button = qs<HTMLButtonElement>(selector, this.dom_);
-    if (button) {
-      if (isActive) {
-        button.classList.add('active');
-      } else {
-        button.classList.remove('active');
-      }
-    }
   }
 
   private playSound(): void {

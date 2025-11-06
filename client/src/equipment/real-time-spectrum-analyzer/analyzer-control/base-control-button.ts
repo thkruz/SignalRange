@@ -1,5 +1,6 @@
 import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
+import { Logger } from "@app/logging/logger";
 
 export abstract class BaseControlButton {
   private readonly html_: string;
@@ -38,10 +39,15 @@ export abstract class BaseControlButton {
   }
 
   addEventListeners(): void {
-    this.dom.addEventListener('click', this.handleClick_.bind(this));
+    this.dom.addEventListener('click', this.handleClick.bind(this));
   }
 
-  protected abstract handleClick_(): void;
+  protected abstract handleClick(): void;
+
+  // TODO: This should be an abstract eventually
+  onEnterPressed(): void {
+    Logger.info(`Processing request with ${this.uniqueId} because enter was pressed.`);
+  }
 
   protected playSound(): void {
     // TODO: Integrate sound system when available

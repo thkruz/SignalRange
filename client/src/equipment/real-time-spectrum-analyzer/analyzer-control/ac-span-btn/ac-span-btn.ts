@@ -24,7 +24,7 @@ export class ACSpanBtn extends BaseControlButton {
     return new ACSpanBtn();
   }
 
-  protected handleClick_(): void {
+  protected handleClick(): void {
     this.analyzerControl.domCache['label-cell-1'].textContent = 'Set Span';
     this.analyzerControl.domCache['label-cell-2'].textContent = '';
     this.analyzerControl.domCache['label-cell-3'].textContent = '';

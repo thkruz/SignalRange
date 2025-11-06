@@ -24,13 +24,13 @@ export class ACTraceBtn extends BaseControlButton {
     return new ACTraceBtn();
   }
 
-  protected handleClick_(): void {
+  protected handleClick(): void {
     this.analyzerControl.specA.state.isMaxHold = !this.analyzerControl.specA.state.isMaxHold;
 
     // Update spectrum analyzer
     this.analyzerControl.specA.resetHoldData();
 
-    this.analyzerControl.updateDisplay();
+
     this.playSound();
   }
 }

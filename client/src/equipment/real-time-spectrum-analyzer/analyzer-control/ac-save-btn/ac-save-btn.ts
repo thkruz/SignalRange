@@ -25,7 +25,7 @@ export class ACSaveBtn extends BaseControlButton {
     return new ACSaveBtn();
   }
 
-  protected handleClick_(): void {
+  protected handleClick(): void {
     const currentMode = this.analyzerControl.specA.state.screenMode;
 
     switch (currentMode) {

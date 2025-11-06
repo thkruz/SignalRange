@@ -1,32 +1,32 @@
 import { AnalyzerControl } from "../../analyzer-control";
 import { BaseControlButton } from "../base-control-button";
-import './ac-extra2-btn.css';
+import './ac-freq-btn.css';
 
-export class ACExtra2Btn extends BaseControlButton {
+export class ACFreqBtn extends BaseControlButton {
   private readonly analyzerControl: AnalyzerControl;
 
   private constructor(analyzerControl?: AnalyzerControl) {
     super({
-      uniqueId: 'ac-extra2-btn',
-      label: 'Extra2',
-      ariaLabel: 'Extra 2',
+      uniqueId: 'ac-freq-btn',
+      label: 'Freq',
+      ariaLabel: 'Frequency',
     });
     if (analyzerControl) {
       this.analyzerControl = analyzerControl;
     }
   }
 
-  static create(analyzerControl: AnalyzerControl): ACExtra2Btn {
-    return new ACExtra2Btn(analyzerControl);
+  static create(analyzerControl: AnalyzerControl): ACFreqBtn {
+    return new ACFreqBtn(analyzerControl);
   }
 
-  static getInstance(): ACExtra2Btn {
-    return new ACExtra2Btn();
+  static getInstance(): ACFreqBtn {
+    return new ACFreqBtn();
   }
 
   protected handleClick(): void {
     if (this.analyzerControl) {
-      this.analyzerControl.updateSubMenu('extra2');
+      this.analyzerControl.updateSubMenu('freq');
     }
   }
 }

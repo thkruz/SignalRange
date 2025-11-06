@@ -10,8 +10,8 @@ import { SpectralDensityPlot } from './rtsa-screen/spectral-density-plot';
 import { WaterfallDisplay } from "./rtsa-screen/waterfall-display";
 
 export interface RealTimeSpectrumAnalyzerState {
-  inputUnit: string | number;
-  inputValue: string | number;
+  inputUnit: 'Hz' | 'kHz' | 'MHz' | 'GHz' | 'dBm' | 'dBW' | 'W';
+  inputValue: string;
   id: number; // 1-4
   team_id: number;
   antenna_id: number;
@@ -82,6 +82,8 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
     };
     this.state.startFrequency = (this.state.centerFrequency - this.state.span / 2) as Hertz;
     this.state.stopFrequency = (this.state.centerFrequency + this.state.span / 2) as Hertz;
+    this.state.inputValue = (this.state.centerFrequency / 1e6).toString(); // in MHz
+    this.state.inputUnit = 'MHz';
 
     this.build(parentId);
 

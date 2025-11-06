@@ -24,7 +24,7 @@ export class ACModeBtn extends BaseControlButton {
     return new ACModeBtn();
   }
 
-  protected handleClick_(): void {
+  protected handleClick(): void {
     if (this.analyzerControl) {
       this.analyzerControl.updateSubMenu('mode');
     }

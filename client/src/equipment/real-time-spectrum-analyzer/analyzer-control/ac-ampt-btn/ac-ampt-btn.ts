@@ -26,7 +26,7 @@ export class ACAmptBtn extends BaseControlButton {
     return this.instance_;
   }
 
-  protected handleClick_(): void {
+  protected handleClick(): void {
     this.analyzerControl.domCache['label-cell-1'].textContent = 'Max Amplitude';
     this.analyzerControl.domCache['label-cell-2'].textContent = 'Min Amplitude';
     this.analyzerControl.domCache['label-cell-3'].textContent = '';
@@ -46,13 +46,13 @@ export class ACAmptBtn extends BaseControlButton {
 
   private handleMinAmplitudeClick(): void {
     // Update the display with current min amplitude
-    this.analyzerControl.updateDisplay();
+
     this.playSound();
   }
 
   private handleMaxAmplitudeClick(): void {
     // Update the display with current min amplitude
-    this.analyzerControl.updateDisplay();
+
     this.playSound();
   }
 }

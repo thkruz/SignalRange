@@ -24,7 +24,7 @@ export class ACSweepBtn extends BaseControlButton {
     return new ACSweepBtn();
   }
 
-  protected handleClick_(): void {
+  protected handleClick(): void {
     if (this.analyzerControl) {
       this.analyzerControl.updateSubMenu('sweep');
     }

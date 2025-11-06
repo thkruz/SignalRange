@@ -24,14 +24,14 @@ export class ACMinHoldBtn extends BaseControlButton {
     return new ACMinHoldBtn();
   }
 
-  protected handleClick_(): void {
+  protected handleClick(): void {
     this.analyzerControl.updateSubMenu('minhold');
     this.analyzerControl.specA.state.isMinHold = !this.analyzerControl.specA.state.isMinHold;
 
     // Update spectrum analyzer
     this.analyzerControl.specA.resetHoldData();
 
-    this.analyzerControl.updateDisplay();
+
     this.playSound();
   }
 }

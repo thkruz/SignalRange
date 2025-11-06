@@ -1,3 +1,5 @@
+import { Logger } from "@app/logging/logger";
+import { Hertz } from "@app/types";
 import { AnalyzerControl } from "../../analyzer-control";
 import { BaseControlButton } from "../base-control-button";
 import './ac-freq-btn.css';
@@ -5,6 +7,7 @@ import './ac-freq-btn.css';
 export class ACFreqBtn extends BaseControlButton {
   private static instance_: ACFreqBtn;
   private readonly analyzerControl: AnalyzerControl;
+  private subMenuSelected: 'center' | 'start' | 'stop' | null = null;
 
   private constructor(analyzerControl?: AnalyzerControl) {
     super({
@@ -26,7 +29,9 @@ export class ACFreqBtn extends BaseControlButton {
     return this.instance_;
   }
 
-  protected handleClick_(): void {
+  handleClick(): void {
+    this.analyzerControl.controlSelection = this;
+
     this.analyzerControl.domCache['label-cell-1'].textContent = 'Center Freq';
     this.analyzerControl.domCache['label-cell-2'].textContent = 'Start Freq';
     this.analyzerControl.domCache['label-cell-3'].textContent = 'Stop Freq';
@@ -48,32 +53,74 @@ export class ACFreqBtn extends BaseControlButton {
   }
 
   private handleCenterFreqClick(): void {
-    this.analyzerControl.controlSelection = this;
+    this.subMenuSelected = 'center';
 
     // Update the display with current center frequency
-    // const centerFreq = this.analyzerControl.specA.state.centerFrequency;
-    // this.analyzerControl.updateValueForSelection(centerFreq);
-    this.analyzerControl.updateDisplay();
+    const centerFreq = this.analyzerControl.specA.state.centerFrequency;
+    this.analyzerControl.specA.state.inputValue = centerFreq.toString();
+    this.analyzerControl.specA.state.inputUnit = 'Hz';
+
     this.playSound();
   }
 
   private handleStartFreqClick(): void {
-    this.analyzerControl.controlSelection = this;
+    this.subMenuSelected = 'start';
 
     // Update the display with current start frequency
-    // const startFreq = this.analyzerControl.specA.state.startFrequency;
-    // this.analyzerControl.updateValueForSelection(startFreq);
-    this.analyzerControl.updateDisplay();
+    const startFreq = this.analyzerControl.specA.state.startFrequency;
+    this.analyzerControl.specA.state.inputValue = startFreq.toString();
+    this.analyzerControl.specA.state.inputUnit = 'Hz';
+
     this.playSound();
   }
 
   private handleStopFreqClick(): void {
-    this.analyzerControl.controlSelection = this;
+    this.subMenuSelected = 'stop';
 
     // Update the display with current stop frequency
-    // const stopFreq = this.analyzerControl.specA.state.stopFrequency;
-    // this.analyzerControl.updateValueForSelection(stopFreq);
-    this.analyzerControl.updateDisplay();
+    const stopFreq = this.analyzerControl.specA.state.stopFrequency;
+    this.analyzerControl.specA.state.inputValue = stopFreq.toString();
+    this.analyzerControl.specA.state.inputUnit = 'Hz';
+
+    this.playSound();
+  }
+
+  onEnterPressed(): void {
+    Logger.info(`Processing frequency input for ${this.subMenuSelected} frequency.`);
+
+    const inputValue = parseFloat(this.analyzerControl.specA.state.inputValue);
+    const inputUnit = this.analyzerControl.specA.state.inputUnit;
+    let frequencyInHz: number;
+
+    // Convert input value to Hz based on selected unit
+    switch (inputUnit) {
+      case 'GHz':
+        frequencyInHz = inputValue * 1e9;
+        break;
+      case 'MHz':
+        frequencyInHz = inputValue * 1e6;
+        break;
+      case 'kHz':
+        frequencyInHz = inputValue * 1e3;
+        break;
+      case 'Hz':
+        break;
+      default:
+        throw new Error('Invalid frequency unit');
+    }
+
+    // Update the appropriate frequency based on submenu selection
+    if (this.subMenuSelected === 'center') {
+      this.analyzerControl.specA.state.centerFrequency = frequencyInHz as Hertz;
+    } else if (this.subMenuSelected === 'start') {
+      this.analyzerControl.specA.state.startFrequency = frequencyInHz as Hertz;
+    } else if (this.subMenuSelected === 'stop') {
+      this.analyzerControl.specA.state.stopFrequency = frequencyInHz as Hertz;
+    }
+
+    // Clear input after processing
+    this.analyzerControl.specA.state.inputValue = '';
+    this.analyzerControl.specA.state.inputUnit = 'Hz';
     this.playSound();
   }
 }

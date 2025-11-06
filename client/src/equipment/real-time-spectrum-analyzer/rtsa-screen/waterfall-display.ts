@@ -185,7 +185,7 @@ export class WaterfallDisplay extends RTSAScreen {
           frequency: (signal.frequency + this.upconvertOffset +
             (this.antenna.state.isLoopbackEnabled
               ? this.antenna.state.offset * 1e6
-              : SATELLITES[this.antenna.state.noradId].offset)) as RfFrequency
+              : SATELLITES.find(sat => sat.noradId === this.antenna.state.noradId)?.offset)) as RfFrequency
         };
 
         this.addSignalToData(rfUpSignal, minFreq, maxFreq);
@@ -197,7 +197,7 @@ export class WaterfallDisplay extends RTSAScreen {
           frequency: (signal.frequency + this.upconvertOffset - this.downconvertOffset +
             (this.antenna.state.isLoopbackEnabled
               ? this.antenna.state.offset * 1e6
-              : SATELLITES[this.antenna.state.noradId].offset)) as IfFrequency
+              : SATELLITES.find(sat => sat.noradId === this.antenna.state.noradId)?.offset)) as IfFrequency
         };
 
         this.addSignalToData(ifUpSignal, minFreq, maxFreq);

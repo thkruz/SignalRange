@@ -40,6 +40,7 @@ export class Receiver extends BaseEquipment {
   private inputData: Partial<ReceiverModemState> = {};
   private readonly antennas: Antenna[];
   private lastRenderState: ReceiverState | null = null;
+  private mediaCache: { [url: string]: HTMLImageElement | HTMLVideoElement | HTMLIFrameElement } = {};
   powerSwitch: PowerSwitch;
 
   constructor(parentId: string, unit: number, antennas: Antenna[], teamId: number = 1, serverId: number = 1) {
@@ -184,7 +185,11 @@ export class Receiver extends BaseEquipment {
             </div>
 
             <!-- Power Switch -->
-            ${this.powerSwitch.html}
+            <div class="status-indicator online">
+              <span id="rx-active-power-light" class="indicator-light ${this.activeModem.isPowered ? 'on' : 'off'}"></span>
+              <span class="indicator-label">Online</span>
+              ${this.powerSwitch.html}
+            </div>
 
           </div>
         </div>
@@ -204,6 +209,7 @@ export class Receiver extends BaseEquipment {
     this.domCache['inputFec'] = qs('.input-rx-fec', parentDom);
     this.domCache['btnApply'] = qs('.btn-apply', parentDom);
     this.domCache['monitorScreen'] = qs('.monitor-screen', parentDom);
+    this.domCache['rxActivePowerLight'] = qs('#rx-active-power-light', parentDom);
 
     const currentValueEls = parentDom.querySelectorAll('.current-value');
     this.domCache['currentValueAntenna'] = currentValueEls[0] as HTMLElement;
@@ -370,6 +376,10 @@ export class Receiver extends BaseEquipment {
   private getSignalStatus(): { text: string; class: string } {
     const visibleSignals = this.getVisibleSignals();
 
+    if (this.activeModem.isPowered === false) {
+      return { text: 'NO POWER', class: 'status-no-power' };
+    }
+
     // If 1 then good signal
     if (visibleSignals.length === 1) {
       return { text: 'SIGNAL FOUND', class: 'status-signal-found' };
@@ -469,6 +479,8 @@ export class Receiver extends BaseEquipment {
     if (JSON.stringify(this.state) === JSON.stringify(this.lastRenderState)) {
       return; // No changes, skip update
     }
+    // Save render snapshot
+    this.lastRenderState = structuredClone(this.state);
 
     const parentDom = this.domCache['parent'];
 
@@ -511,7 +523,10 @@ export class Receiver extends BaseEquipment {
     (this.domCache['currentValueModulation']).textContent = String(activeModem.modulation);
     (this.domCache['currentValueFec']).textContent = String(activeModem.fec);
 
-    // Update monitor / video feed
+    // Update power indicator light
+    this.domCache['rxActivePowerLight'].className = `indicator-light ${activeModem.isPowered ? 'on' : 'off'}`;
+
+    // Update monitor / video feed | KEEP AT BOTTOM
     const monitor = this.domCache['monitorScreen'];
     if (monitor) {
       if (!this.activeModem.isPowered) {
@@ -523,22 +538,52 @@ export class Receiver extends BaseEquipment {
 
       monitor.className = `monitor-screen ${feedUrl.length > 0 ? 'signal-found' : 'no-signal'}`;
       if (feedUrl.length > 0) {
-        const signal = visibleSignals[0];
-        if (signal.isImage && !signal.isExternal) { // internal image
-          monitor.innerHTML = `<div class="signal-indicator"><img class="image-feed" src="/images/${feedUrl}" alt="Image Feed" /></div>`;
-        } else if (signal.isImage && signal.isExternal) { // external image
-          monitor.innerHTML = `<div class="signal-indicator"><img class="external-image-feed" src="${feedUrl}" alt="External Image Feed" /></div>`;
-        } else if (signal.isExternal) { // external video
-          monitor.innerHTML = `<div class="signal-indicator"><iframe class="external-feed" src="${feedUrl}" title="External Feed"></iframe></div>`;
-        } else { // internal video
-          monitor.innerHTML = `<div class="signal-indicator"><video class="video-feed" src="/videos/${feedUrl}" alt="Video Feed" autoplay muted loop></video></div>`;
+        if (this.mediaCache[feedUrl]) {
+          // Use cached media element
+          monitor.innerHTML = '';
+          monitor.appendChild(this.mediaCache[feedUrl]);
+        } else {
+          // If not in cache, create new media element
+          const signal = visibleSignals[0];
+          if (signal.isImage && !signal.isExternal) { // internal image
+            const img = document.createElement('img');
+            img.className = 'image-feed';
+            img.src = `/images/${feedUrl}`;
+            img.alt = 'Image Feed';
+            monitor.innerHTML = `<div class="signal-indicator"></div>`;
+            monitor.querySelector('.signal-indicator')?.appendChild(img);
+            this.mediaCache[feedUrl] = img;
+          } else if (signal.isImage && signal.isExternal) { // external image
+            const img = document.createElement('img');
+            img.className = 'external-image-feed';
+            img.src = feedUrl;
+            img.alt = 'External Image Feed';
+            monitor.innerHTML = `<div class="signal-indicator"></div>`;
+            monitor.querySelector('.signal-indicator')?.appendChild(img);
+            this.mediaCache[feedUrl] = img;
+          } else if (signal.isExternal) { // external video
+            const iframe = document.createElement('iframe');
+            iframe.className = 'external-feed';
+            iframe.src = feedUrl;
+            iframe.title = 'External Feed';
+            monitor.innerHTML = `<div class="signal-indicator"></div>`;
+            monitor.querySelector('.signal-indicator')?.appendChild(iframe);
+            this.mediaCache[feedUrl] = iframe;
+          } else { // internal video
+            const video = document.createElement('video');
+            video.className = 'video-feed';
+            video.src = `/videos/${feedUrl}`;
+            video.autoplay = true;
+            video.muted = true;
+            video.loop = true;
+            monitor.innerHTML = `<div class="signal-indicator"></div>`;
+            monitor.querySelector('.signal-indicator')?.appendChild(video);
+            this.mediaCache[feedUrl] = video;
+          }
         }
       } else {
         monitor.innerHTML = `<span class="no-signal-text">NO SIGNAL</span>`;
       }
     }
-
-    // Save render snapshot
-    this.lastRenderState = structuredClone(this.state);
   }
 }

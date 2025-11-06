@@ -121,12 +121,12 @@
 .input-tx-frequency,
 .input-tx-bandwidth,
 .input-tx-power {
-  width: 60px;
+  width: 80px;
 }
 
 .config-row {
   display: grid;
-  grid-template-columns: 85px 1fr 110px;
+  grid-template-columns: 75px 1fr 80px;
   align-items: center;
   gap: 12px;
 }
@@ -139,7 +139,7 @@
 
 .config-row input,
 .config-row select {
-  padding: 8px;
+  padding: 5px;
   background-color: #2a2a2a;
   color: #fff;
   border: 1px solid #555;

@@ -46,6 +46,7 @@
   color: #fff;
 }
 
+.status-no-power,
 .status-denied,
 .status-signal-denied {
   background-color: #f44336;
@@ -148,7 +149,7 @@
 
 .config-row {
   display: grid;
-  grid-template-columns: 85px 1fr 110px;
+  grid-template-columns: 75px 1fr 80px;
   align-items: center;
   gap: 12px;
 }
@@ -161,7 +162,7 @@
 
 .config-row input,
 .config-row select {
-  padding: 8px;
+  padding: 5px;
   background-color: #2a2a2a;
   color: #fff;
   border: 1px solid #555;
@@ -180,7 +181,7 @@
 .input-rx-bandwidth,
 .input-rx-modulation,
 .input-rx-fec {
-  width: 60px;
+  width: 80px;
 }
 
 .current-value {
@@ -224,6 +225,10 @@
       rgba(26, 26, 26, 0.3) 4px);
   /* flicker */
   animation: flicker 0.1s infinite;
+}
+
+.monitor-screen.no-power {
+  background: #050505;
 }
 
 .video-feed {

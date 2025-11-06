@@ -1,1 +1,0 @@
-export { CRUDdataTable } from './crud';

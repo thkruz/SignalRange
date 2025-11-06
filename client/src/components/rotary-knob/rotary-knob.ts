@@ -1,4 +1,5 @@
 import { html } from "@app/engine/utils/development/formatter";
+import './rotary-knob.css';
 
 export class RotaryKnob {
   private element: HTMLElement;
@@ -63,8 +64,12 @@ export class RotaryKnob {
     if (!this.isDragging) return;
 
     const deltaY = this.startY - e.clientY;
+    const deltaX = e.clientX - (this.element.getBoundingClientRect().left + this.element.offsetWidth / 2);
+
+    // Combine vertical and horizontal movement: up/right increases, down/left decreases
+    const movement = deltaY + deltaX;
     const range = this.max - this.min;
-    const deltaValue = (deltaY / 100) * range; // 100px = full range
+    const deltaValue = (movement / 100) * range; // 100px = full range
 
     this.setValue(this.startValue + deltaValue);
   }

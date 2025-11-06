@@ -2,6 +2,7 @@ import { PowerSwitch } from "@app/components/power-switch/power-switch";
 import { SecureToggleSwitch } from "@app/components/secure-toggle-switch/secure-toggle-switch";
 import { SecureToggleSwitch2 } from "@app/components/secure-toggle-switch2/secure-toggle-switch2";
 import { EventBus } from "@app/events/event-bus";
+import { Sfx } from "@app/sound/sfx-enum";
 import SoundManager from "@app/sound/sound-manager";
 import { bandInformation, FrequencyBand } from "../../constants";
 import { html } from "../../engine/utils/development/formatter";
@@ -12,7 +13,6 @@ import { RfFrequency, RfSignal } from "../../types";
 import { BaseEquipment } from '../base-equipment';
 import { Transmitter } from "../transmitter/transmitter";
 import './antenna.css';
-import { Sfx } from "@app/sound/sfx-enum";
 
 export interface AntennaState {
   isPowered: boolean;
@@ -391,12 +391,13 @@ export class Antenna extends BaseEquipment {
 
     // Simulate lock acquisition delay
     if (newTrackValue) {
+      SoundManager.getInstance().play(Sfx.SMALL_MOTOR);
       setTimeout(() => {
         this.state.isLocked = true;
         this.updateSignalStatus();
         this.syncDomWithState();
         this.emit(Events.ANTENNA_LOCKED, { locked: true });
-      }, 3000); // 3 second delay to acquire lock
+      }, 7000); // 7 second delay to acquire lock
     } else {
       this.state.isLocked = false;
       this.state.signals = [];

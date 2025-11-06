@@ -5,6 +5,7 @@ const SFX_FILE_MAP: Record<Sfx, string> = {
   [Sfx.SWITCH]: '/sfx/light-switch-flip.mp3',
   [Sfx.TOGGLE_OFF]: '/sfx/toggle-button-off.mp3',
   [Sfx.TOGGLE_ON]: '/sfx/toggle-button-on.mp3',
+  [Sfx.SMALL_MOTOR]: '/sfx/small-electronic-motor.mp3',
 };
 
 class SoundManager {

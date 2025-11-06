@@ -1,4 +1,5 @@
 import { PowerSwitch } from '@app/components/power-switch/power-switch';
+import { RotaryKnob } from '@app/components/rotary-knob/rotary-knob';
 import { ToggleSwitch } from "@app/components/toggle-switch/toggle-switch";
 import { EventBus } from "@app/events/event-bus";
 import { html } from "../../engine/utils/development/formatter";
@@ -155,6 +156,11 @@ export class RFFrontEnd extends BaseEquipment {
   lnbPowerSwitch: PowerSwitch;
   couplerTapToggle: ToggleSwitch;
 
+  // Rotary knobs
+  bucGainKnob: RotaryKnob;
+  hpaBackOffKnob: RotaryKnob;
+  lnbGainKnob: RotaryKnob;
+
   constructor(parentId: string, unit: number, teamId: number = 1, serverId: number = 1) {
     super(parentId, unit, teamId);
 
@@ -290,6 +296,41 @@ export class RFFrontEnd extends BaseEquipment {
       this.state.coupler.tapPoint === 'IF_AFTER_LNB'
     );
 
+    // Create rotary knobs
+    this.bucGainKnob = RotaryKnob.create(
+      `rf-fe-buc-gain-knob-${this.state.unit}`,
+      this.state.buc.gain,
+      0,
+      70,
+      1,
+      (value: number) => {
+        this.state.buc.gain = value;
+        this.calculateSignalPath();
+      }
+    );
+    this.hpaBackOffKnob = RotaryKnob.create(
+      `rf-fe-hpa-backoff-knob-${this.state.unit}`,
+      this.state.hpa.backOff,
+      0,
+      10,
+      0.5,
+      (value: number) => {
+        this.state.hpa.backOff = value;
+        this.calculateSignalPath();
+      }
+    );
+    this.lnbGainKnob = RotaryKnob.create(
+      `rf-fe-lnb-gain-knob-${this.state.unit}`,
+      this.state.lnb.gain,
+      40,
+      65,
+      1,
+      (value: number) => {
+        this.state.lnb.gain = value;
+        this.calculateSignalPath();
+      }
+    );
+
     parentDom.innerHTML = html`
       <div
         id="rf-fe-box-${this.state.unit}"
@@ -369,12 +410,7 @@ export class RFFrontEnd extends BaseEquipment {
             </div>
             <div class="control-group">
               <label>GAIN (dB)</label>
-              <input type="range"
-                      class="rotary-knob"
-                      data-param="buc.gain"
-                      value="${this.state.buc.gain}"
-                      min="0" max="70" step="1" />
-              <span class="value-readout">${this.state.buc.gain}</span>
+              <div id="rf-fe-buc-gain-knob-${this.state.unit}"></div>
             </div>
             <div class="led-indicator">
               <span class="indicator-label">LOCK</span>
@@ -400,12 +436,7 @@ export class RFFrontEnd extends BaseEquipment {
               </div>
               <div class="control-group">
                 <label>BACK-OFF (dB)</label>
-                <input type="range"
-                        class="rotary-knob"
-                        data-param="hpa.backOff"
-                        value="${this.state.hpa.backOff}"
-                        min="0" max="10" step="0.5" />
-                <span class="value-readout">${this.state.hpa.backOff}</span>
+                <div id="rf-fe-hpa-backoff-knob-${this.state.unit}"></div>
               </div>
               <div class="power-meter">
                 <div class="meter-label">OUTPUT</div>
@@ -465,12 +496,7 @@ export class RFFrontEnd extends BaseEquipment {
               </div>
               <div class="control-group">
                 <label>GAIN (dB)</label>
-                <input type="range"
-                       class="rotary-knob"
-                       data-param="lnb.gain"
-                       value="${this.state.lnb.gain}"
-                       min="40" max="65" step="1" />
-                <span class="value-readout">${this.state.lnb.gain}</span>
+                <div id="rf-fe-lnb-gain-knob-${this.state.unit}"></div>
               </div>
               <div class="led-indicator">
                 <span class="indicator-label">LOCK</span>
@@ -926,6 +952,26 @@ export class RFFrontEnd extends BaseEquipment {
     const lnbLoDisplay = container.querySelector('.lnb-module .digital-display');
     if (lnbLoDisplay) {
       lnbLoDisplay.textContent = this.state.lnb.loFrequency.toString();
+    }
+
+    // Update rotary knobs
+    const bucGainKnobContainer = container.querySelector(`#rf-fe-buc-gain-knob-${this.state.unit}`);
+    if (bucGainKnobContainer && this.bucGainKnob) {
+      bucGainKnobContainer.innerHTML = '';
+      bucGainKnobContainer.appendChild(this.bucGainKnob.getElement());
+      this.bucGainKnob.sync(this.state.buc.gain);
+    }
+    const hpaBackOffKnobContainer = container.querySelector(`#rf-fe-hpa-backoff-knob-${this.state.unit}`);
+    if (hpaBackOffKnobContainer && this.hpaBackOffKnob) {
+      hpaBackOffKnobContainer.innerHTML = '';
+      hpaBackOffKnobContainer.appendChild(this.hpaBackOffKnob.getElement());
+      this.hpaBackOffKnob.sync(this.state.hpa.backOff);
+    }
+    const lnbGainKnobContainer = container.querySelector(`#rf-fe-lnb-gain-knob-${this.state.unit}`);
+    if (lnbGainKnobContainer && this.lnbGainKnob) {
+      lnbGainKnobContainer.innerHTML = '';
+      lnbGainKnobContainer.appendChild(this.lnbGainKnob.getElement());
+      this.lnbGainKnob.sync(this.state.lnb.gain);
     }
 
     // Update signal path readout

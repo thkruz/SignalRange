@@ -1,6 +1,8 @@
 import { PowerSwitch } from "@app/components/power-switch/power-switch";
+import { RotaryKnob } from "@app/components/rotary-knob/rotary-knob";
 import { SecureToggleSwitch } from "@app/components/secure-toggle-switch/secure-toggle-switch";
 import { SecureToggleSwitch2 } from "@app/components/secure-toggle-switch2/secure-toggle-switch2";
+import { Degrees } from "@app/engine/ootk/src/main";
 import { EventBus } from "@app/events/event-bus";
 import { Sfx } from "@app/sound/sfx-enum";
 import SoundManager from "@app/sound/sound-manager";
@@ -11,6 +13,7 @@ import { Events } from "../../events/events";
 import { SimulationManager } from "../../simulation/simulation-manager";
 import { RfFrequency, RfSignal } from "../../types";
 import { BaseEquipment } from '../base-equipment';
+import { RFFrontEnd } from "../rf-front-end/rf-front-end";
 import { Transmitter } from "../transmitter/transmitter";
 import './antenna.css';
 
@@ -28,6 +31,8 @@ export interface AntennaState {
   freqBand: FrequencyBand;
   /** Frequency offset */
   offset: number; // MHz
+  /** Antenna skew */
+  skew: Degrees;
   /** is the High Powered Amplifier (HPA) enabled */
   isHpaEnabled: boolean;
   /** is the HPA switch enabled */
@@ -58,6 +63,8 @@ export class Antenna extends BaseEquipment {
   transmitters: Transmitter[] = [];
   powerSwitch: PowerSwitch;
   hpaSwitch: SecureToggleSwitch | SecureToggleSwitch2;
+  skewKnob: RotaryKnob;
+  rfFrontEnd: RFFrontEnd | null = null;
 
   constructor(parentId: string, unit: number, teamId: number = 1, serverId: number = 1) {
     super(parentId, unit, teamId);
@@ -70,6 +77,7 @@ export class Antenna extends BaseEquipment {
       noradId: 1,
       freqBand: FrequencyBand.C,
       offset: 0,
+      skew: 0 as Degrees,
       isHpaEnabled: false,
       isHpaSwitchEnabled: false,
       isLoopbackEnabled: false,
@@ -98,6 +106,14 @@ export class Antenna extends BaseEquipment {
 
     this.hpaSwitch = SecureToggleSwitch.create(`antenna-hpa-switch-${this.state.id}`, this.state.isHpaSwitchEnabled);
     this.powerSwitch = PowerSwitch.create(`antenna-power-switch-${this.state.id}`, this.state.isPowered);
+    this.skewKnob = RotaryKnob.create(
+      `antenna-skew-knob-${this.state.id}`,
+      this.state.skew,
+      -90,
+      90,
+      1,
+      (value) => this.handleSkewChange(value)
+    );
 
     parentDom.innerHTML = html`
       <div class="equipment-box">
@@ -168,6 +184,12 @@ export class Antenna extends BaseEquipment {
             </div>
 
             <div class="config-row">
+              <label>Skew</label>
+              <div class="skew-knob-container"></div>
+              <span id="labelSkew" class="current-value">${this.state.skew}°</span>
+            </div>
+
+            <div class="config-row">
               <label>Auto-Track</label>
               <div class="switch-container">
                 <label class="switch">
@@ -220,6 +242,13 @@ export class Antenna extends BaseEquipment {
     this.domCache['labelOffset'] = qs('#labelOffset', parentDom);
     this.domCache['labelBand'] = qs('#labelBand', parentDom);
     this.domCache['labelLockStatus'] = qs('#labelLockStatus', parentDom);
+    this.domCache['labelSkew'] = qs('#labelSkew', parentDom);
+
+    // Insert skew knob element
+    const skewKnobContainer = qs('.skew-knob-container', parentDom);
+    if (skewKnobContainer) {
+      skewKnobContainer.appendChild(this.skewKnob.getElement());
+    }
 
     return parentDom;
   }
@@ -279,6 +308,13 @@ export class Antenna extends BaseEquipment {
   /**
    * Private Methods
    */
+
+  private handleSkewChange(value: number): void {
+    this.state.skew = value as Degrees;
+    if (this.domCache['labelSkew']) {
+      this.domCache['labelSkew'].textContent = `${value}°`;
+    }
+  }
 
   private handleInputChange(e: Event): void {
     const target = e.target as HTMLInputElement | HTMLSelectElement;
@@ -444,6 +480,7 @@ export class Antenna extends BaseEquipment {
             serverId: this.state.serverId,
             noradId: this.state.noradId,
             frequency: modem.ifSignal.frequency,
+            polarization: this.rfFrontEnd.state.omt.effectiveTxPol,
             bandwidth: modem.ifSignal.bandwidth,
             power: modem.ifSignal.power,
             modulation: modem.ifSignal.modulation,
@@ -507,6 +544,10 @@ export class Antenna extends BaseEquipment {
     });
   }
 
+  attachRfFrontEnd(rfFrontEnd: RFFrontEnd): void {
+    this.rfFrontEnd = rfFrontEnd;
+  }
+
   getDownlinkFrequency(): RfFrequency {
     const band = this.state.freqBand === FrequencyBand.C ? 'c' : 'ku';
     const bandInfo = bandInformation[band];
@@ -545,6 +586,10 @@ export class Antenna extends BaseEquipment {
     const bandInfo = bandInformation[band];
     this.domCache['labelBand'].textContent = bandInfo.name;
     this.domCache['labelOffset'].textContent = `${this.state.offset} MHz`;
+    this.domCache['labelSkew'].textContent = `${this.state.skew}°`;
+
+    // Update skew knob
+    this.skewKnob.sync(this.state.skew);
 
     // Save last render state
     this.lastRenderState = structuredClone(this.state);

@@ -96,8 +96,10 @@ export class StudentEquipment extends BaseElement {
       })
       this.antennas.push(antenna);
 
-      const rfFrontEndContainer = new RFFrontEnd(`rf-front-end${i}-container`, i, 1);
-      this.rfFrontEnds.push(rfFrontEndContainer);
+      const rfFrontEnd = new RFFrontEnd(`rf-front-end${i}-container`, i, 1);
+      this.rfFrontEnds.push(rfFrontEnd);
+      rfFrontEnd.connectAntenna(antenna);
+      antenna.attachRfFrontEnd(rfFrontEnd);
     }
 
     // Initialize 4 spectrum analyzers

@@ -29,6 +29,8 @@ export interface RfSignal {
   noradId: number;
   /** RF frequency */
   frequency: RfFrequency;
+  /** Signal polarization */
+  polarization: 'H' | 'V' | 'LHCP' | 'RHCP';
   /** Signal power in dBm */
   power: number;
   /** Bandwidth in Hz */

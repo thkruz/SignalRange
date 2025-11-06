@@ -4,9 +4,9 @@ import './rotary-knob.css';
 export class RotaryKnob {
   private element: HTMLElement;
   private value: number;
-  private min: number;
-  private max: number;
-  private step: number;
+  private readonly min: number;
+  private readonly max: number;
+  private readonly step: number;
   private angle: number = 0; // -135° to +135° (270° total range)
   private isDragging: boolean = false;
   private startY: number = 0;

@@ -1,38 +1,108 @@
+import { ToggleSwitch } from '@app/components/toggle-switch/toggle-switch';
 import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
-import { OMTState } from "./rf-front-end";
+import { EventBus } from '@app/events/event-bus';
+import { Events } from '@app/events/events';
+import { Logger } from '@app/logging/logger';
+import { RFFrontEnd } from './rf-front-end';
+
+/**
+ * Polarization types for OMT/Duplexer
+ */
+export type PolarizationType = 'H' | 'V' | 'LHCP' | 'RHCP';
+
+/**
+ * OMT/Duplexer module state
+ */
+export interface OMTState {
+  txPolarization: PolarizationType;
+  rxPolarization: PolarizationType;
+  crossPolIsolation: number; // dB (typical 25-35)
+  isFaulted: boolean; // true if isolation < 20 dB
+  effectiveTxPol: PolarizationType; // Effective TX polarization based on skew
+  effectiveRxPol: PolarizationType; // Effective RX polarization based on skew
+}
 
 export class OMTModule {
   private static instance_: OMTModule;
   protected html_: string;
   private readonly uniqueId: string;
+  // private readonly unit: number;
   private dom_?: HTMLElement;
+  private rfFrontEnd_: RFFrontEnd;
   private state_: OMTState;
+  polarizationToggle: ToggleSwitch;
+  private lastDraw_: number = 0;
 
-  private constructor(state: OMTState, unit?: number) {
+  private constructor(state: OMTState, rfFrontEnd: RFFrontEnd, unit: number = 1) {
     this.state_ = state;
-    this.uniqueId = `rf-fe-omt-pol-${unit ?? 1}`;
+    this.rfFrontEnd_ = rfFrontEnd;
+    this.uniqueId = `rf-fe-omt-pol-${unit}`;
+
+    this.polarizationToggle = ToggleSwitch.create(
+      this.uniqueId,
+      this.state_.txPolarization === 'V'
+    );
+
     this.html_ = html`
       <div class="rf-fe-module omt-module">
         <div class="module-label">OMT/DUPLEXER</div>
         <div class="module-controls">
           <div class="control-group">
-            <label>TX/RX POL</label>
-            <div id="${this.uniqueId}"></div>
-            <span class="pol-label">${this.state_.txPolarization}/${this.state_.rxPolarization}</span>
+            <label>TOGGLE</label>
+            ${this.polarizationToggle.html}
+          </div>
+          <div class="polarization-display-column">
+            <div class="pol-display-row">
+              <span class="pol-display-label">TX POL:</span>
+              <div class="digital-display pol-tx-display">${this.state_.txPolarization}</div>
+            </div>
+            <div class="pol-display-row">
+              <span class="pol-display-label">RX POL:</span>
+              <div class="digital-display pol-rx-display">${this.state_.rxPolarization}</div>
+            </div>
+            <div class="pol-display-row">
+              <span class="pol-display-label">TX EFF:</span>
+              <div class="digital-display pol-tx-eff-display">${this.state_.effectiveTxPol || '―'}</div>
+            </div>
+            <div class="pol-display-row">
+              <span class="pol-display-label">RX EFF:</span>
+              <div class="digital-display pol-rx-eff-display">${this.state_.effectiveRxPol || '―'}</div>
+            </div>
           </div>
           <div class="led-indicator">
             <span class="indicator-label">X-POL</span>
-            <div class="led ${this.state_.isFaulted ? 'led-red' : 'led-off'}"></div>
+            <div class="led ${this.getXPolLedStatus()}"></div>
             <span class="value-readout">${this.state_.crossPolIsolation.toFixed(1)} dB</span>
           </div>
         </div>
       </div>
     `;
+
+    EventBus.getInstance().on(Events.UPDATE, this.update.bind(this));
+    EventBus.getInstance().on(Events.DRAW, () => {
+      const now = Date.now();
+      if (now - this.lastDraw_ > 500) {
+        this.syncDomWithState();
+        this.lastDraw_ = now;
+      }
+    });
+    EventBus.getInstance().on(Events.SYNC, this.syncDomWithState.bind(this));
   }
 
-  static create(state: OMTState, unit?: number): OMTModule {
-    this.instance_ ??= new OMTModule(state, unit);
+  private getXPolLedStatus(): string | number {
+    if (this.state_.crossPolIsolation < 25) {
+      return 'led-red';
+    }
+    if (this.state_.crossPolIsolation < 30) {
+      return 'led-amber';
+    }
+
+    return 'led-green';
+  }
+
+  static create(state: OMTState, rfFrontEnd: RFFrontEnd, unit: number = 1): OMTModule {
+    this.instance_ ??= new OMTModule(state, rfFrontEnd, unit);
     return this.instance_;
   }
 
@@ -49,13 +119,196 @@ export class OMTModule {
     return this.dom_;
   }
 
-  sync(state: OMTState): void {
-    this.state_ = state;
-    // Optionally update DOM if needed
+  /**
+   * Add event listeners for user interactions
+   */
+  addEventListeners(cb: (state: OMTState) => void): void {
+    if (!this.polarizationToggle) {
+      console.warn('OMTModule: Cannot add event listeners - components not initialized');
+      return;
+    }
+
+    this.polarizationToggle.addEventListeners((isVertical: boolean) => {
+      // Toggle between H and V polarization
+      this.state_.txPolarization = isVertical ? 'V' : 'H';
+      this.state_.rxPolarization = isVertical ? 'H' : 'V';
+
+      // Update the polarization displays
+      this.updatePolarizationDisplays();
+
+      // Notify parent of state change
+      cb(this.state_);
+    });
   }
 
-  addEventListeners(_cb: (state: OMTState) => void): void {
-    // Example: add event listeners to polarization toggle, etc.
-    // qs(`#${this.uniqueId}`).addEventListener('change', ...)
+  /**
+   * Update component state and check for faults
+   * @param antennaSkew Optional antenna skew in degrees for effective polarization calculation
+   */
+  update(): void {
+    this.updateCrossPolIsolation();
+
+    // Calculate effective polarization based on antenna skew
+    this.updateEffectivePolarization(this.rfFrontEnd_.antenna.state.skew);
+  }
+
+  private updateCrossPolIsolation(): void {
+    // Check polarization of visible signal
+    const signal = this.rfFrontEnd_.antenna.state.signals[0];
+    if (signal) {
+      if (signal.polarization === this.state_.effectiveRxPol) {
+        // Aligned polarization, normal isolation
+        this.state_.crossPolIsolation = 30 + Math.random() * 5; // 30-35 dB
+      } else {
+        // Misaligned polarization, degraded isolation
+        this.state_.crossPolIsolation = 15 + Math.random() * 10; // 15-25 dB
+      }
+    } else {
+      // No signal, normal isolation
+      this.state_.crossPolIsolation = 30 + Math.random() * 5; // 30-35 dB
+    }
+
+    // Update fault status
+    this.state_.isFaulted = this.state_.crossPolIsolation < 25;
+  }
+
+  /**
+   * Calculate effective polarization based on antenna skew and OMT reversal
+   * If OMT is set to reverse (txPolarization = 'V'), effective polarization is opposite of what skew would normally do.
+   * H if |θ| < 15°, V if |θ−90°| < 15°, but reversed if OMT is toggled.
+   * @param skew Antenna skew in degrees
+   */
+  private updateEffectivePolarization(skew: number): void {
+    // Normalize skew to 0-180 range
+    const normalizedSkew = ((skew % 180) + 180) % 180;
+
+    // Determine if OMT is set to reverse (toggle switch is vertical)
+    const isReversed = this.state_.txPolarization === 'V';
+
+    let baseTxPol: PolarizationType;
+    let baseRxPol: PolarizationType;
+
+    if (Math.abs(normalizedSkew) < 15 || Math.abs(normalizedSkew - 180) < 15) {
+      baseTxPol = 'H';
+      baseRxPol = 'V';
+    } else if (Math.abs(normalizedSkew - 90) < 15) {
+      baseTxPol = 'V';
+      baseRxPol = 'H';
+    } else {
+      Logger.info('OMTModule', 'Skew between polarizations, using configured pol');
+      baseTxPol = this.state_.txPolarization;
+      baseRxPol = this.state_.rxPolarization;
+    }
+
+    // If reversed, swap the base polarizations
+    const newEffectiveTxPol = isReversed ? (baseTxPol === 'H' ? 'V' : 'H') : baseTxPol;
+    const newEffectiveRxPol = isReversed ? (baseRxPol === 'H' ? 'V' : 'H') : baseRxPol;
+
+    const txChanged = this.state_.effectiveTxPol !== newEffectiveTxPol;
+    const rxChanged = this.state_.effectiveRxPol !== newEffectiveRxPol;
+
+    this.state_.effectiveTxPol = newEffectiveTxPol;
+    this.state_.effectiveRxPol = newEffectiveRxPol;
+
+    if (txChanged || rxChanged) {
+      this.syncDomWithState();
+    }
+  }
+
+  /**
+   * Sync state from external source
+   */
+  sync(state: Partial<OMTState>): void {
+    this.state_ = { ...this.state_, ...state };
+    this.syncDomWithState();
+  }
+
+  /**
+   * Get current state
+   */
+  get state(): OMTState {
+    return this.state_;
+  }
+
+  /**
+   * Check if module has alarms
+   */
+  getAlarms(): string[] {
+    const alarms: string[] = [];
+
+    if (this.state_.isFaulted) {
+      alarms.push('Cross-pol isolation degraded');
+    }
+
+    return alarms;
+  }
+
+  /**
+   * Update the DOM to reflect current state
+   */
+  private syncDomWithState(): void {
+    const container = qs('.omt-module');
+    if (!container) return;
+
+    // Update polarization displays
+    this.updatePolarizationDisplays();
+
+    // Update cross-pol LED
+    const xpolLed = container.querySelector('.led-indicator .led');
+    if (xpolLed) {
+      xpolLed.className = `led ${this.getXPolLedStatus()}`;
+    }
+
+    // Update cross-pol isolation readout
+    const xpolReadout = container.querySelector('.led-indicator .value-readout');
+    if (xpolReadout) {
+      xpolReadout.textContent = `${this.state_.crossPolIsolation.toFixed(1)} dB`;
+    }
+  }
+
+  /**
+   * Update all polarization digital displays
+   */
+  private updatePolarizationDisplays(): void {
+    const container = qs('.omt-module');
+    if (!container) return;
+
+    // Update TX POL
+    const txPolDisplay = container.querySelector('.pol-tx-display');
+    if (txPolDisplay) {
+      txPolDisplay.textContent = this.state_.txPolarization;
+    }
+
+    // Update RX POL
+    const rxPolDisplay = container.querySelector('.pol-rx-display');
+    if (rxPolDisplay) {
+      rxPolDisplay.textContent = this.state_.rxPolarization;
+    }
+
+    // Update TX Effective POL and check for mismatch
+    const txEffDisplay = container.querySelector('.pol-tx-eff-display');
+    if (txEffDisplay) {
+      txEffDisplay.textContent = this.state_.effectiveTxPol || '―';
+
+      // Add mismatch class if TX POL and TX EFF don't match
+      if (this.state_.effectiveTxPol && this.state_.effectiveTxPol !== this.state_.txPolarization) {
+        txPolDisplay.classList.add('pol-mismatch');
+      } else {
+        txPolDisplay.classList.remove('pol-mismatch');
+      }
+    }
+
+    // Update RX Effective POL and check for mismatch
+    const rxEffDisplay = container.querySelector('.pol-rx-eff-display');
+    if (rxEffDisplay) {
+      rxEffDisplay.textContent = this.state_.effectiveRxPol || '―';
+
+      // Add mismatch class if RX POL and RX EFF don't match
+      if (this.state_.effectiveRxPol && this.state_.effectiveRxPol !== this.state_.rxPolarization) {
+        rxPolDisplay.classList.add('pol-mismatch');
+      } else {
+        rxPolDisplay.classList.remove('pol-mismatch');
+      }
+    }
   }
 }

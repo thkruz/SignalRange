@@ -6,19 +6,15 @@ import { html } from "../../engine/utils/development/formatter";
 import { qs } from "../../engine/utils/query-selector";
 import { Events } from "../../events/events";
 import { IfFrequency, MHz, RfFrequency } from "../../types";
+import { Antenna } from '../antenna/antenna';
 import { BaseEquipment } from "../base-equipment";
 import { BUCModule } from './buc-module';
 import { CouplerModule } from './coupler-module';
 import { FilterModule } from './filter-module';
 import { HPAModule } from './hpa-module';
 import { LNBModule } from './lnb-module';
-import { OMTModule } from './omt-module';
+import { OMTModule, OMTState } from './omt-module';
 import './rf-front-end.css';
-
-/**
- * Polarization types for OMT/Duplexer
- */
-export type PolarizationType = 'H' | 'V' | 'LHCP' | 'RHCP';
 
 /**
  * Filter bandwidth modes
@@ -29,16 +25,6 @@ export type FilterMode = 'WIDE' | 'MEDIUM' | 'NARROW';
  * Spectrum analyzer tap point
  */
 export type TapPoint = 'RF_PRE_FILTER' | 'RF_POST_FILTER' | 'IF_AFTER_LNB';
-
-/**
- * OMT/Duplexer module state
- */
-export interface OMTState {
-  txPolarization: PolarizationType;
-  rxPolarization: PolarizationType;
-  crossPolIsolation: number; // dB (typical 25-35)
-  isFaulted: boolean; // true if isolation < 20 dB
-}
 
 /**
  * Block Up Converter module state
@@ -159,7 +145,6 @@ export class RFFrontEnd extends BaseEquipment {
 
   // UI Components (legacy, will be moved into modules)
   powerSwitch: PowerSwitch;
-  omtPolarizationToggle: ToggleSwitch;
   bucPowerSwitch: PowerSwitch;
   hpaEnableSwitch: PowerSwitch;
   filterModeToggle: ToggleSwitch;
@@ -170,6 +155,7 @@ export class RFFrontEnd extends BaseEquipment {
   bucGainKnob: RotaryKnob;
   hpaBackOffKnob: RotaryKnob;
   lnbGainKnob: RotaryKnob;
+  antenna: Antenna;
 
   constructor(parentId: string, unit: number, teamId: number = 1, serverId: number = 1) {
     super(parentId, unit, teamId);
@@ -186,6 +172,8 @@ export class RFFrontEnd extends BaseEquipment {
       omt: {
         txPolarization: 'H',
         rxPolarization: 'V',
+        effectiveTxPol: 'H',
+        effectiveRxPol: 'V',
         crossPolIsolation: 28.5, // dB
         isFaulted: false,
       },
@@ -263,15 +251,22 @@ export class RFFrontEnd extends BaseEquipment {
     // Update component states based on conditions
     this.updateComponentStates();
 
+    // Update module states
+    this.omtModule.update();
+
     // Check for alarms and faults
     this.checkAlarms();
+  }
+
+  connectAntenna(antenna: Antenna): void {
+    this.antenna = antenna;
   }
 
   initializeDom(parentId: string): HTMLElement {
     const parentDom = super.initializeDom(parentId);
 
     // Instantiate module classes
-    this.omtModule = OMTModule.create(this.state.omt);
+    this.omtModule = OMTModule.create(this.state.omt, this, this.state.unit);
     this.bucModule = new BUCModule(this.state.buc);
     this.hpaModule = new HPAModule(this.state.hpa);
     this.filterModule = new FilterModule(this.state.filter);
@@ -282,11 +277,6 @@ export class RFFrontEnd extends BaseEquipment {
     this.powerSwitch = PowerSwitch.create(
       `rf-fe-power-${this.state.unit}`,
       this.state.isPowered
-    );
-
-    this.omtPolarizationToggle = ToggleSwitch.create(
-      `rf-fe-omt-pol-${this.state.unit}`,
-      this.state.omt.txPolarization === 'V'
     );
 
     this.bucPowerSwitch = PowerSwitch.create(
@@ -555,6 +545,13 @@ export class RFFrontEnd extends BaseEquipment {
   }
 
   protected addListeners(): void {
+    // Add module event listeners
+    this.omtModule.addEventListeners((state: OMTState) => {
+      this.state.omt = state;
+      this.calculateSignalPath();
+      this.syncDomWithState();
+    });
+
     // Attach event listeners after DOM is created
     this.attachEventListeners();
   }
@@ -618,7 +615,10 @@ export class RFFrontEnd extends BaseEquipment {
 
   public sync(data: Partial<RFFrontEndState>): void {
     // Deep merge state
-    if (data.omt) this.state.omt = { ...this.state.omt, ...data.omt };
+    if (data.omt) {
+      this.state.omt = { ...this.state.omt, ...data.omt };
+      this.omtModule.sync(data.omt);
+    }
     if (data.buc) this.state.buc = { ...this.state.buc, ...data.buc };
     if (data.hpa) this.state.hpa = { ...this.state.hpa, ...data.hpa };
     if (data.filter) this.state.filter = { ...this.state.filter, ...data.filter };
@@ -830,15 +830,9 @@ export class RFFrontEnd extends BaseEquipment {
 
     // Update HPA overdrive status
     this.state.hpa.isOverdriven = this.state.hpa.backOff < 3;
-
-    // Update OMT cross-pol fault
-    this.state.omt.isFaulted = this.state.omt.crossPolIsolation < 20;
   }
 
   private checkAlarms(): void {
-    // OMT cross-polarization isolation check
-    this.state.omt.isFaulted = this.state.omt.crossPolIsolation < 20;
-
     // HPA overdrive check (back-off < 3 dB is typically considered overdrive)
     this.state.hpa.isOverdriven = this.state.hpa.backOff < 3;
 
@@ -850,7 +844,9 @@ export class RFFrontEnd extends BaseEquipment {
     }
 
     // Collect alarm messages
-    const alarms: string[] = [];
+    const alarms: string[] = [
+      ...this.omtModule.getAlarms()
+    ];
 
     if (!this.state.isExtRefPresent) {
       alarms.push('External reference lost');
@@ -868,10 +864,6 @@ export class RFFrontEnd extends BaseEquipment {
 
     if (this.state.hpa.isOverdriven) {
       alarms.push('HPA overdrive - IMD degradation');
-    }
-
-    if (this.state.omt.isFaulted) {
-      alarms.push('Cross-pol isolation degraded');
     }
 
     // Temperature alarm for HPA
@@ -1028,12 +1020,6 @@ export class RFFrontEnd extends BaseEquipment {
     const hpaImdLed = container.querySelector('.hpa-module .led-indicator .led');
     if (hpaImdLed) {
       hpaImdLed.className = `led ${this.state.hpa.isOverdriven ? 'led-orange' : 'led-off'}`;
-    }
-
-    // OMT cross-pol LED (if in advanced mode)
-    const omtXpolLed = container.querySelector('.omt-module .led-indicator .led');
-    if (omtXpolLed) {
-      omtXpolLed.className = `led ${this.state.omt.isFaulted ? 'led-red' : 'led-off'}`;
     }
   }
 

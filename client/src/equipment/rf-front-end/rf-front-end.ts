@@ -7,6 +7,12 @@ import { qs } from "../../engine/utils/query-selector";
 import { Events } from "../../events/events";
 import { IfFrequency, MHz, RfFrequency } from "../../types";
 import { BaseEquipment } from "../base-equipment";
+import { BUCModule } from './buc-module';
+import { CouplerModule } from './coupler-module';
+import { FilterModule } from './filter-module';
+import { HPAModule } from './hpa-module';
+import { LNBModule } from './lnb-module';
+import { OMTModule } from './omt-module';
 import './rf-front-end.css';
 
 /**
@@ -141,13 +147,17 @@ export interface RFFrontEndState {
 export class RFFrontEnd extends BaseEquipment {
   // State
   state: RFFrontEndState;
-  // private inputData: Partial<RFFrontEndState> = {};
   private lastRenderState: RFFrontEndState | null = null;
 
-  // Power management
-  // private readonly powerBudget = 45000; // mW (typical RF front-end power consumption)
+  // Module classes
+  omtModule: OMTModule;
+  bucModule: BUCModule;
+  hpaModule: HPAModule;
+  filterModule: FilterModule;
+  lnbModule: LNBModule;
+  couplerModule: CouplerModule;
 
-  // UI Components
+  // UI Components (legacy, will be moved into modules)
   powerSwitch: PowerSwitch;
   omtPolarizationToggle: ToggleSwitch;
   bucPowerSwitch: PowerSwitch;
@@ -156,7 +166,7 @@ export class RFFrontEnd extends BaseEquipment {
   lnbPowerSwitch: PowerSwitch;
   couplerTapToggle: ToggleSwitch;
 
-  // Rotary knobs
+  // Rotary knobs (legacy, will be moved into modules)
   bucGainKnob: RotaryKnob;
   hpaBackOffKnob: RotaryKnob;
   lnbGainKnob: RotaryKnob;
@@ -259,6 +269,14 @@ export class RFFrontEnd extends BaseEquipment {
 
   initializeDom(parentId: string): HTMLElement {
     const parentDom = super.initializeDom(parentId);
+
+    // Instantiate module classes
+    this.omtModule = OMTModule.create(this.state.omt);
+    this.bucModule = new BUCModule(this.state.buc);
+    this.hpaModule = new HPAModule(this.state.hpa);
+    this.filterModule = new FilterModule(this.state.filter);
+    this.lnbModule = new LNBModule(this.state.lnb);
+    this.couplerModule = new CouplerModule(this.state.coupler);
 
     // Create UI components
     this.powerSwitch = PowerSwitch.create(
@@ -373,27 +391,11 @@ export class RFFrontEnd extends BaseEquipment {
 
         <!-- Main Module Container -->
         <div class="rf-fe-modules">
-
-        <!-- OMT/Duplexer Module -->
-        <div class="rf-fe-module omt-module">
-          <div class="module-label">OMT/DUPLEXER</div>
-          <div class="module-controls">
-            <div class="control-group">
-              <label>TX/RX POL</label>
-              <div id="rf-fe-omt-pol-${this.state.unit}"></div>
-              <span class="pol-label">${this.state.omt.txPolarization}/${this.state.omt.rxPolarization}</span>
-            </div>
-            <div class="led-indicator">
-              <span class="indicator-label">X-POL</span>
-              <div class="led ${this.state.omt.isFaulted ? 'led-red' : 'led-off'}"></div>
-              <span class="value-readout">${this.state.omt.crossPolIsolation.toFixed(1)} dB</span>
-            </div>
-          </div>
-        </div>
+          ${this.omtModule.html}
 
         <!-- BUC Module -->
         <div class="rf-fe-module buc-module">
-          <div class="module-label">BUC</div>
+          <div class="module-label">Block Upconverter</div>
           <div class="module-controls">
             <div class="control-group">
               <label>POWER</label>
@@ -428,7 +430,7 @@ export class RFFrontEnd extends BaseEquipment {
 
           <!-- HPA/SSPA Module -->
           <div class="rf-fe-module hpa-module">
-            <div class="module-label">HPA/SSPA</div>
+            <div class="module-label">High Power Amplifier</div>
             <div class="module-controls">
               <div class="control-group">
                 <label>ENABLE</label>
@@ -479,7 +481,7 @@ export class RFFrontEnd extends BaseEquipment {
 
           <!-- LNB Module -->
           <div class="rf-fe-module lnb-module">
-            <div class="module-label">LNB</div>
+            <div class="module-label">Low Noise Block</div>
             <div class="module-controls">
               <div class="control-group">
                 <label>POWER</label>

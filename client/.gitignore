@@ -38,3 +38,6 @@ coverage/
 # Temporary files
 tmp/
 temp/
+
+# Sound Files
+public/sfx/*.mp3

@@ -1,5 +1,7 @@
 import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
+import { Sfx } from "@app/sound/sfx-enum";
+import SoundManager from "@app/sound/sound-manager";
 import './power-switch.css';
 
 export class PowerSwitch {
@@ -54,6 +56,7 @@ export class PowerSwitch {
     if (!this.isOn_) {
       this.dom.checked = true;
       this.isOn_ = true;
+      SoundManager.getInstance().play(Sfx.POWER_ON);
     }
   }
 

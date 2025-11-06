@@ -1,5 +1,7 @@
 import { ToggleSwitch } from "@app/components/toggle-switch/toggle-switch";
 import { EventBus } from "@app/events/event-bus";
+import { Sfx } from "@app/sound/sfx-enum";
+import SoundManager from "@app/sound/sound-manager";
 import { PowerSwitch } from '../../components/power-switch/power-switch';
 import { html } from "../../engine/utils/development/formatter";
 import { qs } from "../../engine/utils/query-selector";
@@ -94,10 +96,15 @@ export class Transmitter extends BaseEquipment {
 
     EventBus.getInstance().on(Events.UPDATE, this.update.bind(this));
     EventBus.getInstance().on(Events.SYNC, this.syncDomWithState.bind(this));
+    EventBus.getInstance().once(Events.SYNC, this.initialSync.bind(this));
   }
 
   public update(): void {
     // No periodic updates needed for transmitter at this time
+  }
+
+  initialSync(): void {
+    this.inputData = { ...this.activeModem };
   }
 
   initializeDom(parentId: string): HTMLElement {
@@ -278,10 +285,13 @@ export class Transmitter extends BaseEquipment {
   }
 
   private togglePower(isOn: boolean): void {
-    if (!isOn) {
+    if (isOn) {
+      SoundManager.getInstance().play(Sfx.TOGGLE_ON);
+    } else {
       // If turning off power, also stop transmission
       this.activeModem.isTransmitting = false;
       this.activeModem.isFaulted = false;
+      SoundManager.getInstance().play(Sfx.TOGGLE_OFF);
     }
 
     setTimeout(() => {
@@ -339,15 +349,15 @@ export class Transmitter extends BaseEquipment {
       case 'power':
         // Allow negative numbers for power
         if (value.match(/[^0-9-]/g)) return;
-        this.inputData.ifSignal.power = Number.parseInt(value) || 0;
+        this.inputData.ifSignal.power = Number.parseFloat(value) || 0;
         break;
       case 'frequency':
-        value = Number.parseInt(value) || 0;
+        value = Number.parseFloat(value) || 0;
         // Convert MHz to Hertz
         this.inputData.ifSignal.frequency = value * 1e6 as IfFrequency;
         break;
       case 'bandwidth':
-        value = Number.parseInt(value) || 0;
+        value = Number.parseFloat(value) || 0;
         // Convert MHz to Hertz
         this.inputData.ifSignal.bandwidth = value * 1e6 as IfFrequency;
         break;
@@ -365,7 +375,8 @@ export class Transmitter extends BaseEquipment {
     // Update the modem configuration
     this.state.modems[this.activeModem.id] = {
       ...this.activeModem,
-      ...this.inputData
+      ifSignal: this.inputData.ifSignal ?? this.activeModem.ifSignal
+      ,
     };
 
     this.emit(Events.TX_CONFIG_CHANGED, {
@@ -396,6 +407,8 @@ export class Transmitter extends BaseEquipment {
       config: this.state.modems[this.activeModem.id]
     });
 
+    SoundManager.getInstance().play(Sfx.SWITCH);
+
     this.syncDomWithState();
   }
 
@@ -415,6 +428,7 @@ export class Transmitter extends BaseEquipment {
         modem: this.state.activeModem,
         config: this.state.modems[this.activeModem.id]
       });
+      SoundManager.getInstance().play(Sfx.SWITCH);
     }, 250);
 
     this.emit(Events.TX_CONFIG_CHANGED, {
@@ -422,6 +436,8 @@ export class Transmitter extends BaseEquipment {
       modem: this.state.activeModem,
       config: this.state.modems[this.activeModem.id]
     });
+
+    SoundManager.getInstance().play(Sfx.SWITCH);
   }
 
   private toggleTestMode(): void {
@@ -432,6 +448,7 @@ export class Transmitter extends BaseEquipment {
       modem: this.state.activeModem,
       config: this.state.modems[this.activeModem.id]
     });
+    SoundManager.getInstance().play(Sfx.SWITCH);
     this.syncDomWithState();
   }
 

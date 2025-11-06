@@ -2,6 +2,7 @@ import { PowerSwitch } from "@app/components/power-switch/power-switch";
 import { SecureToggleSwitch } from "@app/components/secure-toggle-switch/secure-toggle-switch";
 import { SecureToggleSwitch2 } from "@app/components/secure-toggle-switch2/secure-toggle-switch2";
 import { EventBus } from "@app/events/event-bus";
+import SoundManager from "@app/sound/sound-manager";
 import { bandInformation, FrequencyBand } from "../../constants";
 import { html } from "../../engine/utils/development/formatter";
 import { qs } from "../../engine/utils/query-selector";
@@ -11,6 +12,7 @@ import { RfFrequency, RfSignal } from "../../types";
 import { BaseEquipment } from '../base-equipment';
 import { Transmitter } from "../transmitter/transmitter";
 import './antenna.css';
+import { Sfx } from "@app/sound/sfx-enum";
 
 export interface AntennaState {
   isPowered: boolean;
@@ -342,6 +344,10 @@ export class Antenna extends BaseEquipment {
     }
 
     this.state.isHpaSwitchEnabled = !this.state.isHpaSwitchEnabled;
+
+    SoundManager.getInstance().play(
+      this.state.isHpaSwitchEnabled ? Sfx.TOGGLE_ON : Sfx.TOGGLE_OFF
+    );
 
     if (this.state.isPowered) {
       this.state.isHpaEnabled = this.state.isHpaSwitchEnabled;

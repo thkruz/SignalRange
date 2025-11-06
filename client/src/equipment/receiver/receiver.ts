@@ -27,6 +27,7 @@ export interface ReceiverState {
   availableSignals: {
     id: string;
     feed: string;
+    isDegraded: boolean;
   }[];
 }
 
@@ -75,10 +76,15 @@ export class Receiver extends BaseEquipment {
 
     EventBus.getInstance().on(Events.UPDATE, this.update.bind(this));
     EventBus.getInstance().on(Events.SYNC, this.syncDomWithState.bind(this));
+    EventBus.getInstance().once(Events.SYNC, this.initialSync.bind(this));
   }
 
   update(): void {
     this.syncDomWithState();
+  }
+
+  initialSync(): void {
+    this.inputData = { ...this.activeModem };
   }
 
   initializeDom(parentId: string): HTMLElement {
@@ -295,6 +301,14 @@ export class Receiver extends BaseEquipment {
     this.on(Events.ANTENNA_TRACK_CHANGED, () => {
       this.syncDomWithState();
     });
+
+    this.on(Events.TX_CONFIG_CHANGED, () => {
+      this.syncDomWithState();
+    });
+
+    this.on(Events.TX_TRANSMIT_CHANGED, () => {
+      this.syncDomWithState();
+    });
   }
 
   public sync(data: Partial<ReceiverState>): void {
@@ -335,10 +349,10 @@ export class Receiver extends BaseEquipment {
     // Parse based on parameter type
     switch (param) {
       case 'frequency':
-        this.inputData.frequency = Number.parseInt(inputValue) as MHz || 0 as MHz;
+        this.inputData.frequency = Number.parseFloat(inputValue) as MHz || 0 as MHz;
         break;
       case 'bandwidth':
-        this.inputData.bandwidth = (Number.parseInt(inputValue) as MHz) || 0 as MHz;
+        this.inputData.bandwidth = (Number.parseFloat(inputValue) as MHz) || 0 as MHz;
         break;
       case 'antenna':
         this.inputData.antennaId = this.antennas.find(a => a.state.id === Number.parseInt(inputValue))?.state.id;
@@ -464,7 +478,7 @@ export class Receiver extends BaseEquipment {
   syncDomWithState(): void {
     const visibleSignals = this.getVisibleSignals().map(s => {
       // Return signal with degraded feed if applicable
-      if (s.isDegraded) {
+      if (s.isDegraded && !s.isImage) {
         return {
           ...s,
           feed: `degraded-${s.feed.replace(/^degraded-/, '')}`
@@ -473,7 +487,7 @@ export class Receiver extends BaseEquipment {
       return s;
     });
     const feedUrl = visibleSignals[0]?.feed || '';
-    this.state.availableSignals = visibleSignals.map(s => ({ id: s.id, feed: s.feed }));
+    this.state.availableSignals = visibleSignals.map(s => ({ id: s.id, feed: s.feed, isDegraded: s.isDegraded || false }));
 
     // Avoid unnecessary DOM updates by shallow comparing serialized state
     if (JSON.stringify(this.state) === JSON.stringify(this.lastRenderState)) {
@@ -542,6 +556,12 @@ export class Receiver extends BaseEquipment {
           // Use cached media element
           monitor.innerHTML = '';
           monitor.appendChild(this.mediaCache[feedUrl]);
+
+          // If it is degraded, then add a css effect to make the image pixelated
+          if (visibleSignals[0].isDegraded) {
+            monitor.classList.add('glitch');
+            monitor.innerHTML += `<div class="block-glitch"></div>`;
+          }
         } else {
           // If not in cache, create new media element
           const signal = visibleSignals[0];
@@ -553,6 +573,13 @@ export class Receiver extends BaseEquipment {
             monitor.innerHTML = `<div class="signal-indicator"></div>`;
             monitor.querySelector('.signal-indicator')?.appendChild(img);
             this.mediaCache[feedUrl] = img;
+
+            // If it is degraded, then add a css effect to make the image pixelated
+            if (signal.isDegraded) {
+              monitor.classList.add('glitch');
+              monitor.innerHTML += `<div class="block-glitch"></div>`;
+            }
+
           } else if (signal.isImage && signal.isExternal) { // external image
             const img = document.createElement('img');
             img.className = 'external-image-feed';
@@ -561,6 +588,13 @@ export class Receiver extends BaseEquipment {
             monitor.innerHTML = `<div class="signal-indicator"></div>`;
             monitor.querySelector('.signal-indicator')?.appendChild(img);
             this.mediaCache[feedUrl] = img;
+
+            // If it is degraded, then add a css effect to make the image pixelated
+            if (signal.isDegraded) {
+              monitor.classList.add('glitch');
+              monitor.innerHTML += `<div class="block-glitch"></div>`;
+            }
+
           } else if (signal.isExternal) { // external video
             const iframe = document.createElement('iframe');
             iframe.className = 'external-feed';

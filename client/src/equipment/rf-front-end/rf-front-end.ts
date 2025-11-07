@@ -13,7 +13,7 @@ import { CouplerModule } from './coupler-module';
 import { FilterModule } from './filter-module';
 import { HPAModule } from './hpa-module';
 import { LNBModule, LNBState } from './lnb/lnb-module';
-import { OMTModule, OMTState } from './omt-module';
+import { OMTModule, OMTState } from './omt-module/omt-module';
 import './rf-front-end.css';
 
 /**

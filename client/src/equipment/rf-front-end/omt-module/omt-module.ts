@@ -2,8 +2,8 @@ import { ToggleSwitch } from '@app/components/toggle-switch/toggle-switch';
 import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
 import { RfSignal } from '@app/types';
-import { RFFrontEnd } from './rf-front-end';
-import { RFFrontEndModule } from './rf-front-end-module';
+import { RFFrontEnd } from '../rf-front-end';
+import { RFFrontEndModule } from '../rf-front-end-module';
 
 /**
  * Polarization types for OMT/Duplexer

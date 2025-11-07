@@ -234,7 +234,7 @@ export class Receiver extends BaseEquipment {
     return parentDom;
   }
 
-  protected addListeners(parentDom: HTMLElement): void {
+  protected addListeners_(parentDom: HTMLElement): void {
     // Modem selection buttons
     const modemButtons = parentDom.querySelectorAll('.btn-modem');
     modemButtons.forEach(btn => {
@@ -270,7 +270,7 @@ export class Receiver extends BaseEquipment {
     }, isOn ? 4000 : 250);
   }
 
-  protected initialize(): void {
+  protected initialize_(): void {
     this.syncDomWithState();
 
     // Listen for antenna changes

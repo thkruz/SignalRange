@@ -544,7 +544,7 @@ export class RFFrontEnd extends BaseEquipment {
     return parentDom;
   }
 
-  protected addListeners(): void {
+  protected addListeners_(): void {
     // Add module event listeners
     this.omtModule.addEventListeners((state: OMTState) => {
       this.state.omt = state;
@@ -609,7 +609,7 @@ export class RFFrontEnd extends BaseEquipment {
     });
   }
 
-  protected initialize(): void {
+  protected initialize_(): void {
     this.syncDomWithState();
   }
 

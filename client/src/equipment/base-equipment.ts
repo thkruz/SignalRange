@@ -32,8 +32,8 @@ export abstract class BaseEquipment {
   // Standard initialization sequence
   protected build(parentId: string): void {
     const parentDom = this.initializeDom(parentId);
-    this.addListeners(parentDom);
-    this.initialize();
+    this.addListeners_(parentDom);
+    this.initialize_();
   }
 
   initializeDom(parentId: string): HTMLElement {
@@ -54,13 +54,13 @@ export abstract class BaseEquipment {
    * Add event listeners
    * MUST be implemented by child classes
    */
-  protected abstract addListeners(parentDom: HTMLElement): void;
+  protected abstract addListeners_(parentDom: HTMLElement): void;
 
   /**
    * Initialize equipment state and start operations
    * MUST be implemented by child classes
    */
-  protected abstract initialize(): void;
+  protected abstract initialize_(): void;
 
   /**
    * Update equipment state

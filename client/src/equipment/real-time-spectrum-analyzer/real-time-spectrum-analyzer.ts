@@ -146,7 +146,7 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
     return parentDom;
   }
 
-  protected addListeners(parentDom: HTMLElement): void {
+  protected addListeners_(parentDom: HTMLElement): void {
     // Button clicks
     parentDom.addEventListener('click', (e) => {
       const target = e.target as HTMLElement;
@@ -214,7 +214,7 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
     this.syncDomWithState();
   }
 
-  protected initialize(): void {
+  protected initialize_(): void {
     if (!this.domCache['canvas']) throw new Error('Canvas element not found for Spectrum Analyzer');
     if (!this.domCache['canvasSpectral']) throw new Error('Spectral canvas element not found for Spectrum Analyzer');
     if (!this.domCache['canvasWaterfall']) throw new Error('Waterfall canvas element not found for Spectrum Analyzer');

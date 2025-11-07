@@ -92,7 +92,7 @@ export class Antenna extends BaseEquipment {
     this.inputState = structuredClone(this.state);
     const parentDom = this.initializeDom(parentId);
     this.lastRenderState = structuredClone(this.state);
-    this.addListeners(parentDom);
+    this.addListeners_(parentDom);
 
     EventBus.getInstance().on(Events.UPDATE, this.update.bind(this));
     EventBus.getInstance().on(Events.SYNC, this.syncDomWithState.bind(this));
@@ -112,7 +112,7 @@ export class Antenna extends BaseEquipment {
       -90,
       90,
       1,
-      (value) => this.handleSkewChange(value)
+      (value) => this.handleSkewChange_(value)
     );
 
     parentDom.innerHTML = html`
@@ -253,55 +253,55 @@ export class Antenna extends BaseEquipment {
     return parentDom;
   }
 
-  protected addListeners(parentDom: HTMLElement): void {
+  protected addListeners_(parentDom: HTMLElement): void {
     // Loopback switch
     const btnLoopback = qs('.btn-loopback', parentDom);
-    btnLoopback?.addEventListener('click', () => this.toggleLoopback());
+    btnLoopback?.addEventListener('click', () => this.toggleLoopback_());
 
     // HPA switch
-    this.hpaSwitch.addEventListeners(this.toggleHpa.bind(this));
+    this.hpaSwitch.addEventListeners(this.toggleHpa_.bind(this));
 
     // Input changes
     const inputs = parentDom.querySelectorAll('input, select');
     inputs.forEach(input => {
-      input.addEventListener('change', (e) => this.handleInputChange(e));
+      input.addEventListener('change', (e) => this.handleInputChange_(e));
     });
 
     // Apply button
     const btnApply = qs('.btn-apply', parentDom);
-    btnApply?.addEventListener('click', () => this.applyChanges());
+    btnApply?.addEventListener('click', () => this.applyChanges_());
 
     // Power switch
-    this.powerSwitch.addEventListeners(this.togglePower.bind(this));
+    this.powerSwitch.addEventListeners(this.togglePower_.bind(this));
 
     // Track switch special handling
     const trackSwitch = qs('.input-track', parentDom) as HTMLInputElement;
-    trackSwitch?.addEventListener('change', () => this.handleTrackChange(parentDom));
+    trackSwitch?.addEventListener('change', () => this.handleTrackChange_(parentDom));
 
     this.on(Events.ANTENNA_LOCKED, () => (data: { locked: boolean; antennaId: number }) => {
       if (data.antennaId === this.id) {
         this.state.isLocked = data.locked;
-        this.updateSignalStatus();
+        this.updateSignalStatus_();
         this.syncDomWithState();
       }
     });
   }
 
-  protected initialize(): void {
+  protected initialize_(): void {
     // Start in operational state_
-    this.updateSignalStatus();
+    this.updateSignalStatus_();
     this.syncDomWithState();
   }
 
-  public update(): void {
-    this.updateSignalStatus();
+  update(): void {
+    this.updateSignalStatus_();
     this.syncDomWithState();
   }
 
-  public sync(data: Partial<AntennaState>): void {
+  sync(data: Partial<AntennaState>): void {
     this.state = { ...this.state, ...data };
     this.inputState = { ...this.state };
-    this.updateSignalStatus();
+    this.updateSignalStatus_();
     this.syncDomWithState();
   }
 
@@ -309,14 +309,14 @@ export class Antenna extends BaseEquipment {
    * Private Methods
    */
 
-  private handleSkewChange(value: number): void {
+  private handleSkewChange_(value: number): void {
     this.state.skew = value as Degrees;
     if (this.domCache['labelSkew']) {
       this.domCache['labelSkew'].textContent = `${value}°`;
     }
   }
 
-  private handleInputChange(e: Event): void {
+  private handleInputChange_(e: Event): void {
     const target = e.target as HTMLInputElement | HTMLSelectElement;
     const param = target.dataset.param ?? null;
     if (!param) return;
@@ -337,7 +337,7 @@ export class Antenna extends BaseEquipment {
     this.inputState = { ...this.inputState, [param]: value };
   }
 
-  private applyChanges(): void {
+  private applyChanges_(): void {
     // Validate operational state_
     if (!this.state.isOperational) {
       this.emit(Events.ANTENNA_ERROR, { message: 'Antenna is not operational' });
@@ -359,11 +359,11 @@ export class Antenna extends BaseEquipment {
     // Emit configuration change event
     this.emit(Events.ANTENNA_CONFIG_CHANGED, this.state);
 
-    this.updateSignalStatus();
+    this.updateSignalStatus_();
     this.syncDomWithState();
   }
 
-  private toggleLoopback(): void {
+  private toggleLoopback_(): void {
     if (!this.state.isOperational) {
       this.emit(Events.ANTENNA_ERROR, { message: 'Antenna is not operational' });
       return;
@@ -380,11 +380,11 @@ export class Antenna extends BaseEquipment {
       loopback: this.state.isLoopbackEnabled
     });
 
-    this.updateSignalStatus();
+    this.updateSignalStatus_();
     this.syncDomWithState();
   }
 
-  private toggleHpa(): void {
+  private toggleHpa_(): void {
     if (!this.state.isOperational) {
       this.emit(Events.ANTENNA_ERROR, { message: 'Antenna is not operational' });
       return;
@@ -408,11 +408,11 @@ export class Antenna extends BaseEquipment {
 
     this.emit(Events.ANTENNA_CONFIG_CHANGED, this.state);
 
-    this.updateSignalStatus();
+    this.updateSignalStatus_();
     this.syncDomWithState();
   }
 
-  private togglePower(): void {
+  private togglePower_(): void {
     this.state.isPowered = !this.state.isPowered;
 
     // If turning off, also turn off track and locked
@@ -425,11 +425,11 @@ export class Antenna extends BaseEquipment {
       operational: this.state.isOperational
     });
 
-    this.updateSignalStatus();
+    this.updateSignalStatus_();
     this.syncDomWithState();
   }
 
-  private handleTrackChange(parentDom: HTMLElement): void {
+  private handleTrackChange_(parentDom: HTMLElement): void {
     if (!this.state.isOperational) {
       this.state.signals = [];
       this.emit(Events.ANTENNA_ERROR, { message: 'Antenna is not operational' });
@@ -447,7 +447,7 @@ export class Antenna extends BaseEquipment {
       SoundManager.getInstance().play(Sfx.SMALL_MOTOR);
       setTimeout(() => {
         this.state.isLocked = true;
-        this.updateSignalStatus();
+        this.updateSignalStatus_();
         this.syncDomWithState();
         this.emit(Events.ANTENNA_LOCKED, { locked: true });
       }, 7000); // 7 second delay to acquire lock
@@ -461,17 +461,18 @@ export class Antenna extends BaseEquipment {
       track: this.state.isAutoTrackEnabled
     });
 
-    this.updateSignalStatus();
+    this.updateSignalStatus_();
     this.syncDomWithState();
   }
 
-  private updateSignalStatus(): void {
+  private updateSignalStatus_(): void {
     // Can't receive signals if Not locked or Not operational
     if (!this.state.isLocked || !this.state.isOperational) {
       this.state.signals = [];
       return;
     }
 
+    // Check transmitters for signals being sent to this antenna
     for (const tx of this.transmitters) {
       for (const modem of tx.state.modems) {
         if (modem.antenna_id === this.state.id) {
@@ -498,6 +499,8 @@ export class Antenna extends BaseEquipment {
         }
       }
     }
+
+    // TODO: Some of this logic should be moved to a Satellite class
 
     // Update signal active status based on antenna config
     this.state.signals = SimulationManager.getInstance().getVisibleSignals(
@@ -562,7 +565,7 @@ export class Antenna extends BaseEquipment {
 
     // Update status
     // this.domCache['status'].textContent = this.getStatusText();
-    this.domCache['led'].className = `led ${this.getLedColor()}`;
+    this.domCache['led'].className = `led ${this.getLedColor_()}`;
 
     // Update buttons
     this.domCache['btnLoopback'].className = `btn-loopback ${this.state.isLoopbackEnabled ? 'active' : ''}`;
@@ -595,7 +598,7 @@ export class Antenna extends BaseEquipment {
     this.lastRenderState = structuredClone(this.state);
   }
 
-  private getLedColor(): string {
+  private getLedColor_(): string {
     if (!this.state.isPowered) return '';
     if (!this.state.isOperational) return 'led-amber';
     if (this.state.isLoopbackEnabled) return 'led-amber';

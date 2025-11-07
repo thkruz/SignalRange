@@ -106,7 +106,7 @@ export class StudentEquipment extends BaseElement {
     // First two use antenna 1, next two use antenna 2
     for (let i = 1; i <= (this.isFullEquipmentSuite ? 4 : 2); i++) {
       const antennaId = i <= 2 ? 1 : 2;
-      const specA = new RealTimeSpectrumAnalyzer(`specA${i}-container`, i, this.antennas[antennaId - 1]);
+      const specA = new RealTimeSpectrumAnalyzer(`specA${i}-container`, i, this.rfFrontEnds[antennaId - 1]);
       this.spectrumAnalyzers.push(specA);
     }
 

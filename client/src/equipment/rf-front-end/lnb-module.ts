@@ -2,7 +2,7 @@ import { PowerSwitch } from '@app/components/power-switch/power-switch';
 import { RotaryKnob } from '@app/components/rotary-knob/rotary-knob';
 import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
-import { MHz } from '@app/types';
+import { IfFrequency, IfSignal, MHz, RfFrequency, RfSignal } from '@app/types';
 import { LNBState, RFFrontEnd } from './rf-front-end';
 import { RFFrontEndModule } from './rf-front-end-module';
 
@@ -11,6 +11,10 @@ export class LNBModule extends RFFrontEndModule<LNBState> {
 
   private readonly powerSwitch: PowerSwitch;
   private readonly gainKnob: RotaryKnob;
+  inputSignals: RfSignal[] = [];
+  preLNASignals: RfSignal[] = [];
+  postLNASignals: RfSignal[] = [];
+  ifSignals: IfSignal[] = [];
 
   static create(state: LNBState, rfFrontEnd: RFFrontEnd, unit: number = 1): LNBModule {
     this.instance_ ??= new LNBModule(state, rfFrontEnd, unit);
@@ -143,6 +147,9 @@ export class LNBModule extends RFFrontEndModule<LNBState> {
    * Update component state and check for faults
    */
   update(): void {
+    // Get RF Signals from OMT and duplicate for pre/post LNA stages
+    this.inputSignals = this.rfFrontEnd_.omtModule.outputSignals.map(sig => ({ ...sig }));
+
     // Update noise temperature based on noise figure
     this.updateNoiseTemperature_();
 
@@ -151,6 +158,21 @@ export class LNBModule extends RFFrontEndModule<LNBState> {
 
     // Check for alarms
     this.checkAlarms_();
+
+    // For now, pass input signals directly to pre/post LNA signals
+    this.preLNASignals = this.inputSignals;
+    this.postLNASignals = this.inputSignals;
+
+    // Calculate IF signals after LNB based on LO frequency
+    this.ifSignals = this.inputSignals.map(sig => {
+      const ifFreq = this.calculateIfFrequency(sig.frequency);
+      const isInverted = this.isSpectrumInverted(sig.frequency);
+      return {
+        ...sig,
+        frequency: ifFreq,
+        isSpectrumInverted: isInverted,
+      } as IfSignal;
+    });
   }
 
   /**
@@ -270,8 +292,8 @@ export class LNBModule extends RFFrontEndModule<LNBState> {
    * @param rfFrequency RF input frequency in Hz
    * @returns IF output frequency in Hz
    */
-  calculateIfFrequency(rfFrequency: number): number {
-    return Math.abs(rfFrequency - this.state_.loFrequency * 1e6);
+  calculateIfFrequency(rfFrequency: RfFrequency): IfFrequency {
+    return Math.abs(rfFrequency - this.state_.loFrequency * 1e6) as IfFrequency;
   }
 
   /**

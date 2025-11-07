@@ -2,6 +2,7 @@ import { ToggleSwitch } from '@app/components/toggle-switch/toggle-switch';
 import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
 import { Logger } from '@app/logging/logger';
+import { RfSignal } from '@app/types';
 import { RFFrontEnd } from './rf-front-end';
 import { RFFrontEndModule } from './rf-front-end-module';
 
@@ -26,6 +27,8 @@ export class OMTModule extends RFFrontEndModule<OMTState> {
   private static instance_: OMTModule;
 
   private readonly polarizationToggle_: ToggleSwitch;
+  inputSignals: RfSignal[] = [];
+  outputSignals: RfSignal[] = [];
 
   static create(state: OMTState, rfFrontEnd: RFFrontEnd, unit: number = 1): OMTModule {
     this.instance_ ??= new OMTModule(state, rfFrontEnd, unit);
@@ -118,10 +121,17 @@ export class OMTModule extends RFFrontEndModule<OMTState> {
    * Update component state and check for faults
    */
   update(): void {
+    // Get RF Signals from the Antenna
+    this.inputSignals = this.rfFrontEnd_.antenna.state.signals;
+
     this.updateCrossPolIsolation_();
 
     // Calculate effective polarization based on antenna skew
     this.updateEffectivePolarization_(this.rfFrontEnd_.antenna.state.skew);
+
+    // TODO: Update output signals based on OMT behavior
+    // For now, pass input signals directly to output
+    this.outputSignals = this.inputSignals;
   }
 
   private updateCrossPolIsolation_(): void {

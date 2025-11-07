@@ -65,7 +65,7 @@ export interface FilterState {
  */
 export interface LNBState {
   isPowered: boolean;
-  loFrequency: MHz; // MHz (typical 3700-4200)
+  loFrequency: MHz;
   gain: number; // dB (40-65)
   noiseFigure: number; // dB (0.3-1.2)
   noiseTemperature: number; // Kelvin

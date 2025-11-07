@@ -1,7 +1,5 @@
 import { App } from "@app/app";
-import { SATELLITES } from "../../../constants";
-import { Hertz, IfFrequency, IfSignal, MHz, RfFrequency, RfSignal } from "../../../types";
-import { Antenna } from '../../antenna/antenna';
+import { Hertz, IfSignal, MHz, RfSignal } from "../../../types";
 import { RealTimeSpectrumAnalyzer } from "../real-time-spectrum-analyzer";
 import { RTSAScreen } from "./rtsa-screen";
 
@@ -29,16 +27,12 @@ export class SpectralDensityPlot extends RTSAScreen {
   private range: number;
   private decibelShift: number;
 
-  // Antenna reference
-  private readonly upconvertOffset: number = 3350e6;
-  private readonly downconvertOffset: number = 3500e6;
-
   // Colors
   private readonly noiseColor: string = '#fff647ff';
   signalColorCache: Map<string, string> = new Map();
 
-  constructor(canvas: HTMLCanvasElement, antenna: Antenna, specA: RealTimeSpectrumAnalyzer) {
-    super(canvas, antenna, specA);
+  constructor(canvas: HTMLCanvasElement, specA: RealTimeSpectrumAnalyzer) {
+    super(canvas, specA);
 
     // Initialize typed arrays
     this.allData = new Float32Array(this.width);
@@ -157,9 +151,9 @@ export class SpectralDensityPlot extends RTSAScreen {
    */
 
   private drawSignals(): void {
-    this.antenna.state.signals.forEach((signal, i) => {
+    this.specA.inputSignals.forEach((signal, i) => {
       let color = this.noiseColor;
-      if (!this.antenna.state.isLocked || !this.antenna.state.isOperational) return;
+      if (!this.specA.rfFrontEnd_.antenna.state.isLocked || !this.specA.rfFrontEnd_.antenna.state.isOperational) return;
 
       if (App.getInstance().isDeveloperMode) {
         // Check if we have cached a color for this signal id
@@ -170,44 +164,8 @@ export class SpectralDensityPlot extends RTSAScreen {
         }
       }
 
-      if (this.specA.state.isRfMode) {
-        // Draw RF signals
-        const rfUpSignal: RfSignal = {
-          ...signal,
-          frequency: (signal.frequency + this.upconvertOffset) as RfFrequency
-        };
-        const rfDownSignal: RfSignal = {
-          ...signal,
-          frequency: (signal.frequency + this.upconvertOffset) as RfFrequency
-        };
-        rfDownSignal.frequency = (rfDownSignal.frequency +
-          (this.antenna.state.isLoopbackEnabled
-            ? this.antenna.state.offset * 1e6
-            : SATELLITES.find(sat => sat.noradId === this.antenna.state.noradId)?.offset)) as RfFrequency;
-        rfDownSignal.power = !this.antenna.state.isLoopbackEnabled && !this.antenna.state.isHpaSwitchEnabled
-          ? -1000
-          : rfDownSignal.power;
-
-        this.drawSignal(this.ctx, color, rfUpSignal);
-        this.drawSignal(this.ctx, color, rfDownSignal);
-      } else {
-        // Draw IF signals
-        const ifUpSignal: IfSignal = signal;
-        const ifDownSignal: IfSignal = {
-          ...signal,
-          frequency: (signal.frequency + this.upconvertOffset - this.downconvertOffset) as IfFrequency
-        };
-        ifDownSignal.frequency = (ifDownSignal.frequency +
-          (this.antenna.state.isLoopbackEnabled
-            ? this.antenna.state.offset * 1e6
-            : SATELLITES.find(sat => sat.noradId === this.antenna.state.noradId)?.offset)) as IfFrequency;
-        ifDownSignal.power = !this.antenna.state.isLoopbackEnabled && !this.antenna.state.isHpaSwitchEnabled
-          ? -1000
-          : ifDownSignal.power;
-
-        this.drawSignal(this.ctx, color, ifUpSignal);
-        this.drawSignal(this.ctx, color, ifDownSignal);
-      }
+      // Draw signals
+      this.drawSignal(this.ctx, color, signal);
     });
   }
 

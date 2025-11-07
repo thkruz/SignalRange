@@ -1,6 +1,4 @@
-import { SATELLITES } from "../../../constants";
-import { Hertz, IfFrequency, IfSignal, RfFrequency, RfSignal } from "../../../types";
-import { Antenna } from "../../antenna/antenna";
+import { Hertz, IfSignal, RfSignal } from "../../../types";
 import { RealTimeSpectrumAnalyzer, RealTimeSpectrumAnalyzerState } from "../real-time-spectrum-analyzer";
 import { RTSAScreen } from "./rtsa-screen";
 
@@ -21,8 +19,6 @@ export class WaterfallDisplay extends RTSAScreen {
   private noiseData: Float32Array;
 
   // Antenna reference
-  private readonly upconvertOffset: number = 3350e6;
-  private readonly downconvertOffset: number = 3500e6;
   minFreq: Hertz = 0 as Hertz;
   maxFreq: Hertz = 0 as Hertz;
 
@@ -32,8 +28,8 @@ export class WaterfallDisplay extends RTSAScreen {
   cacheMaxDb: number = 0;
   cacheMinDb: number = 0;
 
-  constructor(canvas: HTMLCanvasElement, antenna: Antenna, specA: RealTimeSpectrumAnalyzer) {
-    super(canvas, antenna, specA);
+  constructor(canvas: HTMLCanvasElement, specA: RealTimeSpectrumAnalyzer) {
+    super(canvas, specA);
     this.data = new Float32Array(this.width);
     this.noiseData = new Float32Array(this.width);
     this.bufferSize = this.height;
@@ -102,7 +98,7 @@ export class WaterfallDisplay extends RTSAScreen {
       }
 
       const now = Date.now();
-      if (now - this.lastDrawTime > 1000 / (this.specA.state.refreshRate)) {
+      if (now - this.lastDrawTime > 1000 / (this.specA.state.refreshRate * 2)) {
         // Create new row of data
         this.noiseData = this.createNoise(this.noiseData);
         this.data.fill(this.specA.state.minAmplitude);
@@ -184,37 +180,10 @@ export class WaterfallDisplay extends RTSAScreen {
   }
 
   private drawSignalsToData(minFreq: Hertz, maxFreq: Hertz): void {
-    this.antenna.state.signals.forEach((signal) => {
-      if (!this.antenna.state.isLocked || !this.antenna.state.isOperational) return;
+    this.specA.inputSignals.forEach((signal) => {
+      if (!this.specA.rfFrontEnd_.antenna.state.isLocked || !this.specA.rfFrontEnd_.antenna.state.isOperational) return;
 
-      if (this.specA.state.isRfMode) {
-        const rfUpSignal: RfSignal = {
-          ...signal,
-          frequency: (signal.frequency + this.upconvertOffset) as RfFrequency
-        };
-        const rfDownSignal: RfSignal = {
-          ...signal,
-          frequency: (signal.frequency + this.upconvertOffset +
-            (this.antenna.state.isLoopbackEnabled
-              ? this.antenna.state.offset * 1e6
-              : SATELLITES.find(sat => sat.noradId === this.antenna.state.noradId)?.offset)) as RfFrequency
-        };
-
-        this.addSignalToData(rfUpSignal, minFreq, maxFreq);
-        this.addSignalToData(rfDownSignal, minFreq, maxFreq);
-      } else {
-        const ifUpSignal: IfSignal = signal;
-        const ifDownSignal: IfSignal = {
-          ...signal,
-          frequency: (signal.frequency + this.upconvertOffset - this.downconvertOffset +
-            (this.antenna.state.isLoopbackEnabled
-              ? this.antenna.state.offset * 1e6
-              : SATELLITES.find(sat => sat.noradId === this.antenna.state.noradId)?.offset)) as IfFrequency
-        };
-
-        this.addSignalToData(ifUpSignal, minFreq, maxFreq);
-        this.addSignalToData(ifDownSignal, minFreq, maxFreq);
-      }
+      this.addSignalToData(signal, minFreq, maxFreq);
     });
   }
 

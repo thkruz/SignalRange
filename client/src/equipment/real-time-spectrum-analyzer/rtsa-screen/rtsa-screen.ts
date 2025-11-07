@@ -1,20 +1,17 @@
-import { Antenna } from "../../antenna/antenna";
 import { RealTimeSpectrumAnalyzer } from "../real-time-spectrum-analyzer";
 
 export abstract class RTSAScreen {
   // Canvas elements
   readonly canvas: HTMLCanvasElement;
   protected readonly ctx: CanvasRenderingContext2D;
-  protected readonly antenna: Antenna;
   protected readonly specA: RealTimeSpectrumAnalyzer;
 
   // Canvas dimensions
   protected width: number = 800;
   protected height: number = 400;
 
-  constructor(canvas: HTMLCanvasElement, antenna: Antenna, specA: RealTimeSpectrumAnalyzer) {
+  constructor(canvas: HTMLCanvasElement, specA: RealTimeSpectrumAnalyzer) {
     this.canvas = canvas;
-    this.antenna = antenna;
     this.specA = specA;
     this.width = canvas.width;
     this.height = canvas.height;

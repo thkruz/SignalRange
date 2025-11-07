@@ -1,9 +1,9 @@
 import { EventBus } from "@app/events/event-bus";
 import { html } from "../../engine/utils/development/formatter";
 import { Events } from "../../events/events";
-import { Hertz } from "../../types";
-import { Antenna } from '../antenna/antenna';
+import { Hertz, IfSignal } from "../../types";
 import { BaseEquipment } from '../base-equipment';
+import { RFFrontEnd } from "../rf-front-end/rf-front-end";
 import { AnalyzerControlBox } from "./analyzer-control-box";
 import './real-time-spectrum-analyzer.css';
 import { SpectralDensityPlot } from './rtsa-screen/spectral-density-plot';
@@ -14,7 +14,7 @@ export interface RealTimeSpectrumAnalyzerState {
   inputValue: string;
   id: number; // 1-4
   team_id: number;
-  antenna_id: number;
+  rfFrontEndId: number;
   isRfMode: boolean; // true = RF mode, false = IF mode
   isPaused: boolean;
   isMaxHold: boolean;
@@ -46,21 +46,22 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
   spectralDensityBoth: SpectralDensityPlot | null = null;
   waterfallBoth: WaterfallDisplay | null = null;
 
-  // Antenna reference
-  private readonly antenna_: Antenna;
+  // RFFrontEnd reference
+  readonly rfFrontEnd_: RFFrontEnd;
 
   configPanel: AnalyzerControlBox | null = null;
+  inputSignals: IfSignal[] = [];
 
-  constructor(parentId: string, id: number, antenna: Antenna, teamId: number = 1) {
+  constructor(parentId: string, id: number, rfFrontEnd: RFFrontEnd, teamId: number = 1) {
     super(parentId, id, teamId);
 
-    this.antenna_ = antenna;
+    this.rfFrontEnd_ = rfFrontEnd;
 
     // Initialize config
     this.state = {
       id: this.id,
       team_id: this.teamId,
-      antenna_id: this.antenna_.state.id,
+      rfFrontEndId: this.rfFrontEnd_.antenna.state.id, // RF is hard linked to antenna
       isRfMode: false,
       isPaused: false,
       isMaxHold: false,
@@ -113,7 +114,7 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
         <div class="spec-a-info">
           <div>CF: ${this.state.centerFrequency / 1e6} MHz</div>
           <div>Input: ${this.state.inputValue} ${this.state.inputUnit}</div>
-          <div>Ant: ${this.state.antenna_id}</div>
+          <div>Ant: ${this.state.rfFrontEndId}</div>
         </div>
 
         <div class="spec-a-controls">
@@ -220,12 +221,12 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
     if (!this.domCache['canvasWaterfall']) throw new Error('Waterfall canvas element not found for Spectrum Analyzer');
 
     // Initialize single-mode screens
-    this.spectralDensity = new SpectralDensityPlot(this.domCache['canvas'] as HTMLCanvasElement, this.antenna_, this);
-    this.waterfall = new WaterfallDisplay(this.domCache['canvas'] as HTMLCanvasElement, this.antenna_, this);
+    this.spectralDensity = new SpectralDensityPlot(this.domCache['canvas'] as HTMLCanvasElement, this);
+    this.waterfall = new WaterfallDisplay(this.domCache['canvas'] as HTMLCanvasElement, this);
 
     // Initialize "both" mode screens with their dedicated canvases
-    this.spectralDensityBoth = new SpectralDensityPlot(this.domCache['canvasSpectral'] as HTMLCanvasElement, this.antenna_, this);
-    this.waterfallBoth = new WaterfallDisplay(this.domCache['canvasWaterfall'] as HTMLCanvasElement, this.antenna_, this);
+    this.spectralDensityBoth = new SpectralDensityPlot(this.domCache['canvasSpectral'] as HTMLCanvasElement, this);
+    this.waterfallBoth = new WaterfallDisplay(this.domCache['canvasWaterfall'] as HTMLCanvasElement, this);
 
     // Set initial screen mode
     this.updateScreenVisibility();
@@ -295,6 +296,10 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
   }
 
   public update(): void {
+    // Determine tap point
+    this.inputSignals = this.rfFrontEnd_.lnbModule.ifSignals;
+
+
     this.updateScreenState();
     if (!this.state.isPaused) {
       if (this.state.screenMode === 'both') {
@@ -408,7 +413,7 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
     this.domCache['info'].innerHTML = html`
       <div>CF: ${(this.state.centerFrequency / 1e6).toFixed(3)} MHz</div>
       <div>Input: ${this.state.inputValue} ${this.state.inputUnit}</div>
-      <div>Ant: ${this.state.antenna_id}</div>
+      <div>Ant: ${this.state.rfFrontEndId}</div>
     `;
 
     this.domCache['ifRfModeButton'].textContent = this.state.isRfMode ? 'RF' : 'IF';

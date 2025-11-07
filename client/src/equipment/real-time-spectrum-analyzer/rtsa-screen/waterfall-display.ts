@@ -216,7 +216,7 @@ export class WaterfallDisplay extends RTSAScreen {
   noiseCache: Float32Array = new Float32Array(this.height * this.width);
 
   private createNoise(data: Float32Array): Float32Array {
-    const base = this.specA.state.noiseFloor;
+    const base = this.specA.state.noiseFloor + this.specA.rfFrontEnd_.lnbModule.getTotalGain();
     const len = data.length;
     const time = performance.now() / 1000;
 

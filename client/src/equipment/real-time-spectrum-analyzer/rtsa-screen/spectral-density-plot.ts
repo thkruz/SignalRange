@@ -362,7 +362,7 @@ export class SpectralDensityPlot extends RTSAScreen {
 
   private createNoise(data: Float32Array): Float32Array {
     // Parameters for noise complexity
-    const base = this.specA.state.noiseFloor + this.decibelShift;
+    const base = this.specA.state.noiseFloor + this.specA.rfFrontEnd_.lnbModule.getTotalGain() + this.decibelShift;
     const len = data.length;
     const time = performance.now() / 1000;
 

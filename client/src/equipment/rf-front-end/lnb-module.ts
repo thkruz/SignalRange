@@ -11,7 +11,6 @@ export class LNBModule extends RFFrontEndModule<LNBState> {
 
   private readonly powerSwitch: PowerSwitch;
   private readonly gainKnob: RotaryKnob;
-  inputSignals: RfSignal[] = [];
   preLNASignals: RfSignal[] = [];
   postLNASignals: RfSignal[] = [];
   ifSignals: IfSignal[] = [];
@@ -148,7 +147,7 @@ export class LNBModule extends RFFrontEndModule<LNBState> {
    */
   update(): void {
     // Get RF Signals from OMT and duplicate for pre/post LNA stages
-    this.inputSignals = this.rfFrontEnd_.omtModule.outputSignals.map(sig => ({ ...sig }));
+    this.preLNASignals = this.rfFrontEnd_.omtModule.outputSignals.map(sig => ({ ...sig }));
 
     // Update noise temperature based on noise figure
     this.updateNoiseTemperature_();
@@ -159,12 +158,17 @@ export class LNBModule extends RFFrontEndModule<LNBState> {
     // Check for alarms
     this.checkAlarms_();
 
-    // For now, pass input signals directly to pre/post LNA signals
-    this.preLNASignals = this.inputSignals;
-    this.postLNASignals = this.inputSignals;
+    // Calculate post-LNA signals (apply gain if powered)
+    this.postLNASignals = this.preLNASignals.map(sig => {
+      const gain = this.state_.isPowered ? this.state_.gain : 0;
+      return {
+        ...sig,
+        power: sig.power + gain,
+      } as RfSignal;
+    });
 
     // Calculate IF signals after LNB based on LO frequency
-    this.ifSignals = this.inputSignals.map(sig => {
+    this.ifSignals = this.postLNASignals.map(sig => {
       const ifFreq = this.calculateIfFrequency(sig.frequency);
       const isInverted = this.isSpectrumInverted(sig.frequency);
       return {

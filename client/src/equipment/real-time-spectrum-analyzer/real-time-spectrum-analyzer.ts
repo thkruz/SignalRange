@@ -73,7 +73,7 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
       hold: false,
       minAmplitude: -120,
       maxAmplitude: -80,
-      noiseFloor: -115,
+      noiseFloor: -104,
       refreshRate: 10,
       screenMode: 'spectralDensity',
       inputUnit: 'MHz',

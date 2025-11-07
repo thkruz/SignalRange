@@ -826,7 +826,7 @@ export class RFFrontEnd extends BaseEquipment {
     }
 
     if (alarms.length > 0) {
-      this.emit(Events.RF_FE_ALARM, { unit: this.id, alarms });
+      // this.emit(Events.RF_FE_ALARM, { unit: this.id, alarms });
     }
   }
 

@@ -22,7 +22,8 @@ export interface RealTimeSpectrumAnalyzerState {
   isMarkerOn: boolean;
   refreshRate: number; // in Hz
   centerFrequency: Hertz; // Hz - center frequency
-  span: Hertz; // Hz - bandwidth
+  span: Hertz;
+  rbw: Hertz; // Resolution Bandwidth
   lockedControl: 'freq' | 'span';
   hold: boolean; // Hold max amplitude
   minAmplitude: number;
@@ -69,6 +70,7 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
       isMarkerOn: false,
       centerFrequency: 4810e6 as Hertz,
       span: 100e6 as Hertz,
+      rbw: 1e6 as Hertz,
       lockedControl: 'freq',
       hold: false,
       minAmplitude: -120,

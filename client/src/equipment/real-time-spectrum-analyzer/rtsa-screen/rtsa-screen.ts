@@ -7,7 +7,7 @@ export abstract class RTSAScreen {
   protected readonly specA: RealTimeSpectrumAnalyzer;
 
   // Canvas dimensions
-  protected width: number = 800;
+  protected width: number = 1600; // More width to increase resolution (especially for noise floor)
   protected height: number = 400;
 
   constructor(canvas: HTMLCanvasElement, specA: RealTimeSpectrumAnalyzer) {

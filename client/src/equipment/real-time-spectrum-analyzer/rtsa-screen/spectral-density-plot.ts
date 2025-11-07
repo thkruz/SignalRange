@@ -15,7 +15,8 @@ export class SpectralDensityPlot extends RTSAScreen {
   // Signal processing
   private allData: Float32Array;
   private signalData: Float32Array;
-  private noiseData: Float32Array;
+  /** Highest visible noise in dBm */
+  noiseData: Float32Array;
   private maxHoldData: Float32Array;
   private minHoldData: Float32Array;
 
@@ -87,7 +88,7 @@ export class SpectralDensityPlot extends RTSAScreen {
           this.minHoldData = new Float32Array(this.width);
         }
         // Calculate range
-        this.range = this.specA.state.minAmplitude - this.specA.state.maxAmplitude;
+        this.range = this.specA.state.maxAmplitude - this.specA.state.minAmplitude;
         this.decibelShift = 0 - this.specA.state.minAmplitude;
 
         this.noiseData = this.createNoise(this.noiseData);
@@ -105,7 +106,7 @@ export class SpectralDensityPlot extends RTSAScreen {
         this.ctx.globalAlpha = 1.0;
 
         // Create and draw noise
-        this.drawNoise(this.ctx);
+        // this.drawNoise(this.ctx);
 
         // Draw signals
         this.drawSignals();
@@ -150,7 +151,7 @@ export class SpectralDensityPlot extends RTSAScreen {
    * Signal Drawing
    */
 
-  private drawSignals(): void {
+  drawSignals(): void {
     this.specA.inputSignals.forEach((signal, i) => {
       let color = this.noiseColor;
       if (!this.specA.rfFrontEnd_.antenna.state.isLocked || !this.specA.rfFrontEnd_.antenna.state.isOperational) return;
@@ -230,30 +231,31 @@ export class SpectralDensityPlot extends RTSAScreen {
     ctx.globalAlpha = 1.0;
   }
 
-  private drawNoise(ctx: CanvasRenderingContext2D): void {
+  drawNoise(ctx: CanvasRenderingContext2D): void {
     ctx.strokeStyle = this.noiseColor;
     ctx.beginPath();
 
     for (let x = 0, len = this.noiseData.length; x < len; x++) {
-      const y = (this.noiseData[x] - this.specA.state.maxAmplitude - this.decibelShift) / this.range;
+      // calculate y position
+      const y = (this.noiseData[x] - this.specA.state.minAmplitude) / this.range;
       if (x === 0) {
-        ctx.moveTo(x, this.height * y);
+        ctx.moveTo(x, this.height * (1 - y));
       } else {
-        ctx.lineTo(x, this.height * y);
+        ctx.lineTo(x, this.height * (1 - y));
       }
     }
 
     ctx.stroke();
   }
 
-  private hideBelowNoiseFloor(ctx: CanvasRenderingContext2D): void {
+  hideBelowNoiseFloor(ctx: CanvasRenderingContext2D): void {
     ctx.beginPath();
     ctx.fillStyle = '#000';
     ctx.moveTo(0, this.height);
 
     for (let x = 0; x < this.width; x++) {
-      const y = (this.noiseData[x] - this.specA.state.maxAmplitude - this.decibelShift) / this.range;
-      ctx.lineTo(x, this.height * y);
+      const y = (this.noiseData[x] - this.specA.state.minAmplitude) / this.range;
+      ctx.lineTo(x, this.height * (1 - y));
     }
 
     ctx.lineTo(this.width, this.height);
@@ -277,17 +279,17 @@ export class SpectralDensityPlot extends RTSAScreen {
 
     const len = this.signalData.length;
     for (let x = 0; x < len; x++) {
-      const lowestSignal = this.signalData[x] >= this.noiseData[x] ? this.signalData[x] : 0;
-      const y = (lowestSignal - this.specA.state.maxAmplitude - this.decibelShift) / this.range;
+      const lowestSignal = Math.max(this.signalData[x], this.noiseData[x]);
+      const y = (lowestSignal - this.specA.state.minAmplitude) / this.range;
 
       maxSignalFreq = y < maxY ? lowestSignal : maxSignalFreq;
       maxX = y < maxY ? x : maxX;
       maxY = Math.min(y, maxY);
 
       if (x === 0) {
-        ctx.moveTo(x, this.height * y);
+        ctx.moveTo(x, this.height * (1 - y));
       } else {
-        ctx.lineTo(x, this.height * y);
+        ctx.lineTo(x, this.height * (1 - y));
       }
     }
 
@@ -362,41 +364,59 @@ export class SpectralDensityPlot extends RTSAScreen {
 
   private createNoise(data: Float32Array): Float32Array {
     // Parameters for noise complexity
-    const base = this.specA.state.noiseFloor + this.specA.rfFrontEnd_.lnbModule.getTotalGain() + this.decibelShift;
+    // Teq​=290×(10NF/10−1) | 34 Kelvin at NF=0.5dB
+    const noiseFigure = 0.5; // dB
+    let internalNoise = -174 + 10 * Math.log10(this.specA.state.span) + noiseFigure;
+    let externalNoise = this.specA.state.noiseFloor + this.specA.rfFrontEnd_.lnbModule.getTotalGain();
+
+    const isInternalNoise = internalNoise > externalNoise;
+    let base = isInternalNoise ? internalNoise : (externalNoise - this.specA.rfFrontEnd_.lnbModule.getTotalGain());
+
     const len = data.length;
     const time = performance.now() / 1000;
 
     // Generate multiple noise layers
     for (let x = 0; x < len; x++) {
-      // Layer 1: base random noise
-      let noise = (0.5 + (5 * Math.random()) / 10) * base;
+      // Add randomized phase offsets to prevent coherent patterns
+      const randPhase1 = Math.random() * Math.PI * 2;
+      const randPhase2 = Math.random() * Math.PI * 2;
+      const randPhase3 = Math.random() * Math.PI * 2;
+      const randAmp1 = 0.8 + Math.random() * 0.4;
+      const randAmp2 = 1.2 + Math.random() * 0.6;
+      const randAmp3 = 0.2 + Math.random() * 0.4;
 
-      // Layer 2: Perlin-like smooth noise (simple sine modulated)
-      noise += Math.sin((x / 50) + time) * base * 0.08;
+      // Layer 1: base random noise (±1 dB fixed variation)
+      let noise = base + (Math.random() - 0.5) * 2;
 
-      // Layer 3: Low-frequency drift
-      noise += Math.sin((x / 400) + time / 10) * base * 0.15;
+      // Layer 2: Smooth low-frequency drift (additive, not multiplicative)
+      noise += Math.sin((x / 300) + time / 8 + randPhase1) * randAmp1 * 0.5;
 
-      // Layer 4: High-frequency jitter
-      noise += Math.sin((x * 2 + time * 10)) * base * 0.03;
+      // Layer 3: Very subtle high-frequency jitter (additive)
+      noise += Math.sin((x * 0.5 + time * 2 + randPhase2)) * randAmp2 * 0.005;
 
-      // Layer 5: Occasional impulse spikes
-      if (Math.random() > 0.9995) {
-        noise += base * (1 + Math.random() * 2);
+      // Layer 4: Band-limited noise (simulate mild interference, additive)
+      if (x > len * 0.4 && x < len * 0.6) {
+        noise += Math.sin((x / 40) + time * 1.5 + randPhase3) * randAmp3 * 0.02;
       }
 
-      // Layer 6: Dropouts (simulate sudden dips)
-      if (Math.random() < 0.0005) {
-        noise -= base * (0.5 + Math.random());
+      // Clamp noise to within +/-2 dB of base for realism
+      noise = Math.max(base - 2, Math.min(base + 2, noise));
+
+      // Layer 5: Occasional impulse spikes (fixed amplitude, not scaled by base)
+      if (Math.random() > 0.9999) {
+        noise += 2 + Math.random() * 3;
       }
 
-      // Layer 7: Band-limited noise (simulate interference)
-      if (x > len * 0.3 && x < len * 0.7) {
-        noise += Math.sin((x / 20) + time * 2) * base * 0.12;
+      // Layer 6: Rare dropouts (fixed amplitude)
+      if (Math.random() < 0.0002) {
+        noise -= 1 + Math.random() * 2;
       }
 
-      // Clamp to minimum 0
-      data[x] = Math.max(noise, 0);
+      if (!isInternalNoise) {
+        noise += this.specA.rfFrontEnd_.lnbModule.getTotalGain();
+      }
+
+      data[x] = noise;
 
       // Update max hold
       if (this.maxHoldData[x] < data[x]) {
@@ -431,46 +451,53 @@ export class SpectralDensityPlot extends RTSAScreen {
       // Update all data with the largest value at that frequency
       this.allData[x] = Math.max(this.allData[x], y);
 
-      data[x] = Math.max(y, 0);
+      data[x] = y;
     }
 
     return data;
   }
 
   private createRealSignal(inBandWidth: number, x: number, center: number, amplitude: number, outOfBandWidth: number) {
-    let y = 0;
     const sigma = inBandWidth / 1.75; // Controls sharpness of main lobe
     const distance = x - center;
     const gaussian = Math.exp(-0.5 * Math.pow(distance / sigma, 2));
 
+    // Zero out signal far outside the band
+    if (x > center + outOfBandWidth || x < center - outOfBandWidth ||
+      x < center - inBandWidth || x > center + inBandWidth) {
+      return -170; // Well below noise floor
+    }
+
+    // Convert gaussian attenuation to dB (20*log10(gaussian))
+    // For gaussian values 0-1, this gives us 0 to -infinity dB
+    const gaussianDb = 20 * Math.log10(Math.max(gaussian, 1e-10));
+
+    let y = amplitude + gaussianDb;
+
     // Main lobe (signal bandwidth)
     if (Math.abs(distance) <= inBandWidth) {
-      // Add some random amplitude jitter for realism
-      y = (amplitude + this.decibelShift) * gaussian * (0.97 + Math.random() * 0.06);
+      // Add some random amplitude jitter for realism (±0.3 dB)
+      y += (Math.random() - 0.5) * 0.6;
     }
 
     // Simulate out-of-band rolloff (side lobes)
     if (Math.abs(distance) > inBandWidth && Math.abs(distance) <= outOfBandWidth) {
-      // Side lobes: much lower amplitude, oscillatory decay
+      // Side lobes: much lower amplitude (-15 to -20 dB below main lobe)
       const sideLobe = Math.sin((distance / inBandWidth) * Math.PI * 2) * 0.15;
-      y = (amplitude + this.decibelShift) * gaussian * sideLobe * (0.9 + Math.random() * 0.1);
+      const sideLobeDb = 20 * Math.log10(Math.abs(sideLobe) + 1e-10);
+      y = amplitude + gaussianDb + sideLobeDb + (Math.random() - 0.5) * 0.8;
     }
 
-    // Add noise floor blending near edges
+    // Add noise floor blending near edges (additional -3 to -9 dB)
     if (Math.abs(distance) > outOfBandWidth * 0.95) {
-      y *= 0.5 + Math.random() * 0.2;
+      y -= 3 + Math.random() * 6;
     }
 
-    // Simulate deep nulls and random dropouts for realism
+    // Simulate deep nulls and random dropouts for realism (-10 to -14 dB drops)
     if (Math.random() < 0.001) {
-      y *= 0.2 + Math.random() * 0.2;
+      y -= 10 + Math.random() * 4;
     }
 
-    // Zero out signal far outside the band and handle out-of-band regions
-    if (x > center + outOfBandWidth || x < center - outOfBandWidth ||
-      x < center - inBandWidth || x > center + inBandWidth) {
-      y = 0;
-    }
     return y;
   }
 

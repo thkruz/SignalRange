@@ -24,9 +24,10 @@ export class WaterfallDisplay extends RTSAScreen {
 
   // Color cache for performance
   private readonly colorCache: Map<number, [number, number, number]> = new Map();
-  private readonly COLOR_CACHE_STEPS = 1024;
+  private readonly COLOR_CACHE_STEPS = 2048;
   cacheMaxDb: number = 0;
   cacheMinDb: number = 0;
+  cacheGain: number = 0;
 
   constructor(canvas: HTMLCanvasElement, specA: RealTimeSpectrumAnalyzer) {
     super(canvas, specA);
@@ -88,7 +89,13 @@ export class WaterfallDisplay extends RTSAScreen {
 
   public update(): void {
     if (!this.specA.state.isPaused && this.running) {
-      if (this.cacheMaxDb !== this.specA.state.maxAmplitude || this.cacheMinDb !== this.specA.state.minAmplitude) {
+      if (
+        this.cacheMaxDb !== this.specA.state.maxAmplitude ||
+        this.cacheMinDb !== this.specA.state.minAmplitude ||
+        this.width !== this.data.length ||
+        this.cacheGain !== this.specA.rfFrontEnd_.lnbModule.getTotalGain()
+      ) {
+        this.initializeColorCache();
         // TODO: This causes old data to have the wrong colors - low priority but it causes a graphical glitch
         this.cacheMaxDb = this.specA.state.maxAmplitude;
         this.cacheMinDb = this.specA.state.minAmplitude;
@@ -99,8 +106,15 @@ export class WaterfallDisplay extends RTSAScreen {
 
       const now = Date.now();
       if (now - this.lastDrawTime > 1000 / (this.specA.state.refreshRate * 2)) {
+        // If we are in 'both' screen mode, reuse spectral-density-plot's noise data
+        if (this.specA.state.screenMode === 'both') {
+          const spectralDensityNoise = this.specA.spectralDensityBoth.noiseData;
+          this.noiseData.set(spectralDensityNoise);
+        } else {
+          this.noiseData = this.createNoise(this.noiseData);
+        }
+
         // Create new row of data
-        this.noiseData = this.createNoise(this.noiseData);
         this.data.fill(this.specA.state.minAmplitude);
         this.drawSignalsToData(this.minFreq, this.maxFreq);
 
@@ -216,7 +230,15 @@ export class WaterfallDisplay extends RTSAScreen {
   noiseCache: Float32Array = new Float32Array(this.height * this.width);
 
   private createNoise(data: Float32Array): Float32Array {
-    const base = this.specA.state.noiseFloor + this.specA.rfFrontEnd_.lnbModule.getTotalGain();
+    // Parameters for noise complexity (match spectral-density-plot)
+    // Teq​=290×(10NF/10−1) | 34 Kelvin at NF=0.5dB
+    const noiseFigure = 0.5; // dB
+    let internalNoise = -174 + 10 * Math.log10(this.specA.state.span) + noiseFigure;
+    let externalNoise = this.specA.state.noiseFloor + this.specA.rfFrontEnd_.lnbModule.getTotalGain();
+
+    const isInternalNoise = internalNoise > externalNoise;
+    let base = isInternalNoise ? internalNoise : (externalNoise - this.specA.rfFrontEnd_.lnbModule.getTotalGain());
+
     const len = data.length;
     const time = performance.now() / 1000;
 
@@ -228,7 +250,7 @@ export class WaterfallDisplay extends RTSAScreen {
         continue;
       }
 
-      // Add more randomness to phase and amplitude for each iteration
+      // Add randomized phase offsets to prevent coherent patterns (match spectral-density-plot)
       const randPhase1 = Math.random() * Math.PI * 2;
       const randPhase2 = Math.random() * Math.PI * 2;
       const randPhase3 = Math.random() * Math.PI * 2;
@@ -236,17 +258,35 @@ export class WaterfallDisplay extends RTSAScreen {
       const randAmp2 = 1.2 + Math.random() * 0.6;
       const randAmp3 = 0.2 + Math.random() * 0.4;
 
-      let noise =
-        base +
-        (Math.random() - 0.5) * 2; // random component within +/-1 dB
-      noise += Math.sin((x / 50) + time + randPhase1) * randAmp1 * 0.5;
-      noise += Math.sin((x / 400) + time / 10 + randPhase2) * randAmp2 * 0.5;
-      noise += Math.sin((x * 2 + time * 10 + randPhase3)) * randAmp3 * 0.5;
-      // Clamp noise to within +/-1 dB of base
-      noise = Math.max(base - 1, Math.min(base + 1, noise));
+      // Layer 1: base random noise (±1 dB fixed variation)
+      let noise = base + (Math.random() - 0.5) * 2;
 
-      if (Math.random() > 0.999) {
-        noise += 3 + Math.random() * 3;
+      // Layer 2: Smooth low-frequency drift (additive, not multiplicative)
+      noise += Math.sin((x / 300) + time / 8 + randPhase1) * randAmp1 * 0.5;
+
+      // Layer 3: Very subtle high-frequency jitter (additive)
+      noise += Math.sin((x * 0.5 + time * 2 + randPhase2)) * randAmp2 * 0.005;
+
+      // Layer 4: Band-limited noise (simulate mild interference, additive)
+      if (x > len * 0.4 && x < len * 0.6) {
+        noise += Math.sin((x / 40) + time * 1.5 + randPhase3) * randAmp3 * 0.02;
+      }
+
+      // Clamp noise to within +/-2 dB of base for realism
+      noise = Math.max(base - 2, Math.min(base + 2, noise));
+
+      // Layer 5: Occasional impulse spikes (fixed amplitude, not scaled by base)
+      if (Math.random() > 0.9999) {
+        noise += 2 + Math.random() * 3;
+      }
+
+      // Layer 6: Rare dropouts (fixed amplitude)
+      if (Math.random() < 0.0002) {
+        noise -= 1 + Math.random() * 2;
+      }
+
+      if (!isInternalNoise) {
+        noise += this.specA.rfFrontEnd_.lnbModule.getTotalGain();
       }
 
       data[x] = noise;
@@ -305,27 +345,33 @@ export class WaterfallDisplay extends RTSAScreen {
 
     const brightness = 1;
 
-    if (norm < 0.1) {
+    // Smooth linear gradient: dark blue -> blue -> cyan -> green -> yellow -> red
+    if (norm < 0.2) {
+      // Dark Blue to Bright Blue
       const t = norm / 0.2;
-      return [0, 0, Math.floor((20 + 80 * t) * brightness)];
+      return [0, 0, Math.floor((100 + 155 * t) * brightness)];
     } else if (norm < 0.4) {
+      // Blue to Cyan
       const t = (norm - 0.2) / 0.2;
-      return [0, Math.floor(100 * t * brightness), Math.floor((100 + 100 * t) * brightness)];
-    } else if (norm < 0.3) {
+      return [0, Math.floor(255 * t * brightness), Math.floor(255 * brightness)];
+    } else if (norm < 0.6) {
+      // Cyan to Green
       const t = (norm - 0.4) / 0.2;
       return [
-        Math.floor(128 * t * brightness),
-        Math.floor((100 + 155 * t) * brightness),
-        Math.floor(200 * (1 - t) * brightness)
+        0,
+        Math.floor(255 * brightness),
+        Math.floor(255 * (1 - t) * brightness)
       ];
-    } else if (norm < 0.6) {
+    } else if (norm < 0.8) {
+      // Green to Yellow
       const t = (norm - 0.6) / 0.2;
       return [
-        Math.floor((128 + 127 * t) * brightness),
+        Math.floor(255 * t * brightness),
         Math.floor(255 * brightness),
         0
       ];
     } else {
+      // Yellow to Red
       const t = (norm - 0.8) / 0.2;
       return [
         Math.floor(255 * brightness),

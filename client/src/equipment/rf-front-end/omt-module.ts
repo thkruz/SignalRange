@@ -1,7 +1,6 @@
 import { ToggleSwitch } from '@app/components/toggle-switch/toggle-switch';
 import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
-import { Logger } from '@app/logging/logger';
 import { RfSignal } from '@app/types';
 import { RFFrontEnd } from './rf-front-end';
 import { RFFrontEndModule } from './rf-front-end-module';
@@ -177,7 +176,7 @@ export class OMTModule extends RFFrontEndModule<OMTState> {
       baseTxPol = 'V';
       baseRxPol = 'H';
     } else {
-      Logger.info('OMTModule', 'Skew between polarizations, using configured pol');
+      // Logger.info('OMTModule', 'Skew between polarizations, using configured pol');
       baseTxPol = this.state_.txPolarization;
       baseRxPol = this.state_.rxPolarization;
     }

@@ -133,7 +133,7 @@ export interface RFFrontEndState {
 export class RFFrontEnd extends BaseEquipment {
   // State
   state: RFFrontEndState;
-  private lastRenderState: RFFrontEndState | null = null;
+  private lastRenderState: string = '';
 
   // Module classes
   omtModule: OMTModule;
@@ -253,6 +253,7 @@ export class RFFrontEnd extends BaseEquipment {
 
     // Update module states
     this.omtModule.update();
+    this.lnbModule.update();
 
     // Check for alarms and faults
     this.checkAlarms();
@@ -270,7 +271,7 @@ export class RFFrontEnd extends BaseEquipment {
     this.bucModule = new BUCModule(this.state.buc);
     this.hpaModule = new HPAModule(this.state.hpa);
     this.filterModule = new FilterModule(this.state.filter);
-    this.lnbModule = new LNBModule(this.state.lnb);
+    this.lnbModule = LNBModule.create(this.state.lnb, this, this.state.unit);
     this.couplerModule = new CouplerModule(this.state.coupler);
 
     // Create UI components
@@ -292,11 +293,6 @@ export class RFFrontEnd extends BaseEquipment {
     this.filterModeToggle = ToggleSwitch.create(
       `rf-fe-filter-mode-${this.state.unit}`,
       this.state.filter.mode === 'NARROW'
-    );
-
-    this.lnbPowerSwitch = PowerSwitch.create(
-      `rf-fe-lnb-power-${this.state.unit}`,
-      this.state.lnb.isPowered
     );
 
     this.couplerTapToggle = ToggleSwitch.create(
@@ -324,17 +320,6 @@ export class RFFrontEnd extends BaseEquipment {
       0.5,
       (value: number) => {
         this.state.hpa.backOff = value;
-        this.calculateSignalPath();
-      }
-    );
-    this.lnbGainKnob = RotaryKnob.create(
-      `rf-fe-lnb-gain-knob-${this.state.unit}`,
-      this.state.lnb.gain,
-      40,
-      65,
-      1,
-      (value: number) => {
-        this.state.lnb.gain = value;
         this.calculateSignalPath();
       }
     );
@@ -402,7 +387,7 @@ export class RFFrontEnd extends BaseEquipment {
             </div>
             <div class="control-group">
               <label>GAIN (dB)</label>
-              <div id="rf-fe-buc-gain-knob-${this.state.unit}"></div>
+              ${this.bucGainKnob.html}
             </div>
             <div class="led-indicator">
               <span class="indicator-label">LOCK</span>
@@ -428,7 +413,7 @@ export class RFFrontEnd extends BaseEquipment {
               </div>
               <div class="control-group">
                 <label>BACK-OFF (dB)</label>
-                <div id="rf-fe-hpa-backoff-knob-${this.state.unit}"></div>
+                ${this.hpaBackOffKnob.html}
               </div>
               <div class="power-meter">
                 <div class="meter-label">OUTPUT</div>
@@ -470,37 +455,7 @@ export class RFFrontEnd extends BaseEquipment {
           </div>
 
           <!-- LNB Module -->
-          <div class="rf-fe-module lnb-module">
-            <div class="module-label">Low Noise Block</div>
-            <div class="module-controls">
-              <div class="control-group">
-                <label>POWER</label>
-                <div id="rf-fe-lnb-power-${this.state.unit}"></div>
-              </div>
-              <div class="control-group">
-                <label>LO (MHz)</label>
-                <input type="number"
-                       class="input-lnb-lo"
-                       data-param="lnb.loFrequency"
-                       value="${this.state.lnb.loFrequency}"
-                       min="3700" max="4200" step="10" />
-                <div class="digital-display">${this.state.lnb.loFrequency}</div>
-              </div>
-              <div class="control-group">
-                <label>GAIN (dB)</label>
-                <div id="rf-fe-lnb-gain-knob-${this.state.unit}"></div>
-              </div>
-              <div class="led-indicator">
-                <span class="indicator-label">LOCK</span>
-                <div class="led ${this.state.lnb.isExtRefLocked ? 'led-green' : 'led-red'}"></div>
-              </div>
-              <div class="led-indicator">
-                <span class="indicator-label">NOISE TEMP</span>
-                <div class="led led-blue" style="filter: brightness(${2 - this.state.lnb.noiseTemperature / 50})"></div>
-                <span class="value-readout">${this.state.lnb.noiseTemperature.toFixed(0)} K</span>
-              </div>
-            </div>
-          </div>
+          ${this.lnbModule.html}
 
           <!-- Spec-A Coupler Module -->
           <div class="rf-fe-module coupler-module">
@@ -551,6 +506,11 @@ export class RFFrontEnd extends BaseEquipment {
       this.calculateSignalPath();
       this.syncDomWithState();
     });
+    this.lnbModule.addEventListeners((state: LNBState) => {
+      this.state.lnb = state;
+      this.calculateSignalPath();
+      this.syncDomWithState();
+    });
 
     // Attach event listeners after DOM is created
     this.attachEventListeners();
@@ -584,6 +544,9 @@ export class RFFrontEnd extends BaseEquipment {
       this.emit(Events.RF_FE_POWER_CHANGED, { unit: this.id, isPowered });
     });
 
+    this.bucGainKnob.attachListeners();
+    this.hpaBackOffKnob.attachListeners();
+
     this.bucPowerSwitch.addEventListeners((isPowered: boolean) => {
       if (this.state.isPowered) {
         this.state.buc.isPowered = isPowered;
@@ -597,14 +560,6 @@ export class RFFrontEnd extends BaseEquipment {
         this.state.hpa.isEnabled = isEnabled;
         this.syncDomWithState();
         this.emit(Events.RF_FE_HPA_CHANGED, { unit: this.id, hpa: this.state.hpa });
-      }
-    });
-
-    this.lnbPowerSwitch.addEventListeners((isPowered: boolean) => {
-      if (this.state.isPowered) {
-        this.state.lnb.isPowered = isPowered;
-        this.syncDomWithState();
-        this.emit(Events.RF_FE_LNB_CHANGED, { unit: this.id, lnb: this.state.lnb });
       }
     });
   }
@@ -622,7 +577,10 @@ export class RFFrontEnd extends BaseEquipment {
     if (data.buc) this.state.buc = { ...this.state.buc, ...data.buc };
     if (data.hpa) this.state.hpa = { ...this.state.hpa, ...data.hpa };
     if (data.filter) this.state.filter = { ...this.state.filter, ...data.filter };
-    if (data.lnb) this.state.lnb = { ...this.state.lnb, ...data.lnb };
+    if (data.lnb) {
+      this.state.lnb = { ...this.state.lnb, ...data.lnb };
+      this.lnbModule.sync(data.lnb);
+    }
     if (data.coupler) this.state.coupler = { ...this.state.coupler, ...data.coupler };
 
     // Update scalar properties
@@ -673,7 +631,7 @@ export class RFFrontEnd extends BaseEquipment {
     this.syncDomWithState();
   }
 
-  private calculateSignalPath(): void {
+  calculateSignalPath(): void {
     if (!this.state.isPowered) {
       // Zero out all values when powered off
       this.state.signalPath.txPath = {
@@ -845,7 +803,8 @@ export class RFFrontEnd extends BaseEquipment {
 
     // Collect alarm messages
     const alarms: string[] = [
-      ...this.omtModule.getAlarms()
+      ...this.omtModule.getAlarms(),
+      ...this.lnbModule.getAlarms(),
     ];
 
     if (!this.state.isExtRefPresent) {
@@ -855,11 +814,6 @@ export class RFFrontEnd extends BaseEquipment {
     // BUC lock check
     if (this.state.buc.isPowered && !this.state.buc.isExtRefLocked && this.state.isExtRefPresent) {
       alarms.push('BUC not locked to reference');
-    }
-
-    // LNB lock check
-    if (this.state.lnb.isPowered && !this.state.lnb.isExtRefLocked && this.state.isExtRefPresent) {
-      alarms.push('LNB not locked to reference');
     }
 
     if (this.state.hpa.isOverdriven) {
@@ -929,7 +883,7 @@ export class RFFrontEnd extends BaseEquipment {
 
   private syncDomWithState(): void {
     // Prevent unnecessary re-renders
-    if (JSON.stringify(this.state) === JSON.stringify(this.lastRenderState)) {
+    if (JSON.stringify(this.state) === this.lastRenderState) {
       return;
     }
 
@@ -943,30 +897,9 @@ export class RFFrontEnd extends BaseEquipment {
       bucLoDisplay.textContent = this.state.buc.loFrequency.toString();
     }
 
-    const lnbLoDisplay = container.querySelector('.lnb-module .digital-display');
-    if (lnbLoDisplay) {
-      lnbLoDisplay.textContent = this.state.lnb.loFrequency.toString();
-    }
-
     // Update rotary knobs
-    const bucGainKnobContainer = container.querySelector(`#rf-fe-buc-gain-knob-${this.state.unit}`);
-    if (bucGainKnobContainer && this.bucGainKnob) {
-      bucGainKnobContainer.innerHTML = '';
-      bucGainKnobContainer.appendChild(this.bucGainKnob.getElement());
-      this.bucGainKnob.sync(this.state.buc.gain);
-    }
-    const hpaBackOffKnobContainer = container.querySelector(`#rf-fe-hpa-backoff-knob-${this.state.unit}`);
-    if (hpaBackOffKnobContainer && this.hpaBackOffKnob) {
-      hpaBackOffKnobContainer.innerHTML = '';
-      hpaBackOffKnobContainer.appendChild(this.hpaBackOffKnob.getElement());
-      this.hpaBackOffKnob.sync(this.state.hpa.backOff);
-    }
-    const lnbGainKnobContainer = container.querySelector(`#rf-fe-lnb-gain-knob-${this.state.unit}`);
-    if (lnbGainKnobContainer && this.lnbGainKnob) {
-      lnbGainKnobContainer.innerHTML = '';
-      lnbGainKnobContainer.appendChild(this.lnbGainKnob.getElement());
-      this.lnbGainKnob.sync(this.state.lnb.gain);
-    }
+    this.bucGainKnob.sync(this.state.buc.gain);
+    this.hpaBackOffKnob.sync(this.state.hpa.backOff);
 
     // Update signal path readout
     const pathReadout = container.querySelector('.signal-path-readout');
@@ -987,11 +920,8 @@ export class RFFrontEnd extends BaseEquipment {
     if (this.hpaEnableSwitch) {
       this.hpaEnableSwitch.sync(this.state.hpa.isEnabled);
     }
-    if (this.lnbPowerSwitch) {
-      this.lnbPowerSwitch.sync(this.state.lnb.isPowered);
-    }
 
-    this.lastRenderState = JSON.parse(JSON.stringify(this.state));
+    this.lastRenderState = JSON.stringify(this.state);
   }
 
   private updateLEDs(container: Element): void {
@@ -1064,10 +994,6 @@ export class RFFrontEnd extends BaseEquipment {
 
   public getBUCOutputFrequency(): RfFrequency {
     return (this.state.signalPath.txPath.ifFrequency + this.state.buc.loFrequency * 1e6) as RfFrequency;
-  }
-
-  public getLNBOutputFrequency(): IfFrequency {
-    return Math.abs(this.state.signalPath.rxPath.rfFrequency - this.state.lnb.loFrequency * 1e6) as IfFrequency;
   }
 
   public getTotalTxGain(): number {

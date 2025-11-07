@@ -1,8 +1,8 @@
 /* rf-front-end.css - Styles for RF Front-End equipment case */
 
-/* Signal Flow Diagram - 100px height */
+/* Signal Flow Diagram - 50px height */
 .rf-fe-signal-flow {
-  height: 100px;
+  height: 50px;
   padding: 0 15px;
   background: linear-gradient(180deg, #1a1a1a 0%, #1f1f1f 100%);
   border-bottom: 1px solid #333;

@@ -10,11 +10,11 @@ export class PowerSwitch {
   private dom_?: HTMLInputElement;
   private isOn_: boolean;
 
-  constructor(uniqueId: string, isOn: boolean) {
+  constructor(uniqueId: string, isOn: boolean, isVertical: boolean, isSmall: boolean) {
     this.html_ = html`
-      <div class="physical-switch-container">
+      <div class="physical-switch-container ${isVertical ? 'vertical-power-switch' : 'horizontal-power-switch'}">
         <input type="checkbox" id="${uniqueId}" class="physical-power-switch" checked="${isOn ? 'checked' : ''}" />
-        <label for="${uniqueId}" class="physical-switch">
+        <label for="${uniqueId}" class="physical-switch ${isVertical ? 'vertical-power-switch' : 'horizontal-power-switch'} ${isSmall ? 'small-power-switch' : ''}">
             <div class="physical-switch-track">
                 <div class="physical-switch-rocker">
                     <div class="physical-switch-light"></div>
@@ -32,8 +32,8 @@ export class PowerSwitch {
     this.uniqueId = uniqueId;
   }
 
-  static create(domId: string, isOn: boolean): PowerSwitch {
-    return new PowerSwitch(domId, isOn);
+  static create(domId: string, isOn: boolean, isVertical = true, isSmall = false): PowerSwitch {
+    return new PowerSwitch(domId, isOn, isVertical, isSmall);
   }
 
   get html(): string {

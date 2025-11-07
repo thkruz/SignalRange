@@ -1,10 +1,9 @@
 import { ToggleSwitch } from '@app/components/toggle-switch/toggle-switch';
 import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
-import { EventBus } from '@app/events/event-bus';
-import { Events } from '@app/events/events';
 import { Logger } from '@app/logging/logger';
 import { RFFrontEnd } from './rf-front-end';
+import { RFFrontEndModule } from './rf-front-end-module';
 
 /**
  * Polarization types for OMT/Duplexer
@@ -23,23 +22,25 @@ export interface OMTState {
   effectiveRxPol: PolarizationType; // Effective RX polarization based on skew
 }
 
-export class OMTModule {
+export class OMTModule extends RFFrontEndModule<OMTState> {
   private static instance_: OMTModule;
-  protected html_: string;
-  private readonly uniqueId: string;
-  // private readonly unit: number;
-  private dom_?: HTMLElement;
-  private rfFrontEnd_: RFFrontEnd;
-  private state_: OMTState;
-  polarizationToggle: ToggleSwitch;
-  private lastDraw_: number = 0;
+
+  private readonly polarizationToggle_: ToggleSwitch;
+
+  static create(state: OMTState, rfFrontEnd: RFFrontEnd, unit: number = 1): OMTModule {
+    this.instance_ ??= new OMTModule(state, rfFrontEnd, unit);
+    return this.instance_;
+  }
+
+  static getInstance(): OMTModule {
+    return this.instance_;
+  }
 
   private constructor(state: OMTState, rfFrontEnd: RFFrontEnd, unit: number = 1) {
-    this.state_ = state;
-    this.rfFrontEnd_ = rfFrontEnd;
-    this.uniqueId = `rf-fe-omt-pol-${unit}`;
+    super(state, rfFrontEnd, 'rf-fe-omt-pol', unit);
 
-    this.polarizationToggle = ToggleSwitch.create(
+    // Create UI components
+    this.polarizationToggle_ = ToggleSwitch.create(
       this.uniqueId,
       this.state_.txPolarization === 'V'
     );
@@ -50,7 +51,7 @@ export class OMTModule {
         <div class="module-controls">
           <div class="control-group">
             <label>TOGGLE</label>
-            ${this.polarizationToggle.html}
+            ${this.polarizationToggle_.html}
           </div>
           <div class="polarization-display-column">
             <div class="pol-display-row">
@@ -72,25 +73,15 @@ export class OMTModule {
           </div>
           <div class="led-indicator">
             <span class="indicator-label">X-POL</span>
-            <div class="led ${this.getXPolLedStatus()}"></div>
+            <div class="led ${this.getXPolLedStatus_()}"></div>
             <span class="value-readout">${this.state_.crossPolIsolation.toFixed(1)} dB</span>
           </div>
         </div>
       </div>
     `;
-
-    EventBus.getInstance().on(Events.UPDATE, this.update.bind(this));
-    EventBus.getInstance().on(Events.DRAW, () => {
-      const now = Date.now();
-      if (now - this.lastDraw_ > 500) {
-        this.syncDomWithState();
-        this.lastDraw_ = now;
-      }
-    });
-    EventBus.getInstance().on(Events.SYNC, this.syncDomWithState.bind(this));
   }
 
-  private getXPolLedStatus(): string | number {
+  private getXPolLedStatus_(): string | number {
     if (this.state_.crossPolIsolation < 25) {
       return 'led-red';
     }
@@ -101,40 +92,22 @@ export class OMTModule {
     return 'led-green';
   }
 
-  static create(state: OMTState, rfFrontEnd: RFFrontEnd, unit: number = 1): OMTModule {
-    this.instance_ ??= new OMTModule(state, rfFrontEnd, unit);
-    return this.instance_;
-  }
-
-  static getInstance(): OMTModule {
-    return this.instance_;
-  }
-
-  get html(): string {
-    return this.html_;
-  }
-
-  get dom(): HTMLElement {
-    this.dom_ ??= qs(`#${this.uniqueId}`);
-    return this.dom_;
-  }
-
   /**
    * Add event listeners for user interactions
    */
   addEventListeners(cb: (state: OMTState) => void): void {
-    if (!this.polarizationToggle) {
+    if (!this.polarizationToggle_) {
       console.warn('OMTModule: Cannot add event listeners - components not initialized');
       return;
     }
 
-    this.polarizationToggle.addEventListeners((isVertical: boolean) => {
+    this.polarizationToggle_.addEventListeners((isVertical: boolean) => {
       // Toggle between H and V polarization
       this.state_.txPolarization = isVertical ? 'V' : 'H';
       this.state_.rxPolarization = isVertical ? 'H' : 'V';
 
       // Update the polarization displays
-      this.updatePolarizationDisplays();
+      this.updatePolarizationDisplays_();
 
       // Notify parent of state change
       cb(this.state_);
@@ -143,16 +116,15 @@ export class OMTModule {
 
   /**
    * Update component state and check for faults
-   * @param antennaSkew Optional antenna skew in degrees for effective polarization calculation
    */
   update(): void {
-    this.updateCrossPolIsolation();
+    this.updateCrossPolIsolation_();
 
     // Calculate effective polarization based on antenna skew
-    this.updateEffectivePolarization(this.rfFrontEnd_.antenna.state.skew);
+    this.updateEffectivePolarization_(this.rfFrontEnd_.antenna.state.skew);
   }
 
-  private updateCrossPolIsolation(): void {
+  private updateCrossPolIsolation_(): void {
     // Check polarization of visible signal
     const signal = this.rfFrontEnd_.antenna.state.signals[0];
     if (signal) {
@@ -178,7 +150,7 @@ export class OMTModule {
    * H if |θ| < 15°, V if |θ−90°| < 15°, but reversed if OMT is toggled.
    * @param skew Antenna skew in degrees
    */
-  private updateEffectivePolarization(skew: number): void {
+  private updateEffectivePolarization_(skew: number): void {
     // Normalize skew to 0-180 range
     const normalizedSkew = ((skew % 180) + 180) % 180;
 
@@ -211,7 +183,7 @@ export class OMTModule {
     this.state_.effectiveRxPol = newEffectiveRxPol;
 
     if (txChanged || rxChanged) {
-      this.syncDomWithState();
+      this.syncDomWithState_();
     }
   }
 
@@ -219,15 +191,7 @@ export class OMTModule {
    * Sync state from external source
    */
   sync(state: Partial<OMTState>): void {
-    this.state_ = { ...this.state_, ...state };
-    this.syncDomWithState();
-  }
-
-  /**
-   * Get current state
-   */
-  get state(): OMTState {
-    return this.state_;
+    super.sync(state);
   }
 
   /**
@@ -246,17 +210,20 @@ export class OMTModule {
   /**
    * Update the DOM to reflect current state
    */
-  private syncDomWithState(): void {
+  protected syncDomWithState_(): void {
+    if (!this.hasStateChanged()) {
+      return; // No changes, skip update
+    }
     const container = qs('.omt-module');
     if (!container) return;
 
     // Update polarization displays
-    this.updatePolarizationDisplays();
+    this.updatePolarizationDisplays_();
 
     // Update cross-pol LED
     const xpolLed = container.querySelector('.led-indicator .led');
     if (xpolLed) {
-      xpolLed.className = `led ${this.getXPolLedStatus()}`;
+      xpolLed.className = `led ${this.getXPolLedStatus_()}`;
     }
 
     // Update cross-pol isolation readout
@@ -269,7 +236,7 @@ export class OMTModule {
   /**
    * Update all polarization digital displays
    */
-  private updatePolarizationDisplays(): void {
+  private updatePolarizationDisplays_(): void {
     const container = qs('.omt-module');
     if (!container) return;
 

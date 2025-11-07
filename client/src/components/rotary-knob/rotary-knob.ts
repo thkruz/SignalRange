@@ -1,9 +1,12 @@
 import { html } from "@app/engine/utils/development/formatter";
+import { qs } from "@app/engine/utils/query-selector";
 import './rotary-knob.css';
 
 export class RotaryKnob {
-  private element: HTMLElement;
-  private value: number;
+  protected html_: string;
+  private readonly uniqueId: string;
+  private dom_?: HTMLInputElement;
+  private value: number = 0;
   private readonly min: number;
   private readonly max: number;
   private readonly step: number;
@@ -14,13 +17,21 @@ export class RotaryKnob {
   private callback?: (value: number) => void;
 
   constructor(
-    id: string,
+    uniqueId: string,
     initialValue: number,
     min: number,
     max: number,
     step: number = 1,
     callback?: (value: number) => void
   ) {
+    this.html_ = html`
+      <div class="rotary-knob" id="${uniqueId}">
+        <div class="knob-body">
+          <div class="knob-indicator"></div>
+        </div>
+        <div class="knob-value">${this.value.toFixed(1)}</div>
+      </div>
+    `;
     this.value = initialValue;
     this.min = min;
     this.max = max;
@@ -29,28 +40,21 @@ export class RotaryKnob {
 
     const container = document.createElement('div');
     container.className = 'rotary-knob-container';
-    container.innerHTML = html`
-      <div class="rotary-knob" id="${id}">
-        <div class="knob-body">
-          <div class="knob-indicator"></div>
-        </div>
-        <div class="knob-value">${this.value.toFixed(1)}</div>
-      </div>
-    `;
+    container.innerHTML = this.html_;
 
-    this.element = container.firstElementChild as HTMLElement;
-    this.updateAngleFromValue();
-    this.attachListeners();
+    this.uniqueId = uniqueId;
+    this.updateAngleFromValue_();
   }
 
-  private attachListeners(): void {
-    const knobBody = this.element.querySelector('.knob-body') as HTMLElement;
+  attachListeners(): void {
+    this.dom_ ??= qs(`#${this.uniqueId}`);
+    const knobBody = qs('.knob-body', this.dom);
 
     knobBody.addEventListener('mousedown', this.onDragStart.bind(this));
     document.addEventListener('mousemove', this.onDragMove.bind(this));
     document.addEventListener('mouseup', this.onDragEnd.bind(this));
 
-    knobBody.addEventListener('wheel', this.onWheel.bind(this), { passive: false });
+    knobBody.addEventListener('wheel', this.onWheel_.bind(this), { passive: false });
   }
 
   private onDragStart(e: MouseEvent): void {
@@ -64,69 +68,75 @@ export class RotaryKnob {
     if (!this.isDragging) return;
 
     const deltaY = this.startY - e.clientY;
-    const deltaX = e.clientX - (this.element.getBoundingClientRect().left + this.element.offsetWidth / 2);
+    const deltaX = e.clientX - (this.dom.getBoundingClientRect().left + this.dom.offsetWidth / 2);
 
     // Combine vertical and horizontal movement: up/right increases, down/left decreases
     const movement = deltaY + deltaX;
     const range = this.max - this.min;
     const deltaValue = (movement / 100) * range; // 100px = full range
 
-    this.setValue(this.startValue + deltaValue);
+    this.setValue_(this.startValue + deltaValue);
   }
 
   private onDragEnd(): void {
     this.isDragging = false;
   }
 
-  private onWheel(e: WheelEvent): void {
+  private onWheel_(e: WheelEvent): void {
     e.preventDefault();
     const delta = -Math.sign(e.deltaY) * this.step;
-    this.setValue(this.value + delta);
+    this.setValue_(this.value + delta);
   }
 
-  private setValue(newValue: number): void {
+  private setValue_(newValue: number): void {
     // Clamp and round to step
     this.value = Math.max(this.min, Math.min(this.max, newValue));
     this.value = Math.round(this.value / this.step) * this.step;
 
-    this.updateAngleFromValue();
-    this.updateDisplay();
+    this.updateAngleFromValue_();
+    this.updateDisplay_();
 
     if (this.callback) {
       this.callback(this.value);
     }
   }
 
-  private updateAngleFromValue(): void {
+  private updateAngleFromValue_(): void {
     const normalized = (this.value - this.min) / (this.max - this.min);
     this.angle = -135 + (normalized * 270); // -135° to +135°
   }
 
-  private updateDisplay(): void {
-    const knobBody = this.element.querySelector('.knob-body') as HTMLElement;
+  private updateDisplay_(): void {
+    const knobBody = qs('.knob-body', this.dom);
     if (knobBody) {
       knobBody.style.transform = `rotate(${this.angle}deg)`;
     }
 
-    const valueDisplay = this.element.querySelector('.knob-value') as HTMLElement;
+    const valueDisplay = qs('.knob-value', this.dom);
     if (valueDisplay) {
       valueDisplay.textContent = this.value.toFixed(1);
     }
   }
 
-  public getValue(): number {
+  getValue(): number {
     return this.value;
   }
 
-  public getElement(): HTMLElement {
-    return this.element;
+  get html(): string {
+    return this.html_;
   }
 
-  public sync(newValue: number): void {
-    this.setValue(newValue);
+  get dom(): HTMLInputElement {
+    this.dom_ ??= qs(`#${this.uniqueId}`);
+
+    return this.dom_;
   }
 
-  public static create(
+  sync(newValue: number): void {
+    this.setValue_(newValue);
+  }
+
+  static create(
     id: string,
     initialValue: number,
     min: number,

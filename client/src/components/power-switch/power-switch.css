@@ -3,6 +3,21 @@
   position: relative;
 }
 
+.physical-switch-container.horizontal-power-switch {
+  position: relative;
+  display: flex;
+  align-content: center;
+  justify-content: center;
+  height: 60px;
+  margin-top: -20px;
+  margin-bottom: 10px;
+}
+
+/* If horizontal rotate it 90 degrees */
+.physical-switch.horizontal-power-switch {
+  transform: rotate(90deg);
+}
+
 /* Hide the actual transmitter power switch checkbox */
 .physical-power-switch {
   display: none;
@@ -26,6 +41,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.physical-switch.small-power-switch {
+  width: 35px;
+  height: 60px;
 }
 
 .physical-switch-track {

@@ -185,7 +185,7 @@ export class Antenna extends BaseEquipment {
 
             <div class="config-row">
               <label>Skew</label>
-              <div class="skew-knob-container"></div>
+              ${this.skewKnob.html}
               <span id="labelSkew" class="current-value">${this.state.skew}°</span>
             </div>
 
@@ -244,12 +244,6 @@ export class Antenna extends BaseEquipment {
     this.domCache['labelLockStatus'] = qs('#labelLockStatus', parentDom);
     this.domCache['labelSkew'] = qs('#labelSkew', parentDom);
 
-    // Insert skew knob element
-    const skewKnobContainer = qs('.skew-knob-container', parentDom);
-    if (skewKnobContainer) {
-      skewKnobContainer.appendChild(this.skewKnob.getElement());
-    }
-
     return parentDom;
   }
 
@@ -266,6 +260,8 @@ export class Antenna extends BaseEquipment {
     inputs.forEach(input => {
       input.addEventListener('change', (e) => this.handleInputChange_(e));
     });
+
+    this.skewKnob.attachListeners();
 
     // Apply button
     const btnApply = qs('.btn-apply', parentDom);

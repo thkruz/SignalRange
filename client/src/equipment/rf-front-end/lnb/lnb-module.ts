@@ -3,8 +3,23 @@ import { RotaryKnob } from '@app/components/rotary-knob/rotary-knob';
 import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
 import { IfFrequency, IfSignal, MHz, RfFrequency, RfSignal } from '@app/types';
-import { LNBState, RFFrontEnd } from './rf-front-end';
-import { RFFrontEndModule } from './rf-front-end-module';
+import { RFFrontEnd } from '../rf-front-end';
+import { RFFrontEndModule } from '../rf-front-end-module';
+import './lnb-module.css';
+
+/**
+ * Low Noise Block converter module state
+ */
+export interface LNBState {
+  isPowered: boolean;
+  loFrequency: MHz;
+  gain: number; // dB (40-65)
+  lnaNoiseFigure: number; // dB (0.3-1.2)
+  mixerNoiseFigure: number; // dB (e.g., 6-10)
+  noiseTemperature: number; // Kelvin
+  isExtRefLocked: boolean;
+  isSpectrumInverted: boolean;
+}
 
 export class LNBModule extends RFFrontEndModule<LNBState> {
   private static instance_: LNBModule;
@@ -75,7 +90,7 @@ export class LNBModule extends RFFrontEndModule<LNBState> {
           <div class="led-indicator">
             <span class="indicator-label">NOISE TEMP</span>
             <div class="led led-blue" style="filter: brightness(${this.getNoiseTempBrightness__()})"></div>
-            <span class="value-readout">${this.state_.noiseTemperature.toFixed(0)} K</span>
+            <span class="value-readout lnb-noise-temp">${this.state_.noiseTemperature.toFixed(0)} K</span>
           </div>
         </div>
       </div>
@@ -87,7 +102,9 @@ export class LNBModule extends RFFrontEndModule<LNBState> {
   }
 
   private getNoiseTempBrightness__(): number {
-    return 2 - this.state_.noiseTemperature / 50;
+    // Typical noise temperature range: ~90K (bright) to 290K+ (dim)
+    // To map 90K -> ~2, 290K -> ~0, use denominator ~100
+    return Math.max(2 - this.state_.noiseTemperature / 100, 0);
   }
 
   /**
@@ -183,10 +200,18 @@ export class LNBModule extends RFFrontEndModule<LNBState> {
    * Calculate noise temperature from noise figure
    * T_noise = T_0 * (F - 1), where T_0 = 290K
    */
+  // 2. Update updateNoiseTemperature_() to include Mixer
   private updateNoiseTemperature_(): void {
-    const nfLinear = Math.pow(10, this.state_.noiseFigure / 10);
-    this.state_.noiseTemperature = 290 * (nfLinear - 1);
+    const nfLnaLinear = Math.pow(10, this.state_.lnaNoiseFigure / 10);
+    const nfMixerLinear = Math.pow(10, this.state_.mixerNoiseFigure / 10);
+    const gainLnaLinear = this.state_.gain > 0 ? Math.pow(10, this.state_.gain / 10) : 1;
+
+    // Friis formula for cascaded stages
+    const nfTotal = nfLnaLinear + (nfMixerLinear - 1) / gainLnaLinear;
+
+    this.state_.noiseTemperature = 290 * (nfTotal - 1);
   }
+
 
   /**
    * Update lock status based on power and external reference
@@ -250,8 +275,8 @@ export class LNBModule extends RFFrontEndModule<LNBState> {
     }
 
     // High noise figure alarm
-    if (this.state_.noiseFigure > 1.0) {
-      alarms.push(`LNB noise figure degraded (${this.state_.noiseFigure.toFixed(2)} dB)`);
+    if (this.state_.lnaNoiseFigure > 1.0) {
+      alarms.push(`LNB noise figure degraded (${this.state_.lnaNoiseFigure.toFixed(2)} dB)`);
     }
 
     return alarms;

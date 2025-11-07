@@ -12,7 +12,7 @@ import { BUCModule } from './buc-module';
 import { CouplerModule } from './coupler-module';
 import { FilterModule } from './filter-module';
 import { HPAModule } from './hpa-module';
-import { LNBModule } from './lnb-module';
+import { LNBModule, LNBState } from './lnb/lnb-module';
 import { OMTModule, OMTState } from './omt-module';
 import './rf-front-end.css';
 
@@ -58,19 +58,6 @@ export interface FilterState {
   bandwidth: MHz; // MHz
   insertionLoss: number; // dB
   centerFrequency: RfFrequency; // Hz
-}
-
-/**
- * Low Noise Block converter module state
- */
-export interface LNBState {
-  isPowered: boolean;
-  loFrequency: MHz;
-  gain: number; // dB (40-65)
-  noiseFigure: number; // dB (0.3-1.2)
-  noiseTemperature: number; // Kelvin
-  isExtRefLocked: boolean;
-  isSpectrumInverted: boolean;
 }
 
 /**
@@ -207,7 +194,8 @@ export class RFFrontEnd extends BaseEquipment {
         isPowered: true,
         loFrequency: 4200 as MHz, // MHz
         gain: 55, // dB
-        noiseFigure: 0.6, // dB
+        lnaNoiseFigure: 0.6, // dB
+        mixerNoiseFigure: 16.0, // dB
         noiseTemperature: 45, // K
         isExtRefLocked: true,
         isSpectrumInverted: true,
@@ -244,7 +232,7 @@ export class RFFrontEnd extends BaseEquipment {
     EventBus.getInstance().on(Events.SYNC, this.syncDomWithState.bind(this));
   }
 
-  public update(): void {
+  update(): void {
     // Update signal path calculations
     this.calculateSignalPath();
 
@@ -254,6 +242,8 @@ export class RFFrontEnd extends BaseEquipment {
     // Update module states
     this.omtModule.update();
     this.lnbModule.update();
+
+    this.updateSystemNoiseFigure_();
 
     // Check for alarms and faults
     this.checkAlarms();
@@ -568,7 +558,7 @@ export class RFFrontEnd extends BaseEquipment {
     this.syncDomWithState();
   }
 
-  public sync(data: Partial<RFFrontEndState>): void {
+  sync(data: Partial<RFFrontEndState>): void {
     // Deep merge state
     if (data.omt) {
       this.state.omt = { ...this.state.omt, ...data.omt };
@@ -717,7 +707,7 @@ export class RFFrontEnd extends BaseEquipment {
     const filterNfLinear = Math.pow(10, filterLossDb / 10); // Loss = NF for passive device
     const filterGainLinear = Math.pow(10, -filterLossDb / 10); // Negative gain
 
-    const lnbNfLinear = Math.pow(10, this.state.lnb.noiseFigure / 10);
+    const lnbNfLinear = Math.pow(10, this.state.lnb.lnaNoiseFigure / 10);
 
     const totalNfLinear = filterNfLinear + (lnbNfLinear - 1) / filterGainLinear;
     return 10 * Math.log10(totalNfLinear);
@@ -763,7 +753,7 @@ export class RFFrontEnd extends BaseEquipment {
     }
 
     // LNB noise temperature calculation
-    const nfLinear = Math.pow(10, this.state.lnb.noiseFigure / 10);
+    const nfLinear = Math.pow(10, this.state.lnb.lnaNoiseFigure / 10);
     this.state.lnb.noiseTemperature = 290 * (nfLinear - 1);
 
     // BUC output power calculation
@@ -954,10 +944,10 @@ export class RFFrontEnd extends BaseEquipment {
   }
 
   /**
-   * Public API Methods
+   * API Methods
    */
 
-  public setPower(isPowered: boolean): void {
+  setPower(isPowered: boolean): void {
     this.state.isPowered = isPowered;
     if (!isPowered) {
       this.state.buc.isPowered = false;
@@ -967,7 +957,7 @@ export class RFFrontEnd extends BaseEquipment {
     this.syncDomWithState();
   }
 
-  public setExternalReference(isPresent: boolean): void {
+  setExternalReference(isPresent: boolean): void {
     this.state.isExtRefPresent = isPresent;
     if (!isPresent) {
       this.state.buc.isExtRefLocked = false;
@@ -987,16 +977,16 @@ export class RFFrontEnd extends BaseEquipment {
     this.syncDomWithState();
   }
 
-  public setSignalFlowDirection(direction: 'TX' | 'RX' | 'IDLE'): void {
+  setSignalFlowDirection(direction: 'TX' | 'RX' | 'IDLE'): void {
     this.state.signalFlowDirection = direction;
     this.syncDomWithState();
   }
 
-  public getBUCOutputFrequency(): RfFrequency {
+  getBUCOutputFrequency(): RfFrequency {
     return (this.state.signalPath.txPath.ifFrequency + this.state.buc.loFrequency * 1e6) as RfFrequency;
   }
 
-  public getTotalTxGain(): number {
+  getTotalTxGain(): number {
     let gain = this.state.buc.gain;
     if (this.state.hpa.isEnabled) {
       gain += this.state.hpa.outputPower;
@@ -1005,23 +995,23 @@ export class RFFrontEnd extends BaseEquipment {
     return gain;
   }
 
-  public getTotalRxGain(): number {
+  getTotalRxGain(): number {
     return this.state.lnb.gain - this.state.filter.insertionLoss;
   }
 
-  public getSystemNoiseFigure(): number {
+  private updateSystemNoiseFigure_(): number {
     // Friis formula for cascaded noise figure
     // F_total = F1 + (F2-1)/G1 + (F3-1)/(G1*G2) + ...
     // For RX: Filter → LNB
     const filterNfLinear = Math.pow(10, (this.state.filter.insertionLoss / 10));
-    const lnbNfLinear = Math.pow(10, (this.state.lnb.noiseFigure / 10));
+    const lnbNfLinear = Math.pow(10, (this.state.lnb.lnaNoiseFigure / 10));
     // const lnbGainLinear = Math.pow(10, (this.state.lnb.gain / 10));
 
     const totalNfLinear = filterNfLinear + (lnbNfLinear - 1) / filterNfLinear;
     return 10 * Math.log10(totalNfLinear);
   }
 
-  public getCouplerOutput(): { frequency: RfFrequency | IfFrequency; power: number } {
+  getCouplerOutput(): { frequency: RfFrequency | IfFrequency; power: number } {
     switch (this.state.coupler.tapPoint) {
       case 'RF_PRE_FILTER':
         return {

@@ -38,7 +38,7 @@ export class LNBModule extends RFFrontEndModule<LNBState> {
     this.gainKnob = RotaryKnob.create(
       `${this.uniqueId}-gain-knob`,
       this.state_.gain,
-      40,
+      0, // For training purposes, allow 0 dB gain
       65,
       1,
       (value: number) => {

@@ -6,6 +6,7 @@ import { Events } from "../../events/events";
 import { IfFrequency, MHz, RfFrequency } from "../../types";
 import { Antenna } from '../antenna/antenna';
 import { BaseEquipment } from "../base-equipment";
+import { Transmitter } from '../transmitter/transmitter';
 import { BUCModule, BUCState } from './buc-module/buc-module';
 import { CouplerModule, CouplerState } from './coupler-module/coupler-module';
 import { IfFilterBankModule, IfFilterBankState } from './filter-module/filter-module';
@@ -86,6 +87,9 @@ export class RFFrontEnd extends BaseEquipment {
   // Antenna reference
   antenna: Antenna | null = null;
 
+  // Transmitter reference
+  transmitters: Transmitter[] = [];
+
   constructor(parentId: string, unit: number, teamId: number = 1, serverId: number = 1) {
     super(parentId, unit, teamId);
 
@@ -147,8 +151,8 @@ export class RFFrontEnd extends BaseEquipment {
       },
 
       coupler: {
-        tapPointA: 'POST',
-        tapPointB: 'IF',
+        tapPointA: 'TX IF',
+        tapPointB: 'RX IF',
         couplingFactorA: -30, // dB
         couplingFactorB: -20, // dB
         isActiveA: true,
@@ -203,6 +207,10 @@ export class RFFrontEnd extends BaseEquipment {
 
   connectAntenna(antenna: Antenna): void {
     this.antenna = antenna;
+  }
+
+  connectTransmitter(transmitter: Transmitter): void {
+    this.transmitters.push(transmitter);
   }
 
   initializeDom(parentId: string): HTMLElement {
@@ -399,6 +407,10 @@ export class RFFrontEnd extends BaseEquipment {
     if (data.signalFlowDirection !== undefined) this.state.signalFlowDirection = data.signalFlowDirection;
 
     this.syncDomWithState();
+  }
+
+  get externalNoise() {
+    return this.filterModule.state.noiseFloor + this.getTotalRxGain();
   }
 
   /**

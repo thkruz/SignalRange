@@ -70,6 +70,10 @@ export interface IfSignal {
   feed: string;
   /** whether the signal is degraded */
   isDegraded: boolean;
+  /** whether the signal is an image instead of a video */
+  isImage?: boolean;
+  /** whether the signal is from an external source */
+  isExternal?: boolean;
 }
 
 export interface Satellite {

@@ -26,8 +26,8 @@ export class OMTModule extends RFFrontEndModule<OMTState> {
   private static instance_: OMTModule;
 
   private readonly polarizationToggle_: ToggleSwitch;
-  inputSignals: RfSignal[] = [];
-  outputSignals: RfSignal[] = [];
+  rxSignalsOut: RfSignal[] = [];
+  txSignalsOut: RfSignal[] = [];
 
   static create(state: OMTState, rfFrontEnd: RFFrontEnd, unit: number = 1): OMTModule {
     this.instance_ ??= new OMTModule(state, rfFrontEnd, unit);
@@ -120,22 +120,47 @@ export class OMTModule extends RFFrontEndModule<OMTState> {
    * Update component state and check for faults
    */
   update(): void {
-    // Get RF Signals from the Antenna
-    this.inputSignals = this.rfFrontEnd_.antenna.state.signals;
-
     this.updateCrossPolIsolation_();
 
     // Calculate effective polarization based on antenna skew
     this.updateEffectivePolarization_(this.rfFrontEnd_.antenna.state.skew);
 
-    // TODO: Update output signals based on OMT behavior
-    // For now, pass input signals directly to output
-    this.outputSignals = this.inputSignals;
+    this.rxSignalsOut = this.rxSignalsIn.map(sig => {
+      if (sig.polarization !== this.state_.effectiveRxPol) {
+        // Apply cross-pol isolation loss
+        const isolatedPower = sig.power - this.state_.crossPolIsolation;
+        return {
+          ...sig,
+          power: isolatedPower,
+          isDegraded: true,
+        };
+      }
+
+      return sig;
+    });
+
+    // Set TX signal polarization based on OMT setting
+    // Any changes to the TX signals' polarization by the antenna module
+    // will happen inside the antenna module itself
+    this.txSignalsOut = this.txSignalsIn.map((sig: RfSignal) => {
+      return {
+        ...sig,
+        polarization: this.state_.txPolarization
+      };
+    });
+  }
+
+  get txSignalsIn(): RfSignal[] {
+    return this.rfFrontEnd_.hpaModule.outputSignals;
+  }
+
+  get rxSignalsIn(): RfSignal[] {
+    return this.rfFrontEnd_.antenna.state.rxSignalsIn;
   }
 
   private updateCrossPolIsolation_(): void {
     // Check polarization of visible signal
-    const signal = this.rfFrontEnd_.antenna.state.signals[0];
+    const signal = this.rfFrontEnd_.antenna.state.rxSignalsIn[0];
     if (signal) {
       if (signal.polarization === this.state_.effectiveRxPol) {
         // Aligned polarization, normal isolation

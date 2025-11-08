@@ -14,6 +14,7 @@ export class SimulationManager {
   public static getInstance(): SimulationManager {
     if (!this.instance) {
       this.instance = new SimulationManager();
+      window.signalRange.simulationManager = this.instance;
     }
     return this.instance;
   }
@@ -35,6 +36,10 @@ export class SimulationManager {
         s.noradId === signal.noradId &&
         s.id === signal.id);
     });
+  }
+
+  clearUserSignals(): void {
+    this.userSignals = [];
   }
 
   getVisibleSignals(serverId: number, targetId: number): RfSignal[] {

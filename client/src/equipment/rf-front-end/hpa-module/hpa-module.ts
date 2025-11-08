@@ -34,7 +34,7 @@ export class HPAModule extends RFFrontEndModule<HPAState> {
   private readonly powerSwitch: PowerSwitch;
   private readonly backOffKnob: RotaryKnob;
   rfSignalsIn: RfSignal[] = [];
-  rfSignalsOut: RfSignal[] = [];
+  outputSignals: RfSignal[] = [];
 
   // HPA characteristics
   private readonly p1db = Math.log10(100) * 10; // dBm (100W) typical P1dB compression point
@@ -213,15 +213,14 @@ export class HPAModule extends RFFrontEndModule<HPAState> {
    * Process RF signals through HPA
    */
   private processSignals_(): void {
-    this.rfSignalsOut = this.rfSignalsIn.map(sig => {
-      if (!this.state_.isPowered) {
-        // Pass through with no gain when disabled
-        return {
-          ...sig,
-          power: sig.power - 120, // Effectively blocked
-        };
-      }
+    if (!this.state_.isPowered || !this.state_.isHpaEnabled) {
+      // HPA is off, no output signals
+      this.outputSignals = [];
+      return;
+    }
 
+    // Apply gain and compression to input signals
+    this.outputSignals = this.inputSignals.map(sig => {
       // Apply HPA gain
       const gain = this.calculateGain_(sig.power);
       return {
@@ -242,10 +241,26 @@ export class HPAModule extends RFFrontEndModule<HPAState> {
 
     // Ideal linear gain would bring signal to P1dB - backOff
     const targetOutputDbm = this.p1db - this.state_.backOff;
-    const linearGain = targetOutputDbm - inputPowerDbm;
+    let linearGain = targetOutputDbm - inputPowerDbm;
 
-    // Apply compression if getting close to P1dB
-    // This is a simplified model
+    // Maximum gain limit (e.g., 50 dB typical for HPA)
+    const maxGain = 50;
+    if (linearGain > maxGain) {
+      linearGain = maxGain;
+    }
+
+    // Compression: as input approaches P1dB, gain is reduced
+    // Simple model: reduce gain by 1 dB for every dB input above (P1dB - backOff - 3)
+    const compressionThreshold = targetOutputDbm - 3;
+    if (inputPowerDbm > compressionThreshold) {
+      linearGain -= (inputPowerDbm - compressionThreshold);
+    }
+
+    // Ensure gain is not negative
+    if (linearGain < 0) {
+      linearGain = 0;
+    }
+
     return linearGain;
   }
 
@@ -389,6 +404,10 @@ export class HPAModule extends RFFrontEndModule<HPAState> {
     }
 
     return segments.join('');
+  }
+
+  get inputSignals(): RfSignal[] {
+    return this.rfFrontEnd_.bucModule.outputSignals;
   }
 
   /**

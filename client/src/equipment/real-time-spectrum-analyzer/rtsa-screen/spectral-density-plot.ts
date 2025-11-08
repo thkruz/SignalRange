@@ -106,7 +106,7 @@ export class SpectralDensityPlot extends RTSAScreen {
         this.ctx.globalAlpha = 1.0;
 
         // Create and draw noise
-        // this.drawNoise(this.ctx);
+        this.drawNoise(this.ctx);
 
         // Draw signals
         this.drawSignals();

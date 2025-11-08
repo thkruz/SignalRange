@@ -8,7 +8,7 @@ import './coupler-module.css';
 /**
  * Spectrum analyzer tap point options
  */
-export type TapPoint = 'PRE' | 'POST' | 'IF';
+export type TapPoint = 'TX IF' | 'RX IF' | 'POST BUC / PRE HPA TX RF' | 'POST HPA / PRE OMT TX RF' | 'POST OMT/PRE ANT TX RF' | 'PRE OMT/POST ANT RX RF' | 'POST OMT/PRE LNA RX RF' | 'POST LNA RX RF'
 
 /**
  * Spectrum Analyzer coupler module state
@@ -37,6 +37,17 @@ export class CouplerModule extends RFFrontEndModule<CouplerState> {
   private constructor(state: CouplerState, rfFrontEnd: RFFrontEnd, unit: number = 1) {
     super(state, rfFrontEnd, 'rf-fe-coupler', unit);
 
+    const tapPointOptions = [
+      'TX IF',
+      'RX IF',
+      'POST BUC / PRE HPA TX RF',
+      'POST HPA / PRE OMT TX RF',
+      'POST OMT/PRE ANT TX RF',
+      'PRE OMT/POST ANT RX RF',
+      'POST OMT/PRE LNA RX RF',
+      'POST LNA RX RF'
+    ];
+
     this.html_ = html`
       <div class="rf-fe-module coupler-module">
         <div class="module-label">SPEC-A TAPS</div>
@@ -45,9 +56,7 @@ export class CouplerModule extends RFFrontEndModule<CouplerState> {
           <div class="control-group">
             <label>TAP POINT A</label>
             <select class="input-coupler-tap-a" data-param="tapPointA">
-              <option value="PRE" ${this.state_.tapPointA === 'PRE' ? 'selected' : ''}>RF PRE</option>
-              <option value="POST" ${this.state_.tapPointA === 'POST' ? 'selected' : ''}>RF POST</option>
-              <option value="IF" ${this.state_.tapPointA === 'IF' ? 'selected' : ''}>IF</option>
+              ${tapPointOptions.map(tp => `<option value="${tp}"${this.state_.tapPointA === tp ? ' selected' : ''}>${tp}</option>`).join('\n')}
             </select>
           </div>
           <div class="led-indicator">
@@ -65,9 +74,7 @@ export class CouplerModule extends RFFrontEndModule<CouplerState> {
           <div class="control-group">
             <label>TAP POINT B</label>
             <select class="input-coupler-tap-b" data-param="tapPointB">
-              <option value="PRE" ${this.state_.tapPointB === 'PRE' ? 'selected' : ''}>RF PRE</option>
-              <option value="POST" ${this.state_.tapPointB === 'POST' ? 'selected' : ''}>RF POST</option>
-              <option value="IF" ${this.state_.tapPointB === 'IF' ? 'selected' : ''}>IF</option>
+              ${tapPointOptions.map(tp => `<option value="${tp}"${this.state_.tapPointB === tp ? ' selected' : ''}>${tp}</option>`).join('\n')}
             </select>
           </div>
           <div class="led-indicator">
@@ -149,11 +156,25 @@ export class CouplerModule extends RFFrontEndModule<CouplerState> {
       return false;
     }
 
-    // PRE and POST are on TX path, IF is on RX path
-    if (tapPoint === 'PRE' || tapPoint === 'POST') {
-      return direction === 'TX';
-    } else if (tapPoint === 'IF') {
-      return direction === 'RX';
+    const txTapPoints: TapPoint[] = [
+      'TX IF',
+      'POST BUC / PRE HPA TX RF',
+      'POST HPA / PRE OMT TX RF',
+      'POST OMT/PRE ANT TX RF'
+    ];
+
+    const rxTapPoints: TapPoint[] = [
+      'RX IF',
+      'PRE OMT/POST ANT RX RF',
+      'POST OMT/PRE LNA RX RF',
+      'POST LNA RX RF'
+    ];
+
+    if (
+      (direction === 'TX' && txTapPoints.includes(tapPoint)) ||
+      (direction === 'RX' && rxTapPoints.includes(tapPoint))
+    ) {
+      return true;
     }
 
     return false;
@@ -256,26 +277,11 @@ export class CouplerModule extends RFFrontEndModule<CouplerState> {
   /**
    * Get coupler output for a specific tap point
    */
-  private getCouplerOutput_(tapPoint: TapPoint, couplingFactor: number): { frequency: RfFrequency | IfFrequency; power: number } {
-    const signalPath = this.rfFrontEnd_.state.signalPath;
-    const filter = this.rfFrontEnd_.state.filter;
-
-    switch (tapPoint) {
-      case 'PRE':
-        return {
-          frequency: signalPath.txPath.rfFrequency,
-          power: signalPath.txPath.rfPower + couplingFactor,
-        };
-      case 'POST':
-        return {
-          frequency: signalPath.txPath.rfFrequency,
-          power: (signalPath.txPath.rfPower - filter.insertionLoss) + couplingFactor,
-        };
-      case 'IF':
-        return {
-          frequency: signalPath.rxPath.ifFrequency,
-          power: signalPath.rxPath.ifPower + couplingFactor,
-        };
-    }
+  private getCouplerOutput_(_tapPoint: TapPoint, couplingFactor: number): { frequency: RfFrequency | IfFrequency; power: number } {
+    // Return a random number for now
+    return {
+      frequency: Math.random() * 1000 as RfFrequency | IfFrequency,
+      power: - Math.abs(couplingFactor) // Coupled power is negative of coupling factor
+    };
   }
 }

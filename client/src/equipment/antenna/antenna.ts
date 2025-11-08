@@ -29,7 +29,7 @@ export interface AntennaState {
   freqBand: FrequencyBand;
   /** Frequency offset */
   offset: number; // MHz
-  /** Antenna skew */
+  /** Antenna skew between -90 and 90 degrees */
   skew: Degrees;
   /** is loopback enabled */
   isLoopbackEnabled: boolean;
@@ -40,7 +40,7 @@ export interface AntennaState {
   /** is antenna operational */
   isOperational: boolean;
   /** signals currently received */
-  signals: RfSignal[];
+  rxSignalsIn: RfSignal[];
 }
 
 /**
@@ -57,7 +57,7 @@ export class Antenna extends BaseEquipment {
   transmitters: Transmitter[] = [];
   powerSwitch: PowerSwitch;
   skewKnob: RotaryKnob;
-  rfFrontEnd: RFFrontEnd | null = null;
+  private rfFrontEnd_: RFFrontEnd | null = null;
 
   constructor(parentId: string, unit: number, teamId: number = 1, serverId: number = 1) {
     super(parentId, unit, teamId);
@@ -76,7 +76,7 @@ export class Antenna extends BaseEquipment {
       isAutoTrackEnabled: false,
       isOperational: true,
       isPowered: true,
-      signals: []
+      rxSignalsIn: []
     };
 
     // Input state starts as a copy of current state
@@ -286,6 +286,44 @@ export class Antenna extends BaseEquipment {
     this.syncDomWithState();
   }
 
+  get txSignalsIn(): RfSignal[] {
+    return this.rfFrontEnd_.omtModule.txSignalsOut;
+  }
+
+  get txSignalsOut(): RfSignal[] {
+    return this.rfFrontEnd_.omtModule.txSignalsOut.map((sig: RfSignal) => {
+      // Adjust polarization based on antenna skew (H and V only for now)
+      let adjustedPolarization = sig.polarization;
+      // Our skew is limited to -90 to 90 degrees
+      if (sig.polarization === 'H' || sig.polarization === 'V') {
+        if (this.state.skew > 45 || this.state.skew < -45) {
+          adjustedPolarization = 'V';
+        } else {
+          adjustedPolarization = 'H';
+        }
+      }
+
+      // Our effective power is reduced by misalignment
+      const skewAbs = Math.abs(this.state.skew);
+      let powerReduction: number;
+      if (skewAbs <= 15) {
+        powerReduction = 0;
+      } else if (skewAbs <= 30) {
+        powerReduction = 3;
+      } else if (skewAbs <= 45) {
+        powerReduction = 6;
+      } else if (skewAbs <= 60) {
+        powerReduction = 12;
+      }
+
+      return {
+        ...sig,
+        polarization: adjustedPolarization,
+        power: sig.power - powerReduction
+      };
+    });
+  }
+
   /**
    * Private Methods
    */
@@ -379,7 +417,7 @@ export class Antenna extends BaseEquipment {
 
   private handleTrackChange_(parentDom: HTMLElement): void {
     if (!this.state.isOperational) {
-      this.state.signals = [];
+      this.state.rxSignalsIn = [];
       this.emit(Events.ANTENNA_ERROR, { message: 'Antenna is not operational' });
       // Reset the switch
       const trackSwitch = qs('.input-track', parentDom) as HTMLInputElement;
@@ -401,7 +439,7 @@ export class Antenna extends BaseEquipment {
       }, 7000); // 7 second delay to acquire lock
     } else {
       this.state.isLocked = false;
-      this.state.signals = [];
+      this.state.rxSignalsIn = [];
       this.emit(Events.ANTENNA_LOCKED, { locked: false });
     }
 
@@ -416,42 +454,24 @@ export class Antenna extends BaseEquipment {
   private updateSignalStatus_(): void {
     // Can't receive signals if Not locked or Not operational
     if (!this.state.isLocked || !this.state.isOperational) {
-      this.state.signals = [];
+      this.state.rxSignalsIn = [];
       return;
     }
 
+    SimulationManager.getInstance().clearUserSignals();
+
     // Check transmitters for signals being sent to this antenna
-    for (const tx of this.transmitters) {
-      for (const modem of tx.state.modems) {
-        if (modem.antenna_id === this.state.id) {
-          const rfSignal = {
-            id: `tx${tx.state.unit}-modem${modem.modem_number}`,
-            serverId: this.state.serverId,
-            noradId: this.state.noradId,
-            frequency: modem.ifSignal.frequency,
-            polarization: this.rfFrontEnd.state.omt.effectiveTxPol,
-            bandwidth: modem.ifSignal.bandwidth,
-            power: modem.ifSignal.power,
-            modulation: modem.ifSignal.modulation,
-            fec: modem.ifSignal.fec,
-            feed: modem.ifSignal.feed,
-            isDegraded: modem.ifSignal.isDegraded,
-          }
-          if (modem.isTransmitting && !modem.isFaulted && !this.state.isLoopbackEnabled && this.rfFrontEnd.hpaModule.state.isHpaEnabled) {
-            // Pass the signal to the SimulationManager
-            SimulationManager.getInstance().addSignal(rfSignal);
-          } else {
-            // Remove any old version of this signal
-            SimulationManager.getInstance().removeSignal(rfSignal);
-          }
-        }
+    for (const sig of this.txSignalsOut) {
+      if (!this.state.isLoopbackEnabled) {
+        // Pass the signal to the SimulationManager
+        SimulationManager.getInstance().addSignal(sig);
       }
     }
 
     // TODO: Some of this logic should be moved to a Satellite class
 
     // Update signal active status based on antenna config
-    this.state.signals = SimulationManager.getInstance().getVisibleSignals(
+    this.state.rxSignalsIn = SimulationManager.getInstance().getVisibleSignals(
       this.state.serverId,
       this.state.noradId
     ).filter((signal) => {
@@ -461,7 +481,8 @@ export class Antenna extends BaseEquipment {
       const upperBound = signal.frequency + halfBandwidth;
 
       // Find any other signal with higher strength
-      const stronger = this.state.signals.some(
+      // TODO: This logic belongs in the satellite/simulation manager
+      const stronger = this.state.rxSignalsIn.some(
         (other) => {
           if (other.id === signal.id) return false;
 
@@ -496,7 +517,7 @@ export class Antenna extends BaseEquipment {
   }
 
   attachRfFrontEnd(rfFrontEnd: RFFrontEnd): void {
-    this.rfFrontEnd = rfFrontEnd;
+    this.rfFrontEnd_ = rfFrontEnd;
   }
 
   getDownlinkFrequency(): RfFrequency {
@@ -549,8 +570,8 @@ export class Antenna extends BaseEquipment {
     if (!this.state.isPowered) return '';
     if (!this.state.isOperational) return 'led-amber';
     if (this.state.isLoopbackEnabled) return 'led-amber';
-    if (this.state.isLocked && !this.state.isLoopbackEnabled && !this.rfFrontEnd?.hpaModule.state.isHpaEnabled) return 'led-green';
-    if (!this.state.isLoopbackEnabled && this.rfFrontEnd?.hpaModule.state.isHpaEnabled) return 'led-red';
+    if (this.state.isLocked && !this.state.isLoopbackEnabled && !this.rfFrontEnd_?.hpaModule.state.isHpaEnabled) return 'led-green';
+    if (!this.state.isLoopbackEnabled && this.rfFrontEnd_?.hpaModule.state.isHpaEnabled) return 'led-red';
     return 'led-amber';
   }
 }

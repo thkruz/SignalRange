@@ -24,9 +24,7 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
 
   private readonly powerSwitch: PowerSwitch;
   private readonly gainKnob: RotaryKnob;
-  ifSignals: IfSignal[] = [];
-  postBUCSignals: RfSignal[] = [];
-  rfSignals: RfSignal[] = [];
+  outputSignals: RfSignal[] = [];
 
   static create(state: BUCState, rfFrontEnd: RFFrontEnd, unit: number = 1): BUCModule {
     this.instance_ ??= new BUCModule(state, rfFrontEnd, unit);
@@ -166,10 +164,6 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
    * Update component state and check for faults
    */
   update(): void {
-    // Get IF Signals (from upstream modulator/transmitter)
-    // TODO: This needs to go to the RFFrontEnd and then back to the Transmitter
-    this.ifSignals = [];
-
     // Update lock status based on power and reference availability
     this.updateLockStatus_();
 
@@ -180,18 +174,16 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
     this.checkAlarms_();
 
     // Calculate post-BUC signals (apply upconversion and gain if powered)
-    this.postBUCSignals = this.ifSignals.map(sig => {
+    this.outputSignals = this.inputSignals.map(sig => {
       const rfFreq = this.calculateRfFrequency(sig.frequency);
-      const gain = this.state_.isPowered && !this.state_.isMuted ? this.state_.gain : -120;
+      const gain = this.state_.isPowered && !this.state_.isMuted ? this.state_.gain : -170;
       return {
+        ...sig,
         frequency: rfFreq,
         power: sig.power + gain,
         bandwidth: sig.bandwidth,
       } as RfSignal;
     });
-
-    // Output signals for next stage
-    this.rfSignals = this.postBUCSignals;
   }
 
   /**
@@ -308,6 +300,13 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
 
     this.powerSwitch.sync(this.state_.isPowered);
     this.gainKnob.sync(this.state_.gain);
+  }
+
+  get inputSignals(): IfSignal[] {
+    return this.rfFrontEnd_.transmitters
+      .flatMap((tx) => tx.state.modems
+        .filter((modem) => modem.isTransmitting && !modem.isFaulted)
+        .map((modem) => modem.ifSignal));
   }
 
   /**

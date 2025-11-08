@@ -22,6 +22,7 @@ export interface TransmitterModem {
   isFaultSwitchUp: boolean;
   isTransmitting: boolean;
   isTransmittingSwitchUp: boolean;
+  /** The active IF signal of this modem */
   ifSignal: IfSignal;
 }
 
@@ -104,7 +105,7 @@ export class Transmitter extends BaseEquipment {
   }
 
   initialSync(): void {
-    this.inputData = { ...this.activeModem };
+    this.inputData = structuredClone(this.activeModem);
   }
 
   initializeDom(parentId: string): HTMLElement {
@@ -329,7 +330,7 @@ export class Transmitter extends BaseEquipment {
 
   private setActiveModem(modemNumber: number): void {
     this.state.activeModem = modemNumber;
-    this.inputData = { ...this.activeModem };
+    this.inputData = structuredClone(this.activeModem);
     this.syncDomWithState();
 
     // Emit event for modem change

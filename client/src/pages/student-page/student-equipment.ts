@@ -127,6 +127,12 @@ export class StudentEquipment extends BaseElement {
     for (let i = 1; i <= (this.isFullEquipmentSuite ? 4 : 2); i++) {
       const tx = new Transmitter(`tx${i}-container`, i, 1, 1);
       this.transmitters.push(tx);
+
+      if (i <= 2) {
+        this.rfFrontEnds[0].connectTransmitter(tx);
+      } else {
+        this.rfFrontEnds[1].connectTransmitter(tx);
+      }
     }
 
     // Add all transmitters to all antennas
@@ -140,6 +146,12 @@ export class StudentEquipment extends BaseElement {
     for (let i = 1; i <= (this.isFullEquipmentSuite ? 4 : 2); i++) {
       const rx = new Receiver(`rx${i}-container`, i, this.antennas, 1, 1);
       this.receivers.push(rx);
+
+      if (i <= 2) {
+        rx.connectRfFrontEnd(this.rfFrontEnds[0]);
+      } else {
+        rx.connectRfFrontEnd(this.rfFrontEnds[1]);
+      }
     }
   }
 }

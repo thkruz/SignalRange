@@ -1,7 +1,7 @@
 import { EventBus } from "@app/events/event-bus";
 import { html } from "../../engine/utils/development/formatter";
 import { Events } from "../../events/events";
-import { Hertz, IfSignal } from "../../types";
+import { Hertz, IfSignal, RfSignal } from "../../types";
 import { BaseEquipment } from '../base-equipment';
 import { RFFrontEnd } from "../rf-front-end/rf-front-end";
 import { AnalyzerControlBox } from "./analyzer-control-box";
@@ -299,8 +299,7 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
 
   public update(): void {
     // Determine tap point
-    this.inputSignals = this.rfFrontEnd_.lnbModule.ifSignals;
-
+    this.inputSignals = this.getInputSignals();
 
     this.updateScreenState();
     if (!this.state.isPaused) {
@@ -316,6 +315,46 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
         this.screen.update();
       }
     }
+  }
+
+  getInputSignals(): (IfSignal | RfSignal)[] {
+    const tapPointA = this.rfFrontEnd_.couplerModule.state.tapPointA;
+    const tapPointB = this.rfFrontEnd_.couplerModule.state.tapPointB;
+
+    let signals: (IfSignal | RfSignal)[] = [];
+
+    for (const tapPoint of [tapPointA, tapPointB]) {
+      switch (tapPoint) {
+        case 'TX IF':
+          signals.push(...this.rfFrontEnd_.bucModule.inputSignals); // IF signals from both transmitter cases
+          break;
+        case 'POST BUC / PRE HPA TX RF':
+          signals.push(...this.rfFrontEnd_.bucModule.outputSignals);
+          break;
+        case 'POST HPA / PRE OMT TX RF':
+          signals.push(...this.rfFrontEnd_.hpaModule.outputSignals);
+          break;
+        case 'POST OMT/PRE ANT TX RF':
+          signals.push(...this.rfFrontEnd_.omtModule.txSignalsOut);
+          break;
+        case 'PRE OMT/POST ANT RX RF':
+          signals.push(...this.rfFrontEnd_.antenna.state.rxSignalsIn);
+          break;
+        case 'POST OMT/PRE LNA RX RF':
+          signals.push(...this.rfFrontEnd_.omtModule.rxSignalsOut);
+          break;
+        case 'POST LNA RX RF':
+          signals.push(...this.rfFrontEnd_.lnbModule.postLNASignals);
+          break;
+        case 'RX IF':
+          signals.push(...this.rfFrontEnd_.lnbModule.ifSignals); // IF signals from LNB
+          break;
+        default:
+          throw new Error(`Unknown tap point: ${tapPointA}`);
+      }
+    }
+
+    return signals;
   }
 
   public draw(): void {

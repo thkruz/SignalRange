@@ -26,7 +26,6 @@ export class LNBModule extends RFFrontEndModule<LNBState> {
 
   private readonly powerSwitch: PowerSwitch;
   private readonly gainKnob: RotaryKnob;
-  preLNASignals: RfSignal[] = [];
   postLNASignals: RfSignal[] = [];
   ifSignals: IfSignal[] = [];
 
@@ -162,9 +161,6 @@ export class LNBModule extends RFFrontEndModule<LNBState> {
    * Update component state and check for faults
    */
   update(): void {
-    // Get RF Signals from OMT and duplicate for pre/post LNA stages
-    this.preLNASignals = this.rfFrontEnd_.omtModule.outputSignals.map(sig => ({ ...sig }));
-
     // Update noise temperature based on noise figure
     this.updateNoiseTemperature_();
 
@@ -175,7 +171,7 @@ export class LNBModule extends RFFrontEndModule<LNBState> {
     this.checkAlarms_();
 
     // Calculate post-LNA signals (apply gain if powered)
-    this.postLNASignals = this.preLNASignals.map(sig => {
+    this.postLNASignals = this.rxSignalsIn.map(sig => {
       const gain = this.state_.isPowered ? this.state_.gain : 0;
       return {
         ...sig,
@@ -193,6 +189,10 @@ export class LNBModule extends RFFrontEndModule<LNBState> {
         isSpectrumInverted: isInverted,
       } as IfSignal;
     });
+  }
+
+  get rxSignalsIn(): RfSignal[] {
+    return this.rfFrontEnd_.omtModule.rxSignalsOut;
   }
 
   /**

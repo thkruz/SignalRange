@@ -5,6 +5,7 @@ import { qs } from "../../engine/utils/query-selector";
 import { Events } from "../../events/events";
 import { FECType, Hertz, MHz, ModulationType } from "../../types";
 import { BaseEquipment } from "../base-equipment";
+import { RFFrontEnd } from "../rf-front-end/rf-front-end";
 import { Antenna } from './../antenna/antenna';
 import './receiver.css';
 
@@ -42,7 +43,9 @@ export class Receiver extends BaseEquipment {
   private readonly antennas: Antenna[];
   private lastRenderState: ReceiverState | null = null;
   private mediaCache: { [url: string]: HTMLImageElement | HTMLVideoElement | HTMLIFrameElement } = {};
+  private videoPlayTime: { [url: string]: number } = {};
   powerSwitch: PowerSwitch;
+  rfFrontEnd_: RFFrontEnd | null = null;
 
   constructor(parentId: string, unit: number, antennas: Antenna[], teamId: number = 1, serverId: number = 1) {
     super(parentId, unit, teamId);
@@ -277,6 +280,10 @@ export class Receiver extends BaseEquipment {
     this.subscribeToAntennaEvents();
   }
 
+  connectRfFrontEnd(rfFrontEnd: RFFrontEnd) {
+    this.rfFrontEnd_ = rfFrontEnd;
+  }
+
   private subscribeToAntennaEvents() {
     this.on(Events.ANTENNA_CONFIG_CHANGED, () => {
       this.syncDomWithState();
@@ -419,12 +426,14 @@ export class Receiver extends BaseEquipment {
   private getVisibleSignals(activeModemData = this.activeModem) {
     if (!activeModemData) return [];
 
-    const activeAntenna = this.antennas.find(a => a.state.id === activeModemData.antennaId);
-
-    if (!activeAntenna) return [];
+    const externalNoise = this.rfFrontEnd_?.externalNoise ?? 0;
 
     // Figure out which signals match the receiver settings
-    const visibleSignals = activeAntenna.state.signals.filter((s) => {
+    const visibleSignals = (this.rfFrontEnd_?.lnbModule.ifSignals ?? []).filter((s) => {
+      if (s.power < externalNoise) {
+        return false;
+      }
+
       if (s.bandwidth > (activeModemData.bandwidth * 1e6 as Hertz)) {
         return false;
       }
@@ -553,15 +562,26 @@ export class Receiver extends BaseEquipment {
 
       monitor.className = `monitor-screen ${feedUrl.length > 0 ? 'signal-found' : 'no-signal'}`;
       if (feedUrl.length > 0) {
-        if (this.mediaCache[feedUrl]) {
+        const media = this.mediaCache[feedUrl];
+        if (media) {
           // Use cached media element
           monitor.innerHTML = '';
-          monitor.appendChild(this.mediaCache[feedUrl]);
+          monitor.appendChild(media);
 
           // If it is degraded, then add a css effect to make the image pixelated
           if (visibleSignals[0].isDegraded) {
             monitor.classList.add('glitch');
             monitor.innerHTML += `<div class="block-glitch"></div>`;
+          }
+
+          // Load previous play time if exists
+          if (media instanceof HTMLVideoElement) {
+            const savedTime = this.videoPlayTime[feedUrl] || 0;
+            media.currentTime = savedTime;
+
+            media.play().catch(() => {
+              // flickering signal will cause failures to play, ignore
+            });
           }
         } else {
           // If not in cache, create new media element
@@ -614,6 +634,11 @@ export class Receiver extends BaseEquipment {
             monitor.innerHTML = `<div class="signal-indicator"></div>`;
             monitor.querySelector('.signal-indicator')?.appendChild(video);
             this.mediaCache[feedUrl] = video;
+
+            // Track video play time
+            video.addEventListener('timeupdate', () => {
+              this.videoPlayTime[feedUrl] = video.currentTime;
+            });
           }
         }
       } else {

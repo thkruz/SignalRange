@@ -4,3 +4,7 @@
   grid-template-columns: repeat(3, 1fr);
   gap: 1rem;
 }
+
+.buc-module {
+  min-width: 235px !important;
+}

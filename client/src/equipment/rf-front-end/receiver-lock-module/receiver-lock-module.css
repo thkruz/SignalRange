@@ -1,0 +1,55 @@
+.receiver-lock-module {
+  min-width: 140px;
+}
+
+.receiver-lock-module .lock-indicators {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 8px;
+}
+
+.receiver-lock-module .lock-indicator-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+
+.receiver-lock-module .led-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.receiver-lock-module .indicator-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #aaa;
+  min-width: 90px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.receiver-lock-module .lock-metric {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-left: 4px;
+}
+
+.receiver-lock-module .metric-label {
+  font-size: 9px;
+  color: #888;
+  min-width: 45px;
+  font-family: 'Courier New', monospace;
+}
+
+.receiver-lock-module .metric-value {
+  font-size: 10px;
+  color: #0f0;
+  font-family: 'Courier New', monospace;
+  font-weight: 600;
+}

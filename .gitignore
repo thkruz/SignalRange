@@ -31,3 +31,6 @@ super-linter.log
 .vscode/
 .claude/
 .github/instructions/
+
+# Deprecated Server Files
+server/

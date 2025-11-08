@@ -13,7 +13,8 @@
 }
 
 .rf-front-end-box {
-  height: 550px;
+  min-height: 550px;
+  height: min-content;
 }
 
 .signal-flow-line {

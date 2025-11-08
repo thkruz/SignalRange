@@ -1,5 +1,4 @@
 import { PowerSwitch } from '@app/components/power-switch/power-switch';
-import { RotaryKnob } from '@app/components/rotary-knob/rotary-knob';
 import { ToggleSwitch } from "@app/components/toggle-switch/toggle-switch";
 import { EventBus } from "@app/events/event-bus";
 import { html } from "../../engine/utils/development/formatter";
@@ -11,7 +10,7 @@ import { BaseEquipment } from "../base-equipment";
 import { BUCModule, BUCState } from './buc-module/buc-module';
 import { CouplerModule } from './coupler-module';
 import { IfFilterBankModule, IfFilterBankState } from './filter-module/filter-module';
-import { HPAModule } from './hpa-module';
+import { HPAModule, HPAState } from './hpa-module/hpa-module';
 import { LNBModule, LNBState } from './lnb/lnb-module';
 import { OMTModule, OMTState } from './omt-module/omt-module';
 import './rf-front-end.css';
@@ -20,18 +19,6 @@ import './rf-front-end.css';
  * Spectrum analyzer tap point
  */
 export type TapPoint = 'RF_PRE_FILTER' | 'RF_POST_FILTER' | 'IF_AFTER_LNB';
-
-/**
- * High Power Amplifier module state
- */
-export interface HPAState {
-  isEnabled: boolean;
-  backOff: number; // dB from P1dB (0-10)
-  outputPower: number; // dBW (1-200W -> 0-53 dBW)
-  isOverdriven: boolean; // true if back-off < 3 dB
-  imdLevel: number; // dBc
-  temperature: number; // Celsius
-}
 
 /**
  * Spectrum Analyzer coupler module state
@@ -105,11 +92,9 @@ export class RFFrontEnd extends BaseEquipment {
 
   // UI Components (legacy, will be moved into modules)
   powerSwitch: PowerSwitch;
-  hpaEnableSwitch: PowerSwitch;
   couplerTapToggle: ToggleSwitch;
 
-  // Rotary knobs (legacy, will be moved into modules)
-  hpaBackOffKnob: RotaryKnob;
+  // Antenna reference
   antenna: Antenna;
 
   constructor(parentId: string, unit: number, teamId: number = 1, serverId: number = 1) {
@@ -211,6 +196,7 @@ export class RFFrontEnd extends BaseEquipment {
     // Update module states
     this.omtModule.update();
     this.bucModule.update();
+    this.hpaModule.update();
     this.filterModule.update();
     this.lnbModule.update();
 
@@ -230,7 +216,7 @@ export class RFFrontEnd extends BaseEquipment {
     // Instantiate module classes
     this.omtModule = OMTModule.create(this.state.omt, this, this.state.unit);
     this.bucModule = BUCModule.create(this.state.buc, this, this.state.unit);
-    this.hpaModule = new HPAModule(this.state.hpa);
+    this.hpaModule = HPAModule.create(this.state.hpa, this, this.state.unit);
     this.filterModule = IfFilterBankModule.create(this.state.filter, this, this.state.unit);
     this.lnbModule = LNBModule.create(this.state.lnb, this, this.state.unit);
     this.couplerModule = new CouplerModule(this.state.coupler);
@@ -241,27 +227,9 @@ export class RFFrontEnd extends BaseEquipment {
       this.state.isPowered
     );
 
-    this.hpaEnableSwitch = PowerSwitch.create(
-      `rf-fe-hpa-enable-${this.state.unit}`,
-      this.state.hpa.isEnabled
-    );
-
     this.couplerTapToggle = ToggleSwitch.create(
       `rf-fe-coupler-tap-${this.state.unit}`,
       this.state.coupler.tapPoint === 'IF_AFTER_LNB'
-    );
-
-    // Create rotary knobs
-    this.hpaBackOffKnob = RotaryKnob.create(
-      `rf-fe-hpa-backoff-knob-${this.state.unit}`,
-      this.state.hpa.backOff,
-      0,
-      10,
-      0.5,
-      (value: number) => {
-        this.state.hpa.backOff = value;
-        this.calculateSignalPath();
-      }
     );
 
     parentDom.innerHTML = html`
@@ -308,33 +276,7 @@ export class RFFrontEnd extends BaseEquipment {
         <div class="rf-fe-modules">
           ${this.omtModule.html}
           ${this.bucModule.html}
-
-          <!-- HPA/SSPA Module -->
-          <div class="rf-fe-module hpa-module">
-            <div class="module-label">High Power Amplifier</div>
-            <div class="module-controls">
-              <div class="control-group">
-                <label>ENABLE</label>
-                <div id="rf-fe-hpa-enable-${this.state.unit}"></div>
-              </div>
-              <div class="control-group">
-                <label>BACK-OFF (dB)</label>
-                ${this.hpaBackOffKnob.html}
-              </div>
-              <div class="power-meter">
-                <div class="meter-label">OUTPUT</div>
-                <div class="led-bar">
-                  ${this.renderPowerMeter(this.state.hpa.outputPower)}
-                </div>
-                <span class="value-readout">${this.state.hpa.outputPower.toFixed(1)} dBW</span>
-              </div>
-              <div class="led-indicator">
-                <span class="indicator-label">IMD</span>
-                <div class="led ${this.state.hpa.isOverdriven ? 'led-orange' : 'led-off'}"></div>
-                <span class="value-readout">${this.state.hpa.imdLevel} dBc</span>
-              </div>
-            </div>
-          </div>
+          ${this.hpaModule.html}
 
           <!-- Filter/Preselector Module -->
           ${this.filterModule.html}
@@ -396,6 +338,11 @@ export class RFFrontEnd extends BaseEquipment {
       this.calculateSignalPath();
       this.syncDomWithState();
     });
+    this.hpaModule.addEventListeners((state: HPAState) => {
+      this.state.hpa = state;
+      this.calculateSignalPath();
+      this.syncDomWithState();
+    });
     this.filterModule.addEventListeners((state: IfFilterBankState) => {
       this.state.filter = state;
       this.calculateSignalPath();
@@ -438,16 +385,6 @@ export class RFFrontEnd extends BaseEquipment {
       this.syncDomWithState();
       this.emit(Events.RF_FE_POWER_CHANGED, { unit: this.id, isPowered });
     });
-
-    this.hpaBackOffKnob.attachListeners();
-
-    this.hpaEnableSwitch.addEventListeners((isEnabled: boolean) => {
-      if (this.state.isPowered && this.state.buc.isPowered) {
-        this.state.hpa.isEnabled = isEnabled;
-        this.syncDomWithState();
-        this.emit(Events.RF_FE_HPA_CHANGED, { unit: this.id, hpa: this.state.hpa });
-      }
-    });
   }
 
   protected initialize_(): void {
@@ -464,7 +401,10 @@ export class RFFrontEnd extends BaseEquipment {
       this.state.buc = { ...this.state.buc, ...data.buc };
       this.bucModule.sync(data.buc);
     }
-    if (data.hpa) this.state.hpa = { ...this.state.hpa, ...data.hpa };
+    if (data.hpa) {
+      this.state.hpa = { ...this.state.hpa, ...data.hpa };
+      this.hpaModule.sync(data.hpa);
+    }
     if (data.filter) {
       this.state.filter = { ...this.state.filter, ...data.filter };
       this.filterModule.sync(data.filter);
@@ -694,21 +634,13 @@ export class RFFrontEnd extends BaseEquipment {
     const alarms: string[] = [
       ...this.omtModule.getAlarms(),
       ...this.bucModule.getAlarms(),
+      ...this.hpaModule.getAlarms(),
       ...this.filterModule.getAlarms(),
       ...this.lnbModule.getAlarms(),
     ];
 
     if (!this.state.isExtRefPresent) {
       alarms.push('External reference lost');
-    }
-
-    if (this.state.hpa.isOverdriven) {
-      alarms.push('HPA overdrive - IMD degradation');
-    }
-
-    // Temperature alarm for HPA
-    if (this.state.hpa.temperature > 85) {
-      alarms.push(`HPA over-temperature (${this.state.hpa.temperature.toFixed(0)}°C)`);
     }
 
     if (alarms.length > 0) {
@@ -744,29 +676,6 @@ export class RFFrontEnd extends BaseEquipment {
     return 'IDLE';
   }
 
-  private renderPowerMeter(powerDbW: number): string {
-    // Convert dBW to percentage (0 dBW = 1W, 53 dBW = 200W for scale)
-    const maxPowerDbW = 53; // 200W = 53 dBW
-    const percentage = Math.max(0, Math.min(100, (powerDbW / maxPowerDbW) * 100));
-
-    const segments = [];
-    for (let i = 0; i < 5; i++) {
-      const threshold = (i + 1) * 20; // 20%, 40%, 60%, 80%, 100%
-      const isLit = percentage >= threshold;
-
-      let colorClass = 'led-off';
-      if (isLit) {
-        if (i < 3) colorClass = 'led-green';      // 0-60%: green
-        else if (i < 4) colorClass = 'led-yellow'; // 60-80%: yellow
-        else colorClass = 'led-red';                // 80-100%: red
-      }
-
-      segments.push(`<div class="led-segment ${colorClass}"></div>`);
-    }
-
-    return segments.join('');
-  }
-
   private syncDomWithState(): void {
     // Prevent unnecessary re-renders
     if (JSON.stringify(this.state) === this.lastRenderState) {
@@ -776,9 +685,6 @@ export class RFFrontEnd extends BaseEquipment {
     // Update UI based on state changes
     const container = qs(`.equipment-box[data-unit="${this.state.unit}"]`);
     if (!container) return;
-
-    // Update rotary knobs
-    this.hpaBackOffKnob.sync(this.state.hpa.backOff);
 
     // Update signal path readout
     const pathReadout = container.querySelector('.signal-path-readout');
@@ -792,9 +698,6 @@ export class RFFrontEnd extends BaseEquipment {
     // Update power switches
     if (this.powerSwitch) {
       this.powerSwitch.sync(this.state.isPowered);
-    }
-    if (this.hpaEnableSwitch) {
-      this.hpaEnableSwitch.sync(this.state.hpa.isEnabled);
     }
 
     this.lastRenderState = JSON.stringify(this.state);
@@ -814,12 +717,6 @@ export class RFFrontEnd extends BaseEquipment {
     const lnbLockLed = container.querySelector('.lnb-module .led-indicator .led');
     if (lnbLockLed) {
       lnbLockLed.className = `led ${this.state.lnb.isExtRefLocked ? 'led-green' : 'led-red'}`;
-    }
-
-    // HPA IMD LED (if in advanced mode)
-    const hpaImdLed = container.querySelector('.hpa-module .led-indicator .led');
-    if (hpaImdLed) {
-      hpaImdLed.className = `led ${this.state.hpa.isOverdriven ? 'led-orange' : 'led-off'}`;
     }
   }
 

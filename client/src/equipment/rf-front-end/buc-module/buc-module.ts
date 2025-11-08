@@ -65,10 +65,6 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
         <div class="module-label">Block Upconverter</div>
         <div class="module-controls">
           <div class="control-group">
-            <label>POWER</label>
-            ${this.powerSwitch.html}
-          </div>
-          <div class="control-group">
             <label>LO (MHz)</label>
             <input type="number"
                    class="input-buc-lo"
@@ -92,6 +88,9 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
               ${this.state_.isMuted ? 'ON' : 'OFF'}
             </button>
           </div>
+        </div>
+        <div class="control-group">
+          ${this.powerSwitch.html}
         </div>
       </div>
     `;

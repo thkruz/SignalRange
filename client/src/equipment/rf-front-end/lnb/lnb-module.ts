@@ -67,10 +67,6 @@ export class LNBModule extends RFFrontEndModule<LNBState> {
         <div class="module-label">Low Noise Block</div>
         <div class="module-controls">
           <div class="control-group">
-            <label>POWER</label>
-            ${this.powerSwitch.html}
-          </div>
-          <div class="control-group">
             <label>LO (MHz)</label>
             <input type="number"
                    class="input-lnb-lo"
@@ -90,8 +86,11 @@ export class LNBModule extends RFFrontEndModule<LNBState> {
           <div class="led-indicator">
             <span class="indicator-label">NOISE TEMP</span>
             <div class="led led-blue" style="filter: brightness(${this.getNoiseTempBrightness__()})"></div>
-            <span class="value-readout lnb-noise-temp">${this.state_.noiseTemperature.toFixed(0)} K</span>
+            <span id="noise-temp-readout" class="value-readout lnb-noise-temp">${this.state_.noiseTemperature.toFixed(0)} K</span>
           </div>
+        </div>
+        <div class="control-group power-switch">
+          ${this.powerSwitch.html}
         </div>
       </div>
     `;
@@ -306,7 +305,7 @@ export class LNBModule extends RFFrontEndModule<LNBState> {
     lockLed.className = `led ${this.getLockLedStatus_()}`;
 
     // Update noise temperature display and LED
-    const noiseTempReadout = qs('.led-indicator:last-child .value-readout', container);
+    const noiseTempReadout = qs('#noise-temp-readout', container);
     noiseTempReadout.textContent = `${this.state_.noiseTemperature.toFixed(0)} K`;
 
     const noiseTempLed = qs('.led-blue', container);

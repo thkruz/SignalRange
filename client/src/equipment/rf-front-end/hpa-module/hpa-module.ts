@@ -71,10 +71,6 @@ export class HPAModule extends RFFrontEndModule<HPAState> {
         <div class="module-label">High Power Amplifier</div>
         <div class="module-controls">
           <div class="control-group">
-            <label>ENABLE</label>
-            ${this.enableSwitch.html}
-          </div>
-          <div class="control-group">
             <label>BACK-OFF (dB)</label>
             ${this.backOffKnob.html}
           </div>
@@ -90,6 +86,9 @@ export class HPAModule extends RFFrontEndModule<HPAState> {
             <div class="led ${this.state_.isOverdriven ? 'led-orange' : 'led-off'}"></div>
             <span class="value-readout">${this.state_.imdLevel} dBc</span>
           </div>
+        </div>
+        <div class="control-group">
+          ${this.enableSwitch.html}
         </div>
       </div>
     `;

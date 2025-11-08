@@ -1,8 +1,0 @@
-{
-  "editor.codeActionsOnSave": {
-    "source.fixAll.eslint": "explicit",
-    "source.organizeImports": "always",
-    "source.addMissingImports": "explicit",
-    "source.removeUnusedImports": "explicit"
-  }
-}

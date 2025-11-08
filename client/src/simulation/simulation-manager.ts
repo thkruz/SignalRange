@@ -1,14 +1,39 @@
-import { RfSignal } from './../types';
-import { defaultSignalData } from "./default-signal-data";
+import { Satellite } from '@app/equipment/satellite/satellite';
+import { EventBus } from '@app/events/event-bus';
+import { Events } from '@app/events/events';
+import { FECType, Hertz, ModulationType, RfFrequency, RfSignal, SignalOrigin } from './../types';
 import { PerlinNoise } from './perlin-noise';
 
 export class SimulationManager {
   private static instance: SimulationManager;
-  satelliteSignals: RfSignal[] = defaultSignalData;
+  satellites: Satellite[] = [];
+  satelliteSignals: RfSignal[];
   userSignals: RfSignal[] = [];
 
   private constructor() {
-    // Private constructor for singleton
+    this.satellites = [
+      new Satellite(1, [
+        {
+          id: '1',
+          serverId: 1,
+          noradId: 1,
+          frequency: 2810e6 as RfFrequency,
+          polarization: 'H',
+          power: -98,
+          bandwidth: 10e6 as Hertz,
+          modulation: '8QAM' as ModulationType,
+          fec: '3/4' as FECType,
+          feed: 'red-1.mp4',
+          isDegraded: false,
+          origin: SignalOrigin.SATELLITE_RX
+        }
+      ])
+    ];
+
+    this.satelliteSignals = this.satellites.flatMap(sat => sat.txSignal);
+
+    // Register event listeners
+    EventBus.getInstance().on(Events.UPDATE, this.update.bind(this));
   }
 
   public static getInstance(): SimulationManager {
@@ -20,7 +45,7 @@ export class SimulationManager {
   }
 
   update(): void {
-    // Update simulation state
+    this.satelliteSignals = this.satellites.flatMap(sat => sat.txSignal);
   }
 
   addSignal(signal: RfSignal): void {

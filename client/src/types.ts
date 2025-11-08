@@ -20,44 +20,28 @@ export type RfFrequency = Distinct<Hertz, 'RfFrequency'>;
 /** Intermediate Frequency in Hz */
 export type IfFrequency = Distinct<Hertz, 'IfFrequency'>;
 
-export interface RfSignal {
-  /** Signal ID */
-  id: string;
-  /** Server ID */
-  serverId: number;
-  /** Target satellite ID */
-  noradId: number;
-  /** RF frequency */
-  frequency: RfFrequency;
-  /** Signal polarization */
-  polarization: 'H' | 'V' | 'LHCP' | 'RHCP';
-  /** Signal power in dBm */
-  power: number;
-  /** Bandwidth in Hz */
-  bandwidth: Hertz;
-  /** Modulation type */
-  modulation: ModulationType;
-  /** Forward Error Correction type */
-  fec: FECType;
-  /** url of the video feed */
-  feed: string;
-  /** whether the signal is an image instead of a video */
-  isImage?: boolean;
-  /** whether the signal is from an external source */
-  isExternal?: boolean;
-  /** whether the signal is degraded */
-  isDegraded: boolean;
+export enum SignalOrigin {
+  TRANSMITTER,
+  BUC,
+  HIGH_POWER_AMPLIFIER,
+  OMT_TX,
+  ANTENNA_TX,
+  SATELLITE_RX,
+  SATELLITE_TX,
+  ANTENNA_RX,
+  OMT_RX,
+  LOW_NOISE_AMPLIFIER,
+  LOW_NOISE_BLOCK,
+  IF_FILTER_BANK,
 }
 
-export interface IfSignal {
+export interface BaseSignal {
   /** Signal ID */
   id: string;
   /** Server ID */
   serverId: number;
   /** Target satellite ID */
   noradId: number;
-  /** RF frequency */
-  frequency: IfFrequency;
   /** Signal power in dBm */
   power: number;
   /** Bandwidth in Hz */
@@ -66,6 +50,8 @@ export interface IfSignal {
   modulation: ModulationType;
   /** Forward Error Correction type */
   fec: FECType;
+  /** Signal polarization */
+  polarization: null | 'H' | 'V' | 'LHCP' | 'RHCP';
   /** url of the video feed */
   feed: string;
   /** whether the signal is degraded */
@@ -74,6 +60,18 @@ export interface IfSignal {
   isImage?: boolean;
   /** whether the signal is from an external source */
   isExternal?: boolean;
+  /** This is the last device in the signal chain */
+  origin: SignalOrigin;
+}
+
+export interface RfSignal extends BaseSignal {
+  /** RF frequency */
+  frequency: RfFrequency;
+}
+
+export interface IfSignal extends BaseSignal {
+  /** RF frequency */
+  frequency: IfFrequency;
 }
 
 export interface Satellite {

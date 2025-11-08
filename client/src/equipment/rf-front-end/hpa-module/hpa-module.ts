@@ -7,7 +7,7 @@ import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
 import { Sfx } from '@app/sound/sfx-enum';
 import SoundManager from '@app/sound/sound-manager';
-import { RfSignal } from '@app/types';
+import { RfSignal, SignalOrigin } from '@app/types';
 import { RFFrontEnd } from '../rf-front-end';
 import { RFFrontEndModule } from '../rf-front-end-module';
 import './hpa-module.css';
@@ -16,6 +16,7 @@ import './hpa-module.css';
  * High Power Amplifier module state
  */
 export interface HPAState {
+  noiseFloor: number;
   isPowered: boolean;
   backOff: number; // dB from P1dB (0-10)
   outputPower: number; // dBW (1-200W -> 0-53 dBW)
@@ -225,7 +226,8 @@ export class HPAModule extends RFFrontEndModule<HPAState> {
       const gain = this.calculateGain_(sig.power);
       return {
         ...sig,
-        power: sig.power + gain,
+        power: sig.power + gain - this.state_.backOff, // Apply back-off
+        origin: SignalOrigin.HIGH_POWER_AMPLIFIER,
       };
     });
   }

@@ -1,5 +1,5 @@
 import { App } from "@app/app";
-import { Hertz, IfSignal, MHz, RfSignal } from "../../../types";
+import { Hertz, IfSignal, MHz, RfSignal, SignalOrigin } from "../../../types";
 import { RealTimeSpectrumAnalyzer } from "../real-time-spectrum-analyzer";
 import { RTSAScreen } from "./rtsa-screen";
 
@@ -363,14 +363,7 @@ export class SpectralDensityPlot extends RTSAScreen {
    */
 
   private createNoise(data: Float32Array): Float32Array {
-    // Parameters for noise complexity
-    // Teq​=290×(10NF/10−1) | 34 Kelvin at NF=0.5dB
-    const noiseFigure = 0.5; // dB
-    let internalNoise = -174 + 10 * Math.log10(this.specA.rfFrontEnd_.filterModule.state.bandwidth * 1e6) + noiseFigure;
-    let externalNoise = this.specA.rfFrontEnd_.filterModule.state.noiseFloor + this.specA.rfFrontEnd_.getTotalRxGain();
-
-    const isInternalNoise = internalNoise > externalNoise;
-    let base = isInternalNoise ? internalNoise : (externalNoise - this.specA.rfFrontEnd_.getTotalRxGain());
+    let base = this.specA.state.noiseFloor;
 
     const len = data.length;
     const time = performance.now() / 1000;
@@ -412,7 +405,8 @@ export class SpectralDensityPlot extends RTSAScreen {
         noise -= 1 + Math.random() * 2;
       }
 
-      if (!isInternalNoise) {
+      // If noise floor is external, add RF front-end gain
+      if (!this.specA.state.isInternalNoiseFloor) {
         noise += this.specA.rfFrontEnd_.getTotalRxGain();
       }
 
@@ -501,7 +495,7 @@ export class SpectralDensityPlot extends RTSAScreen {
     // if filter bank bandwidth is this.specA.rfFrontEnd_.filterModule.state.bandwidth * 1e6
     // what should happen if the signal bandwidth is greater than that?
 
-    if (signal.bandwidth > this.specA.rfFrontEnd_.filterModule.state.bandwidth * 1e6) {
+    if (signal.origin === SignalOrigin.IF_FILTER_BANK && signal.bandwidth > this.specA.rfFrontEnd_.filterModule.state.bandwidth * 1e6) {
       // Apply additional attenuation for out-of-band signals
       // Ps,out​=Ps​+10log10​(Bs​Bf​​)
       const bandwidthRatio = signal.bandwidth / ((this.specA.rfFrontEnd_.filterModule.state.bandwidth * 1e6) / 2);

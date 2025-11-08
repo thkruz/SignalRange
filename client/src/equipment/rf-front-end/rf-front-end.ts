@@ -8,17 +8,12 @@ import { Antenna } from '../antenna/antenna';
 import { BaseEquipment } from "../base-equipment";
 import { Transmitter } from '../transmitter/transmitter';
 import { BUCModule, BUCState } from './buc-module/buc-module';
-import { CouplerModule, CouplerState } from './coupler-module/coupler-module';
+import { CouplerModule, CouplerState, TapPoint } from './coupler-module/coupler-module';
 import { IfFilterBankModule, IfFilterBankState } from './filter-module/filter-module';
 import { HPAModule, HPAState } from './hpa-module/hpa-module';
 import { LNBModule, LNBState } from './lnb/lnb-module';
 import { OMTModule, OMTState } from './omt-module/omt-module';
 import './rf-front-end.css';
-
-/**
- * Spectrum analyzer tap point (old type - kept for backwards compatibility)
- */
-export type TapPoint = 'RF_PRE_FILTER' | 'RF_POST_FILTER' | 'IF_AFTER_LNB';
 
 /**
  * Signal path calculation result
@@ -109,6 +104,7 @@ export class RFFrontEnd extends BaseEquipment {
         effectiveRxPol: 'V',
         crossPolIsolation: 28.5, // dB
         isFaulted: false,
+        noiseFloor: -140, // dBm/Hz
       },
 
       buc: {
@@ -118,6 +114,7 @@ export class RFFrontEnd extends BaseEquipment {
         isMuted: false,
         isExtRefLocked: true,
         outputPower: -10, // dBm
+        noiseFloor: -140, // dBm/Hz
       },
 
       hpa: {
@@ -129,6 +126,7 @@ export class RFFrontEnd extends BaseEquipment {
         temperature: 45, // Celsius
         isHpaEnabled: false,
         isHpaSwitchEnabled: false,
+        noiseFloor: -140, // dBm/Hz
       },
 
       filter: {
@@ -148,6 +146,7 @@ export class RFFrontEnd extends BaseEquipment {
         noiseTemperature: 45, // K
         isExtRefLocked: true,
         isSpectrumInverted: true,
+        noiseFloor: -140, // dBm/Hz
       },
 
       coupler: {
@@ -792,5 +791,17 @@ export class RFFrontEnd extends BaseEquipment {
   getCouplerOutput(): { frequency: RfFrequency | IfFrequency; power: number } {
     // Backwards compatibility - returns tap point A output
     return this.getCouplerOutputA();
+  }
+
+  getNoiseFloor(_tapPoint: TapPoint): { isInternalNoiseGreater: boolean; noiseFloor: number } {
+    const NF = 0.5;
+    const externalNoiseFloor = this.filterModule.state.noiseFloor + this.getTotalRxGain();
+    const internalNoiseFloor = -174 + 10 * Math.log10(this.filterModule.state.bandwidth * 1e6) + NF;
+    const isInternalNoiseGreater = internalNoiseFloor > externalNoiseFloor;
+
+    return {
+      isInternalNoiseGreater: isInternalNoiseGreater,
+      noiseFloor: isInternalNoiseGreater ? internalNoiseFloor : (externalNoiseFloor - this.getTotalRxGain())
+    };
   }
 }

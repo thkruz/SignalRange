@@ -1,7 +1,7 @@
 import { ToggleSwitch } from '@app/components/toggle-switch/toggle-switch';
 import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
-import { RfSignal } from '@app/types';
+import { RfSignal, SignalOrigin } from '@app/types';
 import { RFFrontEnd } from '../rf-front-end';
 import { RFFrontEndModule } from '../rf-front-end-module';
 
@@ -14,6 +14,7 @@ export type PolarizationType = 'H' | 'V' | 'LHCP' | 'RHCP';
  * OMT/Duplexer module state
  */
 export interface OMTState {
+  noiseFloor: number;
   txPolarization: PolarizationType;
   rxPolarization: PolarizationType;
   crossPolIsolation: number; // dB (typical 25-35)
@@ -133,6 +134,7 @@ export class OMTModule extends RFFrontEndModule<OMTState> {
           ...sig,
           power: isolatedPower,
           isDegraded: true,
+          origin: SignalOrigin.OMT_RX,
         };
       }
 
@@ -145,7 +147,8 @@ export class OMTModule extends RFFrontEndModule<OMTState> {
     this.txSignalsOut = this.txSignalsIn.map((sig: RfSignal) => {
       return {
         ...sig,
-        polarization: this.state_.txPolarization
+        polarization: this.state_.txPolarization,
+        origin: SignalOrigin.OMT_TX,
       };
     });
   }

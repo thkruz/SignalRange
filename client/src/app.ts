@@ -10,6 +10,7 @@ import { LoginPage } from './pages/login-page';
 import { StudentPage } from './pages/student-page';
 import { StudentEquipment } from './pages/student-page/student-equipment';
 import { Router } from './router';
+import { SimulationManager } from './simulation/simulation-manager';
 
 /**
  * Main Application Class
@@ -34,10 +35,10 @@ export class App extends BaseElement {
     }
 
     App.instance_ = new App();
+    window.signalRange = App.instance_;
     App.instance_.init_();
     App.instance_.gameLoop_();
 
-    window.signalRange = App.instance_;
 
     return App.instance_;
   }
@@ -57,6 +58,8 @@ export class App extends BaseElement {
     // Initialize pages
     LoginPage.create();
     StudentPage.create();
+
+    SimulationManager.getInstance();
 
     // Initialize router
     this.router.add(LoginPage.getInstance());

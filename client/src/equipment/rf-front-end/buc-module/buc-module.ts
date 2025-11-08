@@ -2,7 +2,7 @@ import { PowerSwitch } from '@app/components/power-switch/power-switch';
 import { RotaryKnob } from '@app/components/rotary-knob/rotary-knob';
 import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
-import { IfFrequency, IfSignal, MHz, RfFrequency, RfSignal } from '@app/types';
+import { IfFrequency, IfSignal, MHz, RfFrequency, RfSignal, SignalOrigin } from '@app/types';
 import { RFFrontEnd } from '../rf-front-end';
 import { RFFrontEndModule } from '../rf-front-end-module';
 import './buc-module.css';
@@ -17,6 +17,7 @@ export interface BUCState {
   isMuted: boolean;
   isExtRefLocked: boolean;
   outputPower: number; // dBm
+  noiseFloor: number;
 }
 
 export class BUCModule extends RFFrontEndModule<BUCState> {
@@ -182,6 +183,7 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
         frequency: rfFreq,
         power: sig.power + gain,
         bandwidth: sig.bandwidth,
+        origin: SignalOrigin.BUC,
       } as RfSignal;
     });
   }

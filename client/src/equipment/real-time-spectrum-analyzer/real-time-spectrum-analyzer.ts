@@ -17,6 +17,8 @@ export interface RealTimeSpectrumAnalyzerState {
   rfFrontEndId: number;
   isRfMode: boolean; // true = RF mode, false = IF mode
   isPaused: boolean;
+  noiseFloor: any;
+  isInternalNoiseFloor: boolean;
   isMaxHold: boolean;
   isMinHold: boolean;
   isMarkerOn: boolean;
@@ -28,7 +30,6 @@ export interface RealTimeSpectrumAnalyzerState {
   hold: boolean; // Hold max amplitude
   minAmplitude: number;
   maxAmplitude: number;
-  noiseFloor: number;
   screenMode: 'spectralDensity' | 'waterfall' | 'both';
 }
 
@@ -76,6 +77,7 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
       minAmplitude: -100,
       maxAmplitude: -40,
       noiseFloor: -104,
+      isInternalNoiseFloor: true,
       refreshRate: 10,
       screenMode: 'spectralDensity',
       inputUnit: 'MHz',
@@ -322,35 +324,58 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
     const tapPointB = this.rfFrontEnd_.couplerModule.state.tapPointB;
 
     let signals: (IfSignal | RfSignal)[] = [];
+    this.state.noiseFloor = -174; // Reset to default before calculation
+    this.state.isInternalNoiseFloor = true;
 
     for (const tapPoint of [tapPointA, tapPointB]) {
+      let tapPointnoiseFloor = -174;
+      let isInternalNoiseFloor = true;
+
       switch (tapPoint) {
         case 'TX IF':
           signals.push(...this.rfFrontEnd_.bucModule.inputSignals); // IF signals from both transmitter cases
+          tapPointnoiseFloor = this.rfFrontEnd_.bucModule.state.noiseFloor;
           break;
         case 'POST BUC / PRE HPA TX RF':
           signals.push(...this.rfFrontEnd_.bucModule.outputSignals);
+          tapPointnoiseFloor = this.rfFrontEnd_.bucModule.state.noiseFloor;
           break;
         case 'POST HPA / PRE OMT TX RF':
           signals.push(...this.rfFrontEnd_.hpaModule.outputSignals);
+          tapPointnoiseFloor = this.rfFrontEnd_.hpaModule.state.noiseFloor;
           break;
         case 'POST OMT/PRE ANT TX RF':
           signals.push(...this.rfFrontEnd_.omtModule.txSignalsOut);
+          tapPointnoiseFloor = this.rfFrontEnd_.omtModule.state.noiseFloor;
           break;
         case 'PRE OMT/POST ANT RX RF':
           signals.push(...this.rfFrontEnd_.antenna.state.rxSignalsIn);
+          tapPointnoiseFloor = this.rfFrontEnd_.antenna.state.noiseFloor;
           break;
         case 'POST OMT/PRE LNA RX RF':
           signals.push(...this.rfFrontEnd_.omtModule.rxSignalsOut);
+          tapPointnoiseFloor = this.rfFrontEnd_.omtModule.state.noiseFloor;
           break;
         case 'POST LNA RX RF':
           signals.push(...this.rfFrontEnd_.lnbModule.postLNASignals);
+          tapPointnoiseFloor = this.rfFrontEnd_.lnbModule.state.noiseFloor;
           break;
         case 'RX IF':
-          signals.push(...this.rfFrontEnd_.lnbModule.ifSignals); // IF signals from LNB
-          break;
+          {
+            signals.push(...this.rfFrontEnd_.filterModule.outputSignals); // IF signals from LNB
+            const noiseData = this.rfFrontEnd_.getNoiseFloor(tapPoint);
+
+            tapPointnoiseFloor = noiseData.noiseFloor;
+            isInternalNoiseFloor = noiseData.isInternalNoiseGreater;
+            break;
+          }
         default:
           throw new Error(`Unknown tap point: ${tapPointA}`);
+      }
+
+      if (tapPointnoiseFloor > this.state.noiseFloor) {
+        this.state.noiseFloor = tapPointnoiseFloor;
+        this.state.isInternalNoiseFloor = isInternalNoiseFloor;
       }
     }
 

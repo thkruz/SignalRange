@@ -2,7 +2,7 @@ import { PowerSwitch } from '@app/components/power-switch/power-switch';
 import { RotaryKnob } from '@app/components/rotary-knob/rotary-knob';
 import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
-import { IfFrequency, IfSignal, MHz, RfFrequency, RfSignal } from '@app/types';
+import { IfFrequency, IfSignal, MHz, RfFrequency, RfSignal, SignalOrigin } from '@app/types';
 import { RFFrontEnd } from '../rf-front-end';
 import { RFFrontEndModule } from '../rf-front-end-module';
 import './lnb-module.css';
@@ -11,6 +11,7 @@ import './lnb-module.css';
  * Low Noise Block converter module state
  */
 export interface LNBState {
+  noiseFloor: number;
   isPowered: boolean;
   loFrequency: MHz;
   gain: number; // dB (40-65)
@@ -176,6 +177,7 @@ export class LNBModule extends RFFrontEndModule<LNBState> {
       return {
         ...sig,
         power: sig.power + gain,
+        origin: SignalOrigin.LOW_NOISE_AMPLIFIER,
       } as RfSignal;
     });
 
@@ -187,6 +189,7 @@ export class LNBModule extends RFFrontEndModule<LNBState> {
         ...sig,
         frequency: ifFreq,
         isSpectrumInverted: isInverted,
+        origin: SignalOrigin.LOW_NOISE_BLOCK,
       } as IfSignal;
     });
   }

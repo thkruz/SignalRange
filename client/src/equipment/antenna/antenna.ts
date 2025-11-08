@@ -16,6 +16,7 @@ import { Transmitter } from "../transmitter/transmitter";
 import './antenna.css';
 
 export interface AntennaState {
+  noiseFloor: number;
   isPowered: boolean;
   /** Which antenna is this */
   id: number;
@@ -76,7 +77,8 @@ export class Antenna extends BaseEquipment {
       isAutoTrackEnabled: false,
       isOperational: true,
       isPowered: true,
-      rxSignalsIn: []
+      rxSignalsIn: [],
+      noiseFloor: -130,
     };
 
     // Input state starts as a copy of current state

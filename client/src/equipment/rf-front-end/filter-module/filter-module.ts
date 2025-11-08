@@ -1,7 +1,7 @@
 import { RotaryKnob } from "@app/components/rotary-knob/rotary-knob";
 import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
-import { MHz, RfFrequency } from '@app/types';
+import { IfSignal, MHz, RfFrequency, SignalOrigin } from '@app/types';
 import { RFFrontEnd } from '../rf-front-end';
 import { RFFrontEndModule } from '../rf-front-end-module';
 
@@ -49,6 +49,7 @@ export interface IfFilterBankState {
 export class IfFilterBankModule extends RFFrontEndModule<IfFilterBankState> {
   private static instance_: IfFilterBankModule;
   private bandwidthKnob_?: RotaryKnob;
+  outputSignals: IfSignal[] = [];
 
   static create(state: IfFilterBankState, rfFrontEnd: RFFrontEnd, unit: number = 1): IfFilterBankModule {
     this.instance_ ??= new IfFilterBankModule(state, rfFrontEnd, unit);
@@ -125,8 +126,13 @@ export class IfFilterBankModule extends RFFrontEndModule<IfFilterBankState> {
    * Update component state and check for faults
    */
   update(): void {
-    // Filter is passive, not much to update dynamically
-    // Could add temperature monitoring, VSWR, etc. in future
+    this.outputSignals = this.rfFrontEnd_.lnbModule.ifSignals.map((sig: IfSignal) => {
+      return {
+        ...sig,
+        power: sig.power - this.state_.insertionLoss, // Apply insertion loss
+        origin: SignalOrigin.IF_FILTER_BANK,
+      };
+    });
   }
 
   /**

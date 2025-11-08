@@ -1,5 +1,6 @@
 import { PowerSwitch } from '@app/components/power-switch/power-switch';
 import { RotaryKnob } from '@app/components/rotary-knob/rotary-knob';
+import { ToggleSwitch } from '@app/components/toggle-switch/toggle-switch';
 import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
 import { IfFrequency, IfSignal, MHz, RfFrequency, RfSignal, SignalOrigin } from '@app/types';
@@ -25,6 +26,7 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
 
   private readonly powerSwitch: PowerSwitch;
   private readonly gainKnob: RotaryKnob;
+  private readonly muteSwitch: ToggleSwitch;
   outputSignals: RfSignal[] = [];
 
   static create(state: BUCState, rfFrontEnd: RFFrontEnd, unit: number = 1): BUCModule {
@@ -59,6 +61,12 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
       }
     );
 
+    this.muteSwitch = ToggleSwitch.create(
+      `${this.uniqueId}-mute`,
+      this.state_.isMuted,
+      false
+    );
+
     this.html_ = html`
       <div class="rf-fe-module buc-module">
         <div class="module-label">Block Upconverter</div>
@@ -82,10 +90,7 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
           </div>
           <div class="control-group">
             <label>MUTE</label>
-            <button class="btn-mute ${this.state_.isMuted ? 'active' : ''}"
-                    data-action="toggle-buc-mute">
-              ${this.state_.isMuted ? 'ON' : 'OFF'}
-            </button>
+            ${this.muteSwitch.html}
           </div>
         </div>
         <div class="control-group">
@@ -103,7 +108,7 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
    * Add event listeners for user interactions
    */
   addEventListeners(cb: (state: BUCState) => void): void {
-    if (!this.powerSwitch || !this.gainKnob) {
+    if (!this.powerSwitch || !this.gainKnob || !this.muteSwitch) {
       console.warn('BUCModule: Cannot add event listeners - components not initialized');
       return;
     }
@@ -130,6 +135,13 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
       }
     });
 
+    // Mute switch handler
+    this.muteSwitch.addEventListeners((isMuted: boolean) => {
+      this.state_.isMuted = isMuted;
+      this.syncDomWithState_();
+      cb(this.state_);
+    });
+
     // LO frequency input handler
     const container = qs('.buc-module');
     if (container) {
@@ -143,16 +155,6 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
             this.syncDomWithState_();
             cb(this.state_);
           }
-        });
-      }
-
-      // Mute button handler
-      const muteButton = container.querySelector('[data-action="toggle-buc-mute"]');
-      if (muteButton) {
-        muteButton.addEventListener('click', () => {
-          this.state_.isMuted = !this.state_.isMuted;
-          this.syncDomWithState_();
-          cb(this.state_);
         });
       }
     }
@@ -240,6 +242,9 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
     if (this.gainKnob && state.gain !== undefined) {
       this.gainKnob.sync(state.gain);
     }
+    if (this.muteSwitch && state.isMuted !== undefined) {
+      this.muteSwitch.sync(state.isMuted);
+    }
   }
 
   /**
@@ -293,15 +298,10 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
       lockLed.className = `led ${this.getLockLedStatus_()}`;
     }
 
-    // Update mute button
-    const muteButton: HTMLButtonElement = qs('[data-action="toggle-buc-mute"]', container);
-    if (muteButton) {
-      muteButton.className = `btn-mute ${this.state_.isMuted ? 'active' : ''}`;
-      muteButton.textContent = this.state_.isMuted ? 'ON' : 'OFF';
-    }
-
+    // Sync UI components
     this.powerSwitch.sync(this.state_.isPowered);
     this.gainKnob.sync(this.state_.gain);
+    this.muteSwitch.sync(this.state_.isMuted);
   }
 
   get inputSignals(): IfSignal[] {

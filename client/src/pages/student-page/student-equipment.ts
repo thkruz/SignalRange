@@ -91,9 +91,6 @@ export class StudentEquipment extends BaseElement {
     // Initialize 2 antennas
     for (let i = 1; i <= (this.isFullEquipmentSuite ? 2 : 1); i++) {
       const antenna = new Antenna(`antenna${i}-container`);
-      antenna.sync({
-        offset: 1310,
-      })
       this.antennas.push(antenna);
 
       const rfFrontEnd = new RFFrontEnd(`rf-front-end${i}-container`, i, 1);

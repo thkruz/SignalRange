@@ -4,12 +4,11 @@ import { Degrees } from "@app/engine/ootk/src/main";
 import { EventBus } from "@app/events/event-bus";
 import { Sfx } from "@app/sound/sfx-enum";
 import SoundManager from "@app/sound/sound-manager";
-import { bandInformation, FrequencyBand } from "../../constants";
 import { html } from "../../engine/utils/development/formatter";
 import { qs } from "../../engine/utils/query-selector";
 import { Events } from "../../events/events";
 import { SimulationManager } from "../../simulation/simulation-manager";
-import { RfFrequency, RfSignal } from "../../types";
+import { RfSignal } from "../../types";
 import { BaseEquipment } from '../base-equipment';
 import { RFFrontEnd } from "../rf-front-end/rf-front-end";
 import { Transmitter } from "../transmitter/transmitter";
@@ -26,10 +25,6 @@ export interface AntennaState {
   serverId: number;
   /** Which satellite is this antenna targeting */
   noradId: number;
-  /** Frequency band */
-  freqBand: FrequencyBand;
-  /** Frequency offset */
-  offset: number; // MHz
   /** Antenna skew between -90 and 90 degrees */
   skew: Degrees;
   /** is loopback enabled */
@@ -69,8 +64,6 @@ export class Antenna extends BaseEquipment {
       teamId: this.teamId,
       serverId: serverId,
       noradId: 1,
-      freqBand: FrequencyBand.C,
-      offset: 0,
       skew: 0 as Degrees,
       isLoopbackEnabled: false,
       isLocked: false,
@@ -93,9 +86,6 @@ export class Antenna extends BaseEquipment {
 
   initializeDom(parentId: string): HTMLElement {
     const parentDom = super.initializeDom(parentId);
-
-    const band = this.state.freqBand === FrequencyBand.C ? 'c' : 'ku';
-    const bandInfo = bandInformation[band];
 
     this.powerSwitch = PowerSwitch.create(`antenna-power-switch-${this.state.uuid}`, this.state.isPowered);
     this.skewKnob = RotaryKnob.create(
@@ -153,27 +143,6 @@ export class Antenna extends BaseEquipment {
             </div>
 
             <div class="config-row">
-              <label>Band</label>
-              <select class="input-band" data-param="freqBand">
-                <option value="0" ${this.inputState.freqBand === 0 ? 'selected' : ''}>C Band</option>
-                <option value="1" ${this.inputState.freqBand === 1 ? 'selected' : ''}>Ku Band</option>
-              </select>
-              <span id="labelBand" class="current-value">${bandInfo.name}</span>
-            </div>
-
-            <div class="config-row">
-              <label>Offset</label>
-              <input
-                type="text"
-                class="input-offset"
-                data-param="offset"
-                value="${this.inputState.offset ?? this.state.offset}"
-                placeholder="0"
-              />
-              <span id="labelOffset" class="current-value">${this.state.offset} MHz</span>
-            </div>
-
-            <div class="config-row">
               <label>Skew</label>
               ${this.skewKnob.html}
               <span id="labelSkew" class="current-value">${this.state.skew}°</span>
@@ -223,14 +192,10 @@ export class Antenna extends BaseEquipment {
     this.domCache['led'] = qs('.led', parentDom);
     this.domCache['btnLoopback'] = qs('.btn-loopback', parentDom);
     this.domCache['inputTarget'] = qs('.input-target', parentDom);
-    this.domCache['inputBand'] = qs('.input-band', parentDom);
-    this.domCache['inputOffset'] = qs('.input-offset', parentDom);
     this.domCache['inputTrack'] = qs('.input-track', parentDom);
     this.domCache['lockStatus'] = qs('.lock-status', parentDom);
     this.domCache['btnApply'] = qs('.btn-apply', parentDom);
     this.domCache['labelTarget'] = qs('#labelTarget', parentDom);
-    this.domCache['labelOffset'] = qs('#labelOffset', parentDom);
-    this.domCache['labelBand'] = qs('#labelBand', parentDom);
     this.domCache['labelLockStatus'] = qs('#labelLockStatus', parentDom);
     this.domCache['labelSkew'] = qs('#labelSkew', parentDom);
 
@@ -345,11 +310,7 @@ export class Antenna extends BaseEquipment {
     let value: any = target.value;
 
     // Parse based on parameter type
-    if (param === 'offset') {
-      // Allow negative numbers
-      if (value.match(/[^0-9-]/g)) return;
-      value = Number.parseInt(value) || 0;
-    } else if (param === 'noradId' || param === 'freqBand') {
+    if (param === 'noradId') {
       value = Number.parseInt(value);
     } else if (param === 'track') {
       value = (target as HTMLInputElement).checked;
@@ -522,13 +483,6 @@ export class Antenna extends BaseEquipment {
     this.rfFrontEnd_ = rfFrontEnd;
   }
 
-  getDownlinkFrequency(): RfFrequency {
-    const band = this.state.freqBand === FrequencyBand.C ? 'c' : 'ku';
-    const bandInfo = bandInformation[band];
-    const downlinkFreq = bandInfo.downconvert + (this.state.offset * 1e6); // MHz to Hz
-    return downlinkFreq as RfFrequency;
-  }
-
   syncDomWithState(): void {
     if (JSON.stringify(this.state) === JSON.stringify(this.lastRenderState)) {
       return; // No changes, skip update
@@ -545,8 +499,6 @@ export class Antenna extends BaseEquipment {
 
     // Update inputs
     (this.domCache['inputTarget'] as HTMLSelectElement).value = this.inputState.noradId.toString();
-    (this.domCache['inputBand'] as HTMLSelectElement).value = this.inputState.freqBand.toString();
-    (this.domCache['inputOffset'] as HTMLInputElement).value = this.inputState.offset.toString();
     (this.domCache['inputTrack'] as HTMLInputElement).checked = this.state.isAutoTrackEnabled;
 
     // Update lock status
@@ -555,10 +507,6 @@ export class Antenna extends BaseEquipment {
 
     // Update current value labels
     this.domCache['labelTarget'].textContent = `Satellite ${this.state.noradId}`;
-    const band = this.state.freqBand === FrequencyBand.C ? 'c' : 'ku';
-    const bandInfo = bandInformation[band];
-    this.domCache['labelBand'].textContent = bandInfo.name;
-    this.domCache['labelOffset'].textContent = `${this.state.offset} MHz`;
     this.domCache['labelSkew'].textContent = `${this.state.skew}°`;
 
     // Update skew knob

@@ -30,8 +30,8 @@ export class OMTModule extends RFFrontEndModule<OMTState> {
   rxSignalsOut: RfSignal[] = [];
   txSignalsOut: RfSignal[] = [];
 
-  static create(state: OMTState, rfFrontEnd: RFFrontEnd, unit: number = 1): OMTModule {
-    this.instance_ ??= new OMTModule(state, rfFrontEnd, unit);
+  static create(state: OMTState, rfFrontEnd: RFFrontEnd): OMTModule {
+    this.instance_ ??= new OMTModule(state, rfFrontEnd);
     return this.instance_;
   }
 

@@ -10,13 +10,13 @@ export class AnalyzerControlBox extends DraggableBox {
   private control: AnalyzerControl | null = null;
 
   constructor(specA: RealTimeSpectrumAnalyzer) {
-    super(`spec-a-${specA.state.id}-control-popup-box`, { title: `Spectrum Analyzer ${specA.state.id} Control Panel`, width: 'fit-content' });
+    super(`spec-a-${specA.state.uuid}-control-popup-box`, { title: `Spectrum Analyzer ${specA.state.uuid} Control Panel`, width: 'fit-content' });
     this.spectrumAnalyzer = specA;
   }
 
   protected getBoxContentHtml(): string {
     return html`
-      <div id="spec-a-${this.spectrumAnalyzer.state.id}-control-popup-content">
+      <div id="spec-a-${this.spectrumAnalyzer.state.uuid}-control-popup-content">
       </div>
     `.trim();
   }
@@ -24,7 +24,7 @@ export class AnalyzerControlBox extends DraggableBox {
   protected onOpen(): void {
     super.onOpen();
 
-    this.popupDom = getEl(`spec-a-${this.spectrumAnalyzer.state.id}-control-popup-content`)!;
+    this.popupDom = getEl(`spec-a-${this.spectrumAnalyzer.state.uuid}-control-popup-content`)!;
 
     this.control ??= new AnalyzerControl({
       element: this.popupDom,

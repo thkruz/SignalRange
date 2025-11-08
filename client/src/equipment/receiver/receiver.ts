@@ -10,8 +10,8 @@ import { Antenna } from './../antenna/antenna';
 import './receiver.css';
 
 export interface ReceiverModemState {
+  antennaUuid: string;
   modemNumber: number; // 1-4
-  antennaId: number;
   frequency: MHz; // MHz
   bandwidth: MHz; // MHz
   modulation: ModulationType;
@@ -20,7 +20,7 @@ export interface ReceiverModemState {
 }
 
 export interface ReceiverState {
-  unit: number; // Case number 1-4
+  uuid: string;
   team_id: number;
   server_id: number;
   modems: ReceiverModemState[];
@@ -47,8 +47,8 @@ export class Receiver extends BaseEquipment {
   powerSwitch: PowerSwitch;
   rfFrontEnd_: RFFrontEnd | null = null;
 
-  constructor(parentId: string, unit: number, antennas: Antenna[], teamId: number = 1, serverId: number = 1) {
-    super(parentId, unit, teamId);
+  constructor(parentId: string, antennas: Antenna[], teamId: number = 1, serverId: number = 1) {
+    super(parentId, teamId);
 
     this.antennas = antennas;
 
@@ -57,7 +57,7 @@ export class Receiver extends BaseEquipment {
     for (let i = 1; i <= 4; i++) {
       modems.push({
         modemNumber: i,
-        antennaId: i <= 2 ? antennas[0].state.id : antennas[1]?.state.id ?? antennas[0].state.id,
+        antennaUuid: i <= 2 ? antennas[0].state.uuid : antennas[1]?.state.uuid ?? antennas[0].state.uuid,
         frequency: 4700 as MHz, // (IF Band after downconversion)
         bandwidth: 50 as MHz,
         modulation: 'QPSK' as ModulationType,
@@ -67,7 +67,7 @@ export class Receiver extends BaseEquipment {
     }
 
     this.state = {
-      unit: this.id,
+      uuid: this.uuid,
       team_id: this.teamId,
       server_id: serverId,
       modems,
@@ -95,12 +95,12 @@ export class Receiver extends BaseEquipment {
     const ledColor = this.getLedColor();
     const feedUrl = this.getVisibleSignals()[0]?.feed || '';
 
-    this.powerSwitch = PowerSwitch.create(`rx-power-switch-${this.state.unit}${this.activeModem.modemNumber}`, this.activeModem.isPowered);
+    this.powerSwitch = PowerSwitch.create(`rx-power-switch-${this.state.uuid}${this.activeModem.modemNumber}`, this.activeModem.isPowered);
 
     parentDom.innerHTML = html`
       <div class="equipment-box receiver-box">
         <div class="equipment-case-header">
-          <div class="equipment-case-title">Receiver Case ${this.id}</div>
+          <div class="equipment-case-title">Receiver Case ${this.uuidShort}</div>
           <div class="equipment-case-power-controls">
             <div class="equipment-case-main-power"></div>
             <div class="equipment-case-status-indicator">
@@ -129,10 +129,10 @@ export class Receiver extends BaseEquipment {
               <div class="config-row">
                 <label>Antenna</label>
                 <select class="input-rx-antenna" data-param="antennaId">
-                  <option value="1" ${this.inputData.antennaId === this.antennas[0]?.state.id ? 'selected' : ''}>1</option>
-                  <option value="2" ${this.inputData.antennaId === this.antennas[1]?.state.id ? 'selected' : ''}>2</option>
+                  <option value="1" ${this.inputData.antennaUuid === this.antennas[0]?.state.uuid ? 'selected' : ''}>1</option>
+                  <option value="2" ${this.inputData.antennaUuid === this.antennas[1]?.state.uuid ? 'selected' : ''}>2</option>
                 </select>
-                <span class="current-value">${this.inputData.antennaId ?? 1}</span>
+                <span class="current-value">${this.inputData.antennaUuid ?? 1}</span>
               </div>
 
               <div class="config-row">
@@ -265,7 +265,7 @@ export class Receiver extends BaseEquipment {
       this.activeModem.isPowered = isOn;
 
       this.emit(Events.RX_CONFIG_CHANGED, {
-        unit: this.id,
+        uuid: this.uuid,
         modem: this.state.activeModem,
         config: this.state.modems.find(m => m.modemNumber === this.state.activeModem)
       });
@@ -345,7 +345,7 @@ export class Receiver extends BaseEquipment {
 
     // Emit event for modem change
     this.emit(Events.RX_ACTIVE_MODEM_CHANGED, {
-      unit: this.id,
+      uuid: this.uuid,
       activeModem: modemNumber
     });
   }
@@ -366,7 +366,7 @@ export class Receiver extends BaseEquipment {
         this.inputData.bandwidth = (Number.parseFloat(inputValue) as MHz) || 0 as MHz;
         break;
       case 'antenna':
-        this.inputData.antennaId = this.antennas.find(a => a.state.id === Number.parseInt(inputValue))?.state.id;
+        this.inputData.antennaUuid = this.antennas.find(a => a.state.uuid === inputValue)?.state.uuid;
         break;
       case 'modulation':
         this.inputData.modulation = inputValue as ModulationType;
@@ -390,7 +390,7 @@ export class Receiver extends BaseEquipment {
     };
 
     this.emit(Events.RX_CONFIG_CHANGED, {
-      unit: this.id,
+      uuid: this.uuid,
       modem: this.state.activeModem,
       config: this.state.modems[modemIndex]
     });
@@ -532,7 +532,7 @@ export class Receiver extends BaseEquipment {
       const sel = this.domCache['inputAntenna'] as HTMLSelectElement;
       // Try to select the option matching antenna id
       for (const option of sel.options) {
-        option.selected = Number(option.value) === (this.inputData.antennaId ?? activeModem?.antennaId);
+        option.selected = option.value === (this.inputData.antennaUuid ?? activeModem?.antennaUuid);
       }
     }
 
@@ -541,7 +541,7 @@ export class Receiver extends BaseEquipment {
     (this.domCache['inputModulation'] as HTMLSelectElement).value = String(this.inputData.modulation ?? activeModem?.modulation ?? '');
     (this.domCache['inputFec'] as HTMLSelectElement).value = String(this.inputData.fec ?? activeModem?.fec ?? '');
 
-    (this.domCache['currentValueAntenna']).textContent = String(activeModem.antennaId);
+    (this.domCache['currentValueAntenna']).textContent = String(activeModem.antennaUuid);
     (this.domCache['currentValueFrequency']).textContent = `${activeModem.frequency} MHz`;
     (this.domCache['currentValueBandwidth']).textContent = `${activeModem.bandwidth} MHz`;
     (this.domCache['currentValueModulation']).textContent = String(activeModem.modulation);

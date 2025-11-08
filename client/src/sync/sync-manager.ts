@@ -169,7 +169,7 @@ export class SyncManager {
     if (state.equipment.spectrumAnalyzersState) {
       state.equipment.spectrumAnalyzersState.forEach((storedSa: RealTimeSpectrumAnalyzerState) => {
         const localSa = this.equipment!.spectrumAnalyzers.find(
-          sa => sa.state.id === storedSa.id
+          sa => sa.state.uuid === storedSa.uuid
         );
         if (localSa) {
           localSa.sync({ ...storedSa });

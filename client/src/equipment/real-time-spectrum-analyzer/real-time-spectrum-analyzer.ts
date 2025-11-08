@@ -12,9 +12,9 @@ import { WaterfallDisplay } from "./rtsa-screen/waterfall-display";
 export interface RealTimeSpectrumAnalyzerState {
   inputUnit: 'Hz' | 'kHz' | 'MHz' | 'GHz' | 'dBm' | 'dBW' | 'W';
   inputValue: string;
-  id: number; // 1-4
+  uuid: string;
   team_id: number;
-  rfFrontEndId: number;
+  rfFeUuid: string;
   isRfMode: boolean; // true = RF mode, false = IF mode
   isPaused: boolean;
   noiseFloor: any;
@@ -54,16 +54,16 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
   configPanel: AnalyzerControlBox | null = null;
   inputSignals: IfSignal[] = [];
 
-  constructor(parentId: string, id: number, rfFrontEnd: RFFrontEnd, teamId: number = 1) {
-    super(parentId, id, teamId);
+  constructor(parentId: string, rfFrontEnd: RFFrontEnd, teamId: number = 1) {
+    super(parentId, teamId);
 
     this.rfFrontEnd_ = rfFrontEnd;
 
     // Initialize config
     this.state = {
-      id: this.id,
+      uuid: this.uuid,
       team_id: this.teamId,
-      rfFrontEndId: this.rfFrontEnd_.antenna.state.id, // RF is hard linked to antenna
+      rfFeUuid: this.rfFrontEnd_.state.uuid, // RF is hard linked to antenna
       isRfMode: false,
       isPaused: false,
       isMaxHold: false,
@@ -99,7 +99,7 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
     parentDom.innerHTML = html`
         <div class="equipment-box spectrum-analyzer-box">
         <div class="equipment-case-header">
-          <div class="equipment-case-title">Spectrum Analyzer ${this.id}</div>
+          <div class="equipment-case-title">Spectrum Analyzer ${this.uuidShort}</div>
           <div class="equipment-case-power-controls">
             <div class="equipment-case-main-power"></div>
             <div class="equipment-case-status-indicator">
@@ -110,15 +110,15 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
         </div>
 
         <div class="spec-a-canvas-container">
-          <canvas id="specA${this.id}" width="747" height="747" class="spec-a-canvas-single"></canvas>
-          <canvas id="specA${this.id}-spectral" width="747" height="200" class="spec-a-canvas-spectral"></canvas>
-          <canvas id="specA${this.id}-waterfall" width="747" height="200" class="spec-a-canvas-waterfall"></canvas>
+          <canvas id="specA${this.uuid}" width="747" height="747" class="spec-a-canvas-single"></canvas>
+          <canvas id="specA${this.uuid}-spectral" width="747" height="200" class="spec-a-canvas-spectral"></canvas>
+          <canvas id="specA${this.uuid}-waterfall" width="747" height="200" class="spec-a-canvas-waterfall"></canvas>
         </div>
 
         <div class="spec-a-info">
           <div>CF: ${this.state.centerFrequency / 1e6} MHz</div>
           <div>Input: ${this.state.inputValue} ${this.state.inputUnit}</div>
-          <div>Ant: ${this.state.rfFrontEndId}</div>
+          <div>RF Front End: ${this.state.rfFeUuid.split('-')[0]}</div>
         </div>
 
         <div class="spec-a-controls">
@@ -140,9 +140,9 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
     this.domCache['container'] = parentDom.querySelector('.spectrum-analyzer-box') as HTMLElement;
     this.domCache['info'] = parentDom.querySelector('.spec-a-info') as HTMLElement;
     this.domCache['controls'] = parentDom.querySelector('.spec-a-controls') as HTMLElement;
-    this.domCache['canvas'] = parentDom.querySelector(`#specA${this.id}`) as HTMLCanvasElement;
-    this.domCache['canvasSpectral'] = parentDom.querySelector(`#specA${this.id}-spectral`) as HTMLCanvasElement;
-    this.domCache['canvasWaterfall'] = parentDom.querySelector(`#specA${this.id}-waterfall`) as HTMLCanvasElement;
+    this.domCache['canvas'] = parentDom.querySelector(`#specA${this.uuid}`) as HTMLCanvasElement;
+    this.domCache['canvasSpectral'] = parentDom.querySelector(`#specA${this.uuid}-spectral`) as HTMLCanvasElement;
+    this.domCache['canvasWaterfall'] = parentDom.querySelector(`#specA${this.uuid}-waterfall`) as HTMLCanvasElement;
     this.domCache['configButton'] = parentDom.querySelector('.btn-config') as HTMLButtonElement;
     this.domCache['ifRfModeButton'] = parentDom.querySelector('.btn-mode-if-rf') as HTMLButtonElement;
     this.domCache['screenModeButton'] = parentDom.querySelector('.btn-mode-screen') as HTMLButtonElement;
@@ -208,7 +208,7 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
   }
 
   private updateConfigChange(data: any): void {
-    if (data.unit === this.state.id) {
+    if (data.unit === this.state.uuid) {
       this.state = { ...this.state, ...data };
 
       if (data.frequency) {
@@ -429,14 +429,14 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
   private openConfigPopupMenu(): void {
     this.configPanel ??= new AnalyzerControlBox(this);
     this.configPanel.open();
-    this.emit(Events.SPEC_A_CONFIG_CHANGED, { id: this.id });
+    this.emit(Events.SPEC_A_CONFIG_CHANGED, { uuid: this.uuid });
   }
 
   private toggleIfRfMode(): void {
     this.state.isRfMode = !this.state.isRfMode;
 
     this.emit(Events.SPEC_A_CONFIG_CHANGED, {
-      id: this.id,
+      uuid: this.uuid,
       isRfMode: this.state.isRfMode,
     });
     this.syncDomWithState();
@@ -456,7 +456,7 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
     }
 
     this.emit(Events.SPEC_A_CONFIG_CHANGED, {
-      id: this.id,
+      uuid: this.uuid,
       screenMode: this.state.screenMode,
     });
 
@@ -468,7 +468,7 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
     this.state.isPaused = !this.state.isPaused;
 
     this.emit(Events.SPEC_A_CONFIG_CHANGED, {
-      id: this.id,
+      uuid: this.uuid,
       isPaused: this.state.isPaused,
     });
     this.syncDomWithState();
@@ -479,7 +479,7 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
     this.domCache['info'].innerHTML = html`
       <div>CF: ${(this.state.centerFrequency / 1e6).toFixed(3)} MHz</div>
       <div>Input: ${this.state.inputValue} ${this.state.inputUnit}</div>
-      <div>Ant: ${this.state.rfFrontEndId}</div>
+      <div>RF Front End: ${this.state.rfFeUuid.split('-')[0]}</div>
     `;
 
     this.domCache['ifRfModeButton'].textContent = this.state.isRfMode ? 'RF' : 'IF';

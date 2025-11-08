@@ -19,7 +19,7 @@ export interface AntennaState {
   noiseFloor: number;
   isPowered: boolean;
   /** Which antenna is this */
-  id: number;
+  uuid: string;
   /** If there are multiple teams, which team is this antenna part of */
   teamId: number;
   /** Which server is this antenna connected to */
@@ -60,12 +60,12 @@ export class Antenna extends BaseEquipment {
   skewKnob: RotaryKnob;
   private rfFrontEnd_: RFFrontEnd | null = null;
 
-  constructor(parentId: string, unit: number, teamId: number = 1, serverId: number = 1) {
-    super(parentId, unit, teamId);
+  constructor(parentId: string, teamId: number = 1, serverId: number = 1) {
+    super(parentId, teamId);
 
     // Initialize status with defaults
     this.state = {
-      id: this.id,
+      uuid: this.uuid,
       teamId: this.teamId,
       serverId: serverId,
       noradId: 1,
@@ -97,9 +97,9 @@ export class Antenna extends BaseEquipment {
     const band = this.state.freqBand === FrequencyBand.C ? 'c' : 'ku';
     const bandInfo = bandInformation[band];
 
-    this.powerSwitch = PowerSwitch.create(`antenna-power-switch-${this.state.id}`, this.state.isPowered);
+    this.powerSwitch = PowerSwitch.create(`antenna-power-switch-${this.state.uuid}`, this.state.isPowered);
     this.skewKnob = RotaryKnob.create(
-      `antenna-skew-knob-${this.state.id}`,
+      `antenna-skew-knob-${this.state.uuid}`,
       this.state.skew,
       -90,
       90,
@@ -110,7 +110,7 @@ export class Antenna extends BaseEquipment {
     parentDom.innerHTML = html`
       <div class="equipment-box">
         <div class="equipment-case-header">
-          <div class="equipment-case-title">Antenna ${this.id}</div>
+          <div class="equipment-case-title">Antenna ${this.uuidShort}</div>
           <div class="equipment-case-power-controls">
             <div class="equipment-case-main-power"></div>
             <div class="equipment-case-status-indicator">
@@ -261,8 +261,8 @@ export class Antenna extends BaseEquipment {
     const trackSwitch = qs('.input-track', parentDom) as HTMLInputElement;
     trackSwitch?.addEventListener('change', () => this.handleTrackChange_(parentDom));
 
-    this.on(Events.ANTENNA_LOCKED, () => (data: { locked: boolean; antennaId: number }) => {
-      if (data.antennaId === this.id) {
+    this.on(Events.ANTENNA_LOCKED, () => (data: { locked: boolean; uuid: string }) => {
+      if (data.uuid === this.uuid) {
         this.state.isLocked = data.locked;
         this.updateSignalStatus_();
         this.syncDomWithState();

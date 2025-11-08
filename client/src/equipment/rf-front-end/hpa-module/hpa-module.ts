@@ -65,7 +65,7 @@ export class HPAModule extends RFFrontEndModule<HPAState> {
       true,
     );
 
-    this.hpaSwitch = SecureToggleSwitch.create(`hpa-switch-${this.rfFrontEnd_.state.unit}`, this.state.isHpaSwitchEnabled);
+    this.hpaSwitch = SecureToggleSwitch.create(`hpa-switch-${this.rfFrontEnd_.state.uuid}`, this.state.isHpaSwitchEnabled);
 
     this.backOffKnob = RotaryKnob.create(
       `${this.uniqueId}-backoff-knob`,

@@ -47,7 +47,7 @@ export interface IfFilterBankState {
 
 export class IfFilterBankModule extends RFFrontEndModule<IfFilterBankState> {
   private static instance_: IfFilterBankModule;
-  private bandwidthKnob_?: RotaryKnob;
+  private readonly bandwidthKnob_: RotaryKnob;
   outputSignals: IfSignal[] = [];
 
   static create(state: IfFilterBankState, rfFrontEnd: RFFrontEnd, unit: number = 1): IfFilterBankModule {
@@ -187,10 +187,10 @@ export class IfFilterBankModule extends RFFrontEndModule<IfFilterBankState> {
 
     const config = FILTER_BANDWIDTH_CONFIGS[this.state_.bandwidthIndex];
 
+    const knobLabelElement = qs('.knob-value', this.bandwidthKnob_.dom);
     // Update knob label
-    const knobLabel = container.querySelector('.knob-label');
-    if (knobLabel) {
-      knobLabel.textContent = config.label;
+    if (knobLabelElement) {
+      knobLabelElement.textContent = config.label;
     }
 
     // Update insertion loss LED

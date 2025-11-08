@@ -27,7 +27,7 @@ export interface TransmitterModem {
 }
 
 export interface TransmitterState {
-  unit: number; // Case number 1-4
+  uuid: string;
   team_id: number;
   server_id: number;
   modems: TransmitterModem[];
@@ -54,8 +54,8 @@ export class Transmitter extends BaseEquipment {
   testModeSwitch: ToggleSwitch;
   faultResetSwitch: ToggleSwitch;
 
-  constructor(parentId: string, unit: number, teamId: number = 1, serverId: number = 1) {
-    super(parentId, unit, teamId);
+  constructor(parentId: string, teamId: number = 1, serverId: number = 1) {
+    super(parentId, teamId);
 
     // Initialize config with 4 modems
     const modems: TransmitterModem[] = [];
@@ -65,7 +65,7 @@ export class Transmitter extends BaseEquipment {
         modem_number: i,
         antenna_id: 1,
         ifSignal: {
-          id: `${unit}-${i}-default`,
+          id: `${this.uuid}-${i}-default`,
           serverId: serverId,
           noradId: 1,
           frequency: 1000 * 1e6 as IfFrequency, // MHz (L-Band)
@@ -88,7 +88,7 @@ export class Transmitter extends BaseEquipment {
     }
 
     this.state = {
-      unit: this.id,
+      uuid: this.uuid,
       team_id: this.teamId,
       server_id: serverId,
       modems,
@@ -113,15 +113,15 @@ export class Transmitter extends BaseEquipment {
   initializeDom(parentId: string): HTMLElement {
     const parentDom = super.initializeDom(parentId);
 
-    this.txToggleSwitch = ToggleSwitch.create(`tx-transmit-switch-${this.state.unit}${this.activeModem.modem_number}`, this.activeModem.isTransmittingSwitchUp);
-    this.faultResetSwitch = ToggleSwitch.create(`tx-fault-reset-switch-${this.state.unit}${this.activeModem.modem_number}`, this.activeModem.isFaultSwitchUp);
-    this.testModeSwitch = ToggleSwitch.create(`tx-test-mode-switch-${this.state.unit}${this.activeModem.modem_number}`, this.activeModem.isTestMode);
-    this.powerSwitch = PowerSwitch.create(`tx-power-switch-${this.state.unit}${this.activeModem.modem_number}`, this.activeModem.isPowered);
+    this.txToggleSwitch = ToggleSwitch.create(`tx-transmit-switch-${this.state.uuid}${this.activeModem.modem_number}`, this.activeModem.isTransmittingSwitchUp);
+    this.faultResetSwitch = ToggleSwitch.create(`tx-fault-reset-switch-${this.state.uuid}${this.activeModem.modem_number}`, this.activeModem.isFaultSwitchUp);
+    this.testModeSwitch = ToggleSwitch.create(`tx-test-mode-switch-${this.state.uuid}${this.activeModem.modem_number}`, this.activeModem.isTestMode);
+    this.powerSwitch = PowerSwitch.create(`tx-power-switch-${this.state.uuid}${this.activeModem.modem_number}`, this.activeModem.isPowered);
 
     parentDom.innerHTML = html`
       <div class="equipment-box transmitter-box">
         <div class="equipment-case-header">
-          <div class="equipment-case-title">Transmitter Case ${this.id}</div>
+          <div class="equipment-case-title">Transmitter Case ${this.uuidShort}</div>
           <div class="equipment-case-power-controls">
             <div class="equipment-case-main-power"></div>
             <div class="equipment-case-status-indicator">
@@ -302,7 +302,7 @@ export class Transmitter extends BaseEquipment {
     setTimeout(() => {
       this.activeModem.isPowered = isOn;
       this.emit(Events.TX_CONFIG_CHANGED, {
-        unit: this.id,
+        uuid: this.uuid,
         modem: this.state.activeModem,
         config: this.activeModem
       });
@@ -337,7 +337,7 @@ export class Transmitter extends BaseEquipment {
 
     // Emit event for modem change
     this.emit(Events.TX_ACTIVE_MODEM_CHANGED, {
-      unit: this.id,
+      uuid: this.uuid,
       activeModem: modemNumber
     });
   }
@@ -385,7 +385,7 @@ export class Transmitter extends BaseEquipment {
     };
 
     this.emit(Events.TX_CONFIG_CHANGED, {
-      unit: this.id,
+      uuid: this.uuid,
       modem: this.state.activeModem,
       config: this.state.modems[this.activeModem.id]
     });
@@ -407,7 +407,7 @@ export class Transmitter extends BaseEquipment {
     this.updateTransmissionState();
 
     this.emit(Events.TX_CONFIG_CHANGED, {
-      unit: this.id,
+      uuid: this.uuid,
       modem: this.state.activeModem,
       config: this.state.modems[this.activeModem.id]
     });
@@ -429,7 +429,7 @@ export class Transmitter extends BaseEquipment {
       this.activeModem.isFaultSwitchUp = false;
 
       this.emit(Events.TX_CONFIG_CHANGED, {
-        unit: this.id,
+        uuid: this.uuid,
         modem: this.state.activeModem,
         config: this.state.modems[this.activeModem.id]
       });
@@ -437,7 +437,7 @@ export class Transmitter extends BaseEquipment {
     }, 250);
 
     this.emit(Events.TX_CONFIG_CHANGED, {
-      unit: this.id,
+      uuid: this.uuid,
       modem: this.state.activeModem,
       config: this.state.modems[this.activeModem.id]
     });
@@ -449,7 +449,7 @@ export class Transmitter extends BaseEquipment {
     this.activeModem.isTestMode = !this.activeModem.isTestMode;
 
     this.emit(Events.TX_CONFIG_CHANGED, {
-      unit: this.id,
+      uuid: this.uuid,
       modem: this.state.activeModem,
       config: this.state.modems[this.activeModem.id]
     });

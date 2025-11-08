@@ -1,3 +1,4 @@
+import { generateUuid } from '@app/engine/utils/uuid';
 import { EventBus } from '../events/event-bus';
 import { EventMap, Events } from '../events/events';
 import { AntennaState } from './antenna/antenna';
@@ -13,7 +14,7 @@ import { TransmitterState } from './transmitter/transmitter';
  * Provides standard lifecycle methods and shared functionality
  */
 export abstract class BaseEquipment {
-  protected readonly id: number;
+  protected readonly uuid: string;
   protected readonly teamId: number;
   /** Current equipment state.*/
   abstract state: AntennaState | ReceiverState | TransmitterState | RealTimeSpectrumAnalyzerState | RFFrontEndState;
@@ -21,12 +22,16 @@ export abstract class BaseEquipment {
   private isInitialized: boolean = false;
   protected domCache: { [key: string]: HTMLElement } = {};
 
-  constructor(parentId: string, unit: number, teamId: number = 1) {
+  constructor(parentId: string, teamId: number = 1) {
     const parentDom = document.getElementById(parentId);
     if (!parentDom) throw new Error(`Parent element ${parentId} not found`);
 
-    this.id = unit;
+    this.uuid = generateUuid();
     this.teamId = teamId;
+  }
+
+  get uuidShort(): string {
+    return this.uuid.split('-')[0];
   }
 
   // Standard initialization sequence

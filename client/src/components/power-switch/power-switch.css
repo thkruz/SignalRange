@@ -44,8 +44,8 @@
 }
 
 .physical-switch.small-power-switch {
-  width: 35px;
-  height: 60px;
+  width: 35px !important;
+  height: 60px !important;
 }
 
 .physical-switch-track {

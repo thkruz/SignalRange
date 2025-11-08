@@ -40,7 +40,7 @@ export interface SignalPath {
  * Complete RF Front-End state
  */
 export interface RFFrontEndState {
-  unit: number; // Case number 1-4
+  uuid: string;
   teamId: number;
   serverId: number;
   isPowered: boolean;
@@ -85,12 +85,12 @@ export class RFFrontEnd extends BaseEquipment {
   // Transmitter reference
   transmitters: Transmitter[] = [];
 
-  constructor(parentId: string, unit: number, teamId: number = 1, serverId: number = 1) {
-    super(parentId, unit, teamId);
+  constructor(parentId: string, teamId: number = 1, serverId: number = 1) {
+    super(parentId, teamId);
 
     // Initialize state with default values
     this.state = {
-      unit: this.id,
+      uuid: this.uuid,
       teamId: this.teamId,
       serverId: serverId,
       isPowered: true,
@@ -232,30 +232,30 @@ export class RFFrontEnd extends BaseEquipment {
     const parentDom = super.initializeDom(parentId);
 
     // Instantiate module classes
-    this.omtModule = OMTModule.create(this.state.omt, this, this.state.unit);
-    this.bucModule = BUCModule.create(this.state.buc, this, this.state.unit);
-    this.hpaModule = HPAModule.create(this.state.hpa, this, this.state.unit);
-    this.filterModule = IfFilterBankModule.create(this.state.filter, this, this.state.unit);
-    this.lnbModule = LNBModule.create(this.state.lnb, this, this.state.unit);
-    this.couplerModule = CouplerModule.create(this.state.coupler, this, this.state.unit);
+    this.omtModule = OMTModule.create(this.state.omt, this);
+    this.bucModule = BUCModule.create(this.state.buc, this);
+    this.hpaModule = HPAModule.create(this.state.hpa, this);
+    this.filterModule = IfFilterBankModule.create(this.state.filter, this);
+    this.lnbModule = LNBModule.create(this.state.lnb, this);
+    this.couplerModule = CouplerModule.create(this.state.coupler, this);
 
     // Create UI components
     this.powerSwitch = PowerSwitch.create(
-      `rf-fe-power-${this.state.unit}`,
+      `rf-fe-power-${this.state.uuid}`,
       this.state.isPowered
     );
 
     parentDom.innerHTML = html`
       <div
-        id="rf-fe-box-${this.state.unit}"
-        class="equipment-box rf-front-end-box" data-unit="${this.state.unit}"
+        id="rf-fe-box-${this.state.uuid}"
+        class="equipment-box rf-front-end-box" data-unit="${this.state.uuid}"
       >
 
         <!-- Top Status Bar -->
         <div class="equipment-case-header">
-          <div class="equipment-case-title">RF FRONT END ${this.state.unit}</div>
+          <div class="equipment-case-title">RF FRONT END ${this.uuidShort}</div>
           <div class="equipment-case-power-controls">
-            <div id="rf-fe-power-${this.state.unit}" class="equipment-case-main-power"></div>
+            <div id="rf-fe-power-${this.state.uuid}" class="equipment-case-main-power"></div>
             <div class="equipment-case-status-indicator">
               <span class="equipment-case-status-label">EXT REF</span>
               <div class="led ${this.state.isExtRefPresent && this.state.buc.isExtRefLocked ? 'led-green' : 'led-amber'}"></div>
@@ -363,7 +363,7 @@ export class RFFrontEnd extends BaseEquipment {
   }
 
   protected attachEventListeners(): void {
-    const container = qs(`.equipment-box[data-unit="${this.state.unit}"]`);
+    const container = qs(`.equipment-box[data-unit="${this.state.uuid}"]`);
     if (!container) return;
 
     // Input change handlers
@@ -387,7 +387,7 @@ export class RFFrontEnd extends BaseEquipment {
         this.state.lnb.isPowered = false;
       }
       this.syncDomWithState();
-      this.emit(Events.RF_FE_POWER_CHANGED, { unit: this.id, isPowered });
+      this.emit(Events.RF_FE_POWER_CHANGED, { uuid: this.uuid, isPowered });
     });
   }
 
@@ -694,7 +694,7 @@ export class RFFrontEnd extends BaseEquipment {
     }
 
     // Update UI based on state changes
-    const container = qs(`.equipment-box[data-unit="${this.state.unit}"]`);
+    const container = qs(`.equipment-box[data-unit="${this.state.uuid}"]`);
     if (!container) return;
 
     // Update signal path readout

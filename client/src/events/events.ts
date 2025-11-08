@@ -39,18 +39,18 @@ export interface AntennaErrorData {
 
 // TX Event specific interfaces
 export interface TxConfigChangedData {
-  unit: number;
+  uuid: string;
   modem: number;
   config: TransmitterModem;
 }
 
 export interface TxActiveModemChangedData {
-  unit: number;
+  uuid: string;
   activeModem: number;
 }
 
 export interface TxTransmitChangedData {
-  unit: number;
+  uuid: string;
   modem: number;
   transmitting: boolean;
   rfSignal: RfSignal;
@@ -62,23 +62,23 @@ export interface TxErrorData {
 
 // RX Event specific interfaces
 export interface RxConfigChangedData {
-  unit: number;
+  uuid: string;
   modem: number;
   config: ReceiverModemState;
 }
 
 export interface RxActiveModemChangedData {
-  unit: number;
+  uuid: string;
   activeModem: number;
 }
 
 export interface RxSignalFoundData {
-  unit: number;
+  uuid: string;
   modem: number;
 }
 
 export interface RxSignalLostData {
-  unit: number;
+  uuid: string;
   modem: number;
 }
 

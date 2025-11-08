@@ -90,7 +90,7 @@ export class StudentEquipment extends BaseElement {
 
     // Initialize 2 antennas
     for (let i = 1; i <= (this.isFullEquipmentSuite ? 2 : 1); i++) {
-      const antenna = new Antenna(`antenna${i}-container`, i, 1, 1);
+      const antenna = new Antenna(`antenna${i}-container`);
       antenna.sync({
         offset: 1310,
       })
@@ -106,7 +106,7 @@ export class StudentEquipment extends BaseElement {
     // First two use antenna 1, next two use antenna 2
     for (let i = 1; i <= (this.isFullEquipmentSuite ? 4 : 2); i++) {
       const antennaId = i <= 2 ? 1 : 2;
-      const specA = new RealTimeSpectrumAnalyzer(`specA${i}-container`, i, this.rfFrontEnds[antennaId - 1]);
+      const specA = new RealTimeSpectrumAnalyzer(`specA${i}-container`, this.rfFrontEnds[antennaId - 1]);
       this.spectrumAnalyzers.push(specA);
     }
 
@@ -125,7 +125,7 @@ export class StudentEquipment extends BaseElement {
 
     // Initialize 4 transmitter cases (each with 4 modems)
     for (let i = 1; i <= (this.isFullEquipmentSuite ? 4 : 2); i++) {
-      const tx = new Transmitter(`tx${i}-container`, i, 1, 1);
+      const tx = new Transmitter(`tx${i}-container`);
       this.transmitters.push(tx);
 
       if (i <= 2) {
@@ -144,7 +144,7 @@ export class StudentEquipment extends BaseElement {
 
     // Initialize 4 receiver cases (each with 4 modems)
     for (let i = 1; i <= (this.isFullEquipmentSuite ? 4 : 2); i++) {
-      const rx = new Receiver(`rx${i}-container`, i, this.antennas, 1, 1);
+      const rx = new Receiver(`rx${i}-container`, this.antennas);
       this.receivers.push(rx);
 
       if (i <= 2) {

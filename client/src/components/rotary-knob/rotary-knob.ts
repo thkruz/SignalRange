@@ -1,5 +1,6 @@
 import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
+import { Logger } from "@app/logging/logger";
 import './rotary-knob.css';
 
 export class RotaryKnob {
@@ -88,6 +89,9 @@ export class RotaryKnob {
   private onWheel_(e: WheelEvent): void {
     e.preventDefault();
     const delta = -Math.sign(e.deltaY) * this.step;
+
+    Logger.warn('RotaryKnob', `Wheel event delta: ${delta}`);
+
     this.setValue_(this.value + delta);
   }
 

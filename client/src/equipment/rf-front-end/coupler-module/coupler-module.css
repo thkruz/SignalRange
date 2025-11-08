@@ -1,0 +1,105 @@
+.coupler-module {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background: rgba(20, 20, 30, 0.5);
+  border: 1px solid rgba(100, 100, 120, 0.3);
+  border-radius: 4px;
+  min-width: 200px;
+}
+
+.coupler-module .module-controls {
+  display: flex
+}
+
+.coupler-module .control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.coupler-module .control-group label {
+  font-size: 0.65rem;
+  color: #9aa0a6;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.coupler-module select {
+  padding: 0.25rem 0.5rem;
+  background: rgba(40, 40, 50, 0.8);
+  border: 1px solid rgba(100, 100, 120, 0.4);
+  border-radius: 3px;
+  color: #e8eaed;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.coupler-module select:hover {
+  border-color: rgba(138, 180, 248, 0.6);
+  background: rgba(50, 50, 60, 0.9);
+}
+
+.coupler-module select:focus {
+  outline: none;
+  border-color: #8ab4f8;
+  box-shadow: 0 0 0 2px rgba(138, 180, 248, 0.2);
+}
+
+.coupler-module .led-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0;
+}
+
+.coupler-module .led-indicator .indicator-label {
+  font-size: 0.65rem;
+  color: #9aa0a6;
+  font-weight: 500;
+  flex: 1;
+}
+
+.coupler-module .led {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.3);
+}
+
+.coupler-module .led-green {
+  background: radial-gradient(circle, #4caf50, #2e7d32);
+  box-shadow: 0 0 8px rgba(76, 175, 80, 0.8);
+}
+
+.coupler-module .led-off {
+  background: radial-gradient(circle, #333, #1a1a1a);
+  box-shadow: inset 0 0 3px rgba(0, 0, 0, 0.5);
+}
+
+.coupler-module .value-display {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem;
+  background: rgba(30, 30, 40, 0.6);
+  border: 1px solid rgba(100, 100, 120, 0.2);
+  border-radius: 3px;
+  margin-top: 0.25rem;
+  height: 10px;
+}
+
+.coupler-module .value-display .display-label {
+  font-size: 0.65rem;
+  color: #9aa0a6;
+  font-weight: 600;
+}
+
+.coupler-module .value-display .value-readout {
+  font-size: 0.75rem;
+  color: #8ab4f8;
+  font-weight: 500;
+  font-family: 'Courier New', monospace;
+}

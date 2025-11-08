@@ -1,5 +1,4 @@
 import { PowerSwitch } from '@app/components/power-switch/power-switch';
-import { ToggleSwitch } from "@app/components/toggle-switch/toggle-switch";
 import { EventBus } from "@app/events/event-bus";
 import { html } from "../../engine/utils/development/formatter";
 import { qs } from "../../engine/utils/query-selector";
@@ -8,7 +7,7 @@ import { IfFrequency, MHz, RfFrequency } from "../../types";
 import { Antenna } from '../antenna/antenna';
 import { BaseEquipment } from "../base-equipment";
 import { BUCModule, BUCState } from './buc-module/buc-module';
-import { CouplerModule } from './coupler-module';
+import { CouplerModule, CouplerState } from './coupler-module/coupler-module';
 import { IfFilterBankModule, IfFilterBankState } from './filter-module/filter-module';
 import { HPAModule, HPAState } from './hpa-module/hpa-module';
 import { LNBModule, LNBState } from './lnb/lnb-module';
@@ -16,18 +15,9 @@ import { OMTModule, OMTState } from './omt-module/omt-module';
 import './rf-front-end.css';
 
 /**
- * Spectrum analyzer tap point
+ * Spectrum analyzer tap point (old type - kept for backwards compatibility)
  */
 export type TapPoint = 'RF_PRE_FILTER' | 'RF_POST_FILTER' | 'IF_AFTER_LNB';
-
-/**
- * Spectrum Analyzer coupler module state
- */
-export interface CouplerState {
-  tapPoint: TapPoint;
-  couplingFactor: number; // dB (typically -30)
-  isActive: boolean;
-}
 
 /**
  * Signal path calculation result
@@ -92,7 +82,6 @@ export class RFFrontEnd extends BaseEquipment {
 
   // UI Components (legacy, will be moved into modules)
   powerSwitch: PowerSwitch;
-  couplerTapToggle: ToggleSwitch;
 
   // Antenna reference
   antenna: Antenna;
@@ -156,9 +145,12 @@ export class RFFrontEnd extends BaseEquipment {
       },
 
       coupler: {
-        tapPoint: 'RF_POST_FILTER',
-        couplingFactor: -30, // dB
-        isActive: true,
+        tapPointA: 'POST',
+        tapPointB: 'IF',
+        couplingFactorA: -30, // dB
+        couplingFactorB: -20, // dB
+        isActiveA: true,
+        isActiveB: true,
       },
 
       signalPath: {
@@ -199,6 +191,7 @@ export class RFFrontEnd extends BaseEquipment {
     this.hpaModule.update();
     this.filterModule.update();
     this.lnbModule.update();
+    this.couplerModule.update();
 
     this.updateSystemNoiseFigure_();
 
@@ -219,17 +212,12 @@ export class RFFrontEnd extends BaseEquipment {
     this.hpaModule = HPAModule.create(this.state.hpa, this, this.state.unit);
     this.filterModule = IfFilterBankModule.create(this.state.filter, this, this.state.unit);
     this.lnbModule = LNBModule.create(this.state.lnb, this, this.state.unit);
-    this.couplerModule = new CouplerModule(this.state.coupler);
+    this.couplerModule = CouplerModule.create(this.state.coupler, this, this.state.unit);
 
     // Create UI components
     this.powerSwitch = PowerSwitch.create(
       `rf-fe-power-${this.state.unit}`,
       this.state.isPowered
-    );
-
-    this.couplerTapToggle = ToggleSwitch.create(
-      `rf-fe-coupler-tap-${this.state.unit}`,
-      this.state.coupler.tapPoint === 'IF_AFTER_LNB'
     );
 
     parentDom.innerHTML = html`
@@ -285,27 +273,7 @@ export class RFFrontEnd extends BaseEquipment {
           ${this.lnbModule.html}
 
           <!-- Spec-A Coupler Module -->
-          <div class="rf-fe-module coupler-module">
-            <div class="module-label">SPEC-A TAP</div>
-            <div class="module-controls">
-              <div class="control-group">
-                <label>TAP POINT</label>
-                <select class="input-coupler-tap" data-param="coupler.tapPoint">
-                  <option value="RF_PRE_FILTER" ${this.state.coupler.tapPoint === 'RF_PRE_FILTER' ? 'selected' : ''}>RF PRE</option>
-                  <option value="RF_POST_FILTER" ${this.state.coupler.tapPoint === 'RF_POST_FILTER' ? 'selected' : ''}>RF POST</option>
-                  <option value="IF_AFTER_LNB" ${this.state.coupler.tapPoint === 'IF_AFTER_LNB' ? 'selected' : ''}>IF</option>
-                </select>
-              </div>
-              <div class="led-indicator">
-                <span class="indicator-label">ACTIVE</span>
-                <div class="led ${this.state.coupler.isActive ? 'led-green' : 'led-off'}"></div>
-              </div>
-              <div class="value-display">
-                <span class="display-label">COUPLING:</span>
-                <span class="value-readout">${this.state.coupler.couplingFactor} dB</span>
-              </div>
-            </div>
-          </div>
+          ${this.couplerModule.html}
         </div>
 
         <!-- Bottom Status Bar -->
@@ -350,6 +318,11 @@ export class RFFrontEnd extends BaseEquipment {
     });
     this.lnbModule.addEventListeners((state: LNBState) => {
       this.state.lnb = state;
+      this.calculateSignalPath();
+      this.syncDomWithState();
+    });
+    this.couplerModule.addEventListeners((state: CouplerState) => {
+      this.state.coupler = state;
       this.calculateSignalPath();
       this.syncDomWithState();
     });
@@ -413,7 +386,10 @@ export class RFFrontEnd extends BaseEquipment {
       this.state.lnb = { ...this.state.lnb, ...data.lnb };
       this.lnbModule.sync(data.lnb);
     }
-    if (data.coupler) this.state.coupler = { ...this.state.coupler, ...data.coupler };
+    if (data.coupler) {
+      this.state.coupler = { ...this.state.coupler, ...data.coupler };
+      this.couplerModule.sync(data.coupler);
+    }
 
     // Update scalar properties
     if (data.isPowered !== undefined) this.state.isPowered = data.isPowered;
@@ -788,23 +764,19 @@ export class RFFrontEnd extends BaseEquipment {
     return 10 * Math.log10(totalNfLinear);
   }
 
+  getCouplerOutputA(): { frequency: RfFrequency | IfFrequency; power: number } {
+    return this.couplerModule.getCouplerOutputA();
+  }
+
+  getCouplerOutputB(): { frequency: RfFrequency | IfFrequency; power: number } {
+    return this.couplerModule.getCouplerOutputB();
+  }
+
+  /**
+   * @deprecated Use getCouplerOutputA() or getCouplerOutputB() instead
+   */
   getCouplerOutput(): { frequency: RfFrequency | IfFrequency; power: number } {
-    switch (this.state.coupler.tapPoint) {
-      case 'RF_PRE_FILTER':
-        return {
-          frequency: this.state.signalPath.txPath.rfFrequency,
-          power: this.state.signalPath.txPath.rfPower + this.state.coupler.couplingFactor,
-        };
-      case 'RF_POST_FILTER':
-        return {
-          frequency: this.state.signalPath.txPath.rfFrequency,
-          power: (this.state.signalPath.txPath.rfPower - this.state.filter.insertionLoss) + this.state.coupler.couplingFactor,
-        };
-      case 'IF_AFTER_LNB':
-        return {
-          frequency: this.state.signalPath.rxPath.ifFrequency,
-          power: this.state.signalPath.rxPath.ifPower + this.state.coupler.couplingFactor,
-        };
-    }
+    // Backwards compatibility - returns tap point A output
+    return this.getCouplerOutputA();
   }
 }

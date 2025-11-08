@@ -8,35 +8,18 @@ import { Events } from "../../events/events";
 import { IfFrequency, MHz, RfFrequency } from "../../types";
 import { Antenna } from '../antenna/antenna';
 import { BaseEquipment } from "../base-equipment";
-import { BUCModule } from './buc-module';
+import { BUCModule, BUCState } from './buc-module/buc-module';
 import { CouplerModule } from './coupler-module';
-import { FilterModule } from './filter-module';
+import { IfFilterBankModule, IfFilterBankState } from './filter-module/filter-module';
 import { HPAModule } from './hpa-module';
 import { LNBModule, LNBState } from './lnb/lnb-module';
 import { OMTModule, OMTState } from './omt-module/omt-module';
 import './rf-front-end.css';
 
 /**
- * Filter bandwidth modes
- */
-export type FilterMode = 'WIDE' | 'MEDIUM' | 'NARROW';
-
-/**
  * Spectrum analyzer tap point
  */
 export type TapPoint = 'RF_PRE_FILTER' | 'RF_POST_FILTER' | 'IF_AFTER_LNB';
-
-/**
- * Block Up Converter module state
- */
-export interface BUCState {
-  isPowered: boolean;
-  loFrequency: MHz; // MHz (typical 3700-4200)
-  gain: number; // dB (0-70)
-  isMuted: boolean;
-  isExtRefLocked: boolean;
-  outputPower: number; // dBm
-}
 
 /**
  * High Power Amplifier module state
@@ -48,16 +31,6 @@ export interface HPAState {
   isOverdriven: boolean; // true if back-off < 3 dB
   imdLevel: number; // dBc
   temperature: number; // Celsius
-}
-
-/**
- * Preselector/Filter module state
- */
-export interface FilterState {
-  mode: FilterMode;
-  bandwidth: MHz; // MHz
-  insertionLoss: number; // dB
-  centerFrequency: RfFrequency; // Hz
 }
 
 /**
@@ -104,7 +77,7 @@ export interface RFFrontEndState {
   omt: OMTState;
   buc: BUCState;
   hpa: HPAState;
-  filter: FilterState;
+  filter: IfFilterBankState;
   lnb: LNBState;
   coupler: CouplerState;
 
@@ -126,22 +99,17 @@ export class RFFrontEnd extends BaseEquipment {
   omtModule: OMTModule;
   bucModule: BUCModule;
   hpaModule: HPAModule;
-  filterModule: FilterModule;
+  filterModule: IfFilterBankModule;
   lnbModule: LNBModule;
   couplerModule: CouplerModule;
 
   // UI Components (legacy, will be moved into modules)
   powerSwitch: PowerSwitch;
-  bucPowerSwitch: PowerSwitch;
   hpaEnableSwitch: PowerSwitch;
-  filterModeToggle: ToggleSwitch;
-  lnbPowerSwitch: PowerSwitch;
   couplerTapToggle: ToggleSwitch;
 
   // Rotary knobs (legacy, will be moved into modules)
-  bucGainKnob: RotaryKnob;
   hpaBackOffKnob: RotaryKnob;
-  lnbGainKnob: RotaryKnob;
   antenna: Antenna;
 
   constructor(parentId: string, unit: number, teamId: number = 1, serverId: number = 1) {
@@ -184,10 +152,11 @@ export class RFFrontEnd extends BaseEquipment {
       },
 
       filter: {
-        mode: 'MEDIUM',
-        bandwidth: 250 as MHz, // MHz
+        bandwidthIndex: 9, // 20 MHz
+        bandwidth: 20 as MHz, // MHz
         insertionLoss: 2.0, // dB
         centerFrequency: 5800 * 1e6 as RfFrequency, // 5.8 GHz
+        noiseFloor: -101, // dBm
       },
 
       lnb: {
@@ -241,6 +210,8 @@ export class RFFrontEnd extends BaseEquipment {
 
     // Update module states
     this.omtModule.update();
+    this.bucModule.update();
+    this.filterModule.update();
     this.lnbModule.update();
 
     this.updateSystemNoiseFigure_();
@@ -258,9 +229,9 @@ export class RFFrontEnd extends BaseEquipment {
 
     // Instantiate module classes
     this.omtModule = OMTModule.create(this.state.omt, this, this.state.unit);
-    this.bucModule = new BUCModule(this.state.buc);
+    this.bucModule = BUCModule.create(this.state.buc, this, this.state.unit);
     this.hpaModule = new HPAModule(this.state.hpa);
-    this.filterModule = new FilterModule(this.state.filter);
+    this.filterModule = IfFilterBankModule.create(this.state.filter, this, this.state.unit);
     this.lnbModule = LNBModule.create(this.state.lnb, this, this.state.unit);
     this.couplerModule = new CouplerModule(this.state.coupler);
 
@@ -270,19 +241,9 @@ export class RFFrontEnd extends BaseEquipment {
       this.state.isPowered
     );
 
-    this.bucPowerSwitch = PowerSwitch.create(
-      `rf-fe-buc-power-${this.state.unit}`,
-      this.state.buc.isPowered
-    );
-
     this.hpaEnableSwitch = PowerSwitch.create(
       `rf-fe-hpa-enable-${this.state.unit}`,
       this.state.hpa.isEnabled
-    );
-
-    this.filterModeToggle = ToggleSwitch.create(
-      `rf-fe-filter-mode-${this.state.unit}`,
-      this.state.filter.mode === 'NARROW'
     );
 
     this.couplerTapToggle = ToggleSwitch.create(
@@ -291,17 +252,6 @@ export class RFFrontEnd extends BaseEquipment {
     );
 
     // Create rotary knobs
-    this.bucGainKnob = RotaryKnob.create(
-      `rf-fe-buc-gain-knob-${this.state.unit}`,
-      this.state.buc.gain,
-      0,
-      70,
-      1,
-      (value: number) => {
-        this.state.buc.gain = value;
-        this.calculateSignalPath();
-      }
-    );
     this.hpaBackOffKnob = RotaryKnob.create(
       `rf-fe-hpa-backoff-knob-${this.state.unit}`,
       this.state.hpa.backOff,
@@ -357,41 +307,7 @@ export class RFFrontEnd extends BaseEquipment {
         <!-- Main Module Container -->
         <div class="rf-fe-modules">
           ${this.omtModule.html}
-
-        <!-- BUC Module -->
-        <div class="rf-fe-module buc-module">
-          <div class="module-label">Block Upconverter</div>
-          <div class="module-controls">
-            <div class="control-group">
-              <label>POWER</label>
-              <div id="rf-fe-buc-power-${this.state.unit}"></div>
-            </div>
-            <div class="control-group">
-              <label>LO (MHz)</label>
-              <input type="number"
-                      class="input-buc-lo"
-                      data-param="buc.loFrequency"
-                      value="${this.state.buc.loFrequency}"
-                      min="3700" max="4200" step="10" />
-              <div class="digital-display">${this.state.buc.loFrequency}</div>
-            </div>
-            <div class="control-group">
-              <label>GAIN (dB)</label>
-              ${this.bucGainKnob.html}
-            </div>
-            <div class="led-indicator">
-              <span class="indicator-label">LOCK</span>
-              <div class="led ${this.state.buc.isExtRefLocked ? 'led-green' : 'led-red'}"></div>
-            </div>
-            <div class="control-group">
-              <label>MUTE</label>
-              <button class="btn-mute ${this.state.buc.isMuted ? 'active' : ''}"
-                      data-action="toggle-buc-mute">
-                ${this.state.buc.isMuted ? 'ON' : 'OFF'}
-              </button>
-            </div>
-          </div>
-        </div>
+          ${this.bucModule.html}
 
           <!-- HPA/SSPA Module -->
           <div class="rf-fe-module hpa-module">
@@ -421,28 +337,7 @@ export class RFFrontEnd extends BaseEquipment {
           </div>
 
           <!-- Filter/Preselector Module -->
-          <div class="rf-fe-module filter-module">
-            <div class="module-label">FILTER</div>
-            <div class="module-controls">
-              <div class="control-group">
-                <label>MODE</label>
-                <select class="input-filter-mode" data-param="filter.mode">
-                  <option value="WIDE" ${this.state.filter.mode === 'WIDE' ? 'selected' : ''}>WIDE</option>
-                  <option value="MEDIUM" ${this.state.filter.mode === 'MEDIUM' ? 'selected' : ''}>MEDIUM</option>
-                  <option value="NARROW" ${this.state.filter.mode === 'NARROW' ? 'selected' : ''}>NARROW</option>
-                </select>
-              </div>
-              <div class="led-indicator">
-                <span class="indicator-label">INSERTION LOSS</span>
-                <div class="led led-orange" style="opacity: ${this.state.filter.insertionLoss / 3}"></div>
-                <span class="value-readout">${this.state.filter.insertionLoss.toFixed(1)} dB</span>
-              </div>
-              <div class="value-display">
-                <span class="display-label">BW:</span>
-                <span class="value-readout">${this.state.filter.bandwidth} MHz</span>
-              </div>
-            </div>
-          </div>
+          ${this.filterModule.html}
 
           <!-- LNB Module -->
           ${this.lnbModule.html}
@@ -496,6 +391,16 @@ export class RFFrontEnd extends BaseEquipment {
       this.calculateSignalPath();
       this.syncDomWithState();
     });
+    this.bucModule.addEventListeners((state: BUCState) => {
+      this.state.buc = state;
+      this.calculateSignalPath();
+      this.syncDomWithState();
+    });
+    this.filterModule.addEventListeners((state: IfFilterBankState) => {
+      this.state.filter = state;
+      this.calculateSignalPath();
+      this.syncDomWithState();
+    });
     this.lnbModule.addEventListeners((state: LNBState) => {
       this.state.lnb = state;
       this.calculateSignalPath();
@@ -534,16 +439,7 @@ export class RFFrontEnd extends BaseEquipment {
       this.emit(Events.RF_FE_POWER_CHANGED, { unit: this.id, isPowered });
     });
 
-    this.bucGainKnob.attachListeners();
     this.hpaBackOffKnob.attachListeners();
-
-    this.bucPowerSwitch.addEventListeners((isPowered: boolean) => {
-      if (this.state.isPowered) {
-        this.state.buc.isPowered = isPowered;
-        this.syncDomWithState();
-        this.emit(Events.RF_FE_BUC_CHANGED, { unit: this.id, buc: this.state.buc });
-      }
-    });
 
     this.hpaEnableSwitch.addEventListeners((isEnabled: boolean) => {
       if (this.state.isPowered && this.state.buc.isPowered) {
@@ -564,9 +460,15 @@ export class RFFrontEnd extends BaseEquipment {
       this.state.omt = { ...this.state.omt, ...data.omt };
       this.omtModule.sync(data.omt);
     }
-    if (data.buc) this.state.buc = { ...this.state.buc, ...data.buc };
+    if (data.buc) {
+      this.state.buc = { ...this.state.buc, ...data.buc };
+      this.bucModule.sync(data.buc);
+    }
     if (data.hpa) this.state.hpa = { ...this.state.hpa, ...data.hpa };
-    if (data.filter) this.state.filter = { ...this.state.filter, ...data.filter };
+    if (data.filter) {
+      this.state.filter = { ...this.state.filter, ...data.filter };
+      this.filterModule.sync(data.filter);
+    }
     if (data.lnb) {
       this.state.lnb = { ...this.state.lnb, ...data.lnb };
       this.lnbModule.sync(data.lnb);
@@ -610,9 +512,6 @@ export class RFFrontEnd extends BaseEquipment {
     const action = button.dataset.action;
 
     switch (action) {
-      case 'toggle-buc-mute':
-        this.state.buc.isMuted = !this.state.buc.isMuted;
-        break;
       case 'toggle-advanced-mode':
         // Not sure what this does yet
         break;
@@ -794,16 +693,13 @@ export class RFFrontEnd extends BaseEquipment {
     // Collect alarm messages
     const alarms: string[] = [
       ...this.omtModule.getAlarms(),
+      ...this.bucModule.getAlarms(),
+      ...this.filterModule.getAlarms(),
       ...this.lnbModule.getAlarms(),
     ];
 
     if (!this.state.isExtRefPresent) {
       alarms.push('External reference lost');
-    }
-
-    // BUC lock check
-    if (this.state.buc.isPowered && !this.state.buc.isExtRefLocked && this.state.isExtRefPresent) {
-      alarms.push('BUC not locked to reference');
     }
 
     if (this.state.hpa.isOverdriven) {
@@ -881,14 +777,7 @@ export class RFFrontEnd extends BaseEquipment {
     const container = qs(`.equipment-box[data-unit="${this.state.unit}"]`);
     if (!container) return;
 
-    // Update digital displays
-    const bucLoDisplay = container.querySelector('.buc-module .digital-display');
-    if (bucLoDisplay) {
-      bucLoDisplay.textContent = this.state.buc.loFrequency.toString();
-    }
-
     // Update rotary knobs
-    this.bucGainKnob.sync(this.state.buc.gain);
     this.hpaBackOffKnob.sync(this.state.hpa.backOff);
 
     // Update signal path readout
@@ -903,9 +792,6 @@ export class RFFrontEnd extends BaseEquipment {
     // Update power switches
     if (this.powerSwitch) {
       this.powerSwitch.sync(this.state.isPowered);
-    }
-    if (this.bucPowerSwitch) {
-      this.bucPowerSwitch.sync(this.state.buc.isPowered);
     }
     if (this.hpaEnableSwitch) {
       this.hpaEnableSwitch.sync(this.state.hpa.isEnabled);
@@ -922,12 +808,6 @@ export class RFFrontEnd extends BaseEquipment {
         ? 'led-green'
         : 'led-amber'
         }`;
-    }
-
-    // BUC lock LED
-    const bucLockLed = container.querySelector('.buc-module .led-indicator .led');
-    if (bucLockLed) {
-      bucLockLed.className = `led ${this.state.buc.isExtRefLocked ? 'led-green' : 'led-red'}`;
     }
 
     // LNB lock LED

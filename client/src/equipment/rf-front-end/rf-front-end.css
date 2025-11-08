@@ -107,6 +107,9 @@
 /* Main Module Container - ~360px height */
 .rf-fe-modules {
   display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: space-between;
   flex: 1;
   gap: 12px;
   padding: 15px;
@@ -158,7 +161,7 @@
 
 .input-knobs {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.5rem;
   text-align: center;
 }
@@ -638,16 +641,6 @@
   outline-offset: 2px;
 }
 
-/* Print styles */
-@media print {
-  .equipment-box {
-    break-inside: avoid;
-    box-shadow: none;
-    border: 2px solid #000;
-  }
-
-  .btn-mute,
-  .btn-mode-toggle {
-    display: none;
-  }
+.grid-columns-2 {
+  grid-template-columns: repeat(2, 1fr);
 }

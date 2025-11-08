@@ -10,10 +10,10 @@ import { Transmitter } from '../transmitter/transmitter';
 import { BUCModule, BUCState } from './buc-module/buc-module';
 import { CouplerModule, CouplerState, TapPoint } from './coupler-module/coupler-module';
 import { IfFilterBankModule, IfFilterBankState } from './filter-module/filter-module';
+import { GPSDOModule, GPSDOState } from './gpsdo-module/gpsdo-module';
 import { HPAModule, HPAState } from './hpa-module/hpa-module';
 import { LNBModule, LNBState } from './lnb/lnb-module';
 import { OMTModule, OMTState } from './omt-module/omt-module';
-import { ReceiverLockModule, ReceiverLockState } from './receiver-lock-module/receiver-lock-module';
 import './rf-front-end.css';
 
 /**
@@ -54,7 +54,7 @@ export interface RFFrontEndState {
   filter: IfFilterBankState;
   lnb: LNBState;
   coupler: CouplerState;
-  receiverLock: ReceiverLockState;
+  gpsdo: GPSDOState;
 
   signalPath: SignalPath;
 }
@@ -77,7 +77,7 @@ export class RFFrontEnd extends BaseEquipment {
   filterModule: IfFilterBankModule;
   lnbModule: LNBModule;
   couplerModule: CouplerModule;
-  receiverLockModule: ReceiverLockModule;
+  gpsdoModule: GPSDOModule;
 
   // UI Components (legacy, will be moved into modules)
   powerSwitch: PowerSwitch;
@@ -177,23 +177,29 @@ export class RFFrontEnd extends BaseEquipment {
         isActiveB: true,
       },
 
-      receiverLock: {
-        isFreqLocked: false,
-        isSymbolLocked: false,
-        isPhaseLocked: false,
-        isFrameLocked: false,
-        residualCFO: 250, // Hz (initially unlocked)
-        timingErrorVariance: 0.8,
-        phaseVariance: 45, // degrees
-        consecutiveUWs: 0,
-        cfoThreshold: 100, // ±100 Hz @ 1 Msps
-        timingThreshold: 0.05,
-        phaseThreshold: 10, // degrees
-        requiredUWs: 3,
-        freqLockDuration: 0,
-        symbolLockDuration: 0,
-        phaseLockDuration: 0,
-        lastUpdateTime: Date.now(),
+      gpsdo: {
+        isPowered: true,
+        isLocked: true,
+        warmupTimeRemaining: 0, // seconds
+        temperature: 30, // °C
+        gnssSignalPresent: true,
+        satelliteCount: 9,
+        utcAccuracy: 0,
+        constellation: 'GPS',
+        lockDuration: 0,
+        frequencyAccuracy: 0,
+        allanDeviation: 0,
+        phaseNoise: 0,
+        isInHoldover: false,
+        holdoverDuration: 0,
+        holdoverError: 0,
+        active10MHzOutputs: 2,
+        max10MHzOutputs: 5,
+        output10MHzLevel: 0,
+        ppsOutputsEnabled: false,
+        operatingHours: 6,
+        selfTestPassed: true,
+        agingRate: 0
       },
 
       signalPath: {
@@ -235,7 +241,7 @@ export class RFFrontEnd extends BaseEquipment {
     this.filterModule.update();
     this.lnbModule.update();
     this.couplerModule.update();
-    this.receiverLockModule.update();
+    this.gpsdoModule.update();
 
     this.updateSystemNoiseFigure_();
 
@@ -261,7 +267,7 @@ export class RFFrontEnd extends BaseEquipment {
     this.filterModule = IfFilterBankModule.create(this.state.filter, this);
     this.lnbModule = LNBModule.create(this.state.lnb, this);
     this.couplerModule = CouplerModule.create(this.state.coupler, this);
-    this.receiverLockModule = ReceiverLockModule.create(this.state.receiverLock, this);
+    this.gpsdoModule = GPSDOModule.create(this.state.gpsdo, this);
 
     // Create UI components
     this.powerSwitch = PowerSwitch.create(
@@ -321,11 +327,11 @@ export class RFFrontEnd extends BaseEquipment {
           <!-- LNB Module -->
           ${this.lnbModule.html}
 
-          <!-- Receiver Lock Module -->
-          ${this.receiverLockModule.html}
-
           <!-- Spec-A Coupler Module -->
           ${this.couplerModule.html}
+
+          <!-- Receiver Lock Module -->
+          ${this.gpsdoModule.html}
         </div>
 
         <!-- Bottom Status Bar -->
@@ -384,10 +390,10 @@ export class RFFrontEnd extends BaseEquipment {
       this.syncDomWithState();
       EventBus.getInstance().emit(Events.RF_FE_COUPLER_CHANGED, state);
     });
-    this.receiverLockModule.addEventListeners((state: ReceiverLockState) => {
-      this.state.receiverLock = state;
+    this.gpsdoModule.addEventListeners((state: GPSDOState) => {
+      this.state.gpsdo = state;
       this.syncDomWithState();
-      EventBus.getInstance().emit(Events.RF_FE_RECEIVER_LOCK_CHANGED, state);
+      EventBus.getInstance().emit(Events.RF_FE_GPSDO_CHANGED, state);
     });
 
     // Attach event listeners after DOM is created
@@ -453,9 +459,9 @@ export class RFFrontEnd extends BaseEquipment {
       this.state.coupler = { ...this.state.coupler, ...data.coupler };
       this.couplerModule.sync(data.coupler);
     }
-    if (data.receiverLock) {
-      this.state.receiverLock = { ...this.state.receiverLock, ...data.receiverLock };
-      this.receiverLockModule.sync(data.receiverLock);
+    if (data.gpsdo) {
+      this.state.gpsdo = { ...this.state.gpsdo, ...data.gpsdo };
+      this.gpsdoModule.sync(data.gpsdo);
     }
 
     // Update scalar properties
@@ -684,7 +690,7 @@ export class RFFrontEnd extends BaseEquipment {
       ...this.hpaModule.getAlarms(),
       ...this.filterModule.getAlarms(),
       ...this.lnbModule.getAlarms(),
-      ...this.receiverLockModule.getAlarms(),
+      ...this.gpsdoModule.getAlarms(),
     ];
 
     if (!this.state.isExtRefPresent) {

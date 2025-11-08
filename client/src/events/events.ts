@@ -4,6 +4,7 @@ import { RealTimeSpectrumAnalyzerState } from "@app/equipment/real-time-spectrum
 import { BUCState } from "@app/equipment/rf-front-end/buc-module/buc-module";
 import { CouplerState } from "@app/equipment/rf-front-end/coupler-module/coupler-module";
 import { IfFilterBankState } from "@app/equipment/rf-front-end/filter-module/filter-module";
+import { GPSDOState } from "@app/equipment/rf-front-end/gpsdo-module/gpsdo-module";
 import { HPAState } from "@app/equipment/rf-front-end/hpa-module/hpa-module";
 import { LNBState } from "@app/equipment/rf-front-end/lnb/lnb-module";
 import { OMTState } from "@app/equipment/rf-front-end/omt-module/omt-module";
@@ -125,6 +126,7 @@ export enum Events {
   RF_FE_COUPLER_CHANGED = "rf-fe:coupler:changed",
   RF_FE_FILTER_CHANGED = "rf-fe:filter:changed",
   RF_FE_RECEIVER_LOCK_CHANGED = "rf-fe:receiver-lock:changed",
+  RF_FE_GPSDO_CHANGED = "rf-fe:gpsdo:changed",
 }
 
 export interface EventMap {
@@ -144,6 +146,7 @@ export interface EventMap {
   [Events.RF_FE_COUPLER_CHANGED]: [Partial<CouplerState>];
   [Events.RF_FE_FILTER_CHANGED]: [Partial<IfFilterBankState>];
   [Events.RF_FE_RECEIVER_LOCK_CHANGED]: [Partial<ReceiverLockState>];
+  [Events.RF_FE_GPSDO_CHANGED]: [Partial<GPSDOState>];
   [Events.RF_FE_ALARM]: [{
     unit: number;
     alarms: string[];

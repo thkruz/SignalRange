@@ -154,7 +154,6 @@ export class SpectralDensityPlot extends RTSAScreen {
   drawSignals(): void {
     this.specA.inputSignals.forEach((signal, i) => {
       let color = this.noiseColor;
-      if (!this.specA.rfFrontEnd_.antenna.state.isLocked || !this.specA.rfFrontEnd_.antenna.state.isOperational) return;
 
       if (App.getInstance().isDeveloperMode) {
         // Check if we have cached a color for this signal id

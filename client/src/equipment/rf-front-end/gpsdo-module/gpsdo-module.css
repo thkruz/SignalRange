@@ -1,0 +1,31 @@
+/* GPS Disciplined Oscillator Module Styles */
+
+.gpsdo-module {
+  min-width: 235px !important;
+}
+
+.gpsdo-module .led-indicators {
+  display: flex;
+  justify-content: space-around;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.gpsdo-module .status-displays {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+.gpsdo-module .gpsdo-controls {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+  align-items: center;
+}
+
+.gpsdo-module .gpsdo-controls .control-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}

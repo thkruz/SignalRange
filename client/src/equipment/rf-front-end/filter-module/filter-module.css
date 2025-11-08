@@ -1,0 +1,6 @@
+.filter-module .input-knobs {
+  display: grid;
+  grid-template-columns: auto !important;
+  gap: 0.5rem;
+  text-align: center;
+}

@@ -4,6 +4,7 @@ import { qs } from "@app/engine/utils/query-selector";
 import { IfSignal, MHz, RfFrequency, SignalOrigin } from '@app/types';
 import { RFFrontEnd } from '../rf-front-end';
 import { RFFrontEndModule } from '../rf-front-end-module';
+import './filter-module.css';
 
 /**
  * Filter bandwidth configuration

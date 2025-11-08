@@ -1,7 +1,5 @@
 import { PowerSwitch } from "@app/components/power-switch/power-switch";
 import { RotaryKnob } from "@app/components/rotary-knob/rotary-knob";
-import { SecureToggleSwitch } from "@app/components/secure-toggle-switch/secure-toggle-switch";
-import { SecureToggleSwitch2 } from "@app/components/secure-toggle-switch2/secure-toggle-switch2";
 import { Degrees } from "@app/engine/ootk/src/main";
 import { EventBus } from "@app/events/event-bus";
 import { Sfx } from "@app/sound/sfx-enum";
@@ -33,10 +31,6 @@ export interface AntennaState {
   offset: number; // MHz
   /** Antenna skew */
   skew: Degrees;
-  /** is the High Powered Amplifier (HPA) enabled */
-  isHpaEnabled: boolean;
-  /** is the HPA switch enabled */
-  isHpaSwitchEnabled: boolean;
   /** is loopback enabled */
   isLoopbackEnabled: boolean;
   /** is antenna locked on a satellite */
@@ -62,7 +56,6 @@ export class Antenna extends BaseEquipment {
   private lastRenderState: AntennaState;
   transmitters: Transmitter[] = [];
   powerSwitch: PowerSwitch;
-  hpaSwitch: SecureToggleSwitch | SecureToggleSwitch2;
   skewKnob: RotaryKnob;
   rfFrontEnd: RFFrontEnd | null = null;
 
@@ -78,8 +71,6 @@ export class Antenna extends BaseEquipment {
       freqBand: FrequencyBand.C,
       offset: 0,
       skew: 0 as Degrees,
-      isHpaEnabled: false,
-      isHpaSwitchEnabled: false,
       isLoopbackEnabled: false,
       isLocked: false,
       isAutoTrackEnabled: false,
@@ -104,7 +95,6 @@ export class Antenna extends BaseEquipment {
     const band = this.state.freqBand === FrequencyBand.C ? 'c' : 'ku';
     const bandInfo = bandInformation[band];
 
-    this.hpaSwitch = SecureToggleSwitch.create(`antenna-hpa-switch-${this.state.id}`, this.state.isHpaSwitchEnabled);
     this.powerSwitch = PowerSwitch.create(`antenna-power-switch-${this.state.id}`, this.state.isPowered);
     this.skewKnob = RotaryKnob.create(
       `antenna-skew-knob-${this.state.id}`,
@@ -144,8 +134,6 @@ export class Antenna extends BaseEquipment {
               </button>
               <div class="loopback-label">Antenna</div>
             </div>
-
-             ${this.hpaSwitch.html}
           </div>
 
           <!-- Antenna Configuration -->
@@ -251,9 +239,6 @@ export class Antenna extends BaseEquipment {
     // Loopback switch
     const btnLoopback = qs('.btn-loopback', parentDom);
     btnLoopback?.addEventListener('click', () => this.toggleLoopback_());
-
-    // HPA switch
-    this.hpaSwitch.addEventListeners(this.toggleHpa_.bind(this));
 
     // Input changes
     const inputs = parentDom.querySelectorAll('input, select');
@@ -367,42 +352,9 @@ export class Antenna extends BaseEquipment {
 
     this.state.isLoopbackEnabled = !this.state.isLoopbackEnabled;
 
-    // If switching to antenna mode, disable HPA if it was on
-    if (!this.state.isLoopbackEnabled && this.state.isHpaSwitchEnabled) {
-      // Keep HPA on when going to antenna mode
-    }
-
     this.emit(Events.ANTENNA_LOOPBACK_CHANGED, {
       loopback: this.state.isLoopbackEnabled
     });
-
-    this.updateSignalStatus_();
-    this.syncDomWithState();
-  }
-
-  private toggleHpa_(): void {
-    if (!this.state.isOperational) {
-      this.emit(Events.ANTENNA_ERROR, { message: 'Antenna is not operational' });
-      return;
-    }
-
-    // Can only enable HPA when not in loopback mode
-    if (this.state.isLoopbackEnabled && !this.state.isHpaSwitchEnabled) {
-      this.emit(Events.ANTENNA_ERROR, { message: 'Cannot enable HPA in loopback mode' });
-      return;
-    }
-
-    this.state.isHpaSwitchEnabled = !this.state.isHpaSwitchEnabled;
-
-    SoundManager.getInstance().play(
-      this.state.isHpaSwitchEnabled ? Sfx.TOGGLE_ON : Sfx.TOGGLE_OFF
-    );
-
-    if (this.state.isPowered) {
-      this.state.isHpaEnabled = this.state.isHpaSwitchEnabled;
-    }
-
-    this.emit(Events.ANTENNA_CONFIG_CHANGED, this.state);
 
     this.updateSignalStatus_();
     this.syncDomWithState();
@@ -485,7 +437,7 @@ export class Antenna extends BaseEquipment {
             feed: modem.ifSignal.feed,
             isDegraded: modem.ifSignal.isDegraded,
           }
-          if (modem.isTransmitting && !modem.isFaulted && !this.state.isLoopbackEnabled && this.state.isHpaEnabled) {
+          if (modem.isTransmitting && !modem.isFaulted && !this.state.isLoopbackEnabled && this.rfFrontEnd.hpaModule.state.isHpaEnabled) {
             // Pass the signal to the SimulationManager
             SimulationManager.getInstance().addSignal(rfSignal);
           } else {
@@ -566,7 +518,6 @@ export class Antenna extends BaseEquipment {
     // Update buttons
     this.domCache['btnLoopback'].className = `btn-loopback ${this.state.isLoopbackEnabled ? 'active' : ''}`;
 
-    this.hpaSwitch.sync(this.state.isHpaSwitchEnabled);
     this.powerSwitch.sync(this.state.isPowered);
 
     // Update inputs
@@ -598,8 +549,8 @@ export class Antenna extends BaseEquipment {
     if (!this.state.isPowered) return '';
     if (!this.state.isOperational) return 'led-amber';
     if (this.state.isLoopbackEnabled) return 'led-amber';
-    if (this.state.isLocked && !this.state.isLoopbackEnabled && !this.state.isHpaEnabled) return 'led-green';
-    if (!this.state.isLoopbackEnabled && this.state.isHpaEnabled) return 'led-red';
+    if (this.state.isLocked && !this.state.isLoopbackEnabled && !this.rfFrontEnd?.hpaModule.state.isHpaEnabled) return 'led-green';
+    if (!this.state.isLoopbackEnabled && this.rfFrontEnd?.hpaModule.state.isHpaEnabled) return 'led-red';
     return 'led-amber';
   }
 }

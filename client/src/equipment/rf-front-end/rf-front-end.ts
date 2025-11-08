@@ -84,7 +84,7 @@ export class RFFrontEnd extends BaseEquipment {
   powerSwitch: PowerSwitch;
 
   // Antenna reference
-  antenna: Antenna;
+  antenna: Antenna | null = null;
 
   constructor(parentId: string, unit: number, teamId: number = 1, serverId: number = 1) {
     super(parentId, unit, teamId);
@@ -117,12 +117,14 @@ export class RFFrontEnd extends BaseEquipment {
       },
 
       hpa: {
-        isEnabled: false,
+        isPowered: true,
         backOff: 6, // dB
         outputPower: 10, // dBW (10W)
         isOverdriven: false,
         imdLevel: -30, // dBc
         temperature: 45, // Celsius
+        isHpaEnabled: false,
+        isHpaSwitchEnabled: false,
       },
 
       filter: {
@@ -352,7 +354,7 @@ export class RFFrontEnd extends BaseEquipment {
       if (!isPowered) {
         // Power down all modules
         this.state.buc.isPowered = false;
-        this.state.hpa.isEnabled = false;
+        this.state.hpa.isPowered = false;
         this.state.lnb.isPowered = false;
       }
       this.syncDomWithState();
@@ -467,7 +469,7 @@ export class RFFrontEnd extends BaseEquipment {
       let txRfPower = this.state.buc.isMuted ? -120 : txIfPower + this.state.buc.gain;
 
       // HPA amplification
-      if (this.state.hpa.isEnabled) {
+      if (this.state.hpa.isPowered) {
         const p1db = 50; // dBm (100W) typical P1dB
         const hpaGain = p1db - this.state.hpa.backOff - txRfPower;
         txRfPower += hpaGain;
@@ -532,14 +534,14 @@ export class RFFrontEnd extends BaseEquipment {
     // Power sequencing
     if (!this.state.isPowered) {
       this.state.buc.isPowered = false;
-      this.state.hpa.isEnabled = false;
+      this.state.hpa.isPowered = false;
       this.state.lnb.isPowered = false;
       return;
     }
 
     // HPA can only be enabled if BUC is powered
-    if (this.state.hpa.isEnabled && !this.state.buc.isPowered) {
-      this.state.hpa.isEnabled = false;
+    if (this.state.hpa.isPowered && !this.state.buc.isPowered) {
+      this.state.hpa.isPowered = false;
     }
 
     // External reference lock propagation
@@ -558,7 +560,7 @@ export class RFFrontEnd extends BaseEquipment {
     }
 
     // HPA temperature calculation based on output power
-    if (this.state.hpa.isEnabled) {
+    if (this.state.hpa.isPowered) {
       const powerWatts = Math.pow(10, this.state.hpa.outputPower / 10);
       const efficiency = 0.5; // 50% typical for SSPA
       const dissipatedPower = powerWatts * (1 - efficiency);
@@ -580,7 +582,7 @@ export class RFFrontEnd extends BaseEquipment {
     }
 
     // HPA output power and IMD calculation
-    if (this.state.hpa.isEnabled) {
+    if (this.state.hpa.isPowered) {
       const p1db = 50; // dBm (100W) typical P1dB
       this.state.hpa.outputPower = (p1db - this.state.hpa.backOff) / 10; // Convert to dBW
 
@@ -636,7 +638,7 @@ export class RFFrontEnd extends BaseEquipment {
       return `TX: ${(tx.ifFrequency / 1e6).toFixed(0)} MHz IF → ` +
         `[BUC LO +${this.state.buc.loFrequency}] → ` +
         `${(tx.rfFrequency / 1e6).toFixed(0)} MHz RF ` +
-        `${this.state.hpa.isEnabled ? `→ [HPA ${this.state.hpa.outputPower.toFixed(1)} dBW] ` : ''}` +
+        `${this.state.hpa.isPowered ? `→ [HPA ${this.state.hpa.outputPower.toFixed(1)} dBW] ` : ''}` +
         `→ [Filter -${this.state.filter.insertionLoss.toFixed(1)} dB] ` +
         `→ ${tx.rfPower.toFixed(1)} dBm`;
     }
@@ -704,7 +706,7 @@ export class RFFrontEnd extends BaseEquipment {
     this.state.isPowered = isPowered;
     if (!isPowered) {
       this.state.buc.isPowered = false;
-      this.state.hpa.isEnabled = false;
+      this.state.hpa.isPowered = false;
       this.state.lnb.isPowered = false;
     }
     this.syncDomWithState();
@@ -741,7 +743,7 @@ export class RFFrontEnd extends BaseEquipment {
 
   getTotalTxGain(): number {
     let gain = this.state.buc.gain;
-    if (this.state.hpa.isEnabled) {
+    if (this.state.hpa.isPowered) {
       gain += this.state.hpa.outputPower;
     }
     gain -= this.state.filter.insertionLoss;

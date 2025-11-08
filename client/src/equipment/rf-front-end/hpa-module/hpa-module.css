@@ -5,6 +5,12 @@
   /* Most styles are inherited from rf-front-end.css */
 }
 
+.hpa-module .module-controls {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+}
+
 .hpa-module .power-meter {
   display: flex;
   flex-direction: column;

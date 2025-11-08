@@ -1,7 +1,12 @@
 import { PowerSwitch } from '@app/components/power-switch/power-switch';
 import { RotaryKnob } from '@app/components/rotary-knob/rotary-knob';
+import { SecureToggleSwitch } from '@app/components/secure-toggle-switch/secure-toggle-switch';
 import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
+import { EventBus } from '@app/events/event-bus';
+import { Events } from '@app/events/events';
+import { Sfx } from '@app/sound/sfx-enum';
+import SoundManager from '@app/sound/sound-manager';
 import { RfSignal } from '@app/types';
 import { RFFrontEnd } from '../rf-front-end';
 import { RFFrontEndModule } from '../rf-front-end-module';
@@ -11,28 +16,33 @@ import './hpa-module.css';
  * High Power Amplifier module state
  */
 export interface HPAState {
-  isEnabled: boolean;
+  isPowered: boolean;
   backOff: number; // dB from P1dB (0-10)
   outputPower: number; // dBW (1-200W -> 0-53 dBW)
   isOverdriven: boolean; // true if back-off < 3 dB
   imdLevel: number; // dBc
   temperature: number; // Celsius
+  /** is the High Powered Amplifier (HPA) enabled */
+  isHpaEnabled: boolean;
+  /** is the HPA switch enabled */
+  isHpaSwitchEnabled: boolean;
 }
 
 export class HPAModule extends RFFrontEndModule<HPAState> {
   private static instance_: HPAModule;
 
-  private readonly enableSwitch: PowerSwitch;
+  private readonly powerSwitch: PowerSwitch;
   private readonly backOffKnob: RotaryKnob;
   rfSignalsIn: RfSignal[] = [];
   rfSignalsOut: RfSignal[] = [];
 
   // HPA characteristics
-  private readonly p1db = 50; // dBm (100W) typical P1dB compression point
-  private readonly maxOutputPowerDbW = 53; // 200W = 53 dBW
+  private readonly p1db = Math.log10(100) * 10; // dBm (100W) typical P1dB compression point
+  private readonly maxOutputPowerDbW = Math.log10(200) * 10; // 200W = ~23 dBW
   private readonly minBackOffDb = 0;
   private readonly maxBackOffDb = 10;
   private readonly thermalEfficiency = 0.5; // 50% typical for SSPA
+  hpaSwitch: SecureToggleSwitch;
 
   static create(state: HPAState, rfFrontEnd: RFFrontEnd, unit: number = 1): HPAModule {
     this.instance_ ??= new HPAModule(state, rfFrontEnd, unit);
@@ -47,12 +57,14 @@ export class HPAModule extends RFFrontEndModule<HPAState> {
     super(state, rfFrontEnd, 'rf-fe-hpa', unit);
 
     // Create UI components
-    this.enableSwitch = PowerSwitch.create(
+    this.powerSwitch = PowerSwitch.create(
       `${this.uniqueId}-enable`,
-      this.state_.isEnabled,
+      this.state_.isPowered,
       false,
       true,
     );
+
+    this.hpaSwitch = SecureToggleSwitch.create(`hpa-switch-${this.rfFrontEnd_.state.unit}`, this.state.isHpaSwitchEnabled);
 
     this.backOffKnob = RotaryKnob.create(
       `${this.uniqueId}-backoff-knob`,
@@ -70,25 +82,30 @@ export class HPAModule extends RFFrontEndModule<HPAState> {
       <div class="rf-fe-module hpa-module">
         <div class="module-label">High Power Amplifier</div>
         <div class="module-controls">
-          <div class="control-group">
-            <label>BACK-OFF (dB)</label>
-            ${this.backOffKnob.html}
-          </div>
-          <div class="power-meter">
-            <div class="meter-label">OUTPUT</div>
-            <div class="led-bar">
-              ${this.renderPowerMeter_(this.state_.outputPower)}
+          <div class="hpa-main-inputs">
+            <div class="control-group">
+              <label>BACK-OFF (dB)</label>
+              ${this.backOffKnob.html}
             </div>
-            <span class="value-readout">${this.state_.outputPower.toFixed(1)} dBW</span>
+            <div class="power-meter">
+              <div class="meter-label">OUTPUT</div>
+              <div class="led-bar">
+                ${this.renderPowerMeter_(this.state_.outputPower)}
+              </div>
+              <span class="value-readout">${this.state_.outputPower.toFixed(1)} dBW</span>
+            </div>
+            <div class="led-indicator">
+              <span class="indicator-label">IMD</span>
+              <div class="led ${this.state_.isOverdriven ? 'led-orange' : 'led-off'}"></div>
+              <span class="value-readout">${this.state_.imdLevel} dBc</span>
+            </div>
           </div>
-          <div class="led-indicator">
-            <span class="indicator-label">IMD</span>
-            <div class="led ${this.state_.isOverdriven ? 'led-orange' : 'led-off'}"></div>
-            <span class="value-readout">${this.state_.imdLevel} dBc</span>
+          <div class="hpa-switch">
+            ${this.hpaSwitch.html}
           </div>
         </div>
         <div class="control-group">
-          ${this.enableSwitch.html}
+          ${this.powerSwitch.html}
         </div>
       </div>
     `;
@@ -98,25 +115,28 @@ export class HPAModule extends RFFrontEndModule<HPAState> {
    * Add event listeners for user interactions
    */
   addEventListeners(cb: (state: HPAState) => void): void {
-    if (!this.enableSwitch || !this.backOffKnob) {
+    if (!this.powerSwitch || !this.backOffKnob) {
       console.warn('HPAModule: Cannot add event listeners - components not initialized');
       return;
     }
 
+    // HPA switch
+    this.hpaSwitch.addEventListeners(this.toggleHpa_.bind(this));
+
     // Enable switch handler
-    this.enableSwitch.addEventListeners((isEnabled: boolean) => {
+    this.powerSwitch.addEventListeners((isEnabled: boolean) => {
       const parentPowered = this.rfFrontEnd_.state.isPowered;
       const bucPowered = this.rfFrontEnd_.state.buc.isPowered;
 
       // HPA can only be enabled if both parent and BUC are powered
       if (parentPowered && bucPowered) {
-        this.state_.isEnabled = isEnabled;
+        this.state_.isPowered = isEnabled;
         this.syncDomWithState_();
         cb(this.state_);
       } else {
         // Disable if conditions not met
-        this.state_.isEnabled = false;
-        this.enableSwitch.sync(false);
+        this.state_.isPowered = false;
+        this.powerSwitch.sync(false);
         this.syncDomWithState_();
         cb(this.state_);
       }
@@ -146,13 +166,11 @@ export class HPAModule extends RFFrontEndModule<HPAState> {
    * Calculate HPA output power based on input and back-off
    */
   private updateOutputPower_(): void {
-    if (this.state_.isEnabled) {
+    if (this.state_.isPowered && this.state_.isHpaEnabled) {
       // Calculate output power: P1dB - back-off, then convert to dBW
       const outputPowerDbm = this.p1db - this.state_.backOff;
-      this.state_.outputPower = (outputPowerDbm - 30) / 10; // Convert dBm to dBW (approximate)
-
       // More accurate conversion: dBW = dBm - 30
-      this.state_.outputPower = outputPowerDbm - 30;
+      this.state_.outputPower = outputPowerDbm;
     } else {
       this.state_.outputPower = -90; // dBW (effectively off)
     }
@@ -162,7 +180,7 @@ export class HPAModule extends RFFrontEndModule<HPAState> {
    * Calculate HPA temperature based on output power
    */
   private updateTemperature_(): void {
-    if (this.state_.isEnabled) {
+    if (this.state_.isPowered) {
       // Calculate dissipated power based on efficiency
       const powerWatts = Math.pow(10, this.state_.outputPower / 10);
       const dissipatedPower = powerWatts * (1 - this.thermalEfficiency);
@@ -178,7 +196,7 @@ export class HPAModule extends RFFrontEndModule<HPAState> {
    * Calculate intermodulation distortion (IMD) based on back-off
    */
   private updateIMD_(): void {
-    if (this.state_.isEnabled) {
+    if (this.state_.isPowered) {
       // IMD improves (becomes more negative) as back-off increases
       // Typical relationship: IMD degrades ~2 dB for every dB reduction in back-off
       this.state_.imdLevel = -30 - (this.state_.backOff * 2); // dBc
@@ -196,7 +214,7 @@ export class HPAModule extends RFFrontEndModule<HPAState> {
    */
   private processSignals_(): void {
     this.rfSignalsOut = this.rfSignalsIn.map(sig => {
-      if (!this.state_.isEnabled) {
+      if (!this.state_.isPowered) {
         // Pass through with no gain when disabled
         return {
           ...sig,
@@ -218,7 +236,7 @@ export class HPAModule extends RFFrontEndModule<HPAState> {
    * Includes compression effects near P1dB
    */
   private calculateGain_(inputPowerDbm: number): number {
-    if (!this.state_.isEnabled) {
+    if (!this.state_.isPowered) {
       return -120; // Effectively off
     }
 
@@ -239,9 +257,9 @@ export class HPAModule extends RFFrontEndModule<HPAState> {
     const parentPowered = this.rfFrontEnd_.state.isPowered;
     const bucPowered = this.rfFrontEnd_.state.buc.isPowered;
 
-    if (this.state_.isEnabled && (!parentPowered || !bucPowered)) {
+    if (this.state_.isPowered && (!parentPowered || !bucPowered)) {
       // Disable HPA if power conditions not met
-      this.state_.isEnabled = false;
+      this.state_.isPowered = false;
     }
   }
 
@@ -252,8 +270,8 @@ export class HPAModule extends RFFrontEndModule<HPAState> {
     super.sync(state);
 
     // Update UI components
-    if (this.enableSwitch && state.isEnabled !== undefined) {
-      this.enableSwitch.sync(state.isEnabled);
+    if (this.powerSwitch && state.isPowered !== undefined) {
+      this.powerSwitch.sync(state.isPowered);
     }
     if (this.backOffKnob && state.backOff !== undefined) {
       this.backOffKnob.sync(state.backOff);
@@ -267,7 +285,7 @@ export class HPAModule extends RFFrontEndModule<HPAState> {
     const alarms: string[] = [];
 
     // Overdrive alarm
-    if (this.state_.isOverdriven && this.state_.isEnabled) {
+    if (this.state_.isOverdriven && this.state_.isPowered) {
       alarms.push('HPA overdrive - IMD degradation');
     }
 
@@ -280,7 +298,7 @@ export class HPAModule extends RFFrontEndModule<HPAState> {
     const parentPowered = this.rfFrontEnd_.state.isPowered;
     const bucPowered = this.rfFrontEnd_.state.buc.isPowered;
 
-    if (this.state_.isEnabled && !bucPowered && parentPowered) {
+    if (this.state_.isPowered && !bucPowered && parentPowered) {
       alarms.push('HPA enabled without BUC power');
     }
 
@@ -322,16 +340,37 @@ export class HPAModule extends RFFrontEndModule<HPAState> {
       imdReadout.textContent = `${this.state_.imdLevel} dBc`;
     }
 
+    this.hpaSwitch.sync(this.state.isHpaSwitchEnabled);
+
     // Sync UI components
-    this.enableSwitch.sync(this.state_.isEnabled);
+    this.powerSwitch.sync(this.state_.isPowered);
     this.backOffKnob.sync(this.state_.backOff);
+  }
+
+  private toggleHpa_(): void {
+    if (!this.state.isPowered) {
+      EventBus.getInstance().emit(Events.ANTENNA_ERROR, { message: 'Antenna is not operational' });
+      return;
+    }
+
+    this.state.isHpaSwitchEnabled = !this.state.isHpaSwitchEnabled;
+
+    SoundManager.getInstance().play(
+      this.state.isHpaSwitchEnabled ? Sfx.TOGGLE_ON : Sfx.TOGGLE_OFF
+    );
+
+    if (this.state.isPowered) {
+      this.state.isHpaEnabled = this.state.isHpaSwitchEnabled;
+    }
+
+    this.syncDomWithState_();
   }
 
   /**
    * Render power meter LED bar
    */
   private renderPowerMeter_(powerDbW: number): string {
-    // Convert dBW to percentage (0 dBW = 1W, 53 dBW = 200W for scale)
+    // Convert dBW to percentage (1W = 0 dBW, 10W = 10 dBW for scale)
     const percentage = Math.max(0, Math.min(100, (powerDbW / this.maxOutputPowerDbW) * 100));
 
     const segments = [];
@@ -357,7 +396,7 @@ export class HPAModule extends RFFrontEndModule<HPAState> {
    * @returns Gain in dB
    */
   getTotalGain(): number {
-    if (!this.state_.isEnabled) {
+    if (!this.state_.isPowered) {
       return -120; // Effectively off
     }
 
@@ -373,7 +412,7 @@ export class HPAModule extends RFFrontEndModule<HPAState> {
    * @returns Output RF power in dBm
    */
   getOutputPower(inputPowerDbm: number): number {
-    if (!this.state_.isEnabled) {
+    if (!this.state_.isPowered) {
       return -120; // Effectively off
     }
 

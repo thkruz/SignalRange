@@ -1,7 +1,7 @@
 /* GPS Disciplined Oscillator Module Styles */
 
 .gpsdo-module {
-  min-width: 235px !important;
+  width: 320px !important;
 }
 
 .gpsdo-module .led-indicators {

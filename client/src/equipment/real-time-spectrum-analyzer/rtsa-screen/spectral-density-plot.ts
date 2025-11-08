@@ -268,7 +268,7 @@ export class SpectralDensityPlot extends RTSAScreen {
     const inBandWidth = ((signal.bandwidth / (this.maxFreq - this.minFreq)) * this.width) / 2;
     const outOfBandWidth = ((signal.bandwidth / (this.maxFreq - this.minFreq)) * this.width) / 1.8;
 
-    this.signalData = this.createSignal(this.signalData, center, signal.power, inBandWidth, outOfBandWidth);
+    this.signalData = this.createSignal(this.signalData, signal, center, inBandWidth, outOfBandWidth);
 
     let maxX = 0;
     let maxY = 1;
@@ -366,11 +366,11 @@ export class SpectralDensityPlot extends RTSAScreen {
     // Parameters for noise complexity
     // Teq​=290×(10NF/10−1) | 34 Kelvin at NF=0.5dB
     const noiseFigure = 0.5; // dB
-    let internalNoise = -174 + 10 * Math.log10(this.specA.state.span) + noiseFigure;
-    let externalNoise = this.specA.state.noiseFloor + this.specA.rfFrontEnd_.lnbModule.getTotalGain();
+    let internalNoise = -174 + 10 * Math.log10(this.specA.rfFrontEnd_.filterModule.state.bandwidth * 1e6) + noiseFigure;
+    let externalNoise = this.specA.rfFrontEnd_.filterModule.state.noiseFloor + this.specA.rfFrontEnd_.getTotalRxGain();
 
     const isInternalNoise = internalNoise > externalNoise;
-    let base = isInternalNoise ? internalNoise : (externalNoise - this.specA.rfFrontEnd_.lnbModule.getTotalGain());
+    let base = isInternalNoise ? internalNoise : (externalNoise - this.specA.rfFrontEnd_.getTotalRxGain());
 
     const len = data.length;
     const time = performance.now() / 1000;
@@ -413,7 +413,7 @@ export class SpectralDensityPlot extends RTSAScreen {
       }
 
       if (!isInternalNoise) {
-        noise += this.specA.rfFrontEnd_.lnbModule.getTotalGain();
+        noise += this.specA.rfFrontEnd_.getTotalRxGain();
       }
 
       data[x] = noise;
@@ -429,14 +429,14 @@ export class SpectralDensityPlot extends RTSAScreen {
 
   private createSignal(
     data: Float32Array,
+    signal: IfSignal | RfSignal,
     center: number,
-    amplitude: number,
     inBandWidth: number,
     outOfBandWidth: number
   ): Float32Array {
     for (let x = 0; x < data.length; x++) {
       // Simulate realistic signal shape using Gaussian envelope
-      const y = this.createRealSignal(inBandWidth, x, center, amplitude, outOfBandWidth);
+      const y = this.createRealSignal(inBandWidth, x, signal, center, outOfBandWidth);
 
       // Update max hold
       if (this.maxHoldData[x] < y) {
@@ -457,7 +457,7 @@ export class SpectralDensityPlot extends RTSAScreen {
     return data;
   }
 
-  private createRealSignal(inBandWidth: number, x: number, center: number, amplitude: number, outOfBandWidth: number) {
+  private createRealSignal(inBandWidth: number, x: number, signal: IfSignal | RfSignal, center: number, outOfBandWidth: number) {
     const sigma = inBandWidth / 1.75; // Controls sharpness of main lobe
     const distance = x - center;
     const gaussian = Math.exp(-0.5 * Math.pow(distance / sigma, 2));
@@ -472,7 +472,7 @@ export class SpectralDensityPlot extends RTSAScreen {
     // For gaussian values 0-1, this gives us 0 to -infinity dB
     const gaussianDb = 20 * Math.log10(Math.max(gaussian, 1e-10));
 
-    let y = amplitude + gaussianDb;
+    let y = signal.power + gaussianDb;
 
     // Main lobe (signal bandwidth)
     if (Math.abs(distance) <= inBandWidth) {
@@ -485,7 +485,7 @@ export class SpectralDensityPlot extends RTSAScreen {
       // Side lobes: much lower amplitude (-15 to -20 dB below main lobe)
       const sideLobe = Math.sin((distance / inBandWidth) * Math.PI * 2) * 0.15;
       const sideLobeDb = 20 * Math.log10(Math.abs(sideLobe) + 1e-10);
-      y = amplitude + gaussianDb + sideLobeDb + (Math.random() - 0.5) * 0.8;
+      y = signal.power + gaussianDb + sideLobeDb + (Math.random() - 0.5) * 0.8;
     }
 
     // Add noise floor blending near edges (additional -3 to -9 dB)
@@ -496,6 +496,17 @@ export class SpectralDensityPlot extends RTSAScreen {
     // Simulate deep nulls and random dropouts for realism (-10 to -14 dB drops)
     if (Math.random() < 0.001) {
       y -= 10 + Math.random() * 4;
+    }
+
+    // if filter bank bandwidth is this.specA.rfFrontEnd_.filterModule.state.bandwidth * 1e6
+    // what should happen if the signal bandwidth is greater than that?
+
+    if (signal.bandwidth > this.specA.rfFrontEnd_.filterModule.state.bandwidth * 1e6) {
+      // Apply additional attenuation for out-of-band signals
+      // Ps,out​=Ps​+10log10​(Bs​Bf​​)
+      const bandwidthRatio = signal.bandwidth / ((this.specA.rfFrontEnd_.filterModule.state.bandwidth * 1e6) / 2);
+      const attenuationDb = 10 * Math.log10(bandwidthRatio);
+      y -= attenuationDb;
     }
 
     return y;

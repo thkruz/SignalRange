@@ -210,8 +210,8 @@ export class WaterfallDisplay extends RTSAScreen {
     if (center >= -outOfBandWidth && center <= this.width + outOfBandWidth) {
       this.data = this.createSignal(
         this.data,
+        signal,
         center,
-        signal.power,
         inBandWidth,
         outOfBandWidth
       );
@@ -302,8 +302,8 @@ export class WaterfallDisplay extends RTSAScreen {
 
   private createSignal(
     data: Float32Array,
+    signal: IfSignal | RfSignal,
     center: number,
-    amplitude: number,
     inBandWidth: number,
     outOfBandWidth: number
   ): Float32Array {
@@ -315,18 +315,29 @@ export class WaterfallDisplay extends RTSAScreen {
 
       if (absDistance > outOfBandWidth) continue;
 
-      let y = amplitude;
+      let y = signal.power;
       const gaussian = Math.exp(-0.5 * Math.pow(distance / sigma, 2));
 
       if (absDistance <= inBandWidth) {
-        y = amplitude + Math.log10(gaussian * (0.97 + Math.random() * 0.06)) * 10;
+        y = signal.power + Math.log10(gaussian * (0.97 + Math.random() * 0.06)) * 10;
       } else if (absDistance <= outOfBandWidth) {
         const sideLobe = Math.abs(Math.sin((distance / inBandWidth) * Math.PI * 2)) * 0.15;
-        y = amplitude + Math.log10(gaussian * sideLobe * (0.9 + Math.random() * 0.1)) * 10;
+        y = signal.power + Math.log10(gaussian * sideLobe * (0.9 + Math.random() * 0.1)) * 10;
       }
 
       if (absDistance > outOfBandWidth * 0.95) {
         y -= Math.abs(Math.random() * 3);
+      }
+
+      // if filter bank bandwidth is this.specA.rfFrontEnd_.filterModule.state.bandwidth * 1e6
+      // what should happen if the signal bandwidth is greater than that?
+
+      if (signal.bandwidth > this.specA.rfFrontEnd_.filterModule.state.bandwidth * 1e6) {
+        // Apply additional attenuation for out-of-band signals
+        // Ps,out​=Ps​+10log10​(Bs​Bf​​)
+        const bandwidthRatio = signal.bandwidth / ((this.specA.rfFrontEnd_.filterModule.state.bandwidth * 1e6) / 2);
+        const attenuationDb = 10 * Math.log10(bandwidthRatio);
+        y -= attenuationDb;
       }
 
       data[x] = Math.max(data[x], y);

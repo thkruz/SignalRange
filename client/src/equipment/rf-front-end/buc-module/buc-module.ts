@@ -3,30 +3,76 @@ import { RotaryKnob } from '@app/components/rotary-knob/rotary-knob';
 import { ToggleSwitch } from '@app/components/toggle-switch/toggle-switch';
 import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
-import { IfFrequency, IfSignal, MHz, RfFrequency, RfSignal, SignalOrigin } from '@app/types';
+import { Hertz, IfFrequency, IfSignal, MHz, RfFrequency, RfSignal, SignalOrigin } from '@app/types';
 import { RFFrontEnd } from '../rf-front-end';
 import { RFFrontEndModule } from '../rf-front-end-module';
 import './buc-module.css';
 
 /**
+ * Spurious output from mixer products
+ */
+export interface SpuriousOutput {
+  /** Frequency of the spurious signal in Hz */
+  frequency: Hertz;
+  /** Level relative to carrier in dBc */
+  level: number;
+  /** Harmonic orders: N×LO ± M×IF */
+  loHarmonic: number;
+  ifHarmonic: number;
+}
+
+/**
  * Block Up Converter module state
  */
 export interface BUCState {
+  // ═══ Operational State ═══
+  /** Module power state */
   isPowered: boolean;
-  loFrequency: MHz; // MHz (typical 3700-4200)
-  gain: number; // dB (0-70)
+  /** Output muted for safety */
   isMuted: boolean;
+  /** Operating temperature in °C */
+  temperature: number;
+  /** Current draw in Amperes */
+  currentDraw: number;
+
+  // ═══ Frequency Translation ═══
+  /** Local Oscillator frequency in MHz (typical 3700-4200 for C-band) */
+  loFrequency: MHz;
+  /** Phase lock to external 10MHz reference */
   isExtRefLocked: boolean;
-  outputPower: number; // dBm
+  /** LO frequency drift when unlocked (Hz) */
+  frequencyError: number;
+  /** Phase lock tracking range (Hz) */
+  phaseLockRange: number;
+
+  // ═══ Gain & Power ═══
+  /** BUC gain in dB (typical 0-70 dB range) */
+  gain: number;
+  /** Output power after amplification in dBm */
+  outputPower: number;
+  /** P1dB compression point (saturation power) in dBm */
+  saturationPower: number;
+  /** Gain flatness across bandwidth in dB */
+  gainFlatness: number;
+
+  // ═══ Signal Quality ═══
+  /** Group delay variation (phase distortion) in nanoseconds */
+  groupDelay: number;
+  /** Phase noise contribution in dBc/Hz */
+  phaseNoise: number;
+  /** Unwanted mixer spurious products */
+  spuriousOutputs: SpuriousOutput[];
+  /** Noise floor in dBm */
   noiseFloor: number;
 }
 
 export class BUCModule extends RFFrontEndModule<BUCState> {
   private static instance_: BUCModule;
 
-  private readonly powerSwitch: PowerSwitch;
-  private readonly gainKnob: RotaryKnob;
-  private readonly muteSwitch: ToggleSwitch;
+  private readonly powerSwitch_: PowerSwitch;
+  private readonly gainKnob_: RotaryKnob;
+  private readonly loKnob_: RotaryKnob;
+  private readonly muteSwitch_: ToggleSwitch;
   outputSignals: RfSignal[] = [];
 
   static create(state: BUCState, rfFrontEnd: RFFrontEnd, unit: number = 1): BUCModule {
@@ -42,14 +88,26 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
     super(state, rfFrontEnd, 'rf-fe-buc', unit);
 
     // Create UI components
-    this.powerSwitch = PowerSwitch.create(
+    this.powerSwitch_ = PowerSwitch.create(
       `${this.uniqueId}-power`,
       this.state_.isPowered,
       false,
       true,
     );
 
-    this.gainKnob = RotaryKnob.create(
+    this.loKnob_ = RotaryKnob.create(
+      `${this.uniqueId}-lo-knob`,
+      this.state_.loFrequency,
+      3700,
+      4200,
+      10,
+      (value: number) => {
+        this.state_.loFrequency = value as MHz;
+        this.rfFrontEnd_.calculateSignalPath();
+      }
+    );
+
+    this.gainKnob_ = RotaryKnob.create(
       `${this.uniqueId}-gain-knob`,
       this.state_.gain,
       0,
@@ -61,7 +119,7 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
       }
     );
 
-    this.muteSwitch = ToggleSwitch.create(
+    this.muteSwitch_ = ToggleSwitch.create(
       `${this.uniqueId}-mute`,
       this.state_.isMuted,
       false
@@ -71,30 +129,49 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
       <div class="rf-fe-module buc-module">
         <div class="module-label">Block Upconverter</div>
         <div class="module-controls">
-          <div class="control-group">
-            <label>LO (MHz)</label>
-            <input type="number"
-                   class="input-buc-lo"
-                   data-param="buc.loFrequency"
-                   value="${this.state_.loFrequency}"
-                   min="3700" max="4200" step="10" />
-            <div class="digital-display buc-lo-display">${this.state_.loFrequency}</div>
-          </div>
-          <div class="control-group">
-            <label>GAIN (dB)</label>
-            ${this.gainKnob.html}
+          <div class="input-knobs">
+            <div class="control-group">
+              <label>LO (MHz)</label>
+              ${this.loKnob_.html}
+            </div>
+            <div class="control-group">
+              <label>GAIN (dB)</label>
+              ${this.gainKnob_.html}
+            </div>
+            <div class="control-group">
+              <label>MUTE</label>
+              ${this.muteSwitch_.html}
+            </div>
           </div>
           <div class="led-indicator">
             <span class="indicator-label">LOCK</span>
             <div class="led ${this.getLockLedStatus_()}"></div>
           </div>
-          <div class="control-group">
-            <label>MUTE</label>
-            ${this.muteSwitch.html}
+          <div class="status-displays">
+            <div class="control-group">
+              <label>LO (MHz)</label>
+              <div class="digital-display buc-lo-display">${this.state_.loFrequency}</div>
+            </div>
+            <div class="control-group">
+              <label>TEMP (°C)</label>
+              <div class="digital-display buc-temp-display">${this.state_.temperature.toFixed(1)}</div>
+            </div>
+            <div class="control-group">
+              <label>CURRENT (A)</label>
+              <div class="digital-display buc-current-display">${this.state_.currentDraw.toFixed(2)}</div>
+            </div>
+            <div class="control-group">
+              <label>FREQ ERR (kHz)</label>
+              <div class="digital-display buc-freq-err-display">${(this.state_.frequencyError / 1000).toFixed(1)}</div>
+            </div>
+            <div class="control-group">
+              <label>OUT PWR (dBm)</label>
+              <div class="digital-display buc-out-pwr-display">${this.state_.outputPower.toFixed(1)}</div>
+            </div>
           </div>
         </div>
         <div class="control-group">
-          ${this.powerSwitch.html}
+          ${this.powerSwitch_.html}
         </div>
       </div>
     `;
@@ -108,13 +185,13 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
    * Add event listeners for user interactions
    */
   addEventListeners(cb: (state: BUCState) => void): void {
-    if (!this.powerSwitch || !this.gainKnob || !this.muteSwitch) {
+    if (!this.powerSwitch_ || !this.gainKnob_ || !this.muteSwitch_) {
       console.warn('BUCModule: Cannot add event listeners - components not initialized');
       return;
     }
 
     // Power switch handler
-    this.powerSwitch.addEventListeners((isPowered: boolean) => {
+    this.powerSwitch_.addEventListeners((isPowered: boolean) => {
       const parentPowered = this.rfFrontEnd_.state.isPowered;
       if (parentPowered) {
         this.state_.isPowered = isPowered;
@@ -136,31 +213,17 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
     });
 
     // Mute switch handler
-    this.muteSwitch.addEventListeners((isMuted: boolean) => {
+    this.muteSwitch_.addEventListeners((isMuted: boolean) => {
       this.state_.isMuted = isMuted;
       this.syncDomWithState_();
       cb(this.state_);
     });
 
     // LO frequency input handler
-    const container = qs('.buc-module');
-    if (container) {
-      const loInput = container.querySelector('.input-buc-lo');
-      if (loInput) {
-        loInput.addEventListener('change', (e: Event) => {
-          const target = e.target as HTMLInputElement;
-          const value = parseFloat(target.value);
-          if (!isNaN(value)) {
-            this.state_.loFrequency = value as MHz;
-            this.syncDomWithState_();
-            cb(this.state_);
-          }
-        });
-      }
-    }
+    this.loKnob_.attachListeners();
 
     // Gain knob already has its callback set in constructor
-    this.gainKnob.attachListeners();
+    this.gainKnob_.attachListeners();
   }
 
   /**
@@ -173,8 +236,13 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
     // Calculate output power
     this.updateOutputPower_();
 
-    // Check for alarms
-    this.checkAlarms_();
+    // Update signal quality parameters
+    this.updateSignalQuality_();
+
+    // Update thermal parameters
+    this.updateThermalState_();
+
+    // Check for alarms is currently handled by RFFrontEnd
 
     // Calculate post-BUC signals (apply upconversion and gain if powered)
     this.outputSignals = this.inputSignals.map(sig => {
@@ -191,42 +259,180 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
   }
 
   /**
-   * Calculate BUC output power
+   * Calculate BUC output power with saturation/compression modeling
+   * Models P1dB compression point where gain drops by 1dB
    */
   private updateOutputPower_(): void {
-    if (this.state_.isPowered && !this.state_.isMuted) {
-      const inputPower = -10; // dBm typical IF input
-      this.state_.outputPower = inputPower + this.state_.gain;
-    } else {
+    if (!this.state_.isPowered || this.state_.isMuted) {
       this.state_.outputPower = -120; // Effectively off
+      return;
+    }
+
+    const inputPower = -10; // dBm typical IF input
+    const linearOutputPower = inputPower + this.state_.gain;
+
+    // Model amplifier compression (P1dB)
+    // When output approaches saturation power, gain compresses
+    if (linearOutputPower >= this.state_.saturationPower) {
+      // Above P1dB, output is compressed
+      const compressionDb = Math.min(
+        (linearOutputPower - this.state_.saturationPower) * 0.5,
+        3 // Max 3dB compression beyond P1dB
+      );
+      this.state_.outputPower = linearOutputPower - compressionDb;
+    } else {
+      // Linear region - no compression
+      this.state_.outputPower = linearOutputPower;
     }
   }
 
   /**
    * Update lock status based on power and external reference
+   * Simulates frequency drift when unlocked
    */
   private updateLockStatus_(): void {
     const parentPowered = this.rfFrontEnd_.state.isPowered;
     const extRefPresent = this.rfFrontEnd_.state.isExtRefPresent;
 
-    if (!parentPowered || !this.state_.isPowered) {
-      this.state_.isExtRefLocked = false;
-    } else if (!extRefPresent) {
-      this.state_.isExtRefLocked = false;
-    } else {
+    const canLock = parentPowered && this.state_.isPowered && extRefPresent;
+
+    if (canLock) {
       // In real system, lock acquisition takes 2-5 seconds
       // For simulation, we'll maintain the lock if conditions are met
       if (!this.state_.isExtRefLocked) {
         this.state_.isExtRefLocked = true;
       }
+      // When locked, frequency error is minimal
+      this.state_.frequencyError = 0;
+    } else {
+      this.state_.isExtRefLocked = false;
+      this.updateFrequencyDrift_();
     }
   }
 
   /**
-   * Check for alarm conditions
+   * Update frequency drift when LO is not locked to external reference
+   * Drift is ±1-100 ppm of LO frequency
    */
-  private checkAlarms_(): void {
-    // Alarms are retrieved via getAlarms() method
+  private updateFrequencyDrift_(): void {
+    if (this.state_.isExtRefLocked) {
+      this.state_.frequencyError = 0;
+      return;
+    }
+
+    const loFrequencyHz = this.state_.loFrequency * 1e6;
+    // Simulate drift: ±1-100 ppm (parts per million)
+    // Use random walk model for realistic drift behavior
+    const driftPpm = 10 + Math.random() * 90; // 10-100 ppm
+    const driftDirection = Math.random() > 0.5 ? 1 : -1;
+    this.state_.frequencyError = driftDirection * (loFrequencyHz * driftPpm / 1e6);
+  }
+
+  /**
+   * Update signal quality parameters (phase noise, group delay, spurious outputs)
+   */
+  private updateSignalQuality_(): void {
+    if (!this.state_.isPowered) {
+      this.state_.phaseNoise = 0;
+      this.state_.groupDelay = 0;
+      this.state_.spuriousOutputs = [];
+      return;
+    }
+
+    // Phase noise contribution increases when unlocked
+    // Typical locked: -100 dBc/Hz @ 10kHz offset
+    // Unlocked: -70 to -80 dBc/Hz (degraded)
+    this.state_.phaseNoise = this.state_.isExtRefLocked
+      ? -100 - Math.random() * 5 // -100 to -105 dBc/Hz
+      : -70 - Math.random() * 10; // -70 to -80 dBc/Hz
+
+    // Group delay variation (phase distortion across bandwidth)
+    // Typical: 2-10 ns, increases with temperature and at band edges
+    const baseDelay = 3; // ns
+    const tempVariation = (this.state_.temperature - 25) * 0.1; // 0.1 ns/°C
+    this.state_.groupDelay = baseDelay + tempVariation + Math.random() * 2;
+
+    // Calculate spurious mixer products (N×LO ± M×IF)
+    this.state_.spuriousOutputs = this.calculateSpuriousProducts_();
+  }
+
+  /**
+   * Calculate spurious outputs from mixer products
+   * Generates harmonics at N×LO ± M×IF
+   */
+  private calculateSpuriousProducts_(): SpuriousOutput[] {
+    if (!this.state_.isPowered || this.inputSignals.length === 0) {
+      return [];
+    }
+
+    const spurious: SpuriousOutput[] = [];
+    const loFreqHz = this.state_.loFrequency * 1e6;
+
+    // For each input signal, calculate primary spurious products
+    this.inputSignals.forEach(signal => {
+      const ifFreqHz = signal.frequency;
+
+      spurious.push(
+        // 2×LO - IF (2nd harmonic mixing)
+        {
+          frequency: (2 * loFreqHz - ifFreqHz) as Hertz,
+          level: -30 - Math.random() * 10, // -30 to -40 dBc
+          loHarmonic: 2,
+          ifHarmonic: -1,
+        },
+        // 2×LO + IF (2nd harmonic mixing)
+        {
+          frequency: (2 * loFreqHz + ifFreqHz) as Hertz,
+          level: -35 - Math.random() * 10, // -35 to -45 dBc
+          loHarmonic: 2,
+          ifHarmonic: 1,
+        },
+        // 3×LO - IF (3rd harmonic)
+        {
+          frequency: (3 * loFreqHz - ifFreqHz) as Hertz,
+          level: -40 - Math.random() * 15, // -40 to -55 dBc
+          loHarmonic: 3,
+          ifHarmonic: -1,
+        }
+      );
+    });
+
+    return spurious;
+  }
+
+  /**
+   * Update thermal and operational state
+   */
+  private updateThermalState_(): void {
+    if (!this.state_.isPowered) {
+      // Cooling down gradually toward ambient (25°C)
+      const ambientTemp = 25;
+      const coolRate = 0.00001; // Slow cooling per update
+      this.state_.temperature = this.state_.temperature +
+        (ambientTemp - this.state_.temperature) * coolRate;
+      this.state_.currentDraw = 0;
+      return;
+    }
+
+    // Calculate target temperature based on output power
+    const ambientTemp = 25; // °C
+    const powerDissipation = Math.max(0, this.state_.outputPower - (-10));
+    const thermalRise = powerDissipation * 0.8; // °C per dBm above reference
+    const targetTemp = ambientTemp + thermalRise;
+
+    // Simulate gradual heating (thermal inertia)
+    const heatRate = 0.00005; // Slow heating per update
+    this.state_.temperature = this.state_.temperature +
+      (targetTemp - this.state_.temperature) * heatRate;
+
+    // Current draw trends gradually toward target value
+    const idleCurrent = 0.5;
+    const powerCurrent = (this.state_.gain / 70) * 2.5; // 0-2.5A based on gain
+    const outputCurrent = Math.max(0, (this.state_.outputPower + 10) / 20) * 1.5;
+    const targetCurrent = idleCurrent + powerCurrent + outputCurrent;
+    const currentRate = 0.1; // Slow current change per update
+    this.state_.currentDraw = this.state_.currentDraw +
+      (targetCurrent - this.state_.currentDraw) * currentRate;
   }
 
   /**
@@ -236,14 +442,17 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
     super.sync(state);
 
     // Update UI components
-    if (this.powerSwitch && state.isPowered !== undefined) {
-      this.powerSwitch.sync(state.isPowered);
+    if (this.powerSwitch_ && state.isPowered !== undefined) {
+      this.powerSwitch_.sync(state.isPowered);
     }
-    if (this.gainKnob && state.gain !== undefined) {
-      this.gainKnob.sync(state.gain);
+    if (this.gainKnob_ && state.gain !== undefined) {
+      this.gainKnob_.sync(state.gain);
     }
-    if (this.muteSwitch && state.isMuted !== undefined) {
-      this.muteSwitch.sync(state.isMuted);
+    if (this.loKnob_ && state.loFrequency !== undefined) {
+      this.loKnob_.sync(state.loFrequency);
+    }
+    if (this.muteSwitch_ && state.isMuted !== undefined) {
+      this.muteSwitch_.sync(state.isMuted);
     }
   }
 
@@ -253,17 +462,41 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
   getAlarms(): string[] {
     const alarms: string[] = [];
 
+    if (!this.state_.isPowered) {
+      return alarms;
+    }
+
     const parentPowered = this.rfFrontEnd_.state.isPowered;
     const extRefPresent = this.rfFrontEnd_.state.isExtRefPresent;
 
     // Lock alarm
-    if (this.state_.isPowered && !this.state_.isExtRefLocked && extRefPresent && parentPowered) {
+    if (!this.state_.isExtRefLocked && extRefPresent && parentPowered) {
       alarms.push('BUC not locked to reference');
     }
 
-    // High output power warning
-    if (this.state_.outputPower > 10) {
-      alarms.push(`BUC output power high (${this.state_.outputPower.toFixed(1)} dBm)`);
+    // Frequency error alarm (when unlocked)
+    if (!this.state_.isExtRefLocked && Math.abs(this.state_.frequencyError) > 50000) {
+      alarms.push(`BUC frequency error: ${(this.state_.frequencyError / 1000).toFixed(1)} kHz`);
+    }
+
+    // High output power warning (approaching saturation)
+    if (this.state_.outputPower > this.state_.saturationPower - 2) {
+      alarms.push(`BUC approaching saturation (${this.state_.outputPower.toFixed(1)} dBm)`);
+    }
+
+    // High temperature alarm
+    if (this.state_.temperature > 70) {
+      alarms.push(`BUC over-temperature (${this.state_.temperature.toFixed(1)} °C)`);
+    }
+
+    // High current draw alarm
+    if (this.state_.currentDraw > 4.5) {
+      alarms.push(`BUC high current draw (${this.state_.currentDraw.toFixed(2)} A)`);
+    }
+
+    // Phase noise degradation (when unlocked)
+    if (this.state_.phaseNoise > -85 && !this.state_.isExtRefLocked) {
+      alarms.push('BUC phase noise degraded (unlocked)');
     }
 
     return alarms;
@@ -298,10 +531,41 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
       lockLed.className = `led ${this.getLockLedStatus_()}`;
     }
 
+    // Update temperature display
+    const tempDisplay = qs('.buc-temp-display', container);
+    if (tempDisplay) {
+      tempDisplay.textContent = this.state_.temperature.toFixed(1);
+    }
+
+    // Update current draw display
+    const currentDisplay = qs('.buc-current-display', container);
+    if (currentDisplay) {
+      currentDisplay.textContent = this.state_.currentDraw.toFixed(2);
+    }
+
+    // Update frequency error display
+    const freqErrDisplay = qs('.buc-freq-err-display', container);
+    if (freqErrDisplay) {
+      const freqErrKhz = this.state_.frequencyError / 1000;
+      freqErrDisplay.textContent = freqErrKhz.toFixed(1);
+      // Color code: green when locked, red when unlocked with error
+      freqErrDisplay.style.color = this.state_.isExtRefLocked ? '#0f0' : '#f00';
+    }
+
+    // Update output power display
+    const outPwrDisplay = qs('.buc-out-pwr-display', container);
+    if (outPwrDisplay) {
+      outPwrDisplay.textContent = this.state_.outputPower.toFixed(1);
+      // Color code: yellow when approaching saturation
+      const approachingSat = this.state_.outputPower > this.state_.saturationPower - 2;
+      outPwrDisplay.style.color = approachingSat ? '#ff0' : '#0f0';
+    }
+
     // Sync UI components
-    this.powerSwitch.sync(this.state_.isPowered);
-    this.gainKnob.sync(this.state_.gain);
-    this.muteSwitch.sync(this.state_.isMuted);
+    this.powerSwitch_.sync(this.state_.isPowered);
+    this.gainKnob_.sync(this.state_.gain);
+    this.loKnob_.sync(this.state_.loFrequency);
+    this.muteSwitch_.sync(this.state_.isMuted);
   }
 
   get inputSignals(): IfSignal[] {
@@ -312,12 +576,22 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
   }
 
   /**
-   * Calculate upconverted RF frequency
+   * Calculate upconverted RF frequency with physics-based accuracy
+   * RF_out = IF_in + LO (for upconversion)
+   * When unlocked, frequency drifts by ±1-100 ppm
+   *
    * @param ifFrequency IF input frequency in Hz
    * @returns RF output frequency in Hz
    */
   calculateRfFrequency(ifFrequency: IfFrequency): RfFrequency {
-    return (ifFrequency + this.state_.loFrequency * 1e6) as RfFrequency;
+    const loFrequencyHz = this.state_.loFrequency * 1e6;
+
+    // Apply frequency error when not locked to external reference
+    const effectiveLO = this.state_.isExtRefLocked
+      ? loFrequencyHz
+      : loFrequencyHz + this.state_.frequencyError;
+
+    return (ifFrequency + effectiveLO) as RfFrequency;
   }
 
   /**
@@ -332,14 +606,105 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
   }
 
   /**
-   * Get output power for given input power
+   * Get output power for given input power with compression modeling
    * @param inputPowerDbm Input IF power in dBm
-   * @returns Output RF power in dBm
+   * @returns Output RF power in dBm (with P1dB compression applied)
    */
   getOutputPower(inputPowerDbm: number): number {
     if (!this.state_.isPowered || this.state_.isMuted) {
       return -120; // Effectively off
     }
-    return inputPowerDbm + this.state_.gain;
+
+    const linearOutputPower = inputPowerDbm + this.state_.gain;
+
+    // Apply compression if approaching saturation
+    if (linearOutputPower >= this.state_.saturationPower) {
+      const compressionDb = Math.min(
+        (linearOutputPower - this.state_.saturationPower) * 0.5,
+        3 // Max 3dB compression
+      );
+      return linearOutputPower - compressionDb;
+    }
+
+    return linearOutputPower;
+  }
+
+  /**
+   * Get current compression amount in dB
+   * @returns Compression in dB (0 if in linear region)
+   */
+  getCompressionDb(): number {
+    if (!this.state_.isPowered || this.state_.isMuted) {
+      return 0;
+    }
+
+    const inputPower = -10; // Typical IF input
+    const linearOutputPower = inputPower + this.state_.gain;
+
+    if (linearOutputPower >= this.state_.saturationPower) {
+      return Math.min(
+        (linearOutputPower - this.state_.saturationPower) * 0.5,
+        3
+      );
+    }
+
+    return 0;
+  }
+
+  /**
+   * Get frequency stability status
+   * @returns Frequency stability in ppm
+   */
+  getFrequencyStabilityPpm(): number {
+    const loFrequencyHz = this.state_.loFrequency * 1e6;
+    if (loFrequencyHz === 0) return 0;
+    return (this.state_.frequencyError / loFrequencyHz) * 1e6;
+  }
+
+  /**
+   * Check if BUC is operating in saturation region
+   * @returns True if in saturation
+   */
+  isInSaturation(): boolean {
+    return this.state_.outputPower >= this.state_.saturationPower;
+  }
+
+  /**
+   * Get signal quality metrics
+   * @returns Object with quality metrics
+   */
+  getSignalQualityMetrics(): {
+    phaseNoise: number;
+    groupDelay: number;
+    frequencyError: number;
+    isLocked: boolean;
+    spuriousCount: number;
+  } {
+    return {
+      phaseNoise: this.state_.phaseNoise,
+      groupDelay: this.state_.groupDelay,
+      frequencyError: this.state_.frequencyError,
+      isLocked: this.state_.isExtRefLocked,
+      spuriousCount: this.state_.spuriousOutputs.length,
+    };
+  }
+
+  /**
+   * Get thermal state
+   * @returns Object with thermal parameters
+   */
+  getThermalState(): {
+    temperature: number;
+    currentDraw: number;
+    powerDissipation: number;
+  } {
+    const powerOut = Math.pow(10, this.state_.outputPower / 10);
+    const powerDissipation = this.state_.currentDraw * 28 - powerOut; // Assuming 28V supply
+
+    return {
+      temperature: this.state_.temperature,
+      currentDraw: this.state_.currentDraw,
+      powerDissipation: powerDissipation, // mW
+    };
   }
 }

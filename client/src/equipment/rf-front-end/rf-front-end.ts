@@ -108,12 +108,28 @@ export class RFFrontEnd extends BaseEquipment {
       },
 
       buc: {
+        // Operational State
         isPowered: true,
-        loFrequency: 4200 as MHz, // MHz
-        gain: 58, // dB
         isMuted: false,
+        temperature: 25, // °C (ambient)
+        currentDraw: 0, // A
+
+        // Frequency Translation
+        loFrequency: 4200 as MHz, // MHz (C-band)
         isExtRefLocked: true,
+        frequencyError: 0, // Hz (locked)
+        phaseLockRange: 10000, // ±10 kHz tracking range
+
+        // Gain & Power
+        gain: 58, // dB
         outputPower: -10, // dBm
+        saturationPower: 15, // dBm (P1dB compression point)
+        gainFlatness: 0.5, // ±0.5 dB across bandwidth
+
+        // Signal Quality
+        groupDelay: 3, // ns
+        phaseNoise: -100, // dBc/Hz @ 10kHz offset (locked)
+        spuriousOutputs: [],
         noiseFloor: -140, // dBm/Hz
       },
 
@@ -309,31 +325,37 @@ export class RFFrontEnd extends BaseEquipment {
       this.state.omt = state;
       this.calculateSignalPath();
       this.syncDomWithState();
+      EventBus.getInstance().emit(Events.RF_FE_OMT_CHANGED, state);
     });
     this.bucModule.addEventListeners((state: BUCState) => {
       this.state.buc = state;
       this.calculateSignalPath();
       this.syncDomWithState();
+      EventBus.getInstance().emit(Events.RF_FE_BUC_CHANGED, state);
     });
     this.hpaModule.addEventListeners((state: HPAState) => {
       this.state.hpa = state;
       this.calculateSignalPath();
       this.syncDomWithState();
+      EventBus.getInstance().emit(Events.RF_FE_HPA_CHANGED, state);
     });
     this.filterModule.addEventListeners((state: IfFilterBankState) => {
       this.state.filter = state;
       this.calculateSignalPath();
       this.syncDomWithState();
+      EventBus.getInstance().emit(Events.RF_FE_FILTER_CHANGED, state);
     });
     this.lnbModule.addEventListeners((state: LNBState) => {
       this.state.lnb = state;
       this.calculateSignalPath();
       this.syncDomWithState();
+      EventBus.getInstance().emit(Events.RF_FE_LNB_CHANGED, state);
     });
     this.couplerModule.addEventListeners((state: CouplerState) => {
       this.state.coupler = state;
       this.calculateSignalPath();
       this.syncDomWithState();
+      EventBus.getInstance().emit(Events.RF_FE_COUPLER_CHANGED, state);
     });
 
     // Attach event listeners after DOM is created

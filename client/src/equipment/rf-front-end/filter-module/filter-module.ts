@@ -19,7 +19,6 @@ export interface FilterBandwidthConfig {
  * Available filter bandwidth settings (0-12, where 0 = Off)
  */
 export const FILTER_BANDWIDTH_CONFIGS: FilterBandwidthConfig[] = [
-  { bandwidth: 0 as MHz, noiseFloor: 0, insertionLoss: 0, label: 'OFF' },
   { bandwidth: 0.03 as MHz, noiseFloor: -129, insertionLoss: 3.5, label: '30 kHz' },
   { bandwidth: 0.1 as MHz, noiseFloor: -124, insertionLoss: 3.2, label: '100 kHz' },
   { bandwidth: 0.2 as MHz, noiseFloor: -121, insertionLoss: 3.0, label: '200 kHz' },
@@ -63,6 +62,8 @@ export class IfFilterBankModule extends RFFrontEndModule<IfFilterBankState> {
   private constructor(state: IfFilterBankState, rfFrontEnd: RFFrontEnd, unit: number = 1) {
     super(state, rfFrontEnd, 'rf-fe-filter', unit);
 
+    const config = FILTER_BANDWIDTH_CONFIGS[state.bandwidthIndex];
+
     // Create rotary knob for bandwidth selection (0-13)
     this.bandwidthKnob_ = RotaryKnob.create(
       'filter-bandwidth-knob',
@@ -76,29 +77,30 @@ export class IfFilterBankModule extends RFFrontEndModule<IfFilterBankState> {
         this.syncDomWithState_();
         // Notify parent of state change
         this.rfFrontEnd_.update();
-      }
+      },
+      config.label
     );
-
-    const config = FILTER_BANDWIDTH_CONFIGS[state.bandwidthIndex];
 
     this.html_ = html`
       <div class="rf-fe-module filter-module">
         <div class="module-label">IF FILTER BANK</div>
         <div class="module-controls">
-          <div class="control-group">
-            <label>BANDWIDTH</label>
-            <div class="knob-container">
-              ${this.bandwidthKnob_.html}
+          <div class="input-knobs">
+            <div class="control-group">
+              <label>BANDWIDTH</label>
+              <div class="knob-container">
+                ${this.bandwidthKnob_.html}
+              </div>
             </div>
-            <div class="knob-label">${config.label}</div>
           </div>
           <div class="led-indicator">
             <span class="indicator-label">INSERTION LOSS</span>
-            <div class="led led-orange" style="opacity: ${this.state_.insertionLoss / 3}"></div>
+            <div id="insertion-loss-led" class="led led-orange" style="opacity: ${this.state_.insertionLoss / 3}"></div>
             <span class="value-readout">${this.state_.insertionLoss.toFixed(1)} dB</span>
           </div>
           <div class="value-display">
             <span class="display-label">NOISE FLOOR:</span>
+            <div id="noise-floor-led" class="led led-orange"></div>
             <span class="value-readout">${this.state_.noiseFloor.toFixed(0)} dBm</span>
           </div>
         </div>
@@ -140,6 +142,7 @@ export class IfFilterBankModule extends RFFrontEndModule<IfFilterBankState> {
    */
   private updateFilterCharacteristics_(): void {
     const config = FILTER_BANDWIDTH_CONFIGS[this.state_.bandwidthIndex];
+    this.bandwidthKnob_.valueOverride = config.label;
     this.state_.bandwidth = config.bandwidth;
     this.state_.insertionLoss = config.insertionLoss;
     this.state_.noiseFloor = config.noiseFloor;
@@ -151,15 +154,10 @@ export class IfFilterBankModule extends RFFrontEndModule<IfFilterBankState> {
   sync(state: Partial<IfFilterBankState>): void {
     super.sync(state);
 
-    // If bandwidth index changed, update characteristics
-    if (state.bandwidthIndex !== undefined && state.bandwidthIndex !== this.state_.bandwidthIndex) {
-      this.updateFilterCharacteristics_();
+    this.updateFilterCharacteristics_();
+    this.bandwidthKnob_.sync(this.state_.bandwidthIndex);
 
-      // Sync the rotary knob
-      if (this.bandwidthKnob_) {
-        this.bandwidthKnob_.sync(this.state_.bandwidthIndex);
-      }
-    }
+    this.syncDomWithState_();
   }
 
   /**
@@ -196,21 +194,23 @@ export class IfFilterBankModule extends RFFrontEndModule<IfFilterBankState> {
     }
 
     // Update insertion loss LED
-    const lossLed = container.querySelector('.led-indicator .led');
-    if (lossLed) {
-      (lossLed as HTMLElement).style.opacity = (this.state_.insertionLoss / 3.5).toString();
+    qs('#insertion-loss-led', container).style.opacity = (this.state_.insertionLoss / 3.5).toString();
+
+    // Update noise floor LED
+    // Color Scale from -130 dBm (green) to -40 dBm (green)
+    const noiseFloorLed = qs('#noise-floor-led', container);
+    const externalNoiseFloor = this.state.noiseFloor + this.rfFrontEnd_.getTotalRxGain();
+    if (externalNoiseFloor <= -100) {
+      noiseFloorLed.className = 'led led-green';
+    } else if (externalNoiseFloor > -100 && externalNoiseFloor <= -70) {
+      noiseFloorLed.className = 'led led-orange';
+    } else if (externalNoiseFloor > -70) {
+      noiseFloorLed.className = 'led led-red';
     }
 
     // Update insertion loss readout
-    const lossReadout = container.querySelector('.led-indicator .value-readout');
-    if (lossReadout) {
-      lossReadout.textContent = `${this.state_.insertionLoss.toFixed(1)} dB`;
-    }
-
+    qs('.led-indicator .value-readout', container).textContent = `${this.state_.insertionLoss.toFixed(1)} dB`;
     // Update noise floor display
-    const nfReadout = container.querySelector('.value-display .value-readout');
-    if (nfReadout) {
-      nfReadout.textContent = `${this.state_.noiseFloor.toFixed(0)} dBm`;
-    }
+    qs('.value-display .value-readout', container).textContent = `${(this.state.noiseFloor + this.rfFrontEnd_.getTotalRxGain()).toFixed(0)} dBm`;
   }
 }

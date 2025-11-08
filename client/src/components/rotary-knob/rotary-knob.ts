@@ -7,6 +7,7 @@ export class RotaryKnob {
   private readonly uniqueId: string;
   private dom_?: HTMLInputElement;
   private value: number = 0;
+  valueOverride?: string;
   private readonly min: number;
   private readonly max: number;
   private readonly step: number;
@@ -22,21 +23,23 @@ export class RotaryKnob {
     min: number,
     max: number,
     step: number = 1,
-    callback?: (value: number) => void
+    callback?: (value: number) => void,
+    valueOverride?: string
   ) {
-    this.html_ = html`
-      <div class="rotary-knob" id="${uniqueId}">
-        <div class="knob-body">
-          <div class="knob-indicator"></div>
-        </div>
-        <div class="knob-value">${this.value.toFixed(1)}</div>
-      </div>
-    `;
     this.value = initialValue;
     this.min = min;
     this.max = max;
     this.step = step;
     this.callback = callback;
+    this.valueOverride = valueOverride;
+    this.html_ = html`
+      <div class="rotary-knob" id="${uniqueId}">
+        <div class="knob-body">
+          <div class="knob-indicator"></div>
+        </div>
+        <div class="knob-value">${this.valueOverride ?? this.value.toFixed(1)}</div>
+      </div>
+    `;
 
     const container = document.createElement('div');
     container.className = 'rotary-knob-container';
@@ -94,7 +97,7 @@ export class RotaryKnob {
     this.value = Math.round(this.value / this.step) * this.step;
 
     this.updateAngleFromValue_();
-    this.updateDisplay_();
+    this.updateDisplay();
 
     if (this.callback) {
       this.callback(this.value);
@@ -106,16 +109,9 @@ export class RotaryKnob {
     this.angle = -135 + (normalized * 270); // -135° to +135°
   }
 
-  private updateDisplay_(): void {
-    const knobBody = qs('.knob-body', this.dom);
-    if (knobBody) {
-      knobBody.style.transform = `rotate(${this.angle}deg)`;
-    }
-
-    const valueDisplay = qs('.knob-value', this.dom);
-    if (valueDisplay) {
-      valueDisplay.textContent = this.value.toFixed(1);
-    }
+  updateDisplay(): void {
+    qs('.knob-body', this.dom).style.transform = `rotate(${this.angle}deg)`;
+    qs('.knob-value', this.dom).textContent = this.valueOverride ?? this.value.toFixed(1);
   }
 
   getValue(): number {
@@ -142,8 +138,9 @@ export class RotaryKnob {
     min: number,
     max: number,
     step: number = 1,
-    callback?: (value: number) => void
+    callback?: (value: number) => void,
+    valueOverride?: string
   ): RotaryKnob {
-    return new RotaryKnob(id, initialValue, min, max, step, callback);
+    return new RotaryKnob(id, initialValue, min, max, step, callback, valueOverride);
   }
 }

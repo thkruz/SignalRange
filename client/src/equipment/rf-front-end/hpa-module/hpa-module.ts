@@ -83,26 +83,30 @@ export class HPAModule extends RFFrontEndModule<HPAState> {
       <div class="rf-fe-module hpa-module">
         <div class="module-label">High Power Amplifier</div>
         <div class="module-controls">
-          <div class="hpa-main-inputs">
+          <div class="input-knobs">
             <div class="control-group">
               <label>BACK-OFF (dB)</label>
               ${this.backOffKnob.html}
             </div>
-            <div class="power-meter">
-              <div class="meter-label">OUTPUT</div>
-              <div class="led-bar">
-                ${this.renderPowerMeter_(this.state_.outputPower)}
-              </div>
-              <span class="value-readout">${this.state_.outputPower.toFixed(1)} dBW</span>
-            </div>
-            <div class="led-indicator">
-              <span class="indicator-label">IMD</span>
-              <div class="led ${this.state_.isOverdriven ? 'led-orange' : 'led-off'}"></div>
-              <span class="value-readout">${this.state_.imdLevel} dBc</span>
-            </div>
           </div>
-          <div class="hpa-switch">
-            ${this.hpaSwitch.html}
+          <div class="hpa-lower-module-controls">
+            <div class="hpa-main-inputs">
+              <div class="power-meter">
+                <div class="meter-label">OUTPUT</div>
+                <div class="led-bar">
+                  ${this.renderPowerMeter_(this.state_.outputPower)}
+                </div>
+                <span class="value-readout">${this.state_.outputPower.toFixed(1)} dBW</span>
+              </div>
+              <div class="led-indicator">
+                <span class="indicator-label">IMD</span>
+                <div class="led ${this.state_.isOverdriven ? 'led-orange' : 'led-off'}"></div>
+                <span class="value-readout">${this.state_.imdLevel} dBc</span>
+              </div>
+            </div>
+            <div class="hpa-switch">
+              ${this.hpaSwitch.html}
+            </div>
           </div>
         </div>
         <div class="control-group">

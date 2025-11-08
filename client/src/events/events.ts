@@ -1,6 +1,12 @@
 import { Milliseconds } from "@app/engine/ootk/src/main";
 import { AntennaState } from "@app/equipment/antenna/antenna";
 import { RealTimeSpectrumAnalyzerState } from "@app/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer";
+import { BUCState } from "@app/equipment/rf-front-end/buc-module/buc-module";
+import { CouplerState } from "@app/equipment/rf-front-end/coupler-module/coupler-module";
+import { IfFilterBankState } from "@app/equipment/rf-front-end/filter-module/filter-module";
+import { HPAState } from "@app/equipment/rf-front-end/hpa-module/hpa-module";
+import { LNBState } from "@app/equipment/rf-front-end/lnb/lnb-module";
+import { OMTState } from "@app/equipment/rf-front-end/omt-module/omt-module";
 import { RFFrontEndState } from "@app/equipment/rf-front-end/rf-front-end";
 import { ReceiverModemState } from "../equipment/receiver/receiver";
 import { TransmitterModem } from "../equipment/transmitter/transmitter";
@@ -114,6 +120,9 @@ export enum Events {
   RF_FE_HPA_CHANGED = "rf-fe:hpa:changed",
   RF_FE_LNB_CHANGED = "rf-fe:lnb:changed",
   RF_FE_ALARM = "rf-fe:alarm",
+  RF_FE_OMT_CHANGED = "rf-fe:omt:changed",
+  RF_FE_COUPLER_CHANGED = "rf-fe:coupler:changed",
+  RF_FE_FILTER_CHANGED = "rf-fe:filter:changed",
 }
 
 export interface EventMap {
@@ -126,9 +135,12 @@ export interface EventMap {
   [Events.ANTENNA_ERROR]: [AntennaErrorData];
 
   [Events.RF_FE_POWER_CHANGED]: [Partial<RFFrontEndState>];
-  [Events.RF_FE_BUC_CHANGED]: [Partial<RFFrontEndState>];
-  [Events.RF_FE_HPA_CHANGED]: [Partial<RFFrontEndState>];
-  [Events.RF_FE_LNB_CHANGED]: [Partial<RFFrontEndState>];
+  [Events.RF_FE_BUC_CHANGED]: [Partial<BUCState>];
+  [Events.RF_FE_HPA_CHANGED]: [Partial<HPAState>];
+  [Events.RF_FE_LNB_CHANGED]: [Partial<LNBState>];
+  [Events.RF_FE_OMT_CHANGED]: [Partial<OMTState>];
+  [Events.RF_FE_COUPLER_CHANGED]: [Partial<CouplerState>];
+  [Events.RF_FE_FILTER_CHANGED]: [Partial<IfFilterBankState>];
   [Events.RF_FE_ALARM]: [{
     unit: number;
     alarms: string[];

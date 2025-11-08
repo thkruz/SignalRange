@@ -1,14 +1,14 @@
 /* HPA Module Specific Styles */
 
 .hpa-module {
-  /* Additional HPA-specific styles can go here */
-  /* Most styles are inherited from rf-front-end.css */
+  width: min-content;
 }
 
-.hpa-module .module-controls {
-  display: flex !important;
-  flex-direction: row !important;
-  flex-wrap: nowrap !important;
+.hpa-lower-module-controls {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  justify-content: space-between;
 }
 
 .hpa-module .power-meter {
@@ -20,6 +20,7 @@
   background: rgba(0, 0, 0, 0.3);
   border-radius: 4px;
   border: 1px solid #444;
+  width: min-content;
 }
 
 .hpa-module .meter-label {
@@ -68,6 +69,8 @@
 
 .hpa-module .led-indicator {
   display: flex;
+  flex-direction: column;
+  width: min-content;
   align-items: center;
   gap: 8px;
   padding: 8px;

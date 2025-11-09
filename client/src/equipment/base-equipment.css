@@ -264,7 +264,7 @@ label {
     inset 0 -2px 8px #ffab0099;
 }
 
-.status-indicator.test-mode .indicator-light.on {
+.status-indicator.loopback .indicator-light.on {
   --light-color: #2196f3;
   --light-glow: #2196f3cc;
   background: radial-gradient(circle at 60% 40%, #fff 0%, #d6eaff 30%, #2196f3 70%, #0d47a1 100%);

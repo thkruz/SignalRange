@@ -137,7 +137,6 @@ export abstract class RFFrontEndModule<TState extends RFFrontEndModuleState> {
   protected getLockLedStatus(): string {
     return this.state_.isExtRefLocked ? 'led-green' : 'led-red';
   }
-
   // ═══════════════════════════════════════════════════════════════
   // Common UI Component Management
   // ═══════════════════════════════════════════════════════════════

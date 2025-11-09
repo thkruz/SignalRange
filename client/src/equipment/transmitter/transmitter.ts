@@ -17,7 +17,7 @@ export interface TransmitterModem {
   modem_number: number; // 1-4
   antenna_id: number;
   isPowered: boolean;
-  isTestMode: boolean;
+  isLoopback: boolean;
   isFaulted: boolean;
   isFaultSwitchUp: boolean;
   isTransmitting: boolean;
@@ -51,7 +51,7 @@ export class Transmitter extends BaseEquipment {
   private readonly powerBudget = 23886;
   powerSwitch: PowerSwitch;
   txToggleSwitch: ToggleSwitch;
-  testModeSwitch: ToggleSwitch;
+  loopbackSwitch: ToggleSwitch;
   faultResetSwitch: ToggleSwitch;
 
   constructor(parentId: string, teamId: number = 1, serverId: number = 1) {
@@ -81,7 +81,7 @@ export class Transmitter extends BaseEquipment {
         isTransmitting: false,
         isTransmittingSwitchUp: false,
         isPowered: true,
-        isTestMode: false,
+        isLoopback: false,
         isFaulted: false,
         isFaultSwitchUp: false,
       });
@@ -115,7 +115,7 @@ export class Transmitter extends BaseEquipment {
 
     this.txToggleSwitch = ToggleSwitch.create(`tx-transmit-switch-${this.state.uuid}${this.activeModem.modem_number}`, this.activeModem.isTransmittingSwitchUp);
     this.faultResetSwitch = ToggleSwitch.create(`tx-fault-reset-switch-${this.state.uuid}${this.activeModem.modem_number}`, this.activeModem.isFaultSwitchUp);
-    this.testModeSwitch = ToggleSwitch.create(`tx-test-mode-switch-${this.state.uuid}${this.activeModem.modem_number}`, this.activeModem.isTestMode);
+    this.loopbackSwitch = ToggleSwitch.create(`tx-loopback-switch-${this.state.uuid}${this.activeModem.modem_number}`, this.activeModem.isLoopback);
     this.powerSwitch = PowerSwitch.create(`tx-power-switch-${this.state.uuid}${this.activeModem.modem_number}`, this.activeModem.isPowered);
 
     parentDom.innerHTML = html`
@@ -206,27 +206,29 @@ export class Transmitter extends BaseEquipment {
                   <span class="power-percentage">${Math.round(this.getPowerPercentage())}%</span>
                 </div>
               </div>
-              <div class="unit-status-indicators">
+              <div class="led-indicators">
                 <div class="status-indicator transmitting">
                   <span id="tx-transmitting-light" class="indicator-light ${this.activeModem.isTransmitting ? 'on' : 'off'}"></span>
                   <span class="indicator-label">TX</span>
-                  ${this.txToggleSwitch.html}
                 </div>
                 <div class="status-indicator ${this.activeModem.isFaulted ? 'fault' : ''}">
                   <span id="tx-fault-light" class="indicator-light ${this.activeModem.isPowered ? 'on' : 'off'}"></span>
                   <span class="indicator-label">Fault</span>
-                  ${this.faultResetSwitch.html}
                 </div>
-                <div class="status-indicator test-mode">
-                  <span id="tx-test-mode-light" class="indicator-light ${this.activeModem.isTestMode ? 'on' : 'off'}"></span>
-                  <span class="indicator-label">Test</span>
-                  ${this.testModeSwitch.html}
+                <div class="status-indicator loopback">
+                  <span id="tx-loopback-light" class="indicator-light ${this.activeModem.isLoopback ? 'on' : 'off'}"></span>
+                  <span class="indicator-label">Loopback to<br />IF Filter</span>
                 </div>
                 <div class="status-indicator online">
                   <span id="tx-active-power-light" class="indicator-light ${this.activeModem.isPowered ? 'on' : 'off'}"></span>
                   <span class="indicator-label">Online</span>
-                  ${this.powerSwitch.html}
                 </div>
+              </div>
+              <div class="input-knobs">
+                ${this.txToggleSwitch.html}
+                ${this.faultResetSwitch.html}
+                ${this.loopbackSwitch.html}
+                ${this.powerSwitch.html}
               </div>
             </div>
         </div>
@@ -249,7 +251,7 @@ export class Transmitter extends BaseEquipment {
     this.domCache['txActivePowerLight'] = qs('#tx-active-power-light', parentDom);
     this.domCache['txTransmittingLight'] = qs('#tx-transmitting-light', parentDom);
     this.domCache['txFaultLight'] = qs('#tx-fault-light', parentDom);
-    this.domCache['txTestModeLight'] = qs('#tx-test-mode-light', parentDom);
+    this.domCache['txLoopbackLight'] = qs('#tx-loopback-light', parentDom);
 
     // If this.inputData is empty, initialize it with active modem data
     if (Object.keys(this.inputData).length === 0) {
@@ -285,7 +287,7 @@ export class Transmitter extends BaseEquipment {
     // Power and Transmit Toggle Switches
     this.txToggleSwitch.addEventListeners(this.toggleTransmit.bind(this));
     this.faultResetSwitch.addEventListeners(this.toggleFaultReset.bind(this));
-    this.testModeSwitch.addEventListeners(this.toggleTestMode.bind(this));
+    this.loopbackSwitch.addEventListeners(this.toggleTestMode.bind(this));
     this.powerSwitch.addEventListeners(this.togglePower.bind(this));
   }
 
@@ -446,7 +448,7 @@ export class Transmitter extends BaseEquipment {
   }
 
   private toggleTestMode(): void {
-    this.activeModem.isTestMode = !this.activeModem.isTestMode;
+    this.activeModem.isLoopback = !this.activeModem.isLoopback;
 
     this.emit(Events.TX_CONFIG_CHANGED, {
       uuid: this.uuid,
@@ -559,7 +561,7 @@ export class Transmitter extends BaseEquipment {
     // Update transmit button active class
     this.txToggleSwitch.sync(this.activeModem.isTransmittingSwitchUp);
     this.faultResetSwitch.sync(this.activeModem.isFaultSwitchUp);
-    this.testModeSwitch.sync(this.activeModem.isTestMode);
+    this.loopbackSwitch.sync(this.activeModem.isLoopback);
     this.powerSwitch.sync(activeModem.isPowered);
 
     // Update physical light indicators
@@ -567,7 +569,7 @@ export class Transmitter extends BaseEquipment {
     this.domCache['txTransmittingLight'].className = `indicator-light ${activeModem.isTransmitting ? 'on' : 'off'}`;
     this.domCache['txFaultLight'].className = `indicator-light ${activeModem.isPowered ? 'on' : 'off'}`;
     this.domCache['txFaultLight'].parentElement.className = `status-indicator ${activeModem.isFaulted ? 'fault' : ''}`;
-    this.domCache['txTestModeLight'].className = `indicator-light ${activeModem.isTestMode ? 'on' : 'off'}`;
+    this.domCache['txLoopbackLight'].className = `indicator-light ${activeModem.isLoopback ? 'on' : 'off'}`;
     // Save snapshot
     this.lastRenderState = structuredClone(this.state);
   }

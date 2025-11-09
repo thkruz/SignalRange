@@ -115,6 +115,7 @@ export class RFFrontEnd extends BaseEquipment {
         // Operational State
         isPowered: true,
         isMuted: false,
+        isLoopback: false,
         temperature: 25, // °C (ambient)
         currentDraw: 0, // A
 

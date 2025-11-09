@@ -12,6 +12,8 @@
 
   .control-group label {
     text-align: center;
+    /* TODO This shouldn't be hard coded */
+    width: 85px;
   }
 
   .physical-switch-container {

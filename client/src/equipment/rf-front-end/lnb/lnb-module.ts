@@ -164,7 +164,12 @@ export class LNBModule extends RFFrontEndModule<LNBState> {
   }
 
   get rxSignalsIn(): RfSignal[] {
-    return this.rfFrontEnd_.omtModule.rxSignalsOut;
+    const omtSignals = this.rfFrontEnd_.omtModule.rxSignalsOut;
+    const bucLoopback = this.rfFrontEnd_.bucModule.state.isLoopback
+      ? this.rfFrontEnd_.bucModule.outputSignals
+      : [];
+
+    return [...omtSignals, ...bucLoopback];
   }
 
   /**

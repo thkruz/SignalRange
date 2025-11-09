@@ -1,6 +1,20 @@
 /* Transmitter.css - Styles specific to Transmitter equipment */
 .transmitter-box {
   height: min-content;
+
+  .led-indicators,
+  .input-knobs {
+    margin-top: -3em;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    align-items: center;
+    justify-items: center;
+  }
+
+  .led-indicators {
+    align-items: start;
+  }
 }
 
 /* Header */

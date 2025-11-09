@@ -418,6 +418,10 @@ export class HPAModule extends RFFrontEndModule<HPAState> {
   }
 
   get inputSignals(): RfSignal[] {
+    if (this.rfFrontEnd_.bucModule.state.isLoopback) {
+      return [];
+    }
+
     return this.rfFrontEnd_.bucModule.outputSignals;
   }
 

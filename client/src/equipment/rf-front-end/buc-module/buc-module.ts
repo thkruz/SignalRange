@@ -29,6 +29,8 @@ export interface BUCState extends RFFrontEndModuleState {
   isPowered: boolean;
   /** Output muted for safety */
   isMuted: boolean;
+  /** Indicates if the BUC is in RF loopback mode */
+  isLoopback: boolean;
   /** Operating temperature in °C */
   temperature: number;
   /** Current draw in Amperes */
@@ -70,6 +72,7 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
 
   private readonly loKnob_: RotaryKnob;
   private readonly muteSwitch_: ToggleSwitch;
+  private readonly loopbackSwitch_: ToggleSwitch;
   outputSignals: RfSignal[] = [];
 
   static create(state: BUCState, rfFrontEnd: RFFrontEnd, unit: number = 1): BUCModule {
@@ -106,6 +109,12 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
       false
     );
 
+    this.loopbackSwitch_ = ToggleSwitch.create(
+      `${this.uniqueId}-loopback`,
+      this.state_.isLoopback,
+      false
+    );
+
     this.html_ = html`
       <div class="rf-fe-module buc-module">
         <div class="module-label">Block Upconverter</div>
@@ -113,7 +122,11 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
           <div class="led-indicators">
             <div class="led-indicator">
               <span class="indicator-label">LOCK</span>
-              <div class="led ${this.getLockLedStatus()}"></div>
+              <div class="led-lock led ${this.getLockLedStatus()}"></div>
+            </div>
+            <div class="led-indicator">
+              <span class="indicator-label">LOOPBACK</span>
+              <div class="led-loopback led ${this.getLoopbackLedStatus()}"></div>
             </div>
           </div>
           <div class="input-knobs">
@@ -130,7 +143,8 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
               ${this.gainKnob_?.html || ''}
             </div>
             <div class="control-group">
-              <!-- Insert a gap -->
+              <label>LOOPBACK TO LNB</label>
+              ${this.loopbackSwitch_.html}
             </div>
             <div class="control-group">
               ${this.powerSwitch_?.html || ''}
@@ -167,11 +181,6 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
    * Add event listeners for user interactions
    */
   addEventListeners(cb: (state: BUCState) => void): void {
-    if (!this.powerSwitch_ || !this.gainKnob_ || !this.muteSwitch_) {
-      console.warn('BUCModule: Cannot add event listeners - components not initialized');
-      return;
-    }
-
     // Power switch handler using base class method
     this.addPowerSwitchListener(cb, () => {
       this.simulateLockAcquisition(2000, 2000, () => cb(this.state_));
@@ -189,6 +198,13 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
 
     // Gain knob already has its callback set in constructor
     this.gainKnob_?.attachListeners();
+
+    // Loopback switch handler
+    this.loopbackSwitch_.addEventListeners((isLoopback: boolean) => {
+      this.state_.isLoopback = isLoopback;
+      this.syncDomWithState_();
+      cb(this.state_);
+    });
   }
 
   /**
@@ -491,9 +507,9 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
     }
 
     // Update lock LED using base class method
-    const lockLed = qs('.led-indicator .led', container);
+    const lockLed = qs('.led-lock', container);
     if (lockLed) {
-      lockLed.className = `led ${this.getLockLedStatus()}`;
+      lockLed.className = `led-lock led ${this.getLockLedStatus()}`;
     }
 
     // Update temperature display
@@ -532,13 +548,24 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
     // Sync BUC-specific components
     this.loKnob_.sync(this.state_.loFrequency);
     this.muteSwitch_.sync(this.state_.isMuted);
+    this.loopbackSwitch_.sync(this.state_.isLoopback);
+
+    // Sync loopback LED
+    const loopbackLed = qs('.led-loopback', container);
+    if (loopbackLed) {
+      loopbackLed.className = `led-loopback led ${this.getLoopbackLedStatus()}`;
+    }
   }
 
   get inputSignals(): IfSignal[] {
     return this.rfFrontEnd_.transmitters
       .flatMap((tx) => tx.state.modems
-        .filter((modem) => modem.isTransmitting && !modem.isFaulted)
+        .filter((modem) => modem.isTransmitting && !modem.isFaulted && !modem.isLoopback)
         .map((modem) => modem.ifSignal));
+  }
+
+  protected getLoopbackLedStatus(): string {
+    return this.state_.isLoopback ? 'led-blue' : 'led-off';
   }
 
   /**

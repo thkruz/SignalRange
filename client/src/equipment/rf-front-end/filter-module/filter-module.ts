@@ -142,13 +142,23 @@ export class IfFilterBankModule extends RFFrontEndModule<IfFilterBankState> {
    * Update component state and check for faults
    */
   update(): void {
-    this.outputSignals = this.rfFrontEnd_.lnbModule.ifSignals.map((sig: IfSignal) => {
+    this.outputSignals = this.inputSignals.map((sig: IfSignal) => {
       return {
         ...sig,
         power: sig.power - this.state_.insertionLoss, // Apply insertion loss
         origin: SignalOrigin.IF_FILTER_BANK,
       };
     });
+  }
+
+  get inputSignals(): IfSignal[] {
+    const lnbSignals = this.rfFrontEnd_.lnbModule.ifSignals;
+    const txLoopbackSignals = this.rfFrontEnd_.transmitters
+      .flatMap((tx) => tx.state.modems
+        .filter((modem) => modem.isTransmitting && !modem.isFaulted && modem.isLoopback)
+        .map((modem) => modem.ifSignal));
+
+    return [...lnbSignals, ...txLoopbackSignals];
   }
 
   /**

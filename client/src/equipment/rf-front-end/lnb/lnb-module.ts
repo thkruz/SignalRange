@@ -224,14 +224,15 @@ export class LNBModule extends RFFrontEndModule<LNBState> {
 
     if (!parentPowered || !this.state_.isPowered) {
       this.state_.isExtRefLocked = false;
-    } else if (!extRefPresent) {
-      this.state_.isExtRefLocked = false;
-    } else {
-      // In real system, lock acquisition takes 2-5 seconds
-      // For simulation, we'll maintain the lock if conditions are met
+    } else if (extRefPresent) {
       if (!this.state_.isExtRefLocked) {
-        this.state_.isExtRefLocked = true;
+        setTimeout(() => {
+          this.state_.isExtRefLocked = true;
+          this.syncDomWithState_();
+        }, 2000 + Math.random() * 3000); // 2-5 seconds
       }
+    } else {
+      this.state_.isExtRefLocked = false;
     }
   }
 

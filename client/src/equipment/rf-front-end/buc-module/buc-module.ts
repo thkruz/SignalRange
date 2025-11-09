@@ -300,7 +300,12 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
       // In real system, lock acquisition takes 2-5 seconds
       // For simulation, we'll maintain the lock if conditions are met
       if (!this.state_.isExtRefLocked) {
-        this.state_.isExtRefLocked = true;
+        if (!this.state_.isExtRefLocked) {
+          setTimeout(() => {
+            this.state_.isExtRefLocked = true;
+            this.syncDomWithState_();
+          }, 2000 + Math.random() * 3000); // 2-5 seconds
+        }
       }
       // When locked, frequency error is minimal
       if (this.rfFrontEnd_.gpsdoModule.get10MhzOutput().isWarmedUp) {

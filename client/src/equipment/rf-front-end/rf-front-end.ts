@@ -1,5 +1,6 @@
 import { PowerSwitch } from '@app/components/power-switch/power-switch';
 import { EventBus } from "@app/events/event-bus";
+import { HelpManager } from '@app/help/help-manager';
 import { html } from "../../engine/utils/development/formatter";
 import { qs } from "../../engine/utils/query-selector";
 import { Events } from "../../events/events";
@@ -14,6 +15,7 @@ import { GPSDOModule, GPSDOState } from './gpsdo-module/gpsdo-module';
 import { HPAModule, HPAState } from './hpa-module/hpa-module';
 import { LNBModule, LNBState } from './lnb/lnb-module';
 import { OMTModule, OMTState } from './omt-module/omt-module';
+import omtModuleHelp from './omt-module/omt-module-help';
 import './rf-front-end.css';
 
 /**
@@ -280,50 +282,53 @@ export class RFFrontEnd extends BaseEquipment {
 
     parentDom.innerHTML = html`
       <div
-        id="rf-fe-box-${this.state.uuid}"
-        class="equipment-box rf-front-end-box" data-unit="${this.state.uuid}"
+      id="rf-fe-box-${this.state.uuid}"
+      class="equipment-box rf-front-end-box" data-unit="${this.state.uuid}"
       >
 
-        <!-- Top Status Bar -->
-        <div class="equipment-case-header">
-          <div class="equipment-case-title">RF FRONT END ${this.uuidShort}</div>
+      <!-- Top Status Bar -->
+      <div class="equipment-case-header">
+        <div class="equipment-case-title">RF FRONT END ${this.uuidShort}</div>
           <div class="equipment-case-power-controls">
-            <div id="rf-fe-power-${this.state.uuid}" class="equipment-case-main-power"></div>
-            <div class="equipment-case-status-indicator">
-              <span class="equipment-case-status-label">EXT REF</span>
-              <div class="led led-green"></div>
-            </div>
+          <div id="rf-fe-power-${this.state.uuid}" class="equipment-case-main-power"></div>
+          <div class="equipment-case-status-indicator">
+            <span class="equipment-case-status-label">EXT REF</span>
+            <div class="led led-green"></div>
           </div>
+          <button class="btn-help" title="Help" id="rf-fe-help-${this.state.uuid}">
+            <span class="icon-help">&#x2753;</span>
+          </button>
         </div>
+      </div>
 
-        <!-- Main Module Container -->
-        <div class="rf-fe-modules">
-          <div class="stacked-modules">
-            ${this.omtModule.html}
-            ${this.couplerModule.html}
-          </div>
-          <div class="stacked-modules">
-            ${this.bucModule.html}
-            ${this.hpaModule.html}
-          </div>
-          ${this.gpsdoModule.html}
-          <div class="stacked-modules">
-            ${this.lnbModule.html}
-            ${this.filterModule.html}
-          </div>
+      <!-- Main Module Container -->
+      <div class="rf-fe-modules">
+        <div class="stacked-modules">
+        ${this.omtModule.html}
+        ${this.couplerModule.html}
         </div>
+        <div class="stacked-modules">
+        ${this.bucModule.html}
+        ${this.hpaModule.html}
+        </div>
+        ${this.gpsdoModule.html}
+        <div class="stacked-modules">
+        ${this.lnbModule.html}
+        ${this.filterModule.html}
+        </div>
+      </div>
 
-        <!-- Bottom Status Bar -->
-        <div class="equipment-case-footer">
-          <div class="signal-path-readout">
-            ${this.formatSignalPath()}
-          </div>
-          <div class="mode-toggle">
-            <button class="btn-mode-toggle" data-action="toggle-advanced-mode">
-              PLACEHOLDER
-            </button>
-          </div>
+      <!-- Bottom Status Bar -->
+      <div class="equipment-case-footer">
+        <div class="signal-path-readout">
+        ${this.formatSignalPath()}
         </div>
+        <div class="mode-toggle">
+        <button class="btn-mode-toggle" data-action="toggle-advanced-mode" title="Toggle Advanced Mode">
+          <span class="icon-advanced">&#9881;</span>
+        </button>
+        </div>
+      </div>
 
       </div>
     `;
@@ -332,6 +337,14 @@ export class RFFrontEnd extends BaseEquipment {
   }
 
   protected addListeners_(): void {
+    const helpBtn = qs(`#rf-fe-help-${this.state.uuid}`);
+    if (helpBtn) {
+      helpBtn.addEventListener('click', () => {
+        HelpManager.getInstance().show("OMT / Duplexer", omtModuleHelp);
+      });
+    }
+
+
     // Add module event listeners
     this.omtModule.addEventListeners((state: OMTState) => {
       this.state.omt = state;

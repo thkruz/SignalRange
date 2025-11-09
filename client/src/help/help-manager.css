@@ -1,0 +1,240 @@
+.hm-modal-overlay {
+  position: fixed;
+  inset: 0;
+  /* shorthand for top/left/right/bottom */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.75);
+  z-index: 1000;
+  -webkit-font-smoothing: antialiased;
+}
+
+:root {
+  --hm-bg-start: #2a2a2a;
+  --hm-bg-end: #1f1f1f;
+  --hm-text: #eaeaea;
+  --hm-muted: #bfc3c6;
+  --hm-accent: #ff3535;
+  --hm-accent-2: #ff2827;
+  /* subtle application theme color for accents */
+  --hm-theme: #ba160c;
+  --hm-border: #444;
+  --hm-radius: 10px;
+  --hm-max-width: 1000px;
+  --hm-padding: 1.5rem;
+}
+
+.hm-modal-box {
+  background: linear-gradient(180deg, var(--hm-bg-start) 0%, var(--hm-bg-end) 100%);
+  color: var(--hm-text);
+  padding: var(--hm-padding);
+  border-radius: var(--hm-radius);
+  width: min(92%, var(--hm-max-width));
+  box-shadow: 0 6px 28px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--hm-border);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  line-height: 1.6;
+  font-size: 16px;
+  /* comfortable reading size */
+  max-height: 86vh;
+  /* keep original behavior */
+  overflow: auto;
+
+  /* Headings */
+  :where(h1, h2, h3, h4, h5) {
+    color: var(--hm-text);
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+    line-height: 1.25;
+    font-weight: 700;
+  }
+
+  h2 {
+    font-size: 1.375rem;
+  }
+
+  h3 {
+    font-size: 1.125rem;
+  }
+
+  h4 {
+    font-size: 1rem;
+  }
+
+  /* Paragraphs and text blocks */
+  p {
+    margin: 0 0 0.9rem 0;
+    color: var(--hm-muted);
+  }
+
+  .lead {
+    color: var(--hm-text);
+    font-weight: 600;
+  }
+
+  /* Lists */
+  ul,
+  ol {
+    margin: 0 0 0.9rem 1.25rem;
+    color: var(--hm-muted);
+  }
+
+  li {
+    margin-bottom: 0.45rem;
+  }
+
+  em {
+    color: var(--hm-text);
+    font-style: italic;
+  }
+
+  /* Link styles: visible and accessible */
+  a {
+    color: var(--hm-accent-2);
+    text-decoration: none;
+    border-bottom: 1px dashed rgba(255, 40, 39, 0.12);
+  }
+
+  a:hover,
+  a:focus {
+    text-decoration: underline;
+  }
+
+  /* Button */
+  .hm-modal-close {
+    margin-top: 1rem;
+    padding: 10px 14px;
+    background: linear-gradient(180deg, #444 0%, #333 100%);
+    color: #eee;
+    border: 1px solid #555;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .hm-modal-close:hover {
+    background: linear-gradient(180deg, #555 0%, #444 100%);
+    border-color: #666;
+  }
+
+  .hm-modal-close:focus {
+    /* use app theme for focus state to subtly tie into the application branding */
+    outline: 3px solid var(--hm-theme);
+    outline-offset: 3px;
+  }
+
+  /* Small helper styles for images, code, and tables in help content */
+  img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 0.5rem 0;
+    border-radius: 6px;
+  }
+
+  pre,
+  code {
+    background: rgba(255, 255, 255, 0.02);
+    color: var(--hm-text);
+    padding: 0.2rem 0.4rem;
+    border-radius: 4px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", "Courier New", monospace;
+    font-size: 0.95em;
+  }
+
+  pre {
+    padding: 0.8rem;
+    overflow: auto;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.75rem 0;
+  }
+
+  th,
+  td {
+    padding: 0.5rem;
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    text-align: left;
+  }
+
+  /* Utility: visually separate major sections */
+  .help-section {
+    margin-top: 0.75rem;
+    padding-top: 0.5rem;
+    border-top: 1px dashed rgba(255, 255, 255, 0.03);
+  }
+
+  /* Header layout: clean, professional, minimal accent */
+  .hm-modal-header {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-bottom: 1.2rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--hm-border);
+    background: none;
+    border-radius: 8px 8px 0 0;
+  }
+
+  .hm-modal-header h1 {
+    margin: 0;
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--hm-text);
+    display: block;
+    letter-spacing: 0.01em;
+    text-shadow: none;
+    padding: 0.1rem 0.2rem;
+    border-radius: 4px;
+    background: none;
+    box-shadow: none;
+    border: none;
+  }
+
+  /* small badge utility to call out important notes in help content */
+  strong {
+    display: inline-block;
+    padding: 0.1rem 0.3rem;
+    border-radius: 10px;
+    background: var(--hm-theme);
+    color: var(--hm-text);
+    font-size: 0.8rem;
+    font-weight: 700;
+    border: 1px solid rgba(186, 22, 12, 0.14);
+    vertical-align: middle;
+  }
+
+  strong.red {
+    background: var(--hm-theme);
+    border-color: rgba(255, 40, 39, 0.14);
+  }
+
+  strong.green {
+    background: #137928;
+    border-color: rgba(22, 186, 55, 0.14);
+  }
+
+  strong.amber {
+    background: #9e8516;
+    border-color: rgba(186, 155, 22, 0.14);
+  }
+
+  strong.blue {
+    background: #164dba;
+    border-color: rgba(22, 155, 186, 0.14);
+  }
+
+  .hm-modal-footer {
+    margin-top: 1.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px dashed rgba(255, 255, 255, 0.03);
+    text-align: right;
+  }
+}

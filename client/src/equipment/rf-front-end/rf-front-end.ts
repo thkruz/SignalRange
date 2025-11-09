@@ -321,8 +321,8 @@ export class RFFrontEnd extends BaseEquipment {
 
       <!-- Bottom Status Bar -->
       <div class="equipment-case-footer">
-        <div class="signal-path-readout">
-        ${this.formatSignalPath()}
+        <div class="bottom-status-bar">
+          <!-- Alarms -->
         </div>
         <div class="mode-toggle">
         <button class="btn-mode-toggle" data-action="toggle-advanced-mode" title="Toggle Advanced Mode">
@@ -391,6 +391,28 @@ export class RFFrontEnd extends BaseEquipment {
 
     // Attach event listeners after DOM is created
     this.attachEventListeners();
+
+    this.startAlarmMonitoring_();
+  }
+
+  protected startAlarmMonitoring_(): void {
+    // Start monitoring for alarms in the RF Front End
+    setInterval(() => {
+      this.checkForAlarms_();
+    }, 3000);
+  }
+
+  protected checkForAlarms_(): void {
+    const alarms = this.checkAlarms();
+
+    const statusBarElement = qs(`.bottom-status-bar`);
+    if (alarms.length > 0) {
+      statusBarElement.innerText = `ALARMS: ${alarms.join(', ')}`;
+      statusBarElement.classList.add('has-alarms');
+    } else {
+      statusBarElement.innerText = `SYSTEM NORMAL`;
+      statusBarElement.classList.remove('has-alarms');
+    }
   }
 
   protected attachEventListeners(): void {
@@ -649,7 +671,7 @@ export class RFFrontEnd extends BaseEquipment {
     this.state.hpa.isOverdriven = this.state.hpa.backOff < 3;
   }
 
-  private checkAlarms(): void {
+  private checkAlarms(): string[] {
     // HPA overdrive check (back-off < 3 dB is typically considered overdrive)
     this.state.hpa.isOverdriven = this.state.hpa.backOff < 3;
 
@@ -666,34 +688,8 @@ export class RFFrontEnd extends BaseEquipment {
     if (alarms.length > 0) {
       // this.emit(Events.RF_FE_ALARM, { unit: this.id, alarms });
     }
-  }
 
-  private formatSignalPath(): string {
-    if (!this.state.isPowered) {
-      return 'POWERED OFF';
-    }
-
-    const tx = this.state.signalPath.txPath;
-    const rx = this.state.signalPath.rxPath;
-
-    if (this.state.signalFlowDirection === 'TX') {
-      return `TX: ${(tx.ifFrequency / 1e6).toFixed(0)} MHz IF → ` +
-        `[BUC LO +${this.state.buc.loFrequency}] → ` +
-        `${(tx.rfFrequency / 1e6).toFixed(0)} MHz RF ` +
-        `${this.state.hpa.isPowered ? `→ [HPA ${this.state.hpa.outputPower.toFixed(1)} dBW] ` : ''}` +
-        `→ [Filter -${this.state.filter.insertionLoss.toFixed(1)} dB] ` +
-        `→ ${tx.rfPower.toFixed(1)} dBm`;
-    }
-
-    if (this.state.signalFlowDirection === 'RX') {
-      return `RX: ${(rx.rfFrequency / 1e6).toFixed(0)} MHz RF → ` +
-        `[Filter -${this.state.filter.insertionLoss.toFixed(1)} dB] → ` +
-        `[LNB LO -${this.state.lnb.loFrequency}] → ` +
-        `${(rx.ifFrequency / 1e6).toFixed(0)} MHz IF ` +
-        `(G=${rx.totalGain.toFixed(1)} dB, NF=${rx.noiseFigure.toFixed(1)} dB)`;
-    }
-
-    return 'IDLE';
+    return alarms;
   }
 
   private syncDomWithState(): void {
@@ -705,12 +701,6 @@ export class RFFrontEnd extends BaseEquipment {
     // Update UI based on state changes
     const container = qs(`.equipment-box[data-unit="${this.state.uuid}"]`);
     if (!container) return;
-
-    // Update signal path readout
-    const pathReadout = container.querySelector('.signal-path-readout');
-    if (pathReadout) {
-      pathReadout.textContent = this.formatSignalPath();
-    }
 
     // Update power switches
     if (this.powerSwitch) {

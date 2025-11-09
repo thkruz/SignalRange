@@ -45,7 +45,6 @@ export interface RFFrontEndState {
   teamId: number;
   serverId: number;
   isPowered: boolean;
-  isExtRefPresent: boolean;
   signalFlowDirection: 'TX' | 'RX' | 'IDLE';
 
   omt: OMTState;
@@ -97,7 +96,6 @@ export class RFFrontEnd extends BaseEquipment {
       teamId: this.teamId,
       serverId: serverId,
       isPowered: true,
-      isExtRefPresent: true,
       signalFlowDirection: 'IDLE',
 
       omt: {
@@ -183,6 +181,8 @@ export class RFFrontEnd extends BaseEquipment {
         warmupTimeRemaining: 0, // seconds
         temperature: 30, // °C
         gnssSignalPresent: true,
+        isGnssSwitchUp: true,
+        isGnssAcquiringLock: false,
         satelliteCount: 9,
         utcAccuracy: 0,
         constellation: 'GPS',
@@ -288,7 +288,7 @@ export class RFFrontEnd extends BaseEquipment {
             <div id="rf-fe-power-${this.state.uuid}" class="equipment-case-main-power"></div>
             <div class="equipment-case-status-indicator">
               <span class="equipment-case-status-label">EXT REF</span>
-              <div class="led ${this.state.isExtRefPresent && this.state.buc.isExtRefLocked ? 'led-green' : 'led-amber'}"></div>
+              <div class="led led-green"></div>
             </div>
           </div>
         </div>
@@ -466,7 +466,6 @@ export class RFFrontEnd extends BaseEquipment {
 
     // Update scalar properties
     if (data.isPowered !== undefined) this.state.isPowered = data.isPowered;
-    if (data.isExtRefPresent !== undefined) this.state.isExtRefPresent = data.isExtRefPresent;
     if (data.signalFlowDirection !== undefined) this.state.signalFlowDirection = data.signalFlowDirection;
 
     this.syncDomWithState();
@@ -619,21 +618,6 @@ export class RFFrontEnd extends BaseEquipment {
       this.state.hpa.isPowered = false;
     }
 
-    // External reference lock propagation
-    if (!this.state.isExtRefPresent) {
-      this.state.buc.isExtRefLocked = false;
-      this.state.lnb.isExtRefLocked = false;
-    } else {
-      // Simulate lock acquisition (requires both powered and ref present)
-      if (this.state.buc.isPowered && !this.state.buc.isExtRefLocked) {
-        // In real system, this would be time-based (2-5 seconds)
-        this.state.buc.isExtRefLocked = true;
-      }
-      if (this.state.lnb.isPowered && !this.state.lnb.isExtRefLocked) {
-        this.state.lnb.isExtRefLocked = true;
-      }
-    }
-
     // HPA temperature calculation based on output power
     if (this.state.hpa.isPowered) {
       const powerWatts = Math.pow(10, this.state.hpa.outputPower / 10);
@@ -676,13 +660,6 @@ export class RFFrontEnd extends BaseEquipment {
     // HPA overdrive check (back-off < 3 dB is typically considered overdrive)
     this.state.hpa.isOverdriven = this.state.hpa.backOff < 3;
 
-    // External reference alarms
-    if (!this.state.isExtRefPresent) {
-      // No external reference available - both should show unlocked
-      this.state.buc.isExtRefLocked = false;
-      this.state.lnb.isExtRefLocked = false;
-    }
-
     // Collect alarm messages
     const alarms: string[] = [
       ...this.omtModule.getAlarms(),
@@ -692,10 +669,6 @@ export class RFFrontEnd extends BaseEquipment {
       ...this.lnbModule.getAlarms(),
       ...this.gpsdoModule.getAlarms(),
     ];
-
-    if (!this.state.isExtRefPresent) {
-      alarms.push('External reference lost');
-    }
 
     if (alarms.length > 0) {
       // this.emit(Events.RF_FE_ALARM, { unit: this.id, alarms });
@@ -746,32 +719,12 @@ export class RFFrontEnd extends BaseEquipment {
       pathReadout.textContent = this.formatSignalPath();
     }
 
-    // Update LED indicators
-    this.updateLEDs(container);
-
     // Update power switches
     if (this.powerSwitch) {
       this.powerSwitch.sync(this.state.isPowered);
     }
 
     this.lastRenderState = JSON.stringify(this.state);
-  }
-
-  private updateLEDs(container: Element): void {
-    // External reference LED
-    const extRefLed = container.querySelector('.equipment-case-status-indicator .led');
-    if (extRefLed) {
-      extRefLed.className = `led ${this.state.isExtRefPresent && this.state.buc.isExtRefLocked
-        ? 'led-green'
-        : 'led-amber'
-        }`;
-    }
-
-    // LNB lock LED
-    const lnbLockLed = container.querySelector('.lnb-module .led-indicator .led');
-    if (lnbLockLed) {
-      lnbLockLed.className = `led ${this.state.lnb.isExtRefLocked ? 'led-green' : 'led-red'}`;
-    }
   }
 
   /**
@@ -784,26 +737,6 @@ export class RFFrontEnd extends BaseEquipment {
       this.state.buc.isPowered = false;
       this.state.hpa.isPowered = false;
       this.state.lnb.isPowered = false;
-    }
-    this.syncDomWithState();
-  }
-
-  setExternalReference(isPresent: boolean): void {
-    this.state.isExtRefPresent = isPresent;
-    if (!isPresent) {
-      this.state.buc.isExtRefLocked = false;
-      this.state.lnb.isExtRefLocked = false;
-    } else {
-      // Simulate lock acquisition after reference restored
-      setTimeout(() => {
-        if (this.state.buc.isPowered) {
-          this.state.buc.isExtRefLocked = true;
-        }
-        if (this.state.lnb.isPowered) {
-          this.state.lnb.isExtRefLocked = true;
-        }
-        this.syncDomWithState();
-      }, 2000);
     }
     this.syncDomWithState();
   }

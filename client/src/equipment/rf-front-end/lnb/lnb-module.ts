@@ -122,7 +122,7 @@ export class LNBModule extends RFFrontEndModule<LNBState> {
         this.state_.isPowered = isPowered;
 
         // Simulate lock acquisition when powered on
-        if (isPowered && this.rfFrontEnd_.state.isExtRefPresent) {
+        if (isPowered && this.rfFrontEnd_.gpsdoModule.get10MhzOutput().isPresent) {
           setTimeout(() => {
             this.state_.isExtRefLocked = true;
             this.syncDomWithState_();
@@ -220,7 +220,7 @@ export class LNBModule extends RFFrontEndModule<LNBState> {
    */
   private updateLockStatus_(): void {
     const parentPowered = this.rfFrontEnd_.state.isPowered;
-    const extRefPresent = this.rfFrontEnd_.state.isExtRefPresent;
+    const extRefPresent = this.rfFrontEnd_.gpsdoModule.get10MhzOutput().isPresent;
 
     if (!parentPowered || !this.state_.isPowered) {
       this.state_.isExtRefLocked = false;
@@ -264,7 +264,7 @@ export class LNBModule extends RFFrontEndModule<LNBState> {
     const alarms: string[] = [];
 
     const parentPowered = this.rfFrontEnd_.state.isPowered;
-    const extRefPresent = this.rfFrontEnd_.state.isExtRefPresent;
+    const extRefPresent = this.rfFrontEnd_.gpsdoModule.get10MhzOutput().isPresent;
 
     // Lock alarm
     if (this.state_.isPowered && !this.state_.isExtRefLocked && extRefPresent && parentPowered) {

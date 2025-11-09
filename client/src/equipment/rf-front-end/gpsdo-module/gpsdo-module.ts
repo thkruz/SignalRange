@@ -1,11 +1,20 @@
 import { App } from '@app/app';
 import { PowerSwitch } from '@app/components/power-switch/power-switch';
 import { ToggleSwitch } from '@app/components/toggle-switch/toggle-switch';
+import { clamp } from '@app/engine/ootk/src/utils';
 import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
 import { RFFrontEnd } from '../rf-front-end';
 import { RFFrontEndModule } from '../rf-front-end-module';
 import './gpsdo-module.css';
+
+/**
+ * GLOSSARY:
+ * GPSDO - GPS Disciplined Oscillator
+ * OCXO - Oven-Controlled Crystal Oscillator
+ * 1PPS - One Pulse Per Second
+ * GNSS - Global Navigation Satellite System (ie. GPS, GLONASS, etc.)
+ */
 
 /**
  * GPS Disciplined Oscillator Module State
@@ -24,6 +33,10 @@ export interface GPSDOState {
   // ═══ GNSS Receiver State ═══
   /** GPS/GNSS signal present */
   gnssSignalPresent: boolean;
+  /** GNSS switch state */
+  isGnssSwitchUp: boolean;
+  /** GNSS Attempting to Acquire Lock */
+  isGnssAcquiringLock: boolean;
   /** Number of satellites being tracked */
   satelliteCount: number;
   /** UTC time accuracy in nanoseconds */
@@ -83,6 +96,7 @@ export class GPSDOModule extends RFFrontEndModule<GPSDOState> {
   private warmupInterval_: number | null = null;
   private stabilityInterval_: number | null = null;
   private holdoverInterval_: number | null = null;
+  domCache_: any;
 
   static create(state: GPSDOState, rfFrontEnd: RFFrontEnd, unit: number = 1): GPSDOModule {
     this.instance_ ??= new GPSDOModule(state, rfFrontEnd, unit);
@@ -106,7 +120,7 @@ export class GPSDOModule extends RFFrontEndModule<GPSDOState> {
 
     this.gnssSwitch_ = ToggleSwitch.create(
       `${this.uniqueId}-gnss`,
-      this.state_.gnssSignalPresent,
+      this.state_.isGnssSwitchUp,
       false
     );
 
@@ -120,15 +134,15 @@ export class GPSDOModule extends RFFrontEndModule<GPSDOState> {
               <label>GNSS</label>
               ${this.gnssSwitch_.html}
             </div>
-            <div class="led-indicator">
+            <div id="lock-led" class="led-indicator">
               <span class="indicator-label">LOCK</span>
               <div class="led ${this.getLockLedStatus_()}"></div>
             </div>
-            <div class="led-indicator">
+            <div id="gnss-led" class="led-indicator">
               <span class="indicator-label">GNSS</span>
               <div class="led ${this.getGnssLedStatus_()}"></div>
             </div>
-            <div class="led-indicator">
+            <div id="warm-led" class="led-indicator">
               <span class="indicator-label">WARM</span>
               <div class="led ${this.getWarmupLedStatus_()}"></div>
             </div>
@@ -185,7 +199,9 @@ export class GPSDOModule extends RFFrontEndModule<GPSDOState> {
 
   private getLockLedStatus_(): string {
     if (!this.state_.isPowered) return 'led-off';
-    if (!this.state_.isLocked) return 'led-red';
+    if (!this.state_.isLocked && !this.state_.isGnssAcquiringLock) return 'led-red';
+    if (this.state_.isGnssAcquiringLock) return 'led-amber';
+    // Must be locked
     return 'led-green';
   }
 
@@ -232,6 +248,11 @@ export class GPSDOModule extends RFFrontEndModule<GPSDOState> {
           this.startStabilityMonitor_();
         } else {
           this.state_.isLocked = false;
+          this.state_.isInHoldover = false;
+          this.state_.holdoverDuration = 0;
+          this.state_.gnssSignalPresent = false;
+          this.state_.isGnssAcquiringLock = false;
+          this.state_.satelliteCount = 0;
           this.state_.lockDuration = 0;
           this.stopWarmupTimer_();
           this.stopStabilityMonitor_();
@@ -244,26 +265,57 @@ export class GPSDOModule extends RFFrontEndModule<GPSDOState> {
     });
 
     // GNSS switch handler
-    this.gnssSwitch_.addEventListeners((hasGnss: boolean) => {
-      this.state_.gnssSignalPresent = hasGnss;
+    this.gnssSwitch_.addEventListeners((isGnssSwitchUp: boolean) => {
+      // Change the GNSS switch state
+      this.state_.isGnssSwitchUp = isGnssSwitchUp;
+      this.state_.gnssSignalPresent = false;
 
-      if (hasGnss) {
-        // GNSS acquired - exit holdover
-        this.state_.isInHoldover = false;
-        this.state_.holdoverDuration = 0;
-        this.state_.holdoverError = 0;
-        this.state_.satelliteCount = 4 + Math.floor(Math.random() * 8); // 4-12 sats
-        this.stopHoldoverMonitor_();
+      if (isGnssSwitchUp && this.state_.isPowered) {
+        this.state.isGnssAcquiringLock = true;
+        setTimeout(() => {
+          // GNSS acquired - exit holdover
+          this.state_.gnssSignalPresent = true;
+          this.state_.isGnssAcquiringLock = false;
+          this.state_.satelliteCount = 4 + Math.floor(Math.random() * 8); // 4-12 sats
+          this.state_.isInHoldover = false;
+          this.state_.holdoverError = 0;
+          this.updateLockStatus_();
+          this.syncDomWithState_();
+          cb(this.state_);
+        }, 5000);
       } else if (this.state_.isLocked) {
+        this.state.isGnssAcquiringLock = false;
         // GNSS lost - enter holdover mode
         this.state_.isInHoldover = true;
         this.state_.satelliteCount = 0;
         this.startHoldoverMonitor_();
       }
 
+      this.updateLockStatus_();
       this.syncDomWithState_();
       cb(this.state_);
     });
+
+    this.initializeDomCache_();
+  }
+
+  private initializeDomCache_() {
+    const container = qs('.gpsdo-module');
+    this.domCache_ = {
+      container,
+      lockLed: qs('#lock-led .led', container),
+      gnssLed: qs('#gnss-led .led', container),
+      warmLed: qs('#warm-led .led', container),
+      freqAccuracy: qs('.gpsdo-freq-accuracy', container),
+      stability: qs('.gpsdo-stability', container),
+      phaseNoise: qs('.gpsdo-phase-noise', container),
+      sats: qs('.gpsdo-sats', container),
+      utc: qs('.gpsdo-utc', container),
+      temp: qs('.gpsdo-temp', container),
+      warmup: qs('.gpsdo-warmup', container),
+      outputs: qs('.gpsdo-outputs', container),
+      holdover: qs('.gpsdo-holdover', container),
+    };
   }
 
   /**
@@ -278,9 +330,6 @@ export class GPSDOModule extends RFFrontEndModule<GPSDOState> {
 
     // Update thermal state
     this.updateThermalState_();
-
-    // Update external reference status in RF Front-End
-    this.updateRfFrontEndReference_();
   }
 
   /**
@@ -290,6 +339,7 @@ export class GPSDOModule extends RFFrontEndModule<GPSDOState> {
     const parentPowered = this.rfFrontEnd_.state.isPowered;
     const canLock = parentPowered &&
       this.state_.isPowered &&
+      this.state_.isGnssSwitchUp &&
       this.state_.warmupTimeRemaining === 0;
 
     if (canLock) {
@@ -307,10 +357,19 @@ export class GPSDOModule extends RFFrontEndModule<GPSDOState> {
    * Update signal quality parameters
    */
   private updateSignalQuality_(): void {
-    if (!this.state_.isPowered || !this.state_.isLocked) {
+    if (!this.state_.isPowered || (!this.state_.isLocked && !this.state_.isInHoldover)) {
       this.state_.phaseNoise = 0;
-      this.state_.frequencyAccuracy = 1000; // Poor when unlocked
-      this.state_.allanDeviation = 100;
+      this.state_.frequencyAccuracy = 999; // Poor when unlocked
+      this.state_.allanDeviation = 99;
+      return;
+    }
+
+    if (this.state_.isInHoldover) {
+      // In holdover: maintain specs with OCXO, but degrade slowly
+      this.state_.phaseNoise = -120 + Math.random() * 5; // -120 to -125 dBc/Hz
+      this.state_.frequencyAccuracy = 0.5 + Math.random() * 4.5 + this.state_.holdoverError * 0.05; // degrade with error
+      this.state_.allanDeviation = 0.5 + Math.random() * 4.5 + this.state_.holdoverError * 0.05;
+      this.state_.utcAccuracy = 0; // No GPS timing
       return;
     }
 
@@ -354,15 +413,6 @@ export class GPSDOModule extends RFFrontEndModule<GPSDOState> {
   }
 
   /**
-   * Update RF Front-End reference status
-   */
-  private updateRfFrontEndReference_(): void {
-    // Inform RF Front-End about reference availability
-    const isRefStable = this.isOutputStable();
-    this.rfFrontEnd_.state.isExtRefPresent = isRefStable;
-  }
-
-  /**
    * Reset state when powering on
    */
   private resetToWarmupState_(): void {
@@ -371,12 +421,13 @@ export class GPSDOModule extends RFFrontEndModule<GPSDOState> {
     this.state_.isLocked = false;
     this.state_.lockDuration = 0;
     this.state_.temperature = 25; // Room temp
-    this.state_.frequencyAccuracy = 1000; // Poor when cold
-    this.state_.allanDeviation = 100;
+    this.state_.frequencyAccuracy = 999; // Poor when cold
+    this.state_.allanDeviation = 99;
     this.state_.phaseNoise = -80;
     this.state_.isInHoldover = false;
     this.state_.holdoverDuration = 0;
     this.state_.holdoverError = 0;
+    this.state_.satelliteCount = 0;
   }
 
   /**
@@ -462,6 +513,12 @@ export class GPSDOModule extends RFFrontEndModule<GPSDOState> {
       // Add small random variations to metrics
       this.addMetricVariations_();
 
+      // Satellite count should increase/decrease slightly, staying between 4-12
+      if (this.state_.gnssSignalPresent && Math.random() < 0.2) {
+        const satChange = Math.floor(Math.random() * 3) - 1; // -1, 0, or +1
+        this.state_.satelliteCount = clamp(this.state_.satelliteCount + satChange, 4, 12);
+      }
+
       this.syncDomWithState_();
     }, 5000); // Update every 5 seconds
   }
@@ -492,6 +549,7 @@ export class GPSDOModule extends RFFrontEndModule<GPSDOState> {
    * Start holdover monitoring
    */
   private startHoldoverMonitor_(): void {
+    // Only start if not already running
     if (this.holdoverInterval_) return;
 
     this.holdoverInterval_ = window.setInterval(() => {
@@ -511,11 +569,10 @@ export class GPSDOModule extends RFFrontEndModule<GPSDOState> {
       // Frequency accuracy degrades in holdover at aging rate
       this.state_.frequencyAccuracy += this.state_.agingRate * 0.05 / (365 * 86400); // ppm/year → per second
 
-      // If holdover error exceeds spec, lose lock
+      // If holdover error exceeds spec
       if (this.state_.holdoverError > 40) {
-        this.state_.isLocked = false;
-        this.state_.lockDuration = 0;
-        this.stopHoldoverMonitor_();
+        // This is where the 10Mhz output would become unstable
+        // TODO: Implement output instability behavior
       }
 
       this.syncDomWithState_();
@@ -600,60 +657,61 @@ export class GPSDOModule extends RFFrontEndModule<GPSDOState> {
       return; // No changes, skip update
     }
 
-    const container = qs('.gpsdo-module');
-    if (!container) return;
+    if (this.state.isPowered && this.stabilityInterval_ === null) {
+      this.startStabilityMonitor_();
+    }
 
     // Update LEDs
-    const lockLed = qs('.led-indicators .led-indicator:nth-child(1) .led', container);
-    if (lockLed) lockLed.className = `led ${this.getLockLedStatus_()}`;
+    this.domCache_.lockLed.className = `led ${this.getLockLedStatus_()}`;
+    this.domCache_.gnssLed.className = `led ${this.getGnssLedStatus_()}`;
+    this.domCache_.warmLed.className = `led ${this.getWarmupLedStatus_()}`;
 
-    const gnssLed = qs('.led-indicators .led-indicator:nth-child(2) .led', container);
-    if (gnssLed) gnssLed.className = `led ${this.getGnssLedStatus_()}`;
+    if (!this.state.isPowered) {
+      // If powered off, make all screens blank and greyed out using a CSS class
+      const statusDisplays = this.domCache_.container.querySelector('.status-displays');
+      if (statusDisplays) {
+        statusDisplays.classList.add('status-displays-off');
+      }
+      this.domCache_.freqAccuracy.textContent = '---.--';
+      this.domCache_.stability.textContent = '---.--';
+      this.domCache_.phaseNoise.textContent = '---.-';
+      this.domCache_.sats.textContent = '--';
+      this.domCache_.utc.textContent = '---';
+      this.domCache_.temp.textContent = '--.-';
+      this.domCache_.warmup.textContent = '----';
+      this.domCache_.outputs.textContent = '--/--';
+      this.domCache_.holdover.textContent = '---.-';
+    } else {
+      // Remove powered-off class
+      const statusDisplays = this.domCache_.container.querySelector('.status-displays');
+      if (statusDisplays) {
+        statusDisplays.classList.remove('status-displays-off');
+      }
+      // Update displays
+      this.domCache_.freqAccuracy.textContent = this.state_.frequencyAccuracy.toFixed(3);
+      this.domCache_.stability.textContent = this.state_.allanDeviation.toFixed(3);
+      this.domCache_.phaseNoise.textContent = this.state_.phaseNoise.toFixed(1);
+      this.domCache_.sats.textContent = this.state_.satelliteCount.toString();
+      this.domCache_.utc.textContent = this.state_.utcAccuracy.toFixed(0);
+      this.domCache_.temp.textContent = this.state_.temperature.toFixed(1);
+      this.domCache_.warmup.textContent = this.formatWarmupTime_();
+      this.domCache_.outputs.textContent = `${this.state_.active10MHzOutputs}/${this.state_.max10MHzOutputs}`;
 
-    const warmLed = qs('.led-indicators .led-indicator:nth-child(3) .led', container);
-    if (warmLed) warmLed.className = `led ${this.getWarmupLedStatus_()}`;
-
-    // Update displays
-    const freqAccuracyDisplay = qs('.gpsdo-freq-accuracy', container);
-    if (freqAccuracyDisplay) freqAccuracyDisplay.textContent = this.state_.frequencyAccuracy.toFixed(3);
-
-    const stabilityDisplay = qs('.gpsdo-stability', container);
-    if (stabilityDisplay) stabilityDisplay.textContent = this.state_.allanDeviation.toFixed(3);
-
-    const phaseNoiseDisplay = qs('.gpsdo-phase-noise', container);
-    if (phaseNoiseDisplay) phaseNoiseDisplay.textContent = this.state_.phaseNoise.toFixed(1);
-
-    const satsDisplay = qs('.gpsdo-sats', container);
-    if (satsDisplay) satsDisplay.textContent = this.state_.satelliteCount.toString();
-
-    const utcDisplay = qs('.gpsdo-utc', container);
-    if (utcDisplay) utcDisplay.textContent = this.state_.utcAccuracy.toFixed(0);
-
-    const tempDisplay = qs('.gpsdo-temp', container);
-    if (tempDisplay) tempDisplay.textContent = this.state_.temperature.toFixed(1);
-
-    const warmupDisplay = qs('.gpsdo-warmup', container);
-    if (warmupDisplay) warmupDisplay.textContent = this.formatWarmupTime_();
-
-    const outputsDisplay = qs('.gpsdo-outputs', container);
-    if (outputsDisplay) outputsDisplay.textContent = `${this.state_.active10MHzOutputs}/${this.state_.max10MHzOutputs}`;
-
-    const holdoverDisplay = qs('.gpsdo-holdover', container);
-    if (holdoverDisplay) {
-      holdoverDisplay.textContent = this.state_.holdoverError.toFixed(1);
+      this.domCache_.holdover.textContent = (this.state_.holdoverError).toFixed(3);
       // Color code: green when GPS locked, yellow in holdover, red when excessive
       if (!this.state_.isInHoldover) {
-        holdoverDisplay.style.color = '#0f0';
+        this.domCache_.holdover.style.color = '#0f0';
       } else if (this.state_.holdoverError < 30) {
-        holdoverDisplay.style.color = '#ff0';
+        this.domCache_.holdover.style.color = '#ff0';
       } else {
-        holdoverDisplay.style.color = '#f00';
+        this.domCache_.holdover.style.color = '#f00';
       }
     }
 
+
     // Sync UI components
     this.powerSwitch_.sync(this.state_.isPowered);
-    this.gnssSwitch_.sync(this.state_.gnssSignalPresent);
+    this.gnssSwitch_.sync(this.state_.isGnssSwitchUp);
   }
 
   /**
@@ -670,6 +728,16 @@ export class GPSDOModule extends RFFrontEndModule<GPSDOState> {
    */
   getFrequencyAccuracy(): number {
     return this.state_.frequencyAccuracy * 1e-11; // Convert to fraction
+  }
+
+  get10MhzOutput(): {
+    isPresent: boolean;
+    isWarmedUp: boolean;
+  } {
+    return {
+      isPresent: this.state_.isPowered,
+      isWarmedUp: this.state_.warmupTimeRemaining === 0,
+    };
   }
 
   /**

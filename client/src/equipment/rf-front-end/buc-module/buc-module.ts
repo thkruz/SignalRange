@@ -196,8 +196,8 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
       if (parentPowered) {
         this.state_.isPowered = isPowered;
 
-        // Simulate lock acquisition when powered on
-        if (isPowered && this.rfFrontEnd_.state.isExtRefPresent) {
+        // Check for external reference lock after power on
+        if (isPowered && (this.rfFrontEnd_.gpsdoModule.get10MhzOutput().isPresent)) {
           setTimeout(() => {
             this.state_.isExtRefLocked = true;
             this.syncDomWithState_();
@@ -292,7 +292,7 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
    */
   private updateLockStatus_(): void {
     const parentPowered = this.rfFrontEnd_.state.isPowered;
-    const extRefPresent = this.rfFrontEnd_.state.isExtRefPresent;
+    const extRefPresent = this.rfFrontEnd_.gpsdoModule.get10MhzOutput().isPresent;
 
     const canLock = parentPowered && this.state_.isPowered && extRefPresent;
 
@@ -303,7 +303,11 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
         this.state_.isExtRefLocked = true;
       }
       // When locked, frequency error is minimal
-      this.state_.frequencyError = 0;
+      if (this.rfFrontEnd_.gpsdoModule.get10MhzOutput().isWarmedUp) {
+        this.state_.frequencyError = 0;
+      } else {
+        this.updateFrequencyDrift_();
+      }
     } else {
       this.state_.isExtRefLocked = false;
       this.updateFrequencyDrift_();
@@ -315,7 +319,7 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
    * Drift is ±1-100 ppm of LO frequency
    */
   private updateFrequencyDrift_(): void {
-    if (this.state_.isExtRefLocked) {
+    if (this.state_.isExtRefLocked && this.rfFrontEnd_.gpsdoModule.get10MhzOutput().isWarmedUp) {
       this.state_.frequencyError = 0;
       return;
     }
@@ -467,7 +471,7 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
     }
 
     const parentPowered = this.rfFrontEnd_.state.isPowered;
-    const extRefPresent = this.rfFrontEnd_.state.isExtRefPresent;
+    const extRefPresent = this.rfFrontEnd_.gpsdoModule.get10MhzOutput().isPresent;
 
     // Lock alarm
     if (!this.state_.isExtRefLocked && extRefPresent && parentPowered) {

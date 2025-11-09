@@ -252,7 +252,7 @@ export class RFFrontEnd extends BaseEquipment {
     this.updateSystemNoiseFigure_();
 
     // Check for alarms and faults
-    this.checkAlarms();
+    this.checkForAlarms_();
   }
 
   connectAntenna(antenna: Antenna): void {
@@ -322,7 +322,7 @@ export class RFFrontEnd extends BaseEquipment {
       <!-- Bottom Status Bar -->
       <div class="equipment-case-footer">
         <div class="bottom-status-bar">
-          <!-- Alarms -->
+          SYSTEM NORMAL
         </div>
         <div class="mode-toggle">
         <button class="btn-mode-toggle" data-action="toggle-advanced-mode" title="Toggle Advanced Mode">
@@ -391,21 +391,12 @@ export class RFFrontEnd extends BaseEquipment {
 
     // Attach event listeners after DOM is created
     this.attachEventListeners();
-
-    this.startAlarmMonitoring_();
-  }
-
-  protected startAlarmMonitoring_(): void {
-    // Start monitoring for alarms in the RF Front End
-    setInterval(() => {
-      this.checkForAlarms_();
-    }, 3000);
   }
 
   protected checkForAlarms_(): void {
     const alarms = this.checkAlarms();
 
-    const statusBarElement = qs(`.bottom-status-bar`);
+    const statusBarElement = qs(`.rf-front-end-box .bottom-status-bar`);
     if (alarms.length > 0) {
       statusBarElement.innerText = `ALARMS: ${alarms.join(', ')}`;
       statusBarElement.classList.add('has-alarms');

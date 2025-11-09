@@ -1,5 +1,6 @@
 import { PowerSwitch } from "@app/components/power-switch/power-switch";
 import { RotaryKnob } from "@app/components/rotary-knob/rotary-knob";
+import { ToggleSwitch } from "@app/components/toggle-switch/toggle-switch";
 import { Degrees } from "@app/engine/ootk/src/main";
 import { EventBus } from "@app/events/event-bus";
 import { Sfx } from "@app/sound/sfx-enum";
@@ -28,7 +29,7 @@ export interface AntennaState {
   /** Antenna skew between -90 and 90 degrees */
   skew: Degrees;
   /** is loopback enabled */
-  isLoopbackEnabled: boolean;
+  isLoopback: boolean;
   /** is antenna locked on a satellite */
   isLocked: boolean;
   /** is auto-tracking enabled */
@@ -47,13 +48,15 @@ export interface AntennaState {
 export class Antenna extends BaseEquipment {
   /** Current antenna state */
   state: AntennaState;
+  private readonly powerSwitch_: PowerSwitch;
+  private readonly skewKnob_: RotaryKnob;
+  private readonly loopbackSwitch_: ToggleSwitch;
   /** Input state being edited in the UI before applying changes */
   private inputState: AntennaState;
   private lastRenderState: AntennaState;
-  transmitters: Transmitter[] = [];
-  powerSwitch: PowerSwitch;
-  skewKnob: RotaryKnob;
   private rfFrontEnd_: RFFrontEnd | null = null;
+
+  transmitters: Transmitter[] = [];
 
   constructor(parentId: string, teamId: number = 1, serverId: number = 1) {
     super(parentId, teamId);
@@ -65,7 +68,7 @@ export class Antenna extends BaseEquipment {
       serverId: serverId,
       noradId: 1,
       skew: 0 as Degrees,
-      isLoopbackEnabled: false,
+      isLoopback: false,
       isLocked: false,
       isAutoTrackEnabled: false,
       isOperational: true,
@@ -74,21 +77,8 @@ export class Antenna extends BaseEquipment {
       noiseFloor: -130,
     };
 
-    // Input state starts as a copy of current state
-    this.inputState = structuredClone(this.state);
-    const parentDom = this.initializeDom(parentId);
-    this.lastRenderState = structuredClone(this.state);
-    this.addListeners_(parentDom);
-
-    EventBus.getInstance().on(Events.UPDATE, this.update.bind(this));
-    EventBus.getInstance().on(Events.SYNC, this.syncDomWithState.bind(this));
-  }
-
-  initializeDom(parentId: string): HTMLElement {
-    const parentDom = super.initializeDom(parentId);
-
-    this.powerSwitch = PowerSwitch.create(`antenna-power-switch-${this.state.uuid}`, this.state.isPowered);
-    this.skewKnob = RotaryKnob.create(
+    this.powerSwitch_ = PowerSwitch.create(`antenna-power-switch-${this.state.uuid}`, this.state.isPowered);
+    this.skewKnob_ = RotaryKnob.create(
       `antenna-skew-knob-${this.state.uuid}`,
       this.state.skew,
       -90,
@@ -96,6 +86,25 @@ export class Antenna extends BaseEquipment {
       1,
       (value) => this.handleSkewChange_(value)
     );
+
+    this.loopbackSwitch_ = ToggleSwitch.create(
+      `antenna-loopback-${this.state.uuid}`,
+      this.state.isLoopback,
+      false
+    );
+
+    // Input state starts as a copy of current state
+    this.inputState = structuredClone(this.state);
+    const parentDom = this.initializeDom(parentId);
+    this.lastRenderState = structuredClone(this.state);
+    this.addListeners_(parentDom);
+
+    EventBus.getInstance().on(Events.UPDATE, this.update.bind(this));
+    EventBus.getInstance().on(Events.SYNC, this.syncDomWithState_.bind(this));
+  }
+
+  initializeDom(parentId: string): HTMLElement {
+    const parentDom = super.initializeDom(parentId);
 
     parentDom.innerHTML = html`
       <div class="equipment-box">
@@ -113,19 +122,11 @@ export class Antenna extends BaseEquipment {
         <div class="antenna-controls">
           <!-- Loopback Switch Section -->
           <div class="loopback-section">
-            <div class="loopback-switch">
-              <div class="loopback-label">Loopback</div>
-              <button
-                class="btn-loopback ${this.state.isLoopbackEnabled ? 'active' : ''}"
-                data-action="loopback">
-                <img
-                  src="/assets/baseball_switch_${this.state.isLoopbackEnabled ? '2' : '1'}.png"
-                  alt="Loopback Switch"
-                  class="switch-image"
-                />
-              </button>
-              <div class="loopback-label">Antenna</div>
+            <div class="status-indicator loopback">
+              <span id="ant-loopback-light" class="indicator-light ${this.state.isLoopback ? 'on' : 'off'}"></span>
+              <span class="indicator-label">Loopback to<br />OMT</span>
             </div>
+            ${this.loopbackSwitch_.html}
           </div>
 
           <!-- Antenna Configuration -->
@@ -144,7 +145,7 @@ export class Antenna extends BaseEquipment {
 
             <div class="config-row">
               <label>Skew</label>
-              ${this.skewKnob.html}
+              ${this.skewKnob_.html}
               <span id="labelSkew" class="current-value">${this.state.skew}°</span>
             </div>
 
@@ -168,15 +169,15 @@ export class Antenna extends BaseEquipment {
 
             <div class="config-actions">
               <button class="btn-apply" data-action="apply">Apply</button>
-              ${this.powerSwitch.html}
+              ${this.powerSwitch_.html}
             </div>
           </div>
         </div>
 
         <!-- Bottom Status Bar -->
         <div class="equipment-case-footer">
-          <div class="signal-path-readout">
-            Placeholder for Bottom Status Bar
+          <div class="bottom-status-bar">
+            SYSTEM NORMAL
           </div>
           <div class="mode-toggle">
             <button class="btn-mode-toggle" data-action="toggle-advanced-mode">
@@ -190,7 +191,6 @@ export class Antenna extends BaseEquipment {
     this.domCache['parent'] = parentDom;
     this.domCache['status'] = qs('.equipment-case-status-label', parentDom);
     this.domCache['led'] = qs('.led', parentDom);
-    this.domCache['btnLoopback'] = qs('.btn-loopback', parentDom);
     this.domCache['inputTarget'] = qs('.input-target', parentDom);
     this.domCache['inputTrack'] = qs('.input-track', parentDom);
     this.domCache['lockStatus'] = qs('.lock-status', parentDom);
@@ -198,29 +198,30 @@ export class Antenna extends BaseEquipment {
     this.domCache['labelTarget'] = qs('#labelTarget', parentDom);
     this.domCache['labelLockStatus'] = qs('#labelLockStatus', parentDom);
     this.domCache['labelSkew'] = qs('#labelSkew', parentDom);
+    this.domCache['antLoopbackLight'] = qs('#ant-loopback-light', parentDom);
+    this.domCache['bottomStatusBar'] = qs('.bottom-status-bar', parentDom);
 
     return parentDom;
   }
 
   protected addListeners_(parentDom: HTMLElement): void {
-    // Loopback switch
-    const btnLoopback = qs('.btn-loopback', parentDom);
-    btnLoopback?.addEventListener('click', () => this.toggleLoopback_());
-
     // Input changes
     const inputs = parentDom.querySelectorAll('input, select');
     inputs.forEach(input => {
       input.addEventListener('change', (e) => this.handleInputChange_(e));
     });
 
-    this.skewKnob.attachListeners();
+    this.skewKnob_?.attachListeners();
+
+    // Loopback switch handler
+    this.loopbackSwitch_?.addEventListeners(this.toggleLoopback_.bind(this));
 
     // Apply button
     const btnApply = qs('.btn-apply', parentDom);
     btnApply?.addEventListener('click', () => this.applyChanges_());
 
     // Power switch
-    this.powerSwitch.addEventListeners(this.togglePower_.bind(this));
+    this.powerSwitch_.addEventListeners(this.togglePower_.bind(this));
 
     // Track switch special handling
     const trackSwitch = qs('.input-track', parentDom) as HTMLInputElement;
@@ -230,27 +231,57 @@ export class Antenna extends BaseEquipment {
       if (data.uuid === this.uuid) {
         this.state.isLocked = data.locked;
         this.updateSignalStatus_();
-        this.syncDomWithState();
+        this.syncDomWithState_();
       }
     });
+  }
+
+  private updateBottomStatusBar_(): void {
+    const statusBarElement = this.domCache['bottomStatusBar'];
+    if (!this.state.isOperational) {
+      statusBarElement.innerText = `ANTENNA NOT OPERATIONAL`;
+      statusBarElement.className = 'bottom-status-bar red';
+      return;
+    }
+
+    if (this.state.isLoopback) {
+      statusBarElement.innerText = `LOOPBACK ENABLED`;
+      statusBarElement.className = 'bottom-status-bar blue';
+      return;
+    }
+
+    if (this.state.isAutoTrackEnabled && !this.state.isLocked) {
+      statusBarElement.innerText = `ACQUIRING LOCK...`;
+      statusBarElement.className = 'bottom-status-bar amber';
+      return;
+    }
+
+    if (this.state.isLocked && !this.state.isLoopback) {
+      statusBarElement.innerText = `LOCKED ON SATELLITE ${this.state.noradId}`;
+      statusBarElement.className = 'bottom-status-bar green';
+      return;
+    }
+
+    statusBarElement.innerText = `DISCONNECTED`;
+    statusBarElement.className = 'bottom-status-bar amber';
   }
 
   protected initialize_(): void {
     // Start in operational state_
     this.updateSignalStatus_();
-    this.syncDomWithState();
+    this.syncDomWithState_();
   }
 
   update(): void {
     this.updateSignalStatus_();
-    this.syncDomWithState();
+    this.syncDomWithState_();
   }
 
   sync(data: Partial<AntennaState>): void {
     this.state = { ...this.state, ...data };
     this.inputState = { ...this.state };
     this.updateSignalStatus_();
-    this.syncDomWithState();
+    this.syncDomWithState_();
   }
 
   get txSignalsIn(): RfSignal[] {
@@ -342,23 +373,23 @@ export class Antenna extends BaseEquipment {
     this.emit(Events.ANTENNA_CONFIG_CHANGED, this.state);
 
     this.updateSignalStatus_();
-    this.syncDomWithState();
+    this.syncDomWithState_();
   }
 
-  private toggleLoopback_(): void {
+  private toggleLoopback_(isSwitchUp: boolean): void {
     if (!this.state.isOperational) {
       this.emit(Events.ANTENNA_ERROR, { message: 'Antenna is not operational' });
       return;
     }
 
-    this.state.isLoopbackEnabled = !this.state.isLoopbackEnabled;
+    this.state.isLoopback = isSwitchUp;
 
     this.emit(Events.ANTENNA_LOOPBACK_CHANGED, {
-      loopback: this.state.isLoopbackEnabled
+      loopback: this.state.isLoopback
     });
 
     this.updateSignalStatus_();
-    this.syncDomWithState();
+    this.syncDomWithState_();
   }
 
   private togglePower_(): void {
@@ -375,7 +406,7 @@ export class Antenna extends BaseEquipment {
     });
 
     this.updateSignalStatus_();
-    this.syncDomWithState();
+    this.syncDomWithState_();
   }
 
   private handleTrackChange_(parentDom: HTMLElement): void {
@@ -397,7 +428,7 @@ export class Antenna extends BaseEquipment {
       setTimeout(() => {
         this.state.isLocked = true;
         this.updateSignalStatus_();
-        this.syncDomWithState();
+        this.syncDomWithState_();
         this.emit(Events.ANTENNA_LOCKED, { locked: true });
       }, 7000); // 7 second delay to acquire lock
     } else {
@@ -411,7 +442,7 @@ export class Antenna extends BaseEquipment {
     });
 
     this.updateSignalStatus_();
-    this.syncDomWithState();
+    this.syncDomWithState_();
   }
 
   private updateSignalStatus_(): void {
@@ -425,7 +456,7 @@ export class Antenna extends BaseEquipment {
 
     // Check transmitters for signals being sent to this antenna
     for (const sig of this.txSignalsOut) {
-      if (!this.state.isLoopbackEnabled) {
+      if (!this.state.isLoopback) {
         // Pass the signal to the SimulationManager
         SimulationManager.getInstance().addSignal(sig);
       }
@@ -483,19 +514,19 @@ export class Antenna extends BaseEquipment {
     this.rfFrontEnd_ = rfFrontEnd;
   }
 
-  syncDomWithState(): void {
+  private syncDomWithState_(): void {
     if (JSON.stringify(this.state) === JSON.stringify(this.lastRenderState)) {
       return; // No changes, skip update
     }
+
+    this.updateBottomStatusBar_();
 
     // Update status
     // this.domCache['status'].textContent = this.getStatusText();
     this.domCache['led'].className = `led ${this.getLedColor_()}`;
 
-    // Update buttons
-    this.domCache['btnLoopback'].className = `btn-loopback ${this.state.isLoopbackEnabled ? 'active' : ''}`;
-
-    this.powerSwitch.sync(this.state.isPowered);
+    this.powerSwitch_.sync(this.state.isPowered);
+    this.loopbackSwitch_.sync(this.state.isLoopback);
 
     // Update inputs
     (this.domCache['inputTarget'] as HTMLSelectElement).value = this.inputState.noradId.toString();
@@ -509,8 +540,10 @@ export class Antenna extends BaseEquipment {
     this.domCache['labelTarget'].textContent = `Satellite ${this.state.noradId}`;
     this.domCache['labelSkew'].textContent = `${this.state.skew}°`;
 
+    this.domCache['antLoopbackLight'].className = `indicator-light ${this.state.isLoopback ? 'on' : 'off'}`;
+
     // Update skew knob
-    this.skewKnob.sync(this.state.skew);
+    this.skewKnob_.sync(this.state.skew);
 
     // Save last render state
     this.lastRenderState = structuredClone(this.state);
@@ -519,9 +552,9 @@ export class Antenna extends BaseEquipment {
   private getLedColor_(): string {
     if (!this.state.isPowered) return '';
     if (!this.state.isOperational) return 'led-amber';
-    if (this.state.isLoopbackEnabled) return 'led-amber';
-    if (this.state.isLocked && !this.state.isLoopbackEnabled && !this.rfFrontEnd_?.hpaModule.state.isHpaEnabled) return 'led-green';
-    if (!this.state.isLoopbackEnabled && this.rfFrontEnd_?.hpaModule.state.isHpaEnabled) return 'led-red';
+    if (this.state.isLoopback) return 'led-amber';
+    if (this.state.isLocked && !this.state.isLoopback && !this.rfFrontEnd_?.hpaModule.state.isHpaEnabled) return 'led-green';
+    if (!this.state.isLoopback && this.rfFrontEnd_?.hpaModule.state.isHpaEnabled) return 'led-red';
     return 'led-amber';
   }
 }

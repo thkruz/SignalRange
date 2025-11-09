@@ -173,6 +173,14 @@ export class OMTModule extends RFFrontEndModule<OMTState> {
   }
 
   get rxSignalsIn(): RfSignal[] {
+    if (this.rfFrontEnd_.antenna.state.isLoopback) {
+      // In loopback mode, RX signals come from the TX path
+      return this.txSignalsOut.map(sig => ({
+        ...sig,
+        polarization: sig.polarization === 'H' ? 'V' : 'H', // Reverse polarization for RX
+      }));
+    }
+
     return this.rfFrontEnd_.antenna.state.rxSignalsIn;
   }
 

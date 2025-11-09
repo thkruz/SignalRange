@@ -14,6 +14,7 @@ export type TapPoint = 'TX IF' | 'RX IF' | 'POST BUC / PRE HPA TX RF' | 'POST HP
  * Spectrum Analyzer coupler module state
  */
 export interface CouplerState {
+  isPowered: boolean;
   tapPointA: TapPoint;
   tapPointB: TapPoint;
   couplingFactorA: number; // dB (typically -30)
@@ -52,40 +53,41 @@ export class CouplerModule extends RFFrontEndModule<CouplerState> {
       <div class="rf-fe-module coupler-module">
         <div class="module-label">SPEC-A TAPS</div>
         <div class="module-controls">
-          <!-- Tap Point A -->
-          <div class="control-group">
-            <label>TAP POINT A</label>
-            <select class="input-coupler-tap-a" data-param="tapPointA">
-              ${tapPointOptions.map(tp => `<option value="${tp}"${this.state_.tapPointA === tp ? ' selected' : ''}>${tp}</option>`).join('\n')}
-            </select>
-          </div>
-          <div class="led-indicator">
-            <span class="indicator-label">ACTIVE A</span>
-            <div class="led ${this.state_.isActiveA ? 'led-green' : 'led-off'}"></div>
-          </div>
-
-          <!-- Coupling Factor Display -->
-          <div class="value-display">
-            <span class="display-label">COUPLING A:</span>
-            <span id="coupling-factor-a" class="value-readout">${this.state_.couplingFactorA} dB</span>
+          <div class="led-indicators">
+            <div class="led-indicator">
+              <span class="indicator-label">ACTIVE A</span>
+              <div class="led led-a ${this.state_.isActiveA ? 'led-green' : 'led-off'}"></div>
+            </div>
+            <div class="led-indicator">
+              <span class="indicator-label">ACTIVE B</span>
+              <div class="led led-b ${this.state_.isActiveB ? 'led-green' : 'led-off'}"></div>
+            </div>
           </div>
 
-          <!-- Tap Point B -->
-          <div class="control-group">
-            <label>TAP POINT B</label>
-            <select class="input-coupler-tap-b" data-param="tapPointB">
-              ${tapPointOptions.map(tp => `<option value="${tp}"${this.state_.tapPointB === tp ? ' selected' : ''}>${tp}</option>`).join('\n')}
-            </select>
-          </div>
-          <div class="led-indicator">
-            <span class="indicator-label">ACTIVE B</span>
-            <div class="led ${this.state_.isActiveB ? 'led-green' : 'led-off'}"></div>
+          <div class="status-displays">
+            <div class="control-group">
+              <label>TAP POINT A</label>
+              <select class="input-coupler-tap-a" data-param="tapPointA">
+                ${tapPointOptions.map(tp => `<option value="${tp}"${this.state_.tapPointA === tp ? ' selected' : ''}>${tp}</option>`).join('\n')}
+              </select>
+            </div>
+            <div class="control-group">
+              <label>TAP POINT B</label>
+              <select class="input-coupler-tap-b" data-param="tapPointB">
+                ${tapPointOptions.map(tp => `<option value="${tp}"${this.state_.tapPointB === tp ? ' selected' : ''}>${tp}</option>`).join('\n')}
+              </select>
+            </div>
           </div>
 
-          <!-- Coupling Factor Display -->
-          <div class="value-display">
-            <span class="display-label">COUPLING B:</span>
-            <span id="coupling-factor-b" class="value-readout">${this.state_.couplingFactorB} dB</span>
+          <div class="status-displays">
+            <div class="control-group">
+              <label>COUPLING A (dB)</label>
+              <div class="digital-display coupling-factor-a">${this.state_.couplingFactorA}</div>
+            </div>
+            <div class="control-group">
+              <label>COUPLING B (dB)</label>
+              <div class="digital-display coupling-factor-b">${this.state_.couplingFactorB}</div>
+            </div>
           </div>
         </div>
       </div>
@@ -229,34 +231,26 @@ export class CouplerModule extends RFFrontEndModule<CouplerState> {
     if (!container) return;
 
     // Update Active A LED
-    const ledA = container.querySelectorAll('.led-indicator .led')[0];
+    const ledA = qs('.led-a', container);
     if (ledA) {
       ledA.className = `led ${this.state_.isActiveA ? 'led-green' : 'led-off'}`;
     }
 
     // Update Active B LED
-    const ledB = container.querySelectorAll('.led-indicator .led')[1];
+    const ledB = qs('.led-b', container);
     if (ledB) {
       ledB.className = `led ${this.state_.isActiveB ? 'led-green' : 'led-off'}`;
     }
 
     // Update coupling factor display
-    const couplingReadoutA = qs('#coupling-factor-a', container);
-    if (couplingReadoutA) {
-      couplingReadoutA.textContent = `${this.state_.couplingFactorA} dB`;
-    }
-
-    // Update coupling factor display
-    const couplingReadoutB = qs('#coupling-factor-b', container);
-    if (couplingReadoutB) {
-      couplingReadoutB.textContent = `${this.state_.couplingFactorB} dB`;
-    }
+    qs('.coupling-factor-a', container).textContent = `${this.state_.couplingFactorA} dB`;
+    qs('.coupling-factor-b', container).textContent = `${this.state_.couplingFactorB} dB`;
 
     // Update select values
-    const selectA = qs('.input-coupler-tap-a', container) as HTMLSelectElement;
+    const selectA: HTMLSelectElement = qs('.input-coupler-tap-a', container);
     if (selectA) selectA.value = this.state_.tapPointA;
 
-    const selectB = qs('.input-coupler-tap-b', container) as HTMLSelectElement;
+    const selectB: HTMLSelectElement = qs('.input-coupler-tap-b', container);
     if (selectB) selectB.value = this.state_.tapPointB;
   }
 

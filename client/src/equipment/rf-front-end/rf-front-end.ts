@@ -99,6 +99,7 @@ export class RFFrontEnd extends BaseEquipment {
       signalFlowDirection: 'IDLE',
 
       omt: {
+        isPowered: true,
         txPolarization: 'H',
         rxPolarization: 'V',
         effectiveTxPol: 'H',
@@ -147,6 +148,7 @@ export class RFFrontEnd extends BaseEquipment {
       },
 
       filter: {
+        isPowered: true,
         bandwidthIndex: 9, // 20 MHz
         bandwidth: 20 as MHz, // MHz
         insertionLoss: 2.0, // dB
@@ -167,6 +169,7 @@ export class RFFrontEnd extends BaseEquipment {
       },
 
       coupler: {
+        isPowered: true,
         tapPointA: 'TX IF',
         tapPointB: 'RX IF',
         couplingFactorA: -30, // dB
@@ -293,45 +296,21 @@ export class RFFrontEnd extends BaseEquipment {
           </div>
         </div>
 
-        <!-- Signal Flow Diagram -->
-        <div class="rf-fe-signal-flow">
-          <svg class="signal-flow-line" viewBox="0 0 700 80" preserveAspectRatio="none">
-            <!-- TX Path (top half) -->
-            <line class="flow-line flow-tx ${this.state.signalFlowDirection === 'TX' ? 'active' : ''}"
-                  x1="50" y1="25" x2="650" y2="25" />
-            <polygon class="flow-arrow flow-tx" points="645,25 635,20 635,30" />
-
-            <!-- RX Path (bottom half) -->
-            <line class="flow-line flow-rx ${this.state.signalFlowDirection === 'RX' ? 'active' : ''}"
-                  x1="650" y1="55" x2="50" y2="55" />
-            <polygon class="flow-arrow flow-rx" points="55,55 65,50 65,60" />
-
-            <!-- Module connection points -->
-            <circle class="flow-point" cx="120" cy="40" r="3" />
-            <circle class="flow-point" cx="240" cy="40" r="3" />
-            <circle class="flow-point" cx="360" cy="40" r="3" />
-            <circle class="flow-point" cx="480" cy="40" r="3" />
-            <circle class="flow-point" cx="600" cy="40" r="3" />
-          </svg>
-        </div>
-
         <!-- Main Module Container -->
         <div class="rf-fe-modules">
-          ${this.omtModule.html}
-          ${this.bucModule.html}
-          ${this.hpaModule.html}
-
-          <!-- Filter/Preselector Module -->
-          ${this.filterModule.html}
-
-          <!-- LNB Module -->
-          ${this.lnbModule.html}
-
-          <!-- Spec-A Coupler Module -->
-          ${this.couplerModule.html}
-
-          <!-- Receiver Lock Module -->
+          <div class="stacked-modules">
+            ${this.omtModule.html}
+            ${this.couplerModule.html}
+          </div>
+          <div class="stacked-modules">
+            ${this.bucModule.html}
+            ${this.hpaModule.html}
+          </div>
           ${this.gpsdoModule.html}
+          <div class="stacked-modules">
+            ${this.lnbModule.html}
+            ${this.filterModule.html}
+          </div>
         </div>
 
         <!-- Bottom Status Bar -->

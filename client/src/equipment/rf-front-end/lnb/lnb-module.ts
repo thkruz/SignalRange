@@ -1,16 +1,15 @@
-import { PowerSwitch } from '@app/components/power-switch/power-switch';
-import { RotaryKnob } from '@app/components/rotary-knob/rotary-knob';
+import { RotaryKnob } from "@app/components/rotary-knob/rotary-knob";
 import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
 import { IfFrequency, IfSignal, MHz, RfFrequency, RfSignal, SignalOrigin } from '@app/types';
 import { RFFrontEnd } from '../rf-front-end';
-import { RFFrontEndModule } from '../rf-front-end-module';
+import { RFFrontEndModule, RFFrontEndModuleState } from '../rf-front-end-module';
 import './lnb-module.css';
 
 /**
  * Low Noise Block converter module state
  */
-export interface LNBState {
+export interface LNBState extends RFFrontEndModuleState {
   noiseFloor: number;
   isPowered: boolean;
   loFrequency: MHz;
@@ -25,10 +24,9 @@ export interface LNBState {
 export class LNBModule extends RFFrontEndModule<LNBState> {
   private static instance_: LNBModule;
 
-  private readonly powerSwitch: PowerSwitch;
-  private readonly gainKnob: RotaryKnob;
   postLNASignals: RfSignal[] = [];
   ifSignals: IfSignal[] = [];
+  loKnob_: any;
 
   static create(state: LNBState, rfFrontEnd: RFFrontEnd, unit: number = 1): LNBModule {
     this.instance_ ??= new LNBModule(state, rfFrontEnd, unit);
@@ -42,22 +40,18 @@ export class LNBModule extends RFFrontEndModule<LNBState> {
   private constructor(state: LNBState, rfFrontEnd: RFFrontEnd, unit: number = 1) {
     super(state, rfFrontEnd, 'rf-fe-lnb', unit);
 
-    // Create UI components
-    this.powerSwitch = PowerSwitch.create(
-      `${this.uniqueId}-power`,
-      this.state_.isPowered,
-      false,
-      true,
-    );
+    // Create UI components using base class methods
+    this.createPowerSwitch();
+    this.createGainKnob(0, 70, 1);
 
-    this.gainKnob = RotaryKnob.create(
-      `${this.uniqueId}-gain-knob`,
-      this.state_.gain,
-      0, // For training purposes, allow 0 dB gain
-      65,
-      1,
+    this.loKnob_ = RotaryKnob.create(
+      `${this.uniqueId}-lo-knob`,
+      this.state_.loFrequency,
+      3700,
+      4200,
+      10,
       (value: number) => {
-        this.state_.gain = value;
+        this.state_.loFrequency = value as MHz;
         this.rfFrontEnd_.calculateSignalPath();
       }
     );
@@ -66,38 +60,44 @@ export class LNBModule extends RFFrontEndModule<LNBState> {
       <div class="rf-fe-module lnb-module">
         <div class="module-label">Low Noise Block</div>
         <div class="module-controls">
-          <div class="control-group">
-            <label>LO (MHz)</label>
-            <input type="number"
-                   class="input-lnb-lo"
-                   data-param="lnb.loFrequency"
-                   value="${this.state_.loFrequency}"
-                   min="3700" max="4200" step="10" />
-            <div class="digital-display lnb-lo-display">${this.state_.loFrequency}</div>
+          <div class="split-top-section">
+            <div class="control-group power-switch">
+              ${this.powerSwitch_?.html || ''}
+            </div>
+            <div class="led-indicators">
+              <div class="led-indicator">
+                <span class="indicator-label">LOCK</span>
+                <div class="led ${this.getLockLedStatus()}"></div>
+              </div>
+              <div class="led-indicator">
+                <span class="indicator-label">NOISE TEMP</span>
+                <div class="led led-blue" style="filter: brightness(${this.getNoiseTempBrightness__()})"></div>
+              </div>
+            </div>
           </div>
-          <div class="control-group">
-            <label>GAIN (dB)</label>
-            ${this.gainKnob.html}
+          <div class="input-knobs">
+            <div class="control-group">
+                <label>LO (MHz)</label>
+                ${this.loKnob_.html}
+              </div>
+            <div class="control-group">
+              <label>GAIN (dB)</label>
+              ${this.gainKnob_?.html || ''}
+            </div>
           </div>
-          <div class="led-indicator">
-            <span class="indicator-label">LOCK</span>
-            <div class="led ${this.getLockLedStatus_()}"></div>
+          <div class="status-displays">
+            <div class="control-group">
+              <label>LO (MHz)</label>
+              <div class="digital-display lnb-lo-display">${this.state_.loFrequency}</div>
+            </div>
+            <div class="control-group">
+              <label>NOISE TEMP (K)</label>
+              <div class="digital-display lnb-noise-temp-display">${this.state_.noiseTemperature.toFixed(0)}</div>
+            </div>
           </div>
-          <div class="led-indicator">
-            <span class="indicator-label">NOISE TEMP</span>
-            <div class="led led-blue" style="filter: brightness(${this.getNoiseTempBrightness__()})"></div>
-            <span id="noise-temp-readout" class="value-readout lnb-noise-temp">${this.state_.noiseTemperature.toFixed(0)} K</span>
-          </div>
-        </div>
-        <div class="control-group power-switch">
-          ${this.powerSwitch.html}
         </div>
       </div>
     `;
-  }
-
-  private getLockLedStatus_(): string {
-    return this.state_.isExtRefLocked ? 'led-green' : 'led-red';
   }
 
   private getNoiseTempBrightness__(): number {
@@ -110,52 +110,21 @@ export class LNBModule extends RFFrontEndModule<LNBState> {
    * Add event listeners for user interactions
    */
   addEventListeners(cb: (state: LNBState) => void): void {
-    if (!this.powerSwitch || !this.gainKnob) {
+    if (!this.powerSwitch_ || !this.gainKnob_) {
       console.warn('LNBModule: Cannot add event listeners - components not initialized');
       return;
     }
 
-    // Power switch handler
-    this.powerSwitch.addEventListeners((isPowered: boolean) => {
-      const parentPowered = this.rfFrontEnd_.state.isPowered;
-      if (parentPowered) {
-        this.state_.isPowered = isPowered;
-
-        // Simulate lock acquisition when powered on
-        if (isPowered && this.rfFrontEnd_.gpsdoModule.get10MhzOutput().isPresent) {
-          setTimeout(() => {
-            this.state_.isExtRefLocked = true;
-            this.syncDomWithState_();
-            cb(this.state_);
-          }, 2000);
-        } else if (!isPowered) {
-          this.state_.isExtRefLocked = false;
-        }
-
-        this.syncDomWithState_();
-        cb(this.state_);
-      }
+    // Power switch handler using base class method
+    this.addPowerSwitchListener(cb, () => {
+      this.simulateLockAcquisition(2000, 2000, () => cb(this.state_));
     });
 
     // LO frequency input handler
-    const container = qs('.lnb-module');
-    if (container) {
-      const loInput = container.querySelector('.input-lnb-lo');
-      if (loInput) {
-        loInput.addEventListener('change', (e: Event) => {
-          const target = e.target as HTMLInputElement;
-          const value = parseFloat(target.value);
-          if (!isNaN(value)) {
-            this.state_.loFrequency = value as MHz;
-            this.syncDomWithState_();
-            cb(this.state_);
-          }
-        });
-      }
-    }
+    this.loKnob_.attachListeners();
 
     // Gain knob already has its callback set in constructor
-    this.gainKnob.attachListeners();
+    this.gainKnob_?.attachListeners();
   }
 
   /**
@@ -217,23 +186,10 @@ export class LNBModule extends RFFrontEndModule<LNBState> {
 
   /**
    * Update lock status based on power and external reference
+   * Uses base class implementation
    */
   private updateLockStatus_(): void {
-    const parentPowered = this.rfFrontEnd_.state.isPowered;
-    const extRefPresent = this.rfFrontEnd_.gpsdoModule.get10MhzOutput().isPresent;
-
-    if (!parentPowered || !this.state_.isPowered) {
-      this.state_.isExtRefLocked = false;
-    } else if (extRefPresent) {
-      if (!this.state_.isExtRefLocked) {
-        setTimeout(() => {
-          this.state_.isExtRefLocked = true;
-          this.syncDomWithState_();
-        }, 2000 + Math.random() * 3000); // 2-5 seconds
-      }
-    } else {
-      this.state_.isExtRefLocked = false;
-    }
+    this.updateLockStatus();
   }
 
   /**
@@ -249,13 +205,8 @@ export class LNBModule extends RFFrontEndModule<LNBState> {
   sync(state: Partial<LNBState>): void {
     super.sync(state);
 
-    // Update UI components
-    if (this.powerSwitch && state.isPowered !== undefined) {
-      this.powerSwitch.sync(state.isPowered);
-    }
-    if (this.gainKnob && state.gain !== undefined) {
-      this.gainKnob.sync(state.gain);
-    }
+    // Sync common UI components using base class method
+    this.syncCommonComponents(state);
   }
 
   /**
@@ -264,8 +215,8 @@ export class LNBModule extends RFFrontEndModule<LNBState> {
   getAlarms(): string[] {
     const alarms: string[] = [];
 
-    const parentPowered = this.rfFrontEnd_.state.isPowered;
-    const extRefPresent = this.rfFrontEnd_.gpsdoModule.get10MhzOutput().isPresent;
+    const parentPowered = this.isParentPowered();
+    const extRefPresent = this.isExtRefPresent();
 
     // Lock alarm
     if (this.state_.isPowered && !this.state_.isExtRefLocked && extRefPresent && parentPowered) {
@@ -298,25 +249,35 @@ export class LNBModule extends RFFrontEndModule<LNBState> {
 
     // Update LO frequency display
     const loDisplay = qs('.lnb-lo-display', container);
-    loDisplay.textContent = this.state_.loFrequency.toString();
+    if (loDisplay) {
+      loDisplay.textContent = this.state_.loFrequency.toString();
+    }
 
     // Update LO frequency input
-    const loInput: HTMLInputElement = qs('.input-lnb-lo', container);
-    loInput.value = this.state_.loFrequency.toString();
+    const loInput: HTMLInputElement | null = qs('.input-lnb-lo', container);
+    if (loInput) {
+      loInput.value = this.state_.loFrequency.toString();
+    }
 
-    // Update lock LED
+    // Update lock LED using base class method
     const lockLed = qs('.led-indicator .led', container);
-    lockLed.className = `led ${this.getLockLedStatus_()}`;
+    if (lockLed) {
+      lockLed.className = `led ${this.getLockLedStatus()}`;
+    }
 
     // Update noise temperature display and LED
-    const noiseTempReadout = qs('#noise-temp-readout', container);
-    noiseTempReadout.textContent = `${this.state_.noiseTemperature.toFixed(0)} K`;
+    const noiseTempReadout = qs('.lnb-noise-temp-display', container);
+    if (noiseTempReadout) {
+      noiseTempReadout.textContent = `${this.state_.noiseTemperature.toFixed(1)}`;
+    }
 
     const noiseTempLed = qs('.led-blue', container);
-    noiseTempLed.style.filter = `brightness(${this.getNoiseTempBrightness__()})`;
+    if (noiseTempLed) {
+      noiseTempLed.style.filter = `brightness(${this.getNoiseTempBrightness__()})`;
+    }
 
-    this.powerSwitch.sync(this.state_.isPowered);
-    this.gainKnob.sync(this.state_.gain);
+    // Sync UI components using base class method
+    this.syncCommonComponents(this.state_);
   }
 
   /**

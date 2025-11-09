@@ -91,7 +91,7 @@ export interface GPSDOState {
 export class GPSDOModule extends RFFrontEndModule<GPSDOState> {
   private static instance_: GPSDOModule;
 
-  private readonly powerSwitch_: PowerSwitch;
+  protected readonly powerSwitch_: PowerSwitch;
   private readonly gnssSwitch_: ToggleSwitch;
   private warmupInterval_: number | null = null;
   private stabilityInterval_: number | null = null;
@@ -128,28 +128,33 @@ export class GPSDOModule extends RFFrontEndModule<GPSDOState> {
       <div class="rf-fe-module gpsdo-module">
         <div class="module-label">GPS Disciplined Oscillator</div>
         <div class="module-controls">
-          <!-- Status LEDs -->
-          <div class="led-indicators">
-            <div class="control-group">
-              <label>GNSS</label>
-              ${this.gnssSwitch_.html}
+          <div class="split-top-section">
+            <!-- Input Knobs -->
+            <div class="input-knobs">
+              <div class="control-group">
+                <label>GNSS</label>
+                ${this.gnssSwitch_.html}
+              </div>
             </div>
-            <div id="lock-led" class="led-indicator">
-              <span class="indicator-label">LOCK</span>
-              <div class="led ${this.getLockLedStatus_()}"></div>
-            </div>
-            <div id="gnss-led" class="led-indicator">
-              <span class="indicator-label">GNSS</span>
-              <div class="led ${this.getGnssLedStatus_()}"></div>
-            </div>
-            <div id="warm-led" class="led-indicator">
-              <span class="indicator-label">WARM</span>
-              <div class="led ${this.getWarmupLedStatus_()}"></div>
+            <!-- Status LEDs -->
+            <div class="led-indicators">
+              <div id="lock-led" class="led-indicator">
+                <span class="indicator-label">LOCK</span>
+                <div class="led ${this.getLockLedStatus_()}"></div>
+              </div>
+              <div id="gnss-led" class="led-indicator">
+                <span class="indicator-label">GNSS</span>
+                <div class="led ${this.getGnssLedStatus_()}"></div>
+              </div>
+              <div id="warm-led" class="led-indicator">
+                <span class="indicator-label">WARM</span>
+                <div class="led ${this.getWarmupLedStatus_()}"></div>
+              </div>
             </div>
           </div>
 
           <!-- Status Displays -->
-          <div class="status-displays grid-columns-2">
+          <div class="status-displays">
             <div class="control-group">
               <label>FREQ ACCURACY (×10⁻¹¹)</label>
               <div class="digital-display gpsdo-freq-accuracy">${this.state_.frequencyAccuracy.toFixed(3)}</div>

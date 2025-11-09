@@ -8,7 +8,6 @@ import { GPSDOState } from "@app/equipment/rf-front-end/gpsdo-module/gpsdo-modul
 import { HPAState } from "@app/equipment/rf-front-end/hpa-module/hpa-module";
 import { LNBState } from "@app/equipment/rf-front-end/lnb/lnb-module";
 import { OMTState } from "@app/equipment/rf-front-end/omt-module/omt-module";
-import { ReceiverLockState } from "@app/equipment/rf-front-end/receiver-lock-module/receiver-lock-module";
 import { RFFrontEndState } from "@app/equipment/rf-front-end/rf-front-end";
 import { ReceiverModemState } from "../equipment/receiver/receiver";
 import { TransmitterModem } from "../equipment/transmitter/transmitter";
@@ -125,7 +124,6 @@ export enum Events {
   RF_FE_OMT_CHANGED = "rf-fe:omt:changed",
   RF_FE_COUPLER_CHANGED = "rf-fe:coupler:changed",
   RF_FE_FILTER_CHANGED = "rf-fe:filter:changed",
-  RF_FE_RECEIVER_LOCK_CHANGED = "rf-fe:receiver-lock:changed",
   RF_FE_GPSDO_CHANGED = "rf-fe:gpsdo:changed",
 }
 
@@ -145,7 +143,6 @@ export interface EventMap {
   [Events.RF_FE_OMT_CHANGED]: [Partial<OMTState>];
   [Events.RF_FE_COUPLER_CHANGED]: [Partial<CouplerState>];
   [Events.RF_FE_FILTER_CHANGED]: [Partial<IfFilterBankState>];
-  [Events.RF_FE_RECEIVER_LOCK_CHANGED]: [Partial<ReceiverLockState>];
   [Events.RF_FE_GPSDO_CHANGED]: [Partial<GPSDOState>];
   [Events.RF_FE_ALARM]: [{
     unit: number;

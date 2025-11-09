@@ -32,7 +32,7 @@ export interface HPAState {
 export class HPAModule extends RFFrontEndModule<HPAState> {
   private static instance_: HPAModule;
 
-  private readonly powerSwitch: PowerSwitch;
+  protected readonly powerSwitch_: PowerSwitch;
   private readonly backOffKnob: RotaryKnob;
   rfSignalsIn: RfSignal[] = [];
   outputSignals: RfSignal[] = [];
@@ -58,14 +58,14 @@ export class HPAModule extends RFFrontEndModule<HPAState> {
     super(state, rfFrontEnd, 'rf-fe-hpa', unit);
 
     // Create UI components
-    this.powerSwitch = PowerSwitch.create(
+    this.powerSwitch_ = PowerSwitch.create(
       `${this.uniqueId}-enable`,
       this.state_.isPowered,
-      false,
       true,
+      false,
     );
 
-    this.hpaSwitch = SecureToggleSwitch.create(`hpa-switch-${this.rfFrontEnd_.state.uuid}`, this.state.isHpaSwitchEnabled);
+    this.hpaSwitch = SecureToggleSwitch.create(`hpa-switch-${this.rfFrontEnd_.state.uuid}`, this.state.isHpaSwitchEnabled, false);
 
     this.backOffKnob = RotaryKnob.create(
       `${this.uniqueId}-backoff-knob`,
@@ -83,34 +83,39 @@ export class HPAModule extends RFFrontEndModule<HPAState> {
       <div class="rf-fe-module hpa-module">
         <div class="module-label">High Power Amplifier</div>
         <div class="module-controls">
+          <div class="led-indicators">
+            <div class="led-indicator">
+              <span class="indicator-label">IMD</span>
+              <div class="led ${this.state_.isOverdriven ? 'led-orange' : 'led-off'}"></div>
+            </div>
+          </div>
           <div class="input-knobs">
+            <div class="control-group">
+              ${this.powerSwitch_.html}
+            </div>
+            <div class="hpa-switch">
+              ${this.hpaSwitch.html}
+            </div>
             <div class="control-group">
               <label>BACK-OFF (dB)</label>
               ${this.backOffKnob.html}
             </div>
-          </div>
-          <div class="hpa-lower-module-controls">
             <div class="hpa-main-inputs">
-              <div class="power-meter">
+            <div class="power-meter">
                 <div class="meter-label">OUTPUT</div>
                 <div class="led-bar">
                   ${this.renderPowerMeter_(this.state_.outputPower)}
                 </div>
                 <span class="value-readout">${this.state_.outputPower.toFixed(1)} dBW</span>
               </div>
-              <div class="led-indicator">
-                <span class="indicator-label">IMD</span>
-                <div class="led ${this.state_.isOverdriven ? 'led-orange' : 'led-off'}"></div>
-                <span class="value-readout">${this.state_.imdLevel} dBc</span>
+            </div>
+            <div class="status-displays">
+              <div class="control-group">
+                <label>IMD (dBc)</label>
+                <div class="digital-display hpa-imd">${this.state_.imdLevel.toFixed(3)}</div>
               </div>
             </div>
-            <div class="hpa-switch">
-              ${this.hpaSwitch.html}
-            </div>
           </div>
-        </div>
-        <div class="control-group">
-          ${this.powerSwitch.html}
         </div>
       </div>
     `;
@@ -120,7 +125,7 @@ export class HPAModule extends RFFrontEndModule<HPAState> {
    * Add event listeners for user interactions
    */
   addEventListeners(cb: (state: HPAState) => void): void {
-    if (!this.powerSwitch || !this.backOffKnob) {
+    if (!this.powerSwitch_ || !this.backOffKnob) {
       console.warn('HPAModule: Cannot add event listeners - components not initialized');
       return;
     }
@@ -129,7 +134,7 @@ export class HPAModule extends RFFrontEndModule<HPAState> {
     this.hpaSwitch.addEventListeners(this.toggleHpa_.bind(this));
 
     // Enable switch handler
-    this.powerSwitch.addEventListeners((isEnabled: boolean) => {
+    this.powerSwitch_.addEventListeners((isEnabled: boolean) => {
       const parentPowered = this.rfFrontEnd_.state.isPowered;
       const bucPowered = this.rfFrontEnd_.state.buc.isPowered;
 
@@ -141,7 +146,7 @@ export class HPAModule extends RFFrontEndModule<HPAState> {
       } else {
         // Disable if conditions not met
         this.state_.isPowered = false;
-        this.powerSwitch.sync(false);
+        this.powerSwitch_.sync(false);
         this.syncDomWithState_();
         cb(this.state_);
       }
@@ -291,8 +296,8 @@ export class HPAModule extends RFFrontEndModule<HPAState> {
     super.sync(state);
 
     // Update UI components
-    if (this.powerSwitch && state.isPowered !== undefined) {
-      this.powerSwitch.sync(state.isPowered);
+    if (this.powerSwitch_ && state.isPowered !== undefined) {
+      this.powerSwitch_.sync(state.isPowered);
     }
     if (this.backOffKnob && state.backOff !== undefined) {
       this.backOffKnob.sync(state.backOff);
@@ -356,15 +361,15 @@ export class HPAModule extends RFFrontEndModule<HPAState> {
     }
 
     // Update IMD readout
-    const imdReadout = qs('.led-indicator .value-readout', container);
+    const imdReadout = qs('.hpa-imd', container);
     if (imdReadout) {
-      imdReadout.textContent = `${this.state_.imdLevel} dBc`;
+      imdReadout.textContent = `${this.state_.imdLevel}`;
     }
 
     this.hpaSwitch.sync(this.state.isHpaSwitchEnabled);
 
     // Sync UI components
-    this.powerSwitch.sync(this.state_.isPowered);
+    this.powerSwitch_.sync(this.state_.isPowered);
     this.backOffKnob.sync(this.state_.backOff);
   }
 

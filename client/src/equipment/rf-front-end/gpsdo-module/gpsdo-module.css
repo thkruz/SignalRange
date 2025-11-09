@@ -1,44 +1,60 @@
 /* GPS Disciplined Oscillator Module Styles */
 
 .gpsdo-module {
-  width: 320px !important;
-}
+  min-width: auto !important;
+  max-width: min-content !important;
 
-.gpsdo-module .led-indicators {
-  display: flex;
-  justify-content: space-around;
-  gap: 1rem;
-  margin-bottom: 1rem;
-}
+  .module-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
 
-.gpsdo-module .status-displays {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1rem;
-}
+    label {
+      min-width: 90px !important;
+    }
+  }
 
-.gpsdo-module .gpsdo-controls {
-  display: flex;
-  gap: 1rem;
-  margin-top: 1rem;
-  align-items: center;
-}
+  .control-group label {
+    text-align: center;
+  }
 
-.gpsdo-module .gpsdo-controls .control-group {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
+  .split-top-section {
+    display: flex;
+    flex-direction: row;
+    gap: 1rem;
+    justify-content: space-between;
+  }
 
-/* Grey out all status displays when powered off */
-.gpsdo-module .status-displays-off .digital-display {
-  background: linear-gradient(180deg, #222 0%, #333 100%) !important;
-  color: #444 !important;
-  border-color: #222 !important;
-  /* Keep box-shadow and text-shadow, but neutralize their colors to avoid layout shift */
-  box-shadow:
-    inset 0 1px 4px rgba(0, 0, 0, 0.8),
-    0 0 8px rgba(68, 68, 68, 0.3) !important;
-  text-shadow: 0 0 4px rgba(68, 68, 68, 0.6) !important;
-  opacity: 0.6 !important;
+  .input-knobs {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+    margin-left: 2em;
+  }
+
+  .led-indicators {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    width: min-content
+  }
+
+  .status-displays {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+  }
+
+  /* Grey out all status displays when powered off */
+  .status-displays-off .digital-display {
+    background: linear-gradient(180deg, #222 0%, #333 100%) !important;
+    color: #444 !important;
+    border-color: #222 !important;
+    /* Keep box-shadow and text-shadow, but neutralize their colors to avoid layout shift */
+    box-shadow:
+      inset 0 1px 4px rgba(0, 0, 0, 0.8),
+      0 0 8px rgba(68, 68, 68, 0.3) !important;
+    text-shadow: 0 0 4px rgba(68, 68, 68, 0.6) !important;
+    opacity: 0.6 !important;
+  }
 }

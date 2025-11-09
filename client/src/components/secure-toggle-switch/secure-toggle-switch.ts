@@ -8,7 +8,7 @@ export class SecureToggleSwitch {
   private dom_?: HTMLInputElement;
   private isUp_: boolean;
 
-  constructor(uniqueId: string, isUp: boolean) {
+  constructor(uniqueId: string, isUp: boolean, isLight = true) {
     this.html_ = html`
       <div class="secure-toggle-switch-wrapper">
         <div class="secure-toggle-switch">
@@ -16,7 +16,7 @@ export class SecureToggleSwitch {
           <span class="guard-sides"></span>
           <input class="switch" type="checkbox" id="${uniqueId}" ${isUp ? 'checked' : ''} />
           <span class="knob"></span>
-          <span class="light"></span>
+          ${isLight ? html`<span class="light"></span>` : ''}
         </div>
       </div>
     `;
@@ -24,8 +24,8 @@ export class SecureToggleSwitch {
     this.uniqueId = uniqueId;
   }
 
-  static create(domId: string, isUp: boolean): SecureToggleSwitch {
-    return new SecureToggleSwitch(domId, isUp);
+  static create(domId: string, isUp: boolean, isLight = true): SecureToggleSwitch {
+    return new SecureToggleSwitch(domId, isUp, isLight);
   }
 
   get html(): string {

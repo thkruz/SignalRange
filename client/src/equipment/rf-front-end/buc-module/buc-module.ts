@@ -1,11 +1,10 @@
-import { PowerSwitch } from '@app/components/power-switch/power-switch';
 import { RotaryKnob } from '@app/components/rotary-knob/rotary-knob';
 import { ToggleSwitch } from '@app/components/toggle-switch/toggle-switch';
 import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
 import { Hertz, IfFrequency, IfSignal, MHz, RfFrequency, RfSignal, SignalOrigin } from '@app/types';
 import { RFFrontEnd } from '../rf-front-end';
-import { RFFrontEndModule } from '../rf-front-end-module';
+import { RFFrontEndModule, RFFrontEndModuleState } from '../rf-front-end-module';
 import './buc-module.css';
 
 /**
@@ -24,7 +23,7 @@ export interface SpuriousOutput {
 /**
  * Block Up Converter module state
  */
-export interface BUCState {
+export interface BUCState extends RFFrontEndModuleState {
   // ═══ Operational State ═══
   /** Module power state */
   isPowered: boolean;
@@ -69,8 +68,6 @@ export interface BUCState {
 export class BUCModule extends RFFrontEndModule<BUCState> {
   private static instance_: BUCModule;
 
-  private readonly powerSwitch_: PowerSwitch;
-  private readonly gainKnob_: RotaryKnob;
   private readonly loKnob_: RotaryKnob;
   private readonly muteSwitch_: ToggleSwitch;
   outputSignals: RfSignal[] = [];
@@ -87,13 +84,9 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
   private constructor(state: BUCState, rfFrontEnd: RFFrontEnd, unit: number = 1) {
     super(state, rfFrontEnd, 'rf-fe-buc', unit);
 
-    // Create UI components
-    this.powerSwitch_ = PowerSwitch.create(
-      `${this.uniqueId}-power`,
-      this.state_.isPowered,
-      false,
-      true,
-    );
+    // Create UI components using base class methods
+    this.createPowerSwitch();
+    this.createGainKnob(0, 70, 1);
 
     this.loKnob_ = RotaryKnob.create(
       `${this.uniqueId}-lo-knob`,
@@ -103,18 +96,6 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
       10,
       (value: number) => {
         this.state_.loFrequency = value as MHz;
-        this.rfFrontEnd_.calculateSignalPath();
-      }
-    );
-
-    this.gainKnob_ = RotaryKnob.create(
-      `${this.uniqueId}-gain-knob`,
-      this.state_.gain,
-      0,
-      70,
-      1,
-      (value: number) => {
-        this.state_.gain = value;
         this.rfFrontEnd_.calculateSignalPath();
       }
     );
@@ -129,23 +110,31 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
       <div class="rf-fe-module buc-module">
         <div class="module-label">Block Upconverter</div>
         <div class="module-controls">
+          <div class="led-indicators">
+            <div class="led-indicator">
+              <span class="indicator-label">LOCK</span>
+              <div class="led ${this.getLockLedStatus()}"></div>
+            </div>
+          </div>
           <div class="input-knobs">
+            <div class="control-group">
+              <label>MUTE</label>
+              ${this.muteSwitch_.html}
+            </div>
             <div class="control-group">
               <label>LO (MHz)</label>
               ${this.loKnob_.html}
             </div>
             <div class="control-group">
               <label>GAIN (dB)</label>
-              ${this.gainKnob_.html}
+              ${this.gainKnob_?.html || ''}
             </div>
             <div class="control-group">
-              <label>MUTE</label>
-              ${this.muteSwitch_.html}
+              <!-- Insert a gap -->
             </div>
-          </div>
-          <div class="led-indicator">
-            <span class="indicator-label">LOCK</span>
-            <div class="led ${this.getLockLedStatus_()}"></div>
+            <div class="control-group">
+              ${this.powerSwitch_?.html || ''}
+            </div>
           </div>
           <div class="status-displays">
             <div class="control-group">
@@ -170,15 +159,8 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
             </div>
           </div>
         </div>
-        <div class="control-group">
-          ${this.powerSwitch_.html}
-        </div>
       </div>
     `;
-  }
-
-  private getLockLedStatus_(): string {
-    return this.state_.isExtRefLocked ? 'led-green' : 'led-red';
   }
 
   /**
@@ -190,26 +172,9 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
       return;
     }
 
-    // Power switch handler
-    this.powerSwitch_.addEventListeners((isPowered: boolean) => {
-      const parentPowered = this.rfFrontEnd_.state.isPowered;
-      if (parentPowered) {
-        this.state_.isPowered = isPowered;
-
-        // Check for external reference lock after power on
-        if (isPowered && (this.rfFrontEnd_.gpsdoModule.get10MhzOutput().isPresent)) {
-          setTimeout(() => {
-            this.state_.isExtRefLocked = true;
-            this.syncDomWithState_();
-            cb(this.state_);
-          }, 2000);
-        } else if (!isPowered) {
-          this.state_.isExtRefLocked = false;
-        }
-
-        this.syncDomWithState_();
-        cb(this.state_);
-      }
+    // Power switch handler using base class method
+    this.addPowerSwitchListener(cb, () => {
+      this.simulateLockAcquisition(2000, 2000, () => cb(this.state_));
     });
 
     // Mute switch handler
@@ -223,7 +188,7 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
     this.loKnob_.attachListeners();
 
     // Gain knob already has its callback set in constructor
-    this.gainKnob_.attachListeners();
+    this.gainKnob_?.attachListeners();
   }
 
   /**
@@ -291,24 +256,18 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
    * Simulates frequency drift when unlocked
    */
   private updateLockStatus_(): void {
-    const parentPowered = this.rfFrontEnd_.state.isPowered;
-    const extRefPresent = this.rfFrontEnd_.gpsdoModule.get10MhzOutput().isPresent;
-
+    const parentPowered = this.isParentPowered();
+    const extRefPresent = this.isExtRefPresent();
     const canLock = parentPowered && this.state_.isPowered && extRefPresent;
 
     if (canLock) {
       // In real system, lock acquisition takes 2-5 seconds
-      // For simulation, we'll maintain the lock if conditions are met
+      // Simulate lock acquisition if not already locked
       if (!this.state_.isExtRefLocked) {
-        if (!this.state_.isExtRefLocked) {
-          setTimeout(() => {
-            this.state_.isExtRefLocked = true;
-            this.syncDomWithState_();
-          }, 2000 + Math.random() * 3000); // 2-5 seconds
-        }
+        this.simulateLockAcquisition();
       }
       // When locked, frequency error is minimal
-      if (this.rfFrontEnd_.gpsdoModule.get10MhzOutput().isWarmedUp) {
+      if (this.isExtRefWarmedUp()) {
         this.state_.frequencyError = 0;
       } else {
         this.updateFrequencyDrift_();
@@ -324,7 +283,7 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
    * Drift is ±1-100 ppm of LO frequency
    */
   private updateFrequencyDrift_(): void {
-    if (this.state_.isExtRefLocked && this.rfFrontEnd_.gpsdoModule.get10MhzOutput().isWarmedUp) {
+    if (this.state_.isExtRefLocked && this.isExtRefWarmedUp()) {
       this.state_.frequencyError = 0;
       return;
     }
@@ -450,13 +409,10 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
   sync(state: Partial<BUCState>): void {
     super.sync(state);
 
-    // Update UI components
-    if (this.powerSwitch_ && state.isPowered !== undefined) {
-      this.powerSwitch_.sync(state.isPowered);
-    }
-    if (this.gainKnob_ && state.gain !== undefined) {
-      this.gainKnob_.sync(state.gain);
-    }
+    // Sync common UI components using base class method
+    this.syncCommonComponents(state);
+
+    // Sync BUC-specific UI components
     if (this.loKnob_ && state.loFrequency !== undefined) {
       this.loKnob_.sync(state.loFrequency);
     }
@@ -475,8 +431,8 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
       return alarms;
     }
 
-    const parentPowered = this.rfFrontEnd_.state.isPowered;
-    const extRefPresent = this.rfFrontEnd_.gpsdoModule.get10MhzOutput().isPresent;
+    const parentPowered = this.isParentPowered();
+    const extRefPresent = this.isExtRefPresent();
 
     // Lock alarm
     if (!this.state_.isExtRefLocked && extRefPresent && parentPowered) {
@@ -534,10 +490,10 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
       loInput.value = this.state_.loFrequency.toString();
     }
 
-    // Update lock LED
+    // Update lock LED using base class method
     const lockLed = qs('.led-indicator .led', container);
     if (lockLed) {
-      lockLed.className = `led ${this.getLockLedStatus_()}`;
+      lockLed.className = `led ${this.getLockLedStatus()}`;
     }
 
     // Update temperature display
@@ -570,9 +526,10 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
       outPwrDisplay.style.color = approachingSat ? '#ff0' : '#0f0';
     }
 
-    // Sync UI components
-    this.powerSwitch_.sync(this.state_.isPowered);
-    this.gainKnob_.sync(this.state_.gain);
+    // Sync UI components using base class method for common components
+    this.syncCommonComponents(this.state_);
+
+    // Sync BUC-specific components
     this.loKnob_.sync(this.state_.loFrequency);
     this.muteSwitch_.sync(this.state_.isMuted);
   }
@@ -596,7 +553,7 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
     const loFrequencyHz = this.state_.loFrequency * 1e6;
 
     // Apply frequency error when not locked to external reference
-    const effectiveLO = this.state_.isExtRefLocked
+    const effectiveLO = (this.state_.isExtRefLocked && this.isExtRefWarmedUp())
       ? loFrequencyHz
       : loFrequencyHz + this.state_.frequencyError;
 

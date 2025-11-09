@@ -4,6 +4,7 @@ import { qs } from "@app/engine/utils/query-selector";
 import { RfSignal, SignalOrigin } from '@app/types';
 import { RFFrontEnd } from '../rf-front-end';
 import { RFFrontEndModule } from '../rf-front-end-module';
+import './omt-module.css';
 
 /**
  * Polarization types for OMT/Duplexer
@@ -14,6 +15,7 @@ export type PolarizationType = 'H' | 'V' | 'LHCP' | 'RHCP';
  * OMT/Duplexer module state
  */
 export interface OMTState {
+  isPowered: boolean;
   noiseFloor: number;
   txPolarization: PolarizationType;
   rxPolarization: PolarizationType;
@@ -52,32 +54,45 @@ export class OMTModule extends RFFrontEndModule<OMTState> {
       <div class="rf-fe-module omt-module">
         <div class="module-label">OMT/DUPLEXER</div>
         <div class="module-controls">
-          <div class="control-group">
-            <label>TOGGLE</label>
-            ${this.polarizationToggle_.html}
-          </div>
-          <div class="polarization-display-column">
-            <div class="pol-display-row">
-              <span class="pol-display-label">TX POL:</span>
-              <div class="digital-display pol-tx-display">${this.state_.txPolarization}</div>
+          <div class="split-top-section">
+            <div class="input-knobs">
+              <div class="control-group">
+                <label>TOGGLE</label>
+                ${this.polarizationToggle_.html}
+              </div>
             </div>
-            <div class="pol-display-row">
-              <span class="pol-display-label">RX POL:</span>
-              <div class="digital-display pol-rx-display">${this.state_.rxPolarization}</div>
-            </div>
-            <div class="pol-display-row">
-              <span class="pol-display-label">TX EFF:</span>
-              <div class="digital-display pol-tx-eff-display">${this.state_.effectiveTxPol || '―'}</div>
-            </div>
-            <div class="pol-display-row">
-              <span class="pol-display-label">RX EFF:</span>
-              <div class="digital-display pol-rx-eff-display">${this.state_.effectiveRxPol || '―'}</div>
+            <div class="led-indicators">
+              <div class="led-indicator">
+                <span class="indicator-label">X-POL</span>
+                <div class="led ${this.getXPolLedStatus_()}"></div>
+              </div>
             </div>
           </div>
-          <div class="led-indicator">
-            <span class="indicator-label">X-POL</span>
-            <div class="led ${this.getXPolLedStatus_()}"></div>
-            <span class="value-readout">${this.state_.crossPolIsolation.toFixed(1)} dB</span>
+          <!-- Status Displays -->
+          <div class="status-displays">
+            <div class="control-group">
+              <label>TX POL</label>
+              <div class="digital-display omt-tx">${this.state_.txPolarization}</div>
+            </div>
+            <div class="control-group">
+              <label>RX POL</label>
+              <div class="digital-display omt-rx">${this.state_.rxPolarization}</div>
+            </div>
+            <div class="control-group">
+              <!-- Gap -->
+            </div>
+            <div class="control-group">
+              <label>TX EFF POL</label>
+              <div class="digital-display omt-tx-eff">${this.state_.effectiveTxPol || '―'}</div>
+            </div>
+            <div class="control-group">
+              <label>RX EFF POL</label>
+              <div class="digital-display omt-rx-eff">${this.state_.effectiveRxPol || '―'}</div>
+            </div>
+            <div class="control-group">
+              <label>X-POL (dB)</label>
+              <div class="digital-display omt-x-pol">${this.state_.crossPolIsolation || '―'}</div>
+            </div>
           </div>
         </div>
       </div>
@@ -278,41 +293,48 @@ export class OMTModule extends RFFrontEndModule<OMTState> {
     if (!container) return;
 
     // Update TX POL
-    const txPolDisplay = container.querySelector('.pol-tx-display');
+    const txPolDisplay = container.querySelector('.omt-tx');
     if (txPolDisplay) {
       txPolDisplay.textContent = this.state_.txPolarization;
     }
 
     // Update RX POL
-    const rxPolDisplay = container.querySelector('.pol-rx-display');
+    const rxPolDisplay = container.querySelector('.omt-rx');
     if (rxPolDisplay) {
       rxPolDisplay.textContent = this.state_.rxPolarization;
     }
 
     // Update TX Effective POL and check for mismatch
-    const txEffDisplay = container.querySelector('.pol-tx-eff-display');
+    const txEffDisplay = container.querySelector('.omt-tx-eff');
     if (txEffDisplay) {
       txEffDisplay.textContent = this.state_.effectiveTxPol || '―';
 
       // Add mismatch class if TX POL and TX EFF don't match
       if (this.state_.effectiveTxPol && this.state_.effectiveTxPol !== this.state_.txPolarization) {
-        txPolDisplay.classList.add('pol-mismatch');
+        txEffDisplay.classList.add('pol-mismatch');
       } else {
-        txPolDisplay.classList.remove('pol-mismatch');
+        txEffDisplay.classList.remove('pol-mismatch');
       }
     }
 
     // Update RX Effective POL and check for mismatch
-    const rxEffDisplay = container.querySelector('.pol-rx-eff-display');
+    const rxEffDisplay = container.querySelector('.omt-rx-eff');
     if (rxEffDisplay) {
       rxEffDisplay.textContent = this.state_.effectiveRxPol || '―';
 
       // Add mismatch class if RX POL and RX EFF don't match
       if (this.state_.effectiveRxPol && this.state_.effectiveRxPol !== this.state_.rxPolarization) {
-        rxPolDisplay.classList.add('pol-mismatch');
+        rxEffDisplay.classList.add('pol-mismatch');
       } else {
-        rxPolDisplay.classList.remove('pol-mismatch');
+        rxEffDisplay.classList.remove('pol-mismatch');
       }
+    }
+
+    qs('.omt-x-pol', container).textContent = this.state_.crossPolIsolation.toFixed(1);
+    if (this.state_.isFaulted) {
+      qs('.omt-x-pol', container).classList.add('pol-mismatch');
+    } else {
+      qs('.omt-x-pol', container).classList.remove('pol-mismatch');
     }
   }
 }

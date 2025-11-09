@@ -1,142 +1,50 @@
-/* rf-front-end.css - Styles for RF Front-End equipment case */
+.rf-front-end-box {
+  height: min-content;
 
-/* Signal Flow Diagram - 50px height */
-.rf-fe-signal-flow {
-  height: 50px;
-  padding: 0 15px;
-  background: linear-gradient(180deg, #1a1a1a 0%, #1f1f1f 100%);
-  border-bottom: 1px solid #333;
+  .stacked-modules {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 1em;
+  }
+
+  /* Main Module Container - ~360px height */
+  .rf-fe-modules {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: space-evenly;
+    flex: 1;
+    gap: 1em;
+    padding: 15px;
+    align-items: stretch;
+    overflow-x: auto;
+    overflow-y: hidden;
+
+    .rf-fe-module {
+      display: flex;
+      flex-direction: column;
+      background: linear-gradient(180deg, #2a2a2a 0%, #1f1f1f 100%);
+      border: 1px solid #444;
+      border-radius: 8px;
+      padding: 12px 20px;
+      box-shadow:
+        inset 0 1px 2px rgba(255, 255, 255, 0.05),
+        0 2px 4px rgba(0, 0, 0, 0.4);
+      transition: box-shadow 0.3s;
+    }
+  }
+
+  .split-top-section {
+    display: flex;
+    flex-direction: row;
+    gap: 1rem;
+    justify-content: space-between;
+  }
 }
 
 .rf-front-end-container {
   width: 1576px;
-}
-
-.rf-front-end-box {
-  min-height: 550px;
-  height: min-content;
-}
-
-.signal-flow-line {
-  width: 100%;
-  height: 100%;
-}
-
-.flow-line {
-  stroke-width: 3;
-  stroke: #555;
-  transition: stroke 0.3s, filter 0.3s;
-}
-
-.flow-line.active {
-  stroke-width: 4;
-  filter: drop-shadow(0 0 10px currentColor);
-}
-
-.flow-tx {
-  stroke: #ff6b35;
-  /* International Engineering Orange */
-}
-
-.flow-tx.active {
-  stroke: #ff8c5a;
-  animation: flow-pulse-tx 2s ease-in-out infinite;
-}
-
-.flow-rx {
-  stroke: #00bcd4;
-  /* Teal */
-}
-
-.flow-rx.active {
-  stroke: #26c6da;
-  animation: flow-pulse-rx 2s ease-in-out infinite;
-}
-
-.flow-arrow {
-  fill: #555;
-  transition: fill 0.3s;
-}
-
-.flow-tx.active+.flow-arrow.flow-tx {
-  fill: #ff8c5a;
-}
-
-.flow-rx.active+.flow-arrow.flow-rx {
-  fill: #26c6da;
-}
-
-.flow-point {
-  fill: #666;
-  transition: fill 0.3s, r 0.3s;
-}
-
-.flow-line.active~.flow-point {
-  fill: #ff8c5a;
-  r: 4;
-}
-
-@keyframes flow-pulse-tx {
-
-  0%,
-  100% {
-    stroke: #ff8c5a;
-    filter: drop-shadow(0 0 6px #ff6b35);
-  }
-
-  50% {
-    stroke: #ffaa7a;
-    filter: drop-shadow(0 0 12px #ff6b35);
-  }
-}
-
-@keyframes flow-pulse-rx {
-
-  0%,
-  100% {
-    stroke: #26c6da;
-    filter: drop-shadow(0 0 6px #00bcd4);
-  }
-
-  50% {
-    stroke: #4dd0e1;
-    filter: drop-shadow(0 0 12px #00bcd4);
-  }
-}
-
-/* Main Module Container - ~360px height */
-.rf-fe-modules {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  flex: 1;
-  gap: 12px;
-  padding: 15px;
-  align-items: stretch;
-  overflow-x: auto;
-  overflow-y: hidden;
-}
-
-/* Individual Module Styling */
-.rf-fe-module {
-  display: flex;
-  flex-direction: column;
-  min-width: 140px;
-  background: linear-gradient(180deg, #2a2a2a 0%, #1f1f1f 100%);
-  border: 1px solid #444;
-  border-radius: 8px;
-  padding: 12px 10px;
-  box-shadow:
-    inset 0 1px 2px rgba(255, 255, 255, 0.05),
-    0 2px 4px rgba(0, 0, 0, 0.4);
-  transition: box-shadow 0.3s;
-}
-
-.rf-fe-module:hover {
-  box-shadow:
-    inset 0 1px 2px rgba(255, 255, 255, 0.08),
-    0 4px 8px rgba(0, 0, 0, 0.5);
 }
 
 .module-label {
@@ -537,26 +445,6 @@
   min-width: 160px;
 }
 
-/* Hover Tooltips */
-.rf-fe-module:hover .module-label::after {
-  content: attr(data-tooltip);
-  position: absolute;
-  bottom: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 8px 12px;
-  background-color: rgba(0, 0, 0, 0.9);
-  color: #fff;
-  font-size: 13px;
-  white-space: nowrap;
-  border-radius: 4px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
-  z-index: 100;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.3s;
-}
-
 .rf-fe-module:hover .module-label::after {
   opacity: 1;
 }
@@ -639,8 +527,4 @@
 .btn-mode-toggle:focus {
   outline: 2px solid #ff6b35;
   outline-offset: 2px;
-}
-
-.grid-columns-2 {
-  grid-template-columns: repeat(2, 1fr);
 }

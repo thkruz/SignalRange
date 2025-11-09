@@ -1,123 +1,101 @@
-/* HPA Module Specific Styles */
-
 .hpa-module {
-  width: min-content;
-}
+  min-width: auto !important;
+  max-width: min-content !important;
 
-.hpa-lower-module-controls {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: nowrap;
-  justify-content: space-between;
-}
+  .module-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    width: max-content;
+  }
 
-.hpa-module .power-meter {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding: 8px;
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 4px;
-  border: 1px solid #444;
-  width: min-content;
-}
+  .split-top-section {
+    display: flex;
+    flex-direction: row;
+    gap: 1rem;
+    justify-content: space-between;
+  }
 
-.hpa-module .meter-label {
-  font-size: 10px;
-  color: #888;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
+  .control-group label {
+    text-align: center;
+  }
 
-.hpa-module .led-bar {
-  display: flex;
-  gap: 3px;
-  padding: 4px;
-  background: rgba(0, 0, 0, 0.5);
-  border-radius: 2px;
-}
+  .input-knobs {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 1rem;
+    justify-items: center;
+    align-items: center;
+  }
 
-.hpa-module .led-segment {
-  width: 8px;
-  height: 24px;
-  border-radius: 2px;
-  background: #222;
-  border: 1px solid #333;
-  transition: all 0.2s ease;
-}
+  .hpa-switch {
+    margin-bottom: -40px;
+  }
 
-.hpa-module .led-segment.led-green {
-  background: #0f0;
-  box-shadow: 0 0 8px #0f0, inset 0 0 4px #0f0;
-}
+  .led-indicators {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    width: 100%;
+  }
 
-.hpa-module .led-segment.led-yellow {
-  background: #ff0;
-  box-shadow: 0 0 8px #ff0, inset 0 0 4px #ff0;
-}
+  .hpa-imd {
+    width: 75px;
+  }
 
-.hpa-module .led-segment.led-red {
-  background: #f00;
-  box-shadow: 0 0 8px #f00, inset 0 0 4px #f00;
-}
+  .power-meter {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 8px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 4px;
+    border: 1px solid #444;
+    width: 60px;
+  }
 
-.hpa-module .led-segment.led-off {
-  background: #222;
-  box-shadow: none;
-}
+  .meter-label {
+    font-size: 10px;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
 
-.hpa-module .led-indicator {
-  display: flex;
-  flex-direction: column;
-  width: min-content;
-  align-items: center;
-  gap: 8px;
-  padding: 8px;
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 4px;
-  border: 1px solid #444;
-}
+  .led-bar {
+    display: flex;
+    gap: 3px;
+    padding: 4px;
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 2px;
+  }
 
-.hpa-module .led-indicator .indicator-label {
-  font-size: 10px;
-  color: #888;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  min-width: 40px;
-}
+  .led-segment {
+    width: 8px;
+    height: 24px;
+    border-radius: 2px;
+    background: #222;
+    border: 1px solid #333;
+    transition: all 0.2s ease;
+  }
 
-.hpa-module .led-indicator .led {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  transition: all 0.2s ease;
-}
+  .led-segment.led-green {
+    background: #0f0;
+    box-shadow: 0 0 8px #0f0, inset 0 0 4px #0f0;
+  }
 
-.hpa-module .led-indicator .led.led-orange {
-  background: #ff8800;
-  box-shadow: 0 0 10px #ff8800, inset 0 0 5px #ff8800;
-}
+  .led-segment.led-yellow {
+    background: #ff0;
+    box-shadow: 0 0 8px #ff0, inset 0 0 4px #ff0;
+  }
 
-.hpa-module .led-indicator .led.led-off {
-  background: #222;
-  border: 1px solid #333;
-  box-shadow: none;
-}
+  .led-segment.led-red {
+    background: #f00;
+    box-shadow: 0 0 8px #f00, inset 0 0 4px #f00;
+  }
 
-.hpa-module .led-indicator .value-readout {
-  font-size: 11px;
-  font-family: 'Courier New', monospace;
-  color: #0f0;
-  min-width: 60px;
-  text-align: right;
-}
-
-.hpa-module .control-group label {
-  font-size: 10px;
-  color: #888;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 4px;
-  width: max-content;
+  .led-segment.led-off {
+    background: #222;
+    box-shadow: none;
+  }
 }

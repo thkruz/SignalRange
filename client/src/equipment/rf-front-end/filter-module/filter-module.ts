@@ -39,6 +39,7 @@ export const FILTER_BANDWIDTH_CONFIGS: FilterBandwidthConfig[] = [
  * Preselector/Filter module state
  */
 export interface IfFilterBankState {
+  isPowered: boolean;
   bandwidthIndex: number; // Index into FILTER_BANDWIDTH_CONFIGS (0-13)
   bandwidth: MHz; // MHz
   insertionLoss: number; // dB
@@ -86,23 +87,35 @@ export class IfFilterBankModule extends RFFrontEndModule<IfFilterBankState> {
       <div class="rf-fe-module filter-module">
         <div class="module-label">IF FILTER BANK</div>
         <div class="module-controls">
-          <div class="input-knobs">
-            <div class="control-group">
-              <label>BANDWIDTH</label>
-              <div class="knob-container">
-                ${this.bandwidthKnob_.html}
+          <div class="split-top-section">
+            <div class="input-knobs">
+              <div class="control-group">
+                <label>BANDWIDTH</label>
+                <div class="knob-container">
+                  ${this.bandwidthKnob_.html}
+                </div>
+              </div>
+            </div>
+            <div class="led-indicators">
+              <div class="led-indicator">
+                <span class="indicator-label">INSERTION LOSS</span>
+                <div id="insertion-loss-led" class="led led-orange" style="opacity: ${this.state_.insertionLoss / 3}"></div>
+              </div>
+              <div class="value-display">
+                <span class="display-label">NOISE FLOOR:</span>
+                <div id="noise-floor-led" class="led led-orange"></div>
               </div>
             </div>
           </div>
-          <div class="led-indicator">
-            <span class="indicator-label">INSERTION LOSS</span>
-            <div id="insertion-loss-led" class="led led-orange" style="opacity: ${this.state_.insertionLoss / 3}"></div>
-            <span class="value-readout">${this.state_.insertionLoss.toFixed(1)} dB</span>
-          </div>
-          <div class="value-display">
-            <span class="display-label">NOISE FLOOR:</span>
-            <div id="noise-floor-led" class="led led-orange"></div>
-            <span class="value-readout">${this.state_.noiseFloor.toFixed(0)} dBm</span>
+          <div class="status-displays">
+            <div class="control-group">
+              <label>INSERTION LOSS (dB)</label>
+              <div class="digital-display filter-insertion-loss-display">${this.state_.insertionLoss.toFixed(1)}</div>
+            </div>
+            <div class="control-group">
+              <label>NOISE FLOOR (dBm)</label>
+              <div class="digital-display filter-noise-floor-display">${this.state_.noiseFloor.toFixed(0)}</div>
+            </div>
           </div>
         </div>
       </div>
@@ -210,8 +223,8 @@ export class IfFilterBankModule extends RFFrontEndModule<IfFilterBankState> {
     }
 
     // Update insertion loss readout
-    qs('.led-indicator .value-readout', container).textContent = `${this.state_.insertionLoss.toFixed(1)} dB`;
+    qs('.filter-insertion-loss-display', container).textContent = `${this.state_.insertionLoss.toFixed(1)}`;
     // Update noise floor display
-    qs('.value-display .value-readout', container).textContent = `${(this.state.noiseFloor + this.rfFrontEnd_.getTotalRxGain()).toFixed(0)} dBm`;
+    qs('.filter-noise-floor-display', container).textContent = `${(this.state.noiseFloor + this.rfFrontEnd_.getTotalRxGain()).toFixed(0)}`;
   }
 }

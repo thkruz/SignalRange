@@ -117,6 +117,9 @@ jobs:
           key: ${{ runner.os }}-build-node-modules-${{ hashFiles('client/package-lock.json') }}
           restore-keys: ${{ runner.os }}-build-node-modules-${{ runner.os }}-
 
+      - name: Update submodules
+        run: git submodule update --init --recursive
+
       - name: Install Dependencies
         run: npm ci --ignore-scripts
 

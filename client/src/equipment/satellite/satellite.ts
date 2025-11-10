@@ -54,6 +54,8 @@ export class Satellite {
   /** NORAD catalog number */
   noradId: number;
 
+  /** External signals being sent to the satellite */
+  externalSignal: RfSignal[];
   /** Received signals at the satellite */
   rxSignal: RfSignal[];
 
@@ -78,11 +80,12 @@ export class Satellite {
   constructor(
     norad: number,
     rxSignal: RfSignal[],
-    frequencyOffset: number = 2e9,
+    frequencyOffset: number = 2.225e9,
     degradationConfig?: Partial<SignalDegradationConfig>
   ) {
     this.noradId = norad;
-    this.rxSignal = rxSignal;
+    this.externalSignal = rxSignal;
+    this.rxSignal = [];
     this.frequencyOffset = frequencyOffset;
     this.noiseGenerators = new Map();
     this.health = 1.0;
@@ -113,7 +116,7 @@ export class Satellite {
     return signals.map((signal, index) => ({
       id: `tp-${this.noradId}-${index}`,
       uplinkFrequency: signal.frequency,
-      downlinkFrequency: this.getFrequencyOffset(signal.frequency),
+      downlinkFrequency: this.getDownlinkFromUplink(signal.frequency),
       bandwidth: signal.bandwidth,
       maxPower: signal.power, // Use the initial signal power as max power
       gain: 36.5 as dBi, // dB, typical transponder gain
@@ -140,23 +143,23 @@ export class Satellite {
    */
   private processSignals(): RfSignal[] {
     const processedSignals: RfSignal[] = [];
+    const allRxSignals = [...this.rxSignal, ...this.externalSignal];
 
-    for (let i = 0; i < this.rxSignal.length; i++) {
-      const rxSig = this.rxSignal[i];
-      const transponder = this.transponders[i];
+    for (const signal of allRxSignals) {
+      const transponder = this.findTransponderByUplinkFrequency(signal.frequency);
 
       if (!transponder?.isActive) {
         continue;
       }
 
       // Apply transponder gain to received signal
-      let txPower: dBm = rxSig.power;
+      let txPower: dBm = signal.power;
 
       // Apply saturation effects (non-linear power limiting)
       txPower = this.applySaturation(txPower, transponder.saturationPower, transponder.maxPower);
 
       // Add thermal noise based on noise figure
-      txPower = this.addThermalNoise(txPower, transponder.noiseFigure, rxSig.bandwidth);
+      txPower = this.addThermalNoise(txPower, transponder.noiseFigure, signal.bandwidth);
 
       // Add transponder gain
       txPower = (txPower + transponder.gain) as dBm;
@@ -166,7 +169,7 @@ export class Satellite {
 
       // Create transmitted signal
       let txSignal: RfSignal = {
-        ...rxSig,
+        ...signal,
         frequency: txFrequency,
         power: txPower,
         origin: SignalOrigin.SATELLITE_TX
@@ -179,6 +182,10 @@ export class Satellite {
     }
 
     return processedSignals;
+  }
+
+  private findTransponderByUplinkFrequency(frequency: RfFrequency): Transponder | undefined {
+    return this.transponders.find(tp => tp.uplinkFrequency === frequency);
   }
 
   /**
@@ -358,8 +365,12 @@ export class Satellite {
   /**
    * Calculate frequency offset for uplink to downlink conversion.
    */
-  private getFrequencyOffset(frequency: RfFrequency): RfFrequency {
+  getUplinkFromDownlink(frequency: RfFrequency): RfFrequency {
     return (frequency + this.frequencyOffset) as RfFrequency;
+  }
+
+  private getDownlinkFromUplink(frequency: RfFrequency): RfFrequency {
+    return (frequency - this.frequencyOffset) as RfFrequency;
   }
 
   /**
@@ -380,48 +391,6 @@ export class Satellite {
       ...this.degradationConfig,
       ...config
     };
-  }
-
-  /**
-   * Add a new signal to the satellite's receiver.
-   */
-  addReceivedSignal(signal: RfSignal): void {
-    // Check if signal already exists
-    const existingIndex = this.rxSignal.findIndex(s =>
-      s.id === signal.id && s.serverId === signal.serverId && s.noradId === signal.noradId
-    );
-
-    if (existingIndex >= 0) {
-      this.rxSignal[existingIndex] = signal;
-    } else {
-      this.rxSignal.push(signal);
-
-      // Create a transponder for the new signal
-      const newTransponder: Transponder = {
-        id: `tp-${this.noradId}-${this.transponders.length}`,
-        uplinkFrequency: signal.frequency,
-        downlinkFrequency: this.getFrequencyOffset(signal.frequency),
-        bandwidth: signal.bandwidth,
-        maxPower: 33 as dBm, // dBm, typical satellite transponder output
-        gain: 30.5 as dBi, // dB, typical transponder gain
-        noiseFigure: 3.5 as dBi, // dB, typical satellite transponder noise figure
-        saturationPower: 30 as dBm, // dBm, typical saturation power
-        isActive: true
-      };
-
-      this.transponders.push(newTransponder);
-    }
-  }
-
-  /**
-   * Remove a signal from the satellite's receiver.
-   */
-  removeReceivedSignal(signalId: string): void {
-    const index = this.rxSignal.findIndex(s => s.id === signalId);
-    if (index >= 0) {
-      this.rxSignal.splice(index, 1);
-      this.transponders.splice(index, 1);
-    }
   }
 
   /**

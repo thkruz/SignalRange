@@ -9,7 +9,7 @@ import { html } from "../../engine/utils/development/formatter";
 import { qs } from "../../engine/utils/query-selector";
 import { Events } from "../../events/events";
 import { SimulationManager } from "../../simulation/simulation-manager";
-import { dBm, Hertz, RfSignal } from "../../types";
+import { dBm, Hertz, RfSignal, SignalOrigin } from "../../types";
 import { BaseEquipment } from '../base-equipment';
 import { RFFrontEnd } from "../rf-front-end/rf-front-end";
 import { Transmitter } from "../transmitter/transmitter";
@@ -603,19 +603,24 @@ export class Antenna extends BaseEquipment {
       return;
     }
 
-    SimulationManager.getInstance().clearUserSignals();
+    const sat = SimulationManager.getInstance().getSatelliteByNoradId(this.state.noradId);
+
+    // Clear any old signals
+    sat.rxSignal = [];
 
     // Check transmitters for signals being sent to this antenna
     for (const sig of this.txSignalsOut) {
       if (!this.state.isLoopback) {
-        // Pass the signal to the SimulationManager
-        SimulationManager.getInstance().addSignal(sig);
+        // Check if this signal already exists on the satellite
+        sat.rxSignal.push({
+          ...sig,
+          origin: SignalOrigin.ANTENNA_TX,
+        });
       }
     }
 
     // Get visible signals from the satellite and apply propagation effects
-    let receivedSignals = SimulationManager.getInstance()
-      .getVisibleSignals(this.state.serverId, this.state.noradId)
+    let receivedSignals = this.rxSignals
       .map(signal => this.applyPropagationEffects_(signal))
       .filter(signal => this.isSignalAboveNoiseFloor_(signal.power));
 
@@ -669,6 +674,10 @@ export class Antenna extends BaseEquipment {
     });
 
     this.state.rxSignalsIn = receivedSignals;
+  }
+
+  get rxSignals(): RfSignal[] {
+    return SimulationManager.getInstance().getSatelliteByNoradId(this.state.noradId).txSignal;
   }
 
   attachRfFrontEnd(rfFrontEnd: RFFrontEnd): void {

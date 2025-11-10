@@ -16,7 +16,8 @@ export class SimulationManager {
           id: '1',
           serverId: 1,
           noradId: 1,
-          frequency: 2810e6 as RfFrequency,
+          /** Must be the uplinkl to match the antenna in simulation */
+          frequency: 5935e6 as RfFrequency,
           polarization: 'H',
           power: 40 as dBm, // 10 W
           bandwidth: 10e6 as Hertz,
@@ -46,8 +47,8 @@ export class SimulationManager {
   update(): void {
     // Update each satellite's state
     this.satellites.forEach(sat => {
-      this.userSignals.filter(signal => signal.noradId === sat.noradId).forEach(signal => {
-        sat.addReceivedSignal(signal);
+      this.userSignals.filter(signal => signal.noradId === sat.noradId).forEach(_signal => {
+        // sat.addReceivedSignal(signal);
       });
       sat.update();
     });
@@ -69,6 +70,10 @@ export class SimulationManager {
         s.noradId === signal.noradId &&
         s.id === signal.id);
     });
+  }
+
+  getSatelliteByNoradId(noradId: number): Satellite | undefined {
+    return this.satellites.find(sat => sat.noradId === noradId);
   }
 
   clearUserSignals(): void {

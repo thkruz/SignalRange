@@ -271,7 +271,7 @@ export class SpectralDensityPlot extends RTSAScreen {
 
     let maxX = 0;
     let maxY = 1;
-    let maxSignalFreq = 0;
+    let maxSignalFreq = -Infinity;
 
     ctx.strokeStyle = color;
     ctx.beginPath();
@@ -281,9 +281,11 @@ export class SpectralDensityPlot extends RTSAScreen {
       const lowestSignal = Math.max(this.signalData[x], this.noiseData[x]);
       const y = (lowestSignal - this.specA.state.minAmplitude) / this.range;
 
-      maxSignalFreq = y < maxY ? lowestSignal : maxSignalFreq;
-      maxX = y < maxY ? x : maxX;
-      maxY = Math.min(y, maxY);
+      if (lowestSignal > maxSignalFreq && y > 0 && y < 1 && x > 0 && x < this.width) {
+        maxSignalFreq = lowestSignal;
+        maxX = x;
+        maxY = (1 - y);
+      }
 
       if (x === 0) {
         ctx.moveTo(x, this.height * (1 - y));

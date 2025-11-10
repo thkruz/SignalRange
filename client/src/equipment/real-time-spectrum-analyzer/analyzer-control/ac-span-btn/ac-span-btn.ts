@@ -11,7 +11,7 @@ export class ACSpanBtn extends BaseControlButton {
 
   private constructor(analyzerControl: AnalyzerControl) {
     super({
-      uniqueId: 'ac-span-btn',
+      uniqueId: `ac-span-btn-${analyzerControl.specA.state.uuid}`,
       label: 'Span',
       ariaLabel: 'Span',
     });

@@ -8,7 +8,7 @@ export class ACTraceBtn extends BaseControlButton {
 
   private constructor(analyzerControl: AnalyzerControl) {
     super({
-      uniqueId: 'ac-trace-btn',
+      uniqueId: `ac-trace-btn-${analyzerControl.specA.state.uuid}`,
       label: 'Trace',
       ariaLabel: 'Trace',
     });

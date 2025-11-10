@@ -8,7 +8,7 @@ export class ACMeasBtn extends BaseControlButton {
 
   private constructor(analyzerControl: AnalyzerControl) {
     super({
-      uniqueId: 'ac-meas-btn',
+      uniqueId: `ac-meas-btn-${analyzerControl.specA.state.uuid}`,
       label: 'Meas',
       ariaLabel: 'Measure',
     });

@@ -9,7 +9,7 @@ export class ACSaveBtn extends BaseControlButton {
 
   private constructor(analyzerControl: AnalyzerControl) {
     super({
-      uniqueId: 'ac-save-btn',
+      uniqueId: `ac-save-btn-${analyzerControl.specA.state.uuid}`,
       label: 'Save',
       ariaLabel: 'Save',
     });

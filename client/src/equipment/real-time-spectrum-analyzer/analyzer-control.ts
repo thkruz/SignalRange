@@ -1,7 +1,7 @@
 import { Logger } from '@app/logging/logger';
 import { BaseElement } from '../../components/base-element';
 import { html } from "../../engine/utils/development/formatter";
-import { qsa } from "../../engine/utils/query-selector";
+import { qs, qsa } from "../../engine/utils/query-selector";
 import './analyzer-control.css';
 import { ACAmptBtn } from './analyzer-control/ac-ampt-btn/ac-ampt-btn';
 import { ACBWBtn } from './analyzer-control/ac-bw-btn/ac-bw-btn';
@@ -43,7 +43,47 @@ export class AnalyzerControl extends BaseElement {
 
   // Control state
   controlSelection: BaseControlButton | null = null;
-  panelElements: BaseControlButton[];
+  panelElements: {
+    freq: ACFreqBtn;
+    span: ACSpanBtn;
+    ampt: ACAmptBtn;
+    mkr: ACMkrBtn;
+    mkr2: ACMkr2Btn;
+    bw: ACBWBtn;
+    sweep: ACSweepBtn;
+    trace: ACTraceBtn;
+    minhold: ACMinHoldBtn;
+    save: ACSaveBtn;
+    meas: ACMeasBtn;
+    mode: ACModeBtn;
+    extra1: ACExtra1Btn;
+    extra2: ACExtra2Btn;
+    extra3: ACExtra3Btn;
+    ghz: ACGhzBtn;
+    mhz: ACMhzBtn;
+    khz: ACKhzBtn;
+    hz: ACHzBtn;
+  } = {} as {
+    freq: ACFreqBtn;
+    span: ACSpanBtn;
+    ampt: ACAmptBtn;
+    mkr: ACMkrBtn;
+    mkr2: ACMkr2Btn;
+    bw: ACBWBtn;
+    sweep: ACSweepBtn;
+    trace: ACTraceBtn;
+    minhold: ACMinHoldBtn;
+    save: ACSaveBtn;
+    meas: ACMeasBtn;
+    mode: ACModeBtn;
+    extra1: ACExtra1Btn;
+    extra2: ACExtra2Btn;
+    extra3: ACExtra3Btn;
+    ghz: ACGhzBtn;
+    mhz: ACMhzBtn;
+    khz: ACKhzBtn;
+    hz: ACHzBtn;
+  };
 
   constructor(options: AnalyzerControlOptions) {
     super();
@@ -58,31 +98,31 @@ export class AnalyzerControl extends BaseElement {
 
   private initializeValues(): void {
     // Initialize with current center frequency in MHz
-    ACFreqBtn.getInstance().init();
+    this.panelElements.freq.init();
   }
 
   initDom_(parentId: string, type: 'add' | 'replace' = 'replace'): HTMLElement {
-    this.panelElements = [
-      ACFreqBtn.create(this),
-      ACSpanBtn.create(this),
-      ACAmptBtn.create(this),
-      ACMkrBtn.create(this),
-      ACMkr2Btn.create(this),
-      ACBWBtn.create(this),
-      ACSweepBtn.create(this),
-      ACTraceBtn.create(this),
-      ACMinHoldBtn.create(this),
-      ACSaveBtn.create(this),
-      ACMeasBtn.create(this),
-      ACModeBtn.create(this),
-      ACExtra1Btn.create(this),
-      ACExtra2Btn.create(this),
-      ACExtra3Btn.create(this),
-      ACGhzBtn.create(this),
-      ACMhzBtn.create(this),
-      ACKhzBtn.create(this),
-      ACHzBtn.create(this),
-    ];
+    this.panelElements = {
+      freq: ACFreqBtn.create(this),
+      span: ACSpanBtn.create(this),
+      ampt: ACAmptBtn.create(this),
+      mkr: ACMkrBtn.create(this),
+      mkr2: ACMkr2Btn.create(this),
+      bw: ACBWBtn.create(this),
+      sweep: ACSweepBtn.create(this),
+      trace: ACTraceBtn.create(this),
+      minhold: ACMinHoldBtn.create(this),
+      save: ACSaveBtn.create(this),
+      meas: ACMeasBtn.create(this),
+      mode: ACModeBtn.create(this),
+      extra1: ACExtra1Btn.create(this),
+      extra2: ACExtra2Btn.create(this),
+      extra3: ACExtra3Btn.create(this),
+      ghz: ACGhzBtn.create(this),
+      mhz: ACMhzBtn.create(this),
+      khz: ACKhzBtn.create(this),
+      hz: ACHzBtn.create(this),
+    };
 
     this.html_ = html`
     <div class="analyzer-control-content">
@@ -90,24 +130,24 @@ export class AnalyzerControl extends BaseElement {
     <!-- Left Side: Sub-Menu Selection -->
     <div class="analyzer-control-content-left">
       <div class="sub-menu-column sub-menu-labels">
-        <div class="label-cell" id="label-cell-1">Label 1</div>
-        <div class="label-cell" id="label-cell-2">Label 2</div>
-        <div class="label-cell" id="label-cell-3">Label 3</div>
-        <div class="label-cell" id="label-cell-4">Label 4</div>
-        <div class="label-cell" id="label-cell-5">Label 5</div>
-        <div class="label-cell" id="label-cell-6">Label 6</div>
-        <div class="label-cell" id="label-cell-7">Label 7</div>
-        <div class="label-cell" id="label-cell-8">Label 8</div>
+        <div class="label-cell label-cell-1">Label 1</div>
+        <div class="label-cell label-cell-2">Label 2</div>
+        <div class="label-cell label-cell-3">Label 3</div>
+        <div class="label-cell label-cell-4">Label 4</div>
+        <div class="label-cell label-cell-5">Label 5</div>
+        <div class="label-cell label-cell-6">Label 6</div>
+        <div class="label-cell label-cell-7">Label 7</div>
+        <div class="label-cell label-cell-8">Label 8</div>
       </div>
       <div class="sub-menu-column sub-menu-buttons">
-        <button class="physical-button label-select-button" id="label-select-button-1"></button>
-        <button class="physical-button label-select-button" id="label-select-button-2"></button>
-        <button class="physical-button label-select-button" id="label-select-button-3"></button>
-        <button class="physical-button label-select-button" id="label-select-button-4"></button>
-        <button class="physical-button label-select-button" id="label-select-button-5"></button>
-        <button class="physical-button label-select-button" id="label-select-button-6"></button>
-        <button class="physical-button label-select-button" id="label-select-button-7"></button>
-        <button class="physical-button label-select-button" id="label-select-button-8"></button>
+        <button class="physical-button label-select-button label-select-button-1"></button>
+        <button class="physical-button label-select-button label-select-button-2"></button>
+        <button class="physical-button label-select-button label-select-button-3"></button>
+        <button class="physical-button label-select-button label-select-button-4"></button>
+        <button class="physical-button label-select-button label-select-button-5"></button>
+        <button class="physical-button label-select-button label-select-button-6"></button>
+        <button class="physical-button label-select-button label-select-button-7"></button>
+        <button class="physical-button label-select-button label-select-button-8"></button>
       </div>
     </div>
 
@@ -116,26 +156,25 @@ export class AnalyzerControl extends BaseElement {
       <!-- Top Row: Menu Selection -->
       <div class="analyzer-control-buttons">
         <div class="control-row">
-          ${ACFreqBtn.getInstance().html}
-          ${ACSpanBtn.getInstance().html}
-          ${ACAmptBtn.getInstance().html}
-          ${ACMkrBtn.getInstance().html}
-          ${ACMkr2Btn.getInstance().html}
-          </button>
+          ${this.panelElements.freq.html}
+          ${this.panelElements.span.html}
+          ${this.panelElements.ampt.html}
+          ${this.panelElements.mkr.html}
+          ${this.panelElements.mkr2.html}
         </div>
         <div class="control-row">
-          ${ACBWBtn.getInstance().html}
-          ${ACSweepBtn.getInstance().html}
-          ${ACTraceBtn.getInstance().html}
-          ${ACMinHoldBtn.getInstance().html}
-          ${ACSaveBtn.getInstance().html}
+          ${this.panelElements.bw.html}
+          ${this.panelElements.sweep.html}
+          ${this.panelElements.trace.html}
+          ${this.panelElements.minhold.html}
+          ${this.panelElements.save.html}
         </div>
         <div class="control-row">
-          ${ACMeasBtn.getInstance().html}
-          ${ACModeBtn.getInstance().html}
-          ${ACExtra1Btn.getInstance().html}
-          ${ACExtra2Btn.getInstance().html}
-          ${ACExtra3Btn.getInstance().html}
+          ${this.panelElements.meas.html}
+          ${this.panelElements.mode.html}
+          ${this.panelElements.extra1.html}
+          ${this.panelElements.extra2.html}
+          ${this.panelElements.extra3.html}
         </div>
       </div>
 
@@ -230,41 +269,41 @@ export class AnalyzerControl extends BaseElement {
     // Reinitialize DOM with final HTML
     const parentDom = super.initDom_(parentId, type);
 
-    this.domCache['label-cell-1'] = parentDom.querySelector('#label-cell-1')!;
-    this.domCache['label-cell-2'] = parentDom.querySelector('#label-cell-2')!;
-    this.domCache['label-cell-3'] = parentDom.querySelector('#label-cell-3')!;
-    this.domCache['label-cell-4'] = parentDom.querySelector('#label-cell-4')!;
-    this.domCache['label-cell-5'] = parentDom.querySelector('#label-cell-5')!;
-    this.domCache['label-cell-6'] = parentDom.querySelector('#label-cell-6')!;
-    this.domCache['label-cell-7'] = parentDom.querySelector('#label-cell-7')!;
-    this.domCache['label-cell-8'] = parentDom.querySelector('#label-cell-8')!;
-    this.domCache['label-select-button-1'] = parentDom.querySelector('#label-select-button-1')!;
-    this.domCache['label-select-button-2'] = parentDom.querySelector('#label-select-button-2')!;
-    this.domCache['label-select-button-3'] = parentDom.querySelector('#label-select-button-3')!;
-    this.domCache['label-select-button-4'] = parentDom.querySelector('#label-select-button-4')!;
-    this.domCache['label-select-button-5'] = parentDom.querySelector('#label-select-button-5')!;
-    this.domCache['label-select-button-6'] = parentDom.querySelector('#label-select-button-6')!;
-    this.domCache['label-select-button-7'] = parentDom.querySelector('#label-select-button-7')!;
-    this.domCache['label-select-button-8'] = parentDom.querySelector('#label-select-button-8')!;
-    this.domCache['7-button'] = parentDom.querySelector('.num-button[data-value="7"]')!;
-    this.domCache['8-button'] = parentDom.querySelector('.num-button[data-value="8"]')!;
-    this.domCache['9-button'] = parentDom.querySelector('.num-button[data-value="9"]')!;
-    this.domCache['4-button'] = parentDom.querySelector('.num-button[data-value="4"]')!;
-    this.domCache['5-button'] = parentDom.querySelector('.num-button[data-value="5"]')!;
-    this.domCache['6-button'] = parentDom.querySelector('.num-button[data-value="6"]')!;
-    this.domCache['1-button'] = parentDom.querySelector('.num-button[data-value="1"]')!;
-    this.domCache['2-button'] = parentDom.querySelector('.num-button[data-value="2"]')!;
-    this.domCache['3-button'] = parentDom.querySelector('.num-button[data-value="3"]')!;
-    this.domCache['0-button'] = parentDom.querySelector('.num-button[data-value="0"]')!;
+    this.domCache['label-cell-1'] = qs('.label-cell-1', parentDom);
+    this.domCache['label-cell-2'] = qs('.label-cell-2', parentDom);
+    this.domCache['label-cell-3'] = qs('.label-cell-3', parentDom);
+    this.domCache['label-cell-4'] = qs('.label-cell-4', parentDom);
+    this.domCache['label-cell-5'] = qs('.label-cell-5', parentDom);
+    this.domCache['label-cell-6'] = qs('.label-cell-6', parentDom);
+    this.domCache['label-cell-7'] = qs('.label-cell-7', parentDom);
+    this.domCache['label-cell-8'] = qs('.label-cell-8', parentDom);
+    this.domCache['label-select-button-1'] = qs('.label-select-button-1', parentDom);
+    this.domCache['label-select-button-2'] = qs('.label-select-button-2', parentDom);
+    this.domCache['label-select-button-3'] = qs('.label-select-button-3', parentDom);
+    this.domCache['label-select-button-4'] = qs('.label-select-button-4', parentDom);
+    this.domCache['label-select-button-5'] = qs('.label-select-button-5', parentDom);
+    this.domCache['label-select-button-6'] = qs('.label-select-button-6', parentDom);
+    this.domCache['label-select-button-7'] = qs('.label-select-button-7', parentDom);
+    this.domCache['label-select-button-8'] = qs('.label-select-button-8', parentDom);
+    this.domCache['7-button'] = qs('.num-button[data-value="7"]', parentDom);
+    this.domCache['8-button'] = qs('.num-button[data-value="8"]', parentDom);
+    this.domCache['9-button'] = qs('.num-button[data-value="9"]', parentDom);
+    this.domCache['4-button'] = qs('.num-button[data-value="4"]', parentDom);
+    this.domCache['5-button'] = qs('.num-button[data-value="5"]', parentDom);
+    this.domCache['6-button'] = qs('.num-button[data-value="6"]', parentDom);
+    this.domCache['1-button'] = qs('.num-button[data-value="1"]', parentDom);
+    this.domCache['2-button'] = qs('.num-button[data-value="2"]', parentDom);
+    this.domCache['3-button'] = qs('.num-button[data-value="3"]', parentDom);
+    this.domCache['0-button'] = qs('.num-button[data-value="0"]', parentDom);
     this.domCache['decimal-button'] = parentDom.querySelector('.num-button[data-value="."]')!;
     this.domCache['sign-button'] = parentDom.querySelector('.num-button[data-value="-"]')!;
     this.domCache['clear-button'] = parentDom.querySelector('.num-button[data-value="C"]')!;
     this.domCache['backspace-button'] = parentDom.querySelector('.num-button[data-value="bksp"]')!;
     this.domCache['power-button'] = parentDom.querySelector('.num-button[data-value="power"]')!;
-    this.domCache['ghz-select'] = parentDom.querySelector('#ghz-select')!;
-    this.domCache['mhz-select'] = parentDom.querySelector('#mhz-select')!;
-    this.domCache['khz-select'] = parentDom.querySelector('#khz-select')!;
-    this.domCache['hz-select'] = parentDom.querySelector('#hz-select')!;
+    this.domCache['ghz-select'] = parentDom.querySelector('.ghz-select')!;
+    this.domCache['mhz-select'] = parentDom.querySelector('.mhz-select')!;
+    this.domCache['khz-select'] = parentDom.querySelector('.khz-select')!;
+    this.domCache['hz-select'] = parentDom.querySelector('.hz-select')!;
 
     return parentDom;
   }
@@ -272,7 +311,9 @@ export class AnalyzerControl extends BaseElement {
   protected addEventListeners_(): void {
     if (!this.dom_) return;
 
-    for (const element of this.panelElements) {
+    // Loop through all panel elements and add their event listeners
+    for (const key in this.panelElements) {
+      const element = this.panelElements[key];
       element.addEventListeners();
     }
 

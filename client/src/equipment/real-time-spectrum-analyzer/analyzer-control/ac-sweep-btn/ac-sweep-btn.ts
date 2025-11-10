@@ -8,7 +8,7 @@ export class ACSweepBtn extends BaseControlButton {
 
   private constructor(analyzerControl: AnalyzerControl) {
     super({
-      uniqueId: 'ac-sweep-btn',
+      uniqueId: `ac-sweep-btn-${analyzerControl.specA.state.uuid}`,
       label: 'Sweep',
       ariaLabel: 'Sweep',
     });

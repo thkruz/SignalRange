@@ -1,4 +1,5 @@
 import { EventBus } from "@app/events/event-bus";
+import { Logger } from "@app/logging/logger";
 import { html } from "../../engine/utils/development/formatter";
 import { Events } from "../../events/events";
 import { Hertz, IfSignal, RfSignal } from "../../types";
@@ -17,7 +18,7 @@ export interface RealTimeSpectrumAnalyzerState {
   rfFeUuid: string;
   isRfMode: boolean; // true = RF mode, false = IF mode
   isPaused: boolean;
-  noiseFloor: any;
+  noiseFloorNoGain: any;
   isInternalNoiseFloor: boolean;
   isMaxHold: boolean;
   isMinHold: boolean;
@@ -76,7 +77,7 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
       hold: false,
       minAmplitude: -100,
       maxAmplitude: -40,
-      noiseFloor: -104,
+      noiseFloorNoGain: -104,
       isInternalNoiseFloor: true,
       refreshRate: 10,
       screenMode: 'spectralDensity',
@@ -324,7 +325,7 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
     const tapPointB = this.rfFrontEnd_.couplerModule.state.tapPointB;
 
     let signals: (IfSignal | RfSignal)[] = [];
-    this.state.noiseFloor = -174; // Reset to default before calculation
+    this.state.noiseFloorNoGain = -174; // Reset to default before calculation
     this.state.isInternalNoiseFloor = true;
 
     for (const tapPoint of [tapPointA, tapPointB]) {
@@ -373,8 +374,8 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
           throw new Error(`Unknown tap point: ${tapPointA}`);
       }
 
-      if (tapPointnoiseFloor > this.state.noiseFloor) {
-        this.state.noiseFloor = tapPointnoiseFloor;
+      if (tapPointnoiseFloor > this.state.noiseFloorNoGain) {
+        this.state.noiseFloorNoGain = tapPointnoiseFloor;
         this.state.isInternalNoiseFloor = isInternalNoiseFloor;
       }
     }
@@ -471,6 +472,58 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
       uuid: this.uuid,
       isPaused: this.state.isPaused,
     });
+    this.syncDomWithState();
+  }
+
+  /**
+   * Get the noise floor adjusted for RF front end gain
+   */
+  get noiseFloorAndGain(): number {
+    let noiseFloor = this.state.noiseFloorNoGain;
+    if (!this.state.isInternalNoiseFloor) {
+      noiseFloor += this.rfFrontEnd_.getTotalRxGain();
+    }
+    return noiseFloor;
+  }
+
+  freqAutoTune() {
+    // Find the signal with the highest amplitude within the current frequency span
+    let strongestSignal: IfSignal | RfSignal | null = null;
+
+    for (const signal of this.inputSignals) {
+      if (
+        signal.frequency >= (this.state.centerFrequency - this.state.span / 2) &&
+        signal.frequency <= (this.state.centerFrequency + this.state.span / 2)
+      ) {
+        if (!strongestSignal || signal.power > strongestSignal.power) {
+          strongestSignal = signal;
+        }
+      }
+    }
+
+    // Center the spectrum analyzer on the strongest signal found
+    if (strongestSignal) {
+      this.state.centerFrequency = strongestSignal.frequency;
+      Logger.info(`Auto-tuned to frequency: ${(strongestSignal.frequency / 1e6).toFixed(3)} MHz with power: ${strongestSignal.power} dBm`);
+    } else {
+      Logger.info('No signals found within the current frequency span for auto-tuning.');
+      return;
+    }
+
+    // Adjust the span to be 10% wider than the signal's bandwidth
+    const newSpan = strongestSignal.bandwidth * 1.1;
+    this.state.span = newSpan as Hertz;
+    Logger.info(`Adjusted span to: ${(newSpan / 1e6).toFixed(3)} MHz for better visibility.`);
+
+    // Adjust the amplitude range to fit the signal's power
+    this.state.maxAmplitude = Math.ceil(strongestSignal.power / 10) * 10; // Round up to nearest 10 dB
+    this.state.minAmplitude = this.state.maxAmplitude - 60; // 60 dB range
+    Logger.info(`Set amplitude range: ${this.state.minAmplitude} dBm to ${this.state.maxAmplitude} dBm.`);
+
+    // Adjust the min amplitude to the noise floor if necessary
+    this.state.minAmplitude = this.noiseFloorAndGain - 3; // 3 dB below noise floor
+    Logger.info(`Adjusted min amplitude to noise floor: ${this.noiseFloorAndGain} dBm.`);
+
     this.syncDomWithState();
   }
 

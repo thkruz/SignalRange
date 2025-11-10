@@ -8,7 +8,7 @@ export class ACMhzBtn extends BaseControlButton {
 
   private constructor(analyzerControl: AnalyzerControl) {
     super({
-      uniqueId: 'ac-mhz-btn',
+      uniqueId: `ac-mhz-btn-${analyzerControl.specA.state.uuid}`,
       classNames: 'physical-button unit-button',
       subtext: 'dBm',
       label: 'MHz',

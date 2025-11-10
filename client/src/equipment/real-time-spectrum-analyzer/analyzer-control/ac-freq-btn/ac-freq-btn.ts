@@ -5,13 +5,12 @@ import { BaseControlButton } from "../base-control-button";
 import './ac-freq-btn.css';
 
 export class ACFreqBtn extends BaseControlButton {
-  private static instance_: ACFreqBtn;
   private readonly analyzerControl: AnalyzerControl;
   private subMenuSelected: 'center' | 'start' | 'stop' | null = null;
 
   private constructor(analyzerControl: AnalyzerControl) {
     super({
-      uniqueId: 'ac-freq-btn',
+      uniqueId: `ac-freq-btn-${analyzerControl.specA.state.uuid}`,
       label: 'Freq',
       ariaLabel: 'Frequency',
     });
@@ -21,8 +20,7 @@ export class ACFreqBtn extends BaseControlButton {
   }
 
   static create(analyzerControl: AnalyzerControl): ACFreqBtn {
-    this.instance_ = new ACFreqBtn(analyzerControl);
-    return this.instance_;
+    return new ACFreqBtn(analyzerControl);
   }
 
   init(): void {
@@ -31,17 +29,13 @@ export class ACFreqBtn extends BaseControlButton {
     this.handleCenterFreqClick();
   }
 
-  static getInstance(): ACFreqBtn {
-    return this.instance_;
-  }
-
   protected handleClick_(): void {
     this.analyzerControl.controlSelection = this;
 
     this.analyzerControl.domCache['label-cell-1'].textContent = 'Center Freq';
     this.analyzerControl.domCache['label-cell-2'].textContent = 'Start Freq';
     this.analyzerControl.domCache['label-cell-3'].textContent = 'Stop Freq';
-    this.analyzerControl.domCache['label-cell-4'].textContent = '';
+    this.analyzerControl.domCache['label-cell-4'].textContent = 'Auto-Tune';
     this.analyzerControl.domCache['label-cell-5'].textContent = '';
     this.analyzerControl.domCache['label-cell-6'].textContent = '';
     this.analyzerControl.domCache['label-cell-7'].textContent = '';
@@ -55,6 +49,9 @@ export class ACFreqBtn extends BaseControlButton {
     });
     this.analyzerControl.domCache['label-select-button-3']?.addEventListener('click', () => {
       this.handleStopFreqClick();
+    });
+    this.analyzerControl.domCache['label-select-button-4']?.addEventListener('click', () => {
+      this.handleAutoTuneClick();
     });
   }
 
@@ -92,6 +89,10 @@ export class ACFreqBtn extends BaseControlButton {
 
     this.analyzerControl.specA.syncDomWithState();
     this.playSound();
+  }
+
+  private handleAutoTuneClick(): void {
+    this.analyzerControl.specA.freqAutoTune();
   }
 
   onEnterPressed(): void {

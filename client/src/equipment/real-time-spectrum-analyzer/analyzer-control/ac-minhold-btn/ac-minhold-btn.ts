@@ -8,7 +8,7 @@ export class ACMinHoldBtn extends BaseControlButton {
 
   private constructor(analyzerControl: AnalyzerControl) {
     super({
-      uniqueId: 'ac-minhold-btn',
+      uniqueId: `ac-minhold-btn-${analyzerControl.specA.state.uuid}`,
       label: 'MinHold',
       ariaLabel: 'Min Hold',
     });

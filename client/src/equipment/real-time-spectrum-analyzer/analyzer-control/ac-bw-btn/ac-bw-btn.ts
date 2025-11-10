@@ -8,7 +8,7 @@ export class ACBWBtn extends BaseControlButton {
 
   private constructor(analyzerControl: AnalyzerControl) {
     super({
-      uniqueId: 'ac-bw-btn',
+      uniqueId: `ac-bw-btn-${analyzerControl.specA.state.uuid}`,
       label: 'BW',
       ariaLabel: 'Bandwidth',
     });

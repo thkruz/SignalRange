@@ -362,7 +362,7 @@ export class SpectralDensityPlot extends RTSAScreen {
    */
 
   private createNoise(data: Float32Array): Float32Array {
-    let base = this.specA.state.noiseFloor;
+    let base = this.specA.state.noiseFloorNoGain;
 
     const len = data.length;
     const time = performance.now() / 1000;

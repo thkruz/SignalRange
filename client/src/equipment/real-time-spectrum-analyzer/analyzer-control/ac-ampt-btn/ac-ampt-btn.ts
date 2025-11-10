@@ -3,13 +3,12 @@ import { BaseControlButton } from "../base-control-button";
 import './ac-ampt-btn.css';
 
 export class ACAmptBtn extends BaseControlButton {
-  private static instance_: ACAmptBtn;
   private readonly analyzerControl: AnalyzerControl;
   private subMenuSelected: 'max' | 'min' | null = null;
 
   private constructor(analyzerControl: AnalyzerControl) {
     super({
-      uniqueId: 'ac-ampt-btn',
+      uniqueId: `ac-ampt-btn-${analyzerControl.specA.state.uuid}`,
       label: 'Ampt',
       ariaLabel: 'Amplitude',
     });
@@ -19,12 +18,7 @@ export class ACAmptBtn extends BaseControlButton {
   }
 
   static create(analyzerControl: AnalyzerControl): ACAmptBtn {
-    this.instance_ = new ACAmptBtn(analyzerControl);
-    return this.instance_;
-  }
-
-  static getInstance(): ACAmptBtn {
-    return this.instance_;
+    return new ACAmptBtn(analyzerControl)
   }
 
   protected handleClick_(): void {

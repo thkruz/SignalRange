@@ -8,7 +8,7 @@ export class ACModeBtn extends BaseControlButton {
 
   private constructor(analyzerControl: AnalyzerControl) {
     super({
-      uniqueId: 'ac-mode-btn',
+      uniqueId: `ac-mode-btn-${analyzerControl.specA.state.uuid}`,
       label: 'Mode',
       ariaLabel: 'Mode',
     });

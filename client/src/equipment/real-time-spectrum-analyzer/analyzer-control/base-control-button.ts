@@ -23,8 +23,7 @@ export abstract class BaseControlButton {
     this.uniqueId = uniqueId;
     this.html_ = html`
       <button
-        id="${uniqueId}"
-        class="${classNames}" aria-label="${ariaLabel}"
+        class="${uniqueId} ${classNames}" aria-label="${ariaLabel}"
       >
         <span class="button-text">${label}</span>
         ${subtext ? `<div class="subtext">${subtext}</div>` : ''}
@@ -37,7 +36,7 @@ export abstract class BaseControlButton {
   }
 
   get dom(): HTMLElement {
-    this.dom_ ??= qs(`#${this.uniqueId}`);
+    this.dom_ ??= qs(`.${this.uniqueId}`);
     return this.dom_;
   }
 

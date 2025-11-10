@@ -77,7 +77,7 @@ export class WaterfallDisplay extends RTSAScreen {
     for (let i = 0; i < this.height; i++) {
       const row = new Float32Array(this.width);
       // Initialize with noise floor instead of min decibels so it shows something
-      row.fill(this.specA.state.noiseFloor);
+      row.fill(this.specA.state.noiseFloorNoGain);
       this.buffer.push(row);
     }
   }
@@ -230,7 +230,7 @@ export class WaterfallDisplay extends RTSAScreen {
   noiseCache: Float32Array = new Float32Array(this.height * this.width);
 
   private createNoise(data: Float32Array): Float32Array {
-    let base = this.specA.state.noiseFloor;
+    let base = this.specA.state.noiseFloorNoGain;
 
     const len = data.length;
     const time = performance.now() / 1000;
@@ -446,7 +446,7 @@ export class WaterfallDisplay extends RTSAScreen {
           }
         } else {
           // New row beyond old buffer, fill with noise floor
-          newRow.fill(this.specA.state.noiseFloor);
+          newRow.fill(this.specA.state.noiseFloorNoGain);
         }
 
         this.buffer.push(newRow);

@@ -8,7 +8,7 @@ export class ACMkrBtn extends BaseControlButton {
 
   private constructor(analyzerControl: AnalyzerControl) {
     super({
-      uniqueId: 'ac-mkr-btn',
+      uniqueId: `ac-mkr-btn-${analyzerControl.specA.state.uuid}`,
       label: 'Mkr',
       ariaLabel: 'Marker',
     });

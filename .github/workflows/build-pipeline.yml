@@ -29,6 +29,7 @@ jobs:
         with:
           file_or_dir: .github/workflows/build-pipeline.yml
         continue-on-error: true
+
   compliance:
     needs: lint-yml
     name: NPM Audit Report
@@ -45,6 +46,7 @@ jobs:
           dedupe_issues: true
           github_token: ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: true
+
   lint-and-test:
     needs: compliance
     name: Lint and Unit Tests
@@ -58,41 +60,37 @@ jobs:
         task: [eslint, unit-test]
     steps:
       - uses: actions/checkout@v4
-
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '18'
-
       - name: Cache node modules
         uses: actions/cache@v4.2.3
         with:
           path: ~/.npm
-          key: ${{ runner.os }}-build-node-modules-${{ hashFiles('client/package-lock.json') }}
+          key: ${{ runner.os }}-build-node-modules-${{
+            hashFiles('client/package-lock.json') }}
           restore-keys: ${{ runner.os }}-build-node-modules-${{ runner.os }}-
-
       - name: Install Dependencies
         run: npm ci --ignore-scripts
-
       - name: Set Timezone (only for tests)
         if: matrix.task == 'unit-test'
         uses: szenius/set-timezone@v1.2
         with:
           timezoneLinux: 'America/New_York'
-
       - name: Run ESLint
         if: matrix.task == 'eslint'
         run: |
           echo "Running ESLint..."
           npm run lint
           echo '### ESLint Passed' >> $GITHUB_STEP_SUMMARY
-
       - name: Run Unit Tests
         if: matrix.task == 'unit-test'
         run: |
           echo "Running Unit Tests..."
           npm test
           echo '### Unit Tests Passed' >> $GITHUB_STEP_SUMMARY
+
   build:
     needs: [lint-and-test]
     name: Build
@@ -103,28 +101,24 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
-
       - name: Setup Node.js
         uses: actions/setup-node@v3
-
         with:
           node-version: '18'
       - name: Cache node modules
         uses: actions/cache@v4.2.3
-
         with:
           path: ~/.npm
-          key: ${{ runner.os }}-build-node-modules-${{ hashFiles('client/package-lock.json') }}
+          key: ${{ runner.os }}-build-node-modules-${{
+            hashFiles('client/package-lock.json') }}
           restore-keys: ${{ runner.os }}-build-node-modules-${{ runner.os }}-
-
       - name: Update submodules
         run: git submodule update --init --recursive
-
       - name: Install Dependencies
         run: npm ci --ignore-scripts
-
       - name: Build
         run: npm run build
+
   trufflehog:
     needs: build
     name: TruffleHog Secrets Scan
@@ -134,7 +128,6 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
       - name: Run TruffleHog
         uses: trufflesecurity/trufflehog@v3.82.6
 
@@ -145,14 +138,11 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
-
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
         with:
           languages: javascript
-
       - name: Autobuild
         uses: github/codeql-action/autobuild@v3
-
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3

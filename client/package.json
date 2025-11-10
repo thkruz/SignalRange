@@ -8,7 +8,8 @@
     "dev": "webpack serve --mode development",
     "type-check": "tsc --noEmit",
     "clean": "rm -rf dist",
-    "test": "npx jest --config jest.config.js"
+    "test": "npx jest --config jest.config.js",
+    "lint": "npx eslint --config .eslintrc"
   },
   "keywords": [
     "space",
@@ -23,7 +24,10 @@
     "@types/draggabilly": "^3.0.0",
     "@types/node": "^20.19.24",
     "babel-jest": "^30.2.0",
+    "babel-plugin-transform-import-meta": "^2.3.3",
     "css-loader": "^6.8.1",
+    "eslint": "^8.57.0",
+    "eslint-plugin-jest": "^27.4.0",
     "file-loader": "^6.2.0",
     "html-webpack-plugin": "^5.5.3",
     "jest-canvas-mock": "^2.5.2",

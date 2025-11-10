@@ -96,4 +96,18 @@ export class App extends BaseElement {
   sync(): void {
     EventBus.getInstance().emit(Events.SYNC);
   }
+
+  static dispose(): void {
+    this.instance_ = null;
+  }
+
+  static __resetAll__(): void {
+    Header['instance_'] = null;
+    Body['instance_'] = null;
+    Footer['instance_'] = null;
+    LoginPage['instance_'] = null;
+    StudentPage['instance_'] = null;
+    SimulationManager['instance_'] = null;
+    App.instance_ = null;
+  }
 }

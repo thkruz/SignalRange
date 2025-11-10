@@ -1,0 +1,155 @@
+---
+name: Build Pipeline
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+      - develop
+
+permissions:
+  contents: read
+  issues: write
+  actions: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-yml:
+    name: Yaml Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+      - name: YAML Lint
+        uses: ibiqlik/action-yamllint@v3.1.1
+        with:
+          file_or_dir: .github/workflows/build-pipeline.yml
+        continue-on-error: true
+  compliance:
+    needs: lint-yml
+    name: NPM Audit Report
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+      - name: NPM Audit Action
+        uses: oke-py/npm-audit-action@main
+        with:
+          working_directory: ./client
+          issue_assignees: thkruz
+          issue_labels: Security
+          dedupe_issues: true
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+  lint-and-test:
+    needs: compliance
+    name: Lint and Unit Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./client
+    strategy:
+      fail-fast: false
+      matrix:
+        task: [eslint, unit-test]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Cache node modules
+        uses: actions/cache@v4.2.3
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-build-node-modules-${{ hashFiles('client/package-lock.json') }}
+          restore-keys: ${{ runner.os }}-build-node-modules-${{ runner.os }}-
+
+      - name: Install Dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Set Timezone (only for tests)
+        if: matrix.task == 'unit-test'
+        uses: szenius/set-timezone@v1.2
+        with:
+          timezoneLinux: 'America/New_York'
+
+      - name: Run ESLint
+        if: matrix.task == 'eslint'
+        run: |
+          echo "Running ESLint..."
+          npm run lint
+          echo '### ESLint Passed' >> $GITHUB_STEP_SUMMARY
+
+      - name: Run Unit Tests
+        if: matrix.task == 'unit-test'
+        run: |
+          echo "Running Unit Tests..."
+          npm test
+          echo '### Unit Tests Passed' >> $GITHUB_STEP_SUMMARY
+  build:
+    needs: [lint-and-test]
+    name: Build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./client
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+
+        with:
+          node-version: '18'
+      - name: Cache node modules
+        uses: actions/cache@v4.2.3
+
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-build-node-modules-${{ hashFiles('client/package-lock.json') }}
+          restore-keys: ${{ runner.os }}-build-node-modules-${{ runner.os }}-
+
+      - name: Install Dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Build
+        run: npm run build
+  trufflehog:
+    needs: build
+    name: TruffleHog Secrets Scan
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run TruffleHog
+        uses: trufflesecurity/trufflehog@v3.82.6
+
+  codeql:
+    needs: build
+    name: CodeQL Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3

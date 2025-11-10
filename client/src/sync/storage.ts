@@ -11,6 +11,7 @@ import { Events } from '../events/events';
 import type { StudentEquipment } from '../pages/student-page/student-equipment';
 import { StorageProviderFactory, StorageProviderType } from './storage-provider-factory';
 import { SyncManager, type AppState } from './sync-manager';
+import './webpack-hot-module';
 
 // Create the storage provider (can be easily swapped!)
 const storageProvider = StorageProviderFactory.create({
@@ -24,7 +25,7 @@ const storageProvider = StorageProviderFactory.create({
 });
 
 // Create the sync manager
-const syncManager = new SyncManager(storageProvider);
+export const syncManager = new SyncManager(storageProvider);
 
 // Initialize on first use
 let initPromise: Promise<void> | null = null;
@@ -148,16 +149,6 @@ export async function swapStorageProvider(
  */
 export async function disposeStorage(): Promise<void> {
   await syncManager.dispose();
-}
-
-// HMR support for development
-const webpackHotModule = (import.meta as any).webpackHot;
-if (webpackHotModule) {
-  webpackHotModule.dispose(async () => {
-    await syncManager.saveToStorage();
-    await syncManager.dispose();
-  });
-  webpackHotModule.accept();
 }
 
 // Export types

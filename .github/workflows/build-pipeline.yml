@@ -76,7 +76,7 @@ jobs:
 
       - name: Update submodules
         run: git submodule update --init --recursive
-        working-directory: ../
+        working-directory: ./
       - name: Set Timezone (only for tests)
         if: matrix.task == 'unit-test'
         uses: szenius/set-timezone@v1.2
@@ -118,7 +118,7 @@ jobs:
           restore-keys: ${{ runner.os }}-build-node-modules-${{ runner.os }}-
       - name: Update submodules
         run: git submodule update --init --recursive
-        working-directory: ../
+        working-directory: ./
       - name: Install Dependencies
         run: npm ci --ignore-scripts
       - name: Build

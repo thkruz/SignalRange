@@ -1,4 +1,4 @@
-import { Hertz, IfSignal, RfSignal, SignalOrigin } from "../../../types";
+import { Hertz, IfSignal, RfSignal } from "../../../types";
 import { RealTimeSpectrumAnalyzer, RealTimeSpectrumAnalyzerState } from "../real-time-spectrum-analyzer";
 import { RTSAScreen } from "./rtsa-screen";
 
@@ -325,17 +325,6 @@ export class WaterfallDisplay extends RTSAScreen {
       // Simulate deep nulls and random dropouts for realism (-10 to -14 dB drops)
       if (Math.random() < 0.001) {
         y -= 10 + Math.random() * 4;
-      }
-
-      // if filter bank bandwidth is this.specA.rfFrontEnd_.filterModule.state.bandwidth * 1e6
-      // what should happen if the signal bandwidth is greater than that?
-
-      if (signal.origin === SignalOrigin.IF_FILTER_BANK && signal.bandwidth > this.specA.rfFrontEnd_.filterModule.state.bandwidth * 1e6) {
-        // Apply additional attenuation for out-of-band signals
-        // Ps,out​=Ps​+10log10​(Bs​Bf​​)
-        const bandwidthRatio = signal.bandwidth / ((this.specA.rfFrontEnd_.filterModule.state.bandwidth * 1e6) / 2);
-        const attenuationDb = 10 * Math.log10(bandwidthRatio);
-        y -= attenuationDb;
       }
 
       data[x] = Math.max(data[x], y);

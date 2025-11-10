@@ -1,7 +1,7 @@
 {
-  "name": "space-range-client",
+  "name": "signal-range-client",
   "version": "1.0.0",
-  "description": "Space Range: Space Electronic Warfare Lab",
+  "description": "Signal Range: Space Electronic Warfare Lab",
   "main": "dist/index.js",
   "scripts": {
     "build": "webpack --mode production",

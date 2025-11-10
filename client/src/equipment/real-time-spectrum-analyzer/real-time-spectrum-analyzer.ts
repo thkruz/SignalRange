@@ -12,6 +12,8 @@ import { SpectralDensityPlot } from './rtsa-screen/spectral-density-plot';
 import { WaterfallDisplay } from "./rtsa-screen/waterfall-display";
 
 export interface RealTimeSpectrumAnalyzerState {
+  /** This is the reference level that all dBm values are relative to */
+  referenceLevel: number;
   minFrequency: Hertz;
   maxFrequency: Hertz;
   lastSpan: Hertz;
@@ -21,7 +23,7 @@ export interface RealTimeSpectrumAnalyzerState {
   team_id: number;
   rfFeUuid: string;
   isPaused: boolean;
-  noiseFloorNoGain: any;
+  noiseFloorNoGain: number;
   isInternalNoiseFloor: boolean;
   isMaxHold: boolean;
   isMinHold: boolean;
@@ -72,6 +74,9 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
       isMaxHold: false,
       isMinHold: false,
       isMarkerOn: false,
+
+      referenceLevel: 0, // dBm
+
       minFrequency: 5e3 as Hertz, // 5 kHz
       maxFrequency: 25.5e9 as Hertz, // 25.5 GHz
       centerFrequency: 600e6 as Hertz,

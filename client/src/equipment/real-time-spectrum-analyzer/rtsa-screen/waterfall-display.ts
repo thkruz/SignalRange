@@ -116,7 +116,9 @@ export class WaterfallDisplay extends RTSAScreen {
 
         // Create new row of data
         this.data.fill(this.specA.state.minAmplitude);
-        this.drawSignalsToData(this.minFreq, this.maxFreq);
+        this.specA.inputSignals.forEach((signal) => {
+          this.drawSignal(signal);
+        });
 
         // Compose noise + signals into one row
         const row = new Float32Array(this.width);
@@ -193,37 +195,18 @@ export class WaterfallDisplay extends RTSAScreen {
     }
   }
 
-  private drawSignalsToData(minFreq: Hertz, maxFreq: Hertz): void {
-    this.specA.inputSignals.forEach((signal) => {
-      if (!this.specA.rfFrontEnd_.antenna.state.isLocked || !this.specA.rfFrontEnd_.antenna.state.isOperational) return;
+  private drawSignal(signal: RfSignal | IfSignal): void {
+    const center = ((signal.frequency - this.minFreq) / (this.maxFreq - this.minFreq)) * this.width;
+    const inBandWidth = ((signal.bandwidth / (this.maxFreq - this.minFreq)) * this.width) / 2;
+    const outOfBandWidth = ((signal.bandwidth / (this.maxFreq - this.minFreq)) * this.width) / 1.8;
 
-      this.addSignalToData(signal, minFreq, maxFreq);
-    });
-  }
-
-  private addSignalToData(signal: RfSignal | IfSignal, minFreq: Hertz, maxFreq: Hertz): void {
-    const center = this.freqToX(signal.frequency, minFreq, maxFreq);
-    const inBandWidth = this.bandwidthToW(signal.bandwidth, minFreq, maxFreq);
-    const outOfBandWidth = inBandWidth * 1.1;
-
-    // Only draw if signal is within visible range
-    if (center >= -outOfBandWidth && center <= this.width + outOfBandWidth) {
-      this.data = this.createSignal(
-        this.data,
-        signal,
-        center,
-        inBandWidth,
-        outOfBandWidth
-      );
-    }
-  }
-
-  private freqToX(freq: number, minFreq: Hertz, maxFreq: Hertz): number {
-    return ((freq - minFreq) / (maxFreq - minFreq)) * this.width;
-  }
-
-  private bandwidthToW(bw: number, minFreq: Hertz, maxFreq: Hertz): number {
-    return ((bw / (maxFreq - minFreq)) * this.width) / 2;
+    this.data = this.createSignal(
+      this.data,
+      signal,
+      center,
+      inBandWidth,
+      outOfBandWidth
+    );
   }
 
   noiseCacheRow: number = 0;
@@ -279,7 +262,7 @@ export class WaterfallDisplay extends RTSAScreen {
       }
 
       if (!this.specA.state.isInternalNoiseFloor) {
-        noise += this.specA.rfFrontEnd_.lnbModule.getTotalGain();
+        noise += this.specA.rfFrontEnd_.getTotalRxGain();
       }
 
       data[x] = noise;
@@ -300,7 +283,7 @@ export class WaterfallDisplay extends RTSAScreen {
     inBandWidth: number,
     outOfBandWidth: number
   ): Float32Array {
-    const sigma = inBandWidth / 1.75;
+    const sigma = inBandWidth / 1.035;
 
     for (let x = 0; x < data.length; x++) {
       const distance = x - center;
@@ -311,15 +294,28 @@ export class WaterfallDisplay extends RTSAScreen {
       let y = signal.power;
       const gaussian = Math.exp(-0.5 * Math.pow(distance / sigma, 2));
 
-      if (absDistance <= inBandWidth) {
-        y = signal.power + Math.log10(gaussian * (0.97 + Math.random() * 0.06)) * 10;
-      } else if (absDistance <= outOfBandWidth) {
-        const sideLobe = Math.abs(Math.sin((distance / inBandWidth) * Math.PI * 2)) * 0.15;
-        y = signal.power + Math.log10(gaussian * sideLobe * (0.9 + Math.random() * 0.1)) * 10;
+      // Main lobe (signal bandwidth)
+      if (Math.abs(distance) <= inBandWidth) {
+        // Add some random amplitude jitter for realism (±0.3 dB)
+        y += (Math.random() - 0.5) * 0.6;
       }
 
-      if (absDistance > outOfBandWidth * 0.95) {
-        y -= Math.abs(Math.random() * 3);
+      // Simulate out-of-band rolloff (side lobes)
+      if (Math.abs(distance) > inBandWidth && Math.abs(distance) <= outOfBandWidth) {
+        // Side lobes: much lower amplitude (-15 to -20 dB below main lobe)
+        const sideLobe = Math.sin((distance / inBandWidth) * Math.PI * 2) * 0.15;
+        const sideLobeDb = 20 * Math.log10(Math.abs(sideLobe) + 1e-10);
+        y = signal.power + gaussian + sideLobeDb + (Math.random() - 0.5) * 0.8;
+      }
+
+      // Add noise floor blending near edges (additional -3 to -9 dB)
+      if (Math.abs(distance) > outOfBandWidth * 0.95) {
+        y -= 3 + Math.random() * 6;
+      }
+
+      // Simulate deep nulls and random dropouts for realism (-10 to -14 dB drops)
+      if (Math.random() < 0.001) {
+        y -= 10 + Math.random() * 4;
       }
 
       // if filter bank bandwidth is this.specA.rfFrontEnd_.filterModule.state.bandwidth * 1e6
@@ -331,6 +327,10 @@ export class WaterfallDisplay extends RTSAScreen {
         const bandwidthRatio = signal.bandwidth / ((this.specA.rfFrontEnd_.filterModule.state.bandwidth * 1e6) / 2);
         const attenuationDb = 10 * Math.log10(bandwidthRatio);
         y -= attenuationDb;
+      }
+
+      if (absDistance > outOfBandWidth * 0.85) {
+        y -= 3 + Math.random() * 6;
       }
 
       data[x] = Math.max(data[x], y);

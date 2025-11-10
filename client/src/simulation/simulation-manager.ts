@@ -71,7 +71,7 @@ export class SimulationManager {
     // Return signals within the specified frequency range
     const satelliteSignals = this.satelliteSignals.filter(() => {
       // Random drop to simulate interference
-      if (Math.random() < 0.001) {
+      if (Math.random() < 0.0001) {
         return false;
       }
 

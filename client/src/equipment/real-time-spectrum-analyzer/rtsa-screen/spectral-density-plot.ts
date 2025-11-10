@@ -169,10 +169,10 @@ export class SpectralDensityPlot extends RTSAScreen {
     });
   }
 
-  private drawFrequencyLabels(ctx: CanvasRenderingContext2D, isDualScreenMode: boolean): void {
+  private drawFrequencyLabels(ctx: CanvasRenderingContext2D, _isDualScreenMode: boolean): void {
     ctx.save();
     ctx.fillStyle = '#fff';
-    ctx.font = isDualScreenMode ? '14px Arial' : '14px Arial';
+    ctx.font = '14px Arial';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
 
@@ -225,7 +225,7 @@ export class SpectralDensityPlot extends RTSAScreen {
         const measured = ctx.measureText(text).width;
         // only draw if text fits the max width and does not collide with previous label
         if (measured <= maxTextWidth && x - lastX >= measured + padding) {
-          const y = isDualScreenMode ? 5 : this.height - 20;
+          const y = this.height - 20;
           ctx.fillText(text, x, y);
           lastX = x;
           drawn = true;
@@ -238,7 +238,7 @@ export class SpectralDensityPlot extends RTSAScreen {
         const fallback = candidates[candidates.length - 1];
         const measured = ctx.measureText(fallback).width;
         if (x - lastX >= Math.min(measured, maxTextWidth) + padding) {
-          const y = isDualScreenMode ? 5 : this.height - 20;
+          const y = this.height - 20;
           // truncate long labels to maxTextWidth by progressively removing characters
           let label = fallback;
           while (ctx.measureText(label).width > maxTextWidth && label.length > 1) {
@@ -262,7 +262,10 @@ export class SpectralDensityPlot extends RTSAScreen {
     const numLabels = isDualScreenMode ? 5 : 10;
     for (let i = 0; i <= numLabels - 1; i++) {
       const y = (i / numLabels) * this.height;
-      const power = this.specA.state.maxAmplitude + ((this.specA.state.minAmplitude - this.specA.state.maxAmplitude) * i) / numLabels;
+      const maxAmplitude = this.specA.state.maxAmplitude - this.specA.state.referenceLevel;
+      const minAmplitude = this.specA.state.minAmplitude - this.specA.state.referenceLevel;
+
+      const power = maxAmplitude + ((minAmplitude - maxAmplitude) * i) / numLabels;
       ctx.fillText(`${power.toFixed(0)}`, 35, y);
     }
     ctx.restore();
@@ -519,7 +522,7 @@ export class SpectralDensityPlot extends RTSAScreen {
   }
 
   private createRealSignal(inBandWidth: number, x: number, signal: IfSignal | RfSignal, center: number, outOfBandWidth: number) {
-    const sigma = inBandWidth / 1.75; // Controls sharpness of main lobe
+    const sigma = inBandWidth / 1.035;
     const distance = x - center;
     const gaussian = Math.exp(-0.5 * Math.pow(distance / sigma, 2));
 
@@ -549,9 +552,9 @@ export class SpectralDensityPlot extends RTSAScreen {
       y = signal.power + gaussianDb + sideLobeDb + (Math.random() - 0.5) * 0.8;
     }
 
-    // Add noise floor blending near edges (additional -3 to -9 dB)
+    // Add noise floor blending near edges (additional -3 to -6 dB)
     if (Math.abs(distance) > outOfBandWidth * 0.95) {
-      y -= 3 + Math.random() * 6;
+      y -= 3 + Math.random() * 3;
     }
 
     // Simulate deep nulls and random dropouts for realism (-10 to -14 dB drops)

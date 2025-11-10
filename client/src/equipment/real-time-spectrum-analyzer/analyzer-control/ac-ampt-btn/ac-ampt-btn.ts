@@ -4,7 +4,7 @@ import './ac-ampt-btn.css';
 
 export class ACAmptBtn extends BaseControlButton {
   private readonly analyzerControl: AnalyzerControl;
-  private subMenuSelected: 'max' | 'min' | null = null;
+  private subMenuSelected: 'max' | 'min' | 'ref' | null = null;
 
   private constructor(analyzerControl: AnalyzerControl) {
     super({
@@ -22,7 +22,7 @@ export class ACAmptBtn extends BaseControlButton {
   }
 
   protected handleClick_(): void {
-    this.analyzerControl.controlSelection = this;
+    this.analyzerControl.updateSubMenu('ampt', this);
 
     this.analyzerControl.domCache['label-cell-1'].textContent = 'Reference Level';
     this.analyzerControl.domCache['label-cell-2'].textContent = 'Scale / dB per Division';
@@ -34,11 +34,26 @@ export class ACAmptBtn extends BaseControlButton {
     this.analyzerControl.domCache['label-cell-8'].textContent = 'Min Amplitude';
 
     this.analyzerControl.domCache['label-select-button-1']?.addEventListener('click', () => {
+      this.handleReferenceLevelClick();
+    });
+    this.analyzerControl.domCache['label-select-button-7']?.addEventListener('click', () => {
       this.handleMaxAmplitudeClick();
     });
-    this.analyzerControl.domCache['label-select-button-2']?.addEventListener('click', () => {
+    this.analyzerControl.domCache['label-select-button-8']?.addEventListener('click', () => {
       this.handleMinAmplitudeClick();
     });
+  }
+
+  private handleReferenceLevelClick(): void {
+    // Update the display with current reference level
+    this.subMenuSelected = 'ref';
+
+    const refLevel = this.analyzerControl.specA.state.referenceLevel;
+    this.analyzerControl.specA.state.inputValue = refLevel.toString();
+    this.analyzerControl.specA.state.inputUnit = 'dBm';
+
+    this.analyzerControl.specA.syncDomWithState();
+    this.playSound();
   }
 
   private handleMinAmplitudeClick(): void {
@@ -63,17 +78,63 @@ export class ACAmptBtn extends BaseControlButton {
     this.playSound();
   }
 
+  onMajorTickChange(value: number): void {
+    this.applyTickAdjustment(1, value);
+  }
+
+  onMinorTickChange(value: number): void {
+    this.applyTickAdjustment(10, value);
+  }
+
+  applyTickAdjustment(divisor: number, value: number): void {
+    if (this.subMenuSelected === null) {
+      return;
+    }
+    const adjustment = value / divisor;
+
+    switch (this.subMenuSelected) {
+      case 'ref':
+        this.analyzerControl.specA.state.referenceLevel += adjustment;
+        break;
+      case 'min':
+        this.analyzerControl.specA.state.minAmplitude += adjustment;
+        break;
+      case 'max':
+        this.analyzerControl.specA.state.maxAmplitude += adjustment;
+        break;
+    }
+
+    this.analyzerControl.specA.syncDomWithState();
+  }
+
   onEnterPressed(): void {
-    if (this.subMenuSelected === 'min') {
-      const inputValue = parseFloat(this.analyzerControl.specA.state.inputValue);
-      if (!isNaN(inputValue)) {
-        this.analyzerControl.specA.state.minAmplitude = inputValue;
-      }
-    } else if (this.subMenuSelected === 'max') {
-      const inputValue = parseFloat(this.analyzerControl.specA.state.inputValue);
-      if (!isNaN(inputValue)) {
-        this.analyzerControl.specA.state.maxAmplitude = inputValue;
-      }
+    switch (this.subMenuSelected) {
+      case null:
+        return;
+      case 'ref':
+        {
+          const refInputValue = parseFloat(this.analyzerControl.specA.state.inputValue);
+          if (!isNaN(refInputValue)) {
+            this.analyzerControl.specA.state.referenceLevel = refInputValue;
+          }
+        }
+        break;
+      case 'min':
+        {
+          const minInputValue = parseFloat(this.analyzerControl.specA.state.inputValue);
+          if (!isNaN(minInputValue)) {
+            this.analyzerControl.specA.state.minAmplitude = minInputValue;
+          }
+          break;
+        }
+      case 'max':
+        {
+          const maxInputValue = parseFloat(this.analyzerControl.specA.state.inputValue);
+          if (!isNaN(maxInputValue)) {
+            this.analyzerControl.specA.state.maxAmplitude = maxInputValue;
+          }
+        }
+        break;
     }
 
     this.playSound();

@@ -95,6 +95,37 @@ export class ACFreqBtn extends BaseControlButton {
     this.analyzerControl.specA.freqAutoTune();
   }
 
+  private applyTickAdjustment(divisor: number, value: number): void {
+    const analyzerState = this.analyzerControl.specA.state;
+    const adjustmentInHz = (value * analyzerState.span) / divisor;
+    let newVal = 0;
+
+    if (this.subMenuSelected === 'center') {
+      newVal = this.analyzerControl.specA.state.centerFrequency + adjustmentInHz;
+    } else if (this.subMenuSelected === 'start') {
+      const currentStartFreq = this.analyzerControl.specA.state.centerFrequency - (this.analyzerControl.specA.state.span / 2) as Hertz;
+      newVal = currentStartFreq + adjustmentInHz;
+    } else if (this.subMenuSelected === 'stop') {
+      const currentStopFreq = this.analyzerControl.specA.state.centerFrequency + (this.analyzerControl.specA.state.span / 2) as Hertz;
+      newVal = currentStopFreq + adjustmentInHz;
+    }
+
+    // Round to nearest Hertz
+    newVal = Math.round(newVal);
+
+    this.adjustFrequencyInHz((newVal as Hertz));
+  }
+
+  onMajorTickChange(value: number): void {
+    Logger.info(`Adjusting frequency by major tick: ${value}`);
+    this.applyTickAdjustment(10, value);
+  }
+
+  onMinorTickChange(value: number): void {
+    Logger.info(`Adjusting frequency by minor tick: ${value}`);
+    this.applyTickAdjustment(100, value);
+  }
+
   onEnterPressed(): void {
     Logger.info(`Processing frequency input for ${this.subMenuSelected} frequency.`);
 
@@ -119,6 +150,14 @@ export class ACFreqBtn extends BaseControlButton {
       default:
         throw new Error('Invalid frequency unit');
     }
+
+    this.adjustFrequencyInHz(frequencyInHz as Hertz);
+
+    this.playSound();
+  }
+
+  private adjustFrequencyInHz(frequencyInHz: Hertz): void {
+    const analyzerState = this.analyzerControl.specA.state;
 
     // TODO: This should be a GUI error message
     // Ensure frequency is within allowable range
@@ -174,7 +213,5 @@ export class ACFreqBtn extends BaseControlButton {
     }
 
     analyzerState.lockedControl = 'freq';
-
-    this.playSound();
   }
 }

@@ -1,190 +1,251 @@
 /* AnalyzerControl.css - Modal control panel for Spectrum Analyzer */
+.draggable-box {
 
-/* Main Grid Layout */
-.analyzer-control-content {
-  display: flex;
-  flex-direction: row;
-  background-color: var(--colorTertiary);
-  padding: 10px;
-  justify-content: space-around;
-  align-items: center;
-  gap: 20px;
-  height: 100%;
-}
+  .draggable-box__title span {
+    color: #fff;
+    font-size: 16px;
+    font-weight: bold;
+    letter-spacing: 2px;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+    text-transform: uppercase;
+  }
 
-/* Sub-Menu Selection on Left Side */
-.analyzer-control-content-left {
-  display: flex;
-  flex-direction: row;
-  justify-content: space-around;
-  gap: 12px;
-  height: 500px;
-}
+  .draggable-box__title-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 40px;
+    background: linear-gradient(180deg, #3a3a3a 0%, #2a2a2a 100%);
+    border-bottom: 2px solid #444;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  }
 
-.sub-menu-column {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  justify-content: space-around;
-}
+  .analyzer-control-content {
+    display: flex;
+    flex-direction: row;
+    background-color: var(--colorTertiary);
+    padding: 10px;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+    height: 100%;
+    width: 600px;
 
-.sub-menu-labels {
-  background: #6a7b85;
-  width: 100px;
-  border-radius: 8px;
-  box-shadow: inset 0 2px 4px #3a4a55, 0 1px 2px #222;
-  border: 2px solid #5a6a75;
-  padding: 6px 0;
-  display: flex;
-  flex-direction: column;
-}
+    .sub-menu-column {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      justify-content: space-around;
+    }
 
-.sub-menu-labels>.label-cell {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  border-bottom: 1.5px solid #e0f7fa;
-  color: #e0f7fa;
-  font-family: 'Share Tech Mono', 'Roboto Mono', monospace;
-  font-size: 0.8rem;
-  padding: 8px 0;
-  text-align: center;
-  height: 35px;
-}
+    .sub-menu-labels {
+      background: #6a7b85;
+      width: 100px;
+      border-radius: 8px;
+      box-shadow: inset 0 2px 4px #3a4a55, 0 1px 2px #222;
+      border: 2px solid #5a6a75;
+      padding: 6px 0;
+      display: flex;
+      flex-direction: column;
+    }
 
-.sub-menu-column.sub-menu-buttons {
-  padding: 6px 0;
-}
+    .sub-menu-labels>.label-cell {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      border-bottom: 1.5px solid #e0f7fa;
+      color: #e0f7fa;
+      font-family: 'Share Tech Mono', 'Roboto Mono', monospace;
+      font-size: 0.8rem;
+      padding: 8px 0;
+      text-align: center;
+      height: 35px;
+    }
 
-.physical-button.label-select-button {
-  width: 35px;
-  height: 35px;
-  background: #1b1b1b !important;
-  font-size: 0.9rem;
-}
+    .sub-menu-column.sub-menu-buttons {
+      padding: 6px 0;
+    }
 
-/* Input Area on Right of Spectrum Analyzer */
-.analyzer-control-content-right {
-  display: flex;
-  flex-direction: column;
-  background-color: var(--colorTertiary);
-  padding: 10px;
-  justify-content: space-around;
-  align-items: center;
-  gap: 20px;
-}
+    .physical-button.label-select-button {
+      width: 35px;
+      height: 35px;
+      background: #1b1b1b !important;
+      font-size: 0.9rem;
+    }
 
-/* Middle Column: Control Buttons */
-.analyzer-control-buttons {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  flex: 0 0 auto;
-}
+    .control-row {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      margin-top: 10px;
+    }
 
-.analyzer-control-buttons .control-button {
-  width: 50px;
-  height: 35px;
-  font-size: 0.8rem;
-}
+    /* Physical Button Styling */
+    .physical-button {
+      font-family: 'Roboto', 'Helvetica', 'Arial', sans-serif;
+      cursor: pointer;
+      border: 2px solid var(--color-dark-border);
+      border-radius: 6px;
+      background: linear-gradient(180deg, #f0f0f0 0%, #e2e2e2 100%);
+      color: #1b1b1b;
+      font-weight: bold;
+      transition: all 0.15s ease;
+      box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3), inset 0 1px 2px rgba(255, 255, 255, 0.5);
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
 
-/* Right Column: Number Pad */
-.analyzer-control-numpad {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  flex: 0 0 auto;
-}
+    .physical-button:hover {
+      background: linear-gradient(180deg, #e8e8e8 0%, #b8b8b8 100%);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4), inset 0 1px 2px rgba(255, 255, 255, 0.5);
+    }
 
-.numpad-row {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-}
+    .physical-button:active {
+      background: linear-gradient(180deg, #b8b8b8 0%, #a0a0a0 100%);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5), inset 0 2px 4px rgba(0, 0, 0, 0.2);
+      transform: translateY(2px);
+    }
 
-.num-button {
-  /* flex column */
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  font-size: 1.05rem;
-}
+    .physical-button.active {
+      background: linear-gradient(180deg, #4caf50 0%, #388e3c 100%);
+      color: white;
+      box-shadow: 0 3px 6px rgba(0, 0, 0, 0.4), inset 0 1px 2px rgba(255, 255, 255, 0.3);
+    }
 
-.num-button.special-button {
-  background: #1b1b1b !important;
-  color: #fff;
-  font-size: 0.8em;
-  width: 60px;
-}
+    .physical-button.active:hover {
+      background: linear-gradient(180deg, #66bb6a 0%, #4caf50 100%);
+    }
 
-.control-row {
-  display: flex;
-  gap: 8px;
-  justify-content: center;
-  margin-top: 10px;
-}
+    .physical-button .button-text {
+      user-select: none;
+      pointer-events: none;
+    }
 
-/* Physical Button Styling */
-.physical-button {
-  font-family: 'Roboto', 'Helvetica', 'Arial', sans-serif;
-  cursor: pointer;
-  border: 2px solid var(--color-dark-border);
-  border-radius: 6px;
-  background: linear-gradient(180deg, #f0f0f0 0%, #e2e2e2 100%);
-  color: #1b1b1b;
-  font-weight: bold;
-  transition: all 0.15s ease;
-  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3), inset 0 1px 2px rgba(255, 255, 255, 0.5);
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
+    .physical-button .subtext {
+      font-size: 0.65em;
+      color: #115b97;
+      text-align: center;
+      min-height: 1.2em;
+    }
 
-.physical-button:hover {
-  background: linear-gradient(180deg, #e8e8e8 0%, #b8b8b8 100%);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4), inset 0 1px 2px rgba(255, 255, 255, 0.5);
-}
+    .unit-button {
+      /* flex column */
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 40px;
+      height: 40px;
+      font-size: 0.8rem;
+      background: #1b1b1b !important;
+      color: #fff;
+    }
 
-.physical-button:active {
-  background: linear-gradient(180deg, #b8b8b8 0%, #a0a0a0 100%);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5), inset 0 2px 4px rgba(0, 0, 0, 0.2);
-  transform: translateY(2px);
-}
+    /* Sub-Menu Selection on Left Side */
+    .analyzer-control-content-left {
+      display: flex;
+      flex-direction: row;
+      justify-content: space-around;
+      gap: 12px;
+      height: 500px;
+    }
 
-.physical-button.active {
-  background: linear-gradient(180deg, #4caf50 0%, #388e3c 100%);
-  color: white;
-  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.4), inset 0 1px 2px rgba(255, 255, 255, 0.3);
-}
+    /* Input Area on Right of Spectrum Analyzer */
+    .analyzer-control-content-right {
+      display: flex;
+      flex-direction: column;
+      background-color: var(--colorTertiary);
+      padding: 10px;
+      justify-content: space-around;
+      align-items: center;
+      gap: 20px;
+      width: 100%;
 
-.physical-button.active:hover {
-  background: linear-gradient(180deg, #66bb6a 0%, #4caf50 100%);
-}
+      /* Middle Column - Top: Control Buttons */
+      .analyzer-control-buttons {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        flex: 0 0 auto;
 
-.physical-button .button-text {
-  user-select: none;
-  pointer-events: none;
-}
+        .control-button {
+          width: 60px;
+          height: 35px;
+          font-size: 0.8rem;
+        }
+      }
 
-.physical-button .subtext {
-  font-size: 0.65em;
-  color: #115b97;
-  text-align: center;
-  min-height: 1.2em;
-}
+      /* Middle Column - Middle: Display Area */
+      .analyzer-control-middle-row {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-evenly;
+        gap: 12px;
+        flex: 1 1 auto;
+        width: 100%;
+        flex-wrap: nowrap;
 
-.unit-button {
-  /* flex column */
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  width: 40px;
-  height: 40px;
-  font-size: 0.8rem;
-  background: #1b1b1b !important;
-  color: #fff;
+        /* Right Column: Number Pad */
+        .analyzer-control-numpad {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          flex: 0 0 auto;
+
+          .numpad-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+          }
+
+          .num-button {
+            /* flex column */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            font-size: 1.05rem;
+          }
+
+        }
+
+        /* Reused by POWER button */
+        .num-button.special-button {
+          background: #1b1b1b !important;
+          color: #fff;
+          font-size: 0.8em;
+          width: 60px;
+        }
+
+        .analyzer-control-dials {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          flex: 0 0 auto;
+        }
+      }
+
+      .power-button-row {
+        display: flex;
+        justify-content: flex-end;
+        flex-wrap: nowrap;
+        flex-direction: row;
+        align-items: center;
+        width: 100%;
+
+        /* Bottom Row: Power Button */
+        .power-button {
+          background: #ba160c !important;
+          color: #fff;
+          font-size: 0.8em;
+          width: 60px;
+        }
+      }
+
+    }
+  }
 }

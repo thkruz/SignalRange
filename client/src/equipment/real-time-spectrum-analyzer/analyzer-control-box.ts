@@ -10,7 +10,7 @@ export class AnalyzerControlBox extends DraggableBox {
   private control: AnalyzerControl | null = null;
 
   constructor(specA: RealTimeSpectrumAnalyzer) {
-    super(`spec-a-${specA.state.uuid}-control-popup-box`, { title: `Spectrum Analyzer ${specA.state.uuid} Control Panel`, width: 'fit-content' });
+    super(`spec-a-${specA.state.uuid}-control-popup-box`, { title: `Spectrum Analyzer ${specA.state.uuid.split('-')[0]} Control Panel`, width: 'fit-content' });
     this.spectrumAnalyzer = specA;
   }
 

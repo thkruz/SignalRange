@@ -1,3 +1,4 @@
+import { ContinuousRotaryKnob } from '@app/components/rotary-knob/continuous-rotary-knob';
 import { Logger } from '@app/logging/logger';
 import { BaseElement } from '../../components/base-element';
 import { html } from "../../engine/utils/development/formatter";
@@ -84,6 +85,8 @@ export class AnalyzerControl extends BaseElement {
     khz: ACKhzBtn;
     hz: ACHzBtn;
   };
+  private minorAdjKnob: ContinuousRotaryKnob;
+  private majorAdjKnob: ContinuousRotaryKnob;
 
   constructor(options: AnalyzerControlOptions) {
     super();
@@ -101,7 +104,32 @@ export class AnalyzerControl extends BaseElement {
     this.panelElements.freq.init();
   }
 
+  private handleMinorTickChange(value: number): void {
+    this.controlSelection.onMinorTickChange(-value / 10); // Normalize to 0-1 and reverse direction
+  }
+
+  private handleMajorTickChange(value: number): void {
+    this.controlSelection.onMajorTickChange(-value / 10); // Normalize to 0-1 and reverse direction
+  }
+
   initDom_(parentId: string, type: 'add' | 'replace' = 'replace'): HTMLElement {
+
+    this.minorAdjKnob = ContinuousRotaryKnob.create(
+      `analyzer-control-selector-knob-${this.specA.state.uuid}`,
+      0,
+      10,
+      this.handleMinorTickChange.bind(this),
+      "Minor Tick",
+    );
+
+    this.majorAdjKnob = ContinuousRotaryKnob.create(
+      `analyzer-control-selector-knob-${this.specA.state.uuid}-major`,
+      0,
+      10,
+      this.handleMajorTickChange.bind(this),
+      "Major Tick",
+    );
+
     this.panelElements = {
       freq: ACFreqBtn.create(this),
       span: ACSpanBtn.create(this),
@@ -178,88 +206,97 @@ export class AnalyzerControl extends BaseElement {
         </div>
       </div>
 
-      <!-- Middle Row: Number Pad, Unit Selection, and Dial -->
-      <div class="analyzer-control-numpad">
-        <div class="numpad-row">
-        <button class="physical-button num-button" data-value="7">
-          <span class="button-text">7</span>
-          <div class="subtext"></div>
-        </button>
-        <button class="physical-button num-button" data-value="8">
-          <span class="button-text">8</span>
-          <div class="subtext">abc</div>
-        </button>
-        <button class="physical-button num-button" data-value="9">
-          <span class="button-text">9</span>
-          <div class="subtext">def</div>
-        </button>
-        ${this.panelElements.ghz.html}
-        </div>
-        <div class="numpad-row">
-        <button class="physical-button num-button" data-value="4">
-          <span class="button-text">4</span>
-          <div class="subtext">ghi</div>
-        </button>
-        <button class="physical-button num-button" data-value="5">
-          <span class="button-text">5</span>
-          <div class="subtext">jkl</div>
-        </button>
-        <button class="physical-button num-button" data-value="6">
-          <span class="button-text">6</span>
-          <div class="subtext">mno</div>
-        </button>
-        ${this.panelElements.mhz.html}
-        </div>
-        <div class="numpad-row">
-        <button class="physical-button num-button" data-value="1">
-          <span class="button-text">1</span>
-          <div class="subtext">pqrs</div>
-        </button>
-        <button class="physical-button num-button" data-value="2">
-          <span class="button-text">2</span>
-          <div class="subtext">tuv</div>
-        </button>
-        <button class="physical-button num-button" data-value="3">
-          <span class="button-text">3</span>
-          <div class="subtext">wxyz</div>
-        </button>
-        ${this.panelElements.khz.html}
-        </div>
-        <div class="numpad-row">
-        <button class="physical-button num-button" data-value="0">
-          <span class="button-text">0</span>
-        </button>
-        <button class="physical-button num-button" data-value=".">
-          <span class="button-text">.</span>
-        </button>
-        <button class="physical-button num-button" data-value="+/-">
-          <span class="button-text">+/-</span>
-        </button>
-        ${this.panelElements.hz.html}
-        </div>
-        <div class="numpad-row">
-          <button class="physical-button num-button special-button" data-value="esc" aria-label="Escape">
-            <span class="button-text">Esc</span>
+      <!-- Middle Row -->
+       <div class="analyzer-control-middle-row">
+        <!-- Left : Number Pad, Unit Selection -->
+        <div class="analyzer-control-numpad">
+          <div class="numpad-row">
+          <button class="physical-button num-button" data-value="7">
+            <span class="button-text">7</span>
+            <div class="subtext"></div>
           </button>
-          <button class="physical-button num-button special-button" data-value="bksp" aria-label="Backspace">
-            <span class="button-text" style="display:flex;align-items:center;">
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true" focusable="false">
-              <path d="M7 15L2 10L7 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-              <rect x="7" y="7" width="9" height="6" rx="1" stroke="currentColor" stroke-width="2"/>
-            </svg>
-            </span>
+          <button class="physical-button num-button" data-value="8">
+            <span class="button-text">8</span>
+            <div class="subtext">abc</div>
           </button>
-          <button class="physical-button num-button special-button" data-value="enter" aria-label="Enter">
-            <span class="button-text">
-              &#10003;
-            </span>
+          <button class="physical-button num-button" data-value="9">
+            <span class="button-text">9</span>
+            <div class="subtext">def</div>
           </button>
+          ${this.panelElements.ghz.html}
+          </div>
+          <div class="numpad-row">
+          <button class="physical-button num-button" data-value="4">
+            <span class="button-text">4</span>
+            <div class="subtext">ghi</div>
+          </button>
+          <button class="physical-button num-button" data-value="5">
+            <span class="button-text">5</span>
+            <div class="subtext">jkl</div>
+          </button>
+          <button class="physical-button num-button" data-value="6">
+            <span class="button-text">6</span>
+            <div class="subtext">mno</div>
+          </button>
+          ${this.panelElements.mhz.html}
+          </div>
+          <div class="numpad-row">
+          <button class="physical-button num-button" data-value="1">
+            <span class="button-text">1</span>
+            <div class="subtext">pqrs</div>
+          </button>
+          <button class="physical-button num-button" data-value="2">
+            <span class="button-text">2</span>
+            <div class="subtext">tuv</div>
+          </button>
+          <button class="physical-button num-button" data-value="3">
+            <span class="button-text">3</span>
+            <div class="subtext">wxyz</div>
+          </button>
+          ${this.panelElements.khz.html}
+          </div>
+          <div class="numpad-row">
+          <button class="physical-button num-button" data-value="0">
+            <span class="button-text">0</span>
+          </button>
+          <button class="physical-button num-button" data-value=".">
+            <span class="button-text">.</span>
+          </button>
+          <button class="physical-button num-button" data-value="+/-">
+            <span class="button-text">+/-</span>
+          </button>
+          ${this.panelElements.hz.html}
+          </div>
+          <div class="numpad-row">
+            <button class="physical-button num-button special-button" data-value="esc" aria-label="Escape">
+              <span class="button-text">Esc</span>
+            </button>
+            <button class="physical-button num-button special-button" data-value="bksp" aria-label="Backspace">
+              <span class="button-text" style="display:flex;align-items:center;">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true" focusable="false">
+                <path d="M7 15L2 10L7 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <rect x="7" y="7" width="9" height="6" rx="1" stroke="currentColor" stroke-width="2"/>
+              </svg>
+              </span>
+            </button>
+            <button class="physical-button num-button special-button" data-value="enter" aria-label="Enter">
+              <span class="button-text">
+                &#10003;
+              </span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Right : Dials -->
+        <div class="analyzer-control-dials">
+          ${this.minorAdjKnob.html}
+          ${this.majorAdjKnob.html}
         </div>
       </div>
 
       <!-- Bottom Row: Power Button -->
-      <div class="numpad-row">
-        <button class="physical-button num-button special-button" data-value="power">
+      <div class="power-button-row">
+        <button class="physical-button num-button power-button" data-value="power">
           <span class="button-text">Power</span>
         </button>
       </div>
@@ -316,6 +353,9 @@ export class AnalyzerControl extends BaseElement {
       const element = this.panelElements[key] as BaseControlButton;
       element.addEventListeners();
     }
+
+    this.minorAdjKnob.attachListeners();
+    this.majorAdjKnob.attachListeners();
 
     // Number pad buttons
     const numButtons = qsa<HTMLButtonElement>('.num-button', this.dom_);

@@ -53,6 +53,14 @@ export abstract class BaseControlButton {
     Logger.info(`Processing request with ${this.uniqueId} because enter was pressed.`);
   }
 
+  onMinorTickChange(value: number): void {
+    Logger.info(`Processing request with ${this.uniqueId} because minor tick changed to ${value}.`);
+  }
+
+  onMajorTickChange(value: number): void {
+    Logger.info(`Processing request with ${this.uniqueId} because major tick changed to ${value}.`);
+  }
+
   protected playSound(): void {
     SoundManager.getInstance().play(Sfx.SPEC_A_BTN_PRESS);
   }

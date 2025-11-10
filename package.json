@@ -1,11 +1,14 @@
 {
-  "name": "signal-range-client",
+  "name": "signal-range",
   "version": "1.0.0",
   "description": "Signal Range: Space Electronic Warfare Lab",
   "main": "dist/index.js",
   "scripts": {
     "build": "webpack --mode production",
     "dev": "webpack serve --mode development",
+    "deploy": "npm run build && wrangler deploy",
+    "deploy:dry-run": "npm run build && wrangler deploy --dry-run",
+    "preview": "wrangler dev",
     "type-check": "tsc --noEmit",
     "clean": "rm -rf dist",
     "test": "npx jest --config jest.config.js",
@@ -37,14 +40,17 @@
     "jest-environment-jsdom": "^30.2.0",
     "style-loader": "^3.3.3",
     "ts-loader": "^9.5.1",
+    "tsx": "^4.20.6",
     "typescript": "^5.3.3",
     "webpack": "^5.89.0",
     "webpack-cli": "^5.1.4",
-    "webpack-dev-server": "^4.15.1"
+    "webpack-dev-server": "^4.15.1",
+    "wrangler": "^4.0.0"
   },
   "dependencies": {
     "draggabilly": "^3.0.0",
     "gl-matrix": "^3.4.4",
+    "ootk": "^5.1.1",
     "socket.io-client": "^4.5.4",
     "uuid": "^13.0.0"
   }

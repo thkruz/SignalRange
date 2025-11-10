@@ -1,4 +1,3 @@
-import { Milliseconds } from "@app/engine/ootk/src/main";
 import { AntennaState } from "@app/equipment/antenna/antenna";
 import { RealTimeSpectrumAnalyzerState } from "@app/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer";
 import { BUCState } from "@app/equipment/rf-front-end/buc-module/buc-module";
@@ -12,6 +11,7 @@ import { RFFrontEndState } from "@app/equipment/rf-front-end/rf-front-end";
 import { ReceiverModemState } from "../equipment/receiver/receiver";
 import { TransmitterModem } from "../equipment/transmitter/transmitter";
 import { RfSignal } from "../types";
+import { Milliseconds } from "ootk";
 
 // Antenna Event specific interfaces
 export interface AntennaLoopbackChangedData {

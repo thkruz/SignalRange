@@ -15,9 +15,6 @@
       "@engine/*": [
         "src/engine/*"
       ],
-      "@ootk/*": [
-        "src/engine/ootk/*"
-      ]
     },
     "moduleResolution": "node",
     "strict": false,
@@ -45,7 +42,5 @@
     "dist",
     "**/*.spec.ts",
     "**/*.test.ts",
-    "**/ootk/examples/**",
-    "**/ootk/test/**"
   ]
 }

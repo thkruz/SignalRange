@@ -15,7 +15,6 @@ module.exports = {
     alias: {
       '@app': path.resolve(__dirname, 'src'),
       '@engine': path.resolve(__dirname, 'src/engine'),
-      '@ootk': path.resolve(__dirname, 'src/engine/ootk')
     }
   },
   devtool: 'source-map',

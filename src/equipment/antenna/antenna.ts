@@ -1,10 +1,10 @@
 import { PowerSwitch } from "@app/components/power-switch/power-switch";
 import { RotaryKnob } from "@app/components/rotary-knob/rotary-knob";
 import { ToggleSwitch } from "@app/components/toggle-switch/toggle-switch";
-import { Degrees } from "@app/engine/ootk/src/main";
 import { EventBus } from "@app/events/event-bus";
 import { Sfx } from "@app/sound/sfx-enum";
 import SoundManager from "@app/sound/sound-manager";
+import { Degrees } from "ootk";
 import { html } from "../../engine/utils/development/formatter";
 import { qs } from "../../engine/utils/query-selector";
 import { Events } from "../../events/events";

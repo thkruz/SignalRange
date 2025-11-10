@@ -1,5 +1,5 @@
+import { Milliseconds } from 'ootk';
 import { BaseElement } from './components/base-element';
-import { Milliseconds } from './engine/ootk/src/main';
 import { getEl } from './engine/utils/get-el';
 import { EventBus } from './events/event-bus';
 import { Events } from './events/events';

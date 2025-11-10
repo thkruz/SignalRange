@@ -1,9 +1,9 @@
 import { App } from '@app/app';
 import { PowerSwitch } from '@app/components/power-switch/power-switch';
 import { ToggleSwitch } from '@app/components/toggle-switch/toggle-switch';
-import { clamp } from '@app/engine/ootk/src/utils';
 import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
+import { clamp } from 'ootk';
 import { RFFrontEnd } from '../rf-front-end';
 import { RFFrontEndModule } from '../rf-front-end-module';
 import './gpsdo-module.css';

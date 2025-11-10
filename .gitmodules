@@ -1,3 +1,0 @@
-[submodule "client/src/engine"]
-	path = client/src/engine
-	url = https://github.com/thkruz/doris.git

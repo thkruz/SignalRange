@@ -40,7 +40,7 @@ jobs:
       - name: NPM Audit Action
         uses: oke-py/npm-audit-action@main
         with:
-          working_directory: ./client
+          working_directory: ./
           issue_assignees: thkruz
           issue_labels: Security
           dedupe_issues: true
@@ -53,7 +53,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./client
+        working-directory: ./
     strategy:
       fail-fast: false
       matrix:
@@ -69,7 +69,7 @@ jobs:
         with:
           path: ~/.npm
           key: ${{ runner.os }}-build-node-modules-${{
-            hashFiles('client/package-lock.json') }}
+            hashFiles('package-lock.json') }}
           restore-keys: ${{ runner.os }}-build-node-modules-${{ runner.os }}-
       - name: Install Dependencies
         run: npm ci --ignore-scripts
@@ -101,7 +101,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./client
+        working-directory: ./
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -114,7 +114,7 @@ jobs:
         with:
           path: ~/.npm
           key: ${{ runner.os }}-build-node-modules-${{
-            hashFiles('client/package-lock.json') }}
+            hashFiles('package-lock.json') }}
           restore-keys: ${{ runner.os }}-build-node-modules-${{ runner.os }}-
       - name: Update submodules
         run: git submodule update --init --recursive

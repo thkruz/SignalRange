@@ -1,3 +1,5 @@
+import { EventBus } from "@app/events/event-bus";
+import { Events } from "@app/events/events";
 import { PerlinNoise } from "@app/simulation/perlin-noise";
 import { dBi, dBm, Hertz, RfFrequency, RfSignal, SignalOrigin } from "@app/types";
 
@@ -77,6 +79,8 @@ export class Satellite {
   /** Uplink to downlink frequency offset (Hz) */
   private readonly frequencyOffset: number;
 
+  private readonly randomCache_: Map<string, number> = new Map();
+
   constructor(
     norad: number,
     rxSignal: RfSignal[],
@@ -107,6 +111,8 @@ export class Satellite {
 
     // Process received signals through transponders to generate transmitted signals
     this.txSignal = this.processSignals();
+
+    EventBus.getInstance().on(Events.UPDATE, this.update.bind(this));
   }
 
   /**
@@ -130,11 +136,26 @@ export class Satellite {
    * Update satellite state and process signals.
    */
   update(): void {
+    this.randomCache_.clear();
+    this.createRandomValues_();
+
     // Process signals through transponders
     this.txSignal = this.processSignals();
 
     // Update satellite health based on conditions
     this.updateHealth();
+  }
+
+  private createRandomValues_(): void {
+    // We need to create random values for each transponder to use in degradation effects
+    for (const tp of this.transponders) {
+      // Power Variation
+      this.randomCache_.set(`${tp.id}-powerVariation`, Math.random());
+      // Rain Variation
+      this.randomCache_.set(`${tp.id}-rain`, Math.random());
+      // Scintillation
+      this.randomCache_.set(`${tp.id}-scintillation`, Math.random());
+    }
   }
 
   /**
@@ -172,7 +193,9 @@ export class Satellite {
         ...signal,
         frequency: txFrequency,
         power: txPower,
-        origin: SignalOrigin.SATELLITE_TX
+        origin: SignalOrigin.SATELLITE_TX,
+        // Reverse polarization for downlink
+        polarization: signal.polarization === 'H' ? 'V' : 'H',
       };
 
       // Apply degradation effects
@@ -265,7 +288,8 @@ export class Satellite {
     const noiseGen = this.noiseGenerators.get(signal.id);
     if (!noiseGen) return signal;
 
-    const time = Date.now() / 1000 + Math.random() * 1000;
+    const randomPowerFactor = this.randomCache_.get(`${signal.id}-powerVariation`) ?? 1;
+    const time = Date.now() / 1000 + randomPowerFactor * 1000;
 
     // Perlin noise returns 0-1, convert to -1 to 1
     const noiseValue = noiseGen.get(time) * 2 - 1;
@@ -285,10 +309,14 @@ export class Satellite {
   private applyAtmosphericEffects(signal: RfSignal): RfSignal {
     // Rain fade is frequency dependent (worse at higher frequencies)
     const frequencyGHz = signal.frequency / 1e9;
-    const rainFadeDb = (frequencyGHz / 10) * Math.random() * 2; // Simplified model
+    const randomRainFactor = this.randomCache_.get(`${signal.id}-rain`) ?? 1;
+
+    // Simple rain fade model (in dB)
+    const rainFadeDb = (frequencyGHz / 10) * randomRainFactor * 2; // Simplified model
 
     // Scintillation (rapid amplitude fluctuations)
-    const scintillationDb = (Math.random() - 0.5) * 1.5;
+    const randomScintillationFactor = this.randomCache_.get(`${signal.id}-scintillation`) ?? 1;
+    const scintillationDb = (Math.random() - 0.5) * 1.5 * randomScintillationFactor;
 
     return {
       ...signal,

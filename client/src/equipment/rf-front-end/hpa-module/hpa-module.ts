@@ -18,7 +18,7 @@ import './hpa-module.css';
 export interface HPAState {
   noiseFloor: number;
   isPowered: boolean;
-  backOff: number; // dB from P1dB (0-10)
+  backOff: number; // dB from P1dB (0-30)
   outputPower: dBm; // (1-200W -> 0-53 dBm)
   isOverdriven: boolean; // true if back-off < 3 dB
   imdLevel: number; // dBc
@@ -41,7 +41,7 @@ export class HPAModule extends RFFrontEndModule<HPAState> {
   private readonly p1db = 50 as dBm; // dBm (100W) output power at 1dB compression point
   private readonly maxOutputPower = 53 as dBm; // dBm (200W) maximum output power
   private readonly minBackOffDb = 0;
-  private readonly maxBackOffDb = 10;
+  private readonly maxBackOffDb = 30;
   private readonly thermalEfficiency = 0.5; // 50% typical for SSPA
   hpaSwitch: SecureToggleSwitch;
 

@@ -45,16 +45,7 @@ export class SimulationManager {
   }
 
   update(): void {
-    // Update each satellite's state
-    this.satellites.forEach(sat => {
-      this.userSignals.filter(signal => signal.noradId === sat.noradId).forEach(_signal => {
-        // sat.addReceivedSignal(signal);
-      });
-      sat.update();
-    });
-
-    // Get all transmitted signals from satellites
-    this.satelliteSignals = this.satellites.flatMap(sat => sat.getTransmittedSignals());
+    // Nothing right now
   }
 
   addSignal(signal: RfSignal): void {

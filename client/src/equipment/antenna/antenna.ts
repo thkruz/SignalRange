@@ -304,23 +304,35 @@ export class Antenna extends BaseEquipment {
       // Our skew is limited to -90 to 90 degrees
       if (sig.polarization === 'H' || sig.polarization === 'V') {
         if (this.state.skew > 45 || this.state.skew < -45) {
-          adjustedPolarization = 'V';
-        } else {
-          adjustedPolarization = 'H';
+          // Reverse polarization
+          adjustedPolarization = sig.polarization === 'H' ? 'V' : 'H';
         }
       }
 
       // Our effective power is reduced by misalignment
-      const skewAbs = Math.abs(this.state.skew);
+      let skewAbs = Math.abs(this.state.skew);
+
+      if (skewAbs > 45) {
+        skewAbs = 90 - skewAbs;
+      }
+
+      // Calculate power reduction due to polarization mismatch
       let powerReduction: number;
-      if (skewAbs <= 15) {
+      if (sig.polarization === 'H' || sig.polarization === 'V') {
+        // If polarization is reversed (skew > 45°), apply high loss
+        if (this.state.skew > 45 || this.state.skew < -45) {
+          powerReduction = 20; // Typical cross-polarization loss
+        } else if (skewAbs <= 15) {
+          powerReduction = 0;
+        } else if (skewAbs <= 30) {
+          powerReduction = 3;
+        } else if (skewAbs <= 45) {
+          powerReduction = 6;
+        } else {
+          powerReduction = 0;
+        }
+      } else {
         powerReduction = 0;
-      } else if (skewAbs <= 30) {
-        powerReduction = 3;
-      } else if (skewAbs <= 45) {
-        powerReduction = 6;
-      } else if (skewAbs <= 60) {
-        powerReduction = 12;
       }
 
       return {

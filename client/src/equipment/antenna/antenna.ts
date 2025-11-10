@@ -596,23 +596,6 @@ export class Antenna extends BaseEquipment {
     return signalPower > this.state.noiseFloor;
   }
 
-  /**
-   * Calculate carrier-to-noise ratio for a signal
-   */
-  private calculateCarrierToNoise_(signal: RfSignal): number {
-    // Noise power in bandwidth: N = kTB (in dBm)
-    // k = Boltzmann constant = -228.6 dBW/K/Hz = -198.6 dBm/K/Hz
-    // T = System temperature (assume 290K for now, ~17°C)
-    // B = Bandwidth (Hz)
-
-    const k_dBm_per_K_per_Hz = -198.6;
-    const systemTemp_K = 290;
-    const noisePower_dBm = k_dBm_per_K_per_Hz + 10 * Math.log10(systemTemp_K) + 10 * Math.log10(signal.bandwidth);
-
-    const cn = signal.power - noisePower_dBm;
-    return cn;
-  }
-
   private updateSignalStatus_(): void {
     // Can't receive signals if Not locked or Not operational
     if (!this.state.isLocked || !this.state.isOperational) {
@@ -683,41 +666,6 @@ export class Antenna extends BaseEquipment {
       }
 
       return !isBlocked;
-    });
-
-    // Calculate C/N for each signal and mark as degraded if below threshold
-    receivedSignals.forEach(signal => {
-      const cn = this.calculateCarrierToNoise_(signal);
-
-      // Typical C/N requirements:
-      // BPSK: 6-8 dB
-      // QPSK: 9-11 dB
-      // 8QAM: 12-15 dB
-      // 16QAM: 15-18 dB
-
-      let requiredCN: number;
-
-      switch (signal.modulation) {
-        case 'BPSK':
-          requiredCN = 7;
-          break;
-        case 'QPSK':
-          requiredCN = 10;
-          break;
-        case '8QAM':
-          requiredCN = 13;
-          break;
-        case '16QAM':
-          requiredCN = 16;
-          break;
-        default:
-          requiredCN = 10;
-          break;
-      }
-
-      if (cn < requiredCN) {
-        signal.isDegraded = true;
-      }
     });
 
     this.state.rxSignalsIn = receivedSignals;

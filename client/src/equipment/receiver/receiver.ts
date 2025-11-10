@@ -429,7 +429,7 @@ export class Receiver extends BaseEquipment {
     const externalNoise = this.rfFrontEnd_?.externalNoise ?? 0;
 
     // Figure out which signals match the receiver settings
-    const visibleSignals = (this.rfFrontEnd_?.lnbModule.ifSignals ?? []).filter((s) => {
+    const visibleSignals = (this.rfFrontEnd_?.filterModule.outputSignals ?? []).filter((s) => {
       if (s.power < externalNoise) {
         return false;
       }
@@ -471,6 +471,43 @@ export class Receiver extends BaseEquipment {
         if (!(frequencyMhz >= lowerBound10 && frequencyMhz <= upperBound10)) {
           s.isDegraded = true;
         }
+
+        // Calculate C/N for each signal and mark as degraded if below threshold
+        const noiseFloor = this.rfFrontEnd_.getNoiseFloor('RX IF').noiseFloor + this.rfFrontEnd_.getTotalRxGain();
+        const signalLevel = s.power;
+
+        const cn = signalLevel - noiseFloor;
+
+        // Typical C/N requirements:
+        // BPSK: 6-8 dB
+        // QPSK: 9-11 dB
+        // 8QAM: 12-15 dB
+        // 16QAM: 15-18 dB
+
+        let requiredCN: number;
+
+        switch (s.modulation) {
+          case 'BPSK':
+            requiredCN = 7;
+            break;
+          case 'QPSK':
+            requiredCN = 10;
+            break;
+          case '8QAM':
+            requiredCN = 13;
+            break;
+          case '16QAM':
+            requiredCN = 16;
+            break;
+          default:
+            requiredCN = 10;
+            break;
+        }
+
+        if (cn < requiredCN) {
+          s.isDegraded = true;
+        }
+
         return s;
       });
   }

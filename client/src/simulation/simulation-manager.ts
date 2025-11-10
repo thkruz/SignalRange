@@ -18,9 +18,9 @@ export class SimulationManager {
           noradId: 1,
           frequency: 2810e6 as RfFrequency,
           polarization: 'H',
-          power: 40 as dBm,
+          power: 40 as dBm, // 10 W
           bandwidth: 10e6 as Hertz,
-          modulation: '8QAM' as ModulationType,
+          modulation: '8QAM' as ModulationType, // We need about 7 C/N to support 8QAM
           fec: '3/4' as FECType,
           feed: 'red-1.mp4',
           isDegraded: false,

@@ -172,16 +172,82 @@ export class SpectralDensityPlot extends RTSAScreen {
   private drawFrequencyLabels(ctx: CanvasRenderingContext2D, isDualScreenMode: boolean): void {
     ctx.save();
     ctx.fillStyle = '#fff';
-    ctx.font = isDualScreenMode ? '14px Arial' : '20px Arial';
+    ctx.font = isDualScreenMode ? '14px Arial' : '14px Arial';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
 
     const numLabels = 10;
+    const maxTextWidth = 80; // px
+    const padding = 6; // minimum spacing between labels
+    let lastX = -Infinity;
+
+    const formatCandidates = (freq: number): string[] => {
+      if (freq >= 1e9) {
+        const g = freq / 1e9;
+        return [
+          `${g.toFixed(1)} GHz`,
+          `${g.toFixed(1)}GHz`,
+          `${Math.round(g)} GHz`,
+          `${Math.round(g)}GHz`,
+          `${Math.round(g)}G`
+        ];
+      } else if (freq >= 1e6) {
+        const m = freq / 1e6;
+        return [
+          `${Math.round(m)} MHz`,
+          `${Math.round(m)}MHz`,
+          `${(m >= 1000) ? `${(m / 1000).toFixed(1)} GHz` : `${Math.round(m / 10) / 100}M`}`,
+          `${Math.round(m / 1000)}G`
+        ].filter(Boolean);
+      } else if (freq >= 1e3) {
+        const k = freq / 1e3;
+        return [
+          `${k.toFixed(1)} kHz`,
+          `${Math.round(k)} kHz`,
+          `${Math.round(k)}kHz`,
+          `${Math.round(freq)} Hz`
+        ];
+      } else {
+        return [
+          `${Math.round(freq)} Hz`
+        ];
+      }
+    };
+
     for (let i = 1; i <= numLabels - 1; i++) {
       const x = (i / numLabels) * this.width;
       const freq = this.minFreq + ((this.maxFreq - this.minFreq) * i) / numLabels;
-      const freqMHz = freq / 1e6;
-      ctx.fillText(`${freqMHz.toFixed(1)}`, x, isDualScreenMode ? 5 : this.height - 20);
+
+      const candidates = formatCandidates(freq);
+      let drawn = false;
+
+      for (const text of candidates) {
+        const measured = ctx.measureText(text).width;
+        // only draw if text fits the max width and does not collide with previous label
+        if (measured <= maxTextWidth && x - lastX >= measured + padding) {
+          const y = isDualScreenMode ? 5 : this.height - 20;
+          ctx.fillText(text, x, y);
+          lastX = x;
+          drawn = true;
+          break;
+        }
+      }
+
+      // If no compact candidate fits but we still have plenty of room, try drawing the shortest candidate truncated
+      if (!drawn) {
+        const fallback = candidates[candidates.length - 1];
+        const measured = ctx.measureText(fallback).width;
+        if (x - lastX >= Math.min(measured, maxTextWidth) + padding) {
+          const y = isDualScreenMode ? 5 : this.height - 20;
+          // truncate long labels to maxTextWidth by progressively removing characters
+          let label = fallback;
+          while (ctx.measureText(label).width > maxTextWidth && label.length > 1) {
+            label = label.slice(0, -1);
+          }
+          ctx.fillText(label, x, y);
+          lastX = x;
+        }
+      }
     }
     ctx.restore();
   }

@@ -193,7 +193,7 @@ export class AnalyzerControl extends BaseElement {
           <span class="button-text">9</span>
           <div class="subtext">def</div>
         </button>
-        ${ACGhzBtn.getInstance().html}
+        ${this.panelElements.ghz.html}
         </div>
         <div class="numpad-row">
         <button class="physical-button num-button" data-value="4">
@@ -208,7 +208,7 @@ export class AnalyzerControl extends BaseElement {
           <span class="button-text">6</span>
           <div class="subtext">mno</div>
         </button>
-        ${ACMhzBtn.getInstance().html}
+        ${this.panelElements.mhz.html}
         </div>
         <div class="numpad-row">
         <button class="physical-button num-button" data-value="1">
@@ -223,7 +223,7 @@ export class AnalyzerControl extends BaseElement {
           <span class="button-text">3</span>
           <div class="subtext">wxyz</div>
         </button>
-        ${ACKhzBtn.getInstance().html}
+        ${this.panelElements.khz.html}
         </div>
         <div class="numpad-row">
         <button class="physical-button num-button" data-value="0">
@@ -235,7 +235,7 @@ export class AnalyzerControl extends BaseElement {
         <button class="physical-button num-button" data-value="+/-">
           <span class="button-text">+/-</span>
         </button>
-        ${ACHzBtn.getInstance().html}
+        ${this.panelElements.hz.html}
         </div>
         <div class="numpad-row">
           <button class="physical-button num-button special-button" data-value="esc" aria-label="Escape">
@@ -313,7 +313,7 @@ export class AnalyzerControl extends BaseElement {
 
     // Loop through all panel elements and add their event listeners
     for (const key in this.panelElements) {
-      const element = this.panelElements[key];
+      const element = this.panelElements[key] as BaseControlButton;
       element.addEventListeners();
     }
 

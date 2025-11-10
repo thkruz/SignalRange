@@ -35,13 +35,21 @@ export class ACKhzBtn extends BaseControlButton {
       this.analyzerControl.specA.syncDomWithState();
 
       // Convert the value to GHz if necessary
-      const currentInputValue = parseFloat(this.analyzerControl.specA.state.inputValue);
+      let currentInputValue = parseFloat(this.analyzerControl.specA.state.inputValue);
+
+      if (isNaN(currentInputValue)) {
+        currentInputValue = 0;
+      }
+
       if (currentUnit === 'Hz') {
-        this.analyzerControl.specA.state.inputValue = (currentInputValue / 1e3).toString();
+        const value = currentInputValue / 1e3;
+        this.analyzerControl.specA.state.inputValue = Number(value.toPrecision(12)).toString();
       } else if (currentUnit === 'MHz') {
-        this.analyzerControl.specA.state.inputValue = (currentInputValue * 1e3).toString();
+        const value = currentInputValue * 1e3;
+        this.analyzerControl.specA.state.inputValue = Number(value.toPrecision(12)).toString();
       } else if (currentUnit === 'GHz') {
-        this.analyzerControl.specA.state.inputValue = (currentInputValue * 1e6).toString();
+        const value = currentInputValue * 1e6;
+        this.analyzerControl.specA.state.inputValue = Number(value.toPrecision(12)).toString();
       }
 
       this.analyzerControl.specA.syncDomWithState();

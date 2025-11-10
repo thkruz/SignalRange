@@ -30,7 +30,7 @@ export class ACSpanBtn extends BaseControlButton {
   }
 
   protected handleClick_(): void {
-    this.analyzerControl.controlSelection = this;
+    this.analyzerControl.updateSubMenu('span', this);
 
     this.analyzerControl.domCache['label-cell-1'].textContent = 'Set Span';
     this.analyzerControl.domCache['label-cell-2'].textContent = 'Full Span';
@@ -42,6 +42,9 @@ export class ACSpanBtn extends BaseControlButton {
     this.analyzerControl.domCache['label-cell-8'].textContent = '';
 
     this.analyzerControl.domCache['label-select-button-1']?.addEventListener('click', this.handleSetSpanClick.bind(this));
+    this.analyzerControl.domCache['label-select-button-2']?.addEventListener('click', this.handleFullSpanClick.bind(this));
+    this.analyzerControl.domCache['label-select-button-3']?.addEventListener('click', this.handleZeroSpanClick.bind(this));
+    this.analyzerControl.domCache['label-select-button-4']?.addEventListener('click', this.handleLastSpanClick.bind(this));
   }
 
   private handleSetSpanClick(): void {
@@ -52,6 +55,37 @@ export class ACSpanBtn extends BaseControlButton {
     this.analyzerControl.specA.state.inputUnit = 'MHz';
 
     this.analyzerControl.specA.syncDomWithState();
+    this.playSound();
+  }
+
+  private handleFullSpanClick(): void {
+    // Set to full span on the frequency range
+    // Rohde & Schwarz FPH: 5kHz to 25.5 GHz
+    const startFreq = this.analyzerControl.specA.state.minFrequency;
+    const stopFreq = this.analyzerControl.specA.state.maxFrequency;
+    this.analyzerControl.specA.state.lastSpan = this.analyzerControl.specA.state.span;
+    this.analyzerControl.specA.state.span = (stopFreq - startFreq) as Hertz;
+    // Recenter the frequency
+    this.analyzerControl.specA.state.centerFrequency = ((startFreq + stopFreq) / 2) as Hertz;
+    this.analyzerControl.specA.state.lockedControl = 'span';
+    this.analyzerControl.specA.syncDomWithState();
+    this.playSound();
+  }
+
+  private handleZeroSpanClick(): void {
+    Logger.error('Zero Span functionality not yet implemented.');
+    alert('Zero Span functionality not yet implemented.');
+    this.playSound();
+  }
+
+  private handleLastSpanClick(): void {
+    // Restore the last span value
+    const lastSpan = this.analyzerControl.specA.state.lastSpan;
+    if (lastSpan) {
+      this.analyzerControl.specA.state.span = lastSpan;
+      this.analyzerControl.specA.state.lockedControl = 'span';
+      this.analyzerControl.specA.syncDomWithState();
+    }
     this.playSound();
   }
 
@@ -79,6 +113,7 @@ export class ACSpanBtn extends BaseControlButton {
         throw new Error('Invalid frequency unit');
     }
 
+    this.analyzerControl.specA.state.lastSpan = this.analyzerControl.specA.state.span;
     this.analyzerControl.specA.state.span = frequencyInHz as Hertz;
     this.analyzerControl.specA.state.lockedControl = 'span';
 

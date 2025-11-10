@@ -120,6 +120,16 @@ export class ACFreqBtn extends BaseControlButton {
         throw new Error('Invalid frequency unit');
     }
 
+    // TODO: This should be a GUI error message
+    // Ensure frequency is within allowable range
+    const minFreq = analyzerState.minFrequency;
+    const maxFreq = analyzerState.maxFrequency;
+    if (frequencyInHz < minFreq || frequencyInHz > maxFreq) {
+      Logger.error(`Input frequency ${frequencyInHz} Hz is out of range (${minFreq} Hz - ${maxFreq} Hz).`);
+      alert(`Error: Input frequency is out of range (${(minFreq / 1e3).toFixed(2)} kHz - ${(maxFreq / 1e9).toFixed(2)} GHz).`);
+      return;
+    }
+
     // Update the appropriate frequency based on submenu selection
     if (this.subMenuSelected === 'center') {
       analyzerState.centerFrequency = frequencyInHz as Hertz;

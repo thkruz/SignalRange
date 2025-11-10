@@ -12,6 +12,9 @@ import { SpectralDensityPlot } from './rtsa-screen/spectral-density-plot';
 import { WaterfallDisplay } from "./rtsa-screen/waterfall-display";
 
 export interface RealTimeSpectrumAnalyzerState {
+  minFrequency: Hertz;
+  maxFrequency: Hertz;
+  lastSpan: Hertz;
   inputUnit: 'Hz' | 'kHz' | 'MHz' | 'GHz' | 'dBm' | 'dBW' | 'W';
   inputValue: string;
   uuid: string;
@@ -69,8 +72,11 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
       isMaxHold: false,
       isMinHold: false,
       isMarkerOn: false,
+      minFrequency: 5e3 as Hertz, // 5 kHz
+      maxFrequency: 25.5e9 as Hertz, // 25.5 GHz
       centerFrequency: 600e6 as Hertz,
       span: 100e6 as Hertz,
+      lastSpan: 100e6 as Hertz,
       rbw: 1e6 as Hertz,
       lockedControl: 'freq',
       hold: false,
@@ -214,7 +220,7 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
   /**
    * Update canvas visibility based on screen mode
    */
-  private updateScreenVisibility(): void {
+  updateScreenVisibility(): void {
     const singleCanvas = this.domCache['canvas'] as HTMLCanvasElement;
     const spectralCanvas = this.domCache['canvasSpectral'] as HTMLCanvasElement;
     const waterfallCanvas = this.domCache['canvasWaterfall'] as HTMLCanvasElement;
@@ -404,28 +410,6 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
     this.emit(Events.SPEC_A_CONFIG_CHANGED, { uuid: this.uuid });
   }
 
-  toggleScreenMode(): void {
-    const currentScreenMode = this.state.screenMode;
-    if (currentScreenMode === 'spectralDensity') {
-      this.state.screenMode = 'waterfall';
-      this.screen = this.waterfall;
-    } else if (currentScreenMode === 'waterfall') {
-      this.state.screenMode = 'both';
-      this.screen = null; // No single screen in both mode
-    } else {
-      this.state.screenMode = 'spectralDensity';
-      this.screen = this.spectralDensity;
-    }
-
-    this.emit(Events.SPEC_A_CONFIG_CHANGED, {
-      uuid: this.uuid,
-      screenMode: this.state.screenMode,
-    });
-
-    this.updateScreenVisibility();
-    this.syncDomWithState();
-  }
-
   togglePause(): void {
     this.state.isPaused = !this.state.isPaused;
 
@@ -453,6 +437,7 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
 
     for (const signal of this.inputSignals) {
       if (
+        this.state.span < 320e6 && // 320 MHz minimum span
         signal.frequency >= (this.state.centerFrequency - this.state.span / 2) &&
         signal.frequency <= (this.state.centerFrequency + this.state.span / 2)
       ) {
@@ -463,11 +448,11 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
     }
 
     // If strongest signal is below the noise floor replace it with a fake signal at noise floor
-    if (strongestSignal && strongestSignal.power < this.noiseFloorAndGain) {
+    if (!strongestSignal || (strongestSignal && strongestSignal.power < this.noiseFloorAndGain)) {
       strongestSignal = {
         frequency: Math.random() * this.state.span + (this.state.centerFrequency - this.state.span / 2),
         power: this.noiseFloorAndGain,
-        bandwidth: this.state.span,
+        bandwidth: Math.min(this.state.span, 320e6),
       } as IfSignal | RfSignal;
 
       Logger.warn('No real signals found within the current frequency span for auto-tuning, using noise floor instead.');
@@ -481,6 +466,20 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
     const newSpan = strongestSignal.bandwidth * 1.1;
     this.state.span = newSpan as Hertz;
     Logger.info(`Adjusted span to: ${(newSpan / 1e6).toFixed(3)} MHz for better visibility.`);
+
+    // If that puts the start or stop frequency out of bounds, adjust accordingly
+    const minFreq = this.state.centerFrequency - this.state.span / 2;
+    const maxFreq = this.state.centerFrequency + this.state.span / 2;
+
+    if (minFreq < this.state.minFrequency) {
+      this.state.centerFrequency = (this.state.span / 2) as Hertz;
+      Logger.info(`Adjusted center frequency to ${(this.state.centerFrequency / 1e6).toFixed(3)} MHz to avoid negative start frequency.`);
+    }
+
+    if (maxFreq > this.state.maxFrequency) {
+      this.state.centerFrequency = (this.state.maxFrequency - this.state.span / 2) as Hertz;
+      Logger.info(`Adjusted center frequency to ${(this.state.centerFrequency / 1e6).toFixed(3)} MHz to stay within max frequency limit.`);
+    }
 
     // Adjust the amplitude range to fit the signal's power
     this.state.maxAmplitude = Math.ceil(strongestSignal.power / 10) * 10; // Round up to nearest 10 dB

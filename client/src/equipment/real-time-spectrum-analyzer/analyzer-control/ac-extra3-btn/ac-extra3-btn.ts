@@ -28,7 +28,7 @@ export class ACExtra3Btn extends BaseControlButton {
 
   protected handleClick_(): void {
     if (this.analyzerControl) {
-      this.analyzerControl.updateSubMenu('extra3');
+      this.analyzerControl.updateSubMenu('extra3', this);
     }
   }
 }

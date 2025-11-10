@@ -30,7 +30,7 @@ export class ACFreqBtn extends BaseControlButton {
   }
 
   protected handleClick_(): void {
-    this.analyzerControl.controlSelection = this;
+    this.analyzerControl.updateSubMenu('freq', this);
 
     this.analyzerControl.domCache['label-cell-1'].textContent = 'Center Freq';
     this.analyzerControl.domCache['label-cell-2'].textContent = 'Start Freq';

@@ -27,7 +27,7 @@ export class ACMinHoldBtn extends BaseControlButton {
   }
 
   protected handleClick_(): void {
-    this.analyzerControl.updateSubMenu('minhold');
+    this.analyzerControl.updateSubMenu('minhold', this);
     this.analyzerControl.specA.state.isMinHold = !this.analyzerControl.specA.state.isMinHold;
 
     // Update spectrum analyzer

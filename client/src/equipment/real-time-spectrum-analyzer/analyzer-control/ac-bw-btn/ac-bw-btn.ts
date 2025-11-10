@@ -28,7 +28,7 @@ export class ACBWBtn extends BaseControlButton {
 
   protected handleClick_(): void {
     if (this.analyzerControl) {
-      this.analyzerControl.updateSubMenu('bw');
+      this.analyzerControl.updateSubMenu('bw', this);
     }
   }
 }

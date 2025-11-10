@@ -329,7 +329,8 @@ export class AnalyzerControl extends BaseElement {
     });
   }
 
-  updateSubMenu(subMenu: string): void {
+  updateSubMenu(subMenu: string, controlSelection: BaseControlButton): void {
+    this.controlSelection = controlSelection;
     this.clearSubMenu();
 
     Logger.info(`AnalyzerControl: Updating sub-menu to ${subMenu}`);
@@ -341,6 +342,8 @@ export class AnalyzerControl extends BaseElement {
       const button = this.domCache[`label-select-button-${i}`];
       const newButton = button.cloneNode(true) as HTMLElement;
       button.parentNode?.replaceChild(newButton, button);
+      // Reset labels
+      this.domCache[`label-cell-${i}`].textContent = '';
     }
   }
 

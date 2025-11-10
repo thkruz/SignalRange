@@ -28,7 +28,7 @@ export class ACMkr2Btn extends BaseControlButton {
 
   protected handleClick_(): void {
     if (this.analyzerControl) {
-      this.analyzerControl.updateSubMenu('mkr2');
+      this.analyzerControl.updateSubMenu('mkr2', this);
     }
   }
 }

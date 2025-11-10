@@ -27,7 +27,7 @@ export class ACMkrBtn extends BaseControlButton {
   }
 
   protected handleClick_(): void {
-    this.analyzerControl.updateSubMenu('mkr');
+    this.analyzerControl.updateSubMenu('mkr', this);
 
     this.analyzerControl.specA.state.isMarkerOn = !this.analyzerControl.specA.state.isMarkerOn;
 

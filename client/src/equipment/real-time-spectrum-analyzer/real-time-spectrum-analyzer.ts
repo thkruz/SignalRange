@@ -501,14 +501,20 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
       }
     }
 
-    // Center the spectrum analyzer on the strongest signal found
-    if (strongestSignal) {
-      this.state.centerFrequency = strongestSignal.frequency;
-      Logger.info(`Auto-tuned to frequency: ${(strongestSignal.frequency / 1e6).toFixed(3)} MHz with power: ${strongestSignal.power} dBm`);
-    } else {
-      Logger.info('No signals found within the current frequency span for auto-tuning.');
-      return;
+    // If strongest signal is below the noise floor replace it with a fake signal at noise floor
+    if (strongestSignal && strongestSignal.power < this.noiseFloorAndGain) {
+      strongestSignal = {
+        frequency: Math.random() * this.state.span + (this.state.centerFrequency - this.state.span / 2),
+        power: this.noiseFloorAndGain,
+        bandwidth: this.state.span,
+      } as IfSignal | RfSignal;
+
+      Logger.warn('No real signals found within the current frequency span for auto-tuning, using noise floor instead.');
     }
+
+    // Center the spectrum analyzer on the strongest signal found
+    this.state.centerFrequency = strongestSignal.frequency;
+    Logger.info(`Auto-tuned to frequency: ${(strongestSignal.frequency / 1e6).toFixed(3)} MHz with power: ${strongestSignal.power} dBm`);
 
     // Adjust the span to be 10% wider than the signal's bandwidth
     const newSpan = strongestSignal.bandwidth * 1.1;
@@ -521,8 +527,14 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
     Logger.info(`Set amplitude range: ${this.state.minAmplitude} dBm to ${this.state.maxAmplitude} dBm.`);
 
     // Adjust the min amplitude to the noise floor if necessary
-    this.state.minAmplitude = this.noiseFloorAndGain - 3; // 3 dB below noise floor
+    this.state.minAmplitude = this.noiseFloorAndGain - 6; // 6 dB below noise floor
     Logger.info(`Adjusted min amplitude to noise floor: ${this.noiseFloorAndGain} dBm.`);
+
+    // Ensure max is at least 12 dB above min
+    if (this.state.maxAmplitude < this.state.minAmplitude + 12) {
+      this.state.maxAmplitude = this.state.minAmplitude + 12;
+      Logger.info(`Adjusted max amplitude to maintain at least 12 dB above min: ${this.state.maxAmplitude} dBm.`);
+    }
 
     this.syncDomWithState();
   }

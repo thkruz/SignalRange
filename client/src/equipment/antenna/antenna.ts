@@ -320,7 +320,7 @@ export class Antenna extends BaseEquipment {
       let powerReduction: number;
       if (sig.polarization === 'H' || sig.polarization === 'V') {
         // If polarization is reversed (skew > 45°), apply high loss
-        if (this.state.skew > 45 || this.state.skew < -45) {
+        if (skewAbs > 45) {
           powerReduction = 20; // Typical cross-polarization loss
         } else if (skewAbs <= 15) {
           powerReduction = 0;

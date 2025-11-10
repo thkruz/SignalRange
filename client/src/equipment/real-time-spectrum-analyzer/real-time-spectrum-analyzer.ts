@@ -1,3 +1,4 @@
+import { qs } from "@app/engine/utils/query-selector";
 import { EventBus } from "@app/events/event-bus";
 import { Logger } from "@app/logging/logger";
 import { html } from "../../engine/utils/development/formatter";
@@ -16,7 +17,6 @@ export interface RealTimeSpectrumAnalyzerState {
   uuid: string;
   team_id: number;
   rfFeUuid: string;
-  isRfMode: boolean; // true = RF mode, false = IF mode
   isPaused: boolean;
   noiseFloorNoGain: any;
   isInternalNoiseFloor: boolean;
@@ -65,7 +65,6 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
       uuid: this.uuid,
       team_id: this.teamId,
       rfFeUuid: this.rfFrontEnd_.state.uuid, // RF is hard linked to antenna
-      isRfMode: false,
       isPaused: false,
       isMaxHold: false,
       isMinHold: false,
@@ -124,54 +123,26 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
 
         <div class="spec-a-controls">
           <button class="btn-config" data-action="config">Config</button>
-          <button class="btn-mode-if-rf ${this.state.isRfMode ? 'active' : ''}" data-action="ifRfMode">
-            ${this.state.isRfMode ? 'RF' : 'IF'}
-          </button>
-          <button class="btn-mode-screen ${this.state.screenMode === 'spectralDensity' ? 'active' : ''}" data-action="screenMode">
-            ${this.state.screenMode === 'spectralDensity' ? 'Spectral Density' : 'Waterfall'}
-          </button>
-          <button class="btn-pause ${this.state.isPaused ? 'active' : ''}" data-action="pause">
-            Pause
-          </button>
         </div>
       </div>
     `;
 
     // Cache all DOM references that might be needed later
-    this.domCache['container'] = parentDom.querySelector('.spectrum-analyzer-box') as HTMLElement;
-    this.domCache['info'] = parentDom.querySelector('.spec-a-info') as HTMLElement;
-    this.domCache['controls'] = parentDom.querySelector('.spec-a-controls') as HTMLElement;
-    this.domCache['canvas'] = parentDom.querySelector(`#specA${this.uuid}`) as HTMLCanvasElement;
-    this.domCache['canvasSpectral'] = parentDom.querySelector(`#specA${this.uuid}-spectral`) as HTMLCanvasElement;
-    this.domCache['canvasWaterfall'] = parentDom.querySelector(`#specA${this.uuid}-waterfall`) as HTMLCanvasElement;
-    this.domCache['configButton'] = parentDom.querySelector('.btn-config') as HTMLButtonElement;
-    this.domCache['ifRfModeButton'] = parentDom.querySelector('.btn-mode-if-rf') as HTMLButtonElement;
-    this.domCache['screenModeButton'] = parentDom.querySelector('.btn-mode-screen') as HTMLButtonElement;
-    this.domCache['pauseButton'] = parentDom.querySelector('.btn-pause') as HTMLButtonElement;
+    this.domCache['container'] = qs('.spectrum-analyzer-box', parentDom);
+    this.domCache['info'] = qs('.spec-a-info', parentDom);
+    this.domCache['controls'] = qs('.spec-a-controls', parentDom);
+    this.domCache['canvas'] = qs(`#specA${this.uuid}`, parentDom);
+    this.domCache['canvasSpectral'] = qs(`#specA${this.uuid}-spectral`, parentDom);
+    this.domCache['canvasWaterfall'] = qs(`#specA${this.uuid}-waterfall`, parentDom);
+    this.domCache['configButton'] = qs('.btn-config', parentDom);
 
     return parentDom;
   }
 
-  protected addListeners_(parentDom: HTMLElement): void {
-    // Button clicks
-    parentDom.addEventListener('click', (e) => {
-      const target = e.target as HTMLElement;
-      const action = target.dataset.action;
-
-      switch (action) {
-        case 'config':
-          this.openConfigPopupMenu();
-          break;
-        case 'ifRfMode':
-          this.toggleIfRfMode();
-          break;
-        case 'screenMode':
-          this.toggleScreenMode();
-          break;
-        case 'pause':
-          this.togglePause();
-          break;
-      }
+  protected addListeners_(): void {
+    // config button listener
+    this.domCache['configButton'].addEventListener('click', () => {
+      this.openConfigPopupMenu();
     });
 
     // Listen for antenna changes
@@ -433,17 +404,7 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
     this.emit(Events.SPEC_A_CONFIG_CHANGED, { uuid: this.uuid });
   }
 
-  private toggleIfRfMode(): void {
-    this.state.isRfMode = !this.state.isRfMode;
-
-    this.emit(Events.SPEC_A_CONFIG_CHANGED, {
-      uuid: this.uuid,
-      isRfMode: this.state.isRfMode,
-    });
-    this.syncDomWithState();
-  }
-
-  private toggleScreenMode(): void {
+  toggleScreenMode(): void {
     const currentScreenMode = this.state.screenMode;
     if (currentScreenMode === 'spectralDensity') {
       this.state.screenMode = 'waterfall';
@@ -465,7 +426,7 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
     this.syncDomWithState();
   }
 
-  private togglePause(): void {
+  togglePause(): void {
     this.state.isPaused = !this.state.isPaused;
 
     this.emit(Events.SPEC_A_CONFIG_CHANGED, {
@@ -546,23 +507,6 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
       <div>Input: ${this.state.inputValue} ${this.state.inputUnit}</div>
       <div>RF Front End: ${this.state.rfFeUuid.split('-')[0]}</div>
     `;
-
-    this.domCache['ifRfModeButton'].textContent = this.state.isRfMode ? 'RF' : 'IF';
-    this.domCache['ifRfModeButton'].classList.toggle('active', this.state.isRfMode);
-
-    switch (this.state.screenMode) {
-      case 'spectralDensity':
-        this.domCache['screenModeButton'].textContent = 'Spectral Density';
-        break;
-      case 'waterfall':
-        this.domCache['screenModeButton'].textContent = 'Waterfall';
-        break;
-      case 'both':
-        this.domCache['screenModeButton'].textContent = 'Both';
-        break;
-    }
-
-    this.domCache['pauseButton'].classList.toggle('active', this.state.isPaused);
     this.updateScreenVisibility();
   }
 }

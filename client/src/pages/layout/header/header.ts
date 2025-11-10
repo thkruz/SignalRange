@@ -36,7 +36,7 @@ export class Header extends BaseElement {
     <header class="header">
       <div class="header-toolbar">
         <div class="header-logo-section">
-          <img src="./logo.png" alt="IRIS Logo" height="80" />
+          <img src="./logo.png" alt="SignalRange Logo" height="80" />
         </div>
         <div class="header-title-section">
           <div class="header-main-title">SignalRange</div>

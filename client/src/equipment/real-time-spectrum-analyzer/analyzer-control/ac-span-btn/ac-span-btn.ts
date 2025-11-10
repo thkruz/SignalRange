@@ -33,9 +33,9 @@ export class ACSpanBtn extends BaseControlButton {
     this.analyzerControl.controlSelection = this;
 
     this.analyzerControl.domCache['label-cell-1'].textContent = 'Set Span';
-    this.analyzerControl.domCache['label-cell-2'].textContent = '';
-    this.analyzerControl.domCache['label-cell-3'].textContent = '';
-    this.analyzerControl.domCache['label-cell-4'].textContent = '';
+    this.analyzerControl.domCache['label-cell-2'].textContent = 'Full Span';
+    this.analyzerControl.domCache['label-cell-3'].textContent = 'Zero Span';
+    this.analyzerControl.domCache['label-cell-4'].textContent = 'Last Span';
     this.analyzerControl.domCache['label-cell-5'].textContent = '';
     this.analyzerControl.domCache['label-cell-6'].textContent = '';
     this.analyzerControl.domCache['label-cell-7'].textContent = '';

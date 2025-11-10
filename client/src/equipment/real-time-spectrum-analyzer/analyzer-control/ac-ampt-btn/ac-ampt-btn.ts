@@ -24,14 +24,14 @@ export class ACAmptBtn extends BaseControlButton {
   protected handleClick_(): void {
     this.analyzerControl.controlSelection = this;
 
-    this.analyzerControl.domCache['label-cell-1'].textContent = 'Max Amplitude';
-    this.analyzerControl.domCache['label-cell-2'].textContent = 'Min Amplitude';
-    this.analyzerControl.domCache['label-cell-3'].textContent = '';
-    this.analyzerControl.domCache['label-cell-4'].textContent = '';
-    this.analyzerControl.domCache['label-cell-5'].textContent = '';
-    this.analyzerControl.domCache['label-cell-6'].textContent = '';
-    this.analyzerControl.domCache['label-cell-7'].textContent = '';
-    this.analyzerControl.domCache['label-cell-8'].textContent = '';
+    this.analyzerControl.domCache['label-cell-1'].textContent = 'Reference Level';
+    this.analyzerControl.domCache['label-cell-2'].textContent = 'Scale / dB per Division';
+    this.analyzerControl.domCache['label-cell-3'].textContent = 'Amplitude Units';
+    this.analyzerControl.domCache['label-cell-4'].textContent = 'Input Attenuation';
+    this.analyzerControl.domCache['label-cell-5'].textContent = 'Preamp Gain';
+    this.analyzerControl.domCache['label-cell-6'].textContent = 'Reference Level Offset';
+    this.analyzerControl.domCache['label-cell-7'].textContent = 'Max Amplitude';
+    this.analyzerControl.domCache['label-cell-8'].textContent = 'Min Amplitude';
 
     this.analyzerControl.domCache['label-select-button-1']?.addEventListener('click', () => {
       this.handleMaxAmplitudeClick();

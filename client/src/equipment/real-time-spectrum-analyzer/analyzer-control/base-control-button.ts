@@ -1,6 +1,8 @@
 import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
 import { Logger } from "@app/logging/logger";
+import { Sfx } from "@app/sound/sfx-enum";
+import SoundManager from "@app/sound/sound-manager";
 
 export abstract class BaseControlButton {
   private readonly html_: string;
@@ -52,7 +54,6 @@ export abstract class BaseControlButton {
   }
 
   protected playSound(): void {
-    // TODO: Integrate sound system when available
-    // For now, this is a placeholder for the select sound
+    SoundManager.getInstance().play(Sfx.SPEC_A_BTN_PRESS);
   }
 }

@@ -46,7 +46,7 @@ export class Footer extends BaseElement {
     return `
       © 2025 Kruczek Labs LLC. All rights reserved. SignalRange&#8482; is a trademark.<br>
       Licensed under GNU AGPL v3.0. Attribution and this notice required.
-      <a href="https://raw.githubusercontent.com/thkruz/iris/dev/LICENSE.md" target="_blank" rel="noopener noreferrer">LICENSE</a>
+      <a href="https://raw.githubusercontent.com/thkruz/SignalRange/dev/LICENSE.md" target="_blank" rel="noopener noreferrer">LICENSE</a>
     `;
   }
 

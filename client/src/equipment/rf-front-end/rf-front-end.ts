@@ -4,7 +4,7 @@ import { HelpManager } from '@app/help/help-manager';
 import { html } from "../../engine/utils/development/formatter";
 import { qs } from "../../engine/utils/query-selector";
 import { Events } from "../../events/events";
-import { IfFrequency, MHz, RfFrequency } from "../../types";
+import { dBm, IfFrequency, MHz, RfFrequency } from "../../types";
 import { Antenna } from '../antenna/antenna';
 import { BaseEquipment } from "../base-equipment";
 import { Transmitter } from '../transmitter/transmitter';
@@ -141,7 +141,7 @@ export class RFFrontEnd extends BaseEquipment {
       hpa: {
         isPowered: true,
         backOff: 6, // dB
-        outputPower: 10, // dBW (10W)
+        outputPower: 50 as dBm, // dBm (100W)
         isOverdriven: false,
         imdLevel: -30, // dBc
         temperature: 45, // Celsius
@@ -649,12 +649,12 @@ export class RFFrontEnd extends BaseEquipment {
     // HPA output power and IMD calculation
     if (this.state.hpa.isPowered) {
       const p1db = 50; // dBm (100W) typical P1dB
-      this.state.hpa.outputPower = (p1db - this.state.hpa.backOff) / 10; // Convert to dBW
+      this.state.hpa.outputPower = (p1db - this.state.hpa.backOff) / 10 as dBm;
 
       // IMD increases as back-off decreases
       this.state.hpa.imdLevel = -30 - (this.state.hpa.backOff * 2); // dBc
     } else {
-      this.state.hpa.outputPower = -90; // dBW (effectively off)
+      this.state.hpa.outputPower = -90 as dBm; // dBm (effectively off)
       this.state.hpa.imdLevel = -60; // dBc (very clean when off)
     }
 

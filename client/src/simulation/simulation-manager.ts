@@ -1,8 +1,7 @@
 import { Satellite } from '@app/equipment/satellite/satellite';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
-import { FECType, Hertz, ModulationType, RfFrequency, RfSignal, SignalOrigin } from './../types';
-import { PerlinNoise } from './perlin-noise';
+import { dBm, FECType, Hertz, ModulationType, RfFrequency, RfSignal, SignalOrigin } from './../types';
 
 export class SimulationManager {
   private static instance: SimulationManager;
@@ -19,7 +18,7 @@ export class SimulationManager {
           noradId: 1,
           frequency: 2810e6 as RfFrequency,
           polarization: 'H',
-          power: -98,
+          power: 40 as dBm,
           bandwidth: 10e6 as Hertz,
           modulation: '8QAM' as ModulationType,
           fec: '3/4' as FECType,
@@ -45,7 +44,16 @@ export class SimulationManager {
   }
 
   update(): void {
-    this.satelliteSignals = this.satellites.flatMap(sat => sat.txSignal);
+    // Update each satellite's state
+    this.satellites.forEach(sat => {
+      this.userSignals.filter(signal => signal.noradId === sat.noradId).forEach(signal => {
+        sat.addReceivedSignal(signal);
+      });
+      sat.update();
+    });
+
+    // Get all transmitted signals from satellites
+    this.satelliteSignals = this.satellites.flatMap(sat => sat.getTransmittedSignals());
   }
 
   addSignal(signal: RfSignal): void {
@@ -68,25 +76,14 @@ export class SimulationManager {
   }
 
   getVisibleSignals(serverId: number, targetId: number): RfSignal[] {
-    // Return signals within the specified frequency range
-    const satelliteSignals = this.satelliteSignals.filter(() => {
-      // Random drop to simulate interference
-      if (Math.random() < 0.0001) {
-        return false;
-      }
+    // Get all satellite signals with effects already applied by Satellite class
+    // Signal variation, dropout, and degradation are now handled in Satellite.getTransmittedSignals()
+    const satelliteSignals = this.satellites.flatMap(sat => sat.getTransmittedSignals());
 
-      return true;
-    }).map(signal => {
-      // Slightly vary signal amplitude
-      const time = Date.now() / 1000 + Math.random() * 1000;
-      const variation = (PerlinNoise.getInstance(signal.id.toString()).get(time) * 2 - 1) * 2; // +/-2 dB, smoother variation
-      return {
-        ...signal,
-        power: signal.power + variation
-      };
-    });
-
+    // Combine satellite signals with user signals
     const allSignals = [...satelliteSignals, ...this.userSignals];
+
+    // Filter signals for the current server and satellite
     const visibleSignals = allSignals.filter((signal) => {
       const isCurrentServer = signal.serverId === serverId;
       const isCurrentSatellite = signal.noradId === targetId;

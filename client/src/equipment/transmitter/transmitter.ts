@@ -6,7 +6,7 @@ import { PowerSwitch } from '../../components/power-switch/power-switch';
 import { html } from "../../engine/utils/development/formatter";
 import { qs } from "../../engine/utils/query-selector";
 import { Events } from "../../events/events";
-import { Hertz, IfFrequency, IfSignal, SignalOrigin } from "../../types";
+import { dBm, Hertz, IfFrequency, IfSignal, SignalOrigin } from "../../types";
 import { BaseEquipment } from "../base-equipment";
 import './transmitter.css';
 
@@ -48,7 +48,7 @@ export class Transmitter extends BaseEquipment {
   private lastRenderState: TransmitterState | null = null;
 
   // Power management
-  private readonly powerBudget = 23886;
+  private readonly powerBudget = 10 as dBm; // dBm (10W) total power budget
   powerSwitch: PowerSwitch;
   txToggleSwitch: ToggleSwitch;
   loopbackSwitch: ToggleSwitch;
@@ -69,7 +69,7 @@ export class Transmitter extends BaseEquipment {
           serverId: serverId,
           noradId: 1,
           frequency: 1000 * 1e6 as IfFrequency, // MHz (L-Band)
-          power: -97, // dBm
+          power: -97 as dBm,
           bandwidth: 10 * 1e6 as Hertz, // MHz
           modulation: 'null',
           fec: 'null',
@@ -356,7 +356,7 @@ export class Transmitter extends BaseEquipment {
       case 'power':
         // Allow negative numbers for power
         if (value.match(/[^0-9-]/g)) return;
-        this.inputData.ifSignal.power = Number.parseFloat(value) || 0;
+        this.inputData.ifSignal.power = (Number.parseFloat(value) || 0) as dBm;
         break;
       case 'frequency':
         value = Number.parseFloat(value) || 0;
@@ -470,9 +470,9 @@ export class Transmitter extends BaseEquipment {
     }
   }
 
-  private calculateModemPower(bandwidth: Hertz, powerDbm: number): number {
-    // Power calculation: bandwidth (MHz) * 10^((120 + power) / 10)
-    return bandwidth / 1e6 * Math.pow(10, (120 + powerDbm) / 10);
+  private calculateModemPower(bandwidth: Hertz, powerDbm: dBm): dBm {
+    const bandwidthMHz = bandwidth / 1e6;
+    return (powerDbm + 10 * Math.log10(bandwidthMHz)) as dBm;
   }
 
   private getPowerPercentage(): number {

@@ -1,7 +1,7 @@
 import { RotaryKnob } from "@app/components/rotary-knob/rotary-knob";
 import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
-import { IfSignal, MHz, RfFrequency, SignalOrigin } from '@app/types';
+import { dBm, IfSignal, MHz, RfFrequency, SignalOrigin } from '@app/types';
 import { RFFrontEnd } from '../rf-front-end';
 import { RFFrontEndModule } from '../rf-front-end-module';
 import './filter-module.css';
@@ -145,7 +145,7 @@ export class IfFilterBankModule extends RFFrontEndModule<IfFilterBankState> {
     this.outputSignals = this.inputSignals.map((sig: IfSignal) => {
       return {
         ...sig,
-        power: sig.power - this.state_.insertionLoss, // Apply insertion loss
+        power: (sig.power - this.state_.insertionLoss) as dBm,
         origin: SignalOrigin.IF_FILTER_BANK,
       };
     });

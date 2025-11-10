@@ -1,7 +1,7 @@
 import { ToggleSwitch } from '@app/components/toggle-switch/toggle-switch';
 import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
-import { RfSignal, SignalOrigin } from '@app/types';
+import { dBm, RfSignal, SignalOrigin } from '@app/types';
 import { RFFrontEnd } from '../rf-front-end';
 import { RFFrontEndModule } from '../rf-front-end-module';
 import './omt-module.css';
@@ -147,7 +147,7 @@ export class OMTModule extends RFFrontEndModule<OMTState> {
         const isolatedPower = sig.power - this.state_.crossPolIsolation;
         return {
           ...sig,
-          power: isolatedPower,
+          power: isolatedPower as dBm,
           isDegraded: true,
           origin: SignalOrigin.OMT_RX,
         };

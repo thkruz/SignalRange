@@ -7,7 +7,7 @@ import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
 import { Sfx } from '@app/sound/sfx-enum';
 import SoundManager from '@app/sound/sound-manager';
-import { RfSignal, SignalOrigin } from '@app/types';
+import { dBm, dBW, RfSignal, SignalOrigin } from '@app/types';
 import { RFFrontEnd } from '../rf-front-end';
 import { RFFrontEndModule } from '../rf-front-end-module';
 import './hpa-module.css';
@@ -19,7 +19,7 @@ export interface HPAState {
   noiseFloor: number;
   isPowered: boolean;
   backOff: number; // dB from P1dB (0-10)
-  outputPower: number; // dBW (1-200W -> 0-53 dBW)
+  outputPower: dBm; // (1-200W -> 0-53 dBm)
   isOverdriven: boolean; // true if back-off < 3 dB
   imdLevel: number; // dBc
   temperature: number; // Celsius
@@ -38,8 +38,8 @@ export class HPAModule extends RFFrontEndModule<HPAState> {
   outputSignals: RfSignal[] = [];
 
   // HPA characteristics
-  private readonly p1db = Math.log10(100) * 10; // dBm (100W) typical P1dB compression point
-  private readonly maxOutputPowerDbW = Math.log10(200) * 10; // 200W = ~23 dBW
+  private readonly p1db = 50 as dBm; // dBm (100W) output power at 1dB compression point
+  private readonly maxOutputPower = 53 as dBm; // dBm (200W) maximum output power
   private readonly minBackOffDb = 0;
   private readonly maxBackOffDb = 10;
   private readonly thermalEfficiency = 0.5; // 50% typical for SSPA
@@ -104,7 +104,7 @@ export class HPAModule extends RFFrontEndModule<HPAState> {
             <div class="power-meter">
                 <div class="meter-label">OUTPUT</div>
                 <div class="led-bar">
-                  ${this.renderPowerMeter_(this.state_.outputPower)}
+                  ${this.renderPowerMeter_((this.state_.outputPower - 30) as dBW)}
                 </div>
                 <span class="value-readout">${this.state_.outputPower.toFixed(1)} dBW</span>
               </div>
@@ -177,12 +177,10 @@ export class HPAModule extends RFFrontEndModule<HPAState> {
    */
   private updateOutputPower_(): void {
     if (this.state_.isPowered && this.state_.isHpaEnabled) {
-      // Calculate output power: P1dB - back-off, then convert to dBW
-      const outputPowerDbm = this.p1db - this.state_.backOff;
-      // More accurate conversion: dBW = dBm - 30
-      this.state_.outputPower = outputPowerDbm;
+      // Calculate output power: P1dB - back-off
+      this.state_.outputPower = this.p1db - this.state_.backOff as dBm;
     } else {
-      this.state_.outputPower = -90; // dBW (effectively off)
+      this.state_.outputPower = -90 as dBm; // dBm (effectively off)
     }
   }
 
@@ -191,8 +189,8 @@ export class HPAModule extends RFFrontEndModule<HPAState> {
    */
   private updateTemperature_(): void {
     if (this.state_.isPowered) {
-      // Calculate dissipated power based on efficiency
-      const powerWatts = Math.pow(10, this.state_.outputPower / 10);
+      // Calculate dissipated power based on efficiency, outputPower is in dBm
+      const powerWatts = Math.pow(10, (this.state_.outputPower - 30) / 10); // Convert dBm to Watts
       const dissipatedPower = powerWatts * (1 - this.thermalEfficiency);
 
       // Simple thermal model: ambient + thermal rise
@@ -235,7 +233,7 @@ export class HPAModule extends RFFrontEndModule<HPAState> {
       const gain = this.calculateGain_(sig.power);
       return {
         ...sig,
-        power: sig.power + gain - this.state_.backOff, // Apply back-off
+        power: (sig.power + gain - this.state_.backOff) as dBm,
         origin: SignalOrigin.HIGH_POWER_AMPLIFIER,
       };
     });
@@ -351,7 +349,7 @@ export class HPAModule extends RFFrontEndModule<HPAState> {
     // Update power meter LEDs
     const ledBar = qs('.led-bar', container);
     if (ledBar) {
-      ledBar.innerHTML = this.renderPowerMeter_(this.state_.outputPower);
+      ledBar.innerHTML = this.renderPowerMeter_((this.state_.outputPower - 30) as dBW);
     }
 
     // Update IMD LED
@@ -395,9 +393,9 @@ export class HPAModule extends RFFrontEndModule<HPAState> {
   /**
    * Render power meter LED bar
    */
-  private renderPowerMeter_(powerDbW: number): string {
+  private renderPowerMeter_(powerDbW: dBW): string {
     // Convert dBW to percentage (1W = 0 dBW, 10W = 10 dBW for scale)
-    const percentage = Math.max(0, Math.min(100, (powerDbW / this.maxOutputPowerDbW) * 100));
+    const percentage = Math.max(0, Math.min(100, (powerDbW / (this.maxOutputPower - 30) as dBW) * 100));
 
     const segments = [];
     for (let i = 0; i < 5; i++) {

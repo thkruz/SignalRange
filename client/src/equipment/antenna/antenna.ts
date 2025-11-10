@@ -9,11 +9,17 @@ import { html } from "../../engine/utils/development/formatter";
 import { qs } from "../../engine/utils/query-selector";
 import { Events } from "../../events/events";
 import { SimulationManager } from "../../simulation/simulation-manager";
-import { RfSignal } from "../../types";
+import { dBm, Hertz, RfSignal } from "../../types";
 import { BaseEquipment } from '../base-equipment';
 import { RFFrontEnd } from "../rf-front-end/rf-front-end";
 import { Transmitter } from "../transmitter/transmitter";
 import './antenna.css';
+
+/**
+ * RF Propagation constants for GEO satellite communications
+ */
+const GEO_SATELLITE_DISTANCE_KM = 38000; // Approximate slant range to GEO satellite (km)
+// const SPEED_OF_LIGHT = 299792458; // m/s
 
 export interface AntennaState {
   noiseFloor: number;
@@ -57,6 +63,9 @@ export class Antenna extends BaseEquipment {
   private rfFrontEnd_: RFFrontEnd | null = null;
 
   transmitters: Transmitter[] = [];
+
+  /** Waveguide loss (dB) */
+  private readonly WAVEGUIDE_LOSS = 1;
 
   constructor(parentId: string, teamId: number = 1, serverId: number = 1) {
     super(parentId, teamId);
@@ -317,7 +326,7 @@ export class Antenna extends BaseEquipment {
       return {
         ...sig,
         polarization: adjustedPolarization,
-        power: sig.power - powerReduction
+        power: (sig.power - powerReduction - this.WAVEGUIDE_LOSS + this.antennaGain_dBi(sig.frequency)) as dBm,
       };
     });
   }
@@ -445,6 +454,165 @@ export class Antenna extends BaseEquipment {
     this.syncDomWithState_();
   }
 
+  /**
+   * Calculate Free-Space Path Loss (FSPL) in dB
+   * FSPL = 20*log10(d) + 20*log10(f) + 20*log10(4π/c)
+   * where d = distance (m), f = frequency (Hz), c = speed of light (m/s)
+   *
+   * Simplified: FSPL (dB) = 32.45 + 20*log10(d_km) + 20*log10(f_MHz)
+   */
+  private calculateFreeSpacePathLoss_(frequencyHz: number, distanceKm: number): number {
+    const frequencyMhz = frequencyHz / 1e6;
+    const fspl = 32.45 + 20 * Math.log10(distanceKm) + 20 * Math.log10(frequencyMhz);
+    return fspl;
+  }
+
+  /**
+   * Calculate atmospheric loss in dB
+   * Accounts for atmospheric absorption, primarily from oxygen and water vapor
+   * Frequency dependent - higher at higher frequencies
+   * Elevation angle dependent - more atmosphere at low angles
+   *
+   * Simplified model for clear sky conditions
+   */
+  private calculateAtmosphericLoss_(frequencyHz: number, elevationAngleDeg: number = 45): number {
+    const frequencyGhz = frequencyHz / 1e9;
+
+    // Zenith attenuation (overhead path) varies by frequency
+    let zenithAttenuation = 0;
+
+    if (frequencyGhz < 1) {
+      zenithAttenuation = 0.01; // Very low at low frequencies
+    } else if (frequencyGhz < 10) {
+      // L-band to X-band: minimal atmospheric loss
+      zenithAttenuation = 0.02 + (frequencyGhz - 1) * 0.005;
+    } else if (frequencyGhz < 20) {
+      // Ku-band: moderate atmospheric loss
+      zenithAttenuation = 0.1 + (frequencyGhz - 10) * 0.02;
+    } else {
+      // Ka-band and above: significant atmospheric loss
+      zenithAttenuation = 0.3 + (frequencyGhz - 20) * 0.05;
+    }
+
+    // Elevation angle factor: lower elevation = more atmosphere
+    // sec(θ) approximation for slant path through atmosphere
+    const elevationRad = (elevationAngleDeg * Math.PI) / 180;
+    const slantPathFactor = 1 / Math.sin(elevationRad);
+
+    // Total atmospheric loss
+    const atmosphericLoss = zenithAttenuation * Math.min(slantPathFactor, 3); // Cap at 3x for low angles
+
+    return atmosphericLoss;
+  }
+
+  /**
+   * Calculate polarization mismatch loss between transmit and receive polarizations
+   */
+  calculatePolarizationLoss_(txPolarization: string | null, rxPolarization: string | null, skewDeg: number): number {
+    // If either polarization is null, assume matched (0 dB loss)
+    if (!txPolarization || !rxPolarization) {
+      return 0;
+    }
+
+    // Perfect match with no skew
+    if (txPolarization === rxPolarization && skewDeg === 0) {
+      return 0;
+    }
+
+    // Cross-polarization (H vs V, LHCP vs RHCP)
+    const isCrossPolarized =
+      (txPolarization === 'H' && rxPolarization === 'V') ||
+      (txPolarization === 'V' && rxPolarization === 'H') ||
+      (txPolarization === 'LHCP' && rxPolarization === 'RHCP') ||
+      (txPolarization === 'RHCP' && rxPolarization === 'LHCP');
+
+    if (isCrossPolarized) {
+      return 20; // 20 dB loss for cross-polarization
+    }
+
+    // Polarization loss due to skew (linear polarizations only)
+    if ((txPolarization === 'H' || txPolarization === 'V') &&
+      (rxPolarization === 'H' || rxPolarization === 'V')) {
+      const skewRad = (Math.abs(skewDeg) * Math.PI) / 180;
+      const polarizationLoss = -20 * Math.log10(Math.cos(skewRad));
+      return polarizationLoss;
+    }
+
+    return 0;
+  }
+
+  /**
+   * Apply propagation effects to a received signal
+   */
+  private applyPropagationEffects_(signal: RfSignal): RfSignal {
+    // Calculate free-space path loss (downlink from GEO satellite to ground)
+    const fspl = this.calculateFreeSpacePathLoss_(signal.frequency, GEO_SATELLITE_DISTANCE_KM);
+
+    // Calculate atmospheric loss (assume 45° elevation for GEO satellite)
+    const atmosphericLoss = this.calculateAtmosphericLoss_(signal.frequency, 45);
+
+    // Calculate polarization mismatch loss
+    // For now, assume antenna has same polarization as signal (perfect match)
+    const polarizationLoss = 0; // this.calculatePolarizationLoss_(signal.polarization, signal.polarization, this.state.skew);
+
+    const Grx_dBi = this.antennaGain_dBi(signal.frequency); // implement or read from state
+
+    // Assume perfect alignment for now
+    const L_misc_dB = 0 // this.rxFeederAndPointingLoss_dB();      // e.g., 0.5–2 dB
+
+    // Apply all losses to signal power
+    let receivedPower = signal.power - fspl - atmosphericLoss - polarizationLoss - L_misc_dB + Grx_dBi;
+
+    return {
+      ...signal,
+      power: receivedPower as dBm
+    };
+  }
+
+  /**
+   * Calculate antenna gain in dBi
+   */
+  private antennaGain_dBi(frequencyHz: Hertz): number {
+    // Ground antenna gain (receive) (η≈0.6):
+    // 1.2 m @ 12 GHz (Ku): ~41 dBi
+    // 2.4 m @ 4 GHz (C): ~37–38 dBi
+    // 0.6 m @ 20 GHz (Ka): ~41–42 dBi
+
+    if (frequencyHz >= 18e9) {
+      return 42; // Ka-band
+    } else if (frequencyHz >= 12e9) {
+      return 41; // Ku-band
+    } else if (frequencyHz >= 4e9) {
+      return 38; // C-band
+    } else {
+      return 35; // L-band and below
+    }
+  }
+
+  /**
+   * Check if signal is above the antenna's noise floor
+   */
+  private isSignalAboveNoiseFloor_(signalPower: number): boolean {
+    return signalPower > this.state.noiseFloor;
+  }
+
+  /**
+   * Calculate carrier-to-noise ratio for a signal
+   */
+  private calculateCarrierToNoise_(signal: RfSignal): number {
+    // Noise power in bandwidth: N = kTB (in dBm)
+    // k = Boltzmann constant = -228.6 dBW/K/Hz = -198.6 dBm/K/Hz
+    // T = System temperature (assume 290K for now, ~17°C)
+    // B = Bandwidth (Hz)
+
+    const k_dBm_per_K_per_Hz = -198.6;
+    const systemTemp_K = 290;
+    const noisePower_dBm = k_dBm_per_K_per_Hz + 10 * Math.log10(systemTemp_K) + 10 * Math.log10(signal.bandwidth);
+
+    const cn = signal.power - noisePower_dBm;
+    return cn;
+  }
+
   private updateSignalStatus_(): void {
     // Can't receive signals if Not locked or Not operational
     if (!this.state.isLocked || !this.state.isOperational) {
@@ -462,52 +630,97 @@ export class Antenna extends BaseEquipment {
       }
     }
 
-    // TODO: Some of this logic should be moved to a Satellite class
+    // Get visible signals from the satellite and apply propagation effects
+    let receivedSignals = SimulationManager.getInstance()
+      .getVisibleSignals(this.state.serverId, this.state.noradId)
+      .map(signal => this.applyPropagationEffects_(signal))
+      .filter(signal => this.isSignalAboveNoiseFloor_(signal.power));
 
-    // Update signal active status based on antenna config
-    this.state.rxSignalsIn = SimulationManager.getInstance().getVisibleSignals(
-      this.state.serverId,
-      this.state.noradId
-    ).filter((signal) => {
+    // Apply interference and adjacency logic
+    receivedSignals = receivedSignals.filter((signal) => {
       // Get the frequency bounds of this signal
       const halfBandwidth = signal.bandwidth * 0.5;
       const lowerBound = signal.frequency - halfBandwidth;
       const upperBound = signal.frequency + halfBandwidth;
 
-      // Find any other signal with higher strength
-      // TODO: This logic belongs in the satellite/simulation manager
-      const stronger = this.state.rxSignalsIn.some(
-        (other) => {
-          if (other.id === signal.id) return false;
+      // Check for stronger interfering signals
+      let isBlocked = false;
 
-          const otherHalfBandwidth = other.bandwidth * 0.5;
-          const otherLowerBound = other.frequency - otherHalfBandwidth;
-          const otherUpperBound = other.frequency + otherHalfBandwidth;
+      for (const other of receivedSignals) {
+        if (other.id === signal.id) continue;
 
-          // Calculate how much of the main signal's bandwidth overlaps with the other signal
-          const overlapLower = Math.max(lowerBound, otherLowerBound);
-          const overlapUpper = Math.min(upperBound, otherUpperBound);
-          const overlapBandwidth = Math.max(0, overlapUpper - overlapLower);
-          const overlapPercent = (overlapBandwidth / signal.bandwidth) * 100;
+        const otherHalfBandwidth = other.bandwidth * 0.5;
+        const otherLowerBound = other.frequency - otherHalfBandwidth;
+        const otherUpperBound = other.frequency + otherHalfBandwidth;
 
-          if (overlapPercent === 0) {
-            return false;
-          }
+        // Calculate overlap
+        const overlapLower = Math.max(lowerBound, otherLowerBound);
+        const overlapUpper = Math.min(upperBound, otherUpperBound);
+        const overlapBandwidth = Math.max(0, overlapUpper - overlapLower);
+        const overlapPercent = (overlapBandwidth / signal.bandwidth) * 100;
 
-          if (other.power >= signal.power && overlapPercent >= 50) {
-            // Stronger signal present with significant overlap
-            return true;
-          }
+        if (overlapPercent === 0) continue;
 
-          if (other.power >= signal.power && overlapPercent < 50) {
+        // Calculate carrier-to-interference ratio
+        const signalPowerLinear = Math.pow(10, signal.power / 10);
+        const interferencePowerLinear = Math.pow(10, other.power / 10);
+        const ci_ratio = 10 * Math.log10(signalPowerLinear / interferencePowerLinear);
+
+        // If C/I is less than 10 dB and overlap is significant, signal is degraded or blocked
+        if (ci_ratio < 10 && overlapPercent >= 50) {
+          if (other.power > signal.power) {
+            // Stronger signal blocks this one
+            isBlocked = true;
+            break;
+          } else {
+            // Similar strength causes degradation
             signal.isDegraded = true;
-            return false;
           }
+        } else if (ci_ratio < 15 && overlapPercent >= 25) {
+          // Partial overlap with marginal C/I causes degradation
+          signal.isDegraded = true;
+        }
+      }
 
-          return false;
-        });
-      return !stronger;
+      return !isBlocked;
     });
+
+    // Calculate C/N for each signal and mark as degraded if below threshold
+    receivedSignals.forEach(signal => {
+      const cn = this.calculateCarrierToNoise_(signal);
+
+      // Typical C/N requirements:
+      // BPSK: 6-8 dB
+      // QPSK: 9-11 dB
+      // 8QAM: 12-15 dB
+      // 16QAM: 15-18 dB
+
+      let requiredCN: number;
+
+      switch (signal.modulation) {
+        case 'BPSK':
+          requiredCN = 7;
+          break;
+        case 'QPSK':
+          requiredCN = 10;
+          break;
+        case '8QAM':
+          requiredCN = 13;
+          break;
+        case '16QAM':
+          requiredCN = 16;
+          break;
+        default:
+          requiredCN = 10;
+          break;
+      }
+
+      if (cn < requiredCN) {
+        signal.isDegraded = true;
+      }
+    });
+
+    this.state.rxSignalsIn = receivedSignals;
   }
 
   attachRfFrontEnd(rfFrontEnd: RFFrontEnd): void {

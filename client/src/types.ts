@@ -15,6 +15,12 @@ type Distinct<T, DistinctName> = T & { __TYPE__: DistinctName };
 export type Hertz = Distinct<number, 'Hertz'>;
 /** Frequency in Mhz */
 export type MHz = Distinct<number, 'MHz'>;
+/** Decibels Watts */
+export type dBW = Distinct<number, 'dBW'>;
+/** Decibels Milliwatts */
+export type dBm = Distinct<number, 'dBm'>;
+/** Decibel-isotropic gain */
+export type dBi = Distinct<number, 'dBi'>;
 /** Radio Frequency in Hz */
 export type RfFrequency = Distinct<Hertz, 'RfFrequency'>;
 /** Intermediate Frequency in Hz */
@@ -43,7 +49,7 @@ export interface BaseSignal {
   /** Target satellite ID */
   noradId: number;
   /** Signal power in dBm */
-  power: number;
+  power: dBm;
   /** Bandwidth in Hz */
   bandwidth: Hertz;
   /** Modulation type */

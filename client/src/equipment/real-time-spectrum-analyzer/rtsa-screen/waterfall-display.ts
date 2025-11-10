@@ -288,29 +288,38 @@ export class WaterfallDisplay extends RTSAScreen {
     for (let x = 0; x < data.length; x++) {
       const distance = x - center;
       const absDistance = Math.abs(distance);
-
-      if (absDistance > outOfBandWidth) continue;
-
-      let y = signal.power;
       const gaussian = Math.exp(-0.5 * Math.pow(distance / sigma, 2));
 
+      // Zero out signal far outside the band
+      if (x > center + outOfBandWidth || x < center - outOfBandWidth ||
+        x < center - inBandWidth || x > center + inBandWidth) {
+        data[x] = Math.max(data[x], -170); // Well below noise floor
+        continue;
+      }
+
+      // Convert gaussian attenuation to dB (20*log10(gaussian))
+      // For gaussian values 0-1, this gives us 0 to -infinity dB
+      const gaussianDb = 20 * Math.log10(Math.max(gaussian, 1e-10));
+
+      let y = signal.power + gaussianDb;
+
       // Main lobe (signal bandwidth)
-      if (Math.abs(distance) <= inBandWidth) {
+      if (absDistance <= inBandWidth) {
         // Add some random amplitude jitter for realism (±0.3 dB)
         y += (Math.random() - 0.5) * 0.6;
       }
 
       // Simulate out-of-band rolloff (side lobes)
-      if (Math.abs(distance) > inBandWidth && Math.abs(distance) <= outOfBandWidth) {
+      if (absDistance > inBandWidth && absDistance <= outOfBandWidth) {
         // Side lobes: much lower amplitude (-15 to -20 dB below main lobe)
         const sideLobe = Math.sin((distance / inBandWidth) * Math.PI * 2) * 0.15;
         const sideLobeDb = 20 * Math.log10(Math.abs(sideLobe) + 1e-10);
-        y = signal.power + gaussian + sideLobeDb + (Math.random() - 0.5) * 0.8;
+        y = signal.power + gaussianDb + sideLobeDb + (Math.random() - 0.5) * 0.8;
       }
 
-      // Add noise floor blending near edges (additional -3 to -9 dB)
-      if (Math.abs(distance) > outOfBandWidth * 0.95) {
-        y -= 3 + Math.random() * 6;
+      // Add noise floor blending near edges (additional -3 to -6 dB)
+      if (absDistance > outOfBandWidth * 0.95) {
+        y -= 3 + Math.random() * 3;
       }
 
       // Simulate deep nulls and random dropouts for realism (-10 to -14 dB drops)
@@ -327,10 +336,6 @@ export class WaterfallDisplay extends RTSAScreen {
         const bandwidthRatio = signal.bandwidth / ((this.specA.rfFrontEnd_.filterModule.state.bandwidth * 1e6) / 2);
         const attenuationDb = 10 * Math.log10(bandwidthRatio);
         y -= attenuationDb;
-      }
-
-      if (absDistance > outOfBandWidth * 0.85) {
-        y -= 3 + Math.random() * 6;
       }
 
       data[x] = Math.max(data[x], y);

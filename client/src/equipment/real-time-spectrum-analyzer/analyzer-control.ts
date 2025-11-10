@@ -342,6 +342,8 @@ export class AnalyzerControl extends BaseElement {
       const button = this.domCache[`label-select-button-${i}`];
       const newButton = button.cloneNode(true) as HTMLElement;
       button.parentNode?.replaceChild(newButton, button);
+      // Update cache
+      this.domCache[`label-select-button-${i}`] = newButton;
       // Reset labels
       this.domCache[`label-cell-${i}`].textContent = '';
     }

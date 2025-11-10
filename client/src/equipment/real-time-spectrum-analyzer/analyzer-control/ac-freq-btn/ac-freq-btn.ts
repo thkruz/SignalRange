@@ -60,7 +60,7 @@ export class ACFreqBtn extends BaseControlButton {
 
     // Update the display with current center frequency
     const centerFreq = this.analyzerControl.specA.state.centerFrequency;
-    this.analyzerControl.specA.state.inputValue = (centerFreq / 1e6).toString();
+    this.analyzerControl.specA.state.inputValue = (centerFreq / 1e6).toFixed(2);
     this.analyzerControl.specA.state.inputUnit = 'MHz';
 
     this.analyzerControl.specA.syncDomWithState();
@@ -72,7 +72,7 @@ export class ACFreqBtn extends BaseControlButton {
 
     // Update the display with current start frequency
     const startFreq = (this.analyzerControl.specA.state.centerFrequency - this.analyzerControl.specA.state.span / 2) as Hertz;
-    this.analyzerControl.specA.state.inputValue = (startFreq / 1e6).toString();
+    this.analyzerControl.specA.state.inputValue = (startFreq / 1e6).toFixed(2);
     this.analyzerControl.specA.state.inputUnit = 'MHz';
 
     this.analyzerControl.specA.syncDomWithState();
@@ -84,7 +84,7 @@ export class ACFreqBtn extends BaseControlButton {
 
     // Update the display with current stop frequency
     const stopFreq = (this.analyzerControl.specA.state.centerFrequency + this.analyzerControl.specA.state.span / 2) as Hertz;
-    this.analyzerControl.specA.state.inputValue = (stopFreq / 1e6).toString();
+    this.analyzerControl.specA.state.inputValue = (stopFreq / 1e6).toFixed(2);
     this.analyzerControl.specA.state.inputUnit = 'MHz';
 
     this.analyzerControl.specA.syncDomWithState();

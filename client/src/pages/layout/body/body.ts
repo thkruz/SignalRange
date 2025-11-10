@@ -1,6 +1,6 @@
 import { BaseElement } from "@app/components/base-element";
 import { html } from "../../../engine/utils/development/formatter";
-import './Body.css';
+import './body.css';
 
 /**
  * Body Component

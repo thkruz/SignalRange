@@ -1,5 +1,12 @@
 {
   "ignorePatterns": [
     "src/engine/"
-  ]
+  ],
+  "plugins": [
+    "import"
+  ],
+  "rules": {
+    "import/no-unresolved": "error",
+    "import/case-sensitive": "error"
+  }
 }

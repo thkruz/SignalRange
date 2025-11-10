@@ -1,5 +1,6 @@
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
+const CaseSensitivePathsPlugin = require('case-sensitive-paths-webpack-plugin');
 
 module.exports = {
   entry: './src/index.ts',
@@ -43,7 +44,8 @@ module.exports = {
     new HtmlWebpackPlugin({
       template: './public/index.html',
       // favicon: './public/favicon.ico'
-    })
+    }),
+    new CaseSensitivePathsPlugin()
   ],
   devServer: {
     static: {

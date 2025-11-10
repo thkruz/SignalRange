@@ -1,6 +1,6 @@
 import { BaseElement } from "@app/components/base-element";
 import { html } from "../../../engine/utils/development/formatter";
-import './Footer.css';
+import './footer.css';
 
 /**
  * Footer Component

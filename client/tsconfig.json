@@ -45,6 +45,7 @@
     "dist",
     "**/*.spec.ts",
     "**/*.test.ts",
-    "**/ootk/examples/**"
+    "**/ootk/examples/**",
+    "**/ootk/test/**"
   ]
 }

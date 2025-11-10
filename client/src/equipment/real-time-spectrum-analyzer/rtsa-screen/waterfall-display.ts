@@ -197,8 +197,8 @@ export class WaterfallDisplay extends RTSAScreen {
 
   private drawSignal(signal: RfSignal | IfSignal): void {
     const center = ((signal.frequency - this.minFreq) / (this.maxFreq - this.minFreq)) * this.width;
-    const inBandWidth = ((signal.bandwidth / (this.maxFreq - this.minFreq)) * this.width) / 2;
-    const outOfBandWidth = ((signal.bandwidth / (this.maxFreq - this.minFreq)) * this.width) / 1.8;
+    const inBandWidth = ((signal.bandwidth / (this.maxFreq - this.minFreq)) * this.width) / 1.95;
+    const outOfBandWidth = ((signal.bandwidth / (this.maxFreq - this.minFreq)) * this.width) / 1.6;
 
     this.data = this.createSignal(
       this.data,

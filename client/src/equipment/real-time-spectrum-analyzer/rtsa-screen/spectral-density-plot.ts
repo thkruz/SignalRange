@@ -333,8 +333,8 @@ export class SpectralDensityPlot extends RTSAScreen {
 
   private drawSignal(ctx: CanvasRenderingContext2D, color: string, signal: RfSignal | IfSignal): void {
     const center = ((signal.frequency - this.minFreq) / (this.maxFreq - this.minFreq)) * this.width;
-    const inBandWidth = ((signal.bandwidth / (this.maxFreq - this.minFreq)) * this.width) / 2;
-    const outOfBandWidth = ((signal.bandwidth / (this.maxFreq - this.minFreq)) * this.width) / 1.8;
+    const inBandWidth = ((signal.bandwidth / (this.maxFreq - this.minFreq)) * this.width) / 1.95;
+    const outOfBandWidth = ((signal.bandwidth / (this.maxFreq - this.minFreq)) * this.width) / 1.6;
 
     this.signalData = this.createSignal(this.signalData, signal, center, inBandWidth, outOfBandWidth);
 

@@ -68,8 +68,6 @@ export interface BUCState extends RFFrontEndModuleState {
 }
 
 export class BUCModule extends RFFrontEndModule<BUCState> {
-  private static instance_: BUCModule;
-
   // UI Components
   private readonly muteSwitch_: ToggleSwitch;
   private readonly loKnob_: RotaryKnob;
@@ -110,16 +108,7 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
     };
   }
 
-  static create(state: BUCState, rfFrontEnd: RFFrontEnd, unit: number = 1): BUCModule {
-    this.instance_ ??= new BUCModule(state, rfFrontEnd, unit);
-    return this.instance_;
-  }
-
-  static getInstance(): BUCModule {
-    return this.instance_;
-  }
-
-  private constructor(state: BUCState, rfFrontEnd: RFFrontEnd, unit: number = 1) {
+  constructor(state: BUCState, rfFrontEnd: RFFrontEnd, unit: number = 1) {
     super(state, rfFrontEnd, 'rf-fe-buc', unit);
 
     // Create UI components using base class methods

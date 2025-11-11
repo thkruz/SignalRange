@@ -1,6 +1,7 @@
 import { EventBus } from "./events/event-bus";
 import { Events } from "./events/events";
-import { BasePage } from "./pages/base-page";
+import { SandboxPage } from "./pages/sandbox-page";
+import { ScenarioSelectionPage } from "./pages/scenario-selection";
 
 /**
  * Simple Router for 3 pages: login, student, instructor
@@ -8,7 +9,6 @@ import { BasePage } from "./pages/base-page";
 export class Router {
   private static instance: Router;
   private currentPath: string = '/';
-  private pages_: { [key: string]: BasePage } = {};
 
   private constructor() { }
 
@@ -35,10 +35,6 @@ export class Router {
 
     // Handle initial route
     this.handleRoute();
-  }
-
-  add(page: BasePage): void {
-    this.pages_[page.id] = page;
   }
 
   navigate(path: string): void {
@@ -70,13 +66,22 @@ export class Router {
   }
 
   private hideAll(): void {
-    for (const pageName in this.pages_) {
-      this.pages_[pageName].hide();
-    }
+    ScenarioSelectionPage.getInstance().hide();
+    SandboxPage.getInstance()?.hide();
   }
 
   private showPage(pageName: string): void {
-    this.pages_[pageName].show();
+    switch (pageName) {
+      case 'sandbox-page':
+        if (!SandboxPage.getInstance()) {
+          SandboxPage.create();
+        }
+        SandboxPage.getInstance().show();
+        break;
+      case 'scenario-selection-page':
+        ScenarioSelectionPage.getInstance().show();
+        break;
+    }
   }
 
   getCurrentPath(): string {

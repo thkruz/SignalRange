@@ -3,10 +3,9 @@ import { BaseControlButton } from "../base-control-button";
 import './ac-khz-btn.css';
 
 export class ACKhzBtn extends BaseControlButton {
-  private static instance_: ACKhzBtn;
   private readonly analyzerControl: AnalyzerControl;
 
-  private constructor(analyzerControl: AnalyzerControl) {
+  constructor(analyzerControl: AnalyzerControl) {
     super({
       uniqueId: `ac-khz-btn-${analyzerControl.specA.state.uuid}`,
       classNames: 'physical-button unit-button',
@@ -17,15 +16,6 @@ export class ACKhzBtn extends BaseControlButton {
     if (analyzerControl) {
       this.analyzerControl = analyzerControl;
     }
-  }
-
-  static create(analyzerControl: AnalyzerControl): ACKhzBtn {
-    this.instance_ = new ACKhzBtn(analyzerControl);
-    return this.instance_;
-  }
-
-  static getInstance(): ACKhzBtn {
-    return this.instance_;
   }
 
   protected handleClick_(): void {

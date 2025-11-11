@@ -81,13 +81,13 @@ export class RFFrontEnd extends BaseEquipment {
     };
 
     // Instantiate module classes
-    this.omtModule = OMTModule.create(this.state.omt, this);
-    this.bucModule = BUCModule.create(this.state.buc, this);
-    this.hpaModule = HPAModule.create(this.state.hpa, this);
-    this.filterModule = IfFilterBankModule.create(this.state.filter, this);
-    this.lnbModule = LNBModule.create(this.state.lnb, this);
-    this.couplerModule = CouplerModule.create(this.state.coupler, this);
-    this.gpsdoModule = GPSDOModule.create(this.state.gpsdo, this);
+    this.omtModule = new OMTModule(this.state.omt, this);
+    this.bucModule = new BUCModule(this.state.buc, this);
+    this.hpaModule = new HPAModule(this.state.hpa, this);
+    this.filterModule = new IfFilterBankModule(this.state.filter, this);
+    this.lnbModule = new LNBModule(this.state.lnb, this);
+    this.couplerModule = new CouplerModule(this.state.coupler, this);
+    this.gpsdoModule = new GPSDOModule(this.state.gpsdo, this);
 
     this.helpBtn_ = HelpButton.create(
       `rf-fe-help-${this.state.uuid}`,

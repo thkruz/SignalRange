@@ -5,10 +5,9 @@ import { BaseControlButton } from "../base-control-button";
 import './ac-mode-btn.css';
 
 export class ACModeBtn extends BaseControlButton {
-  private static instance_: ACModeBtn;
   private readonly analyzerControl: AnalyzerControl;
 
-  private constructor(analyzerControl: AnalyzerControl) {
+  constructor(analyzerControl: AnalyzerControl) {
     super({
       uniqueId: `ac-mode-btn-${analyzerControl.specA.state.uuid}`,
       label: 'Mode',
@@ -17,15 +16,6 @@ export class ACModeBtn extends BaseControlButton {
     if (analyzerControl) {
       this.analyzerControl = analyzerControl;
     }
-  }
-
-  static create(analyzerControl: AnalyzerControl): ACModeBtn {
-    this.instance_ = new ACModeBtn(analyzerControl);
-    return this.instance_;
-  }
-
-  static getInstance(): ACModeBtn {
-    return this.instance_;
   }
 
   protected handleClick_(): void {

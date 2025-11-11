@@ -5,11 +5,10 @@ import { BaseControlButton } from "../base-control-button";
 import './ac-span-btn.css';
 
 export class ACSpanBtn extends BaseControlButton {
-  private static instance_: ACSpanBtn;
   private readonly analyzerControl: AnalyzerControl;
   private subMenuSelected: 'set-span' | null = null;
 
-  private constructor(analyzerControl: AnalyzerControl) {
+  constructor(analyzerControl: AnalyzerControl) {
     super({
       uniqueId: `ac-span-btn-${analyzerControl.specA.state.uuid}`,
       label: 'Span',
@@ -18,15 +17,6 @@ export class ACSpanBtn extends BaseControlButton {
     if (analyzerControl) {
       this.analyzerControl = analyzerControl;
     }
-  }
-
-  static create(analyzerControl: AnalyzerControl): ACSpanBtn {
-    this.instance_ = new ACSpanBtn(analyzerControl);
-    return this.instance_;
-  }
-
-  static getInstance(): ACSpanBtn {
-    return this.instance_;
   }
 
   protected handleClick_(): void {

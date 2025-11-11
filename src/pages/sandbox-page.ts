@@ -1,6 +1,8 @@
 import { App } from "@app/app";
 import { getEl } from "@app/engine/utils/get-el";
 import { qs } from "@app/engine/utils/query-selector";
+import { EventBus } from "@app/events/event-bus";
+import { Events } from "@app/events/events";
 import { SimulationManager } from "@app/simulation/simulation-manager";
 import { html } from "../engine/utils/development/formatter";
 import { syncEquipmentWithStore } from '../sync/storage';
@@ -21,19 +23,16 @@ export class SandboxPage extends BasePage {
     this.init_()
   }
 
-  static create(): void {
-    if (SandboxPage.instance_) {
+  static create(): SandboxPage {
+    if (this.instance_) {
       throw new Error("SandboxPage instance already exists.");
     }
 
-    SandboxPage.instance_ = new SandboxPage();
+    this.instance_ = new SandboxPage();
+    return this.instance_;
   }
 
   static getInstance(): SandboxPage | null {
-    if (!SandboxPage.instance_) {
-      return null;
-    }
-
     return this.instance_;
   }
 
@@ -44,11 +43,25 @@ export class SandboxPage extends BasePage {
     `;
 
   init_(): void {
+    const parentDom = document.getElementById(Body.containerId);
+
+    try {
+      // Remove any childe nodes named this.id to avoid duplicates
+      const existing = qs(`#${this.id}`, parentDom!);
+
+      if (existing) {
+        existing.remove();
+      }
+    } catch {
+      // Ignore errors
+    }
+
+
     super.init_(Body.containerId, 'add');
-    const parentDom = getEl(Body.containerId);
     this.dom_ = qs(`#${this.id}`, parentDom);
     this.initEquipment_();
     SimulationManager.getInstance();
+    EventBus.getInstance().emit(Events.DOM_READY);
   }
 
   protected addEventListeners_(): void {
@@ -62,7 +75,17 @@ export class SandboxPage extends BasePage {
     syncEquipmentWithStore(App.getInstance().equipment);
   }
 
+  hide(): void {
+    SandboxPage.destroy();
+  }
+
   static destroy(): void {
     SandboxPage.instance_ = null;
+    SimulationManager.destroy();
+    EventBus.destroy();
+    const container = getEl(SandboxPage.containerId);
+    if (container) {
+      container.innerHTML = '';
+    }
   }
 }

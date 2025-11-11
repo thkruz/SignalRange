@@ -46,6 +46,10 @@ export abstract class BaseControlButton {
     this.dom.addEventListener('click', this.handleClick_.bind(this));
   }
 
+  click(): void {
+    this.handleClick_();
+  }
+
   protected abstract handleClick_(): void;
 
   // TODO: This should be an abstract eventually

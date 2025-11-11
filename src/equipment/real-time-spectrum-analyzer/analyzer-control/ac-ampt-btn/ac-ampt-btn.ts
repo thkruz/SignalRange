@@ -6,7 +6,7 @@ export class ACAmptBtn extends BaseControlButton {
   private readonly analyzerControl: AnalyzerControl;
   private subMenuSelected: 'max' | 'min' | 'ref' | null = null;
 
-  private constructor(analyzerControl: AnalyzerControl) {
+  constructor(analyzerControl: AnalyzerControl) {
     super({
       uniqueId: `ac-ampt-btn-${analyzerControl.specA.state.uuid}`,
       label: 'Ampt',
@@ -15,10 +15,6 @@ export class ACAmptBtn extends BaseControlButton {
     if (analyzerControl) {
       this.analyzerControl = analyzerControl;
     }
-  }
-
-  static create(analyzerControl: AnalyzerControl): ACAmptBtn {
-    return new ACAmptBtn(analyzerControl)
   }
 
   protected handleClick_(): void {

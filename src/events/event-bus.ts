@@ -69,4 +69,8 @@ export class EventBus {
       }
     }
   }
+
+  static destroy(): void {
+    EventBus.instance = null;
+  }
 }

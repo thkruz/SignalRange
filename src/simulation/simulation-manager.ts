@@ -74,4 +74,8 @@ export class SimulationManager {
   getSatelliteByNoradId(noradId: number): Satellite | undefined {
     return this.satellites.find(sat => sat.noradId === noradId);
   }
+
+  static destroy(): void {
+    SimulationManager.instance_ = null;
+  }
 }

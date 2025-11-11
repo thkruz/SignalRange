@@ -4,10 +4,9 @@ import { BaseControlButton } from "../base-control-button";
 import './ac-save-btn.css';
 
 export class ACSaveBtn extends BaseControlButton {
-  private static instance_: ACSaveBtn;
   private readonly analyzerControl: AnalyzerControl;
 
-  private constructor(analyzerControl: AnalyzerControl) {
+  constructor(analyzerControl: AnalyzerControl) {
     super({
       uniqueId: `ac-save-btn-${analyzerControl.specA.state.uuid}`,
       label: 'Save',
@@ -16,15 +15,6 @@ export class ACSaveBtn extends BaseControlButton {
     if (analyzerControl) {
       this.analyzerControl = analyzerControl;
     }
-  }
-
-  static create(analyzerControl: AnalyzerControl): ACSaveBtn {
-    this.instance_ = new ACSaveBtn(analyzerControl);
-    return this.instance_;
-  }
-
-  static getInstance(): ACSaveBtn {
-    return this.instance_;
   }
 
   protected handleClick_(): void {

@@ -113,12 +113,7 @@ export class AnalyzerControl extends BaseElement {
 
   init_(parentId: string, type: 'add' | 'replace' = 'replace'): void {
     super.init_(parentId, type);
-    this.initializeValues();
-  }
-
-  private initializeValues(): void {
-    // Initialize with current center frequency in MHz
-    this.panelElements.freq.init();
+    this.panelElements.freq.click();
   }
 
   private handleMinorTickChange(value: number): void {
@@ -131,25 +126,25 @@ export class AnalyzerControl extends BaseElement {
 
   initDom_(parentId: string, type: 'add' | 'replace' = 'replace'): HTMLElement {
     this.panelElements = {
-      freq: ACFreqBtn.create(this),
-      span: ACSpanBtn.create(this),
-      ampt: ACAmptBtn.create(this),
-      mkr: ACMkrBtn.create(this),
-      mkr2: ACMkr2Btn.create(this),
-      bw: ACBWBtn.create(this),
-      sweep: ACSweepBtn.create(this),
-      trace: ACTraceBtn.create(this),
-      minhold: ACMinHoldBtn.create(this),
-      save: ACSaveBtn.create(this),
-      meas: ACMeasBtn.create(this),
-      mode: ACModeBtn.create(this),
-      extra1: ACExtra1Btn.create(this),
-      extra2: ACExtra2Btn.create(this),
-      extra3: ACExtra3Btn.create(this),
-      ghz: ACGhzBtn.create(this),
-      mhz: ACMhzBtn.create(this),
-      khz: ACKhzBtn.create(this),
-      hz: ACHzBtn.create(this),
+      freq: new ACFreqBtn(this),
+      span: new ACSpanBtn(this),
+      ampt: new ACAmptBtn(this),
+      mkr: new ACMkrBtn(this),
+      mkr2: new ACMkr2Btn(this),
+      bw: new ACBWBtn(this),
+      sweep: new ACSweepBtn(this),
+      trace: new ACTraceBtn(this),
+      minhold: new ACMinHoldBtn(this),
+      save: new ACSaveBtn(this),
+      meas: new ACMeasBtn(this),
+      mode: new ACModeBtn(this),
+      extra1: new ACExtra1Btn(this),
+      extra2: new ACExtra2Btn(this),
+      extra3: new ACExtra3Btn(this),
+      ghz: new ACGhzBtn(this),
+      mhz: new ACMhzBtn(this),
+      khz: new ACKhzBtn(this),
+      hz: new ACHzBtn(this),
     };
 
     this.html_ = html`

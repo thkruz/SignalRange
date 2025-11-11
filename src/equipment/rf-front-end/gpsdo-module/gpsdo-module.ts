@@ -89,8 +89,6 @@ export interface GPSDOState {
  * Critical frequency standard for RF Front-End equipment
  */
 export class GPSDOModule extends RFFrontEndModule<GPSDOState> {
-  private static instance_: GPSDOModule;
-
   // GPSDO characteristics - TODO: These should not be null
   private warmupInterval_: number | null = null;
   private stabilityInterval_: number | null = null;
@@ -135,16 +133,7 @@ export class GPSDOModule extends RFFrontEndModule<GPSDOState> {
     };
   }
 
-  static create(state: GPSDOState, rfFrontEnd: RFFrontEnd, unit: number = 1): GPSDOModule {
-    this.instance_ ??= new GPSDOModule(state, rfFrontEnd, unit);
-    return this.instance_;
-  }
-
-  static getInstance(): GPSDOModule {
-    return this.instance_;
-  }
-
-  private constructor(state: GPSDOState, rfFrontEnd: RFFrontEnd, unit: number = 1) {
+  constructor(state: GPSDOState, rfFrontEnd: RFFrontEnd, unit: number = 1) {
     super(state, rfFrontEnd, 'rf-fe-gpsdo', unit);
 
     // Create UI components

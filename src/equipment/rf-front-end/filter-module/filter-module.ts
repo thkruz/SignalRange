@@ -48,8 +48,6 @@ export interface IfFilterBankState {
 }
 
 export class IfFilterBankModule extends RFFrontEndModule<IfFilterBankState> {
-  private static instance_: IfFilterBankModule;
-
   // UI Components
   private readonly bandwidthKnob_: RotaryKnob;
 
@@ -70,16 +68,7 @@ export class IfFilterBankModule extends RFFrontEndModule<IfFilterBankState> {
     };
   }
 
-  static create(state: IfFilterBankState, rfFrontEnd: RFFrontEnd, unit: number = 1): IfFilterBankModule {
-    this.instance_ ??= new IfFilterBankModule(state, rfFrontEnd, unit);
-    return this.instance_;
-  }
-
-  static getInstance(): IfFilterBankModule {
-    return this.instance_;
-  }
-
-  private constructor(state: IfFilterBankState, rfFrontEnd: RFFrontEnd, unit: number = 1) {
+  constructor(state: IfFilterBankState, rfFrontEnd: RFFrontEnd, unit: number = 1) {
     super(state, rfFrontEnd, 'rf-fe-filter', unit);
 
     const config = FILTER_BANDWIDTH_CONFIGS[state.bandwidthIndex];

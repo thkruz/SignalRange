@@ -3,10 +3,9 @@ import { BaseControlButton } from "../base-control-button";
 import './ac-minhold-btn.css';
 
 export class ACMinHoldBtn extends BaseControlButton {
-  private static instance_: ACMinHoldBtn;
   private readonly analyzerControl: AnalyzerControl;
 
-  private constructor(analyzerControl: AnalyzerControl) {
+  constructor(analyzerControl: AnalyzerControl) {
     super({
       uniqueId: `ac-minhold-btn-${analyzerControl.specA.state.uuid}`,
       label: 'MinHold',
@@ -15,15 +14,6 @@ export class ACMinHoldBtn extends BaseControlButton {
     if (analyzerControl) {
       this.analyzerControl = analyzerControl;
     }
-  }
-
-  static create(analyzerControl: AnalyzerControl): ACMinHoldBtn {
-    this.instance_ = new ACMinHoldBtn(analyzerControl);
-    return this.instance_;
-  }
-
-  static getInstance(): ACMinHoldBtn {
-    return this.instance_;
   }
 
   protected handleClick_(): void {

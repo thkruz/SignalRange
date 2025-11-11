@@ -8,7 +8,7 @@ export class ACFreqBtn extends BaseControlButton {
   private readonly analyzerControl: AnalyzerControl;
   private subMenuSelected: 'center' | 'start' | 'stop' = 'center';
 
-  private constructor(analyzerControl: AnalyzerControl) {
+  constructor(analyzerControl: AnalyzerControl) {
     super({
       uniqueId: `ac-freq-btn-${analyzerControl.specA.state.uuid}`,
       label: 'Freq',
@@ -17,15 +17,6 @@ export class ACFreqBtn extends BaseControlButton {
     if (analyzerControl) {
       this.analyzerControl = analyzerControl;
     }
-  }
-
-  static create(analyzerControl: AnalyzerControl): ACFreqBtn {
-    return new ACFreqBtn(analyzerControl);
-  }
-
-  init(): void {
-    // Unique because its the default submenu on opening AnalyzerControl
-    this.handleClick_();
   }
 
   protected handleClick_(): void {

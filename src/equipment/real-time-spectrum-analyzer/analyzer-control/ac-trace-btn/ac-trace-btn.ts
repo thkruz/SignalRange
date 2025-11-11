@@ -3,10 +3,9 @@ import { BaseControlButton } from "../base-control-button";
 import './ac-trace-btn.css';
 
 export class ACTraceBtn extends BaseControlButton {
-  private static instance_: ACTraceBtn;
   private readonly analyzerControl: AnalyzerControl;
 
-  private constructor(analyzerControl: AnalyzerControl) {
+  constructor(analyzerControl: AnalyzerControl) {
     super({
       uniqueId: `ac-trace-btn-${analyzerControl.specA.state.uuid}`,
       label: 'Trace',
@@ -15,15 +14,6 @@ export class ACTraceBtn extends BaseControlButton {
     if (analyzerControl) {
       this.analyzerControl = analyzerControl;
     }
-  }
-
-  static create(analyzerControl: AnalyzerControl): ACTraceBtn {
-    this.instance_ = new ACTraceBtn(analyzerControl);
-    return this.instance_;
-  }
-
-  static getInstance(): ACTraceBtn {
-    return this.instance_;
   }
 
   protected handleClick_(): void {

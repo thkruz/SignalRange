@@ -3,10 +3,9 @@ import { BaseControlButton } from "../base-control-button";
 import './ac-sweep-btn.css';
 
 export class ACSweepBtn extends BaseControlButton {
-  private static instance_: ACSweepBtn;
   private readonly analyzerControl: AnalyzerControl;
 
-  private constructor(analyzerControl: AnalyzerControl) {
+  constructor(analyzerControl: AnalyzerControl) {
     super({
       uniqueId: `ac-sweep-btn-${analyzerControl.specA.state.uuid}`,
       label: 'Sweep',
@@ -15,15 +14,6 @@ export class ACSweepBtn extends BaseControlButton {
     if (analyzerControl) {
       this.analyzerControl = analyzerControl;
     }
-  }
-
-  static create(analyzerControl: AnalyzerControl): ACSweepBtn {
-    this.instance_ = new ACSweepBtn(analyzerControl);
-    return this.instance_;
-  }
-
-  static getInstance(): ACSweepBtn {
-    return this.instance_;
   }
 
   protected handleClick_(): void {

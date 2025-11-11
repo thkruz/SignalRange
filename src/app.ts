@@ -1,7 +1,5 @@
 import { BaseElement } from './components/base-element';
 import { getEl } from './engine/utils/get-el';
-import { EventBus } from './events/event-bus';
-import { Events } from './events/events';
 import { Body } from './pages/layout/body/body';
 import { Footer } from './pages/layout/footer/footer';
 import { Header } from './pages/layout/header/header';
@@ -34,12 +32,10 @@ export class App extends BaseElement {
       throw new Error("App instance already exists.");
     }
 
-    App.instance_ = new App();
-    window.signalRange = App.instance_;
+    this.instance_ = new App();
+    window.signalRange = this.instance_;
     SimulationManager.getInstance();
-    App.instance_.init_();
-    EventBus.getInstance().emit(Events.DOM_READY);
-
+    this.instance_.init_();
 
     return App.instance_;
   }
@@ -56,15 +52,9 @@ export class App extends BaseElement {
     Body.create(rootDom.id);
     Footer.create(rootDom.id);
 
-    // Initialize pages
-    ScenarioSelectionPage.create();
-    SandboxPage.create();
-
     SimulationManager.getInstance();
 
     // Initialize router
-    this.router.add(ScenarioSelectionPage.getInstance());
-    this.router.add(SandboxPage.getInstance());
     this.router.init();
 
     return rootDom;

@@ -24,8 +24,6 @@ export interface CouplerState {
 }
 
 export class CouplerModule extends RFFrontEndModule<CouplerState> {
-  private static instance_: CouplerModule;
-
   /**
    * Get default state for Coupler module
    */
@@ -41,16 +39,7 @@ export class CouplerModule extends RFFrontEndModule<CouplerState> {
     };
   }
 
-  static create(state: CouplerState, rfFrontEnd: RFFrontEnd, unit: number = 1): CouplerModule {
-    this.instance_ ??= new CouplerModule(state, rfFrontEnd, unit);
-    return this.instance_;
-  }
-
-  static getInstance(): CouplerModule {
-    return this.instance_;
-  }
-
-  private constructor(state: CouplerState, rfFrontEnd: RFFrontEnd, unit: number = 1) {
+  constructor(state: CouplerState, rfFrontEnd: RFFrontEnd, unit: number = 1) {
     super(state, rfFrontEnd, 'rf-fe-coupler', unit);
 
     const tapPointOptions = [
@@ -71,11 +60,11 @@ export class CouplerModule extends RFFrontEndModule<CouplerState> {
           <div class="led-indicators">
             <div class="led-indicator">
               <span class="indicator-label">ACTIVE A</span>
-              <div class="led led-a ${this.state_.isActiveA ? 'led-green' : 'led-off'}"></div>
+              <div id="led-a" class="led ${this.state_.isActiveA ? 'led-green' : 'led-off'}"></div>
             </div>
             <div class="led-indicator">
               <span class="indicator-label">ACTIVE B</span>
-              <div class="led led-b ${this.state_.isActiveB ? 'led-green' : 'led-off'}"></div>
+              <div id="led-b" class="led ${this.state_.isActiveB ? 'led-green' : 'led-off'}"></div>
             </div>
           </div>
 
@@ -239,13 +228,13 @@ export class CouplerModule extends RFFrontEndModule<CouplerState> {
     if (!container) return;
 
     // Update Active A LED
-    const ledA = qs('.led-a', container);
+    const ledA = qs('#led-a', container);
     if (ledA) {
       ledA.className = `led ${this.state_.isActiveA ? 'led-green' : 'led-off'}`;
     }
 
     // Update Active B LED
-    const ledB = qs('.led-b', container);
+    const ledB = qs('#led-b', container);
     if (ledB) {
       ledB.className = `led ${this.state_.isActiveB ? 'led-green' : 'led-off'}`;
     }

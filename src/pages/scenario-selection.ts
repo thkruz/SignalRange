@@ -15,18 +15,8 @@ export class ScenarioSelectionPage extends BasePage {
     this.init_('body-content-container', 'add');
   }
 
-  static create(): void {
-    if (ScenarioSelectionPage.instance_) {
-      throw new Error("ScenarioSelectionPage instance already exists.");
-    }
-
-    ScenarioSelectionPage.instance_ = new ScenarioSelectionPage();
-  }
-
   static getInstance(): ScenarioSelectionPage {
-    if (!ScenarioSelectionPage.instance_) {
-      throw new Error("ScenarioSelectionPage instance does not exist.");
-    }
+    this.instance_ ??= new ScenarioSelectionPage();
 
     return this.instance_;
   }

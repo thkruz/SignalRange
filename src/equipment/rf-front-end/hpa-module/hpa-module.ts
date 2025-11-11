@@ -30,8 +30,6 @@ export interface HPAState {
 }
 
 export class HPAModule extends RFFrontEndModule<HPAState> {
-  private static instance_: HPAModule;
-
   // HPA characteristics
   private readonly p1db_ = 50 as dBm; // dBm (100W) output power at 1dB compression point
   private readonly maxOutputPower_ = 53 as dBm; // dBm (200W) maximum output power
@@ -65,16 +63,7 @@ export class HPAModule extends RFFrontEndModule<HPAState> {
     };
   }
 
-  static create(state: HPAState, rfFrontEnd: RFFrontEnd, unit: number = 1): HPAModule {
-    this.instance_ ??= new HPAModule(state, rfFrontEnd, unit);
-    return this.instance_;
-  }
-
-  static getInstance(): HPAModule {
-    return this.instance_;
-  }
-
-  private constructor(state: HPAState, rfFrontEnd: RFFrontEnd, unit: number = 1) {
+  constructor(state: HPAState, rfFrontEnd: RFFrontEnd, unit: number = 1) {
     super(state, rfFrontEnd, 'rf-fe-hpa', unit);
 
     // Create UI components

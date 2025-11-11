@@ -29,8 +29,6 @@ export interface OMTState {
 }
 
 export class OMTModule extends RFFrontEndModule<OMTState> {
-  private static instance_: OMTModule;
-
   // UI Components
   private readonly polarizationToggle_: ToggleSwitch;
   private readonly helpBtn_: HelpButton;
@@ -55,16 +53,7 @@ export class OMTModule extends RFFrontEndModule<OMTState> {
     };
   }
 
-  static create(state: OMTState, rfFrontEnd: RFFrontEnd): OMTModule {
-    this.instance_ ??= new OMTModule(state, rfFrontEnd);
-    return this.instance_;
-  }
-
-  static getInstance(): OMTModule {
-    return this.instance_;
-  }
-
-  private constructor(state: OMTState, rfFrontEnd: RFFrontEnd, unit: number = 1) {
+  constructor(state: OMTState, rfFrontEnd: RFFrontEnd, unit: number = 1) {
     super(state, rfFrontEnd, 'rf-fe-omt-pol', unit);
 
     // Create UI components

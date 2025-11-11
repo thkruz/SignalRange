@@ -22,8 +22,6 @@ export interface LNBState extends RFFrontEndModuleState {
 }
 
 export class LNBModule extends RFFrontEndModule<LNBState> {
-  private static instance_: LNBModule;
-
   // UI Components
   private readonly loKnob_: RotaryKnob;
 
@@ -48,16 +46,7 @@ export class LNBModule extends RFFrontEndModule<LNBState> {
     };
   }
 
-  static create(state: LNBState, rfFrontEnd: RFFrontEnd, unit: number = 1): LNBModule {
-    this.instance_ ??= new LNBModule(state, rfFrontEnd, unit);
-    return this.instance_;
-  }
-
-  static getInstance(): LNBModule {
-    return this.instance_;
-  }
-
-  private constructor(state: LNBState, rfFrontEnd: RFFrontEnd, unit: number = 1) {
+  constructor(state: LNBState, rfFrontEnd: RFFrontEnd, unit: number = 1) {
     super(state, rfFrontEnd, 'rf-fe-lnb', unit);
 
     // Create UI components using base class methods

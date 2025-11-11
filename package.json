@@ -12,7 +12,8 @@
     "type-check": "tsc --noEmit",
     "clean": "rm -rf dist",
     "test": "npx jest --config jest.config.js",
-    "lint": "npx eslint --config .eslintrc"
+    "lint": "npx eslint --config .eslintrc",
+    "lcov": "npx tsx build/open-lcov.ts"
   },
   "keywords": [
     "space",

@@ -6,8 +6,18 @@ import { BasePage } from "./pages/base-page";
  * Simple Router for 3 pages: login, student, instructor
  */
 export class Router {
+  private static instance: Router;
   private currentPath: string = '/';
   private pages_: { [key: string]: BasePage } = {};
+
+  private constructor() { }
+
+  static getInstance(): Router {
+    if (!Router.instance) {
+      Router.instance = new Router();
+    }
+    return Router.instance;
+  }
 
   init(): void {
     // Listen for popstate (back/forward buttons)
@@ -45,16 +55,13 @@ export class Router {
 
     // Show the appropriate page
     switch (path) {
+      case '/sandbox':
+        this.showPage('sandbox-page');
+        break;
       case '/':
-      case '/student':
-        this.showPage('student-page');
-        break;
-      case '/instructor':
-        this.showPage('instructor-page');
-        break;
-      case '/login':
+      case '/scenario-selection':
       default:
-        this.showPage('login-page');
+        this.showPage('scenario-selection-page');
         break;
     }
 

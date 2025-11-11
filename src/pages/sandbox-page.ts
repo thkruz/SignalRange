@@ -1,6 +1,7 @@
+import { App } from "@app/app";
 import { getEl } from "@app/engine/utils/get-el";
 import { qs } from "@app/engine/utils/query-selector";
-import { App } from "../app";
+import { SimulationManager } from "@app/simulation/simulation-manager";
 import { html } from "../engine/utils/development/formatter";
 import { syncEquipmentWithStore } from '../sync/storage';
 import { BasePage } from "./base-page";
@@ -10,10 +11,10 @@ import { StudentEquipment } from './student-page/student-equipment';
 /**
  * Student page implementation
  */
-export class StudentPage extends BasePage {
-  readonly id = 'student-page';
-  static readonly containerId = 'student-page-container';
-  private static instance_: StudentPage;
+export class SandboxPage extends BasePage {
+  readonly id = 'sandbox-page';
+  static readonly containerId = 'sandbox-page-container';
+  private static instance_: SandboxPage | null = null;
 
   private constructor() {
     super();
@@ -21,24 +22,24 @@ export class StudentPage extends BasePage {
   }
 
   static create(): void {
-    if (StudentPage.instance_) {
-      throw new Error("StudentPage instance already exists.");
+    if (SandboxPage.instance_) {
+      throw new Error("SandboxPage instance already exists.");
     }
 
-    StudentPage.instance_ = new StudentPage();
+    SandboxPage.instance_ = new SandboxPage();
   }
 
-  static getInstance(): StudentPage {
-    if (!StudentPage.instance_) {
-      throw new Error("StudentPage instance does not exist.");
+  static getInstance(): SandboxPage | null {
+    if (!SandboxPage.instance_) {
+      return null;
     }
 
     return this.instance_;
   }
 
   protected html_ = html`
-      <div id="${this.id}" class="student-page-container">
-        <div id="${StudentPage.containerId}"></div>
+      <div id="${this.id}" class="sandbox-page-container">
+        <div id="${SandboxPage.containerId}"></div>
       </div>
     `;
 
@@ -47,6 +48,7 @@ export class StudentPage extends BasePage {
     const parentDom = getEl(Body.containerId);
     this.dom_ = qs(`#${this.id}`, parentDom);
     this.initEquipment_();
+    SimulationManager.getInstance();
   }
 
   protected addEventListeners_(): void {
@@ -58,5 +60,9 @@ export class StudentPage extends BasePage {
 
     // Sync with storage (automatically uses LocalStorage)
     syncEquipmentWithStore(App.getInstance().equipment);
+  }
+
+  static destroy(): void {
+    SandboxPage.instance_ = null;
   }
 }

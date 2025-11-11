@@ -6,8 +6,8 @@ import { Events } from './events/events';
 import { Body } from './pages/layout/body/body';
 import { Footer } from './pages/layout/footer/footer';
 import { Header } from './pages/layout/header/header';
-import { LoginPage } from './pages/login-page';
-import { StudentPage } from './pages/student-page';
+import { SandboxPage } from './pages/sandbox-page';
+import { ScenarioSelectionPage } from './pages/scenario-selection';
 import { StudentEquipment } from './pages/student-page/student-equipment';
 import { Router } from './router';
 import { SimulationManager } from './simulation/simulation-manager';
@@ -21,7 +21,7 @@ export class App extends BaseElement {
   protected html_: string = ''; // No direct HTML for App
   equipment: StudentEquipment;
   isDeveloperMode = false;
-  private readonly router = new Router();
+  private readonly router = Router.getInstance();
   /** Delta time between frames in milliseconds */
   dt = 0 as Milliseconds;
 
@@ -57,14 +57,14 @@ export class App extends BaseElement {
     Footer.create(rootDom.id);
 
     // Initialize pages
-    LoginPage.create();
-    StudentPage.create();
+    ScenarioSelectionPage.create();
+    SandboxPage.create();
 
     SimulationManager.getInstance();
 
     // Initialize router
-    this.router.add(LoginPage.getInstance());
-    this.router.add(StudentPage.getInstance());
+    this.router.add(ScenarioSelectionPage.getInstance());
+    this.router.add(SandboxPage.getInstance());
     this.router.init();
 
     return rootDom;
@@ -106,8 +106,8 @@ export class App extends BaseElement {
     Header['instance_'] = null;
     Body['instance_'] = null;
     Footer['instance_'] = null;
-    LoginPage['instance_'] = null;
-    StudentPage['instance_'] = null;
+    ScenarioSelectionPage['instance_'] = null;
+    SandboxPage['instance_'] = null;
     SimulationManager['instance_'] = null;
     App.instance_ = null;
   }

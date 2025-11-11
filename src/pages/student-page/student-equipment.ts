@@ -1,11 +1,11 @@
 import { BaseElement } from "@app/components/base-element";
 import { RFFrontEnd } from "@app/equipment/rf-front-end/rf-front-end";
-import { StudentPage } from "@app/pages/student-page";
 import { html } from "../../engine/utils/development/formatter";
 import { Antenna } from '../../equipment/antenna/antenna';
 import { RealTimeSpectrumAnalyzer } from '../../equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer';
 import { Receiver } from '../../equipment/receiver/receiver';
 import { Transmitter } from '../../equipment/transmitter/transmitter';
+import { SandboxPage } from "../sandbox-page";
 import './student-equipment.css';
 
 /**
@@ -78,7 +78,7 @@ export class StudentEquipment extends BaseElement {
 
   constructor() {
     super();
-    this.init_(StudentPage.containerId, 'replace');
+    this.init_(SandboxPage.containerId, 'replace');
     this.initEquipment_();
   }
 

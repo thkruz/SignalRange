@@ -5,7 +5,6 @@ import { Footer } from './pages/layout/footer/footer';
 import { Header } from './pages/layout/header/header';
 import { SandboxPage } from './pages/sandbox-page';
 import { ScenarioSelectionPage } from './pages/scenario-selection';
-import { StudentEquipment } from './pages/student-page/student-equipment';
 import { Router } from './router';
 import { SimulationManager } from './simulation/simulation-manager';
 
@@ -19,8 +18,6 @@ import { SimulationManager } from './simulation/simulation-manager';
 export class App extends BaseElement {
   private static instance_: App;
   protected html_: string = ''; // No direct HTML for App
-  equipment: StudentEquipment;
-  isDeveloperMode = false;
   private readonly router = Router.getInstance();
 
   private constructor() {

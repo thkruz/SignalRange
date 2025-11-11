@@ -1,14 +1,14 @@
-import { App } from "@app/app";
 import { getEl } from "@app/engine/utils/get-el";
 import { qs } from "@app/engine/utils/query-selector";
 import { EventBus } from "@app/events/event-bus";
 import { Events } from "@app/events/events";
+import { ScenarioManager } from "@app/scenario-manager";
 import { SimulationManager } from "@app/simulation/simulation-manager";
 import { html } from "../engine/utils/development/formatter";
 import { syncEquipmentWithStore } from '../sync/storage';
 import { BasePage } from "./base-page";
 import { Body } from "./layout/body/body";
-import { StudentEquipment } from './student-page/student-equipment';
+import { Equipment } from './student-page/student-equipment';
 
 /**
  * Student page implementation
@@ -69,10 +69,14 @@ export class SandboxPage extends BasePage {
   }
 
   private initEquipment_(): void {
-    App.getInstance().equipment = new StudentEquipment();
+    const simManager = SimulationManager.getInstance();
 
-    // Sync with storage (automatically uses LocalStorage)
-    syncEquipmentWithStore(App.getInstance().equipment);
+    simManager.equipment = new Equipment(ScenarioManager.getInstance().settings);
+
+    if (ScenarioManager.getInstance().settings.isSync) {
+      // Sync from storage (automatically uses LocalStorage)
+      syncEquipmentWithStore(simManager.equipment);
+    }
   }
 
   hide(): void {

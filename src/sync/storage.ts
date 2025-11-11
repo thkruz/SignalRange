@@ -8,7 +8,7 @@
 import { SimulationManager } from '@app/simulation/simulation-manager';
 import { EventBus } from '../events/event-bus';
 import { Events } from '../events/events';
-import type { StudentEquipment } from '../pages/student-page/student-equipment';
+import type { Equipment } from '../pages/student-page/student-equipment';
 import { StorageProviderFactory, StorageProviderType } from './storage-provider-factory';
 import { SyncManager, type AppState } from './sync-manager';
 import './webpack-hot-module';
@@ -75,7 +75,7 @@ export async function clearPersistedStore(): Promise<void> {
 /**
  * Sync equipment with storage (two-way sync)
  */
-export async function syncEquipmentWithStore(studentEquipment: StudentEquipment): Promise<void> {
+export async function syncEquipmentWithStore(studentEquipment: Equipment): Promise<void> {
   await ensureInitialized();
 
   // Set equipment in sync manager
@@ -93,7 +93,7 @@ export async function syncEquipmentWithStore(studentEquipment: StudentEquipment)
 /**
  * Set up event listeners to automatically save equipment changes
  */
-function setupEquipmentListeners(_studentEquipment: StudentEquipment): void {
+function setupEquipmentListeners(_studentEquipment: Equipment): void {
   const eventBus = EventBus.getInstance();
 
   // Debounce save operations to avoid excessive writes

@@ -1,5 +1,6 @@
 import { BaseElement } from "@app/components/base-element";
 import { RFFrontEnd } from "@app/equipment/rf-front-end/rf-front-end";
+import { SimulationSettings } from "@app/scenario-manager";
 import { html } from "../../engine/utils/development/formatter";
 import { Antenna } from '../../equipment/antenna/antenna';
 import { RealTimeSpectrumAnalyzer } from '../../equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer';
@@ -12,7 +13,7 @@ import './student-equipment.css';
  * StudentEquipment - Orchestrates all equipment on student page
  * Creates the layout and instantiates all equipment classes
  */
-export class StudentEquipment extends BaseElement {
+export class Equipment extends BaseElement {
   /** Debug flag for full equipment suite */
   readonly isFullEquipmentSuite: boolean = false;
 
@@ -76,20 +77,21 @@ export class StudentEquipment extends BaseElement {
       </div>
     `;
 
-  constructor() {
+  constructor(settings: SimulationSettings) {
     super();
+    this.html_ = settings.layout ? settings.layout : this.html_;
     this.init_(SandboxPage.containerId, 'replace');
-    this.initEquipment_();
+    this.initEquipment_(settings);
   }
 
   protected addEventListeners_(): void {
     // No event listeners for now
   }
 
-  private initEquipment_(): void {
+  private initEquipment_(settings: SimulationSettings): void {
 
-    // Initialize 2 antennas
-    for (let i = 1; i <= (this.isFullEquipmentSuite ? 2 : 1); i++) {
+    // Initialize antennas
+    for (let i = 1; i <= (settings.antennas); i++) {
       const antenna = new Antenna(`antenna${i}-container`);
       this.antennas.push(antenna);
 
@@ -101,27 +103,14 @@ export class StudentEquipment extends BaseElement {
 
     // Initialize 4 spectrum analyzers
     // First two use antenna 1, next two use antenna 2
-    for (let i = 1; i <= (this.isFullEquipmentSuite ? 4 : 2); i++) {
+    for (let i = 1; i <= settings.spectrumAnalyzers; i++) {
       const antennaId = i <= 2 ? 1 : 2;
       const specA = new RealTimeSpectrumAnalyzer(`specA${i}-container`, this.rfFrontEnds[antennaId - 1]);
       this.spectrumAnalyzers.push(specA);
     }
 
-    if (!this.isFullEquipmentSuite) {
-      // Hide the second antenna container if not full suite
-      const antenna2Container = document.getElementById('antenna-spec-a-grid2');
-      if (antenna2Container) {
-        antenna2Container.style.display = 'none';
-      }
-
-      const rfFrontEnd2Container = document.getElementById('rf-fe-box-2');
-      if (rfFrontEnd2Container) {
-        rfFrontEnd2Container.style.display = 'none';
-      }
-    }
-
     // Initialize 4 transmitter cases (each with 4 modems)
-    for (let i = 1; i <= (this.isFullEquipmentSuite ? 4 : 2); i++) {
+    for (let i = 1; i <= settings.transmitters; i++) {
       const tx = new Transmitter(`tx${i}-container`);
       this.transmitters.push(tx);
 
@@ -139,8 +128,8 @@ export class StudentEquipment extends BaseElement {
       });
     });
 
-    // Initialize 4 receiver cases (each with 4 modems)
-    for (let i = 1; i <= (this.isFullEquipmentSuite ? 4 : 2); i++) {
+    // Initialize receivers
+    for (let i = 1; i <= settings.receivers; i++) {
       const rx = new Receiver(`rx${i}-container`, this.antennas);
       this.receivers.push(rx);
 

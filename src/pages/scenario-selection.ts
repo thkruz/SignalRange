@@ -62,10 +62,22 @@ export class ScenarioSelectionPage extends BasePage {
 
   private async handleScenarioSelect(event: Event): Promise<void> {
     event.preventDefault();
-    // const form = event.target as HTMLFormElement;
-    // const selected = form.scenario.value;
+    const form = event.target as HTMLFormElement;
+    const selected = form.scenario.value;
 
-    // Handle scenario selection logic here
-    Router.getInstance().navigate('/sandbox');
+    switch (selected) {
+      case 'scenario1':
+        Router.getInstance().navigate('scenario1');
+        break;
+      case 'scenario2':
+        Router.getInstance().navigate('scenario2');
+        break;
+      case 'scenario3':
+        Router.getInstance().navigate('scenario3');
+        break;
+      default:
+        alert('Please select a valid scenario.');
+        break;
+    }
   }
 }

@@ -1,8 +1,8 @@
-import { App } from '@app/app';
 import { PowerSwitch } from '@app/components/power-switch/power-switch';
 import { ToggleSwitch } from '@app/components/toggle-switch/toggle-switch';
 import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
+import { SimulationManager } from '@app/simulation/simulation-manager';
 import { clamp } from 'ootk';
 import { RFFrontEnd } from '../rf-front-end';
 import { RFFrontEndModule } from '../rf-front-end-module';
@@ -467,7 +467,7 @@ export class GPSDOModule extends RFFrontEndModule<GPSDOState> {
    */
   private resetToWarmupState_(): void {
     // Double-oven OCXO warmup: ~10 minutes (600 seconds)
-    this.state_.warmupTimeRemaining = App.getInstance().isDeveloperMode ? 20 : 600;
+    this.state_.warmupTimeRemaining = SimulationManager.getInstance().isDeveloperMode ? 20 : 600;
     this.state_.isLocked = false;
     this.state_.lockDuration = 0;
     this.state_.temperature = 25; // Room temp
@@ -535,7 +535,7 @@ export class GPSDOModule extends RFFrontEndModule<GPSDOState> {
    * Improve specs gradually during warmup
    */
   private improveSpecsDuringWarmup_(): void {
-    const warmupProgress = 1 - (this.state_.warmupTimeRemaining / (App.getInstance().isDeveloperMode ? 20 : 600));
+    const warmupProgress = 1 - (this.state_.warmupTimeRemaining / (SimulationManager.getInstance().isDeveloperMode ? 20 : 600));
 
     // Accuracy improves exponentially
     this.state_.frequencyAccuracy = 1000 * Math.pow(2 / 1000, warmupProgress);

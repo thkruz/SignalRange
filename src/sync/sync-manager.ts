@@ -3,7 +3,7 @@ import { RealTimeSpectrumAnalyzerState } from '../equipment/real-time-spectrum-a
 import { ReceiverState } from '../equipment/receiver/receiver';
 import { TransmitterState } from '../equipment/transmitter/transmitter';
 import { Logger } from '../logging/logger';
-import type { StudentEquipment } from '../pages/student-page/student-equipment';
+import type { Equipment } from '../pages/student-page/student-equipment';
 import type { StorageProvider } from './storage-provider';
 
 /**
@@ -17,7 +17,7 @@ import type { StorageProvider } from './storage-provider';
  */
 export class SyncManager {
   private provider: StorageProvider;
-  private equipment: StudentEquipment | null = null;
+  private equipment: Equipment | null = null;
   private unsubscribe: (() => void) | null = null;
   private isInitialized = false;
 
@@ -49,7 +49,7 @@ export class SyncManager {
   /**
    * Set the equipment instance to sync
    */
-  setEquipment(equipment: StudentEquipment): void {
+  setEquipment(equipment: Equipment): void {
     this.equipment = equipment;
   }
 

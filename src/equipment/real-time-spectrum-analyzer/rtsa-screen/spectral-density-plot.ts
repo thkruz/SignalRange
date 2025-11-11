@@ -1,4 +1,4 @@
-import { App } from "@app/app";
+import { SimulationManager } from "@app/simulation/simulation-manager";
 import { Hertz, IfSignal, MHz, RfSignal } from "../../../types";
 import { RealTimeSpectrumAnalyzer } from "../real-time-spectrum-analyzer";
 import { RTSAScreen } from "./rtsa-screen";
@@ -155,7 +155,7 @@ export class SpectralDensityPlot extends RTSAScreen {
     this.specA.inputSignals.forEach((signal, i) => {
       let color = this.noiseColor;
 
-      if (App.getInstance().isDeveloperMode) {
+      if (SimulationManager.getInstance().isDeveloperMode) {
         // Check if we have cached a color for this signal id
         color = this.signalColorCache.get(signal.id)!;
         if (!color) {

@@ -1,11 +1,15 @@
 import { Satellite } from '@app/equipment/satellite/satellite';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
+import { Equipment } from '@app/pages/student-page/student-equipment';
 import { Milliseconds } from 'ootk';
 import { dBm, FECType, Hertz, ModulationType, RfFrequency, RfSignal, SignalOrigin } from './../types';
 
 export class SimulationManager {
   private static instance_: SimulationManager;
+  equipment: Equipment;
+  isDeveloperMode = false;
+
   /** Delta time between frames in milliseconds */
   dt = 0 as Milliseconds;
 

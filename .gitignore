@@ -35,4 +35,4 @@ tmp/
 temp/
 
 # Notes
-**/*.notes.*
+*.notes.*

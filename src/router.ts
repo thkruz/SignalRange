@@ -2,6 +2,7 @@ import { EventBus } from "./events/event-bus";
 import { Events } from "./events/events";
 import { SandboxPage } from "./pages/sandbox-page";
 import { ScenarioSelectionPage } from "./pages/scenario-selection";
+import { ScenarioManager } from "./scenario-manager";
 
 /**
  * Simple Router for 3 pages: login, student, instructor
@@ -54,6 +55,15 @@ export class Router {
       case '/sandbox':
         this.showPage('sandbox-page');
         break;
+      case '/scenario1':
+        this.showPage('scenario1-page');
+        break;
+      case '/scenario2':
+        this.showPage('scenario2-page');
+        break;
+      case '/scenario3':
+        this.showPage('scenario3-page');
+        break;
       case '/':
       case '/scenario-selection':
       default:
@@ -76,6 +86,21 @@ export class Router {
         if (!SandboxPage.getInstance()) {
           SandboxPage.create();
         }
+        SandboxPage.getInstance().show();
+        break;
+      case 'scenario1-page':
+        ScenarioManager.getInstance().settings = ScenarioManager.getScenarioSettings('scenario1');
+        SandboxPage.create();
+        SandboxPage.getInstance().show();
+        break;
+      case 'scenario2-page':
+        ScenarioManager.getInstance().settings = ScenarioManager.getScenarioSettings('scenario2');
+        SandboxPage.create();
+        SandboxPage.getInstance().show();
+        break;
+      case 'scenario3-page':
+        ScenarioManager.getInstance().settings = ScenarioManager.getScenarioSettings('scenario3');
+        SandboxPage.create();
         SandboxPage.getInstance().show();
         break;
       case 'scenario-selection-page':

@@ -203,7 +203,6 @@ export class Antenna extends BaseEquipment {
   protected addListeners_(): void {
     this.domCache['inputSatTarget'].addEventListener('change', this.handleSatTargetChange_.bind(this));
 
-    this.skewKnob_?.attachListeners();
     this.loopbackSwitch_?.addEventListeners(this.toggleLoopback_.bind(this));
     this.autoTrackSwitch_?.addEventListeners(this.toggleAutoTrack_.bind(this));
     this.powerSwitch_.addEventListeners(this.togglePower_.bind(this));

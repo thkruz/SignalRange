@@ -1,5 +1,3 @@
-import { EventBus } from '../events/event-bus';
-import { EventBusEvent } from '../events/event-bus-events';
 import { isThisNode } from './isThisNode';
 
 export class ErrorManager {
@@ -9,8 +7,8 @@ export class ErrorManager {
   private readonly ALLOW_WARN = true;
   isDebug = false;
 
-  error(e: Error, funcName: string) {
-    EventBus.getInstance().emit(EventBusEvent.error, e, funcName);
+  error(e: Error, _funcName: string) {
+    // EventBus.getInstance().emit(EventBusEvent.error, e, funcName);
 
     // eslint-disable-next-line no-console
     console.error(e);

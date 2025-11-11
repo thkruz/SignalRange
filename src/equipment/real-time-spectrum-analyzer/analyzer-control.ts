@@ -85,34 +85,14 @@ export class AnalyzerControl extends BaseElement {
     khz: ACKhzBtn;
     hz: ACHzBtn;
   };
-  private minorAdjKnob: ContinuousRotaryKnob;
-  private majorAdjKnob: ContinuousRotaryKnob;
+
+  private readonly minorAdjKnob: ContinuousRotaryKnob;
+  private readonly majorAdjKnob: ContinuousRotaryKnob;
 
   constructor(options: AnalyzerControlOptions) {
     super();
     this.specA = options.spectrumAnalyzer;
     this.dom_ = options.element;
-  }
-
-  init_(parentId: string, type: 'add' | 'replace' = 'replace'): void {
-    super.init_(parentId, type);
-    this.initializeValues();
-  }
-
-  private initializeValues(): void {
-    // Initialize with current center frequency in MHz
-    this.panelElements.freq.init();
-  }
-
-  private handleMinorTickChange(value: number): void {
-    this.controlSelection.onMinorTickChange(-value / 10); // Normalize to 0-1 and reverse direction
-  }
-
-  private handleMajorTickChange(value: number): void {
-    this.controlSelection.onMajorTickChange(-value / 10); // Normalize to 0-1 and reverse direction
-  }
-
-  initDom_(parentId: string, type: 'add' | 'replace' = 'replace'): HTMLElement {
 
     this.minorAdjKnob = ContinuousRotaryKnob.create(
       `analyzer-control-selector-knob-${this.specA.state.uuid}`,
@@ -129,7 +109,27 @@ export class AnalyzerControl extends BaseElement {
       this.handleMajorTickChange.bind(this),
       "Major Tick",
     );
+  }
 
+  init_(parentId: string, type: 'add' | 'replace' = 'replace'): void {
+    super.init_(parentId, type);
+    this.initializeValues();
+  }
+
+  private initializeValues(): void {
+    // Initialize with current center frequency in MHz
+    this.panelElements.freq.init();
+  }
+
+  private handleMinorTickChange(value: number): void {
+    this.controlSelection?.onMinorTickChange(-value / 10); // Normalize to 0-1 and reverse direction
+  }
+
+  private handleMajorTickChange(value: number): void {
+    this.controlSelection?.onMajorTickChange(-value / 10); // Normalize to 0-1 and reverse direction
+  }
+
+  initDom_(parentId: string, type: 'add' | 'replace' = 'replace'): HTMLElement {
     this.panelElements = {
       freq: ACFreqBtn.create(this),
       span: ACSpanBtn.create(this),
@@ -353,9 +353,6 @@ export class AnalyzerControl extends BaseElement {
       const element = this.panelElements[key] as BaseControlButton;
       element.addEventListeners();
     }
-
-    this.minorAdjKnob.attachListeners();
-    this.majorAdjKnob.attachListeners();
 
     // Number pad buttons
     const numButtons = qsa<HTMLButtonElement>('.num-button', this.dom_);

@@ -7,6 +7,7 @@ interface DraggableBoxOptions {
   width?: string;
   title?: string;
   isDockable?: boolean;
+  boxContentHtml?: string;
 }
 
 export abstract class DraggableBox {
@@ -33,21 +34,7 @@ export abstract class DraggableBox {
     this.title = opts?.title ?? '';
     this.width = opts?.width ?? '300px';
     this.isDockable = opts?.isDockable ?? false;
-  }
 
-  protected abstract getBoxContentHtml(): string;
-
-  protected onOpen(): void {
-    getEl(`${this.boxId}-close`)!.addEventListener('click', () => this.close());
-
-    if (this.isDockable) {
-      getEl(`${this.boxId}-dock`)!.addEventListener('click', () => this.dock());
-    }
-
-    this.sendToFront();
-  }
-
-  open(cb?: () => void) {
     if (!this.boxEl) {
       document.getElementsByTagName('body')[0].insertAdjacentHTML('beforeend', html`
         <div id="${this.boxId}" class="draggable-box" style="pointer-events:auto;">
@@ -61,15 +48,31 @@ export abstract class DraggableBox {
             <span id="${this.boxId}-close" class="draggable-box__btn draggable-box__close-btn"></span>
           </div>
           <div class="draggable-box__content">
-            ${this.getBoxContentHtml()}
+            ${opts?.boxContentHtml ?? this.getBoxContentHtml()}
           </div>
         </div>
       `);
-      this.boxEl = getEl(this.boxId) as HTMLElement;
+    }
+  }
+
+  protected abstract getBoxContentHtml(): string;
+
+  protected onOpen(): void {
+    if (!this.boxEl) {
+      this.boxEl = getEl(this.boxId);
       this.initDraggabilly_();
       this.onOpen();
     }
+    getEl(`${this.boxId}-close`)!.addEventListener('click', () => this.close());
 
+    if (this.isDockable) {
+      getEl(`${this.boxId}-dock`)!.addEventListener('click', () => this.dock());
+    }
+
+    this.sendToFront();
+  }
+
+  open(cb?: () => void) {
     if (this.boxEl) {
       showEl(this.boxEl);
       const boxContent = getEl(`${this.boxId}`)!;

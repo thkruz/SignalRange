@@ -97,6 +97,7 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
     this.state.inputValue = (this.state.centerFrequency / 1e6).toString(); // in MHz
     this.state.inputUnit = 'MHz';
 
+    this.configPanel = new AnalyzerControlBox(this);
     this.build(parentId);
 
     EventBus.getInstance().on(Events.UPDATE, this.update.bind(this));
@@ -417,7 +418,6 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
    */
 
   private openConfigPopupMenu(): void {
-    this.configPanel ??= new AnalyzerControlBox(this);
     this.configPanel.open();
     this.emit(Events.SPEC_A_CONFIG_CHANGED, { uuid: this.uuid });
   }
@@ -513,11 +513,13 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
 
   syncDomWithState(): void {
     // Update info display
-    this.domCache['info'].innerHTML = html`
-      <div>CF: ${(this.state.centerFrequency / 1e6).toFixed(3)} MHz</div>
-      <div>Input: ${this.state.inputValue} ${this.state.inputUnit}</div>
-      <div>RF Front End: ${this.state.rfFeUuid.split('-')[0]}</div>
-    `;
-    this.updateScreenVisibility();
+    if (this.domCache['info']) {
+      this.domCache['info'].innerHTML = html`
+        <div>CF: ${(this.state.centerFrequency / 1e6).toFixed(3)} MHz</div>
+        <div>Input: ${this.state.inputValue} ${this.state.inputUnit}</div>
+        <div>RF Front End: ${this.state.rfFeUuid.split('-')[0]}</div>
+      `;
+      this.updateScreenVisibility();
+    }
   }
 }

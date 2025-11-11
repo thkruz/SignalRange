@@ -138,12 +138,6 @@ export class LNBModule extends RFFrontEndModule<LNBState> {
     this.addPowerSwitchListener(cb, () => {
       this.simulateLockAcquisition(2000, 2000, () => cb(this.state_));
     });
-
-    // LO frequency input handler
-    this.loKnob_.attachListeners();
-
-    // Gain knob already has its callback set in constructor
-    this.gainKnob_?.attachListeners();
   }
 
   /**

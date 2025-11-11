@@ -30,6 +30,8 @@ export class PowerSwitch {
 
     this.isOn_ = isOn;
     this.uniqueId = uniqueId;
+
+    // TODO use onDomReady_ listener to isolate component from parent DOM
   }
 
   static create(domId: string, isOn: boolean, isVertical = true, isSmall = false): PowerSwitch {

@@ -149,11 +149,6 @@ export class IfFilterBankModule extends RFFrontEndModule<IfFilterBankState> {
       console.warn('FilterModule: Cannot add event listeners - container not found');
       return;
     }
-
-    // Attach rotary knob listeners
-    if (this.bandwidthKnob_) {
-      this.bandwidthKnob_.attachListeners();
-    }
   }
 
   /**

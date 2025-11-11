@@ -227,12 +227,6 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
       cb(this.state_);
     });
 
-    // LO frequency input handler
-    this.loKnob_.attachListeners();
-
-    // Gain knob already has its callback set in constructor
-    this.gainKnob_?.attachListeners();
-
     // Loopback switch handler
     this.loopbackSwitch_.addEventListeners((isLoopback: boolean) => {
       this.state_.isLoopback = isLoopback;

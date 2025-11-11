@@ -6,7 +6,7 @@ import './ac-freq-btn.css';
 
 export class ACFreqBtn extends BaseControlButton {
   private readonly analyzerControl: AnalyzerControl;
-  private subMenuSelected: 'center' | 'start' | 'stop' | null = null;
+  private subMenuSelected: 'center' | 'start' | 'stop' = 'center';
 
   private constructor(analyzerControl: AnalyzerControl) {
     super({
@@ -26,7 +26,6 @@ export class ACFreqBtn extends BaseControlButton {
   init(): void {
     // Unique because its the default submenu on opening AnalyzerControl
     this.handleClick_();
-    this.handleCenterFreqClick();
   }
 
   protected handleClick_(): void {

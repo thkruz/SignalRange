@@ -169,9 +169,6 @@ export class HPAModule extends RFFrontEndModule<HPAState> {
         cb(this.state_);
       }
     });
-
-    // Back-off knob already has its callback set in constructor
-    this.backOffKnob.attachListeners();
   }
 
   /**

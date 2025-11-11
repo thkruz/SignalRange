@@ -1,5 +1,7 @@
 import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
+import { EventBus } from "@app/events/event-bus";
+import { Events } from "@app/events/events";
 import { Logger } from "@app/logging/logger";
 import './continuous-rotary-knob.css';
 
@@ -41,9 +43,11 @@ export class ContinuousRotaryKnob {
     const container = document.createElement('div');
     container.className = 'continuous-rotary-knob-container';
     container.innerHTML = this.html_;
+
+    EventBus.getInstance().on(Events.DOM_READY, this.onDomReady_.bind(this));
   }
 
-  attachListeners(): void {
+  private onDomReady_(): void {
     this.dom_ ??= qs(`#${this.uniqueId}`);
     const knobBody = qs('.knob-body', this.dom);
 

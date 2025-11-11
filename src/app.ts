@@ -1,4 +1,3 @@
-import { Milliseconds } from 'ootk';
 import { BaseElement } from './components/base-element';
 import { getEl } from './engine/utils/get-el';
 import { EventBus } from './events/event-bus';
@@ -15,6 +14,9 @@ import { SimulationManager } from './simulation/simulation-manager';
 /**
  * Main Application Class
  * Orchestrates the entire application lifecycle
+ *
+ * The game loop should be in SimulationManager to allow easy clear/reset without impacting
+ * the rest of the app.
  */
 export class App extends BaseElement {
   private static instance_: App;
@@ -22,8 +24,6 @@ export class App extends BaseElement {
   equipment: StudentEquipment;
   isDeveloperMode = false;
   private readonly router = Router.getInstance();
-  /** Delta time between frames in milliseconds */
-  dt = 0 as Milliseconds;
 
   private constructor() {
     super();
@@ -36,9 +36,9 @@ export class App extends BaseElement {
 
     App.instance_ = new App();
     window.signalRange = App.instance_;
+    SimulationManager.getInstance();
     App.instance_.init_();
     EventBus.getInstance().emit(Events.DOM_READY);
-    App.instance_.gameLoop_();
 
 
     return App.instance_;
@@ -72,34 +72,6 @@ export class App extends BaseElement {
 
   protected addEventListeners_(): void {
     document.addEventListener('contextmenu', (event) => event.preventDefault());
-  }
-
-  private lastFrameTime = performance.now();
-
-  private gameLoop_(): void {
-    const now = performance.now();
-    this.dt = (now - this.lastFrameTime) as Milliseconds;
-    this.lastFrameTime = now;
-
-    this.update(this.dt);
-    this.draw(this.dt);
-    requestAnimationFrame(this.gameLoop_.bind(this));
-  }
-
-  private update(_dt: Milliseconds): void {
-    EventBus.getInstance().emit(Events.UPDATE, _dt);
-  }
-
-  private draw(_dt: Milliseconds): void {
-    EventBus.getInstance().emit(Events.DRAW, _dt);
-  }
-
-  sync(): void {
-    EventBus.getInstance().emit(Events.SYNC);
-  }
-
-  static dispose(): void {
-    this.instance_ = null;
   }
 
   static __resetAll__(): void {

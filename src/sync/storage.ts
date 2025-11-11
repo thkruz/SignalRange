@@ -5,7 +5,7 @@
  * while hiding the complexity of the storage provider.
  */
 
-import { App } from '@app/app';
+import { SimulationManager } from '@app/simulation/simulation-manager';
 import { EventBus } from '../events/event-bus';
 import { Events } from '../events/events';
 import type { StudentEquipment } from '../pages/student-page/student-equipment';
@@ -87,7 +87,7 @@ export async function syncEquipmentWithStore(studentEquipment: StudentEquipment)
   // Set up event listeners to save on changes
   setupEquipmentListeners(studentEquipment);
 
-  App.getInstance().sync();
+  SimulationManager.getInstance().sync();
 }
 
 /**

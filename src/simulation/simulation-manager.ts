@@ -1,10 +1,14 @@
 import { Satellite } from '@app/equipment/satellite/satellite';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
+import { Milliseconds } from 'ootk';
 import { dBm, FECType, Hertz, ModulationType, RfFrequency, RfSignal, SignalOrigin } from './../types';
 
 export class SimulationManager {
-  private static instance: SimulationManager;
+  private static instance_: SimulationManager;
+  /** Delta time between frames in milliseconds */
+  dt = 0 as Milliseconds;
+
   satellites: Satellite[] = [];
   satelliteSignals: RfSignal[];
   userSignals: RfSignal[] = [];
@@ -32,61 +36,42 @@ export class SimulationManager {
 
     this.satelliteSignals = this.satellites.flatMap(sat => sat.txSignal);
 
-    // Register event listeners
-    EventBus.getInstance().on(Events.UPDATE, this.update.bind(this));
+    this.gameLoop_();
   }
 
-  public static getInstance(): SimulationManager {
-    if (!this.instance) {
-      this.instance = new SimulationManager();
-      window.signalRange.simulationManager = this.instance;
+  static getInstance(): SimulationManager {
+    if (!this.instance_) {
+      this.instance_ = new SimulationManager();
+      window.signalRange.simulationManager = this.instance_;
     }
-    return this.instance;
+    return this.instance_;
   }
 
-  update(): void {
-    // Nothing right now
+  private lastFrameTime = performance.now();
+
+  private gameLoop_(): void {
+    const now = performance.now();
+    this.dt = (now - this.lastFrameTime) as Milliseconds;
+    this.lastFrameTime = now;
+
+    this.update(this.dt);
+    this.draw(this.dt);
+    requestAnimationFrame(this.gameLoop_.bind(this));
   }
 
-  addSignal(signal: RfSignal): void {
-    this.removeSignal(signal);
-
-    // Add the new signal
-    this.userSignals.push(signal);
+  private update(_dt: Milliseconds): void {
+    EventBus.getInstance().emit(Events.UPDATE, _dt);
   }
 
-  removeSignal(signal: RfSignal): void {
-    this.userSignals = this.userSignals.filter(s => {
-      return !(s.serverId === signal.serverId &&
-        s.noradId === signal.noradId &&
-        s.id === signal.id);
-    });
+  private draw(_dt: Milliseconds): void {
+    EventBus.getInstance().emit(Events.DRAW, _dt);
+  }
+
+  sync(): void {
+    EventBus.getInstance().emit(Events.SYNC);
   }
 
   getSatelliteByNoradId(noradId: number): Satellite | undefined {
     return this.satellites.find(sat => sat.noradId === noradId);
-  }
-
-  clearUserSignals(): void {
-    this.userSignals = [];
-  }
-
-  getVisibleSignals(serverId: number, targetId: number): RfSignal[] {
-    // Get all satellite signals with effects already applied by Satellite class
-    // Signal variation, dropout, and degradation are now handled in Satellite.getTransmittedSignals()
-    const satelliteSignals = this.satellites.flatMap(sat => sat.getTransmittedSignals());
-
-    // Combine satellite signals with user signals
-    const allSignals = [...satelliteSignals, ...this.userSignals];
-
-    // Filter signals for the current server and satellite
-    const visibleSignals = allSignals.filter((signal) => {
-      const isCurrentServer = signal.serverId === serverId;
-      const isCurrentSatellite = signal.noradId === targetId;
-
-      return isCurrentServer && isCurrentSatellite;
-    });
-
-    return visibleSignals;
   }
 }

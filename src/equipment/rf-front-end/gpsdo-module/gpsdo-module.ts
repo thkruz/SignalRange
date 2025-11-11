@@ -275,30 +275,27 @@ export class GPSDOModule extends RFFrontEndModule<GPSDOState> {
 
     // Power switch handler
     this.powerSwitch_.addEventListeners((isPowered: boolean) => {
-      const parentPowered = this.rfFrontEnd_.state.isPowered;
-      if (parentPowered) {
-        this.state_.isPowered = isPowered;
+      this.state_.isPowered = isPowered;
 
-        if (isPowered) {
-          this.resetToWarmupState_();
-          this.startWarmupTimer_();
-          this.startStabilityMonitor_();
-        } else {
-          this.state_.isLocked = false;
-          this.state_.isInHoldover = false;
-          this.state_.holdoverDuration = 0;
-          this.state_.gnssSignalPresent = false;
-          this.state_.isGnssAcquiringLock = false;
-          this.state_.satelliteCount = 0;
-          this.state_.lockDuration = 0;
-          this.stopWarmupTimer_();
-          this.stopStabilityMonitor_();
-          this.stopHoldoverMonitor_();
-        }
-
-        this.syncDomWithState_();
-        cb(this.state_);
+      if (isPowered) {
+        this.resetToWarmupState_();
+        this.startWarmupTimer_();
+        this.startStabilityMonitor_();
+      } else {
+        this.state_.isLocked = false;
+        this.state_.isInHoldover = false;
+        this.state_.holdoverDuration = 0;
+        this.state_.gnssSignalPresent = false;
+        this.state_.isGnssAcquiringLock = false;
+        this.state_.satelliteCount = 0;
+        this.state_.lockDuration = 0;
+        this.stopWarmupTimer_();
+        this.stopStabilityMonitor_();
+        this.stopHoldoverMonitor_();
       }
+
+      this.syncDomWithState_();
+      cb(this.state_);
     });
 
     // GNSS switch handler
@@ -373,9 +370,7 @@ export class GPSDOModule extends RFFrontEndModule<GPSDOState> {
    * Update lock status based on power, warmup, and GNSS availability
    */
   private updateLockStatus_(): void {
-    const parentPowered = this.rfFrontEnd_.state.isPowered;
-    const canLock = parentPowered &&
-      this.state_.isPowered &&
+    const canLock = this.state_.isPowered &&
       this.state_.isGnssSwitchUp &&
       this.state_.warmupTimeRemaining === 0;
 
@@ -651,15 +646,13 @@ export class GPSDOModule extends RFFrontEndModule<GPSDOState> {
       return alarms;
     }
 
-    const parentPowered = this.rfFrontEnd_.state.isPowered;
-
     // Lock alarm
-    if (!this.state_.isLocked && this.state_.warmupTimeRemaining === 0 && parentPowered) {
+    if (!this.state_.isLocked && this.state_.warmupTimeRemaining === 0) {
       alarms.push('GPSDO not locked');
     }
 
     // GNSS signal alarm
-    if (!this.state_.gnssSignalPresent && parentPowered) {
+    if (!this.state_.gnssSignalPresent) {
       alarms.push('GNSS signal lost');
     }
 

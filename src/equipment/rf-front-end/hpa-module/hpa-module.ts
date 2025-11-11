@@ -92,7 +92,6 @@ export class HPAModule extends RFFrontEndModule<HPAState> {
       0.5,
       (value: number) => {
         this.state_.backOff = value;
-        this.rfFrontEnd_.calculateSignalPath();
       }
     );
 
@@ -152,11 +151,10 @@ export class HPAModule extends RFFrontEndModule<HPAState> {
 
     // Enable switch handler
     this.powerSwitch_.addEventListeners((isEnabled: boolean) => {
-      const parentPowered = this.rfFrontEnd_.state.isPowered;
       const bucPowered = this.rfFrontEnd_.state.buc.isPowered;
 
-      // HPA can only be enabled if both parent and BUC are powered
-      if (parentPowered && bucPowered) {
+      // HPA can only be enabled if BUC is powered
+      if (bucPowered) {
         this.state_.isPowered = isEnabled;
         this.syncDomWithState_();
         cb(this.state_);
@@ -295,10 +293,9 @@ export class HPAModule extends RFFrontEndModule<HPAState> {
    */
   private checkAlarms_(): void {
     // Power sequencing check
-    const parentPowered = this.rfFrontEnd_.state.isPowered;
     const bucPowered = this.rfFrontEnd_.state.buc.isPowered;
 
-    if (this.state_.isPowered && (!parentPowered || !bucPowered)) {
+    if (this.state_.isPowered && (!bucPowered)) {
       // Disable HPA if power conditions not met
       this.state_.isPowered = false;
     }
@@ -336,10 +333,9 @@ export class HPAModule extends RFFrontEndModule<HPAState> {
     }
 
     // Power sequencing alarm
-    const parentPowered = this.rfFrontEnd_.state.isPowered;
     const bucPowered = this.rfFrontEnd_.state.buc.isPowered;
 
-    if (this.state_.isPowered && !bucPowered && parentPowered) {
+    if (this.state_.isPowered && !bucPowered) {
       alarms.push('HPA enabled without BUC power');
     }
 

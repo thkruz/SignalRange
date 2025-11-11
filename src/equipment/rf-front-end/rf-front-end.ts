@@ -18,35 +18,12 @@ import omtModuleHelp from './omt-module/omt-module-help';
 import './rf-front-end.css';
 
 /**
- * Signal path calculation result
- */
-export interface SignalPath {
-  txPath: {
-    ifFrequency: IfFrequency;
-    ifPower: number; // dBm
-    rfFrequency: RfFrequency;
-    rfPower: number; // dBm
-    totalGain: number; // dB
-  };
-  rxPath: {
-    rfFrequency: RfFrequency;
-    rfPower: number; // dBm
-    ifFrequency: IfFrequency;
-    ifPower: number; // dBm
-    totalGain: number; // dB
-    noiseFigure: number; // dB
-  };
-}
-
-/**
  * Complete RF Front-End state
  */
 export interface RFFrontEndState {
   uuid: string;
   teamId: number;
   serverId: number;
-  isPowered: boolean;
-  signalFlowDirection: 'TX' | 'RX' | 'IDLE';
 
   omt: OMTState;
   buc: BUCState;
@@ -55,8 +32,6 @@ export interface RFFrontEndState {
   lnb: LNBState;
   coupler: CouplerState;
   gpsdo: GPSDOState;
-
-  signalPath: SignalPath;
 }
 
 /**
@@ -93,8 +68,6 @@ export class RFFrontEnd extends BaseEquipment {
       uuid: this.uuid,
       teamId: this.teamId,
       serverId: serverId,
-      isPowered: true,
-      signalFlowDirection: 'IDLE',
 
       // Module states managed by their respective classes
       omt: OMTModule.getDefaultState(),
@@ -104,24 +77,6 @@ export class RFFrontEnd extends BaseEquipment {
       lnb: LNBModule.getDefaultState(),
       coupler: CouplerModule.getDefaultState(),
       gpsdo: GPSDOModule.getDefaultState(),
-
-      signalPath: {
-        txPath: {
-          ifFrequency: 1600 * 1e6 as IfFrequency,
-          ifPower: -30,
-          rfFrequency: 5800 * 1e6 as RfFrequency,
-          rfPower: 10,
-          totalGain: 58,
-        },
-        rxPath: {
-          rfFrequency: 5800 * 1e6 as RfFrequency,
-          rfPower: -100,
-          ifFrequency: 1600 * 1e6 as IfFrequency,
-          ifPower: -45,
-          totalGain: 55,
-          noiseFigure: 0.6,
-        },
-      },
     };
 
     // Instantiate module classes
@@ -140,9 +95,6 @@ export class RFFrontEnd extends BaseEquipment {
   }
 
   update(): void {
-    // Update signal path calculations
-    this.calculateSignalPath();
-
     // Update component states based on conditions
     this.updateComponentStates();
 
@@ -240,37 +192,31 @@ export class RFFrontEnd extends BaseEquipment {
     // Add module event listeners
     this.omtModule.addEventListeners((state: OMTState) => {
       this.state.omt = state;
-      this.calculateSignalPath();
       this.syncDomWithState();
       EventBus.getInstance().emit(Events.RF_FE_OMT_CHANGED, state);
     });
     this.bucModule.addEventListeners((state: BUCState) => {
       this.state.buc = state;
-      this.calculateSignalPath();
       this.syncDomWithState();
       EventBus.getInstance().emit(Events.RF_FE_BUC_CHANGED, state);
     });
     this.hpaModule.addEventListeners((state: HPAState) => {
       this.state.hpa = state;
-      this.calculateSignalPath();
       this.syncDomWithState();
       EventBus.getInstance().emit(Events.RF_FE_HPA_CHANGED, state);
     });
     this.filterModule.addEventListeners((state: IfFilterBankState) => {
       this.state.filter = state;
-      this.calculateSignalPath();
       this.syncDomWithState();
       EventBus.getInstance().emit(Events.RF_FE_FILTER_CHANGED, state);
     });
     this.lnbModule.addEventListeners((state: LNBState) => {
       this.state.lnb = state;
-      this.calculateSignalPath();
       this.syncDomWithState();
       EventBus.getInstance().emit(Events.RF_FE_LNB_CHANGED, state);
     });
     this.couplerModule.addEventListeners((state: CouplerState) => {
       this.state.coupler = state;
-      this.calculateSignalPath();
       this.syncDomWithState();
       EventBus.getInstance().emit(Events.RF_FE_COUPLER_CHANGED, state);
     });
@@ -350,10 +296,6 @@ export class RFFrontEnd extends BaseEquipment {
       this.gpsdoModule.sync(data.gpsdo);
     }
 
-    // Update scalar properties
-    if (data.isPowered !== undefined) this.state.isPowered = data.isPowered;
-    if (data.signalFlowDirection !== undefined) this.state.signalFlowDirection = data.signalFlowDirection;
-
     this.syncDomWithState();
   }
 
@@ -381,7 +323,6 @@ export class RFFrontEnd extends BaseEquipment {
       }
     }
 
-    this.calculateSignalPath();
     this.syncDomWithState();
   }
 
@@ -398,107 +339,7 @@ export class RFFrontEnd extends BaseEquipment {
     this.syncDomWithState();
   }
 
-  calculateSignalPath(): void {
-    if (!this.state.isPowered) {
-      // Zero out all values when powered off
-      this.state.signalPath.txPath = {
-        ifFrequency: 0 as IfFrequency,
-        ifPower: -120,
-        rfFrequency: 0 as RfFrequency,
-        rfPower: -120,
-        totalGain: 0
-      };
-      this.state.signalPath.rxPath = {
-        rfFrequency: 0 as RfFrequency,
-        rfPower: -120,
-        ifFrequency: 0 as IfFrequency,
-        ifPower: -120,
-        totalGain: 0,
-        noiseFigure: 99
-      };
-      return;
-    }
-
-    // TX Path: IF → BUC (upconvert) → HPA → Filter → Antenna
-    if (this.state.buc.isPowered && this.state.signalFlowDirection === 'TX') {
-      const txIfFreq = 1600; // MHz (example IF input)
-      const txIfPower = -10; // dBm input to BUC
-
-      // BUC upconversion
-      const txRfFreq = txIfFreq + this.state.buc.loFrequency;
-      let txRfPower = this.state.buc.isMuted ? -120 : txIfPower + this.state.buc.gain;
-
-      // HPA amplification
-      if (this.state.hpa.isPowered) {
-        const p1db = 50; // dBm (100W) typical P1dB
-        const hpaGain = p1db - this.state.hpa.backOff - txRfPower;
-        txRfPower += hpaGain;
-      }
-
-      // Filter insertion loss
-      const txFilteredPower = txRfPower - this.state.filter.insertionLoss;
-
-      this.state.signalPath.txPath = {
-        ifFrequency: txIfFreq * 1e6 as IfFrequency,
-        ifPower: txIfPower,
-        rfFrequency: txRfFreq * 1e6 as RfFrequency,
-        rfPower: txFilteredPower,
-        totalGain: txFilteredPower - txIfPower,
-      };
-    }
-
-    // RX Path: Antenna → Filter → LNB (downconvert) → Receiver
-    if (this.state.lnb.isPowered && this.state.signalFlowDirection === 'RX') {
-      const rxRfFreq = 5800; // MHz (example RF input)
-      const rxRfPower = -80; // dBm at antenna feed
-
-      // Filter insertion loss
-      const rxFilteredPower = rxRfPower - this.state.filter.insertionLoss;
-
-      // LNB downconversion
-      const rxIfFreq = Math.abs(rxRfFreq - this.state.lnb.loFrequency);
-      const rxIfPower = rxFilteredPower + this.state.lnb.gain;
-
-      // Spectrum inversion check (high-side LO injection inverts spectrum)
-      this.state.lnb.isSpectrumInverted = this.state.lnb.loFrequency > rxRfFreq;
-
-      // Calculate cascade noise figure
-      const cascadeNF = this.calculateRxNoiseFigure();
-
-      this.state.signalPath.rxPath = {
-        rfFrequency: rxRfFreq * 1e6 as RfFrequency,
-        rfPower: rxRfPower,
-        ifFrequency: rxIfFreq * 1e6 as IfFrequency,
-        ifPower: rxIfPower,
-        totalGain: rxIfPower - rxRfPower,
-        noiseFigure: cascadeNF,
-      };
-    }
-  }
-
-  private calculateRxNoiseFigure(): number {
-    // Friis formula for cascaded noise figure
-    // F_total = F1 + (F2-1)/G1
-    // For RX: Filter → LNB
-    const filterLossDb = this.state.filter.insertionLoss;
-    const filterNfLinear = Math.pow(10, filterLossDb / 10); // Loss = NF for passive device
-    const filterGainLinear = Math.pow(10, -filterLossDb / 10); // Negative gain
-
-    const lnbNfLinear = Math.pow(10, this.state.lnb.lnaNoiseFigure / 10);
-
-    const totalNfLinear = filterNfLinear + (lnbNfLinear - 1) / filterGainLinear;
-    return 10 * Math.log10(totalNfLinear);
-  }
-
   private updateComponentStates(): void {
-    // Power sequencing
-    if (!this.state.isPowered) {
-      this.state.buc.isPowered = false;
-      this.state.hpa.isPowered = false;
-      this.state.lnb.isPowered = false;
-      return;
-    }
-
     // HPA can only be enabled if BUC is powered
     if (this.state.hpa.isPowered && !this.state.buc.isPowered) {
       this.state.hpa.isPowered = false;
@@ -579,34 +420,6 @@ export class RFFrontEnd extends BaseEquipment {
   /**
    * API Methods
    */
-
-  setPower(isPowered: boolean): void {
-    this.state.isPowered = isPowered;
-    if (!isPowered) {
-      this.state.buc.isPowered = false;
-      this.state.hpa.isPowered = false;
-      this.state.lnb.isPowered = false;
-    }
-    this.syncDomWithState();
-  }
-
-  setSignalFlowDirection(direction: 'TX' | 'RX' | 'IDLE'): void {
-    this.state.signalFlowDirection = direction;
-    this.syncDomWithState();
-  }
-
-  getBUCOutputFrequency(): RfFrequency {
-    return (this.state.signalPath.txPath.ifFrequency + this.state.buc.loFrequency * 1e6) as RfFrequency;
-  }
-
-  getTotalTxGain(): number {
-    let gain = this.state.buc.gain;
-    if (this.state.hpa.isPowered) {
-      gain += this.state.hpa.outputPower;
-    }
-    gain -= this.state.filter.insertionLoss;
-    return gain;
-  }
 
   getTotalRxGain(): number {
     return this.state.lnb.gain - this.state.filter.insertionLoss;

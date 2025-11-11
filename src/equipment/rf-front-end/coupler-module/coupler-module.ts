@@ -155,24 +155,17 @@ export class CouplerModule extends RFFrontEndModule<CouplerState> {
    * Update active states based on signal flow direction and power
    */
   private updateActiveStates_(): void {
-    const isPowered = this.rfFrontEnd_.state.isPowered;
-    const direction = this.rfFrontEnd_.state.signalFlowDirection;
-
     // Tap Point A is active if powered and on the appropriate path
-    this.state_.isActiveA = isPowered && this.isTapPointActive_(this.state_.tapPointA, direction);
+    this.state_.isActiveA = this.isTapPointActive_(this.state_.tapPointA);
 
     // Tap Point B is active if powered and on the appropriate path
-    this.state_.isActiveB = isPowered && this.isTapPointActive_(this.state_.tapPointB, direction);
+    this.state_.isActiveB = this.isTapPointActive_(this.state_.tapPointB);
   }
 
   /**
    * Determine if a tap point is active based on signal flow direction
    */
-  private isTapPointActive_(tapPoint: TapPoint, direction: 'TX' | 'RX' | 'IDLE'): boolean {
-    if (direction === 'IDLE') {
-      return false;
-    }
-
+  private isTapPointActive_(tapPoint: TapPoint): boolean {
     const txTapPoints: TapPoint[] = [
       'TX IF',
       'POST BUC / PRE HPA TX RF',
@@ -188,8 +181,8 @@ export class CouplerModule extends RFFrontEndModule<CouplerState> {
     ];
 
     if (
-      (direction === 'TX' && txTapPoints.includes(tapPoint)) ||
-      (direction === 'RX' && rxTapPoints.includes(tapPoint))
+      txTapPoints.includes(tapPoint) ||
+      rxTapPoints.includes(tapPoint)
     ) {
       return true;
     }

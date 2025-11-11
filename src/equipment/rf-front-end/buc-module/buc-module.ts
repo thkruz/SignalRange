@@ -131,7 +131,6 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
       10,
       (value: number) => {
         this.state_.loFrequency = value as MHz;
-        this.rfFrontEnd_.calculateSignalPath();
       }
     );
 
@@ -304,9 +303,8 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
    * Simulates frequency drift when unlocked
    */
   private updateLockStatus_(): void {
-    const parentPowered = this.isParentPowered();
     const extRefPresent = this.isExtRefPresent();
-    const canLock = parentPowered && this.state_.isPowered && extRefPresent;
+    const canLock = this.state_.isPowered && extRefPresent;
 
     if (canLock) {
       // In real system, lock acquisition takes 2-5 seconds
@@ -479,11 +477,10 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
       return alarms;
     }
 
-    const parentPowered = this.isParentPowered();
     const extRefPresent = this.isExtRefPresent();
 
     // Lock alarm
-    if (!this.state_.isExtRefLocked && extRefPresent && parentPowered) {
+    if (!this.state_.isExtRefLocked && extRefPresent) {
       alarms.push('BUC not locked to reference');
     }
 

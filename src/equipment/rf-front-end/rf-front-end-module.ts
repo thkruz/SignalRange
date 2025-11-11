@@ -111,13 +111,6 @@ export abstract class RFFrontEndModule<TState extends RFFrontEndModuleState> {
   // ═══════════════════════════════════════════════════════════════
 
   /**
-   * Check if parent RF Front End is powered
-   */
-  protected isParentPowered(): boolean {
-    return this.rfFrontEnd_.state.isPowered;
-  }
-
-  /**
    * Check if external 10MHz reference is present from GPSDO
    */
   protected isExtRefPresent(): boolean {
@@ -174,7 +167,6 @@ export abstract class RFFrontEndModule<TState extends RFFrontEndModuleState> {
       (value: number) => {
         if (this.state_.gain !== undefined) {
           this.state_.gain = value;
-          this.rfFrontEnd_.calculateSignalPath();
         }
       }
     );
@@ -195,20 +187,17 @@ export abstract class RFFrontEndModule<TState extends RFFrontEndModuleState> {
     }
 
     this.powerSwitch_.addEventListeners((isPowered: boolean) => {
-      const parentPowered = this.isParentPowered();
-      if (parentPowered) {
-        this.state_.isPowered = isPowered;
+      this.state_.isPowered = isPowered;
 
-        // Simulate lock acquisition when powered on
-        if (isPowered && this.isExtRefPresent() && onPowerOn) {
-          onPowerOn();
-        } else if (!isPowered && this.state_.isExtRefLocked !== undefined) {
-          this.state_.isExtRefLocked = false;
-        }
-
-        this.syncDomWithState_();
-        cb(this.state_);
+      // Simulate lock acquisition when powered on
+      if (isPowered && this.isExtRefPresent() && onPowerOn) {
+        onPowerOn();
+      } else if (!isPowered && this.state_.isExtRefLocked !== undefined) {
+        this.state_.isExtRefLocked = false;
       }
+
+      this.syncDomWithState_();
+      cb(this.state_);
     });
   }
 
@@ -248,9 +237,8 @@ export abstract class RFFrontEndModule<TState extends RFFrontEndModuleState> {
       return;
     }
 
-    const parentPowered = this.isParentPowered();
     const extRefPresent = this.isExtRefPresent();
-    const canLock = parentPowered && this.state_.isPowered && extRefPresent;
+    const canLock = this.state_.isPowered && extRefPresent;
 
     if (!canLock) {
       this.state_.isExtRefLocked = false;

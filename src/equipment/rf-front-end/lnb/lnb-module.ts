@@ -69,7 +69,6 @@ export class LNBModule extends RFFrontEndModule<LNBState> {
       10,
       (value: number) => {
         this.state_.loFrequency = value as MHz;
-        this.rfFrontEnd_.calculateSignalPath();
       }
     );
 
@@ -237,11 +236,10 @@ export class LNBModule extends RFFrontEndModule<LNBState> {
   getAlarms(): string[] {
     const alarms: string[] = [];
 
-    const parentPowered = this.isParentPowered();
     const extRefPresent = this.isExtRefPresent();
 
     // Lock alarm
-    if (this.state_.isPowered && !this.state_.isExtRefLocked && extRefPresent && parentPowered) {
+    if (this.state_.isPowered && !this.state_.isExtRefLocked && extRefPresent) {
       alarms.push('LNB not locked to reference');
     }
 

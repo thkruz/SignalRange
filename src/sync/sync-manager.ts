@@ -3,7 +3,7 @@ import { RealTimeSpectrumAnalyzerState } from '../equipment/real-time-spectrum-a
 import { ReceiverState } from '../equipment/receiver/receiver';
 import { TransmitterState } from '../equipment/transmitter/transmitter';
 import { Logger } from '../logging/logger';
-import type { Equipment } from '../pages/student-page/student-equipment';
+import type { Equipment } from '../pages/sandbox/equipment';
 import type { StorageProvider } from './storage-provider';
 
 /**

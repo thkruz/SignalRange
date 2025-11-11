@@ -8,7 +8,7 @@
 import { SimulationManager } from '@app/simulation/simulation-manager';
 import { EventBus } from '../events/event-bus';
 import { Events } from '../events/events';
-import type { Equipment } from '../pages/student-page/student-equipment';
+import type { Equipment } from '../pages/sandbox/equipment';
 import { StorageProviderFactory, StorageProviderType } from './storage-provider-factory';
 import { SyncManager, type AppState } from './sync-manager';
 import './webpack-hot-module';

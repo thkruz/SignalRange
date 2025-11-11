@@ -8,7 +8,7 @@ import { html } from "../engine/utils/development/formatter";
 import { syncEquipmentWithStore } from '../sync/storage';
 import { BasePage } from "./base-page";
 import { Body } from "./layout/body/body";
-import { Equipment } from './student-page/student-equipment';
+import { Equipment } from './sandbox/equipment';
 
 /**
  * Student page implementation

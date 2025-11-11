@@ -7,7 +7,7 @@ import { RealTimeSpectrumAnalyzer } from '../../equipment/real-time-spectrum-ana
 import { Receiver } from '../../equipment/receiver/receiver';
 import { Transmitter } from '../../equipment/transmitter/transmitter';
 import { SandboxPage } from "../sandbox-page";
-import './student-equipment.css';
+import './equipment.css';
 
 /**
  * StudentEquipment - Orchestrates all equipment on student page

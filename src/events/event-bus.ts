@@ -39,6 +39,14 @@ export class EventBus {
       this.events[event] = callbacks.filter(fn => fn !== cb);
     }
   }
+
+  /**
+   * Clear all callbacks for an event
+   */
+  clear<T extends Events>(event: T) {
+    delete this.events[event];
+  }
+
   /**
    * Subscribe to an event
    */

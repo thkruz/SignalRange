@@ -276,12 +276,6 @@ export class LNBModule extends RFFrontEndModule<LNBState> {
       loDisplay.textContent = this.state_.loFrequency.toString();
     }
 
-    // Update LO frequency input
-    const loInput: HTMLInputElement | null = qs('.input-lnb-lo', container);
-    if (loInput) {
-      loInput.value = this.state_.loFrequency.toString();
-    }
-
     // Update lock LED using base class method
     const lockLed = qs('.led-indicator .led', container);
     if (lockLed) {

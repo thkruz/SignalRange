@@ -532,12 +532,6 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
       loDisplay.textContent = this.state_.loFrequency.toString();
     }
 
-    // Update LO frequency input
-    const loInput: HTMLInputElement | null = qs('.input-buc-lo', container);
-    if (loInput) {
-      loInput.value = this.state_.loFrequency.toString();
-    }
-
     // Update lock LED using base class method
     const lockLed = qs('.led-lock', container);
     if (lockLed) {

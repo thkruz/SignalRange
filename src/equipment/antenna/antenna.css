@@ -1,249 +1,64 @@
 .antenna-container {
-
-  .loopback-section {
+  .antenna-controls {
     display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
-    padding: 12px;
-    background-color: #1a1a1a;
-    border-radius: 8px;
-    min-width: 70px;
+    gap: 20px;
+    flex-grow: 1;
+    padding: 16px;
+
+    .loopback-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      padding: 12px;
+      background-color: #1a1a1a;
+      border-radius: 8px;
+      min-width: 70px;
+    }
+
+    .antenna-config {
+      flex: 1;
+      display: flex;
+      flex-direction: row;
+      gap: 12px;
+      padding: 12px;
+      background-color: #1a1a1a;
+      border-radius: 8px;
+      justify-content: space-evenly;
+
+      .config-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-direction: column;
+        flex-wrap: nowrap;
+        justify-content: space-around;
+      }
+
+      .switch-container {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .lock-status {
+        font-size: 12px;
+        font-weight: bold;
+        padding: 4px 8px;
+        border-radius: 4px;
+        text-align: center;
+      }
+
+      .lock-status.locked {
+        background-color: #4caf50;
+        color: #fff;
+      }
+
+      .lock-status.unlocked {
+        background-color: #f44336;
+        color: #fff;
+      }
+    }
   }
-}
-
-/* Controls Container */
-.antenna-controls {
-  display: flex;
-  gap: 20px;
-  flex-grow: 1;
-  padding: 16px;
-}
-
-
-.loopback-switch {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-}
-
-.loopback-label {
-  color: #aaa;
-  font-size: 12px;
-  text-align: center;
-}
-
-.btn-loopback {
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0;
-  width: 60px;
-  height: 60px;
-  transition: transform 0.2s;
-}
-
-.btn-loopback:hover {
-  transform: scale(1.05);
-}
-
-.btn-loopback:active {
-  transform: scale(0.95);
-}
-
-.switch-image {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-}
-
-.btn-hpa {
-  padding: 12px 24px;
-  background-color: #555;
-  color: #fff;
-  border: 2px solid #f44336;
-  border-radius: 4px;
-  font-weight: bold;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-hpa:hover {
-  background-color: #f44336;
-  color: #000;
-}
-
-.btn-hpa.active {
-  background-color: #f44336;
-  color: #fff;
-}
-
-/* Antenna Configuration */
-.antenna-config {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 12px;
-  background-color: #1a1a1a;
-  border-radius: 8px;
-}
-
-.config-row {
-  display: grid;
-  grid-template-columns: 100px 1fr 100px;
-  align-items: center;
-  gap: 12px;
-}
-
-.config-row label {
-  color: #fff;
-  font-size: 14px;
-  text-align: right;
-}
-
-.config-row input,
-.config-row select {
-  padding: 8px;
-  background-color: #2a2a2a;
-  color: #fff;
-  border: 1px solid #555;
-  border-radius: 4px;
-  font-size: 14px;
-}
-
-.config-row input:focus,
-.config-row select:focus {
-  outline: none;
-  border-color: #4caf50;
-}
-
-.current-value {
-  color: #4caf50;
-  font-size: 14px;
-  font-weight: bold;
-  text-align: center;
-}
-
-/* Switch Container for Track */
-.switch-container {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.switch {
-  position: relative;
-  display: inline-block;
-  width: 48px;
-  height: 24px;
-}
-
-.switch input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-
-.slider {
-  position: absolute;
-  cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: #555;
-  transition: 0.3s;
-  border-radius: 24px;
-}
-
-.slider:before {
-  position: absolute;
-  content: "";
-  height: 16px;
-  width: 16px;
-  left: 4px;
-  bottom: 4px;
-  background-color: white;
-  transition: 0.3s;
-  border-radius: 50%;
-}
-
-input:checked+.slider {
-  background-color: #4caf50;
-}
-
-input:checked+.slider:before {
-  transform: translateX(24px);
-}
-
-.lock-status {
-  font-size: 12px;
-  font-weight: bold;
-  padding: 4px 8px;
-  border-radius: 4px;
-  text-align: center;
-}
-
-.lock-status.locked {
-  background-color: #4caf50;
-  color: #fff;
-}
-
-.lock-status.unlocked {
-  background-color: #f44336;
-  color: #fff;
-}
-
-/* Action Buttons */
-.config-actions {
-  display: flex;
-  gap: 12px;
-  margin-top: auto;
-  padding-top: 12px;
-  border-top: 1px solid #444;
-}
-
-.btn-apply {
-  flex: 1;
-  padding: 12px;
-  background-color: #ff9800;
-  color: #000;
-  border: none;
-  border-radius: 4px;
-  font-weight: bold;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-apply:hover {
-  background-color: #fb8c00;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-}
-
-.btn-power {
-  flex: 1;
-  padding: 12px;
-  background-color: #555;
-  color: #fff;
-  border: 2px solid #f44336;
-  border-radius: 4px;
-  font-weight: bold;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-power:hover {
-  background-color: #f44336;
-  color: #000;
-}
-
-.btn-power.active {
-  background-color: #f44336;
-  color: #fff;
 }

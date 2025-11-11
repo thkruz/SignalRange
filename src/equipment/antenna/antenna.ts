@@ -54,11 +54,6 @@ export interface AntennaState {
 export class Antenna extends BaseEquipment {
   /** Current antenna state */
   state: AntennaState;
-  private readonly powerSwitch_: PowerSwitch;
-  private readonly skewKnob_: RotaryKnob;
-  private readonly loopbackSwitch_: ToggleSwitch;
-  /** Input state being edited in the UI before applying changes */
-  private inputState: AntennaState;
   private lastRenderState: AntennaState;
   private rfFrontEnd_: RFFrontEnd | null = null;
 
@@ -66,6 +61,12 @@ export class Antenna extends BaseEquipment {
 
   /** Waveguide loss (dB) */
   private readonly WAVEGUIDE_LOSS = 1;
+
+  // UI Components
+  private readonly powerSwitch_: PowerSwitch;
+  private readonly skewKnob_: RotaryKnob;
+  private readonly loopbackSwitch_: ToggleSwitch;
+  private readonly autoTrackSwitch_: ToggleSwitch;
 
   constructor(parentId: string, teamId: number = 1, serverId: number = 1) {
     super(parentId, teamId);
@@ -86,6 +87,11 @@ export class Antenna extends BaseEquipment {
       noiseFloor: -130,
     };
 
+    this.autoTrackSwitch_ = ToggleSwitch.create(
+      `antenna-auto-track-${this.state.uuid}`,
+      this.state.isAutoTrackEnabled,
+      false
+    );
     this.powerSwitch_ = PowerSwitch.create(`antenna-power-switch-${this.state.uuid}`, this.state.isPowered);
     this.skewKnob_ = RotaryKnob.create(
       `antenna-skew-knob-${this.state.uuid}`,
@@ -102,11 +108,8 @@ export class Antenna extends BaseEquipment {
       false
     );
 
-    // Input state starts as a copy of current state
-    this.inputState = structuredClone(this.state);
-    const parentDom = this.initializeDom(parentId);
     this.lastRenderState = structuredClone(this.state);
-    this.addListeners_(parentDom);
+    this.build(parentId);
 
     EventBus.getInstance().on(Events.UPDATE, this.update.bind(this));
     EventBus.getInstance().on(Events.SYNC, this.syncDomWithState_.bind(this));
@@ -116,7 +119,8 @@ export class Antenna extends BaseEquipment {
     const parentDom = super.initializeDom(parentId);
 
     parentDom.innerHTML = html`
-      <div class="equipment-case">
+      <div class="equipment-case antenna-container">
+        <!-- Antenna Control Unit Header -->
         <div class="equipment-case-header">
           <div class="equipment-case-title">Antenna Control Unit (ACU) ${this.uuidShort}</div>
           <div class="equipment-case-power-controls">
@@ -127,9 +131,9 @@ export class Antenna extends BaseEquipment {
             </div>
           </div>
         </div>
-
+        <!-- Antenna Control Unit Body -->
         <div class="antenna-controls">
-          <!-- Loopback Switch Section -->
+
           <div class="loopback-section">
             <div class="status-indicator loopback">
               <span id="ant-loopback-light" class="indicator-light ${this.state.isLoopback ? 'on' : 'off'}"></span>
@@ -138,49 +142,33 @@ export class Antenna extends BaseEquipment {
             ${this.loopbackSwitch_.html}
           </div>
 
-          <!-- Antenna Configuration -->
           <div class="antenna-config">
             <div class="config-row">
               <label>Satellite</label>
-              <select class="input-target" data-param="noradId">
-                <option value="28912" ${this.inputState.noradId === 28912 ? 'selected' : ''}>METEOSAT-9 (MSG-2)</option>
-                <option value="1" ${this.inputState.noradId === 1 ? 'selected' : ''}>ARKE 3G</option>
-                <option value="2" ${this.inputState.noradId === 2 ? 'selected' : ''}>AURORA 2B</option>
-                <option value="3" ${this.inputState.noradId === 3 ? 'selected' : ''}>AUXO STAR</option>
-                <option value="4" ${this.inputState.noradId === 4 ? 'selected' : ''}>ENYO</option>
+              <select class="input-sat-target" data-param="noradId">
+                <option value="28912" ${this.state.noradId === 28912 ? 'selected' : ''}>METEOSAT-9 (MSG-2)</option>
+                <option value="1" ${this.state.noradId === 1 ? 'selected' : ''}>ARKE 3G</option>
+                <option value="2" ${this.state.noradId === 2 ? 'selected' : ''}>AURORA 2B</option>
+                <option value="3" ${this.state.noradId === 3 ? 'selected' : ''}>AUXO STAR</option>
+                <option value="4" ${this.state.noradId === 4 ? 'selected' : ''}>ENYO</option>
               </select>
-              <span id="labelTarget" class="current-value">${this.state.noradId}</span>
             </div>
 
             <div class="config-row">
               <label>Skew</label>
               ${this.skewKnob_.html}
-              <span id="labelSkew" class="current-value">${this.state.skew}°</span>
             </div>
 
             <div class="config-row">
-              <label>Auto-Track</label>
-              <div class="switch-container">
-                <label class="switch">
-                  <input
-                    type="checkbox"
-                    class="input-track"
-                    data-param="track"
-                    ${this.state.isAutoTrackEnabled ? 'checked' : ''}
-                  />
-                  <span class="slider"></span>
-                </label>
+              <div class="status-indicator auto-track">
+                <span id="ant-auto-track-light" class="indicator-light ${this.state.isAutoTrackEnabled ? 'on' : 'off'}"></span>
+                <span class="indicator-label">Auto Track</span>
               </div>
-              <span id="labelLockStatus" class="lock-status ${this.state.isLocked ? 'locked' : 'unlocked'}">
-                ${this.state.isLocked ? 'LOCKED' : this.state.isAutoTrackEnabled ? 'TRACKING' : 'UNLOCKED'}
-              </span>
-            </div>
-
-            <div class="config-actions">
-              <button class="btn-apply" data-action="apply">Apply</button>
-              ${this.powerSwitch_.html}
+              ${this.autoTrackSwitch_.html}
             </div>
           </div>
+
+          ${this.powerSwitch_.html}
         </div>
 
         <!-- Bottom Status Bar -->
@@ -195,49 +183,21 @@ export class Antenna extends BaseEquipment {
     this.domCache['parent'] = parentDom;
     this.domCache['status'] = qs('.equipment-case-status-label', parentDom);
     this.domCache['led'] = qs('.led', parentDom);
-    this.domCache['inputTarget'] = qs('.input-target', parentDom);
-    this.domCache['inputTrack'] = qs('.input-track', parentDom);
-    this.domCache['lockStatus'] = qs('.lock-status', parentDom);
-    this.domCache['btnApply'] = qs('.btn-apply', parentDom);
-    this.domCache['labelTarget'] = qs('#labelTarget', parentDom);
-    this.domCache['labelLockStatus'] = qs('#labelLockStatus', parentDom);
-    this.domCache['labelSkew'] = qs('#labelSkew', parentDom);
+    this.domCache['inputSatTarget'] = qs('.input-sat-target', parentDom);
     this.domCache['antLoopbackLight'] = qs('#ant-loopback-light', parentDom);
+    this.domCache['antAutoTrackLight'] = qs('#ant-auto-track-light', parentDom);
     this.domCache['bottomStatusBar'] = qs('.bottom-status-bar', parentDom);
 
     return parentDom;
   }
 
-  protected addListeners_(parentDom: HTMLElement): void {
-    // Input changes
-    const inputs = parentDom.querySelectorAll('input, select');
-    inputs.forEach(input => {
-      input.addEventListener('change', (e) => this.handleInputChange_(e));
-    });
+  protected addListeners_(): void {
+    this.domCache['inputSatTarget'].addEventListener('change', this.handleSatTargetChange_.bind(this));
 
     this.skewKnob_?.attachListeners();
-
-    // Loopback switch handler
     this.loopbackSwitch_?.addEventListeners(this.toggleLoopback_.bind(this));
-
-    // Apply button
-    const btnApply = qs('.btn-apply', parentDom);
-    btnApply?.addEventListener('click', () => this.applyChanges_());
-
-    // Power switch
+    this.autoTrackSwitch_?.addEventListeners(this.toggleAutoTrack_.bind(this));
     this.powerSwitch_.addEventListeners(this.togglePower_.bind(this));
-
-    // Track switch special handling
-    const trackSwitch = qs('.input-track', parentDom) as HTMLInputElement;
-    trackSwitch?.addEventListener('change', () => this.handleTrackChange_(parentDom));
-
-    this.on(Events.ANTENNA_LOCKED, () => (data: { locked: boolean; uuid: string }) => {
-      if (data.uuid === this.uuid) {
-        this.state.isLocked = data.locked;
-        this.updateSignals_();
-        this.syncDomWithState_();
-      }
-    });
   }
 
   /**
@@ -309,7 +269,6 @@ export class Antenna extends BaseEquipment {
 
   sync(data: Partial<AntennaState>): void {
     this.state = { ...this.state, ...data };
-    this.inputState = { ...this.state };
     this.updateSignals_();
     this.syncDomWithState_();
   }
@@ -374,50 +333,25 @@ export class Antenna extends BaseEquipment {
 
   private handleSkewChange_(value: number): void {
     this.state.skew = value as Degrees;
-    if (this.domCache['labelSkew']) {
-      this.domCache['labelSkew'].textContent = `${value}°`;
-    }
   }
 
-  private handleInputChange_(e: Event): void {
+  private handleSatTargetChange_(e: Event): void {
     const target = e.target as HTMLInputElement | HTMLSelectElement;
     const param = target.dataset.param ?? null;
     if (!param) return;
 
-    let value: any = target.value;
+    const parsedNoradId = Number.parseInt(target.value);
 
-    // Parse based on parameter type
-    if (param === 'noradId') {
-      value = Number.parseInt(value);
-    } else if (param === 'track') {
-      value = (target as HTMLInputElement).checked;
+    if (isNaN(parsedNoradId)) {
+      throw new TypeError(`Invalid NORAD ID: ${target.value}`);
     }
 
-    this.inputState = { ...this.inputState, [param]: value };
-  }
-
-  private applyChanges_(): void {
-    // Validate operational state_
-    if (!this.state.isOperational) {
-      return;
-    }
-
-    if (this.inputState.noradId !== this.state.noradId) {
-      // Reset lock and tracking on target change
+    if (this.state.noradId !== parsedNoradId) {
       this.state.isLocked = false;
       this.state.isAutoTrackEnabled = false;
-      this.emit(Events.ANTENNA_LOCKED, { locked: false });
     }
 
-    // Update config with input data
-    this.inputState.isAutoTrackEnabled = this.state.isAutoTrackEnabled;
-    this.inputState.isLocked = this.state.isLocked;
-    this.state = { ...this.state, ...this.inputState };
-
-    // Emit configuration change event
-    this.emit(Events.ANTENNA_CONFIG_CHANGED, this.state);
-
-    this.updateSignals_();
+    this.state.noradId = parsedNoradId;
     this.syncDomWithState_();
   }
 
@@ -436,6 +370,30 @@ export class Antenna extends BaseEquipment {
     this.syncDomWithState_();
   }
 
+  private toggleAutoTrack_(isSwitchUp: boolean): void {
+    if (!this.state.isOperational) {
+      return;
+    }
+
+    this.state.isAutoTrackEnabled = isSwitchUp;
+
+    if (isSwitchUp) {
+      SoundManager.getInstance().play(Sfx.SMALL_MOTOR);
+      // Simulate lock acquisition delay
+      setTimeout(() => {
+        this.state.isLocked = true;
+        this.updateSignals_();
+        this.syncDomWithState_();
+      }, 7000); // 7 second delay to acquire lock
+    } else {
+      this.state.isLocked = false;
+      this.state.rxSignalsIn = [];
+    }
+
+    this.updateSignals_();
+    this.syncDomWithState_();
+  }
+
   private togglePower_(): void {
     this.state.isPowered = !this.state.isPowered;
 
@@ -447,41 +405,6 @@ export class Antenna extends BaseEquipment {
 
     this.emit(Events.ANTENNA_POWER_CHANGED, {
       operational: this.state.isOperational
-    });
-
-    this.updateSignals_();
-    this.syncDomWithState_();
-  }
-
-  private handleTrackChange_(parentDom: HTMLElement): void {
-    if (!this.state.isOperational) {
-      this.state.rxSignalsIn = [];
-      // Reset the switch
-      const trackSwitch = qs('.input-track', parentDom) as HTMLInputElement;
-      if (trackSwitch) trackSwitch.checked = false;
-      return;
-    }
-
-    const newTrackValue = !this.state.isAutoTrackEnabled;
-    this.state.isAutoTrackEnabled = newTrackValue;
-
-    // Simulate lock acquisition delay
-    if (newTrackValue) {
-      SoundManager.getInstance().play(Sfx.SMALL_MOTOR);
-      setTimeout(() => {
-        this.state.isLocked = true;
-        this.updateSignals_();
-        this.syncDomWithState_();
-        this.emit(Events.ANTENNA_LOCKED, { locked: true });
-      }, 7000); // 7 second delay to acquire lock
-    } else {
-      this.state.isLocked = false;
-      this.state.rxSignalsIn = [];
-      this.emit(Events.ANTENNA_LOCKED, { locked: false });
-    }
-
-    this.emit(Events.ANTENNA_TRACK_CHANGED, {
-      track: this.state.isAutoTrackEnabled
     });
 
     this.updateSignals_();
@@ -736,28 +659,21 @@ export class Antenna extends BaseEquipment {
     this.updateBottomStatusBar_();
 
     // Update status
-    // this.domCache['status'].textContent = this.getStatusText();
     this.domCache['led'].className = `led ${this.getLedColor_()}`;
 
     this.powerSwitch_.sync(this.state.isPowered);
     this.loopbackSwitch_.sync(this.state.isLoopback);
 
     // Update inputs
-    (this.domCache['inputTarget'] as HTMLSelectElement).value = this.inputState.noradId.toString();
-    (this.domCache['inputTrack'] as HTMLInputElement).checked = this.state.isAutoTrackEnabled;
-
-    // Update lock status
-    this.domCache['lockStatus'].className = `lock-status ${this.state.isLocked ? 'locked' : 'unlocked'}`;
-    this.domCache['lockStatus'].textContent = this.state.isLocked ? 'LOCKED' : this.state.isAutoTrackEnabled ? 'TRACKING' : 'UNLOCKED';
-
-    // Update current value labels
-    this.domCache['labelTarget'].textContent = `Satellite ${this.state.noradId}`;
-    this.domCache['labelSkew'].textContent = `${this.state.skew}°`;
+    (this.domCache['inputSatTarget'] as HTMLSelectElement).value = this.state.noradId.toString();
 
     this.domCache['antLoopbackLight'].className = `indicator-light ${this.state.isLoopback ? 'on' : 'off'}`;
+    this.domCache['antAutoTrackLight'].className = `indicator-light ${this.state.isAutoTrackEnabled ? 'on' : 'off'}`;
 
     // Update skew knob
     this.skewKnob_.sync(this.state.skew);
+
+    this.autoTrackSwitch_.sync(this.state.isAutoTrackEnabled);
 
     // Save last render state
     this.lastRenderState = structuredClone(this.state);

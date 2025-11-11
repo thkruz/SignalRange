@@ -5,7 +5,7 @@ import { qs } from "../../engine/utils/query-selector";
 import { Events } from "../../events/events";
 import { dBm, IfFrequency, RfFrequency } from "../../types";
 import { Antenna } from '../antenna/antenna';
-import { BaseEquipment } from "../base-equipment";
+import { AlarmStatus, BaseEquipment } from "../base-equipment";
 import { Transmitter } from '../transmitter/transmitter';
 import { BUCModule, BUCState } from './buc-module/buc-module';
 import { CouplerModule, CouplerState, TapPoint } from './coupler-module/coupler-module';
@@ -133,7 +133,7 @@ export class RFFrontEnd extends BaseEquipment {
     parentDom.innerHTML = html`
       <div
       id="rf-fe-box-${this.state.uuid}"
-      class="equipment-box rf-front-end-box" data-unit="${this.state.uuid}"
+      class="equipment-case rf-front-end-box" data-unit="${this.state.uuid}"
       >
 
       <!-- Top Status Bar -->
@@ -236,23 +236,54 @@ export class RFFrontEnd extends BaseEquipment {
     this.attachEventListeners();
   }
 
-  protected checkForAlarms_(): void {
-    const alarms = this.checkAlarms();
-    const statusBarElement = qs(`.rf-front-end-box .bottom-status-bar`);
+  /**
+   * Get status alarms for status bar display
+   * Collects alarms from all modules and returns as AlarmStatus array
+   */
+  private getStatusAlarms(): AlarmStatus[] {
+    const alarms: AlarmStatus[] = [];
 
+    // HPA overdrive check (back-off < 3 dB is typically considered overdrive)
+    this.state.hpa.isOverdriven = this.state.hpa.backOff < 3;
+
+    // Collect alarm messages from all modules
+    const moduleAlarms = [
+      ...this.omtModule.getAlarms(),
+      ...this.bucModule.getAlarms(),
+      ...this.hpaModule.getAlarms(),
+      ...this.filterModule.getAlarms(),
+      ...this.lnbModule.getAlarms(),
+      ...this.gpsdoModule.getAlarms(),
+    ];
+
+    // Convert module alarm strings to AlarmStatus objects
+    // Classify severity based on alarm content
+    for (const alarm of moduleAlarms) {
+      let severity: AlarmStatus['severity'] = 'warning';
+
+      // Upgrade to error for critical conditions
+      if (alarm.toLowerCase().includes('over-temperature') ||
+        alarm.toLowerCase().includes('high current') ||
+        alarm.toLowerCase().includes('not operational')) {
+        severity = 'error';
+      }
+
+      alarms.push({ severity, message: alarm });
+    }
+
+    // If no alarms, system is normal (success state will be handled by base class default)
+    return alarms;
+  }
+
+  protected checkForAlarms_(): void {
+    const statusBarElement = qs(`.rf-front-end-box .bottom-status-bar`);
     if (!statusBarElement) return;
 
-    if (alarms.length > 0) {
-      statusBarElement.innerText = `ALARMS: ${alarms.join(', ')}`;
-      statusBarElement.classList.add('has-alarms');
-    } else {
-      statusBarElement.innerText = `SYSTEM NORMAL`;
-      statusBarElement.classList.remove('has-alarms');
-    }
+    this.updateStatusBar(statusBarElement, this.getStatusAlarms());
   }
 
   protected attachEventListeners(): void {
-    const container = qs(`.equipment-box[data-unit="${this.state.uuid}"]`);
+    const container = qs(`.equipment-case[data-unit="${this.state.uuid}"]`);
     if (!container) return;
 
     // Input change handlers
@@ -389,26 +420,6 @@ export class RFFrontEnd extends BaseEquipment {
     this.state.hpa.isOverdriven = this.state.hpa.backOff < 3;
   }
 
-  private checkAlarms(): string[] {
-    // HPA overdrive check (back-off < 3 dB is typically considered overdrive)
-    this.state.hpa.isOverdriven = this.state.hpa.backOff < 3;
-
-    // Collect alarm messages
-    const alarms: string[] = [
-      ...this.omtModule.getAlarms(),
-      ...this.bucModule.getAlarms(),
-      ...this.hpaModule.getAlarms(),
-      ...this.filterModule.getAlarms(),
-      ...this.lnbModule.getAlarms(),
-      ...this.gpsdoModule.getAlarms(),
-    ];
-
-    if (alarms.length > 0) {
-      // this.emit(Events.RF_FE_ALARM, { unit: this.id, alarms });
-    }
-
-    return alarms;
-  }
 
   private syncDomWithState(): void {
     // Prevent unnecessary re-renders
@@ -417,7 +428,7 @@ export class RFFrontEnd extends BaseEquipment {
     }
 
     // Update UI based on state changes
-    const container = qs(`.equipment-box[data-unit="${this.state.uuid}"]`);
+    const container = qs(`.equipment-case[data-unit="${this.state.uuid}"]`);
     if (!container) return;
 
     this.lastRenderState = JSON.stringify(this.state);

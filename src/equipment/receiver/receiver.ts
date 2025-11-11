@@ -98,7 +98,7 @@ export class Receiver extends BaseEquipment {
     this.powerSwitch = PowerSwitch.create(`rx-power-switch-${this.state.uuid}${this.activeModem.modemNumber}`, this.activeModem.isPowered);
 
     parentDom.innerHTML = html`
-      <div class="equipment-box receiver-box">
+      <div class="equipment-case receiver-box">
         <div class="equipment-case-header">
           <div class="equipment-case-title">Receiver Case ${this.uuidShort}</div>
           <div class="equipment-case-power-controls">
@@ -204,6 +204,17 @@ export class Receiver extends BaseEquipment {
               ${this.powerSwitch.html}
             </div>
 
+          </div>
+        </div>
+        <!-- Bottom Status Bar -->
+        <div class="equipment-case-footer">
+          <div class="bottom-status-bar">
+            SYSTEM NORMAL
+          </div>
+          <div class="mode-toggle">
+          <button class="btn-mode-toggle" data-action="toggle-advanced-mode" title="Toggle Advanced Mode">
+            <span class="icon-advanced">&#9881;</span>
+          </button>
           </div>
         </div>
       </div>

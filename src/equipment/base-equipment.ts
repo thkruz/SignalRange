@@ -2,11 +2,20 @@ import { generateUuid } from '@app/engine/utils/uuid';
 import { EventBus } from '../events/event-bus';
 import { EventMap, Events } from '../events/events';
 import { AntennaState } from './antenna/antenna';
-import './base-equipment.css';
 import { RealTimeSpectrumAnalyzerState } from './real-time-spectrum-analyzer/real-time-spectrum-analyzer';
 import { ReceiverState } from './receiver/receiver';
 import { RFFrontEndState } from './rf-front-end/rf-front-end';
 import { TransmitterState } from './transmitter/transmitter';
+
+import './base-equipment.css';
+
+/**
+ * Alarm status for equipment status bar display
+ */
+export interface AlarmStatus {
+  severity: 'error' | 'warning' | 'info' | 'success';
+  message: string;
+}
 
 /**
  * Base Equipment Class
@@ -91,5 +100,52 @@ export abstract class BaseEquipment {
    */
   protected on<T extends Events>(event: T, callback: (...args: EventMap[T]) => void): void {
     EventBus.getInstance().on(event, callback);
+  }
+
+  /**
+   * Update status bar with alarms using priority-based display
+   * Priority order: error > warning > info > success
+   * Multiple alarms of same severity are comma-separated
+   *
+   * @param element The status bar DOM element to update
+   * @param alarms Array of alarm statuses to display
+   */
+  protected updateStatusBar(element: HTMLElement, alarms: AlarmStatus[]): void {
+    // Priority order: check errors first, then warnings, then info, then success
+    const errors = alarms.filter(a => a.severity === 'error');
+    if (errors.length > 0) {
+      const message = errors.map(a => a.message).join(', ');
+      element.innerText = message;
+      element.className = `bottom-status-bar status-red`;
+      return;
+    }
+
+    const warnings = alarms.filter(a => a.severity === 'warning');
+    if (warnings.length > 0) {
+      const message = warnings.map(a => a.message).join(', ');
+      element.innerText = message;
+      element.className = `bottom-status-bar status-amber`;
+      return;
+    }
+
+    const info = alarms.filter(a => a.severity === 'info');
+    if (info.length > 0) {
+      const message = info.map(a => a.message).join(', ');
+      element.innerText = message;
+      element.className = `bottom-status-bar status-blue`;
+      return;
+    }
+
+    const success = alarms.filter(a => a.severity === 'success');
+    if (success.length > 0) {
+      const message = success.map(a => a.message).join(', ');
+      element.innerText = message;
+      element.className = `bottom-status-bar status-green`;
+      return;
+    }
+
+    // Default: No alarms - system normal
+    element.innerText = 'SYSTEM NORMAL';
+    element.className = `bottom-status-bar status-green`;
   }
 }

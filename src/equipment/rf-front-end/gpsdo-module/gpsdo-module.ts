@@ -111,7 +111,7 @@ export class GPSDOModule extends RFFrontEndModule<GPSDOState> {
       isPowered: true,
       isLocked: true,
       warmupTimeRemaining: 0, // seconds
-      temperature: 30, // °C
+      temperature: 70, // °C
       gnssSignalPresent: true,
       isGnssSwitchUp: true,
       isGnssAcquiringLock: false,

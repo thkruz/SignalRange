@@ -475,7 +475,7 @@
 
 /* Responsive adjustments */
 @media (max-width: 720px) {
-  .equipment-box {
+  .equipment-case {
     width: 100%;
     max-width: 700px;
   }
@@ -503,24 +503,24 @@
 }
 
 /* Power-off state */
-.equipment-box[data-powered="false"] .rf-fe-modules {
+.equipment-case[data-powered="false"] .rf-fe-modules {
   filter: brightness(0.3);
   pointer-events: none;
 }
 
-.equipment-box[data-powered="false"] .led {
+.equipment-case[data-powered="false"] .led {
   background: radial-gradient(circle at 40% 40%, #333 0%, #1a1a1a 60%);
   box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.9);
 }
 
-.equipment-box[data-powered="false"] .digital-display {
+.equipment-case[data-powered="false"] .digital-display {
   background: #0a0a0a;
   color: #001a1a;
   box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.9);
   text-shadow: none;
 }
 
-.equipment-box[data-powered="false"] .bottom-status-bar {
+.equipment-case[data-powered="false"] .bottom-status-bar {
   color: #333;
   text-shadow: none;
 }

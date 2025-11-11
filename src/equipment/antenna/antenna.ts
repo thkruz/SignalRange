@@ -10,7 +10,7 @@ import { qs } from "../../engine/utils/query-selector";
 import { Events } from "../../events/events";
 import { SimulationManager } from "../../simulation/simulation-manager";
 import { dBm, Hertz, RfSignal, SignalOrigin } from "../../types";
-import { BaseEquipment } from '../base-equipment';
+import { AlarmStatus, BaseEquipment } from '../base-equipment';
 import { RFFrontEnd } from "../rf-front-end/rf-front-end";
 import { Transmitter } from "../transmitter/transmitter";
 import './antenna.css';
@@ -116,7 +116,7 @@ export class Antenna extends BaseEquipment {
     const parentDom = super.initializeDom(parentId);
 
     parentDom.innerHTML = html`
-      <div class="equipment-box">
+      <div class="equipment-case">
         <div class="equipment-case-header">
           <div class="equipment-case-title">Antenna ${this.uuidShort}</div>
           <div class="equipment-case-power-controls">
@@ -188,11 +188,6 @@ export class Antenna extends BaseEquipment {
           <div class="bottom-status-bar">
             SYSTEM NORMAL
           </div>
-          <div class="mode-toggle">
-            <button class="btn-mode-toggle" data-action="toggle-advanced-mode">
-              Placeholder
-            </button>
-          </div>
         </div>
       </div>
     `;
@@ -245,34 +240,60 @@ export class Antenna extends BaseEquipment {
     });
   }
 
+  /**
+   * Get status alarms for status bar display
+   * Returns array of alarm statuses with severity and message
+   */
+  private getStatusAlarms(): AlarmStatus[] {
+    const alarms: AlarmStatus[] = [];
+
+    // Error conditions
+    if (!this.state.isOperational) {
+      alarms.push({ severity: 'error', message: 'ANTENNA NOT OPERATIONAL' });
+    }
+
+    // Warning conditions
+    if (this.state.isAutoTrackEnabled && !this.state.isLocked) {
+      alarms.push({ severity: 'warning', message: 'ACQUIRING LOCK...' });
+    }
+
+    if (!this.state.isLocked && !this.state.isAutoTrackEnabled && !this.state.isLoopback) {
+      alarms.push({ severity: 'warning', message: 'DISCONNECTED' });
+    }
+
+    // Signal degradation warnings
+    const degradedSignals = this.state.rxSignalsIn.filter(sig => sig.isDegraded);
+    if (degradedSignals.length > 0) {
+      alarms.push({ severity: 'warning', message: `${degradedSignals.length} SIGNAL(S) DEGRADED` });
+    }
+
+    // Extreme skew warning
+    const skewAbs = Math.abs(this.state.skew);
+    if (skewAbs > 45) {
+      alarms.push({ severity: 'warning', message: `HIGH SKEW (${this.state.skew}°)` });
+    }
+
+    // No signal reception warning
+    if (this.state.isLocked && !this.state.isLoopback && this.state.rxSignalsIn.length === 0) {
+      alarms.push({ severity: 'warning', message: 'NO SIGNALS RECEIVED' });
+    }
+
+    // Info conditions
+    if (this.state.isLoopback) {
+      alarms.push({ severity: 'info', message: 'LOOPBACK ENABLED' });
+    }
+
+    // Success conditions
+    if (this.state.isLocked && !this.state.isLoopback) {
+      alarms.push({ severity: 'success', message: `LOCKED ON SATELLITE ${this.state.noradId}` });
+    }
+
+    return alarms;
+  }
+
   private updateBottomStatusBar_(): void {
     const statusBarElement = this.domCache['bottomStatusBar'];
-    if (!this.state.isOperational) {
-      statusBarElement.innerText = `ANTENNA NOT OPERATIONAL`;
-      statusBarElement.className = 'bottom-status-bar red';
-      return;
-    }
-
-    if (this.state.isLoopback) {
-      statusBarElement.innerText = `LOOPBACK ENABLED`;
-      statusBarElement.className = 'bottom-status-bar blue';
-      return;
-    }
-
-    if (this.state.isAutoTrackEnabled && !this.state.isLocked) {
-      statusBarElement.innerText = `ACQUIRING LOCK...`;
-      statusBarElement.className = 'bottom-status-bar amber';
-      return;
-    }
-
-    if (this.state.isLocked && !this.state.isLoopback) {
-      statusBarElement.innerText = `LOCKED ON SATELLITE ${this.state.noradId}`;
-      statusBarElement.className = 'bottom-status-bar green';
-      return;
-    }
-
-    statusBarElement.innerText = `DISCONNECTED`;
-    statusBarElement.className = 'bottom-status-bar amber';
+    this.updateStatusBar(statusBarElement, this.getStatusAlarms());
   }
 
   protected initialize_(): void {
@@ -374,7 +395,6 @@ export class Antenna extends BaseEquipment {
   private applyChanges_(): void {
     // Validate operational state_
     if (!this.state.isOperational) {
-      this.emit(Events.ANTENNA_ERROR, { message: 'Antenna is not operational' });
       return;
     }
 
@@ -399,7 +419,6 @@ export class Antenna extends BaseEquipment {
 
   private toggleLoopback_(isSwitchUp: boolean): void {
     if (!this.state.isOperational) {
-      this.emit(Events.ANTENNA_ERROR, { message: 'Antenna is not operational' });
       return;
     }
 
@@ -433,7 +452,6 @@ export class Antenna extends BaseEquipment {
   private handleTrackChange_(parentDom: HTMLElement): void {
     if (!this.state.isOperational) {
       this.state.rxSignalsIn = [];
-      this.emit(Events.ANTENNA_ERROR, { message: 'Antenna is not operational' });
       // Reset the switch
       const trackSwitch = qs('.input-track', parentDom) as HTMLInputElement;
       if (trackSwitch) trackSwitch.checked = false;

@@ -1,5 +1,65 @@
-/* Equipment.css - Common styles for all equipment */
+.equipment-case {
+  .equipment-case-footer {
+    button {
+      padding: 6px 16px;
+      background: linear-gradient(180deg, #555 0%, #444 100%);
+      color: #fff;
+      border: 1px solid #666;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.2s;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+    }
 
+    button:hover {
+      background: linear-gradient(180deg, #666 0%, #555 100%);
+      border-color: #777;
+      box-shadow: 0 0 6px rgba(255, 255, 255, 0.2);
+    }
+
+    button:active {
+      background: linear-gradient(180deg, #444 0%, #333 100%);
+      transform: translateY(1px);
+    }
+  }
+}
+
+.bottom-status-bar {
+  font-size: 12px;
+  font-family: 'Courier New', monospace;
+  font-weight: bold;
+  letter-spacing: 0.6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+}
+
+.bottom-status-bar.status-red {
+  color: #ff564d;
+  text-shadow: 0 0 6px rgba(255, 59, 48, 0.75), 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+.bottom-status-bar.status-green {
+  color: #4caf50;
+  text-shadow: 0 0 6px rgba(76, 175, 80, 0.75), 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+.bottom-status-bar.status-amber {
+  color: #ff9800;
+  text-shadow: 0 0 6px rgba(255, 152, 0, 0.75), 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+.bottom-status-bar.status-blue {
+  color: #2196f3;
+  text-shadow: 0 0 6px rgba(33, 150, 243, 0.75), 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+
+/* Equipment.css - Common styles for all equipment */
 .equipment-section h2 {
   color: #fff;
   margin-bottom: 1rem;
@@ -17,7 +77,7 @@
 }
 
 /* Main Container - 700x400px 19" rack panel aesthetic */
-.equipment-box {
+.equipment-case {
   display: flex;
   flex-direction: column;
   min-width: 400px;
@@ -35,8 +95,8 @@
 }
 
 /* Rivet corner decorations */
-.equipment-box::before,
-.equipment-box::after {
+.equipment-case::before,
+.equipment-case::after {
   content: '';
   position: absolute;
   width: 8px;
@@ -47,12 +107,12 @@
   z-index: 10;
 }
 
-.equipment-box::before {
+.equipment-case::before {
   top: 8px;
   left: 8px;
 }
 
-.equipment-box::after {
+.equipment-case::after {
   top: 8px;
   right: 8px;
 }

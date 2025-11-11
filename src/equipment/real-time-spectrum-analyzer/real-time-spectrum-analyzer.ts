@@ -108,7 +108,7 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
     const parentDom = super.initializeDom(parentId);
 
     parentDom.innerHTML = html`
-        <div class="equipment-box spectrum-analyzer-box">
+        <div class="equipment-case spectrum-analyzer-box">
         <div class="equipment-case-header">
           <div class="equipment-case-title">Spectrum Analyzer ${this.uuidShort}</div>
           <div class="equipment-case-power-controls">
@@ -132,8 +132,16 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
           <div>RF Front End: ${this.state.rfFeUuid.split('-')[0]}</div>
         </div>
 
-        <div class="spec-a-controls">
-          <button class="btn-config" data-action="config">Config</button>
+        <!-- Bottom Status Bar -->
+        <div class="equipment-case-footer">
+          <div class="bottom-status-bar">
+            SYSTEM NORMAL
+          </div>
+          <div class="mode-toggle">
+          <button class="btn-config" data-action="config" title="Open Configuration Panel">
+            <span class="icon-advanced">&#9881;</span>
+          </button>
+          </div>
         </div>
       </div>
     `;
@@ -141,7 +149,6 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
     // Cache all DOM references that might be needed later
     this.domCache['container'] = qs('.spectrum-analyzer-box', parentDom);
     this.domCache['info'] = qs('.spec-a-info', parentDom);
-    this.domCache['controls'] = qs('.spec-a-controls', parentDom);
     this.domCache['canvas'] = qs(`#specA${this.uuid}`, parentDom);
     this.domCache['canvasSpectral'] = qs(`#specA${this.uuid}-spectral`, parentDom);
     this.domCache['canvasWaterfall'] = qs(`#specA${this.uuid}-waterfall`, parentDom);

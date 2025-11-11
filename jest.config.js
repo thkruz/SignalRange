@@ -10,7 +10,8 @@ module.exports = {
     '**/test/?(*.)+(spec|test).ts?(x)'
   ],
   coveragePathIgnorePatterns: ['node_modules/', 'dist/', 'src/engine/', 'src/engine/ootk/'],
-  testPathIgnorePatterns: ['node_modules/', 'dist/', 'src/engine/', 'src/engine/ootk/'],
+
+  testPathIgnorePatterns: ['node_modules/', 'dist/', 'src/engine/'],
   moduleFileExtensions: ['js', 'jsx', 'ts', 'tsx', 'json', 'node'],
   moduleNameMapper: {
     '\\.(css|less|sass|scss)$': '<rootDir>/test/mock/styleMock.js',
@@ -18,7 +19,6 @@ module.exports = {
     './webpack-hot-module': '<rootDir>/test/mock/fileMock.js',
     '^@app(.*)$': '<rootDir>/src/$1',
     '^engine(.*)$': '<rootDir>/src/engine/$1',
-    '^ootk(.*)$': '<rootDir>/src/engine/ootk/$1'
   },
   collectCoverage: true,
   coverageDirectory: 'coverage',
@@ -28,7 +28,6 @@ module.exports = {
     '^.+\\.[jt]sx?$': 'babel-jest'
   },
   transformIgnorePatterns: [
-    'node_modules/(?!(uuid)/)'
+    'node_modules/(?!(uuid|ootk)/)'
   ],
-
 };

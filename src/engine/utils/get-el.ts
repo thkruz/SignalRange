@@ -1,5 +1,4 @@
 import { errorManagerInstance } from '../utils/errorManager';
-import { isThisNode } from './isThisNode';
 
 /**
  * Returns the HTML element with the specified ID. If the element is not found, it returns null.
@@ -10,20 +9,14 @@ import { isThisNode } from './isThisNode';
  * @returns The HTML element with the specified ID, or null if it is not found.
  * @throws An error if the element is not found and `isExpectedMissing` is set to `false`.
  */
-export const getEl = (id: string, isExpectedMissing = false): HTMLElement | null => {
+export const getEl = (id: string): HTMLElement => {
   const el = document.getElementById(id);
 
   if (el) {
     return el;
   }
 
-  // Return an empty div to avoid errors
-  if (isThisNode() && !isExpectedMissing) {
-    throw new Error(`Element with id '${id}' not found!`);
-  }
-
-  return null;
-  // DEBUG: Use this code for finding bad requests
+  throw new Error(`Element with id '${id}' not found!`);
 };
 
 export const setInnerHtml = (id: string, html: string) => {
@@ -51,7 +44,7 @@ export const showEl = (id: string | HTMLElement, value = 'block') => {
     return;
   }
 
-  const el = getEl(id, true);
+  const el = getEl(id);
 
   if (el) {
     el.style.display = value;
@@ -70,7 +63,7 @@ export const hideEl = (id: string | HTMLElement) => {
   }
 
   if (typeof id === 'string') {
-    const el = getEl(id, true);
+    const el = getEl(id);
 
     if (el) {
       el.style.display = 'none';

@@ -118,7 +118,7 @@ export class Antenna extends BaseEquipment {
     parentDom.innerHTML = html`
       <div class="equipment-case">
         <div class="equipment-case-header">
-          <div class="equipment-case-title">Antenna ${this.uuidShort}</div>
+          <div class="equipment-case-title">Antenna Control Unit (ACU) ${this.uuidShort}</div>
           <div class="equipment-case-power-controls">
             <div class="equipment-case-main-power"></div>
             <div class="equipment-case-status-indicator">
@@ -234,7 +234,7 @@ export class Antenna extends BaseEquipment {
     this.on(Events.ANTENNA_LOCKED, () => (data: { locked: boolean; uuid: string }) => {
       if (data.uuid === this.uuid) {
         this.state.isLocked = data.locked;
-        this.updateSignalStatus_();
+        this.updateSignals_();
         this.syncDomWithState_();
       }
     });
@@ -298,27 +298,31 @@ export class Antenna extends BaseEquipment {
 
   protected initialize_(): void {
     // Start in operational state_
-    this.updateSignalStatus_();
+    this.updateSignals_();
     this.syncDomWithState_();
   }
 
   update(): void {
-    this.updateSignalStatus_();
+    this.updateSignals_();
     this.syncDomWithState_();
   }
 
   sync(data: Partial<AntennaState>): void {
     this.state = { ...this.state, ...data };
     this.inputState = { ...this.state };
-    this.updateSignalStatus_();
+    this.updateSignals_();
     this.syncDomWithState_();
   }
 
   get txSignalsIn(): RfSignal[] {
-    return this.rfFrontEnd_.omtModule.txSignalsOut;
+    return this.rfFrontEnd_?.omtModule.txSignalsOut ?? [];
   }
 
   get txSignalsOut(): RfSignal[] {
+    if (!this.rfFrontEnd_) {
+      return [];
+    }
+
     return this.rfFrontEnd_.omtModule.txSignalsOut.map((sig: RfSignal) => {
       // Adjust polarization based on antenna skew (H and V only for now)
       let adjustedPolarization = sig.polarization;
@@ -413,7 +417,7 @@ export class Antenna extends BaseEquipment {
     // Emit configuration change event
     this.emit(Events.ANTENNA_CONFIG_CHANGED, this.state);
 
-    this.updateSignalStatus_();
+    this.updateSignals_();
     this.syncDomWithState_();
   }
 
@@ -428,7 +432,7 @@ export class Antenna extends BaseEquipment {
       loopback: this.state.isLoopback
     });
 
-    this.updateSignalStatus_();
+    this.updateSignals_();
     this.syncDomWithState_();
   }
 
@@ -445,7 +449,7 @@ export class Antenna extends BaseEquipment {
       operational: this.state.isOperational
     });
 
-    this.updateSignalStatus_();
+    this.updateSignals_();
     this.syncDomWithState_();
   }
 
@@ -466,7 +470,7 @@ export class Antenna extends BaseEquipment {
       SoundManager.getInstance().play(Sfx.SMALL_MOTOR);
       setTimeout(() => {
         this.state.isLocked = true;
-        this.updateSignalStatus_();
+        this.updateSignals_();
         this.syncDomWithState_();
         this.emit(Events.ANTENNA_LOCKED, { locked: true });
       }, 7000); // 7 second delay to acquire lock
@@ -480,7 +484,7 @@ export class Antenna extends BaseEquipment {
       track: this.state.isAutoTrackEnabled
     });
 
-    this.updateSignalStatus_();
+    this.updateSignals_();
     this.syncDomWithState_();
   }
 
@@ -626,29 +630,19 @@ export class Antenna extends BaseEquipment {
     return signalPower > this.state.noiseFloor;
   }
 
-  private updateSignalStatus_(): void {
+  private updateSignals_(): void {
     // Can't receive signals if Not locked or Not operational
     if (!this.state.isLocked || !this.state.isOperational) {
       this.state.rxSignalsIn = [];
       return;
     }
 
-    const sat = SimulationManager.getInstance().getSatelliteByNoradId(this.state.noradId);
+    this.updateTxSignals_();
 
-    // Clear any old signals
-    sat.rxSignal = [];
+    this.updateRxSignals_();
+  }
 
-    // Check transmitters for signals being sent to this antenna
-    for (const sig of this.txSignalsOut) {
-      if (!this.state.isLoopback) {
-        // Check if this signal already exists on the satellite
-        sat.rxSignal.push({
-          ...sig,
-          origin: SignalOrigin.ANTENNA_TX,
-        });
-      }
-    }
-
+  private updateRxSignals_() {
     // Get visible signals from the satellite and apply propagation effects
     let receivedSignals = this.rxSignals
       .map(signal => this.applyPropagationEffects_(signal))
@@ -706,8 +700,28 @@ export class Antenna extends BaseEquipment {
     this.state.rxSignalsIn = receivedSignals;
   }
 
+  private updateTxSignals_() {
+    const sat = SimulationManager.getInstance().getSatelliteByNoradId(this.state.noradId);
+
+    // Clear any old signals
+    if (sat) {
+      sat.rxSignal = [];
+
+      // Check transmitters for signals being sent to this antenna
+      for (const sig of this.txSignalsOut) {
+        if (!this.state.isLoopback) {
+          // Check if this signal already exists on the satellite
+          sat.rxSignal.push({
+            ...sig,
+            origin: SignalOrigin.ANTENNA_TX,
+          });
+        }
+      }
+    }
+  }
+
   get rxSignals(): RfSignal[] {
-    return SimulationManager.getInstance().getSatelliteByNoradId(this.state.noradId).txSignal;
+    return SimulationManager.getInstance().getSatelliteByNoradId(this.state.noradId)?.txSignal ?? [];
   }
 
   attachRfFrontEnd(rfFrontEnd: RFFrontEnd): void {

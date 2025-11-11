@@ -4,9 +4,9 @@ node_modules/
 # Build outputs
 dist/
 *.tsbuildinfo
+.wrangler/
 
 # IDEs and editors
-.vscode/
 .claude/
 .github/instructions/
 

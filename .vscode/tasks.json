@@ -1,0 +1,164 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "App: Start and Open",
+      "dependsOn": [
+        "App: Developer Mode",
+        "App: Open in Brave"
+      ],
+      "icon": {
+        "id": "server",
+        "color": "terminal.ansiCyan"
+      }
+    },
+    {
+      "label": "App: Build",
+      "command": "npm run build",
+      "type": "shell",
+      "args": [],
+      "isBackground": true,
+      "problemMatcher": [],
+      "icon": {
+        "id": "package",
+        "color": "terminal.ansiCyan"
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "runOptions": {
+        "instanceLimit": 1
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared",
+        "showReuseMessage": false,
+        "clear": true,
+        "group": "dev"
+      }
+    },
+    {
+      "label": "App: Developer Mode",
+      "command": "npm run dev",
+      "type": "shell",
+      "args": [],
+      "isBackground": true,
+      "problemMatcher": [],
+      "icon": {
+        "id": "server-process",
+        "color": "terminal.ansiCyan"
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": false
+      },
+      "runOptions": {
+        "instanceLimit": 1
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared",
+        "showReuseMessage": false,
+        "clear": true,
+        "group": "dev"
+      }
+    },
+    {
+      "label": "App: Open in Brave",
+      "type": "process",
+      "command": "",
+      "windows": {
+        "command": "C:/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe",
+        "args": [
+          "http://localhost:3000"
+        ]
+      },
+      "icon": {
+        "id": "browser",
+        "color": "terminal.ansiCyan"
+      },
+      "presentation": {
+        "echo": false,
+        "reveal": "never",
+        "focus": false,
+        "panel": "new",
+        "showReuseMessage": false,
+        "clear": true,
+        "close": true
+      }
+    },
+    {
+      "label": "Github: SignalRange",
+      "type": "process",
+      "command": "",
+      "windows": {
+        "command": "C:/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe",
+        "args": [
+          "https://github.com/thkruz/signalrange"
+        ]
+      },
+      "icon": {
+        "id": "browser",
+        "color": "terminal.ansiRed"
+      },
+      "presentation": {
+        "echo": false,
+        "reveal": "never",
+        "focus": false,
+        "panel": "new",
+        "showReuseMessage": false,
+        "clear": true,
+        "close": true
+      }
+    },
+    {
+      "label": "Test with Jest",
+      "command": "npm test",
+      "type": "shell",
+      "args": [],
+      "icon": {
+        "id": "beaker",
+        "color": "terminal.ansiGreen"
+      },
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "Open Test Coverage",
+      "command": "npm run lcov",
+      "type": "shell",
+      "args": [],
+      "icon": {
+        "id": "file-code",
+        "color": "terminal.ansiGreen"
+      },
+      "group": {
+        "kind": "test",
+        "isDefault": false
+      }
+    },
+  ],
+  "extensions": {
+    "recommendations": []
+  },
+  "folders": [
+    {
+      "path": ".."
+    }
+  ],
+  "settings": {
+    "jest.disabledWorkspaceFolders": [
+      ".vscode",
+      ".git",
+      "node_modules"
+    ],
+    "typescript.tsdk": "node_modules/typescript/lib"
+  }
+}

@@ -55,7 +55,6 @@ export class RotaryKnob {
   }
 
   private onDomReady_(): void {
-    this.dom_ ??= qs(`#${this.uniqueId}`);
     const knobBody = qs('.knob-body', this.dom);
 
     knobBody.addEventListener('mousedown', this.onDragStart.bind(this));

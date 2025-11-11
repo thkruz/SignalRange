@@ -14,6 +14,7 @@ export class AnalyzerControlBox extends DraggableBox {
       {
         title: `Spectrum Analyzer ${specA.state.uuid.split('-')[0]} Control Panel`,
         width: 'fit-content',
+        parentId: 'sandbox-page', // TODO: This shouldn't be hardcoded
         boxContentHtml: html`
       <div id="spec-a-${specA.state.uuid}-control-popup-content">
       </div>

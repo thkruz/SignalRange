@@ -1,4 +1,6 @@
 import { BaseElement } from "@app/components/base-element";
+import { qs } from "@app/engine/utils/query-selector";
+import { Router } from "@app/router";
 import { html } from "../../../engine/utils/development/formatter";
 import './header.css';
 
@@ -47,6 +49,12 @@ export class Header extends BaseElement {
   `;
 
   protected addEventListeners_(): void {
-    // No event listeners for now
+    // logo should route to home
+    const logo = qs('.header-logo-section img');
+    if (logo) {
+      logo.addEventListener('click', () => {
+        Router.getInstance().navigate('/scenario-selection');
+      });
+    }
   }
 }

@@ -8,6 +8,7 @@ interface DraggableBoxOptions {
   title?: string;
   isDockable?: boolean;
   boxContentHtml?: string;
+  parentId?: string;
 }
 
 export abstract class DraggableBox {
@@ -36,7 +37,9 @@ export abstract class DraggableBox {
     this.isDockable = opts?.isDockable ?? false;
 
     if (!this.boxEl) {
-      document.getElementsByTagName('body')[0].insertAdjacentHTML('beforeend', html`
+      const parentDom = opts?.parentId ? getEl(opts.parentId) : document.getElementsByTagName('body')[0];
+
+      parentDom.insertAdjacentHTML('beforeend', html`
         <div id="${this.boxId}" class="draggable-box" style="pointer-events:auto;">
           <div class="draggable-box__title-bar">
             <div class="draggable-box__title">

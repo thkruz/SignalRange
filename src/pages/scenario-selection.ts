@@ -55,6 +55,10 @@ export class ScenarioSelectionPage extends BasePage {
           </div>
         </div>
 
+        <div class="scenario-image">
+          <img src="/images/scenarios/${scenario.imageUrl}" alt="${scenario.title} Image"/>
+        </div>
+
         <div class="scenario-card-body">
           <h2 class="scenario-title">${scenario.title}</h2>
           <div class="scenario-subtitle">${scenario.subtitle}</div>
@@ -71,13 +75,6 @@ export class ScenarioSelectionPage extends BasePage {
                 </div>
               `).join('')}
             </div>
-          </div>
-        </div>
-
-        <div class="scenario-card-footer">
-          <div class="scenario-status">
-            <div class="status-dot"></div>
-            <span>Ready</span>
           </div>
         </div>
       </div>

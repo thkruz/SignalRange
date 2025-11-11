@@ -1,7 +1,9 @@
 import { ScenarioData } from "../scenario-manager";
 
 export const scenario2Data: ScenarioData = {
-  id: 'scenario2',
+  id: 'first-light2',
+  url: 'scenarios/2',
+  imageUrl: 'scenario2.jpg',
   number: 2,
   title: '"Signal Hunt"',
   subtitle: 'Deep Space Tracking Exercise',

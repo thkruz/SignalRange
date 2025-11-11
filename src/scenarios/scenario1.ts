@@ -8,7 +8,9 @@ import { ScenarioData } from '../scenario-manager';
  */
 
 export const scenario1Data: ScenarioData = {
-  id: 'scenarios/1',
+  id: 'first-light',
+  url: 'scenarios/1',
+  imageUrl: 'scenario1.jpg',
   number: 1,
   title: '"First Light"',
   subtitle: 'HELIOS-7 Initial Contact',

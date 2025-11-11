@@ -2,7 +2,9 @@ import { html } from "@app/engine/utils/development/formatter";
 import { ScenarioData } from "../scenario-manager";
 
 export const scenario3Data: ScenarioData = {
-  id: 'scenario3',
+  id: 'first-light3',
+  url: 'scenarios/3',
+  imageUrl: 'scenario3.jpg',
   number: 3,
   title: '"Full Stack"',
   subtitle: 'Complete Link Budget Analysis',

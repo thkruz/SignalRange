@@ -54,6 +54,8 @@ export class ScenarioManager {
 
 export interface ScenarioData {
   id: string;
+  url: string;
+  imageUrl: string;
   number: number;
   title: string;
   subtitle: string;

@@ -7,7 +7,9 @@
 	// Static assets configuration
 	// This project is assets-only (no Workers script), so we only need the assets directory
 	"assets": {
-		"directory": "./dist"
+		"directory": "./dist",
+		"html_handling": "force-trailing-slash",
+		"not_found_handling": "single-page-application"
 	},
 	// Map to your custom domain
 	"routes": [

@@ -45,6 +45,7 @@ export class Router {
 
     // Show the appropriate page
     switch (path) {
+      case '/':
       case '/student':
         this.showPage('student-page');
         break;
@@ -52,7 +53,6 @@ export class Router {
         this.showPage('instructor-page');
         break;
       case '/login':
-      case '/':
       default:
         this.showPage('login-page');
         break;

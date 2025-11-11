@@ -1,0 +1,357 @@
+.scenario-selection-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2rem;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 100%);
+  color: #fff;
+}
+
+.scenario-selection-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.scenario-selection-header h1 {
+  font-size: 2.5rem;
+  font-weight: bold;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: #fff;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+  margin-bottom: 0.5rem;
+}
+
+.scenario-selection-header .subtitle {
+  font-size: 1rem;
+  color: #aaa;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.scenario-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+  gap: 2rem;
+  width: 100%;
+  max-width: 1400px;
+  margin-bottom: 2rem;
+}
+
+/* Scenario Card - Equipment Case Style */
+.scenario-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(135deg, #2a2a2a 0%, #1f1f1f 100%);
+  border: 2px solid #444;
+  border-radius: 8px;
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.6),
+    inset 0 1px 1px rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.scenario-card:hover {
+  border-color: #666;
+  box-shadow:
+    0 6px 16px rgba(0, 0, 0, 0.8),
+    inset 0 1px 1px rgba(255, 255, 255, 0.15);
+  transform: translateY(-2px);
+}
+
+.scenario-card.selected {
+  border-color: var(--color-primary);
+  box-shadow:
+    0 6px 20px rgba(186, 22, 12, 0.4),
+    inset 0 1px 1px rgba(255, 255, 255, 0.15);
+}
+
+/* Rivet corner decorations */
+.scenario-card::before,
+.scenario-card::after {
+  content: '';
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: radial-gradient(circle at center, #666 30%, #444 70%, #222 100%);
+  border-radius: 50%;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.8);
+  z-index: 10;
+}
+
+.scenario-card::before {
+  top: 8px;
+  left: 8px;
+}
+
+.scenario-card::after {
+  top: 8px;
+  right: 8px;
+}
+
+/* Card Header */
+.scenario-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 50px;
+  padding: 0 24px;
+  background: linear-gradient(180deg, #3a3a3a 0%, #2a2a2a 100%);
+  border-bottom: 2px solid #444;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.scenario-number {
+  color: #aaa;
+  font-size: 14px;
+  font-weight: bold;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+.scenario-badges {
+  display: flex;
+  gap: 8px;
+}
+
+.badge {
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+.badge.difficulty-beginner {
+  background-color: #4caf50;
+  color: #fff;
+}
+
+.badge.difficulty-intermediate {
+  background-color: #ff9800;
+  color: #fff;
+}
+
+.badge.difficulty-advanced {
+  background-color: #f44336;
+  color: #fff;
+}
+
+.badge.duration {
+  background-color: #2196f3;
+  color: #fff;
+}
+
+/* Card Body */
+.scenario-card-body {
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem;
+  flex-grow: 1;
+}
+
+.scenario-title {
+  font-size: 1.25rem;
+  font-weight: bold;
+  color: var(--color-text-accent);
+  margin-bottom: 0.5rem;
+  line-height: 1.3;
+}
+
+.scenario-subtitle {
+  font-size: 0.95rem;
+  color: #ccc;
+  margin-bottom: 1rem;
+  font-style: italic;
+}
+
+.scenario-mission-type {
+  display: inline-block;
+  padding: 4px 12px;
+  background-color: #1a1a1a;
+  border: 1px solid #444;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #aaa;
+  margin-bottom: 1rem;
+  letter-spacing: 0.5px;
+}
+
+.scenario-description {
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: #ddd;
+  margin-bottom: 1rem;
+  flex-grow: 1;
+}
+
+/* Equipment Info Section */
+.scenario-equipment {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #333;
+}
+
+.scenario-equipment-title {
+  font-size: 0.85rem;
+  font-weight: bold;
+  color: #aaa;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 0.75rem;
+}
+
+.equipment-list {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem;
+}
+
+.equipment-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: #ccc;
+}
+
+.equipment-icon {
+  width: 6px;
+  height: 6px;
+  background-color: #4caf50;
+  border-radius: 50%;
+  box-shadow: 0 0 6px rgba(76, 175, 80, 0.75);
+}
+
+/* Card Footer */
+.scenario-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 1.5rem;
+  background: linear-gradient(180deg, #1a1a1a 0%, #0f0f0f 100%);
+  border-top: 1px solid #333;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+.scenario-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #aaa;
+  font-weight: bold;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #666;
+}
+
+.scenario-card.selected .status-dot {
+  background-color: var(--color-primary);
+  box-shadow: 0 0 8px rgba(186, 22, 12, 0.8);
+}
+
+/* Action Buttons */
+.scenario-actions {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  width: 100%;
+  max-width: 600px;
+  margin-top: 1rem;
+}
+
+.btn-start-scenario {
+  padding: 14px 40px;
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: bold;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(186, 22, 12, 0.4);
+  transition: all 0.2s ease;
+}
+
+.btn-start-scenario:hover:not(:disabled) {
+  background: linear-gradient(135deg, var(--color-primary-light) 0%, var(--color-primary) 100%);
+  box-shadow: 0 6px 16px rgba(186, 22, 12, 0.6);
+  transform: translateY(-2px);
+}
+
+.btn-start-scenario:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn-start-scenario:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-back {
+  padding: 14px 40px;
+  background: linear-gradient(135deg, #3a3a3a 0%, #2a2a2a 100%);
+  color: #fff;
+  border: 2px solid #444;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: bold;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-back:hover {
+  border-color: #666;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+  transform: translateY(-2px);
+}
+
+.btn-back:active {
+  transform: translateY(0);
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .scenario-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .scenario-selection-page {
+    padding: 1rem;
+  }
+
+  .scenario-selection-header h1 {
+    font-size: 2rem;
+  }
+
+  .scenario-grid {
+    gap: 1rem;
+  }
+
+  .equipment-list {
+    grid-template-columns: 1fr;
+  }
+
+  .scenario-actions {
+    flex-direction: column;
+  }
+}

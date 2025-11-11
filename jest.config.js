@@ -5,10 +5,12 @@ module.exports = {
     },
   },
   testEnvironment: 'jsdom',
+
   testMatch: [
-    '**/test/?(*.)+(spec|test).js?(x)',
-    '**/test/?(*.)+(spec|test).ts?(x)'
+    '**/test/**/*.(spec|test).js?(x)',
+    '**/test/**/*.(spec|test).ts?(x)'
   ],
+
   coveragePathIgnorePatterns: ['node_modules/', 'dist/', 'src/engine/', 'src/engine/ootk/'],
 
   testPathIgnorePatterns: ['node_modules/', 'dist/', 'src/engine/'],

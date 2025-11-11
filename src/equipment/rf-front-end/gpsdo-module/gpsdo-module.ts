@@ -98,6 +98,38 @@ export class GPSDOModule extends RFFrontEndModule<GPSDOState> {
   private holdoverInterval_: number | null = null;
   domCache_: any;
 
+  /**
+   * Get default state for GPSDO module
+   */
+  static getDefaultState(): GPSDOState {
+    return {
+      isPowered: true,
+      isLocked: true,
+      warmupTimeRemaining: 0, // seconds
+      temperature: 30, // °C
+      gnssSignalPresent: true,
+      isGnssSwitchUp: true,
+      isGnssAcquiringLock: false,
+      satelliteCount: 9,
+      utcAccuracy: 0,
+      constellation: 'GPS',
+      lockDuration: 0,
+      frequencyAccuracy: 0,
+      allanDeviation: 0,
+      phaseNoise: 0,
+      isInHoldover: false,
+      holdoverDuration: 0,
+      holdoverError: 0,
+      active10MHzOutputs: 2,
+      max10MHzOutputs: 5,
+      output10MHzLevel: 0,
+      ppsOutputsEnabled: false,
+      operatingHours: 6,
+      selfTestPassed: true,
+      agingRate: 0,
+    };
+  }
+
   static create(state: GPSDOState, rfFrontEnd: RFFrontEnd, unit: number = 1): GPSDOModule {
     this.instance_ ??= new GPSDOModule(state, rfFrontEnd, unit);
     return this.instance_;

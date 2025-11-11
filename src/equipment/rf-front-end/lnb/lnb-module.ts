@@ -28,6 +28,23 @@ export class LNBModule extends RFFrontEndModule<LNBState> {
   ifSignals: IfSignal[] = [];
   loKnob_: any;
 
+  /**
+   * Get default state for LNB module
+   */
+  static getDefaultState(): LNBState {
+    return {
+      isPowered: true,
+      loFrequency: 4200 as MHz, // MHz
+      gain: 55, // dB
+      lnaNoiseFigure: 0.6, // dB
+      mixerNoiseFigure: 16.0, // dB
+      noiseTemperature: 45, // K
+      isExtRefLocked: true,
+      isSpectrumInverted: true,
+      noiseFloor: -140, // dBm/Hz
+    };
+  }
+
   static create(state: LNBState, rfFrontEnd: RFFrontEnd, unit: number = 1): LNBModule {
     this.instance_ ??= new LNBModule(state, rfFrontEnd, unit);
     return this.instance_;

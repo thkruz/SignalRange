@@ -3,7 +3,7 @@ import { HelpManager } from '@app/help/help-manager';
 import { html } from "../../engine/utils/development/formatter";
 import { qs } from "../../engine/utils/query-selector";
 import { Events } from "../../events/events";
-import { dBm, IfFrequency, MHz, RfFrequency } from "../../types";
+import { dBm, IfFrequency, RfFrequency } from "../../types";
 import { Antenna } from '../antenna/antenna';
 import { BaseEquipment } from "../base-equipment";
 import { Transmitter } from '../transmitter/transmitter';
@@ -88,7 +88,7 @@ export class RFFrontEnd extends BaseEquipment {
   constructor(parentId: string, teamId: number = 1, serverId: number = 1) {
     super(parentId, teamId);
 
-    // Initialize state with default values
+    // Initialize state with default values from modules
     this.state = {
       uuid: this.uuid,
       teamId: this.teamId,
@@ -96,113 +96,14 @@ export class RFFrontEnd extends BaseEquipment {
       isPowered: true,
       signalFlowDirection: 'IDLE',
 
-      omt: {
-        isPowered: true,
-        txPolarization: 'H',
-        rxPolarization: 'V',
-        effectiveTxPol: 'H',
-        effectiveRxPol: 'V',
-        crossPolIsolation: 28.5, // dB
-        isFaulted: false,
-        noiseFloor: -140, // dBm/Hz
-      },
-
-      buc: {
-        // Operational State
-        isPowered: true,
-        isMuted: false,
-        isLoopback: false,
-        temperature: 25, // °C (ambient)
-        currentDraw: 0, // A
-
-        // Frequency Translation
-        loFrequency: 4200 as MHz, // MHz (C-band)
-        isExtRefLocked: true,
-        frequencyError: 0, // Hz (locked)
-        phaseLockRange: 10000, // ±10 kHz tracking range
-
-        // Gain & Power
-        gain: 58, // dB
-        outputPower: -10, // dBm
-        saturationPower: 15, // dBm (P1dB compression point)
-        gainFlatness: 0.5, // ±0.5 dB across bandwidth
-
-        // Signal Quality
-        groupDelay: 3, // ns
-        phaseNoise: -100, // dBc/Hz @ 10kHz offset (locked)
-        spuriousOutputs: [],
-        noiseFloor: -140, // dBm/Hz
-      },
-
-      hpa: {
-        isPowered: true,
-        backOff: 6, // dB
-        outputPower: 50 as dBm, // dBm (100W)
-        isOverdriven: false,
-        imdLevel: -30, // dBc
-        temperature: 45, // Celsius
-        isHpaEnabled: false,
-        isHpaSwitchEnabled: false,
-        noiseFloor: -140, // dBm/Hz
-      },
-
-      filter: {
-        isPowered: true,
-        bandwidthIndex: 9, // 20 MHz
-        bandwidth: 20 as MHz, // MHz
-        insertionLoss: 2.0, // dB
-        centerFrequency: 5800 * 1e6 as RfFrequency, // 5.8 GHz
-        noiseFloor: -101, // dBm
-      },
-
-      lnb: {
-        isPowered: true,
-        loFrequency: 4200 as MHz, // MHz
-        gain: 55, // dB
-        lnaNoiseFigure: 0.6, // dB
-        mixerNoiseFigure: 16.0, // dB
-        noiseTemperature: 45, // K
-        isExtRefLocked: true,
-        isSpectrumInverted: true,
-        noiseFloor: -140, // dBm/Hz
-      },
-
-      coupler: {
-        isPowered: true,
-        tapPointA: 'TX IF',
-        tapPointB: 'RX IF',
-        couplingFactorA: -30, // dB
-        couplingFactorB: -20, // dB
-        isActiveA: true,
-        isActiveB: true,
-      },
-
-      gpsdo: {
-        isPowered: true,
-        isLocked: true,
-        warmupTimeRemaining: 0, // seconds
-        temperature: 30, // °C
-        gnssSignalPresent: true,
-        isGnssSwitchUp: true,
-        isGnssAcquiringLock: false,
-        satelliteCount: 9,
-        utcAccuracy: 0,
-        constellation: 'GPS',
-        lockDuration: 0,
-        frequencyAccuracy: 0,
-        allanDeviation: 0,
-        phaseNoise: 0,
-        isInHoldover: false,
-        holdoverDuration: 0,
-        holdoverError: 0,
-        active10MHzOutputs: 2,
-        max10MHzOutputs: 5,
-        output10MHzLevel: 0,
-        ppsOutputsEnabled: false,
-        operatingHours: 6,
-        selfTestPassed: true,
-        agingRate: 0
-      },
+      // Module states managed by their respective classes
+      omt: OMTModule.getDefaultState(),
+      buc: BUCModule.getDefaultState(),
+      hpa: HPAModule.getDefaultState(),
+      filter: IfFilterBankModule.getDefaultState(),
+      lnb: LNBModule.getDefaultState(),
+      coupler: CouplerModule.getDefaultState(),
+      gpsdo: GPSDOModule.getDefaultState(),
 
       signalPath: {
         txPath: {

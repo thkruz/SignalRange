@@ -45,6 +45,23 @@ export class HPAModule extends RFFrontEndModule<HPAState> {
   private readonly thermalEfficiency = 0.5; // 50% typical for SSPA
   hpaSwitch: SecureToggleSwitch;
 
+  /**
+   * Get default state for HPA module
+   */
+  static getDefaultState(): HPAState {
+    return {
+      isPowered: true,
+      backOff: 6, // dB
+      outputPower: 50 as dBm, // dBm (100W)
+      isOverdriven: false,
+      imdLevel: -30, // dBc
+      temperature: 45, // Celsius
+      isHpaEnabled: false,
+      isHpaSwitchEnabled: false,
+      noiseFloor: -140, // dBm/Hz
+    };
+  }
+
   static create(state: HPAState, rfFrontEnd: RFFrontEnd, unit: number = 1): HPAModule {
     this.instance_ ??= new HPAModule(state, rfFrontEnd, unit);
     return this.instance_;

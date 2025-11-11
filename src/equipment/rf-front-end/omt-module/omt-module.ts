@@ -33,6 +33,22 @@ export class OMTModule extends RFFrontEndModule<OMTState> {
   rxSignalsOut: RfSignal[] = [];
   txSignalsOut: RfSignal[] = [];
 
+  /**
+   * Get default state for OMT module
+   */
+  static getDefaultState(): OMTState {
+    return {
+      isPowered: true,
+      txPolarization: 'H',
+      rxPolarization: 'V',
+      effectiveTxPol: 'H',
+      effectiveRxPol: 'V',
+      crossPolIsolation: 28.5, // dB
+      isFaulted: false,
+      noiseFloor: -140, // dBm/Hz
+    };
+  }
+
   static create(state: OMTState, rfFrontEnd: RFFrontEnd): OMTModule {
     this.instance_ ??= new OMTModule(state, rfFrontEnd);
     return this.instance_;

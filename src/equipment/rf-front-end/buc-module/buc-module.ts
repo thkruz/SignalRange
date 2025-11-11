@@ -75,6 +75,38 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
   private readonly loopbackSwitch_: ToggleSwitch;
   outputSignals: RfSignal[] = [];
 
+  /**
+   * Get default state for BUC module
+   */
+  static getDefaultState(): BUCState {
+    return {
+      // Operational State
+      isPowered: true,
+      isMuted: false,
+      isLoopback: false,
+      temperature: 25, // °C (ambient)
+      currentDraw: 0, // A
+
+      // Frequency Translation
+      loFrequency: 4200 as MHz, // MHz (C-band)
+      isExtRefLocked: true,
+      frequencyError: 0, // Hz (locked)
+      phaseLockRange: 10000, // ±10 kHz tracking range
+
+      // Gain & Power
+      gain: 58, // dB
+      outputPower: -10, // dBm
+      saturationPower: 15, // dBm (P1dB compression point)
+      gainFlatness: 0.5, // ±0.5 dB across bandwidth
+
+      // Signal Quality
+      groupDelay: 3, // ns
+      phaseNoise: -100, // dBc/Hz @ 10kHz offset (locked)
+      spuriousOutputs: [],
+      noiseFloor: -140, // dBm/Hz
+    };
+  }
+
   static create(state: BUCState, rfFrontEnd: RFFrontEnd, unit: number = 1): BUCModule {
     this.instance_ ??= new BUCModule(state, rfFrontEnd, unit);
     return this.instance_;

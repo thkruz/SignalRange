@@ -52,6 +52,20 @@ export class IfFilterBankModule extends RFFrontEndModule<IfFilterBankState> {
   private readonly bandwidthKnob_: RotaryKnob;
   outputSignals: IfSignal[] = [];
 
+  /**
+   * Get default state for IF Filter Bank module
+   */
+  static getDefaultState(): IfFilterBankState {
+    return {
+      isPowered: true,
+      bandwidthIndex: 9, // 20 MHz
+      bandwidth: 20 as MHz, // MHz
+      insertionLoss: 2.0, // dB
+      centerFrequency: 5800 * 1e6 as RfFrequency, // 5.8 GHz
+      noiseFloor: -101, // dBm
+    };
+  }
+
   static create(state: IfFilterBankState, rfFrontEnd: RFFrontEnd, unit: number = 1): IfFilterBankModule {
     this.instance_ ??= new IfFilterBankModule(state, rfFrontEnd, unit);
     return this.instance_;

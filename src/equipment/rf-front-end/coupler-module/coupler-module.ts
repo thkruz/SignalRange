@@ -26,6 +26,21 @@ export interface CouplerState {
 export class CouplerModule extends RFFrontEndModule<CouplerState> {
   private static instance_: CouplerModule;
 
+  /**
+   * Get default state for Coupler module
+   */
+  static getDefaultState(): CouplerState {
+    return {
+      isPowered: true,
+      tapPointA: 'TX IF',
+      tapPointB: 'RX IF',
+      couplingFactorA: -30, // dB
+      couplingFactorB: -20, // dB
+      isActiveA: true,
+      isActiveB: true,
+    };
+  }
+
   static create(state: CouplerState, rfFrontEnd: RFFrontEnd, unit: number = 1): CouplerModule {
     this.instance_ ??= new CouplerModule(state, rfFrontEnd, unit);
     return this.instance_;

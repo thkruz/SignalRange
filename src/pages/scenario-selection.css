@@ -2,7 +2,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 2rem;
+  padding: 2rem 2rem;
   min-height: 100vh;
   background: linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 100%);
   color: #fff;
@@ -14,17 +14,17 @@
 }
 
 .scenario-selection-header h1 {
-  font-size: 2.5rem;
+  font-size: 2rem;
   font-weight: bold;
   letter-spacing: 3px;
   text-transform: uppercase;
   color: #fff;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.25rem;
 }
 
 .scenario-selection-header .subtitle {
-  font-size: 1rem;
+  font-size: 0.9rem;
   color: #aaa;
   letter-spacing: 1px;
   text-transform: uppercase;
@@ -32,11 +32,11 @@
 
 .scenario-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
-  gap: 2rem;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 1rem;
   width: 100%;
-  max-width: 1400px;
-  margin-bottom: 2rem;
+  max-width: 1800px;
+  margin-bottom: 1rem;
 }
 
 /* Scenario Card - Equipment Case Style */
@@ -98,7 +98,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  height: 50px;
+  height: 40px;
   padding: 0 24px;
   background: linear-gradient(180deg, #3a3a3a 0%, #2a2a2a 100%);
   border-bottom: 2px solid #444;
@@ -196,72 +196,72 @@
 .scenario-card-body {
   display: flex;
   flex-direction: column;
-  padding: 1.5rem;
+  padding: 1rem;
   flex-grow: 1;
 }
 
 .scenario-title {
-  font-size: 1.25rem;
+  font-size: 1.1rem;
   font-weight: bold;
   color: var(--color-text-accent);
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.35rem;
   line-height: 1.3;
 }
 
 .scenario-subtitle {
-  font-size: 0.95rem;
+  font-size: 0.85rem;
   color: #ccc;
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
   font-style: italic;
 }
 
 .scenario-mission-type {
   display: inline-block;
-  padding: 4px 12px;
+  padding: 3px 10px;
   background-color: #1a1a1a;
   border: 1px solid #444;
   border-radius: 4px;
-  font-size: 12px;
+  font-size: 11px;
   color: #aaa;
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
   letter-spacing: 0.5px;
 }
 
 .scenario-description {
-  font-size: 0.9rem;
-  line-height: 1.6;
+  font-size: 0.85rem;
+  line-height: 1.5;
   color: #ddd;
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
   flex-grow: 1;
 }
 
 /* Equipment Info Section */
 .scenario-equipment {
-  margin-top: 1rem;
-  padding-top: 1rem;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
   border-top: 1px solid #333;
 }
 
 .scenario-equipment-title {
-  font-size: 0.85rem;
+  font-size: 0.75rem;
   font-weight: bold;
   color: #aaa;
   text-transform: uppercase;
   letter-spacing: 1px;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.5rem;
 }
 
 .equipment-list {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 0.5rem;
+  gap: 0.4rem;
 }
 
 .equipment-item {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  font-size: 0.85rem;
+  gap: 0.4rem;
+  font-size: 0.8rem;
   color: #ccc;
 }
 
@@ -278,7 +278,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 1.5rem;
+  padding: 8px 1rem;
   background: linear-gradient(180deg, #1a1a1a 0%, #0f0f0f 100%);
   border-top: 1px solid #333;
   box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.6);
@@ -314,16 +314,16 @@
   gap: 1rem;
   width: 100%;
   max-width: 600px;
-  margin-top: 1rem;
+  margin-bottom: 1rem;
 }
 
 .btn-start-scenario {
-  padding: 14px 40px;
+  padding: 10px 32px;
   background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
   color: #fff;
   border: none;
   border-radius: 6px;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: bold;
   letter-spacing: 2px;
   text-transform: uppercase;
@@ -348,12 +348,12 @@
 }
 
 .btn-back {
-  padding: 14px 40px;
+  padding: 10px 32px;
   background: linear-gradient(135deg, #3a3a3a 0%, #2a2a2a 100%);
   color: #fff;
   border: 2px solid #444;
   border-radius: 6px;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: bold;
   letter-spacing: 2px;
   text-transform: uppercase;
@@ -372,23 +372,24 @@
 }
 
 /* Responsive Design */
-@media (max-width: 1024px) {
+@media (max-width: 1200px) {
   .scenario-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   }
 }
 
 @media (max-width: 768px) {
   .scenario-selection-page {
-    padding: 1rem;
+    padding: 0.75rem;
   }
 
   .scenario-selection-header h1 {
-    font-size: 2rem;
+    font-size: 1.5rem;
   }
 
   .scenario-grid {
-    gap: 1rem;
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
   }
 
   .equipment-list {

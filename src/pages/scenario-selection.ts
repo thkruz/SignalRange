@@ -46,7 +46,7 @@ export class ScenarioSelectionPage extends BasePage {
 
   private renderScenarioCard_(scenario: ScenarioData): string {
     return html`
-      <div class="scenario-card" data-scenario-id="${scenario.id}">
+      <div class="scenario-card" data-scenario-url="${scenario.url}">
         <div class="scenario-card-header">
           <div class="scenario-number">Scenario ${scenario.number}</div>
           <div class="scenario-badges">
@@ -106,9 +106,9 @@ export class ScenarioSelectionPage extends BasePage {
 
   private handleScenarioCardClick_(event: Event): void {
     const card = (event.currentTarget as HTMLElement);
-    const scenarioId = card.dataset.scenarioId;
+    const scenarioUrl = card.dataset.scenarioUrl;
 
-    if (!scenarioId) return;
+    if (!scenarioUrl) return;
 
     // Remove selection from all cards
     const allCards = qsa('.scenario-card', this.dom_);
@@ -116,7 +116,7 @@ export class ScenarioSelectionPage extends BasePage {
 
     // Add selection to clicked card
     card.classList.add('selected');
-    this.selectedScenario_ = scenarioId;
+    this.selectedScenario_ = scenarioUrl;
 
     // Enable start button
     (this.domCacehe_['btn-start'] as HTMLButtonElement).disabled = false;

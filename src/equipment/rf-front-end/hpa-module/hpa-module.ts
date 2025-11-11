@@ -85,7 +85,7 @@ export class HPAModule extends RFFrontEndModule<HPAState> {
       false,
     );
 
-    this.hpaSwitch_ = SecureToggleSwitch.create(`hpa-switch-${this.rfFrontEnd_.state.uuid}`, this.state.isHpaSwitchEnabled, false);
+    this.hpaSwitch_ = SecureToggleSwitch.create(`hpa-switch-${this.rfFrontEnd_.state.uuid}`, this.toggleHpa_.bind(this), this.state.isHpaSwitchEnabled, false);
 
     this.backOffKnob = RotaryKnob.create(
       `${this.uniqueId}-backoff-knob`,
@@ -148,9 +148,6 @@ export class HPAModule extends RFFrontEndModule<HPAState> {
       console.warn('HPAModule: Cannot add event listeners - components not initialized');
       return;
     }
-
-    // HPA switch
-    this.hpaSwitch_.addEventListeners(this.toggleHpa_.bind(this));
 
     // Enable switch handler
     this.powerSwitch_.addEventListeners((isEnabled: boolean) => {

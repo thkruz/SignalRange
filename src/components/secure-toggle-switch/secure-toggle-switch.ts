@@ -1,5 +1,7 @@
 import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
+import { EventBus } from "@app/events/event-bus";
+import { Events } from "@app/events/events";
 import './secure-toggle-switch.css';
 
 export class SecureToggleSwitch {
@@ -7,8 +9,9 @@ export class SecureToggleSwitch {
   private readonly uniqueId: string;
   private dom_?: HTMLInputElement;
   private isUp_: boolean;
+  private readonly cb_: (isUp: boolean) => void;
 
-  constructor(uniqueId: string, isUp: boolean, isLight = true) {
+  constructor(uniqueId: string, cb: (isUp: boolean) => void, isUp: boolean, isLight = true) {
     this.html_ = html`
       <div class="secure-toggle-switch-wrapper">
         <div class="secure-toggle-switch">
@@ -20,22 +23,30 @@ export class SecureToggleSwitch {
         </div>
       </div>
     `;
+    this.cb_ = cb;
     this.isUp_ = isUp;
     this.uniqueId = uniqueId;
+
+    EventBus.getInstance().on(Events.DOM_READY, this.onDomReady_.bind(this));
   }
 
-  static create(domId: string, isUp: boolean, isLight = true): SecureToggleSwitch {
-    return new SecureToggleSwitch(domId, isUp, isLight);
+  private onDomReady_(): void {
+    this.dom_ ??= qs(`#${this.uniqueId}`);
+    qs(`#${this.uniqueId}`).addEventListener('change', (e) => {
+      this.cb_((e.target as HTMLInputElement).checked);
+    });
+  }
+
+  static create(domId: string, cb: (isUp: boolean) => void, isUp: boolean, isLight = true): SecureToggleSwitch {
+    return new SecureToggleSwitch(domId, cb, isUp, isLight);
   }
 
   get html(): string {
     return this.html_;
   }
 
-  addEventListeners(cb: (isUp: boolean) => void): void {
-    qs(`#${this.uniqueId}`).addEventListener('change', (e) => {
-      cb((e.target as HTMLInputElement).checked);
-    });
+  addEventListeners(_cb: (isUp: boolean) => void): void {
+    // Guard switch
   }
 
   get dom(): HTMLInputElement {

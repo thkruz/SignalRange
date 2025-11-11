@@ -42,14 +42,6 @@ export class Header extends BaseElement {
           <div class="header-main-title">SignalRange</div>
           <div class="header-subtitle">Space Electronic Warfare Lab</div>
         </div>
-        <div class="header-actions">
-          <button class="header-icon-button" title="View Code on Github">
-            <span class="icon">⚙</span>
-          </button>
-          <button class="header-icon-button" title="Help">
-            <span class="icon">?</span>
-          </button>
-        </div>
       </div>
     </header>
   `;

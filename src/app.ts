@@ -37,6 +37,7 @@ export class App extends BaseElement {
     App.instance_ = new App();
     window.signalRange = App.instance_;
     App.instance_.init_();
+    EventBus.getInstance().emit(Events.DOM_READY);
     App.instance_.gameLoop_();
 
 

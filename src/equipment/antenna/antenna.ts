@@ -1,3 +1,4 @@
+import { HelpButton } from "@app/components/help-btn/help-btn";
 import { PowerSwitch } from "@app/components/power-switch/power-switch";
 import { RotaryKnob } from "@app/components/rotary-knob/rotary-knob";
 import { ToggleSwitch } from "@app/components/toggle-switch/toggle-switch";
@@ -19,7 +20,6 @@ import './antenna.css';
  * RF Propagation constants for GEO satellite communications
  */
 const GEO_SATELLITE_DISTANCE_KM = 38000; // Approximate slant range to GEO satellite (km)
-// const SPEED_OF_LIGHT = 299792458; // m/s
 
 export interface AntennaState {
   noiseFloor: number;
@@ -67,6 +67,7 @@ export class Antenna extends BaseEquipment {
   private readonly skewKnob_: RotaryKnob;
   private readonly loopbackSwitch_: ToggleSwitch;
   private readonly autoTrackSwitch_: ToggleSwitch;
+  private readonly helpBtn_: HelpButton;
 
   constructor(parentId: string, teamId: number = 1, serverId: number = 1) {
     super(parentId, teamId);
@@ -107,6 +108,11 @@ export class Antenna extends BaseEquipment {
       this.state.isLoopback,
       false
     );
+    this.helpBtn_ = HelpButton.create(
+      `antenna-help-btn-${this.state.uuid}`,
+      'Antenna Control Unit (ACU) Help',
+      'This unit controls the antenna operations including power, loopback, skew adjustment, and auto-tracking of satellites. Use the controls to manage antenna settings and monitor status indicators for optimal performance.'
+    );
 
     this.lastRenderState = structuredClone(this.state);
     this.build(parentId);
@@ -122,7 +128,10 @@ export class Antenna extends BaseEquipment {
       <div class="equipment-case antenna-container">
         <!-- Antenna Control Unit Header -->
         <div class="equipment-case-header">
-          <div class="equipment-case-title">Antenna Control Unit (ACU) ${this.uuidShort}</div>
+          <div class="equipment-case-title">
+            <span>Antenna Control Unit (ACU) ${this.uuidShort}</span>
+            ${this.helpBtn_.html}
+          </div>
           <div class="equipment-case-power-controls">
             <div class="equipment-case-main-power"></div>
             <div class="equipment-case-status-indicator">

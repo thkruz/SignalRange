@@ -239,7 +239,7 @@ export class Transmitter extends BaseEquipment {
         <div class="bottom-status-bar">
           SYSTEM NORMAL
         </div>
-        <div class="mode-toggle">
+        <div>
         <button class="btn-mode-toggle" data-action="toggle-advanced-mode" title="Toggle Advanced Mode">
           <span class="icon-advanced">&#9881;</span>
         </button>

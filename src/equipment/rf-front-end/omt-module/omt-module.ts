@@ -1,3 +1,4 @@
+import { HelpButton } from '@app/components/help-btn/help-btn';
 import { ToggleSwitch } from '@app/components/toggle-switch/toggle-switch';
 import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
@@ -5,6 +6,7 @@ import { Logger } from '@app/logging/logger';
 import { dBm, RfSignal, SignalOrigin } from '@app/types';
 import { RFFrontEnd } from '../rf-front-end';
 import { RFFrontEndModule } from '../rf-front-end-module';
+import omtModuleHelp from './omt-module-help';
 import './omt-module.css';
 
 /**
@@ -29,7 +31,11 @@ export interface OMTState {
 export class OMTModule extends RFFrontEndModule<OMTState> {
   private static instance_: OMTModule;
 
+  // UI Components
   private readonly polarizationToggle_: ToggleSwitch;
+  private readonly helpBtn_: HelpButton;
+
+  // Signals
   rxSignalsOut: RfSignal[] = [];
   txSignalsOut: RfSignal[] = [];
 
@@ -66,10 +72,18 @@ export class OMTModule extends RFFrontEndModule<OMTState> {
       this.uniqueId,
       this.state_.txPolarization === 'V'
     );
+    this.helpBtn_ = HelpButton.create(
+      `omt-help-${this.rfFrontEnd_.state.uuid}`,
+      "OMT / Duplexer",
+      omtModuleHelp
+    );
 
     this.html_ = html`
       <div class="rf-fe-module omt-module">
-        <div class="module-label">OMT/DUPLEXER</div>
+        <div class="module-label">
+          <span>OMT/DUPLEXER</span>
+          ${this.helpBtn_.html}
+        </div>
         <div class="module-controls">
           <div class="split-top-section">
             <div class="input-knobs">

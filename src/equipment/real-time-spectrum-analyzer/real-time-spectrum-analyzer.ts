@@ -137,7 +137,7 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
           <div class="bottom-status-bar">
             SYSTEM NORMAL
           </div>
-          <div class="mode-toggle">
+          <div>
           <button class="btn-config" data-action="config" title="Open Configuration Panel">
             <span class="icon-advanced">&#9881;</span>
           </button>

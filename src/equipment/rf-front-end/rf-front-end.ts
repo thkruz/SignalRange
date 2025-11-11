@@ -1,5 +1,5 @@
+import { HelpButton } from "@app/components/help-btn/help-btn";
 import { EventBus } from "@app/events/event-bus";
-import { HelpManager } from '@app/help/help-manager';
 import { html } from "../../engine/utils/development/formatter";
 import { qs } from "../../engine/utils/query-selector";
 import { Events } from "../../events/events";
@@ -58,6 +58,9 @@ export class RFFrontEnd extends BaseEquipment {
   antenna: Antenna | null = null;
   transmitters: Transmitter[] = [];
 
+  // UI Components
+  private readonly helpBtn_: HelpButton;
+
   constructor(parentId: string, teamId: number = 1, serverId: number = 1) {
     super(parentId, teamId);
 
@@ -85,6 +88,12 @@ export class RFFrontEnd extends BaseEquipment {
     this.lnbModule = LNBModule.create(this.state.lnb, this);
     this.couplerModule = CouplerModule.create(this.state.coupler, this);
     this.gpsdoModule = GPSDOModule.create(this.state.gpsdo, this);
+
+    this.helpBtn_ = HelpButton.create(
+      `rf-fe-help-${this.state.uuid}`,
+      "OMT / Duplexer",
+      omtModuleHelp
+    );
 
     this.build(parentId);
 
@@ -138,16 +147,16 @@ export class RFFrontEnd extends BaseEquipment {
 
       <!-- Top Status Bar -->
       <div class="equipment-case-header">
-        <div class="equipment-case-title">RF FRONT END ${this.uuidShort}</div>
-          <div class="equipment-case-power-controls">
+        <div class="equipment-case-title">
+          <span>RF FRONT END ${this.uuidShort}</span>
+          ${this.helpBtn_.html}
+        </div>
+        <div class="equipment-case-power-controls">
           <div id="rf-fe-power-${this.state.uuid}" class="equipment-case-main-power"></div>
           <div class="equipment-case-status-indicator">
             <span class="equipment-case-status-label">EXT REF</span>
             <div class="led led-green"></div>
           </div>
-          <button class="btn-help" title="Help" id="rf-fe-help-${this.state.uuid}">
-            <span class="icon-help">&#x2753;</span>
-          </button>
         </div>
       </div>
 
@@ -173,11 +182,6 @@ export class RFFrontEnd extends BaseEquipment {
         <div class="bottom-status-bar">
           SYSTEM NORMAL
         </div>
-        <div class="mode-toggle">
-        <button class="btn-mode-toggle" data-action="toggle-advanced-mode" title="Toggle Advanced Mode">
-          <span class="icon-advanced">&#9881;</span>
-        </button>
-        </div>
       </div>
 
       </div>
@@ -187,14 +191,6 @@ export class RFFrontEnd extends BaseEquipment {
   }
 
   protected addListeners_(): void {
-    const helpBtn = qs(`#rf-fe-help-${this.state.uuid}`);
-    if (helpBtn) {
-      helpBtn.addEventListener('click', () => {
-        HelpManager.getInstance().show("OMT / Duplexer", omtModuleHelp);
-      });
-    }
-
-
     // Add module event listeners
     this.omtModule.addEventListeners((state: OMTState) => {
       this.state.omt = state;

@@ -1,29 +1,27 @@
 .equipment-case {
+  display: flex;
+  flex-direction: column;
+  min-width: 400px;
+  height: 400px;
+  background: linear-gradient(135deg, #2a2a2a 0%, #1f1f1f 100%);
+  border: 2px solid #444;
+  border-radius: 8px;
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.6),
+    inset 0 1px 1px rgba(255, 255, 255, 0.1);
+  padding: 0;
+  position: relative;
+  font-family: 'Roboto', 'Arial', sans-serif;
+  overflow: hidden;
+
   .equipment-case-footer {
-    button {
-      padding: 6px 16px;
-      background: linear-gradient(180deg, #555 0%, #444 100%);
-      color: #fff;
-      border: 1px solid #666;
-      border-radius: 4px;
-      font-size: 11px;
-      font-weight: bold;
-      cursor: pointer;
-      transition: all 0.2s;
-      letter-spacing: 1.2px;
-      text-transform: uppercase;
-    }
-
-    button:hover {
-      background: linear-gradient(180deg, #666 0%, #555 100%);
-      border-color: #777;
-      box-shadow: 0 0 6px rgba(255, 255, 255, 0.2);
-    }
-
-    button:active {
-      background: linear-gradient(180deg, #444 0%, #333 100%);
-      transform: translateY(1px);
-    }
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 12px;
+    background: linear-gradient(180deg, #1a1a1a 0%, #0f0f0f 100%);
+    border-top: 1px solid #333;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.6);
   }
 }
 
@@ -76,24 +74,6 @@
   row-gap: 1em;
 }
 
-/* Main Container - 700x400px 19" rack panel aesthetic */
-.equipment-case {
-  display: flex;
-  flex-direction: column;
-  min-width: 400px;
-  height: 400px;
-  background: linear-gradient(135deg, #2a2a2a 0%, #1f1f1f 100%);
-  border: 2px solid #444;
-  border-radius: 8px;
-  box-shadow:
-    0 4px 12px rgba(0, 0, 0, 0.6),
-    inset 0 1px 1px rgba(255, 255, 255, 0.1);
-  padding: 0;
-  position: relative;
-  font-family: 'Roboto', 'Arial', sans-serif;
-  overflow: hidden;
-}
-
 /* Rivet corner decorations */
 .equipment-case::before,
 .equipment-case::after {
@@ -130,8 +110,10 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
-.antenna-title,
 .equipment-case-title {
+  padding-left: 12px;
+  display: flex;
+  gap: 12px;
   color: #fff;
   font-size: 16px;
   font-weight: bold;
@@ -162,18 +144,6 @@
   font-size: 10px;
   font-weight: bold;
   letter-spacing: 1px;
-}
-
-/* Bottom Status Bar - 20px height */
-.equipment-case-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  height: 20px;
-  padding: 6px 12px;
-  background: linear-gradient(180deg, #1a1a1a 0%, #0f0f0f 100%);
-  border-top: 1px solid #333;
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.6);
 }
 
 .tx-grid,

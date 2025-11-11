@@ -8,10 +8,10 @@ import { HPAState } from "@app/equipment/rf-front-end/hpa-module/hpa-module";
 import { LNBState } from "@app/equipment/rf-front-end/lnb/lnb-module";
 import { OMTState } from "@app/equipment/rf-front-end/omt-module/omt-module";
 import { RFFrontEndState } from "@app/equipment/rf-front-end/rf-front-end";
+import { Milliseconds } from "ootk";
 import { ReceiverModemState } from "../equipment/receiver/receiver";
 import { TransmitterModem } from "../equipment/transmitter/transmitter";
 import { RfSignal } from "../types";
-import { Milliseconds } from "ootk";
 
 // Antenna Event specific interfaces
 export interface AntennaLoopbackChangedData {
@@ -113,6 +113,7 @@ export enum Events {
   STORAGE_ERROR = "STORAGE_ERROR",
 
   // Game loop events
+  DOM_READY = "app:dom-ready",
   UPDATE = "app:update",
   DRAW = "app:draw",
   SYNC = "app:sync",
@@ -165,6 +166,7 @@ export interface EventMap {
 
   [Events.STORAGE_ERROR]: [Error];
 
+  [Events.DOM_READY]: [];
   [Events.UPDATE]: [Milliseconds];
   [Events.DRAW]: [Milliseconds];
   [Events.SYNC]: [];

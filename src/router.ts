@@ -1,5 +1,6 @@
 import { EventBus } from "./events/event-bus";
 import { Events } from "./events/events";
+import { HomePage } from "./pages/home";
 import { SandboxPage } from "./pages/sandbox-page";
 import { ScenarioSelectionPage } from "./pages/scenario-selection";
 import { ScenarioManager } from "./scenario-manager";
@@ -53,22 +54,23 @@ export class Router {
     // Show the appropriate page
     switch (path) {
       case '/sandbox':
-        this.showPage('sandbox-page');
+        this.showPage('sandbox');
         break;
-      case '/scenario1':
-        this.showPage('scenario1-page');
+      case '/scenarios/1':
+        this.showPage('scenario1');
         break;
-      case '/scenario2':
-        this.showPage('scenario2-page');
+      case '/scenarios/2':
+        this.showPage('scenario2');
         break;
-      case '/scenario3':
-        this.showPage('scenario3-page');
+      case '/scenarios/3':
+        this.showPage('scenario3');
+        break;
+      case '/scenarios':
+        this.showPage('scenarios');
         break;
       case '/':
-      case '/scenario-selection':
       default:
-        this.showPage('scenario-selection-page');
-        break;
+        this.showPage('home');
     }
 
     // Emit route change event
@@ -77,33 +79,36 @@ export class Router {
 
   private hideAll(): void {
     ScenarioSelectionPage.getInstance().hide();
+    HomePage.getInstance().hide();
     SandboxPage.getInstance()?.hide();
   }
 
   private showPage(pageName: string): void {
     switch (pageName) {
-      case 'sandbox-page':
-        if (!SandboxPage.getInstance()) {
-          SandboxPage.create();
-        }
+      case 'home':
+        HomePage.getInstance().show();
+        break;
+      case 'sandbox':
+        ScenarioManager.getInstance().settings = ScenarioManager.getDefaultSettings();
+        SandboxPage.create();
         SandboxPage.getInstance().show();
         break;
-      case 'scenario1-page':
+      case 'scenario1':
         ScenarioManager.getInstance().settings = ScenarioManager.getScenarioSettings('scenario1');
         SandboxPage.create();
         SandboxPage.getInstance().show();
         break;
-      case 'scenario2-page':
+      case 'scenario2':
         ScenarioManager.getInstance().settings = ScenarioManager.getScenarioSettings('scenario2');
         SandboxPage.create();
         SandboxPage.getInstance().show();
         break;
-      case 'scenario3-page':
+      case 'scenario3':
         ScenarioManager.getInstance().settings = ScenarioManager.getScenarioSettings('scenario3');
         SandboxPage.create();
         SandboxPage.getInstance().show();
         break;
-      case 'scenario-selection-page':
+      case 'scenarios':
         ScenarioSelectionPage.getInstance().show();
         break;
     }

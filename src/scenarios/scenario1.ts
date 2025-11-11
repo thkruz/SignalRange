@@ -8,7 +8,7 @@ import { ScenarioData } from '../scenario-manager';
  */
 
 export const scenario1Data: ScenarioData = {
-  id: 'scenario1',
+  id: 'scenarios/1',
   number: 1,
   title: '"First Light"',
   subtitle: 'HELIOS-7 Initial Contact',

@@ -30,11 +30,11 @@ export class ScenarioManager {
   static getDefaultSettings(): SimulationSettings {
     return {
       isSync: false,
-      antennas: 1,
+      antennas: 1, // TODO: Max 1 for now because only 1 rfFrontEnd is supported
       rfFrontEnds: 1,
       spectrumAnalyzers: 2,
-      transmitters: 0,
-      receivers: 0,
+      transmitters: 2,
+      receivers: 2,
     };
   }
 

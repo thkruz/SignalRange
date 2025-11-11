@@ -27,6 +27,8 @@ export class ToggleSwitch {
     `;
     this.isActive_ = isActive;
     this.uniqueId = uniqueId;
+
+    // TODO: Add an event bus listener for DOM_READY if needed and remove addEventListeners calls
   }
 
   static create(domId: string, isActive: boolean, showDownWhenActive: boolean = false): ToggleSwitch {

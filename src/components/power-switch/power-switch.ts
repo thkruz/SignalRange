@@ -31,7 +31,7 @@ export class PowerSwitch {
     this.isOn_ = isOn;
     this.uniqueId = uniqueId;
 
-    // TODO use onDomReady_ listener to isolate component from parent DOM
+    // TODO: Add an event bus listener for DOM_READY if needed and remove addEventListeners calls
   }
 
   static create(domId: string, isOn: boolean, isVertical = true, isSmall = false): PowerSwitch {

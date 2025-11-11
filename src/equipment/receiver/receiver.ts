@@ -4,7 +4,7 @@ import { html } from "../../engine/utils/development/formatter";
 import { qs } from "../../engine/utils/query-selector";
 import { Events } from "../../events/events";
 import { FECType, Hertz, MHz, ModulationType } from "../../types";
-import { BaseEquipment } from "../base-equipment";
+import { AlarmStatus, BaseEquipment } from "../base-equipment";
 import { RFFrontEnd } from "../rf-front-end/rf-front-end";
 import { Antenna } from './../antenna/antenna';
 import './receiver.css';
@@ -83,6 +83,7 @@ export class Receiver extends BaseEquipment {
   }
 
   update(): void {
+    this.checkForAlarms_();
     this.syncDomWithState();
   }
 
@@ -234,6 +235,7 @@ export class Receiver extends BaseEquipment {
     this.domCache['btnApply'] = qs('.btn-apply', parentDom);
     this.domCache['monitorScreen'] = qs('.monitor-screen', parentDom);
     this.domCache['rxActivePowerLight'] = qs('#rx-active-power-light', parentDom);
+    this.domCache['bottom-status-bar'] = qs('.bottom-status-bar', parentDom);
 
     const currentValueEls = parentDom.querySelectorAll('.current-value');
     this.domCache['currentValueAntenna'] = currentValueEls[0] as HTMLElement;
@@ -269,6 +271,23 @@ export class Receiver extends BaseEquipment {
     btnApply?.addEventListener('click', () => this.applyChanges());
 
     this.powerSwitch.addEventListeners(this.togglePower.bind(this));
+  }
+
+  protected checkForAlarms_(): void {
+    this.updateStatusBar(this.domCache['bottom-status-bar'], this.getStatusAlarms());
+  }
+
+  protected getStatusAlarms(): AlarmStatus[] {
+    const alarms: AlarmStatus[] = [];
+
+    if (this.state.availableSignals.length > 0) {
+      alarms.push({
+        message: `Signal(s) Detected`,
+        severity: 'info'
+      });
+    }
+
+    return alarms;
   }
 
   private togglePower(isOn: boolean): void {

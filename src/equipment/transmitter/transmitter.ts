@@ -7,7 +7,7 @@ import { html } from "../../engine/utils/development/formatter";
 import { qs } from "../../engine/utils/query-selector";
 import { Events } from "../../events/events";
 import { dBm, Hertz, IfFrequency, IfSignal, SignalOrigin } from "../../types";
-import { BaseEquipment } from "../base-equipment";
+import { AlarmStatus, BaseEquipment } from "../base-equipment";
 import './transmitter.css';
 
 export interface TransmitterModem {
@@ -102,8 +102,9 @@ export class Transmitter extends BaseEquipment {
     EventBus.getInstance().once(Events.SYNC, this.initialSync.bind(this));
   }
 
-  public update(): void {
-    // No periodic updates needed for transmitter at this time
+  update(): void {
+    // Check for alarms and faults
+    this.checkForAlarms_();
   }
 
   initialSync(): void {
@@ -263,6 +264,7 @@ export class Transmitter extends BaseEquipment {
     this.domCache['txTransmittingLight'] = qs('#tx-transmitting-light', parentDom);
     this.domCache['txFaultLight'] = qs('#tx-fault-light', parentDom);
     this.domCache['txLoopbackLight'] = qs('#tx-loopback-light', parentDom);
+    this.domCache['bottom-status-bar'] = qs('.bottom-status-bar', parentDom);
 
     // If this.inputData is empty, initialize it with active modem data
     if (Object.keys(this.inputData).length === 0) {
@@ -302,6 +304,46 @@ export class Transmitter extends BaseEquipment {
     this.powerSwitch.addEventListeners(this.togglePower.bind(this));
   }
 
+  protected checkForAlarms_(): void {
+    this.updateStatusBar(this.domCache['bottom-status-bar'], this.getStatusAlarms());
+  }
+
+  protected getStatusAlarms(): AlarmStatus[] {
+    const alarms: AlarmStatus[] = [];
+
+    for (const modem of this.state.modems) {
+      if (modem.isFaulted) {
+        alarms.push({
+          message: `Modem ${modem.modem_number} Faulted`,
+          severity: 'error'
+        });
+      }
+      if (modem.isLoopback) {
+        alarms.push({
+          message: `Modem ${modem.modem_number} in Loopback Mode`,
+          severity: 'info'
+        });
+      }
+      if (modem.isTransmitting) {
+        const modemPower = this.calculateModemPower(modem.ifSignal.bandwidth, modem.ifSignal.power);
+        if (!this.validatePowerConsumption(modemPower, 100)) {
+          alarms.push({
+            message: `Modem ${modem.modem_number} Power Exceeds Max Transmit Power`,
+            severity: 'error'
+          });
+        }
+        if (!this.validatePowerConsumption(modemPower, 80)) {
+          alarms.push({
+            message: `Modem ${modem.modem_number} Power Approaching Max Transmit Power`,
+            severity: 'warning'
+          });
+        }
+      }
+    }
+
+    return alarms;
+  }
+
   private togglePower(isOn: boolean): void {
     if (isOn) {
       SoundManager.getInstance().play(Sfx.TOGGLE_ON);
@@ -327,7 +369,7 @@ export class Transmitter extends BaseEquipment {
     this.syncDomWithState();
   }
 
-  public sync(data: Partial<TransmitterState>): void {
+  sync(data: Partial<TransmitterState>): void {
     if (data.modems) {
       this.state.modems = data.modems;
     }
@@ -411,7 +453,6 @@ export class Transmitter extends BaseEquipment {
     const modemIndex = this.state.modems.findIndex(m => m.modem_number === this.state.activeModem);
 
     if (activeModem.isPowered === false) {
-      this.emit(Events.TX_ERROR, { message: 'Cannot transmit: Modem is powered off' });
       return;
     }
 
@@ -476,7 +517,6 @@ export class Transmitter extends BaseEquipment {
       const modemPower = this.calculateModemPower(this.activeModem.ifSignal.bandwidth, this.activeModem.ifSignal.power);
       if (!this.validatePowerConsumption(modemPower)) {
         this.activeModem.isFaulted = true;
-        this.emit(Events.TX_ERROR, { message: 'Power consumption exceeds budget' });
       }
     }
   }
@@ -498,8 +538,8 @@ export class Transmitter extends BaseEquipment {
     return Math.round((100 * modemPower) / this.powerBudget);
   }
 
-  private validatePowerConsumption(modemPower: number): boolean {
-    return Math.round((100 * modemPower) / this.powerBudget) <= 100;
+  private validatePowerConsumption(modemPower: number, maxPercent = 100): boolean {
+    return Math.round((100 * modemPower) / this.powerBudget) <= maxPercent;
   }
 
   syncDomWithState(): void {

@@ -4,7 +4,7 @@ export abstract class BasePage extends BaseElement {
   abstract id: string;
 
   show(): void {
-    this.dom_.style.display = 'block';
+    this.dom_.style.display = 'flex';
   }
 
   hide(): void {

@@ -1,0 +1,26 @@
+import { ScenarioData } from "../scenario-manager";
+
+export const scenario2Data: ScenarioData = {
+  id: 'scenario2',
+  number: 2,
+  title: '"Signal Hunt"',
+  subtitle: 'Deep Space Tracking Exercise',
+  duration: '35-40 min',
+  difficulty: 'intermediate',
+  missionType: 'Deep Space Operations',
+  description: `Track and analyze signals from a deep space probe passing through the outer solar system. You'll need to compensate for Doppler shift, manage antenna pointing, and maintain signal lock despite challenging signal conditions and atmospheric interference.`,
+  equipment: [
+    '9-meter C-band Antenna',
+    'RF Front End',
+    '2× Spectrum Analyzers',
+    'Receiver',
+  ],
+  settings: {
+    isSync: false,
+    antennas: 1,
+    rfFrontEnds: 1,
+    spectrumAnalyzers: 2,
+    transmitters: 0,
+    receivers: 1,
+  }
+};

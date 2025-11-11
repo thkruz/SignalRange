@@ -1,71 +1,9 @@
 import { qs, qsa } from "@app/engine/utils/query-selector";
 import { Router } from "@app/router";
+import { ScenarioData, SCENARIOS } from "@app/scenario-manager";
 import { html } from "../engine/utils/development/formatter";
 import { BasePage } from "./base-page";
 import "./scenario-selection.css";
-
-interface ScenarioData {
-  id: string;
-  number: number;
-  title: string;
-  subtitle: string;
-  duration: string;
-  difficulty: 'beginner' | 'intermediate' | 'advanced';
-  missionType: string;
-  description: string;
-  equipment: string[];
-}
-
-const SCENARIOS: ScenarioData[] = [
-  {
-    id: 'scenario1',
-    number: 1,
-    title: '"First Light"',
-    subtitle: 'HELIOS-7 Initial Contact',
-    duration: '25-30 min',
-    difficulty: 'beginner',
-    missionType: 'Commercial Communications',
-    description: `You are a Ground Station Operator at Pacific Rim Communications facility in Guam. Your company has just launched HELIOS-7, a new C-band communications satellite. The satellite is now station-keeping at 145°E geostationary orbit. You will conduct the first ground station link test - a critical milestone before commercial operations begin.`,
-    equipment: [
-      '9-meter C-band Antenna',
-      'RF Front End',
-      '2× Spectrum Analyzers',
-    ],
-  },
-  {
-    id: 'scenario2',
-    number: 2,
-    title: '"Signal Hunt"',
-    subtitle: 'Deep Space Tracking Exercise',
-    duration: '35-40 min',
-    difficulty: 'intermediate',
-    missionType: 'Deep Space Operations',
-    description: `Track and analyze signals from a deep space probe passing through the outer solar system. You'll need to compensate for Doppler shift, manage antenna pointing, and maintain signal lock despite challenging signal conditions and atmospheric interference.`,
-    equipment: [
-      '9-meter C-band Antenna',
-      'RF Front End',
-      '2× Spectrum Analyzers',
-      'Receiver',
-    ],
-  },
-  {
-    id: 'scenario3',
-    number: 3,
-    title: '"Full Stack"',
-    subtitle: 'Complete Link Budget Analysis',
-    duration: '45-60 min',
-    difficulty: 'advanced',
-    missionType: 'Research & Development',
-    description: `Conduct a comprehensive RF link analysis using the complete ground station suite. You'll establish both uplink and downlink connections, analyze signal quality, measure system performance parameters, and optimize the complete communications chain from transmitter to receiver.`,
-    equipment: [
-      '2× 9-meter C-band Antennas',
-      '2× RF Front Ends',
-      '4× Spectrum Analyzers',
-      'Transmitter',
-      'Receiver',
-    ],
-  },
-];
 
 /**
  * Scenario selection page implementation

@@ -1,4 +1,6 @@
-import { html } from "./engine/utils/development/formatter";
+import { scenario1Data } from './scenarios/scenario1';
+import { scenario2Data } from "./scenarios/scenario2";
+import { scenario3Data } from './scenarios/scenario3';
 
 export interface SimulationSettings {
   isSync: boolean;
@@ -39,73 +41,32 @@ export class ScenarioManager {
   static getScenarioSettings(scenarioId: string): SimulationSettings {
     switch (scenarioId) {
       case 'scenario1':
-        return {
-          isSync: false,
-          antennas: 1,
-          rfFrontEnds: 1,
-          spectrumAnalyzers: 2,
-          transmitters: 0,
-          receivers: 0,
-        };
+        return SCENARIOS[0].settings;
       case 'scenario2':
-        return {
-          isSync: false,
-          antennas: 1,
-          rfFrontEnds: 1,
-          spectrumAnalyzers: 2,
-          transmitters: 0,
-          receivers: 1,
-        };
+        return SCENARIOS[1].settings;
       case 'scenario3':
-        return {
-          isSync: false,
-          antennas: 1,
-          rfFrontEnds: 1,
-          spectrumAnalyzers: 2,
-          transmitters: 1,
-          receivers: 1,
-          layout: scenario3Layout,
-        };
+        return SCENARIOS[2].settings;
       default:
         return this.getDefaultSettings();
     }
   }
 }
 
-const scenario3Layout = html`
-      <div class="student-equipment">
-        <!-- Antennas, Front Ends, and Spec Analyzers Grid -->
-          <div id="antenna-spec-a-grid1" class="antenna-spec-a-grid">
-            <div class="paired-equipment-container">
-              <div id="antenna1-container" class="antenna-container"></div>
-              <div id="antenna2-container" class="antenna-container"></div>
-            </div>
-            <div class="paired-equipment-container">
-              <div id="rf-front-end1-container" class="rf-front-end-container"></div>
-            </div>
-            <div class="paired-equipment-container">
-              <div id="rf-front-end2-container" class="rf-front-end-container"></div>
-            </div>
-            <div class="paired-equipment-container">
-              <div id="specA1-container" class="spec-a-container"></div>
-              <div id="specA2-container" class="spec-a-container"></div>
-            </div>
-          </div>
+export interface ScenarioData {
+  id: string;
+  number: number;
+  title: string;
+  subtitle: string;
+  duration: string;
+  difficulty: 'beginner' | 'intermediate' | 'advanced';
+  missionType: string;
+  description: string;
+  equipment: string[];
+  settings: SimulationSettings;
+}
 
-        <!-- Spectrum Analyzers Grid -->
-          <div id="antenna-spec-a-grid2" class="antenna-spec-a-grid">
-            <div class="paired-equipment-container">
-              <div id="specA3-container" class="spec-a-container"></div>
-              <div id="specA4-container" class="spec-a-container"></div>
-            </div>
-          </div>
-
-        <!-- Transmitter And Receivers -->
-          <div class="tx-grid">
-            <div class="paired-equipment-container">
-              <div id="tx1-container" class="tx-container"></div>
-              <div id="rx1-container" class="rx-container"></div>
-            </div>
-          </div>
-      </div>
-    `;
+export const SCENARIOS: ScenarioData[] = [
+  scenario1Data,
+  scenario2Data,
+  scenario3Data,
+];

@@ -1,4 +1,3 @@
-import { PowerSwitch } from '@app/components/power-switch/power-switch';
 import { EventBus } from "@app/events/event-bus";
 import { HelpManager } from '@app/help/help-manager';
 import { html } from "../../engine/utils/development/formatter";
@@ -79,9 +78,6 @@ export class RFFrontEnd extends BaseEquipment {
   lnbModule: LNBModule;
   couplerModule: CouplerModule;
   gpsdoModule: GPSDOModule;
-
-  // UI Components (legacy, will be moved into modules)
-  powerSwitch: PowerSwitch;
 
   // Antenna reference
   antenna: Antenna | null = null;
@@ -227,6 +223,15 @@ export class RFFrontEnd extends BaseEquipment {
       },
     };
 
+    // Instantiate module classes
+    this.omtModule = OMTModule.create(this.state.omt, this);
+    this.bucModule = BUCModule.create(this.state.buc, this);
+    this.hpaModule = HPAModule.create(this.state.hpa, this);
+    this.filterModule = IfFilterBankModule.create(this.state.filter, this);
+    this.lnbModule = LNBModule.create(this.state.lnb, this);
+    this.couplerModule = CouplerModule.create(this.state.coupler, this);
+    this.gpsdoModule = GPSDOModule.create(this.state.gpsdo, this);
+
     this.build(parentId);
 
     EventBus.getInstance().on(Events.UPDATE, this.update.bind(this));
@@ -265,21 +270,6 @@ export class RFFrontEnd extends BaseEquipment {
 
   initializeDom(parentId: string): HTMLElement {
     const parentDom = super.initializeDom(parentId);
-
-    // Instantiate module classes
-    this.omtModule = OMTModule.create(this.state.omt, this);
-    this.bucModule = BUCModule.create(this.state.buc, this);
-    this.hpaModule = HPAModule.create(this.state.hpa, this);
-    this.filterModule = IfFilterBankModule.create(this.state.filter, this);
-    this.lnbModule = LNBModule.create(this.state.lnb, this);
-    this.couplerModule = CouplerModule.create(this.state.coupler, this);
-    this.gpsdoModule = GPSDOModule.create(this.state.gpsdo, this);
-
-    // Create UI components
-    this.powerSwitch = PowerSwitch.create(
-      `rf-fe-power-${this.state.uuid}`,
-      this.state.isPowered
-    );
 
     parentDom.innerHTML = html`
       <div
@@ -395,8 +385,10 @@ export class RFFrontEnd extends BaseEquipment {
 
   protected checkForAlarms_(): void {
     const alarms = this.checkAlarms();
-
     const statusBarElement = qs(`.rf-front-end-box .bottom-status-bar`);
+
+    if (!statusBarElement) return;
+
     if (alarms.length > 0) {
       statusBarElement.innerText = `ALARMS: ${alarms.join(', ')}`;
       statusBarElement.classList.add('has-alarms');
@@ -419,19 +411,6 @@ export class RFFrontEnd extends BaseEquipment {
     // Button action handlers
     container.querySelectorAll('[data-action]').forEach(button => {
       button.addEventListener('click', this.handleButtonAction.bind(this));
-    });
-
-    // Power switch handlers
-    this.powerSwitch.addEventListeners((isPowered: boolean) => {
-      this.state.isPowered = isPowered;
-      if (!isPowered) {
-        // Power down all modules
-        this.state.buc.isPowered = false;
-        this.state.hpa.isPowered = false;
-        this.state.lnb.isPowered = false;
-      }
-      this.syncDomWithState();
-      this.emit(Events.RF_FE_POWER_CHANGED, { uuid: this.uuid, isPowered });
     });
   }
 
@@ -692,11 +671,6 @@ export class RFFrontEnd extends BaseEquipment {
     // Update UI based on state changes
     const container = qs(`.equipment-box[data-unit="${this.state.uuid}"]`);
     if (!container) return;
-
-    // Update power switches
-    if (this.powerSwitch) {
-      this.powerSwitch.sync(this.state.isPowered);
-    }
 
     this.lastRenderState = JSON.stringify(this.state);
   }

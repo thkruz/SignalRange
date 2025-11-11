@@ -250,15 +250,17 @@ export class CouplerModule extends RFFrontEndModule<CouplerState> {
       ledB.className = `led ${this.state_.isActiveB ? 'led-green' : 'led-off'}`;
     }
 
+    // TODO: We should be using a domCache instead of querying each time
+
     // Update coupling factor display
-    qs('.coupling-factor-a', container).textContent = `${this.state_.couplingFactorA} dB`;
-    qs('.coupling-factor-b', container).textContent = `${this.state_.couplingFactorB} dB`;
+    qs('.coupling-factor-a', container)!.textContent = `${this.state_.couplingFactorA} dB`;
+    qs('.coupling-factor-b', container)!.textContent = `${this.state_.couplingFactorB} dB`;
 
     // Update select values
-    const selectA: HTMLSelectElement = qs('.input-coupler-tap-a', container);
+    const selectA: HTMLSelectElement | null = qs('.input-coupler-tap-a', container);
     if (selectA) selectA.value = this.state_.tapPointA;
 
-    const selectB: HTMLSelectElement = qs('.input-coupler-tap-b', container);
+    const selectB: HTMLSelectElement | null = qs('.input-coupler-tap-b', container);
     if (selectB) selectB.value = this.state_.tapPointB;
   }
 

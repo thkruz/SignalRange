@@ -10,7 +10,7 @@ import './omt-module.css';
 /**
  * Polarization types for OMT/Duplexer
  */
-export type PolarizationType = 'H' | 'V' | 'LHCP' | 'RHCP';
+export type PolarizationType = null | 'H' | 'V' | 'LHCP' | 'RHCP';
 
 /**
  * OMT/Duplexer module state
@@ -89,26 +89,26 @@ export class OMTModule extends RFFrontEndModule<OMTState> {
           <div class="status-displays">
             <div class="control-group">
               <label>TX POL</label>
-              <div class="digital-display omt-tx">${this.state_.txPolarization}</div>
+              <div class="digital-display omt-tx">${this.state_.txPolarization ?? '_'}</div>
             </div>
             <div class="control-group">
               <label>RX POL</label>
-              <div class="digital-display omt-rx">${this.state_.rxPolarization}</div>
+              <div class="digital-display omt-rx">${this.state_.rxPolarization ?? '_'}</div>
             </div>
             <div class="control-group">
               <!-- Gap -->
             </div>
             <div class="control-group">
               <label>TX EFF POL</label>
-              <div class="digital-display omt-tx-eff">${this.state_.effectiveTxPol || '―'}</div>
+              <div class="digital-display omt-tx-eff">${this.state_.effectiveTxPol ?? '_'}</div>
             </div>
             <div class="control-group">
               <label>RX EFF POL</label>
-              <div class="digital-display omt-rx-eff">${this.state_.effectiveRxPol || '―'}</div>
+              <div class="digital-display omt-rx-eff">${this.state_.effectiveRxPol ?? '_'}</div>
             </div>
             <div class="control-group">
               <label>X-POL (dB)</label>
-              <div class="digital-display omt-x-pol">${this.state_.crossPolIsolation || '―'}</div>
+              <div class="digital-display omt-x-pol">${this.state_.crossPolIsolation ?? '_'}</div>
             </div>
           </div>
         </div>
@@ -156,7 +156,7 @@ export class OMTModule extends RFFrontEndModule<OMTState> {
     this.updateCrossPolIsolation_();
 
     // Calculate effective polarization based on antenna skew
-    this.updateEffectivePolarization_(this.rfFrontEnd_.antenna.state.skew);
+    this.updateEffectivePolarization_(this.rfFrontEnd_.antenna?.state.skew ?? null);
 
     this.rxSignalsOut = this.rxSignalsIn.map(sig => {
       if (sig.polarization !== this.state_.effectiveRxPol) {
@@ -190,7 +190,7 @@ export class OMTModule extends RFFrontEndModule<OMTState> {
   }
 
   get rxSignalsIn(): RfSignal[] {
-    if (this.rfFrontEnd_.antenna.state.isLoopback) {
+    if (this.rfFrontEnd_.antenna?.state.isLoopback) {
       // In loopback mode, RX signals come from the TX path
       return this.txSignalsOut.map(sig => ({
         ...sig,
@@ -198,7 +198,7 @@ export class OMTModule extends RFFrontEndModule<OMTState> {
       }));
     }
 
-    return this.rfFrontEnd_.antenna.state.rxSignalsIn;
+    return this.rfFrontEnd_.antenna?.state.rxSignalsIn ?? [];
   }
 
   private updateCrossPolIsolation_(): void {
@@ -233,7 +233,13 @@ export class OMTModule extends RFFrontEndModule<OMTState> {
    * H if |θ| < 15°, V if |θ−90°| < 15°, but reversed if OMT is toggled.
    * @param skew Antenna skew in degrees
    */
-  private updateEffectivePolarization_(skew: number): void {
+  private updateEffectivePolarization_(skew: number | null): void {
+    if (skew === null) {
+      this.state_.effectiveTxPol = null;
+      this.state_.effectiveRxPol = null;
+      return;
+    }
+
     // Normalize skew to 0-180 range
     const normalizedSkew = ((skew % 180) + 180) % 180;
 
@@ -361,11 +367,14 @@ export class OMTModule extends RFFrontEndModule<OMTState> {
       }
     }
 
-    qs('.omt-x-pol', container).textContent = this.state_.crossPolIsolation.toFixed(1);
-    if (this.state_.isFaulted) {
-      qs('.omt-x-pol', container).classList.add('pol-mismatch');
-    } else {
-      qs('.omt-x-pol', container).classList.remove('pol-mismatch');
+    const crossPolElement = qs('.omt-x-pol', container);
+    if (crossPolElement) {
+      crossPolElement.textContent = this.state_.crossPolIsolation.toFixed(1);
+      if (this.state_.isFaulted) {
+        crossPolElement.classList.add('pol-mismatch');
+      } else {
+        crossPolElement.classList.remove('pol-mismatch');
+      }
     }
   }
 }

@@ -533,7 +533,7 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
     }
 
     // Update LO frequency input
-    const loInput: HTMLInputElement = qs('.input-buc-lo', container);
+    const loInput: HTMLInputElement | null = qs('.input-buc-lo', container);
     if (loInput) {
       loInput.value = this.state_.loFrequency.toString();
     }

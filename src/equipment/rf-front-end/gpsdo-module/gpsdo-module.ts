@@ -340,20 +340,44 @@ export class GPSDOModule extends RFFrontEndModule<GPSDOState> {
 
   private initializeDomCache_() {
     const container = qs('.gpsdo-module');
+    if (!container) {
+      throw new Error('GPSDOModule: Cannot initialize DOM cache - container not found');
+    }
+
+    const lockLedElement = qs('#lock-led .led', container);
+    const gnssLedElement = qs('#gnss-led .led', container);
+    const warmLedElement = qs('#warm-led .led', container);
+    const freqAccuracyElement = qs('.gpsdo-freq-accuracy', container);
+    const stabilityElement = qs('.gpsdo-stability', container);
+    const phaseNoiseElement = qs('.gpsdo-phase-noise', container);
+    const satsElement = qs('.gpsdo-sats', container);
+    const utcElement = qs('.gpsdo-utc', container);
+    const tempElement = qs('.gpsdo-temp', container);
+    const warmupLedElement = qs('.gpsdo-warmup', container);
+    const outputsElement = qs('.gpsdo-outputs', container);
+    const holdoverElement = qs('.gpsdo-holdover', container);
+
+    if (!lockLedElement || !gnssLedElement || !warmLedElement ||
+      !freqAccuracyElement || !stabilityElement || !phaseNoiseElement ||
+      !satsElement || !utcElement || !tempElement || !warmupLedElement ||
+      !outputsElement || !holdoverElement) {
+      throw new Error('GPSDOModule: Cannot initialize DOM cache - one or more elements not found');
+    }
+
     this.domCache_ = {
       container,
-      lockLed: qs('#lock-led .led', container),
-      gnssLed: qs('#gnss-led .led', container),
-      warmLed: qs('#warm-led .led', container),
-      freqAccuracy: qs('.gpsdo-freq-accuracy', container),
-      stability: qs('.gpsdo-stability', container),
-      phaseNoise: qs('.gpsdo-phase-noise', container),
-      sats: qs('.gpsdo-sats', container),
-      utc: qs('.gpsdo-utc', container),
-      temp: qs('.gpsdo-temp', container),
-      warmup: qs('.gpsdo-warmup', container),
-      outputs: qs('.gpsdo-outputs', container),
-      holdover: qs('.gpsdo-holdover', container),
+      lockLed: lockLedElement,
+      gnssLed: gnssLedElement,
+      warmLed: warmLedElement,
+      freqAccuracy: freqAccuracyElement,
+      stability: stabilityElement,
+      phaseNoise: phaseNoiseElement,
+      sats: satsElement,
+      utc: utcElement,
+      temp: tempElement,
+      warmup: warmupLedElement,
+      outputs: outputsElement,
+      holdover: holdoverElement,
     };
   }
 

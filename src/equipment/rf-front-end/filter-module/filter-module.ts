@@ -247,12 +247,15 @@ export class IfFilterBankModule extends RFFrontEndModule<IfFilterBankState> {
       knobLabelElement.textContent = config.label;
     }
 
+    // TODO: We should be using a domCache instead of querying each time
+
     // Update insertion loss LED
-    qs('#insertion-loss-led', container).style.opacity = (this.state_.insertionLoss / 3.5).toString();
+    qs('#insertion-loss-led', container)!.style.opacity = (this.state_.insertionLoss / 3.5).toString();
 
     // Update noise floor LED
     // Color Scale from -130 dBm (green) to -40 dBm (green)
     const noiseFloorLed = qs('#noise-floor-led', container);
+    if (!noiseFloorLed) throw new Error('Noise floor LED element not found');
     const externalNoiseFloor = this.state.noiseFloor + this.rfFrontEnd_.getTotalRxGain();
     if (externalNoiseFloor <= -100) {
       noiseFloorLed.className = 'led led-green';
@@ -263,8 +266,8 @@ export class IfFilterBankModule extends RFFrontEndModule<IfFilterBankState> {
     }
 
     // Update insertion loss readout
-    qs('.filter-insertion-loss-display', container).textContent = `${this.state_.insertionLoss.toFixed(1)}`;
+    qs('.filter-insertion-loss-display', container)!.textContent = `${this.state_.insertionLoss.toFixed(1)}`;
     // Update noise floor display
-    qs('.filter-noise-floor-display', container).textContent = `${(this.state.noiseFloor + this.rfFrontEnd_.getTotalRxGain()).toFixed(0)}`;
+    qs('.filter-noise-floor-display', container)!.textContent = `${(this.state.noiseFloor + this.rfFrontEnd_.getTotalRxGain()).toFixed(0)}`;
   }
 }

@@ -134,6 +134,6 @@ export class ScenarioSelectionPage extends BasePage {
   }
 
   private handleBack_(): void {
-    Router.getInstance().navigate('home');
+    Router.getInstance().navigate('/');
   }
 }

@@ -23,15 +23,14 @@
   padding-right: 16px;
 }
 
-.header-logo-button {
-  background: transparent;
-  border: none;
-  padding: 10px 20px 10px 0;
+.header-logo-section img {
   cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
 }
 
-.header-logo-button img {
-  display: block;
+.header-logo-section img:hover {
+  transform: scale(1.08) rotate(-2deg);
+  box-shadow: 0 4px 16px rgba(186, 22, 12, 0.15);
 }
 
 .header-title-section {

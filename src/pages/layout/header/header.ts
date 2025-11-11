@@ -53,7 +53,7 @@ export class Header extends BaseElement {
     const logo = qs('.header-logo-section img');
     if (logo) {
       logo.addEventListener('click', () => {
-        Router.getInstance().navigate('/scenario-selection');
+        Router.getInstance().navigate('/');
       });
     }
   }

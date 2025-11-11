@@ -13,6 +13,50 @@
 }
 
 /* ============================================
+   WIP BANNER
+   ============================================ */
+
+.wip-banner {
+  background: linear-gradient(135deg, #4a3200 0%, #3a2600 100%);
+  border-bottom: 2px solid #ffaa00;
+  padding: 1rem 2rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.wip-banner-content {
+  max-width: 1400px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.wip-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
+}
+
+.wip-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.wip-text strong {
+  font-size: 1rem;
+  color: #ffcc66;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+.wip-description {
+  font-size: 0.875rem;
+  color: #ffddaa;
+  line-height: 1.4;
+}
+
+/* ============================================
    HERO SECTION
    ============================================ */
 
@@ -83,7 +127,7 @@
   overflow: clip;
 }
 
-.screenshot-placeholder {
+.screenshot-container {
   width: 100%;
   aspect-ratio: 16 / 10;
   border: 1px solid #444;
@@ -96,6 +140,12 @@
     inset 0 1px 2px rgba(255, 255, 255, 0.05);
   position: relative;
   overflow: hidden;
+}
+
+.screenshot-container img {
+  width: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .placeholder-text {
@@ -189,7 +239,7 @@
   text-align: center;
   color: #aaa;
   margin: 0 0 3rem 0;
-  max-width: 700px;
+  max-width: 750px;
   margin-left: auto;
   margin-right: auto;
 }
@@ -287,7 +337,7 @@
   gap: 1rem;
 }
 
-.screenshot-placeholder.large {
+.screenshot-container.large {
   width: 100%;
   aspect-ratio: 16 / 10;
 }
@@ -298,6 +348,93 @@
   color: #999;
   margin: 0;
   font-style: italic;
+}
+
+/* ============================================
+   SATELLITE DATA SECTION
+   ============================================ */
+
+.satellite-data-section {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 5rem 2rem;
+  background: transparent;
+}
+
+.satellite-info {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 2rem;
+  margin-top: 3rem;
+}
+
+.satellite-half {
+  background: linear-gradient(135deg, #2a2a2a 0%, #1f1f1f 100%);
+  border: 1px solid #444;
+  border-radius: 8px;
+  padding: 2rem;
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.4),
+    inset 0 1px 1px rgba(255, 255, 255, 0.05);
+  transition: all 0.3s ease;
+}
+
+.satellite-half:hover {
+  border-color: #555;
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.5),
+    inset 0 1px 1px rgba(255, 255, 255, 0.08);
+  transform: translateY(-2px);
+}
+
+.satellite-half h3 {
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: var(--color-text-accent);
+  margin: 0 0 1rem 0;
+  letter-spacing: -0.2px;
+}
+
+.satellite-half p {
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: #ccc;
+  margin: 0 0 1.5rem 0;
+}
+
+.satellite-half ul {
+  list-style: none;
+  padding: 0;
+  margin: 1.5rem 0 0 0;
+}
+
+.satellite-half ul li {
+  position: relative;
+  padding-left: 1.5rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.9rem;
+  color: #bbb;
+  line-height: 1.5;
+}
+
+.satellite-half ul li::before {
+  content: '▸';
+  position: absolute;
+  left: 0;
+  color: var(--color-primary);
+  font-weight: bold;
+}
+
+.satellite-data-section a {
+  color: var(--color-primary);
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+.satellite-data-section a:hover {
+  color: var(--color-primary-light);
+  text-decoration: underline;
 }
 
 /* ============================================

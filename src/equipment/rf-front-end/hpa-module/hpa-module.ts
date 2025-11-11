@@ -32,18 +32,21 @@ export interface HPAState {
 export class HPAModule extends RFFrontEndModule<HPAState> {
   private static instance_: HPAModule;
 
-  protected readonly powerSwitch_: PowerSwitch;
+  // HPA characteristics
+  private readonly p1db_ = 50 as dBm; // dBm (100W) output power at 1dB compression point
+  private readonly maxOutputPower_ = 53 as dBm; // dBm (200W) maximum output power
+  private readonly minBackOffDb_ = 0;
+  private readonly maxBackOffDb_ = 30;
+  private readonly thermalEfficiency_ = 0.5; // 50% typical for SSPA
+
+  // UI Components
   private readonly backOffKnob: RotaryKnob;
+  private readonly hpaSwitch_: SecureToggleSwitch;
+  protected readonly powerSwitch_: PowerSwitch;
+
+  // Signals
   rfSignalsIn: RfSignal[] = [];
   outputSignals: RfSignal[] = [];
-
-  // HPA characteristics
-  private readonly p1db = 50 as dBm; // dBm (100W) output power at 1dB compression point
-  private readonly maxOutputPower = 53 as dBm; // dBm (200W) maximum output power
-  private readonly minBackOffDb = 0;
-  private readonly maxBackOffDb = 30;
-  private readonly thermalEfficiency = 0.5; // 50% typical for SSPA
-  hpaSwitch: SecureToggleSwitch;
 
   /**
    * Get default state for HPA module
@@ -82,13 +85,13 @@ export class HPAModule extends RFFrontEndModule<HPAState> {
       false,
     );
 
-    this.hpaSwitch = SecureToggleSwitch.create(`hpa-switch-${this.rfFrontEnd_.state.uuid}`, this.state.isHpaSwitchEnabled, false);
+    this.hpaSwitch_ = SecureToggleSwitch.create(`hpa-switch-${this.rfFrontEnd_.state.uuid}`, this.state.isHpaSwitchEnabled, false);
 
     this.backOffKnob = RotaryKnob.create(
       `${this.uniqueId}-backoff-knob`,
       this.state_.backOff,
-      this.minBackOffDb,
-      this.maxBackOffDb,
+      this.minBackOffDb_,
+      this.maxBackOffDb_,
       0.5,
       (value: number) => {
         this.state_.backOff = value;
@@ -110,7 +113,7 @@ export class HPAModule extends RFFrontEndModule<HPAState> {
               ${this.powerSwitch_.html}
             </div>
             <div class="hpa-switch">
-              ${this.hpaSwitch.html}
+              ${this.hpaSwitch_.html}
             </div>
             <div class="control-group">
               <label>BACK-OFF (dB)</label>
@@ -147,7 +150,7 @@ export class HPAModule extends RFFrontEndModule<HPAState> {
     }
 
     // HPA switch
-    this.hpaSwitch.addEventListeners(this.toggleHpa_.bind(this));
+    this.hpaSwitch_.addEventListeners(this.toggleHpa_.bind(this));
 
     // Enable switch handler
     this.powerSwitch_.addEventListeners((isEnabled: boolean) => {
@@ -193,7 +196,7 @@ export class HPAModule extends RFFrontEndModule<HPAState> {
   private updateOutputPower_(): void {
     if (this.state_.isPowered && this.state_.isHpaEnabled) {
       // Calculate output power: P1dB - back-off
-      this.state_.outputPower = this.p1db - this.state_.backOff as dBm;
+      this.state_.outputPower = this.p1db_ - this.state_.backOff as dBm;
     } else {
       this.state_.outputPower = -90 as dBm; // dBm (effectively off)
     }
@@ -206,7 +209,7 @@ export class HPAModule extends RFFrontEndModule<HPAState> {
     if (this.state_.isPowered) {
       // Calculate dissipated power based on efficiency, outputPower is in dBm
       const powerWatts = Math.pow(10, (this.state_.outputPower - 30) / 10); // Convert dBm to Watts
-      const dissipatedPower = powerWatts * (1 - this.thermalEfficiency);
+      const dissipatedPower = powerWatts * (1 - this.thermalEfficiency_);
 
       // Simple thermal model: ambient + thermal rise
       this.state_.temperature = 25 + (dissipatedPower * 10);
@@ -264,7 +267,7 @@ export class HPAModule extends RFFrontEndModule<HPAState> {
     }
 
     // Ideal linear gain would bring signal to P1dB - backOff
-    const targetOutputDbm = this.p1db - this.state_.backOff;
+    const targetOutputDbm = this.p1db_ - this.state_.backOff;
     let linearGain = targetOutputDbm - inputPowerDbm;
 
     // Maximum gain limit (e.g., 50 dB typical for HPA)
@@ -377,7 +380,7 @@ export class HPAModule extends RFFrontEndModule<HPAState> {
       imdReadout.textContent = `${this.state_.imdLevel}`;
     }
 
-    this.hpaSwitch.sync(this.state.isHpaSwitchEnabled);
+    this.hpaSwitch_.sync(this.state.isHpaSwitchEnabled);
 
     // Sync UI components
     this.powerSwitch_.sync(this.state_.isPowered);
@@ -408,7 +411,7 @@ export class HPAModule extends RFFrontEndModule<HPAState> {
    */
   private renderPowerMeter_(powerDbW: dBW): string {
     // Convert dBW to percentage (1W = 0 dBW, 10W = 10 dBW for scale)
-    const percentage = Math.max(0, Math.min(100, (powerDbW / (this.maxOutputPower - 30) as dBW) * 100));
+    const percentage = Math.max(0, Math.min(100, (powerDbW / (this.maxOutputPower_ - 30) as dBW) * 100));
 
     const segments = [];
     for (let i = 0; i < 5; i++) {

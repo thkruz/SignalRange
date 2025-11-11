@@ -24,9 +24,12 @@ export interface LNBState extends RFFrontEndModuleState {
 export class LNBModule extends RFFrontEndModule<LNBState> {
   private static instance_: LNBModule;
 
+  // UI Components
+  private readonly loKnob_: RotaryKnob;
+
+  // Signals
   postLNASignals: RfSignal[] = [];
   ifSignals: IfSignal[] = [];
-  loKnob_: any;
 
   /**
    * Get default state for LNB module

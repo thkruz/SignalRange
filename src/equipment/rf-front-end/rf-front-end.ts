@@ -54,10 +54,8 @@ export class RFFrontEnd extends BaseEquipment {
   couplerModule: CouplerModule;
   gpsdoModule: GPSDOModule;
 
-  // Antenna reference
+  // References to connected equipment
   antenna: Antenna | null = null;
-
-  // Transmitter reference
   transmitters: Transmitter[] = [];
 
   constructor(parentId: string, teamId: number = 1, serverId: number = 1) {
@@ -113,10 +111,18 @@ export class RFFrontEnd extends BaseEquipment {
     this.checkForAlarms_();
   }
 
+  /**
+   * RF Frontend Modules need a reference to connected Antennas to simulate
+   * signal paths. Use this to wire the antenna after it is created.
+   */
   connectAntenna(antenna: Antenna): void {
     this.antenna = antenna;
   }
 
+  /**
+   * RF Frontend Modules need a reference to connected Transmitters to simulate
+   * loopback mode. Use this to wire the transmitters after they are created.
+   */
   connectTransmitter(transmitter: Transmitter): void {
     this.transmitters.push(transmitter);
   }

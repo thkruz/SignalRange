@@ -91,12 +91,17 @@ export interface GPSDOState {
 export class GPSDOModule extends RFFrontEndModule<GPSDOState> {
   private static instance_: GPSDOModule;
 
-  protected readonly powerSwitch_: PowerSwitch;
-  private readonly gnssSwitch_: ToggleSwitch;
+  // GPSDO characteristics - TODO: These should not be null
   private warmupInterval_: number | null = null;
   private stabilityInterval_: number | null = null;
   private holdoverInterval_: number | null = null;
-  domCache_: any;
+
+  // UI Components
+  private readonly gnssSwitch_: ToggleSwitch;
+  protected readonly powerSwitch_: PowerSwitch;
+
+  // TODO: Implement DOM caching on other modules
+  private domCache_: Record<string, HTMLElement> = {};
 
   /**
    * Get default state for GPSDO module

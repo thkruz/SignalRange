@@ -49,7 +49,11 @@ export interface IfFilterBankState {
 
 export class IfFilterBankModule extends RFFrontEndModule<IfFilterBankState> {
   private static instance_: IfFilterBankModule;
+
+  // UI Components
   private readonly bandwidthKnob_: RotaryKnob;
+
+  // Signals
   outputSignals: IfSignal[] = [];
 
   /**

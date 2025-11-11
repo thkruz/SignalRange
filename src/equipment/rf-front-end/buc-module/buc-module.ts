@@ -70,9 +70,12 @@ export interface BUCState extends RFFrontEndModuleState {
 export class BUCModule extends RFFrontEndModule<BUCState> {
   private static instance_: BUCModule;
 
-  private readonly loKnob_: RotaryKnob;
+  // UI Components
   private readonly muteSwitch_: ToggleSwitch;
+  private readonly loKnob_: RotaryKnob;
   private readonly loopbackSwitch_: ToggleSwitch;
+
+  // Signals
   outputSignals: RfSignal[] = [];
 
   /**

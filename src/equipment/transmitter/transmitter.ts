@@ -65,7 +65,7 @@ export class Transmitter extends BaseEquipment {
         modem_number: i,
         antenna_id: 1,
         ifSignal: {
-          id: `${this.uuid}-${i}-default`,
+          signalId: `${this.uuid}-${i}-default`,
           serverId: serverId,
           noradId: 1,
           frequency: 1000 * 1e6 as IfFrequency, // MHz (L-Band)

@@ -2,8 +2,9 @@ import { Satellite } from '@app/equipment/satellite/satellite';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
 import { Equipment } from '@app/pages/sandbox/equipment';
-import { Milliseconds } from 'ootk';
-import { dBm, FECType, Hertz, ModulationType, RfFrequency, RfSignal, SignalOrigin } from './../types';
+import { ScenarioManager } from '@app/scenario-manager';
+import { Degrees, Milliseconds } from 'ootk';
+import { RfSignal } from './../types';
 
 export class SimulationManager {
   private static instance_: SimulationManager;
@@ -18,25 +19,7 @@ export class SimulationManager {
   userSignals: RfSignal[] = [];
 
   private constructor() {
-    this.satellites = [
-      new Satellite(1, [
-        {
-          id: '1',
-          serverId: 1,
-          noradId: 1,
-          /** Must be the uplinkl to match the antenna in simulation */
-          frequency: 5935e6 as RfFrequency,
-          polarization: 'H',
-          power: 40 as dBm, // 10 W
-          bandwidth: 10e6 as Hertz,
-          modulation: '8QAM' as ModulationType, // We need about 7 C/N to support 8QAM
-          fec: '3/4' as FECType,
-          feed: 'red-1.mp4',
-          isDegraded: false,
-          origin: SignalOrigin.SATELLITE_RX
-        }
-      ])
-    ];
+    this.satellites = ScenarioManager.getInstance().settings.satellites;
 
     this.satelliteSignals = this.satellites.flatMap(sat => sat.txSignal);
 
@@ -75,8 +58,17 @@ export class SimulationManager {
     EventBus.getInstance().emit(Events.SYNC);
   }
 
-  getSatelliteByNoradId(noradId: number): Satellite | undefined {
+  getSatByNoradId(noradId: number): Satellite | undefined {
     return this.satellites.find(sat => sat.noradId === noradId);
+  }
+
+  getSatsByAzEl(az: Degrees, el: Degrees): Satellite[] {
+    return this.satellites.filter((sat) => {
+      // If +/- 2 degrees of az/el, consider it a match since the receive side will have more filtering
+      const azDiff = Math.abs(sat.az - az);
+      const elDiff = Math.abs(sat.el - el);
+      return azDiff <= 2 && elDiff <= 2;
+    });
   }
 
   static destroy(): void {

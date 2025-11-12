@@ -31,7 +31,6 @@ export class App extends BaseElement {
 
     this.instance_ = new App();
     window.signalRange = this.instance_;
-    SimulationManager.getInstance();
     this.instance_.init_();
 
     return App.instance_;

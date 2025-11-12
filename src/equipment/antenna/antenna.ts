@@ -13,6 +13,7 @@ import { SimulationManager } from "../../simulation/simulation-manager";
 import { dBm, Hertz, RfSignal, SignalOrigin } from "../../types";
 import { AlarmStatus, BaseEquipment } from '../base-equipment';
 import { RFFrontEnd } from "../rf-front-end/rf-front-end";
+import { Satellite } from "../satellite/satellite";
 import { Transmitter } from "../transmitter/transmitter";
 import { ANTENNA_CONFIG_KEYS, ANTENNA_CONFIGS, AntennaConfig } from "./antenna-configs";
 import './antenna.css';
@@ -23,6 +24,10 @@ import './antenna.css';
 const GEO_SATELLITE_DISTANCE_KM = 38000; // Approximate slant range to GEO satellite (km)
 
 export interface AntennaState {
+  /** Current pointing elevation angle */
+  elevation: Degrees;
+  /** Current pointing azimuth angle without normalization */
+  azimuth: Degrees;
   noiseFloor: number;
   isPowered: boolean;
   /** Which antenna is this */
@@ -31,14 +36,14 @@ export interface AntennaState {
   teamId: number;
   /** Which server is this antenna connected to */
   serverId: number;
-  /** Which satellite is this antenna targeting */
-  noradId: number;
   /** Antenna skew between -90 and 90 degrees */
   skew: Degrees;
   /** is loopback enabled */
   isLoopback: boolean;
   /** is antenna locked on a satellite */
   isLocked: boolean;
+  /** is auto-tracking switch up */
+  isAutoTrackSwitchUp: boolean;
   /** is auto-tracking enabled */
   isAutoTrackEnabled: boolean;
   /** is antenna operational */
@@ -79,6 +84,8 @@ export class Antenna extends BaseEquipment {
   private readonly loopbackSwitch_: ToggleSwitch;
   private readonly autoTrackSwitch_: ToggleSwitch;
   private readonly helpBtn_: HelpButton;
+  azKnob_: RotaryKnob;
+  elKnob_: RotaryKnob;
 
   constructor(
     parentId: string,
@@ -96,11 +103,13 @@ export class Antenna extends BaseEquipment {
       uuid: this.uuid,
       teamId: this.teamId,
       serverId: serverId,
-      noradId: 1,
       skew: 0 as Degrees,
+      elevation: 0 as Degrees,
+      azimuth: 0 as Degrees,
       isLoopback: false,
-      isLocked: true,
-      isAutoTrackEnabled: true,
+      isLocked: false,
+      isAutoTrackSwitchUp: false,
+      isAutoTrackEnabled: false,
       isOperational: true,
       isPowered: true,
       rxSignalsIn: [],
@@ -109,7 +118,7 @@ export class Antenna extends BaseEquipment {
 
     this.autoTrackSwitch_ = ToggleSwitch.create(
       `antenna-auto-track-${this.state.uuid}`,
-      this.state.isAutoTrackEnabled,
+      this.state.isAutoTrackSwitchUp,
       false
     );
     this.powerSwitch_ = PowerSwitch.create(`antenna-power-switch-${this.state.uuid}`, this.state.isPowered);
@@ -120,6 +129,22 @@ export class Antenna extends BaseEquipment {
       90,
       1,
       (value) => this.handleSkewChange_(value)
+    );
+    this.azKnob_ = RotaryKnob.create(
+      `antenna-az-knob-${this.state.uuid}`,
+      this.state.azimuth,
+      -270,
+      270,
+      0.1,
+      (value) => this.handleAzimuthChange_(value)
+    );
+    this.elKnob_ = RotaryKnob.create(
+      `antenna-el-knob-${this.state.uuid}`,
+      this.state.elevation,
+      -5,
+      90,
+      0.1,
+      (value) => this.handleElevationChange_(value)
     );
 
     this.loopbackSwitch_ = ToggleSwitch.create(
@@ -175,7 +200,7 @@ export class Antenna extends BaseEquipment {
           </div>
 
           <div class="antenna-config">
-            <div class="config-row antenna-specs">
+            <div class="config-row antenna-specs" style="display: none;">
               <label>Specifications</label>
               <div class="spec-details">
                 <span>Diameter: ${this.config.diameter}m</span>
@@ -185,7 +210,7 @@ export class Antenna extends BaseEquipment {
               </div>
             </div>
 
-            <div class="config-row antenna-rf-metrics">
+            <div class="config-row antenna-rf-metrics" style="display: none;">
               <label>RF Performance</label>
               <div class="spec-details">
                 <span class="rf-metric-freq">Freq: -- GHz</span>
@@ -198,14 +223,13 @@ export class Antenna extends BaseEquipment {
             </div>
 
             <div class="config-row">
-              <label>Satellite</label>
-              <select class="input-sat-target" data-param="noradId">
-                <option value="28912" ${this.state.noradId === 28912 ? 'selected' : ''}>METEOSAT-9 (MSG-2)</option>
-                <option value="1" ${this.state.noradId === 1 ? 'selected' : ''}>ARKE 3G</option>
-                <option value="2" ${this.state.noradId === 2 ? 'selected' : ''}>AURORA 2B</option>
-                <option value="3" ${this.state.noradId === 3 ? 'selected' : ''}>AUXO STAR</option>
-                <option value="4" ${this.state.noradId === 4 ? 'selected' : ''}>ENYO</option>
-              </select>
+              <label>Azimuth</label>
+              ${this.azKnob_.html}
+            </div>
+
+            <div class="config-row">
+              <label>Elevation</label>
+              ${this.elKnob_.html}
             </div>
 
             <div class="config-row">
@@ -237,7 +261,6 @@ export class Antenna extends BaseEquipment {
     this.domCache['parent'] = parentDom;
     this.domCache['status'] = qs('.equipment-case-status-label', parentDom);
     this.domCache['led'] = qs('.led', parentDom);
-    this.domCache['inputSatTarget'] = qs('.input-sat-target', parentDom);
     this.domCache['antLoopbackLight'] = qs('#ant-loopback-light', parentDom);
     this.domCache['antAutoTrackLight'] = qs('#ant-auto-track-light', parentDom);
     this.domCache['bottomStatusBar'] = qs('.bottom-status-bar', parentDom);
@@ -253,8 +276,6 @@ export class Antenna extends BaseEquipment {
   }
 
   protected addListeners_(): void {
-    this.domCache['inputSatTarget'].addEventListener('change', this.handleSatTargetChange_.bind(this));
-
     this.loopbackSwitch_?.addEventListeners(this.toggleLoopback_.bind(this));
     this.autoTrackSwitch_?.addEventListeners(this.toggleAutoTrack_.bind(this));
     this.powerSwitch_.addEventListeners(this.togglePower_.bind(this));
@@ -277,7 +298,7 @@ export class Antenna extends BaseEquipment {
       alarms.push({ severity: 'warning', message: 'ACQUIRING LOCK...' });
     }
 
-    if (!this.state.isLocked && !this.state.isAutoTrackEnabled && !this.state.isLoopback) {
+    if (!this.state.rxSignalsIn && !this.state.isLocked && !this.state.isAutoTrackEnabled && !this.state.isLoopback) {
       alarms.push({ severity: 'warning', message: 'DISCONNECTED' });
     }
 
@@ -294,6 +315,10 @@ export class Antenna extends BaseEquipment {
     }
 
     // No signal reception warning
+    if (!this.state.isLocked && this.state.isAutoTrackSwitchUp && !this.state.isAutoTrackEnabled) {
+      alarms.push({ severity: 'warning', message: 'AUTO TRACK FAILED' });
+    }
+
     if (this.state.isLocked && !this.state.isLoopback && this.state.rxSignalsIn.length === 0) {
       alarms.push({ severity: 'warning', message: 'NO SIGNALS RECEIVED' });
     }
@@ -305,10 +330,28 @@ export class Antenna extends BaseEquipment {
 
     // Success conditions
     if (this.state.isLocked && !this.state.isLoopback) {
-      alarms.push({ severity: 'success', message: `LOCKED ON SATELLITE ${this.state.noradId}` });
+      const strongestSignal = SimulationManager.getInstance()
+        .getSatsByAzEl(this.normalizedAzimuth, this.state.elevation)
+        .flatMap(sat => sat.txSignal)
+        .reduce((prev, curr) => (prev.power > curr.power ? prev : curr), { power: -Infinity } as RfSignal).noradId;
+
+      alarms.push({ severity: 'success', message: `LOCKED ON SATELLITE ${SimulationManager.getInstance().isDeveloperMode ? strongestSignal : ''}` });
+    }
+
+    if (this.rxSignals.flatMap(sat => sat.signal).length > 0 && !this.state.isLoopback && !this.state.isAutoTrackEnabled) {
+      alarms.push({ severity: 'info', message: `${this.rxSignals.flatMap(sat => sat.signal).length} SIGNAL(S) RECEIVED` });
+    }
+
+    if (this.state.isPowered && this.state.isOperational && !this.state.isLoopback && !this.state.isAutoTrackEnabled) {
+      alarms.push({ severity: 'info', message: `Manual Tracking Enabled` });
     }
 
     return alarms;
+  }
+
+  get normalizedAzimuth(): Degrees {
+    // Normalize azimuth between 0 and 359.9999 degrees
+    return ((this.state.azimuth % 360) + 360) % 360 as Degrees;
   }
 
   private updateBottomStatusBar_(): void {
@@ -378,24 +421,20 @@ export class Antenna extends BaseEquipment {
     this.state.skew = value as Degrees;
   }
 
-  private handleSatTargetChange_(e: Event): void {
-    const target = e.target as HTMLInputElement | HTMLSelectElement;
-    const param = target.dataset.param ?? null;
-    if (!param) return;
-
-    const parsedNoradId = Number.parseInt(target.value);
-
-    if (isNaN(parsedNoradId)) {
-      throw new TypeError(`Invalid NORAD ID: ${target.value}`);
-    }
-
-    if (this.state.noradId !== parsedNoradId) {
+  private handleAzimuthChange_(value: number): void {
+    if (value.toFixed(2) !== this.state.azimuth.toFixed(2)) {
       this.state.isLocked = false;
       this.state.isAutoTrackEnabled = false;
     }
+    this.state.azimuth = value as Degrees;
+  }
 
-    this.state.noradId = parsedNoradId;
-    this.syncDomWithState_();
+  private handleElevationChange_(value: number): void {
+    if (value.toFixed(2) !== this.state.elevation.toFixed(2)) {
+      this.state.isLocked = false;
+      this.state.isAutoTrackEnabled = false;
+    }
+    this.state.elevation = value as Degrees;
   }
 
   private toggleLoopback_(isSwitchUp: boolean): void {
@@ -418,19 +457,38 @@ export class Antenna extends BaseEquipment {
       return;
     }
 
+    this.state.isAutoTrackSwitchUp = isSwitchUp;
     this.state.isAutoTrackEnabled = isSwitchUp;
+    const sats = SimulationManager.getInstance().getSatsByAzEl(this.normalizedAzimuth, this.state.elevation);
+    const strongestSignal = sats
+      .flatMap(sat => sat.txSignal)
+      .reduce((prev, curr) => (prev.power > curr.power ? prev : curr), { power: -Infinity } as RfSignal);
 
-    if (isSwitchUp) {
+    // hardcoded threshold for lock acquisition - TODO: make configurable
+    const LOCK_THRESHOLD_DBM = -100;
+
+    if (isSwitchUp && strongestSignal.power > LOCK_THRESHOLD_DBM) {
       SoundManager.getInstance().play(Sfx.SMALL_MOTOR);
+      let differenceBetweenAzAndSatAz = Math.abs(this.state.azimuth - SimulationManager.getInstance().getSatByNoradId(strongestSignal.noradId).az);
+
+      const sat = SimulationManager.getInstance().getSatByNoradId(strongestSignal.noradId);
+
+      if (differenceBetweenAzAndSatAz > 180) {
+        this.state.azimuth = (sat.az + 360) as Degrees;
+      } else {
+        this.state.azimuth = sat.az;
+      }
+      this.state.elevation = sat.el;
       // Simulate lock acquisition delay
       setTimeout(() => {
+
         this.state.isLocked = true;
         this.updateSignals_();
         this.syncDomWithState_();
-      }, 7000); // 7 second delay to acquire lock
+      }, 3000); // 3 second delay to acquire lock
     } else {
+      this.state.isAutoTrackEnabled = false;
       this.state.isLocked = false;
-      this.state.rxSignalsIn = [];
     }
 
     this.updateSignals_();
@@ -745,10 +803,14 @@ export class Antenna extends BaseEquipment {
    * Apply propagation effects to a received signal
    * Uses realistic RF physics including Ruze, blockage, polarization, and atmospheric effects
    */
-  private applyPropagationEffects_(signal: RfSignal): RfSignal {
+  private applyPropagationEffects_(satellite: Satellite, signal: RfSignal): RfSignal {
     const f_Hz = signal.frequency as number;
-    const elev_deg = 45; // Assume 45° elevation for GEO satellite (can be made dynamic later)
-    const offAxis_deg = 0; // Assume perfect pointing for now (can add de-pointing later)
+    const elev_deg = this.state.elevation;
+
+    // Calculate off-axis angle between antenna pointing and satellite position
+    const deltaAz = satellite.az - this.normalizedAzimuth;
+    const deltaEl = satellite.el - this.state.elevation;
+    const offAxis_deg = Math.hypot(deltaAz, deltaEl);
 
     // Calculate free-space path loss (downlink from GEO satellite to ground)
     const fspl = this.calculateFreeSpacePathLoss_(signal.frequency, GEO_SATELLITE_DISTANCE_KM);
@@ -831,8 +893,8 @@ export class Antenna extends BaseEquipment {
   }
 
   private updateSignals_(): void {
-    // Can't receive signals if Not locked or Not operational
-    if (!this.state.isLocked || !this.state.isOperational) {
+    // Can't receive signals if Not powered or Not operational
+    if (!this.state.isPowered || !this.state.isOperational) {
       this.state.rxSignalsIn = [];
       return;
     }
@@ -845,7 +907,7 @@ export class Antenna extends BaseEquipment {
   private updateRxSignals_() {
     // Get visible signals from the satellite and apply propagation effects
     let receivedSignals = this.rxSignals
-      .map(signal => this.applyPropagationEffects_(signal))
+      .map(({ sat, signal }) => this.applyPropagationEffects_(sat, signal))
       .filter(signal => this.isSignalAboveNoiseFloor_(signal.power));
 
     // Apply interference and adjacency logic
@@ -859,7 +921,7 @@ export class Antenna extends BaseEquipment {
       let isBlocked = false;
 
       for (const other of receivedSignals) {
-        if (other.id === signal.id) continue;
+        if (other.signalId === signal.signalId) continue;
 
         const otherHalfBandwidth = other.bandwidth * 0.5;
         const otherLowerBound = other.frequency - otherHalfBandwidth;
@@ -901,27 +963,48 @@ export class Antenna extends BaseEquipment {
   }
 
   private updateTxSignals_() {
-    const sat = SimulationManager.getInstance().getSatelliteByNoradId(this.state.noradId);
+    const sats = SimulationManager.getInstance().getSatsByAzEl(this.normalizedAzimuth, this.state.elevation);
 
     // Clear any old signals
-    if (sat) {
-      sat.rxSignal = [];
+    if (sats.length > 0) {
+      for (const sat of sats) {
+        sat.rxSignal = [];
 
-      // Check transmitters for signals being sent to this antenna
-      for (const sig of this.txSignalsOut) {
-        if (!this.state.isLoopback) {
-          // Check if this signal already exists on the satellite
-          sat.rxSignal.push({
-            ...sig,
-            origin: SignalOrigin.ANTENNA_TX,
-          });
+        // Check transmitters for signals being sent to this antenna
+        for (const sig of this.txSignalsOut) {
+          if (!this.state.isLoopback) {
+            // Check if this signal already exists on the satellite
+            sat.rxSignal.push({
+              ...sig,
+              origin: SignalOrigin.ANTENNA_TX,
+            });
+          }
         }
       }
     }
   }
 
-  get rxSignals(): RfSignal[] {
-    return SimulationManager.getInstance().getSatelliteByNoradId(this.state.noradId)?.txSignal ?? [];
+  get rxSignals(): {
+    sat: Satellite,
+    signal: RfSignal,
+  }[] {
+
+    const satellites = SimulationManager.getInstance().satellites.filter((sat) => {
+      if (
+        Math.abs(sat.az - this.normalizedAzimuth) <= 1 &&
+        Math.abs(sat.el - this.state.elevation) <= 1
+      ) {
+        return true;
+      }
+      return false;
+    });
+
+    return satellites.flatMap((sat) => {
+      return sat.txSignal.map((signal) => ({
+        sat,
+        signal,
+      }));
+    });
   }
 
   attachRfFrontEnd(rfFrontEnd: RFFrontEnd): void {
@@ -942,15 +1025,15 @@ export class Antenna extends BaseEquipment {
     this.loopbackSwitch_.sync(this.state.isLoopback);
 
     // Update inputs
-    (this.domCache['inputSatTarget'] as HTMLSelectElement).value = this.state.noradId.toString();
-
     this.domCache['antLoopbackLight'].className = `indicator-light ${this.state.isLoopback ? 'on' : 'off'}`;
     this.domCache['antAutoTrackLight'].className = `indicator-light ${this.state.isAutoTrackEnabled ? 'on' : 'off'}`;
 
     // Update skew knob
     this.skewKnob_.sync(this.state.skew);
+    this.azKnob_.sync(this.state.azimuth);
+    this.elKnob_.sync(this.state.elevation);
 
-    this.autoTrackSwitch_.sync(this.state.isAutoTrackEnabled);
+    this.autoTrackSwitch_.sync(this.state.isAutoTrackSwitchUp);
 
     // Update RF metrics display
     if (this.state.rfMetrics) {

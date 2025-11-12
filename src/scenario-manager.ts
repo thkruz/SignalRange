@@ -1,4 +1,5 @@
 import { ANTENNA_CONFIG_KEYS } from './equipment/antenna/antenna-configs';
+import { Satellite } from './equipment/satellite/satellite';
 import { scenario1Data } from './scenarios/scenario1';
 import { scenario2Data } from "./scenarios/scenario2";
 import { scenario3Data } from './scenarios/scenario3';
@@ -12,6 +13,7 @@ export interface SimulationSettings {
   receivers: number;
   /** Optional HTML override for complex layouts */
   layout?: string;
+  satellites: Satellite[];
 }
 
 export class ScenarioManager {
@@ -36,6 +38,7 @@ export class ScenarioManager {
       spectrumAnalyzers: 2,
       transmitters: 2,
       receivers: 2,
+      satellites: [],
     };
   }
 
@@ -55,6 +58,7 @@ export class ScenarioManager {
 
 export interface ScenarioData {
   id: string;
+  isDisabled?: boolean;
   url: string;
   imageUrl: string;
   number: number;

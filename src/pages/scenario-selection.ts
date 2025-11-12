@@ -46,34 +46,39 @@ export class ScenarioSelectionPage extends BasePage {
 
   private renderScenarioCard_(scenario: ScenarioData): string {
     return html`
-      <div class="scenario-card" data-scenario-url="${scenario.url}">
-        <div class="scenario-card-header">
-          <div class="scenario-number">Scenario ${scenario.number}</div>
-          <div class="scenario-badges">
+      <div class="scenario-card ${scenario.isDisabled ? 'disabled' : ''}" data-scenario-url="${scenario.url}">
+      ${scenario.isDisabled ? `
+        <div class="coming-soon-banner">Coming Soon</div>
+      ` : ''}
+        <div class="scenario-card-inner">
+          <div class="scenario-card-header">
+            <div class="scenario-number">Scenario ${scenario.number}</div>
+            <div class="scenario-badges">
             <span class="badge duration">${scenario.duration}</span>
             <span class="badge difficulty-${scenario.difficulty}">${scenario.difficulty}</span>
+            </div>
           </div>
-        </div>
 
-        <div class="scenario-image">
-          <img src="/images/scenarios/${scenario.imageUrl}" alt="${scenario.title} Image"/>
-        </div>
+          <div class="scenario-image">
+            <img src="/images/scenarios/${scenario.imageUrl}" alt="${scenario.title} Image"/>
+          </div>
 
-        <div class="scenario-card-body">
-          <h2 class="scenario-title">${scenario.title}</h2>
-          <div class="scenario-subtitle">${scenario.subtitle}</div>
-          <div class="scenario-mission-type">${scenario.missionType}</div>
-          <p class="scenario-description">${scenario.description}</p>
+          <div class="scenario-card-body">
+            <h2 class="scenario-title">${scenario.title}</h2>
+            <div class="scenario-subtitle">${scenario.subtitle}</div>
+            <div class="scenario-mission-type">${scenario.missionType}</div>
+            <p class="scenario-description">${scenario.description}</p>
 
-          <div class="scenario-equipment">
+            <div class="scenario-equipment">
             <div class="scenario-equipment-title">Equipment Configuration</div>
             <div class="equipment-list">
               ${scenario.equipment.map(item => `
-                <div class="equipment-item">
-                  <div class="equipment-icon"></div>
-                  <span>${item}</span>
-                </div>
+              <div class="equipment-item">
+                <div class="equipment-icon"></div>
+                <span>${item}</span>
+              </div>
               `).join('')}
+            </div>
             </div>
           </div>
         </div>
@@ -108,7 +113,7 @@ export class ScenarioSelectionPage extends BasePage {
     const card = (event.currentTarget as HTMLElement);
     const scenarioUrl = card.dataset.scenarioUrl;
 
-    if (!scenarioUrl) return;
+    if (!scenarioUrl || card.classList.contains('disabled')) return;
 
     // Remove selection from all cards
     const allCards = qsa('.scenario-card', this.dom_);

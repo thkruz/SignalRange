@@ -4,7 +4,7 @@ import { FECType, Hertz, ModulationType, RfFrequency, RfSignal } from "../types"
 
 const meteoSat9Signals: RfSignal[] = [
   {
-    id: 'GEOS & R E-S',
+    signalId: 'GEOS & R E-S',
     serverId: 1,
     noradId: 28912,
     frequency: 406.05e6 as RfFrequency,
@@ -19,7 +19,7 @@ const meteoSat9Signals: RfSignal[] = [
     isDegraded: false,
   },
   {
-    id: 'GEOS & R S-E',
+    signalId: 'GEOS & R S-E',
     serverId: 1,
     noradId: 28912,
     frequency: 1544.5e6 as RfFrequency,
@@ -34,7 +34,7 @@ const meteoSat9Signals: RfSignal[] = [
     isDegraded: false,
   },
   {
-    id: 'TC & Ranging E-S',
+    signalId: 'TC & Ranging E-S',
     serverId: 1,
     noradId: 28912,
     frequency: 2067.731e6 as RfFrequency,
@@ -49,7 +49,7 @@ const meteoSat9Signals: RfSignal[] = [
     isDegraded: false,
   },
   {
-    id: 'TM S-E',
+    signalId: 'TM S-E',
     serverId: 1,
     noradId: 28912,
     frequency: 2245.5e6 as RfFrequency,
@@ -64,7 +64,7 @@ const meteoSat9Signals: RfSignal[] = [
     isDegraded: false,
   },
   {
-    id: 'PGS S-E',
+    signalId: 'PGS S-E',
     serverId: 1,
     noradId: 28912,
     frequency: 1686.83e6 as RfFrequency,
@@ -79,7 +79,7 @@ const meteoSat9Signals: RfSignal[] = [
     isDegraded: false,
   },
   {
-    id: 'HRIT E-S',
+    signalId: 'HRIT E-S',
     serverId: 1,
     noradId: 28912,
     frequency: 2105.65e6 as RfFrequency,
@@ -94,7 +94,7 @@ const meteoSat9Signals: RfSignal[] = [
     isDegraded: false,
   },
   {
-    id: 'HRIT S-E',
+    signalId: 'HRIT S-E',
     serverId: 1,
     noradId: 28912,
     frequency: 1695.15e6 as RfFrequency,
@@ -109,7 +109,7 @@ const meteoSat9Signals: RfSignal[] = [
     isDegraded: false,
   },
   {
-    id: 'LRIT E-S',
+    signalId: 'LRIT E-S',
     serverId: 1,
     noradId: 28912,
     frequency: 2101.5e6 as RfFrequency,
@@ -124,7 +124,7 @@ const meteoSat9Signals: RfSignal[] = [
     isDegraded: false,
   },
   {
-    id: 'LRIT S-E',
+    signalId: 'LRIT S-E',
     serverId: 1,
     noradId: 28912,
     frequency: 1691e6 as RfFrequency,
@@ -139,7 +139,7 @@ const meteoSat9Signals: RfSignal[] = [
     isDegraded: false,
   },
   {
-    id: 'DCS (international) E-S',
+    signalId: 'DCS (international) E-S',
     serverId: 1,
     noradId: 28912,
     frequency: 402e6 as RfFrequency,
@@ -154,7 +154,7 @@ const meteoSat9Signals: RfSignal[] = [
     isDegraded: false,
   },
   {
-    id: 'DCS (regional) E-S',
+    signalId: 'DCS (regional) E-S',
     serverId: 1,
     noradId: 28912,
     frequency: 402.1e6 as RfFrequency,
@@ -169,7 +169,7 @@ const meteoSat9Signals: RfSignal[] = [
     isDegraded: false,
   },
   {
-    id: 'DCS S-E',
+    signalId: 'DCS S-E',
     serverId: 1,
     noradId: 28912,
     frequency: 1675.281e6 as RfFrequency,
@@ -188,7 +188,7 @@ const meteoSat9Signals: RfSignal[] = [
 export const defaultSignalData: RfSignal[] = [
   ...meteoSat9Signals,
   {
-    id: '1',
+    signalId: '1',
     serverId: 1,
     noradId: 1,
     frequency: 4810e6 as RfFrequency,
@@ -201,7 +201,7 @@ export const defaultSignalData: RfSignal[] = [
     isDegraded: false,
   },
   {
-    id: '2',
+    signalId: '2',
     serverId: 1,
     noradId: 1,
     frequency: 4798e6 as RfFrequency,
@@ -214,7 +214,7 @@ export const defaultSignalData: RfSignal[] = [
     isDegraded: false,
   },
   {
-    id: '3',
+    signalId: '3',
     serverId: 1,
     noradId: 1,
     frequency: 4817e6 as RfFrequency,
@@ -227,7 +227,7 @@ export const defaultSignalData: RfSignal[] = [
     isDegraded: false,
   },
   {
-    id: '4',
+    signalId: '4',
     serverId: 1,
     noradId: 1,
     frequency: 4826e6 as RfFrequency,
@@ -240,7 +240,7 @@ export const defaultSignalData: RfSignal[] = [
     isDegraded: false,
   },
   {
-    id: '5',
+    signalId: '5',
     serverId: 1,
     noradId: 1,
     frequency: 4785e6 as RfFrequency,
@@ -253,7 +253,7 @@ export const defaultSignalData: RfSignal[] = [
     isDegraded: false,
   },
   {
-    id: '6',
+    signalId: '6',
     serverId: 1,
     noradId: 1,
     frequency: 4833e6 as RfFrequency,

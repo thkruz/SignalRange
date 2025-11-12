@@ -4,6 +4,7 @@ import { HomePage } from "./pages/home";
 import { SandboxPage } from "./pages/sandbox-page";
 import { ScenarioSelectionPage } from "./pages/scenario-selection";
 import { ScenarioManager } from "./scenario-manager";
+import { SimulationManager } from "./simulation/simulation-manager";
 
 /**
  * Simple Router for 3 pages: login, student, instructor
@@ -84,6 +85,7 @@ export class Router {
   }
 
   private showPage(pageName: string): void {
+    SimulationManager.destroy();
     switch (pageName) {
       case 'home':
         HomePage.getInstance().show();

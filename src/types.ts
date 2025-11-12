@@ -43,7 +43,7 @@ export enum SignalOrigin {
 
 export interface BaseSignal {
   /** Signal ID */
-  id: string;
+  signalId: string;
   /** Server ID */
   serverId: number;
   /** Target satellite ID */

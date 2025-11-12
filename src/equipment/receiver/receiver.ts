@@ -567,7 +567,7 @@ export class Receiver extends BaseEquipment {
       return s;
     });
     const feedUrl = visibleSignals[0]?.feed || '';
-    this.state.availableSignals = visibleSignals.map(s => ({ id: s.id, feed: s.feed, isDegraded: s.isDegraded || false }));
+    this.state.availableSignals = visibleSignals.map(s => ({ id: s.signalId, feed: s.feed, isDegraded: s.isDegraded || false }));
 
     // Avoid unnecessary DOM updates by shallow comparing serialized state
     if (JSON.stringify(this.state) === JSON.stringify(this.lastRenderState)) {

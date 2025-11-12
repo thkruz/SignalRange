@@ -157,10 +157,10 @@ export class SpectralDensityPlot extends RTSAScreen {
 
       if (SimulationManager.getInstance().isDeveloperMode) {
         // Check if we have cached a color for this signal id
-        color = this.signalColorCache.get(signal.id)!;
+        color = this.signalColorCache.get(signal.signalId)!;
         if (!color) {
           color = SpectralDensityPlot.getRandomRgb(i);
-          this.signalColorCache.set(signal.id, color);
+          this.signalColorCache.set(signal.signalId, color);
         }
       }
 

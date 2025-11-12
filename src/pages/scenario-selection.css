@@ -53,6 +53,33 @@
   overflow: hidden;
   cursor: pointer;
   transition: all 0.3s ease;
+
+  .coming-soon-banner {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    width: 100%;
+    background: #b71c0c;
+    color: #fff;
+    padding: 6px 0;
+    font-size: 36px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    text-align: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    z-index: 20;
+    transform: rotate(-30deg);
+  }
+}
+
+.scenario-card.disabled .scenario-card-inner {
+  opacity: 0.35;
+  cursor: not-allowed;
+  filter: blur(5px);
+  pointer-events: none;
+  border-color: #555;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.05);
 }
 
 .scenario-card:hover {

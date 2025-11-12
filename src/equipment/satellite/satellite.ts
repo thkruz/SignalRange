@@ -2,6 +2,7 @@ import { EventBus } from "@app/events/event-bus";
 import { Events } from "@app/events/events";
 import { PerlinNoise } from "@app/simulation/perlin-noise";
 import { dBi, dBm, Hertz, RfFrequency, RfSignal, SignalOrigin } from "@app/types";
+import { Degrees } from "ootk";
 
 /**
  * Represents a transponder configuration on a satellite.
@@ -47,6 +48,13 @@ export interface SignalDegradationConfig {
   interferencePower: dBm;
 }
 
+export interface SatelliteState {
+  az: Degrees;
+  el: Degrees;
+  frequencyOffset: Hertz;
+  degradationConfig?: Partial<SignalDegradationConfig>;
+}
+
 /**
  * This represents a Satellite on orbit with comprehensive RF signal processing.
  * Handles signal reception, transponder operations, and transmission with realistic
@@ -80,19 +88,22 @@ export class Satellite {
   private readonly frequencyOffset: number;
 
   private readonly randomCache_: Map<string, number> = new Map();
+  el: Degrees;
+  az: Degrees;
 
   constructor(
     norad: number,
     rxSignal: RfSignal[],
-    frequencyOffset: number = 2.225e9,
-    degradationConfig?: Partial<SignalDegradationConfig>
+    satelliteState: SatelliteState = Satellite.getDefaultState_(),
   ) {
     this.noradId = norad;
     this.externalSignal = rxSignal;
     this.rxSignal = [];
-    this.frequencyOffset = frequencyOffset;
+    this.frequencyOffset = satelliteState.frequencyOffset;
     this.noiseGenerators = new Map();
     this.health = 1.0;
+    this.az = satelliteState.az;
+    this.el = satelliteState.el;
 
     // Default degradation configuration
     this.degradationConfig = {
@@ -103,7 +114,7 @@ export class Satellite {
       powerVariationRange: 2.0 as dBm,
       interference: false,
       interferencePower: -110 as dBm,
-      ...degradationConfig
+      ...satelliteState.degradationConfig
     };
 
     // Initialize transponders based on received signals
@@ -113,6 +124,15 @@ export class Satellite {
     this.txSignal = this.processSignals();
 
     EventBus.getInstance().on(Events.UPDATE, this.update.bind(this));
+  }
+
+  private static getDefaultState_(): SatelliteState {
+    return {
+      az: 0 as Degrees,
+      el: 0 as Degrees,
+      frequencyOffset: 2.225e9 as Hertz,
+      degradationConfig: {}
+    };
   }
 
   /**
@@ -281,14 +301,14 @@ export class Satellite {
    */
   private applyPowerVariation(signal: RfSignal): RfSignal {
     // Get or create noise generator for this signal
-    if (!this.noiseGenerators.has(signal.id)) {
-      this.noiseGenerators.set(signal.id, PerlinNoise.getInstance(signal.id));
+    if (!this.noiseGenerators.has(signal.signalId)) {
+      this.noiseGenerators.set(signal.signalId, PerlinNoise.getInstance(signal.signalId));
     }
 
-    const noiseGen = this.noiseGenerators.get(signal.id);
+    const noiseGen = this.noiseGenerators.get(signal.signalId);
     if (!noiseGen) return signal;
 
-    const randomPowerFactor = this.randomCache_.get(`${signal.id}-powerVariation`) ?? 1;
+    const randomPowerFactor = this.randomCache_.get(`${signal.signalId}-powerVariation`) ?? 1;
     const time = Date.now() / 1000 + randomPowerFactor * 1000;
 
     // Perlin noise returns 0-1, convert to -1 to 1
@@ -309,13 +329,13 @@ export class Satellite {
   private applyAtmosphericEffects(signal: RfSignal): RfSignal {
     // Rain fade is frequency dependent (worse at higher frequencies)
     const frequencyGHz = signal.frequency / 1e9;
-    const randomRainFactor = this.randomCache_.get(`${signal.id}-rain`) ?? 1;
+    const randomRainFactor = this.randomCache_.get(`${signal.signalId}-rain`) ?? 1;
 
     // Simple rain fade model (in dB)
     const rainFadeDb = (frequencyGHz / 10) * randomRainFactor * 2; // Simplified model
 
     // Scintillation (rapid amplitude fluctuations)
-    const randomScintillationFactor = this.randomCache_.get(`${signal.id}-scintillation`) ?? 1;
+    const randomScintillationFactor = this.randomCache_.get(`${signal.signalId}-scintillation`) ?? 1;
     const scintillationDb = (Math.random() - 0.5) * 1.5 * randomScintillationFactor;
 
     return {
@@ -425,10 +445,10 @@ export class Satellite {
    * Get carrier-to-noise ratio for a specific signal.
    */
   getCarrierToNoiseRatio(signalId: string): number | null {
-    const signal = this.txSignal.find(s => s.id === signalId);
+    const signal = this.txSignal.find(s => s.signalId === signalId);
     if (!signal) return null;
 
-    const transponderIndex = this.rxSignal.findIndex(s => s.id === signalId);
+    const transponderIndex = this.rxSignal.findIndex(s => s.signalId === signalId);
     if (transponderIndex < 0) return null;
 
     const transponder = this.transponders[transponderIndex];

@@ -1,4 +1,5 @@
 import { BaseElement } from "@app/components/base-element";
+import { qs } from "@app/engine/utils/query-selector";
 import { html } from "../../../engine/utils/development/formatter";
 import './footer.css';
 
@@ -14,7 +15,7 @@ export class Footer extends BaseElement {
     this.init_(rootElementId, 'add');
   }
 
-  public static create(rootElementId?: string): Footer {
+  static create(rootElementId?: string): Footer {
     if (Footer.instance_) {
       throw new Error("Footer instance already exists.");
     }
@@ -24,7 +25,7 @@ export class Footer extends BaseElement {
     return Footer.instance_;
   }
 
-  public static getInstance(): Footer {
+  static getInstance(): Footer {
     if (!Footer.instance_) {
       throw new Error("Footer instance does not exist.");
     }
@@ -48,6 +49,14 @@ export class Footer extends BaseElement {
       Licensed under GNU AGPL v3.0. Attribution and this notice required.
       <a href="https://raw.githubusercontent.com/thkruz/SignalRange/dev/LICENSE.md" target="_blank" rel="noopener noreferrer">LICENSE</a>
     `;
+  }
+
+  makeSmall(isSmall: boolean): void {
+    const footer = qs('.footer');
+
+    if (footer) {
+      footer.classList.toggle('small', isSmall);
+    }
   }
 
   protected addEventListeners_(): void {

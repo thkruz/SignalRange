@@ -1,6 +1,8 @@
 import { EventBus } from "./events/event-bus";
 import { Events } from "./events/events";
 import { HomePage } from "./pages/home";
+import { Footer } from "./pages/layout/footer/footer";
+import { Header } from "./pages/layout/header/header";
 import { SandboxPage } from "./pages/sandbox-page";
 import { ScenarioSelectionPage } from "./pages/scenario-selection";
 import { ScenarioManager } from "./scenario-manager";
@@ -88,29 +90,40 @@ export class Router {
     SimulationManager.destroy();
     switch (pageName) {
       case 'home':
+        Header.getInstance().makeSmall(false);
+        Footer.getInstance().makeSmall(false);
         HomePage.getInstance().show();
         break;
       case 'sandbox':
+        Header.getInstance().makeSmall(true);
         ScenarioManager.getInstance().settings = ScenarioManager.getDefaultSettings();
         SandboxPage.create();
         SandboxPage.getInstance().show();
         break;
       case 'scenario1':
+        Header.getInstance().makeSmall(true);
+        Footer.getInstance().makeSmall(true);
         ScenarioManager.getInstance().settings = ScenarioManager.getScenarioSettings('scenario1');
         SandboxPage.create();
         SandboxPage.getInstance().show();
         break;
       case 'scenario2':
+        Header.getInstance().makeSmall(true);
+        Footer.getInstance().makeSmall(true);
         ScenarioManager.getInstance().settings = ScenarioManager.getScenarioSettings('scenario2');
         SandboxPage.create();
         SandboxPage.getInstance().show();
         break;
       case 'scenario3':
+        Header.getInstance().makeSmall(true);
+        Footer.getInstance().makeSmall(true);
         ScenarioManager.getInstance().settings = ScenarioManager.getScenarioSettings('scenario3');
         SandboxPage.create();
         SandboxPage.getInstance().show();
         break;
       case 'scenarios':
+        Header.getInstance().makeSmall(true);
+        Footer.getInstance().makeSmall(true);
         ScenarioSelectionPage.getInstance().show();
         break;
     }

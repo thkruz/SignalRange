@@ -1,21 +1,29 @@
 .antenna-container {
+  width: max-content;
+  height: 100%;
+  max-width: 540px;
+
+  .antenna-dish {
+    width: 55%;
+    height: 50%;
+    border: 2px solid #555;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #777;
+    font-size: 14px;
+    margin: 16px auto;
+    flex-grow: 1;
+  }
+
   .antenna-controls {
     display: flex;
+    height: min-content;
     gap: 20px;
-    flex-grow: 1;
     padding: 16px;
-
-    .loopback-section {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 12px;
-      padding: 12px;
-      background-color: #1a1a1a;
-      border-radius: 8px;
-      min-width: 70px;
-    }
+    flex-grow: 1;
+    max-height: 150px;
 
     .antenna-config {
       flex: 1;
@@ -81,6 +89,13 @@
       .lock-status.unlocked {
         background-color: #f44336;
         color: #fff;
+      }
+
+      .physical-switch-container {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 8px;
       }
     }
   }

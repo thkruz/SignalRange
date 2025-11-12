@@ -29,21 +29,19 @@ export class Equipment extends BaseElement {
           <div id="antenna-spec-a-grid1" class="antenna-spec-a-grid">
             <div class="paired-equipment-container">
               <div id="antenna1-container" class="antenna-container"></div>
-              <div id="antenna2-container" class="antenna-container"></div>
-            </div>
-            <div class="paired-equipment-container">
               <div id="rf-front-end1-container" class="rf-front-end-container"></div>
+              <div id="specA1-container" class="spec-a-container"></div>
             </div>
             <div class="paired-equipment-container">
+              <div id="antenna2-container" class="antenna-container"></div>
               <div id="rf-front-end2-container" class="rf-front-end-container"></div>
             </div>
             <div class="paired-equipment-container">
-              <div id="specA1-container" class="spec-a-container"></div>
               <div id="specA2-container" class="spec-a-container"></div>
             </div>
           </div>
 
-        <!-- Spectrum Analyzers Grid -->
+          <!-- Spectrum Analyzers Grid -->
           <div id="antenna-spec-a-grid2" class="antenna-spec-a-grid">
             <div class="paired-equipment-container">
               <div id="specA3-container" class="spec-a-container"></div>

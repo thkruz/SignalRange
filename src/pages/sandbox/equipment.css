@@ -1,21 +1,34 @@
 .student-equipment {
   display: flex;
   row-gap: 1em;
-  flex-direction: column;
+  flex-direction: row;
   flex-wrap: nowrap;
   padding: 1em;
+  justify-content: space-between;
 }
 
 .spacer {
   height: 2rem;
 }
 
-.paired-equipment-container {
+#sandbox-page-container {
+  width: 100%;
+}
+
+.paired-equipment-container-left {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  justify-content: space-evenly;
+  width: 50%;
+}
+
+.paired-equipment-container-right {
   display: flex;
   flex-direction: row;
   flex-wrap: wrap;
-  justify-content: center;
-  width: 100%;
+  justify-content: space-evenly;
+  width: 50%;
   column-gap: 1em;
   row-gap: 1em;
 }

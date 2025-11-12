@@ -1,3 +1,4 @@
+import { html } from '@app/engine/utils/development/formatter';
 import { ANTENNA_CONFIG_KEYS } from '@app/equipment/antenna/antenna-configs';
 import { Satellite } from '@app/equipment/satellite/satellite';
 import { dBm, FECType, Hertz, ModulationType, RfFrequency, SignalOrigin } from '@app/types';
@@ -21,19 +22,30 @@ export const scenario1Data: ScenarioData = {
   duration: '25-30 min',
   difficulty: 'beginner',
   missionType: 'Commercial Communications',
-  description: `You are a Ground Station Operator at Pacific Rim Communications facility in Guam. Your company has just launched HELIOS-7, a new C-band communications satellite. The satellite is now station-keeping at 145°E geostationary orbit. You will conduct the first ground station link test - a critical milestone before commercial operations begin.`,
+  description: `You are a Ground Station Operator at Pacific Rim Communications facility in Guam. Your company has just launched HELIOS-7, a new C-band communications satellite. The satellite is now station-keeping at 145°E geostationary orbit. You will conduct the first ground station link test - a critical milestone before commercial operations begin.<br><br> This scenario will guide you through setting up the ground station equipment, acquiring the satellite signal, and performing initial signal quality measurements. You'll learn the basics of antenna pointing, RF front end configuration, and spectrum analysis in a hands-on environment.`,
   equipment: [
     '9-meter C-band Antenna',
     'RF Front End',
-    '2× Spectrum Analyzers',
+    'Spectrum Analyzer',
   ],
   settings: {
     isSync: false,
     antennas: [ANTENNA_CONFIG_KEYS.C_BAND_9M_VERTEX],
     rfFrontEnds: 1,
-    spectrumAnalyzers: 2,
+    spectrumAnalyzers: 1,
     transmitters: 0,
     receivers: 0,
+    layout: html`
+      <div class="student-equipment">
+        <div class="paired-equipment-container-left">
+          <div id="antenna1-container" class="antenna-container"></div>
+          <div id="specA1-container" class="spec-a-container"></div>
+        </div>
+        <div class="paired-equipment-container-right">
+          <div id="rf-front-end1-container" class="rf-front-end-container"></div>
+        </div>
+      </div>
+    `,
     satellites: [
       new Satellite(
         1,

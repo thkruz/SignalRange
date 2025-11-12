@@ -64,16 +64,6 @@
   font-size: 1.5rem;
 }
 
-/* Grid layouts for equipment */
-.antenna-spec-a-grid {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
-  justify-content: center;
-  column-gap: 1em;
-  row-gap: 1em;
-}
-
 /* Rivet corner decorations */
 .equipment-case::before,
 .equipment-case::after {
@@ -120,6 +110,14 @@
   letter-spacing: 2px;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
   text-transform: uppercase;
+  width: calc(100% - 120px);
+}
+
+.equipment-case-title span {
+  /* Clip text overflow */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .equipment-case-power-controls {
@@ -163,7 +161,8 @@
   position: relative;
   min-height: min-content;
   width: 780px;
-  height: fit-content;
+  height: 100%;
+  display: flex;
 }
 
 .tx-container,
@@ -311,4 +310,36 @@ label {
   text-align: center;
   letter-spacing: 0.5px;
   margin-top: 0px;
+}
+
+/* Defaults assume wide screen - now we adjust for smaller */
+@media (max-width: 3048px) {
+  .student-equipment {
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+  }
+
+  .paired-equipment-container-left,
+  .paired-equipment-container-right {
+    max-width: 1580px !important;
+  }
+
+  .paired-equipment-container-left,
+  .paired-equipment-container-right,
+  .rf-front-end-box {
+    width: 100% !important;
+  }
+}
+
+@media (max-width: 1920px) {
+  .rf-front-end-box {
+    .rf-fe-modules {
+      gap: 10px !important;
+      padding: 10px !important;
+
+      .rf-fe-module {
+        padding: 8px !important;
+      }
+    }
+  }
 }

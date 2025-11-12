@@ -16,7 +16,7 @@ export class Header extends BaseElement {
     this.init_(rootElementId, 'add');
   }
 
-  public static create(rootElementId?: string): Header {
+  static create(rootElementId?: string): Header {
     if (Header.instance_) {
       throw new Error("Header instance already exists.");
     }
@@ -26,7 +26,7 @@ export class Header extends BaseElement {
     return Header.instance_;
   }
 
-  public static getInstance(): Header {
+  static getInstance(): Header {
     if (!Header.instance_) {
       throw new Error("Header instance does not exist.");
     }
@@ -42,7 +42,10 @@ export class Header extends BaseElement {
         </div>
         <div class="header-title-section">
           <div class="header-main-title">SignalRange</div>
-          <div class="header-subtitle">Space Electronic Warfare Lab</div>
+          <div class="header-subtitles">
+            <div class="header-subtitle">|</div>
+            <div class="header-subtitle">RF Communications Simulator</div>
+          </div>
         </div>
       </div>
     </header>
@@ -55,6 +58,14 @@ export class Header extends BaseElement {
       logo.addEventListener('click', () => {
         Router.getInstance().navigate('/');
       });
+    }
+  }
+
+  makeSmall(isSmall: boolean): void {
+    const header = qs('.header');
+
+    if (header) {
+      header.classList.toggle('small', isSmall);
     }
   }
 }

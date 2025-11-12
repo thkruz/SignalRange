@@ -1,11 +1,10 @@
-/* SpectrumAnalyzer.css - Styles specific to Spectrum Analyzer equipment */
-.spectrum-analyzer-box {
-  height: min-content;
-}
-
-/* Canvas Container */
 .spec-a-canvas-container {
   position: relative;
+  min-height: min-content;
+  max-width: 780px;
+  height: 100%;
+  display: flex;
+
   border: 8px solid transparent;
   border-image-source: url(./bezel.png);
   border-image-slice: 30 fill;
@@ -16,10 +15,14 @@
   border-radius: 10px;
   margin: 12px;
   flex-grow: 1;
-  display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+}
+
+.spectrum-analyzer-box {
+  height: 100%;
+  flex: 1;
 }
 
 /* Single canvas mode (default for spectralDensity and waterfall) */

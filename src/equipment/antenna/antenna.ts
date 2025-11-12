@@ -121,7 +121,7 @@ export class Antenna extends BaseEquipment {
       this.state.isAutoTrackSwitchUp,
       false
     );
-    this.powerSwitch_ = PowerSwitch.create(`antenna-power-switch-${this.state.uuid}`, this.state.isPowered);
+    this.powerSwitch_ = PowerSwitch.create(`antenna-power-switch-${this.state.uuid}`, this.state.isPowered, true, true);
     this.skewKnob_ = RotaryKnob.create(
       `antenna-skew-knob-${this.state.uuid}`,
       this.state.skew,
@@ -188,16 +188,13 @@ export class Antenna extends BaseEquipment {
             </div>
           </div>
         </div>
+
+        <div class="antenna-dish">
+          PLACEHOLDER
+        </div>
+
         <!-- Antenna Control Unit Body -->
         <div class="antenna-controls">
-
-          <div class="loopback-section">
-            <div class="status-indicator loopback">
-              <span id="ant-loopback-light" class="indicator-light ${this.state.isLoopback ? 'on' : 'off'}"></span>
-              <span class="indicator-label">Loopback to<br />OMT</span>
-            </div>
-            ${this.loopbackSwitch_.html}
-          </div>
 
           <div class="antenna-config">
             <div class="config-row antenna-specs" style="display: none;">
@@ -238,15 +235,23 @@ export class Antenna extends BaseEquipment {
             </div>
 
             <div class="config-row">
+              <div class="status-indicator loopback">
+              <span id="ant-loopback-light" class="indicator-light ${this.state.isLoopback ? 'on' : 'off'}"></span>
+              <span class="indicator-label">Loopback to OMT</span>
+            </div>
+            ${this.loopbackSwitch_.html}
+            </div>
+
+            <div class="config-row">
               <div class="status-indicator auto-track">
                 <span id="ant-auto-track-light" class="indicator-light ${this.state.isAutoTrackEnabled ? 'on' : 'off'}"></span>
                 <span class="indicator-label">Auto Track</span>
               </div>
               ${this.autoTrackSwitch_.html}
             </div>
-          </div>
 
-          ${this.powerSwitch_.html}
+            ${this.powerSwitch_.html}
+          </div>
         </div>
 
         <!-- Bottom Status Bar -->

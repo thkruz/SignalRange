@@ -85,13 +85,7 @@ export interface RxSignalLostData {
 
 export enum Events {
   // Antenna events
-  ANTENNA_CONFIG_CHANGED = 'antenna:config:changed',
-  ANTENNA_LOOPBACK_CHANGED = 'antenna:loopback:changed',
-  ANTENNA_HPA_CHANGED = 'antenna:hpa:changed',
-  ANTENNA_TRACK_CHANGED = 'antenna:track:changed',
-  ANTENNA_LOCKED = 'antenna:locked',
-  ANTENNA_POWER_CHANGED = 'antenna:power:changed',
-  ANTENNA_ERROR = 'antenna:error',
+  ANTENNA_STATE_CHANGED = 'antenna:state:changed',
 
   // Transmitter events
   TX_CONFIG_CHANGED = 'tx:config:changed',
@@ -129,13 +123,7 @@ export enum Events {
 }
 
 export interface EventMap {
-  [Events.ANTENNA_CONFIG_CHANGED]: [AntennaState];
-  [Events.ANTENNA_LOOPBACK_CHANGED]: [AntennaLoopbackChangedData];
-  [Events.ANTENNA_HPA_CHANGED]: [AntennaHpaChangedData];
-  [Events.ANTENNA_TRACK_CHANGED]: [AntennaTrackChangedData];
-  [Events.ANTENNA_LOCKED]: [AntennaLockedData];
-  [Events.ANTENNA_POWER_CHANGED]: [AntennaPowerChangedData];
-  [Events.ANTENNA_ERROR]: [AntennaErrorData];
+  [Events.ANTENNA_STATE_CHANGED]: [Partial<AntennaState>];
 
   [Events.RF_FE_POWER_CHANGED]: [Partial<RFFrontEndState>];
   [Events.RF_FE_BUC_CHANGED]: [Partial<BUCState>];

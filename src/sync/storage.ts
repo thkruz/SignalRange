@@ -107,7 +107,7 @@ function setupEquipmentListeners(_studentEquipment: Equipment): void {
 
   // Listen to equipment change events
   eventBus.on(Events.SPEC_A_CONFIG_CHANGED, debouncedSave);
-  eventBus.on(Events.ANTENNA_CONFIG_CHANGED, debouncedSave);
+  eventBus.on(Events.ANTENNA_STATE_CHANGED, debouncedSave);
   eventBus.on(Events.TX_CONFIG_CHANGED, debouncedSave);
   eventBus.on(Events.TX_ACTIVE_MODEM_CHANGED, debouncedSave);
   eventBus.on(Events.RX_CONFIG_CHANGED, debouncedSave);

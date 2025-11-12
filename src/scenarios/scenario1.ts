@@ -29,7 +29,7 @@ export const scenario1Data: ScenarioData = {
     'Spectrum Analyzer',
   ],
   settings: {
-    isSync: false,
+    isSync: true,
     antennas: [ANTENNA_CONFIG_KEYS.C_BAND_9M_VERTEX],
     rfFrontEnds: 1,
     spectrumAnalyzers: 1,

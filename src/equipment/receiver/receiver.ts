@@ -315,31 +315,7 @@ export class Receiver extends BaseEquipment {
   }
 
   private subscribeToAntennaEvents() {
-    this.on(Events.ANTENNA_CONFIG_CHANGED, () => {
-      this.syncDomWithState();
-    });
-
-    this.on(Events.ANTENNA_ERROR, () => {
-      this.syncDomWithState();
-    });
-
-    this.on(Events.ANTENNA_HPA_CHANGED, () => {
-      this.syncDomWithState();
-    });
-
-    this.on(Events.ANTENNA_LOCKED, () => {
-      this.syncDomWithState();
-    });
-
-    this.on(Events.ANTENNA_LOOPBACK_CHANGED, () => {
-      this.syncDomWithState();
-    });
-
-    this.on(Events.ANTENNA_POWER_CHANGED, () => {
-      this.syncDomWithState();
-    });
-
-    this.on(Events.ANTENNA_TRACK_CHANGED, () => {
+    this.on(Events.ANTENNA_STATE_CHANGED, () => {
       this.syncDomWithState();
     });
 

@@ -103,6 +103,9 @@ export class RotaryKnob {
     this.value = Math.max(this.min, Math.min(this.max, newValue));
     this.value = Math.round(this.value / this.step) * this.step;
 
+    // Round to 3 decimal places to avoid floating point issues
+    this.value = Number(this.value.toFixed(3));
+
     this.updateAngleFromValue_();
     this.updateDisplay();
 

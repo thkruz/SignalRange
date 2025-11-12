@@ -169,31 +169,7 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
   }
 
   private subscribeToAntennaEvents(): void {
-    this.on(Events.ANTENNA_CONFIG_CHANGED, (data) => {
-      this.updateConfigChange(data);
-    });
-
-    this.on(Events.ANTENNA_ERROR, (data) => {
-      this.updateConfigChange(data);
-    });
-
-    this.on(Events.ANTENNA_HPA_CHANGED, (data) => {
-      this.updateConfigChange(data);
-    });
-
-    this.on(Events.ANTENNA_LOCKED, (data) => {
-      this.updateConfigChange(data);
-    });
-
-    this.on(Events.ANTENNA_LOOPBACK_CHANGED, (data) => {
-      this.updateConfigChange(data);
-    });
-
-    this.on(Events.ANTENNA_POWER_CHANGED, (data) => {
-      this.updateConfigChange(data);
-    });
-
-    this.on(Events.ANTENNA_TRACK_CHANGED, (data) => {
+    this.on(Events.ANTENNA_STATE_CHANGED, (data) => {
       this.updateConfigChange(data);
     });
   }

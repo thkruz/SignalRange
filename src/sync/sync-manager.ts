@@ -1,3 +1,4 @@
+import { RFFrontEndState } from '@app/equipment/rf-front-end/rf-front-end';
 import { AntennaState } from '../equipment/antenna/antenna';
 import { RealTimeSpectrumAnalyzerState } from '../equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer';
 import { ReceiverState } from '../equipment/receiver/receiver';
@@ -151,6 +152,7 @@ export class SyncManager {
       equipment: {
         spectrumAnalyzersState: this.equipment.spectrumAnalyzers.map(sa => sa.state),
         antennasState: this.equipment.antennas.map(a => a.state),
+        rfFrontEndsState: this.equipment.rfFrontEnds.map(rf => rf.state),
         transmittersState: this.equipment.transmitters.map(tx => tx.state),
         receiversState: this.equipment.receivers.map(rx => rx.state),
       }
@@ -212,6 +214,7 @@ export class SyncManager {
 export interface AppState {
   equipment?: {
     spectrumAnalyzersState?: RealTimeSpectrumAnalyzerState[];
+    rfFrontEndsState?: RFFrontEndState[];
     antennasState?: AntennaState[];
     transmittersState?: TransmitterState[];
     receiversState?: ReceiverState[];

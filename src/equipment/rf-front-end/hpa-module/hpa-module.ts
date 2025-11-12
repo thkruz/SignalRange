@@ -3,8 +3,6 @@ import { RotaryKnob } from '@app/components/rotary-knob/rotary-knob';
 import { SecureToggleSwitch } from '@app/components/secure-toggle-switch/secure-toggle-switch';
 import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
-import { EventBus } from '@app/events/event-bus';
-import { Events } from '@app/events/events';
 import { Sfx } from '@app/sound/sfx-enum';
 import SoundManager from '@app/sound/sound-manager';
 import { dBm, dBW, RfSignal, SignalOrigin } from '@app/types';
@@ -372,7 +370,6 @@ export class HPAModule extends RFFrontEndModule<HPAState> {
 
   private toggleHpa_(): void {
     if (!this.state.isPowered) {
-      EventBus.getInstance().emit(Events.ANTENNA_ERROR, { message: 'Antenna is not operational' });
       return;
     }
 

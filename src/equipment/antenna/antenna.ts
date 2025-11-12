@@ -1,4 +1,5 @@
 import { HelpButton } from "@app/components/help-btn/help-btn";
+import { PolarPlot } from "@app/components/polar-plot/polar-plot";
 import { PowerSwitch } from "@app/components/power-switch/power-switch";
 import { RotaryKnob } from "@app/components/rotary-knob/rotary-knob";
 import { ToggleSwitch } from "@app/components/toggle-switch/toggle-switch";
@@ -84,6 +85,7 @@ export class Antenna extends BaseEquipment {
   private readonly loopbackSwitch_: ToggleSwitch;
   private readonly autoTrackSwitch_: ToggleSwitch;
   private readonly helpBtn_: HelpButton;
+  private readonly polarPlot_: PolarPlot;
   azKnob_: RotaryKnob;
   elKnob_: RotaryKnob;
 
@@ -157,6 +159,10 @@ export class Antenna extends BaseEquipment {
       'Antenna Control Unit (ACU) Help',
       'This unit controls the antenna operations including power, loopback, skew adjustment, and auto-tracking of satellites. Use the controls to manage antenna settings and monitor status indicators for optimal performance.'
     );
+    this.polarPlot_ = PolarPlot.create(
+      `antenna-polar-plot-${this.state.uuid}`,
+      { width: 380, height: 380, showGrid: true, showLabels: true }
+    );
 
     this.lastRenderState = structuredClone(this.state);
     this.build(parentId);
@@ -190,7 +196,7 @@ export class Antenna extends BaseEquipment {
         </div>
 
         <div class="antenna-dish">
-          PLACEHOLDER
+          ${this.polarPlot_.html}
         </div>
 
         <!-- Antenna Control Unit Body -->
@@ -427,19 +433,21 @@ export class Antenna extends BaseEquipment {
   }
 
   private handleAzimuthChange_(value: number): void {
-    if (value.toFixed(2) !== this.state.azimuth.toFixed(2)) {
+    if (value !== this.state.azimuth) {
       this.state.isLocked = false;
       this.state.isAutoTrackEnabled = false;
+      this.state.azimuth = value as Degrees;
+      this.notifyStateChange_();
     }
-    this.state.azimuth = value as Degrees;
   }
 
   private handleElevationChange_(value: number): void {
-    if (value.toFixed(2) !== this.state.elevation.toFixed(2)) {
+    if (value !== this.state.elevation) {
       this.state.isLocked = false;
       this.state.isAutoTrackEnabled = false;
+      this.state.elevation = value as Degrees;
+      this.notifyStateChange_();
     }
-    this.state.elevation = value as Degrees;
   }
 
   private toggleLoopback_(isSwitchUp: boolean): void {
@@ -449,9 +457,7 @@ export class Antenna extends BaseEquipment {
 
     this.state.isLoopback = isSwitchUp;
 
-    this.emit(Events.ANTENNA_LOOPBACK_CHANGED, {
-      loopback: this.state.isLoopback
-    });
+    this.notifyStateChange_();
 
     this.updateSignals_();
     this.syncDomWithState_();
@@ -485,10 +491,12 @@ export class Antenna extends BaseEquipment {
       }
       this.state.elevation = sat.el;
       // Simulate lock acquisition delay
+      // TODO: Refreshing during this timer will cause it to be stuck in "Acquiring Lock" state until switch toggled again
       setTimeout(() => {
 
         this.state.isLocked = true;
         this.updateSignals_();
+        this.notifyStateChange_();
         this.syncDomWithState_();
       }, 3000); // 3 second delay to acquire lock
     } else {
@@ -497,6 +505,7 @@ export class Antenna extends BaseEquipment {
     }
 
     this.updateSignals_();
+    this.notifyStateChange_();
     this.syncDomWithState_();
   }
 
@@ -509,9 +518,7 @@ export class Antenna extends BaseEquipment {
       this.state.isAutoTrackEnabled = false;
     }
 
-    this.emit(Events.ANTENNA_POWER_CHANGED, {
-      operational: this.state.isOperational
-    });
+    this.notifyStateChange_();
 
     this.updateSignals_();
     this.syncDomWithState_();
@@ -1016,6 +1023,10 @@ export class Antenna extends BaseEquipment {
     this.rfFrontEnd_ = rfFrontEnd;
   }
 
+  private notifyStateChange_(): void {
+    this.emit(Events.ANTENNA_STATE_CHANGED, this.state);
+  }
+
   private syncDomWithState_(): void {
     if (JSON.stringify(this.state) === JSON.stringify(this.lastRenderState)) {
       return; // No changes, skip update
@@ -1039,6 +1050,9 @@ export class Antenna extends BaseEquipment {
     this.elKnob_.sync(this.state.elevation);
 
     this.autoTrackSwitch_.sync(this.state.isAutoTrackSwitchUp);
+
+    // Update polar plot
+    this.polarPlot_.update(this.normalizedAzimuth, this.state.elevation);
 
     // Update RF metrics display
     if (this.state.rfMetrics) {

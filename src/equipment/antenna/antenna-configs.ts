@@ -68,25 +68,25 @@ export interface AntennaConfig {
 }
 
 export enum ANTENNA_CONFIG_KEYS {
-  "C_BAND_9M_VERTEX" = "C_BAND_9M_VERTEX",
-  "KU_BAND_9M_LIMIT" = "KU_BAND_9M_LIMIT",
-  "X_BAND_3M_ANTESKY_RS" = "X_BAND_3M_ANTESKY_RS",
-  "C_BAND_3M_ANTESKY" = "C_BAND_3M_ANTESKY",
-  "KU_BAND_3M_ANTESKY" = "KU_BAND_3M_ANTESKY",
-  "C_BAND_2M4_ANTESKY" = "C_BAND_2M4_ANTESKY",
-  "KU_BAND_2M4_ANTESKY" = "KU_BAND_2M4_ANTESKY",
-  "KU_BAND_1M8_OFFSET" = "KU_BAND_1M8_OFFSET",
-  "C_BAND_1M8_OFFSET" = "C_BAND_1M8_OFFSET",
-  "C_BAND_9M" = "C_BAND_9M",
-  "C_BAND_7M" = "C_BAND_7M",
-  "C_BAND_4M" = "C_BAND_4M",
-  "C_BAND_2M" = "C_BAND_2M",
-  "KU_BAND_3M" = "KU_BAND_3M",
-  "KU_BAND_2M" = "KU_BAND_2M",
-  "KU_BAND_1M2" = "KU_BAND_1M2",
-  "KA_BAND_1M8" = "KA_BAND_1M8",
-  "KA_BAND_1M2" = "KA_BAND_1M2",
-  "X_BAND_5M" = "X_BAND_5M",
+  C_BAND_9M_VORTEK = "C_BAND_9M_VORTEK",
+  KU_BAND_9M_LIMIT = "KU_BAND_9M_LIMIT",
+  X_BAND_3M_ANTESTAR_RS = "X_BAND_3M_ANTESTAR_RS",
+  C_BAND_3M_ANTESTAR = "C_BAND_3M_ANTESTAR",
+  KU_BAND_3M_ANTESTAR = "KU_BAND_3M_ANTESTAR",
+  C_BAND_2M4_ANTESTAR = "C_BAND_2M4_ANTESTAR",
+  KU_BAND_2M4_ANTESTAR = "KU_BAND_2M4_ANTESTAR",
+  KU_BAND_1M8_OFFSET = "KU_BAND_1M8_OFFSET",
+  C_BAND_1M8_OFFSET = "C_BAND_1M8_OFFSET",
+  C_BAND_9M = "C_BAND_9M",
+  C_BAND_7M = "C_BAND_7M",
+  C_BAND_4M = "C_BAND_4M",
+  C_BAND_2M = "C_BAND_2M",
+  KU_BAND_3M = "KU_BAND_3M",
+  KU_BAND_2M = "KU_BAND_2M",
+  KU_BAND_1M2 = "KU_BAND_1M2",
+  KA_BAND_1M8 = "KA_BAND_1M8",
+  KA_BAND_1M2 = "KA_BAND_1M2",
+  X_BAND_5M = "X_BAND_5M",
 }
 
 /**
@@ -94,9 +94,9 @@ export enum ANTENNA_CONFIG_KEYS {
  */
 export const ANTENNA_CONFIGS: Record<ANTENNA_CONFIG_KEYS, AntennaConfig> = {
   // ───────────────────────────────── C-Band (9 m) ─────────────────────────────────
-  // Vertex/General Dynamics 9 m Cassegrain — with real spec shaping
-  C_BAND_9M_VERTEX: {
-    name: 'VertexRSI / GD 9m C-Band',
+  // Based on Vertex/General Dynamics 9 m Cassegrain
+  C_BAND_9M_VORTEK: {
+    name: 'Vortek / Global Mechanics 9m C-Band',
     diameter: 9.0,
     efficiency: 0.70,            // illumination/spill only; Ruze handled elsewhere
     band: 'C',
@@ -131,9 +131,9 @@ export const ANTENNA_CONFIGS: Record<ANTENNA_CONFIG_KEYS, AntennaConfig> = {
     atmosModel: 'ITU_R_P676_Simple',
   },
 
-  // Limit-motion 9 m Ku/DBS (covers Ku Tx and high-band DBS Tx)
+  // Based on Antesky Limit-motion 9 m Ku/DBS (covers Ku Tx and high-band DBS Tx)
   KU_BAND_9M_LIMIT: {
-    name: '9m Ku/DBS Limit-Motion',
+    name: '9m Ku/DBS Limitek-Motion',
     diameter: 9.0,
     efficiency: 0.67,
     band: 'Ku',
@@ -162,9 +162,9 @@ export const ANTENNA_CONFIGS: Record<ANTENNA_CONFIG_KEYS, AntennaConfig> = {
   },
 
   // ───────────────────────────────── X-Band (3 m) ─────────────────────────────────
-  // Antesky 3.0 m X-band Remote Sensing (LEO) — circular pol, fast pedestal
-  X_BAND_3M_ANTESKY_RS: {
-    name: 'Antesky 3.0m X-band RS',
+  // Based on Antesky 3.0 m X-band Remote Sensing (LEO) — circular pol, fast pedestal
+  X_BAND_3M_ANTESTAR_RS: {
+    name: 'Antestar 3.0m X-band RS',
     diameter: 3.0,
     efficiency: 0.62,
     band: 'X',
@@ -193,9 +193,9 @@ export const ANTENNA_CONFIGS: Record<ANTENNA_CONFIG_KEYS, AntennaConfig> = {
   },
 
   // ───────────────────────────────── Ku/C-Band (3 m) ───────────────────────────────
-  // Antesky 3.0 m ring-focus VSAT (C/Ku)
-  C_BAND_3M_ANTESKY: {
-    name: 'Antesky 3.0m C-Band VSAT',
+  // Based on Antesky 3.0 m ring-focus VSAT (C/Ku)
+  C_BAND_3M_ANTESTAR: {
+    name: 'Antestar 3.0m C-Band VSAT',
     diameter: 3.0,
     efficiency: 0.62,
     band: 'C',
@@ -223,8 +223,8 @@ export const ANTENNA_CONFIGS: Record<ANTENNA_CONFIG_KEYS, AntennaConfig> = {
     rxPhysTemp_K: 290,
   },
 
-  KU_BAND_3M_ANTESKY: {
-    name: 'Antesky 3.0m Ku-Band VSAT',
+  KU_BAND_3M_ANTESTAR: {
+    name: 'Antestar 3.0m Ku-Band VSAT',
     diameter: 3.0,
     efficiency: 0.62,
     band: 'Ku',
@@ -253,9 +253,9 @@ export const ANTENNA_CONFIGS: Record<ANTENNA_CONFIG_KEYS, AntennaConfig> = {
   },
 
   // ───────────────────────────────── Ku/C-Band (2.4 m) ─────────────────────────────
-  // Antesky 2.4 m ring-focus VSAT (C/Ku), with measured noise temp and XPD
-  C_BAND_2M4_ANTESKY: {
-    name: 'Antesky 2.4m C-Band VSAT',
+  // Based on Antesky 2.4 m ring-focus VSAT (C/Ku), with measured noise temp and XPD
+  C_BAND_2M4_ANTESTAR: {
+    name: 'Antestar 2.4m C-Band VSAT',
     diameter: 2.4,
     efficiency: 0.60,
     band: 'C',
@@ -283,8 +283,8 @@ export const ANTENNA_CONFIGS: Record<ANTENNA_CONFIG_KEYS, AntennaConfig> = {
     rxPhysTemp_K: 290,
   },
 
-  KU_BAND_2M4_ANTESKY: {
-    name: 'Antesky 2.4m Ku-Band VSAT',
+  KU_BAND_2M4_ANTESTAR: {
+    name: 'Antestar 2.4m Ku-Band VSAT',
     diameter: 2.4,
     efficiency: 0.60,
     band: 'Ku',
@@ -314,7 +314,7 @@ export const ANTENNA_CONFIGS: Record<ANTENNA_CONFIG_KEYS, AntennaConfig> = {
 
   // ───────────────────────────────── Ku/C-Band (1.8 m offset) ──────────────────────
   KU_BAND_1M8_OFFSET: {
-    name: 'Antesky 1.8m Ku-Band Offset',
+    name: 'Antestar 1.8m Ku-Band Offset',
     diameter: 1.8,
     efficiency: 0.63,
     band: 'Ku',
@@ -343,7 +343,7 @@ export const ANTENNA_CONFIGS: Record<ANTENNA_CONFIG_KEYS, AntennaConfig> = {
   },
 
   C_BAND_1M8_OFFSET: {
-    name: 'Antesky 1.8m C-Band Offset',
+    name: 'Antestar 1.8m C-Band Offset',
     diameter: 1.8,
     efficiency: 0.62,
     band: 'C',

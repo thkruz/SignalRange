@@ -33,7 +33,7 @@ export class ScenarioManager {
   static getDefaultSettings(): SimulationSettings {
     return {
       isSync: false,
-      antennas: [ANTENNA_CONFIG_KEYS.C_BAND_3M_ANTESKY], // TODO: Max 1 for now because only 1 rfFrontEnd is supported
+      antennas: [ANTENNA_CONFIG_KEYS.C_BAND_3M_ANTESTAR], // TODO: Max 1 for now because only 1 rfFrontEnd is supported
       rfFrontEnds: 1,
       spectrumAnalyzers: 2,
       transmitters: 2,

@@ -11,6 +11,18 @@
     flex-grow: 1;
   }
 
+  .antenna-name {
+    font-size: 14px;
+    font-weight: bold;
+    color: #fff;
+    text-align: center;
+    background: #691915;
+    margin: 4px 0 8px 0;
+    padding: 6px 16px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+    letter-spacing: 0.5px;
+  }
+
   .antenna-controls {
     display: flex;
     height: min-content;

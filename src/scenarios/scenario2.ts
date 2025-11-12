@@ -24,7 +24,7 @@ export const scenario2Data: ScenarioData = {
   ],
   settings: {
     isSync: false,
-    antennas: [ANTENNA_CONFIG_KEYS.C_BAND_3M_ANTESKY],
+    antennas: [ANTENNA_CONFIG_KEYS.C_BAND_3M_ANTESTAR],
     rfFrontEnds: 1,
     spectrumAnalyzers: 2,
     transmitters: 0,

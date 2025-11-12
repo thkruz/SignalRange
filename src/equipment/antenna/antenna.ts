@@ -91,7 +91,7 @@ export class Antenna extends BaseEquipment {
 
   constructor(
     parentId: string,
-    configId: ANTENNA_CONFIG_KEYS = ANTENNA_CONFIG_KEYS.C_BAND_9M_VERTEX,
+    configId: ANTENNA_CONFIG_KEYS = ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK,
     teamId: number = 1,
     serverId: number = 1,
   ) {
@@ -161,7 +161,7 @@ export class Antenna extends BaseEquipment {
     );
     this.polarPlot_ = PolarPlot.create(
       `antenna-polar-plot-${this.state.uuid}`,
-      { width: 380, height: 380, showGrid: true, showLabels: true }
+      { width: 350, height: 350, showGrid: true, showLabels: true }
     );
 
     this.lastRenderState = structuredClone(this.state);
@@ -183,7 +183,7 @@ export class Antenna extends BaseEquipment {
         <!-- Antenna Control Unit Header -->
         <div class="equipment-case-header">
           <div class="equipment-case-title">
-            <span>ACU ${this.uuidShort} - ${this.config.name}</span>
+            <span>Antenna Control Unit</span>
             ${this.helpBtn_.html}
           </div>
           <div class="equipment-case-power-controls">
@@ -197,6 +197,10 @@ export class Antenna extends BaseEquipment {
 
         <div class="antenna-dish">
           ${this.polarPlot_.html}
+        </div>
+
+        <div class="antenna-name">
+          ${this.config.name}
         </div>
 
         <!-- Antenna Control Unit Body -->

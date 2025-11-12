@@ -24,7 +24,7 @@ export class PolarPlot {
   private ctx_?: CanvasRenderingContext2D;
   private azimuth: Degrees = 0 as Degrees;
   private elevation: Degrees = 0 as Degrees;
-  private config: Required<PolarPlotConfig>;
+  private readonly config: Required<PolarPlotConfig>;
 
   constructor(
     uniqueId: string,

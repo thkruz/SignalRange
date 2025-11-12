@@ -30,7 +30,7 @@ export const scenario1Data: ScenarioData = {
   ],
   settings: {
     isSync: true,
-    antennas: [ANTENNA_CONFIG_KEYS.C_BAND_9M_VERTEX],
+    antennas: [ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK],
     rfFrontEnds: 1,
     spectrumAnalyzers: 1,
     transmitters: 0,

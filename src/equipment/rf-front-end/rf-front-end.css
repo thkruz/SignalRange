@@ -1,5 +1,5 @@
 .rf-front-end-box {
-  height: min-content;
+  height: 100%;
 
   .stacked-modules {
     display: flex;

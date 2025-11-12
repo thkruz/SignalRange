@@ -1,6 +1,6 @@
 {
   "name": "signal-range",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Signal Range: Space Electronic Warfare Lab",
   "main": "dist/index.js",
   "scripts": {

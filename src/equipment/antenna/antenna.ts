@@ -14,6 +14,7 @@ import { dBm, Hertz, RfSignal, SignalOrigin } from "../../types";
 import { AlarmStatus, BaseEquipment } from '../base-equipment';
 import { RFFrontEnd } from "../rf-front-end/rf-front-end";
 import { Transmitter } from "../transmitter/transmitter";
+import { ANTENNA_CONFIGS, AntennaConfig } from "./antenna-configs";
 import './antenna.css';
 
 /**
@@ -44,6 +45,16 @@ export interface AntennaState {
   isOperational: boolean;
   /** signals currently received */
   rxSignalsIn: RfSignal[];
+  /** RF metrics for display (optional, computed on demand) */
+  rfMetrics?: {
+    gain_dBi: number;
+    beamwidth_deg: number;
+    gOverT_dBK: number;
+    polLoss_dB: number;
+    atmosLoss_dB: number;
+    skyTemp_K: number;
+    frequency_GHz: number;
+  };
 }
 
 /**
@@ -59,8 +70,8 @@ export class Antenna extends BaseEquipment {
 
   transmitters: Transmitter[] = [];
 
-  /** Waveguide loss (dB) */
-  private readonly WAVEGUIDE_LOSS = 1;
+  /** Antenna physical configuration */
+  readonly config: AntennaConfig;
 
   // UI Components
   private readonly powerSwitch_: PowerSwitch;
@@ -69,8 +80,16 @@ export class Antenna extends BaseEquipment {
   private readonly autoTrackSwitch_: ToggleSwitch;
   private readonly helpBtn_: HelpButton;
 
-  constructor(parentId: string, teamId: number = 1, serverId: number = 1) {
+  constructor(
+    parentId: string,
+    teamId: number = 1,
+    serverId: number = 1,
+    config: AntennaConfig = ANTENNA_CONFIGS.C_BAND_9M_VERTEX
+  ) {
     super(parentId, teamId);
+
+    // Set antenna configuration
+    this.config = config;
 
     // Initialize status with defaults
     this.state = {
@@ -129,7 +148,7 @@ export class Antenna extends BaseEquipment {
         <!-- Antenna Control Unit Header -->
         <div class="equipment-case-header">
           <div class="equipment-case-title">
-            <span>Antenna Control Unit (ACU) ${this.uuidShort}</span>
+            <span>ACU ${this.uuidShort} - ${this.config.name}</span>
             ${this.helpBtn_.html}
           </div>
           <div class="equipment-case-power-controls">
@@ -152,6 +171,28 @@ export class Antenna extends BaseEquipment {
           </div>
 
           <div class="antenna-config">
+            <div class="config-row antenna-specs">
+              <label>Specifications</label>
+              <div class="spec-details">
+                <span>Diameter: ${this.config.diameter}m</span>
+                <span>Band: ${this.config.band}</span>
+                <span>Rx Freq: ${(this.config.minRxFrequency / 1e9).toFixed(2)}-${(this.config.maxRxFrequency / 1e9).toFixed(2)} GHz</span>
+                <span>Tx Freq: ${(this.config.minTxFrequency / 1e9).toFixed(2)}-${(this.config.maxTxFrequency / 1e9).toFixed(2)} GHz</span>
+              </div>
+            </div>
+
+            <div class="config-row antenna-rf-metrics">
+              <label>RF Performance</label>
+              <div class="spec-details">
+                <span class="rf-metric-freq">Freq: -- GHz</span>
+                <span class="rf-metric-gain">Gain: -- dBi</span>
+                <span class="rf-metric-beamwidth">HPBW: -- deg</span>
+                <span class="rf-metric-gt">G/T: -- dB/K</span>
+                <span class="rf-metric-pol-loss">Pol Loss: -- dB</span>
+                <span class="rf-metric-sky-temp">Sky: -- K</span>
+              </div>
+            </div>
+
             <div class="config-row">
               <label>Satellite</label>
               <select class="input-sat-target" data-param="noradId">
@@ -196,6 +237,13 @@ export class Antenna extends BaseEquipment {
     this.domCache['antLoopbackLight'] = qs('#ant-loopback-light', parentDom);
     this.domCache['antAutoTrackLight'] = qs('#ant-auto-track-light', parentDom);
     this.domCache['bottomStatusBar'] = qs('.bottom-status-bar', parentDom);
+    // RF metrics
+    this.domCache['rfMetricFreq'] = qs('.rf-metric-freq', parentDom);
+    this.domCache['rfMetricGain'] = qs('.rf-metric-gain', parentDom);
+    this.domCache['rfMetricBeamwidth'] = qs('.rf-metric-beamwidth', parentDom);
+    this.domCache['rfMetricGT'] = qs('.rf-metric-gt', parentDom);
+    this.domCache['rfMetricPolLoss'] = qs('.rf-metric-pol-loss', parentDom);
+    this.domCache['rfMetricSkyTemp'] = qs('.rf-metric-sky-temp', parentDom);
 
     return parentDom;
   }
@@ -272,12 +320,14 @@ export class Antenna extends BaseEquipment {
 
   update(): void {
     this.updateSignals_();
+    this.computeRfMetrics_();
     this.syncDomWithState_();
   }
 
   sync(data: Partial<AntennaState>): void {
     this.state = { ...this.state, ...data };
     this.updateSignals_();
+    this.computeRfMetrics_();
     this.syncDomWithState_();
   }
 
@@ -291,46 +341,27 @@ export class Antenna extends BaseEquipment {
     }
 
     return this.rfFrontEnd_.omtModule.txSignalsOut.map((sig: RfSignal) => {
-      // Adjust polarization based on antenna skew (H and V only for now)
-      let adjustedPolarization = sig.polarization;
-      // Our skew is limited to -90 to 90 degrees
-      if (sig.polarization === 'H' || sig.polarization === 'V') {
-        if (this.state.skew > 45 || this.state.skew < -45) {
-          // Reverse polarization
-          adjustedPolarization = sig.polarization === 'H' ? 'V' : 'H';
-        }
-      }
+      const f_Hz = sig.frequency as number;
 
-      // Our effective power is reduced by misalignment
-      let skewAbs = Math.abs(this.state.skew);
+      // Calculate polarization mismatch loss using realistic model
+      const polLoss = this.polMismatchLoss_dB_(
+        sig.polarization as 'H' | 'V' | 'RHCP' | 'LHCP',
+        this.config.polType ?? 'linear',
+        this.state.skew as number
+      );
 
-      if (skewAbs > 45) {
-        skewAbs = 90 - skewAbs;
-      }
+      // Frequency-dependent feed loss
+      const feedLoss = this.feedLossAt_(f_Hz);
 
-      // Calculate power reduction due to polarization mismatch
-      let powerReduction: number;
-      if (sig.polarization === 'H' || sig.polarization === 'V') {
-        // If polarization is reversed (skew > 45°), apply high loss
-        if (skewAbs > 45) {
-          powerReduction = 20; // Typical cross-polarization loss
-        } else if (skewAbs <= 15) {
-          powerReduction = 0;
-        } else if (skewAbs <= 30) {
-          powerReduction = 3;
-        } else if (skewAbs <= 45) {
-          powerReduction = 6;
-        } else {
-          powerReduction = 0;
-        }
-      } else {
-        powerReduction = 0;
-      }
+      // Antenna gain with Ruze + blockage
+      const antennaGain = this.antennaGain_dBi(sig.frequency);
+
+      // Calculate transmitted power
+      const txPower = (sig.power - polLoss - feedLoss + antennaGain) as dBm;
 
       return {
         ...sig,
-        polarization: adjustedPolarization,
-        power: (sig.power - powerReduction - this.WAVEGUIDE_LOSS + this.antennaGain_dBi(sig.frequency)) as dBm,
+        power: txPower,
       };
     });
   }
@@ -506,27 +537,245 @@ export class Antenna extends BaseEquipment {
     return 0;
   }
 
+  // ========================================================================
+  // REALISTIC RF PHYSICS MODELS
+  // ========================================================================
+
+  /**
+   * Compute current RF metrics for display
+   * Uses midband frequency or first signal frequency if available
+   */
+  private computeRfMetrics_(): void {
+    // Use first signal frequency if available, otherwise use midband Rx frequency
+    const f_Hz = this.state.rxSignalsIn.length > 0
+      ? (this.state.rxSignalsIn[0].frequency as number)
+      : ((this.config.minRxFrequency + this.config.maxRxFrequency) / 2) as number;
+
+    const elev_deg = 45; // Standard elevation for GEO
+
+    this.state.rfMetrics = {
+      gain_dBi: this.antennaGain_dBi(f_Hz as Hertz),
+      beamwidth_deg: this.beamwidth3dB_deg_(f_Hz),
+      gOverT_dBK: this.gOverT_dB_perK_(f_Hz, elev_deg),
+      polLoss_dB: this.polMismatchLoss_dB_(
+        'H', // Assume H-pol for display
+        this.config.polType ?? 'linear',
+        this.state.skew as number
+      ),
+      atmosLoss_dB: this.calculateAtmosphericLoss_(f_Hz as Hertz, elev_deg),
+      skyTemp_K: this.skyTempK_(elev_deg),
+      frequency_GHz: f_Hz / 1e9,
+    };
+  }
+
+  // ========================================================================
+  // REALISTIC RF PHYSICS MODELS
+  // ========================================================================
+
+  /**
+   * Frequency-dependent feed loss (dB)
+   * Uses feedLossModel if available, otherwise falls back to static feedLoss
+   */
+  private feedLossAt_(f_Hz: number): number {
+    const m = this.config.feedLossModel;
+    if (!m) return this.config.feedLoss ?? 0;
+    const fGHz = f_Hz / 1e9;
+    return m.a + m.b * Math.sqrt(fGHz) + m.c * fGHz;
+  }
+
+  /**
+   * Aperture efficiency including surface (Ruze) & blockage
+   * Base efficiency is illumination + spill only
+   * Ruze formula accounts for surface RMS errors
+   * Blockage accounts for subreflector/strut shadowing
+   */
+  private apertureEfficiency_(f_Hz: number): number {
+    const base = Math.max(0.01, Math.min(0.95, this.config.efficiency ?? 0.65));
+    const lambda = 3e8 / f_Hz;
+
+    // Ruze: η_surface = exp(-(4πσ/λ)²)
+    const sigma = this.config.surfaceRms_m ?? 0;
+    const eta_surface = Math.exp(-Math.pow((4 * Math.PI * sigma) / lambda, 2));
+
+    // Blockage: simple (1 - ε)² approximation
+    const eps = Math.max(0, Math.min(0.3, this.config.blockageFraction ?? 0));
+    const eta_block = Math.pow(1 - eps, 2);
+
+    return base * eta_surface * eta_block;
+  }
+
+  /**
+   * 3 dB beamwidth (degrees)
+   * HPBW ≈ k*λ/D where k is typically 70 for parabolic dishes
+   */
+  private beamwidth3dB_deg_(f_Hz: number): number {
+    const k = this.config.kBeamConst ?? 70;
+    const lambda = 3e8 / f_Hz;
+    return (k * lambda) / this.config.diameter; // Result in degrees
+  }
+
+  /**
+   * Pointing loss (dB) using the 12*(Δθ/θ3dB)² rule
+   * This represents the gain reduction when pointing off-axis
+   */
+  private pointingLoss_dB_(offAxis_deg: number, f_Hz: number): number {
+    const bw = this.beamwidth3dB_deg_(f_Hz);
+    return Math.max(0, 12 * Math.pow(offAxis_deg / bw, 2));
+  }
+
+  /**
+   * ITU-R 465-type pattern envelope (dBi)
+   * Returns gain at off-axis angle including main lobe and sidelobe envelope
+   */
+  private patternGain_dBi_(theta_deg: number, f_Hz: number): number {
+    const Gmax = this.antennaGain_dBi(f_Hz as Hertz);
+    const bw = this.beamwidth3dB_deg_(f_Hz);
+
+    // Main lobe approximation (within ~1.2 beamwidths)
+    if (theta_deg <= 1.2 * bw) {
+      const drop = 12 * Math.pow(theta_deg / bw, 2);
+      return Gmax - drop;
+    }
+
+    // Sidelobe envelope (ITU-R recommendation for parabolic dishes)
+    // G(θ) ≤ Gmax - min(32, 25*log10(θ*D/λ))
+    const lambda = 3e8 / f_Hz;
+    const theta_normalized = (theta_deg * this.config.diameter) / lambda;
+    const env = Math.min(32, 25 * Math.log10(Math.max(1e-3, theta_normalized)));
+    return Gmax - env;
+  }
+
+  /**
+   * Polarization mismatch loss (dB) for linear pol & skew angle
+   * Combines feed XPD floor and skew-dependent loss
+   */
+  private polMismatchLoss_dB_(
+    signalPol: 'H' | 'V' | 'RHCP' | 'LHCP',
+    _rxPol: 'linear' | 'circular',
+    skew_deg: number
+  ): number {
+    if (this.config.polType === 'circular' || signalPol === 'RHCP' || signalPol === 'LHCP') {
+      // Circular discrimination
+      if (
+        (signalPol === 'RHCP' && this.config.polType === 'circular') ||
+        (signalPol === 'LHCP' && this.config.polType === 'circular')
+      ) {
+        return 0.5; // Small imperfection
+      }
+      return 3; // Mismatched handedness
+    }
+
+    // Linear: loss ≈ 20*log10|cos(skew)| limited by XPD floor
+    const xpd = this.config.xpd_dB ?? 30;
+    const cosTerm = Math.abs(Math.cos(skew_deg * Math.PI / 180));
+    const ideal = -20 * Math.log10(Math.max(1e-6, cosTerm)); // dB penalty
+    return Math.min(xpd, ideal);
+  }
+
+  /**
+   * Sky temperature (K) vs elevation - simple C-band model
+   * ~8-12 K at zenith, increases at low elevation due to atmospheric path
+   */
+  private skyTempK_(elev_deg: number): number {
+    // sec(z) factor for atmospheric path length
+    const secz = 1 / Math.max(0.1, Math.sin(elev_deg * Math.PI / 180));
+    return 8 + 4 * (secz - 1); // Tune as needed
+  }
+
+  /**
+   * Convert loss (dB) at physical temp to equivalent noise temp (K) at LNA input
+   * T_equiv = T_phys * (L - 1) where L is linear loss factor
+   */
+  private noiseFromLossK_(L_dB: number, physK: number = 290): number {
+    const L = Math.pow(10, L_dB / 10);
+    return physK * (L - 1);
+  }
+
+  /**
+   * System noise temperature at LNA input (K)
+   * Accounts for sky, atmosphere, feed, and LNA contributions
+   */
+  private systemTempK_(f_Hz: number, elev_deg: number): number {
+    const Tsky = this.skyTempK_(elev_deg);
+    const Latm = this.calculateAtmosphericLoss_(f_Hz, elev_deg);
+    const Lfeed = this.feedLossAt_(f_Hz) + (this.config.rxChainLoss_dB ?? 0);
+
+    const Tant = Tsky + this.noiseFromLossK_(Latm, 260); // Atm ~260 K slab
+    const Tfeed = this.noiseFromLossK_(Lfeed, this.config.rxPhysTemp_K ?? 290);
+
+    // LNA noise
+    const NF = this.config.lnaNF_dB ?? 1.0;
+    const Tlna = 290 * (Math.pow(10, NF / 10) - 1);
+
+    // Friis cascade for noise temps with preceding losses
+    const L_atm_linear = Math.pow(10, Latm / 10);
+    const L_feed_linear = Math.pow(10, Lfeed / 10);
+    const L_total = L_atm_linear * L_feed_linear;
+
+    return Tant * L_total + Tfeed * L_atm_linear + Tlna;
+  }
+
+  /**
+   * G/T (dB/K) at given frequency & elevation
+   * Key figure of merit for receive systems
+   */
+  private gOverT_dB_perK_(f_Hz: number, elev_deg: number): number {
+    return this.antennaGain_dBi(f_Hz as Hertz) - 10 * Math.log10(this.systemTempK_(f_Hz, elev_deg));
+  }
+
+  /**
+   * Current de-pointing (degrees) from wind & servo jitter
+   * Returns total off-axis error from environmental factors
+   */
+  currentDePointing_deg_(wind_mps: number = 0): number {
+    const coef = this.config.windDePointingCoef_deg_per_mps ?? 0;
+    const randomJitter = (this.config.pointingSigma_deg ?? 0.01) * (Math.random() * 2 - 1);
+    return coef * wind_mps + randomJitter;
+  }
+
+  // ========================================================================
+  // END REALISTIC RF PHYSICS MODELS
+  // ========================================================================
+
   /**
    * Apply propagation effects to a received signal
+   * Uses realistic RF physics including Ruze, blockage, polarization, and atmospheric effects
    */
   private applyPropagationEffects_(signal: RfSignal): RfSignal {
+    const f_Hz = signal.frequency as number;
+    const elev_deg = 45; // Assume 45° elevation for GEO satellite (can be made dynamic later)
+    const offAxis_deg = 0; // Assume perfect pointing for now (can add de-pointing later)
+
     // Calculate free-space path loss (downlink from GEO satellite to ground)
     const fspl = this.calculateFreeSpacePathLoss_(signal.frequency, GEO_SATELLITE_DISTANCE_KM);
 
-    // Calculate atmospheric loss (assume 45° elevation for GEO satellite)
-    const atmosphericLoss = this.calculateAtmosphericLoss_(signal.frequency, 45);
+    // Calculate atmospheric loss using realistic model
+    const atmosphericLoss = this.calculateAtmosphericLoss_(signal.frequency, elev_deg);
 
-    // Calculate polarization mismatch loss
-    // For now, assume antenna has same polarization as signal (perfect match)
-    const polarizationLoss = 0; // this.calculatePolarizationLoss_(signal.polarization, signal.polarization, this.state.skew);
+    // Calculate polarization mismatch loss using new realistic model
+    const polarizationLoss = this.polMismatchLoss_dB_(
+      signal.polarization as 'H' | 'V' | 'RHCP' | 'LHCP',
+      this.config.polType ?? 'linear',
+      this.state.skew as number
+    );
 
-    const Grx_dBi = this.antennaGain_dBi(signal.frequency); // implement or read from state
+    // Use pattern gain (accounts for off-axis angle) instead of just peak gain
+    const Grx_dBi = this.patternGain_dBi_(offAxis_deg, f_Hz);
 
-    // Assume perfect alignment for now
-    const L_misc_dB = 0 // this.rxFeederAndPointingLoss_dB();      // e.g., 0.5–2 dB
+    // Feed loss (frequency-dependent)
+    const feedLoss = this.feedLossAt_(f_Hz);
+
+    // Pointing loss (if any off-axis error from wind/jitter)
+    const pointingLoss = this.pointingLoss_dB_(offAxis_deg, f_Hz);
 
     // Apply all losses to signal power
-    let receivedPower = signal.power - fspl - atmosphericLoss - polarizationLoss - L_misc_dB + Grx_dBi;
+    let receivedPower = signal.power
+      - fspl
+      - atmosphericLoss
+      - polarizationLoss
+      - feedLoss
+      - pointingLoss
+      + Grx_dBi;
 
     return {
       ...signal,
@@ -535,23 +784,39 @@ export class Antenna extends BaseEquipment {
   }
 
   /**
-   * Calculate antenna gain in dBi
+   * Calculate antenna gain in dBi with Ruze + blockage model
+   * Uses aperture efficiency that includes:
+   *   - Base illumination & spill efficiency
+   *   - Surface RMS errors (Ruze formula)
+   *   - Subreflector/strut blockage
+   *
+   * Formula: G = η * (πD/λ)²
+   * In dB: G_dBi = 10*log10(η) + 20*log10(πD/λ)
+   *
+   * @param frequencyHz Operating frequency in Hz
+   * @returns Antenna gain in dBi
    */
   private antennaGain_dBi(frequencyHz: Hertz): number {
-    // Ground antenna gain (receive) (η≈0.6):
-    // 1.2 m @ 12 GHz (Ku): ~41 dBi
-    // 2.4 m @ 4 GHz (C): ~37–38 dBi
-    // 0.6 m @ 20 GHz (Ka): ~41–42 dBi
+    const f_Hz = frequencyHz as number;
 
-    if (frequencyHz >= 18e9) {
-      return 42; // Ka-band
-    } else if (frequencyHz >= 12e9) {
-      return 41; // Ku-band
-    } else if (frequencyHz >= 4e9) {
-      return 38; // C-band
-    } else {
-      return 35; // L-band and below
+    // Check if frequency is within antenna's operating range
+    if ((frequencyHz < this.config.minRxFrequency || frequencyHz > this.config.maxRxFrequency) &&
+      (frequencyHz < this.config.minTxFrequency || frequencyHz > this.config.maxTxFrequency)) {
+      console.warn(
+        `Warning: Frequency ${f_Hz / 1e9} GHz is outside antenna operating range ` +
+        `(${this.config.minRxFrequency / 1e9} - ${this.config.maxRxFrequency / 1e9} GHz for Rx, ` +
+        `${this.config.minTxFrequency / 1e9} - ${this.config.maxTxFrequency / 1e9} GHz for Tx). ` +
+        `Gain calculation may be inaccurate.`
+      );
     }
+
+    // Use new aperture efficiency model (includes Ruze + blockage)
+    const lambda = 3e8 / f_Hz;
+    const k = Math.PI * (this.config.diameter / lambda);
+    const eta = this.apertureEfficiency_(f_Hz);
+    const G_linear = eta * (k * k);
+
+    return 10 * Math.log10(G_linear);
   }
 
   /**
@@ -682,6 +947,17 @@ export class Antenna extends BaseEquipment {
     this.skewKnob_.sync(this.state.skew);
 
     this.autoTrackSwitch_.sync(this.state.isAutoTrackEnabled);
+
+    // Update RF metrics display
+    if (this.state.rfMetrics) {
+      const m = this.state.rfMetrics;
+      this.domCache['rfMetricFreq'].textContent = `Freq: ${m.frequency_GHz.toFixed(3)} GHz`;
+      this.domCache['rfMetricGain'].textContent = `Gain: ${m.gain_dBi.toFixed(1)} dBi`;
+      this.domCache['rfMetricBeamwidth'].textContent = `HPBW: ${m.beamwidth_deg.toFixed(2)}°`;
+      this.domCache['rfMetricGT'].textContent = `G/T: ${m.gOverT_dBK.toFixed(1)} dB/K`;
+      this.domCache['rfMetricPolLoss'].textContent = `Pol Loss: ${m.polLoss_dB.toFixed(1)} dB`;
+      this.domCache['rfMetricSkyTemp'].textContent = `Sky: ${m.skyTemp_K.toFixed(0)} K`;
+    }
 
     // Save last render state
     this.lastRenderState = structuredClone(this.state);

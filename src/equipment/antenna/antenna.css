@@ -34,6 +34,29 @@
         flex-direction: column;
         flex-wrap: nowrap;
         justify-content: space-around;
+
+        &.antenna-specs,
+        &.antenna-rf-metrics {
+          .spec-details {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            font-size: 11px;
+            color: #aaa;
+            text-align: center;
+
+            span {
+              white-space: nowrap;
+            }
+          }
+        }
+
+        &.antenna-rf-metrics {
+          .spec-details {
+            color: #8cf;
+            font-weight: 600;
+          }
+        }
       }
 
       .switch-container {

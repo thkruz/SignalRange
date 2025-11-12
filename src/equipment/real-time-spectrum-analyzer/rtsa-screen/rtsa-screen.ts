@@ -1,3 +1,4 @@
+import { Logger } from "@app/logging/logger";
 import { RealTimeSpectrumAnalyzer } from "../real-time-spectrum-analyzer";
 
 export abstract class RTSAScreen {
@@ -7,20 +8,42 @@ export abstract class RTSAScreen {
   protected readonly specA: RealTimeSpectrumAnalyzer;
 
   // Canvas dimensions
-  protected width: number = 1600; // More width to increase resolution (especially for noise floor)
-  protected height: number = 400;
+  protected width_: number = 1600; // More width to increase resolution (especially for noise floor)
+  protected height_: number = 460;
 
-  constructor(canvas: HTMLCanvasElement, specA: RealTimeSpectrumAnalyzer) {
+  constructor(canvas: HTMLCanvasElement, specA: RealTimeSpectrumAnalyzer, width = 1600, height = 1000) {
     this.canvas = canvas;
     this.specA = specA;
-    this.width = canvas.width;
-    this.height = canvas.height;
+    this.width_ = width;
+    this.height_ = height;
+    this.canvas.width = this.width_;
+    this.canvas.height = this.height_;
+
+    Logger.info('RTSAScreen', 'constructor', `Canvas initialized with width=${this.width_}, height=${this.height_}`);
 
     const context = this.canvas.getContext('2d');
     if (!context) {
       throw new Error('Failed to get canvas 2D context');
     }
     this.ctx = context;
+  }
+
+  get width(): number {
+    return this.width_;
+  }
+
+  get height(): number {
+    return this.height_;
+  }
+
+  set width(value: number) {
+    this.width_ = value;
+    Logger.warn('RTSAScreen', 'set width', `Width set to ${value}, resizing canvas`);
+  }
+
+  set height(value: number) {
+    this.height_ = value;
+    Logger.warn('RTSAScreen', 'set height', `Height set to ${value}, resizing canvas`);
   }
 
   public resetMaxHold(): void {

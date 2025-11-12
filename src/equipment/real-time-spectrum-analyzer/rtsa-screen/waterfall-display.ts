@@ -29,8 +29,8 @@ export class WaterfallDisplay extends RTSAScreen {
   cacheMinDb: number = 0;
   cacheGain: number = 0;
 
-  constructor(canvas: HTMLCanvasElement, specA: RealTimeSpectrumAnalyzer) {
-    super(canvas, specA);
+  constructor(canvas: HTMLCanvasElement, specA: RealTimeSpectrumAnalyzer, width: number, height: number) {
+    super(canvas, specA, width, height);
     this.data = new Float32Array(this.width);
     this.noiseData = new Float32Array(this.width);
     this.bufferSize = this.height;
@@ -386,8 +386,8 @@ export class WaterfallDisplay extends RTSAScreen {
     const newHeight = Math.max(newWidth, 10); // Square aspect ratio
 
     if (newWidth !== this.width || newHeight !== this.height) {
-      this.width = newWidth;
-      this.height = newHeight;
+      // this.width = newWidth;
+      // this.height = newHeight;
       this.canvas.width = this.width;
       this.canvas.height = this.height;
     }

@@ -2,7 +2,6 @@ import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
 import { EventBus } from "@app/events/event-bus";
 import { Events } from "@app/events/events";
-import { Logger } from "@app/logging/logger";
 import './continuous-rotary-knob.css';
 
 export class ContinuousRotaryKnob {
@@ -85,8 +84,6 @@ export class ContinuousRotaryKnob {
   private onWheel_(e: WheelEvent): void {
     e.preventDefault();
     const delta = -Math.sign(e.deltaY) * this.step;
-
-    Logger.warn('ContinuousRotaryKnob', `Wheel event delta: ${delta}`);
 
     this.setAngle_(this.angle + delta);
   }

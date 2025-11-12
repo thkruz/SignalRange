@@ -29,7 +29,7 @@
 .spec-a-canvas-container canvas.spec-a-canvas-single {
   display: block;
   width: 100%;
-  height: 400px;
+  height: 460px;
 }
 
 /* Both mode canvases */
@@ -46,15 +46,39 @@
 }
 
 /* Info Section */
-.spec-a-info {
+.spec-a-info-bar {
   display: flex;
-  justify-content: space-around;
-  margin-bottom: 12px;
+  justify-content: space-between;
+  align-items: center;
+  width: auto;
+  border-radius: 4px;
+  margin: 0 8px 12px 8px;
   padding: 8px;
   background-color: #1a1a1a;
-  border-radius: 4px;
-  color: #fff;
-  font-size: 14px;
+
+  .btn-config {
+    top: 8px;
+    right: 8px;
+    z-index: 10;
+    background: rgba(0, 0, 0, 0.7);
+    border: none;
+    color: #fff;
+    padding: 2px 12px;
+    font-size: 28px;
+    font-weight: bold;
+    border-radius: 4px;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+    text-shadow: 0 1px 2px #000, 0 0 2px #fff;
+  }
+
+  .spec-a-info {
+    display: flex;
+    justify-content: space-around;
+    color: #fff;
+    font-size: 14px;
+    flex: 1;
+  }
 }
 
 .spec-a-info div {
@@ -77,22 +101,6 @@
   color: #fff;
 }
 
-.spec-a-controls button:hover {
-  filter: brightness(1.1);
-}
-
-.btn-mode-screen {
-  min-width: 160px;
-}
-
-.btn-mode-if-rf {
-  width: 65px;
-}
-
-.btn-pause.active {
-  background-color: #f44336;
-  color: #fff;
-}
 
 /* Responsive adjustments */
 @media (max-width: 768px) {

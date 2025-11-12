@@ -11,6 +11,8 @@ import './real-time-spectrum-analyzer.css';
 import { SpectralDensityPlot } from './rtsa-screen/spectral-density-plot';
 import { WaterfallDisplay } from "./rtsa-screen/waterfall-display";
 
+type MarkerPoint = { x: number; y: number; signal: number };
+
 export interface RealTimeSpectrumAnalyzerState {
   /** This is the reference level that all dBm values are relative to */
   referenceLevel: number;
@@ -28,6 +30,9 @@ export interface RealTimeSpectrumAnalyzerState {
   isMaxHold: boolean;
   isMinHold: boolean;
   isMarkerOn: boolean;
+  isUpdateMarkers: boolean;
+  topMarkers: MarkerPoint[];
+  markerIndex: number;
   refreshRate: number; // in Hz
   centerFrequency: Hertz; // Hz - center frequency
   span: Hertz;
@@ -74,6 +79,9 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
       isMaxHold: false,
       isMinHold: false,
       isMarkerOn: false,
+      isUpdateMarkers: false,
+      topMarkers: [],
+      markerIndex: 0,
 
       referenceLevel: 0, // dBm
 
@@ -127,21 +135,21 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
           <canvas id="specA${this.uuid}-waterfall" width="747" height="200" class="spec-a-canvas-waterfall"></canvas>
         </div>
 
-        <div class="spec-a-info">
-          <div>CF: ${this.state.centerFrequency / 1e6} MHz</div>
-          <div>Input: ${this.state.inputValue} ${this.state.inputUnit}</div>
-          <div>RF Front End: ${this.state.rfFeUuid.split('-')[0]}</div>
+        <div class="spec-a-info-bar">
+          <button class="btn-config" data-action="config" title="Open Configuration Panel">
+            <span class="icon-advanced">&#9881;</span>
+          </button>
+          <div class="spec-a-info">
+            <div>CF: ${this.state.centerFrequency / 1e6} MHz</div>
+            <div>Input: ${this.state.inputValue} ${this.state.inputUnit}</div>
+            <div>RF Front End: ${this.state.rfFeUuid.split('-')[0]}</div>
+          </div>
         </div>
 
         <!-- Bottom Status Bar -->
         <div class="equipment-case-footer">
           <div class="bottom-status-bar">
             SYSTEM NORMAL
-          </div>
-          <div>
-          <button class="btn-config" data-action="config" title="Open Configuration Panel">
-            <span class="icon-advanced">&#9881;</span>
-          </button>
           </div>
         </div>
       </div>
@@ -192,12 +200,12 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
     if (!this.domCache['canvasWaterfall']) throw new Error('Waterfall canvas element not found for Spectrum Analyzer');
 
     // Initialize single-mode screens
-    this.spectralDensity = new SpectralDensityPlot(this.domCache['canvas'] as HTMLCanvasElement, this);
-    this.waterfall = new WaterfallDisplay(this.domCache['canvas'] as HTMLCanvasElement, this);
+    this.spectralDensity = new SpectralDensityPlot(this.domCache['canvas'] as HTMLCanvasElement, this, 1600, 1000);
+    this.waterfall = new WaterfallDisplay(this.domCache['canvas'] as HTMLCanvasElement, this, 1600, 1000);
 
     // Initialize "both" mode screens with their dedicated canvases
-    this.spectralDensityBoth = new SpectralDensityPlot(this.domCache['canvasSpectral'] as HTMLCanvasElement, this);
-    this.waterfallBoth = new WaterfallDisplay(this.domCache['canvasWaterfall'] as HTMLCanvasElement, this);
+    this.spectralDensityBoth = new SpectralDensityPlot(this.domCache['canvasSpectral'] as HTMLCanvasElement, this, 1600, 500);
+    this.waterfallBoth = new WaterfallDisplay(this.domCache['canvasWaterfall'] as HTMLCanvasElement, this, 1600, 500);
 
     // Set initial screen mode
     this.updateScreenVisibility();

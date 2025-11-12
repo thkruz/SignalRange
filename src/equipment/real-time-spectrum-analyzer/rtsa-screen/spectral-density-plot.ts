@@ -32,8 +32,8 @@ export class SpectralDensityPlot extends RTSAScreen {
   private readonly noiseColor: string = '#fff647ff';
   signalColorCache: Map<string, string> = new Map();
 
-  constructor(canvas: HTMLCanvasElement, specA: RealTimeSpectrumAnalyzer) {
-    super(canvas, specA);
+  constructor(canvas: HTMLCanvasElement, specA: RealTimeSpectrumAnalyzer, width: number, height: number) {
+    super(canvas, specA, width, height);
 
     // Initialize typed arrays
     this.allData = new Float32Array(this.width);
@@ -45,9 +45,6 @@ export class SpectralDensityPlot extends RTSAScreen {
     // Calculate range
     this.range = this.specA.state.minAmplitude - this.specA.state.maxAmplitude;
     this.decibelShift = 0 - this.specA.state.minAmplitude;
-
-    window.addEventListener('resize', this.resize.bind(this));
-    this.resize();
 
     // Reallocate typed arrays
     this.allData = new Float32Array(this.width);
@@ -138,12 +135,90 @@ export class SpectralDensityPlot extends RTSAScreen {
         // Draw grid overlay
         this.drawGridOverlay(this.ctx, isDualScreenMode);
 
+        this.updateTopMarkers();
+
         // Draw frequency and power labels
         this.drawFrequencyLabels(this.ctx, isDualScreenMode);
         this.drawPowerLabels(this.ctx, isDualScreenMode);
 
         this.lastDrawTime = now;
       }
+    }
+  }
+
+  private updateTopMarkers() {
+    if (this.specA.state.isUpdateMarkers) {
+      // Find the highest x,y and power for each signal
+      this.specA.state.topMarkers = [];
+
+      this.specA.inputSignals.forEach((signal) => {
+        let maxSignal = -Infinity;
+        let maxX = 0;
+        let maxY = 0;
+
+        // Calculate signal envelope
+        const center = ((signal.frequency - this.minFreq) / (this.maxFreq - this.minFreq)) * this.width;
+        const inBandWidth = ((signal.bandwidth / (this.maxFreq - this.minFreq)) * this.width) / 1.95;
+        const outOfBandWidth = ((signal.bandwidth / (this.maxFreq - this.minFreq)) * this.width) / 1.6;
+
+        // Find the single highest point for this signal
+        for (let x = 0; x < this.width; x++) {
+          const yVal = this.createRealSignal(inBandWidth, x, signal, center, outOfBandWidth);
+          const y = (yVal - this.specA.state.minAmplitude) / this.range;
+          if (y > 0 && y < 1 && x > 0 && x < this.width) {
+            if (yVal > maxSignal) {
+              maxSignal = yVal;
+              maxX = x;
+              maxY = 1 - y;
+            }
+          }
+        }
+
+        // Only push one marker per signal
+        if (maxSignal > -Infinity) {
+          this.specA.state.topMarkers.push({ x: maxX, y: maxY, signal: maxSignal });
+        }
+      });
+
+      // If less than 10 then fill with noise peaks
+      while (this.specA.state.topMarkers.length < 10) {
+        // Find the highest noise peak in a random region
+        const x = Math.floor(Math.random() * this.width);
+        const signal = this.noiseData[x];
+
+        // if signal more than 5 dB above noise floor it is a signal, skip it
+        if (signal > this.specA.noiseFloorAndGain + 5) {
+          continue;
+        }
+
+        const y = (signal - this.specA.state.minAmplitude) / this.range;
+        this.specA.state.topMarkers.push({
+          x,
+          y: 1 - y,
+          signal
+        });
+      }
+
+      // Sort markers in ascending x order for drawing
+      this.specA.state.topMarkers.sort((a, b) => a.x - b.x);
+
+      // Set this.specA.state.markerIndex to the highest y value marker
+      this.specA.state.markerIndex = 0;
+      let highestSignal = -Infinity;
+      this.specA.state.topMarkers.forEach((marker, index) => {
+        if (marker.signal > highestSignal) {
+          highestSignal = marker.signal;
+          this.specA.state.markerIndex = index;
+        }
+      });
+
+      this.specA.state.isUpdateMarkers = false;
+    }
+
+    // Draw marker for the current selected marker
+    if (this.specA.state.isMarkerOn && this.specA.state.topMarkers.length > 0) {
+      const { x: maxX, y: maxY, signal: maxSignalFreq } = this.specA.state.topMarkers[this.specA.state.markerIndex];
+      this.drawMarker(maxX, maxY, maxSignalFreq);
     }
   }
 
@@ -172,12 +247,12 @@ export class SpectralDensityPlot extends RTSAScreen {
   private drawFrequencyLabels(ctx: CanvasRenderingContext2D, _isDualScreenMode: boolean): void {
     ctx.save();
     ctx.fillStyle = '#fff';
-    ctx.font = '14px Arial';
+    ctx.font = '24px Arial';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
 
     const numLabels = 10;
-    const maxTextWidth = 80; // px
+    const maxTextWidth = 150; // px
     const padding = 6; // minimum spacing between labels
     let lastX = -Infinity;
 
@@ -185,8 +260,8 @@ export class SpectralDensityPlot extends RTSAScreen {
       if (freq >= 1e9) {
         const g = freq / 1e9;
         return [
-          `${g.toFixed(1)} GHz`,
-          `${g.toFixed(1)}GHz`,
+          `${g.toFixed(3)} GHz`,
+          `${g.toFixed(3)}GHz`,
           `${Math.round(g)} GHz`,
           `${Math.round(g)}GHz`,
           `${Math.round(g)}G`
@@ -202,7 +277,7 @@ export class SpectralDensityPlot extends RTSAScreen {
       } else if (freq >= 1e3) {
         const k = freq / 1e3;
         return [
-          `${k.toFixed(1)} kHz`,
+          `${k.toFixed(3)} kHz`,
           `${Math.round(k)} kHz`,
           `${Math.round(k)}kHz`,
           `${Math.round(freq)} Hz`
@@ -255,7 +330,7 @@ export class SpectralDensityPlot extends RTSAScreen {
   private drawPowerLabels(ctx: CanvasRenderingContext2D, isDualScreenMode: boolean): void {
     ctx.save();
     ctx.fillStyle = '#fff';
-    ctx.font = isDualScreenMode ? '14px Arial' : '20px Arial';
+    ctx.font = '24px Arial';
     ctx.textAlign = 'right';
     ctx.textBaseline = 'middle';
 
@@ -338,8 +413,6 @@ export class SpectralDensityPlot extends RTSAScreen {
 
     this.signalData = this.createSignal(this.signalData, signal, center, inBandWidth, outOfBandWidth);
 
-    let maxX = 0;
-    let maxY = 1;
     let maxSignalFreq = -Infinity;
 
     ctx.strokeStyle = color;
@@ -352,8 +425,6 @@ export class SpectralDensityPlot extends RTSAScreen {
 
       if (lowestSignal > maxSignalFreq && y > 0 && y < 1 && x > 0 && x < this.width) {
         maxSignalFreq = lowestSignal;
-        maxX = x;
-        maxY = (1 - y);
       }
 
       if (x === 0) {
@@ -364,14 +435,10 @@ export class SpectralDensityPlot extends RTSAScreen {
     }
 
     ctx.stroke();
-
-    // Draw marker if enabled
-    if (this.specA.state.isMarkerOn) {
-      this.drawMarker(maxX, maxY, ctx, maxSignalFreq);
-    }
   }
 
-  private drawMarker(maxX: number, maxY: number, ctx: CanvasRenderingContext2D, maxSignalFreq: number): void {
+  private drawMarker(maxX: number, maxY: number, maxSignalFreq: number): void {
+    const ctx = this.ctx;
     if (maxX > 0) {
       maxY -= 0.025;
 
@@ -387,10 +454,10 @@ export class SpectralDensityPlot extends RTSAScreen {
 
       // Draw frequency label
       ctx.fillStyle = '#fff';
-      ctx.font = '18px Arial';
+      ctx.font = '24px Arial';
       const freqMhz = (this.minFreq + (maxX * (this.maxFreq - this.minFreq)) / this.width) / 1e6 as MHz;
-      ctx.fillText(`${freqMhz.toFixed(1)} MHz`, maxX - 20, this.height * maxY - 30);
-      ctx.fillText(`${(maxSignalFreq + this.specA.state.minAmplitude).toFixed(1)} dB`, maxX - 20, this.height * maxY - 15);
+      ctx.fillText(`${freqMhz.toFixed(1)} MHz`, maxX - 20, this.height * maxY - 45);
+      ctx.fillText(`${(maxSignalFreq).toFixed(1)} dB`, maxX - 20, this.height * maxY - 15);
     }
   }
 

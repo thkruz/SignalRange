@@ -1,5 +1,11 @@
 import { html } from '@app/engine/utils/development/formatter';
 import { ANTENNA_CONFIG_KEYS } from '@app/equipment/antenna/antenna-configs';
+import { BUCModule } from '@app/equipment/rf-front-end/buc-module/buc-module';
+import { CouplerModule } from '@app/equipment/rf-front-end/coupler-module/coupler-module';
+import { IfFilterBankModule } from '@app/equipment/rf-front-end/filter-module/filter-module';
+import { HPAModule } from '@app/equipment/rf-front-end/hpa-module/hpa-module';
+import { LNBModule } from '@app/equipment/rf-front-end/lnb/lnb-module';
+import { OMTModule } from '@app/equipment/rf-front-end/omt-module/omt-module';
 import { Satellite } from '@app/equipment/satellite/satellite';
 import { dBm, FECType, Hertz, ModulationType, RfFrequency, SignalOrigin } from '@app/types';
 import { Degrees } from 'ootk';
@@ -32,7 +38,41 @@ export const scenario1Data: ScenarioData = {
   settings: {
     isSync: true,
     antennas: [ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK],
-    rfFrontEnds: 1,
+    rfFrontEnds: [{
+      // Module states managed by their respective classes
+      omt: OMTModule.getDefaultState(),
+      buc: BUCModule.getDefaultState(),
+      hpa: HPAModule.getDefaultState(),
+      filter: IfFilterBankModule.getDefaultState(),
+      lnb: LNBModule.getDefaultState(),
+      coupler: CouplerModule.getDefaultState(),
+      gpsdo: {
+        isPowered: true, // CHANGE
+        isLocked: false,
+        warmupTimeRemaining: 0, // seconds
+        temperature: 70, // °C
+        gnssSignalPresent: false,
+        isGnssSwitchUp: false,
+        isGnssAcquiringLock: false,
+        satelliteCount: 0,
+        utcAccuracy: 0,
+        constellation: 'GPS',
+        lockDuration: 0,
+        frequencyAccuracy: 0,
+        allanDeviation: 0,
+        phaseNoise: 0,
+        isInHoldover: true,
+        holdoverDuration: 600,
+        holdoverError: 0,
+        active10MHzOutputs: 2,
+        max10MHzOutputs: 5,
+        output10MHzLevel: 0,
+        ppsOutputsEnabled: false,
+        operatingHours: 6,
+        selfTestPassed: false,
+        agingRate: 0,
+      },
+    }],
     spectrumAnalyzers: 1,
     transmitters: 0,
     receivers: 0,

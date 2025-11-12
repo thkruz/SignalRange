@@ -61,7 +61,7 @@ export class RFFrontEnd extends BaseEquipment {
   // UI Components
   private readonly helpBtn_: HelpButton;
 
-  constructor(parentId: string, teamId: number = 1, serverId: number = 1) {
+  constructor(parentId: string, state?: Partial<RFFrontEndState>, teamId: number = 1, serverId: number = 1) {
     super(parentId, teamId);
 
     // Initialize state with default values from modules
@@ -77,7 +77,8 @@ export class RFFrontEnd extends BaseEquipment {
       filter: IfFilterBankModule.getDefaultState(),
       lnb: LNBModule.getDefaultState(),
       coupler: CouplerModule.getDefaultState(),
-      gpsdo: GPSDOModule.getDefaultState(),
+      gpsdo: GPSDOModule.getDefaultState()
+      , ...state
     };
 
     // Instantiate module classes

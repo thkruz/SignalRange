@@ -56,10 +56,11 @@ export const scenario1Brief = html`
         <ol>
           <li>GPS Disciplined Oscillator (GPSDO)
             <ul>
+              <li>Verify GPSDO unit is powered on</li>
+              <li>Verify GPSDO unit is warm (the OCXO will alarm if not at operating temp)</li>
               <li>Verify GPS antenna has satellite lock (green LED)</li>
-              <li>Power on GPSDO unit</li>
               <li>Wait for frequency lock (30-60 seconds)</li>
-              <li>Success: "LOCKED" status, &lt;1×10⁻¹¹ stability</li>
+              <li>Success: "LOCKED" status, &lt;5×10⁻¹¹ stability</li>
               <li><strong>Critical:</strong> ALL other equipment depends on this reference!</li>
             </ul>
           </li>

@@ -4,6 +4,13 @@ import { Satellite } from "@app/equipment/satellite/satellite";
 import { dBm, FECType, Hertz, ModulationType, RfFrequency, SignalOrigin } from "@app/types";
 import { Degrees } from "ootk";
 import { ScenarioData } from "../scenario-manager";
+import { BUCModule } from "@app/equipment/rf-front-end/buc-module/buc-module";
+import { CouplerModule } from "@app/equipment/rf-front-end/coupler-module/coupler-module";
+import { IfFilterBankModule } from "@app/equipment/rf-front-end/filter-module/filter-module";
+import { GPSDOModule } from "@app/equipment/rf-front-end/gpsdo-module/gpsdo-module";
+import { HPAModule } from "@app/equipment/rf-front-end/hpa-module/hpa-module";
+import { LNBModule } from "@app/equipment/rf-front-end/lnb/lnb-module";
+import { OMTModule } from "@app/equipment/rf-front-end/omt-module/omt-module";
 
 export const scenario3Data: ScenarioData = {
   id: 'first-light3',
@@ -27,7 +34,16 @@ export const scenario3Data: ScenarioData = {
   settings: {
     isSync: false,
     antennas: [ANTENNA_CONFIG_KEYS.C_BAND_3M_ANTESTAR],
-    rfFrontEnds: 1,
+    rfFrontEnds: [{
+      // Module states managed by their respective classes
+      omt: OMTModule.getDefaultState(),
+      buc: BUCModule.getDefaultState(),
+      hpa: HPAModule.getDefaultState(),
+      filter: IfFilterBankModule.getDefaultState(),
+      lnb: LNBModule.getDefaultState(),
+      coupler: CouplerModule.getDefaultState(),
+      gpsdo: GPSDOModule.getDefaultState(),
+    }],
     spectrumAnalyzers: 2,
     transmitters: 1,
     receivers: 1,

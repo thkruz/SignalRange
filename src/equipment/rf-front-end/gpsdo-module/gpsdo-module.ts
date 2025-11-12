@@ -226,6 +226,15 @@ export class GPSDOModule extends RFFrontEndModule<GPSDOState> {
         </div>
       </div>
     `;
+
+    // TODO: This should be a more elaborate initialization sequence
+    // Check if we are in holdover state
+    if (this.state_.isPowered && this.state_.warmupTimeRemaining === 0 && !this.state_.isLocked) {
+      this.startHoldoverMonitor_();
+    }
+    if (this.state_.isPowered && this.state_.warmupTimeRemaining > 0) {
+      this.startWarmupTimer_();
+    }
   }
 
   private getLockLedStatus_(): string {
@@ -449,7 +458,9 @@ export class GPSDOModule extends RFFrontEndModule<GPSDOState> {
     if (!this.state_.isPowered) {
       // Cooling down toward ambient
       const ambientTemp = 25;
-      const coolRate = 0.0001;
+      const coolRateInSeconds = 0.0001; // Per second
+      // Convert to ms
+      const coolRate = 1 - Math.pow(1 - coolRateInSeconds, 1 / 60);
       this.state_.temperature = this.state_.temperature +
         (ambientTemp - this.state_.temperature) * coolRate;
       return;
@@ -467,11 +478,15 @@ export class GPSDOModule extends RFFrontEndModule<GPSDOState> {
    */
   private resetToWarmupState_(): void {
     // Double-oven OCXO warmup: ~10 minutes (600 seconds)
-    this.state_.warmupTimeRemaining = SimulationManager.getInstance().isDeveloperMode ? 20 : 600;
+    // Each tick increases temp by 0.1C, so estimate remaining ticks
+    const targetTemp = 70;
+    const estimatedTicks = (targetTemp - this.state_.temperature) / 0.1;
+    this.state_.warmupTimeRemaining = Math.ceil(estimatedTicks);
+
     this.state_.isLocked = false;
     this.state_.lockDuration = 0;
-    this.state_.temperature = 25; // Room temp
-    this.state_.frequencyAccuracy = 999; // Poor when cold
+    // this.state_.temperature = 25; // Room temp
+    // this.state_.frequencyAccuracy = 999; // Poor when cold
     this.state_.allanDeviation = 99;
     this.state_.phaseNoise = -80;
     this.state_.isInHoldover = false;

@@ -1,4 +1,12 @@
 import { ANTENNA_CONFIG_KEYS } from './equipment/antenna/antenna-configs';
+import { BUCModule } from './equipment/rf-front-end/buc-module/buc-module';
+import { CouplerModule } from './equipment/rf-front-end/coupler-module/coupler-module';
+import { IfFilterBankModule } from './equipment/rf-front-end/filter-module/filter-module';
+import { GPSDOModule } from './equipment/rf-front-end/gpsdo-module/gpsdo-module';
+import { HPAModule } from './equipment/rf-front-end/hpa-module/hpa-module';
+import { LNBModule } from './equipment/rf-front-end/lnb/lnb-module';
+import { OMTModule } from './equipment/rf-front-end/omt-module/omt-module';
+import { RFFrontEndState } from './equipment/rf-front-end/rf-front-end';
 import { Satellite } from './equipment/satellite/satellite';
 import { scenario1Data } from './scenarios/scenario1';
 import { scenario2Data } from "./scenarios/scenario2";
@@ -7,7 +15,7 @@ import { scenario3Data } from './scenarios/scenario3';
 export interface SimulationSettings {
   isSync: boolean;
   antennas: ANTENNA_CONFIG_KEYS[];
-  rfFrontEnds: number;
+  rfFrontEnds: Partial<RFFrontEndState>[];
   spectrumAnalyzers: number;
   transmitters: number;
   receivers: number;
@@ -35,7 +43,16 @@ export class ScenarioManager {
     return {
       isSync: false,
       antennas: [ANTENNA_CONFIG_KEYS.C_BAND_3M_ANTESTAR], // TODO: Max 1 for now because only 1 rfFrontEnd is supported
-      rfFrontEnds: 1,
+      rfFrontEnds: [{
+        // Module states managed by their respective classes
+        omt: OMTModule.getDefaultState(),
+        buc: BUCModule.getDefaultState(),
+        hpa: HPAModule.getDefaultState(),
+        filter: IfFilterBankModule.getDefaultState(),
+        lnb: LNBModule.getDefaultState(),
+        coupler: CouplerModule.getDefaultState(),
+        gpsdo: GPSDOModule.getDefaultState(),
+      }],
       spectrumAnalyzers: 2,
       transmitters: 2,
       receivers: 2,

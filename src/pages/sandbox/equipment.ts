@@ -105,7 +105,7 @@ export class Equipment extends BaseElement {
       const antenna = new Antenna(`antenna${i}-container`, antennaConfigId);
       this.antennas.push(antenna);
 
-      const rfFrontEnd = new RFFrontEnd(`rf-front-end${i}-container`, i, 1);
+      const rfFrontEnd = new RFFrontEnd(`rf-front-end${i}-container`, settings.rfFrontEnds[i - 1]);
       this.rfFrontEnds.push(rfFrontEnd);
       rfFrontEnd.connectAntenna(antenna);
       antenna.attachRfFrontEnd(rfFrontEnd);

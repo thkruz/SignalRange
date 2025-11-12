@@ -1,10 +1,11 @@
+import { ANTENNA_CONFIG_KEYS } from './equipment/antenna/antenna-configs';
 import { scenario1Data } from './scenarios/scenario1';
 import { scenario2Data } from "./scenarios/scenario2";
 import { scenario3Data } from './scenarios/scenario3';
 
 export interface SimulationSettings {
   isSync: boolean;
-  antennas: number;
+  antennas: ANTENNA_CONFIG_KEYS[];
   rfFrontEnds: number;
   spectrumAnalyzers: number;
   transmitters: number;
@@ -30,7 +31,7 @@ export class ScenarioManager {
   static getDefaultSettings(): SimulationSettings {
     return {
       isSync: false,
-      antennas: 1, // TODO: Max 1 for now because only 1 rfFrontEnd is supported
+      antennas: [ANTENNA_CONFIG_KEYS.C_BAND_3M_ANTESKY], // TODO: Max 1 for now because only 1 rfFrontEnd is supported
       rfFrontEnds: 1,
       spectrumAnalyzers: 2,
       transmitters: 2,

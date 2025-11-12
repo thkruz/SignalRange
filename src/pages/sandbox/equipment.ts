@@ -91,8 +91,9 @@ export class Equipment extends BaseElement {
   private initEquipment_(settings: SimulationSettings): void {
 
     // Initialize antennas
-    for (let i = 1; i <= (settings.antennas); i++) {
-      const antenna = new Antenna(`antenna${i}-container`);
+    for (let i = 1; i <= (settings.antennas.length); i++) {
+      const antennaConfigId = settings.antennas[i - 1];
+      const antenna = new Antenna(`antenna${i}-container`, antennaConfigId);
       this.antennas.push(antenna);
 
       const rfFrontEnd = new RFFrontEnd(`rf-front-end${i}-container`, i, 1);

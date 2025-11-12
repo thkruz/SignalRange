@@ -1,4 +1,5 @@
 import { html } from "@app/engine/utils/development/formatter";
+import { ANTENNA_CONFIG_KEYS } from "@app/equipment/antenna/antenna-configs";
 import { ScenarioData } from "../scenario-manager";
 
 export const scenario3Data: ScenarioData = {
@@ -21,7 +22,7 @@ export const scenario3Data: ScenarioData = {
   ],
   settings: {
     isSync: false,
-    antennas: 1,
+    antennas: [ANTENNA_CONFIG_KEYS.C_BAND_3M_ANTESKY],
     rfFrontEnds: 1,
     spectrumAnalyzers: 2,
     transmitters: 1,

@@ -14,7 +14,7 @@ import { dBm, Hertz, RfSignal, SignalOrigin } from "../../types";
 import { AlarmStatus, BaseEquipment } from '../base-equipment';
 import { RFFrontEnd } from "../rf-front-end/rf-front-end";
 import { Transmitter } from "../transmitter/transmitter";
-import { ANTENNA_CONFIGS, AntennaConfig } from "./antenna-configs";
+import { ANTENNA_CONFIG_KEYS, ANTENNA_CONFIGS, AntennaConfig } from "./antenna-configs";
 import './antenna.css';
 
 /**
@@ -71,7 +71,7 @@ export class Antenna extends BaseEquipment {
   transmitters: Transmitter[] = [];
 
   /** Antenna physical configuration */
-  readonly config: AntennaConfig;
+  config: AntennaConfig;
 
   // UI Components
   private readonly powerSwitch_: PowerSwitch;
@@ -82,14 +82,14 @@ export class Antenna extends BaseEquipment {
 
   constructor(
     parentId: string,
+    configId: ANTENNA_CONFIG_KEYS = ANTENNA_CONFIG_KEYS.C_BAND_9M_VERTEX,
     teamId: number = 1,
     serverId: number = 1,
-    config: AntennaConfig = ANTENNA_CONFIGS.C_BAND_9M_VERTEX
   ) {
     super(parentId, teamId);
 
     // Set antenna configuration
-    this.config = config;
+    this.config = ANTENNA_CONFIGS[configId];
 
     // Initialize status with defaults
     this.state = {
@@ -138,6 +138,10 @@ export class Antenna extends BaseEquipment {
 
     EventBus.getInstance().on(Events.UPDATE, this.update.bind(this));
     EventBus.getInstance().on(Events.SYNC, this.syncDomWithState_.bind(this));
+  }
+
+  set configId(configId: ANTENNA_CONFIG_KEYS) {
+    this.config = ANTENNA_CONFIGS[configId];
   }
 
   initializeDom(parentId: string): HTMLElement {

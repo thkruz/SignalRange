@@ -1,3 +1,4 @@
+import { ANTENNA_CONFIG_KEYS } from '@app/equipment/antenna/antenna-configs';
 import { ScenarioData } from '../scenario-manager';
 
 /**
@@ -25,7 +26,7 @@ export const scenario1Data: ScenarioData = {
   ],
   settings: {
     isSync: false,
-    antennas: 1,
+    antennas: [ANTENNA_CONFIG_KEYS.C_BAND_9M_VERTEX],
     rfFrontEnds: 1,
     spectrumAnalyzers: 2,
     transmitters: 0,

@@ -1,4 +1,4 @@
-const path = require('path');
+const path = require('node:path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const CaseSensitivePathsPlugin = require('case-sensitive-paths-webpack-plugin');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
@@ -48,7 +48,8 @@ module.exports = {
     new CaseSensitivePathsPlugin(),
     new CopyWebpackPlugin({
       patterns: [
-        { from: 'public/assets/logo.png', to: 'logo.png' }
+        { from: 'public/assets/logo.png', to: 'logo.png' },
+        { from: 'public/images/scenarios', to: 'images/scenarios' }
       ]
     })
   ],

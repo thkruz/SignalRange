@@ -1,4 +1,13 @@
 {
+  "root": true,
+  "env": {
+    "node": true,
+    "es6": true
+  },
+  "parserOptions": {
+    "ecmaVersion": 2020, // allow `const`, `let`, async/await, etc.
+    "sourceType": "module" // webpack config is CommonJS; use 'module' if you're using ESM
+  },
   "ignorePatterns": [
     "src/engine/"
   ],
@@ -6,7 +15,6 @@
     "import"
   ],
   "rules": {
-    "import/no-unresolved": "error",
-    "import/case-sensitive": "error"
+    "import/no-unresolved": "error"
   }
 }

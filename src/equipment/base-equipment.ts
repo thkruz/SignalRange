@@ -13,7 +13,7 @@ import './base-equipment.css';
  * Alarm status for equipment status bar display
  */
 export interface AlarmStatus {
-  severity: 'error' | 'warning' | 'info' | 'success';
+  severity: 'error' | 'warning' | 'info' | 'success' | 'off';
   message: string;
 }
 
@@ -111,7 +111,14 @@ export abstract class BaseEquipment {
    * @param alarms Array of alarm statuses to display
    */
   protected updateStatusBar(element: HTMLElement, alarms: AlarmStatus[]): void {
-    // Priority order: check errors first, then warnings, then info, then success
+    // Priority order: check if off, then errors first, then warnings, then info, then success
+    const offAlarms = alarms.filter(a => a.severity === 'off');
+    if (offAlarms.length > 0) {
+      element.innerText = '';
+      element.className = `bottom-status-bar status-off`;
+      return;
+    }
+
     const errors = alarms.filter(a => a.severity === 'error');
     if (errors.length > 0) {
       const message = errors.map(a => a.message).join(', ');

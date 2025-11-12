@@ -66,6 +66,7 @@ export class PowerSwitch {
     if (this.isOn_) {
       this.dom.checked = false;
       this.isOn_ = false;
+      SoundManager.getInstance().play(Sfx.SWITCH);
     }
   }
 

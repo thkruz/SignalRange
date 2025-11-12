@@ -304,6 +304,11 @@ export class Antenna extends BaseEquipment {
     const alarms: AlarmStatus[] = [];
 
     // Error conditions
+    if (!this.state.isPowered) {
+      alarms.push({ severity: 'off', message: '' });
+      return alarms;
+    }
+
     if (!this.state.isOperational) {
       alarms.push({ severity: 'error', message: 'ANTENNA NOT OPERATIONAL' });
     }
@@ -433,10 +438,16 @@ export class Antenna extends BaseEquipment {
    */
 
   private handleSkewChange_(value: number): void {
+    if (!this.state.isPowered) {
+      return;
+    }
     this.state.skew = value as Degrees;
   }
 
   private handleAzimuthChange_(value: number): void {
+    if (!this.state.isPowered) {
+      return;
+    }
     if (value !== this.state.azimuth) {
       if (this.state.isLocked) {
         SoundManager.getInstance().play(Sfx.FAULT);
@@ -449,6 +460,9 @@ export class Antenna extends BaseEquipment {
   }
 
   private handleElevationChange_(value: number): void {
+    if (!this.state.isPowered) {
+      return;
+    }
     if (value !== this.state.elevation) {
       if (this.state.isLocked) {
         SoundManager.getInstance().play(Sfx.FAULT);
@@ -461,7 +475,7 @@ export class Antenna extends BaseEquipment {
   }
 
   private toggleLoopback_(isSwitchUp: boolean): void {
-    if (!this.state.isOperational) {
+    if (!this.state.isOperational || !this.state.isPowered) {
       return;
     }
 
@@ -474,7 +488,7 @@ export class Antenna extends BaseEquipment {
   }
 
   private toggleAutoTrack_(isSwitchUp: boolean): void {
-    if (!this.state.isOperational) {
+    if (!this.state.isOperational || !this.state.isPowered) {
       return;
     }
 
@@ -523,15 +537,22 @@ export class Antenna extends BaseEquipment {
     this.state.isPowered = !this.state.isPowered;
 
     // If turning off, also turn off track and locked
-    if (!this.state.isPowered) {
+    if (this.state.isPowered) {
+      // If turning on, ensure operational
+      setTimeout(() => {
+        this.state.isOperational = true;
+        this.notifyStateChange_();
+        this.updateSignals_();
+        this.syncDomWithState_();
+      }, 3000); // 3 second power-up delay
+    } else {
       this.state.isLocked = false;
       this.state.isAutoTrackEnabled = false;
+      this.notifyStateChange_();
+      this.updateSignals_();
+      this.syncDomWithState_();
     }
 
-    this.notifyStateChange_();
-
-    this.updateSignals_();
-    this.syncDomWithState_();
   }
 
   /**
@@ -1051,8 +1072,8 @@ export class Antenna extends BaseEquipment {
     this.loopbackSwitch_.sync(this.state.isLoopback);
 
     // Update inputs
-    this.domCache['antLoopbackLight'].className = `indicator-light ${this.state.isLoopback ? 'on' : 'off'}`;
-    this.domCache['antAutoTrackLight'].className = `indicator-light ${this.state.isAutoTrackSwitchUp ? 'on' : 'off'}`;
+    this.domCache['antLoopbackLight'].className = `indicator-light ${this.state.isLoopback && this.state.isPowered ? 'on' : 'off'}`;
+    this.domCache['antAutoTrackLight'].className = `indicator-light ${this.state.isAutoTrackSwitchUp && this.state.isPowered ? 'on' : 'off'}`;
 
     qs('.status-indicator.auto-track').classList.toggle('fault', this.state.isAutoTrackSwitchUp && !this.state.isAutoTrackEnabled);
 

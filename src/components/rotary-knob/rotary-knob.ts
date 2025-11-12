@@ -3,6 +3,8 @@ import { qs } from "@app/engine/utils/query-selector";
 import { EventBus } from "@app/events/event-bus";
 import { Events } from "@app/events/events";
 import { Logger } from "@app/logging/logger";
+import { Sfx } from "@app/sound/sfx-enum";
+import SoundManager from "@app/sound/sound-manager";
 import './rotary-knob.css';
 
 export class RotaryKnob {
@@ -100,14 +102,20 @@ export class RotaryKnob {
 
   private setValue_(newValue: number): void {
     // Clamp and round to step
-    this.value = Math.max(this.min, Math.min(this.max, newValue));
-    this.value = Math.round(this.value / this.step) * this.step;
+    newValue = Math.max(this.min, Math.min(this.max, newValue));
+    newValue = Math.round(newValue / this.step) * this.step;
 
     // Round to 3 decimal places to avoid floating point issues
-    this.value = Number(this.value.toFixed(3));
+    newValue = Number(newValue.toFixed(3));
+
+    if (newValue === this.value) return; // No change
+
+    SoundManager.getInstance().play(Sfx.KNOB);
+    this.value = newValue;
 
     this.updateAngleFromValue_();
     this.updateDisplay();
+
 
     if (this.callback) {
       this.callback(this.value);

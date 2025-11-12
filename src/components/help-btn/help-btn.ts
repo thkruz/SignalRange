@@ -2,7 +2,7 @@ import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
 import { EventBus } from "@app/events/event-bus";
 import { Events } from "@app/events/events";
-import { HelpManager } from "@app/help/help-manager";
+import { ModalManager } from "@app/modal/modal-manager";
 import './help-btn.css';
 
 export class HelpButton {
@@ -45,7 +45,7 @@ export class HelpButton {
   private onClick(e: MouseEvent): void {
     e.preventDefault();
 
-    HelpManager.getInstance().show(this.helpTitle_, this.helpContent_);
+    ModalManager.getInstance().show(this.helpTitle_, this.helpContent_);
   }
 
   get html(): string {

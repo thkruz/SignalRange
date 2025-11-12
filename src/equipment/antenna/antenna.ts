@@ -438,6 +438,9 @@ export class Antenna extends BaseEquipment {
 
   private handleAzimuthChange_(value: number): void {
     if (value !== this.state.azimuth) {
+      if (this.state.isLocked) {
+        SoundManager.getInstance().play(Sfx.FAULT);
+      }
       this.state.isLocked = false;
       this.state.isAutoTrackEnabled = false;
       this.state.azimuth = value as Degrees;
@@ -447,6 +450,9 @@ export class Antenna extends BaseEquipment {
 
   private handleElevationChange_(value: number): void {
     if (value !== this.state.elevation) {
+      if (this.state.isLocked) {
+        SoundManager.getInstance().play(Sfx.FAULT);
+      }
       this.state.isLocked = false;
       this.state.isAutoTrackEnabled = false;
       this.state.elevation = value as Degrees;
@@ -497,7 +503,7 @@ export class Antenna extends BaseEquipment {
       // Simulate lock acquisition delay
       // TODO: Refreshing during this timer will cause it to be stuck in "Acquiring Lock" state until switch toggled again
       setTimeout(() => {
-
+        SoundManager.getInstance().stop(Sfx.SMALL_MOTOR);
         this.state.isLocked = true;
         this.updateSignals_();
         this.notifyStateChange_();
@@ -1046,7 +1052,9 @@ export class Antenna extends BaseEquipment {
 
     // Update inputs
     this.domCache['antLoopbackLight'].className = `indicator-light ${this.state.isLoopback ? 'on' : 'off'}`;
-    this.domCache['antAutoTrackLight'].className = `indicator-light ${this.state.isAutoTrackEnabled ? 'on' : 'off'}`;
+    this.domCache['antAutoTrackLight'].className = `indicator-light ${this.state.isAutoTrackSwitchUp ? 'on' : 'off'}`;
+
+    qs('.status-indicator.auto-track').classList.toggle('fault', this.state.isAutoTrackSwitchUp && !this.state.isAutoTrackEnabled);
 
     // Update skew knob
     this.skewKnob_.sync(this.state.skew);

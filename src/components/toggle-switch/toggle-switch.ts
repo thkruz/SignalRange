@@ -1,5 +1,7 @@
 import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
+import { Sfx } from "@app/sound/sfx-enum";
+import SoundManager from "@app/sound/sound-manager";
 import './toggle-switch.css';
 
 export class ToggleSwitch {
@@ -43,6 +45,7 @@ export class ToggleSwitch {
     this.dom.addEventListener('change', (e) => {
       const checked = (e.target as HTMLInputElement).checked;
       this.isActive_ = checked ? this.checkedMeansActive : !this.checkedMeansActive;
+      SoundManager.getInstance().play(Sfx.SWITCH);
       cb(this.isActive_);
     });
   }

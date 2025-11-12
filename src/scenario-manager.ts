@@ -13,6 +13,7 @@ export interface SimulationSettings {
   receivers: number;
   /** Optional HTML override for complex layouts */
   layout?: string;
+  missionBriefUrl?: string;
   satellites: Satellite[];
 }
 

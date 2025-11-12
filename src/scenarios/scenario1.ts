@@ -4,6 +4,7 @@ import { Satellite } from '@app/equipment/satellite/satellite';
 import { dBm, FECType, Hertz, ModulationType, RfFrequency, SignalOrigin } from '@app/types';
 import { Degrees } from 'ootk';
 import { ScenarioData } from '../scenario-manager';
+import { scenario1Brief } from './scenario1-brief';
 
 /**
  * Scenario 1: "First Light" - HELIOS-7 Initial Contact
@@ -36,6 +37,10 @@ export const scenario1Data: ScenarioData = {
     transmitters: 0,
     receivers: 0,
     layout: html`
+      <div id="mission-checklist-container">
+        <div class="mission-brief-icon icon" title="Mission Brief"></div>
+        <div class="checklist-icon icon" title="Mission Checklist"></div>
+      </div>
       <div class="student-equipment">
         <div class="paired-equipment-container-left">
           <div id="antenna1-container" class="antenna-container"></div>
@@ -46,6 +51,7 @@ export const scenario1Data: ScenarioData = {
         </div>
       </div>
     `,
+    missionBriefUrl: scenario1Brief,
     satellites: [
       new Satellite(
         1,

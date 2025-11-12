@@ -3,8 +3,6 @@ import { RotaryKnob } from '@app/components/rotary-knob/rotary-knob';
 import { SecureToggleSwitch } from '@app/components/secure-toggle-switch/secure-toggle-switch';
 import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
-import { Sfx } from '@app/sound/sfx-enum';
-import SoundManager from '@app/sound/sound-manager';
 import { dBm, dBW, RfSignal, SignalOrigin } from '@app/types';
 import { RFFrontEnd } from '../rf-front-end';
 import { RFFrontEndModule } from '../rf-front-end-module';
@@ -374,10 +372,6 @@ export class HPAModule extends RFFrontEndModule<HPAState> {
     }
 
     this.state.isHpaSwitchEnabled = !this.state.isHpaSwitchEnabled;
-
-    SoundManager.getInstance().play(
-      this.state.isHpaSwitchEnabled ? Sfx.TOGGLE_ON : Sfx.TOGGLE_OFF
-    );
 
     if (this.state.isPowered) {
       this.state.isHpaEnabled = this.state.isHpaSwitchEnabled;

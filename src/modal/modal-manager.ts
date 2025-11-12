@@ -1,18 +1,18 @@
 import { html } from '@app/engine/utils/development/formatter';
 import { qs } from '@app/engine/utils/query-selector';
-import './help-manager.css';
+import './modal-manager.css';
 
-export class HelpManager {
-  private static instance: HelpManager;
+export class ModalManager {
+  private static instance: ModalManager;
   private modalElement: HTMLDivElement | null = null;
 
   private constructor() { }
 
-  static getInstance(): HelpManager {
-    if (!HelpManager.instance) {
-      HelpManager.instance = new HelpManager();
+  static getInstance(): ModalManager {
+    if (!ModalManager.instance) {
+      ModalManager.instance = new ModalManager();
     }
-    return HelpManager.instance;
+    return ModalManager.instance;
   }
 
   show(title: string, htmlContent: string): void {

@@ -2,7 +2,9 @@ import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
 import { EventBus } from "@app/events/event-bus";
 import { Events } from "@app/events/events";
+import SoundManager from "@app/sound/sound-manager";
 import './secure-toggle-switch.css';
+import { Sfx } from "@app/sound/sfx-enum";
 
 export class SecureToggleSwitch {
   protected html_: string;
@@ -33,6 +35,7 @@ export class SecureToggleSwitch {
   private onDomReady_(): void {
     this.dom_ ??= qs(`#${this.uniqueId}`);
     qs(`#${this.uniqueId}`).addEventListener('change', (e) => {
+      SoundManager.getInstance().play(Sfx.SWITCH);
       this.cb_((e.target as HTMLInputElement).checked);
     });
   }

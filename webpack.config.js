@@ -50,7 +50,8 @@ module.exports = {
       patterns: [
         { from: 'public/assets/logo.png', to: 'logo.png' },
         { from: 'public/images/scenarios', to: 'images/scenarios' },
-        { from: 'public/images/screenshots', to: 'images/screenshots' }
+        { from: 'public/images/screenshots', to: 'images/screenshots' },
+        { from: 'public/mission-briefs', to: 'mission-briefs' }
       ]
     })
   ],

@@ -1,6 +1,8 @@
 import { BaseElement } from "@app/components/base-element";
+import { qs } from "@app/engine/utils/query-selector";
 import { RFFrontEnd } from "@app/equipment/rf-front-end/rf-front-end";
-import { SimulationSettings } from "@app/scenario-manager";
+import { ModalManager } from "@app/modal/modal-manager";
+import { ScenarioManager, SimulationSettings } from "@app/scenario-manager";
 import { html } from "../../engine/utils/development/formatter";
 import { Antenna } from '../../equipment/antenna/antenna';
 import { RealTimeSpectrumAnalyzer } from '../../equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer';
@@ -83,7 +85,16 @@ export class Equipment extends BaseElement {
   }
 
   protected addEventListeners_(): void {
-    // No event listeners for now
+    this.addMissionBriefListener_();
+  }
+
+  private addMissionBriefListener_(): void {
+    const missionBriefUrl = ScenarioManager.getInstance().settings.missionBriefUrl;
+    if (missionBriefUrl) {
+      qs('.mission-brief-icon').addEventListener('click', () => {
+        ModalManager.getInstance().show('Mission Brief', missionBriefUrl);
+      });
+    }
   }
 
   private initEquipment_(settings: SimulationSettings): void {

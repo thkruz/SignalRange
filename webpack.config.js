@@ -49,7 +49,8 @@ module.exports = {
     new CopyWebpackPlugin({
       patterns: [
         { from: 'public/assets/logo.png', to: 'logo.png' },
-        { from: 'public/images/scenarios', to: 'images/scenarios' }
+        { from: 'public/images/scenarios', to: 'images/scenarios' },
+        { from: 'public/images/screenshots', to: 'images/screenshots' }
       ]
     })
   ],

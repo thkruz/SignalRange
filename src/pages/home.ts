@@ -48,7 +48,7 @@ export class HomePage extends BasePage {
         </div>
         <div class="hero-visual">
           <div class="screenshot-container">
-            <img src="/screenshots/2.png" alt="SignalRange EW Lab Screenshot" class="hero-image" />
+            <img src="/images/screenshots/2.png" alt="SignalRange EW Lab Screenshot" class="hero-image" />
           </div>
         </div>
       </section>
@@ -172,21 +172,21 @@ export class HomePage extends BasePage {
         <div class="screenshots-grid">
           <div class="screenshot-card">
             <div class="screenshot-container large">
-              <img src="/screenshots/5.png" alt="SignalRange EW Lab Screenshot" />
+              <img src="/images/screenshots/5.png" alt="SignalRange EW Lab Screenshot" />
             </div>
             <p class="screenshot-caption">Real-time spectrum analysis with WebGL rendering</p>
           </div>
 
           <div class="screenshot-card">
             <div class="screenshot-container large">
-              <img src="/screenshots/4.png" alt="SignalRange EW Lab Screenshot" />
+              <img src="/images/screenshots/4.png" alt="SignalRange EW Lab Screenshot" />
             </div>
             <p class="screenshot-caption">Multi-modem transmitter and receiver configuration</p>
           </div>
 
           <div class="screenshot-card">
             <div class="screenshot-container large">
-              <img src="/screenshots/3.png" alt="SignalRange EW Lab Screenshot" />
+              <img src="/images/screenshots/3.png" alt="SignalRange EW Lab Screenshot" />
             </div>
             <p class="screenshot-caption">Complete RF signal chain with LNB, BUC, HPA, and filters</p>
           </div>

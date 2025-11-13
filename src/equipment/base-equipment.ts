@@ -155,4 +155,37 @@ export abstract class BaseEquipment {
     element.innerText = 'SYSTEM NORMAL';
     element.className = `bottom-status-bar status-green`;
   }
+
+  protected updateStatusLed(element: HTMLElement, alarms: AlarmStatus[]): void {
+    // If any error alarms, set to red
+    const hasError = alarms.some(a => a.severity === 'error');
+    if (hasError) {
+      element.className = 'led led-red';
+      return;
+    }
+
+    // If any warning alarms, set to amber
+    const hasWarning = alarms.some(a => a.severity === 'warning');
+    if (hasWarning) {
+      element.className = 'led led-amber';
+      return;
+    }
+
+    // If any off alarms, set to warning
+    const hasOff = alarms.some(a => a.severity === 'off');
+    if (hasOff) {
+      element.className = 'led led-warning';
+      return;
+    }
+
+    // If any info alarms, set to blue
+    const hasInfo = alarms.some(a => a.severity === 'info');
+    if (hasInfo) {
+      element.className = 'led led-blue';
+      return;
+    }
+
+    // Otherwise, set to green
+    element.className = 'led led-green';
+  }
 }

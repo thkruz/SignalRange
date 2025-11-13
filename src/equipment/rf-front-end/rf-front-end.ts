@@ -149,14 +149,14 @@ export class RFFrontEnd extends BaseEquipment {
       <!-- Top Status Bar -->
       <div class="equipment-case-header">
         <div class="equipment-case-title">
-          <span>RF FRONT END ${this.uuidShort}</span>
+          <span>RF FRONT END 1 of 2 | ${this.uuidShort}</span>
           ${this.helpBtn_.html}
         </div>
         <div class="equipment-case-power-controls">
           <div id="rf-fe-power-${this.state.uuid}" class="equipment-case-main-power"></div>
           <div class="equipment-case-status-indicator">
-            <span class="equipment-case-status-label">EXT REF</span>
-            <div class="led led-green"></div>
+            <span class="equipment-case-status-label">Status</span>
+            <div id="rf-fe-led-${this.state.uuid}-1" class="led led-green"></div>
           </div>
         </div>
       </div>
@@ -175,7 +175,7 @@ export class RFFrontEnd extends BaseEquipment {
 
       <!-- Bottom Status Bar -->
       <div class="equipment-case-footer">
-        <div class="bottom-status-bar">
+        <div id="rf-fe-status-${this.state.uuid}-1" class="bottom-status-bar">
           SYSTEM NORMAL
         </div>
       </div>
@@ -189,14 +189,14 @@ export class RFFrontEnd extends BaseEquipment {
       <!-- Top Status Bar -->
       <div class="equipment-case-header">
         <div class="equipment-case-title">
-          <span>RF FRONT END ${this.uuidShort}</span>
+          <span>RF FRONT END 2 of 2 | ${this.uuidShort}</span>
           ${this.helpBtn_.html}
         </div>
         <div class="equipment-case-power-controls">
           <div id="rf-fe-power-${this.state.uuid}" class="equipment-case-main-power"></div>
           <div class="equipment-case-status-indicator">
-            <span class="equipment-case-status-label">EXT REF</span>
-            <div class="led led-green"></div>
+            <span class="equipment-case-status-label">Status</span>
+            <div id="rf-fe-led-${this.state.uuid}-2" class="led led-green"></div>
           </div>
         </div>
       </div>
@@ -212,7 +212,7 @@ export class RFFrontEnd extends BaseEquipment {
 
       <!-- Bottom Status Bar -->
       <div class="equipment-case-footer">
-        <div class="bottom-status-bar">
+        <div id="rf-fe-status-${this.state.uuid}-2" class="bottom-status-bar">
           SYSTEM NORMAL
         </div>
       </div>
@@ -269,21 +269,28 @@ export class RFFrontEnd extends BaseEquipment {
    * Get status alarms for status bar display
    * Collects alarms from all modules and returns as AlarmStatus array
    */
-  private getStatusAlarms(): AlarmStatus[] {
+  private getStatusAlarms(rfcase: number): AlarmStatus[] {
     const alarms: AlarmStatus[] = [];
 
     // HPA overdrive check (back-off < 3 dB is typically considered overdrive)
     this.state.hpa.isOverdriven = this.state.hpa.backOff < 3;
 
     // Collect alarm messages from all modules
-    const moduleAlarms = [
-      ...this.omtModule.getAlarms(),
-      ...this.bucModule.getAlarms(),
-      ...this.hpaModule.getAlarms(),
-      ...this.filterModule.getAlarms(),
-      ...this.lnbModule.getAlarms(),
-      ...this.gpsdoModule.getAlarms(),
-    ];
+    let moduleAlarms = []
+
+    if (rfcase === 1) {
+      moduleAlarms = [
+        ...this.omtModule.getAlarms(),
+        ...this.bucModule.getAlarms(),
+        ...this.hpaModule.getAlarms(),
+      ];
+    } else if (rfcase === 2) {
+      moduleAlarms = [
+        ...this.filterModule.getAlarms(),
+        ...this.lnbModule.getAlarms(),
+        ...this.gpsdoModule.getAlarms(),
+      ];
+    }
 
     // Convert module alarm strings to AlarmStatus objects
     // Classify severity based on alarm content
@@ -305,10 +312,19 @@ export class RFFrontEnd extends BaseEquipment {
   }
 
   protected checkForAlarms_(): void {
-    const statusBarElement = qs(`.rf-front-end-box .bottom-status-bar`);
-    if (!statusBarElement) return;
+    const statusBarElement1 = qs(`#rf-fe-status-${this.state.uuid}-1`);
+    const ledElement1 = qs(`#rf-fe-led-${this.state.uuid}-1`);
 
-    this.updateStatusBar(statusBarElement, this.getStatusAlarms());
+    const alarmStatus1 = this.getStatusAlarms(1);
+    this.updateStatusBar(statusBarElement1, alarmStatus1);
+    this.updateStatusLed(ledElement1, alarmStatus1);
+
+    const statusBarElement2 = qs(`#rf-fe-status-${this.state.uuid}-2`);
+    const ledElement2 = qs(`#rf-fe-led-${this.state.uuid}-2`);
+
+    const alarmStatus2 = this.getStatusAlarms(2);
+    this.updateStatusBar(statusBarElement2, alarmStatus2);
+    this.updateStatusLed(ledElement2, alarmStatus2);
   }
 
   protected attachEventListeners(): void {

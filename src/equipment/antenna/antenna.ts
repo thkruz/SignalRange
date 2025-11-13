@@ -382,9 +382,14 @@ export class Antenna extends BaseEquipment {
     return ((this.state.azimuth % 360) + 360) % 360 as Degrees;
   }
 
-  private updateBottomStatusBar_(): void {
+  private checkForAlarms_(): void {
+    const statusAlarms = this.getStatusAlarms();
+
     const statusBarElement = this.domCache['bottomStatusBar'];
-    this.updateStatusBar(statusBarElement, this.getStatusAlarms());
+    const ledElement = this.domCache['led'];
+
+    this.updateStatusBar(statusBarElement, statusAlarms);
+    this.updateStatusLed(ledElement, statusAlarms);
   }
 
   protected initialize_(): void {
@@ -1071,10 +1076,7 @@ export class Antenna extends BaseEquipment {
       return; // No changes, skip update
     }
 
-    this.updateBottomStatusBar_();
-
-    // Update status
-    this.domCache['led'].className = `led ${this.getLedColor_()}`;
+    this.checkForAlarms_();
 
     this.powerSwitch_.sync(this.state.isPowered);
     this.loopbackSwitch_.sync(this.state.isLoopback);
@@ -1108,14 +1110,5 @@ export class Antenna extends BaseEquipment {
 
     // Save last render state
     this.lastRenderState = structuredClone(this.state);
-  }
-
-  private getLedColor_(): string {
-    if (!this.state.isPowered) return '';
-    if (!this.state.isOperational) return 'led-amber';
-    if (this.state.isLoopback) return 'led-amber';
-    if (this.state.isLocked && !this.state.isLoopback && !this.rfFrontEnd_?.hpaModule.state.isHpaEnabled) return 'led-green';
-    if (!this.state.isLoopback && this.rfFrontEnd_?.hpaModule.state.isHpaEnabled) return 'led-red';
-    return 'led-amber';
   }
 }

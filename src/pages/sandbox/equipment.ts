@@ -27,31 +27,13 @@ export class Equipment extends BaseElement {
 
   protected html_ = html`
       <div class="student-equipment">
-        <!-- Antennas, Front Ends, and Spec Analyzers Grid -->
-          <div id="antenna-spec-a-grid1" class="antenna-spec-a-grid">
-            <div class="paired-equipment-container">
-              <div id="antenna1-container" class="antenna-container"></div>
-              <div id="rf-front-end1-container" class="rf-front-end-container"></div>
-              <div id="specA1-container" class="spec-a-container"></div>
-            </div>
-            <div class="paired-equipment-container">
-              <div id="antenna2-container" class="antenna-container"></div>
-              <div id="rf-front-end2-container" class="rf-front-end-container"></div>
-            </div>
-            <div class="paired-equipment-container">
-              <div id="specA2-container" class="spec-a-container"></div>
-            </div>
-          </div>
-
-          <!-- Spectrum Analyzers Grid -->
-          <div id="antenna-spec-a-grid2" class="antenna-spec-a-grid">
-            <div class="paired-equipment-container">
-              <div id="specA3-container" class="spec-a-container"></div>
-              <div id="specA4-container" class="spec-a-container"></div>
-            </div>
-          </div>
-
-        <!-- Transmitters -->
+        <div class="equipment-row">
+          <div id="antenna1-container" class="antenna-container"></div>
+          <div id="specA1-container" class="spec-a-container"></div>
+          <div id="rf-front-end1-container" class="rf-front-end-container"></div>
+        </div>
+        <div class="equipment-row">
+          <!-- Transmitters -->
           <div class="tx-grid">
             <div class="paired-equipment-container">
               <div id="tx1-container" class="tx-container"></div>
@@ -62,8 +44,8 @@ export class Equipment extends BaseElement {
               <div id="tx4-container" class="tx-container"></div>
             </div>
           </div>
-
-        <!-- Receivers -->
+          <div id="specA2-container" class="spec-a-container"></div>
+          <!-- Receivers -->
           <div class="rx-grid">
             <div class="paired-equipment-container">
               <div id="rx1-container" class="rx-container"></div>
@@ -74,6 +56,7 @@ export class Equipment extends BaseElement {
               <div id="rx4-container" class="rx-container"></div>
             </div>
           </div>
+        </div>
       </div>
     `;
 

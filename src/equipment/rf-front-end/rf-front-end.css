@@ -44,7 +44,7 @@
 }
 
 .rf-front-end-container {
-  width: 1576px;
+  width: fit-content;
 }
 
 .module-label {

@@ -1,10 +1,30 @@
-.student-equipment {
+.student-equipment.scenario1-layout {
   display: flex;
   row-gap: 1em;
   flex-direction: row;
   flex-wrap: nowrap;
   padding: 1em;
   justify-content: space-between;
+}
+
+.student-equipment {
+  display: flex;
+  row-gap: 1em;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  padding: 1em;
+  justify-content: space-between;
+}
+
+.equipment-row {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  justify-content: center;
+  width: 100%;
+  margin-bottom: 1.5rem;
+  align-items: flex-start;
+  gap: 3em;
 }
 
 .spacer {

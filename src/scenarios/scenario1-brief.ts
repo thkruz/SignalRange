@@ -66,11 +66,10 @@ export const scenario1Brief = html`
           </li>
           <li>Low Noise Block (LNB)
             <ul>
-              <li>Verify C-band feedhorn is properly installed</li>
               <li>Power on LNB (converts 3.7-4.2 GHz down to 950-1450 MHz IF)</li>
               <li>Set gain: 55 dB</li>
               <li>Wait for temperature stabilization: 2-3 minutes</li>
-              <li>Success: "TEMP STABLE" - no frequency drift</li>
+              <li>Success: temperature stable and no frequency drift</li>
             </ul>
           </li>
           <li>Block Upconverter (BUC)

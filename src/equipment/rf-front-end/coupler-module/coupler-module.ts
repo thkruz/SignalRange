@@ -8,7 +8,16 @@ import './coupler-module.css';
 /**
  * Spectrum analyzer tap point options
  */
-export type TapPoint = 'TX IF' | 'RX IF' | 'POST BUC / PRE HPA TX RF' | 'POST HPA / PRE OMT TX RF' | 'POST OMT/PRE ANT TX RF' | 'PRE OMT/POST ANT RX RF' | 'POST OMT/PRE LNA RX RF' | 'POST LNA RX RF'
+export enum TapPoint {
+  TX_IF = 'TX IF',
+  RX_IF = 'RX IF',
+  POST_BUC_PRE_HPA_TX_RF = 'POST BUC / PRE HPA TX RF',
+  POST_HPA_PRE_OMT_TX_RF = 'POST HPA / PRE OMT TX RF',
+  POST_OMT_PRE_ANT_TX_RF = 'POST OMT/PRE ANT TX RF',
+  PRE_OMT_POST_ANT_RX_RF = 'PRE OMT/POST ANT RX RF',
+  POST_OMT_PRE_LNA_RX_RF = 'POST OMT/PRE LNA RX RF',
+  POST_LNA_RX_RF = 'POST LNA RX RF',
+}
 
 /**
  * Spectrum Analyzer coupler module state
@@ -30,8 +39,8 @@ export class CouplerModule extends RFFrontEndModule<CouplerState> {
   static getDefaultState(): CouplerState {
     return {
       isPowered: true,
-      tapPointA: 'TX IF',
-      tapPointB: 'RX IF',
+      tapPointA: TapPoint.TX_IF,
+      tapPointB: TapPoint.RX_IF,
       couplingFactorA: -30, // dB
       couplingFactorB: -20, // dB
       isActiveA: true,
@@ -156,17 +165,17 @@ export class CouplerModule extends RFFrontEndModule<CouplerState> {
    */
   private isTapPointActive_(tapPoint: TapPoint): boolean {
     const txTapPoints: TapPoint[] = [
-      'TX IF',
-      'POST BUC / PRE HPA TX RF',
-      'POST HPA / PRE OMT TX RF',
-      'POST OMT/PRE ANT TX RF'
+      TapPoint.TX_IF,
+      TapPoint.POST_BUC_PRE_HPA_TX_RF,
+      TapPoint.POST_HPA_PRE_OMT_TX_RF,
+      TapPoint.POST_OMT_PRE_ANT_TX_RF
     ];
 
     const rxTapPoints: TapPoint[] = [
-      'RX IF',
-      'PRE OMT/POST ANT RX RF',
-      'POST OMT/PRE LNA RX RF',
-      'POST LNA RX RF'
+      TapPoint.RX_IF,
+      TapPoint.PRE_OMT_POST_ANT_RX_RF,
+      TapPoint.POST_OMT_PRE_LNA_RX_RF,
+      TapPoint.POST_LNA_RX_RF
     ];
 
     if (

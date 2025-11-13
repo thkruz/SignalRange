@@ -5,6 +5,7 @@ import { qs } from "../../engine/utils/query-selector";
 import { Events } from "../../events/events";
 import { FECType, Hertz, MHz, ModulationType } from "../../types";
 import { AlarmStatus, BaseEquipment } from "../base-equipment";
+import { TapPoint } from "../rf-front-end/coupler-module/coupler-module";
 import { RFFrontEnd } from "../rf-front-end/rf-front-end";
 import { Antenna } from './../antenna/antenna';
 import './receiver.css';
@@ -479,7 +480,7 @@ export class Receiver extends BaseEquipment {
         }
 
         // Calculate C/N for each signal and mark as degraded if below threshold
-        const noiseFloor = this.rfFrontEnd_.getNoiseFloor('RX IF').noiseFloor + this.rfFrontEnd_.getTotalRxGain();
+        const noiseFloor = this.rfFrontEnd_.getNoiseFloor(TapPoint.RX_IF).noiseFloor + this.rfFrontEnd_.getTotalRxGain();
         const signalLevel = s.power;
 
         const cn = signalLevel - noiseFloor;

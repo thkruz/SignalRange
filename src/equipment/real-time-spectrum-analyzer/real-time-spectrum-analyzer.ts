@@ -6,6 +6,7 @@ import { Events } from "../../events/events";
 import { Hertz, IfSignal, RfSignal } from "../../types";
 import { BaseEquipment } from '../base-equipment';
 import { RFFrontEnd } from "../rf-front-end/rf-front-end";
+import { TapPoint } from './../rf-front-end/coupler-module/coupler-module';
 import { AnalyzerControlBox } from "./analyzer-control-box";
 import './real-time-spectrum-analyzer.css';
 import { SpectralDensityPlot } from './rtsa-screen/spectral-density-plot';
@@ -303,39 +304,43 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
     this.state.isInternalNoiseFloor = true;
 
     for (const tapPoint of [tapPointA, tapPointB]) {
-      let tapPointnoiseFloor = -174;
+      let tapPointnoiseFloor: number;
       let isInternalNoiseFloor = true;
 
       switch (tapPoint) {
-        case 'TX IF':
+        case TapPoint.TX_IF:
           signals.push(...this.rfFrontEnd_.bucModule.inputSignals); // IF signals from both transmitter cases
           tapPointnoiseFloor = this.rfFrontEnd_.bucModule.state.noiseFloor;
           break;
-        case 'POST BUC / PRE HPA TX RF':
+        case TapPoint.POST_BUC_PRE_HPA_TX_RF:
           signals.push(...this.rfFrontEnd_.bucModule.outputSignals);
           tapPointnoiseFloor = this.rfFrontEnd_.bucModule.state.noiseFloor;
           break;
-        case 'POST HPA / PRE OMT TX RF':
+        case TapPoint.POST_HPA_PRE_OMT_TX_RF:
           signals.push(...this.rfFrontEnd_.hpaModule.outputSignals);
           tapPointnoiseFloor = this.rfFrontEnd_.hpaModule.state.noiseFloor;
           break;
-        case 'POST OMT/PRE ANT TX RF':
+        case TapPoint.POST_OMT_PRE_ANT_TX_RF:
           signals.push(...this.rfFrontEnd_.omtModule.txSignalsOut);
           tapPointnoiseFloor = this.rfFrontEnd_.omtModule.state.noiseFloor;
           break;
-        case 'PRE OMT/POST ANT RX RF':
+        case TapPoint.PRE_OMT_POST_ANT_RX_RF:
           signals.push(...this.rfFrontEnd_.antenna.state.rxSignalsIn);
           tapPointnoiseFloor = this.rfFrontEnd_.antenna.state.noiseFloor;
           break;
-        case 'POST OMT/PRE LNA RX RF':
+        case TapPoint.POST_OMT_PRE_LNA_RX_RF:
+          {
           signals.push(...this.rfFrontEnd_.omtModule.rxSignalsOut);
           tapPointnoiseFloor = this.rfFrontEnd_.omtModule.state.noiseFloor;
           break;
-        case 'POST LNA RX RF':
+          }
+        case TapPoint.POST_LNA_RX_RF:
+          {
           signals.push(...this.rfFrontEnd_.lnbModule.postLNASignals);
           tapPointnoiseFloor = this.rfFrontEnd_.lnbModule.state.noiseFloor;
           break;
-        case 'RX IF':
+          }
+        case TapPoint.RX_IF:
           {
             signals.push(...this.rfFrontEnd_.filterModule.outputSignals); // IF signals from LNB
             const noiseData = this.rfFrontEnd_.getNoiseFloor(tapPoint);

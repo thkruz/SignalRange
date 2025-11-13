@@ -42,7 +42,7 @@ export class ScenarioManager {
   static getDefaultSettings(): SimulationSettings {
     return {
       isSync: false,
-      antennas: [ANTENNA_CONFIG_KEYS.C_BAND_3M_ANTESTAR], // TODO: Max 1 for now because only 1 rfFrontEnd is supported
+      antennas: [ANTENNA_CONFIG_KEYS.C_BAND_3M_ANTESTAR, ANTENNA_CONFIG_KEYS.KU_BAND_3M_ANTESTAR], // TODO: Max 1 for now because only 1 rfFrontEnd is supported
       rfFrontEnds: [{
         // Module states managed by their respective classes
         omt: OMTModule.getDefaultState(),
@@ -54,8 +54,8 @@ export class ScenarioManager {
         gpsdo: GPSDOModule.getDefaultState(),
       }],
       spectrumAnalyzers: 2,
-      transmitters: 2,
-      receivers: 2,
+      transmitters: 4,
+      receivers: 4,
       satellites: [],
     };
   }

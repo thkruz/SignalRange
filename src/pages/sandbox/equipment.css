@@ -1,19 +1,12 @@
-.student-equipment.scenario1-layout {
-  display: flex;
-  row-gap: 1em;
-  flex-direction: row;
-  flex-wrap: nowrap;
-  padding: 1em;
-  justify-content: space-between;
-}
-
 .student-equipment {
   display: flex;
-  row-gap: 1em;
-  flex-direction: column;
-  flex-wrap: nowrap;
-  padding: 1em;
-  justify-content: space-between;
+  row-gap: 2em;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: center;
+  width: 100%;
+  margin-top: 1em;
+  column-gap: 1em;
 }
 
 .equipment-row {
@@ -33,28 +26,18 @@
 
 #sandbox-page-container {
   width: 100%;
+  margin: 2em 4em;
 }
 
-.paired-equipment-container-left {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: nowrap;
-  justify-content: space-evenly;
-  width: 50%;
-}
-
-.paired-equipment-container-right {
+.paired-equipment-container {
   display: flex;
   flex-direction: row;
   flex-wrap: wrap;
-  justify-content: space-evenly;
-  width: 50%;
-  column-gap: 1em;
-  row-gap: 1em;
+  justify-content: center;
+  gap: 1em;
 }
 
 #mission-checklist-container {
-  height: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;

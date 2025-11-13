@@ -141,7 +141,7 @@ export abstract class RFFrontEndModule<TState extends RFFrontEndModuleState> {
     this.powerSwitch_ = PowerSwitch.create(
       `${this.uniqueId}-power`,
       this.state_.isPowered,
-      false,
+      true,
       true,
     );
   }

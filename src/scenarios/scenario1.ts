@@ -95,13 +95,11 @@ export const scenario1Data: ScenarioData = {
         <div class="checklist-icon icon" title="Mission Checklist"></div>
       </div>
       <div class="student-equipment scenario1-layout">
-        <div class="paired-equipment-container-left">
+        <div class="paired-equipment-container">
           <div id="antenna1-container" class="antenna-container"></div>
           <div id="specA1-container" class="spec-a-container"></div>
         </div>
-        <div class="paired-equipment-container-right">
-          <div id="rf-front-end1-container" class="rf-front-end-container"></div>
-        </div>
+        <div id="rf-front-end1-container" class="paired-equipment-container"></div>
       </div>
     `,
     missionBriefUrl: scenario1Brief,

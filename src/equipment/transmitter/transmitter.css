@@ -1,6 +1,6 @@
 /* Transmitter.css - Styles specific to Transmitter equipment */
 .transmitter-box {
-  height: min-content;
+  height: 380px;
 
   .led-indicators,
   .input-knobs {
@@ -55,6 +55,7 @@
   display: flex;
   gap: 16px;
   padding: 16px;
+  height: 100%;
 }
 
 /* Modem Selection Buttons */

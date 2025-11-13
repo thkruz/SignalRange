@@ -1,12 +1,8 @@
 .filter-module {
-  min-width: auto !important;
-  max-width: min-content !important;
-
   .module-controls {
     display: flex;
     flex-direction: column;
     gap: 1rem;
-    width: max-content;
   }
 
   .split-top-section {
@@ -20,12 +16,6 @@
     text-align: center;
   }
 
-  .input-knobs {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1rem;
-  }
-
   .led-indicators {
     display: flex;
     flex-direction: column;
@@ -35,7 +25,7 @@
 
   .status-displays {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     gap: 1rem;
   }
 }

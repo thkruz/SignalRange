@@ -1,7 +1,6 @@
 .spec-a-canvas-container {
   position: relative;
   min-height: min-content;
-  max-width: 780px;
   height: 100%;
   display: flex;
 
@@ -18,11 +17,6 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-}
-
-.spectrum-analyzer-box {
-  height: 100%;
-  flex: 1;
 }
 
 /* Single canvas mode (default for spectralDensity and waterfall) */
@@ -52,8 +46,7 @@
   align-items: center;
   width: auto;
   border-radius: 4px;
-  margin: 0 8px 12px 8px;
-  padding: 8px;
+  margin: 0 12px 5px 12px;
   background-color: #1a1a1a;
 
   .btn-config {

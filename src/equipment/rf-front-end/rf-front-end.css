@@ -1,11 +1,10 @@
 .rf-front-end-box {
-  height: 100%;
-
   .stacked-modules {
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    gap: 1em;
+    gap: 0.5em;
+    max-height: 100%;
   }
 
   /* Main Module Container - ~360px height */

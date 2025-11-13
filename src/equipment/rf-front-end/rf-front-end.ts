@@ -142,7 +142,7 @@ export class RFFrontEnd extends BaseEquipment {
 
     parentDom.innerHTML = html`
       <div
-      id="rf-fe-box-${this.state.uuid}"
+      id="rf-fe-box-${this.state.uuid}-a"
       class="equipment-case rf-front-end-box" data-unit="${this.state.uuid}"
       >
 
@@ -171,6 +171,38 @@ export class RFFrontEnd extends BaseEquipment {
         ${this.bucModule.html}
         ${this.hpaModule.html}
         </div>
+      </div>
+
+      <!-- Bottom Status Bar -->
+      <div class="equipment-case-footer">
+        <div class="bottom-status-bar">
+          SYSTEM NORMAL
+        </div>
+      </div>
+
+      </div>
+      <div
+      id="rf-fe-box-${this.state.uuid}-b"
+      class="equipment-case rf-front-end-box" data-unit="${this.state.uuid}"
+      >
+
+      <!-- Top Status Bar -->
+      <div class="equipment-case-header">
+        <div class="equipment-case-title">
+          <span>RF FRONT END ${this.uuidShort}</span>
+          ${this.helpBtn_.html}
+        </div>
+        <div class="equipment-case-power-controls">
+          <div id="rf-fe-power-${this.state.uuid}" class="equipment-case-main-power"></div>
+          <div class="equipment-case-status-indicator">
+            <span class="equipment-case-status-label">EXT REF</span>
+            <div class="led led-green"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Module Container -->
+      <div class="rf-fe-modules">
         ${this.gpsdoModule.html}
         <div class="stacked-modules">
         ${this.lnbModule.html}

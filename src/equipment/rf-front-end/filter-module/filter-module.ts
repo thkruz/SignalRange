@@ -95,14 +95,6 @@ export class IfFilterBankModule extends RFFrontEndModule<IfFilterBankState> {
         <div class="module-label">IF FILTER BANK</div>
         <div class="module-controls">
           <div class="split-top-section">
-            <div class="input-knobs">
-              <div class="control-group">
-                <label>BANDWIDTH</label>
-                <div class="knob-container">
-                  ${this.bandwidthKnob_.html}
-                </div>
-              </div>
-            </div>
             <div class="led-indicators">
               <div class="led-indicator">
                 <span class="indicator-label">INSERTION LOSS</span>
@@ -115,6 +107,12 @@ export class IfFilterBankModule extends RFFrontEndModule<IfFilterBankState> {
             </div>
           </div>
           <div class="status-displays">
+            <div class="control-group">
+              <label>BANDWIDTH</label>
+              <div class="knob-container">
+                ${this.bandwidthKnob_.html}
+              </div>
+            </div>
             <div class="control-group">
               <label>INSERTION LOSS (dB)</label>
               <div class="digital-display filter-insertion-loss-display">${this.state_.insertionLoss.toFixed(1)}</div>

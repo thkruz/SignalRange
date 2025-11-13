@@ -1,8 +1,8 @@
 .equipment-case {
   display: flex;
   flex-direction: column;
-  min-width: 400px;
-  height: 400px;
+  width: 864px;
+  height: 600px;
   background: linear-gradient(135deg, #2a2a2a 0%, #1f1f1f 100%);
   border: 2px solid #444;
   border-radius: 8px;
@@ -165,16 +165,7 @@
 .rf-front-end-container,
 .antenna-container {
   position: relative;
-  min-height: min-content;
-  width: 780px;
-  height: 100%;
   display: flex;
-}
-
-.tx-container,
-.rx-container {
-  flex-grow: 1;
-  max-width: 780px;
 }
 
 /* Common button styles */
@@ -316,36 +307,4 @@ label {
   text-align: center;
   letter-spacing: 0.5px;
   margin-top: 0px;
-}
-
-/* Defaults assume wide screen - now we adjust for smaller */
-@media (max-width: 3048px) {
-  .student-equipment {
-    flex-wrap: wrap !important;
-    justify-content: center !important;
-  }
-
-  .paired-equipment-container-left,
-  .paired-equipment-container-right {
-    max-width: 1580px !important;
-  }
-
-  .paired-equipment-container-left,
-  .paired-equipment-container-right,
-  .rf-front-end-box {
-    width: 100% !important;
-  }
-}
-
-@media (max-width: 1920px) {
-  .rf-front-end-box {
-    .rf-fe-modules {
-      gap: 10px !important;
-      padding: 10px !important;
-
-      .rf-fe-module {
-        padding: 8px !important;
-      }
-    }
-  }
 }

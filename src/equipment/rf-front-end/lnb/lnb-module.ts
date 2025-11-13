@@ -85,9 +85,6 @@ export class LNBModule extends RFFrontEndModule<LNBState> {
         <div class="module-label">Low Noise Block</div>
         <div class="module-controls">
           <div class="split-top-section">
-            <div class="control-group power-switch">
-              ${this.powerSwitch_?.html || ''}
-            </div>
             <div class="led-indicators">
               <div class="led-indicator">
                 <span class="indicator-label">LOCK</span>
@@ -107,6 +104,12 @@ export class LNBModule extends RFFrontEndModule<LNBState> {
             <div class="control-group">
               <label>GAIN (dB)</label>
               ${this.gainKnob_?.html || ''}
+            </div>
+            <div>
+              <!-- Spacer -->
+            </div>
+            <div class="control-group power-switch">
+              ${this.powerSwitch_?.html || ''}
             </div>
           </div>
           <div class="status-displays">

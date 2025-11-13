@@ -214,12 +214,9 @@ export class Receiver extends BaseEquipment {
             SYSTEM NORMAL
           </div>
           <div>
-          <button class="btn-mode-toggle" data-action="toggle-advanced-mode" title="Toggle Advanced Mode">
-            <span class="icon-advanced">&#9881;</span>
-          </button>
-          </div>
         </div>
       </div>
+    </div>
     `;
 
     // Cache frequently used DOM nodes for efficient updates

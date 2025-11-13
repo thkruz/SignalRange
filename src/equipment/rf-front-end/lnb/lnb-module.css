@@ -17,8 +17,10 @@
 
   .input-knobs {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     gap: 1rem;
+    justify-content: center;
+    align-items: center;
   }
 
   .led-indicators {
@@ -30,7 +32,7 @@
 
   .status-displays {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     gap: 1rem;
   }
 }

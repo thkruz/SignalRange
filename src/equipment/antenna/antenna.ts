@@ -161,7 +161,7 @@ export class Antenna extends BaseEquipment {
     );
     this.polarPlot_ = PolarPlot.create(
       `antenna-polar-plot-${this.state.uuid}`,
-      { width: 350, height: 350, showGrid: true, showLabels: true }
+      { width: 550, height: 450, showGrid: true, showLabels: true }
     );
 
     this.lastRenderState = structuredClone(this.state);
@@ -195,73 +195,81 @@ export class Antenna extends BaseEquipment {
           </div>
         </div>
 
-        <div class="antenna-dish">
-          ${this.polarPlot_.html}
+        <div class="antenna-body">
+          <!-- Antenna Control Unit Body -->
+          <div class="antenna-controls">
+
+            <div class="antenna-config">
+              <div class="config-row antenna-specs" style="display: none;">
+                <label>Specifications</label>
+                <div class="spec-details">
+                  <span>Diameter: ${this.config.diameter}m</span>
+                  <span>Band: ${this.config.band}</span>
+                  <span>Rx Freq: ${(this.config.minRxFrequency / 1e9).toFixed(2)}-${(this.config.maxRxFrequency / 1e9).toFixed(2)} GHz</span>
+                  <span>Tx Freq: ${(this.config.minTxFrequency / 1e9).toFixed(2)}-${(this.config.maxTxFrequency / 1e9).toFixed(2)} GHz</span>
+                </div>
+              </div>
+
+              <div class="config-row antenna-rf-metrics" style="display: none;">
+                <label>RF Performance</label>
+                <div class="spec-details">
+                  <span class="rf-metric-freq">Freq: -- GHz</span>
+                  <span class="rf-metric-gain">Gain: -- dBi</span>
+                  <span class="rf-metric-beamwidth">HPBW: -- deg</span>
+                  <span class="rf-metric-gt">G/T: -- dB/K</span>
+                  <span class="rf-metric-pol-loss">Pol Loss: -- dB</span>
+                  <span class="rf-metric-sky-temp">Sky: -- K</span>
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="config-row">
+                  <label>Azimuth</label>
+                  ${this.azKnob_.html}
+                </div>
+
+                <div class="config-row">
+                  <label>Elevation</label>
+                  ${this.elKnob_.html}
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="config-row">
+                  <div class="status-indicator loopback">
+                  <span id="ant-loopback-light" class="indicator-light ${this.state.isLoopback ? 'on' : 'off'}"></span>
+                  <span class="indicator-label">Loopback to OMT</span>
+                </div>
+                ${this.loopbackSwitch_.html}
+                </div>
+
+                <div class="config-row">
+                  <div class="status-indicator auto-track">
+                    <span id="ant-auto-track-light" class="indicator-light ${this.state.isAutoTrackEnabled ? 'on' : 'off'}"></span>
+                    <span class="indicator-label">Auto Track</span>
+                  </div>
+                  ${this.autoTrackSwitch_.html}
+                </div>
+            </div>
+
+              <div class="row">
+                <div class="config-row">
+                  <label>Skew</label>
+                  ${this.skewKnob_.html}
+                </div>
+                ${this.powerSwitch_.html}
+              </div>
+            </div>
+          </div>
+
+          <!-- Antenna Dish -->
+          <div class="antenna-dish">
+            ${this.polarPlot_.html}
+          </div>
         </div>
 
         <div class="antenna-name">
           ${this.config.name}
-        </div>
-
-        <!-- Antenna Control Unit Body -->
-        <div class="antenna-controls">
-
-          <div class="antenna-config">
-            <div class="config-row antenna-specs" style="display: none;">
-              <label>Specifications</label>
-              <div class="spec-details">
-                <span>Diameter: ${this.config.diameter}m</span>
-                <span>Band: ${this.config.band}</span>
-                <span>Rx Freq: ${(this.config.minRxFrequency / 1e9).toFixed(2)}-${(this.config.maxRxFrequency / 1e9).toFixed(2)} GHz</span>
-                <span>Tx Freq: ${(this.config.minTxFrequency / 1e9).toFixed(2)}-${(this.config.maxTxFrequency / 1e9).toFixed(2)} GHz</span>
-              </div>
-            </div>
-
-            <div class="config-row antenna-rf-metrics" style="display: none;">
-              <label>RF Performance</label>
-              <div class="spec-details">
-                <span class="rf-metric-freq">Freq: -- GHz</span>
-                <span class="rf-metric-gain">Gain: -- dBi</span>
-                <span class="rf-metric-beamwidth">HPBW: -- deg</span>
-                <span class="rf-metric-gt">G/T: -- dB/K</span>
-                <span class="rf-metric-pol-loss">Pol Loss: -- dB</span>
-                <span class="rf-metric-sky-temp">Sky: -- K</span>
-              </div>
-            </div>
-
-            <div class="config-row">
-              <label>Azimuth</label>
-              ${this.azKnob_.html}
-            </div>
-
-            <div class="config-row">
-              <label>Elevation</label>
-              ${this.elKnob_.html}
-            </div>
-
-            <div class="config-row">
-              <label>Skew</label>
-              ${this.skewKnob_.html}
-            </div>
-
-            <div class="config-row">
-              <div class="status-indicator loopback">
-              <span id="ant-loopback-light" class="indicator-light ${this.state.isLoopback ? 'on' : 'off'}"></span>
-              <span class="indicator-label">Loopback to OMT</span>
-            </div>
-            ${this.loopbackSwitch_.html}
-            </div>
-
-            <div class="config-row">
-              <div class="status-indicator auto-track">
-                <span id="ant-auto-track-light" class="indicator-light ${this.state.isAutoTrackEnabled ? 'on' : 'off'}"></span>
-                <span class="indicator-label">Auto Track</span>
-              </div>
-              ${this.autoTrackSwitch_.html}
-            </div>
-
-            ${this.powerSwitch_.html}
-          </div>
         </div>
 
         <!-- Bottom Status Bar -->

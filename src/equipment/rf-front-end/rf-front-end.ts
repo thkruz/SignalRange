@@ -468,8 +468,18 @@ export class RFFrontEnd extends BaseEquipment {
   }
 
   getNoiseFloor(_tapPoint: TapPoint): { isInternalNoiseGreater: boolean; noiseFloor: number } {
+    switch (_tapPoint) {
+      case TapPoint.TX_IF:
+      case TapPoint.RX_IF:
+      default:
+        return this.getNoiseFloorIfRx_();
+    }
+  }
+
+  private getNoiseFloorIfRx_() {
     const NF = 0.5;
     const externalNoiseFloor = this.filterModule.state.noiseFloor + this.getTotalRxGain();
+    // TODO: assuming ideal temperature for the spectrum analyzer
     const internalNoiseFloor = -174 + 10 * Math.log10(this.filterModule.state.bandwidth * 1e6) + NF;
     const isInternalNoiseGreater = internalNoiseFloor > externalNoiseFloor;
 

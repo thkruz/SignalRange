@@ -1,7 +1,7 @@
 import { RotaryKnob } from "@app/components/rotary-knob/rotary-knob";
 import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
-import { IfFrequency, IfSignal, MHz, RfFrequency, RfSignal, SignalOrigin } from '@app/types';
+import { Hertz, IfFrequency, IfSignal, MHz, RfFrequency, RfSignal, SignalOrigin } from '@app/types';
 import { RFFrontEnd } from '../rf-front-end';
 import { RFFrontEndModule, RFFrontEndModuleState } from '../rf-front-end-module';
 import './lnb-module.css';
@@ -17,6 +17,10 @@ export interface LNBState extends RFFrontEndModuleState {
   lnaNoiseFigure: number; // dB (0.3-1.2)
   mixerNoiseFigure: number; // dB (e.g., 6-10)
   noiseTemperature: number; // Kelvin
+  noiseTemperatureStabilizationTime: number; // seconds (time for noise temp to stabilize after power-on)
+  temperature: number; // °C (physical temperature)
+  thermalStabilizationTime: number; // seconds (time for physical temp to stabilize after power-on)
+  frequencyError: number; // Hz (LO frequency drift)
   isExtRefLocked: boolean;
   isSpectrumInverted: boolean;
 }
@@ -29,6 +33,9 @@ export class LNBModule extends RFFrontEndModule<LNBState> {
   postLNASignals: RfSignal[] = [];
   ifSignals: IfSignal[] = [];
 
+  // Thermal stabilization tracking
+  private powerOnTimestamp_: number | null = null;
+
   /**
    * Get default state for LNB module
    */
@@ -40,6 +47,10 @@ export class LNBModule extends RFFrontEndModule<LNBState> {
       lnaNoiseFigure: 0.6, // dB
       mixerNoiseFigure: 16.0, // dB
       noiseTemperature: 45, // K
+      noiseTemperatureStabilizationTime: 150, // seconds (2.5 minutes - consumer LNB)
+      temperature: 25, // °C (ambient start temperature)
+      thermalStabilizationTime: 150, // seconds (2.5 minutes - matches noise temp)
+      frequencyError: 0, // Hz (LO frequency drift)
       isExtRefLocked: true,
       isSpectrumInverted: true,
       noiseFloor: -140, // dBm/Hz
@@ -48,6 +59,11 @@ export class LNBModule extends RFFrontEndModule<LNBState> {
 
   constructor(state: LNBState, rfFrontEnd: RFFrontEnd, unit: number = 1) {
     super(state, rfFrontEnd, 'rf-fe-lnb', unit);
+
+    // Initialize power-on timestamp if already powered
+    if (state.isPowered) {
+      this.powerOnTimestamp_ = Date.now();
+    }
 
     // Create UI components using base class methods
     this.createPowerSwitch();
@@ -79,7 +95,7 @@ export class LNBModule extends RFFrontEndModule<LNBState> {
               </div>
               <div class="led-indicator">
                 <span class="indicator-label">NOISE TEMP</span>
-                <div class="led led-blue" style="filter: brightness(${this.getNoiseTempBrightness__()})"></div>
+                <div class="led led-noise led-blue" style="filter: brightness(${this.getNoiseTempBrightness__()})"></div>
               </div>
             </div>
           </div>
@@ -101,6 +117,14 @@ export class LNBModule extends RFFrontEndModule<LNBState> {
             <div class="control-group">
               <label>NOISE TEMP (K)</label>
               <div class="digital-display lnb-noise-temp-display">${this.state_.noiseTemperature.toFixed(0)}</div>
+            </div>
+            <div class="control-group">
+              <label>TEMP (°C)</label>
+              <div class="digital-display lnb-temp-display">${this.state_.temperature.toFixed(1)}</div>
+            </div>
+            <div class="control-group">
+              <label>FREQ ERR (MHz)</label>
+              <div class="digital-display lnb-freq-err-display">${(this.state_.frequencyError / 1e6).toFixed(3)}</div>
             </div>
           </div>
         </div>
@@ -125,6 +149,13 @@ export class LNBModule extends RFFrontEndModule<LNBState> {
 
     // Power switch handler using base class method
     this.addPowerSwitchListener(cb, () => {
+      // Track power-on time for noise temperature stabilization
+      if (this.state_.isPowered) {
+        this.powerOnTimestamp_ = Date.now();
+      } else {
+        this.powerOnTimestamp_ = null;
+      }
+
       this.simulateLockAcquisition(2000, 2000, () => cb(this.state_));
     });
   }
@@ -133,8 +164,14 @@ export class LNBModule extends RFFrontEndModule<LNBState> {
    * Update component state and check for faults
    */
   update(): void {
+    // Update physical temperature based on power and elapsed time
+    this.updateThermalState_();
+
     // Update noise temperature based on noise figure
     this.updateNoiseTemperature_();
+
+    // Update frequency drift based on temperature and lock status
+    this.updateFrequencyDrift_();
 
     // Update lock status based on power and reference availability
     this.updateLockStatus_();
@@ -143,8 +180,9 @@ export class LNBModule extends RFFrontEndModule<LNBState> {
     this.checkAlarms_();
 
     // Calculate post-LNA signals (apply gain if powered)
+    // NOTE: I think this is running twice per sim step? once per Spectrum Analyzer update and once per LNB update?
     this.postLNASignals = this.rxSignalsIn.map(sig => {
-      const gain = this.state_.isPowered ? this.state_.gain : 0;
+      const gain = this.state_.isPowered ? 0 : -300;
       return {
         ...sig,
         power: sig.power + gain,
@@ -177,9 +215,17 @@ export class LNBModule extends RFFrontEndModule<LNBState> {
   /**
    * Calculate noise temperature from noise figure
    * T_noise = T_0 * (F - 1), where T_0 = 290K
+   *
+   * Includes thermal stabilization: noise temperature starts higher when
+   * first powered on and gradually decreases to nominal value as components
+   * warm up to steady-state operating temperature.
    */
-  // 2. Update updateNoiseTemperature_() to include Mixer
   private updateNoiseTemperature_(): void {
+    if (!this.state_.isPowered) {
+      this.state_.noiseTemperature = 290; // Ambient temperature when off
+      return;
+    }
+
     const nfLnaLinear = Math.pow(10, this.state_.lnaNoiseFigure / 10);
     const nfMixerLinear = Math.pow(10, this.state_.mixerNoiseFigure / 10);
     const gainLnaLinear = this.state_.gain > 0 ? Math.pow(10, this.state_.gain / 10) : 1;
@@ -187,9 +233,125 @@ export class LNBModule extends RFFrontEndModule<LNBState> {
     // Friis formula for cascaded stages
     const nfTotal = nfLnaLinear + (nfMixerLinear - 1) / gainLnaLinear;
 
-    this.state_.noiseTemperature = 290 * (nfTotal - 1);
+    // Calculate nominal (fully stabilized) noise temperature
+    const nominalNoiseTemp = 290 * (nfTotal - 1);
+
+    // Apply thermal stabilization if power-on time is tracked
+    if (this.powerOnTimestamp_ === null) {
+      // No power-on tracking (shouldn't happen, but fallback)
+      this.state_.noiseTemperature = nominalNoiseTemp;
+      return;
+    }
+
+    const timeElapsedMs = Date.now() - this.powerOnTimestamp_;
+    const timeElapsedSec = timeElapsedMs / 1000;
+    const stabilizationTime = this.state_.noiseTemperatureStabilizationTime;
+
+    if (timeElapsedSec < stabilizationTime) {
+      // Components still warming up - use exponential decay
+      // Time constant = stabilizationTime / 3 (so ~95% stabilized after stabilizationTime)
+      const timeConstant = stabilizationTime / 3;
+      const stabilizationFactor = Math.exp(-timeElapsedSec / timeConstant);
+
+      // Start at 2x nominal (cold components have worse noise performance)
+      const initialNoiseTemp = nominalNoiseTemp * 2;
+
+      // Exponentially decay from initial to nominal
+      this.state_.noiseTemperature = nominalNoiseTemp +
+        (initialNoiseTemp - nominalNoiseTemp) * stabilizationFactor;
+    } else {
+      // Fully stabilized
+      this.state_.noiseTemperature = nominalNoiseTemp;
+    }
   }
 
+  /**
+   * Update physical temperature based on power state and elapsed time
+   * Physical temperature affects oscillator stability and frequency drift
+   */
+  updateThermalState_(): void {
+    const ambientTemp = 25; // °C (room temperature)
+    const operatingTemp = 50; // °C (typical LNB operating temperature)
+
+    if (!this.state_.isPowered) {
+      // When powered off, temperature decays to ambient
+      this.state_.temperature = ambientTemp;
+      return;
+    }
+
+    if (this.powerOnTimestamp_ === null) {
+      // No power-on tracking (shouldn't happen, but fallback)
+      this.state_.temperature = operatingTemp;
+      return;
+    }
+
+    const timeElapsedMs = Date.now() - this.powerOnTimestamp_;
+    const timeElapsedSec = timeElapsedMs / 1000;
+    const stabilizationTime = this.state_.thermalStabilizationTime;
+
+    if (timeElapsedSec < stabilizationTime) {
+      // Components still warming up - use exponential rise
+      // Time constant = stabilizationTime / 3 (so ~95% stabilized after stabilizationTime)
+      const timeConstant = stabilizationTime / 3;
+      const heatingFactor = 1 - Math.exp(-timeElapsedSec / timeConstant);
+
+      // Exponentially rise from ambient to operating temperature
+      this.state_.temperature = ambientTemp + (operatingTemp - ambientTemp) * heatingFactor;
+    } else {
+      // Fully stabilized
+      this.state_.temperature = operatingTemp;
+    }
+  }
+
+  /**
+   * Update frequency drift based on temperature and lock status
+   * LNB oscillators drift when not locked to external reference or still warming up
+   */
+  updateFrequencyDrift_(): void {
+    // Check if GPSDO reference is present and warmed up
+    const extRefPresent = this.isExtRefPresent();
+    const extRefWarmedUp = extRefPresent && this.rfFrontEnd_.gpsdoModule.get10MhzOutput().isWarmedUp;
+
+    // When locked to external reference and reference is warmed up, no drift
+    if (this.state_.isExtRefLocked && extRefWarmedUp) {
+      this.state_.frequencyError = 0;
+      return;
+    }
+
+    // When not locked or reference not warmed up, calculate temperature-dependent drift
+    const nominalTemp = 50; // °C (operating temperature where drift is minimal)
+    const tempDeviation = Math.abs(this.state_.temperature - nominalTemp);
+
+    // Temperature coefficient: 0.5 ppm/°C (typical for LNB DRO)
+    const tempCoefficientPpm = 0.5;
+    const tempDriftPpm = tempDeviation * tempCoefficientPpm;
+
+    // Add aging drift component: 1-3 ppm
+    const agingDriftPpm = 1 + Math.random() * 2;
+
+    // Total drift in ppm
+    const totalDriftPpm = tempDriftPpm + agingDriftPpm;
+
+    // Convert to Hz
+    const loFrequencyHz = this.state_.loFrequency * 1e6;
+
+    // Drift is negative when cold (frequency drops), positive when hot
+    const driftDirection = this.state_.temperature < nominalTemp ? -1 : 1;
+
+    this.state_.frequencyError = driftDirection * (loFrequencyHz * totalDriftPpm / 1e6);
+  }
+
+  /**
+   * Calculate noise floor based on system noise temperature in dBm/Hz
+   */
+  getNoiseFloor(bandwidthHz: Hertz): number {
+    // Noise floor based on actual system noise temperature
+    // P_noise = k·T·B where k = Boltzmann constant (1.38e-23 J/K)
+    // In dBm/Hz: P = 10·log₁₀(k·T·B) + 30 = -198.6 + 10·log₁₀(T) + 10·log₁₀(B)
+    const T_sys = this.state_.noiseTemperature; // Use actual system temperature (includes thermal stabilization)
+
+    return -198.6 + 10 * Math.log10(T_sys) + 10 * Math.log10(bandwidthHz);
+  }
 
   /**
    * Update lock status based on power and external reference
@@ -262,7 +424,7 @@ export class LNBModule extends RFFrontEndModule<LNBState> {
     // Update lock LED using base class method
     const lockLed = qs('.led-indicator .led', container);
     if (lockLed) {
-      lockLed.className = `led ${this.getLockLedStatus()}`;
+      lockLed.className = `led ${this.state_.isPowered ? this.getLockLedStatus() : 'led-off'}`;
     }
 
     // Update noise temperature display and LED
@@ -271,9 +433,27 @@ export class LNBModule extends RFFrontEndModule<LNBState> {
       noiseTempReadout.textContent = `${this.state_.noiseTemperature.toFixed(1)}`;
     }
 
-    const noiseTempLed = qs('.led-blue', container);
-    if (noiseTempLed) {
+    const noiseTempLed = qs('.led-noise', container);
+    if (noiseTempLed && this.state_.isPowered) {
+      noiseTempLed.classList.remove('led-off');
+      noiseTempLed.classList.add('led-blue');
       noiseTempLed.style.filter = `brightness(${this.getNoiseTempBrightness__()})`;
+    } else if (noiseTempLed) {
+      noiseTempLed.style.filter = '';
+      noiseTempLed.classList.add('led-off');
+      noiseTempLed.classList.remove('led-blue');
+    }
+
+    // Update physical temperature display
+    const tempDisplay = qs('.lnb-temp-display', container);
+    if (tempDisplay) {
+      tempDisplay.textContent = this.state_.temperature.toFixed(1);
+    }
+
+    // Update frequency error display
+    const freqErrDisplay = qs('.lnb-freq-err-display', container);
+    if (freqErrDisplay) {
+      freqErrDisplay.textContent = (this.state_.frequencyError / 1e6).toFixed(3);
     }
 
     // Sync UI components using base class method
@@ -286,7 +466,9 @@ export class LNBModule extends RFFrontEndModule<LNBState> {
    * @returns IF output frequency in Hz
    */
   calculateIfFrequency(rfFrequency: RfFrequency): IfFrequency {
-    return Math.abs(rfFrequency - this.state_.loFrequency * 1e6) as IfFrequency;
+    // Apply frequency error to LO (error is 0 when locked and warmed up)
+    const effectiveLO = this.state_.loFrequency * 1e6 + this.state_.frequencyError;
+    return Math.abs(rfFrequency - effectiveLO) as IfFrequency;
   }
 
   /**

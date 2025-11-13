@@ -4,10 +4,9 @@ import { BUCModule } from '@app/equipment/rf-front-end/buc-module/buc-module';
 import { CouplerModule } from '@app/equipment/rf-front-end/coupler-module/coupler-module';
 import { IfFilterBankModule } from '@app/equipment/rf-front-end/filter-module/filter-module';
 import { HPAModule } from '@app/equipment/rf-front-end/hpa-module/hpa-module';
-import { LNBModule } from '@app/equipment/rf-front-end/lnb/lnb-module';
 import { OMTModule } from '@app/equipment/rf-front-end/omt-module/omt-module';
 import { Satellite } from '@app/equipment/satellite/satellite';
-import { dBm, FECType, Hertz, ModulationType, RfFrequency, SignalOrigin } from '@app/types';
+import { dBm, FECType, Hertz, MHz, ModulationType, RfFrequency, SignalOrigin } from '@app/types';
 import { Degrees } from 'ootk';
 import { ScenarioData } from '../scenario-manager';
 import { scenario1Brief } from './scenario1-brief';
@@ -44,7 +43,21 @@ export const scenario1Data: ScenarioData = {
       buc: BUCModule.getDefaultState(),
       hpa: HPAModule.getDefaultState(),
       filter: IfFilterBankModule.getDefaultState(),
-      lnb: LNBModule.getDefaultState(),
+      lnb: {
+        isPowered: false,
+        loFrequency: 4200 as MHz, // MHz
+        gain: 0, // dB
+        lnaNoiseFigure: 0.6, // dB
+        mixerNoiseFigure: 16.0, // dB
+        noiseTemperature: 45, // K
+        noiseTemperatureStabilizationTime: 180, // seconds
+        isExtRefLocked: false,
+        isSpectrumInverted: true,
+        noiseFloor: -140, // dBm/Hz
+        frequencyError: 0, // Hz
+        temperature: 25, // °C
+        thermalStabilizationTime: 180, // seconds
+      },
       coupler: CouplerModule.getDefaultState(),
       gpsdo: {
         isPowered: true, // CHANGE

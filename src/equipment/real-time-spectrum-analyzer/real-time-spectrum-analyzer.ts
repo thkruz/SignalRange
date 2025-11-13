@@ -26,8 +26,10 @@ export interface RealTimeSpectrumAnalyzerState {
   team_id: number;
   rfFeUuid: string;
   isPaused: boolean;
+  /** Noise floor in dBm/Hz without gain */
   noiseFloorNoGain: number;
-  isInternalNoiseFloor: boolean;
+  /** if true, use internal noise floor */
+  isSkipLnaGainDuringDraw: boolean;
   isMaxHold: boolean;
   isMinHold: boolean;
   isMarkerOn: boolean;
@@ -97,7 +99,7 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
       minAmplitude: -100,
       maxAmplitude: -40,
       noiseFloorNoGain: -104,
-      isInternalNoiseFloor: true,
+      isSkipLnaGainDuringDraw: true,
       refreshRate: 10,
       screenMode: 'spectralDensity',
       inputUnit: 'MHz',
@@ -301,11 +303,11 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
 
     let signals: (IfSignal | RfSignal)[] = [];
     this.state.noiseFloorNoGain = -174; // Reset to default before calculation
-    this.state.isInternalNoiseFloor = true;
+    this.state.isSkipLnaGainDuringDraw = true;
 
     for (const tapPoint of [tapPointA, tapPointB]) {
       let tapPointnoiseFloor: number;
-      let isInternalNoiseFloor = true;
+      let isSkipLnaGainDuringDraw = true;
 
       switch (tapPoint) {
         case TapPoint.TX_IF:
@@ -330,15 +332,19 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
           break;
         case TapPoint.POST_OMT_PRE_LNA_RX_RF:
           {
-          signals.push(...this.rfFrontEnd_.omtModule.rxSignalsOut);
-          tapPointnoiseFloor = this.rfFrontEnd_.omtModule.state.noiseFloor;
-          break;
+            signals.push(...this.rfFrontEnd_.omtModule.rxSignalsOut);
+            // TODO: We should be using omt floor? - this is future proofing to add in coupler loss
+            tapPointnoiseFloor = this.rfFrontEnd_.lnbModule.getNoiseFloor(Math.max(this.state.rbw, this.state.span) as Hertz);
+            isSkipLnaGainDuringDraw = false;
+            break;
           }
         case TapPoint.POST_LNA_RX_RF:
           {
-          signals.push(...this.rfFrontEnd_.lnbModule.postLNASignals);
-          tapPointnoiseFloor = this.rfFrontEnd_.lnbModule.state.noiseFloor;
-          break;
+            signals.push(...this.rfFrontEnd_.lnbModule.postLNASignals);
+            // TODO: We should be using rbw not span - but its simpler for now
+            tapPointnoiseFloor = this.rfFrontEnd_.lnbModule.getNoiseFloor(Math.max(this.state.rbw, this.state.span) as Hertz);
+            isSkipLnaGainDuringDraw = false;
+            break;
           }
         case TapPoint.RX_IF:
           {
@@ -346,7 +352,7 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
             const noiseData = this.rfFrontEnd_.getNoiseFloor(tapPoint);
 
             tapPointnoiseFloor = noiseData.noiseFloor;
-            isInternalNoiseFloor = noiseData.isInternalNoiseGreater;
+            isSkipLnaGainDuringDraw = noiseData.isInternalNoiseGreater;
             break;
           }
         default:
@@ -355,7 +361,7 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
 
       if (tapPointnoiseFloor > this.state.noiseFloorNoGain) {
         this.state.noiseFloorNoGain = tapPointnoiseFloor;
-        this.state.isInternalNoiseFloor = isInternalNoiseFloor;
+        this.state.isSkipLnaGainDuringDraw = isSkipLnaGainDuringDraw;
       }
     }
 
@@ -426,7 +432,7 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
    */
   get noiseFloorAndGain(): number {
     let noiseFloor = this.state.noiseFloorNoGain;
-    if (!this.state.isInternalNoiseFloor) {
+    if (!this.state.isSkipLnaGainDuringDraw) {
       noiseFloor += this.rfFrontEnd_.getTotalRxGain();
     }
     return noiseFloor;

@@ -543,7 +543,7 @@ export class SpectralDensityPlot extends RTSAScreen {
       }
 
       // If noise floor is external, add RF front-end gain
-      if (!this.specA.state.isInternalNoiseFloor) {
+      if (!this.specA.state.isSkipLnaGainDuringDraw) {
         noise += this.specA.rfFrontEnd_.getTotalRxGain();
       }
 
@@ -627,6 +627,11 @@ export class SpectralDensityPlot extends RTSAScreen {
     // Simulate deep nulls and random dropouts for realism (-10 to -14 dB drops)
     if (Math.random() < 0.001) {
       y -= 10 + Math.random() * 4;
+    }
+
+    // If noise floor is external, add RF front-end gain to match noise
+    if (!this.specA.state.isSkipLnaGainDuringDraw) {
+      y += this.specA.rfFrontEnd_.getTotalRxGain();
     }
 
     return y;

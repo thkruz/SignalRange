@@ -261,7 +261,7 @@ export class WaterfallDisplay extends RTSAScreen {
         noise -= 1 + Math.random() * 2;
       }
 
-      if (!this.specA.state.isInternalNoiseFloor) {
+      if (!this.specA.state.isSkipLnaGainDuringDraw) {
         noise += this.specA.rfFrontEnd_.getTotalRxGain();
       }
 

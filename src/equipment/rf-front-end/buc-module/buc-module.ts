@@ -1,3 +1,4 @@
+import { HelpButton } from '@app/components/help-btn/help-btn';
 import { RotaryKnob } from '@app/components/rotary-knob/rotary-knob';
 import { ToggleSwitch } from '@app/components/toggle-switch/toggle-switch';
 import { html } from "@app/engine/utils/development/formatter";
@@ -5,6 +6,7 @@ import { qs } from "@app/engine/utils/query-selector";
 import { dB, dBm, Hertz, IfFrequency, IfSignal, MHz, RfFrequency, RfSignal, SignalOrigin } from '@app/types';
 import { RFFrontEnd } from '../rf-front-end';
 import { RFFrontEndModule, RFFrontEndModuleState } from '../rf-front-end-module';
+import bucModuleHelp from './buc-module-help';
 import './buc-module.css';
 
 /**
@@ -111,6 +113,12 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
   constructor(state: BUCState, rfFrontEnd: RFFrontEnd, unit: number = 1) {
     super(state, rfFrontEnd, 'rf-fe-buc', unit);
 
+    this.helpBtn_ = HelpButton.create(
+      `buc-help-${this.rfFrontEnd_.state.uuid}`,
+      "Block Upconverter",
+      bucModuleHelp
+    );
+
     // Create UI components using base class methods
     this.createPowerSwitch();
     this.createGainKnob(0, 70, 1);
@@ -140,7 +148,10 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
 
     this.html_ = html`
       <div class="rf-fe-module buc-module">
-        <div class="module-label">Block Upconverter</div>
+        <div class="module-label">
+          <span>Block Upconverter</span>
+          ${this.helpBtn_.html}
+        </div>
         <div class="module-controls">
           <div class="led-indicators">
             <div class="led-indicator">

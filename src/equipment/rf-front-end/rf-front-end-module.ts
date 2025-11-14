@@ -1,3 +1,4 @@
+import { HelpButton } from '@app/components/help-btn/help-btn';
 import { PowerSwitch } from '@app/components/power-switch/power-switch';
 import { RotaryKnob } from '@app/components/rotary-knob/rotary-knob';
 import { qs } from "@app/engine/utils/query-selector";
@@ -26,6 +27,7 @@ export abstract class RFFrontEndModule<TState extends RFFrontEndModuleState> {
   protected state_: TState;
   protected lastDraw_: number = 0;
   protected lastRenderState_: string = '';
+  protected helpBtn_: HelpButton;
 
   // Common UI components
   protected powerSwitch_?: PowerSwitch;

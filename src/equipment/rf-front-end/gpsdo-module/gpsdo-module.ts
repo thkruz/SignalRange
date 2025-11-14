@@ -1,3 +1,4 @@
+import { HelpButton } from '@app/components/help-btn/help-btn';
 import { PowerSwitch } from '@app/components/power-switch/power-switch';
 import { ToggleSwitch } from '@app/components/toggle-switch/toggle-switch';
 import { html } from "@app/engine/utils/development/formatter";
@@ -6,6 +7,7 @@ import { SimulationManager } from '@app/simulation/simulation-manager';
 import { clamp } from 'ootk';
 import { RFFrontEnd } from '../rf-front-end';
 import { RFFrontEndModule } from '../rf-front-end-module';
+import gpsdoModuleHelp from './gpsdo-module-help';
 import './gpsdo-module.css';
 
 /**
@@ -136,6 +138,12 @@ export class GPSDOModule extends RFFrontEndModule<GPSDOState> {
   constructor(state: GPSDOState, rfFrontEnd: RFFrontEnd, unit: number = 1) {
     super(state, rfFrontEnd, 'rf-fe-gpsdo', unit);
 
+    this.helpBtn_ = HelpButton.create(
+      `gpsdo-help-${this.rfFrontEnd_.state.uuid}`,
+      "GPS Disciplined Oscillator",
+      gpsdoModuleHelp
+    );
+
     // Create UI components
     this.powerSwitch_ = PowerSwitch.create(
       `${this.uniqueId}-power`,
@@ -152,7 +160,10 @@ export class GPSDOModule extends RFFrontEndModule<GPSDOState> {
 
     this.html_ = html`
       <div class="rf-fe-module gpsdo-module">
-        <div class="module-label">GPS Disciplined Oscillator</div>
+        <div class="module-label">
+          <span>GPS Disciplined Oscillator</span>
+          ${this.helpBtn_.html}
+        </div>
         <div class="module-controls">
           <div class="split-top-section">
             <!-- Input Knobs -->

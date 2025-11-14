@@ -1,3 +1,4 @@
+import { HelpButton } from '@app/components/help-btn/help-btn';
 import { PowerSwitch } from '@app/components/power-switch/power-switch';
 import { RotaryKnob } from '@app/components/rotary-knob/rotary-knob';
 import { SecureToggleSwitch } from '@app/components/secure-toggle-switch/secure-toggle-switch';
@@ -6,6 +7,7 @@ import { qs } from "@app/engine/utils/query-selector";
 import { dB, dBm, dBW, RfSignal, SignalOrigin } from '@app/types';
 import { RFFrontEnd } from '../rf-front-end';
 import { RFFrontEndModule } from '../rf-front-end-module';
+import hpaModuleHelp from './hpa-module-help';
 import './hpa-module.css';
 
 /**
@@ -64,6 +66,12 @@ export class HPAModule extends RFFrontEndModule<HPAState> {
   constructor(state: HPAState, rfFrontEnd: RFFrontEnd, unit: number = 1) {
     super(state, rfFrontEnd, 'rf-fe-hpa', unit);
 
+    this.helpBtn_ = HelpButton.create(
+      `hpa-help-${this.rfFrontEnd_.state.uuid}`,
+      "High Power Amplifier",
+      hpaModuleHelp
+    );
+
     // Create UI components
     this.powerSwitch_ = PowerSwitch.create(
       `${this.uniqueId}-enable`,
@@ -87,7 +95,10 @@ export class HPAModule extends RFFrontEndModule<HPAState> {
 
     this.html_ = html`
       <div class="rf-fe-module hpa-module">
-        <div class="module-label">High Power Amplifier</div>
+        <div class="module-label">
+          <span>High Power Amplifier</span>
+          ${this.helpBtn_.html}
+        </div>
         <div class="module-controls">
           <div class="led-indicators">
             <div class="led-indicator">

@@ -1,9 +1,11 @@
+import { HelpButton } from "@app/components/help-btn/help-btn";
 import { RotaryKnob } from "@app/components/rotary-knob/rotary-knob";
 import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
 import { dB, Hertz, IfFrequency, IfSignal, MHz, RfFrequency, RfSignal, SignalOrigin } from '@app/types';
 import { RFFrontEnd } from '../rf-front-end';
 import { RFFrontEndModule, RFFrontEndModuleState } from '../rf-front-end-module';
+import lnbModuleHelp from "./lnb-module-help";
 import './lnb-module.css';
 
 /**
@@ -65,6 +67,12 @@ export class LNBModule extends RFFrontEndModule<LNBState> {
       this.powerOnTimestamp_ = Date.now();
     }
 
+    this.helpBtn_ = HelpButton.create(
+      `lnb-help-${this.rfFrontEnd_.state.uuid}`,
+      "Low Noise Block",
+      lnbModuleHelp
+    );
+
     // Create UI components using base class methods
     this.createPowerSwitch();
     this.createGainKnob(0, 70, 1);
@@ -82,7 +90,10 @@ export class LNBModule extends RFFrontEndModule<LNBState> {
 
     this.html_ = html`
       <div class="rf-fe-module lnb-module">
-        <div class="module-label">Low Noise Block</div>
+        <div class="module-label">
+          <span>Low Noise Block</span>
+          ${this.helpBtn_.html}
+        </div>
         <div class="module-controls">
           <div class="split-top-section">
             <div class="led-indicators">

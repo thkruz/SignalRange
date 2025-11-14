@@ -32,7 +32,6 @@ export interface OMTState {
 export class OMTModule extends RFFrontEndModule<OMTState> {
   // UI Components
   private readonly polarizationToggle_: ToggleSwitch;
-  private readonly helpBtn_: HelpButton;
 
   // Signals
   rxSignalsOut: RfSignal[] = [];

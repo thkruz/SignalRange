@@ -1,9 +1,11 @@
+import { HelpButton } from '@app/components/help-btn/help-btn';
 import { RotaryKnob } from "@app/components/rotary-knob/rotary-knob";
 import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
 import { dBm, IfSignal, MHz, RfFrequency, SignalOrigin } from '@app/types';
 import { RFFrontEnd } from '../rf-front-end';
 import { RFFrontEndModule } from '../rf-front-end-module';
+import filterModuleHelp from './filter-module-help';
 import './filter-module.css';
 
 /**
@@ -71,6 +73,12 @@ export class IfFilterBankModule extends RFFrontEndModule<IfFilterBankState> {
   constructor(state: IfFilterBankState, rfFrontEnd: RFFrontEnd, unit: number = 1) {
     super(state, rfFrontEnd, 'rf-fe-filter', unit);
 
+    this.helpBtn_ = HelpButton.create(
+      `filter-help-${this.rfFrontEnd_.state.uuid}`,
+      "IF Filter Bank",
+      filterModuleHelp
+    );
+
     const config = FILTER_BANDWIDTH_CONFIGS[state.bandwidthIndex];
 
     // Create rotary knob for bandwidth selection (0-13)
@@ -92,7 +100,10 @@ export class IfFilterBankModule extends RFFrontEndModule<IfFilterBankState> {
 
     this.html_ = html`
       <div class="rf-fe-module filter-module">
-        <div class="module-label">IF FILTER BANK</div>
+        <div class="module-label">
+          <span>IF FILTER BANK</span>
+          ${this.helpBtn_.html}
+        </div>
         <div class="module-controls">
           <div class="split-top-section">
             <div class="led-indicators">

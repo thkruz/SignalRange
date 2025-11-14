@@ -7,10 +7,12 @@ import { Hertz, IfSignal, RfSignal } from "../../types";
 import { BaseEquipment } from '../base-equipment';
 import { RFFrontEnd } from "../rf-front-end/rf-front-end";
 import { TapPoint } from './../rf-front-end/coupler-module/coupler-module';
+import { HelpButton } from "@app/components/help-btn/help-btn";
 import { AnalyzerControlBox } from "./analyzer-control-box";
 import './real-time-spectrum-analyzer.css';
 import { SpectralDensityPlot } from './rtsa-screen/spectral-density-plot';
 import { WaterfallDisplay } from "./rtsa-screen/waterfall-display";
+import rtsaHelp from './rtsa-help';
 
 type MarkerPoint = { x: number; y: number; signal: number };
 
@@ -67,6 +69,7 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
   // RFFrontEnd reference
   readonly rfFrontEnd_: RFFrontEnd;
 
+  private helpBtn_: HelpButton;
   configPanel: AnalyzerControlBox | null = null;
   inputSignals: IfSignal[] = [];
 
@@ -113,6 +116,12 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
     this.state.inputValue = (this.state.centerFrequency / 1e6).toString(); // in MHz
     this.state.inputUnit = 'MHz';
 
+    this.helpBtn_ = HelpButton.create(
+      `rtsa-help-${this.uuid}`,
+      'Real-Time Spectrum Analyzer',
+      rtsaHelp
+    );
+
     this.configPanel = new AnalyzerControlBox(this);
     this.build(parentId);
 
@@ -127,7 +136,10 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
     parentDom.innerHTML = html`
         <div class="equipment-case spectrum-analyzer-box">
         <div class="equipment-case-header">
-          <div class="equipment-case-title">Spectrum Analyzer ${this.uuidShort}</div>
+          <div class="equipment-case-title">
+            <span>Spectrum Analyzer ${this.uuidShort}</span>
+            ${this.helpBtn_.html}
+          </div>
           <div class="equipment-case-power-controls">
             <div class="equipment-case-main-power"></div>
             <div class="equipment-case-status-indicator">

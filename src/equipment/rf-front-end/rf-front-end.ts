@@ -1,4 +1,3 @@
-import { HelpButton } from "@app/components/help-btn/help-btn";
 import { EventBus } from "@app/events/event-bus";
 import { html } from "../../engine/utils/development/formatter";
 import { qs } from "../../engine/utils/query-selector";
@@ -15,7 +14,6 @@ import { GPSDOModule, GPSDOState } from './gpsdo-module/gpsdo-module';
 import { HPAModule, HPAState } from './hpa-module/hpa-module';
 import { LNBModule, LNBState } from './lnb/lnb-module';
 import { OMTModule, OMTState } from './omt-module/omt-module';
-import omtModuleHelp from './omt-module/omt-module-help';
 import './rf-front-end.css';
 
 /**
@@ -62,9 +60,6 @@ export class RFFrontEnd extends BaseEquipment {
   antenna: Antenna | null = null;
   transmitters: Transmitter[] = [];
 
-  // UI Components
-  private readonly helpBtn_: HelpButton;
-
   constructor(parentId: string, state?: Partial<RFFrontEndState>, teamId: number = 1, serverId: number = 1) {
     super(parentId, teamId);
 
@@ -96,12 +91,6 @@ export class RFFrontEnd extends BaseEquipment {
 
     // Instantiate signal path manager for aggregated calculations
     this.signalPathManager = new SignalPathManager(this);
-
-    this.helpBtn_ = HelpButton.create(
-      `rf-fe-help-${this.state.uuid}`,
-      "OMT / Duplexer",
-      omtModuleHelp
-    );
 
     this.build(parentId);
 
@@ -157,7 +146,6 @@ export class RFFrontEnd extends BaseEquipment {
       <div class="equipment-case-header">
         <div class="equipment-case-title">
           <span>RF FRONT END 1 of 2 | ${this.uuidShort}</span>
-          ${this.helpBtn_.html}
         </div>
         <div class="equipment-case-power-controls">
           <div id="rf-fe-power-${this.state.uuid}" class="equipment-case-main-power"></div>
@@ -197,7 +185,6 @@ export class RFFrontEnd extends BaseEquipment {
       <div class="equipment-case-header">
         <div class="equipment-case-title">
           <span>RF FRONT END 2 of 2 | ${this.uuidShort}</span>
-          ${this.helpBtn_.html}
         </div>
         <div class="equipment-case-power-controls">
           <div id="rf-fe-power-${this.state.uuid}" class="equipment-case-main-power"></div>

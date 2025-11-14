@@ -17,6 +17,7 @@ import { RFFrontEnd } from "../rf-front-end/rf-front-end";
 import { Satellite } from "../satellite/satellite";
 import { Transmitter } from "../transmitter/transmitter";
 import { ANTENNA_CONFIG_KEYS, ANTENNA_CONFIGS, AntennaConfig } from "./antenna-configs";
+import antennaHelp from './antenna-help';
 import './antenna.css';
 
 /**
@@ -155,8 +156,8 @@ export class Antenna extends BaseEquipment {
     );
     this.helpBtn_ = HelpButton.create(
       `antenna-help-btn-${this.state.uuid}`,
-      'Antenna Control Unit (ACU) Help',
-      'This unit controls the antenna operations including power, loopback, skew adjustment, and auto-tracking of satellites. Use the controls to manage antenna settings and monitor status indicators for optimal performance.'
+      'Antenna Control Unit (ACU)',
+      antennaHelp
     );
     this.polarPlot_ = PolarPlot.create(
       `antenna-polar-plot-${this.state.uuid}`,

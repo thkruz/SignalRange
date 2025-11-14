@@ -329,8 +329,6 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
     const bandwidth = Math.max(this.state.rbw, this.state.span) as Hertz;
 
     let signals: (IfSignal | RfSignal)[] = [];
-    this.state.noiseFloorNoGain = -174; // Reset to default before calculation
-    this.state.isSkipLnaGainDuringDraw = true;
 
     const tapPoints = [];
     if (this.state.isUseTapA) {
@@ -339,6 +337,11 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
     if (this.state.isUseTapB) {
       tapPoints.push(tapPointB);
     }
+
+    // Track the maximum noise floor across all tap points
+    let maxNoiseFloorNoGain = -174; // Default thermal noise floor
+    let maxShouldApplyGain = false;
+
     // Process both tap points
     for (const tapPoint of tapPoints) {
       // Get signals at this tap point
@@ -347,13 +350,18 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
       // Get noise floor using SignalPathManager
       const { noiseFloorNoGain, shouldApplyGain } =
         this.rfFrontEnd_.couplerModule.signalPathManager.getNoiseFloorAt(tapPoint, bandwidth);
+      const noiseFloorWithGain = noiseFloorNoGain + this.rfFrontEnd_.couplerModule.signalPathManager.getTotalGainTo(tapPoint)
 
       // Keep the highest noise floor from both tap points
-      if (noiseFloorNoGain > this.state.noiseFloorNoGain) {
-        this.state.noiseFloorNoGain = noiseFloorNoGain;
-        this.state.isSkipLnaGainDuringDraw = !shouldApplyGain;
+      if (noiseFloorWithGain > maxNoiseFloorNoGain) {
+        maxNoiseFloorNoGain = noiseFloorNoGain;
+        maxShouldApplyGain = shouldApplyGain;
       }
     }
+
+    // Update state with the maximum noise floor found
+    this.state.noiseFloorNoGain = maxNoiseFloorNoGain;
+    this.state.isSkipLnaGainDuringDraw = !maxShouldApplyGain;
 
     return signals;
   }
@@ -451,7 +459,7 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
   get noiseFloorAndGain(): number {
     let noiseFloor = this.state.noiseFloorNoGain;
     if (!this.state.isSkipLnaGainDuringDraw) {
-      noiseFloor += this.rfFrontEnd_.getTotalRxGain();
+      noiseFloor += this.rfFrontEnd_.couplerModule.signalPathManager.getTotalRxGain();
     }
     return noiseFloor;
   }

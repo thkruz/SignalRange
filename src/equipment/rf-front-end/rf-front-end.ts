@@ -3,6 +3,7 @@ import { EventBus } from "@app/events/event-bus";
 import { html } from "../../engine/utils/development/formatter";
 import { qs } from "../../engine/utils/query-selector";
 import { Events } from "../../events/events";
+import { SignalPathManager } from '../../simulation/signal-path-manager';
 import { dBm, IfFrequency, RfFrequency } from "../../types";
 import { Antenna } from '../antenna/antenna';
 import { AlarmStatus, BaseEquipment } from "../base-equipment";
@@ -54,6 +55,9 @@ export class RFFrontEnd extends BaseEquipment {
   couplerModule: CouplerModule;
   gpsdoModule: GPSDOModule;
 
+  // Signal path manager for aggregated calculations
+  signalPathManager: SignalPathManager;
+
   // References to connected equipment
   antenna: Antenna | null = null;
   transmitters: Transmitter[] = [];
@@ -89,6 +93,9 @@ export class RFFrontEnd extends BaseEquipment {
     this.lnbModule = new LNBModule(this.state.lnb, this);
     this.couplerModule = new CouplerModule(this.state.coupler, this);
     this.gpsdoModule = new GPSDOModule(this.state.gpsdo, this);
+
+    // Instantiate signal path manager for aggregated calculations
+    this.signalPathManager = new SignalPathManager(this);
 
     this.helpBtn_ = HelpButton.create(
       `rf-fe-help-${this.state.uuid}`,
@@ -381,8 +388,12 @@ export class RFFrontEnd extends BaseEquipment {
     this.syncDomWithState();
   }
 
+  /**
+   * Get external noise floor at the spectrum analyzer input.
+   * This method delegates to SignalPathManager for centralized calculation.
+   */
   get externalNoise() {
-    return this.filterModule.state.noiseFloor + this.getTotalRxGain();
+    return this.signalPathManager.getExternalNoise();
   }
 
   /**
@@ -443,15 +454,15 @@ export class RFFrontEnd extends BaseEquipment {
 
     // BUC output power calculation
     if (this.state.buc.isPowered && !this.state.buc.isMuted) {
-      const inputPower = -10; // dBm typical IF input
-      this.state.buc.outputPower = inputPower + this.state.buc.gain;
+      const inputPower = -10 as dBm; // dBm typical IF input
+      this.state.buc.outputPower = inputPower + this.state.buc.gain as dBm;
     } else {
-      this.state.buc.outputPower = -120; // Effectively off
+      this.state.buc.outputPower = -120 as dBm; // Effectively off
     }
 
     // HPA output power and IMD calculation
     if (this.state.hpa.isPowered) {
-      const p1db = 50; // dBm (100W) typical P1dB
+      const p1db = 50 as dBm; // dBm (100W) typical P1dB
       this.state.hpa.outputPower = (p1db - this.state.hpa.backOff) / 10 as dBm;
 
       // IMD increases as back-off decreases
@@ -482,10 +493,6 @@ export class RFFrontEnd extends BaseEquipment {
   /**
    * API Methods
    */
-
-  getTotalRxGain(): number {
-    return this.state.lnb.gain - this.state.filter.insertionLoss;
-  }
 
   private updateSystemNoiseFigure_(): number {
     // Friis formula for cascaded noise figure
@@ -524,16 +531,11 @@ export class RFFrontEnd extends BaseEquipment {
     }
   }
 
+  /**
+   * Get noise floor for RX IF tap point.
+   * This method delegates to SignalPathManager for centralized calculation.
+   */
   private getNoiseFloorIfRx_() {
-    const NF = 0.5;
-    const externalNoiseFloor = this.filterModule.state.noiseFloor + this.getTotalRxGain();
-    // TODO: assuming ideal temperature for the spectrum analyzer
-    const internalNoiseFloor = -174 + 10 * Math.log10(this.filterModule.state.bandwidth * 1e6) + NF;
-    const isInternalNoiseGreater = internalNoiseFloor > externalNoiseFloor;
-
-    return {
-      isInternalNoiseGreater: isInternalNoiseGreater,
-      noiseFloor: isInternalNoiseGreater ? internalNoiseFloor : (externalNoiseFloor - this.getTotalRxGain())
-    };
+    return this.signalPathManager.getNoiseFloorIfRx();
   }
 }

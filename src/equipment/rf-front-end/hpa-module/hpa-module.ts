@@ -3,7 +3,7 @@ import { RotaryKnob } from '@app/components/rotary-knob/rotary-knob';
 import { SecureToggleSwitch } from '@app/components/secure-toggle-switch/secure-toggle-switch';
 import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
-import { dBm, dBW, RfSignal, SignalOrigin } from '@app/types';
+import { dB, dBm, dBW, RfSignal, SignalOrigin } from '@app/types';
 import { RFFrontEnd } from '../rf-front-end';
 import { RFFrontEndModule } from '../rf-front-end-module';
 import './hpa-module.css';
@@ -12,6 +12,7 @@ import './hpa-module.css';
  * High Power Amplifier module state
  */
 export interface HPAState {
+  gain: dB;
   noiseFloor: number;
   isPowered: boolean;
   backOff: number; // dB from P1dB (0-30)
@@ -56,6 +57,7 @@ export class HPAModule extends RFFrontEndModule<HPAState> {
       isHpaEnabled: false,
       isHpaSwitchEnabled: false,
       noiseFloor: -140, // dBm/Hz
+      gain: 44 as dB,
     };
   }
 
@@ -234,6 +236,10 @@ export class HPAModule extends RFFrontEndModule<HPAState> {
         origin: SignalOrigin.HIGH_POWER_AMPLIFIER,
       };
     });
+
+    // Update state.gain to be the max gain applied to any input signal
+    const gains = this.inputSignals.map(sig => this.calculateGain_(sig.power));
+    this.state_.gain = (gains.length > 0 ? Math.max(...gains) : 0) as dB;
   }
 
   /**

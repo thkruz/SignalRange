@@ -116,6 +116,38 @@ export class SignalPathManager {
   }
 
   /**
+   * Get total RX gain from LNA minus IF filter insertion loss.
+   * This is the aggregated gain through the RX chain (LNA + Filter).
+   */
+  getTotalRxGain(): dB {
+    return (this.rfFrontEnd_.state.lnb.gain - this.rfFrontEnd_.state.filter.insertionLoss) as dB;
+  }
+
+  /**
+   * Get external noise floor at the spectrum analyzer input (RX_IF tap point).
+   * This combines the filter noise floor with the total RX gain.
+   */
+  getExternalNoise(): dBm {
+    return (this.rfFrontEnd_.filterModule.state.noiseFloor + this.getTotalRxGain()) as dBm;
+  }
+
+  /**
+   * Get noise floor for RX IF tap point, comparing external vs internal noise.
+   * This logic determines which noise source dominates at the spectrum analyzer.
+   */
+  getNoiseFloorIfRx(): { isInternalNoiseGreater: boolean; noiseFloor: dBm } {
+    const NF = 0.5; // Spectrum analyzer noise figure
+    const externalNoiseFloor = this.rfFrontEnd_.filterModule.state.noiseFloor + this.getTotalRxGain();
+    const internalNoiseFloor = -174 + 10 * Math.log10(this.rfFrontEnd_.filterModule.state.bandwidth * 1e6) + NF;
+    const isInternalNoiseGreater = internalNoiseFloor > externalNoiseFloor;
+
+    return {
+      isInternalNoiseGreater: isInternalNoiseGreater,
+      noiseFloor: (isInternalNoiseGreater ? internalNoiseFloor : (externalNoiseFloor - this.getTotalRxGain())) as dBm
+    };
+  }
+
+  /**
    * Get the noise floor at a specific tap point WITHOUT gain corrections applied.
    * This uses the Friis cascade formula to calculate cumulative noise through the RX chain.
    *
@@ -158,7 +190,7 @@ export class SignalPathManager {
       case TapPoint.RX_IF: {
         // Compare external noise (with gain) vs internal spectrum analyzer noise
         const NF = 0.5; // Spectrum analyzer noise figure
-        const externalNoiseFloor = this.rfFrontEnd_.filterModule.state.noiseFloor + this.rfFrontEnd_.getTotalRxGain();
+        const externalNoiseFloor = this.rfFrontEnd_.filterModule.state.noiseFloor + this.getTotalGainTo(tapPoint);
         const internalNoiseFloor = -174 + 10 * Math.log10(this.rfFrontEnd_.filterModule.state.bandwidth * 1e6) + NF;
 
         const isInternalNoiseGreater = internalNoiseFloor > externalNoiseFloor;
@@ -172,7 +204,7 @@ export class SignalPathManager {
         } else {
           // External noise dominates - return without gain, will be applied during visualization
           return {
-            noiseFloorNoGain: (externalNoiseFloor - this.rfFrontEnd_.getTotalRxGain()) as dBm,
+            noiseFloorNoGain: (externalNoiseFloor - this.getTotalGainTo(tapPoint)) as dBm,
             shouldApplyGain: true
           };
         }
@@ -188,7 +220,7 @@ export class SignalPathManager {
         const defaultNoiseFloor = -174 + 10 * Math.log10(bandwidth);
         return {
           noiseFloorNoGain: defaultNoiseFloor as dBm,
-          shouldApplyGain: false
+          shouldApplyGain: true
         };
       }
     }
@@ -204,31 +236,46 @@ export class SignalPathManager {
   getTotalGainTo(tapPoint: TapPoint): dB {
     switch (tapPoint) {
       case TapPoint.PRE_OMT_POST_ANT_RX_RF: {
+        if (!this.rfFrontEnd_.antenna.state.isPowered) {
+          return Number.NEGATIVE_INFINITY as dB; // No signal if antenna is unpowered
+        }
         // At antenna output - no components yet
         return 0 as dB;
       }
 
       case TapPoint.POST_OMT_PRE_LNA_RX_RF: {
+        if (!this.rfFrontEnd_.antenna.state.isPowered || !this.rfFrontEnd_.omtModule.state.isPowered) {
+          return Number.NEGATIVE_INFINITY as dB; // No signal if antenna or OMT is unpowered
+        }
         // Only OMT loss applied
         return (-this.omtInsertionLoss_dB) as dB;
       }
 
       case TapPoint.POST_LNA_RX_RF: {
+        if (!this.rfFrontEnd_.antenna.state.isPowered || !this.rfFrontEnd_.omtModule.state.isPowered || !this.rfFrontEnd_.lnbModule.state.isPowered) {
+          return Number.NEGATIVE_INFINITY as dB; // No signal if any component is unpowered
+        }
         // OMT loss + LNA gain
         return (this.lnaGain - this.omtInsertionLoss_dB) as dB;
       }
 
       case TapPoint.RX_IF: {
+        if (!this.rfFrontEnd_.antenna.state.isPowered || !this.rfFrontEnd_.omtModule.state.isPowered || !this.rfFrontEnd_.lnbModule.state.isPowered || !this.rfFrontEnd_.filterModule.state.isPowered) {
+          return Number.NEGATIVE_INFINITY as dB; // No signal if any component is unpowered
+        }
         // Full RX chain: OMT loss + LNA gain + LNB loss - IF filter insertion loss
         // Note: getTotalRxGain() already calculates (LNA gain - IF filter insertion loss)
-        return (this.rfFrontEnd_.getTotalRxGain() - this.omtInsertionLoss_dB) as dB;
+        return (this.getTotalRxGain() - this.omtInsertionLoss_dB) as dB;
       }
 
       // TX path tap points
-      case TapPoint.TX_IF:
       case TapPoint.POST_BUC_PRE_HPA_TX_RF:
+        return this.rfFrontEnd_.bucModule.state.gain;
       case TapPoint.POST_HPA_PRE_OMT_TX_RF:
+        return (this.rfFrontEnd_.bucModule.state.gain + this.rfFrontEnd_.hpaModule.state.gain) as dB;
       case TapPoint.POST_OMT_PRE_ANT_TX_RF:
+        return (this.rfFrontEnd_.bucModule.state.gain + this.rfFrontEnd_.hpaModule.state.gain - this.rfFrontEnd_.omtModule.state.insertionLoss) as dB;
+      case TapPoint.TX_IF:
       default: {
         // For TX path or unknown, return 0 dB
         return 0 as dB;

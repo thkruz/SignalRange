@@ -2,7 +2,7 @@ import { RotaryKnob } from '@app/components/rotary-knob/rotary-knob';
 import { ToggleSwitch } from '@app/components/toggle-switch/toggle-switch';
 import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
-import { Hertz, IfFrequency, IfSignal, MHz, RfFrequency, RfSignal, SignalOrigin } from '@app/types';
+import { dB, dBm, Hertz, IfFrequency, IfSignal, MHz, RfFrequency, RfSignal, SignalOrigin } from '@app/types';
 import { RFFrontEnd } from '../rf-front-end';
 import { RFFrontEndModule, RFFrontEndModuleState } from '../rf-front-end-module';
 import './buc-module.css';
@@ -48,13 +48,13 @@ export interface BUCState extends RFFrontEndModuleState {
 
   // ═══ Gain & Power ═══
   /** BUC gain in dB (typical 0-70 dB range) */
-  gain: number;
+  gain: dB;
   /** Output power after amplification in dBm */
-  outputPower: number;
+  outputPower: dBm;
   /** P1dB compression point (saturation power) in dBm */
-  saturationPower: number;
+  saturationPower: dBm;
   /** Gain flatness across bandwidth in dB */
-  gainFlatness: number;
+  gainFlatness: dB;
 
   // ═══ Signal Quality ═══
   /** Group delay variation (phase distortion) in nanoseconds */
@@ -95,10 +95,10 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
       phaseLockRange: 10000, // ±10 kHz tracking range
 
       // Gain & Power
-      gain: 58, // dB
-      outputPower: -10, // dBm
-      saturationPower: 15, // dBm (P1dB compression point)
-      gainFlatness: 0.5, // ±0.5 dB across bandwidth
+      gain: 58 as dB,
+      outputPower: -10 as dBm,
+      saturationPower: 15 as dBm, // P1dB point
+      gainFlatness: 0.5 as dB, // ±0.5 dB across bandwidth
 
       // Signal Quality
       groupDelay: 3, // ns
@@ -262,11 +262,11 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
    */
   private updateOutputPower_(): void {
     if (!this.state_.isPowered || this.state_.isMuted) {
-      this.state_.outputPower = -120; // Effectively off
+      this.state_.outputPower = -Infinity as dBm;
       return;
     }
 
-    const inputPower = -10; // dBm typical IF input
+    const inputPower = -10 as dBm; // dBm typical IF input
     const linearOutputPower = inputPower + this.state_.gain;
 
     // Model amplifier compression (P1dB)
@@ -277,10 +277,10 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
         (linearOutputPower - this.state_.saturationPower) * 0.5,
         3 // Max 3dB compression beyond P1dB
       );
-      this.state_.outputPower = linearOutputPower - compressionDb;
+      this.state_.outputPower = linearOutputPower - compressionDb as dBm;
     } else {
       // Linear region - no compression
-      this.state_.outputPower = linearOutputPower;
+      this.state_.outputPower = linearOutputPower as dBm;
     }
   }
 

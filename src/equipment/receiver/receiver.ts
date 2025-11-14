@@ -477,7 +477,7 @@ export class Receiver extends BaseEquipment {
         }
 
         // Calculate C/N for each signal and mark as degraded if below threshold
-        const noiseFloor = this.rfFrontEnd_.getNoiseFloor(TapPoint.RX_IF).noiseFloor + this.rfFrontEnd_.getTotalRxGain();
+        const noiseFloor = this.rfFrontEnd_.getNoiseFloor(TapPoint.RX_IF).noiseFloor + this.rfFrontEnd_.couplerModule.signalPathManager.getTotalRxGain();
         const signalLevel = s.power;
 
         const cn = signalLevel - noiseFloor;

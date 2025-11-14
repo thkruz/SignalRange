@@ -262,7 +262,7 @@ export class WaterfallDisplay extends RTSAScreen {
       }
 
       if (!this.specA.state.isSkipLnaGainDuringDraw) {
-        noise += this.specA.rfFrontEnd_.getTotalRxGain();
+        noise += this.specA.rfFrontEnd_.couplerModule.signalPathManager.getTotalRxGain();
       }
 
       data[x] = noise;

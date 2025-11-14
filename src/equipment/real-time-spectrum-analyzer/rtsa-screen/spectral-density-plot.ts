@@ -544,7 +544,7 @@ export class SpectralDensityPlot extends RTSAScreen {
 
       // If noise floor is external, add RF front-end gain
       if (!this.specA.state.isSkipLnaGainDuringDraw) {
-        noise += this.specA.rfFrontEnd_.getTotalRxGain();
+        noise += this.specA.rfFrontEnd_.couplerModule.signalPathManager.getTotalRxGain();
       }
 
       data[x] = noise;
@@ -631,7 +631,7 @@ export class SpectralDensityPlot extends RTSAScreen {
 
     // If noise floor is external, add RF front-end gain to match noise
     if (!this.specA.state.isSkipLnaGainDuringDraw) {
-      y += this.specA.rfFrontEnd_.getTotalRxGain();
+      y += this.specA.rfFrontEnd_.couplerModule.signalPathManager.getTotalRxGain();
     }
 
     return y;

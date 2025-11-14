@@ -6,7 +6,7 @@ import { IfFilterBankModule } from '@app/equipment/rf-front-end/filter-module/fi
 import { HPAModule } from '@app/equipment/rf-front-end/hpa-module/hpa-module';
 import { OMTModule } from '@app/equipment/rf-front-end/omt-module/omt-module';
 import { Satellite } from '@app/equipment/satellite/satellite';
-import { dBm, FECType, Hertz, MHz, ModulationType, RfFrequency, SignalOrigin } from '@app/types';
+import { dB, dBi, dBm, FECType, Hertz, MHz, ModulationType, RfFrequency, SignalOrigin } from '@app/types';
 import { Degrees } from 'ootk';
 import { ScenarioData } from '../scenario-manager';
 import { scenario1Brief } from './scenario1-brief';
@@ -46,7 +46,7 @@ export const scenario1Data: ScenarioData = {
       lnb: {
         isPowered: false,
         loFrequency: 4200 as MHz, // MHz
-        gain: 0, // dB
+        gain: 0 as dB,
         lnaNoiseFigure: 0.6, // dB
         mixerNoiseFigure: 16.0, // dB
         noiseTemperature: 45, // K
@@ -121,6 +121,8 @@ export const scenario1Data: ScenarioData = {
             feed: 'red-1.mp4',
             isDegraded: false,
             origin: SignalOrigin.SATELLITE_RX,
+            noiseFloor: null,
+            gainInPath: 0 as dBi,
           },
           {
             signalId: '2',
@@ -136,6 +138,8 @@ export const scenario1Data: ScenarioData = {
             feed: 'blue-1.mp4',
             isDegraded: false,
             origin: SignalOrigin.SATELLITE_RX,
+            noiseFloor: null,
+            gainInPath: 0 as dBi,
           }
         ],
         {
@@ -161,6 +165,8 @@ export const scenario1Data: ScenarioData = {
             feed: 'blue-1.mp4',
             isDegraded: false,
             origin: SignalOrigin.SATELLITE_RX,
+            noiseFloor: null,
+            gainInPath: 0 as dBi,
           }
         ],
         {
@@ -186,6 +192,8 @@ export const scenario1Data: ScenarioData = {
             feed: 'blue-1.mp4',
             isDegraded: false,
             origin: SignalOrigin.SATELLITE_RX,
+            noiseFloor: null,
+            gainInPath: 0 as dBi,
           }
         ],
         {

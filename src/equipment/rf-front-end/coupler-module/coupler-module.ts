@@ -1,5 +1,6 @@
 import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
+import { SignalPathManager } from "@app/simulation/signal-path-manager";
 import { IfFrequency, RfFrequency } from "@app/types";
 import { RFFrontEnd } from '../rf-front-end';
 import { RFFrontEndModule } from '../rf-front-end-module';
@@ -33,6 +34,8 @@ export interface CouplerState {
 }
 
 export class CouplerModule extends RFFrontEndModule<CouplerState> {
+  signalPathManager: SignalPathManager;
+
   /**
    * Get default state for Coupler module
    */
@@ -50,6 +53,8 @@ export class CouplerModule extends RFFrontEndModule<CouplerState> {
 
   constructor(state: CouplerState, rfFrontEnd: RFFrontEnd, unit: number = 1) {
     super(state, rfFrontEnd, 'rf-fe-coupler', unit);
+
+    this.signalPathManager = new SignalPathManager(this.rfFrontEnd_);
 
     const tapPointOptions = [
       'TX IF',

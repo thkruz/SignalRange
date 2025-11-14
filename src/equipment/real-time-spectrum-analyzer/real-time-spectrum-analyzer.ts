@@ -15,6 +15,8 @@ import { WaterfallDisplay } from "./rtsa-screen/waterfall-display";
 type MarkerPoint = { x: number; y: number; signal: number };
 
 export interface RealTimeSpectrumAnalyzerState {
+  isUseTapB: boolean;
+  isUseTapA: boolean
   /** This is the reference level that all dBm values are relative to */
   referenceLevel: number;
   minFrequency: Hertz;
@@ -78,6 +80,9 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
       uuid: this.uuid,
       team_id: this.teamId,
       rfFeUuid: this.rfFrontEnd_.state.uuid, // RF is hard linked to antenna
+
+      isUseTapA: true,
+      isUseTapB: true,
       isPaused: false,
       isMaxHold: false,
       isMinHold: false,
@@ -139,8 +144,14 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
         </div>
 
         <div class="spec-a-info-bar">
-          <button class="btn-config" data-action="config" title="Open Configuration Panel">
+          <button class="spec-a-btn btn-config" data-action="config" title="Open Configuration Panel">
             <span class="icon-advanced">&#9881;</span>
+          </button>
+          <button class="spec-a-btn btn-tap-a" data-action="config" title="Enable/Disable Tap A">
+            <span class="icon-advanced">A</span>
+          </button>
+          <button class="spec-a-btn btn-tap-b" data-action="config" title="Enable/Disable Tap B">
+            <span class="icon-advanced">B</span>
           </button>
           <div class="spec-a-info">
             <div>CF: ${this.state.centerFrequency / 1e6} MHz</div>
@@ -165,6 +176,8 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
     this.domCache['canvasSpectral'] = qs(`#specA${this.uuid}-spectral`, parentDom);
     this.domCache['canvasWaterfall'] = qs(`#specA${this.uuid}-waterfall`, parentDom);
     this.domCache['configButton'] = qs('.btn-config', parentDom);
+    this.domCache['tapAButton'] = qs('.btn-tap-a', parentDom);
+    this.domCache['tapBButton'] = qs('.btn-tap-b', parentDom);
 
     return parentDom;
   }
@@ -173,6 +186,18 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
     // config button listener
     this.domCache['configButton'].addEventListener('click', () => {
       this.openConfigPopupMenu();
+    });
+
+    // Tap A button listener
+    this.domCache['tapAButton'].addEventListener('click', () => {
+      this.state.isUseTapA = !this.state.isUseTapA;
+      this.syncDomWithState();
+    });
+
+    // Tap B button listener
+    this.domCache['tapBButton'].addEventListener('click', () => {
+      this.state.isUseTapB = !this.state.isUseTapB;
+      this.syncDomWithState();
     });
 
     // Listen for antenna changes
@@ -300,72 +325,65 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
   getInputSignals(): (IfSignal | RfSignal)[] {
     const tapPointA = this.rfFrontEnd_.couplerModule.state.tapPointA;
     const tapPointB = this.rfFrontEnd_.couplerModule.state.tapPointB;
+    // TODO: We should be using rbw, but span is the only one being adjusted at this time
+    const bandwidth = Math.max(this.state.rbw, this.state.span) as Hertz;
 
     let signals: (IfSignal | RfSignal)[] = [];
     this.state.noiseFloorNoGain = -174; // Reset to default before calculation
     this.state.isSkipLnaGainDuringDraw = true;
 
-    for (const tapPoint of [tapPointA, tapPointB]) {
-      let tapPointnoiseFloor: number;
-      let isSkipLnaGainDuringDraw = true;
+    const tapPoints = [];
+    if (this.state.isUseTapA) {
+      tapPoints.push(tapPointA);
+    }
+    if (this.state.isUseTapB) {
+      tapPoints.push(tapPointB);
+    }
+    // Process both tap points
+    for (const tapPoint of tapPoints) {
+      // Get signals at this tap point
+      signals.push(...this.getSignalsAtTapPoint(tapPoint));
 
-      switch (tapPoint) {
-        case TapPoint.TX_IF:
-          signals.push(...this.rfFrontEnd_.bucModule.inputSignals); // IF signals from both transmitter cases
-          tapPointnoiseFloor = this.rfFrontEnd_.bucModule.state.noiseFloor;
-          break;
-        case TapPoint.POST_BUC_PRE_HPA_TX_RF:
-          signals.push(...this.rfFrontEnd_.bucModule.outputSignals);
-          tapPointnoiseFloor = this.rfFrontEnd_.bucModule.state.noiseFloor;
-          break;
-        case TapPoint.POST_HPA_PRE_OMT_TX_RF:
-          signals.push(...this.rfFrontEnd_.hpaModule.outputSignals);
-          tapPointnoiseFloor = this.rfFrontEnd_.hpaModule.state.noiseFloor;
-          break;
-        case TapPoint.POST_OMT_PRE_ANT_TX_RF:
-          signals.push(...this.rfFrontEnd_.omtModule.txSignalsOut);
-          tapPointnoiseFloor = this.rfFrontEnd_.omtModule.state.noiseFloor;
-          break;
-        case TapPoint.PRE_OMT_POST_ANT_RX_RF:
-          signals.push(...this.rfFrontEnd_.antenna.state.rxSignalsIn);
-          tapPointnoiseFloor = this.rfFrontEnd_.antenna.state.noiseFloor;
-          break;
-        case TapPoint.POST_OMT_PRE_LNA_RX_RF:
-          {
-            signals.push(...this.rfFrontEnd_.omtModule.rxSignalsOut);
-            // TODO: We should be using omt floor? - this is future proofing to add in coupler loss
-            tapPointnoiseFloor = this.rfFrontEnd_.lnbModule.getNoiseFloor(Math.max(this.state.rbw, this.state.span) as Hertz);
-            isSkipLnaGainDuringDraw = false;
-            break;
-          }
-        case TapPoint.POST_LNA_RX_RF:
-          {
-            signals.push(...this.rfFrontEnd_.lnbModule.postLNASignals);
-            // TODO: We should be using rbw not span - but its simpler for now
-            tapPointnoiseFloor = this.rfFrontEnd_.lnbModule.getNoiseFloor(Math.max(this.state.rbw, this.state.span) as Hertz);
-            isSkipLnaGainDuringDraw = false;
-            break;
-          }
-        case TapPoint.RX_IF:
-          {
-            signals.push(...this.rfFrontEnd_.filterModule.outputSignals); // IF signals from LNB
-            const noiseData = this.rfFrontEnd_.getNoiseFloor(tapPoint);
+      // Get noise floor using SignalPathManager
+      const { noiseFloorNoGain, shouldApplyGain } =
+        this.rfFrontEnd_.couplerModule.signalPathManager.getNoiseFloorAt(tapPoint, bandwidth);
 
-            tapPointnoiseFloor = noiseData.noiseFloor;
-            isSkipLnaGainDuringDraw = noiseData.isInternalNoiseGreater;
-            break;
-          }
-        default:
-          throw new Error(`Unknown tap point: ${tapPointA}`);
-      }
-
-      if (tapPointnoiseFloor > this.state.noiseFloorNoGain) {
-        this.state.noiseFloorNoGain = tapPointnoiseFloor;
-        this.state.isSkipLnaGainDuringDraw = isSkipLnaGainDuringDraw;
+      // Keep the highest noise floor from both tap points
+      if (noiseFloorNoGain > this.state.noiseFloorNoGain) {
+        this.state.noiseFloorNoGain = noiseFloorNoGain;
+        this.state.isSkipLnaGainDuringDraw = !shouldApplyGain;
       }
     }
 
     return signals;
+  }
+
+  /**
+   * Get signals at a specific tap point in the signal chain
+   * @param tapPoint - The tap point location
+   * @returns Array of signals at that tap point
+   */
+  private getSignalsAtTapPoint(tapPoint: TapPoint): (IfSignal | RfSignal)[] {
+    switch (tapPoint) {
+      case TapPoint.TX_IF:
+        return this.rfFrontEnd_.bucModule.inputSignals;
+      case TapPoint.POST_BUC_PRE_HPA_TX_RF:
+        return this.rfFrontEnd_.bucModule.outputSignals;
+      case TapPoint.POST_HPA_PRE_OMT_TX_RF:
+        return this.rfFrontEnd_.hpaModule.outputSignals;
+      case TapPoint.POST_OMT_PRE_ANT_TX_RF:
+        return this.rfFrontEnd_.omtModule.txSignalsOut;
+      case TapPoint.PRE_OMT_POST_ANT_RX_RF:
+        return this.rfFrontEnd_.antenna.state.rxSignalsIn;
+      case TapPoint.POST_OMT_PRE_LNA_RX_RF:
+        return this.rfFrontEnd_.omtModule.rxSignalsOut;
+      case TapPoint.POST_LNA_RX_RF:
+        return this.rfFrontEnd_.lnbModule.postLNASignals;
+      case TapPoint.RX_IF:
+        return this.rfFrontEnd_.filterModule.outputSignals;
+      default:
+        throw new Error(`Unknown tap point: ${tapPoint}`);
+    }
   }
 
   public draw(): void {
@@ -515,6 +533,13 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
         <div>RF Front End: ${this.state.rfFeUuid.split('-')[0]}</div>
       `;
       this.updateScreenVisibility();
+    }
+    // Update Taps buttons
+    if (this.domCache['tapAButton']) {
+      this.domCache['tapAButton'].className = `spec-a-btn btn-tap-a ${this.state.isUseTapA ? 'btn-active' : ''}`;
+    }
+    if (this.domCache['tapBButton']) {
+      this.domCache['tapBButton'].className = `spec-a-btn btn-tap-b ${this.state.isUseTapB ? 'btn-active' : ''}`;
     }
   }
 }

@@ -15,6 +15,8 @@ type Distinct<T, DistinctName> = T & { __TYPE__: DistinctName };
 export type Hertz = Distinct<number, 'Hertz'>;
 /** Frequency in Mhz */
 export type MHz = Distinct<number, 'MHz'>;
+/** Decibels */
+export type dB = Distinct<number, 'dB'>;
 /** Decibels Watts */
 export type dBW = Distinct<number, 'dBW'>;
 /** Decibels Milliwatts */
@@ -68,6 +70,13 @@ export interface BaseSignal {
   isExternal?: boolean;
   /** This is the last device in the signal chain */
   origin: SignalOrigin;
+  /** Noise floor in dBm */
+  noiseFloor: dBm;
+  /** Culmative gain in dBi being applied so far in path
+   * This is both the loss from path and gain from devices
+   * This is used to apply culmulative gain in spectrum visualization
+   */
+  gainInPath: dBi;
 }
 
 export interface RfSignal extends BaseSignal {

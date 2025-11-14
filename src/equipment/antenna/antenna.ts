@@ -29,7 +29,7 @@ export interface AntennaState {
   elevation: Degrees;
   /** Current pointing azimuth angle without normalization */
   azimuth: Degrees;
-  noiseFloor: number;
+  /** Is antenna powered on */
   isPowered: boolean;
   /** Which antenna is this */
   uuid: string;
@@ -115,7 +115,6 @@ export class Antenna extends BaseEquipment {
       isOperational: true,
       isPowered: true,
       rxSignalsIn: [],
-      noiseFloor: -130,
     };
 
     this.autoTrackSwitch_ = ToggleSwitch.create(
@@ -665,24 +664,24 @@ export class Antenna extends BaseEquipment {
    */
   private computeRfMetrics_(): void {
     // Use first signal frequency if available, otherwise use midband Rx frequency
-    const f_Hz = this.state.rxSignalsIn.length > 0
-      ? (this.state.rxSignalsIn[0].frequency as number)
-      : ((this.config.minRxFrequency + this.config.maxRxFrequency) / 2) as number;
+    const frequency = this.state.rxSignalsIn.length > 0
+      ? (this.state.rxSignalsIn[0].frequency as Hertz)
+      : ((this.config.minRxFrequency + this.config.maxRxFrequency) / 2) as Hertz;
 
-    const elev_deg = 45; // Standard elevation for GEO
+    const elevation = 45 as Degrees; // Standard elevation for GEO
 
     this.state.rfMetrics = {
-      gain_dBi: this.antennaGain_dBi(f_Hz as Hertz),
-      beamwidth_deg: this.beamwidth3dB_deg_(f_Hz),
-      gOverT_dBK: this.gOverT_dB_perK_(f_Hz, elev_deg),
+      gain_dBi: this.antennaGain_dBi(frequency),
+      beamwidth_deg: this.beamwidth3dB_deg_(frequency),
+      gOverT_dBK: this.gOverT_dB_perK_(frequency, elevation),
       polLoss_dB: this.polMismatchLoss_dB_(
         'H', // Assume H-pol for display
         this.config.polType ?? 'linear',
         this.state.skew as number
       ),
-      atmosLoss_dB: this.calculateAtmosphericLoss_(f_Hz as Hertz, elev_deg),
-      skyTemp_K: this.skyTempK_(elev_deg),
-      frequency_GHz: f_Hz / 1e9,
+      atmosLoss_dB: this.calculateAtmosphericLoss_(frequency, elevation),
+      skyTemp_K: this.skyTempK_(elevation),
+      frequency_GHz: frequency / 1e9,
     };
   }
 
@@ -810,13 +809,45 @@ export class Antenna extends BaseEquipment {
   }
 
   /**
+ * Thermal noise floor at the antenna output (referred to LNA input) for a
+ * given frequency and noise bandwidth.
+ *
+ * Uses system noise temperature (sky + atmosphere + feed + LNA) and kTB.
+ *
+ * NOTE:
+ * - Returns total noise power in dBm **over noiseBandwidth_Hz**.
+ * - If you want noise density, call it with noiseBandwidth_Hz = 1.
+ */
+  antennaNoiseFloor(frequency: Hertz, noiseBandwidth: Hertz): dBm {
+    // Use the actual current pointing elevation
+    const elevation = this.state.elevation;
+    const Tsys_K = this.systemTempK_(frequency, elevation);
+
+    // Guard against degenerate values
+    const T = Math.max(Tsys_K, 1);            // K (avoid log of 0)
+    const B = Math.max(noiseBandwidth, 1); // Hz (at least 1 Hz)
+
+    // Thermal noise density at 290 K ~ -174 dBm/Hz
+    const kTB_290_dBmPerHz = -174;
+
+    // Temperature correction: 10*log10(T/290)
+    const tempCorrection_dB = 10 * Math.log10(T / 290);
+
+    // Bandwidth gain: 10*log10(B)
+    const bandwidthGain_dB = 10 * Math.log10(B);
+
+    const noise_dBm = kTB_290_dBmPerHz + tempCorrection_dB + bandwidthGain_dB;
+    return noise_dBm as dBm;
+  }
+
+  /**
    * System noise temperature at LNA input (K)
    * Accounts for sky, atmosphere, feed, and LNA contributions
    */
-  private systemTempK_(f_Hz: number, elev_deg: number): number {
-    const Tsky = this.skyTempK_(elev_deg);
-    const Latm = this.calculateAtmosphericLoss_(f_Hz, elev_deg);
-    const Lfeed = this.feedLossAt_(f_Hz) + (this.config.rxChainLoss_dB ?? 0);
+  private systemTempK_(frequency: Hertz, elevation: Degrees): number {
+    const Tsky = this.skyTempK_(elevation);
+    const Latm = this.calculateAtmosphericLoss_(frequency, elevation);
+    const Lfeed = this.feedLossAt_(frequency) + (this.config.rxChainLoss_dB ?? 0);
 
     const Tant = Tsky + this.noiseFromLossK_(Latm, 260); // Atm ~260 K slab
     const Tfeed = this.noiseFromLossK_(Lfeed, this.config.rxPhysTemp_K ?? 290);
@@ -837,8 +868,8 @@ export class Antenna extends BaseEquipment {
    * G/T (dB/K) at given frequency & elevation
    * Key figure of merit for receive systems
    */
-  private gOverT_dB_perK_(f_Hz: number, elev_deg: number): number {
-    return this.antennaGain_dBi(f_Hz as Hertz) - 10 * Math.log10(this.systemTempK_(f_Hz, elev_deg));
+  private gOverT_dB_perK_(frequency: Hertz, elevation: Degrees): number {
+    return this.antennaGain_dBi(frequency) - 10 * Math.log10(this.systemTempK_(frequency, elevation));
   }
 
   /**
@@ -901,7 +932,7 @@ export class Antenna extends BaseEquipment {
 
     return {
       ...signal,
-      power: receivedPower as dBm
+      power: receivedPower as dBm,
     };
   }
 
@@ -941,12 +972,6 @@ export class Antenna extends BaseEquipment {
     return 10 * Math.log10(G_linear);
   }
 
-  /**
-   * Check if signal is above the antenna's noise floor
-   */
-  private isSignalAboveNoiseFloor_(signalPower: number): boolean {
-    return signalPower > this.state.noiseFloor;
-  }
 
   private updateSignals_(): void {
     // Can't receive signals if Not powered or Not operational
@@ -956,15 +981,13 @@ export class Antenna extends BaseEquipment {
     }
 
     this.updateTxSignals_();
-
     this.updateRxSignals_();
   }
 
   private updateRxSignals_() {
     // Get visible signals from the satellite and apply propagation effects
     let receivedSignals = this.rxSignals
-      .map(({ sat, signal }) => this.applyPropagationEffects_(sat, signal))
-      .filter(signal => this.isSignalAboveNoiseFloor_(signal.power));
+      .map(({ sat, signal }) => this.applyPropagationEffects_(sat, signal));
 
     // Apply interference and adjacency logic
     receivedSignals = receivedSignals.filter((signal) => {

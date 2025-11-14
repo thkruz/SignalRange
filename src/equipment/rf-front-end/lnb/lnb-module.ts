@@ -1,7 +1,7 @@
 import { RotaryKnob } from "@app/components/rotary-knob/rotary-knob";
 import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
-import { Hertz, IfFrequency, IfSignal, MHz, RfFrequency, RfSignal, SignalOrigin } from '@app/types';
+import { dB, Hertz, IfFrequency, IfSignal, MHz, RfFrequency, RfSignal, SignalOrigin } from '@app/types';
 import { RFFrontEnd } from '../rf-front-end';
 import { RFFrontEndModule, RFFrontEndModuleState } from '../rf-front-end-module';
 import './lnb-module.css';
@@ -13,7 +13,7 @@ export interface LNBState extends RFFrontEndModuleState {
   noiseFloor: number;
   isPowered: boolean;
   loFrequency: MHz;
-  gain: number; // dB (40-65)
+  gain: dB; // dB (40-65)
   lnaNoiseFigure: number; // dB (0.3-1.2)
   mixerNoiseFigure: number; // dB (e.g., 6-10)
   noiseTemperature: number; // Kelvin
@@ -43,7 +43,7 @@ export class LNBModule extends RFFrontEndModule<LNBState> {
     return {
       isPowered: true,
       loFrequency: 4200 as MHz, // MHz
-      gain: 55, // dB
+      gain: 0 as dB, // dB
       lnaNoiseFigure: 0.6, // dB
       mixerNoiseFigure: 16.0, // dB
       noiseTemperature: 45, // K

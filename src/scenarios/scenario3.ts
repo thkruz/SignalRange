@@ -1,9 +1,5 @@
 import { html } from "@app/engine/utils/development/formatter";
 import { ANTENNA_CONFIG_KEYS } from "@app/equipment/antenna/antenna-configs";
-import { Satellite } from "@app/equipment/satellite/satellite";
-import { dBm, FECType, Hertz, ModulationType, RfFrequency, SignalOrigin } from "@app/types";
-import { Degrees } from "ootk";
-import { ScenarioData } from "../scenario-manager";
 import { BUCModule } from "@app/equipment/rf-front-end/buc-module/buc-module";
 import { CouplerModule } from "@app/equipment/rf-front-end/coupler-module/coupler-module";
 import { IfFilterBankModule } from "@app/equipment/rf-front-end/filter-module/filter-module";
@@ -11,6 +7,10 @@ import { GPSDOModule } from "@app/equipment/rf-front-end/gpsdo-module/gpsdo-modu
 import { HPAModule } from "@app/equipment/rf-front-end/hpa-module/hpa-module";
 import { LNBModule } from "@app/equipment/rf-front-end/lnb/lnb-module";
 import { OMTModule } from "@app/equipment/rf-front-end/omt-module/omt-module";
+import { Satellite } from "@app/equipment/satellite/satellite";
+import { dBi, dBm, FECType, Hertz, ModulationType, RfFrequency, SignalOrigin } from "@app/types";
+import { Degrees } from "ootk";
+import { ScenarioData } from "../scenario-manager";
 
 export const scenario3Data: ScenarioData = {
   id: 'first-light3',
@@ -102,6 +102,8 @@ export const scenario3Data: ScenarioData = {
             feed: 'red-1.mp4',
             isDegraded: false,
             origin: SignalOrigin.SATELLITE_RX,
+            noiseFloor: null,
+            gainInPath: 0 as dBi,
           },
           {
             signalId: '2',
@@ -117,6 +119,8 @@ export const scenario3Data: ScenarioData = {
             feed: 'blue-1.mp4',
             isDegraded: false,
             origin: SignalOrigin.SATELLITE_RX,
+            noiseFloor: null,
+            gainInPath: 0 as dBi,
           }
         ],
         {
@@ -142,6 +146,8 @@ export const scenario3Data: ScenarioData = {
             feed: 'blue-1.mp4',
             isDegraded: false,
             origin: SignalOrigin.SATELLITE_RX,
+            noiseFloor: null,
+            gainInPath: 0 as dBi,
           }
         ],
         {
@@ -167,6 +173,8 @@ export const scenario3Data: ScenarioData = {
             feed: 'blue-1.mp4',
             isDegraded: false,
             origin: SignalOrigin.SATELLITE_RX,
+            noiseFloor: null,
+            gainInPath: 0 as dBi,
           }
         ],
         {

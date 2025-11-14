@@ -6,7 +6,7 @@ import { PowerSwitch } from '../../components/power-switch/power-switch';
 import { html } from "../../engine/utils/development/formatter";
 import { qs } from "../../engine/utils/query-selector";
 import { Events } from "../../events/events";
-import { dBm, Hertz, IfFrequency, IfSignal, SignalOrigin } from "../../types";
+import { dBi, dBm, Hertz, IfFrequency, IfSignal, SignalOrigin } from "../../types";
 import { AlarmStatus, BaseEquipment } from "../base-equipment";
 import './transmitter.css';
 
@@ -76,7 +76,9 @@ export class Transmitter extends BaseEquipment {
           feed: '',
           polarization: null,
           isDegraded: false,
-          origin: SignalOrigin.TRANSMITTER
+          origin: SignalOrigin.TRANSMITTER,
+          noiseFloor: null,
+          gainInPath: 0 as dBi,
         },
         isTransmitting: false,
         isTransmittingSwitchUp: false,

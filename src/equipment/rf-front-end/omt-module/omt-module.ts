@@ -3,9 +3,10 @@ import { ToggleSwitch } from '@app/components/toggle-switch/toggle-switch';
 import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
 import { Logger } from '@app/logging/logger';
-import { dBm, RfSignal, SignalOrigin } from '@app/types';
+import { dBi, dBm, RfSignal, SignalOrigin } from '@app/types';
 import { RFFrontEnd } from '../rf-front-end';
 import { RFFrontEndModule } from '../rf-front-end-module';
+import { dB } from './../../../types';
 import omtModuleHelp from './omt-module-help';
 import './omt-module.css';
 
@@ -19,7 +20,7 @@ export type PolarizationType = null | 'H' | 'V' | 'LHCP' | 'RHCP';
  */
 export interface OMTState {
   isPowered: boolean;
-  noiseFloor: number;
+  insertionLoss: dB; // part of state to make it easier to insert faults
   txPolarization: PolarizationType;
   rxPolarization: PolarizationType;
   crossPolIsolation: number; // dB (typical 25-35)
@@ -47,9 +48,9 @@ export class OMTModule extends RFFrontEndModule<OMTState> {
       rxPolarization: 'V',
       effectiveTxPol: 'H',
       effectiveRxPol: 'V',
-      crossPolIsolation: 28.5, // dB
+      crossPolIsolation: 28.5 as dB,
       isFaulted: false,
-      noiseFloor: -140, // dBm/Hz
+      insertionLoss: 0.5 as dB
     };
   }
 
@@ -201,7 +202,13 @@ export class OMTModule extends RFFrontEndModule<OMTState> {
       }));
     }
 
-    return this.rfFrontEnd_.antenna?.state.rxSignalsIn ?? [];
+    const rxSignals = this.rfFrontEnd_.antenna?.state.rxSignalsIn.map(sig => ({
+      ...sig,
+      // Add small loss through OMT to the gain calculation
+      gainInPath: (sig.gainInPath - 0.5) as dBi,
+    }));
+
+    return rxSignals ?? [];
   }
 
   private updateCrossPolIsolation_(): void {

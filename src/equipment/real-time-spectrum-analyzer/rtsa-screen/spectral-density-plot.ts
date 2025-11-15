@@ -36,7 +36,7 @@ export class SpectralDensityPlot extends RTSAScreen {
     maxhold: '#ff0000',      // Red
     minhold: '#0000ff',      // Blue
     average: '#ff00ff',      // Magenta
-    hold: '#fff647ff',       // Yellow (maintains color from before hold)
+    hold: '#4eb136ff',       // Yellow (maintains color from before hold)
   };
 
   // Frequency label caching
@@ -118,7 +118,8 @@ export class SpectralDensityPlot extends RTSAScreen {
   update(): void {
     if (!this.specA.state.isPaused && this.running) {
       const now = Date.now();
-      if (now - this.lastDrawTime > 1000 / this.specA.state.refreshRate) {
+      const sweepTimeMs = 3000 * (this.specA.state.span / (this.specA.state.rbw ?? this.specA.state.span) ** 2);
+      if (now - this.lastDrawTime > sweepTimeMs) {
         // Invalidate grid cache if amplitude range changed
         if (this.cachedMinAmplitude !== this.specA.state.minAmplitude ||
           this.cachedMaxAmplitude !== this.specA.state.maxAmplitude ||

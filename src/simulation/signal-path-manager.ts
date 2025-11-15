@@ -190,8 +190,13 @@ export class SignalPathManager {
       case TapPoint.RX_IF: {
         // Compare external noise (with gain) vs internal spectrum analyzer noise
         const NF = 0.5; // Spectrum analyzer noise figure
-        const externalNoiseFloor = this.rfFrontEnd_.filterModule.state.noiseFloor + this.getTotalGainTo(tapPoint);
-        const internalNoiseFloor = -174 + 10 * Math.log10(this.rfFrontEnd_.filterModule.state.bandwidth * 1e6) + NF;
+        let externalNoiseFloor = this.rfFrontEnd_.lnbModule.getNoiseFloor(bandwidth) + this.getTotalGainTo(tapPoint);
+
+        if (this.rfFrontEnd_.filterModule.state.isPowered === false) {
+          externalNoiseFloor = Number.NEGATIVE_INFINITY as dBm; // No signal if filter is unpowered
+        }
+
+        const internalNoiseFloor = -174 + 10 * Math.log10(bandwidth) + NF;
 
         const isInternalNoiseGreater = internalNoiseFloor > externalNoiseFloor;
 
@@ -216,8 +221,10 @@ export class SignalPathManager {
       case TapPoint.POST_HPA_PRE_OMT_TX_RF:
       case TapPoint.POST_OMT_PRE_ANT_TX_RF:
       default: {
+        const NF = 0.5; // Spectrum analyzer noise figure
+
         // For TX path or unknown, return a default noise floor
-        const defaultNoiseFloor = -174 + 10 * Math.log10(bandwidth);
+        const defaultNoiseFloor = -174 + 10 * Math.log10(bandwidth) + NF;
         return {
           noiseFloorNoGain: defaultNoiseFloor as dBm,
           shouldApplyGain: true

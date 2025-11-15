@@ -283,48 +283,53 @@ export class WaterfallDisplay extends RTSAScreen {
     inBandWidth: number,
     outOfBandWidth: number
   ): Float32Array {
-    const sigma = outOfBandWidth / 3;
+    // Use outOfBandWidth as the basis for sigma to create a wider, more realistic Gaussian
+    // This creates the smooth bell curve shape
+    const sigma = outOfBandWidth / 3; // Adjust factor to control width
 
     for (let x = 0; x < data.length; x++) {
       const distance = x - center;
-      const absDistance = Math.abs(distance);
+      const absDist = Math.abs(distance);
       const gaussian = Math.exp(-0.5 * Math.pow(distance / sigma, 2));
 
-      // Zero out signal far outside the band
-      if (x > center + outOfBandWidth || x < center - outOfBandWidth ||
-        x < center - inBandWidth || x > center + inBandWidth) {
-        data[x] = Math.max(data[x], -170); // Well below noise floor
-        continue;
-      }
-
-      // Convert gaussian attenuation to dB (20*log10(gaussian))
-      // For gaussian values 0-1, this gives us 0 to -infinity dB
+      // Convert gaussian to dB (this creates the smooth exponential rise/fall)
       const gaussianDb = 20 * Math.log10(Math.max(gaussian, 1e-10));
 
+      // Start with the Gaussian shape
       let y = signal.power + gaussianDb;
 
-      // Main lobe (signal bandwidth)
-      if (absDistance <= inBandWidth) {
-        // Add some random amplitude jitter for realism (±0.3 dB)
+      // Main lobe (center region) - add minimal jitter
+      if (absDist <= inBandWidth) {
+        y += (Math.random() - 0.5) * 0.4;
+      }
+      // Transition region - slight additional rolloff for realism
+      else if (absDist <= outOfBandWidth * 0.7) {
         y += (Math.random() - 0.5) * 0.6;
+        // Very subtle side lobe effect (much smaller than before)
+        const sideLobeEffect = Math.sin((distance / outOfBandWidth) * Math.PI * 4) * 0.5;
+        y += sideLobeEffect;
+      }
+      // Outer region - more pronounced side lobes and taper
+      else if (absDist <= outOfBandWidth) {
+        const sideLobeEffect = Math.sin((distance / outOfBandWidth) * Math.PI * 6) * 0.8;
+        y += sideLobeEffect + (Math.random() - 0.5) * 1.0;
+      }
+      // Beyond outOfBandWidth - natural exponential decay
+      else {
+        const excessDistance = absDist - outOfBandWidth;
+        const decayFactor = Math.exp(-excessDistance / (outOfBandWidth * 0.3));
+        y += -20 * (1 - decayFactor); // Additional -20 dB taper beyond the main signal
+        y += (Math.random() - 0.5) * 1.5;
       }
 
-      // Simulate out-of-band rolloff (side lobes)
-      if (absDistance > inBandWidth && absDistance <= outOfBandWidth) {
-        // Side lobes: much lower amplitude (-15 to -20 dB below main lobe)
-        const sideLobe = Math.sin((distance / inBandWidth) * Math.PI * 2) * 0.15;
-        const sideLobeDb = 20 * Math.log10(Math.abs(sideLobe) + 1e-10);
-        y = signal.power + gaussianDb + sideLobeDb + (Math.random() - 0.5) * 0.8;
-      }
-
-      // Add noise floor blending near edges (additional -3 to -6 dB)
-      if (absDistance > outOfBandWidth * 0.95) {
-        y -= 3 + Math.random() * 3;
-      }
-
-      // Simulate deep nulls and random dropouts for realism (-10 to -14 dB drops)
+      // Simulate occasional deep nulls for realism
       if (Math.random() < 0.001) {
         y -= 10 + Math.random() * 4;
+      }
+
+      // If noise floor is external, add RF front-end gain to match noise
+      if (!this.specA.state.isSkipLnaGainDuringDraw) {
+        y += this.specA.rfFrontEnd_.couplerModule.signalPathManager.getTotalRxGain();
       }
 
       data[x] = Math.max(data[x], y);

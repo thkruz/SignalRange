@@ -154,10 +154,6 @@ export class IfFilterBankModule extends RFFrontEndModule<IfFilterBankState> {
    */
   update(): void {
     this.outputSignals = this.inputSignals.map((sig: IfSignal) => {
-
-      // if filter bank bandwidth is this.specA.rfFrontEnd_.filterModule.state.bandwidth * 1e6
-      // what should happen if the signal bandwidth is greater than that?
-
       if (sig.bandwidth > this.state.bandwidth * 1e6) {
         // Apply additional attenuation for out-of-band signals
         // Ps,out​=Ps​+10log10​(Bs​Bf​​)

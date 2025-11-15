@@ -46,7 +46,7 @@ export interface RealTimeSpectrumAnalyzerState {
   refreshRate: number; // in Hz
   centerFrequency: Hertz; // Hz - center frequency
   span: Hertz;
-  rbw: Hertz; // Resolution Bandwidth
+  rbw: Hertz | null; // Resolution Bandwidth
   lockedControl: 'freq' | 'span';
   hold: boolean; // Hold max amplitude
   minAmplitude: number;
@@ -360,8 +360,8 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
   getInputSignals(): (IfSignal | RfSignal)[] {
     const tapPointA = this.rfFrontEnd_.couplerModule.state.tapPointA;
     const tapPointB = this.rfFrontEnd_.couplerModule.state.tapPointB;
-    // TODO: We should be using rbw, but span is the only one being adjusted at this time
-    const bandwidth = Math.max(this.state.rbw, this.state.span) as Hertz;
+    // If rbw is null we are in auto mode so use span as bandwidth
+    const bandwidth = this.state.rbw ?? this.state.span;
 
     let signals: (IfSignal | RfSignal)[] = [];
 
@@ -374,7 +374,7 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
     }
 
     // Track the maximum noise floor across all tap points
-    let maxNoiseFloorNoGain = -174; // Default thermal noise floor
+    let maxNoiseFloorNoGain = this.rfFrontEnd_.couplerModule.signalPathManager.getNoiseFloorAt(TapPoint.RX_IF, bandwidth).noiseFloorNoGain;
     let maxShouldApplyGain = false;
 
     // Process both tap points
@@ -391,6 +391,12 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
       if (noiseFloorWithGain > maxNoiseFloorNoGain) {
         maxNoiseFloorNoGain = noiseFloorNoGain;
         maxShouldApplyGain = shouldApplyGain;
+      }
+    }
+
+    for (const sig of signals) {
+      if (sig.bandwidth > bandwidth) {
+        sig.bandwidth = bandwidth;
       }
     }
 

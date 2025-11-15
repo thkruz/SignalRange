@@ -82,7 +82,7 @@ export const scenario1Data: ScenarioData = {
         output10MHzLevel: 0,
         ppsOutputsEnabled: false,
         operatingHours: 6,
-        selfTestPassed: false,
+        selfTestPassed: true,
         agingRate: 0,
       },
     }],

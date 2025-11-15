@@ -110,12 +110,12 @@ export abstract class BaseEquipment {
    * @param element The status bar DOM element to update
    * @param alarms Array of alarm statuses to display
    */
-  private lastStatusBarUpdate = 0;
+  private lastStatusBarUpdate: { [key: string]: number } = {};
 
   protected updateStatusBar(element: HTMLElement, alarms: AlarmStatus[]): void {
     const now = Date.now();
-    if (now - this.lastStatusBarUpdate < 1000) return;
-    this.lastStatusBarUpdate = now;
+    if (now - (this.lastStatusBarUpdate[element.id] || 0) < 1000) return;
+    this.lastStatusBarUpdate[element.id] = now;
 
     // Priority order: off > error > warning > info > success
     const priorities: Array<{

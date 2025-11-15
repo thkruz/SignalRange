@@ -461,6 +461,7 @@ export class Antenna extends BaseEquipment {
       return;
     }
     this.state.polarization = value as Degrees;
+    this.notifyStateChange_();
   }
 
   private handleAzimuthChange_(value: number): void {

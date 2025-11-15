@@ -1102,7 +1102,10 @@ export class Antenna extends BaseEquipment {
   }
 
   private syncDomWithState_(): void {
-    if (JSON.stringify(this.state) === JSON.stringify(this.lastRenderState)) {
+    // Compare state excluding rxSignalsIn to avoid unnecessary DOM updates
+    const { rxSignalsIn: _, ...stateWithoutRxSignalsIn } = this.state;
+    const { rxSignalsIn: __, ...lastRenderStateWithoutRxSignalsIn } = this.lastRenderState;
+    if (JSON.stringify(stateWithoutRxSignalsIn) === JSON.stringify(lastRenderStateWithoutRxSignalsIn)) {
       return; // No changes, skip update
     }
 

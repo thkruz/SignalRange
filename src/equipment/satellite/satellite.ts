@@ -167,14 +167,16 @@ export class Satellite {
   }
 
   private createRandomValues_(): void {
-    // We need to create random values for each transponder to use in degradation effects
-    for (const tp of this.transponders) {
+    // We need to create random values for each signal to use in degradation effects
+    const allRxSignals = [...this.rxSignal, ...this.externalSignal];
+
+    for (const signal of allRxSignals) {
       // Power Variation
-      this.randomCache_.set(`${tp.id}-powerVariation`, Math.random());
+      this.randomCache_.set(`${signal.signalId}-powerVariation`, Math.random());
       // Rain Variation
-      this.randomCache_.set(`${tp.id}-rain`, Math.random());
-      // Scintillation
-      this.randomCache_.set(`${tp.id}-scintillation`, Math.random());
+      this.randomCache_.set(`${signal.signalId}-rain`, Math.random());
+      // Scintillation (pre-cached to avoid Math.random() during degradation)
+      this.randomCache_.set(`${signal.signalId}-scintillation`, Math.random());
     }
   }
 
@@ -271,44 +273,62 @@ export class Satellite {
 
   /**
    * Apply various degradation effects to the transmitted signal.
+   * Optimized to minimize object allocations by mutating power in-place.
    */
   private applyDegradationEffects(signal: RfSignal): RfSignal {
-    let degradedSignal = { ...signal };
+    // Early exit if all degradation effects are disabled
+    if (!this.degradationConfig.powerVariation &&
+      !this.degradationConfig.atmosphericEffects &&
+      !this.degradationConfig.interference &&
+      this.health >= 1.0) {
+      return signal;
+    }
 
-    // Apply power variation (simulates attitude control variations, antenna pointing)
+    // Single object copy at the start
+    const degradedSignal = { ...signal };
+    let power = degradedSignal.power;
+
+    // Mutate power in place instead of creating new objects at each step
     if (this.degradationConfig.powerVariation) {
-      degradedSignal = this.applyPowerVariation(degradedSignal);
+      power = this.applyPowerVariation_inPlace(degradedSignal.signalId, power);
     }
 
-    // Apply atmospheric effects (rain fade, scintillation)
     if (this.degradationConfig.atmosphericEffects) {
-      degradedSignal = this.applyAtmosphericEffects(degradedSignal);
+      power = this.applyAtmosphericEffects_inPlace(degradedSignal.signalId, degradedSignal.frequency, power);
     }
 
-    // Apply interference
     if (this.degradationConfig.interference) {
-      degradedSignal = this.applyInterference(degradedSignal);
+      power = this.applyInterference_inPlace(power);
+      degradedSignal.isDegraded = true;
     }
 
-    // Apply satellite health degradation
-    degradedSignal = this.applyHealthDegradation(degradedSignal);
+    // Health degradation
+    const healthLossDeb = (1 - this.health) * 10;
+    power = power - healthLossDeb as dBm;
+    if (this.health < 0.9 || degradedSignal.isDegraded) {
+      degradedSignal.isDegraded = true;
+    }
 
+    degradedSignal.power = power;
     return degradedSignal;
   }
 
   /**
-   * Apply smooth power variations using Perlin noise.
+   * Apply smooth power variations using Perlin noise (in-place optimization).
+   * @param signalId - The signal identifier
+   * @param currentPower - Current power level in dBm
+   * @returns Updated power level in dBm
    */
-  private applyPowerVariation(signal: RfSignal): RfSignal {
+  private applyPowerVariation_inPlace(signalId: string, currentPower: dBm): dBm {
     // Get or create noise generator for this signal
-    if (!this.noiseGenerators.has(signal.signalId)) {
-      this.noiseGenerators.set(signal.signalId, PerlinNoise.getInstance(signal.signalId));
+    if (!this.noiseGenerators.has(signalId)) {
+      this.noiseGenerators.set(signalId, PerlinNoise.getInstance(signalId));
     }
 
-    const noiseGen = this.noiseGenerators.get(signal.signalId);
-    if (!noiseGen) return signal;
+    const noiseGen = this.noiseGenerators.get(signalId);
+    if (!noiseGen) return currentPower;
 
-    const randomPowerFactor = this.randomCache_.get(`${signal.signalId}-powerVariation`) ?? 1;
+    const randomPowerFactor = this.randomCache_.get(`${signalId}-powerVariation`) ?? 1;
     const time = Date.now() / 1000 + randomPowerFactor * 1000;
 
     // Perlin noise returns 0-1, convert to -1 to 1
@@ -317,63 +337,43 @@ export class Satellite {
     // Apply variation
     const variation = noiseValue * this.degradationConfig.powerVariationRange;
 
-    return {
-      ...signal,
-      power: signal.power + variation as dBm
-    };
+    return (currentPower + variation) as dBm;
   }
 
   /**
-   * Apply atmospheric effects like rain fade and scintillation.
+   * Apply atmospheric effects like rain fade and scintillation (in-place optimization).
+   * @param signalId - The signal identifier
+   * @param frequency - Signal frequency in Hz
+   * @param currentPower - Current power level in dBm
+   * @returns Updated power level in dBm
    */
-  private applyAtmosphericEffects(signal: RfSignal): RfSignal {
+  private applyAtmosphericEffects_inPlace(signalId: string, frequency: RfFrequency, currentPower: dBm): dBm {
     // Rain fade is frequency dependent (worse at higher frequencies)
-    const frequencyGHz = signal.frequency / 1e9;
-    const randomRainFactor = this.randomCache_.get(`${signal.signalId}-rain`) ?? 1;
+    const frequencyGHz = frequency / 1e9;
+    const randomRainFactor = this.randomCache_.get(`${signalId}-rain`) ?? 1;
 
     // Simple rain fade model (in dB)
     const rainFadeDb = (frequencyGHz / 10) * randomRainFactor * 2; // Simplified model
 
-    // Scintillation (rapid amplitude fluctuations)
-    const randomScintillationFactor = this.randomCache_.get(`${signal.signalId}-scintillation`) ?? 1;
-    const scintillationDb = (Math.random() - 0.5) * 1.5 * randomScintillationFactor;
+    // Scintillation (rapid amplitude fluctuations) - use pre-cached random value
+    const randomScintillationFactor = this.randomCache_.get(`${signalId}-scintillation`) ?? 0.5;
+    const scintillationDb = (randomScintillationFactor - 0.5) * 1.5;
 
-    return {
-      ...signal,
-      power: signal.power - rainFadeDb + scintillationDb as dBm,
-    };
+    return (currentPower - rainFadeDb + scintillationDb) as dBm;
   }
 
   /**
-   * Apply interference to the signal.
+   * Apply interference to the signal (in-place optimization).
+   * @param currentPower - Current power level in dBm
+   * @returns Updated power level in dBm
    */
-  private applyInterference(signal: RfSignal): RfSignal {
+  private applyInterference_inPlace(currentPower: dBm): dBm {
     // Calculate C/I (Carrier-to-Interference ratio)
-    const carrierPowerLinear = Math.pow(10, signal.power / 10);
+    const carrierPowerLinear = Math.pow(10, currentPower / 10);
     const interferencePowerLinear = Math.pow(10, this.degradationConfig.interferencePower / 10);
     const totalPowerLinear = carrierPowerLinear + interferencePowerLinear;
 
-    const degradedPowerDbm = 10 * Math.log10(totalPowerLinear);
-
-    return {
-      ...signal,
-      power: degradedPowerDbm as dBm,
-      isDegraded: true
-    };
-  }
-
-  /**
-   * Apply degradation based on satellite health.
-   */
-  private applyHealthDegradation(signal: RfSignal): RfSignal {
-    // Reduce power based on health status
-    const healthLossDeb = (1 - this.health) * 10; // Up to 10 dB loss when unhealthy
-
-    return {
-      ...signal,
-      power: signal.power - healthLossDeb as dBm,
-      isDegraded: this.health < 0.9 || signal.isDegraded
-    };
+    return (10 * Math.log10(totalPowerLinear)) as dBm;
   }
 
   /**

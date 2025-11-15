@@ -38,6 +38,9 @@ export class LNBModule extends RFFrontEndModule<LNBState> {
   // Thermal stabilization tracking
   private powerOnTimestamp_: number | null = null;
 
+  // Track last applied brightness level to avoid unnecessary DOM updates
+  private lastNoiseTempBrightnessLevel_: number = -1;
+
   /**
    * Get default state for LNB module
    */
@@ -150,6 +153,17 @@ export class LNBModule extends RFFrontEndModule<LNBState> {
     // Typical noise temperature range: ~90K (bright) to 290K+ (dim)
     // To map 90K -> ~2, 290K -> ~0, use denominator ~100
     return Math.max(2 - this.state_.noiseTemperature / 100, 0);
+  }
+
+  /**
+   * Get discrete brightness level to avoid frequent DOM updates
+   * Uses 6 levels from 0.0 to 2.0 in steps of 0.4
+   */
+  private getNoiseTempBrightnessLevel__(): number {
+    const continuousBrightness = this.getNoiseTempBrightness__();
+    // Snap to discrete levels: 0.0, 0.4, 0.8, 1.2, 1.6, 2.0
+    const levelStep = 0.4;
+    return Math.round(continuousBrightness / levelStep) * levelStep;
   }
 
   /**
@@ -451,11 +465,18 @@ export class LNBModule extends RFFrontEndModule<LNBState> {
     if (noiseTempLed && this.state_.isPowered) {
       noiseTempLed.classList.remove('led-off');
       noiseTempLed.classList.add('led-blue');
-      noiseTempLed.style.filter = `brightness(${this.getNoiseTempBrightness__()})`;
+
+      // Only update brightness if the discrete level has changed
+      const brightnessLevel = this.getNoiseTempBrightnessLevel__();
+      if (brightnessLevel !== this.lastNoiseTempBrightnessLevel_) {
+        noiseTempLed.style.filter = `brightness(${brightnessLevel})`;
+        this.lastNoiseTempBrightnessLevel_ = brightnessLevel;
+      }
     } else if (noiseTempLed) {
       noiseTempLed.style.filter = '';
       noiseTempLed.classList.add('led-off');
       noiseTempLed.classList.remove('led-blue');
+      this.lastNoiseTempBrightnessLevel_ = -1; // Reset tracking
     }
 
     // Update physical temperature display

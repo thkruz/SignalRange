@@ -1,3 +1,4 @@
+import { HelpButton } from "@app/components/help-btn/help-btn";
 import { qs } from "@app/engine/utils/query-selector";
 import { EventBus } from "@app/events/event-bus";
 import { Logger } from "@app/logging/logger";
@@ -7,12 +8,11 @@ import { Hertz, IfSignal, RfSignal } from "../../types";
 import { BaseEquipment } from '../base-equipment';
 import { RFFrontEnd } from "../rf-front-end/rf-front-end";
 import { TapPoint } from './../rf-front-end/coupler-module/coupler-module';
-import { HelpButton } from "@app/components/help-btn/help-btn";
 import { AnalyzerControlBox } from "./analyzer-control-box";
 import './real-time-spectrum-analyzer.css';
+import rtsaHelp from './rtsa-help';
 import { SpectralDensityPlot } from './rtsa-screen/spectral-density-plot';
 import { WaterfallDisplay } from "./rtsa-screen/waterfall-display";
-import rtsaHelp from './rtsa-help';
 
 type MarkerPoint = { x: number; y: number; signal: number };
 
@@ -240,12 +240,12 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
     if (!this.domCache['canvasWaterfall']) throw new Error('Waterfall canvas element not found for Spectrum Analyzer');
 
     // Initialize single-mode screens
-    this.spectralDensity = new SpectralDensityPlot(this.domCache['canvas'] as HTMLCanvasElement, this, 1600, 1000);
-    this.waterfall = new WaterfallDisplay(this.domCache['canvas'] as HTMLCanvasElement, this, 1600, 1000);
+    this.spectralDensity = new SpectralDensityPlot(this.domCache['canvas'] as HTMLCanvasElement, this, 800, 500);
+    this.waterfall = new WaterfallDisplay(this.domCache['canvas'] as HTMLCanvasElement, this, 800, 500);
 
     // Initialize "both" mode screens with their dedicated canvases
-    this.spectralDensityBoth = new SpectralDensityPlot(this.domCache['canvasSpectral'] as HTMLCanvasElement, this, 1600, 500);
-    this.waterfallBoth = new WaterfallDisplay(this.domCache['canvasWaterfall'] as HTMLCanvasElement, this, 1600, 500);
+    this.spectralDensityBoth = new SpectralDensityPlot(this.domCache['canvasSpectral'] as HTMLCanvasElement, this, 800, 500);
+    this.waterfallBoth = new WaterfallDisplay(this.domCache['canvasWaterfall'] as HTMLCanvasElement, this, 800, 500);
 
     // Set initial screen mode
     this.updateScreenVisibility();

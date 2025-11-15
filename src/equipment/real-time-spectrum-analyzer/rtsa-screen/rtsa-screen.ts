@@ -8,10 +8,10 @@ export abstract class RTSAScreen {
   protected readonly specA: RealTimeSpectrumAnalyzer;
 
   // Canvas dimensions
-  protected width_: number = 1600; // More width to increase resolution (especially for noise floor)
-  protected height_: number = 460;
+  protected width_: number = 800; // More width to increase resolution (especially for noise floor)
+  protected height_: number = 230;
 
-  constructor(canvas: HTMLCanvasElement, specA: RealTimeSpectrumAnalyzer, width = 1600, height = 1000) {
+  constructor(canvas: HTMLCanvasElement, specA: RealTimeSpectrumAnalyzer, width = 800, height = 230) {
     this.canvas = canvas;
     this.specA = specA;
     this.width_ = width;
@@ -26,6 +26,7 @@ export abstract class RTSAScreen {
       throw new Error('Failed to get canvas 2D context');
     }
     this.ctx = context;
+    this.ctx.font = '24px Arial';
   }
 
   get width(): number {

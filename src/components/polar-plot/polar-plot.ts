@@ -54,16 +54,20 @@ export class PolarPlot {
   private onDomReady_(): void {
     this.canvas_ = qs('.polar-plot-canvas', this.dom) as HTMLCanvasElement;
     this.ctx_ = this.canvas_.getContext('2d')!;
+    this.ctx_.font = '12px monospace';
+    this.ctx_.textBaseline = 'middle';
     this.draw_();
   }
 
   /**
    * Update the antenna position on the polar plot
    */
-  update(azimuth: Degrees, elevation: Degrees): void {
-    this.azimuth = azimuth;
-    this.elevation = elevation;
-    this.draw_();
+  draw(azimuth: Degrees, elevation: Degrees): void {
+    if (this.azimuth !== azimuth || this.elevation !== elevation) {
+      this.azimuth = azimuth;
+      this.elevation = elevation;
+      this.draw_();
+    }
   }
 
   /**
@@ -138,9 +142,7 @@ export class PolarPlot {
    */
   private drawLabels_(ctx: CanvasRenderingContext2D, centerX: number, centerY: number, radius: number): void {
     ctx.fillStyle = '#888';
-    ctx.font = '12px monospace';
     ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
 
     // Draw azimuth labels (N, E, S, W)
     const labels = [

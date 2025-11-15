@@ -11,7 +11,7 @@ import { html } from "../../engine/utils/development/formatter";
 import { qs } from "../../engine/utils/query-selector";
 import { Events } from "../../events/events";
 import { SimulationManager } from "../../simulation/simulation-manager";
-import { dBm, Hertz, RfSignal, SignalOrigin } from "../../types";
+import { dB, dBm, Hertz, RfSignal, SignalOrigin } from "../../types";
 import { AlarmStatus, BaseEquipment } from '../base-equipment';
 import { RFFrontEnd } from "../rf-front-end/rf-front-end";
 import { Satellite } from "../satellite/satellite";
@@ -39,7 +39,7 @@ export interface AntennaState {
   /** Which server is this antenna connected to */
   serverId: number;
   /** Antenna skew between -90 and 90 degrees */
-  skew: Degrees;
+  polarization: Degrees;
   /** is loopback enabled */
   isLoopback: boolean;
   /** is antenna locked on a satellite */
@@ -82,7 +82,7 @@ export class Antenna extends BaseEquipment {
 
   // UI Components
   private readonly powerSwitch_: PowerSwitch;
-  private readonly skewKnob_: RotaryKnob;
+  private readonly polarizationKnob_: RotaryKnob;
   private readonly loopbackSwitch_: ToggleSwitch;
   private readonly autoTrackSwitch_: ToggleSwitch;
   private readonly helpBtn_: HelpButton;
@@ -106,7 +106,7 @@ export class Antenna extends BaseEquipment {
       uuid: this.uuid,
       teamId: this.teamId,
       serverId: serverId,
-      skew: 0 as Degrees,
+      polarization: 0 as Degrees,
       elevation: 0 as Degrees,
       azimuth: 0 as Degrees,
       isLoopback: false,
@@ -124,13 +124,13 @@ export class Antenna extends BaseEquipment {
       false
     );
     this.powerSwitch_ = PowerSwitch.create(`antenna-power-switch-${this.state.uuid}`, this.state.isPowered, true, true);
-    this.skewKnob_ = RotaryKnob.create(
+    this.polarizationKnob_ = RotaryKnob.create(
       `antenna-skew-knob-${this.state.uuid}`,
-      this.state.skew,
+      this.state.polarization,
       -90,
       90,
       1,
-      (value) => this.handleSkewChange_(value)
+      (value) => this.handlePolarizationChange_(value)
     );
     this.azKnob_ = RotaryKnob.create(
       `antenna-az-knob-${this.state.uuid}`,
@@ -169,6 +169,7 @@ export class Antenna extends BaseEquipment {
 
     EventBus.getInstance().on(Events.UPDATE, this.update.bind(this));
     EventBus.getInstance().on(Events.SYNC, this.syncDomWithState_.bind(this));
+    EventBus.getInstance().on(Events.DRAW, this.draw.bind(this));
   }
 
   set configId(configId: ANTENNA_CONFIG_KEYS) {
@@ -254,8 +255,8 @@ export class Antenna extends BaseEquipment {
 
               <div class="row">
                 <div class="config-row">
-                  <label>Skew</label>
-                  ${this.skewKnob_.html}
+                  <label>Polarization</label>
+                  ${this.polarizationKnob_.html}
                 </div>
                 ${this.powerSwitch_.html}
               </div>
@@ -337,9 +338,9 @@ export class Antenna extends BaseEquipment {
     }
 
     // Extreme skew warning
-    const skewAbs = Math.abs(this.state.skew);
-    if (skewAbs > 45) {
-      alarms.push({ severity: 'warning', message: `HIGH SKEW (${this.state.skew}°)` });
+    const absolutePolarization = Math.abs(this.state.polarization);
+    if (absolutePolarization > 45) {
+      alarms.push({ severity: 'warning', message: `HIGH POLARIZATION (${this.state.polarization}°)` });
     }
 
     // No signal reception warning
@@ -363,7 +364,7 @@ export class Antenna extends BaseEquipment {
         .flatMap(sat => sat.txSignal)
         .reduce((prev, curr) => (prev.power > curr.power ? prev : curr), { power: -Infinity } as RfSignal).noradId;
 
-      alarms.push({ severity: 'success', message: `LOCKED ON SATELLITE ${SimulationManager.getInstance().isDeveloperMode ? strongestSignal : ''}` });
+      alarms.push({ severity: 'success', message: `LOCKED ON SATELLITE ${SimulationManager.getInstance().isDeveloperMode ? strongestSignal : ''}`.trimEnd() });
     }
 
     if (this.rxSignals.flatMap(sat => sat.signal).length > 0 && !this.state.isLoopback && !this.state.isAutoTrackEnabled) {
@@ -404,6 +405,11 @@ export class Antenna extends BaseEquipment {
     this.syncDomWithState_();
   }
 
+  draw(): void {
+    // Update polar plot
+    this.polarPlot_.draw(this.normalizedAzimuth, this.state.elevation);
+  }
+
   sync(data: Partial<AntennaState>): void {
     this.state = { ...this.state, ...data };
     this.updateSignals_();
@@ -427,7 +433,7 @@ export class Antenna extends BaseEquipment {
       const polLoss = this.polMismatchLoss_dB_(
         sig.polarization as 'H' | 'V' | 'RHCP' | 'LHCP',
         this.config.polType ?? 'linear',
-        this.state.skew as number
+        this.state.polarization,
       );
 
       // Frequency-dependent feed loss
@@ -450,11 +456,11 @@ export class Antenna extends BaseEquipment {
    * Private Methods
    */
 
-  private handleSkewChange_(value: number): void {
+  private handlePolarizationChange_(value: number): void {
     if (!this.state.isPowered) {
       return;
     }
-    this.state.skew = value as Degrees;
+    this.state.polarization = value as Degrees;
   }
 
   private handleAzimuthChange_(value: number): void {
@@ -622,14 +628,14 @@ export class Antenna extends BaseEquipment {
   /**
    * Calculate polarization mismatch loss between transmit and receive polarizations
    */
-  calculatePolarizationLoss_(txPolarization: string | null, rxPolarization: string | null, skewDeg: number): number {
+  calculatePolarizationLoss_(txPolarization: string | null, rxPolarization: string | null, polarizationAngle: number): number {
     // If either polarization is null, assume matched (0 dB loss)
     if (!txPolarization || !rxPolarization) {
       return 0;
     }
 
     // Perfect match with no skew
-    if (txPolarization === rxPolarization && skewDeg === 0) {
+    if (txPolarization === rxPolarization && polarizationAngle === 0) {
       return 0;
     }
 
@@ -647,8 +653,8 @@ export class Antenna extends BaseEquipment {
     // Polarization loss due to skew (linear polarizations only)
     if ((txPolarization === 'H' || txPolarization === 'V') &&
       (rxPolarization === 'H' || rxPolarization === 'V')) {
-      const skewRad = (Math.abs(skewDeg) * Math.PI) / 180;
-      const polarizationLoss = -20 * Math.log10(Math.cos(skewRad));
+      const polarizationRad = (Math.abs(polarizationAngle) * Math.PI) / 180;
+      const polarizationLoss = -20 * Math.log10(Math.cos(polarizationRad));
       return polarizationLoss;
     }
 
@@ -678,7 +684,7 @@ export class Antenna extends BaseEquipment {
       polLoss_dB: this.polMismatchLoss_dB_(
         'H', // Assume H-pol for display
         this.config.polType ?? 'linear',
-        this.state.skew as number
+        this.state.polarization,
       ),
       atmosLoss_dB: this.calculateAtmosphericLoss_(frequency, elevation),
       skyTemp_K: this.skyTempK_(elevation),
@@ -770,24 +776,24 @@ export class Antenna extends BaseEquipment {
   private polMismatchLoss_dB_(
     signalPol: 'H' | 'V' | 'RHCP' | 'LHCP',
     _rxPol: 'linear' | 'circular',
-    skew_deg: number
-  ): number {
+    polarization_skew_degrees: Degrees
+  ): dB {
     if (this.config.polType === 'circular' || signalPol === 'RHCP' || signalPol === 'LHCP') {
       // Circular discrimination
       if (
         (signalPol === 'RHCP' && this.config.polType === 'circular') ||
         (signalPol === 'LHCP' && this.config.polType === 'circular')
       ) {
-        return 0.5; // Small imperfection
+        return 0.5 as dB; // Small imperfection
       }
-      return 3; // Mismatched handedness
+      return 3 as dB; // Mismatched handedness
     }
 
     // Linear: loss ≈ 20*log10|cos(skew)| limited by XPD floor
     const xpd = this.config.xpd_dB ?? 30;
-    const cosTerm = Math.abs(Math.cos(skew_deg * Math.PI / 180));
+    const cosTerm = Math.abs(Math.cos(polarization_skew_degrees * Math.PI / 180));
     const ideal = -20 * Math.log10(Math.max(1e-6, cosTerm)); // dB penalty
-    return Math.min(xpd, ideal);
+    return Math.min(xpd, ideal) as dB;
   }
 
   /**
@@ -910,7 +916,7 @@ export class Antenna extends BaseEquipment {
     const polarizationLoss = this.polMismatchLoss_dB_(
       signal.polarization as 'H' | 'V' | 'RHCP' | 'LHCP',
       this.config.polType ?? 'linear',
-      this.state.skew as number
+      this.state.polarization,
     );
 
     // Use pattern gain (accounts for off-axis angle) instead of just peak gain
@@ -1112,14 +1118,11 @@ export class Antenna extends BaseEquipment {
     qs('.status-indicator.auto-track').classList.toggle('fault', this.state.isAutoTrackSwitchUp && !this.state.isAutoTrackEnabled);
 
     // Update skew knob
-    this.skewKnob_.sync(this.state.skew);
+    this.polarizationKnob_.sync(this.state.polarization);
     this.azKnob_.sync(this.state.azimuth);
     this.elKnob_.sync(this.state.elevation);
 
     this.autoTrackSwitch_.sync(this.state.isAutoTrackSwitchUp);
-
-    // Update polar plot
-    this.polarPlot_.update(this.normalizedAzimuth, this.state.elevation);
 
     // Update RF metrics display
     if (this.state.rfMetrics) {

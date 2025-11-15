@@ -159,7 +159,7 @@ export class OMTModule extends RFFrontEndModule<OMTState> {
     this.updateCrossPolIsolation_();
 
     // Calculate effective polarization based on antenna skew
-    this.updateEffectivePolarization_(this.rfFrontEnd_.antenna?.state.skew ?? null);
+    this.updateEffectivePolarization_(this.rfFrontEnd_.antenna?.state.polarization ?? null);
 
     this.rxSignalsOut = this.rxSignalsIn.map(sig => {
       if (sig.polarization !== this.state_.effectiveRxPol) {

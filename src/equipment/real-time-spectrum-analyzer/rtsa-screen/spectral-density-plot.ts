@@ -247,7 +247,6 @@ export class SpectralDensityPlot extends RTSAScreen {
   private drawFrequencyLabels(ctx: CanvasRenderingContext2D, _isDualScreenMode: boolean): void {
     ctx.save();
     ctx.fillStyle = '#fff';
-    ctx.font = '24px Arial';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
 
@@ -330,7 +329,6 @@ export class SpectralDensityPlot extends RTSAScreen {
   private drawPowerLabels(ctx: CanvasRenderingContext2D, isDualScreenMode: boolean): void {
     ctx.save();
     ctx.fillStyle = '#fff';
-    ctx.font = '24px Arial';
     ctx.textAlign = 'right';
     ctx.textBaseline = 'middle';
 
@@ -454,7 +452,6 @@ export class SpectralDensityPlot extends RTSAScreen {
 
       // Draw frequency label
       ctx.fillStyle = '#fff';
-      ctx.font = '24px Arial';
       const freqMhz = (this.minFreq + (maxX * (this.maxFreq - this.minFreq)) / this.width) / 1e6 as MHz;
       ctx.fillText(`${freqMhz.toFixed(1)} MHz`, maxX - 20, this.height * maxY - 45);
       ctx.fillText(`${(maxSignalFreq).toFixed(1)} dB`, maxX - 20, this.height * maxY - 15);

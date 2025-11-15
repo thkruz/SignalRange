@@ -110,82 +110,80 @@ export abstract class BaseEquipment {
    * @param element The status bar DOM element to update
    * @param alarms Array of alarm statuses to display
    */
+  private lastStatusBarUpdate = 0;
+
   protected updateStatusBar(element: HTMLElement, alarms: AlarmStatus[]): void {
-    // Priority order: check if off, then errors first, then warnings, then info, then success
-    const offAlarms = alarms.filter(a => a.severity === 'off');
-    if (offAlarms.length > 0) {
-      element.innerText = '';
-      element.className = `bottom-status-bar status-off`;
-      return;
-    }
+    const now = Date.now();
+    if (now - this.lastStatusBarUpdate < 1000) return;
+    this.lastStatusBarUpdate = now;
 
-    const errors = alarms.filter(a => a.severity === 'error');
-    if (errors.length > 0) {
-      const message = errors.map(a => a.message).join(', ');
-      element.innerText = message;
-      element.className = `bottom-status-bar status-red`;
-      return;
-    }
-
-    const warnings = alarms.filter(a => a.severity === 'warning');
-    if (warnings.length > 0) {
-      const message = warnings.map(a => a.message).join(', ');
-      element.innerText = message;
-      element.className = `bottom-status-bar status-amber`;
-      return;
-    }
-
-    const info = alarms.filter(a => a.severity === 'info');
-    if (info.length > 0) {
-      const message = info.map(a => a.message).join(', ');
-      element.innerText = message;
-      element.className = `bottom-status-bar status-blue`;
-      return;
-    }
-
-    const success = alarms.filter(a => a.severity === 'success');
-    if (success.length > 0) {
-      const message = success.map(a => a.message).join(', ');
-      element.innerText = message;
-      element.className = `bottom-status-bar status-green`;
-      return;
-    }
+    // Priority order: off > error > warning > info > success
+    const priorities: Array<{
+      severity: AlarmStatus['severity'];
+      statusClass: string;
+    }> = [
+        { severity: 'off', statusClass: 'status-off' },
+        { severity: 'error', statusClass: 'status-red' },
+        { severity: 'warning', statusClass: 'status-amber' },
+        { severity: 'info', statusClass: 'status-blue' },
+        { severity: 'success', statusClass: 'status-green' },
+      ];
 
     // Default: No alarms - system normal
-    element.innerText = 'SYSTEM NORMAL';
-    element.className = `bottom-status-bar status-green`;
+    let newText = 'SYSTEM NORMAL';
+    let newClassName = 'bottom-status-bar status-green';
+
+    // Find highest priority alarm and use it
+    for (const { severity, statusClass } of priorities) {
+      const matches = alarms.filter(a => a.severity === severity);
+      if (matches.length > 0) {
+        newText = severity === 'off' ? '' : matches.map(a => a.message).join(', ');
+        newClassName = `bottom-status-bar ${statusClass}`;
+        break; // Exit on first match due to priority order
+      }
+    }
+
+    // Only update DOM if values have changed
+    if (element.innerText !== newText) {
+      element.innerText = newText;
+    }
+    if (element.className !== newClassName) {
+      element.className = newClassName;
+    }
   }
 
+  private lastLedUpdate = 0;
+
   protected updateStatusLed(element: HTMLElement, alarms: AlarmStatus[]): void {
-    // If any error alarms, set to red
-    const hasError = alarms.some(a => a.severity === 'error');
-    if (hasError) {
-      element.className = 'led led-red';
-      return;
+    const now = Date.now();
+    if (now - this.lastLedUpdate < 1000) return;
+    this.lastLedUpdate = now;
+
+    // Priority order: error > warning > off > info > success
+    const priorities: Array<{
+      severity: AlarmStatus['severity'];
+      ledClass: string;
+    }> = [
+        { severity: 'error', ledClass: 'led led-red' },
+        { severity: 'warning', ledClass: 'led led-amber' },
+        { severity: 'off', ledClass: 'led led-warning' },
+        { severity: 'info', ledClass: 'led led-blue' },
+      ];
+
+    // Default: green (system normal)
+    let newClassName = 'led led-green';
+
+    // Find highest priority alarm and use it
+    for (const { severity, ledClass } of priorities) {
+      if (alarms.some(a => a.severity === severity)) {
+        newClassName = ledClass;
+        break;
+      }
     }
 
-    // If any warning alarms, set to amber
-    const hasWarning = alarms.some(a => a.severity === 'warning');
-    if (hasWarning) {
-      element.className = 'led led-amber';
-      return;
+    // Only update DOM if value has changed
+    if (element.className !== newClassName) {
+      element.className = newClassName;
     }
-
-    // If any off alarms, set to warning
-    const hasOff = alarms.some(a => a.severity === 'off');
-    if (hasOff) {
-      element.className = 'led led-warning';
-      return;
-    }
-
-    // If any info alarms, set to blue
-    const hasInfo = alarms.some(a => a.severity === 'info');
-    if (hasInfo) {
-      element.className = 'led led-blue';
-      return;
-    }
-
-    // Otherwise, set to green
-    element.className = 'led led-green';
   }
 }

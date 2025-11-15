@@ -4,11 +4,12 @@ import { EventBus } from "@app/events/event-bus";
 import { Logger } from "@app/logging/logger";
 import { html } from "../../engine/utils/development/formatter";
 import { Events } from "../../events/events";
-import { Hertz, IfSignal, RfSignal } from "../../types";
+import { dB, Hertz, IfSignal, RfSignal } from "../../types";
 import { BaseEquipment } from '../base-equipment';
 import { RFFrontEnd } from "../rf-front-end/rf-front-end";
 import { TapPoint } from './../rf-front-end/coupler-module/coupler-module';
 import { AnalyzerControlBox } from "./analyzer-control-box";
+import type { TraceMode } from "./analyzer-control/ac-trace-btn/ac-trace-btn";
 import './real-time-spectrum-analyzer.css';
 import rtsaHelp from './rtsa-help';
 import { SpectralDensityPlot } from './rtsa-screen/spectral-density-plot';
@@ -17,6 +18,8 @@ import { WaterfallDisplay } from "./rtsa-screen/waterfall-display";
 type MarkerPoint = { x: number; y: number; signal: number };
 
 export interface RealTimeSpectrumAnalyzerState {
+  /** Scale in dB per division */
+  scaleDbPerDiv: dB;
   isUseTapB: boolean;
   isUseTapA: boolean
   /** This is the reference level that all dBm values are relative to */
@@ -49,6 +52,14 @@ export interface RealTimeSpectrumAnalyzerState {
   minAmplitude: number;
   maxAmplitude: number;
   screenMode: 'spectralDensity' | 'waterfall' | 'both';
+  /** Multi-trace support - 3 independent traces */
+  traces: {
+    isVisible: boolean;
+    isUpdating: boolean;
+    mode: TraceMode;
+  }[];
+  /** Currently selected trace (1-3) */
+  selectedTrace: number;
 }
 
 /**
@@ -72,6 +83,7 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
   private helpBtn_: HelpButton;
   configPanel: AnalyzerControlBox | null = null;
   inputSignals: IfSignal[] = [];
+  prevState: any;
 
   constructor(parentId: string, rfFrontEnd: RFFrontEnd, teamId: number = 1) {
     super(parentId, teamId);
@@ -106,12 +118,21 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
       hold: false,
       minAmplitude: -100,
       maxAmplitude: -40,
+      scaleDbPerDiv: (-40 + 100) / 10 as dB, // 6 dB/div
       noiseFloorNoGain: -104,
       isSkipLnaGainDuringDraw: true,
       refreshRate: 10,
       screenMode: 'spectralDensity',
       inputUnit: 'MHz',
       inputValue: '',
+
+      // Multi-trace support
+      traces: [
+        { isVisible: true, isUpdating: true, mode: 'clearwrite' }, // Trace 1
+        { isVisible: true, isUpdating: true, mode: 'clearwrite' }, // Trace 2
+        { isVisible: true, isUpdating: true, mode: 'clearwrite' }, // Trace 3
+      ],
+      selectedTrace: 1,
     };
     this.state.inputValue = (this.state.centerFrequency / 1e6).toString(); // in MHz
     this.state.inputUnit = 'MHz';
@@ -306,15 +327,15 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
   }
 
   /**
-   * Public API Methods
+   * API Methods
    */
 
-  public sync(spectrumAnalyzerState: RealTimeSpectrumAnalyzerState): void {
+  sync(spectrumAnalyzerState: RealTimeSpectrumAnalyzerState): void {
     this.state = { ...this.state, ...spectrumAnalyzerState };
     this.syncDomWithState();
   }
 
-  public update(): void {
+  update(): void {
     // Determine tap point
     this.inputSignals = this.getInputSignals();
 
@@ -332,6 +353,8 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
         this.screen.update();
       }
     }
+
+    this.syncDomWithState();
   }
 
   getInputSignals(): (IfSignal | RfSignal)[] {
@@ -406,7 +429,7 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
     }
   }
 
-  public draw(): void {
+  draw(): void {
     if (!this.state.isPaused) {
       if (this.state.screenMode === 'both') {
         // Draw both screens in "both" mode
@@ -422,27 +445,41 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
     }
   }
 
-  public changeCenterFreq(freq: number): void {
+  changeCenterFreq(freq: number): void {
     this.state.centerFrequency = freq as Hertz;
     this.syncDomWithState();
   }
 
-  public changeBandwidth(freqSpan: number): void {
+  changeBandwidth(freqSpan: number): void {
     this.state.span = freqSpan as Hertz;
     this.syncDomWithState();
   }
 
-  public resetHoldData(): void {
+  resetMaxHoldData(): void {
     if (this.state.screenMode === 'both') {
       // Reset both screens in "both" mode
       if (this.spectralDensityBoth) {
-        this.spectralDensityBoth.resetMaxHold();
+        this.spectralDensityBoth.resetMaxHold_();
       }
       if (this.waterfallBoth) {
         this.waterfallBoth.resetMaxHold();
       }
     } else if (this.screen) {
       this.screen.resetMaxHold();
+    }
+  }
+
+  resetMinHoldData(): void {
+    if (this.state.screenMode === 'both') {
+      // Reset both screens in "both" mode
+      if (this.spectralDensityBoth) {
+        this.spectralDensityBoth.resetMinHold_();
+      }
+      if (this.waterfallBoth) {
+        this.waterfallBoth.resetMinHold();
+      }
+    } else if (this.screen) {
+      this.screen.resetMinHold();
     }
   }
 
@@ -545,6 +582,10 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
   }
 
   syncDomWithState(): void {
+    if (JSON.stringify(this.prevState) === JSON.stringify(this.state)) {
+      return; // No changes detected
+    }
+
     // Update info display
     if (this.domCache['info']) {
       this.domCache['info'].innerHTML = html`
@@ -561,5 +602,7 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
     if (this.domCache['tapBButton']) {
       this.domCache['tapBButton'].className = `spec-a-btn btn-tap-b ${this.state.isUseTapB ? 'btn-active' : ''}`;
     }
+
+    this.prevState = structuredClone(this.state);
   }
 }

@@ -44,7 +44,11 @@ export abstract class RTSAScreen {
     Logger.warn('RTSAScreen', 'set height', `Height set to ${value}, resizing canvas`);
   }
 
-  public resetMaxHold(): void {
+  resetMaxHold(): void {
+    // To be implemented by subclasses if needed
+  }
+
+  resetMinHold(): void {
     // To be implemented by subclasses if needed
   }
 
@@ -58,14 +62,14 @@ export abstract class RTSAScreen {
    * Static Utility Methods
    */
 
-  public static rgb2hex(rgb: number[]): string {
+  static rgb2hex(rgb: number[]): string {
     return '#' + rgb.map(x => {
       const hex = x.toString(16);
       return hex.length === 1 ? '0' + hex : hex;
     }).join('');
   }
 
-  public static getRandomRgb(i: number): string {
+  static getRandomRgb(i: number): string {
     let rgb = [255, 0, 0];
     if (i % 3 === 0) {
       rgb[0] = 255;

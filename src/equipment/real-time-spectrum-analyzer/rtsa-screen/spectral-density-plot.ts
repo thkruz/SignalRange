@@ -1,5 +1,6 @@
 import { SimulationManager } from "@app/simulation/simulation-manager";
 import { Hertz, IfSignal, MHz, RfSignal } from "../../../types";
+import type { TraceMode } from "../analyzer-control/ac-trace-btn/ac-trace-btn";
 import { RealTimeSpectrumAnalyzer } from "../real-time-spectrum-analyzer";
 import { RTSAScreen } from "./rtsa-screen";
 
@@ -13,12 +14,10 @@ export class SpectralDensityPlot extends RTSAScreen {
   private lastDrawTime: number = 0;
 
   // Signal processing
-  private allData: Float32Array;
-  private signalData: Float32Array;
   /** Highest visible noise in dBm */
   noiseData: Float32Array;
-  private maxHoldData: Float32Array;
-  private minHoldData: Float32Array;
+  // Per-trace data arrays (3 traces)
+  private traceData: Float32Array[] = [];
 
   // Frequency range (set by parent)
   private minFreq: Hertz = 0 as Hertz;
@@ -26,11 +25,19 @@ export class SpectralDensityPlot extends RTSAScreen {
 
   // Configuration
   private range: number;
-  private decibelShift: number;
 
   // Colors
   private readonly noiseColor: string = '#fff647ff';
   signalColorCache: Map<string, string> = new Map();
+
+  // Trace colors based on mode
+  private readonly traceColors = {
+    clearwrite: '#fff647ff', // Yellow (live data)
+    maxhold: '#ff0000',      // Red
+    minhold: '#0000ff',      // Blue
+    average: '#ff00ff',      // Magenta
+    hold: '#fff647ff',       // Yellow (maintains color from before hold)
+  };
 
   // Frequency label caching
   private frequencyLabelCache: Map<number, string[]> = new Map();
@@ -41,27 +48,23 @@ export class SpectralDensityPlot extends RTSAScreen {
   private cachedMaxFreq: Hertz = 0 as Hertz;
   private cachedMinAmplitude: number = 0;
   private cachedMaxAmplitude: number = 0;
+  cachedReferenceLevel: number;
 
   constructor(canvas: HTMLCanvasElement, specA: RealTimeSpectrumAnalyzer, width: number, height: number) {
     super(canvas, specA, width, height);
 
-    // Initialize typed arrays
-    this.allData = new Float32Array(this.width);
-    this.signalData = new Float32Array(this.width);
+    // Initialize noise data
     this.noiseData = new Float32Array(this.width);
-    this.maxHoldData = new Float32Array(this.width);
-    this.minHoldData = new Float32Array(this.width);
+
+    // Initialize 3 trace data arrays
+    for (let i = 0; i < 3; i++) {
+      this.traceData[i] = new Float32Array(this.width);
+      // Initialize with -Infinity for max hold, Infinity for min hold
+      this.traceData[i].fill(-Infinity);
+    }
 
     // Calculate range
     this.range = this.specA.state.minAmplitude - this.specA.state.maxAmplitude;
-    this.decibelShift = 0 - this.specA.state.minAmplitude;
-
-    // Reallocate typed arrays
-    this.allData = new Float32Array(this.width);
-    this.signalData = new Float32Array(this.width);
-    this.noiseData = new Float32Array(this.width);
-    this.maxHoldData = new Float32Array(this.width);
-    this.minHoldData = new Float32Array(this.width);
 
     // Start after a random delay to stagger multiple analyzers
     setTimeout(() => {
@@ -69,7 +72,7 @@ export class SpectralDensityPlot extends RTSAScreen {
     }, Math.random() * 1000);
   }
 
-  public setFrequencyRange(minFreq: Hertz, maxFreq: Hertz): void {
+  setFrequencyRange(minFreq: Hertz, maxFreq: Hertz): void {
     // Invalidate frequency label cache if range changed
     if (this.minFreq !== minFreq || this.maxFreq !== maxFreq) {
       this.frequencyLabelCache.clear();
@@ -79,59 +82,149 @@ export class SpectralDensityPlot extends RTSAScreen {
     this.maxFreq = maxFreq;
   }
 
-  public resetMaxHold(): void {
-    this.maxHoldData = new Float32Array(this.width);
+  resetMaxHold_(): void {
+    // Reset trace 1 (index 0) for backward compatibility
+    this.resetTraceData_(0, -Infinity);
   }
 
-  public resetMinHold(): void {
-    this.minHoldData = new Float32Array(this.width);
+  resetMinHold_(): void {
+    // Reset trace 1 (index 0) for backward compatibility
+    this.resetTraceData_(0, Infinity);
+  }
+
+  /**
+   * Reset a specific trace's data
+   * @param traceIndex - Trace index (0-2)
+   * @param fillValue - Value to fill the array with (-Infinity for max hold, Infinity for min hold)
+   */
+  private resetTraceData_(traceIndex: number, fillValue: number = -Infinity): void {
+    if (traceIndex >= 0 && traceIndex < 3) {
+      this.traceData[traceIndex] = new Float32Array(this.width);
+      this.traceData[traceIndex].fill(fillValue);
+    }
+  }
+
+  /**
+   * Get the color for a trace based on its mode
+   */
+  private getTraceColor(mode: TraceMode): string {
+    return this.traceColors[mode] || this.traceColors.clearwrite;
   }
 
   /**
    * Animation Methods
    */
 
-  public update(): void {
+  update(): void {
     if (!this.specA.state.isPaused && this.running) {
       const now = Date.now();
       if (now - this.lastDrawTime > 1000 / this.specA.state.refreshRate) {
-        // Update min hold
-        if (!this.specA.state.isMinHold) {
-          this.minHoldData = new Float32Array(this.width);
-        }
-
         // Invalidate grid cache if amplitude range changed
         if (this.cachedMinAmplitude !== this.specA.state.minAmplitude ||
-          this.cachedMaxAmplitude !== this.specA.state.maxAmplitude) {
+          this.cachedMaxAmplitude !== this.specA.state.maxAmplitude ||
+          this.cachedReferenceLevel !== this.specA.state.referenceLevel) {
           this.cachedGridImageData = null;
         }
 
         // Calculate range
         this.range = this.specA.state.maxAmplitude - this.specA.state.minAmplitude;
-        this.decibelShift = 0 - this.specA.state.minAmplitude;
+        this.cachedReferenceLevel = this.specA.state.referenceLevel;
 
+        // Generate noise data
         this.noiseData = this.createNoise(this.noiseData);
-        // Initially fill allData with noise
-        this.allData = this.noiseData;
 
-        if (!SimulationManager.getInstance().isDeveloperMode) {
-          this.updateSignalData_();
+        // Update each trace based on its mode
+        for (let traceIndex = 0; traceIndex < 3; traceIndex++) {
+          const trace = this.specA.state.traces[traceIndex];
+
+          // Skip if trace is not visible or not updating
+          if (!trace.isVisible || !trace.isUpdating) {
+            continue;
+          }
+
+          this.updateTrace_(traceIndex, trace.mode);
         }
       }
     }
   }
 
-  private updateSignalData_() {
-    this.specA.inputSignals.forEach((signal) => {
-      const center = ((signal.frequency - this.minFreq) / (this.maxFreq - this.minFreq)) * this.width;
-      const inBandWidth = ((signal.bandwidth / (this.maxFreq - this.minFreq)) * this.width) / 4;
-      const outOfBandWidth = ((signal.bandwidth / (this.maxFreq - this.minFreq)) * this.width);
+  /**
+   * Update a specific trace based on its mode
+   */
+  private updateTrace_(traceIndex: number, mode: TraceMode): void {
+    // Generate current frame data (noise + signals)
+    const currentData = new Float32Array(this.width);
 
-      this.signalData = this.createSignal(this.signalData, signal, center, inBandWidth, outOfBandWidth);
-    });
+    // Start with noise
+    currentData.set(this.noiseData);
+
+    // Add signals if not in developer mode
+    if (!SimulationManager.getInstance().isDeveloperMode) {
+      this.specA.inputSignals.forEach((signal) => {
+        const center = ((signal.frequency - this.minFreq) / (this.maxFreq - this.minFreq)) * this.width;
+        const inBandWidth = ((signal.bandwidth / (this.maxFreq - this.minFreq)) * this.width) / 4;
+        const outOfBandWidth = ((signal.bandwidth / (this.maxFreq - this.minFreq)) * this.width);
+
+        this.addSignalToData_(currentData, signal, center, inBandWidth, outOfBandWidth);
+      });
+    }
+
+    // Update trace based on mode
+    switch (mode) {
+      case 'clearwrite':
+        // Update with current data
+        this.traceData[traceIndex].set(currentData);
+        break;
+
+      case 'maxhold':
+        // Keep maximum values
+        for (let x = 0; x < this.width; x++) {
+          if (currentData[x] > this.traceData[traceIndex][x]) {
+            this.traceData[traceIndex][x] = currentData[x];
+          }
+        }
+        break;
+
+      case 'minhold':
+        // Keep minimum values
+        for (let x = 0; x < this.width; x++) {
+          if (currentData[x] < this.traceData[traceIndex][x]) {
+            this.traceData[traceIndex][x] = currentData[x];
+          }
+        }
+        break;
+
+      case 'average':
+        // Rolling average: 20% new, 80% old
+        for (let x = 0; x < this.width; x++) {
+          this.traceData[traceIndex][x] = (this.traceData[traceIndex][x] * 0.8) + (currentData[x] * 0.2);
+        }
+        break;
+
+      case 'hold':
+        // Do nothing - keep frozen data
+        break;
+    }
   }
 
-  public draw(): void {
+  /**
+   * Add signal data to the provided Float32Array
+   */
+  private addSignalToData_(
+    data: Float32Array,
+    signal: IfSignal | RfSignal,
+    center: number,
+    inBandWidth: number,
+    outOfBandWidth: number
+  ): void {
+    for (let x = 0; x < data.length; x++) {
+      const signalValue = this.createRealSignal(inBandWidth, x, signal, center, outOfBandWidth);
+      // Take the maximum value at each frequency point
+      data[x] = Math.max(data[x], signalValue);
+    }
+  }
+
+  draw(): void {
     if (!this.specA.state.isPaused && this.running) {
       const now = Date.now();
       if (now - this.lastDrawTime > 1000 / this.specA.state.refreshRate) {
@@ -154,29 +247,27 @@ export class SpectralDensityPlot extends RTSAScreen {
         this.ctx.putImageData(this.cachedGridImageData, 0, 0);
         this.ctx.globalAlpha = 1.0;
 
-        // Create and draw noise
-        this.drawNoise(this.ctx);
-
-        // Draw signals
-        this.drawSignals();
-
-        // Draw max hold if enabled
-        if (this.specA.state.isMaxHold) {
-          this.drawMaxHold(this.ctx);
+        // Draw noise in developer mode
+        if (SimulationManager.getInstance().isDeveloperMode) {
+          this.drawNoise(this.ctx);
         }
 
-        // Calculate min hold based on all data
-        for (let x = 0; x < this.width; x++) {
-          if (this.allData[x] > 0) {
-            if (this.minHoldData[x] === 0 || this.allData[x] < this.minHoldData[x]) {
-              this.minHoldData[x] = this.allData[x];
-            }
+        // Draw all visible traces
+        for (let traceIndex = 0; traceIndex < 3; traceIndex++) {
+          const trace = this.specA.state.traces[traceIndex];
+
+          // Skip if trace is not visible
+          if (!trace.isVisible) {
+            continue;
           }
+
+          const color = this.getTraceColor(trace.mode);
+          this.drawTrace_(this.ctx, traceIndex, color);
         }
 
-        // Draw min hold if enabled
-        if (this.specA.state.isMinHold) {
-          this.drawMinHold(this.ctx);
+        // Draw developer mode signals on top
+        if (SimulationManager.getInstance().isDeveloperMode) {
+          this.drawSignals();
         }
 
         this.updateTopMarkers();
@@ -186,63 +277,94 @@ export class SpectralDensityPlot extends RTSAScreen {
     }
   }
 
+  /**
+   * Draw a specific trace
+   */
+  private drawTrace_(ctx: CanvasRenderingContext2D, traceIndex: number, color: string): void {
+    ctx.strokeStyle = color;
+    ctx.beginPath();
+
+    for (let x = 0; x < this.width; x++) {
+      const amplitude = this.traceData[traceIndex][x];
+      const y = (amplitude - this.specA.state.minAmplitude) / this.range;
+
+      if (x === 0) {
+        ctx.moveTo(x, this.height * (1 - y));
+      } else {
+        ctx.lineTo(x, this.height * (1 - y));
+      }
+    }
+
+    ctx.stroke();
+  }
+
   private updateTopMarkers() {
     if (this.specA.state.isUpdateMarkers) {
-      // Find the highest x,y and power for each signal
+      // Find peaks in the currently selected trace
       this.specA.state.topMarkers = [];
 
-      this.specA.inputSignals.forEach((signal) => {
-        let maxSignal = -Infinity;
-        let maxX = 0;
-        let maxY = 0;
+      const selectedTraceIndex = this.specA.state.selectedTrace - 1;
+      const selectedTraceData = this.traceData[selectedTraceIndex];
 
-        // Calculate signal envelope
-        const center = ((signal.frequency - this.minFreq) / (this.maxFreq - this.minFreq)) * this.width;
-        const inBandWidth = ((signal.bandwidth / (this.maxFreq - this.minFreq)) * this.width) / 1.95;
-        const outOfBandWidth = ((signal.bandwidth / (this.maxFreq - this.minFreq)) * this.width) / 1.6;
+      if (!selectedTraceData) {
+        this.specA.state.isUpdateMarkers = false;
+        return;
+      }
 
-        // Find the single highest point for this signal
-        for (let x = 0; x < this.width; x++) {
-          const yVal = this.createRealSignal(inBandWidth, x, signal, center, outOfBandWidth);
-          const y = (yVal - this.specA.state.minAmplitude) / this.range;
-          if (y > 0 && y < 1 && x > 0 && x < this.width) {
-            if (yVal > maxSignal) {
-              maxSignal = yVal;
-              maxX = x;
-              maxY = 1 - y;
-            }
-          }
+      // Find local maxima (peaks) in the selected trace
+      const peaks: { x: number; signal: number }[] = [];
+
+      for (let x = 1; x < this.width - 1; x++) {
+        const current = selectedTraceData[x];
+        const prev = selectedTraceData[x - 1];
+        const next = selectedTraceData[x + 1];
+
+        // Check if this is a local maximum
+        if (current > prev && current > next && current > this.specA.noiseFloorAndGain + 3) {
+          peaks.push({ x, signal: current });
         }
+      }
 
-        // Only push one marker per signal
-        if (maxSignal > -Infinity) {
-          this.specA.state.topMarkers.push({ x: maxX, y: maxY, signal: maxSignal });
+      // Sort by signal strength and take top 10
+      peaks.sort((a, b) => b.signal - a.signal);
+      const topPeaks = peaks.slice(0, 10);
+
+      // Convert to marker format
+      topPeaks.forEach(peak => {
+        const y = (peak.signal - this.specA.state.minAmplitude) / this.range;
+        if (y > 0 && y < 1) {
+          this.specA.state.topMarkers.push({
+            x: peak.x,
+            y: 1 - y,
+            signal: peak.signal
+          });
         }
       });
 
-      // If less than 10 then fill with noise peaks
-      while (this.specA.state.topMarkers.length < 10) {
-        // Find the highest noise peak in a random region
-        const x = Math.floor(Math.random() * this.width);
-        const signal = this.noiseData[x];
+      // If less than 10 markers, fill with remaining trace peaks
+      if (this.specA.state.topMarkers.length < 10) {
+        for (let x = 0; x < this.width && this.specA.state.topMarkers.length < 10; x++) {
+          const signal = selectedTraceData[x];
+          const y = (signal - this.specA.state.minAmplitude) / this.range;
 
-        // if signal more than 5 dB above noise floor it is a signal, skip it
-        if (signal > this.specA.noiseFloorAndGain + 5) {
-          continue;
+          if (y > 0 && y < 1) {
+            // Check if we already have a marker near this position
+            const tooClose = this.specA.state.topMarkers.some(m => Math.abs(m.x - x) < 10);
+            if (!tooClose) {
+              this.specA.state.topMarkers.push({
+                x,
+                y: 1 - y,
+                signal
+              });
+            }
+          }
         }
-
-        const y = (signal - this.specA.state.minAmplitude) / this.range;
-        this.specA.state.topMarkers.push({
-          x,
-          y: 1 - y,
-          signal
-        });
       }
 
       // Sort markers in ascending x order for drawing
       this.specA.state.topMarkers.sort((a, b) => a.x - b.x);
 
-      // Set this.specA.state.markerIndex to the highest y value marker
+      // Set this.specA.state.markerIndex to the highest signal marker
       this.specA.state.markerIndex = 0;
       let highestSignal = -Infinity;
       this.specA.state.topMarkers.forEach((marker, index) => {
@@ -443,7 +565,7 @@ export class SpectralDensityPlot extends RTSAScreen {
     ctx.beginPath();
 
     for (let x = 0, len = this.noiseData.length; x < len; x++) {
-      const currentAmplitude = SimulationManager.getInstance().isDeveloperMode ? this.noiseData[x] : this.allData[x];
+      const currentAmplitude = this.noiseData[x];
       // calculate y position
       const y = (currentAmplitude - this.specA.state.minAmplitude) / this.range;
       if (x === 0) {
@@ -465,22 +587,14 @@ export class SpectralDensityPlot extends RTSAScreen {
     const inBandWidth = ((signal.bandwidth / (this.maxFreq - this.minFreq)) * this.width) / 1.95;
     const outOfBandWidth = ((signal.bandwidth / (this.maxFreq - this.minFreq)) * this.width) / 1.6;
 
-    this.signalData = this.createSignal(this.signalData, signal, center, inBandWidth, outOfBandWidth);
-
     // In developer mode we draw different color signals to make it easier to see what is happening
-    let maxSignalFreq = -Infinity;
-
     ctx.strokeStyle = color;
     ctx.beginPath();
 
-    const len = this.signalData.length;
-    for (let x = 0; x < len; x++) {
-      const lowestSignal = Math.max(this.signalData[x], this.noiseData[x]);
-      const y = (lowestSignal - this.specA.state.minAmplitude) / this.range;
-
-      if (lowestSignal > maxSignalFreq && y > 0 && y < 1 && x > 0 && x < this.width) {
-        maxSignalFreq = lowestSignal;
-      }
+    for (let x = 0; x < this.width; x++) {
+      const signalValue = this.createRealSignal(inBandWidth, x, signal, center, outOfBandWidth);
+      const combinedValue = Math.max(signalValue, this.noiseData[x]);
+      const y = (combinedValue - this.specA.state.minAmplitude) / this.range;
 
       if (x === 0) {
         ctx.moveTo(x, this.height * (1 - y));
@@ -510,44 +624,11 @@ export class SpectralDensityPlot extends RTSAScreen {
       // Draw frequency label
       ctx.fillStyle = '#fff';
       const freqMhz = (this.minFreq + (maxX * (this.maxFreq - this.minFreq)) / this.width) / 1e6 as MHz;
-      ctx.fillText(`${freqMhz.toFixed(1)} MHz`, maxX - 20, this.height * maxY - 45);
+      ctx.fillText(`${freqMhz.toFixed(1)} MHz`, maxX - 20, this.height * maxY - 30);
       ctx.fillText(`${(maxSignalFreq).toFixed(1)} dB`, maxX - 20, this.height * maxY - 15);
     }
   }
 
-  private drawMaxHold(ctx: CanvasRenderingContext2D, color: string = '#0f0'): void {
-    ctx.strokeStyle = color;
-    ctx.beginPath();
-
-    const len = this.signalData.length;
-    for (let x = 0; x < len; x++) {
-      const y = (this.maxHoldData[x] - this.specA.state.maxAmplitude - this.decibelShift) / this.range;
-      if (x === 0) {
-        ctx.moveTo(x, this.height * y);
-      } else {
-        ctx.lineTo(x, this.height * y);
-      }
-    }
-
-    ctx.stroke();
-  }
-
-  private drawMinHold(ctx: CanvasRenderingContext2D, color: string = '#0f0'): void {
-    ctx.strokeStyle = color;
-    ctx.beginPath();
-
-    const len = this.signalData.length;
-    for (let x = 0; x < len; x++) {
-      const y = (this.minHoldData[x] - this.specA.state.maxAmplitude - this.decibelShift) / this.range;
-      if (x === 0) {
-        ctx.moveTo(x, this.height * y);
-      } else {
-        ctx.lineTo(x, this.height * y);
-      }
-    }
-
-    ctx.stroke();
-  }
 
   /**
    * Signal Processing Methods
@@ -602,45 +683,11 @@ export class SpectralDensityPlot extends RTSAScreen {
       }
 
       data[x] = noise;
-
-      // Update max hold
-      if (this.maxHoldData[x] < data[x]) {
-        this.maxHoldData[x] = data[x];
-      }
     }
 
     return data;
   }
 
-  private createSignal(
-    data: Float32Array,
-    signal: IfSignal | RfSignal,
-    center: number,
-    inBandWidth: number,
-    outOfBandWidth: number
-  ): Float32Array {
-    for (let x = 0; x < data.length; x++) {
-      // Simulate realistic signal shape using Gaussian envelope
-      const y = this.createRealSignal(inBandWidth, x, signal, center, outOfBandWidth);
-
-      // Update max hold
-      if (this.maxHoldData[x] < y) {
-        this.maxHoldData[x] = y;
-      }
-
-      // Update noise floor
-      if (this.noiseData[x] < y) {
-        this.noiseData[x] = y;
-      }
-
-      // Update all data with the largest value at that frequency
-      this.allData[x] = Math.max(this.allData[x], y);
-
-      data[x] = y;
-    }
-
-    return data;
-  }
 
   private createRealSignal(inBandWidth: number, x: number, signal: IfSignal | RfSignal, center: number, outOfBandWidth: number) {
     const distance = x - center;

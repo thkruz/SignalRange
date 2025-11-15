@@ -23,6 +23,7 @@ export class ACMkrBtn extends BaseControlButton {
 
     // Note: Marker drawing would need to be implemented in SpectrumAnalyzer
 
+    this.notifyStateChange_();
     this.playSound();
   }
 

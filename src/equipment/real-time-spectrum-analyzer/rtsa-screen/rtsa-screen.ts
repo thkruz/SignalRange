@@ -19,14 +19,11 @@ export abstract class RTSAScreen {
     this.canvas.width = this.width_;
     this.canvas.height = this.height_;
 
-    Logger.info('RTSAScreen', 'constructor', `Canvas initialized with width=${this.width_}, height=${this.height_}`);
-
     const context = this.canvas.getContext('2d');
     if (!context) {
       throw new Error('Failed to get canvas 2D context');
     }
     this.ctx = context;
-    this.ctx.font = '24px Arial';
   }
 
   get width(): number {

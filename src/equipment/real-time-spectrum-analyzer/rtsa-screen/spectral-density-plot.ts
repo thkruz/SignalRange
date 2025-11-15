@@ -124,8 +124,8 @@ export class SpectralDensityPlot extends RTSAScreen {
   private updateSignalData_() {
     this.specA.inputSignals.forEach((signal) => {
       const center = ((signal.frequency - this.minFreq) / (this.maxFreq - this.minFreq)) * this.width;
-      const inBandWidth = ((signal.bandwidth / (this.maxFreq - this.minFreq)) * this.width) / 1.95;
-      const outOfBandWidth = ((signal.bandwidth / (this.maxFreq - this.minFreq)) * this.width) / 1.6;
+      const inBandWidth = ((signal.bandwidth / (this.maxFreq - this.minFreq)) * this.width) / 4;
+      const outOfBandWidth = ((signal.bandwidth / (this.maxFreq - this.minFreq)) * this.width);
 
       this.signalData = this.createSignal(this.signalData, signal, center, inBandWidth, outOfBandWidth);
     });
@@ -289,6 +289,7 @@ export class SpectralDensityPlot extends RTSAScreen {
     ctx.fillStyle = '#fff';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
+    this.ctx.font = '14px Arial';
 
     const numLabels = 10;
     const maxTextWidth = 150; // px
@@ -376,6 +377,7 @@ export class SpectralDensityPlot extends RTSAScreen {
     ctx.fillStyle = '#fff';
     ctx.textAlign = 'right';
     ctx.textBaseline = 'middle';
+    this.ctx.font = '14px Arial';
 
     const numLabels = isDualScreenMode ? 5 : 10;
     for (let i = 0; i <= numLabels - 1; i++) {
@@ -641,42 +643,45 @@ export class SpectralDensityPlot extends RTSAScreen {
   }
 
   private createRealSignal(inBandWidth: number, x: number, signal: IfSignal | RfSignal, center: number, outOfBandWidth: number) {
-    const sigma = inBandWidth / 1.035;
     const distance = x - center;
+    const absDist = Math.abs(distance);
+
+    // Use outOfBandWidth as the basis for sigma to create a wider, more realistic Gaussian
+    // This creates the smooth bell curve shape
+    const sigma = outOfBandWidth / 3; // Adjust factor to control width
     const gaussian = Math.exp(-0.5 * Math.pow(distance / sigma, 2));
 
-    // Zero out signal far outside the band
-    if (x > center + outOfBandWidth || x < center - outOfBandWidth ||
-      x < center - inBandWidth || x > center + inBandWidth) {
-      return -170; // Well below noise floor
-    }
-
-    // Convert gaussian attenuation to dB (20*log10(gaussian))
-    // For gaussian values 0-1, this gives us 0 to -infinity dB
+    // Convert gaussian to dB (this creates the smooth exponential rise/fall)
     const gaussianDb = 20 * Math.log10(Math.max(gaussian, 1e-10));
 
+    // Start with the Gaussian shape
     let y = signal.power + gaussianDb;
 
-    // Main lobe (signal bandwidth)
-    if (Math.abs(distance) <= inBandWidth) {
-      // Add some random amplitude jitter for realism (±0.3 dB)
+    // Main lobe (center region) - add minimal jitter
+    if (absDist <= inBandWidth) {
+      y += (Math.random() - 0.5) * 0.4;
+    }
+    // Transition region - slight additional rolloff for realism
+    else if (absDist <= outOfBandWidth * 0.7) {
       y += (Math.random() - 0.5) * 0.6;
+      // Very subtle side lobe effect (much smaller than before)
+      const sideLobeEffect = Math.sin((distance / outOfBandWidth) * Math.PI * 4) * 0.5;
+      y += sideLobeEffect;
+    }
+    // Outer region - more pronounced side lobes and taper
+    else if (absDist <= outOfBandWidth) {
+      const sideLobeEffect = Math.sin((distance / outOfBandWidth) * Math.PI * 6) * 0.8;
+      y += sideLobeEffect + (Math.random() - 0.5) * 1.0;
+    }
+    // Beyond outOfBandWidth - natural exponential decay
+    else {
+      const excessDistance = absDist - outOfBandWidth;
+      const decayFactor = Math.exp(-excessDistance / (outOfBandWidth * 0.3));
+      y += -20 * (1 - decayFactor); // Additional -20 dB taper beyond the main signal
+      y += (Math.random() - 0.5) * 1.5;
     }
 
-    // Simulate out-of-band rolloff (side lobes)
-    if (Math.abs(distance) > inBandWidth && Math.abs(distance) <= outOfBandWidth) {
-      // Side lobes: much lower amplitude (-15 to -20 dB below main lobe)
-      const sideLobe = Math.sin((distance / inBandWidth) * Math.PI * 2) * 0.15;
-      const sideLobeDb = 20 * Math.log10(Math.abs(sideLobe) + 1e-10);
-      y = signal.power + gaussianDb + sideLobeDb + (Math.random() - 0.5) * 0.8;
-    }
-
-    // Add noise floor blending near edges (additional -3 to -6 dB)
-    if (Math.abs(distance) > outOfBandWidth * 0.95) {
-      y -= 3 + Math.random() * 3;
-    }
-
-    // Simulate deep nulls and random dropouts for realism (-10 to -14 dB drops)
+    // Simulate occasional deep nulls for realism
     if (Math.random() < 0.001) {
       y -= 10 + Math.random() * 4;
     }

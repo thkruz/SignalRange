@@ -197,8 +197,8 @@ export class WaterfallDisplay extends RTSAScreen {
 
   private drawSignal(signal: RfSignal | IfSignal): void {
     const center = ((signal.frequency - this.minFreq) / (this.maxFreq - this.minFreq)) * this.width;
-    const inBandWidth = ((signal.bandwidth / (this.maxFreq - this.minFreq)) * this.width) / 1.95;
-    const outOfBandWidth = ((signal.bandwidth / (this.maxFreq - this.minFreq)) * this.width) / 1.6;
+    const inBandWidth = ((signal.bandwidth / (this.maxFreq - this.minFreq)) * this.width) / 4;
+    const outOfBandWidth = ((signal.bandwidth / (this.maxFreq - this.minFreq)) * this.width);
 
     this.data = this.createSignal(
       this.data,
@@ -283,7 +283,7 @@ export class WaterfallDisplay extends RTSAScreen {
     inBandWidth: number,
     outOfBandWidth: number
   ): Float32Array {
-    const sigma = inBandWidth / 1.035;
+    const sigma = outOfBandWidth / 3;
 
     for (let x = 0; x < data.length; x++) {
       const distance = x - center;

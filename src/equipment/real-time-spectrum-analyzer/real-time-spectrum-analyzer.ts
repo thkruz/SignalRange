@@ -240,12 +240,12 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
     if (!this.domCache['canvasWaterfall']) throw new Error('Waterfall canvas element not found for Spectrum Analyzer');
 
     // Initialize single-mode screens
-    this.spectralDensity = new SpectralDensityPlot(this.domCache['canvas'] as HTMLCanvasElement, this, 800, 500);
-    this.waterfall = new WaterfallDisplay(this.domCache['canvas'] as HTMLCanvasElement, this, 800, 500);
+    this.spectralDensity = new SpectralDensityPlot(this.domCache['canvas'] as HTMLCanvasElement, this, 824, 460);
+    this.waterfall = new WaterfallDisplay(this.domCache['canvas'] as HTMLCanvasElement, this, 824, 460);
 
     // Initialize "both" mode screens with their dedicated canvases
-    this.spectralDensityBoth = new SpectralDensityPlot(this.domCache['canvasSpectral'] as HTMLCanvasElement, this, 800, 500);
-    this.waterfallBoth = new WaterfallDisplay(this.domCache['canvasWaterfall'] as HTMLCanvasElement, this, 800, 500);
+    this.spectralDensityBoth = new SpectralDensityPlot(this.domCache['canvasSpectral'] as HTMLCanvasElement, this, 824, 230);
+    this.waterfallBoth = new WaterfallDisplay(this.domCache['canvasWaterfall'] as HTMLCanvasElement, this, 824, 230);
 
     // Set initial screen mode
     this.updateScreenVisibility();

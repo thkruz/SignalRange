@@ -169,39 +169,36 @@ export class SyncManager {
 
     // Sync Spectrum Analyzers
     if (state.equipment.spectrumAnalyzersState) {
-      state.equipment.spectrumAnalyzersState.forEach((storedSa: RealTimeSpectrumAnalyzerState) => {
-        const localSa = this.equipment!.spectrumAnalyzers.find(
-          sa => sa.state.uuid === storedSa.uuid
-        );
-        if (localSa) {
-          localSa.sync({ ...storedSa });
+      state.equipment.spectrumAnalyzersState.forEach((storedSa: RealTimeSpectrumAnalyzerState, index: number) => {
+        if (this.equipment.spectrumAnalyzers[index]) {
+          this.equipment.spectrumAnalyzers[index].sync(storedSa);
         }
       });
     }
 
     // Sync Antennas
     if (state.equipment.antennasState) {
-      state.equipment.antennasState.forEach((antennaData: any, index: number) => {
-        if (this.equipment!.antennas[index]) {
-          this.equipment!.antennas[index].sync(antennaData);
+      state.equipment.antennasState.forEach((antennaData: AntennaState, index: number) => {
+        if (this.equipment.antennas[index]) {
+          this.equipment.antennas[index].sync(antennaData);
         }
       });
     }
 
     // Sync Transmitters
     if (state.equipment.transmittersState) {
-      state.equipment.transmittersState.forEach((txData: any, index: number) => {
-        if (this.equipment!.transmitters[index]) {
-          this.equipment!.transmitters[index].sync(txData);
+      state.equipment.transmittersState.forEach((txData: TransmitterState, index: number) => {
+        if (this.equipment.transmitters[index]) {
+          this.equipment.transmitters[index].sync(txData);
         }
       });
     }
 
     // Sync Receivers
     if (state.equipment.receiversState) {
-      state.equipment.receiversState.forEach((rxData: any, index: number) => {
-        if (this.equipment!.receivers[index]) {
-          this.equipment!.receivers[index].sync(rxData);
+      state.equipment.receiversState.forEach((rxData: ReceiverState, index: number) => {
+        if (this.equipment.receivers[index]) {
+          this.equipment.receivers[index].sync(rxData);
         }
       });
     }

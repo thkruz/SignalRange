@@ -5,7 +5,6 @@ import { BaseControlButton } from "../base-control-button";
 import './ac-span-btn.css';
 
 export class ACSpanBtn extends BaseControlButton {
-  private readonly analyzerControl: AnalyzerControl;
   private subMenuSelected: 'set-span' | null = null;
 
   constructor(analyzerControl: AnalyzerControl) {
@@ -13,10 +12,8 @@ export class ACSpanBtn extends BaseControlButton {
       uniqueId: `ac-span-btn-${analyzerControl.specA.state.uuid}`,
       label: 'Span',
       ariaLabel: 'Span',
+      analyzerControl,
     });
-    if (analyzerControl) {
-      this.analyzerControl = analyzerControl;
-    }
   }
 
   protected handleClick_(): void {
@@ -44,7 +41,7 @@ export class ACSpanBtn extends BaseControlButton {
     this.analyzerControl.specA.state.inputValue = (this.analyzerControl.specA.state.span / 1e6).toString();
     this.analyzerControl.specA.state.inputUnit = 'MHz';
 
-    this.analyzerControl.specA.syncDomWithState();
+    this.notifyStateChange_();
     this.playSound();
   }
 
@@ -58,7 +55,8 @@ export class ACSpanBtn extends BaseControlButton {
     // Recenter the frequency
     this.analyzerControl.specA.state.centerFrequency = ((startFreq + stopFreq) / 2) as Hertz;
     this.analyzerControl.specA.state.lockedControl = 'span';
-    this.analyzerControl.specA.syncDomWithState();
+
+    this.notifyStateChange_();
     this.playSound();
   }
 
@@ -74,9 +72,38 @@ export class ACSpanBtn extends BaseControlButton {
     if (lastSpan) {
       this.analyzerControl.specA.state.span = lastSpan;
       this.analyzerControl.specA.state.lockedControl = 'span';
-      this.analyzerControl.specA.syncDomWithState();
+
+      this.notifyStateChange_();
     }
     this.playSound();
+  }
+
+  private applyTickAdjustment(divisor: number, value: number): void {
+    let newVal = 0;
+
+    if (this.subMenuSelected === 'set-span') {
+      const analyzerState = this.analyzerControl.specA.state;
+      const adjustmentInHz = (value * analyzerState.span) / divisor;
+      newVal = this.analyzerControl.specA.state.span + adjustmentInHz;
+    } else {
+      Logger.warn('No submenu selected for span adjustment.');
+      return;
+    }
+
+    // Round to nearest Hertz
+    newVal = Math.round(newVal);
+
+    this.adjustValueInHz((newVal as Hertz));
+  }
+
+  onMajorTickChange(value: number): void {
+    Logger.info(`Adjusting frequency by major tick: ${value}`);
+    this.applyTickAdjustment(10, value);
+  }
+
+  onMinorTickChange(value: number): void {
+    Logger.info(`Adjusting frequency by minor tick: ${value}`);
+    this.applyTickAdjustment(100, value);
   }
 
   onEnterPressed(): void {
@@ -107,6 +134,16 @@ export class ACSpanBtn extends BaseControlButton {
     this.analyzerControl.specA.state.span = frequencyInHz as Hertz;
     this.analyzerControl.specA.state.lockedControl = 'span';
 
+    this.notifyStateChange_();
     this.playSound();
+  }
+
+  private adjustValueInHz(frequencyInHz: Hertz): void {
+    const analyzerState = this.analyzerControl.specA.state;
+
+    analyzerState.span = frequencyInHz;
+
+    analyzerState.lockedControl = 'span';
+    this.notifyStateChange_();
   }
 }

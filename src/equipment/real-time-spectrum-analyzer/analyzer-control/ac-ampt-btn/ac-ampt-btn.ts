@@ -3,7 +3,6 @@ import { BaseControlButton } from "../base-control-button";
 import './ac-ampt-btn.css';
 
 export class ACAmptBtn extends BaseControlButton {
-  private readonly analyzerControl: AnalyzerControl;
   private subMenuSelected: 'max' | 'min' | 'ref' | null = null;
 
   constructor(analyzerControl: AnalyzerControl) {
@@ -11,6 +10,7 @@ export class ACAmptBtn extends BaseControlButton {
       uniqueId: `ac-ampt-btn-${analyzerControl.specA.state.uuid}`,
       label: 'Ampt',
       ariaLabel: 'Amplitude',
+      analyzerControl,
     });
     if (analyzerControl) {
       this.analyzerControl = analyzerControl;
@@ -49,6 +49,8 @@ export class ACAmptBtn extends BaseControlButton {
     this.analyzerControl.specA.state.inputUnit = 'dBm';
 
     this.analyzerControl.specA.syncDomWithState();
+
+    this.notifyStateChange_();
     this.playSound();
   }
 
@@ -60,6 +62,8 @@ export class ACAmptBtn extends BaseControlButton {
     this.analyzerControl.specA.state.inputUnit = 'dBm';
 
     this.analyzerControl.specA.syncDomWithState();
+
+    this.notifyStateChange_();
     this.playSound();
   }
 
@@ -71,6 +75,8 @@ export class ACAmptBtn extends BaseControlButton {
     this.analyzerControl.specA.state.inputUnit = 'dBm';
 
     this.analyzerControl.specA.syncDomWithState();
+
+    this.notifyStateChange_();
     this.playSound();
   }
 
@@ -101,6 +107,7 @@ export class ACAmptBtn extends BaseControlButton {
     }
 
     this.analyzerControl.specA.syncDomWithState();
+    this.notifyStateChange_();
   }
 
   onEnterPressed(): void {
@@ -133,6 +140,7 @@ export class ACAmptBtn extends BaseControlButton {
         break;
     }
 
+    this.notifyStateChange_();
     this.playSound();
   }
 }

@@ -3,17 +3,13 @@ import { BaseControlButton } from "../base-control-button";
 import './ac-extra3-btn.css';
 
 export class ACExtra3Btn extends BaseControlButton {
-  private readonly analyzerControl: AnalyzerControl;
-
   constructor(analyzerControl: AnalyzerControl) {
     super({
       uniqueId: `ac-extra3-btn-${analyzerControl.specA.state.uuid}`,
       label: 'Extra3',
       ariaLabel: 'Extra 3',
+      analyzerControl,
     });
-    if (analyzerControl) {
-      this.analyzerControl = analyzerControl;
-    }
   }
 
   protected handleClick_(): void {

@@ -1,13 +1,17 @@
 import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
+import { EventBus } from "@app/events/event-bus";
+import { Events } from "@app/events/events";
 import { Logger } from "@app/logging/logger";
 import { Sfx } from "@app/sound/sfx-enum";
 import SoundManager from "@app/sound/sound-manager";
+import { AnalyzerControl } from "../analyzer-control";
 
 export abstract class BaseControlButton {
   private readonly html_: string;
   protected uniqueId: string;
   private dom_?: HTMLElement;
+  protected analyzerControl?: AnalyzerControl;
 
   protected constructor({
     uniqueId,
@@ -15,14 +19,17 @@ export abstract class BaseControlButton {
     ariaLabel,
     classNames = "physical-button control-button",
     subtext,
+    analyzerControl,
   }: {
     uniqueId: string;
     label: string;
     ariaLabel: string;
     classNames?: string;
     subtext?: string;
+    analyzerControl?: AnalyzerControl;
   }) {
     this.uniqueId = uniqueId;
+    this.analyzerControl = analyzerControl;
     this.html_ = html`
       <button
         class="${uniqueId} ${classNames}" aria-label="${ariaLabel}"
@@ -48,6 +55,7 @@ export abstract class BaseControlButton {
 
   click(): void {
     this.handleClick_();
+    this.notifyStateChange_();
   }
 
   protected abstract handleClick_(): void;
@@ -63,6 +71,10 @@ export abstract class BaseControlButton {
 
   onMajorTickChange(value: number): void {
     Logger.info(`Processing request with ${this.uniqueId} because major tick changed to ${value}.`);
+  }
+
+  protected notifyStateChange_(): void {
+    EventBus.getInstance().emit(Events.SPEC_A_CONFIG_CHANGED, this.analyzerControl.specA.state);
   }
 
   protected playSound(): void {

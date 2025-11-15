@@ -3,17 +3,13 @@ import { BaseControlButton } from "../base-control-button";
 import './ac-trace-btn.css';
 
 export class ACTraceBtn extends BaseControlButton {
-  private readonly analyzerControl: AnalyzerControl;
-
   constructor(analyzerControl: AnalyzerControl) {
     super({
       uniqueId: `ac-trace-btn-${analyzerControl.specA.state.uuid}`,
       label: 'Trace',
       ariaLabel: 'Trace',
+      analyzerControl,
     });
-    if (analyzerControl) {
-      this.analyzerControl = analyzerControl;
-    }
   }
 
   protected handleClick_(): void {

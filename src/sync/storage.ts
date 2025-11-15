@@ -75,17 +75,17 @@ export async function clearPersistedStore(): Promise<void> {
 /**
  * Sync equipment with storage (two-way sync)
  */
-export async function syncEquipmentWithStore(studentEquipment: Equipment): Promise<void> {
+export async function syncEquipmentWithStore(equipment: Equipment): Promise<void> {
   await ensureInitialized();
 
   // Set equipment in sync manager
-  syncManager.setEquipment(studentEquipment);
+  syncManager.setEquipment(equipment);
 
   // Load initial state from storage
   await syncManager.loadFromStorage();
 
   // Set up event listeners to save on changes
-  setupEquipmentListeners(studentEquipment);
+  setupEquipmentListeners();
 
   SimulationManager.getInstance().sync();
 }
@@ -93,7 +93,7 @@ export async function syncEquipmentWithStore(studentEquipment: Equipment): Promi
 /**
  * Set up event listeners to automatically save equipment changes
  */
-function setupEquipmentListeners(_studentEquipment: Equipment): void {
+function setupEquipmentListeners(): void {
   const eventBus = EventBus.getInstance();
 
   // Debounce save operations to avoid excessive writes

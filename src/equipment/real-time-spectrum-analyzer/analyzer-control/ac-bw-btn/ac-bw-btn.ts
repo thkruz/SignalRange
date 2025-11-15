@@ -3,13 +3,12 @@ import { BaseControlButton } from "../base-control-button";
 import './ac-bw-btn.css';
 
 export class ACBWBtn extends BaseControlButton {
-  private readonly analyzerControl: AnalyzerControl;
-
   constructor(analyzerControl: AnalyzerControl) {
     super({
       uniqueId: `ac-bw-btn-${analyzerControl.specA.state.uuid}`,
       label: 'BW',
       ariaLabel: 'Bandwidth',
+      analyzerControl,
     });
     if (analyzerControl) {
       this.analyzerControl = analyzerControl;

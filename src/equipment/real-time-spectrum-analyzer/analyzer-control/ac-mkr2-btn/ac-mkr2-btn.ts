@@ -3,17 +3,13 @@ import { BaseControlButton } from "../base-control-button";
 import './ac-mkr2-btn.css';
 
 export class ACMkr2Btn extends BaseControlButton {
-  private readonly analyzerControl: AnalyzerControl;
-
   constructor(analyzerControl: AnalyzerControl) {
     super({
       uniqueId: `ac-mkr2-btn-${analyzerControl.specA.state.uuid}`,
       label: 'Mkr2',
       ariaLabel: 'Marker 2',
+      analyzerControl,
     });
-    if (analyzerControl) {
-      this.analyzerControl = analyzerControl;
-    }
   }
 
   protected handleClick_(): void {

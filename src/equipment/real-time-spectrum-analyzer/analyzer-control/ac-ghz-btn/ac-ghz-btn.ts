@@ -3,8 +3,6 @@ import { BaseControlButton } from "../base-control-button";
 import './ac-ghz-btn.css';
 
 export class ACGhzBtn extends BaseControlButton {
-  private readonly analyzerControl: AnalyzerControl;
-
   constructor(analyzerControl: AnalyzerControl) {
     super({
       uniqueId: `ac-ghz-btn-${analyzerControl.specA.state.uuid}`,
@@ -12,10 +10,8 @@ export class ACGhzBtn extends BaseControlButton {
       subtext: 'dBm',
       label: 'GHz',
       ariaLabel: 'GHz',
+      analyzerControl,
     });
-    if (analyzerControl) {
-      this.analyzerControl = analyzerControl;
-    }
   }
 
   protected handleClick_(): void {

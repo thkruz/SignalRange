@@ -4,17 +4,13 @@ import { BaseControlButton } from "../base-control-button";
 import './ac-save-btn.css';
 
 export class ACSaveBtn extends BaseControlButton {
-  private readonly analyzerControl: AnalyzerControl;
-
   constructor(analyzerControl: AnalyzerControl) {
     super({
       uniqueId: `ac-save-btn-${analyzerControl.specA.state.uuid}`,
       label: 'Save',
       ariaLabel: 'Save',
+      analyzerControl,
     });
-    if (analyzerControl) {
-      this.analyzerControl = analyzerControl;
-    }
   }
 
   protected handleClick_(): void {

@@ -126,7 +126,7 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
     this.build(parentId);
 
     EventBus.getInstance().on(Events.UPDATE, this.update.bind(this));
-    EventBus.getInstance().on(Events.SYNC, this.syncDomWithState.bind(this));
+    EventBus.getInstance().on(Events.SYNC, this.sync.bind(this));
     EventBus.getInstance().on(Events.DRAW, this.draw.bind(this));
   }
 

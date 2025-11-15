@@ -5,7 +5,6 @@ import { BaseControlButton } from "../base-control-button";
 import './ac-freq-btn.css';
 
 export class ACFreqBtn extends BaseControlButton {
-  private readonly analyzerControl: AnalyzerControl;
   private subMenuSelected: 'center' | 'start' | 'stop' = 'center';
 
   constructor(analyzerControl: AnalyzerControl) {
@@ -13,6 +12,7 @@ export class ACFreqBtn extends BaseControlButton {
       uniqueId: `ac-freq-btn-${analyzerControl.specA.state.uuid}`,
       label: 'Freq',
       ariaLabel: 'Frequency',
+      analyzerControl,
     });
     if (analyzerControl) {
       this.analyzerControl = analyzerControl;
@@ -53,7 +53,7 @@ export class ACFreqBtn extends BaseControlButton {
     this.analyzerControl.specA.state.inputValue = (centerFreq / 1e6).toFixed(2);
     this.analyzerControl.specA.state.inputUnit = 'MHz';
 
-    this.analyzerControl.specA.syncDomWithState();
+    this.notifyStateChange_();
     this.playSound();
   }
 
@@ -65,7 +65,7 @@ export class ACFreqBtn extends BaseControlButton {
     this.analyzerControl.specA.state.inputValue = (startFreq / 1e6).toFixed(2);
     this.analyzerControl.specA.state.inputUnit = 'MHz';
 
-    this.analyzerControl.specA.syncDomWithState();
+    this.notifyStateChange_();
     this.playSound();
   }
 
@@ -77,12 +77,14 @@ export class ACFreqBtn extends BaseControlButton {
     this.analyzerControl.specA.state.inputValue = (stopFreq / 1e6).toFixed(2);
     this.analyzerControl.specA.state.inputUnit = 'MHz';
 
-    this.analyzerControl.specA.syncDomWithState();
+    this.notifyStateChange_();
     this.playSound();
   }
 
   private handleAutoTuneClick(): void {
     this.analyzerControl.specA.freqAutoTune();
+    this.notifyStateChange_();
+    this.playSound();
   }
 
   private applyTickAdjustment(divisor: number, value: number): void {
@@ -103,17 +105,17 @@ export class ACFreqBtn extends BaseControlButton {
     // Round to nearest Hertz
     newVal = Math.round(newVal);
 
-    this.adjustFrequencyInHz((newVal as Hertz));
+    this.adjustValueInHz((newVal as Hertz));
   }
 
   onMajorTickChange(value: number): void {
     Logger.info(`Adjusting frequency by major tick: ${value}`);
-    this.applyTickAdjustment(10, value);
+    this.applyTickAdjustment(10, -value);
   }
 
   onMinorTickChange(value: number): void {
     Logger.info(`Adjusting frequency by minor tick: ${value}`);
-    this.applyTickAdjustment(100, value);
+    this.applyTickAdjustment(100, -value);
   }
 
   onEnterPressed(): void {
@@ -141,12 +143,13 @@ export class ACFreqBtn extends BaseControlButton {
         throw new Error('Invalid frequency unit');
     }
 
-    this.adjustFrequencyInHz(frequencyInHz as Hertz);
+    this.adjustValueInHz(frequencyInHz as Hertz);
 
+    this.notifyStateChange_();
     this.playSound();
   }
 
-  private adjustFrequencyInHz(frequencyInHz: Hertz): void {
+  private adjustValueInHz(frequencyInHz: Hertz): void {
     const analyzerState = this.analyzerControl.specA.state;
 
     // TODO: This should be a GUI error message
@@ -203,5 +206,6 @@ export class ACFreqBtn extends BaseControlButton {
     }
 
     analyzerState.lockedControl = 'freq';
+    this.notifyStateChange_();
   }
 }

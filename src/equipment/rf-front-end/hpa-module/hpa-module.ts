@@ -69,7 +69,7 @@ export class HPAModule extends RFFrontEndModule<HPAState> {
       `hpa-help-${this.rfFrontEnd_.state.uuid}`,
       "High Power Amplifier",
       null,
-      'http://docs.signalrange.space/equipment/high-power-amplifier?content-only=true&dark=true'
+      'https://docs.signalrange.space/equipment/high-power-amplifier?content-only=true&dark=true'
     );
 
     // Create UI components

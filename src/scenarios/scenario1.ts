@@ -102,7 +102,7 @@ export const scenario1Data: ScenarioData = {
         <div id="rf-front-end1-container" class="paired-equipment-container"></div>
       </div>
     `,
-    missionBriefUrl: 'http://docs.signalrange.space/scenarios/scenario-1?content-only=true&dark=true',
+    missionBriefUrl: 'https://docs.signalrange.space/scenarios/scenario-1?content-only=true&dark=true',
     satellites: [
       new Satellite(
         1,

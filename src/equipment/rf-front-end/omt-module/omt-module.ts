@@ -64,7 +64,7 @@ export class OMTModule extends RFFrontEndModule<OMTState> {
       `omt-help-${this.rfFrontEnd_.state.uuid}`,
       "OMT / Duplexer",
       null,
-      'http://docs.signalrange.space/equipment/orthomode-transducer?content-only=true&dark=true'
+      'https://docs.signalrange.space/equipment/orthomode-transducer?content-only=true&dark=true'
     );
 
     this.html_ = html`

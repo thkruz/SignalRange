@@ -116,7 +116,7 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
       `buc-help-${this.rfFrontEnd_.state.uuid}`,
       "Block Upconverter",
       null,
-      'http://docs.signalrange.space/equipment/block-upconverter?content-only=true&dark=true'
+      'https://docs.signalrange.space/equipment/block-upconverter?content-only=true&dark=true'
     );
 
     // Create UI components using base class methods

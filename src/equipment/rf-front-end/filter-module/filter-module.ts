@@ -76,7 +76,7 @@ export class IfFilterBankModule extends RFFrontEndModule<IfFilterBankState> {
       `filter-help-${this.rfFrontEnd_.state.uuid}`,
       "IF Filter Bank",
       null,
-      'http://docs.signalrange.space/equipment/if-filter-bank?content-only=true&dark=true'
+      'https://docs.signalrange.space/equipment/if-filter-bank?content-only=true&dark=true'
     );
 
     const config = FILTER_BANDWIDTH_CONFIGS[state.bandwidthIndex];

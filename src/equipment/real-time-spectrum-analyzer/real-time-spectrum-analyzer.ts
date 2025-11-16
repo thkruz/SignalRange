@@ -140,7 +140,7 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
       `rtsa-help-${this.uuid}`,
       'Real-Time Spectrum Analyzer',
       null,
-      'http://docs.signalrange.space/equipment/real-time-spectrum-analyzer?content-only=true&dark=true'
+      'https://docs.signalrange.space/equipment/real-time-spectrum-analyzer?content-only=true&dark=true'
     );
 
     this.configPanel = new AnalyzerControlBox(this);

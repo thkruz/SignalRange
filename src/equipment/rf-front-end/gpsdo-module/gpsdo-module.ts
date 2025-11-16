@@ -141,7 +141,7 @@ export class GPSDOModule extends RFFrontEndModule<GPSDOState> {
       `gpsdo-help-${this.rfFrontEnd_.state.uuid}`,
       "GPS Disciplined Oscillator",
       null,
-      'http://docs.signalrange.space/equipment/gps-disciplined-oscillator?content-only=true&dark=true'
+      'https://docs.signalrange.space/equipment/gps-disciplined-oscillator?content-only=true&dark=true'
     );
 
     // Create UI components

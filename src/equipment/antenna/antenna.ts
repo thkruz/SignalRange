@@ -157,7 +157,7 @@ export class Antenna extends BaseEquipment {
       `antenna-help-btn-${this.state.uuid}`,
       'Antenna Control Unit (ACU)',
       null,
-      'http://docs.signalrange.space/equipment/antenna-control-unit?content-only=true&dark=true'
+      'https://docs.signalrange.space/equipment/antenna-control-unit?content-only=true&dark=true'
     );
     this.polarPlot_ = PolarPlot.create(
       `antenna-polar-plot-${this.state.uuid}`,

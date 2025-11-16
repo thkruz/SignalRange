@@ -73,7 +73,7 @@ export class LNBModule extends RFFrontEndModule<LNBState> {
       `lnb-help-${this.rfFrontEnd_.state.uuid}`,
       "Low Noise Block",
       null,
-      'http://docs.signalrange.space/equipment/low-noise-block-downconverter?content-only=true&dark=true'
+      'https://docs.signalrange.space/equipment/low-noise-block-downconverter?content-only=true&dark=true'
     );
 
     // Create UI components using base class methods

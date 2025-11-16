@@ -28,7 +28,7 @@ export const scenario1Data: ScenarioData = {
   duration: '25-30 min',
   difficulty: 'beginner',
   missionType: 'Commercial Communications',
-  description: `You are a Ground Station Operator at Pacific Rim Communications facility in Guam. Your company has just launched HELIOS-7, a new C-band communications satellite. The satellite is now station-keeping at 145°E geostationary orbit. You will conduct the first ground station link test - a critical milestone before commercial operations begin.<br><br> This scenario will guide you through setting up the ground station equipment, acquiring the satellite signal, and performing initial signal quality measurements. You'll learn the basics of antenna pointing, RF front end configuration, and spectrum analysis in a hands-on environment.`,
+  description: `You are a Ground Station Operator at Pacific Edge Communications facility in Guam. Your company has just launched HELIOS-7, a new C-band communications satellite. The satellite is now station-keeping at 145°E geostationary orbit. You will conduct the first ground station link test - a critical milestone before commercial operations begin.<br><br> This scenario will guide you through setting up the ground station equipment, acquiring the satellite signal, and performing initial signal quality measurements. You'll learn the basics of antenna pointing, RF front end configuration, and spectrum analysis in a hands-on environment.`,
   equipment: [
     '9-meter C-band Antenna',
     'RF Front End',

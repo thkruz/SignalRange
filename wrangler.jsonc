@@ -13,6 +13,6 @@
 	},
 	// Map to your custom domain
 	"routes": [
-		"signalrange.space/*"
+		"app.signalrange.space/*"
 	]
 }

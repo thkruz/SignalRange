@@ -9,6 +9,7 @@ import { OMTModule } from './equipment/rf-front-end/omt-module/omt-module';
 import { RFFrontEndState } from './equipment/rf-front-end/rf-front-end';
 import { Satellite } from './equipment/satellite/satellite';
 import { Objective } from './objectives/objective-types';
+import { sandboxData } from './scenarios/sandbox';
 import { scenario1Data } from './scenarios/scenario1';
 import { scenario2Data } from "./scenarios/scenario2";
 import { scenario3Data } from './scenarios/scenario3';
@@ -64,9 +65,7 @@ export class ScenarioManager {
 
   set scenario(scenarioId: string) {
     const scenario = SCENARIOS.find(s => s.id === scenarioId);
-    if (scenarioId === 'sandbox') {
-      this.settings = ScenarioManager.getDefaultSettings();
-    } else if (scenario) {
+    if (scenario) {
       this.settings = scenario.settings;
       this.data = scenario;
     } else {
@@ -93,6 +92,7 @@ export interface ScenarioData {
 }
 
 export const SCENARIOS: ScenarioData[] = [
+  sandboxData,
   scenario1Data,
   scenario2Data,
   scenario3Data,

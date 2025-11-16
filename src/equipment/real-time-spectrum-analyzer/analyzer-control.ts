@@ -6,15 +6,10 @@ import { qs, qsa } from "../../engine/utils/query-selector";
 import './analyzer-control.css';
 import { ACAmptBtn } from './analyzer-control/ac-ampt-btn/ac-ampt-btn';
 import { ACBWBtn } from './analyzer-control/ac-bw-btn/ac-bw-btn';
-import { ACExtra1Btn } from './analyzer-control/ac-extra1-btn/ac-extra1-btn';
-import { ACExtra2Btn } from './analyzer-control/ac-extra2-btn/ac-extra2-btn';
-import { ACExtra3Btn } from './analyzer-control/ac-extra3-btn/ac-extra3-btn';
-import { ACExtra4Btn } from './analyzer-control/ac-extra4-btn/ac-extra4-btn';
 import { ACFreqBtn } from './analyzer-control/ac-freq-btn/ac-freq-btn';
 import { ACGhzBtn } from './analyzer-control/ac-ghz-btn/ac-ghz-btn';
 import { ACHzBtn } from './analyzer-control/ac-hz-btn/ac-hz-btn';
 import { ACKhzBtn } from './analyzer-control/ac-khz-btn/ac-khz-btn';
-import { ACMeasBtn } from './analyzer-control/ac-meas-btn/ac-meas-btn';
 import { ACMhzBtn } from './analyzer-control/ac-mhz-btn/ac-mhz-btn';
 import { ACMkrBtn } from './analyzer-control/ac-mkr-btn/ac-mkr-btn';
 import { ACMkr2Btn } from './analyzer-control/ac-mkr2-btn/ac-mkr2-btn';
@@ -53,13 +48,13 @@ export class AnalyzerControl extends BaseElement {
     bw: ACBWBtn;
     sweep: ACSweepBtn;
     trace: ACTraceBtn;
-    minhold: ACExtra4Btn;
+    // minhold: ACExtra4Btn;
     save: ACSaveBtn;
-    meas: ACMeasBtn;
+    // meas: ACMeasBtn;
     mode: ACModeBtn;
-    extra1: ACExtra1Btn;
-    extra2: ACExtra2Btn;
-    extra3: ACExtra3Btn;
+    // extra1: ACExtra1Btn;
+    // extra2: ACExtra2Btn;
+    // extra3: ACExtra3Btn;
     ghz: ACGhzBtn;
     mhz: ACMhzBtn;
     khz: ACKhzBtn;
@@ -73,13 +68,13 @@ export class AnalyzerControl extends BaseElement {
     bw: ACBWBtn;
     sweep: ACSweepBtn;
     trace: ACTraceBtn;
-    minhold: ACExtra4Btn;
+    // minhold: ACExtra4Btn;
     save: ACSaveBtn;
-    meas: ACMeasBtn;
+    // meas: ACMeasBtn;
     mode: ACModeBtn;
-    extra1: ACExtra1Btn;
-    extra2: ACExtra2Btn;
-    extra3: ACExtra3Btn;
+    // extra1: ACExtra1Btn;
+    // extra2: ACExtra2Btn;
+    // extra3: ACExtra3Btn;
     ghz: ACGhzBtn;
     mhz: ACMhzBtn;
     khz: ACKhzBtn;
@@ -134,13 +129,13 @@ export class AnalyzerControl extends BaseElement {
       bw: new ACBWBtn(this),
       sweep: new ACSweepBtn(this),
       trace: new ACTraceBtn(this),
-      minhold: new ACExtra4Btn(this),
+      // minhold: new ACExtra4Btn(this),
       save: new ACSaveBtn(this),
-      meas: new ACMeasBtn(this),
+      // meas: new ACMeasBtn(this),
       mode: new ACModeBtn(this),
-      extra1: new ACExtra1Btn(this),
-      extra2: new ACExtra2Btn(this),
-      extra3: new ACExtra3Btn(this),
+      // extra1: new ACExtra1Btn(this),
+      // extra2: new ACExtra2Btn(this),
+      // extra3: new ACExtra3Btn(this),
       ghz: new ACGhzBtn(this),
       mhz: new ACMhzBtn(this),
       khz: new ACKhzBtn(this),
@@ -189,15 +184,8 @@ export class AnalyzerControl extends BaseElement {
           ${this.panelElements.bw.html}
           ${this.panelElements.sweep.html}
           ${this.panelElements.trace.html}
-          ${this.panelElements.minhold.html}
-          ${this.panelElements.save.html}
-        </div>
-        <div class="control-row">
-          ${this.panelElements.meas.html}
           ${this.panelElements.mode.html}
-          ${this.panelElements.extra1.html}
-          ${this.panelElements.extra2.html}
-          ${this.panelElements.extra3.html}
+          ${this.panelElements.save.html}
         </div>
       </div>
 

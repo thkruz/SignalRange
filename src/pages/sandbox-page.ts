@@ -65,7 +65,7 @@ export class SandboxPage extends BasePage {
 
     // Initialize objectives manager if scenario has objectives
     const scenario = ScenarioManager.getInstance();
-    if (scenario.data.objectives && scenario.data.objectives.length > 0) {
+    if (scenario.data?.objectives && scenario.data.objectives.length > 0) {
       ObjectivesManager.initialize(scenario.data.objectives);
       SimulationManager.getInstance().objectivesManager = ObjectivesManager.getInstance();
     }

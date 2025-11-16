@@ -1,6 +1,5 @@
 import { EventBus } from "./events/event-bus";
 import { Events } from "./events/events";
-import { HomePage } from "./pages/home";
 import { Footer } from "./pages/layout/footer/footer";
 import { Header } from "./pages/layout/header/header";
 import { SandboxPage } from "./pages/sandbox-page";
@@ -68,12 +67,9 @@ export class Router {
       case '/scenarios/3':
         this.showPage('scenario3');
         break;
-      case '/scenarios':
-        this.showPage('scenarios');
-        break;
       case '/':
       default:
-        this.showPage('home');
+        this.showPage('scenarios');
     }
 
     // Emit route change event
@@ -82,18 +78,12 @@ export class Router {
 
   private hideAll(): void {
     ScenarioSelectionPage.getInstance().hide();
-    HomePage.getInstance().hide();
     SandboxPage.getInstance()?.hide();
   }
 
   private showPage(pageName: string): void {
     SimulationManager.destroy();
     switch (pageName) {
-      case 'home':
-        Header.getInstance().makeSmall(false);
-        Footer.getInstance().makeSmall(false);
-        HomePage.getInstance().show();
-        break;
       case 'sandbox':
         Header.getInstance().makeSmall(true);
         ScenarioManager.getInstance().scenario = 'sandbox';

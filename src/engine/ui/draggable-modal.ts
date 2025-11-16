@@ -10,6 +10,10 @@ import { DraggableBox } from './draggable-box';
 export abstract class DraggableModal extends DraggableBox {
   protected abstract getModalContentHtml(): string;
 
+  constructor(boxId: string, opts?: { width?: string; title?: string }) {
+    super(boxId, { ...opts, skipDomCreation: true });
+  }
+
   protected override onOpen(): void {
     super.onOpen();
     const modalContainer = getEl(`${this.boxId}-container`) as HTMLElement;
@@ -25,7 +29,7 @@ export abstract class DraggableModal extends DraggableBox {
 
   override open(cb?: () => void) {
     if (!this.boxEl) {
-      // Should it be KeepTrack.getInstance().containerRoot instead of document.body?
+      // Create modal structure
       document.body.insertAdjacentHTML('beforeend', html`
         <div id="${this.boxId}-container" class="modal" style="display:none;">
           <div id="${this.boxId}" class="draggable-box" style="pointer-events:auto;">

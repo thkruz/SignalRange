@@ -52,6 +52,7 @@
 .header-toolbar {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   padding: 0 16px;
   height: 100px;
   color: var(--color-dark-text-muted);

@@ -9,6 +9,7 @@ interface DraggableBoxOptions {
   isDockable?: boolean;
   boxContentHtml?: string;
   parentId?: string;
+  skipDomCreation?: boolean;
 }
 
 export abstract class DraggableBox {
@@ -36,7 +37,7 @@ export abstract class DraggableBox {
     this.width = opts?.width ?? '300px';
     this.isDockable = opts?.isDockable ?? false;
 
-    if (!this.boxEl) {
+    if (!this.boxEl && !opts?.skipDomCreation) {
       const parentDom = opts?.parentId ? getEl(opts.parentId) : document.getElementsByTagName('body')[0];
 
       parentDom.insertAdjacentHTML('beforeend', html`

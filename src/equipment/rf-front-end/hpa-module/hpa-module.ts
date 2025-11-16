@@ -7,7 +7,6 @@ import { qs } from "@app/engine/utils/query-selector";
 import { dB, dBm, dBW, RfSignal, SignalOrigin } from '@app/types';
 import { RFFrontEnd } from '../rf-front-end';
 import { RFFrontEndModule } from '../rf-front-end-module';
-import hpaModuleHelp from './hpa-module-help';
 import './hpa-module.css';
 
 /**
@@ -69,7 +68,8 @@ export class HPAModule extends RFFrontEndModule<HPAState> {
     this.helpBtn_ = HelpButton.create(
       `hpa-help-${this.rfFrontEnd_.state.uuid}`,
       "High Power Amplifier",
-      hpaModuleHelp
+      null,
+      'http://docs.signalrange.space/equipment/high-power-amplifier?content-only=true&dark=true'
     );
 
     // Create UI components

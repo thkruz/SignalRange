@@ -5,7 +5,6 @@ import { qs } from "@app/engine/utils/query-selector";
 import { dBm, IfSignal, MHz, RfFrequency, SignalOrigin } from '@app/types';
 import { RFFrontEnd } from '../rf-front-end';
 import { RFFrontEndModule } from '../rf-front-end-module';
-import filterModuleHelp from './filter-module-help';
 import './filter-module.css';
 
 /**
@@ -76,7 +75,8 @@ export class IfFilterBankModule extends RFFrontEndModule<IfFilterBankState> {
     this.helpBtn_ = HelpButton.create(
       `filter-help-${this.rfFrontEnd_.state.uuid}`,
       "IF Filter Bank",
-      filterModuleHelp
+      null,
+      'http://docs.signalrange.space/equipment/if-filter-bank?content-only=true&dark=true'
     );
 
     const config = FILTER_BANDWIDTH_CONFIGS[state.bandwidthIndex];

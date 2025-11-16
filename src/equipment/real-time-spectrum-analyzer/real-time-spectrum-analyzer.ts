@@ -11,7 +11,6 @@ import { TapPoint } from './../rf-front-end/coupler-module/coupler-module';
 import { AnalyzerControlBox } from "./analyzer-control-box";
 import type { TraceMode } from "./analyzer-control/ac-trace-btn/ac-trace-btn";
 import './real-time-spectrum-analyzer.css';
-import rtsaHelp from './rtsa-help';
 import { SpectralDensityPlot } from './rtsa-screen/spectral-density-plot';
 import { WaterfallDisplay } from "./rtsa-screen/waterfall-display";
 
@@ -140,7 +139,8 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
     this.helpBtn_ = HelpButton.create(
       `rtsa-help-${this.uuid}`,
       'Real-Time Spectrum Analyzer',
-      rtsaHelp
+      null,
+      'http://docs.signalrange.space/equipment/real-time-spectrum-analyzer?content-only=true&dark=true'
     );
 
     this.configPanel = new AnalyzerControlBox(this);

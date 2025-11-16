@@ -26,7 +26,7 @@
 }
 
 .hm-modal-box {
-  background: linear-gradient(180deg, var(--hm-bg-start) 0%, var(--hm-bg-end) 100%);
+  background: #181818;
   color: var(--hm-text);
   padding: var(--hm-padding);
   border-radius: var(--hm-radius);

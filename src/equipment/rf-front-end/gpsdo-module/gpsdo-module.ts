@@ -7,7 +7,6 @@ import { SimulationManager } from '@app/simulation/simulation-manager';
 import { clamp } from 'ootk';
 import { RFFrontEnd } from '../rf-front-end';
 import { RFFrontEndModule } from '../rf-front-end-module';
-import gpsdoModuleHelp from './gpsdo-module-help';
 import './gpsdo-module.css';
 
 /**
@@ -141,7 +140,8 @@ export class GPSDOModule extends RFFrontEndModule<GPSDOState> {
     this.helpBtn_ = HelpButton.create(
       `gpsdo-help-${this.rfFrontEnd_.state.uuid}`,
       "GPS Disciplined Oscillator",
-      gpsdoModuleHelp
+      null,
+      'http://docs.signalrange.space/equipment/gps-disciplined-oscillator?content-only=true&dark=true'
     );
 
     // Create UI components

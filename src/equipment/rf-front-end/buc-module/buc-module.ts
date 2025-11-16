@@ -6,7 +6,6 @@ import { qs } from "@app/engine/utils/query-selector";
 import { dB, dBm, Hertz, IfFrequency, IfSignal, MHz, RfFrequency, RfSignal, SignalOrigin } from '@app/types';
 import { RFFrontEnd } from '../rf-front-end';
 import { RFFrontEndModule, RFFrontEndModuleState } from '../rf-front-end-module';
-import bucModuleHelp from './buc-module-help';
 import './buc-module.css';
 
 /**
@@ -116,7 +115,8 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
     this.helpBtn_ = HelpButton.create(
       `buc-help-${this.rfFrontEnd_.state.uuid}`,
       "Block Upconverter",
-      bucModuleHelp
+      null,
+      'http://docs.signalrange.space/equipment/block-upconverter?content-only=true&dark=true'
     );
 
     // Create UI components using base class methods

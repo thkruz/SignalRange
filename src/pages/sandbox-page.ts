@@ -2,6 +2,7 @@ import { getEl } from "@app/engine/utils/get-el";
 import { qs } from "@app/engine/utils/query-selector";
 import { EventBus } from "@app/events/event-bus";
 import { Events } from "@app/events/events";
+import { ObjectivesManager } from "@app/objectives/objectives-manager";
 import { ScenarioManager } from "@app/scenario-manager";
 import { SimulationManager } from "@app/simulation/simulation-manager";
 import { html } from "../engine/utils/development/formatter";
@@ -61,6 +62,14 @@ export class SandboxPage extends BasePage {
     this.dom_ = qs(`#${this.id}`, parentDom);
     this.initEquipment_();
     SimulationManager.getInstance();
+
+    // Initialize objectives manager if scenario has objectives
+    const scenario = ScenarioManager.getInstance();
+    if (scenario.data.objectives && scenario.data.objectives.length > 0) {
+      ObjectivesManager.initialize(scenario.data.objectives);
+      SimulationManager.getInstance().objectivesManager = ObjectivesManager.getInstance();
+    }
+
     EventBus.getInstance().emit(Events.DOM_READY);
   }
 
@@ -85,6 +94,7 @@ export class SandboxPage extends BasePage {
 
   static destroy(): void {
     SandboxPage.instance_ = null;
+    ObjectivesManager.destroy();
     SimulationManager.destroy();
     EventBus.destroy();
     const container = getEl(SandboxPage.containerId);

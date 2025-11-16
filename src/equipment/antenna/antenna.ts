@@ -17,7 +17,6 @@ import { RFFrontEnd } from "../rf-front-end/rf-front-end";
 import { Satellite } from "../satellite/satellite";
 import { Transmitter } from "../transmitter/transmitter";
 import { ANTENNA_CONFIG_KEYS, ANTENNA_CONFIGS, AntennaConfig } from "./antenna-configs";
-import antennaHelp from './antenna-help';
 import './antenna.css';
 
 /**
@@ -157,7 +156,8 @@ export class Antenna extends BaseEquipment {
     this.helpBtn_ = HelpButton.create(
       `antenna-help-btn-${this.state.uuid}`,
       'Antenna Control Unit (ACU)',
-      antennaHelp
+      null,
+      'http://docs.signalrange.space/equipment/antenna-control-unit?content-only=true&dark=true'
     );
     this.polarPlot_ = PolarPlot.create(
       `antenna-polar-plot-${this.state.uuid}`,

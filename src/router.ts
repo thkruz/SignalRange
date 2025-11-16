@@ -96,28 +96,28 @@ export class Router {
         break;
       case 'sandbox':
         Header.getInstance().makeSmall(true);
-        ScenarioManager.getInstance().settings = ScenarioManager.getDefaultSettings();
+        ScenarioManager.getInstance().scenario = 'sandbox';
         SandboxPage.create();
         SandboxPage.getInstance().show();
         break;
       case 'scenario1':
         Header.getInstance().makeSmall(true);
         Footer.getInstance().makeSmall(true);
-        ScenarioManager.getInstance().settings = ScenarioManager.getScenarioSettings('scenario1');
+        ScenarioManager.getInstance().scenario = 'scenario1';
         SandboxPage.create();
         SandboxPage.getInstance().show();
         break;
       case 'scenario2':
         Header.getInstance().makeSmall(true);
         Footer.getInstance().makeSmall(true);
-        ScenarioManager.getInstance().settings = ScenarioManager.getScenarioSettings('scenario2');
+        ScenarioManager.getInstance().scenario = 'scenario2';
         SandboxPage.create();
         SandboxPage.getInstance().show();
         break;
       case 'scenario3':
         Header.getInstance().makeSmall(true);
         Footer.getInstance().makeSmall(true);
-        ScenarioManager.getInstance().settings = ScenarioManager.getScenarioSettings('scenario3');
+        ScenarioManager.getInstance().scenario = 'scenario3';
         SandboxPage.create();
         SandboxPage.getInstance().show();
         break;

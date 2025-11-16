@@ -7,7 +7,6 @@ import { dBi, dBm, RfSignal, SignalOrigin } from '@app/types';
 import { RFFrontEnd } from '../rf-front-end';
 import { RFFrontEndModule } from '../rf-front-end-module';
 import { dB } from './../../../types';
-import omtModuleHelp from './omt-module-help';
 import './omt-module.css';
 
 /**
@@ -64,7 +63,8 @@ export class OMTModule extends RFFrontEndModule<OMTState> {
     this.helpBtn_ = HelpButton.create(
       `omt-help-${this.rfFrontEnd_.state.uuid}`,
       "OMT / Duplexer",
-      omtModuleHelp
+      null,
+      'http://docs.signalrange.space/equipment/orthomode-transducer?content-only=true&dark=true'
     );
 
     this.html_ = html`

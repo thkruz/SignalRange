@@ -5,6 +5,7 @@ import { Equipment } from '@app/pages/sandbox/equipment';
 import { ScenarioManager } from '@app/scenario-manager';
 import { Degrees, Milliseconds } from 'ootk';
 import { RfSignal } from './../types';
+import { ObjectivesManager } from '@app/objectives';
 
 export class SimulationManager {
   private static instance_: SimulationManager;
@@ -17,6 +18,7 @@ export class SimulationManager {
   satellites: Satellite[] = [];
   satelliteSignals: RfSignal[];
   userSignals: RfSignal[] = [];
+  objectivesManager: ObjectivesManager;
 
   private constructor() {
     this.satellites = ScenarioManager.getInstance().settings.satellites;

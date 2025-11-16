@@ -24,13 +24,15 @@ export class ModalManager {
     overlay.setAttribute('aria-modal', 'true');
     overlay.tabIndex = -1;
 
+    const isUrl = /^https?:\/\//.test(htmlContent);
+
     overlay.innerHTML = html`
       <div class="hm-modal-box">
         <div class="hm-modal-header">
           <h1>${title}</h1>
         </div>
         <div class="hm-modal-body">
-          ${htmlContent}
+          ${isUrl ? `<iframe src="${htmlContent}" style="width:100%;height:600px;border:none;"></iframe>` : htmlContent}
         </div>
         <div class="hm-modal-footer">
           <button type="button" class="hm-modal-close">

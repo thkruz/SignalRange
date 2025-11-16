@@ -8,6 +8,7 @@ import { LNBModule } from './equipment/rf-front-end/lnb/lnb-module';
 import { OMTModule } from './equipment/rf-front-end/omt-module/omt-module';
 import { RFFrontEndState } from './equipment/rf-front-end/rf-front-end';
 import { Satellite } from './equipment/satellite/satellite';
+import { Objective } from './objectives/objective-types';
 import { scenario1Data } from './scenarios/scenario1';
 import { scenario2Data } from "./scenarios/scenario2";
 import { scenario3Data } from './scenarios/scenario3';
@@ -29,6 +30,7 @@ export class ScenarioManager {
   private static instance_: ScenarioManager;
 
   settings: SimulationSettings = ScenarioManager.getDefaultSettings();
+  data: ScenarioData;
 
   private constructor() {
     // Private constructor to enforce singleton pattern
@@ -60,16 +62,15 @@ export class ScenarioManager {
     };
   }
 
-  static getScenarioSettings(scenarioId: string): SimulationSettings {
-    switch (scenarioId) {
-      case 'scenario1':
-        return SCENARIOS[0].settings;
-      case 'scenario2':
-        return SCENARIOS[1].settings;
-      case 'scenario3':
-        return SCENARIOS[2].settings;
-      default:
-        return this.getDefaultSettings();
+  set scenario(scenarioId: string) {
+    const scenario = SCENARIOS.find(s => s.id === scenarioId);
+    if (scenarioId === 'sandbox') {
+      this.settings = ScenarioManager.getDefaultSettings();
+    } else if (scenario) {
+      this.settings = scenario.settings;
+      this.data = scenario;
+    } else {
+      throw new Error(`Scenario ${scenarioId} not found`);
     }
   }
 }
@@ -88,6 +89,7 @@ export interface ScenarioData {
   description: string;
   equipment: string[];
   settings: SimulationSettings;
+  objectives?: Objective[];
 }
 
 export const SCENARIOS: ScenarioData[] = [

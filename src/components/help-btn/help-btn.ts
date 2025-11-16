@@ -11,11 +11,12 @@ export class HelpButton {
   private dom_?: HTMLInputElement;
   private readonly helpTitle_: string;
   private readonly helpContent_: string;
-
+  private readonly helpUrl_: string;
   constructor(
     uniqueId: string,
     helpTitle: string,
     helpContent: string,
+    helpUrl: string | null = null
   ) {
     this.html_ = html`
       <div id="${uniqueId}" class="help-button-container">
@@ -28,7 +29,7 @@ export class HelpButton {
     this.uniqueId = uniqueId;
     this.helpTitle_ = helpTitle;
     this.helpContent_ = helpContent;
-
+    this.helpUrl_ = helpUrl;
     const container = document.createElement('div');
     container.innerHTML = this.html_;
 
@@ -45,7 +46,14 @@ export class HelpButton {
   private onClick(e: MouseEvent): void {
     e.preventDefault();
 
-    ModalManager.getInstance().show(this.helpTitle_, this.helpContent_);
+    if (this.helpUrl_) {
+      ModalManager.getInstance().show(
+        this.helpTitle_,
+        `<iframe src="${this.helpUrl_}" style="width:100%;height:600px;border:none;"></iframe>`
+      );
+    } else {
+      ModalManager.getInstance().show(this.helpTitle_, this.helpContent_);
+    }
   }
 
   get html(): string {
@@ -62,7 +70,8 @@ export class HelpButton {
     id: string,
     helpTitle: string,
     helpContent: string,
+    helpUrl: string | null = null
   ): HelpButton {
-    return new HelpButton(id, helpTitle, helpContent);
+    return new HelpButton(id, helpTitle, helpContent, helpUrl);
   }
 }

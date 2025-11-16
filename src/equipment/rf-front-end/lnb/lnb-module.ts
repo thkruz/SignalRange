@@ -5,7 +5,6 @@ import { qs } from "@app/engine/utils/query-selector";
 import { dB, Hertz, IfFrequency, IfSignal, MHz, RfFrequency, RfSignal, SignalOrigin } from '@app/types';
 import { RFFrontEnd } from '../rf-front-end';
 import { RFFrontEndModule, RFFrontEndModuleState } from '../rf-front-end-module';
-import lnbModuleHelp from "./lnb-module-help";
 import './lnb-module.css';
 
 /**
@@ -73,7 +72,8 @@ export class LNBModule extends RFFrontEndModule<LNBState> {
     this.helpBtn_ = HelpButton.create(
       `lnb-help-${this.rfFrontEnd_.state.uuid}`,
       "Low Noise Block",
-      lnbModuleHelp
+      null,
+      'http://docs.signalrange.space/equipment/low-noise-block-downconverter?content-only=true&dark=true'
     );
 
     // Create UI components using base class methods

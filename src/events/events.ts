@@ -12,6 +12,7 @@ import { Milliseconds } from "ootk";
 import { ReceiverModemState } from "../equipment/receiver/receiver";
 import { TransmitterModem } from "../equipment/transmitter/transmitter";
 import { RfSignal } from "../types";
+import { Objective, ObjectiveState, ConditionState } from "../objectives/objective-types";
 
 // Antenna Event specific interfaces
 export interface AntennaLoopbackChangedData {
@@ -83,6 +84,25 @@ export interface RxSignalLostData {
   modem: number;
 }
 
+// Objectives Event specific interfaces
+export interface ObjectiveCompletedData {
+  objectiveId: string;
+  objective: Objective;
+  completedAt: number;
+}
+
+export interface ObjectiveConditionChangedData {
+  objectiveId: string;
+  conditionIndex: number;
+  isSatisfied: boolean;
+  conditionState: ConditionState;
+}
+
+export interface ObjectivesAllCompletedData {
+  completedObjectives: ObjectiveState[];
+  totalTime: number;
+}
+
 export enum Events {
   // Antenna events
   ANTENNA_STATE_CHANGED = 'antenna:state:changed',
@@ -120,6 +140,11 @@ export enum Events {
   RF_FE_COUPLER_CHANGED = "rf-fe:coupler:changed",
   RF_FE_FILTER_CHANGED = "rf-fe:filter:changed",
   RF_FE_GPSDO_CHANGED = "rf-fe:gpsdo:changed",
+
+  // Objectives events
+  OBJECTIVE_COMPLETED = 'objective:completed',
+  OBJECTIVE_CONDITION_CHANGED = 'objective:condition:changed',
+  OBJECTIVES_ALL_COMPLETED = 'objectives:all:completed',
 }
 
 export interface EventMap {
@@ -158,4 +183,8 @@ export interface EventMap {
   [Events.UPDATE]: [Milliseconds];
   [Events.DRAW]: [Milliseconds];
   [Events.SYNC]: [];
+
+  [Events.OBJECTIVE_COMPLETED]: [ObjectiveCompletedData];
+  [Events.OBJECTIVE_CONDITION_CHANGED]: [ObjectiveConditionChangedData];
+  [Events.OBJECTIVES_ALL_COMPLETED]: [ObjectivesAllCompletedData];
 }

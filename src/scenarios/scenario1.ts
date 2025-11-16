@@ -6,10 +6,10 @@ import { IfFilterBankModule } from '@app/equipment/rf-front-end/filter-module/fi
 import { HPAModule } from '@app/equipment/rf-front-end/hpa-module/hpa-module';
 import { OMTModule } from '@app/equipment/rf-front-end/omt-module/omt-module';
 import { Satellite } from '@app/equipment/satellite/satellite';
+import { Objective } from '@app/objectives/objective-types';
 import { dB, dBi, dBm, FECType, Hertz, MHz, ModulationType, RfFrequency, SignalOrigin } from '@app/types';
 import { Degrees } from 'ootk';
 import { ScenarioData } from '../scenario-manager';
-import { scenario1Brief } from './scenario1-brief';
 
 /**
  * Scenario 1: "First Light" - HELIOS-7 Initial Contact
@@ -19,7 +19,7 @@ import { scenario1Brief } from './scenario1-brief';
  */
 
 export const scenario1Data: ScenarioData = {
-  id: 'first-light',
+  id: 'scenario1',
   url: 'scenarios/1',
   imageUrl: 'scenario1.jpg',
   number: 1,
@@ -102,7 +102,7 @@ export const scenario1Data: ScenarioData = {
         <div id="rf-front-end1-container" class="paired-equipment-container"></div>
       </div>
     `,
-    missionBriefUrl: scenario1Brief,
+    missionBriefUrl: 'http://docs.signalrange.space/scenarios/scenario-1?content-only=true&dark=true',
     satellites: [
       new Satellite(
         1,
@@ -204,4 +204,24 @@ export const scenario1Data: ScenarioData = {
       ),
     ]
   },
+  objectives: [
+    {
+      id: 'acquire-lock-satellite-1',
+      title: 'Acquire and Maintain Lock on HELIOS-7',
+      description: 'Point the antenna at satellite 1 (HELIOS-7) and achieve stable tracking lock. The lock must be maintained for at least 10 seconds.',
+      conditions: [
+        {
+          type: 'antenna-locked',
+          description: 'Antenna locked on Satellite 1',
+          params: {
+            satelliteId: 1,
+          },
+          mustMaintain: true,
+          maintainDuration: 10, // Must maintain lock for 10 seconds
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 100,
+    },
+  ] as Objective[],
 }

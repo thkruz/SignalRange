@@ -8,7 +8,7 @@
 // Main storage API (what your app uses)
 export {
   clearPersistedStore,
-  disposeStorage, getStore, isStorageConnected, swapStorageProvider, syncEquipmentWithStore, updateStore, type AppState
+  disposeStorage, getStore, isStorageConnected, joinRoom, swapStorageProvider, syncEquipmentWithStore, updateStore, useLocalStorage, type AppState
 } from './storage';
 
 // Provider types and factory (for configuration)
@@ -26,7 +26,6 @@ export type {
 export { SyncManager } from './sync-manager';
 
 // Provider implementations (if you need to instantiate directly)
-export { D1StorageProvider } from './d1-storage-provider';
 export { LocalStorageProvider } from './local-storage-provider';
-export { WebSocketStorageProvider } from './websocket-storage-provider';
+export { WebSocketStorageProvider, type WebSocketProviderConfig } from './websocket-storage-provider';
 

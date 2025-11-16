@@ -1,15 +1,13 @@
-import { D1StorageProvider } from './d1-storage-provider';
 import { LocalStorageProvider } from './local-storage-provider';
 import type { StorageProvider, StorageProviderConfig } from './storage-provider';
-import { WebSocketStorageProvider } from './websocket-storage-provider';
+import { WebSocketStorageProvider, type WebSocketProviderConfig } from './websocket-storage-provider';
 
 /**
  * Storage Provider Types
  */
 export enum StorageProviderType {
   LOCAL_STORAGE = 'local_storage',
-  WEBSOCKET = 'websocket',
-  CLOUDFLARE_D1 = 'cloudflare_d1',
+  DURABLE_OBJECTS = 'durable_objects',
 }
 
 /**
@@ -18,11 +16,11 @@ export enum StorageProviderType {
 export interface StorageFactoryConfig extends StorageProviderConfig {
   type: StorageProviderType;
 
-  // WebSocket-specific config
-  wsUrl?: string;
-
-  // D1-specific config
-  d1ApiEndpoint?: string;
+  // Durable Objects/WebSocket-specific config
+  workerUrl?: string;
+  roomId?: string;
+  clientId?: string;
+  onRoomChange?: (roomId: string) => void;
 }
 
 /**
@@ -40,17 +38,16 @@ export class StorageProviderFactory {
       case StorageProviderType.LOCAL_STORAGE:
         return new LocalStorageProvider(config);
 
-      case StorageProviderType.WEBSOCKET:
-        if (!config.wsUrl) {
-          throw new Error('wsUrl is required for WebSocket storage provider');
+      case StorageProviderType.DURABLE_OBJECTS:
+        if (!config.workerUrl) {
+          throw new Error('workerUrl is required for Durable Objects storage provider');
         }
-        return new WebSocketStorageProvider(config.wsUrl, config);
-
-      case StorageProviderType.CLOUDFLARE_D1:
-        if (!config.d1ApiEndpoint) {
-          throw new Error('d1ApiEndpoint is required for D1 storage provider');
-        }
-        return new D1StorageProvider(config.d1ApiEndpoint, config);
+        return new WebSocketStorageProvider(config.workerUrl, {
+          ...config,
+          roomId: config.roomId,
+          clientId: config.clientId,
+          onRoomChange: config.onRoomChange,
+        });
 
       default:
         throw new Error(`Unknown storage provider type: ${config.type}`);
@@ -65,22 +62,16 @@ export class StorageProviderFactory {
   }
 
   /**
-   * Create a WebSocket provider with defaults
+   * Create a Durable Objects provider with defaults
    */
-  static createWebSocket(
-    wsUrl: string,
-    config?: Partial<StorageProviderConfig>
+  static createDurableObjects(
+    workerUrl: string,
+    roomId?: string,
+    config?: Partial<WebSocketProviderConfig>
   ): StorageProvider {
-    return new WebSocketStorageProvider(wsUrl, config);
-  }
-
-  /**
-   * Create a Cloudflare D1 provider with defaults
-   */
-  static createD1(
-    apiEndpoint: string,
-    config?: Partial<StorageProviderConfig>
-  ): StorageProvider {
-    return new D1StorageProvider(apiEndpoint, config);
+    return new WebSocketStorageProvider(workerUrl, {
+      ...config,
+      roomId,
+    });
   }
 }

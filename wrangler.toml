@@ -1,0 +1,43 @@
+name = "signal-range-multiplayer"
+main = "worker/index.ts"
+compatibility_date = "2024-11-01"
+
+# Account settings
+# Run `wrangler whoami` to get your account_id
+# account_id = "YOUR_ACCOUNT_ID_HERE"
+
+# Durable Objects bindings
+[[durable_objects.bindings]]
+name = "ROOM"
+class_name = "SignalRangeRoom"
+script_name = "signal-range-multiplayer"
+
+# Migrations for Durable Objects
+[[migrations]]
+tag = "v1"
+new_classes = ["SignalRangeRoom"]
+
+# Environment variables
+[vars]
+ALLOWED_ORIGINS = "*"  # Change to your domain in production, e.g., "https://signalrange.com"
+
+# Development configuration
+[env.development]
+vars = { ALLOWED_ORIGINS = "*" }
+
+# Production configuration
+[env.production]
+vars = { ALLOWED_ORIGINS = "https://your-production-domain.com,https://www.your-production-domain.com" }
+
+# Optional: Custom domain routing
+# routes = [
+#   { pattern = "sync.signalrange.com/*", zone_name = "signalrange.com" }
+# ]
+
+# Build configuration
+[build]
+command = "npm run build"
+
+# Limits (adjust as needed for your scale)
+# [limits]
+# cpu_ms = 50

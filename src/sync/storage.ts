@@ -122,12 +122,14 @@ export function isStorageConnected(): boolean {
 }
 
 /**
- * Swap to a different storage provider (e.g., migrate from LocalStorage to WebSocket)
+ * Swap to a different storage provider (e.g., migrate from LocalStorage to Durable Objects)
  *
  * Example usage:
  * ```
- * await swapStorageProvider(StorageProviderType.WEBSOCKET, {
- *   wsUrl: 'ws://localhost:8080',
+ * // Switch to Durable Objects storage
+ * await swapStorageProvider(StorageProviderType.DURABLE_OBJECTS, {
+ *   workerUrl: 'https://your-worker.workers.dev',
+ *   roomId: 'room-123',
  *   autoSync: true,
  * });
  * ```
@@ -142,6 +144,51 @@ export async function swapStorageProvider(
   });
 
   await syncManager.swapProvider(newProvider);
+}
+
+/**
+ * Join a multiplayer room (switch to Durable Objects for real-time collaboration)
+ *
+ * This is a convenience function to switch from LocalStorage to Durable Objects
+ * and join a specific room for multi-user sync via WebSocket.
+ *
+ * Example usage:
+ * ```
+ * await joinRoom('https://your-worker.workers.dev', 'team-alpha');
+ * ```
+ */
+export async function joinRoom(
+  workerUrl: string,
+  roomId: string = 'default'
+): Promise<void> {
+  await swapStorageProvider(StorageProviderType.DURABLE_OBJECTS, {
+    workerUrl,
+    roomId,
+    autoSync: true,
+    onError: (error) => {
+      console.error('Multiplayer sync error:', error);
+      EventBus.getInstance().emit(Events.STORAGE_ERROR, error);
+    },
+    onRoomChange: (newRoomId) => {
+      console.log('Switched to room:', newRoomId);
+    },
+  });
+}
+
+/**
+ * Switch back to LocalStorage from multiplayer mode
+ *
+ * This will save the current state to LocalStorage and disconnect from the multiplayer room.
+ */
+export async function useLocalStorage(): Promise<void> {
+  await swapStorageProvider(StorageProviderType.LOCAL_STORAGE, {
+    storageKey: '__APP_STORE__',
+    autoSync: true,
+    onError: (error) => {
+      console.error('Storage error:', error);
+      EventBus.getInstance().emit(Events.STORAGE_ERROR, error);
+    },
+  });
 }
 
 /**

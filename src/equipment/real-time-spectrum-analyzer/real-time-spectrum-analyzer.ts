@@ -13,6 +13,7 @@ import type { TraceMode } from "./analyzer-control/ac-trace-btn/ac-trace-btn";
 import './real-time-spectrum-analyzer.css';
 import { SpectralDensityPlot } from './rtsa-screen/spectral-density-plot';
 import { WaterfallDisplay } from "./rtsa-screen/waterfall-display";
+import { SpectrumDataProcessor } from "./spectrum-data-processor";
 
 type MarkerPoint = { x: number; y: number; signal: number };
 
@@ -63,10 +64,13 @@ export interface RealTimeSpectrumAnalyzerState {
 
 /**
  * SpectrumAnalyzer - Configuration and settings manager
- * Delegates all rendering to SpectrumScreen for separation of concerns
+ * Delegates data generation to SpectrumDataProcessor and rendering to screen components
  */
 export class RealTimeSpectrumAnalyzer extends BaseEquipment {
   state: RealTimeSpectrumAnalyzerState;
+
+  // Data processor - centralized data generation
+  private dataProcessor: SpectrumDataProcessor;
 
   // Screen renderer
   screen: SpectralDensityPlot | WaterfallDisplay | null = null;
@@ -260,13 +264,40 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
     if (!this.domCache['canvasSpectral']) throw new Error('Spectral canvas element not found for Spectrum Analyzer');
     if (!this.domCache['canvasWaterfall']) throw new Error('Waterfall canvas element not found for Spectrum Analyzer');
 
-    // Initialize single-mode screens
-    this.spectralDensity = new SpectralDensityPlot(this.domCache['canvas'] as HTMLCanvasElement, this, 824, 460);
-    this.waterfall = new WaterfallDisplay(this.domCache['canvas'] as HTMLCanvasElement, this, 824, 460);
+    // Initialize data processor - centralized data generation
+    this.dataProcessor = new SpectrumDataProcessor(this, 824);
 
-    // Initialize "both" mode screens with their dedicated canvases
-    this.spectralDensityBoth = new SpectralDensityPlot(this.domCache['canvasSpectral'] as HTMLCanvasElement, this, 824, 230);
-    this.waterfallBoth = new WaterfallDisplay(this.domCache['canvasWaterfall'] as HTMLCanvasElement, this, 824, 230);
+    // Initialize single-mode screens with shared data processor
+    this.spectralDensity = new SpectralDensityPlot(
+      this.domCache['canvas'] as HTMLCanvasElement,
+      this,
+      this.dataProcessor,
+      824,
+      460
+    );
+    this.waterfall = new WaterfallDisplay(
+      this.domCache['canvas'] as HTMLCanvasElement,
+      this,
+      this.dataProcessor,
+      824,
+      460
+    );
+
+    // Initialize "both" mode screens with their dedicated canvases and shared data processor
+    this.spectralDensityBoth = new SpectralDensityPlot(
+      this.domCache['canvasSpectral'] as HTMLCanvasElement,
+      this,
+      this.dataProcessor,
+      824,
+      230
+    );
+    this.waterfallBoth = new WaterfallDisplay(
+      this.domCache['canvasWaterfall'] as HTMLCanvasElement,
+      this,
+      this.dataProcessor,
+      824,
+      230
+    );
 
     // Set initial screen mode
     this.updateScreenVisibility();
@@ -304,6 +335,9 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
     const minFreq = (this.state.centerFrequency - this.state.span / 2) as Hertz;
     const maxFreq = (this.state.centerFrequency + this.state.span / 2) as Hertz;
 
+    // Update data processor frequency range (shared by all screens)
+    this.dataProcessor.setFrequencyRange(minFreq, maxFreq);
+
     switch (this.state.screenMode) {
       case 'spectralDensity':
         this.screen = this.spectralDensity!;
@@ -336,11 +370,16 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
   }
 
   update(): void {
-    // Determine tap point
+    // Determine tap point and get input signals
     this.inputSignals = this.getInputSignals();
 
     this.updateScreenState();
+
     if (!this.state.isPaused) {
+      // Generate spectrum data once (shared by all screens)
+      this.dataProcessor.generateData();
+
+      // Update screens with the generated data
       if (this.state.screenMode === 'both') {
         // Update both screens in "both" mode
         if (this.spectralDensityBoth) {

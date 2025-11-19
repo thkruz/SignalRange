@@ -33,7 +33,6 @@
     "case-sensitive-paths-webpack-plugin": "^2.4.0",
     "copy-webpack-plugin": "^13.0.1",
     "css-loader": "^6.8.1",
-    "dotenv": "^17.2.3",
     "eslint": "^8.57.0",
     "eslint-plugin-import": "^2.32.0",
     "eslint-plugin-jest": "^27.4.0",
@@ -53,6 +52,7 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.81.1",
+    "dotenv": "^17.2.3",
     "draggabilly": "^3.0.0",
     "gl-matrix": "^3.4.4",
     "ootk": "^5.1.1",

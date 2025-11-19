@@ -3,7 +3,16 @@ const HtmlWebpackPlugin = require('html-webpack-plugin');
 const CaseSensitivePathsPlugin = require('case-sensitive-paths-webpack-plugin');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 const webpack = require('webpack');
-require('dotenv').config();
+// Don't load local .env when building with wrangler (Cloudflare will provide secrets).
+// Load .env only for local dev so sensitive secrets aren't accidentally bundled.
+if (!process.env.WORKERS_DEV && !process.env.CF_PAGES && !process.env.CLOUDFLARE_ACCOUNT_ID) {
+  require('dotenv').config();
+}
+
+// For production builds, also load .env.production if it exists
+if (process.env.NODE_ENV === 'production') {
+  require('dotenv').config({ path: '.env.production' });
+}
 
 module.exports = {
   entry: {

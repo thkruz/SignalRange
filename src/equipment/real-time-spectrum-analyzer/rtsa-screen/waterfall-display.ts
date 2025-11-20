@@ -1,10 +1,14 @@
-import { Hertz, IfSignal, RfSignal } from "../../../types";
+import { Hertz } from "../../../types";
 import { RealTimeSpectrumAnalyzer, RealTimeSpectrumAnalyzerState } from "../real-time-spectrum-analyzer";
+import { SpectrumDataProcessor } from "../spectrum-data-processor";
 import { RTSAScreen } from "./rtsa-screen";
 
 export class WaterfallDisplay extends RTSAScreen {
   private running: boolean = false;
   private lastDrawTime: number = 0;
+
+  // Data processor reference (shared data source)
+  private dataProcessor: SpectrumDataProcessor;
 
   // Waterfall buffer: each row is a Float32Array of amplitudes
   private buffer: Float32Array[] = [];
@@ -13,10 +17,6 @@ export class WaterfallDisplay extends RTSAScreen {
   // ImageData for efficient pixel manipulation
   private imageData: ImageData;
   private pixels: Uint8ClampedArray;
-
-  // Signal processing
-  private data: Float32Array;
-  private noiseData: Float32Array;
 
   // Antenna reference
   minFreq: Hertz = 0 as Hertz;
@@ -29,10 +29,18 @@ export class WaterfallDisplay extends RTSAScreen {
   cacheMinDb: number = 0;
   cacheGain: number = 0;
 
-  constructor(canvas: HTMLCanvasElement, specA: RealTimeSpectrumAnalyzer, width: number, height: number) {
+  constructor(
+    canvas: HTMLCanvasElement,
+    specA: RealTimeSpectrumAnalyzer,
+    dataProcessor: SpectrumDataProcessor,
+    width: number,
+    height: number
+  ) {
     super(canvas, specA, width, height);
-    this.data = new Float32Array(this.width);
-    this.noiseData = new Float32Array(this.width);
+
+    // Store reference to shared data processor
+    this.dataProcessor = dataProcessor;
+
     this.bufferSize = this.height;
     this.buffer = Array.from({ length: this.bufferSize }, () => {
       const row = new Float32Array(this.width);
@@ -92,39 +100,19 @@ export class WaterfallDisplay extends RTSAScreen {
       if (
         this.cacheMaxDb !== this.specA.state.maxAmplitude ||
         this.cacheMinDb !== this.specA.state.minAmplitude ||
-        this.width !== this.data.length ||
         this.cacheGain !== this.specA.rfFrontEnd_.lnbModule.getTotalGain()
       ) {
         this.initializeColorCache();
         // TODO: This causes old data to have the wrong colors - low priority but it causes a graphical glitch
         this.cacheMaxDb = this.specA.state.maxAmplitude;
         this.cacheMinDb = this.specA.state.minAmplitude;
-        this.noiseData = new Float32Array(this.width);
-        this.noiseCacheRow = 0;
-        this.noiseCache = new Float32Array(this.height * this.width);
       }
 
       const now = Date.now();
       if (now - this.lastDrawTime > 1000 / (this.specA.state.refreshRate * 2)) {
-        // If we are in 'both' screen mode, reuse spectral-density-plot's noise data
-        if (this.specA.state.screenMode === 'both') {
-          const spectralDensityNoise = this.specA.spectralDensityBoth.noiseData;
-          this.noiseData.set(spectralDensityNoise);
-        } else {
-          this.noiseData = this.createNoise(this.noiseData);
-        }
-
-        // Create new row of data
-        this.data.fill(this.specA.state.minAmplitude);
-        this.specA.inputSignals.forEach((signal) => {
-          this.drawSignal(signal);
-        });
-
-        // Compose noise + signals into one row
+        // Get the combined data (noise + signals) from the data processor
         const row = new Float32Array(this.width);
-        for (let x = 0; x < this.width; x++) {
-          row[x] = Math.max(this.noiseData[x], this.data[x]);
-        }
+        row.set(this.dataProcessor.combinedData);
 
         // Scroll buffer DOWN: remove oldest (bottom), add newest (top)
         this.buffer.pop();      // Remove oldest from bottom
@@ -195,148 +183,10 @@ export class WaterfallDisplay extends RTSAScreen {
     }
   }
 
-  private drawSignal(signal: RfSignal | IfSignal): void {
-    const center = ((signal.frequency - this.minFreq) / (this.maxFreq - this.minFreq)) * this.width;
-    const inBandWidth = ((signal.bandwidth / (this.maxFreq - this.minFreq)) * this.width) / 4;
-    const outOfBandWidth = ((signal.bandwidth / (this.maxFreq - this.minFreq)) * this.width);
-
-    this.data = this.createSignal(
-      this.data,
-      signal,
-      center,
-      inBandWidth,
-      outOfBandWidth
-    );
-  }
-
-  noiseCacheRow: number = 0;
-  noiseCache: Float32Array = new Float32Array(this.height * this.width);
-
-  private createNoise(data: Float32Array): Float32Array {
-    let base = this.specA.state.noiseFloorNoGain;
-
-    const len = data.length;
-    const time = performance.now() / 1000;
-
-    for (let x = 0; x < len; x++) {
-      // If Noise Cache is full, reuse old noise values for stability
-      if (this.noiseCacheRow >= this.height / 4) {
-        // Pick a random row from the cache to reuse
-        data[x] = this.noiseCache[(Math.floor(Math.random() * this.height / 4) * this.width) + x];
-        continue;
-      }
-
-      // Add randomized phase offsets to prevent coherent patterns (match spectral-density-plot)
-      const randPhase1 = Math.random() * Math.PI * 2;
-      const randPhase2 = Math.random() * Math.PI * 2;
-      const randPhase3 = Math.random() * Math.PI * 2;
-      const randAmp1 = 0.8 + Math.random() * 0.4;
-      const randAmp2 = 1.2 + Math.random() * 0.6;
-      const randAmp3 = 0.2 + Math.random() * 0.4;
-
-      // Layer 1: base random noise (±1 dB fixed variation)
-      let noise = base + (Math.random() - 0.5) * 2;
-
-      // Layer 2: Smooth low-frequency drift (additive, not multiplicative)
-      noise += Math.sin((x / 300) + time / 8 + randPhase1) * randAmp1 * 0.5;
-
-      // Layer 3: Very subtle high-frequency jitter (additive)
-      noise += Math.sin((x * 0.5 + time * 2 + randPhase2)) * randAmp2 * 0.005;
-
-      // Layer 4: Band-limited noise (simulate mild interference, additive)
-      if (x > len * 0.4 && x < len * 0.6) {
-        noise += Math.sin((x / 40) + time * 1.5 + randPhase3) * randAmp3 * 0.02;
-      }
-
-      // Clamp noise to within +/-2 dB of base for realism
-      noise = Math.max(base - 2, Math.min(base + 2, noise));
-
-      // Layer 5: Occasional impulse spikes (fixed amplitude, not scaled by base)
-      if (Math.random() > 0.9999) {
-        noise += 2 + Math.random() * 3;
-      }
-
-      // Layer 6: Rare dropouts (fixed amplitude)
-      if (Math.random() < 0.0002) {
-        noise -= 1 + Math.random() * 2;
-      }
-
-      if (!this.specA.state.isSkipLnaGainDuringDraw) {
-        noise += this.specA.rfFrontEnd_.couplerModule.signalPathManager.getTotalRxGain();
-      }
-
-      data[x] = noise;
-
-      this.noiseCache[this.noiseCacheRow * this.width + x] = noise;
-    }
-
-    if (this.noiseCacheRow < this.height / 4) {
-      this.noiseCacheRow++;
-    }
-    return data;
-  }
-
-  private createSignal(
-    data: Float32Array,
-    signal: IfSignal | RfSignal,
-    center: number,
-    inBandWidth: number,
-    outOfBandWidth: number
-  ): Float32Array {
-    // Use outOfBandWidth as the basis for sigma to create a wider, more realistic Gaussian
-    // This creates the smooth bell curve shape
-    const sigma = outOfBandWidth / 3; // Adjust factor to control width
-
-    for (let x = 0; x < data.length; x++) {
-      const distance = x - center;
-      const absDist = Math.abs(distance);
-      const gaussian = Math.exp(-0.5 * Math.pow(distance / sigma, 2));
-
-      // Convert gaussian to dB (this creates the smooth exponential rise/fall)
-      const gaussianDb = 20 * Math.log10(Math.max(gaussian, 1e-10));
-
-      // Start with the Gaussian shape
-      let y = signal.power + gaussianDb;
-
-      // Main lobe (center region) - add minimal jitter
-      if (absDist <= inBandWidth) {
-        y += (Math.random() - 0.5) * 0.4;
-      }
-      // Transition region - slight additional rolloff for realism
-      else if (absDist <= outOfBandWidth * 0.7) {
-        y += (Math.random() - 0.5) * 0.6;
-        // Very subtle side lobe effect (much smaller than before)
-        const sideLobeEffect = Math.sin((distance / outOfBandWidth) * Math.PI * 4) * 0.5;
-        y += sideLobeEffect;
-      }
-      // Outer region - more pronounced side lobes and taper
-      else if (absDist <= outOfBandWidth) {
-        const sideLobeEffect = Math.sin((distance / outOfBandWidth) * Math.PI * 6) * 0.8;
-        y += sideLobeEffect + (Math.random() - 0.5) * 1.0;
-      }
-      // Beyond outOfBandWidth - natural exponential decay
-      else {
-        const excessDistance = absDist - outOfBandWidth;
-        const decayFactor = Math.exp(-excessDistance / (outOfBandWidth * 0.3));
-        y += -20 * (1 - decayFactor); // Additional -20 dB taper beyond the main signal
-        y += (Math.random() - 0.5) * 1.5;
-      }
-
-      // Simulate occasional deep nulls for realism
-      if (Math.random() < 0.001) {
-        y -= 10 + Math.random() * 4;
-      }
-
-      // If noise floor is external, add RF front-end gain to match noise
-      if (!this.specA.state.isSkipLnaGainDuringDraw) {
-        y += this.specA.rfFrontEnd_.couplerModule.signalPathManager.getTotalRxGain();
-      }
-
-      data[x] = Math.max(data[x], y);
-    }
-
-    return data;
-  }
+  /**
+   * Note: Data generation (noise and signals) is now handled by SpectrumDataProcessor
+   * This eliminates duplicate code and ensures consistency between spectral density and waterfall displays
+   */
 
   // Return RGB tuple instead of string for better performance
   static amplitudeToColorRGB(amplitude: number, state: RealTimeSpectrumAnalyzerState): [number, number, number] {
@@ -410,11 +260,7 @@ export class WaterfallDisplay extends RTSAScreen {
       this.pixels[i] = 255;
     }
 
-    // Reallocate arrays
-    this.data = new Float32Array(this.width);
-    this.noiseData = new Float32Array(this.width);
-    this.noiseCacheRow = 0;
-    this.noiseCache = new Float32Array(this.height * this.width);
+    // Note: Data arrays are managed by SpectrumDataProcessor, not here
 
     // Handle buffer resize intelligently
     if (oldWidth !== this.width || oldHeight !== this.height) {

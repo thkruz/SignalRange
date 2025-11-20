@@ -206,6 +206,53 @@ export const scenario1Data: ScenarioData = {
   },
   objectives: [
     {
+      id: 'phase-1-power-up-sequence',
+      title: 'Complete Power-Up Sequence',
+      description: 'Power up the RF front end modules in the correct order to prepare for satellite acquisition.',
+      conditions: [
+        {
+          type: 'equipment-powered',
+          description: 'GPSDO Module Powered',
+          params: {
+            equipment: 'gpsdo',
+          },
+          mustMaintain: false,
+        },
+        {
+          type: 'gpsdo-locked',
+          description: 'GPSDO Module Locked',
+          mustMaintain: false,
+        },
+        {
+          type: 'equipment-powered',
+          description: 'LNB Module Powered',
+          params: {
+            equipment: 'lnb',
+          },
+          mustMaintain: true,
+          maintainDuration: 60, // Must maintain power for 60 seconds
+        },
+        {
+          type: 'equipment-powered',
+          description: 'BUC Module Powered',
+          params: {
+            equipment: 'buc',
+          },
+          mustMaintain: false,
+        },
+        {
+          type: 'frequency-set',
+          description: 'SpecA Frequency Set Correctly',
+          params: {
+            frequency: 3985.5e6 as RfFrequency,
+          },
+          mustMaintain: false,
+        }
+      ],
+      conditionLogic: 'AND',
+      points: 50,
+    },
+    {
       id: 'acquire-lock-satellite-1',
       title: 'Acquire and Maintain Lock on HELIOS-7',
       description: 'Point the antenna at satellite 1 (HELIOS-7) and achieve stable tracking lock. The lock must be maintained for at least 10 seconds.',

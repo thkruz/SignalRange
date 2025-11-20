@@ -5,6 +5,30 @@
     "source.addMissingImports": "explicit",
     "source.removeUnusedImports": "explicit"
   },
+  // TypeScript: give the TS server more headroom
+  "typescript.tsserver.maxTsServerMemory": 4096,
+  // Optional: if ESLint is heavy in your repos
+  "eslint.execArgv": [
+    "--max_old_space_size=4096"
+  ],
+  // File watching: keep noise down for big projects
+  "files.watcherExclude": {
+    "**/.git/objects/**": true,
+    "**/.git/subtree-cache/**": true,
+    "**/node_modules/**": true,
+    "**/dist/**": true,
+    "**/build/**": true,
+    "**/.turbo/**": true,
+    "**/.next/**": true
+  },
+  // Searching: don’t waste time on junk
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/dist": true,
+    "**/build": true,
+    "**/.turbo": true,
+    "**/.next": true
+  },
   "github.copilot.enable": {
     "markdown": true,
     "plaintext": true

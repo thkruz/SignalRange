@@ -1,0 +1,7 @@
+.objectives-checklist {
+  .objective-item.completed {
+    strong {
+      background: green;
+    }
+  }
+}

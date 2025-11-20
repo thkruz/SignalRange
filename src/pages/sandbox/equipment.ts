@@ -2,6 +2,7 @@ import { BaseElement } from "@app/components/base-element";
 import { qs } from "@app/engine/utils/query-selector";
 import { RFFrontEnd } from "@app/equipment/rf-front-end/rf-front-end";
 import { ModalManager } from "@app/modal/modal-manager";
+import { ObjectivesManager } from "@app/objectives";
 import { ScenarioManager, SimulationSettings } from "@app/scenario-manager";
 import { html } from "../../engine/utils/development/formatter";
 import { Antenna } from '../../equipment/antenna/antenna';
@@ -24,6 +25,8 @@ export class Equipment extends BaseElement {
   readonly rfFrontEnds: RFFrontEnd[] = [];
   readonly transmitters: Transmitter[] = [];
   readonly receivers: Receiver[] = [];
+  private checklistRefreshIntervalId_: number | null = null;
+  private lastChecklistHtml_: string | null = null;
 
   protected html_ = html`
     <div class="student-equipment">
@@ -65,6 +68,7 @@ export class Equipment extends BaseElement {
 
   protected addEventListeners_(): void {
     this.addMissionBriefListener_();
+    this.addChecklistListener_();
   }
 
   private addMissionBriefListener_(): void {
@@ -74,6 +78,43 @@ export class Equipment extends BaseElement {
         ModalManager.getInstance().show('Mission Brief', missionBriefUrl);
       });
     }
+  }
+
+  private addChecklistListener_(): void {
+    qs('.checklist-icon').addEventListener('click', () => {
+      const modalManager = ModalManager.getInstance();
+      this.lastChecklistHtml_ = ObjectivesManager.getInstance().generateHtmlChecklist();
+      modalManager.show('Checklist', this.lastChecklistHtml_);
+      this.startChecklistRefreshTimer_(modalManager);
+    });
+  }
+
+  private startChecklistRefreshTimer_(modalManager: ModalManager): void {
+    this.stopChecklistRefreshTimer_();
+
+    const refreshChecklist = () => {
+      if (!modalManager.isShowing('Checklist')) {
+        this.stopChecklistRefreshTimer_();
+        return;
+      }
+
+      const nextChecklistHtml = ObjectivesManager.getInstance().generateHtmlChecklist();
+      if (nextChecklistHtml !== this.lastChecklistHtml_) {
+        this.lastChecklistHtml_ = nextChecklistHtml;
+        modalManager.updateContent(nextChecklistHtml);
+      }
+    };
+
+    modalManager.onHide(() => this.stopChecklistRefreshTimer_());
+    this.checklistRefreshIntervalId_ = window.setInterval(refreshChecklist, 1000);
+  }
+
+  private stopChecklistRefreshTimer_(): void {
+    if (this.checklistRefreshIntervalId_ !== null) {
+      window.clearInterval(this.checklistRefreshIntervalId_);
+      this.checklistRefreshIntervalId_ = null;
+    }
+    this.lastChecklistHtml_ = null;
   }
 
   private initEquipment_(settings: SimulationSettings): void {

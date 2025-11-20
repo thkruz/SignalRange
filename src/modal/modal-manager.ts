@@ -5,6 +5,8 @@ import './modal-manager.css';
 export class ModalManager {
   private static instance: ModalManager;
   private modalElement: HTMLDivElement | null = null;
+  private activeTitle: string | null = null;
+  private onHideCallbacks: Array<() => void> = [];
 
   private constructor() { }
 
@@ -13,6 +15,20 @@ export class ModalManager {
       ModalManager.instance = new ModalManager();
     }
     return ModalManager.instance;
+  }
+
+  isShowing(title?: string): boolean {
+    if (!this.modalElement) {
+      return false;
+    }
+    if (!title) {
+      return true;
+    }
+    return this.activeTitle === title;
+  }
+
+  onHide(cb: () => void): void {
+    this.onHideCallbacks.push(cb);
   }
 
   show(title: string, htmlContent: string): void {
@@ -54,15 +70,33 @@ export class ModalManager {
 
     // store reference
     this.modalElement = overlay;
+    this.activeTitle = title;
 
     // focus for accessibility
     overlay.focus();
+  }
+
+  updateContent(htmlContent: string): void {
+    if (!this.modalElement) {
+      return;
+    }
+
+    const body = this.modalElement.querySelector('.hm-modal-body');
+    if (!body) {
+      return;
+    }
+
+    const isUrl = /^https?:\/\//.test(htmlContent);
+    body.innerHTML = isUrl ? `<iframe src="${htmlContent}" style="width:100%;height:600px;border:none;"></iframe>` : htmlContent;
   }
 
   hide(): void {
     if (this.modalElement) {
       this.modalElement.remove();
       this.modalElement = null;
+      this.activeTitle = null;
+      this.onHideCallbacks.forEach((cb) => cb());
+      this.onHideCallbacks = [];
     }
   }
 }

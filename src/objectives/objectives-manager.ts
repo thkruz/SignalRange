@@ -13,15 +13,16 @@ import {
   Objective,
   ObjectiveState
 } from './objective-types';
+import './objectives-manager.css';
 
 /**
  * Manages objective tracking for scenario-based learning
  */
 export class ObjectivesManager {
   private static instance_: ObjectivesManager | null = null;
-  private objectiveStates_: ObjectiveState[] = [];
-  private eventBus_: EventBus;
-  private startTime_: number;
+  private readonly objectiveStates_: ObjectiveState[] = [];
+  private readonly eventBus_: EventBus;
+  private readonly startTime_: number;
 
   private constructor(objectives: Objective[]) {
     this.eventBus_ = EventBus.getInstance();
@@ -105,15 +106,41 @@ export class ObjectivesManager {
     return (performance.now() - this.startTime_) / 1000; // Convert to seconds
   }
 
+  generateHtmlChecklist(): string {
+    let html = '<div class="objectives-checklist"><h2>Objectives Checklist</h2><ul>';
+
+    for (const objectiveState of this.objectiveStates_) {
+      const objective = objectiveState.objective;
+      const isCompleted = objectiveState.isCompleted;
+      html += `<li class="objective-item ${isCompleted ? 'completed' : 'incomplete'}">`;
+      html += `<strong>${objective.title}</strong> - ${isCompleted ? 'Completed' : 'Incomplete'}`;
+      html += `<p>${objective.description}</p>`;
+      html += '<ul>';
+
+      for (let i = 0; i < objective.conditions.length; i++) {
+        const condition = objective.conditions[i];
+        const conditionState = objectiveState.conditionStates[i];
+        const conditionCompleted = conditionState.isMaintenanceComplete;
+
+        html += `<li class="condition-item ${conditionCompleted ? 'completed' : 'incomplete'}">`;
+        html += `${condition.description} - ${conditionCompleted ? 'Completed' : 'Incomplete'}`;
+        html += '</li>';
+      }
+
+      html += '</ul></li>';
+    }
+
+    html += '</ul></div>';
+    return html;
+  }
+
   /**
    * Main update loop - evaluates all objectives each frame
    */
   private update_(dt: Milliseconds): void {
     const dtSeconds = dt / 1000;
 
-    for (let objIndex = 0; objIndex < this.objectiveStates_.length; objIndex++) {
-      const objectiveState = this.objectiveStates_[objIndex];
-
+    for (const objectiveState of this.objectiveStates_) {
       // Skip already completed objectives
       if (objectiveState.isCompleted) {
         continue;
@@ -166,13 +193,12 @@ export class ObjectivesManager {
           // Check if maintenance requirement is met
           const requiredDuration = conditionState.condition.maintainDuration || 0;
           if (
-            conditionState.condition.mustMaintain &&
-            !conditionState.isMaintenanceComplete &&
-            conditionState.maintainedDuration >= requiredDuration
-          ) {
-            conditionState.isMaintenanceComplete = true;
-          } else if (!conditionState.condition.mustMaintain && !conditionState.isMaintenanceComplete) {
+            (conditionState.condition.mustMaintain &&
+              !conditionState.isMaintenanceComplete &&
+              conditionState.maintainedDuration >= requiredDuration) ||
             // Non-maintenance conditions complete immediately when satisfied
+            (!conditionState.condition.mustMaintain && !conditionState.isMaintenanceComplete)
+          ) {
             conditionState.isMaintenanceComplete = true;
           }
         }
@@ -245,7 +271,7 @@ export class ObjectivesManager {
           // Check if antenna is pointed at this satellite (within tolerance)
           const azDiff = Math.abs(state.azimuth - targetSat.az);
           const elDiff = Math.abs(state.elevation - targetSat.el);
-          return azDiff <= 2 && elDiff <= 2;
+          return azDiff <= 1.5 && elDiff <= 1.5;
         }
 
         return true;
@@ -282,6 +308,10 @@ export class ObjectivesManager {
           case 'buc': {
             const rfFrontEnd = equipment.rfFrontEnds[0];
             return rfFrontEnd ? rfFrontEnd.bucModule.state.isPowered : false;
+          }
+          case 'lnb': {
+            const rfFrontEnd = equipment.rfFrontEnds[0];
+            return rfFrontEnd ? rfFrontEnd.lnbModule.state.isPowered : false;
           }
           case 'spectrum-analyzer': {
             return true; // Spectrum analyzer always powered on for this simulation

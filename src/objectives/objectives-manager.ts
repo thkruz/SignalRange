@@ -29,17 +29,24 @@ export class ObjectivesManager {
     this.startTime_ = performance.now();
 
     // Initialize objective states
-    this.objectiveStates_ = objectives.map((objective) => ({
-      objective,
-      isCompleted: false,
-      conditionStates: objective.conditions.map((condition) => ({
-        condition,
-        isSatisfied: false,
-        maintainedDuration: 0,
-        isMaintenanceComplete: false,
-        lostTimestamps: [],
-      })),
-    }));
+    this.objectiveStates_ = objectives.map((objective) => {
+      const hasNoPrerequisites = !objective.prerequisiteObjectiveIds || objective.prerequisiteObjectiveIds.length === 0;
+      const isActive = hasNoPrerequisites;
+
+      return {
+        objective,
+        isActive,
+        activatedAt: isActive ? performance.now() : undefined,
+        isCompleted: false,
+        conditionStates: objective.conditions.map((condition) => ({
+          condition,
+          isSatisfied: false,
+          maintainedDuration: 0,
+          isMaintenanceComplete: false,
+          lostTimestamps: [],
+        })),
+      };
+    });
 
     // Subscribe to update loop
     this.eventBus_.on(Events.UPDATE, this.update_.bind(this));
@@ -112,10 +119,30 @@ export class ObjectivesManager {
     for (const objectiveState of this.objectiveStates_) {
       const objective = objectiveState.objective;
       const isCompleted = objectiveState.isCompleted;
-      html += `<li class="objective-item ${isCompleted ? 'completed' : 'incomplete'}">`;
-      html += `<strong>${objective.title}</strong> - ${isCompleted ? 'Completed' : 'Incomplete'}`;
+      const isActive = objectiveState.isActive;
+
+      // Determine objective state class and label
+      let stateClass = 'locked';
+      let stateLabel = 'Locked';
+      if (isCompleted) {
+        stateClass = 'completed';
+        stateLabel = 'Completed';
+      } else if (isActive) {
+        stateClass = 'active';
+        stateLabel = 'In Progress';
+      }
+
+      // Collapsed by default except for active objectives
+      const collapsedClass = isActive ? '' : 'collapsed';
+
+      html += `<li class="objective-item ${stateClass} ${collapsedClass}">`;
+      html += `<div class="objective-header" onclick="this.parentElement.classList.toggle('collapsed');">`;
+      html += `<span class="accordion-icon"></span>`;
+      html += `<strong>${objective.title}</strong> - ${stateLabel}`;
+      html += `</div>`;
+      html += `<div class="objective-content">`;
       html += `<p>${objective.description}</p>`;
-      html += '<ul>';
+      html += '<ul class="conditions-list">';
 
       for (let i = 0; i < objective.conditions.length; i++) {
         const condition = objective.conditions[i];
@@ -123,14 +150,15 @@ export class ObjectivesManager {
         const conditionCompleted = conditionState.isMaintenanceComplete;
 
         html += `<li class="condition-item ${conditionCompleted ? 'completed' : 'incomplete'}">`;
-        html += `${condition.description} - ${conditionCompleted ? 'Completed' : 'Incomplete'}`;
+        html += `${condition.description}`;
         html += '</li>';
       }
 
-      html += '</ul></li>';
+      html += '</ul></div></li>';
     }
 
     html += '</ul></div>';
+
     return html;
   }
 
@@ -143,6 +171,11 @@ export class ObjectivesManager {
     for (const objectiveState of this.objectiveStates_) {
       // Skip already completed objectives
       if (objectiveState.isCompleted) {
+        continue;
+      }
+
+      // Skip inactive objectives (prerequisites not met)
+      if (!objectiveState.isActive) {
         continue;
       }
 
@@ -216,6 +249,9 @@ export class ObjectivesManager {
           completedAt: objectiveState.completedAt,
         });
 
+        // Activate any objectives that were waiting for this prerequisite
+        this.activateDependentObjectives_(objectiveState.objective.id);
+
         // Check if all objectives are complete
         if (this.areAllObjectivesCompleted()) {
           this.eventBus_.emit(Events.OBJECTIVES_ALL_COMPLETED, {
@@ -239,6 +275,44 @@ export class ObjectivesManager {
     } else {
       // At least one condition must be maintenance-complete
       return objectiveState.conditionStates.some((cs) => cs.isMaintenanceComplete);
+    }
+  }
+
+  /**
+   * Activate objectives that were waiting for a specific prerequisite
+   */
+  private activateDependentObjectives_(completedObjectiveId: string): void {
+    const now = performance.now();
+
+    for (const objectiveState of this.objectiveStates_) {
+      // Skip already active or completed objectives
+      if (objectiveState.isActive || objectiveState.isCompleted) {
+        continue;
+      }
+
+      // Check if this objective has the completed objective as a prerequisite
+      const prerequisites = objectiveState.objective.prerequisiteObjectiveIds || [];
+      if (!prerequisites.includes(completedObjectiveId)) {
+        continue;
+      }
+
+      // Check if all prerequisites are now met
+      const allPrerequisitesMet = prerequisites.every((prereqId) => {
+        const prereqState = this.objectiveStates_.find((state) => state.objective.id === prereqId);
+        return prereqState?.isCompleted || false;
+      });
+
+      // Activate if all prerequisites are met
+      if (allPrerequisitesMet) {
+        objectiveState.isActive = true;
+        objectiveState.activatedAt = now;
+
+        this.eventBus_.emit(Events.OBJECTIVE_ACTIVATED, {
+          objectiveId: objectiveState.objective.id,
+          objective: objectiveState.objective,
+          activatedAt: now,
+        });
+      }
     }
   }
 

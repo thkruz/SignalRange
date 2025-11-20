@@ -85,6 +85,12 @@ export interface RxSignalLostData {
 }
 
 // Objectives Event specific interfaces
+export interface ObjectiveActivatedData {
+  objectiveId: string;
+  objective: Objective;
+  activatedAt: number;
+}
+
 export interface ObjectiveCompletedData {
   objectiveId: string;
   objective: Objective;
@@ -142,6 +148,7 @@ export enum Events {
   RF_FE_GPSDO_CHANGED = "rf-fe:gpsdo:changed",
 
   // Objectives events
+  OBJECTIVE_ACTIVATED = 'objective:activated',
   OBJECTIVE_COMPLETED = 'objective:completed',
   OBJECTIVE_CONDITION_CHANGED = 'objective:condition:changed',
   OBJECTIVES_ALL_COMPLETED = 'objectives:all:completed',
@@ -184,6 +191,7 @@ export interface EventMap {
   [Events.DRAW]: [Milliseconds];
   [Events.SYNC]: [];
 
+  [Events.OBJECTIVE_ACTIVATED]: [ObjectiveActivatedData];
   [Events.OBJECTIVE_COMPLETED]: [ObjectiveCompletedData];
   [Events.OBJECTIVE_CONDITION_CHANGED]: [ObjectiveConditionChangedData];
   [Events.OBJECTIVES_ALL_COMPLETED]: [ObjectivesAllCompletedData];

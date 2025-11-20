@@ -119,6 +119,8 @@ export interface Objective {
   points?: number;
   /** Optional: Whether this objective is optional */
   isOptional?: boolean;
+  /** Prerequisites - objective IDs that must be completed before this becomes active */
+  prerequisiteObjectiveIds?: string[];
 }
 
 /**
@@ -127,6 +129,10 @@ export interface Objective {
 export interface ObjectiveState {
   /** Reference to the objective definition */
   objective: Objective;
+  /** Whether this objective is currently active (prerequisites met) */
+  isActive: boolean;
+  /** Timestamp when objective became active */
+  activatedAt?: number;
   /** Whether this objective has been completed */
   isCompleted: boolean;
   /** Timestamp when objective was first achieved */

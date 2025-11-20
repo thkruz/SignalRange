@@ -206,11 +206,10 @@ export const scenario1Data: ScenarioData = {
   },
   objectives: [
     {
-      id: 'phase-1-power-up-sequence',
-      title: 'Complete Power-Up Sequence',
-      description: 'Power up the RF front end modules in the correct order to prepare for satellite acquisition.',
+      id: 'phase-1-gpsdo',
+      title: 'Phase 1: GPSDO Power-Up and Lock',
+      description: 'Power up the GPSDO module and achieve stable frequency lock.',
       conditions: [
-        // GPSDO Power-Up and Lock
         {
           type: 'equipment-powered',
           description: 'GPSDO Module Powered',
@@ -247,7 +246,16 @@ export const scenario1Data: ScenarioData = {
           description: 'GPSDO Not in Holdover Mode',
           mustMaintain: false,
         },
-        // LNB Power-Up and Stabilization
+      ],
+      conditionLogic: 'AND',
+      points: 15,
+    },
+    {
+      id: 'phase-1-lnb',
+      title: 'Phase 2: LNB Power-Up and Stabilization',
+      description: 'Power up the LNB module and wait for thermal stabilization.',
+      prerequisiteObjectiveIds: ['phase-1-gpsdo'],
+      conditions: [
         {
           type: 'equipment-powered',
           description: 'LNB Module Powered',
@@ -273,8 +281,7 @@ export const scenario1Data: ScenarioData = {
         {
           type: 'lnb-thermally-stable',
           description: 'LNB Temperature Stabilization Complete',
-          mustMaintain: true,
-          maintainDuration: 150, // Must maintain stability for 150 seconds (2.5 min)
+          mustMaintain: false,
         },
         {
           type: 'lnb-noise-performance',
@@ -284,7 +291,16 @@ export const scenario1Data: ScenarioData = {
           },
           mustMaintain: false,
         },
-        // BUC Power-Up (Standby Mode)
+      ],
+      conditionLogic: 'AND',
+      points: 15,
+    },
+    {
+      id: 'phase-1-buc',
+      title: 'Phase 3: BUC Power-Up (Standby Mode)',
+      description: 'Power up the BUC module in standby mode with RF output muted.',
+      prerequisiteObjectiveIds: ['phase-1-lnb'],
+      conditions: [
         {
           type: 'equipment-powered',
           description: 'BUC Module Powered',
@@ -311,7 +327,16 @@ export const scenario1Data: ScenarioData = {
           },
           mustMaintain: false,
         },
-        // Spectrum Analyzer Configuration
+      ],
+      conditionLogic: 'AND',
+      points: 10,
+    },
+    {
+      id: 'phase-1-spec-a',
+      title: 'Phase 4: Spectrum Analyzer Configuration',
+      description: 'Configure the spectrum analyzer for signal monitoring.',
+      prerequisiteObjectiveIds: ['phase-1-buc'],
+      conditions: [
         {
           type: 'frequency-set',
           description: 'SpecA Center Frequency: 3,985.5 MHz',
@@ -355,12 +380,13 @@ export const scenario1Data: ScenarioData = {
         }
       ],
       conditionLogic: 'AND',
-      points: 50,
+      points: 10,
     },
     {
       id: 'acquire-lock-satellite-1',
-      title: 'Acquire and Maintain Lock on HELIOS-7',
+      title: 'Phase 5: Acquire and Maintain Lock on HELIOS-7',
       description: 'Point the antenna at satellite 1 (HELIOS-7) and achieve stable tracking lock. The lock must be maintained for at least 10 seconds.',
+      prerequisiteObjectiveIds: ['phase-1-spec-a'],
       conditions: [
         {
           type: 'antenna-locked',

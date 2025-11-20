@@ -10,10 +10,12 @@
     width: max-content;
   }
 
+  .control-group {
+    max-width: 85px;
+  }
+
   .control-group label {
     text-align: center;
-    /* TODO This shouldn't be hard coded */
-    width: 85px;
   }
 
   .physical-switch-container {

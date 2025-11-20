@@ -273,7 +273,7 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
    */
   private updateOutputPower_(): void {
     if (!this.state_.isPowered || this.state_.isMuted) {
-      this.state_.outputPower = -Infinity as dBm;
+      this.state_.outputPower = -170 as dBm; // Effectively off
       return;
     }
 

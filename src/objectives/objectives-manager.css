@@ -1,7 +1,111 @@
 .objectives-checklist {
-  .objective-item.completed {
-    strong {
-      background: green;
+  .objective-item {
+    margin-bottom: 1em;
+
+    &.locked {
+      opacity: 0.5;
+      strong {
+        background: gray;
+      }
+    }
+
+    &.active {
+      strong {
+        background: orange;
+      }
+    }
+
+    &.completed {
+      strong {
+        background: green;
+      }
+    }
+
+    /* Accordion functionality - collapsed state */
+    &.collapsed .objective-content {
+      max-height: 0;
+      overflow: hidden;
+      opacity: 0;
+      margin: 0;
+      padding: 0;
+      transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out;
+    }
+
+    &.collapsed .accordion-icon::before {
+      transform: rotate(0deg);
+    }
+
+    /* Default (expanded) state - when NOT collapsed */
+    &:not(.collapsed) .objective-content {
+      max-height: 1000px;
+      opacity: 1;
+      transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out;
+    }
+
+    &:not(.collapsed) .accordion-icon::before {
+      transform: rotate(90deg);
+    }
+  }
+
+  .objective-header {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    user-select: none;
+    padding: 0.5em;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+
+    &:hover {
+      background-color: rgba(255, 255, 255, 0.05);
+    }
+  }
+
+  .accordion-icon {
+    display: inline-block;
+    width: 1em;
+    height: 1em;
+    flex-shrink: 0;
+
+    &::before {
+      content: '▶';
+      display: block;
+      transition: transform 0.3s ease-in-out;
+      font-size: 0.8em;
+    }
+  }
+
+  .objective-content {
+    transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out, padding 0.3s ease-in-out;
+    overflow: hidden;
+  }
+
+  .conditions-list {
+    margin-top: 0.5em;
+  }
+
+  .condition-item {
+    list-style: none;
+    padding-left: 1.5em;
+    position: relative;
+    margin: 0.5em 0;
+
+    &::before {
+      position: absolute;
+      left: 0;
+      font-weight: bold;
+      font-size: 1.1em;
+    }
+
+    &.completed::before {
+      content: '✓';
+      color: #4caf50;
+    }
+
+    &.incomplete::before {
+      content: '○';
+      color: #9e9e9e;
     }
   }
 }

@@ -15,7 +15,7 @@ export class SpectralDensityPlot extends RTSAScreen {
   private lastDrawTime: number = 0;
 
   // Data processor reference (shared data source)
-  private dataProcessor: SpectrumDataProcessor;
+  private readonly dataProcessor: SpectrumDataProcessor;
 
   // Per-trace data arrays (3 traces)
   private traceData: Float32Array[] = [];
@@ -41,7 +41,7 @@ export class SpectralDensityPlot extends RTSAScreen {
   };
 
   // Frequency label caching
-  private frequencyLabelCache: Map<number, string[]> = new Map();
+  private readonly frequencyLabelCache: Map<number, string[]> = new Map();
 
   // Grid + labels ImageData caching
   private cachedGridImageData: ImageData | null = null;
@@ -454,7 +454,7 @@ export class SpectralDensityPlot extends RTSAScreen {
 
       // If no compact candidate fits but we still have plenty of room, try drawing the shortest candidate truncated
       if (!drawn) {
-        const fallback = candidates[candidates.length - 1];
+        const fallback = candidates.at(-1);
         const measured = ctx.measureText(fallback).width;
         if (x - lastX >= Math.min(measured, maxTextWidth) + padding) {
           const y = this.height - 20;

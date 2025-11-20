@@ -1,5 +1,7 @@
 import { ContinuousRotaryKnob } from '@app/components/rotary-knob/continuous-rotary-knob';
 import { Logger } from '@app/logging/logger';
+import { Sfx } from '@app/sound/sfx-enum';
+import SoundManager from '@app/sound/sound-manager';
 import { BaseElement } from '../../components/base-element';
 import { html } from "../../engine/utils/development/formatter";
 import { qs, qsa } from "../../engine/utils/query-selector";
@@ -432,7 +434,6 @@ export class AnalyzerControl extends BaseElement {
   }
 
   private playSound(): void {
-    // TODO: Integrate sound system when available
-    // For now, this is a placeholder for the select sound
+    SoundManager.getInstance().play(Sfx.SPEC_A_BTN_PRESS);
   }
 }

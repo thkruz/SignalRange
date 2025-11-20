@@ -8,7 +8,7 @@ export class WaterfallDisplay extends RTSAScreen {
   private lastDrawTime: number = 0;
 
   // Data processor reference (shared data source)
-  private dataProcessor: SpectrumDataProcessor;
+  private readonly dataProcessor: SpectrumDataProcessor;
 
   // Waterfall buffer: each row is a Float32Array of amplitudes
   private buffer: Float32Array[] = [];
@@ -241,8 +241,6 @@ export class WaterfallDisplay extends RTSAScreen {
     const newHeight = Math.max(newWidth, 10); // Square aspect ratio
 
     if (newWidth !== this.width || newHeight !== this.height) {
-      // this.width = newWidth;
-      // this.height = newHeight;
       this.canvas.width = this.width;
       this.canvas.height = this.height;
     }

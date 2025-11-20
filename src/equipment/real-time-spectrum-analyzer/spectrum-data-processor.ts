@@ -10,7 +10,7 @@ import { RealTimeSpectrumAnalyzer } from "./real-time-spectrum-analyzer";
  * 3. Generated data can be synced across networked environments
  */
 export class SpectrumDataProcessor {
-  private specA: RealTimeSpectrumAnalyzer;
+  private readonly specA: RealTimeSpectrumAnalyzer;
 
   // Generated data arrays
   public noiseData: Float32Array;

@@ -210,6 +210,7 @@ export const scenario1Data: ScenarioData = {
       title: 'Complete Power-Up Sequence',
       description: 'Power up the RF front end modules in the correct order to prepare for satellite acquisition.',
       conditions: [
+        // GPSDO Power-Up and Lock
         {
           type: 'equipment-powered',
           description: 'GPSDO Module Powered',
@@ -219,19 +220,71 @@ export const scenario1Data: ScenarioData = {
           mustMaintain: false,
         },
         {
-          type: 'gpsdo-locked',
-          description: 'GPSDO Module Locked',
+          type: 'gpsdo-warmed-up',
+          description: 'GPSDO Warmed Up (Operating Temperature)',
           mustMaintain: false,
         },
+        {
+          type: 'gpsdo-gnss-locked',
+          description: 'GPS Antenna Has Satellite Lock (≥4 satellites)',
+          mustMaintain: false,
+        },
+        {
+          type: 'gpsdo-locked',
+          description: 'GPSDO Frequency Lock Achieved',
+          mustMaintain: false,
+        },
+        {
+          type: 'gpsdo-stability',
+          description: 'GPSDO Stability <5×10⁻¹¹',
+          params: {
+            maxFrequencyAccuracy: 5,
+          },
+          mustMaintain: false,
+        },
+        {
+          type: 'gpsdo-not-in-holdover',
+          description: 'GPSDO Not in Holdover Mode',
+          mustMaintain: false,
+        },
+        // LNB Power-Up and Stabilization
         {
           type: 'equipment-powered',
           description: 'LNB Module Powered',
           params: {
             equipment: 'lnb',
           },
-          mustMaintain: true,
-          maintainDuration: 60, // Must maintain power for 60 seconds
+          mustMaintain: false,
         },
+        {
+          type: 'lnb-gain-set',
+          description: 'LNB Gain Set to 55 dB',
+          params: {
+            gain: 55,
+            gainTolerance: 1,
+          },
+          mustMaintain: false,
+        },
+        {
+          type: 'lnb-reference-locked',
+          description: 'LNB Locked to 10 MHz Reference',
+          mustMaintain: false,
+        },
+        {
+          type: 'lnb-thermally-stable',
+          description: 'LNB Temperature Stabilization Complete',
+          mustMaintain: true,
+          maintainDuration: 150, // Must maintain stability for 150 seconds (2.5 min)
+        },
+        {
+          type: 'lnb-noise-performance',
+          description: 'LNB Noise Temperature ≤100K',
+          params: {
+            maxNoiseTemperature: 100,
+          },
+          mustMaintain: false,
+        },
+        // BUC Power-Up (Standby Mode)
         {
           type: 'equipment-powered',
           description: 'BUC Module Powered',
@@ -241,10 +294,62 @@ export const scenario1Data: ScenarioData = {
           mustMaintain: false,
         },
         {
+          type: 'buc-reference-locked',
+          description: 'BUC Locked to 10 MHz Reference',
+          mustMaintain: false,
+        },
+        {
+          type: 'buc-muted',
+          description: 'BUC RF Output Muted (Safety)',
+          mustMaintain: false,
+        },
+        {
+          type: 'buc-current-normal',
+          description: 'BUC Current Draw Normal (≤4.5A)',
+          params: {
+            maxCurrentDraw: 4.5,
+          },
+          mustMaintain: false,
+        },
+        // Spectrum Analyzer Configuration
+        {
           type: 'frequency-set',
-          description: 'SpecA Frequency Set Correctly',
+          description: 'SpecA Center Frequency: 3,985.5 MHz',
           params: {
             frequency: 3985.5e6 as RfFrequency,
+          },
+          mustMaintain: false,
+        },
+        {
+          type: 'speca-span-set',
+          description: 'SpecA Span: 10 MHz',
+          params: {
+            span: 10e6,
+          },
+          mustMaintain: false,
+        },
+        {
+          type: 'speca-rbw-set',
+          description: 'SpecA RBW: 10 kHz',
+          params: {
+            rbw: 10e3,
+          },
+          mustMaintain: false,
+        },
+        {
+          type: 'speca-reference-level-set',
+          description: 'SpecA Reference Level: -40 dBm',
+          params: {
+            referenceLevel: -40,
+            referenceLevelTolerance: 1,
+          },
+          mustMaintain: false,
+        },
+        {
+          type: 'speca-noise-floor-visible',
+          description: 'SpecA Showing Clean Baseline Noise Floor',
+          params: {
+            maxSignalStrength: -60,
           },
           mustMaintain: false,
         }

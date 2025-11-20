@@ -9,10 +9,26 @@
 export type ConditionType =
   | 'antenna-locked' // Antenna is locked on a specific satellite
   | 'gpsdo-locked' // GPSDO has achieved stable lock
+  | 'gpsdo-warmed-up' // GPSDO is at operating temperature and warmup complete
+  | 'gpsdo-gnss-locked' // GPS antenna has satellite lock (≥4 satellites)
+  | 'gpsdo-stability' // GPSDO frequency accuracy <5×10⁻¹¹
+  | 'gpsdo-not-in-holdover' // GPSDO not operating in holdover mode
   | 'buc-locked' // BUC is locked to external reference
+  | 'buc-reference-locked' // BUC locked to 10MHz reference
+  | 'buc-muted' // BUC RF output is muted (safety check)
+  | 'buc-current-normal' // BUC current draw within normal range
+  | 'buc-not-saturated' // BUC output not in compression
+  | 'lnb-reference-locked' // LNB locked to 10MHz reference
+  | 'lnb-gain-set' // LNB gain set to specific value
+  | 'lnb-thermally-stable' // LNB thermal stabilization complete
+  | 'lnb-noise-performance' // LNB noise temperature within spec
   | 'equipment-powered' // Specific equipment is powered on
   | 'signal-detected' // Signal detected on spectrum analyzer
   | 'frequency-set' // Equipment tuned to specific frequency
+  | 'speca-span-set' // Spectrum analyzer span set to specific value
+  | 'speca-rbw-set' // Spectrum analyzer RBW set to specific value
+  | 'speca-reference-level-set' // Spectrum analyzer reference level set
+  | 'speca-noise-floor-visible' // Spectrum analyzer shows clean baseline
   | 'custom'; // Custom condition with evaluator function
 
 /**
@@ -43,6 +59,26 @@ export interface ConditionParams {
   frequency?: number;
   /** For frequency-set: tolerance in Hz */
   frequencyTolerance?: number;
+  /** For lnb-gain-set: target gain in dB */
+  gain?: number;
+  /** For lnb-gain-set: gain tolerance in dB */
+  gainTolerance?: number;
+  /** For gpsdo-stability: maximum frequency accuracy (×10⁻¹¹) */
+  maxFrequencyAccuracy?: number;
+  /** For lnb-noise-performance: maximum noise temperature in K */
+  maxNoiseTemperature?: number;
+  /** For buc-current-normal: maximum current draw in Amperes */
+  maxCurrentDraw?: number;
+  /** For speca-span-set: target span in Hz */
+  span?: number;
+  /** For speca-rbw-set: target RBW in Hz */
+  rbw?: number;
+  /** For speca-reference-level-set: target reference level in dBm */
+  referenceLevel?: number;
+  /** For speca-reference-level-set: reference level tolerance in dB */
+  referenceLevelTolerance?: number;
+  /** For speca-noise-floor-visible: maximum signal strength to consider "clean baseline" in dBm */
+  maxSignalStrength?: number;
   /** For custom conditions: custom evaluator function */
   evaluator?: () => boolean;
   /** Additional context-specific parameters */

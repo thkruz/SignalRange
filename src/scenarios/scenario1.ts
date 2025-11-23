@@ -26,11 +26,11 @@ export const scenario1Data: ScenarioData = {
   imageUrl: 'scenario1.jpg',
   number: 1,
   title: '"First Light"',
-  subtitle: 'HELIOS-7 Initial Contact',
+  subtitle: 'MARINER-1 Initial Contact',
   duration: '25-30 min',
   difficulty: 'beginner',
   missionType: 'Commercial Communications',
-  description: `You are a Ground Station Operator at Pacific Edge Communications facility in Guam. Your company has just launched HELIOS-7, a new C-band communications satellite. The satellite is now station-keeping at 145°E geostationary orbit. You will conduct the first ground station link test - a critical milestone before commercial operations begin.<br><br> This scenario will guide you through setting up the ground station equipment, acquiring the satellite signal, and performing initial signal quality measurements. You'll learn the basics of antenna pointing, RF front end configuration, and spectrum analysis in a hands-on environment.`,
+  description: `You are a Ground Station Operator at North Atlantic Teleport Services, a commercial satellite ground station facility in rural Vermont. Your company provides ground segment services for multiple GEO communication satellites serving the North Atlantic region.<br><br>Your latest client, SeaLink Communications, launched MARINER-1 fourteen days ago aboard a Falcon 9 from Cape Canaveral. The satellite completed its apogee burns and reached its operational slot at 53°W geostationary orbit yesterday. Beacon Orbital Analytics confirmed the satellite achieved station-keeping this morning, and the spacecraft operations team in Halifax has handed the communications payload over to ground operations.<br><br>You will conduct the first ground station RF link test - a critical milestone before MARINER-1 can begin revenue service providing C-band maritime connectivity from Newfoundland to the Caribbean. This scenario will guide you through setting up the ground station equipment, acquiring the satellite signal, and performing initial signal quality measurements.`,
   equipment: [
     '9-meter C-band Antenna',
     'RF Front End',
@@ -464,7 +464,7 @@ export const scenario1Data: ScenarioData = {
       I'll be monitoring from the upstairs control room. When you're ready, let's bring MARINER-1 online.
       </p>
       `,
-      character: Character.GUIDE,
+      character: Character.CHARLIE_BROOKS,
       audioUrl: getAssetUrl('/assets/campaigns/nats/1/intro.mp3'),
     },
     objectives: {
@@ -483,7 +483,7 @@ export const scenario1Data: ScenarioData = {
         Keep going.
         </p>
         `,
-        character: Character.GUIDE,
+        character: Character.CHARLIE_BROOKS,
         audioUrl: getAssetUrl('/assets/campaigns/nats/1/obj-phase-1-lnb.mp3'),
       },
     },

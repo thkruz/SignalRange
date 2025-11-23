@@ -73,6 +73,32 @@
     transform: rotate(-30deg);
   }
 
+  .locked-banner {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    width: 100%;
+    background: #555;
+    color: #fff;
+    padding: 6px 0;
+    font-size: 36px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    text-align: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    z-index: 20;
+    transform: rotate(-30deg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+  }
+
+  .locked-icon {
+    font-size: 32px;
+  }
+
   .checkpoint-banner {
     position: absolute;
     top: 50px;
@@ -93,6 +119,29 @@
   }
 
   .checkpoint-icon {
+    font-size: 14px;
+  }
+
+  .completed-banner {
+    position: absolute;
+    top: 50px;
+    right: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: linear-gradient(135deg, #ffd700 0%, #ffb700 100%);
+    color: #1a1a1a;
+    padding: 6px 12px;
+    font-size: 11px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(255, 215, 0, 0.5);
+    z-index: 15;
+  }
+
+  .completed-icon {
     font-size: 14px;
   }
 }
@@ -362,7 +411,8 @@
 
 .btn-continue,
 .btn-start,
-.btn-start-fresh {
+.btn-start-fresh,
+.btn-play-again {
   padding: 10px 16px;
   border: none;
   border-radius: 4px;
@@ -410,8 +460,21 @@
   transform: translateY(-1px);
 }
 
+.btn-play-again {
+  background: linear-gradient(135deg, #ffd700 0%, #ffb700 100%);
+  color: #1a1a1a;
+  font-weight: bold;
+}
+
+.btn-play-again:hover {
+  background: linear-gradient(135deg, #ffe44d 0%, #ffd700 100%);
+  box-shadow: 0 4px 10px rgba(255, 215, 0, 0.6);
+  transform: translateY(-1px);
+}
+
 .btn-continue:active,
-.btn-start-fresh:active {
+.btn-start-fresh:active,
+.btn-play-again:active {
   transform: translateY(0);
 }
 

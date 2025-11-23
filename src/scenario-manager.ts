@@ -85,6 +85,7 @@ export class ScenarioManager {
 export interface ScenarioData {
   id: string;
   isDisabled?: boolean;
+  prerequisiteScenarioIds?: string[];
   url: string;
   imageUrl: string;
   number: number;
@@ -109,3 +110,26 @@ export const SCENARIOS: ScenarioData[] = [
   scenario2Data,
   scenario3Data,
 ];
+
+export function isScenarioLocked(scenario: ScenarioData, completedScenarioIds: string[]): boolean {
+  if (!scenario.prerequisiteScenarioIds || scenario.prerequisiteScenarioIds.length === 0) {
+    return false;
+  }
+
+  return !scenario.prerequisiteScenarioIds.every(prereqId =>
+    completedScenarioIds.includes(prereqId)
+  );
+}
+
+export function getPrerequisiteScenarioNames(scenario: ScenarioData): string[] {
+  if (!scenario.prerequisiteScenarioIds || scenario.prerequisiteScenarioIds.length === 0) {
+    return [];
+  }
+
+  return scenario.prerequisiteScenarioIds
+    .map(prereqId => {
+      const prereqScenario = SCENARIOS.find(s => s.id === prereqId);
+      return prereqScenario ? prereqScenario.title : prereqId;
+    })
+    .filter(Boolean);
+}

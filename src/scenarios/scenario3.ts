@@ -15,7 +15,7 @@ import { ScenarioData } from "../scenario-manager";
 
 export const scenario3Data: ScenarioData = {
   id: 'first-light3',
-  isDisabled: true,
+  prerequisiteScenarioIds: ['first-light2'],
   url: 'scenarios/3',
   imageUrl: 'scenario3.jpg',
   number: 3,

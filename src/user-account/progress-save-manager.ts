@@ -14,8 +14,8 @@ import { getUserDataService } from './user-data-service';
  * Checkpoints include the full AppState for seamless scenario continuation.
  */
 export class ProgressSaveManager {
-  private eventBus: EventBus;
-  private userDataService = getUserDataService();
+  private readonly eventBus: EventBus;
+  private readonly userDataService = getUserDataService();
   private isInitialized = false;
   private isSaving = false;
 
@@ -35,6 +35,7 @@ export class ProgressSaveManager {
 
     // Listen for objective completions
     this.eventBus.on(Events.OBJECTIVE_COMPLETED, this.handleObjectiveCompleted.bind(this));
+    this.eventBus.on(Events.OBJECTIVES_ALL_COMPLETED, this.handleAllObjectiveCompleted.bind(this));
 
     this.isInitialized = true;
     Logger.info('ProgressSaveManager initialized');
@@ -57,6 +58,24 @@ export class ProgressSaveManager {
       Logger.error('Failed to save progress checkpoint:', error);
     } finally {
       this.isSaving = false;
+    }
+  }
+
+  private async handleAllObjectiveCompleted(): Promise<void> {
+    Logger.info('All objectives completed, saving final checkpoint...');
+    try {
+      // Update user progress to mark scenario as completed
+      const scenarioManager = ScenarioManager.getInstance();
+
+      const progress = await this.userDataService.getUserProgress();
+      const completedScenarios = new Set(progress.completedScenarios || []);
+      completedScenarios.add(scenarioManager.data.number);
+
+      await this.userDataService.updateUserProgress({
+        completedScenarios: Array.from(completedScenarios),
+      });
+    } catch (error) {
+      Logger.error('Failed to save final progress checkpoint:', error);
     }
   }
 

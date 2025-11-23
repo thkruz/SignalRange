@@ -1,7 +1,7 @@
 import { qs, qsa } from "@app/engine/utils/query-selector";
 import { Logger } from "@app/logging/logger";
 import { Router } from "@app/router";
-import { ScenarioData, SCENARIOS } from "@app/scenario-manager";
+import { ScenarioData, SCENARIOS, isScenarioLocked, getPrerequisiteScenarioNames } from "@app/scenario-manager";
 import { getUserDataService } from "@app/user-account/user-data-service";
 import { html } from "../engine/utils/development/formatter";
 import { BasePage } from "./base-page";
@@ -14,6 +14,7 @@ export class ScenarioSelectionPage extends BasePage {
   id = 'scenario-selection-page';
   private static instance_: ScenarioSelectionPage;
   private readonly scenarioCheckpoints_: Map<string, boolean> = new Map();
+  private completedScenarioIds_: string[] = [];
   private checkpointsLoaded_ = false;
 
   private constructor() {
@@ -64,6 +65,12 @@ export class ScenarioSelectionPage extends BasePage {
         this.scenarioCheckpoints_.set(checkpoint.scenarioId, true);
       });
 
+      // Load completed scenarios - convert scenario numbers to IDs
+      const completedScenarioNumbers = progress.completedScenarios || [];
+      this.completedScenarioIds_ = completedScenarioNumbers
+        .map(num => SCENARIOS.find(s => s.number === num)?.id)
+        .filter(Boolean);
+
       // Re-render the scenario grid with checkpoint data
       this.updateScenarioCards_();
     } catch (error) {
@@ -101,6 +108,12 @@ export class ScenarioSelectionPage extends BasePage {
     startFreshButtons.forEach(btn => {
       btn.addEventListener('click', this.handleStartFresh_.bind(this));
     });
+
+    // Add click handlers for Play Again buttons
+    const playAgainButtons = qsa('.btn-play-again', this.dom_);
+    playAgainButtons.forEach(btn => {
+      btn.addEventListener('click', this.handlePlayAgain_.bind(this));
+    });
   }
 
   protected html_ = html`
@@ -118,18 +131,77 @@ export class ScenarioSelectionPage extends BasePage {
 
   private renderScenarioCard_(scenario: ScenarioData): string {
     const hasCheckpoint = this.scenarioCheckpoints_.get(scenario.id);
+    const isLocked = isScenarioLocked(scenario, this.completedScenarioIds_);
+    const prerequisiteNames = isLocked ? getPrerequisiteScenarioNames(scenario) : [];
+    const isDisabledOrLocked = scenario.isDisabled || isLocked;
+    const isCompleted = this.completedScenarioIds_.includes(scenario.id);
+
+    let statusBanner = '';
+    if (isLocked) {
+      statusBanner = `
+        <div class="locked-banner" title="Complete ${prerequisiteNames.join(', ')} to unlock">
+          <span class="locked-icon">🔒</span> Locked
+        </div>
+      `;
+    } else if (scenario.isDisabled) {
+      statusBanner = `
+        <div class="coming-soon-banner">Coming Soon</div>
+      `;
+    }
+
+    let actionButtons = '';
+    if (!isDisabledOrLocked) {
+      if (isCompleted) {
+        actionButtons = `
+          <div class="scenario-checkpoint-actions">
+          <button type="button" class="btn-play-again" data-scenario-id="${scenario.id}" data-scenario-url="${scenario.url}">
+            Play Again
+          </button>
+          </div>
+        `;
+      } else if (hasCheckpoint) {
+        actionButtons = `
+          <div class="scenario-checkpoint-actions">
+          <button type="button" class="btn-continue" data-scenario-url="${scenario.url}">
+            Continue from Checkpoint
+          </button>
+          <button type="button" class="btn-start-fresh" data-scenario-id="${scenario.id}" data-scenario-url="${scenario.url}">
+            Start Fresh
+          </button>
+          </div>
+        `;
+      } else {
+        actionButtons = `
+          <div class="scenario-checkpoint-actions">
+          <button type="button" class="btn-start" data-scenario-id="${scenario.id}" data-scenario-url="${scenario.url}">
+            Start
+          </button>
+          </div>
+        `;
+      }
+    }
+
+    let progressBanner = '';
+    if (isCompleted && !isDisabledOrLocked) {
+      progressBanner = `
+        <div class="completed-banner">
+          <span class="completed-icon">🏆</span>
+          Completed
+        </div>
+      `;
+    } else if (hasCheckpoint && !isDisabledOrLocked) {
+      progressBanner = `
+        <div class="checkpoint-banner">
+          <span class="checkpoint-icon">💾</span>
+          Checkpoint Available
+        </div>
+      `;
+    }
 
     return html`
-      <div class="scenario-card ${scenario.isDisabled ? 'disabled' : ''}" data-scenario-url="${scenario.url}" data-scenario-id="${scenario.id}" data-scenario="${scenario.title}">
-      ${scenario.isDisabled ? `
-      <div class="coming-soon-banner">Coming Soon</div>
-      ` : ''}
-      ${hasCheckpoint && !scenario.isDisabled ? `
-      <div class="checkpoint-banner">
-        <span class="checkpoint-icon">💾</span>
-        Checkpoint Available
-      </div>
-      ` : ''}
+      <div class="scenario-card ${isDisabledOrLocked ? 'disabled' : ''}" data-scenario-url="${scenario.url}" data-scenario-id="${scenario.id}" data-scenario="${scenario.title}">
+      ${statusBanner}
+      ${progressBanner}
       <div class="scenario-card-inner">
         <div class="scenario-card-header">
         <div class="scenario-number">Scenario ${scenario.number}</div>
@@ -162,22 +234,7 @@ export class ScenarioSelectionPage extends BasePage {
         </div>
         </div>
 
-        ${hasCheckpoint && !scenario.isDisabled ? `
-          <div class="scenario-checkpoint-actions">
-          <button type="button" class="btn-continue" data-scenario-url="${scenario.url}">
-            Continue from Checkpoint
-          </button>
-          <button type="button" class="btn-start-fresh" data-scenario-id="${scenario.id}" data-scenario-url="${scenario.url}">
-            Start Fresh
-          </button>
-          </div>
-        ` : `
-          <div class="scenario-checkpoint-actions">
-          <button type="button" class="btn-start" data-scenario-id="${scenario.id}" data-scenario-url="${scenario.url}">
-            Start
-          </button>
-          </div>
-        `}
+        ${actionButtons}
         </div>
       </div>
       </div>
@@ -191,6 +248,14 @@ export class ScenarioSelectionPage extends BasePage {
     return parentDom;
   }
 
+  show(): void {
+    super.show();
+    // Refresh scenario data when page is shown to reflect any completion updates
+    this.loadCheckpointsAndUpdate_().catch(error => {
+      Logger.error('Failed to refresh scenario data:', error);
+    });
+  }
+
   protected addEventListeners_(): void {
     // Add click handlers for Continue buttons
     const continueButtons = qsa('.btn-continue', this.dom_);
@@ -202,6 +267,12 @@ export class ScenarioSelectionPage extends BasePage {
     const startFreshButtons = qsa('.btn-start-fresh', this.dom_);
     startFreshButtons.forEach(btn => {
       btn.addEventListener('click', this.handleStartFresh_.bind(this));
+    });
+
+    // Add click handlers for Play Again buttons
+    const playAgainButtons = qsa('.btn-play-again', this.dom_);
+    playAgainButtons.forEach(btn => {
+      btn.addEventListener('click', this.handlePlayAgain_.bind(this));
     });
   }
 
@@ -252,6 +323,19 @@ export class ScenarioSelectionPage extends BasePage {
     } catch (error) {
       Logger.error('Failed to clear checkpoint:', error);
       alert('Failed to clear checkpoint. Please try again.');
+    }
+  }
+
+  /**
+   * Handle Play Again button click for completed scenarios
+   */
+  private handlePlayAgain_(event: Event): void {
+    event.stopPropagation(); // Prevent card selection
+    const button = event.currentTarget as HTMLElement;
+    const scenarioUrl = button.dataset.scenarioUrl;
+
+    if (scenarioUrl) {
+      Router.getInstance().navigate(scenarioUrl);
     }
   }
 }

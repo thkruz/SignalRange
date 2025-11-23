@@ -6,6 +6,7 @@ import { Events } from "@app/events/events";
 import { DraggableHtmlBox } from "@app/modal/draggable-html-box";
 import { ObjectivesManager } from "@app/objectives";
 import { ScenarioManager, SimulationSettings } from "@app/scenario-manager";
+import { SimulationManager } from "@app/simulation/simulation-manager";
 import { html } from "../../engine/utils/development/formatter";
 import { Antenna } from '../../equipment/antenna/antenna';
 import { RealTimeSpectrumAnalyzer } from '../../equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer';
@@ -60,14 +61,16 @@ export class Equipment extends BaseElement {
       </div>
     </div>
     `;
-  missionBriefBox: DraggableHtmlBox;
-  checklistBox: DraggableHtmlBox;
 
   constructor(settings: SimulationSettings) {
     super();
     this.html_ = settings.layout ? settings.layout : this.html_;
     this.init_(SandboxPage.containerId, 'replace');
     this.initEquipment_(settings);
+
+    EventBus.getInstance().on(Events.ROUTE_CHANGED, () => {
+      this.stopChecklistRefreshTimer_();
+    });
   }
 
   protected addEventListeners_(): void {
@@ -79,8 +82,8 @@ export class Equipment extends BaseElement {
     const missionBriefUrl = ScenarioManager.getInstance().settings.missionBriefUrl;
     if (missionBriefUrl) {
       qs('.mission-brief-icon').addEventListener('click', () => {
-        this.missionBriefBox ??= new DraggableHtmlBox('Mission Brief', 'mission-brief', missionBriefUrl);
-        this.missionBriefBox.open();
+        SimulationManager.getInstance().missionBriefBox ??= new DraggableHtmlBox('Mission Brief', 'mission-brief', missionBriefUrl);
+        SimulationManager.getInstance().missionBriefBox.open();
       });
     }
   }
@@ -89,24 +92,24 @@ export class Equipment extends BaseElement {
     const missionBriefUrl = ScenarioManager.getInstance().settings.missionBriefUrl;
     if (missionBriefUrl) {
       qs('.checklist-icon').addEventListener('click', () => {
-        this.checklistBox ??= new DraggableHtmlBox('Checklist', 'checklist', '');
+        SimulationManager.getInstance().checklistBox ??= new DraggableHtmlBox('Checklist', 'checklist', '');
         const objectivesManager = ObjectivesManager.getInstance();
         objectivesManager.syncCollapsedStatesFromDOM();
         this.lastChecklistHtml_ = objectivesManager.generateHtmlChecklist();
-        this.checklistBox.updateContent(this.lastChecklistHtml_);
-        this.checklistBox.open();
-        this.startChecklistRefreshTimer_(this.checklistBox);
+        SimulationManager.getInstance().checklistBox.updateContent(this.lastChecklistHtml_);
+        SimulationManager.getInstance().checklistBox.open();
+        this.startChecklistRefreshTimer_(SimulationManager.getInstance().checklistBox);
       });
 
       EventBus.getInstance().on(Events.OBJECTIVE_ACTIVATED, () => {
         // Can't update it until they open it for the first time
-        if (!this.checklistBox) {
+        if (!SimulationManager.getInstance().checklistBox) {
           return;
         }
 
         const objectivesManager = ObjectivesManager.getInstance();
         this.lastChecklistHtml_ = objectivesManager.generateHtmlChecklist();
-        this.checklistBox.updateContent(this.lastChecklistHtml_);
+        SimulationManager.getInstance().checklistBox.updateContent(this.lastChecklistHtml_);
       });
     }
   }

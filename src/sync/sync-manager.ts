@@ -1,4 +1,5 @@
 import { RFFrontEndState } from '@app/equipment/rf-front-end/rf-front-end';
+import { ObjectiveState } from '@app/objectives';
 import { AntennaState } from '../equipment/antenna/antenna';
 import { RealTimeSpectrumAnalyzerState } from '../equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer';
 import { ReceiverState } from '../equipment/receiver/receiver';
@@ -156,7 +157,22 @@ export class SyncManager {
       return { equipment: undefined };
     }
 
+    // Get objective states from SimulationManager if available
+    let objectiveStates: ObjectiveState[] | undefined;
+    try {
+      const { SimulationManager } = require('../simulation/simulation-manager');
+      const sim = SimulationManager.getInstance();
+      if (sim?.objectivesManager) {
+        objectiveStates = sim.objectivesManager.getObjectiveStates() as ObjectiveState[];
+      }
+    } catch (error) {
+      // SimulationManager or ObjectivesManager not available yet - this is expected during initialization
+      console.debug('ObjectivesManager not available when building state:', error);
+      objectiveStates = undefined;
+    }
+
     return {
+      objectiveStates,
       equipment: {
         spectrumAnalyzersState: this.equipment.spectrumAnalyzers.map(sa => sa.state),
         antennasState: this.equipment.antennas.map(a => a.state),
@@ -219,6 +235,19 @@ export class SyncManager {
         }
       });
     }
+
+    // Sync Objective States if available
+    if (state.objectiveStates && state.objectiveStates.length > 0) {
+      try {
+        const { SimulationManager } = require('../simulation/simulation-manager');
+        const sim = SimulationManager.getInstance();
+        if (sim?.objectivesManager) {
+          sim.objectivesManager.restoreState(state.objectiveStates);
+        }
+      } catch (error) {
+        console.debug('ObjectivesManager not available when syncing from storage:', error);
+      }
+    }
   }
 }
 
@@ -226,6 +255,7 @@ export class SyncManager {
  * AppState interface (should match your existing type)
  */
 export interface AppState {
+  objectiveStates?: ObjectiveState[];
   equipment?: {
     spectrumAnalyzersState?: RealTimeSpectrumAnalyzerState[];
     rfFrontEndsState?: RFFrontEndState[];

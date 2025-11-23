@@ -115,6 +115,57 @@ export class ObjectivesManager {
   }
 
   /**
+   * Restore objective states from saved checkpoint data
+   * Merges saved state with current objective definitions, preserving progress
+   */
+  restoreState(savedStates: ObjectiveState[]): void {
+    if (!savedStates || savedStates.length === 0) {
+      return;
+    }
+
+    // Create a map of saved states by objective ID for quick lookup
+    const savedStateMap = new Map<string, ObjectiveState>();
+    savedStates.forEach((state) => {
+      savedStateMap.set(state.objective.id, state);
+    });
+
+    // Restore state for each current objective
+    for (const currentState of this.objectiveStates_) {
+      const savedState = savedStateMap.get(currentState.objective.id);
+
+      // If no saved state for this objective, keep it as-is (fresh state)
+      if (!savedState) {
+        continue;
+      }
+
+      // Restore activation state and timing
+      currentState.isActive = savedState.isActive;
+      currentState.activatedAt = savedState.activatedAt;
+      currentState.isCompleted = savedState.isCompleted;
+      currentState.completedAt = savedState.completedAt;
+
+      // Restore collapse state if objective was completed
+      if (savedState.isCompleted) {
+        this.collapsedObjectiveIds_.add(currentState.objective.id);
+      }
+
+      // Restore condition states by index to ensure proper matching
+      currentState.conditionStates.forEach((currentCondState, condIndex) => {
+        const savedCondState = savedState.conditionStates[condIndex];
+
+        // Only restore if condition exists in saved state
+        if (savedCondState) {
+          currentCondState.isSatisfied = savedCondState.isSatisfied;
+          currentCondState.satisfiedAt = savedCondState.satisfiedAt;
+          currentCondState.maintainedDuration = savedCondState.maintainedDuration;
+          currentCondState.isMaintenanceComplete = savedCondState.isMaintenanceComplete;
+          currentCondState.lostTimestamps = savedCondState.lostTimestamps || [];
+        }
+      });
+    }
+  }
+
+  /**
    * Capture current collapse states from the DOM before regenerating HTML
    * Should be called before generateHtmlChecklist() to preserve user preferences
    */
@@ -648,7 +699,7 @@ export class ObjectivesManager {
 
         const state = specA.state;
         const tolerance = condition.params.referenceLevelTolerance ?? 1; // Default ±1 dB
-        const diff = Math.abs(state.maxAmplitude - condition.params.referenceLevel);
+        const diff = Math.abs(state.referenceLevel - condition.params.referenceLevel);
 
         return diff <= tolerance;
       }

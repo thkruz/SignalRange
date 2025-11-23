@@ -1,3 +1,5 @@
+import { EventBus } from '@app/events/event-bus';
+import { Events } from '@app/events/events';
 import Draggabilly from 'draggabilly';
 import { html } from '../utils/development/formatter';
 import { getEl, showEl } from '../utils/get-el';
@@ -60,6 +62,10 @@ export abstract class DraggableBox {
         </div>
       `);
     }
+
+    EventBus.getInstance().on(Events.ROUTE_CHANGED, () => {
+      this.close();
+    });
   }
 
   protected abstract getBoxContentHtml(): string;

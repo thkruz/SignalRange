@@ -72,7 +72,15 @@ export class SandboxPage extends BasePage {
     this.progressSaveManager_ = new ProgressSaveManager();
     this.progressSaveManager_.initialize();
 
-    this.initEquipment_();
+    // Initialize equipment and objectives asynchronously
+    this.initializeAsync_();
+  }
+
+  /**
+   * Handle async initialization of equipment and objectives
+   */
+  private async initializeAsync_(): Promise<void> {
+    await this.initEquipment_();
     SimulationManager.getInstance();
 
     // Initialize objectives manager if scenario has objectives
@@ -80,6 +88,11 @@ export class SandboxPage extends BasePage {
     if (scenario.data?.objectives && scenario.data.objectives.length > 0) {
       ObjectivesManager.initialize(scenario.data.objectives);
       SimulationManager.getInstance().objectivesManager = ObjectivesManager.getInstance();
+
+      // If we're continuing from a checkpoint, restore objective states
+      if (this.navigationOptions_.continueFromCheckpoint) {
+        await this.restoreObjectiveStatesFromCheckpoint_();
+      }
     }
 
     EventBus.getInstance().emit(Events.DOM_READY);
@@ -162,6 +175,31 @@ export class SandboxPage extends BasePage {
     }
   }
 
+  /**
+   * Restore objective states from checkpoint after ObjectivesManager has been initialized
+   */
+  private async restoreObjectiveStatesFromCheckpoint_(): Promise<void> {
+    if (!this.progressSaveManager_) {
+      return;
+    }
+
+    try {
+      const scenario = ScenarioManager.getInstance();
+      const checkpoint = await this.progressSaveManager_.loadCheckpoint(scenario.data.id) as {
+        state: AppState;
+      };
+
+      if (checkpoint?.state?.objectiveStates) {
+        const objectivesManager = ObjectivesManager.getInstance();
+        objectivesManager.restoreState(checkpoint.state.objectiveStates);
+        Logger.info('Objective states restored from checkpoint');
+      }
+    } catch (error) {
+      Logger.error('Failed to restore objective states from checkpoint:', error);
+      // Continue without restoring objectives - they'll start fresh
+    }
+  }
+
   hide(): void {
     SandboxPage.destroy();
   }
@@ -174,8 +212,8 @@ export class SandboxPage extends BasePage {
     }
 
     SandboxPage.instance_ = null;
-    ObjectivesManager.destroy();
     SimulationManager.destroy();
+    ObjectivesManager.destroy();
     EventBus.destroy();
     const container = getEl(SandboxPage.containerId);
     if (container) {

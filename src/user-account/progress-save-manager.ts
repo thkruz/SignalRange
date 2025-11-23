@@ -1,6 +1,7 @@
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
 import { Logger } from '@app/logging/logger';
+import { SaveProgressToast } from '@app/modal/save-progress-toast';
 import { ScenarioManager } from '@app/scenario-manager';
 import { syncManager } from '@app/sync/storage';
 import packageJson from '../../package.json';
@@ -63,7 +64,14 @@ export class ProgressSaveManager {
    * Save current state as a checkpoint
    */
   async saveCheckpoint(): Promise<void> {
+    const toast = SaveProgressToast.getInstance();
+    const timestamp = Date.now();
+
     try {
+      // Show saving toast and emit start event
+      toast.showSaving();
+      this.eventBus.emit(Events.PROGRESS_SAVE_START, { timestamp });
+
       // Get current scenario info
       const scenarioManager = ScenarioManager.getInstance();
       const scenarioId = scenarioManager.data.id;
@@ -102,8 +110,23 @@ export class ProgressSaveManager {
       await this.userDataService.updateUserProgress({ signalForge });
 
       Logger.info(`Progress checkpoint saved for scenario: ${scenarioId}`);
+
+      // Show success toast and emit success event
+      toast.showSuccess();
+      this.eventBus.emit(Events.PROGRESS_SAVE_SUCCESS, {
+        timestamp: Date.now(),
+        checkpointId: scenarioId
+      });
     } catch (error) {
       Logger.error('Failed to save checkpoint:', error);
+
+      // Show error toast and emit error event
+      toast.showError();
+      this.eventBus.emit(Events.PROGRESS_SAVE_ERROR, {
+        timestamp: Date.now(),
+        error: error as Error
+      });
+
       throw error;
     }
   }

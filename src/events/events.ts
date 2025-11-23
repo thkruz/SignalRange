@@ -109,6 +109,21 @@ export interface ObjectivesAllCompletedData {
   totalTime: number;
 }
 
+// Progress Save Event specific interfaces
+export interface ProgressSaveStartData {
+  timestamp: number;
+}
+
+export interface ProgressSaveSuccessData {
+  timestamp: number;
+  checkpointId: string;
+}
+
+export interface ProgressSaveErrorData {
+  timestamp: number;
+  error: Error;
+}
+
 export enum Events {
   // Antenna events
   ANTENNA_STATE_CHANGED = 'antenna:state:changed',
@@ -152,6 +167,11 @@ export enum Events {
   OBJECTIVE_COMPLETED = 'objective:completed',
   OBJECTIVE_CONDITION_CHANGED = 'objective:condition:changed',
   OBJECTIVES_ALL_COMPLETED = 'objectives:all:completed',
+
+  // Progress Save events
+  PROGRESS_SAVE_START = 'progress:save:start',
+  PROGRESS_SAVE_SUCCESS = 'progress:save:success',
+  PROGRESS_SAVE_ERROR = 'progress:save:error',
 }
 
 export interface EventMap {
@@ -195,4 +215,8 @@ export interface EventMap {
   [Events.OBJECTIVE_COMPLETED]: [ObjectiveCompletedData];
   [Events.OBJECTIVE_CONDITION_CHANGED]: [ObjectiveConditionChangedData];
   [Events.OBJECTIVES_ALL_COMPLETED]: [ObjectivesAllCompletedData];
+
+  [Events.PROGRESS_SAVE_START]: [ProgressSaveStartData];
+  [Events.PROGRESS_SAVE_SUCCESS]: [ProgressSaveSuccessData];
+  [Events.PROGRESS_SAVE_ERROR]: [ProgressSaveErrorData];
 }

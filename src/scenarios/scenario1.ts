@@ -9,6 +9,7 @@ import { Satellite } from '@app/equipment/satellite/satellite';
 import { Character } from '@app/modal/character-enum';
 import { Objective } from '@app/objectives/objective-types';
 import { dB, dBi, dBm, FECType, Hertz, MHz, ModulationType, RfFrequency, SignalOrigin } from '@app/types';
+import { getAssetUrl } from '@app/utils/asset-url';
 import { Degrees } from 'ootk';
 import { ScenarioData } from '../scenario-manager';
 
@@ -463,23 +464,26 @@ export const scenario1Data: ScenarioData = {
       </p>
       `,
       character: Character.GUIDE,
-      audioUrl: '/assets/campaigns/nats/1/intro.mp3',
+      audioUrl: getAssetUrl('/assets/campaigns/nats/1/intro.mp3'),
     },
     objectives: {
-      'phase-1-gpsdo': {
-        text: `Excellent work on the GPSDO. We're seeing stable frequency lock with precision below 5×10⁻¹¹. That's textbook performance. The reference signal is rock solid. We can proceed to the next phase.`,
-        character: Character.GUIDE,
-        audioUrl: '/assets/campaigns/nats/1/obj-phase-1-gpsdo.mp3',
-      },
       'phase-1-lnb': {
-        text: `The LNB is now thermally stabilized and locked to the 10 MHz reference. Noise temperature is well within spec at under 100 Kelvin. Your RF front end is ready for signal acquisition. Nice work.`,
+        text: `
+        <p>
+        LNB's warmed up and behaving.
+        </p>
+        <p>
+        Not bad, new guy.
+        </p>
+        <p>
+        Means I don't have to file another 'mysterious gain drift' ticket upstairs.
+        </p>
+        <p>
+        Keep going.
+        </p>
+        `,
         character: Character.GUIDE,
-        audioUrl: '/assets/campaigns/nats/1/obj-phase-1-lnb.mp3',
-      },
-      'acquire-lock-satellite-1': {
-        text: `Outstanding! We have confirmed lock on HELIOS-7. Signal acquisition is clean and stable. This is Pacific Edge Control - First Light is a success. The satellite is ready for commercial operations. Excellent work, Operator.`,
-        character: Character.GUIDE,
-        audioUrl: '/assets/campaigns/nats/1/obj-acquire-lock-satellite-1.mp3',
+        audioUrl: getAssetUrl('/assets/campaigns/nats/1/obj-phase-1-lnb.mp3'),
       },
     },
   },

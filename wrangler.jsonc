@@ -4,6 +4,15 @@
 	"name": "signal-range",
 	// Compatibility date - using a recent date for latest features
 	"compatibility_date": "2025-11-01",
+	// R2 bucket bindings for large audio assets
+	// Buckets must be created first: wrangler r2 bucket create signal-range-assets
+	"r2_buckets": [
+		{
+			"binding": "ASSETS",
+			"bucket_name": "signal-range-assets",
+			"preview_bucket_name": "signal-range-assets-preview"
+		}
+	],
 	// Static assets configuration
 	// This project is assets-only (no Workers script), so we only need the assets directory
 	"assets": {

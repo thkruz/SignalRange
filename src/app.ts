@@ -9,6 +9,8 @@ import { Router } from './router';
 import { SimulationManager } from './simulation/simulation-manager';
 import { Auth } from './user-account/auth';
 import { initUserDataService } from './user-account/user-data-service';
+import { EventBus } from './events/event-bus';
+import { Events } from './events/events';
 
 /**
  * Main Application Class
@@ -91,6 +93,13 @@ export class App extends BaseElement {
 
   protected addEventListeners_(): void {
     document.addEventListener('contextmenu', (event) => event.preventDefault());
+  }
+
+  /**
+   * Trigger a sync event to notify components to save their state
+   */
+  sync(): void {
+    EventBus.getInstance().emit(Events.SYNC);
   }
 
   static __resetAll__(): void {

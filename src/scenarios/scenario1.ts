@@ -468,6 +468,27 @@ export const scenario1Data: ScenarioData = {
       audioUrl: getAssetUrl('/assets/campaigns/nats/1/intro.mp3'),
     },
     objectives: {
+      'phase-1-gpsdo': {
+        text: `
+        <p>
+        GPS-DO is up and locked.
+        </p>
+        <p>
+        One subsystem down...seventeen more chances for my ulcer to act up.
+        </p>
+        <p>
+        That 10 MHz reference keeps the rack from free-styling...We don’t have room for improvisation today.
+        </p>
+        <p>
+        ...Go ahead...Power the LNB and dial in its gain.
+        </p>
+        <p>
+        Every step we nail buys me another hour before the board calls.
+        </p>
+        `,
+        character: Character.CATHERINE_VEGA,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/1/obj-phase-1-gpsdo.mp3'),
+      },
       'phase-1-lnb': {
         text: `
         <p>

@@ -1,5 +1,6 @@
 import { html } from "@app/engine/utils/development/formatter";
 import { ANTENNA_CONFIG_KEYS } from "@app/equipment/antenna/antenna-configs";
+import { RealTimeSpectrumAnalyzer } from "@app/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer";
 import { BUCModule } from "@app/equipment/rf-front-end/buc-module/buc-module";
 import { CouplerModule } from "@app/equipment/rf-front-end/coupler-module/coupler-module";
 import { IfFilterBankModule } from "@app/equipment/rf-front-end/filter-module/filter-module";
@@ -42,13 +43,16 @@ export const sandboxData: ScenarioData = {
       coupler: CouplerModule.getDefaultState(),
       gpsdo: GPSDOModule.getDefaultState(),
     }],
-    spectrumAnalyzers: 1,
+    spectrumAnalyzers: [RealTimeSpectrumAnalyzer.getDefaultState(), RealTimeSpectrumAnalyzer.getDefaultState()],
     transmitters: 1,
     receivers: 1,
     layout: html`<div class="student-equipment">
       <div class="paired-equipment-container">
         <div id="antenna1-container" class="antenna-container"></div>
         <div id="specA1-container" class="spec-a-container"></div>
+      </div>
+      <div class="paired-equipment-container">
+        <div id="specA2-container" class="spec-a-container"></div>
       </div>
       <div id="rf-front-end1-container" class="paired-equipment-container"></div>
       <div id="tx1-container" class="tx-container"></div>

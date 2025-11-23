@@ -86,26 +86,29 @@ export class Equipment extends BaseElement {
   }
 
   private addChecklistListener_(): void {
-    qs('.checklist-icon').addEventListener('click', () => {
-      this.checklistBox ??= new DraggableHtmlBox('Checklist', 'checklist', '');
-      const objectivesManager = ObjectivesManager.getInstance();
-      objectivesManager.syncCollapsedStatesFromDOM();
-      this.lastChecklistHtml_ = objectivesManager.generateHtmlChecklist();
-      this.checklistBox.updateContent(this.lastChecklistHtml_);
-      this.checklistBox.open();
-      this.startChecklistRefreshTimer_(this.checklistBox);
-    });
+    const missionBriefUrl = ScenarioManager.getInstance().settings.missionBriefUrl;
+    if (missionBriefUrl) {
+      qs('.checklist-icon').addEventListener('click', () => {
+        this.checklistBox ??= new DraggableHtmlBox('Checklist', 'checklist', '');
+        const objectivesManager = ObjectivesManager.getInstance();
+        objectivesManager.syncCollapsedStatesFromDOM();
+        this.lastChecklistHtml_ = objectivesManager.generateHtmlChecklist();
+        this.checklistBox.updateContent(this.lastChecklistHtml_);
+        this.checklistBox.open();
+        this.startChecklistRefreshTimer_(this.checklistBox);
+      });
 
-    EventBus.getInstance().on(Events.OBJECTIVE_ACTIVATED, () => {
-      // Can't update it until they open it for the first time
-      if (!this.checklistBox) {
-        return;
-      }
+      EventBus.getInstance().on(Events.OBJECTIVE_ACTIVATED, () => {
+        // Can't update it until they open it for the first time
+        if (!this.checklistBox) {
+          return;
+        }
 
-      const objectivesManager = ObjectivesManager.getInstance();
-      this.lastChecklistHtml_ = objectivesManager.generateHtmlChecklist();
-      this.checklistBox.updateContent(this.lastChecklistHtml_);
-    });
+        const objectivesManager = ObjectivesManager.getInstance();
+        this.lastChecklistHtml_ = objectivesManager.generateHtmlChecklist();
+        this.checklistBox.updateContent(this.lastChecklistHtml_);
+      });
+    }
   }
 
   private startChecklistRefreshTimer_(draggableBox: DraggableHtmlBox): void {
@@ -154,9 +157,9 @@ export class Equipment extends BaseElement {
 
     // Initialize 4 spectrum analyzers
     // First two use antenna 1, next two use antenna 2
-    for (let i = 1; i <= settings.spectrumAnalyzers; i++) {
+    for (let i = 1; i <= settings.spectrumAnalyzers.length; i++) {
       const antennaId = i <= 2 ? 1 : 2;
-      const specA = new RealTimeSpectrumAnalyzer(`specA${i}-container`, this.rfFrontEnds[antennaId - 1]);
+      const specA = new RealTimeSpectrumAnalyzer(`specA${i}-container`, settings.spectrumAnalyzers[i - 1], this.rfFrontEnds[antennaId - 1]);
       this.spectrumAnalyzers.push(specA);
     }
 

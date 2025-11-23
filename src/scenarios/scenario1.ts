@@ -85,7 +85,28 @@ export const scenario1Data: ScenarioData = {
         agingRate: 0,
       },
     }],
-    spectrumAnalyzers: 1,
+    spectrumAnalyzers: [
+      {
+        referenceLevel: 0, // dBm
+        centerFrequency: 600e6 as Hertz,
+        span: 100e6 as Hertz,
+        rbw: 50e6 as Hertz,
+        minAmplitude: -170,
+        maxAmplitude: 0,
+        scaleDbPerDiv: (-0 + 170) / 10 as dB, // 6 dB/div
+        screenMode: 'both',
+        inputUnit: 'MHz',
+        inputValue: '',
+
+        // Multi-trace support
+        traces: [
+          { isVisible: true, isUpdating: true, mode: 'clearwrite' }, // Trace 1
+          { isVisible: false, isUpdating: false, mode: 'clearwrite' }, // Trace 2
+          { isVisible: false, isUpdating: false, mode: 'clearwrite' }, // Trace 3
+        ],
+        selectedTrace: 1,
+      }
+    ],
     transmitters: 0,
     receivers: 0,
     layout: html`

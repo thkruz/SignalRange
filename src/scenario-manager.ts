@@ -1,4 +1,5 @@
 import { ANTENNA_CONFIG_KEYS } from './equipment/antenna/antenna-configs';
+import { RealTimeSpectrumAnalyzer, RealTimeSpectrumAnalyzerState } from './equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer';
 import { BUCModule } from './equipment/rf-front-end/buc-module/buc-module';
 import { CouplerModule } from './equipment/rf-front-end/coupler-module/coupler-module';
 import { IfFilterBankModule } from './equipment/rf-front-end/filter-module/filter-module';
@@ -18,7 +19,7 @@ export interface SimulationSettings {
   isSync: boolean;
   antennas: ANTENNA_CONFIG_KEYS[];
   rfFrontEnds: Partial<RFFrontEndState>[];
-  spectrumAnalyzers: number;
+  spectrumAnalyzers: Partial<RealTimeSpectrumAnalyzerState>[];
   transmitters: number;
   receivers: number;
   /** Optional HTML override for complex layouts */
@@ -56,7 +57,7 @@ export class ScenarioManager {
         coupler: CouplerModule.getDefaultState(),
         gpsdo: GPSDOModule.getDefaultState(),
       }],
-      spectrumAnalyzers: 2,
+      spectrumAnalyzers: [RealTimeSpectrumAnalyzer.getDefaultState()],
       transmitters: 4,
       receivers: 4,
       satellites: [],

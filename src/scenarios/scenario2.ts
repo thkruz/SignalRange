@@ -1,4 +1,5 @@
 import { ANTENNA_CONFIG_KEYS } from "@app/equipment/antenna/antenna-configs";
+import { RealTimeSpectrumAnalyzer } from "@app/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer";
 import { BUCModule } from "@app/equipment/rf-front-end/buc-module/buc-module";
 import { CouplerModule } from "@app/equipment/rf-front-end/coupler-module/coupler-module";
 import { IfFilterBankModule } from "@app/equipment/rf-front-end/filter-module/filter-module";
@@ -42,7 +43,7 @@ export const scenario2Data: ScenarioData = {
       coupler: CouplerModule.getDefaultState(),
       gpsdo: GPSDOModule.getDefaultState(),
     }],
-    spectrumAnalyzers: 2,
+    spectrumAnalyzers: [RealTimeSpectrumAnalyzer.getDefaultState()],
     transmitters: 0,
     receivers: 1,
     satellites: [

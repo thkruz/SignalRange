@@ -88,57 +88,20 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
   inputSignals: IfSignal[] = [];
   prevState: any;
 
-  constructor(parentId: string, rfFrontEnd: RFFrontEnd, teamId: number = 1) {
+  constructor(parentId: string, initialState: Partial<RealTimeSpectrumAnalyzerState>, rfFrontEnd: RFFrontEnd, teamId: number = 1) {
     super(parentId, teamId);
 
     this.rfFrontEnd_ = rfFrontEnd;
 
     // Initialize config
-    this.state = {
-      uuid: this.uuid,
-      team_id: this.teamId,
-      rfFeUuid: this.rfFrontEnd_.state.uuid, // RF is hard linked to antenna
+    this.state = { ...this.state, ...RealTimeSpectrumAnalyzer.getDefaultState() };
+    this.state = { ...this.state, ...initialState };
 
-      isUseTapA: true,
-      isUseTapB: true,
-      isPaused: false,
-      isMaxHold: false,
-      isMinHold: false,
-      isMarkerOn: false,
-      isUpdateMarkers: false,
-      topMarkers: [],
-      markerIndex: 0,
-
-      referenceLevel: 0, // dBm
-
-      minFrequency: 5e3 as Hertz, // 5 kHz
-      maxFrequency: 25.5e9 as Hertz, // 25.5 GHz
-      centerFrequency: 600e6 as Hertz,
-      span: 100e6 as Hertz,
-      lastSpan: 100e6 as Hertz,
-      rbw: 1e6 as Hertz,
-      lockedControl: 'freq',
-      hold: false,
-      minAmplitude: -100,
-      maxAmplitude: -40,
-      scaleDbPerDiv: (-40 + 100) / 10 as dB, // 6 dB/div
-      noiseFloorNoGain: -104,
-      isSkipLnaGainDuringDraw: true,
-      refreshRate: 10,
-      screenMode: 'spectralDensity',
-      inputUnit: 'MHz',
-      inputValue: '',
-
-      // Multi-trace support
-      traces: [
-        { isVisible: true, isUpdating: true, mode: 'clearwrite' }, // Trace 1
-        { isVisible: true, isUpdating: true, mode: 'clearwrite' }, // Trace 2
-        { isVisible: true, isUpdating: true, mode: 'clearwrite' }, // Trace 3
-      ],
-      selectedTrace: 1,
-    };
     this.state.inputValue = (this.state.centerFrequency / 1e6).toString(); // in MHz
     this.state.inputUnit = 'MHz';
+    this.state.uuid = this.uuid;
+    this.state.team_id = this.teamId;
+    this.state.rfFeUuid = this.rfFrontEnd_.state.uuid; // RF is hard linked to antenna
 
     this.helpBtn_ = HelpButton.create(
       `rtsa-help-${this.uuid}`,
@@ -649,5 +612,47 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
     }
 
     this.prevState = structuredClone(this.state);
+  }
+
+  static getDefaultState(): Partial<RealTimeSpectrumAnalyzerState> {
+    return {
+      isUseTapA: true,
+      isUseTapB: true,
+      isPaused: false,
+      isMaxHold: false,
+      isMinHold: false,
+      isMarkerOn: false,
+      isUpdateMarkers: false,
+      topMarkers: [],
+      markerIndex: 0,
+
+      referenceLevel: 0, // dBm
+
+      minFrequency: 5e3 as Hertz, // 5 kHz
+      maxFrequency: 25.5e9 as Hertz, // 25.5 GHz
+      centerFrequency: 600e6 as Hertz,
+      span: 100e6 as Hertz,
+      lastSpan: 100e6 as Hertz,
+      rbw: 1e6 as Hertz,
+      lockedControl: 'freq',
+      hold: false,
+      minAmplitude: -100,
+      maxAmplitude: -40,
+      scaleDbPerDiv: (-40 + 100) / 10 as dB, // 6 dB/div
+      noiseFloorNoGain: -104,
+      isSkipLnaGainDuringDraw: true,
+      refreshRate: 10,
+      screenMode: 'spectralDensity',
+      inputUnit: 'MHz',
+      inputValue: '',
+
+      // Multi-trace support
+      traces: [
+        { isVisible: true, isUpdating: true, mode: 'clearwrite' }, // Trace 1
+        { isVisible: true, isUpdating: true, mode: 'clearwrite' }, // Trace 2
+        { isVisible: true, isUpdating: true, mode: 'clearwrite' }, // Trace 3
+      ],
+      selectedTrace: 1,
+    };
   }
 }

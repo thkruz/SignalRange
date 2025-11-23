@@ -8,11 +8,19 @@ import { ScenarioManager } from "./scenario-manager";
 import { SimulationManager } from "./simulation/simulation-manager";
 
 /**
+ * Navigation options for router
+ */
+export interface NavigationOptions {
+  continueFromCheckpoint?: boolean;
+}
+
+/**
  * Simple Router for 3 pages: login, student, instructor
  */
 export class Router {
   private static instance: Router;
   private currentPath: string = '/';
+  private navigationOptions_: NavigationOptions = {};
 
   private constructor() { }
 
@@ -41,7 +49,8 @@ export class Router {
     this.handleRoute();
   }
 
-  navigate(path: string): void {
+  navigate(path: string, options?: NavigationOptions): void {
+    this.navigationOptions_ = options || {};
     globalThis.history.pushState({}, '', path);
     this.handleRoute();
   }
@@ -87,28 +96,28 @@ export class Router {
       case 'sandbox':
         Header.getInstance().makeSmall(true);
         ScenarioManager.getInstance().scenario = 'sandbox';
-        SandboxPage.create();
+        SandboxPage.create(this.navigationOptions_);
         SandboxPage.getInstance().show();
         break;
       case 'scenario1':
         Header.getInstance().makeSmall(true);
         Footer.getInstance().makeSmall(true);
         ScenarioManager.getInstance().scenario = 'scenario1';
-        SandboxPage.create();
+        SandboxPage.create(this.navigationOptions_);
         SandboxPage.getInstance().show();
         break;
       case 'scenario2':
         Header.getInstance().makeSmall(true);
         Footer.getInstance().makeSmall(true);
         ScenarioManager.getInstance().scenario = 'scenario2';
-        SandboxPage.create();
+        SandboxPage.create(this.navigationOptions_);
         SandboxPage.getInstance().show();
         break;
       case 'scenario3':
         Header.getInstance().makeSmall(true);
         Footer.getInstance().makeSmall(true);
         ScenarioManager.getInstance().scenario = 'scenario3';
-        SandboxPage.create();
+        SandboxPage.create(this.navigationOptions_);
         SandboxPage.getInstance().show();
         break;
       case 'scenarios':
@@ -117,6 +126,9 @@ export class Router {
         ScenarioSelectionPage.getInstance().show();
         break;
     }
+
+    // Reset navigation options after use
+    this.navigationOptions_ = {};
   }
 
   getCurrentPath(): string {

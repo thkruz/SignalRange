@@ -3,7 +3,7 @@
    ========================================================================== */
 
 :root {
-  --user-account-avatar-size: 40px;
+  --user-account-avatar-size: 30px;
   --user-account-border-radius: 8px;
   --user-account-border-radius-full: 50%;
   --user-account-transition: 0.2s ease;
@@ -21,6 +21,7 @@
 .user-account__menu-item {
   display: flex;
   align-items: center;
+  margin-right: 1em;
 }
 
 .user-account__login-btn,

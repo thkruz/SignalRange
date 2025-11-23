@@ -210,6 +210,15 @@ export class SyncManager {
         }
       });
     }
+
+    // Sync RF Front Ends
+    if (state.equipment.rfFrontEndsState) {
+      state.equipment.rfFrontEndsState.forEach((rfData: RFFrontEndState, index: number) => {
+        if (this.equipment.rfFrontEnds[index]) {
+          this.equipment.rfFrontEnds[index].sync(rfData);
+        }
+      });
+    }
   }
 }
 

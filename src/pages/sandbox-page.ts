@@ -4,12 +4,13 @@ import { EventBus } from "@app/events/event-bus";
 import { Events } from "@app/events/events";
 import { Logger } from "@app/logging/logger";
 import { ObjectivesManager } from "@app/objectives/objectives-manager";
+import { NavigationOptions } from "@app/router";
 import { ScenarioManager } from "@app/scenario-manager";
 import { SimulationManager } from "@app/simulation/simulation-manager";
-import { syncManager } from "@app/sync/storage";
+import { AppState, syncManager } from "@app/sync/storage";
 import { ProgressSaveManager } from "@app/user-account/progress-save-manager";
 import { html } from "../engine/utils/development/formatter";
-import { syncEquipmentWithStore } from '../sync/storage';
+import { clearPersistedStore, syncEquipmentWithStore } from '../sync/storage';
 import { BasePage } from "./base-page";
 import { Body } from "./layout/body/body";
 import { Equipment } from './sandbox/equipment';
@@ -22,18 +23,20 @@ export class SandboxPage extends BasePage {
   static readonly containerId = 'sandbox-page-container';
   private static instance_: SandboxPage | null = null;
   private progressSaveManager_: ProgressSaveManager | null = null;
+  private readonly navigationOptions_: NavigationOptions = {};
 
-  private constructor() {
+  private constructor(options?: NavigationOptions) {
     super();
+    this.navigationOptions_ = options || {};
     this.init_()
   }
 
-  static create(): SandboxPage {
+  static create(options?: NavigationOptions): SandboxPage {
     if (this.instance_) {
       throw new Error("SandboxPage instance already exists.");
     }
 
-    this.instance_ = new SandboxPage();
+    this.instance_ = new SandboxPage(options);
     return this.instance_;
   }
 
@@ -52,7 +55,7 @@ export class SandboxPage extends BasePage {
 
     try {
       // Remove any childe nodes named this.id to avoid duplicates
-      const existing = qs(`#${this.id}`, parentDom!);
+      const existing = qs(`#${this.id}`, parentDom);
 
       if (existing) {
         existing.remove();
@@ -93,8 +96,13 @@ export class SandboxPage extends BasePage {
     simManager.equipment = new Equipment(scenario.settings);
 
     if (scenario.settings.isSync) {
-      // Check for checkpoint before syncing with local storage
-      await this.loadCheckpointIfExists_();
+      // Only load checkpoint if explicitly continuing from checkpoint
+      if (this.navigationOptions_.continueFromCheckpoint) {
+        await this.loadCheckpointIfExists_();
+      } else {
+        // Starting fresh - clear any stale local storage
+        await this.clearLocalStorage_();
+      }
 
       // Sync from storage (automatically uses LocalStorage)
       syncEquipmentWithStore(simManager.equipment);
@@ -111,7 +119,9 @@ export class SandboxPage extends BasePage {
 
     try {
       const scenario = ScenarioManager.getInstance();
-      const checkpoint = await this.progressSaveManager_.loadCheckpoint(scenario.data.id);
+      const checkpoint = await this.progressSaveManager_.loadCheckpoint(scenario.data.id) as {
+        state: AppState;
+      }
 
       if (checkpoint) {
         Logger.info(`Loading checkpoint for scenario: ${scenario.data.id}`);
@@ -125,12 +135,30 @@ export class SandboxPage extends BasePage {
           // We need to access the private syncFromStorage method, so we'll use the provider
           await syncManager['provider'].write(checkpoint.state);
 
+          simManager.equipment = { ...simManager.equipment, ...checkpoint.state.equipment } as Equipment;
+
+          SimulationManager.getInstance().sync();
           Logger.info('Checkpoint loaded successfully');
         }
       }
     } catch (error) {
       Logger.error('Failed to load checkpoint:', error);
       // Continue with normal initialization even if checkpoint load fails
+    }
+  }
+
+  /**
+   * Clear local storage for the current scenario when starting fresh
+   */
+  private async clearLocalStorage_(): Promise<void> {
+    try {
+      // Clear the local storage
+      await clearPersistedStore();
+
+      Logger.info('Local storage cleared for fresh start');
+    } catch (error) {
+      Logger.error('Failed to clear local storage:', error);
+      // Continue with normal initialization even if clear fails
     }
   }
 

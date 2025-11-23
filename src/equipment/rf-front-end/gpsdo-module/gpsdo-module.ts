@@ -3,6 +3,8 @@ import { PowerSwitch } from '@app/components/power-switch/power-switch';
 import { ToggleSwitch } from '@app/components/toggle-switch/toggle-switch';
 import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
+import { EventBus } from '@app/events/event-bus';
+import { Events } from '@app/events/events';
 import { SimulationManager } from '@app/simulation/simulation-manager';
 import { clamp } from 'ootk';
 import { RFFrontEnd } from '../rf-front-end';
@@ -246,6 +248,8 @@ export class GPSDOModule extends RFFrontEndModule<GPSDOState> {
     if (this.state_.isPowered && this.state_.warmupTimeRemaining > 0) {
       this.startWarmupTimer_();
     }
+
+    EventBus.getInstance().on(Events.SYNC, this.sync.bind(this));
   }
 
   private getLockLedStatus_(): string {
@@ -668,14 +672,14 @@ export class GPSDOModule extends RFFrontEndModule<GPSDOState> {
   /**
    * Sync state from external source
    */
-  sync(state: Partial<GPSDOState>): void {
+  sync(state?: Partial<GPSDOState>): void {
     super.sync(state);
 
     // Update UI components
-    if (this.powerSwitch_ && state.isPowered !== undefined) {
+    if (this.powerSwitch_ && state?.isPowered !== undefined) {
       this.powerSwitch_.sync(state.isPowered);
     }
-    if (this.gnssSwitch_ && state.gnssSignalPresent !== undefined) {
+    if (this.gnssSwitch_ && state?.gnssSignalPresent !== undefined) {
       this.gnssSwitch_.sync(state.gnssSignalPresent);
     }
   }

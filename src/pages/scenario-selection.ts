@@ -265,7 +265,7 @@ export class ScenarioSelectionPage extends BasePage {
     const scenarioUrl = button.dataset.scenarioUrl;
 
     if (scenarioUrl) {
-      Router.getInstance().navigate(scenarioUrl);
+      Router.getInstance().navigate(scenarioUrl, { continueFromCheckpoint: true });
     }
   }
 

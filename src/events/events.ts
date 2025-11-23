@@ -11,8 +11,8 @@ import { RFFrontEndState } from "@app/equipment/rf-front-end/rf-front-end";
 import { Milliseconds } from "ootk";
 import { ReceiverModemState } from "../equipment/receiver/receiver";
 import { TransmitterModem } from "../equipment/transmitter/transmitter";
+import { ConditionState, Objective, ObjectiveState } from "../objectives/objective-types";
 import { RfSignal } from "../types";
-import { Objective, ObjectiveState, ConditionState } from "../objectives/objective-types";
 
 // Antenna Event specific interfaces
 export interface AntennaLoopbackChangedData {

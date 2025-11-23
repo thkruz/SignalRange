@@ -37,7 +37,8 @@
 .draggable-box {
   position: absolute;
   background-color: var(--color-dark-background);
-  width: 300px;
+  width: fit-content;
+  min-width: 300px;
   max-width: 90vw;
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.5);
   border-radius: var(--user-account-border-radius);
@@ -72,6 +73,9 @@
   border: 5px solid var(--color-dark-border);
   border-top: 0;
   border-radius: 0 0 var(--user-account-border-radius) var(--user-account-border-radius);
+  height: 100%;
+  max-height: 70vh;
+  overflow: auto;
 }
 
 .draggable-box__btn {

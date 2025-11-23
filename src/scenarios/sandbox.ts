@@ -93,6 +93,7 @@ export const sandboxData: ScenarioData = {
             gainInPath: 0 as dBi,
           }
         ],
+        [],
         {
           az: 247.3 as Degrees,
           el: 78.2 as Degrees,
@@ -120,6 +121,7 @@ export const sandboxData: ScenarioData = {
             gainInPath: 0 as dBi,
           }
         ],
+        [],
         {
           az: 247.6 as Degrees,
           el: 78.2 as Degrees,
@@ -147,6 +149,7 @@ export const sandboxData: ScenarioData = {
             gainInPath: 0 as dBi,
           }
         ],
+        [],
         {
           az: 247.1 as Degrees,
           el: 78.2 as Degrees,

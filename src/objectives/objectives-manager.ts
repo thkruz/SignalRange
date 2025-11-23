@@ -23,6 +23,7 @@ export class ObjectivesManager {
   private readonly objectiveStates_: ObjectiveState[] = [];
   private readonly eventBus_: EventBus;
   private readonly startTime_: number;
+  private readonly collapsedObjectiveIds_: Set<string> = new Set();
 
   private constructor(objectives: Objective[]) {
     this.eventBus_ = EventBus.getInstance();
@@ -113,6 +114,29 @@ export class ObjectivesManager {
     return (performance.now() - this.startTime_) / 1000; // Convert to seconds
   }
 
+  /**
+   * Capture current collapse states from the DOM before regenerating HTML
+   * Should be called before generateHtmlChecklist() to preserve user preferences
+   */
+  syncCollapsedStatesFromDOM(): void {
+    const checklistElement = document.querySelector('.objectives-checklist');
+    if (!checklistElement) {
+      return;
+    }
+
+    const objectiveItems = checklistElement.querySelectorAll('.objective-item');
+    objectiveItems.forEach((item, index) => {
+      if (index < this.objectiveStates_.length) {
+        const objectiveId = this.objectiveStates_[index].objective.id;
+        if (item.classList.contains('collapsed')) {
+          this.collapsedObjectiveIds_.add(objectiveId);
+        } else {
+          this.collapsedObjectiveIds_.delete(objectiveId);
+        }
+      }
+    });
+  }
+
   generateHtmlChecklist(): string {
     let html = '<div class="objectives-checklist"><h2>Objectives Checklist</h2><ul>';
 
@@ -132,8 +156,14 @@ export class ObjectivesManager {
         stateLabel = 'In Progress';
       }
 
-      // Collapsed by default except for active objectives
-      const collapsedClass = isActive ? '' : 'collapsed';
+      // Use tracked collapse state if available, otherwise default based on active state
+      let collapsedClass = '';
+      if (this.collapsedObjectiveIds_.has(objective.id)) {
+        collapsedClass = 'collapsed';
+      } else if (this.collapsedObjectiveIds_.size === 0) {
+        // No collapse states tracked yet (first render), use default behavior
+        collapsedClass = isActive ? '' : 'collapsed';
+      }
 
       html += `<li class="objective-item ${stateClass} ${collapsedClass}">`;
       html += `<div class="objective-header" onclick="this.parentElement.classList.toggle('collapsed');">`;
@@ -243,6 +273,8 @@ export class ObjectivesManager {
         objectiveState.isCompleted = true;
         objectiveState.completedAt = performance.now();
 
+        this.collapsedObjectiveIds_.add(objectiveState.objective.id);
+
         this.eventBus_.emit(Events.OBJECTIVE_COMPLETED, {
           objectiveId: objectiveState.objective.id,
           objective: objectiveState.objective,
@@ -306,6 +338,9 @@ export class ObjectivesManager {
       if (allPrerequisitesMet) {
         objectiveState.isActive = true;
         objectiveState.activatedAt = now;
+
+        // Remove from collapsed set so it expands when it becomes active
+        this.collapsedObjectiveIds_.delete(objectiveState.objective.id);
 
         this.eventBus_.emit(Events.OBJECTIVE_ACTIVATED, {
           objectiveId: objectiveState.objective.id,

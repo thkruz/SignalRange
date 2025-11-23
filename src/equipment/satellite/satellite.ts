@@ -14,6 +14,8 @@ export interface Transponder {
   uplinkFrequency: RfFrequency;
   /** Center frequency of the transponder downlink band (Hz) */
   downlinkFrequency: RfFrequency;
+  /** Beacon signal */
+  beacon?: RfSignal;
   /** Transponder bandwidth (Hz) */
   bandwidth: Hertz;
   /** Maximum output power */
@@ -90,10 +92,12 @@ export class Satellite {
   private readonly randomCache_: Map<string, number> = new Map();
   el: Degrees;
   az: Degrees;
+  rotation: Degrees = ((Math.random() * 90) - 45) as Degrees;
 
   constructor(
     norad: number,
-    rxSignal: RfSignal[],
+    rxSignal: RfSignal[] = [],
+    beaconSignal: RfSignal[] = [],
     satelliteState: SatelliteState = Satellite.getDefaultState_(),
   ) {
     this.noradId = norad;
@@ -118,7 +122,7 @@ export class Satellite {
     };
 
     // Initialize transponders based on received signals
-    this.transponders = this.initializeTransponders(rxSignal);
+    this.transponders = this.initializeTransponders(rxSignal, beaconSignal);
 
     // Process received signals through transponders to generate transmitted signals
     this.txSignal = this.processSignals();
@@ -131,17 +135,18 @@ export class Satellite {
       az: 0 as Degrees,
       el: 0 as Degrees,
       frequencyOffset: 2.225e9 as Hertz,
-      degradationConfig: {}
+      degradationConfig: {},
     };
   }
 
   /**
    * Initialize transponders based on received signals.
    */
-  private initializeTransponders(signals: RfSignal[]): Transponder[] {
-    return signals.map((signal, index) => ({
+  private initializeTransponders(rxSignals: RfSignal[], beaconSignals: RfSignal[]): Transponder[] {
+    return rxSignals.map((signal, index) => ({
       id: `tp-${this.noradId}-${index}`,
       uplinkFrequency: signal.frequency,
+      beacon: beaconSignals[index],
       downlinkFrequency: this.getDownlinkFromUplink(signal.frequency),
       bandwidth: signal.bandwidth,
       maxPower: signal.power, // Use the initial signal power as max power
@@ -224,6 +229,31 @@ export class Satellite {
       txSignal = this.applyDegradationEffects(txSignal);
 
       processedSignals.push(txSignal);
+    }
+
+    // Add beacon signals if transponder has beacon frequency
+    for (const tp of this.transponders) {
+      if (tp.beacon) {
+        const beaconSignal: RfSignal = {
+          signalId: `beacon-${tp.id}`,
+          serverId: 0,
+          noradId: this.noradId,
+          frequency: tp.beacon.frequency,
+          polarization: tp.beacon.polarization,
+          rotation: this.rotation,
+          power: tp.beacon.power,
+          bandwidth: tp.beacon.bandwidth,
+          modulation: tp.beacon.modulation,
+          fec: tp.beacon.fec,
+          feed: tp.beacon.feed,
+          origin: SignalOrigin.SATELLITE_TX,
+          isDegraded: false,
+          noiseFloor: null,
+          gainInPath: 0 as dBi,
+        };
+
+        processedSignals.push(beaconSignal);
+      }
     }
 
     return processedSignals;

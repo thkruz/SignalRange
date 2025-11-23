@@ -55,7 +55,10 @@ export abstract class DraggableModal extends DraggableBox {
       const modalContent = getEl(`${this.boxId}`)!;
 
       if (this.width) {
-        modalContent.style.width = this.width;
+        modalContent.style.minWidth = this.width;
+      }
+      if (this.height) {
+        modalContent.style.minHeight = this.height;
       }
       modalContent.style.top = `${(window.innerHeight - modalContent.offsetHeight) / 2}px`;
       modalContent.style.left = `${(window.innerWidth - modalContent.offsetWidth) / 2}px`;

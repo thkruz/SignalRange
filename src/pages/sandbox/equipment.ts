@@ -1,7 +1,9 @@
 import { BaseElement } from "@app/components/base-element";
 import { qs } from "@app/engine/utils/query-selector";
 import { RFFrontEnd } from "@app/equipment/rf-front-end/rf-front-end";
-import { ModalManager } from "@app/modal/modal-manager";
+import { EventBus } from "@app/events/event-bus";
+import { Events } from "@app/events/events";
+import { DraggableHtmlBox } from "@app/modal/draggable-html-box";
 import { ObjectivesManager } from "@app/objectives";
 import { ScenarioManager, SimulationSettings } from "@app/scenario-manager";
 import { html } from "../../engine/utils/development/formatter";
@@ -58,6 +60,8 @@ export class Equipment extends BaseElement {
       </div>
     </div>
     `;
+  missionBriefBox: DraggableHtmlBox;
+  checklistBox: DraggableHtmlBox;
 
   constructor(settings: SimulationSettings) {
     super();
@@ -75,37 +79,54 @@ export class Equipment extends BaseElement {
     const missionBriefUrl = ScenarioManager.getInstance().settings.missionBriefUrl;
     if (missionBriefUrl) {
       qs('.mission-brief-icon').addEventListener('click', () => {
-        ModalManager.getInstance().show('Mission Brief', missionBriefUrl);
+        this.missionBriefBox ??= new DraggableHtmlBox('Mission Brief', 'mission-brief', missionBriefUrl);
+        this.missionBriefBox.open();
       });
     }
   }
 
   private addChecklistListener_(): void {
     qs('.checklist-icon').addEventListener('click', () => {
-      const modalManager = ModalManager.getInstance();
-      this.lastChecklistHtml_ = ObjectivesManager.getInstance().generateHtmlChecklist();
-      modalManager.show('Checklist', this.lastChecklistHtml_);
-      this.startChecklistRefreshTimer_(modalManager);
+      this.checklistBox ??= new DraggableHtmlBox('Checklist', 'checklist', '');
+      const objectivesManager = ObjectivesManager.getInstance();
+      objectivesManager.syncCollapsedStatesFromDOM();
+      this.lastChecklistHtml_ = objectivesManager.generateHtmlChecklist();
+      this.checklistBox.updateContent(this.lastChecklistHtml_);
+      this.checklistBox.open();
+      this.startChecklistRefreshTimer_(this.checklistBox);
+    });
+
+    EventBus.getInstance().on(Events.OBJECTIVE_ACTIVATED, () => {
+      // Can't update it until they open it for the first time
+      if (!this.checklistBox) {
+        return;
+      }
+
+      const objectivesManager = ObjectivesManager.getInstance();
+      this.lastChecklistHtml_ = objectivesManager.generateHtmlChecklist();
+      this.checklistBox.updateContent(this.lastChecklistHtml_);
     });
   }
 
-  private startChecklistRefreshTimer_(modalManager: ModalManager): void {
+  private startChecklistRefreshTimer_(draggableBox: DraggableHtmlBox): void {
     this.stopChecklistRefreshTimer_();
 
     const refreshChecklist = () => {
-      if (!modalManager.isShowing('Checklist')) {
+      if (!draggableBox.isOpen) {
         this.stopChecklistRefreshTimer_();
         return;
       }
 
-      const nextChecklistHtml = ObjectivesManager.getInstance().generateHtmlChecklist();
+      const objectivesManager = ObjectivesManager.getInstance();
+      objectivesManager.syncCollapsedStatesFromDOM();
+      const nextChecklistHtml = objectivesManager.generateHtmlChecklist();
       if (nextChecklistHtml !== this.lastChecklistHtml_) {
         this.lastChecklistHtml_ = nextChecklistHtml;
-        modalManager.updateContent(nextChecklistHtml);
+        draggableBox.updateContent(nextChecklistHtml);
       }
     };
 
-    modalManager.onHide(() => this.stopChecklistRefreshTimer_());
+    draggableBox.onClose = () => this.stopChecklistRefreshTimer_();
     this.checklistRefreshIntervalId_ = window.setInterval(refreshChecklist, 1000);
   }
 

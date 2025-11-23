@@ -46,7 +46,7 @@ export class ScenarioSelectionPage extends BasePage {
 
   private renderScenarioCard_(scenario: ScenarioData): string {
     return html`
-      <div class="scenario-card ${scenario.isDisabled ? 'disabled' : ''}" data-scenario-url="${scenario.url}">
+      <div class="scenario-card ${scenario.isDisabled ? 'disabled' : ''}" data-scenario-url="${scenario.url}" data-scenario="${scenario.title}">
       ${scenario.isDisabled ? `
         <div class="coming-soon-banner">Coming Soon</div>
       ` : ''}

@@ -433,7 +433,7 @@ export class Antenna extends BaseEquipment {
       const polLoss = this.polMismatchLoss_dB_(
         sig.polarization as 'H' | 'V' | 'RHCP' | 'LHCP',
         this.config.polType ?? 'linear',
-        this.state.polarization,
+        Math.abs((sig.rotation ?? 0) - this.state.polarization) as Degrees,
       );
 
       // Frequency-dependent feed loss
@@ -777,7 +777,7 @@ export class Antenna extends BaseEquipment {
   private polMismatchLoss_dB_(
     signalPol: 'H' | 'V' | 'RHCP' | 'LHCP',
     _rxPol: 'linear' | 'circular',
-    polarization_skew_degrees: Degrees
+    polarizationMismatch: Degrees
   ): dB {
     if (this.config.polType === 'circular' || signalPol === 'RHCP' || signalPol === 'LHCP') {
       // Circular discrimination
@@ -792,7 +792,7 @@ export class Antenna extends BaseEquipment {
 
     // Linear: loss ≈ 20*log10|cos(skew)| limited by XPD floor
     const xpd = this.config.xpd_dB ?? 30;
-    const cosTerm = Math.abs(Math.cos(polarization_skew_degrees * Math.PI / 180));
+    const cosTerm = Math.abs(Math.cos(polarizationMismatch * Math.PI / 180));
     const ideal = -20 * Math.log10(Math.max(1e-6, cosTerm)); // dB penalty
     return Math.min(xpd, ideal) as dB;
   }
@@ -917,7 +917,7 @@ export class Antenna extends BaseEquipment {
     const polarizationLoss = this.polMismatchLoss_dB_(
       signal.polarization as 'H' | 'V' | 'RHCP' | 'LHCP',
       this.config.polType ?? 'linear',
-      this.state.polarization,
+      Math.abs((signal.rotation ?? 0) - this.state.polarization) as Degrees,
     );
 
     // Use pattern gain (accounts for off-axis angle) instead of just peak gain

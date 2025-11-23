@@ -45,14 +45,13 @@ export const scenario1Data: ScenarioData = {
       filter: IfFilterBankModule.getDefaultState(),
       lnb: {
         isPowered: false,
-        loFrequency: 4200 as MHz, // MHz
+        loFrequency: 6080 as MHz, // MHz
         gain: 0 as dB,
         lnaNoiseFigure: 0.6, // dB
         mixerNoiseFigure: 16.0, // dB
         noiseTemperature: 45, // K
         noiseTemperatureStabilizationTime: 180, // seconds
         isExtRefLocked: false,
-        isSpectrumInverted: true,
         noiseFloor: -140, // dBm/Hz
         frequencyError: 0, // Hz
         temperature: 25, // °C
@@ -112,7 +111,7 @@ export const scenario1Data: ScenarioData = {
             serverId: 1,
             noradId: 1,
             /** Must be the uplinkl to match the antenna in simulation */
-            frequency: 5935e6 as RfFrequency,
+            frequency: 6180e6 as RfFrequency,
             polarization: 'H',
             power: 40 as dBm, // 10 W
             bandwidth: 10e6 as Hertz,
@@ -129,7 +128,7 @@ export const scenario1Data: ScenarioData = {
             serverId: 1,
             noradId: 1,
             /** Must be the uplinkl to match the antenna in simulation */
-            frequency: 5945e6 as RfFrequency,
+            frequency: 6190e6 as RfFrequency,
             polarization: 'H',
             power: 40 as dBm, // 10 W
             bandwidth: 3e6 as Hertz,
@@ -142,10 +141,28 @@ export const scenario1Data: ScenarioData = {
             gainInPath: 0 as dBi,
           }
         ],
+        [
+          {
+            frequency: 3985.5e6 as RfFrequency,
+            signalId: 'Sat1-Beacon',
+            serverId: 1,
+            noradId: 1,
+            power: 40 as dBm, // 10 W
+            bandwidth: 1e3 as Hertz,
+            modulation: 'CW' as ModulationType,
+            fec: 'null' as FECType,
+            polarization: 'H',
+            feed: '',
+            isDegraded: false,
+            origin: SignalOrigin.TRANSMITTER,
+            noiseFloor: null,
+            gainInPath: 0 as dBi,
+          }
+        ],
         {
           az: 247.3 as Degrees,
           el: 78.2 as Degrees,
-          frequencyOffset: 2.225e9 as Hertz,
+          frequencyOffset: 2.260e9 as Hertz,
         }
       ),
       new Satellite(
@@ -156,7 +173,7 @@ export const scenario1Data: ScenarioData = {
             serverId: 1,
             noradId: 2,
             /** Must be the uplinkl to match the antenna in simulation */
-            frequency: 5925e6 as RfFrequency,
+            frequency: 6165e6 as RfFrequency,
             polarization: 'H',
             power: 40 as dBm, // 10 W
             bandwidth: 3e6 as Hertz,
@@ -169,10 +186,11 @@ export const scenario1Data: ScenarioData = {
             gainInPath: 0 as dBi,
           }
         ],
+        [],
         {
           az: 247.6 as Degrees,
           el: 78.2 as Degrees,
-          frequencyOffset: 2.225e9 as Hertz,
+          frequencyOffset: 2.260e9 as Hertz,
         }
       ),
       new Satellite(
@@ -183,7 +201,7 @@ export const scenario1Data: ScenarioData = {
             serverId: 1,
             noradId: 3,
             /** Must be the uplinkl to match the antenna in simulation */
-            frequency: 5915e6 as RfFrequency,
+            frequency: 6205e6 as RfFrequency,
             polarization: 'H',
             power: 43 as dBm, // 20 W
             bandwidth: 5e6 as Hertz,
@@ -196,10 +214,11 @@ export const scenario1Data: ScenarioData = {
             gainInPath: 0 as dBi,
           }
         ],
+        [],
         {
           az: 247.1 as Degrees,
           el: 78.2 as Degrees,
-          frequencyOffset: 2.225e9 as Hertz,
+          frequencyOffset: 2.260e9 as Hertz,
         }
       ),
     ]

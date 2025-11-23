@@ -23,7 +23,6 @@ export interface LNBState extends RFFrontEndModuleState {
   thermalStabilizationTime: number; // seconds (time for physical temp to stabilize after power-on)
   frequencyError: number; // Hz (LO frequency drift)
   isExtRefLocked: boolean;
-  isSpectrumInverted: boolean;
 }
 
 export class LNBModule extends RFFrontEndModule<LNBState> {
@@ -46,7 +45,7 @@ export class LNBModule extends RFFrontEndModule<LNBState> {
   static getDefaultState(): LNBState {
     return {
       isPowered: true,
-      loFrequency: 4200 as MHz, // MHz
+      loFrequency: 6080 as MHz, // MHz
       gain: 0 as dB, // dB
       lnaNoiseFigure: 0.6, // dB
       mixerNoiseFigure: 16.0, // dB
@@ -56,7 +55,6 @@ export class LNBModule extends RFFrontEndModule<LNBState> {
       thermalStabilizationTime: 150, // seconds (2.5 minutes - matches noise temp)
       frequencyError: 0, // Hz (LO frequency drift)
       isExtRefLocked: true,
-      isSpectrumInverted: true,
       noiseFloor: -140, // dBm/Hz
     };
   }
@@ -83,8 +81,8 @@ export class LNBModule extends RFFrontEndModule<LNBState> {
     this.loKnob_ = RotaryKnob.create(
       `${this.uniqueId}-lo-knob`,
       this.state_.loFrequency,
-      3700,
-      4200,
+      5555,
+      6075,
       10,
       (value: number) => {
         this.state_.loFrequency = value as MHz;
@@ -221,11 +219,26 @@ export class LNBModule extends RFFrontEndModule<LNBState> {
     // Calculate IF signals after LNB based on LO frequency
     this.ifSignals = this.postLNASignals.map(sig => {
       const ifFreq = this.calculateIfFrequency(sig.frequency);
-      const isInverted = this.isSpectrumInverted(sig.frequency);
+
+      // If frequency is outside of 950e6 or 2150e6, drop signal 40 dB to simulate the bandpass filters
+      let filteredPower = (ifFreq < 950e6 || ifFreq > 2150e6) ? sig.power - 40 : sig.power;
+
+      // If it is on the edge and the bandwidth causes it to partially roll off, apply partial attenuation
+      const halfBw = sig.bandwidth / 2;
+      if (ifFreq - halfBw < 950e6) {
+        const overlapHz = 950e6 - (ifFreq - halfBw);
+        const overlapFraction = overlapHz / sig.bandwidth;
+        filteredPower -= 40 * overlapFraction;
+      } else if (ifFreq + halfBw > 2150e6) {
+        const overlapHz = (ifFreq + halfBw) - 2150e6;
+        const overlapFraction = overlapHz / sig.bandwidth;
+        filteredPower -= 40 * overlapFraction;
+      }
+
       return {
         ...sig,
         frequency: ifFreq,
-        isSpectrumInverted: isInverted,
+        power: filteredPower,
         origin: SignalOrigin.LOW_NOISE_BLOCK,
       } as IfSignal;
     });
@@ -503,16 +516,9 @@ export class LNBModule extends RFFrontEndModule<LNBState> {
   calculateIfFrequency(rfFrequency: RfFrequency): IfFrequency {
     // Apply frequency error to LO (error is 0 when locked and warmed up)
     const effectiveLO = this.state_.loFrequency * 1e6 + this.state_.frequencyError;
-    return Math.abs(rfFrequency - effectiveLO) as IfFrequency;
-  }
 
-  /**
-   * Check if spectrum is inverted (high-side LO injection)
-   * @param rfFrequency RF input frequency in Hz
-   * @returns true if spectrum is inverted
-   */
-  isSpectrumInverted(rfFrequency: number): boolean {
-    return this.state_.loFrequency * 1e6 > rfFrequency;
+    // LNB should be high side injection: IF = LO - RF, TODO: rare models use low side
+    return effectiveLO - rfFrequency as IfFrequency;
   }
 
   /**

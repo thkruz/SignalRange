@@ -4,6 +4,7 @@ import { getEl, showEl } from '../utils/get-el';
 import './engine-ui.css';
 
 interface DraggableBoxOptions {
+  height?: string;
   width?: string;
   title?: string;
   isDockable?: boolean;
@@ -20,6 +21,7 @@ export abstract class DraggableBox {
   protected title: string = '';
   private static zIndexCounter_ = 10000;
   protected isDockable = false;
+  height: string;
 
   static getMaxZIndex(): number {
     return this.zIndexCounter_;
@@ -35,6 +37,7 @@ export abstract class DraggableBox {
     this.boxId = boxId;
     this.title = opts?.title ?? '';
     this.width = opts?.width ?? '300px';
+    this.height = opts?.height ?? '300px';
     this.isDockable = opts?.isDockable ?? false;
 
     if (!this.boxEl && !opts?.skipDomCreation) {
@@ -82,7 +85,11 @@ export abstract class DraggableBox {
       const boxContent = getEl(`${this.boxId}`)!;
 
       if (this.width) {
-        boxContent.style.width = this.width;
+        boxContent.style.minWidth = this.width;
+      }
+
+      if (this.height) {
+        boxContent.style.minHeight = this.height;
       }
 
       if (cb) {

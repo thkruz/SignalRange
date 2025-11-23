@@ -1,3 +1,5 @@
+import { Degrees } from "ootk";
+
 /**
  * Represents a distinct type.
  *
@@ -60,6 +62,8 @@ export interface BaseSignal {
   fec: FECType;
   /** Signal polarization */
   polarization: null | 'H' | 'V' | 'LHCP' | 'RHCP';
+  /** Signal rotation degrees, this represents the satellites or antenna orientation off of 0 degrees */
+  rotation?: Degrees;
   /** url of the video feed */
   feed: string;
   /** whether the signal is degraded */

@@ -142,7 +142,6 @@ export class Equipment extends BaseElement {
   }
 
   private initEquipment_(settings: SimulationSettings): void {
-
     // Initialize antennas
     for (let i = 1; i <= (settings.antennas.length); i++) {
       const antennaConfigId = settings.antennas[i - 1];

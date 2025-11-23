@@ -189,6 +189,61 @@ export class UserDataService {
   }
 
   /**
+   * Get checkpoint for a specific scenario
+   */
+  async getScenarioCheckpoint(scenarioId: string): Promise<any | null> {
+    try {
+      const progress = await this.getUserProgress();
+      const signalForge = progress.signalForge || [];
+      const checkpoint = signalForge.find((cp) => cp.scenarioId === scenarioId);
+
+      return checkpoint || null;
+    } catch (error) {
+      throw new UserDataServiceError(
+        `Failed to get checkpoint for scenario ${scenarioId}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        0,
+        'CHECKPOINT_FETCH_ERROR',
+      );
+    }
+  }
+
+  /**
+   * Check if a checkpoint exists for a specific scenario
+   */
+  async hasScenarioCheckpoint(scenarioId: string): Promise<boolean> {
+    try {
+      const checkpoint = await this.getScenarioCheckpoint(scenarioId);
+      return checkpoint !== null;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  /**
+   * Clear checkpoint for a specific scenario
+   */
+  async clearScenarioCheckpoint(scenarioId: string): Promise<void> {
+    try {
+      const progress = await this.getUserProgress();
+      const signalForge = progress.signalForge || [];
+
+      // Filter out the checkpoint for this scenario
+      const updatedSignalForge = signalForge.filter((cp) => cp.scenarioId !== scenarioId);
+
+      // Only update if something changed
+      if (updatedSignalForge.length !== signalForge.length) {
+        await this.updateUserProgress({ signalForge: updatedSignalForge });
+      }
+    } catch (error) {
+      throw new UserDataServiceError(
+        `Failed to clear checkpoint for scenario ${scenarioId}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        0,
+        'CHECKPOINT_CLEAR_ERROR',
+      );
+    }
+  }
+
+  /**
    * Transform API user profile response (snake_case) to client format (camelCase)
    */
   private transformUserProfile(apiProfile: any): User {

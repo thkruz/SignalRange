@@ -5,6 +5,8 @@
  * Shares the same Supabase backend with KeepTrack
  */
 
+import type { AppState } from '@app/sync/sync-manager';
+
 /**
  * User type enum
  */
@@ -69,6 +71,12 @@ export interface UserProgressData {
     };
   };
   totalScore?: number;
+  signalForge?: Array<{
+    scenarioId: string;
+    version: string;
+    state: AppState;
+    savedAt: number;
+  }>;
 }
 
 /**
@@ -163,6 +171,7 @@ export interface UpdateUserProgressRequest {
   completedScenarios?: number[];
   scenarioProgress?: UserProgressData['scenarioProgress'];
   totalScore?: number;
+  signalForge?: UserProgressData['signalForge'];
 }
 
 export interface UpdateUserDataRequest {

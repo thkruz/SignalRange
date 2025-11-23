@@ -2,9 +2,12 @@ import { getEl } from "@app/engine/utils/get-el";
 import { qs } from "@app/engine/utils/query-selector";
 import { EventBus } from "@app/events/event-bus";
 import { Events } from "@app/events/events";
+import { Logger } from "@app/logging/logger";
 import { ObjectivesManager } from "@app/objectives/objectives-manager";
 import { ScenarioManager } from "@app/scenario-manager";
 import { SimulationManager } from "@app/simulation/simulation-manager";
+import { syncManager } from "@app/sync/storage";
+import { ProgressSaveManager } from "@app/user-account/progress-save-manager";
 import { html } from "../engine/utils/development/formatter";
 import { syncEquipmentWithStore } from '../sync/storage';
 import { BasePage } from "./base-page";
@@ -18,6 +21,7 @@ export class SandboxPage extends BasePage {
   readonly id = 'sandbox-page';
   static readonly containerId = 'sandbox-page-container';
   private static instance_: SandboxPage | null = null;
+  private progressSaveManager_: ProgressSaveManager | null = null;
 
   private constructor() {
     super();
@@ -60,6 +64,11 @@ export class SandboxPage extends BasePage {
 
     super.init_(Body.containerId, 'add');
     this.dom_ = qs(`#${this.id}`, parentDom);
+
+    // Initialize progress save manager
+    this.progressSaveManager_ = new ProgressSaveManager();
+    this.progressSaveManager_.initialize();
+
     this.initEquipment_();
     SimulationManager.getInstance();
 
@@ -77,14 +86,51 @@ export class SandboxPage extends BasePage {
     // No event listeners for now
   }
 
-  private initEquipment_(): void {
+  private async initEquipment_(): Promise<void> {
     const simManager = SimulationManager.getInstance();
+    const scenario = ScenarioManager.getInstance();
 
-    simManager.equipment = new Equipment(ScenarioManager.getInstance().settings);
+    simManager.equipment = new Equipment(scenario.settings);
 
-    if (ScenarioManager.getInstance().settings.isSync) {
+    if (scenario.settings.isSync) {
+      // Check for checkpoint before syncing with local storage
+      await this.loadCheckpointIfExists_();
+
       // Sync from storage (automatically uses LocalStorage)
       syncEquipmentWithStore(simManager.equipment);
+    }
+  }
+
+  /**
+   * Load checkpoint from backend if it exists for the current scenario
+   */
+  private async loadCheckpointIfExists_(): Promise<void> {
+    if (!this.progressSaveManager_) {
+      return;
+    }
+
+    try {
+      const scenario = ScenarioManager.getInstance();
+      const checkpoint = await this.progressSaveManager_.loadCheckpoint(scenario.data.id);
+
+      if (checkpoint) {
+        Logger.info(`Loading checkpoint for scenario: ${scenario.data.id}`);
+
+        // Restore state to sync manager so it will be synced to equipment
+        if (checkpoint.state) {
+          const simManager = SimulationManager.getInstance();
+          syncManager.setEquipment(simManager.equipment);
+
+          // Manually sync the checkpoint state to equipment
+          // We need to access the private syncFromStorage method, so we'll use the provider
+          await syncManager['provider'].write(checkpoint.state);
+
+          Logger.info('Checkpoint loaded successfully');
+        }
+      }
+    } catch (error) {
+      Logger.error('Failed to load checkpoint:', error);
+      // Continue with normal initialization even if checkpoint load fails
     }
   }
 
@@ -93,6 +139,12 @@ export class SandboxPage extends BasePage {
   }
 
   static destroy(): void {
+    // Clean up progress save manager
+    if (SandboxPage.instance_?.progressSaveManager_) {
+      SandboxPage.instance_.progressSaveManager_.dispose();
+      SandboxPage.instance_.progressSaveManager_ = null;
+    }
+
     SandboxPage.instance_ = null;
     ObjectivesManager.destroy();
     SimulationManager.destroy();

@@ -7,6 +7,8 @@ import { SandboxPage } from './pages/sandbox-page';
 import { ScenarioSelectionPage } from './pages/scenario-selection';
 import { Router } from './router';
 import { SimulationManager } from './simulation/simulation-manager';
+import { Auth } from './user-account/auth';
+import { initUserDataService } from './user-account/user-data-service';
 
 /**
  * Main Application Class
@@ -19,9 +21,17 @@ export class App extends BaseElement {
   private static instance_: App;
   protected html_: string = ''; // No direct HTML for App
   private readonly router = Router.getInstance();
+  private static authReadyPromise_: Promise<void>;
 
   private constructor() {
     super();
+  }
+
+  /**
+   * Promise that resolves when auth is initialized and ready to use
+   */
+  static get authReady(): Promise<void> {
+    return this.authReadyPromise_;
   }
 
   static create(): App {
@@ -31,6 +41,29 @@ export class App extends BaseElement {
 
     this.instance_ = new App();
     window.signalRange = this.instance_;
+
+    // Initialize UserDataService with configuration from .env
+    // The getAccessToken function returns the cached token synchronously
+    let cachedAccessToken: string | null = null;
+
+    // Initialize auth and cache the token - track when it's ready
+    this.authReadyPromise_ = Auth.getSession().then((session) => {
+      cachedAccessToken = session?.access_token || null;
+    });
+
+    // Listen for auth state changes to keep token updated
+    Auth.onAuthStateChange((_event, _user, _profile, accessToken) => {
+      cachedAccessToken = accessToken;
+    });
+
+    initUserDataService({
+      apiBaseUrl: process.env.PUBLIC_USER_API_URL || 'https://user.keeptrack.space',
+      getAccessToken: () => cachedAccessToken,
+      enableRetry: true,
+      maxRetries: 3,
+      retryDelay: 1000,
+    });
+
     this.instance_.init_();
 
     return App.instance_;

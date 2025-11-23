@@ -1,11 +1,13 @@
 import { Satellite } from '@app/equipment/satellite/satellite';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
+import { ObjectivesManager } from '@app/objectives';
 import { Equipment } from '@app/pages/sandbox/equipment';
 import { ScenarioManager } from '@app/scenario-manager';
+import { ProgressSaveManager } from '@app/user-account/progress-save-manager';
+import { UserDataService } from '@app/user-account/user-data-service';
 import { Degrees, Milliseconds } from 'ootk';
 import { RfSignal } from './../types';
-import { ObjectivesManager } from '@app/objectives';
 
 export class SimulationManager {
   private static instance_: SimulationManager;
@@ -19,8 +21,12 @@ export class SimulationManager {
   satelliteSignals: RfSignal[];
   userSignals: RfSignal[] = [];
   objectivesManager: ObjectivesManager;
+  progressSaveManager: ProgressSaveManager;
+  userDataServices: UserDataService;
 
   private constructor() {
+    this.progressSaveManager = new ProgressSaveManager();
+
     this.satellites = ScenarioManager.getInstance().settings.satellites;
 
     this.satelliteSignals = this.satellites.flatMap(sat => sat.txSignal);

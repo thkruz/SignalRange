@@ -97,6 +97,14 @@ export class SyncManager {
   }
 
   /**
+   * Get current equipment state
+   * Useful for creating checkpoints or saving progress
+   */
+  getCurrentState(): AppState {
+    return this.buildStateFromEquipment();
+  }
+
+  /**
    * Swap the storage provider (e.g., from LocalStorage to WebSocket)
    */
   async swapProvider(newProvider: StorageProvider): Promise<void> {

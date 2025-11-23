@@ -1,0 +1,100 @@
+.hpa-module {
+  min-width: auto !important;
+  max-width: min-content !important;
+
+  .module-controls {
+    display: flex;
+    flex-direction: column;
+    width: max-content;
+  }
+
+  .split-top-section {
+    display: flex;
+    flex-direction: row;
+    gap: 1rem;
+    justify-content: space-between;
+  }
+
+  .control-group label {
+    text-align: center;
+  }
+
+  .input-knobs {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 1rem;
+    justify-items: center;
+    align-items: center;
+  }
+
+  .hpa-switch {
+    margin-bottom: -40px;
+  }
+
+  .led-indicators {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    width: 100%;
+  }
+
+  .hpa-imd {
+    width: 75px;
+  }
+
+  .power-meter {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 8px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 4px;
+    border: 1px solid #444;
+    width: 60px;
+  }
+
+  .meter-label {
+    font-size: 10px;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .led-bar {
+    display: flex;
+    gap: 3px;
+    padding: 4px;
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 2px;
+  }
+
+  .led-segment {
+    width: 8px;
+    height: 24px;
+    border-radius: 2px;
+    background: #222;
+    border: 1px solid #333;
+    transition: all 0.2s ease;
+  }
+
+  .led-segment.led-green {
+    background: #0f0;
+    box-shadow: 0 0 8px #0f0, inset 0 0 4px #0f0;
+  }
+
+  .led-segment.led-yellow {
+    background: #ff0;
+    box-shadow: 0 0 8px #ff0, inset 0 0 4px #ff0;
+  }
+
+  .led-segment.led-red {
+    background: #f00;
+    box-shadow: 0 0 8px #f00, inset 0 0 4px #f00;
+  }
+
+  .led-segment.led-off {
+    background: #222;
+    box-shadow: none;
+  }
+}

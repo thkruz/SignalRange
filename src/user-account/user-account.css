@@ -1,0 +1,394 @@
+/* ==========================================================================
+   USER ACCOUNT CSS VARIABLES
+   ========================================================================== */
+
+:root {
+  --user-account-avatar-size: 30px;
+  --user-account-border-radius: 8px;
+  --user-account-border-radius-full: 50%;
+  --user-account-transition: 0.2s ease;
+  --user-account-spacing-xs: 4px;
+  --user-account-spacing-sm: 8px;
+  --user-account-spacing-md: 12px;
+  --user-account-spacing-lg: 16px;
+  --user-account-spacing-xl: 24px;
+}
+
+/* ==========================================================================
+   TOP MENU USER ACCOUNT
+   ========================================================================== */
+
+.user-account__menu-item {
+  display: flex;
+  align-items: center;
+  margin-right: 1em;
+}
+
+.user-account__login-btn,
+.user-account__profile-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--user-account-avatar-size);
+  height: var(--user-account-avatar-size);
+  border-radius: var(--user-account-border-radius-full);
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--color-dark-background);
+  transition: filter var(--user-account-transition);
+}
+
+.user-account__profile-btn {
+  /* This color matches the grayscaled images on the site similar to Astro off color  */
+  background-color: #aeaeae;
+}
+
+.user-account__profile-btn--hidden {
+  display: none;
+}
+
+.user-account__btn--hover:hover {
+  filter: brightness(1.2);
+}
+
+.user-account__avatar {
+  width: var(--user-account-avatar-size);
+  height: 100%;
+  border-radius: var(--user-account-border-radius-full);
+  object-fit: cover;
+}
+
+.user-account__avatar--default {
+  filter: grayscale(1);
+}
+
+.user-account__avatar--profile {
+  filter: unset;
+}
+
+/* ==========================================================================
+   OAUTH SECTION
+   ========================================================================== */
+
+.oauth-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--user-account-spacing-lg);
+  gap: var(--user-account-spacing-lg);
+}
+
+.oauth-btn {
+  width: 100%;
+  padding: 12px var(--user-account-spacing-lg);
+  border: none;
+  border-radius: var(--user-account-border-radius);
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color var(--user-account-transition);
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--user-account-spacing-md);
+  position: relative;
+}
+
+.oauth-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.oauth-btn__icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  margin-left: 25px;
+}
+
+.oauth-btn__text {
+  margin: 0;
+  font-weight: 500;
+}
+
+/* OAuth Button Variants */
+.oauth-btn--google {
+  background-color: #ffffff;
+  color: #000000;
+}
+
+.oauth-btn--google:hover:not(:disabled) {
+  background-color: #e9e9e9;
+}
+
+.oauth-btn--linkedin {
+  background-color: #0077b5;
+  color: #ffffff;
+}
+
+.oauth-btn--linkedin:hover:not(:disabled) {
+  background-color: #005885;
+}
+
+.oauth-btn--github {
+  background-color: #24292e;
+  color: #ffffff;
+}
+
+.oauth-btn--github:hover:not(:disabled) {
+  background-color: #1c2125;
+}
+
+.oauth-btn--facebook {
+  background-color: #1877f2;
+  color: #ffffff;
+}
+
+.oauth-btn--facebook:hover:not(:disabled) {
+  background-color: #1567d2;
+}
+
+/* ==========================================================================
+   AUTH DIVIDER
+   ========================================================================== */
+
+.auth-divider {
+  text-align: center;
+  margin: var(--user-account-spacing-xl) 0;
+  position: relative;
+}
+
+.auth-divider::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background-color: #e1e4e8;
+}
+
+.auth-divider__text {
+  background-color: var(--color-dark-background);
+  padding: 0 var(--user-account-spacing-lg);
+  color: #6a737d;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* ==========================================================================
+   AUTH FORM
+   ========================================================================== */
+
+.auth-form {
+  padding: 0 var(--user-account-spacing-xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--user-account-spacing-lg);
+}
+
+.auth-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--user-account-spacing-xs);
+}
+
+.auth-form__label {
+  font-weight: 500;
+  color: var(--color-dark-text);
+  font-size: 0.9rem;
+}
+
+.auth-form__input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--color-dark-border);
+  border-radius: var(--user-account-border-radius);
+  font-size: 16px;
+  box-sizing: border-box;
+  transition: border-color var(--user-account-transition);
+  background-color: var(--colorTertiary);
+  color: #ffffff;
+}
+
+.auth-form__input:focus {
+  outline: none;
+  border-color: var(--color-dark-text-accent);
+}
+
+.auth-form__actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--user-account-spacing-sm);
+  margin-top: var(--user-account-spacing-lg);
+}
+
+.auth-form__btn {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: var(--user-account-border-radius);
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color var(--user-account-transition);
+}
+
+.auth-form__btn--primary {
+  background-color: var(--color-primary);
+  color: #ffffff;
+}
+
+.auth-form__btn--primary:hover {
+  background-color: var(--color-primary-dark);
+}
+
+.auth-form__btn--secondary {
+  background-color: transparent;
+  color: var(--color-primary);
+  border: 1px solid var(--color-primary);
+}
+
+.auth-form__btn--secondary:hover {
+  background-color: var(--color-primary);
+  color: #ffffff;
+}
+
+/* ==========================================================================
+   PROFILE MODAL LAYOUT
+   ========================================================================== */
+
+.profile-modal {
+  display: grid;
+  grid-template-columns: 2fr 8px 3fr;
+  gap: var(--user-account-spacing-xl);
+  min-height: 400px;
+}
+
+.profile-modal__section {
+  display: flex;
+  flex-direction: column;
+}
+
+.profile-modal__divider {
+  background: #363636;
+  width: 2px;
+  border-radius: var(--user-account-border-radius);
+  justify-self: center;
+}
+
+/* ==========================================================================
+   PROFILE FORM
+   ========================================================================== */
+
+.profile-form {
+  padding: var(--user-account-spacing-xl) var(--user-account-spacing-xl) 0 var(--user-account-spacing-xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--user-account-spacing-lg);
+  flex: 1;
+}
+
+.profile-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--user-account-spacing-xs);
+}
+
+.profile-form__label {
+  font-weight: 500;
+  color: var(--color-dark-text);
+  font-size: 0.9rem;
+}
+
+.profile-form__text {
+  padding: var(--user-account-spacing-sm) 0;
+  color: var(--color-dark-text-accent);
+  font-size: 0.95rem;
+  margin: 0;
+}
+
+.profile-form__input,
+.profile-form__select {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--color-dark-border);
+  border-radius: var(--user-account-border-radius);
+  font-size: 16px;
+  box-sizing: border-box;
+  transition: border-color var(--user-account-transition);
+  background-color: var(--colorTertiary);
+  color: #ffffff;
+}
+
+.profile-form__input:focus,
+.profile-form__select:focus {
+  outline: none;
+  border-color: var(--color-dark-text-accent);
+}
+
+/* ==========================================================================
+   PROFILE ACTIONS
+   ========================================================================== */
+
+.profile-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--user-account-spacing-sm);
+  padding: 0 var(--user-account-spacing-xl) var(--user-account-spacing-xl);
+}
+
+.profile-actions__btn {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: var(--user-account-border-radius);
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color var(--user-account-transition);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.profile-actions__btn--primary {
+  background-color: var(--color-primary);
+  color: #ffffff;
+}
+
+.profile-actions__btn--primary:hover {
+  background-color: var(--color-primary-dark);
+}
+
+.profile-actions__btn--secondary {
+  background-color: transparent;
+  color: var(--color-primary);
+  border: 1px solid var(--color-dark-border);
+}
+
+.profile-actions__btn--secondary:hover {
+  background-color: var(--color-dark-border);
+  color: #ffffff;
+}
+
+/* ==========================================================================
+   RESPONSIVE DESIGN
+   ========================================================================== */
+
+@media (max-width: 768px) {
+  .profile-modal {
+    grid-template-columns: 1fr;
+    gap: var(--user-account-spacing-lg);
+  }
+
+  .profile-modal__divider {
+    width: 100%;
+    height: 2px;
+    margin: var(--user-account-spacing-lg) 0;
+  }
+
+  .oauth-btn__icon {
+    margin-left: var(--user-account-spacing-lg);
+  }
+}

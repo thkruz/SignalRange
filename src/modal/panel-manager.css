@@ -1,0 +1,114 @@
+.hm-panel {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  width: 400px;
+  max-width: 90vw;
+  background: var(--background-color, #1e1e1e);
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  transform: translateX(0);
+  transition: transform 0.3s ease-in-out;
+  display: flex;
+  flex-direction: column;
+}
+
+.hm-panel-left {
+  left: 0;
+  transform: translateX(-100%);
+}
+
+.hm-panel-right {
+  right: 0;
+  transform: translateX(100%);
+}
+
+.hm-panel-visible.hm-panel-left {
+  transform: translateX(0);
+}
+
+.hm-panel-visible.hm-panel-right {
+  transform: translateX(0);
+}
+
+.hm-panel-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.hm-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--border-color, #333);
+  background: var(--header-background, #252525);
+  flex-shrink: 0;
+}
+
+.hm-panel-header h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-color, #ffffff);
+}
+
+.hm-panel-close {
+  background: transparent;
+  border: none;
+  color: var(--text-color, #ffffff);
+  font-size: 2rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.hm-panel-close:hover {
+  background-color: var(--hover-background, rgba(255, 255, 255, 0.1));
+}
+
+.hm-panel-close:focus {
+  outline: 2px solid var(--focus-color, #0078d4);
+  outline-offset: 2px;
+}
+
+.hm-panel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.5rem;
+  color: var(--text-color, #ffffff);
+}
+
+.hm-panel-body::-webkit-scrollbar {
+  width: 8px;
+}
+
+.hm-panel-body::-webkit-scrollbar-track {
+  background: var(--scrollbar-track, #1e1e1e);
+}
+
+.hm-panel-body::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb, #555);
+  border-radius: 4px;
+}
+
+.hm-panel-body::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover, #666);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .hm-panel {
+    width: 100vw;
+    max-width: 100vw;
+  }
+}

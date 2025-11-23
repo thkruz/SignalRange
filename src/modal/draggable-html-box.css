@@ -1,0 +1,38 @@
+#draggable-html-box-checklist {
+  max-height: 80vh;
+  width: 600px;
+  min-width: 300px;
+  min-height: 300px;
+  height: fit-content;
+
+  h2 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-color, #ffffff);
+  }
+
+  #draggable-html-box-content-checklist {
+    div {
+      padding: 0.5rem;
+      color: var(--text-color, #ffffff);
+    }
+
+    div::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    div::-webkit-scrollbar-track {
+      background: var(--scrollbar-track, #1e1e1e);
+    }
+
+    div::-webkit-scrollbar-thumb {
+      background: var(--scrollbar-thumb, #555);
+      border-radius: 4px;
+    }
+
+    div::-webkit-scrollbar-thumb:hover {
+      background: var(--scrollbar-thumb-hover, #666);
+    }
+  }
+}

@@ -1,76 +1,64 @@
-![GitHub commit activity](https://img.shields.io/github/commit-activity/m/thkruz/iris?style=flat-square) ![language](https://img.shields.io/github/languages/top/thkruz/iris?style=flat-square) [![DeepSource](https://deepsource.io/gh/thkruz/iris.svg/?label=active+issues&token=qoGmD9EJGXA_iwh6h-5mGA6m)](https://deepsource.io/gh/thkruz/iris/) ![Languages](https://img.shields.io/github/languages/count/thkruz/iris?style=flat-square) ![GitHub issues](https://img.shields.io/github/issues/thkruz/iris?style=flat-square) [![code style: prettier](https://img.shields.io/badge/code_style-prettier-ff69b4.svg?style=flat-square)](https://github.com/prettier/prettier) ![License](https://img.shields.io/github/license/thkruz/iris?style=flat-square)
+# SignalRange | Space Electronic Warfare Lab
 
-# IRIS - Space Electronic Warfare Sandbox
+A comprehensive training environment for Space Electronic Warfare, rewritten in TypeScript with vanilla JavaScript (no React).
 
-A stand-alone training platform for Space Electronic Warfare. The application has a "Student front-end" as well as an "instructor front-end." Users have their own "session/game" that the instructor creates and students join. Each "game" has its own unique id. Games exist as standalone objects that can be "spun up" from the database.
+## 🚀 Project Overview
 
-The student makes choices given the unique problem set presented and can take action to "jam" electronic signals.
+SignalRange is a web-based simulation for learning Space Electronic Warfare operations. It provides:
 
-The interface responds if the student chooses the correct setting to jam the signal.
+- **Antenna** - C-band antenna system
+- **OMT/Duplexer** - Manages transmit and receive paths
+- **BPF** - Bandpass Filters for frequency selection
+- **LNA** - Low Noise Amplifier for weak signal reception
+- **Mixer** - Frequency conversion
+- **IF Filter Bank** - Intermediate frequency filtering
+- **GPS Disciplined Oscillator** - Stable frequency reference
+- **Block Upconverter** - Upconverts IF to RF for transmission
+- **High Power Amplifier** - Amplifies RF signals for transmission
+- **Spectrum Analyzers** - Visualize RF signals in real-time
+- **Transmitter Cases** (8 modems) - Generate jamming signals
+- **Receiver Cases** (8 modems) - Receive and decode satellite transmissions
 
-The problem set is presented as a visual representation of electronic signals that force the student to perform the analysis they are trained for.
+## 🛠️ Getting Started
 
-## Table of Contents
+Instructions are still WIP.
 
-- [Setting up a Local Copy](#Setting-up-a-Local-Copy)
-- [Versioning](#Versioning)
-- [DeepSource](#DeepSource)
-- [Tests](#Tests)
-- [Contributors](#Contributors)
-- [License](#License)
+The current (11/10/2025) scenario is a C-Band satellite with a 5935 MHz uplink and a 3710 MHz downlink. To see the downlink you need to:
 
-### Setting up a Local Copy
+### RX Setup
 
-```bash
-git clone https://github.com/thkruz/iris        #Clone the github files.
-cd ./iris/                                      #Switch into the directory.
-docker compose up -d                            #Start the docker containers.
-```
+- Enable auto-track to track the satellite.
+- Set your receiver to 490 MHz IF, 10 MHz BW, 8QAM demodulation, and 3/4 FEC.
+- Duplexer needs to RX with Horizontal (H) polarization OR the Antenna needs to be skewed to 90 degrees effectively reversing the polarization.
+- LNB LO should be left at 4200 MHz and reduce the gain to 31 dB.
+- Change the IF Filter Bank to use a 10 MHz filter.
+- Ensure the Spec-A is set to 490 MHz center frequency with at least 10 MHz span to see the downlink signal on the RX IF Tap point.
 
-## Versioning
+### TX Setup
 
-We use [SemVer](http://semver.org/) for versioning.
+- Set your transmitter to 1735 MHz IF, 3 MHz BW, annd 3 dBm output power.
+- Enable the transmitter and ensure there are no faults or loopback.
+- In the BUC ensure the gain is at least 30 dB and leave the LO at 4200 MHz.
+- Open the safety switch in the HPA and enable it (down) to transmit.
+- This will send a 1735 MHz IF signal to the BUC which will upconvert it to 5935 MHz for uplink to the satellite. It will mix in with the real satellite uplink signal and cause it to send a degraded signal down to the receiver.
 
-## DeepSource
+### 🐞 Known Issues
 
-We are using DeepSource for static code analysis. It will automatically scan the `dev` branch and continuously find and fix security vulnerabilities, performance issues, and more.
+- This is meant for desktops. The layout will not be great on mobile devices.
+- I develop on Chromium-based browsers, so Firefox or Safari may have issues.
+- Not every pathway has perfect logic right now. Using loopback won't be 100% accurate.
+- I am focusing on functionality over accuracy right now. Some values and behaviors may not be realistic.
 
-You can see the current results here:[https://deepsource.io/gh/thkruz/iris/](https://deepsource.io/gh/thkruz/iris/).
+NOTE: The spectrum analyzer uses a lot of random numbers and gaussian noise to simulate signals. It will become more accurate once the signal flow is fully implemented.
 
-## Tests
+## 🏗️ Architecture
 
-### Unit/Functional
+### Tech Stack
 
-Currently we are using Jest for ui unit and functional tests that should ideally cover at least 80% of the functions. All of these tests can be run using:
+- **TypeScript** - Type-safe code throughout
+- **Webpack** - Module bundling and development server
+- **Canvas API** - Spectrum analyzer visualization
 
-```bash
-cd ./ui/
-npm run test
-```
+## 📄 License
 
-### End-To-End
-
-For end-to-end (E2E) testing we will be using the cypress framework. This is on the to-do list.
-
-### Security
-
-For security testing we are using SonarCloud automatically in the CI/CD pipeline.
-
-## Contributors
-
-- [@bjhufstetler](https://github.com/bjhufstetler)
-- [@thkruz](https://github.com/thkruz/)
-- [@filmo003](https://github.com/filmo003/)
-- [@bigbpete](https://github.com/bigbpete)
-
-## License
-
-Copyright (C) 2022 Theodore Kruczek
-
-This program is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-[Full License](https://github.com/thkruz/iris/blob/master/LICENSE.md)
+AGPLv3 - See LICENSE.md

@@ -1,6 +1,62 @@
 {
+  "name": "signal-range",
+  "version": "1.1.0",
+  "description": "Signal Range: Space Electronic Warfare Lab",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "webpack --mode production",
+    "dev": "webpack serve --mode development",
+    "deploy": "npm run build && wrangler deploy",
+    "deploy:dry-run": "npm run build && wrangler deploy --dry-run",
+    "preview": "wrangler dev",
+    "type-check": "tsc --noEmit",
+    "clean": "rm -rf dist",
+    "test": "npx jest --config jest.config.js",
+    "lint": "npx eslint --config .eslintrc",
+    "lcov": "npx tsx build/open-lcov.ts"
+  },
+  "keywords": [
+    "space",
+    "electronic-warfare",
+    "spectrum-analyzer"
+  ],
+  "author": "Theodore Kruczek",
+  "license": "AGPL-3.0",
+  "devDependencies": {
+    "@babel/preset-env": "^7.28.5",
+    "@babel/preset-typescript": "^7.28.5",
+    "@types/draggabilly": "^3.0.0",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^20.19.24",
+    "babel-jest": "^30.2.0",
+    "babel-plugin-transform-import-meta": "^2.3.3",
+    "case-sensitive-paths-webpack-plugin": "^2.4.0",
+    "copy-webpack-plugin": "^13.0.1",
+    "css-loader": "^6.8.1",
+    "eslint": "^8.57.0",
+    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-jest": "^27.4.0",
+    "file-loader": "^6.2.0",
+    "html-webpack-plugin": "^5.5.3",
+    "jest": "^30.2.0",
+    "jest-canvas-mock": "^2.5.2",
+    "jest-environment-jsdom": "^30.2.0",
+    "style-loader": "^3.3.3",
+    "ts-loader": "^9.5.1",
+    "tsx": "^4.20.6",
+    "typescript": "^5.3.3",
+    "webpack": "^5.89.0",
+    "webpack-cli": "^5.1.4",
+    "webpack-dev-server": "^4.15.1",
+    "wrangler": "^4.0.0"
+  },
   "dependencies": {
-    "express": "^4.17.3",
-    "knex": "^2.0.0"
+    "@supabase/supabase-js": "^2.81.1",
+    "dotenv": "^17.2.3",
+    "draggabilly": "^3.0.0",
+    "gl-matrix": "^3.4.4",
+    "ootk": "^5.1.1",
+    "socket.io-client": "^4.5.4",
+    "uuid": "^13.0.0"
   }
 }

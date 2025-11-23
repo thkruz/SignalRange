@@ -1,0 +1,101 @@
+.save-progress-toast {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 100001;
+  background: var(--color-dark-background);
+  border: 1px solid var(--color-dark-border);
+  border-radius: 4px;
+  padding: 12px 16px;
+  min-width: 250px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  opacity: 0;
+  transform: translateX(20px);
+  transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+  pointer-events: none;
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  color: #fff;
+}
+
+.save-progress-toast.show {
+  opacity: 1;
+  transform: translateX(0);
+  pointer-events: auto;
+}
+
+.save-progress-toast__icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.save-progress-toast__spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--color-dark-border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.save-progress-toast__checkmark {
+  width: 20px;
+  height: 20px;
+  color: #4caf50;
+  font-size: 20px;
+  line-height: 20px;
+}
+
+.save-progress-toast__error {
+  width: 20px;
+  height: 20px;
+  color: var(--color-primary);
+  font-size: 20px;
+  line-height: 20px;
+}
+
+.save-progress-toast__message {
+  flex: 1;
+  line-height: 1.4;
+}
+
+.save-progress-toast__close {
+  background: none;
+  border: none;
+  color: #888;
+  cursor: pointer;
+  padding: 0;
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s;
+}
+
+.save-progress-toast__close:hover {
+  color: #fff;
+}
+
+.save-progress-toast.success {
+  border-color: #4caf50;
+}
+
+.save-progress-toast.error {
+  border-color: var(--color-primary);
+}

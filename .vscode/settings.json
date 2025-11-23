@@ -1,0 +1,59 @@
+{
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "always",
+    "source.organizeImports": "always",
+    "source.addMissingImports": "explicit",
+    "source.removeUnusedImports": "explicit"
+  },
+  // TypeScript: give the TS server more headroom
+  "typescript.tsserver.maxTsServerMemory": 4096,
+  // Optional: if ESLint is heavy in your repos
+  "eslint.execArgv": [
+    "--max_old_space_size=4096"
+  ],
+  // File watching: keep noise down for big projects
+  "files.watcherExclude": {
+    "**/.git/objects/**": true,
+    "**/.git/subtree-cache/**": true,
+    "**/node_modules/**": true,
+    "**/dist/**": true,
+    "**/build/**": true,
+    "**/.turbo/**": true,
+    "**/.next/**": true
+  },
+  // Searching: don’t waste time on junk
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/dist": true,
+    "**/build": true,
+    "**/.turbo": true,
+    "**/.next": true
+  },
+  "github.copilot.enable": {
+    "markdown": true,
+    "plaintext": true
+  },
+  "github.copilot.chat.commitMessageGeneration.instructions": [
+    {
+      "text": "Use Conventional Commits: <type>[optional scope]: :emoji: description"
+    },
+    {
+      "text": "type must be one of: feat, fix, refactor, docs, test, chore"
+    },
+    {
+      "text": "Use imperative, present tense: 'add', 'update', 'extract', not 'added' or 'adds'"
+    },
+    {
+      "text": "No trailing period in subject line"
+    },
+    {
+      "text": "Keep subject ≤ 72 characters"
+    },
+    {
+      "text": "ONLY include body if extra context is helpful"
+    },
+    {
+      "text": "If removing dead code, explain why"
+    },
+  ],
+}

@@ -1,0 +1,621 @@
+/* Receiver.css - Styles specific to Receiver equipment */
+.receiver-box {
+  height: 380px;
+}
+
+/* Header */
+.receiver-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #444;
+}
+
+.receiver-title {
+  color: #fff;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.receiver-status {
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.status-found,
+.status-signal-found {
+  background-color: #4caf50;
+  color: #fff;
+}
+
+.status-degraded,
+.status-signal-degraded {
+  background-color: #ff9800;
+  color: #fff;
+}
+
+.status-no-power,
+.status-denied,
+.status-signal-denied {
+  background-color: #f44336;
+  color: #fff;
+}
+
+.status-standby,
+.status-no-signal {
+  background-color: #757575;
+  color: #fff;
+}
+
+/* Controls Container - now horizontal layout */
+.receiver-controls {
+  display: flex;
+  gap: 16px;
+  flex-grow: 1;
+  padding: 16px;
+}
+
+/* Modem Selection Buttons - vertical on left */
+.modem-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 60px;
+}
+
+.btn-modem {
+  padding: 12px;
+  background-color: #555;
+  color: #fff;
+  border: 2px solid #777;
+  border-radius: 4px;
+  font-weight: bold;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-modem:hover {
+  background-color: #666;
+  transform: translateX(2px);
+}
+
+.btn-modem.active {
+  background-color: #2196f3;
+  border-color: #2196f3;
+  transform: translateX(2px);
+}
+
+.btn-modem.modem-found {
+  border-color: #4caf50;
+  box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+}
+
+.btn-modem.modem-found.active {
+  background-color: #4caf50;
+  border-color: #4caf50;
+}
+
+.btn-modem.modem-degraded {
+  border-color: #ff9800;
+  box-shadow: 0 0 10px rgba(255, 152, 0, 0.5);
+}
+
+.btn-modem.modem-degraded.active {
+  background-color: #ff9800;
+  border-color: #ff9800;
+}
+
+.btn-modem.modem-denied {
+  border-color: #f44336;
+  box-shadow: 0 0 10px rgba(244, 67, 54, 0.5);
+}
+
+.btn-modem.modem-denied.active {
+  background-color: #f44336;
+  border-color: #f44336;
+}
+
+/* Main content area - split into config and video side by side */
+.receiver-main-content {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+/* Modem Configuration - left side */
+.rx-modem-config {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 12px;
+  background-color: #1a1a1a;
+  border-radius: 8px;
+  width: 285px;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.config-row {
+  display: grid;
+  grid-template-columns: 75px 1fr 80px;
+  align-items: center;
+  gap: 12px;
+}
+
+.config-row label {
+  color: #fff;
+  font-size: 14px;
+  text-align: right;
+}
+
+.config-row input,
+.config-row select {
+  padding: 5px;
+  background-color: #2a2a2a;
+  color: #fff;
+  border: 1px solid #555;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.config-row input:focus,
+.config-row select:focus {
+  outline: none;
+  border-color: #2196f3;
+}
+
+.input-rx-antenna,
+.input-rx-frequency,
+.input-rx-bandwidth,
+.input-rx-modulation,
+.input-rx-fec {
+  width: 80px;
+}
+
+.current-value {
+  color: #2196f3;
+  font-size: 14px;
+  font-weight: bold;
+  text-align: center;
+}
+
+/* Video Monitor - right side, more compact */
+.video-monitor {
+  padding: 8px;
+  background-color: #000;
+  border: 4px solid #333;
+  border-radius: 8px;
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.8);
+  display: flex;
+  flex-direction: column;
+  height: 255px;
+  width: 255px;
+}
+
+.monitor-screen {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(ellipse at center, #0a0a0a 0%, #000 100%);
+  border-radius: 4px;
+  position: relative;
+  overflow: hidden;
+  min-height: 180px;
+  min-width: 250px;
+}
+
+.monitor-screen.no-signal {
+  background: repeating-linear-gradient(0deg,
+      rgba(10, 10, 10, 0.3),
+      rgba(10, 10, 10, 0.3) 2px,
+      rgba(26, 26, 26, 0.3) 2px,
+      rgba(26, 26, 26, 0.3) 4px);
+  /* flicker */
+  animation: flicker 0.1s infinite;
+}
+
+.monitor-screen.no-power {
+  background: #050505;
+}
+
+.video-feed {
+  width: 100%;
+  max-height: 250px;
+  border-radius: 4px;
+  object-fit: cover;
+  aspect-ratio: 1;
+}
+
+.no-signal-text {
+  color: #666;
+  font-size: 18px;
+  font-weight: bold;
+  letter-spacing: 2px;
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+}
+
+.signal-indicator {
+  display: flex;
+  height: 100%;
+  width: 100%;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  color: #4caf50;
+  font-weight: bold;
+  text-shadow: 0 0 10px rgba(76, 175, 80, 0.8);
+}
+
+.signal-bars {
+  width: 80px;
+  height: 40px;
+  background: linear-gradient(to top,
+      #4caf50 0%,
+      #4caf50 25%,
+      transparent 25%,
+      transparent 50%,
+      #4caf50 50%,
+      #4caf50 75%,
+      transparent 75%);
+  background-size: 100% 10px;
+  animation: signal-pulse 1s ease-in-out infinite;
+}
+
+@keyframes signal-pulse {
+
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Action Buttons */
+.config-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid #444;
+}
+
+.btn-apply {
+  flex: 1;
+  padding: 12px;
+  background-color: #555;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  font-weight: bold;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-apply:hover {
+  background-color: #666;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.external-image-feed {
+  /* Scale the image down to fit the container */
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.glitch {
+  position: relative;
+  display: inline-block;
+  overflow: hidden;
+  background: #000;
+}
+
+.glitch::before,
+.glitch::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+}
+
+/* Heavy scan lines */
+.glitch::before {
+  background: repeating-linear-gradient(0deg,
+      rgba(0, 0, 0, 0.4),
+      rgba(0, 0, 0, 0.4) 1px,
+      transparent 1px,
+      transparent 3px);
+  z-index: 2;
+  animation: scanline-jitter 0.1s infinite;
+}
+
+@keyframes scanline-jitter {
+  0% {
+    opacity: 0.8;
+  }
+
+  25% {
+    opacity: 0.3;
+  }
+
+  50% {
+    opacity: 0.9;
+  }
+
+  75% {
+    opacity: 0.4;
+  }
+
+  100% {
+    opacity: 0.8;
+  }
+}
+
+/* Heavy static interference */
+.glitch::after {
+  background:
+    repeating-linear-gradient(90deg,
+      transparent,
+      transparent 1px,
+      rgba(255, 255, 255, 0.1) 1px,
+      rgba(255, 255, 255, 0.1) 2px),
+    repeating-linear-gradient(0deg,
+      rgba(0, 0, 0, 0.3),
+      rgba(0, 0, 0, 0.3) 1px,
+      transparent 1px,
+      transparent 2px);
+  animation: heavy-static 0.08s infinite, flicker 0.15s infinite;
+  z-index: 3;
+  mix-blend-mode: overlay;
+}
+
+@keyframes heavy-static {
+  0% {
+    opacity: 0.95;
+    transform: translateY(0);
+  }
+
+  33% {
+    opacity: 0.6;
+    transform: translateY(-2px);
+  }
+
+  66% {
+    opacity: 0.85;
+    transform: translateY(1px);
+  }
+
+  100% {
+    opacity: 0.95;
+    transform: translateY(0);
+  }
+}
+
+@keyframes flicker {
+
+  0%,
+  100% {
+    opacity: 0.9;
+  }
+
+  25% {
+    opacity: 0.3;
+  }
+
+  50% {
+    opacity: 0.95;
+  }
+
+  75% {
+    opacity: 0.5;
+  }
+}
+
+/* Extreme image degradation */
+.glitch img {
+  width: 100%;
+  display: block;
+  image-rendering: pixelated;
+  animation:
+    extreme-degradation 1.3s infinite,
+    chroma-shift 3s infinite,
+    signal-loss 2s infinite;
+}
+
+@keyframes extreme-degradation {
+  0% {
+    filter:
+      contrast(2.5) saturate(0.2) brightness(0.7) hue-rotate(0deg) blur(0.5px);
+  }
+
+  8% {
+    filter:
+      contrast(0.8) saturate(3) brightness(1.3) hue-rotate(15deg) blur(0px);
+  }
+
+  15% {
+    filter:
+      contrast(3) saturate(0.1) brightness(0.5) hue-rotate(-10deg) blur(1px);
+  }
+
+  25% {
+    filter:
+      contrast(1.5) saturate(2.5) brightness(1.1) hue-rotate(8deg) blur(0px);
+  }
+
+  35% {
+    filter:
+      contrast(2.8) saturate(0.3) brightness(0.6) hue-rotate(-15deg) blur(0.8px);
+  }
+
+  50% {
+    filter:
+      contrast(1.2) saturate(1.8) brightness(1.2) hue-rotate(5deg) blur(0.3px);
+  }
+
+  65% {
+    filter:
+      contrast(3.2) saturate(0.15) brightness(0.55) hue-rotate(-8deg) blur(1.2px);
+  }
+
+  80% {
+    filter:
+      contrast(1.8) saturate(2.2) brightness(0.95) hue-rotate(12deg) blur(0.2px);
+  }
+
+  100% {
+    filter:
+      contrast(2.5) saturate(0.2) brightness(0.7) hue-rotate(0deg) blur(0.5px);
+  }
+}
+
+@keyframes chroma-shift {
+  0% {
+    filter:
+      hue-rotate(0deg) saturate(0.3);
+  }
+
+  20% {
+    filter:
+      hue-rotate(25deg) saturate(2.5);
+  }
+
+  40% {
+    filter:
+      hue-rotate(-20deg) saturate(0.1);
+  }
+
+  60% {
+    filter:
+      hue-rotate(15deg) saturate(3);
+  }
+
+  80% {
+    filter:
+      hue-rotate(-30deg) saturate(0.2);
+  }
+
+  100% {
+    filter:
+      hue-rotate(0deg) saturate(0.3);
+  }
+}
+
+@keyframes signal-loss {
+
+  0%,
+  100% {
+    opacity: 0.85;
+    filter: brightness(0.8) contrast(2);
+  }
+
+  15% {
+    opacity: 0.3;
+    filter: brightness(0.4) contrast(3.5);
+  }
+
+  30% {
+    opacity: 0.95;
+    filter: brightness(1.2) contrast(1.2);
+  }
+
+  45% {
+    opacity: 0.5;
+    filter: brightness(0.6) contrast(2.8);
+  }
+
+  60% {
+    opacity: 0.75;
+    filter: brightness(0.9) contrast(1.8);
+  }
+
+  80% {
+    opacity: 0.4;
+    filter: brightness(0.5) contrast(3.2);
+  }
+}
+
+/* Additional glitch blocks */
+.glitch .block-glitch {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background:
+    linear-gradient(0deg,
+      transparent 0%,
+      rgba(0, 255, 0, 0.1) 10%,
+      transparent 10%,
+      transparent 22%,
+      rgba(255, 255, 0, 0.13) 22%,
+      rgba(255, 255, 0, 0.13) 25%,
+      transparent 25%,
+      transparent 45%,
+      rgba(255, 0, 255, 0.15) 45%,
+      rgba(255, 0, 255, 0.15) 48%,
+      transparent 48%,
+      transparent 58%,
+      rgba(0, 128, 255, 0.14) 58%,
+      rgba(0, 128, 255, 0.14) 61%,
+      transparent 61%,
+      transparent 70%,
+      rgba(0, 255, 255, 0.12) 70%,
+      rgba(0, 255, 255, 0.12) 73%,
+      transparent 73%,
+      transparent 85%,
+      rgba(255, 0, 0, 0.11) 85%,
+      rgba(255, 0, 0, 0.11) 88%,
+      transparent 88%);
+  animation: block-shift 0.4s infinite;
+  z-index: 4;
+  mix-blend-mode: screen;
+}
+
+@keyframes block-shift {
+  0% {
+    transform: translateY(0);
+    opacity: 0.8;
+  }
+
+  20% {
+    transform: translateY(-15%);
+    opacity: 0.3;
+  }
+
+  40% {
+    transform: translateY(25%);
+    opacity: 0.9;
+  }
+
+  60% {
+    transform: translateY(-10%);
+    opacity: 0.4;
+  }
+
+  80% {
+    transform: translateY(20%);
+    opacity: 0.7;
+  }
+
+  100% {
+    transform: translateY(0);
+    opacity: 0.8;
+  }
+}

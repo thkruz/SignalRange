@@ -1,0 +1,44 @@
+/* BUC Module Styles */
+.buc-module {
+  min-width: auto !important;
+  max-width: min-content !important;
+
+  .module-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    width: max-content;
+  }
+
+  .control-group {
+    max-width: 85px;
+  }
+
+  .control-group label {
+    text-align: center;
+  }
+
+  .physical-switch-container {
+    margin-top: 2em;
+  }
+
+  .input-knobs {
+    margin-top: -3em;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 1rem;
+  }
+
+  .led-indicators {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    width: 100%;
+  }
+
+  .status-displays {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 1rem;
+  }
+}

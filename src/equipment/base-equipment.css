@@ -1,0 +1,310 @@
+.equipment-case {
+  display: flex;
+  flex-direction: column;
+  width: 864px;
+  height: 600px;
+  background: linear-gradient(135deg, #2a2a2a 0%, #1f1f1f 100%);
+  border: 2px solid #444;
+  border-radius: 8px;
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.6),
+    inset 0 1px 1px rgba(255, 255, 255, 0.1);
+  padding: 0;
+  position: relative;
+  font-family: 'Roboto', 'Arial', sans-serif;
+  overflow: hidden;
+
+  .equipment-case-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 12px;
+    background: linear-gradient(180deg, #1a1a1a 0%, #0f0f0f 100%);
+    border-top: 1px solid #333;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.6);
+  }
+}
+
+.bottom-status-bar {
+  font-size: 12px;
+  font-family: 'Courier New', monospace;
+  font-weight: bold;
+  letter-spacing: 0.6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+}
+
+.bottom-status-bar.status-off {
+  color: #888;
+  text-shadow: 0 0 6px rgba(136, 136, 136, 0.5), 0 1px 2px rgba(0, 0, 0, 0.6);
+  min-height: 13.6px;
+}
+
+.bottom-status-bar.status-red {
+  color: #ff564d;
+  text-shadow: 0 0 6px rgba(255, 59, 48, 0.75), 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+.bottom-status-bar.status-green {
+  color: #4caf50;
+  text-shadow: 0 0 6px rgba(76, 175, 80, 0.75), 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+.bottom-status-bar.status-amber {
+  color: #ff9800;
+  text-shadow: 0 0 6px rgba(255, 152, 0, 0.75), 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+.bottom-status-bar.status-blue {
+  color: #2196f3;
+  text-shadow: 0 0 6px rgba(33, 150, 243, 0.75), 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+
+/* Equipment.css - Common styles for all equipment */
+.equipment-section h2 {
+  color: #fff;
+  margin-bottom: 1rem;
+  font-size: 1.5rem;
+}
+
+/* Rivet corner decorations */
+.equipment-case::before,
+.equipment-case::after {
+  content: '';
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: radial-gradient(circle at center, #666 30%, #444 70%, #222 100%);
+  border-radius: 50%;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.8);
+  z-index: 10;
+}
+
+.equipment-case::before {
+  top: 8px;
+  left: 8px;
+}
+
+.equipment-case::after {
+  top: 8px;
+  right: 8px;
+}
+
+/* Top Status Bar - 40px height */
+.antenna-header,
+.equipment-case-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 40px;
+  padding: 0 20px;
+  background: linear-gradient(180deg, #3a3a3a 0%, #2a2a2a 100%);
+  border-bottom: 2px solid #444;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.equipment-case-title {
+  padding-left: 12px;
+  display: flex;
+  gap: 12px;
+  color: #fff;
+  font-size: 16px;
+  font-weight: bold;
+  letter-spacing: 2px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  text-transform: uppercase;
+  width: calc(100% - 120px);
+}
+
+.equipment-case-title span {
+  /* Clip text overflow */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.equipment-case-power-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.antenna-status,
+.equipment-case-status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background-color: #1a1a1a;
+  border: 1px solid #444;
+  border-radius: 4px;
+}
+
+.equipment-case-status-label {
+  color: #aaa;
+  font-size: 10px;
+  font-weight: bold;
+  letter-spacing: 1px;
+}
+
+.tx-grid,
+.rx-grid {
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  justify-content: space-evenly;
+  column-gap: 1em;
+  row-gap: 1em;
+}
+
+/* Container classes */
+.spec-a-container,
+.rf-front-end-container,
+.antenna-container {
+  position: relative;
+  display: flex;
+}
+
+/* Common button styles */
+button {
+  font-family: 'Roboto', 'Helvetica', 'Arial', sans-serif;
+  cursor: pointer;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 16px;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+button:active {
+  transform: translateY(0);
+}
+
+button.active {
+  background-color: #4caf50;
+  color: white;
+}
+
+/* Common input styles */
+input,
+select {
+  font-family: 'Roboto', 'Helvetica', 'Arial', sans-serif;
+  padding: 8px;
+  border: 1px solid #555;
+  border-radius: 4px;
+  background-color: #2a2a2a;
+  color: #fff;
+  font-size: 14px;
+}
+
+input:focus,
+select:focus {
+  outline: none;
+  border-color: #4caf50;
+}
+
+/* Common label styles */
+label {
+  color: #fff;
+  font-size: 14px;
+  margin-bottom: 4px;
+  display: block;
+}
+
+/* Physical Light Indicator Styles */
+.unit-status-indicators {
+  display: flex;
+  gap: 18px;
+  margin-top: 8px;
+  justify-content: space-around;
+  align-items: center;
+}
+
+.status-indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 54px;
+}
+
+.indicator-light {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 60% 40%, #fff 0%, #eee 20%, var(--light-color, #444) 60%, #222 100%);
+  box-shadow:
+    0 0 8px 2px var(--light-glow, #222),
+    0 2px 6px rgba(0, 0, 0, 0.5),
+    inset 0 -2px 6px rgba(0, 0, 0, 0.7);
+  border: 2px solid #333;
+  transition: box-shadow 0.1s, background 0.1s;
+  margin-bottom: 2px;
+}
+
+.indicator-light.on {
+  --light-color: #4caf50;
+  --light-glow: #4caf50aa;
+  background: radial-gradient(circle at 60% 40%, #fff 0%, #b6ffb6 30%, #4caf50 70%, #1b5e20 100%);
+  box-shadow:
+    0 0 12px 4px #4caf50cc,
+    0 2px 8px rgba(0, 0, 0, 0.5),
+    inset 0 -2px 8px #388e3c99;
+}
+
+.indicator-light.off {
+  --light-color: #757575;
+  --light-glow: #222;
+  background: radial-gradient(circle at 60% 40%, #fff 0%, #ddd 20%, #757575 70%, #222 100%);
+  box-shadow:
+    0 0 4px 1px #222,
+    0 2px 6px rgba(0, 0, 0, 0.5),
+    inset 0 -2px 6px #222;
+}
+
+.status-indicator.transmitting .indicator-light.on {
+  --light-color: #f44336;
+  --light-glow: #f44336cc;
+  background: radial-gradient(circle at 60% 40%, #fff 0%, #ffd6d6 30%, #f44336 70%, #b71c1c 100%);
+  box-shadow:
+    0 0 14px 5px #f44336cc,
+    0 2px 8px rgba(0, 0, 0, 0.5),
+    inset 0 -2px 8px #b71c1c99;
+}
+
+.status-indicator.fault .indicator-light.on {
+  --light-color: #ffd600;
+  --light-glow: #ffd600cc;
+  background: radial-gradient(circle at 60% 40%, #fff 0%, #fff9c4 30%, #ffd600 70%, #ffab00 100%);
+  box-shadow:
+    0 0 14px 5px #ffd600cc,
+    0 2px 8px rgba(0, 0, 0, 0.5),
+    inset 0 -2px 8px #ffab0099;
+}
+
+.status-indicator.loopback .indicator-light.on {
+  --light-color: #2196f3;
+  --light-glow: #2196f3cc;
+  background: radial-gradient(circle at 60% 40%, #fff 0%, #d6eaff 30%, #2196f3 70%, #0d47a1 100%);
+  box-shadow:
+    0 0 14px 5px #2196f3cc,
+    0 2px 8px rgba(0, 0, 0, 0.5),
+    inset 0 -2px 8px #0d47a199;
+}
+
+.indicator-label {
+  color: #ccc;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+  letter-spacing: 0.5px;
+  margin-top: 0px;
+}

@@ -1,0 +1,257 @@
+/* Transmitter.css - Styles specific to Transmitter equipment */
+.transmitter-box {
+  height: 380px;
+
+  .led-indicators,
+  .input-knobs {
+    margin-top: -3em;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    align-items: center;
+    justify-items: center;
+  }
+
+  .led-indicators {
+    align-items: start;
+  }
+}
+
+/* Header */
+.transmitter-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #444;
+}
+
+.transmitter-title {
+  color: #fff;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.transmitter-status {
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.status-active {
+  background-color: #f44336;
+  color: #fff;
+}
+
+.status-standby {
+  background-color: #757575;
+  color: #fff;
+}
+
+/* Controls Container */
+.transmitter-controls {
+  display: flex;
+  gap: 16px;
+  padding: 16px;
+  height: 100%;
+}
+
+/* Modem Selection Buttons */
+.modem-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 60px;
+}
+
+.btn-modem {
+  padding: 12px;
+  background-color: #555;
+  color: #fff;
+  border: 2px solid #777;
+  border-radius: 4px;
+  font-weight: bold;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-modem:hover {
+  background-color: #666;
+  transform: translateX(2px);
+}
+
+.btn-modem.active {
+  background-color: #2196f3;
+  border-color: #2196f3;
+  transform: translateX(2px);
+}
+
+.btn-modem.transmitting {
+  border-color: #f44336;
+  box-shadow: 0 0 10px rgba(244, 67, 54, 0.5);
+}
+
+.btn-modem.transmitting.active {
+  background-color: #f44336;
+  border-color: #f44336;
+}
+
+/* Main content area - split into config and video side by side */
+.transmitter-main-content {
+  flex: 1;
+  display: flex;
+  gap: 16px;
+}
+
+.transmitter-right-content {
+  flex: 1;
+  display: flex;
+  justify-content: space-between;
+  flex-direction: column;
+  gap: 16px;
+  width: 255px;
+}
+
+/* Modem Configuration */
+.tx-modem-config {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 12px;
+  background-color: #1a1a1a;
+  border-radius: 8px;
+  width: 255px;
+}
+
+.input-tx-antenna,
+.input-tx-frequency,
+.input-tx-bandwidth,
+.input-tx-power {
+  width: 80px;
+}
+
+.config-row {
+  display: grid;
+  grid-template-columns: 75px 1fr 80px;
+  align-items: center;
+  gap: 12px;
+}
+
+.config-row label {
+  color: #fff;
+  font-size: 14px;
+  text-align: right;
+}
+
+.config-row input,
+.config-row select {
+  padding: 5px;
+  background-color: #2a2a2a;
+  color: #fff;
+  border: 1px solid #555;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.config-row input:focus,
+.config-row select:focus {
+  outline: none;
+  border-color: #2196f3;
+}
+
+.current-value {
+  color: #2196f3;
+  font-size: 14px;
+  font-weight: bold;
+  text-align: center;
+}
+
+/* Power Meter */
+.config-row.power-meter {
+  grid-template-columns: 100px 1fr;
+}
+
+.power-bar-container {
+  position: relative;
+  height: 24px;
+  background-color: #2a2a2a;
+  border: 1px solid #555;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.power-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #4caf50 0%, #ff9800 70%, #f44336 100%);
+  transition: width 0.3s ease;
+}
+
+.power-bar.over-budget {
+  background: #f44336;
+}
+
+.power-percentage {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #fff;
+  font-size: 12px;
+  font-weight: bold;
+  text-shadow: 0 0 3px rgba(0, 0, 0, 0.8);
+}
+
+/* Action Buttons */
+.config-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid #444;
+}
+
+.btn-apply {
+  flex: 1;
+  padding: 12px;
+  background-color: #555;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  font-weight: bold;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-apply:hover {
+  background-color: #666;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.btn-transmit {
+  flex: 1;
+  padding: 12px;
+  background-color: #555;
+  color: #fff;
+  border: 2px solid #f44336;
+  border-radius: 4px;
+  font-weight: bold;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-transmit:hover {
+  background-color: #f44336;
+  color: #000;
+}
+
+.btn-transmit.active {
+  background-color: #f44336;
+  color: #fff;
+  box-shadow: 0 0 10px rgba(244, 67, 54, 0.5);
+}

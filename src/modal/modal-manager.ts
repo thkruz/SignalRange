@@ -1,0 +1,102 @@
+import { html } from '@app/engine/utils/development/formatter';
+import { qs } from '@app/engine/utils/query-selector';
+import './modal-manager.css';
+
+export class ModalManager {
+  private static instance: ModalManager;
+  private modalElement: HTMLDivElement | null = null;
+  private activeTitle: string | null = null;
+  private onHideCallbacks: Array<() => void> = [];
+
+  private constructor() { }
+
+  static getInstance(): ModalManager {
+    if (!ModalManager.instance) {
+      ModalManager.instance = new ModalManager();
+    }
+    return ModalManager.instance;
+  }
+
+  isShowing(title?: string): boolean {
+    if (!this.modalElement) {
+      return false;
+    }
+    if (!title) {
+      return true;
+    }
+    return this.activeTitle === title;
+  }
+
+  onHide(cb: () => void): void {
+    this.onHideCallbacks.push(cb);
+  }
+
+  show(title: string, htmlContent: string): void {
+    if (this.modalElement) return; // Prevent multiple modals
+
+    const overlay = document.createElement('div');
+    overlay.className = 'hm-modal-overlay';
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-modal', 'true');
+    overlay.tabIndex = -1;
+
+    const isUrl = /^https?:\/\//.test(htmlContent);
+
+    overlay.innerHTML = html`
+      <div class="hm-modal-box">
+        <div class="hm-modal-header">
+          <h1>${title}</h1>
+        </div>
+        <div class="hm-modal-body">
+          ${isUrl ? `<iframe src="${htmlContent}" style="width:100%;height:600px;border:none;"></iframe>` : htmlContent}
+        </div>
+        <div class="hm-modal-footer">
+          <button type="button" class="hm-modal-close">
+            Close
+          </button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    // Wire close button after insertion
+    qs('.hm-modal-close', overlay as unknown as HTMLElement).addEventListener('click', () => this.hide());
+    qs('.hm-modal-overlay').addEventListener('click', (e) => {
+      if (e.target === overlay) {
+        this.hide();
+      }
+    });
+
+    // store reference
+    this.modalElement = overlay;
+    this.activeTitle = title;
+
+    // focus for accessibility
+    overlay.focus();
+  }
+
+  updateContent(htmlContent: string): void {
+    if (!this.modalElement) {
+      return;
+    }
+
+    const body = this.modalElement.querySelector('.hm-modal-body');
+    if (!body) {
+      return;
+    }
+
+    const isUrl = /^https?:\/\//.test(htmlContent);
+    body.innerHTML = isUrl ? `<iframe src="${htmlContent}" style="width:100%;height:600px;border:none;"></iframe>` : htmlContent;
+  }
+
+  hide(): void {
+    if (this.modalElement) {
+      this.modalElement.remove();
+      this.modalElement = null;
+      this.activeTitle = null;
+      this.onHideCallbacks.forEach((cb) => cb());
+      this.onHideCallbacks = [];
+    }
+  }
+}

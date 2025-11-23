@@ -3,6 +3,7 @@ import { qs } from "@app/engine/utils/query-selector";
 import { RFFrontEnd } from "@app/equipment/rf-front-end/rf-front-end";
 import { EventBus } from "@app/events/event-bus";
 import { Events } from "@app/events/events";
+import { DialogHistoryBox } from "@app/modal/dialog-history-box";
 import { DraggableHtmlBox } from "@app/modal/draggable-html-box";
 import { ObjectivesManager } from "@app/objectives";
 import { ScenarioManager, SimulationSettings } from "@app/scenario-manager";
@@ -76,6 +77,7 @@ export class Equipment extends BaseElement {
   protected addEventListeners_(): void {
     this.addMissionBriefListener_();
     this.addChecklistListener_();
+    this.addDialogHistoryListener_();
   }
 
   private addMissionBriefListener_(): void {
@@ -112,6 +114,13 @@ export class Equipment extends BaseElement {
         SimulationManager.getInstance().checklistBox.updateContent(this.lastChecklistHtml_);
       });
     }
+  }
+
+  private addDialogHistoryListener_(): void {
+    qs('.dialog-icon').addEventListener('click', () => {
+      SimulationManager.getInstance().dialogHistoryBox ??= new DialogHistoryBox();
+      SimulationManager.getInstance().dialogHistoryBox.open();
+    });
   }
 
   private startChecklistRefreshTimer_(draggableBox: DraggableHtmlBox): void {

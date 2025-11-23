@@ -1,6 +1,7 @@
 import { Satellite } from '@app/equipment/satellite/satellite';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
+import { DialogHistoryBox } from '@app/modal/dialog-history-box';
 import { DraggableHtmlBox } from '@app/modal/draggable-html-box';
 import { ObjectivesManager } from '@app/objectives';
 import { Equipment } from '@app/pages/sandbox/equipment';
@@ -27,6 +28,7 @@ export class SimulationManager {
 
   missionBriefBox?: DraggableHtmlBox;
   checklistBox?: DraggableHtmlBox;
+  dialogHistoryBox?: DialogHistoryBox;
 
   private constructor() {
     this.progressSaveManager = new ProgressSaveManager();

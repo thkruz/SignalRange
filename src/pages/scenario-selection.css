@@ -75,7 +75,7 @@
 
   .checkpoint-banner {
     position: absolute;
-    top: 12px;
+    top: 50px;
     right: 12px;
     display: flex;
     align-items: center;
@@ -111,7 +111,7 @@
   box-shadow:
     0 6px 16px rgba(0, 0, 0, 0.8),
     inset 0 1px 1px rgba(255, 255, 255, 0.15);
-  transform: translateY(-2px);
+  transform: translateY(-1px);
 }
 
 .scenario-card.selected {
@@ -170,10 +170,20 @@
 .scenario-image {
   position: relative;
   width: 100%;
-  height: 200px;
+  height: 160px;
   overflow: hidden;
   background: #0a0a0a;
   border-bottom: 2px solid #444;
+
+}
+
+.scenario-image-overlay {
+  margin-top: -90px;
+  z-index: 10000;
+  display: block;
+  position: relative;
+  padding: 1px 1em 1px 1em;
+  background: rgba(0, 0, 0, 0.6);
 }
 
 .scenario-image img {
@@ -266,9 +276,9 @@
 .scenario-title {
   font-size: 1.1rem;
   font-weight: bold;
-  color: var(--color-text-accent);
+  color: #fff;
   margin-bottom: 0.35rem;
-  line-height: 1.3;
+  line-height: 0.6;
 }
 
 .scenario-subtitle {
@@ -296,6 +306,8 @@
   color: #ddd;
   margin-bottom: 0.75rem;
   flex-grow: 1;
+  max-height: 130px;
+  overflow: auto;
 }
 
 /* Equipment Info Section */
@@ -339,14 +351,17 @@
 /* Checkpoint Actions */
 .scenario-checkpoint-actions {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   gap: 0.5rem;
   margin-top: 1rem;
   padding-top: 1rem;
   border-top: 1px solid #333;
+  justify-content: space-evenly;
+  align-items: center;
 }
 
 .btn-continue,
+.btn-start,
 .btn-start-fresh {
   padding: 10px 16px;
   border: none;
@@ -368,7 +383,18 @@
 .btn-continue:hover {
   background: linear-gradient(135deg, #66bb6a 0%, #4caf50 100%);
   box-shadow: 0 4px 10px rgba(76, 175, 80, 0.4);
-  transform: translateY(-2px);
+  transform: translateY(-1px);
+}
+
+.btn-start {
+  color: #fff;
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+  transform: translateY(-1px);
+}
+
+.btn-start:hover {
+  background: linear-gradient(135deg, var(--color-primary-light) 0%, var(--color-primary) 100%);
+  box-shadow: 0 4px 10px rgba(186, 22, 12, 0.8);
 }
 
 .btn-start-fresh {
@@ -381,7 +407,7 @@
   background: linear-gradient(135deg, #4a4a4a 0%, #3a3a3a 100%);
   border-color: #666;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
-  transform: translateY(-2px);
+  transform: translateY(-1px);
 }
 
 .btn-continue:active,
@@ -433,36 +459,6 @@
   margin-bottom: 1rem;
 }
 
-.btn-start-scenario {
-  padding: 10px 32px;
-  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
-  color: #fff;
-  border: none;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: bold;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  cursor: pointer;
-  box-shadow: 0 4px 12px rgba(186, 22, 12, 0.4);
-  transition: all 0.2s ease;
-}
-
-.btn-start-scenario:hover:not(:disabled) {
-  background: linear-gradient(135deg, var(--color-primary-light) 0%, var(--color-primary) 100%);
-  box-shadow: 0 6px 16px rgba(186, 22, 12, 0.6);
-  transform: translateY(-2px);
-}
-
-.btn-start-scenario:active:not(:disabled) {
-  transform: translateY(0);
-}
-
-.btn-start-scenario:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
 .btn-back {
   padding: 10px 32px;
   background: linear-gradient(135deg, #3a3a3a 0%, #2a2a2a 100%);
@@ -480,7 +476,7 @@
 .btn-back:hover {
   border-color: #666;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
-  transform: translateY(-2px);
+  transform: translateY(-1px);
 }
 
 .btn-back:active {

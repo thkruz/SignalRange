@@ -2,6 +2,7 @@ import { html } from '@app/engine/utils/development/formatter';
 import { qs } from '@app/engine/utils/query-selector';
 import SoundManager from '@app/sound/sound-manager';
 import { Character, CharacterAvatars } from './character-enum';
+import { DialogHistoryManager } from './dialog-history-manager';
 import './dialog-manager.css';
 
 export class DialogManager {
@@ -25,10 +26,13 @@ export class DialogManager {
     return this.dialogElement !== null;
   }
 
-  show(text: string, character: Character, audioUrl: string): void {
+  show(text: string, character: Character, audioUrl: string, title: string = 'Dialog'): void {
     if (this.dialogElement) {
       this.hide();
     }
+
+    // Track this dialog in history
+    DialogHistoryManager.getInstance().addEntry(text, character, audioUrl, title);
 
     const avatarUrl = CharacterAvatars[character];
     this.currentAudioUrl = audioUrl;

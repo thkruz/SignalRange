@@ -31,12 +31,17 @@ export class ScenarioDialogManager {
     const dialogClip = scenario.dialogClips?.objectives?.[data.objectiveId];
 
     if (dialogClip) {
+      // Find the objective to get its title
+      const objective = scenario.objectives?.find(obj => obj.id === data.objectiveId);
+      const title = objective?.title || data.objectiveId;
+
       // Wait a moment for UI to update and celebrate, then show dialog
       setTimeout(() => {
         DialogManager.getInstance().show(
           dialogClip.text,
           dialogClip.character,
-          dialogClip.audioUrl
+          dialogClip.audioUrl,
+          title
         );
       }, 500);
     }

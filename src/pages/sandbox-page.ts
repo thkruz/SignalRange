@@ -108,7 +108,8 @@ export class SandboxPage extends BasePage {
       DialogManager.getInstance().show(
         introClip.text,
         introClip.character,
-        introClip.audioUrl
+        introClip.audioUrl,
+        'Introduction'
       );
     }
   }
@@ -217,6 +218,10 @@ export class SandboxPage extends BasePage {
 
   hide(): void {
     SandboxPage.destroy();
+    // Set display to none
+    if (this.dom_) {
+      this.dom_.style.display = 'none';
+    }
   }
 
   static destroy(): void {

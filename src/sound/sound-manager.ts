@@ -41,14 +41,14 @@ class SoundManager {
 
   private constructor() { }
 
-  public static getInstance(): SoundManager {
+  static getInstance(): SoundManager {
     if (!SoundManager.instance) {
       SoundManager.instance = new SoundManager();
     }
     return SoundManager.instance;
   }
 
-  public play(sfx: Sfx): void {
+  play(sfx: Sfx): void {
     const isLooping = SFX_LOOP.has(sfx);
 
     // If sound is looping and already playing, don't restart
@@ -108,7 +108,7 @@ class SoundManager {
     this.lastPlayTime.set(sfx, Date.now());
   }
 
-  public stop(sfx: Sfx): void {
+  stop(sfx: Sfx): void {
     const playing = this.currentlyPlaying.get(sfx);
     if (playing) {
       // Fade out over 300ms

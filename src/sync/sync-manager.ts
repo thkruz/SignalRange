@@ -1,5 +1,6 @@
 import { RFFrontEndState } from '@app/equipment/rf-front-end/rf-front-end';
 import { ObjectiveState } from '@app/objectives';
+import { SimulationManager } from '@app/simulation/simulation-manager';
 import { AntennaState } from '../equipment/antenna/antenna';
 import { RealTimeSpectrumAnalyzerState } from '../equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer';
 import { ReceiverState } from '../equipment/receiver/receiver';
@@ -77,7 +78,7 @@ export class SyncManager {
       throw new Error('Equipment not set. Call setEquipment() first.');
     }
 
-    const state = this.buildStateFromEquipment();
+    const state = this.buildAppStateObject();
     await this.provider.write(state);
 
     Logger.info('Store updated:', state);
@@ -102,7 +103,7 @@ export class SyncManager {
    * Useful for creating checkpoints or saving progress
    */
   getCurrentState(): AppState {
-    return this.buildStateFromEquipment();
+    return this.buildAppStateObject();
   }
 
   /**
@@ -110,7 +111,7 @@ export class SyncManager {
    */
   async swapProvider(newProvider: StorageProvider): Promise<void> {
     // Save current state
-    const currentState = this.equipment ? this.buildStateFromEquipment() : null;
+    const currentState = this.equipment ? this.buildAppStateObject() : null;
 
     // Dispose old provider
     if (this.unsubscribe) {
@@ -150,9 +151,9 @@ export class SyncManager {
   }
 
   /**
-   * Build state object from equipment
+   * Build state object from equipment and objectives
    */
-  private buildStateFromEquipment(): AppState {
+  private buildAppStateObject(): AppState {
     if (!this.equipment) {
       return { equipment: undefined };
     }
@@ -160,7 +161,6 @@ export class SyncManager {
     // Get objective states from SimulationManager if available
     let objectiveStates: ObjectiveState[] | undefined;
     try {
-      const { SimulationManager } = require('../simulation/simulation-manager');
       const sim = SimulationManager.getInstance();
       if (sim?.objectivesManager) {
         objectiveStates = sim.objectivesManager.getObjectiveStates() as ObjectiveState[];

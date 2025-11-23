@@ -31,7 +31,7 @@ export class SaveProgressToast {
   /**
    * Get the singleton instance
    */
-  public static getInstance(): SaveProgressToast {
+  static getInstance(): SaveProgressToast {
     if (!SaveProgressToast.instance_) {
       SaveProgressToast.instance_ = new SaveProgressToast();
     }
@@ -71,7 +71,7 @@ export class SaveProgressToast {
   /**
    * Shows the toast with saving state
    */
-  public showSaving(message: string = 'Saving progress to cloud...'): void {
+  showSaving(message: string = 'Saving progress to cloud...'): void {
     this.clearAutoHideTimeout_();
     this.updateContent_(ToastState.SAVING, message);
     this.show_();
@@ -80,7 +80,7 @@ export class SaveProgressToast {
   /**
    * Shows the toast with success state
    */
-  public showSuccess(message: string = 'Progress saved!', autoHideDuration: number = 3000): void {
+  showSuccess(message: string = 'Progress saved!', autoHideDuration: number = 3000): void {
     this.clearAutoHideTimeout_();
     this.updateContent_(ToastState.SUCCESS, message);
     this.show_();
@@ -96,7 +96,7 @@ export class SaveProgressToast {
   /**
    * Shows the toast with error state
    */
-  public showError(message: string = 'Failed to save progress', autoHideDuration: number = 5000): void {
+  showError(message: string = 'Failed to save progress', autoHideDuration: number = 5000): void {
     this.clearAutoHideTimeout_();
     this.updateContent_(ToastState.ERROR, message);
     this.show_();
@@ -158,7 +158,7 @@ export class SaveProgressToast {
   /**
    * Hides the toast with animation
    */
-  public hide(): void {
+  hide(): void {
     if (!this.toastElement_) {
       return;
     }
@@ -170,7 +170,7 @@ export class SaveProgressToast {
   /**
    * Checks if the toast is currently visible
    */
-  public isVisible(): boolean {
+  isVisible(): boolean {
     return this.toastElement_?.classList.contains('show') ?? false;
   }
 
@@ -187,7 +187,7 @@ export class SaveProgressToast {
   /**
    * Cleanup method for destroying the toast
    */
-  public destroy(): void {
+  destroy(): void {
     this.clearAutoHideTimeout_();
 
     if (this.toastElement_) {

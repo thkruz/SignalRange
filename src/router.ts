@@ -134,4 +134,8 @@ export class Router {
   getCurrentPath(): string {
     return this.currentPath;
   }
+
+  static destroy(): void {
+    Router.instance = null;
+  }
 }

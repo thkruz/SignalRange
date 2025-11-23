@@ -10,10 +10,17 @@ import { OMTModule } from './equipment/rf-front-end/omt-module/omt-module';
 import { RFFrontEndState } from './equipment/rf-front-end/rf-front-end';
 import { Satellite } from './equipment/satellite/satellite';
 import { Objective } from './objectives/objective-types';
+import { Character } from './modal/character-enum';
 import { sandboxData } from './scenarios/sandbox';
 import { scenario1Data } from './scenarios/scenario1';
 import { scenario2Data } from "./scenarios/scenario2";
 import { scenario3Data } from './scenarios/scenario3';
+
+export interface DialogClip {
+  text: string;
+  character: Character;
+  audioUrl: string;
+}
 
 export interface SimulationSettings {
   isSync: boolean;
@@ -90,6 +97,10 @@ export interface ScenarioData {
   equipment: string[];
   settings: SimulationSettings;
   objectives?: Objective[];
+  dialogClips?: {
+    intro?: DialogClip;
+    objectives?: Record<string, DialogClip>;
+  };
 }
 
 export const SCENARIOS: ScenarioData[] = [

@@ -6,6 +6,7 @@ import { IfFilterBankModule } from '@app/equipment/rf-front-end/filter-module/fi
 import { HPAModule } from '@app/equipment/rf-front-end/hpa-module/hpa-module';
 import { OMTModule } from '@app/equipment/rf-front-end/omt-module/omt-module';
 import { Satellite } from '@app/equipment/satellite/satellite';
+import { Character } from '@app/modal/character-enum';
 import { Objective } from '@app/objectives/objective-types';
 import { dB, dBi, dBm, FECType, Hertz, MHz, ModulationType, RfFrequency, SignalOrigin } from '@app/types';
 import { Degrees } from 'ootk';
@@ -442,4 +443,44 @@ export const scenario1Data: ScenarioData = {
       points: 100,
     },
   ] as Objective[],
+  dialogClips: {
+    intro: {
+      text: `
+      <p>
+        Welcome to North Atlantic Teleport Services. Big day for you - first shift on console. I'm glad you made it through the snow; the Vermont microwave backhaul barely did.
+      </p>
+      <p>
+      Alright, here's the situation. SeaLink's brand-new GEO bird, MARINER-1, just settled into its station-keeping box at 53 West. Beacon Orbital in Cambridge ran the final orbit checks this morning, so the spacecraft team has handed the payload over to us.
+      </p>
+      <p>
+      Your job? Establish the first RF link from this facility. No pressure—just the part where we prove to the client that their multimillion-dollar satellite actually talks back.
+      </p>
+      <p>
+      You'll see a Guide and a Checklist on the left side of your screen. Follow those step-by-step; they're built from our standard ops flow and the lessons learned from… well, the last time someone rushed this process.
+      </p>
+      <p>
+      I'll be monitoring from the upstairs control room. When you're ready, let's bring MARINER-1 online.
+      </p>
+      `,
+      character: Character.GUIDE,
+      audioUrl: '/assets/campaigns/nats/1/intro.mp3',
+    },
+    objectives: {
+      'phase-1-gpsdo': {
+        text: `Excellent work on the GPSDO. We're seeing stable frequency lock with precision below 5×10⁻¹¹. That's textbook performance. The reference signal is rock solid. We can proceed to the next phase.`,
+        character: Character.GUIDE,
+        audioUrl: '/assets/campaigns/nats/1/obj-phase-1-gpsdo.mp3',
+      },
+      'phase-1-lnb': {
+        text: `The LNB is now thermally stabilized and locked to the 10 MHz reference. Noise temperature is well within spec at under 100 Kelvin. Your RF front end is ready for signal acquisition. Nice work.`,
+        character: Character.GUIDE,
+        audioUrl: '/assets/campaigns/nats/1/obj-phase-1-lnb.mp3',
+      },
+      'acquire-lock-satellite-1': {
+        text: `Outstanding! We have confirmed lock on HELIOS-7. Signal acquisition is clean and stable. This is Pacific Edge Control - First Light is a success. The satellite is ready for commercial operations. Excellent work, Operator.`,
+        character: Character.GUIDE,
+        audioUrl: '/assets/campaigns/nats/1/obj-acquire-lock-satellite-1.mp3',
+      },
+    },
+  },
 }

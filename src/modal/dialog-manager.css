@@ -19,7 +19,8 @@
 .dialog-box {
   position: relative;
   width: 100%;
-  height: 33.33vh; /* Bottom third of 1920x1080 */
+  height: 33.33vh;
+  /* Bottom third of 1920x1080 */
   background: #181818;
   border-top: 2px solid #444;
   box-shadow: 0 -6px 28px rgba(0, 0, 0, 0.6);
@@ -36,19 +37,19 @@
   gap: 2rem;
   width: 100%;
   height: 100%;
-  max-width: 1400px;
+  max-width: 1600px;
   margin: 0 auto;
 }
 
 /* Character Avatar */
 .dialog-avatar {
   flex-shrink: 0;
-  width: 120px;
-  height: 120px;
+  width: 300px;
+  height: 300px;
   border-radius: 50%;
   overflow: hidden;
   background: #2a2a2a;
-  border: 3px solid #ff3535;
+  border: 3px solid #691915;
   box-shadow: 0 4px 12px rgba(255, 53, 53, 0.3);
 }
 
@@ -138,7 +139,8 @@
   stroke: #ff3535;
   stroke-width: 2;
   stroke-linecap: round;
-  stroke-dasharray: 100.53; /* 2 * PI * 16 */
+  stroke-dasharray: 100.53;
+  /* 2 * PI * 16 */
   stroke-dashoffset: 100.53;
   transition: stroke-dashoffset 50ms linear;
 }
@@ -146,7 +148,8 @@
 /* Responsive adjustments for smaller screens */
 @media (max-height: 800px) {
   .dialog-box {
-    height: 40vh; /* Slightly larger proportion on smaller screens */
+    height: 40vh;
+    /* Slightly larger proportion on smaller screens */
   }
 }
 

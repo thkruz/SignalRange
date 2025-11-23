@@ -3,9 +3,11 @@ import { qs } from "@app/engine/utils/query-selector";
 import { EventBus } from "@app/events/event-bus";
 import { Events } from "@app/events/events";
 import { Logger } from "@app/logging/logger";
+import { DialogManager } from "@app/modal/dialog-manager";
 import { ObjectivesManager } from "@app/objectives/objectives-manager";
 import { NavigationOptions } from "@app/router";
 import { ScenarioManager } from "@app/scenario-manager";
+import { ScenarioDialogManager } from "@app/scenarios/scenario-dialog-manager";
 import { SimulationManager } from "@app/simulation/simulation-manager";
 import { AppState, syncManager } from "@app/sync/storage";
 import { ProgressSaveManager } from "@app/user-account/progress-save-manager";
@@ -89,6 +91,9 @@ export class SandboxPage extends BasePage {
       ObjectivesManager.initialize(scenario.data.objectives);
       SimulationManager.getInstance().objectivesManager = ObjectivesManager.getInstance();
 
+      // Initialize scenario dialog manager for objective completion dialogs
+      ScenarioDialogManager.getInstance().initialize();
+
       // If we're continuing from a checkpoint, restore objective states
       if (this.navigationOptions_.continueFromCheckpoint) {
         await this.restoreObjectiveStatesFromCheckpoint_();
@@ -96,6 +101,16 @@ export class SandboxPage extends BasePage {
     }
 
     EventBus.getInstance().emit(Events.DOM_READY);
+
+    // Show intro dialog if available and not continuing from checkpoint
+    const introClip = scenario.data?.dialogClips?.intro;
+    if (introClip && !this.navigationOptions_.continueFromCheckpoint) {
+      DialogManager.getInstance().show(
+        introClip.text,
+        introClip.character,
+        introClip.audioUrl
+      );
+    }
   }
 
   protected addEventListeners_(): void {
@@ -214,6 +229,7 @@ export class SandboxPage extends BasePage {
     SandboxPage.instance_ = null;
     SimulationManager.destroy();
     ObjectivesManager.destroy();
+    ScenarioDialogManager.reset();
     EventBus.destroy();
     const container = getEl(SandboxPage.containerId);
     if (container) {

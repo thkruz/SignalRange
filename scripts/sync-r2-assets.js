@@ -21,10 +21,10 @@
  *   npm run r2:sync -- --verbose # Upload with detailed logging
  */
 
-const { execSync } = require('child_process');
-const fs = require('fs');
-const path = require('path');
-const crypto = require('crypto');
+const { execSync } = require('node:child_process');
+const fs = require('node:fs');
+const path = require('node:path');
+const crypto = require('node:crypto');
 
 // Configuration
 const BUCKET_NAME = 'signal-range-assets';
@@ -35,7 +35,7 @@ const R2_PREFIX = 'assets/campaigns';
 const args = process.argv.slice(2);
 const isDryRun = args.includes('--dry-run');
 const shouldDelete = args.includes('--delete');
-const isVerbose = args.includes('--verbose');
+const isVerbose = true; // args.includes('--verbose');
 const showHelp = args.includes('--help') || args.includes('-h');
 
 // Colors for terminal output
@@ -136,7 +136,7 @@ function runWranglerCommand(command, options = {}) {
  * Upload a file to R2
  */
 function uploadToR2(localPath, r2Key) {
-  const command = `wrangler r2 object put ${BUCKET_NAME}/${r2Key} --file="${localPath}"`;
+  const command = `wrangler r2 object put ${BUCKET_NAME}/${r2Key} --file="${localPath}" --remote`;
 
   verbose(`Uploading: ${localPath} → ${r2Key}`);
 

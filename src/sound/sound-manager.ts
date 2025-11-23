@@ -194,6 +194,10 @@ class SoundManager {
       fadeOut();
     }
   }
+
+  isCustomAudioPlaying(): boolean {
+    return this.customAudio !== null && !this.customAudio.paused && !this.customAudio.ended;
+  }
 }
 
 export default SoundManager;

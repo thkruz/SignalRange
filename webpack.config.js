@@ -73,14 +73,8 @@ module.exports = {
     new CopyWebpackPlugin({
       patterns: [
         { from: 'public/assets/logo.png', to: 'logo.png' },
-        { from: 'public/images/scenarios', to: 'images/scenarios' },
-        { from: 'public/images/screenshots', to: 'images/screenshots' },
-        { from: 'public/images/facebook-white.png', to: 'images/facebook-white.png' },
-        { from: 'public/images/github-white.png', to: 'images/github-white.png' },
-        { from: 'public/images/google-white.png', to: 'images/google-white.png' },
-        { from: 'public/images/linkedin-white.png', to: 'images/linkedin-white.png' },
-        { from: 'public/images/person-gray.png', to: 'images/person-gray.png' },
-        { from: 'public/mission-briefs', to: 'mission-briefs' }
+        { from: 'public/assets/characters/', to: 'assets/characters/' },
+        { from: 'public/images/', to: 'images/' },
       ]
     })
   ],

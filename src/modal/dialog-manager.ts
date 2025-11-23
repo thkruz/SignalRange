@@ -113,7 +113,10 @@ export class DialogManager {
   private startHoldTimer(): void {
     this.isHolding = true;
     this.holdStartTime = Date.now();
-    const holdDuration = 2000; // 2 seconds
+
+    // Use shorter duration if audio has finished to avoid accidental clicks
+    const isAudioPlaying = SoundManager.getInstance().isCustomAudioPlaying();
+    const holdDuration = isAudioPlaying ? 2000 : 250; // 2 seconds while playing, 250ms when finished
 
     const updateProgress = () => {
       if (!this.isHolding || !this.holdStartTime) return;

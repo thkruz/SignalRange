@@ -24,7 +24,7 @@ import type { Degrees } from 'ootk';
 export const scenario1Data: ScenarioData = {
   id: 'scenario1',
   url: 'nats/scenarios/scenario1',
-  imageUrl: 'first-light.png',
+  imageUrl: 'nats/1/card.png',
   number: 1,
   title: '"First Light"',
   subtitle: 'MARINER-1 Initial Contact',

@@ -3,7 +3,7 @@
 /**
  * R2 Asset Sync Script
  *
- * Synchronizes campaign audio files from local directory to Cloudflare R2 bucket.
+ * Synchronizes campaign assets (audio and image files) from local directory to Cloudflare R2 bucket.
  * Uses wrangler CLI to upload files to the signal-range-assets bucket.
  *
  * Usage:
@@ -63,7 +63,7 @@ function showHelpMessage() {
   console.log(`
 ${colors.bright}R2 Asset Sync Script${colors.reset}
 
-Synchronizes campaign audio files to Cloudflare R2 bucket.
+Synchronizes campaign assets (audio and image files) to Cloudflare R2 bucket.
 
 ${colors.bright}Usage:${colors.reset}
   node scripts/sync-r2-assets.js [options]
@@ -80,7 +80,8 @@ ${colors.bright}Examples:${colors.reset}
   npm run r2:sync -- --verbose # Upload with detailed logging
 
 ${colors.bright}Notes:${colors.reset}
-  - Only uploads .mp3, .wav, and .ogg files
+  - Uploads audio files: .mp3, .wav, .ogg
+  - Uploads image files: .png, .jpg, .jpeg
   - Calculates MD5 hashes to avoid re-uploading unchanged files
   - Requires wrangler to be installed and authenticated
   `);
@@ -97,9 +98,9 @@ function getFileHash(filePath) {
 }
 
 /**
- * Get all audio files in a directory recursively
+ * Get all asset files (audio and images) in a directory recursively
  */
-function getAudioFiles(dir, fileList = []) {
+function getAssetFiles(dir, fileList = []) {
   const files = fs.readdirSync(dir);
 
   files.forEach(file => {
@@ -107,8 +108,8 @@ function getAudioFiles(dir, fileList = []) {
     const stat = fs.statSync(filePath);
 
     if (stat.isDirectory()) {
-      getAudioFiles(filePath, fileList);
-    } else if (/\.(mp3|wav|ogg)$/i.test(file)) {
+      getAssetFiles(filePath, fileList);
+    } else if (/\.(mp3|wav|ogg|png|jpe?g)$/i.test(file)) {
       fileList.push(filePath);
     }
   });
@@ -179,22 +180,22 @@ async function syncAssets() {
   // Check if local directory exists
   if (!fs.existsSync(LOCAL_ASSETS_DIR)) {
     log(`❌ Local assets directory not found: ${LOCAL_ASSETS_DIR}`, 'red');
-    log('   Create the directory or add some MP3 files to sync.', 'yellow');
+    log('   Create the directory or add some asset files to sync.', 'yellow');
     process.exit(1);
   }
 
-  // Get all local audio files
+  // Get all local asset files
   log('📂 Scanning local files...', 'blue');
-  const localFiles = getAudioFiles(LOCAL_ASSETS_DIR);
+  const localFiles = getAssetFiles(LOCAL_ASSETS_DIR);
 
   if (localFiles.length === 0) {
-    log('   No audio files found to sync.', 'yellow');
-    log('   Add .mp3, .wav, or .ogg files to:', 'yellow');
+    log('   No asset files found to sync.', 'yellow');
+    log('   Add audio (.mp3, .wav, .ogg) or image (.png, .jpg) files to:', 'yellow');
     log(`   ${LOCAL_ASSETS_DIR}\n`, 'yellow');
     process.exit(0);
   }
 
-  log(`   Found ${localFiles.length} audio file(s)\n`, 'green');
+  log(`   Found ${localFiles.length} asset file(s)\n`, 'green');
 
   // Upload files
   let uploaded = 0;

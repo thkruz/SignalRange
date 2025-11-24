@@ -16,7 +16,7 @@ export const natsCampaignData: CampaignData = {
   title: 'North Atlantic Teleport Services',
   subtitle: 'Commercial Ground Station Operations',
   description: `Welcome to North Atlantic Teleport Services, a commercial satellite ground station facility in rural Vermont. In this campaign, you'll learn the fundamentals of satellite communications by conducting first light tests, tracking satellites, and establishing reliable RF links for GEO communication satellites serving the North Atlantic region.<br><br>Through a series of progressively challenging scenarios, you'll master ground station equipment operation, signal acquisition techniques, and RF link analysis while following the story of bringing multiple communication satellites into operational service.`,
-  imageUrl: 'north-atlantic-teleport-services.png',
+  imageUrl: 'nats/north-atlantic-teleport-services.png',
   difficulty: 'beginner',
   totalDuration: '105-130 min',
   campaignType: 'Commercial Communications',

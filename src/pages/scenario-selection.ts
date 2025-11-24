@@ -7,6 +7,7 @@ import { Router } from "@app/router";
 import { getNextPrerequisiteScenario, getPrerequisiteScenarioNames, isScenarioLocked, SCENARIOS } from "@app/scenario-manager";
 import { ScenarioData } from '@app/ScenarioData';
 import { getUserDataService } from "@app/user-account/user-data-service";
+import { getAssetUrl } from "@app/utils/asset-url";
 import { html } from "../engine/utils/development/formatter";
 import { BasePage } from "./base-page";
 import "./scenario-selection.css";
@@ -294,7 +295,7 @@ export class ScenarioSelectionPage extends BasePage {
         </div>
 
         <div class="scenario-image">
-        <img src="/images/scenarios/${scenario.imageUrl}" alt="${scenario.title} Image"/>
+        <img src="${getAssetUrl('/assets/campaigns/' + scenario.imageUrl)}" alt="${scenario.title} Image"/>
         <div class="scenario-image-overlay">
           <h2 class="scenario-title">${scenario.title}</h2>
           <div class="scenario-subtitle">${scenario.subtitle}</div>

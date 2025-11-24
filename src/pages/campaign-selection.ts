@@ -5,6 +5,7 @@ import { Logger } from "@app/logging/logger";
 import { Router } from "@app/router";
 import { sandboxData } from "@app/scenarios/sandbox";
 import { getUserDataService } from "@app/user-account/user-data-service";
+import { getAssetUrl } from "@app/utils/asset-url";
 import { html } from "../engine/utils/development/formatter";
 import { BasePage } from "./base-page";
 import "./campaign-selection.css";
@@ -190,7 +191,7 @@ export class CampaignSelectionPage extends BasePage {
           </div>
 
           <div class="campaign-image">
-            <img src="/images/campaigns/${campaign.imageUrl}" alt="${campaign.title}" onerror="this.onerror=null; this.src='/images/scenarios/north-atlantic-teleport-services.png'"/>
+            <img src="${getAssetUrl('/assets/campaigns/' + campaign.imageUrl)}" alt="${campaign.title}"/>
             <div class="campaign-image-overlay">
               <h2 class="campaign-title">${campaign.title}</h2>
               <div class="campaign-subtitle">${campaign.subtitle}</div>
@@ -230,7 +231,7 @@ export class CampaignSelectionPage extends BasePage {
           </div>
 
           <div class="campaign-image">
-            <img src="/images/scenarios/${sandboxData.imageUrl}" alt="${sandboxData.title}"/>
+            <img src="${getAssetUrl('/assets/campaigns/sandbox/' + sandboxData.imageUrl)}" alt="${sandboxData.title}"/>
             <div class="campaign-image-overlay">
               <h2 class="campaign-title">${sandboxData.title}</h2>
               <div class="campaign-subtitle">${sandboxData.subtitle}</div>

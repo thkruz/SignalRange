@@ -19,7 +19,7 @@ export const scenario3Data: ScenarioData = {
   isDisabled: true,
   prerequisiteScenarioIds: ['first-light2'],
   url: 'nats/scenarios/scenario3',
-  imageUrl: 'scenario3.png',
+  imageUrl: 'nats/3/card.png',
   number: 3,
   title: '"Full Stack"',
   subtitle: 'Complete Link Budget Analysis',

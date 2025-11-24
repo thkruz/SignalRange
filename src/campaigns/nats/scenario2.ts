@@ -17,7 +17,7 @@ export const scenario2Data: ScenarioData = {
   id: 'first-light2',
   prerequisiteScenarioIds: ['scenario1'],
   url: 'nats/scenarios/scenario2',
-  imageUrl: 'scenario2.png',
+  imageUrl: 'nats/2/card.png',
   number: 2,
   title: '"Signal Hunt"',
   subtitle: 'Deep Space Tracking Exercise',

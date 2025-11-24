@@ -2,15 +2,15 @@ import { BaseElement } from "@app/components/base-element";
 import { qs } from "@app/engine/utils/query-selector";
 import { Router } from "@app/router";
 import { Sfx } from "@app/sound/sfx-enum";
+import SoundManager from "@app/sound/sound-manager";
 import { Auth } from "@app/user-account/auth";
 import { ModalLogin } from "@app/user-account/modal-login";
 import { ModalProfile } from "@app/user-account/modal-profile";
 import { isSupabaseApprovedDomain } from "@app/user-account/supabase-client";
 import '@app/user-account/user-account.css';
+import type { User } from "@supabase/supabase-js";
 import { html } from "../../../engine/utils/development/formatter";
 import './header.css';
-import SoundManager from "@app/sound/sound-manager";
-import type { User } from "@supabase/supabase-js";
 
 /**
  * Header Component
@@ -48,7 +48,7 @@ export class Header extends BaseElement {
     <header class="header">
       <div class="header-toolbar">
         <div class="header-logo-section">
-          <img src="/logo.png" alt="SignalRange Logo" height="80" />
+          <img src="/images/logo.png" alt="SignalRange Logo" height="80" />
         </div>
         <div class="header-title-section">
           <div class="header-main-title">SignalRange</div>

@@ -1,20 +1,21 @@
+import { scenario1Data } from './campaigns/nats/scenario1';
+import { scenario2Data } from "./campaigns/nats/scenario2";
+import { scenario3Data } from './campaigns/nats/scenario3';
 import { ANTENNA_CONFIG_KEYS } from './equipment/antenna/antenna-configs';
-import { RealTimeSpectrumAnalyzer, RealTimeSpectrumAnalyzerState } from './equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer';
+import { defaultSpectrumAnalyzerState } from './equipment/real-time-spectrum-analyzer/defaultSpectrumAnalyzerState';
+import { RealTimeSpectrumAnalyzerState } from './equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer';
 import { BUCModule } from './equipment/rf-front-end/buc-module/buc-module';
 import { CouplerModule } from './equipment/rf-front-end/coupler-module/coupler-module';
 import { IfFilterBankModule } from './equipment/rf-front-end/filter-module/filter-module';
-import { GPSDOModule } from './equipment/rf-front-end/gpsdo-module/gpsdo-module';
+import { defaultGpsdoState } from './equipment/rf-front-end/gpsdo-module/defaultGpsdoState';
 import { HPAModule } from './equipment/rf-front-end/hpa-module/hpa-module';
 import { LNBModule } from './equipment/rf-front-end/lnb/lnb-module';
 import { OMTModule } from './equipment/rf-front-end/omt-module/omt-module';
 import { RFFrontEndState } from './equipment/rf-front-end/rf-front-end';
 import { Satellite } from './equipment/satellite/satellite';
 import { Character } from './modal/character-enum';
-import { Objective } from './objectives/objective-types';
+import { ScenarioData } from './ScenarioData';
 import { sandboxData } from './scenarios/sandbox';
-import { scenario1Data } from './scenarios/scenario1';
-import { scenario2Data } from "./scenarios/scenario2";
-import { scenario3Data } from './scenarios/scenario3';
 
 export interface DialogClip {
   text: string;
@@ -62,9 +63,9 @@ export class ScenarioManager {
         filter: IfFilterBankModule.getDefaultState(),
         lnb: LNBModule.getDefaultState(),
         coupler: CouplerModule.getDefaultState(),
-        gpsdo: GPSDOModule.getDefaultState(),
+        gpsdo: defaultGpsdoState,
       }],
-      spectrumAnalyzers: [RealTimeSpectrumAnalyzer.getDefaultState()],
+      spectrumAnalyzers: [defaultSpectrumAnalyzerState],
       transmitters: 4,
       receivers: 4,
       satellites: [],
@@ -80,28 +81,6 @@ export class ScenarioManager {
       throw new Error(`Scenario ${scenarioId} not found`);
     }
   }
-}
-
-export interface ScenarioData {
-  id: string;
-  isDisabled?: boolean;
-  prerequisiteScenarioIds?: string[];
-  url: string;
-  imageUrl: string;
-  number: number;
-  title: string;
-  subtitle: string;
-  duration: string;
-  difficulty: 'beginner' | 'intermediate' | 'advanced';
-  missionType: string;
-  description: string;
-  equipment: string[];
-  settings: SimulationSettings;
-  objectives?: Objective[];
-  dialogClips?: {
-    intro?: DialogClip;
-    objectives?: Record<string, DialogClip>;
-  };
 }
 
 export const SCENARIOS: ScenarioData[] = [

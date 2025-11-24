@@ -1,7 +1,8 @@
 import { EventBus } from "@app/events/event-bus";
 import { Events } from "@app/events/events";
+import { SignalOrigin } from "@app/SignalOrigin";
 import { PerlinNoise } from "@app/simulation/perlin-noise";
-import { dBi, dBm, Hertz, RfFrequency, RfSignal, SignalOrigin } from "@app/types";
+import { dBi, dBm, Hertz, RfFrequency, RfSignal } from "@app/types";
 import { Degrees } from "ootk";
 
 /**

@@ -1,7 +1,10 @@
+import { CampaignManager } from "@app/campaigns/campaign-manager";
+import { CampaignData } from "@app/campaigns/campaign-types";
 import { qs, qsa } from "@app/engine/utils/query-selector";
 import { Logger } from "@app/logging/logger";
 import { Router } from "@app/router";
-import { getNextPrerequisiteScenario, getPrerequisiteScenarioNames, isScenarioLocked, ScenarioData, SCENARIOS } from "@app/scenario-manager";
+import { getNextPrerequisiteScenario, getPrerequisiteScenarioNames, isScenarioLocked, SCENARIOS } from "@app/scenario-manager";
+import { ScenarioData } from '@app/ScenarioData';
 import { getUserDataService } from "@app/user-account/user-data-service";
 import { html } from "../engine/utils/development/formatter";
 import { BasePage } from "./base-page";
@@ -16,6 +19,8 @@ export class ScenarioSelectionPage extends BasePage {
   private readonly scenarioCheckpoints_: Map<string, boolean> = new Map();
   private completedScenarioIds_: string[] = [];
   private checkpointsLoaded_ = false;
+  private currentCampaignId_: string | null = null;
+  private currentCampaign_: CampaignData | null = null;
 
   private constructor() {
     super();
@@ -31,6 +36,32 @@ export class ScenarioSelectionPage extends BasePage {
     }
 
     return this.instance_;
+  }
+
+  /**
+   * Set the campaign to display scenarios for
+   */
+  setCampaign(campaignId: string | null): void {
+    this.currentCampaignId_ = campaignId;
+    if (campaignId) {
+      const campaignManager = CampaignManager.getInstance();
+      this.currentCampaign_ = campaignManager.getCampaign(campaignId) || null;
+    } else {
+      this.currentCampaign_ = null;
+    }
+    // Re-render with new campaign filter
+    this.updateScenarioCards_();
+  }
+
+  /**
+   * Get scenarios to display (filtered by campaign if set)
+   */
+  private getScenariosToDisplay_(): ScenarioData[] {
+    if (this.currentCampaignId_ && this.currentCampaign_) {
+      return this.currentCampaign_.scenarios;
+    }
+    // Fallback to all scenarios if no campaign is set
+    return SCENARIOS;
   }
 
   /**
@@ -86,11 +117,49 @@ export class ScenarioSelectionPage extends BasePage {
     const scenarioGrid = qs('.scenario-grid', this.dom_);
     if (!scenarioGrid) return;
 
+    const scenarios = this.getScenariosToDisplay_();
+
     // Re-render all scenario cards with updated checkpoint data
-    scenarioGrid.innerHTML = SCENARIOS.map(scenario => this.renderScenarioCard_(scenario)).join('');
+    scenarioGrid.innerHTML = scenarios.map(scenario => this.renderScenarioCard_(scenario)).join('');
+
+    // Update header with campaign info
+    this.updateHeader_();
 
     // Re-attach event listeners for the new cards
     this.attachScenarioCardListeners_();
+  }
+
+  /**
+   * Update the page header with campaign context
+   */
+  private updateHeader_(): void {
+    const headerEl = qs('.scenario-selection-header', this.dom_);
+    if (!headerEl) return;
+
+    if (this.currentCampaign_) {
+      const campaignManager = CampaignManager.getInstance();
+      const progress = campaignManager.getCampaignProgress(
+        this.currentCampaign_.id,
+        this.completedScenarioIds_
+      );
+
+      headerEl.innerHTML = html`
+        <h1>${this.currentCampaign_.title}</h1>
+        <div class="subtitle">${this.currentCampaign_.subtitle}</div>
+        <div class="campaign-progress">
+          ${progress.completedScenarios.length} of ${progress.totalScenarios} scenarios completed
+          (${progress.completionPercentage}%)
+        </div>
+        <div class="back-button" onclick="window.history.back()">
+          ← Back to Campaigns
+        </div>
+      `;
+    } else {
+      headerEl.innerHTML = html`
+        <h1>Training Scenarios</h1>
+        <div class="subtitle">Select a scenario to begin</div>
+      `;
+    }
   }
 
   /**
@@ -130,7 +199,7 @@ export class ScenarioSelectionPage extends BasePage {
       </div>
 
       <div class="scenario-grid">
-        ${SCENARIOS.map(scenario => this.renderScenarioCard_(scenario)).join('')}
+        ${this.getScenariosToDisplay_().map(scenario => this.renderScenarioCard_(scenario)).join('')}
       </div>
     </div>
   `;

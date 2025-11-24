@@ -1,5 +1,8 @@
+import { CampaignManager } from "./campaigns/campaign-manager";
+import { natsCampaignData } from "./campaigns/nats/campaign-data";
 import { EventBus } from "./events/event-bus";
 import { Events } from "./events/events";
+import { CampaignSelectionPage } from "./pages/campaign-selection";
 import { Footer } from "./pages/layout/footer/footer";
 import { Header } from "./pages/layout/header/header";
 import { SandboxPage } from "./pages/sandbox-page";
@@ -32,6 +35,10 @@ export class Router {
   }
 
   init(): void {
+    // Register campaigns
+    const campaignManager = CampaignManager.getInstance();
+    campaignManager.registerCampaign(natsCampaignData);
+
     // Listen for popstate (back/forward buttons)
     globalThis.addEventListener('popstate', () => this.handleRoute());
 
@@ -62,23 +69,39 @@ export class Router {
     // Hide all pages
     this.hideAll();
 
-    // Show the appropriate page
-    switch (path) {
-      case '/sandbox':
-        this.showPage('sandbox');
-        break;
-      case '/scenarios/1':
-        this.showPage('scenario1');
-        break;
-      case '/scenarios/2':
-        this.showPage('scenario2');
-        break;
-      case '/scenarios/3':
-        this.showPage('scenario3');
-        break;
-      case '/':
-      default:
-        this.showPage('scenarios');
+    // Route pattern matching
+    if (path === '/') {
+      // Root - show campaign selection
+      this.showPage('campaigns');
+    } else if (path === '/sandbox') {
+      // Sandbox - special case
+      this.showPage('sandbox');
+    } else if (path.match(/^\/campaigns\/([^/]+)$/)) {
+      // /campaigns/:campaignId - show scenario selection for campaign
+      const match = path.match(/^\/campaigns\/([^/]+)$/);
+      const campaignId = match?.[1];
+      this.showPage('campaign-scenarios', { campaignId });
+    } else if (path.match(/^\/campaigns\/([^/]+)\/scenarios\/([^/]+)$/)) {
+      // /campaigns/:campaignId/scenarios/:scenarioId - show simulation
+      const match = path.match(/^\/campaigns\/([^/]+)\/scenarios\/([^/]+)$/);
+      const campaignId = match?.[1];
+      const scenarioId = match?.[2];
+      this.showPage('scenario', { campaignId, scenarioId });
+    } else if (path === '/scenarios/1') {
+      // Legacy route - redirect to new format
+      this.navigate('/campaigns/nats/scenarios/scenario1', this.navigationOptions_);
+      return;
+    } else if (path === '/scenarios/2') {
+      // Legacy route - redirect to new format
+      this.navigate('/campaigns/nats/scenarios/first-light2', this.navigationOptions_);
+      return;
+    } else if (path === '/scenarios/3') {
+      // Legacy route - redirect to new format
+      this.navigate('/campaigns/nats/scenarios/first-light3', this.navigationOptions_);
+      return;
+    } else {
+      // Unknown route - go to campaign selection
+      this.showPage('campaigns');
     }
 
     // Emit route change event
@@ -86,44 +109,45 @@ export class Router {
   }
 
   private hideAll(): void {
+    CampaignSelectionPage.getInstance().hide();
     ScenarioSelectionPage.getInstance().hide();
     SandboxPage.getInstance()?.hide();
   }
 
-  private showPage(pageName: string): void {
+  private showPage(pageName: string, params?: { campaignId?: string; scenarioId?: string }): void {
     SimulationManager.destroy();
     switch (pageName) {
+      case 'campaigns':
+        // Campaign selection page
+        Header.getInstance().makeSmall(true);
+        Footer.getInstance().makeSmall(true);
+        CampaignSelectionPage.getInstance().show();
+        break;
+      case 'campaign-scenarios':
+        // Scenario selection for a specific campaign
+        Header.getInstance().makeSmall(true);
+        Footer.getInstance().makeSmall(true);
+        if (params?.campaignId) {
+          ScenarioSelectionPage.getInstance().setCampaign(params.campaignId);
+        }
+        ScenarioSelectionPage.getInstance().show();
+        break;
       case 'sandbox':
+        // Sandbox mode
         Header.getInstance().makeSmall(true);
         ScenarioManager.getInstance().scenario = 'sandbox';
         SandboxPage.create(this.navigationOptions_);
         SandboxPage.getInstance().show();
         break;
-      case 'scenario1':
+      case 'scenario':
+        // Scenario simulation
         Header.getInstance().makeSmall(true);
         Footer.getInstance().makeSmall(true);
-        ScenarioManager.getInstance().scenario = 'scenario1';
-        SandboxPage.create(this.navigationOptions_);
-        SandboxPage.getInstance().show();
-        break;
-      case 'scenario2':
-        Header.getInstance().makeSmall(true);
-        Footer.getInstance().makeSmall(true);
-        ScenarioManager.getInstance().scenario = 'scenario2';
-        SandboxPage.create(this.navigationOptions_);
-        SandboxPage.getInstance().show();
-        break;
-      case 'scenario3':
-        Header.getInstance().makeSmall(true);
-        Footer.getInstance().makeSmall(true);
-        ScenarioManager.getInstance().scenario = 'scenario3';
-        SandboxPage.create(this.navigationOptions_);
-        SandboxPage.getInstance().show();
-        break;
-      case 'scenarios':
-        Header.getInstance().makeSmall(true);
-        Footer.getInstance().makeSmall(true);
-        ScenarioSelectionPage.getInstance().show();
+        if (params?.scenarioId) {
+          ScenarioManager.getInstance().scenario = params.scenarioId;
+          SandboxPage.create(this.navigationOptions_);
+          SandboxPage.getInstance().show();
+        }
         break;
     }
 

@@ -10,7 +10,9 @@ import { Transmitter } from '../transmitter/transmitter';
 import { BUCModule, BUCState } from './buc-module/buc-module';
 import { CouplerModule, CouplerState, TapPoint } from './coupler-module/coupler-module';
 import { IfFilterBankModule, IfFilterBankState } from './filter-module/filter-module';
-import { GPSDOModule, GPSDOState } from './gpsdo-module/gpsdo-module';
+import { defaultGpsdoState } from "./gpsdo-module/defaultGpsdoState";
+import { GPSDOModule } from './gpsdo-module/gpsdo-module';
+import { GPSDOState } from './gpsdo-module/GPSDOState';
 import { HPAModule, HPAState } from './hpa-module/hpa-module';
 import { LNBModule, LNBState } from './lnb/lnb-module';
 import { OMTModule, OMTState } from './omt-module/omt-module';
@@ -76,7 +78,7 @@ export class RFFrontEnd extends BaseEquipment {
       filter: IfFilterBankModule.getDefaultState(),
       lnb: LNBModule.getDefaultState(),
       coupler: CouplerModule.getDefaultState(),
-      gpsdo: GPSDOModule.getDefaultState()
+      gpsdo: defaultGpsdoState
       , ...state
     };
 

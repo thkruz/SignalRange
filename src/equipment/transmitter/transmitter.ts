@@ -1,12 +1,13 @@
 import { ToggleSwitch } from "@app/components/toggle-switch/toggle-switch";
 import { EventBus } from "@app/events/event-bus";
+import { SignalOrigin } from "@app/SignalOrigin";
 import { Sfx } from "@app/sound/sfx-enum";
 import SoundManager from "@app/sound/sound-manager";
 import { PowerSwitch } from '../../components/power-switch/power-switch';
 import { html } from "../../engine/utils/development/formatter";
 import { qs } from "../../engine/utils/query-selector";
 import { Events } from "../../events/events";
-import { dBi, dBm, Hertz, IfFrequency, IfSignal, SignalOrigin } from "../../types";
+import { dBi, dBm, Hertz, IfFrequency, IfSignal } from "../../types";
 import { AlarmStatus, BaseEquipment } from "../base-equipment";
 import './transmitter.css';
 

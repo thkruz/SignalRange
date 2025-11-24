@@ -7,11 +7,12 @@ import { HPAModule } from '@app/equipment/rf-front-end/hpa-module/hpa-module';
 import { OMTModule } from '@app/equipment/rf-front-end/omt-module/omt-module';
 import { Satellite } from '@app/equipment/satellite/satellite';
 import { Character } from '@app/modal/character-enum';
-import { Objective } from '@app/objectives/objective-types';
-import { dB, dBi, dBm, FECType, Hertz, MHz, ModulationType, RfFrequency, SignalOrigin } from '@app/types';
+import type { Objective } from '@app/objectives/objective-types';
+import type { ScenarioData } from '@app/ScenarioData';
+import { SignalOrigin } from "@app/SignalOrigin";
+import type { dB, dBi, dBm, FECType, Hertz, MHz, ModulationType, RfFrequency } from '@app/types';
 import { getAssetUrl } from '@app/utils/asset-url';
-import { Degrees } from 'ootk';
-import { ScenarioData } from '../scenario-manager';
+import type { Degrees } from 'ootk';
 
 /**
  * Scenario 1: "First Light" - HELIOS-7 Initial Contact
@@ -23,7 +24,7 @@ import { ScenarioData } from '../scenario-manager';
 export const scenario1Data: ScenarioData = {
   id: 'scenario1',
   url: 'scenarios/1',
-  imageUrl: 'scenario1.jpg',
+  imageUrl: 'first-light.png',
   number: 1,
   title: '"First Light"',
   subtitle: 'MARINER-1 Initial Contact',

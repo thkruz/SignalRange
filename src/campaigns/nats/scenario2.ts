@@ -1,36 +1,34 @@
-import { html } from "@app/engine/utils/development/formatter";
 import { ANTENNA_CONFIG_KEYS } from "@app/equipment/antenna/antenna-configs";
-import { RealTimeSpectrumAnalyzer } from "@app/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer";
+import { defaultSpectrumAnalyzerState } from "@app/equipment/real-time-spectrum-analyzer/defaultSpectrumAnalyzerState";
 import { BUCModule } from "@app/equipment/rf-front-end/buc-module/buc-module";
 import { CouplerModule } from "@app/equipment/rf-front-end/coupler-module/coupler-module";
 import { IfFilterBankModule } from "@app/equipment/rf-front-end/filter-module/filter-module";
-import { GPSDOModule } from "@app/equipment/rf-front-end/gpsdo-module/gpsdo-module";
+import { defaultGpsdoState } from "@app/equipment/rf-front-end/gpsdo-module/defaultGpsdoState";
 import { HPAModule } from "@app/equipment/rf-front-end/hpa-module/hpa-module";
 import { LNBModule } from "@app/equipment/rf-front-end/lnb/lnb-module";
 import { OMTModule } from "@app/equipment/rf-front-end/omt-module/omt-module";
 import { Satellite } from "@app/equipment/satellite/satellite";
-import { dBi, dBm, FECType, Hertz, ModulationType, RfFrequency, SignalOrigin } from "@app/types";
+import type { ScenarioData } from "@app/ScenarioData";
+import { SignalOrigin } from "@app/SignalOrigin";
+import type { dBi, dBm, FECType, Hertz, ModulationType, RfFrequency } from "@app/types";
 import { Degrees } from "ootk";
-import { ScenarioData } from "../scenario-manager";
 
-export const scenario3Data: ScenarioData = {
-  id: 'first-light3',
-  isDisabled: true,
-  prerequisiteScenarioIds: ['first-light2'],
-  url: 'scenarios/3',
-  imageUrl: 'scenario3.jpg',
-  number: 3,
-  title: '"Full Stack"',
-  subtitle: 'Complete Link Budget Analysis',
-  duration: '45-60 min',
-  difficulty: 'advanced',
-  missionType: 'Research & Development',
-  description: `Conduct a comprehensive RF link analysis using the complete ground station suite. You'll establish both uplink and downlink connections, analyze signal quality, measure system performance parameters, and optimize the complete communications chain from transmitter to receiver.`,
+export const scenario2Data: ScenarioData = {
+  id: 'first-light2',
+  prerequisiteScenarioIds: ['scenario1'],
+  url: 'scenarios/2',
+  imageUrl: 'scenario2.jpg',
+  number: 2,
+  title: '"Signal Hunt"',
+  subtitle: 'Deep Space Tracking Exercise',
+  duration: '35-40 min',
+  difficulty: 'intermediate',
+  missionType: 'Deep Space Operations',
+  description: `Track and analyze signals from a deep space probe passing through the outer solar system. You'll need to compensate for Doppler shift, manage antenna pointing, and maintain signal lock despite challenging signal conditions and atmospheric interference.`,
   equipment: [
-    '2× 9-meter C-band Antennas',
-    '2× RF Front Ends',
-    '4× Spectrum Analyzers',
-    'Transmitter',
+    '9-meter C-band Antenna',
+    'RF Front End',
+    '2× Spectrum Analyzers',
     'Receiver',
   ],
   settings: {
@@ -44,48 +42,11 @@ export const scenario3Data: ScenarioData = {
       filter: IfFilterBankModule.getDefaultState(),
       lnb: LNBModule.getDefaultState(),
       coupler: CouplerModule.getDefaultState(),
-      gpsdo: GPSDOModule.getDefaultState(),
+      gpsdo: defaultGpsdoState,
     }],
-    spectrumAnalyzers: [RealTimeSpectrumAnalyzer.getDefaultState()],
-    transmitters: 1,
+    spectrumAnalyzers: [defaultSpectrumAnalyzerState],
+    transmitters: 0,
     receivers: 1,
-    layout: html`
-      <div class="student-equipment">
-        <!-- Antennas, Front Ends, and Spec Analyzers Grid -->
-          <div id="antenna-spec-a-grid1" class="antenna-spec-a-grid">
-            <div class="paired-equipment-container">
-              <div id="antenna1-container" class="antenna-container"></div>
-              <div id="antenna2-container" class="antenna-container"></div>
-            </div>
-            <div class="paired-equipment-container">
-              <div id="rf-front-end1-container" class="rf-front-end-container"></div>
-            </div>
-            <div class="paired-equipment-container">
-              <div id="rf-front-end2-container" class="rf-front-end-container"></div>
-            </div>
-            <div class="paired-equipment-container">
-              <div id="specA1-container" class="spec-a-container"></div>
-              <div id="specA2-container" class="spec-a-container"></div>
-            </div>
-          </div>
-
-        <!-- Spectrum Analyzers Grid -->
-          <div id="antenna-spec-a-grid2" class="antenna-spec-a-grid">
-            <div class="paired-equipment-container">
-              <div id="specA3-container" class="spec-a-container"></div>
-              <div id="specA4-container" class="spec-a-container"></div>
-            </div>
-          </div>
-
-        <!-- Transmitter And Receivers -->
-          <div class="tx-grid">
-            <div class="paired-equipment-container">
-              <div id="tx1-container" class="tx-container"></div>
-              <div id="rx1-container" class="rx-container"></div>
-            </div>
-          </div>
-      </div>
-    `,
     satellites: [
       new Satellite(
         1,

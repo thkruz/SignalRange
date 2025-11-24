@@ -1,17 +1,18 @@
 import { html } from "@app/engine/utils/development/formatter";
 import { ANTENNA_CONFIG_KEYS } from "@app/equipment/antenna/antenna-configs";
-import { RealTimeSpectrumAnalyzer } from "@app/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer";
+import { defaultSpectrumAnalyzerState } from "@app/equipment/real-time-spectrum-analyzer/defaultSpectrumAnalyzerState";
 import { BUCModule } from "@app/equipment/rf-front-end/buc-module/buc-module";
 import { CouplerModule } from "@app/equipment/rf-front-end/coupler-module/coupler-module";
 import { IfFilterBankModule } from "@app/equipment/rf-front-end/filter-module/filter-module";
-import { GPSDOModule } from "@app/equipment/rf-front-end/gpsdo-module/gpsdo-module";
+import { defaultGpsdoState } from "@app/equipment/rf-front-end/gpsdo-module/defaultGpsdoState";
 import { HPAModule } from "@app/equipment/rf-front-end/hpa-module/hpa-module";
 import { LNBModule } from "@app/equipment/rf-front-end/lnb/lnb-module";
 import { OMTModule } from "@app/equipment/rf-front-end/omt-module/omt-module";
 import { Satellite } from "@app/equipment/satellite/satellite";
-import { ScenarioData } from "@app/scenario-manager";
-import { FECType, Hertz, ModulationType, RfFrequency, SignalOrigin, dBi, dBm } from "@app/types";
-import { Degrees } from "ootk";
+import type { ScenarioData } from '@app/ScenarioData';
+import { SignalOrigin } from "@app/SignalOrigin";
+import type { FECType, Hertz, ModulationType, RfFrequency, dBi, dBm } from "@app/types";
+import type { Degrees } from "ootk";
 
 export const sandboxData: ScenarioData = {
   id: 'sandbox',
@@ -41,9 +42,9 @@ export const sandboxData: ScenarioData = {
       filter: IfFilterBankModule.getDefaultState(),
       lnb: LNBModule.getDefaultState(),
       coupler: CouplerModule.getDefaultState(),
-      gpsdo: GPSDOModule.getDefaultState(),
+      gpsdo: defaultGpsdoState,
     }],
-    spectrumAnalyzers: [RealTimeSpectrumAnalyzer.getDefaultState(), RealTimeSpectrumAnalyzer.getDefaultState()],
+    spectrumAnalyzers: [defaultSpectrumAnalyzerState, defaultSpectrumAnalyzerState],
     transmitters: 1,
     receivers: 1,
     layout: html`<div class="student-equipment">

@@ -3,6 +3,7 @@ import { qs } from "@app/engine/utils/query-selector";
 import { EventBus } from "@app/events/event-bus";
 import { Events } from "@app/events/events";
 import { Logger } from "@app/logging/logger";
+import { Character } from "@app/modal/character-enum";
 import { DialogManager } from "@app/modal/dialog-manager";
 import { ObjectivesManager } from "@app/objectives/objectives-manager";
 import { NavigationOptions } from "@app/router";
@@ -10,7 +11,9 @@ import { ScenarioManager } from "@app/scenario-manager";
 import { ScenarioDialogManager } from "@app/scenarios/scenario-dialog-manager";
 import { SimulationManager } from "@app/simulation/simulation-manager";
 import { AppState, syncManager } from "@app/sync/storage";
+import { Auth } from "@app/user-account/auth";
 import { ProgressSaveManager } from "@app/user-account/progress-save-manager";
+import { getAssetUrl } from "@app/utils/asset-url";
 import { html } from "../engine/utils/development/formatter";
 import { clearPersistedStore, syncEquipmentWithStore } from '../sync/storage';
 import { BasePage } from "./base-page";
@@ -111,6 +114,9 @@ export class SandboxPage extends BasePage {
         introClip.audioUrl,
         'Introduction'
       );
+
+      // Schedule login prompt dialog to show 5 seconds after intro dialog is closed
+      this.scheduleLoginPrompt_();
     }
   }
 
@@ -214,6 +220,47 @@ export class SandboxPage extends BasePage {
       Logger.error('Failed to restore objective states from checkpoint:', error);
       // Continue without restoring objectives - they'll start fresh
     }
+  }
+
+  /**
+   * Schedule login prompt dialog to show 5 seconds after the intro dialog is closed
+   */
+  private scheduleLoginPrompt_(): void {
+    // Check periodically if the intro dialog has been closed
+    const checkDialogClosed = setInterval(() => {
+      const dialogManager = DialogManager.getInstance();
+
+      if (!dialogManager.isShowing()) {
+        // Dialog is closed, clear the interval and schedule the login prompt
+        clearInterval(checkDialogClosed);
+
+        // Wait 5 seconds, then check if user is logged in
+        setTimeout(async () => {
+          const isLoggedIn = await Auth.isLoggedIn();
+
+          if (!isLoggedIn) {
+            // User is not logged in, show the login prompt dialog
+            dialogManager.show(
+              `
+              <p>
+              Hey, normally you make an account on the computer and log what you are doing.
+              </p>
+              <p>
+              If you want to keep your notes on your desk, that's up to you, but just know none of us will have any idea what you did today if you ask us tomorrow!
+              </p>
+
+              <p>
+              (You can make an account in the top right corner of the screen in order to save your progress automatically. It's free and only takes a minute!)
+              </p>
+              `,
+              Character.CHARLIE_BROOKS,
+              getAssetUrl('/assets/campaigns/login-first.mp3'),
+              'Login Reminder'
+            );
+          }
+        }, 5000);
+      }
+    }, 100); // Check every 100ms
   }
 
   hide(): void {

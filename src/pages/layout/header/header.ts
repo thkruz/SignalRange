@@ -10,6 +10,7 @@ import '@app/user-account/user-account.css';
 import { html } from "../../../engine/utils/development/formatter";
 import './header.css';
 import SoundManager from "@app/sound/sound-manager";
+import type { User } from "@supabase/supabase-js";
 
 /**
  * Header Component
@@ -116,8 +117,7 @@ export class Header extends BaseElement {
     Auth.onAuthStateChange(async (_event, user) => {
       if (user) {
         this.showProfileButton();
-        const profile = await Auth.getUserProfile();
-        this.updateProfileButton(profile?.full_name || profile?.name || user.email || '??');
+        this.updateProfileButton(user);
       } else {
         this.showLoginButton();
       }
@@ -131,8 +131,7 @@ export class Header extends BaseElement {
     const user = await Auth.getCurrentUser();
     if (user) {
       this.showProfileButton();
-      const profile = await Auth.getUserProfile();
-      this.updateProfileButton(profile?.full_name || profile?.name || user.email || '??');
+      this.updateProfileButton(user);
     }
   }
 
@@ -152,15 +151,57 @@ export class Header extends BaseElement {
     }
   }
 
-  private updateProfileButton(displayName: string): void {
-    if (this.profileBtn) {
-      const initials = displayName
-        .split(' ')
-        .map(word => word.charAt(0).toUpperCase())
-        .join('')
-        .slice(0, 2);
-      this.profileBtn.textContent = initials || '??';
+  private updateProfileButton(user: User): void {
+    if (!this.profileBtn) {
+      return;
     }
+
+    // Get profile image URL from OAuth provider metadata
+    // Different providers use different fields:
+    // - Google uses 'picture'
+    // - GitHub uses 'avatar_url'
+    // - LinkedIn uses 'picture'
+    // - Facebook uses 'picture'
+    const metadata = user.user_metadata as Record<string, any>;
+    const profileImageUrl = metadata?.picture || metadata?.avatar_url;
+
+    // Clear existing content
+    this.profileBtn.innerHTML = '';
+
+    if (profileImageUrl) {
+      // Create and display profile image
+      const img = document.createElement('img');
+      img.src = profileImageUrl;
+      img.alt = 'Profile';
+      img.className = 'user-account__avatar user-account__avatar--profile';
+
+      // Fallback to initials if image fails to load
+      img.onerror = () => {
+        this.profileBtn!.innerHTML = '';
+        this.displayInitials(user);
+      };
+
+      this.profileBtn.appendChild(img);
+    } else {
+      // No profile image - display initials
+      this.displayInitials(user);
+    }
+  }
+
+  private displayInitials(user: User): void {
+    if (!this.profileBtn) {
+      return;
+    }
+
+    const metadata = user.user_metadata as Record<string, any>;
+    const displayName = metadata?.full_name || metadata?.name || user.email || '??';
+    const initials = displayName
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase())
+      .join('')
+      .slice(0, 2);
+
+    this.profileBtn.textContent = initials || '??';
   }
 
   makeSmall(isSmall: boolean): void {

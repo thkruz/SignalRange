@@ -67,6 +67,7 @@
 .draggable-box__title h3 {
   margin: 0;
   user-select: none;
+  color: #ffffff;
 }
 
 .draggable-box__content {

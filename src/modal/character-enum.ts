@@ -15,3 +15,17 @@ export const CharacterAvatars: Record<Character, string> = {
   [Character.JAMES_OKAFOR]: '/assets/characters/james-okafor.png',
   [Character.FRANCIS_MARTIN]: '/assets/characters/francis-martin.png',
 };
+
+export const CharacterNames: Record<Character, string> = {
+  [Character.CHARLIE_BROOKS]: 'Charlie Brooks',
+  [Character.CATHERINE_VEGA]: 'Catherine Vega',
+  [Character.JAMES_OKAFOR]: 'James Okafor',
+  [Character.FRANCIS_MARTIN]: 'Francis Martin',
+};
+
+export const CharacterTitles: Record<Character, string> = {
+  [Character.CHARLIE_BROOKS]: 'Senior Ground Station Operator, SeaLink',
+  [Character.CATHERINE_VEGA]: 'CEO, SeaLink',
+  [Character.JAMES_OKAFOR]: 'Atlantic Shipping Alliance',
+  [Character.FRANCIS_MARTIN]: 'Board Member',
+};

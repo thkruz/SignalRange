@@ -75,45 +75,43 @@ export class Equipment extends BaseElement {
   }
 
   protected addEventListeners_(): void {
-    this.addMissionBriefListener_();
-    this.addChecklistListener_();
-    this.addDialogHistoryListener_();
-  }
 
-  private addMissionBriefListener_(): void {
     const missionBriefUrl = ScenarioManager.getInstance().settings.missionBriefUrl;
     if (missionBriefUrl) {
-      qs('.mission-brief-icon').addEventListener('click', () => {
-        SimulationManager.getInstance().missionBriefBox ??= new DraggableHtmlBox('Mission Brief', 'mission-brief', missionBriefUrl);
-        SimulationManager.getInstance().missionBriefBox.open();
-      });
+      this.addMissionBriefListener_(missionBriefUrl);
+      this.addChecklistListener_();
+      this.addDialogHistoryListener_();
     }
+  }
+
+  private addMissionBriefListener_(missionBriefUrl: string): void {
+    qs('.mission-brief-icon').addEventListener('click', () => {
+      SimulationManager.getInstance().missionBriefBox ??= new DraggableHtmlBox('Mission Brief', 'mission-brief', missionBriefUrl);
+      SimulationManager.getInstance().missionBriefBox.open();
+    });
   }
 
   private addChecklistListener_(): void {
-    const missionBriefUrl = ScenarioManager.getInstance().settings.missionBriefUrl;
-    if (missionBriefUrl) {
-      qs('.checklist-icon').addEventListener('click', () => {
-        SimulationManager.getInstance().checklistBox ??= new DraggableHtmlBox('Checklist', 'checklist', '');
-        const objectivesManager = ObjectivesManager.getInstance();
-        objectivesManager.syncCollapsedStatesFromDOM();
-        this.lastChecklistHtml_ = objectivesManager.generateHtmlChecklist();
-        SimulationManager.getInstance().checklistBox.updateContent(this.lastChecklistHtml_);
-        SimulationManager.getInstance().checklistBox.open();
-        this.startChecklistRefreshTimer_(SimulationManager.getInstance().checklistBox);
-      });
+    qs('.checklist-icon').addEventListener('click', () => {
+      SimulationManager.getInstance().checklistBox ??= new DraggableHtmlBox('Checklist', 'checklist', '');
+      const objectivesManager = ObjectivesManager.getInstance();
+      objectivesManager.syncCollapsedStatesFromDOM();
+      this.lastChecklistHtml_ = objectivesManager.generateHtmlChecklist();
+      SimulationManager.getInstance().checklistBox.updateContent(this.lastChecklistHtml_);
+      SimulationManager.getInstance().checklistBox.open();
+      this.startChecklistRefreshTimer_(SimulationManager.getInstance().checklistBox);
+    });
 
-      EventBus.getInstance().on(Events.OBJECTIVE_ACTIVATED, () => {
-        // Can't update it until they open it for the first time
-        if (!SimulationManager.getInstance().checklistBox) {
-          return;
-        }
+    EventBus.getInstance().on(Events.OBJECTIVE_ACTIVATED, () => {
+      // Can't update it until they open it for the first time
+      if (!SimulationManager.getInstance().checklistBox) {
+        return;
+      }
 
-        const objectivesManager = ObjectivesManager.getInstance();
-        this.lastChecklistHtml_ = objectivesManager.generateHtmlChecklist();
-        SimulationManager.getInstance().checklistBox.updateContent(this.lastChecklistHtml_);
-      });
-    }
+      const objectivesManager = ObjectivesManager.getInstance();
+      this.lastChecklistHtml_ = objectivesManager.generateHtmlChecklist();
+      SimulationManager.getInstance().checklistBox.updateContent(this.lastChecklistHtml_);
+    });
   }
 
   private addDialogHistoryListener_(): void {

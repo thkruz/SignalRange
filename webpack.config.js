@@ -85,7 +85,14 @@ module.exports = {
     compress: false,
     port: 3000,
     hot: true,
-    historyApiFallback: true,
+    historyApiFallback: {
+      rewrites: [
+        // Don't redirect auth callback - serve the actual HTML file
+        { from: /^\/auth\/callback/, to: '/auth/callback.html' },
+        // All other routes go to index.html
+        { from: /./, to: '/index.html' }
+      ]
+    },
     liveReload: false
   }
 };

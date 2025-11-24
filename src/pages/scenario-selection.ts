@@ -1,7 +1,7 @@
 import { qs, qsa } from "@app/engine/utils/query-selector";
 import { Logger } from "@app/logging/logger";
 import { Router } from "@app/router";
-import { ScenarioData, SCENARIOS, isScenarioLocked, getPrerequisiteScenarioNames } from "@app/scenario-manager";
+import { getPrerequisiteScenarioNames, isScenarioLocked, ScenarioData, SCENARIOS } from "@app/scenario-manager";
 import { getUserDataService } from "@app/user-account/user-data-service";
 import { html } from "../engine/utils/development/formatter";
 import { BasePage } from "./base-page";
@@ -57,8 +57,8 @@ export class ScenarioSelectionPage extends BasePage {
 
       const userDataService = getUserDataService();
 
-      const progress = await userDataService.getUserProgress();
-      const signalForge = progress.signalForge || [];
+      const progress = await userDataService.getUserProgress().catch(() => null);
+      const signalForge = progress?.signalForge ?? [];
 
       // Build a map of scenario IDs that have checkpoints
       signalForge.forEach(checkpoint => {
@@ -66,7 +66,7 @@ export class ScenarioSelectionPage extends BasePage {
       });
 
       // Load completed scenarios - convert scenario numbers to IDs
-      const completedScenarioNumbers = progress.completedScenarios || [];
+      const completedScenarioNumbers = progress?.completedScenarios ?? [];
       this.completedScenarioIds_ = completedScenarioNumbers
         .map(num => SCENARIOS.find(s => s.number === num)?.id)
         .filter(Boolean);
@@ -114,6 +114,12 @@ export class ScenarioSelectionPage extends BasePage {
     playAgainButtons.forEach(btn => {
       btn.addEventListener('click', this.handlePlayAgain_.bind(this));
     });
+
+    // Add click handlers for Play Again buttons
+    const startButtons = qsa('.btn-start', this.dom_);
+    startButtons.forEach(btn => {
+      btn.addEventListener('click', this.handlePlayAgain_.bind(this));
+    });
   }
 
   protected html_ = html`
@@ -137,15 +143,15 @@ export class ScenarioSelectionPage extends BasePage {
     const isCompleted = this.completedScenarioIds_.includes(scenario.id);
 
     let statusBanner = '';
-    if (isLocked) {
+    if (scenario.isDisabled) {
+      statusBanner = `
+        <div class="coming-soon-banner">Coming Soon</div>
+      `;
+    } else if (isLocked) {
       statusBanner = `
         <div class="locked-banner" title="Complete ${prerequisiteNames.join(', ')} to unlock">
           <span class="locked-icon">🔒</span> Locked
         </div>
-      `;
-    } else if (scenario.isDisabled) {
-      statusBanner = `
-        <div class="coming-soon-banner">Coming Soon</div>
       `;
     }
 

@@ -776,14 +776,6 @@ export class GPSDOModule extends RFFrontEndModule<GPSDOState> {
       this.domCache_.outputs.textContent = `${this.state_.active10MHzOutputs}/${this.state_.max10MHzOutputs}`;
 
       this.domCache_.holdover.textContent = (this.state_.holdoverError).toFixed(3);
-      // Color code: green when GPS locked, yellow in holdover, red when excessive
-      if (!this.state_.isInHoldover) {
-        this.domCache_.holdover.style.color = '#0f0';
-      } else if (this.state_.holdoverError < 30) {
-        this.domCache_.holdover.style.color = '#ff0';
-      } else {
-        this.domCache_.holdover.style.color = '#f00';
-      }
     }
 
 

@@ -119,7 +119,8 @@
 }
 
 .oauth-btn--google:hover:not(:disabled) {
-  background-color: #e9e9e9;
+  background-color: #f8f9fa;
+  border-color: #d2d3d4;
 }
 
 .oauth-btn--linkedin {
@@ -172,7 +173,7 @@
 .auth-divider__text {
   background-color: var(--color-dark-background);
   padding: 0 var(--user-account-spacing-lg);
-  color: #6a737d;
+  color: #ffffff;
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 1px;
@@ -197,7 +198,7 @@
 
 .auth-form__label {
   font-weight: 500;
-  color: var(--color-dark-text);
+  color: #ffffff;
   font-size: 0.9rem;
 }
 
@@ -298,7 +299,7 @@
 
 .profile-form__label {
   font-weight: 500;
-  color: var(--color-dark-text);
+  color: #ffffff;
   font-size: 0.9rem;
 }
 

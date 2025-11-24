@@ -1,7 +1,7 @@
 import { html } from '@app/engine/utils/development/formatter';
 import { qs } from '@app/engine/utils/query-selector';
 import SoundManager from '@app/sound/sound-manager';
-import { Character, CharacterAvatars } from './character-enum';
+import { Character, CharacterAvatars, CharacterNames, CharacterTitles } from './character-enum';
 import { DialogHistoryManager } from './dialog-history-manager';
 import './dialog-manager.css';
 
@@ -35,6 +35,8 @@ export class DialogManager {
     DialogHistoryManager.getInstance().addEntry(text, character, audioUrl, title);
 
     const avatarUrl = CharacterAvatars[character];
+    const characterName = CharacterNames[character];
+    const characterTitle = CharacterTitles[character];
     this.currentAudioUrl = audioUrl;
 
     const overlay = document.createElement('div');
@@ -45,8 +47,14 @@ export class DialogManager {
     overlay.innerHTML = html`
       <div class="dialog-box">
         <div class="dialog-content">
-          <div class="dialog-avatar">
-            <img src="${avatarUrl}" alt="${character}" />
+          <div class="dialog-avatar-container">
+            <div class="dialog-avatar">
+              <img src="${avatarUrl}" alt="${character}" />
+            </div>
+            <div class="dialog-character-info">
+              <div class="dialog-character-name">${characterName}</div>
+              <div class="dialog-character-title">${characterTitle}</div>
+            </div>
           </div>
           <div class="dialog-text-container">
             <div class="dialog-text">${text}</div>
@@ -120,7 +128,7 @@ export class DialogManager {
 
     // Use shorter duration if audio has finished to avoid accidental clicks
     const isAudioPlaying = SoundManager.getInstance().isCustomAudioPlaying();
-    const holdDuration = isAudioPlaying ? 2000 : 250; // 2 seconds while playing, 250ms when finished
+    const holdDuration = isAudioPlaying ? 1500 : 250; // 1.5 seconds while playing, 250ms when finished
 
     const updateProgress = () => {
       if (!this.isHolding || !this.holdStartTime) return;

@@ -373,6 +373,17 @@
   color: #ffffff;
 }
 
+.profile-actions__btn--danger {
+  background-color: transparent;
+  color: #dc3545;
+  border: 1px solid #dc3545;
+}
+
+.profile-actions__btn--danger:hover {
+  background-color: #dc3545;
+  color: #ffffff;
+}
+
 /* ==========================================================================
    RESPONSIVE DESIGN
    ========================================================================== */

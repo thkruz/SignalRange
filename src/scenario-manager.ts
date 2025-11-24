@@ -9,8 +9,8 @@ import { LNBModule } from './equipment/rf-front-end/lnb/lnb-module';
 import { OMTModule } from './equipment/rf-front-end/omt-module/omt-module';
 import { RFFrontEndState } from './equipment/rf-front-end/rf-front-end';
 import { Satellite } from './equipment/satellite/satellite';
-import { Objective } from './objectives/objective-types';
 import { Character } from './modal/character-enum';
+import { Objective } from './objectives/objective-types';
 import { sandboxData } from './scenarios/sandbox';
 import { scenario1Data } from './scenarios/scenario1';
 import { scenario2Data } from "./scenarios/scenario2";
@@ -119,6 +119,22 @@ export function isScenarioLocked(scenario: ScenarioData, completedScenarioIds: s
   return !scenario.prerequisiteScenarioIds.every(prereqId =>
     completedScenarioIds.includes(prereqId)
   );
+}
+
+/** Function finds the next scenario the user needs to complete in order to unlock the provided scenario */
+export function getNextPrerequisiteScenario(scenario: ScenarioData, completedScenarioIds: string[]): ScenarioData | null {
+  if (!scenario.prerequisiteScenarioIds || scenario.prerequisiteScenarioIds.length === 0) {
+    return null;
+  }
+
+  for (const prereqId of scenario.prerequisiteScenarioIds) {
+    if (!completedScenarioIds.includes(prereqId)) {
+      const prereqScenario = SCENARIOS.find(s => s.id === prereqId);
+      return prereqScenario || null;
+    }
+  }
+
+  return null;
 }
 
 export function getPrerequisiteScenarioNames(scenario: ScenarioData): string[] {

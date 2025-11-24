@@ -1,7 +1,7 @@
 import { qs, qsa } from "@app/engine/utils/query-selector";
 import { Logger } from "@app/logging/logger";
 import { Router } from "@app/router";
-import { getPrerequisiteScenarioNames, isScenarioLocked, ScenarioData, SCENARIOS } from "@app/scenario-manager";
+import { getNextPrerequisiteScenario, getPrerequisiteScenarioNames, isScenarioLocked, ScenarioData, SCENARIOS } from "@app/scenario-manager";
 import { getUserDataService } from "@app/user-account/user-data-service";
 import { html } from "../engine/utils/development/formatter";
 import { BasePage } from "./base-page";
@@ -148,9 +148,15 @@ export class ScenarioSelectionPage extends BasePage {
         <div class="coming-soon-banner">Coming Soon</div>
       `;
     } else if (isLocked) {
+      const nextPrereqScenario = getNextPrerequisiteScenario(scenario, this.completedScenarioIds_);
       statusBanner = `
         <div class="locked-banner" title="Complete ${prerequisiteNames.join(', ')} to unlock">
-          <span class="locked-icon">🔒</span> Locked
+          <div>
+            <span class="locked-icon">🔒</span> Locked
+          </div>
+          <div class="locked-requirement">
+            ${nextPrereqScenario ? `<strong>${nextPrereqScenario.title}</strong> must be completed first to unlock this scenario.` : ''}
+          </div>
         </div>
       `;
     }

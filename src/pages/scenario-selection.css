@@ -270,7 +270,7 @@
 
 .scenario-image-overlay {
   margin-top: -90px;
-  z-index: 10000;
+  z-index: 1000;
   display: block;
   position: relative;
   padding: 1px 1em 1px 1em;

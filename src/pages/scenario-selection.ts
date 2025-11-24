@@ -1,5 +1,6 @@
 import { CampaignManager } from "@app/campaigns/campaign-manager";
 import { CampaignData } from "@app/campaigns/campaign-types";
+import { ModalConfirm } from "@app/engine/ui/modal-confirm";
 import { qs, qsa } from "@app/engine/utils/query-selector";
 import { Logger } from "@app/logging/logger";
 import { Router } from "@app/router";
@@ -384,27 +385,30 @@ export class ScenarioSelectionPage extends BasePage {
     }
 
     // Show confirmation modal
-    const confirmed = confirm(
-      'Starting fresh will clear your saved checkpoint for this scenario. Your achievements will be preserved.\n\nAre you sure you want to continue?'
+    ModalConfirm.getInstance().open(
+      async () => {
+        try {
+          // Clear the checkpoint
+          const userDataService = getUserDataService();
+          await userDataService.clearScenarioCheckpoint(scenarioId);
+
+          Logger.info(`Checkpoint cleared for scenario: ${scenarioId}`);
+
+          // Navigate to scenario
+          Router.getInstance().navigate(scenarioUrl);
+        } catch (error) {
+          Logger.error('Failed to clear checkpoint:', error);
+          alert('Failed to clear checkpoint. Please try again.');
+        }
+      },
+      {
+        title: 'Start Fresh?',
+        message: '<p>Starting fresh will clear your saved checkpoint for this scenario. Your achievements will be preserved.</p><p>Are you sure you want to continue?</p>',
+        confirmText: 'Start Fresh',
+        cancelText: 'Cancel',
+        isDestructive: true,
+      }
     );
-
-    if (!confirmed) {
-      return;
-    }
-
-    try {
-      // Clear the checkpoint
-      const userDataService = getUserDataService();
-      await userDataService.clearScenarioCheckpoint(scenarioId);
-
-      Logger.info(`Checkpoint cleared for scenario: ${scenarioId}`);
-
-      // Navigate to scenario
-      Router.getInstance().navigate(scenarioUrl);
-    } catch (error) {
-      Logger.error('Failed to clear checkpoint:', error);
-      alert('Failed to clear checkpoint. Please try again.');
-    }
   }
 
   /**

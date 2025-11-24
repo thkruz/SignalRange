@@ -16,8 +16,8 @@ import { Degrees } from "ootk";
 export const scenario2Data: ScenarioData = {
   id: 'first-light2',
   prerequisiteScenarioIds: ['scenario1'],
-  url: 'scenarios/2',
-  imageUrl: 'scenario2.jpg',
+  url: 'nats/scenarios/scenario2',
+  imageUrl: 'scenario2.png',
   number: 2,
   title: '"Signal Hunt"',
   subtitle: 'Deep Space Tracking Exercise',

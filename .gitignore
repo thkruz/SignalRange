@@ -43,6 +43,7 @@ notes
 public/assets/campaigns/**/*.mp3
 public/assets/campaigns/**/*.wav
 public/assets/campaigns/**/*.ogg
+public/**/wip/
 
 # Keep directory structure with .gitkeep files
 !public/assets/campaigns/**/.gitkeep

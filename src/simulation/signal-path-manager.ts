@@ -164,7 +164,7 @@ export class SignalPathManager {
     shouldApplyGain: boolean;
   } {
     switch (tapPoint) {
-      case TapPoint.PRE_OMT_POST_ANT_RX_RF: {
+      case TapPoint.RX_RF_PRE_OMT: {
         // Noise floor = Antenna thermal noise only
         // No components in chain yet, so this is just antenna noise temperature
         const antennaFreq = 4e9 as Hertz; // Use center of C-band as representative frequency
@@ -175,8 +175,8 @@ export class SignalPathManager {
         };
       }
 
-      case TapPoint.POST_OMT_PRE_LNA_RX_RF:
-      case TapPoint.POST_LNA_RX_RF: {
+      case TapPoint.RX_RF_POST_OMT:
+      case TapPoint.RX_RF_POST_LNA: {
         // Noise floor = LNB system noise (includes LNA + mixer noise figures)
         // This is the "external" noise that will be (or has been) amplified by the LNA
         // We return the noise WITHOUT gain - caller applies gain during visualization
@@ -217,9 +217,9 @@ export class SignalPathManager {
 
       // TX path tap points - simplified for now
       case TapPoint.TX_IF:
-      case TapPoint.POST_BUC_PRE_HPA_TX_RF:
-      case TapPoint.POST_HPA_PRE_OMT_TX_RF:
-      case TapPoint.POST_OMT_PRE_ANT_TX_RF:
+      case TapPoint.TX_RF_POST_BUC:
+      case TapPoint.TX_RF_POST_HPA:
+      case TapPoint.TX_RF_POST_OMT:
       default: {
         const NF = 0.5; // Spectrum analyzer noise figure
 
@@ -242,7 +242,7 @@ export class SignalPathManager {
    */
   getTotalGainTo(tapPoint: TapPoint): dB {
     switch (tapPoint) {
-      case TapPoint.PRE_OMT_POST_ANT_RX_RF: {
+      case TapPoint.RX_RF_PRE_OMT: {
         if (!this.rfFrontEnd_.antenna.state.isPowered) {
           return Number.NEGATIVE_INFINITY as dB; // No signal if antenna is unpowered
         }
@@ -250,7 +250,7 @@ export class SignalPathManager {
         return 0 as dB;
       }
 
-      case TapPoint.POST_OMT_PRE_LNA_RX_RF: {
+      case TapPoint.RX_RF_POST_OMT: {
         if (!this.rfFrontEnd_.antenna.state.isPowered || !this.rfFrontEnd_.omtModule.state.isPowered) {
           return Number.NEGATIVE_INFINITY as dB; // No signal if antenna or OMT is unpowered
         }
@@ -258,7 +258,7 @@ export class SignalPathManager {
         return (-this.omtInsertionLoss_dB) as dB;
       }
 
-      case TapPoint.POST_LNA_RX_RF: {
+      case TapPoint.RX_RF_POST_LNA: {
         if (!this.rfFrontEnd_.antenna.state.isPowered || !this.rfFrontEnd_.omtModule.state.isPowered || !this.rfFrontEnd_.lnbModule.state.isPowered) {
           return Number.NEGATIVE_INFINITY as dB; // No signal if any component is unpowered
         }
@@ -276,11 +276,11 @@ export class SignalPathManager {
       }
 
       // TX path tap points
-      case TapPoint.POST_BUC_PRE_HPA_TX_RF:
+      case TapPoint.TX_RF_POST_BUC:
         return this.rfFrontEnd_.bucModule.state.gain;
-      case TapPoint.POST_HPA_PRE_OMT_TX_RF:
+      case TapPoint.TX_RF_POST_HPA:
         return (this.rfFrontEnd_.bucModule.state.gain + this.rfFrontEnd_.hpaModule.state.gain) as dB;
-      case TapPoint.POST_OMT_PRE_ANT_TX_RF:
+      case TapPoint.TX_RF_POST_OMT:
         return (this.rfFrontEnd_.bucModule.state.gain + this.rfFrontEnd_.hpaModule.state.gain - this.rfFrontEnd_.omtModule.state.insertionLoss) as dB;
       case TapPoint.TX_IF:
       default: {

@@ -419,17 +419,17 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
     switch (tapPoint) {
       case TapPoint.TX_IF:
         return this.rfFrontEnd_.bucModule.inputSignals;
-      case TapPoint.POST_BUC_PRE_HPA_TX_RF:
+      case TapPoint.TX_RF_POST_BUC:
         return this.rfFrontEnd_.bucModule.outputSignals;
-      case TapPoint.POST_HPA_PRE_OMT_TX_RF:
+      case TapPoint.TX_RF_POST_HPA:
         return this.rfFrontEnd_.hpaModule.outputSignals;
-      case TapPoint.POST_OMT_PRE_ANT_TX_RF:
+      case TapPoint.TX_RF_POST_OMT:
         return this.rfFrontEnd_.omtModule.txSignalsOut;
-      case TapPoint.PRE_OMT_POST_ANT_RX_RF:
+      case TapPoint.RX_RF_PRE_OMT:
         return this.rfFrontEnd_.antenna.state.rxSignalsIn;
-      case TapPoint.POST_OMT_PRE_LNA_RX_RF:
+      case TapPoint.RX_RF_POST_OMT:
         return this.rfFrontEnd_.omtModule.rxSignalsOut;
-      case TapPoint.POST_LNA_RX_RF:
+      case TapPoint.RX_RF_POST_LNA:
         return this.rfFrontEnd_.lnbModule.postLNASignals;
       case TapPoint.RX_IF:
         return this.rfFrontEnd_.filterModule.outputSignals;

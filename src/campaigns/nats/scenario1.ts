@@ -1,7 +1,8 @@
 import { html } from '@app/engine/utils/development/formatter';
+import type { AntennaState } from '@app/equipment/antenna/antenna';
 import { ANTENNA_CONFIG_KEYS } from '@app/equipment/antenna/antenna-configs';
 import { BUCModule } from '@app/equipment/rf-front-end/buc-module/buc-module';
-import { CouplerModule } from '@app/equipment/rf-front-end/coupler-module/coupler-module';
+import { CouplerState, TapPoint } from '@app/equipment/rf-front-end/coupler-module/coupler-module';
 import { IfFilterBankModule } from '@app/equipment/rf-front-end/filter-module/filter-module';
 import { HPAModule } from '@app/equipment/rf-front-end/hpa-module/hpa-module';
 import { OMTModule } from '@app/equipment/rf-front-end/omt-module/omt-module';
@@ -40,6 +41,15 @@ export const scenario1Data: ScenarioData = {
   settings: {
     isSync: true,
     antennas: [ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK],
+    antennasState: [
+      {
+        // Pre-configure antenna to be powered on and pointed roughly at satellite 1
+        isPowered: true,
+        azimuth: 161.8 as Degrees,
+        elevation: 34.2 as Degrees,
+        polarization: 14 as Degrees,
+      } as Partial<AntennaState>,
+    ],
     rfFrontEnds: [{
       // Module states managed by their respective classes
       omt: OMTModule.getDefaultState(),
@@ -60,7 +70,17 @@ export const scenario1Data: ScenarioData = {
         temperature: 25, // °C
         thermalStabilizationTime: 180, // seconds
       },
-      coupler: CouplerModule.getDefaultState(),
+      coupler: {
+        isPowered: true,
+        tapPointA: TapPoint.TX_IF,
+        tapPointB: TapPoint.RX_IF,
+        availableTapPointsA: [TapPoint.TX_IF, TapPoint.TX_RF_POST_BUC],
+        availableTapPointsB: [TapPoint.RX_IF],
+        couplingFactorA: -40, // dB
+        couplingFactorB: -39, // dB
+        isActiveA: true,
+        isActiveB: true,
+      } as CouplerState,
       gpsdo: {
         isPowered: true, // CHANGE
         isLocked: false,
@@ -127,6 +147,7 @@ export const scenario1Data: ScenarioData = {
       </div>
     `,
     missionBriefUrl: 'https://docs.signalrange.space/scenarios/scenario-1?content-only=true&dark=true',
+    isExtraSatellitesVisible: true,
     satellites: [
       new Satellite(
         1,
@@ -136,11 +157,11 @@ export const scenario1Data: ScenarioData = {
             serverId: 1,
             noradId: 1,
             /** Must be the uplinkl to match the antenna in simulation */
-            frequency: 6180e6 as RfFrequency,
+            frequency: 5925e6 as RfFrequency,
             polarization: 'H',
             power: 40 as dBm, // 10 W
-            bandwidth: 10e6 as Hertz,
-            modulation: '8QAM' as ModulationType, // We need about 7 C/N to support 8QAM
+            bandwidth: 36e6 as Hertz,
+            modulation: 'QPSK' as ModulationType,
             fec: '3/4' as FECType,
             feed: 'red-1.mp4',
             isDegraded: false,
@@ -148,28 +169,11 @@ export const scenario1Data: ScenarioData = {
             noiseFloor: null,
             gainInPath: 0 as dBi,
           },
-          {
-            signalId: '2',
-            serverId: 1,
-            noradId: 1,
-            /** Must be the uplinkl to match the antenna in simulation */
-            frequency: 6190e6 as RfFrequency,
-            polarization: 'H',
-            power: 40 as dBm, // 10 W
-            bandwidth: 3e6 as Hertz,
-            modulation: '8QAM' as ModulationType, // We need about 7 C/N to support 8QAM
-            fec: '3/4' as FECType,
-            feed: 'blue-1.mp4',
-            isDegraded: false,
-            origin: SignalOrigin.SATELLITE_RX,
-            noiseFloor: null,
-            gainInPath: 0 as dBi,
-          }
         ],
         [
           {
-            frequency: 3985.5e6 as RfFrequency,
-            signalId: 'Sat1-Beacon',
+            frequency: 3702.5e6 as RfFrequency,
+            signalId: 'MARINER-1-Beacon',
             serverId: 1,
             noradId: 1,
             power: 40 as dBm, // 10 W
@@ -185,65 +189,10 @@ export const scenario1Data: ScenarioData = {
           }
         ],
         {
-          az: 247.3 as Degrees,
-          el: 78.2 as Degrees,
-          frequencyOffset: 2.260e9 as Hertz,
-        }
-      ),
-      new Satellite(
-        2,
-        [
-          {
-            signalId: '3',
-            serverId: 1,
-            noradId: 2,
-            /** Must be the uplinkl to match the antenna in simulation */
-            frequency: 6165e6 as RfFrequency,
-            polarization: 'H',
-            power: 40 as dBm, // 10 W
-            bandwidth: 3e6 as Hertz,
-            modulation: '8QAM' as ModulationType, // We need about 7 C/N to support 8QAM
-            fec: '3/4' as FECType,
-            feed: 'blue-1.mp4',
-            isDegraded: false,
-            origin: SignalOrigin.SATELLITE_RX,
-            noiseFloor: null,
-            gainInPath: 0 as dBi,
-          }
-        ],
-        [],
-        {
-          az: 247.6 as Degrees,
-          el: 78.2 as Degrees,
-          frequencyOffset: 2.260e9 as Hertz,
-        }
-      ),
-      new Satellite(
-        3,
-        [
-          {
-            signalId: '4',
-            serverId: 1,
-            noradId: 3,
-            /** Must be the uplinkl to match the antenna in simulation */
-            frequency: 6205e6 as RfFrequency,
-            polarization: 'H',
-            power: 43 as dBm, // 20 W
-            bandwidth: 5e6 as Hertz,
-            modulation: '8QAM' as ModulationType, // We need about 7 C/N to support 8QAM
-            fec: '3/4' as FECType,
-            feed: 'blue-1.mp4',
-            isDegraded: false,
-            origin: SignalOrigin.SATELLITE_RX,
-            noiseFloor: null,
-            gainInPath: 0 as dBi,
-          }
-        ],
-        [],
-        {
-          az: 247.1 as Degrees,
-          el: 78.2 as Degrees,
-          frequencyOffset: 2.260e9 as Hertz,
+          az: 161.8 as Degrees,
+          el: 34.2 as Degrees,
+          rotation: 14 as Degrees,
+          frequencyOffset: 2.225e9 as Hertz,
         }
       ),
     ]
@@ -306,26 +255,35 @@ export const scenario1Data: ScenarioData = {
           params: {
             equipment: 'lnb',
           },
-          mustMaintain: false,
+          maintainUntilObjectiveComplete: true,
+        },
+        {
+          type: 'lnb-lo-set',
+          description: 'LNB LO Frequency Set to 5,150 MHz',
+          params: {
+            loFrequency: 5150 as MHz,
+            loFrequencyTolerance: 0, // Hz
+          },
+          maintainUntilObjectiveComplete: true,
         },
         {
           type: 'lnb-gain-set',
           description: 'LNB Gain Set to 55 dB',
           params: {
             gain: 55,
-            gainTolerance: 1,
+            gainTolerance: 0, // dB
           },
-          mustMaintain: false,
+          maintainUntilObjectiveComplete: true,
         },
         {
           type: 'lnb-reference-locked',
           description: 'LNB Locked to 10 MHz Reference',
-          mustMaintain: false,
+          maintainUntilObjectiveComplete: true,
         },
         {
           type: 'lnb-thermally-stable',
           description: 'LNB Temperature Stabilization Complete',
-          mustMaintain: false,
+          maintainUntilObjectiveComplete: true,
         },
         {
           type: 'lnb-noise-performance',
@@ -333,7 +291,7 @@ export const scenario1Data: ScenarioData = {
           params: {
             maxNoiseTemperature: 100,
           },
-          mustMaintain: false,
+          maintainUntilObjectiveComplete: true,
         },
       ],
       conditionLogic: 'AND',

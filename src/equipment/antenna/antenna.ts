@@ -93,6 +93,7 @@ export class Antenna extends BaseEquipment {
   constructor(
     parentId: string,
     configId: ANTENNA_CONFIG_KEYS = ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK,
+    initialState: Partial<AntennaState> = {},
     teamId: number = 1,
     serverId: number = 1,
   ) {
@@ -117,6 +118,8 @@ export class Antenna extends BaseEquipment {
       isPowered: true,
       rxSignalsIn: [],
     };
+    // Override with any provided initial state
+    this.state = { ...this.state, ...initialState };
 
     this.autoTrackSwitch_ = ToggleSwitch.create(
       `antenna-auto-track-${this.state.uuid}`,

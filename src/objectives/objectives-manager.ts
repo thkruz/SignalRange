@@ -264,8 +264,9 @@ export class ObjectivesManager {
       for (let condIndex = 0; condIndex < objectiveState.conditionStates.length; condIndex++) {
         const conditionState = objectiveState.conditionStates[condIndex];
 
-        // Skip already completed maintenance
-        if (conditionState.isMaintenanceComplete) {
+        // Skip already completed maintenance (unless it's indefinite maintenance)
+        if (conditionState.isMaintenanceComplete &&
+            !conditionState.condition.maintainUntilObjectiveComplete) {
           continue;
         }
 
@@ -281,6 +282,14 @@ export class ObjectivesManager {
           conditionState.satisfiedAt = performance.now();
           conditionState.maintainedDuration = 0;
 
+          // Mark as complete based on condition type
+          if (conditionState.condition.maintainUntilObjectiveComplete ||
+              !conditionState.condition.mustMaintain) {
+            // Indefinite maintenance & non-maintenance conditions complete immediately
+            // Timer-based maintenance conditions need to maintain for duration (handled in else block)
+            conditionState.isMaintenanceComplete = true;
+          }
+
           this.eventBus_.emit(Events.OBJECTIVE_CONDITION_CHANGED, {
             objectiveId: objectiveState.objective.id,
             conditionIndex: condIndex,
@@ -294,6 +303,11 @@ export class ObjectivesManager {
           conditionState.lostTimestamps = conditionState.lostTimestamps || [];
           conditionState.lostTimestamps.push(performance.now());
 
+          // Reset maintenance complete for indefinite-maintenance conditions
+          if (conditionState.condition.maintainUntilObjectiveComplete) {
+            conditionState.isMaintenanceComplete = false;
+          }
+
           this.eventBus_.emit(Events.OBJECTIVE_CONDITION_CHANGED, {
             objectiveId: objectiveState.objective.id,
             conditionIndex: condIndex,
@@ -305,15 +319,20 @@ export class ObjectivesManager {
           conditionState.maintainedDuration += dtSeconds;
 
           // Check if maintenance requirement is met
-          const requiredDuration = conditionState.condition.maintainDuration || 0;
-          if (
-            (conditionState.condition.mustMaintain &&
-              !conditionState.isMaintenanceComplete &&
-              conditionState.maintainedDuration >= requiredDuration) ||
-            // Non-maintenance conditions complete immediately when satisfied
-            (!conditionState.condition.mustMaintain && !conditionState.isMaintenanceComplete)
-          ) {
-            conditionState.isMaintenanceComplete = true;
+          if (!conditionState.isMaintenanceComplete) {
+            if (conditionState.condition.maintainUntilObjectiveComplete) {
+              // Indefinite maintenance: mark complete while satisfied, but can be reset if lost
+              conditionState.isMaintenanceComplete = true;
+            } else if (conditionState.condition.mustMaintain) {
+              // Timer-based maintenance: check duration
+              const requiredDuration = conditionState.condition.maintainDuration || 0;
+              if (conditionState.maintainedDuration >= requiredDuration) {
+                conditionState.isMaintenanceComplete = true;
+              }
+            } else {
+              // Non-maintenance conditions complete immediately when satisfied
+              conditionState.isMaintenanceComplete = true;
+            }
           }
         }
       }
@@ -353,10 +372,19 @@ export class ObjectivesManager {
     const logic = objectiveState.objective.conditionLogic || 'AND';
 
     if (logic === 'AND') {
-      // All conditions must be maintenance-complete
-      return objectiveState.conditionStates.every((cs) => cs.isMaintenanceComplete);
+      // All conditions must be satisfied or maintenance-complete
+      return objectiveState.conditionStates.every((cs) => {
+        if (cs.condition.maintainUntilObjectiveComplete) {
+          // Indefinite conditions must be satisfied (not necessarily maintenance complete)
+          return cs.isSatisfied;
+        } else {
+          // Regular conditions must be maintenance complete
+          return cs.isMaintenanceComplete;
+        }
+      });
     } else {
       // At least one condition must be maintenance-complete
+      // OR logic with indefinite conditions is handled the same way
       return objectiveState.conditionStates.some((cs) => cs.isMaintenanceComplete);
     }
   }
@@ -565,6 +593,22 @@ export class ObjectivesManager {
         );
       }
 
+      case 'lnb-lo-set': {
+        const rfFrontEnd = equipment.rfFrontEnds[0];
+        if (!rfFrontEnd) return false;
+
+        const lnbState = rfFrontEnd.lnbModule.state;
+        if (!condition.params?.loFrequency) return false;
+
+        const targetLoFrequency = condition.params.loFrequency;
+        const tolerance = condition.params.loFrequencyTolerance ?? 0; // Default: ±0 Hz
+        // LNB local oscillator frequency is set to target value within tolerance
+        return (
+          lnbState.isPowered &&
+          Math.abs(lnbState.loFrequency - targetLoFrequency) <= tolerance
+        );
+      }
+
       case 'lnb-gain-set': {
         const rfFrontEnd = equipment.rfFrontEnds[0];
         if (!rfFrontEnd) return false;
@@ -573,7 +617,7 @@ export class ObjectivesManager {
         if (!condition.params?.gain) return false;
 
         const targetGain = condition.params.gain;
-        const tolerance = condition.params.gainTolerance ?? 1; // Default: ±1 dB
+        const tolerance = condition.params.gainTolerance ?? 0; // Default: ±0 dB
         // LNB gain is set to target value within tolerance
         return (
           lnbState.isPowered &&

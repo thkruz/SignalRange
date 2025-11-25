@@ -52,6 +52,7 @@ export interface SignalDegradationConfig {
 }
 
 export interface SatelliteState {
+  rotation?: Degrees; // Random rotation if not specified
   az: Degrees;
   el: Degrees;
   frequencyOffset: Hertz;
@@ -109,6 +110,7 @@ export class Satellite {
     this.health = 1.0;
     this.az = satelliteState.az;
     this.el = satelliteState.el;
+    this.rotation = satelliteState.rotation ?? this.rotation;
 
     // Default degradation configuration
     this.degradationConfig = {

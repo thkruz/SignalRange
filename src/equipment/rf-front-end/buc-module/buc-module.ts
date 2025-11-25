@@ -91,7 +91,7 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
       currentDraw: 0, // A
 
       // Frequency Translation
-      loFrequency: 4200 as MHz, // MHz (C-band)
+      loFrequency: 6425 as MHz, // MHz (C-band)
       isExtRefLocked: true,
       frequencyError: 0, // Hz (locked)
       phaseLockRange: 10000, // ±10 kHz tracking range
@@ -127,8 +127,8 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
     this.loKnob_ = RotaryKnob.create(
       `${this.uniqueId}-lo-knob`,
       this.state_.loFrequency,
-      3700,
-      4200,
+      5850,
+      6425,
       10,
       (value: number) => {
         this.state_.loFrequency = value as MHz;

@@ -1,6 +1,7 @@
 import { scenario1Data } from './campaigns/nats/scenario1';
 import { scenario2Data } from "./campaigns/nats/scenario2";
 import { scenario3Data } from './campaigns/nats/scenario3';
+import { AntennaState } from './equipment/antenna/antenna';
 import { ANTENNA_CONFIG_KEYS } from './equipment/antenna/antenna-configs';
 import { defaultSpectrumAnalyzerState } from './equipment/real-time-spectrum-analyzer/defaultSpectrumAnalyzerState';
 import { RealTimeSpectrumAnalyzerState } from './equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer';
@@ -26,6 +27,7 @@ export interface DialogClip {
 export interface SimulationSettings {
   isSync: boolean;
   antennas: ANTENNA_CONFIG_KEYS[];
+  antennasState?: Partial<AntennaState>[];
   rfFrontEnds: Partial<RFFrontEndState>[];
   spectrumAnalyzers: Partial<RealTimeSpectrumAnalyzerState>[];
   transmitters: number;
@@ -33,6 +35,7 @@ export interface SimulationSettings {
   /** Optional HTML override for complex layouts */
   layout?: string;
   missionBriefUrl?: string;
+  isExtraSatellitesVisible?: boolean;
   satellites: Satellite[];
 }
 

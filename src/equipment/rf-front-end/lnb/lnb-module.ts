@@ -82,7 +82,7 @@ export class LNBModule extends RFFrontEndModule<LNBState> {
     this.loKnob_ = RotaryKnob.create(
       `${this.uniqueId}-lo-knob`,
       this.state_.loFrequency,
-      5555,
+      5100,
       6075,
       10,
       (value: number) => {

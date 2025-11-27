@@ -1,6 +1,6 @@
 import { SignalOrigin } from "@app/SignalOrigin";
 import { dB, dBm, Hertz, IfFrequency, IfSignal, MHz, RfFrequency, RfSignal } from '@app/types';
-import { RFFrontEnd } from '../rf-front-end';
+import { RFFrontEndCore } from "../rf-front-end-core";
 import { RFFrontEndModule, RFFrontEndModuleState } from '../rf-front-end-module';
 
 /**
@@ -103,9 +103,11 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
     };
   }
 
-  constructor(state: BUCState, rfFrontEnd: RFFrontEnd, unit: number = 1) {
+  constructor(state: BUCState, rfFrontEnd: RFFrontEndCore, unit: number = 1) {
     super(state, rfFrontEnd, 'rf-fe-buc', unit);
     // Don't call build() here - UI subclasses will call it
+
+    this.state = { ...BUCModuleCore.getDefaultState(), ...state };
   }
 
   /**
@@ -124,12 +126,12 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
     // Update thermal parameters
     this.updateThermalState_();
 
-    // Check for alarms is currently handled by RFFrontEnd
+    // Check for alarms is currently handled by RFFrontEndCore
 
     // Calculate post-BUC signals (apply upconversion and gain if powered)
     this.outputSignals = this.inputSignals.map(sig => {
       const rfFreq = this.calculateRfFrequency(sig.frequency);
-      const gain = this.state_.isPowered && !this.state_.isMuted ? this.state_.gain : -170;
+      const gain = this.state.isPowered && !this.state.isMuted ? this.state.gain : -170;
       return {
         ...sig,
         frequency: rfFreq,
@@ -146,39 +148,39 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
   getAlarms(): string[] {
     const alarms: string[] = [];
 
-    if (!this.state_.isPowered) {
+    if (!this.state.isPowered) {
       return alarms;
     }
 
     const extRefPresent = this.isExtRefPresent();
 
     // Lock alarm
-    if (!this.state_.isExtRefLocked && extRefPresent) {
+    if (!this.state.isExtRefLocked && extRefPresent) {
       alarms.push('BUC not locked to reference');
     }
 
     // Frequency error alarm (when unlocked)
-    if (!this.state_.isExtRefLocked && Math.abs(this.state_.frequencyError) > 50000) {
-      alarms.push(`BUC frequency error: ${(this.state_.frequencyError / 1000).toFixed(1)} kHz`);
+    if (!this.state.isExtRefLocked && Math.abs(this.state.frequencyError) > 50000) {
+      alarms.push(`BUC frequency error: ${(this.state.frequencyError / 1000).toFixed(1)} kHz`);
     }
 
     // High output power warning (approaching saturation)
-    if (this.state_.outputPower > this.state_.saturationPower - 2) {
-      alarms.push(`BUC approaching saturation (${this.state_.outputPower.toFixed(1)} dBm)`);
+    if (this.state.outputPower > this.state.saturationPower - 2) {
+      alarms.push(`BUC approaching saturation (${this.state.outputPower.toFixed(1)} dBm)`);
     }
 
     // High temperature alarm
-    if (this.state_.temperature > 70) {
-      alarms.push(`BUC over-temperature (${this.state_.temperature.toFixed(1)} °C)`);
+    if (this.state.temperature > 70) {
+      alarms.push(`BUC over-temperature (${this.state.temperature.toFixed(1)} °C)`);
     }
 
     // High current draw alarm
-    if (this.state_.currentDraw > 4.5) {
-      alarms.push(`BUC high current draw (${this.state_.currentDraw.toFixed(2)} A)`);
+    if (this.state.currentDraw > 4.5) {
+      alarms.push(`BUC high current draw (${this.state.currentDraw.toFixed(2)} A)`);
     }
 
     // Phase noise degradation (when unlocked)
-    if (this.state_.phaseNoise > -85 && !this.state_.isExtRefLocked) {
+    if (this.state.phaseNoise > -85 && !this.state.isExtRefLocked) {
       alarms.push('BUC phase noise degraded (unlocked)');
     }
 
@@ -205,12 +207,12 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
    * @returns RF output frequency in Hz
    */
   calculateRfFrequency(ifFrequency: IfFrequency): RfFrequency {
-    const loFrequencyHz = this.state_.loFrequency * 1e6;
+    const loFrequencyHz = this.state.loFrequency * 1e6;
 
     // Apply frequency error when not locked to external reference
-    const effectiveLO = (this.state_.isExtRefLocked && this.isExtRefWarmedUp())
+    const effectiveLO = (this.state.isExtRefLocked && this.isExtRefWarmedUp())
       ? loFrequencyHz
-      : loFrequencyHz + this.state_.frequencyError;
+      : loFrequencyHz + this.state.frequencyError;
 
     return (ifFrequency + effectiveLO) as RfFrequency;
   }
@@ -221,28 +223,28 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
 
   protected handlePowerToggle(isPowered?: boolean): void {
     if (isPowered !== undefined) {
-      this.state_.isPowered = isPowered;
+      this.state.isPowered = isPowered;
     }
   }
 
   protected handleGainChange(gain: number): void {
-    this.state_.gain = gain as dB;
+    this.state.gain = gain as dB;
   }
 
   protected handleMuteToggle(isMuted: boolean): void {
-    this.state_.isMuted = isMuted;
+    this.state.isMuted = isMuted;
   }
 
   protected handleLoFrequencyChange(frequency: number): void {
-    this.state_.loFrequency = frequency as MHz;
+    this.state.loFrequency = frequency as MHz;
   }
 
   protected handleLoopbackToggle(isLoopback: boolean): void {
-    this.state_.isLoopback = isLoopback;
+    this.state.isLoopback = isLoopback;
   }
 
   protected getLoopbackLedStatus(): string {
-    return this.state_.isLoopback ? 'led-blue' : 'led-off';
+    return this.state.isLoopback ? 'led-blue' : 'led-off';
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -254,26 +256,26 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
    * Models P1dB compression point where gain drops by 1dB
    */
   private updateOutputPower_(): void {
-    if (!this.state_.isPowered || this.state_.isMuted) {
-      this.state_.outputPower = -170 as dBm; // Effectively off
+    if (!this.state.isPowered || this.state.isMuted) {
+      this.state.outputPower = -170 as dBm; // Effectively off
       return;
     }
 
     const inputPower = -10 as dBm; // dBm typical IF input
-    const linearOutputPower = inputPower + this.state_.gain;
+    const linearOutputPower = inputPower + this.state.gain;
 
     // Model amplifier compression (P1dB)
     // When output approaches saturation power, gain compresses
-    if (linearOutputPower >= this.state_.saturationPower) {
+    if (linearOutputPower >= this.state.saturationPower) {
       // Above P1dB, output is compressed
       const compressionDb = Math.min(
-        (linearOutputPower - this.state_.saturationPower) * 0.5,
+        (linearOutputPower - this.state.saturationPower) * 0.5,
         3 // Max 3dB compression beyond P1dB
       );
-      this.state_.outputPower = linearOutputPower - compressionDb as dBm;
+      this.state.outputPower = linearOutputPower - compressionDb as dBm;
     } else {
       // Linear region - no compression
-      this.state_.outputPower = linearOutputPower as dBm;
+      this.state.outputPower = linearOutputPower as dBm;
     }
   }
 
@@ -283,22 +285,22 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
    */
   private updateLockStatus_(): void {
     const extRefPresent = this.isExtRefPresent();
-    const canLock = this.state_.isPowered && extRefPresent;
+    const canLock = this.state.isPowered && extRefPresent;
 
     if (canLock) {
       // In real system, lock acquisition takes 2-5 seconds
       // Simulate lock acquisition if not already locked
-      if (!this.state_.isExtRefLocked) {
+      if (!this.state.isExtRefLocked) {
         this.simulateLockAcquisition();
       }
       // When locked, frequency error is minimal
       if (this.isExtRefWarmedUp()) {
-        this.state_.frequencyError = 0;
+        this.state.frequencyError = 0;
       } else {
         this.updateFrequencyDrift_();
       }
     } else {
-      this.state_.isExtRefLocked = false;
+      this.state.isExtRefLocked = false;
       this.updateFrequencyDrift_();
     }
   }
@@ -308,45 +310,45 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
    * Drift is ±1-100 ppm of LO frequency
    */
   private updateFrequencyDrift_(): void {
-    if (this.state_.isExtRefLocked && this.isExtRefWarmedUp()) {
-      this.state_.frequencyError = 0;
+    if (this.state.isExtRefLocked && this.isExtRefWarmedUp()) {
+      this.state.frequencyError = 0;
       return;
     }
 
-    const loFrequencyHz = this.state_.loFrequency * 1e6;
+    const loFrequencyHz = this.state.loFrequency * 1e6;
     // Simulate drift: ±1-100 ppm (parts per million)
     // Use random walk model for realistic drift behavior
     const driftPpm = 10 + Math.random() * 90; // 10-100 ppm
     const driftDirection = Math.random() > 0.5 ? 1 : -1;
-    this.state_.frequencyError = driftDirection * (loFrequencyHz * driftPpm / 1e6);
+    this.state.frequencyError = driftDirection * (loFrequencyHz * driftPpm / 1e6);
   }
 
   /**
    * Update signal quality parameters (phase noise, group delay, spurious outputs)
    */
   private updateSignalQuality_(): void {
-    if (!this.state_.isPowered) {
-      this.state_.phaseNoise = 0;
-      this.state_.groupDelay = 0;
-      this.state_.spuriousOutputs = [];
+    if (!this.state.isPowered) {
+      this.state.phaseNoise = 0;
+      this.state.groupDelay = 0;
+      this.state.spuriousOutputs = [];
       return;
     }
 
     // Phase noise contribution increases when unlocked
     // Typical locked: -100 dBc/Hz @ 10kHz offset
     // Unlocked: -70 to -80 dBc/Hz (degraded)
-    this.state_.phaseNoise = this.state_.isExtRefLocked
+    this.state.phaseNoise = this.state.isExtRefLocked
       ? -100 - Math.random() * 5 // -100 to -105 dBc/Hz
       : -70 - Math.random() * 10; // -70 to -80 dBc/Hz
 
     // Group delay variation (phase distortion across bandwidth)
     // Typical: 2-10 ns, increases with temperature and at band edges
     const baseDelay = 3; // ns
-    const tempVariation = (this.state_.temperature - 25) * 0.1; // 0.1 ns/°C
-    this.state_.groupDelay = baseDelay + tempVariation + Math.random() * 2;
+    const tempVariation = (this.state.temperature - 25) * 0.1; // 0.1 ns/°C
+    this.state.groupDelay = baseDelay + tempVariation + Math.random() * 2;
 
     // Calculate spurious mixer products (N×LO ± M×IF)
-    this.state_.spuriousOutputs = this.calculateSpuriousProducts_();
+    this.state.spuriousOutputs = this.calculateSpuriousProducts_();
   }
 
   /**
@@ -354,12 +356,12 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
    * Generates harmonics at N×LO ± M×IF
    */
   private calculateSpuriousProducts_(): SpuriousOutput[] {
-    if (!this.state_.isPowered || this.inputSignals.length === 0) {
+    if (!this.state.isPowered || this.inputSignals.length === 0) {
       return [];
     }
 
     const spurious: SpuriousOutput[] = [];
-    const loFreqHz = this.state_.loFrequency * 1e6;
+    const loFreqHz = this.state.loFrequency * 1e6;
 
     // For each input signal, calculate primary spurious products
     this.inputSignals.forEach(signal => {
@@ -397,35 +399,35 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
    * Update thermal and operational state
    */
   private updateThermalState_(): void {
-    if (!this.state_.isPowered) {
+    if (!this.state.isPowered) {
       // Cooling down gradually toward ambient (25°C)
       const ambientTemp = 25;
       const coolRate = 0.00001; // Slow cooling per update
-      this.state_.temperature = this.state_.temperature +
-        (ambientTemp - this.state_.temperature) * coolRate;
-      this.state_.currentDraw = 0;
+      this.state.temperature = this.state.temperature +
+        (ambientTemp - this.state.temperature) * coolRate;
+      this.state.currentDraw = 0;
       return;
     }
 
     // Calculate target temperature based on output power
     const ambientTemp = 25; // °C
-    const powerDissipation = Math.max(0, this.state_.outputPower - (-10));
+    const powerDissipation = Math.max(0, this.state.outputPower - (-10));
     const thermalRise = powerDissipation * 0.8; // °C per dBm above reference
     const targetTemp = ambientTemp + thermalRise;
 
     // Simulate gradual heating (thermal inertia)
     const heatRate = 0.00005; // Slow heating per update
-    this.state_.temperature = this.state_.temperature +
-      (targetTemp - this.state_.temperature) * heatRate;
+    this.state.temperature = this.state.temperature +
+      (targetTemp - this.state.temperature) * heatRate;
 
     // Current draw trends gradually toward target value
     const idleCurrent = 0.5;
-    const powerCurrent = (this.state_.gain / 70) * 2.5; // 0-2.5A based on gain
-    const outputCurrent = Math.max(0, (this.state_.outputPower + 10) / 20) * 1.5;
+    const powerCurrent = (this.state.gain / 70) * 2.5; // 0-2.5A based on gain
+    const outputCurrent = Math.max(0, (this.state.outputPower + 10) / 20) * 1.5;
     const targetCurrent = idleCurrent + powerCurrent + outputCurrent;
     const currentRate = 0.1; // Slow current change per update
-    this.state_.currentDraw = this.state_.currentDraw +
-      (targetCurrent - this.state_.currentDraw) * currentRate;
+    this.state.currentDraw = this.state.currentDraw +
+      (targetCurrent - this.state.currentDraw) * currentRate;
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -437,10 +439,10 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
    * @returns Gain in dB
    */
   getTotalGain(): number {
-    if (!this.state_.isPowered || this.state_.isMuted) {
+    if (!this.state.isPowered || this.state.isMuted) {
       return -120; // Effectively off
     }
-    return this.state_.gain;
+    return this.state.gain;
   }
 
   /**
@@ -449,16 +451,16 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
    * @returns Output RF power in dBm (with P1dB compression applied)
    */
   getOutputPower(inputPowerDbm: number): number {
-    if (!this.state_.isPowered || this.state_.isMuted) {
+    if (!this.state.isPowered || this.state.isMuted) {
       return -120; // Effectively off
     }
 
-    const linearOutputPower = inputPowerDbm + this.state_.gain;
+    const linearOutputPower = inputPowerDbm + this.state.gain;
 
     // Apply compression if approaching saturation
-    if (linearOutputPower >= this.state_.saturationPower) {
+    if (linearOutputPower >= this.state.saturationPower) {
       const compressionDb = Math.min(
-        (linearOutputPower - this.state_.saturationPower) * 0.5,
+        (linearOutputPower - this.state.saturationPower) * 0.5,
         3 // Max 3dB compression
       );
       return linearOutputPower - compressionDb;
@@ -472,16 +474,16 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
    * @returns Compression in dB (0 if in linear region)
    */
   getCompressionDb(): number {
-    if (!this.state_.isPowered || this.state_.isMuted) {
+    if (!this.state.isPowered || this.state.isMuted) {
       return 0;
     }
 
     const inputPower = -10; // Typical IF input
-    const linearOutputPower = inputPower + this.state_.gain;
+    const linearOutputPower = inputPower + this.state.gain;
 
-    if (linearOutputPower >= this.state_.saturationPower) {
+    if (linearOutputPower >= this.state.saturationPower) {
       return Math.min(
-        (linearOutputPower - this.state_.saturationPower) * 0.5,
+        (linearOutputPower - this.state.saturationPower) * 0.5,
         3
       );
     }
@@ -494,9 +496,9 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
    * @returns Frequency stability in ppm
    */
   getFrequencyStabilityPpm(): number {
-    const loFrequencyHz = this.state_.loFrequency * 1e6;
+    const loFrequencyHz = this.state.loFrequency * 1e6;
     if (loFrequencyHz === 0) return 0;
-    return (this.state_.frequencyError / loFrequencyHz) * 1e6;
+    return (this.state.frequencyError / loFrequencyHz) * 1e6;
   }
 
   /**
@@ -504,7 +506,7 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
    * @returns True if in saturation
    */
   isInSaturation(): boolean {
-    return this.state_.outputPower >= this.state_.saturationPower;
+    return this.state.outputPower >= this.state.saturationPower;
   }
 
   /**
@@ -519,11 +521,11 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
     spuriousCount: number;
   } {
     return {
-      phaseNoise: this.state_.phaseNoise,
-      groupDelay: this.state_.groupDelay,
-      frequencyError: this.state_.frequencyError,
-      isLocked: this.state_.isExtRefLocked,
-      spuriousCount: this.state_.spuriousOutputs.length,
+      phaseNoise: this.state.phaseNoise,
+      groupDelay: this.state.groupDelay,
+      frequencyError: this.state.frequencyError,
+      isLocked: this.state.isExtRefLocked,
+      spuriousCount: this.state.spuriousOutputs.length,
     };
   }
 
@@ -536,12 +538,12 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
     currentDraw: number;
     powerDissipation: number;
   } {
-    const powerOut = Math.pow(10, this.state_.outputPower / 10);
-    const powerDissipation = this.state_.currentDraw * 28 - powerOut; // Assuming 28V supply
+    const powerOut = Math.pow(10, this.state.outputPower / 10);
+    const powerDissipation = this.state.currentDraw * 28 - powerOut; // Assuming 28V supply
 
     return {
-      temperature: this.state_.temperature,
-      currentDraw: this.state_.currentDraw,
+      temperature: this.state.temperature,
+      currentDraw: this.state.currentDraw,
       powerDissipation: powerDissipation, // mW
     };
   }

@@ -3,7 +3,7 @@ import { RotaryKnob } from '@app/components/rotary-knob/rotary-knob';
 import { ToggleSwitch } from '@app/components/toggle-switch/toggle-switch';
 import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
-import { RFFrontEnd } from '../rf-front-end';
+import { RFFrontEndCore } from '../rf-front-end-core';
 import { BUCModuleCore, BUCState } from './buc-module-core';
 import './buc-module.css';
 
@@ -17,7 +17,7 @@ export class BUCModuleUIStandard extends BUCModuleCore {
   private readonly loKnob_: RotaryKnob;
   private readonly loopbackSwitch_: ToggleSwitch;
 
-  constructor(state: BUCState, rfFrontEnd: RFFrontEnd, unit: number, parentId: string) {
+  constructor(state: BUCState, rfFrontEnd: RFFrontEndCore, unit: number, parentId: string) {
     // Create UI components BEFORE calling super
     const tempId = `rf-fe-buc-temp-${unit}`;
 
@@ -120,23 +120,23 @@ export class BUCModuleUIStandard extends BUCModuleCore {
           <div class="status-displays">
             <div class="control-group">
               <label>LO (MHz)</label>
-              <div class="digital-display buc-lo-display">${this.state_.loFrequency}</div>
+              <div class="digital-display buc-lo-display">${this.state.loFrequency}</div>
             </div>
             <div class="control-group">
               <label>TEMP (°C)</label>
-              <div class="digital-display buc-temp-display">${this.state_.temperature.toFixed(1)}</div>
+              <div class="digital-display buc-temp-display">${this.state.temperature.toFixed(1)}</div>
             </div>
             <div class="control-group">
               <label>CURRENT (A)</label>
-              <div class="digital-display buc-current-display">${this.state_.currentDraw.toFixed(2)}</div>
+              <div class="digital-display buc-current-display">${this.state.currentDraw.toFixed(2)}</div>
             </div>
             <div class="control-group">
               <label>FREQ ERR (kHz)</label>
-              <div class="digital-display buc-freq-err-display">${(this.state_.frequencyError / 1000).toFixed(1)}</div>
+              <div class="digital-display buc-freq-err-display">${(this.state.frequencyError / 1000).toFixed(1)}</div>
             </div>
             <div class="control-group">
               <label>OUT PWR (dBm)</label>
-              <div class="digital-display buc-out-pwr-display">${this.state_.outputPower.toFixed(1)}</div>
+              <div class="digital-display buc-out-pwr-display">${this.state.outputPower.toFixed(1)}</div>
             </div>
           </div>
         </div>
@@ -169,14 +169,14 @@ export class BUCModuleUIStandard extends BUCModuleCore {
   addEventListeners(cb: (state: BUCState) => void): void {
     // Power switch handler using base class method
     this.addPowerSwitchListener(cb, () => {
-      this.simulateLockAcquisition(2000, 2000, () => cb(this.state_));
+      this.simulateLockAcquisition(2000, 2000, () => cb(this.state));
     });
 
     // Mute switch handler
     this.muteSwitch_.addEventListeners((isMuted: boolean) => {
       this.handleMuteToggle(isMuted);
       this.syncDomWithState_();
-      cb(this.state_);
+      cb(this.state);
     });
 
     // Note: LO knob callback is already set in constructor
@@ -186,7 +186,7 @@ export class BUCModuleUIStandard extends BUCModuleCore {
     this.loopbackSwitch_.addEventListeners((isLoopback: boolean) => {
       this.handleLoopbackToggle(isLoopback);
       this.syncDomWithState_();
-      cb(this.state_);
+      cb(this.state);
     });
   }
 
@@ -232,11 +232,11 @@ export class BUCModuleUIStandard extends BUCModuleCore {
    */
   getDisplays() {
     return {
-      loFrequency: () => this.state_.loFrequency.toString(),
-      temperature: () => this.state_.temperature.toFixed(1),
-      currentDraw: () => this.state_.currentDraw.toFixed(2),
-      frequencyError: () => (this.state_.frequencyError / 1000).toFixed(1),
-      outputPower: () => this.state_.outputPower.toFixed(1)
+      loFrequency: () => this.state.loFrequency.toString(),
+      temperature: () => this.state.temperature.toFixed(1),
+      currentDraw: () => this.state.currentDraw.toFixed(2),
+      frequencyError: () => (this.state.frequencyError / 1000).toFixed(1),
+      outputPower: () => this.state.outputPower.toFixed(1)
     };
   }
 
@@ -265,7 +265,7 @@ export class BUCModuleUIStandard extends BUCModuleCore {
     // Update LO frequency display
     const loDisplay = qs('.buc-lo-display', container);
     if (loDisplay) {
-      loDisplay.textContent = this.state_.loFrequency.toString();
+      loDisplay.textContent = this.state.loFrequency.toString();
     }
 
     // Update lock LED using base class method
@@ -277,40 +277,40 @@ export class BUCModuleUIStandard extends BUCModuleCore {
     // Update temperature display
     const tempDisplay = qs('.buc-temp-display', container);
     if (tempDisplay) {
-      tempDisplay.textContent = this.state_.temperature.toFixed(1);
+      tempDisplay.textContent = this.state.temperature.toFixed(1);
     }
 
     // Update current draw display
     const currentDisplay = qs('.buc-current-display', container);
     if (currentDisplay) {
-      currentDisplay.textContent = this.state_.currentDraw.toFixed(2);
+      currentDisplay.textContent = this.state.currentDraw.toFixed(2);
     }
 
     // Update frequency error display
     const freqErrDisplay = qs('.buc-freq-err-display', container);
     if (freqErrDisplay) {
-      const freqErrKhz = this.state_.frequencyError / 1000;
+      const freqErrKhz = this.state.frequencyError / 1000;
       freqErrDisplay.textContent = freqErrKhz.toFixed(1);
       // Color code: green when locked, red when unlocked with error
-      freqErrDisplay.style.color = this.state_.isExtRefLocked ? '#0f0' : '#f00';
+      freqErrDisplay.style.color = this.state.isExtRefLocked ? '#0f0' : '#f00';
     }
 
     // Update output power display
     const outPwrDisplay = qs('.buc-out-pwr-display', container);
     if (outPwrDisplay) {
-      outPwrDisplay.textContent = this.state_.outputPower.toFixed(1);
+      outPwrDisplay.textContent = this.state.outputPower.toFixed(1);
       // Color code: yellow when approaching saturation
-      const approachingSat = this.state_.outputPower > this.state_.saturationPower - 2;
+      const approachingSat = this.state.outputPower > this.state.saturationPower - 2;
       outPwrDisplay.style.color = approachingSat ? '#ff0' : '#0f0';
     }
 
     // Sync UI components using base class method for common components
-    this.syncCommonComponents(this.state_);
+    this.syncCommonComponents(this.state);
 
     // Sync BUC-specific components
-    this.loKnob_.sync(this.state_.loFrequency);
-    this.muteSwitch_.sync(this.state_.isMuted);
-    this.loopbackSwitch_.sync(this.state_.isLoopback);
+    this.loKnob_.sync(this.state.loFrequency);
+    this.muteSwitch_.sync(this.state.isMuted);
+    this.loopbackSwitch_.sync(this.state.isLoopback);
 
     // Sync loopback LED
     const loopbackLed = qs('.led-loopback', container);

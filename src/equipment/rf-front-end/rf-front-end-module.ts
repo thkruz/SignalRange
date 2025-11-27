@@ -4,7 +4,7 @@ import { RotaryKnob } from '@app/components/rotary-knob/rotary-knob';
 import { qs } from "@app/engine/utils/query-selector";
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
-import { RFFrontEnd } from './rf-front-end';
+import { RFFrontEndCore } from './rf-front-end-core';
 
 /**
  * Base state interface that all RF modules must implement
@@ -21,10 +21,10 @@ export interface RFFrontEndModuleState {
  */
 export abstract class RFFrontEndModule<TState extends RFFrontEndModuleState> {
   protected readonly uniqueId: string;
-  protected readonly rfFrontEnd_: RFFrontEnd;
+  protected readonly rfFrontEnd_: RFFrontEndCore;
   protected html_: string = '';
   protected dom_?: HTMLElement;
-  protected state_: TState;
+  state: TState;
   protected lastDraw_: number = 0;
   protected lastRenderState_: string = '';
   protected helpBtn_: HelpButton;
@@ -33,8 +33,8 @@ export abstract class RFFrontEndModule<TState extends RFFrontEndModuleState> {
   protected powerSwitch_?: PowerSwitch;
   protected gainKnob_?: RotaryKnob;
 
-  constructor(state: TState, rfFrontEnd: RFFrontEnd, modulePrefix: string, unit: number = 1) {
-    this.state_ = state;
+  constructor(state: TState, rfFrontEnd: RFFrontEndCore, modulePrefix: string, unit: number = 1) {
+    this.state = state;
     this.rfFrontEnd_ = rfFrontEnd;
     this.uniqueId = `${modulePrefix}-${unit}`;
 
@@ -57,7 +57,7 @@ export abstract class RFFrontEndModule<TState extends RFFrontEndModuleState> {
   protected build(parentId: string): void {
     this.initializeDom(parentId);
     this.addEventListeners((state: TState) => {
-      this.state_ = state;
+      this.state = state;
       this.syncDomWithState_();
     });
   }
@@ -69,10 +69,6 @@ export abstract class RFFrontEndModule<TState extends RFFrontEndModuleState> {
   get dom(): HTMLElement {
     this.dom_ ??= qs(`#${this.uniqueId}`);
     return this.dom_;
-  }
-
-  get state(): TState {
-    return this.state_;
   }
 
   /**
@@ -98,7 +94,7 @@ export abstract class RFFrontEndModule<TState extends RFFrontEndModuleState> {
    * Can be overridden by subclasses for custom behavior
    */
   sync(state: Partial<TState>): void {
-    this.state_ = { ...this.state_, ...state };
+    this.state = { ...this.state, ...state };
     this.syncDomWithState_();
   }
 
@@ -148,7 +144,7 @@ export abstract class RFFrontEndModule<TState extends RFFrontEndModuleState> {
    * Get lock LED status class based on lock state
    */
   protected getLockLedStatus(): string {
-    return this.state_.isExtRefLocked ? 'led-green' : 'led-red';
+    return this.state.isExtRefLocked ? 'led-green' : 'led-red';
   }
   // ═══════════════════════════════════════════════════════════════
   // Common UI Component Management
@@ -159,8 +155,8 @@ export abstract class RFFrontEndModule<TState extends RFFrontEndModuleState> {
    */
   protected createPowerSwitch(): void {
     this.powerSwitch_ = PowerSwitch.create(
-      `${this.uniqueId}-power`,
-      this.state_.isPowered,
+      `power-${this.uniqueId}`,
+      this.state.isPowered,
       true,
       true,
     );
@@ -173,20 +169,20 @@ export abstract class RFFrontEndModule<TState extends RFFrontEndModuleState> {
    * @param step Step size for gain adjustment
    */
   protected createGainKnob(min: number, max: number, step: number = 1): void {
-    if (this.state_.gain === undefined) {
+    if (this.state.gain === undefined) {
       console.warn(`${this.uniqueId}: Cannot create gain knob - state.gain is undefined`);
       return;
     }
 
     this.gainKnob_ = RotaryKnob.create(
       `${this.uniqueId}-gain-knob`,
-      this.state_.gain,
+      this.state.gain,
       min,
       max,
       step,
       (value: number) => {
-        if (this.state_.gain !== undefined) {
-          this.state_.gain = value;
+        if (this.state.gain !== undefined) {
+          this.state.gain = value;
         }
       }
     );
@@ -207,17 +203,17 @@ export abstract class RFFrontEndModule<TState extends RFFrontEndModuleState> {
     }
 
     this.powerSwitch_.addEventListeners((isPowered: boolean) => {
-      this.state_.isPowered = isPowered;
+      this.state.isPowered = isPowered;
 
       // Simulate lock acquisition when powered on
       if (isPowered && this.isExtRefPresent() && onPowerOn) {
         onPowerOn();
-      } else if (!isPowered && this.state_.isExtRefLocked !== undefined) {
-        this.state_.isExtRefLocked = false;
+      } else if (!isPowered && this.state.isExtRefLocked !== undefined) {
+        this.state.isExtRefLocked = false;
       }
 
       this.syncDomWithState_();
-      cb(this.state_);
+      cb(this.state);
     });
   }
 
@@ -232,14 +228,14 @@ export abstract class RFFrontEndModule<TState extends RFFrontEndModuleState> {
     maxDelay: number = 5000,
     cb?: () => void
   ): void {
-    if (this.state_.isExtRefLocked === undefined) {
+    if (this.state.isExtRefLocked === undefined) {
       return;
     }
 
     const delay = minDelay + Math.random() * (maxDelay - minDelay);
     setTimeout(() => {
-      if (this.state_.isExtRefLocked !== undefined) {
-        this.state_.isExtRefLocked = true;
+      if (this.state.isExtRefLocked !== undefined) {
+        this.state.isExtRefLocked = true;
       }
       this.syncDomWithState_();
       if (cb) {
@@ -253,20 +249,20 @@ export abstract class RFFrontEndModule<TState extends RFFrontEndModuleState> {
    * Common pattern used by LNB and BUC modules
    */
   protected updateLockStatus(): void {
-    if (this.state_.isExtRefLocked === undefined) {
+    if (this.state.isExtRefLocked === undefined) {
       return;
     }
 
     const extRefPresent = this.isExtRefPresent();
-    const canLock = this.state_.isPowered && extRefPresent;
+    const canLock = this.state.isPowered && extRefPresent;
 
     if (!canLock) {
-      this.state_.isExtRefLocked = false;
+      this.state.isExtRefLocked = false;
       return;
     }
 
     // Simulate lock acquisition if not already locked
-    if (!this.state_.isExtRefLocked) {
+    if (!this.state.isExtRefLocked) {
       this.simulateLockAcquisition();
     }
   }

@@ -2,7 +2,8 @@ import { BaseElement } from "@app/components/base-element";
 import { qs } from "@app/engine/utils/query-selector";
 import { ANTENNA_CONFIG_KEYS, AntennaCore, AntennaUIBasic } from "@app/equipment/antenna";
 import { AntennaUIModern } from "@app/equipment/antenna/antenna-ui-modern";
-import { RFFrontEnd } from "@app/equipment/rf-front-end/rf-front-end";
+import { RFFrontEndCore } from "@app/equipment/rf-front-end/rf-front-end-core";
+import { createRFFrontEnd } from "@app/equipment/rf-front-end/rf-front-end-factory";
 import { EventBus } from "@app/events/event-bus";
 import { Events } from "@app/events/events";
 import { DialogHistoryBox } from "@app/modal/dialog-history-box";
@@ -27,7 +28,7 @@ export class Equipment extends BaseElement {
 
   readonly spectrumAnalyzers: RealTimeSpectrumAnalyzer[] = [];
   readonly antennas: AntennaCore[] = [];
-  readonly rfFrontEnds: RFFrontEnd[] = [];
+  readonly rfFrontEnds: RFFrontEndCore[] = [];
   readonly transmitters: Transmitter[] = [];
   readonly receivers: Receiver[] = [];
   private checklistRefreshIntervalId_: number | null = null;
@@ -169,7 +170,7 @@ export class Equipment extends BaseElement {
       }
       this.antennas.push(antenna);
 
-      const rfFrontEnd = new RFFrontEnd(`rf-front-end${i}-container`, settings.rfFrontEnds[i - 1]);
+      const rfFrontEnd = createRFFrontEnd(`rf-front-end${i}-container`, settings.rfFrontEnds[i - 1], 'standard');
       this.rfFrontEnds.push(rfFrontEnd);
       rfFrontEnd.connectAntenna(antenna);
       antenna.attachRfFrontEnd(rfFrontEnd);

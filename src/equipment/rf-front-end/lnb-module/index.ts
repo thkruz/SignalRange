@@ -9,5 +9,3 @@ export { LNBModuleUIStandard } from './lnb-module-ui-standard';
 export { createLNB } from './lnb-module-factory';
 export type { LNBModuleUIType } from './lnb-module-factory';
 
-// Backward compatibility
-export { LNBModule } from './lnb-module';

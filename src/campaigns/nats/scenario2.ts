@@ -1,11 +1,11 @@
 import { ANTENNA_CONFIG_KEYS } from "@app/equipment/antenna/antenna-configs";
 import { defaultSpectrumAnalyzerState } from "@app/equipment/real-time-spectrum-analyzer/defaultSpectrumAnalyzerState";
-import { BUCModule } from "@app/equipment/rf-front-end/buc-module/buc-module";
+import { BUCModuleCore } from "@app/equipment/rf-front-end/buc-module";
 import { CouplerModule } from "@app/equipment/rf-front-end/coupler-module/coupler-module";
-import { IfFilterBankModule } from "@app/equipment/rf-front-end/filter-module/filter-module";
-import { defaultGpsdoState } from "@app/equipment/rf-front-end/gpsdo-module/defaultGpsdoState";
-import { HPAModule } from "@app/equipment/rf-front-end/hpa-module/hpa-module";
-import { LNBModule } from "@app/equipment/rf-front-end/lnb/lnb-module";
+import { IfFilterBankModuleCore } from "@app/equipment/rf-front-end/filter-module";
+import { defaultGpsdoState } from "@app/equipment/rf-front-end/gpsdo-module/gpsdo-state";
+import { HPAModuleCore } from "@app/equipment/rf-front-end/hpa-module";
+import { LNBModuleCore } from "@app/equipment/rf-front-end/lnb-module";
 import { OMTModule } from "@app/equipment/rf-front-end/omt-module/omt-module";
 import { Satellite } from "@app/equipment/satellite/satellite";
 import type { ScenarioData } from "@app/ScenarioData";
@@ -37,10 +37,10 @@ export const scenario2Data: ScenarioData = {
     rfFrontEnds: [{
       // Module states managed by their respective classes
       omt: OMTModule.getDefaultState(),
-      buc: BUCModule.getDefaultState(),
-      hpa: HPAModule.getDefaultState(),
-      filter: IfFilterBankModule.getDefaultState(),
-      lnb: LNBModule.getDefaultState(),
+      buc: BUCModuleCore.getDefaultState(),
+      hpa: HPAModuleCore.getDefaultState(),
+      filter: IfFilterBankModuleCore.getDefaultState(),
+      lnb: LNBModuleCore.getDefaultState(),
       coupler: CouplerModule.getDefaultState(),
       gpsdo: defaultGpsdoState,
     }],

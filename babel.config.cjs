@@ -26,7 +26,12 @@ module.exports = (api) => {
           },
         },
       ],
-      '@babel/preset-typescript',
+      [
+        '@babel/preset-typescript',
+        {
+          allowDeclareFields: true,
+        }
+      ],
     ],
     compact: 'auto',
   };

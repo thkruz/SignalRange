@@ -1,6 +1,6 @@
 import { SignalOrigin } from "@app/SignalOrigin";
 import type { dB, dBm, dBW, RfSignal } from '@app/types';
-import { RFFrontEnd } from '../rf-front-end';
+import { RFFrontEndCore } from "../rf-front-end-core";
 import { RFFrontEndModule } from '../rf-front-end-module';
 
 /**
@@ -56,8 +56,10 @@ export abstract class HPAModuleCore extends RFFrontEndModule<HPAState> {
     };
   }
 
-  constructor(state: HPAState, rfFrontEnd: RFFrontEnd, unit: number) {
+  constructor(state: HPAState, rfFrontEnd: RFFrontEndCore, unit: number) {
     super(state, rfFrontEnd, 'rf-fe-hpa', unit);
+
+    this.state = { ...HPAModuleCore.getDefaultState(), ...state };
   }
 
   /**
@@ -80,11 +82,11 @@ export abstract class HPAModuleCore extends RFFrontEndModule<HPAState> {
    * Calculate HPA output power based on input and back-off
    */
   private updateOutputPower_(): void {
-    if (this.state_.isPowered && this.state_.isHpaEnabled) {
+    if (this.state.isPowered && this.state.isHpaEnabled) {
       // Calculate output power: P1dB - back-off
-      this.state_.outputPower = this.p1db_ - this.state_.backOff as dBm;
+      this.state.outputPower = this.p1db_ - this.state.backOff as dBm;
     } else {
-      this.state_.outputPower = -90 as dBm; // dBm (effectively off)
+      this.state.outputPower = -90 as dBm; // dBm (effectively off)
     }
   }
 
@@ -92,15 +94,15 @@ export abstract class HPAModuleCore extends RFFrontEndModule<HPAState> {
    * Calculate HPA temperature based on output power
    */
   private updateTemperature_(): void {
-    if (this.state_.isPowered) {
+    if (this.state.isPowered) {
       // Calculate dissipated power based on efficiency, outputPower is in dBm
-      const powerWatts = Math.pow(10, (this.state_.outputPower - 30) / 10); // Convert dBm to Watts
+      const powerWatts = Math.pow(10, (this.state.outputPower - 30) / 10); // Convert dBm to Watts
       const dissipatedPower = powerWatts * (1 - this.thermalEfficiency_);
 
       // Simple thermal model: ambient + thermal rise
-      this.state_.temperature = 25 + (dissipatedPower * 10);
+      this.state.temperature = 25 + (dissipatedPower * 10);
     } else {
-      this.state_.temperature = 25; // Ambient temperature
+      this.state.temperature = 25; // Ambient temperature
     }
   }
 
@@ -108,16 +110,16 @@ export abstract class HPAModuleCore extends RFFrontEndModule<HPAState> {
    * Calculate intermodulation distortion (IMD) based on back-off
    */
   private updateIMD_(): void {
-    if (this.state_.isPowered) {
+    if (this.state.isPowered) {
       // IMD improves (becomes more negative) as back-off increases
       // Typical relationship: IMD degrades ~2 dB for every dB reduction in back-off
-      this.state_.imdLevel = -30 - (this.state_.backOff * 2); // dBc
+      this.state.imdLevel = -30 - (this.state.backOff * 2); // dBc
 
       // Update overdrive status
-      this.state_.isOverdriven = this.state_.backOff < 3;
+      this.state.isOverdriven = this.state.backOff < 3;
     } else {
-      this.state_.imdLevel = -60; // dBc (very clean when off)
-      this.state_.isOverdriven = false;
+      this.state.imdLevel = -60; // dBc (very clean when off)
+      this.state.isOverdriven = false;
     }
   }
 
@@ -125,7 +127,7 @@ export abstract class HPAModuleCore extends RFFrontEndModule<HPAState> {
    * Process RF signals through HPA
    */
   private processSignals_(): void {
-    if (!this.state_.isPowered || !this.state_.isHpaEnabled) {
+    if (!this.state.isPowered || !this.state.isHpaEnabled) {
       // HPA is off, no output signals
       this.outputSignals = [];
       return;
@@ -137,14 +139,14 @@ export abstract class HPAModuleCore extends RFFrontEndModule<HPAState> {
       const gain = this.calculateGain_(sig.power);
       return {
         ...sig,
-        power: (sig.power + gain - this.state_.backOff) as dBm,
+        power: (sig.power + gain - this.state.backOff) as dBm,
         origin: SignalOrigin.HIGH_POWER_AMPLIFIER,
       };
     });
 
     // Update state.gain to be the max gain applied to any input signal
     const gains = this.inputSignals.map(sig => this.calculateGain_(sig.power));
-    this.state_.gain = (gains.length > 0 ? Math.max(...gains) : 0) as dB;
+    this.state.gain = (gains.length > 0 ? Math.max(...gains) : 0) as dB;
   }
 
   /**
@@ -152,12 +154,12 @@ export abstract class HPAModuleCore extends RFFrontEndModule<HPAState> {
    * Includes compression effects near P1dB
    */
   private calculateGain_(inputPowerDbm: number): number {
-    if (!this.state_.isPowered) {
+    if (!this.state.isPowered) {
       return -120; // Effectively off
     }
 
     // Ideal linear gain would bring signal to P1dB - backOff
-    const targetOutputDbm = this.p1db_ - this.state_.backOff;
+    const targetOutputDbm = this.p1db_ - this.state.backOff;
     let linearGain = targetOutputDbm - inputPowerDbm;
 
     // Maximum gain limit (e.g., 50 dB typical for HPA)
@@ -188,9 +190,9 @@ export abstract class HPAModuleCore extends RFFrontEndModule<HPAState> {
     // Power sequencing check
     const bucPowered = this.rfFrontEnd_.state.buc.isPowered;
 
-    if (this.state_.isPowered && (!bucPowered)) {
+    if (this.state.isPowered && (!bucPowered)) {
       // Disable HPA if power conditions not met
-      this.state_.isPowered = false;
+      this.state.isPowered = false;
     }
   }
 
@@ -208,19 +210,19 @@ export abstract class HPAModuleCore extends RFFrontEndModule<HPAState> {
     const alarms: string[] = [];
 
     // Overdrive alarm
-    if (this.state_.isOverdriven && this.state_.isPowered) {
+    if (this.state.isOverdriven && this.state.isPowered) {
       alarms.push('HPA overdrive - IMD degradation');
     }
 
     // Temperature alarm
-    if (this.state_.temperature > 85) {
-      alarms.push(`HPA over-temperature (${this.state_.temperature.toFixed(0)}°C)`);
+    if (this.state.temperature > 85) {
+      alarms.push(`HPA over-temperature (${this.state.temperature.toFixed(0)}°C)`);
     }
 
     // Power sequencing alarm
     const bucPowered = this.rfFrontEnd_.state.buc.isPowered;
 
-    if (this.state_.isPowered && !bucPowered) {
+    if (this.state.isPowered && !bucPowered) {
       alarms.push('HPA enabled without BUC power');
     }
 
@@ -240,7 +242,7 @@ export abstract class HPAModuleCore extends RFFrontEndModule<HPAState> {
    * @returns Gain in dB
    */
   getTotalGain(): number {
-    if (!this.state_.isPowered) {
+    if (!this.state.isPowered) {
       return -120; // Effectively off
     }
 
@@ -256,7 +258,7 @@ export abstract class HPAModuleCore extends RFFrontEndModule<HPAState> {
    * @returns Output RF power in dBm
    */
   getOutputPower(inputPowerDbm: number): number {
-    if (!this.state_.isPowered) {
+    if (!this.state.isPowered) {
       return -120; // Effectively off
     }
 
@@ -268,21 +270,21 @@ export abstract class HPAModuleCore extends RFFrontEndModule<HPAState> {
    * Check if HPA is in overdrive condition
    */
   isOverdriven(): boolean {
-    return this.state_.isOverdriven;
+    return this.state.isOverdriven;
   }
 
   /**
    * Get current temperature
    */
   getTemperature(): number {
-    return this.state_.temperature;
+    return this.state.temperature;
   }
 
   /**
    * Get IMD level
    */
   getIMDLevel(): number {
-    return this.state_.imdLevel;
+    return this.state.imdLevel;
   }
 
   // Protected handlers for UI layer
@@ -291,17 +293,17 @@ export abstract class HPAModuleCore extends RFFrontEndModule<HPAState> {
 
     // HPA can only be enabled if BUC is powered
     if (bucPowered) {
-      this.state_.isPowered = isEnabled;
+      this.state.isPowered = isEnabled;
     } else {
       // Disable if conditions not met
-      this.state_.isPowered = false;
+      this.state.isPowered = false;
     }
 
-    callback(this.state_);
+    callback(this.state);
   }
 
   protected handleBackOffChange(backOff: number): void {
-    this.state_.backOff = backOff;
+    this.state.backOff = backOff;
   }
 
   protected handleHpaToggle(): void {

@@ -1,4 +1,4 @@
-import { RFFrontEnd } from '../rf-front-end';
+import { RFFrontEndCore } from '../rf-front-end-core';
 import { LNBModuleCore, LNBState } from './lnb-module-core';
 import { LNBModuleUIStandard } from './lnb-module-ui-standard';
 
@@ -10,7 +10,7 @@ export type LNBModuleUIType = 'standard' | 'basic' | 'headless';
  */
 export function createLNB(
   state: LNBState,
-  rfFrontEnd: RFFrontEnd,
+  rfFrontEnd: RFFrontEndCore,
   unit: number = 1,
   parentId: string,
   uiType: LNBModuleUIType = 'standard'

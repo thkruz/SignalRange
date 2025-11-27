@@ -1,4 +1,4 @@
-import { RFFrontEnd } from '../rf-front-end';
+import { RFFrontEndCore } from '../rf-front-end-core';
 import { CouplerModule, CouplerState } from './coupler-module';
 
 export type CouplerModuleUIType = 'standard' | 'basic' | 'headless';
@@ -9,11 +9,11 @@ export type CouplerModuleUIType = 'standard' | 'basic' | 'headless';
  */
 export function createCoupler(
   state: CouplerState,
-  rfFrontEnd: any, // Using any to accept both RFFrontEnd and RFFrontEndCore
+  rfFrontEnd: any, // Using any to accept both RFFrontEndCore and RFFrontEndCore
   unit: number = 1,
   _parentId: string = '',
   _uiType: CouplerModuleUIType = 'standard'
 ): CouplerModule {
   // Only standard variant exists currently
-  return new CouplerModule(state, rfFrontEnd as RFFrontEnd, unit);
+  return new CouplerModule(state, rfFrontEnd as RFFrontEndCore, unit);
 }

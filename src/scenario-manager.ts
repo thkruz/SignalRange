@@ -5,14 +5,14 @@ import { AntennaState } from './equipment/antenna';
 import { ANTENNA_CONFIG_KEYS } from './equipment/antenna/antenna-configs';
 import { defaultSpectrumAnalyzerState } from './equipment/real-time-spectrum-analyzer/defaultSpectrumAnalyzerState';
 import { RealTimeSpectrumAnalyzerState } from './equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer';
-import { BUCModule } from './equipment/rf-front-end/buc-module/buc-module';
+import { BUCModuleCore } from './equipment/rf-front-end/buc-module';
 import { CouplerModule } from './equipment/rf-front-end/coupler-module/coupler-module';
-import { IfFilterBankModule } from './equipment/rf-front-end/filter-module/filter-module';
-import { defaultGpsdoState } from './equipment/rf-front-end/gpsdo-module/defaultGpsdoState';
-import { HPAModule } from './equipment/rf-front-end/hpa-module/hpa-module';
-import { LNBModule } from './equipment/rf-front-end/lnb/lnb-module';
+import { IfFilterBankModuleCore } from './equipment/rf-front-end/filter-module';
+import { defaultGpsdoState } from './equipment/rf-front-end/gpsdo-module/gpsdo-state';
+import { HPAModuleCore } from './equipment/rf-front-end/hpa-module';
+import { LNBModuleCore } from './equipment/rf-front-end/lnb-module';
 import { OMTModule } from './equipment/rf-front-end/omt-module/omt-module';
-import { RFFrontEndState } from './equipment/rf-front-end/rf-front-end';
+import { RFFrontEndState } from './equipment/rf-front-end/rf-front-end-core';
 import { Satellite } from './equipment/satellite/satellite';
 import { Character } from './modal/character-enum';
 import { ScenarioData } from './ScenarioData';
@@ -61,10 +61,10 @@ export class ScenarioManager {
       rfFrontEnds: [{
         // Module states managed by their respective classes
         omt: OMTModule.getDefaultState(),
-        buc: BUCModule.getDefaultState(),
-        hpa: HPAModule.getDefaultState(),
-        filter: IfFilterBankModule.getDefaultState(),
-        lnb: LNBModule.getDefaultState(),
+        buc: BUCModuleCore.getDefaultState(),
+        hpa: HPAModuleCore.getDefaultState(),
+        filter: IfFilterBankModuleCore.getDefaultState(),
+        lnb: LNBModuleCore.getDefaultState(),
         coupler: CouplerModule.getDefaultState(),
         gpsdo: defaultGpsdoState,
       }],

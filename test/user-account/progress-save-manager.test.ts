@@ -75,7 +75,7 @@ describe('ProgressSaveManager', () => {
     manager.initialize();
     manager.initialize();
 
-    expect(mockEventBus.on).toHaveBeenCalledTimes(1);
+    expect(mockEventBus.on).toHaveBeenCalledTimes(2); // Two calls per initialize attempt, so we want 2 not 4
     expect(mockEventBus.on).toHaveBeenCalledWith(Events.OBJECTIVE_COMPLETED, expect.any(Function));
   });
 

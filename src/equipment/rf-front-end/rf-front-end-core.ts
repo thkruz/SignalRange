@@ -8,11 +8,10 @@ import { Transmitter } from '../transmitter/transmitter';
 import { BUCModuleCore, BUCState } from './buc-module/buc-module-core';
 import { CouplerModule, CouplerState, TapPoint } from './coupler-module/coupler-module';
 import { IfFilterBankModuleCore, IfFilterBankState } from './filter-module/filter-module-core';
-import { defaultGpsdoState } from "./gpsdo-module/defaultGpsdoState";
 import { GPSDOModuleCore } from './gpsdo-module/gpsdo-module-core';
-import { GPSDOState } from './gpsdo-module/GPSDOState';
+import { defaultGpsdoState, GPSDOState } from "./gpsdo-module/gpsdo-state";
 import { HPAModuleCore, HPAState } from './hpa-module/hpa-module-core';
-import { LNBModuleCore, LNBState } from './lnb/lnb-module-core';
+import { LNBModuleCore, LNBState } from './lnb-module/lnb-module-core';
 import { OMTModule, OMTState } from './omt-module/omt-module';
 
 /**
@@ -40,7 +39,7 @@ export interface RFFrontEndState {
  */
 export abstract class RFFrontEndCore extends BaseEquipment {
   // State
-  state: RFFrontEndState;
+  private readonly state_: RFFrontEndState;
   private lastRenderState: string = '';
 
   // Module references (typed as Core for polymorphism)
@@ -64,7 +63,7 @@ export abstract class RFFrontEndCore extends BaseEquipment {
     super(parentId, teamId);
 
     // Initialize state with default values from modules
-    this.state = {
+    this.state_ = {
       uuid: this.uuid,
       teamId: this.teamId,
       serverId: serverId,
@@ -89,6 +88,23 @@ export abstract class RFFrontEndCore extends BaseEquipment {
     // Register event handlers
     EventBus.getInstance().on(Events.UPDATE, this.update.bind(this));
     EventBus.getInstance().on(Events.SYNC, this.syncDomWithState.bind(this));
+  }
+
+  get state(): RFFrontEndState {
+    return {
+      uuid: this.uuid,
+      teamId: this.teamId,
+      serverId: this.state_.serverId,
+
+      // Module states managed by their respective classes
+      omt: this.omtModule?.state ?? this.state_.omt,
+      buc: this.bucModule?.state ?? this.state_.buc,
+      hpa: this.hpaModule?.state ?? this.state_.hpa,
+      filter: this.filterModule?.state ?? this.state_.filter,
+      lnb: this.lnbModule?.state ?? this.state_.lnb,
+      coupler: this.couplerModule?.state ?? this.state_.coupler,
+      gpsdo: this.gpsdoModule?.state ?? this.state_.gpsdo,
+    }
   }
 
   /**

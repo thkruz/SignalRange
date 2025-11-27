@@ -3,10 +3,9 @@ import { html } from "@app/engine/utils/development/formatter";
 import { Logger } from '@app/logging/logger';
 import { SignalOrigin } from "@app/SignalOrigin";
 import type { dBi, dBm, RfSignal } from '@app/types';
-import { RFFrontEnd } from '../rf-front-end';
+import { dB } from '../../../types';
+import { RFFrontEndCore } from '../rf-front-end-core';
 import { RFFrontEndModule } from '../rf-front-end-module';
-import { dB } from './../../../types';
-import './omt-module.css';
 
 /**
  * Polarization types for OMT/Duplexer
@@ -48,7 +47,7 @@ export class OMTModule extends RFFrontEndModule<OMTState> {
     };
   }
 
-  constructor(state: OMTState, rfFrontEnd: RFFrontEnd, unit: number = 1) {
+  constructor(state: OMTState, rfFrontEnd: RFFrontEndCore, unit: number = 1) {
     super(state, rfFrontEnd, 'rf-fe-omt-pol', unit);
 
     // Create UI components
@@ -94,9 +93,9 @@ export class OMTModule extends RFFrontEndModule<OMTState> {
    */
   getDisplays() {
     return {
-      txPolarization: () => this.state_.txPolarization || 'None',
-      rxPolarization: () => this.state_.rxPolarization || 'None',
-      crossPolIsolation: () => this.state_.crossPolIsolation.toFixed(1)
+      txPolarization: () => this.state.txPolarization || 'None',
+      rxPolarization: () => this.state.rxPolarization || 'None',
+      crossPolIsolation: () => this.state.crossPolIsolation.toFixed(1)
     };
   }
 
@@ -106,7 +105,7 @@ export class OMTModule extends RFFrontEndModule<OMTState> {
    */
   getLEDs() {
     return {
-      fault: () => this.state_.isFaulted ? 'led-red' : 'led-off'
+      fault: () => this.state.isFaulted ? 'led-red' : 'led-off'
     };
   }
 
@@ -127,9 +126,9 @@ export class OMTModule extends RFFrontEndModule<OMTState> {
     this.updateEffectivePolarization_(this.rfFrontEnd_.antenna?.state.polarization ?? null);
 
     this.rxSignalsOut = this.rxSignalsIn.map(sig => {
-      if (sig.polarization !== this.state_.effectiveRxPol) {
+      if (sig.polarization !== this.state.effectiveRxPol) {
         // Apply cross-pol isolation loss
-        const isolatedPower = sig.power - this.state_.crossPolIsolation;
+        const isolatedPower = sig.power - this.state.crossPolIsolation;
         return {
           ...sig,
           power: isolatedPower as dBm,
@@ -147,7 +146,7 @@ export class OMTModule extends RFFrontEndModule<OMTState> {
     this.txSignalsOut = this.txSignalsIn.map((sig: RfSignal) => {
       return {
         ...sig,
-        polarization: this.state_.txPolarization,
+        polarization: this.state.txPolarization,
         origin: SignalOrigin.OMT_TX,
       };
     });
@@ -185,20 +184,20 @@ export class OMTModule extends RFFrontEndModule<OMTState> {
     // Check polarization of visible signal
     const signal = this.rfFrontEnd_.antenna.state.rxSignalsIn[0];
     if (signal) {
-      if (signal.polarization === this.state_.effectiveRxPol) {
+      if (signal.polarization === this.state.effectiveRxPol) {
         // Aligned polarization, normal isolation
-        this.state_.crossPolIsolation = 30 + Math.random() * 5; // 30-35 dB
+        this.state.crossPolIsolation = 30 + Math.random() * 5; // 30-35 dB
       } else {
         // Misaligned polarization, degraded isolation
-        this.state_.crossPolIsolation = 15 + Math.random() * 10; // 15-25 dB
+        this.state.crossPolIsolation = 15 + Math.random() * 10; // 15-25 dB
       }
     } else {
       // No signal, normal isolation
-      this.state_.crossPolIsolation = 30 + Math.random() * 5; // 30-35 dB
+      this.state.crossPolIsolation = 30 + Math.random() * 5; // 30-35 dB
     }
 
     // Update fault status
-    this.state_.isFaulted = this.state_.crossPolIsolation < 25;
+    this.state.isFaulted = this.state.crossPolIsolation < 25;
   }
 
   /**
@@ -209,8 +208,8 @@ export class OMTModule extends RFFrontEndModule<OMTState> {
    */
   private updateEffectivePolarization_(skew: number | null): void {
     if (skew === null) {
-      this.state_.effectiveTxPol = null;
-      this.state_.effectiveRxPol = null;
+      this.state.effectiveTxPol = null;
+      this.state.effectiveRxPol = null;
       return;
     }
 
@@ -218,7 +217,7 @@ export class OMTModule extends RFFrontEndModule<OMTState> {
     const normalizedSkew = ((skew % 180) + 180) % 180;
 
     // Determine if OMT is set to reverse (toggle switch is vertical)
-    const isReversed = this.state_.txPolarization === 'V';
+    const isReversed = this.state.txPolarization === 'V';
 
     let baseTxPol: PolarizationType;
     let baseRxPol: PolarizationType;
@@ -230,8 +229,8 @@ export class OMTModule extends RFFrontEndModule<OMTState> {
       baseTxPol = 'V';
       baseRxPol = 'H';
     } else {
-      baseTxPol = this.state_.txPolarization;
-      baseRxPol = this.state_.rxPolarization;
+      baseTxPol = this.state.txPolarization;
+      baseRxPol = this.state.rxPolarization;
     }
 
     const reverseTxPol = baseTxPol === 'H' ? 'V' : 'H';
@@ -241,11 +240,11 @@ export class OMTModule extends RFFrontEndModule<OMTState> {
     const newEffectiveTxPol = isReversed ? reverseTxPol : baseTxPol;
     const newEffectiveRxPol = isReversed ? reverseRxPol : baseRxPol;
 
-    const txChanged = this.state_.effectiveTxPol !== newEffectiveTxPol;
-    const rxChanged = this.state_.effectiveRxPol !== newEffectiveRxPol;
+    const txChanged = this.state.effectiveTxPol !== newEffectiveTxPol;
+    const rxChanged = this.state.effectiveRxPol !== newEffectiveRxPol;
 
-    this.state_.effectiveTxPol = newEffectiveTxPol;
-    this.state_.effectiveRxPol = newEffectiveRxPol;
+    this.state.effectiveTxPol = newEffectiveTxPol;
+    this.state.effectiveRxPol = newEffectiveRxPol;
 
     if (txChanged || rxChanged) {
       this.syncDomWithState_();

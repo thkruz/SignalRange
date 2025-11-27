@@ -1,4 +1,4 @@
-import { RFFrontEnd } from '../rf-front-end';
+import { RFFrontEndCore } from '../rf-front-end-core';
 import { BUCModuleCore, BUCState } from './buc-module-core';
 import { BUCModuleUIStandard } from './buc-module-ui-standard';
 
@@ -10,7 +10,7 @@ export type BUCModuleUIType = 'standard' | 'basic' | 'headless';
  */
 export function createBUC(
   state: BUCState,
-  rfFrontEnd: RFFrontEnd,
+  rfFrontEnd: RFFrontEndCore,
   unit: number = 1,
   parentId: string,
   uiType: BUCModuleUIType = 'standard'

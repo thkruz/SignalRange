@@ -2,7 +2,7 @@ import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
 import { SignalPathManager } from "@app/simulation/signal-path-manager";
 import { IfFrequency, RfFrequency } from "@app/types";
-import { RFFrontEnd } from '../rf-front-end';
+import { RFFrontEndCore } from "../rf-front-end-core";
 import { RFFrontEndModule } from '../rf-front-end-module';
 import './coupler-module.css';
 
@@ -55,7 +55,7 @@ export class CouplerModule extends RFFrontEndModule<CouplerState> {
     };
   }
 
-  constructor(state: CouplerState, rfFrontEnd: RFFrontEnd, unit: number = 1) {
+  constructor(state: CouplerState, rfFrontEnd: RFFrontEndCore, unit: number = 1) {
     super(state, rfFrontEnd, 'rf-fe-coupler', unit);
 
     this.signalPathManager = new SignalPathManager(this.rfFrontEnd_);
@@ -78,11 +78,11 @@ export class CouplerModule extends RFFrontEndModule<CouplerState> {
           <div class="led-indicators">
             <div class="led-indicator">
               <span class="indicator-label">ACTIVE A</span>
-              <div id="led-a" class="led ${this.state_.isActiveA ? 'led-green' : 'led-off'}"></div>
+              <div id="led-a" class="led ${this.state.isActiveA ? 'led-green' : 'led-off'}"></div>
             </div>
             <div class="led-indicator">
               <span class="indicator-label">ACTIVE B</span>
-              <div id="led-b" class="led ${this.state_.isActiveB ? 'led-green' : 'led-off'}"></div>
+              <div id="led-b" class="led ${this.state.isActiveB ? 'led-green' : 'led-off'}"></div>
             </div>
           </div>
 
@@ -90,13 +90,13 @@ export class CouplerModule extends RFFrontEndModule<CouplerState> {
             <div class="control-group">
               <label>TAP POINT A</label>
               <select class="input-coupler-tap-a" data-param="tapPointA">
-                ${(this.state_.availableTapPointsA ?? tapPointOptions).map(tp => `<option value="${tp}"${this.state_.tapPointA === tp ? ' selected' : ''}>${tp}</option>`).join('\n')}
+                ${(this.state.availableTapPointsA ?? tapPointOptions).map(tp => `<option value="${tp}"${this.state.tapPointA === tp ? ' selected' : ''}>${tp}</option>`).join('\n')}
               </select>
             </div>
             <div class="control-group">
               <label>TAP POINT B</label>
               <select class="input-coupler-tap-b" data-param="tapPointB">
-                ${(this.state_.availableTapPointsB ?? tapPointOptions).map(tp => `<option value="${tp}"${this.state_.tapPointB === tp ? ' selected' : ''}>${tp}</option>`).join('\n')}
+                ${(this.state.availableTapPointsB ?? tapPointOptions).map(tp => `<option value="${tp}"${this.state.tapPointB === tp ? ' selected' : ''}>${tp}</option>`).join('\n')}
               </select>
             </div>
           </div>
@@ -104,11 +104,11 @@ export class CouplerModule extends RFFrontEndModule<CouplerState> {
           <div class="status-displays">
             <div class="control-group">
               <label>COUPLING A (dB)</label>
-              <div class="digital-display coupling-factor-a">${this.state_.couplingFactorA}</div>
+              <div class="digital-display coupling-factor-a">${this.state.couplingFactorA}</div>
             </div>
             <div class="control-group">
               <label>COUPLING B (dB)</label>
-              <div class="digital-display coupling-factor-b">${this.state_.couplingFactorB}</div>
+              <div class="digital-display coupling-factor-b">${this.state.couplingFactorB}</div>
             </div>
           </div>
         </div>
@@ -132,10 +132,10 @@ export class CouplerModule extends RFFrontEndModule<CouplerState> {
    */
   getDisplays() {
     return {
-      tapPointA: () => this.state_.tapPointA,
-      tapPointB: () => this.state_.tapPointB,
-      couplingFactorA: () => this.state_.couplingFactorA.toFixed(1),
-      couplingFactorB: () => this.state_.couplingFactorB.toFixed(1)
+      tapPointA: () => this.state.tapPointA,
+      tapPointB: () => this.state.tapPointB,
+      couplingFactorA: () => this.state.couplingFactorA.toFixed(1),
+      couplingFactorB: () => this.state.couplingFactorB.toFixed(1)
     };
   }
 
@@ -145,8 +145,8 @@ export class CouplerModule extends RFFrontEndModule<CouplerState> {
    */
   getLEDs() {
     return {
-      activeA: () => this.state_.isActiveA ? 'led-green' : 'led-off',
-      activeB: () => this.state_.isActiveB ? 'led-green' : 'led-off'
+      activeA: () => this.state.isActiveA ? 'led-green' : 'led-off',
+      activeB: () => this.state.isActiveB ? 'led-green' : 'led-off'
     };
   }
 
@@ -174,10 +174,10 @@ export class CouplerModule extends RFFrontEndModule<CouplerState> {
     if (tapASelect) {
       tapASelect.addEventListener('change', (e) => {
         const target = e.target as HTMLSelectElement;
-        this.state_.tapPointA = target.value as TapPoint;
+        this.state.tapPointA = target.value as TapPoint;
         this.updateActiveStates_();
         this.syncDomWithState_();
-        cb(this.state_);
+        cb(this.state);
       });
     }
 
@@ -186,10 +186,10 @@ export class CouplerModule extends RFFrontEndModule<CouplerState> {
     if (tapBSelect) {
       tapBSelect.addEventListener('change', (e) => {
         const target = e.target as HTMLSelectElement;
-        this.state_.tapPointB = target.value as TapPoint;
+        this.state.tapPointB = target.value as TapPoint;
         this.updateActiveStates_();
         this.syncDomWithState_();
-        cb(this.state_);
+        cb(this.state);
       });
     }
   }
@@ -206,10 +206,10 @@ export class CouplerModule extends RFFrontEndModule<CouplerState> {
    */
   private updateActiveStates_(): void {
     // Tap Point A is active if powered and on the appropriate path
-    this.state_.isActiveA = this.isTapPointActive_(this.state_.tapPointA);
+    this.state.isActiveA = this.isTapPointActive_(this.state.tapPointA);
 
     // Tap Point B is active if powered and on the appropriate path
-    this.state_.isActiveB = this.isTapPointActive_(this.state_.tapPointB);
+    this.state.isActiveB = this.isTapPointActive_(this.state.tapPointB);
   }
 
   /**
@@ -270,7 +270,7 @@ export class CouplerModule extends RFFrontEndModule<CouplerState> {
     // No alarms for coupler module - it's passive
     // Could add warnings for same tap point selected twice
 
-    if (this.state_.tapPointA === this.state_.tapPointB) {
+    if (this.state.tapPointA === this.state.tapPointB) {
       alarms.push('Both tap points set to same location');
     }
 
@@ -291,41 +291,41 @@ export class CouplerModule extends RFFrontEndModule<CouplerState> {
     // Update Active A LED
     const ledA = qs('#led-a', container);
     if (ledA) {
-      ledA.className = `led ${this.state_.isActiveA ? 'led-green' : 'led-off'}`;
+      ledA.className = `led ${this.state.isActiveA ? 'led-green' : 'led-off'}`;
     }
 
     // Update Active B LED
     const ledB = qs('#led-b', container);
     if (ledB) {
-      ledB.className = `led ${this.state_.isActiveB ? 'led-green' : 'led-off'}`;
+      ledB.className = `led ${this.state.isActiveB ? 'led-green' : 'led-off'}`;
     }
 
     // TODO: We should be using a domCache instead of querying each time
 
     // Update coupling factor display
-    qs('.coupling-factor-a', container)!.textContent = `${this.state_.couplingFactorA} dB`;
-    qs('.coupling-factor-b', container)!.textContent = `${this.state_.couplingFactorB} dB`;
+    qs('.coupling-factor-a', container)!.textContent = `${this.state.couplingFactorA} dB`;
+    qs('.coupling-factor-b', container)!.textContent = `${this.state.couplingFactorB} dB`;
 
     // Update select values
     const selectA: HTMLSelectElement | null = qs('.input-coupler-tap-a', container);
-    if (selectA) selectA.value = this.state_.tapPointA;
+    if (selectA) selectA.value = this.state.tapPointA;
 
     const selectB: HTMLSelectElement | null = qs('.input-coupler-tap-b', container);
-    if (selectB) selectB.value = this.state_.tapPointB;
+    if (selectB) selectB.value = this.state.tapPointB;
   }
 
   /**
    * Get coupler output for tap point A
    */
   getCouplerOutputA(): { frequency: RfFrequency | IfFrequency; power: number } {
-    return this.getCouplerOutput_(this.state_.tapPointA, this.state_.couplingFactorA);
+    return this.getCouplerOutput_(this.state.tapPointA, this.state.couplingFactorA);
   }
 
   /**
    * Get coupler output for tap point B
    */
   getCouplerOutputB(): { frequency: RfFrequency | IfFrequency; power: number } {
-    return this.getCouplerOutput_(this.state_.tapPointB, this.state_.couplingFactorB);
+    return this.getCouplerOutput_(this.state.tapPointB, this.state.couplingFactorB);
   }
 
   /**

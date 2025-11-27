@@ -1,10 +1,10 @@
 import { html } from '@app/engine/utils/development/formatter';
 import type { AntennaState } from '@app/equipment/antenna';
 import { ANTENNA_CONFIG_KEYS } from '@app/equipment/antenna/antenna-configs';
-import { BUCModule } from '@app/equipment/rf-front-end/buc-module/buc-module';
+import { BUCModuleCore } from '@app/equipment/rf-front-end/buc-module';
 import { CouplerState, TapPoint } from '@app/equipment/rf-front-end/coupler-module/coupler-module';
-import { IfFilterBankModule } from '@app/equipment/rf-front-end/filter-module/filter-module';
-import { HPAModule } from '@app/equipment/rf-front-end/hpa-module/hpa-module';
+import { IfFilterBankModuleCore } from '@app/equipment/rf-front-end/filter-module';
+import { HPAModuleCore } from '@app/equipment/rf-front-end/hpa-module';
 import { OMTModule } from '@app/equipment/rf-front-end/omt-module/omt-module';
 import { Satellite } from '@app/equipment/satellite/satellite';
 import { Character } from '@app/modal/character-enum';
@@ -53,9 +53,9 @@ export const scenario1Data: ScenarioData = {
     rfFrontEnds: [{
       // Module states managed by their respective classes
       omt: OMTModule.getDefaultState(),
-      buc: BUCModule.getDefaultState(),
-      hpa: HPAModule.getDefaultState(),
-      filter: IfFilterBankModule.getDefaultState(),
+      buc: BUCModuleCore.getDefaultState(),
+      hpa: HPAModuleCore.getDefaultState(),
+      filter: IfFilterBankModuleCore.getDefaultState(),
       lnb: {
         isPowered: false,
         loFrequency: 6080 as MHz, // MHz

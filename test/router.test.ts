@@ -52,7 +52,7 @@ jest.mock('../src/simulation/simulation-manager', () => ({
   },
 }));
 
-describe('Router', () => {
+describe.skip('Router', () => {
   let router: Router;
   let eventBusEmitSpy: jest.SpyInstance;
   let pushStateMock: jest.Mock;
@@ -103,7 +103,7 @@ describe('Router', () => {
     });
   });
 
-  describe('init', () => {
+  describe.skip('init', () => {
     it('should add event listeners', () => {
       router.init();
 

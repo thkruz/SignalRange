@@ -1,4 +1,4 @@
-import { RFFrontEnd } from '../rf-front-end';
+import { RFFrontEndCore } from '../rf-front-end-core';
 import { OMTModule, OMTState } from './omt-module';
 
 export type OMTModuleUIType = 'standard' | 'basic' | 'headless';
@@ -9,11 +9,11 @@ export type OMTModuleUIType = 'standard' | 'basic' | 'headless';
  */
 export function createOMT(
   state: OMTState,
-  rfFrontEnd: any, // Using any to accept both RFFrontEnd and RFFrontEndCore
+  rfFrontEnd: RFFrontEndCore,
   unit: number = 1,
   _parentId: string = '',
   _uiType: OMTModuleUIType = 'standard'
 ): OMTModule {
   // Only standard variant exists currently
-  return new OMTModule(state, rfFrontEnd as RFFrontEnd, unit);
+  return new OMTModule(state, rfFrontEnd, unit);
 }

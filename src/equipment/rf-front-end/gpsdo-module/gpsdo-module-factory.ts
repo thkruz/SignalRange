@@ -1,7 +1,7 @@
-import { RFFrontEnd } from '../rf-front-end';
+import { RFFrontEndCore } from '../rf-front-end-core';
 import { GPSDOModuleCore } from './gpsdo-module-core';
 import { GPSDOModuleUIStandard } from './gpsdo-module-ui-standard';
-import { GPSDOState } from './GPSDOState';
+import { GPSDOState } from './gpsdo-state';
 
 export type GPSDOModuleUIType = 'standard' | 'basic' | 'headless';
 
@@ -11,7 +11,7 @@ export type GPSDOModuleUIType = 'standard' | 'basic' | 'headless';
  */
 export function createGPSDO(
   state: GPSDOState,
-  rfFrontEnd: RFFrontEnd,
+  rfFrontEnd: RFFrontEndCore,
   unit: number = 1,
   parentId: string,
   uiType: GPSDOModuleUIType = 'standard'

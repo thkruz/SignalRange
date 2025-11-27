@@ -4,7 +4,7 @@ import { EventMap, Events } from '../events/events';
 import { AntennaState } from './antenna';
 import { RealTimeSpectrumAnalyzerState } from './real-time-spectrum-analyzer/real-time-spectrum-analyzer';
 import { ReceiverState } from './receiver/receiver';
-import { RFFrontEndState } from './rf-front-end/rf-front-end';
+import { RFFrontEndState } from './rf-front-end/rf-front-end-core';
 import { TransmitterState } from './transmitter/transmitter';
 
 import './base-equipment.css';

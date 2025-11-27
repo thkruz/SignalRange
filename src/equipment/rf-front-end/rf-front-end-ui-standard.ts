@@ -1,7 +1,7 @@
 import { html } from "../../engine/utils/development/formatter";
 import { qs } from "../../engine/utils/query-selector";
-import { EventBus } from "../../events/event-bus";
-import { Events } from "../../events/events";
+import { EventBus } from '@app/events/event-bus';
+import { Events } from '@app/events/events';
 import { BUCState } from './buc-module/buc-module-core';
 import { createBUC } from './buc-module/buc-module-factory';
 import { BUCModuleUIStandard } from './buc-module/buc-module-ui-standard';
@@ -10,17 +10,17 @@ import { createCoupler } from './coupler-module/coupler-module-factory';
 import { IfFilterBankState } from './filter-module/filter-module-core';
 import { createIfFilterBank } from './filter-module/filter-module-factory';
 import { IfFilterBankModuleUIStandard } from './filter-module/filter-module-ui-standard';
+import { GPSDOState } from './gpsdo-module/gpsdo-state';
 import { createGPSDO } from './gpsdo-module/gpsdo-module-factory';
 import { GPSDOModuleUIStandard } from './gpsdo-module/gpsdo-module-ui-standard';
-import { GPSDOState } from './gpsdo-module/GPSDOState';
 import { HPAState } from './hpa-module/hpa-module-core';
 import { createHPA } from './hpa-module/hpa-module-factory';
 import { HPAModuleUIStandard } from './hpa-module/hpa-module-ui-standard';
-import { LNBState } from './lnb/lnb-module-core';
-import { createLNB } from './lnb/lnb-module-factory';
-import { LNBModuleUIStandard } from './lnb/lnb-module-ui-standard';
+import { LNBState } from './lnb-module/lnb-module-core';
+import { createLNB } from './lnb-module/lnb-module-factory';
+import { LNBModuleUIStandard } from './lnb-module/lnb-module-ui-standard';
 import { OMTModule, OMTState } from "./omt-module/omt-module";
-import { createOMT } from './omt-module/omt-module-factory';
+import { createOMT } from "./omt-module/omt-module-factory";
 import { RFFrontEndCore, RFFrontEndState } from './rf-front-end-core';
 import './rf-front-end.css';
 
@@ -57,16 +57,17 @@ export class RFFrontEndUIStandard extends RFFrontEndCore {
    * Build UI with composite layouts
    */
   protected build(parentId: string): void {
-    // Create UI-enabled modules with actual parentId
+    // Create UI-enabled modules WITHOUT parentId (they should only generate HTML, not build)
+    // We'll inject their HTML via innerHTML and add event listeners afterward
     // Using factories to create standard UI variants
     // Using 'as any' for rfFrontEnd parameter until module constructors are updated to accept RFFrontEndCore
-    this.omtModule = createOMT(this.state.omt, this as any, 1, parentId, 'standard') as OMTModule;
-    this.bucModule = createBUC(this.state.buc, this as any, 1, parentId, 'standard') as BUCModuleUIStandard;
-    this.hpaModule = createHPA(this.state.hpa, this as any, 1, parentId, 'standard') as HPAModuleUIStandard;
-    this.filterModule = createIfFilterBank(this.state.filter, this as any, 1, parentId, 'standard') as IfFilterBankModuleUIStandard;
-    this.lnbModule = createLNB(this.state.lnb, this as any, 1, parentId, 'standard') as LNBModuleUIStandard;
-    this.couplerModule = createCoupler(this.state.coupler, this as any, 1, parentId, 'standard') as CouplerModule;
-    this.gpsdoModule = createGPSDO(this.state.gpsdo, this as any, 1, parentId, 'standard') as GPSDOModuleUIStandard;
+    this.omtModule = createOMT(this.state.omt, this as any, 1, '', 'standard');
+    this.bucModule = createBUC(this.state.buc, this as any, 1, '', 'standard') as BUCModuleUIStandard;
+    this.hpaModule = createHPA(this.state.hpa, this as any, 1, '', 'standard') as HPAModuleUIStandard;
+    this.filterModule = createIfFilterBank(this.state.filter, this as any, 1, '', 'standard') as IfFilterBankModuleUIStandard;
+    this.lnbModule = createLNB(this.state.lnb, this as any, 1, '', 'standard') as LNBModuleUIStandard;
+    this.couplerModule = createCoupler(this.state.coupler, this as any, 1, '', 'standard');
+    this.gpsdoModule = createGPSDO(this.state.gpsdo, this as any, 1, '', 'standard') as GPSDOModuleUIStandard;
 
     // Initialize DOM with composite layout
     super.build(parentId);
@@ -154,6 +155,7 @@ export class RFFrontEndUIStandard extends RFFrontEndCore {
 
   /**
    * Add event listeners for modules
+   * Called AFTER innerHTML is set, so components can find their DOM elements
    */
   protected addListeners_(_parentDom: HTMLElement): void {
     // Wire module event listeners

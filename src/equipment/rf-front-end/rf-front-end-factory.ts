@@ -4,7 +4,7 @@ import { RFFrontEndUIStandard } from './rf-front-end-ui-standard';
 export type RFFrontEndUIType = 'standard' | 'basic' | 'headless';
 
 /**
- * Factory function to create RFFrontEnd instances
+ * Factory function to create RFFrontEndCore instances
  * Enables switching between UI implementations
  *
  * @param parentId - DOM container ID for rendering
@@ -17,9 +17,9 @@ export type RFFrontEndUIType = 'standard' | 'basic' | 'headless';
 export function createRFFrontEnd(
   parentId: string,
   state?: Partial<RFFrontEndState>,
+  uiType: RFFrontEndUIType = 'standard',
   teamId: number = 1,
   serverId: number = 1,
-  uiType: RFFrontEndUIType = 'standard'
 ): RFFrontEndCore {
   switch (uiType) {
     case 'standard':

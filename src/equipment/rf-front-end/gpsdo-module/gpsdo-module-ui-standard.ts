@@ -5,10 +5,10 @@ import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
-import { RFFrontEnd } from '../rf-front-end';
+import { GPSDOState } from '.';
+import { RFFrontEndCore } from '../rf-front-end-core';
 import { GPSDOModuleCore } from './gpsdo-module-core';
 import './gpsdo-module.css';
-import { GPSDOState } from './GPSDOState';
 
 /**
  * GPSDO Module UI Standard - Current UI Implementation
@@ -21,29 +21,22 @@ export class GPSDOModuleUIStandard extends GPSDOModuleCore {
   // DOM caching for performance
   private domCache_: Record<string, HTMLElement> = {};
 
-  constructor(state: GPSDOState, rfFrontEnd: RFFrontEnd, unit: number, parentId: string) {
-    // Create UI components BEFORE calling super
-    const tempId = `rf-fe-gpsdo-temp-${unit}`;
+  constructor(state: GPSDOState, rfFrontEnd: RFFrontEndCore, unit: number, parentId: string) {
+    // Call parent constructor
+    super(state, rfFrontEnd, unit);
 
-    const powerSwitch = PowerSwitch.create(
-      `${tempId}-power`,
-      state.isPowered,
+    this.powerSwitch_ = PowerSwitch.create(
+      `${this.uniqueId}-power`,
+      this.state.isPowered,
       false,
       true,
     );
 
-    const gnssSwitch = ToggleSwitch.create(
-      `${tempId}-gnss`,
-      state.isGnssSwitchUp,
+    this.gnssSwitch_ = ToggleSwitch.create(
+      `${this.uniqueId}-gnss`,
+      this.state.isGnssSwitchUp,
       false
     );
-
-    // Call parent constructor
-    super(state, rfFrontEnd, unit);
-
-    // Store components
-    this.powerSwitch_ = powerSwitch;
-    this.gnssSwitch_ = gnssSwitch;
 
     this.helpBtn_ = HelpButton.create(
       `gpsdo-help-${rfFrontEnd.state.uuid}`,
@@ -103,27 +96,27 @@ export class GPSDOModuleUIStandard extends GPSDOModuleCore {
           <div class="status-displays">
             <div class="control-group">
               <label>FREQ ACCURACY (×10⁻¹¹)</label>
-              <div class="digital-display gpsdo-freq-accuracy">${this.state_.frequencyAccuracy.toFixed(3)}</div>
+              <div class="digital-display gpsdo-freq-accuracy">${this.state.frequencyAccuracy.toFixed(3)}</div>
             </div>
             <div class="control-group">
               <label>STABILITY (×10⁻¹¹)</label>
-              <div class="digital-display gpsdo-stability">${this.state_.allanDeviation.toFixed(3)}</div>
+              <div class="digital-display gpsdo-stability">${this.state.allanDeviation.toFixed(3)}</div>
             </div>
             <div class="control-group">
               <label>PHASE NOISE (dBc/Hz)</label>
-              <div class="digital-display gpsdo-phase-noise">${this.state_.phaseNoise.toFixed(1)}</div>
+              <div class="digital-display gpsdo-phase-noise">${this.state.phaseNoise.toFixed(1)}</div>
             </div>
             <div class="control-group">
               <label>SATELLITES</label>
-              <div class="digital-display gpsdo-sats">${this.state_.satelliteCount}</div>
+              <div class="digital-display gpsdo-sats">${this.state.satelliteCount}</div>
             </div>
             <div class="control-group">
               <label>UTC (ns)</label>
-              <div class="digital-display gpsdo-utc">${this.state_.utcAccuracy.toFixed(0)}</div>
+              <div class="digital-display gpsdo-utc">${this.state.utcAccuracy.toFixed(0)}</div>
             </div>
             <div class="control-group">
               <label>TEMP (°C)</label>
-              <div class="digital-display gpsdo-temp">${this.state_.temperature.toFixed(1)}</div>
+              <div class="digital-display gpsdo-temp">${this.state.temperature.toFixed(1)}</div>
             </div>
             <div class="control-group">
               <label>WARMUP</label>
@@ -131,11 +124,11 @@ export class GPSDOModuleUIStandard extends GPSDOModuleCore {
             </div>
             <div class="control-group">
               <label>OUTPUTS</label>
-              <div class="digital-display gpsdo-outputs">${this.state_.active10MHzOutputs}/${this.state_.max10MHzOutputs}</div>
+              <div class="digital-display gpsdo-outputs">${this.state.active10MHzOutputs}/${this.state.max10MHzOutputs}</div>
             </div>
             <div class="control-group">
               <label>HOLDOVER (μs)</label>
-              <div class="digital-display gpsdo-holdover">${this.state_.holdoverError.toFixed(1)}</div>
+              <div class="digital-display gpsdo-holdover">${this.state.holdoverError.toFixed(1)}</div>
             </div>
           </div>
 
@@ -180,7 +173,7 @@ export class GPSDOModuleUIStandard extends GPSDOModuleCore {
     this.powerSwitch_.addEventListeners((isPowered: boolean) => {
       this.handlePowerToggle(isPowered);
       this.syncDomWithState_();
-      cb(this.state_);
+      cb(this.state);
     });
 
     // GNSS switch handler
@@ -190,16 +183,16 @@ export class GPSDOModuleUIStandard extends GPSDOModuleCore {
         cb(state);
       });
       this.syncDomWithState_();
-      cb(this.state_);
+      cb(this.state);
     });
 
     this.initializeDomCache_();
   }
 
   private initializeDomCache_() {
-    const container = qs('.gpsdo-module');
+    const container = qs(`#${this.uniqueId}`);
     if (!container) {
-      throw new Error('GPSDOModule: Cannot initialize DOM cache - container not found');
+      throw new Error(`GPSDOModule: Cannot initialize DOM cache - container #${this.uniqueId} not found`);
     }
 
     const lockLedElement = qs('#lock-led .led', container);
@@ -260,15 +253,15 @@ export class GPSDOModuleUIStandard extends GPSDOModuleCore {
    */
   getDisplays() {
     return {
-      frequencyAccuracy: () => this.state_.frequencyAccuracy.toFixed(3),
-      allanDeviation: () => this.state_.allanDeviation.toFixed(3),
-      phaseNoise: () => this.state_.phaseNoise.toFixed(1),
-      satelliteCount: () => this.state_.satelliteCount.toString(),
-      utcAccuracy: () => this.state_.utcAccuracy.toFixed(0),
-      temperature: () => this.state_.temperature.toFixed(1),
+      frequencyAccuracy: () => this.state.frequencyAccuracy.toFixed(3),
+      allanDeviation: () => this.state.allanDeviation.toFixed(3),
+      phaseNoise: () => this.state.phaseNoise.toFixed(1),
+      satelliteCount: () => this.state.satelliteCount.toString(),
+      utcAccuracy: () => this.state.utcAccuracy.toFixed(0),
+      temperature: () => this.state.temperature.toFixed(1),
       warmupTime: () => this.formatWarmupTime_(),
-      outputs: () => `${this.state_.active10MHzOutputs}/${this.state_.max10MHzOutputs}`,
-      holdoverError: () => this.state_.holdoverError.toFixed(1)
+      outputs: () => `${this.state.active10MHzOutputs}/${this.state.max10MHzOutputs}`,
+      holdoverError: () => this.state.holdoverError.toFixed(1)
     };
   }
 
@@ -338,21 +331,21 @@ export class GPSDOModuleUIStandard extends GPSDOModuleCore {
         statusDisplays.classList.remove('status-displays-off');
       }
       // Update displays
-      this.domCache_.freqAccuracy.textContent = this.state_.frequencyAccuracy.toFixed(3);
-      this.domCache_.stability.textContent = this.state_.allanDeviation.toFixed(3);
-      this.domCache_.phaseNoise.textContent = this.state_.phaseNoise.toFixed(1);
-      this.domCache_.sats.textContent = this.state_.satelliteCount.toString();
-      this.domCache_.utc.textContent = this.state_.utcAccuracy.toFixed(0);
-      this.domCache_.temp.textContent = this.state_.temperature.toFixed(1);
+      this.domCache_.freqAccuracy.textContent = this.state.frequencyAccuracy.toFixed(3);
+      this.domCache_.stability.textContent = this.state.allanDeviation.toFixed(3);
+      this.domCache_.phaseNoise.textContent = this.state.phaseNoise.toFixed(1);
+      this.domCache_.sats.textContent = this.state.satelliteCount.toString();
+      this.domCache_.utc.textContent = this.state.utcAccuracy.toFixed(0);
+      this.domCache_.temp.textContent = this.state.temperature.toFixed(1);
       this.domCache_.warmup.textContent = this.formatWarmupTime_();
-      this.domCache_.outputs.textContent = `${this.state_.active10MHzOutputs}/${this.state_.max10MHzOutputs}`;
+      this.domCache_.outputs.textContent = `${this.state.active10MHzOutputs}/${this.state.max10MHzOutputs}`;
 
-      this.domCache_.holdover.textContent = (this.state_.holdoverError).toFixed(3);
+      this.domCache_.holdover.textContent = (this.state.holdoverError).toFixed(3);
     }
 
     // Sync UI components
-    this.powerSwitch_.sync(this.state_.isPowered);
-    this.gnssSwitch_.sync(this.state_.isGnssSwitchUp);
+    this.powerSwitch_.sync(this.state.isPowered);
+    this.gnssSwitch_.sync(this.state.isGnssSwitchUp);
   }
 
   // Override hooks to trigger DOM updates

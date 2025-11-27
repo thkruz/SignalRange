@@ -34,13 +34,13 @@ export class AntennaUIModern extends AntennaCore {
 
     // Create UI components
     this.helpBtn_ = HelpButton.create(
-      `${this.state.uuid}-help-btn`,
+      `help-btn-${this.state.uuid}`,
       'Antenna Control Unit (ACU)',
       null,
       'https://docs.signalrange.space/equipment/antenna-control-unit?content-only=true&dark=true'
     );
     this.polarPlot_ = PolarPlot.create(
-      `${this.state.uuid}-polar-plot`,
+      `polar-plot-${this.state.uuid}`,
       { width: 550, height: 450, showGrid: true, showLabels: true }
     );
 

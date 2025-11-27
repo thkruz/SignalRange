@@ -1,19 +1,20 @@
-import { Antenna } from "../../src/equipment/antenna/antenna";
-import { BUCState } from "../../src/equipment/rf-front-end/buc-module/buc-module";
+import { createAntenna } from "../../src/equipment/antenna";
+import { BUCState } from "../../src/equipment/rf-front-end/buc-module/buc-module-core";
 import { TapPoint } from "../../src/equipment/rf-front-end/coupler-module/coupler-module";
-import { IfFilterBankState } from "../../src/equipment/rf-front-end/filter-module/filter-module";
-import { HPAState } from "../../src/equipment/rf-front-end/hpa-module/hpa-module";
-import { LNBState } from "../../src/equipment/rf-front-end/lnb/lnb-module";
+import { IfFilterBankState } from "../../src/equipment/rf-front-end/filter-module/filter-module-core";
+import { HPAState } from "../../src/equipment/rf-front-end/hpa-module/hpa-module-core";
+import { LNBState } from "../../src/equipment/rf-front-end/lnb-module/lnb-module-core";
 import { OMTState } from "../../src/equipment/rf-front-end/omt-module/omt-module";
-import { RFFrontEnd } from "../../src/equipment/rf-front-end/rf-front-end";
+import { RFFrontEndCore } from "../../src/equipment/rf-front-end/rf-front-end-core";
+import { createRFFrontEnd } from '../../src/equipment/rf-front-end/rf-front-end-factory';
 import { Transmitter } from "../../src/equipment/transmitter/transmitter";
 import { EventBus } from "../../src/events/event-bus";
 import { Events } from "../../src/events/events";
 
-// Tests for RFFrontEnd class
+// Tests for RFFrontEndCore class
 
-describe('RFFrontEnd class', () => {
-  let rfFrontEnd: RFFrontEnd;
+describe('RFFrontEndCore class', () => {
+  let rfFrontEnd: RFFrontEndCore;
   let parentElement: HTMLElement;
 
   beforeEach(() => {
@@ -35,7 +36,7 @@ describe('RFFrontEnd class', () => {
 
   describe('Initialization', () => {
     it('should create RF Front-End with default state', () => {
-      rfFrontEnd = new RFFrontEnd('test-root');
+      rfFrontEnd = createRFFrontEnd('test-root');
 
       expect(rfFrontEnd).toBeDefined();
       expect(rfFrontEnd.state.teamId).toBe(1);
@@ -43,7 +44,7 @@ describe('RFFrontEnd class', () => {
     });
 
     it('should initialize all modules', () => {
-      rfFrontEnd = new RFFrontEnd('test-root');
+      rfFrontEnd = createRFFrontEnd('test-root');
 
       expect(rfFrontEnd.omtModule).toBeDefined();
       expect(rfFrontEnd.bucModule).toBeDefined();
@@ -55,33 +56,33 @@ describe('RFFrontEnd class', () => {
     });
 
     it('should set up default module states', () => {
-      rfFrontEnd = new RFFrontEnd('test-root');
+      rfFrontEnd = createRFFrontEnd('test-root');
 
       // Check OMT state
-      expect(rfFrontEnd.state.omt.isPowered).toBe(true);
-      expect(rfFrontEnd.state.omt.txPolarization).toBe('H');
-      expect(rfFrontEnd.state.omt.rxPolarization).toBe('V');
+      expect(rfFrontEnd.omtModule.state.isPowered).toBe(true);
+      expect(rfFrontEnd.omtModule.state.txPolarization).toBe('H');
+      expect(rfFrontEnd.omtModule.state.rxPolarization).toBe('V');
 
       // Check BUC state
-      expect(rfFrontEnd.state.buc.isPowered).toBe(true);
-      expect(rfFrontEnd.state.buc.gain).toBe(58);
-      expect(rfFrontEnd.state.buc.loFrequency).toBe(4200);
+      expect(rfFrontEnd.bucModule.state.isPowered).toBe(true);
+      expect(rfFrontEnd.bucModule.state.gain).toBe(58);
+      expect(rfFrontEnd.bucModule.state.loFrequency).toBe(6425);
 
       // Check LNB state
-      expect(rfFrontEnd.state.lnb.isPowered).toBe(true);
-      expect(rfFrontEnd.state.lnb.gain).toBe(0);
-      expect(rfFrontEnd.state.lnb.lnaNoiseFigure).toBe(0.6);
+      expect(rfFrontEnd.lnbModule.state.isPowered).toBe(true);
+      expect(rfFrontEnd.lnbModule.state.gain).toBe(0);
+      expect(rfFrontEnd.lnbModule.state.lnaNoiseFigure).toBe(0.6);
 
       // Check HPA state
-      expect(rfFrontEnd.state.hpa.isPowered).toBe(true);
-      expect(rfFrontEnd.state.hpa.backOff).toBe(6);
-      expect(rfFrontEnd.state.hpa.isHpaEnabled).toBe(false);
+      expect(rfFrontEnd.hpaModule.state.isPowered).toBe(true);
+      expect(rfFrontEnd.hpaModule.state.backOff).toBe(6);
+      expect(rfFrontEnd.hpaModule.state.isHpaEnabled).toBe(false);
     });
 
     it('should subscribe to UPDATE and SYNC events', () => {
       const onSpy = jest.spyOn(EventBus.getInstance(), 'on');
 
-      rfFrontEnd = new RFFrontEnd('test-root');
+      rfFrontEnd = createRFFrontEnd('test-root');
 
       expect(onSpy).toHaveBeenCalledWith(Events.UPDATE, expect.any(Function));
       expect(onSpy).toHaveBeenCalledWith(Events.SYNC, expect.any(Function));
@@ -92,7 +93,7 @@ describe('RFFrontEnd class', () => {
 
   describe('Component State Updates', () => {
     beforeEach(() => {
-      rfFrontEnd = new RFFrontEnd('test-root');
+      rfFrontEnd = createRFFrontEnd('test-root');
     });
 
     it('should disable HPA if BUC is not powered', () => {
@@ -169,7 +170,7 @@ describe('RFFrontEnd class', () => {
 
   describe('Module Synchronization', () => {
     beforeEach(() => {
-      rfFrontEnd = new RFFrontEnd('test-root');
+      rfFrontEnd = createRFFrontEnd('test-root');
     });
 
     it('should sync OMT state', () => {
@@ -229,13 +230,13 @@ describe('RFFrontEnd class', () => {
       rfFrontEnd.sync({ filter: newFilterState as IfFilterBankState });
 
       expect(rfFrontEnd.state.filter.bandwidth).toBe(40);
-      expect(rfFrontEnd.state.filter.insertionLoss).toBe(3.0);
+      expect(rfFrontEnd.state.filter.insertionLoss).toBe(1.8);
     });
   });
 
   describe('Alarm Checking', () => {
     beforeEach(() => {
-      rfFrontEnd = new RFFrontEnd('test-root');
+      rfFrontEnd = createRFFrontEnd('test-root');
     });
 
     it('should detect HPA overdrive alarm', () => {
@@ -257,7 +258,7 @@ describe('RFFrontEnd class', () => {
 
   describe('API Methods', () => {
     beforeEach(() => {
-      rfFrontEnd = new RFFrontEnd('test-root');
+      rfFrontEnd = createRFFrontEnd('test-root');
     });
 
     it('should get coupler output A', () => {
@@ -285,11 +286,11 @@ describe('RFFrontEnd class', () => {
 
   describe('Equipment Connections', () => {
     beforeEach(() => {
-      rfFrontEnd = new RFFrontEnd('test-root');
+      rfFrontEnd = createRFFrontEnd('test-root');
     });
 
     it.skip('should connect to antenna', () => {
-      const antenna = new Antenna('test-root');
+      const antenna = createAntenna('test-root');
 
       rfFrontEnd.connectAntenna(antenna);
 
@@ -319,7 +320,7 @@ describe('RFFrontEnd class', () => {
 
   describe('Update Cycle', () => {
     beforeEach(() => {
-      rfFrontEnd = new RFFrontEnd('test-root');
+      rfFrontEnd = createRFFrontEnd('test-root');
     });
 
     it('should update all modules on update()', () => {

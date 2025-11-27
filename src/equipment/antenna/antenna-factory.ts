@@ -55,7 +55,7 @@ export type AntennaUIType = 'standard' | 'basic' | 'headless';
  */
 export function createAntenna(
   parentId: string,
-  configId: ANTENNA_CONFIG_KEYS,
+  configId?: ANTENNA_CONFIG_KEYS,
   initialState: Partial<AntennaState> = {},
   teamId: number = 1,
   serverId: number = 1,

@@ -1,6 +1,6 @@
 import { SignalOrigin } from "@app/SignalOrigin";
 import { dBm, IfSignal, MHz, RfFrequency } from '@app/types';
-import { RFFrontEnd } from '../rf-front-end';
+import { RFFrontEndCore } from "../rf-front-end-core";
 import { RFFrontEndModule } from '../rf-front-end-module';
 
 /**
@@ -67,7 +67,7 @@ export abstract class IfFilterBankModuleCore extends RFFrontEndModule<IfFilterBa
     };
   }
 
-  constructor(state: IfFilterBankState, rfFrontEnd: RFFrontEnd, unit: number) {
+  constructor(state: IfFilterBankState, rfFrontEnd: RFFrontEndCore, unit: number) {
     super(state, rfFrontEnd, 'rf-fe-filter', unit);
   }
 
@@ -86,7 +86,7 @@ export abstract class IfFilterBankModuleCore extends RFFrontEndModule<IfFilterBa
 
       return {
         ...sig,
-        power: (sig.power - this.state_.insertionLoss) as dBm,
+        power: (sig.power - this.state.insertionLoss) as dBm,
         origin: SignalOrigin.IF_FILTER_BANK,
       };
     });
@@ -106,10 +106,10 @@ export abstract class IfFilterBankModuleCore extends RFFrontEndModule<IfFilterBa
    * Update filter characteristics based on selected bandwidth index
    */
   protected updateFilterCharacteristics_(): void {
-    const config = FILTER_BANDWIDTH_CONFIGS[this.state_.bandwidthIndex];
-    this.state_.bandwidth = config.bandwidth;
-    this.state_.insertionLoss = config.insertionLoss;
-    this.state_.noiseFloor = config.noiseFloor;
+    const config = FILTER_BANDWIDTH_CONFIGS[this.state.bandwidthIndex];
+    this.state.bandwidth = config.bandwidth;
+    this.state.insertionLoss = config.insertionLoss;
+    this.state.noiseFloor = config.noiseFloor;
   }
 
   /**
@@ -127,8 +127,8 @@ export abstract class IfFilterBankModuleCore extends RFFrontEndModule<IfFilterBa
     const alarms: string[] = [];
 
     // Check for excessive insertion loss
-    if (this.state_.insertionLoss > 3.0) {
-      alarms.push(`Filter insertion loss high (${this.state_.insertionLoss.toFixed(1)} dB)`);
+    if (this.state.insertionLoss > 3.0) {
+      alarms.push(`Filter insertion loss high (${this.state.insertionLoss.toFixed(1)} dB)`);
     }
 
     return alarms;
@@ -136,11 +136,11 @@ export abstract class IfFilterBankModuleCore extends RFFrontEndModule<IfFilterBa
 
   // Protected handlers for UI layer
   protected handleBandwidthChange(bandwidthIndex: number): void {
-    this.state_.bandwidthIndex = Math.round(bandwidthIndex);
+    this.state.bandwidthIndex = Math.round(bandwidthIndex);
     this.updateFilterCharacteristics_();
   }
 
   protected getFilterConfig(): FilterBandwidthConfig {
-    return FILTER_BANDWIDTH_CONFIGS[this.state_.bandwidthIndex];
+    return FILTER_BANDWIDTH_CONFIGS[this.state.bandwidthIndex];
   }
 }

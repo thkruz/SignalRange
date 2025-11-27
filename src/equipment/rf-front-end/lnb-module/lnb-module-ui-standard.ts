@@ -2,7 +2,8 @@ import { HelpButton } from "@app/components/help-btn/help-btn";
 import { RotaryKnob } from "@app/components/rotary-knob/rotary-knob";
 import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
-import { RFFrontEnd } from '../rf-front-end';
+import { IfFrequency } from "@app/types";
+import { RFFrontEndCore } from "../rf-front-end-core";
 import { LNBModuleCore, LNBState } from './lnb-module-core';
 import './lnb-module.css';
 
@@ -17,28 +18,22 @@ export class LNBModuleUIStandard extends LNBModuleCore {
   // Track last applied brightness level to avoid unnecessary DOM updates
   private lastNoiseTempBrightnessLevel_: number = -1;
 
-  constructor(state: LNBState, rfFrontEnd: RFFrontEnd, unit: number, parentId: string) {
-    // Create UI components BEFORE calling super
-    const tempId = `rf-fe-lnb-temp-${unit}`;
+  constructor(state: LNBState, rfFrontEnd: RFFrontEndCore, unit: number, parentId: string) {
+    // Call parent constructor
+    super(state, rfFrontEnd, unit);
 
-    // Initialize LO knob (callback will be wired through base class event system)
-    const loKnob = RotaryKnob.create(
-      `${tempId}-lo-knob`,
-      state.loFrequency,
+    // Store components
+    this.loKnob_ = RotaryKnob.create(
+      `${this.uniqueId}-lo-knob`,
+      this.state.loFrequency,
       5100,
       6075,
       10,
       (value: number) => {
         // Direct state update - will be synced through event callback
-        state.loFrequency = value as any;
+        this.state.loFrequency = value as IfFrequency;
       }
     );
-
-    // Call parent constructor
-    super(state, rfFrontEnd, unit);
-
-    // Store components
-    this.loKnob_ = loKnob;
 
     // Create common UI components using base class methods
     this.createPowerSwitch();
@@ -102,19 +97,19 @@ export class LNBModuleUIStandard extends LNBModuleCore {
           <div class="status-displays">
             <div class="control-group">
               <label>LO (MHz)</label>
-              <div class="digital-display lnb-lo-display">${this.state_.loFrequency}</div>
+              <div class="digital-display lnb-lo-display">${this.state.loFrequency}</div>
             </div>
             <div class="control-group">
               <label>NOISE TEMP (K)</label>
-              <div class="digital-display lnb-noise-temp-display">${this.state_.noiseTemperature.toFixed(0)}</div>
+              <div class="digital-display lnb-noise-temp-display">${this.state.noiseTemperature.toFixed(0)}</div>
             </div>
             <div class="control-group">
               <label>TEMP (°C)</label>
-              <div class="digital-display lnb-temp-display">${this.state_.temperature.toFixed(1)}</div>
+              <div class="digital-display lnb-temp-display">${this.state.temperature.toFixed(1)}</div>
             </div>
             <div class="control-group">
               <label>FREQ ERR (MHz)</label>
-              <div class="digital-display lnb-freq-err-display">${(this.state_.frequencyError / 1e6).toFixed(3)}</div>
+              <div class="digital-display lnb-freq-err-display">${(this.state.frequencyError / 1e6).toFixed(3)}</div>
             </div>
           </div>
         </div>
@@ -125,7 +120,7 @@ export class LNBModuleUIStandard extends LNBModuleCore {
   private getNoiseTempBrightness__(): number {
     // Typical noise temperature range: ~90K (bright) to 290K+ (dim)
     // To map 90K -> ~2, 290K -> ~0, use denominator ~100
-    return Math.max(2 - this.state_.noiseTemperature / 100, 0);
+    return Math.max(2 - this.state.noiseTemperature / 100, 0);
   }
 
   /**
@@ -169,8 +164,7 @@ export class LNBModuleUIStandard extends LNBModuleCore {
 
     // Power switch handler using base class method
     this.addPowerSwitchListener(cb, () => {
-      this.handlePowerToggle();
-      this.simulateLockAcquisition(2000, 2000, () => cb(this.state_));
+      this.simulateLockAcquisition(2000, 2000, () => cb(this.state));
     });
 
     // Note: LO knob callback is already set in constructor
@@ -214,10 +208,10 @@ export class LNBModuleUIStandard extends LNBModuleCore {
    */
   getDisplays() {
     return {
-      loFrequency: () => this.state_.loFrequency.toString(),
-      noiseTemperature: () => this.state_.noiseTemperature.toFixed(1),
-      temperature: () => this.state_.temperature.toFixed(1),
-      frequencyError: () => (this.state_.frequencyError / 1e6).toFixed(3)
+      loFrequency: () => this.state.loFrequency.toString(),
+      noiseTemperature: () => this.state.noiseTemperature.toFixed(1),
+      temperature: () => this.state.temperature.toFixed(1),
+      frequencyError: () => (this.state.frequencyError / 1e6).toFixed(3)
     };
   }
 
@@ -246,23 +240,23 @@ export class LNBModuleUIStandard extends LNBModuleCore {
     // Update LO frequency display
     const loDisplay = qs('.lnb-lo-display', container);
     if (loDisplay) {
-      loDisplay.textContent = this.state_.loFrequency.toString();
+      loDisplay.textContent = this.state.loFrequency.toString();
     }
 
     // Update lock LED using base class method
     const lockLed = qs('.led-indicator .led', container);
     if (lockLed) {
-      lockLed.className = `led ${this.state_.isPowered ? this.getLockLedStatus() : 'led-off'}`;
+      lockLed.className = `led ${this.state.isPowered ? this.getLockLedStatus() : 'led-off'}`;
     }
 
     // Update noise temperature display and LED
     const noiseTempReadout = qs('.lnb-noise-temp-display', container);
     if (noiseTempReadout) {
-      noiseTempReadout.textContent = `${this.state_.noiseTemperature.toFixed(1)}`;
+      noiseTempReadout.textContent = `${this.state.noiseTemperature.toFixed(1)}`;
     }
 
     const noiseTempLed = qs('.led-noise', container);
-    if (noiseTempLed && this.state_.isPowered) {
+    if (noiseTempLed && this.state.isPowered) {
       noiseTempLed.classList.remove('led-off');
       noiseTempLed.classList.add('led-blue');
 
@@ -282,19 +276,19 @@ export class LNBModuleUIStandard extends LNBModuleCore {
     // Update physical temperature display
     const tempDisplay = qs('.lnb-temp-display', container);
     if (tempDisplay) {
-      tempDisplay.textContent = this.state_.temperature.toFixed(1);
+      tempDisplay.textContent = this.state.temperature.toFixed(1);
     }
 
     // Update frequency error display
     const freqErrDisplay = qs('.lnb-freq-err-display', container);
     if (freqErrDisplay) {
-      freqErrDisplay.textContent = (this.state_.frequencyError / 1e6).toFixed(3);
+      freqErrDisplay.textContent = (this.state.frequencyError / 1e6).toFixed(3);
     }
 
     // Sync UI components using base class method
-    this.syncCommonComponents(this.state_);
+    this.syncCommonComponents(this.state);
 
     // Sync LNB-specific components
-    this.loKnob_.sync(this.state_.loFrequency);
+    this.loKnob_.sync(this.state.loFrequency);
   }
 }

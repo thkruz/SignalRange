@@ -1,4 +1,4 @@
-import { RFFrontEnd } from '../rf-front-end';
+import { RFFrontEndCore } from '../rf-front-end-core';
 import { HPAModuleCore, HPAState } from './hpa-module-core';
 import { HPAModuleUIStandard } from './hpa-module-ui-standard';
 
@@ -10,7 +10,7 @@ export type HPAModuleUIType = 'standard' | 'basic' | 'headless';
  */
 export function createHPA(
   state: HPAState,
-  rfFrontEnd: RFFrontEnd,
+  rfFrontEnd: RFFrontEndCore,
   unit: number = 1,
   parentId: string,
   uiType: HPAModuleUIType = 'standard'

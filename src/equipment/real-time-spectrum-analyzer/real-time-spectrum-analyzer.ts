@@ -6,7 +6,6 @@ import { html } from "../../engine/utils/development/formatter";
 import { Events } from "../../events/events";
 import { dB, Hertz, IfSignal, RfSignal } from "../../types";
 import { BaseEquipment } from '../base-equipment';
-import { RFFrontEnd } from "../rf-front-end/rf-front-end";
 import { TapPoint } from './../rf-front-end/coupler-module/coupler-module';
 import { AnalyzerControlBox } from "./analyzer-control-box";
 import type { TraceMode } from "./analyzer-control/ac-trace-btn/ac-trace-btn";
@@ -15,6 +14,7 @@ import './real-time-spectrum-analyzer.css';
 import { SpectralDensityPlot } from './rtsa-screen/spectral-density-plot';
 import { WaterfallDisplay } from "./rtsa-screen/waterfall-display";
 import { SpectrumDataProcessor } from "./spectrum-data-processor";
+import { RFFrontEndCore } from "../rf-front-end/rf-front-end-core";
 
 type MarkerPoint = { x: number; y: number; signal: number };
 
@@ -81,15 +81,15 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
   spectralDensityBoth: SpectralDensityPlot | null = null;
   waterfallBoth: WaterfallDisplay | null = null;
 
-  // RFFrontEnd reference
-  readonly rfFrontEnd_: RFFrontEnd;
+  // RFFrontEndCore reference
+  readonly rfFrontEnd_: RFFrontEndCore;
 
   private helpBtn_: HelpButton;
   configPanel: AnalyzerControlBox | null = null;
   inputSignals: IfSignal[] = [];
   prevState: any;
 
-  constructor(parentId: string, initialState: Partial<RealTimeSpectrumAnalyzerState>, rfFrontEnd: RFFrontEnd, teamId: number = 1) {
+  constructor(parentId: string, initialState: Partial<RealTimeSpectrumAnalyzerState>, rfFrontEnd: RFFrontEndCore, teamId: number = 1) {
     super(parentId, teamId);
 
     this.rfFrontEnd_ = rfFrontEnd;

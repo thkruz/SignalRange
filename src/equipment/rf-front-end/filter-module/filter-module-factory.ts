@@ -1,4 +1,4 @@
-import { RFFrontEnd } from '../rf-front-end';
+import { RFFrontEndCore } from '../rf-front-end-core';
 import { IfFilterBankModuleCore, IfFilterBankState } from './filter-module-core';
 import { IfFilterBankModuleUIStandard } from './filter-module-ui-standard';
 
@@ -10,7 +10,7 @@ export type IfFilterBankModuleUIType = 'standard' | 'basic' | 'headless';
  */
 export function createIfFilterBank(
   state: IfFilterBankState,
-  rfFrontEnd: RFFrontEnd,
+  rfFrontEnd: RFFrontEndCore,
   unit: number = 1,
   parentId: string,
   uiType: IfFilterBankModuleUIType = 'standard'

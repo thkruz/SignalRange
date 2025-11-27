@@ -2,7 +2,7 @@ import { HelpButton } from '@app/components/help-btn/help-btn';
 import { RotaryKnob } from "@app/components/rotary-knob/rotary-knob";
 import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
-import { RFFrontEnd } from '../rf-front-end';
+import { RFFrontEndCore } from '../rf-front-end-core';
 import { FILTER_BANDWIDTH_CONFIGS, IfFilterBankModuleCore, IfFilterBankState } from './filter-module-core';
 import './filter-module.css';
 
@@ -14,9 +14,13 @@ export class IfFilterBankModuleUIStandard extends IfFilterBankModuleCore {
   // UI Components
   private readonly bandwidthKnob_: RotaryKnob;
 
-  constructor(state: IfFilterBankState, rfFrontEnd: RFFrontEnd, unit: number, parentId: string) {
+  constructor(state: IfFilterBankState, rfFrontEnd: RFFrontEndCore, unit: number, parentId: string) {
+    // Call parent constructor
+    super(state, rfFrontEnd, unit);
+    this.state = { ...IfFilterBankModuleCore.getDefaultState(), ...state };
+
     // Create UI components BEFORE calling super
-    const config = FILTER_BANDWIDTH_CONFIGS[state.bandwidthIndex];
+    const config = FILTER_BANDWIDTH_CONFIGS[this.state.bandwidthIndex];
 
     // Create rotary knob for bandwidth selection (0-13)
     const bandwidthKnob = RotaryKnob.create(
@@ -33,9 +37,6 @@ export class IfFilterBankModuleUIStandard extends IfFilterBankModuleCore {
       },
       config.label
     );
-
-    // Call parent constructor
-    super(state, rfFrontEnd, unit);
 
     // Store components
     this.bandwidthKnob_ = bandwidthKnob;
@@ -71,7 +72,7 @@ export class IfFilterBankModuleUIStandard extends IfFilterBankModuleCore {
             <div class="led-indicators">
               <div class="led-indicator">
                 <span class="indicator-label">INSERTION LOSS</span>
-                <div id="insertion-loss-led" class="led led-orange" style="opacity: ${this.state_.insertionLoss / 3}"></div>
+                <div id="insertion-loss-led" class="led led-orange" style="opacity: ${this.state.insertionLoss / 3}"></div>
               </div>
               <div class="value-display">
                 <span class="display-label">NOISE FLOOR:</span>
@@ -88,11 +89,11 @@ export class IfFilterBankModuleUIStandard extends IfFilterBankModuleCore {
             </div>
             <div class="control-group">
               <label>INSERTION LOSS (dB)</label>
-              <div class="digital-display filter-insertion-loss-display">${this.state_.insertionLoss.toFixed(1)}</div>
+              <div class="digital-display filter-insertion-loss-display">${this.state.insertionLoss.toFixed(1)}</div>
             </div>
             <div class="control-group">
               <label>NOISE FLOOR (dBm)</label>
-              <div class="digital-display filter-noise-floor-display">${this.state_.noiseFloor.toFixed(0)}</div>
+              <div class="digital-display filter-noise-floor-display">${this.state.noiseFloor.toFixed(0)}</div>
             </div>
           </div>
         </div>
@@ -139,7 +140,7 @@ export class IfFilterBankModuleUIStandard extends IfFilterBankModuleCore {
   sync(state: Partial<IfFilterBankState>): void {
     super.sync(state);
 
-    this.bandwidthKnob_.sync(this.state_.bandwidthIndex);
+    this.bandwidthKnob_.sync(this.state.bandwidthIndex);
     this.syncDomWithState_();
   }
 
@@ -163,8 +164,8 @@ export class IfFilterBankModuleUIStandard extends IfFilterBankModuleCore {
    */
   getDisplays() {
     return {
-      insertionLoss: () => this.state_.insertionLoss.toFixed(1),
-      noiseFloor: () => this.state_.noiseFloor.toFixed(0)
+      insertionLoss: () => this.state.insertionLoss.toFixed(1),
+      noiseFloor: () => this.state.noiseFloor.toFixed(0)
     };
   }
 
@@ -174,7 +175,7 @@ export class IfFilterBankModuleUIStandard extends IfFilterBankModuleCore {
    */
   getLEDs() {
     return {
-      insertionLossOpacity: () => this.state_.insertionLoss / 3
+      insertionLossOpacity: () => this.state.insertionLoss / 3
     };
   }
 
@@ -203,7 +204,7 @@ export class IfFilterBankModuleUIStandard extends IfFilterBankModuleCore {
     // TODO: We should be using a domCache instead of querying each time
 
     // Update insertion loss LED
-    qs('#insertion-loss-led', container)!.style.opacity = (this.state_.insertionLoss / 3.5).toString();
+    qs('#insertion-loss-led', container)!.style.opacity = (this.state.insertionLoss / 3.5).toString();
 
     // Update noise floor LED
     // Color Scale from -130 dBm (green) to -40 dBm (green)
@@ -219,7 +220,7 @@ export class IfFilterBankModuleUIStandard extends IfFilterBankModuleCore {
     }
 
     // Update insertion loss readout
-    qs('.filter-insertion-loss-display', container)!.textContent = `${this.state_.insertionLoss.toFixed(1)}`;
+    qs('.filter-insertion-loss-display', container)!.textContent = `${this.state.insertionLoss.toFixed(1)}`;
     // Update noise floor display
     qs('.filter-noise-floor-display', container)!.textContent = `${this.rfFrontEnd_.signalPathManager.getExternalNoise().toFixed(0)}`;
   }

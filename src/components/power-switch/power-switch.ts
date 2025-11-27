@@ -1,5 +1,7 @@
 import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
+import { EventBus } from "@app/events/event-bus";
+import { Events } from "@app/events/events";
 import { Sfx } from "@app/sound/sfx-enum";
 import SoundManager from "@app/sound/sound-manager";
 import './power-switch.css';
@@ -9,6 +11,7 @@ export class PowerSwitch {
   private readonly uniqueId: string;
   private dom_?: HTMLInputElement;
   private isOn_: boolean;
+  private cb_: (isOn: boolean) => void = () => { };
 
   constructor(uniqueId: string, isOn: boolean, isVertical: boolean, isSmall: boolean) {
     this.html_ = html`
@@ -31,7 +34,7 @@ export class PowerSwitch {
     this.isOn_ = isOn;
     this.uniqueId = uniqueId;
 
-    // TODO: Add an event bus listener for DOM_READY if needed and remove addEventListeners calls
+    EventBus.getInstance().on(Events.DOM_READY, this.onDomReady_.bind(this));
   }
 
   static create(domId: string, isOn: boolean, isVertical = true, isSmall = false): PowerSwitch {
@@ -43,8 +46,12 @@ export class PowerSwitch {
   }
 
   addEventListeners(cb: (isOn: boolean) => void): void {
+    this.cb_ = cb;
+  }
+
+  private onDomReady_(): void {
     qs(`#${this.uniqueId}`).addEventListener('change', (e) => {
-      cb((e.target as HTMLInputElement).checked);
+      this.cb_((e.target as HTMLInputElement).checked);
     });
   }
 

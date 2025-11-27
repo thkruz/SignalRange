@@ -7,10 +7,10 @@ import { Events } from "../../events/events";
 import { SimulationManager } from "../../simulation/simulation-manager";
 import { dB, dBm, Hertz, RfSignal } from "../../types";
 import { AlarmStatus, BaseEquipment } from '../base-equipment';
-import { RFFrontEnd } from "../rf-front-end/rf-front-end";
 import { Satellite } from "../satellite/satellite";
 import { Transmitter } from "../transmitter/transmitter";
 import { ANTENNA_CONFIG_KEYS, ANTENNA_CONFIGS, AntennaConfig } from "./antenna-configs";
+import { RFFrontEndCore } from "../rf-front-end/rf-front-end-core";
 
 /**
  * RF Propagation constants for GEO satellite communications
@@ -65,7 +65,7 @@ export abstract class AntennaCore extends BaseEquipment {
   /** Current antenna state */
   state: AntennaState;
   protected lastRenderState: AntennaState;
-  protected rfFrontEnd_: RFFrontEnd | null = null;
+  protected rfFrontEnd_: RFFrontEndCore | null = null;
 
   transmitters: Transmitter[] = [];
 
@@ -371,7 +371,7 @@ export abstract class AntennaCore extends BaseEquipment {
     });
   }
 
-  attachRfFrontEnd(rfFrontEnd: RFFrontEnd): void {
+  attachRfFrontEnd(rfFrontEnd: RFFrontEndCore): void {
     this.rfFrontEnd_ = rfFrontEnd;
   }
 

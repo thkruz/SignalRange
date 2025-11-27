@@ -5,7 +5,7 @@ import { SecureToggleSwitch } from '@app/components/secure-toggle-switch/secure-
 import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
 import type { dBW } from '@app/types';
-import { RFFrontEnd } from '../rf-front-end';
+import { RFFrontEndCore } from '../rf-front-end-core';
 import { HPAModuleCore, HPAState } from './hpa-module-core';
 import './hpa-module.css';
 
@@ -18,7 +18,7 @@ export class HPAModuleUIStandard extends HPAModuleCore {
   private readonly backOffKnob: RotaryKnob;
   private readonly hpaSwitch_: SecureToggleSwitch;
 
-  constructor(state: HPAState, rfFrontEnd: RFFrontEnd, unit: number, parentId: string) {
+  constructor(state: HPAState, rfFrontEnd: RFFrontEndCore, unit: number, parentId: string) {
     // Create UI components BEFORE calling super
     const tempId = `rf-fe-hpa-temp-${unit}`;
 
@@ -43,7 +43,7 @@ export class HPAModuleUIStandard extends HPAModuleCore {
     // Create power switch with HPA-specific settings
     this.powerSwitch_ = PowerSwitch.create(
       `${this.uniqueId}-power`,
-      this.state_.isPowered,
+      this.state.isPowered,
       true,
       false,
     );
@@ -86,7 +86,7 @@ export class HPAModuleUIStandard extends HPAModuleCore {
           <div class="led-indicators">
             <div class="led-indicator">
               <span class="indicator-label">IMD</span>
-              <div class="led ${this.state_.isOverdriven ? 'led-orange' : 'led-off'}"></div>
+              <div class="led ${this.state.isOverdriven ? 'led-orange' : 'led-off'}"></div>
             </div>
           </div>
           <div class="input-knobs">
@@ -104,15 +104,15 @@ export class HPAModuleUIStandard extends HPAModuleCore {
             <div class="power-meter">
                 <div class="meter-label">OUTPUT</div>
                 <div class="led-bar">
-                  ${this.renderPowerMeter_((this.state_.outputPower - 30) as dBW)}
+                  ${this.renderPowerMeter_((this.state.outputPower - 30) as dBW)}
                 </div>
-                <span class="value-readout">${this.state_.outputPower.toFixed(1)} dBW</span>
+                <span class="value-readout">${this.state.outputPower.toFixed(1)} dBW</span>
               </div>
             </div>
             <div class="status-displays">
               <div class="control-group">
                 <label>IMD (dBc)</label>
-                <div class="digital-display hpa-imd">${this.state_.imdLevel.toFixed(3)}</div>
+                <div class="digital-display hpa-imd">${this.state.imdLevel.toFixed(3)}</div>
               </div>
             </div>
           </div>
@@ -151,7 +151,7 @@ export class HPAModuleUIStandard extends HPAModuleCore {
 
     // Enable switch handler using base class method
     this.addPowerSwitchListener(cb, () => {
-      this.handlePowerToggle(this.state_.isPowered, (state) => {
+      this.handlePowerToggle(this.state.isPowered, (state) => {
         // Update power switch to match actual state (may differ from requested)
         if (this.powerSwitch_) {
           this.powerSwitch_.sync(state.isPowered);
@@ -192,8 +192,8 @@ export class HPAModuleUIStandard extends HPAModuleCore {
    */
   getDisplays() {
     return {
-      outputPower: () => this.state_.outputPower.toFixed(1),
-      imdLevel: () => this.state_.imdLevel.toFixed(3)
+      outputPower: () => this.state.outputPower.toFixed(1),
+      imdLevel: () => this.state.imdLevel.toFixed(3)
     };
   }
 
@@ -203,7 +203,7 @@ export class HPAModuleUIStandard extends HPAModuleCore {
    */
   getLEDs() {
     return {
-      imd: () => this.state_.isOverdriven ? 'led-orange' : 'led-off'
+      imd: () => this.state.isOverdriven ? 'led-orange' : 'led-off'
     };
   }
 
@@ -213,7 +213,7 @@ export class HPAModuleUIStandard extends HPAModuleCore {
    */
   getPowerMeter() {
     return {
-      render: () => this.renderPowerMeter_((this.state_.outputPower - 30) as dBW)
+      render: () => this.renderPowerMeter_((this.state.outputPower - 30) as dBW)
     };
   }
 
@@ -246,33 +246,33 @@ export class HPAModuleUIStandard extends HPAModuleCore {
     // Update output power display
     const powerReadout = qs('.power-meter .value-readout', container);
     if (powerReadout) {
-      powerReadout.textContent = `${this.state_.outputPower.toFixed(1)} dBW`;
+      powerReadout.textContent = `${this.state.outputPower.toFixed(1)} dBW`;
     }
 
     // Update power meter LEDs
     const ledBar = qs('.led-bar', container);
     if (ledBar) {
-      ledBar.innerHTML = this.renderPowerMeter_((this.state_.outputPower - 30) as dBW);
+      ledBar.innerHTML = this.renderPowerMeter_((this.state.outputPower - 30) as dBW);
     }
 
     // Update IMD LED
     const imdLed = qs('.led-indicator .led', container);
     if (imdLed) {
-      imdLed.className = `led ${this.state_.isOverdriven ? 'led-orange' : 'led-off'}`;
+      imdLed.className = `led ${this.state.isOverdriven ? 'led-orange' : 'led-off'}`;
     }
 
     // Update IMD readout
     const imdReadout = qs('.hpa-imd', container);
     if (imdReadout) {
-      imdReadout.textContent = `${this.state_.imdLevel}`;
+      imdReadout.textContent = `${this.state.imdLevel}`;
     }
 
     this.hpaSwitch_.sync(this.state.isHpaSwitchEnabled);
 
     // Sync UI components using base class method
-    this.syncCommonComponents(this.state_);
+    this.syncCommonComponents(this.state);
 
     // Sync HPA-specific components
-    this.backOffKnob.sync(this.state_.backOff);
+    this.backOffKnob.sync(this.state.backOff);
   }
 }

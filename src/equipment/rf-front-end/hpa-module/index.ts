@@ -8,6 +8,3 @@ export { HPAModuleUIStandard } from './hpa-module-ui-standard';
 // Factory
 export { createHPA } from './hpa-module-factory';
 export type { HPAModuleUIType } from './hpa-module-factory';
-
-// Backward compatibility
-export { HPAModule } from './hpa-module';

@@ -117,6 +117,40 @@ export class CouplerModule extends RFFrontEndModule<CouplerState> {
   }
 
   /**
+   * Get UI components for composite layouts
+   * Exposes Coupler module components for parent to arrange in custom layouts
+   */
+  getComponents() {
+    return {
+      // No interactive components in this module yet
+    };
+  }
+
+  /**
+   * Get display value functions for composite layouts
+   * Returns functions that compute current display values
+   */
+  getDisplays() {
+    return {
+      tapPointA: () => this.state_.tapPointA,
+      tapPointB: () => this.state_.tapPointB,
+      couplingFactorA: () => this.state_.couplingFactorA.toFixed(1),
+      couplingFactorB: () => this.state_.couplingFactorB.toFixed(1)
+    };
+  }
+
+  /**
+   * Get LED status functions for composite layouts
+   * Returns functions that compute current LED states
+   */
+  getLEDs() {
+    return {
+      activeA: () => this.state_.isActiveA ? 'led-green' : 'led-off',
+      activeB: () => this.state_.isActiveB ? 'led-green' : 'led-off'
+    };
+  }
+
+  /**
    * Initialize DOM structure (stub for backward compatibility)
    * @deprecated This module will be refactored to use the new pattern
    */

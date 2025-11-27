@@ -240,6 +240,51 @@ export class GPSDOModuleUIStandard extends GPSDOModuleCore {
   }
 
   /**
+   * Get UI components for composite layouts
+   * Exposes GPSDO module components for parent to arrange in custom layouts
+   */
+  getComponents() {
+    if (!this.powerSwitch_ || !this.gnssSwitch_) {
+      throw new Error('GPSDO components not initialized');
+    }
+    return {
+      powerSwitch: this.powerSwitch_,
+      gnssSwitch: this.gnssSwitch_,
+      helpBtn: this.helpBtn_
+    };
+  }
+
+  /**
+   * Get display value functions for composite layouts
+   * Returns functions that compute current display values
+   */
+  getDisplays() {
+    return {
+      frequencyAccuracy: () => this.state_.frequencyAccuracy.toFixed(3),
+      allanDeviation: () => this.state_.allanDeviation.toFixed(3),
+      phaseNoise: () => this.state_.phaseNoise.toFixed(1),
+      satelliteCount: () => this.state_.satelliteCount.toString(),
+      utcAccuracy: () => this.state_.utcAccuracy.toFixed(0),
+      temperature: () => this.state_.temperature.toFixed(1),
+      warmupTime: () => this.formatWarmupTime_(),
+      outputs: () => `${this.state_.active10MHzOutputs}/${this.state_.max10MHzOutputs}`,
+      holdoverError: () => this.state_.holdoverError.toFixed(1)
+    };
+  }
+
+  /**
+   * Get LED status functions for composite layouts
+   * Returns functions that compute current LED states
+   */
+  getLEDs() {
+    return {
+      lock: () => this.getLockLedStatus_(),
+      gnss: () => this.getGnssLedStatus_(),
+      warm: () => this.getWarmupLedStatus_()
+    };
+  }
+
+  /**
    * Sync state from external source
    */
   sync(state?: Partial<GPSDOState>): void {

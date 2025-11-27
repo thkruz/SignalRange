@@ -79,6 +79,38 @@ export class OMTModule extends RFFrontEndModule<OMTState> {
   }
 
   /**
+   * Get UI components for composite layouts
+   * Exposes OMT module components for parent to arrange in custom layouts
+   */
+  getComponents() {
+    return {
+      helpBtn: this.helpBtn_
+    };
+  }
+
+  /**
+   * Get display value functions for composite layouts
+   * Returns functions that compute current display values
+   */
+  getDisplays() {
+    return {
+      txPolarization: () => this.state_.txPolarization || 'None',
+      rxPolarization: () => this.state_.rxPolarization || 'None',
+      crossPolIsolation: () => this.state_.crossPolIsolation.toFixed(1)
+    };
+  }
+
+  /**
+   * Get LED status functions for composite layouts
+   * Returns functions that compute current LED states
+   */
+  getLEDs() {
+    return {
+      fault: () => this.state_.isFaulted ? 'led-red' : 'led-off'
+    };
+  }
+
+  /**
    * Add event listeners for user interactions
    */
   addEventListeners(_cb: (state: OMTState) => void): void {

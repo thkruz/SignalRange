@@ -209,6 +209,49 @@ export class BUCModuleUIStandard extends BUCModuleCore {
   }
 
   /**
+   * Get UI components for composite layouts
+   * Exposes BUC module components for parent to arrange in custom layouts
+   */
+  getComponents() {
+    if (!this.powerSwitch_ || !this.gainKnob_) {
+      throw new Error('BUC components not initialized');
+    }
+    return {
+      powerSwitch: this.powerSwitch_,
+      gainKnob: this.gainKnob_,
+      muteSwitch: this.muteSwitch_,
+      loKnob: this.loKnob_,
+      loopbackSwitch: this.loopbackSwitch_,
+      helpBtn: this.helpBtn_
+    };
+  }
+
+  /**
+   * Get display value functions for composite layouts
+   * Returns functions that compute current display values
+   */
+  getDisplays() {
+    return {
+      loFrequency: () => this.state_.loFrequency.toString(),
+      temperature: () => this.state_.temperature.toFixed(1),
+      currentDraw: () => this.state_.currentDraw.toFixed(2),
+      frequencyError: () => (this.state_.frequencyError / 1000).toFixed(1),
+      outputPower: () => this.state_.outputPower.toFixed(1)
+    };
+  }
+
+  /**
+   * Get LED status functions for composite layouts
+   * Returns functions that compute current LED states
+   */
+  getLEDs() {
+    return {
+      lock: () => this.getLockLedStatus(),
+      loopback: () => this.getLoopbackLedStatus()
+    };
+  }
+
+  /**
    * Update the DOM to reflect current state
    */
   protected syncDomWithState_(): void {

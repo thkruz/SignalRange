@@ -171,6 +171,53 @@ export class HPAModuleUIStandard extends HPAModuleCore {
   }
 
   /**
+   * Get UI components for composite layouts
+   * Exposes HPA module components for parent to arrange in custom layouts
+   */
+  getComponents() {
+    if (!this.powerSwitch_ || !this.backOffKnob) {
+      throw new Error('HPA components not initialized');
+    }
+    return {
+      powerSwitch: this.powerSwitch_,
+      backOffKnob: this.backOffKnob,
+      hpaSwitch: this.hpaSwitch_,
+      helpBtn: this.helpBtn_
+    };
+  }
+
+  /**
+   * Get display value functions for composite layouts
+   * Returns functions that compute current display values
+   */
+  getDisplays() {
+    return {
+      outputPower: () => this.state_.outputPower.toFixed(1),
+      imdLevel: () => this.state_.imdLevel.toFixed(3)
+    };
+  }
+
+  /**
+   * Get LED status functions for composite layouts
+   * Returns functions that compute current LED states
+   */
+  getLEDs() {
+    return {
+      imd: () => this.state_.isOverdriven ? 'led-orange' : 'led-off'
+    };
+  }
+
+  /**
+   * Get power meter HTML for composite layouts
+   * Returns function that renders power meter
+   */
+  getPowerMeter() {
+    return {
+      render: () => this.renderPowerMeter_((this.state_.outputPower - 30) as dBW)
+    };
+  }
+
+  /**
    * Sync state from external source
    */
   sync(state: Partial<HPAState>): void {

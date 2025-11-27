@@ -144,6 +144,41 @@ export class IfFilterBankModuleUIStandard extends IfFilterBankModuleCore {
   }
 
   /**
+   * Get UI components for composite layouts
+   * Exposes Filter module components for parent to arrange in custom layouts
+   */
+  getComponents() {
+    if (!this.bandwidthKnob_) {
+      throw new Error('Filter components not initialized');
+    }
+    return {
+      bandwidthKnob: this.bandwidthKnob_,
+      helpBtn: this.helpBtn_
+    };
+  }
+
+  /**
+   * Get display value functions for composite layouts
+   * Returns functions that compute current display values
+   */
+  getDisplays() {
+    return {
+      insertionLoss: () => this.state_.insertionLoss.toFixed(1),
+      noiseFloor: () => this.state_.noiseFloor.toFixed(0)
+    };
+  }
+
+  /**
+   * Get LED status functions for composite layouts
+   * Returns functions that compute current LED states
+   */
+  getLEDs() {
+    return {
+      insertionLossOpacity: () => this.state_.insertionLoss / 3
+    };
+  }
+
+  /**
    * Update the DOM to reflect current state
    */
   protected syncDomWithState_(): void {

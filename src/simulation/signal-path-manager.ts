@@ -1,5 +1,5 @@
 import { TapPoint } from "@app/equipment/rf-front-end/coupler-module/coupler-module";
-import { RFFrontEnd } from "@app/equipment/rf-front-end/rf-front-end";
+import { RFFrontEndCore } from "@app/equipment/rf-front-end/rf-front-end-core";
 import { dB, dBm, Hertz, RfSignal } from "@app/types";
 
 /**
@@ -63,7 +63,7 @@ import { dB, dBm, Hertz, RfSignal } from "@app/types";
  */
 export class SignalPathManager {
   constructor(
-    private readonly rfFrontEnd_: RFFrontEnd
+    private readonly rfFrontEnd_: RFFrontEndCore
   ) {
     // No-op
   }

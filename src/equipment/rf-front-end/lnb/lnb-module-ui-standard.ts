@@ -193,6 +193,46 @@ export class LNBModuleUIStandard extends LNBModuleCore {
   }
 
   /**
+   * Get UI components for composite layouts
+   * Exposes LNB module components for parent to arrange in custom layouts
+   */
+  getComponents() {
+    if (!this.powerSwitch_ || !this.gainKnob_) {
+      throw new Error('LNB components not initialized');
+    }
+    return {
+      powerSwitch: this.powerSwitch_,
+      gainKnob: this.gainKnob_,
+      loKnob: this.loKnob_,
+      helpBtn: this.helpBtn_
+    };
+  }
+
+  /**
+   * Get display value functions for composite layouts
+   * Returns functions that compute current display values
+   */
+  getDisplays() {
+    return {
+      loFrequency: () => this.state_.loFrequency.toString(),
+      noiseTemperature: () => this.state_.noiseTemperature.toFixed(1),
+      temperature: () => this.state_.temperature.toFixed(1),
+      frequencyError: () => (this.state_.frequencyError / 1e6).toFixed(3)
+    };
+  }
+
+  /**
+   * Get LED status functions for composite layouts
+   * Returns functions that compute current LED states
+   */
+  getLEDs() {
+    return {
+      lock: () => this.getLockLedStatus(),
+      noiseTempBrightness: () => this.getNoiseTempBrightnessLevel__()
+    };
+  }
+
+  /**
    * Update the DOM to reflect current state
    */
   protected syncDomWithState_(): void {

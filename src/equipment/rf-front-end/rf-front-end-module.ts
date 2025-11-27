@@ -50,6 +50,18 @@ export abstract class RFFrontEndModule<TState extends RFFrontEndModuleState> {
     EventBus.getInstance().on(Events.SYNC, this.syncDomWithState_.bind(this));
   }
 
+  /**
+   * Build the module DOM and initialize components
+   * Called by UI subclasses after component initialization
+   */
+  protected build(parentId: string): void {
+    this.initializeDom(parentId);
+    this.addEventListeners((state: TState) => {
+      this.state_ = state;
+      this.syncDomWithState_();
+    });
+  }
+
   get html(): string {
     return this.html_;
   }
@@ -62,6 +74,12 @@ export abstract class RFFrontEndModule<TState extends RFFrontEndModuleState> {
   get state(): TState {
     return this.state_;
   }
+
+  /**
+   * Initialize DOM structure
+   * Must be implemented by UI classes
+   */
+  protected abstract initializeDom(parentId: string): HTMLElement;
 
   /**
    * Add event listeners for user interactions

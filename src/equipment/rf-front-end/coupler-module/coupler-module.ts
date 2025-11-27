@@ -117,6 +117,15 @@ export class CouplerModule extends RFFrontEndModule<CouplerState> {
   }
 
   /**
+   * Initialize DOM structure (stub for backward compatibility)
+   * @deprecated This module will be refactored to use the new pattern
+   */
+  protected initializeDom(_parentId: string): HTMLElement {
+    // Stub implementation - this module still uses old pattern
+    return document.createElement('div') as unknown as HTMLElement;
+  }
+
+  /**
    * Add event listeners for user interactions
    */
   addEventListeners(cb: (state: CouplerState) => void): void {

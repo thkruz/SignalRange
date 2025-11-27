@@ -204,7 +204,8 @@ export class SpectralDensityPlot extends RTSAScreen {
   draw(): void {
     if (!this.specA.state.isPaused && this.running) {
       const now = Date.now();
-      if (now - this.lastDrawTime > 1000 / this.specA.state.refreshRate) {
+      const sweepTimeMs = 3000 * (this.specA.state.span / (this.specA.state.rbw ?? this.specA.state.span) ** 2);
+      if (now - this.lastDrawTime > sweepTimeMs) {
         const isDualScreenMode = this.canvas.id.endsWith('-spectral');
 
         // Generate cached grid+labels ImageData if needed

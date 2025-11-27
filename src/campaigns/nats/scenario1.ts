@@ -172,7 +172,7 @@ export const scenario1Data: ScenarioData = {
         ],
         [
           {
-            frequency: 3702.5e6 as RfFrequency,
+            frequency: 3802.5e6 as RfFrequency,
             signalId: 'MARINER-1-Beacon',
             serverId: 1,
             noradId: 1,

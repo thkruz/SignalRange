@@ -5,6 +5,7 @@ import { Events } from "./events/events";
 import { CampaignSelectionPage } from "./pages/campaign-selection";
 import { Footer } from "./pages/layout/footer/footer";
 import { Header } from "./pages/layout/header/header";
+import { AppShellPage } from "./pages/mission-control/app-shell-page";
 import { SandboxPage } from "./pages/sandbox-page";
 import { ScenarioSelectionPage } from "./pages/scenario-selection";
 import { ScenarioManager } from "./scenario-manager";
@@ -73,6 +74,9 @@ export class Router {
     if (path === '/') {
       // Root - show campaign selection
       this.showPage('campaigns');
+    } else if (path === '/mission-control') {
+      // Mission Control - app-shell interface
+      this.showPage('mission-control');
     } else if (path === '/sandbox') {
       // Sandbox - special case
       this.showPage('sandbox');
@@ -112,6 +116,7 @@ export class Router {
     CampaignSelectionPage.getInstance().hide();
     ScenarioSelectionPage.getInstance().hide();
     SandboxPage.getInstance()?.hide();
+    AppShellPage.getInstance()?.hide();
   }
 
   private showPage(pageName: string, params?: { campaignId?: string; scenarioId?: string }): void {
@@ -148,6 +153,13 @@ export class Router {
           SandboxPage.create(this.navigationOptions_);
           SandboxPage.getInstance().show();
         }
+        break;
+      case 'mission-control':
+        // Mission Control interface
+        Header.getInstance().makeSmall(true);
+        Footer.getInstance().makeSmall(true);
+        AppShellPage.create();
+        AppShellPage.getInstance().show();
         break;
     }
 

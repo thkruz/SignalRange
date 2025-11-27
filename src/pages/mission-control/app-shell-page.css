@@ -1,0 +1,269 @@
+/* AppShell Page Styles - Mission Control Interface */
+
+.app-shell-page {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 80px);
+  background-color: #1f1f1f;
+  color: #cbd5e1;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  overflow: hidden;
+}
+
+/* ===== 1. Global Command Bar (Top) ===== */
+.app-shell-header {
+  height: 56px;
+  background-color: #292929;
+  border-bottom: 1px solid #6b6b6b;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.command-bar-left {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  background-color: #292929;
+  gap: 1rem;
+}
+
+.command-bar-right {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  background-color: #292929;
+  padding: 0 1rem;
+  gap: 1rem;
+}
+
+.command-bar-left {
+  width: 256px;
+  /* w-64 */
+  border-right: 1px solid #6b6b6b;
+}
+
+.command-bar-center {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.aos-countdown {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #1f1f1f;
+  position: relative;
+}
+
+.command-bar-left i {
+  font-size: 20px;
+  color: #ba160c;
+}
+
+.command-bar-ticker {
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  overflow: hidden;
+  position: relative;
+}
+
+.command-bar-ticker.info {
+  background-color: rgba(107, 114, 128, 0.2);
+  border-top: 1px solid rgba(107, 114, 128, 0.3);
+}
+
+.command-bar-ticker.warn {
+  background-color: rgba(234, 179, 8, 0.2);
+  border-top: 1px solid rgba(234, 179, 8, 0.3);
+}
+
+.command-bar-ticker.healthy {
+  background-color: rgba(16, 185, 129, 0.2);
+  border-top: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.command-bar-ticker.alarm {
+  background-color: rgba(186, 22, 12, 0.2);
+  border-top: 1px solid rgba(186, 22, 12, 0.3);
+}
+
+.command-bar-right {
+  border-left: 1px solid #6b6b6b;
+}
+
+.command-bar-left .text-blue-500 {
+  color: #ba160c;
+}
+
+/* Ticker Animation */
+@keyframes ticker {
+  0% {
+    transform: translateX(100%);
+  }
+
+  100% {
+    transform: translateX(-100%);
+  }
+}
+
+.ticker-wrap {
+  overflow: hidden;
+  white-space: nowrap;
+  width: 100%;
+}
+
+.ticker-move {
+  display: inline-block;
+  animation: ticker 30s linear infinite;
+}
+
+.ticker-item {
+  display: inline-block;
+  padding: 0 2rem;
+}
+
+/* ===== 2. Main Workspace ===== */
+.app-shell-main {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ===== Asset Tree Sidebar ===== */
+.app-shell-sidebar {
+  background-color: #292929;
+  border-right: 1px solid #6b6b6b;
+  width: 256px;
+  /* w-64 */
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.sidebar-header {
+  border-bottom: 1px solid #6b6b6b;
+  padding: 0.5rem;
+  /* p-2 */
+}
+
+.sidebar-header h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #e2e8f0;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.sidebar-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.5rem;
+  /* p-2 */
+}
+
+/* ===== 3. Tabbed Canvas ===== */
+.app-shell-canvas {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background-color: #1f1f1f;
+  overflow: hidden;
+}
+
+.canvas-header {
+  background-color: #292929;
+  border-bottom: 1px solid #6b6b6b;
+  height: 36px;
+  display: flex;
+  align-items: flex-end;
+  padding: 0.5em 0 0 0.5rem;
+  flex-shrink: 0;
+}
+
+.tab-bar {
+  display: flex;
+  gap: 4px;
+  height: 100%;
+}
+
+.tab {
+  padding: 8px 16px;
+  color: #6c0f09;
+  background-color: #3b3b3b;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  border-top-left-radius: 0.25rem;
+  border-top-right-radius: 0.25rem;
+  transition: all 0.2s;
+  border-top: 2px solid transparent;
+}
+
+.tab:hover {
+  background-color: #475569;
+  color: #e2e8f0;
+}
+
+.tab-active {
+  background-color: #1f1f1f;
+  color: #db3a32;
+  border-top: 2px solid #ba160c;
+  font-weight: 700;
+  /* font-bold */
+}
+
+.canvas-content {
+  flex: 1;
+  padding: 1rem;
+  /* p-4 */
+  overflow-y: auto;
+}
+
+.canvas-content h2 {
+  font-size: 24px;
+  font-weight: 600;
+  color: #e2e8f0;
+  margin: 0 0 1rem 0;
+}
+
+.canvas-content p {
+  font-size: 14px;
+  color: #ea4239;
+  margin: 0;
+}
+
+/* ===== Placeholder Styles ===== */
+.placeholder-text {
+  color: #ea4239;
+  font-size: 13px;
+  font-style: italic;
+}
+
+/* ===== Scrollbar Styles ===== */
+.app-shell-page ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.app-shell-page ::-webkit-scrollbar-track {
+  background: #1f1f1f;
+}
+
+.app-shell-page ::-webkit-scrollbar-thumb {
+  background: #6b6b6b;
+  border-radius: 3px;
+}
+
+.app-shell-page ::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}

@@ -1,0 +1,284 @@
+/*
+ * Styles for the TimelineDeck component.
+ * This component displays the mission timeline at the bottom of the shell.
+ */
+
+.app-shell-timeline {
+  height: 12rem;
+  /* h-48 */
+  background-color: #1f1f1f;
+  /* bg-slate-950 */
+  border-top: 1px solid #6b6b6b;
+  /* border-slate-700 */
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  transition: height 0.3s ease-in-out;
+}
+
+.app-shell-timeline.collapsed {
+  height: 2rem;
+  /* h-8 */
+}
+
+.app-shell-timeline.collapsed .timeline-content {
+  visibility: hidden;
+  transition: visibility 0.3s ease-in-out;
+  /* Add display none for better performance */
+}
+
+.timeline-header {
+  height: 2rem;
+  /* h-8 */
+  background-color: #292929;
+  /* bg-slate-900 */
+  border-bottom: 1px solid #292929;
+  /* border-slate-800 */
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 1rem;
+  /* px-4 */
+  color: #94a3b8;
+  /* text-slate-400 */
+  font-size: 0.75rem;
+  /* text-xs */
+  font-weight: 700;
+  /* font-bold */
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  /* tracking-wide */
+}
+
+.timeline-header-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  /* gap-4 */
+}
+
+.timeline-zoom-controls {
+  display: flex;
+  gap: 0.25rem;
+  /* gap-1 */
+}
+
+.timeline-zoom-controls button {
+  font-size: 0.75rem;
+  /* text-xs */
+  background-color: #292929;
+  /* bg-slate-800 */
+  color: #cbd5e1;
+  /* text-slate-300 */
+  padding: 0.125rem 0.5rem;
+  /* px-2 py-0.5 */
+  border-radius: 0.25rem;
+  /* rounded */
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.timeline-zoom-controls button:hover {
+  background-color: #334155;
+  /* hover:bg-slate-700 */
+}
+
+.timeline-zoom-controls button.active {
+  background-color: #a72019;
+  /* bg-red-700 */
+  color: #fecaca;
+  /* text-red-200 */
+  border-color: #ed5e56;
+  /* border-red-600 */
+}
+
+.app-shell-timeline.collapsed .timeline-axis {
+  visibility: hidden;
+  transition: visibility 0.3s ease-in-out;
+}
+
+.timeline-collapse-btn {
+  color: #878787;
+  /* text-slate-500 */
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.timeline-collapse-btn.is-rotated {
+  transform: rotate(180deg);
+  transition: transform 0.3s ease-in-out;
+}
+
+.timeline-collapse-btn:hover {
+  color: #ffffff;
+  /* hover:text-white */
+}
+
+.timeline-content {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background-color: #161616;
+}
+
+.timeline-grid {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  justify-content: space-between;
+  padding: 0 3rem;
+  /* px-12 */
+  pointer-events: none;
+}
+
+.timeline-grid-line {
+  width: 1px;
+  height: 100%;
+  background-color: #292929;
+  /* bg-slate-800 */
+  border-right: 1px dashed #292929;
+  /* border-r border-slate-800 border-dashed */
+}
+
+.timeline-tracks {
+  position: absolute;
+  inset: 0;
+  top: 1.5rem;
+  /* top-6 */
+  padding: 0 1rem;
+  /* px-4 */
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  /* space-y-4 */
+}
+
+.timeline-track {
+  height: 1.5rem;
+  /* h-6 */
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
+}
+
+.timeline-track-label {
+  width: 6rem;
+  /* w-24 */
+  font-size: 10px;
+  color: #bdbdbd;
+  /* text-slate-500 */
+  font-weight: 700;
+  /* font-bold */
+}
+
+.timeline-track-lane {
+  flex: 1;
+  height: 1rem;
+  /* h-4 */
+  background-color: #292929;
+  /* bg-slate-900 */
+  border-radius: 0.25rem;
+  /* rounded */
+  position: relative;
+  overflow: hidden;
+}
+
+/* Timeline Blocks */
+.timeline-block {
+  position: absolute;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  border-radius: 0.25rem;
+  /* rounded */
+}
+
+.pass-active {
+  background-color: rgba(16, 185, 129, 0.2);
+  /* bg-green-900/50 */
+  border: 1px solid #15803d;
+  /* border-green-700 */
+  color: #4ade80;
+  /* text-green-400 */
+}
+
+.pass-inactive {
+  background-color: #292929;
+  /* bg-slate-800 */
+  border: 1px solid #475569;
+  /* border-slate-600 */
+  color: #94a3b8;
+  /* text-slate-400 */
+}
+
+.sun {
+  background-color: rgba(245, 158, 11, 0.2);
+  /* bg-amber-500/20 */
+  border-left: 1px solid rgba(245, 158, 11, 0.5);
+  /* border-l border-amber-500/50 */
+  border-radius: 0;
+}
+
+.eclipse {
+  background-color: #121212;
+  /* bg-slate-950 */
+  border: 1px solid #575757;
+  /* border-slate-700 */
+  color: #878787;
+  /* text-slate-500 */
+}
+
+.activity-downlink {
+  background-color: #2563eb;
+  /* bg-blue-600 */
+  cursor: pointer;
+}
+
+.activity-downlink:hover {
+  background-color: #3b82f6;
+  /* hover:bg-blue-500 */
+}
+
+.activity-fsw {
+  background-color: #9333ea;
+  /* bg-purple-600 */
+  cursor: pointer;
+}
+
+.activity-fsw:hover {
+  background-color: #a855f7;
+  /* hover:bg-purple-500 */
+}
+
+/* Time Axis */
+.timeline-axis {
+  height: 1.5rem;
+  /* h-6 */
+  background-color: #292929;
+  /* bg-slate-900 */
+  display: flex;
+  justify-content: space-between;
+  padding: 0 3rem;
+  /* px-12 */
+  font-size: 10px;
+  color: #8d8d8d;
+  /* text-slate-500 */
+  font-family: 'JetBrains Mono', monospace;
+  align-items: center;
+  border-top: 1px solid #292929;
+  /* border-slate-800 */
+}
+
+.timeline-header span {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #ea3c2b;
+}

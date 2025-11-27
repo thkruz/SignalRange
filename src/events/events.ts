@@ -13,6 +13,7 @@ import { ConditionState, Objective, ObjectiveState } from "../objectives/objecti
 import { RfSignal } from "../types";
 import { HPAState } from "@app/equipment/rf-front-end/hpa-module";
 import { LNBState } from "@app/equipment/rf-front-end/lnb-module";
+import { GroundStationState } from "@app/assets/ground-station/ground-station-state";
 
 // Antenna Event specific interfaces
 export interface AntennaLoopbackChangedData {
@@ -128,6 +129,10 @@ export enum Events {
   // Antenna events
   ANTENNA_STATE_CHANGED = 'antenna:state:changed',
 
+  // Ground Station events
+  GROUND_STATION_STATE_CHANGED = 'ground-station:state:changed',
+  ASSET_SELECTED = 'asset:selected',
+
   // Transmitter events
   TX_CONFIG_CHANGED = 'tx:config:changed',
   TX_ACTIVE_MODEM_CHANGED = 'tx:activeModem:changed',
@@ -176,6 +181,9 @@ export enum Events {
 
 export interface EventMap {
   [Events.ANTENNA_STATE_CHANGED]: [Partial<AntennaState>];
+
+  [Events.GROUND_STATION_STATE_CHANGED]: [Partial<GroundStationState>];
+  [Events.ASSET_SELECTED]: [{ type: 'ground-station' | 'satellite', id: string }];
 
   [Events.RF_FE_POWER_CHANGED]: [Partial<RFFrontEndState>];
   [Events.RF_FE_BUC_CHANGED]: [Partial<BUCState>];

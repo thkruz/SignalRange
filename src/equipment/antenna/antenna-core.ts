@@ -277,8 +277,8 @@ export abstract class AntennaCore extends BaseEquipment {
     this.syncDomWithState();
   }
 
-  protected handlePowerToggle(): void {
-    this.state.isPowered = !this.state.isPowered;
+  protected handlePowerToggle(isPowered?: boolean): void {
+    this.state.isPowered = isPowered ?? !this.state.isPowered;
 
     // Clear lock acquisition timeout when powering off
     if (!this.state.isPowered && this.lockAcquisitionTimeout_) {

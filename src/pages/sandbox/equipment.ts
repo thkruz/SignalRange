@@ -1,6 +1,7 @@
 import { BaseElement } from "@app/components/base-element";
 import { qs } from "@app/engine/utils/query-selector";
-import { ANTENNA_CONFIG_KEYS, AntennaCore, AntennaUIBasic, AntennaUIStandard } from "@app/equipment/antenna";
+import { ANTENNA_CONFIG_KEYS, AntennaCore, AntennaUIBasic } from "@app/equipment/antenna";
+import { AntennaUIModern } from "@app/equipment/antenna/antenna-ui-modern";
 import { RFFrontEnd } from "@app/equipment/rf-front-end/rf-front-end";
 import { EventBus } from "@app/events/event-bus";
 import { Events } from "@app/events/events";
@@ -160,7 +161,7 @@ export class Equipment extends BaseElement {
       switch (antennaConfigId) {
         case ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK:
         case ANTENNA_CONFIG_KEYS.KU_BAND_9M_LIMIT:
-          antenna = new AntennaUIStandard(`antenna${i}-container`, antennaConfigId, settings.antennasState?.[i - 1]);
+          antenna = new AntennaUIModern(`antenna${i}-container`, antennaConfigId, settings.antennasState?.[i - 1]);
           break;
         default:
           antenna = new AntennaUIBasic(`antenna${i}-container`, antennaConfigId, settings.antennasState?.[i - 1]);

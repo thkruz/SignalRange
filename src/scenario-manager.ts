@@ -1,7 +1,7 @@
 import { scenario1Data } from './campaigns/nats/scenario1';
 import { scenario2Data } from "./campaigns/nats/scenario2";
 import { scenario3Data } from './campaigns/nats/scenario3';
-import { AntennaState } from './equipment/antenna/antenna';
+import { AntennaState } from './equipment/antenna';
 import { ANTENNA_CONFIG_KEYS } from './equipment/antenna/antenna-configs';
 import { defaultSpectrumAnalyzerState } from './equipment/real-time-spectrum-analyzer/defaultSpectrumAnalyzerState';
 import { RealTimeSpectrumAnalyzerState } from './equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer';

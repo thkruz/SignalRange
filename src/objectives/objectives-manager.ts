@@ -27,7 +27,7 @@ export class ObjectivesManager {
 
   private constructor(objectives: Objective[]) {
     this.eventBus_ = EventBus.getInstance();
-    this.startTime_ = performance.now();
+    this.startTime_ = Date.now();
 
     // Initialize objective states
     this.objectiveStates_ = objectives.map((objective) => {
@@ -37,7 +37,7 @@ export class ObjectivesManager {
       return {
         objective,
         isActive,
-        activatedAt: isActive ? performance.now() : undefined,
+        activatedAt: isActive ? Date.now() : undefined,
         isCompleted: false,
         conditionStates: objective.conditions.map((condition) => ({
           condition,
@@ -111,7 +111,7 @@ export class ObjectivesManager {
    * Get total elapsed time since objectives manager started
    */
   getElapsedTime(): number {
-    return (performance.now() - this.startTime_) / 1000; // Convert to seconds
+    return (Date.now() - this.startTime_) / 1000; // Convert to seconds
   }
 
   /**
@@ -266,7 +266,7 @@ export class ObjectivesManager {
 
         // Skip already completed maintenance (unless it's indefinite maintenance)
         if (conditionState.isMaintenanceComplete &&
-            !conditionState.condition.maintainUntilObjectiveComplete) {
+          !conditionState.condition.maintainUntilObjectiveComplete) {
           continue;
         }
 
@@ -279,12 +279,12 @@ export class ObjectivesManager {
         // Handle condition state changes
         if (isNowSatisfied && !wasSatisfied) {
           // Condition just became satisfied
-          conditionState.satisfiedAt = performance.now();
+          conditionState.satisfiedAt = Date.now();
           conditionState.maintainedDuration = 0;
 
           // Mark as complete based on condition type
           if (conditionState.condition.maintainUntilObjectiveComplete ||
-              !conditionState.condition.mustMaintain) {
+            !conditionState.condition.mustMaintain) {
             // Indefinite maintenance & non-maintenance conditions complete immediately
             // Timer-based maintenance conditions need to maintain for duration (handled in else block)
             conditionState.isMaintenanceComplete = true;
@@ -301,7 +301,7 @@ export class ObjectivesManager {
           conditionState.satisfiedAt = undefined;
           conditionState.maintainedDuration = 0;
           conditionState.lostTimestamps = conditionState.lostTimestamps || [];
-          conditionState.lostTimestamps.push(performance.now());
+          conditionState.lostTimestamps.push(Date.now());
 
           // Reset maintenance complete for indefinite-maintenance conditions
           if (conditionState.condition.maintainUntilObjectiveComplete) {
@@ -341,7 +341,7 @@ export class ObjectivesManager {
       const isObjectiveComplete = this.checkObjectiveComplete_(objectiveState);
       if (isObjectiveComplete && !objectiveState.isCompleted) {
         objectiveState.isCompleted = true;
-        objectiveState.completedAt = performance.now();
+        objectiveState.completedAt = Date.now();
 
         this.collapsedObjectiveIds_.add(objectiveState.objective.id);
 
@@ -393,7 +393,7 @@ export class ObjectivesManager {
    * Activate objectives that were waiting for a specific prerequisite
    */
   private activateDependentObjectives_(completedObjectiveId: string): void {
-    const now = performance.now();
+    const now = Date.now();
 
     for (const objectiveState of this.objectiveStates_) {
       // Skip already active or completed objectives

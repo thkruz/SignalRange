@@ -24,7 +24,7 @@ module.exports = {
   },
   collectCoverage: true,
   coverageDirectory: 'coverage',
-  setupFiles: ["jest-canvas-mock"],
+  setupFiles: ["jest-canvas-mock", '<rootDir>/jest.polyfills.js'],
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   transform: {
     '^.+\\.[jt]sx?$': 'babel-jest'

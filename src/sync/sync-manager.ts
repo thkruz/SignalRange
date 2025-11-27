@@ -1,13 +1,13 @@
 import { RFFrontEndState } from '@app/equipment/rf-front-end/rf-front-end';
 import { ObjectiveState } from '@app/objectives';
 import { SimulationManager } from '@app/simulation/simulation-manager';
-import { AntennaState } from '../equipment/antenna/antenna';
 import { RealTimeSpectrumAnalyzerState } from '../equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer';
 import { ReceiverState } from '../equipment/receiver/receiver';
 import { TransmitterState } from '../equipment/transmitter/transmitter';
 import { Logger } from '../logging/logger';
 import type { Equipment } from '../pages/sandbox/equipment';
 import type { StorageProvider } from './storage-provider';
+import { AntennaState } from '@app/equipment/antenna';
 
 /**
  * SyncManager - Orchestrates synchronization between StudentEquipment and storage

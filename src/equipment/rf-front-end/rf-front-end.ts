@@ -4,7 +4,7 @@ import { qs } from "../../engine/utils/query-selector";
 import { Events } from "../../events/events";
 import { SignalPathManager } from '../../simulation/signal-path-manager';
 import { dBm, IfFrequency, RfFrequency } from "../../types";
-import { Antenna } from '../antenna/antenna';
+import { AntennaCore } from "../antenna";
 import { AlarmStatus, BaseEquipment } from "../base-equipment";
 import { Transmitter } from '../transmitter/transmitter';
 import { BUCModule, BUCState } from './buc-module/buc-module';
@@ -59,7 +59,7 @@ export class RFFrontEnd extends BaseEquipment {
   signalPathManager: SignalPathManager;
 
   // References to connected equipment
-  antenna: Antenna | null = null;
+  antenna: AntennaCore | null = null;
   transmitters: Transmitter[] = [];
 
   constructor(parentId: string, state?: Partial<RFFrontEndState>, teamId: number = 1, serverId: number = 1) {
@@ -123,7 +123,7 @@ export class RFFrontEnd extends BaseEquipment {
    * RF Frontend Modules need a reference to connected Antennas to simulate
    * signal paths. Use this to wire the antenna after it is created.
    */
-  connectAntenna(antenna: Antenna): void {
+  connectAntenna(antenna: AntennaCore): void {
     this.antenna = antenna;
   }
 

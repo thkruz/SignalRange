@@ -1,5 +1,5 @@
 import { html } from '@app/engine/utils/development/formatter';
-import type { AntennaState } from '@app/equipment/antenna/antenna';
+import type { AntennaState } from '@app/equipment/antenna';
 import { ANTENNA_CONFIG_KEYS } from '@app/equipment/antenna/antenna-configs';
 import { BUCModule } from '@app/equipment/rf-front-end/buc-module/buc-module';
 import { CouplerState, TapPoint } from '@app/equipment/rf-front-end/coupler-module/coupler-module';

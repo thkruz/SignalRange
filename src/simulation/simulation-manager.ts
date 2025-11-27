@@ -13,6 +13,7 @@ import { RfSignal } from './../types';
 
 export class SimulationManager {
   private static instance_: SimulationManager;
+  private lastFrameTime: number;
   equipment: Equipment;
   isDeveloperMode = false;
 
@@ -37,6 +38,7 @@ export class SimulationManager {
 
     this.satelliteSignals = this.satellites.flatMap(sat => sat.txSignal);
 
+    this.lastFrameTime = Date.now();
     this.gameLoop_();
   }
 
@@ -48,10 +50,9 @@ export class SimulationManager {
     return this.instance_;
   }
 
-  private lastFrameTime = performance.now();
 
   private gameLoop_(): void {
-    const now = performance.now();
+    const now = Date.now();
     this.dt = (now - this.lastFrameTime) as Milliseconds;
     this.lastFrameTime = now;
 

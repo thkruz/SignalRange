@@ -12,7 +12,7 @@ export function createLNB(
   state: LNBState,
   rfFrontEnd: RFFrontEndCore,
   unit: number = 1,
-  parentId: string,
+  parentId: string = '',
   uiType: LNBModuleUIType = 'standard'
 ): LNBModuleCore {
   switch (uiType) {

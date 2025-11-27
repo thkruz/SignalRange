@@ -1,22 +1,22 @@
-import { html } from "../../engine/utils/development/formatter";
-import { qs } from "../../engine/utils/query-selector";
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
-import { BUCState } from './buc-module/buc-module-core';
+import { html } from "../../engine/utils/development/formatter";
+import { qs } from "../../engine/utils/query-selector";
+import { BUCModuleCore, BUCState } from './buc-module/buc-module-core';
 import { createBUC } from './buc-module/buc-module-factory';
-import { BUCModuleUIStandard } from './buc-module/buc-module-ui-standard';
 import { CouplerModule, CouplerState } from "./coupler-module/coupler-module";
 import { createCoupler } from './coupler-module/coupler-module-factory';
-import { IfFilterBankState } from './filter-module/filter-module-core';
+import { IfFilterBankModuleCore, IfFilterBankState } from './filter-module/filter-module-core';
 import { createIfFilterBank } from './filter-module/filter-module-factory';
 import { IfFilterBankModuleUIStandard } from './filter-module/filter-module-ui-standard';
-import { GPSDOState } from './gpsdo-module/gpsdo-state';
+import { GPSDOModuleCore } from './gpsdo-module';
 import { createGPSDO } from './gpsdo-module/gpsdo-module-factory';
 import { GPSDOModuleUIStandard } from './gpsdo-module/gpsdo-module-ui-standard';
-import { HPAState } from './hpa-module/hpa-module-core';
+import { GPSDOState } from './gpsdo-module/gpsdo-state';
+import { HPAModuleCore, HPAState } from './hpa-module/hpa-module-core';
 import { createHPA } from './hpa-module/hpa-module-factory';
 import { HPAModuleUIStandard } from './hpa-module/hpa-module-ui-standard';
-import { LNBState } from './lnb-module/lnb-module-core';
+import { LNBModuleCore, LNBState } from './lnb-module/lnb-module-core';
 import { createLNB } from './lnb-module/lnb-module-factory';
 import { LNBModuleUIStandard } from './lnb-module/lnb-module-ui-standard';
 import { OMTModule, OMTState } from "./omt-module/omt-module";
@@ -32,12 +32,12 @@ import './rf-front-end.css';
 export class RFFrontEndUIStandard extends RFFrontEndCore {
   // Type-safe module references (UI variants)
   declare omtModule: OMTModule;
-  declare bucModule: BUCModuleUIStandard;
-  declare hpaModule: HPAModuleUIStandard;
-  declare filterModule: IfFilterBankModuleUIStandard;
-  declare lnbModule: LNBModuleUIStandard;
+  declare bucModule: BUCModuleCore;
+  declare hpaModule: HPAModuleCore;
+  declare filterModule: IfFilterBankModuleCore;
+  declare lnbModule: LNBModuleCore;
   declare couplerModule: CouplerModule;
-  declare gpsdoModule: GPSDOModuleUIStandard;
+  declare gpsdoModule: GPSDOModuleCore;
 
   constructor(parentId: string, state?: Partial<RFFrontEndState>, teamId = 1, serverId = 1) {
     super(state, teamId, serverId, parentId);
@@ -61,13 +61,13 @@ export class RFFrontEndUIStandard extends RFFrontEndCore {
     // We'll inject their HTML via innerHTML and add event listeners afterward
     // Using factories to create standard UI variants
     // Using 'as any' for rfFrontEnd parameter until module constructors are updated to accept RFFrontEndCore
-    this.omtModule = createOMT(this.state.omt, this as any, 1, '', 'standard');
-    this.bucModule = createBUC(this.state.buc, this as any, 1, '', 'standard') as BUCModuleUIStandard;
-    this.hpaModule = createHPA(this.state.hpa, this as any, 1, '', 'standard') as HPAModuleUIStandard;
-    this.filterModule = createIfFilterBank(this.state.filter, this as any, 1, '', 'standard') as IfFilterBankModuleUIStandard;
-    this.lnbModule = createLNB(this.state.lnb, this as any, 1, '', 'standard') as LNBModuleUIStandard;
-    this.couplerModule = createCoupler(this.state.coupler, this as any, 1, '', 'standard');
-    this.gpsdoModule = createGPSDO(this.state.gpsdo, this as any, 1, '', 'standard') as GPSDOModuleUIStandard;
+    this.omtModule = createOMT(this.state.omt, this);
+    this.bucModule = createBUC(this.state.buc, this);
+    this.hpaModule = createHPA(this.state.hpa, this) as HPAModuleUIStandard;
+    this.filterModule = createIfFilterBank(this.state.filter, this) as IfFilterBankModuleUIStandard;
+    this.lnbModule = createLNB(this.state.lnb, this) as LNBModuleUIStandard;
+    this.couplerModule = createCoupler(this.state.coupler, this);
+    this.gpsdoModule = createGPSDO(this.state.gpsdo, this as RFFrontEndCore) as GPSDOModuleUIStandard;
 
     // Initialize DOM with composite layout
     super.build(parentId);
@@ -243,11 +243,6 @@ export class RFFrontEndUIStandard extends RFFrontEndCore {
       element.addEventListener('change', this.handleInputChange.bind(this));
       element.addEventListener('input', this.handleInputChange.bind(this));
     });
-
-    // Button action handlers
-    container.querySelectorAll('[data-action]').forEach(button => {
-      button.addEventListener('click', this.handleButtonAction.bind(this));
-    });
   }
 
   /**
@@ -267,22 +262,6 @@ export class RFFrontEndUIStandard extends RFFrontEndCore {
       if (module in this.state && typeof this.state[module as keyof RFFrontEndState] === 'object') {
         (this.state[module as keyof RFFrontEndState] as any)[property] = value;
       }
-    }
-
-    this.syncDomWithState();
-  }
-
-  /**
-   * Handle button actions (from original implementation)
-   */
-  private handleButtonAction(e: Event): void {
-    const button = e.target as HTMLButtonElement;
-    const action = button.dataset.action;
-
-    switch (action) {
-      case 'toggle-advanced-mode':
-        // Not sure what this does yet
-        break;
     }
 
     this.syncDomWithState();

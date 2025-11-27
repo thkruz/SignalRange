@@ -13,7 +13,7 @@ export function createGPSDO(
   state: GPSDOState,
   rfFrontEnd: RFFrontEndCore,
   unit: number = 1,
-  parentId: string,
+  parentId: string = '',
   uiType: GPSDOModuleUIType = 'standard'
 ): GPSDOModuleCore {
   switch (uiType) {

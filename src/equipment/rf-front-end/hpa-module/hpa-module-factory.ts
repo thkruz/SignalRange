@@ -12,7 +12,7 @@ export function createHPA(
   state: HPAState,
   rfFrontEnd: RFFrontEndCore,
   unit: number = 1,
-  parentId: string,
+  parentId: string = '',
   uiType: HPAModuleUIType = 'standard'
 ): HPAModuleCore {
   switch (uiType) {

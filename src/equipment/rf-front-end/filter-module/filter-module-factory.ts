@@ -12,7 +12,7 @@ export function createIfFilterBank(
   state: IfFilterBankState,
   rfFrontEnd: RFFrontEndCore,
   unit: number = 1,
-  parentId: string,
+  parentId: string = '',
   uiType: IfFilterBankModuleUIType = 'standard'
 ): IfFilterBankModuleCore {
   switch (uiType) {

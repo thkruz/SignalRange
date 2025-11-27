@@ -12,7 +12,7 @@ export function createBUC(
   state: BUCState,
   rfFrontEnd: RFFrontEndCore,
   unit: number = 1,
-  parentId: string,
+  parentId: string = '',
   uiType: BUCModuleUIType = 'standard'
 ): BUCModuleCore {
   switch (uiType) {

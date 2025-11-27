@@ -311,7 +311,7 @@ export abstract class RFFrontEndCore extends BaseEquipment {
 
   protected abstract checkForAlarms_(): void;
 
-  protected syncDomWithState(): void {
+  syncDomWithState(): void {
     // Prevent unnecessary re-renders
     if (JSON.stringify(this.state) === this.lastRenderState) {
       return;

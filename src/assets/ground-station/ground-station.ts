@@ -86,8 +86,6 @@ export class GroundStation {
         `gs-${this.uuid}-rf-front-end${index + 1}-container`,
         rfConfig,
         'standard',
-        config.teamId || 1,
-        config.serverId || 1
       );
       this.rfFrontEnds.push(rfFrontEnd);
     });
@@ -101,8 +99,8 @@ export class GroundStation {
       if (rfFrontEnd) {
         const specA = new RealTimeSpectrumAnalyzer(
           `gs-${this.uuid}-specA${index + 1}-container`,
-          specConfig || {},
           rfFrontEnd,
+          specConfig || {},
           config.teamId || 1
         );
         this.spectrumAnalyzers.push(specA);

@@ -36,6 +36,7 @@ export const scenario3Data: ScenarioData = {
   ],
   settings: {
     isSync: false,
+    groundStations: [],
     antennas: [ANTENNA_CONFIG_KEYS.C_BAND_3M_ANTESTAR],
     rfFrontEnds: [{
       // Module states managed by their respective classes

@@ -5,7 +5,7 @@ import { Events } from "./events/events";
 import { CampaignSelectionPage } from "./pages/campaign-selection";
 import { Footer } from "./pages/layout/footer/footer";
 import { Header } from "./pages/layout/header/header";
-import { AppShellPage } from "./pages/mission-control/app-shell-page";
+import { MissionControlPage } from "./pages/mission-control/mission-control-page";
 import { SandboxPage } from "./pages/sandbox-page";
 import { ScenarioSelectionPage } from "./pages/scenario-selection";
 import { ScenarioManager } from "./scenario-manager";
@@ -116,7 +116,7 @@ export class Router {
     CampaignSelectionPage.getInstance().hide();
     ScenarioSelectionPage.getInstance().hide();
     SandboxPage.getInstance()?.hide();
-    AppShellPage.getInstance()?.hide();
+    MissionControlPage.getInstance()?.hide();
   }
 
   private showPage(pageName: string, params?: { campaignId?: string; scenarioId?: string }): void {
@@ -150,16 +150,16 @@ export class Router {
         Footer.getInstance().makeSmall(true);
         if (params?.scenarioId) {
           ScenarioManager.getInstance().scenario = params.scenarioId;
-          SandboxPage.create(this.navigationOptions_);
-          SandboxPage.getInstance().show();
+          MissionControlPage.create();
+          MissionControlPage.getInstance().show();
         }
         break;
       case 'mission-control':
         // Mission Control interface
         Header.getInstance().makeSmall(true);
         Footer.getInstance().makeSmall(true);
-        AppShellPage.create();
-        AppShellPage.getInstance().show();
+        MissionControlPage.create();
+        MissionControlPage.getInstance().show();
         break;
     }
 

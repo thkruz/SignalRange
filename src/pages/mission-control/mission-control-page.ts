@@ -1,21 +1,25 @@
+import { GroundStation } from "@app/assets/ground-station/ground-station";
+import { GroundStationConfig } from "@app/assets/ground-station/ground-station-state";
 import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
+import { ScenarioManager } from "@app/scenario-manager";
 import { BasePage } from "../base-page";
 import { Body } from "../layout/body/body";
-import './app-shell-page.css';
 import { GlobalCommandBar } from "./global-command-bar";
+import './mission-control-page.css';
 import { TimelineDeck } from "./timeline-deck";
+
 
 /**
  * AppShellPage - Mission Control Interface
- *
- * Modern web-based ground station control system
- * Displays asset tree, tabbed canvas for equipment control, and timeline
- */
-export class AppShellPage extends BasePage {
+*
+* Modern web-based ground station control system
+* Displays asset tree, tabbed canvas for equipment control, and timeline
+*/
+export class MissionControlPage extends BasePage {
   readonly id = 'app-shell-page';
   static readonly containerId = 'app-shell-page-container';
-  private static instance_: AppShellPage | null = null;
+  private static instance_: MissionControlPage | null = null;
 
   // Components (placeholder for now)
   private commandBarCenter_!: GlobalCommandBar;
@@ -23,28 +27,25 @@ export class AppShellPage extends BasePage {
   // private assetTreeSidebar_: AssetTreeSidebar;
   // private tabbedCanvas_: TabbedCanvas;
 
-  // State
-  // private groundStations_: GroundStation[] = [];
-  // private satellites_: any[] = [];  // Placeholder
+  private groundStations_: GroundStation[] = [];
 
   private constructor() {
     super();
     this.init_();
 
-    console.log(this.commandBarCenter_);
-    console.log(this.timelineDeck_);
+    console.log(this.commandBarCenter_, this.timelineDeck_, this.groundStations_);
   }
 
-  static create(): AppShellPage {
+  static create(): MissionControlPage {
     if (this.instance_) {
       throw new Error("AppShellPage instance already exists.");
     }
 
-    this.instance_ = new AppShellPage();
+    this.instance_ = new MissionControlPage();
     return this.instance_;
   }
 
-  static getInstance(): AppShellPage | null {
+  static getInstance(): MissionControlPage | null {
     return this.instance_;
   }
 
@@ -101,6 +102,9 @@ export class AppShellPage extends BasePage {
     this.commandBarCenter_ = new GlobalCommandBar('global-command-bar-container');
 
     this.timelineDeck_ = new TimelineDeck(this.id);
+
+    this.createGroundStationsFromScenario_();
+
     // Initialize components (placeholder)
     this.initializePlaceholderComponents_();
 
@@ -114,6 +118,15 @@ export class AppShellPage extends BasePage {
   private initializePlaceholderComponents_(): void {
     // TODO: Initialize actual components in Phase 3-4
     // Other components will be initialized here.
+  }
+
+  /**
+   * Creates GroundStation instances from the current scenario config.
+   */
+  private createGroundStationsFromScenario_(): void {
+    const scenario = ScenarioManager.getInstance();
+
+    this.groundStations_ = scenario.getScenario().groundStations.map((config: GroundStationConfig) => new GroundStation(config));
   }
 
   /**
@@ -139,7 +152,7 @@ export class AppShellPage extends BasePage {
   }
 
   hide(): void {
-    AppShellPage.destroy();
+    MissionControlPage.destroy();
     if (this.dom_) {
       this.dom_.style.display = 'none';
     }
@@ -147,11 +160,11 @@ export class AppShellPage extends BasePage {
 
   static destroy(): void {
     // Clean up resources
-    if (AppShellPage.instance_) {
+    if (MissionControlPage.instance_) {
       // TODO: Clean up components and ground stations
       // this.commandBarCenter_.destroy();
       // this.timelineDeck_.destroy();
-      AppShellPage.instance_ = null;
+      MissionControlPage.instance_ = null;
     }
   }
 }

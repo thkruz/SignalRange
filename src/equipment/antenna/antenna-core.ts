@@ -7,10 +7,10 @@ import { Events } from "../../events/events";
 import { SimulationManager } from "../../simulation/simulation-manager";
 import { dB, dBm, Hertz, RfSignal } from "../../types";
 import { AlarmStatus, BaseEquipment } from '../base-equipment';
+import { RFFrontEndCore } from "../rf-front-end/rf-front-end-core";
 import { Satellite } from "../satellite/satellite";
 import { Transmitter } from "../transmitter/transmitter";
 import { ANTENNA_CONFIG_KEYS, ANTENNA_CONFIGS, AntennaConfig } from "./antenna-configs";
-import { RFFrontEndCore } from "../rf-front-end/rf-front-end-core";
 
 /**
  * RF Propagation constants for GEO satellite communications
@@ -139,7 +139,7 @@ export abstract class AntennaCore extends BaseEquipment {
    * Sync DOM with current state
    * Must be implemented by UI subclasses
    */
-  protected abstract syncDomWithState(): void;
+  abstract syncDomWithState(): void;
 
   /**
    * Draw visual elements (e.g., polar plot)

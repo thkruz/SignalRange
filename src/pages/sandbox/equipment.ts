@@ -180,7 +180,7 @@ export class Equipment extends BaseElement {
     // First two use antenna 1, next two use antenna 2
     for (let i = 1; i <= settings.spectrumAnalyzers.length; i++) {
       const antennaId = i <= 2 ? 1 : 2;
-      const specA = new RealTimeSpectrumAnalyzer(`specA${i}-container`, settings.spectrumAnalyzers[i - 1], this.rfFrontEnds[antennaId - 1]);
+      const specA = new RealTimeSpectrumAnalyzer(`specA${i}-container`, this.rfFrontEnds[antennaId - 1], settings.spectrumAnalyzers[i - 1]);
       this.spectrumAnalyzers.push(specA);
     }
 

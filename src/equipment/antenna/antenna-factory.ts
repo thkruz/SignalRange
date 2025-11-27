@@ -2,12 +2,13 @@ import { ANTENNA_CONFIG_KEYS } from "./antenna-configs";
 import { AntennaCore, AntennaState } from "./antenna-core";
 import { AntennaUIBasic } from "./antenna-ui-basic";
 import { AntennaUIHeadless } from "./antenna-ui-headless";
+import { AntennaUIModern } from "./antenna-ui-modern";
 import { AntennaUIStandard } from "./antenna-ui-standard";
 
 /**
  * UI type options for antenna creation
  */
-export type AntennaUIType = 'standard' | 'basic' | 'headless';
+export type AntennaUIType = 'standard' | 'basic' | 'headless' | 'modern';
 
 /**
  * Create an antenna instance with the specified UI type
@@ -55,11 +56,11 @@ export type AntennaUIType = 'standard' | 'basic' | 'headless';
  */
 export function createAntenna(
   parentId: string,
-  configId?: ANTENNA_CONFIG_KEYS,
+  uiType: AntennaUIType = 'standard',
+  configId: ANTENNA_CONFIG_KEYS = ANTENNA_CONFIG_KEYS.C_BAND_3M_ANTESTAR,
   initialState: Partial<AntennaState> = {},
   teamId: number = 1,
   serverId: number = 1,
-  uiType: AntennaUIType = 'standard'
 ): AntennaCore {
   switch (uiType) {
     case 'standard':
@@ -68,6 +69,8 @@ export function createAntenna(
       return new AntennaUIBasic(parentId, configId, initialState, teamId, serverId);
     case 'headless':
       return new AntennaUIHeadless(parentId, configId, initialState, teamId, serverId);
+    case 'modern':
+      return new AntennaUIModern(parentId, configId, initialState, teamId, serverId);
     default:
       // TypeScript should prevent this, but provide fallback
       throw new Error(`Unknown antenna UI type: ${uiType}`);

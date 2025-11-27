@@ -49,7 +49,7 @@ export class AntennaUIHeadless extends AntennaCore {
     // No UI components = no listeners
   }
 
-  protected syncDomWithState(): void {
+  syncDomWithState(): void {
     // No DOM to sync
     // State changes are still tracked in AntennaCore
   }

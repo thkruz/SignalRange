@@ -34,6 +34,7 @@ export const sandboxData: ScenarioData = {
   ],
   settings: {
     isSync: true,
+    groundStations: [],
     antennas: [ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK],
     rfFrontEnds: [{
       omt: OMTModule.getDefaultState(),

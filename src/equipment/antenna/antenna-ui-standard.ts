@@ -256,7 +256,7 @@ export class AntennaUIStandard extends AntennaCore {
     this.powerSwitch_.addEventListeners(this.handlePowerToggle.bind(this));
   }
 
-  protected syncDomWithState(): void {
+  syncDomWithState(): void {
     // Compare state excluding rxSignalsIn to avoid unnecessary DOM updates
     const { rxSignalsIn: _, ...stateWithoutRxSignalsIn } = this.state;
     const { rxSignalsIn: __, ...lastRenderStateWithoutRxSignalsIn } = this.lastRenderState;

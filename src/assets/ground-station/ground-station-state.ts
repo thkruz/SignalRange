@@ -1,6 +1,6 @@
 import type { AntennaState } from "@app/equipment/antenna";
-import type { ReceiverState } from "@app/equipment/receiver/receiver";
 import type { RealTimeSpectrumAnalyzerState } from "@app/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer";
+import type { ReceiverState } from "@app/equipment/receiver/receiver";
 import type { RFFrontEndState } from "@app/equipment/rf-front-end/rf-front-end-core";
 import type { TransmitterState } from "@app/equipment/transmitter/transmitter";
 
@@ -33,7 +33,7 @@ export interface GroundStationState {
   name: string;                  // "Miami Ground Station"
   location: GroundStationLocation;
   isOperational: boolean;
-  equipment: GroundStationEquipmentState;
+  equipment: Partial<GroundStationEquipmentState>;
 }
 
 /**

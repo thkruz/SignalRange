@@ -1,3 +1,4 @@
+import { GroundStationConfig } from './assets/ground-station/ground-station-state';
 import { scenario1Data } from './campaigns/nats/scenario1';
 import { scenario2Data } from "./campaigns/nats/scenario2";
 import { scenario3Data } from './campaigns/nats/scenario3';
@@ -26,12 +27,13 @@ export interface DialogClip {
 
 export interface SimulationSettings {
   isSync: boolean;
-  antennas: ANTENNA_CONFIG_KEYS[];
+  groundStations: GroundStationConfig[];
+  antennas?: ANTENNA_CONFIG_KEYS[];
   antennasState?: Partial<AntennaState>[];
-  rfFrontEnds: Partial<RFFrontEndState>[];
-  spectrumAnalyzers: Partial<RealTimeSpectrumAnalyzerState>[];
-  transmitters: number;
-  receivers: number;
+  rfFrontEnds?: Partial<RFFrontEndState>[];
+  spectrumAnalyzers?: Partial<RealTimeSpectrumAnalyzerState>[];
+  transmitters?: number;
+  receivers?: number;
   /** Optional HTML override for complex layouts */
   layout?: string;
   missionBriefUrl?: string;
@@ -57,6 +59,7 @@ export class ScenarioManager {
   static getDefaultSettings(): SimulationSettings {
     return {
       isSync: false,
+      groundStations: [],
       antennas: [ANTENNA_CONFIG_KEYS.C_BAND_3M_ANTESTAR, ANTENNA_CONFIG_KEYS.KU_BAND_3M_ANTESTAR], // TODO: Max 1 for now because only 1 rfFrontEnd is supported
       rfFrontEnds: [{
         // Module states managed by their respective classes
@@ -74,6 +77,11 @@ export class ScenarioManager {
       satellites: [],
     };
   }
+
+  getScenario(): SimulationSettings {
+    return this.settings;
+  }
+
 
   set scenario(scenarioId: string) {
     const scenario = SCENARIOS.find(s => s.id === scenarioId);

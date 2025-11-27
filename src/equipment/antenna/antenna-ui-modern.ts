@@ -164,7 +164,7 @@ export class AntennaUIModern extends AntennaCore {
     this.domCache['polSlider'].addEventListener('input', (e: Event) => this.handlePolarizationChange(parseFloat((e.target as HTMLInputElement).value) as Degrees));
   }
 
-  protected syncDomWithState(): void {
+  syncDomWithState(): void {
     // Compare state excluding rxSignalsIn to avoid unnecessary DOM updates
     const { rxSignalsIn: _, ...stateWithoutRxSignalsIn } = this.state;
     const { rxSignalsIn: __, ...lastRenderStateWithoutRxSignalsIn } = this.lastRenderState;

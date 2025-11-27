@@ -182,11 +182,11 @@ export class SyncManager {
       objectiveStates,
       groundStationStates: this.groundStations.map(gs => gs.state),
       equipment: {
-        spectrumAnalyzersState: this.equipment.spectrumAnalyzers.map(sa => sa.state),
-        antennasState: this.equipment.antennas.map(a => a.state),
-        rfFrontEndsState: this.equipment.rfFrontEnds.map(rf => rf.state),
-        transmittersState: this.equipment.transmitters.map(tx => tx.state),
-        receiversState: this.equipment.receivers.map(rx => rx.state),
+        spectrumAnalyzersState: this.equipment.spectrumAnalyzers?.map(sa => sa.state),
+        antennasState: this.equipment.antennas?.map(a => a.state),
+        rfFrontEndsState: this.equipment.rfFrontEnds?.map(rf => rf.state),
+        transmittersState: this.equipment.transmitters?.map(tx => tx.state),
+        receiversState: this.equipment.receivers?.map(rx => rx.state),
       }
     };
   }

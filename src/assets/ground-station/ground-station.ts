@@ -9,6 +9,7 @@ import { Transmitter } from "@app/equipment/transmitter/transmitter";
 import { EventBus } from "@app/events/event-bus";
 import { EventMap, Events } from "@app/events/events";
 import { Logger } from "@app/logging/logger";
+import { SimulationManager } from "@app/simulation/simulation-manager";
 import type { GroundStationConfig, GroundStationState } from "./ground-station-state";
 
 /**
@@ -56,6 +57,8 @@ export class GroundStation {
 
     // Register with EventBus for UPDATE cycle
     EventBus.getInstance().on(Events.UPDATE, this.update.bind(this));
+
+    SimulationManager.getInstance().groundStations.push(this);
 
     Logger.info(`GroundStation created: ${config.name} (${config.id}) - equipment deferred`);
   }

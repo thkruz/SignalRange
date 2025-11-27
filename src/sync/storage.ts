@@ -110,6 +110,7 @@ function setupEquipmentListeners(): void {
   };
 
   // Listen to equipment change events
+  eventBus.on(Events.GROUND_STATION_STATE_CHANGED, debouncedSave);
   eventBus.on(Events.SPEC_A_CONFIG_CHANGED, debouncedSave);
   eventBus.on(Events.ANTENNA_STATE_CHANGED, debouncedSave);
   eventBus.on(Events.TX_CONFIG_CHANGED, debouncedSave);

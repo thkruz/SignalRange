@@ -15,8 +15,8 @@ import { RfSignal } from './../types';
 export class SimulationManager {
   private static instance_: SimulationManager;
   private lastFrameTime: number;
-  equipment: Equipment;
-  groundStations: GroundStation[];
+  equipment: Equipment | null = null;
+  groundStations: GroundStation[] = [];
   isDeveloperMode = false;
 
   /** Delta time between frames in milliseconds */

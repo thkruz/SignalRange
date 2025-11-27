@@ -1,0 +1,197 @@
+.tabbed-canvas {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--color-surface-0);
+}
+
+/* Canvas Header */
+.canvas-header {
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface-1);
+}
+
+.tab-bar {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.5rem;
+  overflow-x: auto;
+}
+
+/* Tabs */
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem;
+  border-radius: 0.375rem 0.375rem 0 0;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+  font-weight: 500;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+
+.tab:hover {
+  background: var(--color-surface-2);
+  color: var(--color-text-primary);
+}
+
+.tab-active {
+  background: var(--color-surface-0);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border);
+  border-bottom-color: var(--color-surface-0);
+  font-weight: 600;
+}
+
+.tab-icon {
+  font-size: 1rem;
+}
+
+.tab-label {
+  font-size: 0.875rem;
+}
+
+/* Canvas Content */
+.canvas-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 2rem;
+}
+
+/* Welcome Screen */
+.welcome-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  text-align: center;
+  color: var(--color-text-secondary);
+}
+
+.welcome-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+  opacity: 0.5;
+}
+
+.welcome-screen h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: var(--color-text-primary);
+}
+
+.welcome-screen p {
+  font-size: 1rem;
+  margin: 0;
+}
+
+/* Placeholder Screen */
+.placeholder-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  text-align: center;
+  color: var(--color-text-secondary);
+}
+
+.placeholder-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+  opacity: 0.5;
+}
+
+.placeholder-screen h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: var(--color-text-primary);
+}
+
+.placeholder-screen p {
+  font-size: 1rem;
+  margin: 0.25rem 0;
+}
+
+.placeholder-note {
+  margin-top: 1rem;
+  padding: 0.5rem 1rem;
+  background: var(--color-surface-2);
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  font-style: italic;
+  color: var(--color-text-tertiary);
+}
+
+/* Tab Content Placeholder */
+.tab-content-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  text-align: center;
+  padding: 2rem;
+}
+
+.tab-content-placeholder h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: var(--color-text-primary);
+}
+
+.tab-content-placeholder p {
+  font-size: 1rem;
+  margin: 0.25rem 0;
+  color: var(--color-text-secondary);
+}
+
+.tab-content-placeholder .placeholder-note {
+  margin-top: 1.5rem;
+  padding: 0.5rem 1rem;
+  background: var(--color-surface-2);
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  font-style: italic;
+  color: var(--color-text-tertiary);
+}
+
+/* Scrollbar Styling */
+.canvas-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.canvas-content::-webkit-scrollbar-track {
+  background: var(--color-surface-0);
+}
+
+.canvas-content::-webkit-scrollbar-thumb {
+  background: var(--color-surface-3);
+  border-radius: 4px;
+}
+
+.canvas-content::-webkit-scrollbar-thumb:hover {
+  background: var(--color-surface-4);
+}
+
+.tab-bar::-webkit-scrollbar {
+  height: 4px;
+}
+
+.tab-bar::-webkit-scrollbar-track {
+  background: var(--color-surface-1);
+}
+
+.tab-bar::-webkit-scrollbar-thumb {
+  background: var(--color-surface-3);
+  border-radius: 4px;
+}

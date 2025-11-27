@@ -6,8 +6,10 @@ import { ScenarioManager } from "@app/scenario-manager";
 import { syncEquipmentWithStore } from "@app/sync";
 import { BasePage } from "../base-page";
 import { Body } from "../layout/body/body";
+import { AssetTreeSidebar } from "./asset-tree-sidebar";
 import { GlobalCommandBar } from "./global-command-bar";
 import './mission-control-page.css';
+import { TabbedCanvas } from "./tabbed-canvas";
 import { TimelineDeck } from "./timeline-deck";
 
 
@@ -22,11 +24,11 @@ export class MissionControlPage extends BasePage {
   static readonly containerId = 'app-shell-page-container';
   private static instance_: MissionControlPage | null = null;
 
-  // Components (placeholder for now)
+  // Components
   private commandBarCenter_!: GlobalCommandBar;
   private timelineDeck_!: TimelineDeck;
-  // private assetTreeSidebar_: AssetTreeSidebar;
-  // private tabbedCanvas_: TabbedCanvas;
+  private assetTreeSidebar_!: AssetTreeSidebar;
+  private tabbedCanvas_!: TabbedCanvas;
 
   private groundStations_: GroundStation[] = [];
 
@@ -34,7 +36,7 @@ export class MissionControlPage extends BasePage {
     super();
     this.init_();
 
-    console.log(this.commandBarCenter_, this.timelineDeck_, this.groundStations_);
+    console.log(this.commandBarCenter_, this.timelineDeck_, this.assetTreeSidebar_, this.tabbedCanvas_, this.groundStations_);
   }
 
   static create(): MissionControlPage {
@@ -56,31 +58,14 @@ export class MissionControlPage extends BasePage {
 
       <!-- Main Workspace -->
       <div class="app-shell-main">
-        <!-- Asset Tree Sidebar (Left) -->
-        <aside id="asset-tree-sidebar-container" class="app-shell-sidebar">
-          <div class="sidebar-header">
-            <h3>Assets</h3>
-          </div>
-          <div class="sidebar-content">
-            <p class="placeholder-text">Ground stations will appear here</p>
-          </div>
-        </aside>
+        <!-- Asset Tree Sidebar (Left) - Rendered by component -->
+        <aside id="asset-tree-sidebar-container" class="app-shell-sidebar"></aside>
 
-        <!-- Tabbed Canvas (Center) -->
-        <main id="tabbed-canvas-container" class="app-shell-canvas">
-          <div class="canvas-header">
-            <div class="tab-bar">
-              <div class="tab tab-active">Dashboard</div>
-            </div>
-          </div>
-          <div class="canvas-content">
-            <h2>Welcome to Mission Control</h2>
-            <p>Select a ground station from the asset tree to begin.</p>
-          </div>
-        </main>
+        <!-- Tabbed Canvas (Center) - Rendered by component -->
+        <main id="tabbed-canvas-container" class="app-shell-canvas"></main>
       </div>
 
-      <!-- Timeline Deck (Bottom) (Component) -->
+      <!-- Timeline Deck (Bottom) - Rendered by component -->
     </div>
   `;
 
@@ -106,20 +91,14 @@ export class MissionControlPage extends BasePage {
 
     this.createGroundStationsFromScenario_();
 
-    // Initialize components (placeholder)
-    this.initializePlaceholderComponents_();
+    // Initialize components
+    this.assetTreeSidebar_ = new AssetTreeSidebar('asset-tree-sidebar-container');
+    this.tabbedCanvas_ = new TabbedCanvas('tabbed-canvas-container');
 
     // Start clock
     this.startClock_();
   }
 
-  /**
-   * Initialize placeholder components (Phase 1)
-   */
-  private initializePlaceholderComponents_(): void {
-    // TODO: Initialize actual components in Phase 3-4
-    // Other components will be initialized here.
-  }
 
   /**
    * Creates GroundStation instances from the current scenario config.

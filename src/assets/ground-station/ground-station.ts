@@ -29,6 +29,7 @@ export class GroundStation {
   readonly receivers: Receiver[] = [];
 
   private readonly config_: GroundStationConfig;
+  lastStateString: string;
 
   constructor(config: GroundStationConfig) {
     this.uuid = generateUuid();
@@ -50,20 +51,34 @@ export class GroundStation {
       }
     };
 
-    // Create equipment using existing factories
-    this.createEquipment_();
-
-    // Wire equipment connections
-    this.wireEquipment_();
+    // NOTE: Equipment creation deferred until UI containers are ready
+    // Will be called by initializeEquipment() when tabs are created in Phase 4+
 
     // Register with EventBus for UPDATE cycle
     EventBus.getInstance().on(Events.UPDATE, this.update.bind(this));
 
-    Logger.info(`GroundStation created: ${config.name} (${config.id})`);
+    Logger.info(`GroundStation created: ${config.name} (${config.id}) - equipment deferred`);
+  }
+
+  /**
+   * Initialize equipment - creates instances and wires connections
+   * Called by UI layer (tabs) once DOM containers are ready
+   * @public for Phase 4+ tab integration
+   */
+  public initializeEquipment(): void {
+    if (this.antennas.length > 0) {
+      Logger.warn('Equipment already initialized, skipping');
+      return;
+    }
+
+    this.createEquipment_();
+    this.wireEquipment_();
+    Logger.info('Equipment initialized and wired');
   }
 
   /**
    * Create all equipment instances using existing factories
+   * @private - called by initializeEquipment()
    */
   private createEquipment_(): void {
     const config = this.config_;
@@ -178,7 +193,10 @@ export class GroundStation {
     this.state.equipment.receivers = this.receivers.map(r => r.state);
 
     // Emit ground station state changed
-    this.emit(Events.GROUND_STATION_STATE_CHANGED, this.state);
+    if (JSON.stringify(this.state) !== this.lastStateString) {
+      this.emit(Events.GROUND_STATION_STATE_CHANGED, this.state);
+      this.lastStateString = JSON.stringify(this.state);
+    }
   }
 
   /**

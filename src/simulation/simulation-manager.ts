@@ -1,3 +1,4 @@
+import { GroundStation } from '@app/assets/ground-station/ground-station';
 import { Satellite } from '@app/equipment/satellite/satellite';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
@@ -15,6 +16,7 @@ export class SimulationManager {
   private static instance_: SimulationManager;
   private lastFrameTime: number;
   equipment: Equipment;
+  groundStations: GroundStation[];
   isDeveloperMode = false;
 
   /** Delta time between frames in milliseconds */

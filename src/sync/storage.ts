@@ -5,6 +5,7 @@
  * while hiding the complexity of the storage provider.
  */
 
+import { GroundStation } from '@app/assets/ground-station/ground-station';
 import { SimulationManager } from '@app/simulation/simulation-manager';
 import { EventBus } from '../events/event-bus';
 import { Events } from '../events/events';
@@ -75,11 +76,14 @@ export async function clearPersistedStore(): Promise<void> {
 /**
  * Sync equipment with storage (two-way sync)
  */
-export async function syncEquipmentWithStore(equipment: Equipment): Promise<void> {
+export async function syncEquipmentWithStore(equipment: Equipment | null, groundStations: GroundStation[]): Promise<void> {
   await ensureInitialized();
 
   // Set equipment in sync manager
-  syncManager.setEquipment(equipment);
+  if (equipment) {
+    syncManager.setEquipment(equipment);
+  }
+  syncManager.setGroundStations(groundStations);
 
   // Load initial state from storage
   await syncManager.loadFromStorage();

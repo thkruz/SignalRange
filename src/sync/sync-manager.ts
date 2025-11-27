@@ -1,3 +1,5 @@
+import { GroundStation } from '@app/assets/ground-station/ground-station';
+import { GroundStationState } from '@app/assets/ground-station/ground-station-state';
 import { AntennaState } from '@app/equipment/antenna';
 import { RFFrontEndState } from '@app/equipment/rf-front-end/rf-front-end-core';
 import { ObjectiveState } from '@app/objectives';
@@ -23,6 +25,7 @@ export class SyncManager {
   private equipment: Equipment | null = null;
   private unsubscribe: (() => void) | null = null;
   private isInitialized = false;
+  groundStations: GroundStation[] = [];
 
   constructor(provider: StorageProvider) {
     this.provider = provider;
@@ -56,13 +59,16 @@ export class SyncManager {
     this.equipment = equipment;
   }
 
+  setGroundStations(groundStations: GroundStation[]): void {
+    this.groundStations = groundStations;
+  }
+
   /**
    * Load state from storage and update equipment
    */
   async loadFromStorage(): Promise<void> {
-    if (!this.equipment) {
-      throw new Error('Equipment not set. Call setEquipment() first.');
-    }
+    this.equipment ??= {} as Equipment; // Ensure equipment is set to avoid null checks
+    this.groundStations ??= [] as GroundStation[];
 
     const state = await this.provider.read<AppState>();
     if (state) {
@@ -147,6 +153,7 @@ export class SyncManager {
     }
     await this.provider.dispose();
     this.equipment = null;
+    this.groundStations = [];
     this.isInitialized = false;
   }
 
@@ -173,6 +180,7 @@ export class SyncManager {
 
     return {
       objectiveStates,
+      groundStationStates: this.groundStations.map(gs => gs.state),
       equipment: {
         spectrumAnalyzersState: this.equipment.spectrumAnalyzers.map(sa => sa.state),
         antennasState: this.equipment.antennas.map(a => a.state),
@@ -189,6 +197,14 @@ export class SyncManager {
   private syncFromStorage(state: AppState): void {
     if (!this.equipment || !state.equipment) {
       return;
+    }
+
+    if (state.groundStationStates) {
+      state.groundStationStates.forEach((gsState: GroundStationState, index: number) => {
+        if (this.groundStations[index]) {
+          this.groundStations[index].sync(gsState);
+        }
+      });
     }
 
     // Sync Spectrum Analyzers
@@ -256,6 +272,7 @@ export class SyncManager {
  */
 export interface AppState {
   objectiveStates?: ObjectiveState[];
+  groundStationStates?: GroundStationState[];
   equipment?: {
     spectrumAnalyzersState?: RealTimeSpectrumAnalyzerState[];
     rfFrontEndsState?: RFFrontEndState[];

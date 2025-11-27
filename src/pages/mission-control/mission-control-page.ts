@@ -3,6 +3,7 @@ import { GroundStationConfig } from "@app/assets/ground-station/ground-station-s
 import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
 import { ScenarioManager } from "@app/scenario-manager";
+import { syncEquipmentWithStore } from "@app/sync";
 import { BasePage } from "../base-page";
 import { Body } from "../layout/body/body";
 import { GlobalCommandBar } from "./global-command-bar";
@@ -127,6 +128,8 @@ export class MissionControlPage extends BasePage {
     const scenario = ScenarioManager.getInstance();
 
     this.groundStations_ = scenario.getScenario().groundStations.map((config: GroundStationConfig) => new GroundStation(config));
+
+    syncEquipmentWithStore(null, this.groundStations_);
   }
 
   /**

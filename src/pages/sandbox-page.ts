@@ -140,7 +140,7 @@ export class SandboxPage extends BasePage {
       }
 
       // Sync from storage (automatically uses LocalStorage)
-      syncEquipmentWithStore(simManager.equipment);
+      syncEquipmentWithStore(simManager.equipment, simManager.groundStations);
     }
   }
 

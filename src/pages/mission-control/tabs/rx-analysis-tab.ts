@@ -43,148 +43,153 @@ export class RxAnalysisTab extends BaseElement {
 
   protected html_ = html`
     <div class="rx-analysis-tab">
-      <!-- LNB Control Section -->
-      <div class="rx-section lnb-control">
-        <h3 class="rx-section-title">LNB (Low Noise Block)</h3>
-        <div class="rx-section-content">
-          <!-- LO Frequency Control -->
-          <div class="control-group">
-            <label for="lnb-lo-frequency">LO Frequency</label>
-            <div class="control-with-display">
-              <input
-                type="range"
-                id="lnb-lo-frequency"
-                min="5000"
-                max="7000"
-                step="10"
-                value="6080"
-                class="form-range"
-              />
-              <span id="lnb-lo-frequency-display" class="control-display">6080 MHz</span>
+      <div class="row g-3">
+        <!-- LNB Control Card -->
+        <div class="col-lg-6">
+          <div class="card h-100">
+            <div class="card-header">
+              <h3 class="card-title">LNB (Low Noise Block)</h3>
             </div>
-          </div>
-
-          <!-- Gain Control -->
-          <div class="control-group">
-            <label for="lnb-gain">Gain</label>
-            <div class="control-with-display">
-              <input
-                type="range"
-                id="lnb-gain"
-                min="0"
-                max="65"
-                step="0.5"
-                value="0"
-                class="form-range"
-              />
-              <span id="lnb-gain-display" class="control-display">0.0 dB</span>
-            </div>
-          </div>
-
-          <!-- Power Switch -->
-          <div class="control-group">
-            <label for="lnb-power">Power</label>
-            <div class="switch-control">
-              <input type="checkbox" id="lnb-power" class="form-check-input" checked />
-              <label for="lnb-power" class="form-check-label">Powered</label>
-            </div>
-          </div>
-
-          <!-- Status Indicators -->
-          <div class="status-group">
-            <div class="status-item">
-              <span class="status-label">Noise Temp:</span>
-              <span id="lnb-noise-temp-display" class="status-value">45 K</span>
-            </div>
-            <div class="status-item">
-              <span class="status-label">Lock Status:</span>
-              <div id="lnb-lock-led" class="led led-green"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Filter Control Section -->
-      <div class="rx-section filter-control">
-        <h3 class="rx-section-title">IF Filter</h3>
-        <div class="rx-section-content">
-          <!-- Bandwidth Selector -->
-          <div class="control-group">
-            <label for="filter-bandwidth">Bandwidth</label>
-            <select id="filter-bandwidth" class="form-select">
-              ${this.generateFilterOptions()}
-            </select>
-            <span id="filter-bandwidth-display" class="control-display">20 MHz</span>
-          </div>
-
-          <!-- Filter Metrics -->
-          <div class="status-group">
-            <div class="status-item">
-              <span class="status-label">Insertion Loss:</span>
-              <span id="filter-insertion-loss-display" class="status-value">2.0 dB</span>
-            </div>
-            <div class="status-item">
-              <span class="status-label">Noise Floor:</span>
-              <span id="filter-noise-floor-display" class="status-value">-101 dBm</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Spectrum Analyzer Section -->
-      <div class="rx-section spectrum-analyzer">
-        <h3 class="rx-section-title">Spectrum Analyzer</h3>
-        <div class="rx-section-content">
-          <!-- Spectrum Analyzer Canvas -->
-          <div id="spec-analyzer-canvas-container" class="spec-analyzer-canvas">
-            <!-- Canvas will be moved here by adapter -->
-          </div>
-
-          <!-- Spectrum Analyzer Controls -->
-          <div class="spec-analyzer-controls">
-            <div class="control-group">
-              <label for="spec-analyzer-center-freq">Center Frequency (MHz)</label>
-              <div class="control-with-display">
+            <div class="card-body">
+              <!-- LO Frequency Control -->
+              <div class="mb-3">
+                <label for="lnb-lo-frequency" class="form-label d-flex justify-content-between">
+                  <span class="text-muted small text-uppercase">LO Frequency</span>
+                  <span id="lnb-lo-frequency-display" class="fw-bold font-monospace">6080 MHz</span>
+                </label>
                 <input
-                  type="number"
-                  id="spec-analyzer-center-freq"
-                  class="form-control form-control-sm"
-                  step="0.1"
-                  value="1500"
+                  type="range"
+                  id="lnb-lo-frequency"
+                  class="form-range"
+                  min="5000"
+                  max="7000"
+                  step="10"
+                  value="6080"
                 />
-                <span id="spec-analyzer-center-freq-display" class="control-display">1500.000 MHz</span>
+              </div>
+
+              <!-- Gain Control -->
+              <div class="mb-3">
+                <label for="lnb-gain" class="form-label d-flex justify-content-between">
+                  <span class="text-muted small text-uppercase">Gain</span>
+                  <span id="lnb-gain-display" class="fw-bold font-monospace">0.0 dB</span>
+                </label>
+                <input
+                  type="range"
+                  id="lnb-gain"
+                  class="form-range"
+                  min="0"
+                  max="65"
+                  step="0.5"
+                  value="0"
+                />
+              </div>
+
+              <!-- Power Switch -->
+              <div class="form-check form-switch mb-3">
+                <input type="checkbox" id="lnb-power" class="form-check-input" role="switch" checked />
+                <label for="lnb-power" class="form-check-label">Power</label>
+              </div>
+
+              <!-- Status Indicators -->
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="text-muted small">Noise Temp:</span>
+                <span id="lnb-noise-temp-display" class="fw-bold font-monospace">45 K</span>
+              </div>
+              <div class="d-flex justify-content-between align-items-center">
+                <span class="text-muted small">Lock Status:</span>
+                <div id="lnb-lock-led" class="led led-green"></div>
               </div>
             </div>
+          </div>
+        </div>
 
-            <div class="control-group">
-              <label for="spec-analyzer-span">Span (MHz)</label>
-              <div class="control-with-display">
-                <input
-                  type="number"
-                  id="spec-analyzer-span"
-                  class="form-control form-control-sm"
-                  step="0.1"
-                  value="100"
-                />
-                <span id="spec-analyzer-span-display" class="control-display">100.000 MHz</span>
-              </div>
+        <!-- Filter Control Card -->
+        <div class="col-lg-6">
+          <div class="card h-100">
+            <div class="card-header">
+              <h3 class="card-title">IF Filter</h3>
             </div>
+            <div class="card-body">
+              <!-- Bandwidth Selector -->
+              <div class="mb-3">
+                <label for="filter-bandwidth" class="form-label text-muted small text-uppercase">Bandwidth</label>
+                <select id="filter-bandwidth" class="form-select">
+                  ${this.generateFilterOptions()}
+                </select>
+                <span id="filter-bandwidth-display" class="fw-bold font-monospace mt-2 d-block">20 MHz</span>
+              </div>
 
-            <div class="spec-analyzer-buttons">
-              <button id="spec-analyzer-pause-btn" class="btn btn-warning btn-sm">Pause</button>
-              <button id="spec-analyzer-autotune-btn" class="btn btn-primary btn-sm">Auto-Tune</button>
+              <!-- Filter Metrics -->
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="text-muted small">Insertion Loss:</span>
+                <span id="filter-insertion-loss-display" class="fw-bold font-monospace">2.0 dB</span>
+              </div>
+              <div class="d-flex justify-content-between align-items-center">
+                <span class="text-muted small">Noise Floor:</span>
+                <span id="filter-noise-floor-display" class="fw-bold font-monospace">-101 dBm</span>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- Demodulator Section (Placeholder) -->
-      <div class="rx-section demodulator-placeholder">
-        <h3 class="rx-section-title">Demodulator</h3>
-        <div class="rx-section-content">
-          <div class="placeholder-message">
-            <p>Demodulator controls coming in Phase 6+</p>
-            <p class="text-muted">Status: Not Implemented</p>
+        <!-- Spectrum Analyzer Card -->
+        <div class="col-12">
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">Spectrum Analyzer</h3>
+            </div>
+            <div class="card-body">
+              <!-- Spectrum Analyzer Canvas -->
+              <div id="spec-analyzer-canvas-container" class="spec-analyzer-canvas mb-3">
+                <!-- Canvas will be moved here by adapter -->
+              </div>
+
+              <!-- Spectrum Analyzer Controls -->
+              <div class="row g-2">
+                <div class="col-md-4">
+                  <label for="spec-analyzer-center-freq" class="form-label text-muted small">Center Frequency (MHz)</label>
+                  <input
+                    type="number"
+                    id="spec-analyzer-center-freq"
+                    class="form-control form-control-sm"
+                    step="0.1"
+                    value="1500"
+                  />
+                  <span id="spec-analyzer-center-freq-display" class="fw-bold font-monospace small mt-1 d-block">1500.000 MHz</span>
+                </div>
+
+                <div class="col-md-4">
+                  <label for="spec-analyzer-span" class="form-label text-muted small">Span (MHz)</label>
+                  <input
+                    type="number"
+                    id="spec-analyzer-span"
+                    class="form-control form-control-sm"
+                    step="0.1"
+                    value="100"
+                  />
+                  <span id="spec-analyzer-span-display" class="fw-bold font-monospace small mt-1 d-block">100.000 MHz</span>
+                </div>
+
+                <div class="col-md-4 d-flex align-items-end gap-2">
+                  <button id="spec-analyzer-pause-btn" class="btn btn-warning btn-sm">Pause</button>
+                  <button id="spec-analyzer-autotune-btn" class="btn btn-primary btn-sm">Auto-Tune</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Demodulator Placeholder Card -->
+        <div class="col-12 d-none">
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">Demodulator</h3>
+            </div>
+            <div class="card-body text-center">
+              <p class="text-muted">Demodulator controls coming in Phase 6+</p>
+              <p class="text-muted small">Status: Not Implemented</p>
+            </div>
           </div>
         </div>
       </div>
@@ -227,7 +232,7 @@ export class RxAnalysisTab extends BaseElement {
    */
   public activate(): void {
     if (this.dom_) {
-      this.dom_.style.display = 'grid';
+      this.dom_.style.display = 'block';
     }
   }
 

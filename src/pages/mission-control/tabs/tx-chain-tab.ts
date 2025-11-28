@@ -40,163 +40,161 @@ export class TxChainTab extends BaseElement {
 
   protected html_ = html`
     <div class="tx-chain-tab">
-      <!-- BUC Control Section -->
-      <div class="tx-section buc-control">
-        <h3 class="tx-section-title">BUC (Block Up Converter)</h3>
-        <div class="tx-section-content">
-          <!-- LO Frequency Control -->
-          <div class="control-group">
-            <label for="buc-lo-frequency">LO Frequency</label>
-            <div class="control-with-display">
-              <input
-                type="range"
-                id="buc-lo-frequency"
-                min="6000"
-                max="7000"
-                step="10"
-                value="6425"
-                class="form-range"
-              />
-              <span id="buc-lo-frequency-display" class="control-display">6425 MHz</span>
+      <div class="row g-3">
+        <!-- BUC Control Card -->
+        <div class="col-lg-6">
+          <div class="card h-100">
+            <div class="card-header">
+              <h3 class="card-title">BUC (Block Up Converter)</h3>
             </div>
-          </div>
+            <div class="card-body">
+              <!-- LO Frequency Control -->
+              <div class="mb-3">
+                <label for="buc-lo-frequency" class="form-label d-flex justify-content-between">
+                  <span class="text-muted small text-uppercase">LO Frequency</span>
+                  <span id="buc-lo-frequency-display" class="fw-bold font-monospace">6425 MHz</span>
+                </label>
+                <input
+                  type="range"
+                  id="buc-lo-frequency"
+                  class="form-range"
+                  min="6000"
+                  max="7000"
+                  step="10"
+                  value="6425"
+                />
+              </div>
 
-          <!-- Gain Control -->
-          <div class="control-group">
-            <label for="buc-gain">Gain</label>
-            <div class="control-with-display">
-              <input
-                type="range"
-                id="buc-gain"
-                min="0"
-                max="70"
-                step="0.5"
-                value="58"
-                class="form-range"
-              />
-              <span id="buc-gain-display" class="control-display">58.0 dB</span>
-            </div>
-          </div>
+              <!-- Gain Control -->
+              <div class="mb-3">
+                <label for="buc-gain" class="form-label d-flex justify-content-between">
+                  <span class="text-muted small text-uppercase">Gain</span>
+                  <span id="buc-gain-display" class="fw-bold font-monospace">58.0 dB</span>
+                </label>
+                <input
+                  type="range"
+                  id="buc-gain"
+                  class="form-range"
+                  min="0"
+                  max="70"
+                  step="0.5"
+                  value="58"
+                />
+              </div>
 
-          <!-- Power Switch -->
-          <div class="control-group">
-            <label for="buc-power">Power</label>
-            <div class="switch-control">
-              <input type="checkbox" id="buc-power" class="form-check-input" checked />
-              <label for="buc-power" class="form-check-label">Powered</label>
-            </div>
-          </div>
+              <!-- Power Switch -->
+              <div class="form-check form-switch mb-2">
+                <input type="checkbox" id="buc-power" class="form-check-input" role="switch" checked />
+                <label for="buc-power" class="form-check-label">Power</label>
+              </div>
 
-          <!-- Mute Switch -->
-          <div class="control-group">
-            <label for="buc-mute">Mute</label>
-            <div class="switch-control">
-              <input type="checkbox" id="buc-mute" class="form-check-input" />
-              <label for="buc-mute" class="form-check-label">Muted</label>
-            </div>
-          </div>
+              <!-- Mute Switch -->
+              <div class="form-check form-switch mb-3">
+                <input type="checkbox" id="buc-mute" class="form-check-input" role="switch" />
+                <label for="buc-mute" class="form-check-label">Mute</label>
+              </div>
 
-          <!-- Status Indicators -->
-          <div class="status-group">
-            <div class="status-item">
-              <span class="status-label">Output Power:</span>
-              <span id="buc-output-power-display" class="status-value">-10.0 dBm</span>
-            </div>
-            <div class="status-item">
-              <span class="status-label">Temperature:</span>
-              <span id="buc-temperature-display" class="status-value">25.0 °C</span>
-            </div>
-            <div class="status-item">
-              <span class="status-label">Lock Status:</span>
-              <div id="buc-lock-led" class="led led-green"></div>
+              <!-- Status Indicators -->
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="text-muted small">Output Power:</span>
+                <span id="buc-output-power-display" class="fw-bold font-monospace">-10.0 dBm</span>
+              </div>
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="text-muted small">Temperature:</span>
+                <span id="buc-temperature-display" class="fw-bold font-monospace">25.0 °C</span>
+              </div>
+              <div class="d-flex justify-content-between align-items-center">
+                <span class="text-muted small">Lock Status:</span>
+                <div id="buc-lock-led" class="led led-green"></div>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- HPA Control Section -->
-      <div class="tx-section hpa-control">
-        <h3 class="tx-section-title">HPA (High Power Amplifier)</h3>
-        <div class="tx-section-content">
-          <!-- Power Switch -->
-          <div class="control-group">
-            <label for="hpa-power">Power</label>
-            <div class="switch-control">
-              <input type="checkbox" id="hpa-power" class="form-check-input" checked />
-              <label for="hpa-power" class="form-check-label">Powered</label>
+        <!-- HPA Control Card -->
+        <div class="col-lg-6">
+          <div class="card h-100">
+            <div class="card-header">
+              <h3 class="card-title">HPA (High Power Amplifier)</h3>
             </div>
-          </div>
+            <div class="card-body">
+              <!-- Power Switch -->
+              <div class="form-check form-switch mb-2">
+                <input type="checkbox" id="hpa-power" class="form-check-input" role="switch" checked />
+                <label for="hpa-power" class="form-check-label">Power</label>
+              </div>
 
-          <!-- HPA Enable Switch -->
-          <div class="control-group">
-            <label for="hpa-enable">HPA Enable</label>
-            <div class="switch-control">
-              <input type="checkbox" id="hpa-enable" class="form-check-input" />
-              <label for="hpa-enable" class="form-check-label">Enabled</label>
-            </div>
-          </div>
+              <!-- HPA Enable Switch -->
+              <div class="form-check form-switch mb-3">
+                <input type="checkbox" id="hpa-enable" class="form-check-input" role="switch" />
+                <label for="hpa-enable" class="form-check-label">HPA Enable</label>
+              </div>
 
-          <!-- Back-off Control -->
-          <div class="control-group">
-            <label for="hpa-backoff">Back-off from P1dB</label>
-            <div class="control-with-display">
-              <input
-                type="range"
-                id="hpa-backoff"
-                min="0"
-                max="30"
-                step="0.5"
-                value="6"
-                class="form-range"
-              />
-              <span id="hpa-backoff-display" class="control-display">6.0 dB</span>
-            </div>
-          </div>
+              <!-- Back-off Control -->
+              <div class="mb-3">
+                <label for="hpa-backoff" class="form-label d-flex justify-content-between">
+                  <span class="text-muted small text-uppercase">Back-off from P1dB</span>
+                  <span id="hpa-backoff-display" class="fw-bold font-monospace">6.0 dB</span>
+                </label>
+                <input
+                  type="range"
+                  id="hpa-backoff"
+                  class="form-range"
+                  min="0"
+                  max="30"
+                  step="0.5"
+                  value="6"
+                />
+              </div>
 
-          <!-- Status Indicators -->
-          <div class="status-group">
-            <div class="status-item">
-              <span class="status-label">Output Power:</span>
-              <span id="hpa-output-power-display" class="status-value">50.0 dBm</span>
-            </div>
-            <div class="status-item">
-              <span class="status-label">Gain:</span>
-              <span id="hpa-gain-display" class="status-value">44.0 dB</span>
-            </div>
-            <div class="status-item">
-              <span class="status-label">Temperature:</span>
-              <span id="hpa-temperature-display" class="status-value">45.0 °C</span>
-            </div>
-            <div class="status-item">
-              <span class="status-label">IMD Level:</span>
-              <span id="hpa-imd-display" class="status-value">-30.0 dBc</span>
-            </div>
-            <div class="status-item">
-              <span class="status-label">Overdrive:</span>
-              <div id="hpa-overdrive-led" class="led led-green"></div>
+              <!-- Status Indicators -->
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="text-muted small">Output Power:</span>
+                <span id="hpa-output-power-display" class="fw-bold font-monospace">50.0 dBm</span>
+              </div>
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="text-muted small">Gain:</span>
+                <span id="hpa-gain-display" class="fw-bold font-monospace">44.0 dB</span>
+              </div>
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="text-muted small">Temperature:</span>
+                <span id="hpa-temperature-display" class="fw-bold font-monospace">45.0 °C</span>
+              </div>
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="text-muted small">IMD Level:</span>
+                <span id="hpa-imd-display" class="fw-bold font-monospace">-30.0 dBc</span>
+              </div>
+              <div class="d-flex justify-content-between align-items-center">
+                <span class="text-muted small">Overdrive:</span>
+                <div id="hpa-overdrive-led" class="led led-green"></div>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- Modulator Section (Placeholder) -->
-      <div class="tx-section modulator-placeholder">
-        <h3 class="tx-section-title">Modulator</h3>
-        <div class="tx-section-content">
-          <div class="placeholder-message">
-            <p>Modulator controls coming in future phase</p>
-            <p class="text-muted">Status: Not Implemented</p>
+        <!-- Modulator Placeholder Card -->
+        <div class="col-lg-6">
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">Modulator</h3>
+            </div>
+            <div class="card-body text-center">
+              <p class="text-muted">Modulator controls coming in future phase</p>
+              <p class="text-muted small">Status: Not Implemented</p>
+            </div>
           </div>
         </div>
-      </div>
 
-      <!-- Redundancy Controller Section (Placeholder) -->
-      <div class="tx-section redundancy-placeholder">
-        <h3 class="tx-section-title">Redundancy Controller</h3>
-        <div class="tx-section-content">
-          <div class="placeholder-message">
-            <p>Redundancy controller coming in future phase</p>
-            <p class="text-muted">Status: Not Implemented</p>
+        <!-- Redundancy Controller Placeholder Card -->
+        <div class="col-lg-6">
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">Redundancy Controller</h3>
+            </div>
+            <div class="card-body text-center">
+              <p class="text-muted">Redundancy controller coming in future phase</p>
+              <p class="text-muted small">Status: Not Implemented</p>
+            </div>
           </div>
         </div>
       </div>
@@ -225,7 +223,7 @@ export class TxChainTab extends BaseElement {
    */
   public activate(): void {
     if (this.dom_) {
-      this.dom_.style.display = 'grid';
+      this.dom_.style.display = 'block';
     }
   }
 

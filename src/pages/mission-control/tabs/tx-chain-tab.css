@@ -1,101 +1,15 @@
 /**
  * TX Chain Tab Styles
- * Dark theme inspired by app-shell.html, using index.css variables.
+ * Most styling now handled by Tabler/Bootstrap. Only custom elements remain.
  */
 
 .tx-chain-tab {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  grid-template-rows: auto auto;
-  gap: 1rem;
-  padding: 1rem;
+  padding: 1.5rem;
   height: 100%;
-  background-color: var(--color-dark-background);
-  color: #cbd5e1;
   overflow-y: auto;
 }
 
-/* Section Layout */
-.tx-section {
-  background-color: #292929;
-  /* A surface color, slightly lighter than background */
-  border: 1px solid var(--color-dark-border);
-  border-radius: 0.25rem;
-  padding: 1rem;
-  display: flex;
-  flex-direction: column;
-}
-
-.tx-section-title {
-  font-size: 0.875rem;
-  /* 14px */
-  font-weight: 700;
-  margin: 0 0 1rem 0;
-  color: #cbd5e1;
-  border-bottom: 1px solid var(--color-dark-border);
-  padding-bottom: 0.5rem;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.tx-section-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-/* Grid Layout */
-.buc-control {
-  grid-column: 1;
-  grid-row: 1;
-}
-
-.hpa-control {
-  grid-column: 2;
-  grid-row: 1;
-}
-
-.modulator-placeholder {
-  grid-column: 1;
-  grid-row: 2;
-}
-
-.redundancy-placeholder {
-  grid-column: 2;
-  grid-row: 2;
-}
-
-/* Status Groups */
-.status-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.375rem;
-}
-
-.status-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 0.8125rem;
-  /* 13px */
-  background-color: var(--color-dark-background);
-  padding: 0.375rem 0.5rem;
-  border-radius: 0.25rem;
-}
-
-.status-label {
-  color: var(--color-dark-text-muted);
-  font-weight: 500;
-}
-
-.status-value {
-  font-weight: 600;
-  color: #cbd5e1;
-  font-family: 'JetBrains Mono', monospace;
-}
-
-/* LED Indicators */
+/* LED Indicators - Custom Component */
 .led {
   width: 10px;
   height: 10px;
@@ -103,7 +17,6 @@
   display: inline-block;
   transition: all 0.3s ease;
   background-color: #4a4a4a;
-  /* Off state */
 }
 
 .led-green {
@@ -124,35 +37,4 @@
 .led-off {
   background-color: #4a4a4a;
   box-shadow: none;
-}
-
-/* Placeholder Styling */
-.placeholder-message {
-  text-align: center;
-  padding: 2rem;
-  color: var(--color-dark-text-muted);
-  font-style: italic;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px dashed var(--color-dark-border);
-  border-radius: 0.25rem;
-}
-
-/* Responsive Adjustments */
-@media (max-width: 1200px) {
-  .tx-chain-tab {
-    grid-template-columns: 1fr;
-  }
-
-  .buc-control {
-    grid-column: 1;
-    grid-row: 1;
-  }
-
-  .hpa-control {
-    grid-column: 1;
-    grid-row: 2;
-  }
 }

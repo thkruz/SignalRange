@@ -31,7 +31,7 @@ export class ACUControlTab extends BaseElement {
     <div class="acu-control-tab">
       <div class="row g-3 pb-6">
         <!-- Antenna Position Polar Plot (Full Width) -->
-        <div class="col-4">
+        <div class="col-xxl-4 fit-content">
           <div class="card">
             <div class="card-header">
               <h3 class="card-title">Antenna Position</h3>
@@ -43,7 +43,7 @@ export class ACUControlTab extends BaseElement {
         </div>
 
         <!-- Antenna Controls Card -->
-        <div class="col-lg-8">
+        <div class="col-xxl-6 grow-1">
           <div class="card h-100">
             <div class="card-header">
               <h3 class="card-title">Antenna Control</h3>
@@ -96,7 +96,7 @@ export class ACUControlTab extends BaseElement {
         </div>
 
         <!-- Right Column: OMT & RF Metrics -->
-        <div class="col-lg-3">
+        <div class="col-xxl-3">
           <!-- OMT Display Card -->
           <div class="card mb-3">
             <div class="card-header">
@@ -221,7 +221,7 @@ export class ACUControlTab extends BaseElement {
     // Create and initialize polar plot
     this.polarPlot_ = PolarPlot.create(
       `polar-plot-${this.groundStation.uuid}`,
-      { width: 600, height: 600, showGrid: true, showLabels: true }
+      { width: 450, height: 450, showGrid: true, showLabels: true }
     );
 
     // Inject polar plot HTML into container

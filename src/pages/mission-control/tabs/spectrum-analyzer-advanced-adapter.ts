@@ -9,7 +9,6 @@ export class SpectrumAnalyzerAdvancedAdapter {
   private readonly spectrumAnalyzer: RealTimeSpectrumAnalyzer;
   private readonly containerEl: HTMLElement;
   private analyzerControl: AnalyzerControl | null = null;
-  private isExpanded: boolean = false;
 
   constructor(spectrumAnalyzer: RealTimeSpectrumAnalyzer, containerEl: HTMLElement) {
     this.spectrumAnalyzer = spectrumAnalyzer;
@@ -33,28 +32,6 @@ export class SpectrumAnalyzerAdvancedAdapter {
 
     // Initialize the control (injects HTML)
     this.analyzerControl.init_(controlContainer.id, 'replace');
-
-    // Setup expand/collapse handler
-    this.setupExpandCollapseHandler_();
-  }
-
-  private setupExpandCollapseHandler_(): void {
-    const toggleBtn = this.containerEl.querySelector('#spec-analyzer-advanced-toggle');
-    const collapseEl = this.containerEl.querySelector('#spec-analyzer-advanced-collapse');
-
-    if (!toggleBtn || !collapseEl) return;
-
-    toggleBtn.addEventListener('click', () => {
-      this.isExpanded = !this.isExpanded;
-
-      if (this.isExpanded) {
-        collapseEl.classList.add('show');
-        toggleBtn.innerHTML = '<span class="icon">▼</span> Hide Advanced Controls';
-      } else {
-        collapseEl.classList.remove('show');
-        toggleBtn.innerHTML = '<span class="icon">▶</span> Show Advanced Controls';
-      }
-    });
   }
 
   dispose(): void {

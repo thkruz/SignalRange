@@ -185,17 +185,14 @@ export class RxAnalysisTab extends BaseElement {
         </div>
 
         <!-- Advanced Spectrum Analyzer Controls (Expandable) -->
-        <div class="col-12">
+        <div class="col-6">
           <div class="card">
             <div class="card-header">
               <div class="d-flex justify-content-between align-items-center">
                 <h3 class="card-title">Advanced Spectrum Analyzer Controls</h3>
-                <button id="spec-analyzer-advanced-toggle" class="btn btn-sm btn-outline-primary">
-                  <span class="icon">▶</span> Show Advanced Controls
-                </button>
               </div>
             </div>
-            <div class="collapse" id="spec-analyzer-advanced-collapse">
+            <div id="spec-analyzer-advanced-collapse">
               <div class="card-body">
                 <!-- AnalyzerControl component will be injected here -->
                 <div id="spec-analyzer-advanced-controls"></div>

@@ -52,7 +52,6 @@ export class TimelineDeck {
     const collapseBtn = qs('.timeline-collapse-btn', this.dom_);
     collapseBtn?.addEventListener('click', () => {
       this.dom_?.classList.toggle('collapsed');
-      // const icon = qs('.timeline-collapse-icon', collapseBtn);
       collapseBtn.classList.toggle('is-rotated', this.dom_?.classList.contains('collapsed'));
     });
   }

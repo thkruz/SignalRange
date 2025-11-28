@@ -3,6 +3,105 @@
  * Most styling now handled by Tabler list-group. Only custom elements remain.
  */
 
+:root {
+  --icon-size: 24px;
+  --sidebar-width: 280px;
+  --sidebar-collapsed-width: 56px;
+}
+
+
+#asset-tree-sidebar-container {
+  width: var(--sidebar-width);
+  overflow: hidden;
+  transition: width 0.25s ease-out;
+  will-change: width;
+}
+
+.list-group-item {
+  cursor: pointer;
+}
+
+#asset-tree-sidebar-container.collapsed {
+  width: var(--sidebar-collapsed-width);
+
+  .mb-3 {
+    margin-bottom: 0px !important;
+  }
+
+  .sidebar-header {
+    border-bottom: 0px !important;
+    padding: 1rem 0.5rem 0rem 0.5rem !important;
+  }
+
+  .list-group-flush>.list-group-item {
+    border-bottom: 0px !important;
+  }
+
+  .list-group-item.placeholder-item {
+    display: none;
+  }
+}
+
+.list-group-item.placeholder-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* === Text Fade Transitions === */
+.sidebar-header h3,
+.list-group-header-text,
+.flex-fill,
+.item-status {
+  transition: opacity 0.15s ease-out;
+}
+
+#asset-tree-sidebar-container.collapsed .sidebar-header h3,
+#asset-tree-sidebar-container.collapsed .list-group-header,
+#asset-tree-sidebar-container.collapsed .flex-fill,
+#asset-tree-sidebar-container.collapsed .item-status {
+  opacity: 0;
+  display: none;
+  pointer-events: none;
+  text-align: center;
+  align-items: center;
+}
+
+/* === Collapsed Layout === */
+#asset-tree-sidebar-container.collapsed .sidebar-content {
+  padding: 0.25rem;
+}
+
+#asset-tree-sidebar-container.collapsed .list-group-item {
+  justify-content: center;
+  padding: 0.5rem;
+}
+
+#asset-tree-sidebar-container.collapsed .list-group-header {
+  justify-content: center;
+  padding: 0.5rem;
+}
+
+#asset-tree-sidebar-container.collapsed .sidebar-header {
+  justify-content: center;
+  padding: 0.75rem;
+}
+
+/* === Icon Sizing (fixed, no resize) === */
+.item-icon,
+.category-icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.item-icon img,
+.category-icon img {
+  width: var(--icon-size);
+  height: var(--icon-size);
+}
+
 .asset-tree-sidebar {
   display: flex;
   flex-direction: column;
@@ -12,9 +111,12 @@
 }
 
 .sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   padding: 1rem;
   border-bottom: 1px solid var(--mc-border);
-  background: var(--mc-surface-0);
+  transition: padding 0.25s ease-out, justify-content 0.25s ease-out;
 }
 
 .sidebar-header h3 {
@@ -24,28 +126,67 @@
   color: var(--mc-text-primary);
 }
 
+.sidebar-collapse-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--mc-text-secondary);
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.sidebar-collapse-btn svg {
+  width: 32px !important;
+  height: 32px !important;
+  flex-shrink: 0;
+}
+
+.sidebar-collapse-btn:hover {
+  color: var(--mc-text-primary);
+  box-shadow: none !important;
+}
+
+.sidebar-collapse-icon {
+  transition: transform 0.3s ease;
+}
+
+.sidebar-collapse-btn.is-rotated .sidebar-collapse-icon {
+  transform: rotate(180deg);
+}
+
 .sidebar-content {
   flex: 1;
   overflow-y: auto;
   padding: 0.5rem;
+  transition: padding 0.25s ease-out;
 }
 
 .asset-tree {
   display: flex;
   flex-direction: column;
+}
+
+/* Category Icon - in list-group-header */
+.list-group-header {
+  display: flex;
+  align-items: center;
   gap: 0.5rem;
+  background: transparent !important;
 }
 
-/* Category Icon - Custom Component */
-.category-icon {
-  font-size: 1rem;
-  margin-right: 0.25rem;
+.list-group-header-text {
+  flex: 1;
 }
 
-/* Item Icon - Custom Component */
-.item-icon {
-  font-size: 1rem;
-  opacity: 0.8;
+/* List item layout with gap */
+.list-group-item {
+  gap: 0.5rem;
 }
 
 /* Item Status Indicator - Custom Component */
@@ -54,7 +195,6 @@
   height: 8px;
   border-radius: 50%;
   flex-shrink: 0;
-  margin-left: 0.5rem;
 }
 
 .item-status.operational {

@@ -31,10 +31,7 @@ export abstract class BaseEquipment {
   private isInitialized: boolean = false;
   protected domCache: { [key: string]: HTMLElement | HTMLDivElement } = {};
 
-  constructor(parentId: string, teamId: number = 1) {
-    const parentDom = document.getElementById(parentId);
-    if (!parentDom) throw new Error(`Parent element ${parentId} not found`);
-
+  constructor(teamId: number = 1) {
     this.uuid = generateUuid();
     this.teamId = teamId;
   }
@@ -58,7 +55,21 @@ export abstract class BaseEquipment {
 
     const parentDom = parentId ? document.getElementById(parentId) : null;
     if (!parentId || !parentDom) {
-      throw new Error(`Parent element ${parentId} not found`);
+      // For headless mode, create a hidden container directly in body
+      // Don't require a specific parent element
+      const container = document.createElement('div');
+      container.id = `antenna-headless-${this.uuid}`;
+      container.className = 'antenna-headless';
+      container.style.display = 'none'; // Hidden
+      container.style.position = 'absolute';
+      container.style.visibility = 'hidden';
+
+      // Append to body instead of looking for specific parent
+      document.body.appendChild(container);
+
+      this.domCache['parent'] = container;
+
+      return container as unknown as HTMLElement;
     }
 
     return parentDom;

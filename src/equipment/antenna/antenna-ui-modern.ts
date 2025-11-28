@@ -30,7 +30,7 @@ export class AntennaUIModern extends AntennaCore {
     serverId: number = 1,
   ) {
     // Call parent constructor which will call build()
-    super(parentId, configId, initialState, teamId, serverId);
+    super(configId, initialState, teamId, serverId);
 
     // Create UI components
     this.helpBtn_ = HelpButton.create(

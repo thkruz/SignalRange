@@ -1,0 +1,293 @@
+/* ACU Control Tab - Modern theme compatible with Bootstrap 5 */
+
+.acu-control-tab {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto 1fr;
+  gap: 1.5rem;
+  padding: 1.5rem;
+  height: 100%;
+  background-color: var(--bs-body-bg, #1a1a1a);
+  overflow-y: auto;
+}
+
+/* Section Containers */
+.acu-section {
+  background-color: var(--bs-dark, #212529);
+  border: 1px solid var(--bs-border-color, #333);
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.acu-section h3 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--bs-light, #f8f9fa);
+  border-bottom: 1px solid var(--bs-border-color, #333);
+  padding-bottom: 0.5rem;
+}
+
+/* Grid Layout */
+.antenna-controls {
+  grid-column: 1;
+  grid-row: 1 / 3;
+}
+
+.omt-display {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.rf-metrics {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+/* Antenna Controls */
+.control-group {
+  margin-bottom: 1.5rem;
+}
+
+.control-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: var(--bs-light, #f8f9fa);
+  font-size: 0.9rem;
+}
+
+.control-group span {
+  float: right;
+  font-family: 'Courier New', monospace;
+  color: var(--bs-info, #0dcaf0);
+  font-weight: 600;
+}
+
+.control-group input[type="range"] {
+  width: 100%;
+  height: 0.5rem;
+  background: var(--bs-secondary, #6c757d);
+  border-radius: 0.25rem;
+  outline: none;
+  opacity: 0.9;
+  transition: opacity 0.2s;
+}
+
+.control-group input[type="range"]:hover {
+  opacity: 1;
+}
+
+.control-group input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 50%;
+  background: var(--bs-primary, #0d6efd);
+  cursor: pointer;
+  box-shadow: 0 0 0 4px rgba(13, 110, 253, 0.2);
+  transition: all 0.2s;
+}
+
+.control-group input[type="range"]::-webkit-slider-thumb:hover {
+  background: var(--bs-primary-dark, #0a58ca);
+  box-shadow: 0 0 0 6px rgba(13, 110, 253, 0.3);
+}
+
+.control-group input[type="range"]::-moz-range-thumb {
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 50%;
+  background: var(--bs-primary, #0d6efd);
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 0 0 4px rgba(13, 110, 253, 0.2);
+  transition: all 0.2s;
+}
+
+.control-group input[type="range"]::-moz-range-thumb:hover {
+  background: var(--bs-primary-dark, #0a58ca);
+  box-shadow: 0 0 0 6px rgba(13, 110, 253, 0.3);
+}
+
+/* Switches */
+.switches {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--bs-border-color, #333);
+}
+
+.form-check {
+  display: flex;
+  align-items: center;
+  padding-left: 0;
+}
+
+.form-check-input {
+  width: 3em;
+  height: 1.5em;
+  margin-right: 0.75rem;
+  cursor: pointer;
+  background-color: var(--bs-secondary, #6c757d);
+  border: none;
+  transition: all 0.2s;
+}
+
+.form-check-input:checked {
+  background-color: var(--bs-success, #198754);
+  border-color: var(--bs-success, #198754);
+}
+
+.form-check-input:focus {
+  border-color: var(--bs-primary, #0d6efd);
+  box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+.form-check-label {
+  margin-left: 0;
+  font-weight: 500;
+  color: var(--bs-light, #f8f9fa);
+  user-select: none;
+  cursor: pointer;
+}
+
+/* OMT Display */
+.omt-status {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.status-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  background-color: var(--bs-body-bg, #1a1a1a);
+  border-radius: 0.375rem;
+  border: 1px solid var(--bs-border-color-subtle, #2a2a2a);
+}
+
+.status-label {
+  font-weight: 500;
+  color: var(--bs-secondary, #6c757d);
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.status-value {
+  font-family: 'Courier New', monospace;
+  font-weight: 600;
+  color: var(--bs-light, #f8f9fa);
+  font-size: 0.95rem;
+}
+
+/* RF Metrics */
+.metrics-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.metric-item {
+  display: flex;
+  flex-direction: column;
+  padding: 0.75rem;
+  background-color: var(--bs-body-bg, #1a1a1a);
+  border-radius: 0.375rem;
+  border: 1px solid var(--bs-border-color-subtle, #2a2a2a);
+}
+
+.metric-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--bs-secondary, #6c757d);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-bottom: 0.25rem;
+}
+
+.metric-value {
+  font-family: 'Courier New', monospace;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--bs-light, #f8f9fa);
+}
+
+/* LED Indicator */
+.led {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+}
+
+.led-green {
+  background-color: #28a745;
+  box-shadow: 0 0 12px rgba(40, 167, 69, 0.7), inset 0 0 6px rgba(255, 255, 255, 0.3);
+}
+
+.led-red {
+  background-color: #dc3545;
+  box-shadow: 0 0 12px rgba(220, 53, 69, 0.7), inset 0 0 6px rgba(255, 255, 255, 0.3);
+}
+
+.led-amber {
+  background-color: #ffc107;
+  box-shadow: 0 0 12px rgba(255, 193, 7, 0.7), inset 0 0 6px rgba(255, 255, 255, 0.3);
+}
+
+.led-off {
+  background-color: #404040;
+  box-shadow: none;
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+  .acu-control-tab {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto;
+  }
+
+  .antenna-controls {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .omt-display {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .rf-metrics {
+    grid-column: 1;
+    grid-row: 3;
+  }
+}
+
+/* Scrollbar Styling */
+.acu-control-tab::-webkit-scrollbar {
+  width: 8px;
+}
+
+.acu-control-tab::-webkit-scrollbar-track {
+  background: var(--bs-body-bg, #1a1a1a);
+}
+
+.acu-control-tab::-webkit-scrollbar-thumb {
+  background: var(--bs-secondary, #6c757d);
+  border-radius: 4px;
+}
+
+.acu-control-tab::-webkit-scrollbar-thumb:hover {
+  background: var(--bs-secondary-dark, #5a6268);
+}

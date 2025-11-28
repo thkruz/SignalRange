@@ -53,7 +53,7 @@ export class AntennaUIBasic extends AntennaCore {
     };
 
     // Call parent constructor
-    super(parentId, configId, initialState, teamId, serverId);
+    super(configId, initialState, teamId, serverId);
 
     const tempId = `antenna-basic-temp`;
     this.powerSwitch_ = PowerSwitch.create(
@@ -173,7 +173,7 @@ export class AntennaUIBasic extends AntennaCore {
   /**
    * Override: Loopback not available in basic UI
    */
-  protected override handleLoopbackToggle(_isSwitchUp: boolean): void {
+  public override handleLoopbackToggle(_isSwitchUp: boolean): void {
     // Feature not available in basic UI
     console.warn('Loopback control not available in basic antenna UI');
   }
@@ -181,7 +181,7 @@ export class AntennaUIBasic extends AntennaCore {
   /**
    * Override: Auto-track not available in basic UI
    */
-  protected override handleAutoTrackToggle(_isSwitchUp: boolean): void {
+  public override handleAutoTrackToggle(_isSwitchUp: boolean): void {
     // Feature not available in basic UI
     console.warn('Auto-track not available in basic antenna UI');
   }
@@ -189,7 +189,7 @@ export class AntennaUIBasic extends AntennaCore {
   /**
    * Override: Polarization control not available in basic UI (locked at 0°)
    */
-  protected override handlePolarizationChange(_value: number): void {
+  public override handlePolarizationChange(_value: number): void {
     // Feature not available in basic UI - polarization locked at 0°
     console.warn('Polarization control not available in basic antenna UI');
   }

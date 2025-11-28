@@ -76,13 +76,12 @@ export abstract class AntennaCore extends BaseEquipment {
   private lockAcquisitionTimeout_: number | null = null;
 
   constructor(
-    parentId: string,
     configId: ANTENNA_CONFIG_KEYS = ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK,
     initialState: Partial<AntennaState> = {},
     teamId: number = 1,
     serverId: number = 1,
   ) {
-    super(parentId, teamId);
+    super(teamId);
 
     // Set antenna configuration
     this.config = ANTENNA_CONFIGS[configId];
@@ -171,10 +170,10 @@ export abstract class AntennaCore extends BaseEquipment {
   }
 
   // ========================================================================
-  // PROTECTED HANDLERS FOR UI CLASSES
+  // PUBLIC HANDLERS FOR UI CLASSES AND ADAPTERS
   // ========================================================================
 
-  protected handlePolarizationChange(value: number): void {
+  public handlePolarizationChange(value: number): void {
     if (!this.state.isPowered) {
       return;
     }
@@ -182,7 +181,7 @@ export abstract class AntennaCore extends BaseEquipment {
     this.notifyStateChange_();
   }
 
-  protected handleAzimuthChange(value: number): void {
+  public handleAzimuthChange(value: number): void {
     if (!this.state.isPowered) {
       return;
     }
@@ -197,7 +196,7 @@ export abstract class AntennaCore extends BaseEquipment {
     }
   }
 
-  protected handleElevationChange(value: number): void {
+  public handleElevationChange(value: number): void {
     if (!this.state.isPowered) {
       return;
     }
@@ -212,7 +211,7 @@ export abstract class AntennaCore extends BaseEquipment {
     }
   }
 
-  protected handleLoopbackToggle(isSwitchUp: boolean): void {
+  public handleLoopbackToggle(isSwitchUp: boolean): void {
     if (!this.state.isOperational || !this.state.isPowered) {
       return;
     }
@@ -225,7 +224,7 @@ export abstract class AntennaCore extends BaseEquipment {
     this.syncDomWithState();
   }
 
-  protected handleAutoTrackToggle(isSwitchUp: boolean): void {
+  public handleAutoTrackToggle(isSwitchUp: boolean): void {
     if (!this.state.isOperational || !this.state.isPowered) {
       return;
     }
@@ -277,7 +276,7 @@ export abstract class AntennaCore extends BaseEquipment {
     this.syncDomWithState();
   }
 
-  protected handlePowerToggle(isPowered?: boolean): void {
+  public handlePowerToggle(isPowered?: boolean): void {
     this.state.isPowered = isPowered ?? !this.state.isPowered;
 
     // Clear lock acquisition timeout when powering off

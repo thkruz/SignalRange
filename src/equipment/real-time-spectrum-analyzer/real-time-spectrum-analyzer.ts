@@ -90,7 +90,7 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
   prevState: any;
 
   constructor(parentId: string, rfFrontEnd: RFFrontEndCore, initialState: Partial<RealTimeSpectrumAnalyzerState> = {}, teamId: number = 1) {
-    super(parentId, teamId);
+    super(teamId);
 
     this.rfFrontEnd_ = rfFrontEnd;
 

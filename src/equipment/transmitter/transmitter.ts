@@ -56,7 +56,7 @@ export class Transmitter extends BaseEquipment {
   faultResetSwitch: ToggleSwitch;
 
   constructor(parentId: string, teamId: number = 1, serverId: number = 1) {
-    super(parentId, teamId);
+    super(teamId);
 
     // Initialize config with 4 modems
     const modems: TransmitterModem[] = [];

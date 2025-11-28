@@ -40,7 +40,7 @@ export class RFFrontEndUIStandard extends RFFrontEndCore {
   declare gpsdoModule: GPSDOModuleCore;
 
   constructor(parentId: string, state?: Partial<RFFrontEndState>, teamId = 1, serverId = 1) {
-    super(state, teamId, serverId, parentId);
+    super(state, teamId, serverId);
     this.build(parentId);
   }
 

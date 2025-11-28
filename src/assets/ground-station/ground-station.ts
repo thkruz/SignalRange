@@ -1,6 +1,6 @@
 import { generateUuid } from "@app/engine/utils/uuid";
 import { ANTENNA_CONFIG_KEYS, AntennaCore } from "@app/equipment/antenna";
-import { AntennaUIModern } from "@app/equipment/antenna/antenna-ui-modern";
+import { AntennaUIHeadless } from "@app/equipment/antenna/antenna-ui-headless";
 import { RealTimeSpectrumAnalyzer } from "@app/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer";
 import { Receiver } from "@app/equipment/receiver/receiver";
 import { RFFrontEndCore } from "@app/equipment/rf-front-end/rf-front-end-core";
@@ -30,7 +30,7 @@ export class GroundStation {
   readonly receivers: Receiver[] = [];
 
   private readonly config_: GroundStationConfig;
-  lastStateString: string;
+  lastStateString: string = '{}';
 
   constructor(config: GroundStationConfig) {
     this.uuid = generateUuid();
@@ -86,12 +86,12 @@ export class GroundStation {
   private createEquipment_(): void {
     const config = this.config_;
 
-    // Create antennas
+    // Create antennas (headless mode for mission control)
     config.antennas.forEach((antennaConfigId, index) => {
-      const antenna = new AntennaUIModern(
-        `gs-${this.uuid}-antenna${index + 1}-container`,
+      const antenna = new AntennaUIHeadless(
+        `gs-${this.uuid}-antenna${index + 1}-headless`,
         antennaConfigId as ANTENNA_CONFIG_KEYS,
-        undefined,
+        null,
         config.teamId || 1
       );
 
@@ -197,7 +197,9 @@ export class GroundStation {
 
     // Emit ground station state changed
     if (JSON.stringify(this.state) !== this.lastStateString) {
-      this.emit(Events.GROUND_STATION_STATE_CHANGED, this.state);
+      // Changes every update due to random noise and current
+
+      // this.emit(Events.GROUND_STATION_STATE_CHANGED, this.state);
       this.lastStateString = JSON.stringify(this.state);
     }
   }
@@ -207,6 +209,10 @@ export class GroundStation {
    * Distributes state to individual equipment modules
    */
   sync(data: Partial<GroundStationState>): void {
+    if (data.uuid !== this.uuid) {
+      return;
+    }
+
     this.state = { ...this.state, ...data };
 
     // Sync individual equipment
@@ -244,7 +250,7 @@ export class GroundStation {
   /**
    * Helper to emit equipment events
    */
-  private emit<T extends Events>(event: T, ...args: EventMap[T]): void {
+  emit<T extends Events>(event: T, ...args: EventMap[T]): void {
     EventBus.getInstance().emit(event, ...args);
   }
 

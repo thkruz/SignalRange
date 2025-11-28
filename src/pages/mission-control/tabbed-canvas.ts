@@ -4,6 +4,7 @@ import { qs } from "@app/engine/utils/query-selector";
 import { EventBus } from "@app/events/event-bus";
 import { Events } from "@app/events/events";
 import { SimulationManager } from "@app/simulation/simulation-manager";
+import { ACUControlTab } from './tabs/acu-control-tab';
 import './tabbed-canvas.css';
 
 /**
@@ -18,6 +19,7 @@ export class TabbedCanvas extends BaseElement {
 
   private activeTab_: string = 'welcome';
   private selectedAssetId_: string | null = null;
+  private tabInstances_: Map<string, ACUControlTab> = new Map();
 
   protected html_ = html`
     <div class="tabbed-canvas">
@@ -46,6 +48,12 @@ export class TabbedCanvas extends BaseElement {
    * Handle asset selection from the asset tree
    */
   private handleAssetSelected_(type: 'ground-station' | 'satellite', id: string): void {
+    // Clean up old tabs when switching assets
+    if (this.selectedAssetId_ !== id) {
+      this.tabInstances_.forEach(tab => tab.dispose());
+      this.tabInstances_.clear();
+    }
+
     this.selectedAssetId_ = id;
 
     if (type === 'ground-station') {
@@ -172,8 +180,11 @@ export class TabbedCanvas extends BaseElement {
   private renderTabContent_(tabId: string): void {
     const content = qs('#canvas-content', this.dom_);
 
-    // Phase 3: Placeholder content for all tabs
-    // Phase 4+: Actual tab implementations (ACUControlTab, RxAnalysisTab, etc.)
+    // Deactivate all existing tabs
+    this.tabInstances_.forEach(tab => tab.deactivate());
+
+    // Phase 4: ACU Control implemented
+    // Phase 5+: Actual tab implementations for other tabs (RxAnalysisTab, etc.)
     switch (tabId) {
       case 'dashboard':
         content.innerHTML = html`
@@ -186,13 +197,7 @@ export class TabbedCanvas extends BaseElement {
         break;
 
       case 'acu-control':
-        content.innerHTML = html`
-          <div class="tab-content-placeholder">
-            <h3>ACU Control</h3>
-            <p>Antenna Control Unit (ACU) interface for azimuth, elevation, and polarization control.</p>
-            <div class="placeholder-note">Coming in Phase 4</div>
-          </div>
-        `;
+        this.renderACUControlTab_(content);
         break;
 
       case 'rx-analysis':
@@ -236,9 +241,46 @@ export class TabbedCanvas extends BaseElement {
   }
 
   /**
+   * Render ACU Control tab (Phase 4)
+   */
+  private renderACUControlTab_(content: HTMLElement): void {
+    const groundStation = SimulationManager.getInstance().groundStations.find(
+      gs => gs.state.id === this.selectedAssetId_
+    );
+
+    if (!groundStation) {
+      content.innerHTML = html`
+        <div class="tab-content-placeholder">
+          <h3>Error</h3>
+          <p>Ground station not found.</p>
+        </div>
+      `;
+      return;
+    }
+
+    // Check if tab instance already exists
+    const tabKey = `acu-control-${this.selectedAssetId_}`;
+    let acuTab = this.tabInstances_.get(tabKey);
+
+    if (!acuTab) {
+      // Create new tab instance
+      acuTab = new ACUControlTab(groundStation, 'canvas-content');
+      this.tabInstances_.set(tabKey, acuTab);
+    }
+
+    // Activate the tab
+    acuTab.activate();
+  }
+
+  /**
    * Cleanup
    */
   public destroy(): void {
+    // Dispose all tab instances
+    this.tabInstances_.forEach(tab => tab.dispose());
+    this.tabInstances_.clear();
+
+    // Remove event listeners
     EventBus.getInstance().off(Events.ASSET_SELECTED, this.handleAssetSelected_.bind(this));
   }
 }

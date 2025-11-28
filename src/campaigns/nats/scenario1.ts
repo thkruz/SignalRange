@@ -40,98 +40,192 @@ export const scenario1Data: ScenarioData = {
   ],
   settings: {
     isSync: true,
-    groundStations: [{
-      id: 'MIA-01',
-      name: 'Miami Ground Station',
-      location: {
-        latitude: 25.7617,
-        longitude: -80.1918,
-        elevation: 2,
-      },
-      antennas: [ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK],
-      rfFrontEnds: [{
-        // Module states managed by their respective classes
-        omt: OMTModule.getDefaultState(),
-        buc: BUCModuleCore.getDefaultState(),
-        hpa: HPAModuleCore.getDefaultState(),
-        filter: IfFilterBankModuleCore.getDefaultState(),
-        lnb: {
-          isPowered: false,
-          loFrequency: 6080 as MHz, // MHz
-          gain: 0 as dB,
-          lnaNoiseFigure: 0.6, // dB
-          mixerNoiseFigure: 16.0, // dB
-          noiseTemperature: 45, // K
-          noiseTemperatureStabilizationTime: 180, // seconds
-          isExtRefLocked: false,
-          noiseFloor: -140, // dBm/Hz
-          frequencyError: 0, // Hz
-          temperature: 25, // °C
-          thermalStabilizationTime: 180, // seconds
+    groundStations: [
+      {
+        id: 'VT-01',
+        name: 'Vermont Ground Station',
+        location: {
+          latitude: 44.5588,
+          longitude: -72.5778,
+          elevation: 2,
         },
-        coupler: {
-          isPowered: true,
-          tapPointA: TapPoint.TX_IF,
-          tapPointB: TapPoint.RX_IF,
-          availableTapPointsA: [TapPoint.TX_IF, TapPoint.TX_RF_POST_BUC],
-          availableTapPointsB: [TapPoint.RX_IF],
-          couplingFactorA: -40, // dB
-          couplingFactorB: -39, // dB
-          isActiveA: true,
-          isActiveB: true,
-        } as CouplerState,
-        gpsdo: {
-          isPowered: true, // CHANGE
-          isLocked: false,
-          warmupTimeRemaining: 0, // seconds
-          temperature: 70, // °C
-          gnssSignalPresent: false,
-          isGnssSwitchUp: false,
-          isGnssAcquiringLock: false,
-          satelliteCount: 0,
-          utcAccuracy: 0,
-          constellation: 'GPS',
-          lockDuration: 0,
-          frequencyAccuracy: 0,
-          allanDeviation: 0,
-          phaseNoise: 0,
-          isInHoldover: true,
-          holdoverDuration: 600,
-          holdoverError: 0,
-          active10MHzOutputs: 2,
-          max10MHzOutputs: 5,
-          output10MHzLevel: 0,
-          ppsOutputsEnabled: false,
-          operatingHours: 6,
-          selfTestPassed: true,
-          agingRate: 0,
-        },
-      }],
-      spectrumAnalyzers: [
-        {
-          referenceLevel: 0, // dBm
-          centerFrequency: 600e6 as Hertz,
-          span: 100e6 as Hertz,
-          rbw: 50e6 as Hertz,
-          minAmplitude: -170,
-          maxAmplitude: 0,
-          scaleDbPerDiv: (-0 + 170) / 10 as dB, // 6 dB/div
-          screenMode: 'both',
-          inputUnit: 'MHz',
-          inputValue: '',
+        antennas: [ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK],
+        rfFrontEnds: [{
+          // Module states managed by their respective classes
+          omt: OMTModule.getDefaultState(),
+          buc: BUCModuleCore.getDefaultState(),
+          hpa: HPAModuleCore.getDefaultState(),
+          filter: IfFilterBankModuleCore.getDefaultState(),
+          lnb: {
+            isPowered: false,
+            loFrequency: 6080 as MHz, // MHz
+            gain: 0 as dB,
+            lnaNoiseFigure: 0.6, // dB
+            mixerNoiseFigure: 16.0, // dB
+            noiseTemperature: 45, // K
+            noiseTemperatureStabilizationTime: 180, // seconds
+            isExtRefLocked: false,
+            noiseFloor: -140, // dBm/Hz
+            frequencyError: 0, // Hz
+            temperature: 25, // °C
+            thermalStabilizationTime: 180, // seconds
+          },
+          coupler: {
+            isPowered: true,
+            tapPointA: TapPoint.TX_IF,
+            tapPointB: TapPoint.RX_IF,
+            availableTapPointsA: [TapPoint.TX_IF, TapPoint.TX_RF_POST_BUC],
+            availableTapPointsB: [TapPoint.RX_IF],
+            couplingFactorA: -40, // dB
+            couplingFactorB: -39, // dB
+            isActiveA: true,
+            isActiveB: true,
+          } as CouplerState,
+          gpsdo: {
+            isPowered: true, // CHANGE
+            isLocked: false,
+            warmupTimeRemaining: 0, // seconds
+            temperature: 70, // °C
+            gnssSignalPresent: false,
+            isGnssSwitchUp: false,
+            isGnssAcquiringLock: false,
+            satelliteCount: 0,
+            utcAccuracy: 0,
+            constellation: 'GPS',
+            lockDuration: 0,
+            frequencyAccuracy: 0,
+            allanDeviation: 0,
+            phaseNoise: 0,
+            isInHoldover: true,
+            holdoverDuration: 600,
+            holdoverError: 0,
+            active10MHzOutputs: 2,
+            max10MHzOutputs: 5,
+            output10MHzLevel: 0,
+            ppsOutputsEnabled: false,
+            operatingHours: 6,
+            selfTestPassed: true,
+            agingRate: 0,
+          },
+        }],
+        spectrumAnalyzers: [
+          {
+            referenceLevel: 0, // dBm
+            centerFrequency: 600e6 as Hertz,
+            span: 100e6 as Hertz,
+            rbw: 50e6 as Hertz,
+            minAmplitude: -170,
+            maxAmplitude: 0,
+            scaleDbPerDiv: (-0 + 170) / 10 as dB, // 6 dB/div
+            screenMode: 'both',
+            inputUnit: 'MHz',
+            inputValue: '',
 
-          // Multi-trace support
-          traces: [
-            { isVisible: true, isUpdating: true, mode: 'clearwrite' }, // Trace 1
-            { isVisible: false, isUpdating: false, mode: 'clearwrite' }, // Trace 2
-            { isVisible: false, isUpdating: false, mode: 'clearwrite' }, // Trace 3
-          ],
-          selectedTrace: 1,
-        }
-      ],
-      transmitters: 0,
-      receivers: 0,
-    }],
+            // Multi-trace support
+            traces: [
+              { isVisible: true, isUpdating: true, mode: 'clearwrite' }, // Trace 1
+              { isVisible: false, isUpdating: false, mode: 'clearwrite' }, // Trace 2
+              { isVisible: false, isUpdating: false, mode: 'clearwrite' }, // Trace 3
+            ],
+            selectedTrace: 1,
+          }
+        ],
+        transmitters: 0,
+        receivers: 0,
+      },
+      {
+        id: 'MIA-01',
+        name: 'Miami Ground Station',
+        location: {
+          latitude: 25.7617,
+          longitude: -80.1918,
+          elevation: 2,
+        },
+        antennas: [ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK],
+        rfFrontEnds: [{
+          // Module states managed by their respective classes
+          omt: OMTModule.getDefaultState(),
+          buc: BUCModuleCore.getDefaultState(),
+          hpa: HPAModuleCore.getDefaultState(),
+          filter: IfFilterBankModuleCore.getDefaultState(),
+          lnb: {
+            isPowered: false,
+            loFrequency: 6080 as MHz, // MHz
+            gain: 0 as dB,
+            lnaNoiseFigure: 0.6, // dB
+            mixerNoiseFigure: 16.0, // dB
+            noiseTemperature: 45, // K
+            noiseTemperatureStabilizationTime: 180, // seconds
+            isExtRefLocked: false,
+            noiseFloor: -140, // dBm/Hz
+            frequencyError: 0, // Hz
+            temperature: 25, // °C
+            thermalStabilizationTime: 180, // seconds
+          },
+          coupler: {
+            isPowered: true,
+            tapPointA: TapPoint.TX_IF,
+            tapPointB: TapPoint.RX_IF,
+            availableTapPointsA: [TapPoint.TX_IF, TapPoint.TX_RF_POST_BUC],
+            availableTapPointsB: [TapPoint.RX_IF],
+            couplingFactorA: -40, // dB
+            couplingFactorB: -39, // dB
+            isActiveA: true,
+            isActiveB: true,
+          } as CouplerState,
+          gpsdo: {
+            isPowered: true, // CHANGE
+            isLocked: false,
+            warmupTimeRemaining: 0, // seconds
+            temperature: 70, // °C
+            gnssSignalPresent: false,
+            isGnssSwitchUp: false,
+            isGnssAcquiringLock: false,
+            satelliteCount: 0,
+            utcAccuracy: 0,
+            constellation: 'GPS',
+            lockDuration: 0,
+            frequencyAccuracy: 0,
+            allanDeviation: 0,
+            phaseNoise: 0,
+            isInHoldover: true,
+            holdoverDuration: 600,
+            holdoverError: 0,
+            active10MHzOutputs: 2,
+            max10MHzOutputs: 5,
+            output10MHzLevel: 0,
+            ppsOutputsEnabled: false,
+            operatingHours: 6,
+            selfTestPassed: true,
+            agingRate: 0,
+          },
+        }],
+        spectrumAnalyzers: [
+          {
+            referenceLevel: 0, // dBm
+            centerFrequency: 600e6 as Hertz,
+            span: 100e6 as Hertz,
+            rbw: 50e6 as Hertz,
+            minAmplitude: -170,
+            maxAmplitude: 0,
+            scaleDbPerDiv: (-0 + 170) / 10 as dB, // 6 dB/div
+            screenMode: 'both',
+            inputUnit: 'MHz',
+            inputValue: '',
+
+            // Multi-trace support
+            traces: [
+              { isVisible: true, isUpdating: true, mode: 'clearwrite' }, // Trace 1
+              { isVisible: false, isUpdating: false, mode: 'clearwrite' }, // Trace 2
+              { isVisible: false, isUpdating: false, mode: 'clearwrite' }, // Trace 3
+            ],
+            selectedTrace: 1,
+          }
+        ],
+        transmitters: 0,
+        receivers: 0,
+      }
+    ],
     antennasState: [
       {
         // Pre-configure antenna to be powered on and pointed roughly at satellite 1

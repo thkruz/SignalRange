@@ -58,7 +58,7 @@ export class AntennaUIStandard extends AntennaCore {
     };
 
     // Call parent constructor which will call build()
-    super(parentId, configId, initialState, teamId, serverId);
+    super(configId, initialState, teamId, serverId);
 
     // Create UI components with temporary IDs (will be updated after super)
     const tempId = `antenna-temp`;

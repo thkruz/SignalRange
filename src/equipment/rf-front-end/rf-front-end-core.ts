@@ -58,9 +58,9 @@ export abstract class RFFrontEndCore extends BaseEquipment {
   antenna: AntennaCore | null = null;
   transmitters: Transmitter[] = [];
 
-  constructor(state?: Partial<RFFrontEndState>, teamId: number = 1, serverId: number = 1, parentId: string = '') {
+  constructor(state?: Partial<RFFrontEndState>, teamId: number = 1, serverId: number = 1) {
     // Note: parentId is required for BaseEquipment but may not be used in core
-    super(parentId, teamId);
+    super(teamId);
 
     // Initialize state with default values from modules
     this.state_ = {

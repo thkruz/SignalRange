@@ -25,24 +25,26 @@ export class AntennaUIHeadless extends AntennaCore {
     serverId: number = 1,
   ) {
     // Call parent constructor
-    super(parentId, configId, initialState, teamId, serverId);
+    super(configId, initialState, teamId, serverId);
     super.build(parentId);
   }
 
-  protected override initializeDom(parentId: string): HTMLElement {
-    const parentDom = super.initializeDom(parentId);
-
-    // Create minimal hidden DOM stub
+  protected override initializeDom(_parentId: string): HTMLElement {
+    // For headless mode, create a hidden container directly in body
+    // Don't require a specific parent element
     const container = document.createElement('div');
-    container.id = this.uuid;
+    container.id = `antenna-headless-${this.uuid}`;
     container.className = 'antenna-headless';
     container.style.display = 'none'; // Hidden
+    container.style.position = 'absolute';
+    container.style.visibility = 'hidden';
 
-    parentDom.appendChild(container);
+    // Append to body instead of looking for specific parent
+    document.body.appendChild(container);
 
     this.domCache['parent'] = container;
 
-    return parentDom;
+    return container as unknown as HTMLElement;
   }
 
   protected override addListeners_(): void {

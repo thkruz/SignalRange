@@ -7,8 +7,8 @@ import { FECType, Hertz, MHz, ModulationType } from "../../types";
 import { AntennaCore } from "../antenna";
 import { AlarmStatus, BaseEquipment } from "../base-equipment";
 import { TapPoint } from "../rf-front-end/coupler-module/coupler-module";
-import './receiver.css';
 import { RFFrontEndCore } from "../rf-front-end/rf-front-end-core";
+import './receiver.css';
 
 export interface ReceiverModemState {
   antennaUuid: string;
@@ -49,7 +49,7 @@ export class Receiver extends BaseEquipment {
   rfFrontEnd_: RFFrontEndCore | null = null;
 
   constructor(parentId: string, antennas: AntennaCore[], teamId: number = 1, serverId: number = 1) {
-    super(parentId, teamId);
+    super(teamId);
 
     this.antennas = antennas;
 

@@ -5,6 +5,7 @@ import { EventBus } from "@app/events/event-bus";
 import { Events } from "@app/events/events";
 import { SimulationManager } from "@app/simulation/simulation-manager";
 import { ACUControlTab } from './tabs/acu-control-tab';
+import { RxAnalysisTab } from './tabs/rx-analysis-tab';
 import './tabbed-canvas.css';
 
 /**
@@ -19,7 +20,7 @@ export class TabbedCanvas extends BaseElement {
 
   private activeTab_: string = 'welcome';
   private selectedAssetId_: string | null = null;
-  private tabInstances_: Map<string, ACUControlTab> = new Map();
+  private tabInstances_: Map<string, ACUControlTab | RxAnalysisTab> = new Map();
 
   protected html_ = html`
     <div class="tabbed-canvas">
@@ -201,13 +202,7 @@ export class TabbedCanvas extends BaseElement {
         break;
 
       case 'rx-analysis':
-        content.innerHTML = html`
-          <div class="tab-content-placeholder">
-            <h3>RX Analysis</h3>
-            <p>Receiver chain control with spectrum analyzer and signal analysis.</p>
-            <div class="placeholder-note">Coming in Phase 5</div>
-          </div>
-        `;
+        this.renderRxAnalysisTab_(content);
         break;
 
       case 'tx-chain':
@@ -260,7 +255,7 @@ export class TabbedCanvas extends BaseElement {
 
     // Check if tab instance already exists
     const tabKey = `acu-control-${this.selectedAssetId_}`;
-    let acuTab = this.tabInstances_.get(tabKey);
+    let acuTab = this.tabInstances_.get(tabKey) as ACUControlTab;
 
     if (!acuTab) {
       // Create new tab instance
@@ -270,6 +265,38 @@ export class TabbedCanvas extends BaseElement {
 
     // Activate the tab
     acuTab.activate();
+  }
+
+  /**
+   * Render RX Analysis tab (Phase 5)
+   */
+  private renderRxAnalysisTab_(content: HTMLElement): void {
+    const groundStation = SimulationManager.getInstance().groundStations.find(
+      gs => gs.state.id === this.selectedAssetId_
+    );
+
+    if (!groundStation) {
+      content.innerHTML = html`
+        <div class="tab-content-placeholder">
+          <h3>Error</h3>
+          <p>Ground station not found.</p>
+        </div>
+      `;
+      return;
+    }
+
+    // Check if tab instance already exists
+    const tabKey = `rx-analysis-${this.selectedAssetId_}`;
+    let rxTab = this.tabInstances_.get(tabKey) as RxAnalysisTab;
+
+    if (!rxTab) {
+      // Create new tab instance
+      rxTab = new RxAnalysisTab(groundStation, 'canvas-content');
+      this.tabInstances_.set(tabKey, rxTab);
+    }
+
+    // Activate the tab
+    rxTab.activate();
   }
 
   /**

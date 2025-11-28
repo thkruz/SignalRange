@@ -354,8 +354,8 @@ export abstract class LNBModuleCore extends RFFrontEndModule<LNBState> {
     return inputPowerDbm + this.state.gain;
   }
 
-  // Protected handlers for UI layer
-  protected handlePowerToggle(isPowered?: boolean): void {
+  // Public handlers for UI layer
+  public handlePowerToggle(isPowered?: boolean): void {
     if (isPowered !== undefined) {
       this.state.isPowered = isPowered;
     } else {
@@ -370,11 +370,11 @@ export abstract class LNBModuleCore extends RFFrontEndModule<LNBState> {
     }
   }
 
-  protected handleGainChange(gain: number): void {
+  public handleGainChange(gain: number): void {
     this.state.gain = gain as dB;
   }
 
-  protected handleLoFrequencyChange(frequency: number): void {
+  public handleLoFrequencyChange(frequency: number): void {
     this.state.loFrequency = frequency as MHz;
   }
 }

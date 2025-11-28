@@ -134,13 +134,13 @@ export abstract class IfFilterBankModuleCore extends RFFrontEndModule<IfFilterBa
     return alarms;
   }
 
-  // Protected handlers for UI layer
-  protected handleBandwidthChange(bandwidthIndex: number): void {
+  // Public handlers for UI layer
+  public handleBandwidthChange(bandwidthIndex: number): void {
     this.state.bandwidthIndex = Math.round(bandwidthIndex);
     this.updateFilterCharacteristics_();
   }
 
-  protected getFilterConfig(): FilterBandwidthConfig {
+  public getFilterConfig(): FilterBandwidthConfig {
     return FILTER_BANDWIDTH_CONFIGS[this.state.bandwidthIndex];
   }
 }

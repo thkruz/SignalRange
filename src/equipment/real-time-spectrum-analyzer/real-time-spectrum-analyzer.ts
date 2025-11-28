@@ -613,4 +613,19 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
 
     this.prevState = structuredClone(this.state);
   }
+
+  /**
+   * Public getters for canvas elements (for adapter access)
+   */
+  public getCanvas(): HTMLCanvasElement | null {
+    return this.domCache['canvas'] as HTMLCanvasElement || null;
+  }
+
+  public getSpectralCanvas(): HTMLCanvasElement | null {
+    return this.domCache['canvasSpectral'] as HTMLCanvasElement || null;
+  }
+
+  public getWaterfallCanvas(): HTMLCanvasElement | null {
+    return this.domCache['canvasWaterfall'] as HTMLCanvasElement || null;
+  }
 }

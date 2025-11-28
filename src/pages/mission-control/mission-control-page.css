@@ -119,11 +119,15 @@
   overflow: hidden;
   white-space: nowrap;
   width: 100%;
+  text-align: center;
 }
 
 .ticker-move {
-  display: inline-block;
-  animation: ticker 30s linear infinite;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-evenly;
+  width: 100%;
+  animation: ticker 60s linear infinite;
 }
 
 .ticker-item {

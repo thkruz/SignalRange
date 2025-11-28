@@ -10,30 +10,67 @@
 
 /* LED Indicators - Custom Component */
 .led {
-  width: 10px;
-  height: 10px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
   display: inline-block;
   transition: all 0.3s ease;
-  background-color: #4a4a4a;
+}
+
+.led-gray {
+  background-color: #6b7280;
 }
 
 .led-green {
   background-color: #22c55e;
-  box-shadow: 0 0 6px #22c55e;
+  box-shadow: 0 0 8px #22c55e;
 }
 
 .led-red {
-  background-color: var(--color-primary);
-  box-shadow: 0 0 6px var(--color-primary);
+  background-color: #dc2626;
+  box-shadow: 0 0 8px #dc2626;
 }
 
 .led-amber {
-  background-color: #eab308;
-  box-shadow: 0 0 6px #eab308;
+  background-color: #f59e0b;
+  box-shadow: 0 0 8px #f59e0b;
 }
 
 .led-off {
   background-color: #4a4a4a;
   box-shadow: none;
+}
+
+/* Modem button states */
+.modem-btn.active {
+  background-color: var(--tblr-primary);
+  border-color: var(--tblr-primary);
+  color: white;
+}
+
+.modem-btn.transmitting {
+  animation: pulse-red 1s infinite;
+  border-color: #dc2626;
+}
+
+@keyframes pulse-red {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(220, 38, 38, 0);
+  }
+}
+
+/* Power budget bar colors */
+.progress-bar.bg-success {
+  background-color: #22c55e !important;
+}
+
+.progress-bar.bg-warning {
+  background-color: #f59e0b !important;
+}
+
+.progress-bar.bg-danger {
+  background-color: #dc2626 !important;
 }

@@ -342,7 +342,11 @@ export class Receiver extends BaseEquipment {
     return this.state.modems.find(m => m.modemNumber === this.state.activeModem) ?? this.state.modems[0];
   }
 
-  private setActiveModem(modemNumber: number): void {
+  /**
+   * Public API Methods - For Adapter Pattern
+   */
+
+  public setActiveModem(modemNumber: number): void {
     this.state.activeModem = modemNumber;
     this.inputData = { ...this.activeModem };
     this.syncDomWithState();
@@ -353,6 +357,47 @@ export class Receiver extends BaseEquipment {
       activeModem: modemNumber
     });
   }
+
+  public handleAntennaChange(antennaUuid: string): void {
+    this.inputData.antennaUuid = antennaUuid;
+  }
+
+  public handleFrequencyChange(frequencyMHz: number): void {
+    this.inputData.frequency = frequencyMHz as MHz;
+  }
+
+  public handleBandwidthChange(bandwidthMHz: number): void {
+    this.inputData.bandwidth = bandwidthMHz as MHz;
+  }
+
+  public handleModulationChange(modulation: ModulationType): void {
+    this.inputData.modulation = modulation;
+  }
+
+  public handleFecChange(fec: FECType): void {
+    this.inputData.fec = fec;
+  }
+
+  public handlePowerToggle(isEnabled: boolean): void {
+    this.togglePower(isEnabled);
+  }
+
+  public hasSignalForModem(modem: ReceiverModemState): boolean {
+    const visibleSignals = this.getVisibleSignals(modem);
+    return visibleSignals.length > 0;
+  }
+
+  public isSignalDegraded(modem: ReceiverModemState): boolean {
+    const visibleSignals = this.getVisibleSignals(modem);
+    if (visibleSignals.length === 0) return false;
+
+    // Check if any signal is degraded
+    return visibleSignals.some(s => s.isDegraded);
+  }
+
+  /**
+   * Private Methods
+   */
 
   private handleInputChange(e: Event): void {
     const target = e.target as HTMLInputElement | HTMLSelectElement;
@@ -381,7 +426,7 @@ export class Receiver extends BaseEquipment {
     }
   }
 
-  private applyChanges(): void {
+  public applyChanges(): void {
     const activeModem = this.activeModem;
     const modemIndex = this.state.modems.findIndex(m => m.modemNumber === this.state.activeModem);
 
@@ -427,7 +472,7 @@ export class Receiver extends BaseEquipment {
     return 'led-green';
   }
 
-  private getVisibleSignals(activeModemData = this.activeModem) {
+  public getVisibleSignals(activeModemData = this.activeModem) {
     if (!activeModemData) return [];
 
     const externalNoise = this.rfFrontEnd_?.externalNoise ?? 0;

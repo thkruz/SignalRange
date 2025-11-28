@@ -5,6 +5,7 @@ import { qs } from "@app/engine/utils/query-selector";
 import { FILTER_BANDWIDTH_CONFIGS } from "@app/equipment/rf-front-end/filter-module/filter-module-core";
 import { FilterAdapter } from './filter-adapter';
 import { LNBAdapter } from './lnb-adapter';
+import { ReceiverAdapter } from './receiver-adapter';
 import './rx-analysis-tab.css';
 import { SpectrumAnalyzerAdapter } from './spectrum-analyzer-adapter';
 
@@ -25,6 +26,7 @@ export class RxAnalysisTab extends BaseElement {
   private lnbAdapter: LNBAdapter | null = null;
   private filterAdapter: FilterAdapter | null = null;
   private spectrumAnalyzerAdapter: SpectrumAnalyzerAdapter | null = null;
+  private receiverAdapter: ReceiverAdapter | null = null;
 
   constructor(groundStation: GroundStation, containerId: string) {
     super();
@@ -134,14 +136,14 @@ export class RxAnalysisTab extends BaseElement {
         </div>
 
         <!-- Spectrum Analyzer Card -->
-        <div class="col-12">
+        <div class="col-6">
           <div class="card">
             <div class="card-header">
               <h3 class="card-title">Spectrum Analyzer</h3>
             </div>
             <div class="card-body">
               <!-- Spectrum Analyzer Canvas -->
-              <div id="spec-analyzer-canvas-container" class="spec-analyzer-canvas mb-3">
+              <div id="spec-analyzer-canvas-container" class="spec-analyzer-canvas mb-3 row g-3">
                 <!-- Canvas will be moved here by adapter -->
               </div>
 
@@ -180,15 +182,144 @@ export class RxAnalysisTab extends BaseElement {
           </div>
         </div>
 
-        <!-- Demodulator Placeholder Card -->
-        <div class="col-12 d-none">
+        <!-- Receiver Modems Card -->
+        <div class="col-12">
           <div class="card">
             <div class="card-header">
-              <h3 class="card-title">Demodulator</h3>
+              <h3 class="card-title">Receiver Modems</h3>
             </div>
-            <div class="card-body text-center">
-              <p class="text-muted">Demodulator controls coming in Phase 6+</p>
-              <p class="text-muted small">Status: Not Implemented</p>
+            <div class="card-body">
+              <!-- Modem Selection Buttons -->
+              <div class="btn-group mb-3" role="group">
+                <button class="btn btn-outline-primary modem-btn" data-modem="1">RX 1</button>
+                <button class="btn btn-outline-primary modem-btn" data-modem="2">RX 2</button>
+                <button class="btn btn-outline-primary modem-btn" data-modem="3">RX 3</button>
+                <button class="btn btn-outline-primary modem-btn" data-modem="4">RX 4</button>
+              </div>
+
+              <div class="row g-3">
+                <!-- Configuration Panel -->
+                <div class="col-lg-4">
+                  <div class="card h-100">
+                    <div class="card-header">
+                      <h4 class="card-title">Configuration</h4>
+                    </div>
+                    <div class="card-body">
+                      <!-- Antenna selector -->
+                      <div class="mb-3">
+                        <label for="antenna-select" class="form-label">Antenna</label>
+                        <select id="antenna-select" class="form-select">
+                          <option value="1">Antenna 1</option>
+                          <option value="2">Antenna 2</option>
+                        </select>
+                        <small class="text-muted">Current: <span id="antenna-current">--</span></small>
+                      </div>
+
+                      <!-- Frequency input -->
+                      <div class="mb-3">
+                        <label for="frequency-input" class="form-label">Frequency (MHz)</label>
+                        <input id="frequency-input" type="number" class="form-control" step="0.1" />
+                        <small class="text-muted">Current: <span id="frequency-current">--</span></small>
+                      </div>
+
+                      <!-- Bandwidth input -->
+                      <div class="mb-3">
+                        <label for="bandwidth-input" class="form-label">Bandwidth (MHz)</label>
+                        <input id="bandwidth-input" type="number" class="form-control" step="0.1" />
+                        <small class="text-muted">Current: <span id="bandwidth-current">--</span></small>
+                      </div>
+
+                      <!-- Modulation selector -->
+                      <div class="mb-3">
+                        <label for="modulation-select" class="form-label">Modulation</label>
+                        <select id="modulation-select" class="form-select">
+                          <option value="BPSK">BPSK</option>
+                          <option value="QPSK">QPSK</option>
+                          <option value="8QAM">8QAM</option>
+                          <option value="16QAM">16QAM</option>
+                        </select>
+                        <small class="text-muted">Current: <span id="modulation-current">--</span></small>
+                      </div>
+
+                      <!-- FEC selector -->
+                      <div class="mb-3">
+                        <label for="fec-select" class="form-label">FEC Rate</label>
+                        <select id="fec-select" class="form-select">
+                          <option value="1/2">1/2</option>
+                          <option value="2/3">2/3</option>
+                          <option value="3/4">3/4</option>
+                          <option value="5/6">5/6</option>
+                          <option value="7/8">7/8</option>
+                        </select>
+                        <small class="text-muted">Current: <span id="fec-current">--</span></small>
+                      </div>
+
+                      <button id="apply-btn" class="btn btn-primary w-100">Apply Changes</button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Video Monitor -->
+                <div class="col-lg-4">
+                  <div class="card h-100">
+                    <div class="card-header">
+                      <h4 class="card-title">Video Monitor</h4>
+                    </div>
+                    <div class="card-body d-flex align-items-center justify-content-center p-0">
+                      <div id="video-monitor" class="video-monitor no-signal">
+                        <img id="video-feed" class="video-feed" alt="Video feed" />
+                        <div class="video-overlay">NO SIGNAL</div>
+                        <div class="signal-degraded-overlay"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Status & Control Panel -->
+                <div class="col-lg-4">
+                  <div class="card h-100">
+                    <div class="card-header">
+                      <h4 class="card-title">Status & Control</h4>
+                    </div>
+                    <div class="card-body">
+                      <!-- Power Switch -->
+                      <div class="mb-3">
+                        <div class="form-check form-switch">
+                          <input id="power-switch" type="checkbox" class="form-check-input" role="switch" checked />
+                          <label for="power-switch" class="form-check-label">Power</label>
+                        </div>
+                      </div>
+
+                      <!-- Signal Quality LED -->
+                      <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                          <span class="text-muted">Signal Quality:</span>
+                          <div id="signal-led" class="led led-gray"></div>
+                        </div>
+                      </div>
+
+                      <!-- Status Info -->
+                      <div class="mb-2">
+                        <div class="d-flex justify-content-between">
+                          <span class="text-muted small">SNR:</span>
+                          <span id="snr-display" class="fw-bold font-monospace">-- dB</span>
+                        </div>
+                      </div>
+                      <div class="mb-2">
+                        <div class="d-flex justify-content-between">
+                          <span class="text-muted small">Power Level:</span>
+                          <span id="power-level-display" class="fw-bold font-monospace">-- dBm</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Status Bar -->
+              <div id="status-bar" class="alert alert-info mt-3" role="alert">
+                Ready
+              </div>
             </div>
           </div>
         </div>
@@ -210,6 +341,7 @@ export class RxAnalysisTab extends BaseElement {
   protected addEventListenersLate_(): void {
     const rfFrontEnd = this.groundStation.rfFrontEnds[0];
     const spectrumAnalyzer = this.groundStation.spectrumAnalyzers[0];
+    const receiver = this.groundStation.receivers[0];
 
     if (!rfFrontEnd) {
       console.error('RF Front End not found in ground station');
@@ -225,6 +357,11 @@ export class RxAnalysisTab extends BaseElement {
     this.lnbAdapter = new LNBAdapter(rfFrontEnd.lnbModule, this.dom_!);
     this.filterAdapter = new FilterAdapter(rfFrontEnd.filterModule, this.dom_!);
     this.spectrumAnalyzerAdapter = new SpectrumAnalyzerAdapter(spectrumAnalyzer, this.dom_!);
+
+    // Create receiver adapter if receiver exists
+    if (receiver && this.dom_) {
+      this.receiverAdapter = new ReceiverAdapter(receiver, this.dom_);
+    }
   }
 
   /**
@@ -252,10 +389,12 @@ export class RxAnalysisTab extends BaseElement {
     this.lnbAdapter?.dispose();
     this.filterAdapter?.dispose();
     this.spectrumAnalyzerAdapter?.dispose();
+    this.receiverAdapter?.dispose();
 
     this.lnbAdapter = null;
     this.filterAdapter = null;
     this.spectrumAnalyzerAdapter = null;
+    this.receiverAdapter = null;
 
     this.dom_?.remove();
   }

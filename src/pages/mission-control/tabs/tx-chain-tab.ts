@@ -4,6 +4,7 @@ import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
 import { BUCAdapter } from './buc-adapter';
 import { HPAAdapter } from './hpa-adapter';
+import { TransmitterAdapter } from './transmitter-adapter';
 import './tx-chain-tab.css';
 
 /**
@@ -22,6 +23,7 @@ export class TxChainTab extends BaseElement {
   private readonly groundStation: GroundStation;
   private bucAdapter: BUCAdapter | null = null;
   private hpaAdapter: HPAAdapter | null = null;
+  private transmitterAdapter: TransmitterAdapter | null = null;
 
   constructor(groundStation: GroundStation, containerId: string) {
     super();
@@ -172,15 +174,131 @@ export class TxChainTab extends BaseElement {
           </div>
         </div>
 
-        <!-- Modulator Placeholder Card -->
-        <div class="col-lg-6">
+        <!-- Transmitter Modem Control Card (Full Width) -->
+        <div class="col-12">
           <div class="card">
             <div class="card-header">
-              <h3 class="card-title">Modulator</h3>
+              <h3 class="card-title">Transmitter Modems</h3>
             </div>
-            <div class="card-body text-center">
-              <p class="text-muted">Modulator controls coming in future phase</p>
-              <p class="text-muted small">Status: Not Implemented</p>
+            <div class="card-body">
+              <!-- Modem Selection Buttons -->
+              <div class="btn-group mb-3" role="group">
+                <button class="btn btn-outline-primary modem-btn" data-modem="1">TX 1</button>
+                <button class="btn btn-outline-primary modem-btn" data-modem="2">TX 2</button>
+                <button class="btn btn-outline-primary modem-btn" data-modem="3">TX 3</button>
+                <button class="btn btn-outline-primary modem-btn" data-modem="4">TX 4</button>
+              </div>
+
+              <div class="row g-3">
+                <!-- Configuration Panel -->
+                <div class="col-lg-6">
+                  <div class="card h-100">
+                    <div class="card-header">
+                      <h4 class="card-title">Configuration</h4>
+                    </div>
+                    <div class="card-body">
+                      <!-- Antenna selector -->
+                      <div class="mb-3">
+                        <label class="form-label">Antenna</label>
+                        <select id="tx-antenna-select" class="form-select">
+                          <option value="1">Antenna 1</option>
+                          <option value="2">Antenna 2</option>
+                        </select>
+                      </div>
+
+                      <!-- Frequency input -->
+                      <div class="mb-3">
+                        <label class="form-label">Frequency (MHz)</label>
+                        <input id="tx-frequency-input" type="number" class="form-control" step="0.1" />
+                        <small class="text-muted">Current: <span id="tx-frequency-current">--</span> MHz</small>
+                      </div>
+
+                      <!-- Bandwidth input -->
+                      <div class="mb-3">
+                        <label class="form-label">Bandwidth (MHz)</label>
+                        <input id="tx-bandwidth-input" type="number" class="form-control" step="0.1" />
+                        <small class="text-muted">Current: <span id="tx-bandwidth-current">--</span> MHz</small>
+                      </div>
+
+                      <!-- Power input -->
+                      <div class="mb-3">
+                        <label class="form-label">Power (dBm)</label>
+                        <input id="tx-power-input" type="number" class="form-control" step="0.5" />
+                        <small class="text-muted">Current: <span id="tx-power-current">--</span> dBm</small>
+                      </div>
+
+                      <button id="tx-apply-btn" class="btn btn-primary w-100">Apply Changes</button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Status & Control Panel -->
+                <div class="col-lg-6">
+                  <div class="card h-100">
+                    <div class="card-header">
+                      <h4 class="card-title">Status & Control</h4>
+                    </div>
+                    <div class="card-body">
+                      <!-- Power Budget Bar -->
+                      <div class="mb-3">
+                        <label class="form-label d-flex justify-content-between">
+                          <span>Power Budget</span>
+                          <span id="tx-power-percentage" class="fw-bold">0%</span>
+                        </label>
+                        <div class="progress">
+                          <div id="tx-power-bar" class="progress-bar" style="width: 0%"></div>
+                        </div>
+                      </div>
+
+                      <!-- Switches -->
+                      <div class="mb-3">
+                        <div class="form-check form-switch mb-2">
+                          <input id="tx-transmit-switch" type="checkbox" class="form-check-input" role="switch" />
+                          <label class="form-check-label">Transmit</label>
+                        </div>
+                        <div class="form-check form-switch mb-2">
+                          <input id="tx-loopback-switch" type="checkbox" class="form-check-input" role="switch" />
+                          <label class="form-check-label">Loopback</label>
+                        </div>
+                        <div class="form-check form-switch mb-2">
+                          <input id="tx-power-switch" type="checkbox" class="form-check-input" role="switch" />
+                          <label class="form-check-label">Power</label>
+                        </div>
+                      </div>
+
+                      <!-- Status LEDs -->
+                      <div class="mb-3">
+                        <div class="d-flex justify-content-around">
+                          <div class="text-center">
+                            <div id="tx-transmit-led" class="led led-gray mb-1"></div>
+                            <small class="text-muted">TX</small>
+                          </div>
+                          <div class="text-center">
+                            <div id="tx-fault-led" class="led led-gray mb-1"></div>
+                            <small class="text-muted">Fault</small>
+                          </div>
+                          <div class="text-center">
+                            <div id="tx-loopback-led" class="led led-gray mb-1"></div>
+                            <small class="text-muted">Loopback</small>
+                          </div>
+                          <div class="text-center">
+                            <div id="tx-online-led" class="led led-gray mb-1"></div>
+                            <small class="text-muted">Online</small>
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- Fault Reset Button -->
+                      <button id="tx-fault-reset-btn" class="btn btn-warning w-100 mb-2">Reset Fault</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Status Bar -->
+              <div id="tx-status-bar" class="alert alert-info mt-3" role="alert">
+                Ready
+              </div>
             </div>
           </div>
         </div>
@@ -216,6 +334,12 @@ export class TxChainTab extends BaseElement {
     // Create adapters
     this.bucAdapter = new BUCAdapter(rfFrontEnd.bucModule, this.dom_!);
     this.hpaAdapter = new HPAAdapter(rfFrontEnd.hpaModule, this.dom_!);
+
+    // Setup transmitter adapter
+    const transmitter = this.groundStation.transmitters[0];
+    if (transmitter && this.dom_) {
+      this.transmitterAdapter = new TransmitterAdapter(transmitter, this.dom_);
+    }
   }
 
   /**
@@ -242,9 +366,11 @@ export class TxChainTab extends BaseElement {
   public dispose(): void {
     this.bucAdapter?.dispose();
     this.hpaAdapter?.dispose();
+    this.transmitterAdapter?.dispose();
 
     this.bucAdapter = null;
     this.hpaAdapter = null;
+    this.transmitterAdapter = null;
 
     this.dom_?.remove();
   }

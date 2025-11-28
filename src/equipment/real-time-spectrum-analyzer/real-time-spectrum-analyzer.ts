@@ -137,10 +137,10 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
           </div>
         </div>
 
-        <div class="spec-a-canvas-container">
-          <canvas id="specA${this.uuid}" width="747" height="747" class="spec-a-canvas-single"></canvas>
-          <canvas id="specA${this.uuid}-spectral" width="747" height="200" class="spec-a-canvas-spectral"></canvas>
-          <canvas id="specA${this.uuid}-waterfall" width="747" height="200" class="spec-a-canvas-waterfall"></canvas>
+        <div class="spec-a-canvas-container row g-3">
+          <canvas id="specA${this.uuid}" width="747" height="747" class="spec-a-canvas-single col-lg-12"></canvas>
+          <canvas id="specA${this.uuid}-spectral" width="747" height="200" class="spec-a-canvas-spectral col-lg-12"></canvas>
+          <canvas id="specA${this.uuid}-waterfall" width="747" height="200" class="spec-a-canvas-waterfall col-lg-12"></canvas>
         </div>
 
         <div class="spec-a-info-bar">

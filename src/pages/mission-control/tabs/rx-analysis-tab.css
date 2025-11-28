@@ -45,3 +45,111 @@
   position: relative;
   overflow: hidden;
 }
+
+/* Modem Button Signal Quality States */
+.modem-btn.btn-rx-signal-good {
+  border: 2px solid #22c55e;
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.5);
+}
+
+.modem-btn.btn-rx-signal-degraded {
+  border: 2px solid #f59e0b;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.5);
+}
+
+.modem-btn.active {
+  background-color: var(--tblr-primary);
+  border-color: var(--tblr-primary);
+  color: white;
+}
+
+/* Video Monitor Container */
+.video-monitor {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background-color: #000;
+  border: 1px solid var(--mc-border);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Video Feed Element */
+.video-feed {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: none;
+}
+
+.video-monitor.signal-found .video-feed {
+  display: block;
+}
+
+/* Video Overlay States */
+.video-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #6b7280;
+  font-size: 1.5rem;
+  font-weight: bold;
+  text-align: center;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.video-monitor.no-signal .video-overlay::after {
+  content: 'NO SIGNAL';
+}
+
+.video-monitor.no-power .video-overlay::after {
+  content: 'NO POWER';
+}
+
+.video-monitor.signal-found .video-overlay {
+  display: none;
+}
+
+/* Signal Degraded Overlay */
+.signal-degraded-overlay {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.1) 2px,
+    rgba(0, 0, 0, 0.1) 4px
+  );
+  display: none;
+  pointer-events: none;
+  animation: scanline 8s linear infinite;
+  z-index: 3;
+}
+
+.video-monitor.signal-degraded .signal-degraded-overlay {
+  display: block;
+}
+
+.video-monitor.signal-degraded .video-feed {
+  filter: contrast(1.2) saturate(0.8);
+  animation: glitch 0.3s infinite;
+}
+
+@keyframes scanline {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(100%); }
+}
+
+@keyframes glitch {
+  0%, 90% { transform: translate(0); }
+  92% { transform: translate(-2px, 1px); }
+  94% { transform: translate(2px, -1px); }
+  96% { transform: translate(-1px, 2px); }
+  98% { transform: translate(1px, -2px); }
+  100% { transform: translate(0); }
+}

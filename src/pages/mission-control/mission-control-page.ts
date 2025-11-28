@@ -53,16 +53,16 @@ export class MissionControlPage extends BasePage {
   }
 
   protected html_ = html`
-    <div id="${this.id}" class="app-shell-page">
+    <div id="${this.id}" class="app-shell-page d-flex flex-column">
       <header id="global-command-bar-container"></header>
 
       <!-- Main Workspace -->
-      <div class="app-shell-main">
+      <div class="app-shell-main d-flex flex-fill overflow-hidden">
         <!-- Asset Tree Sidebar (Left) - Rendered by component -->
-        <aside id="asset-tree-sidebar-container" class="app-shell-sidebar"></aside>
+        <aside id="asset-tree-sidebar-container" class="app-shell-sidebar flex-shrink-0"></aside>
 
         <!-- Tabbed Canvas (Center) - Rendered by component -->
-        <main id="tabbed-canvas-container" class="app-shell-canvas"></main>
+        <main id="tabbed-canvas-container" class="app-shell-canvas d-flex flex-column flex-fill overflow-hidden"></main>
       </div>
 
       <!-- Timeline Deck (Bottom) - Rendered by component -->

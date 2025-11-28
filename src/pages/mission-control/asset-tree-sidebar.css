@@ -1,22 +1,27 @@
+/**
+ * Asset Tree Sidebar Styles
+ * Most styling now handled by Tabler list-group. Only custom elements remain.
+ */
+
 .asset-tree-sidebar {
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: var(--color-surface-1);
-  border-right: 1px solid var(--color-border);
+  background: var(--mc-surface-1);
+  border-right: 1px solid var(--mc-border);
 }
 
 .sidebar-header {
   padding: 1rem;
-  border-bottom: 1px solid var(--color-border);
-  background: var(--color-surface-0);
+  border-bottom: 1px solid var(--mc-border);
+  background: var(--mc-surface-0);
 }
 
 .sidebar-header h3 {
   margin: 0;
   font-size: 1rem;
   font-weight: 600;
-  color: var(--color-text-primary);
+  color: var(--mc-text-primary);
 }
 
 .sidebar-content {
@@ -28,87 +33,28 @@
 .asset-tree {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-}
-
-/* Asset Categories */
-.asset-category {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.category-header {
-  display: flex;
-  align-items: center;
   gap: 0.5rem;
-  padding: 0.5rem;
-  font-weight: 600;
-  font-size: 0.875rem;
-  color: var(--color-text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
 }
 
+/* Category Icon - Custom Component */
 .category-icon {
   font-size: 1rem;
+  margin-right: 0.25rem;
 }
 
-.category-title {
-  flex: 1;
-}
-
-.category-items {
-  display: flex;
-  flex-direction: column;
-  gap: 0.125rem;
-}
-
-/* Asset Items */
-.asset-item {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.625rem 0.75rem;
-  border-radius: 0.375rem;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  background: var(--color-surface-1);
-}
-
-.asset-item:hover {
-  background: var(--color-surface-2);
-}
-
-.asset-item.selected {
-  background: var(--color-primary);
-  color: white;
-}
-
-.asset-item.selected .item-label {
-  color: white;
-  font-weight: 600;
-}
-
+/* Item Icon - Custom Component */
 .item-icon {
   font-size: 1rem;
   opacity: 0.8;
 }
 
-.item-label {
-  flex: 1;
-  font-size: 0.875rem;
-  color: var(--color-text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
+/* Item Status Indicator - Custom Component */
 .item-status {
   width: 8px;
   height: 8px;
   border-radius: 50%;
   flex-shrink: 0;
+  margin-left: 0.5rem;
 }
 
 .item-status.operational {
@@ -121,15 +67,11 @@
   box-shadow: 0 0 4px var(--color-error);
 }
 
-/* Placeholder Items */
+/* Placeholder Item - Custom Styling */
 .placeholder-item {
   cursor: default;
   opacity: 0.5;
-  background: transparent;
-}
-
-.placeholder-item:hover {
-  background: transparent;
+  pointer-events: none;
 }
 
 /* Scrollbar Styling */
@@ -138,14 +80,14 @@
 }
 
 .sidebar-content::-webkit-scrollbar-track {
-  background: var(--color-surface-0);
+  background: var(--mc-surface-0);
 }
 
 .sidebar-content::-webkit-scrollbar-thumb {
-  background: var(--color-surface-3);
+  background: var(--mc-surface-3);
   border-radius: 4px;
 }
 
 .sidebar-content::-webkit-scrollbar-thumb:hover {
-  background: var(--color-surface-4);
+  background: var(--mc-surface-4);
 }

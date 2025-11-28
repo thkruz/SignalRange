@@ -50,26 +50,20 @@ export class AssetTreeSidebar extends BaseElement {
     const treeContainer = qs('#asset-tree', this.dom_);
 
     const treeHtml = html`
-      <div class="asset-category">
-        <div class="category-header">
-          <span class="category-icon">🛰️</span>
-          <span class="category-title">Ground Stations</span>
+      <div class="list-group list-group-flush mb-3">
+        <div class="list-group-header sticky-top">
+          <span class="category-icon">🛰️</span> Ground Stations
         </div>
-        <div class="category-items">
-          ${this.groundStations_.map(gs => this.renderGroundStationNode_(gs)).join('')}
-        </div>
+        ${this.groundStations_.map(gs => this.renderGroundStationNode_(gs)).join('')}
       </div>
 
-      <div class="asset-category">
-        <div class="category-header">
-          <span class="category-icon">📡</span>
-          <span class="category-title">Satellites</span>
+      <div class="list-group list-group-flush">
+        <div class="list-group-header sticky-top">
+          <span class="category-icon">📡</span> Satellites
         </div>
-        <div class="category-items">
-          <div class="asset-item placeholder-item">
-            <span class="item-icon">ℹ️</span>
-            <span class="item-label">No satellites in scenario</span>
-          </div>
+        <div class="list-group-item placeholder-item">
+          <span class="item-icon">ℹ️</span>
+          <span class="ms-2">No satellites in scenario</span>
         </div>
       </div>
     `;
@@ -85,13 +79,13 @@ export class AssetTreeSidebar extends BaseElement {
     const isSelected = this.selectedAssetId_ === gs.state.id;
 
     return html`
-      <div class="asset-item ${isSelected ? 'selected' : ''}"
-           data-asset-type="ground-station"
-           data-asset-id="${gs.state.id}">
-        <span class="item-icon">📍</span>
-        <span class="item-label">${gs.state.name}</span>
+      <a class="list-group-item list-group-item-action d-flex align-items-center ${isSelected ? 'active' : ''}"
+         data-asset-type="ground-station"
+         data-asset-id="${gs.state.id}">
+        <span class="item-icon me-2">📍</span>
+        <span class="flex-fill">${gs.state.name}</span>
         <span class="item-status ${gs.state.isOperational ? 'operational' : 'offline'}"></span>
-      </div>
+      </a>
     `;
   }
 
@@ -99,10 +93,11 @@ export class AssetTreeSidebar extends BaseElement {
    * Add event listeners to tree items
    */
   private addTreeEventListeners_(): void {
-    const assetItems = this.dom_.querySelectorAll('.asset-item:not(.placeholder-item)');
+    const assetItems = this.dom_.querySelectorAll('.list-group-item-action:not(.placeholder-item)');
 
     assetItems.forEach(item => {
-      item.addEventListener('click', () => {
+      item.addEventListener('click', (e) => {
+        e.preventDefault();
         const type = item.getAttribute('data-asset-type') as 'ground-station' | 'satellite';
         const id = item.getAttribute('data-asset-id');
 
@@ -112,8 +107,8 @@ export class AssetTreeSidebar extends BaseElement {
         this.selectedAssetId_ = id;
 
         // Update UI
-        assetItems.forEach(i => i.classList.remove('selected'));
-        item.classList.add('selected');
+        assetItems.forEach(i => i.classList.remove('active'));
+        item.classList.add('active');
 
         // Emit asset selected event
         EventBus.getInstance().emit(Events.ASSET_SELECTED, { type, id });

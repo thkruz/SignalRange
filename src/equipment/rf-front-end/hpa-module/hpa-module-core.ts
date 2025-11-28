@@ -288,7 +288,7 @@ export abstract class HPAModuleCore extends RFFrontEndModule<HPAState> {
   }
 
   // Protected handlers for UI layer
-  protected handlePowerToggle(isEnabled: boolean, callback: (state: HPAState) => void): void {
+  handlePowerToggle(isEnabled: boolean, callback: (state: HPAState) => void): void {
     const bucPowered = this.rfFrontEnd_.state.buc.isPowered;
 
     // HPA can only be enabled if BUC is powered
@@ -302,11 +302,11 @@ export abstract class HPAModuleCore extends RFFrontEndModule<HPAState> {
     callback(this.state);
   }
 
-  protected handleBackOffChange(backOff: number): void {
+  handleBackOffChange(backOff: number): void {
     this.state.backOff = backOff;
   }
 
-  protected handleHpaToggle(): void {
+  handleHpaToggle(): void {
     if (!this.state.isPowered) {
       return;
     }
@@ -318,7 +318,7 @@ export abstract class HPAModuleCore extends RFFrontEndModule<HPAState> {
     }
   }
 
-  protected renderPowerMeter_(powerDbW: dBW): string {
+  renderPowerMeter_(powerDbW: dBW): string {
     // Convert dBW to percentage (1W = 0 dBW, 10W = 10 dBW for scale)
     const percentage = Math.max(0, Math.min(100, (powerDbW / (this.maxOutputPower_ - 30) as dBW) * 100));
 

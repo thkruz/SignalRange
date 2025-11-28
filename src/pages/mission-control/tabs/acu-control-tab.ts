@@ -18,7 +18,7 @@ import { OMTAdapter } from './omt-adapter';
  * Uses adapters to bridge equipment Core classes to modern web controls
  */
 export class ACUControlTab extends BaseElement {
-  private groundStation: GroundStation;
+  private readonly groundStation: GroundStation;
   private antennaAdapter: AntennaAdapter | null = null;
   private omtAdapter: OMTAdapter | null = null;
 

@@ -57,6 +57,7 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.81.1",
+    "@tabler/core": "^1.4.0",
     "dotenv": "^17.2.3",
     "draggabilly": "^3.0.0",
     "gl-matrix": "^3.4.4",

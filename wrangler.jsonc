@@ -21,7 +21,14 @@
 		"not_found_handling": "single-page-application"
 	},
 	// Map to your custom domain
-	"routes": [
-		"app.signalrange.space/*"
-	]
+	// NOTE: Comment out routes if domain is not set up in Cloudflare
+	// The app will be available at: https://signal-range.YOUR_SUBDOMAIN.workers.dev
+	// To use a custom domain:
+	// 1. Add domain to Cloudflare (DNS → Add site)
+	// 2. Update nameservers as instructed
+	// 3. Uncomment the routes below
+	// 4. Update the domain name to match your setup
+	// "routes": [
+	// 	"app.signalrange.space/*"
+	// ]
 }

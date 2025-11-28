@@ -1,7 +1,10 @@
 import { GroundStation } from '@app/assets/ground-station/ground-station';
 import { BaseElement } from '@app/components/base-element';
+import { PolarPlot } from '@app/components/polar-plot/polar-plot';
 import { html } from '@app/engine/utils/development/formatter';
 import { qs } from '@app/engine/utils/query-selector';
+import { EventBus } from '@app/events/event-bus';
+import { Events } from '@app/events/events';
 import './acu-control-tab.css';
 import { AntennaAdapter } from './antenna-adapter';
 import { OMTAdapter } from './omt-adapter';
@@ -21,12 +24,26 @@ export class ACUControlTab extends BaseElement {
   private readonly groundStation: GroundStation;
   private antennaAdapter: AntennaAdapter | null = null;
   private omtAdapter: OMTAdapter | null = null;
+  private polarPlot_: PolarPlot | null = null;
+  private antennaStateHandler_: (() => void) | null = null;
 
   protected html_ = html`
     <div class="acu-control-tab">
       <div class="row g-3 pb-6">
+        <!-- Antenna Position Polar Plot (Full Width) -->
+        <div class="col-4">
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">Antenna Position</h3>
+            </div>
+            <div class="card-body d-flex justify-content-center align-items-center">
+              <div id="polar-plot-container"></div>
+            </div>
+          </div>
+        </div>
+
         <!-- Antenna Controls Card -->
-        <div class="col-lg-6">
+        <div class="col-lg-8">
           <div class="card h-100">
             <div class="card-header">
               <h3 class="card-title">Antenna Control</h3>
@@ -79,7 +96,7 @@ export class ACUControlTab extends BaseElement {
         </div>
 
         <!-- Right Column: OMT & RF Metrics -->
-        <div class="col-lg-6">
+        <div class="col-lg-3">
           <!-- OMT Display Card -->
           <div class="card mb-3">
             <div class="card-header">
@@ -164,6 +181,7 @@ export class ACUControlTab extends BaseElement {
             </div>
           </div>
         </div>
+        <!-- END -->
       </div>
     </div>
   `;
@@ -199,6 +217,30 @@ export class ACUControlTab extends BaseElement {
     // Create adapters
     this.antennaAdapter = new AntennaAdapter(antenna, this.dom_);
     this.omtAdapter = new OMTAdapter(rfFrontEnd.omtModule, this.dom_);
+
+    // Create and initialize polar plot
+    this.polarPlot_ = PolarPlot.create(
+      `polar-plot-${this.groundStation.uuid}`,
+      { width: 600, height: 600, showGrid: true, showLabels: true }
+    );
+
+    // Inject polar plot HTML into container
+    const polarPlotContainer = this.dom_.querySelector('#polar-plot-container');
+    if (polarPlotContainer) {
+      polarPlotContainer.innerHTML = this.polarPlot_.html;
+    }
+
+    // Wire to antenna state changes - store handler for cleanup
+    this.antennaStateHandler_ = () => {
+      if (this.polarPlot_) {
+        this.polarPlot_.draw(antenna.state.azimuth, antenna.state.elevation);
+      }
+    };
+    EventBus.getInstance().on(Events.ANTENNA_STATE_CHANGED, this.antennaStateHandler_);
+
+    // Initial draw with current antenna position
+    this.polarPlot_.onDomReady();
+    this.polarPlot_.draw(antenna.state.azimuth, antenna.state.elevation);
   }
 
   public activate(): void {
@@ -214,8 +256,20 @@ export class ACUControlTab extends BaseElement {
   }
 
   public dispose(): void {
+    // Remove event listeners
+    if (this.antennaStateHandler_) {
+      EventBus.getInstance().off(Events.ANTENNA_STATE_CHANGED, this.antennaStateHandler_);
+      this.antennaStateHandler_ = null;
+    }
+
+    // Dispose adapters
     this.antennaAdapter?.dispose();
     this.omtAdapter?.dispose();
+
+    // Clean up polar plot
+    this.polarPlot_ = null;
+
+    // Remove DOM
     this.dom_?.remove();
   }
 }

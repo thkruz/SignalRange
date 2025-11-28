@@ -1,7 +1,5 @@
 import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
-import { EventBus } from "@app/events/event-bus";
-import { Events } from "@app/events/events";
 import { Degrees } from "ootk";
 import './polar-plot.css';
 
@@ -47,12 +45,10 @@ export class PolarPlot {
         </canvas>
       </div>
     `;
-
-    EventBus.getInstance().on(Events.DOM_READY, this.onDomReady_.bind(this));
   }
 
-  private onDomReady_(): void {
-    this.canvas_ = qs('.polar-plot-canvas', this.dom) as HTMLCanvasElement;
+  onDomReady(): void {
+    this.canvas_ = qs('.polar-plot-canvas', this.dom);
     this.ctx_ = this.canvas_.getContext('2d')!;
     this.ctx_.font = '12px monospace';
     this.ctx_.textBaseline = 'middle';

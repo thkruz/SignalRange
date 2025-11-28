@@ -308,7 +308,7 @@ export class Transmitter extends BaseEquipment {
     this.updateStatusBar(this.domCache['bottom-status-bar'], this.getStatusAlarms());
   }
 
-  protected getStatusAlarms(): AlarmStatus[] {
+  public getStatusAlarms(): AlarmStatus[] {
     const alarms: AlarmStatus[] = [];
 
     for (const modem of this.state.modems) {
@@ -385,7 +385,10 @@ export class Transmitter extends BaseEquipment {
     return this.state.modems.find(m => m.modem_number === this.state.activeModem) ?? this.state.modems[0];
   }
 
-  private setActiveModem(modemNumber: number): void {
+  /**
+   * Public API for adapters - Modem selection
+   */
+  public setActiveModem(modemNumber: number): void {
     this.state.activeModem = modemNumber;
     this.inputData = structuredClone(this.activeModem);
     this.syncDomWithState();
@@ -429,24 +432,6 @@ export class Transmitter extends BaseEquipment {
     }
   }
 
-  private applyChanges(): void {
-    this.updateTransmissionState();
-
-    // Update the modem configuration
-    this.state.modems[this.activeModem.id] = {
-      ...this.activeModem,
-      ifSignal: this.inputData.ifSignal ?? this.activeModem.ifSignal
-      ,
-    };
-
-    this.emit(Events.TX_CONFIG_CHANGED, {
-      uuid: this.uuid,
-      modem: this.state.activeModem,
-      config: this.state.modems[this.activeModem.id]
-    });
-
-    this.syncDomWithState();
-  }
 
   private toggleTransmit(): void {
     const activeModem = this.activeModem;
@@ -526,7 +511,10 @@ export class Transmitter extends BaseEquipment {
     return (powerDbm + 10 * Math.log10(bandwidthMHz)) as dBm;
   }
 
-  private getPowerPercentage(): number {
+  /**
+   * Public API for adapters - Power budget percentage
+   */
+  public getPowerPercentage(): number {
     const activeModem = this.activeModem;
 
     if (!activeModem.isPowered) return 0;
@@ -540,6 +528,117 @@ export class Transmitter extends BaseEquipment {
 
   private validatePowerConsumption(modemPower: number, maxPercent = 100): boolean {
     return Math.round((100 * modemPower) / this.powerBudget) <= maxPercent;
+  }
+
+  /**
+   * Public API for adapters - Configuration handlers
+   */
+  public handleAntennaChange(antennaId: number): void {
+    if (!this.inputData.ifSignal) {
+      this.inputData.ifSignal = { ...this.activeModem.ifSignal };
+    }
+    this.inputData.antenna_id = antennaId;
+  }
+
+  public handleFrequencyChange(frequencyMHz: number): void {
+    if (!this.inputData.ifSignal) {
+      this.inputData.ifSignal = { ...this.activeModem.ifSignal };
+    }
+    this.inputData.ifSignal.frequency = (frequencyMHz * 1e6) as IfFrequency;
+  }
+
+  public handleBandwidthChange(bandwidthMHz: number): void {
+    if (!this.inputData.ifSignal) {
+      this.inputData.ifSignal = { ...this.activeModem.ifSignal };
+    }
+    this.inputData.ifSignal.bandwidth = (bandwidthMHz * 1e6) as Hertz;
+  }
+
+  public handlePowerChange(powerDbm: number): void {
+    if (!this.inputData.ifSignal) {
+      this.inputData.ifSignal = { ...this.activeModem.ifSignal };
+    }
+    this.inputData.ifSignal.power = powerDbm as dBm;
+  }
+
+  /**
+   * Public API for adapters - Control switches
+   */
+  public handleTransmitToggle(isEnabled: boolean): void {
+    const activeModem = this.activeModem;
+    const modemIndex = this.state.modems.findIndex(m => m.modem_number === this.state.activeModem);
+
+    if (!activeModem.isPowered) return;
+
+    this.activeModem.isTransmittingSwitchUp = isEnabled;
+    this.state.modems[modemIndex].isTransmitting = isEnabled;
+    this.updateTransmissionState();
+
+    this.emit(Events.TX_CONFIG_CHANGED, {
+      uuid: this.uuid,
+      modem: this.state.activeModem,
+      config: this.state.modems[this.activeModem.id]
+    });
+
+    this.syncDomWithState();
+  }
+
+  public handleFaultReset(): void {
+    this.toggleFaultReset();
+  }
+
+  public handleLoopbackToggle(isEnabled: boolean): void {
+    this.activeModem.isLoopback = isEnabled;
+
+    this.emit(Events.TX_CONFIG_CHANGED, {
+      uuid: this.uuid,
+      modem: this.state.activeModem,
+      config: this.state.modems[this.activeModem.id]
+    });
+
+    this.syncDomWithState();
+  }
+
+  public handlePowerToggle(isEnabled: boolean): void {
+    if (isEnabled) {
+      SoundManager.getInstance().play(Sfx.TOGGLE_ON);
+    } else {
+      // If turning off power, also stop transmission
+      this.activeModem.isTransmitting = false;
+      this.activeModem.isFaulted = false;
+      SoundManager.getInstance().play(Sfx.TOGGLE_OFF);
+    }
+
+    setTimeout(() => {
+      this.activeModem.isPowered = isEnabled;
+      this.emit(Events.TX_CONFIG_CHANGED, {
+        uuid: this.uuid,
+        modem: this.state.activeModem,
+        config: this.activeModem
+      });
+      this.syncDomWithState();
+    }, isEnabled ? 4000 : 250);
+  }
+
+  /**
+   * Public API for adapters - Apply pending configuration changes
+   */
+  public applyChanges(): void {
+    this.updateTransmissionState();
+
+    // Update the modem configuration
+    this.state.modems[this.activeModem.id] = {
+      ...this.activeModem,
+      ifSignal: this.inputData.ifSignal ?? this.activeModem.ifSignal,
+    };
+
+    this.emit(Events.TX_CONFIG_CHANGED, {
+      uuid: this.uuid,
+      modem: this.state.activeModem,
+      config: this.state.modems[this.activeModem.id]
+    });
+
+    this.syncDomWithState();
   }
 
   syncDomWithState(): void {

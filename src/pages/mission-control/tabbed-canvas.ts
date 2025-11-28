@@ -27,9 +27,9 @@ export class TabbedCanvas extends BaseElement {
   protected html_ = html`
     <div class="tabbed-canvas">
       <div class="canvas-header">
-        <div id="tab-bar" class="tab-bar"></div>
+        <ul id="tab-bar" class="nav nav-tabs" role="tablist"></ul>
       </div>
-      <div id="canvas-content" class="canvas-content"></div>
+      <div id="canvas-content" class="canvas-content tab-content"></div>
     </div>
   `;
 
@@ -116,10 +116,12 @@ export class TabbedCanvas extends BaseElement {
     const content = qs('#canvas-content', this.dom_);
 
     tabBar.innerHTML = html`
-      <div class="tab tab-active">
-        <span class="tab-icon">🛰️</span>
-        <span class="tab-label">Satellite Control</span>
-      </div>
+      <li class="nav-item" role="presentation">
+        <a class="nav-link active" href="#" role="tab">
+          <span class="tab-icon">🛰️</span>
+          <span class="tab-label">Satellite Control</span>
+        </a>
+      </li>
     `;
 
     content.innerHTML = html`
@@ -133,23 +135,28 @@ export class TabbedCanvas extends BaseElement {
   }
 
   /**
-   * Render tab bar
+   * Render tab bar using Bootstrap nav-tabs
    */
   private renderTabs_(tabs: Array<{ id: string; label: string; icon: string }>): void {
     const tabBar = qs('#tab-bar', this.dom_);
 
     tabBar.innerHTML = tabs.map(tab => html`
-      <div class="tab ${tab.id === this.activeTab_ ? 'tab-active' : ''}"
+      <li class="nav-item" role="presentation">
+        <a class="nav-link ${tab.id === this.activeTab_ ? 'active' : ''}"
+           href="#"
+           role="tab"
            data-tab-id="${tab.id}">
-        <span class="tab-icon">${tab.icon}</span>
-        <span class="tab-label">${tab.label}</span>
-      </div>
+          <span class="tab-icon">${tab.icon}</span>
+          <span class="tab-label">${tab.label}</span>
+        </a>
+      </li>
     `).join('');
 
-    // Add click listeners
-    tabBar.querySelectorAll('.tab').forEach(tabElement => {
-      tabElement.addEventListener('click', () => {
-        const tabId = tabElement.getAttribute('data-tab-id');
+    // Add click listeners to nav-links
+    tabBar.querySelectorAll('.nav-link').forEach((tabElement: HTMLElement) => {
+      tabElement.addEventListener('click', (e) => {
+        e.preventDefault(); // Prevent default link behavior
+        const tabId = tabElement.dataset.tabId;
         if (tabId) {
           this.switchTab_(tabId);
         }
@@ -163,13 +170,13 @@ export class TabbedCanvas extends BaseElement {
   private switchTab_(tabId: string): void {
     this.activeTab_ = tabId;
 
-    // Update tab active state
+    // Update tab active state using Bootstrap classes
     const tabBar = qs('#tab-bar', this.dom_);
-    tabBar.querySelectorAll('.tab').forEach(tab => {
-      if (tab.getAttribute('data-tab-id') === tabId) {
-        tab.classList.add('tab-active');
+    tabBar.querySelectorAll('.nav-link').forEach((navLink: HTMLElement) => {
+      if (navLink.dataset.tabId === tabId) {
+        navLink.classList.add('active');
       } else {
-        tab.classList.remove('tab-active');
+        navLink.classList.remove('active');
       }
     });
 

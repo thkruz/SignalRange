@@ -1,0 +1,384 @@
+/**
+ * Tabler Theme Overrides - Mission Control Red/Grayscale Theme
+ *
+ * This file customizes Tabler CSS to match the mission control interface:
+ * - Dark theme (#1f1f1f background)
+ * - International Orange red accent (#ba160c)
+ * - Grayscale palette with red highlights
+ */
+
+/* ==========================================================================
+   Force Dark Theme Globally
+   ========================================================================== */
+
+html,
+body {
+  color-scheme: dark;
+}
+
+/* ==========================================================================
+   Tabler CSS Variable Overrides
+   ========================================================================== */
+
+:root,
+[data-bs-theme=dark] {
+  /* Primary Color - International Orange Red */
+  --tblr-primary: #ba160c !important;
+  --tblr-primary-rgb: 186, 22, 12 !important;
+  --tblr-primary-text-emphasis: #ff2827 !important;
+  --tblr-primary-bg-subtle: rgba(186, 22, 12, 0.15) !important;
+  --tblr-primary-border-subtle: rgba(186, 22, 12, 0.3) !important;
+
+  /* Dark Theme Background Colors */
+  --tblr-body-bg: #1f1f1f !important;
+  --tblr-body-color: #cbd5e1 !important;
+  --tblr-secondary-bg: #292929 !important;
+  --tblr-tertiary-bg: #3a3a3a !important;
+  --tblr-border-color: #3a3a3a !important;
+  --tblr-border-color-translucent: rgba(255, 255, 255, 0.1) !important;
+
+  /* Text Colors */
+  --tblr-emphasis-color: #e2e8f0 !important;
+  --tblr-secondary-color: #94a3b8 !important;
+  --tblr-tertiary-color: #64748b !important;
+
+  /* Link Colors */
+  --tblr-link-color: #ba160c !important;
+  --tblr-link-hover-color: #e01a0e !important;
+
+  /* Form Control Colors */
+  --tblr-form-valid-color: #22c55e !important;
+  --tblr-form-valid-border-color: #22c55e !important;
+  --tblr-form-invalid-color: #ba160c !important;
+  --tblr-form-invalid-border-color: #ba160c !important;
+
+  /* Success/Danger/Warning Colors */
+  --tblr-success: #22c55e !important;
+  --tblr-danger: #ba160c !important;
+  --tblr-warning: #eab308 !important;
+
+  /* Mission Control Custom Variables */
+  --mc-surface-0: #1f1f1f;
+  --mc-surface-1: #292929;
+  --mc-surface-2: #3a3a3a;
+  --mc-surface-3: #4a4a4a;
+  --mc-surface-4: #5a5a5a;
+
+  --mc-text-primary: #e2e8f0;
+  --mc-text-secondary: #cbd5e1;
+  --mc-text-tertiary: #94a3b8;
+  --mc-text-muted: #6b6b6b;
+
+  --mc-border: #3a3a3a;
+
+  --mc-accent-red: #ba160c;
+  --mc-accent-red-bright: #ff2827;
+  --mc-accent-red-light: #e01a0e;
+  --mc-accent-red-dark: #860f08;
+
+  /* Backward Compatibility - Map old variables to new system */
+  --color-primary: var(--mc-accent-red);
+  --color-dark-background: var(--mc-surface-0);
+  --color-dark-border: var(--mc-border);
+  --color-dark-text-accent: #dd382f;
+  --color-dark-text-muted: var(--mc-text-muted);
+  --color-text-accent: var(--mc-accent-red-bright);
+
+  --color-surface-0: var(--mc-surface-0);
+  --color-surface-1: var(--mc-surface-1);
+  --color-surface-2: var(--mc-surface-2);
+  --color-surface-3: var(--mc-surface-3);
+  --color-surface-4: var(--mc-surface-4);
+  --color-border: var(--mc-border);
+  --color-text-primary: var(--mc-text-primary);
+  --color-text-secondary: var(--mc-text-secondary);
+  --color-text-tertiary: var(--mc-text-tertiary);
+}
+
+/* ==========================================================================
+   Card Component Overrides
+   ========================================================================== */
+
+.card {
+  background-color: var(--mc-surface-1) !important;
+  border-color: var(--mc-border) !important;
+}
+
+.card-header {
+  background-color: var(--mc-surface-2) !important;
+  border-bottom-color: var(--mc-border) !important;
+}
+
+.card-body {
+  color: var(--mc-text-secondary);
+}
+
+.card-title {
+  color: var(--mc-text-primary);
+}
+
+/* Small cards for metrics */
+.card-sm {
+  font-size: 0.875rem;
+}
+
+/* ==========================================================================
+   Form Control Overrides - Red Accent
+   ========================================================================== */
+
+/* Range sliders - red thumb */
+.form-range::-webkit-slider-thumb {
+  background: var(--mc-accent-red) !important;
+}
+
+.form-range::-webkit-slider-thumb:active {
+  background: var(--mc-accent-red-light) !important;
+}
+
+.form-range::-moz-range-thumb {
+  background: var(--mc-accent-red) !important;
+}
+
+.form-range::-moz-range-thumb:active {
+  background: var(--mc-accent-red-light) !important;
+}
+
+/* Checkboxes and switches - red when checked */
+.form-check-input:checked {
+  background-color: var(--mc-accent-red) !important;
+  border-color: var(--mc-accent-red) !important;
+}
+
+.form-check-input:focus {
+  border-color: var(--mc-accent-red-light) !important;
+  box-shadow: 0 0 0 0.25rem rgba(186, 22, 12, 0.25) !important;
+}
+
+/* Form labels */
+.form-label {
+  color: var(--mc-text-primary);
+  font-weight: 500;
+}
+
+/* Form controls dark theme */
+.form-control,
+.form-select {
+  background-color: var(--mc-surface-2);
+  border-color: var(--mc-border);
+  color: var(--mc-text-primary);
+}
+
+.form-control:focus,
+.form-select:focus {
+  background-color: var(--mc-surface-2);
+  border-color: var(--mc-accent-red);
+  color: var(--mc-text-primary);
+  box-shadow: 0 0 0 0.25rem rgba(186, 22, 12, 0.25);
+}
+
+/* ==========================================================================
+   Tab Component Overrides - Red Accent
+   ========================================================================== */
+
+.nav-tabs {
+  border-bottom-color: var(--mc-border);
+}
+
+.nav-tabs .nav-link {
+  color: var(--mc-text-secondary) !important;
+  background-color: transparent;
+  border-color: transparent;
+  transition: all 0.2s ease;
+}
+
+.nav-tabs .nav-link:hover {
+  color: var(--mc-text-primary) !important;
+  background-color: var(--mc-surface-2) !important;
+  border-color: transparent;
+}
+
+.nav-tabs .nav-link.active {
+  background-color: var(--mc-surface-0) !important;
+  border-color: var(--mc-border) var(--mc-border) var(--mc-surface-0) !important;
+  border-top: 2px solid var(--mc-accent-red) !important;
+  color: var(--mc-text-primary) !important;
+  padding-top: calc(0.5rem - 1px); /* Adjust for red border */
+}
+
+/* Tab content background */
+.tab-content {
+  background-color: var(--mc-surface-0);
+}
+
+.tab-pane {
+  color: var(--mc-text-secondary);
+}
+
+/* ==========================================================================
+   List Group Overrides - Asset Tree Sidebar
+   ========================================================================== */
+
+.list-group {
+  --bs-list-group-bg: var(--mc-surface-1);
+  --bs-list-group-border-color: var(--mc-border);
+  --bs-list-group-color: var(--mc-text-secondary);
+}
+
+.list-group-item {
+  background-color: var(--mc-surface-1);
+  border-color: var(--mc-border);
+  color: var(--mc-text-secondary);
+}
+
+.list-group-item:hover {
+  background-color: var(--mc-surface-2);
+  color: var(--mc-text-primary);
+}
+
+.list-group-item.active {
+  background-color: var(--mc-accent-red) !important;
+  border-color: var(--mc-accent-red) !important;
+  color: #ffffff !important;
+}
+
+.list-group-item-action:focus {
+  background-color: var(--mc-surface-2);
+  color: var(--mc-text-primary);
+}
+
+/* ==========================================================================
+   Status Dots - Equipment Status Indicators
+   ========================================================================== */
+
+.status-dot {
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+}
+
+.status-dot.bg-success {
+  background-color: #22c55e !important;
+}
+
+.status-dot.bg-danger {
+  background-color: var(--mc-accent-red) !important;
+}
+
+.status-dot.bg-warning {
+  background-color: #eab308 !important;
+}
+
+.status-dot.bg-secondary {
+  background-color: var(--mc-surface-3) !important;
+}
+
+/* Animated status dots */
+.status-dot-animated {
+  animation: status-dot-pulse 2s ease-in-out infinite;
+}
+
+@keyframes status-dot-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+/* ==========================================================================
+   Button Overrides
+   ========================================================================== */
+
+.btn-primary {
+  background-color: var(--mc-accent-red);
+  border-color: var(--mc-accent-red);
+}
+
+.btn-primary:hover {
+  background-color: var(--mc-accent-red-light);
+  border-color: var(--mc-accent-red-light);
+}
+
+.btn-primary:active,
+.btn-primary:focus {
+  background-color: var(--mc-accent-red-dark);
+  border-color: var(--mc-accent-red-dark);
+  box-shadow: 0 0 0 0.25rem rgba(186, 22, 12, 0.5);
+}
+
+/* ==========================================================================
+   Badge Overrides
+   ========================================================================== */
+
+.badge {
+  font-weight: 600;
+}
+
+.badge.bg-success {
+  background-color: #22c55e !important;
+}
+
+.badge.bg-danger {
+  background-color: var(--mc-accent-red) !important;
+}
+
+.badge.bg-warning {
+  background-color: #eab308 !important;
+  color: #000000 !important;
+}
+
+.badge.bg-primary {
+  background-color: var(--mc-accent-red) !important;
+}
+
+/* ==========================================================================
+   Utility Class Overrides
+   ========================================================================== */
+
+.text-primary {
+  color: var(--mc-accent-red) !important;
+}
+
+.text-muted {
+  color: var(--mc-text-muted) !important;
+}
+
+.bg-dark {
+  background-color: var(--mc-surface-1) !important;
+}
+
+.border {
+  border-color: var(--mc-border) !important;
+}
+
+/* ==========================================================================
+   Scrollbar Styling (Maintain Existing Style)
+   ========================================================================== */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--mc-surface-0);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--mc-surface-3);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--mc-surface-4);
+}
+
+/* ==========================================================================
+   Monospace Font for Metrics
+   ========================================================================== */
+
+.font-monospace {
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+}

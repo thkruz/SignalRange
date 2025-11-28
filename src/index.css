@@ -7,19 +7,38 @@ body {
 }
 
 :root {
+  /* Legacy variables - kept for backward compatibility */
   --colorTertiary: #4a4a4a !important;
   --color-dark-background: #1f1f1f !important;
   --color-dark-border: #3a3a3a !important;
   --color-dark-text-accent: #dd382f !important;
   --color-dark-text-muted: #6b6b6b !important;
-  /* International Orange Engineering */
+
+  /* International Orange Engineering - Primary Colors */
   --color-primary: #ba160c !important;
-  /* Brighter version of International Orange Engineering for icons */
   --color-text-accent: #ff2827;
-  /* Lighter shade of International Orange Engineering */
   --color-primary-light: #e01a0e !important;
-  /* Darker shade of International Orange Engineering */
   --color-primary-dark: #860f08 !important;
+
+  /* Surface Colors - Dark Theme Layers */
+  --color-surface-0: #1f1f1f; /* Darkest - main background */
+  --color-surface-1: #292929; /* Panel background */
+  --color-surface-2: #3a3a3a; /* Hover/active states */
+  --color-surface-3: #4a4a4a; /* Scrollbar thumb */
+  --color-surface-4: #5a5a5a; /* Scrollbar thumb hover */
+
+  /* Text Colors */
+  --color-text-primary: #e2e8f0;   /* Brightest text */
+  --color-text-secondary: #cbd5e1; /* Standard text */
+  --color-text-tertiary: #94a3b8;  /* Muted text */
+
+  /* Border Colors */
+  --color-border: #3a3a3a;
+
+  /* Status Colors */
+  --color-success: #22c55e; /* Green for operational/success */
+  --color-error: #dc3545;   /* Red for errors/faults */
+  --color-warning: #eab308; /* Yellow for warnings */
 }
 
 body {

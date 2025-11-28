@@ -24,7 +24,7 @@ export class ACUControlTab extends BaseElement {
 
   protected html_ = html`
     <div class="acu-control-tab">
-      <div class="row g-3">
+      <div class="row g-3 pb-6">
         <!-- Antenna Controls Card -->
         <div class="col-lg-6">
           <div class="card h-100">

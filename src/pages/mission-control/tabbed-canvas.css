@@ -138,20 +138,15 @@
 
 /* Scrollbar Styling */
 .canvas-content::-webkit-scrollbar {
-  width: 8px;
+  width: 0px;
+  display: none;
 }
 
-.canvas-content::-webkit-scrollbar-track {
-  background: var(--mc-surface-0);
-}
-
-.canvas-content::-webkit-scrollbar-thumb {
-  background: var(--mc-surface-3);
-  border-radius: 4px;
-}
-
-.canvas-content::-webkit-scrollbar-thumb:hover {
-  background: var(--mc-surface-4);
+.canvas-content {
+  scrollbar-width: none;
+  /* Firefox */
+  -ms-overflow-style: none;
+  /* IE and Edge */
 }
 
 .nav-tabs::-webkit-scrollbar {

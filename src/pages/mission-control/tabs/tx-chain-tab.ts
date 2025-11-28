@@ -40,7 +40,7 @@ export class TxChainTab extends BaseElement {
 
   protected html_ = html`
     <div class="tx-chain-tab">
-      <div class="row g-3">
+      <div class="row g-3 pb-6">
         <!-- BUC Control Card -->
         <div class="col-lg-6">
           <div class="card h-100">

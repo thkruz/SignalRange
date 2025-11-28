@@ -2,8 +2,8 @@ import { GroundStation } from "@app/assets/ground-station/ground-station";
 import { BaseElement } from "@app/components/base-element";
 import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
-import { GPSDOAdapter } from './gpsdo-adapter';
 import './gps-timing-tab.css';
+import { GPSDOAdapter } from './gpsdo-adapter';
 
 /**
  * GPSTimingTab - GPS Disciplined Oscillator timing reference display
@@ -40,7 +40,7 @@ export class GPSTimingTab extends BaseElement {
 
   protected html_ = html`
     <div class="gps-timing-tab">
-      <div class="row g-3">
+      <div class="row g-3 pb-6">
         <!-- Lock Status Card -->
         <div class="col-lg-6">
           <div class="card h-100">

@@ -17,6 +17,15 @@ body {
 }
 
 /* ==========================================================================
+   Always Full Width
+   ========================================================================== */
+body {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ==========================================================================
    Tabler CSS Variable Overrides
    ========================================================================== */
 
@@ -202,7 +211,8 @@ body {
   border-color: var(--mc-border) var(--mc-border) var(--mc-surface-0) !important;
   border-top: 2px solid var(--mc-accent-red) !important;
   color: var(--mc-text-primary) !important;
-  padding-top: calc(0.5rem - 1px); /* Adjust for red border */
+  padding-top: calc(0.5rem - 1px);
+  /* Adjust for red border */
 }
 
 /* Tab content background */
@@ -279,9 +289,12 @@ body {
 }
 
 @keyframes status-dot-pulse {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 1;
   }
+
   50% {
     opacity: 0.4;
   }

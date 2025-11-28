@@ -6,6 +6,7 @@ import { Events } from "@app/events/events";
 import { SimulationManager } from "@app/simulation/simulation-manager";
 import { ACUControlTab } from './tabs/acu-control-tab';
 import { RxAnalysisTab } from './tabs/rx-analysis-tab';
+import { TxChainTab } from './tabs/tx-chain-tab';
 import './tabbed-canvas.css';
 
 /**
@@ -20,7 +21,7 @@ export class TabbedCanvas extends BaseElement {
 
   private activeTab_: string = 'welcome';
   private selectedAssetId_: string | null = null;
-  private tabInstances_: Map<string, ACUControlTab | RxAnalysisTab> = new Map();
+  private tabInstances_: Map<string, ACUControlTab | RxAnalysisTab | TxChainTab> = new Map();
 
   protected html_ = html`
     <div class="tabbed-canvas">
@@ -206,13 +207,7 @@ export class TabbedCanvas extends BaseElement {
         break;
 
       case 'tx-chain':
-        content.innerHTML = html`
-          <div class="tab-content-placeholder">
-            <h3>TX Chain</h3>
-            <p>Transmitter chain control with BUC and HPA management.</p>
-            <div class="placeholder-note">Coming in Phase 6</div>
-          </div>
-        `;
+        this.renderTxChainTab_(content);
         break;
 
       case 'gps-timing':
@@ -297,6 +292,38 @@ export class TabbedCanvas extends BaseElement {
 
     // Activate the tab
     rxTab.activate();
+  }
+
+  /**
+   * Render TX Chain tab (Phase 6)
+   */
+  private renderTxChainTab_(content: HTMLElement): void {
+    const groundStation = SimulationManager.getInstance().groundStations.find(
+      gs => gs.state.id === this.selectedAssetId_
+    );
+
+    if (!groundStation) {
+      content.innerHTML = html`
+        <div class="tab-content-placeholder">
+          <h3>Error</h3>
+          <p>Ground station not found.</p>
+        </div>
+      `;
+      return;
+    }
+
+    // Check if tab instance already exists
+    const tabKey = `tx-chain-${this.selectedAssetId_}`;
+    let txTab = this.tabInstances_.get(tabKey) as TxChainTab;
+
+    if (!txTab) {
+      // Create new tab instance
+      txTab = new TxChainTab(groundStation, 'canvas-content');
+      this.tabInstances_.set(tabKey, txTab);
+    }
+
+    // Activate the tab
+    txTab.activate();
   }
 
   /**

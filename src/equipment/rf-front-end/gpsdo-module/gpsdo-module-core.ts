@@ -414,8 +414,8 @@ export abstract class GPSDOModuleCore extends RFFrontEndModule<GPSDOState> {
     };
   }
 
-  // Protected handlers for UI layer
-  protected handlePowerToggle(isPowered: boolean): void {
+  // Public handlers for UI layer
+  handlePowerToggle(isPowered: boolean): void {
     this.state.isPowered = isPowered;
 
     if (isPowered) {
@@ -436,7 +436,7 @@ export abstract class GPSDOModuleCore extends RFFrontEndModule<GPSDOState> {
     }
   }
 
-  protected handleGnssToggle(isGnssSwitchUp: boolean, callback: (state: GPSDOState) => void): void {
+  handleGnssToggle(isGnssSwitchUp: boolean, callback: (state: GPSDOState) => void): void {
     // Change the GNSS switch state
     this.state.isGnssSwitchUp = isGnssSwitchUp;
     this.state.gnssSignalPresent = false;
@@ -464,7 +464,7 @@ export abstract class GPSDOModuleCore extends RFFrontEndModule<GPSDOState> {
     this.updateLockStatus_();
   }
 
-  protected formatWarmupTime_(): string {
+  formatWarmupTime_(): string {
     if (this.state.warmupTimeRemaining === 0) {
       return 'READY';
     }
@@ -473,7 +473,7 @@ export abstract class GPSDOModuleCore extends RFFrontEndModule<GPSDOState> {
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   }
 
-  protected getLockLedStatus_(): string {
+  getLockLedStatus_(): string {
     if (!this.state.isPowered) return 'led-off';
     if (!this.state.isLocked && !this.state.isGnssAcquiringLock) return 'led-red';
     if (this.state.isGnssAcquiringLock) return 'led-amber';
@@ -481,14 +481,14 @@ export abstract class GPSDOModuleCore extends RFFrontEndModule<GPSDOState> {
     return 'led-green';
   }
 
-  protected getGnssLedStatus_(): string {
+  getGnssLedStatus_(): string {
     if (!this.state.isPowered) return 'led-off';
     if (!this.state.gnssSignalPresent) return 'led-red';
     if (this.state.satelliteCount < 4) return 'led-amber';
     return 'led-green';
   }
 
-  protected getWarmupLedStatus_(): string {
+  getWarmupLedStatus_(): string {
     if (!this.state.isPowered) return 'led-off';
     if (this.state.warmupTimeRemaining > 0) return 'led-amber';
     return 'led-green';

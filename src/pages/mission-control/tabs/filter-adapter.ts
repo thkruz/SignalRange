@@ -13,11 +13,12 @@ import { qs } from "@app/engine/utils/query-selector";
  * Prevents circular updates via state comparison
  */
 export class FilterAdapter {
-  private filterModule: IfFilterBankModuleCore;
-  private containerEl: HTMLElement;
+  private readonly filterModule: IfFilterBankModuleCore;
+  private readonly containerEl: HTMLElement;
   private lastStateString: string = '';
-  private boundHandlers: Map<string, EventListener> = new Map();
-  private stateChangeHandler: (state: Partial<IfFilterBankState>) => void;
+  private readonly domCache_: Map<string, HTMLElement> = new Map();
+  private readonly boundHandlers: Map<string, EventListener> = new Map();
+  private readonly stateChangeHandler: (state: Partial<IfFilterBankState>) => void;
 
   constructor(filterModule: IfFilterBankModuleCore, containerEl: HTMLElement) {
     this.filterModule = filterModule;
@@ -25,36 +26,52 @@ export class FilterAdapter {
 
     // Bind state change handler
     this.stateChangeHandler = (state: Partial<IfFilterBankState>) => {
-      // Sync DOM with state changes
-      this.syncDomWithState(state);
+      this.syncDomWithState_(state);
     };
 
     this.initialize();
   }
 
   private initialize(): void {
+    // Cache DOM elements
+    this.setupDomCache_();
+
     // Setup DOM event listeners for user input
-    this.setupInputListeners();
+    this.setupInputListeners_();
 
     // Listen to Filter state changes via EventBus
     EventBus.getInstance().on(Events.RF_FE_FILTER_CHANGED, this.stateChangeHandler as any);
 
     // Initial sync
-    this.syncDomWithState(this.filterModule.state);
+    this.syncDomWithState_(this.filterModule.state);
   }
 
-  private setupInputListeners(): void {
+  private setupDomCache_(): void {
+    this.domCache_.set('bandwidthSelect', qs('#filter-bandwidth', this.containerEl));
+    this.domCache_.set('bandwidthDisplay', qs('#filter-bandwidth-display', this.containerEl));
+    this.domCache_.set('insertionLossDisplay', qs('#filter-insertion-loss-display', this.containerEl));
+    this.domCache_.set('noiseFloorDisplay', qs('#filter-noise-floor-display', this.containerEl));
+  }
+
+  private setupInputListeners_(): void {
+    const bandwidthSelect = this.domCache_.get('bandwidthSelect') as HTMLSelectElement;
+
     // Bandwidth selector
-    const bandwidthSelect = qs('#filter-bandwidth', this.containerEl) as HTMLSelectElement;
-    const bandwidthHandler = (e: Event) => {
-      const index = parseInt((e.target as HTMLSelectElement).value, 10);
-      this.filterModule.handleBandwidthChange(index);
-    };
-    bandwidthSelect?.addEventListener('change', bandwidthHandler);
-    this.boundHandlers.set('bandwidth', bandwidthHandler);
+    bandwidthSelect?.addEventListener('change', this.bandwidthHandler_.bind(this));
+    this.boundHandlers.set('bandwidth', this.bandwidthHandler_.bind(this));
   }
 
-  private syncDomWithState(state: Partial<IfFilterBankState>): void {
+  private bandwidthHandler_(e: Event): void {
+    const index = parseInt((e.target as HTMLSelectElement).value, 10);
+    this.filterModule.handleBandwidthChange(index);
+    this.syncDomWithState_(this.filterModule.state);
+  }
+
+  update(): void {
+    this.syncDomWithState_(this.filterModule.state);
+  }
+
+  private syncDomWithState_(state: Partial<IfFilterBankState>): void {
     // Prevent circular updates
     const stateStr = JSON.stringify(state);
     if (stateStr === this.lastStateString) return;
@@ -62,31 +79,31 @@ export class FilterAdapter {
 
     // Update bandwidth selector
     if (state.bandwidthIndex !== undefined) {
-      const select = qs('#filter-bandwidth', this.containerEl) as HTMLSelectElement;
+      const select = this.domCache_.get('bandwidthSelect') as HTMLSelectElement;
       if (select) select.value = state.bandwidthIndex.toString();
     }
 
     // Update bandwidth display
     if (state.bandwidth !== undefined) {
-      const display = qs('#filter-bandwidth-display', this.containerEl);
+      const display = this.domCache_.get('bandwidthDisplay');
       const config = FILTER_BANDWIDTH_CONFIGS[state.bandwidthIndex || 0];
       if (display) display.textContent = config.label;
     }
 
     // Update insertion loss display
     if (state.insertionLoss !== undefined) {
-      const display = qs('#filter-insertion-loss-display', this.containerEl);
+      const display = this.domCache_.get('insertionLossDisplay');
       if (display) display.textContent = `${state.insertionLoss.toFixed(1)} dB`;
     }
 
     // Update noise floor display
     if (state.noiseFloor !== undefined) {
-      const display = qs('#filter-noise-floor-display', this.containerEl);
+      const display = this.domCache_.get('noiseFloorDisplay');
       if (display) display.textContent = `${state.noiseFloor.toFixed(0)} dBm`;
     }
   }
 
-  public dispose(): void {
+  dispose(): void {
     // Remove EventBus listeners
     EventBus.getInstance().off(Events.RF_FE_FILTER_CHANGED, this.stateChangeHandler as any);
 

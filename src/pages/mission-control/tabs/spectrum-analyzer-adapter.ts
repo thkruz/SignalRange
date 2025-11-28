@@ -10,18 +10,19 @@ import { qs } from "@app/engine/utils/query-selector";
  * - Simplified interface for tab integration
  */
 export class SpectrumAnalyzerAdapter {
-  private spectrumAnalyzer: RealTimeSpectrumAnalyzer;
-  private containerEl: HTMLElement;
+  private readonly spectrumAnalyzer: RealTimeSpectrumAnalyzer;
+  private readonly containerEl: HTMLElement;
+  private readonly domCache_: Map<string, HTMLElement> = new Map();
   private canvasContainer: HTMLElement | null = null;
 
   constructor(spectrumAnalyzer: RealTimeSpectrumAnalyzer, containerEl: HTMLElement) {
     this.spectrumAnalyzer = spectrumAnalyzer;
     this.containerEl = containerEl;
 
-    this.initialize();
+    this.initialize_();
   }
 
-  private initialize(): void {
+  private initialize_(): void {
     // Get the canvas container from the tab
     this.canvasContainer = qs('#spec-analyzer-canvas-container', this.containerEl);
 
@@ -30,14 +31,26 @@ export class SpectrumAnalyzerAdapter {
       return;
     }
 
+    // Cache DOM elements
+    this.setupDomCache_();
+
     // Move the spectrum analyzer's canvas to the tab container
-    this.embedCanvas();
+    this.embedCanvas_();
 
     // Setup control event listeners
-    this.setupControls();
+    this.setupControls_();
   }
 
-  private embedCanvas(): void {
+  private setupDomCache_(): void {
+    this.domCache_.set('cfInput', qs('#spec-analyzer-center-freq', this.containerEl));
+    this.domCache_.set('cfDisplay', qs('#spec-analyzer-center-freq-display', this.containerEl));
+    this.domCache_.set('spanInput', qs('#spec-analyzer-span', this.containerEl));
+    this.domCache_.set('spanDisplay', qs('#spec-analyzer-span-display', this.containerEl));
+    this.domCache_.set('pauseBtn', qs('#spec-analyzer-pause-btn', this.containerEl));
+    this.domCache_.set('autoTuneBtn', qs('#spec-analyzer-autotune-btn', this.containerEl));
+  }
+
+  private embedCanvas_(): void {
     if (!this.canvasContainer) return;
 
     // Get the canvas elements from the spectrum analyzer using public getters
@@ -54,60 +67,69 @@ export class SpectrumAnalyzerAdapter {
     }
   }
 
-  private setupControls(): void {
+  private setupControls_(): void {
+    const cfInput = this.domCache_.get('cfInput') as HTMLInputElement;
+    const spanInput = this.domCache_.get('spanInput') as HTMLInputElement;
+    const pauseBtn = this.domCache_.get('pauseBtn');
+    const autoTuneBtn = this.domCache_.get('autoTuneBtn');
+
     // Center Frequency control
-    const cfInput = qs('#spec-analyzer-center-freq', this.containerEl) as HTMLInputElement;
-    cfInput?.addEventListener('input', (e) => {
-      const freq = parseFloat((e.target as HTMLInputElement).value) * 1e6; // Convert MHz to Hz
-      this.spectrumAnalyzer.changeCenterFreq(freq);
-    });
+    cfInput?.addEventListener('input', this.cfHandler_.bind(this));
 
     // Span control
-    const spanInput = qs('#spec-analyzer-span', this.containerEl) as HTMLInputElement;
-    spanInput?.addEventListener('input', (e) => {
-      const span = parseFloat((e.target as HTMLInputElement).value) * 1e6; // Convert MHz to Hz
-      this.spectrumAnalyzer.changeBandwidth(span);
-    });
+    spanInput?.addEventListener('input', this.spanHandler_.bind(this));
 
     // Pause/Resume button
-    const pauseBtn = qs('#spec-analyzer-pause-btn', this.containerEl);
-    pauseBtn?.addEventListener('click', () => {
-      this.spectrumAnalyzer.togglePause();
-      this.updatePauseButton();
-    });
+    pauseBtn?.addEventListener('click', this.pauseHandler_.bind(this));
 
     // Auto-tune button
-    const autoTuneBtn = qs('#spec-analyzer-autotune-btn', this.containerEl);
-    autoTuneBtn?.addEventListener('click', () => {
-      this.spectrumAnalyzer.freqAutoTune();
-      this.syncControlsWithState();
-    });
+    autoTuneBtn?.addEventListener('click', this.autoTuneHandler_.bind(this));
 
     // Initial sync
-    this.syncControlsWithState();
+    this.syncControlsWithState_();
   }
 
-  private syncControlsWithState(): void {
+  private cfHandler_(e: Event): void {
+    const freq = parseFloat((e.target as HTMLInputElement).value) * 1e6; // Convert MHz to Hz
+    this.spectrumAnalyzer.changeCenterFreq(freq);
+  }
+
+  private spanHandler_(e: Event): void {
+    const span = parseFloat((e.target as HTMLInputElement).value) * 1e6; // Convert MHz to Hz
+    this.spectrumAnalyzer.changeBandwidth(span);
+  }
+
+  private pauseHandler_(): void {
+    this.spectrumAnalyzer.togglePause();
+    this.updatePauseButton_();
+  }
+
+  private autoTuneHandler_(): void {
+    this.spectrumAnalyzer.freqAutoTune();
+    this.syncControlsWithState_();
+  }
+
+  private syncControlsWithState_(): void {
     const state = this.spectrumAnalyzer.state;
 
     // Update center frequency display
-    const cfInput = qs('#spec-analyzer-center-freq', this.containerEl) as HTMLInputElement;
-    const cfDisplay = qs('#spec-analyzer-center-freq-display', this.containerEl);
+    const cfInput = this.domCache_.get('cfInput') as HTMLInputElement;
+    const cfDisplay = this.domCache_.get('cfDisplay');
     if (cfInput) cfInput.value = (state.centerFrequency / 1e6).toFixed(3);
     if (cfDisplay) cfDisplay.textContent = `${(state.centerFrequency / 1e6).toFixed(3)} MHz`;
 
     // Update span display
-    const spanInput = qs('#spec-analyzer-span', this.containerEl) as HTMLInputElement;
-    const spanDisplay = qs('#spec-analyzer-span-display', this.containerEl);
+    const spanInput = this.domCache_.get('spanInput') as HTMLInputElement;
+    const spanDisplay = this.domCache_.get('spanDisplay');
     if (spanInput) spanInput.value = (state.span / 1e6).toFixed(3);
     if (spanDisplay) spanDisplay.textContent = `${(state.span / 1e6).toFixed(3)} MHz`;
 
     // Update pause button
-    this.updatePauseButton();
+    this.updatePauseButton_();
   }
 
-  private updatePauseButton(): void {
-    const pauseBtn = qs('#spec-analyzer-pause-btn', this.containerEl);
+  private updatePauseButton_(): void {
+    const pauseBtn = this.domCache_.get('pauseBtn');
     if (pauseBtn) {
       pauseBtn.textContent = this.spectrumAnalyzer.state.isPaused ? 'Resume' : 'Pause';
       pauseBtn.className = this.spectrumAnalyzer.state.isPaused
@@ -116,7 +138,7 @@ export class SpectrumAnalyzerAdapter {
     }
   }
 
-  public dispose(): void {
+  dispose(): void {
     // Note: We don't destroy the canvas elements as they belong to the spectrum analyzer
     // We just remove them from the tab container
     if (this.canvasContainer) {

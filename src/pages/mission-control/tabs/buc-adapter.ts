@@ -13,11 +13,12 @@ import { qs } from "@app/engine/utils/query-selector";
  * Prevents circular updates via state comparison
  */
 export class BUCAdapter {
-  private bucModule: BUCModuleCore;
-  private containerEl: HTMLElement;
+  private readonly bucModule: BUCModuleCore;
+  private readonly containerEl: HTMLElement;
   private lastStateString: string = '';
-  private boundHandlers: Map<string, EventListener> = new Map();
-  private stateChangeHandler: (state: Partial<BUCState>) => void;
+  private readonly domCache_: Map<string, HTMLElement> = new Map();
+  private readonly boundHandlers: Map<string, EventListener> = new Map();
+  private readonly stateChangeHandler: (state: Partial<BUCState>) => void;
 
   constructor(bucModule: BUCModuleCore, containerEl: HTMLElement) {
     this.bucModule = bucModule;
@@ -25,63 +26,90 @@ export class BUCAdapter {
 
     // Bind state change handler
     this.stateChangeHandler = (state: Partial<BUCState>) => {
-      // Sync DOM with state changes
-      this.syncDomWithState(state);
+      this.syncDomWithState_(state);
     };
 
     this.initialize();
   }
 
   private initialize(): void {
+    // Cache DOM elements
+    this.setupDomCache_();
+
     // Setup DOM event listeners for user input
-    this.setupInputListeners();
+    this.setupInputListeners_();
 
     // Listen to BUC state changes via EventBus
     EventBus.getInstance().on(Events.RF_FE_BUC_CHANGED, this.stateChangeHandler as any);
 
     // Initial sync
-    this.syncDomWithState(this.bucModule.state);
+    this.syncDomWithState_(this.bucModule.state);
   }
 
-  private setupInputListeners(): void {
+  private setupDomCache_(): void {
+    this.domCache_.set('loFreqSlider', qs('#buc-lo-frequency', this.containerEl));
+    this.domCache_.set('loFreqDisplay', qs('#buc-lo-frequency-display', this.containerEl));
+    this.domCache_.set('gainSlider', qs('#buc-gain', this.containerEl));
+    this.domCache_.set('gainDisplay', qs('#buc-gain-display', this.containerEl));
+    this.domCache_.set('powerSwitch', qs('#buc-power', this.containerEl));
+    this.domCache_.set('muteSwitch', qs('#buc-mute', this.containerEl));
+    this.domCache_.set('outputPowerDisplay', qs('#buc-output-power-display', this.containerEl));
+    this.domCache_.set('temperatureDisplay', qs('#buc-temperature-display', this.containerEl));
+    this.domCache_.set('lockLed', qs('#buc-lock-led', this.containerEl));
+  }
+
+  private setupInputListeners_(): void {
+    const loFreqSlider = this.domCache_.get('loFreqSlider') as HTMLInputElement;
+    const gainSlider = this.domCache_.get('gainSlider') as HTMLInputElement;
+    const powerSwitch = this.domCache_.get('powerSwitch') as HTMLInputElement;
+    const muteSwitch = this.domCache_.get('muteSwitch') as HTMLInputElement;
+
     // LO Frequency slider
-    const loFreqSlider = qs('#buc-lo-frequency', this.containerEl) as HTMLInputElement;
-    const loFreqHandler = (e: Event) => {
-      const value = parseFloat((e.target as HTMLInputElement).value);
-      this.bucModule['handleLoFrequencyChange'](value);
-    };
-    loFreqSlider?.addEventListener('input', loFreqHandler);
-    this.boundHandlers.set('loFreq', loFreqHandler);
+    loFreqSlider?.addEventListener('input', this.loFreqHandler_.bind(this));
+    this.boundHandlers.set('loFreq', this.loFreqHandler_.bind(this));
 
     // Gain slider
-    const gainSlider = qs('#buc-gain', this.containerEl) as HTMLInputElement;
-    const gainHandler = (e: Event) => {
-      const value = parseFloat((e.target as HTMLInputElement).value);
-      this.bucModule['handleGainChange'](value);
-    };
-    gainSlider?.addEventListener('input', gainHandler);
-    this.boundHandlers.set('gain', gainHandler);
+    gainSlider?.addEventListener('input', this.gainHandler_.bind(this));
+    this.boundHandlers.set('gain', this.gainHandler_.bind(this));
 
     // Power switch
-    const powerSwitch = qs('#buc-power', this.containerEl) as HTMLInputElement;
-    const powerHandler = (e: Event) => {
-      const isChecked = (e.target as HTMLInputElement).checked;
-      this.bucModule['handlePowerToggle'](isChecked);
-    };
-    powerSwitch?.addEventListener('change', powerHandler);
-    this.boundHandlers.set('power', powerHandler);
+    powerSwitch?.addEventListener('change', this.powerHandler_.bind(this));
+    this.boundHandlers.set('power', this.powerHandler_.bind(this));
 
     // Mute switch
-    const muteSwitch = qs('#buc-mute', this.containerEl) as HTMLInputElement;
-    const muteHandler = (e: Event) => {
-      const isChecked = (e.target as HTMLInputElement).checked;
-      this.bucModule['handleMuteToggle'](isChecked);
-    };
-    muteSwitch?.addEventListener('change', muteHandler);
-    this.boundHandlers.set('mute', muteHandler);
+    muteSwitch?.addEventListener('change', this.muteHandler_.bind(this));
+    this.boundHandlers.set('mute', this.muteHandler_.bind(this));
   }
 
-  private syncDomWithState(state: Partial<BUCState>): void {
+  private loFreqHandler_(e: Event): void {
+    const value = parseFloat((e.target as HTMLInputElement).value);
+    this.bucModule.handleLoFrequencyChange(value);
+    this.syncDomWithState_(this.bucModule.state);
+  }
+
+  private gainHandler_(e: Event): void {
+    const value = parseFloat((e.target as HTMLInputElement).value);
+    this.bucModule.handleGainChange(value);
+    this.syncDomWithState_(this.bucModule.state);
+  }
+
+  private powerHandler_(e: Event): void {
+    const isChecked = (e.target as HTMLInputElement).checked;
+    this.bucModule.handlePowerToggle(isChecked);
+    this.syncDomWithState_(this.bucModule.state);
+  }
+
+  private muteHandler_(e: Event): void {
+    const isChecked = (e.target as HTMLInputElement).checked;
+    this.bucModule.handleMuteToggle(isChecked);
+    this.syncDomWithState_(this.bucModule.state);
+  }
+
+  update(): void {
+    this.syncDomWithState_(this.bucModule.state);
+  }
+
+  private syncDomWithState_(state: Partial<BUCState>): void {
     // Prevent circular updates
     const stateStr = JSON.stringify(state);
     if (stateStr === this.lastStateString) return;
@@ -89,52 +117,52 @@ export class BUCAdapter {
 
     // Update LO Frequency slider and display
     if (state.loFrequency !== undefined) {
-      const slider = qs('#buc-lo-frequency', this.containerEl) as HTMLInputElement;
-      const display = qs('#buc-lo-frequency-display', this.containerEl);
+      const slider = this.domCache_.get('loFreqSlider') as HTMLInputElement;
+      const display = this.domCache_.get('loFreqDisplay');
       if (slider) slider.value = state.loFrequency.toString();
       if (display) display.textContent = `${state.loFrequency.toFixed(0)} MHz`;
     }
 
     // Update Gain slider and display
     if (state.gain !== undefined) {
-      const slider = qs('#buc-gain', this.containerEl) as HTMLInputElement;
-      const display = qs('#buc-gain-display', this.containerEl);
+      const slider = this.domCache_.get('gainSlider') as HTMLInputElement;
+      const display = this.domCache_.get('gainDisplay');
       if (slider) slider.value = state.gain.toString();
       if (display) display.textContent = `${state.gain.toFixed(1)} dB`;
     }
 
     // Update Power switch
     if (state.isPowered !== undefined) {
-      const powerSwitch = qs('#buc-power', this.containerEl) as HTMLInputElement;
+      const powerSwitch = this.domCache_.get('powerSwitch') as HTMLInputElement;
       if (powerSwitch) powerSwitch.checked = state.isPowered;
     }
 
     // Update Mute switch
     if (state.isMuted !== undefined) {
-      const muteSwitch = qs('#buc-mute', this.containerEl) as HTMLInputElement;
+      const muteSwitch = this.domCache_.get('muteSwitch') as HTMLInputElement;
       if (muteSwitch) muteSwitch.checked = state.isMuted;
     }
 
     // Update status indicators
     if (state.outputPower !== undefined) {
-      const display = qs('#buc-output-power-display', this.containerEl);
+      const display = this.domCache_.get('outputPowerDisplay');
       if (display) display.textContent = `${state.outputPower.toFixed(1)} dBm`;
     }
 
     if (state.temperature !== undefined) {
-      const display = qs('#buc-temperature-display', this.containerEl);
+      const display = this.domCache_.get('temperatureDisplay');
       if (display) display.textContent = `${state.temperature.toFixed(1)} °C`;
     }
 
     if (state.isExtRefLocked !== undefined) {
-      const led = qs('#buc-lock-led', this.containerEl);
+      const led = this.domCache_.get('lockLed');
       if (led) {
         led.className = state.isExtRefLocked ? 'led led-green' : 'led led-red';
       }
     }
   }
 
-  public dispose(): void {
+  dispose(): void {
     // Remove EventBus listeners
     EventBus.getInstance().off(Events.RF_FE_BUC_CHANGED, this.stateChangeHandler as any);
 

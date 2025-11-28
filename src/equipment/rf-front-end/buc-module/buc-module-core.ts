@@ -218,28 +218,28 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
   }
 
   // ═══════════════════════════════════════════════════════════════
-  // Protected Handler Methods (for UI)
+  // Public Handler Methods (for UI)
   // ═══════════════════════════════════════════════════════════════
 
-  protected handlePowerToggle(isPowered?: boolean): void {
+  handlePowerToggle(isPowered?: boolean): void {
     if (isPowered !== undefined) {
       this.state.isPowered = isPowered;
     }
   }
 
-  protected handleGainChange(gain: number): void {
+  handleGainChange(gain: number): void {
     this.state.gain = gain as dB;
   }
 
-  protected handleMuteToggle(isMuted: boolean): void {
+  handleMuteToggle(isMuted: boolean): void {
     this.state.isMuted = isMuted;
   }
 
-  protected handleLoFrequencyChange(frequency: number): void {
+  handleLoFrequencyChange(frequency: number): void {
     this.state.loFrequency = frequency as MHz;
   }
 
-  protected handleLoopbackToggle(isLoopback: boolean): void {
+  handleLoopbackToggle(isLoopback: boolean): void {
     this.state.isLoopback = isLoopback;
   }
 

@@ -7,6 +7,7 @@ import { SimulationManager } from "@app/simulation/simulation-manager";
 import { ACUControlTab } from './tabs/acu-control-tab';
 import { RxAnalysisTab } from './tabs/rx-analysis-tab';
 import { TxChainTab } from './tabs/tx-chain-tab';
+import { GPSTimingTab } from './tabs/gps-timing-tab';
 import './tabbed-canvas.css';
 
 /**
@@ -21,7 +22,7 @@ export class TabbedCanvas extends BaseElement {
 
   private activeTab_: string = 'welcome';
   private selectedAssetId_: string | null = null;
-  private tabInstances_: Map<string, ACUControlTab | RxAnalysisTab | TxChainTab> = new Map();
+  private tabInstances_: Map<string, ACUControlTab | RxAnalysisTab | TxChainTab | GPSTimingTab> = new Map();
 
   protected html_ = html`
     <div class="tabbed-canvas">
@@ -211,13 +212,7 @@ export class TabbedCanvas extends BaseElement {
         break;
 
       case 'gps-timing':
-        content.innerHTML = html`
-          <div class="tab-content-placeholder">
-            <h3>GPS Timing</h3>
-            <p>GPS Disciplined Oscillator (GPSDO) timing reference display.</p>
-            <div class="placeholder-note">Coming in Phase 7</div>
-          </div>
-        `;
+        this.renderGPSTimingTab_(content);
         break;
 
       default:
@@ -324,6 +319,38 @@ export class TabbedCanvas extends BaseElement {
 
     // Activate the tab
     txTab.activate();
+  }
+
+  /**
+   * Render GPS Timing tab (Phase 7)
+   */
+  private renderGPSTimingTab_(content: HTMLElement): void {
+    const groundStation = SimulationManager.getInstance().groundStations.find(
+      gs => gs.state.id === this.selectedAssetId_
+    );
+
+    if (!groundStation) {
+      content.innerHTML = html`
+        <div class="tab-content-placeholder">
+          <h3>Error</h3>
+          <p>Ground station not found.</p>
+        </div>
+      `;
+      return;
+    }
+
+    // Check if tab instance already exists
+    const tabKey = `gps-timing-${this.selectedAssetId_}`;
+    let gpsTab = this.tabInstances_.get(tabKey) as GPSTimingTab;
+
+    if (!gpsTab) {
+      // Create new tab instance
+      gpsTab = new GPSTimingTab(groundStation, 'canvas-content');
+      this.tabInstances_.set(tabKey, gpsTab);
+    }
+
+    // Activate the tab
+    gpsTab.activate();
   }
 
   /**

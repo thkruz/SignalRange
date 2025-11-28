@@ -38,6 +38,10 @@ temp/
 *.notes.*
 notes
 
+# Plans
+plans/*.done
+plans/*.done.*
+
 # Large audio assets (stored in R2, not in git)
 # Campaign audio files can be large and numerous
 public/assets/campaigns/**/*.mp3

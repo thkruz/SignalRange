@@ -8,6 +8,7 @@ import { LNBAdapter } from './lnb-adapter';
 import { ReceiverAdapter } from './receiver-adapter';
 import './rx-analysis-tab.css';
 import { SpectrumAnalyzerAdapter } from './spectrum-analyzer-adapter';
+import { SpectrumAnalyzerAdvancedAdapter } from './spectrum-analyzer-advanced-adapter';
 
 /**
  * RxAnalysisTab - Receiver chain analysis and control
@@ -26,6 +27,7 @@ export class RxAnalysisTab extends BaseElement {
   private lnbAdapter: LNBAdapter | null = null;
   private filterAdapter: FilterAdapter | null = null;
   private spectrumAnalyzerAdapter: SpectrumAnalyzerAdapter | null = null;
+  private spectrumAnalyzerAdvancedAdapter: SpectrumAnalyzerAdvancedAdapter | null = null;
   private receiverAdapter: ReceiverAdapter | null = null;
 
   constructor(groundStation: GroundStation, containerId: string) {
@@ -177,6 +179,26 @@ export class RxAnalysisTab extends BaseElement {
                   <button id="spec-analyzer-pause-btn" class="btn btn-warning btn-sm">Pause</button>
                   <button id="spec-analyzer-autotune-btn" class="btn btn-primary btn-sm">Auto-Tune</button>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Advanced Spectrum Analyzer Controls (Expandable) -->
+        <div class="col-12">
+          <div class="card">
+            <div class="card-header">
+              <div class="d-flex justify-content-between align-items-center">
+                <h3 class="card-title">Advanced Spectrum Analyzer Controls</h3>
+                <button id="spec-analyzer-advanced-toggle" class="btn btn-sm btn-outline-primary">
+                  <span class="icon">▶</span> Show Advanced Controls
+                </button>
+              </div>
+            </div>
+            <div class="collapse" id="spec-analyzer-advanced-collapse">
+              <div class="card-body">
+                <!-- AnalyzerControl component will be injected here -->
+                <div id="spec-analyzer-advanced-controls"></div>
               </div>
             </div>
           </div>
@@ -358,6 +380,14 @@ export class RxAnalysisTab extends BaseElement {
     this.filterAdapter = new FilterAdapter(rfFrontEnd.filterModule, this.dom_!);
     this.spectrumAnalyzerAdapter = new SpectrumAnalyzerAdapter(spectrumAnalyzer, this.dom_!);
 
+    // Create advanced spectrum analyzer adapter
+    if (spectrumAnalyzer && this.dom_) {
+      this.spectrumAnalyzerAdvancedAdapter = new SpectrumAnalyzerAdvancedAdapter(
+        spectrumAnalyzer,
+        this.dom_
+      );
+    }
+
     // Create receiver adapter if receiver exists
     if (receiver && this.dom_) {
       this.receiverAdapter = new ReceiverAdapter(receiver, this.dom_);
@@ -389,11 +419,13 @@ export class RxAnalysisTab extends BaseElement {
     this.lnbAdapter?.dispose();
     this.filterAdapter?.dispose();
     this.spectrumAnalyzerAdapter?.dispose();
+    this.spectrumAnalyzerAdvancedAdapter?.dispose();
     this.receiverAdapter?.dispose();
 
     this.lnbAdapter = null;
     this.filterAdapter = null;
     this.spectrumAnalyzerAdapter = null;
+    this.spectrumAnalyzerAdvancedAdapter = null;
     this.receiverAdapter = null;
 
     this.dom_?.remove();

@@ -153,3 +153,22 @@
   98% { transform: translate(1px, -2px); }
   100% { transform: translate(0); }
 }
+
+/* Advanced Spectrum Analyzer Controls - Expandable */
+#spec-analyzer-advanced-toggle {
+  transition: all 0.2s ease;
+}
+
+#spec-analyzer-advanced-toggle .icon {
+  display: inline-block;
+  transition: transform 0.2s ease;
+}
+
+/* Collapse transition */
+#spec-analyzer-advanced-collapse {
+  transition: height 0.3s ease;
+}
+
+#spec-analyzer-advanced-collapse.show {
+  display: block;
+}

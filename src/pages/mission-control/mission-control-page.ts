@@ -133,6 +133,9 @@ export class MissionControlPage extends BasePage {
 
     this.groundStations_ = scenario.getScenario().groundStations.map((config: GroundStationConfig) => new GroundStation(config));
 
+    // Initialize equipment immediately so AlarmService can poll alarms
+    this.groundStations_.forEach(gs => gs.initializeEquipment());
+
     syncEquipmentWithStore(null, this.groundStations_);
   }
 

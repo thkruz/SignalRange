@@ -4,6 +4,10 @@ export abstract class BaseElement {
   protected dom_: HTMLElement | null = null;
   protected domCacehe_: { [key: string]: HTMLElement } = {};
 
+  get dom(): HTMLElement | null {
+    return this.dom_;
+  }
+
   protected init_(parentId = 'root', type: 'add' | 'replace' = 'replace'): void {
     this.initDom_(parentId, type);
     this.addEventListeners_();

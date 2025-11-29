@@ -88,10 +88,11 @@ export class GroundStation {
 
     // Create antennas (headless mode for mission control)
     config.antennas.forEach((antennaConfigId, index) => {
+      const initialState = config.antennasState?.[index] ?? {};
       const antenna = new AntennaUIHeadless(
         `gs-${this.uuid}-antenna${index + 1}-headless`,
         antennaConfigId as ANTENNA_CONFIG_KEYS,
-        null,
+        initialState,
         config.teamId || 1
       );
 

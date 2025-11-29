@@ -166,6 +166,7 @@ export abstract class AntennaCore extends BaseEquipment {
     this.state = { ...this.state, ...data };
     this.updateSignals_();
     this.computeRfMetrics_();
+    this.notifyStateChange_();
     this.syncDomWithState();
   }
 

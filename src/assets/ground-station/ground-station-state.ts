@@ -45,6 +45,7 @@ export interface GroundStationConfig {
   isOperational?: boolean;
   location: GroundStationLocation;
   antennas: string[];           // Antenna config IDs
+  antennasState?: Partial<AntennaState>[];  // Initial antenna states (parallel to antennas array)
   rfFrontEnds: any[];           // RF front-end configs
   spectrumAnalyzers?: any[];    // Spectrum analyzer configs (optional)
   transmitters?: number;        // Number of transmitters (default: 4)

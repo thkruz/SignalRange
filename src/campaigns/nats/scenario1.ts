@@ -50,6 +50,15 @@ export const scenario1Data: ScenarioData = {
           elevation: 2,
         },
         antennas: [ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK],
+        antennasState: [
+          {
+            // Pre-configure antenna to be powered on and pointed roughly at satellite 1
+            isPowered: true,
+            azimuth: 161.8 as Degrees,
+            elevation: 34.2 as Degrees,
+            polarization: 14 as Degrees,
+          } as Partial<AntennaState>,
+        ],
         rfFrontEnds: [{
           // Module states managed by their respective classes
           omt: OMTModule.getDefaultState(),
@@ -226,15 +235,6 @@ export const scenario1Data: ScenarioData = {
         transmitters: 0,
         receivers: 0,
       }
-    ],
-    antennasState: [
-      {
-        // Pre-configure antenna to be powered on and pointed roughly at satellite 1
-        isPowered: true,
-        azimuth: 161.8 as Degrees,
-        elevation: 34.2 as Degrees,
-        polarization: 14 as Degrees,
-      } as Partial<AntennaState>,
     ],
     layout: html`
       <div class="student-equipment scenario1-layout">

@@ -145,11 +145,11 @@ export class AntennaAdapter {
     if (state.azimuth !== undefined) {
       const slider = this.domCache_.get('azSlider') as HTMLInputElement;
       const display = this.domCache_.get('azValue');
-      if (slider && parseFloat(slider.value) !== state.azimuth) {
+      if (slider) {
         slider.value = state.azimuth.toString();
       }
       if (display) {
-        display.textContent = state.azimuth.toFixed(1);
+        display.textContent = `${state.azimuth.toFixed(1)}°`;
       }
     }
 
@@ -157,11 +157,11 @@ export class AntennaAdapter {
     if (state.elevation !== undefined) {
       const slider = this.domCache_.get('elSlider') as HTMLInputElement;
       const display = this.domCache_.get('elValue');
-      if (slider && parseFloat(slider.value) !== state.elevation) {
+      if (slider) {
         slider.value = state.elevation.toString();
       }
       if (display) {
-        display.textContent = state.elevation.toFixed(1);
+        display.textContent = `${state.elevation.toFixed(1)}°`;
       }
     }
 
@@ -169,11 +169,11 @@ export class AntennaAdapter {
     if (state.polarization !== undefined) {
       const slider = this.domCache_.get('polSlider') as HTMLInputElement;
       const display = this.domCache_.get('polValue');
-      if (slider && parseFloat(slider.value) !== state.polarization) {
+      if (slider) {
         slider.value = state.polarization.toString();
       }
       if (display) {
-        display.textContent = state.polarization.toFixed(1);
+        display.textContent = `${state.polarization.toFixed(1)}°`;
       }
     }
 

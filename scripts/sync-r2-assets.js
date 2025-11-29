@@ -28,8 +28,16 @@ const crypto = require('node:crypto');
 
 // Configuration
 const BUCKET_NAME = 'signal-range-assets';
-const LOCAL_ASSETS_DIR = path.join(__dirname, '..', 'public', 'assets', 'campaigns');
-const R2_PREFIX = 'assets/campaigns';
+const ASSET_DIRS = [
+  {
+    localDir: path.join(__dirname, '..', 'public', 'assets', 'campaigns'),
+    r2Prefix: 'assets/campaigns',
+  },
+  {
+    localDir: path.join(__dirname, '..', 'public', 'assets', 'characters'),
+    r2Prefix: 'assets/characters',
+  },
+];
 
 // Parse command line arguments
 const args = process.argv.slice(2);
@@ -108,6 +116,10 @@ function getAssetFiles(dir, fileList = []) {
     const stat = fs.statSync(filePath);
 
     if (stat.isDirectory()) {
+      // Skip "wip" directories
+      if (file.toLowerCase() === 'wip') {
+        return;
+      }
       getAssetFiles(filePath, fileList);
     } else if (/\.(mp3|wav|ogg|png|jpe?g)$/i.test(file)) {
       fileList.push(filePath);
@@ -177,40 +189,47 @@ async function syncAssets() {
   log('  R2 Asset Sync', 'bright');
   log('='.repeat(60) + '\n', 'bright');
 
-  // Check if local directory exists
-  if (!fs.existsSync(LOCAL_ASSETS_DIR)) {
-    log(`❌ Local assets directory not found: ${LOCAL_ASSETS_DIR}`, 'red');
-    log('   Create the directory or add some asset files to sync.', 'yellow');
-    process.exit(1);
+  // Collect all files from all configured directories
+  const allFiles = [];
+
+  for (const { localDir, r2Prefix } of ASSET_DIRS) {
+    if (!fs.existsSync(localDir)) {
+      log(`⚠️  Directory not found (skipping): ${localDir}`, 'yellow');
+      continue;
+    }
+
+    log(`📂 Scanning ${path.basename(localDir)}...`, 'blue');
+    const files = getAssetFiles(localDir);
+
+    for (const filePath of files) {
+      allFiles.push({ filePath, localDir, r2Prefix });
+    }
+
+    log(`   Found ${files.length} file(s)`, 'green');
   }
 
-  // Get all local asset files
-  log('📂 Scanning local files...', 'blue');
-  const localFiles = getAssetFiles(LOCAL_ASSETS_DIR);
-
-  if (localFiles.length === 0) {
-    log('   No asset files found to sync.', 'yellow');
-    log('   Add audio (.mp3, .wav, .ogg) or image (.png, .jpg) files to:', 'yellow');
-    log(`   ${LOCAL_ASSETS_DIR}\n`, 'yellow');
+  if (allFiles.length === 0) {
+    log('\n   No asset files found to sync.', 'yellow');
+    log('   Add audio (.mp3, .wav, .ogg) or image (.png, .jpg) files to the asset directories.\n', 'yellow');
     process.exit(0);
   }
 
-  log(`   Found ${localFiles.length} asset file(s)\n`, 'green');
+  log(`\n📊 Total: ${allFiles.length} asset file(s)\n`, 'green');
 
   // Upload files
   let uploaded = 0;
   let skipped = 0;
   let failed = 0;
 
-  for (const localFile of localFiles) {
-    const relativePath = path.relative(LOCAL_ASSETS_DIR, localFile);
-    const r2Key = `${R2_PREFIX}/${relativePath.replace(/\\/g, '/')}`;
-    const fileSize = fs.statSync(localFile).size;
+  for (const { filePath, localDir, r2Prefix } of allFiles) {
+    const relativePath = path.relative(localDir, filePath);
+    const r2Key = `${r2Prefix}/${relativePath.replace(/\\/g, '/')}`;
+    const fileSize = fs.statSync(filePath).size;
     const fileSizeMB = (fileSize / 1024 / 1024).toFixed(2);
 
-    log(`📤 ${relativePath} (${fileSizeMB} MB)`, 'bright');
+    log(`📤 ${r2Key} (${fileSizeMB} MB)`, 'bright');
 
-    const result = uploadToR2(localFile, r2Key);
+    const result = uploadToR2(filePath, r2Key);
 
     if (result.success) {
       uploaded++;
@@ -231,7 +250,7 @@ async function syncAssets() {
   }
 
   log(`\n📊 Summary:`, 'bright');
-  log(`   Total files:    ${localFiles.length}`);
+  log(`   Total files:    ${allFiles.length}`);
   log(`   Uploaded:       ${uploaded}`, uploaded > 0 ? 'green' : 'reset');
   log(`   Skipped:        ${skipped}`, skipped > 0 ? 'yellow' : 'reset');
   log(`   Failed:         ${failed}`, failed > 0 ? 'red' : 'reset');

@@ -1,3 +1,5 @@
+import { getAssetUrl } from "@app/utils/asset-url";
+
 export enum Character {
   /** Mid-level ground station operator and guide. British immigrant with a rough tone. */
   CHARLIE_BROOKS = 'charlie_brooks',
@@ -23,10 +25,10 @@ export enum Emotion {
 }
 
 export const CharacterAvatars: Record<Character, string> = {
-  [Character.CHARLIE_BROOKS]: '/assets/characters/charlie-brooks.png',
-  [Character.CATHERINE_VEGA]: '/assets/characters/catherine-vega.png',
-  [Character.JAMES_OKAFOR]: '/assets/characters/james-okafor.png',
-  [Character.FRANCIS_MARTIN]: '/assets/characters/francis-martin.png',
+  [Character.CHARLIE_BROOKS]: getAssetUrl('/assets/characters/charlie-brooks.png'),
+  [Character.CATHERINE_VEGA]: getAssetUrl('/assets/characters/catherine-vega.png'),
+  [Character.JAMES_OKAFOR]: getAssetUrl('/assets/characters/james-okafor.png'),
+  [Character.FRANCIS_MARTIN]: getAssetUrl('/assets/characters/francis-martin.png'),
 };
 
 export const CharacterNames: Record<Character, string> = {

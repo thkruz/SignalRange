@@ -54,6 +54,7 @@ public/assets/campaigns/**/*.wav
 public/assets/campaigns/**/*.ogg
 public/assets/campaigns/**/*.png
 public/assets/campaigns/**/*.jpg
+public/assets/characters/**/*.png
 public/**/wip/
 
 # Keep directory structure with .gitkeep files

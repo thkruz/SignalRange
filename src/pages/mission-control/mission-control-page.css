@@ -73,8 +73,8 @@
 }
 
 .command-bar-ticker.info {
-  background-color: rgba(107, 114, 128, 0.2);
-  border-top: 1px solid rgba(107, 114, 128, 0.3);
+  background-color: rgba(59, 130, 246, 0.2);
+  border-top: 1px solid rgba(59, 130, 246, 0.3);
 }
 
 .command-bar-ticker.warn {

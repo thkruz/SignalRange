@@ -125,6 +125,20 @@ export interface ProgressSaveErrorData {
   error: Error;
 }
 
+// Alarm Event specific interfaces
+export interface AggregatedAlarm {
+  severity: 'error' | 'warning' | 'info' | 'success';
+  message: string;
+  assetId: string;
+  equipmentType: string;
+  equipmentIndex: number;
+}
+
+export interface AlarmStateChangedData {
+  alarms: AggregatedAlarm[];
+  highestSeverity: 'error' | 'warning' | 'info' | 'success';
+}
+
 export enum Events {
   // Antenna events
   ANTENNA_STATE_CHANGED = 'antenna:state:changed',
@@ -177,6 +191,9 @@ export enum Events {
   PROGRESS_SAVE_START = 'progress:save:start',
   PROGRESS_SAVE_SUCCESS = 'progress:save:success',
   PROGRESS_SAVE_ERROR = 'progress:save:error',
+
+  // Global Alarm events
+  ALARM_STATE_CHANGED = 'alarm:state:changed',
 }
 
 export interface EventMap {
@@ -227,4 +244,6 @@ export interface EventMap {
   [Events.PROGRESS_SAVE_START]: [ProgressSaveStartData];
   [Events.PROGRESS_SAVE_SUCCESS]: [ProgressSaveSuccessData];
   [Events.PROGRESS_SAVE_ERROR]: [ProgressSaveErrorData];
+
+  [Events.ALARM_STATE_CHANGED]: [AlarmStateChangedData];
 }

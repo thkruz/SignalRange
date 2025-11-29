@@ -7,6 +7,7 @@ import { ObjectivesManager } from "@app/objectives/objectives-manager";
 import { NavigationOptions } from "@app/router";
 import { ScenarioManager } from "@app/scenario-manager";
 import { ScenarioDialogManager } from "@app/scenarios/scenario-dialog-manager";
+import { AlarmService } from "@app/services/alarm-service";
 import { SimulationManager } from "@app/simulation/simulation-manager";
 import { syncEquipmentWithStore } from "@app/sync";
 import { BasePage } from "../base-page";
@@ -117,6 +118,10 @@ export class MissionControlPage extends BasePage {
   private async initializeAsync_(): Promise<void> {
     // Initialize SimulationManager first (before objectives can subscribe to events)
     SimulationManager.getInstance();
+
+    // Initialize AlarmService for global alarm aggregation
+    AlarmService.getInstance();
+
     await this.initializeObjectivesAndDialogs_();
   }
 
@@ -173,6 +178,7 @@ export class MissionControlPage extends BasePage {
     }
 
     // Clean up singletons (matches SandboxPage.destroy())
+    AlarmService.destroy();
     SimulationManager.destroy();
     ObjectivesManager.destroy();
     ScenarioDialogManager.reset();

@@ -275,7 +275,7 @@ export class Receiver extends BaseEquipment {
     this.updateStatusBar(this.domCache['bottom-status-bar'], this.getStatusAlarms());
   }
 
-  protected getStatusAlarms(): AlarmStatus[] {
+  public getStatusAlarms(): AlarmStatus[] {
     const alarms: AlarmStatus[] = [];
 
     if (this.state.availableSignals.length > 0) {

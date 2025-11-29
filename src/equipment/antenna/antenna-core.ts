@@ -383,7 +383,7 @@ export abstract class AntennaCore extends BaseEquipment {
    * Get status alarms for status bar display
    * Returns array of alarm statuses with severity and message
    */
-  protected getStatusAlarms(): AlarmStatus[] {
+  public getStatusAlarms(): AlarmStatus[] {
     const alarms: AlarmStatus[] = [];
 
     // Error conditions

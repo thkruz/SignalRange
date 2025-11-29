@@ -267,7 +267,7 @@ export abstract class RFFrontEndCore extends BaseEquipment {
    * Get status alarms for status bar display
    * Collects alarms from all modules and returns as AlarmStatus array
    */
-  protected getStatusAlarms(rfcase: number): AlarmStatus[] {
+  public getStatusAlarms(rfcase: number): AlarmStatus[] {
     const alarms: AlarmStatus[] = [];
 
     // HPA overdrive check (back-off < 3 dB is typically considered overdrive)

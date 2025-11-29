@@ -4,11 +4,11 @@ import { qs } from "@app/engine/utils/query-selector";
 import { EventBus } from "@app/events/event-bus";
 import { Events } from "@app/events/events";
 import { SimulationManager } from "@app/simulation/simulation-manager";
+import './tabbed-canvas.css';
 import { ACUControlTab } from './tabs/acu-control-tab';
+import { GPSTimingTab } from './tabs/gps-timing-tab';
 import { RxAnalysisTab } from './tabs/rx-analysis-tab';
 import { TxChainTab } from './tabs/tx-chain-tab';
-import { GPSTimingTab } from './tabs/gps-timing-tab';
-import './tabbed-canvas.css';
 
 /**
  * TabbedCanvas - Dynamic tabbed interface for ground station equipment
@@ -22,7 +22,7 @@ export class TabbedCanvas extends BaseElement {
 
   private activeTab_: string = 'welcome';
   private selectedAssetId_: string | null = null;
-  private tabInstances_: Map<string, ACUControlTab | RxAnalysisTab | TxChainTab | GPSTimingTab> = new Map();
+  private readonly tabInstances_: Map<string, ACUControlTab | RxAnalysisTab | TxChainTab | GPSTimingTab> = new Map();
 
   protected html_ = html`
     <div class="tabbed-canvas">
@@ -250,9 +250,16 @@ export class TabbedCanvas extends BaseElement {
       return;
     }
 
-    // Check if tab instance already exists
+    // Check if tab instance already exists and its DOM is still attached
     const tabKey = `acu-control-${this.selectedAssetId_}`;
     let acuTab = this.tabInstances_.get(tabKey) as ACUControlTab;
+
+    if (acuTab && !document.contains(acuTab.dom)) {
+      // DOM was destroyed (e.g., by switching to a placeholder tab), recreate
+      acuTab.dispose();
+      this.tabInstances_.delete(tabKey);
+      acuTab = null!;
+    }
 
     if (!acuTab) {
       // Create new tab instance
@@ -282,9 +289,16 @@ export class TabbedCanvas extends BaseElement {
       return;
     }
 
-    // Check if tab instance already exists
+    // Check if tab instance already exists and its DOM is still attached
     const tabKey = `rx-analysis-${this.selectedAssetId_}`;
     let rxTab = this.tabInstances_.get(tabKey) as RxAnalysisTab;
+
+    if (rxTab && !document.contains(rxTab.dom)) {
+      // DOM was destroyed (e.g., by switching to a placeholder tab), recreate
+      rxTab.dispose();
+      this.tabInstances_.delete(tabKey);
+      rxTab = null!;
+    }
 
     if (!rxTab) {
       // Create new tab instance
@@ -314,9 +328,16 @@ export class TabbedCanvas extends BaseElement {
       return;
     }
 
-    // Check if tab instance already exists
+    // Check if tab instance already exists and its DOM is still attached
     const tabKey = `tx-chain-${this.selectedAssetId_}`;
     let txTab = this.tabInstances_.get(tabKey) as TxChainTab;
+
+    if (txTab && !document.contains(txTab.dom)) {
+      // DOM was destroyed (e.g., by switching to a placeholder tab), recreate
+      txTab.dispose();
+      this.tabInstances_.delete(tabKey);
+      txTab = null!;
+    }
 
     if (!txTab) {
       // Create new tab instance
@@ -346,9 +367,16 @@ export class TabbedCanvas extends BaseElement {
       return;
     }
 
-    // Check if tab instance already exists
+    // Check if tab instance already exists and its DOM is still attached
     const tabKey = `gps-timing-${this.selectedAssetId_}`;
     let gpsTab = this.tabInstances_.get(tabKey) as GPSTimingTab;
+
+    if (gpsTab && !document.contains(gpsTab.dom)) {
+      // DOM was destroyed (e.g., by switching to a placeholder tab), recreate
+      gpsTab.dispose();
+      this.tabInstances_.delete(tabKey);
+      gpsTab = null!;
+    }
 
     if (!gpsTab) {
       // Create new tab instance

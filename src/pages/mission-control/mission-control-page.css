@@ -63,31 +63,32 @@
   color: #ba160c;
 }
 
-.command-bar-ticker {
+/* ===== Static Alarm Bar ===== */
+.command-bar-alarm-bar {
   height: 24px;
   display: flex;
   align-items: center;
-  justify-content: space-around;
-  overflow: hidden;
-  position: relative;
+  gap: 1rem;
+  padding: 0 1rem;
+  transition: background-color 0.3s ease;
 }
 
-.command-bar-ticker.info {
+.command-bar-alarm-bar.info {
   background-color: rgba(59, 130, 246, 0.2);
   border-top: 1px solid rgba(59, 130, 246, 0.3);
 }
 
-.command-bar-ticker.warn {
+.command-bar-alarm-bar.warn {
   background-color: rgba(234, 179, 8, 0.2);
   border-top: 1px solid rgba(234, 179, 8, 0.3);
 }
 
-.command-bar-ticker.healthy {
+.command-bar-alarm-bar.healthy {
   background-color: rgba(16, 185, 129, 0.2);
   border-top: 1px solid rgba(16, 185, 129, 0.3);
 }
 
-.command-bar-ticker.alarm {
+.command-bar-alarm-bar.alarm {
   background-color: rgba(186, 22, 12, 0.2);
   border-top: 1px solid rgba(186, 22, 12, 0.3);
 }
@@ -96,35 +97,68 @@
   color: #ba160c;
 }
 
-/* Ticker Animation */
-@keyframes ticker {
-  0% {
-    transform: translateX(100%);
-  }
-
-  100% {
-    transform: translateX(-100%);
-  }
+/* Alarm Count Badges */
+.alarm-counts {
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
 }
 
-.ticker-wrap {
+.alarm-count {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0 0.5rem;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+}
+
+.alarm-count.error {
+  background: rgba(186, 22, 12, 0.3);
+  color: #fca5a5;
+}
+
+.alarm-count.warning {
+  background: rgba(234, 179, 8, 0.3);
+  color: #fde047;
+}
+
+.alarm-count.info {
+  background: rgba(59, 130, 246, 0.3);
+  color: #93c5fd;
+}
+
+/* Alarm Messages */
+.alarm-messages {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   overflow: hidden;
   white-space: nowrap;
-  width: 100%;
-  text-align: center;
+  text-overflow: ellipsis;
+  font-size: 10px;
+  font-family: monospace;
 }
 
-.ticker-move {
-  display: flex;
-  flex-direction: row;
-  justify-content: space-evenly;
-  width: 100%;
-  animation: ticker 60s linear infinite;
+.alarm-item {
+  font-weight: 500;
 }
 
-.ticker-item {
-  display: inline-block;
-  padding: 0 2rem;
+.alarm-separator {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.alarm-overflow {
+  font-size: 10px;
+  opacity: 0.7;
+  color: #94a3b8;
+}
+
+.alarm-stable {
+  font-size: 10px;
+  font-family: monospace;
 }
 
 /* ===== 2. Main Workspace ===== */

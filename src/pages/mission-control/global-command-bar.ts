@@ -6,35 +6,27 @@ import { Events, AlarmStateChangedData, AggregatedAlarm } from "@app/events/even
 /**
  * GlobalCommandBar
  *
- * Displays AOS countdown and a dynamic alarm ticker.
- * Subscribes to ALARM_STATE_CHANGED events to update the ticker display.
+ * Displays AOS countdown and a static alarm bar.
+ * Subscribes to ALARM_STATE_CHANGED events to update the display immediately.
  *
- * Ticker behavior:
- * - Updates are queued and applied at animation loop start (not mid-scroll)
- * - Animation speed scales with content length
- * - Width is max(container width, content width)
+ * Static alarm bar shows:
+ * - Severity count badges (errors, warnings, info)
+ * - Top 3 most severe alarms inline
+ * - "+N more" overflow indicator
  */
 export class GlobalCommandBar {
   readonly id = 'global-command-bar-container';
   protected dom_: HTMLElement | null = null;
-  private tickerEl_: HTMLElement | null = null;
-  private tickerContainerEl_: HTMLElement | null = null;
-  private tickerWrapEl_: HTMLElement | null = null;
+  private alarmBarEl_: HTMLElement | null = null;
+  private countsEl_: HTMLElement | null = null;
+  private messagesEl_: HTMLElement | null = null;
   private readonly boundOnAlarmStateChanged_: (data: AlarmStateChangedData) => void;
-  private readonly boundOnAnimationIteration_: () => void;
 
-  /** Queued update to apply at next animation loop */
-  private pendingUpdate_: { alarms: AggregatedAlarm[]; severity: string } | null = null;
-
-  /** Pixels per second for ticker scroll speed */
-  private readonly SCROLL_SPEED_ = 100;
-
-  /** Minimum animation duration in seconds */
-  private readonly MIN_DURATION_ = 8;
+  /** Maximum number of alarms to show inline */
+  private readonly MAX_INLINE_ALARMS_ = 3;
 
   constructor(private readonly parentContainerId_: string) {
     this.boundOnAlarmStateChanged_ = this.onAlarmStateChanged_.bind(this);
-    this.boundOnAnimationIteration_ = this.onAnimationIteration_.bind(this);
     this.init_();
     this.subscribeToAlarms_();
   }
@@ -65,12 +57,13 @@ export class GlobalCommandBar {
             <span class="text-[10px] text-slate-500">EL 12.5° RISING</span>
           </div>
         </div>
-        <!-- Alarm Ticker -->
-        <div id="alarm-ticker" class="command-bar-ticker healthy">
-          <div id="ticker-wrap" class="ticker-wrap">
-            <div id="ticker-content" class="ticker-move text-[10px] font-mono text-green-400">
-              <span class="ticker-item"><i class="fa-solid fa-circle-check mr-1"></i> SYSTEM STABLE</span>
-            </div>
+        <!-- Static Alarm Bar -->
+        <div id="alarm-bar" class="command-bar-alarm-bar healthy">
+          <div id="alarm-counts" class="alarm-counts"></div>
+          <div id="alarm-messages" class="alarm-messages">
+            <span class="alarm-stable text-green-400">
+              <i class="fa-solid fa-circle-check mr-1"></i> SYSTEM STABLE
+            </span>
           </div>
         </div>
       </div>
@@ -96,15 +89,9 @@ export class GlobalCommandBar {
     const parentDom = qs(`#${this.parentContainerId_}`);
     parentDom?.insertAdjacentHTML('beforeend', this.html_);
     this.dom_ = qs(`#${this.id}`, parentDom);
-    this.tickerEl_ = qs('#ticker-content', parentDom);
-    this.tickerContainerEl_ = qs('#alarm-ticker', parentDom);
-    this.tickerWrapEl_ = qs('#ticker-wrap', parentDom);
-
-    // Listen for animation iteration to apply queued updates
-    this.tickerEl_?.addEventListener('animationiteration', this.boundOnAnimationIteration_);
-
-    // Set initial animation duration
-    this.updateAnimationDuration_();
+    this.alarmBarEl_ = qs('#alarm-bar', parentDom);
+    this.countsEl_ = qs('#alarm-counts', parentDom);
+    this.messagesEl_ = qs('#alarm-messages', parentDom);
   }
 
   private subscribeToAlarms_(): void {
@@ -112,100 +99,116 @@ export class GlobalCommandBar {
   }
 
   private onAlarmStateChanged_(data: AlarmStateChangedData): void {
-    // Queue the update for next animation loop
-    this.pendingUpdate_ = {
-      alarms: data.alarms,
-      severity: data.highestSeverity
-    };
-
-    // If this is the first update or animation isn't running, apply immediately
-    if (!this.tickerEl_?.style.animationDuration || this.tickerEl_.style.animationDuration === '0s') {
-      this.applyPendingUpdate_();
-    }
+    // Apply immediately - no queuing needed for static display
+    this.renderStaticAlarms_(data.alarms, data.highestSeverity);
   }
 
   /**
-   * Called when animation completes one iteration - apply any pending updates
+   * Render the static alarm bar with counts and top alarms
    */
-  private onAnimationIteration_(): void {
-    if (this.pendingUpdate_) {
-      this.applyPendingUpdate_();
-    }
-  }
+  private renderStaticAlarms_(alarms: AggregatedAlarm[], severity: string): void {
+    if (!this.alarmBarEl_ || !this.countsEl_ || !this.messagesEl_) return;
 
-  /**
-   * Apply the pending update to the ticker
-   */
-  private applyPendingUpdate_(): void {
-    if (!this.pendingUpdate_ || !this.tickerEl_ || !this.tickerContainerEl_) return;
+    // Count by severity
+    const counts = { error: 0, warning: 0, info: 0 };
+    alarms.forEach(a => {
+      if (a.severity in counts) {
+        counts[a.severity as keyof typeof counts]++;
+      }
+    });
 
-    const { alarms, severity } = this.pendingUpdate_;
-    this.pendingUpdate_ = null;
+    // Update count badges
+    this.renderCountBadges_(counts);
 
     // Update container class for background color
-    this.tickerContainerEl_.classList.remove('alarm', 'warn', 'healthy', 'info');
+    this.alarmBarEl_.classList.remove('alarm', 'warn', 'healthy', 'info');
 
     if (alarms.length === 0) {
-      // System stable - no alarms
-      this.tickerEl_.innerHTML = `<span class="ticker-item text-green-400"><i class="fa-solid fa-circle-check mr-1"></i> SYSTEM STABLE</span>`;
-      this.tickerEl_.className = 'ticker-move text-[10px] font-mono text-green-400';
-      this.tickerContainerEl_.classList.add('healthy');
+      // System stable
+      this.messagesEl_.innerHTML = `
+        <span class="alarm-stable text-green-400">
+          <i class="fa-solid fa-circle-check mr-1"></i> SYSTEM STABLE
+        </span>
+      `;
+      this.alarmBarEl_.classList.add('healthy');
     } else {
-      // Build ticker items - format: VT-01(RF1): MESSAGE
-      const color = this.getColorClass_(severity);
-      const icon = this.getIcon_(severity);
-      this.tickerEl_.innerHTML = alarms.map(alarm =>
-        `<span class="ticker-item ${color}"><i class="${icon} mr-1"></i> ${alarm.assetId}(${alarm.equipmentType}${alarm.equipmentIndex + 1}): ${alarm.message}</span>`
-      ).join('');
+      // Get top alarms by severity
+      const topAlarms = this.getTopAlarms_(alarms, this.MAX_INLINE_ALARMS_);
+      const overflowCount = alarms.length - topAlarms.length;
 
-      this.tickerEl_.className = `ticker-move text-[10px] font-mono ${color}`;
+      this.renderAlarmMessages_(topAlarms, overflowCount);
 
       // Set container background based on severity
-      if (severity === 'error') this.tickerContainerEl_.classList.add('alarm');
-      else if (severity === 'warning') this.tickerContainerEl_.classList.add('warn');
-      else if (severity === 'info') this.tickerContainerEl_.classList.add('info');
+      if (severity === 'error') this.alarmBarEl_.classList.add('alarm');
+      else if (severity === 'warning') this.alarmBarEl_.classList.add('warn');
+      else if (severity === 'info') this.alarmBarEl_.classList.add('info');
     }
-
-    // Update animation duration and width after content change
-    // Use requestAnimationFrame to ensure DOM has updated
-    requestAnimationFrame(() => this.updateAnimationDuration_());
   }
 
   /**
-   * Calculate and set animation duration based on content width
-   * Also ensures ticker width is at least container width
+   * Render severity count badges
    */
-  private updateAnimationDuration_(): void {
-    if (!this.tickerEl_ || !this.tickerWrapEl_) return;
+  private renderCountBadges_(counts: { error: number; warning: number; info: number }): void {
+    if (!this.countsEl_) return;
 
-    // Get the container width
-    const containerWidth = this.tickerWrapEl_.offsetWidth;
+    const badges: string[] = [];
 
-    // Temporarily remove animation to measure natural content width
-    this.tickerEl_.style.animation = 'none';
-    this.tickerEl_.style.width = 'auto';
-
-    // Force reflow and get actual content width
-    const contentWidth = (this.tickerEl_.offsetWidth, this.tickerEl_.scrollWidth);
-
-    // Width should be max(containerWidth, contentWidth)
-    const effectiveWidth = Math.max(containerWidth, contentWidth);
-    this.tickerEl_.style.width = `${effectiveWidth}px`;
-
-    // Calculate duration based on total distance to travel
-    // Animation goes from translateX(100%) to translateX(-100%)
-    // So total distance is 2 * effectiveWidth
-    const totalDistance = 2 * effectiveWidth;
-    const duration = Math.max(this.MIN_DURATION_, totalDistance / this.SCROLL_SPEED_);
-
-    // Restore animation with new duration
-    this.tickerEl_.style.animation = '';
-    this.tickerEl_.style.animationDuration = `${duration}s`;
-
-    // Ensure the animation class is applied
-    if (!this.tickerEl_.classList.contains('ticker-move')) {
-      this.tickerEl_.classList.add('ticker-move');
+    if (counts.error > 0) {
+      badges.push(`
+        <span class="alarm-count error" title="${counts.error} Error${counts.error > 1 ? 's' : ''}">
+          <i class="fa-solid fa-circle-exclamation"></i> ${counts.error}
+        </span>
+      `);
     }
+
+    if (counts.warning > 0) {
+      badges.push(`
+        <span class="alarm-count warning" title="${counts.warning} Warning${counts.warning > 1 ? 's' : ''}">
+          <i class="fa-solid fa-triangle-exclamation"></i> ${counts.warning}
+        </span>
+      `);
+    }
+
+    if (counts.info > 0) {
+      badges.push(`
+        <span class="alarm-count info" title="${counts.info} Info">
+          <i class="fa-solid fa-circle-info"></i> ${counts.info}
+        </span>
+      `);
+    }
+
+    this.countsEl_.innerHTML = badges.join('');
+  }
+
+  /**
+   * Get top N alarms sorted by severity (errors first)
+   */
+  private getTopAlarms_(alarms: AggregatedAlarm[], limit: number): AggregatedAlarm[] {
+    const severityOrder: Record<string, number> = { error: 0, warning: 1, info: 2, success: 3 };
+
+    return [...alarms]
+      .sort((a, b) => (severityOrder[a.severity] ?? 3) - (severityOrder[b.severity] ?? 3))
+      .slice(0, limit);
+  }
+
+  /**
+   * Render alarm messages with overflow indicator
+   */
+  private renderAlarmMessages_(alarms: AggregatedAlarm[], overflowCount: number): void {
+    if (!this.messagesEl_) return;
+
+    const items = alarms.map((alarm, index) => {
+      const color = this.getColorClass_(alarm.severity);
+      const icon = this.getIcon_(alarm.severity);
+      const separator = index > 0 ? '<span class="alarm-separator">•</span>' : '';
+      return `${separator}<span class="alarm-item ${color}"><i class="${icon} mr-1"></i>${alarm.assetId}(${alarm.equipmentType}${alarm.equipmentIndex + 1}): ${alarm.message}</span>`;
+    });
+
+    if (overflowCount > 0) {
+      items.push(`<span class="alarm-overflow">+${overflowCount} more</span>`);
+    }
+
+    this.messagesEl_.innerHTML = items.join('');
   }
 
   private getColorClass_(severity: string): string {
@@ -228,6 +231,5 @@ export class GlobalCommandBar {
 
   dispose(): void {
     EventBus.getInstance().off(Events.ALARM_STATE_CHANGED, this.boundOnAlarmStateChanged_);
-    this.tickerEl_?.removeEventListener('animationiteration', this.boundOnAnimationIteration_);
   }
 }

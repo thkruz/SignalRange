@@ -46,8 +46,9 @@ export class TxChainTab extends BaseElement {
         <!-- BUC Control Card -->
         <div class="col-lg-6">
           <div class="card h-100">
-            <div class="card-header">
+            <div class="card-header d-flex justify-content-between align-items-center">
               <h3 class="card-title">BUC (Block Up Converter)</h3>
+              <div id="buc-alarm-badge"></div>
             </div>
             <div class="card-body">
               <!-- LO Frequency Control -->
@@ -116,8 +117,9 @@ export class TxChainTab extends BaseElement {
         <!-- HPA Control Card -->
         <div class="col-lg-6">
           <div class="card h-100">
-            <div class="card-header">
+            <div class="card-header d-flex justify-content-between align-items-center">
               <h3 class="card-title">HPA (High Power Amplifier)</h3>
+              <div id="hpa-alarm-badge"></div>
             </div>
             <div class="card-body">
               <!-- Power Switch -->
@@ -177,8 +179,9 @@ export class TxChainTab extends BaseElement {
         <!-- Transmitter Modem Control Card (Full Width) -->
         <div class="col-12">
           <div class="card">
-            <div class="card-header">
+            <div class="card-header d-flex justify-content-between align-items-center">
               <h3 class="card-title">Transmitter Modems</h3>
+              <div id="tx-alarm-badge"></div>
             </div>
             <div class="card-body">
               <!-- Modem Selection Buttons -->

@@ -2,6 +2,8 @@ import { EventBus } from "@app/events/event-bus";
 import { Events } from "@app/events/events";
 import { BUCModuleCore, BUCState } from "@app/equipment/rf-front-end/buc-module/buc-module-core";
 import { qs } from "@app/engine/utils/query-selector";
+import { CardAlarmBadge } from "@app/components/card-alarm-badge/card-alarm-badge";
+import { AlarmStatus } from "@app/equipment/base-equipment";
 
 /**
  * BUCAdapter - Bridges BUCModuleCore state to web controls
@@ -19,10 +21,18 @@ export class BUCAdapter {
   private readonly domCache_: Map<string, HTMLElement> = new Map();
   private readonly boundHandlers: Map<string, EventListener> = new Map();
   private readonly stateChangeHandler: (state: Partial<BUCState>) => void;
+  private readonly alarmBadge_: CardAlarmBadge;
 
   constructor(bucModule: BUCModuleCore, containerEl: HTMLElement) {
     this.bucModule = bucModule;
     this.containerEl = containerEl;
+
+    // Create alarm badge
+    this.alarmBadge_ = CardAlarmBadge.create('buc-alarm-badge-led');
+    const badgeContainer = qs('#buc-alarm-badge', containerEl);
+    if (badgeContainer) {
+      badgeContainer.innerHTML = this.alarmBadge_.html;
+    }
 
     // Bind state change handler
     this.stateChangeHandler = (state: Partial<BUCState>) => {
@@ -160,9 +170,41 @@ export class BUCAdapter {
         led.className = state.isExtRefLocked ? 'led led-green' : 'led led-red';
       }
     }
+
+    // Update alarm badge - immediate feedback
+    const alarms = this.getAlarmsFromModule_();
+    this.alarmBadge_.update(alarms);
+  }
+
+  /**
+   * Get current alarms from BUC module as AlarmStatus array
+   */
+  private getAlarmsFromModule_(): AlarmStatus[] {
+    const alarmStrings = this.bucModule.getAlarms();
+    return alarmStrings.map(message => ({
+      severity: this.classifySeverity_(message),
+      message
+    }));
+  }
+
+  /**
+   * Classify alarm message severity based on content
+   */
+  private classifySeverity_(message: string): AlarmStatus['severity'] {
+    const lowerMsg = message.toLowerCase();
+    if (lowerMsg.includes('error') || lowerMsg.includes('fault') || lowerMsg.includes('fail')) {
+      return 'error';
+    }
+    if (lowerMsg.includes('not locked') || lowerMsg.includes('saturation') || lowerMsg.includes('approaching')) {
+      return 'warning';
+    }
+    return 'warning'; // Default to warning for any alarm
   }
 
   dispose(): void {
+    // Dispose alarm badge
+    this.alarmBadge_.dispose();
+
     // Remove EventBus listeners
     EventBus.getInstance().off(Events.RF_FE_BUC_CHANGED, this.stateChangeHandler as any);
 

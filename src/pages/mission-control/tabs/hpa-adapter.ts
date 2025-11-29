@@ -2,6 +2,8 @@ import { qs } from "@app/engine/utils/query-selector";
 import { HPAModuleCore, HPAState } from "@app/equipment/rf-front-end/hpa-module/hpa-module-core";
 import { EventBus } from "@app/events/event-bus";
 import { Events } from "@app/events/events";
+import { CardAlarmBadge } from "@app/components/card-alarm-badge/card-alarm-badge";
+import { AlarmStatus } from "@app/equipment/base-equipment";
 
 /**
  * HPAAdapter - Bridges HPAModuleCore state to web controls
@@ -19,10 +21,18 @@ export class HPAAdapter {
   private readonly domCache_: Map<string, HTMLElement> = new Map();
   private readonly boundHandlers: Map<string, EventListener> = new Map();
   private readonly stateChangeHandler: (state: Partial<HPAState>) => void;
+  private readonly alarmBadge_: CardAlarmBadge;
 
   constructor(hpaModule: HPAModuleCore, containerEl: HTMLElement) {
     this.hpaModule = hpaModule;
     this.containerEl = containerEl;
+
+    // Create alarm badge
+    this.alarmBadge_ = CardAlarmBadge.create('hpa-alarm-badge-led');
+    const badgeContainer = qs('#hpa-alarm-badge', containerEl);
+    if (badgeContainer) {
+      badgeContainer.innerHTML = this.alarmBadge_.html;
+    }
 
     // Bind state change handler
     this.stateChangeHandler = (state: Partial<HPAState>) => {
@@ -151,9 +161,40 @@ export class HPAAdapter {
       const display = this.domCache_.get('gainDisplay');
       if (display) display.textContent = `${state.gain.toFixed(1)} dB`;
     }
+
+    // Update alarm badge - immediate feedback
+    const alarms = this.getAlarmsFromModule_();
+    this.alarmBadge_.update(alarms);
+  }
+
+  /**
+   * Get current alarms from HPA module as AlarmStatus array
+   */
+  private getAlarmsFromModule_(): AlarmStatus[] {
+    const alarmStrings = this.hpaModule.getAlarms();
+    return alarmStrings.map(message => ({
+      severity: this.classifySeverity_(message),
+      message
+    }));
+  }
+
+  /**
+   * Classify alarm message severity based on content
+   */
+  private classifySeverity_(message: string): AlarmStatus['severity'] {
+    const lowerMsg = message.toLowerCase();
+    if (lowerMsg.includes('overdrive') || lowerMsg.includes('over-temperature')) {
+      return 'error';
+    }
+    if (lowerMsg.includes('warning') || lowerMsg.includes('enabled without')) {
+      return 'warning';
+    }
+    return 'warning'; // Default to warning for any alarm
   }
 
   dispose(): void {
+    // Dispose alarm badge
+    this.alarmBadge_.dispose();
     // Remove EventBus listeners
     EventBus.getInstance().off(Events.RF_FE_HPA_CHANGED, this.stateChangeHandler as any);
 

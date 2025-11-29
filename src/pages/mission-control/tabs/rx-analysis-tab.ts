@@ -51,8 +51,9 @@ export class RxAnalysisTab extends BaseElement {
         <!-- LNB Control Card -->
         <div class="col-lg-6">
           <div class="card h-100">
-            <div class="card-header">
+            <div class="card-header d-flex justify-content-between align-items-center">
               <h3 class="card-title">LNB (Low Noise Block)</h3>
+              <div id="lnb-alarm-badge"></div>
             </div>
             <div class="card-body">
               <!-- LO Frequency Control -->
@@ -315,8 +316,9 @@ export class RxAnalysisTab extends BaseElement {
         <!-- Receiver Modems Card -->
         <div class="col-12">
           <div class="card">
-            <div class="card-header">
+            <div class="card-header d-flex justify-content-between align-items-center">
               <h3 class="card-title">Receiver Modems</h3>
+              <div id="rx-alarm-badge"></div>
             </div>
             <div class="card-body">
               <!-- Modem Selection Buttons -->

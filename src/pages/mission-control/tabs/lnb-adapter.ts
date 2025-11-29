@@ -2,6 +2,8 @@ import { EventBus } from "@app/events/event-bus";
 import { Events } from "@app/events/events";
 import { LNBModuleCore, LNBState } from "@app/equipment/rf-front-end/lnb-module/lnb-module-core";
 import { qs } from "@app/engine/utils/query-selector";
+import { CardAlarmBadge } from "@app/components/card-alarm-badge/card-alarm-badge";
+import { AlarmStatus } from "@app/equipment/base-equipment";
 
 /**
  * LNBAdapter - Bridges LNBModuleCore state to web controls
@@ -19,10 +21,18 @@ export class LNBAdapter {
   private readonly domCache_: Map<string, HTMLElement> = new Map();
   private readonly boundHandlers: Map<string, EventListener> = new Map();
   private readonly stateChangeHandler: (state: Partial<LNBState>) => void;
+  private readonly alarmBadge_: CardAlarmBadge;
 
   constructor(lnbModule: LNBModuleCore, containerEl: HTMLElement) {
     this.lnbModule = lnbModule;
     this.containerEl = containerEl;
+
+    // Create alarm badge
+    this.alarmBadge_ = CardAlarmBadge.create('lnb-alarm-badge-led');
+    const badgeContainer = qs('#lnb-alarm-badge', containerEl);
+    if (badgeContainer) {
+      badgeContainer.innerHTML = this.alarmBadge_.html;
+    }
 
     // Bind state change handler
     this.stateChangeHandler = (state: Partial<LNBState>) => {
@@ -136,9 +146,37 @@ export class LNBAdapter {
         led.className = state.isExtRefLocked ? 'led led-green' : 'led led-red';
       }
     }
+
+    // Update alarm badge - immediate feedback
+    const alarms = this.getAlarmsFromModule_();
+    this.alarmBadge_.update(alarms);
+  }
+
+  /**
+   * Get current alarms from LNB module as AlarmStatus array
+   */
+  private getAlarmsFromModule_(): AlarmStatus[] {
+    const alarmStrings = this.lnbModule.getAlarms();
+    return alarmStrings.map(message => ({
+      severity: this.classifySeverity_(message),
+      message
+    }));
+  }
+
+  /**
+   * Classify alarm message severity based on content
+   */
+  private classifySeverity_(message: string): AlarmStatus['severity'] {
+    const lowerMsg = message.toLowerCase();
+    if (lowerMsg.includes('not locked') || lowerMsg.includes('error')) {
+      return 'warning';
+    }
+    return 'warning'; // Default to warning for any alarm
   }
 
   dispose(): void {
+    // Dispose alarm badge
+    this.alarmBadge_.dispose();
     // Remove EventBus listeners
     EventBus.getInstance().off(Events.RF_FE_LNB_CHANGED, this.stateChangeHandler as any);
 

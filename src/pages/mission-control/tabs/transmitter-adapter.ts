@@ -1,4 +1,6 @@
 import { Transmitter, TransmitterModem, TransmitterState } from '@app/equipment/transmitter/transmitter';
+import { CardAlarmBadge } from "@app/components/card-alarm-badge/card-alarm-badge";
+import { qs } from "@app/engine/utils/query-selector";
 
 /**
  * TransmitterAdapter - Bridges Transmitter equipment class to modern Mission Control UI
@@ -17,10 +19,18 @@ export class TransmitterAdapter {
   private readonly domCache_: Map<string, HTMLElement> = new Map();
   private readonly boundHandlers: Map<string, EventListener> = new Map();
   private lastStateString: string = '';
+  private readonly alarmBadge_: CardAlarmBadge;
 
   constructor(transmitter: Transmitter, containerEl: HTMLElement) {
     this.transmitter = transmitter;
     this.containerEl = containerEl;
+
+    // Create alarm badge
+    this.alarmBadge_ = CardAlarmBadge.create('tx-alarm-badge-led');
+    const badgeContainer = qs('#tx-alarm-badge', containerEl);
+    if (badgeContainer) {
+      badgeContainer.innerHTML = this.alarmBadge_.html;
+    }
 
     // Initialize
     this.setupDomCache_();
@@ -406,9 +416,12 @@ export class TransmitterAdapter {
 
   private updateStatusBar_(): void {
     const statusBar = this.domCache_.get('status-bar');
-    if (!statusBar) return;
-
     const alarms = this.transmitter.getStatusAlarms();
+
+    // Update alarm badge - immediate feedback
+    this.alarmBadge_.update(alarms);
+
+    if (!statusBar) return;
 
     if (alarms.length === 0) {
       statusBar.className = 'alert alert-info mt-3';
@@ -425,6 +438,9 @@ export class TransmitterAdapter {
    * Cleanup
    */
   dispose(): void {
+    // Dispose alarm badge
+    this.alarmBadge_.dispose();
+
     // Remove all event listeners
     this.boundHandlers.forEach((handler, key) => {
       if (key.startsWith('modem-')) {

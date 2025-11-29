@@ -42,8 +42,7 @@ notes
 retrospectives/
 
 # Plans
-plans/*.done
-plans/*.done.*
+plans/
 
 # Unused Icons
 src/assets/icons/wip

@@ -1,7 +1,7 @@
 import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
 import { EventBus } from "@app/events/event-bus";
-import { Events, AlarmStateChangedData, AggregatedAlarm } from "@app/events/events";
+import { AggregatedAlarm, AlarmStateChangedData, Events } from "@app/events/events";
 
 /**
  * GlobalCommandBar
@@ -69,7 +69,7 @@ export class GlobalCommandBar {
       </div>
 
       <!-- Right: User & System Status -->
-      <div class="command-bar-right">
+      <!-- <div class="command-bar-right">
           <div class="text-right">
               <div class="text-[10px] text-slate-400">NETWORK STATUS</div>
               <div class="flex gap-1">
@@ -81,7 +81,7 @@ export class GlobalCommandBar {
           <div class="h-8 w-8 rounded-full bg-slate-700 flex items-center justify-center border border-slate-600">
               <i class="fa-solid fa-user text-slate-400"></i>
           </div>
-      </div>
+      </div> -->
     </header>
   `;
 

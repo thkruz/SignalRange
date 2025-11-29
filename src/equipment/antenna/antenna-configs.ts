@@ -61,10 +61,18 @@ export interface AntennaConfig {
   elRange_deg?: [number, number];
   /** Whether azimuth is continuous */
   azContinuous?: boolean;
+  /** Azimuth range in degrees [min, max] for non-continuous antennas (e.g., [-180, 540] for cable wrap) */
+  azRange_deg?: [number, number];
   /** Maximum slew rate in degrees per second */
   maxRate_deg_s?: number;
   /** De-pointing coefficient: de-pointing ≈ coef * wind(m/s) in degrees */
   windDePointingCoef_deg_per_mps?: number;
+
+  // --- ACU Identification ---
+  /** ACU model number (e.g., "Kratos NGC-2200") */
+  acuModel?: string;
+  /** ACU serial number (e.g., "ACU-01") */
+  acuSerialNumber?: string;
 }
 
 export enum ANTENNA_CONFIG_KEYS {

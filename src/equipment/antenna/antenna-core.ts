@@ -11,11 +11,22 @@ import { RFFrontEndCore } from "../rf-front-end/rf-front-end-core";
 import { Satellite } from "../satellite/satellite";
 import { Transmitter } from "../transmitter/transmitter";
 import { ANTENNA_CONFIG_KEYS, ANTENNA_CONFIGS, AntennaConfig } from "./antenna-configs";
+import { StepTrackController } from "./step-track-controller";
 
 /**
  * RF Propagation constants for GEO satellite communications
  */
 const GEO_SATELLITE_DISTANCE_KM = 38000; // Approximate slant range to GEO satellite (km)
+
+/**
+ * ACU Tracking Modes
+ * - stow: Safe storage position (Az=0°, El=0°)
+ * - maintenance: Feed access position (El=5°)
+ * - manual: Operator controls Az/El/Pol directly
+ * - step-track: Auto-adjust to maximize beacon signal power
+ * - program-track: Follow TLE ephemeris (placeholder)
+ */
+export type TrackingMode = 'stow' | 'maintenance' | 'manual' | 'step-track' | 'program-track';
 
 export interface AntennaState {
   /** Current pointing elevation angle */
@@ -54,6 +65,66 @@ export interface AntennaState {
     skyTemp_K: number;
     frequency_GHz: number;
   };
+
+  // === ACU Tracking Mode ===
+  /** Current tracking mode */
+  trackingMode: TrackingMode;
+  /** Target satellite NORAD ID for program track */
+  targetSatelliteId: number | null;
+
+  // === Beacon Tracking ===
+  /** Beacon frequency in Hz */
+  beaconFrequencyHz: number;
+  /** Beacon search bandwidth in Hz */
+  beaconSearchBwHz: number;
+  /** Current beacon power measurement in dBm, null if not tracking */
+  beaconPower: number | null;
+  /** Is beacon locked */
+  isBeaconLocked: boolean;
+
+  // === Environmental Controls (cosmetic for now) ===
+  /** Is feed heater enabled */
+  isHeaterEnabled: boolean;
+  /** Is rain blower enabled */
+  isRainBlowerEnabled: boolean;
+  /** Is precipitation detected (read-only sensor) */
+  precipitationDetected: boolean;
+
+  // === ACU Identification ===
+  /** ACU model number */
+  acuModel: string;
+  /** ACU serial number */
+  acuSerialNumber: string;
+
+  // === Target Position (for slew simulation) ===
+  /** Target azimuth - antenna slews toward this */
+  targetAzimuth: Degrees;
+  /** Target elevation - antenna slews toward this */
+  targetElevation: Degrees;
+  /** Target polarization - antenna slews toward this */
+  targetPolarization: Degrees;
+  /** Is antenna currently slewing (actual != target) */
+  isSlewing: boolean;
+
+  // === Staged Changes (pending Apply button) ===
+  /** Staged target azimuth - pending user approval */
+  stagedTargetAzimuth: Degrees | null;
+  /** Staged target elevation - pending user approval */
+  stagedTargetElevation: Degrees | null;
+  /** Staged target polarization - pending user approval */
+  stagedTargetPolarization: Degrees | null;
+  /** Staged beacon frequency - pending user approval */
+  stagedBeaconFrequencyHz: number | null;
+  /** Staged beacon search bandwidth - pending user approval */
+  stagedBeaconSearchBwHz: number | null;
+  /** Are there pending changes to apply */
+  hasStagedChanges: boolean;
+
+  // === Fault State ===
+  /** Has a fault condition */
+  hasFault: boolean;
+  /** Fault message for display */
+  faultMessage: string | null;
 }
 
 /**
@@ -74,6 +145,9 @@ export abstract class AntennaCore extends BaseEquipment {
 
   /** Timeout ID for lock acquisition to prevent memory leaks */
   private lockAcquisitionTimeout_: number | null = null;
+
+  /** Step track controller for beacon signal maximization */
+  protected stepTrackController_: StepTrackController;
 
   constructor(
     configId: ANTENNA_CONFIG_KEYS = ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK,
@@ -101,11 +175,44 @@ export abstract class AntennaCore extends BaseEquipment {
       isOperational: true,
       isPowered: true,
       rxSignalsIn: [],
+      // ACU Tracking Mode
+      trackingMode: 'manual',
+      targetSatelliteId: null,
+      // Beacon Tracking
+      beaconFrequencyHz: 3_948_000_000, // Default 3.948 GHz C-band beacon
+      beaconSearchBwHz: 500_000, // Default 500 kHz search bandwidth
+      beaconPower: null,
+      isBeaconLocked: false,
+      // Environmental Controls
+      isHeaterEnabled: false,
+      isRainBlowerEnabled: false,
+      precipitationDetected: false,
+      // ACU Identification
+      acuModel: this.config.acuModel ?? 'Kratos NGC-2200',
+      acuSerialNumber: this.config.acuSerialNumber ?? 'ACU-01',
+      // Target Position (for slew simulation)
+      targetAzimuth: 0 as Degrees,
+      targetElevation: 0 as Degrees,
+      targetPolarization: 0 as Degrees,
+      isSlewing: false,
+      // Staged Changes (pending Apply button)
+      stagedTargetAzimuth: null,
+      stagedTargetElevation: null,
+      stagedTargetPolarization: null,
+      stagedBeaconFrequencyHz: null,
+      stagedBeaconSearchBwHz: null,
+      hasStagedChanges: false,
+      // Fault State
+      hasFault: false,
+      faultMessage: null,
     };
     // Override with any provided initial state
     this.state = { ...this.state, ...initialState };
 
     this.lastRenderState = structuredClone(this.state);
+
+    // Initialize step track controller
+    this.stepTrackController_ = new StepTrackController(this);
 
     EventBus.getInstance().on(Events.UPDATE, this.update.bind(this));
     EventBus.getInstance().on(Events.SYNC, this.syncDomWithState.bind(this));
@@ -157,9 +264,62 @@ export abstract class AntennaCore extends BaseEquipment {
   }
 
   update(): void {
+    // Update step track controller if in step-track mode
+    if (this.state.trackingMode === 'step-track' && this.state.isPowered && this.state.isOperational) {
+      this.stepTrackController_.update();
+    }
+
+    // Slew actual position toward target at maxRate_deg_s
+    this.updateSlew_();
+
     this.updateSignals_();
     this.computeRfMetrics_();
     this.syncDomWithState();
+  }
+
+  /**
+   * Update slew - move actual position toward target at configured slew rate
+   * Called each update cycle to simulate mechanical antenna movement
+   */
+  private updateSlew_(): void {
+    if (!this.state.isPowered || !this.state.isOperational) {
+      return;
+    }
+
+    // Get slew rate from config (default 3°/s if not specified)
+    const maxRate = this.config.maxRate_deg_s ?? 3.0;
+    // Assume ~60 FPS update rate
+    const dt = 1 / 60;
+    const maxDelta = maxRate * dt;
+
+    let isMoving = false;
+
+    // Slew azimuth
+    const azDiff = this.state.targetAzimuth - this.state.azimuth;
+    if (Math.abs(azDiff) > 0.001) {
+      const azStep = Math.sign(azDiff) * Math.min(Math.abs(azDiff), maxDelta);
+      this.state.azimuth = (this.state.azimuth + azStep) as Degrees;
+      isMoving = true;
+    }
+
+    // Slew elevation
+    const elDiff = this.state.targetElevation - this.state.elevation;
+    if (Math.abs(elDiff) > 0.001) {
+      const elStep = Math.sign(elDiff) * Math.min(Math.abs(elDiff), maxDelta);
+      this.state.elevation = (this.state.elevation + elStep) as Degrees;
+      isMoving = true;
+    }
+
+    // Slew polarization (typically faster than main axes)
+    const polDiff = this.state.targetPolarization - this.state.polarization;
+    if (Math.abs(polDiff) > 0.001) {
+      const polStep = Math.sign(polDiff) * Math.min(Math.abs(polDiff), maxDelta * 2);
+      this.state.polarization = (this.state.polarization + polStep) as Degrees;
+      isMoving = true;
+    }
+
+    // Update slewing flag
+    this.state.isSlewing = isMoving;
   }
 
   sync(data: Partial<AntennaState>): void {
@@ -247,20 +407,20 @@ export abstract class AntennaCore extends BaseEquipment {
     const LOCK_THRESHOLD_DBM = -100;
 
     if (isSwitchUp && strongestSignal.power > LOCK_THRESHOLD_DBM) {
-      SoundManager.getInstance().play(Sfx.SMALL_MOTOR);
-      let differenceBetweenAzAndSatAz = Math.abs(this.state.azimuth - SimulationManager.getInstance().getSatByNoradId(strongestSignal.noradId).az);
+      const differenceBetweenAzAndSatAz = Math.abs(this.state.targetAzimuth - SimulationManager.getInstance().getSatByNoradId(strongestSignal.noradId).az);
 
       const sat = SimulationManager.getInstance().getSatByNoradId(strongestSignal.noradId);
 
+      // Set target position - actual position will slew in update loop
       if (differenceBetweenAzAndSatAz > 180) {
-        this.state.azimuth = (sat.az + 360) as Degrees;
+        this.state.targetAzimuth = (sat.az + 360) as Degrees;
       } else {
-        this.state.azimuth = sat.az;
+        this.state.targetAzimuth = sat.az;
       }
-      this.state.elevation = sat.el;
+      this.state.targetElevation = sat.el;
+
       // Simulate lock acquisition delay with timeout tracking
       this.lockAcquisitionTimeout_ = window.setTimeout(() => {
-        SoundManager.getInstance().stop(Sfx.SMALL_MOTOR);
         this.state.isLocked = true;
         this.lockAcquisitionTimeout_ = null;
         this.updateSignals_();
@@ -298,10 +458,440 @@ export abstract class AntennaCore extends BaseEquipment {
     } else {
       this.state.isLocked = false;
       this.state.isAutoTrackEnabled = false;
+      this.state.trackingMode = 'manual';
       this.notifyStateChange_();
       this.updateSignals_();
       this.syncDomWithState();
     }
+  }
+
+  // ========================================================================
+  // TRACKING MODE HANDLERS
+  // ========================================================================
+
+  /**
+   * Handle tracking mode change
+   * Stow: Move to Az=0°, El=0° (safe storage)
+   * Maintenance: Move to El=5° for feed access
+   * Manual: Operator controls Az/El/Pol directly
+   * Step Track: Auto-adjust to maximize beacon signal
+   * Program Track: Follow TLE ephemeris (placeholder)
+   */
+  public handleTrackingModeChange(mode: TrackingMode): void {
+    if (!this.state.isPowered || !this.state.isOperational) {
+      return;
+    }
+
+    // Clear any existing lock acquisition timeout
+    if (this.lockAcquisitionTimeout_) {
+      clearTimeout(this.lockAcquisitionTimeout_);
+      this.lockAcquisitionTimeout_ = null;
+    }
+
+    // Stop step track controller if leaving step-track mode
+    if (this.state.trackingMode === 'step-track') {
+      this.stepTrackController_.stop();
+    }
+
+    this.state.trackingMode = mode;
+
+    // Reset tracking state when changing modes
+    this.state.isLocked = false;
+    this.state.isBeaconLocked = false;
+    this.state.isAutoTrackEnabled = false;
+    this.state.isAutoTrackSwitchUp = false;
+    this.state.beaconPower = null;
+
+    switch (mode) {
+      case 'stow':
+        // Stage target to safe storage position (Az=0°, El=0°)
+        // Requires Apply button before antenna moves
+        this.state.stagedTargetAzimuth = 0 as Degrees;
+        this.state.stagedTargetElevation = 0 as Degrees;
+        this.state.hasStagedChanges = true;
+        break;
+
+      case 'maintenance':
+        // Stage target to maintenance position (low elevation for feed access)
+        // Requires Apply button before antenna moves
+        this.state.stagedTargetElevation = 5 as Degrees;
+        this.state.hasStagedChanges = true;
+        break;
+
+      case 'manual':
+        // No automatic movement, operator controls via staged changes
+        break;
+
+      case 'step-track':
+        // Just switch mode - user must press START to begin tracking
+        // This allows setting beacon frequency before tracking starts
+        break;
+
+      case 'program-track':
+        // Just switch mode - user must press "Move to Target" to begin tracking
+        // This allows selecting satellite before movement starts
+        break;
+    }
+
+    this.updateSignals_();
+    this.notifyStateChange_();
+    this.syncDomWithState();
+  }
+
+  /**
+   * Set target satellite for program track mode
+   */
+  public handleTargetSatelliteChange(noradId: number | null): void {
+    this.state.targetSatelliteId = noradId;
+    this.notifyStateChange_();
+  }
+
+  /**
+   * Move antenna to target satellite position (for program track)
+   */
+  public moveToTargetSatellite(): void {
+    if (!this.state.isPowered || !this.state.isOperational) {
+      return;
+    }
+    if (this.state.targetSatelliteId === null) {
+      return;
+    }
+    this.moveToTargetSatellite_();
+  }
+
+  private moveToTargetSatellite_(): void {
+    if (this.state.targetSatelliteId === null) {
+      return;
+    }
+    const sat = SimulationManager.getInstance().getSatByNoradId(this.state.targetSatelliteId);
+    if (!sat) {
+      return;
+    }
+
+    // Set target position - actual position will slew in update loop
+    // Handle azimuth wrap-around for shortest path
+    const differenceBetweenAzAndSatAz = Math.abs(this.state.targetAzimuth - sat.az);
+    if (differenceBetweenAzAndSatAz > 180) {
+      this.state.targetAzimuth = (sat.az + 360) as Degrees;
+    } else {
+      this.state.targetAzimuth = sat.az;
+    }
+    this.state.targetElevation = sat.el;
+
+    this.updateSignals_();
+    this.notifyStateChange_();
+    this.syncDomWithState();
+  }
+
+  // ========================================================================
+  // BEACON TRACKING HANDLERS
+  // ========================================================================
+
+  public handleBeaconFrequencyChange(frequencyHz: number): void {
+    this.state.beaconFrequencyHz = frequencyHz;
+    this.notifyStateChange_();
+  }
+
+  public handleBeaconSearchBwChange(bandwidthHz: number): void {
+    this.state.beaconSearchBwHz = bandwidthHz;
+    this.notifyStateChange_();
+  }
+
+  // ========================================================================
+  // ENVIRONMENTAL CONTROL HANDLERS
+  // ========================================================================
+
+  public handleHeaterToggle(enabled: boolean): void {
+    if (!this.state.isPowered) {
+      return;
+    }
+    this.state.isHeaterEnabled = enabled;
+    this.notifyStateChange_();
+  }
+
+  public handleRainBlowerToggle(enabled: boolean): void {
+    if (!this.state.isPowered) {
+      return;
+    }
+    this.state.isRainBlowerEnabled = enabled;
+    this.notifyStateChange_();
+  }
+
+  // ========================================================================
+  // FINE ADJUSTMENT METHODS
+  // ========================================================================
+
+  /**
+   * Adjust azimuth by delta degrees
+   * Used by fine adjustment buttons (+/- 0.01, 1, 10 degrees)
+   */
+  public adjustAzimuth(delta: number): void {
+    if (!this.state.isPowered || !this.state.isOperational) {
+      return;
+    }
+    if (this.state.trackingMode !== 'manual') {
+      return; // Only allow in manual mode
+    }
+    const newValue = this.state.azimuth + delta;
+    this.handleAzimuthChange(newValue);
+  }
+
+  /**
+   * Adjust elevation by delta degrees
+   * Used by fine adjustment buttons (+/- 0.01, 1, 10 degrees)
+   */
+  public adjustElevation(delta: number): void {
+    if (!this.state.isPowered || !this.state.isOperational) {
+      return;
+    }
+    if (this.state.trackingMode !== 'manual') {
+      return; // Only allow in manual mode
+    }
+    // Clamp elevation between 0 and 90 degrees
+    const newValue = Math.max(0, Math.min(90, this.state.elevation + delta));
+    this.handleElevationChange(newValue);
+  }
+
+  /**
+   * Adjust polarization by delta degrees
+   * Used by fine adjustment buttons (+/- 0.01, 1, 10 degrees)
+   */
+  public adjustPolarization(delta: number): void {
+    if (!this.state.isPowered || !this.state.isOperational) {
+      return;
+    }
+    // Clamp polarization between -90 and 90 degrees
+    const newValue = Math.max(-90, Math.min(90, this.state.polarization + delta));
+    this.handlePolarizationChange(newValue);
+  }
+
+  // ========================================================================
+  // STAGED CHANGES METHODS (Apply Button Pattern)
+  // ========================================================================
+
+  /**
+   * Stage azimuth change - does not apply until applyChanges() is called
+   */
+  public stageAzimuthChange(delta: number): void {
+    if (!this.state.isPowered || !this.state.isOperational) {
+      return;
+    }
+    if (this.state.trackingMode !== 'manual') {
+      return; // Only allow in manual mode
+    }
+
+    const base = this.state.stagedTargetAzimuth ?? this.state.targetAzimuth;
+    let newAz = base + delta;
+
+    // Normalize for continuous azimuth antennas
+    if (this.config.azContinuous) {
+      newAz = this.normalizeAzimuth_(newAz);
+    }
+
+    this.state.stagedTargetAzimuth = newAz as Degrees;
+    this.state.hasStagedChanges = true;
+    this.notifyStateChange_();
+  }
+
+  /**
+   * Stage elevation change - does not apply until applyChanges() is called
+   */
+  public stageElevationChange(delta: number): void {
+    if (!this.state.isPowered || !this.state.isOperational) {
+      return;
+    }
+    if (this.state.trackingMode !== 'manual') {
+      return; // Only allow in manual mode
+    }
+
+    const base = this.state.stagedTargetElevation ?? this.state.targetElevation;
+    // Clamp elevation between configured range or default 0-90
+    const [minEl, maxEl] = this.config.elRange_deg ?? [0, 90];
+    const newEl = Math.max(minEl, Math.min(maxEl, base + delta));
+
+    this.state.stagedTargetElevation = newEl as Degrees;
+    this.state.hasStagedChanges = true;
+    this.notifyStateChange_();
+  }
+
+  /**
+   * Stage polarization change - does not apply until applyChanges() is called
+   */
+  public stagePolarizationChange(delta: number): void {
+    if (!this.state.isPowered || !this.state.isOperational) {
+      return;
+    }
+
+    const base = this.state.stagedTargetPolarization ?? this.state.targetPolarization;
+    // Clamp polarization between -90 and 90 degrees
+    const newPol = Math.max(-90, Math.min(90, base + delta));
+
+    this.state.stagedTargetPolarization = newPol as Degrees;
+    this.state.hasStagedChanges = true;
+    this.notifyStateChange_();
+  }
+
+  /**
+   * Stage beacon frequency change - does not apply until applyChanges() is called
+   */
+  public stageBeaconFrequencyChange(frequencyHz: number): void {
+    this.state.stagedBeaconFrequencyHz = frequencyHz;
+    this.state.hasStagedChanges = true;
+    this.notifyStateChange_();
+  }
+
+  /**
+   * Stage beacon search bandwidth change - does not apply until applyChanges() is called
+   */
+  public stageBeaconSearchBwChange(bandwidthHz: number): void {
+    this.state.stagedBeaconSearchBwHz = bandwidthHz;
+    this.state.hasStagedChanges = true;
+    this.notifyStateChange_();
+  }
+
+  /**
+   * Start step tracking - begins the hill-climbing algorithm
+   * Should be called after beacon frequency is configured
+   */
+  public startStepTrack(): void {
+    if (!this.state.isPowered || !this.state.isOperational) {
+      return;
+    }
+    if (this.state.trackingMode !== 'step-track') {
+      return;
+    }
+
+    // Apply any staged beacon settings first
+    if (this.state.stagedBeaconFrequencyHz !== null) {
+      this.state.beaconFrequencyHz = this.state.stagedBeaconFrequencyHz;
+      this.state.stagedBeaconFrequencyHz = null;
+    }
+    if (this.state.stagedBeaconSearchBwHz !== null) {
+      this.state.beaconSearchBwHz = this.state.stagedBeaconSearchBwHz;
+      this.state.stagedBeaconSearchBwHz = null;
+    }
+    this.state.hasStagedChanges = false;
+
+    this.stepTrackController_.start();
+    this.state.isAutoTrackEnabled = true;
+    this.state.isAutoTrackSwitchUp = true;
+    this.notifyStateChange_();
+  }
+
+  /**
+   * Stop step tracking
+   */
+  public stopStepTrack(): void {
+    this.stepTrackController_.stop();
+    this.state.isAutoTrackEnabled = false;
+    this.state.isAutoTrackSwitchUp = false;
+    this.state.isBeaconLocked = false;
+    this.notifyStateChange_();
+  }
+
+  /**
+   * Apply all staged changes
+   * Validates limits before applying and triggers FAULT if exceeded
+   */
+  public applyChanges(): void {
+    if (!this.state.isPowered || !this.state.isOperational) {
+      return;
+    }
+
+    // Clear any previous fault
+    this.state.hasFault = false;
+    this.state.faultMessage = null;
+
+    // Apply staged azimuth with limit checking
+    if (this.state.stagedTargetAzimuth !== null) {
+      const az = this.state.stagedTargetAzimuth;
+
+      // Check limits for non-continuous antennas
+      if (!this.config.azContinuous) {
+        const [minAz, maxAz] = this.config.azRange_deg ?? [-180, 540];
+        if (az < minAz || az > maxAz) {
+          // FAULT - azimuth limit exceeded
+          SoundManager.getInstance().play(Sfx.FAULT);
+          this.state.hasFault = true;
+          this.state.faultMessage = `Azimuth ${az.toFixed(1)}° exceeds limit [${minAz}°, ${maxAz}°]`;
+          this.notifyStateChange_();
+          return;
+        }
+      }
+
+      this.state.targetAzimuth = az;
+      this.state.stagedTargetAzimuth = null;
+
+      // Break lock when moving in manual mode
+      this.state.isLocked = false;
+      this.state.isAutoTrackEnabled = false;
+    }
+
+    // Apply staged elevation with limit checking
+    if (this.state.stagedTargetElevation !== null) {
+      const el = this.state.stagedTargetElevation;
+      const [minEl, maxEl] = this.config.elRange_deg ?? [0, 90];
+
+      if (el < minEl || el > maxEl) {
+        // FAULT - elevation limit exceeded
+        SoundManager.getInstance().play(Sfx.FAULT);
+        this.state.hasFault = true;
+        this.state.faultMessage = `Elevation ${el.toFixed(1)}° exceeds limit [${minEl}°, ${maxEl}°]`;
+        this.notifyStateChange_();
+        return;
+      }
+
+      this.state.targetElevation = el;
+      this.state.stagedTargetElevation = null;
+
+      // Break lock when moving in manual mode
+      this.state.isLocked = false;
+      this.state.isAutoTrackEnabled = false;
+    }
+
+    // Apply staged polarization
+    if (this.state.stagedTargetPolarization !== null) {
+      this.state.targetPolarization = this.state.stagedTargetPolarization;
+      this.state.stagedTargetPolarization = null;
+    }
+
+    // Apply staged beacon frequency
+    if (this.state.stagedBeaconFrequencyHz !== null) {
+      this.state.beaconFrequencyHz = this.state.stagedBeaconFrequencyHz;
+      this.state.stagedBeaconFrequencyHz = null;
+    }
+
+    // Apply staged beacon search bandwidth
+    if (this.state.stagedBeaconSearchBwHz !== null) {
+      this.state.beaconSearchBwHz = this.state.stagedBeaconSearchBwHz;
+      this.state.stagedBeaconSearchBwHz = null;
+    }
+
+    this.state.hasStagedChanges = false;
+    this.notifyStateChange_();
+  }
+
+  /**
+   * Discard all staged changes without applying
+   */
+  public discardChanges(): void {
+    this.state.stagedTargetAzimuth = null;
+    this.state.stagedTargetElevation = null;
+    this.state.stagedTargetPolarization = null;
+    this.state.stagedBeaconFrequencyHz = null;
+    this.state.stagedBeaconSearchBwHz = null;
+    this.state.hasStagedChanges = false;
+    this.state.hasFault = false;
+    this.state.faultMessage = null;
+    this.notifyStateChange_();
+  }
+
+  /**
+   * Normalize azimuth to 0-359.999° range
+   * Used for continuous rotation antennas
+   */
+  private normalizeAzimuth_(az: number): number {
+    return ((az % 360) + 360) % 360;
   }
 
   // ========================================================================

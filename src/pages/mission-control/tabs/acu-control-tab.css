@@ -37,3 +37,250 @@
   background-color: #4a4a4a;
   box-shadow: none;
 }
+
+/* ========================================
+   ACU Header - Identification & Mode Selector
+   ======================================== */
+
+.acu-header-card {
+  background-color: var(--mc-surface-1, #1a1a2e);
+  border: 1px solid var(--mc-border, #3a3a3a);
+}
+
+.acu-identification {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.acu-model {
+  font-size: 1.25rem;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', 'Consolas', monospace;
+  color: var(--mc-text-primary, #e2e8f0);
+}
+
+.acu-serial {
+  font-size: 0.875rem;
+  font-weight: 500;
+  font-family: 'JetBrains Mono', 'Consolas', monospace;
+  color: var(--mc-text-tertiary, #94a3b8);
+}
+
+/* Tracking Mode Selector Buttons */
+.tracking-mode-selector {
+  display: flex;
+  gap: 2px;
+}
+
+.btn-tracking {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background-color: var(--mc-surface-2, #2a2a3e);
+  border: 1px solid var(--mc-border, #3a3a3a);
+  color: var(--mc-text-secondary, #cbd5e1);
+  transition: all 0.15s ease;
+}
+
+.btn-tracking:first-child {
+  border-radius: 4px 0 0 4px;
+}
+
+.btn-tracking:last-child {
+  border-radius: 0 4px 4px 0;
+}
+
+.btn-tracking:hover {
+  background-color: var(--mc-surface-3, #3a3a4e);
+  color: var(--mc-text-primary, #e2e8f0);
+}
+
+.btn-tracking.active {
+  background-color: var(--mc-accent-red, #ba160c);
+  border-color: var(--mc-accent-red, #ba160c);
+  color: white;
+  box-shadow: 0 0 8px rgba(186, 22, 12, 0.4);
+}
+
+/* ========================================
+   Beacon Strength Meter
+   ======================================== */
+
+.beacon-strength-container {
+  margin-top: 1rem;
+}
+
+.beacon-strength-bar {
+  position: relative;
+  height: 28px;
+  background-color: #0a0a0a;
+  border: 2px solid var(--mc-border, #3a3a3a);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.beacon-strength-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg,
+    #22c55e 0%,
+    #84cc16 25%,
+    #eab308 50%,
+    #f97316 75%,
+    #ef4444 100%
+  );
+  transition: width 0.3s ease;
+}
+
+.beacon-strength-value {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'JetBrains Mono', 'Consolas', monospace;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: white;
+  text-shadow: 0 0 4px rgba(0, 0, 0, 0.8);
+  z-index: 1;
+}
+
+/* ========================================
+   RF Metrics - High Visibility Display
+   ======================================== */
+
+.rf-metric-box {
+  background-color: #0a0a0a;
+  border: 2px solid var(--mc-border, #3a3a3a);
+  border-radius: 6px;
+  padding: 0.75rem;
+  text-align: center;
+}
+
+.rf-metric-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--mc-text-tertiary, #94a3b8);
+  margin-bottom: 0.25rem;
+}
+
+.rf-metric-value {
+  font-family: 'JetBrains Mono', 'Consolas', monospace;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--mc-accent-red-bright, #ff2827);
+  text-shadow: 0 0 8px rgba(255, 40, 39, 0.4);
+  letter-spacing: 0.5px;
+}
+
+/* ========================================
+   Tracking Sections
+   ======================================== */
+
+.tracking-section {
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.status-info {
+  padding: 0.5rem;
+  background-color: var(--mc-surface-1, #1a1a2e);
+  border-radius: 4px;
+}
+
+/* ========================================
+   Environmental Controls
+   ======================================== */
+
+.form-check.form-switch .form-check-input {
+  cursor: pointer;
+}
+
+.form-check.form-switch .form-check-input:checked {
+  background-color: var(--mc-accent-red, #ba160c);
+  border-color: var(--mc-accent-red, #ba160c);
+}
+
+/* ========================================
+   Text Utility Classes
+   ======================================== */
+
+.text-success {
+  color: #22c55e !important;
+}
+
+/* ========================================
+   Responsive adjustments
+   ======================================== */
+
+@media (max-width: 1400px) {
+  .acu-header-card .card-body {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .tracking-mode-selector {
+    order: 2;
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 768px) {
+  .acu-model {
+    font-size: 1rem;
+  }
+
+  .btn-tracking {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.65rem;
+  }
+
+  .rf-metric-value {
+    font-size: 0.9rem;
+  }
+}
+
+/* ========================================
+   Apply/Cancel Buttons
+   ======================================== */
+
+.btn-apply {
+  background-color: var(--mc-accent-red, #ba160c);
+  border-color: var(--mc-accent-red, #ba160c);
+  color: white;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: all 0.15s ease;
+}
+
+.btn-apply:hover:not(:disabled) {
+  background-color: var(--mc-accent-red-bright, #ff2827);
+  border-color: var(--mc-accent-red-bright, #ff2827);
+  box-shadow: 0 0 8px rgba(255, 40, 39, 0.4);
+}
+
+.btn-apply:disabled {
+  background-color: var(--mc-surface-2, #3a3a3a);
+  border-color: var(--mc-border, #3a3a3a);
+  color: var(--mc-text-tertiary, #94a3b8);
+  opacity: 0.6;
+}
+
+#discard-changes-btn:disabled {
+  opacity: 0.6;
+}

@@ -1,0 +1,125 @@
+/* Fine Adjust Control - Button-based value adjustment */
+
+.fine-adjust-control {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.fine-adjust-control.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.fine-adjust-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--mc-text-tertiary, #94a3b8);
+}
+
+.fine-adjust-row {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.fine-adjust-buttons {
+  display: flex;
+  gap: 2px;
+}
+
+.fine-adjust-decrease .btn-fine:first-child {
+  border-radius: 4px 0 0 4px;
+}
+
+.fine-adjust-decrease .btn-fine:last-child {
+  border-radius: 0;
+}
+
+.fine-adjust-increase .btn-fine:first-child {
+  border-radius: 0;
+}
+
+.fine-adjust-increase .btn-fine:last-child {
+  border-radius: 0 4px 4px 0;
+}
+
+.btn-fine {
+  padding: 0.375rem 0.5rem;
+  min-width: 2.5rem;
+  font-family: 'JetBrains Mono', 'Consolas', monospace;
+  font-size: 0.875rem;
+  font-weight: bold;
+  background-color: var(--mc-surface-2, #3a3a3a);
+  border: 1px solid var(--mc-border, #3a3a3a);
+  color: var(--mc-text-primary, #e2e8f0);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  line-height: 1;
+}
+
+.btn-fine:hover {
+  background-color: var(--mc-surface-3, #4a4a4a);
+  transform: translateY(-1px);
+}
+
+.btn-fine:active {
+  background-color: var(--mc-accent-red, #ba160c);
+  color: white;
+  transform: translateY(0);
+}
+
+.btn-fine:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* High-visibility value display */
+.fine-adjust-display {
+  min-width: 8rem;
+  text-align: center;
+  padding: 0.5rem 0.75rem;
+  background-color: #0a0a0a;
+  border-radius: 4px;
+  border: 2px solid var(--mc-border, #3a3a3a);
+}
+
+.fine-adjust-value {
+  font-family: 'JetBrains Mono', 'Consolas', monospace;
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.fine-adjust-value-active {
+  color: var(--mc-accent-red-bright, #ff2827);
+  text-shadow: 0 0 8px rgba(255, 40, 39, 0.4);
+}
+
+.fine-adjust-value-pending {
+  color: var(--mc-accent-amber, #ffc107);
+  text-shadow: 0 0 8px rgba(255, 193, 7, 0.4);
+  margin-left: 0.25rem;
+  font-size: 1rem;
+}
+
+/* Responsive adjustments for smaller screens */
+@media (max-width: 768px) {
+  .btn-fine {
+    min-width: 2rem;
+    padding: 0.25rem 0.375rem;
+    font-size: 0.75rem;
+  }
+
+  .fine-adjust-display {
+    min-width: 6rem;
+  }
+
+  .fine-adjust-value {
+    font-size: 1rem;
+  }
+}

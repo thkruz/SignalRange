@@ -191,6 +191,7 @@ body {
 
 .nav-tabs {
   border-bottom-color: var(--mc-border);
+  padding: 0.5rem 1rem 0rem 1rem !important;
 }
 
 .nav-tabs .nav-link {

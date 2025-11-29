@@ -1,3 +1,8 @@
+import downlinkPng from '@app/assets/icons/arrow-big-down-lines.png';
+import uplinkPng from '@app/assets/icons/arrow-big-up-lines.png';
+import dashboardPng from '@app/assets/icons/dashboard.png';
+import gpsPng from '@app/assets/icons/gps.png';
+import radarPng from '@app/assets/icons/radar.png';
 import { BaseElement } from "@app/components/base-element";
 import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
@@ -97,11 +102,11 @@ export class TabbedCanvas extends BaseElement {
     }
 
     const tabs = [
-      { id: 'dashboard', label: 'Dashboard', icon: '📊' },
-      { id: 'acu-control', label: 'ACU Control', icon: '📡', isDisabled: groundStation.state.isOperational === false },
-      { id: 'rx-analysis', label: 'RX Analysis', icon: '📥', isDisabled: groundStation.state.isOperational === false },
-      { id: 'tx-chain', label: 'TX Chain', icon: '📤', isDisabled: groundStation.state.isOperational === false },
-      { id: 'gps-timing', label: 'GPS Timing', icon: '🛰️', isDisabled: groundStation.state.isOperational === false },
+      { id: 'dashboard', label: 'Dashboard', icon: dashboardPng },
+      { id: 'acu-control', label: 'ACU Control', icon: radarPng, isDisabled: groundStation.state.isOperational === false },
+      { id: 'rx-analysis', label: 'RX Analysis', icon: downlinkPng, isDisabled: groundStation.state.isOperational === false },
+      { id: 'tx-chain', label: 'TX Chain', icon: uplinkPng, isDisabled: groundStation.state.isOperational === false },
+      { id: 'gps-timing', label: 'GPS Timing', icon: gpsPng, isDisabled: groundStation.state.isOperational === false },
     ];
 
     this.renderTabs_(tabs);
@@ -143,11 +148,17 @@ export class TabbedCanvas extends BaseElement {
     tabBar.innerHTML = tabs.map(tab => html`
       <li class="nav-item" role="presentation">
       <a class="nav-link ${tab.id === this.activeTab_ ? 'active' : ''} ${tab.isDisabled ? 'disabled' : ''}"
-         href="#"
-         role="tab"
-         data-tab-id="${tab.id}"
-         ${tab.isDisabled ? 'aria-disabled="true"' : ''}>
-        <span class="tab-icon">${tab.icon}</span>
+        href="#"
+        role="tab"
+        data-tab-id="${tab.id}"
+        ${tab.isDisabled ? 'aria-disabled="true"' : ''}>
+        <span class="tab-icon">
+          <img
+          src="${tab.icon}"
+          class="tab-icon-image"
+          alt="${tab.label}"
+          />
+        </span>
         <span class="tab-label">${tab.label}</span>
       </a>
       </li>

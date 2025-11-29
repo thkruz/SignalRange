@@ -41,7 +41,8 @@ export class ScenarioDialogManager {
           dialogClip.text,
           dialogClip.character,
           dialogClip.audioUrl,
-          title
+          title,
+          dialogClip.emotion
         );
       }, 500);
     }

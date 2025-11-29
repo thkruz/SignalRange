@@ -15,7 +15,7 @@ import { LNBModuleCore } from './equipment/rf-front-end/lnb-module';
 import { OMTModule } from './equipment/rf-front-end/omt-module/omt-module';
 import { RFFrontEndState } from './equipment/rf-front-end/rf-front-end-core';
 import { Satellite } from './equipment/satellite/satellite';
-import { Character } from './modal/character-enum';
+import { Character, Emotion } from './modal/character-enum';
 import { ScenarioData } from './ScenarioData';
 import { sandboxData } from './scenarios/sandbox';
 
@@ -23,6 +23,7 @@ export interface DialogClip {
   text: string;
   character: Character;
   audioUrl: string;
+  emotion?: Emotion;
 }
 
 export interface SimulationSettings {

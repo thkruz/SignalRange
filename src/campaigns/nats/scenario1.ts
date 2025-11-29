@@ -7,7 +7,7 @@ import { IfFilterBankModuleCore } from '@app/equipment/rf-front-end/filter-modul
 import { HPAModuleCore } from '@app/equipment/rf-front-end/hpa-module';
 import { OMTModule } from '@app/equipment/rf-front-end/omt-module/omt-module';
 import { Satellite } from '@app/equipment/satellite/satellite';
-import { Character } from '@app/modal/character-enum';
+import { Character, Emotion } from '@app/modal/character-enum';
 import type { Objective } from '@app/objectives/objective-types';
 import type { ScenarioData } from '@app/ScenarioData';
 import { SignalOrigin } from "@app/SignalOrigin";
@@ -528,6 +528,7 @@ export const scenario1Data: ScenarioData = {
       </p>
       `,
       character: Character.CHARLIE_BROOKS,
+      emotion: Emotion.HAPPY,
       audioUrl: getAssetUrl('/assets/campaigns/nats/1/intro.mp3'),
     },
     objectives: {
@@ -568,6 +569,7 @@ export const scenario1Data: ScenarioData = {
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
+        emotion: Emotion.SURPRISED,
         audioUrl: getAssetUrl('/assets/campaigns/nats/1/obj-phase-1-lnb.mp3'),
       },
     },

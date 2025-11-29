@@ -1,7 +1,7 @@
 import { html } from '@app/engine/utils/development/formatter';
 import { qs } from '@app/engine/utils/query-selector';
 import SoundManager from '@app/sound/sound-manager';
-import { Character, CharacterAvatars, CharacterCompany, CharacterNames, CharacterTitles } from './character-enum';
+import { Character, CharacterCompany, CharacterNames, CharacterTitles, Emotion, getCharacterAvatarUrl } from './character-enum';
 import { DialogHistoryManager } from './dialog-history-manager';
 import './dialog-manager.css';
 
@@ -26,15 +26,15 @@ export class DialogManager {
     return this.dialogElement !== null;
   }
 
-  show(text: string, character: Character, audioUrl: string, title: string = 'Dialog'): void {
+  show(text: string, character: Character, audioUrl: string, title: string = 'Dialog', emotion?: Emotion): void {
     if (this.dialogElement) {
       this.hide();
     }
 
     // Track this dialog in history
-    DialogHistoryManager.getInstance().addEntry(text, character, audioUrl, title);
+    DialogHistoryManager.getInstance().addEntry(text, character, audioUrl, title, emotion);
 
-    const avatarUrl = CharacterAvatars[character];
+    const avatarUrl = getCharacterAvatarUrl(character, emotion);
     const characterName = CharacterNames[character];
     const characterTitle = CharacterTitles[character];
     const characterCompany = CharacterCompany[character];

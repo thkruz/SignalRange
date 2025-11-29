@@ -1,4 +1,4 @@
-import { Character } from './character-enum';
+import { Character, Emotion } from './character-enum';
 import { DialogManager } from './dialog-manager';
 
 export interface DialogHistoryEntry {
@@ -7,6 +7,7 @@ export interface DialogHistoryEntry {
   audioUrl: string;
   timestamp: number;
   title: string;
+  emotion?: Emotion;
 }
 
 export class DialogHistoryManager {
@@ -25,7 +26,7 @@ export class DialogHistoryManager {
   /**
    * Add a dialog entry to the history
    */
-  addEntry(text: string, character: Character, audioUrl: string, title: string): void {
+  addEntry(text: string, character: Character, audioUrl: string, title: string, emotion?: Emotion): void {
     // Don't add the same audioUrl twice
     const isAlreadyInHistory = this.history.some(entry => entry.audioUrl === audioUrl);
     if (isAlreadyInHistory) {
@@ -38,6 +39,7 @@ export class DialogHistoryManager {
       audioUrl,
       timestamp: Date.now(),
       title,
+      emotion,
     });
   }
 
@@ -52,7 +54,7 @@ export class DialogHistoryManager {
    * Replay a specific dialog from history
    */
   replayDialog(entry: DialogHistoryEntry): void {
-    DialogManager.getInstance().show(entry.text, entry.character, entry.audioUrl);
+    DialogManager.getInstance().show(entry.text, entry.character, entry.audioUrl, entry.title, entry.emotion);
   }
 
   /**

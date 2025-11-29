@@ -5,8 +5,21 @@ export enum Character {
   CATHERINE_VEGA = 'catherine_vega',
   /** Atlantic Shipping Alliance. SeaLink's anchor customer. */
   JAMES_OKAFOR = 'james_okafor',
-  /** Board Member and former investment banker who doesn’t understand satellites but understands burn rate */
+  /** Board Member and former investment banker who doesn't understand satellites but understands burn rate */
   FRANCIS_MARTIN = 'francis_martin',
+}
+
+export enum Emotion {
+  NEUTRAL = 'neutral',
+  HAPPY = 'happy',
+  ANGRY = 'angry',
+  SAD = 'sad',
+  SURPRISED = 'surprised',
+  CONCERNED = 'concerned',
+  CONFIDENT = 'confident',
+  SKEPTICAL = 'skeptical',
+  EXCITED = 'excited',
+  FRUSTRATED = 'frustrated',
 }
 
 export const CharacterAvatars: Record<Character, string> = {
@@ -36,3 +49,12 @@ export const CharacterCompany: Record<Character, string> = {
   [Character.JAMES_OKAFOR]: 'Atlantic Shipping Alliance',
   [Character.FRANCIS_MARTIN]: 'SeaLink',
 };
+
+export function getCharacterAvatarUrl(character: Character, emotion?: Emotion): string {
+  const basePath = CharacterAvatars[character];
+  if (!emotion || emotion === Emotion.NEUTRAL) {
+    return basePath;
+  }
+  // Insert emotion before .png: /assets/characters/charlie-brooks.png -> /assets/characters/charlie-brooks-happy.png
+  return basePath.replace('.png', `-${emotion}.png`);
+}

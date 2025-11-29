@@ -67,7 +67,8 @@ export abstract class BasePage extends BaseElement {
         introClip.text,
         introClip.character,
         introClip.audioUrl,
-        'Introduction'
+        'Introduction',
+        introClip.emotion
       );
 
       // Schedule login prompt dialog to show 5 seconds after intro dialog is closed

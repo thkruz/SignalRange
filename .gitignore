@@ -8,6 +8,7 @@ dist/
 
 # IDEs and editors
 .claude/
+CLAUDE.md
 .github/instructions/
 
 # OS

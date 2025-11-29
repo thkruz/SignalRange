@@ -86,6 +86,8 @@ export interface ConditionParams {
   maxSignalStrength?: number;
   /** For custom conditions: custom evaluator function */
   evaluator?: () => boolean;
+  /** Target specific equipment by index (0-based). If omitted, any equipment satisfies. */
+  equipmentIndex?: number;
   /** Additional context-specific parameters */
   [key: string]: unknown;
 }

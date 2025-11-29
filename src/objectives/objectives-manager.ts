@@ -4,12 +4,14 @@
  * conditions during the simulation update loop
  */
 
+import { GroundStation } from '@app/assets/ground-station/ground-station';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
 import { SimulationManager } from '@app/simulation/simulation-manager';
 import { Milliseconds } from 'ootk';
 import {
   Condition,
+  ConditionParams,
   Objective,
   ObjectiveState
 } from './objective-types';
@@ -271,7 +273,7 @@ export class ObjectivesManager {
         }
 
         const wasSatisfied = conditionState.isSatisfied;
-        const isNowSatisfied = this.evaluateCondition_(conditionState.condition);
+        const isNowSatisfied = this.evaluateCondition_(conditionState.condition, objectiveState);
 
         // Update satisfied state
         conditionState.isSatisfied = isNowSatisfied;
@@ -431,337 +433,312 @@ export class ObjectivesManager {
   }
 
   /**
+   * Get the ground station for an objective by its groundStation ID
+   */
+  private getGroundStation_(objectiveState: ObjectiveState): GroundStation | null {
+    const groundStationId = objectiveState.objective.groundStation;
+    if (!groundStationId) {
+      console.warn(`Objective '${objectiveState.objective.id}' missing groundStation`);
+      return null;
+    }
+
+    const sim = SimulationManager.getInstance();
+    const gs = sim.groundStations.find((g) => g.state.id === groundStationId);
+    if (!gs) {
+      console.warn(`Ground station '${groundStationId}' not found for objective '${objectiveState.objective.id}'`);
+      return null;
+    }
+    return gs;
+  }
+
+  /**
+   * Evaluate equipment using a checker function
+   * If equipmentIndex is specified, checks only that equipment
+   * If equipmentIndex is omitted, checks if ANY equipment satisfies
+   */
+  private evaluateEquipment_<T>(
+    equipmentArray: readonly T[],
+    params: ConditionParams | undefined,
+    checker: (item: T) => boolean
+  ): boolean {
+    if (!equipmentArray || equipmentArray.length === 0) return false;
+
+    if (params?.equipmentIndex !== undefined) {
+      const index = params.equipmentIndex;
+      if (index < 0 || index >= equipmentArray.length) {
+        console.warn(`Equipment index ${index} out of bounds (0-${equipmentArray.length - 1})`);
+        return false;
+      }
+      return checker(equipmentArray[index]);
+    }
+
+    // No index specified - check if ANY equipment satisfies
+    return equipmentArray.some(checker);
+  }
+
+  /**
    * Evaluate a single condition and return whether it's currently satisfied
    */
-  private evaluateCondition_(condition: Condition): boolean {
+  private evaluateCondition_(condition: Condition, objectiveState: ObjectiveState): boolean {
     const sim = SimulationManager.getInstance();
-    const equipment = sim.equipment;
+    const gs = this.getGroundStation_(objectiveState);
 
-    if (!equipment) {
+    if (!gs) {
       return false;
     }
 
     switch (condition.type) {
       case 'antenna-locked': {
-        const antenna = equipment.antennas[0]; // Default to first antenna
-        if (!antenna) return false;
+        return this.evaluateEquipment_(gs.antennas, condition.params, (antenna) => {
+          const state = antenna.state;
+          if (!state.isLocked) return false;
 
-        const state = antenna.state;
+          // If a specific satellite is required, check it
+          if (condition.params?.satelliteId !== undefined) {
+            const targetSat = sim.getSatByNoradId(condition.params.satelliteId);
+            if (!targetSat) return false;
 
-        // Check if antenna is locked
-        if (!state.isLocked) return false;
-
-        // If a specific satellite is required, check it
-        if (condition.params?.satelliteId !== undefined) {
-          const targetSat = sim.getSatByNoradId(condition.params.satelliteId);
-          if (!targetSat) return false;
-
-          // Check if antenna is pointed at this satellite (within tolerance)
-          const azDiff = Math.abs(state.azimuth - targetSat.az);
-          const elDiff = Math.abs(state.elevation - targetSat.el);
-          return azDiff <= 1.5 && elDiff <= 1.5;
-        }
-
-        return true;
+            const azDiff = Math.abs(state.azimuth - targetSat.az);
+            const elDiff = Math.abs(state.elevation - targetSat.el);
+            return azDiff <= 1.5 && elDiff <= 1.5;
+          }
+          return true;
+        });
       }
 
       case 'gpsdo-locked': {
-        const rfFrontEnd = equipment.rfFrontEnds[0]; // Default to first RF front end
-        if (!rfFrontEnd) return false;
-
-        const gpsdoState = rfFrontEnd.gpsdoModule.state;
-        return gpsdoState.isLocked;
+        return this.evaluateEquipment_(gs.rfFrontEnds, condition.params, (rfFrontEnd) => {
+          return rfFrontEnd.gpsdoModule.state.isLocked;
+        });
       }
 
       case 'gpsdo-warmed-up': {
-        const rfFrontEnd = equipment.rfFrontEnds[0];
-        if (!rfFrontEnd) return false;
-
-        const gpsdoState = rfFrontEnd.gpsdoModule.state;
-        // GPSDO is warmed up when warmup time is 0 and temperature is in operating range
-        return (
-          gpsdoState.isPowered &&
-          gpsdoState.warmupTimeRemaining === 0 &&
-          gpsdoState.temperature >= 65 &&
-          gpsdoState.temperature <= 75
-        );
+        return this.evaluateEquipment_(gs.rfFrontEnds, condition.params, (rfFrontEnd) => {
+          const gpsdoState = rfFrontEnd.gpsdoModule.state;
+          return (
+            gpsdoState.isPowered &&
+            gpsdoState.warmupTimeRemaining === 0 &&
+            gpsdoState.temperature >= 65 &&
+            gpsdoState.temperature <= 75
+          );
+        });
       }
 
       case 'gpsdo-gnss-locked': {
-        const rfFrontEnd = equipment.rfFrontEnds[0];
-        if (!rfFrontEnd) return false;
-
-        const gpsdoState = rfFrontEnd.gpsdoModule.state;
-        // GPS antenna has satellite lock with sufficient satellites
-        return (
-          gpsdoState.isPowered &&
-          gpsdoState.gnssSignalPresent &&
-          gpsdoState.satelliteCount >= 4
-        );
+        return this.evaluateEquipment_(gs.rfFrontEnds, condition.params, (rfFrontEnd) => {
+          const gpsdoState = rfFrontEnd.gpsdoModule.state;
+          return (
+            gpsdoState.isPowered &&
+            gpsdoState.gnssSignalPresent &&
+            gpsdoState.satelliteCount >= 4
+          );
+        });
       }
 
       case 'gpsdo-stability': {
-        const rfFrontEnd = equipment.rfFrontEnds[0];
-        if (!rfFrontEnd) return false;
-
-        const gpsdoState = rfFrontEnd.gpsdoModule.state;
-        const maxAccuracy = condition.params?.maxFrequencyAccuracy ?? 5; // Default: 5×10⁻¹¹
-        // GPSDO achieves required frequency stability
-        return (
-          gpsdoState.isPowered &&
-          gpsdoState.isLocked &&
-          gpsdoState.frequencyAccuracy < maxAccuracy &&
-          gpsdoState.allanDeviation < maxAccuracy &&
-          gpsdoState.phaseNoise < -125 // dBc/Hz at 10 Hz offset
-        );
+        const maxAccuracy = condition.params?.maxFrequencyAccuracy ?? 5;
+        return this.evaluateEquipment_(gs.rfFrontEnds, condition.params, (rfFrontEnd) => {
+          const gpsdoState = rfFrontEnd.gpsdoModule.state;
+          return (
+            gpsdoState.isPowered &&
+            gpsdoState.isLocked &&
+            gpsdoState.frequencyAccuracy < maxAccuracy &&
+            gpsdoState.allanDeviation < maxAccuracy &&
+            gpsdoState.phaseNoise < -125
+          );
+        });
       }
 
       case 'gpsdo-not-in-holdover': {
-        const rfFrontEnd = equipment.rfFrontEnds[0];
-        if (!rfFrontEnd) return false;
-
-        const gpsdoState = rfFrontEnd.gpsdoModule.state;
-        // GPSDO is not operating in holdover mode
-        return gpsdoState.isPowered && !gpsdoState.isInHoldover;
+        return this.evaluateEquipment_(gs.rfFrontEnds, condition.params, (rfFrontEnd) => {
+          const gpsdoState = rfFrontEnd.gpsdoModule.state;
+          return gpsdoState.isPowered && !gpsdoState.isInHoldover;
+        });
       }
 
       case 'buc-locked': {
-        const rfFrontEnd = equipment.rfFrontEnds[0]; // Default to first RF front end
-        if (!rfFrontEnd) return false;
-
-        const bucState = rfFrontEnd.bucModule.state;
-        return bucState.isExtRefLocked;
+        return this.evaluateEquipment_(gs.rfFrontEnds, condition.params, (rfFrontEnd) => {
+          return rfFrontEnd.bucModule.state.isExtRefLocked;
+        });
       }
 
       case 'buc-reference-locked': {
-        const rfFrontEnd = equipment.rfFrontEnds[0];
-        if (!rfFrontEnd) return false;
-
-        const bucState = rfFrontEnd.bucModule.state;
-        // BUC is locked to external 10MHz reference
-        return (
-          bucState.isPowered &&
-          bucState.isExtRefLocked &&
-          bucState.frequencyError === 0
-        );
+        return this.evaluateEquipment_(gs.rfFrontEnds, condition.params, (rfFrontEnd) => {
+          const bucState = rfFrontEnd.bucModule.state;
+          return (
+            bucState.isPowered &&
+            bucState.isExtRefLocked &&
+            bucState.frequencyError === 0
+          );
+        });
       }
 
       case 'buc-muted': {
-        const rfFrontEnd = equipment.rfFrontEnds[0];
-        if (!rfFrontEnd) return false;
-
-        const bucState = rfFrontEnd.bucModule.state;
-        // BUC RF output is muted for safety
-        return bucState.isPowered && bucState.isMuted;
+        return this.evaluateEquipment_(gs.rfFrontEnds, condition.params, (rfFrontEnd) => {
+          const bucState = rfFrontEnd.bucModule.state;
+          return bucState.isPowered && bucState.isMuted;
+        });
       }
 
       case 'buc-current-normal': {
-        const rfFrontEnd = equipment.rfFrontEnds[0];
-        if (!rfFrontEnd) return false;
-
-        const bucState = rfFrontEnd.bucModule.state;
-        const maxCurrent = condition.params?.maxCurrentDraw ?? 4.5; // Default: 4.5A
-        // BUC current draw is within normal operating range
-        return (
-          bucState.isPowered &&
-          bucState.currentDraw <= maxCurrent
-        );
+        const maxCurrent = condition.params?.maxCurrentDraw ?? 4.5;
+        return this.evaluateEquipment_(gs.rfFrontEnds, condition.params, (rfFrontEnd) => {
+          const bucState = rfFrontEnd.bucModule.state;
+          return bucState.isPowered && bucState.currentDraw <= maxCurrent;
+        });
       }
 
       case 'buc-not-saturated': {
-        const rfFrontEnd = equipment.rfFrontEnds[0];
-        if (!rfFrontEnd) return false;
-
-        const bucState = rfFrontEnd.bucModule.state;
-        // BUC output is not approaching saturation (at least 2 dB backoff from P1dB)
-        return (
-          bucState.isPowered &&
-          bucState.outputPower <= (bucState.saturationPower - 2)
-        );
+        return this.evaluateEquipment_(gs.rfFrontEnds, condition.params, (rfFrontEnd) => {
+          const bucState = rfFrontEnd.bucModule.state;
+          return (
+            bucState.isPowered &&
+            bucState.outputPower <= (bucState.saturationPower - 2)
+          );
+        });
       }
 
       case 'lnb-reference-locked': {
-        const rfFrontEnd = equipment.rfFrontEnds[0];
-        if (!rfFrontEnd) return false;
-
-        const lnbState = rfFrontEnd.lnbModule.state;
-        // LNB is locked to external 10MHz reference
-        return (
-          lnbState.isPowered &&
-          lnbState.isExtRefLocked &&
-          lnbState.frequencyError === 0
-        );
+        return this.evaluateEquipment_(gs.rfFrontEnds, condition.params, (rfFrontEnd) => {
+          const lnbState = rfFrontEnd.lnbModule.state;
+          return (
+            lnbState.isPowered &&
+            lnbState.isExtRefLocked &&
+            lnbState.frequencyError === 0
+          );
+        });
       }
 
       case 'lnb-lo-set': {
-        const rfFrontEnd = equipment.rfFrontEnds[0];
-        if (!rfFrontEnd) return false;
-
-        const lnbState = rfFrontEnd.lnbModule.state;
         if (!condition.params?.loFrequency) return false;
-
         const targetLoFrequency = condition.params.loFrequency;
-        const tolerance = condition.params.loFrequencyTolerance ?? 0; // Default: ±0 Hz
-        // LNB local oscillator frequency is set to target value within tolerance
-        return (
-          lnbState.isPowered &&
-          Math.abs(lnbState.loFrequency - targetLoFrequency) <= tolerance
-        );
+        const tolerance = condition.params.loFrequencyTolerance ?? 0;
+        return this.evaluateEquipment_(gs.rfFrontEnds, condition.params, (rfFrontEnd) => {
+          const lnbState = rfFrontEnd.lnbModule.state;
+          return (
+            lnbState.isPowered &&
+            Math.abs(lnbState.loFrequency - targetLoFrequency) <= tolerance
+          );
+        });
       }
 
       case 'lnb-gain-set': {
-        const rfFrontEnd = equipment.rfFrontEnds[0];
-        if (!rfFrontEnd) return false;
-
-        const lnbState = rfFrontEnd.lnbModule.state;
         if (!condition.params?.gain) return false;
-
         const targetGain = condition.params.gain;
-        const tolerance = condition.params.gainTolerance ?? 0; // Default: ±0 dB
-        // LNB gain is set to target value within tolerance
-        return (
-          lnbState.isPowered &&
-          Math.abs(lnbState.gain - targetGain) <= tolerance
-        );
+        const tolerance = condition.params.gainTolerance ?? 0;
+        return this.evaluateEquipment_(gs.rfFrontEnds, condition.params, (rfFrontEnd) => {
+          const lnbState = rfFrontEnd.lnbModule.state;
+          return (
+            lnbState.isPowered &&
+            Math.abs(lnbState.gain - targetGain) <= tolerance
+          );
+        });
       }
 
       case 'lnb-thermally-stable': {
-        const rfFrontEnd = equipment.rfFrontEnds[0];
-        if (!rfFrontEnd) return false;
-
-        const lnbState = rfFrontEnd.lnbModule.state;
-        // LNB thermal stabilization complete (temperature stable, no drift)
-        // Check that thermal stabilization time has passed and noise temperature is stable
-        return (
-          lnbState.isPowered &&
-          lnbState.noiseTemperature < 100 && // Within spec
-          lnbState.temperature >= 25 &&
-          lnbState.temperature <= 50 &&
-          lnbState.frequencyError === 0 // No frequency drift
-        );
+        return this.evaluateEquipment_(gs.rfFrontEnds, condition.params, (rfFrontEnd) => {
+          const lnbState = rfFrontEnd.lnbModule.state;
+          return (
+            lnbState.isPowered &&
+            lnbState.noiseTemperature < 100 &&
+            lnbState.temperature >= 25 &&
+            lnbState.temperature <= 50 &&
+            lnbState.frequencyError === 0
+          );
+        });
       }
 
       case 'lnb-noise-performance': {
-        const rfFrontEnd = equipment.rfFrontEnds[0];
-        if (!rfFrontEnd) return false;
-
-        const lnbState = rfFrontEnd.lnbModule.state;
-        const maxNoiseTemp = condition.params?.maxNoiseTemperature ?? 100; // Default: 100K
-        // LNB noise temperature within specification
-        return (
-          lnbState.isPowered &&
-          lnbState.noiseTemperature <= maxNoiseTemp
-        );
+        const maxNoiseTemp = condition.params?.maxNoiseTemperature ?? 100;
+        return this.evaluateEquipment_(gs.rfFrontEnds, condition.params, (rfFrontEnd) => {
+          const lnbState = rfFrontEnd.lnbModule.state;
+          return lnbState.isPowered && lnbState.noiseTemperature <= maxNoiseTemp;
+        });
       }
 
       case 'equipment-powered': {
         if (!condition.params?.equipment) return false;
 
         switch (condition.params.equipment) {
-          case 'antenna': {
-            const antenna = equipment.antennas[0];
-            return antenna ? antenna.state.isPowered : false;
-          }
-          case 'gpsdo': {
-            const rfFrontEnd = equipment.rfFrontEnds[0];
-            return rfFrontEnd ? rfFrontEnd.gpsdoModule.state.isPowered : false;
-          }
-          case 'buc': {
-            const rfFrontEnd = equipment.rfFrontEnds[0];
-            return rfFrontEnd ? rfFrontEnd.bucModule.state.isPowered : false;
-          }
-          case 'lnb': {
-            const rfFrontEnd = equipment.rfFrontEnds[0];
-            return rfFrontEnd ? rfFrontEnd.lnbModule.state.isPowered : false;
-          }
-          case 'spectrum-analyzer': {
+          case 'antenna':
+            return this.evaluateEquipment_(gs.antennas, condition.params, (antenna) => {
+              return antenna.state.isPowered;
+            });
+          case 'gpsdo':
+            return this.evaluateEquipment_(gs.rfFrontEnds, condition.params, (rfFrontEnd) => {
+              return rfFrontEnd.gpsdoModule.state.isPowered;
+            });
+          case 'buc':
+            return this.evaluateEquipment_(gs.rfFrontEnds, condition.params, (rfFrontEnd) => {
+              return rfFrontEnd.bucModule.state.isPowered;
+            });
+          case 'lnb':
+            return this.evaluateEquipment_(gs.rfFrontEnds, condition.params, (rfFrontEnd) => {
+              return rfFrontEnd.lnbModule.state.isPowered;
+            });
+          case 'spectrum-analyzer':
             return true; // Spectrum analyzer always powered on for this simulation
-            // const specA = equipment.spectrumAnalyzers[0];
-            // return specA ? specA.state.isPowered : false;
-          }
-          // Add more equipment types as needed
           default:
             return false;
         }
       }
 
       case 'signal-detected': {
-        const specA = equipment.spectrumAnalyzers[0];
-        if (!specA) return false;
-
-        // Check if any signals are detected above noise floor
-        return specA.getInputSignals().length > 0;
+        return this.evaluateEquipment_(gs.spectrumAnalyzers, condition.params, (specA) => {
+          return specA.getInputSignals().length > 0;
+        });
       }
 
       case 'frequency-set': {
         if (!condition.params?.frequency) return false;
-
-        const specA = equipment.spectrumAnalyzers[0];
-        if (!specA) return false;
-
-        const state = specA.state;
-        const tolerance = condition.params.frequencyTolerance || 1e6; // Default 1 MHz tolerance
-        const diff = Math.abs(state.centerFrequency - condition.params.frequency);
-
-        return diff <= tolerance;
+        const targetFrequency = condition.params.frequency;
+        const tolerance = condition.params.frequencyTolerance || 1e6;
+        return this.evaluateEquipment_(gs.spectrumAnalyzers, condition.params, (specA) => {
+          const diff = Math.abs(specA.state.centerFrequency - targetFrequency);
+          return diff <= tolerance;
+        });
       }
 
       case 'speca-span-set': {
         if (!condition.params?.span) return false;
-
-        const specA = equipment.spectrumAnalyzers[0];
-        if (!specA) return false;
-
-        const state = specA.state;
-        const tolerance = condition.params.frequencyTolerance || 1e6; // Default 1 MHz tolerance
-        const diff = Math.abs(state.span - condition.params.span);
-
-        return diff <= tolerance;
+        const targetSpan = condition.params.span;
+        const tolerance = condition.params.frequencyTolerance || 1e6;
+        return this.evaluateEquipment_(gs.spectrumAnalyzers, condition.params, (specA) => {
+          const diff = Math.abs(specA.state.span - targetSpan);
+          return diff <= tolerance;
+        });
       }
 
       case 'speca-rbw-set': {
         if (!condition.params?.rbw) return false;
-
-        const specA = equipment.spectrumAnalyzers[0];
-        if (!specA) return false;
-
-        const state = specA.state;
-        // Check if RBW is set to the target value (if null, it's auto mode)
-        if (state.rbw === null) return false;
-
-        const tolerance = condition.params.frequencyTolerance || 1e3; // Default 1 kHz tolerance
-        const diff = Math.abs(state.rbw - condition.params.rbw);
-
-        return diff <= tolerance;
+        const targetRbw = condition.params.rbw;
+        const tolerance = condition.params.frequencyTolerance || 1e3;
+        return this.evaluateEquipment_(gs.spectrumAnalyzers, condition.params, (specA) => {
+          if (specA.state.rbw === null) return false;
+          const diff = Math.abs(specA.state.rbw - targetRbw);
+          return diff <= tolerance;
+        });
       }
 
       case 'speca-reference-level-set': {
         if (condition.params?.referenceLevel === undefined) return false;
-
-        const specA = equipment.spectrumAnalyzers[0];
-        if (!specA) return false;
-
-        const state = specA.state;
-        const tolerance = condition.params.referenceLevelTolerance ?? 1; // Default ±1 dB
-        const diff = Math.abs(state.referenceLevel - condition.params.referenceLevel);
-
-        return diff <= tolerance;
+        const targetRefLevel = condition.params.referenceLevel;
+        const tolerance = condition.params.referenceLevelTolerance ?? 1;
+        return this.evaluateEquipment_(gs.spectrumAnalyzers, condition.params, (specA) => {
+          const diff = Math.abs(specA.state.referenceLevel - targetRefLevel);
+          return diff <= tolerance;
+        });
       }
 
       case 'speca-noise-floor-visible': {
-        const specA = equipment.spectrumAnalyzers[0];
-        if (!specA) return false;
-
-        const signals = specA.getInputSignals();
-        const maxSignalStrength = condition.params?.maxSignalStrength ?? -60; // Default: -60 dBm
-
-        // Check that no strong signals are overwhelming the display
-        // Clean baseline means all signals are below the threshold
-        return signals.every(signal => signal.power < maxSignalStrength);
+        const maxSignalStrength = condition.params?.maxSignalStrength ?? -60;
+        return this.evaluateEquipment_(gs.spectrumAnalyzers, condition.params, (specA) => {
+          const signals = specA.getInputSignals();
+          return signals.every((signal) => signal.power < maxSignalStrength);
+        });
       }
 
       case 'custom': {
-        // Use custom evaluator function if provided
         if (condition.params?.evaluator && typeof condition.params.evaluator === 'function') {
           return condition.params.evaluator();
         }

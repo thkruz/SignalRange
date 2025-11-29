@@ -236,11 +236,6 @@ export const scenario1Data: ScenarioData = {
       } as Partial<AntennaState>,
     ],
     layout: html`
-      <div id="mission-checklist-container">
-        <div class="mission-brief-icon icon" title="Mission Brief"></div>
-        <div class="checklist-icon icon" title="Mission Checklist"></div>
-        <div class="dialog-icon icon" title="Dialog History"></div>
-      </div>
       <div class="student-equipment scenario1-layout">
         <div class="paired-equipment-container">
           <div id="antenna1-container" class="antenna-container"></div>

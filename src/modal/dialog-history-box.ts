@@ -4,8 +4,8 @@ import { DialogHistoryManager } from "./dialog-history-manager";
 import { DraggableHtmlBox } from "./draggable-html-box";
 
 export class DialogHistoryBox extends DraggableHtmlBox {
-  constructor() {
-    super('Dialog History', 'dialog-history', '');
+  constructor(parentId = 'sandbox-page') {
+    super('Dialog History', 'dialog-history', '', parentId);
     this.updateContent(this.generateHistoryHtml());
   }
 

@@ -4,9 +4,18 @@ import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
 import { EventBus } from "@app/events/event-bus";
 import { Events } from "@app/events/events";
+import { DialogHistoryBox } from "@app/modal/dialog-history-box";
+import { DraggableHtmlBox } from "@app/modal/draggable-html-box";
+import { ObjectivesManager } from "@app/objectives";
+import { ScenarioManager } from "@app/scenario-manager";
 import { SimulationManager } from "@app/simulation/simulation-manager";
-import antenna2Png from '../../assets/icons/antenna2.png';
-import satellitePng from '../../assets/icons/satellite.png';
+import antennaPng from '../../assets/icons/antenna.png';
+import checklistPng from "../../assets/icons/checklist.png";
+import historyPng from '../../assets/icons/history.png';
+import layoutSidebarLeftCollapsePng from '../../assets/icons/layout-sidebar-left-collapse.png';
+import layoutSidebarLeftExpandPng from '../../assets/icons/layout-sidebar-left-expand.png';
+import satelliteOffPng from '../../assets/icons/satellite-off.png';
+import targetArrowPng from '../../assets/icons/target-arrow.png';
 import './asset-tree-sidebar.css';
 
 /**
@@ -21,15 +30,40 @@ export class AssetTreeSidebar extends BaseElement {
 
   private selectedAssetId_: string | null = null;
   private groundStations_: GroundStation[] = [];
+  private checklistRefreshIntervalId_: number | null = null;
+  private lastChecklistHtml_: string | null = null;
+  private missionBriefUrl_: string | null = null;
 
   protected html_ = html`
     <div class="asset-tree-sidebar">
       <div class="sidebar-header">
         <h3>Assets</h3>
         <button class="sidebar-collapse-btn">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" class="icon icon-tabler icons-tabler-filled icon-tabler-layout-sidebar-left-collapse"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M18 3a3 3 0 0 1 2.995 2.824l.005 .176v12a3 3 0 0 1 -2.824 2.995l-.176 .005h-12a3 3 0 0 1 -2.995 -2.824l-.005 -.176v-12a3 3 0 0 1 2.824 -2.995l.176 -.005h12zm0 2h-9v14h9a1 1 0 0 0 .993 -.883l.007 -.117v-12a1 1 0 0 0 -.883 -.993l-.117 -.007zm-2.293 4.293a1 1 0 0 1 .083 1.32l-.083 .094l-1.292 1.293l1.292 1.293a1 1 0 0 1 .083 1.32l-.083 .094a1 1 0 0 1 -1.32 .083l-.094 -.083l-2 -2a1 1 0 0 1 -.083 -1.32l.083 -.094l2 -2a1 1 0 0 1 1.414 0z" />
-          </svg>
+          <img src="${layoutSidebarLeftCollapsePng}" alt="Collapse Sidebar" />
         </button>
+      </div>
+      <div id="mission-icons-section" class="mission-icons-section list-group list-group-flush" style="display: none;">
+        <div class="list-group-header sticky-top">
+          <span class="list-group-header-text">Mission</span>
+        </div>
+        <a class="list-group-item list-group-item-action d-flex align-items-center mission-brief-icon" title="Mission Brief">
+          <span class="item-icon">
+            <img src="${targetArrowPng}" alt="Mission Brief"/>
+          </span>
+          <span class="flex-fill">Mission Brief</span>
+        </a>
+        <a class="list-group-item list-group-item-action d-flex align-items-center checklist-icon" title="Mission Checklist">
+          <span class="item-icon">
+            <img src="${checklistPng}" alt="Checklist"/>
+          </span>
+          <span class="flex-fill">Checklist</span>
+        </a>
+        <a class="list-group-item list-group-item-action d-flex align-items-center dialog-icon" title="Dialog History">
+          <span class="item-icon">
+            <img src="${historyPng}" alt="Dialog History"/>
+          </span>
+          <span class="flex-fill">Dialog History</span>
+        </a>
       </div>
       <div class="sidebar-content">
         <div id="asset-tree" class="asset-tree"></div>
@@ -42,7 +76,9 @@ export class AssetTreeSidebar extends BaseElement {
     this.init_(parentId, 'replace');
     this.dom_ = qs('.asset-tree-sidebar');
     this.groundStations_ = SimulationManager.getInstance().groundStations;
+    this.missionBriefUrl_ = ScenarioManager.getInstance().settings.missionBriefUrl ?? null;
     this.renderAssetTree_();
+    this.initMissionSection_();
   }
 
   protected addEventListeners_(): void {
@@ -53,10 +89,101 @@ export class AssetTreeSidebar extends BaseElement {
       // If collapsed, change svg icon to new svg
       const isCollapsed = sidebar?.classList.contains('collapsed');
       collapseBtn.children[0].innerHTML = isCollapsed
-        ? `<path d="M18 3a3 3 0 0 1 2.995 2.824l.005 .176v12a3 3 0 0 1 -2.824 2.995l-.176 .005h-12a3 3 0 0 1 -2.995 -2.824l-.005 -.176v-12a3 3 0 0 1 2.824 -2.995l.176 -.005h12zm-3 2h-9a1 1 0 0 0 -.993 .883l-.007 .117v12a1 1 0 0 0 .883 .993l.117 .007h9v-14zm-5.387 4.21l.094 .083l2 2a1 1 0 0 1 .083 1.32l-.083 .094l-2 2a1 1 0 0 1 -1.497 -1.32l.083 -.094l1.292 -1.293l-1.292 -1.293a1 1 0 0 1 -.083 -1.32l.083 -.094a1 1 0 0 1 1.32 -.083z" />`
-        : `<path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M18 3a3 3 0 0 1 2.995 2.824l.005 .176v12a3 3 0 0 1 -2.824 2.995l-.176 .005h-12a3 3 0 0 1 -2.995 -2.824l-.005 -.176v-12a3 3 0 0 1 2.824 -2.995l.176 -.005h12zm0 2h-9v14h9a1 1 0 0 0 .993 -.883l.007 -.117v-12a1 1 0 0 0 -.883 -.993l-.117 -.007zm-2.293 4.293a1 1 0 0 1 .083 1.32l-.083 .094l-1.292 1.293l1.292 1.293a1 1 0 0 1 .083 1.32l-.083 .094a1 1 0 0 1 -1.32 .083l-.094 -.083l-2 -2a1 1 0 0 1 -.083 -1.32l.083 -.094l2 -2a1 1 0 0 1 1.414 0z" />`;
-
+        ? `<img src="${layoutSidebarLeftExpandPng}" alt="Expand Sidebar" />`
+        : `<img src="${layoutSidebarLeftCollapsePng}" alt="Collapse Sidebar" />`;
     });
+
+    EventBus.getInstance().on(Events.ROUTE_CHANGED, () => {
+      this.stopChecklistRefreshTimer_();
+    });
+  }
+
+  /**
+   * Initialize the mission section if missionBriefUrl is set
+   */
+  private initMissionSection_(): void {
+    if (!this.missionBriefUrl_) {
+      return;
+    }
+
+    // Show the mission section
+    const missionSection = qs('#mission-icons-section', this.dom_);
+    if (missionSection) {
+      missionSection.style.display = 'block';
+    }
+
+    // Add listeners
+    this.addMissionBriefListener_();
+    this.addChecklistListener_();
+    this.addDialogHistoryListener_();
+  }
+
+  private addMissionBriefListener_(): void {
+    const btn = qs('.mission-brief-icon', this.dom_);
+    btn?.addEventListener('click', () => {
+      SimulationManager.getInstance().missionBriefBox ??= new DraggableHtmlBox('Mission Brief', 'mission-brief', this.missionBriefUrl_, 'app-shell-page');
+      SimulationManager.getInstance().missionBriefBox.open();
+    });
+  }
+
+  private addChecklistListener_(): void {
+    const btn = qs('.checklist-icon', this.dom_);
+    btn?.addEventListener('click', () => {
+      SimulationManager.getInstance().checklistBox ??= new DraggableHtmlBox('Checklist', 'checklist', '', 'app-shell-page');
+      const objectivesManager = ObjectivesManager.getInstance();
+      objectivesManager.syncCollapsedStatesFromDOM();
+      this.lastChecklistHtml_ = objectivesManager.generateHtmlChecklist();
+      SimulationManager.getInstance().checklistBox.updateContent(this.lastChecklistHtml_);
+      SimulationManager.getInstance().checklistBox.open();
+      this.startChecklistRefreshTimer_(SimulationManager.getInstance().checklistBox);
+    });
+
+    EventBus.getInstance().on(Events.OBJECTIVE_ACTIVATED, () => {
+      if (!SimulationManager.getInstance().checklistBox) {
+        return;
+      }
+      const objectivesManager = ObjectivesManager.getInstance();
+      this.lastChecklistHtml_ = objectivesManager.generateHtmlChecklist();
+      SimulationManager.getInstance().checklistBox.updateContent(this.lastChecklistHtml_);
+    });
+  }
+
+  private addDialogHistoryListener_(): void {
+    const btn = qs('.dialog-icon', this.dom_);
+    btn?.addEventListener('click', () => {
+      SimulationManager.getInstance().dialogHistoryBox ??= new DialogHistoryBox('app-shell-page');
+      SimulationManager.getInstance().dialogHistoryBox.open();
+    });
+  }
+
+  private startChecklistRefreshTimer_(draggableBox: DraggableHtmlBox): void {
+    this.stopChecklistRefreshTimer_();
+
+    const refreshChecklist = () => {
+      if (!draggableBox.isOpen) {
+        this.stopChecklistRefreshTimer_();
+        return;
+      }
+
+      const objectivesManager = ObjectivesManager.getInstance();
+      objectivesManager.syncCollapsedStatesFromDOM();
+      const nextChecklistHtml = objectivesManager.generateHtmlChecklist();
+      if (nextChecklistHtml !== this.lastChecklistHtml_) {
+        this.lastChecklistHtml_ = nextChecklistHtml;
+        draggableBox.updateContent(nextChecklistHtml);
+      }
+    };
+
+    draggableBox.onClose = () => this.stopChecklistRefreshTimer_();
+    this.checklistRefreshIntervalId_ = window.setInterval(refreshChecklist, 1000);
+  }
+
+  private stopChecklistRefreshTimer_(): void {
+    if (this.checklistRefreshIntervalId_ !== null) {
+      window.clearInterval(this.checklistRefreshIntervalId_);
+      this.checklistRefreshIntervalId_ = null;
+    }
+    this.lastChecklistHtml_ = null;
   }
 
   /**
@@ -79,7 +206,7 @@ export class AssetTreeSidebar extends BaseElement {
         </div>
         <div class="list-group-item placeholder-item">
           <span class="item-icon">
-            <img src="${satellitePng}" alt="Satellite" style="filter: invert(1);" />
+            <img src="${satelliteOffPng}" alt="Satellite"/>
           </span>
           <span class="flex-fill">No satellites in scenario</span>
         </div>
@@ -101,10 +228,10 @@ export class AssetTreeSidebar extends BaseElement {
          data-asset-type="ground-station"
          data-asset-id="${gs.state.id}">
          <span class="item-icon">
-          <img src="${antenna2Png}" alt="Antenna" style="filter: invert(1);" />
+          <img src="${antennaPng}" alt="Antenna"/>
          </span>
-         <span class="item-status ${gs.state.isOperational ? 'operational' : 'offline'}"></span>
          <span class="flex-fill">${gs.state.name}</span>
+         <span class="item-status ${gs.state.isOperational ? 'operational' : 'offline'}"></span>
       </a>
     `;
   }
@@ -148,6 +275,6 @@ export class AssetTreeSidebar extends BaseElement {
    * Cleanup
    */
   public destroy(): void {
-    // Cleanup if needed
+    this.stopChecklistRefreshTimer_();
   }
 }

@@ -15,6 +15,14 @@
   overflow: hidden;
   transition: width 0.25s ease-out;
   will-change: width;
+
+  img {
+    filter: invert(1);
+  }
+
+  .list-group-item {
+    color: #fff !important;
+  }
 }
 
 .list-group-item {
@@ -230,4 +238,32 @@
 
 .sidebar-content::-webkit-scrollbar-thumb:hover {
   background: var(--mc-surface-4);
+}
+
+/* === Mission Icons Section === */
+.mission-icons-section {
+  margin-bottom: 0.75rem;
+}
+
+/* Mission icon sprites using item-icon pattern */
+.mission-icon-brief,
+.mission-icon-checklist,
+.mission-icon-dialog {
+  width: var(--icon-size);
+  height: var(--icon-size);
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.mission-icon-brief {
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2" fill="%23ffffff" stroke="%231f1f1f" stroke-width="1.5"/><rect x="7" y="7" width="10" height="2" rx="1" fill="%233a3a3a"/><rect x="7" y="11" width="10" height="2" rx="1" fill="%233a3a3a"/><rect x="7" y="15" width="6" height="2" rx="1" fill="%23ba160c"/></svg>');
+}
+
+.mission-icon-checklist {
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><rect x="6" y="4" width="12" height="16" rx="2" fill="%23ffffff" stroke="%231f1f1f" stroke-width="1.5"/><rect x="9" y="2" width="6" height="4" rx="1" fill="%233a3a3a" stroke="%23ba160c" stroke-width="1.5"/><line x1="9" y1="8" x2="15" y2="8" stroke="%233a3a3a" stroke-width="1.5"/><line x1="9" y1="12" x2="15" y2="12" stroke="%23ba160c" stroke-width="1.5"/><line x1="9" y1="16" x2="15" y2="16" stroke="%231f1f1f" stroke-width="1.5"/></svg>');
+}
+
+.mission-icon-dialog {
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2" fill="%23ffffff" stroke="%231f1f1f" stroke-width="1.5"/><path d="M7 8h10M7 12h10M7 16h6" stroke="%233a3a3a" stroke-width="1.5"/><circle cx="16" cy="16" r="1.5" fill="%23ba160c"/></svg>');
 }

@@ -36,11 +36,6 @@
     margin-bottom: 0px !important;
   }
 
-  .sidebar-header {
-    border-bottom: 0px !important;
-    padding: 1rem 0.5rem 0rem 0.5rem !important;
-  }
-
   .list-group-flush>.list-group-item {
     border-bottom: 0px !important;
   }
@@ -138,8 +133,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 24px;
+  height: 24px;
   padding: 0;
   border: none;
   background: transparent;
@@ -149,23 +144,8 @@
   transition: background-color 0.2s, color 0.2s;
 }
 
-.sidebar-collapse-btn svg {
-  width: 32px !important;
-  height: 32px !important;
-  flex-shrink: 0;
-}
-
-.sidebar-collapse-btn:hover {
-  color: var(--mc-text-primary);
-  box-shadow: none !important;
-}
-
 .sidebar-collapse-icon {
   transition: transform 0.3s ease;
-}
-
-.sidebar-collapse-btn.is-rotated .sidebar-collapse-icon {
-  transform: rotate(180deg);
 }
 
 .sidebar-content {

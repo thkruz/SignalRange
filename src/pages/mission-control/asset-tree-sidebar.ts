@@ -88,7 +88,7 @@ export class AssetTreeSidebar extends BaseElement {
       sidebar?.classList.toggle('collapsed');
       // If collapsed, change svg icon to new svg
       const isCollapsed = sidebar?.classList.contains('collapsed');
-      collapseBtn.children[0].innerHTML = isCollapsed
+      collapseBtn.innerHTML = isCollapsed
         ? `<img src="${layoutSidebarLeftExpandPng}" alt="Expand Sidebar" />`
         : `<img src="${layoutSidebarLeftCollapsePng}" alt="Collapse Sidebar" />`;
     });

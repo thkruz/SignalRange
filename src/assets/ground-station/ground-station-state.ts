@@ -42,6 +42,7 @@ export interface GroundStationState {
 export interface GroundStationConfig {
   id: string;
   name: string;
+  isOperational?: boolean;
   location: GroundStationLocation;
   antennas: string[];           // Antenna config IDs
   rfFrontEnds: any[];           // RF front-end configs

@@ -1,7 +1,7 @@
 import { html } from '@app/engine/utils/development/formatter';
 import { qs } from '@app/engine/utils/query-selector';
 import SoundManager from '@app/sound/sound-manager';
-import { Character, CharacterAvatars, CharacterNames, CharacterTitles } from './character-enum';
+import { Character, CharacterAvatars, CharacterCompany, CharacterNames, CharacterTitles } from './character-enum';
 import { DialogHistoryManager } from './dialog-history-manager';
 import './dialog-manager.css';
 
@@ -37,6 +37,7 @@ export class DialogManager {
     const avatarUrl = CharacterAvatars[character];
     const characterName = CharacterNames[character];
     const characterTitle = CharacterTitles[character];
+    const characterCompany = CharacterCompany[character];
     this.currentAudioUrl = audioUrl;
 
     const overlay = document.createElement('div');
@@ -47,25 +48,26 @@ export class DialogManager {
     overlay.innerHTML = html`
       <div class="dialog-box">
         <div class="dialog-content">
-          <div class="dialog-avatar-container">
+          <div class="dialog-avatar-container col-4">
             <div class="dialog-avatar">
               <img src="${avatarUrl}" alt="${character}" />
             </div>
             <div class="dialog-character-info">
               <div class="dialog-character-name">${characterName}</div>
               <div class="dialog-character-title">${characterTitle}</div>
+              <div class="dialog-character-company">${characterCompany}</div>
             </div>
           </div>
-          <div class="dialog-text-container">
+          <div class="dialog-text-container col-8">
             <div class="dialog-text">${text}</div>
           </div>
-        </div>
-        <div class="dialog-skip-indicator">
-          <div class="dialog-skip-text">Hold to Skip</div>
-          <svg class="dialog-skip-progress" viewBox="0 0 36 36">
-            <circle class="dialog-skip-progress-bg" cx="18" cy="18" r="16" />
-            <circle class="dialog-skip-progress-fill" cx="18" cy="18" r="16" />
-          </svg>
+          <div class="dialog-skip-indicator">
+            <div class="dialog-skip-text">Hold to Skip</div>
+            <svg class="dialog-skip-progress" viewBox="0 0 36 36">
+              <circle class="dialog-skip-progress-bg" cx="18" cy="18" r="16" />
+              <circle class="dialog-skip-progress-fill" cx="18" cy="18" r="16" />
+            </svg>
+          </div>
         </div>
       </div>
     `;

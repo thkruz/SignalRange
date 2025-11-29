@@ -135,6 +135,7 @@ export const scenario1Data: ScenarioData = {
       },
       {
         id: 'MIA-01',
+        isOperational: false,
         name: 'Miami Ground Station',
         location: {
           latitude: 25.7617,

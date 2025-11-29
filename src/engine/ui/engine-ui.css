@@ -41,7 +41,6 @@
   min-width: 300px;
   max-width: 90vw;
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.5);
-  border-radius: var(--user-account-border-radius);
 }
 
 .draggable-box__title-bar {
@@ -52,7 +51,6 @@
   margin: 0;
   height: 25px;
   width: 100%;
-  border-radius: var(--user-account-border-radius) var(--user-account-border-radius) 0 0;
 }
 
 .draggable-box__title {
@@ -73,11 +71,10 @@
 .draggable-box__content {
   border: 5px solid var(--color-dark-border);
   border-top: 0;
-  border-radius: 0 0 var(--user-account-border-radius) var(--user-account-border-radius);
   min-height: 250px;
   height: 100%;
   max-height: 70vh;
-  overflow: auto;
+  overflow: hidden;
 }
 
 .draggable-box__btn {

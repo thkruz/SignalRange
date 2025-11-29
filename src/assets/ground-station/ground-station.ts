@@ -42,7 +42,7 @@ export class GroundStation {
       id: config.id,
       name: config.name,
       location: config.location,
-      isOperational: true,
+      isOperational: config.isOperational ?? true,
       equipment: {
         antennas: [],
         rfFrontEnds: [],

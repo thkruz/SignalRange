@@ -24,8 +24,15 @@ export const CharacterNames: Record<Character, string> = {
 };
 
 export const CharacterTitles: Record<Character, string> = {
-  [Character.CHARLIE_BROOKS]: 'Senior Ground Station Operator<br/>North Atlantic Teleport Services',
-  [Character.CATHERINE_VEGA]: 'CEO<br/>SeaLink',
-  [Character.JAMES_OKAFOR]: 'Fleet Captain<br/>Atlantic Shipping Alliance',
-  [Character.FRANCIS_MARTIN]: 'Board Member<br/>SeaLink',
+  [Character.CHARLIE_BROOKS]: 'Senior Ground Station Operator',
+  [Character.CATHERINE_VEGA]: 'CEO',
+  [Character.JAMES_OKAFOR]: 'Fleet Captain',
+  [Character.FRANCIS_MARTIN]: 'Board Member',
+};
+
+export const CharacterCompany: Record<Character, string> = {
+  [Character.CHARLIE_BROOKS]: 'North Atlantic Teleport Services',
+  [Character.CATHERINE_VEGA]: 'SeaLink',
+  [Character.JAMES_OKAFOR]: 'Atlantic Shipping Alliance',
+  [Character.FRANCIS_MARTIN]: 'SeaLink',
 };

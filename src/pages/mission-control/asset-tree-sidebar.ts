@@ -42,29 +42,6 @@ export class AssetTreeSidebar extends BaseElement {
           <img src="${layoutSidebarLeftCollapsePng}" alt="Collapse Sidebar" />
         </button>
       </div>
-      <div id="mission-icons-section" class="mission-icons-section list-group list-group-flush" style="display: none;">
-        <div class="list-group-header sticky-top">
-          <span class="list-group-header-text">Mission</span>
-        </div>
-        <a class="list-group-item list-group-item-action d-flex align-items-center mission-brief-icon" title="Mission Brief">
-          <span class="item-icon">
-            <img src="${targetArrowPng}" alt="Mission Brief"/>
-          </span>
-          <span class="flex-fill">Mission Brief</span>
-        </a>
-        <a class="list-group-item list-group-item-action d-flex align-items-center checklist-icon" title="Mission Checklist">
-          <span class="item-icon">
-            <img src="${checklistPng}" alt="Checklist"/>
-          </span>
-          <span class="flex-fill">Checklist</span>
-        </a>
-        <a class="list-group-item list-group-item-action d-flex align-items-center dialog-icon" title="Dialog History">
-          <span class="item-icon">
-            <img src="${historyPng}" alt="Dialog History"/>
-          </span>
-          <span class="flex-fill">Dialog History</span>
-        </a>
-      </div>
       <div class="sidebar-content">
         <div id="asset-tree" class="asset-tree"></div>
       </div>
@@ -193,6 +170,30 @@ export class AssetTreeSidebar extends BaseElement {
     const treeContainer = qs('#asset-tree', this.dom_);
 
     const treeHtml = html`
+      <div id="mission-icons-section" class="mission-icons-section list-group list-group-flush" style="display: none;">
+        <div class="list-group-header">
+          <span class="list-group-header-text">Mission</span>
+        </div>
+        <a class="list-group-item list-group-item-action d-flex align-items-center mission-brief-icon" title="Mission Brief">
+          <span class="item-icon">
+            <img src="${targetArrowPng}" alt="Mission Brief"/>
+          </span>
+          <span class="flex-fill">Mission Brief</span>
+        </a>
+        <a class="list-group-item list-group-item-action d-flex align-items-center checklist-icon" title="Mission Checklist">
+          <span class="item-icon">
+            <img src="${checklistPng}" alt="Checklist"/>
+          </span>
+          <span class="flex-fill">Checklist</span>
+        </a>
+        <a class="list-group-item list-group-item-action d-flex align-items-center dialog-icon" title="Dialog History">
+          <span class="item-icon">
+            <img src="${historyPng}" alt="Dialog History"/>
+          </span>
+          <span class="flex-fill">Dialog History</span>
+        </a>
+      </div>
+
       <div class="list-group list-group-flush mb-3">
         <div class="list-group-header sticky-top">
           <span class="list-group-header-text">Ground Stations</span>

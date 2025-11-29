@@ -519,17 +519,27 @@ export abstract class AntennaCore extends BaseEquipment {
         break;
 
       case 'manual':
-        // No automatic movement, operator controls via staged changes
+        // Set target to current position to prevent unintended movement
+        // Operator controls via staged changes
+        this.state.targetAzimuth = this.state.azimuth;
+        this.state.targetElevation = this.state.elevation;
+        this.state.targetPolarization = this.state.polarization;
         break;
 
       case 'step-track':
-        // Just switch mode - user must press START to begin tracking
-        // This allows setting beacon frequency before tracking starts
+        // Set target to current position to prevent unintended movement
+        // User must press START to begin tracking
+        this.state.targetAzimuth = this.state.azimuth;
+        this.state.targetElevation = this.state.elevation;
+        this.state.targetPolarization = this.state.polarization;
         break;
 
       case 'program-track':
-        // Just switch mode - user must press "Move to Target" to begin tracking
-        // This allows selecting satellite before movement starts
+        // Set target to current position to prevent unintended movement
+        // User must select satellite and press "Move to Target" to begin tracking
+        this.state.targetAzimuth = this.state.azimuth;
+        this.state.targetElevation = this.state.elevation;
+        this.state.targetPolarization = this.state.polarization;
         break;
     }
 

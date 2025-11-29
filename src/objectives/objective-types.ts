@@ -122,6 +122,8 @@ export interface Objective {
   title: string;
   /** Detailed description of what the student must do */
   description: string;
+  /** Optional: Ground station ID this objective is associated with */
+  groundStation?: string;
   /** Array of conditions that must all be satisfied */
   conditions: Condition[];
   /** Whether all conditions must be met simultaneously (AND) or any one (OR) */

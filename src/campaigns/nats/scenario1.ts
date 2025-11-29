@@ -301,6 +301,7 @@ export const scenario1Data: ScenarioData = {
       id: 'phase-1-gpsdo',
       title: 'Phase 1: GPSDO Power-Up and Lock',
       description: 'Power up the GPSDO module and achieve stable frequency lock.',
+      groundStation: 'VT-01',
       conditions: [
         {
           type: 'equipment-powered',
@@ -346,6 +347,7 @@ export const scenario1Data: ScenarioData = {
       id: 'phase-1-lnb',
       title: 'Phase 2: LNB Power-Up and Stabilization',
       description: 'Power up the LNB module and wait for thermal stabilization.',
+      groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['phase-1-gpsdo'],
       conditions: [
         {
@@ -400,6 +402,7 @@ export const scenario1Data: ScenarioData = {
       id: 'phase-1-buc',
       title: 'Phase 3: BUC Power-Up (Standby Mode)',
       description: 'Power up the BUC module in standby mode with RF output muted.',
+      groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['phase-1-lnb'],
       conditions: [
         {
@@ -436,6 +439,7 @@ export const scenario1Data: ScenarioData = {
       id: 'phase-1-spec-a',
       title: 'Phase 4: Spectrum Analyzer Configuration',
       description: 'Configure the spectrum analyzer for signal monitoring.',
+      groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['phase-1-buc'],
       conditions: [
         {
@@ -487,6 +491,7 @@ export const scenario1Data: ScenarioData = {
       id: 'acquire-lock-satellite-1',
       title: 'Phase 5: Acquire and Maintain Lock on HELIOS-7',
       description: 'Point the antenna at satellite 1 (HELIOS-7) and achieve stable tracking lock. The lock must be maintained for at least 10 seconds.',
+      groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['phase-1-spec-a'],
       conditions: [
         {

@@ -98,10 +98,10 @@ export class TabbedCanvas extends BaseElement {
 
     const tabs = [
       { id: 'dashboard', label: 'Dashboard', icon: '📊' },
-      { id: 'acu-control', label: 'ACU Control', icon: '📡' },
-      { id: 'rx-analysis', label: 'RX Analysis', icon: '📥' },
-      { id: 'tx-chain', label: 'TX Chain', icon: '📤' },
-      { id: 'gps-timing', label: 'GPS Timing', icon: '🛰️' },
+      { id: 'acu-control', label: 'ACU Control', icon: '📡', isDisabled: groundStation.state.isOperational === false },
+      { id: 'rx-analysis', label: 'RX Analysis', icon: '📥', isDisabled: groundStation.state.isOperational === false },
+      { id: 'tx-chain', label: 'TX Chain', icon: '📤', isDisabled: groundStation.state.isOperational === false },
+      { id: 'gps-timing', label: 'GPS Timing', icon: '🛰️', isDisabled: groundStation.state.isOperational === false },
     ];
 
     this.renderTabs_(tabs);
@@ -137,18 +137,19 @@ export class TabbedCanvas extends BaseElement {
   /**
    * Render tab bar using Bootstrap nav-tabs
    */
-  private renderTabs_(tabs: Array<{ id: string; label: string; icon: string }>): void {
+  private renderTabs_(tabs: Array<{ id: string; label: string; icon: string, isDisabled?: boolean }>): void {
     const tabBar = qs('#tab-bar', this.dom_);
 
     tabBar.innerHTML = tabs.map(tab => html`
       <li class="nav-item" role="presentation">
-        <a class="nav-link ${tab.id === this.activeTab_ ? 'active' : ''}"
-           href="#"
-           role="tab"
-           data-tab-id="${tab.id}">
-          <span class="tab-icon">${tab.icon}</span>
-          <span class="tab-label">${tab.label}</span>
-        </a>
+      <a class="nav-link ${tab.id === this.activeTab_ ? 'active' : ''} ${tab.isDisabled ? 'disabled' : ''}"
+         href="#"
+         role="tab"
+         data-tab-id="${tab.id}"
+         ${tab.isDisabled ? 'aria-disabled="true"' : ''}>
+        <span class="tab-icon">${tab.icon}</span>
+        <span class="tab-label">${tab.label}</span>
+      </a>
       </li>
     `).join('');
 

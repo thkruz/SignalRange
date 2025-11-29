@@ -38,6 +38,9 @@ temp/
 *.notes.*
 notes
 
+# Retrospective files
+retrospectives/
+
 # Plans
 plans/*.done
 plans/*.done.*

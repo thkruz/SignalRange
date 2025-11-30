@@ -52,63 +52,116 @@ export class TxChainTab extends BaseElement {
             </div>
             <div class="card-body">
               <!-- LO Frequency Control -->
-              <div class="mb-3">
-                <label for="buc-lo-frequency" class="form-label d-flex justify-content-between">
-                  <span class="text-muted small text-uppercase">LO Frequency</span>
-                  <span id="buc-lo-frequency-display" class="fw-bold font-monospace">6425 MHz</span>
-                </label>
-                <input
-                  type="range"
-                  id="buc-lo-frequency"
-                  class="form-range"
-                  min="6000"
-                  max="7000"
-                  step="10"
-                  value="6425"
-                />
+              <div class="equip-adjust-control">
+                <label class="equip-adjust-label">LO Frequency</label>
+                <div class="equip-adjust-row">
+                  <div class="equip-adjust-buttons equip-adjust-decrease">
+                    <button id="buc-lo-dec-coarse" class="btn-equip" title="-100 MHz">-100</button>
+                    <button id="buc-lo-dec-fine" class="btn-equip" title="-10 MHz">-10</button>
+                  </div>
+                  <div class="equip-adjust-display">
+                    <input type="number" id="buc-lo-frequency" class="equip-adjust-input"
+                           min="6000" max="7000" step="10" value="6425" />
+                  </div>
+                  <div class="equip-adjust-buttons equip-adjust-increase">
+                    <button id="buc-lo-inc-fine" class="btn-equip" title="+10 MHz">+10</button>
+                    <button id="buc-lo-inc-coarse" class="btn-equip" title="+100 MHz">+100</button>
+                  </div>
+                  <span class="equip-adjust-unit">MHz</span>
+                </div>
               </div>
 
               <!-- Gain Control -->
+              <div class="equip-adjust-control">
+                <label class="equip-adjust-label">Gain</label>
+                <div class="equip-adjust-row">
+                  <div class="equip-adjust-buttons equip-adjust-decrease">
+                    <button id="buc-gain-dec-coarse" class="btn-equip" title="-1 dB">-1</button>
+                    <button id="buc-gain-dec-fine" class="btn-equip" title="-0.5 dB">-.5</button>
+                  </div>
+                  <div class="equip-adjust-display">
+                    <input type="number" id="buc-gain" class="equip-adjust-input"
+                           min="0" max="70" step="0.5" value="58" />
+                  </div>
+                  <div class="equip-adjust-buttons equip-adjust-increase">
+                    <button id="buc-gain-inc-fine" class="btn-equip" title="+0.5 dB">+.5</button>
+                    <button id="buc-gain-inc-coarse" class="btn-equip" title="+1 dB">+1</button>
+                  </div>
+                  <span class="equip-adjust-unit">dB</span>
+                </div>
+              </div>
+
+              <!-- Apply Button -->
               <div class="mb-3">
-                <label for="buc-gain" class="form-label d-flex justify-content-between">
-                  <span class="text-muted small text-uppercase">Gain</span>
-                  <span id="buc-gain-display" class="fw-bold font-monospace">58.0 dB</span>
-                </label>
-                <input
-                  type="range"
-                  id="buc-gain"
-                  class="form-range"
-                  min="0"
-                  max="70"
-                  step="0.5"
-                  value="58"
-                />
+                <button id="buc-apply-btn" class="btn btn-primary btn-sm">Apply Changes</button>
               </div>
 
-              <!-- Power Switch -->
-              <div class="form-check form-switch mb-2">
-                <input type="checkbox" id="buc-power" class="form-check-input" role="switch" checked />
-                <label for="buc-power" class="form-check-label">Power</label>
+              <!-- Controls and Status Row -->
+              <div class="row g-2 mb-2">
+                <!-- Controls Column -->
+                <div class="col-6">
+                  <div class="metric-group h-100">
+                    <div class="metric-group-title">Controls</div>
+                    <div class="form-check form-switch mb-2">
+                      <input type="checkbox" id="buc-power" class="form-check-input" role="switch" checked />
+                      <label for="buc-power" class="form-check-label small">Power</label>
+                    </div>
+                    <div class="form-check form-switch">
+                      <input type="checkbox" id="buc-mute" class="form-check-input" role="switch" />
+                      <label for="buc-mute" class="form-check-label small">Mute</label>
+                    </div>
+                  </div>
+                </div>
+                <!-- RF Status Column -->
+                <div class="col-6">
+                  <div class="metric-group h-100">
+                    <div class="metric-group-title">RF Status</div>
+                    <div class="metric-row">
+                      <span class="metric-label">Output:</span>
+                      <span id="buc-output-power-display" class="metric-value">-10.0 dBm</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">P1dB Margin:</span>
+                      <span id="buc-p1db-margin-display" class="metric-value">25.0 dB</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Lock:</span>
+                      <span id="buc-lock-status" class="status-badge status-badge-locked">Locked</span>
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              <!-- Mute Switch -->
-              <div class="form-check form-switch mb-3">
-                <input type="checkbox" id="buc-mute" class="form-check-input" role="switch" />
-                <label for="buc-mute" class="form-check-label">Mute</label>
-              </div>
-
-              <!-- Status Indicators -->
-              <div class="d-flex justify-content-between align-items-center mb-2">
-                <span class="text-muted small">Output Power:</span>
-                <span id="buc-output-power-display" class="fw-bold font-monospace">-10.0 dBm</span>
-              </div>
-              <div class="d-flex justify-content-between align-items-center mb-2">
-                <span class="text-muted small">Temperature:</span>
-                <span id="buc-temperature-display" class="fw-bold font-monospace">25.0 °C</span>
-              </div>
-              <div class="d-flex justify-content-between align-items-center">
-                <span class="text-muted small">Lock Status:</span>
-                <div id="buc-lock-led" class="led led-green"></div>
+              <!-- Thermal and Signal Quality Row -->
+              <div class="row g-2">
+                <!-- Thermal Column -->
+                <div class="col-6">
+                  <div class="metric-group h-100">
+                    <div class="metric-group-title">Thermal</div>
+                    <div class="metric-row">
+                      <span class="metric-label">Temp:</span>
+                      <span id="buc-temperature-display" class="metric-value">25.0 °C</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Current:</span>
+                      <span id="buc-current-display" class="metric-value">0.00 A</span>
+                    </div>
+                  </div>
+                </div>
+                <!-- Signal Quality Column -->
+                <div class="col-6">
+                  <div class="metric-group h-100">
+                    <div class="metric-group-title">Signal Quality</div>
+                    <div class="metric-row">
+                      <span class="metric-label">Phase Noise:</span>
+                      <span id="buc-phase-noise-display" class="metric-value">-100 dBc/Hz</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Freq Error:</span>
+                      <span id="buc-freq-error-display" class="metric-value">0 Hz</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -122,63 +175,114 @@ export class TxChainTab extends BaseElement {
               <div id="hpa-alarm-badge"></div>
             </div>
             <div class="card-body">
-              <!-- Power Switch -->
-              <div class="form-check form-switch mb-2">
-                <input type="checkbox" id="hpa-power" class="form-check-input" role="switch" checked />
-                <label for="hpa-power" class="form-check-label">Power</label>
-              </div>
-
-              <!-- HPA Enable Switch -->
-              <div class="form-check form-switch mb-3">
-                <input type="checkbox" id="hpa-enable" class="form-check-input" role="switch" />
-                <label for="hpa-enable" class="form-check-label">HPA Enable</label>
-              </div>
-
               <!-- Back-off Control -->
-              <div class="mb-3">
-                <label for="hpa-backoff" class="form-label d-flex justify-content-between">
-                  <span class="text-muted small text-uppercase">Back-off from P1dB</span>
-                  <span id="hpa-backoff-display" class="fw-bold font-monospace">6.0 dB</span>
-                </label>
-                <input
-                  type="range"
-                  id="hpa-backoff"
-                  class="form-range"
-                  min="0"
-                  max="30"
-                  step="0.5"
-                  value="6"
-                />
+              <div class="equip-adjust-control">
+                <label class="equip-adjust-label">Back-off from P1dB</label>
+                <div class="equip-adjust-row">
+                  <div class="equip-adjust-buttons equip-adjust-decrease">
+                    <button id="hpa-backoff-dec-coarse" class="btn-equip" title="-5 dB">-5</button>
+                    <button id="hpa-backoff-dec-fine" class="btn-equip" title="-1 dB">-1</button>
+                  </div>
+                  <div class="equip-adjust-display">
+                    <input type="number" id="hpa-backoff" class="equip-adjust-input"
+                           min="0" max="30" step="0.5" value="6" />
+                  </div>
+                  <div class="equip-adjust-buttons equip-adjust-increase">
+                    <button id="hpa-backoff-inc-fine" class="btn-equip" title="+1 dB">+1</button>
+                    <button id="hpa-backoff-inc-coarse" class="btn-equip" title="+5 dB">+5</button>
+                  </div>
+                  <span class="equip-adjust-unit">dB</span>
+                </div>
               </div>
 
-              <!-- Status Indicators -->
-              <div class="d-flex justify-content-between align-items-center mb-2">
-                <span class="text-muted small">Output Power:</span>
-                <span id="hpa-output-power-display" class="fw-bold font-monospace">50.0 dBm</span>
+              <!-- Apply Button -->
+              <div class="mb-3">
+                <button id="hpa-apply-btn" class="btn btn-primary btn-sm">Apply Changes</button>
               </div>
-              <div class="d-flex justify-content-between align-items-center mb-2">
-                <span class="text-muted small">Gain:</span>
-                <span id="hpa-gain-display" class="fw-bold font-monospace">44.0 dB</span>
+
+              <!-- Controls and Power Output Row -->
+              <div class="row g-2 mb-2">
+                <!-- Controls Column -->
+                <div class="col-5">
+                  <div class="metric-group h-100">
+                    <div class="metric-group-title">Controls</div>
+                    <div class="form-check form-switch mb-2">
+                      <input type="checkbox" id="hpa-power" class="form-check-input" role="switch" checked />
+                      <label for="hpa-power" class="form-check-label small">Power</label>
+                    </div>
+                    <div class="form-check form-switch">
+                      <input type="checkbox" id="hpa-enable" class="form-check-input" role="switch" />
+                      <label for="hpa-enable" class="form-check-label small">HPA Enable</label>
+                    </div>
+                  </div>
+                </div>
+                <!-- Power Output Column -->
+                <div class="col-7">
+                  <div class="metric-group h-100">
+                    <div class="metric-group-title">Power Output</div>
+                    <div class="metric-row">
+                      <span class="metric-label">Output:</span>
+                      <span id="hpa-output-power-display" class="metric-value">50.0 dBm</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Power:</span>
+                      <div class="power-meter-container">
+                        <div id="hpa-power-meter" class="power-meter">
+                          <div class="power-segment led-off"></div>
+                          <div class="power-segment led-off"></div>
+                          <div class="power-segment led-off"></div>
+                          <div class="power-segment led-off"></div>
+                          <div class="power-segment led-off"></div>
+                        </div>
+                        <span id="hpa-power-watts" class="power-meter-label">0W</span>
+                      </div>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">P1dB:</span>
+                      <span id="hpa-p1db-display" class="metric-value">50.0 dBm</span>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div class="d-flex justify-content-between align-items-center mb-2">
-                <span class="text-muted small">Temperature:</span>
-                <span id="hpa-temperature-display" class="fw-bold font-monospace">45.0 °C</span>
-              </div>
-              <div class="d-flex justify-content-between align-items-center mb-2">
-                <span class="text-muted small">IMD Level:</span>
-                <span id="hpa-imd-display" class="fw-bold font-monospace">-30.0 dBc</span>
-              </div>
-              <div class="d-flex justify-content-between align-items-center">
-                <span class="text-muted small">Overdrive:</span>
-                <div id="hpa-overdrive-led" class="led led-green"></div>
+
+              <!-- Amplifier Status and Signal Quality Row -->
+              <div class="row g-2">
+                <!-- Amplifier Status Column -->
+                <div class="col-6">
+                  <div class="metric-group h-100">
+                    <div class="metric-group-title">Amplifier Status</div>
+                    <div class="metric-row">
+                      <span class="metric-label">Gain:</span>
+                      <span id="hpa-gain-display" class="metric-value">44.0 dB</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Temp:</span>
+                      <span id="hpa-temperature-display" class="metric-value">45.0 °C</span>
+                    </div>
+                  </div>
+                </div>
+                <!-- Signal Quality Column -->
+                <div class="col-6">
+                  <div class="metric-group h-100">
+                    <div class="metric-group-title">Signal Quality</div>
+                    <div class="metric-row">
+                      <span class="metric-label">IMD Level:</span>
+                      <span id="hpa-imd-display" class="metric-value">-30.0 dBc</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Overdrive:</span>
+                      <span id="hpa-overdrive-status" class="status-badge status-badge-good">Normal</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Transmitter Modem Control Card (Full Width) -->
-        <div class="col-12">
-          <div class="card">
+        <!-- Transmitter Modem Control Card -->
+        <div class="col-lg-6">
+          <div class="card h-100">
             <div class="card-header d-flex justify-content-between align-items-center">
               <h3 class="card-title">Transmitter Modems</h3>
               <div id="tx-alarm-badge"></div>
@@ -201,36 +305,36 @@ export class TxChainTab extends BaseElement {
                     </div>
                     <div class="card-body">
                       <!-- Antenna selector -->
-                      <div class="mb-3">
-                        <label class="form-label">Antenna</label>
-                        <select id="tx-antenna-select" class="form-select">
+                      <div class="mb-2">
+                        <label class="form-label small">Antenna</label>
+                        <select id="tx-antenna-select" class="form-select form-select-sm">
                           <option value="1">Antenna 1</option>
                           <option value="2">Antenna 2</option>
                         </select>
                       </div>
 
                       <!-- Frequency input -->
-                      <div class="mb-3">
-                        <label class="form-label">Frequency (MHz)</label>
-                        <input id="tx-frequency-input" type="number" class="form-control" step="0.1" />
-                        <small class="text-muted">Current: <span id="tx-frequency-current">--</span> MHz</small>
+                      <div class="mb-2">
+                        <label class="form-label small">Frequency (MHz)</label>
+                        <input id="tx-frequency-input" type="number" class="form-control form-control-sm" step="0.1" />
+                        <small class="text-muted">Current: <span id="tx-frequency-current">--</span></small>
                       </div>
 
                       <!-- Bandwidth input -->
-                      <div class="mb-3">
-                        <label class="form-label">Bandwidth (MHz)</label>
-                        <input id="tx-bandwidth-input" type="number" class="form-control" step="0.1" />
-                        <small class="text-muted">Current: <span id="tx-bandwidth-current">--</span> MHz</small>
+                      <div class="mb-2">
+                        <label class="form-label small">Bandwidth (MHz)</label>
+                        <input id="tx-bandwidth-input" type="number" class="form-control form-control-sm" step="0.1" />
+                        <small class="text-muted">Current: <span id="tx-bandwidth-current">--</span></small>
                       </div>
 
                       <!-- Power input -->
-                      <div class="mb-3">
-                        <label class="form-label">Power (dBm)</label>
-                        <input id="tx-power-input" type="number" class="form-control" step="0.5" />
-                        <small class="text-muted">Current: <span id="tx-power-current">--</span> dBm</small>
+                      <div class="mb-2">
+                        <label class="form-label small">Power (dBm)</label>
+                        <input id="tx-power-input" type="number" class="form-control form-control-sm" step="0.5" />
+                        <small class="text-muted">Current: <span id="tx-power-current">--</span></small>
                       </div>
 
-                      <button id="tx-apply-btn" class="btn btn-primary w-100">Apply Changes</button>
+                      <button id="tx-apply-btn" class="btn btn-primary btn-sm w-100">Apply Changes</button>
                     </div>
                   </div>
                 </div>
@@ -243,63 +347,63 @@ export class TxChainTab extends BaseElement {
                     </div>
                     <div class="card-body">
                       <!-- Power Budget Bar -->
-                      <div class="mb-3">
-                        <label class="form-label d-flex justify-content-between">
+                      <div class="mb-2">
+                        <label class="form-label small d-flex justify-content-between">
                           <span>Power Budget</span>
                           <span id="tx-power-percentage" class="fw-bold">0%</span>
                         </label>
-                        <div class="progress">
+                        <div class="progress" style="height: 6px;">
                           <div id="tx-power-bar" class="progress-bar" style="width: 0%"></div>
                         </div>
                       </div>
 
                       <!-- Switches -->
-                      <div class="mb-3">
-                        <div class="form-check form-switch mb-2">
+                      <div class="mb-2">
+                        <div class="form-check form-switch mb-1">
                           <input id="tx-transmit-switch" type="checkbox" class="form-check-input" role="switch" />
-                          <label class="form-check-label">Transmit</label>
+                          <label class="form-check-label small">Transmit</label>
                         </div>
-                        <div class="form-check form-switch mb-2">
+                        <div class="form-check form-switch mb-1">
                           <input id="tx-loopback-switch" type="checkbox" class="form-check-input" role="switch" />
-                          <label class="form-check-label">Loopback</label>
+                          <label class="form-check-label small">Loopback</label>
                         </div>
-                        <div class="form-check form-switch mb-2">
+                        <div class="form-check form-switch mb-1">
                           <input id="tx-power-switch" type="checkbox" class="form-check-input" role="switch" />
-                          <label class="form-check-label">Power</label>
+                          <label class="form-check-label small">Power</label>
                         </div>
                       </div>
 
                       <!-- Status LEDs -->
-                      <div class="mb-3">
+                      <div class="mb-2">
                         <div class="d-flex justify-content-around">
                           <div class="text-center">
                             <div id="tx-transmit-led" class="led led-gray mb-1"></div>
-                            <small class="text-muted">TX</small>
+                            <small class="text-muted" style="font-size: 0.65rem;">TX</small>
                           </div>
                           <div class="text-center">
                             <div id="tx-fault-led" class="led led-gray mb-1"></div>
-                            <small class="text-muted">Fault</small>
+                            <small class="text-muted" style="font-size: 0.65rem;">Fault</small>
                           </div>
                           <div class="text-center">
                             <div id="tx-loopback-led" class="led led-gray mb-1"></div>
-                            <small class="text-muted">Loopback</small>
+                            <small class="text-muted" style="font-size: 0.65rem;">Loop</small>
                           </div>
                           <div class="text-center">
                             <div id="tx-online-led" class="led led-gray mb-1"></div>
-                            <small class="text-muted">Online</small>
+                            <small class="text-muted" style="font-size: 0.65rem;">Online</small>
                           </div>
                         </div>
                       </div>
 
                       <!-- Fault Reset Button -->
-                      <button id="tx-fault-reset-btn" class="btn btn-warning w-100 mb-2">Reset Fault</button>
+                      <button id="tx-fault-reset-btn" class="btn btn-warning btn-sm w-100">Reset Fault</button>
                     </div>
                   </div>
                 </div>
               </div>
 
               <!-- Status Bar -->
-              <div id="tx-status-bar" class="alert alert-info mt-3" role="alert">
+              <div id="tx-status-bar" class="small text-muted mt-2 py-1 border-top" style="font-size: 0.75rem;">
                 Ready
               </div>
             </div>
@@ -307,14 +411,14 @@ export class TxChainTab extends BaseElement {
         </div>
 
         <!-- Redundancy Controller Placeholder Card -->
-        <div class="col-lg-6">
-          <div class="card">
+        <div class="col-lg-4">
+          <div class="card h-100">
             <div class="card-header">
               <h3 class="card-title">Redundancy Controller</h3>
             </div>
-            <div class="card-body text-center">
-              <p class="text-muted">Redundancy controller coming in future phase</p>
-              <p class="text-muted small">Status: Not Implemented</p>
+            <div class="card-body text-center d-flex flex-column justify-content-center">
+              <p class="text-muted mb-2">Redundancy controller coming in future phase</p>
+              <p class="text-muted small mb-0">Status: Not Implemented</p>
             </div>
           </div>
         </div>

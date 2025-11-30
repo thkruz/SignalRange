@@ -59,55 +59,76 @@ export class RxAnalysisTab extends BaseElement {
             </div>
             <div class="card-body">
               <!-- LO Frequency Control -->
-              <div class="mb-3">
-                <label for="lnb-lo-frequency" class="form-label d-flex justify-content-between">
-                  <span class="text-muted small text-uppercase">LO Frequency</span>
-                  <span id="lnb-lo-frequency-display" class="fw-bold font-monospace">6080 MHz</span>
-                </label>
-                <input
-                  type="range"
-                  id="lnb-lo-frequency"
-                  class="form-range"
-                  min="5000"
-                  max="7000"
-                  step="10"
-                  value="6080"
-                />
-              </div>
-
-              <!-- Gain Control -->
-              <div class="mb-3">
-                <label class="form-label text-muted small text-uppercase">Gain</label>
-                <div class="d-flex align-items-center gap-2">
-                  <div class="btn-group btn-group-sm">
-                    <button id="lnb-gain-dec-coarse" class="btn btn-outline-secondary" title="-1 dB">-1</button>
-                    <button id="lnb-gain-dec-fine" class="btn btn-outline-secondary" title="-0.1 dB">-.1</button>
+              <div class="equip-adjust-control">
+                <label class="equip-adjust-label">LO Frequency</label>
+                <div class="equip-adjust-row">
+                  <div class="equip-adjust-buttons equip-adjust-decrease">
+                    <button id="lnb-lo-dec-coarse" class="btn-equip" title="-100 MHz">-100</button>
+                    <button id="lnb-lo-dec-fine" class="btn-equip" title="-10 MHz">-10</button>
                   </div>
-                  <div class="input-group input-group-sm" style="width: 100px;">
-                    <input type="number" id="lnb-gain" class="form-control text-center font-monospace" min="0" max="65" step="0.1" value="0" />
+                  <div class="equip-adjust-display">
+                    <input type="number" id="lnb-lo-frequency" class="equip-adjust-input"
+                           min="5000" max="7000" step="10" value="6080" />
                   </div>
-                  <div class="btn-group btn-group-sm">
-                    <button id="lnb-gain-inc-fine" class="btn btn-outline-secondary" title="+0.1 dB">+.1</button>
-                    <button id="lnb-gain-inc-coarse" class="btn btn-outline-secondary" title="+1 dB">+1</button>
+                  <div class="equip-adjust-buttons equip-adjust-increase">
+                    <button id="lnb-lo-inc-fine" class="btn-equip" title="+10 MHz">+10</button>
+                    <button id="lnb-lo-inc-coarse" class="btn-equip" title="+100 MHz">+100</button>
                   </div>
-                  <span class="text-muted small">dB</span>
+                  <span class="equip-adjust-unit">MHz</span>
                 </div>
               </div>
 
-              <!-- Power Switch -->
-              <div class="form-check form-switch mb-3">
-                <input type="checkbox" id="lnb-power" class="form-check-input" role="switch" checked />
-                <label for="lnb-power" class="form-check-label">Power</label>
+              <!-- Gain Control -->
+              <div class="equip-adjust-control">
+                <label class="equip-adjust-label">Gain</label>
+                <div class="equip-adjust-row">
+                  <div class="equip-adjust-buttons equip-adjust-decrease">
+                    <button id="lnb-gain-dec-coarse" class="btn-equip" title="-1 dB">-1</button>
+                    <button id="lnb-gain-dec-fine" class="btn-equip" title="-0.1 dB">-.1</button>
+                  </div>
+                  <div class="equip-adjust-display">
+                    <input type="number" id="lnb-gain" class="equip-adjust-input"
+                           min="0" max="65" step="0.1" value="0" />
+                  </div>
+                  <div class="equip-adjust-buttons equip-adjust-increase">
+                    <button id="lnb-gain-inc-fine" class="btn-equip" title="+0.1 dB">+.1</button>
+                    <button id="lnb-gain-inc-coarse" class="btn-equip" title="+1 dB">+1</button>
+                  </div>
+                  <span class="equip-adjust-unit">dB</span>
+                </div>
               </div>
 
-              <!-- Status Indicators -->
-              <div class="d-flex justify-content-between align-items-center mb-2">
-                <span class="text-muted small">Noise Temp:</span>
-                <span id="lnb-noise-temp-display" class="fw-bold font-monospace">45 K</span>
+              <!-- Apply Button -->
+              <div class="mb-3">
+                <button id="lnb-apply-btn" class="btn btn-primary btn-sm">Apply Changes</button>
               </div>
-              <div class="d-flex justify-content-between align-items-center">
-                <span class="text-muted small">Lock Status:</span>
-                <div id="lnb-lock-led" class="led led-green"></div>
+
+              <!-- Controls and Status Row -->
+              <div class="row g-2">
+                <!-- Controls Column -->
+                <div class="col-6">
+                  <div class="metric-group h-100">
+                    <div class="metric-group-title">Controls</div>
+                    <div class="form-check form-switch mb-2">
+                      <input type="checkbox" id="lnb-power" class="form-check-input" role="switch" checked />
+                      <label for="lnb-power" class="form-check-label small">Power</label>
+                    </div>
+                  </div>
+                </div>
+                <!-- Status Column -->
+                <div class="col-6">
+                  <div class="metric-group h-100">
+                    <div class="metric-group-title">Status</div>
+                    <div class="metric-row">
+                      <span class="metric-label">Noise Temp:</span>
+                      <span id="lnb-noise-temp-display" class="metric-value">45 K</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Lock:</span>
+                      <span id="lnb-lock-status" class="status-badge status-badge-locked">Locked</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -126,24 +147,34 @@ export class RxAnalysisTab extends BaseElement {
                 <select id="filter-bandwidth" class="form-select">
                   ${this.generateFilterOptions()}
                 </select>
-                <span id="filter-bandwidth-display" class="fw-bold font-monospace mt-2 d-block">20 MHz</span>
               </div>
 
-              <!-- Filter Metrics -->
-              <div class="d-flex justify-content-between align-items-center mb-2">
-                <span class="text-muted small">Insertion Loss:</span>
-                <span id="filter-insertion-loss-display" class="fw-bold font-monospace">2.0 dB</span>
-              </div>
-              <div class="d-flex justify-content-between align-items-center">
-                <span class="text-muted small">Noise Floor:</span>
-                <span id="filter-noise-floor-display" class="fw-bold font-monospace">-101 dBm</span>
+              <!-- Status Row -->
+              <div class="row g-2">
+                <div class="col-12">
+                  <div class="metric-group">
+                    <div class="metric-group-title">Status</div>
+                    <div class="metric-row">
+                      <span class="metric-label">Bandwidth:</span>
+                      <span id="filter-bandwidth-display" class="metric-value">20 MHz</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Insertion Loss:</span>
+                      <span id="filter-insertion-loss-display" class="metric-value">2.0 dB</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Noise Floor:</span>
+                      <span id="filter-noise-floor-display" class="metric-value">-101 dBm</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
         <!-- Spectrum Analyzer Canvas Card -->
-        <div class="col-7">
+        <div class="col-6">
           <div class="card">
             <div class="card-header">
               <h3 class="card-title">Spectrum Analyzer</h3>
@@ -157,59 +188,69 @@ export class RxAnalysisTab extends BaseElement {
         </div>
 
         <!-- Spectrum Analyzer Controls Card -->
-        <div class="col-5">
+        <div class="col-6">
           <div class="card">
             <div class="card-header">
               <h3 class="card-title">Spectrum Analyzer Controls</h3>
             </div>
             <div class="card-body" id="spec-analyzer-controls">
-              <!-- Frequency & Amplitude Row -->
+              <!-- Frequency Row -->
               <div class="row g-2 mb-2">
-                <div class="col-md-3">
-                  <label class="form-label d-flex justify-content-between">
-                    <span class="text-muted small text-uppercase">Center Frequency</span>
-                    <span id="sa-center-freq-display" class="fw-bold font-monospace">600.000 MHz</span>
-                  </label>
+                <div class="col-6">
+                  <label class="form-label text-muted small text-uppercase">Center Frequency</label>
                   <div class="input-group input-group-sm">
                     <input type="number" id="sa-center-freq" class="form-control" step="0.001">
                     <span class="input-group-text">MHz</span>
                   </div>
                 </div>
-                <div class="col-md-3">
-                  <label class="form-label d-flex justify-content-between">
-                    <span class="text-muted small text-uppercase">Span</span>
-                    <span id="sa-span-display" class="fw-bold font-monospace">100.000 MHz</span>
-                  </label>
+                <div class="col-6">
+                  <label class="form-label text-muted small text-uppercase">Span</label>
                   <div class="input-group input-group-sm">
                     <input type="number" id="sa-span" class="form-control" step="0.001">
                     <span class="input-group-text">MHz</span>
                   </div>
                 </div>
-                <div class="col-md-3">
-                  <label class="form-label d-flex justify-content-between">
-                    <span class="text-muted small text-uppercase">Reference Level</span>
-                    <span id="sa-ref-level-display" class="fw-bold font-monospace">0 dBm</span>
-                  </label>
+              </div>
+
+              <!-- Amplitude Row -->
+              <div class="row g-2 mb-2">
+                <div class="col-4">
+                  <label class="form-label text-muted small text-uppercase">Ref Level</label>
                   <div class="input-group input-group-sm">
                     <input type="number" id="sa-ref-level" class="form-control" step="1">
                     <span class="input-group-text">dBm</span>
                   </div>
                 </div>
-                <div class="col-md-3">
-                  <label class="form-label text-muted small text-uppercase">Scale (dB/div)</label>
-                  <select id="sa-scale" class="form-select form-select-sm">
-                    <option value="1">1 dB</option>
-                    <option value="2">2 dB</option>
-                    <option value="5">5 dB</option>
-                    <option value="6" selected>6 dB</option>
-                    <option value="10">10 dB</option>
-                  </select>
+                <div class="col-4">
+                  <label class="form-label text-muted small text-uppercase">Min Amp</label>
+                  <div class="input-group input-group-sm">
+                    <input type="number" id="sa-min-amp" class="form-control" step="1">
+                    <span class="input-group-text">dBm</span>
+                  </div>
+                </div>
+                <div class="col-4">
+                  <label class="form-label text-muted small text-uppercase">Max Amp</label>
+                  <div class="input-group input-group-sm">
+                    <input type="number" id="sa-max-amp" class="form-control" step="1">
+                    <span class="input-group-text">dBm</span>
+                  </div>
                 </div>
               </div>
 
+              <!-- Settings Row -->
               <div class="row g-2 mb-2">
-                <div class="col-md-3">
-                  <label class="form-label text-muted small text-uppercase">Resolution BW</label>
+                <div class="col-4">
+                  <label class="form-label text-muted small text-uppercase">Scale</label>
+                  <select id="sa-scale" class="form-select form-select-sm">
+                    <option value="1">1 dB/div</option>
+                    <option value="2">2 dB/div</option>
+                    <option value="5">5 dB/div</option>
+                    <option value="6" selected>6 dB/div</option>
+                    <option value="10">10 dB/div</option>
+                  </select>
+                </div>
+                <div class="col-4">
+                  <label class="form-label text-muted small text-uppercase">RBW</label>
                   <select id="sa-rbw" class="form-select form-select-sm">
                     <option value="auto">Auto</option>
                     <option value="0.0001">100 Hz</option>
@@ -219,30 +260,16 @@ export class RxAnalysisTab extends BaseElement {
                     <option value="1">1 MHz</option>
                   </select>
                 </div>
-                <div class="col-md-3">
-                  <label class="form-label d-flex justify-content-between">
-                    <span class="text-muted small text-uppercase">Min Amplitude</span>
-                  </label>
-                  <div class="input-group input-group-sm">
-                    <input type="number" id="sa-min-amp" class="form-control" step="1">
-                    <span class="input-group-text">dBm</span>
-                  </div>
-                </div>
-                <div class="col-md-3">
-                  <label class="form-label d-flex justify-content-between">
-                    <span class="text-muted small text-uppercase">Max Amplitude</span>
-                  </label>
-                  <div class="input-group input-group-sm">
-                    <input type="number" id="sa-max-amp" class="form-control" step="1">
-                    <span class="input-group-text">dBm</span>
-                  </div>
-                </div>
-                <div class="col-md-3">
-                  <label class="form-label d-flex justify-content-between">
-                    <span class="text-muted small text-uppercase">Refresh Rate</span>
-                    <span id="sa-refresh-display" class="fw-bold font-monospace">10 Hz</span>
-                  </label>
-                  <input type="range" id="sa-refresh" class="form-range" min="1" max="30" step="1" value="10">
+                <div class="col-4">
+                  <label class="form-label text-muted small text-uppercase">Refresh</label>
+                  <select id="sa-refresh" class="form-select form-select-sm">
+                    <option value="1">1 Hz</option>
+                    <option value="5">5 Hz</option>
+                    <option value="10" selected>10 Hz</option>
+                    <option value="15">15 Hz</option>
+                    <option value="20">20 Hz</option>
+                    <option value="30">30 Hz</option>
+                  </select>
                 </div>
               </div>
 
@@ -438,11 +465,11 @@ export class RxAnalysisTab extends BaseElement {
                         </div>
                       </div>
 
-                      <!-- Signal Quality LED -->
+                      <!-- Signal Quality Status -->
                       <div class="mb-3">
                         <div class="d-flex justify-content-between align-items-center">
                           <span class="text-muted">Signal Quality:</span>
-                          <div id="signal-led" class="led led-gray"></div>
+                          <span id="signal-status" class="status-badge status-badge-none">None</span>
                         </div>
                       </div>
 

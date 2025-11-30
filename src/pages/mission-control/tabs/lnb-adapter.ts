@@ -23,6 +23,10 @@ export class LNBAdapter {
   private readonly stateChangeHandler: (state: Partial<LNBState>) => void;
   private readonly alarmBadge_: CardAlarmBadge;
 
+  // Staged values for Apply pattern
+  private stagedLoFrequency_: number = 6080;
+  private stagedGain_: number = 0;
+
   constructor(lnbModule: LNBModuleCore, containerEl: HTMLElement) {
     this.lnbModule = lnbModule;
     this.containerEl = containerEl;
@@ -57,69 +61,118 @@ export class LNBAdapter {
   }
 
   private setupDomCache_(): void {
-    this.domCache_.set('loFreqSlider', qs('#lnb-lo-frequency', this.containerEl));
-    this.domCache_.set('loFreqDisplay', qs('#lnb-lo-frequency-display', this.containerEl));
+    // LO Frequency controls
+    this.domCache_.set('loFreqInput', qs('#lnb-lo-frequency', this.containerEl));
+    this.domCache_.set('loDecCoarse', qs('#lnb-lo-dec-coarse', this.containerEl));
+    this.domCache_.set('loDecFine', qs('#lnb-lo-dec-fine', this.containerEl));
+    this.domCache_.set('loIncFine', qs('#lnb-lo-inc-fine', this.containerEl));
+    this.domCache_.set('loIncCoarse', qs('#lnb-lo-inc-coarse', this.containerEl));
+
+    // Gain controls
     this.domCache_.set('gainInput', qs('#lnb-gain', this.containerEl));
     this.domCache_.set('gainDecCoarse', qs('#lnb-gain-dec-coarse', this.containerEl));
     this.domCache_.set('gainDecFine', qs('#lnb-gain-dec-fine', this.containerEl));
     this.domCache_.set('gainIncFine', qs('#lnb-gain-inc-fine', this.containerEl));
     this.domCache_.set('gainIncCoarse', qs('#lnb-gain-inc-coarse', this.containerEl));
+
+    // Apply button, power switch, status displays
+    this.domCache_.set('applyBtn', qs('#lnb-apply-btn', this.containerEl));
     this.domCache_.set('powerSwitch', qs('#lnb-power', this.containerEl));
     this.domCache_.set('noiseTempDisplay', qs('#lnb-noise-temp-display', this.containerEl));
-    this.domCache_.set('lockLed', qs('#lnb-lock-led', this.containerEl));
+    this.domCache_.set('lockStatus', qs('#lnb-lock-status', this.containerEl));
   }
 
   private setupInputListeners_(): void {
-    const loFreqSlider = this.domCache_.get('loFreqSlider') as HTMLInputElement;
+    // LO Frequency controls
+    const loFreqInput = this.domCache_.get('loFreqInput') as HTMLInputElement;
+    const loDecCoarse = this.domCache_.get('loDecCoarse') as HTMLButtonElement;
+    const loDecFine = this.domCache_.get('loDecFine') as HTMLButtonElement;
+    const loIncFine = this.domCache_.get('loIncFine') as HTMLButtonElement;
+    const loIncCoarse = this.domCache_.get('loIncCoarse') as HTMLButtonElement;
+
+    // Gain controls
     const gainInput = this.domCache_.get('gainInput') as HTMLInputElement;
     const gainDecCoarse = this.domCache_.get('gainDecCoarse') as HTMLButtonElement;
     const gainDecFine = this.domCache_.get('gainDecFine') as HTMLButtonElement;
     const gainIncFine = this.domCache_.get('gainIncFine') as HTMLButtonElement;
     const gainIncCoarse = this.domCache_.get('gainIncCoarse') as HTMLButtonElement;
+
+    // Apply button and power switch
+    const applyBtn = this.domCache_.get('applyBtn') as HTMLButtonElement;
     const powerSwitch = this.domCache_.get('powerSwitch') as HTMLInputElement;
 
-    // LO Frequency slider
-    loFreqSlider?.addEventListener('input', this.loFreqHandler_.bind(this));
-    this.boundHandlers.set('loFreq', this.loFreqHandler_.bind(this));
+    // LO Frequency input change updates staged value
+    loFreqInput?.addEventListener('change', this.loFreqInputHandler_.bind(this));
+    this.boundHandlers.set('loFreqInput', this.loFreqInputHandler_.bind(this));
 
-    // Gain input and buttons
+    // LO Frequency buttons
+    loDecCoarse?.addEventListener('click', () => this.adjustStagedLoFreq_(-100));
+    loDecFine?.addEventListener('click', () => this.adjustStagedLoFreq_(-10));
+    loIncFine?.addEventListener('click', () => this.adjustStagedLoFreq_(10));
+    loIncCoarse?.addEventListener('click', () => this.adjustStagedLoFreq_(100));
+
+    this.boundHandlers.set('loDecCoarse', () => this.adjustStagedLoFreq_(-100));
+    this.boundHandlers.set('loDecFine', () => this.adjustStagedLoFreq_(-10));
+    this.boundHandlers.set('loIncFine', () => this.adjustStagedLoFreq_(10));
+    this.boundHandlers.set('loIncCoarse', () => this.adjustStagedLoFreq_(100));
+
+    // Gain input change updates staged value
     gainInput?.addEventListener('change', this.gainInputHandler_.bind(this));
     this.boundHandlers.set('gainInput', this.gainInputHandler_.bind(this));
 
-    gainDecCoarse?.addEventListener('click', () => this.adjustGain_(-1));
-    gainDecFine?.addEventListener('click', () => this.adjustGain_(-0.1));
-    gainIncFine?.addEventListener('click', () => this.adjustGain_(0.1));
-    gainIncCoarse?.addEventListener('click', () => this.adjustGain_(1));
+    // Gain buttons
+    gainDecCoarse?.addEventListener('click', () => this.adjustStagedGain_(-1));
+    gainDecFine?.addEventListener('click', () => this.adjustStagedGain_(-0.1));
+    gainIncFine?.addEventListener('click', () => this.adjustStagedGain_(0.1));
+    gainIncCoarse?.addEventListener('click', () => this.adjustStagedGain_(1));
 
-    this.boundHandlers.set('gainDecCoarse', () => this.adjustGain_(-1));
-    this.boundHandlers.set('gainDecFine', () => this.adjustGain_(-0.1));
-    this.boundHandlers.set('gainIncFine', () => this.adjustGain_(0.1));
-    this.boundHandlers.set('gainIncCoarse', () => this.adjustGain_(1));
+    this.boundHandlers.set('gainDecCoarse', () => this.adjustStagedGain_(-1));
+    this.boundHandlers.set('gainDecFine', () => this.adjustStagedGain_(-0.1));
+    this.boundHandlers.set('gainIncFine', () => this.adjustStagedGain_(0.1));
+    this.boundHandlers.set('gainIncCoarse', () => this.adjustStagedGain_(1));
+
+    // Apply button
+    applyBtn?.addEventListener('click', this.applyHandler_.bind(this));
+    this.boundHandlers.set('apply', this.applyHandler_.bind(this));
 
     // Power switch
     powerSwitch?.addEventListener('change', this.powerHandler_.bind(this));
     this.boundHandlers.set('power', this.powerHandler_.bind(this));
   }
 
-  private loFreqHandler_(e: Event): void {
+  private loFreqInputHandler_(e: Event): void {
     const value = parseFloat((e.target as HTMLInputElement).value);
-    this.lnbModule.handleLoFrequencyChange(value);
-    this.syncDomWithState_(this.lnbModule.state);
+    this.stagedLoFrequency_ = Math.max(5000, Math.min(7000, value));
+    this.updateStagedDisplays_();
+  }
+
+  private adjustStagedLoFreq_(delta: number): void {
+    this.stagedLoFrequency_ = Math.max(5000, Math.min(7000, this.stagedLoFrequency_ + delta));
+    this.updateStagedDisplays_();
   }
 
   private gainInputHandler_(e: Event): void {
     const value = parseFloat((e.target as HTMLInputElement).value);
-    const clampedValue = Math.max(0, Math.min(65, value));
-    this.lnbModule.handleGainChange(clampedValue);
-    this.syncDomWithState_(this.lnbModule.state);
+    this.stagedGain_ = Math.max(0, Math.min(65, value));
+    this.updateStagedDisplays_();
   }
 
-  private adjustGain_(delta: number): void {
-    const currentGain = this.lnbModule.state.gain ?? 0;
-    const newGain = Math.max(0, Math.min(65, currentGain + delta));
-    // Round to 1 decimal place to avoid floating point issues
-    const roundedGain = Math.round(newGain * 10) / 10;
-    this.lnbModule.handleGainChange(roundedGain);
+  private adjustStagedGain_(delta: number): void {
+    const newGain = this.stagedGain_ + delta;
+    this.stagedGain_ = Math.round(Math.max(0, Math.min(65, newGain)) * 10) / 10;
+    this.updateStagedDisplays_();
+  }
+
+  private updateStagedDisplays_(): void {
+    const loInput = this.domCache_.get('loFreqInput') as HTMLInputElement;
+    const gainInput = this.domCache_.get('gainInput') as HTMLInputElement;
+    if (loInput) loInput.value = this.stagedLoFrequency_.toString();
+    if (gainInput) gainInput.value = this.stagedGain_.toFixed(1);
+  }
+
+  private applyHandler_(): void {
+    this.lnbModule.handleLoFrequencyChange(this.stagedLoFrequency_);
+    this.lnbModule.handleGainChange(this.stagedGain_);
     this.syncDomWithState_(this.lnbModule.state);
   }
 
@@ -139,19 +192,14 @@ export class LNBAdapter {
     if (stateStr === this.lastStateString) return;
     this.lastStateString = stateStr;
 
-    // Update LO Frequency slider and display
+    // Update staged values from state and refresh displays
     if (state.loFrequency !== undefined) {
-      const slider = this.domCache_.get('loFreqSlider') as HTMLInputElement;
-      const display = this.domCache_.get('loFreqDisplay');
-      if (slider) slider.value = state.loFrequency.toString();
-      if (display) display.textContent = `${state.loFrequency.toFixed(0)} MHz`;
+      this.stagedLoFrequency_ = state.loFrequency;
     }
-
-    // Update Gain input
     if (state.gain !== undefined) {
-      const input = this.domCache_.get('gainInput') as HTMLInputElement;
-      if (input) input.value = state.gain.toFixed(1);
+      this.stagedGain_ = state.gain;
     }
+    this.updateStagedDisplays_();
 
     // Update Power switch
     if (state.isPowered !== undefined) {
@@ -166,9 +214,15 @@ export class LNBAdapter {
     }
 
     if (state.isExtRefLocked !== undefined) {
-      const led = this.domCache_.get('lockLed');
-      if (led) {
-        led.className = state.isExtRefLocked ? 'led led-green' : 'led led-red';
+      const status = this.domCache_.get('lockStatus');
+      if (status) {
+        if (state.isExtRefLocked) {
+          status.className = 'status-badge status-badge-locked';
+          status.textContent = 'Locked';
+        } else {
+          status.className = 'status-badge status-badge-unlocked';
+          status.textContent = 'Unlocked';
+        }
       }
     }
 
@@ -206,24 +260,35 @@ export class LNBAdapter {
     EventBus.getInstance().off(Events.RF_FE_LNB_CHANGED, this.stateChangeHandler as any);
 
     // Remove DOM event listeners
-    const loFreqSlider = this.domCache_.get('loFreqSlider') as HTMLInputElement;
+    const loFreqInput = this.domCache_.get('loFreqInput') as HTMLInputElement;
+    const loDecCoarse = this.domCache_.get('loDecCoarse') as HTMLButtonElement;
+    const loDecFine = this.domCache_.get('loDecFine') as HTMLButtonElement;
+    const loIncFine = this.domCache_.get('loIncFine') as HTMLButtonElement;
+    const loIncCoarse = this.domCache_.get('loIncCoarse') as HTMLButtonElement;
     const gainInput = this.domCache_.get('gainInput') as HTMLInputElement;
     const gainDecCoarse = this.domCache_.get('gainDecCoarse') as HTMLButtonElement;
     const gainDecFine = this.domCache_.get('gainDecFine') as HTMLButtonElement;
     const gainIncFine = this.domCache_.get('gainIncFine') as HTMLButtonElement;
     const gainIncCoarse = this.domCache_.get('gainIncCoarse') as HTMLButtonElement;
+    const applyBtn = this.domCache_.get('applyBtn') as HTMLButtonElement;
     const powerSwitch = this.domCache_.get('powerSwitch') as HTMLInputElement;
 
-    const loFreqHandler = this.boundHandlers.get('loFreq');
+    const loFreqInputHandler = this.boundHandlers.get('loFreqInput');
     const gainInputHandler = this.boundHandlers.get('gainInput');
+    const applyHandler = this.boundHandlers.get('apply');
     const powerHandler = this.boundHandlers.get('power');
 
-    if (loFreqSlider && loFreqHandler) loFreqSlider.removeEventListener('input', loFreqHandler);
+    if (loFreqInput && loFreqInputHandler) loFreqInput.removeEventListener('change', loFreqInputHandler);
+    if (loDecCoarse) loDecCoarse.removeEventListener('click', this.boundHandlers.get('loDecCoarse')!);
+    if (loDecFine) loDecFine.removeEventListener('click', this.boundHandlers.get('loDecFine')!);
+    if (loIncFine) loIncFine.removeEventListener('click', this.boundHandlers.get('loIncFine')!);
+    if (loIncCoarse) loIncCoarse.removeEventListener('click', this.boundHandlers.get('loIncCoarse')!);
     if (gainInput && gainInputHandler) gainInput.removeEventListener('change', gainInputHandler);
     if (gainDecCoarse) gainDecCoarse.removeEventListener('click', this.boundHandlers.get('gainDecCoarse')!);
     if (gainDecFine) gainDecFine.removeEventListener('click', this.boundHandlers.get('gainDecFine')!);
     if (gainIncFine) gainIncFine.removeEventListener('click', this.boundHandlers.get('gainIncFine')!);
     if (gainIncCoarse) gainIncCoarse.removeEventListener('click', this.boundHandlers.get('gainIncCoarse')!);
+    if (applyBtn && applyHandler) applyBtn.removeEventListener('click', applyHandler);
     if (powerSwitch && powerHandler) powerSwitch.removeEventListener('change', powerHandler);
 
     this.boundHandlers.clear();

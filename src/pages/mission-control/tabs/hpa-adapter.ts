@@ -23,6 +23,9 @@ export class HPAAdapter {
   private readonly stateChangeHandler: (state: Partial<HPAState>) => void;
   private readonly alarmBadge_: CardAlarmBadge;
 
+  // Staged values - not applied until Apply button is clicked
+  private stagedBackOff_: number = 6;
+
   constructor(hpaModule: HPAModuleCore, containerEl: HTMLElement) {
     this.hpaModule = hpaModule;
     this.containerEl = containerEl;
@@ -57,38 +60,91 @@ export class HPAAdapter {
   }
 
   private setupDomCache_() {
-    this.domCache_.set('backOffSlider', qs('#hpa-backoff', this.containerEl));
+    // Back-off controls (input field is now the display)
+    this.domCache_.set('backOffInput', qs('#hpa-backoff', this.containerEl));
+    this.domCache_.set('backOffDecCoarse', qs('#hpa-backoff-dec-coarse', this.containerEl));
+    this.domCache_.set('backOffDecFine', qs('#hpa-backoff-dec-fine', this.containerEl));
+    this.domCache_.set('backOffIncFine', qs('#hpa-backoff-inc-fine', this.containerEl));
+    this.domCache_.set('backOffIncCoarse', qs('#hpa-backoff-inc-coarse', this.containerEl));
+
+    // Apply button
+    this.domCache_.set('applyBtn', qs('#hpa-apply-btn', this.containerEl));
+
+    // Switches
     this.domCache_.set('powerSwitch', qs('#hpa-power', this.containerEl));
     this.domCache_.set('hpaEnableSwitch', qs('#hpa-enable', this.containerEl));
+
+    // Power Output displays
     this.domCache_.set('outputPowerDisplay', qs('#hpa-output-power-display', this.containerEl));
-    this.domCache_.set('temperatureDisplay', qs('#hpa-temperature-display', this.containerEl));
-    this.domCache_.set('overdriveLed', qs('#hpa-overdrive-led', this.containerEl));
-    this.domCache_.set('imdDisplay', qs('#hpa-imd-display', this.containerEl));
+    this.domCache_.set('powerMeter', qs('#hpa-power-meter', this.containerEl));
+    this.domCache_.set('powerWatts', qs('#hpa-power-watts', this.containerEl));
+    this.domCache_.set('p1dbDisplay', qs('#hpa-p1db-display', this.containerEl));
+
+    // Amplifier Status displays
     this.domCache_.set('gainDisplay', qs('#hpa-gain-display', this.containerEl));
-    this.domCache_.set('backOffDisplay', qs('#hpa-backoff-display', this.containerEl));
+    this.domCache_.set('temperatureDisplay', qs('#hpa-temperature-display', this.containerEl));
+
+    // Signal Quality displays
+    this.domCache_.set('imdDisplay', qs('#hpa-imd-display', this.containerEl));
+    this.domCache_.set('overdriveStatus', qs('#hpa-overdrive-status', this.containerEl));
   }
 
   private setupInputListeners(): void {
-    const backOffSlider = this.domCache_.get('backOffSlider') as HTMLInputElement;
+    // Initialize staged value from current state
+    this.stagedBackOff_ = this.hpaModule.state.backOff;
+
+    // Back-off input and buttons - update staged values only
+    const backOffInput = this.domCache_.get('backOffInput') as HTMLInputElement;
+    const backOffDecCoarse = this.domCache_.get('backOffDecCoarse') as HTMLButtonElement;
+    const backOffDecFine = this.domCache_.get('backOffDecFine') as HTMLButtonElement;
+    const backOffIncFine = this.domCache_.get('backOffIncFine') as HTMLButtonElement;
+    const backOffIncCoarse = this.domCache_.get('backOffIncCoarse') as HTMLButtonElement;
+
+    backOffInput?.addEventListener('change', this.backOffInputHandler_.bind(this));
+    this.boundHandlers.set('backOffInput', this.backOffInputHandler_.bind(this));
+
+    backOffDecCoarse?.addEventListener('click', () => this.adjustStagedBackOff_(-5));
+    backOffDecFine?.addEventListener('click', () => this.adjustStagedBackOff_(-1));
+    backOffIncFine?.addEventListener('click', () => this.adjustStagedBackOff_(1));
+    backOffIncCoarse?.addEventListener('click', () => this.adjustStagedBackOff_(5));
+
+    // Apply button - applies staged values to core
+    const applyBtn = this.domCache_.get('applyBtn') as HTMLButtonElement;
+    applyBtn?.addEventListener('click', this.applyHandler_.bind(this));
+    this.boundHandlers.set('apply', this.applyHandler_.bind(this));
+
+    // Power switch - immediate effect
     const powerSwitch = this.domCache_.get('powerSwitch') as HTMLInputElement;
-    const hpaEnableSwitch = this.domCache_.get('hpaEnableSwitch') as HTMLInputElement;
-
-    // Back-off slider
-    backOffSlider?.addEventListener('input', this.backOffHandler_.bind(this));
-    this.boundHandlers.set('backOff', this.backOffHandler_.bind(this));
-
-    // Power switch
     powerSwitch?.addEventListener('change', this.powerHandler_.bind(this));
     this.boundHandlers.set('power', this.powerHandler_.bind(this));
 
-    // HPA Enable switch
+    // HPA Enable switch - immediate effect
+    const hpaEnableSwitch = this.domCache_.get('hpaEnableSwitch') as HTMLInputElement;
     hpaEnableSwitch?.addEventListener('change', this.hpaEnableHandler_.bind(this));
     this.boundHandlers.set('hpaEnable', this.hpaEnableHandler_.bind(this));
   }
 
-  private backOffHandler_(e: Event) {
+  private backOffInputHandler_(e: Event) {
     const value = parseFloat((e.target as HTMLInputElement).value);
-    this.hpaModule.handleBackOffChange(value);
+    if (!isNaN(value)) {
+      this.stagedBackOff_ = Math.max(0, Math.min(30, value));
+      this.updateStagedDisplay_();
+    }
+  }
+
+  private adjustStagedBackOff_(delta: number): void {
+    this.stagedBackOff_ = Math.max(0, Math.min(30, this.stagedBackOff_ + delta));
+    this.updateStagedDisplay_();
+  }
+
+  private updateStagedDisplay_(): void {
+    const backOffInput = this.domCache_.get('backOffInput') as HTMLInputElement;
+    if (backOffInput) backOffInput.value = this.stagedBackOff_.toString();
+  }
+
+  private applyHandler_(): void {
+    // Apply staged value to the core module
+    this.hpaModule.handleBackOffChange(this.stagedBackOff_);
     this.syncDomWithState_(this.hpaModule.state);
   }
 
@@ -99,8 +155,12 @@ export class HPAAdapter {
     });
   }
 
-  private hpaEnableHandler_() {
-    this.hpaModule.handleHpaToggle();
+  private hpaEnableHandler_(e: Event) {
+    const isChecked = (e.target as HTMLInputElement).checked;
+    // Only toggle if state doesn't match checkbox value
+    if (this.hpaModule.state.isHpaEnabled !== isChecked) {
+      this.hpaModule.handleHpaToggle();
+    }
     this.syncDomWithState_(this.hpaModule.state);
   }
 
@@ -114,30 +174,48 @@ export class HPAAdapter {
     if (stateStr === this.lastStateString) return;
     this.lastStateString = stateStr;
 
-    // Update Back-off slider and display
+    // Update Back-off input (input field is now the display)
     if (state.backOff !== undefined) {
-      const slider: HTMLInputElement = this.domCache_.get('backOffSlider') as HTMLInputElement;
-      const display = this.domCache_.get('backOffDisplay');
-      if (slider) slider.value = state.backOff.toString();
-      if (display) display.textContent = `${state.backOff.toFixed(1)} dB`;
+      const input = this.domCache_.get('backOffInput') as HTMLInputElement;
+      if (input) input.value = state.backOff.toString();
     }
 
     // Update Power switch
     if (state.isPowered !== undefined) {
-      const powerSwitch: HTMLInputElement = this.domCache_.get('powerSwitch') as HTMLInputElement;
+      const powerSwitch = this.domCache_.get('powerSwitch') as HTMLInputElement;
       if (powerSwitch) powerSwitch.checked = state.isPowered;
     }
 
     // Update HPA Enable switch
     if (state.isHpaEnabled !== undefined) {
-      const hpaEnableSwitch: HTMLInputElement = this.domCache_.get('hpaEnableSwitch') as HTMLInputElement;
+      const hpaEnableSwitch = this.domCache_.get('hpaEnableSwitch') as HTMLInputElement;
       if (hpaEnableSwitch) hpaEnableSwitch.checked = state.isHpaEnabled;
     }
 
-    // Update status indicators
+    // Update Power Output displays
     if (state.outputPower !== undefined) {
       const display = this.domCache_.get('outputPowerDisplay');
       if (display) display.textContent = `${state.outputPower.toFixed(1)} dBm`;
+
+      // Update power meter visualization
+      this.updatePowerMeter_(state.outputPower);
+
+      // Update power in watts (convert from dBm)
+      const wattsDisplay = this.domCache_.get('powerWatts');
+      if (wattsDisplay) {
+        const watts = Math.pow(10, (state.outputPower - 30) / 10);
+        if (watts >= 1) {
+          wattsDisplay.textContent = `${watts.toFixed(0)} W`;
+        } else {
+          wattsDisplay.textContent = `${(watts * 1000).toFixed(0)} mW`;
+        }
+      }
+    }
+
+    // Update P1dB display (constant value from HPA spec)
+    const p1dbDisplay = this.domCache_.get('p1dbDisplay');
+    if (p1dbDisplay) {
+      p1dbDisplay.textContent = '50.0 dBm';
     }
 
     if (state.temperature !== undefined) {
@@ -146,9 +224,12 @@ export class HPAAdapter {
     }
 
     if (state.isOverdriven !== undefined) {
-      const led = this.domCache_.get('overdriveLed');
-      if (led) {
-        led.className = state.isOverdriven ? 'led led-red' : 'led led-green';
+      const status = this.domCache_.get('overdriveStatus');
+      if (status) {
+        status.textContent = state.isOverdriven ? 'OVERDRIVE' : 'Normal';
+        status.className = state.isOverdriven
+          ? 'status-badge status-badge-danger'
+          : 'status-badge status-badge-good';
       }
     }
 
@@ -165,6 +246,37 @@ export class HPAAdapter {
     // Update alarm badge - immediate feedback
     const alarms = this.getAlarmsFromModule_();
     this.alarmBadge_.update(alarms);
+  }
+
+  /**
+   * Update power meter LED segments based on output power
+   * Green: normal operation, Yellow: approaching saturation, Red: overdrive
+   */
+  private updatePowerMeter_(outputPowerDbm: number): void {
+    const powerMeter = this.domCache_.get('powerMeter');
+    if (!powerMeter) return;
+
+    // P1dB is 50 dBm, so scale from ~30 dBm (low) to 50 dBm (max)
+    const minPower = 30;
+    const maxPower = 50;
+    const normalized = Math.max(0, Math.min(1, (outputPowerDbm - minPower) / (maxPower - minPower)));
+    const activeSegments = Math.round(normalized * 5);
+
+    const segments = powerMeter.querySelectorAll('.power-segment');
+    segments.forEach((segment, index) => {
+      if (index < activeSegments) {
+        // Determine color based on segment position
+        if (index >= 4) {
+          segment.className = 'power-segment led-red';
+        } else if (index >= 3) {
+          segment.className = 'power-segment led-yellow';
+        } else {
+          segment.className = 'power-segment led-green';
+        }
+      } else {
+        segment.className = 'power-segment led-off';
+      }
+    });
   }
 
   /**
@@ -195,22 +307,25 @@ export class HPAAdapter {
   dispose(): void {
     // Dispose alarm badge
     this.alarmBadge_.dispose();
+
     // Remove EventBus listeners
     EventBus.getInstance().off(Events.RF_FE_HPA_CHANGED, this.stateChangeHandler as any);
 
-    // Remove DOM event listeners
-    const backOffSlider: HTMLInputElement = qs('#hpa-backoff', this.containerEl);
-    const powerSwitch: HTMLInputElement = qs('#hpa-power', this.containerEl);
-    const hpaEnableSwitch: HTMLInputElement = qs('#hpa-enable', this.containerEl);
+    // Remove DOM event listeners for inputs
+    const backOffInput = this.domCache_.get('backOffInput') as HTMLInputElement;
+    const powerSwitch = this.domCache_.get('powerSwitch') as HTMLInputElement;
+    const hpaEnableSwitch = this.domCache_.get('hpaEnableSwitch') as HTMLInputElement;
 
-    const backOffHandler = this.boundHandlers.get('backOff');
+    const backOffHandler = this.boundHandlers.get('backOffInput');
     const powerHandler = this.boundHandlers.get('power');
     const hpaEnableHandler = this.boundHandlers.get('hpaEnable');
 
-    if (backOffSlider && backOffHandler) backOffSlider.removeEventListener('input', backOffHandler);
+    if (backOffInput && backOffHandler) backOffInput.removeEventListener('change', backOffHandler);
     if (powerSwitch && powerHandler) powerSwitch.removeEventListener('change', powerHandler);
     if (hpaEnableSwitch && hpaEnableHandler) hpaEnableSwitch.removeEventListener('change', hpaEnableHandler);
 
+    // Note: Button click handlers use inline arrow functions and are cleaned up when DOM is removed
     this.boundHandlers.clear();
+    this.domCache_.clear();
   }
 }

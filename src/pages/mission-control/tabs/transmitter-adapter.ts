@@ -50,45 +50,46 @@ export class TransmitterAdapter {
       if (btn) this.domCache_.set(`modem-btn-${i}`, btn as HTMLElement);
     }
 
-    // Configuration inputs
-    this.cacheElement_('antenna-select');
-    this.cacheElement_('frequency-input');
-    this.cacheElement_('bandwidth-input');
-    this.cacheElement_('power-input');
-    this.cacheElement_('apply-btn');
+    // Configuration inputs (HTML uses tx- prefix)
+    this.cacheElement_('tx-antenna-select', 'antenna-select');
+    this.cacheElement_('tx-frequency-input', 'frequency-input');
+    this.cacheElement_('tx-bandwidth-input', 'bandwidth-input');
+    this.cacheElement_('tx-power-input', 'power-input');
+    this.cacheElement_('tx-apply-btn', 'apply-btn');
 
     // Current value displays
-    this.cacheElement_('antenna-current');
-    this.cacheElement_('frequency-current');
-    this.cacheElement_('bandwidth-current');
-    this.cacheElement_('power-current');
+    this.cacheElement_('tx-frequency-current', 'frequency-current');
+    this.cacheElement_('tx-bandwidth-current', 'bandwidth-current');
+    this.cacheElement_('tx-power-current', 'power-current');
 
     // Power budget visualization
-    this.cacheElement_('power-bar');
-    this.cacheElement_('power-percentage');
+    this.cacheElement_('tx-power-bar', 'power-bar');
+    this.cacheElement_('tx-power-percentage', 'power-percentage');
 
     // Switches
-    this.cacheElement_('tx-switch');
-    this.cacheElement_('fault-reset-btn');
-    this.cacheElement_('loopback-switch');
-    this.cacheElement_('power-switch');
+    this.cacheElement_('tx-transmit-switch', 'tx-switch');
+    this.cacheElement_('tx-fault-reset-btn', 'fault-reset-btn');
+    this.cacheElement_('tx-loopback-switch', 'loopback-switch');
+    this.cacheElement_('tx-power-switch', 'power-switch');
 
     // Status LEDs
-    this.cacheElement_('tx-led');
-    this.cacheElement_('fault-led');
-    this.cacheElement_('loopback-led');
-    this.cacheElement_('online-led');
+    this.cacheElement_('tx-transmit-led', 'tx-led');
+    this.cacheElement_('tx-fault-led', 'fault-led');
+    this.cacheElement_('tx-loopback-led', 'loopback-led');
+    this.cacheElement_('tx-online-led', 'online-led');
 
     // Status bar
-    this.cacheElement_('status-bar');
+    this.cacheElement_('tx-status-bar', 'status-bar');
   }
 
   /**
    * Helper to cache a single element
+   * @param htmlId - The actual HTML element ID
+   * @param cacheKey - The key to use in the cache (defaults to htmlId)
    */
-  private cacheElement_(id: string): void {
-    const el = this.containerEl.querySelector(`#${id}`);
-    if (el) this.domCache_.set(id, el as HTMLElement);
+  private cacheElement_(htmlId: string, cacheKey?: string): void {
+    const el = this.containerEl.querySelector(`#${htmlId}`);
+    if (el) this.domCache_.set(cacheKey || htmlId, el as HTMLElement);
   }
 
   /**
@@ -424,12 +425,13 @@ export class TransmitterAdapter {
     if (!statusBar) return;
 
     if (alarms.length === 0) {
-      statusBar.className = 'alert alert-info mt-3';
+      statusBar.className = 'small text-muted mt-2 py-1 border-top';
       statusBar.textContent = 'Ready';
     } else {
       // Show first alarm (highest priority)
       const alarm = alarms[0];
-      statusBar.className = `alert alert-${alarm.severity === 'error' ? 'danger' : alarm.severity === 'warning' ? 'warning' : 'info'} mt-3`;
+      const colorClass = alarm.severity === 'error' ? 'text-danger' : alarm.severity === 'warning' ? 'text-warning' : 'text-muted';
+      statusBar.className = `small ${colorClass} mt-2 py-1 border-top`;
       statusBar.textContent = alarm.message;
     }
   }

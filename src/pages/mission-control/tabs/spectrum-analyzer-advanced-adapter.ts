@@ -61,15 +61,15 @@ export class SpectrumAnalyzerAdvancedAdapter {
   private setupDomCache_(): void {
     const ids = [
       // Frequency controls
-      'sa-center-freq', 'sa-center-freq-display',
-      'sa-span', 'sa-span-display',
+      'sa-center-freq',
+      'sa-span',
       'sa-rbw',
       // Amplitude controls
-      'sa-ref-level', 'sa-ref-level-display',
+      'sa-ref-level',
       'sa-scale',
       'sa-min-amp', 'sa-max-amp',
       // Display controls
-      'sa-refresh', 'sa-refresh-display',
+      'sa-refresh',
       'sa-mode-spectral', 'sa-mode-waterfall', 'sa-mode-both',
       'sa-auto-tune', 'sa-pause',
       'sa-max-hold', 'sa-min-hold',
@@ -100,8 +100,8 @@ export class SpectrumAnalyzerAdvancedAdapter {
     this.addInputHandler_('sa-min-amp', this.handleMinAmpChange_.bind(this));
     this.addInputHandler_('sa-max-amp', this.handleMaxAmpChange_.bind(this));
 
-    // Refresh rate
-    this.addInputHandler_('sa-refresh', this.handleRefreshChange_.bind(this));
+    // Refresh rate (select dropdown)
+    this.addChangeHandler_('sa-refresh', this.handleRefreshChange_.bind(this));
 
     // Display mode buttons
     this.addClickHandler_('sa-mode-spectral', () => this.handleModeChange_('spectralDensity'));
@@ -224,10 +224,9 @@ export class SpectrumAnalyzerAdvancedAdapter {
   }
 
   private handleRefreshChange_(e: Event): void {
-    const value = parseInt((e.target as HTMLInputElement).value, 10);
+    const value = parseInt((e.target as HTMLSelectElement).value, 10);
     if (!isNaN(value)) {
       this.spectrumAnalyzer.state.refreshRate = value;
-      this.updateRefreshDisplay_(value);
       this.emitStateChange_();
     }
   }
@@ -357,10 +356,7 @@ export class SpectrumAnalyzerAdvancedAdapter {
 
     // Frequency controls
     this.setInputValue_('sa-center-freq', this.toMHz_(state.centerFrequency).toFixed(3));
-    this.setTextContent_('sa-center-freq-display', `${this.toMHz_(state.centerFrequency).toFixed(3)} MHz`);
-
     this.setInputValue_('sa-span', this.toMHz_(state.span).toFixed(3));
-    this.setTextContent_('sa-span-display', `${this.toMHz_(state.span).toFixed(3)} MHz`);
 
     // RBW select
     const rbwSelect = this.domCache_.get('sa-rbw') as HTMLSelectElement;
@@ -374,7 +370,6 @@ export class SpectrumAnalyzerAdvancedAdapter {
 
     // Amplitude controls
     this.setInputValue_('sa-ref-level', state.referenceLevel.toString());
-    this.setTextContent_('sa-ref-level-display', `${state.referenceLevel} dBm`);
 
     const scaleSelect = this.domCache_.get('sa-scale') as HTMLSelectElement;
     if (scaleSelect) {
@@ -384,9 +379,8 @@ export class SpectrumAnalyzerAdvancedAdapter {
     this.setInputValue_('sa-min-amp', state.minAmplitude.toString());
     this.setInputValue_('sa-max-amp', state.maxAmplitude.toString());
 
-    // Refresh rate
+    // Refresh rate (select dropdown)
     this.setInputValue_('sa-refresh', state.refreshRate.toString());
-    this.updateRefreshDisplay_(state.refreshRate);
 
     // Display mode
     this.updateModeButtons_(state.screenMode);
@@ -415,22 +409,11 @@ export class SpectrumAnalyzerAdvancedAdapter {
     }
   }
 
-  private setTextContent_(id: string, text: string): void {
-    const el = this.domCache_.get(id);
-    if (el) {
-      el.textContent = text;
-    }
-  }
-
   private setCheckboxValue_(id: string, checked: boolean): void {
     const el = this.domCache_.get(id) as HTMLInputElement;
     if (el) {
       el.checked = checked;
     }
-  }
-
-  private updateRefreshDisplay_(rate: number): void {
-    this.setTextContent_('sa-refresh-display', `${rate} Hz`);
   }
 
   private updateModeButtons_(mode: 'spectralDensity' | 'waterfall' | 'both'): void {

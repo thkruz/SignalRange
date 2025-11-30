@@ -86,8 +86,8 @@ export class ReceiverAdapter {
     // Power switch
     this.cacheElement_('power-switch');
 
-    // Signal quality LED
-    this.cacheElement_('signal-led');
+    // Signal quality status badge
+    this.cacheElement_('signal-status');
 
     // Status bar
     this.cacheElement_('status-bar');
@@ -419,23 +419,25 @@ export class ReceiverAdapter {
       powerSwitch.checked = activeModem.isPowered;
     }
 
-    // Signal Quality LED
-    const signalLed = this.domCache_.get('signal-led');
-    if (signalLed) {
-      signalLed.classList.remove('led-gray', 'led-green', 'led-amber', 'led-red');
-
+    // Signal Quality Status Badge
+    const signalStatus = this.domCache_.get('signal-status');
+    if (signalStatus) {
       if (!activeModem.isPowered) {
-        signalLed.classList.add('led-gray');
+        signalStatus.className = 'status-badge status-badge-none';
+        signalStatus.textContent = 'Off';
       } else {
         const hasSignal = this.receiver.hasSignalForModem(activeModem);
         const isDegraded = this.receiver.isSignalDegraded(activeModem);
 
         if (!hasSignal) {
-          signalLed.classList.add('led-gray');
+          signalStatus.className = 'status-badge status-badge-none';
+          signalStatus.textContent = 'None';
         } else if (isDegraded) {
-          signalLed.classList.add('led-amber');
+          signalStatus.className = 'status-badge status-badge-degraded';
+          signalStatus.textContent = 'Degraded';
         } else {
-          signalLed.classList.add('led-green');
+          signalStatus.className = 'status-badge status-badge-good';
+          signalStatus.textContent = 'Good';
         }
       }
     }

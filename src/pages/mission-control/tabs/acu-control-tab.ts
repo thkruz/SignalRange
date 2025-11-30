@@ -32,6 +32,7 @@ export class ACUControlTab extends BaseElement {
   private omtAdapter: OMTAdapter | null = null;
   private polarPlot_: PolarPlot | null = null;
   private antennaStateHandler_: (() => void) | null = null;
+  private drawHandler_: (() => void) | null = null;
 
   // Fine adjustment controls
   private azFineControl_: FineAdjustControl | null = null;
@@ -375,6 +376,12 @@ export class ACUControlTab extends BaseElement {
       this.syncUiWithState_(antenna);
     };
     EventBus.getInstance().on(Events.ANTENNA_STATE_CHANGED, this.antennaStateHandler_);
+
+    // Wire to draw events for continuous RF metrics updates
+    this.drawHandler_ = () => {
+      this.syncRfMetrics_(antenna);
+    };
+    EventBus.getInstance().on(Events.DRAW, this.drawHandler_);
 
     // Initial draw and sync
     this.polarPlot_.onDomReady();
@@ -720,6 +727,28 @@ export class ACUControlTab extends BaseElement {
       const bwKHz = (state.stagedBeaconSearchBwHz ?? state.beaconSearchBwHz) / 1e3;
       beaconBwInput.value = bwKHz.toString();
     }
+
+    // Sync RF metrics display
+    this.syncRfMetrics_(antenna);
+  }
+
+  private syncRfMetrics_(antenna: typeof this.groundStation.antennas[0]): void {
+    const metrics = antenna.state.rfMetrics;
+    if (!metrics) return;
+
+    const freqEl = this.dom_.querySelector('#rf-metric-freq');
+    const gainEl = this.dom_.querySelector('#rf-metric-gain');
+    const bwEl = this.dom_.querySelector('#rf-metric-beamwidth');
+    const gtEl = this.dom_.querySelector('#rf-metric-gt');
+    const polLossEl = this.dom_.querySelector('#rf-metric-pol-loss');
+    const skyTempEl = this.dom_.querySelector('#rf-metric-sky-temp');
+
+    if (freqEl) freqEl.textContent = `${metrics.frequency_GHz.toFixed(3)} GHz`;
+    if (gainEl) gainEl.textContent = `${metrics.gain_dBi.toFixed(1)} dBi`;
+    if (bwEl) bwEl.textContent = `${metrics.beamwidth_deg.toFixed(2)}°`;
+    if (gtEl) gtEl.textContent = `${metrics.gOverT_dBK.toFixed(1)} dB/K`;
+    if (polLossEl) polLossEl.textContent = `${metrics.polLoss_dB.toFixed(1)} dB`;
+    if (skyTempEl) skyTempEl.textContent = `${metrics.skyTemp_K.toFixed(0)} K`;
   }
 
   public activate(): void {
@@ -739,6 +768,10 @@ export class ACUControlTab extends BaseElement {
     if (this.antennaStateHandler_) {
       EventBus.getInstance().off(Events.ANTENNA_STATE_CHANGED, this.antennaStateHandler_);
       this.antennaStateHandler_ = null;
+    }
+    if (this.drawHandler_) {
+      EventBus.getInstance().off(Events.DRAW, this.drawHandler_);
+      this.drawHandler_ = null;
     }
 
     // Dispose adapters

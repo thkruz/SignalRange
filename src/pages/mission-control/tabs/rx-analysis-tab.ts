@@ -139,7 +139,7 @@ export class RxAnalysisTab extends BaseElement {
         </div>
 
         <!-- Spectrum Analyzer Canvas Card -->
-        <div class="col-12">
+        <div class="col-6">
           <div class="card">
             <div class="card-header">
               <h3 class="card-title">Spectrum Analyzer</h3>
@@ -153,7 +153,7 @@ export class RxAnalysisTab extends BaseElement {
         </div>
 
         <!-- Spectrum Analyzer Controls Card -->
-        <div class="col-12">
+        <div class="col-6">
           <div class="card">
             <div class="card-header">
               <h3 class="card-title">Spectrum Analyzer Controls</h3>

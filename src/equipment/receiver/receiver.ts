@@ -34,6 +34,21 @@ export interface ReceiverState {
 }
 
 /**
+ * Signal information for IQ constellation display.
+ * Uses relaxed filtering to show signals even when modem config doesn't match.
+ */
+export interface IQSignalInfo {
+  hasCarrier: boolean;              // Any RF signal in bandwidth
+  hasLock: boolean;                 // Modem can demodulate (mod + FEC match)
+  actualModulation: ModulationType | null;
+  configuredModulation: ModulationType;
+  cnRatio_dB: number;               // Carrier-to-noise ratio
+  frequencyOffset_Hz: number;       // Offset from center frequency
+  modulationMismatch: boolean;
+  fecMismatch: boolean;
+}
+
+/**
  * Receiver - Single receiver case containing 4 modems
  * Manages modem configuration and signal reception state
  * Extends Equipment base class for standard lifecycle
@@ -393,6 +408,86 @@ export class Receiver extends BaseEquipment {
 
     // Check if any signal is degraded
     return visibleSignals.some(s => s.isDegraded);
+  }
+
+  /**
+   * Get signal info for IQ constellation display.
+   * Uses relaxed filtering - only checks frequency overlap, not modulation/FEC.
+   * This allows the IQ display to show signals for troubleshooting even when
+   * the modem configuration doesn't match the incoming signal.
+   */
+  public getSignalsInBandwidth(modem: ReceiverModemState = this.activeModem): IQSignalInfo {
+    const noSignalResult: IQSignalInfo = {
+      hasCarrier: false,
+      hasLock: false,
+      actualModulation: null,
+      configuredModulation: modem.modulation,
+      cnRatio_dB: -Infinity,
+      frequencyOffset_Hz: 0,
+      modulationMismatch: false,
+      fecMismatch: false,
+    };
+
+    if (!this.rfFrontEnd_) return noSignalResult;
+
+    const externalNoise = this.rfFrontEnd_.externalNoise ?? 0;
+    const totalGain = this.rfFrontEnd_.couplerModule.signalPathManager.getTotalRxGain();
+
+    // Get ALL signals in the receiver bandwidth (relaxed filtering - no mod/FEC check)
+    const signalsInBand = (this.rfFrontEnd_.filterModule.outputSignals ?? []).filter((s) => {
+      // Power must exceed noise floor
+      if (s.power + totalGain < externalNoise) {
+        return false;
+      }
+
+      // Bandwidth must fit
+      if (s.bandwidth > (modem.bandwidth * 1e6 as Hertz)) {
+        return false;
+      }
+
+      // Frequency must overlap with modem bandwidth
+      const signalLower = s.frequency - s.bandwidth / 2;
+      const signalUpper = s.frequency + s.bandwidth / 2;
+      const modemLower = (modem.frequency - modem.bandwidth / 2) * 1e6;
+      const modemUpper = (modem.frequency + modem.bandwidth / 2) * 1e6;
+
+      if (signalUpper < modemLower || signalLower > modemUpper) {
+        return false;
+      }
+
+      return true;
+    });
+
+    if (signalsInBand.length === 0) return noSignalResult;
+
+    // Take the strongest signal
+    const strongestSignal = signalsInBand.reduce((a, b) => a.power > b.power ? a : b, signalsInBand[0]);
+
+    // Calculate C/N ratio
+    const noiseFloor = this.rfFrontEnd_.getNoiseFloor(TapPoint.RX_IF).noiseFloor + totalGain;
+    const signalLevel = strongestSignal.power + totalGain;
+    const cnRatio = signalLevel - noiseFloor;
+
+    // Calculate frequency offset in Hz
+    const signalFreqHz = strongestSignal.frequency;
+    const modemFreqHz = modem.frequency * 1e6;
+    const frequencyOffset = signalFreqHz - modemFreqHz;
+
+    // Check for modulation/FEC match (determines lock state)
+    const modulationMismatch = strongestSignal.modulation !== modem.modulation;
+    const fecMismatch = strongestSignal.fec !== modem.fec;
+    const hasLock = !modulationMismatch && !fecMismatch;
+
+    return {
+      hasCarrier: true,
+      hasLock,
+      actualModulation: strongestSignal.modulation,
+      configuredModulation: modem.modulation,
+      cnRatio_dB: cnRatio,
+      frequencyOffset_Hz: frequencyOffset,
+      modulationMismatch,
+      fecMismatch,
+    };
   }
 
   /**

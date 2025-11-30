@@ -190,3 +190,22 @@
 #spec-analyzer-advanced-collapse.show {
   display: block;
 }
+
+/* IQ Constellation Status Container */
+.iq-status-container {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  margin-bottom: 0.25rem;
+  padding: 0 0.25rem;
+}
+
+.iq-status-cn,
+.iq-status-lock {
+  font-weight: 500;
+}
+
+.iq-constellation-canvas {
+  display: block;
+  border-radius: 0.25rem;
+}

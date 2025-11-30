@@ -8,7 +8,6 @@ dist/
 
 # IDEs and editors
 .claude/
-CLAUDE.md
 .github/instructions/
 
 # OS
@@ -38,12 +37,6 @@ temp/
 # Notes
 *.notes.*
 notes
-
-# Retrospective files
-retrospectives/
-
-# Plans
-plans/
 
 # Unused Icons
 src/assets/icons/wip

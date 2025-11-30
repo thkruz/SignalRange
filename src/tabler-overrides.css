@@ -609,15 +609,15 @@ body {
   --bs-table-border-color: var(--mc-border);
 }
 
-.table > thead {
+.table>thead {
   color: var(--mc-text-primary);
 }
 
-.table > tbody > tr:hover {
+.table>tbody>tr:hover {
   background-color: var(--mc-surface-2);
 }
 
-.table-striped > tbody > tr:nth-of-type(odd) {
+.table-striped>tbody>tr:nth-of-type(odd) {
   background-color: rgba(255, 255, 255, 0.02);
 }
 
@@ -754,6 +754,7 @@ body {
 
 .power-meter {
   display: flex;
+  flex-direction: row;
   gap: 2px;
   align-items: center;
 }

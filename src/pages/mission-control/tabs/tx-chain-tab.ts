@@ -227,14 +227,19 @@ export class TxChainTab extends BaseElement {
                     <div class="metric-row">
                       <span class="metric-label">Power:</span>
                       <div class="power-meter-container">
-                        <div id="hpa-power-meter" class="power-meter">
+                        <div id="hpa-power-meter" class="power-meter power-meter-10">
+                          <div class="power-segment led-off"></div>
+                          <div class="power-segment led-off"></div>
+                          <div class="power-segment led-off"></div>
+                          <div class="power-segment led-off"></div>
+                          <div class="power-segment led-off"></div>
                           <div class="power-segment led-off"></div>
                           <div class="power-segment led-off"></div>
                           <div class="power-segment led-off"></div>
                           <div class="power-segment led-off"></div>
                           <div class="power-segment led-off"></div>
                         </div>
-                        <span id="hpa-power-watts" class="power-meter-label">0W</span>
+                        <span id="hpa-power-watts" class="power-meter-label">0 W</span>
                       </div>
                     </div>
                     <div class="metric-row">

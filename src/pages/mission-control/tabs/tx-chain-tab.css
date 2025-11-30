@@ -121,6 +121,17 @@
   box-shadow: none;
 }
 
+/* 10-segment power meter - narrower segments */
+.power-meter-10 .power-segment {
+  width: 10px;
+}
+
+/* Fixed width for power label to prevent layout shift */
+.power-meter-label {
+  min-width: 3.5rem;
+  text-align: right;
+}
+
 /* ==========================================================================
    Equipment Adjust Control - Matches FineAdjustControl design
    ========================================================================== */

@@ -666,6 +666,60 @@ export class ACUControlTab extends BaseElement {
         statusLed.className = 'led led-green ms-2';
       }
     }
+
+    // Sync loopback switch
+    const loopbackSwitch = qs<HTMLInputElement>('#loopback-switch', this.dom_);
+    if (loopbackSwitch) loopbackSwitch.checked = state.isLoopback;
+
+    // Sync precipitation status
+    const precipStatus = qs('#precip-status', this.dom_);
+    if (precipStatus) {
+      const led = precipStatus.querySelector('.led');
+      if (led) led.className = `led ${state.precipitationDetected ? 'led-amber' : 'led-off'} me-1`;
+      const textNode = precipStatus.childNodes[precipStatus.childNodes.length - 1];
+      if (textNode) textNode.textContent = state.precipitationDetected ? 'RAIN' : 'CLEAR';
+    }
+
+    // Sync context panel title based on tracking mode
+    const contextTitle = qs('#context-panel-title', this.dom_);
+    if (contextTitle) {
+      switch (state.trackingMode) {
+        case 'program-track':
+          contextTitle.textContent = 'Program Track';
+          break;
+        case 'step-track':
+          contextTitle.textContent = 'Step Track';
+          break;
+        default:
+          contextTitle.textContent = 'Tracking';
+      }
+    }
+
+    // Sync move-to-target button disabled state
+    const moveToTargetBtn = qs<HTMLButtonElement>('#move-to-target-btn', this.dom_);
+    if (moveToTargetBtn) {
+      moveToTargetBtn.disabled = state.trackingMode !== 'program-track' || state.targetSatelliteId === null;
+    }
+
+    // Sync satellite dropdown selection
+    const satelliteSelect = qs<HTMLSelectElement>('#satellite-select', this.dom_);
+    if (satelliteSelect) {
+      satelliteSelect.value = state.targetSatelliteId?.toString() ?? '';
+    }
+
+    // Sync beacon frequency input
+    const beaconFreqInput = qs<HTMLInputElement>('#beacon-freq', this.dom_);
+    if (beaconFreqInput) {
+      const freqMHz = (state.stagedBeaconFrequencyHz ?? state.beaconFrequencyHz) / 1e6;
+      beaconFreqInput.value = freqMHz.toString();
+    }
+
+    // Sync beacon search bandwidth input
+    const beaconBwInput = qs<HTMLInputElement>('#beacon-search-bw', this.dom_);
+    if (beaconBwInput) {
+      const bwKHz = (state.stagedBeaconSearchBwHz ?? state.beaconSearchBwHz) / 1e3;
+      beaconBwInput.value = bwKHz.toString();
+    }
   }
 
   public activate(): void {

@@ -411,6 +411,34 @@ export class Receiver extends BaseEquipment {
   }
 
   /**
+   * Get SNR (C/N ratio) for a modem in dB
+   * Returns null if no signal present
+   */
+  public getSnrForModem(modem: ReceiverModemState): number | null {
+    if (!modem.isPowered) return null;
+
+    const signalInfo = this.getSignalsInBandwidth(modem);
+    if (!signalInfo.hasCarrier) return null;
+
+    return signalInfo.cnRatio_dB;
+  }
+
+  /**
+   * Get received signal power for a modem in dBm
+   * Returns null if no signal present
+   */
+  public getPowerForModem(modem: ReceiverModemState): number | null {
+    if (!modem.isPowered) return null;
+
+    const visibleSignals = this.getVisibleSignals(modem);
+    if (visibleSignals.length === 0) return null;
+
+    // Return the power of the strongest signal
+    const totalGain = this.rfFrontEnd_?.couplerModule.signalPathManager.getTotalRxGain() ?? 0;
+    return Math.max(...visibleSignals.map(s => s.power + totalGain));
+  }
+
+  /**
    * Get signal info for IQ constellation display.
    * Uses relaxed filtering - only checks frequency overlap, not modulation/FEC.
    * This allows the IQ display to show signals for troubleshooting even when

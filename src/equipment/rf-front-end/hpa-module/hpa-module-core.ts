@@ -304,6 +304,11 @@ export abstract class HPAModuleCore extends RFFrontEndModule<HPAState> {
 
   handleBackOffChange(backOff: number): void {
     this.state.backOff = backOff;
+
+    // Immediately recalculate derived values so UI updates instantly
+    this.updateOutputPower_();
+    this.updateTemperature_();
+    this.updateIMD_();
   }
 
   handleHpaToggle(): void {
@@ -316,6 +321,11 @@ export abstract class HPAModuleCore extends RFFrontEndModule<HPAState> {
     if (this.state.isPowered) {
       this.state.isHpaEnabled = this.state.isHpaSwitchEnabled;
     }
+
+    // Immediately recalculate derived values so UI updates instantly
+    this.updateOutputPower_();
+    this.updateTemperature_();
+    this.updateIMD_();
   }
 
   renderPowerMeter_(powerDbW: dBW): string {

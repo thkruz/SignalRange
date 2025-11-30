@@ -1,6 +1,9 @@
 import { Receiver, ReceiverModemState, ReceiverState } from '@app/equipment/receiver/receiver';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
+import { CardAlarmBadge } from '@app/components/card-alarm-badge/card-alarm-badge';
+import { AlarmStatus } from '@app/equipment/base-equipment';
+import { qs } from '@app/engine/utils/query-selector';
 
 /**
  * ReceiverAdapter - Bridges Receiver equipment class to modern Mission Control UI
@@ -25,11 +28,19 @@ export class ReceiverAdapter {
   private readonly domCache_: Map<string, HTMLElement> = new Map();
   private readonly boundHandlers: Map<string, EventListener> = new Map();
   private readonly stateChangeHandler_: () => void;
+  private readonly alarmBadge_: CardAlarmBadge;
   private lastStateString: string = '';
 
   constructor(receiver: Receiver, containerEl: HTMLElement) {
     this.receiver = receiver;
     this.containerEl = containerEl;
+
+    // Create alarm badge
+    this.alarmBadge_ = CardAlarmBadge.create('rx-alarm-badge-led');
+    const badgeContainer = qs('#rx-alarm-badge', containerEl);
+    if (badgeContainer) {
+      badgeContainer.innerHTML = this.alarmBadge_.html;
+    }
 
     // Create state change handler
     this.stateChangeHandler_ = () => {
@@ -88,6 +99,10 @@ export class ReceiverAdapter {
 
     // Signal quality status badge
     this.cacheElement_('signal-status');
+
+    // SNR and power level displays
+    this.cacheElement_('snr-display');
+    this.cacheElement_('power-level-display');
 
     // Status bar
     this.cacheElement_('status-bar');
@@ -441,6 +456,24 @@ export class ReceiverAdapter {
         }
       }
     }
+
+    // SNR display
+    const snrDisplay = this.domCache_.get('snr-display');
+    if (snrDisplay) {
+      const snr = this.receiver.getSnrForModem(activeModem);
+      snrDisplay.textContent = snr !== null ? `${snr.toFixed(1)} dB` : '-- dB';
+    }
+
+    // Power level display
+    const powerLevelDisplay = this.domCache_.get('power-level-display');
+    if (powerLevelDisplay) {
+      const power = this.receiver.getPowerForModem(activeModem);
+      powerLevelDisplay.textContent = power !== null ? `${power.toFixed(1)} dBm` : '-- dBm';
+    }
+
+    // Update alarm badge
+    const alarms = this.getAlarmsFromReceiver_();
+    this.alarmBadge_.update(alarms);
   }
 
   private updateStatusBar_(): void {
@@ -472,9 +505,37 @@ export class ReceiverAdapter {
   }
 
   /**
+   * Get current alarms from receiver as AlarmStatus array
+   */
+  private getAlarmsFromReceiver_(): AlarmStatus[] {
+    const alarms: AlarmStatus[] = [];
+    const activeModem = this.getActiveModem_();
+
+    if (!activeModem) return alarms;
+
+    if (activeModem.isPowered) {
+      const hasSignal = this.receiver.hasSignalForModem(activeModem);
+      const isDegraded = this.receiver.isSignalDegraded(activeModem);
+
+      if (!hasSignal) {
+        alarms.push({ severity: 'warning', message: 'No signal detected' });
+      } else if (isDegraded) {
+        alarms.push({ severity: 'warning', message: 'Signal degraded' });
+      }
+    } else {
+      alarms.push({ severity: 'info', message: 'Modem powered off' });
+    }
+
+    return alarms;
+  }
+
+  /**
    * Cleanup
    */
   dispose(): void {
+    // Dispose alarm badge
+    this.alarmBadge_.dispose();
+
     // Unsubscribe from state changes
     EventBus.getInstance().off(Events.RX_CONFIG_CHANGED, this.stateChangeHandler_);
     EventBus.getInstance().off(Events.RX_ACTIVE_MODEM_CHANGED, this.stateChangeHandler_);

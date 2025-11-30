@@ -1,6 +1,8 @@
 import { Transmitter, TransmitterModem, TransmitterState } from '@app/equipment/transmitter/transmitter';
 import { CardAlarmBadge } from "@app/components/card-alarm-badge/card-alarm-badge";
 import { qs } from "@app/engine/utils/query-selector";
+import { EventBus } from '@app/events/event-bus';
+import { Events } from '@app/events/events';
 
 /**
  * TransmitterAdapter - Bridges Transmitter equipment class to modern Mission Control UI
@@ -18,6 +20,7 @@ export class TransmitterAdapter {
   private readonly containerEl: HTMLElement;
   private readonly domCache_: Map<string, HTMLElement> = new Map();
   private readonly boundHandlers: Map<string, EventListener> = new Map();
+  private readonly stateChangeHandler_: () => void;
   private lastStateString: string = '';
   private readonly alarmBadge_: CardAlarmBadge;
 
@@ -32,12 +35,28 @@ export class TransmitterAdapter {
       badgeContainer.innerHTML = this.alarmBadge_.html;
     }
 
+    // Create state change handler
+    this.stateChangeHandler_ = () => {
+      this.syncDomWithState_(this.transmitter.state);
+    };
+
     // Initialize
     this.setupDomCache_();
     this.setupEventListeners_();
+    this.subscribeToStateChanges_();
 
     // Initial sync
     this.syncDomWithState_(this.transmitter.state);
+  }
+
+  /**
+   * Subscribe to transmitter state changes
+   */
+  private subscribeToStateChanges_(): void {
+    EventBus.getInstance().on(Events.TX_CONFIG_CHANGED, this.stateChangeHandler_);
+    EventBus.getInstance().on(Events.TX_ACTIVE_MODEM_CHANGED, this.stateChangeHandler_);
+    EventBus.getInstance().on(Events.TX_TRANSMIT_CHANGED, this.stateChangeHandler_);
+    EventBus.getInstance().on(Events.SYNC, this.stateChangeHandler_);
   }
 
   /**
@@ -442,6 +461,12 @@ export class TransmitterAdapter {
   dispose(): void {
     // Dispose alarm badge
     this.alarmBadge_.dispose();
+
+    // Unsubscribe from state changes
+    EventBus.getInstance().off(Events.TX_CONFIG_CHANGED, this.stateChangeHandler_);
+    EventBus.getInstance().off(Events.TX_ACTIVE_MODEM_CHANGED, this.stateChangeHandler_);
+    EventBus.getInstance().off(Events.TX_TRANSMIT_CHANGED, this.stateChangeHandler_);
+    EventBus.getInstance().off(Events.SYNC, this.stateChangeHandler_);
 
     // Remove all event listeners
     this.boundHandlers.forEach((handler, key) => {

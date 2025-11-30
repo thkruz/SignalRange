@@ -250,7 +250,7 @@ export class HPAAdapter {
 
   /**
    * Update power meter LED segments based on output power
-   * Green: normal operation, Yellow: approaching saturation, Red: overdrive
+   * Green: normal operation (0-70%), Yellow: approaching saturation (70-90%), Red: overdrive (90-100%)
    */
   private updatePowerMeter_(outputPowerDbm: number): void {
     const powerMeter = this.domCache_.get('powerMeter');
@@ -260,15 +260,16 @@ export class HPAAdapter {
     const minPower = 30;
     const maxPower = 50;
     const normalized = Math.max(0, Math.min(1, (outputPowerDbm - minPower) / (maxPower - minPower)));
-    const activeSegments = Math.round(normalized * 5);
+    const activeSegments = Math.round(normalized * 10);
 
     const segments = powerMeter.querySelectorAll('.power-segment');
     segments.forEach((segment, index) => {
       if (index < activeSegments) {
-        // Determine color based on segment position
-        if (index >= 4) {
+        // Determine color based on segment position (10 segments total)
+        // Green: 0-6 (70%), Yellow: 7-8 (70-90%), Red: 9 (90-100%)
+        if (index >= 9) {
           segment.className = 'power-segment led-red';
-        } else if (index >= 3) {
+        } else if (index >= 7) {
           segment.className = 'power-segment led-yellow';
         } else {
           segment.className = 'power-segment led-green';

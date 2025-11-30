@@ -310,16 +310,16 @@ export class ReceiverAdapter {
       antennaSelect.value = modem.antennaUuid;
     }
 
-    // Frequency input
+    // Frequency input - round to 1 decimal place to avoid floating point display errors
     const frequencyInput = this.domCache_.get('frequency-input') as HTMLInputElement;
     if (frequencyInput) {
-      frequencyInput.value = String(modem.frequency);
+      frequencyInput.value = Number(modem.frequency.toFixed(1)).toString();
     }
 
-    // Bandwidth input
+    // Bandwidth input - round to 1 decimal place to avoid floating point display errors
     const bandwidthInput = this.domCache_.get('bandwidth-input') as HTMLInputElement;
     if (bandwidthInput) {
-      bandwidthInput.value = String(modem.bandwidth);
+      bandwidthInput.value = Number(modem.bandwidth.toFixed(1)).toString();
     }
 
     // Modulation selector

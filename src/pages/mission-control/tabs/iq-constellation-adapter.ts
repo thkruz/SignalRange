@@ -118,11 +118,14 @@ export class IQConstellationAdapter {
     const modulation = signalState.actualModulation ?? signalState.configuredModulation;
     let points = this.getConstellationPoints_(modulation);
 
-    // Apply carrier recovery error if modulation mismatch
-    points = this.applyCarrierRecoveryError_(points, signalState);
-
-    // Apply frequency offset rotation
-    points = this.applyFrequencyOffset_(points, signalState.frequencyOffset_Hz);
+    // When locked, carrier recovery compensates for frequency offset - constellation is stable
+    // When not locked, apply rotation effects to simulate carrier hunting
+    if (signalState.hasLock) {
+      this.carrierRotationPhase_ = 0;
+    } else {
+      points = this.applyCarrierRecoveryError_(points, signalState);
+      points = this.applyFrequencyOffset_(points, signalState.frequencyOffset_Hz);
+    }
 
     // Draw constellation with C/N-based noise
     this.drawConstellationRealistic_(ctx, points, centerX, centerY, scale, signalState);

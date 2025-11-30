@@ -4,6 +4,7 @@ import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
 import { FILTER_BANDWIDTH_CONFIGS } from "@app/equipment/rf-front-end/filter-module/filter-module-core";
 import { FilterAdapter } from './filter-adapter';
+import { IQConstellationAdapter } from './iq-constellation-adapter';
 import { LNBAdapter } from './lnb-adapter';
 import { ReceiverAdapter } from './receiver-adapter';
 import './rx-analysis-tab.css';
@@ -29,6 +30,7 @@ export class RxAnalysisTab extends BaseElement {
   private spectrumAnalyzerAdapter: SpectrumAnalyzerAdapter | null = null;
   private spectrumAnalyzerAdvancedAdapter: SpectrumAnalyzerAdvancedAdapter | null = null;
   private receiverAdapter: ReceiverAdapter | null = null;
+  private iqConstellationAdapter: IQConstellationAdapter | null = null;
 
   constructor(groundStation: GroundStation, containerId: string) {
     super();
@@ -47,7 +49,7 @@ export class RxAnalysisTab extends BaseElement {
 
   protected html_ = html`
     <div class="rx-analysis-tab">
-      <div class="row g-3 pb-6">
+      <div class="row g-2 pb-6">
         <!-- LNB Control Card -->
         <div class="col-lg-6">
           <div class="card h-100">
@@ -75,19 +77,21 @@ export class RxAnalysisTab extends BaseElement {
 
               <!-- Gain Control -->
               <div class="mb-3">
-                <label for="lnb-gain" class="form-label d-flex justify-content-between">
-                  <span class="text-muted small text-uppercase">Gain</span>
-                  <span id="lnb-gain-display" class="fw-bold font-monospace">0.0 dB</span>
-                </label>
-                <input
-                  type="range"
-                  id="lnb-gain"
-                  class="form-range"
-                  min="0"
-                  max="65"
-                  step="0.5"
-                  value="0"
-                />
+                <label class="form-label text-muted small text-uppercase">Gain</label>
+                <div class="d-flex align-items-center gap-2">
+                  <div class="btn-group btn-group-sm">
+                    <button id="lnb-gain-dec-coarse" class="btn btn-outline-secondary" title="-1 dB">-1</button>
+                    <button id="lnb-gain-dec-fine" class="btn btn-outline-secondary" title="-0.1 dB">-.1</button>
+                  </div>
+                  <div class="input-group input-group-sm" style="width: 100px;">
+                    <input type="number" id="lnb-gain" class="form-control text-center font-monospace" min="0" max="65" step="0.1" value="0" />
+                  </div>
+                  <div class="btn-group btn-group-sm">
+                    <button id="lnb-gain-inc-fine" class="btn btn-outline-secondary" title="+0.1 dB">+.1</button>
+                    <button id="lnb-gain-inc-coarse" class="btn btn-outline-secondary" title="+1 dB">+1</button>
+                  </div>
+                  <span class="text-muted small">dB</span>
+                </div>
               </div>
 
               <!-- Power Switch -->
@@ -139,13 +143,13 @@ export class RxAnalysisTab extends BaseElement {
         </div>
 
         <!-- Spectrum Analyzer Canvas Card -->
-        <div class="col-6">
+        <div class="col-7">
           <div class="card">
             <div class="card-header">
               <h3 class="card-title">Spectrum Analyzer</h3>
             </div>
             <div class="card-body">
-              <div id="spec-analyzer-canvas-container" class="spec-analyzer-canvas row g-3">
+              <div id="spec-analyzer-canvas-container" class="spec-analyzer-canvas row g-2">
                 <!-- Canvas will be moved here by adapter -->
               </div>
             </div>
@@ -153,14 +157,14 @@ export class RxAnalysisTab extends BaseElement {
         </div>
 
         <!-- Spectrum Analyzer Controls Card -->
-        <div class="col-6">
+        <div class="col-5">
           <div class="card">
             <div class="card-header">
               <h3 class="card-title">Spectrum Analyzer Controls</h3>
             </div>
             <div class="card-body" id="spec-analyzer-controls">
               <!-- Frequency & Amplitude Row -->
-              <div class="row g-3 mb-3">
+              <div class="row g-2 mb-2">
                 <div class="col-md-3">
                   <label class="form-label d-flex justify-content-between">
                     <span class="text-muted small text-uppercase">Center Frequency</span>
@@ -203,7 +207,7 @@ export class RxAnalysisTab extends BaseElement {
                 </div>
               </div>
 
-              <div class="row g-3 mb-3">
+              <div class="row g-2 mb-2">
                 <div class="col-md-3">
                   <label class="form-label text-muted small text-uppercase">Resolution BW</label>
                   <select id="sa-rbw" class="form-select form-select-sm">
@@ -243,7 +247,7 @@ export class RxAnalysisTab extends BaseElement {
               </div>
 
               <!-- Display Mode & Actions -->
-              <div class="row g-3 mb-3">
+              <div class="row g-2 mb-2">
                 <div class="col-12">
                   <div class="d-flex flex-wrap gap-2 align-items-center">
                     <div class="btn-group btn-group-sm">
@@ -266,7 +270,7 @@ export class RxAnalysisTab extends BaseElement {
               </div>
 
               <!-- Trace Controls -->
-              <div class="row g-3 mb-3">
+              <div class="row g-2 mb-2">
                 <div class="col-12">
                   <label class="form-label text-muted small text-uppercase">Traces</label>
                   <div class="d-flex flex-wrap gap-2 align-items-center">
@@ -294,7 +298,7 @@ export class RxAnalysisTab extends BaseElement {
               </div>
 
               <!-- Markers -->
-              <div class="row g-3">
+              <div class="row g-2">
                 <div class="col-12">
                   <div class="d-flex gap-3 align-items-center">
                     <div class="form-check form-switch">
@@ -313,8 +317,20 @@ export class RxAnalysisTab extends BaseElement {
           </div>
         </div>
 
+        <!-- I&Q Constellation Card -->
+        <div class="col-lg-3">
+          <div class="card h-100">
+            <div class="card-header">
+              <h3 class="card-title">I&Q Constellation</h3>
+            </div>
+            <div class="card-body d-flex align-items-center justify-content-center">
+              <div id="iq-constellation-container"></div>
+            </div>
+          </div>
+        </div>
+
         <!-- Receiver Modems Card -->
-        <div class="col-12">
+        <div class="col-lg-9">
           <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
               <h3 class="card-title">Receiver Modems</h3>
@@ -329,7 +345,7 @@ export class RxAnalysisTab extends BaseElement {
                 <button class="btn btn-outline-primary modem-btn" data-modem="4">RX 4</button>
               </div>
 
-              <div class="row g-3">
+              <div class="row g-2">
                 <!-- Configuration Panel -->
                 <div class="col-lg-4">
                   <div class="card h-100">
@@ -502,6 +518,11 @@ export class RxAnalysisTab extends BaseElement {
     if (receiver && this.dom_) {
       this.receiverAdapter = new ReceiverAdapter(receiver, this.dom_);
     }
+
+    // Create I&Q constellation adapter if receiver exists
+    if (receiver && this.dom_) {
+      this.iqConstellationAdapter = new IQConstellationAdapter(receiver, this.dom_);
+    }
   }
 
   /**
@@ -531,12 +552,14 @@ export class RxAnalysisTab extends BaseElement {
     this.spectrumAnalyzerAdapter?.dispose();
     this.spectrumAnalyzerAdvancedAdapter?.dispose();
     this.receiverAdapter?.dispose();
+    this.iqConstellationAdapter?.dispose();
 
     this.lnbAdapter = null;
     this.filterAdapter = null;
     this.spectrumAnalyzerAdapter = null;
     this.spectrumAnalyzerAdvancedAdapter = null;
     this.receiverAdapter = null;
+    this.iqConstellationAdapter = null;
 
     this.dom_?.remove();
   }

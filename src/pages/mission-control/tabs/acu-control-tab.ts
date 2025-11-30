@@ -75,7 +75,7 @@ export class ACUControlTab extends BaseElement {
         </div>
       </div>
 
-      <div class="row g-3 pb-6">
+      <div class="row g-2 pb-6">
         <!-- Antenna Position Polar Plot -->
         <div class="col-xl-3">
           <div class="card h-100">
@@ -184,7 +184,7 @@ export class ACUControlTab extends BaseElement {
       </div>
 
       <!-- Bottom Row: OMT, Environmental, RF Metrics -->
-      <div class="row g-3">
+      <div class="row g-2">
         <!-- OMT Display Card -->
         <div class="col-xl-3">
           <div class="card h-100">

@@ -479,7 +479,7 @@ export class Receiver extends BaseEquipment {
 
     // Figure out which signals match the receiver settings
     const visibleSignals = (this.rfFrontEnd_?.filterModule.outputSignals ?? []).filter((s) => {
-      if (s.power < externalNoise) {
+      if (s.power + this.rfFrontEnd_.couplerModule.signalPathManager.getTotalRxGain() < externalNoise) {
         return false;
       }
 
@@ -523,7 +523,7 @@ export class Receiver extends BaseEquipment {
 
         // Calculate C/N for each signal and mark as degraded if below threshold
         const noiseFloor = this.rfFrontEnd_.getNoiseFloor(TapPoint.RX_IF).noiseFloor + this.rfFrontEnd_.couplerModule.signalPathManager.getTotalRxGain();
-        const signalLevel = s.power;
+        const signalLevel = s.power + this.rfFrontEnd_.couplerModule.signalPathManager.getTotalRxGain();
 
         const cn = signalLevel - noiseFloor;
 

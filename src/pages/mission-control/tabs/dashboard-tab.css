@@ -1,0 +1,149 @@
+/**
+ * Dashboard Tab Styles
+ */
+
+.dashboard-tab {
+  padding: 0.75rem;
+  height: 100%;
+  overflow-y: auto;
+}
+
+/* Station icon */
+.station-icon-lg {
+  width: 48px;
+  height: 48px;
+  filter: invert(1);
+}
+
+/* Equipment summary grid */
+.equipment-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.75rem;
+}
+
+.equipment-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.75rem;
+  background: var(--mc-surface-2);
+  border-radius: 6px;
+  border: 1px solid var(--mc-border);
+}
+
+.equipment-item-icon {
+  width: 32px;
+  height: 32px;
+  filter: invert(1);
+  margin-bottom: 0.5rem;
+}
+
+.equipment-item-count {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--mc-text-primary);
+}
+
+.equipment-item-label {
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  color: var(--mc-text-secondary);
+  letter-spacing: 0.5px;
+}
+
+/* Alarm list */
+.alarm-list {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.alarm-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--mc-border);
+}
+
+.alarm-item:last-child {
+  border-bottom: none;
+}
+
+.alarm-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.alarm-icon.critical {
+  color: var(--color-error);
+}
+
+.alarm-icon.warning {
+  color: var(--color-warning);
+}
+
+.alarm-icon.info {
+  color: var(--color-info);
+}
+
+.alarm-message {
+  flex: 1;
+  font-size: 0.8125rem;
+}
+
+.alarm-time {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.6875rem;
+  color: var(--mc-text-secondary);
+}
+
+/* No alarms state */
+.no-alarms {
+  text-align: center;
+  padding: 2rem;
+  color: var(--mc-text-secondary);
+}
+
+.no-alarms-icon {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+  opacity: 0.5;
+}
+
+/* Quick stats */
+.quick-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1rem;
+  text-align: center;
+}
+
+.quick-stat-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.quick-stat-label {
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  color: var(--mc-text-secondary);
+  margin-top: 0.25rem;
+}
+
+.quick-stat-value.good {
+  color: var(--color-success);
+}
+
+.quick-stat-value.warn {
+  color: var(--color-warning);
+}
+
+.quick-stat-value.bad {
+  color: var(--color-error);
+}

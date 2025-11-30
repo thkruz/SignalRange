@@ -40,9 +40,9 @@ export class GPSTimingTab extends BaseElement {
 
   protected html_ = html`
     <div class="gps-timing-tab">
-      <div class="row g-3 pb-6">
+      <div class="row g-2 pb-6">
         <!-- Lock Status Card -->
-        <div class="col-lg-6">
+        <div class="col-lg-3">
           <div class="card h-100">
             <div class="card-header">
               <h3 class="card-title">Lock & Power Status</h3>
@@ -63,32 +63,26 @@ export class GPSTimingTab extends BaseElement {
               <!-- Status Indicators -->
               <div class="d-flex justify-content-between align-items-center mb-2">
                 <span class="text-muted small">Lock Status:</span>
-                <div class="status-with-led">
-                  <span id="gpsdo-lock-status" class="fw-bold font-monospace">LOCKED</span>
-                  <div id="gpsdo-lock-led" class="led led-green"></div>
-                </div>
+                <span id="gpsdo-lock-badge" class="status-badge status-badge-green">LOCKED</span>
               </div>
               <div class="d-flex justify-content-between align-items-center mb-2">
                 <span class="text-muted small">GNSS Signal:</span>
-                <div id="gpsdo-gnss-led" class="led led-green"></div>
+                <span id="gpsdo-gnss-badge" class="status-badge status-badge-green">GOOD</span>
               </div>
               <div class="d-flex justify-content-between align-items-center mb-2">
                 <span class="text-muted small">Warmup:</span>
-                <div class="status-with-led">
-                  <span id="gpsdo-warmup-time" class="fw-bold font-monospace">READY</span>
-                  <div id="gpsdo-warmup-led" class="led led-green"></div>
-                </div>
+                <span id="gpsdo-warmup-badge" class="status-badge status-badge-green">READY</span>
               </div>
               <div class="d-flex justify-content-between align-items-center">
                 <span class="text-muted small">Holdover:</span>
-                <div id="gpsdo-holdover-led" class="led led-off"></div>
+                <span id="gpsdo-holdover-badge" class="status-badge status-badge-off">INACTIVE</span>
               </div>
             </div>
           </div>
         </div>
 
         <!-- GNSS Constellation Card -->
-        <div class="col-lg-6">
+        <div class="col-lg-3">
           <div class="card h-100">
             <div class="card-header">
               <h3 class="card-title">GNSS Constellation</h3>
@@ -108,6 +102,46 @@ export class GPSTimingTab extends BaseElement {
               <div class="d-flex justify-content-between align-items-center">
                 <span class="text-muted small">UTC Accuracy:</span>
                 <span id="gpsdo-utc-accuracy" class="fw-bold font-monospace">0 ns</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- OCXO Oven Card -->
+        <div class="col-lg-3">
+          <div class="card h-100">
+            <div class="card-header">
+              <h3 class="card-title">OCXO Oven Control</h3>
+            </div>
+            <div class="card-body">
+              <div class="text-center mb-3">
+                <span style="font-size: 2rem;">🌡️</span>
+              </div>
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="text-muted small">Oven Temperature:</span>
+                <span id="gpsdo-temperature" class="fw-bold font-monospace">70.0 °C</span>
+              </div>
+              <div class="d-flex justify-content-between align-items-center">
+                <span class="text-muted small">Operating Hours:</span>
+                <span id="gpsdo-operating-hours" class="fw-bold font-monospace">0.0 hrs</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 10 MHz Distribution Card -->
+        <div class="col-lg-3">
+          <div class="card h-100">
+            <div class="card-header">
+              <h3 class="card-title">10 MHz Distribution</h3>
+            </div>
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <span class="text-muted small">Active Outputs:</span>
+                <span id="gpsdo-10mhz-outputs" class="fw-bold font-monospace">2/5</span>
+              </div>
+              <div class="text-muted small text-center">
+                Distributing 10 MHz reference to BUC and LNB modules
               </div>
             </div>
           </div>
@@ -142,28 +176,6 @@ export class GPSTimingTab extends BaseElement {
           </div>
         </div>
 
-        <!-- OCXO Oven Card -->
-        <div class="col-lg-6">
-          <div class="card h-100">
-            <div class="card-header">
-              <h3 class="card-title">OCXO Oven Control</h3>
-            </div>
-            <div class="card-body">
-              <div class="text-center mb-3">
-                <span style="font-size: 2rem;">🌡️</span>
-              </div>
-              <div class="d-flex justify-content-between align-items-center mb-2">
-                <span class="text-muted small">Oven Temperature:</span>
-                <span id="gpsdo-temperature" class="fw-bold font-monospace">70.0 °C</span>
-              </div>
-              <div class="d-flex justify-content-between align-items-center">
-                <span class="text-muted small">Operating Hours:</span>
-                <span id="gpsdo-operating-hours" class="fw-bold font-monospace">0.0 hrs</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
         <!-- Holdover Performance Card -->
         <div class="col-lg-6">
           <div class="card h-100">
@@ -182,23 +194,6 @@ export class GPSTimingTab extends BaseElement {
           </div>
         </div>
 
-        <!-- 10 MHz Distribution Card -->
-        <div class="col-lg-6">
-          <div class="card h-100">
-            <div class="card-header">
-              <h3 class="card-title">10 MHz Distribution</h3>
-            </div>
-            <div class="card-body">
-              <div class="d-flex justify-content-between align-items-center mb-3">
-                <span class="text-muted small">Active Outputs:</span>
-                <span id="gpsdo-10mhz-outputs" class="fw-bold font-monospace">2/5</span>
-              </div>
-              <div class="text-muted small text-center">
-                Distributing 10 MHz reference to BUC and LNB modules
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   `;

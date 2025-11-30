@@ -3,6 +3,7 @@ import uplinkPng from '@app/assets/icons/arrow-big-up-lines.png';
 import dashboardPng from '@app/assets/icons/dashboard.png';
 import gpsPng from '@app/assets/icons/gps.png';
 import radarPng from '@app/assets/icons/radar.png';
+import satellitePng from '@app/assets/icons/satellite.png';
 import { BaseElement } from "@app/components/base-element";
 import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
@@ -11,8 +12,10 @@ import { Events } from "@app/events/events";
 import { SimulationManager } from "@app/simulation/simulation-manager";
 import './tabbed-canvas.css';
 import { ACUControlTab } from './tabs/acu-control-tab';
+import { DashboardTab } from './tabs/dashboard-tab';
 import { GPSTimingTab } from './tabs/gps-timing-tab';
 import { RxAnalysisTab } from './tabs/rx-analysis-tab';
+import { SatelliteDashboardTab } from './tabs/satellite-dashboard-tab';
 import { TxChainTab } from './tabs/tx-chain-tab';
 
 /**
@@ -27,7 +30,7 @@ export class TabbedCanvas extends BaseElement {
 
   private activeTab_: string = 'welcome';
   private selectedAssetId_: string | null = null;
-  private readonly tabInstances_: Map<string, ACUControlTab | RxAnalysisTab | TxChainTab | GPSTimingTab> = new Map();
+  private readonly tabInstances_: Map<string, ACUControlTab | DashboardTab | RxAnalysisTab | TxChainTab | GPSTimingTab | SatelliteDashboardTab> = new Map();
 
   protected html_ = html`
     <div class="tabbed-canvas">
@@ -67,7 +70,7 @@ export class TabbedCanvas extends BaseElement {
     if (type === 'ground-station') {
       this.renderGroundStationTabs_();
     } else if (type === 'satellite') {
-      this.renderSatellitePlaceholder_();
+      this.renderSatelliteDashboard_();
     }
   }
 
@@ -114,29 +117,51 @@ export class TabbedCanvas extends BaseElement {
   }
 
   /**
-   * Render satellite placeholder
+   * Render satellite dashboard
    */
-  private renderSatellitePlaceholder_(): void {
-    const tabBar = qs('#tab-bar', this.dom_);
-    const content = qs('#canvas-content', this.dom_);
+  private renderSatelliteDashboard_(): void {
+    // Extract NORAD ID from the asset ID (format: "sat-12345")
+    const noradId = parseInt(this.selectedAssetId_?.replace('sat-', '') ?? '0', 10);
+    const satellite = SimulationManager.getInstance().getSatByNoradId(noradId);
 
-    tabBar.innerHTML = html`
-      <li class="nav-item" role="presentation">
-        <a class="nav-link active" href="#" role="tab">
-          <span class="tab-icon">🛰️</span>
-          <span class="tab-label">Satellite Control</span>
-        </a>
-      </li>
-    `;
+    if (!satellite) {
+      const tabBar = qs('#tab-bar', this.dom_);
+      const content = qs('#canvas-content', this.dom_);
 
-    content.innerHTML = html`
-      <div class="placeholder-screen">
-        <div class="placeholder-icon">🚧</div>
-        <h2>Satellite Control</h2>
-        <p>Satellite control interface is not yet implemented.</p>
-        <p class="placeholder-note">This feature is planned for Phase 8.</p>
-      </div>
-    `;
+      tabBar.innerHTML = '';
+      content.innerHTML = html`
+        <div class="placeholder-screen">
+          <div class="placeholder-icon">⚠️</div>
+          <h2>Satellite Not Found</h2>
+          <p>Could not find satellite with NORAD ID ${noradId}.</p>
+        </div>
+      `;
+      return;
+    }
+
+    const tabs = [
+      { id: 'sat-dashboard', label: 'Dashboard', icon: satellitePng },
+    ];
+
+    this.renderTabs_(tabs);
+    this.activeTab_ = 'sat-dashboard';
+
+    // Render the satellite dashboard tab
+    const tabKey = `sat-dashboard-${this.selectedAssetId_}`;
+    let satTab = this.tabInstances_.get(tabKey) as SatelliteDashboardTab;
+
+    if (satTab && !document.contains(satTab.dom)) {
+      satTab.dispose();
+      this.tabInstances_.delete(tabKey);
+      satTab = null!;
+    }
+
+    if (!satTab) {
+      satTab = new SatelliteDashboardTab(satellite, 'canvas-content');
+      this.tabInstances_.set(tabKey, satTab);
+    }
+
+    satTab.activate();
   }
 
   /**
@@ -209,13 +234,7 @@ export class TabbedCanvas extends BaseElement {
     // Phase 5+: Actual tab implementations for other tabs (RxAnalysisTab, etc.)
     switch (tabId) {
       case 'dashboard':
-        content.innerHTML = html`
-          <div class="tab-content-placeholder">
-            <h3>Dashboard</h3>
-            <p>Ground station overview and status will be displayed here.</p>
-            <div class="placeholder-note">Coming in Phase 4+</div>
-          </div>
-        `;
+        this.renderDashboardTab_(content);
         break;
 
       case 'acu-control':
@@ -242,6 +261,45 @@ export class TabbedCanvas extends BaseElement {
           </div>
         `;
     }
+  }
+
+  /**
+   * Render Dashboard tab
+   */
+  private renderDashboardTab_(content: HTMLElement): void {
+    const groundStation = SimulationManager.getInstance().groundStations.find(
+      gs => gs.state.id === this.selectedAssetId_
+    );
+
+    if (!groundStation) {
+      content.innerHTML = html`
+        <div class="tab-content-placeholder">
+          <h3>Error</h3>
+          <p>Ground station not found.</p>
+        </div>
+      `;
+      return;
+    }
+
+    // Check if tab instance already exists and its DOM is still attached
+    const tabKey = `dashboard-${this.selectedAssetId_}`;
+    let dashTab = this.tabInstances_.get(tabKey) as DashboardTab;
+
+    if (dashTab && !document.contains(dashTab.dom)) {
+      // DOM was destroyed (e.g., by switching to a placeholder tab), recreate
+      dashTab.dispose();
+      this.tabInstances_.delete(tabKey);
+      dashTab = null!;
+    }
+
+    if (!dashTab) {
+      // Create new tab instance
+      dashTab = new DashboardTab(groundStation, 'canvas-content');
+      this.tabInstances_.set(tabKey, dashTab);
+    }
+
+    // Activate the tab
+    dashTab.activate();
   }
 
   /**

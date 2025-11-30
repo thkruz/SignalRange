@@ -50,11 +50,10 @@ export class GPSDOAdapter {
   private setupDomCache_(): void {
     this.domCache_.set('powerSwitch', qs('#gpsdo-power', this.containerEl));
     this.domCache_.set('gnssSwitch', qs('#gpsdo-gnss-switch', this.containerEl));
-    this.domCache_.set('lockLed', qs('#gpsdo-lock-led', this.containerEl));
-    this.domCache_.set('lockStatus', qs('#gpsdo-lock-status', this.containerEl));
-    this.domCache_.set('gnssLed', qs('#gpsdo-gnss-led', this.containerEl));
-    this.domCache_.set('warmupLed', qs('#gpsdo-warmup-led', this.containerEl));
-    this.domCache_.set('warmupTime', qs('#gpsdo-warmup-time', this.containerEl));
+    this.domCache_.set('lockBadge', qs('#gpsdo-lock-badge', this.containerEl));
+    this.domCache_.set('gnssBadge', qs('#gpsdo-gnss-badge', this.containerEl));
+    this.domCache_.set('warmupBadge', qs('#gpsdo-warmup-badge', this.containerEl));
+    this.domCache_.set('holdoverBadge', qs('#gpsdo-holdover-badge', this.containerEl));
     this.domCache_.set('satelliteCount', qs('#gpsdo-satellite-count', this.containerEl));
     this.domCache_.set('constellation', qs('#gpsdo-constellation', this.containerEl));
     this.domCache_.set('freqAccuracy', qs('#gpsdo-freq-accuracy', this.containerEl));
@@ -62,11 +61,22 @@ export class GPSDOAdapter {
     this.domCache_.set('phaseNoise', qs('#gpsdo-phase-noise', this.containerEl));
     this.domCache_.set('temperature', qs('#gpsdo-temperature', this.containerEl));
     this.domCache_.set('lockDuration', qs('#gpsdo-lock-duration', this.containerEl));
-    this.domCache_.set('holdoverLed', qs('#gpsdo-holdover-led', this.containerEl));
     this.domCache_.set('holdoverError', qs('#gpsdo-holdover-error', this.containerEl));
     this.domCache_.set('10mhzOutputs', qs('#gpsdo-10mhz-outputs', this.containerEl));
     this.domCache_.set('utcAccuracy', qs('#gpsdo-utc-accuracy', this.containerEl));
     this.domCache_.set('operatingHours', qs('#gpsdo-operating-hours', this.containerEl));
+  }
+
+  /**
+   * Convert LED class to badge class
+   */
+  private getBadgeClass_(ledClass: string): string {
+    switch (ledClass) {
+      case 'led-green': return 'status-badge-green';
+      case 'led-red': return 'status-badge-red';
+      case 'led-amber': return 'status-badge-amber';
+      default: return 'status-badge-off';
+    }
   }
 
   private setupInputListeners_(): void {
@@ -117,50 +127,59 @@ export class GPSDOAdapter {
       if (gnssSwitch) gnssSwitch.checked = state.isGnssSwitchUp;
     }
 
-    // Update Lock Status LED and text
+    // Update Lock Status Badge
     if (state.isLocked !== undefined || state.isGnssAcquiringLock !== undefined || state.isPowered !== undefined) {
-      const lockLed = this.domCache_.get('lockLed');
-      const lockStatus = this.domCache_.get('lockStatus');
+      const lockBadge = this.domCache_.get('lockBadge');
       const ledStatus = this.gpsdoModule.getLockLedStatus_();
+      const badgeClass = this.getBadgeClass_(ledStatus);
 
-      if (lockLed) {
-        lockLed.className = `led ${ledStatus}`;
-      }
-
-      if (lockStatus) {
-        if (!state.isPowered) {
-          lockStatus.textContent = 'OFF';
-        } else if (state.isGnssAcquiringLock) {
-          lockStatus.textContent = 'ACQUIRING';
-        } else if (state.isLocked) {
-          lockStatus.textContent = 'LOCKED';
+      if (lockBadge) {
+        let text: string;
+        if (!this.gpsdoModule.state.isPowered) {
+          text = 'OFF';
+        } else if (this.gpsdoModule.state.isGnssAcquiringLock) {
+          text = 'ACQUIRING';
+        } else if (this.gpsdoModule.state.isLocked) {
+          text = 'LOCKED';
         } else {
-          lockStatus.textContent = 'UNLOCKED';
+          text = 'UNLOCKED';
         }
+        lockBadge.textContent = text;
+        lockBadge.className = `status-badge ${badgeClass}`;
       }
     }
 
-    // Update GNSS Status LED
-    if (state.gnssSignalPresent !== undefined || state.satelliteCount !== undefined) {
-      const gnssLed = this.domCache_.get('gnssLed');
+    // Update GNSS Status Badge
+    if (state.gnssSignalPresent !== undefined || state.satelliteCount !== undefined || state.isPowered !== undefined) {
+      const gnssBadge = this.domCache_.get('gnssBadge');
       const ledStatus = this.gpsdoModule.getGnssLedStatus_();
-      if (gnssLed) {
-        gnssLed.className = `led ${ledStatus}`;
+      const badgeClass = this.getBadgeClass_(ledStatus);
+
+      if (gnssBadge) {
+        let text: string;
+        if (!this.gpsdoModule.state.isPowered) {
+          text = 'OFF';
+        } else if (!this.gpsdoModule.state.gnssSignalPresent) {
+          text = 'NO SIGNAL';
+        } else if ((this.gpsdoModule.state.satelliteCount ?? 0) < 4) {
+          text = 'WEAK';
+        } else {
+          text = `${this.gpsdoModule.state.satelliteCount} SATS`;
+        }
+        gnssBadge.textContent = text;
+        gnssBadge.className = `status-badge ${badgeClass}`;
       }
     }
 
-    // Update Warmup Status LED and time
-    if (state.warmupTimeRemaining !== undefined) {
-      const warmupLed = this.domCache_.get('warmupLed');
-      const warmupTime = this.domCache_.get('warmupTime');
+    // Update Warmup Status Badge
+    if (state.warmupTimeRemaining !== undefined || state.isPowered !== undefined) {
+      const warmupBadge = this.domCache_.get('warmupBadge');
       const ledStatus = this.gpsdoModule.getWarmupLedStatus_();
+      const badgeClass = this.getBadgeClass_(ledStatus);
 
-      if (warmupLed) {
-        warmupLed.className = `led ${ledStatus}`;
-      }
-
-      if (warmupTime) {
-        warmupTime.textContent = this.gpsdoModule.formatWarmupTime_();
+      if (warmupBadge) {
+        warmupBadge.textContent = this.gpsdoModule.formatWarmupTime_();
+        warmupBadge.className = `status-badge ${badgeClass}`;
       }
     }
 
@@ -211,11 +230,24 @@ export class GPSDOAdapter {
       }
     }
 
-    // Update holdover status
-    if (state.isInHoldover !== undefined) {
-      const holdoverLed = this.domCache_.get('holdoverLed');
-      if (holdoverLed) {
-        holdoverLed.className = state.isInHoldover ? 'led led-amber' : 'led led-off';
+    // Update holdover status badge
+    if (state.isInHoldover !== undefined || state.isPowered !== undefined) {
+      const holdoverBadge = this.domCache_.get('holdoverBadge');
+      if (holdoverBadge) {
+        let text: string;
+        let badgeClass: string;
+        if (!this.gpsdoModule.state.isPowered) {
+          text = 'OFF';
+          badgeClass = 'status-badge-off';
+        } else if (this.gpsdoModule.state.isInHoldover) {
+          text = 'ACTIVE';
+          badgeClass = 'status-badge-amber';
+        } else {
+          text = 'INACTIVE';
+          badgeClass = 'status-badge-off';
+        }
+        holdoverBadge.textContent = text;
+        holdoverBadge.className = `status-badge ${badgeClass}`;
       }
     }
 

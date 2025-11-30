@@ -191,14 +191,31 @@ body {
 
 .nav-tabs {
   border-bottom-color: var(--mc-border);
-  padding: 0.5rem 1rem 0rem 1rem !important;
+  padding: 0.25rem 0.5rem 0rem 0.5rem !important;
 }
 
 .nav-tabs .nav-link {
   color: var(--mc-text-secondary) !important;
-  background-color: transparent;
-  border-color: transparent;
+  background-color: var(--mc-surface-1);
+  border-color: var(--mc-border) var(--mc-border) transparent;
+  border-radius: 4px 4px 0 0;
   transition: all 0.2s ease;
+  position: relative;
+  padding: 0.375rem 0.625rem;
+}
+
+/* Subtle underline indicator for non-active tabs */
+.nav-tabs .nav-link::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 2px;
+  background-color: var(--mc-accent-red);
+  opacity: 0.3;
+  transition: width 0.2s ease, opacity 0.2s ease;
 }
 
 .nav-tabs .nav-link.disabled {
@@ -209,10 +226,20 @@ body {
   pointer-events: none;
 }
 
-.nav-tabs .nav-link:hover {
+.nav-tabs .nav-link.disabled::after {
+  display: none;
+}
+
+.nav-tabs .nav-link:hover:not(.active):not(.disabled) {
   color: var(--mc-text-primary) !important;
   background-color: var(--mc-surface-2) !important;
-  border-color: transparent;
+  border-color: var(--mc-border);
+  transform: translateY(-1px);
+}
+
+.nav-tabs .nav-link:hover:not(.active):not(.disabled)::after {
+  width: 60%;
+  opacity: 0.6;
 }
 
 .nav-tabs .nav-link.active {
@@ -220,8 +247,12 @@ body {
   border-color: var(--mc-border) var(--mc-border) var(--mc-surface-0) !important;
   border-top: 2px solid var(--mc-accent-red) !important;
   color: var(--mc-text-primary) !important;
-  padding-top: calc(0.5rem - 1px);
-  /* Adjust for red border */
+  padding-top: calc(0.375rem - 1px);
+  transform: none;
+}
+
+.nav-tabs .nav-link.active::after {
+  display: none;
 }
 
 /* Tab content background */

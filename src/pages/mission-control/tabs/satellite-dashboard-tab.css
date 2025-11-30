@@ -1,0 +1,66 @@
+/**
+ * Satellite Dashboard Tab Styles
+ */
+
+.satellite-dashboard-tab {
+  padding: 0.75rem;
+  height: 100%;
+  overflow-y: auto;
+}
+
+/* Satellite icon styling */
+.satellite-icon-lg {
+  width: 64px;
+  height: 64px;
+  filter: invert(1);
+}
+
+/* Transponder list */
+.transponder-list {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.transponder-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--mc-border);
+}
+
+.transponder-item:last-child {
+  border-bottom: none;
+}
+
+.transponder-id {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+}
+
+.transponder-freq {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  color: var(--mc-text-secondary);
+}
+
+/* Signal cards */
+.signal-card {
+  border-left: 3px solid var(--mc-accent-red);
+}
+
+.signal-card.tx {
+  border-left-color: var(--color-success);
+}
+
+/* Metric display */
+.metric-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.metric-unit {
+  font-size: 0.75rem;
+  color: var(--mc-text-secondary);
+}

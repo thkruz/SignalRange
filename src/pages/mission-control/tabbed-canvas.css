@@ -13,25 +13,26 @@
 
 /* Tab styling - most handled by Tabler, keep custom for icons/labels */
 .nav-tabs {
-  padding: 0.5rem;
-  overflow-x: auto;
-  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  overflow-x: visible;
+  gap: 0.125rem;
+  flex-wrap: nowrap;
 }
 
 .tab-icon {
-  font-size: 1rem;
-  margin-right: 0.5rem;
+  font-size: 0.875rem;
+  margin-right: 0.375rem;
 
   img {
-    width: 24px;
-    height: 24px;
+    width: 18px;
+    height: 18px;
     vertical-align: middle;
     filter: invert(1);
   }
 }
 
 .tab-label {
-  font-size: 0.875rem;
+  font-size: 0.75rem;
 }
 
 /* Canvas Content */

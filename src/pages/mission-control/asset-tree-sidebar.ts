@@ -2,6 +2,7 @@ import { GroundStation } from "@app/assets/ground-station/ground-station";
 import { BaseElement } from "@app/components/base-element";
 import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
+import { Satellite } from "@app/equipment/satellite/satellite";
 import { EventBus } from "@app/events/event-bus";
 import { Events } from "@app/events/events";
 import { DialogHistoryBox } from "@app/modal/dialog-history-box";
@@ -14,6 +15,7 @@ import checklistPng from "../../assets/icons/checklist.png";
 import historyPng from '../../assets/icons/history.png';
 import layoutSidebarLeftCollapsePng from '../../assets/icons/layout-sidebar-left-collapse.png';
 import layoutSidebarLeftExpandPng from '../../assets/icons/layout-sidebar-left-expand.png';
+import satellitePng from '../../assets/icons/satellite.png';
 import satelliteOffPng from '../../assets/icons/satellite-off.png';
 import targetArrowPng from '../../assets/icons/target-arrow.png';
 import './asset-tree-sidebar.css';
@@ -30,6 +32,7 @@ export class AssetTreeSidebar extends BaseElement {
 
   private selectedAssetId_: string | null = null;
   private groundStations_: GroundStation[] = [];
+  private satellites_: Satellite[] = [];
   private checklistRefreshIntervalId_: number | null = null;
   private lastChecklistHtml_: string | null = null;
   private missionBriefUrl_: string | null = null;
@@ -53,6 +56,7 @@ export class AssetTreeSidebar extends BaseElement {
     this.init_(parentId, 'replace');
     this.dom_ = qs('.asset-tree-sidebar');
     this.groundStations_ = SimulationManager.getInstance().groundStations;
+    this.satellites_ = SimulationManager.getInstance().satellites;
     this.missionBriefUrl_ = ScenarioManager.getInstance().settings.missionBriefUrl ?? null;
     this.renderAssetTree_();
     this.initMissionSection_();
@@ -174,19 +178,19 @@ export class AssetTreeSidebar extends BaseElement {
         <div class="list-group-header">
           <span class="list-group-header-text">Mission</span>
         </div>
-        <a class="list-group-item list-group-item-action d-flex align-items-center mission-brief-icon" title="Mission Brief">
+        <a class="list-group-item list-group-item-action d-flex align-items-center mission-brief-icon" data-tooltip="Mission Brief">
           <span class="item-icon">
             <img src="${targetArrowPng}" alt="Mission Brief"/>
           </span>
           <span class="flex-fill">Mission Brief</span>
         </a>
-        <a class="list-group-item list-group-item-action d-flex align-items-center checklist-icon" title="Mission Checklist">
+        <a class="list-group-item list-group-item-action d-flex align-items-center checklist-icon" data-tooltip="Checklist">
           <span class="item-icon">
             <img src="${checklistPng}" alt="Checklist"/>
           </span>
           <span class="flex-fill">Checklist</span>
         </a>
-        <a class="list-group-item list-group-item-action d-flex align-items-center dialog-icon" title="Dialog History">
+        <a class="list-group-item list-group-item-action d-flex align-items-center dialog-icon" data-tooltip="Dialog History">
           <span class="item-icon">
             <img src="${historyPng}" alt="Dialog History"/>
           </span>
@@ -205,12 +209,15 @@ export class AssetTreeSidebar extends BaseElement {
         <div class="list-group-header sticky-top">
           <span class="list-group-header-text">Satellites</span>
         </div>
-        <div class="list-group-item placeholder-item">
-          <span class="item-icon">
-            <img src="${satelliteOffPng}" alt="Satellite"/>
-          </span>
-          <span class="flex-fill">No satellites in scenario</span>
-        </div>
+        ${this.satellites_.length > 0
+          ? this.satellites_.map(sat => this.renderSatelliteNode_(sat)).join('')
+          : `<div class="list-group-item placeholder-item">
+              <span class="item-icon">
+                <img src="${satelliteOffPng}" alt="Satellite"/>
+              </span>
+              <span class="flex-fill">No satellites in scenario</span>
+            </div>`
+        }
       </div>
     `;
 
@@ -227,12 +234,36 @@ export class AssetTreeSidebar extends BaseElement {
     return html`
       <a class="list-group-item list-group-item-action d-flex align-items-center ${isSelected ? 'active' : ''}"
          data-asset-type="ground-station"
-         data-asset-id="${gs.state.id}">
+         data-asset-id="${gs.state.id}"
+         data-tooltip="${gs.state.name}">
          <span class="item-icon">
           <img src="${antennaPng}" alt="Antenna"/>
          </span>
          <span class="flex-fill">${gs.state.name}</span>
          <span class="item-status ${gs.state.isOperational ? 'operational' : 'offline'}"></span>
+      </a>
+    `;
+  }
+
+  /**
+   * Render a satellite node
+   */
+  private renderSatelliteNode_(sat: Satellite): string {
+    const satId = `sat-${sat.noradId}`;
+    const isSelected = this.selectedAssetId_ === satId;
+    const isHealthy = sat.health >= 0.9;
+    const satName = `NORAD ${sat.noradId}`;
+
+    return html`
+      <a class="list-group-item list-group-item-action d-flex align-items-center ${isSelected ? 'active' : ''}"
+         data-asset-type="satellite"
+         data-asset-id="${satId}"
+         data-tooltip="${satName}">
+         <span class="item-icon">
+          <img src="${satellitePng}" alt="Satellite"/>
+         </span>
+         <span class="flex-fill">${satName}</span>
+         <span class="item-status ${isHealthy ? 'operational' : 'degraded'}"></span>
       </a>
     `;
   }
@@ -265,10 +296,11 @@ export class AssetTreeSidebar extends BaseElement {
   }
 
   /**
-   * Refresh the asset tree (called when ground stations change)
+   * Refresh the asset tree (called when assets change)
    */
   public refresh(): void {
     this.groundStations_ = SimulationManager.getInstance().groundStations;
+    this.satellites_ = SimulationManager.getInstance().satellites;
     this.renderAssetTree_();
   }
 

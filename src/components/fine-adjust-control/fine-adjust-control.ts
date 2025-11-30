@@ -67,12 +67,12 @@ export class FineAdjustControl {
   private buildHtml_(): string {
     // Generate decrease buttons (largest step first)
     const decreaseButtons = this.steps.map(step =>
-      `<button class="btn-fine btn-fine-decrease" data-delta="-${step.value}" title="-${step.value}${this.unit}">${step.label}</button>`
+      `<button type="button" class="btn-fine btn-fine-decrease" data-delta="-${step.value}" title="-${step.value}${this.unit}">${step.label}</button>`
     ).join('');
 
     // Generate increase buttons (smallest step first)
     const increaseButtons = this.steps.slice().reverse().map(step =>
-      `<button class="btn-fine btn-fine-increase" data-delta="${step.value}" title="+${step.value}${this.unit}">${step.label.replace(/</g, '>')}</button>`
+      `<button type="button" class="btn-fine btn-fine-increase" data-delta="${step.value}" title="+${step.value}${this.unit}">${step.label.replace(/</g, '>')}</button>`
     ).join('');
 
     return html`
@@ -84,7 +84,7 @@ export class FineAdjustControl {
           </div>
           <div class="fine-adjust-display">
             <span class="fine-adjust-value fine-adjust-value-active" id="${this.uniqueId}-value">${this.formatValue_(this.value_)}</span>
-            <span class="fine-adjust-value fine-adjust-value-pending" id="${this.uniqueId}-pending" style="display: none;"></span>
+            <span class="fine-adjust-value fine-adjust-value-pending" id="${this.uniqueId}-pending"></span>
           </div>
           <div class="fine-adjust-buttons fine-adjust-increase">
             ${increaseButtons}
@@ -161,9 +161,8 @@ export class FineAdjustControl {
       this.pendingValue_ = pendingValue;
       if (pendingValue !== null && pendingValue !== value) {
         this.pendingDisplay.textContent = `→ ${this.formatValue_(pendingValue)}`;
-        this.pendingDisplay.style.display = 'inline';
       } else {
-        this.pendingDisplay.style.display = 'none';
+        this.pendingDisplay.textContent = '';
       }
     }
   }

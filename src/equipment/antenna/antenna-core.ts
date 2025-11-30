@@ -209,6 +209,14 @@ export abstract class AntennaCore extends BaseEquipment {
     // Override with any provided initial state
     this.state = { ...this.state, ...initialState };
 
+    // In manual mode, ensure targets match actual position to prevent unintended slewing
+    // This handles cases where initialState provides position without matching targets
+    if (this.state.trackingMode === 'manual') {
+      this.state.targetAzimuth = this.state.azimuth;
+      this.state.targetElevation = this.state.elevation;
+      this.state.targetPolarization = this.state.polarization;
+    }
+
     this.lastRenderState = structuredClone(this.state);
 
     // Initialize step track controller
@@ -331,10 +339,10 @@ export abstract class AntennaCore extends BaseEquipment {
   }
 
   // ========================================================================
-  // PUBLIC HANDLERS FOR UI CLASSES AND ADAPTERS
+  // HANDLERS FOR UI CLASSES AND ADAPTERS
   // ========================================================================
 
-  public handlePolarizationChange(value: number): void {
+  handlePolarizationChange(value: number): void {
     if (!this.state.isPowered) {
       return;
     }
@@ -342,7 +350,7 @@ export abstract class AntennaCore extends BaseEquipment {
     this.notifyStateChange_();
   }
 
-  public handleAzimuthChange(value: number): void {
+  handleAzimuthChange(value: number): void {
     if (!this.state.isPowered) {
       return;
     }
@@ -353,11 +361,15 @@ export abstract class AntennaCore extends BaseEquipment {
       this.state.isLocked = false;
       this.state.isAutoTrackEnabled = false;
       this.state.azimuth = value as Degrees;
+      // In manual mode, keep target in sync to prevent unintended slew-back
+      if (this.state.trackingMode === 'manual') {
+        this.state.targetAzimuth = value as Degrees;
+      }
       this.notifyStateChange_();
     }
   }
 
-  public handleElevationChange(value: number): void {
+  handleElevationChange(value: number): void {
     if (!this.state.isPowered) {
       return;
     }
@@ -368,11 +380,15 @@ export abstract class AntennaCore extends BaseEquipment {
       this.state.isLocked = false;
       this.state.isAutoTrackEnabled = false;
       this.state.elevation = value as Degrees;
+      // In manual mode, keep target in sync to prevent unintended slew-back
+      if (this.state.trackingMode === 'manual') {
+        this.state.targetElevation = value as Degrees;
+      }
       this.notifyStateChange_();
     }
   }
 
-  public handleLoopbackToggle(isSwitchUp: boolean): void {
+  handleLoopbackToggle(isSwitchUp: boolean): void {
     if (!this.state.isOperational || !this.state.isPowered) {
       return;
     }
@@ -385,7 +401,7 @@ export abstract class AntennaCore extends BaseEquipment {
     this.syncDomWithState();
   }
 
-  public handleAutoTrackToggle(isSwitchUp: boolean): void {
+  handleAutoTrackToggle(isSwitchUp: boolean): void {
     if (!this.state.isOperational || !this.state.isPowered) {
       return;
     }
@@ -437,7 +453,7 @@ export abstract class AntennaCore extends BaseEquipment {
     this.syncDomWithState();
   }
 
-  public handlePowerToggle(isPowered?: boolean): void {
+  handlePowerToggle(isPowered?: boolean): void {
     this.state.isPowered = isPowered ?? !this.state.isPowered;
 
     // Clear lock acquisition timeout when powering off
@@ -459,6 +475,14 @@ export abstract class AntennaCore extends BaseEquipment {
       this.state.isLocked = false;
       this.state.isAutoTrackEnabled = false;
       this.state.trackingMode = 'manual';
+      // Sync targets to prevent movement when power is restored
+      this.state.targetAzimuth = this.state.azimuth;
+      this.state.targetElevation = this.state.elevation;
+      this.state.targetPolarization = this.state.polarization;
+      this.state.stagedTargetAzimuth = null;
+      this.state.stagedTargetElevation = null;
+      this.state.stagedTargetPolarization = null;
+      this.state.hasStagedChanges = false;
       this.notifyStateChange_();
       this.updateSignals_();
       this.syncDomWithState();
@@ -477,7 +501,7 @@ export abstract class AntennaCore extends BaseEquipment {
    * Step Track: Auto-adjust to maximize beacon signal
    * Program Track: Follow TLE ephemeris (placeholder)
    */
-  public handleTrackingModeChange(mode: TrackingMode): void {
+  handleTrackingModeChange(mode: TrackingMode): void {
     if (!this.state.isPowered || !this.state.isOperational) {
       return;
     }
@@ -519,27 +543,17 @@ export abstract class AntennaCore extends BaseEquipment {
         break;
 
       case 'manual':
-        // Set target to current position to prevent unintended movement
-        // Operator controls via staged changes
-        this.state.targetAzimuth = this.state.azimuth;
-        this.state.targetElevation = this.state.elevation;
-        this.state.targetPolarization = this.state.polarization;
-        break;
-
       case 'step-track':
-        // Set target to current position to prevent unintended movement
-        // User must press START to begin tracking
-        this.state.targetAzimuth = this.state.azimuth;
-        this.state.targetElevation = this.state.elevation;
-        this.state.targetPolarization = this.state.polarization;
-        break;
-
       case 'program-track':
         // Set target to current position to prevent unintended movement
-        // User must select satellite and press "Move to Target" to begin tracking
+        // Clear any staged position changes from previous modes (e.g., stow → manual)
         this.state.targetAzimuth = this.state.azimuth;
         this.state.targetElevation = this.state.elevation;
         this.state.targetPolarization = this.state.polarization;
+        this.state.stagedTargetAzimuth = null;
+        this.state.stagedTargetElevation = null;
+        this.state.stagedTargetPolarization = null;
+        this.state.hasStagedChanges = false;
         break;
     }
 
@@ -551,7 +565,7 @@ export abstract class AntennaCore extends BaseEquipment {
   /**
    * Set target satellite for program track mode
    */
-  public handleTargetSatelliteChange(noradId: number | null): void {
+  handleTargetSatelliteChange(noradId: number | null): void {
     this.state.targetSatelliteId = noradId;
     this.notifyStateChange_();
   }
@@ -559,7 +573,7 @@ export abstract class AntennaCore extends BaseEquipment {
   /**
    * Move antenna to target satellite position (for program track)
    */
-  public moveToTargetSatellite(): void {
+  moveToTargetSatellite(): void {
     if (!this.state.isPowered || !this.state.isOperational) {
       return;
     }
@@ -597,12 +611,12 @@ export abstract class AntennaCore extends BaseEquipment {
   // BEACON TRACKING HANDLERS
   // ========================================================================
 
-  public handleBeaconFrequencyChange(frequencyHz: number): void {
+  handleBeaconFrequencyChange(frequencyHz: number): void {
     this.state.beaconFrequencyHz = frequencyHz;
     this.notifyStateChange_();
   }
 
-  public handleBeaconSearchBwChange(bandwidthHz: number): void {
+  handleBeaconSearchBwChange(bandwidthHz: number): void {
     this.state.beaconSearchBwHz = bandwidthHz;
     this.notifyStateChange_();
   }
@@ -611,7 +625,7 @@ export abstract class AntennaCore extends BaseEquipment {
   // ENVIRONMENTAL CONTROL HANDLERS
   // ========================================================================
 
-  public handleHeaterToggle(enabled: boolean): void {
+  handleHeaterToggle(enabled: boolean): void {
     if (!this.state.isPowered) {
       return;
     }
@@ -619,7 +633,7 @@ export abstract class AntennaCore extends BaseEquipment {
     this.notifyStateChange_();
   }
 
-  public handleRainBlowerToggle(enabled: boolean): void {
+  handleRainBlowerToggle(enabled: boolean): void {
     if (!this.state.isPowered) {
       return;
     }
@@ -635,7 +649,7 @@ export abstract class AntennaCore extends BaseEquipment {
    * Adjust azimuth by delta degrees
    * Used by fine adjustment buttons (+/- 0.01, 1, 10 degrees)
    */
-  public adjustAzimuth(delta: number): void {
+  adjustAzimuth(delta: number): void {
     if (!this.state.isPowered || !this.state.isOperational) {
       return;
     }
@@ -650,7 +664,7 @@ export abstract class AntennaCore extends BaseEquipment {
    * Adjust elevation by delta degrees
    * Used by fine adjustment buttons (+/- 0.01, 1, 10 degrees)
    */
-  public adjustElevation(delta: number): void {
+  adjustElevation(delta: number): void {
     if (!this.state.isPowered || !this.state.isOperational) {
       return;
     }
@@ -666,7 +680,7 @@ export abstract class AntennaCore extends BaseEquipment {
    * Adjust polarization by delta degrees
    * Used by fine adjustment buttons (+/- 0.01, 1, 10 degrees)
    */
-  public adjustPolarization(delta: number): void {
+  adjustPolarization(delta: number): void {
     if (!this.state.isPowered || !this.state.isOperational) {
       return;
     }
@@ -682,7 +696,7 @@ export abstract class AntennaCore extends BaseEquipment {
   /**
    * Stage azimuth change - does not apply until applyChanges() is called
    */
-  public stageAzimuthChange(delta: number): void {
+  stageAzimuthChange(delta: number): void {
     if (!this.state.isPowered || !this.state.isOperational) {
       return;
     }
@@ -706,7 +720,7 @@ export abstract class AntennaCore extends BaseEquipment {
   /**
    * Stage elevation change - does not apply until applyChanges() is called
    */
-  public stageElevationChange(delta: number): void {
+  stageElevationChange(delta: number): void {
     if (!this.state.isPowered || !this.state.isOperational) {
       return;
     }
@@ -727,7 +741,7 @@ export abstract class AntennaCore extends BaseEquipment {
   /**
    * Stage polarization change - does not apply until applyChanges() is called
    */
-  public stagePolarizationChange(delta: number): void {
+  stagePolarizationChange(delta: number): void {
     if (!this.state.isPowered || !this.state.isOperational) {
       return;
     }
@@ -744,7 +758,7 @@ export abstract class AntennaCore extends BaseEquipment {
   /**
    * Stage beacon frequency change - does not apply until applyChanges() is called
    */
-  public stageBeaconFrequencyChange(frequencyHz: number): void {
+  stageBeaconFrequencyChange(frequencyHz: number): void {
     this.state.stagedBeaconFrequencyHz = frequencyHz;
     this.state.hasStagedChanges = true;
     this.notifyStateChange_();
@@ -753,7 +767,7 @@ export abstract class AntennaCore extends BaseEquipment {
   /**
    * Stage beacon search bandwidth change - does not apply until applyChanges() is called
    */
-  public stageBeaconSearchBwChange(bandwidthHz: number): void {
+  stageBeaconSearchBwChange(bandwidthHz: number): void {
     this.state.stagedBeaconSearchBwHz = bandwidthHz;
     this.state.hasStagedChanges = true;
     this.notifyStateChange_();
@@ -763,7 +777,7 @@ export abstract class AntennaCore extends BaseEquipment {
    * Start step tracking - begins the hill-climbing algorithm
    * Should be called after beacon frequency is configured
    */
-  public startStepTrack(): void {
+  startStepTrack(): void {
     if (!this.state.isPowered || !this.state.isOperational) {
       return;
     }
@@ -791,7 +805,7 @@ export abstract class AntennaCore extends BaseEquipment {
   /**
    * Stop step tracking
    */
-  public stopStepTrack(): void {
+  stopStepTrack(): void {
     this.stepTrackController_.stop();
     this.state.isAutoTrackEnabled = false;
     this.state.isAutoTrackSwitchUp = false;
@@ -803,7 +817,7 @@ export abstract class AntennaCore extends BaseEquipment {
    * Apply all staged changes
    * Validates limits before applying and triggers FAULT if exceeded
    */
-  public applyChanges(): void {
+  applyChanges(): void {
     if (!this.state.isPowered || !this.state.isOperational) {
       return;
     }
@@ -884,7 +898,7 @@ export abstract class AntennaCore extends BaseEquipment {
   /**
    * Discard all staged changes without applying
    */
-  public discardChanges(): void {
+  discardChanges(): void {
     this.state.stagedTargetAzimuth = null;
     this.state.stagedTargetElevation = null;
     this.state.stagedTargetPolarization = null;
@@ -905,7 +919,7 @@ export abstract class AntennaCore extends BaseEquipment {
   }
 
   // ========================================================================
-  // PUBLIC GETTERS
+  // GETTERS
   // ========================================================================
 
   get normalizedAzimuth(): Degrees {
@@ -983,7 +997,7 @@ export abstract class AntennaCore extends BaseEquipment {
    * Get status alarms for status bar display
    * Returns array of alarm statuses with severity and message
    */
-  public getStatusAlarms(): AlarmStatus[] {
+  getStatusAlarms(): AlarmStatus[] {
     const alarms: AlarmStatus[] = [];
 
     // Error conditions

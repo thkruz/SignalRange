@@ -24,6 +24,7 @@
   display: flex;
   align-items: center;
   gap: 0.25rem;
+  margin-bottom: 1rem; /* Space for pending value indicator */
 }
 
 .fine-adjust-buttons {
@@ -80,6 +81,7 @@
 
 /* High-visibility value display */
 .fine-adjust-display {
+  position: relative;
   min-width: 8rem;
   text-align: center;
   padding: 0.5rem 0.75rem;
@@ -101,10 +103,14 @@
 }
 
 .fine-adjust-value-pending {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: -1.25rem;
+  white-space: nowrap;
   color: var(--mc-accent-amber, #ffc107);
   text-shadow: 0 0 8px rgba(255, 193, 7, 0.4);
-  margin-left: 0.25rem;
-  font-size: 1rem;
+  font-size: 0.875rem;
 }
 
 /* Responsive adjustments for smaller screens */
@@ -121,5 +127,10 @@
 
   .fine-adjust-value {
     font-size: 1rem;
+  }
+
+  .fine-adjust-value-pending {
+    font-size: 0.75rem;
+    bottom: -1rem;
   }
 }

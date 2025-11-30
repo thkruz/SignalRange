@@ -404,3 +404,215 @@ body {
 .font-monospace {
   font-family: 'JetBrains Mono', 'Courier New', monospace;
 }
+
+/* ==========================================================================
+   Input Group Overrides - Dark Theme
+   ========================================================================== */
+
+.input-group-text {
+  background-color: var(--mc-surface-2);
+  border-color: var(--mc-border);
+  color: var(--mc-text-secondary);
+}
+
+/* ==========================================================================
+   Secondary/Outline Button Overrides - Dark Theme
+   ========================================================================== */
+
+.btn-secondary,
+.btn-outline-secondary {
+  background-color: var(--mc-surface-2);
+  border-color: var(--mc-border);
+  color: var(--mc-text-secondary);
+}
+
+.btn-secondary:hover,
+.btn-outline-secondary:hover {
+  background-color: var(--mc-surface-3);
+  border-color: var(--mc-surface-4);
+  color: var(--mc-text-primary);
+}
+
+.btn-secondary:active,
+.btn-secondary:focus,
+.btn-outline-secondary:active,
+.btn-outline-secondary:focus {
+  background-color: var(--mc-surface-3);
+  border-color: var(--mc-surface-4);
+  color: var(--mc-text-primary);
+  box-shadow: 0 0 0 0.25rem rgba(90, 90, 90, 0.25);
+}
+
+/* Default button (no variant) - ensure dark styling */
+.btn:not([class*="btn-"]):not(.btn-tracking) {
+  background-color: var(--mc-surface-2);
+  border-color: var(--mc-border);
+  color: var(--mc-text-secondary);
+}
+
+.btn:not([class*="btn-"]):not(.btn-tracking):hover {
+  background-color: var(--mc-surface-3);
+  border-color: var(--mc-surface-4);
+  color: var(--mc-text-primary);
+}
+
+/* Tracking Mode Buttons - Mission Control Style */
+.btn.btn-tracking {
+  background-color: var(--mc-surface-2);
+  border-color: var(--mc-border);
+  color: var(--mc-text-secondary);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.btn.btn-tracking:hover {
+  background-color: var(--mc-surface-3);
+  border-color: var(--mc-surface-4);
+  color: var(--mc-text-primary);
+}
+
+.btn.btn-tracking.active {
+  background-color: var(--mc-accent-red);
+  border-color: var(--mc-accent-red);
+  color: #ffffff;
+  box-shadow: 0 0 8px rgba(186, 22, 12, 0.4);
+}
+
+.btn.btn-tracking:focus {
+  box-shadow: 0 0 0 0.25rem rgba(186, 22, 12, 0.25);
+}
+
+/* Apply Button - Red accent for primary actions */
+.btn.btn-apply {
+  background-color: var(--mc-accent-red);
+  border-color: var(--mc-accent-red);
+  color: #ffffff;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.btn.btn-apply:hover:not(:disabled) {
+  background-color: var(--mc-accent-red-bright);
+  border-color: var(--mc-accent-red-bright);
+  box-shadow: 0 0 8px rgba(255, 40, 39, 0.4);
+}
+
+.btn.btn-apply:disabled {
+  background-color: var(--mc-surface-2);
+  border-color: var(--mc-border);
+  color: var(--mc-text-tertiary);
+  opacity: 0.6;
+}
+
+.btn.btn-apply:focus {
+  box-shadow: 0 0 0 0.25rem rgba(186, 22, 12, 0.25);
+}
+
+/* ==========================================================================
+   Dropdown Menu Overrides - Dark Theme
+   ========================================================================== */
+
+.dropdown-menu {
+  background-color: var(--mc-surface-1);
+  border-color: var(--mc-border);
+}
+
+.dropdown-item {
+  color: var(--mc-text-secondary);
+}
+
+.dropdown-item:hover,
+.dropdown-item:focus {
+  background-color: var(--mc-surface-2);
+  color: var(--mc-text-primary);
+}
+
+.dropdown-item.active,
+.dropdown-item:active {
+  background-color: var(--mc-accent-red);
+  color: #ffffff;
+}
+
+.dropdown-divider {
+  border-color: var(--mc-border);
+}
+
+/* ==========================================================================
+   Modal Overrides - Dark Theme
+   ========================================================================== */
+
+.modal-content {
+  background-color: var(--mc-surface-1);
+  border-color: var(--mc-border);
+}
+
+.modal-header {
+  background-color: var(--mc-surface-2);
+  border-bottom-color: var(--mc-border);
+}
+
+.modal-footer {
+  border-top-color: var(--mc-border);
+}
+
+.btn-close {
+  filter: invert(1) grayscale(100%) brightness(200%);
+}
+
+/* ==========================================================================
+   Table Overrides - Dark Theme
+   ========================================================================== */
+
+.table {
+  --bs-table-bg: transparent;
+  --bs-table-color: var(--mc-text-secondary);
+  --bs-table-border-color: var(--mc-border);
+}
+
+.table > thead {
+  color: var(--mc-text-primary);
+}
+
+.table > tbody > tr:hover {
+  background-color: var(--mc-surface-2);
+}
+
+.table-striped > tbody > tr:nth-of-type(odd) {
+  background-color: rgba(255, 255, 255, 0.02);
+}
+
+/* ==========================================================================
+   Alert Overrides - Dark Theme
+   ========================================================================== */
+
+.alert-primary {
+  background-color: var(--mc-primary-bg-subtle, rgba(186, 22, 12, 0.15));
+  border-color: var(--mc-primary-border-subtle, rgba(186, 22, 12, 0.3));
+  color: var(--mc-accent-red-bright);
+}
+
+.alert-secondary {
+  background-color: var(--mc-surface-2);
+  border-color: var(--mc-border);
+  color: var(--mc-text-secondary);
+}
+
+.alert-success {
+  background-color: rgba(34, 197, 94, 0.15);
+  border-color: rgba(34, 197, 94, 0.3);
+  color: #86efac;
+}
+
+.alert-warning {
+  background-color: rgba(234, 179, 8, 0.15);
+  border-color: rgba(234, 179, 8, 0.3);
+  color: #fde047;
+}
+
+.alert-danger {
+  background-color: rgba(186, 22, 12, 0.15);
+  border-color: rgba(186, 22, 12, 0.3);
+  color: var(--mc-accent-red-bright);
+}

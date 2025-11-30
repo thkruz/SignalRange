@@ -73,36 +73,17 @@
   gap: 2px;
 }
 
-.btn-tracking {
+.tracking-mode-selector .btn-tracking {
   padding: 0.375rem 0.75rem;
   font-size: 0.75rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  background-color: var(--mc-surface-2, #2a2a3e);
-  border: 1px solid var(--mc-border, #3a3a3a);
-  color: var(--mc-text-secondary, #cbd5e1);
-  transition: all 0.15s ease;
 }
 
-.btn-tracking:first-child {
+.tracking-mode-selector .btn-tracking:first-child {
   border-radius: 4px 0 0 4px;
 }
 
-.btn-tracking:last-child {
+.tracking-mode-selector .btn-tracking:last-child {
   border-radius: 0 4px 4px 0;
-}
-
-.btn-tracking:hover {
-  background-color: var(--mc-surface-3, #3a3a4e);
-  color: var(--mc-text-primary, #e2e8f0);
-}
-
-.btn-tracking.active {
-  background-color: var(--mc-accent-red, #ba160c);
-  border-color: var(--mc-accent-red, #ba160c);
-  color: white;
-  box-shadow: 0 0 8px rgba(186, 22, 12, 0.4);
 }
 
 /* ========================================
@@ -258,29 +239,8 @@
    Apply/Cancel Buttons
    ======================================== */
 
-.btn-apply {
-  background-color: var(--mc-accent-red, #ba160c);
-  border-color: var(--mc-accent-red, #ba160c);
-  color: white;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  transition: all 0.15s ease;
-}
-
-.btn-apply:hover:not(:disabled) {
-  background-color: var(--mc-accent-red-bright, #ff2827);
-  border-color: var(--mc-accent-red-bright, #ff2827);
-  box-shadow: 0 0 8px rgba(255, 40, 39, 0.4);
-}
-
-.btn-apply:disabled {
-  background-color: var(--mc-surface-2, #3a3a3a);
-  border-color: var(--mc-border, #3a3a3a);
-  color: var(--mc-text-tertiary, #94a3b8);
-  opacity: 0.6;
-}
-
-#discard-changes-btn:disabled {
+/* Button styles handled in tabler-overrides.css */
+#discard-changes-btn:disabled,
+#apply-changes-btn:disabled {
   opacity: 0.6;
 }

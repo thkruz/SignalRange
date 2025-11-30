@@ -35,25 +35,25 @@
   },
   "github.copilot.chat.commitMessageGeneration.instructions": [
     {
-      "text": "Use Conventional Commits: <type>[optional scope]: :emoji: description"
+      "text": "Format: <type>: :emoji: <description>"
     },
     {
-      "text": "type must be one of: feat, fix, refactor, docs, test, chore"
+      "text": "ALWAYS include the emoji - this is required"
     },
     {
-      "text": "Use imperative, present tense: 'add', 'update', 'extract', not 'added' or 'adds'"
+      "text": "Emoji mapping by type: feat=:sparkles:, fix=:bug:, refactor=:recycle:, docs=:memo:, test=:white_check_mark:, chore=:wrench:, perf=:zap:, style=:art:"
     },
     {
-      "text": "No trailing period in subject line"
+      "text": "Special emojis: localization=:globe_with_meridians:, move/rename=:truck:, breaking=:boom:, security=:lock:, remove=:fire:, UI/UX=:children_crossing:"
     },
     {
-      "text": "Keep subject ≤ 72 characters"
+      "text": "Use imperative present tense: 'add', 'update', 'fix', not 'added' or 'fixes'"
     },
     {
-      "text": "ONLY include body if extra context is helpful"
+      "text": "Keep description concise - aim for < 50 chars, max 72. Omit filler words like 'functionality', 'to enhance', 'for better'"
     },
     {
-      "text": "If removing dead code, explain why"
+      "text": "No trailing period. No scope needed unless clarifying ambiguity"
     },
   ],
 }

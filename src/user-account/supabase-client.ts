@@ -18,10 +18,17 @@ const createResilientStorage = () => {
   const COOKIE_NAME = 'sr_auth_session';
   const memoryCache = new Map<string, string>();
 
+  // Helper: Escape special regex characters in a string
+  const escapeRegExp = (string: string): string => {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  };
+
   // Helper: Get from cookie
   const getCookie = (name: string): string | null => {
     try {
-      const pattern = new RegExp(`(^| )${name}=([^;]+)`, 'u');
+      // Escape the cookie name to prevent regex injection
+      const escapedName = escapeRegExp(name);
+      const pattern = new RegExp(`(^| )${escapedName}=([^;]+)`, 'u');
       const match = pattern.exec(document.cookie);
 
       return match ? decodeURIComponent(match[2]) : null;

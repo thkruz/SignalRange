@@ -10,6 +10,8 @@
  *   const audioUrl = getAssetUrl('/assets/campaigns/nats/1/intro.mp3');
  */
 
+import { config } from '@app/config/env';
+
 /**
  * Get the full URL for an asset path.
  * Prepends the PUBLIC_ASSETS_BASE_URL if configured.
@@ -28,8 +30,8 @@
  * // Returns: 'https://assets.signalrange.space/assets/campaigns/nats/1/intro.mp3'
  */
 export function getAssetUrl(path: string): string {
-  // Get base URL from environment (empty string in development)
-  const baseUrl = process.env.PUBLIC_ASSETS_BASE_URL || '';
+  // Get base URL from config (empty string in development)
+  const baseUrl = config.assets.baseUrl;
 
   // If no base URL, return path as-is (local development)
   if (!baseUrl) {

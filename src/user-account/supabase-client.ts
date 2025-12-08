@@ -1,7 +1,8 @@
+import { config } from '@app/config/env';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-export const SUPABASE_URL = process.env.PUBLIC_SUPABASE_URL;
-export const SUPABASE_ANON_KEY = process.env.PUBLIC_SUPABASE_ANON_KEY;
+export const SUPABASE_URL = config.supabase.url;
+export const SUPABASE_ANON_KEY = config.supabase.anonKey;
 
 export const isSupabaseApprovedDomain =
   window.location.hostname === 'localhost' ||

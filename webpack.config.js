@@ -64,10 +64,13 @@ module.exports = {
       filename: 'auth/callback.html'
     }),
     new webpack.DefinePlugin({
+      'process.env.PUBLIC_ENVIRONMENT': JSON.stringify(process.env.PUBLIC_ENVIRONMENT || 'production'),
       'process.env.PUBLIC_SUPABASE_URL': JSON.stringify(process.env.PUBLIC_SUPABASE_URL),
       'process.env.PUBLIC_SUPABASE_ANON_KEY': JSON.stringify(process.env.PUBLIC_SUPABASE_ANON_KEY),
       'process.env.PUBLIC_USER_API_URL': JSON.stringify(process.env.PUBLIC_USER_API_URL || 'https://user.keeptrack.space'),
-      'process.env.PUBLIC_ASSETS_BASE_URL': JSON.stringify(process.env.PUBLIC_ASSETS_BASE_URL || '')
+      'process.env.PUBLIC_ASSETS_BASE_URL': JSON.stringify(process.env.PUBLIC_ASSETS_BASE_URL || ''),
+      'process.env.PUBLIC_AI_MODE': JSON.stringify(process.env.PUBLIC_AI_MODE || 'cloud'),
+      'process.env.PUBLIC_AI_ENDPOINT': JSON.stringify(process.env.PUBLIC_AI_ENDPOINT || '')
     }),
     new CaseSensitivePathsPlugin(),
     new CopyWebpackPlugin({

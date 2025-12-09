@@ -54,3 +54,4 @@ export const isUAT = (): boolean => config.environment === 'uat';
  */
 export const isLocal = (): boolean => config.environment === 'local';
 
+

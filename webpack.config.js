@@ -8,8 +8,12 @@ if (process.env.NODE_ENV === 'development') {
   require('dotenv').config({ path: '.env' });
 }
 
-// For production builds, also load .env.production
-require('dotenv').config({ path: '.env.production' });
+// Load environment-specific config based on PUBLIC_ENVIRONMENT
+// Defaults to .env.production if PUBLIC_ENVIRONMENT is not set
+const envFile = process.env.PUBLIC_ENVIRONMENT === 'uat' 
+  ? '.env.uat' 
+  : '.env.production';
+require('dotenv').config({ path: envFile });
 
 module.exports = {
   entry: {

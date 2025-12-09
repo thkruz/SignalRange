@@ -1,6 +1,7 @@
 import { Satellite } from '@app/equipment/satellite/satellite';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
+import { DialogHistoryBox } from '@app/modal/dialog-history-box';
 import { DraggableHtmlBox } from '@app/modal/draggable-html-box';
 import { ObjectivesManager } from '@app/objectives';
 import { Equipment } from '@app/pages/sandbox/equipment';
@@ -12,6 +13,7 @@ import { RfSignal } from './../types';
 
 export class SimulationManager {
   private static instance_: SimulationManager;
+  private lastFrameTime: number;
   equipment: Equipment;
   isDeveloperMode = false;
 
@@ -27,6 +29,7 @@ export class SimulationManager {
 
   missionBriefBox?: DraggableHtmlBox;
   checklistBox?: DraggableHtmlBox;
+  dialogHistoryBox?: DialogHistoryBox;
 
   private constructor() {
     this.progressSaveManager = new ProgressSaveManager();
@@ -35,6 +38,7 @@ export class SimulationManager {
 
     this.satelliteSignals = this.satellites.flatMap(sat => sat.txSignal);
 
+    this.lastFrameTime = Date.now();
     this.gameLoop_();
   }
 
@@ -46,10 +50,9 @@ export class SimulationManager {
     return this.instance_;
   }
 
-  private lastFrameTime = performance.now();
 
   private gameLoop_(): void {
-    const now = performance.now();
+    const now = Date.now();
     this.dt = (now - this.lastFrameTime) as Milliseconds;
     this.lastFrameTime = now;
 

@@ -1,0 +1,242 @@
+/* Dialog Overlay - Faded background */
+.dialog-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.75);
+  z-index: 100000;
+  opacity: 0;
+  transition: opacity 300ms ease-in-out;
+}
+
+.dialog-overlay.dialog-visible {
+  opacity: 1;
+}
+
+/* Dialog Box - Bottom third of screen */
+.dialog-box {
+  position: relative;
+  width: 100%;
+  height: 33.33vh;
+  /* Bottom third of 1920x1080 */
+  background: #181818;
+  border-top: 2px solid #444;
+  box-shadow: 0 -6px 28px rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  padding: 2rem;
+  box-sizing: border-box;
+}
+
+/* Dialog Content Container */
+.dialog-content {
+  display: flex;
+  align-items: center;
+  gap: 8rem;
+  width: 100%;
+  height: 100%;
+  max-width: 1600px;
+  margin: 0 auto;
+}
+
+/* Character Avatar Container */
+.dialog-avatar-container {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+/* Character Avatar */
+.dialog-avatar {
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #2a2a2a;
+  border: 3px solid #691915;
+  box-shadow: 0 4px 12px rgba(255, 53, 53, 0.3);
+}
+
+.dialog-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Character Info - Name and Title */
+.dialog-character-info {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.dialog-character-name {
+  color: #eaeaea;
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.dialog-character-title {
+  color: #ff3535;
+  font-size: 1rem;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  opacity: 0.9;
+}
+
+/* Text Container - Scrollable */
+.dialog-text-container {
+  flex: 1;
+  height: 100%;
+  overflow-y: auto;
+  padding-right: 1rem;
+}
+
+/* Custom Scrollbar */
+.dialog-text-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.dialog-text-container::-webkit-scrollbar-track {
+  background: #2a2a2a;
+  border-radius: 4px;
+}
+
+.dialog-text-container::-webkit-scrollbar-thumb {
+  background: #ff3535;
+  border-radius: 4px;
+}
+
+.dialog-text-container::-webkit-scrollbar-thumb:hover {
+  background: #ff2827;
+}
+
+/* Dialog Text Content */
+.dialog-text {
+  color: #eaeaea;
+  font-size: 1.25rem;
+  line-height: 1.8;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Hold to Skip Indicator */
+.dialog-skip-indicator {
+  position: absolute;
+  top: 1.5rem;
+  right: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms ease-in-out;
+}
+
+.dialog-skip-indicator.dialog-skip-visible {
+  opacity: 1;
+}
+
+.dialog-skip-text {
+  color: #eaeaea;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+/* Circular Progress Indicator */
+.dialog-skip-progress {
+  width: 48px;
+  height: 48px;
+  transform: rotate(-90deg);
+}
+
+.dialog-skip-progress-bg {
+  fill: none;
+  stroke: #2a2a2a;
+  stroke-width: 2;
+}
+
+.dialog-skip-progress-fill {
+  fill: none;
+  stroke: #ff3535;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-dasharray: 100.53;
+  /* 2 * PI * 16 */
+  stroke-dashoffset: 100.53;
+  transition: stroke-dashoffset 50ms linear;
+}
+
+/* Responsive adjustments for smaller screens */
+@media (max-height: 800px) {
+  .dialog-box {
+    height: 40vh;
+    /* Slightly larger proportion on smaller screens */
+  }
+}
+
+@media (max-width: 1200px) {
+  .dialog-content {
+    gap: 1.5rem;
+  }
+
+  .dialog-avatar {
+    width: 100px;
+    height: 100px;
+  }
+
+  .dialog-character-name {
+    font-size: 1.1rem;
+  }
+
+  .dialog-character-title {
+    font-size: 0.85rem;
+  }
+
+  .dialog-text {
+    font-size: 1.1rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .dialog-box {
+    padding: 1.5rem;
+  }
+
+  .dialog-content {
+    gap: 1rem;
+  }
+
+  .dialog-avatar {
+    width: 80px;
+    height: 80px;
+  }
+
+  .dialog-character-name {
+    font-size: 0.95rem;
+  }
+
+  .dialog-character-title {
+    font-size: 0.75rem;
+  }
+
+  .dialog-text {
+    font-size: 1rem;
+  }
+
+  .dialog-skip-indicator {
+    top: 1rem;
+    right: 1rem;
+  }
+}

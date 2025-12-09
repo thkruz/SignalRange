@@ -1,9 +1,18 @@
 {
 	// Cloudflare Workers configuration for signal-range
 	// Migrated from Cloudflare Pages to Workers with static assets support
-	"name": "signal-range",
+	"name": "signalrange",
 	// Compatibility date - using a recent date for latest features
 	"compatibility_date": "2025-11-01",
+	// R2 bucket bindings for large audio assets
+	// Buckets must be created first: wrangler r2 bucket create signal-range-assets
+	"r2_buckets": [
+		{
+			"binding": "ASSETS",
+			"bucket_name": "signal-range-assets",
+			"preview_bucket_name": "signal-range-assets-preview"
+		}
+	],
 	// Static assets configuration
 	// This project is assets-only (no Workers script), so we only need the assets directory
 	"assets": {
@@ -11,8 +20,17 @@
 		"html_handling": "force-trailing-slash",
 		"not_found_handling": "single-page-application"
 	},
-	// Map to your custom domain
+	// Production routes
 	"routes": [
 		"app.signalrange.space/*"
-	]
+	],
+	// Environment-specific configurations
+	"env": {
+		"uat": {
+			// UAT routes - points to uat.signalrange.space
+			"routes": [
+				"uat.signalrange.space/*"
+			]
+		}
+	}
 }

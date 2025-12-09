@@ -64,6 +64,8 @@ export class RotaryKnob {
     document.addEventListener('mouseup', this.onDragEnd.bind(this));
 
     knobBody.addEventListener('wheel', this.onWheel_.bind(this), { passive: false });
+
+    this.updateDisplay();
   }
 
   private onDragStart(e: MouseEvent): void {

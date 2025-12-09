@@ -19,6 +19,7 @@ export type ConditionType =
   | 'buc-current-normal' // BUC current draw within normal range
   | 'buc-not-saturated' // BUC output not in compression
   | 'lnb-reference-locked' // LNB locked to 10MHz reference
+  | 'lnb-lo-set' // LNB local oscillator frequency set to specific value
   | 'lnb-gain-set' // LNB gain set to specific value
   | 'lnb-thermally-stable' // LNB thermal stabilization complete
   | 'lnb-noise-performance' // LNB noise temperature within spec
@@ -59,6 +60,10 @@ export interface ConditionParams {
   frequency?: number;
   /** For frequency-set: tolerance in Hz */
   frequencyTolerance?: number;
+  /** For lnb-lo-set: target local oscillator frequency in Hz */
+  loFrequency?: number;
+  /** For lnb-lo-set: local oscillator frequency tolerance in Hz */
+  loFrequencyTolerance?: number;
   /** For lnb-gain-set: target gain in dB */
   gain?: number;
   /** For lnb-gain-set: gain tolerance in dB */
@@ -99,6 +104,12 @@ export interface Condition {
   mustMaintain: boolean;
   /** Minimum time (in seconds) the condition must be maintained before considered complete */
   maintainDuration?: number;
+  /**
+   * If true, condition must remain satisfied until ALL conditions in the objective are complete.
+   * If the condition becomes unsatisfied before objective completion, it will need to be re-satisfied.
+   * Takes precedence over maintainDuration for maintenance behavior.
+   */
+  maintainUntilObjectiveComplete?: boolean;
 }
 
 /**

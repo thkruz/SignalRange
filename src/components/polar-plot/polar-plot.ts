@@ -64,6 +64,7 @@ export class PolarPlot {
    */
   draw(azimuth: Degrees, elevation: Degrees): void {
     if (this.azimuth !== azimuth || this.elevation !== elevation) {
+      if (!this.ctx_ || !this.canvas_) return;
       this.azimuth = azimuth;
       this.elevation = elevation;
       this.draw_();

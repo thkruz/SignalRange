@@ -3,16 +3,17 @@ const HtmlWebpackPlugin = require('html-webpack-plugin');
 const CaseSensitivePathsPlugin = require('case-sensitive-paths-webpack-plugin');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 const webpack = require('webpack');
-// Don't load local .env when building with wrangler (Cloudflare will provide secrets).
-// Load .env only for local dev so sensitive secrets aren't accidentally bundled.
-if (!process.env.WORKERS_DEV && !process.env.CF_PAGES && !process.env.CLOUDFLARE_ACCOUNT_ID) {
-  require('dotenv').config();
+// First loaded always wins, so load .env first
+if (process.env.NODE_ENV === 'development') {
+  require('dotenv').config({ path: '.env' });
 }
 
-// For production builds, also load .env.production if it exists
-if (process.env.NODE_ENV === 'production') {
-  require('dotenv').config({ path: '.env.production' });
-}
+// Load environment-specific config based on PUBLIC_ENVIRONMENT
+// Defaults to .env.production if PUBLIC_ENVIRONMENT is not set
+const envFile = process.env.PUBLIC_ENVIRONMENT === 'uat' 
+  ? '.env.uat' 
+  : '.env.production';
+require('dotenv').config({ path: envFile });
 
 module.exports = {
   entry: {
@@ -67,22 +68,20 @@ module.exports = {
       filename: 'auth/callback.html'
     }),
     new webpack.DefinePlugin({
+      'process.env.PUBLIC_ENVIRONMENT': JSON.stringify(process.env.PUBLIC_ENVIRONMENT || 'production'),
       'process.env.PUBLIC_SUPABASE_URL': JSON.stringify(process.env.PUBLIC_SUPABASE_URL),
       'process.env.PUBLIC_SUPABASE_ANON_KEY': JSON.stringify(process.env.PUBLIC_SUPABASE_ANON_KEY),
-      'process.env.PUBLIC_USER_API_URL': JSON.stringify(process.env.PUBLIC_USER_API_URL || 'https://user.keeptrack.space')
+      'process.env.PUBLIC_USER_API_URL': JSON.stringify(process.env.PUBLIC_USER_API_URL || 'https://user.keeptrack.space'),
+      'process.env.PUBLIC_ASSETS_BASE_URL': JSON.stringify(process.env.PUBLIC_ASSETS_BASE_URL || ''),
+      'process.env.PUBLIC_AI_MODE': JSON.stringify(process.env.PUBLIC_AI_MODE || 'cloud'),
+      'process.env.PUBLIC_AI_ENDPOINT': JSON.stringify(process.env.PUBLIC_AI_ENDPOINT || '')
     }),
     new CaseSensitivePathsPlugin(),
     new CopyWebpackPlugin({
       patterns: [
         { from: 'public/assets/logo.png', to: 'logo.png' },
-        { from: 'public/images/scenarios', to: 'images/scenarios' },
-        { from: 'public/images/screenshots', to: 'images/screenshots' },
-        { from: 'public/images/facebook-white.png', to: 'images/facebook-white.png' },
-        { from: 'public/images/github-white.png', to: 'images/github-white.png' },
-        { from: 'public/images/google-white.png', to: 'images/google-white.png' },
-        { from: 'public/images/linkedin-white.png', to: 'images/linkedin-white.png' },
-        { from: 'public/images/person-gray.png', to: 'images/person-gray.png' },
-        { from: 'public/mission-briefs', to: 'mission-briefs' }
+        { from: 'public/assets/characters/', to: 'assets/characters/' },
+        { from: 'public/images/', to: 'images/' },
       ]
     })
   ],
@@ -93,7 +92,14 @@ module.exports = {
     compress: false,
     port: 3000,
     hot: true,
-    historyApiFallback: true,
+    historyApiFallback: {
+      rewrites: [
+        // Don't redirect auth callback - serve the actual HTML file
+        { from: /^\/auth\/callback/, to: '/auth/callback.html' },
+        // All other routes go to index.html
+        { from: /./, to: '/index.html' }
+      ]
+    },
     liveReload: false
   }
 };

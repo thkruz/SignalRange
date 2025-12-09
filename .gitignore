@@ -36,3 +36,17 @@ temp/
 
 # Notes
 *.notes.*
+notes
+
+# Large audio assets (stored in R2, not in git)
+# Campaign audio files can be large and numerous
+public/assets/campaigns/**/*.mp3
+public/assets/campaigns/**/*.wav
+public/assets/campaigns/**/*.ogg
+public/assets/campaigns/**/*.png
+public/assets/campaigns/**/*.jpg
+public/**/wip/
+
+# Keep directory structure with .gitkeep files
+!public/assets/campaigns/**/.gitkeep
+!public/assets/campaigns/**/README.md

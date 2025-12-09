@@ -4,10 +4,10 @@ import { html } from "../../engine/utils/development/formatter";
 import { qs } from "../../engine/utils/query-selector";
 import { Events } from "../../events/events";
 import { FECType, Hertz, MHz, ModulationType } from "../../types";
+import { AntennaCore } from "../antenna";
 import { AlarmStatus, BaseEquipment } from "../base-equipment";
 import { TapPoint } from "../rf-front-end/coupler-module/coupler-module";
 import { RFFrontEnd } from "../rf-front-end/rf-front-end";
-import { Antenna } from './../antenna/antenna';
 import './receiver.css';
 
 export interface ReceiverModemState {
@@ -41,14 +41,14 @@ export interface ReceiverState {
 export class Receiver extends BaseEquipment {
   state: ReceiverState;
   private inputData: Partial<ReceiverModemState> = {};
-  private readonly antennas: Antenna[];
+  private readonly antennas: AntennaCore[];
   private lastRenderState: ReceiverState | null = null;
   private mediaCache: { [url: string]: HTMLImageElement | HTMLVideoElement | HTMLIFrameElement } = {};
   private videoPlayTime: { [url: string]: number } = {};
   powerSwitch: PowerSwitch;
   rfFrontEnd_: RFFrontEnd | null = null;
 
-  constructor(parentId: string, antennas: Antenna[], teamId: number = 1, serverId: number = 1) {
+  constructor(parentId: string, antennas: AntennaCore[], teamId: number = 1, serverId: number = 1) {
     super(parentId, teamId);
 
     this.antennas = antennas;

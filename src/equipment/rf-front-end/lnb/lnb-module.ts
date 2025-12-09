@@ -2,7 +2,8 @@ import { HelpButton } from "@app/components/help-btn/help-btn";
 import { RotaryKnob } from "@app/components/rotary-knob/rotary-knob";
 import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
-import { dB, Hertz, IfFrequency, IfSignal, MHz, RfFrequency, RfSignal, SignalOrigin } from '@app/types';
+import { SignalOrigin } from "@app/SignalOrigin";
+import { dB, Hertz, IfFrequency, IfSignal, MHz, RfFrequency, RfSignal } from '@app/types';
 import { RFFrontEnd } from '../rf-front-end';
 import { RFFrontEndModule, RFFrontEndModuleState } from '../rf-front-end-module';
 import './lnb-module.css';
@@ -81,7 +82,7 @@ export class LNBModule extends RFFrontEndModule<LNBState> {
     this.loKnob_ = RotaryKnob.create(
       `${this.uniqueId}-lo-knob`,
       this.state_.loFrequency,
-      5555,
+      5100,
       6075,
       10,
       (value: number) => {

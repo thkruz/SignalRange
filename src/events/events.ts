@@ -1,9 +1,8 @@
-import { AntennaState } from "@app/equipment/antenna/antenna";
 import { RealTimeSpectrumAnalyzerState } from "@app/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer";
 import { BUCState } from "@app/equipment/rf-front-end/buc-module/buc-module";
 import { CouplerState } from "@app/equipment/rf-front-end/coupler-module/coupler-module";
 import { IfFilterBankState } from "@app/equipment/rf-front-end/filter-module/filter-module";
-import { GPSDOState } from "@app/equipment/rf-front-end/gpsdo-module/gpsdo-module";
+import { GPSDOState } from '@app/equipment/rf-front-end/gpsdo-module/GPSDOState';
 import { HPAState } from "@app/equipment/rf-front-end/hpa-module/hpa-module";
 import { LNBState } from "@app/equipment/rf-front-end/lnb/lnb-module";
 import { OMTState } from "@app/equipment/rf-front-end/omt-module/omt-module";
@@ -13,6 +12,7 @@ import { ReceiverModemState } from "../equipment/receiver/receiver";
 import { TransmitterModem } from "../equipment/transmitter/transmitter";
 import { ConditionState, Objective, ObjectiveState } from "../objectives/objective-types";
 import { RfSignal } from "../types";
+import { AntennaState } from "@app/equipment/antenna";
 
 // Antenna Event specific interfaces
 export interface AntennaLoopbackChangedData {

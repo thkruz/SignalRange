@@ -8,6 +8,8 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
     persistSession: false,
     autoRefreshToken: false,
+    detectSessionInUrl: true, // Let Supabase detect and process the OAuth callback
+    flowType: 'implicit', // Use implicit flow for popup-based OAuth
     storage: undefined, // Don't use any storage in popup
   },
 });
@@ -18,10 +20,11 @@ const handleAuthCallback = async () => {
     console.log('Hash:', window.location.hash);
     console.log('Search:', window.location.search);
 
-    /*
-     * Let Supabase automatically handle the OAuth callback
-     * This will process the hash parameters and create a session
-     */
+    // Give Supabase a moment to process the OAuth callback automatically
+    // With detectSessionInUrl: true, Supabase will parse the hash/query params
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    // Now get the session that Supabase created
     const { data, error } = await supabase.auth.getSession();
 
     console.log('Session data:', data);
@@ -34,32 +37,25 @@ const handleAuthCallback = async () => {
         error: error.message,
       }, window.location.origin);
       window.close();
-
       return;
     }
 
     if (data.session?.user) {
-      console.log('Auth successful:', data.session);
+      console.log('Auth successful:', data.session.user);
       window.opener?.postMessage({
         type: 'SUPABASE_AUTH_SUCCESS',
         user: data.session.user,
         session: data.session,
       }, window.location.origin);
       window.close();
-
       return;
     }
 
-    // If no session yet, check if we have OAuth hash parameters
+    // If still no session, there might be an error in the URL
     const hashParams = new URLSearchParams(window.location.hash.substring(1));
-    const accessToken = hashParams.get('access_token');
-    const refreshToken = hashParams.get('refresh_token');
-    const expiresIn = hashParams.get('expires_in');
-    const tokenType = hashParams.get('token_type');
-    const errorParam = hashParams.get('error');
-    const errorDescription = hashParams.get('error_description');
-
-    console.log('OAuth params:', { accessToken, refreshToken, expiresIn, tokenType, errorParam });
+    const queryParams = new URLSearchParams(window.location.search);
+    const errorParam = hashParams.get('error') || queryParams.get('error');
+    const errorDescription = hashParams.get('error_description') || queryParams.get('error_description');
 
     if (errorParam) {
       console.error('OAuth error:', errorParam, errorDescription);
@@ -68,45 +64,16 @@ const handleAuthCallback = async () => {
         error: errorDescription || errorParam,
       }, window.location.origin);
       window.close();
-
       return;
     }
 
-    if (accessToken) {
-      // We have OAuth tokens, set the session manually
-      const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
-        access_token: accessToken,
-        refresh_token: refreshToken || '',
-      });
-
-      console.log('Set session result:', sessionData, sessionError);
-
-      if (sessionError) {
-        console.error('Set session error:', sessionError);
-        window.opener?.postMessage({
-          type: 'SUPABASE_AUTH_ERROR',
-          error: sessionError.message,
-        }, window.location.origin);
-      } else if (sessionData.session?.user) {
-        console.log('Session set successfully:', sessionData.session.user);
-        window.opener?.postMessage({
-          type: 'SUPABASE_AUTH_SUCCESS',
-          user: sessionData.session.user,
-        }, window.location.origin);
-      } else {
-        console.error('Session set but no user found');
-        window.opener?.postMessage({
-          type: 'SUPABASE_AUTH_ERROR',
-          error: 'Authentication succeeded but no user data received',
-        }, window.location.origin);
-      }
-
-      window.close();
-    } else {
-      // No OAuth parameters and no session - might still be loading
-      console.log('No OAuth parameters found, retrying in 1 second...');
-      setTimeout(handleAuthCallback, 1000);
-    }
+    // No session and no error - unexpected state
+    console.error('No session created and no error found');
+    window.opener?.postMessage({
+      type: 'SUPABASE_AUTH_ERROR',
+      error: 'Authentication did not complete successfully',
+    }, window.location.origin);
+    window.close();
 
   } catch (err) {
     console.error('Auth callback error:', err);

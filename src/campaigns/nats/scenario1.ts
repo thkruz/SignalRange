@@ -1,15 +1,19 @@
 import { html } from '@app/engine/utils/development/formatter';
+import type { AntennaState } from '@app/equipment/antenna';
 import { ANTENNA_CONFIG_KEYS } from '@app/equipment/antenna/antenna-configs';
 import { BUCModule } from '@app/equipment/rf-front-end/buc-module/buc-module';
-import { CouplerModule } from '@app/equipment/rf-front-end/coupler-module/coupler-module';
+import { CouplerState, TapPoint } from '@app/equipment/rf-front-end/coupler-module/coupler-module';
 import { IfFilterBankModule } from '@app/equipment/rf-front-end/filter-module/filter-module';
 import { HPAModule } from '@app/equipment/rf-front-end/hpa-module/hpa-module';
 import { OMTModule } from '@app/equipment/rf-front-end/omt-module/omt-module';
 import { Satellite } from '@app/equipment/satellite/satellite';
-import { Objective } from '@app/objectives/objective-types';
-import { dB, dBi, dBm, FECType, Hertz, MHz, ModulationType, RfFrequency, SignalOrigin } from '@app/types';
-import { Degrees } from 'ootk';
-import { ScenarioData } from '../scenario-manager';
+import { Character } from '@app/modal/character-enum';
+import type { Objective } from '@app/objectives/objective-types';
+import type { ScenarioData } from '@app/ScenarioData';
+import { SignalOrigin } from "@app/SignalOrigin";
+import type { dB, dBi, dBm, FECType, Hertz, MHz, ModulationType, RfFrequency } from '@app/types';
+import { getAssetUrl } from '@app/utils/asset-url';
+import type { Degrees } from 'ootk';
 
 /**
  * Scenario 1: "First Light" - HELIOS-7 Initial Contact
@@ -20,15 +24,15 @@ import { ScenarioData } from '../scenario-manager';
 
 export const scenario1Data: ScenarioData = {
   id: 'scenario1',
-  url: 'scenarios/1',
-  imageUrl: 'scenario1.jpg',
+  url: 'nats/scenarios/scenario1',
+  imageUrl: 'nats/1/card.png',
   number: 1,
   title: '"First Light"',
-  subtitle: 'HELIOS-7 Initial Contact',
+  subtitle: 'MARINER-1 Initial Contact',
   duration: '25-30 min',
   difficulty: 'beginner',
   missionType: 'Commercial Communications',
-  description: `You are a Ground Station Operator at Pacific Edge Communications facility in Guam. Your company has just launched HELIOS-7, a new C-band communications satellite. The satellite is now station-keeping at 145°E geostationary orbit. You will conduct the first ground station link test - a critical milestone before commercial operations begin.<br><br> This scenario will guide you through setting up the ground station equipment, acquiring the satellite signal, and performing initial signal quality measurements. You'll learn the basics of antenna pointing, RF front end configuration, and spectrum analysis in a hands-on environment.`,
+  description: `You are a Ground Station Operator at North Atlantic Teleport Services, a commercial satellite ground station facility in rural Vermont. Your company provides ground segment services for multiple GEO communication satellites serving the North Atlantic region.<br><br>Your latest client, SeaLink Communications, launched MARINER-1 fourteen days ago aboard a Falcon 9 from Cape Canaveral. The satellite completed its apogee burns and reached its operational slot at 53°W geostationary orbit yesterday. Beacon Orbital Analytics confirmed the satellite achieved station-keeping this morning, and the spacecraft operations team in Halifax has handed the communications payload over to ground operations.<br><br>You will conduct the first ground station RF link test - a critical milestone before MARINER-1 can begin revenue service providing C-band maritime connectivity from Newfoundland to the Caribbean. This scenario will guide you through setting up the ground station equipment, acquiring the satellite signal, and performing initial signal quality measurements.`,
   equipment: [
     '9-meter C-band Antenna',
     'RF Front End',
@@ -37,6 +41,15 @@ export const scenario1Data: ScenarioData = {
   settings: {
     isSync: true,
     antennas: [ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK],
+    antennasState: [
+      {
+        // Pre-configure antenna to be powered on and pointed roughly at satellite 1
+        isPowered: true,
+        azimuth: 161.8 as Degrees,
+        elevation: 34.2 as Degrees,
+        polarization: 14 as Degrees,
+      } as Partial<AntennaState>,
+    ],
     rfFrontEnds: [{
       // Module states managed by their respective classes
       omt: OMTModule.getDefaultState(),
@@ -57,7 +70,17 @@ export const scenario1Data: ScenarioData = {
         temperature: 25, // °C
         thermalStabilizationTime: 180, // seconds
       },
-      coupler: CouplerModule.getDefaultState(),
+      coupler: {
+        isPowered: true,
+        tapPointA: TapPoint.TX_IF,
+        tapPointB: TapPoint.RX_IF,
+        availableTapPointsA: [TapPoint.TX_IF, TapPoint.TX_RF_POST_BUC],
+        availableTapPointsB: [TapPoint.RX_IF],
+        couplingFactorA: -40, // dB
+        couplingFactorB: -39, // dB
+        isActiveA: true,
+        isActiveB: true,
+      } as CouplerState,
       gpsdo: {
         isPowered: true, // CHANGE
         isLocked: false,
@@ -113,6 +136,7 @@ export const scenario1Data: ScenarioData = {
       <div id="mission-checklist-container">
         <div class="mission-brief-icon icon" title="Mission Brief"></div>
         <div class="checklist-icon icon" title="Mission Checklist"></div>
+        <div class="dialog-icon icon" title="Dialog History"></div>
       </div>
       <div class="student-equipment scenario1-layout">
         <div class="paired-equipment-container">
@@ -123,6 +147,7 @@ export const scenario1Data: ScenarioData = {
       </div>
     `,
     missionBriefUrl: 'https://docs.signalrange.space/scenarios/scenario-1?content-only=true&dark=true',
+    isExtraSatellitesVisible: true,
     satellites: [
       new Satellite(
         1,
@@ -132,11 +157,11 @@ export const scenario1Data: ScenarioData = {
             serverId: 1,
             noradId: 1,
             /** Must be the uplinkl to match the antenna in simulation */
-            frequency: 6180e6 as RfFrequency,
+            frequency: 5925e6 as RfFrequency,
             polarization: 'H',
             power: 40 as dBm, // 10 W
-            bandwidth: 10e6 as Hertz,
-            modulation: '8QAM' as ModulationType, // We need about 7 C/N to support 8QAM
+            bandwidth: 36e6 as Hertz,
+            modulation: 'QPSK' as ModulationType,
             fec: '3/4' as FECType,
             feed: 'red-1.mp4',
             isDegraded: false,
@@ -144,28 +169,11 @@ export const scenario1Data: ScenarioData = {
             noiseFloor: null,
             gainInPath: 0 as dBi,
           },
-          {
-            signalId: '2',
-            serverId: 1,
-            noradId: 1,
-            /** Must be the uplinkl to match the antenna in simulation */
-            frequency: 6190e6 as RfFrequency,
-            polarization: 'H',
-            power: 40 as dBm, // 10 W
-            bandwidth: 3e6 as Hertz,
-            modulation: '8QAM' as ModulationType, // We need about 7 C/N to support 8QAM
-            fec: '3/4' as FECType,
-            feed: 'blue-1.mp4',
-            isDegraded: false,
-            origin: SignalOrigin.SATELLITE_RX,
-            noiseFloor: null,
-            gainInPath: 0 as dBi,
-          }
         ],
         [
           {
-            frequency: 3985.5e6 as RfFrequency,
-            signalId: 'Sat1-Beacon',
+            frequency: 3802.5e6 as RfFrequency,
+            signalId: 'MARINER-1-Beacon',
             serverId: 1,
             noradId: 1,
             power: 40 as dBm, // 10 W
@@ -181,65 +189,10 @@ export const scenario1Data: ScenarioData = {
           }
         ],
         {
-          az: 247.3 as Degrees,
-          el: 78.2 as Degrees,
-          frequencyOffset: 2.260e9 as Hertz,
-        }
-      ),
-      new Satellite(
-        2,
-        [
-          {
-            signalId: '3',
-            serverId: 1,
-            noradId: 2,
-            /** Must be the uplinkl to match the antenna in simulation */
-            frequency: 6165e6 as RfFrequency,
-            polarization: 'H',
-            power: 40 as dBm, // 10 W
-            bandwidth: 3e6 as Hertz,
-            modulation: '8QAM' as ModulationType, // We need about 7 C/N to support 8QAM
-            fec: '3/4' as FECType,
-            feed: 'blue-1.mp4',
-            isDegraded: false,
-            origin: SignalOrigin.SATELLITE_RX,
-            noiseFloor: null,
-            gainInPath: 0 as dBi,
-          }
-        ],
-        [],
-        {
-          az: 247.6 as Degrees,
-          el: 78.2 as Degrees,
-          frequencyOffset: 2.260e9 as Hertz,
-        }
-      ),
-      new Satellite(
-        3,
-        [
-          {
-            signalId: '4',
-            serverId: 1,
-            noradId: 3,
-            /** Must be the uplinkl to match the antenna in simulation */
-            frequency: 6205e6 as RfFrequency,
-            polarization: 'H',
-            power: 43 as dBm, // 20 W
-            bandwidth: 5e6 as Hertz,
-            modulation: '8QAM' as ModulationType, // We need about 7 C/N to support 8QAM
-            fec: '3/4' as FECType,
-            feed: 'blue-1.mp4',
-            isDegraded: false,
-            origin: SignalOrigin.SATELLITE_RX,
-            noiseFloor: null,
-            gainInPath: 0 as dBi,
-          }
-        ],
-        [],
-        {
-          az: 247.1 as Degrees,
-          el: 78.2 as Degrees,
-          frequencyOffset: 2.260e9 as Hertz,
+          az: 161.8 as Degrees,
+          el: 34.2 as Degrees,
+          rotation: 14 as Degrees,
+          frequencyOffset: 2.225e9 as Hertz,
         }
       ),
     ]
@@ -302,26 +255,35 @@ export const scenario1Data: ScenarioData = {
           params: {
             equipment: 'lnb',
           },
-          mustMaintain: false,
+          maintainUntilObjectiveComplete: true,
+        },
+        {
+          type: 'lnb-lo-set',
+          description: 'LNB LO Frequency Set to 5,150 MHz',
+          params: {
+            loFrequency: 5150 as MHz,
+            loFrequencyTolerance: 0, // Hz
+          },
+          maintainUntilObjectiveComplete: true,
         },
         {
           type: 'lnb-gain-set',
           description: 'LNB Gain Set to 55 dB',
           params: {
             gain: 55,
-            gainTolerance: 1,
+            gainTolerance: 0, // dB
           },
-          mustMaintain: false,
+          maintainUntilObjectiveComplete: true,
         },
         {
           type: 'lnb-reference-locked',
           description: 'LNB Locked to 10 MHz Reference',
-          mustMaintain: false,
+          maintainUntilObjectiveComplete: true,
         },
         {
           type: 'lnb-thermally-stable',
           description: 'LNB Temperature Stabilization Complete',
-          mustMaintain: false,
+          maintainUntilObjectiveComplete: true,
         },
         {
           type: 'lnb-noise-performance',
@@ -329,7 +291,7 @@ export const scenario1Data: ScenarioData = {
           params: {
             maxNoiseTemperature: 100,
           },
-          mustMaintain: false,
+          maintainUntilObjectiveComplete: true,
         },
       ],
       conditionLogic: 'AND',
@@ -442,4 +404,68 @@ export const scenario1Data: ScenarioData = {
       points: 100,
     },
   ] as Objective[],
+  dialogClips: {
+    intro: {
+      text: `
+      <p>
+        Welcome to North Atlantic Teleport Services. Big day for you - first shift on console. I'm glad you made it through the snow; the Vermont microwave backhaul barely did.
+      </p>
+      <p>
+      Alright, here's the situation. SeaLink's brand-new GEO bird, MARINER-1, just settled into its station-keeping box at 53 West. Beacon Orbital in Cambridge ran the final orbit checks this morning, so the spacecraft team has handed the payload over to us.
+      </p>
+      <p>
+      Your job? Establish the first RF link from this facility. No pressure—just the part where we prove to the client that their multimillion-dollar satellite actually talks back.
+      </p>
+      <p>
+      You'll see a Guide and a Checklist on the left side of your screen. Follow those step-by-step; they're built from our standard ops flow and the lessons learned from… well, the last time someone rushed this process.
+      </p>
+      <p>
+      I'll be monitoring from the upstairs control room. When you're ready, let's bring MARINER-1 online.
+      </p>
+      `,
+      character: Character.CHARLIE_BROOKS,
+      audioUrl: getAssetUrl('/assets/campaigns/nats/1/intro.mp3'),
+    },
+    objectives: {
+      'phase-1-gpsdo': {
+        text: `
+        <p>
+        GPS-DO is up and locked.
+        </p>
+        <p>
+        One subsystem down...seventeen more chances for my ulcer to act up.
+        </p>
+        <p>
+        That 10 MHz reference keeps the rack from free-styling...We don’t have room for improvisation today.
+        </p>
+        <p>
+        ...Go ahead...Power the LNB and dial in its gain.
+        </p>
+        <p>
+        Every step we nail buys me another hour before the board calls.
+        </p>
+        `,
+        character: Character.CATHERINE_VEGA,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/1/obj-phase-1-gpsdo.mp3'),
+      },
+      'phase-1-lnb': {
+        text: `
+        <p>
+        LNB's warmed up and behaving.
+        </p>
+        <p>
+        Not bad, new guy.
+        </p>
+        <p>
+        Means I don't have to file another 'mysterious gain drift' ticket upstairs.
+        </p>
+        <p>
+        Keep going.
+        </p>
+        `,
+        character: Character.CHARLIE_BROOKS,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/1/obj-phase-1-lnb.mp3'),
+      },
+    },
+  },
 }

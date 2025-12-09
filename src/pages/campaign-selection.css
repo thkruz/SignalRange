@@ -1,0 +1,397 @@
+.campaign-selection-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: calc(100vh - 80px);
+  background: linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 100%);
+  color: #fff;
+  padding: 2rem 1rem;
+}
+
+.campaign-selection-header {
+  text-align: center;
+  margin-bottom: 2.5rem;
+}
+
+.campaign-selection-header h1 {
+  font-size: 2.5rem;
+  font-weight: bold;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: #fff;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+  margin-bottom: 0.5rem;
+}
+
+.campaign-selection-header .subtitle {
+  font-size: 1rem;
+  color: #aaa;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+
+.campaign-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 1.5rem;
+  width: 100%;
+  max-width: 1800px;
+  margin-bottom: 1rem;
+}
+
+/* Campaign Card - Equipment Case Style */
+.campaign-card {
+  position: relative;
+  max-height: 65vh;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(135deg, #2a2a2a 0%, #1f1f1f 100%);
+  border: 2px solid #444;
+  border-radius: 8px;
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.6),
+    inset 0 1px 1px rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.campaign-card.disabled {
+  cursor: not-allowed;
+}
+
+.campaign-card.disabled .campaign-card-inner {
+  opacity: 0.35;
+  filter: blur(5px);
+  pointer-events: none;
+}
+
+.campaign-card:not(.disabled):hover {
+  border-color: #666;
+  box-shadow:
+    0 6px 16px rgba(0, 0, 0, 0.8),
+    inset 0 1px 1px rgba(255, 255, 255, 0.15);
+  transform: translateY(-2px);
+}
+
+/* Special styling for sandbox card */
+.campaign-card.sandbox-card {
+  border-color: #4caf50;
+  box-shadow:
+    0 4px 12px rgba(76, 175, 80, 0.3),
+    inset 0 1px 1px rgba(255, 255, 255, 0.1);
+}
+
+.campaign-card.sandbox-card:hover {
+  border-color: #66bb6a;
+  box-shadow:
+    0 6px 16px rgba(76, 175, 80, 0.5),
+    inset 0 1px 1px rgba(255, 255, 255, 0.15);
+}
+
+/* Status Banners */
+.coming-soon-banner {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 100%;
+  background: #b71c0c;
+  color: #fff;
+  padding: 6px 0;
+  font-size: 36px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  z-index: 20;
+  transform: rotate(-30deg);
+}
+
+.locked-banner {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 100%;
+  background: #555;
+  color: #fff;
+  padding: 0.3em 0;
+  font-size: 36px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  z-index: 20;
+  transform: rotate(-30deg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25em;
+}
+
+.locked-icon {
+  font-size: 32px;
+}
+
+.progress-banner {
+  position: absolute;
+  top: 50px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%);
+  color: #fff;
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  z-index: 15;
+}
+
+.progress-icon {
+  font-size: 14px;
+}
+
+.completed-banner {
+  position: absolute;
+  top: 50px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #ffd700 0%, #ffb700 100%);
+  color: #1a1a1a;
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(255, 215, 0, 0.5);
+  z-index: 15;
+}
+
+.completed-icon {
+  font-size: 14px;
+}
+
+/* Rivet corner decorations */
+.campaign-card::before,
+.campaign-card::after {
+  content: '';
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: radial-gradient(circle at center, #666 30%, #444 70%, #222 100%);
+  border-radius: 50%;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.8);
+  z-index: 10;
+}
+
+.campaign-card::before {
+  top: 8px;
+  left: 8px;
+}
+
+.campaign-card::after {
+  top: 8px;
+  right: 8px;
+}
+
+/* Inner wrapper */
+.campaign-card-inner {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Card Header */
+.campaign-card-header {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  height: 40px;
+  padding: 0 24px;
+  background: linear-gradient(180deg, #3a3a3a 0%, #2a2a2a 100%);
+  border-bottom: 2px solid #444;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* Campaign Image Section */
+.campaign-image {
+  position: relative;
+  width: 100%;
+  height: 400px;
+  overflow: hidden;
+  background: #0a0a0a;
+  border-bottom: 2px solid #444;
+}
+
+.campaign-image-overlay {
+  margin-top: -90px;
+  z-index: 10;
+  display: block;
+  position: relative;
+  padding: 1px 1em 1px 1em;
+  background: rgba(0, 0, 0, 0.7);
+}
+
+.campaign-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: brightness(0.8);
+  transition: transform 0.3s ease, filter 0.3s ease;
+}
+
+.campaign-card:not(.disabled):hover .campaign-image img {
+  transform: scale(1.05);
+  filter: brightness(0.9);
+}
+
+/* Badges */
+.campaign-badges {
+  display: flex;
+  gap: 8px;
+}
+
+.badge {
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+.badge.difficulty-beginner {
+  background-color: #4caf50;
+  color: #fff;
+}
+
+.badge.difficulty-intermediate {
+  background-color: #ff9800;
+  color: #fff;
+}
+
+.badge.difficulty-advanced {
+  background-color: #f44336;
+  color: #fff;
+}
+
+.badge.difficulty-mixed {
+  background: linear-gradient(135deg, #4caf50 0%, #ff9800 50%, #f44336 100%);
+  color: #fff;
+}
+
+.badge.duration {
+  background-color: #2196f3;
+  color: #fff;
+}
+
+.badge.special {
+  background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%);
+  color: #fff;
+}
+
+/* Card Body */
+.campaign-card-body {
+  display: flex;
+  flex-direction: column;
+  padding: 1.25rem;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+.campaign-title {
+  font-size: 1.3rem;
+  font-weight: bold;
+  color: #fff;
+  margin-bottom: 0.35rem;
+  line-height: 1.2;
+}
+
+.campaign-subtitle {
+  font-size: 0.9rem;
+  color: #ccc;
+  margin-bottom: 0.75rem;
+  font-style: italic;
+}
+
+.campaign-description {
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: #ddd;
+  margin-bottom: 1rem;
+  flex-grow: 1;
+  max-height: 150px;
+  overflow: auto;
+}
+
+/* Campaign Info Section */
+.campaign-info {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  margin-top: auto;
+  padding-top: 1rem;
+  border-top: 1px solid #333;
+}
+
+.campaign-info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.info-label {
+  font-size: 0.7rem;
+  font-weight: bold;
+  color: #aaa;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.info-value {
+  font-size: 1rem;
+  font-weight: bold;
+  color: #fff;
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+  .campaign-grid {
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .campaign-selection-page {
+    padding: 0.75rem;
+  }
+
+  .campaign-selection-header h1 {
+    font-size: 1.75rem;
+  }
+
+  .campaign-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .campaign-info {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+}

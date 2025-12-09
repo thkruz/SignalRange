@@ -67,12 +67,14 @@
 .draggable-box__title h3 {
   margin: 0;
   user-select: none;
+  color: #ffffff;
 }
 
 .draggable-box__content {
   border: 5px solid var(--color-dark-border);
   border-top: 0;
   border-radius: 0 0 var(--user-account-border-radius) var(--user-account-border-radius);
+  min-height: 250px;
   height: 100%;
   max-height: 70vh;
   overflow: auto;

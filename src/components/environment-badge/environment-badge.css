@@ -1,0 +1,53 @@
+/* Environment Badge Component */
+
+.environment-badge {
+  position: fixed;
+  top: 0;
+  right: 0;
+  z-index: 10000;
+  padding: 4px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-radius: 0 0 0 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  pointer-events: none;
+  user-select: none;
+}
+
+.environment-badge__label {
+  display: inline-block;
+}
+
+/* UAT Environment */
+.environment-badge--uat {
+  background-color: #ff9800;
+  color: #ffffff;
+  border-bottom: 2px solid #f57c00;
+}
+
+/* Local Development Environment */
+.environment-badge--local {
+  background-color: #4caf50;
+  color: #ffffff;
+  border-bottom: 2px solid #388e3c;
+}
+
+/* Animation for visibility */
+.environment-badge {
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+

@@ -1,0 +1,105 @@
+#draggable-html-box-dialog-history {
+  max-height: 80vh;
+  width: 600px;
+  min-width: 400px;
+  min-height: 300px;
+  height: fit-content;
+
+  #draggable-html-box-content-dialog-history {
+    padding: 0;
+    color: var(--text-color, #ffffff);
+    max-height: 70vh;
+    overflow-y: auto;
+
+    &::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    &::-webkit-scrollbar-track {
+      background: var(--scrollbar-track, #1e1e1e);
+    }
+
+    &::-webkit-scrollbar-thumb {
+      background: var(--scrollbar-thumb, #555);
+      border-radius: 4px;
+    }
+
+    &::-webkit-scrollbar-thumb:hover {
+      background: var(--scrollbar-thumb-hover, #666);
+    }
+  }
+}
+
+.dialog-history-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+}
+
+.dialog-history-empty {
+  padding: 2rem;
+  text-align: center;
+  color: var(--text-color-secondary, #999);
+}
+
+.dialog-history-item {
+  background: var(--background-secondary, #2a2a2a);
+  border: 1px solid var(--border-color, #444);
+  border-radius: 6px;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  transition: background 0.2s ease;
+
+  &:hover {
+    background: var(--background-hover, #333);
+  }
+}
+
+.dialog-history-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.dialog-history-title {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--text-color, #ffffff);
+}
+
+.dialog-history-time {
+  font-size: 0.8rem;
+  color: var(--text-color-secondary, #999);
+  white-space: nowrap;
+}
+
+.dialog-history-character {
+  font-size: 0.85rem;
+  color: var(--text-color-secondary, #aaa);
+  text-transform: capitalize;
+}
+
+.dialog-history-replay-btn {
+  align-self: flex-start;
+  padding: 0.4rem 0.8rem;
+  background: var(--button-bg, #4a90e2);
+  color: var(--button-text, #ffffff);
+  border: none;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  font-family: inherit;
+
+  &:hover {
+    background: var(--button-bg-hover, #357abd);
+  }
+
+  &:active {
+    background: var(--button-bg-active, #2a6199);
+  }
+}

@@ -3,7 +3,8 @@ import { RotaryKnob } from '@app/components/rotary-knob/rotary-knob';
 import { ToggleSwitch } from '@app/components/toggle-switch/toggle-switch';
 import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
-import { dB, dBm, Hertz, IfFrequency, IfSignal, MHz, RfFrequency, RfSignal, SignalOrigin } from '@app/types';
+import { SignalOrigin } from "@app/SignalOrigin";
+import { dB, dBm, Hertz, IfFrequency, IfSignal, MHz, RfFrequency, RfSignal } from '@app/types';
 import { RFFrontEnd } from '../rf-front-end';
 import { RFFrontEndModule, RFFrontEndModuleState } from '../rf-front-end-module';
 import './buc-module.css';
@@ -90,7 +91,7 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
       currentDraw: 0, // A
 
       // Frequency Translation
-      loFrequency: 4200 as MHz, // MHz (C-band)
+      loFrequency: 6425 as MHz, // MHz (C-band)
       isExtRefLocked: true,
       frequencyError: 0, // Hz (locked)
       phaseLockRange: 10000, // ±10 kHz tracking range
@@ -126,8 +127,8 @@ export class BUCModule extends RFFrontEndModule<BUCState> {
     this.loKnob_ = RotaryKnob.create(
       `${this.uniqueId}-lo-knob`,
       this.state_.loFrequency,
-      3700,
-      4200,
+      5850,
+      6425,
       10,
       (value: number) => {
         this.state_.loFrequency = value as MHz;

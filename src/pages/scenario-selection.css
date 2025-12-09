@@ -10,6 +10,7 @@
 .scenario-selection-header {
   text-align: center;
   margin-bottom: 2rem;
+  position: relative;
 }
 
 .scenario-selection-header h1 {
@@ -29,6 +30,39 @@
   text-transform: uppercase;
 }
 
+.scenario-selection-header .campaign-progress {
+  font-size: 0.85rem;
+  color: #4caf50;
+  margin-top: 0.5rem;
+  font-weight: bold;
+}
+
+.back-button {
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #3a3a3a 0%, #2a2a2a 100%);
+  color: #fff;
+  border: 2px solid #444;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin: 1em auto 0em auto;
+  max-width: fit-content;
+}
+
+.back-button:hover {
+  border-color: #666;
+  background: linear-gradient(135deg, #4a4a4a 0%, #3a3a3a 100%);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+  transform: translateY(-1px);
+}
+
+.back-button:active {
+  transform: translateY(0);
+}
+
 .scenario-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
@@ -41,7 +75,7 @@
 /* Scenario Card - Equipment Case Style */
 .scenario-card {
   position: relative;
-  max-height: 60vh;
+  max-height: 70vh;
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -73,9 +107,43 @@
     transform: rotate(-30deg);
   }
 
+  .locked-banner {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    width: 100%;
+    background: #555;
+    color: #fff;
+    padding: 0.3em 0;
+    font-size: 36px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    text-align: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    z-index: 20;
+    transform: rotate(-30deg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25em;
+  }
+
+  .locked-requirement {
+    font-size: 14px;
+    font-weight: normal;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+
+  .locked-icon {
+    font-size: 32px;
+  }
+
   .checkpoint-banner {
     position: absolute;
-    top: 12px;
+    top: 50px;
     right: 12px;
     display: flex;
     align-items: center;
@@ -95,6 +163,29 @@
   .checkpoint-icon {
     font-size: 14px;
   }
+
+  .completed-banner {
+    position: absolute;
+    top: 50px;
+    right: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: linear-gradient(135deg, #ffd700 0%, #ffb700 100%);
+    color: #1a1a1a;
+    padding: 6px 12px;
+    font-size: 11px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(255, 215, 0, 0.5);
+    z-index: 15;
+  }
+
+  .completed-icon {
+    font-size: 14px;
+  }
 }
 
 .scenario-card.disabled .scenario-card-inner {
@@ -111,7 +202,7 @@
   box-shadow:
     0 6px 16px rgba(0, 0, 0, 0.8),
     inset 0 1px 1px rgba(255, 255, 255, 0.15);
-  transform: translateY(-2px);
+  transform: translateY(-1px);
 }
 
 .scenario-card.selected {
@@ -170,10 +261,20 @@
 .scenario-image {
   position: relative;
   width: 100%;
-  height: 200px;
+  height: 350px;
   overflow: hidden;
   background: #0a0a0a;
   border-bottom: 2px solid #444;
+
+}
+
+.scenario-image-overlay {
+  margin-top: -90px;
+  z-index: 1000;
+  display: block;
+  position: relative;
+  padding: 1px 1em 1px 1em;
+  background: rgba(0, 0, 0, 0.6);
 }
 
 .scenario-image img {
@@ -266,9 +367,9 @@
 .scenario-title {
   font-size: 1.1rem;
   font-weight: bold;
-  color: var(--color-text-accent);
+  color: #fff;
   margin-bottom: 0.35rem;
-  line-height: 1.3;
+  line-height: 0.6;
 }
 
 .scenario-subtitle {
@@ -296,6 +397,8 @@
   color: #ddd;
   margin-bottom: 0.75rem;
   flex-grow: 1;
+  max-height: 300px;
+  overflow: auto;
 }
 
 /* Equipment Info Section */
@@ -339,15 +442,19 @@
 /* Checkpoint Actions */
 .scenario-checkpoint-actions {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   gap: 0.5rem;
   margin-top: 1rem;
   padding-top: 1rem;
   border-top: 1px solid #333;
+  justify-content: space-evenly;
+  align-items: center;
 }
 
 .btn-continue,
-.btn-start-fresh {
+.btn-start,
+.btn-start-fresh,
+.btn-play-again {
   padding: 10px 16px;
   border: none;
   border-radius: 4px;
@@ -368,7 +475,18 @@
 .btn-continue:hover {
   background: linear-gradient(135deg, #66bb6a 0%, #4caf50 100%);
   box-shadow: 0 4px 10px rgba(76, 175, 80, 0.4);
-  transform: translateY(-2px);
+  transform: translateY(-1px);
+}
+
+.btn-start {
+  color: #fff;
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+  transform: translateY(-1px);
+}
+
+.btn-start:hover {
+  background: linear-gradient(135deg, var(--color-primary-light) 0%, var(--color-primary) 100%);
+  box-shadow: 0 4px 10px rgba(186, 22, 12, 0.8);
 }
 
 .btn-start-fresh {
@@ -381,11 +499,24 @@
   background: linear-gradient(135deg, #4a4a4a 0%, #3a3a3a 100%);
   border-color: #666;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
-  transform: translateY(-2px);
+  transform: translateY(-1px);
+}
+
+.btn-play-again {
+  background: linear-gradient(135deg, #ffd700 0%, #ffb700 100%);
+  color: #1a1a1a;
+  font-weight: bold;
+}
+
+.btn-play-again:hover {
+  background: linear-gradient(135deg, #ffe44d 0%, #ffd700 100%);
+  box-shadow: 0 4px 10px rgba(255, 215, 0, 0.6);
+  transform: translateY(-1px);
 }
 
 .btn-continue:active,
-.btn-start-fresh:active {
+.btn-start-fresh:active,
+.btn-play-again:active {
   transform: translateY(0);
 }
 
@@ -433,36 +564,6 @@
   margin-bottom: 1rem;
 }
 
-.btn-start-scenario {
-  padding: 10px 32px;
-  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
-  color: #fff;
-  border: none;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: bold;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  cursor: pointer;
-  box-shadow: 0 4px 12px rgba(186, 22, 12, 0.4);
-  transition: all 0.2s ease;
-}
-
-.btn-start-scenario:hover:not(:disabled) {
-  background: linear-gradient(135deg, var(--color-primary-light) 0%, var(--color-primary) 100%);
-  box-shadow: 0 6px 16px rgba(186, 22, 12, 0.6);
-  transform: translateY(-2px);
-}
-
-.btn-start-scenario:active:not(:disabled) {
-  transform: translateY(0);
-}
-
-.btn-start-scenario:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
 .btn-back {
   padding: 10px 32px;
   background: linear-gradient(135deg, #3a3a3a 0%, #2a2a2a 100%);
@@ -480,7 +581,7 @@
 .btn-back:hover {
   border-color: #666;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
-  transform: translateY(-2px);
+  transform: translateY(-1px);
 }
 
 .btn-back:active {

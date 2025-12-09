@@ -1,23 +1,25 @@
 import { html } from "@app/engine/utils/development/formatter";
 import { ANTENNA_CONFIG_KEYS } from "@app/equipment/antenna/antenna-configs";
-import { RealTimeSpectrumAnalyzer } from "@app/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer";
+import { defaultSpectrumAnalyzerState } from "@app/equipment/real-time-spectrum-analyzer/defaultSpectrumAnalyzerState";
 import { BUCModule } from "@app/equipment/rf-front-end/buc-module/buc-module";
 import { CouplerModule } from "@app/equipment/rf-front-end/coupler-module/coupler-module";
 import { IfFilterBankModule } from "@app/equipment/rf-front-end/filter-module/filter-module";
-import { GPSDOModule } from "@app/equipment/rf-front-end/gpsdo-module/gpsdo-module";
+import { defaultGpsdoState } from "@app/equipment/rf-front-end/gpsdo-module/defaultGpsdoState";
 import { HPAModule } from "@app/equipment/rf-front-end/hpa-module/hpa-module";
 import { LNBModule } from "@app/equipment/rf-front-end/lnb/lnb-module";
 import { OMTModule } from "@app/equipment/rf-front-end/omt-module/omt-module";
 import { Satellite } from "@app/equipment/satellite/satellite";
-import { dBi, dBm, FECType, Hertz, ModulationType, RfFrequency, SignalOrigin } from "@app/types";
+import type { ScenarioData } from "@app/ScenarioData";
+import { SignalOrigin } from "@app/SignalOrigin";
+import type { dBi, dBm, FECType, Hertz, ModulationType, RfFrequency } from "@app/types";
 import { Degrees } from "ootk";
-import { ScenarioData } from "../scenario-manager";
 
 export const scenario3Data: ScenarioData = {
   id: 'first-light3',
   isDisabled: true,
-  url: 'scenarios/3',
-  imageUrl: 'scenario3.jpg',
+  prerequisiteScenarioIds: ['first-light2'],
+  url: 'nats/scenarios/scenario3',
+  imageUrl: 'nats/3/card.png',
   number: 3,
   title: '"Full Stack"',
   subtitle: 'Complete Link Budget Analysis',
@@ -43,9 +45,9 @@ export const scenario3Data: ScenarioData = {
       filter: IfFilterBankModule.getDefaultState(),
       lnb: LNBModule.getDefaultState(),
       coupler: CouplerModule.getDefaultState(),
-      gpsdo: GPSDOModule.getDefaultState(),
+      gpsdo: defaultGpsdoState,
     }],
-    spectrumAnalyzers: [RealTimeSpectrumAnalyzer.getDefaultState()],
+    spectrumAnalyzers: [defaultSpectrumAnalyzerState],
     transmitters: 1,
     receivers: 1,
     layout: html`

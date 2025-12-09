@@ -12,12 +12,12 @@ import './coupler-module.css';
 export enum TapPoint {
   TX_IF = 'TX IF',
   RX_IF = 'RX IF',
-  POST_BUC_PRE_HPA_TX_RF = 'POST BUC / PRE HPA TX RF',
-  POST_HPA_PRE_OMT_TX_RF = 'POST HPA / PRE OMT TX RF',
-  POST_OMT_PRE_ANT_TX_RF = 'POST OMT/PRE ANT TX RF',
-  PRE_OMT_POST_ANT_RX_RF = 'PRE OMT/POST ANT RX RF',
-  POST_OMT_PRE_LNA_RX_RF = 'POST OMT/PRE LNA RX RF',
-  POST_LNA_RX_RF = 'POST LNA RX RF',
+  TX_RF_POST_BUC = 'TX RF POST BUC',
+  TX_RF_POST_HPA = 'TX RF POST HPA',
+  TX_RF_POST_OMT = 'TX RF POST OMT',
+  RX_RF_PRE_OMT = 'RX RF PRE OMT',
+  RX_RF_POST_OMT = 'RX RF POST OMT',
+  RX_RF_POST_LNA = 'RX RF POST LNA',
 }
 
 /**
@@ -27,6 +27,8 @@ export interface CouplerState {
   isPowered: boolean;
   tapPointA: TapPoint;
   tapPointB: TapPoint;
+  availableTapPointsA?: TapPoint[];
+  availableTapPointsB?: TapPoint[];
   couplingFactorA: number; // dB (typically -30)
   couplingFactorB: number; // dB (typically -30)
   isActiveA: boolean;
@@ -44,6 +46,8 @@ export class CouplerModule extends RFFrontEndModule<CouplerState> {
       isPowered: true,
       tapPointA: TapPoint.TX_IF,
       tapPointB: TapPoint.RX_IF,
+      availableTapPointsA: [TapPoint.TX_IF, TapPoint.TX_RF_POST_BUC, TapPoint.TX_RF_POST_HPA, TapPoint.TX_RF_POST_OMT],
+      availableTapPointsB: [TapPoint.RX_IF, TapPoint.RX_RF_PRE_OMT, TapPoint.RX_RF_POST_OMT, TapPoint.RX_RF_POST_LNA],
       couplingFactorA: -30, // dB
       couplingFactorB: -20, // dB
       isActiveA: true,
@@ -86,13 +90,13 @@ export class CouplerModule extends RFFrontEndModule<CouplerState> {
             <div class="control-group">
               <label>TAP POINT A</label>
               <select class="input-coupler-tap-a" data-param="tapPointA">
-                ${tapPointOptions.map(tp => `<option value="${tp}"${this.state_.tapPointA === tp ? ' selected' : ''}>${tp}</option>`).join('\n')}
+                ${(this.state_.availableTapPointsA ?? tapPointOptions).map(tp => `<option value="${tp}"${this.state_.tapPointA === tp ? ' selected' : ''}>${tp}</option>`).join('\n')}
               </select>
             </div>
             <div class="control-group">
               <label>TAP POINT B</label>
               <select class="input-coupler-tap-b" data-param="tapPointB">
-                ${tapPointOptions.map(tp => `<option value="${tp}"${this.state_.tapPointB === tp ? ' selected' : ''}>${tp}</option>`).join('\n')}
+                ${(this.state_.availableTapPointsB ?? tapPointOptions).map(tp => `<option value="${tp}"${this.state_.tapPointB === tp ? ' selected' : ''}>${tp}</option>`).join('\n')}
               </select>
             </div>
           </div>
@@ -171,16 +175,16 @@ export class CouplerModule extends RFFrontEndModule<CouplerState> {
   private isTapPointActive_(tapPoint: TapPoint): boolean {
     const txTapPoints: TapPoint[] = [
       TapPoint.TX_IF,
-      TapPoint.POST_BUC_PRE_HPA_TX_RF,
-      TapPoint.POST_HPA_PRE_OMT_TX_RF,
-      TapPoint.POST_OMT_PRE_ANT_TX_RF
+      TapPoint.TX_RF_POST_BUC,
+      TapPoint.TX_RF_POST_HPA,
+      TapPoint.TX_RF_POST_OMT
     ];
 
     const rxTapPoints: TapPoint[] = [
       TapPoint.RX_IF,
-      TapPoint.PRE_OMT_POST_ANT_RX_RF,
-      TapPoint.POST_OMT_PRE_LNA_RX_RF,
-      TapPoint.POST_LNA_RX_RF
+      TapPoint.RX_RF_PRE_OMT,
+      TapPoint.RX_RF_POST_OMT,
+      TapPoint.RX_RF_POST_LNA
     ];
 
     if (

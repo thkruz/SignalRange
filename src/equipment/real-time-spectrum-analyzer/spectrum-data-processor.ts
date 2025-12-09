@@ -62,7 +62,7 @@ export class SpectrumDataProcessor {
     let base = this.specA.state.noiseFloorNoGain;
 
     const len = this.width;
-    const time = performance.now() / 1000;
+    const time = Date.now() / 1000;
 
     // Generate multiple noise layers
     for (let x = 0; x < len; x++) {

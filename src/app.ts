@@ -1,5 +1,9 @@
 import { BaseElement } from './components/base-element';
+import { EnvironmentBadge } from './components/environment-badge/environment-badge';
+import { config } from './config/env';
 import { getEl } from './engine/utils/get-el';
+import { EventBus } from './events/event-bus';
+import { Events } from './events/events';
 import { Body } from './pages/layout/body/body';
 import { Footer } from './pages/layout/footer/footer';
 import { Header } from './pages/layout/header/header';
@@ -9,8 +13,6 @@ import { Router } from './router';
 import { SimulationManager } from './simulation/simulation-manager';
 import { Auth } from './user-account/auth';
 import { initUserDataService } from './user-account/user-data-service';
-import { EventBus } from './events/event-bus';
-import { Events } from './events/events';
 
 /**
  * Main Application Class
@@ -59,7 +61,7 @@ export class App extends BaseElement {
     });
 
     initUserDataService({
-      apiBaseUrl: process.env.PUBLIC_USER_API_URL || 'https://user.keeptrack.space',
+      apiBaseUrl: config.userApi.url,
       getAccessToken: () => cachedAccessToken,
       enableRetry: true,
       maxRetries: 3,
@@ -82,6 +84,10 @@ export class App extends BaseElement {
     Header.create(rootDom.id);
     Body.create(rootDom.id);
     Footer.create(rootDom.id);
+
+    // Initialize environment badge (only shows in non-production)
+    const badge = EnvironmentBadge.create(rootDom.id);
+    // Badge will be null in production, which is expected
 
     SimulationManager.getInstance();
 

@@ -1,4 +1,5 @@
 import { Degrees } from "ootk";
+import { SignalOrigin } from "./SignalOrigin";
 
 /**
  * Represents a distinct type.
@@ -29,21 +30,6 @@ export type dBi = Distinct<number, 'dBi'>;
 export type RfFrequency = Distinct<Hertz, 'RfFrequency'>;
 /** Intermediate Frequency in Hz */
 export type IfFrequency = Distinct<Hertz, 'IfFrequency'>;
-
-export enum SignalOrigin {
-  TRANSMITTER,
-  BUC,
-  HIGH_POWER_AMPLIFIER,
-  OMT_TX,
-  ANTENNA_TX,
-  SATELLITE_RX,
-  SATELLITE_TX,
-  ANTENNA_RX,
-  OMT_RX,
-  LOW_NOISE_AMPLIFIER,
-  LOW_NOISE_BLOCK,
-  IF_FILTER_BANK,
-}
 
 export interface BaseSignal {
   /** Signal ID */

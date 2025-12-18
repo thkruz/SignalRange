@@ -414,14 +414,33 @@ export class ScenarioSelectionPage extends BasePage {
 
   /**
    * Handle Play Again button click for completed scenarios
+   * Removes scenario from completed list before starting fresh
    */
-  private handlePlayAgain_(event: Event): void {
+  private async handlePlayAgain_(event: Event): Promise<void> {
     event.stopPropagation(); // Prevent card selection
     const button = event.currentTarget as HTMLElement;
+    const scenarioId = button.dataset.scenarioId;
     const scenarioUrl = button.dataset.scenarioUrl;
 
-    if (scenarioUrl) {
-      Router.getInstance().navigate(scenarioUrl);
+    if (!scenarioUrl) {
+      return;
     }
+
+    // Remove from completed scenarios list (no confirmation needed for Play Again)
+    if (scenarioId) {
+      try {
+        const scenario = SCENARIOS.find(s => s.id === scenarioId);
+        if (scenario) {
+          const userDataService = getUserDataService();
+          await userDataService.removeCompletedScenario(scenario.number);
+          Logger.info(`Removed from completed scenarios for Play Again: ${scenarioId}`);
+        }
+      } catch (error) {
+        Logger.error('Failed to remove completed scenario for Play Again:', error);
+        // Continue anyway - user wants to play again
+      }
+    }
+
+    Router.getInstance().navigate(scenarioUrl);
   }
 }

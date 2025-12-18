@@ -244,6 +244,30 @@ export class UserDataService {
   }
 
   /**
+   * Remove a scenario from the completed scenarios list (for Play Again)
+   */
+  async removeCompletedScenario(scenarioNumber: number): Promise<void> {
+    try {
+      const progress = await this.getUserProgress();
+      const completedScenarios = progress.completedScenarios || [];
+
+      // Filter out the scenario number
+      const updatedCompletedScenarios = completedScenarios.filter((num) => num !== scenarioNumber);
+
+      // Only update if something changed
+      if (updatedCompletedScenarios.length !== completedScenarios.length) {
+        await this.updateUserProgress({ completedScenarios: updatedCompletedScenarios });
+      }
+    } catch (error) {
+      throw new UserDataServiceError(
+        `Failed to remove completed scenario ${scenarioNumber}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        0,
+        'SCENARIO_REMOVE_ERROR',
+      );
+    }
+  }
+
+  /**
    * Transform API user profile response (snake_case) to client format (camelCase)
    */
   private transformUserProfile(apiProfile: any): User {

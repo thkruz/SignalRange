@@ -60,7 +60,7 @@ export class MissionControlPage extends BasePage {
   }
 
   protected html_ = html`
-    <div id="${this.id}" class="app-shell-page d-flex flex-column">
+    <div id="${this.id}" class="app-shell-page flex-column" style="display: flex;">
       <header id="global-command-bar-container"></header>
 
       <!-- Main Workspace -->

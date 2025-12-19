@@ -11,7 +11,7 @@ import { Character, Emotion } from '@app/modal/character-enum';
 import type { Objective } from '@app/objectives/objective-types';
 import type { ScenarioData } from '@app/ScenarioData';
 import { SignalOrigin } from "@app/SignalOrigin";
-import type { dB, dBi, dBm, FECType, Hertz, MHz, ModulationType, RfFrequency } from '@app/types';
+import type { dB, dBi, dBm, FECType, Hertz, IfSignal, MHz, ModulationType, RfFrequency } from '@app/types';
 import { getAssetUrl } from '@app/utils/asset-url';
 import type { Degrees } from 'ootk';
 
@@ -29,14 +29,16 @@ export const scenario1Data: ScenarioData = {
   number: 1,
   title: '"First Light"',
   subtitle: 'MARINER-1 Initial Contact',
-  duration: '25-30 min',
+  duration: '35-40 min',
   difficulty: 'beginner',
   missionType: 'Commercial Communications',
   description: `You are a Ground Station Operator at North Atlantic Teleport Services, a commercial satellite ground station facility in rural Vermont. Your company provides ground segment services for multiple GEO communication satellites serving the North Atlantic region.<br><br>Your latest client, SeaLink Communications, launched MARINER-1 fourteen days ago aboard a Falcon 9 from Cape Canaveral. The satellite completed its apogee burns and reached its operational slot at 53°W geostationary orbit yesterday. Beacon Orbital Analytics confirmed the satellite achieved station-keeping this morning, and the spacecraft operations team in Halifax has handed the communications payload over to ground operations.<br><br>You will conduct the first ground station RF link test - a critical milestone before MARINER-1 can begin revenue service providing C-band maritime connectivity from Newfoundland to the Caribbean. This scenario will guide you through setting up the ground station equipment, acquiring the satellite signal, and performing initial signal quality measurements.`,
   equipment: [
     '9-meter C-band Antenna',
-    'RF Front End',
+    'RF Front End (GPSDO, LNB, BUC, HPA, Filter)',
     'Spectrum Analyzer',
+    'Receiver Modem (pre-configured)',
+    'Transmitter Modem (pre-configured)',
   ],
   settings: {
     isSync: true,
@@ -139,8 +141,37 @@ export const scenario1Data: ScenarioData = {
             selectedTrace: 1,
           }
         ],
-        transmitters: 0,
-        receivers: 0,
+        transmitters: [{
+          activeModem: 1,
+          modems: [{
+            modem_number: 1,
+            isPowered: true,
+            isTransmitting: false,
+            isFaulted: false,
+            isLoopback: false,
+            antenna_id: 1,
+            ifSignal: {
+              frequency: 70e6,
+              bandwidth: 36e6,
+              power: -10,
+            } as IfSignal,
+            id: 0,
+            isFaultSwitchUp: false,
+            isTransmittingSwitchUp: false
+          }],
+        }],
+        receivers: [{
+          activeModem: 1,
+          modems: [{
+            modemNumber: 1,
+            isPowered: true,
+            frequency: 775 as MHz,
+            bandwidth: 1 as MHz,
+            modulation: 'QPSK',
+            fec: '3/4',
+            antennaUuid: '',
+          }],
+        }],
       },
       {
         id: 'MIA-01',
@@ -232,8 +263,8 @@ export const scenario1Data: ScenarioData = {
             selectedTrace: 1,
           }
         ],
-        transmitters: 0,
-        receivers: 0,
+        transmitters: [],
+        receivers: [],
       }
     ],
     layout: html`
@@ -300,7 +331,7 @@ export const scenario1Data: ScenarioData = {
     {
       id: 'phase-1-gpsdo',
       title: 'Phase 1: GPSDO Power-Up and Lock',
-      description: 'Power up the GPSDO module and achieve stable frequency lock.',
+      description: 'At the Vermont Ground Station, power up the GPSDO module and achieve stable frequency lock.',
       groundStation: 'VT-01',
       conditions: [
         {
@@ -344,7 +375,7 @@ export const scenario1Data: ScenarioData = {
       points: 15,
     },
     {
-      id: 'phase-1-lnb',
+      id: 'phase-2-lnb',
       title: 'Phase 2: LNB Power-Up and Stabilization',
       description: 'Power up the LNB module and wait for thermal stabilization.',
       groundStation: 'VT-01',
@@ -399,11 +430,11 @@ export const scenario1Data: ScenarioData = {
       points: 15,
     },
     {
-      id: 'phase-1-buc',
+      id: 'phase-3-buc',
       title: 'Phase 3: BUC Power-Up (Standby Mode)',
       description: 'Power up the BUC module in standby mode with RF output muted.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['phase-1-lnb'],
+      prerequisiteObjectiveIds: ['phase-2-lnb'],
       conditions: [
         {
           type: 'equipment-powered',
@@ -436,76 +467,232 @@ export const scenario1Data: ScenarioData = {
       points: 10,
     },
     {
-      id: 'phase-1-spec-a',
-      title: 'Phase 4: Spectrum Analyzer Configuration',
-      description: 'Configure the spectrum analyzer for signal monitoring.',
+      id: 'phase-4-filter',
+      title: 'Phase 4: IF Filter Configuration',
+      description: 'Configure the IF filter bandwidth for beacon acquisition. The filter helps reject out-of-band noise.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['phase-1-buc'],
+      prerequisiteObjectiveIds: ['phase-3-buc'],
       conditions: [
         {
-          type: 'frequency-set',
-          description: 'SpecA Center Frequency: 3,985.5 MHz',
+          type: 'equipment-powered',
+          description: 'IF Filter Bank Powered',
           params: {
-            frequency: 3985.5e6 as RfFrequency,
+            equipment: 'filter',
           },
           mustMaintain: false,
         },
         {
-          type: 'speca-span-set',
-          description: 'SpecA Span: 10 MHz',
+          type: 'filter-bandwidth-set',
+          description: 'IF Filter Bandwidth Set to 5 MHz',
           params: {
-            span: 10e6,
+            bandwidthIndex: 6, // Index 6 = 5 MHz
           },
           mustMaintain: false,
         },
-        {
-          type: 'speca-rbw-set',
-          description: 'SpecA RBW: 10 kHz',
-          params: {
-            rbw: 10e3,
-          },
-          mustMaintain: false,
-        },
-        {
-          type: 'speca-reference-level-set',
-          description: 'SpecA Reference Level: -40 dBm',
-          params: {
-            referenceLevel: -40,
-            referenceLevelTolerance: 1,
-          },
-          mustMaintain: false,
-        },
-        {
-          type: 'speca-noise-floor-visible',
-          description: 'SpecA Showing Clean Baseline Noise Floor',
-          params: {
-            maxSignalStrength: -60,
-          },
-          mustMaintain: false,
-        }
       ],
       conditionLogic: 'AND',
       points: 10,
     },
     {
-      id: 'acquire-lock-satellite-1',
-      title: 'Phase 5: Acquire and Maintain Lock on HELIOS-7',
-      description: 'Point the antenna at satellite 1 (HELIOS-7) and achieve stable tracking lock. The lock must be maintained for at least 10 seconds.',
+      id: 'phase-5-spec-a',
+      title: 'Phase 5: Spectrum Analyzer Configuration',
+      description: 'Configure the spectrum analyzer to monitor the MARINER-1 beacon at 3,802.5 MHz.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['phase-1-spec-a'],
+      prerequisiteObjectiveIds: ['phase-4-filter'],
       conditions: [
         {
+          type: 'frequency-set',
+          description: 'SpecA Center Frequency: 3,802.5 MHz (Beacon)',
+          params: {
+            frequency: 3802.5e6 as RfFrequency,
+          },
+          mustMaintain: false,
+        },
+        {
+          type: 'speca-span-set',
+          description: 'SpecA Span: 5 MHz',
+          params: {
+            span: 5e6,
+          },
+          mustMaintain: false,
+        },
+        {
+          type: 'speca-rbw-set',
+          description: 'SpecA RBW: 1 kHz (Narrow for CW Beacon)',
+          params: {
+            rbw: 1e3,
+          },
+          mustMaintain: false,
+        },
+        {
+          type: 'speca-reference-level-set',
+          description: 'SpecA Reference Level: -60 dBm',
+          params: {
+            referenceLevel: -60,
+            referenceLevelTolerance: 5,
+          },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 15,
+    },
+    {
+      id: 'phase-6-beacon-lock',
+      title: 'Phase 6: Beacon Lock on MARINER-1',
+      description: 'Configure beacon tracking parameters and acquire stable lock on the MARINER-1 beacon signal.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['phase-5-spec-a'],
+      conditions: [
+        {
+          type: 'antenna-beacon-frequency-set',
+          description: 'Beacon Frequency Set to 3,802.5 MHz',
+          params: {
+            beaconFrequency: 3802.5e6,
+          },
+          mustMaintain: false,
+        },
+        {
+          type: 'antenna-tracking-mode-set',
+          description: 'Tracking Mode: Step Track',
+          params: {
+            trackingMode: 'step-track',
+          },
+          mustMaintain: false,
+        },
+        {
+          type: 'antenna-beacon-locked',
+          description: 'Beacon Lock Achieved',
+          mustMaintain: true,
+          maintainDuration: 5,
+        },
+        {
           type: 'antenna-locked',
-          description: 'Antenna locked on Satellite 1',
+          description: 'Antenna Locked on MARINER-1 (10 seconds)',
           params: {
             satelliteId: 1,
           },
           mustMaintain: true,
-          maintainDuration: 10, // Must maintain lock for 10 seconds
+          maintainDuration: 10,
         },
       ],
       conditionLogic: 'AND',
-      points: 100,
+      points: 50,
+    },
+    {
+      id: 'phase-7-buc-unmute',
+      title: 'Phase 7: BUC Transmit Activation',
+      description: 'Unmute the BUC to enable RF output. The antenna must remain locked during this operation.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['phase-6-beacon-lock'],
+      conditions: [
+        {
+          type: 'equipment-powered',
+          description: 'BUC Module Powered',
+          params: {
+            equipment: 'buc',
+          },
+          maintainUntilObjectiveComplete: true,
+        },
+        {
+          type: 'buc-reference-locked',
+          description: 'BUC Locked to 10 MHz Reference',
+          maintainUntilObjectiveComplete: true,
+        },
+        {
+          type: 'buc-unmuted',
+          description: 'BUC RF Output Enabled (Unmuted)',
+          maintainUntilObjectiveComplete: true,
+        },
+        {
+          type: 'buc-not-saturated',
+          description: 'BUC Operating in Linear Region',
+          maintainUntilObjectiveComplete: true,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 15,
+    },
+    {
+      id: 'phase-8-hpa',
+      title: 'Phase 8: HPA Activation',
+      description: 'Enable the High Power Amplifier with proper back-off to avoid overdrive. The dual-action switch requires two steps.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['phase-7-buc-unmute'],
+      conditions: [
+        {
+          type: 'equipment-powered',
+          description: 'HPA Module Powered',
+          params: {
+            equipment: 'hpa',
+          },
+          maintainUntilObjectiveComplete: true,
+        },
+        {
+          type: 'hpa-enabled',
+          description: 'HPA Output Enabled (Dual-Action Switch)',
+          maintainUntilObjectiveComplete: true,
+        },
+        {
+          type: 'hpa-back-off-set',
+          description: 'HPA Back-Off Set to 6 dB (Safe Operating Point)',
+          params: {
+            backOff: 6,
+            backOffTolerance: 1,
+          },
+          maintainUntilObjectiveComplete: true,
+        },
+        {
+          type: 'hpa-not-overdriven',
+          description: 'HPA Not in Overdrive',
+          maintainUntilObjectiveComplete: true,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 20,
+    },
+    {
+      id: 'phase-9-full-link',
+      title: 'Phase 9: Bidirectional Link Test',
+      description: 'Maintain stable bidirectional link with MARINER-1 for 15 seconds. Both receive and transmit chains must remain active.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['phase-8-hpa'],
+      conditions: [
+        {
+          type: 'antenna-locked',
+          description: 'Antenna Tracking Lock Maintained',
+          params: {
+            satelliteId: 1,
+          },
+          maintainUntilObjectiveComplete: true,
+        },
+        {
+          type: 'signal-detected',
+          description: 'Beacon Signal Detected on Spectrum Analyzer',
+          maintainUntilObjectiveComplete: true,
+        },
+        {
+          type: 'buc-unmuted',
+          description: 'BUC RF Output Active',
+          maintainUntilObjectiveComplete: true,
+        },
+        {
+          type: 'hpa-enabled',
+          description: 'HPA Output Active',
+          maintainUntilObjectiveComplete: true,
+        },
+        {
+          type: 'hpa-output-power-set',
+          description: 'HPA Output Power ≥44 dBm (25W)',
+          params: {
+            minOutputPower: 44,
+          },
+          mustMaintain: true,
+          maintainDuration: 15,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 75,
     },
   ] as Objective[],
   dialogClips: {
@@ -522,6 +709,9 @@ export const scenario1Data: ScenarioData = {
       </p>
       <p>
       You'll see a Guide and a Checklist on the left side of your screen. Follow those step-by-step; they're built from our standard ops flow and the lessons learned from… well, the last time someone rushed this process.
+      </p>
+      <p>
+      Oh, and I already configured the receiver and transmitter modems while you were getting coffee. You're welcome. Next time, that'll be your problem.
       </p>
       <p>
       I'll be monitoring from the upstairs control room. When you're ready, let's bring MARINER-1 online.
@@ -571,6 +761,127 @@ export const scenario1Data: ScenarioData = {
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.SURPRISED,
         audioUrl: getAssetUrl('/assets/campaigns/nats/1/obj-phase-1-lnb.mp3'),
+      },
+      'phase-1-buc': {
+        text: `
+        <p>
+        BUC is in standby, muted and locked. Good.
+        </p>
+        <p>
+        We don't unmute until we've got beacon lock. That's not paranoia — that's procedure.
+        </p>
+        <p>
+        Next up, configure the IF filter. Five megahertz bandwidth should be tight enough for beacon acquisition.
+        </p>
+        `,
+        character: Character.CATHERINE_VEGA,
+        emotion: Emotion.HAPPY,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/1/obj-phase-1-buc.mp3'),
+      },
+      'phase-4-filter': {
+        text: `
+        <p>
+        IF filter configured. Most new operators skip this step.
+        </p>
+        <p>
+        The filter bank helps us reject out-of-band noise before it hits the analyzer. For beacon acquisition, 5 MHz is the sweet spot — narrow enough to reject adjacent channel interference, wide enough to catch the beacon.
+        </p>
+        <p>
+        Now configure the spectrum analyzer. MARINER-1's beacon is at 3,802.5 MHz.
+        </p>
+        `,
+        character: Character.CATHERINE_VEGA,
+        emotion: Emotion.CONFIDENT,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/1/obj-phase-4-filter.mp3'),
+      },
+      'phase-5-spec-a': {
+        text: `
+        <p>
+        Spectrum analyzer is dialed in. That narrow RBW will help us pick out the CW beacon from the noise floor.
+        </p>
+        <p>
+        Now comes the fun part — beacon acquisition. Set the antenna's beacon receiver to 3,802.5 MHz and switch to step-track mode. The ACU will peak up on the beacon automatically.
+        </p>
+        <p>
+        Once you've got lock, maintain it for 10 seconds. The satellite ops team in Halifax is watching our telemetry.
+        </p>
+        `,
+        character: Character.CHARLIE_BROOKS,
+        emotion: Emotion.HAPPY,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/1/obj-phase-5-spec-a.mp3'),
+      },
+      'phase-6-beacon-lock': {
+        text: `
+        <p>
+        Beautiful! Beacon lock confirmed. MARINER-1 is talking to us.
+        </p>
+        <p>
+        Now we prove we can talk back. Time to light up the transmit chain.
+        </p>
+        <p>
+        Unmute the BUC first. When you do, RF starts flowing to the antenna — which means we're radiating. Make sure the antenna stays locked. I don't want to explain to the neighbors why their TV went fuzzy.
+        </p>
+        `,
+        character: Character.CHARLIE_BROOKS,
+        emotion: Emotion.EXCITED,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/1/obj-phase-6-beacon-lock.mp3'),
+      },
+      'phase-7-buc-unmute': {
+        text: `
+        <p>
+        BUC is hot. RF is flowing.
+        </p>
+        <p>
+        Now for the HPA. This is a 200-watt amplifier, so treat it with respect.
+        </p>
+        <p>
+        The enable switch is a dual-action safety — you need to arm it AND flip the enable. It's designed to prevent accidental transmission.
+        </p>
+        <p>
+        Set back-off to 6 dB. That keeps us well below the 1 dB compression point and maintains good IMD performance. The SeaLink maritime modems are sensitive to intermodulation distortion.
+        </p>
+        `,
+        character: Character.CATHERINE_VEGA,
+        emotion: Emotion.CONFIDENT,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/1/obj-phase-7-buc-unmute.mp3'),
+      },
+      'phase-8-hpa': {
+        text: `
+        <p>
+        HPA is up and linear. Output power looks good.
+        </p>
+        <p>
+        This is it. First Light for MARINER-1.
+        </p>
+        <p>
+        We've got receive chain up and locked, transmit chain active and stable. Now we hold it for 15 seconds to prove to SeaLink that their satellite can talk to us AND hear us back.
+        </p>
+        <p>
+        Don't touch anything. Just breathe.
+        </p>
+        `,
+        character: Character.CATHERINE_VEGA,
+        emotion: Emotion.CONFIDENT,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/1/obj-phase-8-hpa.mp3'),
+      },
+      'phase-9-full-link': {
+        text: `
+        <p>
+        MARINER-1 is officially online! First bidirectional link confirmed.
+        </p>
+        <p>
+        Not bad for your first shift. Most new operators take three attempts to get through First Light without breaking lock.
+        </p>
+        <p>
+        The receiver and transmitter modems I set up earlier? Those handle the actual data — video feeds, telemetry, the works. We'll get you trained on those next shift.
+        </p>
+        <p>
+        For now, enjoy the win. Catherine's already on the phone with SeaLink's CEO. You just made them a lot of money.
+        </p>
+        `,
+        character: Character.CHARLIE_BROOKS,
+        emotion: Emotion.HAPPY,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/1/obj-phase-9-full-link.mp3'),
       },
     },
   },

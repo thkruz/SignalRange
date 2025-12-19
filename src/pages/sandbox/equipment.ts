@@ -185,8 +185,8 @@ export class Equipment extends BaseElement {
     }
 
     // Initialize 4 transmitter cases (each with 4 modems)
-    for (let i = 1; i <= settings.transmitters; i++) {
-      const tx = new Transmitter(`tx${i}-container`);
+    for (let i = 1; i <= settings.transmitters.length; i++) {
+      const tx = new Transmitter(`tx${i}-container`, settings.transmitters[i - 1]);
       this.transmitters.push(tx);
 
       if (i <= 2) {
@@ -196,13 +196,13 @@ export class Equipment extends BaseElement {
       }
     }
 
-    if (settings.transmitters <= 2) {
+    if (settings.transmitters.length <= 2) {
       const tx3ContainerElement = document.getElementById('tx3-container');
       if (tx3ContainerElement) {
         tx3ContainerElement.parentElement.style.display = 'none';
       }
     }
-    if (settings.receivers <= 2) {
+    if (settings.receivers.length <= 2) {
       const rx3ContainerElement = document.getElementById('rx3-container');
       if (rx3ContainerElement) {
         rx3ContainerElement.parentElement.style.display = 'none';
@@ -217,8 +217,8 @@ export class Equipment extends BaseElement {
     });
 
     // Initialize receivers
-    for (let i = 1; i <= settings.receivers; i++) {
-      const rx = new Receiver(`rx${i}-container`, this.antennas);
+    for (let i = 1; i <= settings.receivers.length; i++) {
+      const rx = new Receiver(`rx${i}-container`, this.antennas, settings.receivers[i - 1]);
       this.receivers.push(rx);
 
       if (i <= 2) {

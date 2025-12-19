@@ -55,23 +55,75 @@ export class Transmitter extends BaseEquipment {
   loopbackSwitch: ToggleSwitch;
   faultResetSwitch: ToggleSwitch;
 
-  constructor(parentId: string, teamId: number = 1, serverId: number = 1) {
+  constructor(parentId: string, state?: Partial<TransmitterState>, teamId: number = 1, serverId: number = 1) {
     super(teamId);
 
-    // Initialize config with 4 modems
-    const modems: TransmitterModem[] = [];
-    for (let i = 1; i <= 4; i++) {
-      modems.push({
-        id: i - 1,
-        modem_number: i,
+    const defaults = Transmitter.getDefaultState();
+
+    const uuid = state?.uuid ?? this.uuid;
+    const team_id = state?.team_id ?? this.teamId;
+    const server_id = state?.server_id ?? serverId;
+
+    // Merge modem overrides by modem_number (so callers don't have to provide a full ordered array)
+    const overridesByModemNumber = new Map<number, Partial<TransmitterModem>>(
+      (state?.modems ?? []).map(m => [m.modem_number, m])
+    );
+
+    const modems: TransmitterModem[] = defaults.modems.map((def) => {
+      const override = overridesByModemNumber.get(def.modem_number);
+
+      const merged: TransmitterModem = {
+        ...def,
+        ...override,
+        // Ensure identity fields remain correct unless explicitly overridden
+        id: override?.id ?? def.id,
+        modem_number: override?.modem_number ?? def.modem_number,
+        ifSignal: {
+          ...def.ifSignal,
+          ...override?.ifSignal,
+        },
+      };
+
+      // Fill in derived defaults unless overridden
+      merged.ifSignal.serverId = override?.ifSignal?.serverId ?? server_id;
+      merged.ifSignal.signalId = override?.ifSignal?.signalId ?? `${uuid}-${merged.modem_number}-default`;
+      merged.ifSignal.origin = override?.ifSignal?.origin ?? SignalOrigin.TRANSMITTER;
+
+      return merged;
+    });
+
+    this.state = {
+      ...defaults,
+      ...state,
+      uuid,
+      team_id,
+      server_id,
+      modems,
+      activeModem: state?.activeModem ?? defaults.activeModem,
+    };
+
+    this.build(parentId);
+
+    EventBus.getInstance().on(Events.UPDATE, this.update.bind(this));
+    EventBus.getInstance().on(Events.SYNC, this.syncDomWithState.bind(this));
+    EventBus.getInstance().once(Events.SYNC, this.initialSync.bind(this));
+  }
+
+  static getDefaultState(): TransmitterState {
+    const modems: TransmitterModem[] = Array.from({ length: 4 }, (_, idx) => {
+      const modemNumber = idx + 1;
+
+      return {
+        id: idx,
+        modem_number: modemNumber,
         antenna_id: 1,
         ifSignal: {
-          signalId: `${this.uuid}-${i}-default`,
-          serverId: serverId,
+          signalId: `default-${modemNumber}`,
+          serverId: 1,
           noradId: 1,
-          frequency: 1000 * 1e6 as IfFrequency, // MHz (L-Band)
+          frequency: (1000 * 1e6) as IfFrequency, // 1 GHz IF
           power: -97 as dBm,
-          bandwidth: 10 * 1e6 as Hertz, // MHz
+          bandwidth: (10 * 1e6) as Hertz, // 10 MHz
           modulation: 'null',
           fec: 'null',
           feed: '',
@@ -87,22 +139,16 @@ export class Transmitter extends BaseEquipment {
         isLoopback: false,
         isFaulted: false,
         isFaultSwitchUp: false,
-      });
-    }
+      };
+    });
 
-    this.state = {
-      uuid: this.uuid,
-      team_id: this.teamId,
-      server_id: serverId,
+    return {
+      uuid: 'default',
+      team_id: 1,
+      server_id: 1,
       modems,
-      activeModem: 1
+      activeModem: 1,
     };
-
-    this.build(parentId);
-
-    EventBus.getInstance().on(Events.UPDATE, this.update.bind(this));
-    EventBus.getInstance().on(Events.SYNC, this.syncDomWithState.bind(this));
-    EventBus.getInstance().once(Events.SYNC, this.initialSync.bind(this));
   }
 
   update(): void {

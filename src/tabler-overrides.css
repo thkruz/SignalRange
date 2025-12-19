@@ -131,6 +131,10 @@ body {
 
 .card-title {
   color: var(--mc-text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
 }
 
 /* Small cards for metrics */

@@ -1,4 +1,10 @@
 import { GroundStation } from "@app/assets/ground-station/ground-station";
+import activityPng from '@app/assets/icons/activity.png';
+import heartRateMonitorPng from '@app/assets/icons/heart-rate-monitor.png';
+import powerPng from '@app/assets/icons/power.png';
+import satellitePng from '@app/assets/icons/satellite.png';
+import sharePng from '@app/assets/icons/share.png';
+import temperaturePng from '@app/assets/icons/temperature.png';
 import { BaseElement } from "@app/components/base-element";
 import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
@@ -45,7 +51,10 @@ export class GPSTimingTab extends BaseElement {
         <div class="col-lg-3">
           <div class="card h-100">
             <div class="card-header">
-              <h3 class="card-title">Lock & Power Status</h3>
+              <h3 class="card-title">
+                <img src="${powerPng}" alt="Power" style="width: 1.25rem; height: 1.25rem; filter: invert(1);" />
+                <span>Lock & Power Status</span>
+              </h3>
             </div>
             <div class="card-body">
               <!-- Power Control -->
@@ -85,12 +94,12 @@ export class GPSTimingTab extends BaseElement {
         <div class="col-lg-3">
           <div class="card h-100">
             <div class="card-header">
-              <h3 class="card-title">GNSS Constellation</h3>
+              <h3 class="card-title">
+                <img src="${satellitePng}" alt="GNSS Constellation" style="width: 1.25rem; height: 1.25rem; filter: invert(1);" />
+                <span>GNSS Constellation</span>
+              </h3>
             </div>
             <div class="card-body">
-              <div class="text-center mb-3">
-                <span style="font-size: 2rem;">🛰️</span>
-              </div>
               <div class="d-flex justify-content-between align-items-center mb-2">
                 <span class="text-muted small">Satellites Tracked:</span>
                 <span id="gpsdo-satellite-count" class="fw-bold font-monospace">9</span>
@@ -111,12 +120,12 @@ export class GPSTimingTab extends BaseElement {
         <div class="col-lg-3">
           <div class="card h-100">
             <div class="card-header">
-              <h3 class="card-title">OCXO Oven Control</h3>
+              <h3 class="card-title">
+                <img src="${temperaturePng}" alt="OCXO Oven Control" style="width: 1.25rem; height: 1.25rem; filter: invert(1);" />
+                <span>OCXO Oven Control</span>
+              </h3>
             </div>
             <div class="card-body">
-              <div class="text-center mb-3">
-                <span style="font-size: 2rem;">🌡️</span>
-              </div>
               <div class="d-flex justify-content-between align-items-center mb-2">
                 <span class="text-muted small">Oven Temperature:</span>
                 <span id="gpsdo-temperature" class="fw-bold font-monospace">70.0 °C</span>
@@ -133,15 +142,23 @@ export class GPSTimingTab extends BaseElement {
         <div class="col-lg-3">
           <div class="card h-100">
             <div class="card-header">
-              <h3 class="card-title">10 MHz Distribution</h3>
+              <h3 class="card-title">
+                <img src="${sharePng}" alt="10 MHz Distribution" style="width: 1.25rem; height: 1.25rem; filter: invert(1);" />
+                <span>10 MHz Distribution</span>
+              </h3>
             </div>
             <div class="card-body">
               <div class="d-flex justify-content-between align-items-center mb-3">
                 <span class="text-muted small">Active Outputs:</span>
                 <span id="gpsdo-10mhz-outputs" class="fw-bold font-monospace">2/5</span>
               </div>
-              <div class="text-muted small text-center">
-                Distributing 10 MHz reference to BUC and LNB modules
+              <div class="text-muted text-center">
+                <p>
+                  BUC Module
+                </p>
+                <p>
+                  LNB Module
+                </p>
               </div>
             </div>
           </div>
@@ -151,7 +168,10 @@ export class GPSTimingTab extends BaseElement {
         <div class="col-lg-6">
           <div class="card h-100">
             <div class="card-header">
-              <h3 class="card-title">Reference Quality Metrics</h3>
+              <h3 class="card-title">
+                <img src="${heartRateMonitorPng}" alt="Reference Quality Metrics" style="width: 1.25rem; height: 1.25rem; filter: invert(1);" />
+                <span>Reference Quality Metrics</span>
+              </h3>
             </div>
             <div class="card-body">
               <div class="metrics-grid">
@@ -180,15 +200,44 @@ export class GPSTimingTab extends BaseElement {
         <div class="col-lg-6">
           <div class="card h-100">
             <div class="card-header">
-              <h3 class="card-title">Holdover Performance</h3>
+              <h3 class="card-title">
+                <img src="${activityPng}" alt="Holdover Performance" style="width: 1.25rem; height: 1.25rem; filter: invert(1);" />
+                <span>Holdover Performance</span>
+              </h3>
             </div>
             <div class="card-body">
-              <div class="d-flex justify-content-between align-items-center mb-3">
-                <span class="text-muted small">Holdover Error:</span>
-                <span id="gpsdo-holdover-error" class="fw-bold font-monospace">0.00 μs</span>
+              <!-- Status Row -->
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="text-muted small">Status:</span>
+                <span id="gpsdo-holdover-badge" class="status-badge status-badge-off">INACTIVE</span>
               </div>
-              <div class="text-muted small text-center">
-                Spec: &lt; 40 μs over 24 hours
+
+              <!-- Duration Row -->
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="text-muted small">Duration:</span>
+                <span id="gpsdo-holdover-duration" class="fw-bold font-monospace">0h 0m 0s</span>
+              </div>
+
+              <!-- Error with Progress Bar -->
+              <div class="mb-2">
+                <div class="d-flex justify-content-between align-items-center">
+                  <span class="text-muted small">Error:</span>
+                  <span id="gpsdo-holdover-error" class="fw-bold font-monospace">0.00 μs</span>
+                </div>
+                <div class="progress mt-1" style="height: 6px;">
+                  <div id="gpsdo-holdover-progress" class="progress-bar bg-success"
+                       role="progressbar" style="width: 0%"></div>
+                </div>
+                <div class="d-flex justify-content-between mt-1">
+                  <span class="text-muted small">0 μs</span>
+                  <span class="text-muted small">40 μs (spec limit)</span>
+                </div>
+              </div>
+
+              <!-- Time to Limit -->
+              <div class="d-flex justify-content-between align-items-center">
+                <span class="text-muted small">Time to Limit:</span>
+                <span id="gpsdo-holdover-ttl" class="fw-bold font-monospace">--</span>
               </div>
             </div>
           </div>

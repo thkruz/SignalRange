@@ -6,6 +6,7 @@ import { AntennaState } from './equipment/antenna';
 import { ANTENNA_CONFIG_KEYS } from './equipment/antenna/antenna-configs';
 import { defaultSpectrumAnalyzerState } from './equipment/real-time-spectrum-analyzer/defaultSpectrumAnalyzerState';
 import { RealTimeSpectrumAnalyzerState } from './equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer';
+import { Receiver, ReceiverState } from './equipment/receiver/receiver';
 import { BUCModuleCore } from './equipment/rf-front-end/buc-module';
 import { CouplerModule } from './equipment/rf-front-end/coupler-module/coupler-module';
 import { IfFilterBankModuleCore } from './equipment/rf-front-end/filter-module';
@@ -15,6 +16,7 @@ import { LNBModuleCore } from './equipment/rf-front-end/lnb-module';
 import { OMTModule } from './equipment/rf-front-end/omt-module/omt-module';
 import { RFFrontEndState } from './equipment/rf-front-end/rf-front-end-core';
 import { Satellite } from './equipment/satellite/satellite';
+import { Transmitter, TransmitterState } from './equipment/transmitter/transmitter';
 import { Character, Emotion } from './modal/character-enum';
 import { ScenarioData } from './ScenarioData';
 import { sandboxData } from './scenarios/sandbox';
@@ -33,8 +35,8 @@ export interface SimulationSettings {
   antennasState?: Partial<AntennaState>[];
   rfFrontEnds?: Partial<RFFrontEndState>[];
   spectrumAnalyzers?: Partial<RealTimeSpectrumAnalyzerState>[];
-  transmitters?: number;
-  receivers?: number;
+  transmitters?: Partial<TransmitterState>[];
+  receivers?: Partial<ReceiverState>[];
   /** Optional HTML override for complex layouts */
   layout?: string;
   missionBriefUrl?: string;
@@ -73,8 +75,18 @@ export class ScenarioManager {
         gpsdo: defaultGpsdoState,
       }],
       spectrumAnalyzers: [defaultSpectrumAnalyzerState],
-      transmitters: 4,
-      receivers: 4,
+      transmitters: [
+        Transmitter.getDefaultState(),
+        Transmitter.getDefaultState(),
+        Transmitter.getDefaultState(),
+        Transmitter.getDefaultState()
+      ],
+      receivers: [
+        Receiver.getDefaultState(),
+        Receiver.getDefaultState(),
+        Receiver.getDefaultState(),
+        Receiver.getDefaultState()
+      ],
       satellites: [],
     };
   }

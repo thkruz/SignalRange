@@ -127,18 +127,19 @@ export class GroundStation {
     });
 
     // Create transmitters
-    const transmitterCount = config.transmitters || 4;
+    const transmitterCount = config.transmitters?.length || 4;
     for (let i = 1; i <= transmitterCount; i++) {
-      const tx = new Transmitter(`gs-${this.uuid}-tx${i}-container`, config.teamId || 1);
+      const tx = new Transmitter(`gs-${this.uuid}-tx${i}-container`, config.transmitters?.[i - 1], config.teamId || 1);
       this.transmitters.push(tx);
     }
 
     // Create receivers
-    const receiverCount = config.receivers || 4;
+    const receiverCount = config.receivers?.length || 4;
     for (let i = 1; i <= receiverCount; i++) {
       const rx = new Receiver(
         `gs-${this.uuid}-rx${i}-container`,
         this.antennas,
+        config.receivers?.[i - 1],
         config.teamId || 1
       );
       this.receivers.push(rx);

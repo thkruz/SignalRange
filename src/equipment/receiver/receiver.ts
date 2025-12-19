@@ -63,32 +63,50 @@ export class Receiver extends BaseEquipment {
   powerSwitch: PowerSwitch;
   rfFrontEnd_: RFFrontEndCore | null = null;
 
-  constructor(parentId: string, antennas: AntennaCore[], teamId: number = 1, serverId: number = 1) {
+  constructor(parentId: string, antennas: AntennaCore[], state?: Partial<ReceiverState>, teamId: number = 1, serverId: number = 1) {
     super(teamId);
 
     this.antennas = antennas;
 
-    // Initialize config with 4 modems
-    const modems: ReceiverModemState[] = [];
-    for (let i = 1; i <= 4; i++) {
-      modems.push({
-        modemNumber: i,
-        antennaUuid: i <= 2 ? antennas[0].state.uuid : antennas[1]?.state.uuid ?? antennas[0].state.uuid,
-        frequency: 4700 as MHz, // (IF Band after downconversion)
-        bandwidth: 50 as MHz,
-        modulation: 'QPSK' as ModulationType,
-        fec: '3/4' as FECType,
-        isPowered: true,
-      });
-    }
+    const defaults = Receiver.getDefaultState();
+
+    const uuid = state?.uuid ?? this.uuid;
+    const team_id = state?.team_id ?? this.teamId;
+    const server_id = state?.server_id ?? serverId;
+
+    // Merge modem overrides by modemNumber (so callers don't have to provide a full ordered array)
+    const overridesByModemNumber = new Map<number, Partial<ReceiverModemState>>(
+      (state?.modems ?? []).map(m => [m.modemNumber, m])
+    );
+
+    const fallbackAntenna1 = antennas[0]?.state.uuid ?? 'default-antenna-1';
+    const fallbackAntenna2 = antennas[1]?.state.uuid ?? fallbackAntenna1;
+
+    const modems: ReceiverModemState[] = defaults.modems.map((def) => {
+      const override = overridesByModemNumber.get(def.modemNumber);
+
+      // Prefer real antenna UUIDs for defaults in this runtime
+      const defaultAntennaUuid =
+        def.modemNumber <= 2 ? fallbackAntenna1 : fallbackAntenna2;
+
+      return {
+        ...def,
+        antennaUuid: defaultAntennaUuid,
+        ...override,
+        // Ensure identity field remains correct unless explicitly overridden
+        modemNumber: override?.modemNumber ?? def.modemNumber,
+      };
+    });
 
     this.state = {
-      uuid: this.uuid,
-      team_id: this.teamId,
-      server_id: serverId,
+      ...defaults,
+      ...state,
+      uuid,
+      team_id,
+      server_id,
       modems,
-      activeModem: 1,
-      availableSignals: [],
+      activeModem: state?.activeModem ?? defaults.activeModem,
+      availableSignals: state?.availableSignals ?? defaults.availableSignals,
     };
 
     this.build(parentId);
@@ -96,6 +114,31 @@ export class Receiver extends BaseEquipment {
     EventBus.getInstance().on(Events.UPDATE, this.update.bind(this));
     EventBus.getInstance().on(Events.SYNC, this.syncDomWithState.bind(this));
     EventBus.getInstance().once(Events.SYNC, this.initialSync.bind(this));
+  }
+
+  static getDefaultState(): ReceiverState {
+    const modems: ReceiverModemState[] = Array.from({ length: 4 }, (_, idx) => {
+      const modemNumber = idx + 1;
+
+      return {
+        modemNumber,
+        antennaUuid: modemNumber <= 2 ? 'default-antenna-1' : 'default-antenna-2',
+        frequency: 4700 as MHz, // IF Band after downconversion
+        bandwidth: 50 as MHz,
+        modulation: 'QPSK' as ModulationType,
+        fec: '3/4' as FECType,
+        isPowered: true,
+      };
+    });
+
+    return {
+      uuid: 'default',
+      team_id: 1,
+      server_id: 1,
+      modems,
+      activeModem: 1,
+      availableSignals: [],
+    };
   }
 
   update(): void {

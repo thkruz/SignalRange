@@ -30,6 +30,15 @@ export type ConditionType =
   | 'speca-rbw-set' // Spectrum analyzer RBW set to specific value
   | 'speca-reference-level-set' // Spectrum analyzer reference level set
   | 'speca-noise-floor-visible' // Spectrum analyzer shows clean baseline
+  | 'filter-bandwidth-set' // IF filter bandwidth configured
+  | 'antenna-beacon-frequency-set' // Antenna beacon frequency configured
+  | 'antenna-tracking-mode-set' // Antenna tracking mode set (step-track, etc.)
+  | 'antenna-beacon-locked' // Antenna beacon signal locked
+  | 'buc-unmuted' // BUC RF output enabled (inverse of muted)
+  | 'hpa-enabled' // HPA output enabled (dual-action switch)
+  | 'hpa-back-off-set' // HPA back-off level configured
+  | 'hpa-not-overdriven' // HPA not in overdrive (IMD check)
+  | 'hpa-output-power-set' // HPA output power above threshold
   | 'custom'; // Custom condition with evaluator function
 
 /**
@@ -88,6 +97,20 @@ export interface ConditionParams {
   evaluator?: () => boolean;
   /** Target specific equipment by index (0-based). If omitted, any equipment satisfies. */
   equipmentIndex?: number;
+  /** For filter-bandwidth-set: target bandwidth index (0-12) */
+  bandwidthIndex?: number;
+  /** For antenna-beacon-frequency-set: beacon frequency in Hz */
+  beaconFrequency?: number;
+  /** For antenna-tracking-mode-set: tracking mode */
+  trackingMode?: 'stow' | 'maintenance' | 'manual' | 'step-track' | 'program-track';
+  /** For hpa-back-off-set: target back-off in dB */
+  backOff?: number;
+  /** For hpa-back-off-set: tolerance in dB */
+  backOffTolerance?: number;
+  /** For hpa-not-overdriven: maximum IMD level in dBc (optional, defaults to checking isOverdriven) */
+  maxImdLevel?: number;
+  /** For hpa-output-power-set: minimum output power in dBm */
+  minOutputPower?: number;
   /** Additional context-specific parameters */
   [key: string]: unknown;
 }

@@ -13,6 +13,9 @@
   }
 
   #draggable-html-box-content-checklist {
+    overflow-y: auto;
+    max-height: calc(80vh - 8rem);
+
     div {
       padding: 0.5rem;
       color: var(--text-color, #ffffff);

@@ -46,10 +46,10 @@ export interface GroundStationConfig {
   location: GroundStationLocation;
   antennas: string[];           // Antenna config IDs
   antennasState?: Partial<AntennaState>[];  // Initial antenna states (parallel to antennas array)
-  rfFrontEnds: any[];           // RF front-end configs
-  spectrumAnalyzers?: any[];    // Spectrum analyzer configs (optional)
-  transmitters?: number;        // Number of transmitters (default: 4)
-  receivers?: number;           // Number of receivers (default: 4)
+  rfFrontEnds: Partial<RFFrontEndState>[];           // RF front-end configs
+  spectrumAnalyzers?: Partial<RealTimeSpectrumAnalyzerState>[];    // Spectrum analyzer configs (optional)
+  transmitters?: Partial<TransmitterState>[]; // Initial transmitter states (optional, parallel to transmitters)
+  receivers?: Partial<ReceiverState>[]; // Initial receiver states (optional, parallel to receivers)
   teamId?: number;
   serverId?: number;
 }

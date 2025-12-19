@@ -678,6 +678,14 @@ export class ObjectivesManager {
             });
           case 'spectrum-analyzer':
             return true; // Spectrum analyzer always powered on for this simulation
+          case 'hpa':
+            return this.evaluateEquipment_(gs.rfFrontEnds, condition.params, (rfFrontEnd) => {
+              return rfFrontEnd.hpaModule.state.isPowered;
+            });
+          case 'filter':
+            return this.evaluateEquipment_(gs.rfFrontEnds, condition.params, (rfFrontEnd) => {
+              return rfFrontEnd.filterModule.state.isPowered;
+            });
           default:
             return false;
         }
@@ -735,6 +743,81 @@ export class ObjectivesManager {
         return this.evaluateEquipment_(gs.spectrumAnalyzers, condition.params, (specA) => {
           const signals = specA.getInputSignals();
           return signals.every((signal) => signal.power < maxSignalStrength);
+        });
+      }
+
+      case 'filter-bandwidth-set': {
+        if (condition.params?.bandwidthIndex === undefined) return false;
+        const targetIndex = condition.params.bandwidthIndex;
+        return this.evaluateEquipment_(gs.rfFrontEnds, condition.params, (rfFrontEnd) => {
+          return rfFrontEnd.filterModule.state.bandwidthIndex === targetIndex;
+        });
+      }
+
+      case 'antenna-beacon-frequency-set': {
+        if (condition.params?.beaconFrequency === undefined) return false;
+        const targetFrequency = condition.params.beaconFrequency;
+        const tolerance = condition.params.frequencyTolerance ?? 1e6; // 1 MHz default
+        return this.evaluateEquipment_(gs.antennas, condition.params, (antenna) => {
+          const diff = Math.abs(antenna.state.beaconFrequencyHz - targetFrequency);
+          return diff <= tolerance;
+        });
+      }
+
+      case 'antenna-tracking-mode-set': {
+        if (!condition.params?.trackingMode) return false;
+        const targetMode = condition.params.trackingMode;
+        return this.evaluateEquipment_(gs.antennas, condition.params, (antenna) => {
+          return antenna.state.trackingMode === targetMode;
+        });
+      }
+
+      case 'antenna-beacon-locked': {
+        return this.evaluateEquipment_(gs.antennas, condition.params, (antenna) => {
+          return antenna.state.isBeaconLocked === true;
+        });
+      }
+
+      case 'buc-unmuted': {
+        return this.evaluateEquipment_(gs.rfFrontEnds, condition.params, (rfFrontEnd) => {
+          const bucState = rfFrontEnd.bucModule.state;
+          return bucState.isPowered && !bucState.isMuted;
+        });
+      }
+
+      case 'hpa-enabled': {
+        return this.evaluateEquipment_(gs.rfFrontEnds, condition.params, (rfFrontEnd) => {
+          const hpaState = rfFrontEnd.hpaModule.state;
+          return hpaState.isPowered && hpaState.isHpaEnabled;
+        });
+      }
+
+      case 'hpa-back-off-set': {
+        if (condition.params?.backOff === undefined) return false;
+        const targetBackOff = condition.params.backOff;
+        const tolerance = condition.params.backOffTolerance ?? 0.5;
+        return this.evaluateEquipment_(gs.rfFrontEnds, condition.params, (rfFrontEnd) => {
+          const hpaState = rfFrontEnd.hpaModule.state;
+          return (
+            hpaState.isPowered &&
+            Math.abs(hpaState.backOff - targetBackOff) <= tolerance
+          );
+        });
+      }
+
+      case 'hpa-not-overdriven': {
+        return this.evaluateEquipment_(gs.rfFrontEnds, condition.params, (rfFrontEnd) => {
+          const hpaState = rfFrontEnd.hpaModule.state;
+          return hpaState.isPowered && !hpaState.isOverdriven;
+        });
+      }
+
+      case 'hpa-output-power-set': {
+        if (condition.params?.minOutputPower === undefined) return false;
+        const minPower = condition.params.minOutputPower;
+        return this.evaluateEquipment_(gs.rfFrontEnds, condition.params, (rfFrontEnd) => {
+          const hpaState = rfFrontEnd.hpaModule.state;
+          return hpaState.isPowered && hpaState.isHpaEnabled && hpaState.outputPower >= minPower;
         });
       }
 

@@ -1,8 +1,7 @@
+import { qs } from "@app/engine/utils/query-selector";
+import { GPSDOModuleCore } from "@app/equipment/rf-front-end/gpsdo-module/gpsdo-module-core";
 import { EventBus } from "@app/events/event-bus";
 import { Events } from "@app/events/events";
-import { GPSDOModuleCore } from "@app/equipment/rf-front-end/gpsdo-module/gpsdo-module-core";
-import { GPSDOState } from "@app/equipment/rf-front-end/gpsdo-module/gpsdo-state";
-import { qs } from "@app/engine/utils/query-selector";
 
 /**
  * GPSDOAdapter - Bridges GPSDOModuleCore state to web controls
@@ -14,23 +13,28 @@ import { qs } from "@app/engine/utils/query-selector";
  * Prevents circular updates via state comparison
  */
 export class GPSDOAdapter {
+  private static readonly UPDATE_INTERVAL_MS = 1000;
+
   private readonly gpsdoModule: GPSDOModuleCore;
   private readonly containerEl: HTMLElement;
-  private lastStateString: string = '';
+  private lastStateString_: string = '';
+  private lastSyncTime_: number = 0;
   private readonly domCache_: Map<string, HTMLElement> = new Map();
   private readonly boundHandlers: Map<string, EventListener> = new Map();
-  private readonly stateChangeHandler: (state: Partial<GPSDOState>) => void;
+  private readonly boundUpdateHandler_: () => void;
 
   constructor(gpsdoModule: GPSDOModuleCore, containerEl: HTMLElement) {
     this.gpsdoModule = gpsdoModule;
     this.containerEl = containerEl;
-
-    // Bind state change handler
-    this.stateChangeHandler = (state: Partial<GPSDOState>) => {
-      this.syncDomWithState_(state);
-    };
-
+    this.boundUpdateHandler_ = this.throttledSync_.bind(this);
     this.initialize();
+  }
+
+  private throttledSync_(): void {
+    const now = Date.now();
+    if (now - this.lastSyncTime_ < GPSDOAdapter.UPDATE_INTERVAL_MS) return;
+    this.lastSyncTime_ = now;
+    this.syncDomWithState_();
   }
 
   private initialize(): void {
@@ -40,11 +44,11 @@ export class GPSDOAdapter {
     // Setup DOM event listeners for user input
     this.setupInputListeners_();
 
-    // Listen to GPSDO state changes via EventBus
-    EventBus.getInstance().on(Events.RF_FE_GPSDO_CHANGED, this.stateChangeHandler as any);
+    // Listen to UPDATE event for periodic updates (warmup timer, stability, etc.)
+    EventBus.getInstance().on(Events.UPDATE, this.boundUpdateHandler_);
 
     // Initial sync
-    this.syncDomWithState_(this.gpsdoModule.state);
+    this.syncDomWithState_();
   }
 
   private setupDomCache_(): void {
@@ -54,6 +58,9 @@ export class GPSDOAdapter {
     this.domCache_.set('gnssBadge', qs('#gpsdo-gnss-badge', this.containerEl));
     this.domCache_.set('warmupBadge', qs('#gpsdo-warmup-badge', this.containerEl));
     this.domCache_.set('holdoverBadge', qs('#gpsdo-holdover-badge', this.containerEl));
+    this.domCache_.set('holdoverDuration', qs('#gpsdo-holdover-duration', this.containerEl));
+    this.domCache_.set('holdoverProgress', qs('#gpsdo-holdover-progress', this.containerEl));
+    this.domCache_.set('holdoverTtl', qs('#gpsdo-holdover-ttl', this.containerEl));
     this.domCache_.set('satelliteCount', qs('#gpsdo-satellite-count', this.containerEl));
     this.domCache_.set('constellation', qs('#gpsdo-constellation', this.containerEl));
     this.domCache_.set('freqAccuracy', qs('#gpsdo-freq-accuracy', this.containerEl));
@@ -95,194 +102,210 @@ export class GPSDOAdapter {
   private powerHandler_(e: Event): void {
     const isChecked = (e.target as HTMLInputElement).checked;
     this.gpsdoModule.handlePowerToggle(isChecked);
-    this.syncDomWithState_(this.gpsdoModule.state);
+    this.lastStateString_ = ''; // Force update after power change
+    this.syncDomWithState_();
   }
 
   private gnssHandler_(e: Event): void {
     const isChecked = (e.target as HTMLInputElement).checked;
-    this.gpsdoModule.handleGnssToggle(isChecked, (state: GPSDOState) => {
-      this.syncDomWithState_(state);
+    this.gpsdoModule.handleGnssToggle(isChecked, () => {
+      this.lastStateString_ = ''; // Force update after GNSS callback
+      this.syncDomWithState_();
     });
   }
 
   update(): void {
-    this.syncDomWithState_(this.gpsdoModule.state);
+    this.syncDomWithState_();
   }
 
-  private syncDomWithState_(state: Partial<GPSDOState>): void {
-    // Prevent circular updates
+  private syncDomWithState_(): void {
+    const state = this.gpsdoModule.state;
+
+    // Prevent unnecessary updates by comparing full state
     const stateStr = JSON.stringify(state);
-    if (stateStr === this.lastStateString) return;
-    this.lastStateString = stateStr;
+    if (stateStr === this.lastStateString_) return;
+    this.lastStateString_ = stateStr;
+
+    const isPowered = state.isPowered;
 
     // Update Power switch
-    if (state.isPowered !== undefined) {
-      const powerSwitch = this.domCache_.get('powerSwitch') as HTMLInputElement;
-      if (powerSwitch) powerSwitch.checked = state.isPowered;
-    }
+    const powerSwitch = this.domCache_.get('powerSwitch') as HTMLInputElement;
+    if (powerSwitch) powerSwitch.checked = isPowered;
 
     // Update GNSS switch
-    if (state.isGnssSwitchUp !== undefined) {
-      const gnssSwitch = this.domCache_.get('gnssSwitch') as HTMLInputElement;
-      if (gnssSwitch) gnssSwitch.checked = state.isGnssSwitchUp;
-    }
+    const gnssSwitch = this.domCache_.get('gnssSwitch') as HTMLInputElement;
+    if (gnssSwitch) gnssSwitch.checked = state.isGnssSwitchUp;
 
     // Update Lock Status Badge
-    if (state.isLocked !== undefined || state.isGnssAcquiringLock !== undefined || state.isPowered !== undefined) {
-      const lockBadge = this.domCache_.get('lockBadge');
+    const lockBadge = this.domCache_.get('lockBadge');
+    if (lockBadge) {
       const ledStatus = this.gpsdoModule.getLockLedStatus_();
       const badgeClass = this.getBadgeClass_(ledStatus);
-
-      if (lockBadge) {
-        let text: string;
-        if (!this.gpsdoModule.state.isPowered) {
-          text = 'OFF';
-        } else if (this.gpsdoModule.state.isGnssAcquiringLock) {
-          text = 'ACQUIRING';
-        } else if (this.gpsdoModule.state.isLocked) {
-          text = 'LOCKED';
-        } else {
-          text = 'UNLOCKED';
-        }
-        lockBadge.textContent = text;
-        lockBadge.className = `status-badge ${badgeClass}`;
+      let text: string;
+      if (!isPowered) {
+        text = 'OFF';
+      } else if (state.isGnssAcquiringLock) {
+        text = 'ACQUIRING';
+      } else if (state.isLocked) {
+        text = 'LOCKED';
+      } else {
+        text = 'UNLOCKED';
       }
+      lockBadge.textContent = text;
+      lockBadge.className = `status-badge ${badgeClass}`;
     }
 
     // Update GNSS Status Badge
-    if (state.gnssSignalPresent !== undefined || state.satelliteCount !== undefined || state.isPowered !== undefined) {
-      const gnssBadge = this.domCache_.get('gnssBadge');
+    const gnssBadge = this.domCache_.get('gnssBadge');
+    if (gnssBadge) {
       const ledStatus = this.gpsdoModule.getGnssLedStatus_();
       const badgeClass = this.getBadgeClass_(ledStatus);
-
-      if (gnssBadge) {
-        let text: string;
-        if (!this.gpsdoModule.state.isPowered) {
-          text = 'OFF';
-        } else if (!this.gpsdoModule.state.gnssSignalPresent) {
-          text = 'NO SIGNAL';
-        } else if ((this.gpsdoModule.state.satelliteCount ?? 0) < 4) {
-          text = 'WEAK';
-        } else {
-          text = `${this.gpsdoModule.state.satelliteCount} SATS`;
-        }
-        gnssBadge.textContent = text;
-        gnssBadge.className = `status-badge ${badgeClass}`;
+      let text: string;
+      if (!isPowered) {
+        text = 'OFF';
+      } else if (!state.gnssSignalPresent) {
+        text = 'NO SIGNAL';
+      } else if ((state.satelliteCount ?? 0) < 4) {
+        text = 'WEAK';
+      } else {
+        text = `${state.satelliteCount} SATS`;
       }
+      gnssBadge.textContent = text;
+      gnssBadge.className = `status-badge ${badgeClass}`;
     }
 
     // Update Warmup Status Badge
-    if (state.warmupTimeRemaining !== undefined || state.isPowered !== undefined) {
-      const warmupBadge = this.domCache_.get('warmupBadge');
+    const warmupBadge = this.domCache_.get('warmupBadge');
+    if (warmupBadge) {
       const ledStatus = this.gpsdoModule.getWarmupLedStatus_();
       const badgeClass = this.getBadgeClass_(ledStatus);
+      warmupBadge.textContent = isPowered ? this.gpsdoModule.formatWarmupTime_() : 'OFF';
+      warmupBadge.className = `status-badge ${badgeClass}`;
+    }
 
-      if (warmupBadge) {
-        warmupBadge.textContent = this.gpsdoModule.formatWarmupTime_();
-        warmupBadge.className = `status-badge ${badgeClass}`;
+    // Update Holdover Status Badge
+    const holdoverBadge = this.domCache_.get('holdoverBadge');
+    if (holdoverBadge) {
+      let text: string;
+      let badgeClass: string;
+      if (!isPowered) {
+        text = 'OFF';
+        badgeClass = 'status-badge-off';
+      } else if (state.isInHoldover) {
+        text = 'ACTIVE';
+        badgeClass = 'status-badge-amber';
+      } else {
+        text = 'INACTIVE';
+        badgeClass = 'status-badge-off';
       }
+      holdoverBadge.textContent = text;
+      holdoverBadge.className = `status-badge ${badgeClass}`;
     }
 
     // Update satellite count
-    if (state.satelliteCount !== undefined) {
-      const satCount = this.domCache_.get('satelliteCount');
-      if (satCount) satCount.textContent = state.satelliteCount.toString();
-    }
+    const satCount = this.domCache_.get('satelliteCount');
+    if (satCount) satCount.textContent = isPowered ? state.satelliteCount.toString() : '--';
 
     // Update constellation
-    if (state.constellation !== undefined) {
-      const constellation = this.domCache_.get('constellation');
-      if (constellation) constellation.textContent = state.constellation;
-    }
+    const constellation = this.domCache_.get('constellation');
+    if (constellation) constellation.textContent = isPowered ? state.constellation : '--';
+
+    // Update UTC accuracy
+    const utcAcc = this.domCache_.get('utcAccuracy');
+    if (utcAcc) utcAcc.textContent = isPowered ? `${state.utcAccuracy.toFixed(0)} ns` : '-- ns';
+
+    // Update temperature (always shows - even cooling down when off)
+    const temp = this.domCache_.get('temperature');
+    if (temp) temp.textContent = `${state.temperature.toFixed(1)} °C`;
+
+    // Update operating hours (always shows)
+    const opHours = this.domCache_.get('operatingHours');
+    if (opHours) opHours.textContent = `${state.operatingHours.toFixed(1)} hrs`;
 
     // Update frequency accuracy
-    if (state.frequencyAccuracy !== undefined) {
-      const freqAcc = this.domCache_.get('freqAccuracy');
-      if (freqAcc) freqAcc.textContent = `${state.frequencyAccuracy.toFixed(2)} ×10⁻¹¹`;
-    }
+    const freqAcc = this.domCache_.get('freqAccuracy');
+    if (freqAcc) freqAcc.textContent = isPowered ? `${state.frequencyAccuracy.toFixed(2)} ×10⁻¹¹` : '-- ×10⁻¹¹';
 
     // Update Allan deviation
-    if (state.allanDeviation !== undefined) {
-      const allanDev = this.domCache_.get('allanDeviation');
-      if (allanDev) allanDev.textContent = `${state.allanDeviation.toFixed(2)} ×10⁻¹¹`;
-    }
+    const allanDev = this.domCache_.get('allanDeviation');
+    if (allanDev) allanDev.textContent = isPowered ? `${state.allanDeviation.toFixed(2)} ×10⁻¹¹` : '-- ×10⁻¹¹';
 
     // Update phase noise
-    if (state.phaseNoise !== undefined) {
-      const phaseNoise = this.domCache_.get('phaseNoise');
-      if (phaseNoise) phaseNoise.textContent = `${state.phaseNoise.toFixed(1)} dBc/Hz`;
-    }
-
-    // Update temperature
-    if (state.temperature !== undefined) {
-      const temp = this.domCache_.get('temperature');
-      if (temp) temp.textContent = `${state.temperature.toFixed(1)} °C`;
-    }
+    const phaseNoise = this.domCache_.get('phaseNoise');
+    if (phaseNoise) phaseNoise.textContent = isPowered ? `${state.phaseNoise.toFixed(1)} dBc/Hz` : '-- dBc/Hz';
 
     // Update lock duration
-    if (state.lockDuration !== undefined) {
-      const lockDuration = this.domCache_.get('lockDuration');
-      if (lockDuration) {
+    const lockDuration = this.domCache_.get('lockDuration');
+    if (lockDuration) {
+      if (isPowered) {
         const hours = Math.floor(state.lockDuration / 3600);
         const minutes = Math.floor((state.lockDuration % 3600) / 60);
         const seconds = state.lockDuration % 60;
         lockDuration.textContent = `${hours}h ${minutes}m ${seconds}s`;
-      }
-    }
-
-    // Update holdover status badge
-    if (state.isInHoldover !== undefined || state.isPowered !== undefined) {
-      const holdoverBadge = this.domCache_.get('holdoverBadge');
-      if (holdoverBadge) {
-        let text: string;
-        let badgeClass: string;
-        if (!this.gpsdoModule.state.isPowered) {
-          text = 'OFF';
-          badgeClass = 'status-badge-off';
-        } else if (this.gpsdoModule.state.isInHoldover) {
-          text = 'ACTIVE';
-          badgeClass = 'status-badge-amber';
-        } else {
-          text = 'INACTIVE';
-          badgeClass = 'status-badge-off';
-        }
-        holdoverBadge.textContent = text;
-        holdoverBadge.className = `status-badge ${badgeClass}`;
+      } else {
+        lockDuration.textContent = '--h --m --s';
       }
     }
 
     // Update holdover error
-    if (state.holdoverError !== undefined) {
-      const holdoverError = this.domCache_.get('holdoverError');
-      if (holdoverError) holdoverError.textContent = `${state.holdoverError.toFixed(2)} μs`;
+    const holdoverError = this.domCache_.get('holdoverError');
+    if (holdoverError) holdoverError.textContent = isPowered ? `${state.holdoverError.toFixed(2)} μs` : '-- μs';
+
+    // Update holdover duration
+    const holdoverDuration = this.domCache_.get('holdoverDuration');
+    if (holdoverDuration) {
+      if (isPowered && state.isInHoldover) {
+        const hours = Math.floor(state.holdoverDuration / 3600);
+        const minutes = Math.floor((state.holdoverDuration % 3600) / 60);
+        const seconds = state.holdoverDuration % 60;
+        holdoverDuration.textContent = `${hours}h ${minutes}m ${seconds}s`;
+      } else {
+        holdoverDuration.textContent = isPowered ? '0h 0m 0s' : '--';
+      }
+    }
+
+    // Update holdover progress bar
+    const holdoverProgress = this.domCache_.get('holdoverProgress');
+    if (holdoverProgress) {
+      const percentage = Math.min(100, (state.holdoverError / 40) * 100);
+      holdoverProgress.style.width = `${percentage}%`;
+      // Change color based on severity
+      holdoverProgress.classList.remove('bg-success', 'bg-warning', 'bg-danger');
+      if (percentage < 50) {
+        holdoverProgress.classList.add('bg-success');
+      } else if (percentage < 75) {
+        holdoverProgress.classList.add('bg-warning');
+      } else {
+        holdoverProgress.classList.add('bg-danger');
+      }
+    }
+
+    // Update time to limit
+    const holdoverTtl = this.domCache_.get('holdoverTtl');
+    if (holdoverTtl) {
+      if (isPowered && state.isInHoldover && state.holdoverError < 40) {
+        // Drift rate is ~1.67 μs/hour
+        const remaining = (40 - state.holdoverError) / 1.67;
+        holdoverTtl.textContent = `~${remaining.toFixed(1)} hrs`;
+      } else if (isPowered && state.isInHoldover) {
+        holdoverTtl.textContent = 'EXCEEDED';
+      } else {
+        holdoverTtl.textContent = '--';
+      }
     }
 
     // Update 10 MHz outputs
-    if (state.active10MHzOutputs !== undefined) {
-      const outputs = this.domCache_.get('10mhzOutputs');
-      if (outputs) outputs.textContent = `${state.active10MHzOutputs}/${state.max10MHzOutputs}`;
-    }
-
-    // Update UTC accuracy
-    if (state.utcAccuracy !== undefined) {
-      const utcAcc = this.domCache_.get('utcAccuracy');
-      if (utcAcc) utcAcc.textContent = `${state.utcAccuracy.toFixed(0)} ns`;
-    }
-
-    // Update operating hours
-    if (state.operatingHours !== undefined) {
-      const opHours = this.domCache_.get('operatingHours');
-      if (opHours) opHours.textContent = `${state.operatingHours.toFixed(1)} hrs`;
-    }
+    const outputs = this.domCache_.get('10mhzOutputs');
+    if (outputs) outputs.textContent = isPowered ? `${state.active10MHzOutputs}/${state.max10MHzOutputs}` : '--/--';
   }
 
   dispose(): void {
     // Remove EventBus listeners
-    EventBus.getInstance().off(Events.RF_FE_GPSDO_CHANGED, this.stateChangeHandler as any);
+    EventBus.getInstance().off(Events.UPDATE, this.boundUpdateHandler_);
 
     // Remove DOM event listeners
-    const powerSwitch = qs('#gpsdo-power', this.containerEl) as HTMLInputElement;
-    const gnssSwitch = qs('#gpsdo-gnss-switch', this.containerEl) as HTMLInputElement;
+    const powerSwitch = qs('#gpsdo-power', this.containerEl);
+    const gnssSwitch = qs('#gpsdo-gnss-switch', this.containerEl);
 
     const powerHandler = this.boundHandlers.get('power');
     const gnssHandler = this.boundHandlers.get('gnss');

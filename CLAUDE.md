@@ -25,6 +25,43 @@
 - RotaryKnob uses callback-in-constructor; PowerSwitch/ToggleSwitch use `addEventListeners()` method
 - Factories return base Core type for polymorphism
 
+## EventBus Events
+
+- `Events.UPDATE` - Fires on each simulation tick; use for periodic state sync in adapters
+- `Events.DRAW` - Fires for canvas rendering only; do NOT use for DOM updates
+- When using `.bind(this)` for event handlers, store the bound reference to properly remove it later:
+
+```typescript
+private readonly boundUpdateHandler_: () => void;
+
+constructor() {
+  this.boundUpdateHandler_ = this.syncDomWithState_.bind(this);
+  EventBus.getInstance().on(Events.UPDATE, this.boundUpdateHandler_);
+}
+
+dispose(): void {
+  EventBus.getInstance().off(Events.UPDATE, this.boundUpdateHandler_);
+}
+```
+
+## Adapter Throttling Pattern
+
+For adapters listening to `Events.UPDATE`, throttle DOM updates to avoid performance issues:
+
+```typescript
+private static readonly UPDATE_INTERVAL_MS = 1000;
+private lastSyncTime_: number = 0;
+
+private throttledSync_(): void {
+  const now = Date.now();
+  if (now - this.lastSyncTime_ < ClassName.UPDATE_INTERVAL_MS) return;
+  this.lastSyncTime_ = now;
+  this.syncDomWithState_();
+}
+```
+
+Direct user actions (button clicks, toggles) should bypass throttling for immediate feedback.
+
 ## Equipment Adjust Controls (Phase 6+)
 
 For numeric equipment controls (frequency, gain, power, etc.), use the `equip-adjust-control` pattern:

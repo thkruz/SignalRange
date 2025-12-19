@@ -1,6 +1,7 @@
 import { html } from "@app/engine/utils/development/formatter";
 import { ANTENNA_CONFIG_KEYS } from "@app/equipment/antenna/antenna-configs";
 import { defaultSpectrumAnalyzerState } from "@app/equipment/real-time-spectrum-analyzer/defaultSpectrumAnalyzerState";
+import { Receiver } from "@app/equipment/receiver/receiver";
 import { BUCModuleCore } from "@app/equipment/rf-front-end/buc-module";
 import { CouplerModule } from "@app/equipment/rf-front-end/coupler-module/coupler-module";
 import { IfFilterBankModuleCore } from "@app/equipment/rf-front-end/filter-module";
@@ -9,6 +10,7 @@ import { HPAModuleCore } from "@app/equipment/rf-front-end/hpa-module";
 import { LNBModuleCore } from "@app/equipment/rf-front-end/lnb-module";
 import { OMTModule } from "@app/equipment/rf-front-end/omt-module/omt-module";
 import { Satellite } from "@app/equipment/satellite/satellite";
+import { Transmitter } from "@app/equipment/transmitter/transmitter";
 import type { ScenarioData } from "@app/ScenarioData";
 import { SignalOrigin } from "@app/SignalOrigin";
 import type { dBi, dBm, FECType, Hertz, ModulationType, RfFrequency } from "@app/types";
@@ -49,8 +51,8 @@ export const scenario3Data: ScenarioData = {
       gpsdo: defaultGpsdoState,
     }],
     spectrumAnalyzers: [defaultSpectrumAnalyzerState],
-    transmitters: 1,
-    receivers: 1,
+    transmitters: [Transmitter.getDefaultState()],
+    receivers: [Receiver.getDefaultState()],
     layout: html`
       <div class="student-equipment">
         <!-- Antennas, Front Ends, and Spec Analyzers Grid -->

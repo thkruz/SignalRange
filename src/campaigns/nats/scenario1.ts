@@ -195,7 +195,7 @@ export const scenario1Data: ScenarioData = {
             gain: 0 as dB,
             lnaNoiseFigure: 0.6, // dB
             mixerNoiseFigure: 16.0, // dB
-            noiseTemperature: 45, // K
+            noiseTemperature: 290, // K
             noiseTemperatureStabilizationTime: 180, // seconds
             isExtRefLocked: false,
             noiseFloor: -140, // dBm/Hz

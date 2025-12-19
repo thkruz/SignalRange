@@ -15,12 +15,16 @@ import { AlarmStatus } from "@app/equipment/base-equipment";
  * Prevents circular updates via state comparison
  */
 export class HPAAdapter {
+  private static readonly UPDATE_INTERVAL_MS = 1000;
+
   private readonly hpaModule: HPAModuleCore;
   private readonly containerEl: HTMLElement;
   private lastStateString: string = '';
+  private lastSyncTime_: number = 0;
   private readonly domCache_: Map<string, HTMLElement> = new Map();
   private readonly boundHandlers: Map<string, EventListener> = new Map();
   private readonly stateChangeHandler: (state: Partial<HPAState>) => void;
+  private readonly boundUpdateHandler_: () => void;
   private readonly alarmBadge_: CardAlarmBadge;
 
   // Staged values - not applied until Apply button is clicked
@@ -42,6 +46,9 @@ export class HPAAdapter {
       this.syncDomWithState_(state);
     };
 
+    // Bind update handler for periodic sync
+    this.boundUpdateHandler_ = this.throttledSync_.bind(this);
+
     this.initialize();
   }
 
@@ -55,8 +62,78 @@ export class HPAAdapter {
     // Listen to HPA state changes via EventBus
     EventBus.getInstance().on(Events.RF_FE_HPA_CHANGED, this.stateChangeHandler as any);
 
+    // Listen to UPDATE event for periodic sync of continuously-changing values
+    EventBus.getInstance().on(Events.UPDATE, this.boundUpdateHandler_);
+
     // Initial sync
     this.syncDomWithState_(this.hpaModule.state);
+  }
+
+  private throttledSync_(): void {
+    const now = Date.now();
+    if (now - this.lastSyncTime_ < HPAAdapter.UPDATE_INTERVAL_MS) return;
+    this.lastSyncTime_ = now;
+    // Only sync read-only displays, not user-editable inputs
+    this.syncReadOnlyDisplays_();
+  }
+
+  /**
+   * Sync only read-only status displays (not user inputs)
+   * Used by throttled UPDATE handler to avoid overwriting staged values
+   */
+  private syncReadOnlyDisplays_(): void {
+    const state = this.hpaModule.state;
+
+    // Update Power Output displays
+    const outputPowerDisplay = this.domCache_.get('outputPowerDisplay');
+    if (outputPowerDisplay) {
+      outputPowerDisplay.textContent = `${state.outputPower.toFixed(1)} dBm`;
+    }
+
+    // Update power meter visualization
+    this.updatePowerMeter_(state.outputPower);
+
+    // Update power in watts
+    const powerWatts = this.domCache_.get('powerWatts');
+    if (powerWatts) {
+      const watts = Math.pow(10, (state.outputPower - 30) / 10);
+      if (watts >= 1) {
+        powerWatts.textContent = `${watts.toFixed(0)} W`;
+      } else {
+        powerWatts.textContent = `${(watts * 1000).toFixed(0)} mW`;
+      }
+    }
+
+    // Update temperature display
+    const temperatureDisplay = this.domCache_.get('temperatureDisplay');
+    if (temperatureDisplay) {
+      temperatureDisplay.textContent = `${state.temperature.toFixed(1)} °C`;
+    }
+
+    // Update overdrive status
+    const overdriveStatus = this.domCache_.get('overdriveStatus');
+    if (overdriveStatus) {
+      overdriveStatus.textContent = state.isOverdriven ? 'OVERDRIVE' : 'Normal';
+      overdriveStatus.className = state.isOverdriven
+        ? 'status-badge status-badge-danger'
+        : 'status-badge status-badge-good';
+    }
+
+    // Update IMD display
+    const imdDisplay = this.domCache_.get('imdDisplay');
+    if (imdDisplay) {
+      imdDisplay.textContent = `${state.imdLevel.toFixed(1)} dBc`;
+    }
+
+    // Update gain display
+    const gainDisplay = this.domCache_.get('gainDisplay');
+    if (gainDisplay) {
+      gainDisplay.textContent = `${state.gain.toFixed(1)} dB`;
+    }
+
+    // Update alarm badge
+    const alarms = this.getAlarmsFromModule_();
+    this.alarmBadge_.update(alarms);
   }
 
   private setupDomCache_() {
@@ -310,6 +387,7 @@ export class HPAAdapter {
     this.alarmBadge_.dispose();
 
     // Remove EventBus listeners
+    EventBus.getInstance().off(Events.UPDATE, this.boundUpdateHandler_);
     EventBus.getInstance().off(Events.RF_FE_HPA_CHANGED, this.stateChangeHandler as any);
 
     // Remove DOM event listeners for inputs

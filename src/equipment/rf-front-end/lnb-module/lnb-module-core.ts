@@ -136,6 +136,9 @@ export abstract class LNBModuleCore extends RFFrontEndModule<LNBState> {
    * Includes thermal stabilization: noise temperature starts higher when
    * first powered on and gradually decreases to nominal value as components
    * warm up to steady-state operating temperature.
+   *
+   * Also applies exponential smoothing so parameter changes (like gain)
+   * cause gradual noise temperature transitions rather than instant jumps.
    */
   private updateNoiseTemperature_(): void {
     if (!this.state.isPowered) {
@@ -153,33 +156,34 @@ export abstract class LNBModuleCore extends RFFrontEndModule<LNBState> {
     // Calculate nominal (fully stabilized) noise temperature
     const nominalNoiseTemp = 290 * (nfTotal - 1);
 
-    // Apply thermal stabilization if power-on time is tracked
-    if (this.powerOnTimestamp_ === null) {
-      // No power-on tracking (shouldn't happen, but fallback)
-      this.state.noiseTemperature = nominalNoiseTemp;
-      return;
+    // Calculate target temperature (accounting for power-on warmup)
+    let targetNoiseTemp = nominalNoiseTemp;
+
+    if (this.powerOnTimestamp_ !== null) {
+      const timeElapsedMs = Date.now() - this.powerOnTimestamp_;
+      const timeElapsedSec = timeElapsedMs / 1000;
+      const stabilizationTime = this.state.noiseTemperatureStabilizationTime;
+
+      if (timeElapsedSec < stabilizationTime) {
+        // Components still warming up - use exponential decay
+        // Time constant = stabilizationTime / 3 (so ~95% stabilized after stabilizationTime)
+        const timeConstant = stabilizationTime / 3;
+        const stabilizationFactor = Math.exp(-timeElapsedSec / timeConstant);
+
+        // Start at 2x nominal (cold components have worse noise performance)
+        const initialNoiseTemp = nominalNoiseTemp * 2;
+
+        // Target is between initial and nominal based on warmup progress
+        targetNoiseTemp = nominalNoiseTemp +
+          (initialNoiseTemp - nominalNoiseTemp) * stabilizationFactor;
+      }
     }
 
-    const timeElapsedMs = Date.now() - this.powerOnTimestamp_;
-    const timeElapsedSec = timeElapsedMs / 1000;
-    const stabilizationTime = this.state.noiseTemperatureStabilizationTime;
-
-    if (timeElapsedSec < stabilizationTime) {
-      // Components still warming up - use exponential decay
-      // Time constant = stabilizationTime / 3 (so ~95% stabilized after stabilizationTime)
-      const timeConstant = stabilizationTime / 3;
-      const stabilizationFactor = Math.exp(-timeElapsedSec / timeConstant);
-
-      // Start at 2x nominal (cold components have worse noise performance)
-      const initialNoiseTemp = nominalNoiseTemp * 2;
-
-      // Exponentially decay from initial to nominal
-      this.state.noiseTemperature = nominalNoiseTemp +
-        (initialNoiseTemp - nominalNoiseTemp) * stabilizationFactor;
-    } else {
-      // Fully stabilized
-      this.state.noiseTemperature = nominalNoiseTemp;
-    }
+    // Apply exponential smoothing so changes are gradual (not instant)
+    // At 60 FPS with factor 0.0005: ~30+ seconds for significant change
+    const smoothingFactor = 0.005;
+    this.state.noiseTemperature = this.state.noiseTemperature +
+      (targetNoiseTemp - this.state.noiseTemperature) * smoothingFactor;
   }
 
   /**

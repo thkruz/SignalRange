@@ -15,12 +15,16 @@ import { AlarmStatus } from "@app/equipment/base-equipment";
  * Prevents circular updates via state comparison
  */
 export class LNBAdapter {
+  private static readonly UPDATE_INTERVAL_MS = 1000;
+
   private readonly lnbModule: LNBModuleCore;
   private readonly containerEl: HTMLElement;
   private lastStateString: string = '';
+  private lastSyncTime_: number = 0;
   private readonly domCache_: Map<string, HTMLElement> = new Map();
   private readonly boundHandlers: Map<string, EventListener> = new Map();
   private readonly stateChangeHandler: (state: Partial<LNBState>) => void;
+  private readonly boundUpdateHandler_: () => void;
   private readonly alarmBadge_: CardAlarmBadge;
 
   // Staged values for Apply pattern
@@ -43,6 +47,9 @@ export class LNBAdapter {
       this.syncDomWithState_(state);
     };
 
+    // Bind update handler for periodic sync
+    this.boundUpdateHandler_ = this.throttledSync_.bind(this);
+
     this.initialize();
   }
 
@@ -56,8 +63,49 @@ export class LNBAdapter {
     // Listen to LNB state changes via EventBus
     EventBus.getInstance().on(Events.RF_FE_LNB_CHANGED, this.stateChangeHandler as any);
 
+    // Listen to UPDATE event for periodic sync of continuously-changing values
+    EventBus.getInstance().on(Events.UPDATE, this.boundUpdateHandler_);
+
     // Initial sync
     this.syncDomWithState_(this.lnbModule.state);
+  }
+
+  private throttledSync_(): void {
+    const now = Date.now();
+    if (now - this.lastSyncTime_ < LNBAdapter.UPDATE_INTERVAL_MS) return;
+    this.lastSyncTime_ = now;
+    // Only sync read-only displays, not user-editable inputs
+    this.syncReadOnlyDisplays_();
+  }
+
+  /**
+   * Sync only read-only status displays (not user inputs)
+   * Used by throttled UPDATE handler to avoid overwriting staged values
+   */
+  private syncReadOnlyDisplays_(): void {
+    const state = this.lnbModule.state;
+
+    // Update noise temperature display
+    const noiseTempDisplay = this.domCache_.get('noiseTempDisplay');
+    if (noiseTempDisplay) {
+      noiseTempDisplay.textContent = `${state.noiseTemperature.toFixed(0)} K`;
+    }
+
+    // Update lock status
+    const lockStatus = this.domCache_.get('lockStatus');
+    if (lockStatus) {
+      if (state.isExtRefLocked) {
+        lockStatus.className = 'status-badge status-badge-locked';
+        lockStatus.textContent = 'Locked';
+      } else {
+        lockStatus.className = 'status-badge status-badge-unlocked';
+        lockStatus.textContent = 'Unlocked';
+      }
+    }
+
+    // Update alarm badge
+    const alarms = this.getAlarmsFromModule_();
+    this.alarmBadge_.update(alarms);
   }
 
   private setupDomCache_(): void {
@@ -257,6 +305,7 @@ export class LNBAdapter {
     // Dispose alarm badge
     this.alarmBadge_.dispose();
     // Remove EventBus listeners
+    EventBus.getInstance().off(Events.UPDATE, this.boundUpdateHandler_);
     EventBus.getInstance().off(Events.RF_FE_LNB_CHANGED, this.stateChangeHandler as any);
 
     // Remove DOM event listeners

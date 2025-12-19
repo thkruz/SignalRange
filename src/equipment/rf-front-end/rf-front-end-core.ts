@@ -235,9 +235,8 @@ export abstract class RFFrontEndCore extends BaseEquipment {
       this.state.hpa.temperature = 25; // Ambient
     }
 
-    // LNB noise temperature calculation
-    const nfLinear = Math.pow(10, this.state.lnb.lnaNoiseFigure / 10);
-    this.state.lnb.noiseTemperature = 290 * (nfLinear - 1);
+    // LNB noise temperature is calculated in LNBModuleCore.updateNoiseTemperature_()
+    // with proper Friis formula, gain dependency, and smoothing - don't override here
 
     // BUC output power calculation
     if (this.state.buc.isPowered && !this.state.buc.isMuted) {

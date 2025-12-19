@@ -278,10 +278,23 @@
   transform: translateY(-1px);
 }
 
-.btn-equip:active {
+.btn-equip:active:not(:disabled) {
   background-color: var(--mc-accent-red, #ba160c);
   color: white;
   transform: translateY(0);
+}
+
+.btn-equip:disabled,
+.btn-equip:disabled:active {
+  background-color: var(--mc-surface-1, #2a2a2a);
+  color: #4a4a4a;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-equip:disabled:hover {
+  background-color: var(--mc-surface-1, #2a2a2a);
+  transform: none;
 }
 
 /* High-visibility value display */
@@ -322,6 +335,12 @@
 
 .equip-adjust-input[type=number] {
   -moz-appearance: textfield;
+}
+
+.equip-adjust-input:disabled {
+  color: #4a4a4a;
+  text-shadow: none;
+  cursor: not-allowed;
 }
 
 .equip-adjust-unit {
@@ -368,4 +387,10 @@
   background-color: rgba(107, 114, 128, 0.15);
   color: #6b7280;
   border: 1px solid rgba(107, 114, 128, 0.3);
+}
+
+.status-badge-off {
+  background-color: rgba(64, 64, 64, 0.15);
+  color: #4a4a4a;
+  border: 1px solid rgba(64, 64, 64, 0.3);
 }

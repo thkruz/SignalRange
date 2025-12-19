@@ -84,53 +84,67 @@ export class BUCAdapter {
    */
   private syncReadOnlyDisplays_(): void {
     const state = this.bucModule.state;
+    const isPowered = state.isPowered;
 
     // Update RF Status displays
     const outputPowerDisplay = this.domCache_.get('outputPowerDisplay');
     if (outputPowerDisplay) {
-      outputPowerDisplay.textContent = `${state.outputPower.toFixed(1)} dBm`;
+      outputPowerDisplay.textContent = isPowered ? `${state.outputPower.toFixed(1)} dBm` : '-- dBm';
     }
 
     // Calculate and display P1dB margin
     const p1dbMarginDisplay = this.domCache_.get('p1dbMarginDisplay');
     if (p1dbMarginDisplay) {
-      const p1dbMargin = state.saturationPower - state.outputPower;
-      p1dbMarginDisplay.textContent = `${p1dbMargin.toFixed(1)} dB`;
+      if (isPowered) {
+        const p1dbMargin = state.saturationPower - state.outputPower;
+        p1dbMarginDisplay.textContent = `${p1dbMargin.toFixed(1)} dB`;
+      } else {
+        p1dbMarginDisplay.textContent = '-- dB';
+      }
     }
 
     // Update lock status
     const lockStatus = this.domCache_.get('lockStatus');
     if (lockStatus) {
-      lockStatus.textContent = state.isExtRefLocked ? 'Locked' : 'Unlocked';
-      lockStatus.className = state.isExtRefLocked
-        ? 'status-badge status-badge-locked'
-        : 'status-badge status-badge-unlocked';
+      if (isPowered) {
+        lockStatus.textContent = state.isExtRefLocked ? 'Locked' : 'Unlocked';
+        lockStatus.className = state.isExtRefLocked
+          ? 'status-badge status-badge-locked'
+          : 'status-badge status-badge-unlocked';
+      } else {
+        lockStatus.textContent = '--';
+        lockStatus.className = 'status-badge status-badge-off';
+      }
     }
 
     // Update Thermal displays
     const temperatureDisplay = this.domCache_.get('temperatureDisplay');
     if (temperatureDisplay) {
-      temperatureDisplay.textContent = `${state.temperature.toFixed(1)} °C`;
+      temperatureDisplay.textContent = isPowered ? `${state.temperature.toFixed(1)} °C` : '-- °C';
     }
 
     const currentDisplay = this.domCache_.get('currentDisplay');
     if (currentDisplay) {
-      currentDisplay.textContent = `${state.currentDraw.toFixed(2)} A`;
+      currentDisplay.textContent = isPowered ? `${state.currentDraw.toFixed(2)} A` : '-- A';
     }
 
     // Update Signal Quality displays
     const phaseNoiseDisplay = this.domCache_.get('phaseNoiseDisplay');
     if (phaseNoiseDisplay) {
-      phaseNoiseDisplay.textContent = `${state.phaseNoise.toFixed(0)} dBc/Hz`;
+      phaseNoiseDisplay.textContent = isPowered ? `${state.phaseNoise.toFixed(0)} dBc/Hz` : '-- dBc/Hz';
     }
 
     const freqErrorDisplay = this.domCache_.get('freqErrorDisplay');
     if (freqErrorDisplay) {
-      const absError = Math.abs(state.frequencyError);
-      if (absError >= 1000) {
-        freqErrorDisplay.textContent = `${(state.frequencyError / 1000).toFixed(1)} kHz`;
+      if (isPowered) {
+        const absError = Math.abs(state.frequencyError);
+        if (absError >= 1000) {
+          freqErrorDisplay.textContent = `${(state.frequencyError / 1000).toFixed(1)} kHz`;
+        } else {
+          freqErrorDisplay.textContent = `${state.frequencyError.toFixed(0)} Hz`;
+        }
       } else {
-        freqErrorDisplay.textContent = `${state.frequencyError.toFixed(0)} Hz`;
+        freqErrorDisplay.textContent = '-- Hz';
       }
     }
 
@@ -253,11 +267,33 @@ export class BUCAdapter {
   }
 
   private updateStagedDisplay_(): void {
-    // Update input fields with staged values
+    const isPowered = this.bucModule.state.isPowered;
     const loFreqInput = this.domCache_.get('loFreqInput') as HTMLInputElement;
     const gainInput = this.domCache_.get('gainInput') as HTMLInputElement;
-    if (loFreqInput) loFreqInput.value = this.stagedLoFrequency_.toString();
-    if (gainInput) gainInput.value = this.stagedGain_.toString();
+
+    if (loFreqInput) {
+      loFreqInput.value = isPowered ? this.stagedLoFrequency_.toString() : '--';
+      loFreqInput.disabled = !isPowered;
+    }
+    if (gainInput) {
+      gainInput.value = isPowered ? this.stagedGain_.toString() : '--';
+      gainInput.disabled = !isPowered;
+    }
+
+    // Disable adjust buttons when powered off
+    this.setControlButtonsEnabled_(isPowered);
+  }
+
+  private setControlButtonsEnabled_(enabled: boolean): void {
+    const buttonKeys = [
+      'loDecCoarse', 'loDecFine', 'loIncFine', 'loIncCoarse',
+      'gainDecCoarse', 'gainDecFine', 'gainIncFine', 'gainIncCoarse',
+      'applyBtn'
+    ];
+    for (const key of buttonKeys) {
+      const btn = this.domCache_.get(key) as HTMLButtonElement;
+      if (btn) btn.disabled = !enabled;
+    }
   }
 
   private applyHandler_(): void {
@@ -289,17 +325,16 @@ export class BUCAdapter {
     if (stateStr === this.lastStateString) return;
     this.lastStateString = stateStr;
 
-    // Update LO Frequency input (input field is now the display)
-    if (state.loFrequency !== undefined) {
-      const input = this.domCache_.get('loFreqInput') as HTMLInputElement;
-      if (input) input.value = state.loFrequency.toString();
-    }
+    const isPowered = state.isPowered ?? this.bucModule.state.isPowered;
 
-    // Update Gain input (input field is now the display)
-    if (state.gain !== undefined) {
-      const input = this.domCache_.get('gainInput') as HTMLInputElement;
-      if (input) input.value = state.gain.toString();
+    // Update staged values from state and refresh displays
+    if (state.loFrequency !== undefined) {
+      this.stagedLoFrequency_ = state.loFrequency;
     }
+    if (state.gain !== undefined) {
+      this.stagedGain_ = state.gain;
+    }
+    this.updateStagedDisplay_();
 
     // Update Power switch
     if (state.isPowered !== undefined) {
@@ -313,56 +348,81 @@ export class BUCAdapter {
       if (muteSwitch) muteSwitch.checked = state.isMuted;
     }
 
-    // Update RF Status displays
-    if (state.outputPower !== undefined) {
-      const display = this.domCache_.get('outputPowerDisplay');
-      if (display) display.textContent = `${state.outputPower.toFixed(1)} dBm`;
+    // Update RF Status displays - show "--" when powered off
+    const outputPowerDisplay = this.domCache_.get('outputPowerDisplay');
+    if (outputPowerDisplay) {
+      if (isPowered && state.outputPower !== undefined) {
+        outputPowerDisplay.textContent = `${state.outputPower.toFixed(1)} dBm`;
+      } else if (!isPowered) {
+        outputPowerDisplay.textContent = '-- dBm';
+      }
     }
 
     // Calculate and display P1dB margin
-    if (state.outputPower !== undefined && state.saturationPower !== undefined) {
-      const p1dbMargin = state.saturationPower - state.outputPower;
-      const display = this.domCache_.get('p1dbMarginDisplay');
-      if (display) display.textContent = `${p1dbMargin.toFixed(1)} dB`;
+    const p1dbMarginDisplay = this.domCache_.get('p1dbMarginDisplay');
+    if (p1dbMarginDisplay) {
+      if (isPowered && state.outputPower !== undefined && state.saturationPower !== undefined) {
+        const p1dbMargin = state.saturationPower - state.outputPower;
+        p1dbMarginDisplay.textContent = `${p1dbMargin.toFixed(1)} dB`;
+      } else if (!isPowered) {
+        p1dbMarginDisplay.textContent = '-- dB';
+      }
     }
 
-    if (state.isExtRefLocked !== undefined) {
-      const status = this.domCache_.get('lockStatus');
-      if (status) {
-        status.textContent = state.isExtRefLocked ? 'Locked' : 'Unlocked';
-        status.className = state.isExtRefLocked
+    // Update lock status
+    const lockStatus = this.domCache_.get('lockStatus');
+    if (lockStatus) {
+      if (isPowered && state.isExtRefLocked !== undefined) {
+        lockStatus.textContent = state.isExtRefLocked ? 'Locked' : 'Unlocked';
+        lockStatus.className = state.isExtRefLocked
           ? 'status-badge status-badge-locked'
           : 'status-badge status-badge-unlocked';
+      } else if (!isPowered) {
+        lockStatus.textContent = '--';
+        lockStatus.className = 'status-badge status-badge-off';
       }
     }
 
     // Update Thermal displays
-    if (state.temperature !== undefined) {
-      const display = this.domCache_.get('temperatureDisplay');
-      if (display) display.textContent = `${state.temperature.toFixed(1)} °C`;
+    const temperatureDisplay = this.domCache_.get('temperatureDisplay');
+    if (temperatureDisplay) {
+      if (isPowered && state.temperature !== undefined) {
+        temperatureDisplay.textContent = `${state.temperature.toFixed(1)} °C`;
+      } else if (!isPowered) {
+        temperatureDisplay.textContent = '-- °C';
+      }
     }
 
-    if (state.currentDraw !== undefined) {
-      const display = this.domCache_.get('currentDisplay');
-      if (display) display.textContent = `${state.currentDraw.toFixed(2)} A`;
+    const currentDisplay = this.domCache_.get('currentDisplay');
+    if (currentDisplay) {
+      if (isPowered && state.currentDraw !== undefined) {
+        currentDisplay.textContent = `${state.currentDraw.toFixed(2)} A`;
+      } else if (!isPowered) {
+        currentDisplay.textContent = '-- A';
+      }
     }
 
     // Update Signal Quality displays
-    if (state.phaseNoise !== undefined) {
-      const display = this.domCache_.get('phaseNoiseDisplay');
-      if (display) display.textContent = `${state.phaseNoise.toFixed(0)} dBc/Hz`;
+    const phaseNoiseDisplay = this.domCache_.get('phaseNoiseDisplay');
+    if (phaseNoiseDisplay) {
+      if (isPowered && state.phaseNoise !== undefined) {
+        phaseNoiseDisplay.textContent = `${state.phaseNoise.toFixed(0)} dBc/Hz`;
+      } else if (!isPowered) {
+        phaseNoiseDisplay.textContent = '-- dBc/Hz';
+      }
     }
 
-    if (state.frequencyError !== undefined) {
-      const display = this.domCache_.get('freqErrorDisplay');
-      if (display) {
-        // Format frequency error - show in Hz or kHz depending on magnitude
+    const freqErrorDisplay = this.domCache_.get('freqErrorDisplay');
+    if (freqErrorDisplay) {
+      if (isPowered && state.frequencyError !== undefined) {
         const absError = Math.abs(state.frequencyError);
         if (absError >= 1000) {
-          display.textContent = `${(state.frequencyError / 1000).toFixed(1)} kHz`;
+          freqErrorDisplay.textContent = `${(state.frequencyError / 1000).toFixed(1)} kHz`;
         } else {
-          display.textContent = `${state.frequencyError.toFixed(0)} Hz`;
+          freqErrorDisplay.textContent = `${state.frequencyError.toFixed(0)} Hz`;
         }
+      } else if (!isPowered) {
+        freqErrorDisplay.textContent = '-- Hz';
       }
     }
 

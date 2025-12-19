@@ -84,17 +84,21 @@ export class LNBAdapter {
    */
   private syncReadOnlyDisplays_(): void {
     const state = this.lnbModule.state;
+    const isPowered = state.isPowered;
 
     // Update noise temperature display
     const noiseTempDisplay = this.domCache_.get('noiseTempDisplay');
     if (noiseTempDisplay) {
-      noiseTempDisplay.textContent = `${state.noiseTemperature.toFixed(0)} K`;
+      noiseTempDisplay.textContent = isPowered ? `${state.noiseTemperature.toFixed(0)} K` : '-- K';
     }
 
     // Update lock status
     const lockStatus = this.domCache_.get('lockStatus');
     if (lockStatus) {
-      if (state.isExtRefLocked) {
+      if (!isPowered) {
+        lockStatus.className = 'status-badge status-badge-off';
+        lockStatus.textContent = '--';
+      } else if (state.isExtRefLocked) {
         lockStatus.className = 'status-badge status-badge-locked';
         lockStatus.textContent = 'Locked';
       } else {
@@ -212,10 +216,33 @@ export class LNBAdapter {
   }
 
   private updateStagedDisplays_(): void {
+    const isPowered = this.lnbModule.state.isPowered;
     const loInput = this.domCache_.get('loFreqInput') as HTMLInputElement;
     const gainInput = this.domCache_.get('gainInput') as HTMLInputElement;
-    if (loInput) loInput.value = this.stagedLoFrequency_.toString();
-    if (gainInput) gainInput.value = this.stagedGain_.toFixed(1);
+
+    if (loInput) {
+      loInput.value = isPowered ? this.stagedLoFrequency_.toString() : '--';
+      loInput.disabled = !isPowered;
+    }
+    if (gainInput) {
+      gainInput.value = isPowered ? this.stagedGain_.toFixed(1) : '--';
+      gainInput.disabled = !isPowered;
+    }
+
+    // Disable adjust buttons when powered off
+    this.setControlButtonsEnabled_(isPowered);
+  }
+
+  private setControlButtonsEnabled_(enabled: boolean): void {
+    const buttonKeys = [
+      'loDecCoarse', 'loDecFine', 'loIncFine', 'loIncCoarse',
+      'gainDecCoarse', 'gainDecFine', 'gainIncFine', 'gainIncCoarse',
+      'applyBtn'
+    ];
+    for (const key of buttonKeys) {
+      const btn = this.domCache_.get(key) as HTMLButtonElement;
+      if (btn) btn.disabled = !enabled;
+    }
   }
 
   private applyHandler_(): void {
@@ -240,6 +267,8 @@ export class LNBAdapter {
     if (stateStr === this.lastStateString) return;
     this.lastStateString = stateStr;
 
+    const isPowered = state.isPowered ?? this.lnbModule.state.isPowered;
+
     // Update staged values from state and refresh displays
     if (state.loFrequency !== undefined) {
       this.stagedLoFrequency_ = state.loFrequency;
@@ -255,21 +284,28 @@ export class LNBAdapter {
       if (powerSwitch) powerSwitch.checked = state.isPowered;
     }
 
-    // Update status indicators
-    if (state.noiseTemperature !== undefined) {
-      const display = this.domCache_.get('noiseTempDisplay');
-      if (display) display.textContent = `${state.noiseTemperature.toFixed(0)} K`;
+    // Update status indicators - show "--" when powered off
+    const noiseTempDisplay = this.domCache_.get('noiseTempDisplay');
+    if (noiseTempDisplay) {
+      if (!isPowered) {
+        noiseTempDisplay.textContent = '-- K';
+      } else if (state.noiseTemperature !== undefined) {
+        noiseTempDisplay.textContent = `${state.noiseTemperature.toFixed(0)} K`;
+      }
     }
 
-    if (state.isExtRefLocked !== undefined) {
-      const status = this.domCache_.get('lockStatus');
-      if (status) {
+    const lockStatus = this.domCache_.get('lockStatus');
+    if (lockStatus) {
+      if (!isPowered) {
+        lockStatus.className = 'status-badge status-badge-off';
+        lockStatus.textContent = '--';
+      } else if (state.isExtRefLocked !== undefined) {
         if (state.isExtRefLocked) {
-          status.className = 'status-badge status-badge-locked';
-          status.textContent = 'Locked';
+          lockStatus.className = 'status-badge status-badge-locked';
+          lockStatus.textContent = 'Locked';
         } else {
-          status.className = 'status-badge status-badge-unlocked';
-          status.textContent = 'Unlocked';
+          lockStatus.className = 'status-badge status-badge-unlocked';
+          lockStatus.textContent = 'Unlocked';
         }
       }
     }

@@ -90,7 +90,7 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
       phaseLockRange: 10000, // ±10 kHz tracking range
 
       // Gain & Power
-      gain: 58 as dB,
+      gain: 0 as dB,
       outputPower: -10 as dBm,
       saturationPower: 15 as dBm, // P1dB point
       gainFlatness: 0.5 as dB, // ±0.5 dB across bandwidth

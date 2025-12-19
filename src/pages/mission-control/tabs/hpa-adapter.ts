@@ -83,57 +83,94 @@ export class HPAAdapter {
    */
   private syncReadOnlyDisplays_(): void {
     const state = this.hpaModule.state;
+    const isPowered = state.isPowered;
+
+    // Sync power switch in case HPA was auto-powered-off by BUC
+    const powerSwitch = this.domCache_.get('powerSwitch') as HTMLInputElement;
+    if (powerSwitch && powerSwitch.checked !== isPowered) {
+      powerSwitch.checked = isPowered;
+      // Also update staged display since power state changed
+      this.updateStagedDisplay_();
+    }
 
     // Update Power Output displays
     const outputPowerDisplay = this.domCache_.get('outputPowerDisplay');
     if (outputPowerDisplay) {
-      outputPowerDisplay.textContent = `${state.outputPower.toFixed(1)} dBm`;
+      outputPowerDisplay.textContent = isPowered ? `${state.outputPower.toFixed(1)} dBm` : '-- dBm';
     }
 
     // Update power meter visualization
-    this.updatePowerMeter_(state.outputPower);
+    if (isPowered) {
+      this.updatePowerMeter_(state.outputPower);
+    } else {
+      this.clearPowerMeter_();
+    }
 
     // Update power in watts
     const powerWatts = this.domCache_.get('powerWatts');
     if (powerWatts) {
-      const watts = Math.pow(10, (state.outputPower - 30) / 10);
-      if (watts >= 1) {
-        powerWatts.textContent = `${watts.toFixed(0)} W`;
+      if (isPowered) {
+        const watts = Math.pow(10, (state.outputPower - 30) / 10);
+        if (watts >= 1) {
+          powerWatts.textContent = `${watts.toFixed(0)} W`;
+        } else {
+          powerWatts.textContent = `${(watts * 1000).toFixed(0)} mW`;
+        }
       } else {
-        powerWatts.textContent = `${(watts * 1000).toFixed(0)} mW`;
+        powerWatts.textContent = '-- W';
       }
+    }
+
+    // Update P1dB display
+    const p1dbDisplay = this.domCache_.get('p1dbDisplay');
+    if (p1dbDisplay) {
+      p1dbDisplay.textContent = isPowered ? '50.0 dBm' : '-- dBm';
     }
 
     // Update temperature display
     const temperatureDisplay = this.domCache_.get('temperatureDisplay');
     if (temperatureDisplay) {
-      temperatureDisplay.textContent = `${state.temperature.toFixed(1)} °C`;
+      temperatureDisplay.textContent = isPowered ? `${state.temperature.toFixed(1)} °C` : '-- °C';
     }
 
     // Update overdrive status
     const overdriveStatus = this.domCache_.get('overdriveStatus');
     if (overdriveStatus) {
-      overdriveStatus.textContent = state.isOverdriven ? 'OVERDRIVE' : 'Normal';
-      overdriveStatus.className = state.isOverdriven
-        ? 'status-badge status-badge-danger'
-        : 'status-badge status-badge-good';
+      if (isPowered) {
+        overdriveStatus.textContent = state.isOverdriven ? 'OVERDRIVE' : 'Normal';
+        overdriveStatus.className = state.isOverdriven
+          ? 'status-badge status-badge-danger'
+          : 'status-badge status-badge-good';
+      } else {
+        overdriveStatus.textContent = '--';
+        overdriveStatus.className = 'status-badge status-badge-off';
+      }
     }
 
     // Update IMD display
     const imdDisplay = this.domCache_.get('imdDisplay');
     if (imdDisplay) {
-      imdDisplay.textContent = `${state.imdLevel.toFixed(1)} dBc`;
+      imdDisplay.textContent = isPowered ? `${state.imdLevel.toFixed(1)} dBc` : '-- dBc';
     }
 
     // Update gain display
     const gainDisplay = this.domCache_.get('gainDisplay');
     if (gainDisplay) {
-      gainDisplay.textContent = `${state.gain.toFixed(1)} dB`;
+      gainDisplay.textContent = isPowered ? `${state.gain.toFixed(1)} dB` : '-- dB';
     }
 
     // Update alarm badge
     const alarms = this.getAlarmsFromModule_();
     this.alarmBadge_.update(alarms);
+  }
+
+  private clearPowerMeter_(): void {
+    const powerMeter = this.domCache_.get('powerMeter');
+    if (!powerMeter) return;
+    const segments = powerMeter.querySelectorAll('.power-segment');
+    segments.forEach(segment => {
+      segment.className = 'power-segment led-off';
+    });
   }
 
   private setupDomCache_() {
@@ -215,8 +252,27 @@ export class HPAAdapter {
   }
 
   private updateStagedDisplay_(): void {
+    const isPowered = this.hpaModule.state.isPowered;
     const backOffInput = this.domCache_.get('backOffInput') as HTMLInputElement;
-    if (backOffInput) backOffInput.value = this.stagedBackOff_.toString();
+
+    if (backOffInput) {
+      backOffInput.value = isPowered ? this.stagedBackOff_.toString() : '--';
+      backOffInput.disabled = !isPowered;
+    }
+
+    // Disable adjust buttons when powered off
+    this.setControlButtonsEnabled_(isPowered);
+  }
+
+  private setControlButtonsEnabled_(enabled: boolean): void {
+    const buttonKeys = [
+      'backOffDecCoarse', 'backOffDecFine', 'backOffIncFine', 'backOffIncCoarse',
+      'applyBtn'
+    ];
+    for (const key of buttonKeys) {
+      const btn = this.domCache_.get(key) as HTMLButtonElement;
+      if (btn) btn.disabled = !enabled;
+    }
   }
 
   private applyHandler_(): void {
@@ -251,11 +307,13 @@ export class HPAAdapter {
     if (stateStr === this.lastStateString) return;
     this.lastStateString = stateStr;
 
-    // Update Back-off input (input field is now the display)
+    const isPowered = state.isPowered ?? this.hpaModule.state.isPowered;
+
+    // Update staged value from state and refresh display
     if (state.backOff !== undefined) {
-      const input = this.domCache_.get('backOffInput') as HTMLInputElement;
-      if (input) input.value = state.backOff.toString();
+      this.stagedBackOff_ = state.backOff;
     }
+    this.updateStagedDisplay_();
 
     // Update Power switch
     if (state.isPowered !== undefined) {
@@ -269,55 +327,86 @@ export class HPAAdapter {
       if (hpaEnableSwitch) hpaEnableSwitch.checked = state.isHpaEnabled;
     }
 
-    // Update Power Output displays
-    if (state.outputPower !== undefined) {
-      const display = this.domCache_.get('outputPowerDisplay');
-      if (display) display.textContent = `${state.outputPower.toFixed(1)} dBm`;
+    // Update Power Output displays - show "--" when powered off
+    const outputPowerDisplay = this.domCache_.get('outputPowerDisplay');
+    if (outputPowerDisplay) {
+      if (isPowered && state.outputPower !== undefined) {
+        outputPowerDisplay.textContent = `${state.outputPower.toFixed(1)} dBm`;
+      } else if (!isPowered) {
+        outputPowerDisplay.textContent = '-- dBm';
+      }
+    }
 
-      // Update power meter visualization
+    // Update power meter visualization
+    if (isPowered && state.outputPower !== undefined) {
       this.updatePowerMeter_(state.outputPower);
+    } else if (!isPowered) {
+      this.clearPowerMeter_();
+    }
 
-      // Update power in watts (convert from dBm)
-      const wattsDisplay = this.domCache_.get('powerWatts');
-      if (wattsDisplay) {
+    // Update power in watts
+    const wattsDisplay = this.domCache_.get('powerWatts');
+    if (wattsDisplay) {
+      if (isPowered && state.outputPower !== undefined) {
         const watts = Math.pow(10, (state.outputPower - 30) / 10);
         if (watts >= 1) {
           wattsDisplay.textContent = `${watts.toFixed(0)} W`;
         } else {
           wattsDisplay.textContent = `${(watts * 1000).toFixed(0)} mW`;
         }
+      } else if (!isPowered) {
+        wattsDisplay.textContent = '-- W';
       }
     }
 
-    // Update P1dB display (constant value from HPA spec)
+    // Update P1dB display
     const p1dbDisplay = this.domCache_.get('p1dbDisplay');
     if (p1dbDisplay) {
-      p1dbDisplay.textContent = '50.0 dBm';
+      p1dbDisplay.textContent = isPowered ? '50.0 dBm' : '-- dBm';
     }
 
-    if (state.temperature !== undefined) {
-      const display = this.domCache_.get('temperatureDisplay');
-      if (display) display.textContent = `${state.temperature.toFixed(1)} °C`;
-    }
-
-    if (state.isOverdriven !== undefined) {
-      const status = this.domCache_.get('overdriveStatus');
-      if (status) {
-        status.textContent = state.isOverdriven ? 'OVERDRIVE' : 'Normal';
-        status.className = state.isOverdriven
-          ? 'status-badge status-badge-danger'
-          : 'status-badge status-badge-good';
+    // Update temperature display
+    const temperatureDisplay = this.domCache_.get('temperatureDisplay');
+    if (temperatureDisplay) {
+      if (isPowered && state.temperature !== undefined) {
+        temperatureDisplay.textContent = `${state.temperature.toFixed(1)} °C`;
+      } else if (!isPowered) {
+        temperatureDisplay.textContent = '-- °C';
       }
     }
 
-    if (state.imdLevel !== undefined) {
-      const display = this.domCache_.get('imdDisplay');
-      if (display) display.textContent = `${state.imdLevel.toFixed(1)} dBc`;
+    // Update overdrive status
+    const overdriveStatus = this.domCache_.get('overdriveStatus');
+    if (overdriveStatus) {
+      if (isPowered && state.isOverdriven !== undefined) {
+        overdriveStatus.textContent = state.isOverdriven ? 'OVERDRIVE' : 'Normal';
+        overdriveStatus.className = state.isOverdriven
+          ? 'status-badge status-badge-danger'
+          : 'status-badge status-badge-good';
+      } else if (!isPowered) {
+        overdriveStatus.textContent = '--';
+        overdriveStatus.className = 'status-badge status-badge-off';
+      }
     }
 
-    if (state.gain !== undefined) {
-      const display = this.domCache_.get('gainDisplay');
-      if (display) display.textContent = `${state.gain.toFixed(1)} dB`;
+    // Update IMD display
+    const imdDisplay = this.domCache_.get('imdDisplay');
+    if (imdDisplay) {
+      if (isPowered && state.imdLevel !== undefined) {
+        imdDisplay.textContent = `${state.imdLevel.toFixed(1)} dBc`;
+      } else if (!isPowered) {
+        imdDisplay.textContent = '-- dBc';
+      }
+    }
+
+    // Update gain display
+    const gainDisplay = this.domCache_.get('gainDisplay');
+    if (gainDisplay) {
+      if (isPowered && state.gain !== undefined) {
+        gainDisplay.textContent = `${state.gain.toFixed(1)} dB`;
+      } else if (!isPowered) {
+        gainDisplay.textContent = '-- dB';
+      }
     }
 
     // Update alarm badge - immediate feedback

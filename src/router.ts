@@ -150,7 +150,7 @@ export class Router {
         Footer.getInstance().makeSmall(true);
         if (params?.scenarioId) {
           ScenarioManager.getInstance().scenario = params.scenarioId;
-          MissionControlPage.create();
+          MissionControlPage.create(this.navigationOptions_);
           MissionControlPage.getInstance().show();
         }
         break;

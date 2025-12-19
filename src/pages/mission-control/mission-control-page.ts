@@ -9,7 +9,11 @@ import { ScenarioManager } from "@app/scenario-manager";
 import { ScenarioDialogManager } from "@app/scenarios/scenario-dialog-manager";
 import { AlarmService } from "@app/services/alarm-service";
 import { SimulationManager } from "@app/simulation/simulation-manager";
+import { Logger } from "@app/logging/logger";
 import { syncEquipmentWithStore } from "@app/sync";
+import { AppState, syncManager } from "@app/sync/storage";
+import { Auth } from "@app/user-account/auth";
+import { App } from "@app/app";
 import { BasePage } from "../base-page";
 import { Body } from "../layout/body/body";
 import { AssetTreeSidebar } from "./asset-tree-sidebar";
@@ -46,12 +50,12 @@ export class MissionControlPage extends BasePage {
     console.log(this.commandBarCenter_, this.timelineDeck_, this.assetTreeSidebar_, this.tabbedCanvas_, this.groundStations_);
   }
 
-  static create(): MissionControlPage {
+  static create(options?: NavigationOptions): MissionControlPage {
     if (this.instance_) {
       throw new Error("AppShellPage instance already exists.");
     }
 
-    this.instance_ = new MissionControlPage();
+    this.instance_ = new MissionControlPage(options);
     return this.instance_;
   }
 
@@ -96,6 +100,7 @@ export class MissionControlPage extends BasePage {
 
     this.timelineDeck_ = new TimelineDeck(this.id);
 
+    // Create ground stations BEFORE UI components (they depend on ground stations existing)
     this.createGroundStationsFromScenario_();
 
     // Initialize components
@@ -122,6 +127,12 @@ export class MissionControlPage extends BasePage {
     // Initialize AlarmService for global alarm aggregation
     AlarmService.getInstance();
 
+    // Load checkpoint from backend and write to local storage (before sync)
+    await this.loadCheckpointIfExists_();
+
+    // Sync equipment with storage - will read checkpoint state from local storage if loaded
+    syncEquipmentWithStore(null, this.groundStations_);
+
     await this.initializeObjectivesAndDialogs_();
   }
 
@@ -135,8 +146,93 @@ export class MissionControlPage extends BasePage {
 
     // Initialize equipment immediately so AlarmService can poll alarms
     this.groundStations_.forEach(gs => gs.initializeEquipment());
+  }
 
-    syncEquipmentWithStore(null, this.groundStations_);
+  /**
+   * Load checkpoint from backend if it exists for the current scenario.
+   * Manually syncs equipment states since:
+   * 1. syncFromStorage in SyncManager early-returns when equipment is null
+   * 2. GroundStation.sync() checks UUID which changes on each page load
+   */
+  private async loadCheckpointIfExists_(): Promise<void> {
+    if (!this.progressSaveManager_) {
+      Logger.warn('loadCheckpointIfExists_: progressSaveManager not initialized');
+      return;
+    }
+
+    // Wait for auth to be ready before checking login status
+    await App.authReady;
+
+    // Check if user is logged in before trying to load from backend
+    const isLoggedIn = await Auth.isLoggedIn();
+    if (!isLoggedIn) {
+      Logger.info('loadCheckpointIfExists_: User not logged in, skipping checkpoint load');
+      return;
+    }
+
+    try {
+      const scenario = ScenarioManager.getInstance();
+      Logger.info(`loadCheckpointIfExists_: Loading checkpoint for scenario: ${scenario.data.id}`);
+
+      const checkpoint = await this.progressSaveManager_.loadCheckpoint(scenario.data.id) as {
+        state: AppState;
+      };
+
+      Logger.info(`loadCheckpointIfExists_: Checkpoint result:`, checkpoint ? 'found' : 'not found');
+
+      if (checkpoint?.state) {
+        // Manually sync ground station equipment states
+        // Note: GroundStation.sync() checks UUID which won't match (UUIDs are regenerated on page load)
+        // So we need to sync equipment directly by index
+        const gsStates = checkpoint.state.groundStationStates;
+        Logger.info(`loadCheckpointIfExists_: Found ${gsStates?.length ?? 0} ground station states to restore`);
+
+        if (gsStates) {
+          gsStates.forEach((gsState, gsIndex) => {
+            const gs = this.groundStations_[gsIndex];
+            if (!gs || !gsState.equipment) return;
+
+            // Sync antennas
+            gsState.equipment.antennas?.forEach((antennaState, i) => {
+              gs.antennas[i]?.sync(antennaState);
+            });
+
+            // Sync RF front ends (includes GPSDO, LNB, BUC, HPA, Filter)
+            gsState.equipment.rfFrontEnds?.forEach((rfState, i) => {
+              gs.rfFrontEnds[i]?.sync(rfState);
+            });
+
+            // Sync spectrum analyzers
+            gsState.equipment.spectrumAnalyzers?.forEach((specState, i) => {
+              gs.spectrumAnalyzers[i]?.sync(specState);
+            });
+
+            // Sync transmitters
+            gsState.equipment.transmitters?.forEach((txState, i) => {
+              gs.transmitters[i]?.sync(txState);
+            });
+
+            // Sync receivers
+            gsState.equipment.receivers?.forEach((rxState, i) => {
+              gs.receivers[i]?.sync(rxState);
+            });
+
+            Logger.info(`loadCheckpointIfExists_: Synced equipment for ground station ${gsIndex}`);
+          });
+        }
+
+        // Write checkpoint state to local storage for persistence
+        await syncManager['provider'].write(checkpoint.state);
+
+        // Set flag so objectives get restored and intro dialog is skipped
+        this.navigationOptions_.continueFromCheckpoint = true;
+
+        Logger.info(`Checkpoint loaded for scenario: ${scenario.data.id}`);
+      }
+    } catch (error) {
+      Logger.error('Failed to load checkpoint:', error);
+      // Continue without restoring - mission will start fresh
+    }
   }
 
   /**

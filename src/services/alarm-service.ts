@@ -57,6 +57,9 @@ export class AlarmService {
   }
 
   private collectGroundStationAlarms_(gs: GroundStation): AggregatedAlarm[] {
+    // Skip non-operational locations
+    if (!gs.state.isOperational) return [];
+
     const alarms: AggregatedAlarm[] = [];
     const assetId = gs.state.id;
 

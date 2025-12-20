@@ -126,7 +126,8 @@ export class SpectralDensityPlot extends RTSAScreen {
     if (!this.specA.state.isPaused && this.running) {
       const now = Date.now();
       const sweepTimeMs = 3000 * (this.specA.state.span / (this.specA.state.rbw ?? this.specA.state.span) ** 2);
-      if (now - this.lastDrawTime > sweepTimeMs) {
+      const minIntervalMs = 1000 / this.specA.state.refreshRate;
+      if (now - this.lastDrawTime > Math.max(sweepTimeMs, minIntervalMs)) {
         // Invalidate grid cache if amplitude range changed
         if (this.cachedMinAmplitude !== this.specA.state.minAmplitude ||
           this.cachedMaxAmplitude !== this.specA.state.maxAmplitude ||
@@ -205,7 +206,8 @@ export class SpectralDensityPlot extends RTSAScreen {
     if (!this.specA.state.isPaused && this.running) {
       const now = Date.now();
       const sweepTimeMs = 3000 * (this.specA.state.span / (this.specA.state.rbw ?? this.specA.state.span) ** 2);
-      if (now - this.lastDrawTime > sweepTimeMs) {
+      const minIntervalMs = 1000 / this.specA.state.refreshRate;
+      if (now - this.lastDrawTime > Math.max(sweepTimeMs, minIntervalMs)) {
         const isDualScreenMode = this.canvas.id.endsWith('-spectral');
 
         // Generate cached grid+labels ImageData if needed

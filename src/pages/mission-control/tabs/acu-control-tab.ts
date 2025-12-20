@@ -708,22 +708,22 @@ export class ACUControlTab extends BaseElement {
       moveToTargetBtn.disabled = state.trackingMode !== 'program-track' || state.targetSatelliteId === null;
     }
 
-    // Sync satellite dropdown selection
+    // Sync satellite dropdown selection (skip if user is interacting)
     const satelliteSelect = qs<HTMLSelectElement>('#satellite-select', this.dom_);
-    if (satelliteSelect) {
+    if (satelliteSelect && document.activeElement !== satelliteSelect) {
       satelliteSelect.value = state.targetSatelliteId?.toString() ?? '';
     }
 
-    // Sync beacon frequency input
+    // Sync beacon frequency input (skip if user is typing)
     const beaconFreqInput = qs<HTMLInputElement>('#beacon-freq', this.dom_);
-    if (beaconFreqInput) {
+    if (beaconFreqInput && document.activeElement !== beaconFreqInput) {
       const freqMHz = (state.stagedBeaconFrequencyHz ?? state.beaconFrequencyHz) / 1e6;
       beaconFreqInput.value = freqMHz.toString();
     }
 
-    // Sync beacon search bandwidth input
+    // Sync beacon search bandwidth input (skip if user is typing)
     const beaconBwInput = qs<HTMLInputElement>('#beacon-search-bw', this.dom_);
-    if (beaconBwInput) {
+    if (beaconBwInput && document.activeElement !== beaconBwInput) {
       const bwKHz = (state.stagedBeaconSearchBwHz ?? state.beaconSearchBwHz) / 1e3;
       beaconBwInput.value = bwKHz.toString();
     }

@@ -143,6 +143,9 @@ export abstract class AntennaCore extends BaseEquipment {
   /** Antenna physical configuration */
   config: AntennaConfig;
 
+  /** Tolerance for program-track lock detection (degrees) */
+  private static readonly LOCK_TOLERANCE_DEG = 1.5;
+
   /** Timeout ID for lock acquisition to prevent memory leaks */
   private lockAcquisitionTimeout_: number | null = null;
 
@@ -280,6 +283,13 @@ export abstract class AntennaCore extends BaseEquipment {
     // Slew actual position toward target at maxRate_deg_s
     this.updateSlew_();
 
+    // Check for program-track lock when antenna arrives at target
+    if (this.state.trackingMode === 'program-track' &&
+        this.state.targetSatelliteId !== null &&
+        !this.state.isSlewing) {
+      this.checkProgramTrackLock_();
+    }
+
     this.updateSignals_();
     this.computeRfMetrics_();
     this.syncDomWithState();
@@ -328,6 +338,35 @@ export abstract class AntennaCore extends BaseEquipment {
 
     // Update slewing flag
     this.state.isSlewing = isMoving;
+  }
+
+  /**
+   * Check if antenna is locked on target satellite in program-track mode.
+   * Sets isLocked = true when within tolerance, false otherwise.
+   */
+  private checkProgramTrackLock_(): void {
+    // targetSatelliteId is guaranteed non-null by caller check
+    const sat = SimulationManager.getInstance().getSatByNoradId(this.state.targetSatelliteId!);
+    if (!sat) {
+      if (this.state.isLocked) {
+        this.state.isLocked = false;
+        this.notifyStateChange_();
+      }
+      return;
+    }
+
+    const azDiff = Math.abs(this.state.azimuth - sat.az);
+    const elDiff = Math.abs(this.state.elevation - sat.el);
+    const withinTolerance = azDiff <= AntennaCore.LOCK_TOLERANCE_DEG &&
+                            elDiff <= AntennaCore.LOCK_TOLERANCE_DEG;
+
+    if (withinTolerance && !this.state.isLocked) {
+      this.state.isLocked = true;
+      this.notifyStateChange_();
+    } else if (!withinTolerance && this.state.isLocked) {
+      this.state.isLocked = false;
+      this.notifyStateChange_();
+    }
   }
 
   sync(data: Partial<AntennaState>): void {

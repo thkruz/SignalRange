@@ -109,14 +109,23 @@
   top: 0;
   height: 100%;
   width: 0%;
-  background: linear-gradient(90deg,
-    #22c55e 0%,
-    #84cc16 25%,
-    #eab308 50%,
-    #f97316 75%,
-    #ef4444 100%
-  );
-  transition: width 0.3s ease;
+  background-color: #dc3545; /* Default red */
+  transition: width 0.3s ease, background-color 0.3s ease;
+}
+
+/* C/N < 5 dB: Red (unusable) */
+.beacon-strength-fill.cn-red {
+  background-color: #dc3545;
+}
+
+/* 5 <= C/N < 10 dB: Amber (marginal) */
+.beacon-strength-fill.cn-amber {
+  background-color: #ffc107;
+}
+
+/* C/N >= 10 dB: Green (healthy) */
+.beacon-strength-fill.cn-green {
+  background-color: #22c55e;
 }
 
 .beacon-strength-value {

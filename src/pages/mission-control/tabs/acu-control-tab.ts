@@ -150,10 +150,10 @@ export class ACUControlTab extends BaseElement {
                   START TRACKING
                 </button>
                 <div class="beacon-strength-container">
-                  <label class="form-label">Beacon Signal</label>
+                  <label class="form-label">Beacon C/N</label>
                   <div class="beacon-strength-bar">
                     <div class="beacon-strength-fill" id="beacon-strength-fill"></div>
-                    <span class="beacon-strength-value" id="beacon-power-value">-- dBm</span>
+                    <span class="beacon-strength-value" id="beacon-cn-value">-- dB</span>
                   </div>
                   <div class="d-flex justify-content-between mt-1">
                     <span class="text-muted small">Lock Status:</span>
@@ -611,18 +611,34 @@ export class ACUControlTab extends BaseElement {
       }
     }
 
-    // Sync beacon power display
-    const beaconPowerEl = qs('#beacon-power-value', this.dom_);
-    const beaconFillEl = qs('#beacon-strength-fill', this.dom_);
+    // Sync beacon C/N display
+    const beaconCnEl = qs('#beacon-cn-value', this.dom_);
+    const beaconFillEl = qs('#beacon-strength-fill', this.dom_) as HTMLElement;
     const beaconLockEl = qs('#beacon-lock-status', this.dom_);
 
-    if (beaconPowerEl && state.beaconPower !== null) {
-      beaconPowerEl.textContent = `${state.beaconPower.toFixed(1)} dBm`;
+    if (beaconCnEl) {
+      beaconCnEl.textContent = state.beaconCN !== null ? `${state.beaconCN.toFixed(1)} dB` : '-- dB';
     }
-    if (beaconFillEl && state.beaconPower !== null) {
-      // Map -120 to -40 dBm to 0-100%
-      const percent = Math.max(0, Math.min(100, ((state.beaconPower + 120) / 80) * 100));
-      (beaconFillEl as HTMLElement).style.width = `${percent}%`;
+    if (beaconFillEl) {
+      if (state.beaconCN !== null) {
+        // Map 0 to 30 dB C/N to 0-100%
+        const percent = Math.max(0, Math.min(100, (state.beaconCN / 30) * 100));
+        beaconFillEl.style.width = `${percent}%`;
+
+        // Apply color class based on C/N thresholds
+        // Red: < 5 dB, Amber: 5-10 dB, Green: >= 10 dB
+        beaconFillEl.classList.remove('cn-red', 'cn-amber', 'cn-green');
+        if (state.beaconCN < 5) {
+          beaconFillEl.classList.add('cn-red');
+        } else if (state.beaconCN < 10) {
+          beaconFillEl.classList.add('cn-amber');
+        } else {
+          beaconFillEl.classList.add('cn-green');
+        }
+      } else {
+        beaconFillEl.style.width = '0%';
+        beaconFillEl.classList.remove('cn-red', 'cn-amber', 'cn-green');
+      }
     }
     if (beaconLockEl) {
       beaconLockEl.textContent = state.isBeaconLocked ? 'LOCKED' : 'SEARCHING';

@@ -75,10 +75,14 @@ export interface AntennaState {
   // === Beacon Tracking ===
   /** Beacon frequency in Hz */
   beaconFrequencyHz: number;
-  /** Beacon search bandwidth in Hz */
+  /** Beacon search bandwidth in Hz (where to LOOK for the beacon - wider) */
   beaconSearchBwHz: number;
+  /** Beacon tracking bandwidth in Hz (beacon receiver integration bandwidth for C/N - narrow) */
+  beaconTrackingBwHz: number;
   /** Current beacon power measurement in dBm, null if not tracking */
   beaconPower: number | null;
+  /** Current beacon C/N ratio in dB, null if not tracking */
+  beaconCN: number | null;
   /** Is beacon locked */
   isBeaconLocked: boolean;
 
@@ -138,6 +142,11 @@ export abstract class AntennaCore extends BaseEquipment {
   protected lastRenderState: AntennaState;
   protected rfFrontEnd_: RFFrontEndCore | null = null;
 
+  /** Get the attached RF front-end (for signal path calculations) */
+  get rfFrontEnd(): RFFrontEndCore | null {
+    return this.rfFrontEnd_;
+  }
+
   transmitters: Transmitter[] = [];
 
   /** Antenna physical configuration */
@@ -184,7 +193,9 @@ export abstract class AntennaCore extends BaseEquipment {
       // Beacon Tracking
       beaconFrequencyHz: 3_948_000_000, // Default 3.948 GHz C-band beacon
       beaconSearchBwHz: 500_000, // Default 500 kHz search bandwidth
+      beaconTrackingBwHz: 1_000, // Default 25 kHz tracking bandwidth (typical CW beacon)
       beaconPower: null,
+      beaconCN: null,
       isBeaconLocked: false,
       // Environmental Controls
       isHeaterEnabled: false,
@@ -285,8 +296,8 @@ export abstract class AntennaCore extends BaseEquipment {
 
     // Check for program-track lock when antenna arrives at target
     if (this.state.trackingMode === 'program-track' &&
-        this.state.targetSatelliteId !== null &&
-        !this.state.isSlewing) {
+      this.state.targetSatelliteId !== null &&
+      !this.state.isSlewing) {
       this.checkProgramTrackLock_();
     }
 
@@ -358,7 +369,7 @@ export abstract class AntennaCore extends BaseEquipment {
     const azDiff = Math.abs(this.state.azimuth - sat.az);
     const elDiff = Math.abs(this.state.elevation - sat.el);
     const withinTolerance = azDiff <= AntennaCore.LOCK_TOLERANCE_DEG &&
-                            elDiff <= AntennaCore.LOCK_TOLERANCE_DEG;
+      elDiff <= AntennaCore.LOCK_TOLERANCE_DEG;
 
     if (withinTolerance && !this.state.isLocked) {
       this.state.isLocked = true;

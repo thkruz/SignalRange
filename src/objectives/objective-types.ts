@@ -39,6 +39,8 @@ export type ConditionType =
   | 'hpa-back-off-set' // HPA back-off level configured
   | 'hpa-not-overdriven' // HPA not in overdrive (IMD check)
   | 'hpa-output-power-set' // HPA output power above threshold
+  | 'receiver-signal-locked' // Receiver modem has demodulation lock
+  | 'receiver-snr-threshold' // Receiver modem C/N ratio meets threshold
   | 'custom'; // Custom condition with evaluator function
 
 /**
@@ -111,6 +113,10 @@ export interface ConditionParams {
   maxImdLevel?: number;
   /** For hpa-output-power-set: minimum output power in dBm */
   minOutputPower?: number;
+  /** For receiver-signal-locked/receiver-snr-threshold: which modem (1-4), defaults to active modem */
+  modemNumber?: number;
+  /** For receiver-snr-threshold: minimum C/N ratio in dB */
+  minCNRatio?: number;
   /** Additional context-specific parameters */
   [key: string]: unknown;
 }

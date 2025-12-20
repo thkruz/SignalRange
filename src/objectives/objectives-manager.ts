@@ -828,6 +828,29 @@ export class ObjectivesManager {
         return false;
       }
 
+      case 'receiver-signal-locked': {
+        return this.evaluateEquipment_(gs.receivers, condition.params, (receiver) => {
+          const modemNum = condition.params?.modemNumber ?? receiver.state.activeModem;
+          const modem = receiver.state.modems.find(m => m.modemNumber === modemNum);
+          if (!modem?.isPowered) return false;
+
+          const signalInfo = receiver.getSignalsInBandwidth(modem);
+          return signalInfo.hasLock;
+        });
+      }
+
+      case 'receiver-snr-threshold': {
+        const minCNRatio = condition.params?.minCNRatio ?? 10;
+        return this.evaluateEquipment_(gs.receivers, condition.params, (receiver) => {
+          const modemNum = condition.params?.modemNumber ?? receiver.state.activeModem;
+          const modem = receiver.state.modems.find(m => m.modemNumber === modemNum);
+          if (!modem?.isPowered) return false;
+
+          const snr = receiver.getSnrForModem(modem);
+          return snr !== null && snr >= minCNRatio;
+        });
+      }
+
       default:
         console.warn(`Unknown condition type: ${condition.type}`);
         return false;

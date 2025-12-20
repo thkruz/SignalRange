@@ -4,6 +4,7 @@ import { html } from '@app/engine/utils/development/formatter';
 import { errorManagerInstance } from '@app/engine/utils/errorManager';
 import { Sfx } from '@app/sound/sfx-enum';
 import SoundManager from '@app/sound/sound-manager';
+import { syncManager } from '@app/sync/storage';
 import { Auth } from './auth';
 import { getUserDataService } from './user-data-service';
 
@@ -164,13 +165,27 @@ export class ModalProfile extends DraggableModal {
 
       const userDataService = getUserDataService();
 
+      console.log('[ClearProgress] Starting clear process...');
+
       // Clear only SignalRange-specific fields, preserving KeepTrack data
-      await userDataService.updateUserProgress({
+      const result = await userDataService.updateUserProgress({
         completedScenarios: [],
         scenarioProgress: {},
         totalScore: 0,
         signalForge: [],
       });
+      console.log('[ClearProgress] Backend update result:', result);
+
+      // Verify the clear worked
+      const verifyProgress = await userDataService.getUserProgress();
+      console.log('[ClearProgress] Verification - signalForge after clear:', verifyProgress.signalForge);
+
+      // Clear local sync storage to ensure objectives reset on reload
+      await syncManager.clearStorage();
+      console.log('[ClearProgress] LocalStorage cleared');
+
+      // Verify localStorage is empty
+      console.log('[ClearProgress] __APP_STORE__ after clear:', localStorage.getItem('__APP_STORE__'));
 
       // Refresh the page to reflect changes
       window.location.reload();

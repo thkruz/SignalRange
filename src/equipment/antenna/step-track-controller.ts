@@ -118,6 +118,7 @@ export class StepTrackController {
     // Check if we have a signal
     if (currentPower === null || currentPower < this.lockThreshold_) {
       this.antenna_.state.isBeaconLocked = false;
+      this.antenna_.state.isLocked = false;
 
       // If signal is getting weaker, reverse direction before stepping
       if (this.lastPower_ !== null && currentPower !== null && currentPower < this.lastPower_) {
@@ -148,6 +149,7 @@ export class StepTrackController {
       // If consistently improving, we're locked
       if (this.consecutiveImprovements_ >= 3) {
         this.antenna_.state.isBeaconLocked = true;
+        this.antenna_.state.isLocked = true;
       }
 
       // Potentially increase step size if consistently improving
@@ -171,6 +173,7 @@ export class StepTrackController {
     } else {
       // Power stable - we're at or near the peak
       this.antenna_.state.isBeaconLocked = true;
+      this.antenna_.state.isLocked = true;
       // Hold position, don't step - only resume if signal degrades
       this.lastPower_ = currentPower;
       return;

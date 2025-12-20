@@ -190,13 +190,18 @@ export class SignalPathManager {
       case TapPoint.RX_IF: {
         // Compare external noise (with gain) vs internal spectrum analyzer noise
         const NF = 0.5; // Spectrum analyzer noise figure
-        let externalNoiseFloor = this.rfFrontEnd_.lnbModule.getNoiseFloor(bandwidth) + this.getTotalGainTo(tapPoint);
+
+        // Effective noise bandwidth is the minimum of IF filter BW and requested BW (RBW)
+        const filterBandwidthHz = this.rfFrontEnd_.filterModule.state.bandwidth * 1e6 as Hertz;
+        const effectiveBandwidth = Math.min(filterBandwidthHz, bandwidth) as Hertz;
+
+        let externalNoiseFloor = this.rfFrontEnd_.lnbModule.getNoiseFloor(effectiveBandwidth) + this.getTotalGainTo(tapPoint);
 
         if (this.rfFrontEnd_.filterModule.state.isPowered === false) {
           externalNoiseFloor = Number.NEGATIVE_INFINITY as dBm; // No signal if filter is unpowered
         }
 
-        const internalNoiseFloor = -174 + 10 * Math.log10(bandwidth) + NF;
+        const internalNoiseFloor = -174 + 10 * Math.log10(effectiveBandwidth) + NF;
 
         const isInternalNoiseGreater = internalNoiseFloor > externalNoiseFloor;
 

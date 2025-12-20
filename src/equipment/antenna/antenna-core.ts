@@ -1011,7 +1011,7 @@ export abstract class AntennaCore extends BaseEquipment {
     }
 
     // Warning conditions
-    if (this.state.isAutoTrackEnabled && !this.state.isLocked) {
+    if (this.state.isAutoTrackEnabled && !this.state.isLocked && !this.state.isBeaconLocked) {
       alarms.push({ severity: 'warning', message: 'ACQUIRING LOCK...' });
     }
 

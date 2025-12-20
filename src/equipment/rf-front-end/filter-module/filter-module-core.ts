@@ -1,5 +1,5 @@
 import { SignalOrigin } from "@app/SignalOrigin";
-import { dBm, IfSignal, MHz, RfFrequency } from '@app/types';
+import { dBm, IfSignal, MHz } from '@app/types';
 import { RFFrontEndCore } from "../rf-front-end-core";
 import { RFFrontEndModule } from '../rf-front-end-module';
 
@@ -14,9 +14,13 @@ export interface FilterBandwidthConfig {
 }
 
 /**
- * Available filter bandwidth settings (0-12, where 0 = Off)
+ * Available filter bandwidth settings (0-16)
  */
 export const FILTER_BANDWIDTH_CONFIGS: FilterBandwidthConfig[] = [
+  { bandwidth: 0.0001 as MHz, noiseFloor: -154, insertionLoss: 6.0, label: '100 Hz' },
+  { bandwidth: 0.0005 as MHz, noiseFloor: -147, insertionLoss: 5.5, label: '500 Hz' },
+  { bandwidth: 0.001 as MHz, noiseFloor: -144, insertionLoss: 5.0, label: '1 kHz' },
+  { bandwidth: 0.01 as MHz, noiseFloor: -134, insertionLoss: 4.0, label: '10 kHz' },
   { bandwidth: 0.03 as MHz, noiseFloor: -129, insertionLoss: 3.5, label: '30 kHz' },
   { bandwidth: 0.1 as MHz, noiseFloor: -124, insertionLoss: 3.2, label: '100 kHz' },
   { bandwidth: 0.2 as MHz, noiseFloor: -121, insertionLoss: 3.0, label: '200 kHz' },
@@ -37,10 +41,9 @@ export const FILTER_BANDWIDTH_CONFIGS: FilterBandwidthConfig[] = [
  */
 export interface IfFilterBankState {
   isPowered: boolean;
-  bandwidthIndex: number; // Index into FILTER_BANDWIDTH_CONFIGS (0-13)
+  bandwidthIndex: number; // Index into FILTER_BANDWIDTH_CONFIGS (0-16)
   bandwidth: MHz; // MHz
   insertionLoss: number; // dB
-  centerFrequency: RfFrequency; // Hz
   noiseFloor: number; // dBm
 }
 
@@ -59,10 +62,9 @@ export abstract class IfFilterBankModuleCore extends RFFrontEndModule<IfFilterBa
   static getDefaultState(): IfFilterBankState {
     return {
       isPowered: true,
-      bandwidthIndex: 9, // 20 MHz
+      bandwidthIndex: 12, // 20 MHz (index shifted due to narrow filter options)
       bandwidth: 20 as MHz, // MHz
       insertionLoss: 2.0, // dB
-      centerFrequency: 5800 * 1e6 as RfFrequency, // 5.8 GHz
       noiseFloor: -101, // dBm
     };
   }
@@ -75,18 +77,20 @@ export abstract class IfFilterBankModuleCore extends RFFrontEndModule<IfFilterBa
    * Update component state and check for faults
    */
   update(): void {
+    const filterBandwidthHz = this.state.bandwidth * 1e6;
+
     this.outputSignals = this.inputSignals.map((sig: IfSignal) => {
-      if (sig.bandwidth > this.state.bandwidth * 1e6) {
-        // Apply additional attenuation for out-of-band signals
-        // Ps,out​=Ps​+10log10​(Bs​Bf​​)
-        const bandwidthRatio = sig.bandwidth / ((this.state.bandwidth * 1e6) / 2);
-        const attenuationDb = 10 * Math.log10(bandwidthRatio);
-        sig.power = sig.power - attenuationDb as dBm;
+      let power = sig.power;
+
+      if (sig.bandwidth > filterBandwidthHz) {
+        // Signal wider than filter - bandwidth ratio attenuation
+        const bandwidthRatio = sig.bandwidth / filterBandwidthHz;
+        power = (power - 10 * Math.log10(bandwidthRatio)) as dBm;
       }
 
       return {
         ...sig,
-        power: (sig.power - this.state.insertionLoss) as dBm,
+        power: (power - this.state.insertionLoss) as dBm,
         origin: SignalOrigin.IF_FILTER_BANK,
       };
     });

@@ -1,0 +1,233 @@
+/**
+ * Quiz Modal Styles
+ * Uses the application's dark theme with accent colors for feedback
+ */
+
+.quiz-modal-content {
+  padding: 1rem;
+  color: var(--hm-text, #eaeaea);
+  font-family: var(--tblr-font-sans-serif, system-ui, -apple-system, sans-serif);
+}
+
+/* Header with character avatar */
+.quiz-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--hm-border, #444);
+}
+
+.quiz-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 2px solid var(--hm-accent, #ff3535);
+  object-fit: cover;
+}
+
+.quiz-header-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.quiz-character-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.quiz-prompt-label {
+  font-size: 0.8rem;
+  opacity: 0.7;
+}
+
+/* Question text */
+.quiz-question {
+  font-size: 1.1rem;
+  line-height: 1.5;
+  margin-bottom: 1.25rem;
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+}
+
+/* Options container */
+.quiz-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+/* Individual option button */
+.quiz-option-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px solid var(--hm-border, #444);
+  border-radius: 6px;
+  color: var(--hm-text, #eaeaea);
+  cursor: pointer;
+  text-align: left;
+  font-size: 0.95rem;
+  transition: all 0.15s ease;
+}
+
+.quiz-option-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--hm-accent, #ff3535);
+}
+
+.quiz-option-btn:focus {
+  outline: none;
+  border-color: var(--hm-accent, #ff3535);
+  box-shadow: 0 0 0 2px rgba(255, 53, 53, 0.3);
+}
+
+.quiz-option-btn.disabled,
+.quiz-option-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Option label (A, B, C, D) */
+.quiz-option-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: var(--hm-border, #444);
+  border-radius: 50%;
+  font-weight: 700;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+.quiz-option-text {
+  flex: 1;
+}
+
+/* Correct answer state */
+.quiz-option-btn.correct {
+  background: rgba(19, 121, 40, 0.2);
+  border-color: #137928;
+}
+
+.quiz-option-btn.correct .quiz-option-label {
+  background: #137928;
+}
+
+/* Incorrect answer state */
+.quiz-option-btn.incorrect {
+  background: rgba(255, 53, 53, 0.2);
+  border-color: #ff3535;
+}
+
+.quiz-option-btn.incorrect .quiz-option-label {
+  background: #ff3535;
+}
+
+/* Feedback area */
+.quiz-feedback {
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.feedback-correct,
+.feedback-incorrect {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  font-size: 1.1rem;
+  margin-bottom: 0.5rem;
+}
+
+.feedback-correct {
+  color: #137928;
+}
+
+.feedback-correct .feedback-icon {
+  font-size: 1.5rem;
+}
+
+.feedback-incorrect {
+  color: #ff3535;
+}
+
+.feedback-incorrect .feedback-icon {
+  font-size: 1.5rem;
+}
+
+.feedback-explanation {
+  margin: 0.75rem 0 1rem;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  opacity: 0.9;
+}
+
+/* Continue button */
+.quiz-continue-btn {
+  display: block;
+  width: 100%;
+  padding: 0.75rem 1.5rem;
+  background: #137928;
+  border: none;
+  border-radius: 6px;
+  color: white;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.quiz-continue-btn:hover {
+  background: #0f5f20;
+}
+
+.quiz-continue-btn:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(19, 121, 40, 0.4);
+}
+
+/* Penalty notice */
+.quiz-penalty-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(255, 53, 53, 0.1);
+  border-radius: 4px;
+  font-size: 0.85rem;
+}
+
+.penalty-text {
+  color: #ff3535;
+  font-weight: 600;
+}
+
+.penalty-total {
+  opacity: 0.7;
+}
+
+/* Modal container overrides for quiz */
+#quiz-modal-container.modal {
+  z-index: 100001;
+}
+
+#quiz-modal.draggable-box {
+  max-width: 550px;
+}
+
+#quiz-modal .draggable-box__content {
+  max-height: 80vh;
+  overflow-y: auto;
+}

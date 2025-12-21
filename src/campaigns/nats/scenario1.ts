@@ -280,12 +280,12 @@ export const scenario1Data: ScenarioData = {
     isExtraSatellitesVisible: true,
     satellites: [
       new Satellite(
-        1,
+        61525,
         [
           {
             signalId: 'MARINER-1-Payload',
             serverId: 1,
-            noradId: 1,
+            noradId: 61525,
             /** Must be the uplinkl to match the antenna in simulation */
             frequency: 5943e6 as RfFrequency,
             polarization: 'H',
@@ -305,7 +305,7 @@ export const scenario1Data: ScenarioData = {
             frequency: 3902.5e6 as RfFrequency,
             signalId: 'MARINER-1-Beacon',
             serverId: 1,
-            noradId: 1,
+            noradId: 61525,
             power: 40 as dBm, // 10 W
             bandwidth: 1e3 as Hertz,
             modulation: 'CW' as ModulationType,

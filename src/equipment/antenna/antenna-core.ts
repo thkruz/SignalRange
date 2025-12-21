@@ -7,6 +7,7 @@ import { Events } from "../../events/events";
 import { SimulationManager } from "../../simulation/simulation-manager";
 import { dB, dBm, Hertz, RfSignal } from "../../types";
 import { AlarmStatus, BaseEquipment } from '../base-equipment';
+import { TapPoint } from "../rf-front-end/coupler-module/coupler-module";
 import { RFFrontEndCore } from "../rf-front-end/rf-front-end-core";
 import { Satellite } from "../satellite/satellite";
 import { Transmitter } from "../transmitter/transmitter";
@@ -161,6 +162,15 @@ export abstract class AntennaCore extends BaseEquipment {
   /** Step track controller for beacon signal maximization */
   protected stepTrackController_: StepTrackController;
 
+  /** Smoothed C/N for beacon display (EMA) */
+  private smoothedBeaconCN_: number | null = null;
+
+  /** Smoothing factor for beacon C/N display */
+  private readonly beaconCNSmoothingAlpha_: number = 0.3;
+
+  /** C/N threshold to acquire beacon lock */
+  private readonly beaconLockAcquireCN_: number = 6.5;
+
   constructor(
     configId: ANTENNA_CONFIG_KEYS = ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK,
     initialState: Partial<AntennaState> = {},
@@ -288,6 +298,11 @@ export abstract class AntennaCore extends BaseEquipment {
   update(): void {
     // Update step track controller if in step-track mode
     if (this.state.trackingMode === 'step-track' && this.state.isPowered && this.state.isOperational) {
+      // Restart controller if state says tracking enabled but controller is inactive
+      // (handles page refresh where state is restored but controller wasn't started)
+      if (this.state.isAutoTrackEnabled && !this.stepTrackController_.isActive) {
+        this.stepTrackController_.start();
+      }
       this.stepTrackController_.update();
     }
 
@@ -299,6 +314,12 @@ export abstract class AntennaCore extends BaseEquipment {
       this.state.targetSatelliteId !== null &&
       !this.state.isSlewing) {
       this.checkProgramTrackLock_();
+    }
+
+    // Update beacon metrics for all active modes (manual, program-track)
+    // Step-track controller handles its own beacon measurement with specialized smoothing
+    if (this.state.trackingMode !== 'step-track') {
+      this.updateBeaconMetrics_();
     }
 
     this.updateSignals_();
@@ -575,6 +596,8 @@ export abstract class AntennaCore extends BaseEquipment {
     this.state.isAutoTrackEnabled = false;
     this.state.isAutoTrackSwitchUp = false;
     this.state.beaconPower = null;
+    this.state.beaconCN = null;
+    this.smoothedBeaconCN_ = null;
 
     switch (mode) {
       case 'stow':
@@ -669,6 +692,104 @@ export abstract class AntennaCore extends BaseEquipment {
   handleBeaconSearchBwChange(bandwidthHz: number): void {
     this.state.beaconSearchBwHz = bandwidthHz;
     this.notifyStateChange_();
+  }
+
+  /**
+   * Measure beacon metrics and update state
+   * Called on each update cycle when antenna is powered and in active mode
+   * This is mode-independent - works in manual, program-track, and step-track
+   */
+  updateBeaconMetrics_(): void {
+    // Only measure if powered and operational
+    if (!this.state.isPowered || !this.state.isOperational) {
+      this.state.beaconPower = null;
+      this.state.beaconCN = null;
+      this.smoothedBeaconCN_ = null;
+      return;
+    }
+
+    // Measure beacon metrics
+    const { power, cn } = this.measureBeaconMetrics_();
+
+    // Update raw power state
+    this.state.beaconPower = power;
+
+    // Apply EMA smoothing to C/N for stable display
+    if (cn !== null) {
+      if (this.smoothedBeaconCN_ === null) {
+        this.smoothedBeaconCN_ = cn;
+      } else {
+        this.smoothedBeaconCN_ = this.beaconCNSmoothingAlpha_ * cn +
+                                  (1 - this.beaconCNSmoothingAlpha_) * this.smoothedBeaconCN_;
+      }
+      this.state.beaconCN = this.smoothedBeaconCN_;
+
+      // Update lock state based on C/N threshold (only in non-step-track modes)
+      // Step-track manages its own lock state with different thresholds
+      if (this.state.trackingMode !== 'step-track') {
+        const wasLocked = this.state.isBeaconLocked;
+        if (!wasLocked && this.smoothedBeaconCN_ >= this.beaconLockAcquireCN_) {
+          this.state.isBeaconLocked = true;
+        } else if (wasLocked && this.smoothedBeaconCN_ < this.beaconLockAcquireCN_) {
+          this.state.isBeaconLocked = false;
+        }
+      }
+    } else {
+      this.smoothedBeaconCN_ = null;
+      this.state.beaconCN = null;
+      if (this.state.trackingMode !== 'step-track') {
+        this.state.isBeaconLocked = false;
+      }
+    }
+  }
+
+  /**
+   * Measure current beacon power and C/N ratio
+   * Filters received signals to find beacon within configured frequency range
+   * @returns Object with power (dBm) and cn (dB), both null if no signal
+   */
+  private measureBeaconMetrics_(): { power: number | null; cn: number | null } {
+    const beaconFreq = this.rfFrontEnd.lnbModule.state.loFrequency * 1e6 - this.state.beaconFrequencyHz;
+    const searchBw = this.state.beaconSearchBwHz;
+
+    // Find signals within beacon search bandwidth (look at the IF signals post LNA)
+    const beaconSignals = this.rfFrontEnd.filterModule.outputSignals.filter(sig => {
+      const freqDiff = Math.abs((sig.frequency as number) - beaconFreq);
+      return freqDiff <= searchBw / 2;
+    });
+
+    if (beaconSignals.length === 0) {
+      return { power: null, cn: null };
+    }
+
+    // Get strongest signal power in beacon range
+    const strongestPower = beaconSignals.reduce(
+      (max, sig) => Math.max(max, sig.power as number),
+      -Infinity
+    );
+
+    if (strongestPower === -Infinity) {
+      return { power: null, cn: null };
+    }
+
+    // Calculate C/N ratio
+    const rfFrontEnd = this.rfFrontEnd;
+    if (!rfFrontEnd) {
+      return { power: strongestPower, cn: null };
+    }
+
+    // Get noise floor using TRACKING bandwidth (narrow beacon receiver)
+    const trackingBw = this.state.beaconTrackingBwHz;
+    const { noiseFloorNoGain } =
+      rfFrontEnd.couplerModule.signalPathManager.getNoiseFloorAt(
+        TapPoint.RX_IF,
+        trackingBw as Hertz
+      );
+
+    // C/N = Signal Power - Noise Floor (both in pre-gain reference frame)
+    const cn = strongestPower - noiseFloorNoGain;
+
+    return { power: strongestPower, cn };
   }
 
   // ========================================================================

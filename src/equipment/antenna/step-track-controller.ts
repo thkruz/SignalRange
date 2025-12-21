@@ -48,6 +48,21 @@ export class StepTrackController {
   /** Smoothing factor for C/N (0-1, lower = more smoothing) */
   private readonly cnSmoothingAlpha_: number = 0.3;
 
+  /** Smoothed power value for step-track decisions */
+  private smoothedPower_: number | null = null;
+
+  /** Smoothing factor for power (0-1, lower = more smoothing) */
+  private readonly powerSmoothingAlpha_: number = 0.15;
+
+  /** Last smoothed power for comparison */
+  private lastSmoothedPower_: number | null = null;
+
+  /** Counter for confirming degradation before reversing */
+  private confirmationCount_: number = 0;
+
+  /** Required confirmations before direction reversal */
+  private readonly confirmationsRequired_: number = 2;
+
   /** Number of consecutive improvements in current direction */
   private consecutiveImprovements_: number = 0;
 
@@ -55,7 +70,7 @@ export class StepTrackController {
   private consecutiveDegradations_: number = 0;
 
   /** Power improvement threshold in dB to consider "improved" */
-  private readonly improvementThreshold_: number = 0.1;
+  private readonly improvementThreshold_: number = 0.2;
 
   /** Update counter for rate limiting */
   private updateCounter_: number = 0;
@@ -78,6 +93,12 @@ export class StepTrackController {
   /** Is step tracking currently active */
   private isActive_: boolean = false;
 
+  /** Startup grace period - skips auto-disable for first N measurement cycles */
+  private startupGraceCycles_: number = 0;
+
+  /** Number of grace cycles after start (allows RF chain to initialize) */
+  private readonly startupGraceCycleCount_: number = 3;
+
   constructor(antenna: AntennaCore) {
     this.antenna_ = antenna;
   }
@@ -98,6 +119,13 @@ export class StepTrackController {
   }
 
   /**
+   * Check if step tracking is currently active
+   */
+  get isActive(): boolean {
+    return this.isActive_;
+  }
+
+  /**
    * Reset controller state
    */
   private reset_(): void {
@@ -106,9 +134,13 @@ export class StepTrackController {
     this.searchDirection_ = 1;
     this.lastPower_ = null;
     this.smoothedCN_ = null;
+    this.smoothedPower_ = null;
+    this.lastSmoothedPower_ = null;
+    this.confirmationCount_ = 0;
     this.consecutiveImprovements_ = 0;
     this.consecutiveDegradations_ = 0;
     this.updateCounter_ = 0;
+    this.startupGraceCycles_ = this.startupGraceCycleCount_;
   }
 
   /**
@@ -126,6 +158,11 @@ export class StepTrackController {
       return;
     }
     this.updateCounter_ = 0;
+
+    // Decrement startup grace period counter
+    if (this.startupGraceCycles_ > 0) {
+      this.startupGraceCycles_--;
+    }
 
     // Get current beacon metrics (power and C/N)
     const { power: currentPower, cn } = this.measureBeaconMetrics_();
@@ -146,8 +183,21 @@ export class StepTrackController {
       this.antenna_.state.beaconCN = null;
     }
 
+    // Apply EMA smoothing to power for stable step-track decisions
+    if (currentPower !== null) {
+      if (this.smoothedPower_ === null) {
+        this.smoothedPower_ = currentPower;
+      } else {
+        this.smoothedPower_ = this.powerSmoothingAlpha_ * currentPower +
+                              (1 - this.powerSmoothingAlpha_) * this.smoothedPower_;
+      }
+    } else {
+      this.smoothedPower_ = null;
+    }
+
     // Auto-disable if beacon is not detectable (C/N < 3 dB)
-    if (cn === null || cn < this.beaconDetectableCN_) {
+    // Skip during startup grace period to allow RF chain to initialize
+    if (this.startupGraceCycles_ === 0 && (cn === null || cn < this.beaconDetectableCN_)) {
       this.antenna_.state.isBeaconLocked = false;
       this.antenna_.state.isLocked = false;
       // Auto-disable step tracking - user must manually restart
@@ -187,26 +237,21 @@ export class StepTrackController {
       this.antenna_.state.isLocked = false;
     }
 
-    // If we have a stable lock (C/N >= 8 dB), hold position - don't step
-    // Use smoothed C/N to match displayed value and avoid reacting to brief fluctuations
-    if (this.smoothedCN_ !== null && this.smoothedCN_ >= this.lockStableCN_) {
-      this.lastPower_ = currentPower;
-      return;
-    }
-
     // First sample - just record baseline, don't step yet
-    if (this.lastPower_ === null) {
+    if (this.lastSmoothedPower_ === null || this.smoothedPower_ === null) {
+      this.lastSmoothedPower_ = this.smoothedPower_;
       this.lastPower_ = currentPower;
       return;
     }
 
-    // Compare with last power
-    const powerDelta = currentPower - this.lastPower_;
+    // Compare smoothed values for decisions (filters out beacon noise)
+    const powerDelta = this.smoothedPower_ - this.lastSmoothedPower_;
 
     if (powerDelta > this.improvementThreshold_) {
-      // Power improved - continue in same direction
+      // Power improved - continue in same direction, reset confirmation
       this.consecutiveImprovements_++;
       this.consecutiveDegradations_ = 0;
+      this.confirmationCount_ = 0;
 
       // Potentially increase step size if consistently improving
       if (this.consecutiveImprovements_ >= 5) {
@@ -214,24 +259,34 @@ export class StepTrackController {
         this.consecutiveImprovements_ = 0;
       }
     } else if (powerDelta < -this.improvementThreshold_) {
-      // Power degraded - reverse direction and reduce step size
-      this.consecutiveDegradations_++;
-      this.consecutiveImprovements_ = 0;
+      // Possible degradation - require confirmation before reversing
+      this.confirmationCount_++;
 
-      this.searchDirection_ *= -1;
-      this.stepSize_ = Math.max(this.stepSize_ * 0.7, this.minStepSize_);
+      if (this.confirmationCount_ >= this.confirmationsRequired_) {
+        // Confirmed degradation - reverse direction and reduce step size
+        this.consecutiveDegradations_++;
+        this.consecutiveImprovements_ = 0;
+        this.confirmationCount_ = 0;
 
-      // If consistently degrading, switch axis
-      if (this.consecutiveDegradations_ >= 3) {
-        this.switchAxis_();
-        this.consecutiveDegradations_ = 0;
+        this.searchDirection_ *= -1;
+        this.stepSize_ = Math.max(this.stepSize_ * 0.6, this.minStepSize_);
+
+        // If consistently degrading, switch axis
+        if (this.consecutiveDegradations_ >= 3) {
+          this.switchAxis_();
+          this.consecutiveDegradations_ = 0;
+        }
       }
+      // If not yet confirmed, don't reverse - wait for more samples
     } else {
-      // Power stable - we're at or near the peak, hold position
+      // Power stable - we're at or near the peak, reset confirmation
+      this.confirmationCount_ = 0;
+      this.lastSmoothedPower_ = this.smoothedPower_;
       this.lastPower_ = currentPower;
       return;
     }
 
+    this.lastSmoothedPower_ = this.smoothedPower_;
     this.lastPower_ = currentPower;
     this.executeStep_();
   }
@@ -330,6 +385,8 @@ export class StepTrackController {
     searchAxis: 'az' | 'el';
     searchDirection: 1 | -1;
     lastPower: number | null;
+    smoothedPower: number | null;
+    confirmationCount: number;
     isLocked: boolean;
     isLockStable: boolean;
   } {
@@ -339,6 +396,8 @@ export class StepTrackController {
       searchAxis: this.searchAxis_,
       searchDirection: this.searchDirection_,
       lastPower: this.lastPower_,
+      smoothedPower: this.smoothedPower_,
+      confirmationCount: this.confirmationCount_,
       isLocked: this.antenna_.state.isBeaconLocked,
       isLockStable: this.isLockStable(),
     };

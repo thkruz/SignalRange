@@ -118,7 +118,7 @@ export class Satellite {
       randomDropout: true,
       dropoutProbability: 0.0001,
       powerVariation: true,
-      powerVariationRange: 2.0 as dBm,
+      powerVariationRange: 1.0 as dBm,
       interference: false,
       interferencePower: -110 as dBm,
       ...satelliteState.degradationConfig
@@ -386,11 +386,11 @@ export class Satellite {
     const randomRainFactor = this.randomCache_.get(`${signalId}-rain`) ?? 1;
 
     // Simple rain fade model (in dB)
-    const rainFadeDb = (frequencyGHz / 10) * randomRainFactor * 2; // Simplified model
+    const rainFadeDb = (frequencyGHz / 10) * randomRainFactor * 0.3; // Simplified model
 
     // Scintillation (rapid amplitude fluctuations) - use pre-cached random value
     const randomScintillationFactor = this.randomCache_.get(`${signalId}-scintillation`) ?? 0.5;
-    const scintillationDb = (randomScintillationFactor - 0.5) * 1.5;
+    const scintillationDb = (randomScintillationFactor - 0.5) * 0.3;
 
     return (currentPower - rainFadeDb + scintillationDb) as dBm;
   }

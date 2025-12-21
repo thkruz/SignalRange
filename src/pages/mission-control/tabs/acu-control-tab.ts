@@ -33,11 +33,16 @@ export class ACUControlTab extends BaseElement {
   private polarPlot_: PolarPlot | null = null;
   private antennaStateHandler_: (() => void) | null = null;
   private drawHandler_: (() => void) | null = null;
+  private updateHandler_: (() => void) | null = null;
 
   // Fine adjustment controls
   private azFineControl_: FineAdjustControl | null = null;
   private elFineControl_: FineAdjustControl | null = null;
   private polFineControl_: FineAdjustControl | null = null;
+
+  // Beacon display throttling (1 second interval like other adapters)
+  private static readonly BEACON_UPDATE_INTERVAL_MS = 1000;
+  private lastBeaconSyncTime_: number = 0;
 
   protected html_ = html`
     <div class="acu-control-tab">
@@ -146,20 +151,9 @@ export class ACUControlTab extends BaseElement {
                     <span class="input-group-text">kHz</span>
                   </div>
                 </div>
-                <button id="step-track-toggle-btn" class="btn btn-primary w-100 mb-3">
+                <button id="step-track-toggle-btn" class="btn btn-primary w-100">
                   START TRACKING
                 </button>
-                <div class="beacon-strength-container">
-                  <label class="form-label">Beacon C/N</label>
-                  <div class="beacon-strength-bar">
-                    <div class="beacon-strength-fill" id="beacon-strength-fill"></div>
-                    <span class="beacon-strength-value" id="beacon-cn-value">-- dB</span>
-                  </div>
-                  <div class="d-flex justify-content-between mt-1">
-                    <span class="text-muted small">Lock Status:</span>
-                    <span id="beacon-lock-status" class="fw-bold">--</span>
-                  </div>
-                </div>
               </div>
 
               <!-- Manual/Stow/Maintenance: Status Info -->
@@ -176,6 +170,21 @@ export class ACUControlTab extends BaseElement {
                   <div class="d-flex justify-content-between">
                     <span class="text-muted">Signals:</span>
                     <span id="signals-count-display" class="fw-bold font-monospace">0</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Beacon C/N Display - visible in manual, program-track, step-track modes -->
+              <div id="beacon-display-section" class="mt-3" style="display: none;">
+                <div class="beacon-strength-container">
+                  <label class="form-label">Beacon C/N</label>
+                  <div class="beacon-strength-bar">
+                    <div class="beacon-strength-fill" id="beacon-strength-fill"></div>
+                    <span class="beacon-strength-value" id="beacon-cn-value">-- dB</span>
+                  </div>
+                  <div class="d-flex justify-content-between mt-1">
+                    <span class="text-muted small">Lock Status:</span>
+                    <span id="beacon-lock-status" class="fw-bold">--</span>
                   </div>
                 </div>
               </div>
@@ -383,6 +392,15 @@ export class ACUControlTab extends BaseElement {
     };
     EventBus.getInstance().on(Events.DRAW, this.drawHandler_);
 
+    // Wire to update events for beacon C/N updates (throttled to 1Hz like other adapters)
+    this.updateHandler_ = () => {
+      const now = Date.now();
+      if (now - this.lastBeaconSyncTime_ < ACUControlTab.BEACON_UPDATE_INTERVAL_MS) return;
+      this.lastBeaconSyncTime_ = now;
+      this.syncBeaconMetrics_(antenna);
+    };
+    EventBus.getInstance().on(Events.UPDATE, this.updateHandler_);
+
     // Initial draw and sync
     this.polarPlot_.onDomReady();
     this.polarPlot_.draw(antenna.state.azimuth, antenna.state.elevation);
@@ -562,10 +580,13 @@ export class ACUControlTab extends BaseElement {
     const programSection = qs('#program-track-section', this.dom_);
     const stepSection = qs('#step-track-section', this.dom_);
     const manualSection = qs('#manual-section', this.dom_);
+    const beaconDisplaySection = qs('#beacon-display-section', this.dom_);
 
     if (programSection) programSection.style.display = state.trackingMode === 'program-track' ? 'block' : 'none';
     if (stepSection) stepSection.style.display = state.trackingMode === 'step-track' ? 'block' : 'none';
     if (manualSection) manualSection.style.display = ['manual', 'stow', 'maintenance'].includes(state.trackingMode) ? 'block' : 'none';
+    // Beacon C/N display visible in active tracking modes (not stow/maintenance)
+    if (beaconDisplaySection) beaconDisplaySection.style.display = ['manual', 'program-track', 'step-track'].includes(state.trackingMode) ? 'block' : 'none';
 
     // Update tracking mode display
     const modeDisplay = qs('#tracking-mode-display', this.dom_);
@@ -611,39 +632,7 @@ export class ACUControlTab extends BaseElement {
       }
     }
 
-    // Sync beacon C/N display
-    const beaconCnEl = qs('#beacon-cn-value', this.dom_);
-    const beaconFillEl = qs('#beacon-strength-fill', this.dom_) as HTMLElement;
-    const beaconLockEl = qs('#beacon-lock-status', this.dom_);
-
-    if (beaconCnEl) {
-      beaconCnEl.textContent = state.beaconCN !== null ? `${state.beaconCN.toFixed(1)} dB` : '-- dB';
-    }
-    if (beaconFillEl) {
-      if (state.beaconCN !== null) {
-        // Map 0 to 30 dB C/N to 0-100%
-        const percent = Math.max(0, Math.min(100, (state.beaconCN / 30) * 100));
-        beaconFillEl.style.width = `${percent}%`;
-
-        // Apply color class based on C/N thresholds
-        // Red: < 5 dB, Amber: 5-10 dB, Green: >= 10 dB
-        beaconFillEl.classList.remove('cn-red', 'cn-amber', 'cn-green');
-        if (state.beaconCN < 5) {
-          beaconFillEl.classList.add('cn-red');
-        } else if (state.beaconCN < 10) {
-          beaconFillEl.classList.add('cn-amber');
-        } else {
-          beaconFillEl.classList.add('cn-green');
-        }
-      } else {
-        beaconFillEl.style.width = '0%';
-        beaconFillEl.classList.remove('cn-red', 'cn-amber', 'cn-green');
-      }
-    }
-    if (beaconLockEl) {
-      beaconLockEl.textContent = state.isBeaconLocked ? 'LOCKED' : 'SEARCHING';
-      beaconLockEl.classList.toggle('text-success', state.isBeaconLocked);
-    }
+    // Beacon C/N display is updated by syncBeaconMetrics_() on each UPDATE event
 
     // Update step track toggle button
     const stepTrackBtn = qs('#step-track-toggle-btn', this.dom_) as HTMLButtonElement;
@@ -767,6 +756,61 @@ export class ACUControlTab extends BaseElement {
     if (skyTempEl) skyTempEl.textContent = `${metrics.skyTemp_K.toFixed(0)} K`;
   }
 
+  private syncBeaconMetrics_(antenna: typeof this.groundStation.antennas[0]): void {
+    const state = antenna.state;
+
+    const beaconCnEl = qs('#beacon-cn-value', this.dom_);
+    const beaconFillEl = qs('#beacon-strength-fill', this.dom_) as HTMLElement;
+    const beaconLockEl = qs('#beacon-lock-status', this.dom_);
+
+    if (beaconCnEl) {
+      beaconCnEl.textContent = state.beaconCN !== null ? `${state.beaconCN.toFixed(1)} dB` : '-- dB';
+    }
+    if (beaconFillEl) {
+      if (state.beaconCN !== null) {
+        const percent = Math.max(0, Math.min(100, (state.beaconCN / 30) * 100));
+        beaconFillEl.style.width = `${percent}%`;
+
+        beaconFillEl.classList.remove('cn-red', 'cn-amber', 'cn-green');
+        if (state.beaconCN < 5) {
+          beaconFillEl.classList.add('cn-red');
+        } else if (state.beaconCN < 10) {
+          beaconFillEl.classList.add('cn-amber');
+        } else {
+          beaconFillEl.classList.add('cn-green');
+        }
+      } else {
+        beaconFillEl.style.width = '0%';
+        beaconFillEl.classList.remove('cn-red', 'cn-amber', 'cn-green');
+      }
+    }
+    if (beaconLockEl) {
+      // Lock status depends on tracking mode
+      if (state.trackingMode === 'step-track') {
+        // Step-track mode: IDLE (tracking off), SEARCHING (tracking on), LOCKED
+        if (!state.isAutoTrackEnabled) {
+          beaconLockEl.textContent = 'IDLE';
+          beaconLockEl.classList.remove('text-success');
+        } else if (state.isBeaconLocked) {
+          beaconLockEl.textContent = 'LOCKED';
+          beaconLockEl.classList.add('text-success');
+        } else {
+          beaconLockEl.textContent = 'SEARCHING';
+          beaconLockEl.classList.remove('text-success');
+        }
+      } else {
+        // Manual/Program-track mode: UNLOCKED or LOCKED based on C/N
+        if (state.isBeaconLocked) {
+          beaconLockEl.textContent = 'LOCKED';
+          beaconLockEl.classList.add('text-success');
+        } else {
+          beaconLockEl.textContent = 'UNLOCKED';
+          beaconLockEl.classList.remove('text-success');
+        }
+      }
+    }
+  }
+
   public activate(): void {
     if (this.dom_) {
       this.dom_.style.display = 'block';
@@ -788,6 +832,10 @@ export class ACUControlTab extends BaseElement {
     if (this.drawHandler_) {
       EventBus.getInstance().off(Events.DRAW, this.drawHandler_);
       this.drawHandler_ = null;
+    }
+    if (this.updateHandler_) {
+      EventBus.getInstance().off(Events.UPDATE, this.updateHandler_);
+      this.updateHandler_ = null;
     }
 
     // Dispose adapters

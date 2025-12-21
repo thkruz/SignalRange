@@ -1,7 +1,7 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-export const SUPABASE_URL = process.env.PUBLIC_SUPABASE_URL;
-export const SUPABASE_ANON_KEY = process.env.PUBLIC_SUPABASE_ANON_KEY;
+export const SUPABASE_URL = process.env.PUBLIC_SUPABASE_URL ?? 'https://ucukugprniwigzqnqpuz.supabase.co'; // Public
+export const SUPABASE_ANON_KEY = process.env.PUBLIC_SUPABASE_ANON_KEY ?? 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVjdWt1Z3Bybml3aWd6cW5xcHV6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyNjIyODQsImV4cCI6MjA3MDgzODI4NH0.1Cd5tTJ_XAKFf30dGjk7W5vTTat9tOemF9iQ57c4Pu4'; // Public
 
 export const isSupabaseApprovedDomain =
   window.location.hostname === 'localhost' ||

@@ -22,4 +22,6 @@ export interface ScenarioData {
     intro?: DialogClip;
     objectives?: Record<string, DialogClip>;
   };
+  /** Optional scenario-wide time limit in seconds */
+  timeLimitSeconds?: number;
 }

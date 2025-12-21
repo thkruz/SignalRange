@@ -11,15 +11,15 @@ import { Character, Emotion } from '@app/modal/character-enum';
 import type { Objective } from '@app/objectives/objective-types';
 import type { ScenarioData } from '@app/ScenarioData';
 import { SignalOrigin } from "@app/SignalOrigin";
-import type { dB, dBi, dBm, FECType, Hertz, IfFrequency, IfSignal, MHz, ModulationType, RfFrequency } from '@app/types';
+import type { dB, dBi, dBm, FECType, Hertz, IfSignal, MHz, ModulationType, RfFrequency } from '@app/types';
 import { getAssetUrl } from '@app/utils/asset-url';
 import type { Degrees } from 'ootk';
 
 /**
- * Scenario 1: "First Light" - HELIOS-7 Initial Contact
+ * Scenario 1: "First Day" - TIDEMARK-1 Health Check
  *
- * A beginner-level scenario where the student conducts the first ground station
- * link test with a newly launched C-band communications satellite.
+ * A beginner-level tutorial where Charlie Brooks walks you through a routine
+ * health check on an already-operational satellite ground station.
  */
 
 export const scenario1Data: ScenarioData = {
@@ -27,12 +27,12 @@ export const scenario1Data: ScenarioData = {
   url: 'nats/scenarios/scenario1',
   imageUrl: 'nats/1/card.png',
   number: 1,
-  title: '"First Light"',
-  subtitle: 'MARINER-1 Initial Contact',
-  duration: '35-40 min',
+  title: '"First Day"',
+  subtitle: 'TIDEMARK-1 Health Check',
+  duration: '15-20 min',
   difficulty: 'beginner',
-  missionType: 'Commercial Communications',
-  description: `You are a Ground Station Operator at North Atlantic Teleport Services, a commercial satellite ground station facility in rural Vermont. Your company provides ground segment services for multiple GEO communication satellites serving the North Atlantic region.<br><br>Your latest client, SeaLink Communications, launched MARINER-1 fourteen days ago aboard a Falcon 9 from Cape Canaveral. The satellite completed its apogee burns and reached its operational slot at 53°W geostationary orbit yesterday. Beacon Orbital Analytics confirmed the satellite achieved station-keeping this morning, and the spacecraft operations team in Halifax has handed the communications payload over to ground operations.<br><br>You will conduct the first ground station RF link test - a critical milestone before MARINER-1 can begin revenue service providing C-band maritime connectivity from Newfoundland to the Caribbean. This scenario will guide you through setting up the ground station equipment, acquiring the satellite signal, and performing initial signal quality measurements.`,
+  missionType: 'Routine Operations',
+  description: `Welcome to your first day at North Atlantic Teleport Services, a commercial satellite ground station facility in rural Vermont. Your company provides ground segment services for the TIDEMARK constellation - SeaLink Global Communications' fleet of GEO satellites providing maritime broadband across the Atlantic.<br><br>TIDEMARK-1 is already online at 53°W, serving customer traffic. Today, Charlie Brooks will walk you through a routine health check. You'll learn what each equipment panel shows, what the indicators mean, and what "normal" looks like.<br><br>No pressure today - just observation and familiarization. Click through each panel and verify the status indicators as Charlie explains them.`,
   equipment: [
     '9-meter C-band Antenna',
     'RF Front End (GPSDO, LNB, BUC, HPA, Filter)',
@@ -54,11 +54,14 @@ export const scenario1Data: ScenarioData = {
         antennas: [ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK],
         antennasState: [
           {
-            // Pre-configure antenna to be powered on and pointed roughly at satellite 1
+            // Antenna already tracking TIDEMARK-1 in step-track mode
             isPowered: true,
-            azimuth: 150.0 as Degrees,
-            elevation: 5.0 as Degrees,
+            azimuth: 161.8 as Degrees, // Locked on TIDEMARK-1
+            elevation: 34.2 as Degrees,
             polarization: 14 as Degrees,
+            trackingMode: 'step-track',
+            isBeaconLocked: true,
+            beaconFrequency: 3902.5e6 as Hertz,
           } as Partial<AntennaState>,
         ],
         rfFrontEnds: [{
@@ -68,18 +71,18 @@ export const scenario1Data: ScenarioData = {
           hpa: HPAModuleCore.getDefaultState(),
           filter: IfFilterBankModuleCore.getDefaultState(),
           lnb: {
-            isPowered: false,
-            loFrequency: 6080 as MHz, // MHz
-            gain: 0 as dB,
+            isPowered: true,
+            loFrequency: 5150 as MHz, // C-band LNB LO for 3902.5 MHz beacon -> 1247.5 MHz IF
+            gain: 55 as dB,
             lnaNoiseFigure: 0.6, // dB
             mixerNoiseFigure: 16.0, // dB
-            noiseTemperature: 45, // K
-            noiseTemperatureStabilizationTime: 180, // seconds
-            isExtRefLocked: false,
+            noiseTemperature: 45, // K - stable
+            noiseTemperatureStabilizationTime: 0, // Already stabilized
+            isExtRefLocked: true, // Locked to GPSDO 10 MHz
             noiseFloor: -140, // dBm/Hz
             frequencyError: 0, // Hz
-            temperature: 25, // °C
-            thermalStabilizationTime: 180, // seconds
+            temperature: 28, // °C - stable
+            thermalStabilizationTime: 0, // Already stabilized
           },
           coupler: {
             isPowered: true,
@@ -93,41 +96,41 @@ export const scenario1Data: ScenarioData = {
             isActiveB: true,
           } as CouplerState,
           gpsdo: {
-            isPowered: true, // CHANGE
-            isLocked: false,
-            warmupTimeRemaining: 0, // seconds
-            temperature: 70, // °C
-            gnssSignalPresent: false,
-            isGnssSwitchUp: false,
+            isPowered: true,
+            isLocked: true,
+            warmupTimeRemaining: 0,
+            temperature: 45, // °C - stable operating temp
+            gnssSignalPresent: true,
+            isGnssSwitchUp: true,
             isGnssAcquiringLock: false,
-            satelliteCount: 0,
-            utcAccuracy: 0,
+            satelliteCount: 8,
+            utcAccuracy: 50, // ns
             constellation: 'GPS',
-            lockDuration: 0,
-            frequencyAccuracy: 0,
-            allanDeviation: 0,
-            phaseNoise: 0,
-            isInHoldover: true,
-            holdoverDuration: 600,
+            lockDuration: 7200, // 2 hours locked
+            frequencyAccuracy: 2e-11, // Excellent stability
+            allanDeviation: 1e-11,
+            phaseNoise: -110, // dBc/Hz
+            isInHoldover: false,
+            holdoverDuration: 0,
             holdoverError: 0,
-            active10MHzOutputs: 2,
+            active10MHzOutputs: 3,
             max10MHzOutputs: 5,
-            output10MHzLevel: 0,
-            ppsOutputsEnabled: false,
-            operatingHours: 6,
+            output10MHzLevel: 7, // dBm
+            ppsOutputsEnabled: true,
+            operatingHours: 8760, // 1 year of operation
             selfTestPassed: true,
-            agingRate: 0,
+            agingRate: 1e-10,
           },
         }],
         spectrumAnalyzers: [
           {
-            referenceLevel: 0, // dBm
-            centerFrequency: 600e6 as Hertz,
-            span: 100e6 as Hertz,
-            rbw: 50e6 as Hertz,
+            referenceLevel: -100 as dBm, // Set for beacon observation
+            centerFrequency: 1247.5e6 as Hertz, // IF frequency for beacon
+            span: 2e3 as Hertz, // 2 kHz span for CW beacon
+            rbw: 1e3 as Hertz, // 1 kHz RBW for CW beacon
             minAmplitude: -170,
             maxAmplitude: 0,
-            scaleDbPerDiv: (-0 + 170) / 10 as dB, // 6 dB/div
+            scaleDbPerDiv: 10 as dB,
             screenMode: 'both',
             inputUnit: 'MHz',
             inputValue: '',
@@ -283,7 +286,7 @@ export const scenario1Data: ScenarioData = {
         61525,
         [
           {
-            signalId: 'MARINER-1-Payload',
+            signalId: 'TIDEMARK-1-Payload',
             serverId: 1,
             noradId: 61525,
             /** Must be the uplinkl to match the antenna in simulation */
@@ -303,7 +306,7 @@ export const scenario1Data: ScenarioData = {
         [
           {
             frequency: 3902.5e6 as RfFrequency,
-            signalId: 'MARINER-1-Beacon',
+            signalId: 'TIDEMARK-1-Beacon',
             serverId: 1,
             noradId: 61525,
             power: 40 as dBm, // 10 W
@@ -330,646 +333,247 @@ export const scenario1Data: ScenarioData = {
   objectives: [
     {
       id: 'phase-1-gpsdo',
-      title: 'Phase 1: GPSDO Power-Up and Lock',
-      description: 'At the Vermont Ground Station, power up the GPSDO module and achieve stable frequency lock.',
+      title: 'Phase 1: GPSDO Status Check',
+      description: 'Click on the GPSDO panel and verify all status indicators show normal operation.',
       groundStation: 'VT-01',
       conditions: [
         {
-          type: 'equipment-powered',
-          description: 'GPSDO Module Powered',
+          type: 'status-check',
+          description: 'Verify GPSDO Status',
           params: {
-            equipment: 'gpsdo',
+            question: 'What does the GPSDO "Lock" indicator show?',
+            options: [
+              'Locked (green) - stable frequency reference',
+              'Unlocked (red) - no frequency reference',
+              'Holdover (yellow) - using backup oscillator',
+              'Off - GPSDO is powered down',
+            ],
+            correctIndex: 0,
+            explanation: 'The green "Locked" indicator means the GPSDO is receiving GPS timing signals and providing a stable 10 MHz reference to all equipment in the rack.',
+            pointPenalty: 5,
           },
-          mustMaintain: false,
-        },
-        {
-          type: 'gpsdo-warmed-up',
-          description: 'GPSDO Warmed Up (Operating Temperature)',
-          mustMaintain: false,
-        },
-        {
-          type: 'gpsdo-gnss-locked',
-          description: 'GPS Antenna Has Satellite Lock (≥4 satellites)',
-          mustMaintain: false,
-        },
-        {
-          type: 'gpsdo-locked',
-          description: 'GPSDO Frequency Lock Achieved',
-          mustMaintain: false,
-        },
-        {
-          type: 'gpsdo-stability',
-          description: 'GPSDO Stability <5×10⁻¹¹',
-          params: {
-            maxFrequencyAccuracy: 5,
-          },
-          mustMaintain: false,
-        },
-        {
-          type: 'gpsdo-not-in-holdover',
-          description: 'GPSDO Not in Holdover Mode',
           mustMaintain: false,
         },
       ],
       conditionLogic: 'AND',
-      points: 15,
+      points: 20,
     },
     {
       id: 'phase-2-lnb',
-      title: 'Phase 2: LNB Power-Up and Stabilization',
-      description: 'Power up the LNB module and wait for thermal stabilization.',
+      title: 'Phase 2: LNB Status Check',
+      description: 'Review the LNB panel. Learn what each indicator means for the receive chain.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['phase-1-gpsdo'],
       conditions: [
         {
-          type: 'equipment-powered',
-          description: 'LNB Module Powered',
+          type: 'status-check',
+          description: 'Verify LNB Noise Temperature',
           params: {
-            equipment: 'lnb',
+            question: 'What is the LNB noise temperature reading, and is it within spec?',
+            options: [
+              '45K - within spec (good receive sensitivity)',
+              '150K - above spec (degraded sensitivity)',
+              '290K - far above spec (major problem)',
+              'No reading - LNB is offline',
+            ],
+            correctIndex: 0,
+            explanation: 'The LNB noise temperature of 45K is excellent. Lower noise temperature means better receive sensitivity. Anything under 100K is considered good for C-band.',
+            pointPenalty: 5,
           },
-          maintainUntilObjectiveComplete: true,
-        },
-        {
-          type: 'lnb-lo-set',
-          description: 'LNB LO Frequency Set to 5,150 MHz',
-          params: {
-            loFrequency: 5150 as MHz,
-            loFrequencyTolerance: 0, // Hz
-          },
-          maintainUntilObjectiveComplete: true,
-        },
-        {
-          type: 'lnb-gain-set',
-          description: 'LNB Gain Set to 55 dB',
-          params: {
-            gain: 55,
-            gainTolerance: 0, // dB
-          },
-          maintainUntilObjectiveComplete: true,
-        },
-        {
-          type: 'lnb-reference-locked',
-          description: 'LNB Locked to 10 MHz Reference',
-          maintainUntilObjectiveComplete: true,
-        },
-        {
-          type: 'lnb-thermally-stable',
-          description: 'LNB Temperature Stabilization Complete',
-          maintainUntilObjectiveComplete: true,
-        },
-        {
-          type: 'lnb-noise-performance',
-          description: 'LNB Noise Temperature ≤100K',
-          params: {
-            maxNoiseTemperature: 100,
-          },
-          maintainUntilObjectiveComplete: true,
+          mustMaintain: false,
         },
       ],
       conditionLogic: 'AND',
-      points: 15,
+      points: 20,
     },
     {
-      id: 'phase-3-buc',
-      title: 'Phase 3: BUC Power-Up (Standby Mode)',
-      description: 'Power up the BUC module in standby mode with RF output muted.',
+      id: 'phase-3-antenna',
+      title: 'Phase 3: Antenna Tracking Status',
+      description: 'Check the antenna control unit. The antenna should be actively tracking TIDEMARK-1.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['phase-2-lnb'],
       conditions: [
         {
-          type: 'equipment-powered',
-          description: 'BUC Module Powered',
+          type: 'status-check',
+          description: 'Verify Antenna Tracking Mode',
           params: {
-            equipment: 'buc',
+            question: 'What tracking mode is the antenna currently using?',
+            options: [
+              'Step-track - actively tracking beacon signal',
+              'Program-track - following predicted orbital position',
+              'Manual - operator-controlled pointing',
+              'Stow - antenna in safe position',
+            ],
+            correctIndex: 0,
+            explanation: 'Step-track mode uses the satellite beacon signal to continuously optimize antenna pointing. This provides the most accurate tracking for operational satellites.',
+            pointPenalty: 5,
           },
           mustMaintain: false,
-        },
-        {
-          type: 'buc-reference-locked',
-          description: 'BUC Locked to 10 MHz Reference',
-          mustMaintain: false,
-        },
-        {
-          type: 'buc-muted',
-          description: 'BUC RF Output Muted (Safety)',
-          mustMaintain: false,
-        },
-        {
-          type: 'buc-current-normal',
-          description: 'BUC Current Draw Normal (≤4.5A)',
-          params: {
-            maxCurrentDraw: 4.5,
-          },
-          mustMaintain: false,
-        },
-      ],
-      conditionLogic: 'AND',
-      points: 10,
-    },
-    {
-      id: 'phase-4-antenna',
-      title: 'Phase 4: Antenna Program Track',
-      description: 'Point the antenna at MARINER-1 using program track mode. The ACU will slew to the calculated look angles.',
-      groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['phase-3-buc'],
-      conditions: [
-        {
-          type: 'antenna-tracking-mode-set',
-          description: 'Tracking Mode: Program Track',
-          params: {
-            trackingMode: 'program-track',
-          },
-          mustMaintain: false,
-        },
-        {
-          type: 'antenna-locked',
-          description: 'Antenna Pointed at MARINER-1',
-          params: {
-            satelliteId: 1,
-          },
-          mustMaintain: false,
-        },
-      ],
-      conditionLogic: 'AND',
-      points: 10,
-    },
-    {
-      id: 'phase-5-filter',
-      title: 'Phase 5: IF Filter Configuration',
-      description: 'Configure the IF filter bandwidth for beacon acquisition. The filter helps reject out-of-band noise.',
-      groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['phase-4-antenna'],
-      conditions: [
-        {
-          type: 'equipment-powered',
-          description: 'IF Filter Bank Powered',
-          params: {
-            equipment: 'filter',
-          },
-          mustMaintain: false,
-        },
-        {
-          type: 'filter-bandwidth-set',
-          description: 'IF Filter Bandwidth Set to 1 MHz',
-          params: {
-            bandwidthIndex: 8, // Index 8 = 1 MHz
-          },
-          mustMaintain: false,
-        },
-      ],
-      conditionLogic: 'AND',
-      points: 10,
-    },
-    {
-      id: 'phase-6-spec-a',
-      title: 'Phase 6: Spectrum Analyzer Configuration',
-      description: 'Configure the spectrum analyzer to monitor the MARINER-1 beacon at 1,247.5 MHz.',
-      groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['phase-5-filter'],
-      conditions: [
-        {
-          type: 'frequency-set',
-          description: 'SpecA Center Frequency: 1,247.5 MHz (Beacon)',
-          params: {
-            frequency: 1247.5e6 as IfFrequency,
-          },
-          mustMaintain: false,
-        },
-        {
-          type: 'speca-span-set',
-          description: 'SpecA Span: 2 KHz',
-          params: {
-            span: 2e3 as Hertz,
-          },
-          mustMaintain: false,
-        },
-        {
-          type: 'speca-rbw-set',
-          description: 'SpecA RBW: 1 kHz (Narrow for CW Beacon)',
-          params: {
-            rbw: 1e3 as Hertz,
-          },
-          mustMaintain: false,
-        },
-        {
-          type: 'speca-reference-level-set',
-          description: 'SpecA Reference Level: -100 dBm',
-          params: {
-            referenceLevel: -100 as dBm,
-            referenceLevelTolerance: 5,
-          },
-          mustMaintain: false,
-        },
-      ],
-      conditionLogic: 'AND',
-      points: 15,
-    },
-    {
-      id: 'phase-7-beacon-lock',
-      title: 'Phase 7: Beacon Lock on MARINER-1',
-      description: 'Transition from program track to step track mode for precision beacon tracking.',
-      groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['phase-6-spec-a'],
-      conditions: [
-        {
-          type: 'antenna-beacon-frequency-set',
-          description: 'Beacon Frequency Set to 3,902.5 MHz',
-          params: {
-            beaconFrequency: 3902.5e6,
-          },
-          mustMaintain: false,
-        },
-        {
-          type: 'antenna-tracking-mode-set',
-          description: 'Tracking Mode: Step Track',
-          params: {
-            trackingMode: 'step-track',
-          },
-          mustMaintain: false,
-        },
-        {
-          type: 'antenna-beacon-locked',
-          description: 'Beacon Lock Achieved',
-          mustMaintain: true,
-          maintainDuration: 5,
-        },
-        {
-          type: 'antenna-locked',
-          description: 'Antenna Locked on MARINER-1 (10 seconds)',
-          params: {
-            satelliteId: 1,
-          },
-          mustMaintain: true,
-          maintainDuration: 10,
-        },
-      ],
-      conditionLogic: 'AND',
-      points: 50,
-    },
-    {
-      id: 'phase-7b-payload-verify',
-      title: 'Phase 7b: Verify Payload Downlink',
-      description: 'Verify the receiver modem has locked onto the MARINER-1 payload downlink signal.',
-      groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['phase-7-beacon-lock'],
-      conditions: [
-        {
-          type: 'receiver-signal-locked',
-          description: 'Receiver Modem Locked to Payload',
-          params: {
-            modemNumber: 1,
-          },
-          mustMaintain: false,
-        },
-        {
-          type: 'receiver-snr-threshold',
-          description: 'Signal Quality ≥10 dB C/N',
-          params: {
-            modemNumber: 1,
-            minCNRatio: 10,
-          },
-          mustMaintain: true,
-          maintainDuration: 60,
         },
       ],
       conditionLogic: 'AND',
       points: 20,
     },
     {
-      id: 'phase-8-buc-unmute',
-      title: 'Phase 8: BUC Transmit Activation',
-      description: 'Unmute the BUC to enable RF output. The antenna must remain locked during this operation.',
+      id: 'phase-4-spectrum',
+      title: 'Phase 4: Spectrum Analyzer Reading',
+      description: 'Look at the spectrum analyzer display. You should see the TIDEMARK-1 beacon signal.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['phase-7b-payload-verify'],
+      prerequisiteObjectiveIds: ['phase-3-antenna'],
       conditions: [
         {
-          type: 'equipment-powered',
-          description: 'BUC Module Powered',
+          type: 'status-check',
+          description: 'Identify Beacon Signal',
           params: {
-            equipment: 'buc',
+            question: 'What do you see at the center of the spectrum analyzer display?',
+            options: [
+              'A clear spike - the TIDEMARK-1 beacon signal',
+              'Only noise floor - no signal detected',
+              'Multiple interference spikes - contaminated spectrum',
+              'Flat line at 0 dBm - equipment malfunction',
+            ],
+            correctIndex: 0,
+            explanation: 'The beacon signal appears as a narrow spike rising above the noise floor. This CW (continuous wave) signal at 1,247.5 MHz IF confirms the satellite is in view and the receive chain is working.',
+            pointPenalty: 5,
           },
-          maintainUntilObjectiveComplete: true,
-        },
-        {
-          type: 'buc-reference-locked',
-          description: 'BUC Locked to 10 MHz Reference',
-          maintainUntilObjectiveComplete: true,
-        },
-        {
-          type: 'buc-unmuted',
-          description: 'BUC RF Output Enabled (Unmuted)',
-          maintainUntilObjectiveComplete: true,
-        },
-        {
-          type: 'buc-not-saturated',
-          description: 'BUC Operating in Linear Region',
-          maintainUntilObjectiveComplete: true,
-        },
-      ],
-      conditionLogic: 'AND',
-      points: 15,
-    },
-    {
-      id: 'phase-9-hpa',
-      title: 'Phase 9: HPA Activation',
-      description: 'Enable the High Power Amplifier with proper back-off to avoid overdrive. The dual-action switch requires two steps.',
-      groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['phase-8-buc-unmute'],
-      conditions: [
-        {
-          type: 'equipment-powered',
-          description: 'HPA Module Powered',
-          params: {
-            equipment: 'hpa',
-          },
-          maintainUntilObjectiveComplete: true,
-        },
-        {
-          type: 'hpa-enabled',
-          description: 'HPA Output Enabled (Dual-Action Switch)',
-          maintainUntilObjectiveComplete: true,
-        },
-        {
-          type: 'hpa-back-off-set',
-          description: 'HPA Back-Off Set to 6 dB (Safe Operating Point)',
-          params: {
-            backOff: 6,
-            backOffTolerance: 1,
-          },
-          maintainUntilObjectiveComplete: true,
-        },
-        {
-          type: 'hpa-not-overdriven',
-          description: 'HPA Not in Overdrive',
-          maintainUntilObjectiveComplete: true,
+          mustMaintain: false,
         },
       ],
       conditionLogic: 'AND',
       points: 20,
     },
     {
-      id: 'phase-10-full-link',
-      title: 'Phase 10: Bidirectional Link Test',
-      description: 'Maintain stable bidirectional link with MARINER-1 for 60 seconds. Both receive and transmit chains must remain active.',
+      id: 'phase-5-receiver',
+      title: 'Phase 5: Receiver Modem Check',
+      description: 'Final check: verify the receiver modem is locked and the link quality is good.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['phase-9-hpa'],
+      prerequisiteObjectiveIds: ['phase-4-spectrum'],
       conditions: [
         {
-          type: 'antenna-locked',
-          description: 'Antenna Tracking Lock Maintained',
+          type: 'status-check',
+          description: 'Verify Link Quality',
           params: {
-            satelliteId: 1,
+            question: 'What is the receiver modem C/N ratio, and what does it indicate?',
+            options: [
+              'Above 10 dB - healthy link with good margin',
+              '5 dB - marginal link, may have errors',
+              '0 dB - at threshold, unreliable',
+              'Negative - no usable signal',
+            ],
+            correctIndex: 0,
+            explanation: 'A C/N ratio above 10 dB indicates a healthy link with adequate margin for reliable data reception. This confirms the entire receive chain from antenna to modem is functioning properly.',
+            pointPenalty: 5,
           },
-          maintainUntilObjectiveComplete: true,
-        },
-        {
-          type: 'signal-detected',
-          description: 'Beacon Signal Detected on Spectrum Analyzer',
-          maintainUntilObjectiveComplete: true,
-        },
-        {
-          type: 'buc-unmuted',
-          description: 'BUC RF Output Active',
-          maintainUntilObjectiveComplete: true,
-        },
-        {
-          type: 'hpa-enabled',
-          description: 'HPA Output Active',
-          maintainUntilObjectiveComplete: true,
-        },
-        {
-          type: 'hpa-output-power-set',
-          description: 'HPA Output Power ≥40 dBm (10 W)',
-          params: {
-            minOutputPower: 40 as dBm,
-          },
-          mustMaintain: true,
-          maintainDuration: 60,
+          mustMaintain: false,
         },
       ],
       conditionLogic: 'AND',
-      points: 75,
+      points: 20,
     },
   ] as Objective[],
   dialogClips: {
     intro: {
       text: `
       <p>
-        Welcome to North Atlantic Teleport Services. Big day for you - first shift on console. I'm glad you made it through the snow; the Vermont microwave backhaul barely did.
+        I've got three new hires to train before I leave next month, so let's make good use of our time. I'm Charlie Brooks - senior operator here at NATS.
       </p>
       <p>
-      Alright, here's the situation. SeaLink's brand-new GEO bird, MARINER-1, just settled into its station-keeping box at 53 West. Beacon Orbital in Cambridge ran the final orbit checks this morning, so the spacecraft team has handed the payload over to us.
+        TIDEMARK-1 is already online at 53 West, serving customer traffic for SeaLink. Today I'm going to walk you through a routine health check. You'll learn what each equipment panel shows, what the indicators mean, and what "normal" looks like.
       </p>
       <p>
-      Your job? Establish the first RF link from this facility. No pressure—just the part where we prove to the client that their multimillion-dollar satellite actually talks back.
+        No pressure today - just observation and familiarization. Click through each panel and verify the status indicators as I explain them.
       </p>
       <p>
-      You'll see a Guide and a Checklist on the left side of your screen. Follow those step-by-step; they're built from our standard ops flow and the lessons learned from… well, the last time someone rushed this process.
-      </p>
-      <p>
-      Oh, and I already configured the receiver and transmitter modems while you were getting coffee. You're welcome. Next time, that'll be your problem.
-      </p>
-      <p>
-      I'll be monitoring from the upstairs control room. When you're ready, let's bring MARINER-1 online.
+        Let's start with the GPSDO. That's the GPS-Disciplined Oscillator - the heart of our frequency reference system.
       </p>
       `,
       character: Character.CHARLIE_BROOKS,
-      emotion: Emotion.HAPPY,
-      audioUrl: getAssetUrl('/assets/campaigns/nats/1/intro.mp3'),
+      emotion: Emotion.CONFIDENT,
+      audioUrl: getAssetUrl('/assets/campaigns/nats/1/intro-v2.mp3'),
     },
     objectives: {
       'phase-1-gpsdo': {
         text: `
         <p>
-        GPS-DO is up and locked.
+          See that green lock indicator? That's what we want to see - means we've got a stable 10 MHz reference for the entire rack.
         </p>
         <p>
-        One subsystem down...seventeen more chances for my ulcer to act up.
+          The GPSDO receives timing signals from GPS satellites and uses them to discipline a precision oscillator. When it says "Locked" and shows 8 satellites, everything's nominal.
         </p>
         <p>
-        That 10 MHz reference keeps the rack from free-styling...We don't have room for improvisation today.
+          That stability reading - anything below 5×10⁻¹¹ is excellent. This reference feeds every other piece of equipment in the chain.
         </p>
         <p>
-        ...Go ahead...Power the LNB and dial in its gain.
-        </p>
-        <p>
-        Every step we nail buys me another hour before the board calls.
+          Next up: the LNB panel. That's the Low Noise Block downconverter - it's part of the receive chain.
         </p>
         `,
-        character: Character.CATHERINE_VEGA,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/1/obj-phase-1-gpsdo.mp3'),
+        character: Character.CHARLIE_BROOKS,
+        emotion: Emotion.CONFIDENT,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/1/v2/obj-phase-1-gpsdo.mp3'),
       },
       'phase-2-lnb': {
         text: `
         <p>
-        LNB's warmed up and behaving.
+          The LNB converts the incoming C-band signal down to an intermediate frequency we can work with. It's mounted right at the antenna feed.
         </p>
         <p>
-        Not bad, new guy.
+          Key things to check: power is on, it's locked to our 10 MHz reference, and the temperature is stable. That noise temperature reading tells us how clean the receive signal is - lower is better, and anything under 100 Kelvin is good.
         </p>
         <p>
-        Means I don't have to file another 'mysterious gain drift' ticket upstairs.
-        </p>
-        <p>
-        Keep going.
-        </p>
-        `,
-        character: Character.CHARLIE_BROOKS,
-        emotion: Emotion.SURPRISED,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/1/obj-phase-2-lnb.mp3'),
-      },
-      'phase-3-buc': {
-        text: `
-        <p>
-        BUC is in standby, muted and locked. Good.
-        </p>
-        <p>
-        We don't unmute until we've got beacon lock. That's not paranoia — that's procedure.
-        </p>
-        <p>
-        Next step: point the antenna at MARINER-1. Use program track mode — the ACU will calculate the look angles from the orbital elements.
-        </p>
-        `,
-        character: Character.CATHERINE_VEGA,
-        emotion: Emotion.HAPPY,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/1/obj-phase-3-buc.mp3'),
-      },
-      'phase-4-antenna': {
-        text: `
-        <p>
-        Antenna's slewing to MARINER-1's predicted position.
-        </p>
-        <p>
-        Program track uses the orbital elements to calculate the look angles — it's close enough to get us in the ballpark, but not precise enough for beacon lock.
-        </p>
-        <p>
-        That comes later with step-track. For now, configure the IF filter while we wait for the antenna to settle.
+          Now let's look at the antenna control unit. That's where we monitor tracking status.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.HAPPY,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/1/obj-phase-4-antenna.mp3'),
+        audioUrl: getAssetUrl('/assets/campaigns/nats/1/v2/obj-phase-2-lnb.mp3'),
       },
-      'phase-5-filter': {
+      'phase-3-antenna': {
         text: `
         <p>
-        IF filter configured. Most new operators skip this step.
+          The antenna is currently in step-track mode, locked on TIDEMARK-1's beacon signal. See those azimuth and elevation readings? That's where the dish is pointing.
         </p>
         <p>
-        The filter bank helps us reject out-of-band noise before it hits the analyzer. For beacon acquisition, 1 MHz is the sweet spot — narrow enough to reject adjacent channel interference, but with minimal insertion loss.
+          Step-track mode automatically makes small adjustments to keep us peaked on the beacon. The "Beacon Lock" indicator confirms we're receiving that signal.
         </p>
         <p>
-        Now configure the spectrum analyzer. MARINER-1's beacon is at 3,902.5 MHz, but we need to use the IF frequency. Since the oscillator is set to 5,150 MHz, the IF frequency is 1,247.5 MHz.
+          When you see stable tracking like this, the receive chain is healthy. Let's verify that on the spectrum analyzer.
         </p>
         `,
-        character: Character.CATHERINE_VEGA,
+        character: Character.CHARLIE_BROOKS,
         emotion: Emotion.CONFIDENT,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/1/obj-phase-5-filter.mp3'),
+        audioUrl: getAssetUrl('/assets/campaigns/nats/1/v2/obj-phase-3-antenna.mp3'),
       },
-      'phase-6-spec-a': {
+      'phase-4-spectrum': {
         text: `
         <p>
-        Spectrum analyzer is dialed in. That narrow RBW will help us pick out the CW beacon from the noise floor.
+          This is what a healthy beacon signal looks like. That spike in the center of the display is the TIDEMARK-1 beacon at 1,247.5 MHz IF.
         </p>
         <p>
-        You should see the beacon on screen now — program track got us close enough. But for precision tracking, we need to switch to step-track mode.
+          The noise floor - that's the baseline around -120 dBm - is clean and flat. No interference, no spurious signals. That's exactly what we want to see.
         </p>
         <p>
-        Set the beacon receiver to 3,902.5 MHz, then engage step-track. The ACU will peak up on the beacon automatically.
+          One more check: the receiver modem. Let's make sure it's demodulating properly.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.HAPPY,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/1/obj-phase-6-spec-a.mp3'),
+        audioUrl: getAssetUrl('/assets/campaigns/nats/1/v2/obj-phase-4-spectrum.mp3'),
       },
-      'phase-7-beacon-lock': {
+      'phase-5-receiver': {
         text: `
         <p>
-        Beautiful! Step-track is locked on the beacon. MARINER-1 is talking to us.
+          Receiver's locked. That C/N ratio above 10 dB means we've got plenty of margin for reliable data reception.
         </p>
         <p>
-        Program track got us in the ballpark, step-track is keeping us centered. That's the handoff working exactly as designed.
+          That covers the basics. You've seen what normal operation looks like - GPSDO locked, LNB stable, antenna tracking, clean spectrum, receiver demodulating.
         </p>
         <p>
-        Now let's verify the payload downlink. The receiver modem I configured earlier should be picking up the transponder signal. Check the RX Analysis tab — you should see a clean constellation on the IQ display.
-        </p>
-        `,
-        character: Character.CHARLIE_BROOKS,
-        emotion: Emotion.EXCITED,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/1/obj-phase-7-beacon-lock.mp3'),
-      },
-      'phase-7b-payload-verify': {
-        text: `
-        <p>
-        Receiver is locked. I'm seeing a clean constellation on the IQ display — that's the payload channel, not just the beacon.
-        </p>
-        <p>
-        Signal quality looks good. The modem I configured earlier is pulling in the data carrier just fine.
-        </p>
-        <p>
-        This confirms MARINER-1's receive chain is working. Now let's prove we can talk back. Time to unmute the BUC.
-        </p>
-        `,
-        character: Character.CHARLIE_BROOKS,
-        emotion: Emotion.CONFIDENT,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/1/obj-phase-7b-payload-verify.mp3'),
-      },
-      'phase-8-buc-unmute': {
-        text: `
-        <p>
-        BUC is hot. RF is flowing.
-        </p>
-        <p>
-        Now for the HPA. This is a 200-watt amplifier, so treat it with respect.
-        </p>
-        <p>
-        The enable switch is a dual-action safety — you need to arm it AND flip the enable. It's designed to prevent accidental transmission.
-        </p>
-        <p>
-        Set back-off to 10 dB. That keeps us well below the 1 dB compression point and maintains good IMD performance. The SeaLink maritime modems are sensitive to intermodulation distortion.
-        </p>
-        `,
-        character: Character.CATHERINE_VEGA,
-        emotion: Emotion.CONFIDENT,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/1/obj-phase-8-buc-unmute.mp3'),
-      },
-      'phase-9-hpa': {
-        text: `
-        <p>
-        HPA is up and linear. Output power looks good.
-        </p>
-        <p>
-        This is it. First Light for MARINER-1.
-        </p>
-        <p>
-        We've got receive chain up and locked, transmit chain active and stable. Now we hold it for 15 seconds to prove to SeaLink that their satellite can talk to us AND hear us back.
-        </p>
-        <p>
-        Don't touch anything. Just breathe.
-        </p>
-        `,
-        character: Character.CATHERINE_VEGA,
-        emotion: Emotion.CONFIDENT,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/1/obj-phase-9-hpa.mp3'),
-      },
-      'phase-10-full-link': {
-        text: `
-        <p>
-        MARINER-1 is officially online! First bidirectional link confirmed.
-        </p>
-        <p>
-        Not bad for your first shift. Most new operators take three attempts to get through First Light without breaking lock.
-        </p>
-        <p>
-        The receiver and transmitter modems I set up earlier? Those handle the actual data — video feeds, telemetry, the works. We'll get you trained on those next shift.
-        </p>
-        <p>
-        For now, enjoy the win. Catherine's already on the phone with SeaLink's CEO. You just made them a lot of money.
+          Next shift, we'll do something more hands-on. But for now, you know what healthy equipment looks like. That's the foundation for everything else.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.HAPPY,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/1/obj-phase-10-full-link.mp3'),
+        audioUrl: getAssetUrl('/assets/campaigns/nats/1/v2/obj-phase-5-receiver.mp3'),
       },
     },
   },

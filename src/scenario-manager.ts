@@ -42,6 +42,19 @@ export interface SimulationSettings {
   missionBriefUrl?: string;
   isExtraSatellitesVisible?: boolean;
   satellites: Satellite[];
+  missionTimeLimitSeconds?: number;
+  weatherEvents?: Array<{
+    id: string;
+    groundStationId: string;
+    type: "snow" | "rain" | "fog" | "wind" | "dust" | "hail" | "ice" | "storm";
+    severity: "minor" | "moderate" | "severe";
+    /** Seconds since mission start */
+    startTime: number;
+    /** Duration in seconds */
+    duration: number;
+    /** dB degradation to link margin */
+    linkMarginDegradation: number;
+  }>;
 }
 
 export class ScenarioManager {

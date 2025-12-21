@@ -295,7 +295,7 @@ export class ScenarioSelectionPage extends BasePage {
         </div>
 
         <div class="scenario-image">
-        <img src="${getAssetUrl('/assets/campaigns/' + scenario.imageUrl)}" alt="${scenario.title} Image"/>
+        <img src="${getAssetUrl('/assets/campaigns/' + scenario.imageUrl)}" alt="${scenario.title} Image" onerror="this.onerror=null; this.src='${getAssetUrl('/images/placeholder.png')}'"/>
         <div class="scenario-image-overlay">
           <h2 class="scenario-title">${scenario.title}</h2>
           <div class="scenario-subtitle">${scenario.subtitle}</div>

@@ -110,6 +110,45 @@ export interface ObjectivesAllCompletedData {
   totalTime: number;
 }
 
+export interface ObjectiveFailedData {
+  objectiveId: string;
+  objective: Objective;
+  failedAt: number;
+  reason: 'timeout';
+}
+
+// Quiz Event specific interfaces
+export interface QuizShowData {
+  objectiveId: string;
+  conditionIndex: number;
+  question: string;
+  options: [string, string, string, string];
+  correctIndex: 0 | 1 | 2 | 3;
+  explanation?: string;
+  pointPenalty: number;
+}
+
+export interface QuizAnsweredData {
+  objectiveId: string;
+  conditionIndex: number;
+  isCorrect: boolean;
+  selectedIndex: number;
+  attempts: number;
+  pointsDeducted: number;
+}
+
+export interface QuizCompletedData {
+  objectiveId: string;
+  conditionIndex: number;
+  totalAttempts: number;
+  totalPointsDeducted: number;
+}
+
+export interface ScenarioTimeExpiredData {
+  elapsedTime: number;
+  timeLimit: number;
+}
+
 // Progress Save Event specific interfaces
 export interface ProgressSaveStartData {
   timestamp: number;
@@ -188,6 +227,13 @@ export enum Events {
   OBJECTIVE_COMPLETED = 'objective:completed',
   OBJECTIVE_CONDITION_CHANGED = 'objective:condition:changed',
   OBJECTIVES_ALL_COMPLETED = 'objectives:all:completed',
+  OBJECTIVE_FAILED = 'objective:failed',
+  SCENARIO_TIME_EXPIRED = 'scenario:time:expired',
+
+  // Quiz events (for status-check conditions)
+  QUIZ_SHOW = 'quiz:show',
+  QUIZ_ANSWERED = 'quiz:answered',
+  QUIZ_COMPLETED = 'quiz:completed',
 
   // Progress Save events
   PROGRESS_SAVE_START = 'progress:save:start',
@@ -245,6 +291,12 @@ export interface EventMap {
   [Events.OBJECTIVE_COMPLETED]: [ObjectiveCompletedData];
   [Events.OBJECTIVE_CONDITION_CHANGED]: [ObjectiveConditionChangedData];
   [Events.OBJECTIVES_ALL_COMPLETED]: [ObjectivesAllCompletedData];
+  [Events.OBJECTIVE_FAILED]: [ObjectiveFailedData];
+  [Events.SCENARIO_TIME_EXPIRED]: [ScenarioTimeExpiredData];
+
+  [Events.QUIZ_SHOW]: [QuizShowData];
+  [Events.QUIZ_ANSWERED]: [QuizAnsweredData];
+  [Events.QUIZ_COMPLETED]: [QuizCompletedData];
 
   [Events.PROGRESS_SAVE_START]: [ProgressSaveStartData];
   [Events.PROGRESS_SAVE_SUCCESS]: [ProgressSaveSuccessData];

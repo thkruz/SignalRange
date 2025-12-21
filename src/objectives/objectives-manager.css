@@ -21,6 +21,12 @@
       }
     }
 
+    &.failed {
+      strong {
+        background: #dc3545;
+      }
+    }
+
     /* Accordion functionality - collapsed state */
     &.collapsed .objective-content {
       max-height: 0;
@@ -108,4 +114,26 @@
       color: #9e9e9e;
     }
   }
+
+  /* Timer display styling */
+  .objective-timer {
+    font-family: var(--font-monospace, monospace);
+    font-size: 0.9em;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: rgba(255, 165, 0, 0.2);
+    color: #ffa500;
+    margin-left: auto;
+  }
+
+  .objective-timer.timer-urgent {
+    background: rgba(255, 0, 0, 0.3);
+    color: #ff4444;
+    animation: timer-pulse 1s infinite;
+  }
+}
+
+@keyframes timer-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
 }

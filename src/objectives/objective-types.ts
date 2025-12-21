@@ -41,6 +41,7 @@ export type ConditionType =
   | 'hpa-output-power-set' // HPA output power above threshold
   | 'receiver-signal-locked' // Receiver modem has demodulation lock
   | 'receiver-snr-threshold' // Receiver modem C/N ratio meets threshold
+  | 'status-check' // Interactive quiz to verify player found the correct information
   | 'custom'; // Custom condition with evaluator function
 
 /**
@@ -117,6 +118,16 @@ export interface ConditionParams {
   modemNumber?: number;
   /** For receiver-snr-threshold: minimum C/N ratio in dB */
   minCNRatio?: number;
+  /** For status-check: the question to display */
+  question?: string;
+  /** For status-check: the four answer options */
+  options?: [string, string, string, string];
+  /** For status-check: index of the correct answer (0-3) */
+  correctIndex?: 0 | 1 | 2 | 3;
+  /** For status-check: explanation shown after correct answer */
+  explanation?: string;
+  /** For status-check: points deducted per wrong answer (default: 5) */
+  pointPenalty?: number;
   /** Additional context-specific parameters */
   [key: string]: unknown;
 }
@@ -165,6 +176,10 @@ export interface Objective {
   isOptional?: boolean;
   /** Prerequisites - objective IDs that must be completed before this becomes active */
   prerequisiteObjectiveIds?: string[];
+  /** Optional time limit in seconds for this objective */
+  timeLimitSeconds?: number;
+  /** When the timer starts: 'on-activate' (default) or 'on-scenario-load' */
+  timerStartTrigger?: 'on-activate' | 'on-scenario-load';
 }
 
 /**
@@ -183,6 +198,14 @@ export interface ObjectiveState {
   completedAt?: number;
   /** Current state of each condition */
   conditionStates: ConditionState[];
+  /** Whether this objective has failed (e.g., timer expired) */
+  isFailed: boolean;
+  /** Timestamp when objective failed */
+  failedAt?: number;
+  /** Remaining time in seconds (countdown timer) */
+  timeRemainingSeconds?: number;
+  /** Whether timer is currently running */
+  isTimerRunning: boolean;
 }
 
 /**

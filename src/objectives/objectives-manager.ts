@@ -15,6 +15,7 @@ import {
   Objective,
   ObjectiveState
 } from './objective-types';
+import { QuizManager } from '@app/modal/quiz-manager';
 import './objectives-manager.css';
 
 /**
@@ -27,14 +28,33 @@ export class ObjectivesManager {
   private readonly startTime_: number;
   private readonly collapsedObjectiveIds_: Set<string> = new Set();
 
-  private constructor(objectives: Objective[]) {
+  // Timer-related properties
+  private scenarioTimeLimit_: number | null = null;
+  private scenarioTimerRunning_: boolean = false;
+  private scenarioTimeRemaining_: number = 0;
+  private timerInterval_: number | null = null;
+
+  private constructor(objectives: Objective[], scenarioTimeLimit?: number) {
     this.eventBus_ = EventBus.getInstance();
     this.startTime_ = Date.now();
+
+    // Initialize scenario timer if provided
+    if (scenarioTimeLimit !== undefined && scenarioTimeLimit > 0) {
+      this.scenarioTimeLimit_ = scenarioTimeLimit;
+      this.scenarioTimeRemaining_ = scenarioTimeLimit;
+      this.scenarioTimerRunning_ = true;
+    }
 
     // Initialize objective states
     this.objectiveStates_ = objectives.map((objective) => {
       const hasNoPrerequisites = !objective.prerequisiteObjectiveIds || objective.prerequisiteObjectiveIds.length === 0;
       const isActive = hasNoPrerequisites;
+
+      // Determine if timer should start now (on-scenario-load) or later (on-activate)
+      const startsOnLoad = objective.timeLimitSeconds !== undefined &&
+        objective.timerStartTrigger === 'on-scenario-load';
+      const startsOnActivate = objective.timeLimitSeconds !== undefined &&
+        objective.timerStartTrigger !== 'on-scenario-load';
 
       return {
         objective,
@@ -48,23 +68,32 @@ export class ObjectivesManager {
           isMaintenanceComplete: false,
           lostTimestamps: [],
         })),
+        // Timer state initialization
+        isFailed: false,
+        isTimerRunning: startsOnLoad || (startsOnActivate && isActive),
+        timeRemainingSeconds: objective.timeLimitSeconds,
       };
     });
 
     // Subscribe to update loop
     this.eventBus_.on(Events.UPDATE, this.update_.bind(this));
+
+    // Start the 1-second timer interval for countdown updates
+    this.startTimerInterval_();
   }
 
   /**
    * Initialize the objectives manager with a set of objectives
+   * @param objectives Array of objectives to track
+   * @param scenarioTimeLimit Optional scenario-wide time limit in seconds
    */
-  static initialize(objectives: Objective[]): ObjectivesManager {
+  static initialize(objectives: Objective[], scenarioTimeLimit?: number): ObjectivesManager {
     if (ObjectivesManager.instance_) {
       console.warn('ObjectivesManager already initialized. Destroying previous instance.');
       ObjectivesManager.destroy();
     }
 
-    ObjectivesManager.instance_ = new ObjectivesManager(objectives);
+    ObjectivesManager.instance_ = new ObjectivesManager(objectives, scenarioTimeLimit);
     return ObjectivesManager.instance_;
   }
 
@@ -84,6 +113,13 @@ export class ObjectivesManager {
   static destroy(): void {
     if (ObjectivesManager.instance_) {
       ObjectivesManager.instance_.eventBus_.off(Events.UPDATE, ObjectivesManager.instance_.update_.bind(ObjectivesManager.instance_));
+
+      // Clear timer interval
+      if (ObjectivesManager.instance_.timerInterval_) {
+        clearInterval(ObjectivesManager.instance_.timerInterval_);
+        ObjectivesManager.instance_.timerInterval_ = null;
+      }
+
       ObjectivesManager.instance_ = null;
     }
   }
@@ -114,6 +150,102 @@ export class ObjectivesManager {
    */
   getElapsedTime(): number {
     return (Date.now() - this.startTime_) / 1000; // Convert to seconds
+  }
+
+  /**
+   * Get remaining scenario time in seconds
+   */
+  getScenarioTimeRemaining(): number {
+    return this.scenarioTimeRemaining_;
+  }
+
+  /**
+   * Check if scenario has a time limit
+   */
+  hasScenarioTimer(): boolean {
+    return this.scenarioTimeLimit_ !== null;
+  }
+
+  /**
+   * Get remaining time for a specific objective
+   */
+  getObjectiveTimeRemaining(objectiveId: string): number | null {
+    const state = this.getObjectiveState(objectiveId);
+    if (state?.timeRemainingSeconds === undefined) return null;
+    return state.timeRemainingSeconds;
+  }
+
+  /**
+   * Format seconds as M:SS string
+   */
+  formatTimeRemaining(seconds: number): string {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  }
+
+  /**
+   * Start the 1-second timer interval for countdown updates
+   */
+  private startTimerInterval_(): void {
+    if (this.timerInterval_) return;
+
+    this.timerInterval_ = window.setInterval(() => {
+      this.tickTimers_();
+    }, 1000);
+  }
+
+  /**
+   * Called every second to update timers
+   */
+  private tickTimers_(): void {
+    // Update scenario timer
+    if (this.scenarioTimerRunning_ && this.scenarioTimeRemaining_ > 0) {
+      this.scenarioTimeRemaining_--;
+      if (this.scenarioTimeRemaining_ <= 0) {
+        this.handleScenarioTimeout_();
+      }
+    }
+
+    // Update per-objective timers
+    for (const state of this.objectiveStates_) {
+      if (state.isTimerRunning && !state.isCompleted && !state.isFailed) {
+        if (state.timeRemainingSeconds !== undefined && state.timeRemainingSeconds > 0) {
+          state.timeRemainingSeconds--;
+          if (state.timeRemainingSeconds <= 0) {
+            this.failObjective_(state, 'timeout');
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Mark an objective as failed
+   */
+  private failObjective_(state: ObjectiveState, reason: 'timeout'): void {
+    state.isFailed = true;
+    state.failedAt = Date.now();
+    state.isTimerRunning = false;
+
+    this.eventBus_.emit(Events.OBJECTIVE_FAILED, {
+      objectiveId: state.objective.id,
+      objective: state.objective,
+      failedAt: state.failedAt,
+      reason,
+    });
+  }
+
+  /**
+   * Handle scenario-level timeout
+   */
+  private handleScenarioTimeout_(): void {
+    this.scenarioTimerRunning_ = false;
+
+    this.eventBus_.emit(Events.SCENARIO_TIME_EXPIRED, {
+      elapsedTime: this.getElapsedTime(),
+      timeLimit: this.scenarioTimeLimit_ ?? 0,
+    });
   }
 
   /**
@@ -196,6 +328,7 @@ export class ObjectivesManager {
     for (const objectiveState of this.objectiveStates_) {
       const objective = objectiveState.objective;
       const isCompleted = objectiveState.isCompleted;
+      const isFailed = objectiveState.isFailed;
       const isActive = objectiveState.isActive;
 
       // Determine objective state class and label
@@ -204,6 +337,9 @@ export class ObjectivesManager {
       if (isCompleted) {
         stateClass = 'completed';
         stateLabel = 'Completed';
+      } else if (isFailed) {
+        stateClass = 'failed';
+        stateLabel = 'Failed';
       } else if (isActive) {
         stateClass = 'active';
         stateLabel = 'In Progress';
@@ -222,6 +358,14 @@ export class ObjectivesManager {
       html += `<div class="objective-header" onclick="this.parentElement.classList.toggle('collapsed');">`;
       html += `<span class="accordion-icon"></span>`;
       html += `<strong>${objective.title}</strong> - ${stateLabel}`;
+
+      // Add timer display if objective has a running timer
+      if (objectiveState.isTimerRunning && objectiveState.timeRemainingSeconds !== undefined) {
+        const timeStr = this.formatTimeRemaining(objectiveState.timeRemainingSeconds);
+        const urgencyClass = objectiveState.timeRemainingSeconds < 30 ? 'timer-urgent' : '';
+        html += `<span class="objective-timer ${urgencyClass}">${timeStr}</span>`;
+      }
+
       html += `</div>`;
       html += `<div class="objective-content">`;
       html += `<p>${objective.description}</p>`;
@@ -254,6 +398,11 @@ export class ObjectivesManager {
     for (const objectiveState of this.objectiveStates_) {
       // Skip already completed objectives
       if (objectiveState.isCompleted) {
+        continue;
+      }
+
+      // Skip failed objectives
+      if (objectiveState.isFailed) {
         continue;
       }
 
@@ -344,6 +493,7 @@ export class ObjectivesManager {
       if (isObjectiveComplete && !objectiveState.isCompleted) {
         objectiveState.isCompleted = true;
         objectiveState.completedAt = Date.now();
+        objectiveState.isTimerRunning = false; // Stop timer on completion
 
         this.collapsedObjectiveIds_.add(objectiveState.objective.id);
 
@@ -371,6 +521,11 @@ export class ObjectivesManager {
    * Check if an objective is complete based on its condition logic
    */
   private checkObjectiveComplete_(objectiveState: ObjectiveState): boolean {
+    // Failed objectives cannot be completed
+    if (objectiveState.isFailed) {
+      return false;
+    }
+
     const logic = objectiveState.objective.conditionLogic || 'AND';
 
     if (logic === 'AND') {
@@ -419,6 +574,14 @@ export class ObjectivesManager {
       if (allPrerequisitesMet) {
         objectiveState.isActive = true;
         objectiveState.activatedAt = now;
+
+        // Start timer for objectives with 'on-activate' trigger (default behavior)
+        const objective = objectiveState.objective;
+        if (objective.timeLimitSeconds !== undefined &&
+          objective.timerStartTrigger !== 'on-scenario-load') {
+          objectiveState.timeRemainingSeconds = objective.timeLimitSeconds;
+          objectiveState.isTimerRunning = true;
+        }
 
         // Remove from collapsed set so it expands when it becomes active
         this.collapsedObjectiveIds_.delete(objectiveState.objective.id);
@@ -849,6 +1012,39 @@ export class ObjectivesManager {
           const snr = receiver.getSnrForModem(modem);
           return snr !== null && snr >= minCNRatio;
         });
+      }
+
+      case 'status-check': {
+        // Quiz-based condition - requires player to answer correctly
+        const params = condition.params;
+        if (!params?.question || !params?.options || params?.correctIndex === undefined) {
+          console.warn('status-check condition missing required params (question, options, correctIndex)');
+          return false;
+        }
+
+        const quizManager = QuizManager.getInstance();
+        const conditionIndex = objectiveState.conditionStates.findIndex(
+          cs => cs.condition === condition
+        );
+
+        // Register the quiz if not already registered
+        if (!quizManager.hasQuiz(objectiveState.objective.id, conditionIndex)) {
+          quizManager.registerQuiz(
+            objectiveState.objective.id,
+            conditionIndex,
+            params.question,
+            params.options,
+            params.correctIndex,
+            params.explanation,
+            params.pointPenalty ?? 5
+          );
+
+          // Show the quiz immediately when the objective becomes active
+          quizManager.showQuiz(objectiveState.objective.id, conditionIndex);
+        }
+
+        // Check if quiz has been completed
+        return quizManager.isQuizComplete(objectiveState.objective.id, conditionIndex);
       }
 
       default:

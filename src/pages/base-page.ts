@@ -1,10 +1,13 @@
 import { BaseElement } from "@app/components/base-element";
 import { EventBus } from "@app/events/event-bus";
-import { Events } from "@app/events/events";
+import { Events, ObjectiveFailedData, ScenarioTimeExpiredData } from "@app/events/events";
 import { Logger } from "@app/logging/logger";
 import { Character } from "@app/modal/character-enum";
 import { DialogManager } from "@app/modal/dialog-manager";
+import { ObjectiveFailedModal } from "@app/modal/objective-failed-modal";
+import { QuizModal } from "@app/modal/quiz-modal";
 import { ObjectivesManager } from "@app/objectives/objectives-manager";
+import { ScenarioTimerDisplay } from "@app/objectives/scenario-timer-display";
 import { NavigationOptions } from "@app/router";
 import { ScenarioManager } from "@app/scenario-manager";
 import { ScenarioDialogManager } from "@app/scenarios/scenario-dialog-manager";
@@ -46,11 +49,23 @@ export abstract class BasePage extends BaseElement {
     // Initialize objectives manager if scenario has objectives
     const scenario = ScenarioManager.getInstance();
     if (scenario.data?.objectives && scenario.data.objectives.length > 0) {
-      ObjectivesManager.initialize(scenario.data.objectives);
+      // Pass scenario time limit if defined
+      ObjectivesManager.initialize(scenario.data.objectives, scenario.data.timeLimitSeconds);
       SimulationManager.getInstance().objectivesManager = ObjectivesManager.getInstance();
+
+      // Initialize scenario timer display if scenario has a time limit
+      if (scenario.data.timeLimitSeconds) {
+        ScenarioTimerDisplay.initialize(ObjectivesManager.getInstance());
+      }
+
+      // Subscribe to failure events
+      this.subscribeToFailureEvents_();
 
       // Initialize scenario dialog manager for objective completion dialogs
       ScenarioDialogManager.getInstance().initialize();
+
+      // Initialize quiz modal for status-check objective conditions
+      QuizModal.getInstance();
 
       // If we're continuing from a checkpoint, restore objective states
       if (this.navigationOptions_.continueFromCheckpoint) {
@@ -74,6 +89,32 @@ export abstract class BasePage extends BaseElement {
       // Schedule login prompt dialog to show 5 seconds after intro dialog is closed
       this.scheduleLoginPrompt_();
     }
+  }
+
+  /**
+   * Subscribe to objective/scenario failure events to show the failure modal
+   */
+  protected subscribeToFailureEvents_(): void {
+    const eventBus = EventBus.getInstance();
+
+    eventBus.on(Events.OBJECTIVE_FAILED, (data: ObjectiveFailedData) => {
+      ObjectiveFailedModal.getInstance().showFailure({
+        title: 'Objective Failed',
+        message: `Time expired for: ${data.objective.title}`,
+        objectiveId: data.objectiveId,
+        isScenarioTimeout: false,
+      });
+    });
+
+    eventBus.on(Events.SCENARIO_TIME_EXPIRED, (data: ScenarioTimeExpiredData) => {
+      const minutes = Math.floor(data.timeLimit / 60);
+      const minuteWord = minutes === 1 ? 'minute' : 'minutes';
+      ObjectiveFailedModal.getInstance().showFailure({
+        title: 'Mission Failed',
+        message: `Scenario time limit of ${minutes} ${minuteWord} has expired.`,
+        isScenarioTimeout: true,
+      });
+    });
   }
 
   /**

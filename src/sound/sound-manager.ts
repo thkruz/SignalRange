@@ -94,7 +94,9 @@ class SoundManager {
     }
 
     audio.currentTime = 0;
-    audio.play();
+    audio.play().catch(() => {
+      console.error(`Audio file not found: ${SFX_FILE_MAP[sfx]}. Run 'npm run r2:pull' to fetch assets.`);
+    });
 
     // Track currently playing audio for restart-enabled or looping sounds
     if (SFX_RESTART_ON_PLAY.has(sfx) || isLooping) {
@@ -154,7 +156,9 @@ class SoundManager {
     // Clone to allow the same audio to be played multiple times if needed
     audio = audio.cloneNode(true) as HTMLAudioElement;
     audio.currentTime = 0;
-    audio.play();
+    audio.play().catch(() => {
+      console.error(`Audio file not found: ${audioUrl}. Run 'npm run r2:pull' to fetch assets.`);
+    });
 
     this.customAudio = audio;
 

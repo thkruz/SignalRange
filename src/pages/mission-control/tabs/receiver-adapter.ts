@@ -193,7 +193,7 @@ export class ReceiverAdapter {
   }
 
   private antennaHandler_(e: Event): void {
-    const value = (e.target as HTMLSelectElement).value;
+    const value = parseInt((e.target as HTMLSelectElement).value);
     this.receiver.handleAntennaChange(value);
   }
 
@@ -307,7 +307,7 @@ export class ReceiverAdapter {
     // Antenna selector
     const antennaSelect = this.domCache_.get('antenna-select') as HTMLSelectElement;
     if (antennaSelect) {
-      antennaSelect.value = modem.antennaUuid;
+      antennaSelect.value = String(modem.antenna_id);
     }
 
     // Frequency input - round to 1 decimal place to avoid floating point display errors
@@ -339,7 +339,7 @@ export class ReceiverAdapter {
     // Antenna current value
     const antennaCurrent = this.domCache_.get('antenna-current');
     if (antennaCurrent) {
-      antennaCurrent.textContent = modem.antennaUuid;
+      antennaCurrent.textContent = String(modem.antenna_id);
     }
 
     // Frequency current value

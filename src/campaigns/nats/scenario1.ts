@@ -169,7 +169,7 @@ export const scenario1Data: ScenarioData = {
             bandwidth: 36 as MHz,    // Match payload bandwidth
             modulation: 'QPSK',
             fec: '3/4',
-            antennaUuid: '',
+            antenna_id: 1,
           }],
         }],
       },

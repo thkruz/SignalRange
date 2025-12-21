@@ -11,7 +11,7 @@ import { RFFrontEndCore } from "../rf-front-end/rf-front-end-core";
 import './receiver.css';
 
 export interface ReceiverModemState {
-  antennaUuid: string;
+  antenna_id: number;
   modemNumber: number; // 1-4
   frequency: MHz; // MHz
   bandwidth: MHz; // MHz
@@ -56,7 +56,7 @@ export interface IQSignalInfo {
 export class Receiver extends BaseEquipment {
   state: ReceiverState;
   private inputData: Partial<ReceiverModemState> = {};
-  private readonly antennas: AntennaCore[];
+  private readonly antennas_: AntennaCore[];
   private lastRenderState: ReceiverState | null = null;
   private mediaCache: { [url: string]: HTMLImageElement | HTMLVideoElement | HTMLIFrameElement } = {};
   private videoPlayTime: { [url: string]: number } = {};
@@ -66,7 +66,7 @@ export class Receiver extends BaseEquipment {
   constructor(parentId: string, antennas: AntennaCore[], state?: Partial<ReceiverState>, teamId: number = 1, serverId: number = 1) {
     super(teamId);
 
-    this.antennas = antennas;
+    this.antennas_ = antennas;
 
     const defaults = Receiver.getDefaultState();
 
@@ -79,19 +79,10 @@ export class Receiver extends BaseEquipment {
       (state?.modems ?? []).map(m => [m.modemNumber, m])
     );
 
-    const fallbackAntenna1 = antennas[0]?.state.uuid ?? 'default-antenna-1';
-    const fallbackAntenna2 = antennas[1]?.state.uuid ?? fallbackAntenna1;
-
     const modems: ReceiverModemState[] = defaults.modems.map((def) => {
       const override = overridesByModemNumber.get(def.modemNumber);
-
-      // Prefer real antenna UUIDs for defaults in this runtime
-      const defaultAntennaUuid =
-        def.modemNumber <= 2 ? fallbackAntenna1 : fallbackAntenna2;
-
       return {
         ...def,
-        antennaUuid: defaultAntennaUuid,
         ...override,
         // Ensure identity field remains correct unless explicitly overridden
         modemNumber: override?.modemNumber ?? def.modemNumber,
@@ -122,7 +113,7 @@ export class Receiver extends BaseEquipment {
 
       return {
         modemNumber,
-        antennaUuid: modemNumber <= 2 ? 'default-antenna-1' : 'default-antenna-2',
+        antenna_id: modemNumber <= 2 ? 1 : 2,
         frequency: 4700 as MHz, // IF Band after downconversion
         bandwidth: 50 as MHz,
         modulation: 'QPSK' as ModulationType,
@@ -188,11 +179,11 @@ export class Receiver extends BaseEquipment {
             <div class="rx-modem-config">
               <div class="config-row">
                 <label>Antenna</label>
-                <select class="input-rx-antenna" data-param="antennaId">
-                  <option value="1" ${this.inputData.antennaUuid === this.antennas[0]?.state.uuid ? 'selected' : ''}>1</option>
-                  <option value="2" ${this.inputData.antennaUuid === this.antennas[1]?.state.uuid ? 'selected' : ''}>2</option>
+                <select class="input-rx-antenna" data-param="antenna_id">
+                  <option value="1" ${this.inputData.antenna_id === 1 ? 'selected' : ''}>1</option>
+                  <option value="2" ${this.inputData.antenna_id === 2 ? 'selected' : ''}>2</option>
                 </select>
-                <span class="current-value">${this.inputData.antennaUuid ?? 1}</span>
+                <span class="current-value">${this.inputData.antenna_id ?? 1}</span>
               </div>
 
               <div class="config-row">
@@ -400,6 +391,10 @@ export class Receiver extends BaseEquipment {
     return this.state.modems.find(m => m.modemNumber === this.state.activeModem) ?? this.state.modems[0];
   }
 
+  get antennas(): AntennaCore[] {
+    return this.antennas_;
+  }
+
   /**
    * Public API Methods - For Adapter Pattern
    */
@@ -416,8 +411,8 @@ export class Receiver extends BaseEquipment {
     });
   }
 
-  public handleAntennaChange(antennaUuid: string): void {
-    this.inputData.antennaUuid = antennaUuid;
+  public handleAntennaChange(antennaId: number): void {
+    this.inputData.antenna_id = antennaId;
   }
 
   public handleFrequencyChange(frequencyMHz: number): void {
@@ -580,8 +575,8 @@ export class Receiver extends BaseEquipment {
       case 'bandwidth':
         this.inputData.bandwidth = (Number.parseFloat(inputValue) as MHz) || 0 as MHz;
         break;
-      case 'antenna':
-        this.inputData.antennaUuid = this.antennas.find(a => a.state.uuid === inputValue)?.state.uuid;
+      case 'antenna_id':
+        this.inputData.antenna_id = Number.parseInt(inputValue);
         break;
       case 'modulation':
         this.inputData.modulation = inputValue as ModulationType;
@@ -784,7 +779,7 @@ export class Receiver extends BaseEquipment {
       const sel = this.domCache['inputAntenna'] as HTMLSelectElement;
       // Try to select the option matching antenna id
       for (const option of sel.options) {
-        option.selected = option.value === (this.inputData.antennaUuid ?? activeModem?.antennaUuid);
+        option.selected = Number(option.value) === (this.inputData.antenna_id ?? activeModem?.antenna_id);
       }
     }
 
@@ -793,7 +788,7 @@ export class Receiver extends BaseEquipment {
     (this.domCache['inputModulation'] as HTMLSelectElement).value = String(this.inputData.modulation ?? activeModem?.modulation ?? '');
     (this.domCache['inputFec'] as HTMLSelectElement).value = String(this.inputData.fec ?? activeModem?.fec ?? '');
 
-    (this.domCache['currentValueAntenna']).textContent = String(activeModem.antennaUuid);
+    (this.domCache['currentValueAntenna']).textContent = String(activeModem.antenna_id);
     (this.domCache['currentValueFrequency']).textContent = `${activeModem.frequency} MHz`;
     (this.domCache['currentValueBandwidth']).textContent = `${activeModem.bandwidth} MHz`;
     (this.domCache['currentValueModulation']).textContent = String(activeModem.modulation);

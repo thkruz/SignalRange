@@ -4,6 +4,7 @@ import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
 import { EventBus } from "@app/events/event-bus";
 import { ObjectivesManager } from "@app/objectives/objectives-manager";
+import { ScenarioTimerDisplay } from "@app/objectives/scenario-timer-display";
 import { NavigationOptions } from "@app/router";
 import { ScenarioManager } from "@app/scenario-manager";
 import { ScenarioDialogManager } from "@app/scenarios/scenario-dialog-manager";
@@ -279,6 +280,7 @@ export class MissionControlPage extends BasePage {
     // Clean up singletons (matches SandboxPage.destroy())
     AlarmService.destroy();
     SimulationManager.destroy();
+    ScenarioTimerDisplay.getInstance()?.dispose();
     ObjectivesManager.destroy();
     ScenarioDialogManager.reset();
     EventBus.destroy();

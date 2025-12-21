@@ -3,6 +3,12 @@
  * This component displays the mission timeline at the bottom of the shell.
  */
 
+
+/* Disabled until after version 1 */
+#timeline-deck-container {
+  display: none;
+}
+
 .app-shell-timeline {
   height: 12rem;
   /* h-48 */

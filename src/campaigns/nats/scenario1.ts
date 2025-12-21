@@ -145,7 +145,7 @@ export const scenario1Data: ScenarioData = {
           activeModem: 1,
           modems: [{
             modem_number: 1,
-            isPowered: true,
+            isPowered: false,
             isTransmitting: false,
             isFaulted: false,
             isLoopback: false,
@@ -174,13 +174,13 @@ export const scenario1Data: ScenarioData = {
         }],
       },
       {
-        id: 'MIA-01',
+        id: 'ME-01',
         isOperational: false,
-        name: 'Miami Ground Station',
+        name: 'Maine Ground Station',
         location: {
-          latitude: 25.7617,
-          longitude: -80.1918,
-          elevation: 2,
+          latitude: 45.215214,
+          longitude: -68.785507,
+          elevation: 48,
         },
         antennas: [ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK],
         rfFrontEnds: [{

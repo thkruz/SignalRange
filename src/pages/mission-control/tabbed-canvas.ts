@@ -53,6 +53,11 @@ export class TabbedCanvas extends BaseElement {
     EventBus.getInstance().on(Events.ASSET_SELECTED, (data) => {
       this.handleAssetSelected_(data.type, data.id);
     });
+
+    // Listen for tab switch requests from other components (e.g., dashboard cards)
+    EventBus.getInstance().on(Events.SWITCH_TAB, (data) => {
+      this.switchTab_(data.tabId);
+    });
   }
 
   /**

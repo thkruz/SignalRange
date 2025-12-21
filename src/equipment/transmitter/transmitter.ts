@@ -135,7 +135,7 @@ export class Transmitter extends BaseEquipment {
         },
         isTransmitting: false,
         isTransmittingSwitchUp: false,
-        isPowered: true,
+        isPowered: false,
         isLoopback: false,
         isFaulted: false,
         isFaultSwitchUp: false,

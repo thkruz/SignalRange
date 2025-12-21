@@ -147,3 +147,101 @@
 .quick-stat-value.bad {
   color: var(--color-error);
 }
+
+/* Summary Cards */
+.summary-card {
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.summary-card .card-body {
+  padding: 0.75rem;
+}
+
+.summary-card .card-header {
+  padding: 0.5rem 0.75rem;
+}
+
+.summary-card .card-title {
+  font-size: 0.8125rem;
+  margin-bottom: 0;
+}
+
+/* Clickable Cards */
+.clickable-card {
+  cursor: pointer;
+}
+
+.clickable-card:hover {
+  border-color: var(--mc-primary);
+  box-shadow: 0 0 0 1px var(--mc-primary);
+}
+
+.clickable-card:active {
+  transform: scale(0.995);
+}
+
+/* Status Badges */
+.status-badge {
+  display: inline-block;
+  padding: 0.125rem 0.5rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-radius: 3px;
+  line-height: 1.4;
+}
+
+.status-badge-green {
+  background: rgba(46, 204, 113, 0.15);
+  color: #2ecc71;
+}
+
+.status-badge-red {
+  background: rgba(231, 76, 60, 0.15);
+  color: #e74c3c;
+}
+
+.status-badge-amber {
+  background: rgba(243, 156, 18, 0.15);
+  color: #f39c12;
+}
+
+.status-badge-gray {
+  background: rgba(127, 140, 141, 0.15);
+  color: #7f8c8d;
+}
+
+.status-badge-info {
+  background: rgba(52, 152, 219, 0.15);
+  color: #3498db;
+}
+
+/* LED Indicators */
+.led {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.led-off {
+  background: #555;
+  box-shadow: none;
+}
+
+.led-green {
+  background: #2ecc71;
+  box-shadow: 0 0 4px #2ecc71;
+}
+
+.led-red {
+  background: #e74c3c;
+  box-shadow: 0 0 4px #e74c3c;
+}
+
+.led-amber {
+  background: #f39c12;
+  box-shadow: 0 0 4px #f39c12;
+}

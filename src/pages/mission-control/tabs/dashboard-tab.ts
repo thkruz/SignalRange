@@ -27,10 +27,13 @@ interface AlarmEntry {
  * - Active alarms list
  */
 export class DashboardTab extends BaseElement {
+  private static readonly UPDATE_INTERVAL_MS = 1000;
+
   private readonly groundStation: GroundStation;
   private readonly domCache_: Map<string, HTMLElement> = new Map();
   private readonly alarms_: AlarmEntry[] = [];
   private updateHandler_: (() => void) | null = null;
+  private lastSyncTime_: number = 0;
 
   constructor(groundStation: GroundStation, containerId: string) {
     super();
@@ -163,6 +166,195 @@ export class DashboardTab extends BaseElement {
             </div>
           </div>
 
+          <!-- Row 2: Subsystem Summary Cards -->
+
+          <!-- Antenna/ACU Summary Card -->
+          <div class="col-lg-3">
+            <div class="card h-100 summary-card clickable-card" data-target-tab="acu-control">
+              <div class="card-header d-flex justify-content-between align-items-center">
+                <h3 class="card-title mb-0">Antenna</h3>
+                <span id="antenna-fault-led" class="led led-off"></span>
+              </div>
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <span class="text-muted small">Mode:</span>
+                  <span id="antenna-mode" class="status-badge status-badge-info">MANUAL</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <span class="text-muted small">Position:</span>
+                  <span id="antenna-position" class="fw-bold font-monospace small">Az: --° El: --°</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <span class="text-muted small">Lock:</span>
+                  <span id="antenna-lock" class="d-flex align-items-center gap-1">
+                    <span class="led led-off"></span>
+                    <span class="small">UNLOCKED</span>
+                  </span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center">
+                  <span class="text-muted small">Beacon C/N:</span>
+                  <span id="antenna-cn" class="fw-bold font-monospace small">-- dB</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- GPSDO Summary Card -->
+          <div class="col-lg-3">
+            <div class="card h-100 summary-card clickable-card" data-target-tab="gps-timing">
+              <div class="card-header">
+                <h3 class="card-title">GPSDO</h3>
+              </div>
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <span class="text-muted small">Lock:</span>
+                  <span id="gpsdo-lock" class="d-flex align-items-center gap-1">
+                    <span class="led led-off"></span>
+                    <span class="small">UNLOCKED</span>
+                  </span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <span class="text-muted small">Satellites:</span>
+                  <span id="gpsdo-sats" class="fw-bold font-monospace small">-- SVs</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <span class="text-muted small">Status:</span>
+                  <span id="gpsdo-status" class="status-badge status-badge-green">OK</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center">
+                  <span class="text-muted small">Warm-up:</span>
+                  <span id="gpsdo-warmup" class="fw-bold font-monospace small">--</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- RF Chain RX Summary Card -->
+          <div class="col-lg-3">
+            <div class="card h-100 summary-card clickable-card" data-target-tab="rx-analysis">
+              <div class="card-header">
+                <h3 class="card-title">RF Chain RX</h3>
+              </div>
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <span class="text-muted small">LNB Lock:</span>
+                  <span id="lnb-lock" class="d-flex align-items-center gap-1">
+                    <span class="led led-off"></span>
+                    <span class="small">UNLOCKED</span>
+                  </span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <span class="text-muted small">Noise Temp:</span>
+                  <span id="lnb-noise" class="fw-bold font-monospace small">-- K</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <span class="text-muted small">Filter BW:</span>
+                  <span id="filter-bw" class="fw-bold font-monospace small">-- MHz</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center">
+                  <span class="text-muted small">LNB Power:</span>
+                  <span id="lnb-power" class="led led-off"></span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- RF Chain TX Summary Card -->
+          <div class="col-lg-3">
+            <div class="card h-100 summary-card clickable-card" data-target-tab="tx-chain">
+              <div class="card-header">
+                <h3 class="card-title">RF Chain TX</h3>
+              </div>
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <span class="text-muted small">BUC Lock:</span>
+                  <span id="buc-lock" class="d-flex align-items-center gap-1">
+                    <span class="led led-off"></span>
+                    <span class="small">UNLOCKED</span>
+                  </span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <span class="text-muted small">BUC Output:</span>
+                  <span id="buc-output" class="fw-bold font-monospace small">-- dBm</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <span class="text-muted small">HPA Power:</span>
+                  <span id="hpa-power" class="fw-bold font-monospace small">-- dBm</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center">
+                  <span class="text-muted small">HPA Status:</span>
+                  <span id="hpa-status" class="status-badge status-badge-green">OK</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Receivers Summary Card -->
+          <div class="col-lg-6">
+            <div class="card h-100 summary-card clickable-card" data-target-tab="rx-analysis">
+              <div class="card-header">
+                <h3 class="card-title">Receivers</h3>
+              </div>
+              <div class="card-body">
+                <div class="row">
+                  <div class="col-6">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                      <span class="text-muted small">Active:</span>
+                      <span id="rx-active" class="fw-bold font-monospace">--/-- Modems</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                      <span class="text-muted small">Best SNR:</span>
+                      <span id="rx-snr" class="fw-bold font-monospace">-- dB</span>
+                    </div>
+                  </div>
+                  <div class="col-6">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                      <span class="text-muted small">Signals:</span>
+                      <span id="rx-signals" class="fw-bold font-monospace">-- locked</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                      <span class="text-muted small">Quality:</span>
+                      <span id="rx-quality" class="led led-off"></span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Transmitters Summary Card -->
+          <div class="col-lg-6">
+            <div class="card h-100 summary-card clickable-card" data-target-tab="tx-chain">
+              <div class="card-header">
+                <h3 class="card-title">Transmitters</h3>
+              </div>
+              <div class="card-body">
+                <div class="row">
+                  <div class="col-6">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                      <span class="text-muted small">Active:</span>
+                      <span id="tx-active" class="fw-bold font-monospace">--/-- Modems</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                      <span class="text-muted small">TX Status:</span>
+                      <span id="tx-status" class="fw-bold font-monospace">-- TX</span>
+                    </div>
+                  </div>
+                  <div class="col-6">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                      <span class="text-muted small">Power Budget:</span>
+                      <span id="tx-budget" class="fw-bold font-monospace">--%</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                      <span class="text-muted small">Faults:</span>
+                      <span id="tx-fault" class="led led-off"></span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- Alarms Card (full width) -->
           <div class="col-12">
             <div class="card">
@@ -229,8 +421,21 @@ export class DashboardTab extends BaseElement {
 
   private cacheDomElements_(): void {
     const ids = [
+      // Existing elements
       'station-status', 'antenna-count', 'rf-count', 'tx-count', 'rx-count',
-      'active-receivers', 'active-transmitters', 'signal-count', 'alarm-count', 'alarm-list'
+      'active-receivers', 'active-transmitters', 'signal-count', 'alarm-count', 'alarm-list',
+      // Antenna summary
+      'antenna-fault-led', 'antenna-mode', 'antenna-position', 'antenna-lock', 'antenna-cn',
+      // GPSDO summary
+      'gpsdo-lock', 'gpsdo-sats', 'gpsdo-status', 'gpsdo-warmup',
+      // RF Chain RX summary
+      'lnb-lock', 'lnb-noise', 'filter-bw', 'lnb-power',
+      // RF Chain TX summary
+      'buc-lock', 'buc-output', 'hpa-power', 'hpa-status',
+      // Receivers summary
+      'rx-active', 'rx-snr', 'rx-signals', 'rx-quality',
+      // Transmitters summary
+      'tx-active', 'tx-status', 'tx-budget', 'tx-fault'
     ];
 
     ids.forEach(id => {
@@ -238,6 +443,21 @@ export class DashboardTab extends BaseElement {
       if (el) {
         this.domCache_.set(id, el);
       }
+    });
+
+    // Add click handlers for clickable cards
+    this.addCardClickHandlers_();
+  }
+
+  private addCardClickHandlers_(): void {
+    const clickableCards = this.dom_.querySelectorAll('.clickable-card');
+    clickableCards.forEach((card: HTMLElement) => {
+      card.addEventListener('click', () => {
+        const targetTab = card.dataset.targetTab;
+        if (targetTab) {
+          EventBus.getInstance().emit(Events.SWITCH_TAB, { tabId: targetTab });
+        }
+      });
     });
   }
 
@@ -274,11 +494,292 @@ export class DashboardTab extends BaseElement {
       alarmCountEl.textContent = String(this.alarms_.length);
       alarmCountEl.className = `quick-stat-value ${this.alarms_.length > 0 ? 'warn' : ''}`;
     }
+
+    // Sync new summary cards
+    this.syncAntennaSummary_();
+    this.syncGpsdoSummary_();
+    this.syncRxChainSummary_();
+    this.syncTxChainSummary_();
+    this.syncReceiversSummary_();
+    this.syncTransmittersSummary_();
+  }
+
+  private syncAntennaSummary_(): void {
+    const antenna = this.groundStation.antennas[0];
+    if (!antenna) return;
+
+    const state = antenna.state;
+
+    // Mode badge
+    const modeEl = this.domCache_.get('antenna-mode');
+    if (modeEl) {
+      const modeText = state.trackingMode.toUpperCase().replace('-', ' ');
+      modeEl.textContent = modeText;
+      // Color by mode type
+      modeEl.className = 'status-badge';
+      if (state.trackingMode === 'stow') {
+        modeEl.classList.add('status-badge-gray');
+      } else if (state.trackingMode === 'program-track' || state.trackingMode === 'step-track') {
+        modeEl.classList.add('status-badge-green');
+      } else {
+        modeEl.classList.add('status-badge-info');
+      }
+    }
+
+    // Position
+    const posEl = this.domCache_.get('antenna-position');
+    if (posEl) {
+      posEl.textContent = `Az: ${state.azimuth.toFixed(1)}° El: ${state.elevation.toFixed(1)}°`;
+    }
+
+    // Lock status
+    const lockEl = this.domCache_.get('antenna-lock');
+    if (lockEl) {
+      const isLocked = state.isLocked || state.isBeaconLocked;
+      const led = lockEl.querySelector('.led');
+      const text = lockEl.querySelector('.small');
+      if (led) led.className = `led ${isLocked ? 'led-green' : 'led-off'}`;
+      if (text) text.textContent = isLocked ? 'LOCKED' : 'UNLOCKED';
+    }
+
+    // Beacon C/N
+    const cnEl = this.domCache_.get('antenna-cn');
+    if (cnEl) {
+      cnEl.textContent = state.beaconCN !== null ? `${state.beaconCN.toFixed(1)} dB` : '-- dB';
+    }
+
+    // Fault LED
+    const faultEl = this.domCache_.get('antenna-fault-led');
+    if (faultEl) {
+      faultEl.className = `led ${state.hasFault ? 'led-red' : 'led-off'}`;
+    }
+  }
+
+  private syncGpsdoSummary_(): void {
+    const rfFe = this.groundStation.rfFrontEnds[0];
+    if (!rfFe?.gpsdoModule) return;
+
+    const state = rfFe.gpsdoModule.state;
+
+    // Lock status
+    const lockEl = this.domCache_.get('gpsdo-lock');
+    if (lockEl) {
+      const led = lockEl.querySelector('.led');
+      const text = lockEl.querySelector('.small');
+      if (led) led.className = `led ${state.isLocked ? 'led-green' : 'led-off'}`;
+      if (text) text.textContent = state.isLocked ? 'LOCKED' : 'UNLOCKED';
+    }
+
+    // Satellites
+    const satsEl = this.domCache_.get('gpsdo-sats');
+    if (satsEl) {
+      satsEl.textContent = `${state.satelliteCount} SVs`;
+    }
+
+    // Status badge (holdover/warming/ok)
+    const statusEl = this.domCache_.get('gpsdo-status');
+    if (statusEl) {
+      if (state.isInHoldover) {
+        statusEl.textContent = 'HOLDOVER';
+        statusEl.className = 'status-badge status-badge-amber';
+      } else if (state.warmupTimeRemaining > 0) {
+        statusEl.textContent = 'WARMING';
+        statusEl.className = 'status-badge status-badge-amber';
+      } else if (!state.isPowered) {
+        statusEl.textContent = 'OFF';
+        statusEl.className = 'status-badge status-badge-gray';
+      } else {
+        statusEl.textContent = 'OK';
+        statusEl.className = 'status-badge status-badge-green';
+      }
+    }
+
+    // Warm-up time
+    const warmupEl = this.domCache_.get('gpsdo-warmup');
+    if (warmupEl) {
+      if (state.warmupTimeRemaining > 0) {
+        const mins = Math.floor(state.warmupTimeRemaining / 60);
+        const secs = Math.floor(state.warmupTimeRemaining % 60);
+        warmupEl.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+      } else {
+        warmupEl.textContent = '--';
+      }
+    }
+  }
+
+  private syncRxChainSummary_(): void {
+    const rfFe = this.groundStation.rfFrontEnds[0];
+    if (!rfFe) return;
+
+    // LNB Lock
+    const lnbLockEl = this.domCache_.get('lnb-lock');
+    if (lnbLockEl && rfFe.lnbModule) {
+      const led = lnbLockEl.querySelector('.led');
+      const text = lnbLockEl.querySelector('.small');
+      const isLocked = rfFe.lnbModule.state.isExtRefLocked;
+      if (led) led.className = `led ${isLocked ? 'led-green' : 'led-off'}`;
+      if (text) text.textContent = isLocked ? 'LOCKED' : 'UNLOCKED';
+    }
+
+    // LNB Noise Temp
+    const noiseEl = this.domCache_.get('lnb-noise');
+    if (noiseEl && rfFe.lnbModule) {
+      noiseEl.textContent = `${rfFe.lnbModule.state.noiseTemperature.toFixed(0)} K`;
+    }
+
+    // Filter Bandwidth
+    const bwEl = this.domCache_.get('filter-bw');
+    if (bwEl && rfFe.filterModule) {
+      const bwMHz = rfFe.filterModule.state.bandwidth;
+      bwEl.textContent = bwMHz >= 1 ? `${bwMHz.toFixed(0)} MHz` : `${(bwMHz * 1000).toFixed(0)} kHz`;
+    }
+
+    // LNB Power LED
+    const powerEl = this.domCache_.get('lnb-power');
+    if (powerEl && rfFe.lnbModule) {
+      powerEl.className = `led ${rfFe.lnbModule.state.isPowered ? 'led-green' : 'led-off'}`;
+    }
+  }
+
+  private syncTxChainSummary_(): void {
+    const rfFe = this.groundStation.rfFrontEnds[0];
+    if (!rfFe) return;
+
+    // BUC Lock
+    const bucLockEl = this.domCache_.get('buc-lock');
+    if (bucLockEl && rfFe.bucModule) {
+      const led = bucLockEl.querySelector('.led');
+      const text = bucLockEl.querySelector('.small');
+      const isLocked = rfFe.bucModule.state.isExtRefLocked;
+      if (led) led.className = `led ${isLocked ? 'led-green' : 'led-off'}`;
+      if (text) text.textContent = isLocked ? 'LOCKED' : 'UNLOCKED';
+    }
+
+    // BUC Output
+    const bucOutEl = this.domCache_.get('buc-output');
+    if (bucOutEl && rfFe.bucModule) {
+      bucOutEl.textContent = `${rfFe.bucModule.state.outputPower.toFixed(1)} dBm`;
+    }
+
+    // HPA Power
+    const hpaPowerEl = this.domCache_.get('hpa-power');
+    if (hpaPowerEl && rfFe.hpaModule) {
+      hpaPowerEl.textContent = `${rfFe.hpaModule.state.outputPower.toFixed(1)} dBm`;
+    }
+
+    // HPA Status
+    const hpaStatusEl = this.domCache_.get('hpa-status');
+    if (hpaStatusEl && rfFe.hpaModule) {
+      const isOverdriven = rfFe.hpaModule.state.isOverdriven;
+      const isPowered = rfFe.hpaModule.state.isPowered;
+      if (!isPowered) {
+        hpaStatusEl.textContent = 'OFF';
+        hpaStatusEl.className = 'status-badge status-badge-gray';
+      } else if (isOverdriven) {
+        hpaStatusEl.textContent = 'OVERDRIVE';
+        hpaStatusEl.className = 'status-badge status-badge-red';
+      } else {
+        hpaStatusEl.textContent = 'OK';
+        hpaStatusEl.className = 'status-badge status-badge-green';
+      }
+    }
+  }
+
+  private syncReceiversSummary_(): void {
+    const receiver = this.groundStation.receivers[0];
+    if (!receiver) return;
+
+    const modems = receiver.state.modems;
+    const totalModems = modems.length;
+    const activeModems = modems.filter(m => m.isPowered).length;
+
+    // Active modems
+    const activeEl = this.domCache_.get('rx-active');
+    if (activeEl) {
+      activeEl.textContent = `${activeModems}/${totalModems} Modems`;
+    }
+
+    // Best SNR
+    const snrEl = this.domCache_.get('rx-snr');
+    if (snrEl) {
+      let bestSnr: number | null = null;
+      modems.forEach(modem => {
+        const snr = receiver.getSnrForModem(modem);
+        if (snr !== null && (bestSnr === null || snr > bestSnr)) {
+          bestSnr = snr;
+        }
+      });
+      snrEl.textContent = bestSnr !== null ? `${bestSnr.toFixed(1)} dB` : '-- dB';
+    }
+
+    // Signals locked
+    const signalsEl = this.domCache_.get('rx-signals');
+    if (signalsEl) {
+      const signalCount = receiver.state.availableSignals?.length ?? 0;
+      signalsEl.textContent = `${signalCount} locked`;
+    }
+
+    // Quality LED (green if any signal, amber if degraded, red if none)
+    const qualityEl = this.domCache_.get('rx-quality');
+    if (qualityEl) {
+      const signals = receiver.state.availableSignals ?? [];
+      const hasDegraded = signals.some(s => s.isDegraded);
+      if (signals.length === 0) {
+        qualityEl.className = 'led led-off';
+      } else if (hasDegraded) {
+        qualityEl.className = 'led led-amber';
+      } else {
+        qualityEl.className = 'led led-green';
+      }
+    }
+  }
+
+  private syncTransmittersSummary_(): void {
+    const transmitter = this.groundStation.transmitters[0];
+    if (!transmitter) return;
+
+    const modems = transmitter.state.modems;
+    const totalModems = modems.length;
+    const activeModems = modems.filter(m => m.isPowered).length;
+    const transmittingModems = modems.filter(m => m.isTransmitting).length;
+    const faultedModems = modems.filter(m => m.isFaulted).length;
+
+    // Active modems
+    const activeEl = this.domCache_.get('tx-active');
+    if (activeEl) {
+      activeEl.textContent = `${activeModems}/${totalModems} Modems`;
+    }
+
+    // TX Status
+    const statusEl = this.domCache_.get('tx-status');
+    if (statusEl) {
+      statusEl.textContent = `${transmittingModems} TX`;
+    }
+
+    // Power Budget
+    const budgetEl = this.domCache_.get('tx-budget');
+    if (budgetEl) {
+      const percentage = transmitter.getPowerPercentage();
+      budgetEl.textContent = `${percentage.toFixed(0)}%`;
+    }
+
+    // Fault LED
+    const faultEl = this.domCache_.get('tx-fault');
+    if (faultEl) {
+      faultEl.className = `led ${faultedModems > 0 ? 'led-red' : 'led-off'}`;
+    }
+  }
+
+  private throttledSync_(): void {
+    const now = Date.now();
+    if (now - this.lastSyncTime_ < DashboardTab.UPDATE_INTERVAL_MS) return;
+    this.lastSyncTime_ = now;
+    this.syncDomWithState_();
   }
 
   protected addEventListeners_(): void {
-    // Subscribe to update events for live data
-    this.updateHandler_ = () => this.syncDomWithState_();
+    // Subscribe to update events for live data with throttling
+    this.updateHandler_ = () => this.throttledSync_();
     EventBus.getInstance().on(Events.UPDATE, this.updateHandler_);
   }
 

@@ -127,7 +127,7 @@ export class Receiver extends BaseEquipment {
         bandwidth: 50 as MHz,
         modulation: 'QPSK' as ModulationType,
         fec: '3/4' as FECType,
-        isPowered: true,
+        isPowered: false,
       };
     });
 

@@ -196,6 +196,9 @@ export enum Events {
 
   // Global Alarm events
   ALARM_STATE_CHANGED = 'alarm:state:changed',
+
+  // Navigation events
+  SWITCH_TAB = 'navigation:switch:tab',
 }
 
 export interface EventMap {
@@ -248,4 +251,6 @@ export interface EventMap {
   [Events.PROGRESS_SAVE_ERROR]: [ProgressSaveErrorData];
 
   [Events.ALARM_STATE_CHANGED]: [AlarmStateChangedData];
+
+  [Events.SWITCH_TAB]: [{ tabId: string }];
 }

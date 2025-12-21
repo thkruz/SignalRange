@@ -7,8 +7,7 @@ export const isSupabaseApprovedDomain =
   window.location.hostname === 'localhost' ||
   window.location.hostname.endsWith('signalrange.space') ||
   window.location.hostname.endsWith('keeptrack.space') ||
-  window.location.hostname.endsWith('workers.dev') ||
-  window.location.hostname.includes('theodore-kruczek.workers.dev');
+  window.location.hostname.endsWith('workers.dev');
 
 /**
  * Custom storage adapter with multi-layer fallback for Brave and other privacy-focused browsers.

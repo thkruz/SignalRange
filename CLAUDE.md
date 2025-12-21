@@ -62,6 +62,20 @@ private throttledSync_(): void {
 
 Direct user actions (button clicks, toggles) should bypass throttling for immediate feedback.
 
+## Protecting Input Fields During DOM Sync
+
+When `syncDomWithState_()` updates input fields, it can overwrite what the user is typing. Always check `document.activeElement` before updating inputs, selects, or textareas:
+
+```typescript
+// Skip updating if user is focused on this input
+const input = qs<HTMLInputElement>('#my-input', this.dom_);
+if (input && document.activeElement !== input) {
+  input.value = state.someValue.toString();
+}
+```
+
+Apply this pattern to all user-editable fields in sync methods.
+
 ## Equipment Adjust Controls (Phase 6+)
 
 For numeric equipment controls (frequency, gain, power, etc.), use the `equip-adjust-control` pattern:
@@ -115,6 +129,27 @@ private applyHandler_(): void {
 - Toggle handlers must check state before calling toggle methods: `if (state !== isChecked)`
 - The `qs()` function throws on missing elements - remove refs when removing HTML elements
 - Use `cacheElement_(htmlId, cacheKey)` helper when HTML IDs differ from cache keys
+
+## Satellite Constructor
+
+The `Satellite` class constructor takes signal arrays in a specific order:
+
+```typescript
+new Satellite(
+  noradId: number,
+  uplinkSignals: RfSignal[],    // First array: signals satellite RECEIVES
+  downlinkSignals: RfSignal[],  // Second array: signals satellite TRANSMITS directly
+  config: { az, el, rotation, frequencyOffset }
+)
+```
+
+**Key Points:**
+
+- **First array (uplinks)**: Use `origin: SignalOrigin.SATELLITE_RX` - these are signals the satellite receives and transponds
+- **Second array (downlinks)**: Use `origin: SignalOrigin.TRANSMITTER` - these are signals the satellite transmits directly (e.g., beacons)
+- **Transponder**: Automatically converts uplink signals to downlinks using `frequencyOffset`
+  - Example: Uplink at 5943 MHz with `frequencyOffset: 2.225e9` → Downlink at 3718 MHz
+- **Don't duplicate**: If a signal is in the uplink array, the transponder creates the downlink automatically. Don't add it to both arrays.
 
 ## Planning
 

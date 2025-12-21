@@ -1,0 +1,737 @@
+import { html } from '@app/engine/utils/development/formatter';
+import type { AntennaState } from '@app/equipment/antenna';
+import { ANTENNA_CONFIG_KEYS } from '@app/equipment/antenna/antenna-configs';
+import { BUCModuleCore } from '@app/equipment/rf-front-end/buc-module';
+import { CouplerState, TapPoint } from '@app/equipment/rf-front-end/coupler-module/coupler-module';
+import { IfFilterBankModuleCore } from '@app/equipment/rf-front-end/filter-module';
+import { HPAModuleCore } from '@app/equipment/rf-front-end/hpa-module';
+import { OMTModule } from '@app/equipment/rf-front-end/omt-module/omt-module';
+import { Satellite } from '@app/equipment/satellite/satellite';
+import { Character, Emotion } from '@app/modal/character-enum';
+import type { Objective } from '@app/objectives/objective-types';
+import type { ScenarioData } from '@app/ScenarioData';
+import { SignalOrigin } from "@app/SignalOrigin";
+import type { dB, dBi, dBm, FECType, Hertz, MHz, ModulationType, RfFrequency } from '@app/types';
+import { getAssetUrl } from '@app/utils/asset-url';
+import type { Degrees } from 'ootk';
+
+/**
+ * NATS Level 8: "First Light Solo"
+ * 
+ * Phase: Final Evaluation
+ * Time Pressure: Moderate (45 minutes - realistic first light timeline)
+ * Calculation Required: Yes (all frequencies, no assistance)
+ * New UI Elements: None (mastery of all existing systems)
+ * 
+ * Premise: Charlie's last day is tomorrow. Today, you conduct first light for 
+ * TIDEMARK-4 independently while he observes. This is your final evaluation before 
+ * he leaves. Complete end-to-end acquisition procedure. Minor realistic complications 
+ * will occur. Handle them independently. Charlie is present but silent unless you 
+ * make a critical safety error.
+ */
+
+export const level8FirstLightSolo: ScenarioData = {
+  id: 'nats-level-8-first-light-solo',
+  prerequisiteScenarioIds: ['nats-level-7-equipment-cascade'],
+  url: 'nats/level-8/first-light-solo',
+  imageUrl: 'nats/8/card.png',
+  number: 8,
+  title: 'Level 8: "First Light Solo"',
+  subtitle: 'Final Evaluation',
+  duration: '45-50 min',
+  difficulty: 'expert',
+  missionType: 'Final Evaluation',
+  description: `Charlie's last day is tomorrow. He's finishing paperwork, closing out projects, preparing to hand over operations to you and the other trained operators. Today is your final evaluation.<br><br>TIDEMARK-4 just reached its operational slot at 29°W. The spacecraft team has confirmed station-keeping and handed the communications payload over to ground operations. You will conduct the complete first light procedure - from cold equipment to bidirectional link establishment - independently while Charlie observes.<br><br>You have 45 minutes, which is a realistic timeline for first light operations. Charlie will be present in the room but silent unless you're about to make a critical safety error. Minor complications will occur - equipment won't be perfect. Handle them professionally.<br><br>This is it. Show Charlie you're ready for solo operations.`,
+  equipment: [
+    '9-meter C-band Antenna',
+    'Complete RF Front End',
+    'Spectrum Analyzer',
+    'RX/TX Modems',
+    'All Control Systems',
+  ],
+  settings: {
+    isSync: true,
+    missionTimeLimit: 2700, // 45 minutes
+    evaluationMode: true, // Charlie observing, minimal intervention
+    groundStations: [
+      {
+        id: 'VT-01',
+        name: 'Vermont Ground Station',
+        location: {
+          latitude: 44.5588,
+          longitude: -72.5778,
+          elevation: 350,
+        },
+        antennas: [ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK],
+        antennasState: [
+          {
+            // Antenna stowed initially
+            isPowered: true,
+            azimuth: 0 as Degrees,
+            elevation: 90 as Degrees,
+            polarization: 0 as Degrees,
+            isTracking: false,
+            trackingMode: 'manual',
+            slewRateLimited: true, // Will take longer than expected
+            actualSlewRate: 0.75, // degrees/second (slower than spec'd 1.0)
+          } as Partial<AntennaState>,
+        ],
+        rfFrontEnds: [{
+          omt: OMTModule.getDefaultState(),
+          buc: {
+            ...BUCModuleCore.getDefaultState(),
+            isPowered: false,
+            loFrequency: 2225 as MHz,
+            outputPower: 0 as dBm,
+            isMuted: true,
+            isExtRefLocked: false,
+          },
+          hpa: {
+            ...HPAModuleCore.getDefaultState(),
+            isPowered: false,
+            isEnabled: false,
+            outputPower: 0,
+          },
+          filter: {
+            ...IfFilterBankModuleCore.getDefaultState(),
+            isPowered: false,
+            selectedFilter: 0,
+          },
+          lnb: {
+            isPowered: false,
+            loFrequency: 0 as MHz, // Student must calculate
+            gain: 0 as dB,
+            lnaNoiseFigure: 0.6,
+            mixerNoiseFigure: 16.0,
+            noiseTemperature: 20,
+            noiseTemperatureStabilizationTime: 180,
+            isExtRefLocked: false,
+            noiseFloor: -140,
+            frequencyError: 0,
+            temperature: 18,
+            thermalStabilizationTime: 180,
+          },
+          coupler: {
+            isPowered: true,
+            tapPointA: TapPoint.TX_IF,
+            tapPointB: TapPoint.RX_IF,
+            availableTapPointsA: [TapPoint.TX_IF, TapPoint.TX_RF_POST_BUC],
+            availableTapPointsB: [TapPoint.RX_IF],
+            couplingFactorA: -40,
+            couplingFactorB: -39,
+            isActiveA: true,
+            isActiveB: true,
+          } as CouplerState,
+          gpsdo: {
+            isPowered: true,
+            isLocked: true,
+            warmupTimeRemaining: 0,
+            temperature: 65,
+            gnssSignalPresent: true,
+            isGnssSwitchUp: true,
+            isGnssAcquiringLock: false,
+            satelliteCount: 11,
+            utcAccuracy: 18,
+            constellation: 'GPS',
+            lockDuration: 172800, // 2 days
+            frequencyAccuracy: 1e-12,
+            allanDeviation: 5e-13,
+            phaseNoise: -140,
+            isInHoldover: false,
+            holdoverDuration: 0,
+            holdoverError: 0,
+            active10MHzOutputs: 1,
+            max10MHzOutputs: 5,
+            output10MHzLevel: 0,
+            ppsOutputsEnabled: true,
+            operatingHours: 172800,
+            selfTestPassed: true,
+            agingRate: 1e-10,
+          },
+        }],
+        spectrumAnalyzers: [
+          {
+            referenceLevel: 0,
+            centerFrequency: 1e9 as Hertz,
+            span: 100e6 as Hertz,
+            rbw: 1e6 as Hertz,
+            minAmplitude: -170,
+            maxAmplitude: 0,
+            scaleDbPerDiv: 17 as dB,
+            screenMode: 'both',
+            inputUnit: 'MHz',
+            inputValue: '',
+            traces: [
+              { isVisible: true, isUpdating: true, mode: 'clearwrite' },
+              { isVisible: false, isUpdating: false, mode: 'clearwrite' },
+              { isVisible: false, isUpdating: false, mode: 'clearwrite' },
+            ],
+            selectedTrace: 1,
+          }
+        ],
+        transmitters: 1,
+        receivers: 1,
+      },
+    ],
+    satellites: [
+      new Satellite(
+        4, // TIDEMARK-4
+        [
+          {
+            signalId: 'tidemark-4-beacon',
+            serverId: 1,
+            noradId: 4,
+            frequency: 4023.7e6 as RfFrequency, // Given in ops note
+            polarization: 'H',
+            power: -98 as dBm, // 3 dB weaker than predicted (Complication 1)
+            bandwidth: 1e3 as Hertz,
+            modulation: 'CW' as ModulationType,
+            fec: 'none' as FECType,
+            feed: null,
+            isDegraded: false,
+            origin: SignalOrigin.SATELLITE_TX,
+            noiseFloor: null,
+            gainInPath: 0 as dBi,
+          },
+        ],
+        [],
+        {
+          name: 'TIDEMARK-4',
+          az: 224.8 as Degrees, // 29°W from Vermont
+          el: 25.9 as Degrees,
+          frequencyOffset: 2.225e9 as Hertz,
+        }
+      ),
+    ],
+    operationsNote: {
+      satelliteName: 'TIDEMARK-4',
+      orbitalSlot: '29°W',
+      beaconFrequency: '4,023.7 MHz',
+      expectedSignalLevel: '-95 dBm ± 2 dB',
+      polarization: 'Horizontal',
+      targetIF: '1,247.5 MHz (standard)',
+      antennaPointing: 'Az 224.8°, El 25.9° (from VT-01)',
+      notes: [
+        'Final TIDEMARK constellation satellite',
+        'Commissioning phase - first RF contact critical',
+        'Standard C-band configuration',
+        'Report any anomalies to spacecraft team',
+      ]
+    },
+    complications: [
+      {
+        id: 'weak-beacon-signal',
+        triggeredAt: 900, // 15 minutes - when beacon first acquired
+        type: 'signal-level-deviation',
+        description: 'Beacon signal 3 dB weaker than predicted',
+        expectedValue: -95 as dBm,
+        actualValue: -98 as dBm,
+        correctAction: 'increase-lnb-gain', // Increase gain from 55 to 58 dB
+      },
+      {
+        id: 'slow-antenna-slew',
+        triggeredAt: 600, // 10 minutes - during antenna movement
+        type: 'equipment-performance',
+        description: 'Antenna slew rate slower than expected',
+        expectedDuration: 300, // 5 minutes expected
+        actualDuration: 480, // 8 minutes actual (25% slower)
+        correctAction: 'wait-for-completion', // Not a fault, just patience
+      },
+    ],
+  },
+  objectives: [
+    {
+      id: 'review-ops-note',
+      title: 'Phase 1: Review Operations Note',
+      description: 'Read TIDEMARK-4 first light operations note.',
+      groundStation: 'VT-01',
+      conditions: [
+        {
+          type: 'document-reviewed',
+          description: 'TIDEMARK-4 Operations Note Reviewed',
+          params: {
+            documentId: 'tidemark-4-ops-note',
+          },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 5,
+    },
+    {
+      id: 'verify-gpsdo',
+      title: 'Phase 2: Verify GPSDO Lock',
+      description: 'Confirm GPSDO is locked and stable.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['review-ops-note'],
+      conditions: [
+        {
+          type: 'gpsdo-locked',
+          description: 'GPSDO Lock Verified',
+          mustMaintain: false,
+        },
+        {
+          type: 'gpsdo-stability-acceptable',
+          description: 'Frequency Accuracy < 1e-11',
+          params: {
+            maxFrequencyError: 1e-11,
+          },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 5,
+    },
+    {
+      id: 'calculate-frequencies',
+      title: 'Phase 3: Calculate Required Frequencies',
+      description: 'Calculate LNB LO frequency for TIDEMARK-4 beacon acquisition.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['verify-gpsdo'],
+      conditions: [
+        {
+          type: 'calculation-performed',
+          description: 'LNB LO Frequency Calculated',
+          params: {
+            // RF: 4023.7 MHz, Target IF: 1247.5 MHz
+            // LO = 4023.7 - 1247.5 = 2776.2 MHz
+            calculationType: 'lnb-lo-frequency',
+            correctAnswer: 2776.2,
+            tolerance: 0.1,
+          },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 10,
+    },
+    {
+      id: 'configure-lnb',
+      title: 'Phase 4: Configure and Power LNB',
+      description: 'Power LNB with calculated LO frequency and standard 55 dB gain.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['calculate-frequencies'],
+      conditions: [
+        {
+          type: 'equipment-powered',
+          description: 'LNB Powered On',
+          params: {
+            equipment: 'lnb',
+          },
+          maintainUntilObjectiveComplete: true,
+        },
+        {
+          type: 'lnb-lo-set',
+          description: 'LNB LO Frequency Set to 2,776.2 MHz',
+          params: {
+            loFrequency: 2776.2 as MHz,
+            loFrequencyTolerance: 0.5,
+          },
+          maintainUntilObjectiveComplete: true,
+        },
+        {
+          type: 'lnb-gain-set',
+          description: 'LNB Gain Set to 55 dB',
+          params: {
+            gain: 55,
+            gainTolerance: 0,
+          },
+          maintainUntilObjectiveComplete: true,
+        },
+        {
+          type: 'lnb-thermally-stable',
+          description: 'LNB Thermally Stabilized',
+          maintainUntilObjectiveComplete: true,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 15,
+    },
+    {
+      id: 'configure-buc',
+      title: 'Phase 5: Configure BUC (Standby)',
+      description: 'Power and configure BUC with RF output muted.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['configure-lnb'],
+      conditions: [
+        {
+          type: 'equipment-powered',
+          description: 'BUC Powered On',
+          params: {
+            equipment: 'buc',
+          },
+          maintainUntilObjectiveComplete: true,
+        },
+        {
+          type: 'buc-lo-set',
+          description: 'BUC LO Frequency Set to 2,225 MHz',
+          params: {
+            loFrequency: 2225 as MHz,
+            loFrequencyTolerance: 1,
+          },
+          maintainUntilObjectiveComplete: true,
+        },
+        {
+          type: 'buc-muted',
+          description: 'BUC RF Output Muted',
+          maintainUntilObjectiveComplete: true,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 10,
+    },
+    {
+      id: 'configure-spectrum-analyzer',
+      title: 'Phase 6: Configure Spectrum Analyzer',
+      description: 'Set up spectrum analyzer for beacon acquisition.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['configure-buc'],
+      conditions: [
+        {
+          type: 'frequency-set',
+          description: 'Center Frequency: 1,247.5 MHz',
+          params: {
+            frequency: 1247.5e6 as RfFrequency,
+            tolerance: 1e3 as Hertz,
+          },
+          mustMaintain: false,
+        },
+        {
+          type: 'speca-span-set',
+          description: 'Span: 5-10 kHz',
+          params: {
+            minSpan: 5e3,
+            maxSpan: 10e3,
+          },
+          mustMaintain: false,
+        },
+        {
+          type: 'speca-rbw-set',
+          description: 'RBW: ≤ 100 Hz',
+          params: {
+            maxRbw: 100,
+          },
+          mustMaintain: false,
+        },
+        {
+          type: 'speca-reference-level-set',
+          description: 'Reference Level: -85 to -90 dBm',
+          params: {
+            minReferenceLevel: -90,
+            maxReferenceLevel: -85,
+          },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 10,
+    },
+    {
+      id: 'point-antenna',
+      title: 'Phase 7: Point Antenna at TIDEMARK-4',
+      description: 'Command antenna to Az: 224.8°, El: 25.9°. Note: Slew will take ~8 minutes.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['configure-spectrum-analyzer'],
+      conditions: [
+        {
+          type: 'antenna-position-command',
+          description: 'TIDEMARK-4 Position Commanded',
+          params: {
+            azimuth: 224.8 as Degrees,
+            elevation: 25.9 as Degrees,
+            tolerance: 1.0 as Degrees,
+          },
+          mustMaintain: false,
+        },
+        {
+          type: 'antenna-position-reached',
+          description: 'Antenna On Target (slew complete)',
+          params: {
+            azimuth: 224.8 as Degrees,
+            elevation: 25.9 as Degrees,
+            tolerance: 0.5 as Degrees,
+          },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 10,
+    },
+    {
+      id: 'acquire-beacon',
+      title: 'Phase 8: Acquire Beacon Signal',
+      description: 'Verify beacon visible on spectrum analyzer. Note: Signal weaker than predicted.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['point-antenna'],
+      conditions: [
+        {
+          type: 'signal-detected',
+          description: 'Beacon Signal Detected',
+          params: {
+            signalId: 'tidemark-4-beacon',
+            minPower: -100 as dBm, // Allow for weak signal
+          },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 15,
+    },
+    {
+      id: 'handle-weak-signal',
+      title: 'Phase 9: Address Weak Beacon Signal',
+      description: 'Beacon is -98 dBm (3 dB below predicted -95 dBm). Adjust LNB gain to compensate.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['acquire-beacon'],
+      conditions: [
+        {
+          type: 'signal-level-assessed',
+          description: 'Signal Level Deviation Recognized',
+          params: {
+            expectedPower: -95 as dBm,
+            actualPower: -98 as dBm,
+            deviation: 3 as dB,
+          },
+          mustMaintain: false,
+        },
+        {
+          type: 'lnb-gain-adjusted',
+          description: 'LNB Gain Increased to 58 dB (+3 dB compensation)',
+          params: {
+            targetGain: 58 as dB,
+            tolerance: 1 as dB,
+          },
+          maintainUntilObjectiveComplete: true,
+        },
+        {
+          type: 'signal-level-improved',
+          description: 'Beacon Signal Now Visible at Expected Level',
+          params: {
+            targetPower: -95 as dBm,
+            tolerance: 2 as dB,
+          },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 20,
+    },
+    {
+      id: 'switch-to-step-track',
+      title: 'Phase 10: Enable Step-Track Mode',
+      description: 'Switch antenna from manual to step-track for automatic pointing optimization.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['handle-weak-signal'],
+      conditions: [
+        {
+          type: 'tracking-mode-changed',
+          description: 'Antenna Switched to Step-Track Mode',
+          params: {
+            trackingMode: 'step-track',
+          },
+          maintainUntilObjectiveComplete: true,
+        },
+        {
+          type: 'antenna-locked',
+          description: 'Antenna Lock Achieved',
+          params: {
+            satelliteId: 4,
+          },
+          maintainUntilObjectiveComplete: true,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 10,
+    },
+    {
+      id: 'configure-receiver-modem',
+      title: 'Phase 11: Configure Receiver Modem',
+      description: 'Set up receiver modem for beacon lock verification.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['switch-to-step-track'],
+      conditions: [
+        {
+          type: 'rx-modem-frequency-set',
+          description: 'RX Frequency Set to 4,023.7 MHz',
+          params: {
+            frequency: 4023.7e6 as RfFrequency,
+            tolerance: 1e3 as Hertz,
+          },
+          maintainUntilObjectiveComplete: true,
+        },
+        {
+          type: 'rx-modem-locked',
+          description: 'Receiver Modem Locked on Beacon',
+          maintainUntilObjectiveComplete: true,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 10,
+    },
+    {
+      id: 'enable-transmit-chain',
+      title: 'Phase 12: Enable Transmit Chain',
+      description: 'Unmute BUC and enable HPA to establish bidirectional link.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['configure-receiver-modem'],
+      conditions: [
+        {
+          type: 'buc-unmuted',
+          description: 'BUC RF Output Unmuted',
+          maintainUntilObjectiveComplete: true,
+        },
+        {
+          type: 'hpa-armed',
+          description: 'HPA ARM Procedure Completed',
+          mustMaintain: false,
+        },
+        {
+          type: 'equipment-enabled',
+          description: 'HPA Enabled',
+          params: {
+            equipment: 'hpa',
+          },
+          maintainUntilObjectiveComplete: true,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 15,
+    },
+    {
+      id: 'verify-bidirectional-link',
+      title: 'Phase 13: Verify Bidirectional Link',
+      description: 'Confirm stable uplink and downlink. Maintain for 60 seconds.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['enable-transmit-chain'],
+      conditions: [
+        {
+          type: 'uplink-verified',
+          description: 'Uplink Transmission Verified',
+          mustMaintain: false,
+        },
+        {
+          type: 'downlink-stable',
+          description: 'Downlink Reception Stable',
+          maintainUntilObjectiveComplete: true,
+        },
+        {
+          type: 'link-quality-acceptable',
+          description: 'Link Quality Maintained for 60 Seconds',
+          maintainDuration: 60,
+          mustMaintain: true,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 20,
+    },
+    {
+      id: 'mission-complete',
+      title: 'Phase 14: First Light Complete',
+      description: 'TIDEMARK-4 first light successful. Link established and stable.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['verify-bidirectional-link'],
+      conditions: [
+        {
+          type: 'zero-safety-violations',
+          description: 'No Safety Violations During Procedure',
+          mustMaintain: false,
+        },
+        {
+          type: 'complications-handled',
+          description: 'All Complications Handled Correctly',
+          params: {
+            complications: ['weak-beacon-signal', 'slow-antenna-slew'],
+          },
+          mustMaintain: false,
+        },
+        {
+          type: 'time-within-limit',
+          description: 'Completed Within 45-Minute Timeline',
+          params: {
+            maxDuration: 2700,
+          },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 25,
+    },
+  ] as Objective[],
+  dialogClips: {
+    intro: {
+      text: `
+      <p>
+        I'm not going to hold your hand today. You've done the training.
+      </p>
+      <p>
+        TIDEMARK-4's beacon frequency is in the ops note: 4,023.7 megahertz. Target IF is standard 1,247.5 megahertz.
+      </p>
+      <p>
+        I'll be watching, but this is your show. If you're about to make a safety-critical error, I'll stop you. Otherwise, run the procedure.
+      </p>
+      <p>
+        Take your time. Do it right. Show me you're ready for solo ops.
+      </p>
+      `,
+      character: Character.CHARLIE_BROOKS,
+      emotion: Emotion.SERIOUS,
+      audioUrl: getAssetUrl('/assets/campaigns/nats/level-8/intro.mp3'),
+    },
+    objectives: {
+      'handle-weak-signal': {
+        text: `
+        <p>
+          [Charlie remains silent but you see him make a note on his tablet]
+        </p>
+        <p>
+          [Internal thought: Beacon's 3 dB weaker than predicted. Not a failure - spacecraft team's prediction, not my error. Just need to compensate. Increase LNB gain.]
+        </p>
+        `,
+        character: Character.SYSTEM,
+        emotion: Emotion.NEUTRAL,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/level-8/obj-weak-signal.mp3'),
+      },
+      'verify-bidirectional-link': {
+        text: `
+        <p>
+          [Charlie walks over, checks the displays, nods]
+        </p>
+        <p>
+          [Still says nothing. Returns to his desk.]
+        </p>
+        `,
+        character: Character.CHARLIE_BROOKS,
+        emotion: Emotion.NEUTRAL,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/level-8/obj-verify.mp3'),
+      },
+      'mission-complete': {
+        text: `
+        <p>
+          [Charlie stands up, walks to your console]
+        </p>
+        <p>
+          Good work. You handled the gain adjustment correctly - I was wondering if you'd catch that the beacon was weaker than predicted.
+        </p>
+        <p>
+          The antenna slew took eight minutes instead of five. Not a fault - just slower equipment than some sites. You waited for completion instead of trying to rush it. Right call.
+        </p>
+        <p>
+          My last day's tomorrow - I'm finishing paperwork and handing off my projects. You're on the schedule for solo ops starting Monday.
+        </p>
+        <p>
+          Don't hesitate to ask Catherine if something comes up. She's been doing this longer than either of us.
+        </p>
+        <p>
+          [He extends his hand for a handshake]
+        </p>
+        <p>
+          My contact info's in the company directory if you ever need to reach me in Europe. Best of luck.
+        </p>
+        `,
+        character: Character.CHARLIE_BROOKS,
+        emotion: Emotion.HAPPY,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/level-8/complete.mp3'),
+      },
+    },
+  },
+};

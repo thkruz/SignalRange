@@ -3,31 +3,35 @@
 /**
  * R2 Asset Sync Script
  *
- * Synchronizes campaign assets (audio and image files) from local directory to Cloudflare R2 bucket.
- * Uses wrangler CLI to upload files to the signal-range-assets bucket.
+ * Synchronizes campaign assets (audio and image files) between local directory and Cloudflare R2 bucket.
+ * Uses wrangler CLI to upload/download files to/from the signal-range-assets bucket.
  *
  * Usage:
  *   node scripts/sync-r2-assets.js [options]
  *
  * Options:
- *   --dry-run    Show what would be uploaded without actually uploading
+ *   --pull       Download assets from R2 (skips files that exist locally)
+ *   --dry-run    Show what would be uploaded/downloaded without actually doing it
  *   --delete     Remove files from R2 that don't exist locally (dangerous!)
  *   --verbose    Show detailed progress information
  *   --help       Show this help message
  *
  * Examples:
- *   npm run r2:sync              # Upload new/changed files
+ *   npm run r2:sync              # Upload new/changed files to R2
  *   npm run r2:sync:dry          # Preview what would be uploaded
- *   npm run r2:sync -- --verbose # Upload with detailed logging
+ *   npm run r2:pull              # Download assets from R2
+ *   npm run r2:pull:dry          # Preview what would be downloaded
  */
 
 const { execSync } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
+const https = require('node:https');
 
 // Configuration
 const BUCKET_NAME = 'signal-range-assets';
+const PUBLIC_ASSETS_URL = 'https://assets.signalrange.space';
 const ASSET_DIRS = [
   {
     localDir: path.join(__dirname, '..', 'public', 'assets', 'campaigns'),
@@ -45,6 +49,7 @@ const isDryRun = args.includes('--dry-run');
 const shouldDelete = args.includes('--delete');
 const isVerbose = true; // args.includes('--verbose');
 const showHelp = args.includes('--help') || args.includes('-h');
+const isPull = args.includes('--pull');
 
 // Colors for terminal output
 const colors = {
@@ -71,27 +76,29 @@ function showHelpMessage() {
   console.log(`
 ${colors.bright}R2 Asset Sync Script${colors.reset}
 
-Synchronizes campaign assets (audio and image files) to Cloudflare R2 bucket.
+Synchronizes campaign assets (audio and image files) with Cloudflare R2 bucket.
 
 ${colors.bright}Usage:${colors.reset}
   node scripts/sync-r2-assets.js [options]
 
 ${colors.bright}Options:${colors.reset}
-  --dry-run    Show what would be uploaded without actually uploading
+  --pull       Download assets from R2 (skips files that exist locally)
+  --dry-run    Show what would be uploaded/downloaded without actually doing it
   --delete     Remove files from R2 that don't exist locally (dangerous!)
   --verbose    Show detailed progress information
   --help       Show this help message
 
 ${colors.bright}Examples:${colors.reset}
-  npm run r2:sync              # Upload new/changed files
+  npm run r2:sync              # Upload new/changed files to R2
   npm run r2:sync:dry          # Preview what would be uploaded
-  npm run r2:sync -- --verbose # Upload with detailed logging
+  npm run r2:pull              # Download assets from R2
+  npm run r2:pull:dry          # Preview what would be downloaded
 
 ${colors.bright}Notes:${colors.reset}
-  - Uploads audio files: .mp3, .wav, .ogg
-  - Uploads image files: .png, .jpg, .jpeg
-  - Calculates MD5 hashes to avoid re-uploading unchanged files
-  - Requires wrangler to be installed and authenticated
+  - Syncs audio files: .mp3, .wav, .ogg
+  - Syncs image files: .png, .jpg, .jpeg
+  - Pull downloads from public URL (no auth needed)
+  - Sync/upload requires wrangler to be installed and authenticated
   `);
 }
 
@@ -162,23 +169,79 @@ function uploadToR2(localPath, r2Key) {
 }
 
 /**
- * List all objects in R2 bucket with a given prefix
+ * Fetch the asset manifest from the public URL
+ * Returns array of asset keys or null on error
  */
-function listR2Objects(prefix) {
-  const command = `wrangler r2 object list ${BUCKET_NAME} --prefix="${prefix}"`;
+async function fetchManifest() {
+  const manifestUrl = `${PUBLIC_ASSETS_URL}/manifest.json`;
+  verbose(`Fetching manifest from: ${manifestUrl}`);
 
-  verbose(`Listing R2 objects with prefix: ${prefix}`);
+  return new Promise(resolve => {
+    https.get(manifestUrl, res => {
+      if (res.statusCode !== 200) {
+        verbose(`Failed to fetch manifest: HTTP ${res.statusCode}`);
+        resolve(null);
+        return;
+      }
 
-  try {
-    const output = execSync(command, { encoding: 'utf8', stdio: 'pipe' });
-    // Parse wrangler output (this is a simplified version, adjust based on actual output format)
-    // wrangler r2 object list returns JSON
-    const lines = output.trim().split('\n').filter(line => line.trim());
-    return lines;
-  } catch (error) {
-    verbose(`Failed to list R2 objects: ${error.message}`);
-    return [];
+      let data = '';
+      res.on('data', chunk => { data += chunk; });
+      res.on('end', () => {
+        try {
+          const manifest = JSON.parse(data);
+          resolve(manifest.files || []);
+        } catch {
+          verbose('Failed to parse manifest JSON');
+          resolve(null);
+        }
+      });
+    }).on('error', err => {
+      verbose(`Failed to fetch manifest: ${err.message}`);
+      resolve(null);
+    });
+  });
+}
+
+/**
+ * Download a file from the public assets URL
+ */
+function downloadFromPublicUrl(r2Key, localPath) {
+  const fileUrl = `${PUBLIC_ASSETS_URL}/${r2Key}`;
+
+  verbose(`Downloading: ${fileUrl} → ${localPath}`);
+
+  if (isDryRun) {
+    log(`  [DRY RUN] Would download: ${r2Key}`, 'yellow');
+    return Promise.resolve({ success: true });
   }
+
+  // Ensure parent directory exists
+  const parentDir = path.dirname(localPath);
+  if (!fs.existsSync(parentDir)) {
+    fs.mkdirSync(parentDir, { recursive: true });
+  }
+
+  return new Promise(resolve => {
+    const file = fs.createWriteStream(localPath);
+    https.get(fileUrl, res => {
+      if (res.statusCode !== 200) {
+        file.close();
+        fs.unlinkSync(localPath);
+        resolve({ success: false, error: `HTTP ${res.statusCode}` });
+        return;
+      }
+
+      res.pipe(file);
+      file.on('finish', () => {
+        file.close();
+        resolve({ success: true });
+      });
+    }).on('error', err => {
+      file.close();
+      if (fs.existsSync(localPath)) fs.unlinkSync(localPath);
+      resolve({ success: false, error: err.message });
+    });
+  });
 }
 
 /**
@@ -240,6 +303,33 @@ async function syncAssets() {
     }
   }
 
+  // Generate and upload manifest for pull functionality
+  const manifestKeys = allFiles.map(({ filePath, localDir, r2Prefix }) => {
+    const relativePath = path.relative(localDir, filePath);
+    return `${r2Prefix}/${relativePath.replace(/\\/g, '/')}`;
+  });
+
+  const manifest = {
+    generatedAt: new Date().toISOString(),
+    files: manifestKeys,
+  };
+
+  const manifestPath = path.join(__dirname, 'manifest.json');
+  fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+
+  log(`\n📋 Uploading manifest (${manifestKeys.length} files)...`, 'blue');
+  const manifestResult = uploadToR2(manifestPath, 'manifest.json');
+
+  if (manifestResult.success) {
+    log(`   ✓ Manifest uploaded`, 'green');
+  } else {
+    log(`   ✗ Manifest upload failed: ${manifestResult.error}`, 'red');
+    failed++;
+  }
+
+  // Clean up local manifest file
+  fs.unlinkSync(manifestPath);
+
   // Summary
   log('\n' + '='.repeat(60), 'bright');
   log('  Sync Complete', 'bright');
@@ -268,6 +358,95 @@ async function syncAssets() {
   process.exit(0);
 }
 
+/**
+ * Main pull function - downloads assets from public URL to local
+ */
+async function pullAssets() {
+  log('\n' + '='.repeat(60), 'bright');
+  log('  R2 Asset Pull', 'bright');
+  log('='.repeat(60) + '\n', 'bright');
+
+  log(`📂 Fetching manifest from ${PUBLIC_ASSETS_URL}...`, 'blue');
+
+  const r2Keys = await fetchManifest();
+
+  if (!r2Keys) {
+    log(`\n❌ Failed to fetch manifest. Run 'npm run r2:sync' first to generate it.`, 'red');
+    process.exit(1);
+  }
+
+  if (r2Keys.length === 0) {
+    log(`   No files found in manifest.`, 'yellow');
+    process.exit(0);
+  }
+
+  log(`   Found ${r2Keys.length} file(s) in manifest`, 'green');
+
+  let downloaded = 0;
+  let skipped = 0;
+  let failed = 0;
+
+  for (const r2Key of r2Keys) {
+    // Find matching ASSET_DIR config for this key
+    const config = ASSET_DIRS.find(({ r2Prefix }) => r2Key.startsWith(r2Prefix + '/'));
+
+    if (!config) {
+      verbose(`Skipping unknown prefix: ${r2Key}`);
+      continue;
+    }
+
+    // Convert R2 key to local path
+    const relativePath = r2Key.slice(config.r2Prefix.length + 1);
+    const localPath = path.join(config.localDir, relativePath);
+
+    // Check if file already exists locally
+    if (fs.existsSync(localPath)) {
+      verbose(`Skipping (exists): ${relativePath}`);
+      skipped++;
+      continue;
+    }
+
+    log(`📥 ${r2Key}`, 'bright');
+
+    const result = await downloadFromPublicUrl(r2Key, localPath);
+
+    if (result.success) {
+      downloaded++;
+      log(`   ✓ Downloaded successfully`, 'green');
+    } else {
+      failed++;
+      log(`   ✗ Download failed: ${result.error}`, 'red');
+    }
+  }
+
+  // Summary
+  log('\n' + '='.repeat(60), 'bright');
+  log('  Pull Complete', 'bright');
+  log('='.repeat(60), 'bright');
+
+  if (isDryRun) {
+    log(`\n🔍 DRY RUN MODE - No files were actually downloaded`, 'yellow');
+  }
+
+  log(`\n📊 Summary:`, 'bright');
+  log(`   Total in manifest: ${r2Keys.length}`);
+  log(`   Downloaded:        ${downloaded}`, downloaded > 0 ? 'green' : 'reset');
+  log(`   Skipped:           ${skipped}`, skipped > 0 ? 'yellow' : 'reset');
+  log(`   Failed:            ${failed}`, failed > 0 ? 'red' : 'reset');
+
+  if (isDryRun) {
+    log(`\n💡 Run without --dry-run to actually download files`, 'cyan');
+  }
+
+  if (failed > 0) {
+    log(`\n⚠️  Some downloads failed. Check errors above.`, 'red');
+    process.exit(1);
+  }
+
+  log('');
+  process.exit(0);
+}
+
 // Main execution
 if (showHelp) {
   showHelpMessage();
@@ -284,8 +463,9 @@ try {
   process.exit(1);
 }
 
-// Run sync
-syncAssets().catch(error => {
+// Run sync or pull based on --pull flag
+const mainFn = isPull ? pullAssets : syncAssets;
+mainFn().catch(error => {
   log(`\n❌ Fatal error: ${error.message}`, 'red');
   if (isVerbose) {
     console.error(error);

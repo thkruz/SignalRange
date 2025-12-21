@@ -13,6 +13,8 @@
     "r2:sync": "node scripts/sync-r2-assets.js",
     "r2:sync:dry": "node scripts/sync-r2-assets.js --dry-run",
     "r2:sync:verbose": "node scripts/sync-r2-assets.js --verbose",
+    "r2:pull": "node scripts/sync-r2-assets.js --pull",
+    "r2:pull:dry": "node scripts/sync-r2-assets.js --pull --dry-run",
     "type-check": "tsc --noEmit",
     "clean": "rm -rf dist",
     "test": "npx jest --config jest.config.js",

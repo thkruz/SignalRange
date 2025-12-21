@@ -50,7 +50,7 @@ export class DialogManager {
         <div class="dialog-content">
           <div class="dialog-avatar-container col-4">
             <div class="dialog-avatar">
-              <img src="${avatarUrl}" alt="${character}" />
+              <img src="${avatarUrl}" alt="${character}" onerror="this.onerror=null; this.src='/images/placeholder-avatar.png';" />
             </div>
             <div class="dialog-character-info">
               <div class="dialog-character-name">${characterName}</div>

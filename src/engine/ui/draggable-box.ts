@@ -141,7 +141,7 @@ export abstract class DraggableBox {
   }
 
   private sendToFront() {
-    getEl(`${this.boxId}`)!.parentElement.style.zIndex = DraggableBox.increaseMaxZIndex().toString();
+    getEl(`${this.boxId}`)!.style.zIndex = DraggableBox.increaseMaxZIndex().toString();
   }
 
   close(cb?: () => void) {

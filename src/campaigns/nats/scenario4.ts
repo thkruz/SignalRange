@@ -1,3 +1,4 @@
+import { html } from '@app/engine/utils/development/formatter';
 import type { AntennaState } from '@app/equipment/antenna';
 import { ANTENNA_CONFIG_KEYS } from '@app/equipment/antenna/antenna-configs';
 import { BUCModuleCore } from '@app/equipment/rf-front-end/buc-module';
@@ -28,9 +29,9 @@ import type { Degrees } from 'ootk';
  */
 
 export const scenario4Data: ScenarioData = {
-  id: 'nats-level-4-new-bird',
+  id: 'nats-scenario4',
+  url: 'nats/scenarios/nats-scenario4',
   prerequisiteScenarioIds: [],
-  url: 'nats/level-4/new-bird-no-handbook',
   imageUrl: 'nats/4/card.png',
   number: 4,
   title: 'Level 4: "New Bird, No Handbook"',
@@ -43,7 +44,8 @@ export const scenario4Data: ScenarioData = {
     '9-meter C-band Antenna',
     'RF Front End',
     'Spectrum Analyzer',
-    'Reference Documentation',
+    'Receiver Modem',
+    'Transmitter Modem',
   ],
   settings: {
     isSync: true,
@@ -54,7 +56,7 @@ export const scenario4Data: ScenarioData = {
         location: {
           latitude: 44.5588,
           longitude: -72.5778,
-          elevation: 350,
+          elevation: 2,
         },
         antennas: [ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK],
         antennasState: [
@@ -65,7 +67,7 @@ export const scenario4Data: ScenarioData = {
             elevation: 90 as Degrees,
             polarization: 0 as Degrees,
             isTracking: false,
-            trackingMode: 'manual',
+            trackingMode: 'stow',
           } as Partial<AntennaState>,
         ],
         rfFrontEnds: [{
@@ -164,18 +166,216 @@ export const scenario4Data: ScenarioData = {
         transmitters: [],
         receivers: [],
       },
+      {
+        id: 'ME-01',
+        isOperational: false,
+        name: 'Maine Ground Station',
+        location: {
+          latitude: 45.215214,
+          longitude: -68.785507,
+          elevation: 48,
+        },
+        antennas: [ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK],
+        rfFrontEnds: [{
+          // Module states managed by their respective classes
+          omt: OMTModule.getDefaultState(),
+          buc: BUCModuleCore.getDefaultState(),
+          hpa: HPAModuleCore.getDefaultState(),
+          filter: IfFilterBankModuleCore.getDefaultState(),
+          lnb: {
+            isPowered: false,
+            loFrequency: 6080 as MHz, // MHz
+            gain: 0 as dB,
+            lnaNoiseFigure: 0.6, // dB
+            mixerNoiseFigure: 16.0, // dB
+            noiseTemperature: 290, // K
+            noiseTemperatureStabilizationTime: 180, // seconds
+            isExtRefLocked: false,
+            noiseFloor: -140, // dBm/Hz
+            frequencyError: 0, // Hz
+            temperature: 25, // °C
+            thermalStabilizationTime: 180, // seconds
+          },
+          coupler: {
+            isPowered: true,
+            tapPointA: TapPoint.TX_IF,
+            tapPointB: TapPoint.RX_IF,
+            availableTapPointsA: [TapPoint.TX_IF, TapPoint.TX_RF_POST_BUC],
+            availableTapPointsB: [TapPoint.RX_IF],
+            couplingFactorA: -40, // dB
+            couplingFactorB: -39, // dB
+            isActiveA: true,
+            isActiveB: true,
+          } as CouplerState,
+          gpsdo: {
+            isPowered: true, // CHANGE
+            isLocked: false,
+            warmupTimeRemaining: 0, // seconds
+            temperature: 70, // °C
+            gnssSignalPresent: false,
+            isGnssSwitchUp: false,
+            isGnssAcquiringLock: false,
+            satelliteCount: 0,
+            utcAccuracy: 0,
+            constellation: 'GPS',
+            lockDuration: 0,
+            frequencyAccuracy: 0,
+            allanDeviation: 0,
+            phaseNoise: 0,
+            isInHoldover: true,
+            holdoverDuration: 600,
+            holdoverError: 0,
+            active10MHzOutputs: 2,
+            max10MHzOutputs: 5,
+            output10MHzLevel: 0,
+            ppsOutputsEnabled: false,
+            operatingHours: 6,
+            selfTestPassed: true,
+            agingRate: 0,
+          },
+        }],
+        spectrumAnalyzers: [
+          {
+            referenceLevel: 0, // dBm
+            centerFrequency: 600e6 as Hertz,
+            span: 100e6 as Hertz,
+            rbw: 50e6 as Hertz,
+            minAmplitude: -170,
+            maxAmplitude: 0,
+            scaleDbPerDiv: (-0 + 170) / 10 as dB, // 6 dB/div
+            screenMode: 'both',
+            inputUnit: 'MHz',
+            inputValue: '',
+
+            // Multi-trace support
+            traces: [
+              { isVisible: true, isUpdating: true, mode: 'clearwrite' }, // Trace 1
+              { isVisible: false, isUpdating: false, mode: 'clearwrite' }, // Trace 2
+              { isVisible: false, isUpdating: false, mode: 'clearwrite' }, // Trace 3
+            ],
+            selectedTrace: 1,
+          }
+        ],
+        transmitters: [],
+        receivers: [],
+      }
     ],
+    layout: html`
+              <div class="student-equipment scenario1-layout">
+                <div class="paired-equipment-container">
+                  <div id="antenna1-container" class="antenna-container"></div>
+                  <div id="specA1-container" class="spec-a-container"></div>
+                </div>
+                <div id="rf-front-end1-container" class="paired-equipment-container"></div>
+              </div>
+            `,
+    missionBriefUrl: 'https://docs.signalrange.space/scenarios/scenario-2?content-only=true&dark=true',
+    isExtraSatellitesVisible: true,
     satellites: [
       new Satellite(
-        2, // TIDEMARK-2
+        67525,
+        [
+          {
+            signalId: 'TIDEMARK-1-Payload',
+            serverId: 1,
+            noradId: 61525,
+            /** Must be the uplinkl to match the antenna in simulation */
+            frequency: 5943e6 as RfFrequency,
+            polarization: 'H',
+            power: 40 as dBm, // 10 W
+            bandwidth: 36e6 as Hertz,
+            modulation: 'QPSK' as ModulationType,
+            fec: '3/4' as FECType,
+            feed: '',
+            isDegraded: false,
+            origin: SignalOrigin.SATELLITE_RX,
+            noiseFloor: null,
+            gainInPath: 0 as dBi,
+          },
+        ],
+        [
+          {
+            frequency: 3902.5e6 as RfFrequency,
+            signalId: 'TIDEMARK-1-Beacon',
+            serverId: 1,
+            noradId: 61525,
+            power: 40 as dBm, // 10 W
+            bandwidth: 1e3 as Hertz,
+            modulation: 'CW' as ModulationType,
+            fec: 'null' as FECType,
+            polarization: 'H',
+            feed: '',
+            isDegraded: false,
+            origin: SignalOrigin.TRANSMITTER,
+            noiseFloor: null,
+            gainInPath: 0 as dBi,
+          },
+        ],
+        {
+          az: 161.8 as Degrees,
+          el: 34.2 as Degrees,
+          rotation: 14 as Degrees,
+          frequencyOffset: 2.225e9 as Hertz,
+        }
+      ),
+      new Satellite(
+        42432,
+        [
+          {
+            signalId: 'SES-10-Payload',
+            serverId: 1,
+            noradId: 42432,
+            /** Must be the uplinkl to match the antenna in simulation */
+            frequency: 6115e6 as RfFrequency,
+            polarization: 'V',
+            power: 40 as dBm, // 10 W
+            bandwidth: 36e6 as Hertz,
+            modulation: 'QPSK' as ModulationType,
+            fec: '3/4' as FECType,
+            feed: '',
+            isDegraded: false,
+            origin: SignalOrigin.SATELLITE_RX,
+            noiseFloor: null,
+            gainInPath: 0 as dBi,
+          },
+        ],
+        [
+          {
+            frequency: 3905.0e6 as RfFrequency,
+            signalId: 'SES-10-Beacon',
+            serverId: 1,
+            noradId: 42432,
+            power: 40 as dBm, // 10 W
+            bandwidth: 1e3 as Hertz,
+            modulation: 'CW' as ModulationType,
+            fec: 'null' as FECType,
+            polarization: 'H',
+            feed: '',
+            isDegraded: false,
+            origin: SignalOrigin.TRANSMITTER,
+            noiseFloor: null,
+            gainInPath: 0 as dBi,
+          },
+        ],
+        {
+          az: 164.2 as Degrees,
+          el: 34.1 as Degrees,
+          rotation: -32 as Degrees,
+          frequencyOffset: 2.225e9 as Hertz,
+        }
+      ),
+      new Satellite(
+        69543, // TIDEMARK-2
+        [
+        ],
         [
           {
             signalId: 'tidemark-2-beacon',
             serverId: 1,
-            noradId: 2,
+            noradId: 69543,
             frequency: 3947.8e6 as RfFrequency, // Provided to student
             polarization: 'H',
-            power: -93 as dBm, // Slightly stronger (newer satellite)
+            power: 38 as dBm, // Slightly stronger (newer satellite)
             bandwidth: 1e3 as Hertz, // CW beacon
             modulation: 'CW' as ModulationType,
             fec: 'none' as FECType,
@@ -186,7 +386,6 @@ export const scenario4Data: ScenarioData = {
             gainInPath: 0 as dBi,
           },
         ],
-        [],
         {
           az: 219.7 as Degrees, // 45°W from Vermont
           el: 26.3 as Degrees,
@@ -197,60 +396,32 @@ export const scenario4Data: ScenarioData = {
   },
   objectives: [
     {
-      id: 'review-documentation',
-      title: 'Phase 1: Review Reference Documentation',
-      description: 'Read the RF calculations guide and TIDEMARK-2 operations note.',
+      id: 'calculate-lnb-lo',
+      title: 'Phase 2: Calculate LNB Local Oscillator Frequency',
+      description: 'Calculate required LO frequency. Submit calculation for Charlie\'s approval.',
       groundStation: 'VT-01',
+      prerequisiteObjectiveIds: [],
       conditions: [
         {
-          type: 'document-viewed',
-          description: 'RF Calculations Guide Reviewed',
+          type: 'status-check',
+          description: 'Calculation Submitted and Approved',
           params: {
-            documentId: 'rf-calculations-guide',
-          },
-          mustMaintain: false,
-        },
-        {
-          type: 'document-viewed',
-          description: 'TIDEMARK-2 Operations Note Reviewed',
-          params: {
-            documentId: 'tidemark-2-ops-note',
+            question: 'What is the required LNB local oscillator frequency (in MHz) to achieve the target IF of 1,247.5 MHz for the TIDEMARK-2 beacon at 3,947.8 MHz?',
+            options: [
+              '5,195.3 MHz',
+              '5,255.3 MHz',
+              '5,193.5 MHz',
+              '5,253.5 MHz',
+            ],
+            correctIndex: 0,
+            explanation: 'The LNB local oscillator frequency is calculated by adding the target IF frequency to the received RF frequency: 3,947.8 MHz + 1,247.5 MHz = 5,195.3 MHz. This LO frequency will downconvert the received beacon signal to the desired IF frequency for processing.',
+            pointPenalty: 5,
           },
           mustMaintain: false,
         },
       ],
       conditionLogic: 'AND',
       points: 5,
-    },
-    {
-      id: 'calculate-lnb-lo',
-      title: 'Phase 2: Calculate LNB Local Oscillator Frequency',
-      description: 'Calculate required LO frequency. Submit calculation for Charlie\'s approval.',
-      groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['review-documentation'],
-      conditions: [
-        {
-          type: 'calculation-submitted',
-          description: 'LO Frequency Calculation Submitted',
-          params: {
-            calculationType: 'lnb-lo-frequency',
-            correctAnswer: 2700.3, // MHz: 3947.8 - 1247.5
-            tolerance: 0.1,
-            showWork: true,
-          },
-          mustMaintain: false,
-        },
-        {
-          type: 'calculation-approved',
-          description: 'Charlie Approved Calculation',
-          params: {
-            calculationType: 'lnb-lo-frequency',
-          },
-          mustMaintain: false,
-        },
-      ],
-      conditionLogic: 'AND',
-      points: 20,
     },
     {
       id: 'select-if-filter',

@@ -6,9 +6,121 @@
 
 ## Overview
 
-SignalRange shares a Supabase backend with KeepTrack. The database uses JSONB columns for flexible data storage (preferences, progress, data) while maintaining relational integrity through foreign keys to the `users` table.
+SignalRange shares a Supabase backend with KeepTrack. The database now uses **app-scoped normalized tables** for data isolation and granular updates, replacing the previous JSONB-based approach.
 
-## Table Schemas
+### Key Design Principles
+
+1. **App Isolation** - Each app has its own data via `app_id` column
+2. **Granular Updates** - Per-scenario tables instead of monolithic JSONB
+3. **Separated Checkpoints** - Large AppState blobs in dedicated table
+
+---
+
+## New Tables (App-Scoped)
+
+### `public.apps`
+
+Registry of applications sharing this backend.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | text | **PK** | App identifier ('signalrange', 'keeptrack') |
+| name | text | NOT NULL | Display name |
+| description | text | - | App description |
+| created_at | timestamptz | DEFAULT now() | Creation time |
+
+---
+
+### `public.scenario_progress`
+
+Per-scenario progress tracking. **One row per user + app + scenario.**
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | uuid | **PK**, DEFAULT gen_random_uuid() | Row identifier |
+| user_id | uuid | **FK → users.id**, NOT NULL | User reference |
+| app_id | text | **FK → apps.id**, NOT NULL | App reference |
+| scenario_id | text | NOT NULL | Scenario identifier |
+| scenario_number | integer | - | Legacy numeric ID |
+| completed_objectives | integer[] | DEFAULT '{}' | Objective indices completed |
+| score | integer | DEFAULT 0 | Total score |
+| base_points | integer | DEFAULT 0 | Points from objectives |
+| time_bonus | integer | DEFAULT 0 | Bonus from remaining time |
+| quiz_penalties | integer | DEFAULT 0 | Deductions from wrong answers |
+| completed_at | timestamptz | - | Completion timestamp |
+| last_played | timestamptz | DEFAULT now() | Last play timestamp |
+| created_at | timestamptz | DEFAULT now() | Creation time |
+| updated_at | timestamptz | DEFAULT now() | Last update |
+
+**Unique Constraint:** `(user_id, app_id, scenario_id)`
+
+**Indexes:**
+- `scenario_progress_user_app_idx` (user_id, app_id)
+- `scenario_progress_user_scenario_idx` (user_id, scenario_id)
+
+---
+
+### `public.checkpoints`
+
+Stores full AppState blobs for scenario resume functionality.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | uuid | **PK**, DEFAULT gen_random_uuid() | Row identifier |
+| user_id | uuid | **FK → users.id**, NOT NULL | User reference |
+| app_id | text | **FK → apps.id**, NOT NULL | App reference |
+| scenario_id | text | NOT NULL | Scenario identifier |
+| version | text | NOT NULL | App version when saved |
+| state | jsonb | NOT NULL | Full AppState snapshot |
+| saved_at | timestamptz | DEFAULT now() | Save timestamp |
+| created_at | timestamptz | DEFAULT now() | Creation time |
+| updated_at | timestamptz | DEFAULT now() | Last update |
+
+**Unique Constraint:** `(user_id, app_id, scenario_id)` - One checkpoint per scenario
+
+**Indexes:**
+- `checkpoints_user_app_idx` (user_id, app_id)
+- `checkpoints_user_scenario_idx` (user_id, scenario_id)
+
+---
+
+### `public.app_preferences`
+
+Per-app user preferences.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | uuid | **PK**, DEFAULT gen_random_uuid() | Row identifier |
+| user_id | uuid | **FK → users.id**, NOT NULL | User reference |
+| app_id | text | **FK → apps.id**, NOT NULL | App reference |
+| preferences | jsonb | DEFAULT '{}' | Preferences object |
+| created_at | timestamptz | DEFAULT now() | Creation time |
+| updated_at | timestamptz | DEFAULT now() | Last update |
+
+**Unique Constraint:** `(user_id, app_id)`
+
+---
+
+### `public.user_app_summary`
+
+Aggregated stats per user per app.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | uuid | **PK**, DEFAULT gen_random_uuid() | Row identifier |
+| user_id | uuid | **FK → users.id**, NOT NULL | User reference |
+| app_id | text | **FK → apps.id**, NOT NULL | App reference |
+| total_score | integer | DEFAULT 0 | Sum of all scenario scores |
+| completed_scenario_count | integer | DEFAULT 0 | Number of completed scenarios |
+| last_played_scenario | text | - | Most recent scenario ID |
+| created_at | timestamptz | DEFAULT now() | Creation time |
+| updated_at | timestamptz | DEFAULT now() | Last update |
+
+**Unique Constraint:** `(user_id, app_id)`
+
+---
+
+## Shared Tables
 
 ### `public.users`
 
@@ -24,124 +136,6 @@ Primary user identity table, linked to Supabase Auth.
 | created_at | timestamptz | DEFAULT now() | Account creation time |
 | updated_at | timestamptz | DEFAULT now() | Last profile update |
 
-**Indexes:**
-- `users_pkey` (id) - Primary key
-- `users_email_key` (email) - Unique constraint
-- `users_email_idx` (email) - Query optimization
-- `users_username_key` (username) - Unique constraint (unused)
-- `users_username_idx` (username) - Query optimization (unused)
-
-**Row Count:** ~212 users
-
----
-
-### `public.user_preferences`
-
-User settings and preferences stored as JSONB.
-
-| Column | Type | Constraints | Description |
-|--------|------|-------------|-------------|
-| id | uuid | **PK**, DEFAULT gen_random_uuid() | Row identifier |
-| user_id | uuid | **FK → users.id**, NOT NULL, UNIQUE | One-to-one with users |
-| preferences | jsonb | - | Preferences object |
-| created_at | timestamptz | DEFAULT now() | Creation time |
-| updated_at | timestamptz | DEFAULT now() | Last update |
-
-**JSONB Structure (`preferences`):**
-```typescript
-interface UserPreferencesData {
-  // Audio settings
-  isSoundEnabled: boolean;
-  soundVolume: number;          // 0-1
-
-  // UI settings
-  theme: 'dark' | 'light';
-  autoSaveProgress: boolean;
-
-  // Simulation settings
-  defaultFrequencyUnits: 'Hz' | 'kHz' | 'MHz' | 'GHz';
-  defaultPowerUnits: 'dBm' | 'W' | 'mW';
-}
-```
-
-**Indexes:**
-- `user_preferences_pkey` (id)
-- `user_preferences_user_id_key` (user_id) - Unique
-- `user_preferences_user_id_idx` (user_id) - Query optimization
-
----
-
-### `public.user_progress`
-
-Tracks scenario completion, scores, and SignalForge saves.
-
-| Column | Type | Constraints | Description |
-|--------|------|-------------|-------------|
-| id | uuid | **PK**, DEFAULT gen_random_uuid() | Row identifier |
-| user_id | uuid | **FK → users.id**, NOT NULL, UNIQUE | One-to-one with users |
-| progress | jsonb | - | Progress data object |
-| created_at | timestamptz | DEFAULT now() | Creation time |
-| updated_at | timestamptz | DEFAULT now() | Last update |
-
-**JSONB Structure (`progress`):**
-```typescript
-interface UserProgressData {
-  completedScenarios?: number[];      // Array of completed scenario IDs
-  scenarioProgress?: {
-    [scenarioId: number]: {
-      completedObjectives: number[];  // Objective IDs completed
-      score: number;                  // Total score for scenario
-      basePoints?: number;            // Points from objectives
-      timeBonus?: number;             // Bonus from remaining time
-      quizPenalties?: number;         // Deductions from wrong answers
-      completedAt?: string;           // ISO timestamp
-      lastPlayed: string;             // ISO timestamp
-    };
-  };
-  totalScore?: number;                // Cumulative score across all scenarios
-  signalForge?: Array<{
-    scenarioId: string;
-    version: string;
-    state: AppState;                  // Full app state snapshot
-    savedAt: number;                  // Unix timestamp
-  }>;
-}
-```
-
-**Indexes:**
-- `user_progress_pkey` (id)
-- `user_progress_user_id_key` (user_id) - Unique
-- `user_progress_user_id_idx` (user_id) - **Most used index** (4455 scans)
-
-**Size:** 352 kB (largest table due to JSONB data)
-
----
-
-### `public.user_data`
-
-Miscellaneous user data (last played, favorites).
-
-| Column | Type | Constraints | Description |
-|--------|------|-------------|-------------|
-| id | uuid | **PK**, DEFAULT gen_random_uuid() | Row identifier |
-| user_id | uuid | **FK → users.id**, NOT NULL, UNIQUE | One-to-one with users |
-| data | jsonb | - | User data object |
-| created_at | timestamptz | DEFAULT now() | Creation time |
-| updated_at | timestamptz | DEFAULT now() | Last update |
-
-**JSONB Structure (`data`):**
-```typescript
-interface UserDataData {
-  lastPlayedScenario?: number | null;   // Most recent scenario ID
-  favoriteScenarios?: number[];         // Bookmarked scenarios
-}
-```
-
-**Indexes:**
-- `user_data_pkey` (id)
-- `user_data_user_id_key` (user_id) - Unique
-- `user_data_user_id_idx` (user_id)
-
 ---
 
 ### `public.achievements`
@@ -156,9 +150,8 @@ Achievement definitions (shared with KeepTrack).
 | icon_url | text | - | Achievement icon URL |
 | points | integer | DEFAULT 0 | Point value |
 | category | text | - | Achievement category |
+| app_id | text | **FK → apps.id** | App-specific (NULL = shared) |
 | created_at | timestamptz | DEFAULT now() | Creation time |
-
-**Row Count:** 5 achievements defined
 
 ---
 
@@ -171,15 +164,28 @@ Junction table for user-achievement relationships.
 | id | uuid | **PK**, DEFAULT gen_random_uuid() | Row identifier |
 | user_id | uuid | **FK → users.id**, NOT NULL | User who earned it |
 | achievement_id | integer | **FK → achievements.id**, NOT NULL | Achievement earned |
-| unlocked_at | timestamptz | DEFAULT now() | When achievement was earned |
+| app_id | text | **FK → apps.id** | App context |
+| unlocked_at | timestamptz | DEFAULT now() | When earned |
 
-**Unique Constraint:** `(user_id, achievement_id)` - Prevents duplicate unlocks
+**Unique Constraint:** `(user_id, achievement_id)`
 
-**Indexes:**
-- `user_achievements_pkey` (id)
-- `user_achievements_user_id_achievement_id_key` - Composite unique
-- `user_achievements_user_id_idx` (user_id)
-- `user_achievements_achievement_id_idx` (achievement_id) - Unused
+---
+
+## Deprecated Tables
+
+> **Note:** These tables are deprecated but may still contain data. New code should use the app-scoped tables above.
+
+### `public.user_preferences` (deprecated)
+
+Use `app_preferences` instead for per-app settings.
+
+### `public.user_progress` (deprecated)
+
+Use `scenario_progress` and `checkpoints` tables instead.
+
+### `public.user_data` (deprecated)
+
+Use `user_app_summary` for aggregated stats.
 
 ---
 
@@ -193,67 +199,105 @@ Junction table for user-achievement relationships.
          │ id
          ▼
 ┌─────────────────┐       ┌──────────────────┐
-│  public.users   │       │  achievements    │
+│  public.users   │       │  apps            │
 │─────────────────│       │──────────────────│
 │ id (PK)         │       │ id (PK)          │
 │ email           │       │ name             │
-│ username        │       │ description      │
-│ display_name    │       │ icon_url         │
-│ avatar_url      │       │ points           │
-│ created_at      │       │ category         │
-│ updated_at      │       │ created_at       │
-└────────┬────────┘       └────────┬─────────┘
+│ display_name    │       │ description      │
+│ avatar_url      │       └────────┬─────────┘
+└────────┬────────┘                │
          │                         │
-    ┌────┴────┬──────────┬─────────┼─────────┐
-    │         │          │         │         │
-    ▼         ▼          ▼         ▼         │
-┌────────┐ ┌────────┐ ┌────────┐ ┌───────────┴───┐
-│ user_  │ │ user_  │ │ user_  │ │ user_         │
-│ prefs  │ │ prog   │ │ data   │ │ achievements  │
-│────────│ │────────│ │────────│ │───────────────│
-│ id     │ │ id     │ │ id     │ │ id            │
-│ user_id│ │ user_id│ │ user_id│ │ user_id (FK)  │
-│ prefs  │ │ prog   │ │ data   │ │ achiev_id(FK) │
-│ (jsonb)│ │ (jsonb)│ │ (jsonb)│ │ unlocked_at   │
-└────────┘ └────────┘ └────────┘ └───────────────┘
+    ┌────┴────────┬────────────────┼──────────────┐
+    │             │                │              │
+    ▼             ▼                ▼              ▼
+┌──────────┐ ┌──────────┐ ┌──────────────┐ ┌────────────┐
+│ scenario │ │ check-   │ │ app_         │ │ user_app_  │
+│ progress │ │ points   │ │ preferences  │ │ summary    │
+│──────────│ │──────────│ │──────────────│ │────────────│
+│ id       │ │ id       │ │ id           │ │ id         │
+│ user_id  │ │ user_id  │ │ user_id      │ │ user_id    │
+│ app_id   │ │ app_id   │ │ app_id       │ │ app_id     │
+│ scen_id  │ │ scen_id  │ │ preferences  │ │ total_score│
+│ score    │ │ state    │ └──────────────┘ └────────────┘
+│ ...      │ │ ...      │
+└──────────┘ └──────────┘
+
+         ┌───────────────┐    ┌───────────────┐
+         │ achievements  │────│ user_         │
+         │───────────────│    │ achievements  │
+         │ id (PK)       │    │───────────────│
+         │ name          │    │ user_id (FK)  │
+         │ app_id (FK)   │    │ achiev_id(FK) │
+         │ points        │    │ app_id (FK)   │
+         └───────────────┘    └───────────────┘
 ```
 
-## Statistics (as of 2025-12-22)
+---
 
-| Table | Rows | Table Size | Index Size | Total Size |
-|-------|------|------------|------------|------------|
-| user_progress | 183 | 304 kB | 48 kB | 352 kB |
-| users | 212 | 56 kB | 112 kB | 168 kB |
-| user_preferences | 212 | 56 kB | 48 kB | 104 kB |
-| user_data | 183 | 48 kB | 48 kB | 96 kB |
-| user_achievements | 1 | 8 kB | 64 kB | 72 kB |
-| achievements | 5 | 16 kB | 32 kB | 48 kB |
+## API Endpoints
 
-## API Access
+### New App-Scoped Endpoints
 
-### REST API
-- **Base URL:** `https://ucukugprniwigzqnqpuz.supabase.co/rest/v1/`
-- **Auth Header:** `apikey: <anon_key>` + `Authorization: Bearer <user_jwt>`
+```
+GET    /api/user/apps/:appId/scenarios/progress          # Batch load all
+GET    /api/user/apps/:appId/scenarios/:id/progress      # Single scenario
+PUT    /api/user/apps/:appId/scenarios/:id/progress      # Update scenario
 
-### User API Server (KeepTrack Shared)
-- **Base URL:** `https://user.keeptrack.space`
-- **Auth:** Bearer token (Supabase JWT)
-- Used for CRUD operations on user data
+GET    /api/user/apps/:appId/scenarios/:id/checkpoint    # Load checkpoint
+PUT    /api/user/apps/:appId/scenarios/:id/checkpoint    # Save checkpoint
+DELETE /api/user/apps/:appId/scenarios/:id/checkpoint    # Clear checkpoint
+HEAD   /api/user/apps/:appId/scenarios/:id/checkpoint    # Check exists
+
+GET    /api/user/apps/:appId/preferences                 # App preferences
+PUT    /api/user/apps/:appId/preferences
+
+GET    /api/user/apps/:appId/summary                     # Aggregated stats
+GET    /api/user/apps/:appId/full-data                   # Full user data
+```
+
+### Legacy Endpoints (deprecated)
+
+```
+GET/PUT  /api/user/progress      # Use scenario-specific endpoints
+GET/PUT  /api/user/preferences   # Use app-scoped preferences
+```
+
+---
 
 ## TypeScript Types
 
-See [src/user-account/types.ts](../src/user-account/types.ts) for complete type definitions including:
-- `User`, `UserPreferences`, `UserProgress`, `UserData`
-- `Achievement`, `UserAchievement`
-- `FullUserData` - Complete user data response
-- API request/response types
+See [src/user-account/types.ts](../src/user-account/types.ts) for complete type definitions:
+
+**New Types:**
+- `AppId` - App identifier type
+- `ScenarioProgress` - Per-scenario progress (normalized)
+- `Checkpoint` - AppState snapshot
+- `AppPreferences` - Per-app preferences
+- `UserAppSummary` - Aggregated stats
+- `ScenariosProgressResponse` - Batch response
+- `FullAppUserData` - Complete app-scoped data
+
+**Deprecated Types:**
+- `UserProgressData` - Use `ScenarioProgress` instead
+- `ScenarioProgressEntry` - Use `ScenarioProgress` instead
+- `UserProgress` - Use normalized tables
+
+---
+
+## Migration
+
+To apply the new schema, run the SQL in [schema-migration.sql](./schema-migration.sql).
+
+---
 
 ## Notes
 
-1. **JSONB Columns:** `preferences`, `progress`, and `data` columns use JSONB for flexibility. The TypeScript interfaces define the expected structure but the database allows any valid JSON.
+1. **App Isolation:** All new tables include `app_id` to prevent cross-app data corruption.
 
-2. **Unused Indexes:** `users_username_key`, `users_username_idx`, and `user_achievements_achievement_id_idx` show 0 scans - consider removing if username feature isn't used.
+2. **Granular Updates:** Saving a scenario only updates that scenario's row, not the entire progress blob.
 
-3. **Row Count Mismatch:** `users` has 212 rows but `user_progress`/`user_data` have 183 - some users may not have initialized their progress/data yet.
+3. **Checkpoint Separation:** Large AppState data is stored in a dedicated table, keeping core progress data lean.
 
-4. **Shared Backend:** This database is shared with KeepTrack. Changes may affect both applications.
+4. **Backward Compatibility:** Legacy endpoints still work during transition but are deprecated.
+
+5. **Shared Backend:** This database is shared with KeepTrack. The new schema ensures both apps can coexist safely.

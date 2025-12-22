@@ -305,10 +305,38 @@ export class UserDataService {
     scenarioId: string,
     updates: UpdateScenarioProgressRequest,
   ): Promise<ScenarioProgress> {
+    // Transform camelCase to snake_case for API
+    const apiUpdates: Record<string, unknown> = {};
+
+    if (updates.completedObjectives !== undefined) {
+      apiUpdates.completed_objectives = updates.completedObjectives;
+    }
+    if (updates.score !== undefined) {
+      apiUpdates.score = updates.score;
+    }
+    if (updates.basePoints !== undefined) {
+      apiUpdates.base_points = updates.basePoints;
+    }
+    if (updates.timeBonus !== undefined) {
+      apiUpdates.time_bonus = updates.timeBonus;
+    }
+    if (updates.quizPenalties !== undefined) {
+      apiUpdates.quiz_penalties = updates.quizPenalties;
+    }
+    if (updates.completedAt !== undefined) {
+      apiUpdates.completed_at = updates.completedAt;
+    }
+    if (updates.lastPlayed !== undefined) {
+      apiUpdates.last_played = updates.lastPlayed;
+    }
+    if (updates.scenarioNumber !== undefined) {
+      apiUpdates.scenario_number = updates.scenarioNumber;
+    }
+
     const response = await this.request<any>(
       `/api/user/apps/${this.config.appId}/scenarios/${scenarioId}/progress`,
       'PUT',
-      updates,
+      apiUpdates,
     );
 
     return this.transformScenarioProgress(response);

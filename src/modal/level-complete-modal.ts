@@ -27,7 +27,7 @@ export class LevelCompleteModal extends DraggableModal {
     scenarioId: '',
   };
 
-  private onContinueCallback_: (() => void) | null = null;
+  private onContinueCallback_: (() => void | Promise<void>) | null = null;
   private isReplayMode_: boolean = false;
 
   private constructor() {
@@ -109,10 +109,10 @@ export class LevelCompleteModal extends DraggableModal {
     playAgainBtn?.addEventListener('click', () => this.handlePlayAgain_());
   }
 
-  private handleContinue_(): void {
-    // Call the callback first (to save score)
+  private async handleContinue_(): Promise<void> {
+    // Call the callback first (to save score) - must await to ensure save completes before navigation
     if (this.onContinueCallback_) {
-      this.onContinueCallback_();
+      await this.onContinueCallback_();
     }
 
     // Close this modal and all other popups
@@ -169,7 +169,7 @@ export class LevelCompleteModal extends DraggableModal {
    * @param onContinue Callback when Continue button is clicked
    * @param isReplay True if showing for an already-completed scenario (adds Play Again button)
    */
-  showCompletion(options: CompletionModalOptions, onContinue?: () => void, isReplay?: boolean): void {
+  showCompletion(options: CompletionModalOptions, onContinue?: () => void | Promise<void>, isReplay?: boolean): void {
     this.options_ = options;
     this.onContinueCallback_ = onContinue ?? null;
     this.isReplayMode_ = isReplay ?? false;

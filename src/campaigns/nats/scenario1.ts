@@ -679,7 +679,10 @@ export const scenario1Data: ScenarioData = {
         No pressure today - just observation and familiarization. Click through each panel and verify the status indicators as I explain them.
       </p>
       <p>
-        Let's start with the GPSDO. That's the GPS-Disciplined Oscillator - the heart of our frequency reference system.
+        Let's start with the GPSDO - that's the GPS-Disciplined Oscillator. It's the timing heart of our frequency reference system. Everything else in this rack keys off that 10 MHz clock.
+      </p>
+      <p>
+        Pull up the GPSDO panel and check the lock indicator. It can show a few different states - locked to GPS, running in holdover mode on the backup oscillator, unlocked, or completely off. You need to know what state it's in before we check anything else.
       </p>
       `,
       character: Character.CHARLIE_BROOKS,
@@ -690,16 +693,13 @@ export const scenario1Data: ScenarioData = {
       'phase-1-gpsdo': {
         text: `
         <p>
-          See that green lock indicator? That's what we want to see - means we've got a stable 10 MHz reference for the entire rack.
+          Good. The GPSDO provides the frequency reference for everything else in the rack. If it ever drops to holdover mode, you've got maybe twenty minutes before frequency drift starts causing problems. If it's unlocked entirely, nothing downstream will work right.
         </p>
         <p>
-          The GPSDO receives timing signals from GPS satellites and uses them to discipline a precision oscillator. When it says "Locked" and shows 8 satellites, everything's nominal.
+          Next up: the LNB panel. That's the Low Noise Block downconverter - it's part of the receive chain, mounted right at the antenna feed. It converts incoming C-band signals down to an intermediate frequency we can work with.
         </p>
         <p>
-          That stability reading - anything below 5×10⁻¹¹ is excellent. This reference feeds every other piece of equipment in the chain.
-        </p>
-        <p>
-          Next up: the LNB panel. That's the Low Noise Block downconverter - it's part of the receive chain.
+          The key spec to check is noise temperature - that's measured in Kelvin and tells you how much thermal noise the LNB adds to the signal. Lower is better. Under 100K is acceptable for C-band, but you'll see a range of values depending on equipment condition. Check what the panel shows and whether it's within spec.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -709,13 +709,13 @@ export const scenario1Data: ScenarioData = {
       'phase-2-lnb': {
         text: `
         <p>
-          The LNB converts the incoming C-band signal down to an intermediate frequency we can work with. It's mounted right at the antenna feed.
+          Noise temperature is critical for receive sensitivity. Higher numbers mean more noise getting added to your signal, which eats into your link margin. If you ever see it climb above spec, that's an early warning sign of equipment degradation.
         </p>
         <p>
-          Key things to check: power is on, it's locked to our 10 MHz reference, and the temperature is stable. That noise temperature reading tells us how clean the receive signal is - lower is better, and anything under 100 Kelvin is good.
+          Now let's check the HPA - the High Power Amplifier. That's the muscle of our transmit chain. It amplifies our signal to the power level needed to reach the satellite - we're talking hundreds of watts.
         </p>
         <p>
-          Now let's check the HPA - the High Power Amplifier. That's the heart of our transmit chain.
+          The HPA can be in several states: transmitting at power, in safe standby with RF muted, powered off, or faulted. It's potentially dangerous equipment - you don't want it transmitting when you're not expecting it. Check the panel and determine what state it's in.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -725,13 +725,13 @@ export const scenario1Data: ScenarioData = {
       'phase-3-hpa': {
         text: `
         <p>
-          The HPA amplifies our transmitted signal to the power level needed to reach the satellite. It's a critical piece of equipment - and potentially dangerous if mishandled.
+          Good awareness on the HPA state. That mute control is your safety - it prevents RF emission when you're doing maintenance or when there's a problem. Never assume it's muted; always verify.
         </p>
         <p>
-          Right now it's in safe standby mode - powered but muted. That means it's ready to go but not actually transmitting any RF. The BUC mute switch prevents accidental transmission.
+          Next, let's check the antenna control unit. The antenna needs to stay pointed at TIDEMARK-1 to maintain the link.
         </p>
         <p>
-          Next, let's check the antenna control unit. That's where we monitor tracking status.
+          There are different tracking modes: program-track follows predicted orbital position from ephemeris data, step-track actively hunts for maximum signal, manual lets the operator control pointing directly, and stow parks the antenna safely. Each has its use case. Check what mode we're currently in.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -741,13 +741,13 @@ export const scenario1Data: ScenarioData = {
       'phase-4-antenna': {
         text: `
         <p>
-          The antenna is currently in program-track mode, following TIDEMARK-1's predicted orbital position. See those azimuth and elevation readings? That's where the dish is pointing.
+          Different satellites need different tracking approaches. TIDEMARK-1 is eight years old and starting to drift in its orbit, so our tracking strategy may need to adapt over time.
         </p>
         <p>
-          Program-track uses ephemeris data to predict where the satellite will be. The "Beacon Lock" indicator confirms we're also receiving the beacon signal.
+          Now let's verify the polarization setting. Polarization is how the electromagnetic wave is oriented - and it has to match what the satellite expects.
         </p>
         <p>
-          Now let's verify the polarization setting - that's critical for maximizing signal strength.
+          You might see horizontal at 0 degrees, vertical at 90 degrees, or a specific angle that matches the satellite's configuration. If you're off, you lose signal strength. At 90 degrees off from where you should be, you'd be in the null - almost nothing. Check the ACU and see what angle is set.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -757,13 +757,13 @@ export const scenario1Data: ScenarioData = {
       'phase-5-polarization': {
         text: `
         <p>
-          Polarization is how the electromagnetic wave is oriented. TIDEMARK-1 uses linear polarization at 14 degrees, and our antenna needs to match that exactly.
+          Polarization alignment is one of those details that's easy to overlook but costs you dBs if it's wrong. Always verify it matches the satellite spec.
         </p>
         <p>
-          If we're off by even a few degrees, we lose signal strength. At 90 degrees off, we'd be in the null - almost no signal at all. So this reading is important.
+          Let's move to the spectrum analyzer. This is where you'll spend a lot of time as an operator - it shows you the RF environment in real time.
         </p>
         <p>
-          Let's move to the spectrum analyzer and see what the signal looks like.
+          You're looking for the TIDEMARK-1 beacon signal. It should appear as a narrow spike rising above the noise floor. But you might also see just noise if something's wrong with the receive chain, interference spikes if there's RF contamination, or a flat line if the equipment has a problem. Look at the display and identify what you see.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -773,13 +773,13 @@ export const scenario1Data: ScenarioData = {
       'phase-6-spectrum': {
         text: `
         <p>
-          This is what a healthy beacon signal looks like. That spike in the center of the display is the TIDEMARK-1 beacon at 1,247.5 MHz IF.
+          The beacon is your constant reference - if you can see it clean and stable, you know the receive path is working. If it's missing or degraded, that's your first clue something's wrong.
         </p>
         <p>
-          The noise floor - that's the baseline around -120 dBm - is clean and flat. No interference, no spurious signals. That's exactly what we want to see.
+          Now look at how the spectrum analyzer itself is configured. The settings determine what you can see.
         </p>
         <p>
-          Now let's look at how the spectrum analyzer is configured for this observation.
+          Center frequency should match what you're trying to observe - that could be the RF frequency, the IF frequency after downconversion, or baseband depending on where you're tapping the signal. Reference level needs to be set so weak signals are visible above the noise floor on the display. Check the current settings and see if they make sense for beacon observation.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -789,13 +789,13 @@ export const scenario1Data: ScenarioData = {
       'phase-7-speca-settings': {
         text: `
         <p>
-          The spectrum analyzer is set up specifically for beacon observation. Center frequency at 1247.5 MHz - that's the IF frequency after the LNB converts the 3902.5 MHz beacon down.
+          Getting the spectrum analyzer settings right is an art. Wrong reference level and you either can't see weak signals or you clip strong ones. Wrong center frequency and you're looking at the wrong part of the spectrum entirely.
         </p>
         <p>
-          The reference level at -100 dBm puts the weak beacon signal nicely in view. If we had a higher reference level, the beacon would be lost in the noise floor on the display.
+          Now let's check the receiver modem. This is where the rubber meets the road - it demodulates the RF signal back into data.
         </p>
         <p>
-          Now let's check the receiver modem to make sure it's demodulating properly.
+          The key metric is C/N ratio - Carrier-to-Noise. Higher numbers mean better signal quality. Above 10 dB is healthy with good margin. Around 5 dB is marginal - you might see errors. At or below threshold, the link becomes unreliable. Check the modem panel and see where we stand.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -805,10 +805,13 @@ export const scenario1Data: ScenarioData = {
       'phase-8-receiver': {
         text: `
         <p>
-          Receiver's locked. That C/N ratio above 10 dB means we've got plenty of margin for reliable data reception.
+          C/N ratio is your primary link health indicator. It tells you how much margin you have before errors start creeping in. Always know where you are relative to threshold.
         </p>
         <p>
-          The lock indicator confirms the modem is successfully demodulating the signal. Let's look at the I&Q constellation to get a visual confirmation of signal quality.
+          Let's look at the I&Q constellation diagram. This gives you a visual representation of the demodulated symbols.
+        </p>
+        <p>
+          For QPSK modulation, you'll see four cluster positions - one for each symbol. Tight clusters mean clean demodulation. Scattered or spread-out points indicate noise or interference. If the pattern is rotating or stretched, you've got phase or amplitude problems. An empty display means no lock at all. Check what the constellation shows you.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -818,13 +821,13 @@ export const scenario1Data: ScenarioData = {
       'phase-9-constellation': {
         text: `
         <p>
-          The I&Q constellation shows us the actual symbol positions being received. For QPSK modulation, we expect four tight clusters in a square pattern.
+          The constellation diagram is a quick visual health check. Experienced operators can spot problems at a glance - noise, phase errors, interference all show up as distinct patterns.
         </p>
         <p>
-          What you're seeing here is clean - the clusters are compact and well-defined. If we had noise or interference, these would spread out or drift. Phase errors would rotate the whole pattern.
+          One final check - pull up the alarm dashboard. This aggregates status from every piece of equipment into one view.
         </p>
         <p>
-          One final check - let's look at the alarm dashboard to confirm everything is nominal.
+          You might see no alarms if everything's nominal, or various warnings and errors if there are problems - temperature warnings, tracking issues, equipment faults. This is your early warning system. Check the dashboard and see what it's reporting.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -834,13 +837,13 @@ export const scenario1Data: ScenarioData = {
       'phase-10-alarms': {
         text: `
         <p>
-          Clean dashboard - no active alarms. That's what we like to see. Every piece of equipment is operating within normal parameters.
+          Alright, that covers the complete health check. You've walked through every critical indicator: GPSDO, LNB, HPA, antenna tracking, polarization, spectrum, receiver, constellation, and alarms.
         </p>
         <p>
-          That covers the complete health check. You've seen every critical indicator: GPSDO locked, LNB stable, HPA in safe standby, antenna tracking, polarization matched, clean spectrum, receiver demodulating with good I&Q, and no alarms.
+          Not bad for your first day. Now you know what to look for on each panel and what the different states mean. That's the foundation for everything else - when something goes wrong, you'll recognize it because you know what right looks like.
         </p>
         <p>
-          Next shift, we'll do something more hands-on. But for now, you know what healthy equipment looks like. That's the foundation for everything else.
+          I've got other work to handle, so we'll pick this up tomorrow. Next shift, we'll do something more hands-on - actually powering systems down and bringing them back up in sequence. Get some rest.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,

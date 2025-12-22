@@ -498,18 +498,18 @@ export const scenario2Data: ScenarioData = {
       points: 10,
     },
     {
-      id: 'antenna-stow',
-      title: 'Phase 5: Move Antenna to Stow Position',
-      description: 'Command the antenna to stow position (Az: 0°, El: 90°) for maintenance access.',
+      id: 'antenna-maintenance',
+      title: 'Phase 5: Move Antenna to Maintenance Position',
+      description: 'Command the antenna to maintenance position (Az: 0°, El: 5) for maintenance access.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['power-down-lnb'],
       conditions: [
         {
           type: 'antenna-position',
-          description: 'Antenna Reached Stow Position',
+          description: 'Antenna Reached Maintenance Position',
           params: {
-            azimuth: 0 as Degrees,
-            elevation: 90 as Degrees,
+            trackingMode: 'maintenance',
+            elevation: 5 as Degrees,
             tolerance: 0.5 as Degrees,
           },
           mustMaintain: false,

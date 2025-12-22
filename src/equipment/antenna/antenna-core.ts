@@ -613,7 +613,7 @@ export abstract class AntennaCore extends BaseEquipment {
         // Stage target to safe storage position (Az=0°, El=0°)
         // Requires Apply button before antenna moves
         this.state.stagedTargetAzimuth = 0 as Degrees;
-        this.state.stagedTargetElevation = 0 as Degrees;
+        this.state.stagedTargetElevation = 90 as Degrees;
         this.state.hasStagedChanges = true;
         break;
 
@@ -732,7 +732,7 @@ export abstract class AntennaCore extends BaseEquipment {
         this.smoothedBeaconCN_ = cn;
       } else {
         this.smoothedBeaconCN_ = this.beaconCNSmoothingAlpha_ * cn +
-                                  (1 - this.beaconCNSmoothingAlpha_) * this.smoothedBeaconCN_;
+          (1 - this.beaconCNSmoothingAlpha_) * this.smoothedBeaconCN_;
       }
       this.state.beaconCN = this.smoothedBeaconCN_;
 

@@ -1088,6 +1088,36 @@ export class ObjectivesManager {
         });
       }
 
+      case 'antenna-position': {
+        const targetAz = condition.params?.azimuth;
+        const targetEl = condition.params?.elevation;
+        const tolerance = condition.params?.tolerance ?? 1.0;
+
+        // Must specify at least one of azimuth or elevation
+        if (targetAz === undefined && targetEl === undefined) {
+          console.warn('antenna-position condition requires azimuth and/or elevation params');
+          return false;
+        }
+
+        return this.evaluateEquipment_(gs.antennas, condition.params, (antenna) => {
+          const state = antenna.state;
+
+          // Check azimuth if specified
+          if (targetAz !== undefined) {
+            const azDiff = Math.abs(state.azimuth - targetAz);
+            if (azDiff > tolerance) return false;
+          }
+
+          // Check elevation if specified
+          if (targetEl !== undefined) {
+            const elDiff = Math.abs(state.elevation - targetEl);
+            if (elDiff > tolerance) return false;
+          }
+
+          return true;
+        });
+      }
+
       case 'buc-unmuted': {
         return this.evaluateEquipment_(gs.rfFrontEnds, condition.params, (rfFrontEnd) => {
           const bucState = rfFrontEnd.bucModule.state;

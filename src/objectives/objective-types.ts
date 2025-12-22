@@ -36,6 +36,7 @@ export type ConditionType =
   | 'antenna-beacon-frequency-set' // Antenna beacon frequency configured
   | 'antenna-tracking-mode-set' // Antenna tracking mode set (step-track, etc.)
   | 'antenna-beacon-locked' // Antenna beacon signal locked
+  | 'antenna-position' // Antenna at specific azimuth/elevation position
   | 'buc-unmuted' // BUC RF output enabled (inverse of muted)
   | 'hpa-enabled' // HPA output enabled (dual-action switch)
   | 'hpa-back-off-set' // HPA back-off level configured
@@ -108,6 +109,12 @@ export interface ConditionParams {
   beaconFrequency?: number;
   /** For antenna-tracking-mode-set: tracking mode */
   trackingMode?: 'stow' | 'maintenance' | 'manual' | 'step-track' | 'program-track';
+  /** For antenna-position: target azimuth in degrees */
+  azimuth?: number;
+  /** For antenna-position: target elevation in degrees */
+  elevation?: number;
+  /** For antenna-position: position tolerance in degrees (default: 1.0) */
+  tolerance?: number;
   /** For hpa-back-off-set: target back-off in dB */
   backOff?: number;
   /** For hpa-back-off-set: tolerance in dB */

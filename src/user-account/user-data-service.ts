@@ -703,8 +703,14 @@ export class UserDataService {
         throw new UserDataServiceError(`HTTP ${response.status}: ${response.statusText}`, response.status);
       }
 
-      // HEAD requests don't have a body
-      if (method === 'HEAD') {
+      // HEAD and DELETE requests don't have a body
+      if (method === 'HEAD' || method === 'DELETE') {
+        return undefined as T;
+      }
+
+      // Handle empty responses (204 No Content)
+      const contentLength = response.headers.get('content-length');
+      if (response.status === 204 || contentLength === '0') {
         return undefined as T;
       }
 

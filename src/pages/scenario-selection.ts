@@ -443,18 +443,21 @@ export class ScenarioSelectionPage extends BasePage {
       return;
     }
 
-    // Remove from completed scenarios list using direct API (no confirmation needed for Play Again)
+    // Remove from completed scenarios list and clear checkpoint using direct API (no confirmation needed for Play Again)
     if (scenarioId) {
       try {
         const userDataService = getUserDataService();
-        await userDataService.deleteScenarioProgress(scenarioId);
-        Logger.info(`Removed scenario progress for Play Again: ${scenarioId}`);
+        await Promise.all([
+          userDataService.deleteScenarioProgress(scenarioId),
+          userDataService.deleteCheckpoint(scenarioId),
+        ]);
+        Logger.info(`Cleared progress and checkpoint for Play Again: ${scenarioId}`);
       } catch (error) {
-        Logger.error('Failed to remove scenario progress for Play Again:', error);
+        Logger.error('Failed to clear progress for Play Again:', error);
         // Continue anyway - user wants to play again
       }
     }
 
-    Router.getInstance().navigate(scenarioUrl);
+    Router.getInstance().navigate(scenarioUrl, { forceReplay: true });
   }
 }

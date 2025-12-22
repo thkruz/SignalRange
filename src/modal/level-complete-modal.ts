@@ -1,9 +1,11 @@
 import { html } from '@app/engine/utils/development/formatter';
 import { DraggableModal } from '@app/engine/ui/draggable-modal';
+import { Logger } from '@app/logging/logger';
 import { Router } from '@app/router';
 import type { ScoreBreakdown } from '@app/scoring/score-calculator';
 import { SimulationManager } from '@app/simulation/simulation-manager';
 import { clearPersistedStore } from '@app/sync/storage';
+import { getUserDataService } from '@app/user-account/user-data-service';
 import { DialogManager } from './dialog-manager';
 import { PendingQuizIndicator } from './pending-quiz-indicator';
 import { QuizModal } from './quiz-modal';
@@ -129,10 +131,17 @@ export class LevelCompleteModal extends DraggableModal {
 
     const { campaignId, scenarioId } = this.options_;
 
-    // Clear the checkpoint for this scenario so it starts fresh
-    const sim = SimulationManager.getInstance();
-    if (sim.progressSaveManager) {
-      await sim.progressSaveManager.clearCheckpoint(scenarioId);
+    // Clear checkpoint and scenario progress so it starts fresh
+    try {
+      const userDataService = getUserDataService();
+      await Promise.all([
+        userDataService.deleteScenarioProgress(scenarioId),
+        userDataService.deleteCheckpoint(scenarioId),
+      ]);
+      Logger.info(`Cleared progress and checkpoint for Play Again: ${scenarioId}`);
+    } catch (error) {
+      Logger.error('Failed to clear progress for Play Again:', error);
+      // Continue anyway - user wants to play again
     }
 
     // Clear local equipment state so scenario starts with default equipment settings

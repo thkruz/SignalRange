@@ -128,7 +128,7 @@ export const ANTENNA_CONFIGS: Record<ANTENNA_CONFIG_KEYS, AntennaConfig> = {
     // Mechanical / environment
     elRange_deg: [5, 90],
     azContinuous: false,
-    maxRate_deg_s: 0.35,         // conservative jackscrew rate
+    maxRate_deg_s: 2.5, //REAL: 0.35,         // conservative jackscrew rate
     windDePointingCoef_deg_per_mps: 0.003,
 
     // System noise (G/T budgeting helpers)

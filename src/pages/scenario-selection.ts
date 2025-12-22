@@ -152,9 +152,9 @@ export class ScenarioSelectionPage extends BasePage {
           ${progress.completedScenarios.length} of ${progress.totalScenarios} scenarios completed
           (${progress.completionPercentage}%)
         </div>
-        <div class="back-button" onclick="window.history.back()">
+        <a href="/campaigns/" class="back-button">
           ← Back to Campaigns
-        </div>
+        </a>
       `;
     } else {
       headerEl.innerHTML = html`

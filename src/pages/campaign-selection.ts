@@ -292,7 +292,7 @@ export class CampaignSelectionPage extends BasePage {
       Router.getInstance().navigate(scenarioUrl);
     } else if (campaignId) {
       // Navigate to campaign's scenario selection page
-      Router.getInstance().navigate(`campaigns/${campaignId}`);
+      Router.getInstance().navigate(`/campaigns/${campaignId}`);
     }
   }
 }

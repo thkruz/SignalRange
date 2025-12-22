@@ -280,6 +280,9 @@ export class QuizModal extends DraggableBox {
       if (continueBtn) {
         continueBtn.addEventListener('click', () => this.handleContinueClick_());
       }
+
+      // Adjust position if modal extends past viewport
+      this.ensureModalInViewport_();
     }
 
     // Disable all option buttons
@@ -309,6 +312,25 @@ export class QuizModal extends DraggableBox {
     if (this.overlayEl_) {
       this.overlayEl_.remove();
       this.overlayEl_ = null;
+    }
+  }
+
+  /**
+   * Ensure the modal doesn't extend past the bottom of the viewport
+   * Called after feedback is shown which may increase modal height
+   */
+  private ensureModalInViewport_(): void {
+    if (!this.boxEl) return;
+
+    const rect = this.boxEl.getBoundingClientRect();
+    const viewportHeight = window.innerHeight;
+    const margin = 16; // Minimum margin from viewport edge
+
+    if (rect.bottom > viewportHeight - margin) {
+      const overflow = rect.bottom - (viewportHeight - margin);
+      const currentTop = parseFloat(this.boxEl.style.top) || rect.top;
+      const newTop = Math.max(margin, currentTop - overflow);
+      this.boxEl.style.top = `${newTop}px`;
     }
   }
 
@@ -367,6 +389,9 @@ export class QuizModal extends DraggableBox {
       `;
       penaltyEl.style.display = 'block';
     }
+
+    // Adjust position if modal extends past viewport
+    this.ensureModalInViewport_();
 
     // Disable the wrong answer button but keep others enabled
     // Find the display index for the selected original index

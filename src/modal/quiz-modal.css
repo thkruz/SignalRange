@@ -246,3 +246,21 @@
   background: rgba(0, 0, 0, 0.75);
   z-index: 10000;
 }
+
+/* Single option button (acknowledgment style) */
+.quiz-option-btn.quiz-option-single {
+  justify-content: center;
+  padding: 1rem 1.5rem;
+  background: rgba(19, 121, 40, 0.15);
+  border-color: #137928;
+  font-weight: 600;
+}
+
+.quiz-option-btn.quiz-option-single:hover:not(:disabled) {
+  background: rgba(19, 121, 40, 0.3);
+  border-color: #1a9933;
+}
+
+.quiz-option-btn.quiz-option-single .quiz-option-text {
+  text-align: center;
+}

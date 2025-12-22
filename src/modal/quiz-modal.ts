@@ -157,9 +157,23 @@ export class QuizModal extends DraggableBox {
     this.shuffledIndices_ = this.shuffleIndices_();
 
     const quiz = this.currentQuiz_;
+    const isSingleOption = quiz.options.length === 1;
+
     optionsEl.innerHTML = this.shuffledIndices_
       .map((originalIndex, displayIndex) => {
         const option = quiz.options[originalIndex];
+        // Single option: show as prominent acknowledgment button without letter label
+        if (isSingleOption) {
+          return html`
+            <button
+              id="quiz-option-${displayIndex}"
+              class="quiz-option-btn quiz-option-single"
+              data-index="${originalIndex}"
+            >
+              <span class="quiz-option-text">${option}</span>
+            </button>
+          `;
+        }
         return html`
           <button
             id="quiz-option-${displayIndex}"
@@ -449,9 +463,16 @@ export class QuizModal extends DraggableBox {
 
   /**
    * Fisher-Yates shuffle to randomize answer order
+   * For single-option quizzes, no shuffle is needed
    */
   private shuffleIndices_(): number[] {
-    const indices = [0, 1, 2, 3];
+    if (!this.currentQuiz_) return [];
+    const count = this.currentQuiz_.options.length;
+    const indices = Array.from({ length: count }, (_, i) => i);
+
+    // Don't shuffle single-option quizzes
+    if (count === 1) return indices;
+
     for (let i = indices.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [indices[i], indices[j]] = [indices[j], indices[i]];

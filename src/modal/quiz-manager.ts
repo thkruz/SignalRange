@@ -10,8 +10,8 @@ interface QuizState {
   objectiveId: string;
   conditionIndex: number;
   question: string;
-  options: [string, string, string, string];
-  correctIndex: 0 | 1 | 2 | 3;
+  options: string[];
+  correctIndex: number;
   explanation?: string;
   pointPenalty: number;
   attempts: number;
@@ -60,8 +60,8 @@ export class QuizManager {
     objectiveId: string,
     conditionIndex: number,
     question: string,
-    options: [string, string, string, string],
-    correctIndex: 0 | 1 | 2 | 3,
+    options: string[],
+    correctIndex: number,
     explanation?: string,
     pointPenalty: number = 5
   ): void {

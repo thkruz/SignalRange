@@ -10,6 +10,7 @@ import { ObjectivesManager } from "@app/objectives/objectives-manager";
 import { NavigationOptions } from "@app/router";
 import { ScenarioManager } from "@app/scenario-manager";
 import { ScenarioDialogManager } from "@app/scenarios/scenario-dialog-manager";
+import { ScenarioCompletionHandler } from "@app/scoring/scenario-completion-handler";
 import { SimulationManager } from "@app/simulation/simulation-manager";
 import { AppState } from "@app/sync/storage";
 import { Auth } from "@app/user-account/auth";
@@ -32,11 +33,15 @@ export abstract class BasePage extends BaseElement {
   }
 
   /**
-   * Initialize the progress save manager. Call this in subclass init_() methods.
+   * Initialize the progress save manager and completion handler.
+   * Call this in subclass init_() methods.
    */
   protected initProgressSaveManager_(): void {
     this.progressSaveManager_ = new ProgressSaveManager();
     this.progressSaveManager_.initialize();
+
+    // Initialize scenario completion handler for scoring popup
+    ScenarioCompletionHandler.getInstance().initialize();
   }
 
   /**
@@ -181,12 +186,16 @@ export abstract class BasePage extends BaseElement {
   }
 
   /**
-   * Clean up progress save manager. Call this in subclass destroy() methods.
+   * Clean up progress save manager and completion handler.
+   * Call this in subclass destroy() methods.
    */
   protected disposeProgressSaveManager_(): void {
     if (this.progressSaveManager_) {
       this.progressSaveManager_.dispose();
       this.progressSaveManager_ = null;
     }
+
+    // Clean up scenario completion handler
+    ScenarioCompletionHandler.destroy();
   }
 }

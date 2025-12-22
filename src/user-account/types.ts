@@ -59,16 +59,29 @@ export interface UserPreferences extends UserPreferencesData {
 }
 
 /**
+ * Progress entry for a single scenario including score breakdown
+ */
+export interface ScenarioProgressEntry {
+  completedObjectives: number[];
+  score: number;
+  /** Points earned from completing objectives */
+  basePoints?: number;
+  /** Bonus points from remaining time */
+  timeBonus?: number;
+  /** Points deducted from quiz wrong answers */
+  quizPenalties?: number;
+  /** ISO timestamp when scenario was completed */
+  completedAt?: string;
+  lastPlayed: string;
+}
+
+/**
  * User progress data for tracking scenario completion
  */
 export interface UserProgressData {
   completedScenarios?: number[];
   scenarioProgress?: {
-    [scenarioId: number]: {
-      completedObjectives: number[];
-      score: number;
-      lastPlayed: string;
-    };
+    [scenarioId: number]: ScenarioProgressEntry;
   };
   totalScore?: number;
   signalForge?: Array<{

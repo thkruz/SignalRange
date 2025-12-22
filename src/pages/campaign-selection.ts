@@ -60,16 +60,12 @@ export class CampaignSelectionPage extends BasePage {
       await App.authReady;
 
       const userDataService = getUserDataService();
-      const progress = await userDataService.getUserProgress().catch(() => null);
+      const progressResponse = await userDataService.getAllScenariosProgress().catch(() => null);
 
-      // Load completed scenarios - convert scenario numbers to IDs
-      const completedScenarioNumbers = progress?.completedScenarios ?? [];
-      const campaignManager = CampaignManager.getInstance();
-      const allScenarios = campaignManager.getAllScenarios();
-
-      this.completedScenarioIds_ = completedScenarioNumbers
-        .map(num => allScenarios.find(s => s.number === num)?.id)
-        .filter(Boolean);
+      // Get completed scenario IDs from progress records
+      this.completedScenarioIds_ = (progressResponse?.scenarios ?? [])
+        .filter(s => s.completedAt)
+        .map(s => s.scenarioId);
 
       // Re-render the campaign grid with progress data
       this.updateCampaignCards_();

@@ -11,6 +11,7 @@ import { ScenarioManager } from "@app/scenario-manager";
 import { ScenarioDialogManager } from "@app/scenarios/scenario-dialog-manager";
 import { AlarmService } from "@app/services/alarm-service";
 import { SimulationManager } from "@app/simulation/simulation-manager";
+import { QuizModal } from "@app/modal/quiz-modal";
 import { syncEquipmentWithStore } from "@app/sync";
 import { AppState, syncManager } from "@app/sync/storage";
 import { Auth } from "@app/user-account/auth";
@@ -281,6 +282,7 @@ export class MissionControlPage extends BasePage {
     SimulationManager.destroy();
     ObjectivesManager.destroy();
     ScenarioDialogManager.reset();
+    QuizModal.destroy();
     EventBus.destroy();
   }
 }

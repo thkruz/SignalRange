@@ -440,4 +440,16 @@ export class QuizModal extends DraggableBox {
   dispose(): void {
     EventBus.getInstance().off(Events.QUIZ_SHOW, this.boundShowQuizHandler_);
   }
+
+  /**
+   * Destroy the singleton instance and clean up
+   * Should be called when page is destroyed to ensure fresh listener on new EventBus
+   */
+  static destroy(): void {
+    if (QuizModal.instance_) {
+      QuizModal.instance_.dispose();
+      QuizModal.instance_.close();
+      QuizModal.instance_ = null;
+    }
+  }
 }

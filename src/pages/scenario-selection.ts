@@ -99,17 +99,23 @@ export class ScenarioSelectionPage extends BasePage {
         this.scenarioCheckpoints_.clear();
         this.completedScenarioIds_ = [];
 
-        // Process each scenario's progress
+        // Track completed scenarios from progress records
         for (const scenarioProgress of progressResponse.scenarios) {
-          // Check if checkpoint exists for this scenario
-          const hasCheckpoint = await userDataService.checkpointExists(scenarioProgress.scenarioId).catch(() => false);
-          if (hasCheckpoint) {
-            this.scenarioCheckpoints_.set(scenarioProgress.scenarioId, true);
-          }
-
-          // Check if scenario is completed
           if (scenarioProgress.completedAt) {
             this.completedScenarioIds_.push(scenarioProgress.scenarioId);
+          }
+        }
+
+        // Check checkpoints for ALL scenarios in parallel (not just ones with progress records)
+        // This ensures we detect checkpoints even when no objectives have been completed yet
+        const checkpointChecks = SCENARIOS.map(async scenario => {
+          const hasCheckpoint = await userDataService.checkpointExists(scenario.id).catch(() => false);
+          return { scenarioId: scenario.id, hasCheckpoint };
+        });
+        const checkpointResults = await Promise.all(checkpointChecks);
+        for (const { scenarioId, hasCheckpoint } of checkpointResults) {
+          if (hasCheckpoint) {
+            this.scenarioCheckpoints_.set(scenarioId, true);
           }
         }
       }

@@ -6,6 +6,7 @@ import { NavigationOptions } from "@app/router";
 import { ScenarioManager } from "@app/scenario-manager";
 import { ScenarioDialogManager } from "@app/scenarios/scenario-dialog-manager";
 import { SimulationManager } from "@app/simulation/simulation-manager";
+import { QuizModal } from "@app/modal/quiz-modal";
 import { AppState, syncManager } from "@app/sync/storage";
 import { ObjectivesManager } from "@app/objectives/objectives-manager";
 import { html } from "../engine/utils/development/formatter";
@@ -173,6 +174,7 @@ export class SandboxPage extends BasePage {
     SimulationManager.destroy();
     ObjectivesManager.destroy();
     ScenarioDialogManager.reset();
+    QuizModal.destroy();
     EventBus.destroy();
     const container = getEl(SandboxPage.containerId);
     if (container) {

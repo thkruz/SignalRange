@@ -390,6 +390,14 @@ export class ObjectivesManager {
         }
       });
     }
+
+    // After restoring all states, activate dependent objectives for any
+    // objectives that were restored as completed
+    for (const currentState of this.objectiveStates_) {
+      if (currentState.isCompleted) {
+        this.activateDependentObjectives_(currentState.objective.id);
+      }
+    }
   }
 
   /**

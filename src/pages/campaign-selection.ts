@@ -187,7 +187,7 @@ export class CampaignSelectionPage extends BasePage {
           </div>
 
           <div class="campaign-image">
-            <img src="${getAssetUrl('/assets/campaigns/' + campaign.imageUrl)}" alt="${campaign.title}" onerror="this.onerror=null; this.src='${getAssetUrl('/images/placeholder.png')}'"/>
+            <img src="${getAssetUrl('/assets/campaigns/' + campaign.imageUrl)}" alt="${campaign.title}" onerror="this.onerror=null; this.src='/images/placeholder.png'"/>
             <div class="campaign-image-overlay">
               <h2 class="campaign-title">${campaign.title}</h2>
               <div class="campaign-subtitle">${campaign.subtitle}</div>
@@ -227,7 +227,7 @@ export class CampaignSelectionPage extends BasePage {
           </div>
 
           <div class="campaign-image">
-            <img src="${getAssetUrl('/assets/campaigns/sandbox/' + sandboxData.imageUrl)}" alt="${sandboxData.title}" onerror="this.onerror=null; this.src='${getAssetUrl('/images/placeholder.png')}'"/>
+            <img src="${getAssetUrl('/assets/campaigns/sandbox/' + sandboxData.imageUrl)}" alt="${sandboxData.title}" onerror="this.onerror=null; this.src='/images/placeholder.png'"/>
             <div class="campaign-image-overlay">
               <h2 class="campaign-title">${sandboxData.title}</h2>
               <div class="campaign-subtitle">${sandboxData.subtitle}</div>

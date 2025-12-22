@@ -1,0 +1,118 @@
+.complete-modal {
+  text-align: center;
+  padding: 1rem;
+}
+
+.complete-modal__icon {
+  font-size: 3.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.complete-modal__title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #28a745;
+  margin-bottom: 1rem;
+}
+
+.complete-modal__score-section {
+  background: rgba(40, 167, 69, 0.1);
+  border: 1px solid rgba(40, 167, 69, 0.3);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.complete-modal__total {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid rgba(40, 167, 69, 0.2);
+}
+
+.complete-modal__total .total-label {
+  font-size: 0.85rem;
+  color: var(--hm-muted, #adb5bd);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.25rem;
+}
+
+.complete-modal__total .total-value {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #28a745;
+  font-family: var(--font-mono, monospace);
+}
+
+.complete-modal__breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.complete-modal__breakdown .breakdown-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.9rem;
+}
+
+.complete-modal__breakdown .breakdown-label {
+  color: var(--hm-muted, #adb5bd);
+}
+
+.complete-modal__breakdown .breakdown-value {
+  font-family: var(--font-mono, monospace);
+  font-weight: 500;
+}
+
+.complete-modal__breakdown .breakdown-value.positive {
+  color: #28a745;
+}
+
+.complete-modal__breakdown .breakdown-value.negative {
+  color: #dc3545;
+}
+
+.complete-modal__time {
+  font-size: 0.9rem;
+  color: var(--hm-muted, #adb5bd);
+  margin-bottom: 1.25rem;
+}
+
+.complete-modal__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.complete-modal__actions button {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.1s;
+}
+
+.complete-modal__actions button:hover {
+  transform: translateY(-1px);
+}
+
+.complete-modal__actions button:active {
+  transform: translateY(0);
+}
+
+.complete-modal__actions .btn-success {
+  background-color: #28a745;
+  border: none;
+  color: white;
+  font-weight: 500;
+}
+
+.complete-modal__actions .btn-success:hover {
+  background-color: #218838;
+}

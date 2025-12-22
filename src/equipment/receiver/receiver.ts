@@ -4,14 +4,14 @@ import { html } from "../../engine/utils/development/formatter";
 import { qs } from "../../engine/utils/query-selector";
 import { Events } from "../../events/events";
 import { FECType, Hertz, MHz, ModulationType } from "../../types";
+import { AntennaCore } from "../antenna";
 import { AlarmStatus, BaseEquipment } from "../base-equipment";
 import { TapPoint } from "../rf-front-end/coupler-module/coupler-module";
-import { RFFrontEnd } from "../rf-front-end/rf-front-end";
-import { Antenna } from './../antenna/antenna';
+import { RFFrontEndCore } from "../rf-front-end/rf-front-end-core";
 import './receiver.css';
 
 export interface ReceiverModemState {
-  antennaUuid: string;
+  antenna_id: number;
   modemNumber: number; // 1-4
   frequency: MHz; // MHz
   bandwidth: MHz; // MHz
@@ -34,6 +34,21 @@ export interface ReceiverState {
 }
 
 /**
+ * Signal information for IQ constellation display.
+ * Uses relaxed filtering to show signals even when modem config doesn't match.
+ */
+export interface IQSignalInfo {
+  hasCarrier: boolean;              // Any RF signal in bandwidth
+  hasLock: boolean;                 // Modem can demodulate (mod + FEC match)
+  actualModulation: ModulationType | null;
+  configuredModulation: ModulationType;
+  cnRatio_dB: number;               // Carrier-to-noise ratio
+  frequencyOffset_Hz: number;       // Offset from center frequency
+  modulationMismatch: boolean;
+  fecMismatch: boolean;
+}
+
+/**
  * Receiver - Single receiver case containing 4 modems
  * Manages modem configuration and signal reception state
  * Extends Equipment base class for standard lifecycle
@@ -41,39 +56,48 @@ export interface ReceiverState {
 export class Receiver extends BaseEquipment {
   state: ReceiverState;
   private inputData: Partial<ReceiverModemState> = {};
-  private readonly antennas: Antenna[];
+  private readonly antennas_: AntennaCore[];
   private lastRenderState: ReceiverState | null = null;
   private mediaCache: { [url: string]: HTMLImageElement | HTMLVideoElement | HTMLIFrameElement } = {};
   private videoPlayTime: { [url: string]: number } = {};
   powerSwitch: PowerSwitch;
-  rfFrontEnd_: RFFrontEnd | null = null;
+  rfFrontEnd_: RFFrontEndCore | null = null;
 
-  constructor(parentId: string, antennas: Antenna[], teamId: number = 1, serverId: number = 1) {
-    super(parentId, teamId);
+  constructor(parentId: string, antennas: AntennaCore[], state?: Partial<ReceiverState>, teamId: number = 1, serverId: number = 1) {
+    super(teamId);
 
-    this.antennas = antennas;
+    this.antennas_ = antennas;
 
-    // Initialize config with 4 modems
-    const modems: ReceiverModemState[] = [];
-    for (let i = 1; i <= 4; i++) {
-      modems.push({
-        modemNumber: i,
-        antennaUuid: i <= 2 ? antennas[0].state.uuid : antennas[1]?.state.uuid ?? antennas[0].state.uuid,
-        frequency: 4700 as MHz, // (IF Band after downconversion)
-        bandwidth: 50 as MHz,
-        modulation: 'QPSK' as ModulationType,
-        fec: '3/4' as FECType,
-        isPowered: true,
-      });
-    }
+    const defaults = Receiver.getDefaultState();
+
+    const uuid = state?.uuid ?? this.uuid;
+    const team_id = state?.team_id ?? this.teamId;
+    const server_id = state?.server_id ?? serverId;
+
+    // Merge modem overrides by modemNumber (so callers don't have to provide a full ordered array)
+    const overridesByModemNumber = new Map<number, Partial<ReceiverModemState>>(
+      (state?.modems ?? []).map(m => [m.modemNumber, m])
+    );
+
+    const modems: ReceiverModemState[] = defaults.modems.map((def) => {
+      const override = overridesByModemNumber.get(def.modemNumber);
+      return {
+        ...def,
+        ...override,
+        // Ensure identity field remains correct unless explicitly overridden
+        modemNumber: override?.modemNumber ?? def.modemNumber,
+      };
+    });
 
     this.state = {
-      uuid: this.uuid,
-      team_id: this.teamId,
-      server_id: serverId,
+      ...defaults,
+      ...state,
+      uuid,
+      team_id,
+      server_id,
       modems,
-      activeModem: 1,
-      availableSignals: [],
+      activeModem: state?.activeModem ?? defaults.activeModem,
+      availableSignals: state?.availableSignals ?? defaults.availableSignals,
     };
 
     this.build(parentId);
@@ -81,6 +105,31 @@ export class Receiver extends BaseEquipment {
     EventBus.getInstance().on(Events.UPDATE, this.update.bind(this));
     EventBus.getInstance().on(Events.SYNC, this.syncDomWithState.bind(this));
     EventBus.getInstance().once(Events.SYNC, this.initialSync.bind(this));
+  }
+
+  static getDefaultState(): ReceiverState {
+    const modems: ReceiverModemState[] = Array.from({ length: 4 }, (_, idx) => {
+      const modemNumber = idx + 1;
+
+      return {
+        modemNumber,
+        antenna_id: modemNumber <= 2 ? 1 : 2,
+        frequency: 4700 as MHz, // IF Band after downconversion
+        bandwidth: 50 as MHz,
+        modulation: 'QPSK' as ModulationType,
+        fec: '3/4' as FECType,
+        isPowered: false,
+      };
+    });
+
+    return {
+      uuid: 'default',
+      team_id: 1,
+      server_id: 1,
+      modems,
+      activeModem: 1,
+      availableSignals: [],
+    };
   }
 
   update(): void {
@@ -130,11 +179,11 @@ export class Receiver extends BaseEquipment {
             <div class="rx-modem-config">
               <div class="config-row">
                 <label>Antenna</label>
-                <select class="input-rx-antenna" data-param="antennaId">
-                  <option value="1" ${this.inputData.antennaUuid === this.antennas[0]?.state.uuid ? 'selected' : ''}>1</option>
-                  <option value="2" ${this.inputData.antennaUuid === this.antennas[1]?.state.uuid ? 'selected' : ''}>2</option>
+                <select class="input-rx-antenna" data-param="antenna_id">
+                  <option value="1" ${this.inputData.antenna_id === 1 ? 'selected' : ''}>1</option>
+                  <option value="2" ${this.inputData.antenna_id === 2 ? 'selected' : ''}>2</option>
                 </select>
-                <span class="current-value">${this.inputData.antennaUuid ?? 1}</span>
+                <span class="current-value">${this.inputData.antenna_id ?? 1}</span>
               </div>
 
               <div class="config-row">
@@ -275,7 +324,7 @@ export class Receiver extends BaseEquipment {
     this.updateStatusBar(this.domCache['bottom-status-bar'], this.getStatusAlarms());
   }
 
-  protected getStatusAlarms(): AlarmStatus[] {
+  public getStatusAlarms(): AlarmStatus[] {
     const alarms: AlarmStatus[] = [];
 
     if (this.state.availableSignals.length > 0) {
@@ -308,7 +357,7 @@ export class Receiver extends BaseEquipment {
     this.subscribeToAntennaEvents();
   }
 
-  connectRfFrontEnd(rfFrontEnd: RFFrontEnd) {
+  connectRfFrontEnd(rfFrontEnd: RFFrontEndCore) {
     this.rfFrontEnd_ = rfFrontEnd;
   }
 
@@ -342,7 +391,15 @@ export class Receiver extends BaseEquipment {
     return this.state.modems.find(m => m.modemNumber === this.state.activeModem) ?? this.state.modems[0];
   }
 
-  private setActiveModem(modemNumber: number): void {
+  get antennas(): AntennaCore[] {
+    return this.antennas_;
+  }
+
+  /**
+   * Public API Methods - For Adapter Pattern
+   */
+
+  public setActiveModem(modemNumber: number): void {
     this.state.activeModem = modemNumber;
     this.inputData = { ...this.activeModem };
     this.syncDomWithState();
@@ -353,6 +410,155 @@ export class Receiver extends BaseEquipment {
       activeModem: modemNumber
     });
   }
+
+  public handleAntennaChange(antennaId: number): void {
+    this.inputData.antenna_id = antennaId;
+  }
+
+  public handleFrequencyChange(frequencyMHz: number): void {
+    this.inputData.frequency = frequencyMHz as MHz;
+  }
+
+  public handleBandwidthChange(bandwidthMHz: number): void {
+    this.inputData.bandwidth = bandwidthMHz as MHz;
+  }
+
+  public handleModulationChange(modulation: ModulationType): void {
+    this.inputData.modulation = modulation;
+  }
+
+  public handleFecChange(fec: FECType): void {
+    this.inputData.fec = fec;
+  }
+
+  public handlePowerToggle(isEnabled: boolean): void {
+    this.togglePower(isEnabled);
+  }
+
+  public hasSignalForModem(modem: ReceiverModemState): boolean {
+    const visibleSignals = this.getVisibleSignals(modem);
+    return visibleSignals.length > 0;
+  }
+
+  public isSignalDegraded(modem: ReceiverModemState): boolean {
+    const visibleSignals = this.getVisibleSignals(modem);
+    if (visibleSignals.length === 0) return false;
+
+    // Check if any signal is degraded
+    return visibleSignals.some(s => s.isDegraded);
+  }
+
+  /**
+   * Get SNR (C/N ratio) for a modem in dB
+   * Returns null if no signal present
+   */
+  public getSnrForModem(modem: ReceiverModemState): number | null {
+    if (!modem.isPowered) return null;
+
+    const signalInfo = this.getSignalsInBandwidth(modem);
+    if (!signalInfo.hasCarrier) return null;
+
+    return signalInfo.cnRatio_dB;
+  }
+
+  /**
+   * Get received signal power for a modem in dBm
+   * Returns null if no signal present
+   */
+  public getPowerForModem(modem: ReceiverModemState): number | null {
+    if (!modem.isPowered) return null;
+
+    const visibleSignals = this.getVisibleSignals(modem);
+    if (visibleSignals.length === 0) return null;
+
+    // Return the power of the strongest signal
+    const totalGain = this.rfFrontEnd_?.couplerModule.signalPathManager.getTotalRxGain() ?? 0;
+    return Math.max(...visibleSignals.map(s => s.power + totalGain));
+  }
+
+  /**
+   * Get signal info for IQ constellation display.
+   * Uses relaxed filtering - only checks frequency overlap, not modulation/FEC.
+   * This allows the IQ display to show signals for troubleshooting even when
+   * the modem configuration doesn't match the incoming signal.
+   */
+  public getSignalsInBandwidth(modem: ReceiverModemState = this.activeModem): IQSignalInfo {
+    const noSignalResult: IQSignalInfo = {
+      hasCarrier: false,
+      hasLock: false,
+      actualModulation: null,
+      configuredModulation: modem.modulation,
+      cnRatio_dB: -Infinity,
+      frequencyOffset_Hz: 0,
+      modulationMismatch: false,
+      fecMismatch: false,
+    };
+
+    if (!this.rfFrontEnd_) return noSignalResult;
+
+    const externalNoise = this.rfFrontEnd_.externalNoise ?? 0;
+    const totalGain = this.rfFrontEnd_.couplerModule.signalPathManager.getTotalRxGain();
+
+    // Get ALL signals in the receiver bandwidth (relaxed filtering - no mod/FEC check)
+    const signalsInBand = (this.rfFrontEnd_.filterModule.outputSignals ?? []).filter((s) => {
+      // Power must exceed noise floor
+      if (s.power + totalGain < externalNoise) {
+        return false;
+      }
+
+      // Bandwidth must fit
+      if (s.bandwidth > (modem.bandwidth * 1e6 as Hertz)) {
+        return false;
+      }
+
+      // Frequency must overlap with modem bandwidth
+      const signalLower = s.frequency - s.bandwidth / 2;
+      const signalUpper = s.frequency + s.bandwidth / 2;
+      const modemLower = (modem.frequency - modem.bandwidth / 2) * 1e6;
+      const modemUpper = (modem.frequency + modem.bandwidth / 2) * 1e6;
+
+      if (signalUpper < modemLower || signalLower > modemUpper) {
+        return false;
+      }
+
+      return true;
+    });
+
+    if (signalsInBand.length === 0) return noSignalResult;
+
+    // Take the strongest signal
+    const strongestSignal = signalsInBand.reduce((a, b) => a.power > b.power ? a : b, signalsInBand[0]);
+
+    // Calculate C/N ratio
+    const noiseFloor = this.rfFrontEnd_.getNoiseFloor(TapPoint.RX_IF).noiseFloor + totalGain;
+    const signalLevel = strongestSignal.power + totalGain;
+    const cnRatio = signalLevel - noiseFloor;
+
+    // Calculate frequency offset in Hz
+    const signalFreqHz = strongestSignal.frequency;
+    const modemFreqHz = modem.frequency * 1e6;
+    const frequencyOffset = signalFreqHz - modemFreqHz;
+
+    // Check for modulation/FEC match (determines lock state)
+    const modulationMismatch = strongestSignal.modulation !== modem.modulation;
+    const fecMismatch = strongestSignal.fec !== modem.fec;
+    const hasLock = !modulationMismatch && !fecMismatch;
+
+    return {
+      hasCarrier: true,
+      hasLock,
+      actualModulation: strongestSignal.modulation,
+      configuredModulation: modem.modulation,
+      cnRatio_dB: cnRatio,
+      frequencyOffset_Hz: frequencyOffset,
+      modulationMismatch,
+      fecMismatch,
+    };
+  }
+
+  /**
+   * Private Methods
+   */
 
   private handleInputChange(e: Event): void {
     const target = e.target as HTMLInputElement | HTMLSelectElement;
@@ -369,8 +575,8 @@ export class Receiver extends BaseEquipment {
       case 'bandwidth':
         this.inputData.bandwidth = (Number.parseFloat(inputValue) as MHz) || 0 as MHz;
         break;
-      case 'antenna':
-        this.inputData.antennaUuid = this.antennas.find(a => a.state.uuid === inputValue)?.state.uuid;
+      case 'antenna_id':
+        this.inputData.antenna_id = Number.parseInt(inputValue);
         break;
       case 'modulation':
         this.inputData.modulation = inputValue as ModulationType;
@@ -381,7 +587,7 @@ export class Receiver extends BaseEquipment {
     }
   }
 
-  private applyChanges(): void {
+  public applyChanges(): void {
     const activeModem = this.activeModem;
     const modemIndex = this.state.modems.findIndex(m => m.modemNumber === this.state.activeModem);
 
@@ -427,14 +633,14 @@ export class Receiver extends BaseEquipment {
     return 'led-green';
   }
 
-  private getVisibleSignals(activeModemData = this.activeModem) {
+  public getVisibleSignals(activeModemData = this.activeModem) {
     if (!activeModemData) return [];
 
     const externalNoise = this.rfFrontEnd_?.externalNoise ?? 0;
 
     // Figure out which signals match the receiver settings
     const visibleSignals = (this.rfFrontEnd_?.filterModule.outputSignals ?? []).filter((s) => {
-      if (s.power < externalNoise) {
+      if (s.power + this.rfFrontEnd_.couplerModule.signalPathManager.getTotalRxGain() < externalNoise) {
         return false;
       }
 
@@ -478,7 +684,7 @@ export class Receiver extends BaseEquipment {
 
         // Calculate C/N for each signal and mark as degraded if below threshold
         const noiseFloor = this.rfFrontEnd_.getNoiseFloor(TapPoint.RX_IF).noiseFloor + this.rfFrontEnd_.couplerModule.signalPathManager.getTotalRxGain();
-        const signalLevel = s.power;
+        const signalLevel = s.power + this.rfFrontEnd_.couplerModule.signalPathManager.getTotalRxGain();
 
         const cn = signalLevel - noiseFloor;
 
@@ -573,7 +779,7 @@ export class Receiver extends BaseEquipment {
       const sel = this.domCache['inputAntenna'] as HTMLSelectElement;
       // Try to select the option matching antenna id
       for (const option of sel.options) {
-        option.selected = option.value === (this.inputData.antennaUuid ?? activeModem?.antennaUuid);
+        option.selected = Number(option.value) === (this.inputData.antenna_id ?? activeModem?.antenna_id);
       }
     }
 
@@ -582,7 +788,7 @@ export class Receiver extends BaseEquipment {
     (this.domCache['inputModulation'] as HTMLSelectElement).value = String(this.inputData.modulation ?? activeModem?.modulation ?? '');
     (this.domCache['inputFec'] as HTMLSelectElement).value = String(this.inputData.fec ?? activeModem?.fec ?? '');
 
-    (this.domCache['currentValueAntenna']).textContent = String(activeModem.antennaUuid);
+    (this.domCache['currentValueAntenna']).textContent = String(activeModem.antenna_id);
     (this.domCache['currentValueFrequency']).textContent = `${activeModem.frequency} MHz`;
     (this.domCache['currentValueBandwidth']).textContent = `${activeModem.bandwidth} MHz`;
     (this.domCache['currentValueModulation']).textContent = String(activeModem.modulation);

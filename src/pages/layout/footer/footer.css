@@ -1,7 +1,8 @@
 .footer {
   width: 100%;
-  background-color: var(--color-dark-background);
-  color: var(--color-dark-text-muted);
+  background-color: var(--mc-surface-0) !important;
+  color: var(--mc-text-muted) !important;
+  padding: 0 !important;
 
   .footer-toolbar {
     display: flex;
@@ -18,7 +19,7 @@
   }
 
   .footer-text a {
-    color: var(--color-text-accent);
+    color: var(--mc-accent-red-bright);
     text-decoration: none;
     transition: opacity 0.2s;
   }

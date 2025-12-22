@@ -20,7 +20,7 @@ const oauthButtons = [
   {
     id: 'google-signin-btn',
     provider: 'google',
-    icon: '/images/google-white.png',
+    icon: '/images/google.png',
     text: 'Continue with Google',
     cssClass: 'oauth-btn oauth-btn--google',
   },
@@ -184,7 +184,7 @@ export class ModalLogin extends DraggableModal {
       const { user } = await Auth.signInWithOAuthProvider(buttonConfig.provider, `${buttonConfig.provider} Sign In`);
 
       if (user) {
-        hideEl(this.boxEl!);
+        this.close();
       }
     } catch (error) {
       this.handleOAuthError(error as Error, button, buttonConfig);

@@ -109,7 +109,9 @@ export class WaterfallDisplay extends RTSAScreen {
       }
 
       const now = Date.now();
-      if (now - this.lastDrawTime > 1000 / (this.specA.state.refreshRate * 2)) {
+      const sweepTimeMs = 3000 * (this.specA.state.span / (this.specA.state.rbw ?? this.specA.state.span) ** 2);
+      const minIntervalMs = 1000 / this.specA.state.refreshRate;
+      if (now - this.lastDrawTime > Math.max(sweepTimeMs, minIntervalMs)) {
         // Get the combined data (noise + signals) from the data processor
         const row = new Float32Array(this.width);
         row.set(this.dataProcessor.combinedData);
@@ -124,7 +126,9 @@ export class WaterfallDisplay extends RTSAScreen {
   public draw(): void {
     if (!this.specA.state.isPaused && this.running) {
       const now = Date.now();
-      if (now - this.lastDrawTime > 1000 / (this.specA.state.refreshRate)) {
+      const sweepTimeMs = 3000 * (this.specA.state.span / (this.specA.state.rbw ?? this.specA.state.span) ** 2);
+      const minIntervalMs = 1000 / this.specA.state.refreshRate;
+      if (now - this.lastDrawTime > Math.max(sweepTimeMs, minIntervalMs)) {
         // Draw the entire waterfall using ImageData
         this.renderWaterfallToImageData(Math.floor((this.height * 3) / 4), this.height);
         this.ctx.putImageData(this.imageData, 0, 0);

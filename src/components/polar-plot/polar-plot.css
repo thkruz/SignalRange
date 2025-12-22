@@ -1,11 +1,18 @@
 .polar-plot {
   display: inline-block;
+  margin: 0px;
+  width: 100%;
   position: relative;
-  margin: 10px;
+}
+
+.polar-plot-container {
+  width: 100%;
 }
 
 .polar-plot-canvas {
   display: block;
+  margin: 0px;
+  width: 100%;
   border: 2px solid #444;
   border-radius: 4px;
   background: #1a1a1a;

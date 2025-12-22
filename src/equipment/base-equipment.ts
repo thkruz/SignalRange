@@ -1,10 +1,10 @@
 import { generateUuid } from '@app/engine/utils/uuid';
 import { EventBus } from '../events/event-bus';
 import { EventMap, Events } from '../events/events';
-import { AntennaState } from './antenna/antenna';
+import { AntennaState } from './antenna';
 import { RealTimeSpectrumAnalyzerState } from './real-time-spectrum-analyzer/real-time-spectrum-analyzer';
 import { ReceiverState } from './receiver/receiver';
-import { RFFrontEndState } from './rf-front-end/rf-front-end';
+import { RFFrontEndState } from './rf-front-end/rf-front-end-core';
 import { TransmitterState } from './transmitter/transmitter';
 
 import './base-equipment.css';
@@ -29,12 +29,9 @@ export abstract class BaseEquipment {
   abstract state: AntennaState | ReceiverState | TransmitterState | RealTimeSpectrumAnalyzerState | RFFrontEndState;
 
   private isInitialized: boolean = false;
-  protected domCache: { [key: string]: HTMLElement } = {};
+  protected domCache: { [key: string]: HTMLElement | HTMLDivElement } = {};
 
-  constructor(parentId: string, teamId: number = 1) {
-    const parentDom = document.getElementById(parentId);
-    if (!parentDom) throw new Error(`Parent element ${parentId} not found`);
-
+  constructor(teamId: number = 1) {
     this.uuid = generateUuid();
     this.teamId = teamId;
   }
@@ -50,7 +47,7 @@ export abstract class BaseEquipment {
     this.initialize_();
   }
 
-  initializeDom(parentId: string): HTMLElement {
+  protected initializeDom(parentId: string): HTMLElement {
     if (this.isInitialized) {
       throw new Error('DOM already initialized');
     }
@@ -58,7 +55,21 @@ export abstract class BaseEquipment {
 
     const parentDom = parentId ? document.getElementById(parentId) : null;
     if (!parentId || !parentDom) {
-      throw new Error(`Parent element ${parentId} not found`);
+      // For headless mode, create a hidden container directly in body
+      // Don't require a specific parent element
+      const container = document.createElement('div');
+      container.id = `antenna-headless-${this.uuid}`;
+      container.className = 'antenna-headless';
+      container.style.display = 'none'; // Hidden
+      container.style.position = 'absolute';
+      container.style.visibility = 'hidden';
+
+      // Append to body instead of looking for specific parent
+      document.body.appendChild(container);
+
+      this.domCache['parent'] = container;
+
+      return container as unknown as HTMLElement;
     }
 
     return parentDom;
@@ -112,7 +123,7 @@ export abstract class BaseEquipment {
    */
   private lastStatusBarUpdate: { [key: string]: number } = {};
 
-  protected updateStatusBar(element: HTMLElement, alarms: AlarmStatus[]): void {
+  protected updateStatusBar(element: HTMLElement | HTMLDivElement, alarms: AlarmStatus[]): void {
     const now = Date.now();
     if (now - (this.lastStatusBarUpdate[element.id] || 0) < 1000) return;
     this.lastStatusBarUpdate[element.id] = now;
@@ -154,7 +165,7 @@ export abstract class BaseEquipment {
 
   private lastLedUpdate = 0;
 
-  protected updateStatusLed(element: HTMLElement, alarms: AlarmStatus[]): void {
+  protected updateStatusLed(element: HTMLElement | HTMLDivElement, alarms: AlarmStatus[]): void {
     const now = Date.now();
     if (now - this.lastLedUpdate < 1000) return;
     this.lastLedUpdate = now;

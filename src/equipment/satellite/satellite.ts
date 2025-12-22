@@ -1,7 +1,8 @@
 import { EventBus } from "@app/events/event-bus";
 import { Events } from "@app/events/events";
+import { SignalOrigin } from "@app/SignalOrigin";
 import { PerlinNoise } from "@app/simulation/perlin-noise";
-import { dBi, dBm, Hertz, RfFrequency, RfSignal, SignalOrigin } from "@app/types";
+import { dBi, dBm, Hertz, RfFrequency, RfSignal } from "@app/types";
 import { Degrees } from "ootk";
 
 /**
@@ -51,6 +52,7 @@ export interface SignalDegradationConfig {
 }
 
 export interface SatelliteState {
+  rotation?: Degrees; // Random rotation if not specified
   az: Degrees;
   el: Degrees;
   frequencyOffset: Hertz;
@@ -108,6 +110,7 @@ export class Satellite {
     this.health = 1.0;
     this.az = satelliteState.az;
     this.el = satelliteState.el;
+    this.rotation = satelliteState.rotation ?? this.rotation;
 
     // Default degradation configuration
     this.degradationConfig = {
@@ -115,7 +118,7 @@ export class Satellite {
       randomDropout: true,
       dropoutProbability: 0.0001,
       powerVariation: true,
-      powerVariationRange: 2.0 as dBm,
+      powerVariationRange: 1.0 as dBm,
       interference: false,
       interferencePower: -110 as dBm,
       ...satelliteState.degradationConfig
@@ -383,11 +386,11 @@ export class Satellite {
     const randomRainFactor = this.randomCache_.get(`${signalId}-rain`) ?? 1;
 
     // Simple rain fade model (in dB)
-    const rainFadeDb = (frequencyGHz / 10) * randomRainFactor * 2; // Simplified model
+    const rainFadeDb = (frequencyGHz / 10) * randomRainFactor * 0.3; // Simplified model
 
     // Scintillation (rapid amplitude fluctuations) - use pre-cached random value
     const randomScintillationFactor = this.randomCache_.get(`${signalId}-scintillation`) ?? 0.5;
-    const scintillationDb = (randomScintillationFactor - 0.5) * 1.5;
+    const scintillationDb = (randomScintillationFactor - 0.5) * 0.3;
 
     return (currentPower - rainFadeDb + scintillationDb) as dBm;
   }

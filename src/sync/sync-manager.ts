@@ -1,6 +1,9 @@
-import { RFFrontEndState } from '@app/equipment/rf-front-end/rf-front-end';
+import { GroundStation } from '@app/assets/ground-station/ground-station';
+import { GroundStationState } from '@app/assets/ground-station/ground-station-state';
+import { AntennaState } from '@app/equipment/antenna';
+import { RFFrontEndState } from '@app/equipment/rf-front-end/rf-front-end-core';
 import { ObjectiveState } from '@app/objectives';
-import { AntennaState } from '../equipment/antenna/antenna';
+import { SimulationManager } from '@app/simulation/simulation-manager';
 import { RealTimeSpectrumAnalyzerState } from '../equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer';
 import { ReceiverState } from '../equipment/receiver/receiver';
 import { TransmitterState } from '../equipment/transmitter/transmitter';
@@ -22,6 +25,7 @@ export class SyncManager {
   private equipment: Equipment | null = null;
   private unsubscribe: (() => void) | null = null;
   private isInitialized = false;
+  groundStations: GroundStation[] = [];
 
   constructor(provider: StorageProvider) {
     this.provider = provider;
@@ -55,13 +59,16 @@ export class SyncManager {
     this.equipment = equipment;
   }
 
+  setGroundStations(groundStations: GroundStation[]): void {
+    this.groundStations = groundStations;
+  }
+
   /**
    * Load state from storage and update equipment
    */
   async loadFromStorage(): Promise<void> {
-    if (!this.equipment) {
-      throw new Error('Equipment not set. Call setEquipment() first.');
-    }
+    this.equipment ??= {} as Equipment; // Ensure equipment is set to avoid null checks
+    this.groundStations ??= [] as GroundStation[];
 
     const state = await this.provider.read<AppState>();
     if (state) {
@@ -77,7 +84,7 @@ export class SyncManager {
       throw new Error('Equipment not set. Call setEquipment() first.');
     }
 
-    const state = this.buildStateFromEquipment();
+    const state = this.buildAppStateObject();
     await this.provider.write(state);
 
     Logger.info('Store updated:', state);
@@ -102,7 +109,7 @@ export class SyncManager {
    * Useful for creating checkpoints or saving progress
    */
   getCurrentState(): AppState {
-    return this.buildStateFromEquipment();
+    return this.buildAppStateObject();
   }
 
   /**
@@ -110,7 +117,7 @@ export class SyncManager {
    */
   async swapProvider(newProvider: StorageProvider): Promise<void> {
     // Save current state
-    const currentState = this.equipment ? this.buildStateFromEquipment() : null;
+    const currentState = this.equipment ? this.buildAppStateObject() : null;
 
     // Dispose old provider
     if (this.unsubscribe) {
@@ -146,24 +153,28 @@ export class SyncManager {
     }
     await this.provider.dispose();
     this.equipment = null;
+    this.groundStations = [];
     this.isInitialized = false;
   }
 
   /**
-   * Build state object from equipment
+   * Build state object from equipment and objectives
    */
-  private buildStateFromEquipment(): AppState {
+  private buildAppStateObject(): AppState {
     if (!this.equipment) {
       return { equipment: undefined };
     }
 
-    // Get objective states from SimulationManager if available
+    // Get objective states and scenario timer from SimulationManager if available
     let objectiveStates: ObjectiveState[] | undefined;
+    let scenarioTimeRemaining: number | undefined;
     try {
-      const { SimulationManager } = require('../simulation/simulation-manager');
       const sim = SimulationManager.getInstance();
       if (sim?.objectivesManager) {
         objectiveStates = sim.objectivesManager.getObjectiveStates() as ObjectiveState[];
+        if (sim.objectivesManager.hasScenarioTimer()) {
+          scenarioTimeRemaining = sim.objectivesManager.getScenarioTimeRemaining();
+        }
       }
     } catch (error) {
       // SimulationManager or ObjectivesManager not available yet - this is expected during initialization
@@ -173,12 +184,14 @@ export class SyncManager {
 
     return {
       objectiveStates,
+      scenarioTimeRemaining,
+      groundStationStates: this.groundStations.map(gs => gs.state),
       equipment: {
-        spectrumAnalyzersState: this.equipment.spectrumAnalyzers.map(sa => sa.state),
-        antennasState: this.equipment.antennas.map(a => a.state),
-        rfFrontEndsState: this.equipment.rfFrontEnds.map(rf => rf.state),
-        transmittersState: this.equipment.transmitters.map(tx => tx.state),
-        receiversState: this.equipment.receivers.map(rx => rx.state),
+        spectrumAnalyzersState: this.equipment.spectrumAnalyzers?.map(sa => sa.state),
+        antennasState: this.equipment.antennas?.map(a => a.state),
+        rfFrontEndsState: this.equipment.rfFrontEnds?.map(rf => rf.state),
+        transmittersState: this.equipment.transmitters?.map(tx => tx.state),
+        receiversState: this.equipment.receivers?.map(rx => rx.state),
       }
     };
   }
@@ -189,6 +202,14 @@ export class SyncManager {
   private syncFromStorage(state: AppState): void {
     if (!this.equipment || !state.equipment) {
       return;
+    }
+
+    if (state.groundStationStates) {
+      state.groundStationStates.forEach((gsState: GroundStationState, index: number) => {
+        if (this.groundStations[index]) {
+          this.groundStations[index].sync(gsState);
+        }
+      });
     }
 
     // Sync Spectrum Analyzers
@@ -242,7 +263,10 @@ export class SyncManager {
         const { SimulationManager } = require('../simulation/simulation-manager');
         const sim = SimulationManager.getInstance();
         if (sim?.objectivesManager) {
-          sim.objectivesManager.restoreState(state.objectiveStates);
+          sim.objectivesManager.restoreState(
+            state.objectiveStates,
+            state.scenarioTimeRemaining
+          );
         }
       } catch (error) {
         console.debug('ObjectivesManager not available when syncing from storage:', error);
@@ -256,6 +280,8 @@ export class SyncManager {
  */
 export interface AppState {
   objectiveStates?: ObjectiveState[];
+  scenarioTimeRemaining?: number;
+  groundStationStates?: GroundStationState[];
   equipment?: {
     spectrumAnalyzersState?: RealTimeSpectrumAnalyzerState[];
     rfFrontEndsState?: RFFrontEndState[];

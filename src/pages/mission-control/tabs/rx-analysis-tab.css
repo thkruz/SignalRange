@@ -1,0 +1,396 @@
+/**
+ * RX Analysis Tab Styles
+ * Most styling now handled by Tabler/Bootstrap. Only custom elements remain.
+ */
+
+.rx-analysis-tab {
+  padding: 0.75rem;
+  height: 100%;
+}
+
+/* LED Indicators - Custom Component */
+.led {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  transition: all 0.3s ease;
+  background-color: #4a4a4a;
+}
+
+.led-green {
+  background-color: #22c55e;
+  box-shadow: 0 0 6px #22c55e;
+}
+
+.led-red {
+  background-color: var(--color-primary);
+  box-shadow: 0 0 6px var(--color-primary);
+}
+
+.led-amber {
+  background-color: #eab308;
+  box-shadow: 0 0 6px #eab308;
+}
+
+/* Spectrum Analyzer Canvas - Custom Component */
+.spec-analyzer-canvas {
+  min-height: 400px;
+  background-color: #000;
+  border: 1px solid var(--mc-border);
+  border-radius: 0.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Modem Button Signal Quality States */
+.modem-btn.btn-rx-signal-good {
+  border: 2px solid #22c55e;
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.5);
+}
+
+.modem-btn.btn-rx-signal-degraded {
+  border: 2px solid #f59e0b;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.5);
+}
+
+.modem-btn.active {
+  background-color: var(--tblr-primary);
+  border-color: var(--tblr-primary);
+  color: white;
+}
+
+/* Video Monitor Container */
+.video-monitor {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background-color: #000;
+  border: 1px solid var(--mc-border);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Video Feed Element */
+.video-feed {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: none;
+}
+
+.video-monitor.signal-found .video-feed {
+  display: block;
+}
+
+/* Video Overlay States */
+.video-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #6b7280;
+  font-size: 1.5rem;
+  font-weight: bold;
+  text-align: center;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.video-monitor.no-signal .video-overlay::after {
+  content: 'NO SIGNAL';
+}
+
+.video-monitor.no-power .video-overlay::after {
+  content: 'NO POWER';
+}
+
+.video-monitor.signal-found .video-overlay {
+  display: none;
+}
+
+/* Signal Degraded Overlay */
+.signal-degraded-overlay {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.1) 2px,
+    rgba(0, 0, 0, 0.1) 4px
+  );
+  display: none;
+  pointer-events: none;
+  animation: scanline 8s linear infinite;
+  z-index: 3;
+}
+
+.video-monitor.signal-degraded .signal-degraded-overlay {
+  display: block;
+}
+
+.video-monitor.signal-degraded .video-feed {
+  filter: contrast(1.2) saturate(0.8);
+  animation: glitch 0.3s infinite;
+}
+
+@keyframes scanline {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(100%); }
+}
+
+@keyframes glitch {
+  0%, 90% { transform: translate(0); }
+  92% { transform: translate(-2px, 1px); }
+  94% { transform: translate(2px, -1px); }
+  96% { transform: translate(-1px, 2px); }
+  98% { transform: translate(1px, -2px); }
+  100% { transform: translate(0); }
+}
+
+/* Compact nested cards for modems */
+.rx-analysis-tab .card .card .card-header {
+  padding: 0.5rem 0.75rem;
+}
+
+.rx-analysis-tab .card .card .card-body {
+  padding: 0.75rem;
+}
+
+.rx-analysis-tab .card .card .mb-3 {
+  margin-bottom: 0.5rem !important;
+}
+
+.rx-analysis-tab .card .card .form-label {
+  margin-bottom: 0.25rem;
+  font-size: 0.8125rem;
+}
+
+/* Advanced Spectrum Analyzer Controls - Expandable */
+#spec-analyzer-advanced-toggle {
+  transition: all 0.2s ease;
+}
+
+#spec-analyzer-advanced-toggle .icon {
+  display: inline-block;
+  transition: transform 0.2s ease;
+}
+
+/* Collapse transition */
+#spec-analyzer-advanced-collapse {
+  transition: height 0.3s ease;
+}
+
+#spec-analyzer-advanced-collapse.show {
+  display: block;
+}
+
+/* IQ Constellation Status Container */
+.iq-status-container {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  margin-bottom: 0.25rem;
+  padding: 0 0.25rem;
+}
+
+.iq-status-cn,
+.iq-status-lock {
+  font-weight: 500;
+}
+
+.iq-constellation-canvas {
+  display: block;
+  border-radius: 0.25rem;
+}
+
+/* ==========================================================================
+   Equipment Adjust Control - Matches FineAdjustControl design
+   ========================================================================== */
+
+.equip-adjust-control {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.equip-adjust-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--mc-text-tertiary, #909090);
+}
+
+.equip-adjust-row {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.equip-adjust-buttons {
+  display: flex;
+  gap: 2px;
+}
+
+/* Button rounded corners - decrease buttons */
+.equip-adjust-decrease .btn-equip:first-child {
+  border-radius: 4px 0 0 4px;
+}
+
+.equip-adjust-decrease .btn-equip:last-child {
+  border-radius: 0;
+}
+
+/* Button rounded corners - increase buttons */
+.equip-adjust-increase .btn-equip:first-child {
+  border-radius: 0;
+}
+
+.equip-adjust-increase .btn-equip:last-child {
+  border-radius: 0 4px 4px 0;
+}
+
+.btn-equip {
+  padding: 0.375rem 0.5rem;
+  width: 3.5rem;
+  font-family: 'JetBrains Mono', 'Consolas', monospace;
+  font-size: 0.875rem;
+  font-weight: bold;
+  background-color: var(--mc-surface-2, #3a3a3a);
+  border: 1px solid var(--mc-border, #3a3a3a);
+  color: var(--mc-text-primary, #e0e0e0);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  line-height: 1;
+  text-align: center;
+}
+
+.btn-equip:hover {
+  background-color: var(--mc-surface-3, #4a4a4a);
+  transform: translateY(-1px);
+}
+
+.btn-equip:active:not(:disabled) {
+  background-color: var(--mc-accent-red, #ba160c);
+  color: white;
+  transform: translateY(0);
+}
+
+.btn-equip:disabled,
+.btn-equip:disabled:active {
+  background-color: var(--mc-surface-1, #2a2a2a);
+  color: #4a4a4a;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-equip:disabled:hover {
+  background-color: var(--mc-surface-1, #2a2a2a);
+  transform: none;
+}
+
+/* High-visibility value display */
+.equip-adjust-display {
+  position: relative;
+  min-width: 7rem;
+  text-align: center;
+  padding: 0.5rem 0.75rem;
+  background-color: #0a0a0a;
+  border-radius: 4px;
+  border: 2px solid var(--mc-border, #3a3a3a);
+}
+
+/* Input inside display area */
+.equip-adjust-input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  text-align: center;
+  font-family: 'JetBrains Mono', 'Consolas', monospace;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--mc-accent-red-bright, #ff2827);
+  text-shadow: 0 0 8px rgba(255, 40, 39, 0.4);
+  outline: none;
+}
+
+.equip-adjust-input:focus {
+  color: #fff;
+  text-shadow: 0 0 12px rgba(255, 255, 255, 0.5);
+}
+
+.equip-adjust-input::-webkit-inner-spin-button,
+.equip-adjust-input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.equip-adjust-input[type=number] {
+  -moz-appearance: textfield;
+}
+
+.equip-adjust-input:disabled {
+  color: #4a4a4a;
+  text-shadow: none;
+  cursor: not-allowed;
+}
+
+.equip-adjust-unit {
+  font-size: 0.75rem;
+  color: var(--mc-text-muted, #6b6b6b);
+  margin-left: 0.5rem;
+}
+
+/* Status text badges */
+.status-badge {
+  font-family: 'JetBrains Mono', 'Consolas', monospace;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.125rem 0.5rem;
+  border-radius: 3px;
+  text-transform: uppercase;
+}
+
+.status-badge-locked {
+  background-color: rgba(34, 197, 94, 0.15);
+  color: #22c55e;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.status-badge-unlocked {
+  background-color: rgba(220, 38, 38, 0.15);
+  color: #dc2626;
+  border: 1px solid rgba(220, 38, 38, 0.3);
+}
+
+.status-badge-good {
+  background-color: rgba(34, 197, 94, 0.15);
+  color: #22c55e;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.status-badge-degraded {
+  background-color: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.status-badge-none {
+  background-color: rgba(107, 114, 128, 0.15);
+  color: #6b7280;
+  border: 1px solid rgba(107, 114, 128, 0.3);
+}
+
+.status-badge-off {
+  background-color: rgba(64, 64, 64, 0.15);
+  color: #4a4a4a;
+  border: 1px solid rgba(64, 64, 64, 0.3);
+}

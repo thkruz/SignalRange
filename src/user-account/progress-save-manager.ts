@@ -14,8 +14,8 @@ import { getUserDataService } from './user-data-service';
  * Checkpoints include the full AppState for seamless scenario continuation.
  */
 export class ProgressSaveManager {
-  private eventBus: EventBus;
-  private userDataService = getUserDataService();
+  private readonly eventBus: EventBus;
+  private readonly userDataService = getUserDataService();
   private isInitialized = false;
   private isSaving = false;
 
@@ -35,6 +35,7 @@ export class ProgressSaveManager {
 
     // Listen for objective completions
     this.eventBus.on(Events.OBJECTIVE_COMPLETED, this.handleObjectiveCompleted.bind(this));
+    this.eventBus.on(Events.OBJECTIVES_ALL_COMPLETED, this.handleAllObjectiveCompleted.bind(this));
 
     this.isInitialized = true;
     Logger.info('ProgressSaveManager initialized');
@@ -60,8 +61,30 @@ export class ProgressSaveManager {
     }
   }
 
+  private async handleAllObjectiveCompleted(): Promise<void> {
+    Logger.info('All objectives completed, marking scenario as completed...');
+    try {
+      // Update scenario progress to mark as completed
+      const scenarioManager = ScenarioManager.getInstance();
+      const scenarioId = scenarioManager.data.id;
+
+      // Mark scenario as completed with timestamp
+      // Note: Score is saved separately by ScenarioCompletionHandler
+      await this.userDataService.updateScenarioProgress(scenarioId, {
+        completedAt: new Date().toISOString(),
+        lastPlayed: new Date().toISOString(),
+        scenarioNumber: scenarioManager.data.number,
+      });
+
+      Logger.info(`Scenario ${scenarioId} marked as completed`);
+    } catch (error) {
+      Logger.error('Failed to mark scenario as completed:', error);
+    }
+  }
+
   /**
    * Save current state as a checkpoint
+   * Uses direct upsert API - no read-modify-write needed
    */
   async saveCheckpoint(): Promise<void> {
     const toast = SaveProgressToast.getInstance();
@@ -80,34 +103,11 @@ export class ProgressSaveManager {
       // Get current equipment state
       const state = syncManager.getCurrentState();
 
-      // Fetch existing progress
-      const currentProgress = await this.userDataService.getUserProgress();
-
-      // Get existing signalForge array or create new one
-      const signalForge = currentProgress.signalForge || [];
-
-      // Find existing checkpoint for this scenario
-      const existingIndex = signalForge.findIndex(
-        (checkpoint) => checkpoint.scenarioId === scenarioId
-      );
-
-      // Create new checkpoint
-      const newCheckpoint = {
-        scenarioId,
+      // Direct upsert - no need to read first
+      await this.userDataService.saveCheckpoint(scenarioId, {
         version,
         state,
-        savedAt: Date.now(),
-      };
-
-      // Replace or add checkpoint
-      if (existingIndex >= 0) {
-        signalForge[existingIndex] = newCheckpoint;
-      } else {
-        signalForge.push(newCheckpoint);
-      }
-
-      // Save updated progress
-      await this.userDataService.updateUserProgress({ signalForge });
+      });
 
       Logger.info(`Progress checkpoint saved for scenario: ${scenarioId}`);
 
@@ -133,13 +133,11 @@ export class ProgressSaveManager {
 
   /**
    * Load checkpoint for a specific scenario
+   * Uses direct API - no need to load all checkpoints
    */
   async loadCheckpoint(scenarioId: string): Promise<any | null> {
     try {
-      const progress = await this.userDataService.getUserProgress();
-      const signalForge = progress.signalForge || [];
-
-      const checkpoint = signalForge.find((cp) => cp.scenarioId === scenarioId);
+      const checkpoint = await this.userDataService.getCheckpoint(scenarioId);
 
       if (checkpoint) {
         Logger.info(`Checkpoint found for scenario: ${scenarioId}`, checkpoint);
@@ -156,20 +154,12 @@ export class ProgressSaveManager {
 
   /**
    * Clear checkpoint for a specific scenario
+   * Uses direct delete API
    */
   async clearCheckpoint(scenarioId: string): Promise<void> {
     try {
-      const progress = await this.userDataService.getUserProgress();
-      const signalForge = progress.signalForge || [];
-
-      // Filter out the checkpoint for this scenario
-      const updatedSignalForge = signalForge.filter((cp) => cp.scenarioId !== scenarioId);
-
-      // Only update if something changed
-      if (updatedSignalForge.length !== signalForge.length) {
-        await this.userDataService.updateUserProgress({ signalForge: updatedSignalForge });
-        Logger.info(`Checkpoint cleared for scenario: ${scenarioId}`);
-      }
+      await this.userDataService.deleteCheckpoint(scenarioId);
+      Logger.info(`Checkpoint cleared for scenario: ${scenarioId}`);
     } catch (error) {
       Logger.error('Failed to clear checkpoint:', error);
       throw error;
@@ -178,11 +168,11 @@ export class ProgressSaveManager {
 
   /**
    * Check if a checkpoint exists for a scenario
+   * Uses lightweight HEAD request
    */
   async hasCheckpoint(scenarioId: string): Promise<boolean> {
     try {
-      const checkpoint = await this.loadCheckpoint(scenarioId);
-      return checkpoint !== null;
+      return await this.userDataService.checkpointExists(scenarioId);
     } catch (error) {
       Logger.error('Failed to check for checkpoint:', error);
       return false;

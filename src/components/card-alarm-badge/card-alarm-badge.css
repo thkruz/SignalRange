@@ -1,0 +1,70 @@
+/**
+ * Card Alarm Badge Styles
+ * LED indicator for equipment card headers
+ */
+
+.card-alarm-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.card-alarm-led {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  cursor: help;
+  transition: all 0.3s ease;
+}
+
+/* Success/Normal - Green with subtle pulse */
+.card-alarm-led.success {
+  background-color: #22c55e;
+  box-shadow: 0 0 6px #22c55e;
+  animation: pulse-success 2s ease-in-out infinite;
+}
+
+/* Warning - Amber steady glow */
+.card-alarm-led.warning {
+  background-color: #f59e0b;
+  box-shadow: 0 0 8px #f59e0b;
+}
+
+/* Error - Red with attention pulse */
+.card-alarm-led.error {
+  background-color: #dc2626;
+  box-shadow: 0 0 8px #dc2626;
+  animation: pulse-error 1s ease-in-out infinite;
+}
+
+/* Info - Blue steady */
+.card-alarm-led.info {
+  background-color: #3b82f6;
+  box-shadow: 0 0 6px #3b82f6;
+}
+
+/* Off/Inactive - Gray */
+.card-alarm-led.off {
+  background-color: #6b7280;
+  box-shadow: none;
+}
+
+/* Subtle pulse for success state */
+@keyframes pulse-success {
+  0%, 100% {
+    box-shadow: 0 0 6px #22c55e;
+  }
+  50% {
+    box-shadow: 0 0 10px #22c55e;
+  }
+}
+
+/* More noticeable pulse for error state */
+@keyframes pulse-error {
+  0%, 100% {
+    box-shadow: 0 0 8px #dc2626;
+  }
+  50% {
+    box-shadow: 0 0 14px #dc2626;
+  }
+}

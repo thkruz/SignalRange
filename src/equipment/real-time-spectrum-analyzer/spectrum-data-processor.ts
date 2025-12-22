@@ -62,7 +62,7 @@ export class SpectrumDataProcessor {
     let base = this.specA.state.noiseFloorNoGain;
 
     const len = this.width;
-    const time = performance.now() / 1000;
+    const time = Date.now() / 1000;
 
     // Generate multiple noise layers
     for (let x = 0; x < len; x++) {
@@ -74,11 +74,11 @@ export class SpectrumDataProcessor {
       const randAmp2 = 1.2 + Math.random() * 0.6;
       const randAmp3 = 0.2 + Math.random() * 0.4;
 
-      // Layer 1: base random noise (±1 dB fixed variation)
-      let noise = base + (Math.random() - 0.5) * 2;
+      // Layer 1: base random noise (±0.75 dB fixed variation)
+      let noise = base + (Math.random() - 0.5) * 1.5;
 
       // Layer 2: Smooth low-frequency drift (additive, not multiplicative)
-      noise += Math.sin((x / 300) + time / 8 + randPhase1) * randAmp1 * 0.5;
+      noise += Math.sin((x / 300) + time / 8 + randPhase1) * randAmp1 * 0.15;
 
       // Layer 3: Very subtle high-frequency jitter (additive)
       noise += Math.sin((x * 0.5 + time * 2 + randPhase2)) * randAmp2 * 0.005;
@@ -88,8 +88,8 @@ export class SpectrumDataProcessor {
         noise += Math.sin((x / 40) + time * 1.5 + randPhase3) * randAmp3 * 0.02;
       }
 
-      // Clamp noise to within +/-2 dB of base for realism
-      noise = Math.max(base - 2, Math.min(base + 2, noise));
+      // Clamp noise to within +/-0.5 dB of base for realism
+      noise = Math.max(base - 0.5, Math.min(base + 0.5, noise));
 
       // Layer 5: Occasional impulse spikes (fixed amplitude, not scaled by base)
       if (Math.random() > 0.9999) {
@@ -152,11 +152,11 @@ export class SpectrumDataProcessor {
 
       // Main lobe (center region) - add minimal jitter
       if (absDist <= inBandWidth) {
-        y += (Math.random() - 0.5) * 0.4;
+        y += (Math.random() - 0.5) * 0.14;
       }
       // Transition region - slight additional rolloff for realism
       else if (absDist <= outOfBandWidth * 0.7) {
-        y += (Math.random() - 0.5) * 0.6;
+        y += (Math.random() - 0.5) * 0.2;
         // Very subtle side lobe effect
         const sideLobeEffect = Math.sin((distance / outOfBandWidth) * Math.PI * 4) * 0.5;
         y += sideLobeEffect;
@@ -164,14 +164,14 @@ export class SpectrumDataProcessor {
       // Outer region - more pronounced side lobes and taper
       else if (absDist <= outOfBandWidth) {
         const sideLobeEffect = Math.sin((distance / outOfBandWidth) * Math.PI * 6) * 0.8;
-        y += sideLobeEffect + (Math.random() - 0.5) * 1.0;
+        y += sideLobeEffect + (Math.random() - 0.5) * 0.3;
       }
       // Beyond outOfBandWidth - natural exponential decay
       else {
         const excessDistance = absDist - outOfBandWidth;
         const decayFactor = Math.exp(-excessDistance / (outOfBandWidth * 0.3));
         y += -20 * (1 - decayFactor);
-        y += (Math.random() - 0.5) * 1.5;
+        y += (Math.random() - 0.5) * 0.4;
       }
 
       // Simulate occasional deep nulls for realism

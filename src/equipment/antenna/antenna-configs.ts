@@ -61,10 +61,18 @@ export interface AntennaConfig {
   elRange_deg?: [number, number];
   /** Whether azimuth is continuous */
   azContinuous?: boolean;
+  /** Azimuth range in degrees [min, max] for non-continuous antennas (e.g., [-180, 540] for cable wrap) */
+  azRange_deg?: [number, number];
   /** Maximum slew rate in degrees per second */
   maxRate_deg_s?: number;
   /** De-pointing coefficient: de-pointing ≈ coef * wind(m/s) in degrees */
   windDePointingCoef_deg_per_mps?: number;
+
+  // --- ACU Identification ---
+  /** ACU model number (e.g., "Kratos NGC-2200") */
+  acuModel?: string;
+  /** ACU serial number (e.g., "ACU-01") */
+  acuSerialNumber?: string;
 }
 
 export enum ANTENNA_CONFIG_KEYS {
@@ -120,7 +128,7 @@ export const ANTENNA_CONFIGS: Record<ANTENNA_CONFIG_KEYS, AntennaConfig> = {
     // Mechanical / environment
     elRange_deg: [5, 90],
     azContinuous: false,
-    maxRate_deg_s: 0.06,         // conservative jackscrew rate
+    maxRate_deg_s: 0.35,         // conservative jackscrew rate
     windDePointingCoef_deg_per_mps: 0.003,
 
     // System noise (G/T budgeting helpers)
@@ -154,7 +162,7 @@ export const ANTENNA_CONFIGS: Record<ANTENNA_CONFIG_KEYS, AntennaConfig> = {
     pointingSigma_deg: 0.021,    // spec step-track rms
     elRange_deg: [0, 90],
     azContinuous: false,         // two-segment az by spec
-    maxRate_deg_s: 0.06,
+    maxRate_deg_s: 0.35,
 
     lnaNF_dB: 1.0,
     rxChainLoss_dB: 0.6,

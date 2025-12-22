@@ -6,7 +6,8 @@ export const SUPABASE_ANON_KEY = process.env.PUBLIC_SUPABASE_ANON_KEY;
 export const isSupabaseApprovedDomain =
   window.location.hostname === 'localhost' ||
   window.location.hostname.endsWith('signalrange.space') ||
-  window.location.hostname.endsWith('keeptrack.space');
+  window.location.hostname.endsWith('keeptrack.space') ||
+  window.location.hostname.endsWith('workers.dev');
 
 /**
  * Custom storage adapter with multi-layer fallback for Brave and other privacy-focused browsers.
@@ -17,10 +18,17 @@ const createResilientStorage = () => {
   const COOKIE_NAME = 'sr_auth_session';
   const memoryCache = new Map<string, string>();
 
+  // Helper: Escape special regex characters in a string
+  const escapeRegExp = (string: string): string => {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  };
+
   // Helper: Get from cookie
   const getCookie = (name: string): string | null => {
     try {
-      const pattern = new RegExp(`(^| )${name}=([^;]+)`, 'u');
+      // Escape the cookie name to prevent regex injection
+      const escapedName = escapeRegExp(name);
+      const pattern = new RegExp(`(^| )${escapedName}=([^;]+)`, 'u');
       const match = pattern.exec(document.cookie);
 
       return match ? decodeURIComponent(match[2]) : null;

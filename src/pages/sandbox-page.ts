@@ -1,14 +1,14 @@
 import { getEl } from "@app/engine/utils/get-el";
 import { qs } from "@app/engine/utils/query-selector";
 import { EventBus } from "@app/events/event-bus";
-import { Events } from "@app/events/events";
 import { Logger } from "@app/logging/logger";
-import { ObjectivesManager } from "@app/objectives/objectives-manager";
 import { NavigationOptions } from "@app/router";
 import { ScenarioManager } from "@app/scenario-manager";
+import { ScenarioDialogManager } from "@app/scenarios/scenario-dialog-manager";
 import { SimulationManager } from "@app/simulation/simulation-manager";
+import { QuizModal } from "@app/modal/quiz-modal";
 import { AppState, syncManager } from "@app/sync/storage";
-import { ProgressSaveManager } from "@app/user-account/progress-save-manager";
+import { ObjectivesManager } from "@app/objectives/objectives-manager";
 import { html } from "../engine/utils/development/formatter";
 import { clearPersistedStore, syncEquipmentWithStore } from '../sync/storage';
 import { BasePage } from "./base-page";
@@ -22,8 +22,6 @@ export class SandboxPage extends BasePage {
   readonly id = 'sandbox-page';
   static readonly containerId = 'sandbox-page-container';
   private static instance_: SandboxPage | null = null;
-  private progressSaveManager_: ProgressSaveManager | null = null;
-  private readonly navigationOptions_: NavigationOptions = {};
 
   private constructor(options?: NavigationOptions) {
     super();
@@ -69,8 +67,7 @@ export class SandboxPage extends BasePage {
     this.dom_ = qs(`#${this.id}`, parentDom);
 
     // Initialize progress save manager
-    this.progressSaveManager_ = new ProgressSaveManager();
-    this.progressSaveManager_.initialize();
+    this.initProgressSaveManager_();
 
     // Initialize equipment and objectives asynchronously
     this.initializeAsync_();
@@ -81,21 +78,7 @@ export class SandboxPage extends BasePage {
    */
   private async initializeAsync_(): Promise<void> {
     await this.initEquipment_();
-    SimulationManager.getInstance();
-
-    // Initialize objectives manager if scenario has objectives
-    const scenario = ScenarioManager.getInstance();
-    if (scenario.data?.objectives && scenario.data.objectives.length > 0) {
-      ObjectivesManager.initialize(scenario.data.objectives);
-      SimulationManager.getInstance().objectivesManager = ObjectivesManager.getInstance();
-
-      // If we're continuing from a checkpoint, restore objective states
-      if (this.navigationOptions_.continueFromCheckpoint) {
-        await this.restoreObjectiveStatesFromCheckpoint_();
-      }
-    }
-
-    EventBus.getInstance().emit(Events.DOM_READY);
+    await this.initializeObjectivesAndDialogs_();
   }
 
   protected addEventListeners_(): void {
@@ -118,7 +101,7 @@ export class SandboxPage extends BasePage {
       }
 
       // Sync from storage (automatically uses LocalStorage)
-      syncEquipmentWithStore(simManager.equipment);
+      syncEquipmentWithStore(simManager.equipment, simManager.groundStations);
     }
   }
 
@@ -175,45 +158,23 @@ export class SandboxPage extends BasePage {
     }
   }
 
-  /**
-   * Restore objective states from checkpoint after ObjectivesManager has been initialized
-   */
-  private async restoreObjectiveStatesFromCheckpoint_(): Promise<void> {
-    if (!this.progressSaveManager_) {
-      return;
-    }
-
-    try {
-      const scenario = ScenarioManager.getInstance();
-      const checkpoint = await this.progressSaveManager_.loadCheckpoint(scenario.data.id) as {
-        state: AppState;
-      };
-
-      if (checkpoint?.state?.objectiveStates) {
-        const objectivesManager = ObjectivesManager.getInstance();
-        objectivesManager.restoreState(checkpoint.state.objectiveStates);
-        Logger.info('Objective states restored from checkpoint');
-      }
-    } catch (error) {
-      Logger.error('Failed to restore objective states from checkpoint:', error);
-      // Continue without restoring objectives - they'll start fresh
-    }
-  }
-
   hide(): void {
     SandboxPage.destroy();
+    // Set display to none
+    if (this.dom_) {
+      this.dom_.style.display = 'none';
+    }
   }
 
   static destroy(): void {
     // Clean up progress save manager
-    if (SandboxPage.instance_?.progressSaveManager_) {
-      SandboxPage.instance_.progressSaveManager_.dispose();
-      SandboxPage.instance_.progressSaveManager_ = null;
-    }
+    SandboxPage.instance_?.disposeProgressSaveManager_();
 
     SandboxPage.instance_ = null;
     SimulationManager.destroy();
     ObjectivesManager.destroy();
+    ScenarioDialogManager.reset();
+    QuizModal.destroy();
     EventBus.destroy();
     const container = getEl(SandboxPage.containerId);
     if (container) {

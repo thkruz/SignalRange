@@ -20,13 +20,13 @@ export class RotaryKnob {
   private isDragging: boolean = false;
   private startY: number = 0;
   private startValue: number = 0;
-  private callback?: (value: number) => void;
+  private readonly callback?: (value: number) => void;
 
   constructor(
     uniqueId: string,
-    initialValue: number,
-    min: number,
-    max: number,
+    initialValue: number = 0,
+    min: number = 0,
+    max: number = 100,
     step: number = 1,
     callback?: (value: number) => void,
     valueOverride?: string
@@ -64,6 +64,8 @@ export class RotaryKnob {
     document.addEventListener('mouseup', this.onDragEnd.bind(this));
 
     knobBody.addEventListener('wheel', this.onWheel_.bind(this), { passive: false });
+
+    this.updateDisplay();
   }
 
   private onDragStart(e: MouseEvent): void {

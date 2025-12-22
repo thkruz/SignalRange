@@ -1,0 +1,74 @@
+.time-penalty-toast {
+  position: fixed;
+  top: 80px; /* Below save-progress-toast */
+  right: 20px;
+  z-index: 100001;
+  background: var(--color-dark-background);
+  border: 1px solid #f44336;
+  border-radius: 4px;
+  padding: 12px 16px;
+  min-width: 280px;
+  max-width: 400px;
+  box-shadow: 0 4px 12px rgba(244, 67, 54, 0.3);
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  opacity: 0;
+  transform: translateX(20px);
+  transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+  pointer-events: none;
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  color: #fff;
+}
+
+.time-penalty-toast.show {
+  opacity: 1;
+  transform: translateX(0);
+  pointer-events: auto;
+}
+
+.time-penalty-toast__icon {
+  font-size: 24px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.time-penalty-toast__content {
+  flex: 1;
+}
+
+.time-penalty-toast__points {
+  display: block;
+  font-weight: bold;
+  font-size: 16px;
+  color: #f44336;
+  margin-bottom: 4px;
+}
+
+.time-penalty-toast__message {
+  font-size: 13px;
+  color: #ccc;
+  line-height: 1.4;
+}
+
+.time-penalty-toast__close {
+  background: none;
+  border: none;
+  color: #888;
+  cursor: pointer;
+  padding: 0;
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s;
+  flex-shrink: 0;
+}
+
+.time-penalty-toast__close:hover {
+  color: #fff;
+}

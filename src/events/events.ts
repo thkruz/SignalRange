@@ -1,13 +1,14 @@
-import { AntennaState } from "@app/equipment/antenna/antenna";
+import { GroundStationState } from "@app/assets/ground-station/ground-station-state";
+import { AntennaState } from "@app/equipment/antenna";
 import { RealTimeSpectrumAnalyzerState } from "@app/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer";
-import { BUCState } from "@app/equipment/rf-front-end/buc-module/buc-module";
+import { BUCState } from "@app/equipment/rf-front-end/buc-module";
 import { CouplerState } from "@app/equipment/rf-front-end/coupler-module/coupler-module";
-import { IfFilterBankState } from "@app/equipment/rf-front-end/filter-module/filter-module";
-import { GPSDOState } from "@app/equipment/rf-front-end/gpsdo-module/gpsdo-module";
-import { HPAState } from "@app/equipment/rf-front-end/hpa-module/hpa-module";
-import { LNBState } from "@app/equipment/rf-front-end/lnb/lnb-module";
+import { IfFilterBankState } from "@app/equipment/rf-front-end/filter-module";
+import { GPSDOState } from "@app/equipment/rf-front-end/gpsdo-module";
+import { HPAState } from "@app/equipment/rf-front-end/hpa-module";
+import { LNBState } from "@app/equipment/rf-front-end/lnb-module";
 import { OMTState } from "@app/equipment/rf-front-end/omt-module/omt-module";
-import { RFFrontEndState } from "@app/equipment/rf-front-end/rf-front-end";
+import { RFFrontEndState } from "@app/equipment/rf-front-end/rf-front-end-core";
 import { Milliseconds } from "ootk";
 import { ReceiverModemState } from "../equipment/receiver/receiver";
 import { TransmitterModem } from "../equipment/transmitter/transmitter";
@@ -109,6 +110,71 @@ export interface ObjectivesAllCompletedData {
   totalTime: number;
 }
 
+export interface ObjectiveFailedData {
+  objectiveId: string;
+  objective: Objective;
+  failedAt: number;
+  reason: 'timeout';
+}
+
+// Quiz Event specific interfaces
+export interface QuizShowData {
+  objectiveId: string;
+  conditionIndex: number;
+  question: string;
+  options: string[];
+  correctIndex: number;
+  explanation?: string;
+  pointPenalty: number;
+}
+
+export interface QuizAnsweredData {
+  objectiveId: string;
+  conditionIndex: number;
+  isCorrect: boolean;
+  selectedIndex: number;
+  attempts: number;
+  pointsDeducted: number;
+}
+
+export interface QuizCompletedData {
+  objectiveId: string;
+  conditionIndex: number;
+  totalAttempts: number;
+  totalPointsDeducted: number;
+}
+
+export interface QuizDismissedData {
+  objectiveId: string;
+  conditionIndex: number;
+}
+
+export interface QuizPendingData {
+  objectiveId: string;
+  conditionIndex: number;
+}
+
+export interface QuizPassedData {
+  objectiveId: string;
+  conditionIndex: number;
+  attempts: number;
+  pointsDeducted: number;
+}
+
+export interface ScenarioTimeExpiredData {
+  elapsedTime: number;
+  timeLimit: number;
+}
+
+export interface TimePenaltyAppliedData {
+  objectiveId: string;
+  objectiveTitle: string;
+  pointsDeducted: number;
+  message?: string;
+  elapsedTime: number;
+  threshold: number;
+}
+
 // Progress Save Event specific interfaces
 export interface ProgressSaveStartData {
   timestamp: number;
@@ -124,9 +190,27 @@ export interface ProgressSaveErrorData {
   error: Error;
 }
 
+// Alarm Event specific interfaces
+export interface AggregatedAlarm {
+  severity: 'error' | 'warning' | 'info' | 'success';
+  message: string;
+  assetId: string;
+  equipmentType: string;
+  equipmentIndex: number;
+}
+
+export interface AlarmStateChangedData {
+  alarms: AggregatedAlarm[];
+  highestSeverity: 'error' | 'warning' | 'info' | 'success';
+}
+
 export enum Events {
   // Antenna events
   ANTENNA_STATE_CHANGED = 'antenna:state:changed',
+
+  // Ground Station events
+  GROUND_STATION_STATE_CHANGED = 'ground-station:state:changed',
+  ASSET_SELECTED = 'asset:selected',
 
   // Transmitter events
   TX_CONFIG_CHANGED = 'tx:config:changed',
@@ -149,7 +233,9 @@ export enum Events {
 
   // Game loop events
   DOM_READY = "app:dom-ready",
+  /** This event is called every simulation update tick */
   UPDATE = "app:update",
+  /** This event is used for canvas rendering */
   DRAW = "app:draw",
   SYNC = "app:sync",
   RF_FE_POWER_CHANGED = "rf-fe:power:changed",
@@ -167,15 +253,35 @@ export enum Events {
   OBJECTIVE_COMPLETED = 'objective:completed',
   OBJECTIVE_CONDITION_CHANGED = 'objective:condition:changed',
   OBJECTIVES_ALL_COMPLETED = 'objectives:all:completed',
+  OBJECTIVE_FAILED = 'objective:failed',
+  SCENARIO_TIME_EXPIRED = 'scenario:time:expired',
+  TIME_PENALTY_APPLIED = 'time:penalty:applied',
+
+  // Quiz events (for status-check conditions)
+  QUIZ_SHOW = 'quiz:show',
+  QUIZ_ANSWERED = 'quiz:answered',
+  QUIZ_COMPLETED = 'quiz:completed',
+  QUIZ_DISMISSED = 'quiz:dismissed',
+  QUIZ_PENDING = 'quiz:pending',
+  QUIZ_PASSED = 'quiz:passed',
 
   // Progress Save events
   PROGRESS_SAVE_START = 'progress:save:start',
   PROGRESS_SAVE_SUCCESS = 'progress:save:success',
   PROGRESS_SAVE_ERROR = 'progress:save:error',
+
+  // Global Alarm events
+  ALARM_STATE_CHANGED = 'alarm:state:changed',
+
+  // Navigation events
+  SWITCH_TAB = 'navigation:switch:tab',
 }
 
 export interface EventMap {
   [Events.ANTENNA_STATE_CHANGED]: [Partial<AntennaState>];
+
+  [Events.GROUND_STATION_STATE_CHANGED]: [Partial<GroundStationState>];
+  [Events.ASSET_SELECTED]: [{ type: 'ground-station' | 'satellite', id: string }];
 
   [Events.RF_FE_POWER_CHANGED]: [Partial<RFFrontEndState>];
   [Events.RF_FE_BUC_CHANGED]: [Partial<BUCState>];
@@ -215,8 +321,22 @@ export interface EventMap {
   [Events.OBJECTIVE_COMPLETED]: [ObjectiveCompletedData];
   [Events.OBJECTIVE_CONDITION_CHANGED]: [ObjectiveConditionChangedData];
   [Events.OBJECTIVES_ALL_COMPLETED]: [ObjectivesAllCompletedData];
+  [Events.OBJECTIVE_FAILED]: [ObjectiveFailedData];
+  [Events.SCENARIO_TIME_EXPIRED]: [ScenarioTimeExpiredData];
+  [Events.TIME_PENALTY_APPLIED]: [TimePenaltyAppliedData];
+
+  [Events.QUIZ_SHOW]: [QuizShowData];
+  [Events.QUIZ_ANSWERED]: [QuizAnsweredData];
+  [Events.QUIZ_COMPLETED]: [QuizCompletedData];
+  [Events.QUIZ_DISMISSED]: [QuizDismissedData];
+  [Events.QUIZ_PENDING]: [QuizPendingData];
+  [Events.QUIZ_PASSED]: [QuizPassedData];
 
   [Events.PROGRESS_SAVE_START]: [ProgressSaveStartData];
   [Events.PROGRESS_SAVE_SUCCESS]: [ProgressSaveSuccessData];
   [Events.PROGRESS_SAVE_ERROR]: [ProgressSaveErrorData];
+
+  [Events.ALARM_STATE_CHANGED]: [AlarmStateChangedData];
+
+  [Events.SWITCH_TAB]: [{ tabId: string }];
 }

@@ -45,7 +45,7 @@ export class ModalConfirm extends DraggableModal {
     return html`
       <div class="confirm-modal">
         <div class="confirm-modal__content">
-          <p class="confirm-modal__message">${message}</p>
+          <div class="confirm-modal__message">${message}</div>
         </div>
 
         <div class="confirm-modal__actions">

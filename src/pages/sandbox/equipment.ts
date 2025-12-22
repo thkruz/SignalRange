@@ -1,14 +1,17 @@
 import { BaseElement } from "@app/components/base-element";
 import { qs } from "@app/engine/utils/query-selector";
-import { RFFrontEnd } from "@app/equipment/rf-front-end/rf-front-end";
+import { ANTENNA_CONFIG_KEYS, AntennaCore, AntennaUIBasic } from "@app/equipment/antenna";
+import { AntennaUIModern } from "@app/equipment/antenna/antenna-ui-modern";
+import { RFFrontEndCore } from "@app/equipment/rf-front-end/rf-front-end-core";
+import { createRFFrontEnd } from "@app/equipment/rf-front-end/rf-front-end-factory";
 import { EventBus } from "@app/events/event-bus";
 import { Events } from "@app/events/events";
+import { DialogHistoryBox } from "@app/modal/dialog-history-box";
 import { DraggableHtmlBox } from "@app/modal/draggable-html-box";
 import { ObjectivesManager } from "@app/objectives";
 import { ScenarioManager, SimulationSettings } from "@app/scenario-manager";
 import { SimulationManager } from "@app/simulation/simulation-manager";
 import { html } from "../../engine/utils/development/formatter";
-import { Antenna } from '../../equipment/antenna/antenna';
 import { RealTimeSpectrumAnalyzer } from '../../equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer';
 import { Receiver } from '../../equipment/receiver/receiver';
 import { Transmitter } from '../../equipment/transmitter/transmitter';
@@ -24,8 +27,8 @@ export class Equipment extends BaseElement {
   readonly isFullEquipmentSuite: boolean = false;
 
   readonly spectrumAnalyzers: RealTimeSpectrumAnalyzer[] = [];
-  readonly antennas: Antenna[] = [];
-  readonly rfFrontEnds: RFFrontEnd[] = [];
+  readonly antennas: AntennaCore[] = [];
+  readonly rfFrontEnds: RFFrontEndCore[] = [];
   readonly transmitters: Transmitter[] = [];
   readonly receivers: Receiver[] = [];
   private checklistRefreshIntervalId_: number | null = null;
@@ -74,44 +77,50 @@ export class Equipment extends BaseElement {
   }
 
   protected addEventListeners_(): void {
-    this.addMissionBriefListener_();
-    this.addChecklistListener_();
-  }
 
-  private addMissionBriefListener_(): void {
     const missionBriefUrl = ScenarioManager.getInstance().settings.missionBriefUrl;
     if (missionBriefUrl) {
-      qs('.mission-brief-icon').addEventListener('click', () => {
-        SimulationManager.getInstance().missionBriefBox ??= new DraggableHtmlBox('Mission Brief', 'mission-brief', missionBriefUrl);
-        SimulationManager.getInstance().missionBriefBox.open();
-      });
+      this.addMissionBriefListener_(missionBriefUrl);
+      this.addChecklistListener_();
+      this.addDialogHistoryListener_();
     }
+  }
+
+  private addMissionBriefListener_(missionBriefUrl: string): void {
+    qs('.mission-brief-icon').addEventListener('click', () => {
+      SimulationManager.getInstance().missionBriefBox ??= new DraggableHtmlBox('Mission Brief', 'mission-brief', missionBriefUrl);
+      SimulationManager.getInstance().missionBriefBox.open();
+    });
   }
 
   private addChecklistListener_(): void {
-    const missionBriefUrl = ScenarioManager.getInstance().settings.missionBriefUrl;
-    if (missionBriefUrl) {
-      qs('.checklist-icon').addEventListener('click', () => {
-        SimulationManager.getInstance().checklistBox ??= new DraggableHtmlBox('Checklist', 'checklist', '');
-        const objectivesManager = ObjectivesManager.getInstance();
-        objectivesManager.syncCollapsedStatesFromDOM();
-        this.lastChecklistHtml_ = objectivesManager.generateHtmlChecklist();
-        SimulationManager.getInstance().checklistBox.updateContent(this.lastChecklistHtml_);
-        SimulationManager.getInstance().checklistBox.open();
-        this.startChecklistRefreshTimer_(SimulationManager.getInstance().checklistBox);
-      });
+    qs('.checklist-icon').addEventListener('click', () => {
+      SimulationManager.getInstance().checklistBox ??= new DraggableHtmlBox('Checklist', 'checklist', '');
+      const objectivesManager = ObjectivesManager.getInstance();
+      objectivesManager.syncCollapsedStatesFromDOM();
+      this.lastChecklistHtml_ = objectivesManager.generateHtmlChecklist();
+      SimulationManager.getInstance().checklistBox.updateContent(this.lastChecklistHtml_);
+      SimulationManager.getInstance().checklistBox.open();
+      this.startChecklistRefreshTimer_(SimulationManager.getInstance().checklistBox);
+    });
 
-      EventBus.getInstance().on(Events.OBJECTIVE_ACTIVATED, () => {
-        // Can't update it until they open it for the first time
-        if (!SimulationManager.getInstance().checklistBox) {
-          return;
-        }
+    EventBus.getInstance().on(Events.OBJECTIVE_ACTIVATED, () => {
+      // Can't update it until they open it for the first time
+      if (!SimulationManager.getInstance().checklistBox) {
+        return;
+      }
 
-        const objectivesManager = ObjectivesManager.getInstance();
-        this.lastChecklistHtml_ = objectivesManager.generateHtmlChecklist();
-        SimulationManager.getInstance().checklistBox.updateContent(this.lastChecklistHtml_);
-      });
-    }
+      const objectivesManager = ObjectivesManager.getInstance();
+      this.lastChecklistHtml_ = objectivesManager.generateHtmlChecklist();
+      SimulationManager.getInstance().checklistBox.updateContent(this.lastChecklistHtml_);
+    });
+  }
+
+  private addDialogHistoryListener_(): void {
+    qs('.dialog-icon').addEventListener('click', () => {
+      SimulationManager.getInstance().dialogHistoryBox ??= new DialogHistoryBox();
+      SimulationManager.getInstance().dialogHistoryBox.open();
+    });
   }
 
   private startChecklistRefreshTimer_(draggableBox: DraggableHtmlBox): void {
@@ -148,10 +157,20 @@ export class Equipment extends BaseElement {
     // Initialize antennas
     for (let i = 1; i <= (settings.antennas.length); i++) {
       const antennaConfigId = settings.antennas[i - 1];
-      const antenna = new Antenna(`antenna${i}-container`, antennaConfigId);
+      let antenna: AntennaCore;
+
+      switch (antennaConfigId) {
+        case ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK:
+        case ANTENNA_CONFIG_KEYS.KU_BAND_9M_LIMIT:
+          antenna = new AntennaUIModern(`antenna${i}-container`, antennaConfigId, settings.antennasState?.[i - 1]);
+          break;
+        default:
+          antenna = new AntennaUIBasic(`antenna${i}-container`, antennaConfigId, settings.antennasState?.[i - 1]);
+          break;
+      }
       this.antennas.push(antenna);
 
-      const rfFrontEnd = new RFFrontEnd(`rf-front-end${i}-container`, settings.rfFrontEnds[i - 1]);
+      const rfFrontEnd = createRFFrontEnd(`rf-front-end${i}-container`, settings.rfFrontEnds[i - 1], 'standard');
       this.rfFrontEnds.push(rfFrontEnd);
       rfFrontEnd.connectAntenna(antenna);
       antenna.attachRfFrontEnd(rfFrontEnd);
@@ -161,13 +180,13 @@ export class Equipment extends BaseElement {
     // First two use antenna 1, next two use antenna 2
     for (let i = 1; i <= settings.spectrumAnalyzers.length; i++) {
       const antennaId = i <= 2 ? 1 : 2;
-      const specA = new RealTimeSpectrumAnalyzer(`specA${i}-container`, settings.spectrumAnalyzers[i - 1], this.rfFrontEnds[antennaId - 1]);
+      const specA = new RealTimeSpectrumAnalyzer(`specA${i}-container`, this.rfFrontEnds[antennaId - 1], settings.spectrumAnalyzers[i - 1]);
       this.spectrumAnalyzers.push(specA);
     }
 
     // Initialize 4 transmitter cases (each with 4 modems)
-    for (let i = 1; i <= settings.transmitters; i++) {
-      const tx = new Transmitter(`tx${i}-container`);
+    for (let i = 1; i <= settings.transmitters.length; i++) {
+      const tx = new Transmitter(`tx${i}-container`, settings.transmitters[i - 1]);
       this.transmitters.push(tx);
 
       if (i <= 2) {
@@ -177,13 +196,13 @@ export class Equipment extends BaseElement {
       }
     }
 
-    if (settings.transmitters <= 2) {
+    if (settings.transmitters.length <= 2) {
       const tx3ContainerElement = document.getElementById('tx3-container');
       if (tx3ContainerElement) {
         tx3ContainerElement.parentElement.style.display = 'none';
       }
     }
-    if (settings.receivers <= 2) {
+    if (settings.receivers.length <= 2) {
       const rx3ContainerElement = document.getElementById('rx3-container');
       if (rx3ContainerElement) {
         rx3ContainerElement.parentElement.style.display = 'none';
@@ -198,8 +217,8 @@ export class Equipment extends BaseElement {
     });
 
     // Initialize receivers
-    for (let i = 1; i <= settings.receivers; i++) {
-      const rx = new Receiver(`rx${i}-container`, this.antennas);
+    for (let i = 1; i <= settings.receivers.length; i++) {
+      const rx = new Receiver(`rx${i}-container`, this.antennas, settings.receivers[i - 1]);
       this.receivers.push(rx);
 
       if (i <= 2) {

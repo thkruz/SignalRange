@@ -36,7 +36,8 @@
     "allowSyntheticDefaultImports": true
   },
   "include": [
-    "src/**/*"
+    "src/**/*",
+    "test/equipment/antenna-ui-headless.test.ts"
   ],
   "exclude": [
     "node_modules",

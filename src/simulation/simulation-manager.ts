@@ -1,7 +1,10 @@
+import { GroundStation } from '@app/assets/ground-station/ground-station';
 import { Satellite } from '@app/equipment/satellite/satellite';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
+import { DialogHistoryBox } from '@app/modal/dialog-history-box';
 import { DraggableHtmlBox } from '@app/modal/draggable-html-box';
+import { QuizManager } from '@app/modal/quiz-manager';
 import { ObjectivesManager } from '@app/objectives';
 import { Equipment } from '@app/pages/sandbox/equipment';
 import { ScenarioManager } from '@app/scenario-manager';
@@ -12,7 +15,9 @@ import { RfSignal } from './../types';
 
 export class SimulationManager {
   private static instance_: SimulationManager;
-  equipment: Equipment;
+  private lastFrameTime: number;
+  equipment: Equipment | null = null;
+  groundStations: GroundStation[] = [];
   isDeveloperMode = false;
 
   /** Delta time between frames in milliseconds */
@@ -27,6 +32,7 @@ export class SimulationManager {
 
   missionBriefBox?: DraggableHtmlBox;
   checklistBox?: DraggableHtmlBox;
+  dialogHistoryBox?: DialogHistoryBox;
 
   private constructor() {
     this.progressSaveManager = new ProgressSaveManager();
@@ -35,6 +41,7 @@ export class SimulationManager {
 
     this.satelliteSignals = this.satellites.flatMap(sat => sat.txSignal);
 
+    this.lastFrameTime = Date.now();
     this.gameLoop_();
   }
 
@@ -46,10 +53,9 @@ export class SimulationManager {
     return this.instance_;
   }
 
-  private lastFrameTime = performance.now();
 
   private gameLoop_(): void {
-    const now = performance.now();
+    const now = Date.now();
     this.dt = (now - this.lastFrameTime) as Milliseconds;
     this.lastFrameTime = now;
 
@@ -87,5 +93,9 @@ export class SimulationManager {
     SimulationManager.instance_?.checklistBox?.close();
     SimulationManager.instance_?.missionBriefBox?.close();
     SimulationManager.instance_ = null;
+
+    // Clean up singleton managers
+    ObjectivesManager.destroy();
+    QuizManager.destroy();
   }
 }

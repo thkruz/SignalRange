@@ -4,15 +4,15 @@ import { getEl } from "@app/engine/utils/get-el";
 import './draggable-html-box.css';
 
 export class DraggableHtmlBox extends DraggableBox {
-  private readonly popupDom: HTMLElement;
+  readonly popupDom: HTMLElement;
   isOpen: boolean = true;
   onClose: () => void;
 
-  constructor(title: string, id: string, url?: string,) {
+  constructor(title: string, id: string, url?: string, parentId = 'sandbox-page') {
     super(`draggable-html-box-${id}`,
       {
         title,
-        parentId: 'sandbox-page',
+        parentId,
         boxContentHtml: html`
       <div id="draggable-html-box-content-${id}" style="width:100%;height:100%;">
         ${url ? `<iframe src="${url}" style="width:600px;height:600px;border:none;"></iframe>` : ''}

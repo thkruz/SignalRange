@@ -19,16 +19,32 @@ export type ConditionType =
   | 'buc-current-normal' // BUC current draw within normal range
   | 'buc-not-saturated' // BUC output not in compression
   | 'lnb-reference-locked' // LNB locked to 10MHz reference
+  | 'lnb-lo-set' // LNB local oscillator frequency set to specific value
   | 'lnb-gain-set' // LNB gain set to specific value
   | 'lnb-thermally-stable' // LNB thermal stabilization complete
   | 'lnb-noise-performance' // LNB noise temperature within spec
   | 'equipment-powered' // Specific equipment is powered on
+  | 'equipment-not-powered' // Specific equipment is powered off
+  | 'hpa-disabled' // HPA output disabled (but may still be powered)
   | 'signal-detected' // Signal detected on spectrum analyzer
   | 'frequency-set' // Equipment tuned to specific frequency
   | 'speca-span-set' // Spectrum analyzer span set to specific value
   | 'speca-rbw-set' // Spectrum analyzer RBW set to specific value
   | 'speca-reference-level-set' // Spectrum analyzer reference level set
   | 'speca-noise-floor-visible' // Spectrum analyzer shows clean baseline
+  | 'filter-bandwidth-set' // IF filter bandwidth configured
+  | 'antenna-beacon-frequency-set' // Antenna beacon frequency configured
+  | 'antenna-tracking-mode-set' // Antenna tracking mode set (step-track, etc.)
+  | 'antenna-beacon-locked' // Antenna beacon signal locked
+  | 'antenna-position' // Antenna at specific azimuth/elevation position
+  | 'buc-unmuted' // BUC RF output enabled (inverse of muted)
+  | 'hpa-enabled' // HPA output enabled (dual-action switch)
+  | 'hpa-back-off-set' // HPA back-off level configured
+  | 'hpa-not-overdriven' // HPA not in overdrive (IMD check)
+  | 'hpa-output-power-set' // HPA output power above threshold
+  | 'receiver-signal-locked' // Receiver modem has demodulation lock
+  | 'receiver-snr-threshold' // Receiver modem C/N ratio meets threshold
+  | 'status-check' // Interactive quiz to verify player found the correct information
   | 'custom'; // Custom condition with evaluator function
 
 /**
@@ -59,6 +75,10 @@ export interface ConditionParams {
   frequency?: number;
   /** For frequency-set: tolerance in Hz */
   frequencyTolerance?: number;
+  /** For lnb-lo-set: target local oscillator frequency in Hz */
+  loFrequency?: number;
+  /** For lnb-lo-set: local oscillator frequency tolerance in Hz */
+  loFrequencyTolerance?: number;
   /** For lnb-gain-set: target gain in dB */
   gain?: number;
   /** For lnb-gain-set: gain tolerance in dB */
@@ -81,8 +101,56 @@ export interface ConditionParams {
   maxSignalStrength?: number;
   /** For custom conditions: custom evaluator function */
   evaluator?: () => boolean;
+  /** Target specific equipment by index (0-based). If omitted, any equipment satisfies. */
+  equipmentIndex?: number;
+  /** For filter-bandwidth-set: target bandwidth index (0-12) */
+  bandwidthIndex?: number;
+  /** For antenna-beacon-frequency-set: beacon frequency in Hz */
+  beaconFrequency?: number;
+  /** For antenna-tracking-mode-set: tracking mode */
+  trackingMode?: 'stow' | 'maintenance' | 'manual' | 'step-track' | 'program-track';
+  /** For antenna-position: target azimuth in degrees */
+  azimuth?: number;
+  /** For antenna-position: target elevation in degrees */
+  elevation?: number;
+  /** For antenna-position: position tolerance in degrees (default: 1.0) */
+  tolerance?: number;
+  /** For hpa-back-off-set: target back-off in dB */
+  backOff?: number;
+  /** For hpa-back-off-set: tolerance in dB */
+  backOffTolerance?: number;
+  /** For hpa-not-overdriven: maximum IMD level in dBc (optional, defaults to checking isOverdriven) */
+  maxImdLevel?: number;
+  /** For hpa-output-power-set: minimum output power in dBm */
+  minOutputPower?: number;
+  /** For receiver-signal-locked/receiver-snr-threshold: which modem (1-4), defaults to active modem */
+  modemNumber?: number;
+  /** For receiver-snr-threshold: minimum C/N ratio in dB */
+  minCNRatio?: number;
+  /** For status-check: the question to display */
+  question?: string;
+  /** For status-check: the answer options (1-4) */
+  options?: string[];
+  /** For status-check: index of the correct answer (0 to options.length-1) */
+  correctIndex?: number;
+  /** For status-check: explanation shown after correct answer */
+  explanation?: string;
+  /** For status-check: points deducted per wrong answer (default: 5) */
+  pointPenalty?: number;
   /** Additional context-specific parameters */
   [key: string]: unknown;
+}
+
+/**
+ * Configuration for time-based point deduction on objective completion
+ */
+export interface TimePenalty {
+  /** Elapsed scenario time (in seconds) after which penalty applies */
+  elapsedTimeThreshold: number;
+  /** Fixed number of points to deduct */
+  pointsDeducted: number;
+  /** Optional message explaining the deduction */
+  message?: string;
 }
 
 /**
@@ -99,6 +167,12 @@ export interface Condition {
   mustMaintain: boolean;
   /** Minimum time (in seconds) the condition must be maintained before considered complete */
   maintainDuration?: number;
+  /**
+   * If true, condition must remain satisfied until ALL conditions in the objective are complete.
+   * If the condition becomes unsatisfied before objective completion, it will need to be re-satisfied.
+   * Takes precedence over maintainDuration for maintenance behavior.
+   */
+  maintainUntilObjectiveComplete?: boolean;
 }
 
 /**
@@ -111,6 +185,8 @@ export interface Objective {
   title: string;
   /** Detailed description of what the student must do */
   description: string;
+  /** Optional: Ground station ID this objective is associated with */
+  groundStation?: string;
   /** Array of conditions that must all be satisfied */
   conditions: Condition[];
   /** Whether all conditions must be met simultaneously (AND) or any one (OR) */
@@ -121,6 +197,12 @@ export interface Objective {
   isOptional?: boolean;
   /** Prerequisites - objective IDs that must be completed before this becomes active */
   prerequisiteObjectiveIds?: string[];
+  /** Optional time limit in seconds for this objective */
+  timeLimitSeconds?: number;
+  /** When the timer starts: 'on-activate' (default) or 'on-scenario-load' */
+  timerStartTrigger?: 'on-activate' | 'on-scenario-load';
+  /** Optional time penalty: deducts points if completed after elapsed time threshold */
+  timePenalty?: TimePenalty;
 }
 
 /**
@@ -139,6 +221,18 @@ export interface ObjectiveState {
   completedAt?: number;
   /** Current state of each condition */
   conditionStates: ConditionState[];
+  /** Whether this objective has failed (e.g., timer expired) */
+  isFailed: boolean;
+  /** Timestamp when objective failed */
+  failedAt?: number;
+  /** Remaining time in seconds (countdown timer) */
+  timeRemainingSeconds?: number;
+  /** Whether timer is currently running */
+  isTimerRunning: boolean;
+  /** Whether a time penalty was applied on completion */
+  timePenaltyApplied?: boolean;
+  /** Points deducted due to time penalty */
+  timePenaltyPoints?: number;
 }
 
 /**

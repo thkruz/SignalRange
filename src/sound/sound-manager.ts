@@ -38,17 +38,19 @@ class SoundManager {
   private readonly audioCache: Map<Sfx, HTMLAudioElement> = new Map();
   private readonly lastPlayTime: Map<Sfx, number> = new Map();
   private readonly currentlyPlaying: Map<Sfx, HTMLAudioElement> = new Map();
+  private customAudio: HTMLAudioElement | null = null;
+  private readonly customAudioCache: Map<string, HTMLAudioElement> = new Map();
 
   private constructor() { }
 
-  public static getInstance(): SoundManager {
+  static getInstance(): SoundManager {
     if (!SoundManager.instance) {
       SoundManager.instance = new SoundManager();
     }
     return SoundManager.instance;
   }
 
-  public play(sfx: Sfx): void {
+  play(sfx: Sfx): void {
     const isLooping = SFX_LOOP.has(sfx);
 
     // If sound is looping and already playing, don't restart
@@ -92,7 +94,9 @@ class SoundManager {
     }
 
     audio.currentTime = 0;
-    audio.play();
+    audio.play().catch(() => {
+      console.error(`Audio file not found: ${SFX_FILE_MAP[sfx]}. Run 'npm run r2:pull' to fetch assets.`);
+    });
 
     // Track currently playing audio for restart-enabled or looping sounds
     if (SFX_RESTART_ON_PLAY.has(sfx) || isLooping) {
@@ -108,7 +112,7 @@ class SoundManager {
     this.lastPlayTime.set(sfx, Date.now());
   }
 
-  public stop(sfx: Sfx): void {
+  stop(sfx: Sfx): void {
     const playing = this.currentlyPlaying.get(sfx);
     if (playing) {
       // Fade out over 300ms
@@ -133,6 +137,70 @@ class SoundManager {
 
       fadeOut();
     }
+  }
+
+  playCustom(audioUrl: string): void {
+    // Stop any currently playing custom audio
+    if (this.customAudio) {
+      this.customAudio.pause();
+      this.customAudio.currentTime = 0;
+    }
+
+    // Check cache or create new audio element
+    let audio = this.customAudioCache.get(audioUrl);
+    if (!audio) {
+      audio = new Audio(audioUrl);
+      this.customAudioCache.set(audioUrl, audio);
+    }
+
+    // Clone to allow the same audio to be played multiple times if needed
+    audio = audio.cloneNode(true) as HTMLAudioElement;
+    audio.currentTime = 0;
+    audio.play().catch(() => {
+      console.error(`Audio file not found: ${audioUrl}. Run 'npm run r2:pull' to fetch assets.`);
+    });
+
+    this.customAudio = audio;
+
+    // Clean up reference when audio ends
+    audio.addEventListener('ended', () => {
+      if (this.customAudio === audio) {
+        this.customAudio = null;
+      }
+    });
+  }
+
+  stopCustom(): void {
+    if (this.customAudio) {
+      // Fade out over 300ms
+      const fadeDuration = 300;
+      const steps = 30;
+      const stepTime = fadeDuration / steps;
+      let currentStep = 0;
+      const initialVolume = this.customAudio.volume;
+      const audioToStop = this.customAudio;
+
+      const fadeOut = () => {
+        currentStep++;
+        audioToStop.volume = initialVolume * (1 - currentStep / steps);
+        if (currentStep < steps) {
+          setTimeout(fadeOut, stepTime);
+        } else {
+          audioToStop.pause();
+          audioToStop.currentTime = 0;
+          audioToStop.volume = initialVolume;
+          if (this.customAudio === audioToStop) {
+            this.customAudio = null;
+          }
+        }
+      };
+
+      fadeOut();
+    }
+  }
+
+  isCustomAudioPlaying(): boolean {
+    return this.customAudio !== null && !this.customAudio.paused && !this.customAudio.ended;
   }
 }
 

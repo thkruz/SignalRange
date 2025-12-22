@@ -1,0 +1,296 @@
+/* AppShell Page Styles - Mission Control Interface */
+/* Layout now handled by Tabler utilities: .d-flex .flex-column */
+
+.app-shell-page {
+  height: calc(100vh - 80px);
+  background-color: #1f1f1f;
+  color: #cbd5e1;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  overflow: hidden;
+}
+
+/* ===== 1. Global Command Bar (Top) ===== */
+.app-shell-header {
+  height: 56px;
+  background-color: #292929;
+  border-bottom: 1px solid #6b6b6b;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.command-bar-left {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  background-color: #292929;
+  gap: 1rem;
+  width: 256px;
+  border-right: 1px solid #6b6b6b;
+}
+
+.command-bar-right {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  background-color: #292929;
+  padding: 0 1rem;
+  gap: 1rem;
+  border-left: 1px solid #6b6b6b;
+}
+
+.command-bar-center {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.aos-countdown {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #292929;
+  position: relative;
+}
+
+.command-bar-left i {
+  font-size: 20px;
+  color: #ba160c;
+}
+
+/* ===== Static Alarm Bar ===== */
+.command-bar-alarm-bar {
+  height: 24px;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0 1rem;
+  transition: background-color 0.3s ease;
+}
+
+.command-bar-alarm-bar.info {
+  background-color: rgba(59, 130, 246, 0.2);
+  border-top: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.command-bar-alarm-bar.warn {
+  background-color: rgba(234, 179, 8, 0.2);
+  border-top: 1px solid rgba(234, 179, 8, 0.3);
+}
+
+.command-bar-alarm-bar.healthy {
+  background-color: rgba(16, 185, 129, 0.2);
+  border-top: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.command-bar-alarm-bar.alarm {
+  background-color: rgba(186, 22, 12, 0.2);
+  border-top: 1px solid rgba(186, 22, 12, 0.3);
+}
+
+.command-bar-left .text-blue-500 {
+  color: #ba160c;
+}
+
+/* Alarm Count Badges */
+.alarm-counts {
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.alarm-count {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0 0.5rem;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+}
+
+.alarm-count.error {
+  background: rgba(186, 22, 12, 0.3);
+  color: #fca5a5;
+}
+
+.alarm-count.warning {
+  background: rgba(234, 179, 8, 0.3);
+  color: #fde047;
+}
+
+.alarm-count.info {
+  background: rgba(59, 130, 246, 0.3);
+  color: #93c5fd;
+}
+
+/* Alarm Messages */
+.alarm-messages {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 10px;
+  font-family: monospace;
+}
+
+.alarm-item {
+  font-weight: 500;
+}
+
+.alarm-separator {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.alarm-overflow {
+  font-size: 10px;
+  opacity: 0.7;
+  color: #94a3b8;
+}
+
+.alarm-stable {
+  font-size: 10px;
+  font-family: monospace;
+}
+
+/* ===== 2. Main Workspace ===== */
+/* Layout now handled by Tabler utilities: .d-flex .flex-fill .overflow-hidden */
+.app-shell-main {
+  /* No custom styles needed - all handled by utilities */
+}
+
+/* ===== Asset Tree Sidebar ===== */
+/* Layout now handled by Tabler utilities: .flex-shrink-0 */
+/* Sidebar header/content styles moved to asset-tree-sidebar.css */
+.app-shell-sidebar {
+  background-color: #292929;
+  border-right: 1px solid #6b6b6b;
+  width: 256px;
+}
+
+/* ===== 3. Tabbed Canvas ===== */
+/* Layout now handled by Tabler utilities: .d-flex .flex-column .flex-fill .overflow-hidden */
+/* Canvas header/content/tab styles moved to tabbed-canvas.css */
+.app-shell-canvas {
+  background-color: #1f1f1f;
+}
+
+/* ===== Scrollbar Styles ===== */
+.app-shell-page ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.app-shell-page ::-webkit-scrollbar-track {
+  background: #1f1f1f;
+}
+
+.app-shell-page ::-webkit-scrollbar-thumb {
+  background: #6b6b6b;
+  border-radius: 3px;
+}
+
+.app-shell-page ::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+/* ===== Timer Displays (Command Bar Right) ===== */
+.timer-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  width: 100px;
+}
+
+.timer-display .timer-label {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+}
+
+.timer-display .timer-value {
+  font-size: 1.25rem;
+  font-weight: 700;
+  font-family: var(--font-monospace, monospace);
+  color: #ffffff;
+  line-height: 1.2;
+}
+
+/* Warning state - less than 5 minutes (scenario) or 1 minute (objective) */
+.timer-display.timer-warning {
+  border-color: rgba(255, 165, 0, 0.5);
+  background: rgba(255, 165, 0, 0.1);
+}
+
+.timer-display.timer-warning .timer-value {
+  color: #ffa500;
+}
+
+/* Urgent state - less than 1 minute (scenario) or 30 seconds (objective) */
+.timer-display.timer-urgent {
+  border-color: rgba(255, 68, 68, 0.7);
+  background: rgba(255, 0, 0, 0.15);
+  animation: command-bar-timer-pulse 1s infinite;
+}
+
+.timer-display.timer-urgent .timer-value {
+  color: #ff4444;
+}
+
+@keyframes command-bar-timer-pulse {
+
+  0%,
+  100% {
+    background: rgba(255, 0, 0, 0.15);
+  }
+
+  50% {
+    background: rgba(255, 0, 0, 0.25);
+  }
+}
+
+/* Unlimited state - no time limit */
+.timer-display.timer-unlimited {
+  border-color: rgba(16, 185, 129, 0.5);
+  background: rgba(16, 185, 129, 0.1);
+}
+
+.timer-display.timer-unlimited .timer-value {
+  color: #10b981;
+}
+
+/* Failed state - timer expired */
+.timer-display.timer-failed {
+  border-color: rgba(220, 38, 38, 0.7);
+  background: rgba(220, 38, 38, 0.2);
+}
+
+.timer-display.timer-failed .timer-value {
+  color: #ef4444;
+  font-weight: 800;
+}
+
+/* Passed state - quiz answered correctly */
+.timer-display.timer-passed {
+  border-color: rgba(34, 197, 94, 0.7);
+  background: rgba(34, 197, 94, 0.2);
+}
+
+.timer-display.timer-passed .timer-value {
+  color: #22c55e;
+  font-weight: 800;
+}

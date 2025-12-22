@@ -1,9 +1,12 @@
 import { DraggableModal } from '@app/engine/ui/draggable-modal';
+import { ModalConfirm } from '@app/engine/ui/modal-confirm';
 import { html } from '@app/engine/utils/development/formatter';
 import { errorManagerInstance } from '@app/engine/utils/errorManager';
 import { Sfx } from '@app/sound/sfx-enum';
-import { Auth } from './auth';
 import SoundManager from '@app/sound/sound-manager';
+import { syncManager } from '@app/sync/storage';
+import { Auth } from './auth';
+import { getUserDataService } from './user-data-service';
 
 export class ModalProfile extends DraggableModal {
   private static readonly id = 'modal-profile';
@@ -46,6 +49,9 @@ export class ModalProfile extends DraggableModal {
           <div class="profile-actions">
             <button type="button" id="logout-btn" class="profile-actions__btn profile-actions__btn--secondary">
               Logout
+            </button>
+            <button type="button" id="clear-progress-btn" class="profile-actions__btn profile-actions__btn--danger">
+              Clear Progress
             </button>
           </div>
         </div>
@@ -103,10 +109,17 @@ export class ModalProfile extends DraggableModal {
 
   private initializeButtons(): void {
     const logoutBtn = this.boxEl?.querySelector('#logout-btn') as HTMLButtonElement;
+    const clearProgressBtn = this.boxEl?.querySelector('#clear-progress-btn') as HTMLButtonElement;
 
     if (logoutBtn) {
       logoutBtn.addEventListener('click', async () => {
         await this.handleLogout();
+      });
+    }
+
+    if (clearProgressBtn) {
+      clearProgressBtn.addEventListener('click', () => {
+        this.handleClearProgress();
       });
     }
   }
@@ -125,6 +138,61 @@ export class ModalProfile extends DraggableModal {
       }
     } catch (error) {
       errorManagerInstance.error(error as Error, 'Logout error');
+    }
+  }
+
+  private handleClearProgress(): void {
+    const confirmModal = ModalConfirm.getInstance();
+
+    confirmModal.open(
+      async () => {
+        await this.performClearProgress();
+      },
+      {
+        title: 'Clear All Progress?',
+        message:
+          'Are you sure you want to clear all your progress? This will delete all your saved checkpoints and progress data. This action cannot be undone.',
+        confirmText: 'Clear Progress',
+        cancelText: 'Cancel',
+        isDestructive: true,
+      },
+    );
+  }
+
+  private async performClearProgress(): Promise<void> {
+    try {
+      SoundManager.getInstance().play(Sfx.TOGGLE_OFF);
+
+      const userDataService = getUserDataService();
+
+      console.log('[ClearProgress] Starting clear process...');
+
+      // Clear only SignalRange-specific fields, preserving KeepTrack data
+      const result = await userDataService.updateUserProgress({
+        completedScenarios: [],
+        scenarioProgress: {},
+        totalScore: 0,
+        signalForge: [],
+      });
+      console.log('[ClearProgress] Backend update result:', result);
+
+      // Verify the clear worked
+      const verifyProgress = await userDataService.getUserProgress();
+      console.log('[ClearProgress] Verification - signalForge after clear:', verifyProgress.signalForge);
+
+      // Clear local sync storage to ensure objectives reset on reload
+      await syncManager.clearStorage();
+      console.log('[ClearProgress] LocalStorage cleared');
+
+      // Verify localStorage is empty
+      console.log('[ClearProgress] __APP_STORE__ after clear:', localStorage.getItem('__APP_STORE__'));
+
+      // Refresh the page to reflect changes
+      window.location.reload();
+
+      errorManagerInstance.info('Progress cleared successfully');
+    } catch (error) {
+      errorManagerInstance.error(error as Error, 'Failed to clear progress');
     }
   }
 

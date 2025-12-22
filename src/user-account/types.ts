@@ -8,6 +8,11 @@
 import type { AppState } from '@app/sync/sync-manager';
 
 /**
+ * App identifier for multi-app support
+ */
+export type AppId = 'signalrange' | 'keeptrack';
+
+/**
  * User type enum
  */
 export type UserType = 'civilian' | 'education' | 'government' | 'military';
@@ -59,16 +64,33 @@ export interface UserPreferences extends UserPreferencesData {
 }
 
 /**
+ * Progress entry for a single scenario including score breakdown
+ * @deprecated Use ScenarioProgress instead (normalized table row)
+ */
+export interface ScenarioProgressEntry {
+  completedObjectives: number[];
+  score: number;
+  /** Points earned from completing objectives */
+  basePoints?: number;
+  /** Bonus points from remaining time */
+  timeBonus?: number;
+  /** Points deducted from quiz wrong answers */
+  quizPenalties?: number;
+  /** Points deducted from time-based objective penalties */
+  timePenalties?: number;
+  /** ISO timestamp when scenario was completed */
+  completedAt?: string;
+  lastPlayed: string;
+}
+
+/**
  * User progress data for tracking scenario completion
+ * @deprecated Use ScenarioProgress and Checkpoint tables instead
  */
 export interface UserProgressData {
   completedScenarios?: number[];
   scenarioProgress?: {
-    [scenarioId: number]: {
-      completedObjectives: number[];
-      score: number;
-      lastPlayed: string;
-    };
+    [scenarioId: number]: ScenarioProgressEntry;
   };
   totalScore?: number;
   signalForge?: Array<{
@@ -81,12 +103,100 @@ export interface UserProgressData {
 
 /**
  * User progress from public.user_progress table
+ * @deprecated Use ScenarioProgress table instead
  */
 export interface UserProgress extends UserProgressData {
   id: string;
   userId: string;
   createdAt: string;
   updatedAt: string;
+}
+
+// ============================================================================
+// New Normalized Table Types (replaces JSONB-based progress)
+// ============================================================================
+
+/**
+ * Scenario progress from public.scenario_progress table
+ * One row per user + app + scenario
+ */
+export interface ScenarioProgress {
+  id: string;
+  userId: string;
+  appId: AppId;
+  scenarioId: string;
+  scenarioNumber?: number;
+  completedObjectives: number[];
+  score: number;
+  basePoints: number;
+  timeBonus: number;
+  quizPenalties: number;
+  timePenalties: number;
+  completedAt?: string;
+  lastPlayed: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Checkpoint from public.checkpoints table
+ * Stores full AppState for scenario resume
+ */
+export interface Checkpoint {
+  id: string;
+  userId: string;
+  appId: AppId;
+  scenarioId: string;
+  version: string;
+  state: AppState;
+  savedAt: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Per-app preferences from public.app_preferences table
+ */
+export interface AppPreferences {
+  id: string;
+  userId: string;
+  appId: AppId;
+  preferences: UserPreferencesData;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * User app summary from public.user_app_summary table
+ * Aggregated stats per app
+ */
+export interface UserAppSummary {
+  id: string;
+  userId: string;
+  appId: AppId;
+  totalScore: number;
+  completedScenarioCount: number;
+  lastPlayedScenario?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Batch response for all scenarios progress
+ */
+export interface ScenariosProgressResponse {
+  scenarios: ScenarioProgress[];
+  summary: UserAppSummary;
+}
+
+/**
+ * Full user data response (app-scoped)
+ */
+export interface FullAppUserData {
+  user: User;
+  preferences: AppPreferences;
+  progress: ScenariosProgressResponse;
+  achievements: UserAchievement[];
 }
 
 /**
@@ -167,11 +277,48 @@ export interface UpdateUserPreferencesRequest {
   defaultPowerUnits?: 'dBm' | 'W' | 'mW';
 }
 
+/**
+ * @deprecated Use UpdateScenarioProgressRequest instead
+ */
 export interface UpdateUserProgressRequest {
   completedScenarios?: number[];
   scenarioProgress?: UserProgressData['scenarioProgress'];
   totalScore?: number;
   signalForge?: UserProgressData['signalForge'];
+}
+
+// ============================================================================
+// New API Request Types (for granular operations)
+// ============================================================================
+
+/**
+ * Update request for a single scenario's progress
+ */
+export interface UpdateScenarioProgressRequest {
+  completedObjectives?: number[];
+  score?: number;
+  basePoints?: number;
+  timeBonus?: number;
+  quizPenalties?: number;
+  timePenalties?: number;
+  completedAt?: string;
+  lastPlayed?: string;
+  scenarioNumber?: number;
+}
+
+/**
+ * Upsert request for a checkpoint
+ */
+export interface UpsertCheckpointRequest {
+  version: string;
+  state: AppState;
+}
+
+/**
+ * Update request for app preferences
+ */
+export interface UpdateAppPreferencesRequest {
+  preferences: Partial<UserPreferencesData>;
 }
 
 export interface UpdateUserDataRequest {

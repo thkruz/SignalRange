@@ -164,13 +164,15 @@ export class ScenarioSelectionPage extends BasePage {
       headerEl.innerHTML = html`
         <h1>${this.currentCampaign_.title}</h1>
         <div class="subtitle">${this.currentCampaign_.subtitle}</div>
-        <div class="campaign-progress">
-          ${progress.completedScenarios.length} of ${progress.totalScenarios} scenarios completed
-          (${progress.completionPercentage}%)
+        <div class="progress-and-navigation">
+          <div class="campaign-progress">
+            ${progress.completedScenarios.length} of ${progress.totalScenarios} scenarios completed
+            (${progress.completionPercentage}%)
+          </div>
+          <a href="/campaigns/" class="back-button">
+            ← Back to Campaigns
+          </a>
         </div>
-        <a href="/campaigns/" class="back-button">
-          ← Back to Campaigns
-        </a>
       `;
     } else {
       headerEl.innerHTML = html`

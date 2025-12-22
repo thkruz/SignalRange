@@ -5,6 +5,20 @@
   min-height: calc(100vh - 80px);
   background: linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 100%);
   color: #fff;
+  padding: 1rem;
+
+  /* all child elements should be the same size */
+  .progress-and-navigation {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 0.5rem;
+    gap: 1rem;
+
+    div {
+      width: 50%;
+    }
+  }
 }
 
 .scenario-selection-header {
@@ -398,6 +412,7 @@
   margin-bottom: 0.75rem;
   flex-grow: 1;
   max-height: 300px;
+  min-height: fit-content;
   overflow: auto;
 }
 

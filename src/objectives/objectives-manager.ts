@@ -25,7 +25,6 @@ export class ObjectivesManager {
   private static instance_: ObjectivesManager | null = null;
   private readonly objectiveStates_: ObjectiveState[] = [];
   private readonly eventBus_: EventBus;
-  private readonly startTime_: number;
   private readonly collapsedObjectiveIds_: Set<string> = new Set();
 
   // Timer-related properties
@@ -36,7 +35,6 @@ export class ObjectivesManager {
 
   private constructor(objectives: Objective[], scenarioTimeLimit?: number) {
     this.eventBus_ = EventBus.getInstance();
-    this.startTime_ = Date.now();
 
     // Initialize scenario timer if provided
     if (scenarioTimeLimit !== undefined && scenarioTimeLimit > 0) {
@@ -146,10 +144,14 @@ export class ObjectivesManager {
   }
 
   /**
-   * Get total elapsed time since objectives manager started
+   * Get total elapsed time derived from scenario countdown timer
+   * Returns 0 if no scenario timer is set
    */
   getElapsedTime(): number {
-    return (Date.now() - this.startTime_) / 1000; // Convert to seconds
+    if (this.scenarioTimeLimit_ !== null) {
+      return this.scenarioTimeLimit_ - this.scenarioTimeRemaining_;
+    }
+    return 0;
   }
 
   /**
@@ -263,8 +265,17 @@ export class ObjectivesManager {
   /**
    * Restore objective states from saved checkpoint data
    * Merges saved state with current objective definitions, preserving progress
+   * @param savedStates Array of saved objective states
+   * @param scenarioTimeRemaining Saved scenario timer value (seconds remaining)
    */
-  restoreState(savedStates: ObjectiveState[]): void {
+  restoreState(savedStates: ObjectiveState[], scenarioTimeRemaining?: number): void {
+    // Restore scenario timer if provided
+    if (scenarioTimeRemaining !== undefined && this.scenarioTimeLimit_ !== null) {
+      this.scenarioTimeRemaining_ = scenarioTimeRemaining;
+      // Keep timer running if time remains, stop if expired
+      this.scenarioTimerRunning_ = scenarioTimeRemaining > 0;
+    }
+
     if (!savedStates || savedStates.length === 0) {
       return;
     }
@@ -289,6 +300,12 @@ export class ObjectivesManager {
       currentState.activatedAt = savedState.activatedAt;
       currentState.isCompleted = savedState.isCompleted;
       currentState.completedAt = savedState.completedAt;
+
+      // Restore timer state
+      currentState.timeRemainingSeconds = savedState.timeRemainingSeconds;
+      currentState.isTimerRunning = savedState.isTimerRunning;
+      currentState.isFailed = savedState.isFailed;
+      currentState.failedAt = savedState.failedAt;
 
       // Restore collapse state if objective was completed
       if (savedState.isCompleted) {

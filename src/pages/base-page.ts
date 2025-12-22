@@ -127,7 +127,10 @@ export abstract class BasePage extends BaseElement {
 
       if (checkpoint?.state?.objectiveStates) {
         const objectivesManager = ObjectivesManager.getInstance();
-        objectivesManager.restoreState(checkpoint.state.objectiveStates);
+        objectivesManager.restoreState(
+          checkpoint.state.objectiveStates,
+          checkpoint.state.scenarioTimeRemaining
+        );
         Logger.info('Objective states restored from checkpoint');
       }
     } catch (error) {

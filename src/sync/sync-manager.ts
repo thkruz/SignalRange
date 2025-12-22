@@ -165,12 +165,16 @@ export class SyncManager {
       return { equipment: undefined };
     }
 
-    // Get objective states from SimulationManager if available
+    // Get objective states and scenario timer from SimulationManager if available
     let objectiveStates: ObjectiveState[] | undefined;
+    let scenarioTimeRemaining: number | undefined;
     try {
       const sim = SimulationManager.getInstance();
       if (sim?.objectivesManager) {
         objectiveStates = sim.objectivesManager.getObjectiveStates() as ObjectiveState[];
+        if (sim.objectivesManager.hasScenarioTimer()) {
+          scenarioTimeRemaining = sim.objectivesManager.getScenarioTimeRemaining();
+        }
       }
     } catch (error) {
       // SimulationManager or ObjectivesManager not available yet - this is expected during initialization
@@ -180,6 +184,7 @@ export class SyncManager {
 
     return {
       objectiveStates,
+      scenarioTimeRemaining,
       groundStationStates: this.groundStations.map(gs => gs.state),
       equipment: {
         spectrumAnalyzersState: this.equipment.spectrumAnalyzers?.map(sa => sa.state),
@@ -258,7 +263,10 @@ export class SyncManager {
         const { SimulationManager } = require('../simulation/simulation-manager');
         const sim = SimulationManager.getInstance();
         if (sim?.objectivesManager) {
-          sim.objectivesManager.restoreState(state.objectiveStates);
+          sim.objectivesManager.restoreState(
+            state.objectiveStates,
+            state.scenarioTimeRemaining
+          );
         }
       } catch (error) {
         console.debug('ObjectivesManager not available when syncing from storage:', error);
@@ -272,6 +280,7 @@ export class SyncManager {
  */
 export interface AppState {
   objectiveStates?: ObjectiveState[];
+  scenarioTimeRemaining?: number;
   groundStationStates?: GroundStationState[];
   equipment?: {
     spectrumAnalyzersState?: RealTimeSpectrumAnalyzerState[];

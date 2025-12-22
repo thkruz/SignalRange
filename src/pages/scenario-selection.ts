@@ -6,6 +6,7 @@ import { Logger } from "@app/logging/logger";
 import { Router } from "@app/router";
 import { getNextPrerequisiteScenario, getPrerequisiteScenarioNames, isScenarioLocked, SCENARIOS } from "@app/scenario-manager";
 import { ScenarioData } from '@app/ScenarioData';
+import { clearPersistedStore } from "@app/sync/storage";
 import { getUserDataService } from "@app/user-account/user-data-service";
 import { getAssetUrl } from "@app/utils/asset-url";
 import { html } from "../engine/utils/development/formatter";
@@ -263,10 +264,10 @@ export class ScenarioSelectionPage extends BasePage {
       } else if (hasCheckpoint) {
         actionButtons = `
           <div class="scenario-checkpoint-actions">
-          <button type="button" class="btn-continue" data-scenario-url="${scenario.url}">
+          <button type="button" class="btn-continue" data-scenario-id="${scenario.id}">
             Continue
           </button>
-          <button type="button" class="btn-start-fresh" data-scenario-id="${scenario.id}" data-scenario-url="${scenario.url}">
+          <button type="button" class="btn-start-fresh" data-scenario-id="${scenario.id}">
             Restart Level
           </button>
           </div>
@@ -382,10 +383,12 @@ export class ScenarioSelectionPage extends BasePage {
   private handleContinueScenario_(event: Event): void {
     event.stopPropagation(); // Prevent card selection
     const button = event.currentTarget as HTMLElement;
-    const scenarioUrl = button.dataset.scenarioUrl;
+    const scenarioId = button.dataset.scenarioId;
 
-    if (scenarioUrl) {
-      Router.getInstance().navigate(scenarioUrl, { continueFromCheckpoint: true });
+    if (scenarioId && this.currentCampaignId_) {
+      // Use absolute path to ensure correct routing
+      const absolutePath = `/campaigns/${this.currentCampaignId_}/scenarios/${scenarioId}`;
+      Router.getInstance().navigate(absolutePath, { continueFromCheckpoint: true });
     }
   }
 
@@ -396,9 +399,8 @@ export class ScenarioSelectionPage extends BasePage {
     event.stopPropagation(); // Prevent card selection
     const button = event.currentTarget as HTMLElement;
     const scenarioId = button.dataset.scenarioId;
-    const scenarioUrl = button.dataset.scenarioUrl;
 
-    if (!scenarioId || !scenarioUrl) {
+    if (!scenarioId || !this.currentCampaignId_) {
       return;
     }
 
@@ -410,10 +412,15 @@ export class ScenarioSelectionPage extends BasePage {
           const userDataService = getUserDataService();
           await userDataService.deleteCheckpoint(scenarioId);
 
+          // Clear local equipment state so scenario starts with default equipment settings
+          await clearPersistedStore();
+
           Logger.info(`Checkpoint cleared for scenario: ${scenarioId}`);
 
-          // Navigate to scenario
-          Router.getInstance().navigate(scenarioUrl);
+          // Navigate to scenario with forceReplay to skip completion checks
+          // Use absolute path to ensure correct routing
+          const absolutePath = `/campaigns/${this.currentCampaignId_}/scenarios/${scenarioId}`;
+          Router.getInstance().navigate(absolutePath, { forceReplay: true });
         } catch (error) {
           Logger.error('Failed to clear checkpoint:', error);
           alert('Failed to clear checkpoint. Please try again.');
@@ -437,27 +444,31 @@ export class ScenarioSelectionPage extends BasePage {
     event.stopPropagation(); // Prevent card selection
     const button = event.currentTarget as HTMLElement;
     const scenarioId = button.dataset.scenarioId;
-    const scenarioUrl = button.dataset.scenarioUrl;
 
-    if (!scenarioUrl) {
+    if (!scenarioId || !this.currentCampaignId_) {
       return;
     }
 
     // Remove from completed scenarios list and clear checkpoint using direct API (no confirmation needed for Play Again)
-    if (scenarioId) {
-      try {
-        const userDataService = getUserDataService();
-        await Promise.all([
-          userDataService.deleteScenarioProgress(scenarioId),
-          userDataService.deleteCheckpoint(scenarioId),
-        ]);
-        Logger.info(`Cleared progress and checkpoint for Play Again: ${scenarioId}`);
-      } catch (error) {
-        Logger.error('Failed to clear progress for Play Again:', error);
-        // Continue anyway - user wants to play again
-      }
-    }
+    // Use individual .catch() so 404 errors (nothing to delete) don't prevent other cleanup
+    const userDataService = getUserDataService();
 
-    Router.getInstance().navigate(scenarioUrl, { forceReplay: true });
+    await Promise.all([
+      userDataService.deleteScenarioProgress(scenarioId).catch(error => {
+        Logger.warn(`deleteScenarioProgress failed (may not exist): ${error.message}`);
+      }),
+      userDataService.deleteCheckpoint(scenarioId).catch(error => {
+        Logger.warn(`deleteCheckpoint failed (may not exist): ${error.message}`);
+      }),
+    ]);
+
+    // Clear local equipment state so scenario starts with default equipment settings
+    // This must always run regardless of API call results
+    await clearPersistedStore();
+    Logger.info(`Cleared local state for Play Again: ${scenarioId}`);
+
+    // Use absolute path to ensure correct routing
+    const absolutePath = `/campaigns/${this.currentCampaignId_}/scenarios/${scenarioId}`;
+    Router.getInstance().navigate(absolutePath, { forceReplay: true });
   }
 }

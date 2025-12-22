@@ -157,6 +157,12 @@ export class MissionControlPage extends BasePage {
    * 2. GroundStation.sync() checks UUID which changes on each page load
    */
   private async loadCheckpointIfExists_(): Promise<void> {
+    // Skip checkpoint loading if replaying (starting fresh)
+    if (this.navigationOptions_.forceReplay) {
+      Logger.info('loadCheckpointIfExists_: Skipping checkpoint load due to forceReplay');
+      return;
+    }
+
     if (!this.progressSaveManager_) {
       Logger.warn('loadCheckpointIfExists_: progressSaveManager not initialized');
       return;

@@ -91,15 +91,18 @@ export abstract class BasePage extends BaseElement {
 
       // Check if all objectives are already complete (e.g., from restored checkpoint)
       // This handles the case where user refreshes after completing but before clicking Continue
-      const objectivesManager = ObjectivesManager.getInstance();
-      if (objectivesManager.areAllObjectivesCompleted()) {
-        Logger.info('All objectives already complete on load, triggering completion flow');
-        // Stop all timers since scenario is complete
-        objectivesManager.stopAllTimers();
-        EventBus.getInstance().emit(Events.OBJECTIVES_ALL_COMPLETED, {
-          completedObjectives: [...objectivesManager.getObjectiveStates()],
-          totalTime: objectivesManager.getElapsedTime(),
-        });
+      // Skip this check if replaying - we want a fresh start
+      if (!this.navigationOptions_.forceReplay) {
+        const objectivesManager = ObjectivesManager.getInstance();
+        if (objectivesManager.areAllObjectivesCompleted()) {
+          Logger.info('All objectives already complete on load, triggering completion flow');
+          // Stop all timers since scenario is complete
+          objectivesManager.stopAllTimers();
+          EventBus.getInstance().emit(Events.OBJECTIVES_ALL_COMPLETED, {
+            completedObjectives: [...objectivesManager.getObjectiveStates()],
+            totalTime: objectivesManager.getElapsedTime(),
+          });
+        }
       }
     }
 

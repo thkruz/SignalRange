@@ -24,6 +24,8 @@ export type ConditionType =
   | 'lnb-thermally-stable' // LNB thermal stabilization complete
   | 'lnb-noise-performance' // LNB noise temperature within spec
   | 'equipment-powered' // Specific equipment is powered on
+  | 'equipment-not-powered' // Specific equipment is powered off
+  | 'hpa-disabled' // HPA output disabled (but may still be powered)
   | 'signal-detected' // Signal detected on spectrum analyzer
   | 'frequency-set' // Equipment tuned to specific frequency
   | 'speca-span-set' // Spectrum analyzer span set to specific value
@@ -120,10 +122,10 @@ export interface ConditionParams {
   minCNRatio?: number;
   /** For status-check: the question to display */
   question?: string;
-  /** For status-check: the four answer options */
-  options?: [string, string, string, string];
-  /** For status-check: index of the correct answer (0-3) */
-  correctIndex?: 0 | 1 | 2 | 3;
+  /** For status-check: the answer options (1-4) */
+  options?: string[];
+  /** For status-check: index of the correct answer (0 to options.length-1) */
+  correctIndex?: number;
   /** For status-check: explanation shown after correct answer */
   explanation?: string;
   /** For status-check: points deducted per wrong answer (default: 5) */

@@ -968,6 +968,39 @@ export class ObjectivesManager {
         }
       }
 
+      case 'equipment-not-powered': {
+        if (!condition.params?.equipment) return false;
+
+        switch (condition.params.equipment) {
+          case 'antenna':
+            return this.evaluateEquipment_(gs.antennas, condition.params, (antenna) => {
+              return !antenna.state.isPowered;
+            });
+          case 'gpsdo':
+            return this.evaluateEquipment_(gs.rfFrontEnds, condition.params, (rfFrontEnd) => {
+              return !rfFrontEnd.gpsdoModule.state.isPowered;
+            });
+          case 'buc':
+            return this.evaluateEquipment_(gs.rfFrontEnds, condition.params, (rfFrontEnd) => {
+              return !rfFrontEnd.bucModule.state.isPowered;
+            });
+          case 'lnb':
+            return this.evaluateEquipment_(gs.rfFrontEnds, condition.params, (rfFrontEnd) => {
+              return !rfFrontEnd.lnbModule.state.isPowered;
+            });
+          case 'hpa':
+            return this.evaluateEquipment_(gs.rfFrontEnds, condition.params, (rfFrontEnd) => {
+              return !rfFrontEnd.hpaModule.state.isPowered;
+            });
+          case 'filter':
+            return this.evaluateEquipment_(gs.rfFrontEnds, condition.params, (rfFrontEnd) => {
+              return !rfFrontEnd.filterModule.state.isPowered;
+            });
+          default:
+            return false;
+        }
+      }
+
       case 'signal-detected': {
         return this.evaluateEquipment_(gs.spectrumAnalyzers, condition.params, (specA) => {
           return specA.getInputSignals().length > 0;
@@ -1095,6 +1128,13 @@ export class ObjectivesManager {
         return this.evaluateEquipment_(gs.rfFrontEnds, condition.params, (rfFrontEnd) => {
           const hpaState = rfFrontEnd.hpaModule.state;
           return hpaState.isPowered && hpaState.isHpaEnabled && hpaState.outputPower >= minPower;
+        });
+      }
+
+      case 'hpa-disabled': {
+        return this.evaluateEquipment_(gs.rfFrontEnds, condition.params, (rfFrontEnd) => {
+          const hpaState = rfFrontEnd.hpaModule.state;
+          return hpaState.isPowered && !hpaState.isHpaEnabled;
         });
       }
 

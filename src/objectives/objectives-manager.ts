@@ -6,7 +6,7 @@
 
 import { GroundStation } from '@app/assets/ground-station/ground-station';
 import { EventBus } from '@app/events/event-bus';
-import { Events } from '@app/events/events';
+import { Events, QuizCompletedData, QuizPassedData } from '@app/events/events';
 import { SimulationManager } from '@app/simulation/simulation-manager';
 import { Milliseconds } from 'ootk';
 import {
@@ -33,8 +33,19 @@ export class ObjectivesManager {
   private scenarioTimeRemaining_: number = 0;
   private timerInterval_: number | null = null;
 
+  // Quiz pass state - when true, timers are paused and "PASS" should display
+  private isQuizPassed_: boolean = false;
+  private passedObjectiveId_: string | null = null;
+
+  private readonly boundQuizPassedHandler_: (data: QuizPassedData) => void;
+  private readonly boundQuizCompletedHandler_: (data: QuizCompletedData) => void;
+
   private constructor(objectives: Objective[], scenarioTimeLimit?: number) {
     this.eventBus_ = EventBus.getInstance();
+
+    // Initialize bound handlers
+    this.boundQuizPassedHandler_ = this.handleQuizPassed_.bind(this);
+    this.boundQuizCompletedHandler_ = this.handleQuizCompleted_.bind(this);
 
     // Initialize scenario timer if provided
     if (scenarioTimeLimit !== undefined && scenarioTimeLimit > 0) {
@@ -76,6 +87,10 @@ export class ObjectivesManager {
     // Subscribe to update loop
     this.eventBus_.on(Events.UPDATE, this.update_.bind(this));
 
+    // Subscribe to quiz events for timer control
+    this.eventBus_.on(Events.QUIZ_PASSED, this.boundQuizPassedHandler_);
+    this.eventBus_.on(Events.QUIZ_COMPLETED, this.boundQuizCompletedHandler_);
+
     // Start the 1-second timer interval for countdown updates
     this.startTimerInterval_();
   }
@@ -111,6 +126,8 @@ export class ObjectivesManager {
   static destroy(): void {
     if (ObjectivesManager.instance_) {
       ObjectivesManager.instance_.eventBus_.off(Events.UPDATE, ObjectivesManager.instance_.update_.bind(ObjectivesManager.instance_));
+      ObjectivesManager.instance_.eventBus_.off(Events.QUIZ_PASSED, ObjectivesManager.instance_.boundQuizPassedHandler_);
+      ObjectivesManager.instance_.eventBus_.off(Events.QUIZ_COMPLETED, ObjectivesManager.instance_.boundQuizCompletedHandler_);
 
       // Clear timer interval
       if (ObjectivesManager.instance_.timerInterval_) {
@@ -260,6 +277,53 @@ export class ObjectivesManager {
     for (const state of this.objectiveStates_) {
       state.isTimerRunning = false;
     }
+  }
+
+  /**
+   * Handle quiz passed - pause all timers and set passed state
+   * Called when user selects correct answer (before clicking Continue)
+   */
+  private handleQuizPassed_(data: QuizPassedData): void {
+    this.isQuizPassed_ = true;
+    this.passedObjectiveId_ = data.objectiveId;
+
+    // Pause scenario timer
+    this.scenarioTimerRunning_ = false;
+
+    // Pause the objective timer for the passed objective
+    const state = this.objectiveStates_.find(s => s.objective.id === data.objectiveId);
+    if (state) {
+      state.isTimerRunning = false;
+    }
+  }
+
+  /**
+   * Handle quiz completed - resume scenario timer
+   * Called when user clicks Continue button after correct answer
+   */
+  private handleQuizCompleted_(_data: QuizCompletedData): void {
+    this.isQuizPassed_ = false;
+    this.passedObjectiveId_ = null;
+
+    // Resume scenario timer
+    if (this.scenarioTimeLimit_ !== null && this.scenarioTimeRemaining_ > 0) {
+      this.scenarioTimerRunning_ = true;
+    }
+    // Note: objective timer doesn't resume - it will be replaced by next objective's timer
+  }
+
+  /**
+   * Check if a quiz has been passed (correct answer selected, waiting for Continue)
+   */
+  isQuizPassed(): boolean {
+    return this.isQuizPassed_;
+  }
+
+  /**
+   * Get the objective ID that was passed (if any)
+   */
+  getPassedObjectiveId(): string | null {
+    return this.passedObjectiveId_;
   }
 
   /**

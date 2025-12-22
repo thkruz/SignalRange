@@ -283,3 +283,14 @@
   color: #ef4444;
   font-weight: 800;
 }
+
+/* Passed state - quiz answered correctly */
+.timer-display.timer-passed {
+  border-color: rgba(34, 197, 94, 0.7);
+  background: rgba(34, 197, 94, 0.2);
+}
+
+.timer-display.timer-passed .timer-value {
+  color: #22c55e;
+  font-weight: 800;
+}

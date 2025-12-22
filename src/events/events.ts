@@ -154,6 +154,13 @@ export interface QuizPendingData {
   conditionIndex: number;
 }
 
+export interface QuizPassedData {
+  objectiveId: string;
+  conditionIndex: number;
+  attempts: number;
+  pointsDeducted: number;
+}
+
 export interface ScenarioTimeExpiredData {
   elapsedTime: number;
   timeLimit: number;
@@ -246,6 +253,7 @@ export enum Events {
   QUIZ_COMPLETED = 'quiz:completed',
   QUIZ_DISMISSED = 'quiz:dismissed',
   QUIZ_PENDING = 'quiz:pending',
+  QUIZ_PASSED = 'quiz:passed',
 
   // Progress Save events
   PROGRESS_SAVE_START = 'progress:save:start',
@@ -311,6 +319,7 @@ export interface EventMap {
   [Events.QUIZ_COMPLETED]: [QuizCompletedData];
   [Events.QUIZ_DISMISSED]: [QuizDismissedData];
   [Events.QUIZ_PENDING]: [QuizPendingData];
+  [Events.QUIZ_PASSED]: [QuizPassedData];
 
   [Events.PROGRESS_SAVE_START]: [ProgressSaveStartData];
   [Events.PROGRESS_SAVE_SUCCESS]: [ProgressSaveSuccessData];

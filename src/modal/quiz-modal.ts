@@ -4,7 +4,7 @@
  */
 
 import { EventBus } from '@app/events/event-bus';
-import { Events, QuizAnsweredData, QuizDismissedData, QuizShowData } from '@app/events/events';
+import { Events, QuizAnsweredData, QuizCompletedData, QuizDismissedData, QuizPassedData, QuizShowData } from '@app/events/events';
 import { DraggableBox } from '@engine/ui/draggable-box';
 import { getEl, showEl } from '@engine/utils/get-el';
 import { html } from '@engine/utils/development/formatter';
@@ -24,6 +24,7 @@ export class QuizModal extends DraggableBox {
   private isShowingFeedback_: boolean = false;
   private domCreated_: boolean = false;
   private shuffledIndices_: number[] = [];
+  private overlayEl_: HTMLDivElement | null = null;
 
   private readonly boundShowQuizHandler_: (data: QuizShowData) => void;
 
@@ -193,22 +194,20 @@ export class QuizModal extends DraggableBox {
     this.updateButtonStates_(index, isCorrect);
 
     if (isCorrect) {
-      // Emit correct answer immediately to stop the timer
-      // The Continue button just closes the modal after reading the explanation
-      const answeredData: QuizAnsweredData = {
+      // Emit QUIZ_PASSED immediately to pause timers and show "PASS"
+      // QUIZ_COMPLETED will be emitted when Continue is pressed
+      const passedData: QuizPassedData = {
         objectiveId: this.currentQuiz_.objectiveId,
         conditionIndex: this.currentQuiz_.conditionIndex,
-        isCorrect: true,
-        selectedIndex: index,
         attempts: this.attempts_,
         pointsDeducted: this.totalPointsDeducted_,
       };
-      EventBus.getInstance().emit(Events.QUIZ_ANSWERED, answeredData);
+      EventBus.getInstance().emit(Events.QUIZ_PASSED, passedData);
       this.showCorrectFeedback_();
     } else {
       this.showIncorrectFeedback_(index);
 
-      // Only emit for incorrect answers immediately (for point tracking)
+      // Emit for incorrect answers (for point tracking)
       const answeredData: QuizAnsweredData = {
         objectiveId: this.currentQuiz_.objectiveId,
         conditionIndex: this.currentQuiz_.conditionIndex,
@@ -248,6 +247,15 @@ export class QuizModal extends DraggableBox {
 
     this.isShowingFeedback_ = true;
 
+    // Hide close button so user must click Continue
+    const closeBtn = getEl(`${this.boxId}-close`);
+    if (closeBtn) {
+      closeBtn.style.display = 'none';
+    }
+
+    // Show modal overlay to block background interaction
+    this.showOverlay_();
+
     const feedbackEl = getEl('quiz-feedback');
     const avatarEl = getEl('quiz-avatar') as HTMLImageElement;
 
@@ -279,10 +287,52 @@ export class QuizModal extends DraggableBox {
   }
 
   /**
-   * Handle Continue button click - just close the modal
-   * The correct answer was already emitted immediately when answered
+   * Show the modal overlay behind the quiz
+   */
+  private showOverlay_(): void {
+    if (this.overlayEl_) return;
+
+    this.overlayEl_ = document.createElement('div');
+    this.overlayEl_.className = 'quiz-modal-overlay';
+    document.body.appendChild(this.overlayEl_);
+
+    // Ensure quiz box is above overlay
+    if (this.boxEl) {
+      this.boxEl.style.zIndex = (DraggableBox.getMaxZIndex() + 1).toString();
+    }
+  }
+
+  /**
+   * Hide and remove the modal overlay
+   */
+  private hideOverlay_(): void {
+    if (this.overlayEl_) {
+      this.overlayEl_.remove();
+      this.overlayEl_ = null;
+    }
+  }
+
+  /**
+   * Handle Continue button click - emit QUIZ_COMPLETED and close the modal
+   * QUIZ_PASSED was already emitted when the correct answer was selected
    */
   private handleContinueClick_(): void {
+    if (!this.currentQuiz_) {
+      this.close();
+      return;
+    }
+
+    // Emit QUIZ_COMPLETED to mark the quiz as complete and resume scenario timer
+    const completedData: QuizCompletedData = {
+      objectiveId: this.currentQuiz_.objectiveId,
+      conditionIndex: this.currentQuiz_.conditionIndex,
+      totalAttempts: this.attempts_,
+      totalPointsDeducted: this.totalPointsDeducted_,
+    };
+    EventBus.getInstance().emit(Events.QUIZ_COMPLETED, completedData);
+
+    // Hide overlay and close modal
+    this.hideOverlay_();
     this.close();
   }
 
@@ -354,6 +404,15 @@ export class QuizModal extends DraggableBox {
         conditionIndex: this.currentQuiz_.conditionIndex,
       };
       EventBus.getInstance().emit(Events.QUIZ_DISMISSED, dismissedData);
+    }
+
+    // Clean up overlay if still present
+    this.hideOverlay_();
+
+    // Restore close button visibility for next use
+    const closeBtn = getEl(`${this.boxId}-close`);
+    if (closeBtn) {
+      closeBtn.style.display = '';
     }
 
     this.currentQuiz_ = null;

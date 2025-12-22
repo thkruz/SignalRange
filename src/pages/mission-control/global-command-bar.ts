@@ -303,22 +303,32 @@ export class GlobalCommandBar {
     if (this.objectiveTimerEl_) {
       let activeObjectiveTimer: { time: number; title: string } | null = null;
       let failedObjective: { title: string } | null = null;
+      let passedObjective: { title: string } | null = null;
 
       if (objectivesManager) {
-        const states = objectivesManager.getObjectiveStates();
-        for (const state of states) {
-          // Check for failed objectives first
-          if (state.isFailed && state.objective.timeLimitSeconds !== undefined) {
-            failedObjective = { title: state.objective.title };
-            break; // Show failed state
+        // Check for quiz passed state first
+        if (objectivesManager.isQuizPassed()) {
+          const passedId = objectivesManager.getPassedObjectiveId();
+          const passedState = objectivesManager.getObjectiveStates().find(s => s.objective.id === passedId);
+          if (passedState) {
+            passedObjective = { title: passedState.objective.title };
           }
-          if (state.isTimerRunning && !state.isCompleted && !state.isFailed &&
-            state.timeRemainingSeconds !== undefined) {
-            activeObjectiveTimer = {
-              time: state.timeRemainingSeconds,
-              title: state.objective.title
-            };
-            break; // Show the first active timed objective
+        } else {
+          const states = objectivesManager.getObjectiveStates();
+          for (const state of states) {
+            // Check for failed objectives first
+            if (state.isFailed && state.objective.timeLimitSeconds !== undefined) {
+              failedObjective = { title: state.objective.title };
+              break; // Show failed state
+            }
+            if (state.isTimerRunning && !state.isCompleted && !state.isFailed &&
+              state.timeRemainingSeconds !== undefined) {
+              activeObjectiveTimer = {
+                time: state.timeRemainingSeconds,
+                title: state.objective.title
+              };
+              break; // Show the first active timed objective
+            }
           }
         }
       }
@@ -326,14 +336,22 @@ export class GlobalCommandBar {
       const valueEl = this.objectiveTimerEl_.querySelector('#objective-timer-value');
       this.objectiveTimerEl_.style.display = 'flex';
 
-      if (failedObjective) {
+      if (passedObjective) {
+        // Quiz passed - show PASS in green
+        if (valueEl) {
+          valueEl.textContent = 'PASS';
+        }
+        this.objectiveTimerEl_.title = `Passed: ${passedObjective.title}`;
+        this.objectiveTimerEl_.classList.add('timer-passed');
+        this.objectiveTimerEl_.classList.remove('timer-warning', 'timer-urgent', 'timer-unlimited', 'timer-failed');
+      } else if (failedObjective) {
         // An objective has failed - show FAIL in red
         if (valueEl) {
           valueEl.textContent = 'FAIL';
         }
         this.objectiveTimerEl_.title = `Failed: ${failedObjective.title}`;
         this.objectiveTimerEl_.classList.add('timer-failed');
-        this.objectiveTimerEl_.classList.remove('timer-warning', 'timer-urgent', 'timer-unlimited');
+        this.objectiveTimerEl_.classList.remove('timer-warning', 'timer-urgent', 'timer-unlimited', 'timer-passed');
       } else if (activeObjectiveTimer && objectivesManager) {
         const timeStr = objectivesManager.formatTimeRemaining(activeObjectiveTimer.time);
         if (valueEl) {
@@ -344,12 +362,12 @@ export class GlobalCommandBar {
         // Add urgency class
         if (activeObjectiveTimer.time <= 30) {
           this.objectiveTimerEl_.classList.add('timer-urgent');
-          this.objectiveTimerEl_.classList.remove('timer-warning', 'timer-unlimited', 'timer-failed');
+          this.objectiveTimerEl_.classList.remove('timer-warning', 'timer-unlimited', 'timer-failed', 'timer-passed');
         } else if (activeObjectiveTimer.time <= 60) {
           this.objectiveTimerEl_.classList.add('timer-warning');
-          this.objectiveTimerEl_.classList.remove('timer-urgent', 'timer-unlimited', 'timer-failed');
+          this.objectiveTimerEl_.classList.remove('timer-urgent', 'timer-unlimited', 'timer-failed', 'timer-passed');
         } else {
-          this.objectiveTimerEl_.classList.remove('timer-warning', 'timer-urgent', 'timer-unlimited', 'timer-failed');
+          this.objectiveTimerEl_.classList.remove('timer-warning', 'timer-urgent', 'timer-unlimited', 'timer-failed', 'timer-passed');
         }
       } else {
         // No active timed objective - show unlimited indicator
@@ -357,7 +375,7 @@ export class GlobalCommandBar {
           valueEl.textContent = '∞';
         }
         this.objectiveTimerEl_.title = 'No time limit';
-        this.objectiveTimerEl_.classList.remove('timer-warning', 'timer-urgent', 'timer-failed');
+        this.objectiveTimerEl_.classList.remove('timer-warning', 'timer-urgent', 'timer-failed', 'timer-passed');
         this.objectiveTimerEl_.classList.add('timer-unlimited');
       }
     }

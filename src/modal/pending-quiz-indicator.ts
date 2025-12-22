@@ -4,7 +4,7 @@
  */
 
 import { EventBus } from '@app/events/event-bus';
-import { Events, QuizCompletedData, QuizDismissedData, QuizPendingData, QuizShowData } from '@app/events/events';
+import { Events, QuizCompletedData, QuizDismissedData, QuizPassedData, QuizPendingData, QuizShowData } from '@app/events/events';
 import { QuizManager } from './quiz-manager';
 import './pending-quiz-indicator.css';
 
@@ -27,12 +27,14 @@ export class PendingQuizIndicator {
   private readonly boundQuizDismissedHandler_: (data: QuizDismissedData) => void;
   private readonly boundQuizCompletedHandler_: (data: QuizCompletedData) => void;
   private readonly boundQuizPendingHandler_: (data: QuizPendingData) => void;
+  private readonly boundQuizPassedHandler_: (data: QuizPassedData) => void;
 
   private constructor() {
     this.boundQuizShowHandler_ = this.handleQuizShow_.bind(this);
     this.boundQuizDismissedHandler_ = this.handleQuizDismissed_.bind(this);
     this.boundQuizCompletedHandler_ = this.handleQuizCompleted_.bind(this);
     this.boundQuizPendingHandler_ = this.handleQuizPending_.bind(this);
+    this.boundQuizPassedHandler_ = this.handleQuizPassed_.bind(this);
 
     this.createIndicatorElement_();
     this.setupEventListeners_();
@@ -77,6 +79,7 @@ export class PendingQuizIndicator {
     eventBus.on(Events.QUIZ_DISMISSED, this.boundQuizDismissedHandler_);
     eventBus.on(Events.QUIZ_COMPLETED, this.boundQuizCompletedHandler_);
     eventBus.on(Events.QUIZ_PENDING, this.boundQuizPendingHandler_);
+    eventBus.on(Events.QUIZ_PASSED, this.boundQuizPassedHandler_);
   }
 
   /**
@@ -99,6 +102,15 @@ export class PendingQuizIndicator {
    * When quiz is completed, hide the indicator and cancel any pending timeout
    */
   private handleQuizCompleted_(_data: QuizCompletedData): void {
+    this.cancelPendingTimeout_();
+    this.hide_();
+  }
+
+  /**
+   * When quiz is passed (correct answer selected), hide the indicator immediately
+   * This happens before Continue is pressed
+   */
+  private handleQuizPassed_(_data: QuizPassedData): void {
     this.cancelPendingTimeout_();
     this.hide_();
   }
@@ -171,6 +183,7 @@ export class PendingQuizIndicator {
     eventBus.off(Events.QUIZ_DISMISSED, this.boundQuizDismissedHandler_);
     eventBus.off(Events.QUIZ_COMPLETED, this.boundQuizCompletedHandler_);
     eventBus.off(Events.QUIZ_PENDING, this.boundQuizPendingHandler_);
+    eventBus.off(Events.QUIZ_PASSED, this.boundQuizPassedHandler_);
 
     if (this.indicatorElement_) {
       this.indicatorElement_.remove();

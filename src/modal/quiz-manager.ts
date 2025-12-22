@@ -4,7 +4,7 @@
  */
 
 import { EventBus } from '@app/events/event-bus';
-import { Events, QuizAnsweredData, QuizCompletedData, QuizDismissedData, QuizPendingData, QuizShowData } from '@app/events/events';
+import { Events, QuizAnsweredData, QuizCompletedData, QuizDismissedData, QuizPassedData, QuizPendingData, QuizShowData } from '@app/events/events';
 
 interface QuizState {
   objectiveId: string;
@@ -33,13 +33,19 @@ export class QuizManager {
 
   private readonly boundQuizAnsweredHandler_: (data: QuizAnsweredData) => void;
   private readonly boundQuizDismissedHandler_: (data: QuizDismissedData) => void;
+  private readonly boundQuizPassedHandler_: (data: QuizPassedData) => void;
+  private readonly boundQuizCompletedHandler_: (data: QuizCompletedData) => void;
 
   private constructor() {
     this.boundQuizAnsweredHandler_ = this.handleQuizAnswered_.bind(this);
     this.boundQuizDismissedHandler_ = this.handleQuizDismissed_.bind(this);
+    this.boundQuizPassedHandler_ = this.handleQuizPassed_.bind(this);
+    this.boundQuizCompletedHandler_ = this.handleQuizCompleted_.bind(this);
 
     EventBus.getInstance().on(Events.QUIZ_ANSWERED, this.boundQuizAnsweredHandler_);
     EventBus.getInstance().on(Events.QUIZ_DISMISSED, this.boundQuizDismissedHandler_);
+    EventBus.getInstance().on(Events.QUIZ_PASSED, this.boundQuizPassedHandler_);
+    EventBus.getInstance().on(Events.QUIZ_COMPLETED, this.boundQuizCompletedHandler_);
   }
 
   static getInstance(): QuizManager {
@@ -186,9 +192,13 @@ export class QuizManager {
   }
 
   /**
-   * Handle quiz answer from the modal
+   * Handle incorrect quiz answer from the modal
+   * Correct answers are now handled by QUIZ_PASSED event
    */
   private handleQuizAnswered_(data: QuizAnsweredData): void {
+    // Only process incorrect answers - correct answers use QUIZ_PASSED
+    if (data.isCorrect) return;
+
     const key = this.getKey_(data.objectiveId, data.conditionIndex);
     const state = this.quizStates_.get(key);
 
@@ -199,23 +209,25 @@ export class QuizManager {
 
     state.attempts++;
     state.totalPointsDeducted = data.pointsDeducted;
+  }
 
-    if (data.isCorrect) {
-      state.isComplete = true;
+  /**
+   * Handle quiz completed (Continue button pressed after correct answer)
+   * This marks the quiz as complete so the objective can advance
+   */
+  private handleQuizCompleted_(data: QuizCompletedData): void {
+    const key = this.getKey_(data.objectiveId, data.conditionIndex);
+    const state = this.quizStates_.get(key);
 
-      // Clear pending status since quiz is now complete
-      this.pendingQuizKey_ = null;
-
-      // Emit quiz completed event
-      const completedData: QuizCompletedData = {
-        objectiveId: data.objectiveId,
-        conditionIndex: data.conditionIndex,
-        totalAttempts: state.attempts,
-        totalPointsDeducted: state.totalPointsDeducted,
-      };
-
-      EventBus.getInstance().emit(Events.QUIZ_COMPLETED, completedData);
+    if (!state) {
+      console.error(`Quiz state not found for ${key}`);
+      return;
     }
+
+    // Now mark the quiz as complete
+    state.isComplete = true;
+    state.attempts = data.totalAttempts;
+    state.totalPointsDeducted = data.totalPointsDeducted;
   }
 
   /**
@@ -231,6 +243,30 @@ export class QuizManager {
       // Quiz is still pending, no state change needed
       // The pending indicator will use hasPendingQuiz() to show
     }
+  }
+
+  /**
+   * Handle quiz passed (correct answer selected, waiting for Continue)
+   * Clears pending status but does NOT mark complete yet - that happens on QUIZ_COMPLETED
+   */
+  private handleQuizPassed_(data: QuizPassedData): void {
+    const key = this.getKey_(data.objectiveId, data.conditionIndex);
+    const state = this.quizStates_.get(key);
+
+    if (!state) {
+      console.error(`Quiz state not found for ${key}`);
+      return;
+    }
+
+    // Update attempts and points
+    state.attempts = data.attempts;
+    state.totalPointsDeducted = data.pointsDeducted;
+
+    // Clear pending status - user has answered correctly
+    this.pendingQuizKey_ = null;
+
+    // Note: isComplete is NOT set here - it will be set when QUIZ_COMPLETED fires
+    // This allows the objective to wait for the Continue button
   }
 
   private getKey_(objectiveId: string, conditionIndex: number): string {

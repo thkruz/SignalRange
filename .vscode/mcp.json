@@ -1,0 +1,9 @@
+{
+	"servers": {
+		"supabase-mcp": {
+			"url": "https://mcp.supabase.com/mcp",
+			"type": "http"
+		}
+	},
+	"inputs": []
+}

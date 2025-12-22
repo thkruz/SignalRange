@@ -33,6 +33,7 @@ coverage/
 # Temporary files
 tmp/
 temp/
+supabase/
 
 # Notes
 *.notes.*

@@ -133,38 +133,22 @@ export class ScenarioCompletionHandler {
 
   /**
    * Save the final score to user progress
+   * Uses direct per-scenario API - no read-modify-write needed
    */
   private async saveScore_(scenarioId: string, score: ScoreBreakdown, _elapsedTime: number): Promise<void> {
     try {
-      const progress = await this.userDataService_.getUserProgress();
-
-      // Initialize scenarioProgress if it doesn't exist
-      const scenarioProgress = progress.scenarioProgress ?? {};
-
-      // Use scenario number as the key (for backward compatibility with existing type)
       const scenarioManager = ScenarioManager.getInstance();
       const scenarioNumber = scenarioManager.data?.number ?? 0;
 
-      // Update the scenario progress with score breakdown
-      scenarioProgress[scenarioNumber] = {
-        completedObjectives: scenarioProgress[scenarioNumber]?.completedObjectives ?? [],
+      // Direct update to specific scenario - backend handles totalScore aggregation
+      await this.userDataService_.updateScenarioProgress(scenarioId, {
         score: score.totalScore,
         basePoints: score.basePoints,
         timeBonus: score.timeBonus,
         quizPenalties: score.quizPenalties,
         completedAt: new Date().toISOString(),
         lastPlayed: new Date().toISOString(),
-      };
-
-      // Calculate total score across all scenarios
-      const totalScore = Object.values(scenarioProgress).reduce(
-        (sum, sp) => sum + (sp.score ?? 0),
-        0
-      );
-
-      await this.userDataService_.updateUserProgress({
-        scenarioProgress,
-        totalScore,
+        scenarioNumber,
       });
 
       Logger.info(`Score saved for scenario ${scenarioId}: ${score.totalScore}`);

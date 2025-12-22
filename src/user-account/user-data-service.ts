@@ -1,16 +1,26 @@
 import { errorManagerInstance } from '@app/engine/utils/errorManager';
 import {
   Achievement,
+  AppId,
+  AppPreferences,
+  Checkpoint,
+  FullAppUserData,
   FullUserData,
   isApiErrorResponse,
+  ScenarioProgress,
+  ScenariosProgressResponse,
+  UpdateScenarioProgressRequest,
   UpdateUserDataRequest,
   UpdateUserPreferencesRequest,
   UpdateUserProfileRequest,
   UpdateUserProgressRequest,
+  UpsertCheckpointRequest,
   User,
   UserAchievement,
+  UserAppSummary,
   UserData,
   UserPreferences,
+  UserPreferencesData,
   UserProgress,
 } from './types';
 import { UserDataServiceError } from './user-data-service-error';
@@ -21,6 +31,7 @@ import { UserDataServiceError } from './user-data-service-error';
 export interface UserDataServiceConfig {
   apiBaseUrl: string;
   getAccessToken: () => string | null;
+  appId?: AppId;
   enableRetry?: boolean;
   maxRetries?: number;
   retryDelay?: number;
@@ -43,10 +54,18 @@ export class UserDataService {
     this.config = {
       apiBaseUrl: config.apiBaseUrl,
       getAccessToken: config.getAccessToken,
+      appId: config.appId ?? 'signalrange',
       enableRetry: config.enableRetry ?? true,
       maxRetries: config.maxRetries ?? 3,
       retryDelay: config.retryDelay ?? 1000,
     };
+  }
+
+  /**
+   * Get the app ID for this service instance
+   */
+  get appId(): AppId {
+    return this.config.appId;
   }
 
   /**
@@ -243,8 +262,191 @@ export class UserDataService {
     }
   }
 
+  // ============================================================================
+  // New Granular API Methods (app-scoped, per-scenario)
+  // ============================================================================
+
+  /**
+   * Get all scenarios progress for the current app
+   */
+  async getAllScenariosProgress(): Promise<ScenariosProgressResponse> {
+    const response = await this.request<any>(
+      `/api/user/apps/${this.config.appId}/scenarios/progress`,
+      'GET',
+    );
+
+    return this.transformScenariosProgressResponse(response);
+  }
+
+  /**
+   * Get progress for a specific scenario
+   */
+  async getScenarioProgress(scenarioId: string): Promise<ScenarioProgress | null> {
+    try {
+      const response = await this.request<any>(
+        `/api/user/apps/${this.config.appId}/scenarios/${scenarioId}/progress`,
+        'GET',
+      );
+
+      return this.transformScenarioProgress(response);
+    } catch (error) {
+      // Return null for 404 (not found)
+      if (error instanceof UserDataServiceError && error.statusCode === 404) {
+        return null;
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Update progress for a specific scenario (upsert)
+   */
+  async updateScenarioProgress(
+    scenarioId: string,
+    updates: UpdateScenarioProgressRequest,
+  ): Promise<ScenarioProgress> {
+    const response = await this.request<any>(
+      `/api/user/apps/${this.config.appId}/scenarios/${scenarioId}/progress`,
+      'PUT',
+      updates,
+    );
+
+    return this.transformScenarioProgress(response);
+  }
+
+  /**
+   * Delete progress for a specific scenario
+   */
+  async deleteScenarioProgress(scenarioId: string): Promise<void> {
+    await this.request<void>(
+      `/api/user/apps/${this.config.appId}/scenarios/${scenarioId}/progress`,
+      'DELETE',
+    );
+  }
+
+  /**
+   * Get checkpoint for a specific scenario (new API)
+   */
+  async getCheckpoint(scenarioId: string): Promise<Checkpoint | null> {
+    try {
+      const response = await this.request<any>(
+        `/api/user/apps/${this.config.appId}/scenarios/${scenarioId}/checkpoint`,
+        'GET',
+      );
+
+      return this.transformCheckpoint(response);
+    } catch (error) {
+      // Return null for 404 (not found)
+      if (error instanceof UserDataServiceError && error.statusCode === 404) {
+        return null;
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Save checkpoint for a specific scenario (upsert)
+   */
+  async saveCheckpoint(scenarioId: string, checkpoint: UpsertCheckpointRequest): Promise<Checkpoint> {
+    const response = await this.request<any>(
+      `/api/user/apps/${this.config.appId}/scenarios/${scenarioId}/checkpoint`,
+      'PUT',
+      checkpoint,
+    );
+
+    return this.transformCheckpoint(response);
+  }
+
+  /**
+   * Delete checkpoint for a specific scenario
+   */
+  async deleteCheckpoint(scenarioId: string): Promise<void> {
+    await this.request<void>(
+      `/api/user/apps/${this.config.appId}/scenarios/${scenarioId}/checkpoint`,
+      'DELETE',
+    );
+  }
+
+  /**
+   * Check if a checkpoint exists for a specific scenario (HEAD request)
+   */
+  async checkpointExists(scenarioId: string): Promise<boolean> {
+    try {
+      await this.request<void>(
+        `/api/user/apps/${this.config.appId}/scenarios/${scenarioId}/checkpoint`,
+        'HEAD',
+      );
+
+      return true;
+    } catch (error) {
+      if (error instanceof UserDataServiceError && error.statusCode === 404) {
+        return false;
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Get app-specific preferences
+   */
+  async getAppPreferences(): Promise<AppPreferences> {
+    const response = await this.request<any>(
+      `/api/user/apps/${this.config.appId}/preferences`,
+      'GET',
+    );
+
+    return this.transformAppPreferences(response);
+  }
+
+  /**
+   * Update app-specific preferences
+   */
+  async updateAppPreferences(updates: Partial<UserPreferencesData>): Promise<AppPreferences> {
+    const response = await this.request<any>(
+      `/api/user/apps/${this.config.appId}/preferences`,
+      'PUT',
+      { preferences: updates },
+    );
+
+    return this.transformAppPreferences(response);
+  }
+
+  /**
+   * Get app summary (aggregated stats)
+   */
+  async getAppSummary(): Promise<UserAppSummary> {
+    const response = await this.request<any>(
+      `/api/user/apps/${this.config.appId}/summary`,
+      'GET',
+    );
+
+    return this.transformUserAppSummary(response);
+  }
+
+  /**
+   * Get full user data (app-scoped)
+   */
+  async getFullAppUserData(): Promise<FullAppUserData> {
+    const response = await this.request<any>(
+      `/api/user/apps/${this.config.appId}/full-data`,
+      'GET',
+    );
+
+    return {
+      user: this.transformUserProfile(response.user || response.profile),
+      preferences: this.transformAppPreferences(response.preferences),
+      progress: this.transformScenariosProgressResponse(response.progress),
+      achievements: response.achievements || [],
+    };
+  }
+
+  // ============================================================================
+  // Legacy Methods (deprecated - use granular methods above)
+  // ============================================================================
+
   /**
    * Remove a scenario from the completed scenarios list (for Play Again)
+   * @deprecated Use deleteScenarioProgress() instead
    */
   async removeCompletedScenario(scenarioNumber: number): Promise<void> {
     try {
@@ -353,12 +555,95 @@ export class UserDataService {
     } as UserProgress;
   }
 
+  // ============================================================================
+  // New Transform Methods (for normalized table types)
+  // ============================================================================
+
+  /**
+   * Transform API scenario progress response to client format
+   */
+  private transformScenarioProgress(apiProgress: any): ScenarioProgress {
+    return {
+      id: String(apiProgress.id || ''),
+      userId: apiProgress.user_id || apiProgress.userId || '',
+      appId: apiProgress.app_id || apiProgress.appId || this.config.appId,
+      scenarioId: apiProgress.scenario_id || apiProgress.scenarioId || '',
+      scenarioNumber: apiProgress.scenario_number ?? apiProgress.scenarioNumber,
+      completedObjectives: apiProgress.completed_objectives || apiProgress.completedObjectives || [],
+      score: apiProgress.score ?? 0,
+      basePoints: apiProgress.base_points ?? apiProgress.basePoints ?? 0,
+      timeBonus: apiProgress.time_bonus ?? apiProgress.timeBonus ?? 0,
+      quizPenalties: apiProgress.quiz_penalties ?? apiProgress.quizPenalties ?? 0,
+      completedAt: apiProgress.completed_at || apiProgress.completedAt,
+      lastPlayed: apiProgress.last_played || apiProgress.lastPlayed || new Date().toISOString(),
+      createdAt: apiProgress.created_at || apiProgress.createdAt || new Date().toISOString(),
+      updatedAt: apiProgress.updated_at || apiProgress.updatedAt || new Date().toISOString(),
+    };
+  }
+
+  /**
+   * Transform API scenarios progress response (batch) to client format
+   */
+  private transformScenariosProgressResponse(apiResponse: any): ScenariosProgressResponse {
+    const scenarios = (apiResponse.scenarios || []).map((s: any) => this.transformScenarioProgress(s));
+    const summary = this.transformUserAppSummary(apiResponse.summary || {});
+
+    return { scenarios, summary };
+  }
+
+  /**
+   * Transform API checkpoint response to client format
+   */
+  private transformCheckpoint(apiCheckpoint: any): Checkpoint {
+    return {
+      id: String(apiCheckpoint.id || ''),
+      userId: apiCheckpoint.user_id || apiCheckpoint.userId || '',
+      appId: apiCheckpoint.app_id || apiCheckpoint.appId || this.config.appId,
+      scenarioId: apiCheckpoint.scenario_id || apiCheckpoint.scenarioId || '',
+      version: apiCheckpoint.version || '',
+      state: apiCheckpoint.state || {},
+      savedAt: apiCheckpoint.saved_at || apiCheckpoint.savedAt || new Date().toISOString(),
+      createdAt: apiCheckpoint.created_at || apiCheckpoint.createdAt || new Date().toISOString(),
+      updatedAt: apiCheckpoint.updated_at || apiCheckpoint.updatedAt || new Date().toISOString(),
+    };
+  }
+
+  /**
+   * Transform API app preferences response to client format
+   */
+  private transformAppPreferences(apiPrefs: any): AppPreferences {
+    return {
+      id: String(apiPrefs.id || ''),
+      userId: apiPrefs.user_id || apiPrefs.userId || '',
+      appId: apiPrefs.app_id || apiPrefs.appId || this.config.appId,
+      preferences: apiPrefs.preferences || {},
+      createdAt: apiPrefs.created_at || apiPrefs.createdAt || new Date().toISOString(),
+      updatedAt: apiPrefs.updated_at || apiPrefs.updatedAt || new Date().toISOString(),
+    };
+  }
+
+  /**
+   * Transform API user app summary response to client format
+   */
+  private transformUserAppSummary(apiSummary: any): UserAppSummary {
+    return {
+      id: String(apiSummary.id || ''),
+      userId: apiSummary.user_id || apiSummary.userId || '',
+      appId: apiSummary.app_id || apiSummary.appId || this.config.appId,
+      totalScore: apiSummary.total_score ?? apiSummary.totalScore ?? 0,
+      completedScenarioCount: apiSummary.completed_scenario_count ?? apiSummary.completedScenarioCount ?? 0,
+      lastPlayedScenario: apiSummary.last_played_scenario || apiSummary.lastPlayedScenario,
+      createdAt: apiSummary.created_at || apiSummary.createdAt || new Date().toISOString(),
+      updatedAt: apiSummary.updated_at || apiSummary.updatedAt || new Date().toISOString(),
+    };
+  }
+
   /**
    * Internal method to make HTTP requests with retry logic and error handling
    */
   private async request<T>(
     endpoint: string,
-    method: 'GET' | 'POST' | 'PUT' | 'DELETE',
+    method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'HEAD',
     body?: unknown,
     retryCount: number = 0,
   ): Promise<T> {
@@ -388,6 +673,11 @@ export class UserDataService {
         }
 
         throw new UserDataServiceError(`HTTP ${response.status}: ${response.statusText}`, response.status);
+      }
+
+      // HEAD requests don't have a body
+      if (method === 'HEAD') {
+        return undefined as T;
       }
 
       // Parse and return successful response

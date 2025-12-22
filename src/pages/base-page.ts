@@ -229,19 +229,29 @@ export abstract class BasePage extends BaseElement {
   /**
    * Check if the current scenario is already marked as complete.
    * Returns the saved progress entry if complete, null otherwise.
+   * Uses direct per-scenario API for efficient lookup.
    */
   private async checkScenarioAlreadyComplete_(): Promise<ScenarioProgressEntry | null> {
     const scenario = ScenarioManager.getInstance();
-    const scenarioNumber = scenario.data?.number;
-    if (!scenarioNumber) return null;
+    const scenarioId = scenario.data?.id;
+    if (!scenarioId) return null;
 
     try {
-      const progress = await getUserDataService().getUserProgress();
-      const completedScenarios = progress.completedScenarios ?? [];
+      const progress = await getUserDataService().getScenarioProgress(scenarioId);
 
-      if (!completedScenarios.includes(scenarioNumber)) return null;
+      // Return null if no progress or not completed
+      if (!progress?.completedAt) return null;
 
-      return progress.scenarioProgress?.[scenarioNumber] ?? null;
+      // Convert to legacy ScenarioProgressEntry format for compatibility
+      return {
+        completedObjectives: progress.completedObjectives,
+        score: progress.score,
+        basePoints: progress.basePoints,
+        timeBonus: progress.timeBonus,
+        quizPenalties: progress.quizPenalties,
+        completedAt: progress.completedAt,
+        lastPlayed: progress.lastPlayed,
+      };
     } catch (error) {
       Logger.error('Failed to check scenario completion status:', error);
       return null;

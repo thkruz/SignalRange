@@ -81,6 +81,7 @@ export class ScenarioSelectionPage extends BasePage {
 
   /**
    * Load checkpoint status and update the UI
+   * Uses new batch API to get all progress + checkpoint info in one call
    */
   private async loadCheckpointsAndUpdate_(): Promise<void> {
     try {
@@ -90,19 +91,28 @@ export class ScenarioSelectionPage extends BasePage {
 
       const userDataService = getUserDataService();
 
-      const progress = await userDataService.getUserProgress().catch(() => null);
-      const signalForge = progress?.signalForge ?? [];
+      // Get all scenarios progress in one call
+      const progressResponse = await userDataService.getAllScenariosProgress().catch(() => null);
 
-      // Build a map of scenario IDs that have checkpoints
-      signalForge.forEach(checkpoint => {
-        this.scenarioCheckpoints_.set(checkpoint.scenarioId, true);
-      });
+      if (progressResponse) {
+        // Clear previous data
+        this.scenarioCheckpoints_.clear();
+        this.completedScenarioIds_ = [];
 
-      // Load completed scenarios - convert scenario numbers to IDs
-      const completedScenarioNumbers = progress?.completedScenarios ?? [];
-      this.completedScenarioIds_ = completedScenarioNumbers
-        .map(num => SCENARIOS.find(s => s.number === num)?.id)
-        .filter(Boolean);
+        // Process each scenario's progress
+        for (const scenarioProgress of progressResponse.scenarios) {
+          // Check if checkpoint exists for this scenario
+          const hasCheckpoint = await userDataService.checkpointExists(scenarioProgress.scenarioId).catch(() => false);
+          if (hasCheckpoint) {
+            this.scenarioCheckpoints_.set(scenarioProgress.scenarioId, true);
+          }
+
+          // Check if scenario is completed
+          if (scenarioProgress.completedAt) {
+            this.completedScenarioIds_.push(scenarioProgress.scenarioId);
+          }
+        }
+      }
 
       // Re-render the scenario grid with checkpoint data
       this.updateScenarioCards_();
@@ -389,9 +399,9 @@ export class ScenarioSelectionPage extends BasePage {
     ModalConfirm.getInstance().open(
       async () => {
         try {
-          // Clear the checkpoint
+          // Clear the checkpoint using direct API
           const userDataService = getUserDataService();
-          await userDataService.clearScenarioCheckpoint(scenarioId);
+          await userDataService.deleteCheckpoint(scenarioId);
 
           Logger.info(`Checkpoint cleared for scenario: ${scenarioId}`);
 
@@ -426,17 +436,14 @@ export class ScenarioSelectionPage extends BasePage {
       return;
     }
 
-    // Remove from completed scenarios list (no confirmation needed for Play Again)
+    // Remove from completed scenarios list using direct API (no confirmation needed for Play Again)
     if (scenarioId) {
       try {
-        const scenario = SCENARIOS.find(s => s.id === scenarioId);
-        if (scenario) {
-          const userDataService = getUserDataService();
-          await userDataService.removeCompletedScenario(scenario.number);
-          Logger.info(`Removed from completed scenarios for Play Again: ${scenarioId}`);
-        }
+        const userDataService = getUserDataService();
+        await userDataService.deleteScenarioProgress(scenarioId);
+        Logger.info(`Removed scenario progress for Play Again: ${scenarioId}`);
       } catch (error) {
-        Logger.error('Failed to remove completed scenario for Play Again:', error);
+        Logger.error('Failed to remove scenario progress for Play Again:', error);
         // Continue anyway - user wants to play again
       }
     }

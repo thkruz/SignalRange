@@ -468,7 +468,7 @@ export const scenario5Data: ScenarioData = {
       `,
       character: Character.CHARLIE_BROOKS,
       emotion: Emotion.NEUTRAL,
-      audioUrl: getAssetUrl('/assets/campaigns/nats/level-5/intro.mp3'),
+      audioUrl: getAssetUrl('/assets/campaigns/nats/5/intro.mp3'),
     },
     objectives: {
       'initial-acquisition': {
@@ -485,7 +485,7 @@ export const scenario5Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/level-5/obj-initial.mp3'),
+        audioUrl: getAssetUrl('/assets/campaigns/nats/5/obj-initial.mp3'),
       },
       'first-tle-update': {
         text: `
@@ -501,7 +501,7 @@ export const scenario5Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/level-5/obj-first-tle.mp3'),
+        audioUrl: getAssetUrl('/assets/campaigns/nats/5/obj-first-tle.mp3'),
       },
       'maintain-lock-first-period': {
         text: `
@@ -514,7 +514,7 @@ export const scenario5Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/level-5/obj-maintain1.mp3'),
+        audioUrl: getAssetUrl('/assets/campaigns/nats/5/obj-maintain1.mp3'),
       },
       'second-tle-update': {
         text: `
@@ -527,7 +527,7 @@ export const scenario5Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/level-5/obj-second-tle.mp3'),
+        audioUrl: getAssetUrl('/assets/campaigns/nats/5/obj-second-tle.mp3'),
       },
       'complete-tracking-window': {
         text: `
@@ -543,7 +543,7 @@ export const scenario5Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.HAPPY,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/level-5/complete.mp3'),
+        audioUrl: getAssetUrl('/assets/campaigns/nats/5/complete.mp3'),
       },
     },
   },

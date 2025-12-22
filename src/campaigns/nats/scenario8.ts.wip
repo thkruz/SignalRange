@@ -674,7 +674,7 @@ export const level8FirstLightSolo: ScenarioData = {
       `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.CONCERNED,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/level-8/intro.mp3'),
+        audioUrl: getAssetUrl('/assets/campaigns/nats/8/intro.mp3'),
       },
       objectives: {
         'handle-weak-signal': {
@@ -688,7 +688,7 @@ export const level8FirstLightSolo: ScenarioData = {
         `,
           character: Character.FRANCIS_MARTIN, //Character.SYSTEM,
           emotion: Emotion.NEUTRAL,
-          audioUrl: getAssetUrl('/assets/campaigns/nats/level-8/obj-weak-signal.mp3'),
+          audioUrl: getAssetUrl('/assets/campaigns/nats/8/obj-weak-signal.mp3'),
         },
         'verify-bidirectional-link': {
           text: `
@@ -701,7 +701,7 @@ export const level8FirstLightSolo: ScenarioData = {
         `,
           character: Character.CHARLIE_BROOKS,
           emotion: Emotion.NEUTRAL,
-          audioUrl: getAssetUrl('/assets/campaigns/nats/level-8/obj-verify.mp3'),
+          audioUrl: getAssetUrl('/assets/campaigns/nats/8/obj-verify.mp3'),
         },
         'mission-complete': {
           text: `
@@ -729,7 +729,7 @@ export const level8FirstLightSolo: ScenarioData = {
         `,
           character: Character.CHARLIE_BROOKS,
           emotion: Emotion.HAPPY,
-          audioUrl: getAssetUrl('/assets/campaigns/nats/level-8/complete.mp3'),
+          audioUrl: getAssetUrl('/assets/campaigns/nats/8/complete.mp3'),
         },
       },
     },

@@ -103,7 +103,7 @@ export class Router {
       return;
     } else if (path === '/scenarios/3') {
       // Legacy route - redirect to new format
-      this.navigate('/campaigns/nats/scenarios/first-light3', this.navigationOptions_);
+      this.navigate('/campaigns/nats/scenarios/scenario3', this.navigationOptions_);
       return;
     } else {
       // Unknown route - go to campaign selection

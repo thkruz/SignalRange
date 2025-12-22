@@ -448,7 +448,7 @@ export const scenario4Data: ScenarioData = {
       `,
       character: Character.CHARLIE_BROOKS,
       emotion: Emotion.CONCERNED,
-      audioUrl: getAssetUrl('/assets/campaigns/nats/level-4/intro.mp3'),
+      audioUrl: getAssetUrl('/assets/campaigns/nats/4/intro.mp3'),
     },
     objectives: {
       'calculate-lnb-lo': {
@@ -465,7 +465,7 @@ export const scenario4Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.HAPPY,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/level-4/obj-calculation.mp3'),
+        audioUrl: getAssetUrl('/assets/campaigns/nats/4/obj-calculation.mp3'),
       },
       'select-if-filter': {
         text: `
@@ -478,7 +478,7 @@ export const scenario4Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/level-4/obj-filter.mp3'),
+        audioUrl: getAssetUrl('/assets/campaigns/nats/4/obj-filter.mp3'),
       },
       'configure-spectrum-analyzer': {
         text: `
@@ -491,7 +491,7 @@ export const scenario4Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/level-4/obj-speca.mp3'),
+        audioUrl: getAssetUrl('/assets/campaigns/nats/4/obj-speca.mp3'),
       },
       'power-configure-lnb': {
         text: `
@@ -504,7 +504,7 @@ export const scenario4Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/level-4/obj-lnb.mp3'),
+        audioUrl: getAssetUrl('/assets/campaigns/nats/4/obj-lnb.mp3'),
       },
       'acquire-beacon': {
         text: `
@@ -520,7 +520,7 @@ export const scenario4Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.HAPPY,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/level-4/complete.mp3'),
+        audioUrl: getAssetUrl('/assets/campaigns/nats/4/complete.mp3'),
       },
     },
   },

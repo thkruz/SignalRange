@@ -463,7 +463,7 @@ export const scenario2Data: ScenarioData = {
       `,
       character: Character.CHARLIE_BROOKS,
       emotion: Emotion.CONCERNED,
-      audioUrl: getAssetUrl('/assets/campaigns/nats/level-2/intro.mp3'),
+      audioUrl: getAssetUrl('/assets/campaigns/nats/2/intro.mp3'),
     },
     objectives: {
       'power-down-hpa': {
@@ -477,7 +477,7 @@ export const scenario2Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/level-2/obj-hpa-down.mp3'),
+        audioUrl: getAssetUrl('/assets/campaigns/nats/2/obj-hpa-down.mp3'),
       },
       'mute-buc': {
         text: `
@@ -490,7 +490,7 @@ export const scenario2Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/level-2/obj-buc-mute.mp3'),
+        audioUrl: getAssetUrl('/assets/campaigns/nats/2/obj-buc-mute.mp3'),
       },
       'antenna-stow': {
         text: `
@@ -503,7 +503,7 @@ export const scenario2Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/level-2/obj-stow.mp3'),
+        audioUrl: getAssetUrl('/assets/campaigns/nats/2/obj-stow.mp3'),
       },
       'maintenance-window': {
         text: `
@@ -516,7 +516,7 @@ export const scenario2Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/level-2/obj-maintenance-done.mp3'),
+        audioUrl: getAssetUrl('/assets/campaigns/nats/2/obj-maintenance-done.mp3'),
       },
       'power-up-lnb': {
         text: `
@@ -529,7 +529,7 @@ export const scenario2Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/level-2/obj-lnb-up.mp3'),
+        audioUrl: getAssetUrl('/assets/campaigns/nats/2/obj-lnb-up.mp3'),
       },
       'verify-beacon': {
         text: `
@@ -542,7 +542,7 @@ export const scenario2Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/level-2/obj-beacon.mp3'),
+        audioUrl: getAssetUrl('/assets/campaigns/nats/2/obj-beacon.mp3'),
       },
       'restore-transmit': {
         text: `
@@ -558,7 +558,7 @@ export const scenario2Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.HAPPY,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/level-2/complete.mp3'),
+        audioUrl: getAssetUrl('/assets/campaigns/nats/2/complete.mp3'),
       },
     },
   },

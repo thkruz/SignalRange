@@ -30,9 +30,9 @@ import type { Degrees } from 'ootk';
  */
 
 export const scenario3Data: ScenarioData = {
-  id: 'nats-level-3-weather-handover',
+  id: 'scenario3',
   prerequisiteScenarioIds: [],
-  url: 'nats/level-3/weather-handover',
+  url: 'nats/scenarios/scenario3',
   imageUrl: 'nats/3/card.png',
   number: 3,
   title: 'Level 3: "Weather Emergency Handover"',
@@ -604,7 +604,7 @@ export const scenario3Data: ScenarioData = {
       `,
       character: Character.CHARLIE_BROOKS,
       emotion: Emotion.NEUTRAL,
-      audioUrl: getAssetUrl('/assets/campaigns/nats/level-3/intro.mp3'),
+      audioUrl: getAssetUrl('/assets/campaigns/nats/3/intro.mp3'),
     },
     objectives: {
       'verify-maine-equipment': {
@@ -618,7 +618,7 @@ export const scenario3Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/level-3/obj-equipment.mp3'),
+        audioUrl: getAssetUrl('/assets/campaigns/nats/3/obj-equipment.mp3'),
       },
       'configure-maine-lnb': {
         text: `
@@ -631,7 +631,7 @@ export const scenario3Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/level-3/obj-lnb.mp3'),
+        audioUrl: getAssetUrl('/assets/campaigns/nats/3/obj-lnb.mp3'),
       },
       'verify-maine-lock': {
         text: `
@@ -644,7 +644,7 @@ export const scenario3Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/level-3/obj-lock.mp3'),
+        audioUrl: getAssetUrl('/assets/campaigns/nats/3/obj-lock.mp3'),
       },
       'execute-handover': {
         text: `
@@ -657,7 +657,7 @@ export const scenario3Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.HAPPY,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/level-3/obj-handover.mp3'),
+        audioUrl: getAssetUrl('/assets/campaigns/nats/3/obj-handover.mp3'),
       },
       'verify-handover-complete': {
         text: `
@@ -673,7 +673,7 @@ export const scenario3Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.HAPPY,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/level-3/complete.mp3'),
+        audioUrl: getAssetUrl('/assets/campaigns/nats/3/complete.mp3'),
       },
     },
   },

@@ -466,7 +466,7 @@ export const scenario6Data: ScenarioData = {
       `,
       character: Character.CHARLIE_BROOKS,
       emotion: Emotion.FRUSTRATED,
-      audioUrl: getAssetUrl('/assets/campaigns/nats/level-6/intro.mp3'),
+      audioUrl: getAssetUrl('/assets/campaigns/nats/6/intro.mp3'),
     },
     objectives: {
       'assess-degradation': {
@@ -483,7 +483,7 @@ export const scenario6Data: ScenarioData = {
         `,
         character: Character.FRANCIS_MARTIN, //Character.SYSTEM,
         emotion: Emotion.NEUTRAL,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/level-6/obj-assess.mp3'),
+        audioUrl: getAssetUrl('/assets/campaigns/nats/6/obj-assess.mp3'),
       },
       'identify-interference': {
         text: `
@@ -502,7 +502,7 @@ export const scenario6Data: ScenarioData = {
         `,
         character: Character.FRANCIS_MARTIN, //Character.SYSTEM,
         emotion: Emotion.NEUTRAL,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/level-6/obj-identify.mp3'),
+        audioUrl: getAssetUrl('/assets/campaigns/nats/6/obj-identify.mp3'),
       },
       'calculate-ci-ratio': {
         text: `
@@ -518,7 +518,7 @@ export const scenario6Data: ScenarioData = {
         `,
         character: Character.FRANCIS_MARTIN, //Character.SYSTEM,
         emotion: Emotion.NEUTRAL,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/level-6/obj-calculate.mp3'),
+        audioUrl: getAssetUrl('/assets/campaigns/nats/6/obj-calculate.mp3'),
       },
       'implement-filter-solution': {
         text: `
@@ -531,7 +531,7 @@ export const scenario6Data: ScenarioData = {
         `,
         character: Character.FRANCIS_MARTIN, //Character.SYSTEM,
         emotion: Emotion.NEUTRAL,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/level-6/obj-filter.mp3'),
+        audioUrl: getAssetUrl('/assets/campaigns/nats/6/obj-filter.mp3'),
       },
       'verify-service-restoration': {
         text: `
@@ -544,7 +544,7 @@ export const scenario6Data: ScenarioData = {
         `,
         character: Character.FRANCIS_MARTIN, //Character.SYSTEM,
         emotion: Emotion.NEUTRAL,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/level-6/obj-verify.mp3'),
+        audioUrl: getAssetUrl('/assets/campaigns/nats/6/obj-verify.mp3'),
       },
       'sla-compliance': {
         text: `
@@ -563,7 +563,7 @@ export const scenario6Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.HAPPY,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/level-6/complete.mp3'),
+        audioUrl: getAssetUrl('/assets/campaigns/nats/6/complete.mp3'),
       },
     },
   },

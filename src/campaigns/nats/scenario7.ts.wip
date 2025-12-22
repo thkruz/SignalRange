@@ -562,7 +562,7 @@ export const level7EquipmentCascade: ScenarioData = {
       `,
       character: Character.FRANCIS_MARTIN, //Character.SYSTEM,
       emotion: Emotion.NEUTRAL,
-      audioUrl: getAssetUrl('/assets/campaigns/nats/level-7/intro.mp3'),
+      audioUrl: getAssetUrl('/assets/campaigns/nats/7/intro.mp3'),
     },
     objectives: {
       'diagnose-gpsdo-fault': {
@@ -579,7 +579,7 @@ export const level7EquipmentCascade: ScenarioData = {
         `,
         character: Character.FRANCIS_MARTIN, //Character.SYSTEM,
         emotion: Emotion.NEUTRAL,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/level-7/obj-diagnose.mp3'),
+        audioUrl: getAssetUrl('/assets/campaigns/nats/7/obj-diagnose.mp3'),
       },
       'call-charlie-gpsdo': {
         text: `
@@ -601,7 +601,7 @@ export const level7EquipmentCascade: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.CONCERNED,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/level-7/obj-call-charlie.mp3'),
+        audioUrl: getAssetUrl('/assets/campaigns/nats/7/obj-call-charlie.mp3'),
       },
       'lnb-temperature-alarm': {
         text: `
@@ -620,7 +620,7 @@ export const level7EquipmentCascade: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.FRUSTRATED,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/level-7/obj-lnb-alarm.mp3'),
+        audioUrl: getAssetUrl('/assets/campaigns/nats/7/obj-lnb-alarm.mp3'),
       },
       'mitigate-lnb-temperature': {
         text: `
@@ -636,7 +636,7 @@ export const level7EquipmentCascade: ScenarioData = {
         `,
         character: Character.FRANCIS_MARTIN, //Character.SYSTEM,
         emotion: Emotion.NEUTRAL,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/level-7/obj-mitigate-lnb.mp3'),
+        audioUrl: getAssetUrl('/assets/campaigns/nats/7/obj-mitigate-lnb.mp3'),
       },
       'switch-to-backup-gpsdo': {
         text: `
@@ -652,7 +652,7 @@ export const level7EquipmentCascade: ScenarioData = {
         `,
         character: Character.FRANCIS_MARTIN, //Character.SYSTEM,
         emotion: Emotion.NEUTRAL,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/level-7/obj-switch-gpsdo.mp3'),
+        audioUrl: getAssetUrl('/assets/campaigns/nats/7/obj-switch-gpsdo.mp3'),
       },
       'verify-stable-operation': {
         text: `
@@ -671,7 +671,7 @@ export const level7EquipmentCascade: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.HAPPY,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/level-7/complete.mp3'),
+        audioUrl: getAssetUrl('/assets/campaigns/nats/7/complete.mp3'),
       },
     },
   },

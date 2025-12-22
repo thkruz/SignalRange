@@ -195,4 +195,8 @@ export class PendingQuizIndicator {
     this.openButton_ = null;
     PendingQuizIndicator.instance_ = null;
   }
+
+  static destroy(): void {
+    PendingQuizIndicator.instance_?.dispose();
+  }
 }

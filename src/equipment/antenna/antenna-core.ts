@@ -165,6 +165,9 @@ export abstract class AntennaCore extends BaseEquipment {
   /** Smoothed C/N for beacon display (EMA) */
   private smoothedBeaconCN_: number | null = null;
 
+  /** Whether we've received at least one real beacon measurement (vs initial state value) */
+  private hasReceivedRealBeaconMeasurement_: boolean = false;
+
   /** Smoothing factor for beacon C/N display */
   private readonly beaconCNSmoothingAlpha_: number = 0.3;
 
@@ -242,6 +245,12 @@ export abstract class AntennaCore extends BaseEquipment {
     }
 
     this.lastRenderState = structuredClone(this.state);
+
+    // Seed beacon smoother from initial state if provided
+    // This preserves scenario-defined beaconCN until real measurements take over
+    if (this.state.beaconCN !== null) {
+      this.smoothedBeaconCN_ = this.state.beaconCN;
+    }
 
     // Initialize step track controller
     this.stepTrackController_ = new StepTrackController(this);
@@ -716,6 +725,9 @@ export abstract class AntennaCore extends BaseEquipment {
 
     // Apply EMA smoothing to C/N for stable display
     if (cn !== null) {
+      // Mark that we've received a real measurement (vs scenario-seeded initial value)
+      this.hasReceivedRealBeaconMeasurement_ = true;
+
       if (this.smoothedBeaconCN_ === null) {
         this.smoothedBeaconCN_ = cn;
       } else {
@@ -734,13 +746,16 @@ export abstract class AntennaCore extends BaseEquipment {
           this.state.isBeaconLocked = false;
         }
       }
-    } else {
+    } else if (this.hasReceivedRealBeaconMeasurement_) {
+      // Only clear if we've previously received real measurements
+      // This preserves scenario-seeded initial values until real signals arrive
       this.smoothedBeaconCN_ = null;
       this.state.beaconCN = null;
       if (this.state.trackingMode !== 'step-track') {
         this.state.isBeaconLocked = false;
       }
     }
+    // If no measurement and no prior real measurements, preserve initial state values
   }
 
   /**
@@ -749,11 +764,16 @@ export abstract class AntennaCore extends BaseEquipment {
    * @returns Object with power (dBm) and cn (dB), both null if no signal
    */
   private measureBeaconMetrics_(): { power: number | null; cn: number | null } {
-    const beaconFreq = this.rfFrontEnd.lnbModule.state.loFrequency * 1e6 - this.state.beaconFrequencyHz;
+    // Need RF front-end attached to measure beacon
+    if (!this.rfFrontEnd_) {
+      return { power: null, cn: null };
+    }
+
+    const beaconFreq = this.rfFrontEnd_.lnbModule.state.loFrequency * 1e6 - this.state.beaconFrequencyHz;
     const searchBw = this.state.beaconSearchBwHz;
 
     // Find signals within beacon search bandwidth (look at the IF signals post LNA)
-    const beaconSignals = this.rfFrontEnd.filterModule.outputSignals.filter(sig => {
+    const beaconSignals = this.rfFrontEnd_.filterModule.outputSignals.filter(sig => {
       const freqDiff = Math.abs((sig.frequency as number) - beaconFreq);
       return freqDiff <= searchBw / 2;
     });
@@ -772,16 +792,10 @@ export abstract class AntennaCore extends BaseEquipment {
       return { power: null, cn: null };
     }
 
-    // Calculate C/N ratio
-    const rfFrontEnd = this.rfFrontEnd;
-    if (!rfFrontEnd) {
-      return { power: strongestPower, cn: null };
-    }
-
     // Get noise floor using TRACKING bandwidth (narrow beacon receiver)
     const trackingBw = this.state.beaconTrackingBwHz;
     const { noiseFloorNoGain } =
-      rfFrontEnd.couplerModule.signalPathManager.getNoiseFloorAt(
+      this.rfFrontEnd_.couplerModule.signalPathManager.getNoiseFloorAt(
         TapPoint.RX_IF,
         trackingBw as Hertz
       );

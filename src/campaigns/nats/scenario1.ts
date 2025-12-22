@@ -29,7 +29,7 @@ export const scenario1Data: ScenarioData = {
   number: 1,
   title: '"First Day"',
   subtitle: 'TIDEMARK-1 Health Check',
-  duration: '15-20 min',
+  duration: '25-35 min',
   difficulty: 'beginner',
   missionType: 'Routine Operations',
   description: `Welcome to your first day at North Atlantic Teleport Services, a commercial satellite ground station facility in rural Vermont. Your company provides ground segment services for the TIDEMARK constellation - SeaLink Global Communications' fleet of GEO satellites providing maritime broadband across the Atlantic.<br><br>TIDEMARK-1 is already online at 53°W, serving customer traffic. Today, Charlie Brooks will walk you through a routine health check. You'll learn what each equipment panel shows, what the indicators mean, and what "normal" looks like.<br><br>No pressure today - just observation and familiarization. Click through each panel and verify the status indicators as Charlie explains them.`,
@@ -54,14 +54,21 @@ export const scenario1Data: ScenarioData = {
         antennas: [ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK],
         antennasState: [
           {
-            // Antenna already tracking TIDEMARK-1 in step-track mode
+            // Antenna already tracking TIDEMARK-1 in program-track mode
             isPowered: true,
             azimuth: 161.8 as Degrees, // Locked on TIDEMARK-1
             elevation: 34.2 as Degrees,
             polarization: 14 as Degrees,
-            trackingMode: 'step-track',
+            trackingMode: 'program-track',
             isBeaconLocked: true,
-            beaconFrequency: 3902.5e6 as Hertz,
+            targetSatelliteId: 61525,
+            targetAzimuth: 161.8 as Degrees,
+            targetElevation: 34.2 as Degrees,
+            targetPolarization: 14 as Degrees,
+            slewing: false,
+            beaconCN: 10.5 as dB,
+            beaconFrequencyHz: 3902.5e6 as Hertz,
+            isLocked: true,
           } as Partial<AntennaState>,
         ],
         rfFrontEnds: [{
@@ -99,7 +106,7 @@ export const scenario1Data: ScenarioData = {
             isPowered: true,
             isLocked: true,
             warmupTimeRemaining: 0,
-            temperature: 45, // °C - stable operating temp
+            temperature: 70, // °C - stable operating temp
             gnssSignalPresent: true,
             isGnssSwitchUp: true,
             isGnssAcquiringLock: false,
@@ -128,8 +135,8 @@ export const scenario1Data: ScenarioData = {
             centerFrequency: 1247.5e6 as Hertz, // IF frequency for beacon
             span: 2e3 as Hertz, // 2 kHz span for CW beacon
             rbw: 1e3 as Hertz, // 1 kHz RBW for CW beacon
-            minAmplitude: -170,
-            maxAmplitude: 0,
+            minAmplitude: -105 as dBm,
+            maxAmplitude: -85 as dBm,
             scaleDbPerDiv: 10 as dB,
             screenMode: 'both',
             inputUnit: 'MHz',
@@ -328,6 +335,52 @@ export const scenario1Data: ScenarioData = {
           frequencyOffset: 2.225e9 as Hertz,
         }
       ),
+      new Satellite(
+        42432,
+        [
+          {
+            signalId: 'SES-10-Payload',
+            serverId: 1,
+            noradId: 42432,
+            /** Must be the uplinkl to match the antenna in simulation */
+            frequency: 6115e6 as RfFrequency,
+            polarization: 'V',
+            power: 40 as dBm, // 10 W
+            bandwidth: 36e6 as Hertz,
+            modulation: 'QPSK' as ModulationType,
+            fec: '3/4' as FECType,
+            feed: '',
+            isDegraded: false,
+            origin: SignalOrigin.SATELLITE_RX,
+            noiseFloor: null,
+            gainInPath: 0 as dBi,
+          },
+        ],
+        [
+          {
+            frequency: 3905.0e6 as RfFrequency,
+            signalId: 'SES-10-Beacon',
+            serverId: 1,
+            noradId: 42432,
+            power: 40 as dBm, // 10 W
+            bandwidth: 1e3 as Hertz,
+            modulation: 'CW' as ModulationType,
+            fec: 'null' as FECType,
+            polarization: 'H',
+            feed: '',
+            isDegraded: false,
+            origin: SignalOrigin.TRANSMITTER,
+            noiseFloor: null,
+            gainInPath: 0 as dBi,
+          },
+        ],
+        {
+          az: 164.2 as Degrees,
+          el: 34.1 as Degrees,
+          rotation: -32 as Degrees,
+          frequencyOffset: 2.225e9 as Hertz,
+        }
+      ),
     ]
   },
   objectives: [
@@ -371,7 +424,7 @@ export const scenario1Data: ScenarioData = {
           params: {
             question: 'What is the LNB noise temperature reading, and is it within spec?',
             options: [
-              '45K - within spec (good receive sensitivity)',
+              '43K - within spec (good receive sensitivity)',
               '150K - above spec (degraded sensitivity)',
               '290K - far above spec (major problem)',
               'No reading - LNB is offline',
@@ -387,11 +440,39 @@ export const scenario1Data: ScenarioData = {
       points: 20,
     },
     {
-      id: 'phase-3-antenna',
-      title: 'Phase 3: Antenna Tracking Status',
-      description: 'Check the antenna control unit. The antenna should be actively tracking TIDEMARK-1.',
+      id: 'phase-3-hpa',
+      title: 'Phase 3: HPA Status Check',
+      description: 'Review the High Power Amplifier panel. Learn how to verify it is in a safe standby state.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['phase-2-lnb'],
+      conditions: [
+        {
+          type: 'status-check',
+          description: 'Verify HPA Status',
+          params: {
+            question: 'What is the current state of the HPA (High Power Amplifier)?',
+            options: [
+              'Powered but muted - safe standby mode',
+              'Transmitting at full power',
+              'Powered off completely',
+              'Faulted - showing alarm condition',
+            ],
+            correctIndex: 0,
+            explanation: 'The HPA is in safe standby mode - powered on but with RF output muted. This is the normal state when not actively transmitting. The BUC mute prevents any unintended RF emission.',
+            pointPenalty: 5,
+          },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 20,
+    },
+    {
+      id: 'phase-4-antenna',
+      title: 'Phase 4: Antenna Tracking Status',
+      description: 'Check the antenna control unit. The antenna should be actively tracking TIDEMARK-1.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['phase-3-hpa'],
       conditions: [
         {
           type: 'status-check',
@@ -404,8 +485,8 @@ export const scenario1Data: ScenarioData = {
               'Manual - operator-controlled pointing',
               'Stow - antenna in safe position',
             ],
-            correctIndex: 0,
-            explanation: 'Step-track mode uses the satellite beacon signal to continuously optimize antenna pointing. This provides the most accurate tracking for operational satellites.',
+            correctIndex: 1,
+            explanation: 'Program-track mode follows the predicted orbital position of the satellite based on ephemeris data. This mode is used when the beacon signal is not available or during initial acquisition.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -415,11 +496,39 @@ export const scenario1Data: ScenarioData = {
       points: 20,
     },
     {
-      id: 'phase-4-spectrum',
-      title: 'Phase 4: Spectrum Analyzer Reading',
+      id: 'phase-5-polarization',
+      title: 'Phase 5: ACU Polarization Check',
+      description: 'Verify the antenna polarization setting matches the satellite requirements.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['phase-4-antenna'],
+      conditions: [
+        {
+          type: 'status-check',
+          description: 'Verify Polarization Setting',
+          params: {
+            question: 'What is the current polarization angle shown on the ACU, and why is it set to that value?',
+            options: [
+              '14° - matched to TIDEMARK-1 satellite polarization',
+              '0° - default horizontal polarization',
+              '90° - vertical polarization',
+              '45° - circular polarization',
+            ],
+            correctIndex: 0,
+            explanation: 'The polarization is set to 14° to match TIDEMARK-1\'s polarization angle. Proper polarization alignment maximizes signal strength and minimizes cross-pol interference.',
+            pointPenalty: 5,
+          },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 20,
+    },
+    {
+      id: 'phase-6-spectrum',
+      title: 'Phase 6: Spectrum Analyzer Reading',
       description: 'Look at the spectrum analyzer display. You should see the TIDEMARK-1 beacon signal.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['phase-3-antenna'],
+      prerequisiteObjectiveIds: ['phase-5-polarization'],
       conditions: [
         {
           type: 'status-check',
@@ -443,11 +552,39 @@ export const scenario1Data: ScenarioData = {
       points: 20,
     },
     {
-      id: 'phase-5-receiver',
-      title: 'Phase 5: Receiver Modem Check',
-      description: 'Final check: verify the receiver modem is locked and the link quality is good.',
+      id: 'phase-7-speca-settings',
+      title: 'Phase 7: Spectrum Analyzer Settings',
+      description: 'Review the spectrum analyzer settings to understand how it is configured for beacon observation.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['phase-4-spectrum'],
+      prerequisiteObjectiveIds: ['phase-6-spectrum'],
+      conditions: [
+        {
+          type: 'status-check',
+          description: 'Verify Spectrum Analyzer Configuration',
+          params: {
+            question: 'What center frequency and reference level are set on the spectrum analyzer?',
+            options: [
+              '1247.5 MHz center, -100 dBm reference - configured for beacon IF',
+              '3902.5 MHz center, -50 dBm reference - configured for RF frequency',
+              '70 MHz center, -30 dBm reference - configured for baseband',
+              '600 MHz center, 0 dBm reference - default settings',
+            ],
+            correctIndex: 0,
+            explanation: 'The spectrum analyzer is set to 1247.5 MHz (beacon IF frequency after LNB downconversion) with a -100 dBm reference level to properly display the weak beacon signal above the noise floor.',
+            pointPenalty: 5,
+          },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 20,
+    },
+    {
+      id: 'phase-8-receiver',
+      title: 'Phase 8: Receiver Modem Check',
+      description: 'Verify the receiver modem is locked and the link quality is good.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['phase-7-speca-settings'],
       conditions: [
         {
           type: 'status-check',
@@ -462,6 +599,62 @@ export const scenario1Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation: 'A C/N ratio above 10 dB indicates a healthy link with adequate margin for reliable data reception. This confirms the entire receive chain from antenna to modem is functioning properly.',
+            pointPenalty: 5,
+          },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 20,
+    },
+    {
+      id: 'phase-9-constellation',
+      title: 'Phase 9: I&Q Constellation Check',
+      description: 'Examine the I&Q constellation diagram to verify signal quality and modulation.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['phase-8-receiver'],
+      conditions: [
+        {
+          type: 'status-check',
+          description: 'Interpret I&Q Constellation',
+          params: {
+            question: 'What does the I&Q constellation diagram show about the received signal?',
+            options: [
+              'Tight clusters at symbol points - clean QPSK modulation',
+              'Scattered points in a circle - high noise, poor signal',
+              'Points along a line - phase-only modulation issue',
+              'Empty display - no signal lock',
+            ],
+            correctIndex: 0,
+            explanation: 'The tight clusters at the four QPSK symbol points indicate clean demodulation with good signal-to-noise ratio. Spread or scattered points would indicate noise, interference, or phase problems.',
+            pointPenalty: 5,
+          },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 20,
+    },
+    {
+      id: 'phase-10-alarms',
+      title: 'Phase 10: Dashboard Alarm Check',
+      description: 'Final step: review the alarm dashboard to confirm no active alarms.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['phase-9-constellation'],
+      conditions: [
+        {
+          type: 'status-check',
+          description: 'Verify Alarm Status',
+          params: {
+            question: 'What is the current alarm status shown on the dashboard?',
+            options: [
+              'No active alarms - all systems nominal',
+              'Warning: LNB temperature high',
+              'Error: GPSDO holdover mode',
+              'Critical: Antenna tracking lost',
+            ],
+            correctIndex: 0,
+            explanation: 'A clean alarm dashboard with no active alarms confirms all equipment is operating within normal parameters. This is the final confirmation of a healthy ground station.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -520,30 +713,62 @@ export const scenario1Data: ScenarioData = {
           Key things to check: power is on, it's locked to our 10 MHz reference, and the temperature is stable. That noise temperature reading tells us how clean the receive signal is - lower is better, and anything under 100 Kelvin is good.
         </p>
         <p>
-          Now let's look at the antenna control unit. That's where we monitor tracking status.
+          Now let's check the HPA - the High Power Amplifier. That's the heart of our transmit chain.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.HAPPY,
         audioUrl: getAssetUrl('/assets/campaigns/nats/1/v2/obj-phase-2-lnb.mp3'),
       },
-      'phase-3-antenna': {
+      'phase-3-hpa': {
         text: `
         <p>
-          The antenna is currently in step-track mode, locked on TIDEMARK-1's beacon signal. See those azimuth and elevation readings? That's where the dish is pointing.
+          The HPA amplifies our transmitted signal to the power level needed to reach the satellite. It's a critical piece of equipment - and potentially dangerous if mishandled.
         </p>
         <p>
-          Step-track mode automatically makes small adjustments to keep us peaked on the beacon. The "Beacon Lock" indicator confirms we're receiving that signal.
+          Right now it's in safe standby mode - powered but muted. That means it's ready to go but not actually transmitting any RF. The BUC mute switch prevents accidental transmission.
         </p>
         <p>
-          When you see stable tracking like this, the receive chain is healthy. Let's verify that on the spectrum analyzer.
+          Next, let's check the antenna control unit. That's where we monitor tracking status.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.CONFIDENT,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/1/v2/obj-phase-3-antenna.mp3'),
+        audioUrl: getAssetUrl('/assets/campaigns/nats/1/v2/obj-phase-3-hpa.mp3'),
       },
-      'phase-4-spectrum': {
+      'phase-4-antenna': {
+        text: `
+        <p>
+          The antenna is currently in program-track mode, following TIDEMARK-1's predicted orbital position. See those azimuth and elevation readings? That's where the dish is pointing.
+        </p>
+        <p>
+          Program-track uses ephemeris data to predict where the satellite will be. The "Beacon Lock" indicator confirms we're also receiving the beacon signal.
+        </p>
+        <p>
+          Now let's verify the polarization setting - that's critical for maximizing signal strength.
+        </p>
+        `,
+        character: Character.CHARLIE_BROOKS,
+        emotion: Emotion.CONFIDENT,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/1/v2/obj-phase-4-antenna.mp3'),
+      },
+      'phase-5-polarization': {
+        text: `
+        <p>
+          Polarization is how the electromagnetic wave is oriented. TIDEMARK-1 uses linear polarization at 14 degrees, and our antenna needs to match that exactly.
+        </p>
+        <p>
+          If we're off by even a few degrees, we lose signal strength. At 90 degrees off, we'd be in the null - almost no signal at all. So this reading is important.
+        </p>
+        <p>
+          Let's move to the spectrum analyzer and see what the signal looks like.
+        </p>
+        `,
+        character: Character.CHARLIE_BROOKS,
+        emotion: Emotion.HAPPY,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/1/v2/obj-phase-5-polarization.mp3'),
+      },
+      'phase-6-spectrum': {
         text: `
         <p>
           This is what a healthy beacon signal looks like. That spike in the center of the display is the TIDEMARK-1 beacon at 1,247.5 MHz IF.
@@ -552,20 +777,65 @@ export const scenario1Data: ScenarioData = {
           The noise floor - that's the baseline around -120 dBm - is clean and flat. No interference, no spurious signals. That's exactly what we want to see.
         </p>
         <p>
-          One more check: the receiver modem. Let's make sure it's demodulating properly.
+          Now let's look at how the spectrum analyzer is configured for this observation.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.HAPPY,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/1/v2/obj-phase-4-spectrum.mp3'),
+        audioUrl: getAssetUrl('/assets/campaigns/nats/1/v2/obj-phase-6-spectrum.mp3'),
       },
-      'phase-5-receiver': {
+      'phase-7-speca-settings': {
+        text: `
+        <p>
+          The spectrum analyzer is set up specifically for beacon observation. Center frequency at 1247.5 MHz - that's the IF frequency after the LNB converts the 3902.5 MHz beacon down.
+        </p>
+        <p>
+          The reference level at -100 dBm puts the weak beacon signal nicely in view. If we had a higher reference level, the beacon would be lost in the noise floor on the display.
+        </p>
+        <p>
+          Now let's check the receiver modem to make sure it's demodulating properly.
+        </p>
+        `,
+        character: Character.CHARLIE_BROOKS,
+        emotion: Emotion.CONFIDENT,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/1/v2/obj-phase-7-speca-settings.mp3'),
+      },
+      'phase-8-receiver': {
         text: `
         <p>
           Receiver's locked. That C/N ratio above 10 dB means we've got plenty of margin for reliable data reception.
         </p>
         <p>
-          That covers the basics. You've seen what normal operation looks like - GPSDO locked, LNB stable, antenna tracking, clean spectrum, receiver demodulating.
+          The lock indicator confirms the modem is successfully demodulating the signal. Let's look at the I&Q constellation to get a visual confirmation of signal quality.
+        </p>
+        `,
+        character: Character.CHARLIE_BROOKS,
+        emotion: Emotion.HAPPY,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/1/v2/obj-phase-8-receiver.mp3'),
+      },
+      'phase-9-constellation': {
+        text: `
+        <p>
+          The I&Q constellation shows us the actual symbol positions being received. For QPSK modulation, we expect four tight clusters in a square pattern.
+        </p>
+        <p>
+          What you're seeing here is clean - the clusters are compact and well-defined. If we had noise or interference, these would spread out or drift. Phase errors would rotate the whole pattern.
+        </p>
+        <p>
+          One final check - let's look at the alarm dashboard to confirm everything is nominal.
+        </p>
+        `,
+        character: Character.CHARLIE_BROOKS,
+        emotion: Emotion.CONFIDENT,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/1/v2/obj-phase-9-constellation.mp3'),
+      },
+      'phase-10-alarms': {
+        text: `
+        <p>
+          Clean dashboard - no active alarms. That's what we like to see. Every piece of equipment is operating within normal parameters.
+        </p>
+        <p>
+          That covers the complete health check. You've seen every critical indicator: GPSDO locked, LNB stable, HPA in safe standby, antenna tracking, polarization matched, clean spectrum, receiver demodulating with good I&Q, and no alarms.
         </p>
         <p>
           Next shift, we'll do something more hands-on. But for now, you know what healthy equipment looks like. That's the foundation for everything else.
@@ -573,7 +843,7 @@ export const scenario1Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.HAPPY,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/1/v2/obj-phase-5-receiver.mp3'),
+        audioUrl: getAssetUrl('/assets/campaigns/nats/1/v2/obj-phase-10-alarms.mp3'),
       },
     },
   },

@@ -7,6 +7,8 @@ import { EventBus } from "@app/events/event-bus";
 import { Events } from "@app/events/events";
 import { DialogHistoryBox } from "@app/modal/dialog-history-box";
 import { DraggableHtmlBox } from "@app/modal/draggable-html-box";
+import { PendingQuizIndicator } from "@app/modal/pending-quiz-indicator";
+import { QuizManager } from "@app/modal/quiz-manager";
 import { ObjectivesManager } from "@app/objectives";
 import { ScenarioManager } from "@app/scenario-manager";
 import { SimulationManager } from "@app/simulation/simulation-manager";
@@ -36,6 +38,7 @@ export class AssetTreeSidebar extends BaseElement {
   private checklistRefreshIntervalId_: number | null = null;
   private lastChecklistHtml_: string | null = null;
   private missionBriefUrl_: string | null = null;
+  private quizDelegationSetup_: boolean = false;
 
   protected html_ = html`
     <div class="asset-tree-sidebar">
@@ -108,9 +111,16 @@ export class AssetTreeSidebar extends BaseElement {
   }
 
   private addChecklistListener_(): void {
+    // Initialize the pending quiz indicator
+    PendingQuizIndicator.getInstance();
+
     const btn = qs('.checklist-icon', this.dom_);
     btn?.addEventListener('click', () => {
       SimulationManager.getInstance().checklistBox ??= new DraggableHtmlBox('Checklist', 'checklist', '', 'app-shell-page');
+
+      // Set up event delegation for quiz buttons (only once)
+      this.setupQuizButtonDelegation_();
+
       const objectivesManager = ObjectivesManager.getInstance();
       objectivesManager.syncCollapsedStatesFromDOM();
       this.lastChecklistHtml_ = objectivesManager.generateHtmlChecklist();
@@ -127,6 +137,33 @@ export class AssetTreeSidebar extends BaseElement {
       this.lastChecklistHtml_ = objectivesManager.generateHtmlChecklist();
       SimulationManager.getInstance().checklistBox.updateContent(this.lastChecklistHtml_);
     });
+  }
+
+  /**
+   * Set up event delegation for quiz buttons in the checklist
+   * Since checklist content regenerates every second, we delegate on the container
+   */
+  private setupQuizButtonDelegation_(): void {
+    if (this.quizDelegationSetup_) return;
+
+    const checklistBox = SimulationManager.getInstance().checklistBox;
+    if (!checklistBox) return;
+
+    checklistBox.popupDom.addEventListener('click', (e: Event) => {
+      const target = e.target as HTMLElement;
+      const quizBtn = target.closest<HTMLButtonElement>('.condition-quiz-btn');
+
+      if (quizBtn) {
+        const objectiveId = quizBtn.dataset.objectiveId;
+        const conditionIndex = parseInt(quizBtn.dataset.conditionIndex ?? '0', 10);
+
+        if (objectiveId) {
+          QuizManager.getInstance().showQuiz(objectiveId, conditionIndex);
+        }
+      }
+    });
+
+    this.quizDelegationSetup_ = true;
   }
 
   private addDialogHistoryListener_(): void {

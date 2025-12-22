@@ -4,7 +4,7 @@ import { getEl } from "@app/engine/utils/get-el";
 import './draggable-html-box.css';
 
 export class DraggableHtmlBox extends DraggableBox {
-  protected readonly popupDom: HTMLElement;
+  readonly popupDom: HTMLElement;
   isOpen: boolean = true;
   onClose: () => void;
 

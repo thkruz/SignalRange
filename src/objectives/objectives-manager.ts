@@ -371,13 +371,26 @@ export class ObjectivesManager {
       html += `<p>${objective.description}</p>`;
       html += '<ul class="conditions-list">';
 
+      const quizManager = QuizManager.getInstance();
+
       for (let i = 0; i < objective.conditions.length; i++) {
         const condition = objective.conditions[i];
         const conditionState = objectiveState.conditionStates[i];
         const conditionCompleted = conditionState.isMaintenanceComplete;
 
+        // Check if this condition has a pending quiz
+        const hasQuiz = quizManager.hasQuiz(objective.id, i);
+        const isQuizComplete = hasQuiz && quizManager.isQuizComplete(objective.id, i);
+        const isQuizPending = hasQuiz && !isQuizComplete;
+
         html += `<li class="condition-item ${conditionCompleted ? 'completed' : 'incomplete'}">`;
-        html += `${condition.description}`;
+        html += `<span class="condition-text">${condition.description}</span>`;
+
+        // Add quiz button for pending quizzes
+        if (isQuizPending) {
+          html += `<button class="condition-quiz-btn" data-objective-id="${objective.id}" data-condition-index="${i}" title="Take Quiz">?</button>`;
+        }
+
         html += '</li>';
       }
 
@@ -1028,6 +1041,8 @@ export class ObjectivesManager {
         );
 
         // Register the quiz if not already registered
+        // Note: Quiz is NOT shown immediately - pending indicator appears instead
+        // User must click the indicator or "?" button to open the quiz
         if (!quizManager.hasQuiz(objectiveState.objective.id, conditionIndex)) {
           quizManager.registerQuiz(
             objectiveState.objective.id,
@@ -1038,9 +1053,6 @@ export class ObjectivesManager {
             params.explanation,
             params.pointPenalty ?? 5
           );
-
-          // Show the quiz immediately when the objective becomes active
-          quizManager.showQuiz(objectiveState.objective.id, conditionIndex);
         }
 
         // Check if quiz has been completed

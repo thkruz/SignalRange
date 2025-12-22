@@ -1,31 +1,35 @@
 /**
  * @file Quiz Modal - Interactive quiz for status-check objective conditions
- * @description Modal dialog that presents multiple choice questions to verify player understanding
+ * @description Non-modal draggable box that presents multiple choice questions to verify player understanding
  */
 
 import { EventBus } from '@app/events/event-bus';
-import { Events, QuizAnsweredData, QuizShowData } from '@app/events/events';
-import { DraggableModal } from '@engine/ui/draggable-modal';
-import { getEl } from '@engine/utils/get-el';
+import { Events, QuizAnsweredData, QuizDismissedData, QuizShowData } from '@app/events/events';
+import { DraggableBox } from '@engine/ui/draggable-box';
+import { getEl, showEl } from '@engine/utils/get-el';
 import { html } from '@engine/utils/development/formatter';
 import { Character, CharacterAvatars, CharacterNames, Emotion, getCharacterAvatarUrl } from './character-enum';
 import './quiz-modal.css';
 
 /**
- * Singleton modal for presenting status-check quizzes
+ * Singleton non-modal box for presenting status-check quizzes
+ * Unlike a modal, this allows interaction with background elements
  */
-export class QuizModal extends DraggableModal {
+export class QuizModal extends DraggableBox {
   private static instance_: QuizModal | null = null;
 
   private currentQuiz_: QuizShowData | null = null;
   private attempts_: number = 0;
   private totalPointsDeducted_: number = 0;
   private isShowingFeedback_: boolean = false;
+  private domCreated_: boolean = false;
+  /** Stores the correct answer data until user clicks Continue */
+  private pendingCorrectAnswer_: QuizAnsweredData | null = null;
 
   private readonly boundShowQuizHandler_: (data: QuizShowData) => void;
 
   private constructor() {
-    super('quiz-modal', { width: '500px', title: 'Knowledge Check' });
+    super('quiz-modal', { width: '500px', title: 'Knowledge Check', skipDomCreation: true });
 
     this.boundShowQuizHandler_ = this.handleShowQuiz_.bind(this);
     EventBus.getInstance().on(Events.QUIZ_SHOW, this.boundShowQuizHandler_);
@@ -36,7 +40,7 @@ export class QuizModal extends DraggableModal {
     return QuizModal.instance_;
   }
 
-  protected getModalContentHtml(): string {
+  protected getBoxContentHtml(): string {
     return html`
       <div class="quiz-modal-content">
         <div class="quiz-header">
@@ -62,15 +66,68 @@ export class QuizModal extends DraggableModal {
     `;
   }
 
+  private createDom_(): void {
+    if (this.domCreated_) return;
+
+    const parentDom = document.getElementsByTagName('body')[0];
+
+    parentDom.insertAdjacentHTML('beforeend', html`
+      <div id="${this.boxId}" class="draggable-box quiz-box" style="pointer-events:auto; display:none;">
+        <div class="draggable-box__title-bar">
+          <div class="draggable-box__title">
+            <span>${this.title}</span>
+          </div>
+          <span id="${this.boxId}-close" class="draggable-box__btn draggable-box__close-btn"></span>
+        </div>
+        <div class="draggable-box__content">
+          ${this.getBoxContentHtml()}
+        </div>
+      </div>
+    `);
+
+    this.domCreated_ = true;
+    this.onOpen();
+  }
+
   private handleShowQuiz_(data: QuizShowData): void {
     this.currentQuiz_ = data;
     this.attempts_ = 0;
     this.totalPointsDeducted_ = 0;
     this.isShowingFeedback_ = false;
+    this.pendingCorrectAnswer_ = null;
+
+    // Create DOM lazily on first show
+    if (!this.domCreated_) {
+      this.createDom_();
+    }
 
     this.open(() => {
       this.renderQuiz_();
     });
+  }
+
+  override open(cb?: () => void): void {
+    if (!this.boxEl) {
+      console.error('QuizModal: Cannot open, DOM not created');
+      return;
+    }
+
+    showEl(this.boxEl);
+
+    if (this.width) {
+      this.boxEl.style.minWidth = this.width;
+    }
+
+    // Center the box
+    this.boxEl.style.top = `${(window.scrollY + (window.innerHeight - this.boxEl.offsetHeight) / 2)}px`;
+    this.boxEl.style.left = `${(window.innerWidth - this.boxEl.offsetWidth) / 2}px`;
+
+    // Bring to front
+    this.boxEl.style.zIndex = DraggableBox.increaseMaxZIndex().toString();
+
+    if (cb) {
+      cb();
+    }
   }
 
   private renderQuiz_(): void {
@@ -131,22 +188,30 @@ export class QuizModal extends DraggableModal {
     this.updateButtonStates_(index, isCorrect);
 
     if (isCorrect) {
+      // Store correct answer data - will be emitted when Continue is clicked
+      this.pendingCorrectAnswer_ = {
+        objectiveId: this.currentQuiz_.objectiveId,
+        conditionIndex: this.currentQuiz_.conditionIndex,
+        isCorrect: true,
+        selectedIndex: index,
+        attempts: this.attempts_,
+        pointsDeducted: this.totalPointsDeducted_,
+      };
       this.showCorrectFeedback_();
     } else {
       this.showIncorrectFeedback_(index);
+
+      // Only emit for incorrect answers immediately (for point tracking)
+      const answeredData: QuizAnsweredData = {
+        objectiveId: this.currentQuiz_.objectiveId,
+        conditionIndex: this.currentQuiz_.conditionIndex,
+        isCorrect: false,
+        selectedIndex: index,
+        attempts: this.attempts_,
+        pointsDeducted: this.totalPointsDeducted_,
+      };
+      EventBus.getInstance().emit(Events.QUIZ_ANSWERED, answeredData);
     }
-
-    // Emit answer event
-    const answeredData: QuizAnsweredData = {
-      objectiveId: this.currentQuiz_.objectiveId,
-      conditionIndex: this.currentQuiz_.conditionIndex,
-      isCorrect,
-      selectedIndex: index,
-      attempts: this.attempts_,
-      pointsDeducted: this.totalPointsDeducted_,
-    };
-
-    EventBus.getInstance().emit(Events.QUIZ_ANSWERED, answeredData);
   }
 
   private updateButtonStates_(selectedIndex: number, isCorrect: boolean): void {
@@ -195,12 +260,25 @@ export class QuizModal extends DraggableModal {
 
       const continueBtn = getEl('quiz-continue-btn');
       if (continueBtn) {
-        continueBtn.addEventListener('click', () => this.close());
+        continueBtn.addEventListener('click', () => this.handleContinueClick_());
       }
     }
 
     // Disable all option buttons
     this.disableOptions_();
+  }
+
+  /**
+   * Handle Continue button click - emit the correct answer and close
+   * This gates quiz completion behind an explicit user action
+   */
+  private handleContinueClick_(): void {
+    // Emit the pending correct answer now
+    if (this.pendingCorrectAnswer_) {
+      EventBus.getInstance().emit(Events.QUIZ_ANSWERED, this.pendingCorrectAnswer_);
+      this.pendingCorrectAnswer_ = null;
+    }
+    this.close();
   }
 
   private showIncorrectFeedback_(selectedIndex: number): void {
@@ -263,6 +341,20 @@ export class QuizModal extends DraggableModal {
   }
 
   override close(cb?: () => void): void {
+    // If there's a pending correct answer (user answered correctly but didn't click Continue),
+    // emit it now so the quiz is marked complete
+    if (this.pendingCorrectAnswer_) {
+      EventBus.getInstance().emit(Events.QUIZ_ANSWERED, this.pendingCorrectAnswer_);
+      this.pendingCorrectAnswer_ = null;
+    } else if (this.currentQuiz_ && !this.isShowingFeedback_) {
+      // Emit QUIZ_DISMISSED if closing without completing (not showing success feedback)
+      const dismissedData: QuizDismissedData = {
+        objectiveId: this.currentQuiz_.objectiveId,
+        conditionIndex: this.currentQuiz_.conditionIndex,
+      };
+      EventBus.getInstance().emit(Events.QUIZ_DISMISSED, dismissedData);
+    }
+
     this.currentQuiz_ = null;
     this.isShowingFeedback_ = false;
     super.close(cb);

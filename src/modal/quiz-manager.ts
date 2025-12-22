@@ -1,10 +1,10 @@
 /**
  * @file Quiz Manager - Manages quiz state for status-check objective conditions
- * @description Tracks which quizzes have been presented, answered, and completed
+ * @description Tracks which quizzes have been presented, answered, completed, and pending
  */
 
 import { EventBus } from '@app/events/event-bus';
-import { Events, QuizAnsweredData, QuizCompletedData, QuizShowData } from '@app/events/events';
+import { Events, QuizAnsweredData, QuizCompletedData, QuizDismissedData, QuizPendingData, QuizShowData } from '@app/events/events';
 
 interface QuizState {
   objectiveId: string;
@@ -28,9 +28,18 @@ export class QuizManager {
   /** Map of "objectiveId:conditionIndex" -> QuizState */
   private quizStates_: Map<string, QuizState> = new Map();
 
+  /** Key of the currently pending quiz (shown but not completed) */
+  private pendingQuizKey_: string | null = null;
+
+  private readonly boundQuizAnsweredHandler_: (data: QuizAnsweredData) => void;
+  private readonly boundQuizDismissedHandler_: (data: QuizDismissedData) => void;
+
   private constructor() {
-    // Listen for quiz answered events from the modal
-    EventBus.getInstance().on(Events.QUIZ_ANSWERED, this.handleQuizAnswered_.bind(this));
+    this.boundQuizAnsweredHandler_ = this.handleQuizAnswered_.bind(this);
+    this.boundQuizDismissedHandler_ = this.handleQuizDismissed_.bind(this);
+
+    EventBus.getInstance().on(Events.QUIZ_ANSWERED, this.boundQuizAnsweredHandler_);
+    EventBus.getInstance().on(Events.QUIZ_DISMISSED, this.boundQuizDismissedHandler_);
   }
 
   static getInstance(): QuizManager {
@@ -65,6 +74,15 @@ export class QuizManager {
         totalPointsDeducted: 0,
         isComplete: false,
       });
+
+      // Track as pending and emit event so indicator shows
+      this.pendingQuizKey_ = key;
+
+      const pendingData: QuizPendingData = {
+        objectiveId,
+        conditionIndex,
+      };
+      EventBus.getInstance().emit(Events.QUIZ_PENDING, pendingData);
     }
   }
 
@@ -84,6 +102,32 @@ export class QuizManager {
   }
 
   /**
+   * Check if there is a pending quiz (shown but not completed or still needs to be answered)
+   */
+  hasPendingQuiz(): boolean {
+    return this.pendingQuizKey_ !== null;
+  }
+
+  /**
+   * Get the key of the pending quiz, or null if none
+   */
+  getPendingQuizKey(): string | null {
+    return this.pendingQuizKey_;
+  }
+
+  /**
+   * Reopen the pending quiz
+   */
+  reopenPendingQuiz(): void {
+    if (!this.pendingQuizKey_) return;
+
+    const [objectiveId, conditionIndexStr] = this.pendingQuizKey_.split(':');
+    const conditionIndex = parseInt(conditionIndexStr, 10);
+
+    this.showQuiz(objectiveId, conditionIndex);
+  }
+
+  /**
    * Show a quiz modal for a specific condition
    * Emits QUIZ_SHOW event which the QuizModal listens to
    */
@@ -100,6 +144,9 @@ export class QuizManager {
       // Quiz already completed, no need to show again
       return;
     }
+
+    // Track this as the pending quiz
+    this.pendingQuizKey_ = key;
 
     const showData: QuizShowData = {
       objectiveId: state.objectiveId,
@@ -135,6 +182,7 @@ export class QuizManager {
    */
   reset(): void {
     this.quizStates_.clear();
+    this.pendingQuizKey_ = null;
   }
 
   /**
@@ -155,6 +203,9 @@ export class QuizManager {
     if (data.isCorrect) {
       state.isComplete = true;
 
+      // Clear pending status since quiz is now complete
+      this.pendingQuizKey_ = null;
+
       // Emit quiz completed event
       const completedData: QuizCompletedData = {
         objectiveId: data.objectiveId,
@@ -164,6 +215,21 @@ export class QuizManager {
       };
 
       EventBus.getInstance().emit(Events.QUIZ_COMPLETED, completedData);
+    }
+  }
+
+  /**
+   * Handle quiz dismissed (closed without completing)
+   * The quiz remains pending so user can reopen it
+   */
+  private handleQuizDismissed_(data: QuizDismissedData): void {
+    const key = this.getKey_(data.objectiveId, data.conditionIndex);
+
+    // Keep pendingQuizKey_ set - the quiz is still pending
+    // This allows the floating indicator to show and user to reopen
+    if (this.pendingQuizKey_ === key) {
+      // Quiz is still pending, no state change needed
+      // The pending indicator will use hasPendingQuiz() to show
     }
   }
 

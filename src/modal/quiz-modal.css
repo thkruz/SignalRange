@@ -218,16 +218,23 @@
   opacity: 0.7;
 }
 
-/* Modal container overrides for quiz */
-#quiz-modal-container.modal {
-  z-index: 100001;
-}
-
-#quiz-modal.draggable-box {
+/* Quiz box styling (non-modal draggable box) */
+#quiz-modal.quiz-box {
+  position: absolute;
   max-width: 550px;
+  background: var(--color-dark-background, #1a1a2e);
+  border: 2px solid var(--hm-accent, #ff3535);
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
 }
 
 #quiz-modal .draggable-box__content {
-  max-height: 80vh;
+  max-height: 70vh;
   overflow-y: auto;
+  border: 0px;
+}
+
+#quiz-modal .draggable-box__title-bar {
+  background: rgba(255, 53, 53, 0.1);
+  border-bottom: 1px solid var(--hm-border, #444);
 }

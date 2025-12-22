@@ -1,0 +1,92 @@
+/**
+ * Pending Quiz Indicator Styles
+ * Floating indicator that shows when a quiz is pending
+ */
+
+.pending-quiz-indicator {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 99999;
+  background: var(--color-dark-background, #1a1a2e);
+  border: 2px solid var(--hm-accent, #ff3535);
+  border-radius: 8px;
+  padding: 12px 16px;
+  min-width: 220px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+  pointer-events: none;
+  font-family: var(--tblr-font-sans-serif, system-ui, -apple-system, sans-serif);
+  font-size: 14px;
+  color: #fff;
+}
+
+.pending-quiz-indicator.show {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+  animation: quiz-indicator-pulse 2s ease-in-out infinite;
+}
+
+@keyframes quiz-indicator-pulse {
+  0%, 100% {
+    border-color: var(--hm-accent, #ff3535);
+    box-shadow: 0 4px 16px rgba(255, 53, 53, 0.3);
+  }
+  50% {
+    border-color: #ff6b6b;
+    box-shadow: 0 4px 20px rgba(255, 53, 53, 0.5);
+  }
+}
+
+.pending-quiz-indicator__icon {
+  width: 32px;
+  height: 32px;
+  background: var(--hm-accent, #ff3535);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 18px;
+  color: white;
+  flex-shrink: 0;
+}
+
+.pending-quiz-indicator__message {
+  flex: 1;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--hm-text, #eaeaea);
+}
+
+.pending-quiz-indicator__open-btn {
+  background: var(--hm-accent, #ff3535);
+  border: none;
+  border-radius: 4px;
+  color: white;
+  padding: 8px 14px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+  transition: background 0.2s, transform 0.1s;
+  white-space: nowrap;
+}
+
+.pending-quiz-indicator__open-btn:hover {
+  background: #ff6b6b;
+}
+
+.pending-quiz-indicator__open-btn:active {
+  transform: scale(0.98);
+}
+
+.pending-quiz-indicator__open-btn:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(255, 53, 53, 0.4);
+}

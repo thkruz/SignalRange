@@ -1,8 +1,10 @@
 import { html } from '@app/engine/utils/development/formatter';
 import { DraggableModal } from '@app/engine/ui/draggable-modal';
-import { Router } from '@app/router';
 import { ScenarioManager } from '@app/scenario-manager';
 import { ProgressSaveManager } from '@app/user-account/progress-save-manager';
+import { DialogManager } from './dialog-manager';
+import { PendingQuizIndicator } from './pending-quiz-indicator';
+import { QuizModal } from './quiz-modal';
 import './objective-failed-modal.css';
 
 interface FailureModalOptions {
@@ -62,6 +64,13 @@ export class ObjectiveFailedModal extends DraggableModal {
 
   protected override onOpen(): void {
     super.onOpen();
+
+    // Hide the close button - user must use restart options
+    const closeBtn = this.boxEl?.querySelector(`#${ObjectiveFailedModal.id}-close`);
+    if (closeBtn) {
+      (closeBtn as HTMLElement).style.display = 'none';
+    }
+
     this.initializeEventListeners_();
   }
 
@@ -73,40 +82,23 @@ export class ObjectiveFailedModal extends DraggableModal {
     scenarioBtn?.addEventListener('click', () => this.restartScenario_());
   }
 
-  private async restartFromCheckpoint_(): Promise<void> {
-    const scenario = ScenarioManager.getInstance();
-    if (!scenario?.data) {
-      console.error('No active scenario to restart');
-      this.close();
-      return;
-    }
-
-    const hasCheckpoint = await this.progressSaveManager_.hasCheckpoint(scenario.data.id);
-
-    if (hasCheckpoint) {
-      // Navigate with continueFromCheckpoint flag
-      Router.getInstance().navigate(scenario.data.url, { continueFromCheckpoint: true });
-    } else {
-      // No checkpoint, restart scenario instead
-      await this.restartScenario_();
-    }
-    this.close();
+  private restartFromCheckpoint_(): void {
+    // Simply refresh the page - checkpoint will be loaded automatically
+    window.location.reload();
   }
 
   private async restartScenario_(): Promise<void> {
     const scenario = ScenarioManager.getInstance();
     if (!scenario?.data) {
       console.error('No active scenario to restart');
-      this.close();
       return;
     }
 
-    // Clear checkpoint before restarting
+    // Clear checkpoint before refreshing
     await this.progressSaveManager_.clearCheckpoint(scenario.data.id);
 
-    // Navigate to scenario URL (fresh start)
-    Router.getInstance().navigate(scenario.data.url);
-    this.close();
+    // Refresh the page - will start fresh since no checkpoint exists
+    window.location.reload();
   }
 
   showFailure(options: Partial<FailureModalOptions>): void {
@@ -116,6 +108,9 @@ export class ObjectiveFailedModal extends DraggableModal {
       isScenarioTimeout: false,
       ...options,
     };
+
+    // Close any open popups before showing failure modal
+    this.closeAllPopups_();
 
     // Update the modal title based on whether it's scenario or objective failure
     if (options.isScenarioTimeout) {
@@ -136,7 +131,22 @@ export class ObjectiveFailedModal extends DraggableModal {
     this.open();
   }
 
+  /**
+   * Close all open popups when failure modal is shown
+   */
+  private closeAllPopups_(): void {
+    // Hide pending quiz indicator
+    PendingQuizIndicator.getInstance().hideAndCancel();
+
+    // Close quiz modal if open
+    QuizModal.getInstance().close();
+
+    // Close dialog if showing
+    DialogManager.getInstance().hide();
+  }
+
   override close(): void {
-    super.close();
+    // Do nothing - modal cannot be closed by X button or background click
+    // Restart actions use window.location.reload() instead
   }
 }

@@ -23,8 +23,6 @@ export class QuizModal extends DraggableBox {
   private totalPointsDeducted_: number = 0;
   private isShowingFeedback_: boolean = false;
   private domCreated_: boolean = false;
-  /** Stores the correct answer data until user clicks Continue */
-  private pendingCorrectAnswer_: QuizAnsweredData | null = null;
 
   private readonly boundShowQuizHandler_: (data: QuizShowData) => void;
 
@@ -94,7 +92,6 @@ export class QuizModal extends DraggableBox {
     this.attempts_ = 0;
     this.totalPointsDeducted_ = 0;
     this.isShowingFeedback_ = false;
-    this.pendingCorrectAnswer_ = null;
 
     // Create DOM lazily on first show
     if (!this.domCreated_) {
@@ -188,8 +185,9 @@ export class QuizModal extends DraggableBox {
     this.updateButtonStates_(index, isCorrect);
 
     if (isCorrect) {
-      // Store correct answer data - will be emitted when Continue is clicked
-      this.pendingCorrectAnswer_ = {
+      // Emit correct answer immediately to stop the timer
+      // The Continue button just closes the modal after reading the explanation
+      const answeredData: QuizAnsweredData = {
         objectiveId: this.currentQuiz_.objectiveId,
         conditionIndex: this.currentQuiz_.conditionIndex,
         isCorrect: true,
@@ -197,6 +195,7 @@ export class QuizModal extends DraggableBox {
         attempts: this.attempts_,
         pointsDeducted: this.totalPointsDeducted_,
       };
+      EventBus.getInstance().emit(Events.QUIZ_ANSWERED, answeredData);
       this.showCorrectFeedback_();
     } else {
       this.showIncorrectFeedback_(index);
@@ -269,15 +268,10 @@ export class QuizModal extends DraggableBox {
   }
 
   /**
-   * Handle Continue button click - emit the correct answer and close
-   * This gates quiz completion behind an explicit user action
+   * Handle Continue button click - just close the modal
+   * The correct answer was already emitted immediately when answered
    */
   private handleContinueClick_(): void {
-    // Emit the pending correct answer now
-    if (this.pendingCorrectAnswer_) {
-      EventBus.getInstance().emit(Events.QUIZ_ANSWERED, this.pendingCorrectAnswer_);
-      this.pendingCorrectAnswer_ = null;
-    }
     this.close();
   }
 
@@ -341,13 +335,8 @@ export class QuizModal extends DraggableBox {
   }
 
   override close(cb?: () => void): void {
-    // If there's a pending correct answer (user answered correctly but didn't click Continue),
-    // emit it now so the quiz is marked complete
-    if (this.pendingCorrectAnswer_) {
-      EventBus.getInstance().emit(Events.QUIZ_ANSWERED, this.pendingCorrectAnswer_);
-      this.pendingCorrectAnswer_ = null;
-    } else if (this.currentQuiz_ && !this.isShowingFeedback_) {
-      // Emit QUIZ_DISMISSED if closing without completing (not showing success feedback)
+    // If closing without completing (not showing success feedback), emit QUIZ_DISMISSED
+    if (this.currentQuiz_ && !this.isShowingFeedback_) {
       const dismissedData: QuizDismissedData = {
         objectiveId: this.currentQuiz_.objectiveId,
         conditionIndex: this.currentQuiz_.conditionIndex,

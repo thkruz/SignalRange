@@ -40,6 +40,7 @@ export const scenario1Data: ScenarioData = {
     'Receiver Modem (pre-configured)',
     'Transmitter Modem (pre-configured)',
   ],
+  timeLimitSeconds: 6000, // 100 minutes
   settings: {
     isSync: true,
     groundStations: [
@@ -410,6 +411,7 @@ export const scenario1Data: ScenarioData = {
       ],
       conditionLogic: 'AND',
       points: 20,
+      timeLimitSeconds: 10, // 20 minutes
     },
     {
       id: 'phase-2-lnb',

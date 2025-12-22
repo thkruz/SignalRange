@@ -7,7 +7,6 @@ import { DialogManager } from "@app/modal/dialog-manager";
 import { ObjectiveFailedModal } from "@app/modal/objective-failed-modal";
 import { QuizModal } from "@app/modal/quiz-modal";
 import { ObjectivesManager } from "@app/objectives/objectives-manager";
-import { ScenarioTimerDisplay } from "@app/objectives/scenario-timer-display";
 import { NavigationOptions } from "@app/router";
 import { ScenarioManager } from "@app/scenario-manager";
 import { ScenarioDialogManager } from "@app/scenarios/scenario-dialog-manager";
@@ -52,11 +51,6 @@ export abstract class BasePage extends BaseElement {
       // Pass scenario time limit if defined
       ObjectivesManager.initialize(scenario.data.objectives, scenario.data.timeLimitSeconds);
       SimulationManager.getInstance().objectivesManager = ObjectivesManager.getInstance();
-
-      // Initialize scenario timer display if scenario has a time limit
-      if (scenario.data.timeLimitSeconds) {
-        ScenarioTimerDisplay.initialize(ObjectivesManager.getInstance());
-      }
 
       // Subscribe to failure events
       this.subscribeToFailureEvents_();

@@ -1,20 +1,19 @@
+import { App } from "@app/app";
 import { GroundStation } from "@app/assets/ground-station/ground-station";
 import { GroundStationConfig } from "@app/assets/ground-station/ground-station-state";
 import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
 import { EventBus } from "@app/events/event-bus";
+import { Logger } from "@app/logging/logger";
 import { ObjectivesManager } from "@app/objectives/objectives-manager";
-import { ScenarioTimerDisplay } from "@app/objectives/scenario-timer-display";
 import { NavigationOptions } from "@app/router";
 import { ScenarioManager } from "@app/scenario-manager";
 import { ScenarioDialogManager } from "@app/scenarios/scenario-dialog-manager";
 import { AlarmService } from "@app/services/alarm-service";
 import { SimulationManager } from "@app/simulation/simulation-manager";
-import { Logger } from "@app/logging/logger";
 import { syncEquipmentWithStore } from "@app/sync";
 import { AppState, syncManager } from "@app/sync/storage";
 import { Auth } from "@app/user-account/auth";
-import { App } from "@app/app";
 import { BasePage } from "../base-page";
 import { Body } from "../layout/body/body";
 import { AssetTreeSidebar } from "./asset-tree-sidebar";
@@ -280,7 +279,6 @@ export class MissionControlPage extends BasePage {
     // Clean up singletons (matches SandboxPage.destroy())
     AlarmService.destroy();
     SimulationManager.destroy();
-    ScenarioTimerDisplay.getInstance()?.dispose();
     ObjectivesManager.destroy();
     ScenarioDialogManager.reset();
     EventBus.destroy();

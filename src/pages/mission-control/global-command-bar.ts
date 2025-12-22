@@ -2,6 +2,7 @@ import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
 import { EventBus } from "@app/events/event-bus";
 import { AggregatedAlarm, AlarmStateChangedData, Events } from "@app/events/events";
+import { ObjectivesManager } from "@app/objectives/objectives-manager";
 
 /**
  * GlobalCommandBar
@@ -20,7 +21,10 @@ export class GlobalCommandBar {
   private alarmBarEl_: HTMLElement | null = null;
   private countsEl_: HTMLElement | null = null;
   private messagesEl_: HTMLElement | null = null;
+  private objectiveTimerEl_: HTMLElement | null = null;
+  private scenarioTimerEl_: HTMLElement | null = null;
   private readonly boundOnAlarmStateChanged_: (data: AlarmStateChangedData) => void;
+  private timerUpdateInterval_: number | null = null;
 
   /** Maximum number of alarms to show inline */
   private readonly MAX_INLINE_ALARMS_ = 3;
@@ -29,6 +33,7 @@ export class GlobalCommandBar {
     this.boundOnAlarmStateChanged_ = this.onAlarmStateChanged_.bind(this);
     this.init_();
     this.subscribeToAlarms_();
+    this.startTimerUpdates_();
   }
 
   private readonly html_ = html`
@@ -68,20 +73,17 @@ export class GlobalCommandBar {
         </div>
       </div>
 
-      <!-- Right: User & System Status -->
-      <!-- <div class="command-bar-right">
-          <div class="text-right">
-              <div class="text-[10px] text-slate-400">NETWORK STATUS</div>
-              <div class="flex gap-1">
-                  <span class="h-2 w-2 rounded-full bg-green-500"></span>
-                  <span class="h-2 w-2 rounded-full bg-green-500"></span>
-                  <span class="h-2 w-2 rounded-full bg-slate-700"></span>
-              </div>
+      <!-- Right: Timer Displays -->
+      <div class="command-bar-right">
+          <div id="objective-timer-display" class="timer-display" style="display: none;">
+              <div class="timer-label">OBJECTIVE</div>
+              <div class="timer-value" id="objective-timer-value">--:--</div>
           </div>
-          <div class="h-8 w-8 rounded-full bg-slate-700 flex items-center justify-center border border-slate-600">
-              <i class="fa-solid fa-user text-slate-400"></i>
+          <div id="scenario-timer-display" class="timer-display" style="display: none;">
+              <div class="timer-label">MISSION</div>
+              <div class="timer-value" id="scenario-timer-value">--:--</div>
           </div>
-      </div> -->
+      </div>
     </header>
   `;
 
@@ -92,6 +94,8 @@ export class GlobalCommandBar {
     this.alarmBarEl_ = qs('#alarm-bar', parentDom);
     this.countsEl_ = qs('#alarm-counts', parentDom);
     this.messagesEl_ = qs('#alarm-messages', parentDom);
+    this.objectiveTimerEl_ = parentDom?.querySelector('#objective-timer-display') ?? null;
+    this.scenarioTimerEl_ = parentDom?.querySelector('#scenario-timer-display') ?? null;
   }
 
   private subscribeToAlarms_(): void {
@@ -229,7 +233,142 @@ export class GlobalCommandBar {
     }
   }
 
+  /**
+   * Start the timer update interval
+   */
+  private startTimerUpdates_(): void {
+    // Update every second
+    this.timerUpdateInterval_ = window.setInterval(() => {
+      this.updateTimerDisplays_();
+    }, 1000);
+
+    // Initial update
+    this.updateTimerDisplays_();
+  }
+
+  /**
+   * Update the timer displays based on ObjectivesManager state
+   */
+  private updateTimerDisplays_(): void {
+    let objectivesManager: ObjectivesManager | null = null;
+    try {
+      objectivesManager = ObjectivesManager.getInstance();
+    } catch {
+      // ObjectivesManager not initialized yet
+    }
+
+    // Update scenario timer
+    if (this.scenarioTimerEl_) {
+      const valueEl = this.scenarioTimerEl_.querySelector('#scenario-timer-value');
+      this.scenarioTimerEl_.style.display = 'flex';
+
+      if (objectivesManager?.hasScenarioTimer()) {
+        const timeRemaining = objectivesManager.getScenarioTimeRemaining();
+
+        // Check if scenario timer has expired (time is 0 or less)
+        if (timeRemaining <= 0) {
+          if (valueEl) {
+            valueEl.textContent = 'FAIL';
+          }
+          this.scenarioTimerEl_.classList.add('timer-failed');
+          this.scenarioTimerEl_.classList.remove('timer-warning', 'timer-urgent', 'timer-unlimited');
+        } else {
+          const timeStr = objectivesManager.formatTimeRemaining(timeRemaining);
+          if (valueEl) {
+            valueEl.textContent = timeStr;
+          }
+
+          // Add urgency class
+          if (timeRemaining <= 60) {
+            this.scenarioTimerEl_.classList.add('timer-urgent');
+            this.scenarioTimerEl_.classList.remove('timer-warning', 'timer-unlimited', 'timer-failed');
+          } else if (timeRemaining <= 300) {
+            this.scenarioTimerEl_.classList.add('timer-warning');
+            this.scenarioTimerEl_.classList.remove('timer-urgent', 'timer-unlimited', 'timer-failed');
+          } else {
+            this.scenarioTimerEl_.classList.remove('timer-warning', 'timer-urgent', 'timer-unlimited', 'timer-failed');
+          }
+        }
+      } else {
+        // No time limit - show unlimited indicator
+        if (valueEl) {
+          valueEl.textContent = '∞';
+        }
+        this.scenarioTimerEl_.classList.remove('timer-warning', 'timer-urgent', 'timer-failed');
+        this.scenarioTimerEl_.classList.add('timer-unlimited');
+      }
+    }
+
+    // Update objective timer - find the first active objective with a running timer
+    if (this.objectiveTimerEl_) {
+      let activeObjectiveTimer: { time: number; title: string } | null = null;
+      let failedObjective: { title: string } | null = null;
+
+      if (objectivesManager) {
+        const states = objectivesManager.getObjectiveStates();
+        for (const state of states) {
+          // Check for failed objectives first
+          if (state.isFailed && state.objective.timeLimitSeconds !== undefined) {
+            failedObjective = { title: state.objective.title };
+            break; // Show failed state
+          }
+          if (state.isTimerRunning && !state.isCompleted && !state.isFailed &&
+            state.timeRemainingSeconds !== undefined) {
+            activeObjectiveTimer = {
+              time: state.timeRemainingSeconds,
+              title: state.objective.title
+            };
+            break; // Show the first active timed objective
+          }
+        }
+      }
+
+      const valueEl = this.objectiveTimerEl_.querySelector('#objective-timer-value');
+      this.objectiveTimerEl_.style.display = 'flex';
+
+      if (failedObjective) {
+        // An objective has failed - show FAIL in red
+        if (valueEl) {
+          valueEl.textContent = 'FAIL';
+        }
+        this.objectiveTimerEl_.title = `Failed: ${failedObjective.title}`;
+        this.objectiveTimerEl_.classList.add('timer-failed');
+        this.objectiveTimerEl_.classList.remove('timer-warning', 'timer-urgent', 'timer-unlimited');
+      } else if (activeObjectiveTimer && objectivesManager) {
+        const timeStr = objectivesManager.formatTimeRemaining(activeObjectiveTimer.time);
+        if (valueEl) {
+          valueEl.textContent = timeStr;
+        }
+        this.objectiveTimerEl_.title = activeObjectiveTimer.title;
+
+        // Add urgency class
+        if (activeObjectiveTimer.time <= 30) {
+          this.objectiveTimerEl_.classList.add('timer-urgent');
+          this.objectiveTimerEl_.classList.remove('timer-warning', 'timer-unlimited', 'timer-failed');
+        } else if (activeObjectiveTimer.time <= 60) {
+          this.objectiveTimerEl_.classList.add('timer-warning');
+          this.objectiveTimerEl_.classList.remove('timer-urgent', 'timer-unlimited', 'timer-failed');
+        } else {
+          this.objectiveTimerEl_.classList.remove('timer-warning', 'timer-urgent', 'timer-unlimited', 'timer-failed');
+        }
+      } else {
+        // No active timed objective - show unlimited indicator
+        if (valueEl) {
+          valueEl.textContent = '∞';
+        }
+        this.objectiveTimerEl_.title = 'No time limit';
+        this.objectiveTimerEl_.classList.remove('timer-warning', 'timer-urgent', 'timer-failed');
+        this.objectiveTimerEl_.classList.add('timer-unlimited');
+      }
+    }
+  }
+
   dispose(): void {
     EventBus.getInstance().off(Events.ALARM_STATE_CHANGED, this.boundOnAlarmStateChanged_);
+
+    if (this.timerUpdateInterval_) {
+      clearInterval(this.timerUpdateInterval_);
+      this.timerUpdateInterval_ = null;
+    }
   }
 }

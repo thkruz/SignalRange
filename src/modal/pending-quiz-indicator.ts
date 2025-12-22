@@ -150,6 +150,15 @@ export class PendingQuizIndicator {
     this.indicatorElement_.classList.remove('show');
   }
 
+  /**
+   * Publicly hide the indicator and cancel any pending timeout.
+   * Called when failure modal is shown.
+   */
+  hideAndCancel(): void {
+    this.cancelPendingTimeout_();
+    this.hide_();
+  }
+
   isVisible(): boolean {
     return this.indicatorElement_?.classList.contains('show') ?? false;
   }

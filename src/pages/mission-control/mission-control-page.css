@@ -54,7 +54,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #1f1f1f;
+  background-color: #292929;
   position: relative;
 }
 
@@ -200,4 +200,86 @@
 
 .app-shell-page ::-webkit-scrollbar-thumb:hover {
   background: #475569;
+}
+
+/* ===== Timer Displays (Command Bar Right) ===== */
+.timer-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  width: 100px;
+}
+
+.timer-display .timer-label {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+}
+
+.timer-display .timer-value {
+  font-size: 1.25rem;
+  font-weight: 700;
+  font-family: var(--font-monospace, monospace);
+  color: #ffffff;
+  line-height: 1.2;
+}
+
+/* Warning state - less than 5 minutes (scenario) or 1 minute (objective) */
+.timer-display.timer-warning {
+  border-color: rgba(255, 165, 0, 0.5);
+  background: rgba(255, 165, 0, 0.1);
+}
+
+.timer-display.timer-warning .timer-value {
+  color: #ffa500;
+}
+
+/* Urgent state - less than 1 minute (scenario) or 30 seconds (objective) */
+.timer-display.timer-urgent {
+  border-color: rgba(255, 68, 68, 0.7);
+  background: rgba(255, 0, 0, 0.15);
+  animation: command-bar-timer-pulse 1s infinite;
+}
+
+.timer-display.timer-urgent .timer-value {
+  color: #ff4444;
+}
+
+@keyframes command-bar-timer-pulse {
+
+  0%,
+  100% {
+    background: rgba(255, 0, 0, 0.15);
+  }
+
+  50% {
+    background: rgba(255, 0, 0, 0.25);
+  }
+}
+
+/* Unlimited state - no time limit */
+.timer-display.timer-unlimited {
+  border-color: rgba(16, 185, 129, 0.5);
+  background: rgba(16, 185, 129, 0.1);
+}
+
+.timer-display.timer-unlimited .timer-value {
+  color: #10b981;
+}
+
+/* Failed state - timer expired */
+.timer-display.timer-failed {
+  border-color: rgba(220, 38, 38, 0.7);
+  background: rgba(220, 38, 38, 0.2);
+}
+
+.timer-display.timer-failed .timer-value {
+  color: #ef4444;
+  font-weight: 800;
 }

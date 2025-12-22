@@ -226,7 +226,9 @@ export class ObjectivesManager {
   private failObjective_(state: ObjectiveState, reason: 'timeout'): void {
     state.isFailed = true;
     state.failedAt = Date.now();
-    state.isTimerRunning = false;
+
+    // Stop ALL timers when any objective fails
+    this.stopAllTimers_();
 
     this.eventBus_.emit(Events.OBJECTIVE_FAILED, {
       objectiveId: state.objective.id,
@@ -240,12 +242,22 @@ export class ObjectivesManager {
    * Handle scenario-level timeout
    */
   private handleScenarioTimeout_(): void {
-    this.scenarioTimerRunning_ = false;
+    this.stopAllTimers_();
 
     this.eventBus_.emit(Events.SCENARIO_TIME_EXPIRED, {
       elapsedTime: this.getElapsedTime(),
       timeLimit: this.scenarioTimeLimit_ ?? 0,
     });
+  }
+
+  /**
+   * Stop all timers (scenario and per-objective)
+   */
+  private stopAllTimers_(): void {
+    this.scenarioTimerRunning_ = false;
+    for (const state of this.objectiveStates_) {
+      state.isTimerRunning = false;
+    }
   }
 
   /**

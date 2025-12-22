@@ -23,6 +23,7 @@ export class QuizModal extends DraggableBox {
   private totalPointsDeducted_: number = 0;
   private isShowingFeedback_: boolean = false;
   private domCreated_: boolean = false;
+  private shuffledIndices_: number[] = [];
 
   private readonly boundShowQuizHandler_: (data: QuizShowData) => void;
 
@@ -150,26 +151,33 @@ export class QuizModal extends DraggableBox {
     feedbackEl.style.display = 'none';
     penaltyEl.style.display = 'none';
 
-    // Create option buttons
+    // Create option buttons with randomized order
     const optionLabels = ['A', 'B', 'C', 'D'];
-    optionsEl.innerHTML = this.currentQuiz_.options
-      .map((option, index) => html`
-        <button
-          id="quiz-option-${index}"
-          class="quiz-option-btn"
-          data-index="${index}"
-        >
-          <span class="quiz-option-label">${optionLabels[index]}</span>
-          <span class="quiz-option-text">${option}</span>
-        </button>
-      `)
+    this.shuffledIndices_ = this.shuffleIndices_();
+
+    const quiz = this.currentQuiz_;
+    optionsEl.innerHTML = this.shuffledIndices_
+      .map((originalIndex, displayIndex) => {
+        const option = quiz.options[originalIndex];
+        return html`
+          <button
+            id="quiz-option-${displayIndex}"
+            class="quiz-option-btn"
+            data-index="${originalIndex}"
+          >
+            <span class="quiz-option-label">${optionLabels[displayIndex]}</span>
+            <span class="quiz-option-text">${option}</span>
+          </button>
+        `;
+      })
       .join('');
 
-    // Add click handlers
-    this.currentQuiz_.options.forEach((_, index) => {
-      const btn = getEl(`quiz-option-${index}`);
+    // Add click handlers using original index from data attribute
+    this.shuffledIndices_.forEach((_, displayIndex) => {
+      const btn = getEl(`quiz-option-${displayIndex}`);
       if (btn) {
-        btn.addEventListener('click', () => this.handleOptionClick_(index));
+        const originalIndex = parseInt(btn.dataset.index || '0', 10);
+        btn.addEventListener('click', () => this.handleOptionClick_(originalIndex));
       }
     });
   }
@@ -216,17 +224,20 @@ export class QuizModal extends DraggableBox {
   private updateButtonStates_(selectedIndex: number, isCorrect: boolean): void {
     if (!this.currentQuiz_) return;
 
-    this.currentQuiz_.options.forEach((_, index) => {
-      const btn = getEl(`quiz-option-${index}`);
+    const correctIndex = this.currentQuiz_.correctIndex;
+
+    // Iterate over display positions and map to original indices
+    this.shuffledIndices_.forEach((originalIndex, displayIndex) => {
+      const btn = getEl(`quiz-option-${displayIndex}`);
       if (!btn) return;
 
       btn.classList.remove('selected', 'correct', 'incorrect');
 
-      if (index === selectedIndex) {
+      if (originalIndex === selectedIndex) {
         btn.classList.add('selected', isCorrect ? 'correct' : 'incorrect');
       }
 
-      if (isCorrect && index === this.currentQuiz_.correctIndex) {
+      if (isCorrect && originalIndex === correctIndex) {
         btn.classList.add('correct');
       }
     });
@@ -308,7 +319,9 @@ export class QuizModal extends DraggableBox {
     }
 
     // Disable the wrong answer button but keep others enabled
-    const wrongBtn = getEl(`quiz-option-${selectedIndex}`);
+    // Find the display index for the selected original index
+    const displayIndex = this.shuffledIndices_.indexOf(selectedIndex);
+    const wrongBtn = getEl(`quiz-option-${displayIndex}`);
     if (wrongBtn) {
       wrongBtn.setAttribute('disabled', 'true');
       wrongBtn.classList.add('disabled');
@@ -323,10 +336,9 @@ export class QuizModal extends DraggableBox {
   }
 
   private disableOptions_(): void {
-    if (!this.currentQuiz_) return;
-
-    this.currentQuiz_.options.forEach((_, index) => {
-      const btn = getEl(`quiz-option-${index}`);
+    // Iterate over display positions (0-3)
+    this.shuffledIndices_.forEach((_, displayIndex) => {
+      const btn = getEl(`quiz-option-${displayIndex}`);
       if (btn) {
         btn.setAttribute('disabled', 'true');
         btn.classList.add('disabled');
@@ -347,6 +359,18 @@ export class QuizModal extends DraggableBox {
     this.currentQuiz_ = null;
     this.isShowingFeedback_ = false;
     super.close(cb);
+  }
+
+  /**
+   * Fisher-Yates shuffle to randomize answer order
+   */
+  private shuffleIndices_(): number[] {
+    const indices = [0, 1, 2, 3];
+    for (let i = indices.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [indices[i], indices[j]] = [indices[j], indices[i]];
+    }
+    return indices;
   }
 
   /**

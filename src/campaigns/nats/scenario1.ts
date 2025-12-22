@@ -411,7 +411,7 @@ export const scenario1Data: ScenarioData = {
       ],
       conditionLogic: 'AND',
       points: 20,
-      timeLimitSeconds: 10, // 20 minutes
+      timeLimitSeconds: 100, // 20 minutes
     },
     {
       id: 'phase-2-lnb',

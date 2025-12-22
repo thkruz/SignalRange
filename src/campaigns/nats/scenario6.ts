@@ -28,9 +28,9 @@ import type { Degrees } from 'ootk';
  * penalties kick in. Charlie is tied up on another call and mostly unavailable.
  */
 
-export const level6InterferenceHunt: ScenarioData = {
+export const scenario6Data: ScenarioData = {
   id: 'nats-level-6-interference-hunt',
-  prerequisiteScenarioIds: ['nats-level-5-inclined-orbit'],
+  prerequisiteScenarioIds: [],
   url: 'nats/level-6/interference-hunt',
   imageUrl: 'nats/6/card.png',
   number: 6,

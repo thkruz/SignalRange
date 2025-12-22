@@ -16,6 +16,8 @@ import { SimulationManager } from "./simulation/simulation-manager";
  */
 export interface NavigationOptions {
   continueFromCheckpoint?: boolean;
+  /** Skip showing completion modal for already-completed scenarios (for replay) */
+  forceReplay?: boolean;
 }
 
 /**

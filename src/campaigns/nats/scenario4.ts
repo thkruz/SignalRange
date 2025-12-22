@@ -27,9 +27,9 @@ import type { Degrees } from 'ootk';
  * yourself. No more pre-filled values. Charlie checks your math before you execute.
  */
 
-export const level4NewBirdNoHandbook: ScenarioData = {
+export const scenario4Data: ScenarioData = {
   id: 'nats-level-4-new-bird',
-  prerequisiteScenarioIds: ['nats-level-3-weather-handover'],
+  prerequisiteScenarioIds: [],
   url: 'nats/level-4/new-bird-no-handbook',
   imageUrl: 'nats/4/card.png',
   number: 4,

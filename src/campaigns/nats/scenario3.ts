@@ -31,7 +31,7 @@ import type { Degrees } from 'ootk';
 
 export const scenario3Data: ScenarioData = {
   id: 'nats-level-3-weather-handover',
-  prerequisiteScenarioIds: ['nats-level-2-maintenance'],
+  prerequisiteScenarioIds: [],
   url: 'nats/level-3/weather-handover',
   imageUrl: 'nats/3/card.png',
   number: 3,

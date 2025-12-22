@@ -2,6 +2,9 @@ import type { CampaignData } from '../campaign-types';
 import { scenario1Data } from './scenario1';
 import { scenario2Data } from './scenario2';
 import { scenario3Data } from './scenario3';
+import { scenario4Data } from './scenario4';
+import { scenario5Data } from './scenario5';
+import { scenario6Data } from './scenario6';
 
 /**
  * NATS Campaign: North Atlantic Teleport Services
@@ -24,6 +27,9 @@ export const natsCampaignData: CampaignData = {
     scenario1Data,
     scenario2Data,
     scenario3Data,
+    scenario4Data,
+    scenario5Data,
+    scenario6Data
   ],
   isLocked: false,
   isDisabled: false,

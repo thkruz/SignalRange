@@ -2,6 +2,9 @@ import { GroundStationConfig } from './assets/ground-station/ground-station-stat
 import { scenario1Data } from './campaigns/nats/scenario1';
 import { scenario2Data } from "./campaigns/nats/scenario2";
 import { scenario3Data } from './campaigns/nats/scenario3';
+import { scenario4Data } from './campaigns/nats/scenario4';
+import { scenario5Data } from './campaigns/nats/scenario5';
+import { scenario6Data } from './campaigns/nats/scenario6';
 import { AntennaState } from './equipment/antenna';
 import { ANTENNA_CONFIG_KEYS } from './equipment/antenna/antenna-configs';
 import { defaultSpectrumAnalyzerState } from './equipment/real-time-spectrum-analyzer/defaultSpectrumAnalyzerState';
@@ -125,6 +128,9 @@ export const SCENARIOS: ScenarioData[] = [
   scenario1Data,
   scenario2Data,
   scenario3Data,
+  scenario4Data,
+  scenario5Data,
+  scenario6Data
 ];
 
 export function isScenarioLocked(scenario: ScenarioData, completedScenarioIds: string[]): boolean {

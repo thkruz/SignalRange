@@ -29,9 +29,9 @@ import type { Degrees } from 'ootk';
  * requires active tracking with frequent TLE updates.
  */
 
-export const level5InclinedOrbit: ScenarioData = {
+export const scenario5Data: ScenarioData = {
   id: 'nats-level-5-inclined-orbit',
-  prerequisiteScenarioIds: ['nats-level-4-new-bird'],
+  prerequisiteScenarioIds: [],
   url: 'nats/level-5/inclined-orbit',
   imageUrl: 'nats/5/card.png',
   number: 5,

@@ -36,7 +36,7 @@ export const scenario6Data: ScenarioData = {
   number: 6,
   title: 'Level 6: "Interference Hunt"',
   subtitle: 'Troubleshooting Under Pressure',
-  duration: '20-25 min (15 min deadline)',
+  duration: '20-25 min',
   difficulty: 'advanced',
   missionType: 'Pressure Phase',
   description: `Customer reports degraded service on TIDEMARK-1. Packet loss is climbing, C/N ratio has dropped 6 dB from normal. Something's interfering with the downlink carrier.<br><br>SLA terms are clear: service must be restored within 15 minutes or financial penalties apply. The clock started when the customer called.<br><br>Charlie is stuck on another emergency call and can only provide brief support via intercom. You're solo on console. You need to: identify the interference source, determine its characteristics (frequency, type, power), implement a mitigation solution, and restore service quality.<br><br>This is real operations - time pressure, limited support, customer impact. Work fast but work smart.`,

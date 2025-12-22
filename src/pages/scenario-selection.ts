@@ -264,10 +264,10 @@ export class ScenarioSelectionPage extends BasePage {
         actionButtons = `
           <div class="scenario-checkpoint-actions">
           <button type="button" class="btn-continue" data-scenario-url="${scenario.url}">
-            Continue from Checkpoint
+            Continue
           </button>
           <button type="button" class="btn-start-fresh" data-scenario-id="${scenario.id}" data-scenario-url="${scenario.url}">
-            Start Fresh
+            Restart Level
           </button>
           </div>
         `;
@@ -328,7 +328,6 @@ export class ScenarioSelectionPage extends BasePage {
         <div class="equipment-list">
           ${scenario.equipment.map(item => `
           <div class="equipment-item">
-          <div class="equipment-icon"></div>
           <span>${item}</span>
           </div>
           `).join('')}

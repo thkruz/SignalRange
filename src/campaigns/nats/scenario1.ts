@@ -23,11 +23,11 @@ import type { Degrees } from 'ootk';
  */
 
 export const scenario1Data: ScenarioData = {
-  id: 'scenario1',
-  url: 'nats/scenarios/scenario1',
+  id: 'nats-scenario1',
+  url: 'nats/scenarios/nats-scenario1',
   imageUrl: 'nats/1/card.png',
   number: 1,
-  title: '"First Day"',
+  title: 'First Day',
   subtitle: 'TIDEMARK-1 Health Check',
   duration: '25-35 min',
   difficulty: 'beginner',
@@ -35,12 +35,11 @@ export const scenario1Data: ScenarioData = {
   description: `Welcome to your first day at North Atlantic Teleport Services, a commercial satellite ground station facility in rural Vermont. Your company provides ground segment services for the TIDEMARK constellation - SeaLink Global Communications' fleet of GEO satellites providing maritime broadband across the Atlantic.<br><br>TIDEMARK-1 is already online at 53°W, serving customer traffic. Today, Charlie Brooks will walk you through a routine health check. You'll learn what each equipment panel shows, what the indicators mean, and what "normal" looks like.<br><br>No pressure today - just observation and familiarization. Click through each panel and verify the status indicators as Charlie explains them.`,
   equipment: [
     '9-meter C-band Antenna',
-    'RF Front End (GPSDO, LNB, BUC, HPA, Filter)',
+    'RF Front End',
     'Spectrum Analyzer',
     'Receiver Modem (pre-configured)',
     'Transmitter Modem (pre-configured)',
   ],
-  timeLimitSeconds: 6000, // 100 minutes
   settings: {
     isSync: true,
     groundStations: [
@@ -384,6 +383,7 @@ export const scenario1Data: ScenarioData = {
       ),
     ]
   },
+  timeLimitSeconds: 6000, // 100 minutes
   objectives: [
     {
       id: 'phase-1-gpsdo',

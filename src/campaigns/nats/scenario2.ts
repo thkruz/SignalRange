@@ -1,3 +1,4 @@
+import { html } from '@app/engine/utils/development/formatter';
 import type { AntennaState } from '@app/equipment/antenna';
 import { ANTENNA_CONFIG_KEYS } from '@app/equipment/antenna/antenna-configs';
 import { BUCModuleCore } from '@app/equipment/rf-front-end/buc-module';
@@ -10,7 +11,7 @@ import { Character, Emotion } from '@app/modal/character-enum';
 import type { Objective } from '@app/objectives/objective-types';
 import type { ScenarioData } from '@app/ScenarioData';
 import { SignalOrigin } from "@app/SignalOrigin";
-import type { dB, dBi, dBm, FECType, Hertz, MHz, ModulationType, RfFrequency } from '@app/types';
+import type { dB, dBi, dBm, FECType, Hertz, IfSignal, MHz, ModulationType, RfFrequency } from '@app/types';
 import { getAssetUrl } from '@app/utils/asset-url';
 import type { Degrees } from 'ootk';
 
@@ -28,12 +29,12 @@ import type { Degrees } from 'ootk';
  */
 
 export const scenario2Data: ScenarioData = {
-  id: 'nats-level-2-maintenance',
-  prerequisiteScenarioIds: ['nats-level-1-first-day'],
-  url: 'nats/level-2/scheduled-maintenance',
+  id: 'nats-scenario2',
+  url: 'nats/scenarios/nats-scenario2',
+  prerequisiteScenarioIds: ['nats-scenario1'],
   imageUrl: 'nats/2/card.png',
   number: 2,
-  title: 'Level 2: "Scheduled Maintenance"',
+  title: 'Scheduled Maintenance',
   subtitle: 'Power Down and Recovery Procedures',
   duration: '20-25 min',
   difficulty: 'beginner',
@@ -41,8 +42,10 @@ export const scenario2Data: ScenarioData = {
   description: `The maintenance crew needs to perform work on the TIDEMARK-1 antenna feed assembly. You'll power down the transmit chain in the proper sequence to ensure safety (don't radiate the maintenance crew), move the antenna to stow position for access, then restore service after the maintenance window.<br><br>This is your first time actually controlling the equipment. Charlie will provide all frequency values and configuration settings - you just need to execute the procedures in the correct order.<br><br>Key lesson: Sequence matters. RF safety protocols exist for a reason.`,
   equipment: [
     '9-meter C-band Antenna',
-    'RF Front End (GPSDO, LNB, BUC, HPA)',
+    'RF Front End',
     'Spectrum Analyzer',
+    'Receiver Modem (pre-configured)',
+    'Transmitter Modem (pre-configured)',
   ],
   settings: {
     isSync: true,
@@ -53,54 +56,58 @@ export const scenario2Data: ScenarioData = {
         location: {
           latitude: 44.5588,
           longitude: -72.5778,
-          elevation: 350,
+          elevation: 2,
         },
         antennas: [ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK],
         antennasState: [
           {
-            // TIDEMARK-1 currently serving traffic
+            // Antenna already tracking TIDEMARK-1 in program-track mode
             isPowered: true,
-            azimuth: 214.2 as Degrees,
-            elevation: 24.8 as Degrees,
-            polarization: 0 as Degrees,
-            isTracking: true,
-            trackingMode: 'step-track',
+            azimuth: 161.8 as Degrees, // Locked on TIDEMARK-1
+            elevation: 34.2 as Degrees,
+            polarization: 14 as Degrees,
+            trackingMode: 'program-track',
+            isBeaconLocked: true,
+            targetSatelliteId: 61525,
+            targetAzimuth: 161.8 as Degrees,
+            targetElevation: 34.2 as Degrees,
+            targetPolarization: 14 as Degrees,
+            slewing: false,
+            beaconCN: 10.5 as dB,
+            beaconFrequencyHz: 3902.5e6 as Hertz,
+            isLocked: true,
           } as Partial<AntennaState>,
         ],
         rfFrontEnds: [{
+          // Module states managed by their respective classes
           omt: OMTModule.getDefaultState(),
-          buc: {
-            ...BUCModuleCore.getDefaultState(),
-            isPowered: true,
-            loFrequency: 2225 as MHz,
-            outputPower: 10 as dBm,
-            isMuted: false,
-            isExtRefLocked: true,
-          },
+          buc: BUCModuleCore.getDefaultState(),
           hpa: {
-            ...HPAModuleCore.getDefaultState(),
             isPowered: true,
+            backOff: 6, // dB
+            outputPower: 50 as dBm, // dBm (100W)
+            isOverdriven: false,
+            imdLevel: -30, // dBc
+            temperature: 45, // Celsius
             isHpaEnabled: true,
-            outputPower: 100 as dBm, // Watts - actively transmitting
+            isHpaSwitchEnabled: true,
+            noiseFloor: -140, // dBm/Hz
+            gain: 44 as dB,
           },
-          filter: {
-            ...IfFilterBankModuleCore.getDefaultState(),
-            isPowered: true,
-            bandwidthIndex: 3, // 36 MHz
-          },
+          filter: IfFilterBankModuleCore.getDefaultState(),
           lnb: {
             isPowered: true,
-            loFrequency: 5150 as MHz,
+            loFrequency: 5150 as MHz, // C-band LNB LO for 3902.5 MHz beacon -> 1247.5 MHz IF
             gain: 55 as dB,
-            lnaNoiseFigure: 0.6,
-            mixerNoiseFigure: 16.0,
-            noiseTemperature: 65,
-            noiseTemperatureStabilizationTime: 0,
-            isExtRefLocked: true,
-            noiseFloor: -140,
-            frequencyError: 0,
-            temperature: 45,
-            thermalStabilizationTime: 0,
+            lnaNoiseFigure: 0.6, // dB
+            mixerNoiseFigure: 16.0, // dB
+            noiseTemperature: 45, // K - stable
+            noiseTemperatureStabilizationTime: 0, // Already stabilized
+            isExtRefLocked: true, // Locked to GPSDO 10 MHz
+            noiseFloor: -140, // dBm/Hz
+            frequencyError: 0, // Hz
+            temperature: 28, // °C - stable
+            thermalStabilizationTime: 0, // Already stabilized
           },
           coupler: {
             isPowered: true,
@@ -108,8 +115,8 @@ export const scenario2Data: ScenarioData = {
             tapPointB: TapPoint.RX_IF,
             availableTapPointsA: [TapPoint.TX_IF, TapPoint.TX_RF_POST_BUC],
             availableTapPointsB: [TapPoint.RX_IF],
-            couplingFactorA: -40,
-            couplingFactorB: -39,
+            couplingFactorA: -40, // dB
+            couplingFactorB: -39, // dB
             isActiveA: true,
             isActiveB: true,
           } as CouplerState,
@@ -117,83 +124,284 @@ export const scenario2Data: ScenarioData = {
             isPowered: true,
             isLocked: true,
             warmupTimeRemaining: 0,
-            temperature: 65,
+            temperature: 70, // °C - stable operating temp
             gnssSignalPresent: true,
             isGnssSwitchUp: true,
             isGnssAcquiringLock: false,
-            satelliteCount: 12,
-            utcAccuracy: 15,
+            satelliteCount: 8,
+            utcAccuracy: 50, // ns
             constellation: 'GPS',
-            lockDuration: 43200,
-            frequencyAccuracy: 1e-12,
-            allanDeviation: 5e-13,
-            phaseNoise: -140,
+            lockDuration: 7200, // 2 hours locked
+            frequencyAccuracy: 2e-11, // Excellent stability
+            allanDeviation: 1e-11,
+            phaseNoise: -110, // dBc/Hz
             isInHoldover: false,
             holdoverDuration: 0,
             holdoverError: 0,
-            active10MHzOutputs: 5,
+            active10MHzOutputs: 3,
             max10MHzOutputs: 5,
-            output10MHzLevel: 0,
+            output10MHzLevel: 7, // dBm
             ppsOutputsEnabled: true,
-            operatingHours: 43200,
+            operatingHours: 8760, // 1 year of operation
             selfTestPassed: true,
             agingRate: 1e-10,
           },
         }],
         spectrumAnalyzers: [
           {
-            referenceLevel: -50,
-            centerFrequency: 3947.8e6 as Hertz,
-            span: 10e6 as Hertz,
-            rbw: 10e3 as Hertz,
-            minAmplitude: -170,
-            maxAmplitude: 0,
-            scaleDbPerDiv: 12 as dB,
+            referenceLevel: -100 as dBm, // Set for beacon observation
+            centerFrequency: 1247.5e6 as Hertz, // IF frequency for beacon
+            span: 2e3 as Hertz, // 2 kHz span for CW beacon
+            rbw: 1e3 as Hertz, // 1 kHz RBW for CW beacon
+            minAmplitude: -105 as dBm,
+            maxAmplitude: -85 as dBm,
+            scaleDbPerDiv: 10 as dB,
             screenMode: 'both',
             inputUnit: 'MHz',
             inputValue: '',
+
+            // Multi-trace support
             traces: [
-              { isVisible: true, isUpdating: true, mode: 'clearwrite' },
-              { isVisible: false, isUpdating: false, mode: 'clearwrite' },
-              { isVisible: false, isUpdating: false, mode: 'clearwrite' },
+              { isVisible: true, isUpdating: true, mode: 'clearwrite' }, // Trace 1
+              { isVisible: false, isUpdating: false, mode: 'clearwrite' }, // Trace 2
+              { isVisible: false, isUpdating: false, mode: 'clearwrite' }, // Trace 3
+            ],
+            selectedTrace: 1,
+          }
+        ],
+        transmitters: [{
+          activeModem: 1,
+          modems: [{
+            modem_number: 1,
+            isPowered: false,
+            isTransmitting: false,
+            isFaulted: false,
+            isLoopback: false,
+            antenna_id: 1,
+            ifSignal: {
+              frequency: 70e6,
+              bandwidth: 36e6,
+              power: -10,
+            } as IfSignal,
+            id: 0,
+            isFaultSwitchUp: false,
+            isTransmittingSwitchUp: false
+          }],
+        }],
+        receivers: [{
+          activeModem: 1,
+          modems: [{
+            modemNumber: 1,
+            isPowered: true,
+            frequency: 1432 as MHz,  // IF frequency for 3718 MHz RF with 5150 MHz LO
+            bandwidth: 36 as MHz,    // Match payload bandwidth
+            modulation: 'QPSK',
+            fec: '3/4',
+            antenna_id: 1,
+          }],
+        }],
+      },
+      {
+        id: 'ME-01',
+        isOperational: false,
+        name: 'Maine Ground Station',
+        location: {
+          latitude: 45.215214,
+          longitude: -68.785507,
+          elevation: 48,
+        },
+        antennas: [ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK],
+        rfFrontEnds: [{
+          // Module states managed by their respective classes
+          omt: OMTModule.getDefaultState(),
+          buc: BUCModuleCore.getDefaultState(),
+          hpa: HPAModuleCore.getDefaultState(),
+          filter: IfFilterBankModuleCore.getDefaultState(),
+          lnb: {
+            isPowered: false,
+            loFrequency: 6080 as MHz, // MHz
+            gain: 0 as dB,
+            lnaNoiseFigure: 0.6, // dB
+            mixerNoiseFigure: 16.0, // dB
+            noiseTemperature: 290, // K
+            noiseTemperatureStabilizationTime: 180, // seconds
+            isExtRefLocked: false,
+            noiseFloor: -140, // dBm/Hz
+            frequencyError: 0, // Hz
+            temperature: 25, // °C
+            thermalStabilizationTime: 180, // seconds
+          },
+          coupler: {
+            isPowered: true,
+            tapPointA: TapPoint.TX_IF,
+            tapPointB: TapPoint.RX_IF,
+            availableTapPointsA: [TapPoint.TX_IF, TapPoint.TX_RF_POST_BUC],
+            availableTapPointsB: [TapPoint.RX_IF],
+            couplingFactorA: -40, // dB
+            couplingFactorB: -39, // dB
+            isActiveA: true,
+            isActiveB: true,
+          } as CouplerState,
+          gpsdo: {
+            isPowered: true, // CHANGE
+            isLocked: false,
+            warmupTimeRemaining: 0, // seconds
+            temperature: 70, // °C
+            gnssSignalPresent: false,
+            isGnssSwitchUp: false,
+            isGnssAcquiringLock: false,
+            satelliteCount: 0,
+            utcAccuracy: 0,
+            constellation: 'GPS',
+            lockDuration: 0,
+            frequencyAccuracy: 0,
+            allanDeviation: 0,
+            phaseNoise: 0,
+            isInHoldover: true,
+            holdoverDuration: 600,
+            holdoverError: 0,
+            active10MHzOutputs: 2,
+            max10MHzOutputs: 5,
+            output10MHzLevel: 0,
+            ppsOutputsEnabled: false,
+            operatingHours: 6,
+            selfTestPassed: true,
+            agingRate: 0,
+          },
+        }],
+        spectrumAnalyzers: [
+          {
+            referenceLevel: 0, // dBm
+            centerFrequency: 600e6 as Hertz,
+            span: 100e6 as Hertz,
+            rbw: 50e6 as Hertz,
+            minAmplitude: -170,
+            maxAmplitude: 0,
+            scaleDbPerDiv: (-0 + 170) / 10 as dB, // 6 dB/div
+            screenMode: 'both',
+            inputUnit: 'MHz',
+            inputValue: '',
+
+            // Multi-trace support
+            traces: [
+              { isVisible: true, isUpdating: true, mode: 'clearwrite' }, // Trace 1
+              { isVisible: false, isUpdating: false, mode: 'clearwrite' }, // Trace 2
+              { isVisible: false, isUpdating: false, mode: 'clearwrite' }, // Trace 3
             ],
             selectedTrace: 1,
           }
         ],
         transmitters: [],
         receivers: [],
-      },
+      }
     ],
+    layout: html`
+          <div class="student-equipment scenario1-layout">
+            <div class="paired-equipment-container">
+              <div id="antenna1-container" class="antenna-container"></div>
+              <div id="specA1-container" class="spec-a-container"></div>
+            </div>
+            <div id="rf-front-end1-container" class="paired-equipment-container"></div>
+          </div>
+        `,
+    missionBriefUrl: 'https://docs.signalrange.space/scenarios/scenario-2?content-only=true&dark=true',
+    isExtraSatellitesVisible: true,
     satellites: [
       new Satellite(
-        1,
+        61525,
         [
           {
-            signalId: 'tidemark-1-beacon',
+            signalId: 'TIDEMARK-1-Payload',
             serverId: 1,
-            noradId: 1,
-            frequency: 3947.8e6 as RfFrequency,
+            noradId: 61525,
+            /** Must be the uplinkl to match the antenna in simulation */
+            frequency: 5943e6 as RfFrequency,
             polarization: 'H',
-            power: -95 as dBm,
-            bandwidth: 1e3 as Hertz,
-            modulation: 'CW' as ModulationType,
-            fec: 'none' as FECType,
-            feed: null,
+            power: 40 as dBm, // 10 W
+            bandwidth: 36e6 as Hertz,
+            modulation: 'QPSK' as ModulationType,
+            fec: '3/4' as FECType,
+            feed: '',
             isDegraded: false,
-            origin: SignalOrigin.SATELLITE_TX,
+            origin: SignalOrigin.SATELLITE_RX,
             noiseFloor: null,
             gainInPath: 0 as dBi,
           },
         ],
-        [],
+        [
+          {
+            frequency: 3902.5e6 as RfFrequency,
+            signalId: 'TIDEMARK-1-Beacon',
+            serverId: 1,
+            noradId: 61525,
+            power: 40 as dBm, // 10 W
+            bandwidth: 1e3 as Hertz,
+            modulation: 'CW' as ModulationType,
+            fec: 'null' as FECType,
+            polarization: 'H',
+            feed: '',
+            isDegraded: false,
+            origin: SignalOrigin.TRANSMITTER,
+            noiseFloor: null,
+            gainInPath: 0 as dBi,
+          },
+        ],
         {
-          az: 214.2 as Degrees,
-          el: 24.8 as Degrees,
+          az: 161.8 as Degrees,
+          el: 34.2 as Degrees,
+          rotation: 14 as Degrees,
+          frequencyOffset: 2.225e9 as Hertz,
+        }
+      ),
+      new Satellite(
+        42432,
+        [
+          {
+            signalId: 'SES-10-Payload',
+            serverId: 1,
+            noradId: 42432,
+            /** Must be the uplinkl to match the antenna in simulation */
+            frequency: 6115e6 as RfFrequency,
+            polarization: 'V',
+            power: 40 as dBm, // 10 W
+            bandwidth: 36e6 as Hertz,
+            modulation: 'QPSK' as ModulationType,
+            fec: '3/4' as FECType,
+            feed: '',
+            isDegraded: false,
+            origin: SignalOrigin.SATELLITE_RX,
+            noiseFloor: null,
+            gainInPath: 0 as dBi,
+          },
+        ],
+        [
+          {
+            frequency: 3905.0e6 as RfFrequency,
+            signalId: 'SES-10-Beacon',
+            serverId: 1,
+            noradId: 42432,
+            power: 40 as dBm, // 10 W
+            bandwidth: 1e3 as Hertz,
+            modulation: 'CW' as ModulationType,
+            fec: 'null' as FECType,
+            polarization: 'H',
+            feed: '',
+            isDegraded: false,
+            origin: SignalOrigin.TRANSMITTER,
+            noiseFloor: null,
+            gainInPath: 0 as dBi,
+          },
+        ],
+        {
+          az: 164.2 as Degrees,
+          el: 34.1 as Degrees,
+          rotation: -32 as Degrees,
           frequencyOffset: 2.225e9 as Hertz,
         }
       ),
     ]
   },
+  timeLimitSeconds: 900, // 15 minutes
   objectives: [
     {
       id: 'safety-briefing',
@@ -202,10 +410,16 @@ export const scenario2Data: ScenarioData = {
       groundStation: 'VT-01',
       conditions: [
         {
-          type: 'briefing-acknowledged',
+          type: 'status-check',
           description: 'Maintenance Safety Briefing Acknowledged',
           params: {
-            briefingId: 'rf-safety',
+            question: 'I need you to confirm you understand the RF safety briefing for today\'s maintenance work. Company policy is that I need you to verbally acknowledge before we can proceed. Lawyer\'s and such...',
+            options: [
+              'I have received and understood the RF safety briefing for today\'s maintenance work.',
+            ],
+            correctIndex: 0,
+            explanation: 'Acknowledging the RF safety briefing is a critical step to ensure all personnel are aware of the safety procedures before maintenance work begins.',
+            pointPenalty: 5,
           },
           mustMaintain: false,
         },
@@ -214,20 +428,31 @@ export const scenario2Data: ScenarioData = {
       points: 5,
     },
     {
-      id: 'power-down-hpa',
-      title: 'Phase 2: Disable HPA',
-      description: 'Disable the High Power Amplifier using the two-step ARM/DISABLE procedure.',
+      id: 'disable-hpa-output',
+      title: 'Phase 2a: Disable HPA Output',
+      description: 'Disable the High Power Amplifier output by toggling the HPA enable switch off.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['safety-briefing'],
       conditions: [
         {
-          type: 'hpa-armed',
-          description: 'HPA ARM Button Clicked',
-          mustMaintain: false,
+          type: 'hpa-disabled',
+          description: 'HPA Output Disabled',
+          mustMaintain: true,
         },
+      ],
+      conditionLogic: 'AND',
+      points: 5,
+    },
+    {
+      id: 'power-off-hpa',
+      title: 'Phase 2b: Power Off HPA',
+      description: 'Power off the High Power Amplifier completely.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['disable-hpa-output'],
+      conditions: [
         {
-          type: 'equipment-disabled',
-          description: 'HPA Disabled',
+          type: 'equipment-not-powered',
+          description: 'HPA Powered Off',
           params: {
             equipment: 'hpa',
           },
@@ -235,14 +460,14 @@ export const scenario2Data: ScenarioData = {
         },
       ],
       conditionLogic: 'AND',
-      points: 10,
+      points: 5,
     },
     {
       id: 'mute-buc',
       title: 'Phase 3: Mute BUC RF Output',
       description: 'Mute the Block Upconverter to stop all RF transmission.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['power-down-hpa'],
+      prerequisiteObjectiveIds: ['power-off-hpa'],
       conditions: [
         {
           type: 'buc-muted',
@@ -261,7 +486,7 @@ export const scenario2Data: ScenarioData = {
       prerequisiteObjectiveIds: ['mute-buc'],
       conditions: [
         {
-          type: 'equipment-powered-off',
+          type: 'equipment-not-powered',
           description: 'LNB Powered Off',
           params: {
             equipment: 'lnb',
@@ -280,8 +505,8 @@ export const scenario2Data: ScenarioData = {
       prerequisiteObjectiveIds: ['power-down-lnb'],
       conditions: [
         {
-          type: 'antenna-position-command',
-          description: 'Stow Position Commanded (Az: 0°, El: 90°)',
+          type: 'antenna-position',
+          description: 'Antenna Reached Stow Position',
           params: {
             azimuth: 0 as Degrees,
             elevation: 90 as Degrees,
@@ -289,18 +514,7 @@ export const scenario2Data: ScenarioData = {
           },
           mustMaintain: false,
         },
-        {
-          type: 'antenna-position-reached',
-          description: 'Antenna Reached Stow Position',
-          params: {
-            azimuth: 0 as Degrees,
-            elevation: 90 as Degrees,
-            tolerance: 0.5 as Degrees,
-          },
-          mustMaintain: true,
-        },
       ],
-      conditionLogic: 'AND',
       points: 15,
     },
     {

@@ -10,6 +10,8 @@ export interface ScoreBreakdown {
   timeBonus: number;
   /** Points deducted from quiz wrong answers */
   quizPenalties: number;
+  /** Points deducted from time-based objective penalties */
+  timePenalties: number;
   /** Final calculated score */
   totalScore: number;
 }
@@ -26,11 +28,13 @@ export class ScoreCalculator {
    * @param objectives - Completed objective states
    * @param timeRemainingSeconds - Seconds remaining on scenario timer (0 if no timer)
    * @param quizPenalties - Total points deducted from wrong quiz answers
+   * @param timePenalties - Total points deducted from time-based objective penalties
    */
   static calculate(
     objectives: ObjectiveState[],
     timeRemainingSeconds: number,
-    quizPenalties: number
+    quizPenalties: number,
+    timePenalties: number = 0
   ): ScoreBreakdown {
     // Sum objective points (default to 0 if undefined)
     const basePoints = objectives.reduce((sum, objState) => {
@@ -43,15 +47,17 @@ export class ScoreCalculator {
       : 0;
 
     // Ensure penalties are non-negative
-    const sanitizedPenalties = Math.max(0, quizPenalties);
+    const sanitizedQuizPenalties = Math.max(0, quizPenalties);
+    const sanitizedTimePenalties = Math.max(0, timePenalties);
 
     // Calculate total (minimum 0)
-    const totalScore = Math.max(0, basePoints + timeBonus - sanitizedPenalties);
+    const totalScore = Math.max(0, basePoints + timeBonus - sanitizedQuizPenalties - sanitizedTimePenalties);
 
     return {
       basePoints,
       timeBonus,
-      quizPenalties: sanitizedPenalties,
+      quizPenalties: sanitizedQuizPenalties,
+      timePenalties: sanitizedTimePenalties,
       totalScore,
     };
   }

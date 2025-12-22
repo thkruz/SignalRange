@@ -81,6 +81,9 @@ export class ObjectivesManager {
         isFailed: false,
         isTimerRunning: startsOnLoad || (startsOnActivate && isActive),
         timeRemainingSeconds: objective.timeLimitSeconds,
+        // Time penalty state initialization
+        timePenaltyApplied: false,
+        timePenaltyPoints: 0,
       };
     });
 
@@ -371,6 +374,10 @@ export class ObjectivesManager {
       currentState.isFailed = savedState.isFailed;
       currentState.failedAt = savedState.failedAt;
 
+      // Restore time penalty state
+      currentState.timePenaltyApplied = savedState.timePenaltyApplied;
+      currentState.timePenaltyPoints = savedState.timePenaltyPoints;
+
       // Restore collapse state if objective was completed
       if (savedState.isCompleted) {
         this.collapsedObjectiveIds_.add(currentState.objective.id);
@@ -608,6 +615,26 @@ export class ObjectivesManager {
         objectiveState.isCompleted = true;
         objectiveState.completedAt = Date.now();
         objectiveState.isTimerRunning = false; // Stop timer on completion
+
+        // Check for time penalty
+        if (objectiveState.objective.timePenalty) {
+          const elapsedTime = this.getElapsedTime();
+          const penalty = objectiveState.objective.timePenalty;
+
+          if (elapsedTime > penalty.elapsedTimeThreshold) {
+            objectiveState.timePenaltyApplied = true;
+            objectiveState.timePenaltyPoints = penalty.pointsDeducted;
+
+            this.eventBus_.emit(Events.TIME_PENALTY_APPLIED, {
+              objectiveId: objectiveState.objective.id,
+              objectiveTitle: objectiveState.objective.title,
+              pointsDeducted: penalty.pointsDeducted,
+              message: penalty.message,
+              elapsedTime,
+              threshold: penalty.elapsedTimeThreshold,
+            });
+          }
+        }
 
         this.collapsedObjectiveIds_.add(objectiveState.objective.id);
 

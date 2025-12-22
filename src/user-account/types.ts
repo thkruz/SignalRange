@@ -76,6 +76,8 @@ export interface ScenarioProgressEntry {
   timeBonus?: number;
   /** Points deducted from quiz wrong answers */
   quizPenalties?: number;
+  /** Points deducted from time-based objective penalties */
+  timePenalties?: number;
   /** ISO timestamp when scenario was completed */
   completedAt?: string;
   lastPlayed: string;
@@ -129,6 +131,7 @@ export interface ScenarioProgress {
   basePoints: number;
   timeBonus: number;
   quizPenalties: number;
+  timePenalties: number;
   completedAt?: string;
   lastPlayed: string;
   createdAt: string;
@@ -297,6 +300,7 @@ export interface UpdateScenarioProgressRequest {
   basePoints?: number;
   timeBonus?: number;
   quizPenalties?: number;
+  timePenalties?: number;
   completedAt?: string;
   lastPlayed?: string;
   scenarioNumber?: number;

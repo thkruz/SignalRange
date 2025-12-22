@@ -81,8 +81,11 @@ export class ScenarioCompletionHandler {
     // Aggregate quiz penalties
     const quizPenalties = this.aggregateQuizPenalties_(objectives);
 
+    // Aggregate time penalties
+    const timePenalties = this.aggregateTimePenalties_(objectives);
+
     // Calculate score
-    const score = ScoreCalculator.calculate(objectives, timeRemaining, quizPenalties);
+    const score = ScoreCalculator.calculate(objectives, timeRemaining, quizPenalties, timePenalties);
 
     Logger.info('Score calculated:', score);
 
@@ -122,6 +125,15 @@ export class ScenarioCompletionHandler {
   }
 
   /**
+   * Aggregate time penalties across all objectives
+   */
+  private aggregateTimePenalties_(objectives: readonly ReturnType<ObjectivesManager['getObjectiveStates']>[number][]): number {
+    return objectives.reduce((total, objState) => {
+      return total + (objState.timePenaltyPoints ?? 0);
+    }, 0);
+  }
+
+  /**
    * Extract campaign ID from current route
    * Route format: /campaigns/{campaignId}/scenarios/{scenarioId}
    */
@@ -146,6 +158,7 @@ export class ScenarioCompletionHandler {
         basePoints: score.basePoints,
         timeBonus: score.timeBonus,
         quizPenalties: score.quizPenalties,
+        timePenalties: score.timePenalties,
         completedAt: new Date().toISOString(),
         lastPlayed: new Date().toISOString(),
         scenarioNumber,

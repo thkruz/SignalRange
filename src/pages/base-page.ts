@@ -12,6 +12,7 @@ import { NavigationOptions, Router } from "@app/router";
 import { ScenarioManager } from "@app/scenario-manager";
 import { ScenarioDialogManager } from "@app/scenarios/scenario-dialog-manager";
 import { ScenarioCompletionHandler } from "@app/scoring/scenario-completion-handler";
+import { TimePenaltyToast } from "@app/modal/time-penalty-toast";
 import { SimulationManager } from "@app/simulation/simulation-manager";
 import { AppState } from "@app/sync/storage";
 import { Auth } from "@app/user-account/auth";
@@ -45,6 +46,9 @@ export abstract class BasePage extends BaseElement {
 
     // Initialize scenario completion handler for scoring popup
     ScenarioCompletionHandler.getInstance().initialize();
+
+    // Initialize time penalty toast to show notifications when penalties are applied
+    TimePenaltyToast.getInstance();
   }
 
   /**
@@ -271,6 +275,7 @@ export abstract class BasePage extends BaseElement {
           basePoints: savedProgress.basePoints ?? 0,
           timeBonus: savedProgress.timeBonus ?? 0,
           quizPenalties: savedProgress.quizPenalties ?? 0,
+          timePenalties: savedProgress.timePenalties ?? 0,
           totalScore: savedProgress.score ?? 0,
         },
         elapsedTimeSeconds: 0,

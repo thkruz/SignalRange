@@ -602,6 +602,7 @@ export class UserDataService {
       basePoints: apiProgress.base_points ?? apiProgress.basePoints ?? 0,
       timeBonus: apiProgress.time_bonus ?? apiProgress.timeBonus ?? 0,
       quizPenalties: apiProgress.quiz_penalties ?? apiProgress.quizPenalties ?? 0,
+      timePenalties: apiProgress.time_penalties ?? apiProgress.timePenalties ?? 0,
       completedAt: apiProgress.completed_at || apiProgress.completedAt,
       lastPlayed: apiProgress.last_played || apiProgress.lastPlayed || new Date().toISOString(),
       createdAt: apiProgress.created_at || apiProgress.createdAt || new Date().toISOString(),

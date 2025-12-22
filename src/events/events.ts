@@ -166,6 +166,15 @@ export interface ScenarioTimeExpiredData {
   timeLimit: number;
 }
 
+export interface TimePenaltyAppliedData {
+  objectiveId: string;
+  objectiveTitle: string;
+  pointsDeducted: number;
+  message?: string;
+  elapsedTime: number;
+  threshold: number;
+}
+
 // Progress Save Event specific interfaces
 export interface ProgressSaveStartData {
   timestamp: number;
@@ -246,6 +255,7 @@ export enum Events {
   OBJECTIVES_ALL_COMPLETED = 'objectives:all:completed',
   OBJECTIVE_FAILED = 'objective:failed',
   SCENARIO_TIME_EXPIRED = 'scenario:time:expired',
+  TIME_PENALTY_APPLIED = 'time:penalty:applied',
 
   // Quiz events (for status-check conditions)
   QUIZ_SHOW = 'quiz:show',
@@ -313,6 +323,7 @@ export interface EventMap {
   [Events.OBJECTIVES_ALL_COMPLETED]: [ObjectivesAllCompletedData];
   [Events.OBJECTIVE_FAILED]: [ObjectiveFailedData];
   [Events.SCENARIO_TIME_EXPIRED]: [ScenarioTimeExpiredData];
+  [Events.TIME_PENALTY_APPLIED]: [TimePenaltyAppliedData];
 
   [Events.QUIZ_SHOW]: [QuizShowData];
   [Events.QUIZ_ANSWERED]: [QuizAnsweredData];

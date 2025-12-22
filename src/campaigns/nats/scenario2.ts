@@ -401,7 +401,6 @@ export const scenario2Data: ScenarioData = {
       ),
     ]
   },
-  timeLimitSeconds: 900, // 15 minutes
   objectives: [
     {
       id: 'safety-briefing',
@@ -515,56 +514,31 @@ export const scenario2Data: ScenarioData = {
           mustMaintain: false,
         },
       ],
+      timePenalty: {
+        elapsedTimeThreshold: 30, // 15 minutes
+        pointsDeducted: 30,
+        message: "You delayed maintenance getting started on time. Don't let it happen again."
+      },
       points: 15,
-    },
-    {
-      id: 'maintenance-window',
-      title: 'Phase 6: Maintenance Window',
-      description: 'Wait for maintenance crew to complete work on antenna feed assembly.',
-      groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['antenna-stow'],
-      conditions: [
-        {
-          type: 'time-elapsed',
-          description: 'Maintenance Completed (simulated time skip)',
-          params: {
-            duration: 300, // 5 minutes simulated
-          },
-          mustMaintain: false,
-        },
-      ],
-      conditionLogic: 'AND',
-      points: 0,
     },
     {
       id: 'repoint-antenna',
       title: 'Phase 7: Repoint Antenna at TIDEMARK-1',
       description: 'Command antenna to return to operational pointing (Az: 214.2°, El: 24.8°).',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['maintenance-window'],
+      prerequisiteObjectiveIds: ['antenna-maintenance'],
       conditions: [
         {
-          type: 'antenna-position-command',
+          type: 'antenna-position',
           description: 'Operational Position Commanded',
           params: {
-            azimuth: 214.2 as Degrees,
-            elevation: 24.8 as Degrees,
-            tolerance: 0.5 as Degrees,
+            trackingMode: 'program-track',
+            azimuth: 161.8 as Degrees,
+            elevation: 34.2 as Degrees,
+            tolerance: 0.1 as Degrees,
           },
-          mustMaintain: false,
-        },
-        {
-          type: 'antenna-position-reached',
-          description: 'Antenna Reached Operational Position',
-          params: {
-            azimuth: 214.2 as Degrees,
-            elevation: 24.8 as Degrees,
-            tolerance: 0.5 as Degrees,
-          },
-          mustMaintain: false,
         },
       ],
-      conditionLogic: 'AND',
       points: 10,
     },
     {
@@ -630,9 +604,9 @@ export const scenario2Data: ScenarioData = {
       points: 10,
     },
     {
-      id: 'restore-transmit',
-      title: 'Phase 10: Restore Transmit Chain',
-      description: 'Unmute BUC and enable HPA to restore full service.',
+      id: 'unmute-buc',
+      title: 'Phase 10a: Unmute BUC RF Output',
+      description: 'Unmute the Block Upconverter to allow RF transmission.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['verify-beacon'],
       conditions: [
@@ -641,22 +615,41 @@ export const scenario2Data: ScenarioData = {
           description: 'BUC RF Output Unmuted',
           maintainUntilObjectiveComplete: true,
         },
+      ],
+      points: 10,
+    },
+    {
+      id: 'power-on-hpa',
+      title: 'Phase 10b: Power On HPA',
+      description: 'Power on the High Power Amplifier.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['unmute-buc'],
+      conditions: [
         {
-          type: 'hpa-armed',
-          description: 'HPA ARM Button Clicked',
-          mustMaintain: false,
-        },
-        {
-          type: 'equipment-enabled',
-          description: 'HPA Enabled',
+          type: 'equipment-powered',
+          description: 'HPA Powered On',
           params: {
             equipment: 'hpa',
           },
           maintainUntilObjectiveComplete: true,
         },
       ],
-      conditionLogic: 'AND',
-      points: 15,
+      points: 5,
+    },
+    {
+      id: 'enable-hpa-output',
+      title: 'Phase 10c: Enable HPA Output',
+      description: 'Enable the High Power Amplifier output to restore full service.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['power-on-hpa'],
+      conditions: [
+        {
+          type: 'hpa-enabled',
+          description: 'HPA Output Enabled',
+          maintainUntilObjectiveComplete: true,
+        },
+      ],
+      points: 5,
     },
   ] as Objective[],
   dialogClips: {
@@ -758,7 +751,7 @@ export const scenario2Data: ScenarioData = {
         emotion: Emotion.NEUTRAL,
         audioUrl: getAssetUrl('/assets/campaigns/nats/2/obj-beacon.mp3'),
       },
-      'restore-transmit': {
+      'enable-hpa-output': {
         text: `
         <p>
           Link's restored. TIDEMARK-1 back in service, customers are happy, maintenance is done.

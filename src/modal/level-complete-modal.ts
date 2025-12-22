@@ -23,7 +23,7 @@ export class LevelCompleteModal extends DraggableModal {
   private static instance_: LevelCompleteModal | null = null;
 
   private options_: CompletionModalOptions = {
-    score: { basePoints: 0, timeBonus: 0, quizPenalties: 0, totalScore: 0 },
+    score: { basePoints: 0, timeBonus: 0, quizPenalties: 0, timePenalties: 0, totalScore: 0 },
     elapsedTimeSeconds: 0,
     campaignId: '',
     scenarioId: '',
@@ -76,6 +76,12 @@ export class LevelCompleteModal extends DraggableModal {
               <span class="breakdown-label">Quiz Penalties</span>
               <span class="breakdown-value negative">-${score.quizPenalties}</span>
             </div>
+            ${score.timePenalties > 0 ? `
+            <div class="breakdown-row">
+              <span class="breakdown-label">Time Penalties</span>
+              <span class="breakdown-value negative">-${score.timePenalties}</span>
+            </div>
+            ` : ''}
           </div>
         </div>
 

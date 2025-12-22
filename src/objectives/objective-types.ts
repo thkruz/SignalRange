@@ -142,6 +142,18 @@ export interface ConditionParams {
 }
 
 /**
+ * Configuration for time-based point deduction on objective completion
+ */
+export interface TimePenalty {
+  /** Elapsed scenario time (in seconds) after which penalty applies */
+  elapsedTimeThreshold: number;
+  /** Fixed number of points to deduct */
+  pointsDeducted: number;
+  /** Optional message explaining the deduction */
+  message?: string;
+}
+
+/**
  * Single condition that must be satisfied
  */
 export interface Condition {
@@ -189,6 +201,8 @@ export interface Objective {
   timeLimitSeconds?: number;
   /** When the timer starts: 'on-activate' (default) or 'on-scenario-load' */
   timerStartTrigger?: 'on-activate' | 'on-scenario-load';
+  /** Optional time penalty: deducts points if completed after elapsed time threshold */
+  timePenalty?: TimePenalty;
 }
 
 /**
@@ -215,6 +229,10 @@ export interface ObjectiveState {
   timeRemainingSeconds?: number;
   /** Whether timer is currently running */
   isTimerRunning: boolean;
+  /** Whether a time penalty was applied on completion */
+  timePenaltyApplied?: boolean;
+  /** Points deducted due to time penalty */
+  timePenaltyPoints?: number;
 }
 
 /**

@@ -2,6 +2,8 @@ import { html } from '@app/engine/utils/development/formatter';
 import { DraggableModal } from '@app/engine/ui/draggable-modal';
 import { Router } from '@app/router';
 import type { ScoreBreakdown } from '@app/scoring/score-calculator';
+import { SimulationManager } from '@app/simulation/simulation-manager';
+import { clearPersistedStore } from '@app/sync/storage';
 import { DialogManager } from './dialog-manager';
 import { PendingQuizIndicator } from './pending-quiz-indicator';
 import { QuizModal } from './quiz-modal';
@@ -26,6 +28,7 @@ export class LevelCompleteModal extends DraggableModal {
   };
 
   private onContinueCallback_: (() => void) | null = null;
+  private isReplayMode_: boolean = false;
 
   private constructor() {
     if (LevelCompleteModal.instance_) {
@@ -75,10 +78,11 @@ export class LevelCompleteModal extends DraggableModal {
         </div>
 
         <div class="complete-modal__time">
-          Completed in ${elapsedFormatted}
+          ${this.isReplayMode_ ? 'Previously completed' : `Completed in ${elapsedFormatted}`}
         </div>
 
         <div class="complete-modal__actions">
+          ${this.isReplayMode_ ? '<button id="play-again-btn" class="btn btn-primary">Play Again</button>' : ''}
           <button id="continue-btn" class="btn btn-success">Continue</button>
         </div>
       </div>
@@ -100,6 +104,9 @@ export class LevelCompleteModal extends DraggableModal {
   private initializeEventListeners_(): void {
     const continueBtn = this.boxEl?.querySelector('#continue-btn');
     continueBtn?.addEventListener('click', () => this.handleContinue_());
+
+    const playAgainBtn = this.boxEl?.querySelector('#play-again-btn');
+    playAgainBtn?.addEventListener('click', () => this.handlePlayAgain_());
   }
 
   private handleContinue_(): void {
@@ -114,6 +121,25 @@ export class LevelCompleteModal extends DraggableModal {
     // Navigate back to campaign scenarios
     const { campaignId } = this.options_;
     Router.getInstance().navigate(`/campaigns/${campaignId}`);
+  }
+
+  private async handlePlayAgain_(): Promise<void> {
+    // Close this modal
+    this.forceClose_();
+
+    const { campaignId, scenarioId } = this.options_;
+
+    // Clear the checkpoint for this scenario so it starts fresh
+    const sim = SimulationManager.getInstance();
+    if (sim.progressSaveManager) {
+      await sim.progressSaveManager.clearCheckpoint(scenarioId);
+    }
+
+    // Clear local equipment state so scenario starts with default equipment settings
+    await clearPersistedStore();
+
+    // Navigate to the same scenario to restart fresh (forceReplay skips the completion check)
+    Router.getInstance().navigate(`/campaigns/${campaignId}/scenarios/${scenarioId}`, { forceReplay: true });
   }
 
   /**
@@ -139,10 +165,14 @@ export class LevelCompleteModal extends DraggableModal {
 
   /**
    * Show the completion modal with score breakdown
+   * @param options Score and scenario information
+   * @param onContinue Callback when Continue button is clicked
+   * @param isReplay True if showing for an already-completed scenario (adds Play Again button)
    */
-  showCompletion(options: CompletionModalOptions, onContinue?: () => void): void {
+  showCompletion(options: CompletionModalOptions, onContinue?: () => void, isReplay?: boolean): void {
     this.options_ = options;
     this.onContinueCallback_ = onContinue ?? null;
+    this.isReplayMode_ = isReplay ?? false;
 
     // Close any open popups before showing completion modal
     this.closeAllPopups_();
@@ -168,6 +198,11 @@ export class LevelCompleteModal extends DraggableModal {
 
     // Close dialog if showing
     DialogManager.getInstance().hide();
+
+    // Close checklist and mission brief boxes if open
+    const sim = SimulationManager.getInstance();
+    sim.checklistBox?.close();
+    sim.missionBriefBox?.close();
   }
 
   override close(): void {

@@ -192,6 +192,21 @@ export class QuizManager {
   }
 
   /**
+   * Destroy the singleton instance and clean up event listeners
+   */
+  static destroy(): void {
+    if (QuizManager.instance_) {
+      const instance = QuizManager.instance_;
+      EventBus.getInstance().off(Events.QUIZ_ANSWERED, instance.boundQuizAnsweredHandler_);
+      EventBus.getInstance().off(Events.QUIZ_DISMISSED, instance.boundQuizDismissedHandler_);
+      EventBus.getInstance().off(Events.QUIZ_PASSED, instance.boundQuizPassedHandler_);
+      EventBus.getInstance().off(Events.QUIZ_COMPLETED, instance.boundQuizCompletedHandler_);
+      instance.reset();
+      QuizManager.instance_ = null;
+    }
+  }
+
+  /**
    * Handle incorrect quiz answer from the modal
    * Correct answers are now handled by QUIZ_PASSED event
    */

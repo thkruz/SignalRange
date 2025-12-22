@@ -4,10 +4,11 @@ import { Events, ObjectiveFailedData, ScenarioTimeExpiredData } from "@app/event
 import { Logger } from "@app/logging/logger";
 import { Character } from "@app/modal/character-enum";
 import { DialogManager } from "@app/modal/dialog-manager";
+import { LevelCompleteModal } from "@app/modal/level-complete-modal";
 import { ObjectiveFailedModal } from "@app/modal/objective-failed-modal";
 import { QuizModal } from "@app/modal/quiz-modal";
 import { ObjectivesManager } from "@app/objectives/objectives-manager";
-import { NavigationOptions } from "@app/router";
+import { NavigationOptions, Router } from "@app/router";
 import { ScenarioManager } from "@app/scenario-manager";
 import { ScenarioDialogManager } from "@app/scenarios/scenario-dialog-manager";
 import { ScenarioCompletionHandler } from "@app/scoring/scenario-completion-handler";
@@ -15,6 +16,8 @@ import { SimulationManager } from "@app/simulation/simulation-manager";
 import { AppState } from "@app/sync/storage";
 import { Auth } from "@app/user-account/auth";
 import { ProgressSaveManager } from "@app/user-account/progress-save-manager";
+import { ScenarioProgressEntry } from "@app/user-account/types";
+import { getUserDataService } from "@app/user-account/user-data-service";
 import { getAssetUrl } from "@app/utils/asset-url";
 
 export abstract class BasePage extends BaseElement {
@@ -50,8 +53,19 @@ export abstract class BasePage extends BaseElement {
    * Note: Caller should ensure SimulationManager is already initialized before calling this.
    */
   protected async initializeObjectivesAndDialogs_(): Promise<void> {
-    // Initialize objectives manager if scenario has objectives
     const scenario = ScenarioManager.getInstance();
+
+    // Check if scenario is already complete (skip if continuing from checkpoint or replaying)
+    if (!this.navigationOptions_.continueFromCheckpoint && !this.navigationOptions_.forceReplay) {
+      const savedProgress = await this.checkScenarioAlreadyComplete_();
+      if (savedProgress) {
+        this.showAlreadyCompleteModal_(savedProgress);
+        EventBus.getInstance().emit(Events.DOM_READY);
+        return; // Skip normal initialization - no timers started
+      }
+    }
+
+    // Initialize objectives manager if scenario has objectives
     if (scenario.data?.objectives && scenario.data.objectives.length > 0) {
       // Pass scenario time limit if defined
       ObjectivesManager.initialize(scenario.data.objectives, scenario.data.timeLimitSeconds);
@@ -69,6 +83,19 @@ export abstract class BasePage extends BaseElement {
       // If we're continuing from a checkpoint, restore objective states
       if (this.navigationOptions_.continueFromCheckpoint) {
         await this.restoreObjectiveStatesFromCheckpoint_();
+      }
+
+      // Check if all objectives are already complete (e.g., from restored checkpoint)
+      // This handles the case where user refreshes after completing but before clicking Continue
+      const objectivesManager = ObjectivesManager.getInstance();
+      if (objectivesManager.areAllObjectivesCompleted()) {
+        Logger.info('All objectives already complete on load, triggering completion flow');
+        // Stop all timers since scenario is complete
+        objectivesManager.stopAllTimers();
+        EventBus.getInstance().emit(Events.OBJECTIVES_ALL_COMPLETED, {
+          completedObjectives: [...objectivesManager.getObjectiveStates()],
+          totalTime: objectivesManager.getElapsedTime(),
+        });
       }
     }
 
@@ -197,5 +224,61 @@ export abstract class BasePage extends BaseElement {
 
     // Clean up scenario completion handler
     ScenarioCompletionHandler.destroy();
+  }
+
+  /**
+   * Check if the current scenario is already marked as complete.
+   * Returns the saved progress entry if complete, null otherwise.
+   */
+  private async checkScenarioAlreadyComplete_(): Promise<ScenarioProgressEntry | null> {
+    const scenario = ScenarioManager.getInstance();
+    const scenarioNumber = scenario.data?.number;
+    if (!scenarioNumber) return null;
+
+    try {
+      const progress = await getUserDataService().getUserProgress();
+      const completedScenarios = progress.completedScenarios ?? [];
+
+      if (!completedScenarios.includes(scenarioNumber)) return null;
+
+      return progress.scenarioProgress?.[scenarioNumber] ?? null;
+    } catch (error) {
+      Logger.error('Failed to check scenario completion status:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Show the completion modal for an already-complete scenario.
+   */
+  private showAlreadyCompleteModal_(savedProgress: ScenarioProgressEntry): void {
+    const scenario = ScenarioManager.getInstance();
+    const campaignId = this.extractCampaignId_();
+
+    LevelCompleteModal.getInstance().showCompletion(
+      {
+        score: {
+          basePoints: savedProgress.basePoints ?? 0,
+          timeBonus: savedProgress.timeBonus ?? 0,
+          quizPenalties: savedProgress.quizPenalties ?? 0,
+          totalScore: savedProgress.score ?? 0,
+        },
+        elapsedTimeSeconds: 0,
+        campaignId,
+        scenarioId: scenario.data?.id ?? '',
+      },
+      undefined,
+      true
+    );
+  }
+
+  /**
+   * Extract campaign ID from current route.
+   * Route format: /campaigns/{campaignId}/scenarios/{scenarioId}
+   */
+  private extractCampaignId_(): string {
+    const path = Router.getInstance().getCurrentPath();
+    const match = path.match(/^\/campaigns\/([^/]+)/);
+    return match?.[1] ?? 'nats';
   }
 }

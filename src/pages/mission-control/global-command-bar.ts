@@ -262,7 +262,13 @@ export class GlobalCommandBar {
       const valueEl = this.scenarioTimerEl_.querySelector('#scenario-timer-value');
       this.scenarioTimerEl_.style.display = 'flex';
 
-      if (objectivesManager?.hasScenarioTimer()) {
+      if (!objectivesManager) {
+        // Not initialized yet - show pending state
+        if (valueEl) {
+          valueEl.textContent = '--:--';
+        }
+        this.scenarioTimerEl_.classList.remove('timer-warning', 'timer-urgent', 'timer-unlimited', 'timer-failed');
+      } else if (objectivesManager.hasScenarioTimer()) {
         const timeRemaining = objectivesManager.getScenarioTimeRemaining();
 
         // Check if scenario timer has expired (time is 0 or less)
@@ -336,7 +342,14 @@ export class GlobalCommandBar {
       const valueEl = this.objectiveTimerEl_.querySelector('#objective-timer-value');
       this.objectiveTimerEl_.style.display = 'flex';
 
-      if (passedObjective) {
+      if (!objectivesManager) {
+        // Not initialized yet - show pending state
+        if (valueEl) {
+          valueEl.textContent = '--:--';
+        }
+        this.objectiveTimerEl_.title = '';
+        this.objectiveTimerEl_.classList.remove('timer-warning', 'timer-urgent', 'timer-unlimited', 'timer-failed', 'timer-passed');
+      } else if (passedObjective) {
         // Quiz passed - show PASS in green
         if (valueEl) {
           valueEl.textContent = 'PASS';
@@ -352,7 +365,7 @@ export class GlobalCommandBar {
         this.objectiveTimerEl_.title = `Failed: ${failedObjective.title}`;
         this.objectiveTimerEl_.classList.add('timer-failed');
         this.objectiveTimerEl_.classList.remove('timer-warning', 'timer-urgent', 'timer-unlimited', 'timer-passed');
-      } else if (activeObjectiveTimer && objectivesManager) {
+      } else if (activeObjectiveTimer) {
         const timeStr = objectivesManager.formatTimeRemaining(activeObjectiveTimer.time);
         if (valueEl) {
           valueEl.textContent = timeStr;

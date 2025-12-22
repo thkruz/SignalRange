@@ -4,6 +4,7 @@ import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
 import { DialogHistoryBox } from '@app/modal/dialog-history-box';
 import { DraggableHtmlBox } from '@app/modal/draggable-html-box';
+import { QuizManager } from '@app/modal/quiz-manager';
 import { ObjectivesManager } from '@app/objectives';
 import { Equipment } from '@app/pages/sandbox/equipment';
 import { ScenarioManager } from '@app/scenario-manager';
@@ -92,5 +93,9 @@ export class SimulationManager {
     SimulationManager.instance_?.checklistBox?.close();
     SimulationManager.instance_?.missionBriefBox?.close();
     SimulationManager.instance_ = null;
+
+    // Clean up singleton managers
+    ObjectivesManager.destroy();
+    QuizManager.destroy();
   }
 }

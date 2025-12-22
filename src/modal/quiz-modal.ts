@@ -6,8 +6,8 @@
 import { EventBus } from '@app/events/event-bus';
 import { Events, QuizAnsweredData, QuizCompletedData, QuizDismissedData, QuizPassedData, QuizShowData } from '@app/events/events';
 import { DraggableBox } from '@engine/ui/draggable-box';
-import { getEl, showEl } from '@engine/utils/get-el';
 import { html } from '@engine/utils/development/formatter';
+import { getEl, showEl } from '@engine/utils/get-el';
 import { Character, CharacterAvatars, CharacterNames, Emotion, getCharacterAvatarUrl } from './character-enum';
 import './quiz-modal.css';
 
@@ -409,10 +409,12 @@ export class QuizModal extends DraggableBox {
     // Clean up overlay if still present
     this.hideOverlay_();
 
-    // Restore close button visibility for next use
-    const closeBtn = getEl(`${this.boxId}-close`);
-    if (closeBtn) {
-      closeBtn.style.display = '';
+    // Restore close button visibility for next use (only if DOM was created)
+    if (this.domCreated_) {
+      const closeBtn = document.getElementById(`${this.boxId}-close`);
+      if (closeBtn) {
+        closeBtn.style.display = '';
+      }
     }
 
     this.currentQuiz_ = null;

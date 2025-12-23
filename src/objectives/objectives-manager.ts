@@ -1129,9 +1129,10 @@ export class ObjectivesManager {
         return this.evaluateEquipment_(gs.antennas, condition.params, (antenna) => {
           const state = antenna.state;
 
-          // Check azimuth if specified
+          // Check azimuth if specified (handle 360° wraparound)
           if (targetAz !== undefined) {
-            const azDiff = Math.abs(state.azimuth - targetAz);
+            let azDiff = Math.abs(state.azimuth - targetAz);
+            if (azDiff > 180) azDiff = 360 - azDiff;
             if (azDiff > tolerance) return false;
           }
 

@@ -1,8 +1,18 @@
 const path = require('node:path');
+const { execSync } = require('node:child_process');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const CaseSensitivePathsPlugin = require('case-sensitive-paths-webpack-plugin');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 const webpack = require('webpack');
+
+// Get git commit SHA at build time
+const getGitCommitSha = () => {
+  try {
+    return execSync('git rev-parse --short HEAD').toString().trim();
+  } catch {
+    return 'unknown';
+  }
+};
 // First loaded always wins, so load .env first
 if (process.env.NODE_ENV === 'development') {
   require('dotenv').config({ path: '.env' });
@@ -67,7 +77,9 @@ module.exports = {
       'process.env.PUBLIC_SUPABASE_URL': JSON.stringify(process.env.PUBLIC_SUPABASE_URL),
       'process.env.PUBLIC_SUPABASE_ANON_KEY': JSON.stringify(process.env.PUBLIC_SUPABASE_ANON_KEY),
       'process.env.PUBLIC_USER_API_URL': JSON.stringify(process.env.PUBLIC_USER_API_URL || 'https://user.keeptrack.space'),
-      'process.env.PUBLIC_ASSETS_BASE_URL': JSON.stringify(process.env.PUBLIC_ASSETS_BASE_URL || '')
+      'process.env.PUBLIC_ASSETS_BASE_URL': JSON.stringify(process.env.PUBLIC_ASSETS_BASE_URL || ''),
+      '__APP_VERSION__': JSON.stringify(require('./package.json').version),
+      '__GIT_COMMIT_SHA__': JSON.stringify(getGitCommitSha()),
     }),
     new CaseSensitivePathsPlugin(),
     new CopyWebpackPlugin({

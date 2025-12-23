@@ -1,7 +1,7 @@
 {
 	// Cloudflare Workers configuration for signal-range
 	// Migrated from Cloudflare Pages to Workers with static assets support
-	"name": "signal-range",
+	"name": "signal-range-uat",
 	// Compatibility date - using a recent date for latest features
 	"compatibility_date": "2025-11-01",
 	// R2 bucket bindings for large audio assets

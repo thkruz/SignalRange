@@ -176,6 +176,13 @@ export const scenario4Data: ScenarioData = {
           elevation: 48,
         },
         antennas: [ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK],
+        antennasState: [
+          {
+            isPowered: false,
+            azimuth: 0 as Degrees,
+            elevation: 90 as Degrees,
+          } as Partial<AntennaState>
+        ],
         rfFrontEnds: [{
           // Module states managed by their respective classes
           omt: OMTModule.getDefaultState(),
@@ -448,19 +455,10 @@ export const scenario4Data: ScenarioData = {
       prerequisiteObjectiveIds: ['calculate-lnb-lo'],
       conditions: [
         {
-          type: 'filter-selected',
-          description: 'Narrow IF Filter Selected (10 kHz)',
+          type: 'filter-bandwidth-set',
+          description: 'Narrow IF Filter Selected (1 MHz)',
           params: {
-            filterId: 3, // 10 kHz filter
-          },
-          mustMaintain: false,
-        },
-        {
-          type: 'selection-justified',
-          description: 'Filter Selection Justified',
-          params: {
-            selectionType: 'if-filter',
-            correctReasoning: 'cw-beacon-narrow-bandwidth',
+            bandwidthIndex: 8, // 1 Mhz
           },
           mustMaintain: false,
         },
@@ -482,33 +480,32 @@ export const scenario4Data: ScenarioData = {
             frequency: 1247.5e6 as RfFrequency,
             tolerance: 1e3 as Hertz,
           },
-          mustMaintain: false,
+          mustMaintain: true,
         },
         {
           type: 'speca-span-set',
-          description: 'Span: 5-10 kHz (narrow for CW)',
+          description: 'Span: 2-10 kHz (narrow for CW)',
           params: {
-            minSpan: 5e3,
-            maxSpan: 10e3,
+            span: 6e3,
+            frequencyTolerance: 4e3,
           },
-          mustMaintain: false,
+          mustMaintain: true,
         },
         {
           type: 'speca-rbw-set',
-          description: 'RBW: ≤ 100 Hz (very narrow)',
+          description: 'RBW: ≤ 1 kHz (very narrow)',
           params: {
-            maxRbw: 100,
+            rbw: 1000 as Hertz,
           },
-          mustMaintain: false,
+          mustMaintain: true,
         },
         {
           type: 'speca-reference-level-set',
-          description: 'Reference Level: -85 to -90 dBm',
+          description: 'Reference Level: -100 dBm',
           params: {
-            minReferenceLevel: -90,
-            maxReferenceLevel: -85,
+            referenceLevel: -100,
           },
-          mustMaintain: false,
+          mustMaintain: true,
         },
       ],
       conditionLogic: 'AND',
@@ -522,19 +519,10 @@ export const scenario4Data: ScenarioData = {
       prerequisiteObjectiveIds: ['configure-spectrum-analyzer'],
       conditions: [
         {
-          type: 'antenna-position-command',
+          type: 'antenna-position',
           description: 'TIDEMARK-2 Position Commanded',
           params: {
-            azimuth: 219.7 as Degrees,
-            elevation: 26.3 as Degrees,
-            tolerance: 1.0 as Degrees,
-          },
-          mustMaintain: false,
-        },
-        {
-          type: 'antenna-position-reached',
-          description: 'Antenna On Target',
-          params: {
+            trackingMode: 'program-track',
             azimuth: 219.7 as Degrees,
             elevation: 26.3 as Degrees,
             tolerance: 0.5 as Degrees,
@@ -542,7 +530,6 @@ export const scenario4Data: ScenarioData = {
           mustMaintain: false,
         },
       ],
-      conditionLogic: 'AND',
       points: 10,
     },
     {
@@ -562,9 +549,9 @@ export const scenario4Data: ScenarioData = {
         },
         {
           type: 'lnb-lo-set',
-          description: 'LNB LO Set to Calculated Value (2,700.3 MHz)',
+          description: 'LNB LO Set to Calculated Value (5,195.3 MHz)',
           params: {
-            loFrequency: 2700.3 as MHz,
+            loFrequency: 5195.3 as MHz,
             loFrequencyTolerance: 0.5, // Allow small rounding
           },
           maintainUntilObjectiveComplete: true,
@@ -605,13 +592,13 @@ export const scenario4Data: ScenarioData = {
         },
         {
           type: 'signal-level-correct',
-          description: 'Signal Level Within Expected Range (-95 to -91 dBm)',
+          description: 'Signal Level Above -95 dBm for 60 Seconds',
           params: {
             signalId: 'tidemark-2-beacon',
             minPower: -95 as dBm,
-            maxPower: -91 as dBm,
           },
-          mustMaintain: false,
+          mustMaintain: true,
+          maintainDuration: 60, // seconds
         },
       ],
       conditionLogic: 'AND',

@@ -85,8 +85,20 @@ module.exports = {
     new CopyWebpackPlugin({
       patterns: [
         { from: 'public/assets/logo.png', to: 'logo.png' },
-        { from: 'public/assets/characters/', to: 'assets/characters/' },
-        { from: 'public/images/', to: 'images/' },
+        {
+          from: 'public/assets/characters/',
+          to: 'assets/characters/',
+          globOptions: {
+            ignore: ['**/*.png', '**/wip/**']
+          }
+        },
+        {
+          from: 'public/images/',
+          to: 'images/',
+          globOptions: {
+            ignore: ['**/wip/**']
+          }
+        },
       ]
     })
   ],

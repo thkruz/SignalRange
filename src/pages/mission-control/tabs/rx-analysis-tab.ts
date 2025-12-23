@@ -68,7 +68,7 @@ export class RxAnalysisTab extends BaseElement {
                   </div>
                   <div class="equip-adjust-display">
                     <input type="number" id="lnb-lo-frequency" class="equip-adjust-input"
-                           min="5000" max="7000" step="10" value="6080" />
+                           min="5000" max="7000" step="any" value="6080" />
                   </div>
                   <div class="equip-adjust-buttons equip-adjust-increase">
                     <button id="lnb-lo-inc-fine" class="btn-equip" title="+10 MHz">+10</button>

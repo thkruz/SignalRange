@@ -598,7 +598,7 @@ export const scenario4Data: ScenarioData = {
             minPower: -95 as dBm,
           },
           mustMaintain: true,
-          maintainDuration: 60, // seconds
+          maintainDuration: 5, // seconds
         },
       ],
       conditionLogic: 'AND',

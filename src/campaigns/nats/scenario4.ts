@@ -367,6 +367,23 @@ export const scenario4Data: ScenarioData = {
       new Satellite(
         69543, // TIDEMARK-2
         [
+          {
+            signalId: 'tidemark-2-payload',
+            serverId: 1,
+            noradId: 69543,
+            /** Must be the uplinkl to match the antenna in simulation */
+            frequency: 6115e6 as RfFrequency,
+            polarization: 'V',
+            power: 40 as dBm, // 10 W
+            bandwidth: 36e6 as Hertz,
+            modulation: 'QPSK' as ModulationType,
+            fec: '3/4' as FECType,
+            feed: '',
+            isDegraded: false,
+            origin: SignalOrigin.SATELLITE_RX,
+            noiseFloor: null,
+            gainInPath: 0 as dBi,
+          },
         ],
         [
           {

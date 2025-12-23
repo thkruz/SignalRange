@@ -20,17 +20,38 @@
 		"html_handling": "force-trailing-slash",
 		"not_found_handling": "single-page-application"
 	},
+	"observability": {
+		"enabled": false,
+		"head_sampling_rate": 1,
+		"logs": {
+			"enabled": true,
+			"head_sampling_rate": 1,
+			"persist": true,
+			"invocation_logs": true
+		},
+		"traces": {
+			"enabled": false,
+			"persist": true,
+			"head_sampling_rate": 1
+		}
+	},
 	// Environment-specific configurations
 	// Deploy with: npx wrangler deploy --env production (or --env uat)
 	"env": {
 		"production": {
 			"routes": [
-				{ "pattern": "app.signalrange.space/*", "zone_name": "signalrange.space" }
+				{
+					"pattern": "app.signalrange.space/*",
+					"zone_name": "signalrange.space"
+				}
 			]
 		},
 		"uat": {
 			"routes": [
-				{ "pattern": "uat.signalrange.space/*", "zone_name": "signalrange.space" }
+				{
+					"pattern": "uat.signalrange.space/*",
+					"zone_name": "signalrange.space"
+				}
 			]
 		}
 	}

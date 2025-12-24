@@ -1133,6 +1133,56 @@ export class ObjectivesManager {
         });
       }
 
+      case 'notch-filter-configured': {
+        // Check if a notch filter is configured with specific center freq, bandwidth, and depth
+        const targetCenterFreq = condition.params?.notchCenterFrequency;
+        const targetBandwidth = condition.params?.notchBandwidth;
+        const targetDepth = condition.params?.notchDepth;
+
+        // At least center frequency must be specified
+        if (targetCenterFreq === undefined) {
+          console.warn('notch-filter-configured condition requires notchCenterFrequency param');
+          return false;
+        }
+
+        const centerFreqTolerance = condition.params?.notchCenterFrequencyTolerance ?? 1; // MHz
+        const bandwidthTolerance = condition.params?.notchBandwidthTolerance ?? 0.5; // MHz
+        const depthTolerance = condition.params?.notchDepthTolerance ?? 2; // dB
+        const specificNotchIndex = condition.params?.notchIndex;
+
+        return this.evaluateEquipment_(gs.rfFrontEnds, condition.params, (rfFrontEnd) => {
+          const notchState = rfFrontEnd.notchFilterModule.state;
+          if (!notchState.isPowered) return false;
+
+          // Check specific notch or any notch
+          const notchesToCheck = specificNotchIndex !== undefined
+            ? [notchState.notches[specificNotchIndex]].filter(Boolean)
+            : notchState.notches;
+
+          return notchesToCheck.some((notch) => {
+            if (!notch.enabled) return false;
+
+            // Check center frequency
+            const centerFreqDiff = Math.abs(notch.centerFrequency - targetCenterFreq);
+            if (centerFreqDiff > centerFreqTolerance) return false;
+
+            // Check bandwidth if specified
+            if (targetBandwidth !== undefined) {
+              const bandwidthDiff = Math.abs(notch.bandwidth - targetBandwidth);
+              if (bandwidthDiff > bandwidthTolerance) return false;
+            }
+
+            // Check depth if specified
+            if (targetDepth !== undefined) {
+              const depthDiff = Math.abs(notch.depth - targetDepth);
+              if (depthDiff > depthTolerance) return false;
+            }
+
+            return true;
+          });
+        });
+      }
+
       case 'antenna-beacon-frequency-set': {
         if (condition.params?.beaconFrequency === undefined) return false;
         const targetFrequency = condition.params.beaconFrequency;

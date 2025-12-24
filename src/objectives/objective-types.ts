@@ -34,6 +34,7 @@ export type ConditionType =
   | 'speca-reference-level-set' // Spectrum analyzer reference level set
   | 'speca-noise-floor-visible' // Spectrum analyzer shows clean baseline
   | 'filter-bandwidth-set' // IF filter bandwidth configured
+  | 'notch-filter-configured' // Notch filter set to specific center freq, width, depth
   | 'antenna-beacon-frequency-set' // Antenna beacon frequency configured
   | 'antenna-tracking-mode-set' // Antenna tracking mode set (step-track, etc.)
   | 'antenna-beacon-locked' // Antenna beacon signal locked
@@ -106,6 +107,20 @@ export interface ConditionParams {
   equipmentIndex?: number;
   /** For filter-bandwidth-set: target bandwidth index (0-12) */
   bandwidthIndex?: number;
+  /** For notch-filter-configured: target notch center frequency in MHz */
+  notchCenterFrequency?: number;
+  /** For notch-filter-configured: notch center frequency tolerance in MHz (default: 1) */
+  notchCenterFrequencyTolerance?: number;
+  /** For notch-filter-configured: target notch bandwidth in MHz */
+  notchBandwidth?: number;
+  /** For notch-filter-configured: notch bandwidth tolerance in MHz (default: 0.5) */
+  notchBandwidthTolerance?: number;
+  /** For notch-filter-configured: target notch depth in dB */
+  notchDepth?: number;
+  /** For notch-filter-configured: notch depth tolerance in dB (default: 2) */
+  notchDepthTolerance?: number;
+  /** For notch-filter-configured: specific notch slot index (0-2), or any if omitted */
+  notchIndex?: number;
   /** For antenna-beacon-frequency-set: beacon frequency in Hz */
   beaconFrequency?: number;
   /** For antenna-tracking-mode-set: tracking mode */

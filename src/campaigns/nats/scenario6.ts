@@ -320,20 +320,20 @@ export const scenario6Data: ScenarioData = {
     {
       id: 'phase-5-apply-notch-filter',
       title: 'Phase 5: Configure Notch Filter',
-      description: 'Configure a notch filter to block the interference at 1415 MHz IF. Set center frequency to 1415 MHz, width to 3 MHz, and depth to 23 dB.',
+      description: 'Configure a notch filter to surgically remove the interference spike. Match the filter settings to what you observed on the spectrum.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['phase-4-understand-impact'],
       conditions: [
         {
           type: 'notch-filter-configured',
-          description: 'Notch Filter Configured (1415 MHz, 3 MHz wide, 23 dB deep)',
+          description: 'Notch Filter Configured',
           params: {
             notchCenterFrequency: 1415, // MHz - IF frequency of interference
             notchBandwidth: 3, // MHz - matches 3 MHz interference
-            notchDepth: 23, // dB - sufficient attenuation
-            notchCenterFrequencyTolerance: 5, // Allow some tolerance
-            notchBandwidthTolerance: 1,
-            notchDepthTolerance: 3,
+            notchDepth: 36, // dB - sufficient attenuation
+            notchCenterFrequencyTolerance: 0, // Allow some tolerance
+            notchBandwidthTolerance: 0.25,
+            notchDepthTolerance: 10,
           },
           maintainUntilObjectiveComplete: true,
         },
@@ -374,16 +374,10 @@ export const scenario6Data: ScenarioData = {
     intro: {
       text: `
       <p>
-        Got a trouble ticket from SeaLink - their customer is reporting packet errors on TIDEMARK-1. I pulled up the receiver and saw the C/N has dropped about six dB from normal.
+        Got a trouble ticket from SeaLink - their customer is reporting packet errors on TIDEMARK-1. Something's degraded the link but I haven't had time to dig into it yet.
       </p>
       <p>
-        I've already looked at the spectrum analyzer. There's something in-band that shouldn't be there - looks like a narrowband spike sitting right in the middle of our 36 MHz carrier.
-      </p>
-      <p>
-        My guess is cross-pol interference. Someone else's uplink is leaking into our polarization. But I need you to work through the diagnosis and figure out the mitigation.
-      </p>
-      <p>
-        Start by confirming the C/N degradation on the receiver, then take a look at the spectrum. Once you understand what we're dealing with, we'll apply a filter to fix it.
+        Start by checking the receiver to confirm there's actually a problem, then work through the diagnosis. I'll check in as you go.
       </p>
       `,
       character: Character.CHARLIE_BROOKS,
@@ -452,13 +446,10 @@ export const scenario6Data: ScenarioData = {
       'phase-5-apply-notch-filter': {
         text: `
         <p>
-          Good. Now configure the notch filter. The interference is sitting at 1415 MHz IF - that's where you need to center the notch.
+          Now for the fix. You've got all the information you need from the spectrum - the interference frequency and its bandwidth.
         </p>
         <p>
-          Set the width to 3 MHz to match the interference bandwidth, and set the depth to 23 dB. That should be enough attenuation to knock it down without affecting our signal.
-        </p>
-        <p>
-          Watch the spectrum after you enable the notch - you should see the spike get attenuated. And more importantly, watch the C/N on the receiver.
+          Configure the notch filter to match what you're seeing. Think about what center frequency, width, and depth would block that spike without cutting into our wanted signal.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,

@@ -684,11 +684,15 @@ export class Receiver extends BaseEquipment {
         return s.power >= maxPower - suppressionThreshold;
       })
       .map((s) => {
+        // Reset isDegraded flag before checking conditions
+        // (signal objects are shared, so we must reset each time)
+        s.isDegraded = false;
+
         const frequencyMhz = s.frequency / 1e6 as MHz;
         const freqTolerance10 = activeModemData.bandwidth * 0.1;
         const lowerBound10 = activeModemData.frequency - freqTolerance10;
         const upperBound10 = activeModemData.frequency + freqTolerance10;
-        // Within 10%: no prefix
+        // Outside 10% frequency tolerance: mark as degraded
         if (!(frequencyMhz >= lowerBound10 && frequencyMhz <= upperBound10)) {
           s.isDegraded = true;
         }

@@ -1,4 +1,4 @@
-import { Receiver, ReceiverModemState, ReceiverState } from '@app/equipment/receiver/receiver';
+import { Receiver, ReceiverModemState } from '@app/equipment/receiver/receiver';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
 import { CardAlarmBadge } from '@app/components/card-alarm-badge/card-alarm-badge';
@@ -23,13 +23,17 @@ import { qs } from '@app/engine/utils/query-selector';
  * - Status bar shows signal detection instead of alarms
  */
 export class ReceiverAdapter {
+  private static readonly UPDATE_INTERVAL_MS = 250;
+
   private readonly receiver: Receiver;
   private readonly containerEl: HTMLElement;
   private readonly domCache_: Map<string, HTMLElement> = new Map();
   private readonly boundHandlers: Map<string, EventListener> = new Map();
   private readonly stateChangeHandler_: () => void;
+  private readonly boundUpdateHandler_: () => void;
   private readonly alarmBadge_: CardAlarmBadge;
   private lastStateString: string = '';
+  private lastSyncTime_: number = 0;
 
   constructor(receiver: Receiver, containerEl: HTMLElement) {
     this.receiver = receiver;
@@ -44,8 +48,11 @@ export class ReceiverAdapter {
 
     // Create state change handler
     this.stateChangeHandler_ = () => {
-      this.syncDomWithState_(this.receiver.state);
+      this.syncDomWithState_();
     };
+
+    // Create throttled update handler for Events.UPDATE
+    this.boundUpdateHandler_ = this.throttledSync_.bind(this);
 
     // Initialize
     this.setupDomCache_();
@@ -53,7 +60,7 @@ export class ReceiverAdapter {
     this.subscribeToStateChanges_();
 
     // Initial sync
-    this.syncDomWithState_(this.receiver.state);
+    this.syncDomWithState_();
   }
 
   /**
@@ -63,6 +70,17 @@ export class ReceiverAdapter {
     EventBus.getInstance().on(Events.RX_CONFIG_CHANGED, this.stateChangeHandler_);
     EventBus.getInstance().on(Events.RX_ACTIVE_MODEM_CHANGED, this.stateChangeHandler_);
     EventBus.getInstance().on(Events.SYNC, this.stateChangeHandler_);
+    EventBus.getInstance().on(Events.UPDATE, this.boundUpdateHandler_);
+  }
+
+  /**
+   * Throttled sync for UPDATE events to avoid performance issues
+   */
+  private throttledSync_(): void {
+    const now = Date.now();
+    if (now - this.lastSyncTime_ < ReceiverAdapter.UPDATE_INTERVAL_MS) return;
+    this.lastSyncTime_ = now;
+    this.syncDomWithState_();
   }
 
   /**
@@ -189,7 +207,7 @@ export class ReceiverAdapter {
 
   private modemSelectHandler_(modemNumber: number): void {
     this.receiver.setActiveModem(modemNumber);
-    this.syncDomWithState_(this.receiver.state);
+    this.syncDomWithState_();
   }
 
   private antennaHandler_(e: Event): void {
@@ -223,22 +241,50 @@ export class ReceiverAdapter {
 
   private applyHandler_(): void {
     this.receiver.applyChanges();
-    this.syncDomWithState_(this.receiver.state);
+    this.syncDomWithState_();
   }
 
   private powerSwitchHandler_(e: Event): void {
     const isEnabled = (e.target as HTMLInputElement).checked;
     this.receiver.handlePowerToggle(isEnabled);
-    this.syncDomWithState_(this.receiver.state);
+    this.syncDomWithState_();
   }
 
   /**
    * Sync DOM with receiver state
-   * Uses state string comparison to prevent circular updates
+   * Uses state string comparison to prevent unnecessary updates
    */
-  private syncDomWithState_(state: Partial<ReceiverState>): void {
-    // Prevent circular updates
-    const stateString = JSON.stringify(state);
+  private syncDomWithState_(): void {
+    // Build comprehensive state string that includes signal status for all modems
+    // (signal detection depends on external data, not just receiver state)
+    // Include raw signal data since isDegraded flag has mutation issues in getVisibleSignals
+    const activeModem = this.getActiveModem_();
+    const visibleSignals = activeModem ? this.receiver.getVisibleSignals(activeModem) : [];
+
+    const modemSignalStatus = this.receiver.state.modems.map(modem => ({
+      modemNumber: modem.modemNumber,
+      hasSignal: this.receiver.hasSignalForModem(modem),
+      isDegraded: this.receiver.isSignalDegraded(modem),
+      snr: this.receiver.getSnrForModem(modem),
+      power: this.receiver.getPowerForModem(modem),
+    }));
+
+    // Include visible signals for active modem to detect degradation changes
+    const activeSignalState = visibleSignals.map(s => ({
+      id: s.signalId,
+      power: Math.round(s.power * 10) / 10, // Round to avoid floating point noise
+      frequency: s.frequency,
+      isDegraded: s.isDegraded,
+      feed: s.feed,
+    }));
+
+    const stateString = JSON.stringify({
+      receiverState: this.receiver.state,
+      modemSignalStatus,
+      activeSignalState,
+    });
+
+    // Early exit if nothing changed
     if (stateString === this.lastStateString) return;
     this.lastStateString = stateString;
 
@@ -246,7 +292,6 @@ export class ReceiverAdapter {
     this.updateModemButtons_();
 
     // Sync configuration inputs/displays for active modem
-    const activeModem = this.getActiveModem_();
     if (activeModem) {
       this.updateConfigurationInputs_(activeModem);
       this.updateCurrentValueDisplays_(activeModem);
@@ -304,33 +349,33 @@ export class ReceiverAdapter {
   }
 
   private updateConfigurationInputs_(modem: ReceiverModemState): void {
-    // Antenna selector
+    // Antenna selector - skip if user is focused
     const antennaSelect = this.domCache_.get('antenna-select') as HTMLSelectElement;
-    if (antennaSelect) {
+    if (antennaSelect && document.activeElement !== antennaSelect) {
       antennaSelect.value = String(modem.antenna_id);
     }
 
-    // Frequency input - round to 1 decimal place to avoid floating point display errors
+    // Frequency input - skip if user is focused
     const frequencyInput = this.domCache_.get('frequency-input') as HTMLInputElement;
-    if (frequencyInput) {
+    if (frequencyInput && document.activeElement !== frequencyInput) {
       frequencyInput.value = Number(modem.frequency.toFixed(1)).toString();
     }
 
-    // Bandwidth input - round to 1 decimal place to avoid floating point display errors
+    // Bandwidth input - skip if user is focused
     const bandwidthInput = this.domCache_.get('bandwidth-input') as HTMLInputElement;
-    if (bandwidthInput) {
+    if (bandwidthInput && document.activeElement !== bandwidthInput) {
       bandwidthInput.value = Number(modem.bandwidth.toFixed(1)).toString();
     }
 
-    // Modulation selector
+    // Modulation selector - skip if user is focused
     const modulationSelect = this.domCache_.get('modulation-select') as HTMLSelectElement;
-    if (modulationSelect) {
+    if (modulationSelect && document.activeElement !== modulationSelect) {
       modulationSelect.value = modem.modulation;
     }
 
-    // FEC selector
+    // FEC selector - skip if user is focused
     const fecSelect = this.domCache_.get('fec-select') as HTMLSelectElement;
-    if (fecSelect) {
+    if (fecSelect && document.activeElement !== fecSelect) {
       fecSelect.value = modem.fec;
     }
   }
@@ -540,6 +585,7 @@ export class ReceiverAdapter {
     EventBus.getInstance().off(Events.RX_CONFIG_CHANGED, this.stateChangeHandler_);
     EventBus.getInstance().off(Events.RX_ACTIVE_MODEM_CHANGED, this.stateChangeHandler_);
     EventBus.getInstance().off(Events.SYNC, this.stateChangeHandler_);
+    EventBus.getInstance().off(Events.UPDATE, this.boundUpdateHandler_);
 
     // Remove all event listeners
     this.boundHandlers.forEach((handler, key) => {

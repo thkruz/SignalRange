@@ -7,11 +7,12 @@ import { Events } from "../../events/events";
 import { SimulationManager } from "../../simulation/simulation-manager";
 import { dB, dBm, Hertz, RfSignal } from "../../types";
 import { AlarmStatus, BaseEquipment } from '../base-equipment';
-import { TapPoint } from "../rf-front-end/coupler-module/coupler-module";
+import { TapPoint } from "../rf-front-end/coupler-module/tap-points";
 import { RFFrontEndCore } from "../rf-front-end/rf-front-end-core";
 import { Satellite } from "../satellite/satellite";
 import { Transmitter } from "../transmitter/transmitter";
-import { ANTENNA_CONFIG_KEYS, ANTENNA_CONFIGS, AntennaConfig } from "./antenna-configs";
+import { ANTENNA_CONFIG_KEYS } from "./antenna-config-keys";
+import { ANTENNA_CONFIGS, AntennaConfig } from "./antenna-configs";
 import { StepTrackController } from "./step-track-controller";
 
 /**
@@ -1101,8 +1102,8 @@ export abstract class AntennaCore extends BaseEquipment {
     const signedDiff = satAz - currentAz;
     // Normalize difference to [-180, 180] for shortest path
     const shortestDiff = signedDiff > 180 ? signedDiff - 360 :
-                         signedDiff < -180 ? signedDiff + 360 :
-                         signedDiff;
+      signedDiff < -180 ? signedDiff + 360 :
+        signedDiff;
     return (currentAz + shortestDiff) as Degrees;
   }
 

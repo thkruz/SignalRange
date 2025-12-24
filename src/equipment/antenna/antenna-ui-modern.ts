@@ -3,7 +3,7 @@ import { PolarPlot } from "@app/components/polar-plot/polar-plot";
 import { Degrees } from "ootk";
 import { html } from "../../engine/utils/development/formatter";
 import { qs } from "../../engine/utils/query-selector";
-import { ANTENNA_CONFIG_KEYS } from "./antenna-configs";
+import { ANTENNA_CONFIG_KEYS } from "./antenna-config-keys";
 import { AntennaCore, AntennaState } from "./antenna-core";
 import './antenna-ui-modern.css';
 

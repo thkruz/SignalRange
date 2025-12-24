@@ -6,7 +6,7 @@ import { Events } from "../../events/events";
 import { FECType, Hertz, MHz, ModulationType } from "../../types";
 import { AntennaCore } from "../antenna";
 import { AlarmStatus, BaseEquipment } from "../base-equipment";
-import { TapPoint } from "../rf-front-end/coupler-module/coupler-module";
+import { TapPoint } from "../rf-front-end/coupler-module/tap-points";
 import { RFFrontEndCore } from "../rf-front-end/rf-front-end-core";
 import './receiver.css';
 

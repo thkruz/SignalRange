@@ -5,7 +5,7 @@
  */
 
 import { GroundStation } from '@app/assets/ground-station/ground-station';
-import { TapPoint } from '@app/equipment/rf-front-end/coupler-module/coupler-module';
+import { TapPoint } from "@app/equipment/rf-front-end/coupler-module/tap-points";
 import { EventBus } from '@app/events/event-bus';
 import { Events, QuizCompletedData, QuizPassedData } from '@app/events/events';
 import { QuizManager } from '@app/modal/quiz-manager';

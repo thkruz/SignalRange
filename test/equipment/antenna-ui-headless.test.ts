@@ -1,7 +1,7 @@
 import { Degrees } from 'ootk';
-import { ANTENNA_CONFIG_KEYS } from '../../src/equipment/antenna/antenna-configs';
 import { AntennaState } from '../../src/equipment/antenna/antenna-core';
 import { AntennaUIHeadless } from '../../src/equipment/antenna/antenna-ui-headless';
+import { ANTENNA_CONFIG_KEYS } from '../../src/equipment/antenna';
 
 jest.mock('../../src/simulation/simulation-manager', () => {
   return {

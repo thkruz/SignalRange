@@ -1,6 +1,6 @@
-import { TapPoint } from "@app/equipment/rf-front-end/coupler-module/coupler-module";
 import { Hertz } from "@app/types";
 import { Degrees } from "ootk";
+import { TapPoint } from "../rf-front-end/coupler-module/tap-points";
 import { AntennaCore } from "./antenna-core";
 
 /**
@@ -189,7 +189,7 @@ export class StepTrackController {
         this.smoothedPower_ = currentPower;
       } else {
         this.smoothedPower_ = this.powerSmoothingAlpha_ * currentPower +
-                              (1 - this.powerSmoothingAlpha_) * this.smoothedPower_;
+          (1 - this.powerSmoothingAlpha_) * this.smoothedPower_;
       }
     } else {
       this.smoothedPower_ = null;

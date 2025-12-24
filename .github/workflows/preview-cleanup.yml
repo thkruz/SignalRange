@@ -1,0 +1,59 @@
+---
+name: Preview Cleanup
+
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+      - develop
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  cleanup-preview:
+    name: Delete Preview Worker
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Delete Preview Worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: "4"
+          command: delete --config wrangler.jsonc --name signal-range-pr-${{ github.event.pull_request.number }} --force
+        continue-on-error: true
+
+      - name: Find Preview Comment
+        uses: peter-evans/find-comment@v3
+        id: find-comment
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-author: 'github-actions[bot]'
+          body-includes: '<!-- preview-deployment-comment -->'
+
+      - name: Update Preview Comment (Deleted)
+        if: steps.find-comment.outputs.comment-id != ''
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          comment-id: ${{ steps.find-comment.outputs.comment-id }}
+          edit-mode: replace
+          body: |
+            <!-- preview-deployment-comment -->
+            ## :wastebasket: Preview Deployment Deleted
+
+            The preview for this PR has been cleaned up.
+
+            | Property | Value |
+            |----------|-------|
+            | **PR Status** | ${{ github.event.pull_request.merged && 'Merged' || 'Closed' }} |
+
+      - name: Cleanup Summary
+        run: |
+          echo "## Preview Cleanup Complete" >> $GITHUB_STEP_SUMMARY
+          echo "**Worker deleted:** signal-range-pr-${{ github.event.pull_request.number }}" >> $GITHUB_STEP_SUMMARY

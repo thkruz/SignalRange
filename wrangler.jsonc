@@ -55,6 +55,12 @@
 					"zone_name": "signalrange.space"
 				}
 			]
+		},
+		// Preview environment for PR deployments
+		// Name is overridden by --name flag to create signal-range-pr-{number}
+		// No routes - uses workers.dev subdomain
+		"preview": {
+			"name": "signal-range-preview",
 		}
 	}
 }

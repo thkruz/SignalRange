@@ -12,6 +12,7 @@ export { createAntenna } from './antenna-factory';
 export type { AntennaUIType } from './antenna-factory';
 
 // Configuration
-export { ANTENNA_CONFIG_KEYS, ANTENNA_CONFIGS } from './antenna-configs';
+export { ANTENNA_CONFIG_KEYS } from './antenna-config-keys';
+export { ANTENNA_CONFIGS } from './antenna-configs';
 export type { AntennaConfig } from './antenna-configs';
 

@@ -84,7 +84,7 @@ export abstract class LNBModuleCore extends RFFrontEndModule<LNBState> {
 
     // Calculate post-LNA signals (apply gain if powered)
     this.postLNASignals = this.rxSignalsIn.map(sig => {
-      const gain = this.state.isPowered ? 0 : -300;
+      const gain = this.state.isPowered ? this.state.gain : -300;
       return {
         ...sig,
         power: sig.power + gain,

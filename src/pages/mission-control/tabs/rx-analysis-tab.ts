@@ -3,6 +3,7 @@ import { BaseElement } from "@app/components/base-element";
 import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
 import { FILTER_BANDWIDTH_CONFIGS } from "@app/equipment/rf-front-end/filter-module/filter-module-core";
+import { AGCAdapter } from './agc-adapter';
 import { FilterAdapter } from './filter-adapter';
 import { IQConstellationAdapter } from './iq-constellation-adapter';
 import { LNBAdapter } from './lnb-adapter';
@@ -17,16 +18,18 @@ import { SpectrumAnalyzerAdvancedAdapter } from './spectrum-analyzer-advanced-ad
  *
  * Phase 5 Implementation:
  * - LNB (Low Noise Block) control: LO frequency, gain, power
+ * - AGC (Automatic Gain Control): automatic level control with bypass option
  * - IF Filter bandwidth selection
  * - Spectrum Analyzer display with real-time signals
  * - Demodulator status (placeholder for Phase 6+)
  *
  * Equipment Flow:
- * Antenna → OMT → LNB → Filter → Spectrum Analyzer → Demodulator
+ * Antenna → OMT → LNB → AGC → Notch Filter → IF Filter → Spectrum Analyzer → Demodulator
  */
 export class RxAnalysisTab extends BaseElement {
   private readonly groundStation: GroundStation;
   private lnbAdapter: LNBAdapter | null = null;
+  private agcAdapter: AGCAdapter | null = null;
   private filterAdapter: FilterAdapter | null = null;
   private notchFilterAdapter: NotchFilterAdapter | null = null;
   private spectrumAnalyzerAdapter: SpectrumAnalyzerAdapter | null = null;
@@ -136,8 +139,46 @@ export class RxAnalysisTab extends BaseElement {
           </div>
         </div>
 
+        <!-- AGC Control Card -->
+        <div class="col-lg-3">
+          <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+              <h3 class="card-title">AGC</h3>
+              <div id="agc-alarm-badge"></div>
+            </div>
+            <div class="card-body">
+              <!-- Bypass Control -->
+              <div class="form-check form-switch mb-3">
+                <input type="checkbox" id="agc-bypass" class="form-check-input" role="switch" />
+                <label for="agc-bypass" class="form-check-label small">Bypass</label>
+              </div>
+
+              <!-- Status -->
+              <div class="metric-group">
+                <div class="metric-group-title">Status</div>
+                <div class="metric-row">
+                  <span class="metric-label">Mode:</span>
+                  <span id="agc-status" class="status-badge status-badge-locked">Active</span>
+                </div>
+                <div class="metric-row">
+                  <span class="metric-label">Gain:</span>
+                  <span id="agc-gain-display" class="metric-value font-monospace">0.0 dB</span>
+                </div>
+                <div class="metric-row">
+                  <span class="metric-label">Input:</span>
+                  <span id="agc-input-power-display" class="metric-value font-monospace">-100.0 dBm</span>
+                </div>
+                <div class="metric-row">
+                  <span class="metric-label">Output:</span>
+                  <span id="agc-output-power-display" class="metric-value font-monospace">-100.0 dBm</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Filter Control Card -->
-        <div class="col-lg-6">
+        <div class="col-lg-3">
           <div class="card h-100">
             <div class="card-header">
               <h3 class="card-title">IF Filter</h3>
@@ -152,23 +193,19 @@ export class RxAnalysisTab extends BaseElement {
               </div>
 
               <!-- Status Row -->
-              <div class="row g-2">
-                <div class="col-12">
-                  <div class="metric-group">
-                    <div class="metric-group-title">Status</div>
-                    <div class="metric-row">
-                      <span class="metric-label">Bandwidth:</span>
-                      <span id="filter-bandwidth-display" class="metric-value">20 MHz</span>
-                    </div>
-                    <div class="metric-row">
-                      <span class="metric-label">Insertion Loss:</span>
-                      <span id="filter-insertion-loss-display" class="metric-value">2.0 dB</span>
-                    </div>
-                    <div class="metric-row">
-                      <span class="metric-label">Noise Floor:</span>
-                      <span id="filter-noise-floor-display" class="metric-value">-101 dBm</span>
-                    </div>
-                  </div>
+              <div class="metric-group">
+                <div class="metric-group-title">Status</div>
+                <div class="metric-row">
+                  <span class="metric-label">Bandwidth:</span>
+                  <span id="filter-bandwidth-display" class="metric-value">20 MHz</span>
+                </div>
+                <div class="metric-row">
+                  <span class="metric-label">Insertion Loss:</span>
+                  <span id="filter-insertion-loss-display" class="metric-value">2.0 dB</span>
+                </div>
+                <div class="metric-row">
+                  <span class="metric-label">Noise Floor:</span>
+                  <span id="filter-noise-floor-display" class="metric-value">-101 dBm</span>
                 </div>
               </div>
             </div>
@@ -610,6 +647,7 @@ export class RxAnalysisTab extends BaseElement {
 
     // Create adapters
     this.lnbAdapter = new LNBAdapter(rfFrontEnd.lnbModule, this.dom_!);
+    this.agcAdapter = new AGCAdapter(rfFrontEnd.agcModule, this.dom_!);
     this.filterAdapter = new FilterAdapter(rfFrontEnd.filterModule, this.dom_!);
     this.notchFilterAdapter = new NotchFilterAdapter(rfFrontEnd.notchFilterModule, this.dom_!);
     this.spectrumAnalyzerAdapter = new SpectrumAnalyzerAdapter(spectrumAnalyzer, this.dom_!);
@@ -656,6 +694,7 @@ export class RxAnalysisTab extends BaseElement {
    */
   public dispose(): void {
     this.lnbAdapter?.dispose();
+    this.agcAdapter?.dispose();
     this.filterAdapter?.dispose();
     this.notchFilterAdapter?.dispose();
     this.spectrumAnalyzerAdapter?.dispose();
@@ -664,6 +703,7 @@ export class RxAnalysisTab extends BaseElement {
     this.iqConstellationAdapter?.dispose();
 
     this.lnbAdapter = null;
+    this.agcAdapter = null;
     this.filterAdapter = null;
     this.notchFilterAdapter = null;
     this.spectrumAnalyzerAdapter = null;

@@ -1,6 +1,7 @@
 import { GroundStationState } from "@app/assets/ground-station/ground-station-state";
 import { AntennaState } from "@app/equipment/antenna";
 import { RealTimeSpectrumAnalyzerState } from "@app/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer";
+import { AGCState } from "@app/equipment/rf-front-end/agc-module";
 import { BUCState } from "@app/equipment/rf-front-end/buc-module";
 import { CouplerState } from "@app/equipment/rf-front-end/coupler-module/coupler-module";
 import { IfFilterBankState } from "@app/equipment/rf-front-end/filter-module";
@@ -291,6 +292,7 @@ export enum Events {
   RF_FE_POWER_CHANGED = "rf-fe:power:changed",
   RF_FE_BUC_CHANGED = "rf-fe:buc:changed",
   RF_FE_HPA_CHANGED = "rf-fe:hpa:changed",
+  RF_FE_AGC_CHANGED = "rf-fe:agc:changed",
   RF_FE_LNB_CHANGED = "rf-fe:lnb:changed",
   RF_FE_ALARM = "rf-fe:alarm",
   RF_FE_OMT_CHANGED = "rf-fe:omt:changed",
@@ -349,6 +351,7 @@ export interface EventMap {
   [Events.RF_FE_POWER_CHANGED]: [Partial<RFFrontEndState>];
   [Events.RF_FE_BUC_CHANGED]: [Partial<BUCState>];
   [Events.RF_FE_HPA_CHANGED]: [Partial<HPAState>];
+  [Events.RF_FE_AGC_CHANGED]: [Partial<AGCState>];
   [Events.RF_FE_LNB_CHANGED]: [Partial<LNBState>];
   [Events.RF_FE_OMT_CHANGED]: [Partial<OMTState>];
   [Events.RF_FE_COUPLER_CHANGED]: [Partial<CouplerState>];

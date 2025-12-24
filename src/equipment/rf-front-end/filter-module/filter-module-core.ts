@@ -1,4 +1,4 @@
-import { SignalOrigin } from "@app/SignalOrigin";
+import { SignalOrigin } from "@app/signal-origin";
 import { dBm, IfSignal, MHz } from '@app/types';
 import { RFFrontEndCore } from "../rf-front-end-core";
 import { RFFrontEndModule } from '../rf-front-end-module';
@@ -97,13 +97,14 @@ export abstract class IfFilterBankModuleCore extends RFFrontEndModule<IfFilterBa
   }
 
   get inputSignals(): IfSignal[] {
-    const lnbSignals = this.rfFrontEnd_.lnbModule.ifSignals;
+    // Get signals from notch filter (which gets them from LNB)
+    const notchFilterSignals = this.rfFrontEnd_.notchFilterModule.outputSignals;
     const txLoopbackSignals = this.rfFrontEnd_.transmitters
       .flatMap((tx) => tx.state.modems
         .filter((modem) => modem.isTransmitting && !modem.isFaulted && modem.isLoopback)
         .map((modem) => modem.ifSignal));
 
-    return [...lnbSignals, ...txLoopbackSignals];
+    return [...notchFilterSignals, ...txLoopbackSignals];
   }
 
   /**

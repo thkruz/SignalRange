@@ -6,6 +6,7 @@ import { FILTER_BANDWIDTH_CONFIGS } from "@app/equipment/rf-front-end/filter-mod
 import { FilterAdapter } from './filter-adapter';
 import { IQConstellationAdapter } from './iq-constellation-adapter';
 import { LNBAdapter } from './lnb-adapter';
+import { NotchFilterAdapter } from './notch-filter-adapter';
 import { ReceiverAdapter } from './receiver-adapter';
 import './rx-analysis-tab.css';
 import { SpectrumAnalyzerAdapter } from './spectrum-analyzer-adapter';
@@ -27,6 +28,7 @@ export class RxAnalysisTab extends BaseElement {
   private readonly groundStation: GroundStation;
   private lnbAdapter: LNBAdapter | null = null;
   private filterAdapter: FilterAdapter | null = null;
+  private notchFilterAdapter: NotchFilterAdapter | null = null;
   private spectrumAnalyzerAdapter: SpectrumAnalyzerAdapter | null = null;
   private spectrumAnalyzerAdvancedAdapter: SpectrumAnalyzerAdvancedAdapter | null = null;
   private receiverAdapter: ReceiverAdapter | null = null;
@@ -168,6 +170,29 @@ export class RxAnalysisTab extends BaseElement {
                     </div>
                   </div>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Notch Filter Control Card -->
+        <div class="col-lg-12">
+          <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+              <h3 class="card-title">Notch Filter</h3>
+              <div class="form-check form-switch">
+                <input type="checkbox" id="notch-power" class="form-check-input" role="switch" checked />
+                <label for="notch-power" class="form-check-label small">Power</label>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="row g-2">
+                ${this.generateNotchSlotHtml_(0)}
+                ${this.generateNotchSlotHtml_(1)}
+                ${this.generateNotchSlotHtml_(2)}
+              </div>
+              <div class="mt-3">
+                <button id="notch-apply-btn" class="btn btn-primary btn-sm">Apply Changes</button>
               </div>
             </div>
           </div>
@@ -509,6 +534,61 @@ export class RxAnalysisTab extends BaseElement {
     }).join('');
   }
 
+  private generateNotchSlotHtml_(index: number): string {
+    const prefix = `notch-${index}`;
+    return html`
+      <div class="col-lg-4">
+        <div class="card">
+          <div class="card-header d-flex justify-content-between align-items-center py-2">
+            <span class="small fw-bold">Notch ${index + 1}</span>
+            <div class="form-check form-switch">
+              <input type="checkbox" id="${prefix}-enabled" class="form-check-input" role="switch" />
+              <label for="${prefix}-enabled" class="form-check-label small">Enable</label>
+            </div>
+          </div>
+          <div class="card-body py-2">
+            <!-- Center Frequency -->
+            <div class="mb-2">
+              <label class="form-label text-muted small text-uppercase mb-1">Center Freq (MHz)</label>
+              <div class="input-group input-group-sm">
+                <button id="${prefix}-freq-dec-coarse" class="btn btn-outline-secondary" type="button">-100</button>
+                <button id="${prefix}-freq-dec-fine" class="btn btn-outline-secondary" type="button">-10</button>
+                <input type="number" id="${prefix}-freq" class="form-control text-center"
+                       min="950" max="2150" step="1" value="1500" />
+                <button id="${prefix}-freq-inc-fine" class="btn btn-outline-secondary" type="button">+10</button>
+                <button id="${prefix}-freq-inc-coarse" class="btn btn-outline-secondary" type="button">+100</button>
+              </div>
+            </div>
+
+            <!-- Bandwidth -->
+            <div class="row g-1 mb-2">
+              <div class="col-6">
+                <label class="form-label text-muted small text-uppercase mb-1">Width (MHz)</label>
+                <div class="input-group input-group-sm">
+                  <button id="${prefix}-bw-dec" class="btn btn-outline-secondary" type="button">-</button>
+                  <input type="number" id="${prefix}-bw" class="form-control text-center"
+                         min="0.1" max="50" step="0.1" value="1" />
+                  <button id="${prefix}-bw-inc" class="btn btn-outline-secondary" type="button">+</button>
+                </div>
+              </div>
+
+              <!-- Depth -->
+              <div class="col-6">
+                <label class="form-label text-muted small text-uppercase mb-1">Depth (dB)</label>
+                <div class="input-group input-group-sm">
+                  <button id="${prefix}-depth-dec" class="btn btn-outline-secondary" type="button">-</button>
+                  <input type="number" id="${prefix}-depth" class="form-control text-center"
+                         min="1" max="60" step="1" value="20" />
+                  <button id="${prefix}-depth-inc" class="btn btn-outline-secondary" type="button">+</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
   protected addEventListeners_(): void {
     // Add event listeners late
   }
@@ -531,6 +611,7 @@ export class RxAnalysisTab extends BaseElement {
     // Create adapters
     this.lnbAdapter = new LNBAdapter(rfFrontEnd.lnbModule, this.dom_!);
     this.filterAdapter = new FilterAdapter(rfFrontEnd.filterModule, this.dom_!);
+    this.notchFilterAdapter = new NotchFilterAdapter(rfFrontEnd.notchFilterModule, this.dom_!);
     this.spectrumAnalyzerAdapter = new SpectrumAnalyzerAdapter(spectrumAnalyzer, this.dom_!);
 
     // Create advanced spectrum analyzer adapter
@@ -576,6 +657,7 @@ export class RxAnalysisTab extends BaseElement {
   public dispose(): void {
     this.lnbAdapter?.dispose();
     this.filterAdapter?.dispose();
+    this.notchFilterAdapter?.dispose();
     this.spectrumAnalyzerAdapter?.dispose();
     this.spectrumAnalyzerAdvancedAdapter?.dispose();
     this.receiverAdapter?.dispose();
@@ -583,6 +665,7 @@ export class RxAnalysisTab extends BaseElement {
 
     this.lnbAdapter = null;
     this.filterAdapter = null;
+    this.notchFilterAdapter = null;
     this.spectrumAnalyzerAdapter = null;
     this.spectrumAnalyzerAdvancedAdapter = null;
     this.receiverAdapter = null;

@@ -1,5 +1,5 @@
 import { Satellite } from '@app/equipment/satellite/satellite';
-import { SignalOrigin } from '@app/SignalOrigin';
+import { SignalOrigin } from '@app/signal-origin';
 import type { FECType, Hertz, ModulationType, RfFrequency, dBi, dBm } from '@app/types';
 import type { Degrees } from 'ootk';
 

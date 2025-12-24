@@ -1,4 +1,4 @@
-import { SignalOrigin } from "@app/SignalOrigin";
+import { SignalOrigin } from "@app/signal-origin";
 import { dB, dBm, Hertz, IfFrequency, IfSignal, MHz, RfFrequency, RfSignal } from '@app/types';
 import { RFFrontEndCore } from "../rf-front-end-core";
 import { RFFrontEndModule, RFFrontEndModuleState } from '../rf-front-end-module';

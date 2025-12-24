@@ -13,6 +13,7 @@ import { GPSDOModuleCore } from './gpsdo-module/gpsdo-module-core';
 import { defaultGpsdoState, GPSDOState } from "./gpsdo-module/gpsdo-state";
 import { HPAModuleCore, HPAState } from './hpa-module/hpa-module-core';
 import { LNBModuleCore, LNBState } from './lnb-module/lnb-module-core';
+import { NotchFilterModuleCore, NotchFilterState } from './notch-filter-module/notch-filter-module-core';
 import { OMTModule, OMTState } from './omt-module/omt-module';
 
 /**
@@ -26,6 +27,7 @@ export interface RFFrontEndState {
   omt: OMTState;
   buc: BUCState;
   hpa: HPAState;
+  notchFilter: NotchFilterState;
   filter: IfFilterBankState;
   lnb: LNBState;
   coupler: CouplerState;
@@ -47,6 +49,7 @@ export abstract class RFFrontEndCore extends BaseEquipment {
   omtModule!: OMTModule;
   bucModule!: BUCModuleCore;
   hpaModule!: HPAModuleCore;
+  notchFilterModule!: NotchFilterModuleCore;
   filterModule!: IfFilterBankModuleCore;
   lnbModule!: LNBModuleCore;
   couplerModule!: CouplerModule;
@@ -73,6 +76,7 @@ export abstract class RFFrontEndCore extends BaseEquipment {
       omt: OMTModule.getDefaultState(),
       buc: {} as BUCState, // Will be set by getDefaultState from module factories
       hpa: {} as HPAState,
+      notchFilter: NotchFilterModuleCore.getDefaultState(),
       filter: {} as IfFilterBankState,
       lnb: {} as LNBState,
       coupler: CouplerModule.getDefaultState(),
@@ -101,6 +105,7 @@ export abstract class RFFrontEndCore extends BaseEquipment {
       omt: this.omtModule?.state ?? this.state_.omt,
       buc: this.bucModule?.state ?? this.state_.buc,
       hpa: this.hpaModule?.state ?? this.state_.hpa,
+      notchFilter: this.notchFilterModule?.state ?? this.state_.notchFilter,
       filter: this.filterModule?.state ?? this.state_.filter,
       lnb: this.lnbModule?.state ?? this.state_.lnb,
       coupler: this.couplerModule?.state ?? this.state_.coupler,
@@ -122,8 +127,9 @@ export abstract class RFFrontEndCore extends BaseEquipment {
     this.omtModule.update();
     this.bucModule.update();
     this.hpaModule.update();
-    this.filterModule.update();
     this.lnbModule.update();
+    this.notchFilterModule.update();  // After LNB, before filter
+    this.filterModule.update();
     this.couplerModule.update();
     this.gpsdoModule.update();
 
@@ -162,6 +168,10 @@ export abstract class RFFrontEndCore extends BaseEquipment {
     if (data.hpa) {
       this.state.hpa = { ...this.state.hpa, ...data.hpa };
       this.hpaModule.sync(data.hpa);
+    }
+    if (data.notchFilter) {
+      this.state.notchFilter = { ...this.state.notchFilter, ...data.notchFilter };
+      this.notchFilterModule.sync(data.notchFilter);
     }
     if (data.filter) {
       this.state.filter = { ...this.state.filter, ...data.filter };
@@ -284,6 +294,7 @@ export abstract class RFFrontEndCore extends BaseEquipment {
       ];
     } else if (rfcase === 2) {
       moduleAlarms = [
+        ...this.notchFilterModule.getAlarms(),
         ...this.filterModule.getAlarms(),
         ...this.lnbModule.getAlarms(),
         ...this.gpsdoModule.getAlarms(),

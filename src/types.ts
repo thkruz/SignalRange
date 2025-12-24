@@ -1,5 +1,5 @@
 import { Degrees } from "ootk";
-import { SignalOrigin } from "./SignalOrigin";
+import { SignalOrigin } from "./signal-origin";
 
 /**
  * Represents a distinct type.

@@ -19,6 +19,8 @@ import { HPAModuleUIStandard } from './hpa-module/hpa-module-ui-standard';
 import { LNBModuleCore, LNBState } from './lnb-module/lnb-module-core';
 import { createLNB } from './lnb-module/lnb-module-factory';
 import { LNBModuleUIStandard } from './lnb-module/lnb-module-ui-standard';
+import { NotchFilterModuleCore, NotchFilterState } from './notch-filter-module/notch-filter-module-core';
+import { createNotchFilter } from './notch-filter-module/notch-filter-module-factory';
 import { OMTModule, OMTState } from "./omt-module/omt-module";
 import { createOMT } from "./omt-module/omt-module-factory";
 import { RFFrontEndCore, RFFrontEndState } from './rf-front-end-core';
@@ -34,6 +36,7 @@ export class RFFrontEndUIStandard extends RFFrontEndCore {
   declare omtModule: OMTModule;
   declare bucModule: BUCModuleCore;
   declare hpaModule: HPAModuleCore;
+  declare notchFilterModule: NotchFilterModuleCore;
   declare filterModule: IfFilterBankModuleCore;
   declare lnbModule: LNBModuleCore;
   declare couplerModule: CouplerModule;
@@ -64,6 +67,7 @@ export class RFFrontEndUIStandard extends RFFrontEndCore {
     this.omtModule = createOMT(this.state.omt, this);
     this.bucModule = createBUC(this.state.buc, this);
     this.hpaModule = createHPA(this.state.hpa, this) as HPAModuleUIStandard;
+    this.notchFilterModule = createNotchFilter(this.state.notchFilter, this);  // Headless - UI in adapter
     this.filterModule = createIfFilterBank(this.state.filter, this) as IfFilterBankModuleUIStandard;
     this.lnbModule = createLNB(this.state.lnb, this) as LNBModuleUIStandard;
     this.couplerModule = createCoupler(this.state.coupler, this);
@@ -175,6 +179,12 @@ export class RFFrontEndUIStandard extends RFFrontEndCore {
       this.state.hpa = state;
       this.syncDomWithState();
       EventBus.getInstance().emit(Events.RF_FE_HPA_CHANGED, state);
+    });
+
+    this.notchFilterModule.addEventListeners((state: NotchFilterState) => {
+      this.state.notchFilter = state;
+      this.syncDomWithState();
+      EventBus.getInstance().emit(Events.RF_FE_NOTCH_FILTER_CHANGED, state);
     });
 
     this.filterModule.addEventListeners((state: IfFilterBankState) => {

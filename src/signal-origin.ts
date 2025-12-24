@@ -11,5 +11,6 @@ export enum SignalOrigin {
   OMT_RX,
   LOW_NOISE_AMPLIFIER,
   LOW_NOISE_BLOCK,
+  NOTCH_FILTER,
   IF_FILTER_BANK
 }

@@ -664,13 +664,24 @@ export class Receiver extends BaseEquipment {
     });
 
     // Only include signals within 50% bandwidth of center frequency
-    return visibleSignals
+    const signalsInBand = visibleSignals
       .filter((s) => {
         const frequencyMhz = s.frequency / 1e6 as MHz;
         const freqTolerance50 = activeModemData.bandwidth * 0.5;
         const lowerBound50 = activeModemData.frequency - freqTolerance50;
         const upperBound50 = activeModemData.frequency + freqTolerance50;
         return frequencyMhz >= lowerBound50 && frequencyMhz <= upperBound50;
+      });
+
+    // Find the strongest signal - signals significantly weaker (>10dB) are considered
+    // suppressed (e.g., by notch filter) and shouldn't count as interference
+    const maxPower = Math.max(...signalsInBand.map(s => s.power));
+    const suppressionThreshold = 10; // dB - signals this much weaker are filtered out
+
+    return signalsInBand
+      .filter((s) => {
+        // Keep the strongest signal and any within 10dB of it
+        return s.power >= maxPower - suppressionThreshold;
       })
       .map((s) => {
         const frequencyMhz = s.frequency / 1e6 as MHz;

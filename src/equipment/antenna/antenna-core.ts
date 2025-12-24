@@ -1,5 +1,5 @@
 import { EventBus } from "@app/events/event-bus";
-import { SignalOrigin } from "@app/SignalOrigin";
+import { SignalOrigin } from "@app/signal-origin";
 import { Sfx } from "@app/sound/sfx-enum";
 import SoundManager from "@app/sound/sound-manager";
 import { Degrees } from "ootk";
@@ -1208,12 +1208,6 @@ export abstract class AntennaCore extends BaseEquipment {
       alarms.push({ severity: 'warning', message: 'DISCONNECTED' });
     }
 
-    // Signal degradation warnings
-    const degradedSignals = this.state.rxSignalsIn.filter(sig => sig.isDegraded);
-    if (degradedSignals.length > 0) {
-      alarms.push({ severity: 'warning', message: `${degradedSignals.length} SIGNAL(S) DEGRADED` });
-    }
-
     // Extreme skew warning
     const absolutePolarization = Math.abs(this.state.polarization);
     if (absolutePolarization > 45) {
@@ -1244,9 +1238,9 @@ export abstract class AntennaCore extends BaseEquipment {
       alarms.push({ severity: 'success', message: `LOCKED ON SATELLITE ${SimulationManager.getInstance().isDeveloperMode ? strongestSignal : ''}`.trimEnd() });
     }
 
-    if (this.rxSignals.flatMap(sat => sat.signal).length > 0 && !this.state.isLoopback && !this.state.isAutoTrackEnabled) {
-      alarms.push({ severity: 'info', message: `${this.rxSignals.flatMap(sat => sat.signal).length} SIGNAL(S) RECEIVED` });
-    }
+    // if (this.rxSignals.flatMap(sat => sat.signal).length > 0 && !this.state.isLoopback && !this.state.isAutoTrackEnabled) {
+    //   alarms.push({ severity: 'info', message: `${this.rxSignals.flatMap(sat => sat.signal).length} SIGNAL(S) RECEIVED` });
+    // }
 
     if (this.state.isPowered && this.state.isOperational && !this.state.isLoopback && !this.state.isAutoTrackEnabled) {
       alarms.push({ severity: 'info', message: `Manual Tracking Enabled` });

@@ -4,6 +4,7 @@ import { RealTimeSpectrumAnalyzerState } from "@app/equipment/real-time-spectrum
 import { BUCState } from "@app/equipment/rf-front-end/buc-module";
 import { CouplerState } from "@app/equipment/rf-front-end/coupler-module/coupler-module";
 import { IfFilterBankState } from "@app/equipment/rf-front-end/filter-module";
+import { NotchFilterState } from "@app/equipment/rf-front-end/notch-filter-module";
 import { GPSDOState } from "@app/equipment/rf-front-end/gpsdo-module";
 import { HPAState } from "@app/equipment/rf-front-end/hpa-module";
 import { LNBState } from "@app/equipment/rf-front-end/lnb-module";
@@ -246,6 +247,7 @@ export enum Events {
   RF_FE_OMT_CHANGED = "rf-fe:omt:changed",
   RF_FE_COUPLER_CHANGED = "rf-fe:coupler:changed",
   RF_FE_FILTER_CHANGED = "rf-fe:filter:changed",
+  RF_FE_NOTCH_FILTER_CHANGED = "rf-fe:notch-filter:changed",
   RF_FE_GPSDO_CHANGED = "rf-fe:gpsdo:changed",
 
   // Objectives events
@@ -290,6 +292,7 @@ export interface EventMap {
   [Events.RF_FE_OMT_CHANGED]: [Partial<OMTState>];
   [Events.RF_FE_COUPLER_CHANGED]: [Partial<CouplerState>];
   [Events.RF_FE_FILTER_CHANGED]: [Partial<IfFilterBankState>];
+  [Events.RF_FE_NOTCH_FILTER_CHANGED]: [Partial<NotchFilterState>];
   [Events.RF_FE_GPSDO_CHANGED]: [Partial<GPSDOState>];
   [Events.RF_FE_ALARM]: [{
     unit: number;

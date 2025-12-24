@@ -5,12 +5,13 @@ import { Satellite } from '@app/equipment/satellite/satellite';
 import { Character, Emotion } from '@app/modal/character-enum';
 import type { Objective } from '@app/objectives/objective-types';
 import type { ScenarioData } from '@app/ScenarioData';
-import { SignalOrigin } from "@app/SignalOrigin";
+import { SignalOrigin } from "@app/signal-origin";
 import type { dB, dBi, dBm, FECType, Hertz, MHz, ModulationType, RfFrequency } from '@app/types';
 import { getAssetUrl } from '@app/utils/asset-url';
 import type { Degrees } from 'ootk';
 import { createRfFrontEnd } from '../rf-front-end-factory';
 import { vermontGroundStation } from './ground-stations';
+import { natsHtmlLayout } from './html-layout';
 
 /**
  * NATS Level 6: "Interference Hunt"
@@ -114,45 +115,66 @@ export const scenario6Data: ScenarioData = {
         receivers: [Receiver.getDefaultState()],
       },
     ],
+    layout: natsHtmlLayout,
+    missionBriefUrl: 'https://docs.signalrange.space/scenarios/scenario-1?content-only=true&dark=true',
+    isExtraSatellitesVisible: true,
     satellites: [
       new Satellite(
         1,
         [
           {
-            signalId: 'tidemark-1-beacon',
+            signalId: 'TIDEMARK-1-Payload',
             serverId: 1,
-            noradId: 1,
-            frequency: 3947.8e6 as RfFrequency,
+            noradId: 61525,
+            /** Must be the uplinkl to match the antenna in simulation */
+            frequency: 5943e6 as RfFrequency,
             polarization: 'H',
-            power: -95 as dBm,
-            bandwidth: 1e3 as Hertz,
-            modulation: 'CW' as ModulationType,
-            fec: 'none' as FECType,
-            feed: null,
+            power: 40 as dBm, // 10 W
+            bandwidth: 36e6 as Hertz,
+            modulation: 'QPSK' as ModulationType,
+            fec: '3/4' as FECType,
+            feed: '',
             isDegraded: false,
-            origin: SignalOrigin.SATELLITE_TX,
+            origin: SignalOrigin.SATELLITE_RX,
             noiseFloor: null,
             gainInPath: 0 as dBi,
           },
           {
-            signalId: 'tidemark-1-carrier',
+            signalId: 'interfering-signal',
             serverId: 1,
-            noradId: 1,
-            frequency: 3952.5e6 as RfFrequency,
+            noradId: 61525,
+            /** Must be the uplinkl to match the antenna in simulation */
+            frequency: 5960e6 as RfFrequency,
             polarization: 'H',
-            power: -87 as dBm, // Normal power
-            bandwidth: 5e6 as Hertz,
-            modulation: '16APSK' as ModulationType,
+            power: 43 as dBm, // 20 W
+            bandwidth: 3e6 as Hertz,
+            modulation: 'QPSK' as ModulationType,
             fec: '3/4' as FECType,
-            feed: 'maritime-data.mp4',
-            isDegraded: true, // Degraded by interference
-            // degradationReason: 'interference',
-            origin: SignalOrigin.SATELLITE_TX,
+            feed: '',
+            isDegraded: false,
+            origin: SignalOrigin.SATELLITE_RX,
             noiseFloor: null,
             gainInPath: 0 as dBi,
-          }
+          },
         ],
-        [],
+        [
+          {
+            frequency: 3902.5e6 as RfFrequency,
+            signalId: 'TIDEMARK-1-Beacon',
+            serverId: 1,
+            noradId: 61525,
+            power: 40 as dBm, // 10 W
+            bandwidth: 1e3 as Hertz,
+            modulation: 'CW' as ModulationType,
+            fec: 'null' as FECType,
+            polarization: 'H',
+            feed: '',
+            isDegraded: false,
+            origin: SignalOrigin.TRANSMITTER,
+            noiseFloor: null,
+            gainInPath: 0 as dBi,
+          },
+        ],
         {
           az: 214.2 as Degrees,
           el: 24.8 as Degrees,
@@ -160,18 +182,6 @@ export const scenario6Data: ScenarioData = {
         }
       ),
     ],
-    // interferenceSignals: [
-    //   {
-    //     id: 'adjacent-carrier-interference',
-    //     type: 'adjacent-channel-carrier',
-    //     frequency: 3957.5e6 as RfFrequency, // 5 MHz above desired carrier
-    //     power: -83 as dBm, // Stronger than desired signal
-    //     bandwidth: 3e6 as Hertz,
-    //     modulation: 'QPSK' as ModulationType,
-    //     source: 'Unknown terrestrial uplink (likely incorrect polarization)',
-    //     isIntermittent: false,
-    //   }
-    // ],
   },
   objectives: [
     {

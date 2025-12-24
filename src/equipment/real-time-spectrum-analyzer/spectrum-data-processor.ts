@@ -53,6 +53,9 @@ export class SpectrumDataProcessor {
 
     // Combine noise and signals
     this.combineData();
+
+    // Apply notch filter visualization (visual dips at notch frequencies)
+    this.applyNotchVisualization_();
   }
 
   /**
@@ -195,6 +198,38 @@ export class SpectrumDataProcessor {
   private combineData(): void {
     for (let x = 0; x < this.width; x++) {
       this.combinedData[x] = Math.max(this.noiseData[x], this.signalData[x]);
+    }
+  }
+
+  /**
+   * Apply notch filter attenuation to the spectrum display.
+   * Creates a visible "dip" at each enabled notch's frequency range.
+   */
+  private applyNotchVisualization_(): void {
+    const notchFilterModule = this.specA.rfFrontEnd_.notchFilterModule;
+    if (!notchFilterModule) return;
+
+    const notchFilterState = notchFilterModule.state;
+    if (!notchFilterState.isPowered) return;
+
+    for (const notch of notchFilterState.notches) {
+      if (!notch.enabled) continue;
+
+      // Convert notch center and bandwidth from MHz to Hz
+      const notchCenterHz = notch.centerFrequency * 1e6;
+      const notchHalfBwHz = (notch.bandwidth * 1e6) / 2;
+      const notchLowHz = notchCenterHz - notchHalfBwHz;
+      const notchHighHz = notchCenterHz + notchHalfBwHz;
+
+      for (let x = 0; x < this.width; x++) {
+        const freqAtX = this.minFreq + (x / this.width) * (this.maxFreq - this.minFreq);
+
+        if (freqAtX >= notchLowHz && freqAtX <= notchHighHz) {
+          // Apply notch depth attenuation at this frequency
+          this.combinedData[x] -= notch.depth;
+          this.noiseData[x] -= notch.depth;
+        }
+      }
     }
   }
 

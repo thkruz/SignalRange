@@ -82,6 +82,12 @@ jobs:
           name: ${{ needs.build-production.outputs.artifact-name }}
           path: dist/
 
+      - name: Verify Cloudflare Authentication
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          command: whoami
+
       - name: Deploy to Cloudflare Workers
         uses: cloudflare/wrangler-action@v3
         with:

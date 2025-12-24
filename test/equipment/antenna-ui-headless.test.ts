@@ -84,13 +84,13 @@ describe('AntennaUIHeadless', () => {
       expect(container.className).toBe('antenna-headless');
     });
 
-    it('should append container to parent element', () => {
+    it('should append container to document body', () => {
       const antenna = new AntennaUIHeadless('test-parent');
 
-      const container = parentElement.querySelector('.antenna-headless');
+      const container = document.body.querySelector('.antenna-headless');
 
       expect(container).toBeTruthy();
-      expect(container?.parentElement).toBe(parentElement);
+      expect(container?.parentElement).toBe(document.body);
     });
   });
 
@@ -118,14 +118,16 @@ describe('AntennaUIHeadless', () => {
     it('should create only one hidden container element', () => {
       const antenna = new AntennaUIHeadless('test-parent');
 
-      const containers = parentElement.querySelectorAll('.antenna-headless');
+      const containers = document.body.querySelectorAll('.antenna-headless');
 
       expect(containers.length).toBe(1);
     });
 
-    it('should not create visible UI elements', () => {
+    it('should not create visible UI elements in parent', () => {
       const antenna = new AntennaUIHeadless('test-parent');
 
+      // Headless antenna appends to document.body, not parentElement
+      // Parent should remain empty
       const visibleElements = Array.from(parentElement.querySelectorAll('*')).filter(
         el => (el as HTMLElement).style.display !== 'none'
       );

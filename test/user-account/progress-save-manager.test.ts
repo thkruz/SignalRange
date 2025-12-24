@@ -24,6 +24,11 @@ const mockSyncManager = {
 const mockUserDataService = {
   getUserProgress: jest.fn(),
   updateUserProgress: jest.fn(),
+  saveCheckpoint: jest.fn(),
+  getCheckpoint: jest.fn(),
+  deleteCheckpoint: jest.fn(),
+  checkpointExists: jest.fn(),
+  updateScenarioProgress: jest.fn(),
 };
 
 jest.mock('@app/events/event-bus', () => ({
@@ -99,17 +104,7 @@ describe('ProgressSaveManager', () => {
 
   it('saves a checkpoint and replaces any existing one for the scenario', async () => {
     mockSyncManager.getCurrentState.mockReturnValue({ equipment: { foo: 'bar' } });
-    mockUserDataService.getUserProgress.mockResolvedValue({
-      signalForge: [
-        {
-          scenarioId: 'scenario-123',
-          version: '0.0.1',
-          state: { stale: true },
-          savedAt: 0,
-        },
-      ],
-    });
-    mockUserDataService.updateUserProgress.mockResolvedValue(undefined);
+    mockUserDataService.saveCheckpoint.mockResolvedValue(undefined);
 
     await manager.saveCheckpoint();
 
@@ -118,14 +113,11 @@ describe('ProgressSaveManager', () => {
       Events.PROGRESS_SAVE_START,
       expect.objectContaining({ timestamp: expect.any(Number) }),
     );
-    const payload = mockUserDataService.updateUserProgress.mock.calls[0][0].signalForge;
-    expect(payload).toHaveLength(1);
-    expect(payload[0]).toEqual(
+    expect(mockUserDataService.saveCheckpoint).toHaveBeenCalledWith(
+      'scenario-123',
       expect.objectContaining({
-        scenarioId: 'scenario-123',
         version: packageJson.version,
         state: { equipment: { foo: 'bar' } },
-        savedAt: expect.any(Number),
       }),
     );
     expect(mockToast.showSuccess).toHaveBeenCalled();
@@ -137,8 +129,7 @@ describe('ProgressSaveManager', () => {
 
   it('emits an error event when saving a checkpoint fails', async () => {
     mockSyncManager.getCurrentState.mockReturnValue({});
-    mockUserDataService.getUserProgress.mockResolvedValue({ signalForge: [] });
-    mockUserDataService.updateUserProgress.mockRejectedValue(new Error('save failed'));
+    mockUserDataService.saveCheckpoint.mockRejectedValue(new Error('save failed'));
 
     await expect(manager.saveCheckpoint()).rejects.toThrow('save failed');
     expect(mockToast.showError).toHaveBeenCalled();
@@ -150,7 +141,7 @@ describe('ProgressSaveManager', () => {
 
   it('loads a checkpoint when one exists and logs the result', async () => {
     const checkpoint = { scenarioId: 'scenario-123', state: { data: true } };
-    mockUserDataService.getUserProgress.mockResolvedValue({ signalForge: [checkpoint] });
+    mockUserDataService.getCheckpoint.mockResolvedValue(checkpoint);
 
     const result = await manager.loadCheckpoint('scenario-123');
 
@@ -158,38 +149,26 @@ describe('ProgressSaveManager', () => {
   });
 
   it('returns null when no checkpoint is found', async () => {
-    mockUserDataService.getUserProgress.mockResolvedValue({ signalForge: [] });
+    mockUserDataService.getCheckpoint.mockResolvedValue(null);
 
     const result = await manager.loadCheckpoint('missing');
 
     expect(result).toBeNull();
   });
 
-  it('clears a checkpoint when it exists and avoids unnecessary writes', async () => {
-    mockUserDataService.getUserProgress.mockResolvedValue({
-      signalForge: [{ scenarioId: 'scenario-123' }, { scenarioId: 'other' }],
-    });
-    mockUserDataService.updateUserProgress.mockResolvedValue(undefined);
+  it('clears a checkpoint when it exists', async () => {
+    mockUserDataService.deleteCheckpoint.mockResolvedValue(undefined);
 
     await manager.clearCheckpoint('scenario-123');
 
-    expect(mockUserDataService.updateUserProgress).toHaveBeenCalledWith({
-      signalForge: [{ scenarioId: 'other' }],
-    });
-
-    mockUserDataService.updateUserProgress.mockClear();
-    mockUserDataService.getUserProgress.mockResolvedValue({ signalForge: [{ scenarioId: 'other' }] });
-
-    await manager.clearCheckpoint('scenario-123');
-
-    expect(mockUserDataService.updateUserProgress).not.toHaveBeenCalled();
+    expect(mockUserDataService.deleteCheckpoint).toHaveBeenCalledWith('scenario-123');
   });
 
   it('checks for checkpoint presence and handles errors gracefully', async () => {
-    const loadSpy = jest.spyOn(manager, 'loadCheckpoint').mockResolvedValue({} as any);
+    mockUserDataService.checkpointExists.mockResolvedValue(true);
     await expect(manager.hasCheckpoint('scenario-123')).resolves.toBe(true);
 
-    loadSpy.mockRejectedValue(new Error('boom'));
+    mockUserDataService.checkpointExists.mockRejectedValue(new Error('boom'));
     await expect(manager.hasCheckpoint('scenario-123')).resolves.toBe(false);
   });
 

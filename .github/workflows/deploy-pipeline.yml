@@ -1,0 +1,296 @@
+---
+name: Deploy Pipeline
+
+on:
+  # Production: Auto-deploy when main is updated
+  push:
+    branches:
+      - main
+
+  # UAT: Manual deployment with PR number input
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to deploy to UAT'
+        required: true
+        type: number
+
+permissions:
+  contents: read
+  deployments: write
+  pull-requests: write
+  statuses: read
+  checks: read
+
+concurrency:
+  group: deploy-${{ github.event_name == 'push' && 'production' || format('uat-pr{0}', github.event.inputs.pr_number) }}
+  cancel-in-progress: false
+
+jobs:
+  # ============================================
+  # PRODUCTION DEPLOYMENT (auto on main push)
+  # ============================================
+  build-production:
+    name: Build Production
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    outputs:
+      artifact-name: ${{ steps.artifact.outputs.name }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Build Application
+        run: npm run build
+
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-production-${{ github.sha }}
+          path: dist/
+          retention-days: 7
+
+      - name: Set Artifact Name Output
+        id: artifact
+        run: echo "name=dist-production-${{ github.sha }}" >> $GITHUB_OUTPUT
+
+  deploy-production:
+    name: Deploy to Production
+    needs: build-production
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://app.signalrange.space
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Download Build Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build-production.outputs.artifact-name }}
+          path: dist/
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install Wrangler
+        run: npm install -g wrangler
+
+      - name: Deploy to Cloudflare Workers
+        run: wrangler deploy --env production
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+
+      - name: Deployment Summary
+        run: |
+          echo "## Production Deployment Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**URL:** https://app.signalrange.space" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Deployed at:** $(date -u)" >> $GITHUB_STEP_SUMMARY
+
+  # ============================================
+  # UAT DEPLOYMENT (manual with PR number)
+  # ============================================
+  verify-pr-checks:
+    name: Verify PR Build Checks
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    outputs:
+      pr-sha: ${{ steps.pr-info.outputs.sha }}
+      pr-branch: ${{ steps.pr-info.outputs.branch }}
+      pr-title: ${{ steps.pr-info.outputs.title }}
+    steps:
+      - name: Get PR Information
+        id: pr-info
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = ${{ github.event.inputs.pr_number }};
+
+            // Get PR details
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber
+            });
+
+            if (pr.state !== 'open') {
+              core.setFailed(`PR #${prNumber} is not open (state: ${pr.state})`);
+              return;
+            }
+
+            if (pr.base.ref !== 'main') {
+              core.setFailed(`PR #${prNumber} does not target main branch (targets: ${pr.base.ref})`);
+              return;
+            }
+
+            core.setOutput('sha', pr.head.sha);
+            core.setOutput('branch', pr.head.ref);
+            core.setOutput('title', pr.title);
+
+            console.log(`PR #${prNumber}: ${pr.title}`);
+            console.log(`Branch: ${pr.head.ref}`);
+            console.log(`SHA: ${pr.head.sha}`);
+
+      - name: Verify Build Pipeline Status
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const sha = '${{ steps.pr-info.outputs.sha }}';
+            const prNumber = ${{ github.event.inputs.pr_number }};
+
+            // Get check runs for the commit
+            const { data: checkRuns } = await github.rest.checks.listForRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: sha
+            });
+
+            console.log(`Found ${checkRuns.total_count} check runs for SHA ${sha}`);
+
+            // Look for the build job from Build Pipeline
+            const buildCheck = checkRuns.check_runs.find(
+              run => run.name === 'Build'
+            );
+
+            if (!buildCheck) {
+              core.setFailed(`No Build check found for PR #${prNumber}. Ensure the Build Pipeline has run.`);
+              return;
+            }
+
+            console.log(`Build check status: ${buildCheck.status}, conclusion: ${buildCheck.conclusion}`);
+
+            if (buildCheck.status !== 'completed') {
+              core.setFailed(`Build check is still ${buildCheck.status}. Please wait for it to complete.`);
+              return;
+            }
+
+            if (buildCheck.conclusion !== 'success') {
+              core.setFailed(`Build check ${buildCheck.conclusion}. PR must pass build before UAT deployment.`);
+              return;
+            }
+
+            console.log('Build check passed!');
+
+            // Add summary
+            await core.summary
+              .addHeading(`PR #${prNumber} Checks Verified`, 2)
+              .addTable([
+                [{data: 'Check', header: true}, {data: 'Status', header: true}],
+                ...checkRuns.check_runs
+                  .filter(r => r.status === 'completed')
+                  .map(r => [r.name, r.conclusion === 'success' ? '✅ success' : `❌ ${r.conclusion}`])
+              ])
+              .write();
+
+  build-uat:
+    name: Build UAT
+    needs: verify-pr-checks
+    runs-on: ubuntu-latest
+    outputs:
+      artifact-name: ${{ steps.artifact.outputs.name }}
+    steps:
+      - name: Checkout PR Branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.verify-pr-checks.outputs.pr-sha }}
+          submodules: recursive
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Build Application
+        run: npm run build
+
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-uat-pr${{ github.event.inputs.pr_number }}-${{ needs.verify-pr-checks.outputs.pr-sha }}
+          path: dist/
+          retention-days: 7
+
+      - name: Set Artifact Name Output
+        id: artifact
+        run: echo "name=dist-uat-pr${{ github.event.inputs.pr_number }}-${{ needs.verify-pr-checks.outputs.pr-sha }}" >> $GITHUB_OUTPUT
+
+  deploy-uat:
+    name: Deploy to UAT
+    needs: [verify-pr-checks, build-uat]
+    runs-on: ubuntu-latest
+    environment:
+      name: uat
+      url: https://uat.signalrange.space
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Download Build Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build-uat.outputs.artifact-name }}
+          path: dist/
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install Wrangler
+        run: npm install -g wrangler
+
+      - name: Deploy to Cloudflare Workers (UAT)
+        run: wrangler deploy --env uat
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+
+      - name: Deployment Summary
+        run: |
+          echo "## UAT Deployment Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**URL:** https://uat.signalrange.space" >> $GITHUB_STEP_SUMMARY
+          echo "**PR:** #${{ github.event.inputs.pr_number }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch:** ${{ needs.verify-pr-checks.outputs.pr-branch }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** ${{ needs.verify-pr-checks.outputs.pr-sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Deployed at:** $(date -u)" >> $GITHUB_STEP_SUMMARY
+
+      - name: Comment on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = ${{ github.event.inputs.pr_number }};
+            const sha = '${{ needs.verify-pr-checks.outputs.pr-sha }}';
+            const title = `${{ needs.verify-pr-checks.outputs.pr-title }}`;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body: `## 🚀 UAT Deployment Complete\n\n` +
+                    `This PR has been deployed to the UAT environment.\n\n` +
+                    `**URL:** https://uat.signalrange.space\n` +
+                    `**Commit:** \`${sha.substring(0, 7)}\`\n` +
+                    `**Deployed by:** @${context.actor}\n` +
+                    `**Deployed at:** ${new Date().toISOString()}\n\n` +
+                    `Please test your changes and approve when ready for production.`
+            });

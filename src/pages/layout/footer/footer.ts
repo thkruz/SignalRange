@@ -39,6 +39,9 @@ export class Footer extends BaseElement {
         <div class="footer-text">
           <p>${this.generateCopyrightInfo()}</p>
         </div>
+        <div class="footer-build-info">
+          v${__APP_VERSION__} | ${__GIT_COMMIT_SHA__}
+        </div>
       </div>
     </footer>
   `;

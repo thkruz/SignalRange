@@ -3,6 +3,8 @@ import type { AppState } from '../../src/sync/sync-manager';
 const mockObjectivesManager = {
   getObjectiveStates: jest.fn(),
   restoreState: jest.fn(),
+  hasScenarioTimer: jest.fn().mockReturnValue(false),
+  getScenarioTimeRemaining: jest.fn().mockReturnValue(0),
 };
 const mockSimulationManagerInstance = {
   objectivesManager: mockObjectivesManager,
@@ -67,9 +69,13 @@ describe('SyncManager', () => {
     expect(provider.subscribe).toHaveBeenCalledTimes(1);
   });
 
-  it('throws when loading or saving without equipment', async () => {
-    await expect(manager.loadFromStorage()).rejects.toThrow('Equipment not set');
+  it('throws when saving without equipment', async () => {
     await expect(manager.saveToStorage()).rejects.toThrow('Equipment not set');
+  });
+
+  it('initializes empty equipment when loading without equipment set', async () => {
+    provider.read.mockResolvedValue(null);
+    await expect(manager.loadFromStorage()).resolves.toBeUndefined();
   });
 
   it('writes current state when saving to storage', async () => {
@@ -146,7 +152,7 @@ describe('SyncManager', () => {
     expect(equipment.transmitters[0].sync).toHaveBeenCalledWith(state.equipment!.transmittersState![0]);
     expect(equipment.receivers[0].sync).toHaveBeenCalledWith(state.equipment!.receiversState![0]);
     expect(mockSimulationManager.getInstance).toHaveBeenCalledTimes(1);
-    expect(mockObjectivesManager.restoreState).toHaveBeenCalledWith(state.objectiveStates);
+    expect(mockObjectivesManager.restoreState).toHaveBeenCalledWith(state.objectiveStates, state.scenarioTimeRemaining);
   });
 
   it('reports connectivity from the underlying provider', () => {

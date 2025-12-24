@@ -26,7 +26,8 @@ export type ConditionType =
   | 'equipment-powered' // Specific equipment is powered on
   | 'equipment-not-powered' // Specific equipment is powered off
   | 'hpa-disabled' // HPA output disabled (but may still be powered)
-  | 'signal-detected' // Signal detected on spectrum analyzer
+  | 'signal-detected' // Signal detected on spectrum analyzer (optional signalId and minPower params)
+  | 'signal-level-correct' // Specific signal at or above minimum power level
   | 'frequency-set' // Equipment tuned to specific frequency
   | 'speca-span-set' // Spectrum analyzer span set to specific value
   | 'speca-rbw-set' // Spectrum analyzer RBW set to specific value
@@ -137,6 +138,10 @@ export interface ConditionParams {
   explanation?: string;
   /** For status-check: points deducted per wrong answer (default: 5) */
   pointPenalty?: number;
+  /** For signal-detected/signal-level-correct: signal identifier to match */
+  signalId?: string;
+  /** For signal-detected/signal-level-correct: minimum power level in dBm */
+  minPower?: number;
   /** Additional context-specific parameters */
   [key: string]: unknown;
 }

@@ -5,8 +5,10 @@
  */
 
 import { GroundStation } from '@app/assets/ground-station/ground-station';
+import { TapPoint } from '@app/equipment/rf-front-end/coupler-module/coupler-module';
 import { EventBus } from '@app/events/event-bus';
 import { Events, QuizCompletedData, QuizPassedData } from '@app/events/events';
+import { QuizManager } from '@app/modal/quiz-manager';
 import { SimulationManager } from '@app/simulation/simulation-manager';
 import { Milliseconds } from 'ootk';
 import {
@@ -15,7 +17,6 @@ import {
   Objective,
   ObjectiveState
 } from './objective-types';
-import { QuizManager } from '@app/modal/quiz-manager';
 import './objectives-manager.css';
 
 /**
@@ -1030,7 +1031,48 @@ export class ObjectivesManager {
 
       case 'signal-detected': {
         return this.evaluateEquipment_(gs.spectrumAnalyzers, condition.params, (specA) => {
-          return specA.getInputSignals().length > 0;
+          const signals = specA.getInputSignals();
+          if (signals.length === 0) return false;
+
+          // If no specific signal required, any signal counts
+          if (!condition.params?.signalId) {
+            return true;
+          }
+
+          // Find the specific signal by ID
+          const targetSignal = signals.find(s => s.signalId === condition.params?.signalId);
+          if (!targetSignal) return false;
+
+          // If minPower specified, check signal meets threshold (include path gain)
+          if (condition.params?.minPower !== undefined) {
+            const totalGain = specA.rfFrontEnd_.couplerModule.signalPathManager.getTotalGainTo(TapPoint.RX_IF);
+            const effectivePower = targetSignal.power + totalGain;
+            return effectivePower >= condition.params.minPower;
+          }
+
+          return true;
+        });
+      }
+
+      case 'signal-level-correct': {
+        // Requires a specific signal to be at or above a minimum power level
+        if (!condition.params?.signalId || condition.params?.minPower === undefined) {
+          console.warn('signal-level-correct condition requires signalId and minPower params');
+          return false;
+        }
+
+        const targetSignalId = condition.params.signalId;
+        const minPower = condition.params.minPower;
+
+        return this.evaluateEquipment_(gs.spectrumAnalyzers, condition.params, (specA) => {
+          const signals = specA.getInputSignals();
+          const targetSignal = signals.find(s => s.signalId === targetSignalId);
+          if (!targetSignal) return false;
+
+          // Include path gain to get effective power at spectrum analyzer
+          const totalGain = specA.rfFrontEnd_.couplerModule.signalPathManager.getTotalGainTo(TapPoint.RX_IF);
+          const effectivePower = targetSignal.power + totalGain;
+          return effectivePower >= minPower;
         });
       }
 
@@ -1129,9 +1171,10 @@ export class ObjectivesManager {
         return this.evaluateEquipment_(gs.antennas, condition.params, (antenna) => {
           const state = antenna.state;
 
-          // Check azimuth if specified
+          // Check azimuth if specified (handle 360° wraparound)
           if (targetAz !== undefined) {
-            const azDiff = Math.abs(state.azimuth - targetAz);
+            let azDiff = Math.abs(state.azimuth - targetAz);
+            if (azDiff > 180) azDiff = 360 - azDiff;
             if (azDiff > tolerance) return false;
           }
 

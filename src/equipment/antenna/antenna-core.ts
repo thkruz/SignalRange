@@ -503,16 +503,11 @@ export abstract class AntennaCore extends BaseEquipment {
     const LOCK_THRESHOLD_DBM = -100;
 
     if (isSwitchUp && strongestSignal.power > LOCK_THRESHOLD_DBM) {
-      const differenceBetweenAzAndSatAz = Math.abs(this.state.targetAzimuth - SimulationManager.getInstance().getSatByNoradId(strongestSignal.noradId).az);
-
       const sat = SimulationManager.getInstance().getSatByNoradId(strongestSignal.noradId);
 
       // Set target position - actual position will slew in update loop
-      if (differenceBetweenAzAndSatAz > 180) {
-        this.state.targetAzimuth = (sat.az + 360) as Degrees;
-      } else {
-        this.state.targetAzimuth = sat.az;
-      }
+      // Use shortest path calculation to avoid rotating the long way around
+      this.state.targetAzimuth = this.calculateShortestPathTarget_(this.state.azimuth, sat.az);
       this.state.targetElevation = sat.el;
 
       // Simulate lock acquisition delay with timeout tracking
@@ -675,13 +670,8 @@ export abstract class AntennaCore extends BaseEquipment {
     }
 
     // Set target position - actual position will slew in update loop
-    // Handle azimuth wrap-around for shortest path
-    const differenceBetweenAzAndSatAz = Math.abs(this.state.targetAzimuth - sat.az);
-    if (differenceBetweenAzAndSatAz > 180) {
-      this.state.targetAzimuth = (sat.az + 360) as Degrees;
-    } else {
-      this.state.targetAzimuth = sat.az;
-    }
+    // Use shortest path calculation to avoid rotating the long way around
+    this.state.targetAzimuth = this.calculateShortestPathTarget_(this.state.azimuth, sat.az);
     this.state.targetElevation = sat.el;
 
     this.updateSignals_();
@@ -1101,6 +1091,19 @@ export abstract class AntennaCore extends BaseEquipment {
    */
   private normalizeAzimuth_(az: number): number {
     return ((az % 360) + 360) % 360;
+  }
+
+  /**
+   * Calculate target azimuth for shortest path rotation to a satellite
+   * Returns a target that may be outside 0-360 range to ensure shortest rotation
+   */
+  private calculateShortestPathTarget_(currentAz: Degrees, satAz: Degrees): Degrees {
+    const signedDiff = satAz - currentAz;
+    // Normalize difference to [-180, 180] for shortest path
+    const shortestDiff = signedDiff > 180 ? signedDiff - 360 :
+                         signedDiff < -180 ? signedDiff + 360 :
+                         signedDiff;
+    return (currentAz + shortestDiff) as Degrees;
   }
 
   // ========================================================================

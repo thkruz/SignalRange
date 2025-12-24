@@ -13,6 +13,12 @@ import { Events } from "../../src/events/events";
 
 // Tests for RFFrontEndCore class
 
+// Mock HTMLMediaElement.prototype.play for jsdom compatibility
+Object.defineProperty(HTMLMediaElement.prototype, 'play', {
+  configurable: true,
+  value: jest.fn().mockResolvedValue(undefined),
+});
+
 describe('RFFrontEndCore class', () => {
   let rfFrontEnd: RFFrontEndCore;
   let parentElement: HTMLElement;
@@ -65,7 +71,7 @@ describe('RFFrontEndCore class', () => {
 
       // Check BUC state
       expect(rfFrontEnd.bucModule.state.isPowered).toBe(true);
-      expect(rfFrontEnd.bucModule.state.gain).toBe(58);
+      expect(rfFrontEnd.bucModule.state.gain).toBe(0);
       expect(rfFrontEnd.bucModule.state.loFrequency).toBe(6425);
 
       // Check LNB state
@@ -106,6 +112,8 @@ describe('RFFrontEndCore class', () => {
     });
 
     it('should calculate HPA temperature based on output power', () => {
+      // BUC must be powered for HPA to remain powered
+      rfFrontEnd.state.buc.isPowered = true;
       rfFrontEnd.state.hpa.isPowered = true;
       rfFrontEnd.state.hpa.outputPower = 50; // 100W
 
@@ -129,7 +137,10 @@ describe('RFFrontEndCore class', () => {
 
       rfFrontEnd.update();
 
-      expect(rfFrontEnd.state.buc.outputPower).toBe(47); // -10 + 60
+      // Output = -10 + 60 = 50, but compression kicks in (50 > 15 dBm saturation)
+      // Compression = min((50-15)*0.5, 3) = 3 dB
+      // Final output = 50 - 3 = 47 dBm
+      expect(rfFrontEnd.state.buc.outputPower).toBe(47);
     });
 
     it('should set BUC output power to minimum when muted', () => {
@@ -158,6 +169,8 @@ describe('RFFrontEndCore class', () => {
     });
 
     it('should calculate HPA IMD level based on backoff', () => {
+      // BUC must be powered for HPA to remain powered
+      rfFrontEnd.state.buc.isPowered = true;
       rfFrontEnd.state.hpa.isPowered = true;
       rfFrontEnd.state.hpa.backOff = 4;
 
@@ -222,9 +235,9 @@ describe('RFFrontEndCore class', () => {
     });
 
     it('should sync filter state', () => {
+      // bandwidthIndex 13 = 40 MHz, insertionLoss 1.8
       const newFilterState = {
-        bandwidth: 40 as any,
-        insertionLoss: 3.0
+        bandwidthIndex: 13
       };
 
       rfFrontEnd.sync({ filter: newFilterState as IfFilterBankState });

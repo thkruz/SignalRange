@@ -238,17 +238,11 @@ export class Satellite {
     for (const tp of this.transponders) {
       if (tp.beacon) {
         const beaconSignal: RfSignal = {
-          signalId: `beacon-${tp.id}`,
-          serverId: 0,
+          ...tp.beacon,
+          // Use original signalId if provided, otherwise generate one
+          signalId: tp.beacon.signalId || `beacon-${tp.id}`,
           noradId: this.noradId,
-          frequency: tp.beacon.frequency,
-          polarization: tp.beacon.polarization,
           rotation: this.rotation,
-          power: tp.beacon.power,
-          bandwidth: tp.beacon.bandwidth,
-          modulation: tp.beacon.modulation,
-          fec: tp.beacon.fec,
-          feed: tp.beacon.feed,
           origin: SignalOrigin.SATELLITE_TX,
           isDegraded: false,
           noiseFloor: null,

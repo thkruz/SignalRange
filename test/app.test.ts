@@ -4,6 +4,11 @@ import { Events } from "../src/events/events";
 
 // Tests for App class
 
+// Define global constants used by the app
+declare const global: any;
+(global as any).__APP_VERSION__ = '1.0.0-test';
+(global as any).__GIT_COMMIT_SHA__ = 'test-sha';
+
 describe('App class', () => {
   beforeEach(() => {
     jest.resetModules();

@@ -7,147 +7,239 @@ on:
     branches:
       - main
       - develop
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'LICENSE'
 
 permissions:
   contents: read
   issues: write
   actions: read
+  pull-requests: write
+  security-events: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  lint-yml:
-    name: Yaml Lint
+  # ============================================
+  # PARALLEL QUALITY CHECKS
+  # ============================================
+
+  lint:
+    name: Lint
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Node Project
+        uses: ./.github/actions/setup-node-project
+
+      - name: Run ESLint
+        run: npm run lint
+
       - name: YAML Lint
         uses: ibiqlik/action-yamllint@v3.1.1
         with:
-          file_or_dir: .github/workflows/build-pipeline.yml
+          file_or_dir: .github/workflows/
+          config_file: .yamllint.yml
         continue-on-error: true
 
-  compliance:
-    needs: lint-yml
-    name: NPM Audit Report
+      - name: Lint Summary
+        run: |
+          echo "### Lint Results" >> $GITHUB_STEP_SUMMARY
+          echo "- ESLint: Passed" >> $GITHUB_STEP_SUMMARY
+
+  type-check:
+    name: Type Check
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
-      - name: NPM Audit Action
-        uses: oke-py/npm-audit-action@main
         with:
-          working_directory: ./
-          issue_assignees: thkruz
-          issue_labels: Security
-          dedupe_issues: true
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-        continue-on-error: true
+          submodules: recursive
 
-  lint-and-test:
-    needs: compliance
-    name: Lint and Unit Tests
+      - name: Setup Node Project
+        uses: ./.github/actions/setup-node-project
+
+      - name: TypeScript Type Check
+        run: npm run type-check
+
+      - name: Type Check Summary
+        run: |
+          echo "### Type Check Results" >> $GITHUB_STEP_SUMMARY
+          echo "TypeScript compilation: Passed" >> $GITHUB_STEP_SUMMARY
+
+  test:
+    name: Test
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./
-    strategy:
-      fail-fast: false
-      matrix:
-        task: [eslint, unit-test]
     steps:
-      - uses: actions/checkout@v4
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
+      - name: Checkout Code
+        uses: actions/checkout@v4
         with:
-          node-version: '18'
-      - name: Cache node modules
-        uses: actions/cache@v4.2.3
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-build-node-modules-${{
-            hashFiles('package-lock.json') }}
-          restore-keys: ${{ runner.os }}-build-node-modules-${{ runner.os }}-
-      - name: Install Dependencies
-        run: npm ci --ignore-scripts
+          submodules: recursive
 
-      - name: Update submodules
-        run: git submodule update --init --recursive
-        working-directory: ./
-      - name: Set Timezone (only for tests)
-        if: matrix.task == 'unit-test'
-        uses: szenius/set-timezone@v1.2
+      - name: Setup Node Project
+        uses: ./.github/actions/setup-node-project
+
+      - name: Set Timezone
+        uses: szenius/set-timezone@v2.0
         with:
           timezoneLinux: 'America/New_York'
-      - name: Run ESLint
-        if: matrix.task == 'eslint'
-        run: |
-          echo "Running ESLint..."
-          npm run lint
-          echo '### ESLint Passed' >> $GITHUB_STEP_SUMMARY
-      - name: Run Unit Tests
-        if: matrix.task == 'unit-test'
-        run: |
-          echo "Running Unit Tests..."
-          npm test
-          echo '### Unit Tests Passed' >> $GITHUB_STEP_SUMMARY
 
-  build:
-    needs: [lint-and-test]
-    name: Build
+      - name: Run Tests with Coverage
+        run: npm test -- --coverage --coverageReporters=text --coverageReporters=lcov --coverageReporters=json-summary
+
+      - name: Upload Coverage Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 7
+
+      - name: Coverage Report to PR
+        if: github.event_name == 'pull_request'
+        uses: davelosert/vitest-coverage-report-action@v2
+        with:
+          json-summary-path: coverage/coverage-summary.json
+          json-final-path: coverage/coverage-final.json
+          vite-config-path: ''
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
+      - name: Test Summary
+        run: |
+          echo "### Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "Unit tests: Passed" >> $GITHUB_STEP_SUMMARY
+          if [ -f coverage/coverage-summary.json ]; then
+            COVERAGE=$(jq -r '.total.lines.pct' coverage/coverage-summary.json 2>/dev/null || echo "N/A")
+            echo "Line coverage: ${COVERAGE}%" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  security-audit:
+    name: Security Audit
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
         with:
-          node-version: '18'
-      - name: Cache node modules
-        uses: actions/cache@v4.2.3
+          submodules: recursive
+
+      - name: Setup Node Project
+        uses: ./.github/actions/setup-node-project
+
+      - name: NPM Audit (Critical Only)
+        run: npm audit --audit-level=critical
+        continue-on-error: false
+
+      - name: NPM Audit Report (All Levels)
+        run: |
+          echo "### Security Audit" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          npm audit --json | jq -r '
+            "Vulnerabilities: " +
+            (.metadata.vulnerabilities | to_entries | map("\(.key): \(.value)") | join(", "))
+          ' >> $GITHUB_STEP_SUMMARY 2>/dev/null || echo "No vulnerabilities found" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+        continue-on-error: true
+
+  # ============================================
+  # BUILD (after quality checks pass)
+  # ============================================
+
+  build:
+    name: Build
+    needs: [lint, type-check, test, security-audit]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
         with:
-          path: ~/.npm
-          key: ${{ runner.os }}-build-node-modules-${{
-            hashFiles('package-lock.json') }}
-          restore-keys: ${{ runner.os }}-build-node-modules-${{ runner.os }}-
-      - name: Update submodules
-        run: git submodule update --init --recursive
-        working-directory: ./
-      - name: Install Dependencies
-        run: npm ci --ignore-scripts
-      - name: Build
+          submodules: recursive
+
+      - name: Setup Node Project
+        uses: ./.github/actions/setup-node-project
+
+      - name: Build Application
         run: npm run build
 
-  trufflehog:
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ github.sha }}
+          path: dist/
+          retention-days: 7
+
+      - name: Build Summary
+        run: |
+          echo "### Build Results" >> $GITHUB_STEP_SUMMARY
+          echo "Build: Passed" >> $GITHUB_STEP_SUMMARY
+          echo "Artifact: dist-${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+
+  # ============================================
+  # SECURITY SCANS (after build)
+  # ============================================
+
+  secrets-scan:
+    name: Secrets Scan
     needs: build
-    name: TruffleHog Secrets Scan
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Code
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Run TruffleHog
-        uses: trufflesecurity/trufflehog@v3.82.6
+
+      - name: TruffleHog Secrets Scan
+        uses: trufflesecurity/trufflehog@v3.88.0
+
+      - name: Secrets Scan Summary
+        if: success()
+        run: |
+          echo "### Secrets Scan" >> $GITHUB_STEP_SUMMARY
+          echo "TruffleHog: No secrets detected" >> $GITHUB_STEP_SUMMARY
 
   codeql:
+    name: CodeQL
     needs: build
-    name: CodeQL Security Scan
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
         with:
-          languages: javascript
+          languages: javascript-typescript
+          queries: security-extended
+
       - name: Autobuild
         uses: github/codeql-action/autobuild@v3
+
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
+        with:
+          category: '/language:javascript-typescript'
+
+  # ============================================
+  # DEPENDENCY REVIEW (PRs only)
+  # ============================================
+
+  dependency-review:
+    name: Dependency Review
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: critical
+          comment-summary-in-pr: always

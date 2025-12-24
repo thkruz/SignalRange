@@ -1,5 +1,5 @@
 import { html } from "@app/engine/utils/development/formatter";
-import { ANTENNA_CONFIG_KEYS } from "@app/equipment/antenna/antenna-configs";
+import { ANTENNA_CONFIG_KEYS } from "@app/equipment/antenna/antenna-config-keys";
 import { defaultSpectrumAnalyzerState } from "@app/equipment/real-time-spectrum-analyzer/defaultSpectrumAnalyzerState";
 import { Receiver } from "@app/equipment/receiver/receiver";
 import { BUCModuleCore } from "@app/equipment/rf-front-end/buc-module";

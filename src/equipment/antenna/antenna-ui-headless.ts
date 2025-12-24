@@ -1,4 +1,4 @@
-import { ANTENNA_CONFIG_KEYS } from "./antenna-configs";
+import { ANTENNA_CONFIG_KEYS } from "./antenna-config-keys";
 import { AntennaCore, AntennaState } from "./antenna-core";
 
 /**

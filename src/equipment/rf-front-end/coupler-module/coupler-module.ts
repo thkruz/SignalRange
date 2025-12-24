@@ -5,20 +5,7 @@ import { IfFrequency, RfFrequency } from "@app/types";
 import { RFFrontEndCore } from "../rf-front-end-core";
 import { RFFrontEndModule } from '../rf-front-end-module';
 import './coupler-module.css';
-
-/**
- * Spectrum analyzer tap point options
- */
-export enum TapPoint {
-  TX_IF = 'TX IF',
-  RX_IF = 'RX IF',
-  TX_RF_POST_BUC = 'TX RF POST BUC',
-  TX_RF_POST_HPA = 'TX RF POST HPA',
-  TX_RF_POST_OMT = 'TX RF POST OMT',
-  RX_RF_PRE_OMT = 'RX RF PRE OMT',
-  RX_RF_POST_OMT = 'RX RF POST OMT',
-  RX_RF_POST_LNA = 'RX RF POST LNA',
-}
+import { TapPoint } from "./tap-points";
 
 /**
  * Spectrum Analyzer coupler module state

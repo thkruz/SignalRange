@@ -1,4 +1,4 @@
-import { TapPoint } from "@app/equipment/rf-front-end/coupler-module/coupler-module";
+import { TapPoint } from "@app/equipment/rf-front-end/coupler-module/tap-points";
 import { RFFrontEndCore } from "@app/equipment/rf-front-end/rf-front-end-core";
 import { dB, dBm, Hertz, RfSignal } from "@app/types";
 

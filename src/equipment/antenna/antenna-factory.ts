@@ -1,4 +1,4 @@
-import { ANTENNA_CONFIG_KEYS } from "./antenna-configs";
+import { ANTENNA_CONFIG_KEYS } from "./antenna-config-keys";
 import { AntennaCore, AntennaState } from "./antenna-core";
 import { AntennaUIBasic } from "./antenna-ui-basic";
 import { AntennaUIHeadless } from "./antenna-ui-headless";

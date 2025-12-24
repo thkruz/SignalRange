@@ -182,65 +182,6 @@ jobs:
           echo "Artifact: dist-${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
 
   # ============================================
-  # PREVIEW DEPLOYMENT (PRs only)
-  # ============================================
-
-  preview-deploy:
-    name: Deploy Preview
-    if: github.event_name == 'pull_request'
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Download Build Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: dist-${{ github.sha }}
-          path: dist/
-
-      - name: Deploy Preview to Cloudflare Workers
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          wranglerVersion: "4"
-          command: deploy --config wrangler.jsonc --env preview --name signal-range-pr-${{ github.event.pull_request.number }}
-
-      - name: Find Existing Preview Comment
-        uses: peter-evans/find-comment@v3
-        id: find-comment
-        with:
-          issue-number: ${{ github.event.pull_request.number }}
-          comment-author: 'github-actions[bot]'
-          body-includes: '<!-- preview-deployment-comment -->'
-
-      - name: Create or Update Preview Comment
-        uses: peter-evans/create-or-update-comment@v4
-        with:
-          comment-id: ${{ steps.find-comment.outputs.comment-id }}
-          issue-number: ${{ github.event.pull_request.number }}
-          edit-mode: replace
-          body: |
-            <!-- preview-deployment-comment -->
-            ## :rocket: Preview Deployment Ready
-
-            | Property | Value |
-            |----------|-------|
-            | **Preview URL** | https://signal-range-pr-${{ github.event.pull_request.number }}.workers.dev |
-            | **Commit** | `${{ github.sha }}` |
-
-            ---
-            *This preview will be automatically deleted when the PR is closed.*
-
-      - name: Preview Deploy Summary
-        run: |
-          echo "## Preview Deployment Complete" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Preview URL:** https://signal-range-pr-${{ github.event.pull_request.number }}.workers.dev" >> $GITHUB_STEP_SUMMARY
-
-  # ============================================
   # SECURITY SCANS (after build)
   # ============================================
 

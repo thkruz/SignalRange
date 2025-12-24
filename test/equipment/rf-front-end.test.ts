@@ -81,7 +81,7 @@ describe('RFFrontEndCore class', () => {
 
       // Check HPA state
       expect(rfFrontEnd.hpaModule.state.isPowered).toBe(true);
-      expect(rfFrontEnd.hpaModule.state.backOff).toBe(6);
+      expect(rfFrontEnd.hpaModule.state.backOff).toBe(10);
       expect(rfFrontEnd.hpaModule.state.isHpaEnabled).toBe(false);
     });
 

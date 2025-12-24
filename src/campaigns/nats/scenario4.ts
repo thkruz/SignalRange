@@ -1,11 +1,6 @@
 import { html } from '@app/engine/utils/development/formatter';
 import type { AntennaState } from '@app/equipment/antenna';
-import { ANTENNA_CONFIG_KEYS } from '@app/equipment/antenna/antenna-configs';
-import { BUCModuleCore } from '@app/equipment/rf-front-end/buc-module';
-import { CouplerState, TapPoint } from '@app/equipment/rf-front-end/coupler-module/coupler-module';
-import { IfFilterBankModuleCore } from '@app/equipment/rf-front-end/filter-module';
-import { HPAModuleCore } from '@app/equipment/rf-front-end/hpa-module';
-import { OMTModule } from '@app/equipment/rf-front-end/omt-module/omt-module';
+import { ANTENNA_CONFIG_KEYS } from "@app/equipment/antenna/antenna-config-keys";
 import { Satellite } from '@app/equipment/satellite/satellite';
 import { Character, Emotion } from '@app/modal/character-enum';
 import type { Objective } from '@app/objectives/objective-types';
@@ -14,6 +9,8 @@ import { SignalOrigin } from "@app/SignalOrigin";
 import type { dB, dBi, dBm, FECType, Hertz, MHz, ModulationType, RfFrequency } from '@app/types';
 import { getAssetUrl } from '@app/utils/asset-url';
 import type { Degrees } from 'ootk';
+import { createRfFrontEnd } from '../rf-front-end-factory';
+import { maineGroundStationConfig, vermontGroundStation } from './ground-stations';
 
 /**
  * NATS Level 4: "New Bird, No Handbook"
@@ -70,79 +67,34 @@ export const scenario4Data: ScenarioData = {
             trackingMode: 'stow',
           } as Partial<AntennaState>,
         ],
-        rfFrontEnds: [{
-          omt: OMTModule.getDefaultState(),
-          buc: {
-            ...BUCModuleCore.getDefaultState(),
-            isPowered: false,
-            loFrequency: 2225 as MHz,
-            outputPower: 0 as dBm,
-            isMuted: true,
-            isExtRefLocked: false,
-          },
-          hpa: {
-            ...HPAModuleCore.getDefaultState(),
-            isPowered: false,
-            isHpaEnabled: false,
-            outputPower: 0 as dBm,
-          },
-          filter: {
-            ...IfFilterBankModuleCore.getDefaultState(),
-            isPowered: true,
-            bandwidthIndex: 0, // Student must select
-          },
-          lnb: {
-            isPowered: false,
-            loFrequency: 0 as MHz, // Student must calculate
-            gain: 0 as dB,
-            lnaNoiseFigure: 0.6,
-            mixerNoiseFigure: 16.0,
-            noiseTemperature: 25,
-            noiseTemperatureStabilizationTime: 180,
-            isExtRefLocked: false,
-            noiseFloor: -140,
-            frequencyError: 0,
-            temperature: 22,
-            thermalStabilizationTime: 180,
-          },
-          coupler: {
-            isPowered: true,
-            tapPointA: TapPoint.TX_IF,
-            tapPointB: TapPoint.RX_IF,
-            availableTapPointsA: [TapPoint.TX_IF, TapPoint.TX_RF_POST_BUC],
-            availableTapPointsB: [TapPoint.RX_IF],
-            couplingFactorA: -40,
-            couplingFactorB: -39,
-            isActiveA: true,
-            isActiveB: true,
-          } as CouplerState,
-          gpsdo: {
-            isPowered: true,
-            isLocked: true,
-            warmupTimeRemaining: 0,
-            temperature: 65,
-            gnssSignalPresent: true,
-            isGnssSwitchUp: true,
-            isGnssAcquiringLock: false,
-            satelliteCount: 11,
-            utcAccuracy: 18,
-            constellation: 'GPS',
-            lockDuration: 86400,
-            frequencyAccuracy: 1e-12,
-            allanDeviation: 5e-13,
-            phaseNoise: -140,
-            isInHoldover: false,
-            holdoverDuration: 0,
-            holdoverError: 0,
-            active10MHzOutputs: 1, // Only GPSDO itself currently
-            max10MHzOutputs: 5,
-            output10MHzLevel: 0,
-            ppsOutputsEnabled: true,
-            operatingHours: 86400,
-            selfTestPassed: true,
-            agingRate: 1e-10,
-          },
-        }],
+        rfFrontEnds: [
+          createRfFrontEnd(vermontGroundStation.rfFrontEnds[0], {
+            buc: { isPowered: false, loFrequency: 2225 as MHz, outputPower: 0 as dBm, isMuted: true, isExtRefLocked: false },
+            hpa: { isPowered: false, outputPower: 0 as dBm },
+            filter: { bandwidthIndex: 0 }, // Student must select
+            lnb: {
+              isPowered: false,
+              loFrequency: 0 as MHz, // Student must calculate
+              gain: 0 as dB,
+              noiseTemperature: 25,
+              noiseTemperatureStabilizationTime: 180,
+              isExtRefLocked: false,
+              temperature: 22,
+              thermalStabilizationTime: 180,
+            },
+            gpsdo: {
+              temperature: 65,
+              satelliteCount: 11,
+              utcAccuracy: 18,
+              lockDuration: 86400,
+              frequencyAccuracy: 1e-12,
+              allanDeviation: 5e-13,
+              phaseNoise: -140,
+              active10MHzOutputs: 1, // Only GPSDO itself currently
+              operatingHours: 86400,
+            },
+          }),
+        ],
         spectrumAnalyzers: [
           {
             referenceLevel: 0, // Student must configure
@@ -183,64 +135,9 @@ export const scenario4Data: ScenarioData = {
             elevation: 90 as Degrees,
           } as Partial<AntennaState>
         ],
-        rfFrontEnds: [{
-          // Module states managed by their respective classes
-          omt: OMTModule.getDefaultState(),
-          buc: BUCModuleCore.getDefaultState(),
-          hpa: HPAModuleCore.getDefaultState(),
-          filter: IfFilterBankModuleCore.getDefaultState(),
-          lnb: {
-            isPowered: false,
-            loFrequency: 6080 as MHz, // MHz
-            gain: 0 as dB,
-            lnaNoiseFigure: 0.6, // dB
-            mixerNoiseFigure: 16.0, // dB
-            noiseTemperature: 290, // K
-            noiseTemperatureStabilizationTime: 180, // seconds
-            isExtRefLocked: false,
-            noiseFloor: -140, // dBm/Hz
-            frequencyError: 0, // Hz
-            temperature: 25, // °C
-            thermalStabilizationTime: 180, // seconds
-          },
-          coupler: {
-            isPowered: true,
-            tapPointA: TapPoint.TX_IF,
-            tapPointB: TapPoint.RX_IF,
-            availableTapPointsA: [TapPoint.TX_IF, TapPoint.TX_RF_POST_BUC],
-            availableTapPointsB: [TapPoint.RX_IF],
-            couplingFactorA: -40, // dB
-            couplingFactorB: -39, // dB
-            isActiveA: true,
-            isActiveB: true,
-          } as CouplerState,
-          gpsdo: {
-            isPowered: true, // CHANGE
-            isLocked: false,
-            warmupTimeRemaining: 0, // seconds
-            temperature: 70, // °C
-            gnssSignalPresent: false,
-            isGnssSwitchUp: false,
-            isGnssAcquiringLock: false,
-            satelliteCount: 0,
-            utcAccuracy: 0,
-            constellation: 'GPS',
-            lockDuration: 0,
-            frequencyAccuracy: 0,
-            allanDeviation: 0,
-            phaseNoise: 0,
-            isInHoldover: true,
-            holdoverDuration: 600,
-            holdoverError: 0,
-            active10MHzOutputs: 2,
-            max10MHzOutputs: 5,
-            output10MHzLevel: 0,
-            ppsOutputsEnabled: false,
-            operatingHours: 6,
-            selfTestPassed: true,
-            agingRate: 0,
-          },
-        }],
+        rfFrontEnds: [
+          createRfFrontEnd(maineGroundStationConfig.rfFrontEnds[0], {}),
+        ],
         spectrumAnalyzers: [
           {
             referenceLevel: 0, // dBm

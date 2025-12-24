@@ -1,11 +1,6 @@
 import type { AntennaState } from '@app/equipment/antenna';
-import { ANTENNA_CONFIG_KEYS } from '@app/equipment/antenna/antenna-configs';
+import { ANTENNA_CONFIG_KEYS } from "@app/equipment/antenna/antenna-config-keys";
 import { Receiver } from '@app/equipment/receiver/receiver';
-import { BUCModuleCore } from '@app/equipment/rf-front-end/buc-module';
-import { CouplerState, TapPoint } from '@app/equipment/rf-front-end/coupler-module/coupler-module';
-import { IfFilterBankModuleCore } from '@app/equipment/rf-front-end/filter-module';
-import { HPAModuleCore } from '@app/equipment/rf-front-end/hpa-module';
-import { OMTModule } from '@app/equipment/rf-front-end/omt-module/omt-module';
 import { Satellite } from '@app/equipment/satellite/satellite';
 import { Character, Emotion } from '@app/modal/character-enum';
 import type { Objective } from '@app/objectives/objective-types';
@@ -14,6 +9,8 @@ import { SignalOrigin } from "@app/SignalOrigin";
 import type { dB, dBi, dBm, FECType, Hertz, MHz, ModulationType, RfFrequency } from '@app/types';
 import { getAssetUrl } from '@app/utils/asset-url';
 import type { Degrees } from 'ootk';
+import { createRfFrontEnd } from '../rf-front-end-factory';
+import { vermontGroundStation } from './ground-stations';
 
 /**
  * NATS Level 6: "Interference Hunt"
@@ -73,89 +70,24 @@ export const scenario6Data: ScenarioData = {
             trackingMode: 'step-track',
           } as Partial<AntennaState>,
         ],
-        rfFrontEnds: [{
-          omt: OMTModule.getDefaultState(),
-          buc: {
-            ...BUCModuleCore.getDefaultState(),
-            isPowered: false,
-            loFrequency: 2225 as MHz,
-            outputPower: 0 as dBm,
-            isMuted: true,
-            isExtRefLocked: false,
-          },
-          hpa: {
-            ...HPAModuleCore.getDefaultState(),
-            isPowered: false,
-            isHpaEnabled: false,
-            outputPower: 0 as dBm,
-          },
-          filter: {
-            ...IfFilterBankModuleCore.getDefaultState(),
-            isPowered: true,
-            bandwidthIndex: 3, // Wide filter currently selected
-            // availableFilters: [
-            //   { id: 0, bandwidth: 100e6, label: '100 MHz (bypass)' },
-            //   { id: 1, bandwidth: 50e6, label: '50 MHz' },
-            //   { id: 2, bandwidth: 20e6, label: '20 MHz' },
-            //   { id: 3, bandwidth: 10e6, label: '10 MHz' },
-            //   { id: 4, bandwidth: 5e6, label: '5 MHz' },
-            //   { id: 5, bandwidth: 2e6, label: '2 MHz' },
-            //   { id: 6, bandwidth: 1e6, label: '1 MHz with notch at +3 MHz' },
-            //   { id: 7, bandwidth: 1e6, label: '1 MHz with notch at +5 MHz' },
-            // ],
-          },
-          lnb: {
-            isPowered: true,
-            loFrequency: 5150 as MHz,
-            gain: 55 as dB,
-            lnaNoiseFigure: 0.6,
-            mixerNoiseFigure: 16.0,
-            noiseTemperature: 65,
-            noiseTemperatureStabilizationTime: 0,
-            isExtRefLocked: true,
-            noiseFloor: -140,
-            frequencyError: 0,
-            temperature: 45,
-            thermalStabilizationTime: 0,
-          },
-          coupler: {
-            isPowered: true,
-            tapPointA: TapPoint.TX_IF,
-            tapPointB: TapPoint.RX_IF,
-            availableTapPointsA: [TapPoint.TX_IF, TapPoint.TX_RF_POST_BUC],
-            availableTapPointsB: [TapPoint.RX_IF],
-            couplingFactorA: -40,
-            couplingFactorB: -39,
-            isActiveA: true,
-            isActiveB: true,
-          } as CouplerState,
-          gpsdo: {
-            isPowered: true,
-            isLocked: true,
-            warmupTimeRemaining: 0,
-            temperature: 65,
-            gnssSignalPresent: true,
-            isGnssSwitchUp: true,
-            isGnssAcquiringLock: false,
-            satelliteCount: 11,
-            utcAccuracy: 18,
-            constellation: 'GPS',
-            lockDuration: 86400,
-            frequencyAccuracy: 1e-12,
-            allanDeviation: 5e-13,
-            phaseNoise: -140,
-            isInHoldover: false,
-            holdoverDuration: 0,
-            holdoverError: 0,
-            active10MHzOutputs: 3,
-            max10MHzOutputs: 5,
-            output10MHzLevel: 0,
-            ppsOutputsEnabled: true,
-            operatingHours: 86400,
-            selfTestPassed: true,
-            agingRate: 1e-10,
-          },
-        }],
+        rfFrontEnds: [
+          createRfFrontEnd(vermontGroundStation.rfFrontEnds[0], {
+            buc: { isPowered: false, loFrequency: 2225 as MHz, outputPower: 0 as dBm, isMuted: true, isExtRefLocked: false },
+            hpa: { isPowered: false, outputPower: 0 as dBm },
+            filter: { bandwidthIndex: 3 }, // Wide filter currently selected
+            lnb: { noiseTemperature: 65, temperature: 45 },
+            gpsdo: {
+              temperature: 65,
+              satelliteCount: 11,
+              utcAccuracy: 18,
+              lockDuration: 86400,
+              frequencyAccuracy: 1e-12,
+              allanDeviation: 5e-13,
+              phaseNoise: -140,
+              operatingHours: 86400,
+            },
+          }),
+        ],
         spectrumAnalyzers: [
           {
             referenceLevel: -50,

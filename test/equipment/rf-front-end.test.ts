@@ -1,6 +1,6 @@
 import { createAntenna } from "../../src/equipment/antenna";
 import { BUCState } from "../../src/equipment/rf-front-end/buc-module/buc-module-core";
-import { TapPoint } from "../../src/equipment/rf-front-end/coupler-module/coupler-module";
+import { TapPoint } from "../../src/equipment/rf-front-end/coupler-module/tap-points";
 import { IfFilterBankState } from "../../src/equipment/rf-front-end/filter-module/filter-module-core";
 import { HPAState } from "../../src/equipment/rf-front-end/hpa-module/hpa-module-core";
 import { LNBState } from "../../src/equipment/rf-front-end/lnb-module/lnb-module-core";

@@ -1,5 +1,11 @@
 # SignalRange | Space Electronic Warfare Training
 
+![Latest Version](https://img.shields.io/badge/version-1.1.0-darkgreen?style=flat-square)
+[![Discord](https://img.shields.io/discord/1451232817517166816?color=5865F2&label=discord&logo=discord&logoColor=white&style=flat-square)](https://discord.gg/G4tJfSkmzx)
+![GitHub commit activity](https://img.shields.io/github/commit-activity/m/thkruz/SignalRange?style=flat-square)
+![GitHub issues](https://img.shields.io/github/issues/thkruz/SignalRange?style=flat-square)
+![License](https://img.shields.io/github/license/thkruz/SignalRange?style=flat-square)
+
 A web-based training simulation for satellite ground station operations, built with TypeScript and vanilla JavaScript.
 
 ## Overview

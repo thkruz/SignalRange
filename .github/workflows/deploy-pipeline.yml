@@ -86,7 +86,7 @@ jobs:
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          command: deploy --env production
+          command: deploy --config wrangler.jsonc --env production
 
       - name: Deployment Summary
         run: |
@@ -248,7 +248,7 @@ jobs:
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          command: deploy --env uat
+          command: deploy --config wrangler.jsonc --env uat
 
       - name: Deployment Summary
         run: |

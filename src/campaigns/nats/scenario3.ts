@@ -193,10 +193,10 @@ export const scenario3Data: ScenarioData = {
   objectives: [
     {
       id: 'enable-vt01-heater',
-      title: 'Phase 1: Enable VT-01 Feed Heater',
-      description: 'The blizzard is approaching. Enable the feed heater on VT-01 to prevent ice buildup on the antenna feed.',
+      title: 'Phase 1: Activate Weather Protection',
+      description: 'Ice accumulation on the antenna feed can degrade signal quality and damage the waveguide. Enable the feed heater on VT-01 before the storm arrives - this prevents ice from forming on critical RF components.',
       groundStation: 'VT-01',
-      timeLimitSeconds: 120, // 2 minutes
+      timeLimitSeconds: 240, // 4 minutes
       timerStartTrigger: 'on-activate',
       conditions: [
         {
@@ -210,8 +210,8 @@ export const scenario3Data: ScenarioData = {
     },
     {
       id: 'switch-to-maine',
-      title: 'Phase 2: Select Maine Ground Station',
-      description: 'Switch to ME-02 in the ground station selector.',
+      title: 'Phase 2: Access Backup Site Controls',
+      description: 'Use the ground station selector to switch your view to ME-02 (Maine). This gives you control of the backup site equipment while Vermont continues serving traffic.',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['enable-vt01-heater'],
       conditions: [
@@ -229,8 +229,8 @@ export const scenario3Data: ScenarioData = {
     },
     {
       id: 'verify-maine-equipment',
-      title: 'Phase 3: Verify ME-02 Equipment Status',
-      description: 'Check that GPSDO is locked and ready for operations.',
+      title: 'Phase 3: Verify Reference Timing',
+      description: 'Before configuring any RF equipment, verify the GPSDO is locked and providing stable reference timing. Without accurate frequency reference, the modem cannot maintain carrier lock.',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['switch-to-maine'],
       conditions: [
@@ -245,8 +245,8 @@ export const scenario3Data: ScenarioData = {
     },
     {
       id: 'configure-maine-antenna',
-      title: 'Phase 4: Point ME-02 Antenna at TIDEMARK-1',
-      description: 'Command antenna to Az: 215.8°, El: 23.1° (TIDEMARK-1 from Maine location).',
+      title: 'Phase 4: Acquire TIDEMARK-1 from Maine',
+      description: 'Point the Maine antenna at TIDEMARK-1. The look angles differ from Vermont due to the 150-mile separation between sites. Use program-track mode with Az: 215.8°, El: 23.1°.',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['verify-maine-equipment'],
       conditions: [
@@ -266,8 +266,8 @@ export const scenario3Data: ScenarioData = {
     },
     {
       id: 'configure-maine-lnb',
-      title: 'Phase 5: Configure ME-02 LNB',
-      description: 'Power and configure LNB to match VT-01 settings (LO: 5,150 MHz, Gain: 55 dB).',
+      title: 'Phase 5: Power Up Receive Chain',
+      description: 'Power on the LNB and configure it to match Vermont settings: LO frequency 5,150 MHz, Gain 55 dB. Wait for thermal stabilization before proceeding - cold LNBs have unstable noise figures.',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['configure-maine-antenna'],
       conditions: [
@@ -308,8 +308,8 @@ export const scenario3Data: ScenarioData = {
     },
     {
       id: 'configure-maine-modem',
-      title: 'Phase 6: Configure ME-02 Receiver Modem',
-      description: 'Set modem to receive TIDEMARK-1 carrier (Freq: 1,432 MHz, BW: 36 MHz, QPSK, FEC: 3/4).',
+      title: 'Phase 6: Configure Receiver Modem',
+      description: 'Set the receiver modem parameters to match the TIDEMARK-1 carrier: Center Frequency 1,432 MHz (L-band IF), Bandwidth 36 MHz, QPSK modulation, FEC rate 3/4. These must match Vermont exactly for seamless handover.',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['configure-maine-lnb'],
       conditions: [
@@ -357,8 +357,8 @@ export const scenario3Data: ScenarioData = {
     },
     {
       id: 'verify-maine-lock',
-      title: 'Phase 7: Verify ME-02 Receiver Lock',
-      description: 'Confirm modem has achieved carrier lock with acceptable C/N ratio.',
+      title: 'Phase 7: Confirm Signal Acquisition',
+      description: 'Wait for the receiver modem to achieve carrier lock and verify C/N ratio meets operational threshold (≥10 dB). Lock without adequate C/N means marginal signal - handover would risk service interruption.',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['configure-maine-modem'],
       conditions: [
@@ -384,7 +384,7 @@ export const scenario3Data: ScenarioData = {
     {
       id: 'execute-handover',
       title: 'Phase 8: Execute Traffic Handover',
-      description: 'Transfer active traffic from VT-01 to ME-02. Monitor for service continuity.',
+      description: 'Transfer active customer traffic from VT-01 to ME-02. The NOC will switch network routing on your command. Monitor the handover carefully - any packet loss during transition affects customer SLA.',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['verify-maine-lock'],
       conditions: [
@@ -412,8 +412,8 @@ export const scenario3Data: ScenarioData = {
     },
     {
       id: 'stow-vermont-antenna',
-      title: 'Phase 9: Stow VT-01 Antenna',
-      description: 'Set VT-01 antenna to stow mode to protect it during the blizzard.',
+      title: 'Phase 9: Protect Vermont Antenna',
+      description: 'With traffic safely on Maine, stow the Vermont antenna to protect it from wind loading and ice accumulation during the blizzard. Stow position is Az: 0°, El: 90° (pointed straight up).',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['execute-handover'],
       conditions: [
@@ -444,56 +444,108 @@ export const scenario3Data: ScenarioData = {
     intro: {
       text: `
       <p>
-        Weather forecast shows heavy snow arriving in thirty minutes. Link margin's going to drop eight dB during the storm - well below operational threshold.
+        Have you been watching the weather?. Heavy snow is hitting Vermont any minute - link margin's could drop more than eight dB during the storm. That puts us well below operational threshold.
       </p>
       <p>
-        Catherine's already coordinating with the network ops center. We just need to configure Maine before the weather hits.
+        First priority: enable the feed heater on Vermont. Ice on the waveguide is bad news - degrades the signal and can physically damage the feed assembly.
       </p>
       <p>
-        Switch to ME-02 in the ground station selector. See it? Good. Now let's verify their equipment status before we hand over the traffic.
+        Then we bring Maine online as the backup. Catherine's already coordinating with the NOC. This is routine up here - we do weather handovers several times each winter.
       </p>
       <p>
-        This happens regularly up here. Standard procedure - nothing to stress about. Just work through it methodically.
+        Work through it methodically. Heater first, then configure Maine, verify lock, execute handover, stow Vermont. Same principles as the maintenance shutdown, just a different sequence.
       </p>
       `,
       character: Character.CHARLIE_BROOKS,
-      emotion: Emotion.NEUTRAL,
+      emotion: Emotion.CONCERNED,
       audioUrl: getAssetUrl('/assets/campaigns/nats/3/intro.mp3'),
     },
     objectives: {
+      'enable-vt01-heater': {
+        text: `
+        <p>
+          Heater's on. The feed assembly will stay clear of ice buildup now.
+        </p>
+        <p>
+          Now switch to Maine in the ground station selector. We need to configure their equipment before we can hand over.
+        </p>
+        `,
+        character: Character.CHARLIE_BROOKS,
+        emotion: Emotion.NEUTRAL,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/3/obj-heater.mp3'),
+      },
+      'switch-to-maine': {
+        text: `
+        <p>
+          You're now looking at Maine's equipment. Notice Vermont's still running in the background - customers are still being served from there.
+        </p>
+        <p>
+          First thing: check the GPSDO. Can't configure anything else until we know the frequency reference is stable.
+        </p>
+        `,
+        character: Character.CHARLIE_BROOKS,
+        emotion: Emotion.NEUTRAL,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/3/obj-switch.mp3'),
+      },
       'verify-maine-equipment': {
         text: `
         <p>
-          GPSDO's locked at Maine. Good. Point their antenna at TIDEMARK-1.
+          GPSDO's locked at Maine. Good timing reference. Now point their antenna at TIDEMARK-1.
         </p>
         <p>
-          From their location, that's azimuth 215.8, elevation 23.1. Slightly different geometry than from Vermont.
+          From Maine's location, that's azimuth 215.8, elevation 23.1. Different geometry than from Vermont - the satellite appears in a slightly different part of the sky from 150 miles away.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
         audioUrl: getAssetUrl('/assets/campaigns/nats/3/obj-equipment.mp3'),
       },
+      'configure-maine-antenna': {
+        text: `
+        <p>
+          Antenna's slewing to target. While it moves, let's get the LNB powered up.
+        </p>
+        <p>
+          Same settings as Vermont: LO at 5,150 MHz, gain at 55 dB. Cold start means we'll need to wait for thermal stabilization.
+        </p>
+        `,
+        character: Character.CHARLIE_BROOKS,
+        emotion: Emotion.NEUTRAL,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/3/obj-antenna.mp3'),
+      },
       'configure-maine-lnb': {
         text: `
         <p>
-          LNB's up. Temperature's climbing from 15 celsius - it's colder in Maine. Wait for stabilization.
+          LNB's powered. Temperature's climbing from 15 celsius - it's colder in Maine right now. Wait for the thermal indicator to stabilize.
         </p>
         <p>
-          While that's warming, configure the receiver modem to match Vermont's settings.
+          While that's warming, configure the receiver modem. Same parameters as Vermont: 1,432 MHz center, 36 MHz bandwidth, QPSK, FEC 3/4.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
         audioUrl: getAssetUrl('/assets/campaigns/nats/3/obj-lnb.mp3'),
       },
+      'configure-maine-modem': {
+        text: `
+        <p>
+          Modem's configured. Now we wait for carrier lock.
+        </p>
+        <p>
+          Watch the lock indicator and the C/N ratio. We need solid lock with at least 10 dB margin before we can safely hand over.
+        </p>
+        `,
+        character: Character.CHARLIE_BROOKS,
+        emotion: Emotion.NEUTRAL,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/3/obj-modem.mp3'),
+      },
       'verify-maine-lock': {
         text: `
         <p>
-          Maine's got carrier lock. C/N ratio is 11.2 dB - actually slightly better than Vermont right now. Good baseline.
+          Maine's got solid carrier lock. C/N ratio is 11.2 dB - actually slightly better than Vermont right now. Clear skies in Maine.
         </p>
         <p>
-          Now notify the NOC that we're ready for handover. They'll coordinate the network routing.
+          We're ready for handover. Execute the traffic transfer - the NOC will switch network routing when you give the command.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -503,10 +555,10 @@ export const scenario3Data: ScenarioData = {
       'execute-handover': {
         text: `
         <p>
-          Traffic's transferred. Zero packet loss during the handover - textbook execution.
+          Traffic's transferred. Zero packet loss during the handover - that's textbook execution.
         </p>
         <p>
-          Maine's now serving the customer. Vermont can ride out the storm without impacting service.
+          Maine's now serving the customer. Last step: stow Vermont's antenna to protect it during the storm. Switch back to VT-01 and set tracking mode to stow.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -516,13 +568,13 @@ export const scenario3Data: ScenarioData = {
       'stow-vermont-antenna': {
         text: `
         <p>
-          Vermont antenna stowed safely. That's the procedure complete.
+          Vermont antenna stowed safely. Pointing straight up minimizes wind loading and ice accumulation.
         </p>
         <p>
-          Maine's serving the customer, Vermont's protected from the weather. Textbook handover.
+          Maine's serving the customer, Vermont's protected from the weather. That's a textbook weather handover.
         </p>
         <p>
-          That's the tutorial phase finished. You've seen all the equipment panels, you understand the procedures, you can coordinate between sites.
+          That's the tutorial phase complete. You've seen all the equipment panels, you understand the procedures, you can coordinate between sites.
         </p>
         <p>
           Next mission, I'm not giving you the frequency values. You'll need to calculate them yourself. Time to see if you've been paying attention.

@@ -14,23 +14,6 @@ const getGitCommitSha = () => {
   }
 };
 
-// Custom plugin to re-evaluate version/SHA on each compilation (for watch mode)
-class DynamicDefinePlugin {
-  apply(compiler) {
-    compiler.hooks.compilation.tap('DynamicDefinePlugin', () => {
-      // Clear require cache to get fresh package.json
-      delete require.cache[require.resolve('./package.json')];
-
-      const definitions = {
-        '__APP_VERSION__': JSON.stringify(require('./package.json').version),
-        '__GIT_COMMIT_SHA__': JSON.stringify(getGitCommitSha()),
-      };
-
-      new webpack.DefinePlugin(definitions).apply(compiler);
-    });
-  }
-}
-
 // First loaded always wins, so load .env first
 if (process.env.NODE_ENV === 'development') {
   require('dotenv').config({ path: '.env' });
@@ -96,8 +79,9 @@ module.exports = {
       'process.env.PUBLIC_SUPABASE_ANON_KEY': JSON.stringify(process.env.PUBLIC_SUPABASE_ANON_KEY),
       'process.env.PUBLIC_USER_API_URL': JSON.stringify(process.env.PUBLIC_USER_API_URL || 'https://user.keeptrack.space'),
       'process.env.PUBLIC_ASSETS_BASE_URL': JSON.stringify(process.env.PUBLIC_ASSETS_BASE_URL || ''),
+      '__APP_VERSION__': JSON.stringify(require('./package.json').version),
+      '__GIT_COMMIT_SHA__': JSON.stringify(getGitCommitSha()),
     }),
-    new DynamicDefinePlugin(),
     new CaseSensitivePathsPlugin(),
     new CopyWebpackPlugin({
       patterns: [

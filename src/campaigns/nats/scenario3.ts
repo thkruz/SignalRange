@@ -139,6 +139,7 @@ export const scenario3Data: ScenarioData = {
               isGnssSwitchUp: false,
               isLocked: false,
             },
+            lnb: { isPowered: false }
           }),
         ],
         spectrumAnalyzers: [

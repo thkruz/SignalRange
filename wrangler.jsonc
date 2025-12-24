@@ -39,6 +39,7 @@
 	// Deploy with: npx wrangler deploy --env production (or --env uat)
 	"env": {
 		"production": {
+			"name": "signal-range",
 			"routes": [
 				{
 					"pattern": "app.signalrange.space/*",
@@ -47,6 +48,7 @@
 			]
 		},
 		"uat": {
+			"name": "signal-range-uat",
 			"routes": [
 				{
 					"pattern": "uat.signalrange.space/*",

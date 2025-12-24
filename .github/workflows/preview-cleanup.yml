@@ -26,7 +26,7 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           wranglerVersion: "4"
-          command: delete --name signal-range-pr-${{ github.event.pull_request.number }} --force
+          command: delete --config wrangler.jsonc --name signal-range-pr-${{ github.event.pull_request.number }} --force
         continue-on-error: true
 
       - name: Find Preview Comment

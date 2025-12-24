@@ -66,7 +66,7 @@ export const vermontGroundStation = {
     },
     hpa: {
       isPowered: true,
-      backOff: 6,
+      backOff: 10,
       outputPower: 50 as dBm,
       isOverdriven: false,
       imdLevel: -30,

@@ -10,6 +10,7 @@ import { EventBus } from '@app/events/event-bus';
 import { Events, QuizCompletedData, QuizPassedData } from '@app/events/events';
 import { QuizManager } from '@app/modal/quiz-manager';
 import { SimulationManager } from '@app/simulation/simulation-manager';
+import { TrafficControlManager } from '@app/traffic/traffic-control-manager';
 import { Milliseconds } from 'ootk';
 import {
   Condition,
@@ -1238,6 +1239,12 @@ export class ObjectivesManager {
         });
       }
 
+      case 'feed-heater-enabled': {
+        return this.evaluateEquipment_(gs.antennas, condition.params, (antenna) => {
+          return antenna.state.isHeaterEnabled === true;
+        });
+      }
+
       case 'buc-unmuted': {
         return this.evaluateEquipment_(gs.rfFrontEnds, condition.params, (rfFrontEnd) => {
           const bucState = rfFrontEnd.bucModule.state;
@@ -1318,6 +1325,62 @@ export class ObjectivesManager {
         });
       }
 
+      case 'rx-modem-frequency-set': {
+        if (condition.params?.frequency === undefined) return false;
+        const targetFrequency = condition.params.frequency;
+        const tolerance = condition.params.frequencyTolerance ?? 1e6; // Default 1 MHz
+        return this.evaluateEquipment_(gs.receivers, condition.params, (receiver) => {
+          const modemNum = condition.params?.modemNumber ?? receiver.state.activeModem;
+          const modem = receiver.state.modems.find(m => m.modemNumber === modemNum);
+          if (!modem?.isPowered) return false;
+
+          // Modem frequency is in MHz, target is in Hz
+          const modemFreqHz = modem.frequency * 1e6;
+          const diff = Math.abs(modemFreqHz - targetFrequency);
+          return diff <= tolerance;
+        });
+      }
+
+      case 'rx-modem-bandwidth-set': {
+        if (condition.params?.bandwidth === undefined) return false;
+        const targetBandwidth = condition.params.bandwidth;
+        const tolerance = condition.params.bandwidthTolerance ?? 1e6; // Default 1 MHz
+        return this.evaluateEquipment_(gs.receivers, condition.params, (receiver) => {
+          const modemNum = condition.params?.modemNumber ?? receiver.state.activeModem;
+          const modem = receiver.state.modems.find(m => m.modemNumber === modemNum);
+          if (!modem?.isPowered) return false;
+
+          // Modem bandwidth is in MHz, target is in Hz
+          const modemBwHz = modem.bandwidth * 1e6;
+          const diff = Math.abs(modemBwHz - targetBandwidth);
+          return diff <= tolerance;
+        });
+      }
+
+      case 'rx-modem-modulation-set': {
+        if (!condition.params?.modulation) return false;
+        const targetModulation = condition.params.modulation;
+        return this.evaluateEquipment_(gs.receivers, condition.params, (receiver) => {
+          const modemNum = condition.params?.modemNumber ?? receiver.state.activeModem;
+          const modem = receiver.state.modems.find(m => m.modemNumber === modemNum);
+          if (!modem?.isPowered) return false;
+
+          return modem.modulation === targetModulation;
+        });
+      }
+
+      case 'rx-modem-fec-set': {
+        if (!condition.params?.fec) return false;
+        const targetFec = condition.params.fec;
+        return this.evaluateEquipment_(gs.receivers, condition.params, (receiver) => {
+          const modemNum = condition.params?.modemNumber ?? receiver.state.activeModem;
+          const modem = receiver.state.modems.find(m => m.modemNumber === modemNum);
+          if (!modem?.isPowered) return false;
+
+          return modem.fec === targetFec;
+        });
+      }
+
       case 'status-check': {
         // Quiz-based condition - requires player to answer correctly
         const params = condition.params;
@@ -1348,6 +1411,62 @@ export class ObjectivesManager {
 
         // Check if quiz has been completed
         return quizManager.isQuizComplete(objectiveState.objective.id, conditionIndex);
+      }
+
+      case 'handover-complete': {
+        // Check if handover to target station completed
+        const targetGsId = condition.params?.targetGroundStationId;
+        const satId = condition.params?.satelliteId;
+        if (!targetGsId || satId === undefined) return false;
+
+        const tcm = TrafficControlManager.getInstance();
+        return tcm.getOwner(satId) === targetGsId;
+      }
+
+      case 'traffic-owner': {
+        // Check if this ground station owns traffic to satellite
+        const gsId = objectiveState.objective.groundStation;
+        const satId = condition.params?.satelliteId;
+        if (!gsId || satId === undefined) return false;
+
+        const tcm = TrafficControlManager.getInstance();
+        return tcm.getOwner(satId) === gsId;
+      }
+
+      case 'ground-station-selected': {
+        // Check if specific ground station is selected in UI
+        // This would require tracking selected ground station in SimulationManager
+        // For now, return true if the objective's groundStation matches
+        const targetGsId = condition.params?.groundStationId;
+        if (!targetGsId) return false;
+
+        // Check if the SimulationManager has a selected ground station concept
+        // For now, we'll consider it selected if there's a ground station with that ID
+        const gs = SimulationManager.getInstance().groundStations.find(g => g.state.id === targetGsId);
+        return gs !== undefined;
+      }
+
+      case 'traffic-transferred': {
+        // Check if traffic was transferred from source station to target station
+        const sourceStation = condition.params?.sourceStation;
+        const targetStation = condition.params?.targetStation;
+        const satId = condition.params?.satelliteId;
+
+        if (!sourceStation || !targetStation || satId === undefined) {
+          console.warn('traffic-transferred condition requires sourceStation, targetStation, and satelliteId params');
+          return false;
+        }
+
+        // Check if target station now owns the traffic (meaning transfer occurred)
+        const tcm = TrafficControlManager.getInstance();
+        return tcm.getOwner(satId) === targetStation;
+      }
+
+      case 'service-continuity': {
+        // Placeholder condition for service continuity during handover
+        // In a real implementation, this would track packet loss during handover
+        // For now, this always passes since we don't model packet-level traffic
+        return true;
       }
 
       default:

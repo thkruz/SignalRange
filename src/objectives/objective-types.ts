@@ -39,6 +39,7 @@ export type ConditionType =
   | 'antenna-tracking-mode-set' // Antenna tracking mode set (step-track, etc.)
   | 'antenna-beacon-locked' // Antenna beacon signal locked
   | 'antenna-position' // Antenna at specific azimuth/elevation position
+  | 'feed-heater-enabled' // Antenna feed heater is enabled
   | 'buc-unmuted' // BUC RF output enabled (inverse of muted)
   | 'hpa-enabled' // HPA output enabled (dual-action switch)
   | 'hpa-back-off-set' // HPA back-off level configured
@@ -46,8 +47,18 @@ export type ConditionType =
   | 'hpa-output-power-set' // HPA output power above threshold
   | 'receiver-signal-locked' // Receiver modem has demodulation lock
   | 'receiver-snr-threshold' // Receiver modem C/N ratio meets threshold
+  | 'rx-modem-frequency-set' // Receiver modem center frequency set
+  | 'rx-modem-bandwidth-set' // Receiver modem bandwidth set
+  | 'rx-modem-modulation-set' // Receiver modem modulation type set
+  | 'rx-modem-fec-set' // Receiver modem FEC rate set
   | 'status-check' // Interactive quiz to verify player found the correct information
-  | 'custom'; // Custom condition with evaluator function
+  | 'custom' // Custom condition with evaluator function
+  // Handover and traffic control conditions
+  | 'handover-complete' // Traffic handover to target station completed
+  | 'traffic-owner' // Ground station owns traffic to satellite
+  | 'traffic-transferred' // Traffic transferred from source to target station
+  | 'service-continuity' // No packet loss during handover (placeholder - always passes)
+  | 'ground-station-selected'; // Ground station selected in UI
 
 /**
  * Equipment references for condition checking
@@ -143,6 +154,14 @@ export interface ConditionParams {
   modemNumber?: number;
   /** For receiver-snr-threshold: minimum C/N ratio in dB */
   minCNRatio?: number;
+  /** For rx-modem-bandwidth-set: target bandwidth in Hz */
+  bandwidth?: number;
+  /** For rx-modem-bandwidth-set: bandwidth tolerance in Hz */
+  bandwidthTolerance?: number;
+  /** For rx-modem-modulation-set: target modulation type */
+  modulation?: string;
+  /** For rx-modem-fec-set: target FEC rate */
+  fec?: string;
   /** For status-check: the question to display */
   question?: string;
   /** For status-check: the answer options (1-4) */
@@ -157,6 +176,16 @@ export interface ConditionParams {
   signalId?: string;
   /** For signal-detected/signal-level-correct: minimum power level in dBm */
   minPower?: number;
+  /** For handover-complete/traffic-owner: target ground station ID */
+  targetGroundStationId?: string;
+  /** For traffic-transferred: source ground station ID */
+  sourceStation?: string;
+  /** For traffic-transferred: target ground station ID */
+  targetStation?: string;
+  /** For service-continuity: maximum allowed packet loss ratio (0.0-1.0) - placeholder */
+  maxPacketLoss?: number;
+  /** For ground-station-selected: ground station ID that must be selected */
+  groundStationId?: string;
   /** Additional context-specific parameters */
   [key: string]: unknown;
 }

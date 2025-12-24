@@ -593,10 +593,12 @@ export class Receiver extends BaseEquipment {
 
     if (!activeModem || modemIndex === -1) return;
 
-    // Update the modem configuration
+    // Update the modem configuration, preserving the current power state
+    // (isPowered is controlled by the power toggle, not the Apply button)
     this.state.modems[modemIndex] = {
       ...activeModem,
       ...this.inputData,
+      isPowered: activeModem.isPowered,
     };
 
     this.emit(Events.RX_CONFIG_CHANGED, {

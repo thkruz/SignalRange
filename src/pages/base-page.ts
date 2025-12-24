@@ -1,6 +1,6 @@
 import { BaseElement } from "@app/components/base-element";
 import { EventBus } from "@app/events/event-bus";
-import { Events, ObjectiveFailedData, ScenarioTimeExpiredData } from "@app/events/events";
+import { DualTransmissionViolationData, Events, ObjectiveFailedData, ScenarioTimeExpiredData } from "@app/events/events";
 import { Logger } from "@app/logging/logger";
 import { Character } from "@app/modal/character-enum";
 import { DialogManager } from "@app/modal/dialog-manager";
@@ -146,6 +146,14 @@ export abstract class BasePage extends BaseElement {
         title: 'Mission Failed',
         message: `Scenario time limit of ${minutes} ${minuteWord} has expired.`,
         isScenarioTimeout: true,
+      });
+    });
+
+    eventBus.on(Events.DUAL_TRANSMISSION_VIOLATION, (data: DualTransmissionViolationData) => {
+      ObjectiveFailedModal.getInstance().showFailure({
+        title: 'Mission Failed',
+        message: `CRITICAL ERROR: Dual transmission detected! Ground stations ${data.groundStation1Id} and ${data.groundStation2Id} are both transmitting to satellite ${data.satelliteNoradId}. This causes satellite interference and mission failure.`,
+        isScenarioTimeout: false,
       });
     });
   }

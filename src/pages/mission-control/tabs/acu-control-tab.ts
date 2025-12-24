@@ -8,6 +8,7 @@ import { TrackingMode } from '@app/equipment/antenna/antenna-core';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
 import { SimulationManager } from '@app/simulation/simulation-manager';
+import { WeatherManager } from '@app/weather/weather-manager';
 import './acu-control-tab.css';
 import { AntennaAdapter } from './antenna-adapter';
 import { OMTAdapter } from './omt-adapter';
@@ -259,6 +260,10 @@ export class ACUControlTab extends BaseElement {
                   <span class="led led-off me-1"></span>CLEAR
                 </span>
               </div>
+              <div class="d-flex justify-content-between align-items-center pt-2 mt-2 border-top">
+                <span class="text-muted small">Ice Accumulation:</span>
+                <span id="ice-accumulation-display" class="fw-bold font-monospace">0.0 dB</span>
+              </div>
             </div>
           </div>
         </div>
@@ -383,8 +388,9 @@ export class ACUControlTab extends BaseElement {
         this.polarPlot_.draw(antenna.state.azimuth, antenna.state.elevation);
       }
       this.syncUiWithState_(antenna);
+      this.syncIceAccumulation_(antenna);
     };
-    EventBus.getInstance().on(Events.ANTENNA_STATE_CHANGED, this.antennaStateHandler_);
+    EventBus.getInstance().on(Events.UPDATE, this.antennaStateHandler_);
 
     // Wire to draw events for continuous RF metrics updates
     this.drawHandler_ = () => {
@@ -683,14 +689,7 @@ export class ACUControlTab extends BaseElement {
     const loopbackSwitch = qs<HTMLInputElement>('#loopback-switch', this.dom_);
     if (loopbackSwitch) loopbackSwitch.checked = state.isLoopback;
 
-    // Sync precipitation status
-    const precipStatus = qs('#precip-status', this.dom_);
-    if (precipStatus) {
-      const led = precipStatus.querySelector('.led');
-      if (led) led.className = `led ${state.precipitationDetected ? 'led-amber' : 'led-off'} me-1`;
-      const textNode = precipStatus.childNodes[precipStatus.childNodes.length - 1];
-      if (textNode) textNode.textContent = state.precipitationDetected ? 'RAIN' : 'CLEAR';
-    }
+    // Precipitation status is synced by syncIceAccumulation_() using WeatherManager
 
     // Sync context panel title based on tracking mode
     const contextTitle = qs('#context-panel-title', this.dom_);
@@ -808,6 +807,35 @@ export class ACUControlTab extends BaseElement {
           beaconLockEl.classList.remove('text-success');
         }
       }
+    }
+  }
+
+  private syncIceAccumulation_(antenna: typeof this.groundStation.antennas[0]): void {
+    const iceDisplay = qs('#ice-accumulation-display', this.dom_);
+    if (iceDisplay) {
+      const ice = antenna.state.iceAccumulation_dB;
+      iceDisplay.textContent = `${ice.toFixed(1)} dB`;
+
+      // Color code based on severity
+      iceDisplay.classList.remove('text-success', 'text-warning', 'text-danger');
+      if (ice >= 5) {
+        iceDisplay.classList.add('text-danger');
+      } else if (ice >= 2) {
+        iceDisplay.classList.add('text-warning');
+      } else if (ice > 0) {
+        iceDisplay.classList.add('text-success');
+      }
+    }
+
+    // Update precipitation status based on weather manager
+    const precipStatus = qs('#precip-status', this.dom_);
+    if (precipStatus) {
+      const gsId = this.groundStation.state.id;
+      const isPrecip = WeatherManager.getInstance().isPrecipitationActive(gsId);
+      const led = precipStatus.querySelector('.led');
+      if (led) led.className = `led ${isPrecip ? 'led-amber' : 'led-off'} me-1`;
+      const textNode = precipStatus.childNodes[precipStatus.childNodes.length - 1];
+      if (textNode) textNode.textContent = isPrecip ? 'ACTIVE' : 'CLEAR';
     }
   }
 

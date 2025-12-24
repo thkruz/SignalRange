@@ -1,17 +1,17 @@
 import type { AntennaState } from '@app/equipment/antenna';
 import { ANTENNA_CONFIG_KEYS } from "@app/equipment/antenna/antenna-config-keys";
 import { Receiver } from '@app/equipment/receiver/receiver';
-import { Satellite } from '@app/equipment/satellite/satellite';
 import { Transmitter } from '@app/equipment/transmitter/transmitter';
 import { Character, Emotion } from '@app/modal/character-enum';
 import type { Objective } from '@app/objectives/objective-types';
 import type { ScenarioData } from '@app/ScenarioData';
-import { SignalOrigin } from "@app/signal-origin";
-import type { dB, dBi, dBm, FECType, Hertz, MHz, ModulationType, RfFrequency } from '@app/types';
+import type { dB, dBm, FECType, Hertz, MHz, ModulationType, RfFrequency } from '@app/types';
 import { getAssetUrl } from '@app/utils/asset-url';
 import type { Degrees } from 'ootk';
 import { createRfFrontEnd } from '../rf-front-end-factory';
 import { vermontGroundStation } from './ground-stations';
+import { natsHtmlLayout } from './html-layout';
+import { ses10Satellite, tidemark1Satellite } from './satellites';
 
 /**
  * NATS Level 3: "Weather Emergency Handover"
@@ -50,66 +50,67 @@ export const scenario3Data: ScenarioData = {
     missionTimeLimitSeconds: 1800, // 30 minutes
     groundStations: [
       {
-        id: 'VT-01',
-        name: 'Vermont Ground Station',
-        location: {
-          latitude: 44.5588,
-          longitude: -72.5778,
-          elevation: 350,
-        },
-        antennas: [ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK],
-        antennasState: [
-          {
-            // Currently serving TIDEMARK-1
-            isPowered: true,
-            azimuth: 214.2 as Degrees,
-            elevation: 24.8 as Degrees,
-            polarization: 0 as Degrees,
-            isTracking: true,
-            trackingMode: 'step-track',
-          } as Partial<AntennaState>,
-        ],
-        rfFrontEnds: [
-          createRfFrontEnd(vermontGroundStation.rfFrontEnds[0], {
-            buc: { loFrequency: 2225 as MHz, outputPower: 10 as dBm },
-            hpa: { isHpaEnabled: true, outputPower: 100 as dBm },
-            filter: { bandwidthIndex: 3 },
-            lnb: { noiseTemperature: 65, temperature: 45 },
-            gpsdo: {
-              temperature: 65,
-              satelliteCount: 12,
-              utcAccuracy: 15,
-              lockDuration: 43200,
-              frequencyAccuracy: 1e-12,
-              allanDeviation: 5e-13,
-              phaseNoise: -140,
-              active10MHzOutputs: 5,
-              operatingHours: 43200,
-            },
-          }),
-        ],
-        spectrumAnalyzers: [
-          {
-            referenceLevel: -50,
-            centerFrequency: 3947.8e6 as Hertz,
-            span: 10e6 as Hertz,
-            rbw: 10e3 as Hertz,
-            minAmplitude: -170,
-            maxAmplitude: 0,
-            scaleDbPerDiv: 12 as dB,
-            screenMode: 'both',
-            inputUnit: 'MHz',
-            inputValue: '',
-            traces: [
-              { isVisible: true, isUpdating: true, mode: 'clearwrite' },
-              { isVisible: false, isUpdating: false, mode: 'clearwrite' },
-              { isVisible: false, isUpdating: false, mode: 'clearwrite' },
-            ],
-            selectedTrace: 1,
-          }
-        ],
-        transmitters: [Transmitter.getDefaultState()],
-        receivers: [Receiver.getDefaultState()],
+        ...vermontGroundStation,
+        ...{
+          antennasState: [
+            {
+              // Antenna already tracking TIDEMARK-1 in program-track mode
+              isPowered: true,
+              azimuth: 161.8 as Degrees, // Locked on TIDEMARK-1
+              elevation: 34.2 as Degrees,
+              polarization: 14 as Degrees,
+              trackingMode: 'program-track',
+              isBeaconLocked: true,
+              targetSatelliteId: 61525,
+              targetAzimuth: 161.8 as Degrees,
+              targetElevation: 34.2 as Degrees,
+              targetPolarization: 14 as Degrees,
+              slewing: false,
+              beaconCN: 10.5 as dB,
+              beaconFrequencyHz: 3902.5e6 as Hertz,
+              isLocked: true,
+            } as Partial<AntennaState>,
+          ],
+          rfFrontEnds: [
+            createRfFrontEnd(vermontGroundStation.rfFrontEnds[0], {
+              buc: { loFrequency: 2225 as MHz, outputPower: 10 as dBm },
+              hpa: { isHpaEnabled: true, backOff: 10 as dBm },
+              filter: { bandwidthIndex: 3 },
+              lnb: { noiseTemperature: 65, temperature: 45 },
+              gpsdo: {
+                temperature: 70,
+                satelliteCount: 12,
+                utcAccuracy: 15,
+                lockDuration: 43200,
+                frequencyAccuracy: 1e-12,
+                allanDeviation: 5e-13,
+                phaseNoise: -140,
+                active10MHzOutputs: 5,
+                operatingHours: 43200,
+              },
+            }),
+          ],
+          spectrumAnalyzers: [
+            {
+              referenceLevel: -50,
+              centerFrequency: 3947.8e6 as Hertz,
+              span: 10e6 as Hertz,
+              rbw: 10e3 as Hertz,
+              minAmplitude: -170,
+              maxAmplitude: 0,
+              scaleDbPerDiv: 12 as dB,
+              screenMode: 'both',
+              inputUnit: 'MHz',
+              inputValue: '',
+              traces: [
+                { isVisible: true, isUpdating: true, mode: 'clearwrite' },
+                { isVisible: false, isUpdating: false, mode: 'clearwrite' },
+                { isVisible: false, isUpdating: false, mode: 'clearwrite' },
+              ],
+              selectedTrace: 1,
+            }
+          ],
+        }
       },
       {
         id: 'ME-02',
@@ -133,29 +134,10 @@ export const scenario3Data: ScenarioData = {
         ],
         rfFrontEnds: [
           createRfFrontEnd(vermontGroundStation.rfFrontEnds[0], {
-            buc: { isPowered: false, loFrequency: 2225 as MHz, outputPower: 0 as dBm, isMuted: true, isExtRefLocked: false },
-            hpa: { isPowered: false, outputPower: 0 as dBm },
-            filter: { isPowered: false, bandwidthIndex: 0 },
-            lnb: {
-              isPowered: false,
-              gain: 0 as dB,
-              noiseTemperature: 25,
-              noiseTemperatureStabilizationTime: 180,
-              isExtRefLocked: false,
-              temperature: 15,
-              thermalStabilizationTime: 180,
-            },
             gpsdo: {
-              temperature: 60,
-              satelliteCount: 10,
-              utcAccuracy: 20,
-              lockDuration: 86400,
-              frequencyAccuracy: 1e-12,
-              allanDeviation: 6e-13,
-              phaseNoise: -138,
-              active10MHzOutputs: 0,
-              operatingHours: 86400,
-              agingRate: 1.2e-10,
+              gnssSignalPresent: false,
+              isGnssSwitchUp: false,
+              isLocked: false,
             },
           }),
         ],
@@ -184,49 +166,8 @@ export const scenario3Data: ScenarioData = {
       },
     ],
     satellites: [
-      new Satellite(
-        1,
-        [
-          {
-            signalId: 'tidemark-1-beacon',
-            serverId: 1,
-            noradId: 1,
-            frequency: 3947.8e6 as RfFrequency,
-            polarization: 'H',
-            power: -95 as dBm,
-            bandwidth: 1e3 as Hertz,
-            modulation: 'CW' as ModulationType,
-            fec: 'none' as FECType,
-            feed: null,
-            isDegraded: false,
-            origin: SignalOrigin.SATELLITE_TX,
-            noiseFloor: null,
-            gainInPath: 0 as dBi,
-          },
-          {
-            signalId: 'tidemark-1-carrier',
-            serverId: 1,
-            noradId: 1,
-            frequency: 3952.5e6 as RfFrequency,
-            polarization: 'H',
-            power: -87 as dBm,
-            bandwidth: 5e6 as Hertz,
-            modulation: '16APSK' as ModulationType,
-            fec: '3/4' as FECType,
-            feed: 'maritime-data.mp4',
-            isDegraded: false,
-            origin: SignalOrigin.SATELLITE_TX,
-            noiseFloor: null,
-            gainInPath: 0 as dBi,
-          }
-        ],
-        [],
-        {
-          az: 214.2 as Degrees,
-          el: 24.8 as Degrees,
-          frequencyOffset: 2.225e9 as Hertz,
-        }
-      ),
+      tidemark1Satellite,
+      ses10Satellite,
     ],
     weatherEvents: [
       {
@@ -234,18 +175,45 @@ export const scenario3Data: ScenarioData = {
         groundStationId: 'VT-01',
         type: 'snow',
         severity: 'severe',
-        startTime: 1800, // 30 minutes
+        startTime: 120, // 2 minutes into scenario
         duration: 7200, // 2 hours
         linkMarginDegradation: 8, // dB - exceeds acceptable threshold
       }
     ],
+    trafficOwnership: [
+      {
+        satelliteNoradId: 61525, // TIDEMARK-1
+        initialOwnerId: 'VT-01', // Vermont initially owns traffic
+      }
+    ],
+    layout: natsHtmlLayout,
+    missionBriefUrl: 'https://docs.signalrange.space/scenarios/scenario-3?content-only=true&dark=true',
+    isExtraSatellitesVisible: true,
   },
   objectives: [
     {
+      id: 'enable-vt01-heater',
+      title: 'Phase 1: Enable VT-01 Feed Heater',
+      description: 'The blizzard is approaching. Enable the feed heater on VT-01 to prevent ice buildup on the antenna feed.',
+      groundStation: 'VT-01',
+      timeLimitSeconds: 120, // 2 minutes
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'feed-heater-enabled',
+          description: 'VT-01 Feed Heater Enabled',
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 10,
+    },
+    {
       id: 'switch-to-maine',
-      title: 'Phase 1: Select Maine Ground Station',
+      title: 'Phase 2: Select Maine Ground Station',
       description: 'Switch to ME-02 in the ground station selector.',
       groundStation: 'ME-02',
+      prerequisiteObjectiveIds: ['enable-vt01-heater'],
       conditions: [
         {
           type: 'ground-station-selected',
@@ -261,7 +229,7 @@ export const scenario3Data: ScenarioData = {
     },
     {
       id: 'verify-maine-equipment',
-      title: 'Phase 2: Verify ME-02 Equipment Status',
+      title: 'Phase 3: Verify ME-02 Equipment Status',
       description: 'Check that GPSDO is locked and ready for operations.',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['switch-to-maine'],
@@ -277,27 +245,17 @@ export const scenario3Data: ScenarioData = {
     },
     {
       id: 'configure-maine-antenna',
-      title: 'Phase 3: Point ME-02 Antenna at TIDEMARK-1',
+      title: 'Phase 4: Point ME-02 Antenna at TIDEMARK-1',
       description: 'Command antenna to Az: 215.8°, El: 23.1° (TIDEMARK-1 from Maine location).',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['verify-maine-equipment'],
       conditions: [
         {
-          type: 'antenna-position-command',
+          type: 'antenna-position',
           description: 'TIDEMARK-1 Position Commanded from Maine',
           params: {
-            azimuth: 215.8 as Degrees,
-            elevation: 23.1 as Degrees,
-            tolerance: 1.0 as Degrees,
-          },
-          mustMaintain: false,
-        },
-        {
-          type: 'antenna-position-reached',
-          description: 'Antenna On Target',
-          params: {
-            azimuth: 215.8 as Degrees,
-            elevation: 23.1 as Degrees,
+            azimuth: 161.8 as Degrees,
+            elevation: 34.2 as Degrees,
             tolerance: 0.5 as Degrees,
           },
           mustMaintain: false,
@@ -308,7 +266,7 @@ export const scenario3Data: ScenarioData = {
     },
     {
       id: 'configure-maine-lnb',
-      title: 'Phase 4: Configure ME-02 LNB',
+      title: 'Phase 5: Configure ME-02 LNB',
       description: 'Power and configure LNB to match VT-01 settings (LO: 5,150 MHz, Gain: 55 dB).',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['configure-maine-antenna'],
@@ -350,27 +308,38 @@ export const scenario3Data: ScenarioData = {
     },
     {
       id: 'configure-maine-modem',
-      title: 'Phase 5: Configure ME-02 Receiver Modem',
-      description: 'Set modem to receive TIDEMARK-1 carrier (Freq: 3,952.5 MHz, SR: 5 Msps, FEC: 3/4).',
+      title: 'Phase 6: Configure ME-02 Receiver Modem',
+      description: 'Set modem to receive TIDEMARK-1 carrier (Freq: 1,432 MHz, BW: 36 MHz, QPSK, FEC: 3/4).',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['configure-maine-lnb'],
       conditions: [
         {
           type: 'rx-modem-frequency-set',
-          description: 'RX Frequency Set to 3,952.5 MHz',
+          description: 'RX Frequency Set to 1,432 MHz',
           params: {
-            frequency: 3952.5e6 as RfFrequency,
-            tolerance: 1e3 as Hertz,
+            frequency: 1432e6 as RfFrequency,
+            frequencyTolerance: 1e6 as Hertz, // 1 MHz tolerance
           },
+          mustMaintain: false,
           maintainUntilObjectiveComplete: true,
         },
         {
-          type: 'rx-modem-symbol-rate-set',
-          description: 'Symbol Rate Set to 5 Msps',
+          type: 'rx-modem-bandwidth-set',
+          description: 'Bandwidth Set to 36 MHz',
           params: {
-            symbolRate: 5e6 as Hertz,
-            tolerance: 1e3 as Hertz,
+            bandwidth: 36e6 as Hertz,
+            bandwidthTolerance: 1e6 as Hertz,
           },
+          mustMaintain: false,
+          maintainUntilObjectiveComplete: true,
+        },
+        {
+          type: 'rx-modem-modulation-set',
+          description: 'Modulation Set to QPSK',
+          params: {
+            modulation: 'QPSK' as ModulationType,
+          },
+          mustMaintain: false,
           maintainUntilObjectiveComplete: true,
         },
         {
@@ -379,6 +348,7 @@ export const scenario3Data: ScenarioData = {
           params: {
             fec: '3/4' as FECType,
           },
+          mustMaintain: false,
           maintainUntilObjectiveComplete: true,
         },
       ],
@@ -387,22 +357,24 @@ export const scenario3Data: ScenarioData = {
     },
     {
       id: 'verify-maine-lock',
-      title: 'Phase 6: Verify ME-02 Receiver Lock',
+      title: 'Phase 7: Verify ME-02 Receiver Lock',
       description: 'Confirm modem has achieved carrier lock with acceptable C/N ratio.',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['configure-maine-modem'],
       conditions: [
         {
-          type: 'rx-modem-locked',
+          type: 'receiver-signal-locked',
           description: 'Receiver Modem Locked',
+          mustMaintain: false,
           maintainUntilObjectiveComplete: true,
         },
         {
-          type: 'rx-modem-cn-ratio',
+          type: 'receiver-snr-threshold',
           description: 'C/N Ratio ≥ 10 dB',
           params: {
-            minCnRatio: 10 as dB,
+            minCNRatio: 10,
           },
+          mustMaintain: false,
           maintainUntilObjectiveComplete: true,
         },
       ],
@@ -410,30 +382,11 @@ export const scenario3Data: ScenarioData = {
       points: 15,
     },
     {
-      id: 'coordinate-handover',
-      title: 'Phase 7: Coordinate Traffic Handover with NOC',
-      description: 'Notify network operations center that ME-02 is ready for traffic.',
-      groundStation: 'ME-02',
-      prerequisiteObjectiveIds: ['verify-maine-lock'],
-      conditions: [
-        {
-          type: 'handover-coordinated',
-          description: 'NOC Coordination Complete',
-          params: {
-            targetGroundStation: 'ME-02',
-          },
-          mustMaintain: false,
-        },
-      ],
-      conditionLogic: 'AND',
-      points: 10,
-    },
-    {
       id: 'execute-handover',
       title: 'Phase 8: Execute Traffic Handover',
       description: 'Transfer active traffic from VT-01 to ME-02. Monitor for service continuity.',
       groundStation: 'ME-02',
-      prerequisiteObjectiveIds: ['coordinate-handover'],
+      prerequisiteObjectiveIds: ['verify-maine-lock'],
       conditions: [
         {
           type: 'traffic-transferred',
@@ -441,6 +394,7 @@ export const scenario3Data: ScenarioData = {
           params: {
             sourceStation: 'VT-01',
             targetStation: 'ME-02',
+            satelliteId: 61525, // TIDEMARK-1
           },
           mustMaintain: false,
         },
@@ -457,28 +411,30 @@ export const scenario3Data: ScenarioData = {
       points: 20,
     },
     {
-      id: 'verify-handover-complete',
-      title: 'Phase 9: Verify Handover Success',
-      description: 'Confirm ME-02 is serving traffic and VT-01 link margin is safe before weather.',
-      groundStation: 'ME-02',
+      id: 'stow-vermont-antenna',
+      title: 'Phase 9: Stow VT-01 Antenna',
+      description: 'Set VT-01 antenna to stow mode to protect it during the blizzard.',
+      groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['execute-handover'],
       conditions: [
         {
-          type: 'ground-station-active',
-          description: 'ME-02 Serving Traffic',
+          type: 'antenna-tracking-mode-set',
+          description: 'VT-01 Antenna Set to Stow Mode',
           params: {
-            groundStationId: 'ME-02',
-          },
-          maintainUntilObjectiveComplete: true,
-        },
-        {
-          type: 'time-remaining',
-          description: 'Handover Completed Before Weather Window',
-          params: {
-            minTimeRemaining: 300, // 5 minutes buffer
+            trackingMode: 'stow',
           },
           mustMaintain: false,
         },
+        {
+          type: 'antenna-position',
+          description: 'VT-01 Antenna in Stow Position',
+          params: {
+            azimuth: 0 as Degrees,
+            elevation: 90 as Degrees,
+            tolerance: 1 as Degrees,
+          },
+          mustMaintain: false,
+        }
       ],
       conditionLogic: 'AND',
       points: 10,
@@ -557,10 +513,13 @@ export const scenario3Data: ScenarioData = {
         emotion: Emotion.HAPPY,
         audioUrl: getAssetUrl('/assets/campaigns/nats/3/obj-handover.mp3'),
       },
-      'verify-handover-complete': {
+      'stow-vermont-antenna': {
         text: `
         <p>
-          Handover complete with twelve minutes to spare. Well done.
+          Vermont antenna stowed safely. That's the procedure complete.
+        </p>
+        <p>
+          Maine's serving the customer, Vermont's protected from the weather. Textbook handover.
         </p>
         <p>
           That's the tutorial phase finished. You've seen all the equipment panels, you understand the procedures, you can coordinate between sites.

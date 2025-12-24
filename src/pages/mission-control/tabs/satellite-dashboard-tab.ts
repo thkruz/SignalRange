@@ -4,6 +4,9 @@ import { qs } from "@app/engine/utils/query-selector";
 import { Satellite, Transponder } from "@app/equipment/satellite/satellite";
 import { EventBus } from "@app/events/event-bus";
 import { Events } from "@app/events/events";
+import { ScenarioManager } from "@app/scenario-manager";
+import { SimulationManager } from "@app/simulation/simulation-manager";
+import { TrafficControlManager } from "@app/traffic/traffic-control-manager";
 import satellitePng from '../../../assets/icons/satellite.png';
 import './satellite-dashboard-tab.css';
 
@@ -22,6 +25,13 @@ export class SatelliteDashboardTab extends BaseElement {
   private readonly domCache_: Map<string, HTMLElement> = new Map();
   private updateHandler_: (() => void) | null = null;
 
+  /** Whether traffic control is enabled for this satellite */
+  private trafficControlEnabled_: boolean = false;
+
+  /** Throttling for traffic control sync (1 second interval) */
+  private static readonly TRAFFIC_UPDATE_INTERVAL_MS = 1000;
+  private lastTrafficSyncTime_: number = 0;
+
   constructor(satellite: Satellite, containerId: string) {
     super();
     this.satellite = satellite;
@@ -31,6 +41,9 @@ export class SatelliteDashboardTab extends BaseElement {
 
     this.cacheDomElements_();
     this.syncDomWithState_();
+
+    // Call late initialization after dom_ is set
+    this.addEventListenersLate_();
   }
 
   protected get html_(): string {
@@ -128,6 +141,47 @@ export class SatelliteDashboardTab extends BaseElement {
             </div>
           </div>
         </div>
+
+        <!-- Traffic Control Row (visible when traffic ownership is configured for this satellite) -->
+        <div class="row g-2 d-none" id="sat-traffic-control-section">
+          <div class="col-12">
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title">Traffic Control</h3>
+              </div>
+              <div class="card-body">
+                <div class="row g-3 align-items-center">
+                  <div class="col-auto">
+                    <span class="text-muted">Current Owner:</span>
+                    <span id="sat-traffic-owner" class="fw-bold font-monospace ms-2">--</span>
+                  </div>
+                  <div class="col-auto">
+                    <span class="text-muted">Handover To:</span>
+                    <select id="sat-handover-target" class="form-select form-select-sm ms-2" style="width: auto; display: inline-block;">
+                      <option value="">-- Select Station --</option>
+                    </select>
+                  </div>
+                  <div class="col-auto">
+                    <span class="text-muted">Target Status:</span>
+                    <span id="sat-target-status" class="ms-2">
+                      <span class="led led-off me-1"></span>
+                      <span class="status-text">Not Ready</span>
+                    </span>
+                  </div>
+                  <div class="col-auto">
+                    <span class="text-muted">Target C/N:</span>
+                    <span id="sat-target-cn" class="fw-bold font-monospace ms-2">-- dB</span>
+                  </div>
+                  <div class="col-auto ms-auto">
+                    <button id="sat-execute-handover" class="btn btn-primary" disabled>
+                      EXECUTE HANDOVER
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     `;
   }
@@ -199,9 +253,148 @@ export class SatelliteDashboardTab extends BaseElement {
   }
 
   protected addEventListeners_(): void {
-    // Subscribe to update events for live data
-    this.updateHandler_ = () => this.syncDomWithState_();
+    // Called from init_() before this.dom_ is set - do nothing here
+    // All initialization that needs DOM is done in addEventListenersLate_()
+  }
+
+  /**
+   * Late initialization called from constructor after this.dom_ is set.
+   * This handles all setup that requires DOM access.
+   */
+  private addEventListenersLate_(): void {
+    // Initialize traffic control if this satellite is in traffic ownership config
+    this.initTrafficControl_();
+
+    // Subscribe to update events for live data (includes throttled traffic control sync)
+    this.updateHandler_ = () => {
+      this.syncDomWithState_();
+
+      // Throttled traffic control sync
+      if (this.trafficControlEnabled_) {
+        const now = Date.now();
+        if (now - this.lastTrafficSyncTime_ >= SatelliteDashboardTab.TRAFFIC_UPDATE_INTERVAL_MS) {
+          this.lastTrafficSyncTime_ = now;
+          this.syncTrafficControl_();
+        }
+      }
+    };
     EventBus.getInstance().on(Events.UPDATE, this.updateHandler_);
+  }
+
+  /**
+   * Initialize traffic control section if this satellite is in traffic ownership config
+   */
+  private initTrafficControl_(): void {
+    const settings = ScenarioManager.getInstance().settings;
+    const trafficOwnership = settings.trafficOwnership;
+
+    // Check if this satellite is in traffic ownership config
+    const satOwnership = trafficOwnership?.find(o => o.satelliteNoradId === this.satellite.noradId);
+    if (!satOwnership) return;
+
+    this.trafficControlEnabled_ = true;
+
+    // Show the traffic control section (remove Bootstrap d-none class)
+    const section = qs('#sat-traffic-control-section', this.dom_);
+    section.classList.remove('d-none');
+
+    // Populate handover target dropdown with all ground stations
+    const targetSelect = qs<HTMLSelectElement>('#sat-handover-target', this.dom_);
+    if (targetSelect) {
+      const sim = SimulationManager.getInstance();
+
+      targetSelect.innerHTML = '<option value="">-- Select Station --</option>' +
+        sim.groundStations
+          .map(gs => `<option value="${gs.state.id}">${gs.state.id} - ${gs.state.name}</option>`)
+          .join('');
+
+      // Handle target selection - initiate handover from current owner to selected target
+      targetSelect.addEventListener('change', () => {
+        const targetId = targetSelect.value;
+        if (!targetId) return;
+
+        const tcm = TrafficControlManager.getInstance();
+        const ownership = tcm.getOwnershipState(this.satellite.noradId);
+
+        // Initiate handover if not already in progress and target is different from owner
+        if (ownership && !ownership.isHandoverInProgress && ownership.owningGroundStationId !== targetId) {
+          tcm.initiateHandover(this.satellite.noradId, targetId);
+        }
+      });
+    }
+
+    // Handle execute handover button
+    const executeBtn = qs<HTMLButtonElement>('#sat-execute-handover', this.dom_);
+    if (executeBtn) {
+      executeBtn.addEventListener('click', () => {
+        TrafficControlManager.getInstance().executeHandover(this.satellite.noradId);
+      });
+    }
+
+    // Cache traffic control DOM elements
+    const trafficOwnerEl = qs('#sat-traffic-owner', this.dom_);
+    const targetStatusEl = qs('#sat-target-status', this.dom_);
+    const targetCnEl = qs('#sat-target-cn', this.dom_);
+    const executeBtnEl = qs('#sat-execute-handover', this.dom_);
+
+    if (trafficOwnerEl) this.domCache_.set('sat-traffic-owner', trafficOwnerEl);
+    if (targetStatusEl) this.domCache_.set('sat-target-status', targetStatusEl);
+    if (targetCnEl) this.domCache_.set('sat-target-cn', targetCnEl);
+    if (executeBtnEl) this.domCache_.set('sat-execute-handover', executeBtnEl);
+  }
+
+  /**
+   * Sync traffic control UI with current state
+   */
+  private syncTrafficControl_(): void {
+    const tcm = TrafficControlManager.getInstance();
+    const ownership = tcm.getOwnershipState(this.satellite.noradId);
+
+    // Update owner display
+    const ownerDisplay = this.domCache_.get('sat-traffic-owner');
+    if (ownerDisplay) {
+      ownerDisplay.textContent = ownership?.owningGroundStationId ?? '--';
+    }
+
+    // Update target status and C/N
+    const targetStatusEl = this.domCache_.get('sat-target-status');
+    const targetCnEl = this.domCache_.get('sat-target-cn');
+
+    if (ownership?.isHandoverInProgress && ownership.handoverTargetStationId) {
+      const readiness = tcm.checkStationReadiness(ownership.handoverTargetStationId, this.satellite.noradId);
+
+      if (targetStatusEl) {
+        const led = targetStatusEl.querySelector('.led');
+        const statusText = targetStatusEl.querySelector('.status-text');
+        if (led) led.className = `led ${readiness.isReady ? 'led-green' : 'led-amber'} me-1`;
+        if (statusText) statusText.textContent = readiness.isReady ? 'Ready' : 'Not Ready';
+      }
+
+      if (targetCnEl) {
+        targetCnEl.textContent = readiness.cnRatio_dB === null
+          ? '-- dB'
+          : `${readiness.cnRatio_dB.toFixed(1)} dB`;
+      }
+    } else {
+      if (targetStatusEl) {
+        const led = targetStatusEl.querySelector('.led');
+        const statusText = targetStatusEl.querySelector('.status-text');
+        if (led) led.className = 'led led-off me-1';
+        if (statusText) statusText.textContent = 'Not Ready';
+      }
+      if (targetCnEl) {
+        targetCnEl.textContent = '-- dB';
+      }
+    }
+
+    // Update execute button state
+    const executeBtn = this.domCache_.get('sat-execute-handover') as HTMLButtonElement | undefined;
+    if (executeBtn) {
+      const canExecute = ownership?.isHandoverInProgress &&
+        ownership.sourceStationReady &&
+        ownership.targetStationReady;
+      executeBtn.disabled = !canExecute;
+    }
   }
 
   public activate(): void {

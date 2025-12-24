@@ -58,6 +58,13 @@ export interface SimulationSettings {
     /** dB degradation to link margin */
     linkMarginDegradation: number;
   }>;
+  /** Traffic ownership configuration for handover scenarios */
+  trafficOwnership?: Array<{
+    /** Satellite NORAD ID */
+    satelliteNoradId: number;
+    /** Initial owner ground station ID */
+    initialOwnerId: string;
+  }>;
 }
 
 export class ScenarioManager {

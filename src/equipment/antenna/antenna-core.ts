@@ -88,13 +88,15 @@ export interface AntennaState {
   /** Is beacon locked */
   isBeaconLocked: boolean;
 
-  // === Environmental Controls (cosmetic for now) ===
+  // === Environmental Controls ===
   /** Is feed heater enabled */
   isHeaterEnabled: boolean;
   /** Is rain blower enabled */
   isRainBlowerEnabled: boolean;
   /** Is precipitation detected (read-only sensor) */
   precipitationDetected: boolean;
+  /** Ice accumulation on feed horn in dB (0 = no ice) */
+  iceAccumulation_dB: number;
 
   // === ACU Identification ===
   /** ACU model number */
@@ -215,6 +217,7 @@ export abstract class AntennaCore extends BaseEquipment {
       isHeaterEnabled: false,
       isRainBlowerEnabled: false,
       precipitationDetected: false,
+      iceAccumulation_dB: 0,
       // ACU Identification
       acuModel: this.config.acuModel ?? 'Kratos NGC-2200',
       acuSerialNumber: this.config.acuSerialNumber ?? 'ACU-01',
@@ -817,6 +820,15 @@ export abstract class AntennaCore extends BaseEquipment {
     this.notifyStateChange_();
   }
 
+  /**
+   * Update ice accumulation on the feed horn (called by WeatherManager)
+   * @param degradation_dB - Current ice degradation in dB (0 = no ice)
+   */
+  updateIceAccumulation(degradation_dB: number): void {
+    this.state.iceAccumulation_dB = degradation_dB;
+    this.notifyStateChange_();
+  }
+
   // ========================================================================
   // FINE ADJUSTMENT METHODS
   // ========================================================================
@@ -1212,6 +1224,18 @@ export abstract class AntennaCore extends BaseEquipment {
     const absolutePolarization = Math.abs(this.state.polarization);
     if (absolutePolarization > 45) {
       alarms.push({ severity: 'warning', message: `HIGH POLARIZATION (${this.state.polarization}°)` });
+    }
+
+    // Ice accumulation warning
+    if (this.state.iceAccumulation_dB > 0) {
+      const ice = this.state.iceAccumulation_dB;
+      if (ice >= 5) {
+        alarms.push({ severity: 'error', message: `CRITICAL ICE BUILDUP (${ice.toFixed(1)} dB)` });
+      } else if (ice >= 2) {
+        alarms.push({ severity: 'warning', message: `ICE ACCUMULATING (${ice.toFixed(1)} dB)` });
+      } else {
+        alarms.push({ severity: 'info', message: `ICE DETECTED (${ice.toFixed(1)} dB)` });
+      }
     }
 
     // No signal reception warning
@@ -1618,15 +1642,19 @@ export abstract class AntennaCore extends BaseEquipment {
 
   /**
    * System noise temperature at LNA input (K)
-   * Accounts for sky, atmosphere, feed, and LNA contributions
+   * Accounts for sky, atmosphere, feed, ice accumulation, and LNA contributions
    */
   private systemTempK_(frequency: Hertz, elevation: Degrees): number {
     const Tsky = this.skyTempK_(elevation);
     const Latm = this.calculateAtmosphericLoss_(frequency, elevation);
     const Lfeed = this.feedLossAt_(frequency) + (this.config.rxChainLoss_dB ?? 0);
 
+    // Ice accumulation adds to feed loss (ice on feed horn acts as lossy medium)
+    const Lice = this.state.iceAccumulation_dB;
+    const LfeedTotal = Lfeed + Lice;
+
     const Tant = Tsky + this.noiseFromLossK_(Latm, 260); // Atm ~260 K slab
-    const Tfeed = this.noiseFromLossK_(Lfeed, this.config.rxPhysTemp_K ?? 290);
+    const Tfeed = this.noiseFromLossK_(LfeedTotal, this.config.rxPhysTemp_K ?? 290);
 
     // LNA noise
     const NF = this.config.lnaNF_dB ?? 1.0;
@@ -1634,7 +1662,7 @@ export abstract class AntennaCore extends BaseEquipment {
 
     // Friis cascade for noise temps with preceding losses
     const L_atm_linear = Math.pow(10, Latm / 10);
-    const L_feed_linear = Math.pow(10, Lfeed / 10);
+    const L_feed_linear = Math.pow(10, LfeedTotal / 10);
     const L_total = L_atm_linear * L_feed_linear;
 
     return Tant * L_total + Tfeed * L_atm_linear + Tlna;

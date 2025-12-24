@@ -205,6 +205,55 @@ export interface AlarmStateChangedData {
   highestSeverity: 'error' | 'warning' | 'info' | 'success';
 }
 
+// Weather Event specific interfaces
+export interface WeatherEventData {
+  id: string;
+  groundStationId: string;
+  type: 'snow' | 'rain' | 'fog' | 'wind' | 'dust' | 'hail' | 'ice' | 'storm';
+  severity: 'minor' | 'moderate' | 'severe';
+  startTime: number;
+  duration: number;
+  linkMarginDegradation: number;
+}
+
+export interface WeatherMissionFailureData {
+  groundStationId: string;
+  satelliteId: number;
+  weatherEventId: string;
+  currentCN: number | null;
+  requiredCN: number;
+}
+
+// Handover Event specific interfaces
+export interface HandoverInitiatedData {
+  satelliteId: number;
+  sourceStationId: string;
+  targetStationId: string;
+}
+
+export interface HandoverReadyData {
+  satelliteId: number;
+  sourceStationId: string;
+  targetStationId: string;
+}
+
+export interface HandoverCompleteData {
+  satelliteId: number;
+  previousOwnerId: string;
+  newOwnerId: string;
+}
+
+export interface HandoverCancelledData {
+  satelliteId: number;
+}
+
+export interface DualTransmissionViolationData {
+  satelliteNoradId: number;
+  groundStation1Id: string;
+  groundStation2Id: string;
+  detectedAt: number;
+}
+
 export enum Events {
   // Antenna events
   ANTENNA_STATE_CHANGED = 'antenna:state:changed',
@@ -277,6 +326,18 @@ export enum Events {
 
   // Navigation events
   SWITCH_TAB = 'navigation:switch:tab',
+
+  // Weather events
+  WEATHER_EVENT_STARTED = 'weather:event:started',
+  WEATHER_EVENT_ENDED = 'weather:event:ended',
+  WEATHER_MISSION_FAILURE = 'weather:mission:failure',
+
+  // Traffic Control / Handover events
+  HANDOVER_INITIATED = 'handover:initiated',
+  HANDOVER_READY = 'handover:ready',
+  HANDOVER_COMPLETE = 'handover:complete',
+  HANDOVER_CANCELLED = 'handover:cancelled',
+  DUAL_TRANSMISSION_VIOLATION = 'handover:dual-transmission-violation',
 }
 
 export interface EventMap {
@@ -342,4 +403,16 @@ export interface EventMap {
   [Events.ALARM_STATE_CHANGED]: [AlarmStateChangedData];
 
   [Events.SWITCH_TAB]: [{ tabId: string }];
+
+  // Weather events
+  [Events.WEATHER_EVENT_STARTED]: [WeatherEventData];
+  [Events.WEATHER_EVENT_ENDED]: [WeatherEventData];
+  [Events.WEATHER_MISSION_FAILURE]: [WeatherMissionFailureData];
+
+  // Handover events
+  [Events.HANDOVER_INITIATED]: [HandoverInitiatedData];
+  [Events.HANDOVER_READY]: [HandoverReadyData];
+  [Events.HANDOVER_COMPLETE]: [HandoverCompleteData];
+  [Events.HANDOVER_CANCELLED]: [HandoverCancelledData];
+  [Events.DUAL_TRANSMISSION_VIOLATION]: [DualTransmissionViolationData];
 }

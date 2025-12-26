@@ -302,6 +302,10 @@ export abstract class LNBModuleCore extends RFFrontEndModule<LNBState> {
   getAlarms(): string[] {
     const alarms: string[] = [];
 
+    if (!this.state.isPowered) {
+      return alarms; // No alarms when powered off
+    }
+
     const extRefPresent = this.isExtRefPresent();
 
     // Lock alarm

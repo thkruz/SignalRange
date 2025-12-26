@@ -598,18 +598,19 @@ export class Receiver extends BaseEquipment {
     const expectedBandwidth_Hz = modem.bandwidth * 1e6;
     const usableBandwidth_Hz = targetSignal.bandwidth;
     const bandwidthRatio = usableBandwidth_Hz / expectedBandwidth_Hz;
-    // Consider significantly clipped if usable < 50% of expected
-    const isBandwidthClipped = bandwidthRatio < 0.5;
+    // Use FEC-based threshold for consistency with getVisibleSignals()
+    const minBandwidthRatio = this.getMinBandwidthRatioForFec_(targetSignal.fec);
+    const isBandwidthClipped = bandwidthRatio < minBandwidthRatio;
 
     // Calculate frequency offset in Hz
     const signalFreqHz = targetSignal.frequency;
     const modemFreqHz = modem.frequency * 1e6;
     const frequencyOffset = signalFreqHz - modemFreqHz;
 
-    // Check for modulation/FEC match (determines lock state)
+    // Check for modulation/FEC match and bandwidth (determines lock state)
     const modulationMismatch = targetSignal.modulation !== modem.modulation;
     const fecMismatch = targetSignal.fec !== modem.fec;
-    const hasLock = !modulationMismatch && !fecMismatch;
+    const hasLock = !modulationMismatch && !fecMismatch && !isBandwidthClipped;
 
     return {
       hasCarrier: true,

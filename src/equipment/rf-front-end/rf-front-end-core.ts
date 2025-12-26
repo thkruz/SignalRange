@@ -1,7 +1,7 @@
 import { EventBus } from "@app/events/event-bus";
 import { Events } from "../../events/events";
 import { SignalPathManager } from '../../simulation/signal-path-manager';
-import { dBm, IfFrequency, RfFrequency } from "../../types";
+import { dBm, Hertz, IfFrequency, RfFrequency } from "../../types";
 import { AntennaCore } from "../antenna";
 import { AlarmStatus, BaseEquipment } from "../base-equipment";
 import { Transmitter } from '../transmitter/transmitter';
@@ -94,6 +94,9 @@ export abstract class RFFrontEndCore extends BaseEquipment {
     // Instantiate signal path manager for aggregated calculations
     this.signalPathManager = new SignalPathManager(this);
 
+    // Expose debug function on window for console access
+    (window as any).debugSignalPath = this.debugSignalPath.bind(this);
+
     // Register event handlers
     EventBus.getInstance().on(Events.UPDATE, this.update.bind(this));
     EventBus.getInstance().on(Events.SYNC, this.syncDomWithState.bind(this));
@@ -133,9 +136,9 @@ export abstract class RFFrontEndCore extends BaseEquipment {
     this.bucModule.update();
     this.hpaModule.update();
     this.lnbModule.update();
-    this.agcModule.update();          // After LNB, before notch filter
-    this.notchFilterModule.update();  // After AGC, before filter
-    this.filterModule.update();
+    this.filterModule.update();       // After LNB
+    this.notchFilterModule.update();  // After IF Filter
+    this.agcModule.update();          // After Notch Filter (last in RX chain)
     this.couplerModule.update();
     this.gpsdoModule.update();
 
@@ -359,5 +362,100 @@ export abstract class RFFrontEndCore extends BaseEquipment {
    */
   private getNoiseFloorIfRx_() {
     return this.signalPathManager.getNoiseFloorIfRx();
+  }
+
+  /**
+   * Debug signal path - prints frequency, power, and noise at each stage
+   * Call from browser console: window.debugSignalPath()
+   */
+  public debugSignalPath(): void {
+    console.log('%c=== Signal Path Debug ===', 'font-weight: bold; font-size: 14px;');
+
+    const antennaSignals = this.antenna?.state.rxSignalsIn ?? [];
+    const omtSignals = this.omtModule.rxSignalsOut;
+    const postLnaSignals = this.lnbModule.postLNASignals;
+    const ifSignals = this.lnbModule.ifSignals;
+    const postFilterSignals = this.filterModule.outputSignals;
+    const postNotchSignals = this.notchFilterModule.outputSignals;
+    const postAgcSignals = this.agcModule.outputSignals;
+
+    if (antennaSignals.length === 0) {
+      console.warn('No signals at antenna input');
+      return;
+    }
+
+    // Noise floor values
+    const bandwidth = (this.filterModule.state.bandwidth * 1e6) as Hertz;
+    const lnbNoiseFloor = this.lnbModule.getNoiseFloor(bandwidth);
+    const filterNoiseFloor = this.filterModule.state.noiseFloor;
+    const totalGain = this.signalPathManager.getTotalRxGain();
+
+    // Helper functions
+    const formatFreq = (f: number) => (f / 1e6).toFixed(2) + ' MHz';
+    const formatPower = (p: number | undefined) =>
+      p !== undefined ? p.toFixed(2) + ' dBm' : 'N/A';
+
+    // Process each signal
+    antennaSignals.forEach((sig, i) => {
+      console.group(`Signal ${i + 1}: ${formatFreq(sig.frequency)} @ ${formatPower(sig.power)}`);
+
+      console.table([
+        {
+          Stage: 'Antenna In',
+          Frequency: formatFreq(sig.frequency),
+          Power: formatPower(sig.power),
+          NoiseFloor: 'N/A (external)'
+        },
+        {
+          Stage: 'OMT Out',
+          Frequency: formatFreq(omtSignals[i]?.frequency),
+          Power: formatPower(omtSignals[i]?.power),
+          NoiseFloor: 'N/A'
+        },
+        {
+          Stage: 'Post-LNA (RF)',
+          Frequency: formatFreq(postLnaSignals[i]?.frequency),
+          Power: formatPower(postLnaSignals[i]?.power),
+          NoiseFloor: lnbNoiseFloor.toFixed(2) + ' dBm'
+        },
+        {
+          Stage: 'LNB Out (IF)',
+          Frequency: formatFreq(ifSignals[i]?.frequency),
+          Power: formatPower(ifSignals[i]?.power),
+          NoiseFloor: lnbNoiseFloor.toFixed(2) + ' dBm'
+        },
+        {
+          Stage: 'IF Filter Out',
+          Frequency: formatFreq(postFilterSignals[i]?.frequency),
+          Power: formatPower(postFilterSignals[i]?.power),
+          NoiseFloor: filterNoiseFloor.toFixed(2) + ' dBm'
+        },
+        {
+          Stage: 'Notch Filter Out',
+          Frequency: formatFreq(postNotchSignals[i]?.frequency),
+          Power: formatPower(postNotchSignals[i]?.power),
+          NoiseFloor: filterNoiseFloor.toFixed(2) + ' dBm'
+        },
+        {
+          Stage: 'AGC Out',
+          Frequency: formatFreq(postAgcSignals[i]?.frequency),
+          Power: formatPower(postAgcSignals[i]?.power),
+          NoiseFloor: (filterNoiseFloor + this.agcModule.state.currentGain).toFixed(2) + ' dBm'
+        },
+      ]);
+
+      console.groupEnd();
+    });
+
+    // Module states summary
+    console.group('Module States');
+    console.log('LNB Gain:', this.lnbModule.state.gain, 'dB');
+    console.log('LNB LO Freq:', this.lnbModule.state.loFrequency, 'MHz');
+    console.log('IF Filter BW:', this.filterModule.state.bandwidth, 'MHz');
+    console.log('IF Filter Loss:', this.filterModule.state.insertionLoss, 'dB');
+    console.log('AGC Gain:', this.agcModule.state.currentGain.toFixed(2), 'dB');
+    console.log('AGC Bypassed:', this.agcModule.state.isBypassed);
+    console.log('Total RX Gain:', totalGain.toFixed(2), 'dB');
+    console.groupEnd();
   }
 }

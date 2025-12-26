@@ -371,7 +371,7 @@ export class Transmitter extends BaseEquipment {
         });
       }
       if (modem.isTransmitting) {
-        const modemPower = this.calculateModemPower(modem.ifSignal.bandwidth, modem.ifSignal.power);
+        const modemPower = this.calculatePowerBudgetLoad_(modem.ifSignal.bandwidth, modem.ifSignal.power);
         if (!this.validatePowerConsumption(modemPower, 100)) {
           alarms.push({
             message: `Modem ${modem.modem_number} Power Exceeds Max Transmit Power`,
@@ -545,14 +545,27 @@ export class Transmitter extends BaseEquipment {
   private updateTransmissionState() {
     // Check power budget if turning on
     if (this.activeModem.isTransmitting) {
-      const modemPower = this.calculateModemPower(this.activeModem.ifSignal.bandwidth, this.activeModem.ifSignal.power);
+      const modemPower = this.calculatePowerBudgetLoad_(this.activeModem.ifSignal.bandwidth, this.activeModem.ifSignal.power);
       if (!this.validatePowerConsumption(modemPower)) {
         this.activeModem.isFaulted = true;
       }
     }
   }
 
-  private calculateModemPower(bandwidth: Hertz, powerDbm: dBm): dBm {
+  /**
+   * Calculate power budget load for transmitter resource allocation.
+   *
+   * Wider bandwidth signals at the same power level use more transmitter capacity.
+   * This is NOT the RF signal power - it's a metric for budget/resource management.
+   *
+   * The formula accounts for total energy content: a wider bandwidth signal at
+   * the same power level represents more total energy that the transmitter must handle.
+   *
+   * @param bandwidth Signal bandwidth in Hz
+   * @param powerDbm Signal power in dBm (total power, not power density)
+   * @returns Power budget load metric in dBm-equivalent
+   */
+  private calculatePowerBudgetLoad_(bandwidth: Hertz, powerDbm: dBm): dBm {
     const bandwidthMHz = bandwidth / 1e6;
     return (powerDbm + 10 * Math.log10(bandwidthMHz)) as dBm;
   }
@@ -565,7 +578,7 @@ export class Transmitter extends BaseEquipment {
 
     if (!activeModem.isPowered) return 0;
 
-    const modemPower = this.calculateModemPower(
+    const modemPower = this.calculatePowerBudgetLoad_(
       activeModem.ifSignal.bandwidth,
       activeModem.ifSignal.power
     );

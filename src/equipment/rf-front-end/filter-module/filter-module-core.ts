@@ -1,5 +1,5 @@
 import { SignalOrigin } from "@app/signal-origin";
-import { dBm, IfSignal, MHz } from '@app/types';
+import { dBm, Hertz, IfSignal, MHz } from '@app/types';
 import { RFFrontEndCore } from "../rf-front-end-core";
 import { RFFrontEndModule } from '../rf-front-end-module';
 
@@ -75,36 +75,41 @@ export abstract class IfFilterBankModuleCore extends RFFrontEndModule<IfFilterBa
 
   /**
    * Update component state and check for faults
+   *
+   * Filter clips signals to its passband bandwidth but does NOT reduce power.
+   * Power field represents total power (dBm), not power spectral density.
+   * A wideband signal passing through a narrow filter retains its power
+   * in the passband portion (only insertion loss is applied).
    */
   update(): void {
     const filterBandwidthHz = this.state.bandwidth * 1e6;
 
     this.outputSignals = this.inputSignals.map((sig: IfSignal) => {
-      let power = sig.power;
+      // Clip bandwidth to filter bandwidth (power stays the same - total power model)
+      const clippedBandwidth = Math.min(sig.bandwidth, filterBandwidthHz) as Hertz;
 
-      if (sig.bandwidth > filterBandwidthHz) {
-        // Signal wider than filter - bandwidth ratio attenuation
-        const bandwidthRatio = sig.bandwidth / filterBandwidthHz;
-        power = (power - 10 * Math.log10(bandwidthRatio)) as dBm;
-      }
+      // Only apply insertion loss, no bandwidth-based power reduction
+      const outputPower = (sig.power - this.state.insertionLoss) as dBm;
 
       return {
         ...sig,
-        power: (power - this.state.insertionLoss) as dBm,
+        bandwidth: clippedBandwidth,
+        power: outputPower,
         origin: SignalOrigin.IF_FILTER_BANK,
       };
     });
   }
 
   get inputSignals(): IfSignal[] {
-    // Get signals from notch filter (which gets them from LNB)
-    const notchFilterSignals = this.rfFrontEnd_.notchFilterModule.outputSignals;
+    // Get signals from LNB (IF Filter is first in the IF chain)
+    // Signal path: LNB → IF Filter → Notch Filter → AGC
+    const lnbSignals = this.rfFrontEnd_.lnbModule.ifSignals;
     const txLoopbackSignals = this.rfFrontEnd_.transmitters
       .flatMap((tx) => tx.state.modems
         .filter((modem) => modem.isTransmitting && !modem.isFaulted && modem.isLoopback)
         .map((modem) => modem.ifSignal));
 
-    return [...notchFilterSignals, ...txLoopbackSignals];
+    return [...lnbSignals, ...txLoopbackSignals];
   }
 
   /**

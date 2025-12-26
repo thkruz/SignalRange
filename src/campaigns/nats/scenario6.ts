@@ -166,8 +166,8 @@ export const scenario6Data: ScenarioData = {
             noradId: 61525,
             frequency: 5960e6 as RfFrequency,
             polarization: 'H',
-            power: 43 as dBm,
-            bandwidth: 3e6 as Hertz, // Narrowband spike
+            power: 80 as dBm,
+            bandwidth: 1e6 as Hertz, // Narrowband spike
             modulation: 'QPSK' as ModulationType,
             fec: '3/4' as FECType,
             feed: '',
@@ -183,7 +183,7 @@ export const scenario6Data: ScenarioData = {
             signalId: 'TIDEMARK-1-Beacon',
             serverId: 1,
             noradId: 61525,
-            power: 40 as dBm,
+            power: 30 as dBm,
             bandwidth: 1e3 as Hertz,
             modulation: 'CW' as ModulationType,
             fec: 'null' as FECType,

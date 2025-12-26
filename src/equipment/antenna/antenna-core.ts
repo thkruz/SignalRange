@@ -66,6 +66,8 @@ export interface AntennaState {
     atmosLoss_dB: number;
     skyTemp_K: number;
     frequency_GHz: number;
+    /** EIRP in dBW when transmitting (undefined when not transmitting) */
+    eirp_dBW?: number;
   };
 
   // === ACU Tracking Mode ===
@@ -1474,6 +1476,15 @@ export abstract class AntennaCore extends BaseEquipment {
 
     const elevation = 45 as Degrees; // Standard elevation for GEO
 
+    // Calculate EIRP if transmitting
+    let eirp_dBW: number | undefined;
+    const txSignals = this.txSignalsIn;
+    if (txSignals.length > 0 && this.rfFrontEnd_) {
+      const txSignal = txSignals[0];
+      const txFreq = txSignal.frequency as Hertz;
+      eirp_dBW = this.calculateEirp_(txSignal.power, txFreq);
+    }
+
     this.state.rfMetrics = {
       gain_dBi: this.antennaGain_dBi(frequency),
       beamwidth_deg: this.beamwidth3dB_deg_(frequency),
@@ -1486,7 +1497,33 @@ export abstract class AntennaCore extends BaseEquipment {
       atmosLoss_dB: this.calculateAtmosphericLoss_(frequency, elevation),
       skyTemp_K: this.skyTempK_(elevation),
       frequency_GHz: frequency / 1e9,
+      eirp_dBW,
     };
+  }
+
+  /**
+   * Calculate EIRP (Effective Isotropic Radiated Power)
+   *
+   * EIRP = Pt (dBW) + Gt (dBi) - feed losses
+   *
+   * EIRP represents the power that would need to be radiated by an isotropic
+   * antenna to produce the same power flux density in the direction of
+   * maximum antenna gain.
+   *
+   * @param txPowerDbm Transmit power at antenna feed input in dBm
+   * @param frequencyHz Transmit frequency in Hz
+   * @returns EIRP in dBW
+   */
+  private calculateEirp_(txPowerDbm: dBm, frequencyHz: Hertz): number {
+    const antennaGain = this.antennaGain_dBi(frequencyHz);
+    const feedLoss = this.feedLossAt_(frequencyHz as number);
+
+    // Convert dBm to dBW: dBW = dBm - 30
+    const txPowerDbW = (txPowerDbm as number) - 30;
+
+    // EIRP = Pt + Gt - feed losses
+    // Note: Polarization loss is NOT included in EIRP (it's a path/receive-side metric)
+    return txPowerDbW + antennaGain - feedLoss;
   }
 
   /**

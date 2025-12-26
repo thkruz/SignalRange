@@ -127,7 +127,12 @@ export class IQConstellationAdapter {
       points = this.applyFrequencyOffset_(points, signalState.frequencyOffset_Hz);
     }
 
-    // Draw constellation with C/N-based noise
+    // Apply ADC clipping compression effect
+    if (signalState.adcDegradation?.clipPenalty_dB && signalState.adcDegradation.clipPenalty_dB > 0) {
+      points = this.applyClippingEffect_(points, signalState.adcDegradation.clipPenalty_dB);
+    }
+
+    // Draw constellation with C/N-based noise (uses effective C/N if available)
     this.drawConstellationRealistic_(ctx, points, centerX, centerY, scale, signalState);
   }
 
@@ -142,14 +147,34 @@ export class IQConstellationAdapter {
       return;
     }
 
-    // C/N indicator
-    const cnText = state.cnRatio_dB > -50 ? `C/N: ${state.cnRatio_dB.toFixed(1)} dB` : 'C/N: ---';
-    const cnClass = state.cnRatio_dB > 15 ? 'text-success' : state.cnRatio_dB > 8 ? 'text-warning' : 'text-danger';
+    // Use effective C/N (with ADC penalty) for display
+    const displayCn = state.effectiveCnRatio_dB ?? state.cnRatio_dB;
+    const cnText = displayCn > -50 ? `C/N: ${displayCn.toFixed(1)} dB` : 'C/N: ---';
+
+    // Color based on effective C/N AND ADC status
+    let cnClass: string;
+    const adcStatus = state.adcDegradation?.status;
+    if (adcStatus === 'clipping' || adcStatus === 'severe-clipping') {
+      cnClass = 'text-danger';  // Red for clipping
+    } else if (adcStatus === 'low-level' || adcStatus === 'severe-low') {
+      cnClass = 'text-info';    // Blue for low level
+    } else if (displayCn > 15) {
+      cnClass = 'text-success';
+    } else if (displayCn > 8) {
+      cnClass = 'text-warning';
+    } else {
+      cnClass = 'text-danger';
+    }
     this.cnIndicator_.textContent = cnText;
     this.cnIndicator_.className = `iq-status-cn font-monospace ${cnClass}`;
 
-    // Lock indicator
-    const lockText = state.hasLock ? 'LOCKED' : state.hasCarrier ? 'CARRIER' : 'NO LOCK';
+    // Lock indicator with ADC status suffix
+    let lockText = state.hasLock ? 'LOCKED' : state.hasCarrier ? 'CARRIER' : 'NO LOCK';
+    if (adcStatus === 'clipping' || adcStatus === 'severe-clipping') {
+      lockText += ' (CLIP)';
+    } else if (adcStatus === 'low-level' || adcStatus === 'severe-low') {
+      lockText += ' (LOW)';
+    }
     const lockClass = state.hasLock ? 'text-success' : state.hasCarrier ? 'text-warning' : 'text-danger';
     this.lockIndicator_.textContent = lockText;
     this.lockIndicator_.className = `iq-status-lock font-monospace ${lockClass}`;
@@ -240,6 +265,37 @@ export class IQConstellationAdapter {
 
     const cnLinear = Math.pow(10, cnRatio_dB / 10);
     return Math.min(1.0, Math.max(0.02, 1 / Math.sqrt(2 * cnLinear)));
+  }
+
+  /**
+   * Compute additional noise spread from ADC quantization noise.
+   * Low signal levels cause increased "graininess" in constellation.
+   */
+  private computeQuantizationNoiseSpread_(quantizationPenalty_dB: number): number {
+    if (quantizationPenalty_dB <= 0) return 0;
+    // Quantization noise adds structured spread
+    // 6 dB penalty = ~0.1 additional spread
+    return quantizationPenalty_dB * 0.015;
+  }
+
+  /**
+   * Apply ADC clipping effect to constellation points.
+   * Compresses points toward origin when clipping occurs.
+   */
+  private applyClippingEffect_(
+    points: { i: number; q: number }[],
+    clipPenalty_dB: number
+  ): { i: number; q: number }[] {
+    if (clipPenalty_dB <= 0) return points;
+
+    // Compression factor: severe clipping pushes symbols toward origin
+    // clipPenalty of 10 dB = ~50% compression
+    const compressionFactor = 1 / (1 + clipPenalty_dB / 10);
+
+    return points.map(p => ({
+      i: p.i * compressionFactor,
+      q: p.q * compressionFactor
+    }));
   }
 
   /**
@@ -351,24 +407,29 @@ export class IQConstellationAdapter {
     scale: number,
     state: IQSignalInfo
   ): void {
-    const noiseSpread = this.computeNoiseSpread_(state.cnRatio_dB);
-    const samplesPerPoint = this.getSamplesPerPoint_(state.cnRatio_dB);
+    // Use effective C/N if available (includes ADC penalty)
+    const effectiveCn = state.effectiveCnRatio_dB ?? state.cnRatio_dB;
+    const noiseSpread = this.computeNoiseSpread_(effectiveCn);
 
-    // Determine color based on lock state
-    const color = state.hasLock
-      ? 'rgba(0, 255, 128, 0.6)'      // Green - locked
-      : state.modulationMismatch
-        ? 'rgba(255, 165, 0, 0.6)'    // Orange - wrong modulation
-        : 'rgba(255, 255, 0, 0.6)';   // Yellow - wrong FEC or marginal
+    // Add quantization noise spread if present
+    const quantNoiseSpread = state.adcDegradation
+      ? this.computeQuantizationNoiseSpread_(state.adcDegradation.quantizationPenalty_dB)
+      : 0;
+    const totalNoiseSpread = noiseSpread + quantNoiseSpread;
+
+    const samplesPerPoint = this.getSamplesPerPoint_(effectiveCn);
+
+    // Determine color based on lock state AND ADC status
+    const color = this.getConstellationColor_(state);
 
     ctx.fillStyle = color;
 
-    // Draw noisy samples
+    // Draw noisy samples with combined noise spread
     for (const point of points) {
       for (let s = 0; s < samplesPerPoint; s++) {
         const { z0, z1 } = this.boxMullerGaussian_();
-        const noiseI = z0 * noiseSpread;
-        const noiseQ = z1 * noiseSpread;
+        const noiseI = z0 * totalNoiseSpread;
+        const noiseQ = z1 * totalNoiseSpread;
 
         const x = cx + (point.i + noiseI) * scale;
         const y = cy - (point.q + noiseQ) * scale;
@@ -388,6 +449,36 @@ export class IQConstellationAdapter {
       ctx.arc(x, y, 3, 0, Math.PI * 2);
       ctx.fill();
     }
+  }
+
+  /**
+   * Get constellation color based on lock state and ADC status.
+   */
+  private getConstellationColor_(state: IQSignalInfo): string {
+    const adcStatus = state.adcDegradation?.status;
+
+    // ADC status takes priority for color
+    if (adcStatus === 'severe-clipping') {
+      return 'rgba(255, 0, 0, 0.6)';        // Red - severe clipping
+    }
+    if (adcStatus === 'clipping') {
+      return 'rgba(255, 100, 0, 0.6)';      // Orange - clipping
+    }
+    if (adcStatus === 'severe-low') {
+      return 'rgba(128, 0, 255, 0.6)';      // Purple - severe low level
+    }
+    if (adcStatus === 'low-level') {
+      return 'rgba(100, 100, 255, 0.6)';    // Blue - low level
+    }
+
+    // Normal operation - color based on lock state
+    if (state.hasLock) {
+      return 'rgba(0, 255, 128, 0.6)';      // Green - locked, optimal
+    }
+    if (state.modulationMismatch) {
+      return 'rgba(255, 165, 0, 0.6)';      // Orange - wrong modulation
+    }
+    return 'rgba(255, 255, 0, 0.6)';        // Yellow - other issue
   }
 
   private getSamplesPerPoint_(cnRatio_dB: number): number {

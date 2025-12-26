@@ -182,10 +182,9 @@ export class SpectrumDataProcessor {
         y -= 10 + Math.random() * 4;
       }
 
-      // If noise floor is external, add RF front-end gain to match noise
-      if (!this.specA.state.isSkipLnaGainDuringDraw) {
-        y += this.specA.rfFrontEnd_.couplerModule.signalPathManager.getTotalRxGain();
-      }
+      // NOTE: Signals from agcModule.outputSignals already include all chain gains
+      // (LNB gain, IF filter loss, AGC gain). Do NOT add gain here - that would
+      // double-count the gain. Gain is only added to noise floor, not signals.
 
       // Take the maximum value at each frequency point
       this.signalData[x] = Math.max(this.signalData[x], y);

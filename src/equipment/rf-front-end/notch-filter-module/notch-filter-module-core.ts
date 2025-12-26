@@ -40,7 +40,7 @@ export const DEFAULT_NOTCH: NotchConfig = {
  * Notch Filter Module Core - Business Logic Layer
  * Applies selective frequency attenuation to IF signals
  *
- * Position in signal chain: LNB → AGC → Notch Filter → IF Filter Bank
+ * Position in signal chain: LNB → IF Filter → Notch Filter → AGC
  */
 export abstract class NotchFilterModuleCore extends RFFrontEndModule<NotchFilterState> {
   outputSignals: IfSignal[] = [];
@@ -64,10 +64,10 @@ export abstract class NotchFilterModuleCore extends RFFrontEndModule<NotchFilter
   }
 
   /**
-   * Get input signals from AGC module
+   * Get input signals from IF Filter module
    */
   get inputSignals(): IfSignal[] {
-    return this.rfFrontEnd_.agcModule.outputSignals;
+    return this.rfFrontEnd_.filterModule.outputSignals;
   }
 
   /**

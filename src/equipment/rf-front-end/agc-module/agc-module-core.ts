@@ -29,7 +29,7 @@ export interface AGCState extends RFFrontEndModuleState {
  * - When interference is present, reduces gain for ALL signals
  * - Dynamic response with attack/release time constants
  *
- * Position in signal chain: LNB → AGC → Notch Filter → IF Filter Bank
+ * Position in signal chain: LNB → IF Filter → Notch Filter → AGC
  */
 export abstract class AGCModuleCore extends RFFrontEndModule<AGCState> {
   outputSignals: IfSignal[] = [];
@@ -57,10 +57,10 @@ export abstract class AGCModuleCore extends RFFrontEndModule<AGCState> {
   }
 
   /**
-   * Get input signals from LNB module
+   * Get input signals from Notch Filter module
    */
   get inputSignals(): IfSignal[] {
-    return this.rfFrontEnd_.lnbModule.ifSignals;
+    return this.rfFrontEnd_.notchFilterModule.outputSignals;
   }
 
   /**

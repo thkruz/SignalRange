@@ -1,4 +1,5 @@
-import { Receiver, ReceiverModemState } from '@app/equipment/receiver/receiver';
+import { IQSignalInfo, Receiver, ReceiverModemState } from '@app/equipment/receiver/receiver';
+import { ADCStatus } from '@app/equipment/receiver/adc-degradation';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
 import { CardAlarmBadge } from '@app/components/card-alarm-badge/card-alarm-badge';
@@ -118,9 +119,18 @@ export class ReceiverAdapter {
     // Signal quality status badge
     this.cacheElement_('signal-status');
 
-    // SNR and power level displays
-    this.cacheElement_('snr-display');
+    // C/N and power level displays
+    this.cacheElement_('cn-raw-display');
+    this.cacheElement_('cn-effective-display');
     this.cacheElement_('power-level-display');
+
+    // ADC status displays
+    this.cacheElement_('adc-level-display');
+    this.cacheElement_('adc-status-display');
+    this.cacheElement_('degradation-section');
+    this.cacheElement_('clip-penalty-display');
+    this.cacheElement_('quant-penalty-display');
+    this.cacheElement_('total-penalty-display');
 
     // Status bar
     this.cacheElement_('status-bar');
@@ -502,11 +512,21 @@ export class ReceiverAdapter {
       }
     }
 
-    // SNR display
-    const snrDisplay = this.domCache_.get('snr-display');
-    if (snrDisplay) {
-      const snr = this.receiver.getSnrForModem(activeModem);
-      snrDisplay.textContent = snr !== null ? `${snr.toFixed(1)} dB` : '-- dB';
+    // Get signal info for C/N and ADC data
+    const signalInfo = this.receiver.getSignalsInBandwidth(activeModem);
+
+    // Raw C/N display
+    const cnRawDisplay = this.domCache_.get('cn-raw-display');
+    if (cnRawDisplay) {
+      const cn = signalInfo.cnRatio_dB;
+      cnRawDisplay.textContent = cn > -50 ? `${cn.toFixed(1)} dB` : '-- dB';
+    }
+
+    // Effective C/N display
+    const cnEffectiveDisplay = this.domCache_.get('cn-effective-display');
+    if (cnEffectiveDisplay) {
+      const effectiveCn = signalInfo.effectiveCnRatio_dB ?? signalInfo.cnRatio_dB;
+      cnEffectiveDisplay.textContent = effectiveCn > -50 ? `${effectiveCn.toFixed(1)} dB` : '-- dB';
     }
 
     // Power level display
@@ -516,9 +536,96 @@ export class ReceiverAdapter {
       powerLevelDisplay.textContent = power !== null ? `${power.toFixed(1)} dBm` : '-- dBm';
     }
 
+    // Update ADC status displays
+    this.updateAdcStatus_(signalInfo);
+
     // Update alarm badge
     const alarms = this.getAlarmsFromReceiver_();
     this.alarmBadge_.update(alarms);
+  }
+
+  /**
+   * Update ADC status displays based on signal info
+   */
+  private updateAdcStatus_(signalInfo: IQSignalInfo): void {
+    const adcDeg = signalInfo.adcDegradation;
+
+    // ADC Level display
+    const adcLevelEl = this.domCache_.get('adc-level-display');
+    if (adcLevelEl) {
+      if (adcDeg) {
+        adcLevelEl.textContent = `${adcDeg.inputLevel_dBFS.toFixed(1)} dBFS`;
+        adcLevelEl.className = 'fw-bold font-monospace ' + this.getAdcLevelClass_(adcDeg.status);
+      } else {
+        adcLevelEl.textContent = '-- dBFS';
+        adcLevelEl.className = 'fw-bold font-monospace';
+      }
+    }
+
+    // ADC Status badge
+    const adcStatusEl = this.domCache_.get('adc-status-display');
+    if (adcStatusEl) {
+      if (adcDeg) {
+        adcStatusEl.textContent = this.getAdcStatusText_(adcDeg.status);
+        adcStatusEl.className = 'status-badge ' + this.getAdcStatusBadgeClass_(adcDeg.status);
+      } else {
+        adcStatusEl.textContent = '--';
+        adcStatusEl.className = 'status-badge status-badge-none';
+      }
+    }
+
+    // Show/hide degradation breakdown
+    const degradationSection = this.domCache_.get('degradation-section');
+    if (degradationSection) {
+      if (adcDeg && adcDeg.totalPenalty_dB > 0.1) {
+        degradationSection.classList.remove('d-none');
+        this.updatePenaltyDisplay_('clip-penalty-display', adcDeg.clipPenalty_dB);
+        this.updatePenaltyDisplay_('quant-penalty-display', adcDeg.quantizationPenalty_dB);
+        this.updatePenaltyDisplay_('total-penalty-display', adcDeg.totalPenalty_dB);
+      } else {
+        degradationSection.classList.add('d-none');
+      }
+    }
+  }
+
+  private updatePenaltyDisplay_(elementId: string, penalty: number): void {
+    const el = this.domCache_.get(elementId);
+    if (el) {
+      el.textContent = `${penalty.toFixed(1)} dB`;
+    }
+  }
+
+  private getAdcLevelClass_(status: ADCStatus): string {
+    switch (status) {
+      case 'optimal': return 'text-success';
+      case 'clipping':
+      case 'severe-clipping': return 'text-danger';
+      case 'low-level':
+      case 'severe-low': return 'text-info';
+      default: return '';
+    }
+  }
+
+  private getAdcStatusText_(status: ADCStatus): string {
+    switch (status) {
+      case 'optimal': return 'Optimal';
+      case 'clipping': return 'Clipping';
+      case 'severe-clipping': return 'CLIPPING!';
+      case 'low-level': return 'Low Level';
+      case 'severe-low': return 'LOW LEVEL!';
+      default: return '--';
+    }
+  }
+
+  private getAdcStatusBadgeClass_(status: ADCStatus): string {
+    switch (status) {
+      case 'optimal': return 'status-badge-good';
+      case 'clipping': return 'status-badge-degraded';
+      case 'severe-clipping': return 'status-badge-error';
+      case 'low-level': return 'status-badge-degraded';
+      case 'severe-low': return 'status-badge-error';
+      default: return 'status-badge-none';
+    }
   }
 
   private updateStatusBar_(): void {

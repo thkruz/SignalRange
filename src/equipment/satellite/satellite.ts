@@ -155,7 +155,7 @@ export class Satellite {
       maxPower: signal.power, // Use the initial signal power as max power
       gain: 36.5 as dBi, // dB, typical transponder gain
       noiseFigure: 3.5 as dBi, // dB, typical satellite transponder noise figure
-      saturationPower: 37 as dBm, // 5 W typical saturation power
+      saturationPower: 47 as dBm, // 17 dBW typical saturation power
       isActive: true
     }));
   }

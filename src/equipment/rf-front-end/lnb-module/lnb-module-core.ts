@@ -180,8 +180,11 @@ export abstract class LNBModuleCore extends RFFrontEndModule<LNBState> {
     }
 
     // Apply exponential smoothing so changes are gradual (not instant)
-    // At 60 FPS with factor 0.0005: ~30+ seconds for significant change
-    const smoothingFactor = 0.005;
+    // Use faster smoothing for large changes (like gain adjustments)
+    // and slower smoothing for small changes (thermal drift)
+    const tempDelta = Math.abs(targetNoiseTemp - this.state.noiseTemperature);
+    // Fast response (0.1) for large changes, slow (0.005) for small changes
+    const smoothingFactor = tempDelta > 100 ? 0.1 : 0.005;
     this.state.noiseTemperature = this.state.noiseTemperature +
       (targetNoiseTemp - this.state.noiseTemperature) * smoothingFactor;
   }

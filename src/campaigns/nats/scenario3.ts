@@ -139,7 +139,7 @@ export const scenario3Data: ScenarioData = {
               isGnssSwitchUp: false,
               isLocked: false,
             },
-            lnb: { isPowered: false }
+            lnb: { isPowered: false, noiseTemperature: 300, temperature: 25 },
           }),
         ],
         spectrumAnalyzers: [

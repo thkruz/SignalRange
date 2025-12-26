@@ -535,17 +535,62 @@ export class RxAnalysisTab extends BaseElement {
                         </div>
                       </div>
 
-                      <!-- Status Info -->
+                      <!-- C/N Metrics -->
                       <div class="mb-2">
                         <div class="d-flex justify-content-between">
-                          <span class="text-muted small">SNR:</span>
-                          <span id="snr-display" class="fw-bold font-monospace">-- dB</span>
+                          <span class="text-muted small">Raw C/N:</span>
+                          <span id="cn-raw-display" class="fw-bold font-monospace">-- dB</span>
+                        </div>
+                      </div>
+                      <div class="mb-2">
+                        <div class="d-flex justify-content-between">
+                          <span class="text-muted small">Effective C/N:</span>
+                          <span id="cn-effective-display" class="fw-bold font-monospace">-- dB</span>
                         </div>
                       </div>
                       <div class="mb-2">
                         <div class="d-flex justify-content-between">
                           <span class="text-muted small">Power Level:</span>
                           <span id="power-level-display" class="fw-bold font-monospace">-- dBm</span>
+                        </div>
+                      </div>
+
+                      <!-- ADC Status Section -->
+                      <hr class="my-2">
+                      <div class="mb-2">
+                        <div class="d-flex justify-content-between align-items-center">
+                          <span class="text-muted small">ADC Level:</span>
+                          <span id="adc-level-display" class="fw-bold font-monospace">-- dBFS</span>
+                        </div>
+                      </div>
+                      <div class="mb-2">
+                        <div class="d-flex justify-content-between align-items-center">
+                          <span class="text-muted small">ADC Status:</span>
+                          <span id="adc-status-display" class="status-badge status-badge-none">--</span>
+                        </div>
+                      </div>
+
+                      <!-- Degradation Breakdown (shown when applicable) -->
+                      <div id="degradation-section" class="d-none">
+                        <hr class="my-2">
+                        <div class="small text-muted mb-1">Degradation Factors:</div>
+                        <div class="mb-1">
+                          <div class="d-flex justify-content-between">
+                            <span class="text-muted small">Clip Penalty:</span>
+                            <span id="clip-penalty-display" class="font-monospace text-danger">0.0 dB</span>
+                          </div>
+                        </div>
+                        <div class="mb-1">
+                          <div class="d-flex justify-content-between">
+                            <span class="text-muted small">Quant Penalty:</span>
+                            <span id="quant-penalty-display" class="font-monospace text-info">0.0 dB</span>
+                          </div>
+                        </div>
+                        <div class="mb-1">
+                          <div class="d-flex justify-content-between">
+                            <span class="text-muted small fw-bold">Total Penalty:</span>
+                            <span id="total-penalty-display" class="font-monospace fw-bold">0.0 dB</span>
+                          </div>
                         </div>
                       </div>
                     </div>

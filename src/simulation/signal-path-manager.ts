@@ -108,6 +108,14 @@ export class SignalPathManager {
     return 1.0 as dB; // Assume 1 dB insertion loss for LNB
   }
 
+  /** AGC gain (can be positive or negative, 0 if bypassed) */
+  get agcGain(): dB {
+    if (this.rfFrontEnd_.agcModule.state.isBypassed) {
+      return 0 as dB;
+    }
+    return this.rfFrontEnd_.agcModule.state.currentGain;
+  }
+
 
   /** Signals at the point they exit the IF Filter */
   get ifFilterRxSignals(): RfSignal[] {
@@ -116,11 +124,11 @@ export class SignalPathManager {
   }
 
   /**
-   * Get total RX gain from LNA minus IF filter insertion loss.
-   * This is the aggregated gain through the RX chain (LNA + Filter).
+   * Get total RX gain from LNA + AGC minus IF filter insertion loss.
+   * This is the aggregated gain through the RX chain (LNA + AGC + Filter).
    */
   getTotalRxGain(): dB {
-    return (this.rfFrontEnd_.state.lnb.gain - this.rfFrontEnd_.state.filter.insertionLoss) as dB;
+    return (this.rfFrontEnd_.state.lnb.gain + this.agcGain - this.rfFrontEnd_.state.filter.insertionLoss) as dB;
   }
 
   /**
@@ -191,17 +199,14 @@ export class SignalPathManager {
         // Compare external noise (with gain) vs internal spectrum analyzer noise
         const NF = 0.5; // Spectrum analyzer noise figure
 
-        // Effective noise bandwidth is the minimum of IF filter BW and requested BW (RBW)
-        const filterBandwidthHz = this.rfFrontEnd_.filterModule.state.bandwidth * 1e6 as Hertz;
-        const effectiveBandwidth = Math.min(filterBandwidthHz, bandwidth) as Hertz;
-
-        let externalNoiseFloor = this.rfFrontEnd_.lnbModule.getNoiseFloor(effectiveBandwidth) + this.getTotalGainTo(tapPoint);
+        // Use RBW directly for noise calculation (simulates digital RBW filtering)
+        let externalNoiseFloor = this.rfFrontEnd_.lnbModule.getNoiseFloor(bandwidth) + this.getTotalGainTo(tapPoint);
 
         if (this.rfFrontEnd_.filterModule.state.isPowered === false) {
           externalNoiseFloor = Number.NEGATIVE_INFINITY as dBm; // No signal if filter is unpowered
         }
 
-        const internalNoiseFloor = -174 + 10 * Math.log10(effectiveBandwidth) + NF;
+        const internalNoiseFloor = -174 + 10 * Math.log10(bandwidth) + NF;
 
         const isInternalNoiseGreater = internalNoiseFloor > externalNoiseFloor;
 

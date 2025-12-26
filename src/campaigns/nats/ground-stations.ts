@@ -106,8 +106,8 @@ export const vermontGroundStation = {
       outputPower: -30 as dBm,
       attackTime: 10,
       releaseTime: 100,
-      maxGain: 30 as dB,
-      minGain: -30 as dB,
+      maxGain: 0 as dB,
+      minGain: -60 as dB,
     },
     coupler: {
       isPowered: true,
@@ -274,6 +274,18 @@ export const maineGroundStationConfig = {
       frequencyError: 0, // Hz
       temperature: 25, // °C
       thermalStabilizationTime: 180, // seconds
+    },
+    agc: {
+      isPowered: true,
+      isBypassed: false,
+      targetLevel: -30 as dBm,
+      currentGain: 0 as dB,
+      inputPower: -100 as dBm,
+      outputPower: -100 as dBm,
+      attackTime: 10,
+      releaseTime: 100,
+      maxGain: 0 as dB,
+      minGain: -60 as dB,
     },
     coupler: {
       isPowered: true,

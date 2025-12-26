@@ -431,7 +431,8 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
       case TapPoint.RX_RF_POST_LNA:
         return this.rfFrontEnd_.lnbModule.postLNASignals;
       case TapPoint.RX_IF:
-        return this.rfFrontEnd_.filterModule.outputSignals;
+        // Signal path: LNB → IF Filter → Notch Filter → AGC
+        return this.rfFrontEnd_.agcModule.outputSignals;
       default:
         throw new Error(`Unknown tap point: ${tapPoint}`);
     }

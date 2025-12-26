@@ -3,11 +3,12 @@ import { EventBus } from "@app/events/event-bus";
 import { html } from "../../engine/utils/development/formatter";
 import { qs } from "../../engine/utils/query-selector";
 import { Events } from "../../events/events";
-import { FECType, Hertz, MHz, ModulationType } from "../../types";
+import { dBm, FECType, Hertz, MHz, ModulationType } from "../../types";
 import { AntennaCore } from "../antenna";
 import { AlarmStatus, BaseEquipment } from "../base-equipment";
 import { TapPoint } from "../rf-front-end/coupler-module/tap-points";
 import { RFFrontEndCore } from "../rf-front-end/rf-front-end-core";
+import { ADCDegradationResult, calculateADCDegradation } from './adc-degradation';
 import './receiver.css';
 
 export interface ReceiverModemState {
@@ -42,10 +43,14 @@ export interface IQSignalInfo {
   hasLock: boolean;                 // Modem can demodulate (mod + FEC match)
   actualModulation: ModulationType | null;
   configuredModulation: ModulationType;
-  cnRatio_dB: number;               // Carrier-to-noise ratio
+  cnRatio_dB: number;               // Carrier-to-noise ratio (raw, before ADC effects)
   frequencyOffset_Hz: number;       // Offset from center frequency
   modulationMismatch: boolean;
   fecMismatch: boolean;
+  /** ADC degradation result (clipping/quantization effects) */
+  adcDegradation?: ADCDegradationResult;
+  /** Effective C/N ratio after ADC penalty applied */
+  effectiveCnRatio_dB?: number;
 }
 
 /**
@@ -500,7 +505,7 @@ export class Receiver extends BaseEquipment {
     const totalGain = this.rfFrontEnd_.couplerModule.signalPathManager.getTotalRxGain();
 
     // Get ALL signals in the receiver bandwidth (relaxed filtering - no mod/FEC check)
-    const signalsInBand = (this.rfFrontEnd_.filterModule.outputSignals ?? []).filter((s) => {
+    const signalsInBand = (this.rfFrontEnd_.agcModule.outputSignals ?? []).filter((s) => {
       // Power must exceed noise floor
       if (s.power + totalGain < externalNoise) {
         return false;
@@ -534,6 +539,12 @@ export class Receiver extends BaseEquipment {
     const signalLevel = strongestSignal.power + totalGain;
     const cnRatio = signalLevel - noiseFloor;
 
+    // Calculate ADC degradation based on AGC output level
+    // AGC output is the signal level entering the ADC
+    const agcOutputLevel = this.rfFrontEnd_?.agcModule?.state.outputPower ?? signalLevel;
+    const adcDegradation = calculateADCDegradation(agcOutputLevel as dBm);
+    const effectiveCnRatio = cnRatio - adcDegradation.totalPenalty_dB;
+
     // Calculate frequency offset in Hz
     const signalFreqHz = strongestSignal.frequency;
     const modemFreqHz = modem.frequency * 1e6;
@@ -553,6 +564,8 @@ export class Receiver extends BaseEquipment {
       frequencyOffset_Hz: frequencyOffset,
       modulationMismatch,
       fecMismatch,
+      adcDegradation,
+      effectiveCnRatio_dB: effectiveCnRatio,
     };
   }
 
@@ -641,7 +654,7 @@ export class Receiver extends BaseEquipment {
     const externalNoise = this.rfFrontEnd_?.externalNoise ?? 0;
 
     // Figure out which signals match the receiver settings
-    const visibleSignals = (this.rfFrontEnd_?.filterModule.outputSignals ?? []).filter((s) => {
+    const visibleSignals = (this.rfFrontEnd_?.agcModule.outputSignals ?? []).filter((s) => {
       if (s.power + this.rfFrontEnd_.couplerModule.signalPathManager.getTotalRxGain() < externalNoise) {
         return false;
       }

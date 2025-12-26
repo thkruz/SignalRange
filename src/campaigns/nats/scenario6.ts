@@ -84,7 +84,7 @@ export const scenario6Data: ScenarioData = {
             createRfFrontEnd(vermontGroundStation.rfFrontEnds[0], {
               buc: { isPowered: false, loFrequency: 2225 as MHz, outputPower: 0 as dBm, isMuted: true, isExtRefLocked: false },
               hpa: { isPowered: false, outputPower: 0 as dBm },
-              filter: { bandwidthIndex: 3 }, // Wide 36 MHz filter - student must switch to notch filter (index 4)
+              filter: { bandwidthIndex: 16 }, // Wide 36 MHz filter - student must switch to notch filter (index 4)
               lnb: { noiseTemperature: 65, temperature: 45 },
               gpsdo: {
                 temperature: 65,
@@ -183,7 +183,7 @@ export const scenario6Data: ScenarioData = {
             signalId: 'TIDEMARK-1-Beacon',
             serverId: 1,
             noradId: 61525,
-            power: 30 as dBm,
+            power: 40 as dBm,
             bandwidth: 1e3 as Hertz,
             modulation: 'CW' as ModulationType,
             fec: 'null' as FECType,

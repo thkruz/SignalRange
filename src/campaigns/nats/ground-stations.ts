@@ -97,6 +97,18 @@ export const vermontGroundStation = {
       temperature: 28, // °C - stable
       thermalStabilizationTime: 0, // Already stabilized
     },
+    agc: {
+      isPowered: true,
+      isBypassed: false,
+      targetLevel: -30 as dBm,
+      currentGain: 10 as dB,
+      inputPower: -80 as dBm,
+      outputPower: -30 as dBm,
+      attackTime: 10,
+      releaseTime: 100,
+      maxGain: 30 as dB,
+      minGain: -30 as dB,
+    },
     coupler: {
       isPowered: true,
       tapPointA: TapPoint.TX_IF,

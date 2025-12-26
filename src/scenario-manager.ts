@@ -5,6 +5,8 @@ import { scenario3Data } from './campaigns/nats/scenario3';
 import { scenario4Data } from './campaigns/nats/scenario4';
 import { scenario5Data } from './campaigns/nats/scenario5';
 import { scenario6Data } from './campaigns/nats/scenario6';
+import { scenario7Data } from './campaigns/nats/scenario7';
+import { scenario8Data } from './campaigns/nats/scenario8';
 import { AntennaState } from './equipment/antenna';
 import { ANTENNA_CONFIG_KEYS } from "./equipment/antenna/antenna-config-keys";
 import { defaultSpectrumAnalyzerState } from './equipment/real-time-spectrum-analyzer/defaultSpectrumAnalyzerState';
@@ -137,7 +139,9 @@ export const SCENARIOS: ScenarioData[] = [
   scenario3Data,
   scenario4Data,
   scenario5Data,
-  scenario6Data
+  scenario6Data,
+  scenario7Data,
+  scenario8Data,
 ];
 
 export function isScenarioLocked(scenario: ScenarioData, completedScenarioIds: string[]): boolean {

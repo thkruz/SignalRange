@@ -92,6 +92,9 @@ export class Satellite {
   private readonly frequencyOffset: number;
 
   private readonly randomCache_: Map<string, number> = new Map();
+  private readonly boundUpdateHandler_: () => void;
+  private isSubscribedToEventBus_ = false;
+
   el: Degrees;
   az: Degrees;
   rotation: Degrees = ((Math.random() * 90) - 45) as Degrees;
@@ -130,7 +133,21 @@ export class Satellite {
     // Process received signals through transponders to generate transmitted signals
     this.txSignal = this.processSignals();
 
-    EventBus.getInstance().on(Events.UPDATE, this.update.bind(this));
+    // Store bound handler for proper subscription/unsubscription
+    this.boundUpdateHandler_ = this.update.bind(this);
+  }
+
+  /**
+   * Subscribe to EventBus for update events.
+   * Called by SimulationManager when scenario loads to ensure subscription to current EventBus.
+   */
+  subscribeToEventBus(): void {
+    if (this.isSubscribedToEventBus_) {
+      // Unsubscribe first to avoid duplicate handlers
+      EventBus.getInstance().off(Events.UPDATE, this.boundUpdateHandler_);
+    }
+    EventBus.getInstance().on(Events.UPDATE, this.boundUpdateHandler_);
+    this.isSubscribedToEventBus_ = true;
   }
 
   private static getDefaultState_(): SatelliteState {
@@ -151,8 +168,9 @@ export class Satellite {
       uplinkFrequency: signal.frequency,
       beacon: beaconSignals[index],
       downlinkFrequency: this.getDownlinkFromUplink(signal.frequency),
-      bandwidth: signal.bandwidth,
-      maxPower: signal.power, // Use the initial signal power as max power
+      // TODO: We should be configuring the transponder parameters in the constructor
+      bandwidth: 36e6 as Hertz, // Typical transponder bandwidth
+      maxPower: 50 as dBm, // Use the initial signal power as max power
       gain: 36.5 as dBi, // dB, typical transponder gain
       noiseFigure: 3.5 as dBi, // dB, typical satellite transponder noise figure
       saturationPower: 47 as dBm, // 17 dBW typical saturation power
@@ -168,6 +186,7 @@ export class Satellite {
     this.createRandomValues_();
 
     // Process signals through transponders
+    // Note: rxSignal is populated by antenna.updateTxSignals_() each frame
     this.txSignal = this.processSignals();
 
     // Update satellite health based on conditions

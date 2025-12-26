@@ -1,4 +1,5 @@
 import type { GroundStationConfig } from '@app/assets/ground-station/ground-station-state';
+import { FrequencyBand } from '@app/constants';
 import { type AntennaState } from '@app/equipment/antenna';
 import { ANTENNA_CONFIG_KEYS } from '@app/equipment/antenna/antenna-config-keys';
 import { type CouplerState } from '@app/equipment/rf-front-end/coupler-module/coupler-module';
@@ -52,6 +53,9 @@ export const vermontGroundStation = {
       temperature: 25,
       currentDraw: 0,
       loFrequency: 6425 as MHz,
+      filterHighHz: FrequencyBand.c.upHigh,
+      filterLowHz: FrequencyBand.c.upLow,
+      filterRejectionDb: 40 as dB,
       isExtRefLocked: true,
       frequencyError: 0,
       phaseLockRange: 10000,
@@ -230,6 +234,9 @@ export const maineGroundStationConfig = {
       temperature: 25,
       currentDraw: 0,
       loFrequency: 6425 as MHz,
+      filterHighHz: FrequencyBand.c.upHigh,
+      filterLowHz: FrequencyBand.c.upLow,
+      filterRejectionDb: 40 as dB,
       isExtRefLocked: true,
       frequencyError: 0,
       phaseLockRange: 10000,

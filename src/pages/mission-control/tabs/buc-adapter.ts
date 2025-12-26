@@ -92,6 +92,18 @@ export class BUCAdapter {
       outputPowerDisplay.textContent = isPowered ? `${state.outputPower.toFixed(1)} dBm` : '-- dBm';
     }
 
+    // Display RF output frequency (after LO mixing and bandpass filter)
+    const rfFrequencyDisplay = this.domCache_.get('rfFrequencyDisplay');
+    if (rfFrequencyDisplay) {
+      if (isPowered && this.bucModule.outputSignals.length > 0) {
+        const rfFreqHz = this.bucModule.outputSignals[0].frequency;
+        const rfFreqMHz = rfFreqHz / 1e6;
+        rfFrequencyDisplay.textContent = `${rfFreqMHz.toFixed(2)} MHz`;
+      } else {
+        rfFrequencyDisplay.textContent = '-- MHz';
+      }
+    }
+
     // Calculate and display P1dB margin
     const p1dbMarginDisplay = this.domCache_.get('p1dbMarginDisplay');
     if (p1dbMarginDisplay) {
@@ -114,6 +126,27 @@ export class BUCAdapter {
       } else {
         lockStatus.textContent = '--';
         lockStatus.className = 'status-badge status-badge-off';
+      }
+    }
+
+    // Update sideband status
+    const sidebandStatus = this.domCache_.get('sidebandStatus');
+    if (sidebandStatus) {
+      if (isPowered) {
+        const mode = this.bucModule.getActiveInjectionMode();
+        if (mode === 'low') {
+          sidebandStatus.textContent = 'USB';
+          sidebandStatus.className = 'status-badge status-badge-good';
+        } else if (mode === 'high') {
+          sidebandStatus.textContent = 'LSB';
+          sidebandStatus.className = 'status-badge status-badge-good';
+        } else {
+          sidebandStatus.textContent = 'Out of Band';
+          sidebandStatus.className = 'status-badge status-badge-warning';
+        }
+      } else {
+        sidebandStatus.textContent = '--';
+        sidebandStatus.className = 'status-badge status-badge-off';
       }
     }
 
@@ -175,8 +208,12 @@ export class BUCAdapter {
     this.domCache_.set('powerSwitch', qs('#buc-power', this.containerEl));
     this.domCache_.set('muteSwitch', qs('#buc-mute', this.containerEl));
 
+    // Sideband status
+    this.domCache_.set('sidebandStatus', qs('#buc-sideband-status', this.containerEl));
+
     // RF Status displays
     this.domCache_.set('outputPowerDisplay', qs('#buc-output-power-display', this.containerEl));
+    this.domCache_.set('rfFrequencyDisplay', qs('#buc-rf-frequency-display', this.containerEl));
     this.domCache_.set('p1dbMarginDisplay', qs('#buc-p1db-margin-display', this.containerEl));
     this.domCache_.set('lockStatus', qs('#buc-lock-status', this.containerEl));
 
@@ -355,6 +392,18 @@ export class BUCAdapter {
         outputPowerDisplay.textContent = `${state.outputPower.toFixed(1)} dBm`;
       } else if (!isPowered) {
         outputPowerDisplay.textContent = '-- dBm';
+      }
+    }
+
+    // Display RF output frequency (after LO mixing and bandpass filter)
+    const rfFrequencyDisplay = this.domCache_.get('rfFrequencyDisplay');
+    if (rfFrequencyDisplay) {
+      if (isPowered && this.bucModule.outputSignals.length > 0) {
+        const rfFreqHz = this.bucModule.outputSignals[0].frequency;
+        const rfFreqMHz = rfFreqHz / 1e6;
+        rfFrequencyDisplay.textContent = `${rfFreqMHz.toFixed(2)} MHz`;
+      } else {
+        rfFrequencyDisplay.textContent = '-- MHz';
       }
     }
 

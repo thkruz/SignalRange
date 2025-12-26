@@ -42,6 +42,14 @@ export interface BUCState extends RFFrontEndModuleState {
   /** Phase lock tracking range (Hz) */
   phaseLockRange: number;
 
+  // ═══ Output Filter ═══
+  /** Bandpass filter low edge in Hz */
+  filterLowHz: Hertz;
+  /** Bandpass filter high edge in Hz */
+  filterHighHz: Hertz;
+  /** Out-of-band rejection in dB (negative value) */
+  filterRejectionDb: dB;
+
   // ═══ Gain & Power ═══
   /** BUC gain in dB (typical 0-70 dB range) */
   gain: dB;
@@ -89,6 +97,11 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
       frequencyError: 0, // Hz (locked)
       phaseLockRange: 10000, // ±10 kHz tracking range
 
+      // Output Filter (C-band uplink)
+      filterLowHz: 5.925e9 as Hertz,   // 5.925 GHz
+      filterHighHz: 6.425e9 as Hertz,  // 6.425 GHz
+      filterRejectionDb: -60 as dB,    // Out-of-band rejection
+
       // Gain & Power
       gain: 0 as dB,
       outputPower: -10 as dBm,
@@ -128,10 +141,14 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
 
     // Check for alarms is currently handled by RFFrontEndCore
 
-    // Calculate post-BUC signals (apply upconversion and gain if powered)
+    // Calculate post-BUC signals (apply upconversion, filter, and gain if powered)
     this.outputSignals = this.inputSignals.map(sig => {
       const rfFreq = this.calculateRfFrequency(sig.frequency);
-      const gain = this.state.isPowered && !this.state.isMuted ? this.state.gain : -170;
+      const inBand = this.isInPassband_(rfFreq);
+      const filterLoss = inBand ? 0 : this.state.filterRejectionDb;
+      const gain = this.state.isPowered && !this.state.isMuted
+        ? this.state.gain + filterLoss
+        : -170;
       return {
         ...sig,
         frequency: rfFreq,
@@ -200,11 +217,11 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
 
   /**
    * Calculate upconverted RF frequency with physics-based accuracy
-   * RF_out = IF_in + LO (for upconversion)
+   * Mixer produces both sidebands (LO+IF and LO-IF), bandpass filter selects in-band signal.
    * When unlocked, frequency drifts by ±1-100 ppm
    *
    * @param ifFrequency IF input frequency in Hz
-   * @returns RF output frequency in Hz
+   * @returns RF output frequency in Hz (the in-band sideband)
    */
   calculateRfFrequency(ifFrequency: IfFrequency): RfFrequency {
     const loFrequencyHz = this.state.loFrequency * 1e6;
@@ -214,7 +231,48 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
       ? loFrequencyHz
       : loFrequencyHz + this.state.frequencyError;
 
-    return (ifFrequency + effectiveLO) as RfFrequency;
+    // Mixer produces both sidebands
+    const upperSideband = effectiveLO + ifFrequency;  // LO + IF
+    const lowerSideband = effectiveLO - ifFrequency;  // LO - IF
+
+    // Bandpass filter selects the in-band signal
+    const upperInBand = this.isInPassband_(upperSideband);
+    const lowerInBand = this.isInPassband_(lowerSideband);
+
+    if (upperInBand) {
+      return upperSideband as RfFrequency;
+    } else if (lowerInBand) {
+      return lowerSideband as RfFrequency;
+    }
+
+    // Neither in band - return upper sideband (will be attenuated by filter)
+    return upperSideband as RfFrequency;
+  }
+
+  /**
+   * Check if a frequency falls within the output bandpass filter
+   */
+  private isInPassband_(frequencyHz: number): boolean {
+    return frequencyHz >= this.state.filterLowHz
+        && frequencyHz <= this.state.filterHighHz;
+  }
+
+  /**
+   * Get the active LO injection mode based on which sideband is in-band
+   * @returns 'low' for USB (LO+IF in band), 'high' for LSB (LO-IF in band), 'none' if neither
+   */
+  getActiveInjectionMode(): 'low' | 'high' | 'none' {
+    if (this.inputSignals.length === 0) return 'none';
+
+    const ifFreq = this.inputSignals[0].frequency;
+    const loHz = this.state.loFrequency * 1e6;
+
+    const upperInBand = this.isInPassband_(loHz + ifFreq);
+    const lowerInBand = this.isInPassband_(loHz - ifFreq);
+
+    if (upperInBand) return 'low';   // Low-side injection → USB
+    if (lowerInBand) return 'high';  // High-side injection → LSB
+    return 'none';  // Neither in band
   }
 
   // ═══════════════════════════════════════════════════════════════

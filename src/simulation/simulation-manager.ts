@@ -39,6 +39,9 @@ export class SimulationManager {
 
     this.satellites = ScenarioManager.getInstance().settings.satellites;
 
+    // Subscribe satellites to current EventBus (they may have been created before EventBus was ready)
+    this.satellites.forEach(sat => sat.subscribeToEventBus());
+
     this.satelliteSignals = this.satellites.flatMap(sat => sat.txSignal);
 
     this.lastFrameTime = Date.now();

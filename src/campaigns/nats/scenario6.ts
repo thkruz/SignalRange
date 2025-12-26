@@ -147,7 +147,7 @@ export const scenario6Data: ScenarioData = {
             noradId: 61525,
             frequency: 5943e6 as RfFrequency,
             polarization: 'H',
-            power: 40 as dBm,
+            power: 25 as dBm,
             bandwidth: 36e6 as Hertz,
             modulation: 'QPSK' as ModulationType,
             fec: '3/4' as FECType,

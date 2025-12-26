@@ -121,12 +121,20 @@ export class TxChainTab extends BaseElement {
                       <span id="buc-output-power-display" class="metric-value">-10.0 dBm</span>
                     </div>
                     <div class="metric-row">
+                      <span class="metric-label">RF Freq:</span>
+                      <span id="buc-rf-frequency-display" class="metric-value">-- MHz</span>
+                    </div>
+                    <div class="metric-row">
                       <span class="metric-label">P1dB Margin:</span>
                       <span id="buc-p1db-margin-display" class="metric-value">25.0 dB</span>
                     </div>
                     <div class="metric-row">
                       <span class="metric-label">Lock:</span>
                       <span id="buc-lock-status" class="status-badge status-badge-locked">Locked</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Sideband:</span>
+                      <span id="buc-sideband-status" class="status-badge">--</span>
                     </div>
                   </div>
                 </div>

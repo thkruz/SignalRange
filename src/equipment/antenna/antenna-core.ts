@@ -768,8 +768,8 @@ export abstract class AntennaCore extends BaseEquipment {
     const beaconFreq = this.rfFrontEnd_.lnbModule.state.loFrequency * 1e6 - this.state.beaconFrequencyHz;
     const searchBw = this.state.beaconSearchBwHz;
 
-    // Find signals within beacon search bandwidth (look at the IF signals post LNA)
-    const beaconSignals = this.rfFrontEnd_.filterModule.outputSignals.filter(sig => {
+    // Find signals within beacon search bandwidth (use AGC output for consistency with spectrum analyzer)
+    const beaconSignals = this.rfFrontEnd_.agcModule.outputSignals.filter(sig => {
       const freqDiff = Math.abs((sig.frequency as number) - beaconFreq);
       return freqDiff <= searchBw / 2;
     });
@@ -778,7 +778,7 @@ export abstract class AntennaCore extends BaseEquipment {
       return { power: null, cn: null };
     }
 
-    // Get strongest signal power in beacon range
+    // Get strongest signal power in beacon range (includes full RX chain gain)
     const strongestPower = beaconSignals.reduce(
       (max, sig) => Math.max(max, sig.power as number),
       -Infinity
@@ -790,14 +790,19 @@ export abstract class AntennaCore extends BaseEquipment {
 
     // Get noise floor using TRACKING bandwidth (narrow beacon receiver)
     const trackingBw = this.state.beaconTrackingBwHz;
-    const { noiseFloorNoGain } =
+    const { noiseFloorNoGain, shouldApplyGain } =
       this.rfFrontEnd_.couplerModule.signalPathManager.getNoiseFloorAt(
         TapPoint.RX_IF,
         trackingBw as Hertz
       );
 
-    // C/N = Signal Power - Noise Floor (both in pre-gain reference frame)
-    const cn = strongestPower - noiseFloorNoGain;
+    // Apply gain to noise floor to match signal reference frame
+    const noiseFloor = shouldApplyGain
+      ? noiseFloorNoGain + this.rfFrontEnd_.couplerModule.signalPathManager.getTotalRxGain()
+      : noiseFloorNoGain;
+
+    // C/N = Signal Power - Noise Floor (both with full RX chain gain applied)
+    const cn = strongestPower - noiseFloor;
 
     return { power: strongestPower, cn };
   }

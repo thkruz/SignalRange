@@ -168,12 +168,14 @@ export class IQConstellationAdapter {
     this.cnIndicator_.textContent = cnText;
     this.cnIndicator_.className = `iq-status-cn font-monospace ${cnClass}`;
 
-    // Lock indicator with ADC status suffix
+    // Lock indicator with ADC status and bandwidth clipping suffix
     let lockText = state.hasLock ? 'LOCKED' : state.hasCarrier ? 'CARRIER' : 'NO LOCK';
     if (adcStatus === 'clipping' || adcStatus === 'severe-clipping') {
       lockText += ' (CLIP)';
     } else if (adcStatus === 'low-level' || adcStatus === 'severe-low') {
       lockText += ' (LOW)';
+    } else if (state.isBandwidthClipped) {
+      lockText += ' (BW)';
     }
     const lockClass = state.hasLock ? 'text-success' : state.hasCarrier ? 'text-warning' : 'text-danger';
     this.lockIndicator_.textContent = lockText;

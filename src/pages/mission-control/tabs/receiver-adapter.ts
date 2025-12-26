@@ -1,10 +1,10 @@
-import { IQSignalInfo, Receiver, ReceiverModemState } from '@app/equipment/receiver/receiver';
+import { CardAlarmBadge } from '@app/components/card-alarm-badge/card-alarm-badge';
+import { qs } from '@app/engine/utils/query-selector';
+import { AlarmStatus } from '@app/equipment/base-equipment';
 import { ADCStatus } from '@app/equipment/receiver/adc-degradation';
+import { IQSignalInfo, Receiver, ReceiverModemState } from '@app/equipment/receiver/receiver';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
-import { CardAlarmBadge } from '@app/components/card-alarm-badge/card-alarm-badge';
-import { AlarmStatus } from '@app/equipment/base-equipment';
-import { qs } from '@app/engine/utils/query-selector';
 
 /**
  * ReceiverAdapter - Bridges Receiver equipment class to modern Mission Control UI
@@ -123,6 +123,7 @@ export class ReceiverAdapter {
     this.cacheElement_('cn-raw-display');
     this.cacheElement_('cn-effective-display');
     this.cacheElement_('power-level-display');
+    this.cacheElement_('noise-floor-display');
 
     // ADC status displays
     this.cacheElement_('adc-level-display');
@@ -350,12 +351,19 @@ export class ReceiverAdapter {
   private getModemSignalClass_(modem: ReceiverModemState): string {
     if (!modem.isPowered) return '';
 
-    const hasSignal = this.receiver.hasSignalForModem(modem);
-    const isDegraded = this.receiver.isSignalDegraded(modem);
+    const signalInfo = this.receiver.getSignalsInBandwidth(modem);
+    if (!signalInfo.hasCarrier) return '';
 
-    if (!hasSignal) return '';
-    if (isDegraded) return 'btn-rx-signal-degraded';
-    return 'btn-rx-signal-good';
+    const effectiveCn = signalInfo.effectiveCnRatio_dB ?? signalInfo.cnRatio_dB;
+
+    // Match signal quality thresholds
+    if (signalInfo.hasLock && effectiveCn > 15) {
+      return 'btn-rx-signal-good';
+    }
+    if (effectiveCn > 8) {
+      return 'btn-rx-signal-degraded';
+    }
+    return 'btn-rx-signal-error';
   }
 
   private updateConfigurationInputs_(modem: ReceiverModemState): void {
@@ -489,55 +497,75 @@ export class ReceiverAdapter {
       powerSwitch.checked = activeModem.isPowered;
     }
 
-    // Signal Quality Status Badge
+    // Get signal info for C/N and ADC data (needed for signal quality)
+    const signalInfo = this.receiver.getSignalsInBandwidth(activeModem);
+
+    // Signal Quality Status Badge - use actual C/N thresholds matching IQ constellation
     const signalStatus = this.domCache_.get('signal-status');
     if (signalStatus) {
       if (!activeModem.isPowered) {
         signalStatus.className = 'status-badge status-badge-none';
         signalStatus.textContent = 'Off';
+      } else if (!signalInfo.hasCarrier) {
+        signalStatus.className = 'status-badge status-badge-none';
+        signalStatus.textContent = 'None';
       } else {
-        const hasSignal = this.receiver.hasSignalForModem(activeModem);
-        const isDegraded = this.receiver.isSignalDegraded(activeModem);
+        // Use effective C/N (includes ADC penalty) for quality assessment
+        const effectiveCn = signalInfo.effectiveCnRatio_dB ?? signalInfo.cnRatio_dB;
 
-        if (!hasSignal) {
-          signalStatus.className = 'status-badge status-badge-none';
-          signalStatus.textContent = 'None';
-        } else if (isDegraded) {
-          signalStatus.className = 'status-badge status-badge-degraded';
-          signalStatus.textContent = 'Degraded';
-        } else {
+        // Match IQ constellation thresholds:
+        // - Good: C/N > 15 dB AND locked
+        // - Degraded: 8 < C/N <= 15 dB OR unlocked with decent C/N
+        // - Poor: C/N <= 8 dB
+        if (signalInfo.hasLock && effectiveCn > 15) {
           signalStatus.className = 'status-badge status-badge-good';
           signalStatus.textContent = 'Good';
+        } else if (effectiveCn > 8) {
+          signalStatus.className = 'status-badge status-badge-degraded';
+          signalStatus.textContent = signalInfo.hasLock ? 'Degraded' : 'Unlocked';
+        } else if (effectiveCn > 0) {
+          signalStatus.className = 'status-badge status-badge-error';
+          signalStatus.textContent = 'Poor';
+        } else {
+          signalStatus.className = 'status-badge status-badge-error';
+          signalStatus.textContent = 'Critical';
         }
       }
     }
 
-    // Get signal info for C/N and ADC data
-    const signalInfo = this.receiver.getSignalsInBandwidth(activeModem);
+    // Use hasCarrier for all display logic (consistent with signal quality badge)
+    const hasCarrier = signalInfo.hasCarrier;
 
-    // Raw C/N display
+    // Raw C/N display - only show when we have a carrier
     const cnRawDisplay = this.domCache_.get('cn-raw-display');
     if (cnRawDisplay) {
       const cn = signalInfo.cnRatio_dB;
-      cnRawDisplay.textContent = cn > -50 ? `${cn.toFixed(1)} dB` : '-- dB';
+      cnRawDisplay.textContent = (hasCarrier && cn > -50) ? `${cn.toFixed(1)} dB` : '-- dB';
     }
 
-    // Effective C/N display
+    // Effective C/N display - only show when we have a carrier
     const cnEffectiveDisplay = this.domCache_.get('cn-effective-display');
     if (cnEffectiveDisplay) {
       const effectiveCn = signalInfo.effectiveCnRatio_dB ?? signalInfo.cnRatio_dB;
-      cnEffectiveDisplay.textContent = effectiveCn > -50 ? `${effectiveCn.toFixed(1)} dB` : '-- dB';
+      cnEffectiveDisplay.textContent = (hasCarrier && effectiveCn > -50) ? `${effectiveCn.toFixed(1)} dB` : '-- dB';
     }
 
-    // Power level display
+    // Power level display - only show when we have a carrier
     const powerLevelDisplay = this.domCache_.get('power-level-display');
     if (powerLevelDisplay) {
-      const power = this.receiver.getPowerForModem(activeModem);
-      powerLevelDisplay.textContent = power !== null ? `${power.toFixed(1)} dBm` : '-- dBm';
+      const power = signalInfo.signalLevel_dBm;
+      powerLevelDisplay.textContent = (hasCarrier && power !== undefined) ? `${power.toFixed(1)} dBm` : '-- dBm';
     }
 
-    // Update ADC status displays
-    this.updateAdcStatus_(signalInfo);
+    // Noise floor display (for debugging/teaching) - always show if available
+    const noiseFloorDisplay = this.domCache_.get('noise-floor-display');
+    if (noiseFloorDisplay) {
+      const noiseFloor = signalInfo.noiseFloor_dBm;
+      noiseFloorDisplay.textContent = noiseFloor !== undefined ? `${noiseFloor.toFixed(1)} dBm` : '-- dBm';
+    }
+
+    // Update ADC status displays - only show actual values when we have a carrier
+    this.updateAdcStatus_(signalInfo, hasCarrier);
 
     // Update alarm badge
     const alarms = this.getAlarmsFromReceiver_();
@@ -546,14 +574,19 @@ export class ReceiverAdapter {
 
   /**
    * Update ADC status displays based on signal info
+   * @param signalInfo Signal info from receiver
+   * @param hasSignal Whether a matching signal exists (mod + FEC match)
    */
-  private updateAdcStatus_(signalInfo: IQSignalInfo): void {
+  private updateAdcStatus_(signalInfo: IQSignalInfo, hasSignal: boolean): void {
     const adcDeg = signalInfo.adcDegradation;
+
+    // Only show actual ADC values when we have a matching signal
+    const showAdcValues = hasSignal && adcDeg;
 
     // ADC Level display
     const adcLevelEl = this.domCache_.get('adc-level-display');
     if (adcLevelEl) {
-      if (adcDeg) {
+      if (showAdcValues) {
         adcLevelEl.textContent = `${adcDeg.inputLevel_dBFS.toFixed(1)} dBFS`;
         adcLevelEl.className = 'fw-bold font-monospace ' + this.getAdcLevelClass_(adcDeg.status);
       } else {
@@ -565,7 +598,7 @@ export class ReceiverAdapter {
     // ADC Status badge
     const adcStatusEl = this.domCache_.get('adc-status-display');
     if (adcStatusEl) {
-      if (adcDeg) {
+      if (showAdcValues) {
         adcStatusEl.textContent = this.getAdcStatusText_(adcDeg.status);
         adcStatusEl.className = 'status-badge ' + this.getAdcStatusBadgeClass_(adcDeg.status);
       } else {
@@ -574,10 +607,10 @@ export class ReceiverAdapter {
       }
     }
 
-    // Show/hide degradation breakdown
+    // Show/hide degradation breakdown - only when we have a matching signal with penalties
     const degradationSection = this.domCache_.get('degradation-section');
     if (degradationSection) {
-      if (adcDeg && adcDeg.totalPenalty_dB > 0.1) {
+      if (showAdcValues && adcDeg.totalPenalty_dB > 0.1) {
         degradationSection.classList.remove('d-none');
         this.updatePenaltyDisplay_('clip-penalty-display', adcDeg.clipPenalty_dB);
         this.updatePenaltyDisplay_('quant-penalty-display', adcDeg.quantizationPenalty_dB);
@@ -641,18 +674,30 @@ export class ReceiverAdapter {
       return;
     }
 
-    const hasSignal = this.receiver.hasSignalForModem(activeModem);
-    const isDegraded = this.receiver.isSignalDegraded(activeModem);
+    const signalInfo = this.receiver.getSignalsInBandwidth(activeModem);
 
-    if (!hasSignal) {
+    if (!signalInfo.hasCarrier) {
       statusBar.className = 'alert alert-info mt-3';
       statusBar.textContent = 'Searching for signal...';
-    } else if (isDegraded) {
-      statusBar.className = 'alert alert-warning mt-3';
-      statusBar.textContent = 'Signal detected (degraded quality)';
-    } else {
+      return;
+    }
+
+    const effectiveCn = signalInfo.effectiveCnRatio_dB ?? signalInfo.cnRatio_dB;
+
+    // Match signal quality badge thresholds
+    if (signalInfo.hasLock && effectiveCn > 15) {
       statusBar.className = 'alert alert-success mt-3';
       statusBar.textContent = 'Signal locked - Good quality';
+    } else if (effectiveCn > 8) {
+      statusBar.className = 'alert alert-warning mt-3';
+      const lockStatus = signalInfo.hasLock ? 'locked' : 'unlocked';
+      statusBar.textContent = `Signal ${lockStatus} - Degraded quality (C/N: ${effectiveCn.toFixed(1)} dB)`;
+    } else if (effectiveCn > 0) {
+      statusBar.className = 'alert alert-danger mt-3';
+      statusBar.textContent = `Signal poor - C/N: ${effectiveCn.toFixed(1)} dB`;
+    } else {
+      statusBar.className = 'alert alert-danger mt-3';
+      statusBar.textContent = `Signal critical - C/N: ${effectiveCn.toFixed(1)} dB`;
     }
   }
 
@@ -665,17 +710,32 @@ export class ReceiverAdapter {
 
     if (!activeModem) return alarms;
 
-    if (activeModem.isPowered) {
-      const hasSignal = this.receiver.hasSignalForModem(activeModem);
-      const isDegraded = this.receiver.isSignalDegraded(activeModem);
-
-      if (!hasSignal) {
-        alarms.push({ severity: 'warning', message: 'No signal detected' });
-      } else if (isDegraded) {
-        alarms.push({ severity: 'warning', message: 'Signal degraded' });
-      }
-    } else {
+    if (!activeModem.isPowered) {
       alarms.push({ severity: 'info', message: 'Modem powered off' });
+      return alarms;
+    }
+
+    const signalInfo = this.receiver.getSignalsInBandwidth(activeModem);
+
+    if (!signalInfo.hasCarrier) {
+      alarms.push({ severity: 'warning', message: 'No signal detected' });
+      return alarms;
+    }
+
+    const effectiveCn = signalInfo.effectiveCnRatio_dB ?? signalInfo.cnRatio_dB;
+
+    // Match signal quality thresholds
+    if (effectiveCn <= 0) {
+      alarms.push({ severity: 'error', message: `Critical C/N: ${effectiveCn.toFixed(1)} dB` });
+    } else if (effectiveCn <= 8) {
+      alarms.push({ severity: 'error', message: `Poor C/N: ${effectiveCn.toFixed(1)} dB` });
+    } else if (effectiveCn <= 15 || !signalInfo.hasLock) {
+      alarms.push({ severity: 'warning', message: signalInfo.hasLock ? 'Signal degraded' : 'Signal unlocked' });
+    }
+
+    // Add interference warning if present
+    if (signalInfo.interferenceCount && signalInfo.interferenceCount > 0) {
+      alarms.push({ severity: 'warning', message: `${signalInfo.interferenceCount} interferer(s) detected` });
     }
 
     return alarms;

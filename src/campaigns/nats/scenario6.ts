@@ -166,7 +166,7 @@ export const scenario6Data: ScenarioData = {
             noradId: 61525,
             frequency: 5960e6 as RfFrequency,
             polarization: 'H',
-            power: 80 as dBm,
+            power: 63 as dBm,
             bandwidth: 1e6 as Hertz, // Narrowband spike
             modulation: 'QPSK' as ModulationType,
             fec: '3/4' as FECType,

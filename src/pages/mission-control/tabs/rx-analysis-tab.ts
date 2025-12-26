@@ -554,6 +554,12 @@ export class RxAnalysisTab extends BaseElement {
                           <span id="power-level-display" class="fw-bold font-monospace">-- dBm</span>
                         </div>
                       </div>
+                      <div class="mb-2">
+                        <div class="d-flex justify-content-between">
+                          <span class="text-muted small">Noise Floor:</span>
+                          <span id="noise-floor-display" class="fw-bold font-monospace">-- dBm</span>
+                        </div>
+                      </div>
 
                       <!-- ADC Status Section -->
                       <hr class="my-2">

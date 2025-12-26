@@ -458,7 +458,7 @@ export class Receiver extends BaseEquipment {
 
   public hasSignalForModem(modem: ReceiverModemState): boolean {
     const visibleSignals = this.getVisibleSignals(modem);
-    return visibleSignals.length > 0;
+    return visibleSignals.some(s => s.feed !== '');
   }
 
   public isSignalDegraded(modem: ReceiverModemState): boolean {

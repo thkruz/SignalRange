@@ -247,7 +247,7 @@ export const scenario3Data: ScenarioData = {
     {
       id: 'configure-maine-antenna',
       title: 'Phase 4: Acquire TIDEMARK-1 from Maine',
-      description: 'Point the Maine antenna at TIDEMARK-1. The look angles differ from Vermont due to the 150-mile separation between sites. Use program-track mode with Az: 215.8°, El: 23.1°.',
+      description: 'Point the Maine antenna at TIDEMARK-1. The look angles differ from Vermont due to the 150-mile separation between sites. Use program-track mode with Az: 164.2°, El: 23.1°.',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['verify-maine-equipment'],
       conditions: [
@@ -494,7 +494,7 @@ export const scenario3Data: ScenarioData = {
           GPSDO's locked at Maine. Good timing reference. Now point their antenna at TIDEMARK-1.
         </p>
         <p>
-          From Maine's location, that's azimuth 215.8, elevation 23.1. Different geometry than from Vermont - the satellite appears in a slightly different part of the sky from 150 miles away.
+          From Maine's location, that's azimuth 164.2, elevation 23.1. Different geometry than from Vermont - the satellite appears in a slightly different part of the sky from 150 miles away.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,

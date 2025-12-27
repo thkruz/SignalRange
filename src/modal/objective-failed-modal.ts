@@ -1,6 +1,7 @@
 import { html } from '@app/engine/utils/development/formatter';
 import { DraggableModal } from '@app/engine/ui/draggable-modal';
 import { ScenarioManager } from '@app/scenario-manager';
+import { clearPersistedStore } from '@app/sync/storage';
 import { ProgressSaveManager } from '@app/user-account/progress-save-manager';
 import { DialogManager } from './dialog-manager';
 import { PendingQuizIndicator } from './pending-quiz-indicator';
@@ -97,6 +98,9 @@ export class ObjectiveFailedModal extends DraggableModal {
 
     // Clear checkpoint before refreshing
     await this.progressSaveManager_.clearCheckpoint(scenario.data.id);
+
+    // Clear local equipment and objective state so scenario starts fresh
+    await clearPersistedStore();
 
     // Refresh the page - will start fresh since no checkpoint exists
     window.location.reload();

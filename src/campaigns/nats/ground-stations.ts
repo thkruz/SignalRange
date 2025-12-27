@@ -4,7 +4,8 @@ import { type AntennaState } from '@app/equipment/antenna';
 import { ANTENNA_CONFIG_KEYS } from '@app/equipment/antenna/antenna-config-keys';
 import { type CouplerState } from '@app/equipment/rf-front-end/coupler-module/coupler-module';
 import { TapPoint } from "@app/equipment/rf-front-end/coupler-module/tap-points";
-import type { dB, dBm, Hertz, IfSignal, MHz } from '@app/types';
+import { SignalOrigin } from '@app/signal-origin';
+import type { dB, dBi, dBm, FECType, Hertz, IfFrequency, MHz, ModulationType } from '@app/types';
 import type { Degrees } from 'ootk';
 
 export const vermontGroundStation = {
@@ -75,8 +76,8 @@ export const vermontGroundStation = {
       isOverdriven: false,
       imdLevel: -30,
       temperature: 45,
-      isHpaEnabled: false,
-      isHpaSwitchEnabled: false,
+      isHpaEnabled: true,
+      isHpaSwitchEnabled: true,
       noiseFloor: -140,
       gain: 44 as dB,
     },
@@ -153,12 +154,12 @@ export const vermontGroundStation = {
   }],
   spectrumAnalyzers: [
     {
-      referenceLevel: -100 as dBm, // Set for beacon observation
+      referenceLevel: -120 as dBm, // Set for beacon observation
       centerFrequency: 1247.5e6 as Hertz, // IF frequency for beacon
       span: 2e3 as Hertz, // 2 kHz span for CW beacon
       rbw: 1e3 as Hertz, // 1 kHz RBW for CW beacon
-      minAmplitude: -105 as dBm,
-      maxAmplitude: -85 as dBm,
+      minAmplitude: -121 as dBm,
+      maxAmplitude: -100 as dBm,
       scaleDbPerDiv: 10 as dB,
       screenMode: 'both',
       inputUnit: 'MHz',
@@ -176,20 +177,30 @@ export const vermontGroundStation = {
   transmitters: [{
     activeModem: 1,
     modems: [{
-      modem_number: 1,
-      isPowered: false,
-      isTransmitting: false,
-      isFaulted: false,
-      isLoopback: false,
+      isPowered: true,
       antenna_id: 1,
-      ifSignal: {
-        frequency: 70e6,
-        bandwidth: 36e6,
-        power: -10,
-      } as IfSignal,
-      id: 0,
+      modem_number: 1,
+      isFaulted: false,
+      isTransmitting: true,
+      isTransmittingSwitchUp: true,
       isFaultSwitchUp: false,
-      isTransmittingSwitchUp: false
+      id: 1,
+      isLoopback: false,
+      ifSignal: {
+        signalId: 'TIDEMARK-1-Teleport',
+        serverId: 1,
+        noradId: 61525, polarization: 'V',
+        feed: '',
+        isDegraded: false,
+        origin: SignalOrigin.TRANSMITTER,
+        noiseFloor: null,
+        gainInPath: 0 as dBi,
+        frequency: 1094e6 as IfFrequency,
+        power: -7 as dBm,
+        bandwidth: 36e6 as Hertz, // Match payload bandwidth
+        modulation: 'QPSK' as ModulationType,
+        fec: '3/4' as FECType,
+      },
     }],
   }],
   receivers: [{

@@ -328,6 +328,7 @@ export enum Events {
 
   // Navigation events
   SWITCH_TAB = 'navigation:switch:tab',
+  MISSION_OVERVIEW_SELECTED = 'navigation:mission-overview',
 
   // Weather events
   WEATHER_EVENT_STARTED = 'weather:event:started',
@@ -406,6 +407,7 @@ export interface EventMap {
   [Events.ALARM_STATE_CHANGED]: [AlarmStateChangedData];
 
   [Events.SWITCH_TAB]: [{ tabId: string }];
+  [Events.MISSION_OVERVIEW_SELECTED]: [];
 
   // Weather events
   [Events.WEATHER_EVENT_STARTED]: [WeatherEventData];

@@ -1,0 +1,96 @@
+/**
+ * Mission Overview Tab Styles
+ */
+
+.mission-overview-tab {
+  padding: 0.75rem;
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+}
+
+/* Title styling */
+.mission-overview-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--mc-text-primary);
+  margin-bottom: 0.5rem;
+}
+
+.section-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--mc-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.5rem;
+}
+
+/* Asset cards */
+.asset-card {
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+}
+
+.asset-card:hover {
+  border-color: var(--mc-primary);
+  box-shadow: 0 0 0 1px var(--mc-primary);
+}
+
+.asset-card:active {
+  transform: scale(0.995);
+}
+
+.asset-card .card-body {
+  padding: 0.75rem;
+}
+
+.asset-card .card-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0;
+}
+
+/* Asset icon */
+.asset-icon {
+  width: 40px;
+  height: 40px;
+  filter: invert(1);
+}
+
+/* Equipment counts */
+.equipment-counts {
+  padding: 0.5rem 0;
+}
+
+.equipment-count {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.count-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--mc-text-primary);
+  line-height: 1.2;
+}
+
+.count-label {
+  font-size: 0.625rem;
+  text-transform: uppercase;
+  color: var(--mc-text-secondary);
+  letter-spacing: 0.5px;
+  margin-top: 0.125rem;
+}
+
+/* Status badges - extend from dashboard-tab.css */
+.status-badge-yellow {
+  background: rgba(243, 156, 18, 0.15);
+  color: #f39c12;
+}
+
+/* Clickable card cursor */
+.clickable-card {
+  cursor: pointer;
+}

@@ -116,13 +116,13 @@ export const scenario1Data: ScenarioData = {
           params: {
             question: 'What is the current state of the HPA (High Power Amplifier)?',
             options: [
-              'Powered but muted - safe standby mode',
+              'Transmitting with 10 db backoff',
+              'Powered on but not enabled (safe standby)',
               'Transmitting at full power',
               'Powered off completely',
-              'Faulted - showing alarm condition',
             ],
             correctIndex: 0,
-            explanation: 'The HPA is in safe standby mode - powered on but with RF output muted. This is the normal state when not actively transmitting. The BUC mute prevents any unintended RF emission.',
+            explanation: 'The HPA is powered on and transmitting with 10 dB backoff, which is a safe condition for routine operations. This reduces stress on the amplifier while still allowing signal transmission.',
             pointPenalty: 5,
           },
           mustMaintain: false,

@@ -14,6 +14,7 @@ import { ScenarioManager } from "@app/scenario-manager";
 import { SimulationManager } from "@app/simulation/simulation-manager";
 import antennaPng from '../../assets/icons/antenna.png';
 import checklistPng from "../../assets/icons/checklist.png";
+import dashboardPng from '../../assets/icons/dashboard.png';
 import historyPng from '../../assets/icons/history.png';
 import layoutSidebarLeftCollapsePng from '../../assets/icons/layout-sidebar-left-collapse.png';
 import layoutSidebarLeftExpandPng from '../../assets/icons/layout-sidebar-left-expand.png';
@@ -79,6 +80,29 @@ export class AssetTreeSidebar extends BaseElement {
 
     EventBus.getInstance().on(Events.ROUTE_CHANGED, () => {
       this.stopChecklistRefreshTimer_();
+    });
+
+    // Listen for asset selection from other components (e.g., Mission Overview cards)
+    EventBus.getInstance().on(Events.ASSET_SELECTED, (data) => {
+      this.updateSelectionUI_(data.id);
+    });
+  }
+
+  /**
+   * Update the sidebar selection UI when an asset is selected externally
+   */
+  private updateSelectionUI_(assetId: string): void {
+    this.selectedAssetId_ = assetId;
+
+    // Update UI - remove active from all items and add to the selected one
+    const assetItems = this.dom_.querySelectorAll('.list-group-item-action:not(.placeholder-item):not(.mission-brief-icon):not(.checklist-icon):not(.dialog-icon)');
+    assetItems.forEach(item => {
+      const itemId = item.getAttribute('data-asset-id');
+      if (itemId === assetId) {
+        item.classList.add('active');
+      } else {
+        item.classList.remove('active');
+      }
     });
   }
 
@@ -210,7 +234,20 @@ export class AssetTreeSidebar extends BaseElement {
   private renderAssetTree_(): void {
     const treeContainer = qs('#asset-tree', this.dom_);
 
+    const isMissionOverviewSelected = this.selectedAssetId_ === null;
+
     const treeHtml = html`
+      <div class="list-group list-group-flush mb-3">
+        <a class="list-group-item list-group-item-action d-flex align-items-center mission-overview-item ${isMissionOverviewSelected ? 'active' : ''}"
+           data-asset-type="mission-overview"
+           data-tooltip="Mission Overview">
+          <span class="item-icon">
+            <img src="${dashboardPng}" alt="Mission Overview"/>
+          </span>
+          <span class="flex-fill">Mission Overview</span>
+        </a>
+      </div>
+
       <div id="mission-icons-section" class="mission-icons-section list-group list-group-flush" style="display: none;">
         <div class="list-group-header">
           <span class="list-group-header-text">Mission</span>
@@ -309,14 +346,27 @@ export class AssetTreeSidebar extends BaseElement {
    * Add event listeners to tree items
    */
   private addTreeEventListeners_(): void {
-    const assetItems = this.dom_.querySelectorAll('.list-group-item-action:not(.placeholder-item)');
+    const assetItems = this.dom_.querySelectorAll('.list-group-item-action:not(.placeholder-item):not(.mission-brief-icon):not(.checklist-icon):not(.dialog-icon)');
 
     assetItems.forEach(item => {
       item.addEventListener('click', (e) => {
         e.preventDefault();
-        const type = item.getAttribute('data-asset-type') as 'ground-station' | 'satellite';
-        const id = item.getAttribute('data-asset-id');
+        const type = item.getAttribute('data-asset-type') as 'ground-station' | 'satellite' | 'mission-overview';
 
+        // Handle Mission Overview selection
+        if (type === 'mission-overview') {
+          this.selectedAssetId_ = null;
+
+          // Update UI
+          assetItems.forEach(i => i.classList.remove('active'));
+          item.classList.add('active');
+
+          // Emit mission overview selected event
+          EventBus.getInstance().emit(Events.MISSION_OVERVIEW_SELECTED);
+          return;
+        }
+
+        const id = item.getAttribute('data-asset-id');
         if (!id) return;
 
         // Update selection state

@@ -14,6 +14,7 @@ import './tabbed-canvas.css';
 import { ACUControlTab } from './tabs/acu-control-tab';
 import { DashboardTab } from './tabs/dashboard-tab';
 import { GPSTimingTab } from './tabs/gps-timing-tab';
+import { MissionOverviewTab } from './tabs/mission-overview-tab';
 import { RxAnalysisTab } from './tabs/rx-analysis-tab';
 import { SatelliteDashboardTab } from './tabs/satellite-dashboard-tab';
 import { TxChainTab } from './tabs/tx-chain-tab';
@@ -28,9 +29,9 @@ import { TxChainTab } from './tabs/tx-chain-tab';
 export class TabbedCanvas extends BaseElement {
   static readonly containerId = 'tabbed-canvas-container';
 
-  private activeTab_: string = 'welcome';
+  private activeTab_: string = 'mission-overview';
   private selectedAssetId_: string | null = null;
-  private readonly tabInstances_: Map<string, ACUControlTab | DashboardTab | RxAnalysisTab | TxChainTab | GPSTimingTab | SatelliteDashboardTab> = new Map();
+  private readonly tabInstances_: Map<string, ACUControlTab | DashboardTab | RxAnalysisTab | TxChainTab | GPSTimingTab | SatelliteDashboardTab | MissionOverviewTab> = new Map();
 
   protected html_ = html`
     <div class="tabbed-canvas">
@@ -45,7 +46,7 @@ export class TabbedCanvas extends BaseElement {
     super();
     this.init_(parentId, 'replace');
     this.dom_ = qs('.tabbed-canvas');
-    this.renderWelcomeScreen_();
+    this.renderMissionOverview_();
   }
 
   protected addEventListeners_(): void {
@@ -57,6 +58,14 @@ export class TabbedCanvas extends BaseElement {
     // Listen for tab switch requests from other components (e.g., dashboard cards)
     EventBus.getInstance().on(Events.SWITCH_TAB, (data) => {
       this.switchTab_(data.tabId);
+    });
+
+    // Listen for mission overview selection
+    EventBus.getInstance().on(Events.MISSION_OVERVIEW_SELECTED, () => {
+      this.selectedAssetId_ = null;
+      this.tabInstances_.forEach(tab => tab.dispose());
+      this.tabInstances_.clear();
+      this.renderMissionOverview_();
     });
   }
 
@@ -80,20 +89,34 @@ export class TabbedCanvas extends BaseElement {
   }
 
   /**
-   * Render welcome screen (no asset selected)
+   * Render mission overview (no asset selected)
    */
-  private renderWelcomeScreen_(): void {
+  private renderMissionOverview_(): void {
     const tabBar = qs('#tab-bar', this.dom_);
-    const content = qs('#canvas-content', this.dom_);
 
+    // Clear tab bar - mission overview has no tabs
     tabBar.innerHTML = '';
-    content.innerHTML = html`
-      <div class="welcome-screen">
-        <div class="welcome-icon">🛰️</div>
-        <h2>Welcome to Mission Control</h2>
-        <p>Select a ground station from the asset tree to begin.</p>
-      </div>
-    `;
+
+    // Deactivate all existing tabs
+    this.tabInstances_.forEach(tab => tab.deactivate());
+
+    // Check if mission overview instance already exists
+    const tabKey = 'mission-overview';
+    let overviewTab = this.tabInstances_.get(tabKey) as MissionOverviewTab;
+
+    if (overviewTab && !document.contains(overviewTab.dom)) {
+      overviewTab.dispose();
+      this.tabInstances_.delete(tabKey);
+      overviewTab = null!;
+    }
+
+    if (!overviewTab) {
+      overviewTab = new MissionOverviewTab('canvas-content');
+      this.tabInstances_.set(tabKey, overviewTab);
+    }
+
+    overviewTab.activate();
+    this.activeTab_ = 'mission-overview';
   }
 
   /**

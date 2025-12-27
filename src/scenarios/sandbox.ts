@@ -19,6 +19,7 @@ import type { Degrees } from "ootk";
 export const sandboxData: ScenarioData = {
   id: 'sandbox',
   url: 'sandbox',
+  isDisabled: true,
   imageUrl: 'sandbox.jpg',
   number: 0,
   title: 'Free Play',

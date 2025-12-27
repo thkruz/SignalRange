@@ -1154,8 +1154,8 @@ export abstract class AntennaCore extends BaseEquipment {
         Math.abs((sig.rotation ?? 0) - this.state.polarization) as Degrees,
       );
 
-      // Frequency-dependent feed loss
-      const feedLoss = this.feedLossAt_(f_Hz);
+      // Frequency-dependent feed loss + ice accumulation on feed horn
+      const feedLoss = this.feedLossAt_(f_Hz) + this.state.iceAccumulation_dB;
 
       // Antenna gain with Ruze + blockage
       const antennaGain = this.antennaGain_dBi(sig.frequency);
@@ -1757,8 +1757,8 @@ export abstract class AntennaCore extends BaseEquipment {
     // Use pattern gain (accounts for off-axis angle) instead of just peak gain
     const Grx_dBi = this.patternGain_dBi_(offAxis_deg, f_Hz);
 
-    // Feed loss (frequency-dependent)
-    const feedLoss = this.feedLossAt_(f_Hz);
+    // Feed loss (frequency-dependent) + ice accumulation on feed horn
+    const feedLoss = this.feedLossAt_(f_Hz) + this.state.iceAccumulation_dB;
 
     // Pointing loss (if any off-axis error from wind/jitter)
     const pointingLoss = this.pointingLoss_dB_(offAxis_deg, f_Hz);

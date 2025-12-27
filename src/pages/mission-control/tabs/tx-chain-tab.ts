@@ -424,7 +424,7 @@ export class TxChainTab extends BaseElement {
         </div>
 
         <!-- Redundancy Controller Placeholder Card -->
-        <div class="col-lg-4">
+        <!-- <div class="col-lg-4">
           <div class="card h-100">
             <div class="card-header">
               <h3 class="card-title">Redundancy Controller</h3>
@@ -434,7 +434,7 @@ export class TxChainTab extends BaseElement {
               <p class="text-muted small mb-0">Status: Not Implemented</p>
             </div>
           </div>
-        </div>
+        </div> -->
       </div>
     </div>
   `;

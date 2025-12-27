@@ -1,5 +1,5 @@
-import { html } from '@app/engine/utils/development/formatter';
 import { DraggableModal } from '@app/engine/ui/draggable-modal';
+import { html } from '@app/engine/utils/development/formatter';
 import { Logger } from '@app/logging/logger';
 import { Router } from '@app/router';
 import type { ScoreBreakdown } from '@app/scoring/score-calculator';
@@ -7,9 +7,9 @@ import { SimulationManager } from '@app/simulation/simulation-manager';
 import { clearPersistedStore } from '@app/sync/storage';
 import { getUserDataService } from '@app/user-account/user-data-service';
 import { DialogManager } from './dialog-manager';
+import './level-complete-modal.css';
 import { PendingQuizIndicator } from './pending-quiz-indicator';
 import { QuizModal } from './quiz-modal';
-import './level-complete-modal.css';
 
 interface CompletionModalOptions {
   score: ScoreBreakdown;
@@ -206,7 +206,7 @@ export class LevelCompleteModal extends DraggableModal {
 
   private closeAllPopups_(): void {
     // Hide pending quiz indicator
-    PendingQuizIndicator.getInstance().hideAndCancel();
+    PendingQuizIndicator.getInstance().suppress();
 
     // Close quiz modal if open
     QuizModal.getInstance().close();

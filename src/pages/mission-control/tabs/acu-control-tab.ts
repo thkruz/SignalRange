@@ -45,6 +45,9 @@ export class ACUControlTab extends BaseElement {
   private static readonly BEACON_UPDATE_INTERVAL_MS = 1000;
   private lastBeaconSyncTime_: number = 0;
 
+  // Active target satellite (only updates when "Move to Target" is clicked)
+  private activeTargetSatelliteId_: number | null = null;
+
   protected html_ = html`
     <div class="acu-control-tab">
       <!-- ACU Header: Identification + Tracking Mode -->
@@ -123,6 +126,10 @@ export class ACUControlTab extends BaseElement {
             <div class="card-body">
               <!-- Program Track: Satellite Selection -->
               <div id="program-track-section" class="tracking-section" style="display: none;">
+                <div class="mb-3">
+                  <label class="form-label">Current Target</label>
+                  <input type="text" id="current-target-display" class="form-control font-monospace" value="No Target" readonly style="cursor: default;">
+                </div>
                 <div class="mb-3">
                   <label for="satellite-select" class="form-label">Target Satellite</label>
                   <select id="satellite-select" class="form-select">
@@ -492,11 +499,14 @@ export class ACUControlTab extends BaseElement {
 
     if (!select || !moveBtn) return;
 
+    // Initialize active target from current state
+    this.activeTargetSatelliteId_ = antenna.state.targetSatelliteId;
+
     // Populate satellite dropdown
     const satellites = SimulationManager.getInstance().satellites;
     select.innerHTML = '<option value="">-- Select Satellite --</option>' +
       satellites.map(sat =>
-        `<option value="${sat.noradId}">${sat.noradId} (Az: ${sat.az.toFixed(1)}°, El: ${sat.el.toFixed(1)}°)</option>`
+        `<option value="${sat.noradId}">${sat.name}</option>`
       ).join('');
 
     // Handle selection change
@@ -508,6 +518,7 @@ export class ACUControlTab extends BaseElement {
 
     // Handle move button
     moveBtn.addEventListener('click', () => {
+      this.activeTargetSatelliteId_ = antenna.state.targetSatelliteId;
       antenna.moveToTargetSatellite();
     });
   }
@@ -716,6 +727,17 @@ export class ACUControlTab extends BaseElement {
     const satelliteSelect = qs<HTMLSelectElement>('#satellite-select', this.dom_);
     if (satelliteSelect && document.activeElement !== satelliteSelect) {
       satelliteSelect.value = state.targetSatelliteId?.toString() ?? '';
+    }
+
+    // Sync current target display (only shows active target, not dropdown selection)
+    const currentTargetDisplay = qs<HTMLInputElement>('#current-target-display', this.dom_);
+    if (currentTargetDisplay) {
+      const satellite = this.activeTargetSatelliteId_ === null
+        ? null
+        : SimulationManager.getInstance().satellites.find(
+            sat => sat.noradId === this.activeTargetSatelliteId_
+          );
+      currentTargetDisplay.value = satellite?.name ?? 'No Target';
     }
 
     // Sync beacon frequency input (skip if user is typing)

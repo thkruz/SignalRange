@@ -334,9 +334,9 @@ export class ScenarioSelectionPage extends BasePage {
           `).join('')}
         </div>
         </div>
+        </div>
 
         ${actionButtons}
-        </div>
       </div>
       </div>
     `;

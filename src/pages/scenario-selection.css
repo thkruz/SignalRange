@@ -448,14 +448,15 @@
   color: #ccc;
 }
 
-/* Checkpoint Actions */
+/* Checkpoint Actions - positioned outside scrollable card body */
 .scenario-checkpoint-actions {
   display: flex;
   flex-direction: row;
+  flex-shrink: 0;
   gap: 0.5rem;
-  margin-top: 1rem;
-  padding-top: 1rem;
+  padding: 1rem;
   border-top: 1px solid #333;
+  background: linear-gradient(180deg, #2a2a2a 0%, #1f1f1f 100%);
   justify-content: space-evenly;
   align-items: center;
 }

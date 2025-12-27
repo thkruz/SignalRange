@@ -4,6 +4,7 @@ import type { FECType, Hertz, ModulationType, RfFrequency, dBi, dBm } from '@app
 import type { Degrees } from 'ootk';
 
 export const tidemark1Satellite = new Satellite(
+  'TIDEMARK-1',
   61525,
   [
     {
@@ -51,6 +52,7 @@ export const tidemark1Satellite = new Satellite(
 );
 
 export const ses10Satellite = new Satellite(
+  'SES-10',
   42432,
   [
     {

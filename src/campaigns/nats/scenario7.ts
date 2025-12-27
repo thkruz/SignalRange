@@ -258,6 +258,7 @@ export const scenario7Data: ScenarioData = {
     ],
     satellites: [
       new Satellite(
+        'TIDEMARK-1',
         1,
         [
           {

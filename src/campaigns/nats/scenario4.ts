@@ -177,7 +177,8 @@ export const scenario4Data: ScenarioData = {
     isExtraSatellitesVisible: true,
     satellites: [
       new Satellite(
-        67525,
+        'TIDEMARK-1',
+        61525,
         [
           {
             signalId: 'TIDEMARK-1-Payload',
@@ -223,6 +224,7 @@ export const scenario4Data: ScenarioData = {
         }
       ),
       new Satellite(
+        'SES-10',
         42432,
         [
           {
@@ -269,6 +271,7 @@ export const scenario4Data: ScenarioData = {
         }
       ),
       new Satellite(
+        'TIDEMARK-2',
         69543, // TIDEMARK-2
         [
           {

@@ -17,8 +17,8 @@ import checklistPng from "../../assets/icons/checklist.png";
 import historyPng from '../../assets/icons/history.png';
 import layoutSidebarLeftCollapsePng from '../../assets/icons/layout-sidebar-left-collapse.png';
 import layoutSidebarLeftExpandPng from '../../assets/icons/layout-sidebar-left-expand.png';
-import satellitePng from '../../assets/icons/satellite.png';
 import satelliteOffPng from '../../assets/icons/satellite-off.png';
+import satellitePng from '../../assets/icons/satellite.png';
 import targetArrowPng from '../../assets/icons/target-arrow.png';
 import './asset-tree-sidebar.css';
 
@@ -247,14 +247,14 @@ export class AssetTreeSidebar extends BaseElement {
           <span class="list-group-header-text">Satellites</span>
         </div>
         ${this.satellites_.length > 0
-          ? this.satellites_.map(sat => this.renderSatelliteNode_(sat)).join('')
-          : `<div class="list-group-item placeholder-item">
+        ? this.satellites_.map(sat => this.renderSatelliteNode_(sat)).join('')
+        : `<div class="list-group-item placeholder-item">
               <span class="item-icon">
                 <img src="${satelliteOffPng}" alt="Satellite"/>
               </span>
               <span class="flex-fill">No satellites in scenario</span>
             </div>`
-        }
+      }
       </div>
     `;
 
@@ -289,7 +289,7 @@ export class AssetTreeSidebar extends BaseElement {
     const satId = `sat-${sat.noradId}`;
     const isSelected = this.selectedAssetId_ === satId;
     const isHealthy = sat.health >= 0.9;
-    const satName = `NORAD ${sat.noradId}`;
+    const satName = `${sat.name}`;
 
     return html`
       <a class="list-group-item list-group-item-action d-flex align-items-center ${isSelected ? 'active' : ''}"

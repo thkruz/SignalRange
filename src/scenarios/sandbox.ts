@@ -65,6 +65,7 @@ export const sandboxData: ScenarioData = {
     </div>`,
     satellites: [
       new Satellite(
+        'Fake Sat',
         1,
         [
           {
@@ -110,6 +111,7 @@ export const sandboxData: ScenarioData = {
         }
       ),
       new Satellite(
+        'Fake Sat 2',
         2,
         [
           {
@@ -138,6 +140,7 @@ export const sandboxData: ScenarioData = {
         }
       ),
       new Satellite(
+        'Fake Sat',
         3,
         [
           {

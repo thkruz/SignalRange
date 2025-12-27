@@ -179,7 +179,8 @@ export const scenario5Data: ScenarioData = {
     isExtraSatellitesVisible: true,
     satellites: [
       new Satellite(
-        1,
+        'TIDEMARK-1',
+        61525,
         [
           // Uplink signals - routed to transponders based on frequency and polarization
           {

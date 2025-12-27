@@ -139,8 +139,10 @@ export class Satellite {
   el: Degrees;
   az: Degrees;
   rotation: Degrees = ((Math.random() * 90) - 45) as Degrees;
+  name: string;
 
   constructor(
+    name: string,
     norad: number,
     rxSignal: RfSignal[] = [],
     beaconSignal: RfSignal[] = [],
@@ -155,6 +157,8 @@ export class Satellite {
     this.az = satelliteState.az;
     this.el = satelliteState.el;
     this.rotation = satelliteState.rotation ?? this.rotation;
+
+    this.name = name ?? `NORAD-${this.noradId}`;
 
     // Default degradation configuration
     this.degradationConfig = {

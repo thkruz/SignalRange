@@ -1,10 +1,10 @@
 import { AntennaState } from '@app/equipment/antenna';
-import { Satellite } from '@app/equipment/satellite/satellite';
+import { Satellite, TransponderConfig } from '@app/equipment/satellite/satellite';
 import { Character, Emotion } from '@app/modal/character-enum';
 import type { Objective } from '@app/objectives/objective-types';
 import type { ScenarioData } from '@app/ScenarioData';
 import { SignalOrigin } from "@app/signal-origin";
-import type { dB, dBi, dBm, FECType, Hertz, MHz, ModulationType, RfFrequency } from '@app/types';
+import type { dB, dBi, dBm, FECType, Hertz, IfFrequency, MHz, ModulationType, RfFrequency } from '@app/types';
 import { getAssetUrl } from '@app/utils/asset-url';
 import type { Degrees } from 'ootk';
 import { createRfFrontEnd } from '../rf-front-end-factory';
@@ -82,8 +82,20 @@ export const scenario6Data: ScenarioData = {
           ],
           rfFrontEnds: [
             createRfFrontEnd(vermontGroundStation.rfFrontEnds[0], {
-              buc: { isPowered: false, loFrequency: 2225 as MHz, outputPower: 0 as dBm, isMuted: true, isExtRefLocked: false },
-              hpa: { isPowered: false, outputPower: 0 as dBm },
+              buc: {
+                isPowered: true,
+                loFrequency: 7000 as MHz,
+                outputPower: 0 as dBm,
+                isMuted: false,
+                isExtRefLocked: true,
+                gain: 23 as dB
+              },
+              hpa: {
+                isPowered: true,
+                isHpaEnabled: true,
+                backOff: 10 as dB,
+                outputPower: 0 as dBm
+              },
               filter: { bandwidthIndex: 16 }, // Wide 36 MHz filter - student must switch to notch filter (index 4)
               lnb: { noiseTemperature: 65, temperature: 45 },
               gpsdo: {
@@ -118,7 +130,35 @@ export const scenario6Data: ScenarioData = {
               selectedTrace: 1,
             }
           ],
-          transmitters: [],
+          transmitters: [{
+            activeModem: 1,
+            modems: [{
+              isPowered: true,
+              antenna_id: 1,
+              modem_number: 1,
+              isFaulted: false,
+              isTransmitting: true,
+              isTransmittingSwitchUp: true,
+              isFaultSwitchUp: false,
+              id: 1,
+              isLoopback: false,
+              ifSignal: {
+                signalId: 'TIDEMARK-1-Teleport',
+                serverId: 1,
+                noradId: 61525, polarization: 'V',
+                feed: '',
+                isDegraded: false,
+                origin: SignalOrigin.TRANSMITTER,
+                noiseFloor: null,
+                gainInPath: 0 as dBi,
+                frequency: 1094e6 as IfFrequency,
+                power: -7 as dBm,
+                bandwidth: 36e6 as Hertz, // Match payload bandwidth
+                modulation: 'QPSK' as ModulationType,
+                fec: '3/4' as FECType,
+              },
+            }],
+          }],
           receivers: [{
             activeModem: 1,
             modems: [{
@@ -141,8 +181,9 @@ export const scenario6Data: ScenarioData = {
       new Satellite(
         1,
         [
+          // Uplink signals - routed to transponders based on frequency and polarization
           {
-            signalId: 'TIDEMARK-1-Payload',
+            signalId: 'TIDEMARK-1-TDMA-Composite',
             serverId: 1,
             noradId: 61525,
             frequency: 5943e6 as RfFrequency,
@@ -158,8 +199,9 @@ export const scenario6Data: ScenarioData = {
             gainInPath: 0 as dBi,
           },
           {
-            // Cross-pol interference: 3 MHz spike within our 36 MHz bandwidth
-            // 5950 MHz uplink = 7 MHz above our 5943 MHz center
+            // Cross-pol interference: 3 MHz spike within TP-1's 36 MHz passband
+            // 5960 MHz uplink = 17 MHz above TP-1 center (5943 MHz)
+            // Falls within TP-1's passband (5925-5961 MHz)
             // Simulates polarization mismatch from another operator
             signalId: 'cross-pol-interference',
             serverId: 1,
@@ -177,29 +219,45 @@ export const scenario6Data: ScenarioData = {
             gainInPath: 0 as dBi,
           },
         ],
-        [
-          {
-            frequency: 3902.5e6 as RfFrequency,
-            signalId: 'TIDEMARK-1-Beacon',
-            serverId: 1,
-            noradId: 61525,
-            power: 40 as dBm,
-            bandwidth: 1e3 as Hertz,
-            modulation: 'CW' as ModulationType,
-            fec: 'null' as FECType,
-            polarization: 'H',
-            feed: '',
-            isDegraded: false,
-            origin: SignalOrigin.TRANSMITTER,
-            noiseFloor: null,
-            gainInPath: 0 as dBi,
-          },
-        ],
+        [], // Beacons now defined in transponderConfigs
         {
           az: 161.8 as Degrees,
           el: 34.2 as Degrees,
           rotation: 14 as Degrees,
-          frequencyOffset: 2.225e9 as Hertz,
+          frequencyOffset: 2.225e9 as Hertz, // Legacy fallback
+          transponderConfigs: [
+            {
+              id: 'TP-1',
+              uplinkCenterFrequency: 5943e6 as RfFrequency, // Passband: 5925-5961 MHz
+              bandwidth: 36e6 as Hertz,
+              frequencyOffset: 2.225e9 as Hertz, // Downlink center: 3718 MHz
+              polarization: 'H',
+              beacon: {
+                frequency: 3902.5e6 as RfFrequency,
+                signalId: 'TIDEMARK-1-Beacon',
+                serverId: 1,
+                noradId: 61525,
+                power: 40 as dBm,
+                bandwidth: 1e3 as Hertz,
+                modulation: 'CW' as ModulationType,
+                fec: 'null' as FECType,
+                polarization: 'H',
+                feed: '',
+                isDegraded: false,
+                origin: SignalOrigin.TRANSMITTER,
+                noiseFloor: null,
+                gainInPath: 0 as dBi,
+              },
+            } as TransponderConfig,
+            {
+              id: 'TP-2',
+              uplinkCenterFrequency: 5906e6 as RfFrequency, // Passband: 5963-5999 MHz
+              bandwidth: 36e6 as Hertz,
+              frequencyOffset: 2.225e9 as Hertz, // Downlink center: 3756 MHz
+              polarization: 'H',
+              // No beacon for TP-2
+            } as TransponderConfig,
+          ],
         }
       ),
     ],

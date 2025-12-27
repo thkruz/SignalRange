@@ -819,31 +819,42 @@ export class Receiver extends BaseEquipment {
     const maxPower = Math.max(...signalsInBand.map(s => s.power));
     const suppressionThreshold = 20; // dB - notch filters typically provide 20-60dB attenuation
 
-    return signalsInBand
-      .filter((s) => {
-        // Filter out signals that are too weak (suppressed)
-        if (s.power < maxPower - suppressionThreshold) return false;
+    const survivingSignals = signalsInBand.filter((s) => {
+      // Filter out signals that are too weak (suppressed)
+      if (s.power < maxPower - suppressionThreshold) return false;
 
-        // Also filter out signals that were intentionally notched
-        const notchState = this.rfFrontEnd_?.notchFilterModule?.state;
-        if (notchState?.isPowered) {
-          for (const notch of notchState.notches) {
-            if (!notch.enabled) continue;
+      // Also filter out signals that were intentionally notched
+      const notchState = this.rfFrontEnd_?.notchFilterModule?.state;
+      if (notchState?.isPowered) {
+        for (const notch of notchState.notches) {
+          if (!notch.enabled) continue;
 
-            // Check if signal frequency falls within notch bandwidth
-            const signalFreqMHz = s.frequency / 1e6;
-            const notchLow = notch.centerFrequency - notch.bandwidth / 2;
-            const notchHigh = notch.centerFrequency + notch.bandwidth / 2;
+          // Check if signal frequency falls within notch bandwidth
+          const signalFreqMHz = s.frequency / 1e6;
+          const notchLow = notch.centerFrequency - notch.bandwidth / 2;
+          const notchHigh = notch.centerFrequency + notch.bandwidth / 2;
 
-            if (signalFreqMHz >= notchLow && signalFreqMHz <= notchHigh) {
-              return false;  // Signal was intentionally notched, don't count as interference
-            }
+          if (signalFreqMHz >= notchLow && signalFreqMHz <= notchHigh) {
+            return false;  // Signal was intentionally notched, don't count as interference
           }
         }
+      }
 
-        return true;
-      })
-      .map((s) => {
+      return true;
+    });
+
+    // Select only the strongest signal to avoid displaying duplicates
+    // (e.g., when antenna TX matches satellite external signal at same frequency)
+    if (survivingSignals.length === 0) {
+      return [];
+    }
+
+    const strongestSignal = survivingSignals.reduce((best, s) =>
+      s.power > best.power ? s : best,
+      survivingSignals[0]
+    );
+
+    return [strongestSignal].map((s) => {
         // Reset isDegraded flag before checking conditions
         // (signal objects are shared, so we must reset each time)
         s.isDegraded = false;

@@ -396,11 +396,13 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
       }
     }
 
-    for (const sig of signals) {
+    // Create copies when clamping bandwidth to avoid mutating original signals
+    signals = signals.map(sig => {
       if (sig.bandwidth > bandwidth) {
-        sig.bandwidth = bandwidth;
+        return { ...sig, bandwidth };
       }
-    }
+      return sig;
+    });
 
     // Update state with the maximum noise floor found
     this.state.noiseFloorNoGain = maxNoiseFloorNoGain;

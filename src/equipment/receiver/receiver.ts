@@ -561,12 +561,15 @@ export class Receiver extends BaseEquipment {
     // Target is the signal with the largest bandwidth
     const targetSignal = candidates.reduce((a, b) => a.bandwidth > b.bandwidth ? a : b, candidates[0]);
 
-    // Calculate thermal noise floor
+    // Calculate modem bandwidth for noise floor calculation
+    const modemBandwidthHz = modem.bandwidth * 1e6 as Hertz;
+
+    // Calculate thermal noise floor based on modem bandwidth
+    // Narrower bandwidth = lower noise floor, wider bandwidth = higher noise floor
     // Noise floor needs totalGain added to match the reference point
-    const thermalNoiseFloor = this.rfFrontEnd_.getNoiseFloor(TapPoint.RX_IF).noiseFloor + totalGain;
+    const thermalNoiseFloor = this.rfFrontEnd_.couplerModule.signalPathManager.getNoiseFloorAt(TapPoint.RX_IF, modemBandwidthHz).noiseFloorNoGain + totalGain;
 
     // Calculate interference power within modem bandwidth
-    const modemBandwidthHz = modem.bandwidth * 1e6;
     const modemCenterHz = modem.frequency * 1e6;
     const interferencePower = this.calculateInterferencePower_(
       targetSignal,
@@ -869,9 +872,10 @@ export class Receiver extends BaseEquipment {
         }
 
         // Calculate C/N for each signal and mark as degraded if below threshold
+        // Noise floor based on modem bandwidth: narrower BW = lower noise floor
         // Noise floor needs totalGain added to match the reference point
         // Signal from AGC output already includes all chain gains
-        const noiseFloor = this.rfFrontEnd_.getNoiseFloor(TapPoint.RX_IF).noiseFloor + this.rfFrontEnd_.couplerModule.signalPathManager.getTotalRxGain();
+        const noiseFloor = this.rfFrontEnd_.couplerModule.signalPathManager.getNoiseFloorAt(TapPoint.RX_IF, expectedBandwidth_Hz as Hertz).noiseFloorNoGain + this.rfFrontEnd_.couplerModule.signalPathManager.getTotalRxGain();
         const signalLevel = s.power;  // Already includes all chain gains
 
         const cn = signalLevel - noiseFloor;

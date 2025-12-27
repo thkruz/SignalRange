@@ -583,12 +583,25 @@ export const scenario3Data: ScenarioData = {
           Maine's got solid carrier lock. C/N ratio is 11.2 dB - actually slightly better than Vermont right now. Clear skies in Maine.
         </p>
         <p>
-          We're ready for handover. Execute the traffic transfer - the NOC will switch network routing when you give the command.
+          Next step: enable their transmitter. Same settings as Vermont again: 1,094 MHz IF, -7 dBm power, 36 MHz bandwidth, QPSK, FEC 3/4.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
         audioUrl: getAssetUrl('/assets/campaigns/nats/3/obj-lock.mp3'),
+      },
+      'enable-me-02-transmitter': {
+        text: `
+        <p>
+          ME-02 transmitter's enabled and transmitting. All set on their end.
+        </p>
+        <p>
+          Time to hand over traffic. Monitor both sites closely during the transition - any packet loss affects customer SLA.
+        </p>
+        `,
+        character: Character.CHARLIE_BROOKS,
+        emotion: Emotion.NEUTRAL,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/3/obj-transmitter.mp3'),
       },
       'execute-handover': {
         text: `

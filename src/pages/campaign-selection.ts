@@ -218,33 +218,35 @@ export class CampaignSelectionPage extends BasePage {
    */
   private renderSandboxCard_(): string {
     return html`
-      <div class="campaign-card sandbox-card" data-campaign-id="sandbox" data-scenario-url="${sandboxData.url}">
-        <div class="campaign-card-inner">
-          <div class="campaign-card-header">
-            <div class="campaign-badges">
-              <span class="badge special">Sandbox</span>
-            </div>
-          </div>
+      <div class="campaign-card sandbox-card disabled">
+      <div class="coming-soon-banner">Coming Soon</div>
 
-          <div class="campaign-image">
-            <img src="${getAssetUrl('/assets/campaigns/sandbox/' + sandboxData.imageUrl)}" alt="${sandboxData.title}" onerror="this.onerror=null; this.src='/images/placeholder.png'"/>
-            <div class="campaign-image-overlay">
-              <h2 class="campaign-title">${sandboxData.title}</h2>
-              <div class="campaign-subtitle">${sandboxData.subtitle}</div>
-            </div>
-          </div>
+      <div class="campaign-card-inner">
+        <div class="campaign-card-header">
+        <div class="campaign-badges">
+          <span class="badge special">Sandbox</span>
+        </div>
+        </div>
 
-          <div class="campaign-card-body">
-            <p class="campaign-description">${sandboxData.description}</p>
+        <div class="campaign-image">
+        <img src="${getAssetUrl('/assets/campaigns/sandbox/' + sandboxData.imageUrl)}" alt="${sandboxData.title}" onerror="this.onerror=null; this.src='/images/placeholder.png'"/>
+        <div class="campaign-image-overlay">
+          <h2 class="campaign-title">${sandboxData.title}</h2>
+          <div class="campaign-subtitle">${sandboxData.subtitle}</div>
+        </div>
+        </div>
 
-            <div class="campaign-info">
-              <div class="campaign-info-item">
-                <div class="info-label">Mode</div>
-                <div class="info-value">Free Play</div>
-              </div>
-            </div>
+        <div class="campaign-card-body">
+        <p class="campaign-description">${sandboxData.description}</p>
+
+        <div class="campaign-info">''
+          <div class="campaign-info-item">
+          <div class="info-label">Mode</div>
+          <div class="info-value">Free Play</div>
           </div>
         </div>
+        </div>
+      </div>
       </div>
     `;
   }

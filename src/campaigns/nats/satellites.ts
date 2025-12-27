@@ -23,27 +23,7 @@ export const tidemark1Satellite = new Satellite(
       origin: SignalOrigin.SATELLITE_RX,
       noiseFloor: null,
       gainInPath: 0 as dBi,
-    },
-    {
-      // Cross-pol interference: 3 MHz spike within TP-1's 36 MHz passband
-      // 5960 MHz uplink = 17 MHz above TP-1 center (5943 MHz)
-      // Falls within TP-1's passband (5925-5961 MHz)
-      // Simulates polarization mismatch from another operator
-      signalId: 'cross-pol-interference',
-      serverId: 1,
-      noradId: 61525,
-      frequency: 5960e6 as RfFrequency,
-      polarization: 'H',
-      power: 63 as dBm,
-      bandwidth: 1e6 as Hertz, // Narrowband spike
-      modulation: 'QPSK' as ModulationType,
-      fec: '3/4' as FECType,
-      feed: '',
-      isDegraded: false,
-      origin: SignalOrigin.SATELLITE_RX,
-      noiseFloor: null,
-      gainInPath: 0 as dBi,
-    },
+    }
   ],
   [], // Beacons now defined in transponderConfigs
   {

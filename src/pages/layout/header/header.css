@@ -96,8 +96,9 @@
 
 .header-actions {
   display: flex;
-  gap: 8px;
+  gap: 0px;
   align-items: center;
+  margin-right: 12px;
 }
 
 .header-icon-button {
@@ -123,4 +124,9 @@
 .header-icon-button .icon {
   font-size: 24px;
   font-weight: bold;
+}
+
+.header-icon-button svg.icon {
+  width: 24px;
+  height: 24px;
 }

@@ -1,12 +1,27 @@
 import { html } from "@app/engine/utils/development/formatter";
+import { EventBus } from "@app/events/event-bus";
+import { Events } from "@app/events/events";
 import './dialog-history-box.css';
 import { DialogHistoryManager } from "./dialog-history-manager";
 import { DraggableHtmlBox } from "./draggable-html-box";
 
 export class DialogHistoryBox extends DraggableHtmlBox {
+  private readonly boundHistoryChangedHandler_: () => void;
+
   constructor(parentId = 'sandbox-page') {
     super('Dialog History', 'dialog-history', '', parentId);
     this.updateContent(this.generateHistoryHtml());
+
+    // Listen for history changes to refresh content when open
+    this.boundHistoryChangedHandler_ = this.onHistoryChanged_.bind(this);
+    EventBus.getInstance().on(Events.DIALOG_HISTORY_CHANGED, this.boundHistoryChangedHandler_);
+  }
+
+  private onHistoryChanged_(): void {
+    if (this.isOpen) {
+      this.updateContent(this.generateHistoryHtml());
+      this.attachReplayListeners();
+    }
   }
 
   private generateHistoryHtml(): string {

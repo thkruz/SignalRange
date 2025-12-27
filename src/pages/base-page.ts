@@ -3,6 +3,7 @@ import { EventBus } from "@app/events/event-bus";
 import { DualTransmissionViolationData, Events, ObjectiveFailedData, ScenarioTimeExpiredData } from "@app/events/events";
 import { Logger } from "@app/logging/logger";
 import { Character } from "@app/modal/character-enum";
+import { DialogHistoryManager } from "@app/modal/dialog-history-manager";
 import { DialogManager } from "@app/modal/dialog-manager";
 import { LevelCompleteModal } from "@app/modal/level-complete-modal";
 import { ObjectiveFailedModal } from "@app/modal/objective-failed-modal";
@@ -179,6 +180,13 @@ export abstract class BasePage extends BaseElement {
           checkpoint.state.scenarioTimeRemaining
         );
         Logger.info('Objective states restored from checkpoint');
+
+        // Reconstruct dialog history from completed objectives
+        DialogHistoryManager.getInstance().reconstructFromCompletedObjectives(
+          scenario.data.dialogClips,
+          checkpoint.state.objectiveStates,
+          scenario.data.objectives ?? []
+        );
       }
     } catch (error) {
       Logger.error('Failed to restore objective states from checkpoint:', error);

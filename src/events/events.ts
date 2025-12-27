@@ -335,6 +335,9 @@ export enum Events {
   WEATHER_EVENT_ENDED = 'weather:event:ended',
   WEATHER_MISSION_FAILURE = 'weather:mission:failure',
 
+  // Dialog events
+  DIALOG_HISTORY_CHANGED = 'dialog:history:changed',
+
   // Traffic Control / Handover events
   HANDOVER_INITIATED = 'handover:initiated',
   HANDOVER_READY = 'handover:ready',
@@ -413,6 +416,9 @@ export interface EventMap {
   [Events.WEATHER_EVENT_STARTED]: [WeatherEventData];
   [Events.WEATHER_EVENT_ENDED]: [WeatherEventData];
   [Events.WEATHER_MISSION_FAILURE]: [WeatherMissionFailureData];
+
+  // Dialog events
+  [Events.DIALOG_HISTORY_CHANGED]: [];
 
   // Handover events
   [Events.HANDOVER_INITIATED]: [HandoverInitiatedData];

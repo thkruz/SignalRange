@@ -378,7 +378,7 @@ export class Transmitter extends BaseEquipment {
             severity: 'error'
           });
         }
-        if (!this.validatePowerConsumption(modemPower, 80)) {
+        if (!this.validatePowerConsumption(modemPower, 90)) {
           alarms.push({
             message: `Modem ${modem.modem_number} Power Approaching Max Transmit Power`,
             severity: 'warning'

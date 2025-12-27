@@ -135,11 +135,11 @@ export class Receiver extends BaseEquipment {
       return {
         modemNumber,
         antenna_id: modemNumber <= 2 ? 1 : 2,
-        frequency: 4700 as MHz, // IF Band after downconversion
-        bandwidth: 50 as MHz,
+        frequency: 1400 as MHz, // IF Band after downconversion
+        bandwidth: 20 as MHz,
         modulation: 'QPSK' as ModulationType,
-        fec: '3/4' as FECType,
-        isPowered: false,
+        fec: '1/2' as FECType,
+        isPowered: true,
       };
     });
 
@@ -858,60 +858,60 @@ export class Receiver extends BaseEquipment {
     );
 
     return [strongestSignal].map((s) => {
-        // Reset isDegraded flag before checking conditions
-        // (signal objects are shared, so we must reset each time)
-        s.isDegraded = false;
+      // Reset isDegraded flag before checking conditions
+      // (signal objects are shared, so we must reset each time)
+      s.isDegraded = false;
 
-        const frequencyMhz = s.frequency / 1e6 as MHz;
-        const freqTolerance10 = activeModemData.bandwidth * 0.1;
-        const lowerBound10 = activeModemData.frequency - freqTolerance10;
-        const upperBound10 = activeModemData.frequency + freqTolerance10;
-        // Outside 10% frequency tolerance: mark as degraded
-        if (!(frequencyMhz >= lowerBound10 && frequencyMhz <= upperBound10)) {
-          s.isDegraded = true;
-        }
+      const frequencyMhz = s.frequency / 1e6 as MHz;
+      const freqTolerance10 = activeModemData.bandwidth * 0.1;
+      const lowerBound10 = activeModemData.frequency - freqTolerance10;
+      const upperBound10 = activeModemData.frequency + freqTolerance10;
+      // Outside 10% frequency tolerance: mark as degraded
+      if (!(frequencyMhz >= lowerBound10 && frequencyMhz <= upperBound10)) {
+        s.isDegraded = true;
+      }
 
-        // Calculate C/N for each signal and mark as degraded if below threshold
-        // Noise floor based on modem bandwidth: narrower BW = lower noise floor
-        // Noise floor needs totalGain added to match the reference point
-        // Signal from AGC output already includes all chain gains
-        const noiseFloor = this.rfFrontEnd_.couplerModule.signalPathManager.getNoiseFloorAt(TapPoint.RX_IF, expectedBandwidth_Hz as Hertz).noiseFloorNoGain + this.rfFrontEnd_.couplerModule.signalPathManager.getTotalRxGain();
-        const signalLevel = s.power;  // Already includes all chain gains
+      // Calculate C/N for each signal and mark as degraded if below threshold
+      // Noise floor based on modem bandwidth: narrower BW = lower noise floor
+      // Noise floor needs totalGain added to match the reference point
+      // Signal from AGC output already includes all chain gains
+      const noiseFloor = this.rfFrontEnd_.couplerModule.signalPathManager.getNoiseFloorAt(TapPoint.RX_IF, expectedBandwidth_Hz as Hertz).noiseFloorNoGain + this.rfFrontEnd_.couplerModule.signalPathManager.getTotalRxGain();
+      const signalLevel = s.power;  // Already includes all chain gains
 
-        const cn = signalLevel - noiseFloor;
+      const cn = signalLevel - noiseFloor;
 
-        // Typical C/N requirements:
-        // BPSK: 6-8 dB
-        // QPSK: 9-11 dB
-        // 8QAM: 12-15 dB
-        // 16QAM: 15-18 dB
+      // Typical C/N requirements:
+      // BPSK: 6-8 dB
+      // QPSK: 9-11 dB
+      // 8QAM: 12-15 dB
+      // 16QAM: 15-18 dB
 
-        let requiredCN: number;
+      let requiredCN: number;
 
-        switch (s.modulation) {
-          case 'BPSK':
-            requiredCN = 7;
-            break;
-          case 'QPSK':
-            requiredCN = 10;
-            break;
-          case '8QAM':
-            requiredCN = 13;
-            break;
-          case '16QAM':
-            requiredCN = 16;
-            break;
-          default:
-            requiredCN = 10;
-            break;
-        }
+      switch (s.modulation) {
+        case 'BPSK':
+          requiredCN = 7;
+          break;
+        case 'QPSK':
+          requiredCN = 10;
+          break;
+        case '8QAM':
+          requiredCN = 13;
+          break;
+        case '16QAM':
+          requiredCN = 16;
+          break;
+        default:
+          requiredCN = 10;
+          break;
+      }
 
-        if (cn < requiredCN) {
-          s.isDegraded = true;
-        }
+      if (cn < requiredCN) {
+        s.isDegraded = true;
+      }
 
-        return s;
-      });
+      return s;
+    });
   }
 
   /**

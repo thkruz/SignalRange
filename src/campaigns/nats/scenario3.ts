@@ -1,11 +1,11 @@
 import type { AntennaState } from '@app/equipment/antenna';
 import { ANTENNA_CONFIG_KEYS } from "@app/equipment/antenna/antenna-config-keys";
 import { Receiver } from '@app/equipment/receiver/receiver';
-import { Transmitter } from '@app/equipment/transmitter/transmitter';
 import { Character, Emotion } from '@app/modal/character-enum';
 import type { Objective } from '@app/objectives/objective-types';
 import type { ScenarioData } from '@app/ScenarioData';
-import type { dB, FECType, Hertz, MHz, ModulationType, RfFrequency } from '@app/types';
+import { SignalOrigin } from '@app/signal-origin';
+import type { dB, dBi, dBm, FECType, Hertz, IfFrequency, MHz, ModulationType, RfFrequency } from '@app/types';
 import { getAssetUrl } from '@app/utils/asset-url';
 import type { Degrees } from 'ootk';
 import { createRfFrontEnd } from '../rf-front-end-factory';
@@ -106,7 +106,35 @@ export const scenario3Data: ScenarioData = {
             selectedTrace: 1,
           }
         ],
-        transmitters: [Transmitter.getDefaultState()],
+        transmitters: [{
+          activeModem: 1,
+          modems: [{
+            isPowered: true,
+            antenna_id: 1,
+            modem_number: 1,
+            isFaulted: false,
+            isTransmitting: false,
+            isTransmittingSwitchUp: false,
+            isFaultSwitchUp: false,
+            id: 1,
+            isLoopback: false,
+            ifSignal: {
+              signalId: 'TIDEMARK-1-Teleport',
+              serverId: 1,
+              noradId: 61525, polarization: 'V',
+              feed: '',
+              isDegraded: false,
+              origin: SignalOrigin.TRANSMITTER,
+              noiseFloor: null,
+              gainInPath: 0 as dBi,
+              frequency: 1094e6 as IfFrequency,
+              power: -7 as dBm,
+              bandwidth: 36e6 as Hertz, // Match payload bandwidth
+              modulation: 'QPSK' as ModulationType,
+              fec: '3/4' as FECType,
+            },
+          }],
+        }],
         receivers: [Receiver.getDefaultState()],
       },
     ],
@@ -327,11 +355,76 @@ export const scenario3Data: ScenarioData = {
       points: 15,
     },
     {
-      id: 'execute-handover',
-      title: 'Phase 8: Execute Traffic Handover',
-      description: 'Transfer active customer traffic from VT-01 to ME-02. The NOC will switch network routing on your command. Monitor the handover carefully - any packet loss during transition affects customer SLA.',
+      id: 'enable-me-02-transmitter',
+      title: 'Phase 8: Enable ME-02 Transmitter',
+      description: 'Power on the ME-02 transmitter and configure it to match the VT-01 settings for TIDEMARK-1: Frequency 1,094 MHz (IF), Power -7 dBm, Bandwidth 36 MHz, QPSK modulation, FEC 3/4. This prepares ME-02 to take over transmission after handover.',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['verify-maine-lock'],
+      conditions: [
+        {
+          type: 'equipment-powered',
+          description: 'Transmitter Powered',
+          params: {
+            equipment: 'transmitter',
+          },
+          maintainUntilObjectiveComplete: true,
+        },
+        {
+          type: 'tx-modem-frequency-set',
+          description: 'TX Frequency Set to 1,094 MHz',
+          params: {
+            frequency: 1094e6 as IfFrequency,
+            frequencyTolerance: 1e6 as Hertz, // 1 MHz tolerance
+          },
+          maintainUntilObjectiveComplete: true,
+        },
+        {
+          type: 'tx-modem-power-set',
+          description: 'TX Power Set to -7 dBm',
+          params: {
+            power: -7 as dBm,
+            powerTolerance: 1 as dB,
+          },
+          maintainUntilObjectiveComplete: true,
+        },
+        {
+          type: 'tx-modem-bandwidth-set',
+          description: 'Bandwidth Set to 36 MHz',
+          params: {
+            bandwidth: 36e6 as Hertz,
+            bandwidthTolerance: 1e6 as Hertz,
+          },
+          maintainUntilObjectiveComplete: true,
+        },
+        {
+          type: 'tx-modem-modulation-set',
+          description: 'Modulation Set to QPSK',
+          params: {
+            modulation: 'QPSK' as ModulationType,
+          },
+          maintainUntilObjectiveComplete: true,
+        },
+        {
+          type: 'tx-modem-fec-set',
+          description: 'FEC Set to 3/4',
+          params: {
+            fec: '3/4' as FECType,
+          },
+          maintainUntilObjectiveComplete: true,
+        },
+        {
+          type: 'tx-modem-transmitting',
+          description: 'Transmitter Enabled and Transmitting',
+          maintainUntilObjectiveComplete: true,
+        }
+      ],
+    },
+    {
+      id: 'execute-handover',
+      title: 'Phase 9: Execute Traffic Handover',
+      description: 'Transfer active customer traffic from VT-01 to ME-02. The NOC will switch network routing on your command. Monitor the handover carefully - any packet loss during transition affects customer SLA.',
+      groundStation: 'ME-02',
+      prerequisiteObjectiveIds: ['enable-me-02-transmitter'],
       conditions: [
         {
           type: 'traffic-transferred',
@@ -357,7 +450,7 @@ export const scenario3Data: ScenarioData = {
     },
     {
       id: 'stow-vermont-antenna',
-      title: 'Phase 9: Protect Vermont Antenna',
+      title: 'Phase 10: Protect Vermont Antenna',
       description: 'With traffic safely on Maine, stow the Vermont antenna to protect it from wind loading and ice accumulation during the blizzard. Stow position is Az: 0°, El: 90° (pointed straight up).',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['execute-handover'],

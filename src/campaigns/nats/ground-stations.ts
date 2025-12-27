@@ -111,7 +111,7 @@ export const vermontGroundStation = {
       outputPower: -30 as dBm,
       attackTime: 10,
       releaseTime: 100,
-      maxGain: 0 as dB,
+      maxGain: 10 as dB,
       minGain: -60 as dB,
     },
     coupler: {
@@ -154,12 +154,12 @@ export const vermontGroundStation = {
   }],
   spectrumAnalyzers: [
     {
-      referenceLevel: -95 as dBm, // Set for beacon observation
+      referenceLevel: -91 as dBm, // Set for beacon observation
       centerFrequency: 1247.5e6 as Hertz, // IF frequency for beacon
       span: 2e3 as Hertz, // 2 kHz span for CW beacon
       rbw: 1e3 as Hertz, // 1 kHz RBW for CW beacon
-      minAmplitude: -99 as dBm,
-      maxAmplitude: -80 as dBm,
+      minAmplitude: -95 as dBm,
+      maxAmplitude: -75 as dBm,
       scaleDbPerDiv: 10 as dB,
       screenMode: 'both',
       inputUnit: 'MHz',

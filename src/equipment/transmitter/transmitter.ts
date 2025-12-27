@@ -121,8 +121,8 @@ export class Transmitter extends BaseEquipment {
           signalId: `default-${modemNumber}`,
           serverId: 1,
           noradId: 1,
-          frequency: (1000 * 1e6) as IfFrequency, // 1 GHz IF
-          power: -97 as dBm,
+          frequency: (1400 * 1e6) as IfFrequency, // 1.4 GHz IF
+          power: -20 as dBm,
           bandwidth: (10 * 1e6) as Hertz, // 10 MHz
           modulation: 'null',
           fec: 'null',
@@ -135,7 +135,7 @@ export class Transmitter extends BaseEquipment {
         },
         isTransmitting: false,
         isTransmittingSwitchUp: false,
-        isPowered: false,
+        isPowered: true,
         isLoopback: false,
         isFaulted: false,
         isFaultSwitchUp: false,

@@ -141,22 +141,26 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
 
     // Check for alarms is currently handled by RFFrontEndCore
 
-    // Calculate post-BUC signals (apply upconversion, filter, and gain if powered)
-    this.outputSignals = this.inputSignals.map(sig => {
-      const rfFreq = this.calculateRfFrequency(sig.frequency);
-      const inBand = this.isInPassband_(rfFreq);
-      const filterLoss = inBand ? 0 : this.state.filterRejectionDb;
-      const gain = this.state.isPowered && !this.state.isMuted
-        ? this.state.gain + filterLoss
-        : -170;
-      return {
-        ...sig,
-        frequency: rfFreq,
-        power: sig.power + gain,
-        bandwidth: sig.bandwidth,
-        origin: SignalOrigin.BUC,
-      } as RfSignal;
-    });
+    // Calculate post-BUC signals (apply upconversion and gain if powered)
+    // Bandpass filter rejects out-of-band signals entirely
+    this.outputSignals = this.inputSignals
+      .map(sig => {
+        const rfFreq = this.calculateRfFrequency(sig.frequency);
+        const inBand = this.isInPassband_(rfFreq);
+        if (!inBand) return null;  // Reject out-of-band signals
+
+        const gain = this.state.isPowered && !this.state.isMuted
+          ? this.state.gain
+          : -170;
+        return {
+          ...sig,
+          frequency: rfFreq,
+          power: sig.power + gain,
+          bandwidth: sig.bandwidth,
+          origin: SignalOrigin.BUC,
+        } as RfSignal;
+      })
+      .filter((sig): sig is RfSignal => sig !== null);
   }
 
   /**

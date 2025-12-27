@@ -62,7 +62,7 @@ export class SpectrumDataProcessor {
    * Generate noise data across the frequency range
    */
   private generateNoise(): void {
-    let base = this.specA.state.noiseFloorNoGain;
+    const base = this.specA.state.noiseFloorNoGain;
 
     const len = this.width;
     const time = Date.now() / 1000;
@@ -77,8 +77,9 @@ export class SpectrumDataProcessor {
       const randAmp2 = 1.2 + Math.random() * 0.6;
       const randAmp3 = 0.2 + Math.random() * 0.4;
 
-      // Layer 1: base random noise (±0.75 dB fixed variation)
-      let noise = base + (Math.random() - 0.5) * 1.5;
+      // Layer 1: Gaussian-distributed base noise (natural thermal noise distribution)
+      // stdDev of 0.6 dB gives realistic spread - most samples within ±1.2 dB
+      let noise = this.gaussianRandom_(base, 0.6);
 
       // Layer 2: Smooth low-frequency drift (additive, not multiplicative)
       noise += Math.sin((x / 300) + time / 8 + randPhase1) * randAmp1 * 0.15;
@@ -91,15 +92,24 @@ export class SpectrumDataProcessor {
         noise += Math.sin((x / 40) + time * 1.5 + randPhase3) * randAmp3 * 0.02;
       }
 
-      // Clamp noise to within +/-0.5 dB of base for realism
-      noise = Math.max(base - 0.5, Math.min(base + 0.5, noise));
+      // Layer 5: Frequent small random peaks (creates natural "grass" above baseline)
+      // ~3% of samples get small bumps
+      if (Math.random() < 0.03) {
+        noise += 0.5 + Math.random() * 1.5;
+      }
 
-      // Layer 5: Occasional impulse spikes (fixed amplitude, not scaled by base)
-      if (Math.random() > 0.9999) {
+      // Layer 6: Frequent small random dips (natural variation below baseline)
+      // ~3% of samples get small dips
+      if (Math.random() < 0.03) {
+        noise -= 0.3 + Math.random() * 1.0;
+      }
+
+      // Layer 7: Rare larger impulse spikes (fixed amplitude, not scaled by base)
+      if (Math.random() < 0.0001) {
         noise += 2 + Math.random() * 3;
       }
 
-      // Layer 6: Rare dropouts (fixed amplitude)
+      // Layer 8: Rare larger dropouts (fixed amplitude)
       if (Math.random() < 0.0002) {
         noise -= 1 + Math.random() * 2;
       }
@@ -132,6 +142,7 @@ export class SpectrumDataProcessor {
 
   /**
    * Add a single signal to the signal data array
+   * Uses a flat-top shape where middle 80% is near peak with steep roll-off edges
    */
   private addSignalToData(
     signal: IfSignal | RfSignal,
@@ -139,47 +150,82 @@ export class SpectrumDataProcessor {
     inBandWidth: number,
     outOfBandWidth: number
   ): void {
-    // Use outOfBandWidth as the basis for sigma to create a wider, more realistic Gaussian
-    const sigma = outOfBandWidth / 3;
+    // Flat-top region is 80% of the in-band width (40% on each side of center)
+    const flatTopHalfWidth = inBandWidth * 0.8;
+    // Transition region for the roll-off edges
+    const transitionWidth = inBandWidth * 0.5;
 
-    for (let x = 0; x < this.width; x++) {
+    // Only process pixels within the signal's influence region
+    // Beyond outOfBandWidth, the signal decays to minAmplitude (already set by fill)
+    const startX = Math.max(0, Math.floor(center - outOfBandWidth));
+    const endX = Math.min(this.width, Math.ceil(center + outOfBandWidth));
+
+    for (let x = startX; x < endX; x++) {
       const distance = x - center;
       const absDist = Math.abs(distance);
-      const gaussian = Math.exp(-0.5 * Math.pow(distance / sigma, 2));
 
-      // Convert gaussian to dB (this creates the smooth exponential rise/fall)
-      const gaussianDb = 20 * Math.log10(Math.max(gaussian, 1e-10));
+      let y: number;
 
-      // Start with the Gaussian shape
-      let y = signal.power + gaussianDb;
+      // Flat-top region (middle 80% of bandwidth) - near peak amplitude
+      if (absDist <= flatTopHalfWidth) {
+        y = signal.power;
 
-      // Main lobe (center region) - add minimal jitter
-      if (absDist <= inBandWidth) {
-        y += (Math.random() - 0.5) * 0.14;
+        // Add noise-like variation similar to noise floor
+        // Base random variation
+        y += this.gaussianRandom_(0, 0.4);
+
+        // Occasional small bumps (like noise "grass")
+        if (Math.random() < 0.05) {
+          y += 0.3 + Math.random() * 0.8;
+        }
+
+        // Occasional small dips
+        if (Math.random() < 0.05) {
+          y -= 0.2 + Math.random() * 0.6;
+        }
+
+        // Very subtle slow variation across the flat top
+        y += Math.sin((x / 50) + Date.now() / 2000) * 0.15;
       }
-      // Transition region - slight additional rolloff for realism
-      else if (absDist <= outOfBandWidth * 0.7) {
-        y += (Math.random() - 0.5) * 0.2;
-        // Very subtle side lobe effect
-        const sideLobeEffect = Math.sin((distance / outOfBandWidth) * Math.PI * 4) * 0.5;
-        y += sideLobeEffect;
+      // Transition/roll-off region - steep but smooth edges
+      else if (absDist <= flatTopHalfWidth + transitionWidth) {
+        // Use raised cosine for smooth but steep roll-off
+        // transitionProgress: 0 at flat-top edge, 1 at outer edge
+        const transitionProgress = (absDist - flatTopHalfWidth) / transitionWidth;
+        // rolloff: 1 at start (full amplitude), 0 at end (fully attenuated)
+        const rolloff = 0.5 * (1 + Math.cos(Math.PI * transitionProgress));
+        const rolloffDb = 20 * Math.log10(Math.max(rolloff, 1e-10));
+
+        y = signal.power + rolloffDb;
+
+        // Add variation that increases as we move away from center
+        y += this.gaussianRandom_(0, 0.5 + transitionProgress * 0.3);
+
+        // Side lobe ripple effect
+        y += Math.sin(transitionProgress * Math.PI * 3) * 0.4;
       }
-      // Outer region - more pronounced side lobes and taper
-      else if (absDist <= outOfBandWidth) {
-        const sideLobeEffect = Math.sin((distance / outOfBandWidth) * Math.PI * 6) * 0.8;
-        y += sideLobeEffect + (Math.random() - 0.5) * 0.3;
-      }
-      // Beyond outOfBandWidth - natural exponential decay
+      // Out-of-band region - steep roll-off toward edges
       else {
-        const excessDistance = absDist - outOfBandWidth;
-        const decayFactor = Math.exp(-excessDistance / (outOfBandWidth * 0.3));
-        y += -20 * (1 - decayFactor);
-        y += (Math.random() - 0.5) * 0.4;
+        const outOfBandProgress = (absDist - flatTopHalfWidth - transitionWidth) /
+          (outOfBandWidth - flatTopHalfWidth - transitionWidth);
+
+        // Exponential decay in out-of-band region
+        const decay = Math.exp(-outOfBandProgress * 3);
+        const decayDb = 20 * Math.log10(Math.max(decay, 1e-10));
+
+        // Start from where transition ended (around -20 to -30 dB)
+        y = signal.power - 25 + decayDb;
+
+        // More variation in out-of-band
+        y += this.gaussianRandom_(0, 0.6);
+
+        // Side lobe effects
+        y += Math.sin(outOfBandProgress * Math.PI * 4) * 0.6;
       }
 
       // Simulate occasional deep nulls for realism
       if (Math.random() < 0.001) {
-        y -= 10 + Math.random() * 4;
+        y -= 8 + Math.random() * 4;
       }
 
       // NOTE: Signals from agcModule.outputSignals already include all chain gains
@@ -230,6 +276,16 @@ export class SpectrumDataProcessor {
         }
       }
     }
+  }
+
+  /**
+   * Generate Gaussian-distributed random number using Box-Muller transform
+   */
+  private gaussianRandom_(mean: number, stdDev: number): number {
+    const u1 = Math.random();
+    const u2 = Math.random();
+    const z = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+    return mean + z * stdDev;
   }
 
   /**

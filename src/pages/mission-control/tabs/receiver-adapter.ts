@@ -514,13 +514,13 @@ export class ReceiverAdapter {
         const effectiveCn = signalInfo.effectiveCnRatio_dB ?? signalInfo.cnRatio_dB;
 
         // Match IQ constellation thresholds:
-        // - Good: C/N > 15 dB AND locked
-        // - Degraded: 8 < C/N <= 15 dB OR unlocked with decent C/N
-        // - Poor: C/N <= 8 dB
-        if (signalInfo.hasLock && effectiveCn > 15) {
+        // - Good: C/N >= 8 dB AND locked
+        // - Degraded: 5 <= C/N < 8 dB AND locked OR unlocked with decent C/N
+        // - Poor: C/N < 5 dB
+        if (signalInfo.hasLock && effectiveCn >= 8) {
           signalStatus.className = 'status-badge status-badge-good';
           signalStatus.textContent = 'Good';
-        } else if (effectiveCn > 8) {
+        } else if (effectiveCn >= 5) {
           signalStatus.className = 'status-badge status-badge-degraded';
           signalStatus.textContent = signalInfo.hasLock ? 'Degraded' : 'Unlocked';
         } else if (effectiveCn > 0) {
@@ -684,20 +684,21 @@ export class ReceiverAdapter {
 
     const effectiveCn = signalInfo.effectiveCnRatio_dB ?? signalInfo.cnRatio_dB;
 
-    // Match signal quality badge thresholds
-    if (signalInfo.hasLock && effectiveCn > 15) {
+    // QPSK-ish modem-quality thresholds (MVP, no Eb/N0)
+    if (signalInfo.hasLock && effectiveCn >= 8) {
       statusBar.className = 'alert alert-success mt-3';
-      statusBar.textContent = 'Signal locked - Good quality';
-    } else if (effectiveCn > 8) {
+      statusBar.textContent = `Signal locked - Good margin (C/N: ${effectiveCn.toFixed(1)} dB)`;
+    } else if (signalInfo.hasLock && effectiveCn >= 5) {
       statusBar.className = 'alert alert-warning mt-3';
-      const lockStatus = signalInfo.hasLock ? 'locked' : 'unlocked';
-      statusBar.textContent = `Signal ${lockStatus} - Degraded quality (C/N: ${effectiveCn.toFixed(1)} dB)`;
-    } else if (effectiveCn > 0) {
+      statusBar.textContent = `Signal locked - Degraded margin (C/N: ${effectiveCn.toFixed(1)} dB)`;
+    } else if (effectiveCn >= 3) {
+      // may flicker lock depending on your sim; treat as near-threshold
+      const lockStatus = signalInfo.hasLock ? 'locked' : 'unlocking';
       statusBar.className = 'alert alert-danger mt-3';
-      statusBar.textContent = `Signal poor - C/N: ${effectiveCn.toFixed(1)} dB`;
+      statusBar.textContent = `Signal ${lockStatus} - Near threshold (C/N: ${effectiveCn.toFixed(1)} dB)`;
     } else {
       statusBar.className = 'alert alert-danger mt-3';
-      statusBar.textContent = `Signal critical - C/N: ${effectiveCn.toFixed(1)} dB`;
+      statusBar.textContent = `Signal no lock - Below threshold (C/N: ${effectiveCn.toFixed(1)} dB)`;
     }
   }
 

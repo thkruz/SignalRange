@@ -71,6 +71,9 @@ export abstract class IfFilterBankModuleCore extends RFFrontEndModule<IfFilterBa
 
   constructor(state: IfFilterBankState, rfFrontEnd: RFFrontEndCore, unit: number) {
     super(state, rfFrontEnd, 'rf-fe-filter', unit);
+
+    // Calculate the correct insertion loss and noise floor based on bandwidth index
+    this.updateFilterCharacteristics_();
   }
 
   /**

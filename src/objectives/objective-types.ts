@@ -51,6 +51,12 @@ export type ConditionType =
   | 'rx-modem-bandwidth-set' // Receiver modem bandwidth set
   | 'rx-modem-modulation-set' // Receiver modem modulation type set
   | 'rx-modem-fec-set' // Receiver modem FEC rate set
+  | 'tx-modem-frequency-set' // Transmitter modem center frequency set
+  | 'tx-modem-power-set' // Transmitter modem power set
+  | 'tx-modem-bandwidth-set' // Transmitter modem bandwidth set
+  | 'tx-modem-modulation-set' // Transmitter modem modulation type set
+  | 'tx-modem-fec-set' // Transmitter modem FEC rate set
+  | 'tx-modem-transmitting' // Transmitter modem actively transmitting
   | 'status-check' // Interactive quiz to verify player found the correct information
   | 'custom' // Custom condition with evaluator function
   // Handover and traffic control conditions
@@ -162,6 +168,10 @@ export interface ConditionParams {
   modulation?: string;
   /** For rx-modem-fec-set: target FEC rate */
   fec?: string;
+  /** For tx-modem-power-set: target power in dBm */
+  power?: number;
+  /** For tx-modem-power-set: power tolerance in dB */
+  powerTolerance?: number;
   /** For status-check: the question to display */
   question?: string;
   /** For status-check: the answer options (1-4) */

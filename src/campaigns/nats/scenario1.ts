@@ -2,9 +2,9 @@ import { Character, Emotion } from '@app/modal/character-enum';
 import type { Objective } from '@app/objectives/objective-types';
 import type { ScenarioData } from '@app/ScenarioData';
 import { getAssetUrl } from '@app/utils/asset-url';
-import { maineGroundStationConfig, vermontGroundStation } from './ground-stations';
+import { vermontGroundStation } from './ground-stations';
 import { natsHtmlLayout } from './html-layout';
-import { ses10Satellite, tidemark1Satellite } from './satellites';
+import { tidemark1Satellite } from './satellites';
 
 /**
  * Scenario 1: "First Day" - TIDEMARK-1 Health Check
@@ -35,14 +35,12 @@ export const scenario1Data: ScenarioData = {
     isSync: true,
     groundStations: [
       vermontGroundStation,
-      maineGroundStationConfig
     ],
     layout: natsHtmlLayout,
     missionBriefUrl: 'https://docs.signalrange.space/scenarios/scenario-1?content-only=true&dark=true',
     isExtraSatellitesVisible: true,
     satellites: [
       tidemark1Satellite,
-      ses10Satellite,
     ]
   },
   timeLimitSeconds: 6000, // 100 minutes

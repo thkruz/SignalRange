@@ -1,16 +1,15 @@
 import type { AntennaState } from '@app/equipment/antenna';
 import { ANTENNA_CONFIG_KEYS } from "@app/equipment/antenna/antenna-config-keys";
 import { Receiver } from '@app/equipment/receiver/receiver';
-import { Satellite } from '@app/equipment/satellite/satellite';
 import { Character, Emotion } from '@app/modal/character-enum';
 import type { Objective } from '@app/objectives/objective-types';
 import type { ScenarioData } from '@app/ScenarioData';
-import { SignalOrigin } from "@app/signal-origin";
-import type { dB, dBi, dBm, FECType, Hertz, MHz, ModulationType, RfFrequency } from '@app/types';
+import type { dB, dBm, Hertz, MHz } from '@app/types';
 import { getAssetUrl } from '@app/utils/asset-url';
 import type { Degrees } from 'ootk';
 import { createRfFrontEnd } from '../rf-front-end-factory';
 import { vermontGroundStation } from './ground-stations';
+import { tidemark1Satellite, ses10Satellite, tidemark2Satellite } from './satellites';
 
 /**
  * NATS Level 5: "Inclined Orbit Operations"
@@ -113,54 +112,9 @@ export const scenario6Data: ScenarioData = {
       },
     ],
     satellites: [
-      new Satellite(
-        'TIDEMARK-1',
-        1,
-        [
-          {
-            signalId: 'tidemark-1-beacon',
-            serverId: 1,
-            noradId: 1,
-            frequency: 3947.8e6 as RfFrequency,
-            polarization: 'H',
-            power: -95 as dBm,
-            bandwidth: 1e3 as Hertz,
-            modulation: 'CW' as ModulationType,
-            fec: 'none' as FECType,
-            feed: null,
-            isDegraded: false,
-            origin: SignalOrigin.SATELLITE_TX,
-            noiseFloor: null,
-            gainInPath: 0 as dBi,
-          },
-          {
-            signalId: 'tidemark-1-carrier',
-            serverId: 1,
-            noradId: 1,
-            frequency: 3952.5e6 as RfFrequency,
-            polarization: 'H',
-            power: -87 as dBm,
-            bandwidth: 5e6 as Hertz,
-            modulation: '16APSK' as ModulationType,
-            fec: '3/4' as FECType,
-            feed: 'maritime-data.mp4',
-            isDegraded: false,
-            origin: SignalOrigin.SATELLITE_TX,
-            noiseFloor: null,
-            gainInPath: 0 as dBi,
-          }
-        ],
-        [],
-        {
-          az: 214.2 as Degrees, // Initial position
-          el: 24.8 as Degrees,
-          frequencyOffset: 2.225e9 as Hertz,
-          // Orbital elements indicate inclined orbit
-          // inclination: 2.1 as Degrees, // 2.1° inclination (growing)
-          // isDrifting: true,
-          // driftRateNS: 0.15, // degrees per hour north-south
-        }
-      ),
+      tidemark1Satellite,
+      ses10Satellite,
+      tidemark2Satellite
     ],
     // tleUpdateInterval: 900, // TLE updates available every 15 minutes (900 seconds)
     // tleAutoNotify: true, // Automatically notify when updates available

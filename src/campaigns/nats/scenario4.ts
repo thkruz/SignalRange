@@ -1,16 +1,15 @@
 import { html } from '@app/engine/utils/development/formatter';
 import type { AntennaState } from '@app/equipment/antenna';
 import { ANTENNA_CONFIG_KEYS } from "@app/equipment/antenna/antenna-config-keys";
-import { Satellite } from '@app/equipment/satellite/satellite';
 import { Character, Emotion } from '@app/modal/character-enum';
 import type { Objective } from '@app/objectives/objective-types';
 import type { ScenarioData } from '@app/ScenarioData';
-import { SignalOrigin } from "@app/signal-origin";
-import type { dB, dBi, dBm, FECType, Hertz, MHz, ModulationType, RfFrequency } from '@app/types';
+import type { dB, dBm, Hertz, MHz, RfFrequency } from '@app/types';
 import { getAssetUrl } from '@app/utils/asset-url';
 import type { Degrees } from 'ootk';
 import { createRfFrontEnd } from '../rf-front-end-factory';
 import { maineGroundStationConfig, vermontGroundStation } from './ground-stations';
+import { ses10Satellite, tidemark1Satellite, tidemark2Satellite } from './satellites';
 
 /**
  * NATS Level 4: "New Bird, No Handbook"
@@ -176,146 +175,9 @@ export const scenario4Data: ScenarioData = {
     missionBriefUrl: 'https://docs.signalrange.space/scenarios/scenario-2?content-only=true&dark=true',
     isExtraSatellitesVisible: true,
     satellites: [
-      new Satellite(
-        'TIDEMARK-1',
-        61525,
-        [
-          {
-            signalId: 'TIDEMARK-1-Payload',
-            serverId: 1,
-            noradId: 61525,
-            /** Must be the uplinkl to match the antenna in simulation */
-            frequency: 5943e6 as RfFrequency,
-            polarization: 'H',
-            power: 40 as dBm, // 10 W
-            bandwidth: 36e6 as Hertz,
-            modulation: 'QPSK' as ModulationType,
-            fec: '3/4' as FECType,
-            feed: '',
-            isDegraded: false,
-            origin: SignalOrigin.SATELLITE_RX,
-            noiseFloor: null,
-            gainInPath: 0 as dBi,
-          },
-        ],
-        [
-          {
-            frequency: 3902.5e6 as RfFrequency,
-            signalId: 'TIDEMARK-1-Beacon',
-            serverId: 1,
-            noradId: 61525,
-            power: 40 as dBm, // 10 W
-            bandwidth: 1e3 as Hertz,
-            modulation: 'CW' as ModulationType,
-            fec: 'null' as FECType,
-            polarization: 'H',
-            feed: '',
-            isDegraded: false,
-            origin: SignalOrigin.TRANSMITTER,
-            noiseFloor: null,
-            gainInPath: 0 as dBi,
-          },
-        ],
-        {
-          az: 161.8 as Degrees,
-          el: 34.2 as Degrees,
-          rotation: 14 as Degrees,
-          frequencyOffset: 2.225e9 as Hertz,
-        }
-      ),
-      new Satellite(
-        'SES-10',
-        42432,
-        [
-          {
-            signalId: 'SES-10-Payload',
-            serverId: 1,
-            noradId: 42432,
-            /** Must be the uplinkl to match the antenna in simulation */
-            frequency: 6115e6 as RfFrequency,
-            polarization: 'V',
-            power: 40 as dBm, // 10 W
-            bandwidth: 36e6 as Hertz,
-            modulation: 'QPSK' as ModulationType,
-            fec: '3/4' as FECType,
-            feed: '',
-            isDegraded: false,
-            origin: SignalOrigin.SATELLITE_RX,
-            noiseFloor: null,
-            gainInPath: 0 as dBi,
-          },
-        ],
-        [
-          {
-            frequency: 3905.0e6 as RfFrequency,
-            signalId: 'SES-10-Beacon',
-            serverId: 1,
-            noradId: 42432,
-            power: 40 as dBm, // 10 W
-            bandwidth: 1e3 as Hertz,
-            modulation: 'CW' as ModulationType,
-            fec: 'null' as FECType,
-            polarization: 'H',
-            feed: '',
-            isDegraded: false,
-            origin: SignalOrigin.TRANSMITTER,
-            noiseFloor: null,
-            gainInPath: 0 as dBi,
-          },
-        ],
-        {
-          az: 164.2 as Degrees,
-          el: 34.1 as Degrees,
-          rotation: -32 as Degrees,
-          frequencyOffset: 2.225e9 as Hertz,
-        }
-      ),
-      new Satellite(
-        'TIDEMARK-2',
-        69543, // TIDEMARK-2
-        [
-          {
-            signalId: 'tidemark-2-payload',
-            serverId: 1,
-            noradId: 69543,
-            /** Must be the uplinkl to match the antenna in simulation */
-            frequency: 6115e6 as RfFrequency,
-            polarization: 'V',
-            power: 40 as dBm, // 10 W
-            bandwidth: 36e6 as Hertz,
-            modulation: 'QPSK' as ModulationType,
-            fec: '3/4' as FECType,
-            feed: '',
-            isDegraded: false,
-            origin: SignalOrigin.SATELLITE_RX,
-            noiseFloor: null,
-            gainInPath: 0 as dBi,
-          },
-        ],
-        [
-          {
-            signalId: 'tidemark-2-beacon',
-            serverId: 1,
-            noradId: 69543,
-            frequency: 3947.8e6 as RfFrequency, // Provided to student
-            polarization: 'H',
-            power: 38 as dBm, // Slightly stronger (newer satellite)
-            bandwidth: 1e3 as Hertz, // CW beacon
-            modulation: 'CW' as ModulationType,
-            fec: 'none' as FECType,
-            feed: null,
-            isDegraded: false,
-            origin: SignalOrigin.SATELLITE_TX,
-            noiseFloor: null,
-            gainInPath: 0 as dBi,
-          },
-        ],
-        {
-          az: 219.7 as Degrees, // 45°W from Vermont
-          el: 26.3 as Degrees,
-          frequencyOffset: 2.225e9 as Hertz,
-        }
-      ),
+      tidemark1Satellite,
+      ses10Satellite,
+      tidemark2Satellite
     ],
   },
   objectives: [
@@ -529,10 +391,10 @@ export const scenario4Data: ScenarioData = {
       'calculate-lnb-lo': {
         text: `
         <p>
-          2,700.3 megahertz. That's correct. 3,947.8 minus 1,247.5 equals 2,700.3.
+          5,195.3 megahertz. That's correct.
         </p>
         <p>
-          Good work showing the calculation. Math matters here - one decimal place wrong and you won't see the beacon.
+          Good work showing the calculation. Math matters here - one decimal place wrong and you might not see the beacon.
         </p>
         <p>
           Now select your IF filter. Think about the signal type - CW beacon, very narrow bandwidth.
@@ -545,7 +407,7 @@ export const scenario4Data: ScenarioData = {
       'select-if-filter': {
         text: `
         <p>
-          Ten kilohertz filter. Right choice. CW signal doesn't need wide bandwidth - narrower filter means less noise.
+          1 megahertz filter. Perfect choice for a CW beacon. This is the balance between noise floor and insertion loss.
         </p>
         <p>
           Configure the spectrum analyzer now. Center frequency at your target IF, narrow span for the CW beacon, tight RBW.

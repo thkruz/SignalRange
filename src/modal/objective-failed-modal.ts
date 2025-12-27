@@ -136,8 +136,8 @@ export class ObjectiveFailedModal extends DraggableModal {
    * Close all open popups when failure modal is shown
    */
   private closeAllPopups_(): void {
-    // Hide pending quiz indicator
-    PendingQuizIndicator.getInstance().hideAndCancel();
+    // Suppress pending quiz indicator permanently
+    PendingQuizIndicator.getInstance().suppress();
 
     // Close quiz modal if open
     QuizModal.getInstance().close();

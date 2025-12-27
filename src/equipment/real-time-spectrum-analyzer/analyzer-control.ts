@@ -2,6 +2,7 @@ import { ContinuousRotaryKnob } from '@app/components/rotary-knob/continuous-rot
 import { Logger } from '@app/logging/logger';
 import { Sfx } from '@app/sound/sfx-enum';
 import SoundManager from '@app/sound/sound-manager';
+import { parseLocalizedNumber } from '@app/utils/parse-number';
 import { BaseElement } from '../../components/base-element';
 import { html } from "../../engine/utils/development/formatter";
 import { qs, qsa } from "../../engine/utils/query-selector";
@@ -381,7 +382,7 @@ export class AnalyzerControl extends BaseElement {
     if (value === 'enter') {
       // Submit input
       Logger.info(`AnalyzerControl: Submitting input value: ${this.specA.state.inputValue} ${this.specA.state.inputUnit}`);
-      const inputNumber = parseFloat(this.specA.state.inputValue.toString());
+      const inputNumber = parseLocalizedNumber(this.specA.state.inputValue.toString());
       if (isNaN(inputNumber)) {
         // Invalid number entered
         Logger.warn('AnalyzerControl: Invalid number entered');

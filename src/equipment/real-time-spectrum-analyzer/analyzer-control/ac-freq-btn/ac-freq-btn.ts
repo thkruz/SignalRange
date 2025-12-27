@@ -1,5 +1,6 @@
 import { Logger } from "@app/logging/logger";
 import { Hertz } from "@app/types";
+import { parseLocalizedNumber } from "@app/utils/parse-number";
 import { AnalyzerControl } from "../../analyzer-control";
 import { BaseControlButton } from "../base-control-button";
 import './ac-freq-btn.css';
@@ -122,7 +123,7 @@ export class ACFreqBtn extends BaseControlButton {
     Logger.info(`Processing frequency input for ${this.subMenuSelected} frequency.`);
 
     const analyzerState = this.analyzerControl.specA.state;
-    const inputValue = parseFloat(analyzerState.inputValue);
+    const inputValue = parseLocalizedNumber(analyzerState.inputValue);
     const inputUnit = analyzerState.inputUnit;
     let frequencyInHz: number;
 

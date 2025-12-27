@@ -4,6 +4,7 @@ import { BUCModuleCore, BUCState } from "@app/equipment/rf-front-end/buc-module/
 import { qs } from "@app/engine/utils/query-selector";
 import { CardAlarmBadge } from "@app/components/card-alarm-badge/card-alarm-badge";
 import { AlarmStatus } from "@app/equipment/base-equipment";
+import { parseLocalizedNumber } from "@app/utils/parse-number";
 
 /**
  * BUCAdapter - Bridges BUCModuleCore state to web controls
@@ -278,7 +279,7 @@ export class BUCAdapter {
   }
 
   private loFreqInputHandler_(e: Event): void {
-    const value = parseFloat((e.target as HTMLInputElement).value);
+    const value = parseLocalizedNumber((e.target as HTMLInputElement).value);
     if (!isNaN(value)) {
       this.stagedLoFrequency_ = Math.max(6000, Math.min(7000, value));
       this.updateStagedDisplay_();
@@ -291,7 +292,7 @@ export class BUCAdapter {
   }
 
   private gainInputHandler_(e: Event): void {
-    const value = parseFloat((e.target as HTMLInputElement).value);
+    const value = parseLocalizedNumber((e.target as HTMLInputElement).value);
     if (!isNaN(value)) {
       this.stagedGain_ = Math.max(0, Math.min(70, value));
       this.updateStagedDisplay_();

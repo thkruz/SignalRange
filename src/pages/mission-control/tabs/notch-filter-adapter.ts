@@ -3,6 +3,7 @@ import { Events } from "@app/events/events";
 import { NotchFilterModuleCore, NotchFilterState, NotchConfig } from "@app/equipment/rf-front-end/notch-filter-module";
 import { qs } from "@app/engine/utils/query-selector";
 import { MHz, dB } from "@app/types";
+import { parseLocalizedNumber } from "@app/utils/parse-number";
 
 /**
  * NotchFilterAdapter - Bridges NotchFilterModuleCore state to web controls
@@ -117,7 +118,7 @@ export class NotchFilterAdapter {
     // Frequency input
     const freqInput = this.domCache_.get(`${prefix}-freq`) as HTMLInputElement;
     const freqHandler = () => {
-      const val = parseFloat(freqInput.value);
+      const val = parseLocalizedNumber(freqInput.value);
       if (!isNaN(val)) {
         this.stagedNotches_[index].centerFrequency = Math.max(950, Math.min(2150, val)) as MHz;
         this.updateStagedDisplays_();
@@ -140,7 +141,7 @@ export class NotchFilterAdapter {
     // Bandwidth input and buttons
     const bwInput = this.domCache_.get(`${prefix}-bw`) as HTMLInputElement;
     const bwHandler = () => {
-      const val = parseFloat(bwInput.value);
+      const val = parseLocalizedNumber(bwInput.value);
       if (!isNaN(val)) {
         this.stagedNotches_[index].bandwidth = Math.max(0.1, Math.min(50, val)) as MHz;
         this.updateStagedDisplays_();
@@ -158,7 +159,7 @@ export class NotchFilterAdapter {
     // Depth input and buttons
     const depthInput = this.domCache_.get(`${prefix}-depth`) as HTMLInputElement;
     const depthHandler = () => {
-      const val = parseFloat(depthInput.value);
+      const val = parseLocalizedNumber(depthInput.value);
       if (!isNaN(val)) {
         this.stagedNotches_[index].depth = Math.max(1, Math.min(60, val)) as dB;
         this.updateStagedDisplays_();

@@ -5,6 +5,7 @@ import { ADCStatus } from '@app/equipment/receiver/adc-degradation';
 import { IQSignalInfo, Receiver, ReceiverModemState } from '@app/equipment/receiver/receiver';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
+import { parseLocalizedNumber } from '@app/utils/parse-number';
 
 /**
  * ReceiverAdapter - Bridges Receiver equipment class to modern Mission Control UI
@@ -227,14 +228,14 @@ export class ReceiverAdapter {
   }
 
   private frequencyHandler_(e: Event): void {
-    const value = parseFloat((e.target as HTMLInputElement).value);
+    const value = parseLocalizedNumber((e.target as HTMLInputElement).value);
     if (!isNaN(value)) {
       this.receiver.handleFrequencyChange(value);
     }
   }
 
   private bandwidthHandler_(e: Event): void {
-    const value = parseFloat((e.target as HTMLInputElement).value);
+    const value = parseLocalizedNumber((e.target as HTMLInputElement).value);
     if (!isNaN(value)) {
       this.receiver.handleBandwidthChange(value);
     }

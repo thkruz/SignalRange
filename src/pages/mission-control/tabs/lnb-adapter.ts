@@ -4,6 +4,7 @@ import { LNBModuleCore, LNBState } from "@app/equipment/rf-front-end/lnb-module/
 import { qs } from "@app/engine/utils/query-selector";
 import { CardAlarmBadge } from "@app/components/card-alarm-badge/card-alarm-badge";
 import { AlarmStatus } from "@app/equipment/base-equipment";
+import { parseLocalizedNumber } from "@app/utils/parse-number";
 
 /**
  * LNBAdapter - Bridges LNBModuleCore state to web controls
@@ -193,7 +194,7 @@ export class LNBAdapter {
   }
 
   private loFreqInputHandler_(e: Event): void {
-    const value = parseFloat((e.target as HTMLInputElement).value);
+    const value = parseLocalizedNumber((e.target as HTMLInputElement).value);
     this.stagedLoFrequency_ = Math.max(5000, Math.min(7000, value));
     this.updateStagedDisplays_();
   }
@@ -204,7 +205,7 @@ export class LNBAdapter {
   }
 
   private gainInputHandler_(e: Event): void {
-    const value = parseFloat((e.target as HTMLInputElement).value);
+    const value = parseLocalizedNumber((e.target as HTMLInputElement).value);
     this.stagedGain_ = Math.max(0, Math.min(65, value));
     this.updateStagedDisplays_();
   }

@@ -1,6 +1,7 @@
 import { qs } from "@app/engine/utils/query-selector";
 import { EventBus } from "@app/events/event-bus";
 import { Events } from "@app/events/events";
+import { parseLocalizedNumber } from "@app/utils/parse-number";
 import {
   RealTimeSpectrumAnalyzer,
   RealTimeSpectrumAnalyzerState
@@ -170,14 +171,14 @@ export class SpectrumAnalyzerAdvancedAdapter {
   // ============ Control Handlers ============
 
   private handleCenterFreqChange_(e: Event): void {
-    const value = parseFloat((e.target as HTMLInputElement).value);
+    const value = parseLocalizedNumber((e.target as HTMLInputElement).value);
     if (!isNaN(value)) {
       this.spectrumAnalyzer.changeCenterFreq(this.toHz_(value));
     }
   }
 
   private handleSpanChange_(e: Event): void {
-    const value = parseFloat((e.target as HTMLInputElement).value);
+    const value = parseLocalizedNumber((e.target as HTMLInputElement).value);
     if (!isNaN(value)) {
       this.spectrumAnalyzer.changeBandwidth(this.toHz_(value));
     }
@@ -188,13 +189,13 @@ export class SpectrumAnalyzerAdvancedAdapter {
     if (value === 'auto') {
       this.spectrumAnalyzer.state.rbw = null;
     } else {
-      this.spectrumAnalyzer.state.rbw = this.toHz_(parseFloat(value)) as Hertz;
+      this.spectrumAnalyzer.state.rbw = this.toHz_(parseLocalizedNumber(value)) as Hertz;
     }
     this.emitStateChange_();
   }
 
   private handleRefLevelChange_(e: Event): void {
-    const value = parseFloat((e.target as HTMLInputElement).value);
+    const value = parseLocalizedNumber((e.target as HTMLInputElement).value);
     if (!isNaN(value)) {
       this.spectrumAnalyzer.state.referenceLevel = value;
       this.emitStateChange_();
@@ -202,13 +203,13 @@ export class SpectrumAnalyzerAdvancedAdapter {
   }
 
   private handleScaleChange_(e: Event): void {
-    const value = parseFloat((e.target as HTMLSelectElement).value);
+    const value = parseLocalizedNumber((e.target as HTMLSelectElement).value);
     this.spectrumAnalyzer.state.scaleDbPerDiv = value as dB;
     this.emitStateChange_();
   }
 
   private handleMinAmpChange_(e: Event): void {
-    const value = parseFloat((e.target as HTMLInputElement).value);
+    const value = parseLocalizedNumber((e.target as HTMLInputElement).value);
     if (!isNaN(value)) {
       this.spectrumAnalyzer.state.minAmplitude = value;
       this.emitStateChange_();
@@ -216,7 +217,7 @@ export class SpectrumAnalyzerAdvancedAdapter {
   }
 
   private handleMaxAmpChange_(e: Event): void {
-    const value = parseFloat((e.target as HTMLInputElement).value);
+    const value = parseLocalizedNumber((e.target as HTMLInputElement).value);
     if (!isNaN(value)) {
       this.spectrumAnalyzer.state.maxAmplitude = value;
       this.emitStateChange_();

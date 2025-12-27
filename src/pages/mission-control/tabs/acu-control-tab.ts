@@ -8,6 +8,7 @@ import { TrackingMode } from '@app/equipment/antenna/antenna-core';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
 import { SimulationManager } from '@app/simulation/simulation-manager';
+import { parseLocalizedNumber } from '@app/utils/parse-number';
 import { WeatherManager } from '@app/weather/weather-manager';
 import './acu-control-tab.css';
 import { AntennaAdapter } from './antenna-adapter';
@@ -535,7 +536,7 @@ export class ACUControlTab extends BaseElement {
 
     // Handle frequency change - use staging method
     freqInput.addEventListener('change', () => {
-      const freqMHz = parseFloat(freqInput.value);
+      const freqMHz = parseLocalizedNumber(freqInput.value);
       if (!isNaN(freqMHz)) {
         antenna.stageBeaconFrequencyChange(freqMHz * 1e6);
       }
@@ -543,7 +544,7 @@ export class ACUControlTab extends BaseElement {
 
     // Handle bandwidth change - use staging method
     bwInput.addEventListener('change', () => {
-      const bwKHz = parseFloat(bwInput.value);
+      const bwKHz = parseLocalizedNumber(bwInput.value);
       if (!isNaN(bwKHz)) {
         antenna.stageBeaconSearchBwChange(bwKHz * 1e3);
       }

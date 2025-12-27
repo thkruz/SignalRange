@@ -5,8 +5,8 @@
 
 import { EventBus } from '@app/events/event-bus';
 import { Events, QuizCompletedData, QuizDismissedData, QuizPassedData, QuizPendingData, QuizShowData } from '@app/events/events';
-import { QuizManager } from './quiz-manager';
 import './pending-quiz-indicator.css';
+import { QuizManager } from './quiz-manager';
 
 /**
  * Floating indicator that shows when there's a pending quiz
@@ -15,7 +15,7 @@ import './pending-quiz-indicator.css';
 export class PendingQuizIndicator {
   private static instance_: PendingQuizIndicator | null = null;
 
-  private static readonly INITIAL_DELAY_MS = 15000;
+  private static readonly INITIAL_DELAY_MS = 5000;
 
   private indicatorElement_: HTMLDivElement | null = null;
   private iconElement_: HTMLDivElement | null = null;

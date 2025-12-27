@@ -83,15 +83,15 @@ export const vermontGroundStation = {
     },
     filter: {
       isPowered: true,
-      bandwidthIndex: 12,
-      bandwidth: 20 as MHz,
-      insertionLoss: 2.0,
-      noiseFloor: -101,
+      bandwidthIndex: 13,
+      bandwidth: 40 as MHz, // Only the index matters here
+      insertionLoss: 2.0, // Only the index matters here
+      noiseFloor: -101, // Only the index matters here
     },
     lnb: {
       isPowered: true,
       loFrequency: 5150 as MHz, // C-band LNB LO for 3902.5 MHz beacon -> 1247.5 MHz IF
-      gain: 55 as dB,
+      gain: 60 as dB,
       lnaNoiseFigure: 0.6, // dB
       mixerNoiseFigure: 16.0, // dB
       noiseTemperature: 45, // K - stable
@@ -154,12 +154,12 @@ export const vermontGroundStation = {
   }],
   spectrumAnalyzers: [
     {
-      referenceLevel: -99 as dBm, // Set for beacon observation
+      referenceLevel: -95 as dBm, // Set for beacon observation
       centerFrequency: 1247.5e6 as Hertz, // IF frequency for beacon
       span: 2e3 as Hertz, // 2 kHz span for CW beacon
       rbw: 1e3 as Hertz, // 1 kHz RBW for CW beacon
-      minAmplitude: -103 as dBm,
-      maxAmplitude: -85 as dBm,
+      minAmplitude: -99 as dBm,
+      maxAmplitude: -80 as dBm,
       scaleDbPerDiv: 10 as dB,
       screenMode: 'both',
       inputUnit: 'MHz',

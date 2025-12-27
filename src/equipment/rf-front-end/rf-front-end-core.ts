@@ -77,12 +77,12 @@ export abstract class RFFrontEndCore extends BaseEquipment {
 
       // Module states managed by their respective classes
       omt: OMTModule.getDefaultState(),
-      buc: {} as BUCState, // Will be set by getDefaultState from module factories
-      hpa: {} as HPAState,
+      buc: BUCModuleCore.getDefaultState(),
+      hpa: HPAModuleCore.getDefaultState(),
       agc: AGCModuleCore.getDefaultState(),
       notchFilter: NotchFilterModuleCore.getDefaultState(),
-      filter: {} as IfFilterBankState,
-      lnb: {} as LNBState,
+      filter: IfFilterBankModuleCore.getDefaultState(),
+      lnb: LNBModuleCore.getDefaultState(),
       coupler: CouplerModule.getDefaultState(),
       gpsdo: defaultGpsdoState,
       ...state

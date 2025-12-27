@@ -5,7 +5,7 @@ import { Transmitter } from '@app/equipment/transmitter/transmitter';
 import { Character, Emotion } from '@app/modal/character-enum';
 import type { Objective } from '@app/objectives/objective-types';
 import type { ScenarioData } from '@app/ScenarioData';
-import type { dB, dBm, FECType, Hertz, MHz, ModulationType, RfFrequency } from '@app/types';
+import type { dB, FECType, Hertz, MHz, ModulationType, RfFrequency } from '@app/types';
 import { getAssetUrl } from '@app/utils/asset-url';
 import type { Degrees } from 'ootk';
 import { createRfFrontEnd } from '../rf-front-end-factory';
@@ -52,64 +52,6 @@ export const scenario3Data: ScenarioData = {
       {
         ...vermontGroundStation,
         ...{
-          antennasState: [
-            {
-              // Antenna already tracking TIDEMARK-1 in program-track mode
-              isPowered: true,
-              azimuth: 161.8 as Degrees, // Locked on TIDEMARK-1
-              elevation: 34.2 as Degrees,
-              polarization: 14 as Degrees,
-              trackingMode: 'program-track',
-              isBeaconLocked: true,
-              targetSatelliteId: 61525,
-              targetAzimuth: 161.8 as Degrees,
-              targetElevation: 34.2 as Degrees,
-              targetPolarization: 14 as Degrees,
-              slewing: false,
-              beaconCN: 10.5 as dB,
-              beaconFrequencyHz: 3902.5e6 as Hertz,
-              isLocked: true,
-            } as Partial<AntennaState>,
-          ],
-          rfFrontEnds: [
-            createRfFrontEnd(vermontGroundStation.rfFrontEnds[0], {
-              buc: { loFrequency: 2225 as MHz, outputPower: 10 as dBm },
-              hpa: { isHpaEnabled: true, backOff: 10 as dBm },
-              filter: { bandwidthIndex: 3 },
-              lnb: { noiseTemperature: 65, temperature: 45 },
-              gpsdo: {
-                temperature: 70,
-                satelliteCount: 12,
-                utcAccuracy: 15,
-                lockDuration: 43200,
-                frequencyAccuracy: 1e-12,
-                allanDeviation: 5e-13,
-                phaseNoise: -140,
-                active10MHzOutputs: 5,
-                operatingHours: 43200,
-              },
-            }),
-          ],
-          spectrumAnalyzers: [
-            {
-              referenceLevel: -50,
-              centerFrequency: 3947.8e6 as Hertz,
-              span: 10e6 as Hertz,
-              rbw: 10e3 as Hertz,
-              minAmplitude: -170,
-              maxAmplitude: 0,
-              scaleDbPerDiv: 12 as dB,
-              screenMode: 'both',
-              inputUnit: 'MHz',
-              inputValue: '',
-              traces: [
-                { isVisible: true, isUpdating: true, mode: 'clearwrite' },
-                { isVisible: false, isUpdating: false, mode: 'clearwrite' },
-                { isVisible: false, isUpdating: false, mode: 'clearwrite' },
-              ],
-              selectedTrace: 1,
-            }
-          ],
         }
       },
       {
@@ -140,6 +82,8 @@ export const scenario3Data: ScenarioData = {
               isLocked: false,
             },
             lnb: { isPowered: false, noiseTemperature: 300, temperature: 25 },
+            buc: { isMuted: true },
+            hpa: { isHpaEnabled: false },
           }),
         ],
         spectrumAnalyzers: [
@@ -176,7 +120,7 @@ export const scenario3Data: ScenarioData = {
         groundStationId: 'VT-01',
         type: 'snow',
         severity: 'severe',
-        startTime: 120, // 2 minutes into scenario
+        startTime: 5, // 2 minutes into scenario
         duration: 7200, // 2 hours
         linkMarginDegradation: 8, // dB - exceeds acceptable threshold
       }

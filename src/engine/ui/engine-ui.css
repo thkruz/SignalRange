@@ -179,14 +179,15 @@
 }
 
 .confirm-modal__btn--secondary {
-  background-color: transparent;
-  color: var(--color-primary-dark);
-  border: 1px solid var(--color-dark-border);
+  background-color: #3a3a3a;
+  color: #ffffff;
+  border: 1px solid #555;
 }
 
 .confirm-modal__btn--secondary:hover {
-  background-color: var(--color-dark-border);
-  color: var(--color-dark-text);
+  background-color: #4a4a4a;
+  border-color: #666;
+  color: #ffffff;
   transform: translateY(-1px);
 }
 

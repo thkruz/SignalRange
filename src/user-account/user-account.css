@@ -265,6 +265,7 @@
   grid-template-columns: 2fr 8px 3fr;
   gap: var(--user-account-spacing-xl);
   min-height: 400px;
+  padding: 0 var(--user-account-spacing-xl);
 }
 
 .profile-modal__section {
@@ -298,15 +299,18 @@
 }
 
 .profile-form__label {
-  font-weight: 500;
-  color: #ffffff;
-  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-dark-text-muted);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .profile-form__text {
-  padding: var(--user-account-spacing-sm) 0;
-  color: var(--color-dark-text-accent);
-  font-size: 0.95rem;
+  padding: var(--user-account-spacing-xs) 0;
+  color: #ffffff;
+  font-size: 1rem;
+  font-weight: 500;
   margin: 0;
 }
 
@@ -338,6 +342,8 @@
   flex-direction: column;
   gap: var(--user-account-spacing-sm);
   padding: 0 var(--user-account-spacing-xl) var(--user-account-spacing-xl);
+  margin-top: auto;
+  padding-top: var(--user-account-spacing-xl);
 }
 
 .profile-actions__btn {
@@ -363,25 +369,137 @@
 }
 
 .profile-actions__btn--secondary {
-  background-color: transparent;
-  color: var(--color-primary);
-  border: 1px solid var(--color-dark-border);
+  background-color: #3a3a3a;
+  color: #ffffff;
+  border: 1px solid #555;
 }
 
 .profile-actions__btn--secondary:hover {
-  background-color: var(--color-dark-border);
+  background-color: #4a4a4a;
+  border-color: #666;
   color: #ffffff;
 }
 
 .profile-actions__btn--danger {
-  background-color: transparent;
-  color: #dc3545;
-  border: 1px solid #dc3545;
+  background-color: #2a1a1a;
+  color: #b71c0c;
+  border: 1px solid #b71c0c;
 }
 
 .profile-actions__btn--danger:hover {
-  background-color: #dc3545;
+  background-color: #b71c0c;
   color: #ffffff;
+}
+
+/* ==========================================================================
+   PROFILE STATS
+   ========================================================================== */
+
+.profile-stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--user-account-spacing-md);
+  margin-top: var(--user-account-spacing-lg);
+}
+
+.profile-stat-card {
+  background: linear-gradient(135deg, #2a2a2a 0%, #1f1f1f 100%);
+  border: 1px solid var(--color-dark-border);
+  border-left: 3px solid var(--color-primary);
+  border-radius: var(--user-account-border-radius);
+  padding: var(--user-account-spacing-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--user-account-spacing-xs);
+}
+
+.profile-stat-card__value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #ffffff;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+.profile-stat-card__label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--color-dark-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* ==========================================================================
+   ACHIEVEMENTS PLACEHOLDER
+   ========================================================================== */
+
+.profile-achievements-section {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.profile-achievements-placeholder {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: var(--user-account-spacing-lg);
+}
+
+.achievements-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #ffffff;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  text-align: center;
+  z-index: 5;
+}
+
+.achievements-grid-wrapper {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.achievements-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: var(--user-account-spacing-xl);
+  filter: blur(3px);
+  opacity: 0.5;
+}
+
+.achievement-tile--placeholder {
+  width: 100%;
+  aspect-ratio: 1;
+  background: linear-gradient(135deg, #3a3a3a 0%, #2a2a2a 100%);
+  border-radius: var(--user-account-border-radius);
+  border: 1px solid #444;
+  min-width: 60px;
+}
+
+.achievements-grid-wrapper .coming-soon-banner {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-30deg);
+  background: #b71c0c;
+  color: #fff;
+  padding: var(--user-account-spacing-sm) 60px;
+  font-size: 1.1rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  z-index: 10;
+  white-space: nowrap;
 }
 
 /* ==========================================================================

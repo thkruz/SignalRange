@@ -396,6 +396,17 @@ export class UserDataService {
   }
 
   /**
+   * Delete all progress and checkpoints for the current app
+   * This is a bulk operation that clears all scenario_progress and checkpoints
+   */
+  async deleteAllProgress(): Promise<void> {
+    await this.request<void>(
+      `/api/user/apps/${this.config.appId}/progress`,
+      'DELETE',
+    );
+  }
+
+  /**
    * Check if a checkpoint exists for a specific scenario (HEAD request)
    */
   async checkpointExists(scenarioId: string): Promise<boolean> {

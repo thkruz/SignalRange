@@ -593,28 +593,25 @@ export class Transmitter extends BaseEquipment {
    * Public API for adapters - Configuration handlers
    */
   public handleAntennaChange(antennaId: number): void {
-    if (!this.inputData.ifSignal) {
-      this.inputData.ifSignal = { ...this.activeModem.ifSignal };
-    }
     this.inputData.antenna_id = antennaId;
   }
 
   public handleFrequencyChange(frequencyMHz: number): void {
-    if (!this.inputData.ifSignal) {
+    if (!this.inputData.ifSignal?.signalId) {
       this.inputData.ifSignal = { ...this.activeModem.ifSignal };
     }
     this.inputData.ifSignal.frequency = (frequencyMHz * 1e6) as IfFrequency;
   }
 
   public handleBandwidthChange(bandwidthMHz: number): void {
-    if (!this.inputData.ifSignal) {
+    if (!this.inputData.ifSignal?.signalId) {
       this.inputData.ifSignal = { ...this.activeModem.ifSignal };
     }
     this.inputData.ifSignal.bandwidth = (bandwidthMHz * 1e6) as Hertz;
   }
 
   public handlePowerChange(powerDbm: number): void {
-    if (!this.inputData.ifSignal) {
+    if (!this.inputData.ifSignal?.signalId) {
       this.inputData.ifSignal = { ...this.activeModem.ifSignal };
     }
     this.inputData.ifSignal.power = powerDbm as dBm;
@@ -685,16 +682,24 @@ export class Transmitter extends BaseEquipment {
   public applyChanges(): void {
     this.updateTransmissionState();
 
-    // Update the modem configuration
-    this.state.modems[this.activeModem.id] = {
+    // Find the correct array index for the active modem
+    const modemIndex = this.state.modems.findIndex(m => m.modem_number === this.state.activeModem);
+    if (modemIndex === -1) return;
+
+    // Update the modem configuration, merging ifSignal properties
+    this.state.modems[modemIndex] = {
       ...this.activeModem,
-      ifSignal: this.inputData.ifSignal ?? this.activeModem.ifSignal,
+      antenna_id: this.inputData.antenna_id ?? this.activeModem.antenna_id,
+      ifSignal: {
+        ...this.activeModem.ifSignal,
+        ...this.inputData.ifSignal,
+      },
     };
 
     this.emit(Events.TX_CONFIG_CHANGED, {
       uuid: this.uuid,
       modem: this.state.activeModem,
-      config: this.state.modems[this.activeModem.id]
+      config: this.state.modems[modemIndex]
     });
 
     this.syncDomWithState();

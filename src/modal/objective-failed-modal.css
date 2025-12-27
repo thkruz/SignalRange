@@ -4,21 +4,26 @@
 }
 
 .failure-modal__icon {
-  font-size: 3rem;
   margin-bottom: 0.75rem;
+}
+
+.failure-modal__icon img {
+  width: 48px;
+  height: 48px;
   opacity: 0.8;
+  filter: invert();
 }
 
 .failure-modal__title {
   font-size: 1.25rem;
   font-weight: 600;
-  color: #dc3545;
+  color: #b71c0c;
   margin-bottom: 0.5rem;
 }
 
 .failure-modal__message {
   font-size: 1rem;
-  color: var(--hm-muted, #adb5bd);
+  color: var(--color-dark-text-muted, #adb5bd);
   margin-bottom: 1.5rem;
   line-height: 1.4;
 }
@@ -31,37 +36,30 @@
 
 .failure-modal__actions button {
   width: 100%;
-  padding: 0.75rem 1rem;
-  font-size: 0.95rem;
-  border-radius: 4px;
+  padding: 12px;
+  font-size: 1rem;
+  border-radius: 8px;
   cursor: pointer;
-  transition: background-color 0.2s, transform 0.1s;
-}
-
-.failure-modal__actions button:hover {
-  transform: translateY(-1px);
-}
-
-.failure-modal__actions button:active {
-  transform: translateY(0);
+  transition: background-color 0.2s ease;
 }
 
 .failure-modal__actions .btn-primary {
-  background-color: #0d6efd;
+  background-color: var(--color-primary);
   border: none;
-  color: white;
+  color: #ffffff;
 }
 
 .failure-modal__actions .btn-primary:hover {
-  background-color: #0b5ed7;
+  background-color: var(--color-primary-dark);
 }
 
 .failure-modal__actions .btn-secondary {
-  background-color: transparent;
-  border: 1px solid #6c757d;
-  color: #adb5bd;
+  background-color: #3a3a3a;
+  border: 1px solid #555;
+  color: #ffffff;
 }
 
 .failure-modal__actions .btn-secondary:hover {
-  background-color: rgba(108, 117, 125, 0.2);
+  background-color: #4a4a4a;
+  border-color: #666;
 }

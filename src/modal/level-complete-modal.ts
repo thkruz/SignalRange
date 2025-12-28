@@ -77,11 +77,13 @@ export class LevelCompleteModal extends DraggableModal {
               <span class="breakdown-value positive">+${score.basePoints}</span>
             </div>
             <div class="breakdown-detail">${this.formatObjectivesDetail_(score.objectiveBreakdown)}</div>
+            ${score.timeBonus > 0 ? `
             <div class="breakdown-row">
               <span class="breakdown-label">Time Bonus</span>
               <span class="breakdown-value positive">+${score.timeBonus}</span>
             </div>
             <div class="breakdown-detail">${score.timeRemainingSeconds} seconds remaining / ${ScoreCalculator.TIME_BONUS_DIVISOR}</div>
+            ` : ''}
             ${score.quizPenalties > 0 ? `
             <div class="breakdown-row">
               <span class="breakdown-label">Quiz Penalties</span>

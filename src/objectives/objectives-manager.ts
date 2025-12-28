@@ -34,6 +34,7 @@ export class ObjectivesManager {
   private scenarioTimerRunning_: boolean = false;
   private scenarioTimeRemaining_: number = 0;
   private timerInterval_: number | null = null;
+  private scenarioStartTime_: number = 0;
 
   // Quiz pass state - when true, timers are paused and "PASS" should display
   private isQuizPassed_: boolean = false;
@@ -48,6 +49,9 @@ export class ObjectivesManager {
     // Initialize bound handlers
     this.boundQuizPassedHandler_ = this.handleQuizPassed_.bind(this);
     this.boundQuizCompletedHandler_ = this.handleQuizCompleted_.bind(this);
+
+    // Track scenario start time for elapsed time calculation
+    this.scenarioStartTime_ = Date.now();
 
     // Initialize scenario timer if provided
     if (scenarioTimeLimit !== undefined && scenarioTimeLimit > 0) {
@@ -166,14 +170,15 @@ export class ObjectivesManager {
   }
 
   /**
-   * Get total elapsed time derived from scenario countdown timer
-   * Returns 0 if no scenario timer is set
+   * Get total elapsed time in seconds since scenario started
+   * Uses countdown timer if available, otherwise calculates from start time
    */
   getElapsedTime(): number {
     if (this.scenarioTimeLimit_ !== null) {
       return this.scenarioTimeLimit_ - this.scenarioTimeRemaining_;
     }
-    return 0;
+    // No countdown timer - calculate from start time
+    return Math.floor((Date.now() - this.scenarioStartTime_) / 1000);
   }
 
   /**

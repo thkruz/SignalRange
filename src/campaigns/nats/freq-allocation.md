@@ -12,6 +12,6 @@
 5962 - 5980 - 5998 - TIDEMARK-2-Teleport
 6405 (4180) - Beacon
 
-5851 - 5869 - 5887 - TIDEMARK-2-TDMA-Composite
-5814 - 5832 - 5850 - TIDEMARK-2-Teleport
+5851 - 5869 - 5887 - SES-10-TDMA-Composite
+5814 - 5832 - 5850 - SES-10-Teleport --- INVALID FREQ
 6403 (4178) - Beacon

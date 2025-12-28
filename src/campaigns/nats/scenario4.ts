@@ -1,14 +1,11 @@
 import { html } from '@app/engine/utils/development/formatter';
-import type { AntennaState } from '@app/equipment/antenna';
-import { ANTENNA_CONFIG_KEYS } from "@app/equipment/antenna/antenna-config-keys";
 import { Character, Emotion } from '@app/modal/character-enum';
 import type { Objective } from '@app/objectives/objective-types';
 import type { ScenarioData } from '@app/ScenarioData';
-import type { dB, dBm, Hertz, MHz, RfFrequency } from '@app/types';
+import type { dBm, Hertz, MHz, RfFrequency } from '@app/types';
 import { getAssetUrl } from '@app/utils/asset-url';
 import type { Degrees } from 'ootk';
-import { createRfFrontEnd } from '../rf-front-end-factory';
-import { maineGroundStationConfig, vermontGroundStation } from './ground-stations';
+import { maineGroundStation, vermontGroundStation } from './ground-stations';
 import { ses10Satellite, tidemark1Satellite, tidemark2Satellite } from './satellites';
 
 /**
@@ -46,122 +43,8 @@ export const scenario4Data: ScenarioData = {
   settings: {
     isSync: true,
     groundStations: [
-      {
-        id: 'VT-01',
-        name: 'Vermont Ground Station',
-        location: {
-          latitude: 44.5588,
-          longitude: -72.5778,
-          elevation: 2,
-        },
-        antennas: [ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK],
-        antennasState: [
-          {
-            // Stowed initially
-            isPowered: true,
-            azimuth: 0 as Degrees,
-            elevation: 90 as Degrees,
-            polarization: 0 as Degrees,
-            isTracking: false,
-            trackingMode: 'stow',
-          } as Partial<AntennaState>,
-        ],
-        rfFrontEnds: [
-          createRfFrontEnd(vermontGroundStation.rfFrontEnds[0], {
-            buc: { isPowered: false, loFrequency: 2225 as MHz, outputPower: 0 as dBm, isMuted: true, isExtRefLocked: false },
-            hpa: { isPowered: false, outputPower: 0 as dBm },
-            filter: { bandwidthIndex: 0 }, // Student must select
-            lnb: {
-              isPowered: false,
-              loFrequency: 0 as MHz, // Student must calculate
-              gain: 0 as dB,
-              noiseTemperature: 25,
-              noiseTemperatureStabilizationTime: 180,
-              isExtRefLocked: false,
-              temperature: 22,
-              thermalStabilizationTime: 180,
-            },
-            gpsdo: {
-              temperature: 65,
-              satelliteCount: 11,
-              utcAccuracy: 18,
-              lockDuration: 86400,
-              frequencyAccuracy: 1e-12,
-              allanDeviation: 5e-13,
-              phaseNoise: -140,
-              active10MHzOutputs: 1, // Only GPSDO itself currently
-              operatingHours: 86400,
-            },
-          }),
-        ],
-        spectrumAnalyzers: [
-          {
-            referenceLevel: 0, // Student must configure
-            centerFrequency: 1.432e9 as Hertz, // Student must configure
-            span: 100e6 as Hertz, // Student must configure
-            rbw: 1e6 as Hertz, // Student must configure
-            minAmplitude: -170,
-            maxAmplitude: 0,
-            scaleDbPerDiv: 17 as dB,
-            screenMode: 'both',
-            inputUnit: 'MHz',
-            inputValue: '',
-            traces: [
-              { isVisible: true, isUpdating: true, mode: 'clearwrite' },
-              { isVisible: false, isUpdating: false, mode: 'clearwrite' },
-              { isVisible: false, isUpdating: false, mode: 'clearwrite' },
-            ],
-            selectedTrace: 1,
-          }
-        ],
-        transmitters: [],
-        receivers: [],
-      },
-      {
-        id: 'ME-01',
-        isOperational: false,
-        name: 'Maine Ground Station',
-        location: {
-          latitude: 45.215214,
-          longitude: -68.785507,
-          elevation: 48,
-        },
-        antennas: [ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK],
-        antennasState: [
-          {
-            isPowered: false,
-            azimuth: 0 as Degrees,
-            elevation: 90 as Degrees,
-          } as Partial<AntennaState>
-        ],
-        rfFrontEnds: [
-          createRfFrontEnd(maineGroundStationConfig.rfFrontEnds[0], {}),
-        ],
-        spectrumAnalyzers: [
-          {
-            referenceLevel: 0, // dBm
-            centerFrequency: 600e6 as Hertz,
-            span: 100e6 as Hertz,
-            rbw: 50e6 as Hertz,
-            minAmplitude: -170,
-            maxAmplitude: 0,
-            scaleDbPerDiv: (-0 + 170) / 10 as dB, // 6 dB/div
-            screenMode: 'both',
-            inputUnit: 'MHz',
-            inputValue: '',
-
-            // Multi-trace support
-            traces: [
-              { isVisible: true, isUpdating: true, mode: 'clearwrite' }, // Trace 1
-              { isVisible: false, isUpdating: false, mode: 'clearwrite' }, // Trace 2
-              { isVisible: false, isUpdating: false, mode: 'clearwrite' }, // Trace 3
-            ],
-            selectedTrace: 1,
-          }
-        ],
-        transmitters: [],
-        receivers: [],
-      }
+      vermontGroundStation,
+      maineGroundStation
     ],
     layout: html`
               <div class="student-equipment scenario1-layout">

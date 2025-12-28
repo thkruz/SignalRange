@@ -217,7 +217,7 @@ export const vermontGroundStation = {
   }],
 } as GroundStationConfig;
 
-export const maineGroundStationConfig = {
+export const maineGroundStation = {
   id: 'ME-02',
   isOperational: false,
   name: 'Maine Ground Station',

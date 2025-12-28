@@ -5,7 +5,7 @@ import type { dBm, Hertz, MHz } from '@app/types';
 import { getAssetUrl } from '@app/utils/asset-url';
 import type { Degrees } from 'ootk';
 import { createRfFrontEnd } from '../rf-front-end-factory';
-import { maineGroundStationConfig, vermontGroundStation } from './ground-stations';
+import { maineGroundStation, vermontGroundStation } from './ground-stations';
 import { natsHtmlLayout } from './html-layout';
 import { ses10Satellite, tidemark1Satellite } from './satellites';
 
@@ -59,7 +59,7 @@ export const scenario2Data: ScenarioData = {
           },
         ],
       },
-      { ...maineGroundStationConfig, isOperational: false },
+      { ...maineGroundStation, isOperational: false },
     ],
     layout: natsHtmlLayout,
     missionBriefUrl: 'https://docs.signalrange.space/scenarios/scenario-2?content-only=true&dark=true',

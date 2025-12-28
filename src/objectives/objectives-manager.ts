@@ -605,6 +605,9 @@ export class ObjectivesManager {
 
         // Check if all objectives are complete
         if (this.areAllObjectivesCompleted()) {
+          // Freeze all timers when scenario is completed
+          this.stopAllTimers();
+
           this.eventBus_.emit(Events.OBJECTIVES_ALL_COMPLETED, {
             completedObjectives: this.objectiveStates_,
             totalTime: this.getElapsedTime(),

@@ -382,7 +382,7 @@ export const scenario2Data: ScenarioData = {
           Good. Now we start the shutdown sequence.
         </p>
         <p>
-          The HPA is pushing several hundred watts through that feed horn. We disable it first - that's the big one. TX Chain tab. Find the HPA panel and disable the output. Two-step process: ARM first, then DISABLE.
+          The HPA is pushing several hundred watts through that feed horn. We disable it first - that's the big one. TX Chain tab. Find the HPA panel and leave it powered for now, but disable the output.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,

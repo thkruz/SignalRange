@@ -54,11 +54,13 @@ jobs:
           script: |
             const prNumber = context.payload.issue.number;
             const actor = context.payload.comment.user.login;
+            const repo = `${context.repo.owner}/${context.repo.repo}`;
+            const workflowUrl = `https://github.com/${repo}/actions/workflows/deploy-pipeline.yml`;
 
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: prNumber,
               body: `⏳ **UAT deployment started** by @${actor}\n\n` +
-                    `[View workflow run](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/workflows/deploy-pipeline.yml)`
+                    `[View workflow run](${workflowUrl})`
             });

@@ -46,7 +46,7 @@ export const scenario5Data: ScenarioData = {
   duration: '15-20 min',
   difficulty: 'intermediate',
   missionType: 'Troubleshooting',
-  description: `Customer reports degraded service on TIDEMARK-1. The C/N ratio has dropped significantly, causing packet errors.<br><br>The spectrum analyzer shows our 36 MHz carrier, but there's something else in the band - a narrowband spike that shouldn't be there. It's likely cross-polarization leakage from another operator's uplink. The spike is causing the receiver's AGC to reduce gain, which degrades the overall C/N ratio.<br><br>Your job is to identify the interference and apply a notch filter to block it while preserving our wideband signal. Charlie will guide you through the troubleshooting process.`,
+  description: `Customer reports degraded service on TIDEMARK-1. The C/N ratio has dropped significantly, causing packet errors.<br><br>The spectrum analyzer is currently configured for beacon tracking - you'll need to reconfigure it to investigate the main signal. Something's causing interference, but you'll need to find it, characterize it, and figure out the best way to mitigate it.<br><br>Charlie will guide you through the troubleshooting process, but you'll need to figure out the right settings and measurements yourself.`,
   equipment: [
     '9-meter C-band Antenna',
     'RF Front End',
@@ -58,7 +58,10 @@ export const scenario5Data: ScenarioData = {
     isSync: true,
     groundStations: [
       vermontGroundStation,
-      maineGroundStation,
+      {
+        ...maineGroundStation,
+        isOperational: true,
+      },
     ],
     layout: natsHtmlLayout,
     missionBriefUrl: 'https://docs.signalrange.space/scenarios/scenario-6?content-only=true&dark=true',
@@ -153,53 +156,172 @@ export const scenario5Data: ScenarioData = {
   },
   timeLimitSeconds: 1800, // 30 minutes
   objectives: [
+    // Phase 1: Confirm the customer complaint
     {
       id: 'phase-1-observe-degradation',
-      title: 'Phase 1: Confirm Signal Degradation',
+      title: 'Confirm Signal Degradation',
       description: 'Check the receiver modem to confirm the customer\'s report of degraded service.',
       groundStation: 'VT-01',
+      timeLimitSeconds: 2 * 60,
+      timerStartTrigger: 'on-activate',
       conditions: [
         {
           type: 'status-check',
           description: 'Identify C/N Degradation',
           params: {
-            question: 'Looking at the receiver modem, what is the current C/N ratio?',
+            question: 'Looking at the receiver modem, what is the current C/N ratio status?',
             options: [
-              'C/N is degraded (~6 dB) - below normal operating threshold',
-              'C/N is healthy (~12 dB) - operating normally',
-              'C/N is marginal (~9 dB) - at threshold',
+              'C/N is degraded - well below normal operating threshold',
+              'C/N is healthy - operating normally',
+              'C/N is marginal - at threshold',
               'No signal lock - receiver is offline',
             ],
             correctIndex: 0,
-            explanation: 'The C/N ratio of approximately 6 dB is well below the normal 12 dB operating level. This confirms the customer complaint - something is degrading our signal quality.',
+            explanation: 'The C/N ratio is well below the normal operating level. This confirms the customer complaint - something is degrading our signal quality.',
             pointPenalty: 5,
           },
           mustMaintain: false,
         },
       ],
       conditionLogic: 'AND',
-      points: 15,
+      points: 10,
     },
+    // Phase 2: Widen spectrum view (NEW)
     {
-      id: 'phase-2-identify-interference',
-      title: 'Phase 2: Identify Interference on Spectrum',
-      description: 'Look at the spectrum analyzer display. Our 36 MHz signal should be visible, but there\'s something else.',
+      id: 'phase-2-configure-span',
+      title: 'Widen Spectrum View',
+      description: 'The spectrum analyzer is currently configured for beacon observation. Widen the frequency span to see the full signal bandwidth.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['phase-1-observe-degradation'],
+      timeLimitSeconds: 2 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'speca-span-set',
+          description: 'Span widened to see full signal',
+          params: {
+            span: 75e6, // 75 MHz span
+            frequencyTolerance: 25e6, // Allow 50-100 MHz
+          },
+          mustMaintain: true,
+        },
+        {
+          type: 'speca-center-frequency',
+          description: 'Center frequency set to see full signal',
+          params: {
+            centerFrequency: 1532e6 as Hertz, // Beacon IF is 1520 MHz, signal is 10 MHz higher
+            centerFrequencyTolerance: 1e6, // Allow +/- 1 MHz
+          },
+          mustMaintain: true,
+        },
+        {
+          type: 'speca-min-amplitude',
+          description: 'Min amplitude set just below noise floor',
+          params: {
+            minAmplitude: -115 as dBm,
+            minAmplitudeTolerance: 20 as dBm,
+          },
+          mustMaintain: true,
+        },
+        {
+          type: 'speca-max-amplitude',
+          description: 'Max amplitude set just above signal peak',
+          params: {
+            maxAmplitude: 0 as dBm,
+            maxAmplitudeTolerance: 30 as dBm,
+          },
+          mustMaintain: true,
+        }
+      ],
+      conditionLogic: 'AND',
+      points: 15,
+    },
+    // Phase 3: Locate main signal (NEW)
+    {
+      id: 'phase-3-locate-signal',
+      title: 'Center on Downlink Signal',
+      description: 'Move the spectrum analyzer center frequency to observe the main downlink signal. Think about where the signal should appear at IF.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['phase-2-configure-span'],
+      timeLimitSeconds: 2 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'speca-center-frequency',
+          description: 'Center frequency set to see main signal',
+          params: {
+            centerFrequency: 1532e6 as Hertz, // Main signal IF
+            centerFrequencyTolerance: 20e6, // Allow 1512-1552 MHz
+          },
+          mustMaintain: true,
+        },
+        {
+          type: 'signal-detected',
+          description: 'Main signal visible',
+          params: {
+            signalId: 'TIDEMARK-1-TDMA-Composite',
+            minPower: -100 as dBm,
+          },
+          mustMaintain: true,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 15,
+    },
+    // Phase 4: Identify interference
+    {
+      id: 'phase-4-identify-interference',
+      title: 'Identify Interference',
+      description: 'Look at the spectrum analyzer display. Our wideband signal should be visible - is there anything else that shouldn\'t be there?',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['phase-3-locate-signal'],
+      timeLimitSeconds: 2 * 60,
+      timerStartTrigger: 'on-activate',
       conditions: [
         {
           type: 'status-check',
           description: 'Identify the Interference',
           params: {
-            question: 'Looking at the spectrum analyzer, what do you see within our 36 MHz signal bandwidth?',
+            question: 'Looking at the spectrum analyzer, what do you see within our wideband signal?',
             options: [
-              'A narrow 3 MHz spike sitting within our wideband signal',
+              'A narrowband spike sitting within our wideband signal',
               'Our signal looks normal with no interference',
               'The entire noise floor is elevated uniformly',
               'Multiple spikes scattered across the spectrum',
             ],
             correctIndex: 0,
-            explanation: 'There\'s a 3 MHz narrowband spike sitting within our 36 MHz signal. This is in-band interference - it\'s not adjacent to our signal, it\'s inside it. That\'s why it\'s so problematic.',
+            explanation: 'There\'s a narrowband spike sitting within our wideband signal. This is in-band interference - it\'s not adjacent to our signal, it\'s inside it. That\'s why it\'s so problematic.',
+            pointPenalty: 5,
+          },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 10,
+    },
+    // Phase 5: Characterize interference (NEW)
+    {
+      id: 'phase-5-characterize-interference',
+      title: 'Characterize the Interference',
+      description: 'Look closely at the interference. What can you determine about its bandwidth compared to our main signal?',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['phase-4-identify-interference'],
+      timeLimitSeconds: 2 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'status-check',
+          description: 'Identify Interference Bandwidth',
+          params: {
+            question: 'How does the interference bandwidth compare to our main signal?',
+            options: [
+              'Much narrower - a spike only a few MHz wide within our wideband signal',
+              'Same width - the interference matches our signal bandwidth',
+              'Much wider - the interference spans beyond our signal',
+              'Variable - the interference bandwidth keeps changing',
+            ],
+            correctIndex: 0,
+            explanation: 'The interference is a narrowband spike - only a few MHz wide compared to our wideband signal. This is important because it means we can surgically remove it with a notch filter without affecting most of our signal.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -208,12 +330,15 @@ export const scenario5Data: ScenarioData = {
       conditionLogic: 'AND',
       points: 15,
     },
+    // Phase 6: Understand cause
     {
-      id: 'phase-3-understand-cause',
-      title: 'Phase 3: Understand the Interference Source',
+      id: 'phase-6-understand-cause',
+      title: 'Understand the Interference Source',
       description: 'Determine what\'s causing this in-band interference.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['phase-2-identify-interference'],
+      prerequisiteObjectiveIds: ['phase-5-characterize-interference'],
+      timeLimitSeconds: 2 * 60,
+      timerStartTrigger: 'on-activate',
       conditions: [
         {
           type: 'status-check',
@@ -234,20 +359,23 @@ export const scenario5Data: ScenarioData = {
         },
       ],
       conditionLogic: 'AND',
-      points: 15,
+      points: 10,
     },
+    // Phase 7: Understand AGC impact
     {
-      id: 'phase-4-understand-impact',
-      title: 'Phase 4: Understand the AGC Impact',
-      description: 'Understand why this spike is affecting our C/N ratio.',
+      id: 'phase-7-understand-impact',
+      title: 'Understand the AGC Impact',
+      description: 'Understand why this spike is affecting our C/N ratio across the entire signal.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['phase-3-understand-cause'],
+      prerequisiteObjectiveIds: ['phase-6-understand-cause'],
+      timeLimitSeconds: 2 * 60,
+      timerStartTrigger: 'on-activate',
       conditions: [
         {
           type: 'status-check',
           description: 'Understand AGC Impact',
           params: {
-            question: 'Why is this 3 MHz spike causing the C/N to drop across our entire 36 MHz signal?',
+            question: 'Why is this narrowband spike causing the C/N to drop across our entire wideband signal?',
             options: [
               'The AGC sees the spike as part of the total signal and reduces gain accordingly',
               'The spike is overloading the LNB causing compression',
@@ -262,25 +390,28 @@ export const scenario5Data: ScenarioData = {
         },
       ],
       conditionLogic: 'AND',
-      points: 15,
+      points: 10,
     },
+    // Phase 8: Configure notch filter
     {
-      id: 'phase-5-apply-notch-filter',
-      title: 'Phase 5: Configure Notch Filter',
+      id: 'phase-8-apply-notch-filter',
+      title: 'Configure Notch Filter',
       description: 'Configure a notch filter to surgically remove the interference spike. Match the filter settings to what you observed on the spectrum.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['phase-4-understand-impact'],
+      prerequisiteObjectiveIds: ['phase-7-understand-impact'],
+      timeLimitSeconds: 3 * 60,
+      timerStartTrigger: 'on-activate',
       conditions: [
         {
           type: 'notch-filter-configured',
           description: 'Notch Filter Configured',
           params: {
-            notchCenterFrequency: 1415, // MHz - IF frequency of interference
-            notchBandwidth: 3, // MHz - matches 3 MHz interference
-            notchDepth: 36, // dB - sufficient attenuation
-            notchCenterFrequencyTolerance: 0, // Allow some tolerance
+            notchCenterFrequency: 1515, // MHz - IF frequency of interference (5250 - 3735 = 1515)
+            notchBandwidth: 1, // MHz - matches narrowband interference
+            notchDepth: 40, // dB - sufficient attenuation
+            notchCenterFrequencyTolerance: 0, // Exact match required
             notchBandwidthTolerance: 0.25,
-            notchDepthTolerance: 10,
+            notchDepthTolerance: 20,
           },
           maintainUntilObjectiveComplete: true,
         },
@@ -288,12 +419,15 @@ export const scenario5Data: ScenarioData = {
       conditionLogic: 'AND',
       points: 25,
     },
+    // Phase 9: Verify restoration
     {
-      id: 'phase-6-verify-restoration',
-      title: 'Phase 6: Verify Service Restored',
+      id: 'phase-9-verify-restoration',
+      title: 'Verify Service Restored',
       description: 'Confirm the notch filter has restored normal C/N ratio.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['phase-5-apply-notch-filter'],
+      prerequisiteObjectiveIds: ['phase-8-apply-notch-filter'],
+      timeLimitSeconds: 2 * 60,
+      timerStartTrigger: 'on-activate',
       conditions: [
         {
           type: 'status-check',
@@ -301,13 +435,13 @@ export const scenario5Data: ScenarioData = {
           params: {
             question: 'After applying the notch filter, what happened to the signal?',
             options: [
-              'C/N restored to ~12 dB - the spike is notched out and AGC normalized',
-              'C/N unchanged at 6 dB - the filter had no effect',
+              'C/N restored to normal levels - the spike is notched out and AGC normalized',
+              'C/N unchanged - the filter had no effect',
               'Signal lock lost - the notch filter blocked our carrier',
-              'C/N dropped further - wrong filter selected',
+              'C/N dropped further - wrong filter settings',
             ],
             correctIndex: 0,
-            explanation: 'The 3 MHz notch filter blocks the interference spike while passing the rest of our 36 MHz signal. With the spike removed, the AGC no longer sees the excess power and allows proper gain. C/N returns to normal.',
+            explanation: 'The notch filter blocks the interference spike while passing the rest of our wideband signal. With the spike removed, the AGC no longer sees the excess power and allows proper gain. C/N returns to normal.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -335,87 +469,114 @@ export const scenario5Data: ScenarioData = {
       'phase-1-observe-degradation': {
         text: `
         <p>
-          Six dB C/N - that's well below where we should be running. The customer's complaint is legitimate.
+          That C/N is well below normal. The customer's complaint is legitimate.
         </p>
         <p>
-          Now look at the spectrum analyzer. You can see our 36 MHz wideband signal, but there's also a narrowband spike sitting inside our bandwidth. That spike is our problem.
+          But before we dig into why, we need to see what's happening on the spectrum. The analyzer is still configured for beacon tracking - you'll need to pull back and get a wider view of the band.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
         audioUrl: getAssetUrl('/assets/campaigns/nats/6/obj-phase-1.mp3'),
       },
-      'phase-2-identify-interference': {
+      'phase-2-configure-span': {
         text: `
         <p>
-          There it is - a 3 MHz spike sitting right inside our 36 MHz signal. That's in-band interference, which is worse than adjacent channel. We can't just use a narrower filter because we'd cut off part of our own signal.
+          Now you can see more of the picture. But we need to center on where our actual signal is - not the beacon.
         </p>
         <p>
-          Think about what could cause a narrowband signal to land inside our bandwidth on a different polarization...
+          Think about where the downlink should appear at IF. The receiver modem shows what frequency it's tuned to - that's a hint.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
         audioUrl: getAssetUrl('/assets/campaigns/nats/6/obj-phase-2.mp3'),
       },
-      'phase-3-understand-cause': {
+      'phase-3-locate-signal': {
         text: `
         <p>
-          Cross-pol leakage - that's what this is. Another operator is transmitting on vertical polarization in the same frequency range, and their cross-pol isolation isn't perfect. We're picking up some of their energy on our horizontal pol receiver.
+          There's our wideband signal. But look carefully - there's something else in there that shouldn't be.
         </p>
         <p>
-          This happens. Antennas don't have infinite cross-pol discrimination, especially in rain. Could also be a feed alignment issue on their end.
-        </p>
-        <p>
-          The question is: why does this 3 MHz spike cause our entire 36 MHz signal to degrade? Think about what the receiver does with the total power it sees.
+          See if you can spot what doesn't belong.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
-        emotion: Emotion.CONFIDENT,
+        emotion: Emotion.NEUTRAL,
         audioUrl: getAssetUrl('/assets/campaigns/nats/6/obj-phase-3.mp3'),
       },
-      'phase-4-understand-impact': {
+      'phase-4-identify-interference': {
         text: `
         <p>
-          Exactly. The AGC doesn't know the difference between our wanted signal and interference. It just sees total power and sets the gain accordingly.
+          You found it. There's a spike sitting inside our signal bandwidth. That's in-band interference - worse than adjacent channel because we can't just filter it out with a narrower passband.
         </p>
         <p>
-          That spike is adding extra power to the passband. The AGC backs off the gain to compensate, and now our actual carrier is too weak. The C/N suffers even though the spike isn't directly on top of our signal.
-        </p>
-        <p>
-          The solution is a notch filter. We can surgically remove that 3 MHz spike while leaving the rest of our 36 MHz signal intact. Open the notch filter panel - you'll need to configure the center frequency, width, and depth to match the interference.
+          Look at it more closely - what can you tell about its characteristics?
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
-        emotion: Emotion.CONFIDENT,
+        emotion: Emotion.NEUTRAL,
         audioUrl: getAssetUrl('/assets/campaigns/nats/6/obj-phase-4.mp3'),
       },
-      'phase-5-apply-notch-filter': {
+      'phase-5-characterize-interference': {
         text: `
         <p>
-          Now for the fix. You've got all the information you need from the spectrum - the interference frequency and its bandwidth.
+          It's narrowband - just a spike compared to our wideband signal. That's the good news. The bad news is it's strong enough to cause problems.
         </p>
         <p>
-          Configure the notch filter to match what you're seeing. Think about what center frequency, width, and depth would block that spike without cutting into our wanted signal.
+          Think about what could put a narrowband signal inside our bandwidth on this transponder...
+        </p>
+        `,
+        character: Character.CHARLIE_BROOKS,
+        emotion: Emotion.NEUTRAL,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/6/obj-phase-5.mp3'),
+      },
+      'phase-6-understand-cause': {
+        text: `
+        <p>
+          Cross-pol leakage. Another operator's signal bleeding through. Their cross-pol isolation isn't perfect, and we're picking up some of their energy.
+        </p>
+        <p>
+          But here's the puzzle - that spike is narrow. Why would it degrade our entire wideband signal? Think about what the receiver does with total power in the passband.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.CONFIDENT,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/6/obj-phase-5.mp3'),
+        audioUrl: getAssetUrl('/assets/campaigns/nats/6/obj-phase-6.mp3'),
       },
-      'phase-6-verify-restoration': {
+      'phase-7-understand-impact': {
         text: `
         <p>
-          C/N's back up where it belongs. The notch filter blocked the interference, the AGC normalized, and our signal is clean again.
+          Exactly. The AGC sees total power and adjusts gain accordingly. That spike is fooling it into backing off the gain across the whole band.
         </p>
         <p>
-          Nice work. You diagnosed the interference type, understood why it was affecting the whole signal through AGC desensitization, and applied the right filter to fix it.
+          The fix is surgical - we need to notch out just that interference while leaving our signal intact. Check the spectrum carefully and configure the notch filter to match what you're seeing.
+        </p>
+        `,
+        character: Character.CHARLIE_BROOKS,
+        emotion: Emotion.CONFIDENT,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/6/obj-phase-7.mp3'),
+      },
+      'phase-8-apply-notch-filter': {
+        text: `
+        <p>
+          Check the receiver now. If you got the notch parameters right, the AGC should normalize and C/N should come back up.
+        </p>
+        `,
+        character: Character.CHARLIE_BROOKS,
+        emotion: Emotion.CONFIDENT,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/6/obj-phase-8.mp3'),
+      },
+      'phase-9-verify-restoration': {
+        text: `
+        <p>
+          C/N's restored. The notch filter is blocking the interference, AGC normalized, and our signal is clean again.
         </p>
         <p>
-          I'll file a coordination request with the satellite operator to track down who's causing the cross-pol leakage. They probably don't even know there's a problem. For now, the customer's happy and we've got a workaround in place.
+          Nice work. You diagnosed the interference, figured out why it was affecting the whole signal, and applied the right fix.
         </p>
         <p>
-          That's interference hunting - observe, diagnose, mitigate, verify. You handled it well.
+          I'll file a coordination request to track down the source. For now, the customer's happy and we've got a workaround in place.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,

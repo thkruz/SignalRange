@@ -1215,6 +1215,26 @@ export class ObjectivesManager {
         });
       }
 
+      case 'speca-min-amplitude': {
+        if (condition.params?.minAmplitude === undefined) return false;
+        const targetMinAmplitude = condition.params.minAmplitude;
+        const tolerance = condition.params.minAmplitudeTolerance ?? 5;
+        return this.evaluateEquipment_(gs.spectrumAnalyzers, condition.params, (specA) => {
+          const diff = Math.abs(specA.state.minAmplitude - targetMinAmplitude);
+          return diff <= tolerance;
+        });
+      }
+
+      case 'speca-max-amplitude': {
+        if (condition.params?.maxAmplitude === undefined) return false;
+        const targetMaxAmplitude = condition.params.maxAmplitude;
+        const tolerance = condition.params.maxAmplitudeTolerance ?? 5;
+        return this.evaluateEquipment_(gs.spectrumAnalyzers, condition.params, (specA) => {
+          const diff = Math.abs(specA.state.maxAmplitude - targetMaxAmplitude);
+          return diff <= tolerance;
+        });
+      }
+
       case 'filter-bandwidth-set': {
         if (condition.params?.bandwidthIndex === undefined) return false;
         const targetIndex = condition.params.bandwidthIndex;

@@ -34,6 +34,8 @@ export type ConditionType =
   | 'speca-reference-level-set' // Spectrum analyzer reference level set
   | 'speca-center-frequency' // Spectrum analyzer center frequency set to specific value
   | 'speca-noise-floor-visible' // Spectrum analyzer shows clean baseline
+  | 'speca-min-amplitude' // Spectrum analyzer min amplitude set
+  | 'speca-max-amplitude' // Spectrum analyzer max amplitude set
   | 'filter-bandwidth-set' // IF filter bandwidth configured
   | 'notch-filter-configured' // Notch filter set to specific center freq, width, depth
   | 'antenna-beacon-frequency-set' // Antenna beacon frequency configured
@@ -125,6 +127,14 @@ export interface ConditionParams {
   centerFrequencyTolerance?: number;
   /** For speca-noise-floor-visible: maximum signal strength to consider "clean baseline" in dBm */
   maxSignalStrength?: number;
+  /** For speca-min-amplitude: target min amplitude in dBm */
+  minAmplitude?: number;
+  /** For speca-min-amplitude: min amplitude tolerance in dB (default: 5) */
+  minAmplitudeTolerance?: number;
+  /** For speca-max-amplitude: target max amplitude in dBm */
+  maxAmplitude?: number;
+  /** For speca-max-amplitude: max amplitude tolerance in dB (default: 5) */
+  maxAmplitudeTolerance?: number;
   /** For custom conditions: custom evaluator function */
   evaluator?: () => boolean;
   /** Target specific equipment by index (0-based). If omitted, any equipment satisfies. */

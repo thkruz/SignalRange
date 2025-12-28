@@ -5,6 +5,12 @@ import { Character, CharacterCompany, CharacterNames, CharacterTitles, Emotion, 
 import { DialogHistoryManager } from './dialog-history-manager';
 import './dialog-manager.css';
 
+declare global {
+  interface Window {
+    AUTO_CLOSE_DIALOGS?: boolean;
+  }
+}
+
 export class DialogManager {
   private static instance: DialogManager;
   private dialogElement: HTMLDivElement | null = null;
@@ -82,6 +88,12 @@ export class DialogManager {
 
     // Play audio
     SoundManager.getInstance().playCustom(audioUrl);
+
+    // Debug: auto-close dialogs for faster testing
+    if (window.AUTO_CLOSE_DIALOGS) {
+      this.hide();
+      return;
+    }
 
     // Add event listeners for hold-to-skip
     this.attachHoldToSkipListeners();

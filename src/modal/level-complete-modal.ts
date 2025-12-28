@@ -2,7 +2,7 @@ import { DraggableModal } from '@app/engine/ui/draggable-modal';
 import { html } from '@app/engine/utils/development/formatter';
 import { Logger } from '@app/logging/logger';
 import { Router } from '@app/router';
-import type { ScoreBreakdown } from '@app/scoring/score-calculator';
+import { ScoreCalculator, type ScoreBreakdown } from '@app/scoring/score-calculator';
 import { SimulationManager } from '@app/simulation/simulation-manager';
 import { clearPersistedStore } from '@app/sync/storage';
 import { getUserDataService } from '@app/user-account/user-data-service';
@@ -23,7 +23,15 @@ export class LevelCompleteModal extends DraggableModal {
   private static instance_: LevelCompleteModal | null = null;
 
   private options_: CompletionModalOptions = {
-    score: { basePoints: 0, timeBonus: 0, quizPenalties: 0, timePenalties: 0, totalScore: 0 },
+    score: {
+      basePoints: 0,
+      timeBonus: 0,
+      quizPenalties: 0,
+      timePenalties: 0,
+      totalScore: 0,
+      objectiveBreakdown: [],
+      timeRemainingSeconds: 0,
+    },
     elapsedTimeSeconds: 0,
     campaignId: '',
     scenarioId: '',
@@ -68,19 +76,25 @@ export class LevelCompleteModal extends DraggableModal {
               <span class="breakdown-label">Objectives</span>
               <span class="breakdown-value positive">+${score.basePoints}</span>
             </div>
+            <div class="breakdown-detail">${this.formatObjectivesDetail_(score.objectiveBreakdown)}</div>
             <div class="breakdown-row">
               <span class="breakdown-label">Time Bonus</span>
               <span class="breakdown-value positive">+${score.timeBonus}</span>
             </div>
+            <div class="breakdown-detail">${score.timeRemainingSeconds} seconds remaining / ${ScoreCalculator.TIME_BONUS_DIVISOR}</div>
+            ${score.quizPenalties > 0 ? `
             <div class="breakdown-row">
               <span class="breakdown-label">Quiz Penalties</span>
               <span class="breakdown-value negative">-${score.quizPenalties}</span>
             </div>
+            <div class="breakdown-detail">${score.quizPenalties} points deducted</div>
+            ` : ''}
             ${score.timePenalties > 0 ? `
             <div class="breakdown-row">
               <span class="breakdown-label">Time Penalties</span>
               <span class="breakdown-value negative">-${score.timePenalties}</span>
             </div>
+            <div class="breakdown-detail">${score.timePenalties} points deducted</div>
             ` : ''}
           </div>
         </div>
@@ -176,6 +190,24 @@ export class LevelCompleteModal extends DraggableModal {
       return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
     }
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  }
+
+  /**
+   * Format objectives breakdown for display
+   * Shows "N objectives x +X each" if uniform, or count with total if varied
+   */
+  private formatObjectivesDetail_(breakdown: { points: number }[]): string {
+    if (breakdown.length === 0) return 'No objectives';
+
+    const count = breakdown.length;
+    const plural = count === 1 ? '' : 's';
+    const points = breakdown.map((o) => o.points);
+    const allSame = points.every((p) => p === points[0]);
+
+    if (allSame) {
+      return `${count} objective${plural} x +${points[0]} each`;
+    }
+    return `${count} objective${plural} completed`;
   }
 
   /**

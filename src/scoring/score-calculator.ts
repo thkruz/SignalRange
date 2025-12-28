@@ -14,6 +14,11 @@ export interface ScoreBreakdown {
   timePenalties: number;
   /** Final calculated score */
   totalScore: number;
+
+  /** Individual objective points for breakdown display */
+  objectiveBreakdown: { points: number }[];
+  /** Raw seconds remaining (used to calculate timeBonus) */
+  timeRemainingSeconds: number;
 }
 
 /**
@@ -53,12 +58,19 @@ export class ScoreCalculator {
     // Calculate total (minimum 0)
     const totalScore = Math.max(0, basePoints + timeBonus - sanitizedQuizPenalties - sanitizedTimePenalties);
 
+    // Build objective breakdown for display
+    const objectiveBreakdown = objectives.map((objState) => ({
+      points: objState.objective.points ?? 0,
+    }));
+
     return {
       basePoints,
       timeBonus,
       quizPenalties: sanitizedQuizPenalties,
       timePenalties: sanitizedTimePenalties,
       totalScore,
+      objectiveBreakdown,
+      timeRemainingSeconds,
     };
   }
 }

@@ -13,6 +13,7 @@ import { NavigationOptions, Router } from "@app/router";
 import { ScenarioManager } from "@app/scenario-manager";
 import { ScenarioDialogManager } from "@app/scenarios/scenario-dialog-manager";
 import { ScenarioCompletionHandler } from "@app/scoring/scenario-completion-handler";
+import { ScoreCalculator } from "@app/scoring/score-calculator";
 import { TimePenaltyToast } from "@app/modal/time-penalty-toast";
 import { SimulationManager } from "@app/simulation/simulation-manager";
 import { AppState } from "@app/sync/storage";
@@ -288,14 +289,17 @@ export abstract class BasePage extends BaseElement {
     const scenario = ScenarioManager.getInstance();
     const campaignId = this.extractCampaignId_();
 
+    const timeBonus = savedProgress.timeBonus ?? 0;
     LevelCompleteModal.getInstance().showCompletion(
       {
         score: {
           basePoints: savedProgress.basePoints ?? 0,
-          timeBonus: savedProgress.timeBonus ?? 0,
+          timeBonus,
           quizPenalties: savedProgress.quizPenalties ?? 0,
           timePenalties: savedProgress.timePenalties ?? 0,
           totalScore: savedProgress.score ?? 0,
+          objectiveBreakdown: [], // Not saved, show empty for replays
+          timeRemainingSeconds: timeBonus * ScoreCalculator.TIME_BONUS_DIVISOR,
         },
         elapsedTimeSeconds: 0,
         campaignId,

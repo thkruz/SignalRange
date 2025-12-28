@@ -60,7 +60,7 @@ export const vermontGroundStation = {
       isExtRefLocked: true,
       frequencyError: 0,
       phaseLockRange: 10000,
-      gain: 0 as dB,
+      gain: 23 as dB,
       outputPower: -10 as dBm,
       saturationPower: 15 as dBm,
       gainFlatness: 0.5 as dB,
@@ -90,11 +90,11 @@ export const vermontGroundStation = {
     },
     lnb: {
       isPowered: true,
-      loFrequency: 5150 as MHz, // C-band LNB LO for 3902.5 MHz beacon -> 1247.5 MHz IF
+      loFrequency: 5250 as MHz,
       gain: 60 as dB,
       lnaNoiseFigure: 0.6, // dB
       mixerNoiseFigure: 16.0, // dB
-      noiseTemperature: 45, // K - stable
+      noiseTemperature: 43, // K - stable
       noiseTemperatureStabilizationTime: 0, // Already stabilized
       isExtRefLocked: true, // Locked to GPSDO 10 MHz
       noiseFloor: -140, // dBm/Hz
@@ -155,7 +155,7 @@ export const vermontGroundStation = {
   spectrumAnalyzers: [
     {
       referenceLevel: -91 as dBm, // Set for beacon observation
-      centerFrequency: 1247.5e6 as Hertz, // IF frequency for beacon
+      centerFrequency: 1074.5e6 as Hertz, // IF frequency for beacon
       span: 2e3 as Hertz, // 2 kHz span for CW beacon
       rbw: 1e3 as Hertz, // 1 kHz RBW for CW beacon
       minAmplitude: -95 as dBm,
@@ -208,7 +208,7 @@ export const vermontGroundStation = {
     modems: [{
       modemNumber: 1,
       isPowered: true,
-      frequency: 1432 as MHz, // IF frequency for 3718 MHz RF with 5150 MHz LO
+      frequency: 1532 as MHz, // IF frequency for 3718 MHz RF with 5150 MHz LO
       bandwidth: 36 as MHz, // Match payload bandwidth
       modulation: 'QPSK',
       fec: '3/4',

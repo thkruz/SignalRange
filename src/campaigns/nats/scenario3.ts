@@ -39,11 +39,11 @@ export const scenario3Data: ScenarioData = {
   missionType: 'Tutorial',
   description: `Heavy snow is forecast for Vermont in 30 minutes. The link margin to TIDEMARK-1 will degrade below operational threshold during the storm. You need to hand traffic from VT-01 to the backup ground station in Maine (ME-02) before the weather window closes.<br><br>Catherine from Maine has been recalled to take over operations once the handover is complete. You'll configure the Maine site remotely, monitor both sites simultaneously during handover, and ensure graceful service continuity.<br><br>First time touching modem configuration panels. First time managing multiple ground stations. This is routine procedure - weather handovers happen regularly in the Northeast.`,
   equipment: [
-    '2× 9-meter C-band Antennas (VT-01, ME-02)',
-    '2× RF Front Ends',
-    '2× Spectrum Analyzers',
-    'RX/TX Modems',
-    'Network Status Monitor',
+    '9-meter C-band Antenna (×2)',
+    'RF Front End (×2)',
+    'Spectrum Analyzer (×2)',
+    'Receiver Modem',
+    'Transmitter Modem',
   ],
   timeLimitSeconds: 30 * 60, // 30 minutes
   settings: {

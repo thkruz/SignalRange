@@ -1,6 +1,7 @@
 import { DraggableBox } from "@app/engine/ui/draggable-box";
 import { html } from "@app/engine/utils/development/formatter";
 import { getEl } from "@app/engine/utils/get-el";
+import { ObjectivesManager } from "@app/objectives/objectives-manager";
 import './draggable-html-box.css';
 
 export class DraggableHtmlBox extends DraggableBox {
@@ -21,6 +22,9 @@ export class DraggableHtmlBox extends DraggableBox {
       });
 
     this.popupDom = getEl(`draggable-html-box-content-${id}`);
+
+    // Register this box as opened for objective tracking
+    ObjectivesManager.registerOpenedBox(id);
 
     this.onOpen();
   }

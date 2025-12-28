@@ -1,54 +1,53 @@
 import type { AntennaState } from '@app/equipment/antenna';
 import { ANTENNA_CONFIG_KEYS } from "@app/equipment/antenna/antenna-config-keys";
 import { Receiver } from '@app/equipment/receiver/receiver';
-import { Satellite } from '@app/equipment/satellite/satellite';
 import { Character, Emotion } from '@app/modal/character-enum';
 import type { Objective } from '@app/objectives/objective-types';
 import type { ScenarioData } from '@app/ScenarioData';
-import { SignalOrigin } from "@app/SignalOrigin";
-import type { dB, dBi, dBm, FECType, Hertz, MHz, ModulationType, RfFrequency } from '@app/types';
+import type { dB, dBm, Hertz, MHz } from '@app/types';
 import { getAssetUrl } from '@app/utils/asset-url';
 import type { Degrees } from 'ootk';
 import { createRfFrontEnd } from '../rf-front-end-factory';
 import { vermontGroundStation } from './ground-stations';
+import { tidemark1Satellite, ses10Satellite, tidemark2Satellite } from './satellites';
 
 /**
- * NATS Level 6: "Interference Hunt"
+ * NATS Level 5: "Inclined Orbit Operations"
  *
- * Phase: Pressure
- * Time Pressure: High (15 minutes until SLA breach)
- * Calculation Required: As needed
- * New UI Elements: Wide-span spectrum sweep, interference measurement tools, filter notch controls
+ * Phase: Mastery
+ * Time Pressure: Mild (30-minute tracking window)
+ * Calculation Required: Yes (as needed)
+ * New UI Elements: TLE update notifications, real-time satellite position tracking
  *
- * Premise: Customer reports intermittent service degradation on TIDEMARK-1. SLA clock
- * is ticking - you have 15 minutes to identify and resolve the interference before
- * penalties kick in. Charlie is tied up on another call and mostly unavailable.
+ * Premise: TIDEMARK-1 is eight years old and running low on fuel. SeaLink stopped
+ * north-south station-keeping to extend satellite life. The orbit is now inclined,
+ * causing the satellite to trace a figure-8 pattern daily. Service continues, but
+ * requires active tracking with frequent TLE updates.
  */
 
 export const scenario6Data: ScenarioData = {
-  id: 'nats-level-6-interference-hunt',
-  prerequisiteScenarioIds: [],
-  url: 'nats/level-6/interference-hunt',
+  id: 'scenario6',
+  prerequisiteScenarioIds: ['scenario5'],
+  isDisabled: true,
+  url: 'nats/scenarios/nats-scenario6',
   imageUrl: 'nats/6/card.png',
   number: 6,
-  title: 'Level 6: "Interference Hunt"',
-  subtitle: 'Troubleshooting Under Pressure',
-  duration: '20-25 min',
-  difficulty: 'advanced',
-  missionType: 'Pressure Phase',
-  description: `Customer reports degraded service on TIDEMARK-1. Packet loss is climbing, C/N ratio has dropped 6 dB from normal. Something's interfering with the downlink carrier.<br><br>SLA terms are clear: service must be restored within 15 minutes or financial penalties apply. The clock started when the customer called.<br><br>Charlie is stuck on another emergency call and can only provide brief support via intercom. You're solo on console. You need to: identify the interference source, determine its characteristics (frequency, type, power), implement a mitigation solution, and restore service quality.<br><br>This is real operations - time pressure, limited support, customer impact. Work fast but work smart.`,
+  title: 'Inclined Orbit Operations',
+  subtitle: 'Tracking Aging Satellites',
+  duration: '35-40 min',
+  difficulty: 'intermediate',
+  missionType: 'Mastery Phase',
+  description: `TIDEMARK-1 launched eight years ago. Fuel is running low, so SeaLink Global Communications stopped north-south station-keeping last month to extend the satellite's operational life. This means the orbit is now inclined - the satellite appears to trace a figure-8 pattern in the sky relative to the ground.<br><br>The satellite still provides maritime communications service, but maintaining the link requires active antenna tracking. You'll need to apply TLE (Two-Line Element) updates every 15 minutes to keep the antenna pointed accurately as the satellite drifts north and south.<br><br>This is end-of-life operations for an aging bird - routine but requiring attention and precision. Maintain service quality throughout the 30-minute tracking window.`,
   equipment: [
     '9-meter C-band Antenna',
     'RF Front End',
-    'Spectrum Analyzer (wide-span capable)',
+    'Spectrum Analyzer',
     'Receiver Modem',
-    'IF Filter Bank with Notch Filters',
-    'Interference Analysis Tools',
+    'TLE Update System',
   ],
   settings: {
     isSync: true,
-    missionTimeLimitSeconds: 900, // 15 minutes hard deadline
-    // slaBreachWarnings: [300, 120, 60], // Warnings at 5 min, 2 min, 1 min remaining
+    missionTimeLimitSeconds: 1800, // 30 minutes tracking window
     groundStations: [
       {
         id: 'VT-01',
@@ -61,37 +60,37 @@ export const scenario6Data: ScenarioData = {
         antennas: [ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK],
         antennasState: [
           {
-            // Locked on TIDEMARK-1 but degraded performance
+            // Already pointed at TIDEMARK-1, but needs tracking updates
             isPowered: true,
             azimuth: 214.2 as Degrees,
             elevation: 24.8 as Degrees,
             polarization: 0 as Degrees,
             isTracking: true,
-            trackingMode: 'step-track',
+            trackingMode: 'program-track', // Using program track for inclined orbit
           } as Partial<AntennaState>,
         ],
         rfFrontEnds: [
           createRfFrontEnd(vermontGroundStation.rfFrontEnds[0], {
             buc: { isPowered: false, loFrequency: 2225 as MHz, outputPower: 0 as dBm, isMuted: true, isExtRefLocked: false },
             hpa: { isPowered: false, outputPower: 0 as dBm },
-            filter: { bandwidthIndex: 3 }, // Wide filter currently selected
+            filter: { bandwidthIndex: 3 },
             lnb: { noiseTemperature: 65, temperature: 45 },
             gpsdo: {
               temperature: 65,
-              satelliteCount: 11,
-              utcAccuracy: 18,
-              lockDuration: 86400,
+              satelliteCount: 12,
+              utcAccuracy: 15,
+              lockDuration: 43200,
               frequencyAccuracy: 1e-12,
               allanDeviation: 5e-13,
               phaseNoise: -140,
-              operatingHours: 86400,
+              operatingHours: 43200,
             },
           }),
         ],
         spectrumAnalyzers: [
           {
             referenceLevel: -50,
-            centerFrequency: 3952.5e6 as Hertz, // Looking at carrier
+            centerFrequency: 3947.8e6 as Hertz,
             span: 10e6 as Hertz,
             rbw: 10e3 as Hertz,
             minAmplitude: -170,
@@ -106,8 +105,6 @@ export const scenario6Data: ScenarioData = {
               { isVisible: false, isUpdating: false, mode: 'clearwrite' },
             ],
             selectedTrace: 1,
-            // Wide-span mode available
-            // maxSpan: 500e6 as Hertz, // Can sweep 500 MHz
           }
         ],
         transmitters: [],
@@ -115,84 +112,66 @@ export const scenario6Data: ScenarioData = {
       },
     ],
     satellites: [
-      new Satellite(
-        1,
-        [
-          {
-            signalId: 'tidemark-1-beacon',
-            serverId: 1,
-            noradId: 1,
-            frequency: 3947.8e6 as RfFrequency,
-            polarization: 'H',
-            power: -95 as dBm,
-            bandwidth: 1e3 as Hertz,
-            modulation: 'CW' as ModulationType,
-            fec: 'none' as FECType,
-            feed: null,
-            isDegraded: false,
-            origin: SignalOrigin.SATELLITE_TX,
-            noiseFloor: null,
-            gainInPath: 0 as dBi,
-          },
-          {
-            signalId: 'tidemark-1-carrier',
-            serverId: 1,
-            noradId: 1,
-            frequency: 3952.5e6 as RfFrequency,
-            polarization: 'H',
-            power: -87 as dBm, // Normal power
-            bandwidth: 5e6 as Hertz,
-            modulation: '16APSK' as ModulationType,
-            fec: '3/4' as FECType,
-            feed: 'maritime-data.mp4',
-            isDegraded: true, // Degraded by interference
-            // degradationReason: 'interference',
-            origin: SignalOrigin.SATELLITE_TX,
-            noiseFloor: null,
-            gainInPath: 0 as dBi,
-          }
-        ],
-        [],
-        {
-          az: 214.2 as Degrees,
-          el: 24.8 as Degrees,
-          frequencyOffset: 2.225e9 as Hertz,
-        }
-      ),
+      tidemark1Satellite,
+      ses10Satellite,
+      tidemark2Satellite
     ],
-    // interferenceSignals: [
-    //   {
-    //     id: 'adjacent-carrier-interference',
-    //     type: 'adjacent-channel-carrier',
-    //     frequency: 3957.5e6 as RfFrequency, // 5 MHz above desired carrier
-    //     power: -83 as dBm, // Stronger than desired signal
-    //     bandwidth: 3e6 as Hertz,
-    //     modulation: 'QPSK' as ModulationType,
-    //     source: 'Unknown terrestrial uplink (likely incorrect polarization)',
-    //     isIntermittent: false,
-    //   }
-    // ],
+    // tleUpdateInterval: 900, // TLE updates available every 15 minutes (900 seconds)
+    // tleAutoNotify: true, // Automatically notify when updates available
   },
   objectives: [
     {
-      id: 'assess-degradation',
-      title: 'Phase 1: Assess Service Degradation',
-      description: 'Verify the problem and measure current C/N ratio. SLA clock is running.',
+      id: 'initial-acquisition',
+      title: 'Phase 1: Initial Lock Verification',
+      description: 'Verify antenna lock on TIDEMARK-1 and confirm signal quality.',
       groundStation: 'VT-01',
       conditions: [
         {
-          type: 'cn-ratio-measured',
-          description: 'Current C/N Ratio Measured (degraded)',
+          type: 'antenna-locked',
+          description: 'Antenna Locked on TIDEMARK-1',
           params: {
-            expectedDegradation: 6 as dB, // Should be ~6 dB below normal
+            satelliteId: 1,
           },
           mustMaintain: false,
         },
         {
-          type: 'packet-loss-confirmed',
-          description: 'Packet Loss Confirmed (> 2%)',
+          type: 'signal-detected',
+          description: 'Beacon Signal Present',
           params: {
-            minPacketLoss: 2, // percent
+            signalId: 'tidemark-1-beacon',
+            minPower: -98 as dBm,
+          },
+          mustMaintain: false,
+        },
+        {
+          type: 'rx-modem-locked',
+          description: 'Receiver Modem Locked on Carrier',
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 10,
+    },
+    {
+      id: 'understand-inclined-orbit',
+      title: 'Phase 2: Inclined Orbit Briefing',
+      description: 'Review the orbital elements and understand the tracking requirements.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['initial-acquisition'],
+      conditions: [
+        {
+          type: 'briefing-acknowledged',
+          description: 'Inclined Orbit Briefing Reviewed',
+          params: {
+            briefingId: 'inclined-orbit-operations',
+          },
+          mustMaintain: false,
+        },
+        {
+          type: 'tracking-mode-verified',
+          description: 'Program Track Mode Confirmed',
+          params: {
+            trackingMode: 'program-track',
           },
           mustMaintain: false,
         },
@@ -201,301 +180,268 @@ export const scenario6Data: ScenarioData = {
       points: 5,
     },
     {
-      id: 'wide-span-sweep',
-      title: 'Phase 2: Perform Wide-Span Spectrum Sweep',
-      description: 'Switch spectrum analyzer to wide-span mode to search for interference.',
+      id: 'first-tle-update',
+      title: 'Phase 3: First TLE Update',
+      description: 'Apply first TLE update when notification arrives (~15 minutes).',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['assess-degradation'],
+      prerequisiteObjectiveIds: ['understand-inclined-orbit'],
       conditions: [
         {
-          type: 'speca-mode-changed',
-          description: 'Spectrum Analyzer Switched to Wide-Span Mode',
+          type: 'tle-update-available',
+          description: 'TLE Update Notification Received',
+          mustMaintain: false,
+        },
+        {
+          type: 'tle-update-applied',
+          description: 'TLE Update Applied to ACU',
           params: {
-            mode: 'wide-span',
+            satelliteId: 1,
+            updateNumber: 1,
           },
           mustMaintain: false,
         },
         {
-          type: 'speca-span-set',
-          description: 'Span ≥ 50 MHz (wide enough to see interference)',
+          type: 'antenna-pointing-corrected',
+          description: 'Antenna Pointing Adjusted Based on New TLE',
           params: {
-            minSpan: 50e6,
-          },
-          mustMaintain: false,
-        },
-        {
-          type: 'frequency-sweep-completed',
-          description: 'Frequency Sweep Completed',
-          mustMaintain: false,
-        },
-      ],
-      conditionLogic: 'AND',
-      points: 10,
-    },
-    {
-      id: 'identify-interference',
-      title: 'Phase 3: Identify Interference Source',
-      description: 'Locate and characterize the interfering signal.',
-      groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['wide-span-sweep'],
-      conditions: [
-        {
-          type: 'interference-detected',
-          description: 'Interference Signal Located',
-          params: {
-            interferenceId: 'adjacent-carrier-interference',
-          },
-          mustMaintain: false,
-        },
-        {
-          type: 'interference-frequency-measured',
-          description: 'Interference Frequency Identified (~3,957.5 MHz)',
-          params: {
-            expectedFrequency: 3957.5e6 as RfFrequency,
-            tolerance: 100e3 as Hertz,
-          },
-          mustMaintain: false,
-        },
-        {
-          type: 'interference-power-measured',
-          description: 'Interference Power Level Measured (~-83 dBm)',
-          params: {
-            expectedPower: -83 as dBm,
-            tolerance: 2 as dB,
-          },
-          mustMaintain: false,
-        },
-        {
-          type: 'interference-type-identified',
-          description: 'Interference Type Identified (Adjacent Channel Carrier)',
-          params: {
-            interferenceType: 'adjacent-channel-carrier',
+            maxPointingError: 0.1 as Degrees,
           },
           mustMaintain: false,
         },
       ],
       conditionLogic: 'AND',
-      points: 20,
+      points: 15,
     },
     {
-      id: 'calculate-ci-ratio',
-      title: 'Phase 4: Calculate Carrier-to-Interference Ratio',
-      description: 'Determine C/I ratio to confirm it explains the degradation.',
+      id: 'maintain-lock-first-period',
+      title: 'Phase 4: Maintain Lock During Drift',
+      description: 'Keep antenna locked on satellite as it drifts. Monitor pointing error.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['identify-interference'],
+      prerequisiteObjectiveIds: ['first-tle-update'],
       conditions: [
         {
-          type: 'ci-ratio-calculated',
-          description: 'C/I Ratio Calculated',
+          type: 'antenna-locked',
+          description: 'Antenna Lock Maintained',
           params: {
-            carrierPower: -87 as dBm,
-            interferencePower: -83 as dBm,
-            expectedCIRatio: 4 as dB, // -87 - (-83) = 4 dB (very poor)
-            tolerance: 1 as dB,
+            satelliteId: 1,
           },
-          mustMaintain: false,
-        },
-      ],
-      conditionLogic: 'AND',
-      points: 10,
-    },
-    {
-      id: 'implement-filter-solution',
-      title: 'Phase 5: Implement Filter-Based Mitigation',
-      description: 'Select and apply IF filter with notch at interference frequency.',
-      groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['calculate-ci-ratio'],
-      conditions: [
-        {
-          type: 'filter-selected',
-          description: 'Notch Filter Selected (1 MHz with notch at +5 MHz)',
-          params: {
-            filterId: 7, // 1 MHz bandwidth with notch at +5 MHz offset
-          },
-          maintainUntilObjectiveComplete: true,
-        },
-        {
-          type: 'interference-suppressed',
-          description: 'Interference Suppressed by Notch Filter',
-          params: {
-            minSuppression: 15 as dB, // Notch provides ~15-20 dB rejection
-          },
-          mustMaintain: false,
-        },
-      ],
-      conditionLogic: 'AND',
-      points: 20,
-    },
-    {
-      id: 'verify-service-restoration',
-      title: 'Phase 6: Verify Service Quality Restored',
-      description: 'Confirm C/N ratio improved and packet loss eliminated.',
-      groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['implement-filter-solution'],
-      conditions: [
-        {
-          type: 'cn-ratio-improved',
-          description: 'C/N Ratio Improved ≥ 6 dB',
-          params: {
-            minImprovement: 6 as dB,
-            targetCnRatio: 11 as dB, // Back to acceptable level
-          },
-          maintainUntilObjectiveComplete: true,
-        },
-        {
-          type: 'packet-loss-eliminated',
-          description: 'Packet Loss < 0.5%',
-          params: {
-            maxPacketLoss: 0.5,
-          },
-          maintainUntilObjectiveComplete: true,
-        },
-        {
-          type: 'service-quality-stable',
-          description: 'Service Quality Stable for 60 Seconds',
-          maintainDuration: 60,
           mustMaintain: true,
+          maintainDuration: 300, // 5 minutes
+        },
+        {
+          type: 'pointing-error-acceptable',
+          description: 'Pointing Error < 0.1°',
+          params: {
+            maxPointingError: 0.1 as Degrees,
+          },
+          mustMaintain: true,
+          maintainDuration: 300,
+        },
+        {
+          type: 'cn-ratio-maintained',
+          description: 'C/N Ratio Maintained > 10 dB',
+          params: {
+            minCnRatio: 10 as dB,
+          },
+          mustMaintain: true,
+          maintainDuration: 300,
         },
       ],
       conditionLogic: 'AND',
-      points: 25,
+      points: 20,
     },
     {
-      id: 'sla-compliance',
-      title: 'Phase 7: SLA Compliance',
-      description: 'Service restored within 15-minute SLA window.',
+      id: 'second-tle-update',
+      title: 'Phase 5: Second TLE Update',
+      description: 'Apply second TLE update to maintain accurate tracking.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['verify-service-restoration'],
+      prerequisiteObjectiveIds: ['maintain-lock-first-period'],
       conditions: [
         {
-          type: 'time-remaining',
-          description: 'Resolved Before SLA Breach',
+          type: 'tle-update-available',
+          description: 'Second TLE Update Received',
+          mustMaintain: false,
+        },
+        {
+          type: 'tle-update-applied',
+          description: 'Second TLE Update Applied',
           params: {
-            minTimeRemaining: 0, // Just need to finish before deadline
+            satelliteId: 1,
+            updateNumber: 2,
+          },
+          mustMaintain: false,
+        },
+        {
+          type: 'antenna-pointing-corrected',
+          description: 'Pointing Corrected',
+          params: {
+            maxPointingError: 0.1 as Degrees,
           },
           mustMaintain: false,
         },
       ],
       conditionLogic: 'AND',
-      points: 10,
+      points: 15,
+    },
+    {
+      id: 'maintain-lock-second-period',
+      title: 'Phase 6: Continue Tracking',
+      description: 'Maintain tracking through second update period.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['second-tle-update'],
+      conditions: [
+        {
+          type: 'antenna-locked',
+          description: 'Antenna Lock Maintained',
+          params: {
+            satelliteId: 1,
+          },
+          mustMaintain: true,
+          maintainDuration: 300, // Another 5 minutes
+        },
+        {
+          type: 'pointing-error-acceptable',
+          description: 'Pointing Error < 0.1°',
+          params: {
+            maxPointingError: 0.1 as Degrees,
+          },
+          mustMaintain: true,
+          maintainDuration: 300,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 15,
+    },
+    {
+      id: 'complete-tracking-window',
+      title: 'Phase 7: Complete 30-Minute Tracking Window',
+      description: 'Successfully maintain service through entire tracking session.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['maintain-lock-second-period'],
+      conditions: [
+        {
+          type: 'service-continuity',
+          description: 'No Loss of Lock During Window',
+          params: {
+            maxLockLossEvents: 0,
+          },
+          mustMaintain: false,
+        },
+        {
+          type: 'tle-updates-completed',
+          description: 'All Required TLE Updates Applied (3-4 total)',
+          params: {
+            minUpdatesApplied: 3,
+          },
+          mustMaintain: false,
+        },
+        {
+          type: 'time-elapsed',
+          description: '30-Minute Window Completed',
+          params: {
+            requiredDuration: 1800, // 30 minutes
+          },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 20,
     },
   ] as Objective[],
   dialogClips: {
     intro: {
       text: `
       <p>
-        [Intercom, Charlie sounds stressed] Customer on the phone reporting degraded service on TIDEMARK-1. Packet loss climbing, C/N's down six dB.
+        TIDEMARK-1 launched eight years ago. Fuel's running low, so SeaLink stopped doing north-south station-keeping last month.
       </p>
       <p>
-        I'm stuck on this call with another customer for at least ten minutes. You need to handle this solo.
+        Means the orbit's inclined now - satellite traces a figure-8 pattern relative to the ground. Still provides service, but you need to update the ACU pointing every fifteen minutes or so.
       </p>
       <p>
-        SLA terms say we've got fifteen minutes to restore service or we're paying penalties. Clock started when they called - three minutes ago.
+        TLEs will come in automatically. You just need to apply them and verify lock. We're going to track for thirty minutes - you'll see three or four updates come through.
       </p>
       <p>
-        Use the wide-span sweep to find the interferer. Check the filter bank settings - you might be able to notch it out. Page me if you absolutely need help, but I trust you can handle this.
+        This is routine end-of-life operations. Nothing difficult, just requires attention. Don't let the pointing error exceed point-one degrees or you'll lose the link.
       </p>
       `,
       character: Character.CHARLIE_BROOKS,
-      emotion: Emotion.FRUSTRATED,
-      audioUrl: getAssetUrl('/assets/campaigns/nats/6/intro.mp3'),
+      emotion: Emotion.NEUTRAL,
+      audioUrl: getAssetUrl('/assets/campaigns/nats/5/intro.mp3'),
     },
     objectives: {
-      'assess-degradation': {
+      'initial-acquisition': {
         text: `
         <p>
-          C/N down to about 6 dB. That's bad - we need at least 7 for this modulation scheme, and we usually run at 12.
+          Link's up. Beacon's there, modem's locked, C/N ratio looks good.
         </p>
         <p>
-          Packet loss over 2 percent. Customer's definitely seeing impact.
+          The antenna's in program track mode - it's following the orbital elements we loaded earlier. But those elements get stale every fifteen minutes because the satellite's drifting.
         </p>
         <p>
-          Twelve minutes left on the SLA. Move fast.
+          Watch the pointing error indicator. When it starts creeping up toward point-one degrees, you know it's time for a TLE update.
         </p>
         `,
-        character: Character.FRANCIS_MARTIN, //Character.SYSTEM,
+        character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/6/obj-assess.mp3'),
+        audioUrl: getAssetUrl('/assets/campaigns/nats/5/obj-initial.mp3'),
       },
-      'identify-interference': {
+      'first-tle-update': {
         text: `
         <p>
-          There it is - adjacent channel carrier at 3,957.5 megahertz. Five megahertz above our signal.
+          First TLE update applied. See how the antenna adjusted? Pointing error dropped back down to near zero.
         </p>
         <p>
-          Power's at minus-83 dBm. That's 4 dB stronger than our carrier. No wonder we're having problems.
+          That's the pattern - satellite drifts, pointing error increases, you apply fresh orbital elements, antenna corrects.
         </p>
         <p>
-          Looks like someone's uplink hit the wrong polarization or satellite. Not our fault, but we still need to fix it.
-        </p>
-        <p>
-          Nine minutes remaining.
+          Keep monitoring. Next update will be in about fifteen minutes.
         </p>
         `,
-        character: Character.FRANCIS_MARTIN, //Character.SYSTEM,
+        character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/6/obj-identify.mp3'),
+        audioUrl: getAssetUrl('/assets/campaigns/nats/5/obj-first-tle.mp3'),
       },
-      'calculate-ci-ratio': {
+      'maintain-lock-first-period': {
         text: `
         <p>
-          C/I ratio is 4 dB. That's terrible - we need at least 15 dB for clean operation.
+          Lock's stable. Pointing error's staying below threshold. Good.
         </p>
         <p>
-          Combined with the thermal noise, this explains exactly why the C/N dropped 6 dB.
-        </p>
-        <p>
-          Check the filter bank. There should be a notch filter that can reject that adjacent carrier.
+          This is what aging satellite operations looks like - just steady monitoring and periodic corrections.
         </p>
         `,
-        character: Character.FRANCIS_MARTIN, //Character.SYSTEM,
+        character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/6/obj-calculate.mp3'),
+        audioUrl: getAssetUrl('/assets/campaigns/nats/5/obj-maintain1.mp3'),
       },
-      'implement-filter-solution': {
+      'second-tle-update': {
         text: `
         <p>
-          Notch filter applied. Watch the spectrum - interference is getting suppressed by the notch.
+          Second update applied. You're getting the rhythm of this now.
         </p>
         <p>
-          C/N should start climbing back up now.
+          SeaLink will keep running TIDEMARK-1 like this for another year or two until the fuel's completely gone. Then it'll drift into a graveyard orbit.
         </p>
         `,
-        character: Character.FRANCIS_MARTIN, //Character.SYSTEM,
+        character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/6/obj-filter.mp3'),
+        audioUrl: getAssetUrl('/assets/campaigns/nats/5/obj-second-tle.mp3'),
       },
-      'verify-service-restoration': {
+      'complete-tracking-window': {
         text: `
         <p>
-          C/N's back up to 11 dB. Packet loss dropped to near zero.
+          Thirty-minute window complete. No loss of lock, all TLE updates applied correctly, service continuity maintained.
         </p>
         <p>
-          Service quality looks stable. Good work.
-        </p>
-        `,
-        character: Character.FRANCIS_MARTIN, //Character.SYSTEM,
-        emotion: Emotion.NEUTRAL,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/6/obj-verify.mp3'),
-      },
-      'sla-compliance': {
-        text: `
-        <p>
-          [Intercom, Charlie sounds relieved] Saw the C/N come back up on the monitoring dashboard. Nice work - you beat the SLA deadline with time to spare.
+          That's exactly how inclined orbit operations work. Routine, but you can't walk away from it.
         </p>
         <p>
-          You identified the interference, calculated the impact, implemented a solution, and verified the fix. Exactly what I needed you to do.
-        </p>
-        <p>
-          That's real operations right there - time pressure, customer impact, working solo. You handled it.
-        </p>
-        <p>
-          I'll file a coordination request to track down whoever's transmitting on that adjacent carrier. For now, the customer's happy and we're not paying penalties.
+          Next mission, you're going solo on a real problem - interference hunting with a ticking SLA clock. No more practice scenarios.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.HAPPY,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/6/complete.mp3'),
+        audioUrl: getAssetUrl('/assets/campaigns/nats/5/complete.mp3'),
       },
     },
   },

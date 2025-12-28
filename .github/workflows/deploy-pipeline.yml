@@ -110,6 +110,12 @@ jobs:
       pr-branch: ${{ steps.pr-info.outputs.branch }}
       pr-title: ${{ steps.pr-info.outputs.title }}
     steps:
+      - name: Verify Triggered from Main or Dev Branch
+        if: github.ref != 'refs/heads/dev' && github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::UAT deployment must be triggered from the main or dev branch, not ${{ github.ref }}"
+          exit 1
+
       - name: Get PR Information
         id: pr-info
         uses: actions/github-script@v7
@@ -239,6 +245,8 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          ref: dev
 
       - name: Download Build Artifact
         uses: actions/download-artifact@v4

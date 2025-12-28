@@ -1,8 +1,9 @@
 import { BaseElement } from "@app/components/base-element";
 import { EventBus } from "@app/events/event-bus";
-import { Events, ObjectiveFailedData, ScenarioTimeExpiredData } from "@app/events/events";
+import { DualTransmissionViolationData, Events, ObjectiveFailedData, ScenarioTimeExpiredData } from "@app/events/events";
 import { Logger } from "@app/logging/logger";
 import { Character } from "@app/modal/character-enum";
+import { DialogHistoryManager } from "@app/modal/dialog-history-manager";
 import { DialogManager } from "@app/modal/dialog-manager";
 import { LevelCompleteModal } from "@app/modal/level-complete-modal";
 import { ObjectiveFailedModal } from "@app/modal/objective-failed-modal";
@@ -12,6 +13,7 @@ import { NavigationOptions, Router } from "@app/router";
 import { ScenarioManager } from "@app/scenario-manager";
 import { ScenarioDialogManager } from "@app/scenarios/scenario-dialog-manager";
 import { ScenarioCompletionHandler } from "@app/scoring/scenario-completion-handler";
+import { ScoreCalculator } from "@app/scoring/score-calculator";
 import { TimePenaltyToast } from "@app/modal/time-penalty-toast";
 import { SimulationManager } from "@app/simulation/simulation-manager";
 import { AppState } from "@app/sync/storage";
@@ -148,6 +150,14 @@ export abstract class BasePage extends BaseElement {
         isScenarioTimeout: true,
       });
     });
+
+    eventBus.on(Events.DUAL_TRANSMISSION_VIOLATION, (data: DualTransmissionViolationData) => {
+      ObjectiveFailedModal.getInstance().showFailure({
+        title: 'Mission Failed',
+        message: `CRITICAL ERROR: Dual transmission detected! Ground stations ${data.groundStation1Id} and ${data.groundStation2Id} are both transmitting to satellite ${data.satelliteNoradId}. This causes satellite interference and mission failure.`,
+        isScenarioTimeout: false,
+      });
+    });
   }
 
   /**
@@ -171,6 +181,13 @@ export abstract class BasePage extends BaseElement {
           checkpoint.state.scenarioTimeRemaining
         );
         Logger.info('Objective states restored from checkpoint');
+
+        // Reconstruct dialog history from completed objectives
+        DialogHistoryManager.getInstance().reconstructFromCompletedObjectives(
+          scenario.data.dialogClips,
+          checkpoint.state.objectiveStates,
+          scenario.data.objectives ?? []
+        );
       }
     } catch (error) {
       Logger.error('Failed to restore objective states from checkpoint:', error);
@@ -272,14 +289,17 @@ export abstract class BasePage extends BaseElement {
     const scenario = ScenarioManager.getInstance();
     const campaignId = this.extractCampaignId_();
 
+    const timeBonus = savedProgress.timeBonus ?? 0;
     LevelCompleteModal.getInstance().showCompletion(
       {
         score: {
           basePoints: savedProgress.basePoints ?? 0,
-          timeBonus: savedProgress.timeBonus ?? 0,
+          timeBonus,
           quizPenalties: savedProgress.quizPenalties ?? 0,
           timePenalties: savedProgress.timePenalties ?? 0,
           totalScore: savedProgress.score ?? 0,
+          objectiveBreakdown: [], // Not saved, show empty for replays
+          timeRemainingSeconds: timeBonus * ScoreCalculator.TIME_BONUS_DIVISOR,
         },
         elapsedTimeSeconds: 0,
         campaignId,

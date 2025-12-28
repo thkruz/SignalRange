@@ -1,4 +1,4 @@
-import { SignalOrigin } from "@app/SignalOrigin";
+import { SignalOrigin } from "@app/signal-origin";
 import { dB, Hertz, IfFrequency, IfSignal, MHz, RfFrequency, RfSignal } from '@app/types';
 import { RFFrontEndCore } from "../rf-front-end-core";
 import { RFFrontEndModule, RFFrontEndModuleState } from '../rf-front-end-module';
@@ -84,7 +84,7 @@ export abstract class LNBModuleCore extends RFFrontEndModule<LNBState> {
 
     // Calculate post-LNA signals (apply gain if powered)
     this.postLNASignals = this.rxSignalsIn.map(sig => {
-      const gain = this.state.isPowered ? 0 : -300;
+      const gain = this.state.isPowered ? this.state.gain : -300;
       return {
         ...sig,
         power: sig.power + gain,
@@ -180,8 +180,11 @@ export abstract class LNBModuleCore extends RFFrontEndModule<LNBState> {
     }
 
     // Apply exponential smoothing so changes are gradual (not instant)
-    // At 60 FPS with factor 0.0005: ~30+ seconds for significant change
-    const smoothingFactor = 0.005;
+    // Use faster smoothing for large changes (like gain adjustments)
+    // and slower smoothing for small changes (thermal drift)
+    const tempDelta = Math.abs(targetNoiseTemp - this.state.noiseTemperature);
+    // Fast response (0.1) for large changes, slow (0.005) for small changes
+    const smoothingFactor = tempDelta > 100 ? 0.1 : 0.005;
     this.state.noiseTemperature = this.state.noiseTemperature +
       (targetNoiseTemp - this.state.noiseTemperature) * smoothingFactor;
   }
@@ -301,6 +304,10 @@ export abstract class LNBModuleCore extends RFFrontEndModule<LNBState> {
    */
   getAlarms(): string[] {
     const alarms: string[] = [];
+
+    if (!this.state.isPowered) {
+      return alarms; // No alarms when powered off
+    }
 
     const extRefPresent = this.isExtRefPresent();
 

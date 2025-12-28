@@ -1,5 +1,5 @@
 import { Degrees } from "ootk";
-import { SignalOrigin } from "./SignalOrigin";
+import { SignalOrigin } from "./signal-origin";
 
 /**
  * Represents a distinct type.
@@ -26,6 +26,8 @@ export type dBW = Distinct<number, 'dBW'>;
 export type dBm = Distinct<number, 'dBm'>;
 /** Decibel-isotropic gain */
 export type dBi = Distinct<number, 'dBi'>;
+/** Decibels Full Scale (relative to ADC clipping point) */
+export type dBFS = Distinct<number, 'dBFS'>;
 /** Radio Frequency in Hz */
 export type RfFrequency = Distinct<Hertz, 'RfFrequency'>;
 /** Intermediate Frequency in Hz */

@@ -1,9 +1,11 @@
-import { Receiver, ReceiverModemState, ReceiverState } from '@app/equipment/receiver/receiver';
+import { CardAlarmBadge } from '@app/components/card-alarm-badge/card-alarm-badge';
+import { qs } from '@app/engine/utils/query-selector';
+import { AlarmStatus } from '@app/equipment/base-equipment';
+import { ADCStatus } from '@app/equipment/receiver/adc-degradation';
+import { IQSignalInfo, Receiver, ReceiverModemState } from '@app/equipment/receiver/receiver';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
-import { CardAlarmBadge } from '@app/components/card-alarm-badge/card-alarm-badge';
-import { AlarmStatus } from '@app/equipment/base-equipment';
-import { qs } from '@app/engine/utils/query-selector';
+import { parseLocalizedNumber } from '@app/utils/parse-number';
 
 /**
  * ReceiverAdapter - Bridges Receiver equipment class to modern Mission Control UI
@@ -23,13 +25,17 @@ import { qs } from '@app/engine/utils/query-selector';
  * - Status bar shows signal detection instead of alarms
  */
 export class ReceiverAdapter {
+  private static readonly UPDATE_INTERVAL_MS = 250;
+
   private readonly receiver: Receiver;
   private readonly containerEl: HTMLElement;
   private readonly domCache_: Map<string, HTMLElement> = new Map();
   private readonly boundHandlers: Map<string, EventListener> = new Map();
   private readonly stateChangeHandler_: () => void;
+  private readonly boundUpdateHandler_: () => void;
   private readonly alarmBadge_: CardAlarmBadge;
   private lastStateString: string = '';
+  private lastSyncTime_: number = 0;
 
   constructor(receiver: Receiver, containerEl: HTMLElement) {
     this.receiver = receiver;
@@ -44,8 +50,11 @@ export class ReceiverAdapter {
 
     // Create state change handler
     this.stateChangeHandler_ = () => {
-      this.syncDomWithState_(this.receiver.state);
+      this.syncDomWithState_();
     };
+
+    // Create throttled update handler for Events.UPDATE
+    this.boundUpdateHandler_ = this.throttledSync_.bind(this);
 
     // Initialize
     this.setupDomCache_();
@@ -53,7 +62,7 @@ export class ReceiverAdapter {
     this.subscribeToStateChanges_();
 
     // Initial sync
-    this.syncDomWithState_(this.receiver.state);
+    this.syncDomWithState_();
   }
 
   /**
@@ -63,6 +72,17 @@ export class ReceiverAdapter {
     EventBus.getInstance().on(Events.RX_CONFIG_CHANGED, this.stateChangeHandler_);
     EventBus.getInstance().on(Events.RX_ACTIVE_MODEM_CHANGED, this.stateChangeHandler_);
     EventBus.getInstance().on(Events.SYNC, this.stateChangeHandler_);
+    EventBus.getInstance().on(Events.UPDATE, this.boundUpdateHandler_);
+  }
+
+  /**
+   * Throttled sync for UPDATE events to avoid performance issues
+   */
+  private throttledSync_(): void {
+    const now = Date.now();
+    if (now - this.lastSyncTime_ < ReceiverAdapter.UPDATE_INTERVAL_MS) return;
+    this.lastSyncTime_ = now;
+    this.syncDomWithState_();
   }
 
   /**
@@ -100,9 +120,19 @@ export class ReceiverAdapter {
     // Signal quality status badge
     this.cacheElement_('signal-status');
 
-    // SNR and power level displays
-    this.cacheElement_('snr-display');
+    // C/N and power level displays
+    this.cacheElement_('cn-raw-display');
+    this.cacheElement_('cn-effective-display');
     this.cacheElement_('power-level-display');
+    this.cacheElement_('noise-floor-display');
+
+    // ADC status displays
+    this.cacheElement_('adc-level-display');
+    this.cacheElement_('adc-status-display');
+    this.cacheElement_('degradation-section');
+    this.cacheElement_('clip-penalty-display');
+    this.cacheElement_('quant-penalty-display');
+    this.cacheElement_('total-penalty-display');
 
     // Status bar
     this.cacheElement_('status-bar');
@@ -189,7 +219,7 @@ export class ReceiverAdapter {
 
   private modemSelectHandler_(modemNumber: number): void {
     this.receiver.setActiveModem(modemNumber);
-    this.syncDomWithState_(this.receiver.state);
+    this.syncDomWithState_();
   }
 
   private antennaHandler_(e: Event): void {
@@ -198,14 +228,14 @@ export class ReceiverAdapter {
   }
 
   private frequencyHandler_(e: Event): void {
-    const value = parseFloat((e.target as HTMLInputElement).value);
+    const value = parseLocalizedNumber((e.target as HTMLInputElement).value);
     if (!isNaN(value)) {
       this.receiver.handleFrequencyChange(value);
     }
   }
 
   private bandwidthHandler_(e: Event): void {
-    const value = parseFloat((e.target as HTMLInputElement).value);
+    const value = parseLocalizedNumber((e.target as HTMLInputElement).value);
     if (!isNaN(value)) {
       this.receiver.handleBandwidthChange(value);
     }
@@ -223,22 +253,50 @@ export class ReceiverAdapter {
 
   private applyHandler_(): void {
     this.receiver.applyChanges();
-    this.syncDomWithState_(this.receiver.state);
+    this.syncDomWithState_();
   }
 
   private powerSwitchHandler_(e: Event): void {
     const isEnabled = (e.target as HTMLInputElement).checked;
     this.receiver.handlePowerToggle(isEnabled);
-    this.syncDomWithState_(this.receiver.state);
+    this.syncDomWithState_();
   }
 
   /**
    * Sync DOM with receiver state
-   * Uses state string comparison to prevent circular updates
+   * Uses state string comparison to prevent unnecessary updates
    */
-  private syncDomWithState_(state: Partial<ReceiverState>): void {
-    // Prevent circular updates
-    const stateString = JSON.stringify(state);
+  private syncDomWithState_(): void {
+    // Build comprehensive state string that includes signal status for all modems
+    // (signal detection depends on external data, not just receiver state)
+    // Include raw signal data since isDegraded flag has mutation issues in getVisibleSignals
+    const activeModem = this.getActiveModem_();
+    const visibleSignals = activeModem ? this.receiver.getVisibleSignals(activeModem) : [];
+
+    const modemSignalStatus = this.receiver.state.modems.map(modem => ({
+      modemNumber: modem.modemNumber,
+      hasSignal: this.receiver.hasSignalForModem(modem),
+      isDegraded: this.receiver.isSignalDegraded(modem),
+      snr: this.receiver.getSnrForModem(modem),
+      power: this.receiver.getPowerForModem(modem),
+    }));
+
+    // Include visible signals for active modem to detect degradation changes
+    const activeSignalState = visibleSignals.map(s => ({
+      id: s.signalId,
+      power: Math.round(s.power * 10) / 10, // Round to avoid floating point noise
+      frequency: s.frequency,
+      isDegraded: s.isDegraded,
+      feed: s.feed,
+    }));
+
+    const stateString = JSON.stringify({
+      receiverState: this.receiver.state,
+      modemSignalStatus,
+      activeSignalState,
+    });
+
+    // Early exit if nothing changed
     if (stateString === this.lastStateString) return;
     this.lastStateString = stateString;
 
@@ -246,7 +304,6 @@ export class ReceiverAdapter {
     this.updateModemButtons_();
 
     // Sync configuration inputs/displays for active modem
-    const activeModem = this.getActiveModem_();
     if (activeModem) {
       this.updateConfigurationInputs_(activeModem);
       this.updateCurrentValueDisplays_(activeModem);
@@ -295,42 +352,49 @@ export class ReceiverAdapter {
   private getModemSignalClass_(modem: ReceiverModemState): string {
     if (!modem.isPowered) return '';
 
-    const hasSignal = this.receiver.hasSignalForModem(modem);
-    const isDegraded = this.receiver.isSignalDegraded(modem);
+    const signalInfo = this.receiver.getSignalsInBandwidth(modem);
+    if (!signalInfo.hasCarrier) return '';
 
-    if (!hasSignal) return '';
-    if (isDegraded) return 'btn-rx-signal-degraded';
-    return 'btn-rx-signal-good';
+    const effectiveCn = signalInfo.effectiveCnRatio_dB ?? signalInfo.cnRatio_dB;
+
+    // Match signal quality thresholds
+    if (signalInfo.hasLock && effectiveCn > 15) {
+      return 'btn-rx-signal-good';
+    }
+    if (effectiveCn > 8) {
+      return 'btn-rx-signal-degraded';
+    }
+    return 'btn-rx-signal-error';
   }
 
   private updateConfigurationInputs_(modem: ReceiverModemState): void {
-    // Antenna selector
+    // Antenna selector - skip if user is focused
     const antennaSelect = this.domCache_.get('antenna-select') as HTMLSelectElement;
-    if (antennaSelect) {
+    if (antennaSelect && document.activeElement !== antennaSelect) {
       antennaSelect.value = String(modem.antenna_id);
     }
 
-    // Frequency input - round to 1 decimal place to avoid floating point display errors
+    // Frequency input - skip if user is focused
     const frequencyInput = this.domCache_.get('frequency-input') as HTMLInputElement;
-    if (frequencyInput) {
+    if (frequencyInput && document.activeElement !== frequencyInput) {
       frequencyInput.value = Number(modem.frequency.toFixed(1)).toString();
     }
 
-    // Bandwidth input - round to 1 decimal place to avoid floating point display errors
+    // Bandwidth input - skip if user is focused
     const bandwidthInput = this.domCache_.get('bandwidth-input') as HTMLInputElement;
-    if (bandwidthInput) {
+    if (bandwidthInput && document.activeElement !== bandwidthInput) {
       bandwidthInput.value = Number(modem.bandwidth.toFixed(1)).toString();
     }
 
-    // Modulation selector
+    // Modulation selector - skip if user is focused
     const modulationSelect = this.domCache_.get('modulation-select') as HTMLSelectElement;
-    if (modulationSelect) {
+    if (modulationSelect && document.activeElement !== modulationSelect) {
       modulationSelect.value = modem.modulation;
     }
 
-    // FEC selector
+    // FEC selector - skip if user is focused
     const fecSelect = this.domCache_.get('fec-select') as HTMLSelectElement;
-    if (fecSelect) {
+    if (fecSelect && document.activeElement !== fecSelect) {
       fecSelect.value = modem.fec;
     }
   }
@@ -434,46 +498,168 @@ export class ReceiverAdapter {
       powerSwitch.checked = activeModem.isPowered;
     }
 
-    // Signal Quality Status Badge
+    // Get signal info for C/N and ADC data (needed for signal quality)
+    const signalInfo = this.receiver.getSignalsInBandwidth(activeModem);
+
+    // Signal Quality Status Badge - use actual C/N thresholds matching IQ constellation
     const signalStatus = this.domCache_.get('signal-status');
     if (signalStatus) {
       if (!activeModem.isPowered) {
         signalStatus.className = 'status-badge status-badge-none';
         signalStatus.textContent = 'Off';
+      } else if (!signalInfo.hasCarrier) {
+        signalStatus.className = 'status-badge status-badge-none';
+        signalStatus.textContent = 'None';
       } else {
-        const hasSignal = this.receiver.hasSignalForModem(activeModem);
-        const isDegraded = this.receiver.isSignalDegraded(activeModem);
+        // Use effective C/N (includes ADC penalty) for quality assessment
+        const effectiveCn = signalInfo.effectiveCnRatio_dB ?? signalInfo.cnRatio_dB;
 
-        if (!hasSignal) {
-          signalStatus.className = 'status-badge status-badge-none';
-          signalStatus.textContent = 'None';
-        } else if (isDegraded) {
-          signalStatus.className = 'status-badge status-badge-degraded';
-          signalStatus.textContent = 'Degraded';
-        } else {
+        // Match IQ constellation thresholds:
+        // - Good: C/N >= 8 dB AND locked
+        // - Degraded: 5 <= C/N < 8 dB AND locked OR unlocked with decent C/N
+        // - Poor: C/N < 5 dB
+        if (signalInfo.hasLock && effectiveCn >= 8) {
           signalStatus.className = 'status-badge status-badge-good';
           signalStatus.textContent = 'Good';
+        } else if (effectiveCn >= 5) {
+          signalStatus.className = 'status-badge status-badge-degraded';
+          signalStatus.textContent = signalInfo.hasLock ? 'Degraded' : 'Unlocked';
+        } else if (effectiveCn > 0) {
+          signalStatus.className = 'status-badge status-badge-error';
+          signalStatus.textContent = 'Poor';
+        } else {
+          signalStatus.className = 'status-badge status-badge-error';
+          signalStatus.textContent = 'Critical';
         }
       }
     }
 
-    // SNR display
-    const snrDisplay = this.domCache_.get('snr-display');
-    if (snrDisplay) {
-      const snr = this.receiver.getSnrForModem(activeModem);
-      snrDisplay.textContent = snr !== null ? `${snr.toFixed(1)} dB` : '-- dB';
+    // Use hasCarrier for all display logic (consistent with signal quality badge)
+    const hasCarrier = signalInfo.hasCarrier;
+
+    // Raw C/N display - only show when we have a carrier
+    const cnRawDisplay = this.domCache_.get('cn-raw-display');
+    if (cnRawDisplay) {
+      const cn = signalInfo.cnRatio_dB;
+      cnRawDisplay.textContent = (hasCarrier && cn > -50) ? `${cn.toFixed(1)} dB` : '-- dB';
     }
 
-    // Power level display
+    // Effective C/N display - only show when we have a carrier
+    const cnEffectiveDisplay = this.domCache_.get('cn-effective-display');
+    if (cnEffectiveDisplay) {
+      const effectiveCn = signalInfo.effectiveCnRatio_dB ?? signalInfo.cnRatio_dB;
+      cnEffectiveDisplay.textContent = (hasCarrier && effectiveCn > -50) ? `${effectiveCn.toFixed(1)} dB` : '-- dB';
+    }
+
+    // Power level display - only show when we have a carrier
     const powerLevelDisplay = this.domCache_.get('power-level-display');
     if (powerLevelDisplay) {
-      const power = this.receiver.getPowerForModem(activeModem);
-      powerLevelDisplay.textContent = power !== null ? `${power.toFixed(1)} dBm` : '-- dBm';
+      const power = signalInfo.signalLevel_dBm;
+      powerLevelDisplay.textContent = (hasCarrier && power !== undefined) ? `${power.toFixed(1)} dBm` : '-- dBm';
     }
+
+    // Noise floor display (for debugging/teaching) - always show if available
+    const noiseFloorDisplay = this.domCache_.get('noise-floor-display');
+    if (noiseFloorDisplay) {
+      const noiseFloor = signalInfo.noiseFloor_dBm;
+      noiseFloorDisplay.textContent = noiseFloor !== undefined ? `${noiseFloor.toFixed(1)} dBm` : '-- dBm';
+    }
+
+    // Update ADC status displays - only show actual values when we have a carrier
+    this.updateAdcStatus_(signalInfo, hasCarrier);
 
     // Update alarm badge
     const alarms = this.getAlarmsFromReceiver_();
     this.alarmBadge_.update(alarms);
+  }
+
+  /**
+   * Update ADC status displays based on signal info
+   * @param signalInfo Signal info from receiver
+   * @param hasSignal Whether a matching signal exists (mod + FEC match)
+   */
+  private updateAdcStatus_(signalInfo: IQSignalInfo, hasSignal: boolean): void {
+    const adcDeg = signalInfo.adcDegradation;
+
+    // Only show actual ADC values when we have a matching signal
+    const showAdcValues = hasSignal && adcDeg;
+
+    // ADC Level display
+    const adcLevelEl = this.domCache_.get('adc-level-display');
+    if (adcLevelEl) {
+      if (showAdcValues) {
+        adcLevelEl.textContent = `${adcDeg.inputLevel_dBFS.toFixed(1)} dBFS`;
+        adcLevelEl.className = 'fw-bold font-monospace ' + this.getAdcLevelClass_(adcDeg.status);
+      } else {
+        adcLevelEl.textContent = '-- dBFS';
+        adcLevelEl.className = 'fw-bold font-monospace';
+      }
+    }
+
+    // ADC Status badge
+    const adcStatusEl = this.domCache_.get('adc-status-display');
+    if (adcStatusEl) {
+      if (showAdcValues) {
+        adcStatusEl.textContent = this.getAdcStatusText_(adcDeg.status);
+        adcStatusEl.className = 'status-badge ' + this.getAdcStatusBadgeClass_(adcDeg.status);
+      } else {
+        adcStatusEl.textContent = '--';
+        adcStatusEl.className = 'status-badge status-badge-none';
+      }
+    }
+
+    // Show/hide degradation breakdown - only when we have a matching signal with penalties
+    const degradationSection = this.domCache_.get('degradation-section');
+    if (degradationSection) {
+      if (showAdcValues && adcDeg.totalPenalty_dB > 0.1) {
+        degradationSection.classList.remove('d-none');
+        this.updatePenaltyDisplay_('clip-penalty-display', adcDeg.clipPenalty_dB);
+        this.updatePenaltyDisplay_('quant-penalty-display', adcDeg.quantizationPenalty_dB);
+        this.updatePenaltyDisplay_('total-penalty-display', adcDeg.totalPenalty_dB);
+      } else {
+        degradationSection.classList.add('d-none');
+      }
+    }
+  }
+
+  private updatePenaltyDisplay_(elementId: string, penalty: number): void {
+    const el = this.domCache_.get(elementId);
+    if (el) {
+      el.textContent = `${penalty.toFixed(1)} dB`;
+    }
+  }
+
+  private getAdcLevelClass_(status: ADCStatus): string {
+    switch (status) {
+      case 'optimal': return 'text-success';
+      case 'clipping':
+      case 'severe-clipping': return 'text-danger';
+      case 'low-level':
+      case 'severe-low': return 'text-info';
+      default: return '';
+    }
+  }
+
+  private getAdcStatusText_(status: ADCStatus): string {
+    switch (status) {
+      case 'optimal': return 'Optimal';
+      case 'clipping': return 'Clipping';
+      case 'severe-clipping': return 'CLIPPING!';
+      case 'low-level': return 'Low Level';
+      case 'severe-low': return 'LOW LEVEL!';
+      default: return '--';
+    }
+  }
+
+  private getAdcStatusBadgeClass_(status: ADCStatus): string {
+    switch (status) {
+      case 'optimal': return 'status-badge-good';
+      case 'clipping': return 'status-badge-degraded';
+      case 'severe-clipping': return 'status-badge-error';
+      case 'low-level': return 'status-badge-degraded';
+      case 'severe-low': return 'status-badge-error';
+      default: return 'status-badge-none';
+    }
   }
 
   private updateStatusBar_(): void {
@@ -489,18 +675,31 @@ export class ReceiverAdapter {
       return;
     }
 
-    const hasSignal = this.receiver.hasSignalForModem(activeModem);
-    const isDegraded = this.receiver.isSignalDegraded(activeModem);
+    const signalInfo = this.receiver.getSignalsInBandwidth(activeModem);
 
-    if (!hasSignal) {
+    if (!signalInfo.hasCarrier) {
       statusBar.className = 'alert alert-info mt-3';
       statusBar.textContent = 'Searching for signal...';
-    } else if (isDegraded) {
-      statusBar.className = 'alert alert-warning mt-3';
-      statusBar.textContent = 'Signal detected (degraded quality)';
-    } else {
+      return;
+    }
+
+    const effectiveCn = signalInfo.effectiveCnRatio_dB ?? signalInfo.cnRatio_dB;
+
+    // QPSK-ish modem-quality thresholds (MVP, no Eb/N0)
+    if (signalInfo.hasLock && effectiveCn >= 8) {
       statusBar.className = 'alert alert-success mt-3';
-      statusBar.textContent = 'Signal locked - Good quality';
+      statusBar.textContent = `Signal locked - Good margin (C/N: ${effectiveCn.toFixed(1)} dB)`;
+    } else if (signalInfo.hasLock && effectiveCn >= 5) {
+      statusBar.className = 'alert alert-warning mt-3';
+      statusBar.textContent = `Signal locked - Degraded margin (C/N: ${effectiveCn.toFixed(1)} dB)`;
+    } else if (effectiveCn >= 3) {
+      // may flicker lock depending on your sim; treat as near-threshold
+      const lockStatus = signalInfo.hasLock ? 'locked' : 'unlocking';
+      statusBar.className = 'alert alert-danger mt-3';
+      statusBar.textContent = `Signal ${lockStatus} - Near threshold (C/N: ${effectiveCn.toFixed(1)} dB)`;
+    } else {
+      statusBar.className = 'alert alert-danger mt-3';
+      statusBar.textContent = `Signal no lock - Below threshold (C/N: ${effectiveCn.toFixed(1)} dB)`;
     }
   }
 
@@ -513,17 +712,32 @@ export class ReceiverAdapter {
 
     if (!activeModem) return alarms;
 
-    if (activeModem.isPowered) {
-      const hasSignal = this.receiver.hasSignalForModem(activeModem);
-      const isDegraded = this.receiver.isSignalDegraded(activeModem);
-
-      if (!hasSignal) {
-        alarms.push({ severity: 'warning', message: 'No signal detected' });
-      } else if (isDegraded) {
-        alarms.push({ severity: 'warning', message: 'Signal degraded' });
-      }
-    } else {
+    if (!activeModem.isPowered) {
       alarms.push({ severity: 'info', message: 'Modem powered off' });
+      return alarms;
+    }
+
+    const signalInfo = this.receiver.getSignalsInBandwidth(activeModem);
+
+    if (!signalInfo.hasCarrier) {
+      alarms.push({ severity: 'warning', message: 'No signal detected' });
+      return alarms;
+    }
+
+    const effectiveCn = signalInfo.effectiveCnRatio_dB ?? signalInfo.cnRatio_dB;
+
+    // Match signal quality thresholds
+    if (effectiveCn <= 0) {
+      alarms.push({ severity: 'error', message: `Critical C/N: ${effectiveCn.toFixed(1)} dB` });
+    } else if (effectiveCn <= 8) {
+      alarms.push({ severity: 'error', message: `Poor C/N: ${effectiveCn.toFixed(1)} dB` });
+    } else if (effectiveCn <= 15 || !signalInfo.hasLock) {
+      alarms.push({ severity: 'warning', message: signalInfo.hasLock ? 'Signal degraded' : 'Signal unlocked' });
+    }
+
+    // Add interference warning if present
+    if (signalInfo.interferenceCount && signalInfo.interferenceCount > 0) {
+      alarms.push({ severity: 'warning', message: `${signalInfo.interferenceCount} interferer(s) detected` });
     }
 
     return alarms;
@@ -540,6 +754,7 @@ export class ReceiverAdapter {
     EventBus.getInstance().off(Events.RX_CONFIG_CHANGED, this.stateChangeHandler_);
     EventBus.getInstance().off(Events.RX_ACTIVE_MODEM_CHANGED, this.stateChangeHandler_);
     EventBus.getInstance().off(Events.SYNC, this.stateChangeHandler_);
+    EventBus.getInstance().off(Events.UPDATE, this.boundUpdateHandler_);
 
     // Remove all event listeners
     this.boundHandlers.forEach((handler, key) => {

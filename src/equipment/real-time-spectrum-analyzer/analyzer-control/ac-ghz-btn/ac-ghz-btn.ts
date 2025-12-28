@@ -1,3 +1,4 @@
+import { parseLocalizedNumber } from "@app/utils/parse-number";
 import { AnalyzerControl } from "../../analyzer-control";
 import { BaseControlButton } from "../base-control-button";
 import './ac-ghz-btn.css';
@@ -20,7 +21,7 @@ export class ACGhzBtn extends BaseControlButton {
       this.analyzerControl.specA.state.inputUnit = 'GHz';
 
       // Convert the value to GHz if necessary
-      let currentInputValue = parseFloat(this.analyzerControl.specA.state.inputValue);
+      let currentInputValue = parseLocalizedNumber(this.analyzerControl.specA.state.inputValue);
 
       if (isNaN(currentInputValue)) {
         currentInputValue = 0;

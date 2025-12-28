@@ -32,12 +32,15 @@ export type ConditionType =
   | 'speca-span-set' // Spectrum analyzer span set to specific value
   | 'speca-rbw-set' // Spectrum analyzer RBW set to specific value
   | 'speca-reference-level-set' // Spectrum analyzer reference level set
+  | 'speca-center-frequency' // Spectrum analyzer center frequency set to specific value
   | 'speca-noise-floor-visible' // Spectrum analyzer shows clean baseline
   | 'filter-bandwidth-set' // IF filter bandwidth configured
+  | 'notch-filter-configured' // Notch filter set to specific center freq, width, depth
   | 'antenna-beacon-frequency-set' // Antenna beacon frequency configured
   | 'antenna-tracking-mode-set' // Antenna tracking mode set (step-track, etc.)
   | 'antenna-beacon-locked' // Antenna beacon signal locked
   | 'antenna-position' // Antenna at specific azimuth/elevation position
+  | 'feed-heater-enabled' // Antenna feed heater is enabled
   | 'buc-unmuted' // BUC RF output enabled (inverse of muted)
   | 'hpa-enabled' // HPA output enabled (dual-action switch)
   | 'hpa-back-off-set' // HPA back-off level configured
@@ -45,8 +48,26 @@ export type ConditionType =
   | 'hpa-output-power-set' // HPA output power above threshold
   | 'receiver-signal-locked' // Receiver modem has demodulation lock
   | 'receiver-snr-threshold' // Receiver modem C/N ratio meets threshold
+  | 'rx-modem-frequency-set' // Receiver modem center frequency set
+  | 'rx-modem-bandwidth-set' // Receiver modem bandwidth set
+  | 'rx-modem-modulation-set' // Receiver modem modulation type set
+  | 'rx-modem-fec-set' // Receiver modem FEC rate set
+  | 'tx-modem-frequency-set' // Transmitter modem center frequency set
+  | 'tx-modem-power-set' // Transmitter modem power set
+  | 'tx-modem-bandwidth-set' // Transmitter modem bandwidth set
+  | 'tx-modem-modulation-set' // Transmitter modem modulation type set
+  | 'tx-modem-fec-set' // Transmitter modem FEC rate set
+  | 'tx-modem-transmitting' // Transmitter modem actively transmitting
   | 'status-check' // Interactive quiz to verify player found the correct information
-  | 'custom'; // Custom condition with evaluator function
+  | 'custom' // Custom condition with evaluator function
+  // Handover and traffic control conditions
+  | 'handover-complete' // Traffic handover to target station completed
+  | 'traffic-owner' // Ground station owns traffic to satellite
+  | 'traffic-transferred' // Traffic transferred from source to target station
+  | 'service-continuity' // No packet loss during handover (placeholder - always passes)
+  | 'ground-station-selected' // Ground station selected in UI
+  // UI interaction conditions
+  | 'mission-brief-opened'; // Mission brief document has been opened
 
 /**
  * Equipment references for condition checking
@@ -98,6 +119,10 @@ export interface ConditionParams {
   referenceLevel?: number;
   /** For speca-reference-level-set: reference level tolerance in dB */
   referenceLevelTolerance?: number;
+  /** For speca-center-frequency: target center frequency in Hz */
+  centerFrequency?: number;
+  /** For speca-center-frequency: center frequency tolerance in Hz (default: 1e6) */
+  centerFrequencyTolerance?: number;
   /** For speca-noise-floor-visible: maximum signal strength to consider "clean baseline" in dBm */
   maxSignalStrength?: number;
   /** For custom conditions: custom evaluator function */
@@ -106,6 +131,20 @@ export interface ConditionParams {
   equipmentIndex?: number;
   /** For filter-bandwidth-set: target bandwidth index (0-12) */
   bandwidthIndex?: number;
+  /** For notch-filter-configured: target notch center frequency in MHz */
+  notchCenterFrequency?: number;
+  /** For notch-filter-configured: notch center frequency tolerance in MHz (default: 1) */
+  notchCenterFrequencyTolerance?: number;
+  /** For notch-filter-configured: target notch bandwidth in MHz */
+  notchBandwidth?: number;
+  /** For notch-filter-configured: notch bandwidth tolerance in MHz (default: 0.5) */
+  notchBandwidthTolerance?: number;
+  /** For notch-filter-configured: target notch depth in dB */
+  notchDepth?: number;
+  /** For notch-filter-configured: notch depth tolerance in dB (default: 2) */
+  notchDepthTolerance?: number;
+  /** For notch-filter-configured: specific notch slot index (0-2), or any if omitted */
+  notchIndex?: number;
   /** For antenna-beacon-frequency-set: beacon frequency in Hz */
   beaconFrequency?: number;
   /** For antenna-tracking-mode-set: tracking mode */
@@ -128,6 +167,18 @@ export interface ConditionParams {
   modemNumber?: number;
   /** For receiver-snr-threshold: minimum C/N ratio in dB */
   minCNRatio?: number;
+  /** For rx-modem-bandwidth-set: target bandwidth in Hz */
+  bandwidth?: number;
+  /** For rx-modem-bandwidth-set: bandwidth tolerance in Hz */
+  bandwidthTolerance?: number;
+  /** For rx-modem-modulation-set: target modulation type */
+  modulation?: string;
+  /** For rx-modem-fec-set: target FEC rate */
+  fec?: string;
+  /** For tx-modem-power-set: target power in dBm */
+  power?: number;
+  /** For tx-modem-power-set: power tolerance in dB */
+  powerTolerance?: number;
   /** For status-check: the question to display */
   question?: string;
   /** For status-check: the answer options (1-4) */
@@ -142,6 +193,18 @@ export interface ConditionParams {
   signalId?: string;
   /** For signal-detected/signal-level-correct: minimum power level in dBm */
   minPower?: number;
+  /** For handover-complete/traffic-owner: target ground station ID */
+  targetGroundStationId?: string;
+  /** For traffic-transferred: source ground station ID */
+  sourceStation?: string;
+  /** For traffic-transferred: target ground station ID */
+  targetStation?: string;
+  /** For service-continuity: maximum allowed packet loss ratio (0.0-1.0) - placeholder */
+  maxPacketLoss?: number;
+  /** For ground-station-selected: ground station ID that must be selected */
+  groundStationId?: string;
+  /** For mission-brief-opened: specific box ID that must be opened (defaults to any 'mission-brief*' box) */
+  boxId?: string;
   /** Additional context-specific parameters */
   [key: string]: unknown;
 }

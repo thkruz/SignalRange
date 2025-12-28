@@ -1,6 +1,6 @@
 import { ToggleSwitch } from "@app/components/toggle-switch/toggle-switch";
 import { EventBus } from "@app/events/event-bus";
-import { SignalOrigin } from "@app/SignalOrigin";
+import { SignalOrigin } from "@app/signal-origin";
 import { Sfx } from "@app/sound/sfx-enum";
 import SoundManager from "@app/sound/sound-manager";
 import { PowerSwitch } from '../../components/power-switch/power-switch';
@@ -121,8 +121,8 @@ export class Transmitter extends BaseEquipment {
           signalId: `default-${modemNumber}`,
           serverId: 1,
           noradId: 1,
-          frequency: (1000 * 1e6) as IfFrequency, // 1 GHz IF
-          power: -97 as dBm,
+          frequency: (1400 * 1e6) as IfFrequency, // 1.4 GHz IF
+          power: -20 as dBm,
           bandwidth: (10 * 1e6) as Hertz, // 10 MHz
           modulation: 'null',
           fec: 'null',
@@ -135,7 +135,7 @@ export class Transmitter extends BaseEquipment {
         },
         isTransmitting: false,
         isTransmittingSwitchUp: false,
-        isPowered: false,
+        isPowered: true,
         isLoopback: false,
         isFaulted: false,
         isFaultSwitchUp: false,
@@ -371,14 +371,14 @@ export class Transmitter extends BaseEquipment {
         });
       }
       if (modem.isTransmitting) {
-        const modemPower = this.calculateModemPower(modem.ifSignal.bandwidth, modem.ifSignal.power);
+        const modemPower = this.calculatePowerBudgetLoad_(modem.ifSignal.bandwidth, modem.ifSignal.power);
         if (!this.validatePowerConsumption(modemPower, 100)) {
           alarms.push({
             message: `Modem ${modem.modem_number} Power Exceeds Max Transmit Power`,
             severity: 'error'
           });
         }
-        if (!this.validatePowerConsumption(modemPower, 80)) {
+        if (!this.validatePowerConsumption(modemPower, 90)) {
           alarms.push({
             message: `Modem ${modem.modem_number} Power Approaching Max Transmit Power`,
             severity: 'warning'
@@ -545,14 +545,27 @@ export class Transmitter extends BaseEquipment {
   private updateTransmissionState() {
     // Check power budget if turning on
     if (this.activeModem.isTransmitting) {
-      const modemPower = this.calculateModemPower(this.activeModem.ifSignal.bandwidth, this.activeModem.ifSignal.power);
+      const modemPower = this.calculatePowerBudgetLoad_(this.activeModem.ifSignal.bandwidth, this.activeModem.ifSignal.power);
       if (!this.validatePowerConsumption(modemPower)) {
         this.activeModem.isFaulted = true;
       }
     }
   }
 
-  private calculateModemPower(bandwidth: Hertz, powerDbm: dBm): dBm {
+  /**
+   * Calculate power budget load for transmitter resource allocation.
+   *
+   * Wider bandwidth signals at the same power level use more transmitter capacity.
+   * This is NOT the RF signal power - it's a metric for budget/resource management.
+   *
+   * The formula accounts for total energy content: a wider bandwidth signal at
+   * the same power level represents more total energy that the transmitter must handle.
+   *
+   * @param bandwidth Signal bandwidth in Hz
+   * @param powerDbm Signal power in dBm (total power, not power density)
+   * @returns Power budget load metric in dBm-equivalent
+   */
+  private calculatePowerBudgetLoad_(bandwidth: Hertz, powerDbm: dBm): dBm {
     const bandwidthMHz = bandwidth / 1e6;
     return (powerDbm + 10 * Math.log10(bandwidthMHz)) as dBm;
   }
@@ -565,7 +578,7 @@ export class Transmitter extends BaseEquipment {
 
     if (!activeModem.isPowered) return 0;
 
-    const modemPower = this.calculateModemPower(
+    const modemPower = this.calculatePowerBudgetLoad_(
       activeModem.ifSignal.bandwidth,
       activeModem.ifSignal.power
     );
@@ -580,28 +593,25 @@ export class Transmitter extends BaseEquipment {
    * Public API for adapters - Configuration handlers
    */
   public handleAntennaChange(antennaId: number): void {
-    if (!this.inputData.ifSignal) {
-      this.inputData.ifSignal = { ...this.activeModem.ifSignal };
-    }
     this.inputData.antenna_id = antennaId;
   }
 
   public handleFrequencyChange(frequencyMHz: number): void {
-    if (!this.inputData.ifSignal) {
+    if (!this.inputData.ifSignal?.signalId) {
       this.inputData.ifSignal = { ...this.activeModem.ifSignal };
     }
     this.inputData.ifSignal.frequency = (frequencyMHz * 1e6) as IfFrequency;
   }
 
   public handleBandwidthChange(bandwidthMHz: number): void {
-    if (!this.inputData.ifSignal) {
+    if (!this.inputData.ifSignal?.signalId) {
       this.inputData.ifSignal = { ...this.activeModem.ifSignal };
     }
     this.inputData.ifSignal.bandwidth = (bandwidthMHz * 1e6) as Hertz;
   }
 
   public handlePowerChange(powerDbm: number): void {
-    if (!this.inputData.ifSignal) {
+    if (!this.inputData.ifSignal?.signalId) {
       this.inputData.ifSignal = { ...this.activeModem.ifSignal };
     }
     this.inputData.ifSignal.power = powerDbm as dBm;
@@ -672,16 +682,24 @@ export class Transmitter extends BaseEquipment {
   public applyChanges(): void {
     this.updateTransmissionState();
 
-    // Update the modem configuration
-    this.state.modems[this.activeModem.id] = {
+    // Find the correct array index for the active modem
+    const modemIndex = this.state.modems.findIndex(m => m.modem_number === this.state.activeModem);
+    if (modemIndex === -1) return;
+
+    // Update the modem configuration, merging ifSignal properties
+    this.state.modems[modemIndex] = {
       ...this.activeModem,
-      ifSignal: this.inputData.ifSignal ?? this.activeModem.ifSignal,
+      antenna_id: this.inputData.antenna_id ?? this.activeModem.antenna_id,
+      ifSignal: {
+        ...this.activeModem.ifSignal,
+        ...this.inputData.ifSignal,
+      },
     };
 
     this.emit(Events.TX_CONFIG_CHANGED, {
       uuid: this.uuid,
       modem: this.state.activeModem,
-      config: this.state.modems[this.activeModem.id]
+      config: this.state.modems[modemIndex]
     });
 
     this.syncDomWithState();

@@ -61,7 +61,7 @@ export class TxChainTab extends BaseElement {
                   </div>
                   <div class="equip-adjust-display">
                     <input type="number" id="buc-lo-frequency" class="equip-adjust-input"
-                           min="6000" max="7000" step="10" value="6425" />
+                           min="6000" max="7000" step="1" value="6425" />
                   </div>
                   <div class="equip-adjust-buttons equip-adjust-increase">
                     <button id="buc-lo-inc-fine" class="btn-equip" title="+10 MHz">+10</button>
@@ -121,12 +121,20 @@ export class TxChainTab extends BaseElement {
                       <span id="buc-output-power-display" class="metric-value">-10.0 dBm</span>
                     </div>
                     <div class="metric-row">
+                      <span class="metric-label">RF Freq:</span>
+                      <span id="buc-rf-frequency-display" class="metric-value">-- MHz</span>
+                    </div>
+                    <div class="metric-row">
                       <span class="metric-label">P1dB Margin:</span>
                       <span id="buc-p1db-margin-display" class="metric-value">25.0 dB</span>
                     </div>
                     <div class="metric-row">
                       <span class="metric-label">Lock:</span>
                       <span id="buc-lock-status" class="status-badge status-badge-locked">Locked</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Sideband:</span>
+                      <span id="buc-sideband-status" class="status-badge">--</span>
                     </div>
                   </div>
                 </div>
@@ -416,7 +424,7 @@ export class TxChainTab extends BaseElement {
         </div>
 
         <!-- Redundancy Controller Placeholder Card -->
-        <div class="col-lg-4">
+        <!-- <div class="col-lg-4">
           <div class="card h-100">
             <div class="card-header">
               <h3 class="card-title">Redundancy Controller</h3>
@@ -426,7 +434,7 @@ export class TxChainTab extends BaseElement {
               <p class="text-muted small mb-0">Status: Not Implemented</p>
             </div>
           </div>
-        </div>
+        </div> -->
       </div>
     </div>
   `;

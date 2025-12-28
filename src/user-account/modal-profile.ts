@@ -38,12 +38,22 @@ export class ModalProfile extends DraggableModal {
         <div class="profile-modal__section">
           <div class="profile-form">
             <div class="profile-form__field">
-              <label class="profile-form__label">Email:</label>
-              <p class="profile-form__text" id="profile-email">${this.userEmail || 'Loading...'}</p>
+              <label class="profile-form__label">Name</label>
+              <p class="profile-form__text" id="profile-name">${this.userName || 'Not set'}</p>
             </div>
             <div class="profile-form__field">
-              <label class="profile-form__label">Name:</label>
-              <p class="profile-form__text" id="profile-name">${this.userName || 'Not set'}</p>
+              <label class="profile-form__label">Email</label>
+              <p class="profile-form__text" id="profile-email">${this.userEmail || 'Loading...'}</p>
+            </div>
+            <div class="profile-stats-grid">
+              <div class="profile-stat-card">
+                <span class="profile-stat-card__value" id="profile-score">--</span>
+                <span class="profile-stat-card__label">Total Score</span>
+              </div>
+              <div class="profile-stat-card">
+                <span class="profile-stat-card__value" id="profile-completed">--</span>
+                <span class="profile-stat-card__label">Completed</span>
+              </div>
             </div>
           </div>
           <div class="profile-actions">
@@ -59,16 +69,15 @@ export class ModalProfile extends DraggableModal {
         <!-- Divider -->
         <div class="profile-modal__divider"></div>
 
-        <!-- Right Section: Additional Info -->
-        <div class="profile-modal__section">
-          <div class="profile-form">
-            <div class="profile-form__field">
-              <label class="profile-form__label">Account Type:</label>
-              <p class="profile-form__text">Free</p>
-            </div>
-            <div class="profile-form__field">
-              <label class="profile-form__label">Shared Account:</label>
-              <p class="profile-form__text">SignalRange shares user accounts with KeepTrack</p>
+        <!-- Right Section: Achievements -->
+        <div class="profile-modal__section profile-achievements-section">
+          <div class="profile-achievements-placeholder">
+            <h3 class="achievements-title">Achievements</h3>
+            <div class="achievements-grid-wrapper">
+              <div class="achievements-grid">
+                ${new Array(15).fill('<div class="achievement-tile achievement-tile--placeholder"></div>').join('\n              ')}
+              </div>
+              <div class="coming-soon-banner">Coming Soon</div>
             </div>
           </div>
         </div>
@@ -79,6 +88,7 @@ export class ModalProfile extends DraggableModal {
   protected async onOpen(): Promise<void> {
     super.onOpen();
     await this.loadUserProfile();
+    this.loadProgressStats();
     this.initializeButtons();
   }
 
@@ -104,6 +114,25 @@ export class ModalProfile extends DraggableModal {
       }
     } catch (error) {
       errorManagerInstance.error(error as Error, 'Failed to load user profile');
+    }
+  }
+
+  private async loadProgressStats(): Promise<void> {
+    try {
+      const userDataService = getUserDataService();
+      const response = await userDataService.getAllScenariosProgress();
+
+      const scoreEl = this.boxEl?.querySelector('#profile-score');
+      const completedEl = this.boxEl?.querySelector('#profile-completed');
+
+      if (scoreEl) {
+        scoreEl.textContent = response.summary.totalScore.toLocaleString();
+      }
+      if (completedEl) {
+        completedEl.textContent = `${response.summary.completedScenarioCount} scenarios`;
+      }
+    } catch {
+      // Progress stats are non-critical, silently fail
     }
   }
 
@@ -165,27 +194,11 @@ export class ModalProfile extends DraggableModal {
 
       const userDataService = getUserDataService();
 
-      console.log('[ClearProgress] Starting clear process...');
-
-      // Clear only SignalRange-specific fields, preserving KeepTrack data
-      const result = await userDataService.updateUserProgress({
-        completedScenarios: [],
-        scenarioProgress: {},
-        totalScore: 0,
-        signalForge: [],
-      });
-      console.log('[ClearProgress] Backend update result:', result);
-
-      // Verify the clear worked
-      const verifyProgress = await userDataService.getUserProgress();
-      console.log('[ClearProgress] Verification - signalForge after clear:', verifyProgress.signalForge);
+      // Delete all progress and checkpoints using the new bulk delete API
+      await userDataService.deleteAllProgress();
 
       // Clear local sync storage to ensure objectives reset on reload
       await syncManager.clearStorage();
-      console.log('[ClearProgress] LocalStorage cleared');
-
-      // Verify localStorage is empty
-      console.log('[ClearProgress] __APP_STORE__ after clear:', localStorage.getItem('__APP_STORE__'));
 
       // Refresh the page to reflect changes
       window.location.reload();

@@ -171,6 +171,7 @@ export class AntennaUIStandard extends AntennaCore {
                   <span class="rf-metric-gt">G/T: -- dB/K</span>
                   <span class="rf-metric-pol-loss">Pol Loss: -- dB</span>
                   <span class="rf-metric-sky-temp">Sky: -- K</span>
+                  <span class="rf-metric-eirp">EIRP: -- dBW</span>
                 </div>
               </div>
 
@@ -246,6 +247,7 @@ export class AntennaUIStandard extends AntennaCore {
     this.domCache['rfMetricGT'] = qs('.rf-metric-gt', parentDom);
     this.domCache['rfMetricPolLoss'] = qs('.rf-metric-pol-loss', parentDom);
     this.domCache['rfMetricSkyTemp'] = qs('.rf-metric-sky-temp', parentDom);
+    this.domCache['rfMetricEirp'] = qs('.rf-metric-eirp', parentDom);
 
     return parentDom;
   }
@@ -291,6 +293,13 @@ export class AntennaUIStandard extends AntennaCore {
       this.domCache['rfMetricGT'].textContent = `G/T: ${m.gOverT_dBK.toFixed(1)} dB/K`;
       this.domCache['rfMetricPolLoss'].textContent = `Pol Loss: ${m.polLoss_dB.toFixed(1)} dB`;
       this.domCache['rfMetricSkyTemp'].textContent = `Sky: ${m.skyTemp_K.toFixed(0)} K`;
+      // EIRP only shown when transmitting
+      if (m.eirp_dBW === undefined) {
+        this.domCache['rfMetricEirp'].style.display = 'none';
+      } else {
+        this.domCache['rfMetricEirp'].textContent = `EIRP: ${m.eirp_dBW.toFixed(1)} dBW`;
+        this.domCache['rfMetricEirp'].style.display = '';
+      }
     }
 
     // Save last render state

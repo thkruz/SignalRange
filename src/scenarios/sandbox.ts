@@ -12,13 +12,14 @@ import { OMTModule } from "@app/equipment/rf-front-end/omt-module/omt-module";
 import { Satellite } from "@app/equipment/satellite/satellite";
 import { Transmitter } from "@app/equipment/transmitter/transmitter";
 import type { ScenarioData } from '@app/ScenarioData';
-import { SignalOrigin } from "@app/SignalOrigin";
+import { SignalOrigin } from "@app/signal-origin";
 import type { FECType, Hertz, ModulationType, RfFrequency, dBi, dBm } from "@app/types";
 import type { Degrees } from "ootk";
 
 export const sandboxData: ScenarioData = {
   id: 'sandbox',
   url: 'sandbox',
+  isDisabled: true,
   imageUrl: 'sandbox.jpg',
   number: 0,
   title: 'Free Play',
@@ -64,6 +65,7 @@ export const sandboxData: ScenarioData = {
     </div>`,
     satellites: [
       new Satellite(
+        'Fake Sat',
         1,
         [
           {
@@ -109,6 +111,7 @@ export const sandboxData: ScenarioData = {
         }
       ),
       new Satellite(
+        'Fake Sat 2',
         2,
         [
           {
@@ -137,6 +140,7 @@ export const sandboxData: ScenarioData = {
         }
       ),
       new Satellite(
+        'Fake Sat',
         3,
         [
           {

@@ -67,6 +67,9 @@ export class Equipment extends BaseElement {
 
   constructor(settings: SimulationSettings) {
     super();
+    // TODO: Rethink what the default should be. It seems that sandbox is the
+    // only scenario that actually needs a custom layout. We should consider making
+    // the default layout match the campaigns and only override it for sandbox.
     this.html_ = settings.layout ? settings.layout : this.html_;
     this.init_(SandboxPage.containerId, 'replace');
     this.initEquipment_(settings);

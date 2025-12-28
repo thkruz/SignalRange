@@ -236,10 +236,15 @@ export class MissionControlPage extends BasePage {
         this.navigationOptions_.continueFromCheckpoint = true;
 
         Logger.info(`Checkpoint loaded for scenario: ${scenario.data.id}`);
+      } else {
+        // No checkpoint found for logged-in user - skip completion modal and start fresh
+        Logger.info('loadCheckpointIfExists_: No checkpoint data found, starting fresh');
+        this.navigationOptions_.forceReplay = true;
       }
     } catch (error) {
       Logger.error('Failed to load checkpoint:', error);
-      // Continue without restoring - mission will start fresh
+      // Checkpoint load failed - skip completion modal and start fresh
+      this.navigationOptions_.forceReplay = true;
     }
   }
 

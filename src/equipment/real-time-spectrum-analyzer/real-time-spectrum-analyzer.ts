@@ -396,11 +396,13 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
       }
     }
 
-    for (const sig of signals) {
+    // Create copies when clamping bandwidth to avoid mutating original signals
+    signals = signals.map(sig => {
       if (sig.bandwidth > bandwidth) {
-        sig.bandwidth = bandwidth;
+        return { ...sig, bandwidth };
       }
-    }
+      return sig;
+    });
 
     // Update state with the maximum noise floor found
     this.state.noiseFloorNoGain = maxNoiseFloorNoGain;
@@ -431,7 +433,8 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
       case TapPoint.RX_RF_POST_LNA:
         return this.rfFrontEnd_.lnbModule.postLNASignals;
       case TapPoint.RX_IF:
-        return this.rfFrontEnd_.filterModule.outputSignals;
+        // Signal path: LNB → IF Filter → Notch Filter → AGC
+        return this.rfFrontEnd_.agcModule.outputSignals;
       default:
         throw new Error(`Unknown tap point: ${tapPoint}`);
     }

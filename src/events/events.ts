@@ -1,9 +1,11 @@
 import { GroundStationState } from "@app/assets/ground-station/ground-station-state";
 import { AntennaState } from "@app/equipment/antenna";
 import { RealTimeSpectrumAnalyzerState } from "@app/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer";
+import { AGCState } from "@app/equipment/rf-front-end/agc-module";
 import { BUCState } from "@app/equipment/rf-front-end/buc-module";
 import { CouplerState } from "@app/equipment/rf-front-end/coupler-module/coupler-module";
 import { IfFilterBankState } from "@app/equipment/rf-front-end/filter-module";
+import { NotchFilterState } from "@app/equipment/rf-front-end/notch-filter-module";
 import { GPSDOState } from "@app/equipment/rf-front-end/gpsdo-module";
 import { HPAState } from "@app/equipment/rf-front-end/hpa-module";
 import { LNBState } from "@app/equipment/rf-front-end/lnb-module";
@@ -204,6 +206,55 @@ export interface AlarmStateChangedData {
   highestSeverity: 'error' | 'warning' | 'info' | 'success';
 }
 
+// Weather Event specific interfaces
+export interface WeatherEventData {
+  id: string;
+  groundStationId: string;
+  type: 'snow' | 'rain' | 'fog' | 'wind' | 'dust' | 'hail' | 'ice' | 'storm';
+  severity: 'minor' | 'moderate' | 'severe';
+  startTime: number;
+  duration: number;
+  linkMarginDegradation: number;
+}
+
+export interface WeatherMissionFailureData {
+  groundStationId: string;
+  satelliteId: number;
+  weatherEventId: string;
+  currentCN: number | null;
+  requiredCN: number;
+}
+
+// Handover Event specific interfaces
+export interface HandoverInitiatedData {
+  satelliteId: number;
+  sourceStationId: string;
+  targetStationId: string;
+}
+
+export interface HandoverReadyData {
+  satelliteId: number;
+  sourceStationId: string;
+  targetStationId: string;
+}
+
+export interface HandoverCompleteData {
+  satelliteId: number;
+  previousOwnerId: string;
+  newOwnerId: string;
+}
+
+export interface HandoverCancelledData {
+  satelliteId: number;
+}
+
+export interface DualTransmissionViolationData {
+  satelliteNoradId: number;
+  groundStation1Id: string;
+  groundStation2Id: string;
+  detectedAt: number;
+}
+
 export enum Events {
   // Antenna events
   ANTENNA_STATE_CHANGED = 'antenna:state:changed',
@@ -241,11 +292,13 @@ export enum Events {
   RF_FE_POWER_CHANGED = "rf-fe:power:changed",
   RF_FE_BUC_CHANGED = "rf-fe:buc:changed",
   RF_FE_HPA_CHANGED = "rf-fe:hpa:changed",
+  RF_FE_AGC_CHANGED = "rf-fe:agc:changed",
   RF_FE_LNB_CHANGED = "rf-fe:lnb:changed",
   RF_FE_ALARM = "rf-fe:alarm",
   RF_FE_OMT_CHANGED = "rf-fe:omt:changed",
   RF_FE_COUPLER_CHANGED = "rf-fe:coupler:changed",
   RF_FE_FILTER_CHANGED = "rf-fe:filter:changed",
+  RF_FE_NOTCH_FILTER_CHANGED = "rf-fe:notch-filter:changed",
   RF_FE_GPSDO_CHANGED = "rf-fe:gpsdo:changed",
 
   // Objectives events
@@ -275,6 +328,22 @@ export enum Events {
 
   // Navigation events
   SWITCH_TAB = 'navigation:switch:tab',
+  MISSION_OVERVIEW_SELECTED = 'navigation:mission-overview',
+
+  // Weather events
+  WEATHER_EVENT_STARTED = 'weather:event:started',
+  WEATHER_EVENT_ENDED = 'weather:event:ended',
+  WEATHER_MISSION_FAILURE = 'weather:mission:failure',
+
+  // Dialog events
+  DIALOG_HISTORY_CHANGED = 'dialog:history:changed',
+
+  // Traffic Control / Handover events
+  HANDOVER_INITIATED = 'handover:initiated',
+  HANDOVER_READY = 'handover:ready',
+  HANDOVER_COMPLETE = 'handover:complete',
+  HANDOVER_CANCELLED = 'handover:cancelled',
+  DUAL_TRANSMISSION_VIOLATION = 'handover:dual-transmission-violation',
 }
 
 export interface EventMap {
@@ -286,10 +355,12 @@ export interface EventMap {
   [Events.RF_FE_POWER_CHANGED]: [Partial<RFFrontEndState>];
   [Events.RF_FE_BUC_CHANGED]: [Partial<BUCState>];
   [Events.RF_FE_HPA_CHANGED]: [Partial<HPAState>];
+  [Events.RF_FE_AGC_CHANGED]: [Partial<AGCState>];
   [Events.RF_FE_LNB_CHANGED]: [Partial<LNBState>];
   [Events.RF_FE_OMT_CHANGED]: [Partial<OMTState>];
   [Events.RF_FE_COUPLER_CHANGED]: [Partial<CouplerState>];
   [Events.RF_FE_FILTER_CHANGED]: [Partial<IfFilterBankState>];
+  [Events.RF_FE_NOTCH_FILTER_CHANGED]: [Partial<NotchFilterState>];
   [Events.RF_FE_GPSDO_CHANGED]: [Partial<GPSDOState>];
   [Events.RF_FE_ALARM]: [{
     unit: number;
@@ -339,4 +410,20 @@ export interface EventMap {
   [Events.ALARM_STATE_CHANGED]: [AlarmStateChangedData];
 
   [Events.SWITCH_TAB]: [{ tabId: string }];
+  [Events.MISSION_OVERVIEW_SELECTED]: [];
+
+  // Weather events
+  [Events.WEATHER_EVENT_STARTED]: [WeatherEventData];
+  [Events.WEATHER_EVENT_ENDED]: [WeatherEventData];
+  [Events.WEATHER_MISSION_FAILURE]: [WeatherMissionFailureData];
+
+  // Dialog events
+  [Events.DIALOG_HISTORY_CHANGED]: [];
+
+  // Handover events
+  [Events.HANDOVER_INITIATED]: [HandoverInitiatedData];
+  [Events.HANDOVER_READY]: [HandoverReadyData];
+  [Events.HANDOVER_COMPLETE]: [HandoverCompleteData];
+  [Events.HANDOVER_CANCELLED]: [HandoverCancelledData];
+  [Events.DUAL_TRANSMISSION_VIOLATION]: [DualTransmissionViolationData];
 }

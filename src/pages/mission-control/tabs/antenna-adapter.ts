@@ -1,6 +1,7 @@
 import { AntennaCore, AntennaState } from '@app/equipment/antenna';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
+import { parseLocalizedNumber } from '@app/utils/parse-number';
 import { Degrees } from 'ootk';
 
 /**
@@ -100,17 +101,17 @@ export class AntennaAdapter {
   }
 
   private azHandler_(e: Event): void {
-    const value = parseFloat((e.target as HTMLInputElement).value);
+    const value = parseLocalizedNumber((e.target as HTMLInputElement).value);
     this.antenna.handleAzimuthChange(value as Degrees);
   }
 
   private elHandler_(e: Event): void {
-    const value = parseFloat((e.target as HTMLInputElement).value);
+    const value = parseLocalizedNumber((e.target as HTMLInputElement).value);
     this.antenna.handleElevationChange(value as Degrees);
   }
 
   private polHandler_(e: Event): void {
-    const value = parseFloat((e.target as HTMLInputElement).value);
+    const value = parseLocalizedNumber((e.target as HTMLInputElement).value);
     this.antenna.handlePolarizationChange(value as Degrees);
   }
 

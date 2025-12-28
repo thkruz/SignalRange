@@ -3,9 +3,11 @@ import { BaseElement } from "@app/components/base-element";
 import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
 import { FILTER_BANDWIDTH_CONFIGS } from "@app/equipment/rf-front-end/filter-module/filter-module-core";
+import { AGCAdapter } from './agc-adapter';
 import { FilterAdapter } from './filter-adapter';
 import { IQConstellationAdapter } from './iq-constellation-adapter';
 import { LNBAdapter } from './lnb-adapter';
+import { NotchFilterAdapter } from './notch-filter-adapter';
 import { ReceiverAdapter } from './receiver-adapter';
 import './rx-analysis-tab.css';
 import { SpectrumAnalyzerAdapter } from './spectrum-analyzer-adapter';
@@ -16,17 +18,20 @@ import { SpectrumAnalyzerAdvancedAdapter } from './spectrum-analyzer-advanced-ad
  *
  * Phase 5 Implementation:
  * - LNB (Low Noise Block) control: LO frequency, gain, power
+ * - AGC (Automatic Gain Control): automatic level control with bypass option
  * - IF Filter bandwidth selection
  * - Spectrum Analyzer display with real-time signals
  * - Demodulator status (placeholder for Phase 6+)
  *
  * Equipment Flow:
- * Antenna → OMT → LNB → Filter → Spectrum Analyzer → Demodulator
+ * Antenna → OMT → LNB → AGC → Notch Filter → IF Filter → Spectrum Analyzer → Demodulator
  */
 export class RxAnalysisTab extends BaseElement {
   private readonly groundStation: GroundStation;
   private lnbAdapter: LNBAdapter | null = null;
+  private agcAdapter: AGCAdapter | null = null;
   private filterAdapter: FilterAdapter | null = null;
+  private notchFilterAdapter: NotchFilterAdapter | null = null;
   private spectrumAnalyzerAdapter: SpectrumAnalyzerAdapter | null = null;
   private spectrumAnalyzerAdvancedAdapter: SpectrumAnalyzerAdvancedAdapter | null = null;
   private receiverAdapter: ReceiverAdapter | null = null;
@@ -134,8 +139,46 @@ export class RxAnalysisTab extends BaseElement {
           </div>
         </div>
 
+        <!-- AGC Control Card -->
+        <div class="col-lg-3">
+          <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+              <h3 class="card-title">AGC</h3>
+              <div id="agc-alarm-badge"></div>
+            </div>
+            <div class="card-body">
+              <!-- Bypass Control -->
+              <div class="form-check form-switch mb-3">
+                <input type="checkbox" id="agc-bypass" class="form-check-input" role="switch" />
+                <label for="agc-bypass" class="form-check-label small">Bypass</label>
+              </div>
+
+              <!-- Status -->
+              <div class="metric-group">
+                <div class="metric-group-title">Status</div>
+                <div class="metric-row">
+                  <span class="metric-label">Mode:</span>
+                  <span id="agc-status" class="status-badge status-badge-locked">Active</span>
+                </div>
+                <div class="metric-row">
+                  <span class="metric-label">Gain:</span>
+                  <span id="agc-gain-display" class="metric-value font-monospace">0.0 dB</span>
+                </div>
+                <div class="metric-row">
+                  <span class="metric-label">Input:</span>
+                  <span id="agc-input-power-display" class="metric-value font-monospace">-100.0 dBm</span>
+                </div>
+                <div class="metric-row">
+                  <span class="metric-label">Output:</span>
+                  <span id="agc-output-power-display" class="metric-value font-monospace">-100.0 dBm</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Filter Control Card -->
-        <div class="col-lg-6">
+        <div class="col-lg-3">
           <div class="card h-100">
             <div class="card-header">
               <h3 class="card-title">IF Filter</h3>
@@ -150,24 +193,43 @@ export class RxAnalysisTab extends BaseElement {
               </div>
 
               <!-- Status Row -->
-              <div class="row g-2">
-                <div class="col-12">
-                  <div class="metric-group">
-                    <div class="metric-group-title">Status</div>
-                    <div class="metric-row">
-                      <span class="metric-label">Bandwidth:</span>
-                      <span id="filter-bandwidth-display" class="metric-value">20 MHz</span>
-                    </div>
-                    <div class="metric-row">
-                      <span class="metric-label">Insertion Loss:</span>
-                      <span id="filter-insertion-loss-display" class="metric-value">2.0 dB</span>
-                    </div>
-                    <div class="metric-row">
-                      <span class="metric-label">Noise Floor:</span>
-                      <span id="filter-noise-floor-display" class="metric-value">-101 dBm</span>
-                    </div>
-                  </div>
+              <div class="metric-group">
+                <div class="metric-group-title">Status</div>
+                <div class="metric-row">
+                  <span class="metric-label">Bandwidth:</span>
+                  <span id="filter-bandwidth-display" class="metric-value">20 MHz</span>
                 </div>
+                <div class="metric-row">
+                  <span class="metric-label">Insertion Loss:</span>
+                  <span id="filter-insertion-loss-display" class="metric-value">2.0 dB</span>
+                </div>
+                <div class="metric-row">
+                  <span class="metric-label">Noise Floor:</span>
+                  <span id="filter-noise-floor-display" class="metric-value">-101 dBm</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Notch Filter Control Card -->
+        <div class="col-lg-12">
+          <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+              <h3 class="card-title">Notch Filter</h3>
+              <div class="form-check form-switch">
+                <input type="checkbox" id="notch-power" class="form-check-input" role="switch" checked />
+                <label for="notch-power" class="form-check-label small">Power</label>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="row g-2">
+                ${this.generateNotchSlotHtml_(0)}
+                ${this.generateNotchSlotHtml_(1)}
+                ${this.generateNotchSlotHtml_(2)}
+              </div>
+              <div class="mt-3">
+                <button id="notch-apply-btn" class="btn btn-primary btn-sm">Apply Changes</button>
               </div>
             </div>
           </div>
@@ -473,17 +535,68 @@ export class RxAnalysisTab extends BaseElement {
                         </div>
                       </div>
 
-                      <!-- Status Info -->
+                      <!-- C/N Metrics -->
                       <div class="mb-2">
                         <div class="d-flex justify-content-between">
-                          <span class="text-muted small">SNR:</span>
-                          <span id="snr-display" class="fw-bold font-monospace">-- dB</span>
+                          <span class="text-muted small">Raw C/N:</span>
+                          <span id="cn-raw-display" class="fw-bold font-monospace">-- dB</span>
+                        </div>
+                      </div>
+                      <div class="mb-2">
+                        <div class="d-flex justify-content-between">
+                          <span class="text-muted small">Effective C/N:</span>
+                          <span id="cn-effective-display" class="fw-bold font-monospace">-- dB</span>
                         </div>
                       </div>
                       <div class="mb-2">
                         <div class="d-flex justify-content-between">
                           <span class="text-muted small">Power Level:</span>
                           <span id="power-level-display" class="fw-bold font-monospace">-- dBm</span>
+                        </div>
+                      </div>
+                      <div class="mb-2">
+                        <div class="d-flex justify-content-between">
+                          <span class="text-muted small">Noise Floor:</span>
+                          <span id="noise-floor-display" class="fw-bold font-monospace">-- dBm</span>
+                        </div>
+                      </div>
+
+                      <!-- ADC Status Section -->
+                      <hr class="my-2">
+                      <div class="mb-2">
+                        <div class="d-flex justify-content-between align-items-center">
+                          <span class="text-muted small">ADC Level:</span>
+                          <span id="adc-level-display" class="fw-bold font-monospace">-- dBFS</span>
+                        </div>
+                      </div>
+                      <div class="mb-2">
+                        <div class="d-flex justify-content-between align-items-center">
+                          <span class="text-muted small">ADC Status:</span>
+                          <span id="adc-status-display" class="status-badge status-badge-none">--</span>
+                        </div>
+                      </div>
+
+                      <!-- Degradation Breakdown (shown when applicable) -->
+                      <div id="degradation-section" class="d-none">
+                        <hr class="my-2">
+                        <div class="small text-muted mb-1">Degradation Factors:</div>
+                        <div class="mb-1">
+                          <div class="d-flex justify-content-between">
+                            <span class="text-muted small">Clip Penalty:</span>
+                            <span id="clip-penalty-display" class="font-monospace text-danger">0.0 dB</span>
+                          </div>
+                        </div>
+                        <div class="mb-1">
+                          <div class="d-flex justify-content-between">
+                            <span class="text-muted small">Quant Penalty:</span>
+                            <span id="quant-penalty-display" class="font-monospace text-info">0.0 dB</span>
+                          </div>
+                        </div>
+                        <div class="mb-1">
+                          <div class="d-flex justify-content-between">
+                            <span class="text-muted small fw-bold">Total Penalty:</span>
+                            <span id="total-penalty-display" class="font-monospace fw-bold">0.0 dB</span>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -509,6 +622,61 @@ export class RxAnalysisTab extends BaseElement {
     }).join('');
   }
 
+  private generateNotchSlotHtml_(index: number): string {
+    const prefix = `notch-${index}`;
+    return html`
+      <div class="col-lg-4">
+        <div class="card">
+          <div class="card-header d-flex justify-content-between align-items-center py-2">
+            <span class="small fw-bold">Notch ${index + 1}</span>
+            <div class="form-check form-switch">
+              <input type="checkbox" id="${prefix}-enabled" class="form-check-input" role="switch" />
+              <label for="${prefix}-enabled" class="form-check-label small">Enable</label>
+            </div>
+          </div>
+          <div class="card-body py-2">
+            <!-- Center Frequency -->
+            <div class="mb-2">
+              <label class="form-label text-muted small text-uppercase mb-1">Center Freq (MHz)</label>
+              <div class="input-group input-group-sm">
+                <button id="${prefix}-freq-dec-coarse" class="btn btn-outline-secondary" type="button">-100</button>
+                <button id="${prefix}-freq-dec-fine" class="btn btn-outline-secondary" type="button">-10</button>
+                <input type="number" id="${prefix}-freq" class="form-control text-center"
+                       min="950" max="2150" step="1" value="1500" />
+                <button id="${prefix}-freq-inc-fine" class="btn btn-outline-secondary" type="button">+10</button>
+                <button id="${prefix}-freq-inc-coarse" class="btn btn-outline-secondary" type="button">+100</button>
+              </div>
+            </div>
+
+            <!-- Bandwidth -->
+            <div class="row g-1 mb-2">
+              <div class="col-6">
+                <label class="form-label text-muted small text-uppercase mb-1">Width (MHz)</label>
+                <div class="input-group input-group-sm">
+                  <button id="${prefix}-bw-dec" class="btn btn-outline-secondary" type="button">-</button>
+                  <input type="number" id="${prefix}-bw" class="form-control text-center"
+                         min="0.1" max="50" step="0.1" value="1" />
+                  <button id="${prefix}-bw-inc" class="btn btn-outline-secondary" type="button">+</button>
+                </div>
+              </div>
+
+              <!-- Depth -->
+              <div class="col-6">
+                <label class="form-label text-muted small text-uppercase mb-1">Depth (dB)</label>
+                <div class="input-group input-group-sm">
+                  <button id="${prefix}-depth-dec" class="btn btn-outline-secondary" type="button">-</button>
+                  <input type="number" id="${prefix}-depth" class="form-control text-center"
+                         min="1" max="60" step="1" value="20" />
+                  <button id="${prefix}-depth-inc" class="btn btn-outline-secondary" type="button">+</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
   protected addEventListeners_(): void {
     // Add event listeners late
   }
@@ -530,7 +698,9 @@ export class RxAnalysisTab extends BaseElement {
 
     // Create adapters
     this.lnbAdapter = new LNBAdapter(rfFrontEnd.lnbModule, this.dom_!);
+    this.agcAdapter = new AGCAdapter(rfFrontEnd.agcModule, this.dom_!);
     this.filterAdapter = new FilterAdapter(rfFrontEnd.filterModule, this.dom_!);
+    this.notchFilterAdapter = new NotchFilterAdapter(rfFrontEnd.notchFilterModule, this.dom_!);
     this.spectrumAnalyzerAdapter = new SpectrumAnalyzerAdapter(spectrumAnalyzer, this.dom_!);
 
     // Create advanced spectrum analyzer adapter
@@ -575,14 +745,18 @@ export class RxAnalysisTab extends BaseElement {
    */
   public dispose(): void {
     this.lnbAdapter?.dispose();
+    this.agcAdapter?.dispose();
     this.filterAdapter?.dispose();
+    this.notchFilterAdapter?.dispose();
     this.spectrumAnalyzerAdapter?.dispose();
     this.spectrumAnalyzerAdvancedAdapter?.dispose();
     this.receiverAdapter?.dispose();
     this.iqConstellationAdapter?.dispose();
 
     this.lnbAdapter = null;
+    this.agcAdapter = null;
     this.filterAdapter = null;
+    this.notchFilterAdapter = null;
     this.spectrumAnalyzerAdapter = null;
     this.spectrumAnalyzerAdvancedAdapter = null;
     this.receiverAdapter = null;

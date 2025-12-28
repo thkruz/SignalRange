@@ -1,7 +1,7 @@
 import { HelpButton } from '@app/components/help-btn/help-btn';
 import { html } from "@app/engine/utils/development/formatter";
 import { Logger } from '@app/logging/logger';
-import { SignalOrigin } from "@app/SignalOrigin";
+import { SignalOrigin } from "@app/signal-origin";
 import type { dBi, dBm, RfSignal } from '@app/types';
 import { dB } from '../../../types';
 import { RFFrontEndCore } from '../rf-front-end-core';

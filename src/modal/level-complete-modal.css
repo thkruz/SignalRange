@@ -77,6 +77,14 @@
   color: #dc3545;
 }
 
+.complete-modal__breakdown .breakdown-detail {
+  font-size: 0.75rem;
+  color: var(--hm-muted, #6c757d);
+  padding-left: 0.75rem;
+  text-align: left;
+  margin-bottom: 0.5rem;
+}
+
 .complete-modal__time {
   font-size: 0.9rem;
   color: var(--hm-muted, #adb5bd);

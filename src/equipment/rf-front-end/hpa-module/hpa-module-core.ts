@@ -1,4 +1,4 @@
-import { SignalOrigin } from "@app/SignalOrigin";
+import { SignalOrigin } from "@app/signal-origin";
 import type { dB, dBm, dBW, RfSignal } from '@app/types';
 import { RFFrontEndCore } from "../rf-front-end-core";
 import { RFFrontEndModule } from '../rf-front-end-module';
@@ -44,11 +44,11 @@ export abstract class HPAModuleCore extends RFFrontEndModule<HPAState> {
   static getDefaultState(): HPAState {
     return {
       isPowered: true,
-      backOff: 6, // dB
-      outputPower: 50 as dBm, // dBm (100W)
+      backOff: 10, // dB
+      outputPower: 40 as dBm, // dBm (10W)
       isOverdriven: false,
-      imdLevel: -30, // dBc
-      temperature: 45, // Celsius
+      imdLevel: -50, // dBc (based on backOff 10: -30 - 10*2)
+      temperature: 75, // Celsius
       isHpaEnabled: false,
       isHpaSwitchEnabled: false,
       noiseFloor: -140, // dBm/Hz

@@ -1,10 +1,12 @@
 import { html } from '@app/engine/utils/development/formatter';
 import { DraggableModal } from '@app/engine/ui/draggable-modal';
 import { ScenarioManager } from '@app/scenario-manager';
+import { clearPersistedStore } from '@app/sync/storage';
 import { ProgressSaveManager } from '@app/user-account/progress-save-manager';
 import { DialogManager } from './dialog-manager';
 import { PendingQuizIndicator } from './pending-quiz-indicator';
 import { QuizModal } from './quiz-modal';
+import stopwatchPng from '../assets/icons/stopwatch.png';
 import './objective-failed-modal.css';
 
 interface FailureModalOptions {
@@ -46,7 +48,7 @@ export class ObjectiveFailedModal extends DraggableModal {
   protected getModalContentHtml(): string {
     return html`
       <div class="failure-modal">
-        <div class="failure-modal__icon">&#9201;</div>
+        <div class="failure-modal__icon"><img src="${stopwatchPng}" alt="Time expired" /></div>
         <div class="failure-modal__title">${this.options_.title}</div>
         <div class="failure-modal__message">${this.options_.message}</div>
 
@@ -97,6 +99,9 @@ export class ObjectiveFailedModal extends DraggableModal {
     // Clear checkpoint before refreshing
     await this.progressSaveManager_.clearCheckpoint(scenario.data.id);
 
+    // Clear local equipment and objective state so scenario starts fresh
+    await clearPersistedStore();
+
     // Refresh the page - will start fresh since no checkpoint exists
     window.location.reload();
   }
@@ -135,8 +140,8 @@ export class ObjectiveFailedModal extends DraggableModal {
    * Close all open popups when failure modal is shown
    */
   private closeAllPopups_(): void {
-    // Hide pending quiz indicator
-    PendingQuizIndicator.getInstance().hideAndCancel();
+    // Suppress pending quiz indicator permanently
+    PendingQuizIndicator.getInstance().suppress();
 
     // Close quiz modal if open
     QuizModal.getInstance().close();

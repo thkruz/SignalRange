@@ -3,6 +3,7 @@ import { CardAlarmBadge } from "@app/components/card-alarm-badge/card-alarm-badg
 import { qs } from "@app/engine/utils/query-selector";
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
+import { parseLocalizedNumber } from '@app/utils/parse-number';
 
 /**
  * TransmitterAdapter - Bridges Transmitter equipment class to modern Mission Control UI
@@ -207,21 +208,21 @@ export class TransmitterAdapter {
   }
 
   private frequencyHandler_(e: Event): void {
-    const value = parseFloat((e.target as HTMLInputElement).value);
+    const value = parseLocalizedNumber((e.target as HTMLInputElement).value);
     if (!isNaN(value)) {
       this.transmitter.handleFrequencyChange(value);
     }
   }
 
   private bandwidthHandler_(e: Event): void {
-    const value = parseFloat((e.target as HTMLInputElement).value);
+    const value = parseLocalizedNumber((e.target as HTMLInputElement).value);
     if (!isNaN(value)) {
       this.transmitter.handleBandwidthChange(value);
     }
   }
 
   private powerHandler_(e: Event): void {
-    const value = parseFloat((e.target as HTMLInputElement).value);
+    const value = parseLocalizedNumber((e.target as HTMLInputElement).value);
     if (!isNaN(value)) {
       this.transmitter.handlePowerChange(value);
     }

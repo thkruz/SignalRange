@@ -1,0 +1,64 @@
+name: Deploy UAT via Comment
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  deploy-uat:
+    name: Trigger UAT Deployment
+    # Only run on PR comments (not issue comments) with the /deploy-uat command
+    if: |
+      github.event.issue.pull_request &&
+      contains(github.event.comment.body, '/deploy-uat')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      actions: write
+    steps:
+      - name: Add Reaction to Comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.reactions.createForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: context.payload.comment.id,
+              content: 'rocket'
+            });
+
+      - name: Trigger Deploy Pipeline
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = context.payload.issue.number;
+
+            console.log(`Triggering UAT deployment for PR #${prNumber}`);
+
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'deploy-pipeline.yml',
+              ref: 'dev',
+              inputs: {
+                pr_number: prNumber.toString()
+              }
+            });
+
+            console.log('UAT deployment triggered successfully');
+
+      - name: Comment Deployment Started
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = context.payload.issue.number;
+            const actor = context.payload.comment.user.login;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body: `⏳ **UAT deployment started** by @${actor}\n\n` +
+                    `[View workflow run](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/workflows/deploy-pipeline.yml)`
+            });

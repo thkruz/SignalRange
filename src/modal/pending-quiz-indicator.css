@@ -5,8 +5,9 @@
 
 .pending-quiz-indicator {
   position: fixed;
-  bottom: 20px;
-  right: 20px;
+  top: 20px;
+  left: 50%;
+  transform: translate(-50%, -20px);
   z-index: 99999;
   background: var(--color-dark-background, #1a1a2e);
   border: 2px solid var(--hm-accent, #ff3535);
@@ -18,7 +19,6 @@
   align-items: center;
   gap: 12px;
   opacity: 0;
-  transform: translateY(20px);
   transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
   pointer-events: none;
   font-family: var(--tblr-font-sans-serif, system-ui, -apple-system, sans-serif);
@@ -28,16 +28,19 @@
 
 .pending-quiz-indicator.show {
   opacity: 1;
-  transform: translateY(0);
+  transform: translate(-50%, 0);
   pointer-events: auto;
   animation: quiz-indicator-pulse 2s ease-in-out infinite;
 }
 
 @keyframes quiz-indicator-pulse {
-  0%, 100% {
+
+  0%,
+  100% {
     border-color: var(--hm-accent, #ff3535);
     box-shadow: 0 4px 16px rgba(255, 53, 53, 0.3);
   }
+
   50% {
     border-color: #ff6b6b;
     box-shadow: 0 4px 20px rgba(255, 53, 53, 0.5);

@@ -4,6 +4,7 @@ import { EventBus } from "@app/events/event-bus";
 import { Events } from "@app/events/events";
 import { CardAlarmBadge } from "@app/components/card-alarm-badge/card-alarm-badge";
 import { AlarmStatus } from "@app/equipment/base-equipment";
+import { parseLocalizedNumber } from "@app/utils/parse-number";
 
 /**
  * HPAAdapter - Bridges HPAModuleCore state to web controls
@@ -239,7 +240,7 @@ export class HPAAdapter {
   }
 
   private backOffInputHandler_(e: Event) {
-    const value = parseFloat((e.target as HTMLInputElement).value);
+    const value = parseLocalizedNumber((e.target as HTMLInputElement).value);
     if (!isNaN(value)) {
       this.stagedBackOff_ = Math.max(0, Math.min(30, value));
       this.updateStagedDisplay_();

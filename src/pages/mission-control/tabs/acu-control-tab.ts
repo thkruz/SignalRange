@@ -8,6 +8,8 @@ import { TrackingMode } from '@app/equipment/antenna/antenna-core';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
 import { SimulationManager } from '@app/simulation/simulation-manager';
+import { parseLocalizedNumber } from '@app/utils/parse-number';
+import { WeatherManager } from '@app/weather/weather-manager';
 import './acu-control-tab.css';
 import { AntennaAdapter } from './antenna-adapter';
 import { OMTAdapter } from './omt-adapter';
@@ -43,6 +45,9 @@ export class ACUControlTab extends BaseElement {
   // Beacon display throttling (1 second interval like other adapters)
   private static readonly BEACON_UPDATE_INTERVAL_MS = 1000;
   private lastBeaconSyncTime_: number = 0;
+
+  // Active target satellite (only updates when "Move to Target" is clicked)
+  private activeTargetSatelliteId_: number | null = null;
 
   protected html_ = html`
     <div class="acu-control-tab">
@@ -122,6 +127,10 @@ export class ACUControlTab extends BaseElement {
             <div class="card-body">
               <!-- Program Track: Satellite Selection -->
               <div id="program-track-section" class="tracking-section" style="display: none;">
+                <div class="mb-3">
+                  <label class="form-label">Current Target</label>
+                  <input type="text" id="current-target-display" class="form-control font-monospace" value="No Target" readonly style="cursor: default;">
+                </div>
                 <div class="mb-3">
                   <label for="satellite-select" class="form-label">Target Satellite</label>
                   <select id="satellite-select" class="form-select">
@@ -259,6 +268,10 @@ export class ACUControlTab extends BaseElement {
                   <span class="led led-off me-1"></span>CLEAR
                 </span>
               </div>
+              <div class="d-flex justify-content-between align-items-center pt-2 mt-2 border-top">
+                <span class="text-muted small">Ice Accumulation:</span>
+                <span id="ice-accumulation-display" class="fw-bold font-monospace">0.0 dB</span>
+              </div>
             </div>
           </div>
         </div>
@@ -383,8 +396,9 @@ export class ACUControlTab extends BaseElement {
         this.polarPlot_.draw(antenna.state.azimuth, antenna.state.elevation);
       }
       this.syncUiWithState_(antenna);
+      this.syncIceAccumulation_(antenna);
     };
-    EventBus.getInstance().on(Events.ANTENNA_STATE_CHANGED, this.antennaStateHandler_);
+    EventBus.getInstance().on(Events.UPDATE, this.antennaStateHandler_);
 
     // Wire to draw events for continuous RF metrics updates
     this.drawHandler_ = () => {
@@ -486,11 +500,14 @@ export class ACUControlTab extends BaseElement {
 
     if (!select || !moveBtn) return;
 
+    // Initialize active target from current state
+    this.activeTargetSatelliteId_ = antenna.state.targetSatelliteId;
+
     // Populate satellite dropdown
     const satellites = SimulationManager.getInstance().satellites;
     select.innerHTML = '<option value="">-- Select Satellite --</option>' +
       satellites.map(sat =>
-        `<option value="${sat.noradId}">${sat.noradId} (Az: ${sat.az.toFixed(1)}°, El: ${sat.el.toFixed(1)}°)</option>`
+        `<option value="${sat.noradId}">${sat.name}</option>`
       ).join('');
 
     // Handle selection change
@@ -502,6 +519,7 @@ export class ACUControlTab extends BaseElement {
 
     // Handle move button
     moveBtn.addEventListener('click', () => {
+      this.activeTargetSatelliteId_ = antenna.state.targetSatelliteId;
       antenna.moveToTargetSatellite();
     });
   }
@@ -518,7 +536,7 @@ export class ACUControlTab extends BaseElement {
 
     // Handle frequency change - use staging method
     freqInput.addEventListener('change', () => {
-      const freqMHz = parseFloat(freqInput.value);
+      const freqMHz = parseLocalizedNumber(freqInput.value);
       if (!isNaN(freqMHz)) {
         antenna.stageBeaconFrequencyChange(freqMHz * 1e6);
       }
@@ -526,7 +544,7 @@ export class ACUControlTab extends BaseElement {
 
     // Handle bandwidth change - use staging method
     bwInput.addEventListener('change', () => {
-      const bwKHz = parseFloat(bwInput.value);
+      const bwKHz = parseLocalizedNumber(bwInput.value);
       if (!isNaN(bwKHz)) {
         antenna.stageBeaconSearchBwChange(bwKHz * 1e3);
       }
@@ -683,14 +701,7 @@ export class ACUControlTab extends BaseElement {
     const loopbackSwitch = qs<HTMLInputElement>('#loopback-switch', this.dom_);
     if (loopbackSwitch) loopbackSwitch.checked = state.isLoopback;
 
-    // Sync precipitation status
-    const precipStatus = qs('#precip-status', this.dom_);
-    if (precipStatus) {
-      const led = precipStatus.querySelector('.led');
-      if (led) led.className = `led ${state.precipitationDetected ? 'led-amber' : 'led-off'} me-1`;
-      const textNode = precipStatus.childNodes[precipStatus.childNodes.length - 1];
-      if (textNode) textNode.textContent = state.precipitationDetected ? 'RAIN' : 'CLEAR';
-    }
+    // Precipitation status is synced by syncIceAccumulation_() using WeatherManager
 
     // Sync context panel title based on tracking mode
     const contextTitle = qs('#context-panel-title', this.dom_);
@@ -717,6 +728,17 @@ export class ACUControlTab extends BaseElement {
     const satelliteSelect = qs<HTMLSelectElement>('#satellite-select', this.dom_);
     if (satelliteSelect && document.activeElement !== satelliteSelect) {
       satelliteSelect.value = state.targetSatelliteId?.toString() ?? '';
+    }
+
+    // Sync current target display (only shows active target, not dropdown selection)
+    const currentTargetDisplay = qs<HTMLInputElement>('#current-target-display', this.dom_);
+    if (currentTargetDisplay) {
+      const satellite = this.activeTargetSatelliteId_ === null
+        ? null
+        : SimulationManager.getInstance().satellites.find(
+            sat => sat.noradId === this.activeTargetSatelliteId_
+          );
+      currentTargetDisplay.value = satellite?.name ?? 'No Target';
     }
 
     // Sync beacon frequency input (skip if user is typing)
@@ -808,6 +830,35 @@ export class ACUControlTab extends BaseElement {
           beaconLockEl.classList.remove('text-success');
         }
       }
+    }
+  }
+
+  private syncIceAccumulation_(antenna: typeof this.groundStation.antennas[0]): void {
+    const iceDisplay = qs('#ice-accumulation-display', this.dom_);
+    if (iceDisplay) {
+      const ice = antenna.state.iceAccumulation_dB;
+      iceDisplay.textContent = `${ice.toFixed(1)} dB`;
+
+      // Color code based on severity
+      iceDisplay.classList.remove('text-success', 'text-warning', 'text-danger');
+      if (ice >= 5) {
+        iceDisplay.classList.add('text-danger');
+      } else if (ice >= 2) {
+        iceDisplay.classList.add('text-warning');
+      } else if (ice > 0) {
+        iceDisplay.classList.add('text-success');
+      }
+    }
+
+    // Update precipitation status based on weather manager
+    const precipStatus = qs('#precip-status', this.dom_);
+    if (precipStatus) {
+      const gsId = this.groundStation.state.id;
+      const isPrecip = WeatherManager.getInstance().isPrecipitationActive(gsId);
+      const led = precipStatus.querySelector('.led');
+      if (led) led.className = `led ${isPrecip ? 'led-amber' : 'led-off'} me-1`;
+      const textNode = precipStatus.childNodes[precipStatus.childNodes.length - 1];
+      if (textNode) textNode.textContent = isPrecip ? 'ACTIVE' : 'CLEAR';
     }
   }
 

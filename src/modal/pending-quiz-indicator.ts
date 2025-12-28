@@ -5,8 +5,8 @@
 
 import { EventBus } from '@app/events/event-bus';
 import { Events, QuizCompletedData, QuizDismissedData, QuizPassedData, QuizPendingData, QuizShowData } from '@app/events/events';
-import { QuizManager } from './quiz-manager';
 import './pending-quiz-indicator.css';
+import { QuizManager } from './quiz-manager';
 
 /**
  * Floating indicator that shows when there's a pending quiz
@@ -15,13 +15,14 @@ import './pending-quiz-indicator.css';
 export class PendingQuizIndicator {
   private static instance_: PendingQuizIndicator | null = null;
 
-  private static readonly INITIAL_DELAY_MS = 15000;
+  private static readonly INITIAL_DELAY_MS = 5000;
 
   private indicatorElement_: HTMLDivElement | null = null;
   private iconElement_: HTMLDivElement | null = null;
   private messageElement_: HTMLDivElement | null = null;
   private openButton_: HTMLButtonElement | null = null;
   private pendingShowTimeout_: number | null = null;
+  private suppressed_: boolean = false;
 
   private readonly boundQuizShowHandler_: (data: QuizShowData) => void;
   private readonly boundQuizDismissedHandler_: (data: QuizDismissedData) => void;
@@ -148,7 +149,7 @@ export class PendingQuizIndicator {
   }
 
   private show_(): void {
-    if (!this.indicatorElement_) return;
+    if (!this.indicatorElement_ || this.suppressed_) return;
 
     requestAnimationFrame(() => {
       if (this.indicatorElement_) {
@@ -163,10 +164,11 @@ export class PendingQuizIndicator {
   }
 
   /**
-   * Publicly hide the indicator and cancel any pending timeout.
+   * Permanently suppress the indicator until page refresh.
    * Called when failure modal is shown.
    */
-  hideAndCancel(): void {
+  suppress(): void {
+    this.suppressed_ = true;
     this.cancelPendingTimeout_();
     this.hide_();
   }

@@ -3,11 +3,12 @@ import { EventBus } from "@app/events/event-bus";
 import { html } from "../../engine/utils/development/formatter";
 import { qs } from "../../engine/utils/query-selector";
 import { Events } from "../../events/events";
-import { FECType, Hertz, MHz, ModulationType } from "../../types";
+import { dBm, FECType, Hertz, IfSignal, MHz, ModulationType } from "../../types";
 import { AntennaCore } from "../antenna";
 import { AlarmStatus, BaseEquipment } from "../base-equipment";
 import { TapPoint } from "../rf-front-end/coupler-module/tap-points";
 import { RFFrontEndCore } from "../rf-front-end/rf-front-end-core";
+import { ADCDegradationResult, calculateADCDegradation } from './adc-degradation';
 import './receiver.css';
 
 export interface ReceiverModemState {
@@ -42,10 +43,30 @@ export interface IQSignalInfo {
   hasLock: boolean;                 // Modem can demodulate (mod + FEC match)
   actualModulation: ModulationType | null;
   configuredModulation: ModulationType;
-  cnRatio_dB: number;               // Carrier-to-noise ratio
+  cnRatio_dB: number;               // Carrier-to-noise ratio (raw, before ADC effects)
   frequencyOffset_Hz: number;       // Offset from center frequency
   modulationMismatch: boolean;
   fecMismatch: boolean;
+  /** ADC degradation result (clipping/quantization effects) */
+  adcDegradation?: ADCDegradationResult;
+  /** Effective C/N ratio after ADC penalty applied */
+  effectiveCnRatio_dB?: number;
+  /** Noise floor in dBm (for debugging/teaching) */
+  noiseFloor_dBm?: number;
+  /** Signal level in dBm (for debugging/teaching) */
+  signalLevel_dBm?: number;
+  /** Expected bandwidth from modem configuration (Hz) */
+  expectedBandwidth_Hz?: number;
+  /** Usable bandwidth after IF filter clipping (Hz) */
+  usableBandwidth_Hz?: number;
+  /** True if bandwidth was significantly clipped by IF filter */
+  isBandwidthClipped?: boolean;
+  /** Thermal noise floor in dBm (before adding interference) */
+  thermalNoiseFloor_dBm?: number;
+  /** Total interference power in modem bandwidth (dBm), undefined if no interference */
+  interferencePower_dBm?: number;
+  /** Number of interfering signals in modem bandwidth */
+  interferenceCount?: number;
 }
 
 /**
@@ -114,11 +135,11 @@ export class Receiver extends BaseEquipment {
       return {
         modemNumber,
         antenna_id: modemNumber <= 2 ? 1 : 2,
-        frequency: 4700 as MHz, // IF Band after downconversion
-        bandwidth: 50 as MHz,
+        frequency: 1400 as MHz, // IF Band after downconversion
+        bandwidth: 20 as MHz,
         modulation: 'QPSK' as ModulationType,
-        fec: '3/4' as FECType,
-        isPowered: false,
+        fec: '1/2' as FECType,
+        isPowered: true,
       };
     });
 
@@ -437,7 +458,7 @@ export class Receiver extends BaseEquipment {
 
   public hasSignalForModem(modem: ReceiverModemState): boolean {
     const visibleSignals = this.getVisibleSignals(modem);
-    return visibleSignals.length > 0;
+    return visibleSignals.some(s => s.feed !== '');
   }
 
   public isSignalDegraded(modem: ReceiverModemState): boolean {
@@ -471,9 +492,10 @@ export class Receiver extends BaseEquipment {
     const visibleSignals = this.getVisibleSignals(modem);
     if (visibleSignals.length === 0) return null;
 
-    // Return the power of the strongest signal
-    const totalGain = this.rfFrontEnd_?.couplerModule.signalPathManager.getTotalRxGain() ?? 0;
-    return Math.max(...visibleSignals.map(s => s.power + totalGain));
+    // Target signal is the one with the largest bandwidth that fits the modem
+    // This distinguishes the actual signal from narrowband interference
+    const targetSignal = visibleSignals.reduce((a, b) => a.bandwidth > b.bandwidth ? a : b, visibleSignals[0]);
+    return targetSignal.power;
   }
 
   /**
@@ -500,7 +522,7 @@ export class Receiver extends BaseEquipment {
     const totalGain = this.rfFrontEnd_.couplerModule.signalPathManager.getTotalRxGain();
 
     // Get ALL signals in the receiver bandwidth (relaxed filtering - no mod/FEC check)
-    const signalsInBand = (this.rfFrontEnd_.filterModule.outputSignals ?? []).filter((s) => {
+    const signalsInBand = (this.rfFrontEnd_.agcModule.outputSignals ?? []).filter((s) => {
       // Power must exceed noise floor
       if (s.power + totalGain < externalNoise) {
         return false;
@@ -526,39 +548,146 @@ export class Receiver extends BaseEquipment {
 
     if (signalsInBand.length === 0) return noSignalResult;
 
-    // Take the strongest signal
-    const strongestSignal = signalsInBand.reduce((a, b) => a.power > b.power ? a : b, signalsInBand[0]);
+    // Find the target signal - the one with the largest bandwidth that fits
+    // This distinguishes the actual signal from narrowband interference
+    // Among signals with matching modulation/FEC, pick the one with largest bandwidth
+    const modFecMatches = signalsInBand.filter(s =>
+      s.modulation === modem.modulation && s.fec === modem.fec
+    );
 
-    // Calculate C/N ratio
-    const noiseFloor = this.rfFrontEnd_.getNoiseFloor(TapPoint.RX_IF).noiseFloor + totalGain;
-    const signalLevel = strongestSignal.power + totalGain;
-    const cnRatio = signalLevel - noiseFloor;
+    // Use mod/FEC matches if available, otherwise all signals in band
+    const candidates = modFecMatches.length > 0 ? modFecMatches : signalsInBand;
+
+    // Target is the signal with the largest bandwidth
+    const targetSignal = candidates.reduce((a, b) => a.bandwidth > b.bandwidth ? a : b, candidates[0]);
+
+    // Calculate modem bandwidth for noise floor calculation
+    const modemBandwidthHz = modem.bandwidth * 1e6 as Hertz;
+
+    // Calculate thermal noise floor based on modem bandwidth
+    // Narrower bandwidth = lower noise floor, wider bandwidth = higher noise floor
+    // Noise floor needs totalGain added to match the reference point
+    const thermalNoiseFloor = this.rfFrontEnd_.couplerModule.signalPathManager.getNoiseFloorAt(TapPoint.RX_IF, modemBandwidthHz).noiseFloorNoGain + totalGain;
+
+    // Calculate interference power within modem bandwidth
+    const modemCenterHz = modem.frequency * 1e6;
+    const interferencePower = this.calculateInterferencePower_(
+      targetSignal,
+      signalsInBand,
+      modemBandwidthHz,
+      modemCenterHz
+    );
+
+    // Combine thermal noise and interference (linear power addition)
+    const thermalNoiseMw = Math.pow(10, thermalNoiseFloor / 10);
+    const interferenceMw = interferencePower > -Infinity ? Math.pow(10, interferencePower / 10) : 0;
+    const effectiveNoiseFloor = 10 * Math.log10(thermalNoiseMw + interferenceMw);
+
+    // C/N ratio now includes interference
+    // Signal from AGC output already includes all chain gains, so don't add totalGain again
+    const signalLevel = targetSignal.power;  // Already includes all chain gains
+    const cnRatio = signalLevel - effectiveNoiseFloor;
+
+    // Calculate ADC degradation based on AGC output level
+    // AGC output is the signal level entering the ADC
+    const agcOutputLevel = this.rfFrontEnd_?.agcModule?.state.outputPower ?? signalLevel;
+    const adcDegradation = calculateADCDegradation(agcOutputLevel as dBm);
+
+    // Effective C/N includes ADC penalty only (bandwidth clipping is handled separately)
+    const effectiveCnRatio = cnRatio - adcDegradation.totalPenalty_dB;
+
+    // Calculate bandwidth clipping info
+    // The modem expects a certain bandwidth, but the IF filter may have clipped it
+    const expectedBandwidth_Hz = modem.bandwidth * 1e6;
+    const usableBandwidth_Hz = targetSignal.bandwidth;
+    const bandwidthRatio = usableBandwidth_Hz / expectedBandwidth_Hz;
+    // Use FEC-based threshold for consistency with getVisibleSignals()
+    const minBandwidthRatio = this.getMinBandwidthRatioForFec_(targetSignal.fec);
+    const isBandwidthClipped = bandwidthRatio < minBandwidthRatio;
 
     // Calculate frequency offset in Hz
-    const signalFreqHz = strongestSignal.frequency;
+    const signalFreqHz = targetSignal.frequency;
     const modemFreqHz = modem.frequency * 1e6;
     const frequencyOffset = signalFreqHz - modemFreqHz;
 
-    // Check for modulation/FEC match (determines lock state)
-    const modulationMismatch = strongestSignal.modulation !== modem.modulation;
-    const fecMismatch = strongestSignal.fec !== modem.fec;
-    const hasLock = !modulationMismatch && !fecMismatch;
+    // Check for modulation/FEC match and bandwidth (determines lock state)
+    const modulationMismatch = targetSignal.modulation !== modem.modulation;
+    const fecMismatch = targetSignal.fec !== modem.fec;
+    const hasLock = !modulationMismatch && !fecMismatch && !isBandwidthClipped;
 
     return {
       hasCarrier: true,
       hasLock,
-      actualModulation: strongestSignal.modulation,
+      actualModulation: targetSignal.modulation,
       configuredModulation: modem.modulation,
       cnRatio_dB: cnRatio,
       frequencyOffset_Hz: frequencyOffset,
       modulationMismatch,
       fecMismatch,
+      adcDegradation,
+      effectiveCnRatio_dB: effectiveCnRatio,
+      noiseFloor_dBm: effectiveNoiseFloor,  // Now includes interference
+      signalLevel_dBm: signalLevel,
+      expectedBandwidth_Hz,
+      usableBandwidth_Hz,
+      isBandwidthClipped,
+      // Interference diagnostics
+      thermalNoiseFloor_dBm: thermalNoiseFloor,
+      interferencePower_dBm: interferencePower > -Infinity ? interferencePower : undefined,
+      interferenceCount: signalsInBand.length - 1,
     };
   }
 
   /**
    * Private Methods
    */
+
+  /**
+   * Calculate total interference power within the modem's demodulation bandwidth.
+   * Uses proportional overlap for partial frequency overlaps.
+   *
+   * @param targetSignal - The wanted signal
+   * @param allSignals - All signals in band (including target)
+   * @param modemBandwidthHz - Modem's demodulation bandwidth in Hz
+   * @param modemCenterHz - Modem's center frequency in Hz
+   * @returns Total interference power in dBm, or -Infinity if no interference
+   */
+  private calculateInterferencePower_(
+    targetSignal: IfSignal,
+    allSignals: IfSignal[],
+    modemBandwidthHz: number,
+    modemCenterHz: number
+  ): dBm {
+    const modemLow = modemCenterHz - modemBandwidthHz / 2;
+    const modemHigh = modemCenterHz + modemBandwidthHz / 2;
+
+    let totalInterferenceMw = 0;
+
+    for (const signal of allSignals) {
+      // Skip the target signal
+      if (signal.signalId === targetSignal.signalId) continue;
+
+      // Calculate signal frequency bounds (bandwidth is already in Hz)
+      const sigLow = signal.frequency - signal.bandwidth / 2;
+      const sigHigh = signal.frequency + signal.bandwidth / 2;
+
+      // Calculate overlap with modem bandwidth
+      const overlapLow = Math.max(modemLow, sigLow);
+      const overlapHigh = Math.min(modemHigh, sigHigh);
+      const overlapWidth = Math.max(0, overlapHigh - overlapLow);
+
+      if (overlapWidth === 0) continue;
+
+      // Proportional power contribution based on overlap
+      const overlapFraction = overlapWidth / signal.bandwidth;
+      const signalPowerMw = Math.pow(10, signal.power / 10);
+      totalInterferenceMw += signalPowerMw * overlapFraction;
+    }
+
+    return (totalInterferenceMw > 0
+      ? 10 * Math.log10(totalInterferenceMw)
+      : -Infinity) as dBm;
+  }
 
   private handleInputChange(e: Event): void {
     const target = e.target as HTMLInputElement | HTMLSelectElement;
@@ -593,10 +722,12 @@ export class Receiver extends BaseEquipment {
 
     if (!activeModem || modemIndex === -1) return;
 
-    // Update the modem configuration
+    // Update the modem configuration, preserving the current power state
+    // (isPowered is controlled by the power toggle, not the Apply button)
     this.state.modems[modemIndex] = {
       ...activeModem,
       ...this.inputData,
+      isPowered: activeModem.isPowered,
     };
 
     this.emit(Events.RX_CONFIG_CHANGED, {
@@ -639,14 +770,27 @@ export class Receiver extends BaseEquipment {
     const externalNoise = this.rfFrontEnd_?.externalNoise ?? 0;
 
     // Figure out which signals match the receiver settings
-    const visibleSignals = (this.rfFrontEnd_?.filterModule.outputSignals ?? []).filter((s) => {
-      if (s.power + this.rfFrontEnd_.couplerModule.signalPathManager.getTotalRxGain() < externalNoise) {
+    // Note: Signals from agcModule.outputSignals already include all chain gains
+    const expectedBandwidth_Hz = activeModemData.bandwidth * 1e6;
+
+    const visibleSignals = (this.rfFrontEnd_?.agcModule.outputSignals ?? []).filter((s) => {
+      if (s.power < externalNoise) {
         return false;
       }
 
-      if (s.bandwidth > (activeModemData.bandwidth * 1e6 as Hertz)) {
+      if (s.bandwidth > (expectedBandwidth_Hz as Hertz)) {
         return false;
       }
+
+      // Filter out signals where bandwidth was severely clipped by IF filter
+      // Minimum usable bandwidth depends on FEC rate - higher redundancy tolerates more loss
+      // FEC tolerance: 1/2 (excellent) → 7/8 (fragile)
+      const bandwidthRatio = s.bandwidth / expectedBandwidth_Hz;
+      const minBandwidthRatio = this.getMinBandwidthRatioForFec_(s.fec);
+      if (bandwidthRatio < minBandwidthRatio) {
+        return false;
+      }
+
       if (s.frequency + (s.bandwidth * 1e6 as Hertz) / 2 < activeModemData.frequency - activeModemData.bandwidth / 2) {
         return false;
       }
@@ -664,62 +808,132 @@ export class Receiver extends BaseEquipment {
     });
 
     // Only include signals within 50% bandwidth of center frequency
-    return visibleSignals
+    const signalsInBand = visibleSignals
       .filter((s) => {
         const frequencyMhz = s.frequency / 1e6 as MHz;
         const freqTolerance50 = activeModemData.bandwidth * 0.5;
         const lowerBound50 = activeModemData.frequency - freqTolerance50;
         const upperBound50 = activeModemData.frequency + freqTolerance50;
         return frequencyMhz >= lowerBound50 && frequencyMhz <= upperBound50;
-      })
-      .map((s) => {
-        const frequencyMhz = s.frequency / 1e6 as MHz;
-        const freqTolerance10 = activeModemData.bandwidth * 0.1;
-        const lowerBound10 = activeModemData.frequency - freqTolerance10;
-        const upperBound10 = activeModemData.frequency + freqTolerance10;
-        // Within 10%: no prefix
-        if (!(frequencyMhz >= lowerBound10 && frequencyMhz <= upperBound10)) {
-          s.isDegraded = true;
-        }
-
-        // Calculate C/N for each signal and mark as degraded if below threshold
-        const noiseFloor = this.rfFrontEnd_.getNoiseFloor(TapPoint.RX_IF).noiseFloor + this.rfFrontEnd_.couplerModule.signalPathManager.getTotalRxGain();
-        const signalLevel = s.power + this.rfFrontEnd_.couplerModule.signalPathManager.getTotalRxGain();
-
-        const cn = signalLevel - noiseFloor;
-
-        // Typical C/N requirements:
-        // BPSK: 6-8 dB
-        // QPSK: 9-11 dB
-        // 8QAM: 12-15 dB
-        // 16QAM: 15-18 dB
-
-        let requiredCN: number;
-
-        switch (s.modulation) {
-          case 'BPSK':
-            requiredCN = 7;
-            break;
-          case 'QPSK':
-            requiredCN = 10;
-            break;
-          case '8QAM':
-            requiredCN = 13;
-            break;
-          case '16QAM':
-            requiredCN = 16;
-            break;
-          default:
-            requiredCN = 10;
-            break;
-        }
-
-        if (cn < requiredCN) {
-          s.isDegraded = true;
-        }
-
-        return s;
       });
+
+    // Find the strongest signal - signals significantly weaker (>20dB) are considered
+    // suppressed (e.g., by notch filter) and shouldn't count as interference
+    const maxPower = Math.max(...signalsInBand.map(s => s.power));
+    const suppressionThreshold = 20; // dB - notch filters typically provide 20-60dB attenuation
+
+    const survivingSignals = signalsInBand.filter((s) => {
+      // Filter out signals that are too weak (suppressed)
+      if (s.power < maxPower - suppressionThreshold) return false;
+
+      // Also filter out signals that were intentionally notched
+      const notchState = this.rfFrontEnd_?.notchFilterModule?.state;
+      if (notchState?.isPowered) {
+        for (const notch of notchState.notches) {
+          if (!notch.enabled) continue;
+
+          // Check if signal frequency falls within notch bandwidth
+          const signalFreqMHz = s.frequency / 1e6;
+          const notchLow = notch.centerFrequency - notch.bandwidth / 2;
+          const notchHigh = notch.centerFrequency + notch.bandwidth / 2;
+
+          if (signalFreqMHz >= notchLow && signalFreqMHz <= notchHigh) {
+            return false;  // Signal was intentionally notched, don't count as interference
+          }
+        }
+      }
+
+      return true;
+    });
+
+    // Select only the strongest signal to avoid displaying duplicates
+    // (e.g., when antenna TX matches satellite external signal at same frequency)
+    if (survivingSignals.length === 0) {
+      return [];
+    }
+
+    const strongestSignal = survivingSignals.reduce((best, s) =>
+      s.power > best.power ? s : best,
+      survivingSignals[0]
+    );
+
+    return [strongestSignal].map((s) => {
+      // Reset isDegraded flag before checking conditions
+      // (signal objects are shared, so we must reset each time)
+      s.isDegraded = false;
+
+      const frequencyMhz = s.frequency / 1e6 as MHz;
+      const freqTolerance10 = activeModemData.bandwidth * 0.1;
+      const lowerBound10 = activeModemData.frequency - freqTolerance10;
+      const upperBound10 = activeModemData.frequency + freqTolerance10;
+      // Outside 10% frequency tolerance: mark as degraded
+      if (!(frequencyMhz >= lowerBound10 && frequencyMhz <= upperBound10)) {
+        s.isDegraded = true;
+      }
+
+      // Calculate C/N for each signal and mark as degraded if below threshold
+      // Noise floor based on modem bandwidth: narrower BW = lower noise floor
+      // Noise floor needs totalGain added to match the reference point
+      // Signal from AGC output already includes all chain gains
+      const noiseFloor = this.rfFrontEnd_.couplerModule.signalPathManager.getNoiseFloorAt(TapPoint.RX_IF, expectedBandwidth_Hz as Hertz).noiseFloorNoGain + this.rfFrontEnd_.couplerModule.signalPathManager.getTotalRxGain();
+      const signalLevel = s.power;  // Already includes all chain gains
+
+      const cn = signalLevel - noiseFloor;
+
+      // Typical C/N requirements:
+      // BPSK: 6-8 dB
+      // QPSK: 9-11 dB
+      // 8QAM: 12-15 dB
+      // 16QAM: 15-18 dB
+
+      let requiredCN: number;
+
+      switch (s.modulation) {
+        case 'BPSK':
+          requiredCN = 7;
+          break;
+        case 'QPSK':
+          requiredCN = 10;
+          break;
+        case '8QAM':
+          requiredCN = 13;
+          break;
+        case '16QAM':
+          requiredCN = 16;
+          break;
+        default:
+          requiredCN = 10;
+          break;
+      }
+
+      if (cn < requiredCN) {
+        s.isDegraded = true;
+      }
+
+      return s;
+    });
+  }
+
+  /**
+   * Get minimum bandwidth ratio required for a given FEC rate.
+   * Higher redundancy FEC codes can tolerate more bandwidth loss.
+   *
+   * FEC Rate | Redundancy   | Min BW Ratio
+   * 1/2      | Very high    | 40% (excellent tolerance)
+   * 2/3      | High         | 50% (very good)
+   * 3/4      | Solid        | 60% (good)
+   * 5/6      | Moderate     | 75% (moderate)
+   * 7/8      | Low          | 85% (fragile)
+   */
+  private getMinBandwidthRatioForFec_(fec: FECType): number {
+    switch (fec) {
+      case '1/2': return 0.40;
+      case '2/3': return 0.50;
+      case '3/4': return 0.60;
+      case '5/6': return 0.75;
+      case '7/8': return 0.85;
+      default: return 0.60;
+    }
   }
 
   private getModemStatusClass(modem: ReceiverModemState): string {

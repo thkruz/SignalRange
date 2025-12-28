@@ -1,4 +1,4 @@
-import { Satellite, Team } from './types';
+import { Hertz, Satellite, Team } from './types';
 
 /**
  * Application Constants
@@ -39,12 +39,62 @@ export const DEFAULT_SPEC_A = {
   noiseFloor: -115,
 };
 
-export enum FrequencyBand {
-  C = 0,
-  Ku = 1
-}
-
-export const bandInformation = {
-  c: { name: 'C Band', upconvert: 3350e6, downconvert: 3500e6 },
-  ku: { name: 'Ku Band', upconvert: 12750e6, downconvert: 10950e6 }
+export const FrequencyBand = {
+  l: {
+    // Inmarsat, Iridium, narrowband
+    downLow: 1525e6 as Hertz,
+    downHigh: 1559e6 as Hertz,
+    upLow: 1626.5e6 as Hertz,
+    upHigh: 1660.5e6 as Hertz,
+    transponderBandwidthHz: [25e3 as Hertz, 200e3 as Hertz], // Typical narrowband transponder bandwidths
+  },
+  s: {
+    // TT&C, weather satellites, some mobile services
+    downLow: 2200e6 as Hertz,
+    downHigh: 2290e6 as Hertz,
+    upLow: 2025e6 as Hertz,
+    upHigh: 2120e6 as Hertz,
+    transponderBandwidthHz: [1e6 as Hertz, 5e6 as Hertz], // Typical S-band transponder bandwidths
+  },
+  c: {
+    // Classic GEO FSS band (very rain-resistant)
+    downLow: 3400e6 as Hertz,
+    downHigh: 4200e6 as Hertz,
+    upLow: 5850e6 as Hertz,
+    upHigh: 6725e6 as Hertz,
+    transponderBandwidthHz: [36e6 as Hertz, 72e6 as Hertz], // Typical C-band transponder bandwidths
+  },
+  x: {
+    // Military, some scientific satellites
+    downLow: 7250e6 as Hertz,
+    downHigh: 7750e6 as Hertz,
+    upLow: 7900e6 as Hertz,
+    upHigh: 8400e6 as Hertz,
+    transponderBandwidthHz: [10e6 as Hertz, 50e6 as Hertz], // Typical X-band transponder bandwidths
+    isRestricted: true, // Restricted access in many countries
+  },
+  ku: {
+    // Common for direct-to-home TV broadcasting
+    downLow: 10700e6 as Hertz,
+    downHigh: 12750e6 as Hertz,
+    upLow: 13750e6 as Hertz,
+    upHigh: 14500e6 as Hertz,
+    transponderBandwidthHz: [36e6 as Hertz, 72e6 as Hertz], // Typical Ku-band transponder bandwidths
+  },
+  ka: {
+    // High-throughput satellites, broadband internet
+    downLow: 17700e6 as Hertz,
+    downHigh: 21200e6 as Hertz,
+    upLow: 27500e6 as Hertz,
+    upHigh: 31000e6 as Hertz,
+    transponderBandwidthHz: [125e6 as Hertz, 500e6 as Hertz], // Typical Ka-band transponder bandwidths
+  },
+  qv: {
+    // Experimental, military applications
+    downLow: 37e9 as Hertz,
+    downHigh: 42e9 as Hertz,
+    upLow: 47e9 as Hertz,
+    upHigh: 51e9 as Hertz,
+    transponderBandwidthHz: [250e6 as Hertz, 1000e6 as Hertz], // Typical Q/V-band transponder bandwidths
+  }
 }

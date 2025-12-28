@@ -1,9 +1,11 @@
 import type { GroundStationConfig } from '@app/assets/ground-station/ground-station-state';
+import { FrequencyBand } from '@app/constants';
 import { type AntennaState } from '@app/equipment/antenna';
 import { ANTENNA_CONFIG_KEYS } from '@app/equipment/antenna/antenna-config-keys';
 import { type CouplerState } from '@app/equipment/rf-front-end/coupler-module/coupler-module';
 import { TapPoint } from "@app/equipment/rf-front-end/coupler-module/tap-points";
-import type { dB, dBm, Hertz, IfSignal, MHz } from '@app/types';
+import { SignalOrigin } from '@app/signal-origin';
+import type { dB, dBi, dBm, FECType, Hertz, IfFrequency, MHz, ModulationType } from '@app/types';
 import type { Degrees } from 'ootk';
 
 export const vermontGroundStation = {
@@ -52,10 +54,13 @@ export const vermontGroundStation = {
       temperature: 25,
       currentDraw: 0,
       loFrequency: 6425 as MHz,
+      filterHighHz: FrequencyBand.c.upHigh,
+      filterLowHz: FrequencyBand.c.upLow,
+      filterRejectionDb: 40 as dB,
       isExtRefLocked: true,
       frequencyError: 0,
       phaseLockRange: 10000,
-      gain: 0 as dB,
+      gain: 23 as dB,
       outputPower: -10 as dBm,
       saturationPower: 15 as dBm,
       gainFlatness: 0.5 as dB,
@@ -66,36 +71,48 @@ export const vermontGroundStation = {
     },
     hpa: {
       isPowered: true,
-      backOff: 6,
+      backOff: 10,
       outputPower: 50 as dBm,
       isOverdriven: false,
       imdLevel: -30,
       temperature: 45,
-      isHpaEnabled: false,
-      isHpaSwitchEnabled: false,
+      isHpaEnabled: true,
+      isHpaSwitchEnabled: true,
       noiseFloor: -140,
       gain: 44 as dB,
     },
     filter: {
       isPowered: true,
-      bandwidthIndex: 12,
-      bandwidth: 20 as MHz,
-      insertionLoss: 2.0,
-      noiseFloor: -101,
+      bandwidthIndex: 13,
+      bandwidth: 40 as MHz, // Only the index matters here
+      insertionLoss: 2.0, // Only the index matters here
+      noiseFloor: -101, // Only the index matters here
     },
     lnb: {
       isPowered: true,
-      loFrequency: 5150 as MHz, // C-band LNB LO for 3902.5 MHz beacon -> 1247.5 MHz IF
-      gain: 55 as dB,
+      loFrequency: 5250 as MHz,
+      gain: 60 as dB,
       lnaNoiseFigure: 0.6, // dB
       mixerNoiseFigure: 16.0, // dB
-      noiseTemperature: 45, // K - stable
+      noiseTemperature: 43, // K - stable
       noiseTemperatureStabilizationTime: 0, // Already stabilized
       isExtRefLocked: true, // Locked to GPSDO 10 MHz
       noiseFloor: -140, // dBm/Hz
       frequencyError: 0, // Hz
       temperature: 28, // °C - stable
       thermalStabilizationTime: 0, // Already stabilized
+    },
+    agc: {
+      isPowered: true,
+      isBypassed: false,
+      targetLevel: -30 as dBm,
+      currentGain: 10 as dB,
+      inputPower: -80 as dBm,
+      outputPower: -30 as dBm,
+      attackTime: 10,
+      releaseTime: 100,
+      maxGain: 10 as dB,
+      minGain: -60 as dB,
     },
     coupler: {
       isPowered: true,
@@ -137,12 +154,12 @@ export const vermontGroundStation = {
   }],
   spectrumAnalyzers: [
     {
-      referenceLevel: -100 as dBm, // Set for beacon observation
-      centerFrequency: 1247.5e6 as Hertz, // IF frequency for beacon
+      referenceLevel: -91 as dBm, // Set for beacon observation
+      centerFrequency: 1074.5e6 as Hertz, // IF frequency for beacon
       span: 2e3 as Hertz, // 2 kHz span for CW beacon
       rbw: 1e3 as Hertz, // 1 kHz RBW for CW beacon
-      minAmplitude: -105 as dBm,
-      maxAmplitude: -85 as dBm,
+      minAmplitude: -95 as dBm,
+      maxAmplitude: -75 as dBm,
       scaleDbPerDiv: 10 as dB,
       screenMode: 'both',
       inputUnit: 'MHz',
@@ -160,20 +177,30 @@ export const vermontGroundStation = {
   transmitters: [{
     activeModem: 1,
     modems: [{
-      modem_number: 1,
-      isPowered: false,
-      isTransmitting: false,
-      isFaulted: false,
-      isLoopback: false,
+      isPowered: true,
       antenna_id: 1,
-      ifSignal: {
-        frequency: 70e6,
-        bandwidth: 36e6,
-        power: -10,
-      } as IfSignal,
-      id: 0,
+      modem_number: 1,
+      isFaulted: false,
+      isTransmitting: true,
+      isTransmittingSwitchUp: true,
       isFaultSwitchUp: false,
-      isTransmittingSwitchUp: false
+      id: 1,
+      isLoopback: false,
+      ifSignal: {
+        signalId: 'TIDEMARK-1-Teleport',
+        serverId: 1,
+        noradId: 61525, polarization: 'V',
+        feed: '',
+        isDegraded: false,
+        origin: SignalOrigin.TRANSMITTER,
+        noiseFloor: null,
+        gainInPath: 0 as dBi,
+        frequency: 1094e6 as IfFrequency,
+        power: -7 as dBm,
+        bandwidth: 36e6 as Hertz, // Match payload bandwidth
+        modulation: 'QPSK' as ModulationType,
+        fec: '3/4' as FECType,
+      },
     }],
   }],
   receivers: [{
@@ -181,7 +208,7 @@ export const vermontGroundStation = {
     modems: [{
       modemNumber: 1,
       isPowered: true,
-      frequency: 1432 as MHz, // IF frequency for 3718 MHz RF with 5150 MHz LO
+      frequency: 1532 as MHz, // IF frequency for 3718 MHz RF with 5150 MHz LO
       bandwidth: 36 as MHz, // Match payload bandwidth
       modulation: 'QPSK',
       fec: '3/4',
@@ -218,6 +245,9 @@ export const maineGroundStationConfig = {
       temperature: 25,
       currentDraw: 0,
       loFrequency: 6425 as MHz,
+      filterHighHz: FrequencyBand.c.upHigh,
+      filterLowHz: FrequencyBand.c.upLow,
+      filterRejectionDb: 40 as dB,
       isExtRefLocked: true,
       frequencyError: 0,
       phaseLockRange: 10000,
@@ -262,6 +292,18 @@ export const maineGroundStationConfig = {
       frequencyError: 0, // Hz
       temperature: 25, // °C
       thermalStabilizationTime: 180, // seconds
+    },
+    agc: {
+      isPowered: true,
+      isBypassed: false,
+      targetLevel: -30 as dBm,
+      currentGain: 0 as dB,
+      inputPower: -100 as dBm,
+      outputPower: -100 as dBm,
+      attackTime: 10,
+      releaseTime: 100,
+      maxGain: 0 as dB,
+      minGain: -60 as dB,
     },
     coupler: {
       isPowered: true,

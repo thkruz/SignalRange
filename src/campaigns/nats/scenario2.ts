@@ -1,7 +1,7 @@
 import { Character, Emotion } from '@app/modal/character-enum';
 import type { Objective } from '@app/objectives/objective-types';
 import type { ScenarioData } from '@app/ScenarioData';
-import type { dBm, MHz } from '@app/types';
+import type { dBm, Hertz, MHz } from '@app/types';
 import { getAssetUrl } from '@app/utils/asset-url';
 import type { Degrees } from 'ootk';
 import { createRfFrontEnd } from '../rf-front-end-factory';
@@ -13,7 +13,7 @@ import { ses10Satellite, tidemark1Satellite } from './satellites';
  * NATS Level 2: "Scheduled Maintenance"
  *
  * Phase: Tutorial
- * Time Pressure: None
+ * Time Pressure: Low (30s limit on maintenance positioning)
  * Calculation Required: None (all values provided)
  * New UI Elements: LNB/BUC/ACU controls, RF mute switches
  *
@@ -25,12 +25,12 @@ import { ses10Satellite, tidemark1Satellite } from './satellites';
 export const scenario2Data: ScenarioData = {
   id: 'nats-scenario2',
   url: 'nats/scenarios/nats-scenario2',
-  prerequisiteScenarioIds: ['nats-scenario1'],
+  prerequisiteScenarioIds: [],
   imageUrl: 'nats/2/card.png',
   number: 2,
   title: 'Scheduled Maintenance',
   subtitle: 'Power Down and Recovery Procedures',
-  duration: '20-25 min',
+  duration: '20-30 min',
   difficulty: 'beginner',
   missionType: 'Tutorial',
   description: `The maintenance crew needs to perform work on the TIDEMARK-1 antenna feed assembly. You'll power down the transmit chain in the proper sequence to ensure safety (don't radiate the maintenance crew), move the antenna to stow position for access, then restore service after the maintenance window.<br><br>This is your first time actually controlling the equipment. Charlie will provide all frequency values and configuration settings - you just need to execute the procedures in the correct order.<br><br>Key lesson: Sequence matters. RF safety protocols exist for a reason.`,
@@ -41,6 +41,7 @@ export const scenario2Data: ScenarioData = {
     'Receiver Modem (pre-configured)',
     'Transmitter Modem (pre-configured)',
   ],
+  timeLimitSeconds: 30 * 60, // 30 minutes
   settings: {
     isSync: true,
     groundStations: [
@@ -51,8 +52,14 @@ export const scenario2Data: ScenarioData = {
             hpa: { isHpaEnabled: true, isHpaSwitchEnabled: true },
           }),
         ],
+        spectrumAnalyzers: [
+          {
+            ...vermontGroundStation.spectrumAnalyzers[0],
+            centerFrequency: 1074.50125e6 as Hertz,
+          },
+        ],
       },
-      maineGroundStationConfig
+      { ...maineGroundStationConfig, isOperational: false },
     ],
     layout: natsHtmlLayout,
     missionBriefUrl: 'https://docs.signalrange.space/scenarios/scenario-2?content-only=true&dark=true',
@@ -60,20 +67,37 @@ export const scenario2Data: ScenarioData = {
     satellites: [
       tidemark1Satellite,
       ses10Satellite,
-    ]
+    ],
   },
   objectives: [
     {
+      id: 'mission-brief-opened',
+      title: 'Open Mission Brief',
+      description: 'Open and read the mission brief document including safety brief.',
+      groundStation: 'VT-01',
+      conditions: [
+        {
+          type: 'mission-brief-opened',
+          description: 'Mission Brief Document Opened',
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 5,
+      timeLimitSeconds: 3 * 60, // 3 minutes
+    },
+    {
       id: 'safety-briefing',
-      title: 'Phase 1: Safety Briefing',
+      title: 'Safety Briefing',
       description: 'Acknowledge the RF safety procedures and maintenance window.',
+      prerequisiteObjectiveIds: ['mission-brief-opened'],
       groundStation: 'VT-01',
       conditions: [
         {
           type: 'status-check',
           description: 'Maintenance Safety Briefing Acknowledged',
           params: {
-            question: 'I need you to confirm you understand the RF safety briefing for today\'s maintenance work. Company policy is that I need you to verbally acknowledge before we can proceed. Lawyer\'s and such...',
+            question: 'I need you to confirm you understand the RF safety briefing for today\'s maintenance work. Company policy is that I need you to verbally acknowledge before we can proceed. Lawyers and such...',
             options: [
               'I have received and understood the RF safety briefing for today\'s maintenance work.',
             ],
@@ -86,10 +110,11 @@ export const scenario2Data: ScenarioData = {
       ],
       conditionLogic: 'AND',
       points: 5,
+      timeLimitSeconds: 5 * 60, // 5 minutes
     },
     {
       id: 'disable-hpa-output',
-      title: 'Phase 2a: Disable HPA Output',
+      title: 'Disable HPA Output',
       description: 'Disable the High Power Amplifier output by toggling the HPA enable switch off.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['safety-briefing'],
@@ -101,11 +126,12 @@ export const scenario2Data: ScenarioData = {
         },
       ],
       conditionLogic: 'AND',
-      points: 5,
+      points: 10,
+      timeLimitSeconds: 2 * 60, // 2 minutes
     },
     {
       id: 'power-off-hpa',
-      title: 'Phase 2b: Power Off HPA',
+      title: 'Power Off HPA',
       description: 'Power off the High Power Amplifier completely.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['disable-hpa-output'],
@@ -120,11 +146,12 @@ export const scenario2Data: ScenarioData = {
         },
       ],
       conditionLogic: 'AND',
-      points: 5,
+      points: 10,
+      timeLimitSeconds: 2 * 60, // 2 minutes
     },
     {
       id: 'mute-buc',
-      title: 'Phase 3: Mute BUC RF Output',
+      title: 'Mute BUC RF Output',
       description: 'Mute the Block Upconverter to stop all RF transmission.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['power-off-hpa'],
@@ -137,10 +164,11 @@ export const scenario2Data: ScenarioData = {
       ],
       conditionLogic: 'AND',
       points: 10,
+      timeLimitSeconds: 2 * 60, // 2 minutes
     },
     {
       id: 'power-down-lnb',
-      title: 'Phase 4: Power Down LNB',
+      title: 'Power Down LNB',
       description: 'Power off the Low Noise Block to complete RF chain shutdown.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['mute-buc'],
@@ -156,11 +184,12 @@ export const scenario2Data: ScenarioData = {
       ],
       conditionLogic: 'AND',
       points: 10,
+      timeLimitSeconds: 2 * 60, // 2 minutes
     },
     {
       id: 'antenna-maintenance',
-      title: 'Phase 5: Move Antenna to Maintenance Position',
-      description: 'Command the antenna to maintenance position (Az: 0°, El: 5) for maintenance access.',
+      title: 'Move Antenna to Maintenance Position',
+      description: 'Command the antenna to maintenance position (Az: 0°, El: 5°) for maintenance access.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['power-down-lnb'],
       conditions: [
@@ -176,16 +205,17 @@ export const scenario2Data: ScenarioData = {
         },
       ],
       timePenalty: {
-        elapsedTimeThreshold: 30, // 15 minutes
+        elapsedTimeThreshold: 15 * 60, // 15 minutes
         pointsDeducted: 30,
-        message: "You delayed maintenance getting started on time. Don't let it happen again."
+        message: "You delayed maintenance getting started on time. Don't let it happen again.",
       },
       points: 15,
+      timeLimitSeconds: 2 * 60, // 2 minutes
     },
     {
       id: 'repoint-antenna',
-      title: 'Phase 7: Repoint Antenna at TIDEMARK-1',
-      description: 'Command antenna to return to operational pointing (Az: 214.2°, El: 24.8°).',
+      title: 'Repoint Antenna at TIDEMARK-1',
+      description: 'Command antenna to return to operational pointing (Az: 161.8°, El: 34.2°).',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['antenna-maintenance'],
       conditions: [
@@ -201,11 +231,12 @@ export const scenario2Data: ScenarioData = {
         },
       ],
       points: 10,
+      timeLimitSeconds: 2 * 60, // 2 minutes
     },
     {
       id: 'power-up-lnb',
-      title: 'Phase 8: Restore LNB',
-      description: 'Power on LNB with settings: LO 5,150 MHz, Gain 55 dB. Wait for thermal stabilization.',
+      title: 'Restore LNB',
+      description: 'Power on LNB with settings: LO 5,250 MHz, Gain 60 dB. Wait for thermal stabilization.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['repoint-antenna'],
       conditions: [
@@ -219,18 +250,18 @@ export const scenario2Data: ScenarioData = {
         },
         {
           type: 'lnb-lo-set',
-          description: 'LNB LO Set to 5,150 MHz',
+          description: 'LNB LO Set to 5,250 MHz',
           params: {
-            loFrequency: 5150 as MHz,
+            loFrequency: 5250 as MHz,
             loFrequencyTolerance: 0,
           },
           maintainUntilObjectiveComplete: true,
         },
         {
           type: 'lnb-gain-set',
-          description: 'LNB Gain Set to 55 dB',
+          description: 'LNB Gain Set to 60 dB',
           params: {
-            gain: 55,
+            gain: 60,
             gainTolerance: 0,
           },
           maintainUntilObjectiveComplete: true,
@@ -242,31 +273,42 @@ export const scenario2Data: ScenarioData = {
         },
       ],
       conditionLogic: 'AND',
-      points: 15,
+      points: 10,
+      timeLimitSeconds: 2 * 60, // 2 minutes
     },
     {
       id: 'verify-beacon',
-      title: 'Phase 9: Verify Beacon Reception',
+      title: 'Verify Beacon Reception',
       description: 'Confirm TIDEMARK-1 beacon is visible on spectrum analyzer.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['power-up-lnb'],
       conditions: [
         {
           type: 'signal-detected',
-          description: 'Beacon Signal Detected (3,947.8 MHz)',
+          description: 'Beacon Signal Detected (4,175.5 MHz RF / 1,074.5 MHz IF)',
           params: {
-            signalId: 'tidemark-1-beacon',
+            signalId: 'TIDEMARK-1-Beacon',
             minPower: -100 as dBm,
           },
-          mustMaintain: false,
+          mustMaintain: true,
         },
+        {
+          type: 'speca-center-frequency',
+          description: 'Spectrum Analyzer Center Frequency Set to exactly 1,074.5 MHz',
+          params: {
+            centerFrequency: 1074.5e6 as Hertz,
+            centerFrequencyTolerance: 0,
+          },
+          mustMaintain: true,
+        }
       ],
       conditionLogic: 'AND',
       points: 10,
+      timeLimitSeconds: 2 * 60, // 2 minutes
     },
     {
       id: 'unmute-buc',
-      title: 'Phase 10a: Unmute BUC RF Output',
+      title: 'Unmute BUC RF Output',
       description: 'Unmute the Block Upconverter to allow RF transmission.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['verify-beacon'],
@@ -278,10 +320,11 @@ export const scenario2Data: ScenarioData = {
         },
       ],
       points: 10,
+      timeLimitSeconds: 2 * 60, // 2 minutes
     },
     {
       id: 'power-on-hpa',
-      title: 'Phase 10b: Power On HPA',
+      title: 'Power On HPA',
       description: 'Power on the High Power Amplifier.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['unmute-buc'],
@@ -295,11 +338,12 @@ export const scenario2Data: ScenarioData = {
           maintainUntilObjectiveComplete: true,
         },
       ],
-      points: 5,
+      points: 10,
+      timeLimitSeconds: 2 * 60, // 2 minutes
     },
     {
       id: 'enable-hpa-output',
-      title: 'Phase 10c: Enable HPA Output',
+      title: 'Enable HPA Output',
       description: 'Enable the High Power Amplifier output to restore full service.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['power-on-hpa'],
@@ -310,123 +354,192 @@ export const scenario2Data: ScenarioData = {
           maintainUntilObjectiveComplete: true,
         },
       ],
-      points: 5,
+      points: 10,
+      timeLimitSeconds: 2 * 60, // 2 minutes
     },
   ] as Objective[],
   dialogClips: {
     intro: {
       text: `
       <p>
-        The maintenance crew needs to work on the antenna feed assembly in fifteen minutes. We're taking TIDEMARK-1 offline for the window.
+        Maintenance crew needs access to the antenna feed assembly in fifteen minutes. We're taking TIDEMARK-1 offline for the window.
       </p>
       <p>
-        We do this right, or someone gets a face full of RF. Let's start with the HPA. See that red ENABLE button? Click ARM first, then DISABLE. Two-step process prevents accidents.
+        First things first - you need to acknowledge the RF safety briefing. Someone forgot that step once. Maintenance tech caught about fifty watts to the face. He's fine now, but the paperwork wasn't.
       </p>
       <p>
-        Sequence matters here. HPA first, then BUC mute, then LNB power down, then we stow the antenna. Never skip steps, never reverse order.
-      </p>
-      <p>
-        After maintenance, we reverse the process. Antenna back on target, LNB up, verify beacon, then restore transmit. I'll walk you through each step.
+        After that, we shut down in sequence: HPA first, then BUC, then LNB, then stow the antenna. Never skip steps, never reverse order. Go.
       </p>
       `,
       character: Character.CHARLIE_BROOKS,
-      emotion: Emotion.CONCERNED,
+      emotion: Emotion.CONFIDENT,
       audioUrl: getAssetUrl('/assets/campaigns/nats/2/intro.mp3'),
     },
     objectives: {
-      'power-down-hpa': {
+      'safety-briefing': {
         text: `
         <p>
-          HPA's disabled. No more RF coming from that amplifier. Good.
+          Good. Now we start the shutdown sequence.
         </p>
         <p>
-          Now mute the BUC. That's the last line of defense before we let anyone climb the tower.
+          The HPA is pushing several hundred watts through that feed horn. We disable it first - that's the big one. TX Chain tab. Find the HPA panel and leave it powered for now, but disable the output.
+        </p>
+        `,
+        character: Character.CHARLIE_BROOKS,
+        emotion: Emotion.CONFIDENT,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/2/obj-safety-briefing.mp3'),
+      },
+      'disable-hpa-output': {
+        text: `
+        <p>
+          Output's disabled. No more RF coming out of the amplifier. But it's still powered and hot.
+        </p>
+        <p>
+          Power it off completely. Same panel, hit the power switch. Tubes need to cool before anyone touches anything upstream.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/2/obj-hpa-down.mp3'),
+        audioUrl: getAssetUrl('/assets/campaigns/nats/2/obj-disable-hpa-output.mp3'),
+      },
+      'power-off-hpa': {
+        text: `
+        <p>
+          HPA's down. Now the BUC.
+        </p>
+        <p>
+          Even without the HPA, the BUC still outputs a few milliwatts. Not enough to hurt anyone, but enough to cause interference if we're moving the antenna around. Mute it. Same tab, BUC panel.
+        </p>
+        `,
+        character: Character.CHARLIE_BROOKS,
+        emotion: Emotion.NEUTRAL,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/2/obj-power-off-hpa.mp3'),
       },
       'mute-buc': {
         text: `
         <p>
-          BUC's muted. No RF transmission anywhere in the chain now.
+          BUC's muted. Transmit chain is completely silent now.
         </p>
         <p>
-          Power down the LNB next. We don't need it while the antenna's stowed anyway.
+          Power down the LNB next. We don't need it during maintenance, and there's no point leaving equipment energized when the antenna's not pointed at anything useful. RX Analysis tab, LNB panel.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/2/obj-buc-mute.mp3'),
+        audioUrl: getAssetUrl('/assets/campaigns/nats/2/obj-mute-buc.mp3'),
       },
-      'antenna-stow': {
+      'power-down-lnb': {
         text: `
         <p>
-          Antenna's at stow. Maintenance crew has the all-clear.
+          LNB's off. RF chain is completely cold. Safe for maintenance.
         </p>
         <p>
-          They're replacing a waveguide flange gasket - should take about fifteen minutes. We'll fast-forward through that.
+          Now stow the antenna. ACU Control tab. Set tracking mode to MAINTENANCE - that'll command it to azimuth zero, elevation five degrees. Low enough for the crew to access the feed, high enough to clear any obstructions.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/2/obj-stow.mp3'),
+        audioUrl: getAssetUrl('/assets/campaigns/nats/2/obj-power-down-lnb.mp3'),
       },
-      'maintenance-window': {
+      'antenna-maintenance': {
         text: `
         <p>
-          Maintenance is complete. Crew's clear of the tower. Time to bring the link back up.
+          Antenna's at maintenance position. Crew has the all-clear.
         </p>
         <p>
-          Point the antenna back at 214.2 degrees azimuth, 24.8 degrees elevation. That's where TIDEMARK-1 sits in our sky.
+          They're replacing a waveguide flange gasket - routine work, takes about fifteen minutes.
+        </p>
+        <p>
+          ...
+        </p>
+        <p>
+          Are you keeping your shift log updated? Eventually you'll need to be able to answer questions about what you did using your shift log. So always keep track of what work you did.
+        </p>
+        <p>
+          ...
+        </p>
+        <p>
+          Maintenance is complete. Something about this place always makes time feel like its moving faster when you are waiting on other people. Crew's clear of the tower. Time to bring the link back up. ACU Control tab. Set tracking mode back to PROGRAM TRACK and command the antenna to azimuth 161.8, elevation 34.2. That's where TIDEMARK-1 sits.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/2/obj-maintenance-done.mp3'),
+        audioUrl: getAssetUrl('/assets/campaigns/nats/2/obj-antenna-maintenance.mp3'),
+      },
+      'repoint-antenna': {
+        text: `
+        <p>
+          Antenna's back on target. Now we restore the receive path first.
+        </p>
+        <p>
+          Power up the LNB. RX Analysis tab. Set the local oscillator to 5,250 megahertz, gain to 60 dB. Wait for thermal stabilization - the indicator will go green when it's ready.
+        </p>
+        `,
+        character: Character.CHARLIE_BROOKS,
+        emotion: Emotion.NEUTRAL,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/2/obj-repoint-antenna.mp3'),
       },
       'power-up-lnb': {
         text: `
         <p>
-          LNB's powered and configured. LO at 5,150 megahertz, gain at 55 dB.
+          LNB's stable. Now verify we're actually seeing the satellite.
         </p>
         <p>
-          Temperature's climbing - it'll stabilize in about three minutes. Wait for the thermal indicator to go green.
+          Check the spectrum analyzer. TIDEMARK-1's beacon should be visible at 1,074.5 MHz on the IF side. That's 4,175.5 MHz RF, minus our 5,250 MHz LO. If you see a clean carrier there, we're pointed correctly.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/2/obj-lnb-up.mp3'),
+        audioUrl: getAssetUrl('/assets/campaigns/nats/2/obj-power-up-lnb.mp3'),
       },
       'verify-beacon': {
         text: `
         <p>
-          There's the beacon. Clean acquisition at 3,947.8 MHz, right where it should be.
+          There's the beacon. Acquisition looks clean.
         </p>
         <p>
-          Now we can restore transmit. Unmute the BUC, then enable the HPA. Same ARM procedure as before.
+          Now we can restore transmit. Unmute the BUC first. TX Chain tab, BUC panel. We bring up the low-power stages before the high-power ones.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/2/obj-beacon.mp3'),
+        audioUrl: getAssetUrl('/assets/campaigns/nats/2/obj-verify-beacon.mp3'),
+      },
+      'unmute-buc': {
+        text: `
+        <p>
+          BUC's live. Now power on the HPA. Same tab, HPA panel.
+        </p>
+        `,
+        character: Character.CHARLIE_BROOKS,
+        emotion: Emotion.NEUTRAL,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/2/obj-unmute-buc.mp3'),
+      },
+      'power-on-hpa': {
+        text: `
+        <p>
+          HPA's powered. Last step - enable the output. ARM first, then ENABLE. Same two-step process as shutdown.
+        </p>
+        `,
+        character: Character.CHARLIE_BROOKS,
+        emotion: Emotion.NEUTRAL,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/2/obj-power-on-hpa.mp3'),
       },
       'enable-hpa-output': {
         text: `
         <p>
-          Link's restored. TIDEMARK-1 back in service, customers are happy, maintenance is done.
+          Link's restored. TIDEMARK-1 back in service.
         </p>
         <p>
-          That's how scheduled maintenance goes. Power down in sequence, stow safely, restore in reverse order. You did it correctly.
+          That's scheduled maintenance. Power down in sequence, stow safely, restore in reverse order. You did it correctly - no one got hurt, no equipment got damaged, all within our Authorised Service Interruption window.
         </p>
         <p>
-          Tomorrow we'll do a weather handover to the Maine site. Same principles, different scenario.
+          I am going to recommend authorizing you to help with remote ground stations. Same equipment, but more of it and higher stakes. Go get some coffee or whatever it is you do here when not training.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
-        emotion: Emotion.HAPPY,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/2/complete.mp3'),
+        emotion: Emotion.CONFIDENT,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/2/obj-enable-hpa-output.mp3'),
       },
     },
   },

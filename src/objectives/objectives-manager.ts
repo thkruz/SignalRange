@@ -10,6 +10,7 @@ import { EventBus } from '@app/events/event-bus';
 import { Events, QuizCompletedData, QuizPassedData } from '@app/events/events';
 import { QuizManager } from '@app/modal/quiz-manager';
 import { SimulationManager } from '@app/simulation/simulation-manager';
+import { TrafficControlManager } from '@app/traffic/traffic-control-manager';
 import { Milliseconds } from 'ootk';
 import {
   Condition,
@@ -24,6 +25,7 @@ import './objectives-manager.css';
  */
 export class ObjectivesManager {
   private static instance_: ObjectivesManager | null = null;
+  private static openedBoxIds_: Set<string> = new Set();
   private readonly objectiveStates_: ObjectiveState[] = [];
   private readonly eventBus_: EventBus;
   private readonly collapsedObjectiveIds_: Set<string> = new Set();
@@ -33,6 +35,7 @@ export class ObjectivesManager {
   private scenarioTimerRunning_: boolean = false;
   private scenarioTimeRemaining_: number = 0;
   private timerInterval_: number | null = null;
+  private scenarioStartTime_: number = 0;
 
   // Quiz pass state - when true, timers are paused and "PASS" should display
   private isQuizPassed_: boolean = false;
@@ -47,6 +50,9 @@ export class ObjectivesManager {
     // Initialize bound handlers
     this.boundQuizPassedHandler_ = this.handleQuizPassed_.bind(this);
     this.boundQuizCompletedHandler_ = this.handleQuizCompleted_.bind(this);
+
+    // Track scenario start time for elapsed time calculation
+    this.scenarioStartTime_ = Date.now();
 
     // Initialize scenario timer if provided
     if (scenarioTimeLimit !== undefined && scenarioTimeLimit > 0) {
@@ -141,6 +147,28 @@ export class ObjectivesManager {
 
       ObjectivesManager.instance_ = null;
     }
+
+    // Clear opened box tracking
+    ObjectivesManager.openedBoxIds_.clear();
+  }
+
+  /**
+   * Register that a box (e.g., mission brief) has been opened
+   * @param boxId The unique identifier of the opened box
+   */
+  static registerOpenedBox(boxId: string): void {
+    ObjectivesManager.openedBoxIds_.add(boxId);
+  }
+
+  /**
+   * Check if a specific box has been opened
+   * @param boxId Optional box ID to check; if omitted, checks if any box was opened
+   */
+  static isBoxOpened(boxId?: string): boolean {
+    if (boxId) {
+      return ObjectivesManager.openedBoxIds_.has(boxId);
+    }
+    return ObjectivesManager.openedBoxIds_.size > 0;
   }
 
   /**
@@ -165,14 +193,15 @@ export class ObjectivesManager {
   }
 
   /**
-   * Get total elapsed time derived from scenario countdown timer
-   * Returns 0 if no scenario timer is set
+   * Get total elapsed time in seconds since scenario started
+   * Uses countdown timer if available, otherwise calculates from start time
    */
   getElapsedTime(): number {
     if (this.scenarioTimeLimit_ !== null) {
       return this.scenarioTimeLimit_ - this.scenarioTimeRemaining_;
     }
-    return 0;
+    // No countdown timer - calculate from start time
+    return Math.floor((Date.now() - this.scenarioStartTime_) / 1000);
   }
 
   /**
@@ -533,82 +562,8 @@ export class ObjectivesManager {
         continue;
       }
 
-      // Evaluate each condition
-      for (let condIndex = 0; condIndex < objectiveState.conditionStates.length; condIndex++) {
-        const conditionState = objectiveState.conditionStates[condIndex];
-
-        // Skip already completed maintenance (unless it's indefinite maintenance)
-        if (conditionState.isMaintenanceComplete &&
-          !conditionState.condition.maintainUntilObjectiveComplete) {
-          continue;
-        }
-
-        const wasSatisfied = conditionState.isSatisfied;
-        const isNowSatisfied = this.evaluateCondition_(conditionState.condition, objectiveState);
-
-        // Update satisfied state
-        conditionState.isSatisfied = isNowSatisfied;
-
-        // Handle condition state changes
-        if (isNowSatisfied && !wasSatisfied) {
-          // Condition just became satisfied
-          conditionState.satisfiedAt = Date.now();
-          conditionState.maintainedDuration = 0;
-
-          // Mark as complete based on condition type
-          if (conditionState.condition.maintainUntilObjectiveComplete ||
-            !conditionState.condition.mustMaintain) {
-            // Indefinite maintenance & non-maintenance conditions complete immediately
-            // Timer-based maintenance conditions need to maintain for duration (handled in else block)
-            conditionState.isMaintenanceComplete = true;
-          }
-
-          this.eventBus_.emit(Events.OBJECTIVE_CONDITION_CHANGED, {
-            objectiveId: objectiveState.objective.id,
-            conditionIndex: condIndex,
-            isSatisfied: true,
-            conditionState,
-          });
-        } else if (!isNowSatisfied && wasSatisfied) {
-          // Condition just became unsatisfied
-          conditionState.satisfiedAt = undefined;
-          conditionState.maintainedDuration = 0;
-          conditionState.lostTimestamps = conditionState.lostTimestamps || [];
-          conditionState.lostTimestamps.push(Date.now());
-
-          // Reset maintenance complete for indefinite-maintenance conditions
-          if (conditionState.condition.maintainUntilObjectiveComplete) {
-            conditionState.isMaintenanceComplete = false;
-          }
-
-          this.eventBus_.emit(Events.OBJECTIVE_CONDITION_CHANGED, {
-            objectiveId: objectiveState.objective.id,
-            conditionIndex: condIndex,
-            isSatisfied: false,
-            conditionState,
-          });
-        } else if (isNowSatisfied) {
-          // Condition continues to be satisfied - update maintenance duration
-          conditionState.maintainedDuration += dtSeconds;
-
-          // Check if maintenance requirement is met
-          if (!conditionState.isMaintenanceComplete) {
-            if (conditionState.condition.maintainUntilObjectiveComplete) {
-              // Indefinite maintenance: mark complete while satisfied, but can be reset if lost
-              conditionState.isMaintenanceComplete = true;
-            } else if (conditionState.condition.mustMaintain) {
-              // Timer-based maintenance: check duration
-              const requiredDuration = conditionState.condition.maintainDuration || 0;
-              if (conditionState.maintainedDuration >= requiredDuration) {
-                conditionState.isMaintenanceComplete = true;
-              }
-            } else {
-              // Non-maintenance conditions complete immediately when satisfied
-              conditionState.isMaintenanceComplete = true;
-            }
-          }
-        }
-      }
+      // Evaluate all conditions for this objective
+      this.evaluateObjectiveConditions_(objectiveState, dtSeconds);
 
       // Check if objective is complete
       const isObjectiveComplete = this.checkObjectiveComplete_(objectiveState);
@@ -650,6 +605,9 @@ export class ObjectivesManager {
 
         // Check if all objectives are complete
         if (this.areAllObjectivesCompleted()) {
+          // Freeze all timers when scenario is completed
+          this.stopAllTimers();
+
           this.eventBus_.emit(Events.OBJECTIVES_ALL_COMPLETED, {
             completedObjectives: this.objectiveStates_,
             totalTime: this.getElapsedTime(),
@@ -728,11 +686,91 @@ export class ObjectivesManager {
         // Remove from collapsed set so it expands when it becomes active
         this.collapsedObjectiveIds_.delete(objectiveState.objective.id);
 
+        // Immediately evaluate conditions for the newly activated objective
+        this.evaluateObjectiveConditions_(objectiveState, 0);
+
         this.eventBus_.emit(Events.OBJECTIVE_ACTIVATED, {
           objectiveId: objectiveState.objective.id,
           objective: objectiveState.objective,
           activatedAt: now,
         });
+      }
+    }
+  }
+
+  /**
+   * Evaluate all conditions for a specific objective
+   * Used for immediate evaluation when objective becomes active
+   */
+  private evaluateObjectiveConditions_(objectiveState: ObjectiveState, dtSeconds: number): void {
+    for (let condIndex = 0; condIndex < objectiveState.conditionStates.length; condIndex++) {
+      const conditionState = objectiveState.conditionStates[condIndex];
+
+      // Skip already completed maintenance (unless it's indefinite maintenance)
+      if (conditionState.isMaintenanceComplete &&
+        !conditionState.condition.maintainUntilObjectiveComplete) {
+        continue;
+      }
+
+      const wasSatisfied = conditionState.isSatisfied;
+      const isNowSatisfied = this.evaluateCondition_(conditionState.condition, objectiveState);
+
+      // Update satisfied state
+      conditionState.isSatisfied = isNowSatisfied;
+
+      // Handle condition state changes
+      if (isNowSatisfied && !wasSatisfied) {
+        // Condition just became satisfied
+        conditionState.satisfiedAt = Date.now();
+        conditionState.maintainedDuration = 0;
+
+        // Mark as complete based on condition type
+        if (conditionState.condition.maintainUntilObjectiveComplete ||
+          !conditionState.condition.mustMaintain) {
+          conditionState.isMaintenanceComplete = true;
+        }
+
+        this.eventBus_.emit(Events.OBJECTIVE_CONDITION_CHANGED, {
+          objectiveId: objectiveState.objective.id,
+          conditionIndex: condIndex,
+          isSatisfied: true,
+          conditionState,
+        });
+      } else if (!isNowSatisfied && wasSatisfied) {
+        // Condition just became unsatisfied
+        conditionState.satisfiedAt = undefined;
+        conditionState.maintainedDuration = 0;
+        conditionState.lostTimestamps = conditionState.lostTimestamps || [];
+        conditionState.lostTimestamps.push(Date.now());
+
+        // Reset maintenance complete for indefinite-maintenance conditions
+        if (conditionState.condition.maintainUntilObjectiveComplete) {
+          conditionState.isMaintenanceComplete = false;
+        }
+
+        this.eventBus_.emit(Events.OBJECTIVE_CONDITION_CHANGED, {
+          objectiveId: objectiveState.objective.id,
+          conditionIndex: condIndex,
+          isSatisfied: false,
+          conditionState,
+        });
+      } else if (isNowSatisfied) {
+        // Condition continues to be satisfied - update maintenance duration
+        conditionState.maintainedDuration += dtSeconds;
+
+        // Check if maintenance requirement is met
+        if (!conditionState.isMaintenanceComplete) {
+          if (conditionState.condition.maintainUntilObjectiveComplete) {
+            conditionState.isMaintenanceComplete = true;
+          } else if (conditionState.condition.mustMaintain) {
+            const requiredDuration = conditionState.condition.maintainDuration || 0;
+            if (conditionState.maintainedDuration >= requiredDuration) {
+              conditionState.isMaintenanceComplete = true;
+            }
+          } else {
+            conditionState.isMaintenanceComplete = true;
+          }
+        }
       }
     }
   }
@@ -983,6 +1021,12 @@ export class ObjectivesManager {
             });
           case 'spectrum-analyzer':
             return true; // Spectrum analyzer always powered on for this simulation
+          case 'transmitter':
+            return this.evaluateEquipment_(gs.transmitters, condition.params, (transmitter) => {
+              const modemNum = condition.params?.modemNumber ?? transmitter.state.activeModem;
+              const modem = transmitter.state.modems.find(m => m.modem_number === modemNum);
+              return modem?.isPowered ?? false;
+            });
           case 'hpa':
             return this.evaluateEquipment_(gs.rfFrontEnds, condition.params, (rfFrontEnd) => {
               return rfFrontEnd.hpaModule.state.isPowered;
@@ -1023,6 +1067,12 @@ export class ObjectivesManager {
           case 'filter':
             return this.evaluateEquipment_(gs.rfFrontEnds, condition.params, (rfFrontEnd) => {
               return !rfFrontEnd.filterModule.state.isPowered;
+            });
+          case 'transmitter':
+            return this.evaluateEquipment_(gs.transmitters, condition.params, (transmitter) => {
+              const modemNum = condition.params?.modemNumber ?? transmitter.state.activeModem;
+              const modem = transmitter.state.modems.find(m => m.modem_number === modemNum);
+              return !(modem?.isPowered ?? true);
             });
           default:
             return false;
@@ -1117,6 +1167,16 @@ export class ObjectivesManager {
         });
       }
 
+      case 'speca-center-frequency': {
+        if (condition.params?.centerFrequency === undefined) return false;
+        const targetCenterFreq = condition.params.centerFrequency;
+        const tolerance = condition.params.centerFrequencyTolerance ?? 1e6; // Default 1 MHz
+        return this.evaluateEquipment_(gs.spectrumAnalyzers, condition.params, (specA) => {
+          const diff = Math.abs(specA.state.centerFrequency - targetCenterFreq);
+          return diff <= tolerance;
+        });
+      }
+
       case 'speca-noise-floor-visible': {
         const maxSignalStrength = condition.params?.maxSignalStrength ?? -60;
         return this.evaluateEquipment_(gs.spectrumAnalyzers, condition.params, (specA) => {
@@ -1130,6 +1190,56 @@ export class ObjectivesManager {
         const targetIndex = condition.params.bandwidthIndex;
         return this.evaluateEquipment_(gs.rfFrontEnds, condition.params, (rfFrontEnd) => {
           return rfFrontEnd.filterModule.state.bandwidthIndex === targetIndex;
+        });
+      }
+
+      case 'notch-filter-configured': {
+        // Check if a notch filter is configured with specific center freq, bandwidth, and depth
+        const targetCenterFreq = condition.params?.notchCenterFrequency;
+        const targetBandwidth = condition.params?.notchBandwidth;
+        const targetDepth = condition.params?.notchDepth;
+
+        // At least center frequency must be specified
+        if (targetCenterFreq === undefined) {
+          console.warn('notch-filter-configured condition requires notchCenterFrequency param');
+          return false;
+        }
+
+        const centerFreqTolerance = condition.params?.notchCenterFrequencyTolerance ?? 1; // MHz
+        const bandwidthTolerance = condition.params?.notchBandwidthTolerance ?? 0.5; // MHz
+        const depthTolerance = condition.params?.notchDepthTolerance ?? 2; // dB
+        const specificNotchIndex = condition.params?.notchIndex;
+
+        return this.evaluateEquipment_(gs.rfFrontEnds, condition.params, (rfFrontEnd) => {
+          const notchState = rfFrontEnd.notchFilterModule.state;
+          if (!notchState.isPowered) return false;
+
+          // Check specific notch or any notch
+          const notchesToCheck = specificNotchIndex !== undefined
+            ? [notchState.notches[specificNotchIndex]].filter(Boolean)
+            : notchState.notches;
+
+          return notchesToCheck.some((notch) => {
+            if (!notch.enabled) return false;
+
+            // Check center frequency
+            const centerFreqDiff = Math.abs(notch.centerFrequency - targetCenterFreq);
+            if (centerFreqDiff > centerFreqTolerance) return false;
+
+            // Check bandwidth if specified
+            if (targetBandwidth !== undefined) {
+              const bandwidthDiff = Math.abs(notch.bandwidth - targetBandwidth);
+              if (bandwidthDiff > bandwidthTolerance) return false;
+            }
+
+            // Check depth if specified
+            if (targetDepth !== undefined) {
+              const depthDiff = Math.abs(notch.depth - targetDepth);
+              if (depthDiff > depthTolerance) return false;
+            }
+
+            return true;
+          });
         });
       }
 
@@ -1185,6 +1295,12 @@ export class ObjectivesManager {
           }
 
           return true;
+        });
+      }
+
+      case 'feed-heater-enabled': {
+        return this.evaluateEquipment_(gs.antennas, condition.params, (antenna) => {
+          return antenna.state.isHeaterEnabled === true;
         });
       }
 
@@ -1268,6 +1384,132 @@ export class ObjectivesManager {
         });
       }
 
+      case 'rx-modem-frequency-set': {
+        if (condition.params?.frequency === undefined) return false;
+        const targetFrequency = condition.params.frequency;
+        const tolerance = condition.params.frequencyTolerance ?? 1e6; // Default 1 MHz
+        return this.evaluateEquipment_(gs.receivers, condition.params, (receiver) => {
+          const modemNum = condition.params?.modemNumber ?? receiver.state.activeModem;
+          const modem = receiver.state.modems.find(m => m.modemNumber === modemNum);
+          if (!modem?.isPowered) return false;
+
+          // Modem frequency is in MHz, target is in Hz
+          const modemFreqHz = modem.frequency * 1e6;
+          const diff = Math.abs(modemFreqHz - targetFrequency);
+          return diff <= tolerance;
+        });
+      }
+
+      case 'rx-modem-bandwidth-set': {
+        if (condition.params?.bandwidth === undefined) return false;
+        const targetBandwidth = condition.params.bandwidth;
+        const tolerance = condition.params.bandwidthTolerance ?? 1e6; // Default 1 MHz
+        return this.evaluateEquipment_(gs.receivers, condition.params, (receiver) => {
+          const modemNum = condition.params?.modemNumber ?? receiver.state.activeModem;
+          const modem = receiver.state.modems.find(m => m.modemNumber === modemNum);
+          if (!modem?.isPowered) return false;
+
+          // Modem bandwidth is in MHz, target is in Hz
+          const modemBwHz = modem.bandwidth * 1e6;
+          const diff = Math.abs(modemBwHz - targetBandwidth);
+          return diff <= tolerance;
+        });
+      }
+
+      case 'rx-modem-modulation-set': {
+        if (!condition.params?.modulation) return false;
+        const targetModulation = condition.params.modulation;
+        return this.evaluateEquipment_(gs.receivers, condition.params, (receiver) => {
+          const modemNum = condition.params?.modemNumber ?? receiver.state.activeModem;
+          const modem = receiver.state.modems.find(m => m.modemNumber === modemNum);
+          if (!modem?.isPowered) return false;
+
+          return modem.modulation === targetModulation;
+        });
+      }
+
+      case 'rx-modem-fec-set': {
+        if (!condition.params?.fec) return false;
+        const targetFec = condition.params.fec;
+        return this.evaluateEquipment_(gs.receivers, condition.params, (receiver) => {
+          const modemNum = condition.params?.modemNumber ?? receiver.state.activeModem;
+          const modem = receiver.state.modems.find(m => m.modemNumber === modemNum);
+          if (!modem?.isPowered) return false;
+
+          return modem.fec === targetFec;
+        });
+      }
+
+      case 'tx-modem-frequency-set': {
+        if (condition.params?.frequency === undefined) return false;
+        const targetFrequency = condition.params.frequency;
+        const tolerance = condition.params.frequencyTolerance ?? 1e6; // Default 1 MHz
+        return this.evaluateEquipment_(gs.transmitters, condition.params, (transmitter) => {
+          const modemNum = condition.params?.modemNumber ?? transmitter.state.activeModem;
+          const modem = transmitter.state.modems.find(m => m.modem_number === modemNum);
+          if (!modem?.isPowered) return false;
+          // Transmitter frequency is in Hz (stored in ifSignal)
+          const diff = Math.abs(modem.ifSignal.frequency - targetFrequency);
+          return diff <= tolerance;
+        });
+      }
+
+      case 'tx-modem-power-set': {
+        if (condition.params?.power === undefined) return false;
+        const targetPower = condition.params.power;
+        const tolerance = condition.params.powerTolerance ?? 1; // Default 1 dB
+        return this.evaluateEquipment_(gs.transmitters, condition.params, (transmitter) => {
+          const modemNum = condition.params?.modemNumber ?? transmitter.state.activeModem;
+          const modem = transmitter.state.modems.find(m => m.modem_number === modemNum);
+          if (!modem?.isPowered) return false;
+          const diff = Math.abs(modem.ifSignal.power - targetPower);
+          return diff <= tolerance;
+        });
+      }
+
+      case 'tx-modem-bandwidth-set': {
+        if (condition.params?.bandwidth === undefined) return false;
+        const targetBandwidth = condition.params.bandwidth;
+        const tolerance = condition.params.bandwidthTolerance ?? 1e6; // Default 1 MHz
+        return this.evaluateEquipment_(gs.transmitters, condition.params, (transmitter) => {
+          const modemNum = condition.params?.modemNumber ?? transmitter.state.activeModem;
+          const modem = transmitter.state.modems.find(m => m.modem_number === modemNum);
+          if (!modem?.isPowered) return false;
+          const diff = Math.abs(modem.ifSignal.bandwidth - targetBandwidth);
+          return diff <= tolerance;
+        });
+      }
+
+      case 'tx-modem-modulation-set': {
+        if (!condition.params?.modulation) return false;
+        const targetModulation = condition.params.modulation;
+        return this.evaluateEquipment_(gs.transmitters, condition.params, (transmitter) => {
+          const modemNum = condition.params?.modemNumber ?? transmitter.state.activeModem;
+          const modem = transmitter.state.modems.find(m => m.modem_number === modemNum);
+          if (!modem?.isPowered) return false;
+          return modem.ifSignal.modulation === targetModulation;
+        });
+      }
+
+      case 'tx-modem-fec-set': {
+        if (!condition.params?.fec) return false;
+        const targetFec = condition.params.fec;
+        return this.evaluateEquipment_(gs.transmitters, condition.params, (transmitter) => {
+          const modemNum = condition.params?.modemNumber ?? transmitter.state.activeModem;
+          const modem = transmitter.state.modems.find(m => m.modem_number === modemNum);
+          if (!modem?.isPowered) return false;
+          return modem.ifSignal.fec === targetFec;
+        });
+      }
+
+      case 'tx-modem-transmitting': {
+        return this.evaluateEquipment_(gs.transmitters, condition.params, (transmitter) => {
+          const modemNum = condition.params?.modemNumber ?? transmitter.state.activeModem;
+          const modem = transmitter.state.modems.find(m => m.modem_number === modemNum);
+          return modem?.isPowered === true && modem?.isTransmitting === true;
+        });
+      }
+
       case 'status-check': {
         // Quiz-based condition - requires player to answer correctly
         const params = condition.params;
@@ -1298,6 +1540,76 @@ export class ObjectivesManager {
 
         // Check if quiz has been completed
         return quizManager.isQuizComplete(objectiveState.objective.id, conditionIndex);
+      }
+
+      case 'handover-complete': {
+        // Check if handover to target station completed
+        const targetGsId = condition.params?.targetGroundStationId;
+        const satId = condition.params?.satelliteId;
+        if (!targetGsId || satId === undefined) return false;
+
+        const tcm = TrafficControlManager.getInstance();
+        return tcm.getOwner(satId) === targetGsId;
+      }
+
+      case 'traffic-owner': {
+        // Check if this ground station owns traffic to satellite
+        const gsId = objectiveState.objective.groundStation;
+        const satId = condition.params?.satelliteId;
+        if (!gsId || satId === undefined) return false;
+
+        const tcm = TrafficControlManager.getInstance();
+        return tcm.getOwner(satId) === gsId;
+      }
+
+      case 'ground-station-selected': {
+        // Check if specific ground station is selected in UI
+        // This would require tracking selected ground station in SimulationManager
+        // For now, return true if the objective's groundStation matches
+        const targetGsId = condition.params?.groundStationId;
+        if (!targetGsId) return false;
+
+        // Check if the SimulationManager has a selected ground station concept
+        // For now, we'll consider it selected if there's a ground station with that ID
+        const gs = SimulationManager.getInstance().groundStations.find(g => g.state.id === targetGsId);
+        return gs !== undefined;
+      }
+
+      case 'traffic-transferred': {
+        // Check if traffic was transferred from source station to target station
+        const sourceStation = condition.params?.sourceStation;
+        const targetStation = condition.params?.targetStation;
+        const satId = condition.params?.satelliteId;
+
+        if (!sourceStation || !targetStation || satId === undefined) {
+          console.warn('traffic-transferred condition requires sourceStation, targetStation, and satelliteId params');
+          return false;
+        }
+
+        // Check if target station now owns the traffic (meaning transfer occurred)
+        const tcm = TrafficControlManager.getInstance();
+        return tcm.getOwner(satId) === targetStation;
+      }
+
+      case 'service-continuity': {
+        // Placeholder condition for service continuity during handover
+        // In a real implementation, this would track packet loss during handover
+        // For now, this always passes since we don't model packet-level traffic
+        return true;
+      }
+
+      case 'mission-brief-opened': {
+        const targetBoxId = condition.params?.boxId as string | undefined;
+        if (targetBoxId) {
+          return ObjectivesManager.isBoxOpened(targetBoxId);
+        }
+        // If no specific boxId, check if any mission-brief box was opened
+        for (const boxId of ObjectivesManager.openedBoxIds_) {
+          if (boxId.startsWith('mission-brief')) {
+            return true;
+          }
+        }
+        return false;
       }
 
       default:

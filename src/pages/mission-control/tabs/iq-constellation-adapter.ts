@@ -127,7 +127,12 @@ export class IQConstellationAdapter {
       points = this.applyFrequencyOffset_(points, signalState.frequencyOffset_Hz);
     }
 
-    // Draw constellation with C/N-based noise
+    // Apply ADC clipping compression effect
+    if (signalState.adcDegradation?.clipPenalty_dB && signalState.adcDegradation.clipPenalty_dB > 0) {
+      points = this.applyClippingEffect_(points, signalState.adcDegradation.clipPenalty_dB);
+    }
+
+    // Draw constellation with C/N-based noise (uses effective C/N if available)
     this.drawConstellationRealistic_(ctx, points, centerX, centerY, scale, signalState);
   }
 
@@ -142,14 +147,36 @@ export class IQConstellationAdapter {
       return;
     }
 
-    // C/N indicator
-    const cnText = state.cnRatio_dB > -50 ? `C/N: ${state.cnRatio_dB.toFixed(1)} dB` : 'C/N: ---';
-    const cnClass = state.cnRatio_dB > 15 ? 'text-success' : state.cnRatio_dB > 8 ? 'text-warning' : 'text-danger';
+    // Use effective C/N (with ADC penalty) for display
+    const displayCn = state.effectiveCnRatio_dB ?? state.cnRatio_dB;
+    const cnText = displayCn > -50 ? `C/N: ${displayCn.toFixed(1)} dB` : 'C/N: ---';
+
+    // Color based on effective C/N AND ADC status
+    let cnClass: string;
+    const adcStatus = state.adcDegradation?.status;
+    if (adcStatus === 'clipping' || adcStatus === 'severe-clipping') {
+      cnClass = 'text-danger';  // Red for clipping
+    } else if (adcStatus === 'low-level' || adcStatus === 'severe-low') {
+      cnClass = 'text-info';    // Blue for low level
+    } else if (displayCn >= 8) {
+      cnClass = 'text-success';
+    } else if (displayCn >= 5) {
+      cnClass = 'text-warning';
+    } else {
+      cnClass = 'text-danger';
+    }
     this.cnIndicator_.textContent = cnText;
     this.cnIndicator_.className = `iq-status-cn font-monospace ${cnClass}`;
 
-    // Lock indicator
-    const lockText = state.hasLock ? 'LOCKED' : state.hasCarrier ? 'CARRIER' : 'NO LOCK';
+    // Lock indicator with ADC status and bandwidth clipping suffix
+    let lockText = state.hasLock ? 'LOCKED' : state.hasCarrier ? 'CARRIER' : 'NO LOCK';
+    if (adcStatus === 'clipping' || adcStatus === 'severe-clipping') {
+      lockText += ' (CLIP)';
+    } else if (adcStatus === 'low-level' || adcStatus === 'severe-low') {
+      lockText += ' (LOW)';
+    } else if (state.isBandwidthClipped) {
+      lockText += ' (BW)';
+    }
     const lockClass = state.hasLock ? 'text-success' : state.hasCarrier ? 'text-warning' : 'text-danger';
     this.lockIndicator_.textContent = lockText;
     this.lockIndicator_.className = `iq-status-lock font-monospace ${lockClass}`;
@@ -232,14 +259,55 @@ export class IQConstellationAdapter {
 
   /**
    * Compute noise spread from C/N ratio
-   * Higher C/N = tighter constellation clusters
+   * >= 8 dB: great signal (tight clusters)
+   * 5-8 dB: marginal signal (moderate spread)
+   * 0-5 dB: degraded signal (significant spread)
+   * < 0 dB: just noise (constellation barely visible)
    */
   private computeNoiseSpread_(cnRatio_dB: number): number {
-    if (cnRatio_dB < -10) return 1.0;   // Pure noise
-    if (cnRatio_dB > 30) return 0.02;   // Very tight clusters
+    if (cnRatio_dB < 0) return 0.9;     // Just noise - constellation barely visible
+    if (cnRatio_dB < 5) {
+      // Degraded: lerp from 0.9 at 0 dB to 0.35 at 5 dB
+      return 0.9 - (cnRatio_dB / 5) * 0.55;
+    }
+    if (cnRatio_dB < 8) {
+      // Marginal: lerp from 0.35 at 5 dB to 0.08 at 8 dB
+      return 0.35 - ((cnRatio_dB - 5) / 3) * 0.27;
+    }
+    // Great signal: lerp from 0.08 at 8 dB to 0.02 at 15+ dB
+    const t = Math.min(1, (cnRatio_dB - 8) / 7);
+    return 0.08 - t * 0.06;
+  }
 
-    const cnLinear = Math.pow(10, cnRatio_dB / 10);
-    return Math.min(1.0, Math.max(0.02, 1 / Math.sqrt(2 * cnLinear)));
+  /**
+   * Compute additional noise spread from ADC quantization noise.
+   * Low signal levels cause increased "graininess" in constellation.
+   */
+  private computeQuantizationNoiseSpread_(quantizationPenalty_dB: number): number {
+    if (quantizationPenalty_dB <= 0) return 0;
+    // Quantization noise adds structured spread
+    // 6 dB penalty = ~0.1 additional spread
+    return quantizationPenalty_dB * 0.015;
+  }
+
+  /**
+   * Apply ADC clipping effect to constellation points.
+   * Compresses points toward origin when clipping occurs.
+   */
+  private applyClippingEffect_(
+    points: { i: number; q: number }[],
+    clipPenalty_dB: number
+  ): { i: number; q: number }[] {
+    if (clipPenalty_dB <= 0) return points;
+
+    // Compression factor: severe clipping pushes symbols toward origin
+    // clipPenalty of 10 dB = ~50% compression
+    const compressionFactor = 1 / (1 + clipPenalty_dB / 10);
+
+    return points.map(p => ({
+      i: p.i * compressionFactor,
+      q: p.q * compressionFactor
+    }));
   }
 
   /**
@@ -351,24 +419,29 @@ export class IQConstellationAdapter {
     scale: number,
     state: IQSignalInfo
   ): void {
-    const noiseSpread = this.computeNoiseSpread_(state.cnRatio_dB);
-    const samplesPerPoint = this.getSamplesPerPoint_(state.cnRatio_dB);
+    // Use effective C/N if available (includes ADC penalty)
+    const effectiveCn = state.effectiveCnRatio_dB ?? state.cnRatio_dB;
+    const noiseSpread = this.computeNoiseSpread_(effectiveCn);
 
-    // Determine color based on lock state
-    const color = state.hasLock
-      ? 'rgba(0, 255, 128, 0.6)'      // Green - locked
-      : state.modulationMismatch
-        ? 'rgba(255, 165, 0, 0.6)'    // Orange - wrong modulation
-        : 'rgba(255, 255, 0, 0.6)';   // Yellow - wrong FEC or marginal
+    // Add quantization noise spread if present
+    const quantNoiseSpread = state.adcDegradation
+      ? this.computeQuantizationNoiseSpread_(state.adcDegradation.quantizationPenalty_dB)
+      : 0;
+    const totalNoiseSpread = noiseSpread + quantNoiseSpread;
+
+    const samplesPerPoint = this.getSamplesPerPoint_(effectiveCn);
+
+    // Determine color based on lock state AND ADC status
+    const color = this.getConstellationColor_(state);
 
     ctx.fillStyle = color;
 
-    // Draw noisy samples
+    // Draw noisy samples with combined noise spread
     for (const point of points) {
       for (let s = 0; s < samplesPerPoint; s++) {
         const { z0, z1 } = this.boxMullerGaussian_();
-        const noiseI = z0 * noiseSpread;
-        const noiseQ = z1 * noiseSpread;
+        const noiseI = z0 * totalNoiseSpread;
+        const noiseQ = z1 * totalNoiseSpread;
 
         const x = cx + (point.i + noiseI) * scale;
         const y = cy - (point.q + noiseQ) * scale;
@@ -379,25 +452,81 @@ export class IQConstellationAdapter {
       }
     }
 
-    // Draw ideal constellation reference points (dimmer when not locked)
-    ctx.fillStyle = state.hasLock ? '#00ff80' : 'rgba(255, 255, 255, 0.3)';
-    for (const point of points) {
-      const x = cx + point.i * scale;
-      const y = cy - point.q * scale;
-      ctx.beginPath();
-      ctx.arc(x, y, 3, 0, Math.PI * 2);
-      ctx.fill();
+    // Draw ideal constellation reference points
+    // Visibility based on signal quality: hidden when noise, dim when degraded
+    const cn = state.effectiveCnRatio_dB ?? state.cnRatio_dB;
+    if (cn >= 0) {  // Don't draw reference points for pure noise
+      let refColor: string;
+      if (cn < 5) {
+        refColor = 'rgba(255, 255, 255, 0.15)';  // Very dim - degraded
+      } else if (cn < 8) {
+        refColor = 'rgba(255, 255, 255, 0.3)';   // Dim - marginal
+      } else if (state.hasLock) {
+        refColor = '#00ff80';                    // Bright green - locked, great
+      } else {
+        refColor = 'rgba(255, 255, 255, 0.5)';   // Medium - good but not locked
+      }
+      ctx.fillStyle = refColor;
+      for (const point of points) {
+        const x = cx + point.i * scale;
+        const y = cy - point.q * scale;
+        ctx.beginPath();
+        ctx.arc(x, y, 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
+  }
+
+  /**
+   * Get constellation color based on C/N ratio, lock state, and ADC status.
+   * >= 8 dB: green (great signal)
+   * 5-8 dB: yellow (marginal)
+   * 0-5 dB: orange (degraded)
+   * < 0 dB: red (just noise)
+   */
+  private getConstellationColor_(state: IQSignalInfo): string {
+    // Color based on C/N ratio (use effective C/N if available)
+    const cn = state.effectiveCnRatio_dB ?? state.cnRatio_dB;
+
+    // Noise takes priority - always gray when C/N < 0
+    if (cn < 0) {
+      return 'rgba(128, 128, 128, 0.4)';    // Gray - just noise
+    }
+
+    // ADC clipping status (only relevant when there's signal)
+    const adcStatus = state.adcDegradation?.status;
+    if (adcStatus === 'severe-clipping') {
+      return 'rgba(255, 0, 0, 0.6)';        // Red - severe clipping
+    }
+    if (adcStatus === 'clipping') {
+      return 'rgba(255, 100, 0, 0.6)';      // Orange - clipping
+    }
+
+    if (cn < 5) {
+      return 'rgba(255, 80, 80, 0.6)';      // Red - degraded signal
+    }
+    if (cn < 8) {
+      return 'rgba(255, 200, 0, 0.6)';      // Yellow - marginal signal
+    }
+    // >= 8 dB: great signal
+    if (state.hasLock) {
+      return 'rgba(0, 255, 128, 0.6)';      // Green - locked, great signal
+    }
+    if (state.modulationMismatch) {
+      return 'rgba(255, 165, 0, 0.6)';      // Orange - wrong modulation config
+    }
+    return 'rgba(100, 255, 100, 0.6)';      // Light green - good signal, not locked
   }
 
   private getSamplesPerPoint_(cnRatio_dB: number): number {
     // More samples when C/N is low (to show spread)
     // Fewer when C/N is high (tight clusters visible with fewer points)
-    if (cnRatio_dB < 5) return 40;
-    if (cnRatio_dB < 10) return 30;
-    if (cnRatio_dB < 15) return 25;
-    if (cnRatio_dB < 20) return 20;
-    return 15;
+    if (cnRatio_dB < 0) return 50;   // Just noise - many samples
+    if (cnRatio_dB < 5) return 40;   // Degraded
+    if (cnRatio_dB < 8) return 30;   // Marginal
+    if (cnRatio_dB < 12) return 25;  // Good
+    if (cnRatio_dB < 15) return 20;  // Great
+    return 15;                        // Excellent
   }
 
   public dispose(): void {

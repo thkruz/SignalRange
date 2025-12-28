@@ -1,9 +1,39 @@
 import { EventBus } from "@app/events/event-bus";
 import { Events } from "@app/events/events";
-import { SignalOrigin } from "@app/SignalOrigin";
+import { SignalOrigin } from "@app/signal-origin";
 import { PerlinNoise } from "@app/simulation/perlin-noise";
 import { dBi, dBm, Hertz, RfFrequency, RfSignal } from "@app/types";
 import { Degrees } from "ootk";
+
+/**
+ * Configuration for explicitly defining a satellite transponder.
+ * Used when creating satellites with multiple transponders that have
+ * distinct passbands and frequency offsets.
+ */
+export interface TransponderConfig {
+  /** Unique transponder identifier (e.g., "TP-1", "TP-2") */
+  id: string;
+  /** Center frequency of the uplink passband in Hz */
+  uplinkCenterFrequency: RfFrequency;
+  /** Transponder bandwidth in Hz (passband width) */
+  bandwidth: Hertz;
+  /** Frequency offset: downlink = uplink - offset */
+  frequencyOffset: Hertz;
+  /** Transponder polarization - only signals matching this polarization are processed */
+  polarization: 'H' | 'V' | 'LHCP' | 'RHCP';
+  /** Optional beacon signal for this transponder */
+  beacon?: RfSignal;
+  /** Maximum output power (dBm), default 50 */
+  maxPower?: dBm;
+  /** Transponder gain (dBi), default 36.5 */
+  gain?: dBi;
+  /** Noise figure (dBi), default 3.5 */
+  noiseFigure?: dBi;
+  /** Saturation power (dBm), default 47 */
+  saturationPower?: dBm;
+  /** Whether transponder is initially active, default true */
+  isActive?: boolean;
+}
 
 /**
  * Represents a transponder configuration on a satellite.
@@ -29,6 +59,14 @@ export interface Transponder {
   saturationPower: dBm;
   /** Whether the transponder is active */
   isActive: boolean;
+  /** Lower edge of uplink passband (uplinkFrequency - bandwidth/2) */
+  uplinkLowEdge: RfFrequency;
+  /** Upper edge of uplink passband (uplinkFrequency + bandwidth/2) */
+  uplinkHighEdge: RfFrequency;
+  /** Transponder polarization for signal filtering */
+  polarization: 'H' | 'V' | 'LHCP' | 'RHCP';
+  /** Per-transponder frequency offset */
+  frequencyOffset: Hertz;
 }
 
 /**
@@ -55,8 +93,11 @@ export interface SatelliteState {
   rotation?: Degrees; // Random rotation if not specified
   az: Degrees;
   el: Degrees;
+  /** Legacy: single frequency offset for all transponders (used when transponderConfigs not provided) */
   frequencyOffset: Hertz;
   degradationConfig?: Partial<SignalDegradationConfig>;
+  /** Explicit transponder configurations (takes precedence over legacy signal-derived transponders) */
+  transponderConfigs?: TransponderConfig[];
 }
 
 /**
@@ -92,11 +133,16 @@ export class Satellite {
   private readonly frequencyOffset: number;
 
   private readonly randomCache_: Map<string, number> = new Map();
+  private readonly boundUpdateHandler_: () => void;
+  private isSubscribedToEventBus_ = false;
+
   el: Degrees;
   az: Degrees;
   rotation: Degrees = ((Math.random() * 90) - 45) as Degrees;
+  name: string;
 
   constructor(
+    name: string,
     norad: number,
     rxSignal: RfSignal[] = [],
     beaconSignal: RfSignal[] = [],
@@ -112,6 +158,8 @@ export class Satellite {
     this.el = satelliteState.el;
     this.rotation = satelliteState.rotation ?? this.rotation;
 
+    this.name = name ?? `NORAD-${this.noradId}`;
+
     // Default degradation configuration
     this.degradationConfig = {
       atmosphericEffects: true,
@@ -124,13 +172,31 @@ export class Satellite {
       ...satelliteState.degradationConfig
     };
 
-    // Initialize transponders based on received signals
-    this.transponders = this.initializeTransponders(rxSignal, beaconSignal);
+    // Initialize transponders: use explicit config if provided, otherwise derive from signals
+    if (satelliteState.transponderConfigs?.length) {
+      this.transponders = this.initializeTranspondersFromConfig_(satelliteState.transponderConfigs);
+    } else {
+      this.transponders = this.initializeTransponders_(rxSignal, beaconSignal);
+    }
 
     // Process received signals through transponders to generate transmitted signals
     this.txSignal = this.processSignals();
 
-    EventBus.getInstance().on(Events.UPDATE, this.update.bind(this));
+    // Store bound handler for proper subscription/unsubscription
+    this.boundUpdateHandler_ = this.update.bind(this);
+  }
+
+  /**
+   * Subscribe to EventBus for update events.
+   * Called by SimulationManager when scenario loads to ensure subscription to current EventBus.
+   */
+  subscribeToEventBus(): void {
+    if (this.isSubscribedToEventBus_) {
+      // Unsubscribe first to avoid duplicate handlers
+      EventBus.getInstance().off(Events.UPDATE, this.boundUpdateHandler_);
+    }
+    EventBus.getInstance().on(Events.UPDATE, this.boundUpdateHandler_);
+    this.isSubscribedToEventBus_ = true;
   }
 
   private static getDefaultState_(): SatelliteState {
@@ -143,20 +209,55 @@ export class Satellite {
   }
 
   /**
-   * Initialize transponders based on received signals.
+   * Initialize transponders from explicit configuration.
+   * Each config defines a complete transponder with its own passband and frequency offset.
    */
-  private initializeTransponders(rxSignals: RfSignal[], beaconSignals: RfSignal[]): Transponder[] {
+  private initializeTranspondersFromConfig_(configs: TransponderConfig[]): Transponder[] {
+    return configs.map((config) => {
+      const halfBandwidth = config.bandwidth / 2;
+      const downlinkCenter = (config.uplinkCenterFrequency - config.frequencyOffset) as RfFrequency;
+
+      return {
+        id: config.id,
+        uplinkFrequency: config.uplinkCenterFrequency,
+        downlinkFrequency: downlinkCenter,
+        bandwidth: config.bandwidth,
+        beacon: config.beacon,
+        maxPower: config.maxPower ?? (50 as dBm),
+        gain: config.gain ?? (36.5 as dBi),
+        noiseFigure: config.noiseFigure ?? (3.5 as dBi),
+        saturationPower: config.saturationPower ?? (47 as dBm),
+        isActive: config.isActive ?? true,
+        uplinkLowEdge: (config.uplinkCenterFrequency - halfBandwidth) as RfFrequency,
+        uplinkHighEdge: (config.uplinkCenterFrequency + halfBandwidth) as RfFrequency,
+        polarization: config.polarization,
+        frequencyOffset: config.frequencyOffset,
+      };
+    });
+  }
+
+  /**
+   * Initialize transponders based on received signals (legacy backward-compatible mode).
+   */
+  private initializeTransponders_(rxSignals: RfSignal[], beaconSignals: RfSignal[]): Transponder[] {
+    const bandwidth = 36e6 as Hertz;
+    const halfBandwidth = bandwidth / 2;
+
     return rxSignals.map((signal, index) => ({
       id: `tp-${this.noradId}-${index}`,
       uplinkFrequency: signal.frequency,
       beacon: beaconSignals[index],
       downlinkFrequency: this.getDownlinkFromUplink(signal.frequency),
-      bandwidth: signal.bandwidth,
-      maxPower: signal.power, // Use the initial signal power as max power
-      gain: 36.5 as dBi, // dB, typical transponder gain
-      noiseFigure: 3.5 as dBi, // dB, typical satellite transponder noise figure
-      saturationPower: 37 as dBm, // 5 W typical saturation power
-      isActive: true
+      bandwidth: bandwidth,
+      maxPower: 50 as dBm,
+      gain: 36.5 as dBi,
+      noiseFigure: 3.5 as dBi,
+      saturationPower: 47 as dBm,
+      isActive: true,
+      uplinkLowEdge: (signal.frequency - halfBandwidth) as RfFrequency,
+      uplinkHighEdge: (signal.frequency + halfBandwidth) as RfFrequency,
+      polarization: (signal.polarization ?? 'H') as 'H' | 'V' | 'LHCP' | 'RHCP',
+      frequencyOffset: this.frequencyOffset as Hertz,
     }));
   }
 
@@ -168,6 +269,7 @@ export class Satellite {
     this.createRandomValues_();
 
     // Process signals through transponders
+    // Note: rxSignal is populated by antenna.updateTxSignals_() each frame
     this.txSignal = this.processSignals();
 
     // Update satellite health based on conditions
@@ -197,7 +299,8 @@ export class Satellite {
     const allRxSignals = [...this.rxSignal, ...this.externalSignal];
 
     for (const signal of allRxSignals) {
-      const transponder = this.findTransponderByUplinkFrequency(signal.frequency);
+      // Find transponder by passband and polarization matching
+      const transponder = this.findTransponderByUplinkFrequency(signal.frequency, signal.polarization);
 
       if (!transponder?.isActive) {
         continue;
@@ -215,8 +318,8 @@ export class Satellite {
       // Add transponder gain
       txPower = (txPower + transponder.gain) as dBm;
 
-      // Frequency translation (uplink to downlink)
-      const txFrequency = transponder.downlinkFrequency;
+      // Frequency translation using per-transponder offset
+      const txFrequency = (signal.frequency - transponder.frequencyOffset) as RfFrequency;
 
       // Create transmitted signal
       let txSignal: RfSignal = {
@@ -256,8 +359,25 @@ export class Satellite {
     return processedSignals;
   }
 
-  private findTransponderByUplinkFrequency(frequency: RfFrequency): Transponder | undefined {
-    return this.transponders.find(tp => tp.uplinkFrequency === frequency);
+  /**
+   * Find a transponder that can process the given signal.
+   * Matches based on:
+   * 1. Signal frequency falling within transponder's passband (uplinkLowEdge to uplinkHighEdge)
+   * 2. Signal polarization matching transponder's polarization
+   */
+  private findTransponderByUplinkFrequency(
+    frequency: RfFrequency,
+    polarization: 'H' | 'V' | 'LHCP' | 'RHCP' | null
+  ): Transponder | undefined {
+    return this.transponders.find(tp => {
+      // Check if frequency falls within passband
+      const inPassband = frequency >= tp.uplinkLowEdge && frequency <= tp.uplinkHighEdge;
+      if (!inPassband) return false;
+
+      // Check polarization match (null signal polarization matches anything)
+      if (polarization === null) return true;
+      return tp.polarization === polarization;
+    });
   }
 
   /**

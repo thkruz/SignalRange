@@ -26,6 +26,7 @@ import './objectives-manager.css';
 export class ObjectivesManager {
   private static instance_: ObjectivesManager | null = null;
   private static openedBoxIds_: Set<string> = new Set();
+  private static selectedGroundStationId_: string | null = null;
   private readonly objectiveStates_: ObjectiveState[] = [];
   private readonly eventBus_: EventBus;
   private readonly collapsedObjectiveIds_: Set<string> = new Set();
@@ -43,6 +44,7 @@ export class ObjectivesManager {
 
   private readonly boundQuizPassedHandler_: (data: QuizPassedData) => void;
   private readonly boundQuizCompletedHandler_: (data: QuizCompletedData) => void;
+  private readonly boundAssetSelectedHandler_: (data: { type: string; id: string }) => void;
 
   private constructor(objectives: Objective[], scenarioTimeLimit?: number) {
     this.eventBus_ = EventBus.getInstance();
@@ -50,6 +52,7 @@ export class ObjectivesManager {
     // Initialize bound handlers
     this.boundQuizPassedHandler_ = this.handleQuizPassed_.bind(this);
     this.boundQuizCompletedHandler_ = this.handleQuizCompleted_.bind(this);
+    this.boundAssetSelectedHandler_ = this.handleAssetSelected_.bind(this);
 
     // Track scenario start time for elapsed time calculation
     this.scenarioStartTime_ = Date.now();
@@ -101,6 +104,9 @@ export class ObjectivesManager {
     this.eventBus_.on(Events.QUIZ_PASSED, this.boundQuizPassedHandler_);
     this.eventBus_.on(Events.QUIZ_COMPLETED, this.boundQuizCompletedHandler_);
 
+    // Subscribe to asset selection events for ground-station-selected condition
+    this.eventBus_.on(Events.ASSET_SELECTED, this.boundAssetSelectedHandler_);
+
     // Start the 1-second timer interval for countdown updates
     this.startTimerInterval_();
   }
@@ -138,6 +144,7 @@ export class ObjectivesManager {
       ObjectivesManager.instance_.eventBus_.off(Events.UPDATE, ObjectivesManager.instance_.update_.bind(ObjectivesManager.instance_));
       ObjectivesManager.instance_.eventBus_.off(Events.QUIZ_PASSED, ObjectivesManager.instance_.boundQuizPassedHandler_);
       ObjectivesManager.instance_.eventBus_.off(Events.QUIZ_COMPLETED, ObjectivesManager.instance_.boundQuizCompletedHandler_);
+      ObjectivesManager.instance_.eventBus_.off(Events.ASSET_SELECTED, ObjectivesManager.instance_.boundAssetSelectedHandler_);
 
       // Clear timer interval
       if (ObjectivesManager.instance_.timerInterval_) {
@@ -150,6 +157,9 @@ export class ObjectivesManager {
 
     // Clear opened box tracking
     ObjectivesManager.openedBoxIds_.clear();
+
+    // Clear selected ground station
+    ObjectivesManager.selectedGroundStationId_ = null;
   }
 
   /**
@@ -357,6 +367,26 @@ export class ObjectivesManager {
    */
   getPassedObjectiveId(): string | null {
     return this.passedObjectiveId_;
+  }
+
+  /**
+   * Handle asset selection events from the UI
+   * Updates the selected ground station for condition evaluation
+   */
+  private handleAssetSelected_(data: { type: string; id: string }): void {
+    if (data.type === 'ground-station') {
+      ObjectivesManager.selectedGroundStationId_ = data.id;
+    } else {
+      // Non-ground-station selected (satellite, mission-overview, etc.)
+      ObjectivesManager.selectedGroundStationId_ = null;
+    }
+  }
+
+  /**
+   * Get the currently selected ground station ID
+   */
+  static getSelectedGroundStationId(): string | null {
+    return ObjectivesManager.selectedGroundStationId_;
   }
 
   /**
@@ -1563,16 +1593,11 @@ export class ObjectivesManager {
       }
 
       case 'ground-station-selected': {
-        // Check if specific ground station is selected in UI
-        // This would require tracking selected ground station in SimulationManager
-        // For now, return true if the objective's groundStation matches
+        // Check if specific ground station is selected in the asset tree sidebar
         const targetGsId = condition.params?.groundStationId;
         if (!targetGsId) return false;
 
-        // Check if the SimulationManager has a selected ground station concept
-        // For now, we'll consider it selected if there's a ground station with that ID
-        const gs = SimulationManager.getInstance().groundStations.find(g => g.state.id === targetGsId);
-        return gs !== undefined;
+        return ObjectivesManager.selectedGroundStationId_ === targetGsId;
       }
 
       case 'traffic-transferred': {

@@ -166,7 +166,7 @@ export const scenario3Data: ScenarioData = {
   objectives: [
     {
       id: 'enable-vt01-heater',
-      title: 'Phase 1: Activate Weather Protection',
+      title: 'Activate Weather Protection',
       description: 'Ice accumulation on the antenna feed can degrade signal quality and damage the waveguide. Enable the feed heater on VT-01 before the storm arrives - this prevents ice from forming on critical RF components.',
       groundStation: 'VT-01',
       timeLimitSeconds: 240, // 4 minutes
@@ -183,14 +183,14 @@ export const scenario3Data: ScenarioData = {
     },
     {
       id: 'switch-to-maine',
-      title: 'Phase 2: Access Backup Site Controls',
-      description: 'Use the ground station selector to switch your view to ME-02 (Maine). This gives you control of the backup site equipment while Vermont continues serving traffic.',
+      title: 'Access Backup Site Controls',
+      description: 'Use the asset menu on the left to switch to ME-02 (Maine). This gives you control of the backup site equipment while Vermont continues serving traffic.',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['enable-vt01-heater'],
       conditions: [
         {
           type: 'ground-station-selected',
-          description: 'ME-02 Selected in Switcher',
+          description: 'ME-02 Selected in assets menu',
           params: {
             groundStationId: 'ME-02',
           },
@@ -202,7 +202,7 @@ export const scenario3Data: ScenarioData = {
     },
     {
       id: 'verify-maine-equipment',
-      title: 'Phase 3: Verify Reference Timing',
+      title: 'Verify Reference Timing',
       description: 'Before configuring any RF equipment, verify the GPSDO is locked and providing stable reference timing. Without accurate frequency reference, the modem cannot maintain carrier lock.',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['switch-to-maine'],
@@ -218,7 +218,7 @@ export const scenario3Data: ScenarioData = {
     },
     {
       id: 'configure-maine-antenna',
-      title: 'Phase 4: Acquire TIDEMARK-1 from Maine',
+      title: 'Acquire TIDEMARK-1 from Maine',
       description: 'Point the Maine antenna at TIDEMARK-1. The look angles differ from Vermont due to the 150-mile separation between sites. Use program-track mode with Az: 164.2°, El: 23.1°.',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['verify-maine-equipment'],
@@ -239,7 +239,7 @@ export const scenario3Data: ScenarioData = {
     },
     {
       id: 'configure-maine-lnb',
-      title: 'Phase 5: Power Up Receive Chain',
+      title: 'Power Up Receive Chain',
       description: 'Power on the LNB and configure it to match Vermont settings: LO frequency 5,150 MHz, Gain 55 dB. Wait for thermal stabilization before proceeding - cold LNBs have unstable noise figures.',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['configure-maine-antenna'],
@@ -281,7 +281,7 @@ export const scenario3Data: ScenarioData = {
     },
     {
       id: 'configure-maine-modem',
-      title: 'Phase 6: Configure Receiver Modem',
+      title: 'Configure Receiver Modem',
       description: 'Set the receiver modem parameters to match the TIDEMARK-1 carrier: Center Frequency 1,432 MHz (L-band IF), Bandwidth 36 MHz, QPSK modulation, FEC rate 3/4. These must match Vermont exactly for seamless handover.',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['configure-maine-lnb'],
@@ -330,7 +330,7 @@ export const scenario3Data: ScenarioData = {
     },
     {
       id: 'verify-maine-lock',
-      title: 'Phase 7: Confirm Signal Acquisition',
+      title: 'Confirm Signal Acquisition',
       description: 'Wait for the receiver modem to achieve carrier lock and verify C/N ratio meets operational threshold (≥10 dB). Lock without adequate C/N means marginal signal - handover would risk service interruption.',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['configure-maine-modem'],
@@ -356,7 +356,7 @@ export const scenario3Data: ScenarioData = {
     },
     {
       id: 'enable-me-02-transmitter',
-      title: 'Phase 8: Enable ME-02 Transmitter',
+      title: 'Enable ME-02 Transmitter',
       description: 'Power on the ME-02 transmitter and configure it to match the VT-01 settings for TIDEMARK-1: Frequency 1,094 MHz (IF), Power -7 dBm, Bandwidth 36 MHz, QPSK modulation, FEC 3/4. This prepares ME-02 to take over transmission after handover.',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['verify-maine-lock'],
@@ -421,7 +421,7 @@ export const scenario3Data: ScenarioData = {
     },
     {
       id: 'execute-handover',
-      title: 'Phase 9: Execute Traffic Handover',
+      title: 'Execute Traffic Handover',
       description: 'Transfer active customer traffic from VT-01 to ME-02. The NOC will switch network routing on your command. Monitor the handover carefully - any packet loss during transition affects customer SLA.',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['enable-me-02-transmitter'],
@@ -450,7 +450,7 @@ export const scenario3Data: ScenarioData = {
     },
     {
       id: 'stow-vermont-antenna',
-      title: 'Phase 10: Protect Vermont Antenna',
+      title: 'Protect Vermont Antenna',
       description: 'With traffic safely on Maine, stow the Vermont antenna to protect it from wind loading and ice accumulation during the blizzard. Stow position is Az: 0°, El: 90° (pointed straight up).',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['execute-handover'],

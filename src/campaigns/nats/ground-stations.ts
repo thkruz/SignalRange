@@ -218,7 +218,7 @@ export const vermontGroundStation = {
 } as GroundStationConfig;
 
 export const maineGroundStationConfig = {
-  id: 'ME-01',
+  id: 'ME-02',
   isOperational: false,
   name: 'Maine Ground Station',
   location: {

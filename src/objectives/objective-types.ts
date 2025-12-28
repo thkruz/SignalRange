@@ -32,6 +32,7 @@ export type ConditionType =
   | 'speca-span-set' // Spectrum analyzer span set to specific value
   | 'speca-rbw-set' // Spectrum analyzer RBW set to specific value
   | 'speca-reference-level-set' // Spectrum analyzer reference level set
+  | 'speca-center-frequency' // Spectrum analyzer center frequency set to specific value
   | 'speca-noise-floor-visible' // Spectrum analyzer shows clean baseline
   | 'filter-bandwidth-set' // IF filter bandwidth configured
   | 'notch-filter-configured' // Notch filter set to specific center freq, width, depth
@@ -118,6 +119,10 @@ export interface ConditionParams {
   referenceLevel?: number;
   /** For speca-reference-level-set: reference level tolerance in dB */
   referenceLevelTolerance?: number;
+  /** For speca-center-frequency: target center frequency in Hz */
+  centerFrequency?: number;
+  /** For speca-center-frequency: center frequency tolerance in Hz (default: 1e6) */
+  centerFrequencyTolerance?: number;
   /** For speca-noise-floor-visible: maximum signal strength to consider "clean baseline" in dBm */
   maxSignalStrength?: number;
   /** For custom conditions: custom evaluator function */

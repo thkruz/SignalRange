@@ -1164,6 +1164,16 @@ export class ObjectivesManager {
         });
       }
 
+      case 'speca-center-frequency': {
+        if (condition.params?.centerFrequency === undefined) return false;
+        const targetCenterFreq = condition.params.centerFrequency;
+        const tolerance = condition.params.centerFrequencyTolerance ?? 1e6; // Default 1 MHz
+        return this.evaluateEquipment_(gs.spectrumAnalyzers, condition.params, (specA) => {
+          const diff = Math.abs(specA.state.centerFrequency - targetCenterFreq);
+          return diff <= tolerance;
+        });
+      }
+
       case 'speca-noise-floor-visible': {
         const maxSignalStrength = condition.params?.maxSignalStrength ?? -60;
         return this.evaluateEquipment_(gs.spectrumAnalyzers, condition.params, (specA) => {

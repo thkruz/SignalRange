@@ -1,7 +1,7 @@
 import { Character, Emotion } from '@app/modal/character-enum';
 import type { Objective } from '@app/objectives/objective-types';
 import type { ScenarioData } from '@app/ScenarioData';
-import type { dBm, MHz } from '@app/types';
+import type { dBm, Hertz, MHz } from '@app/types';
 import { getAssetUrl } from '@app/utils/asset-url';
 import type { Degrees } from 'ootk';
 import { createRfFrontEnd } from '../rf-front-end-factory';
@@ -51,6 +51,12 @@ export const scenario2Data: ScenarioData = {
           createRfFrontEnd(vermontGroundStation.rfFrontEnds[0], {
             hpa: { isHpaEnabled: true, isHpaSwitchEnabled: true },
           }),
+        ],
+        spectrumAnalyzers: [
+          {
+            ...vermontGroundStation.spectrumAnalyzers[0],
+            centerFrequency: 1074.50125e6 as Hertz,
+          },
         ],
       },
       { ...maineGroundStationConfig, isOperational: false },
@@ -284,11 +290,20 @@ export const scenario2Data: ScenarioData = {
             signalId: 'TIDEMARK-1-Beacon',
             minPower: -100 as dBm,
           },
-          mustMaintain: false,
+          mustMaintain: true,
         },
+        {
+          type: 'speca-center-frequency',
+          description: 'Spectrum Analyzer Center Frequency Set to exactly 1,074.5 MHz',
+          params: {
+            centerFrequency: 1074.5e6 as Hertz,
+            centerFrequencyTolerance: 0,
+          },
+          mustMaintain: true,
+        }
       ],
       conditionLogic: 'AND',
-      points: 5,
+      points: 10,
       timeLimitSeconds: 2 * 60, // 2 minutes
     },
     {

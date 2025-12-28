@@ -133,8 +133,17 @@ export class SpectrumDataProcessor {
     // Process each input signal
     this.specA.inputSignals.forEach((signal) => {
       const center = ((signal.frequency - this.minFreq) / (this.maxFreq - this.minFreq)) * this.width;
-      const inBandWidth = ((signal.bandwidth / (this.maxFreq - this.minFreq)) * this.width) / 2;
-      const outOfBandWidth = ((signal.bandwidth / (this.maxFreq - this.minFreq)) * this.width);
+      const freqSpan = this.maxFreq - this.minFreq;
+      const halfBandwidthPixels = (signal.bandwidth / 2 / freqSpan) * this.width;
+
+      // Out-of-band roll-off extends 8% beyond half-bandwidth on each side
+      const outOfBandExtensionHz = signal.bandwidth * 0.08;
+      const outOfBandExtensionPixels = (outOfBandExtensionHz / freqSpan) * this.width;
+
+      // In-band is the flat-top region (half-bandwidth minus roll-off extension)
+      const inBandWidth = halfBandwidthPixels - outOfBandExtensionPixels;
+      // Out-of-band width is the total distance from center to signal edge
+      const outOfBandWidth = halfBandwidthPixels;
 
       this.addSignalToData(signal, center, inBandWidth, outOfBandWidth);
     });
@@ -142,7 +151,7 @@ export class SpectrumDataProcessor {
 
   /**
    * Add a single signal to the signal data array
-   * Uses a flat-top shape where middle 80% is near peak with steep roll-off edges
+   * Uses a flat-top shape with steep roll-off at the band edges
    */
   private addSignalToData(
     signal: IfSignal | RfSignal,
@@ -150,13 +159,12 @@ export class SpectrumDataProcessor {
     inBandWidth: number,
     outOfBandWidth: number
   ): void {
-    // Flat-top region is 80% of the in-band width (40% on each side of center)
-    const flatTopHalfWidth = inBandWidth * 0.8;
-    // Transition region for the roll-off edges
-    const transitionWidth = inBandWidth * 0.5;
+    // inBandWidth = flat-top region (e.g., 17.5 MHz from center for 36 MHz signal)
+    // outOfBandWidth = total signal edge (e.g., 18 MHz from center = half-bandwidth)
+    // Roll-off region spans from inBandWidth to outOfBandWidth
+    const rollOffWidth = outOfBandWidth - inBandWidth;
 
     // Only process pixels within the signal's influence region
-    // Beyond outOfBandWidth, the signal decays to minAmplitude (already set by fill)
     const startX = Math.max(0, Math.floor(center - outOfBandWidth));
     const endX = Math.min(this.width, Math.ceil(center + outOfBandWidth));
 
@@ -166,8 +174,8 @@ export class SpectrumDataProcessor {
 
       let y: number;
 
-      // Flat-top region (middle 80% of bandwidth) - near peak amplitude
-      if (absDist <= flatTopHalfWidth) {
+      // Flat-top region - near peak amplitude
+      if (absDist <= inBandWidth) {
         y = signal.power;
 
         // Add noise-like variation similar to noise floor
@@ -187,40 +195,25 @@ export class SpectrumDataProcessor {
         // Very subtle slow variation across the flat top
         y += Math.sin((x / 50) + Date.now() / 2000) * 0.15;
       }
-      // Transition/roll-off region - steep but smooth edges
-      else if (absDist <= flatTopHalfWidth + transitionWidth) {
+      // Roll-off region - steep transition at the band edges
+      else if (absDist <= outOfBandWidth) {
+        // rollOffProgress: 0 at in-band edge, 1 at signal edge
+        const rollOffProgress = (absDist - inBandWidth) / rollOffWidth;
         // Use raised cosine for smooth but steep roll-off
-        // transitionProgress: 0 at flat-top edge, 1 at outer edge
-        const transitionProgress = (absDist - flatTopHalfWidth) / transitionWidth;
-        // rolloff: 1 at start (full amplitude), 0 at end (fully attenuated)
-        const rolloff = 0.5 * (1 + Math.cos(Math.PI * transitionProgress));
+        const rolloff = 0.5 * (1 + Math.cos(Math.PI * rollOffProgress));
         const rolloffDb = 20 * Math.log10(Math.max(rolloff, 1e-10));
 
         y = signal.power + rolloffDb;
 
         // Add variation that increases as we move away from center
-        y += this.gaussianRandom_(0, 0.5 + transitionProgress * 0.3);
+        y += this.gaussianRandom_(0, 0.5 + rollOffProgress * 0.3);
 
         // Side lobe ripple effect
-        y += Math.sin(transitionProgress * Math.PI * 3) * 0.4;
+        y += Math.sin(rollOffProgress * Math.PI * 2) * 0.3;
       }
-      // Out-of-band region - steep roll-off toward edges
+      // Beyond signal edge - should not reach here due to loop bounds
       else {
-        const outOfBandProgress = (absDist - flatTopHalfWidth - transitionWidth) /
-          (outOfBandWidth - flatTopHalfWidth - transitionWidth);
-
-        // Exponential decay in out-of-band region
-        const decay = Math.exp(-outOfBandProgress * 3);
-        const decayDb = 20 * Math.log10(Math.max(decay, 1e-10));
-
-        // Start from where transition ended (around -20 to -30 dB)
-        y = signal.power - 25 + decayDb;
-
-        // More variation in out-of-band
-        y += this.gaussianRandom_(0, 0.6);
-
-        // Side lobe effects
-        y += Math.sin(outOfBandProgress * Math.PI * 4) * 0.6;
+        y = this.specA.state.minAmplitude;
       }
 
       // Simulate occasional deep nulls for realism

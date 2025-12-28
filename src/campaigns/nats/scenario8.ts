@@ -51,7 +51,6 @@ export const scenario8Data: ScenarioData = {
   ],
   settings: {
     isSync: true,
-    missionTimeLimitSeconds: 2700, // 45 minutes
     // evaluationMode: true, // Charlie observing, minimal intervention
     groundStations: [
       {

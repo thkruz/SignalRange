@@ -47,7 +47,6 @@ export interface SimulationSettings {
   missionBriefUrl?: string;
   isExtraSatellitesVisible?: boolean;
   satellites: Satellite[];
-  missionTimeLimitSeconds?: number;
   weatherEvents?: Array<{
     id: string;
     groundStationId: string;

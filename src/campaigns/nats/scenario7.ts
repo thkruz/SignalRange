@@ -50,7 +50,6 @@ export const scenario7Data: ScenarioData = {
   ],
   settings: {
     isSync: true,
-    missionTimeLimitSeconds: 1200, // 20 minutes before frequency drift kills service
     // cascadeEventTimings: {
     //   primaryFault: 0, // GPSDO holdover at mission start
     //   secondaryFault: 300, // LNB temp alarm at 5 minutes

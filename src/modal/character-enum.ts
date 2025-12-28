@@ -3,7 +3,7 @@ import { getAssetUrl } from "@app/utils/asset-url";
 export enum Character {
   /** Mid-level ground station operator and guide. British immigrant with a rough tone. */
   CHARLIE_BROOKS = 'charlie_brooks',
-  /** SeaLink CEO. Former submarine communications officer. */
+  /** Junior ground station operator. Enthusiastic and eager to learn. */
   CATHERINE_VEGA = 'catherine_vega',
   /** Atlantic Shipping Alliance. SeaLink's anchor customer. */
   JAMES_OKAFOR = 'james_okafor',
@@ -40,14 +40,14 @@ export const CharacterNames: Record<Character, string> = {
 
 export const CharacterTitles: Record<Character, string> = {
   [Character.CHARLIE_BROOKS]: 'Senior Ground Station Operator',
-  [Character.CATHERINE_VEGA]: 'CEO',
+  [Character.CATHERINE_VEGA]: 'Ground Station Operator',
   [Character.JAMES_OKAFOR]: 'Fleet Captain',
   [Character.FRANCIS_MARTIN]: 'Board Member',
 };
 
 export const CharacterCompany: Record<Character, string> = {
-  [Character.CHARLIE_BROOKS]: 'North Atlantic Teleport Services',
-  [Character.CATHERINE_VEGA]: 'SeaLink',
+  [Character.CHARLIE_BROOKS]: 'North Atlantic Teleport Services (Vermont)',
+  [Character.CATHERINE_VEGA]: 'North Atlantic Teleport Services (Maine)',
   [Character.JAMES_OKAFOR]: 'Atlantic Shipping Alliance',
   [Character.FRANCIS_MARTIN]: 'SeaLink',
 };

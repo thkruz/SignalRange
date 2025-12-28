@@ -25,6 +25,7 @@ import './objectives-manager.css';
  */
 export class ObjectivesManager {
   private static instance_: ObjectivesManager | null = null;
+  private static openedBoxIds_: Set<string> = new Set();
   private readonly objectiveStates_: ObjectiveState[] = [];
   private readonly eventBus_: EventBus;
   private readonly collapsedObjectiveIds_: Set<string> = new Set();
@@ -146,6 +147,28 @@ export class ObjectivesManager {
 
       ObjectivesManager.instance_ = null;
     }
+
+    // Clear opened box tracking
+    ObjectivesManager.openedBoxIds_.clear();
+  }
+
+  /**
+   * Register that a box (e.g., mission brief) has been opened
+   * @param boxId The unique identifier of the opened box
+   */
+  static registerOpenedBox(boxId: string): void {
+    ObjectivesManager.openedBoxIds_.add(boxId);
+  }
+
+  /**
+   * Check if a specific box has been opened
+   * @param boxId Optional box ID to check; if omitted, checks if any box was opened
+   */
+  static isBoxOpened(boxId?: string): boolean {
+    if (boxId) {
+      return ObjectivesManager.openedBoxIds_.has(boxId);
+    }
+    return ObjectivesManager.openedBoxIds_.size > 0;
   }
 
   /**
@@ -1560,6 +1583,20 @@ export class ObjectivesManager {
         // In a real implementation, this would track packet loss during handover
         // For now, this always passes since we don't model packet-level traffic
         return true;
+      }
+
+      case 'mission-brief-opened': {
+        const targetBoxId = condition.params?.boxId as string | undefined;
+        if (targetBoxId) {
+          return ObjectivesManager.isBoxOpened(targetBoxId);
+        }
+        // If no specific boxId, check if any mission-brief box was opened
+        for (const boxId of ObjectivesManager.openedBoxIds_) {
+          if (boxId.startsWith('mission-brief')) {
+            return true;
+          }
+        }
+        return false;
       }
 
       default:

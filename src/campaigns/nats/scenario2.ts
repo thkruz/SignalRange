@@ -13,7 +13,7 @@ import { ses10Satellite, tidemark1Satellite } from './satellites';
  * NATS Level 2: "Scheduled Maintenance"
  *
  * Phase: Tutorial
- * Time Pressure: None
+ * Time Pressure: Low (30s limit on maintenance positioning)
  * Calculation Required: None (all values provided)
  * New UI Elements: LNB/BUC/ACU controls, RF mute switches
  *
@@ -30,7 +30,7 @@ export const scenario2Data: ScenarioData = {
   number: 2,
   title: 'Scheduled Maintenance',
   subtitle: 'Power Down and Recovery Procedures',
-  duration: '20-25 min',
+  duration: '20-30 min',
   difficulty: 'beginner',
   missionType: 'Tutorial',
   description: `The maintenance crew needs to perform work on the TIDEMARK-1 antenna feed assembly. You'll power down the transmit chain in the proper sequence to ensure safety (don't radiate the maintenance crew), move the antenna to stow position for access, then restore service after the maintenance window.<br><br>This is your first time actually controlling the equipment. Charlie will provide all frequency values and configuration settings - you just need to execute the procedures in the correct order.<br><br>Key lesson: Sequence matters. RF safety protocols exist for a reason.`,
@@ -41,6 +41,7 @@ export const scenario2Data: ScenarioData = {
     'Receiver Modem (pre-configured)',
     'Transmitter Modem (pre-configured)',
   ],
+  timeLimitSeconds: 30 * 60, // 30 minutes
   settings: {
     isSync: true,
     groundStations: [
@@ -64,9 +65,26 @@ export const scenario2Data: ScenarioData = {
   },
   objectives: [
     {
+      id: 'mission-brief-opened',
+      title: 'Open Mission Brief',
+      description: 'Open and read the mission brief document including safety brief.',
+      groundStation: 'VT-01',
+      conditions: [
+        {
+          type: 'mission-brief-opened',
+          description: 'Mission Brief Document Opened',
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 5,
+      timeLimitSeconds: 3 * 60, // 3 minutes
+    },
+    {
       id: 'safety-briefing',
       title: 'Safety Briefing',
       description: 'Acknowledge the RF safety procedures and maintenance window.',
+      prerequisiteObjectiveIds: ['mission-brief-opened'],
       groundStation: 'VT-01',
       conditions: [
         {
@@ -86,6 +104,7 @@ export const scenario2Data: ScenarioData = {
       ],
       conditionLogic: 'AND',
       points: 5,
+      timeLimitSeconds: 5 * 60, // 5 minutes
     },
     {
       id: 'disable-hpa-output',
@@ -101,7 +120,8 @@ export const scenario2Data: ScenarioData = {
         },
       ],
       conditionLogic: 'AND',
-      points: 5,
+      points: 10,
+      timeLimitSeconds: 2 * 60, // 2 minutes
     },
     {
       id: 'power-off-hpa',
@@ -120,7 +140,8 @@ export const scenario2Data: ScenarioData = {
         },
       ],
       conditionLogic: 'AND',
-      points: 5,
+      points: 10,
+      timeLimitSeconds: 2 * 60, // 2 minutes
     },
     {
       id: 'mute-buc',
@@ -137,6 +158,7 @@ export const scenario2Data: ScenarioData = {
       ],
       conditionLogic: 'AND',
       points: 10,
+      timeLimitSeconds: 2 * 60, // 2 minutes
     },
     {
       id: 'power-down-lnb',
@@ -156,6 +178,7 @@ export const scenario2Data: ScenarioData = {
       ],
       conditionLogic: 'AND',
       points: 10,
+      timeLimitSeconds: 2 * 60, // 2 minutes
     },
     {
       id: 'antenna-maintenance',
@@ -176,11 +199,12 @@ export const scenario2Data: ScenarioData = {
         },
       ],
       timePenalty: {
-        elapsedTimeThreshold: 30,
+        elapsedTimeThreshold: 15 * 60, // 15 minutes
         pointsDeducted: 30,
         message: "You delayed maintenance getting started on time. Don't let it happen again.",
       },
       points: 15,
+      timeLimitSeconds: 2 * 60, // 2 minutes
     },
     {
       id: 'repoint-antenna',
@@ -201,6 +225,7 @@ export const scenario2Data: ScenarioData = {
         },
       ],
       points: 10,
+      timeLimitSeconds: 2 * 60, // 2 minutes
     },
     {
       id: 'power-up-lnb',
@@ -242,7 +267,8 @@ export const scenario2Data: ScenarioData = {
         },
       ],
       conditionLogic: 'AND',
-      points: 15,
+      points: 10,
+      timeLimitSeconds: 2 * 60, // 2 minutes
     },
     {
       id: 'verify-beacon',
@@ -262,7 +288,8 @@ export const scenario2Data: ScenarioData = {
         },
       ],
       conditionLogic: 'AND',
-      points: 10,
+      points: 5,
+      timeLimitSeconds: 2 * 60, // 2 minutes
     },
     {
       id: 'unmute-buc',
@@ -278,6 +305,7 @@ export const scenario2Data: ScenarioData = {
         },
       ],
       points: 10,
+      timeLimitSeconds: 2 * 60, // 2 minutes
     },
     {
       id: 'power-on-hpa',
@@ -295,7 +323,8 @@ export const scenario2Data: ScenarioData = {
           maintainUntilObjectiveComplete: true,
         },
       ],
-      points: 5,
+      points: 10,
+      timeLimitSeconds: 2 * 60, // 2 minutes
     },
     {
       id: 'enable-hpa-output',
@@ -310,7 +339,8 @@ export const scenario2Data: ScenarioData = {
           maintainUntilObjectiveComplete: true,
         },
       ],
-      points: 5,
+      points: 10,
+      timeLimitSeconds: 2 * 60, // 2 minutes
     },
   ] as Objective[],
   dialogClips: {

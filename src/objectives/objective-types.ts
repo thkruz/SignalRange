@@ -64,7 +64,9 @@ export type ConditionType =
   | 'traffic-owner' // Ground station owns traffic to satellite
   | 'traffic-transferred' // Traffic transferred from source to target station
   | 'service-continuity' // No packet loss during handover (placeholder - always passes)
-  | 'ground-station-selected'; // Ground station selected in UI
+  | 'ground-station-selected' // Ground station selected in UI
+  // UI interaction conditions
+  | 'mission-brief-opened'; // Mission brief document has been opened
 
 /**
  * Equipment references for condition checking
@@ -196,6 +198,8 @@ export interface ConditionParams {
   maxPacketLoss?: number;
   /** For ground-station-selected: ground station ID that must be selected */
   groundStationId?: string;
+  /** For mission-brief-opened: specific box ID that must be opened (defaults to any 'mission-brief*' box) */
+  boxId?: string;
   /** Additional context-specific parameters */
   [key: string]: unknown;
 }

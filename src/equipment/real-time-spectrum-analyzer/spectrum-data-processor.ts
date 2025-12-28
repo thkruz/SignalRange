@@ -133,7 +133,7 @@ export class SpectrumDataProcessor {
     // Process each input signal
     this.specA.inputSignals.forEach((signal) => {
       const center = ((signal.frequency - this.minFreq) / (this.maxFreq - this.minFreq)) * this.width;
-      const inBandWidth = ((signal.bandwidth / (this.maxFreq - this.minFreq)) * this.width) / 4;
+      const inBandWidth = ((signal.bandwidth / (this.maxFreq - this.minFreq)) * this.width) / 2;
       const outOfBandWidth = ((signal.bandwidth / (this.maxFreq - this.minFreq)) * this.width);
 
       this.addSignalToData(signal, center, inBandWidth, outOfBandWidth);

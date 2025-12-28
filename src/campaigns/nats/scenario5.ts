@@ -127,7 +127,7 @@ export const scenario5Data: ScenarioData = {
                 signalId: 'TIDEMARK-1-Beacon',
                 serverId: 1,
                 noradId: 61525,
-                power: 23 as dBm,
+                power: 40 as dBm,
                 bandwidth: 1e3 as Hertz,
                 modulation: 'CW' as ModulationType,
                 fec: 'null' as FECType,

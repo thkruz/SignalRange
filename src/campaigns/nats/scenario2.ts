@@ -65,7 +65,7 @@ export const scenario2Data: ScenarioData = {
   objectives: [
     {
       id: 'safety-briefing',
-      title: 'Phase 1: Safety Briefing',
+      title: 'Safety Briefing',
       description: 'Acknowledge the RF safety procedures and maintenance window.',
       groundStation: 'VT-01',
       conditions: [
@@ -89,7 +89,7 @@ export const scenario2Data: ScenarioData = {
     },
     {
       id: 'disable-hpa-output',
-      title: 'Phase 2a: Disable HPA Output',
+      title: 'Disable HPA Output',
       description: 'Disable the High Power Amplifier output by toggling the HPA enable switch off.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['safety-briefing'],
@@ -105,7 +105,7 @@ export const scenario2Data: ScenarioData = {
     },
     {
       id: 'power-off-hpa',
-      title: 'Phase 2b: Power Off HPA',
+      title: 'Power Off HPA',
       description: 'Power off the High Power Amplifier completely.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['disable-hpa-output'],
@@ -124,7 +124,7 @@ export const scenario2Data: ScenarioData = {
     },
     {
       id: 'mute-buc',
-      title: 'Phase 3: Mute BUC RF Output',
+      title: 'Mute BUC RF Output',
       description: 'Mute the Block Upconverter to stop all RF transmission.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['power-off-hpa'],
@@ -140,7 +140,7 @@ export const scenario2Data: ScenarioData = {
     },
     {
       id: 'power-down-lnb',
-      title: 'Phase 4: Power Down LNB',
+      title: 'Power Down LNB',
       description: 'Power off the Low Noise Block to complete RF chain shutdown.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['mute-buc'],
@@ -159,7 +159,7 @@ export const scenario2Data: ScenarioData = {
     },
     {
       id: 'antenna-maintenance',
-      title: 'Phase 5: Move Antenna to Maintenance Position',
+      title: 'Move Antenna to Maintenance Position',
       description: 'Command the antenna to maintenance position (Az: 0°, El: 5°) for maintenance access.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['power-down-lnb'],
@@ -184,7 +184,7 @@ export const scenario2Data: ScenarioData = {
     },
     {
       id: 'repoint-antenna',
-      title: 'Phase 7: Repoint Antenna at TIDEMARK-1',
+      title: 'Repoint Antenna at TIDEMARK-1',
       description: 'Command antenna to return to operational pointing (Az: 161.8°, El: 34.2°).',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['antenna-maintenance'],
@@ -204,7 +204,7 @@ export const scenario2Data: ScenarioData = {
     },
     {
       id: 'power-up-lnb',
-      title: 'Phase 8: Restore LNB',
+      title: 'Restore LNB',
       description: 'Power on LNB with settings: LO 5,250 MHz, Gain 60 dB. Wait for thermal stabilization.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['repoint-antenna'],
@@ -246,7 +246,7 @@ export const scenario2Data: ScenarioData = {
     },
     {
       id: 'verify-beacon',
-      title: 'Phase 9: Verify Beacon Reception',
+      title: 'Verify Beacon Reception',
       description: 'Confirm TIDEMARK-1 beacon is visible on spectrum analyzer.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['power-up-lnb'],
@@ -266,7 +266,7 @@ export const scenario2Data: ScenarioData = {
     },
     {
       id: 'unmute-buc',
-      title: 'Phase 10a: Unmute BUC RF Output',
+      title: 'Unmute BUC RF Output',
       description: 'Unmute the Block Upconverter to allow RF transmission.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['verify-beacon'],
@@ -281,7 +281,7 @@ export const scenario2Data: ScenarioData = {
     },
     {
       id: 'power-on-hpa',
-      title: 'Phase 10b: Power On HPA',
+      title: 'Power On HPA',
       description: 'Power on the High Power Amplifier.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['unmute-buc'],
@@ -299,7 +299,7 @@ export const scenario2Data: ScenarioData = {
     },
     {
       id: 'enable-hpa-output',
-      title: 'Phase 10c: Enable HPA Output',
+      title: 'Enable HPA Output',
       description: 'Enable the High Power Amplifier output to restore full service.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['power-on-hpa'],

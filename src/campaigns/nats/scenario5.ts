@@ -46,7 +46,7 @@ export const scenario5Data: ScenarioData = {
   duration: '15-20 min',
   difficulty: 'intermediate',
   missionType: 'Troubleshooting',
-  description: `Customer reports degraded service on TIDEMARK-1. The C/N ratio has dropped significantly, causing packet errors.<br><br>The spectrum analyzer is currently configured for beacon tracking - you'll need to reconfigure it to investigate the main signal. Something's causing interference, but you'll need to find it, characterize it, and figure out the best way to mitigate it.<br><br>Charlie will guide you through the troubleshooting process, but you'll need to figure out the right settings and measurements yourself.`,
+  description: `Customer reports degraded service on TIDEMARK-1. The C/N ratio has dropped significantly, causing packet errors.<br><br>The spectrum analyzer is currently configured for beacon tracking - you'll need to reconfigure it to investigate the main signal. Something's causing interference, and you'll need to find it, understand what's happening, and apply the right mitigation.<br><br>Charlie will guide you through the troubleshooting process and provide hints along the way.`,
   equipment: [
     '9-meter C-band Antenna',
     'RF Front End',
@@ -127,7 +127,7 @@ export const scenario5Data: ScenarioData = {
                 signalId: 'TIDEMARK-1-Beacon',
                 serverId: 1,
                 noradId: 61525,
-                power: 40 as dBm,
+                power: 23 as dBm,
                 bandwidth: 1e3 as Hertz,
                 modulation: 'CW' as ModulationType,
                 fec: 'null' as FECType,
@@ -202,6 +202,14 @@ export const scenario5Data: ScenarioData = {
           params: {
             span: 75e6, // 75 MHz span
             frequencyTolerance: 25e6, // Allow 50-100 MHz
+          },
+          mustMaintain: true,
+        },
+        {
+          type: 'speca-rbw-set',
+          description: 'RBW set to automatic',
+          params: {
+            rbw: null, // Automatic RBW
           },
           mustMaintain: true,
         },
@@ -472,7 +480,7 @@ export const scenario5Data: ScenarioData = {
           That C/N is well below normal. The customer's complaint is legitimate.
         </p>
         <p>
-          But before we dig into why, we need to see what's happening on the spectrum. The analyzer is still configured for beacon tracking - you'll need to pull back and get a wider view of the band.
+          But before we dig into why, we need to see what's happening on the spectrum. The analyzer is still configured for beacon tracking - you'll need to widen the span to at least 50 megahertz to see our full 36 megahertz signal, and center it on the downlink frequency.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -482,10 +490,10 @@ export const scenario5Data: ScenarioData = {
       'phase-2-configure-span': {
         text: `
         <p>
-          Now you can see more of the picture. But we need to center on where our actual signal is - not the beacon.
+          Good. Now we can see more of the picture. The receiver modem is tuned to 1,532 megahertz - that's where our main signal sits at IF.
         </p>
         <p>
-          Think about where the downlink should appear at IF. The receiver modem shows what frequency it's tuned to - that's a hint.
+          Make sure you can see the full signal and look for anything that doesn't belong.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -550,7 +558,7 @@ export const scenario5Data: ScenarioData = {
           Exactly. The AGC sees total power and adjusts gain accordingly. That spike is fooling it into backing off the gain across the whole band.
         </p>
         <p>
-          The fix is surgical - we need to notch out just that interference while leaving our signal intact. Check the spectrum carefully and configure the notch filter to match what you're seeing.
+          The fix is surgical - we need to notch out just that interference while leaving our signal intact. Look at the spectrum - the spike appears around 1,515 megahertz. Set your notch filter center frequency there, with a bandwidth of about 1 megahertz to match the spike width.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,

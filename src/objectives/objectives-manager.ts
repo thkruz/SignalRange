@@ -1177,10 +1177,15 @@ export class ObjectivesManager {
       }
 
       case 'speca-rbw-set': {
-        if (!condition.params?.rbw) return false;
-        const targetRbw = condition.params.rbw;
+        if (condition.params?.rbw === undefined) return false;
+        const targetRbw = condition.params.rbw; // null means "Automatic"
         const tolerance = condition.params.frequencyTolerance || 1e3;
         return this.evaluateEquipment_(gs.spectrumAnalyzers, condition.params, (specA) => {
+          // Handle "Automatic" mode (null)
+          if (targetRbw === null) {
+            return specA.state.rbw === null;
+          }
+          // Handle specific RBW value
           if (specA.state.rbw === null) return false;
           const diff = Math.abs(specA.state.rbw - targetRbw);
           return diff <= tolerance;

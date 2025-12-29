@@ -608,6 +608,7 @@ export abstract class AntennaCore extends BaseEquipment {
     this.state.beaconPower = null;
     this.state.beaconCN = null;
     this.smoothedBeaconCN_ = null;
+    this.state.targetSatelliteId = null;
 
     switch (mode) {
       case 'stow':

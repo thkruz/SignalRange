@@ -24,7 +24,7 @@ import { ses10Satellite, tidemark1Satellite } from './satellites';
 export const scenario2Data: ScenarioData = {
   id: 'nats-scenario2',
   url: 'nats/scenarios/nats-scenario2',
-  prerequisiteScenarioIds: [],
+  prerequisiteScenarioIds: ['nats-scenario1'],
   imageUrl: 'nats/2/card.png',
   number: 2,
   title: 'Scheduled Maintenance',

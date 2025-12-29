@@ -26,12 +26,12 @@ import { ses10Satellite, tidemark1Satellite } from './satellites';
  */
 
 export const scenario3Data: ScenarioData = {
-  id: 'scenario3',
-  prerequisiteScenarioIds: [],
-  url: 'nats/scenarios/scenario3',
+  id: 'nats-scenario3',
+  prerequisiteScenarioIds: ['nats-scenario2'],
+  url: 'nats/scenarios/nats-scenario3',
   imageUrl: 'nats/3/card.png',
   number: 3,
-  title: 'Level 3: "Weather Emergency Handover"',
+  title: 'Weather Emergency Handover',
   subtitle: 'Multi-Site Operations',
   duration: '25-30 min',
   difficulty: 'beginner',

@@ -25,10 +25,10 @@ import { ses10Satellite, tidemark1Satellite, tidemark2Satellite } from './satell
 export const scenario4Data: ScenarioData = {
   id: 'nats-scenario4',
   url: 'nats/scenarios/nats-scenario4',
-  prerequisiteScenarioIds: [],
+  prerequisiteScenarioIds: ['nats-scenario3'],
   imageUrl: 'nats/4/card.png',
   number: 4,
-  title: 'Level 4: "New Bird on the Block"',
+  title: 'New Bird on the Block',
   subtitle: 'Satellite Switchover Operations',
   duration: '25-30 min',
   timeLimitSeconds: 30 * 60,

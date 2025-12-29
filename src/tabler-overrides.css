@@ -180,6 +180,10 @@ body {
   font-weight: 500;
 }
 
+.form-control.is-invalid {
+  background-position: right 0.3rem center;
+}
+
 /* Form controls dark theme */
 .form-control,
 .form-select {

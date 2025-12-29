@@ -106,8 +106,9 @@ export class Router {
       this.navigate('/campaigns/nats/scenarios/scenario3', this.navigationOptions_);
       return;
     } else {
-      // Unknown route - go to campaign selection
-      this.showPage('campaigns');
+      // Unknown route - redirect to campaign selection
+      this.navigate('/');
+      return;
     }
 
     // Emit route change event

@@ -7,7 +7,6 @@ import type { dBi, dBm, FECType, Hertz, ModulationType, RfFrequency } from '@app
 import { getAssetUrl } from '@app/utils/asset-url';
 import { Degrees } from 'ootk';
 import { maineGroundStation, vermontGroundStation } from './ground-stations';
-import { natsHtmlLayout } from './html-layout';
 import { ses10Satellite, tidemark2Satellite } from './satellites';
 
 /**
@@ -63,7 +62,6 @@ export const scenario5Data: ScenarioData = {
         isOperational: true,
       },
     ],
-    layout: natsHtmlLayout,
     missionBriefUrl: 'https://docs.signalrange.space/scenarios/scenario-6?content-only=true&dark=true',
     isExtraSatellitesVisible: true,
     satellites: [

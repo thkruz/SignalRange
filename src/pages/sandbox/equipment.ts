@@ -35,35 +35,14 @@ export class Equipment extends BaseElement {
   private lastChecklistHtml_: string | null = null;
 
   protected html_ = html`
-    <div class="student-equipment">
+    <div class="student-equipment scenario1-layout">
       <div class="paired-equipment-container">
         <div id="antenna1-container" class="antenna-container"></div>
         <div id="specA1-container" class="spec-a-container"></div>
       </div>
       <div id="rf-front-end1-container" class="paired-equipment-container"></div>
-      <div class="paired-equipment-container">
-        <div id="antenna2-container" class="antenna-container"></div>
-        <div id="specA2-container" class="spec-a-container"></div>
-      </div>
-      <div id="rf-front-end2-container" class="paired-equipment-container"></div>
-      <div class="paired-equipment-container">
-        <div id="tx1-container" class="tx-container"></div>
-        <div id="tx2-container" class="tx-container"></div>
-      </div>
-      <div class="paired-equipment-container">
-        <div id="tx3-container" class="tx-container"></div>
-        <div id="tx4-container" class="tx-container"></div>
-      </div>
-      <div class="paired-equipment-container">
-        <div id="rx1-container" class="rx-container"></div>
-        <div id="rx2-container" class="rx-container"></div>
-      </div>
-      <div class="paired-equipment-container">
-        <div id="rx3-container" class="rx-container"></div>
-        <div id="rx4-container" class="rx-container"></div>
-      </div>
     </div>
-    `;
+  `;
 
   constructor(settings: SimulationSettings) {
     super();

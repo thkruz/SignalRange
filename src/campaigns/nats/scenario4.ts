@@ -1,4 +1,3 @@
-import { html } from '@app/engine/utils/development/formatter';
 import { Character, Emotion } from '@app/modal/character-enum';
 import type { Objective } from '@app/objectives/objective-types';
 import type { ScenarioData } from '@app/ScenarioData';
@@ -63,15 +62,6 @@ export const scenario4Data: ScenarioData = {
         isOperational: true,
       }
     ],
-    layout: html`
-              <div class="student-equipment scenario1-layout">
-                <div class="paired-equipment-container">
-                  <div id="antenna1-container" class="antenna-container"></div>
-                  <div id="specA1-container" class="spec-a-container"></div>
-                </div>
-                <div id="rf-front-end1-container" class="paired-equipment-container"></div>
-              </div>
-            `,
     missionBriefUrl: 'https://docs.signalrange.space/scenarios/scenario-2?content-only=true&dark=true',
     isExtraSatellitesVisible: true,
     satellites: [

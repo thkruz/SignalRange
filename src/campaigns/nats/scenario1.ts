@@ -3,7 +3,6 @@ import type { Objective } from '@app/objectives/objective-types';
 import type { ScenarioData } from '@app/ScenarioData';
 import { getAssetUrl } from '@app/utils/asset-url';
 import { vermontGroundStation } from './ground-stations';
-import { natsHtmlLayout } from './html-layout';
 import { tidemark1Satellite } from './satellites';
 
 /**
@@ -36,7 +35,6 @@ export const scenario1Data: ScenarioData = {
     groundStations: [
       vermontGroundStation,
     ],
-    layout: natsHtmlLayout,
     missionBriefUrl: 'https://docs.signalrange.space/scenarios/scenario-1?content-only=true&dark=true',
     isExtraSatellitesVisible: true,
     satellites: [

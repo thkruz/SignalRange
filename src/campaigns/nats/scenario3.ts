@@ -10,7 +10,6 @@ import { getAssetUrl } from '@app/utils/asset-url';
 import type { Degrees } from 'ootk';
 import { createRfFrontEnd } from '../rf-front-end-factory';
 import { vermontGroundStation } from './ground-stations';
-import { natsHtmlLayout } from './html-layout';
 import { ses10Satellite, tidemark1Satellite } from './satellites';
 
 /**
@@ -159,7 +158,6 @@ export const scenario3Data: ScenarioData = {
         initialOwnerId: 'VT-01', // Vermont initially owns traffic
       }
     ],
-    layout: natsHtmlLayout,
     missionBriefUrl: 'https://docs.signalrange.space/scenarios/scenario-3?content-only=true&dark=true',
     isExtraSatellitesVisible: true,
   },

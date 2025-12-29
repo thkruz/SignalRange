@@ -575,16 +575,28 @@ export class ReceiverAdapter {
       }
     }
 
-    // Get signal info for C/N and ADC data (needed for signal quality)
+    // Signal Quality Status Badge
+    const signalStatus = this.domCache_.get('signal-status');
+
+    // When modem is powered off, clear all signal-related displays
+    if (!activeModem.isPowered) {
+      if (signalStatus) {
+        signalStatus.className = 'status-badge status-badge-none';
+        signalStatus.textContent = 'Off';
+      }
+      this.clearSignalDisplays_();
+      // Update alarm badge for powered-off state
+      const alarms = this.getAlarmsFromReceiver_();
+      this.alarmBadge_.update(alarms);
+      return;
+    }
+
+    // Get signal info for C/N and ADC data (only when powered on)
     const signalInfo = this.receiver.getSignalsInBandwidth(activeModem);
 
     // Signal Quality Status Badge - use actual C/N thresholds matching IQ constellation
-    const signalStatus = this.domCache_.get('signal-status');
     if (signalStatus) {
-      if (!activeModem.isPowered) {
-        signalStatus.className = 'status-badge status-badge-none';
-        signalStatus.textContent = 'Off';
-      } else if (!signalInfo.hasCarrier) {
+      if (!signalInfo.hasCarrier) {
         signalStatus.className = 'status-badge status-badge-none';
         signalStatus.textContent = 'None';
       } else {
@@ -696,6 +708,44 @@ export class ReceiverAdapter {
       } else {
         degradationSection.classList.add('d-none');
       }
+    }
+  }
+
+  /**
+   * Clear all signal-related displays when modem is powered off
+   */
+  private clearSignalDisplays_(): void {
+    // Clear C/N displays
+    const cnRawDisplay = this.domCache_.get('cn-raw-display');
+    if (cnRawDisplay) cnRawDisplay.textContent = '-- dB';
+
+    const cnEffectiveDisplay = this.domCache_.get('cn-effective-display');
+    if (cnEffectiveDisplay) cnEffectiveDisplay.textContent = '-- dB';
+
+    // Clear power and noise displays
+    const powerLevelDisplay = this.domCache_.get('power-level-display');
+    if (powerLevelDisplay) powerLevelDisplay.textContent = '-- dBm';
+
+    const noiseFloorDisplay = this.domCache_.get('noise-floor-display');
+    if (noiseFloorDisplay) noiseFloorDisplay.textContent = '-- dBm';
+
+    // Clear ADC displays
+    const adcLevelEl = this.domCache_.get('adc-level-display');
+    if (adcLevelEl) {
+      adcLevelEl.textContent = '-- dBFS';
+      adcLevelEl.className = 'fw-bold font-monospace';
+    }
+
+    const adcStatusEl = this.domCache_.get('adc-status-display');
+    if (adcStatusEl) {
+      adcStatusEl.textContent = '--';
+      adcStatusEl.className = 'status-badge status-badge-none';
+    }
+
+    // Hide degradation section
+    const degradationSection = this.domCache_.get('degradation-section');
+    if (degradationSection) {
+      degradationSection.classList.add('d-none');
     }
   }
 

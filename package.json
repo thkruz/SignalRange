@@ -18,6 +18,7 @@
     "type-check": "tsc --noEmit",
     "clean": "rm -rf dist",
     "test": "npx jest --config jest.config.js",
+    "test:coverage": "npx jest --config jest.config.js --coverage",
     "lint": "npx eslint --config .eslintrc",
     "lcov": "npx tsx build/open-lcov.ts"
   },

@@ -37,6 +37,7 @@ export class ReceiverAdapter {
   private readonly alarmBadge_: CardAlarmBadge;
   private lastStateString: string = '';
   private lastSyncTime_: number = 0;
+  private pendingPowerState_: boolean | null = null;
 
   // Staged input strings for exact user input preservation
   private stagedInputStrings_: Map<string, string> = new Map();
@@ -310,6 +311,7 @@ export class ReceiverAdapter {
 
   private powerSwitchHandler_(e: Event): void {
     const isEnabled = (e.target as HTMLInputElement).checked;
+    this.pendingPowerState_ = isEnabled;
     this.receiver.handlePowerToggle(isEnabled);
     this.syncDomWithState_();
   }
@@ -557,10 +559,20 @@ export class ReceiverAdapter {
     const activeModem = this.getActiveModem_();
     if (!activeModem) return;
 
-    // Power Switch
+    // Power Switch - show user's pending request until actual state catches up
     const powerSwitch = this.domCache_.get('power-switch') as HTMLInputElement;
     if (powerSwitch) {
-      powerSwitch.checked = activeModem.isPowered;
+      if (this.pendingPowerState_ !== null) {
+        // User has a pending request - show what they clicked
+        powerSwitch.checked = this.pendingPowerState_;
+        // Clear pending state once actual state matches
+        if (activeModem.isPowered === this.pendingPowerState_) {
+          this.pendingPowerState_ = null;
+        }
+      } else {
+        // No pending request - show actual state
+        powerSwitch.checked = activeModem.isPowered;
+      }
     }
 
     // Get signal info for C/N and ADC data (needed for signal quality)

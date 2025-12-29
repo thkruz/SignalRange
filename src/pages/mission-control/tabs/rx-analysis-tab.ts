@@ -505,7 +505,7 @@ export class RxAnalysisTab extends BaseElement {
                     <div class="card-body d-flex align-items-center justify-content-center p-0">
                       <div id="video-monitor" class="video-monitor no-signal">
                         <img id="video-feed" class="video-feed" alt="Video feed" />
-                        <div class="video-overlay">NO SIGNAL</div>
+                        <div class="video-overlay"></div>
                         <div class="signal-degraded-overlay"></div>
                       </div>
                     </div>

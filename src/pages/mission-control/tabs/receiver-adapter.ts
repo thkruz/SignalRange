@@ -509,20 +509,28 @@ export class ReceiverAdapter {
 
     // Check power state
     if (!activeModem.isPowered) {
-      monitor.classList.remove('no-signal', 'signal-found', 'signal-degraded');
+      monitor.classList.remove('no-signal', 'signal-found', 'signal-degraded', 'signal-no-video');
       monitor.classList.add('no-power');
       return;
     }
 
-    // Check for matching signal
-    const hasSignal = this.receiver.hasSignalForModem(activeModem);
+    // Get visible signals to determine state
+    const visibleSignals = this.receiver.getVisibleSignals(activeModem);
+    const hasDecodedSignal = visibleSignals.length > 0;
+    const hasVideoFeed = visibleSignals.some(s => s.feed !== '');
     const isDegraded = this.receiver.isSignalDegraded(activeModem);
 
-    if (!hasSignal) {
-      monitor.classList.remove('no-power', 'signal-found', 'signal-degraded');
+    if (!hasDecodedSignal) {
+      // No signal at all
+      monitor.classList.remove('no-power', 'signal-found', 'signal-degraded', 'signal-no-video');
       monitor.classList.add('no-signal');
+    } else if (!hasVideoFeed) {
+      // Signal decoded but no video feed available
+      monitor.classList.remove('no-power', 'no-signal', 'signal-found', 'signal-degraded');
+      monitor.classList.add('signal-no-video');
     } else {
-      monitor.classList.remove('no-power', 'no-signal');
+      // Signal with video feed
+      monitor.classList.remove('no-power', 'no-signal', 'signal-no-video');
       monitor.classList.add('signal-found');
 
       if (isDegraded) {
@@ -532,10 +540,8 @@ export class ReceiverAdapter {
       }
 
       // Set video feed source
-      const visibleSignals = this.receiver.getVisibleSignals(activeModem);
-      if (visibleSignals.length > 0) {
-        const signal = visibleSignals[0];
-
+      const signal = visibleSignals.find(s => s.feed !== '');
+      if (signal) {
         // Check if it's an image or video
         if (signal.isImage) {
           const imgElement = videoFeed as HTMLImageElement;

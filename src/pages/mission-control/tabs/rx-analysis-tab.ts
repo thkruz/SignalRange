@@ -27,6 +27,7 @@ import { SpectrumAnalyzerAdvancedAdapter } from './spectrum-analyzer-advanced-ad
  * Antenna → OMT → LNB → AGC → Notch Filter → IF Filter → Spectrum Analyzer → Demodulator
  */
 export class RxAnalysisTab extends BaseElement {
+  protected html_!: string;
   private readonly groundStation: GroundStation;
   private lnbAdapter: LNBAdapter | null = null;
   private agcAdapter: AGCAdapter | null = null;

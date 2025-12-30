@@ -51,7 +51,9 @@ export class PowerSwitch {
 
   private onDomReady_(): void {
     qs(`#${this.uniqueId}`).addEventListener('change', (e) => {
-      this.cb_((e.target as HTMLInputElement).checked);
+      const isChecked = (e.target as HTMLInputElement).checked;
+      SoundManager.getInstance().play(isChecked ? Sfx.POWER_ON : Sfx.SWITCH);
+      this.cb_(isChecked);
     });
   }
 
@@ -65,7 +67,6 @@ export class PowerSwitch {
     if (!this.isOn_) {
       this.dom.checked = true;
       this.isOn_ = true;
-      SoundManager.getInstance().play(Sfx.POWER_ON);
     }
   }
 
@@ -73,7 +74,6 @@ export class PowerSwitch {
     if (this.isOn_) {
       this.dom.checked = false;
       this.isOn_ = false;
-      SoundManager.getInstance().play(Sfx.SWITCH);
     }
   }
 

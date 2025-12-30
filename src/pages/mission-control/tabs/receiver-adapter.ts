@@ -1,6 +1,7 @@
 import { CardAlarmBadge } from '@app/components/card-alarm-badge/card-alarm-badge';
 import { qs } from '@app/engine/utils/query-selector';
 import { AlarmStatus } from '@app/equipment/base-equipment';
+import { ValidationError, validateModemFrequency, validateModemBandwidth } from '@app/equipment/modem/modem-constraints';
 import { ADCStatus } from '@app/equipment/receiver/adc-degradation';
 import { IQSignalInfo, Receiver, ReceiverModemState } from '@app/equipment/receiver/receiver';
 import { EventBus } from '@app/events/event-bus';
@@ -36,6 +37,13 @@ export class ReceiverAdapter {
   private readonly alarmBadge_: CardAlarmBadge;
   private lastStateString: string = '';
   private lastSyncTime_: number = 0;
+  private pendingPowerState_: boolean | null = null;
+
+  // Staged input strings for exact user input preservation
+  private stagedInputStrings_: Map<string, string> = new Map();
+
+  // Validation errors for user feedback
+  private validationErrors_: ValidationError[] = [];
 
   constructor(receiver: Receiver, containerEl: HTMLElement) {
     this.receiver = receiver;
@@ -218,6 +226,10 @@ export class ReceiverAdapter {
    */
 
   private modemSelectHandler_(modemNumber: number): void {
+    // Clear staged inputs and validation when switching modems
+    this.stagedInputStrings_.clear();
+    this.validationErrors_ = [];
+
     this.receiver.setActiveModem(modemNumber);
     this.syncDomWithState_();
   }
@@ -228,17 +240,49 @@ export class ReceiverAdapter {
   }
 
   private frequencyHandler_(e: Event): void {
-    const value = parseLocalizedNumber((e.target as HTMLInputElement).value);
+    const inputEl = e.target as HTMLInputElement;
+    const rawValue = inputEl.value;
+
+    // Store exact user input for display preservation
+    this.stagedInputStrings_.set('frequency', rawValue);
+
+    const value = parseLocalizedNumber(rawValue);
     if (!isNaN(value)) {
+      // Validate and update error state
+      const error = validateModemFrequency(value);
+      this.updateValidationError_('frequency', error);
+
+      // Still update receiver for live preview
       this.receiver.handleFrequencyChange(value);
+    } else {
+      // Invalid number - clear any existing frequency error
+      this.updateValidationError_('frequency', null);
     }
+
+    this.updateApplyButtonState_();
   }
 
   private bandwidthHandler_(e: Event): void {
-    const value = parseLocalizedNumber((e.target as HTMLInputElement).value);
+    const inputEl = e.target as HTMLInputElement;
+    const rawValue = inputEl.value;
+
+    // Store exact user input for display preservation
+    this.stagedInputStrings_.set('bandwidth', rawValue);
+
+    const value = parseLocalizedNumber(rawValue);
     if (!isNaN(value)) {
+      // Validate and update error state
+      const error = validateModemBandwidth(value);
+      this.updateValidationError_('bandwidth', error);
+
+      // Still update receiver for live preview
       this.receiver.handleBandwidthChange(value);
+    } else {
+      // Invalid number - clear any existing bandwidth error
+      this.updateValidationError_('bandwidth', null);
     }
+
+    this.updateApplyButtonState_();
   }
 
   private modulationHandler_(e: Event): void {
@@ -252,12 +296,22 @@ export class ReceiverAdapter {
   }
 
   private applyHandler_(): void {
+    // Don't apply if there are validation errors
+    if (this.validationErrors_.length > 0) {
+      return;
+    }
+
     this.receiver.applyChanges();
+
+    // Clear staged inputs after successful apply
+    this.stagedInputStrings_.clear();
+
     this.syncDomWithState_();
   }
 
   private powerSwitchHandler_(e: Event): void {
     const isEnabled = (e.target as HTMLInputElement).checked;
+    this.pendingPowerState_ = isEnabled;
     this.receiver.handlePowerToggle(isEnabled);
     this.syncDomWithState_();
   }
@@ -374,16 +428,26 @@ export class ReceiverAdapter {
       antennaSelect.value = String(modem.antenna_id);
     }
 
-    // Frequency input - skip if user is focused
+    // Frequency input - use staged value if available, otherwise from state
     const frequencyInput = this.domCache_.get('frequency-input') as HTMLInputElement;
     if (frequencyInput && document.activeElement !== frequencyInput) {
-      frequencyInput.value = Number(modem.frequency.toFixed(1)).toString();
+      const staged = this.stagedInputStrings_.get('frequency');
+      if (staged !== undefined) {
+        frequencyInput.value = staged;
+      } else {
+        frequencyInput.value = String(modem.frequency);
+      }
     }
 
-    // Bandwidth input - skip if user is focused
+    // Bandwidth input - use staged value if available, otherwise from state
     const bandwidthInput = this.domCache_.get('bandwidth-input') as HTMLInputElement;
     if (bandwidthInput && document.activeElement !== bandwidthInput) {
-      bandwidthInput.value = Number(modem.bandwidth.toFixed(1)).toString();
+      const staged = this.stagedInputStrings_.get('bandwidth');
+      if (staged !== undefined) {
+        bandwidthInput.value = staged;
+      } else {
+        bandwidthInput.value = String(modem.bandwidth);
+      }
     }
 
     // Modulation selector - skip if user is focused
@@ -397,6 +461,9 @@ export class ReceiverAdapter {
     if (fecSelect && document.activeElement !== fecSelect) {
       fecSelect.value = modem.fec;
     }
+
+    // Update validation visual feedback
+    this.updateValidationDisplay_();
   }
 
   private updateCurrentValueDisplays_(modem: ReceiverModemState): void {
@@ -442,20 +509,28 @@ export class ReceiverAdapter {
 
     // Check power state
     if (!activeModem.isPowered) {
-      monitor.classList.remove('no-signal', 'signal-found', 'signal-degraded');
+      monitor.classList.remove('no-signal', 'signal-found', 'signal-degraded', 'signal-no-video');
       monitor.classList.add('no-power');
       return;
     }
 
-    // Check for matching signal
-    const hasSignal = this.receiver.hasSignalForModem(activeModem);
+    // Get visible signals to determine state
+    const visibleSignals = this.receiver.getVisibleSignals(activeModem);
+    const hasDecodedSignal = visibleSignals.length > 0;
+    const hasVideoFeed = visibleSignals.some(s => s.feed !== '');
     const isDegraded = this.receiver.isSignalDegraded(activeModem);
 
-    if (!hasSignal) {
-      monitor.classList.remove('no-power', 'signal-found', 'signal-degraded');
+    if (!hasDecodedSignal) {
+      // No signal at all
+      monitor.classList.remove('no-power', 'signal-found', 'signal-degraded', 'signal-no-video');
       monitor.classList.add('no-signal');
+    } else if (!hasVideoFeed) {
+      // Signal decoded but no video feed available
+      monitor.classList.remove('no-power', 'no-signal', 'signal-found', 'signal-degraded');
+      monitor.classList.add('signal-no-video');
     } else {
-      monitor.classList.remove('no-power', 'no-signal');
+      // Signal with video feed
+      monitor.classList.remove('no-power', 'no-signal', 'signal-no-video');
       monitor.classList.add('signal-found');
 
       if (isDegraded) {
@@ -465,10 +540,8 @@ export class ReceiverAdapter {
       }
 
       // Set video feed source
-      const visibleSignals = this.receiver.getVisibleSignals(activeModem);
-      if (visibleSignals.length > 0) {
-        const signal = visibleSignals[0];
-
+      const signal = visibleSignals.find(s => s.feed !== '');
+      if (signal) {
         // Check if it's an image or video
         if (signal.isImage) {
           const imgElement = videoFeed as HTMLImageElement;
@@ -492,22 +565,44 @@ export class ReceiverAdapter {
     const activeModem = this.getActiveModem_();
     if (!activeModem) return;
 
-    // Power Switch
+    // Power Switch - show user's pending request until actual state catches up
     const powerSwitch = this.domCache_.get('power-switch') as HTMLInputElement;
     if (powerSwitch) {
-      powerSwitch.checked = activeModem.isPowered;
+      if (this.pendingPowerState_ !== null) {
+        // User has a pending request - show what they clicked
+        powerSwitch.checked = this.pendingPowerState_;
+        // Clear pending state once actual state matches
+        if (activeModem.isPowered === this.pendingPowerState_) {
+          this.pendingPowerState_ = null;
+        }
+      } else {
+        // No pending request - show actual state
+        powerSwitch.checked = activeModem.isPowered;
+      }
     }
 
-    // Get signal info for C/N and ADC data (needed for signal quality)
+    // Signal Quality Status Badge
+    const signalStatus = this.domCache_.get('signal-status');
+
+    // When modem is powered off, clear all signal-related displays
+    if (!activeModem.isPowered) {
+      if (signalStatus) {
+        signalStatus.className = 'status-badge status-badge-none';
+        signalStatus.textContent = 'Off';
+      }
+      this.clearSignalDisplays_();
+      // Update alarm badge for powered-off state
+      const alarms = this.getAlarmsFromReceiver_();
+      this.alarmBadge_.update(alarms);
+      return;
+    }
+
+    // Get signal info for C/N and ADC data (only when powered on)
     const signalInfo = this.receiver.getSignalsInBandwidth(activeModem);
 
     // Signal Quality Status Badge - use actual C/N thresholds matching IQ constellation
-    const signalStatus = this.domCache_.get('signal-status');
     if (signalStatus) {
-      if (!activeModem.isPowered) {
-        signalStatus.className = 'status-badge status-badge-none';
-        signalStatus.textContent = 'Off';
-      } else if (!signalInfo.hasCarrier) {
+      if (!signalInfo.hasCarrier) {
         signalStatus.className = 'status-badge status-badge-none';
         signalStatus.textContent = 'None';
       } else {
@@ -622,6 +717,44 @@ export class ReceiverAdapter {
     }
   }
 
+  /**
+   * Clear all signal-related displays when modem is powered off
+   */
+  private clearSignalDisplays_(): void {
+    // Clear C/N displays
+    const cnRawDisplay = this.domCache_.get('cn-raw-display');
+    if (cnRawDisplay) cnRawDisplay.textContent = '-- dB';
+
+    const cnEffectiveDisplay = this.domCache_.get('cn-effective-display');
+    if (cnEffectiveDisplay) cnEffectiveDisplay.textContent = '-- dB';
+
+    // Clear power and noise displays
+    const powerLevelDisplay = this.domCache_.get('power-level-display');
+    if (powerLevelDisplay) powerLevelDisplay.textContent = '-- dBm';
+
+    const noiseFloorDisplay = this.domCache_.get('noise-floor-display');
+    if (noiseFloorDisplay) noiseFloorDisplay.textContent = '-- dBm';
+
+    // Clear ADC displays
+    const adcLevelEl = this.domCache_.get('adc-level-display');
+    if (adcLevelEl) {
+      adcLevelEl.textContent = '-- dBFS';
+      adcLevelEl.className = 'fw-bold font-monospace';
+    }
+
+    const adcStatusEl = this.domCache_.get('adc-status-display');
+    if (adcStatusEl) {
+      adcStatusEl.textContent = '--';
+      adcStatusEl.className = 'status-badge status-badge-none';
+    }
+
+    // Hide degradation section
+    const degradationSection = this.domCache_.get('degradation-section');
+    if (degradationSection) {
+      degradationSection.classList.add('d-none');
+    }
+  }
+
   private updatePenaltyDisplay_(elementId: string, penalty: number): void {
     const el = this.domCache_.get(elementId);
     if (el) {
@@ -665,6 +798,17 @@ export class ReceiverAdapter {
   private updateStatusBar_(): void {
     const statusBar = this.domCache_.get('status-bar');
     if (!statusBar) return;
+
+    // Validation errors take priority
+    if (this.validationErrors_.length > 0) {
+      const err = this.validationErrors_[0];
+      statusBar.className = 'alert alert-danger mt-3';
+      const hint = err.educationalHint
+        ? '<br><small>' + err.educationalHint + '</small>'
+        : '';
+      statusBar.innerHTML = '<strong>' + err.message + '</strong>' + hint;
+      return;
+    }
 
     const activeModem = this.getActiveModem_();
     if (!activeModem) return;
@@ -741,6 +885,40 @@ export class ReceiverAdapter {
     }
 
     return alarms;
+  }
+
+  /**
+   * Validation Helper Methods
+   */
+
+  private updateValidationError_(field: 'frequency' | 'bandwidth', error: ValidationError | null): void {
+    // Remove existing error for this field
+    this.validationErrors_ = this.validationErrors_.filter(e => e.field !== field);
+
+    // Add new error if present
+    if (error) {
+      this.validationErrors_.push(error);
+    }
+
+    this.updateValidationDisplay_();
+  }
+
+  private updateApplyButtonState_(): void {
+    const applyBtn = this.domCache_.get('apply-btn') as HTMLButtonElement;
+    if (applyBtn) {
+      applyBtn.disabled = this.validationErrors_.length > 0;
+    }
+  }
+
+  private updateValidationDisplay_(): void {
+    // Visual feedback on input fields
+    const freqInput = this.domCache_.get('frequency-input');
+    const freqError = this.validationErrors_.find(e => e.field === 'frequency');
+    freqInput?.classList.toggle('is-invalid', !!freqError);
+
+    const bwInput = this.domCache_.get('bandwidth-input');
+    const bwError = this.validationErrors_.find(e => e.field === 'bandwidth');
+    bwInput?.classList.toggle('is-invalid', !!bwError);
   }
 
   /**

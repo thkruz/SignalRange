@@ -9,7 +9,7 @@ import { getAssetUrl } from '@app/utils/asset-url';
 import type { Degrees } from 'ootk';
 import { createRfFrontEnd } from '../rf-front-end-factory';
 import { vermontGroundStation } from './ground-stations';
-import { tidemark1Satellite, ses10Satellite, tidemark2Satellite } from './satellites';
+import { ses10Satellite, tidemark1Satellite, tidemark2Satellite } from './satellites';
 
 /**
  * NATS Level 5: "Inclined Orbit Operations"
@@ -47,7 +47,6 @@ export const scenario6Data: ScenarioData = {
   ],
   settings: {
     isSync: true,
-    missionTimeLimitSeconds: 1800, // 30 minutes tracking window
     groundStations: [
       {
         id: 'VT-01',

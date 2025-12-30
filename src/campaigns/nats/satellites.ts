@@ -91,8 +91,8 @@ export const tidemark2Satellite = new Satellite(
   ],
   [], // Beacons now defined in transponderConfigs
   {
-    az: 161.8 as Degrees,
-    el: 34.2 as Degrees,
+    az: 219.7 as Degrees,
+    el: 26.3 as Degrees,
     rotation: -25 as Degrees,
     frequencyOffset: 2.225e9 as Hertz, // Legacy fallback
     transponderConfigs: [

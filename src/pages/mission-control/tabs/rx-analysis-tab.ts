@@ -27,6 +27,7 @@ import { SpectrumAnalyzerAdvancedAdapter } from './spectrum-analyzer-advanced-ad
  * Antenna → OMT → LNB → AGC → Notch Filter → IF Filter → Spectrum Analyzer → Demodulator
  */
 export class RxAnalysisTab extends BaseElement {
+  protected html_!: string;
   private readonly groundStation: GroundStation;
   private lnbAdapter: LNBAdapter | null = null;
   private agcAdapter: AGCAdapter | null = null;
@@ -46,13 +47,17 @@ export class RxAnalysisTab extends BaseElement {
       this.groundStation.initializeEquipment();
     }
 
+    // Must set html_ here (after groundStation is set) for dynamic antenna options
+    this.html_ = this.buildHtml_();
+
     this.init_(containerId, 'replace');
     this.dom_ = qs('.rx-analysis-tab');
 
     this.addEventListenersLate_();
   }
 
-  protected html_ = html`
+  private buildHtml_(): string {
+    return html`
     <div class="rx-analysis-tab">
       <div class="row g-2 pb-6">
         <!-- LNB Control Card -->
@@ -446,8 +451,7 @@ export class RxAnalysisTab extends BaseElement {
                       <div class="mb-3">
                         <label for="antenna-select" class="form-label">Antenna</label>
                         <select id="antenna-select" class="form-select">
-                          <option value="1">Antenna 1</option>
-                          <option value="2">Antenna 2</option>
+                          ${this.generateAntennaOptions_()}
                         </select>
                         <small class="text-muted">Current: <span id="antenna-current">--</span></small>
                       </div>
@@ -505,7 +509,7 @@ export class RxAnalysisTab extends BaseElement {
                     <div class="card-body d-flex align-items-center justify-content-center p-0">
                       <div id="video-monitor" class="video-monitor no-signal">
                         <img id="video-feed" class="video-feed" alt="Video feed" />
-                        <div class="video-overlay">NO SIGNAL</div>
+                        <div class="video-overlay"></div>
                         <div class="signal-degraded-overlay"></div>
                       </div>
                     </div>
@@ -614,11 +618,19 @@ export class RxAnalysisTab extends BaseElement {
       </div>
     </div>
   `;
+  }
 
   private generateFilterOptions(): string {
     return FILTER_BANDWIDTH_CONFIGS.map((config, index) => {
       const selected = index === 8 ? 'selected' : ''; // Default to 20 MHz (index 8)
       return `<option value="${index}" ${selected}>${config.label}</option>`;
+    }).join('');
+  }
+
+  private generateAntennaOptions_(): string {
+    return this.groundStation.antennas.map((_, index) => {
+      const antennaNumber = index + 1;
+      return `<option value="${antennaNumber}">Antenna ${antennaNumber}</option>`;
     }).join('');
   }
 

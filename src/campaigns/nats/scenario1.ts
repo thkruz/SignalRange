@@ -3,7 +3,6 @@ import type { Objective } from '@app/objectives/objective-types';
 import type { ScenarioData } from '@app/ScenarioData';
 import { getAssetUrl } from '@app/utils/asset-url';
 import { vermontGroundStation } from './ground-stations';
-import { natsHtmlLayout } from './html-layout';
 import { tidemark1Satellite } from './satellites';
 
 /**
@@ -36,7 +35,6 @@ export const scenario1Data: ScenarioData = {
     groundStations: [
       vermontGroundStation,
     ],
-    layout: natsHtmlLayout,
     missionBriefUrl: 'https://docs.signalrange.space/scenarios/scenario-1?content-only=true&dark=true',
     isExtraSatellitesVisible: true,
     satellites: [
@@ -47,7 +45,7 @@ export const scenario1Data: ScenarioData = {
   objectives: [
     {
       id: 'phase-1-gpsdo',
-      title: 'Phase 1: GPSDO Status Check',
+      title: 'GPSDO Status Check',
       description: 'Click on the GPSDO panel and verify all status indicators show normal operation.',
       groundStation: 'VT-01',
       conditions: [
@@ -75,7 +73,7 @@ export const scenario1Data: ScenarioData = {
     },
     {
       id: 'phase-2-lnb',
-      title: 'Phase 2: LNB Status Check',
+      title: 'LNB Status Check',
       description: 'Review the LNB panel. Learn what each indicator means for the receive chain.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['phase-1-gpsdo'],
@@ -104,7 +102,7 @@ export const scenario1Data: ScenarioData = {
     },
     {
       id: 'phase-3-hpa',
-      title: 'Phase 3: HPA Status Check',
+      title: 'HPA Status Check',
       description: 'Review the High Power Amplifier panel. Learn how to verify it is in a safe standby state.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['phase-2-lnb'],
@@ -133,7 +131,7 @@ export const scenario1Data: ScenarioData = {
     },
     {
       id: 'phase-4-antenna',
-      title: 'Phase 4: Antenna Tracking Status',
+      title: 'Antenna Tracking Status',
       description: 'Check the antenna control unit. The antenna should be actively tracking TIDEMARK-1.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['phase-3-hpa'],
@@ -162,7 +160,7 @@ export const scenario1Data: ScenarioData = {
     },
     {
       id: 'phase-5-polarization',
-      title: 'Phase 5: ACU Polarization Check',
+      title: 'ACU Polarization Check',
       description: 'Verify the antenna polarization setting matches the satellite requirements.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['phase-4-antenna'],
@@ -191,7 +189,7 @@ export const scenario1Data: ScenarioData = {
     },
     {
       id: 'phase-6-spectrum',
-      title: 'Phase 6: Spectrum Analyzer Reading',
+      title: 'Spectrum Analyzer Reading',
       description: 'Look at the spectrum analyzer display. You should see the TIDEMARK-1 beacon signal.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['phase-5-polarization'],
@@ -220,7 +218,7 @@ export const scenario1Data: ScenarioData = {
     },
     {
       id: 'phase-7-speca-settings',
-      title: 'Phase 7: Spectrum Analyzer Settings',
+      title: 'Spectrum Analyzer Settings',
       description: 'Review the spectrum analyzer settings to understand how it is configured for beacon observation.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['phase-6-spectrum'],
@@ -249,7 +247,7 @@ export const scenario1Data: ScenarioData = {
     },
     {
       id: 'phase-8-receiver',
-      title: 'Phase 8: Receiver Modem Check',
+      title: 'Receiver Modem Check',
       description: 'Verify the receiver modem is locked and the link quality is good.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['phase-7-speca-settings'],
@@ -278,7 +276,7 @@ export const scenario1Data: ScenarioData = {
     },
     {
       id: 'phase-9-constellation',
-      title: 'Phase 9: I&Q Constellation Check',
+      title: 'I&Q Constellation Check',
       description: 'Examine the I&Q constellation diagram to verify signal quality and modulation.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['phase-8-receiver'],
@@ -307,7 +305,7 @@ export const scenario1Data: ScenarioData = {
     },
     {
       id: 'phase-10-alarms',
-      title: 'Phase 10: Dashboard Alarm Check',
+      title: 'Dashboard Alarm Check',
       description: 'Final step: review the alarm dashboard to confirm no active alarms.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['phase-9-constellation'],

@@ -1,41 +1,40 @@
-import { html } from '@app/engine/utils/development/formatter';
-import type { AntennaState } from '@app/equipment/antenna';
-import { ANTENNA_CONFIG_KEYS } from "@app/equipment/antenna/antenna-config-keys";
 import { Character, Emotion } from '@app/modal/character-enum';
 import type { Objective } from '@app/objectives/objective-types';
 import type { ScenarioData } from '@app/ScenarioData';
-import type { dB, dBm, Hertz, MHz, RfFrequency } from '@app/types';
+import type { dBm, Hertz, MHz } from '@app/types';
 import { getAssetUrl } from '@app/utils/asset-url';
 import type { Degrees } from 'ootk';
 import { createRfFrontEnd } from '../rf-front-end-factory';
-import { maineGroundStationConfig, vermontGroundStation } from './ground-stations';
+import { maineGroundStation, vermontGroundStation } from './ground-stations';
 import { ses10Satellite, tidemark1Satellite, tidemark2Satellite } from './satellites';
 
 /**
- * NATS Level 4: "New Bird, No Handbook"
+ * NATS Level 4: "New Bird on the Block"
  *
- * Phase: Mastery (first independent level)
- * Time Pressure: None
- * Calculation Required: YES - RF to IF conversions
- * New UI Elements: Reference guide, calculation confirmation dialogs
+ * Phase: Intermediate operations
+ * Time Pressure: Per-objective timers
+ * Calculation Required: YES - IF frequency adjustments
+ * New UI Elements: Multi-character dialog, satellite switchover workflow
  *
- * Premise: TIDEMARK-2 just reached geostationary orbit at 45°W. Spacecraft team
- * has provided the beacon frequency, but you need to calculate all IF frequencies
- * yourself. No more pre-filled values. Charlie checks your math before you execute.
+ * Premise: ME-02 is maintaining primary operations on TIDEMARK-1. TIDEMARK-2 has
+ * just completed station-keeping at 45°W and the Halifax spacecraft team has handed
+ * over the communications payload. VT-01 needs to switch from monitoring TIDEMARK-1
+ * to establishing full uplink/downlink with TIDEMARK-2.
  */
 
 export const scenario4Data: ScenarioData = {
   id: 'nats-scenario4',
   url: 'nats/scenarios/nats-scenario4',
-  prerequisiteScenarioIds: [],
+  prerequisiteScenarioIds: ['nats-scenario3'],
   imageUrl: 'nats/4/card.png',
   number: 4,
-  title: 'Level 4: "New Bird, No Handbook"',
-  subtitle: 'Independent RF Calculations',
-  duration: '30-35 min',
+  title: 'New Bird on the Block',
+  subtitle: 'Satellite Switchover Operations',
+  duration: '25-30 min',
+  timeLimitSeconds: 30 * 60,
   difficulty: 'intermediate',
-  missionType: 'Mastery Phase',
-  description: `TIDEMARK-2 has just reached geostationary orbit at 45°W. The spacecraft operations team in Halifax has confirmed station-keeping and handed over the communications payload to ground operations.<br><br>SeaLink has provided the beacon frequency: 3,947.8 MHz. Your target IF frequency is the standard 1,247.5 MHz. You must calculate the required LNB local oscillator frequency, select appropriate filter bandwidth, and configure the spectrum analyzer parameters yourself.<br><br>Charlie will check your calculations before you execute. This is the transition to mastery - no more hand-holding with pre-filled values. Show your work.`,
+  missionType: 'Operations Phase',
+  description: `ME-02 is maintaining primary communications with TIDEMARK-1. The spacecraft operations team in Halifax has just confirmed that TIDEMARK-2 has completed station-keeping at 45°W and the communications payload is ready for ground operations.<br><br>Your task at VT-01 is to switch from monitoring TIDEMARK-1 to establishing full uplink and downlink with TIDEMARK-2. You'll need to repoint the antenna, acquire the new beacon, reconfigure the modems for the new frequencies, and bring up the transmit path.<br><br>Marcus Chen from Halifax spacecraft ops will confirm payload status. Take your time - ME-02 has primary coverage while you complete the switchover.`,
   equipment: [
     '9-meter C-band Antenna',
     'RF Front End',
@@ -47,131 +46,22 @@ export const scenario4Data: ScenarioData = {
     isSync: true,
     groundStations: [
       {
-        id: 'VT-01',
-        name: 'Vermont Ground Station',
-        location: {
-          latitude: 44.5588,
-          longitude: -72.5778,
-          elevation: 2,
-        },
-        antennas: [ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK],
-        antennasState: [
-          {
-            // Stowed initially
-            isPowered: true,
-            azimuth: 0 as Degrees,
-            elevation: 90 as Degrees,
-            polarization: 0 as Degrees,
-            isTracking: false,
-            trackingMode: 'stow',
-          } as Partial<AntennaState>,
-        ],
+        ...vermontGroundStation,
         rfFrontEnds: [
           createRfFrontEnd(vermontGroundStation.rfFrontEnds[0], {
-            buc: { isPowered: false, loFrequency: 2225 as MHz, outputPower: 0 as dBm, isMuted: true, isExtRefLocked: false },
-            hpa: { isPowered: false, outputPower: 0 as dBm },
-            filter: { bandwidthIndex: 0 }, // Student must select
-            lnb: {
-              isPowered: false,
-              loFrequency: 0 as MHz, // Student must calculate
-              gain: 0 as dB,
-              noiseTemperature: 25,
-              noiseTemperatureStabilizationTime: 180,
-              isExtRefLocked: false,
-              temperature: 22,
-              thermalStabilizationTime: 180,
-            },
-            gpsdo: {
-              temperature: 65,
-              satelliteCount: 11,
-              utcAccuracy: 18,
-              lockDuration: 86400,
-              frequencyAccuracy: 1e-12,
-              allanDeviation: 5e-13,
-              phaseNoise: -140,
-              active10MHzOutputs: 1, // Only GPSDO itself currently
-              operatingHours: 86400,
-            },
+            buc: { isMuted: true, loFrequency: 7000 as MHz },
+            hpa: { isHpaEnabled: false },
           }),
         ],
-        spectrumAnalyzers: [
-          {
-            referenceLevel: 0, // Student must configure
-            centerFrequency: 1.432e9 as Hertz, // Student must configure
-            span: 100e6 as Hertz, // Student must configure
-            rbw: 1e6 as Hertz, // Student must configure
-            minAmplitude: -170,
-            maxAmplitude: 0,
-            scaleDbPerDiv: 17 as dB,
-            screenMode: 'both',
-            inputUnit: 'MHz',
-            inputValue: '',
-            traces: [
-              { isVisible: true, isUpdating: true, mode: 'clearwrite' },
-              { isVisible: false, isUpdating: false, mode: 'clearwrite' },
-              { isVisible: false, isUpdating: false, mode: 'clearwrite' },
-            ],
-            selectedTrace: 1,
-          }
-        ],
-        transmitters: [],
-        receivers: [],
       },
       {
-        id: 'ME-01',
-        isOperational: false,
-        name: 'Maine Ground Station',
-        location: {
-          latitude: 45.215214,
-          longitude: -68.785507,
-          elevation: 48,
-        },
-        antennas: [ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK],
-        antennasState: [
-          {
-            isPowered: false,
-            azimuth: 0 as Degrees,
-            elevation: 90 as Degrees,
-          } as Partial<AntennaState>
-        ],
-        rfFrontEnds: [
-          createRfFrontEnd(maineGroundStationConfig.rfFrontEnds[0], {}),
-        ],
-        spectrumAnalyzers: [
-          {
-            referenceLevel: 0, // dBm
-            centerFrequency: 600e6 as Hertz,
-            span: 100e6 as Hertz,
-            rbw: 50e6 as Hertz,
-            minAmplitude: -170,
-            maxAmplitude: 0,
-            scaleDbPerDiv: (-0 + 170) / 10 as dB, // 6 dB/div
-            screenMode: 'both',
-            inputUnit: 'MHz',
-            inputValue: '',
-
-            // Multi-trace support
-            traces: [
-              { isVisible: true, isUpdating: true, mode: 'clearwrite' }, // Trace 1
-              { isVisible: false, isUpdating: false, mode: 'clearwrite' }, // Trace 2
-              { isVisible: false, isUpdating: false, mode: 'clearwrite' }, // Trace 3
-            ],
-            selectedTrace: 1,
-          }
-        ],
-        transmitters: [],
-        receivers: [],
+        ...vermontGroundStation,
+        id: maineGroundStation.id,
+        name: maineGroundStation.name,
+        location: maineGroundStation.location,
+        isOperational: true,
       }
     ],
-    layout: html`
-              <div class="student-equipment scenario1-layout">
-                <div class="paired-equipment-container">
-                  <div id="antenna1-container" class="antenna-container"></div>
-                  <div id="specA1-container" class="spec-a-container"></div>
-                </div>
-                <div id="rf-front-end1-container" class="paired-equipment-container"></div>
-              </div>
-            `,
     missionBriefUrl: 'https://docs.signalrange.space/scenarios/scenario-2?content-only=true&dark=true',
     isExtraSatellitesVisible: true,
     satellites: [
@@ -181,27 +71,19 @@ export const scenario4Data: ScenarioData = {
     ],
   },
   objectives: [
+    // Phase 1: Preparation & Understanding
     {
-      id: 'calculate-lnb-lo',
-      title: 'Phase 2: Calculate LNB Local Oscillator Frequency',
-      description: 'Calculate required LO frequency. Submit calculation for Charlie\'s approval.',
+      id: 'review-mission-brief',
+      title: 'Review Mission Brief',
+      description: 'Open the mission brief to understand the switchover requirements.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: [],
       conditions: [
         {
-          type: 'status-check',
-          description: 'Calculation Submitted and Approved',
+          type: 'mission-brief-opened',
+          description: 'Mission Brief Reviewed',
           params: {
-            question: 'What is the required LNB local oscillator frequency (in MHz) to achieve the target IF of 1,247.5 MHz for the TIDEMARK-2 beacon at 3,947.8 MHz?',
-            options: [
-              '5,195.3 MHz',
-              '5,255.3 MHz',
-              '5,193.5 MHz',
-              '5,253.5 MHz',
-            ],
-            correctIndex: 0,
-            explanation: 'The LNB local oscillator frequency is calculated by adding the target IF frequency to the received RF frequency: 3,947.8 MHz + 1,247.5 MHz = 5,195.3 MHz. This LO frequency will downconvert the received beacon signal to the desired IF frequency for processing.',
-            pointPenalty: 5,
+            boxId: 'mission-brief',
           },
           mustMaintain: false,
         },
@@ -210,81 +92,57 @@ export const scenario4Data: ScenarioData = {
       points: 5,
     },
     {
-      id: 'select-if-filter',
-      title: 'Phase 3: Select IF Filter Bandwidth',
-      description: 'Choose appropriate IF filter for CW beacon signal. Explain your selection.',
+      id: 'verify-current-status',
+      title: 'Verify Current TIDEMARK-1 Status',
+      description: 'Confirm which satellite VT-01 is currently tracking.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['calculate-lnb-lo'],
+      prerequisiteObjectiveIds: ['review-mission-brief'],
+      timeLimitSeconds: 2 * 60,
+      timerStartTrigger: 'on-activate',
       conditions: [
         {
-          type: 'filter-bandwidth-set',
-          description: 'Narrow IF Filter Selected (1 MHz)',
+          type: 'status-check',
+          description: 'Current Satellite Identified',
           params: {
-            bandwidthIndex: 8, // 1 Mhz
+            question: 'What satellite is VT-01 currently tracking?',
+            options: [
+              'TIDEMARK-1',
+              'TIDEMARK-2',
+              'SES-10',
+              'None - antenna is stowed',
+            ],
+            correctIndex: 0,
+            explanation: 'VT-01 is currently tracking TIDEMARK-1. The antenna is pointed at Az: 161.8°, El: 34.2° with beacon lock confirmed. We need to switch to TIDEMARK-2 at Az: 219.7°, El: 26.3°.',
+            pointPenalty: 5,
           },
           mustMaintain: false,
         },
       ],
       conditionLogic: 'AND',
-      points: 10,
+      points: 5,
     },
+    // Phase 2: Antenna Reconfiguration
     {
-      id: 'configure-spectrum-analyzer',
-      title: 'Phase 4: Configure Spectrum Analyzer',
-      description: 'Set SpecA parameters for CW beacon acquisition (Center: 1,247.5 MHz, appropriate span/RBW).',
+      id: 'command-antenna',
+      title: 'Command Antenna to Track TIDEMARK-2',
+      description: 'Slew the antenna to TIDEMARK-2 position (Az: 219.7°, El: 26.3°).',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['select-if-filter'],
+      prerequisiteObjectiveIds: ['verify-current-status'],
+      timeLimitSeconds: 3 * 60,
+      timerStartTrigger: 'on-activate',
       conditions: [
         {
-          type: 'frequency-set',
-          description: 'Center Frequency: 1,247.5 MHz',
-          params: {
-            frequency: 1247.5e6 as RfFrequency,
-            tolerance: 1e3 as Hertz,
-          },
-          mustMaintain: true,
-        },
-        {
-          type: 'speca-span-set',
-          description: 'Span: 2-10 kHz (narrow for CW)',
-          params: {
-            span: 6e3,
-            frequencyTolerance: 4e3,
-          },
-          mustMaintain: true,
-        },
-        {
-          type: 'speca-rbw-set',
-          description: 'RBW: ≤ 1 kHz (very narrow)',
-          params: {
-            rbw: 1000 as Hertz,
-          },
-          mustMaintain: true,
-        },
-        {
-          type: 'speca-reference-level-set',
-          description: 'Reference Level: -100 dBm',
-          params: {
-            referenceLevel: -100,
-          },
-          mustMaintain: true,
-        },
-      ],
-      conditionLogic: 'AND',
-      points: 15,
-    },
-    {
-      id: 'point-antenna',
-      title: 'Phase 5: Point Antenna at TIDEMARK-2',
-      description: 'Command antenna to Az: 219.7°, El: 26.3° (45°W from Vermont).',
-      groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['configure-spectrum-analyzer'],
-      conditions: [
-        {
-          type: 'antenna-position',
-          description: 'TIDEMARK-2 Position Commanded',
+          type: 'antenna-tracking-mode-set',
+          description: 'Program Track Mode Active',
           params: {
             trackingMode: 'program-track',
+          },
+          mustMaintain: false,
+        },
+        {
+          type: 'antenna-position',
+          description: 'Antenna at TIDEMARK-2 Position',
+          params: {
             azimuth: 219.7 as Degrees,
             elevation: 26.3 as Degrees,
             tolerance: 0.5 as Degrees,
@@ -292,45 +150,54 @@ export const scenario4Data: ScenarioData = {
           mustMaintain: false,
         },
       ],
+      conditionLogic: 'AND',
       points: 10,
     },
+    // Phase 3: Beacon Acquisition
     {
-      id: 'power-configure-lnb',
-      title: 'Phase 6: Power and Configure LNB',
-      description: 'Power LNB with calculated LO frequency and standard 55 dB gain.',
+      id: 'configure-speca-beacon',
+      title: 'Configure Spectrum Analyzer for TIDEMARK-2 Beacon',
+      description: 'Set spectrum analyzer to view TIDEMARK-2 beacon at IF frequency 1070 MHz.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['point-antenna'],
+      prerequisiteObjectiveIds: ['command-antenna'],
+      timeLimitSeconds: 3 * 60,
+      timerStartTrigger: 'on-activate',
       conditions: [
         {
-          type: 'equipment-powered',
-          description: 'LNB Powered',
+          type: 'speca-center-frequency',
+          description: 'Center Frequency: 1070 MHz',
           params: {
-            equipment: 'lnb',
+            centerFrequency: 1070e6 as Hertz,
+            centerFrequencyTolerance: 1e6,
           },
-          maintainUntilObjectiveComplete: true,
+          mustMaintain: true,
         },
         {
-          type: 'lnb-lo-set',
-          description: 'LNB LO Set to Calculated Value (5,195.3 MHz)',
+          type: 'speca-span-set',
+          description: 'Span: 10 kHz (narrow for CW)',
           params: {
-            loFrequency: 5195.3 as MHz,
-            loFrequencyTolerance: 0.5, // Allow small rounding
+            span: 10e3,
+            frequencyTolerance: 5e3,
           },
-          maintainUntilObjectiveComplete: true,
+          mustMaintain: true,
         },
         {
-          type: 'lnb-gain-set',
-          description: 'LNB Gain Set to 55 dB',
+          type: 'speca-rbw-set',
+          description: 'RBW: 1 kHz',
           params: {
-            gain: 55,
-            gainTolerance: 0,
+            rbw: 1000 as Hertz,
+            frequencyTolerance: 500,
           },
-          maintainUntilObjectiveComplete: true,
+          mustMaintain: true,
         },
         {
-          type: 'lnb-thermally-stable',
-          description: 'LNB Thermally Stabilized',
-          maintainUntilObjectiveComplete: true,
+          type: 'speca-reference-level-set',
+          description: 'Reference Level: -90 dBm',
+          params: {
+            referenceLevel: -90,
+            referenceLevelTolerance: 5,
+          },
+          mustMaintain: true,
         },
       ],
       conditionLogic: 'AND',
@@ -338,124 +205,411 @@ export const scenario4Data: ScenarioData = {
     },
     {
       id: 'acquire-beacon',
-      title: 'Phase 7: Acquire TIDEMARK-2 Beacon',
-      description: 'Verify beacon signal appears on spectrum analyzer at correct frequency.',
+      title: 'Acquire TIDEMARK-2 Beacon',
+      description: 'Verify beacon signal appears on spectrum analyzer.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['power-configure-lnb'],
+      prerequisiteObjectiveIds: ['configure-speca-beacon'],
+      timeLimitSeconds: 2 * 60,
+      timerStartTrigger: 'on-activate',
       conditions: [
         {
           type: 'signal-detected',
-          description: 'Beacon Detected at 1,247.5 MHz ± 1 kHz',
+          description: 'Beacon Signal Detected',
           params: {
-            signalId: 'tidemark-2-beacon',
-            minPower: -96 as dBm, // -93 expected, allow margin
+            signalId: 'TIDEMARK-2-Beacon',
+            minPower: -95 as dBm,
           },
           mustMaintain: false,
         },
         {
           type: 'signal-level-correct',
-          description: 'Signal Level Above -95 dBm for 60 Seconds',
+          description: 'Beacon Level Stable',
           params: {
-            signalId: 'tidemark-2-beacon',
+            signalId: 'TIDEMARK-2-Beacon',
             minPower: -95 as dBm,
           },
           mustMaintain: true,
-          maintainDuration: 5, // seconds
+          maintainDuration: 30,
         },
       ],
       conditionLogic: 'AND',
-      points: 25,
+      points: 20,
+    },
+    {
+      id: 'verify-beacon-acquisition',
+      title: 'Verify Beacon Acquisition',
+      description: 'Confirm understanding of what beacon acquisition indicates.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['acquire-beacon'],
+      timeLimitSeconds: 2 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'status-check',
+          description: 'Beacon Significance Understood',
+          params: {
+            question: 'What does a stable beacon signal confirm?',
+            options: [
+              'Antenna is pointed correctly',
+              'LNB local oscillator frequency is correct',
+              'Both antenna pointing and LNB frequency are correct',
+              'Neither - beacon is independent of ground equipment',
+            ],
+            correctIndex: 2,
+            explanation: 'A stable beacon confirms both: (1) the antenna is pointed at the correct satellite, and (2) the LNB LO frequency is set correctly to downconvert the beacon RF to the expected IF. If either were wrong, you would not see the beacon.',
+            pointPenalty: 5,
+          },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 5,
+    },
+    // Phase 4: Receiver Configuration
+    {
+      id: 'configure-rx-frequency',
+      title: 'Configure RX Modem Frequency',
+      description: 'Set receiver modem to TIDEMARK-2 downlink IF frequency (1458 MHz).',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['verify-beacon-acquisition'],
+      timeLimitSeconds: 3 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'rx-modem-frequency-set',
+          description: 'RX Frequency: 1458 MHz',
+          params: {
+            frequency: 1458e6,
+            frequencyTolerance: 1e6,
+          },
+          maintainUntilObjectiveComplete: true,
+        },
+        {
+          type: 'rx-modem-bandwidth-set',
+          description: 'RX Bandwidth: 36 MHz',
+          params: {
+            bandwidth: 36e6,
+            bandwidthTolerance: 1e6,
+          },
+          maintainUntilObjectiveComplete: true,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 15,
+    },
+    {
+      id: 'configure-rx-modulation',
+      title: 'Configure RX Modem Modulation',
+      description: 'Set receiver modem modulation and FEC to match TIDEMARK-2 signal.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['configure-rx-frequency'],
+      timeLimitSeconds: 2 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'rx-modem-modulation-set',
+          description: 'Modulation: QPSK',
+          params: {
+            modulation: 'QPSK',
+          },
+          maintainUntilObjectiveComplete: true,
+        },
+        {
+          type: 'rx-modem-fec-set',
+          description: 'FEC: 3/4',
+          params: {
+            fec: '3/4',
+          },
+          maintainUntilObjectiveComplete: true,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 10,
+    },
+    {
+      id: 'verify-rx-lock',
+      title: 'Verify RX Signal Lock',
+      description: 'Confirm receiver has locked to TIDEMARK-2 downlink with acceptable SNR.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['configure-rx-modulation'],
+      timeLimitSeconds: 3 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'receiver-signal-locked',
+          description: 'Receiver Locked',
+          params: {
+            modemNumber: 1,
+          },
+          maintainUntilObjectiveComplete: true,
+        },
+        {
+          type: 'receiver-snr-threshold',
+          description: 'SNR Above 10 dB',
+          params: {
+            minCNRatio: 10,
+            modemNumber: 1,
+          },
+          maintainUntilObjectiveComplete: true,
+          maintainDuration: 30,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 20,
+    },
+    // Phase 5: Transmitter Configuration
+    {
+      id: 'configure-tx-modem',
+      title: 'Configure TX Modem',
+      description: 'Set transmitter modem parameters for TIDEMARK-2 uplink.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['verify-rx-lock'],
+      timeLimitSeconds: 3 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'tx-modem-frequency-set',
+          description: 'TX Frequency: 1020 MHz',
+          params: {
+            frequency: 1020e6,
+            frequencyTolerance: 1e6,
+          },
+          maintainUntilObjectiveComplete: true,
+        },
+        {
+          type: 'tx-modem-bandwidth-set',
+          description: 'TX Bandwidth: 36 MHz',
+          params: {
+            bandwidth: 36e6,
+            bandwidthTolerance: 1e6,
+          },
+          maintainUntilObjectiveComplete: true,
+        },
+        {
+          type: 'tx-modem-power-set',
+          description: 'TX Power: -7 dBm',
+          params: {
+            power: -7,
+            powerTolerance: 1,
+          },
+          maintainUntilObjectiveComplete: true,
+        },
+        {
+          type: 'tx-modem-modulation-set',
+          description: 'TX Modulation: QPSK',
+          params: {
+            modulation: 'QPSK',
+          },
+          maintainUntilObjectiveComplete: true,
+        },
+        {
+          type: 'tx-modem-fec-set',
+          description: 'TX FEC: 3/4',
+          params: {
+            fec: '3/4',
+          },
+          maintainUntilObjectiveComplete: true,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 15,
+    },
+    {
+      id: 'enable-transmit-path',
+      title: 'Enable Transmit Path',
+      description: 'Unmute BUC and enable HPA for transmission.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['configure-tx-modem'],
+      timeLimitSeconds: 2 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'buc-unmuted',
+          description: 'BUC Unmuted',
+          maintainUntilObjectiveComplete: true,
+        },
+        {
+          type: 'hpa-enabled',
+          description: 'HPA Enabled',
+          maintainUntilObjectiveComplete: true,
+        },
+        {
+          type: 'hpa-not-overdriven',
+          description: 'HPA Not Overdriven',
+          maintainUntilObjectiveComplete: true,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 10,
     },
   ] as Objective[],
   dialogClips: {
     intro: {
       text: `
       <p>
-        The spacecraft team just sent the beacon frequency for TIDEMARK-2: 3,947.8 megahertz. Standard IF target is 1,247.5 megahertz.
+        Hey there, Marcus Chen from Halifax spacecraft ops. TIDEMARK-2's station-keeping is looking good, eh? Payload's been handed over to ground ops - she's all yours now.
       </p>
       <p>
-        You've got the equations in the reference guide. Show me your LO calculation before you configure the LNB. I need to see your work.
+        Sorry for the short notice on this one. The bird came online a bit ahead of schedule, but that's a good problem to have.
       </p>
       <p>
-        This is the first time you're doing this without me giving you the answer. Take your time, use the documentation, get it right.
-      </p>
-      <p>
-        When you're ready, submit your calculation and I'll check it before you execute.
+        Charlie said that ME-02's got primary on TIDEMARK-1, so you've got time to work. Take a look at the Mission Brief and give me a shout when you've got lock - I'll be watching from our end.
       </p>
       `,
-      character: Character.CHARLIE_BROOKS,
-      emotion: Emotion.CONCERNED,
+      character: Character.MARCUS_CHEN,
+      emotion: Emotion.HAPPY,
       audioUrl: getAssetUrl('/assets/campaigns/nats/4/intro.mp3'),
     },
     objectives: {
-      'calculate-lnb-lo': {
+      'review-mission-brief': {
         text: `
         <p>
-          5,195.3 megahertz. That's correct.
+          Good, you've got the mission brief. This is a standard satellite switchover - nothing you haven't trained for.
         </p>
         <p>
-          Good work showing the calculation. Math matters here - one decimal place wrong and you might not see the beacon.
+          VT-01 is currently locked on TIDEMARK-1 at azimuth 161.8, elevation 34.2. TIDEMARK-2 is about 58 degrees away in azimuth - that's a significant slew.
         </p>
         <p>
-          Now select your IF filter. Think about the signal type - CW beacon, very narrow bandwidth.
-        </p>
-        `,
-        character: Character.CHARLIE_BROOKS,
-        emotion: Emotion.HAPPY,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/4/obj-calculation.mp3'),
-      },
-      'select-if-filter': {
-        text: `
-        <p>
-          1 megahertz filter. Perfect choice for a CW beacon. This is the balance between noise floor and insertion loss.
-        </p>
-        <p>
-          Configure the spectrum analyzer now. Center frequency at your target IF, narrow span for the CW beacon, tight RBW.
+          Let's verify where we're starting from before we move anything.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/4/obj-filter.mp3'),
+        audioUrl: getAssetUrl('/assets/campaigns/nats/4/obj-brief.mp3'),
       },
-      'configure-spectrum-analyzer': {
+      'verify-current-status': {
         text: `
         <p>
-          Spectrum analyzer's configured. Center at 1,247.5 megahertz, 5 kilohertz span, 100 hertz RBW. Reference level appropriate for the expected signal.
+          That's right - TIDEMARK-1. Good to confirm you know what you're working with before making changes.
         </p>
         <p>
-          Point the antenna at TIDEMARK-2 and power up the LNB with your calculated settings.
+          Now command the antenna to TIDEMARK-2's position. Azimuth 219.7, elevation 26.3. The ACU will handle the slew - just make sure program track mode is active.
+        </p>
+        `,
+        character: Character.CHARLIE_BROOKS,
+        emotion: Emotion.NEUTRAL,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/4/obj-status.mp3'),
+      },
+      'command-antenna': {
+        text: `
+        <p>
+          Antenna looks like it is on target. Nice and smooth slew.
+        </p>
+        <p>
+          Let's get the spectrum analyzer ready for the new beacon. TIDEMARK-2's beacon is at 4,180 megahertz RF. With your LO at 5,250 megahertz, what IF frequency should you see?
+        </p>
+        <p>
+          Set your center frequency to the correct IF frequency. Narrow span for the CW beacon.
+        </p>
+        `,
+        character: Character.CHARLIE_BROOKS,
+        emotion: Emotion.NEUTRAL,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/4/obj-antenna.mp3'),
+      },
+      'configure-speca-beacon': {
+        text: `
+        <p>
+          Spectrum analyzer's ready. 1,070 megahertz center, narrow span, tight RBW. Reference level set for beacon acquisition.
+        </p>
+        <p>
+          Antenna should be on target by now. Watch the display - if everything's aligned, the beacon should appear right at center frequency.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
         audioUrl: getAssetUrl('/assets/campaigns/nats/4/obj-speca.mp3'),
       },
-      'power-configure-lnb': {
+      'acquire-beacon': {
         text: `
         <p>
-          LNB's up with your calculated LO frequency. Temperature stabilizing.
+          Charlie just pinged me - says you've got the antenna on TIDEMARK-2 and you're seeing the beacon. That's great news.
         </p>
         <p>
-          If your math was right, you should see the beacon appear right at center frequency when the LNB comes up to temperature.
+          Beacon's been rock solid since we finished station-keeping. If you're seeing it clean on the spectrum analyzer, your pointing and receive chain are good to go.
+        </p>
+        `,
+        character: Character.MARCUS_CHEN,
+        emotion: Emotion.HAPPY,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/4/obj-beacon.mp3'),
+      },
+      'verify-beacon-acquisition': {
+        text: `
+        <p>
+          Exactly right. The beacon confirms both your antenna pointing and your LNB frequency. If either were wrong, you wouldn't see it.
+        </p>
+        <p>
+          Now we need to configure the receiver modem for TIDEMARK-2's downlink. The transponder output is at 3,792 megahertz RF - with your LO, that's an IF of 1,458 megahertz.
+        </p>
+        `,
+        character: Character.CHARLIE_BROOKS,
+        emotion: Emotion.HAPPY,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/4/obj-beacon-quiz.mp3'),
+      },
+      'configure-rx-frequency': {
+        text: `
+        <p>
+          Receiver frequency and bandwidth are set. 1,458 megahertz, 36 megahertz bandwidth to match the transponder.
+        </p>
+        <p>
+          Set the modulation and FEC to match TIDEMARK-2's signal format - QPSK with 3/4 rate coding.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/4/obj-lnb.mp3'),
+        audioUrl: getAssetUrl('/assets/campaigns/nats/4/obj-rx-freq.mp3'),
       },
-      'acquire-beacon': {
+      'configure-rx-modulation': {
         text: `
         <p>
-          There it is. Clean spike at 1,247.5 megahertz, signal level right where the spacecraft team predicted.
+          Modulation parameters are set. The modem should start searching for lock now.
         </p>
         <p>
-          You calculated correctly, configured correctly, and acquired on first try. That's exactly what I wanted to see.
-        </p>
-        <p>
-          You can do the math now. Next time, we'll work with a satellite that's got an inclined orbit - TIDEMARK-1's been drifting for a while. I'll show you how to track it.
+          Watch the lock indicator and SNR display. We need to see a stable lock with at least 10 dB carrier-to-noise before we bring up the transmit side.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
+        emotion: Emotion.NEUTRAL,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/4/obj-rx-mod.mp3'),
+      },
+      'verify-rx-lock': {
+        text: `
+        <p>
+          Catherine here from ME-02. I'm seeing your receiver come online on the network status display. Looks like you've got good lock on TIDEMARK-2's downlink.
+        </p>
+        <p>
+          We're holding steady on TIDEMARK-1 over here, so no rush on your end. SNR on your link looks healthy from what I can see.
+        </p>
+        `,
+        character: Character.CATHERINE_VEGA,
+        emotion: Emotion.NEUTRAL,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/4/obj-rx-lock.mp3'),
+      },
+      'configure-tx-modem': {
+        text: `
+        <p>
+          Transmitter modem's configured. 1,020 megahertz IF, 36 megahertz bandwidth, QPSK 3/4.
+        </p>
+        <p>
+          Before we enable the transmit path, double-check that the HPA is ready and the BUC is configured. We don't want any surprises when we key up.
+        </p>
+        `,
+        character: Character.CHARLIE_BROOKS,
+        emotion: Emotion.NEUTRAL,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/4/obj-tx-modem.mp3'),
+      },
+      'enable-transmit-path': {
+        text: `
+        <p>
+          We're seeing your uplink on the payload side. Clean signal, no anomalies. Beauty, eh?
+        </p>
+        <p>
+          Full duplex established with TIDEMARK-2. VT-01 is now operational on the new bird. Grab yourself a double-double - you've earned it.
+        </p>
+        <p>
+          Charlie, your trainee did good work today. Nice and methodical.
+        </p>
+        `,
+        character: Character.MARCUS_CHEN,
         emotion: Emotion.HAPPY,
         audioUrl: getAssetUrl('/assets/campaigns/nats/4/complete.mp3'),
       },

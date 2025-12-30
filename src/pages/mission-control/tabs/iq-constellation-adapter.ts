@@ -168,8 +168,20 @@ export class IQConstellationAdapter {
     this.cnIndicator_.textContent = cnText;
     this.cnIndicator_.className = `iq-status-cn font-monospace ${cnClass}`;
 
-    // Lock indicator with ADC status and bandwidth clipping suffix
-    let lockText = state.hasLock ? 'LOCKED' : state.hasCarrier ? 'CARRIER' : 'NO LOCK';
+    // Lock indicator - must have hasLock AND sufficient C/N to actually maintain lock
+    // Below ~3 dB effective C/N, a real modem wouldn't maintain lock even with correct config
+    // Below 0 dB C/N, there's no usable carrier (noise exceeds signal)
+    const effectiveCn = state.effectiveCnRatio_dB ?? state.cnRatio_dB;
+    const hasUsableCarrier = state.hasCarrier && effectiveCn >= 0;
+    const isActuallyLocked = state.hasLock && effectiveCn >= 3;
+    let lockText: string;
+    if (isActuallyLocked) {
+      lockText = 'LOCKED';
+    } else if (hasUsableCarrier) {
+      lockText = 'CARRIER';
+    } else {
+      lockText = 'NO LOCK';
+    }
     if (adcStatus === 'clipping' || adcStatus === 'severe-clipping') {
       lockText += ' (CLIP)';
     } else if (adcStatus === 'low-level' || adcStatus === 'severe-low') {
@@ -177,7 +189,14 @@ export class IQConstellationAdapter {
     } else if (state.isBandwidthClipped) {
       lockText += ' (BW)';
     }
-    const lockClass = state.hasLock ? 'text-success' : state.hasCarrier ? 'text-warning' : 'text-danger';
+    let lockClass: string;
+    if (isActuallyLocked) {
+      lockClass = 'text-success';
+    } else if (hasUsableCarrier) {
+      lockClass = 'text-warning';
+    } else {
+      lockClass = 'text-danger';
+    }
     this.lockIndicator_.textContent = lockText;
     this.lockIndicator_.className = `iq-status-lock font-monospace ${lockClass}`;
   }

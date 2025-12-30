@@ -1,8 +1,6 @@
 import { ToggleSwitch } from "@app/components/toggle-switch/toggle-switch";
 import { EventBus } from "@app/events/event-bus";
 import { SignalOrigin } from "@app/signal-origin";
-import { Sfx } from "@app/sound/sfx-enum";
-import SoundManager from "@app/sound/sound-manager";
 import { PowerSwitch } from '../../components/power-switch/power-switch';
 import { html } from "../../engine/utils/development/formatter";
 import { qs } from "../../engine/utils/query-selector";
@@ -391,13 +389,10 @@ export class Transmitter extends BaseEquipment {
   }
 
   private togglePower(isOn: boolean): void {
-    if (isOn) {
-      SoundManager.getInstance().play(Sfx.TOGGLE_ON);
-    } else {
+    if (!isOn) {
       // If turning off power, also stop transmission
       this.activeModem.isTransmitting = false;
       this.activeModem.isFaulted = false;
-      SoundManager.getInstance().play(Sfx.TOGGLE_OFF);
     }
 
     setTimeout(() => {
@@ -497,8 +492,6 @@ export class Transmitter extends BaseEquipment {
       config: this.state.modems[this.activeModem.id]
     });
 
-    SoundManager.getInstance().play(Sfx.SWITCH);
-
     this.syncDomWithState();
   }
 
@@ -518,7 +511,6 @@ export class Transmitter extends BaseEquipment {
         modem: this.state.activeModem,
         config: this.state.modems[this.activeModem.id]
       });
-      SoundManager.getInstance().play(Sfx.SWITCH);
     }, 250);
 
     this.emit(Events.TX_CONFIG_CHANGED, {
@@ -526,8 +518,6 @@ export class Transmitter extends BaseEquipment {
       modem: this.state.activeModem,
       config: this.state.modems[this.activeModem.id]
     });
-
-    SoundManager.getInstance().play(Sfx.SWITCH);
   }
 
   private toggleTestMode(): void {
@@ -538,7 +528,6 @@ export class Transmitter extends BaseEquipment {
       modem: this.state.activeModem,
       config: this.state.modems[this.activeModem.id]
     });
-    SoundManager.getInstance().play(Sfx.SWITCH);
     this.syncDomWithState();
   }
 
@@ -656,13 +645,10 @@ export class Transmitter extends BaseEquipment {
   }
 
   public handlePowerToggle(isEnabled: boolean): void {
-    if (isEnabled) {
-      SoundManager.getInstance().play(Sfx.TOGGLE_ON);
-    } else {
+    if (!isEnabled) {
       // If turning off power, also stop transmission
       this.activeModem.isTransmitting = false;
       this.activeModem.isFaulted = false;
-      SoundManager.getInstance().play(Sfx.TOGGLE_OFF);
     }
 
     setTimeout(() => {

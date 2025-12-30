@@ -5,8 +5,7 @@ import type { dBm, Hertz, MHz } from '@app/types';
 import { getAssetUrl } from '@app/utils/asset-url';
 import type { Degrees } from 'ootk';
 import { createRfFrontEnd } from '../rf-front-end-factory';
-import { maineGroundStationConfig, vermontGroundStation } from './ground-stations';
-import { natsHtmlLayout } from './html-layout';
+import { maineGroundStation, vermontGroundStation } from './ground-stations';
 import { ses10Satellite, tidemark1Satellite } from './satellites';
 
 /**
@@ -25,7 +24,7 @@ import { ses10Satellite, tidemark1Satellite } from './satellites';
 export const scenario2Data: ScenarioData = {
   id: 'nats-scenario2',
   url: 'nats/scenarios/nats-scenario2',
-  prerequisiteScenarioIds: [],
+  prerequisiteScenarioIds: ['nats-scenario1'],
   imageUrl: 'nats/2/card.png',
   number: 2,
   title: 'Scheduled Maintenance',
@@ -59,9 +58,8 @@ export const scenario2Data: ScenarioData = {
           },
         ],
       },
-      { ...maineGroundStationConfig, isOperational: false },
+      { ...maineGroundStation, isOperational: false },
     ],
-    layout: natsHtmlLayout,
     missionBriefUrl: 'https://docs.signalrange.space/scenarios/scenario-2?content-only=true&dark=true',
     isExtraSatellitesVisible: true,
     satellites: [

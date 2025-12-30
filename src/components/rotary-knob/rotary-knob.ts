@@ -148,8 +148,22 @@ export class RotaryKnob {
     return this.dom_;
   }
 
+  /**
+   * Sync the knob display to match an externally-set value.
+   * Does NOT trigger callback or sounds - this is for updating the visual
+   * to match state that was set elsewhere.
+   */
   sync(newValue: number): void {
-    this.setValue_(newValue);
+    // Clamp to valid range
+    newValue = Math.max(this.min, Math.min(this.max, newValue));
+
+    // Round to 3 decimal places to avoid floating point issues
+    newValue = Number(newValue.toFixed(3));
+
+    // Update internal value and display without callback
+    this.value = newValue;
+    this.updateAngleFromValue_();
+    this.updateDisplay();
   }
 
   static create(

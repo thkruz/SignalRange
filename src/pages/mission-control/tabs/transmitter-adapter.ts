@@ -3,6 +3,8 @@ import { CardAlarmBadge } from "@app/components/card-alarm-badge/card-alarm-badg
 import { qs } from "@app/engine/utils/query-selector";
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
+import { ValidationError, validateModemFrequency, validateModemBandwidth } from '@app/equipment/modem/modem-constraints';
+import { formatFrequencyMHz, formatBandwidthMHz } from '@app/utils/format-number';
 import { parseLocalizedNumber } from '@app/utils/parse-number';
 
 /**
@@ -24,6 +26,12 @@ export class TransmitterAdapter {
   private readonly stateChangeHandler_: () => void;
   private lastStateString: string = '';
   private readonly alarmBadge_: CardAlarmBadge;
+
+  // Staged input strings for exact user input preservation
+  private stagedInputStrings_: Map<string, string> = new Map();
+
+  // Validation errors for user feedback
+  private validationErrors_: ValidationError[] = [];
 
   constructor(transmitter: Transmitter, containerEl: HTMLElement) {
     this.transmitter = transmitter;
@@ -198,6 +206,10 @@ export class TransmitterAdapter {
    */
 
   private modemSelectHandler_(modemNumber: number): void {
+    // Clear staged inputs and validation when switching modems
+    this.stagedInputStrings_.clear();
+    this.validationErrors_ = [];
+
     this.transmitter.setActiveModem(modemNumber);
     this.syncDomWithState_(this.transmitter.state);
   }
@@ -208,28 +220,75 @@ export class TransmitterAdapter {
   }
 
   private frequencyHandler_(e: Event): void {
-    const value = parseLocalizedNumber((e.target as HTMLInputElement).value);
+    const inputEl = e.target as HTMLInputElement;
+    const rawValue = inputEl.value;
+
+    // Store exact user input for display preservation
+    this.stagedInputStrings_.set('frequency', rawValue);
+
+    const value = parseLocalizedNumber(rawValue);
     if (!isNaN(value)) {
+      // Validate and update error state
+      const error = validateModemFrequency(value);
+      this.updateValidationError_('frequency', error);
+
+      // Still update transmitter for live preview
       this.transmitter.handleFrequencyChange(value);
+    } else {
+      // Invalid number - clear any existing frequency error
+      this.updateValidationError_('frequency', null);
     }
+
+    this.updateApplyButtonState_();
   }
 
   private bandwidthHandler_(e: Event): void {
-    const value = parseLocalizedNumber((e.target as HTMLInputElement).value);
+    const inputEl = e.target as HTMLInputElement;
+    const rawValue = inputEl.value;
+
+    // Store exact user input for display preservation
+    this.stagedInputStrings_.set('bandwidth', rawValue);
+
+    const value = parseLocalizedNumber(rawValue);
     if (!isNaN(value)) {
+      // Validate and update error state
+      const error = validateModemBandwidth(value);
+      this.updateValidationError_('bandwidth', error);
+
+      // Still update transmitter for live preview
       this.transmitter.handleBandwidthChange(value);
+    } else {
+      // Invalid number - clear any existing bandwidth error
+      this.updateValidationError_('bandwidth', null);
     }
+
+    this.updateApplyButtonState_();
   }
 
   private powerHandler_(e: Event): void {
-    const value = parseLocalizedNumber((e.target as HTMLInputElement).value);
+    const inputEl = e.target as HTMLInputElement;
+    const rawValue = inputEl.value;
+
+    // Store exact user input for display preservation
+    this.stagedInputStrings_.set('power', rawValue);
+
+    const value = parseLocalizedNumber(rawValue);
     if (!isNaN(value)) {
       this.transmitter.handlePowerChange(value);
     }
   }
 
   private applyHandler_(): void {
+    // Don't apply if there are validation errors
+    if (this.validationErrors_.length > 0) {
+      return;
+    }
+
     this.transmitter.applyChanges();
+
+    // Clear staged inputs after successful apply
+    this.stagedInputStrings_.clear();
+
     this.syncDomWithState_(this.transmitter.state);
   }
 
@@ -312,29 +371,47 @@ export class TransmitterAdapter {
   }
 
   private updateConfigurationInputs_(modem: TransmitterModem): void {
-    // Antenna selector
+    // Antenna selector - skip if user is focused
     const antennaSelect = this.domCache_.get('antenna-select') as HTMLSelectElement;
-    if (antennaSelect) {
+    if (antennaSelect && document.activeElement !== antennaSelect) {
       antennaSelect.value = String(modem.antenna_id);
     }
 
-    // Frequency input (convert Hz to MHz)
+    // Frequency input - use staged value if available, otherwise format from state
     const frequencyInput = this.domCache_.get('frequency-input') as HTMLInputElement;
-    if (frequencyInput) {
-      frequencyInput.value = String(modem.ifSignal.frequency / 1e6);
+    if (frequencyInput && document.activeElement !== frequencyInput) {
+      const staged = this.stagedInputStrings_.get('frequency');
+      if (staged !== undefined) {
+        frequencyInput.value = staged;
+      } else {
+        frequencyInput.value = formatFrequencyMHz(modem.ifSignal.frequency);
+      }
     }
 
-    // Bandwidth input (convert Hz to MHz)
+    // Bandwidth input - use staged value if available, otherwise format from state
     const bandwidthInput = this.domCache_.get('bandwidth-input') as HTMLInputElement;
-    if (bandwidthInput) {
-      bandwidthInput.value = String(modem.ifSignal.bandwidth / 1e6);
+    if (bandwidthInput && document.activeElement !== bandwidthInput) {
+      const staged = this.stagedInputStrings_.get('bandwidth');
+      if (staged !== undefined) {
+        bandwidthInput.value = staged;
+      } else {
+        bandwidthInput.value = formatBandwidthMHz(modem.ifSignal.bandwidth);
+      }
     }
 
-    // Power input
+    // Power input - use staged value if available
     const powerInput = this.domCache_.get('power-input') as HTMLInputElement;
-    if (powerInput) {
-      powerInput.value = String(modem.ifSignal.power);
+    if (powerInput && document.activeElement !== powerInput) {
+      const staged = this.stagedInputStrings_.get('power');
+      if (staged !== undefined) {
+        powerInput.value = staged;
+      } else {
+        powerInput.value = String(modem.ifSignal.power);
+      }
     }
+
+    // Update validation visual feedback
+    this.updateValidationDisplay_();
   }
 
   private updateCurrentValueDisplays_(modem: TransmitterModem): void {
@@ -444,15 +521,72 @@ export class TransmitterAdapter {
 
     if (!statusBar) return;
 
+    // Validation errors take priority - don't overwrite them
+    if (this.validationErrors_.length > 0) {
+      return;
+    }
+
     if (alarms.length === 0) {
-      statusBar.className = 'small text-muted mt-2 py-1 border-top';
+      statusBar.className = 'alert alert-info mt-3';
       statusBar.textContent = 'Ready';
     } else {
       // Show first alarm (highest priority)
       const alarm = alarms[0];
-      const colorClass = alarm.severity === 'error' ? 'text-danger' : alarm.severity === 'warning' ? 'text-warning' : 'text-muted';
-      statusBar.className = `small ${colorClass} mt-2 py-1 border-top`;
+      let alertClass = 'alert-info';
+      if (alarm.severity === 'error') {
+        alertClass = 'alert-danger';
+      } else if (alarm.severity === 'warning') {
+        alertClass = 'alert-warning';
+      }
+      statusBar.className = `alert ${alertClass} mt-3`;
       statusBar.textContent = alarm.message;
+    }
+  }
+
+  /**
+   * Validation Helper Methods
+   */
+
+  private updateValidationError_(field: 'frequency' | 'bandwidth', error: ValidationError | null): void {
+    // Remove existing error for this field
+    this.validationErrors_ = this.validationErrors_.filter(e => e.field !== field);
+
+    // Add new error if present
+    if (error) {
+      this.validationErrors_.push(error);
+    }
+
+    this.updateValidationDisplay_();
+  }
+
+  private updateApplyButtonState_(): void {
+    const applyBtn = this.domCache_.get('apply-btn') as HTMLButtonElement;
+    if (applyBtn) {
+      applyBtn.disabled = this.validationErrors_.length > 0;
+    }
+  }
+
+  private updateValidationDisplay_(): void {
+    // Visual feedback on input fields
+    const freqInput = this.domCache_.get('frequency-input');
+    const freqError = this.validationErrors_.find(e => e.field === 'frequency');
+    freqInput?.classList.toggle('is-invalid', !!freqError);
+
+    const bwInput = this.domCache_.get('bandwidth-input');
+    const bwError = this.validationErrors_.find(e => e.field === 'bandwidth');
+    bwInput?.classList.toggle('is-invalid', !!bwError);
+
+    // Update status bar with validation error (takes priority over normal status)
+    if (this.validationErrors_.length > 0) {
+      const statusBar = this.domCache_.get('status-bar');
+      if (statusBar) {
+        const err = this.validationErrors_[0];
+        statusBar.className = 'alert alert-danger mt-3';
+        const hint = err.educationalHint
+          ? '<br><small>' + err.educationalHint + '</small>'
+          : '';
+        statusBar.innerHTML = '<strong>' + err.message + '</strong>' + hint;
+      }
     }
   }
 

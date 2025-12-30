@@ -489,6 +489,12 @@ export class ACUControlTab extends BaseElement {
     buttons.forEach(btn => {
       btn.addEventListener('click', () => {
         const mode = (btn as HTMLElement).dataset.mode as TrackingMode;
+
+        // Clear active target when leaving program-track mode
+        if (antenna.state.trackingMode === 'program-track' && mode !== 'program-track') {
+          this.activeTargetSatelliteId_ = null;
+        }
+
         antenna.handleTrackingModeChange(mode);
       });
     });

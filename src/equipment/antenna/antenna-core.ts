@@ -1,7 +1,5 @@
 import { EventBus } from "@app/events/event-bus";
 import { SignalOrigin } from "@app/signal-origin";
-import { Sfx } from "@app/sound/sfx-enum";
-import SoundManager from "@app/sound/sound-manager";
 import { Degrees } from "ootk";
 import { Events } from "../../events/events";
 import { SimulationManager } from "../../simulation/simulation-manager";
@@ -441,9 +439,6 @@ export abstract class AntennaCore extends BaseEquipment {
       return;
     }
     if (value !== this.state.azimuth) {
-      if (this.state.isLocked) {
-        SoundManager.getInstance().play(Sfx.FAULT);
-      }
       this.state.isLocked = false;
       this.state.isAutoTrackEnabled = false;
       this.state.azimuth = value as Degrees;
@@ -460,9 +455,6 @@ export abstract class AntennaCore extends BaseEquipment {
       return;
     }
     if (value !== this.state.elevation) {
-      if (this.state.isLocked) {
-        SoundManager.getInstance().play(Sfx.FAULT);
-      }
       this.state.isLocked = false;
       this.state.isAutoTrackEnabled = false;
       this.state.elevation = value as Degrees;
@@ -608,6 +600,7 @@ export abstract class AntennaCore extends BaseEquipment {
     this.state.beaconPower = null;
     this.state.beaconCN = null;
     this.smoothedBeaconCN_ = null;
+    this.state.targetSatelliteId = null;
 
     switch (mode) {
       case 'stow':
@@ -1030,7 +1023,6 @@ export abstract class AntennaCore extends BaseEquipment {
         const [minAz, maxAz] = this.config.azRange_deg ?? [-180, 540];
         if (az < minAz || az > maxAz) {
           // FAULT - azimuth limit exceeded
-          SoundManager.getInstance().play(Sfx.FAULT);
           this.state.hasFault = true;
           this.state.faultMessage = `Azimuth ${az.toFixed(1)}° exceeds limit [${minAz}°, ${maxAz}°]`;
           this.notifyStateChange_();
@@ -1053,7 +1045,6 @@ export abstract class AntennaCore extends BaseEquipment {
 
       if (el < minEl || el > maxEl) {
         // FAULT - elevation limit exceeded
-        SoundManager.getInstance().play(Sfx.FAULT);
         this.state.hasFault = true;
         this.state.faultMessage = `Elevation ${el.toFixed(1)}° exceeds limit [${minEl}°, ${maxEl}°]`;
         this.notifyStateChange_();

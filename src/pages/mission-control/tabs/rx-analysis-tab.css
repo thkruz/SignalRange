@@ -110,6 +110,18 @@
   content: 'NO POWER';
 }
 
+.video-monitor.signal-no-video .video-overlay::after {
+  content: 'SIGNAL LOCKED';
+}
+
+.video-monitor.signal-no-video .video-overlay::before {
+  content: 'NO VIDEO FEED';
+  display: block;
+  font-size: 0.875rem;
+  margin-top: 0.5rem;
+  opacity: 0.7;
+}
+
 .video-monitor.signal-found .video-overlay {
   display: none;
 }

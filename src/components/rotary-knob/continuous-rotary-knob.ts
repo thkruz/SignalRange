@@ -139,8 +139,15 @@ export class ContinuousRotaryKnob {
     return this.dom_;
   }
 
+  /**
+   * Sync the knob display to match an externally-set angle.
+   * Does NOT trigger callback - this is for updating the visual
+   * to match state that was set elsewhere.
+   */
   sync(newAngle: number): void {
-    this.setAngle_(newAngle);
+    this.angle = newAngle;
+    this.totalRotations = Math.floor(this.angle / 360);
+    this.updateDisplay();
   }
 
   static create(

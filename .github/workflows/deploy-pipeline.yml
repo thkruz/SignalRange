@@ -233,7 +233,10 @@ jobs:
 
       - name: Set Artifact Name Output
         id: artifact
-        run: echo "name=dist-uat-pr${{ github.event.inputs.pr_number }}-${{ needs.verify-pr-checks.outputs.pr-sha }}" >> $GITHUB_OUTPUT
+        env:
+          PR_NUM: ${{ github.event.inputs.pr_number }}
+          PR_SHA: ${{ needs.verify-pr-checks.outputs.pr-sha }}
+        run: echo "name=dist-uat-pr${PR_NUM}-${PR_SHA}" >> $GITHUB_OUTPUT
 
   deploy-uat:
     name: Deploy to UAT

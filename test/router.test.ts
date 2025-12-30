@@ -3,8 +3,20 @@ import { Events } from '../src/events/events';
 import { Router } from '../src/router';
 
 // Mock dependencies
-jest.mock('../src/pages/scenario-selection', () => ({
-  ScenarioSelectionPage: {
+jest.mock('../src/campaigns/campaign-manager', () => ({
+  CampaignManager: {
+    getInstance: jest.fn(() => ({
+      registerCampaign: jest.fn(),
+    })),
+  },
+}));
+
+jest.mock('../src/campaigns/nats/campaign-data', () => ({
+  natsCampaignData: {},
+}));
+
+jest.mock('../src/pages/campaign-selection', () => ({
+  CampaignSelectionPage: {
     getInstance: jest.fn(() => ({
       show: jest.fn(),
       hide: jest.fn(),
@@ -12,8 +24,28 @@ jest.mock('../src/pages/scenario-selection', () => ({
   },
 }));
 
+jest.mock('../src/pages/scenario-selection', () => ({
+  ScenarioSelectionPage: {
+    getInstance: jest.fn(() => ({
+      show: jest.fn(),
+      hide: jest.fn(),
+      setCampaign: jest.fn(),
+    })),
+  },
+}));
+
 jest.mock('../src/pages/sandbox-page', () => ({
   SandboxPage: {
+    create: jest.fn(),
+    getInstance: jest.fn(() => ({
+      show: jest.fn(),
+      hide: jest.fn(),
+    })),
+  },
+}));
+
+jest.mock('../src/pages/mission-control/mission-control-page', () => ({
+  MissionControlPage: {
     create: jest.fn(),
     getInstance: jest.fn(() => ({
       show: jest.fn(),
@@ -52,38 +84,28 @@ jest.mock('../src/simulation/simulation-manager', () => ({
   },
 }));
 
-describe.skip('Router', () => {
+describe('Router', () => {
   let router: Router;
-  let eventBusEmitSpy: jest.SpyInstance;
-  let pushStateMock: jest.Mock;
+  let pushStateSpy: jest.SpyInstance;
 
   beforeEach(() => {
-    // Reset singleton
+    // Reset singletons
     Router.destroy();
-    router = Router.getInstance();
+    EventBus.destroy();
 
-    // Mock EventBus
-    eventBusEmitSpy = jest.spyOn(EventBus.getInstance(), 'emit');
-
-    // Mock window.location
-    // Set initial URL via history API instead of redefining window.location (non-configurable in some envs)
+    // Set initial URL
     window.history.pushState({}, '', '/');
 
-    // Mock history API
-    pushStateMock = jest.fn();
-    Object.defineProperty(window, 'history', {
-      value: { pushState: pushStateMock },
-      writable: true,
-      configurable: true,
-    });
+    // Spy on pushState to track navigation calls
+    pushStateSpy = jest.spyOn(window.history, 'pushState');
 
-    // Mock addEventListener
-    jest.spyOn(window, 'addEventListener').mockImplementation(() => { });
-    jest.spyOn(document, 'addEventListener').mockImplementation(() => { });
+    router = Router.getInstance();
   });
 
   afterEach(() => {
-    eventBusEmitSpy.mockRestore();
+    pushStateSpy.mockRestore();
+    Router.destroy();
+    EventBus.destroy();
   });
 
   describe('getInstance', () => {
@@ -103,20 +125,11 @@ describe.skip('Router', () => {
     });
   });
 
-  describe.skip('init', () => {
-    it('should add event listeners', () => {
-      router.init();
-
-      expect(window.addEventListener).toHaveBeenCalledWith('popstate', expect.any(Function));
-      expect(document.addEventListener).toHaveBeenCalledWith('click', expect.any(Function));
-    });
-  });
-
   describe('navigate', () => {
-    it('should update browser history and route', () => {
+    it('should update browser history', () => {
       router.navigate('/sandbox');
 
-      expect(pushStateMock).toHaveBeenCalledWith({}, '', '/sandbox');
+      expect(pushStateSpy).toHaveBeenCalledWith({}, '', '/sandbox');
     });
 
     it('should accept navigation options', () => {
@@ -124,17 +137,123 @@ describe.skip('Router', () => {
 
       router.navigate('/sandbox', options);
 
-      expect(pushStateMock).toHaveBeenCalledWith({}, '', '/sandbox');
+      expect(pushStateSpy).toHaveBeenCalledWith({}, '', '/sandbox');
     });
 
-    // TODO we have to fix how Mock window.location works to make this test pass
-    it.skip('should emit ROUTE_CHANGED event', () => {
+    it('should update currentPath after navigation', () => {
       router.navigate('/sandbox');
 
-      expect(eventBusEmitSpy).toHaveBeenCalledWith(
-        Events.ROUTE_CHANGED,
-        expect.objectContaining({ path: '/sandbox' })
-      );
+      expect(router.getCurrentPath()).toBe('/sandbox');
+    });
+  });
+
+  describe('unknown route redirect', () => {
+    it('should redirect /student to root path', () => {
+      router.navigate('/student');
+
+      // Should have called pushState twice: once for /student, then for /
+      expect(pushStateSpy).toHaveBeenCalledWith({}, '', '/student');
+      expect(pushStateSpy).toHaveBeenCalledWith({}, '', '/');
+      expect(router.getCurrentPath()).toBe('/');
+    });
+
+    it('should redirect /invalid-path to root path', () => {
+      router.navigate('/invalid-path');
+
+      expect(pushStateSpy).toHaveBeenCalledWith({}, '', '/');
+      expect(router.getCurrentPath()).toBe('/');
+    });
+
+    it('should redirect /foo/bar/baz to root path', () => {
+      router.navigate('/foo/bar/baz');
+
+      expect(pushStateSpy).toHaveBeenCalledWith({}, '', '/');
+      expect(router.getCurrentPath()).toBe('/');
+    });
+
+    it('should redirect /instructor to root path', () => {
+      router.navigate('/instructor');
+
+      expect(pushStateSpy).toHaveBeenCalledWith({}, '', '/');
+      expect(router.getCurrentPath()).toBe('/');
+    });
+
+    it('should redirect /login to root path', () => {
+      router.navigate('/login');
+
+      expect(pushStateSpy).toHaveBeenCalledWith({}, '', '/');
+      expect(router.getCurrentPath()).toBe('/');
+    });
+  });
+
+  describe('valid routes should not redirect', () => {
+    it('should stay on root path', () => {
+      router.navigate('/');
+
+      expect(router.getCurrentPath()).toBe('/');
+      // pushState called only once for the navigation
+      expect(pushStateSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('should stay on /sandbox', () => {
+      router.navigate('/sandbox');
+
+      expect(router.getCurrentPath()).toBe('/sandbox');
+      expect(pushStateSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('should stay on /mission-control', () => {
+      router.navigate('/mission-control');
+
+      expect(router.getCurrentPath()).toBe('/mission-control');
+      expect(pushStateSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('should stay on valid campaign path', () => {
+      router.navigate('/campaigns/nats');
+
+      expect(router.getCurrentPath()).toBe('/campaigns/nats');
+      expect(pushStateSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('should stay on valid scenario path', () => {
+      router.navigate('/campaigns/nats/scenarios/scenario1');
+
+      expect(router.getCurrentPath()).toBe('/campaigns/nats/scenarios/scenario1');
+      expect(pushStateSpy).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('legacy route redirects', () => {
+    it('should redirect /scenarios/1 to new format', () => {
+      router.navigate('/scenarios/1');
+
+      expect(pushStateSpy).toHaveBeenCalledWith({}, '', '/campaigns/nats/scenarios/scenario1');
+      expect(router.getCurrentPath()).toBe('/campaigns/nats/scenarios/scenario1');
+    });
+
+    it('should redirect /scenarios/2 to new format', () => {
+      router.navigate('/scenarios/2');
+
+      expect(pushStateSpy).toHaveBeenCalledWith({}, '', '/campaigns/nats/scenarios/first-light2');
+      expect(router.getCurrentPath()).toBe('/campaigns/nats/scenarios/first-light2');
+    });
+
+    it('should redirect /scenarios/3 to new format', () => {
+      router.navigate('/scenarios/3');
+
+      expect(pushStateSpy).toHaveBeenCalledWith({}, '', '/campaigns/nats/scenarios/scenario3');
+      expect(router.getCurrentPath()).toBe('/campaigns/nats/scenarios/scenario3');
+    });
+  });
+
+  describe('destroy', () => {
+    it('should reset the singleton instance', () => {
+      const instance1 = Router.getInstance();
+      Router.destroy();
+      const instance2 = Router.getInstance();
+
+      expect(instance1).not.toBe(instance2);
     });
   });
 });

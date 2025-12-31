@@ -26,6 +26,7 @@ export class ObjectiveFailedModal extends DraggableModal {
     isScenarioTimeout: false,
   };
   private progressSaveManager_: ProgressSaveManager;
+  private hasCheckpoint_: boolean = false;
 
   private constructor() {
     if (ObjectiveFailedModal.instance_) {
@@ -46,6 +47,13 @@ export class ObjectiveFailedModal extends DraggableModal {
   }
 
   protected getModalContentHtml(): string {
+    const checkpointButton = this.hasCheckpoint_
+      ? `<button id="restart-checkpoint-btn" class="btn btn-primary">Restart from Checkpoint</button>`
+      : '';
+
+    // Make Restart Scenario primary when it's the only option
+    const scenarioButtonClass = this.hasCheckpoint_ ? 'btn btn-secondary' : 'btn btn-primary';
+
     return html`
       <div class="failure-modal">
         <div class="failure-modal__icon"><img src="${stopwatchPng}" alt="Time expired" /></div>
@@ -53,10 +61,8 @@ export class ObjectiveFailedModal extends DraggableModal {
         <div class="failure-modal__message">${this.options_.message}</div>
 
         <div class="failure-modal__actions">
-          <button id="restart-checkpoint-btn" class="btn btn-primary">
-            Restart from Checkpoint
-          </button>
-          <button id="restart-scenario-btn" class="btn btn-secondary">
+          ${checkpointButton}
+          <button id="restart-scenario-btn" class="${scenarioButtonClass}">
             Restart Scenario
           </button>
         </div>
@@ -106,13 +112,21 @@ export class ObjectiveFailedModal extends DraggableModal {
     window.location.reload();
   }
 
-  showFailure(options: Partial<FailureModalOptions>): void {
+  async showFailure(options: Partial<FailureModalOptions>): Promise<void> {
     this.options_ = {
       title: 'Objective Failed',
       message: 'Time has expired.',
       isScenarioTimeout: false,
       ...options,
     };
+
+    // Check if checkpoint exists for current scenario
+    const scenario = ScenarioManager.getInstance();
+    if (scenario?.data?.id) {
+      this.hasCheckpoint_ = await this.progressSaveManager_.hasCheckpoint(scenario.data.id);
+    } else {
+      this.hasCheckpoint_ = false;
+    }
 
     // Close any open popups before showing failure modal
     this.closeAllPopups_();

@@ -90,7 +90,7 @@ export const scenario1Data: ScenarioData = {
               'No reading - LNB is offline',
             ],
             correctIndex: 0,
-            explanation: 'The LNB noise temperature of 433K is excellent. Lower noise temperature means better receive sensitivity. Anything under 100K is considered good for C-band.',
+            explanation: 'The LNB noise temperature of 43K is excellent. Lower noise temperature means better receive sensitivity. Anything under 100K is considered good for C-band.',
             pointPenalty: 10,
           },
           mustMaintain: false,

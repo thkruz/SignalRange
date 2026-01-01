@@ -45,12 +45,20 @@ const oauthButtons = [
     text: 'Continue with Facebook',
     cssClass: 'oauth-btn oauth-btn--facebook',
   },
+  {
+    id: 'discord-signin-btn',
+    provider: 'discord',
+    icon: '/images/discord-white.png',
+    text: 'Continue with Discord',
+    cssClass: 'oauth-btn oauth-btn--discord',
+  }
 ] as OAuthButton[];
 
 export class ModalLogin extends DraggableModal {
   private static readonly id = 'modal-login';
-  private static readonly isEmailSignInEnabled = false;
+  private static readonly isEmailSignInEnabled = true;
   private static instance_: ModalLogin | null = null;
+  private isSignUpMode_ = true;
 
   private constructor() {
     if (ModalLogin.instance_) {
@@ -68,10 +76,13 @@ export class ModalLogin extends DraggableModal {
 
   protected getModalContentHtml(): string {
     return html`
+      ${this.renderEmailForm()}
+      <div class="auth-divider">
+        <span class="auth-divider__text">or continue with</span>
+      </div>
       <div class="oauth-section">
         ${this.renderOAuthButtons()}
       </div>
-      ${this.renderEmailForm()}
     `;
   }
 
@@ -94,42 +105,45 @@ export class ModalLogin extends DraggableModal {
     }
 
     return `
-      <div class="auth-divider">
-        <span class="auth-divider__text">or</span>
+      <div style="padding: var(--user-account-spacing-lg);">
+        <form id="auth-form" class="auth-form">
+          <div class="auth-form__field">
+            <input
+              type="email"
+              id="auth-email"
+              name="email"
+              placeholder="Email"
+              class="auth-form__input keyboard-priority"
+              autocomplete="email"
+              required
+            />
+          </div>
+
+          <div class="auth-form__field">
+            <input
+              type="password"
+              id="auth-password"
+              name="password"
+              placeholder="Password"
+              minlength="6"
+              class="auth-form__input keyboard-priority"
+              autocomplete="new-password"
+              required
+            />
+          </div>
+
+          <div id="auth-error" class="auth-form__error"></div>
+
+          <div class="auth-form__actions">
+            <button type="submit" id="auth-submit" class="auth-form__btn auth-form__btn--primary">Sign Up</button>
+          </div>
+
+          <p class="auth-toggle">
+            <span id="auth-toggle-text">Already have an account?</span>
+            <a href="#" id="auth-toggle-link" class="auth-toggle-link">Sign in</a>
+          </p>
+        </form>
       </div>
-
-      <form id="login-form" class="auth-form">
-        <div class="auth-form__field">
-          <label for="email" class="auth-form__label">Email:</label>
-          <input
-            type="email"
-            id="email"
-            name="email"
-            class="auth-form__input keyboard-priority"
-            autoComplete="username"
-            required
-          />
-        </div>
-
-        <div class="auth-form__field">
-          <label for="password" class="auth-form__label">Password:</label>
-          <input
-            type="password"
-            id="password"
-            name="password"
-            class="auth-form__input keyboard-priority"
-            autoComplete="current-password"
-            required
-          />
-        </div>
-
-        <div class="auth-form__actions">
-          <button type="submit" class="auth-form__btn auth-form__btn--primary">Login</button>
-          <button type="button" id="signup-btn" class="auth-form__btn auth-form__btn--secondary">
-            Sign Up
-          </button>
-        </div>
-      </form>
     `;
   }
 
@@ -153,23 +167,53 @@ export class ModalLogin extends DraggableModal {
   }
 
   private initializeEmailForm(): void {
-    const loginForm = this.getElement('login-form') as HTMLFormElement;
-    const signupBtn = this.getElement('signup-btn') as HTMLButtonElement;
-    const emailInput = this.getElement('email') as HTMLInputElement;
-    const passwordInput = this.getElement('password') as HTMLInputElement;
+    const authForm = this.getElement('auth-form') as HTMLFormElement;
+    const toggleLink = this.getElement('auth-toggle-link') as HTMLAnchorElement;
 
-    if (signupBtn) {
-      signupBtn.addEventListener('click', (event) => {
+    if (toggleLink) {
+      toggleLink.addEventListener('click', (event) => {
         event.preventDefault();
-        this.handleSignUp(emailInput.value.trim(), passwordInput.value.trim());
+        this.isSignUpMode_ = !this.isSignUpMode_;
+        this.updateAuthModeUI_();
       });
     }
 
-    if (loginForm) {
-      loginForm.addEventListener('submit', (event) => {
+    if (authForm) {
+      authForm.addEventListener('submit', (event) => {
         event.preventDefault();
-        this.handleEmailLogin(emailInput.value.trim(), passwordInput.value.trim());
+        const emailInput = this.getElement('auth-email') as HTMLInputElement;
+        const passwordInput = this.getElement('auth-password') as HTMLInputElement;
+        const email = emailInput.value.trim();
+        const password = passwordInput.value.trim();
+
+        if (this.isSignUpMode_) {
+          this.handleSignUp(email, password);
+        } else {
+          this.handleEmailLogin(email, password);
+        }
       });
+    }
+  }
+
+  private updateAuthModeUI_(): void {
+    this.clearError_();
+
+    const submitBtn = this.getElement('auth-submit') as HTMLButtonElement;
+    const toggleText = this.getElement('auth-toggle-text') as HTMLSpanElement;
+    const toggleLink = this.getElement('auth-toggle-link') as HTMLAnchorElement;
+    const passwordInput = this.getElement('auth-password') as HTMLInputElement;
+
+    if (submitBtn) {
+      submitBtn.textContent = this.isSignUpMode_ ? 'Sign Up' : 'Sign In';
+    }
+    if (toggleText) {
+      toggleText.textContent = this.isSignUpMode_ ? 'Already have an account?' : "Don't have an account?";
+    }
+    if (toggleLink) {
+      toggleLink.textContent = this.isSignUpMode_ ? 'Sign in' : 'Sign up';
+    }
+    if (passwordInput) {
+      passwordInput.setAttribute('autocomplete', this.isSignUpMode_ ? 'new-password' : 'current-password');
     }
   }
 
@@ -221,27 +265,85 @@ export class ModalLogin extends DraggableModal {
     return providerNames[provider] || provider;
   }
 
+  private showError_(message: string): void {
+    const errorEl = this.getElement('auth-error');
+
+    if (errorEl) {
+      errorEl.textContent = message;
+      errorEl.style.display = 'block';
+    }
+  }
+
+  private clearError_(): void {
+    const errorEl = this.getElement('auth-error');
+
+    if (errorEl) {
+      errorEl.style.display = 'none';
+    }
+  }
+
+  private getUserFriendlyError_(message: string): string {
+    if (message.includes('Invalid login credentials')) {
+      return 'Invalid email or password';
+    }
+    if (message.includes('Email not confirmed')) {
+      return 'Please confirm your email before signing in';
+    }
+    if (message.includes('already registered')) {
+      return 'An account with this email already exists';
+    }
+
+    return message;
+  }
+
+  private setSubmitLoading_(isLoading: boolean): void {
+    const submitBtn = this.getElement('auth-submit') as HTMLButtonElement;
+
+    if (!submitBtn) return;
+
+    submitBtn.disabled = isLoading;
+    if (isLoading) {
+      submitBtn.textContent = this.isSignUpMode_ ? 'Signing up...' : 'Signing in...';
+    } else {
+      submitBtn.textContent = this.isSignUpMode_ ? 'Sign Up' : 'Sign In';
+    }
+  }
+
   private async handleSignUp(email: string, password: string): Promise<void> {
     if (!email || !password) {
       return;
     }
 
+    this.clearError_();
+    this.setSubmitLoading_(true);
     try {
       await this.signUp_(email, password);
       errorManagerInstance.info('Sign up successful! Check email for confirmation.');
       hideEl(this.boxEl!);
     } catch (error) {
-      errorManagerInstance.warn(`Sign up failed: ${(error as Error).message}`);
+      const message = (error as Error).message;
+
+      this.showError_(this.getUserFriendlyError_(message));
+      errorManagerInstance.warn(`Sign up failed: ${message}`);
+    } finally {
+      this.setSubmitLoading_(false);
     }
   }
 
   private async handleEmailLogin(email: string, password: string): Promise<void> {
+    this.clearError_();
+    this.setSubmitLoading_(true);
     try {
       await this.login_(email, password);
       SoundManager.getInstance().play(Sfx.POWER_ON);
       hideEl(this.boxEl!);
     } catch (error) {
-      errorManagerInstance.warn(`Login failed: ${(error as Error).message}`);
+      const message = (error as Error).message;
+
+      this.showError_(this.getUserFriendlyError_(message));
+      errorManagerInstance.warn(`Login failed: ${message}`);
+    } finally {
+      this.setSubmitLoading_(false);
     }
   }
 

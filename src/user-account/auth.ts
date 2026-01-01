@@ -69,7 +69,7 @@ export class Auth {
 
   // Sign in with OAuth provider (GitHub, Facebook, Google, LinkedIn)
   static signInWithOAuthProvider(
-    provider: 'github' | 'facebook' | 'google' | 'linkedin_oidc',
+    provider: 'github' | 'facebook' | 'google' | 'linkedin_oidc' | 'discord',
     popupName?: string,
   ): Promise<{ user: User | null; error: Error | null }> {
     return new Promise((resolve, reject) => {

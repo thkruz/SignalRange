@@ -150,13 +150,21 @@
   background-color: #1567d2;
 }
 
+.oauth-btn--discord {
+  background-color: #5865F2;
+  color: #ffffff;
+}
+
+.oauth-btn--discord:hover:not(:disabled) {
+  background-color: #4752C4;
+}
+
 /* ==========================================================================
    AUTH DIVIDER
    ========================================================================== */
 
 .auth-divider {
   text-align: center;
-  margin: var(--user-account-spacing-xl) 0;
   position: relative;
 }
 
@@ -172,11 +180,11 @@
 
 .auth-divider__text {
   background-color: var(--color-dark-background);
-  padding: 0 var(--user-account-spacing-lg);
   color: #ffffff;
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 1px;
+  position: relative;
 }
 
 /* ==========================================================================
@@ -184,7 +192,6 @@
    ========================================================================== */
 
 .auth-form {
-  padding: 0 var(--user-account-spacing-xl);
   display: flex;
   flex-direction: column;
   gap: var(--user-account-spacing-lg);
@@ -254,6 +261,44 @@
 .auth-form__btn--secondary:hover {
   background-color: var(--color-primary);
   color: #ffffff;
+}
+
+.auth-form__btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.auth-form__error {
+  display: none;
+  background-color: rgba(183, 28, 12, 0.15);
+  border: 1px solid #b71c0c;
+  border-radius: var(--user-account-border-radius);
+  color: #ff8a8a;
+  font-size: 0.875rem;
+  padding: var(--user-account-spacing-sm) var(--user-account-spacing-md);
+  text-align: center;
+}
+
+/* ==========================================================================
+   AUTH TOGGLE
+   ========================================================================== */
+
+.auth-toggle {
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--color-dark-text-muted);
+  margin-top: var(--user-account-spacing-lg);
+}
+
+.auth-toggle-link {
+  color: var(--color-primary);
+  text-decoration: none;
+  font-weight: 500;
+  margin-left: var(--user-account-spacing-xs);
+}
+
+.auth-toggle-link:hover {
+  text-decoration: underline;
 }
 
 /* ==========================================================================

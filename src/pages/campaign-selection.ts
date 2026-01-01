@@ -4,6 +4,7 @@ import { qs } from "@app/engine/utils/query-selector";
 import { Logger } from "@app/logging/logger";
 import { Router } from "@app/router";
 import { sandboxData } from "@app/scenarios/sandbox";
+import { Auth } from "@app/user-account/auth";
 import { getUserDataService } from "@app/user-account/user-data-service";
 import { getAssetUrl } from "@app/utils/asset-url";
 import { html } from "../engine/utils/development/formatter";
@@ -59,6 +60,10 @@ export class CampaignSelectionPage extends BasePage {
       const { App } = await import('../app');
       await App.authReady;
 
+      // Check if user is logged in and update the warning visibility
+      const isLoggedIn = await Auth.isLoggedIn();
+      this.updateLoginWarning_(!isLoggedIn);
+
       const userDataService = getUserDataService();
       const progressResponse = await userDataService.getAllScenariosProgress().catch(() => null);
 
@@ -72,6 +77,18 @@ export class CampaignSelectionPage extends BasePage {
     } catch (error) {
       Logger.error('Failed to load user progress:', error);
       // Continue without progress info - user may not be authenticated
+      // Show the login warning if we couldn't load user data
+      this.updateLoginWarning_(true);
+    }
+  }
+
+  /**
+   * Show or hide the login warning message
+   */
+  private updateLoginWarning_(show: boolean): void {
+    const warning = this.dom_.querySelector('.login-warning') as HTMLElement;
+    if (warning) {
+      warning.style.display = show ? 'flex' : 'none';
     }
   }
 
@@ -111,6 +128,13 @@ export class CampaignSelectionPage extends BasePage {
       <div class="campaign-selection-header">
         <h1>Signal Range Training</h1>
         <div class="subtitle">Select a campaign to begin your training</div>
+        <div class="login-warning" style="display: none;">
+          <span class="login-warning-icon">&#9888;</span>
+          <span class="login-warning-text">
+            You can play <strong>Scenario 1</strong> of the North Atlantic Teleport Services campaign without an account, but you'll need to
+            <strong>create a free account</strong> (top right) to track your progress and unlock additional scenarios.
+          </span>
+        </div>
       </div>
 
       <div class="campaign-grid">

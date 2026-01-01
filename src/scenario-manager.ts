@@ -26,6 +26,12 @@ import { Character, Emotion } from './modal/character-enum';
 import { ScenarioData } from './ScenarioData';
 import { sandboxData } from './scenarios/sandbox';
 
+declare global {
+  interface Window {
+    DEVELOPER_MODE?: boolean;
+  }
+}
+
 export interface DialogClip {
   text: string;
   character: Character;
@@ -145,6 +151,10 @@ export const SCENARIOS: ScenarioData[] = [
 
 export function isScenarioLocked(scenario: ScenarioData, completedScenarioIds: string[]): boolean {
   if (!scenario.prerequisiteScenarioIds || scenario.prerequisiteScenarioIds.length === 0) {
+    return false;
+  }
+
+  if (window.DEVELOPER_MODE) {
     return false;
   }
 

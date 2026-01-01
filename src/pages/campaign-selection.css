@@ -30,6 +30,37 @@
   text-transform: uppercase;
 }
 
+.login-warning {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+  padding: 0.75rem 1.25rem;
+  background: linear-gradient(135deg, rgba(255, 152, 0, 0.15) 0%, rgba(255, 152, 0, 0.1) 100%);
+  border: 1px solid rgba(255, 152, 0, 0.4);
+  border-radius: 6px;
+  max-width: 700px;
+}
+
+.login-warning-icon {
+  font-size: 1.25rem;
+  color: #ff9800;
+  flex-shrink: 0;
+}
+
+.login-warning-text {
+  font-size: 0.875rem;
+  color: #ddd;
+  line-height: 1.5;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.login-warning-text strong {
+  color: #ff9800;
+}
+
 .campaign-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));

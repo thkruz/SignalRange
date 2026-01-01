@@ -2,26 +2,23 @@ import { BaseElement } from "@app/components/base-element";
 import { EventBus } from "@app/events/event-bus";
 import { DualTransmissionViolationData, Events, ObjectiveFailedData, ScenarioTimeExpiredData } from "@app/events/events";
 import { Logger } from "@app/logging/logger";
-import { Character } from "@app/modal/character-enum";
 import { DialogHistoryManager } from "@app/modal/dialog-history-manager";
 import { DialogManager } from "@app/modal/dialog-manager";
 import { LevelCompleteModal } from "@app/modal/level-complete-modal";
 import { ObjectiveFailedModal } from "@app/modal/objective-failed-modal";
 import { QuizModal } from "@app/modal/quiz-modal";
+import { TimePenaltyToast } from "@app/modal/time-penalty-toast";
 import { ObjectivesManager } from "@app/objectives/objectives-manager";
 import { NavigationOptions, Router } from "@app/router";
 import { ScenarioManager } from "@app/scenario-manager";
 import { ScenarioDialogManager } from "@app/scenarios/scenario-dialog-manager";
 import { ScenarioCompletionHandler } from "@app/scoring/scenario-completion-handler";
 import { ScoreCalculator } from "@app/scoring/score-calculator";
-import { TimePenaltyToast } from "@app/modal/time-penalty-toast";
 import { SimulationManager } from "@app/simulation/simulation-manager";
 import { AppState } from "@app/sync/storage";
-import { Auth } from "@app/user-account/auth";
 import { ProgressSaveManager } from "@app/user-account/progress-save-manager";
 import { ScenarioProgressEntry } from "@app/user-account/types";
 import { getUserDataService } from "@app/user-account/user-data-service";
-import { getAssetUrl } from "@app/utils/asset-url";
 
 export abstract class BasePage extends BaseElement {
   abstract id: string;
@@ -120,9 +117,6 @@ export abstract class BasePage extends BaseElement {
         'Introduction',
         introClip.emotion
       );
-
-      // Schedule login prompt dialog to show 5 seconds after intro dialog is closed
-      this.scheduleLoginPrompt_();
     }
   }
 
@@ -193,47 +187,6 @@ export abstract class BasePage extends BaseElement {
       Logger.error('Failed to restore objective states from checkpoint:', error);
       // Continue without restoring objectives - they'll start fresh
     }
-  }
-
-  /**
-   * Schedule login prompt dialog to show 5 seconds after the intro dialog is closed
-   */
-  protected scheduleLoginPrompt_(): void {
-    // Check periodically if the intro dialog has been closed
-    const checkDialogClosed = setInterval(() => {
-      const dialogManager = DialogManager.getInstance();
-
-      if (!dialogManager.isShowing()) {
-        // Dialog is closed, clear the interval and schedule the login prompt
-        clearInterval(checkDialogClosed);
-
-        // Wait 5 seconds, then check if user is logged in
-        setTimeout(async () => {
-          const isLoggedIn = await Auth.isLoggedIn();
-
-          if (!isLoggedIn) {
-            // User is not logged in, show the login prompt dialog
-            dialogManager.show(
-              `
-              <p>
-              Hey, normally you make an account on the computer and log what you are doing.
-              </p>
-              <p>
-              If you want to keep your notes on your desk, that's up to you, but just know none of us will have any idea what you did today if you ask us tomorrow!
-              </p>
-
-              <p>
-              (You can make an account in the top right corner of the screen in order to save your progress automatically. It's free and only takes a minute!)
-              </p>
-              `,
-              Character.CHARLIE_BROOKS,
-              getAssetUrl('/assets/campaigns/login-first.mp3'),
-              'Login Reminder'
-            );
-          }
-        }, 5000);
-      }
-    }, 100); // Check every 100ms
   }
 
   /**

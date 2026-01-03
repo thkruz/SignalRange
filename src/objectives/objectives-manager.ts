@@ -1554,8 +1554,14 @@ export class ObjectivesManager {
         return this.evaluateEquipment_(gs.transmitters, condition.params, (transmitter) => {
           const modemNum = condition.params?.modemNumber ?? transmitter.state.activeModem;
           const modem = transmitter.state.modems.find(m => m.modem_number === modemNum);
-          if (!modem?.isPowered) return false;
-          return modem.ifSignal.fec === targetFec;
+          if (!modem?.isPowered) {
+            console.log(`[tx-modem-fec-set] Modem ${modemNum} not powered. isPowered=${modem?.isPowered}`);
+            return false;
+          }
+          const actualFec = modem.ifSignal.fec;
+          const result = actualFec === targetFec;
+          console.log(`[tx-modem-fec-set] gs=${gs.state.id}, modem=${modemNum}, targetFec=${targetFec}, actualFec=${actualFec}, result=${result}`);
+          return result;
         });
       }
 

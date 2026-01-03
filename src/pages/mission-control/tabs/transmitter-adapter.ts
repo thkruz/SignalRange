@@ -83,12 +83,16 @@ export class TransmitterAdapter {
     this.cacheElement_('tx-frequency-input', 'frequency-input');
     this.cacheElement_('tx-bandwidth-input', 'bandwidth-input');
     this.cacheElement_('tx-power-input', 'power-input');
+    this.cacheElement_('tx-modulation-select', 'modulation-select');
+    this.cacheElement_('tx-fec-select', 'fec-select');
     this.cacheElement_('tx-apply-btn', 'apply-btn');
 
     // Current value displays
     this.cacheElement_('tx-frequency-current', 'frequency-current');
     this.cacheElement_('tx-bandwidth-current', 'bandwidth-current');
     this.cacheElement_('tx-power-current', 'power-current');
+    this.cacheElement_('tx-modulation-current', 'modulation-current');
+    this.cacheElement_('tx-fec-current', 'fec-current');
 
     // Power budget visualization
     this.cacheElement_('tx-power-bar', 'power-bar');
@@ -161,6 +165,20 @@ export class TransmitterAdapter {
       const handler = (e: Event) => this.powerHandler_(e);
       powerInput.addEventListener('input', handler);
       this.boundHandlers.set('power', handler);
+    }
+
+    const modulationSelect = this.domCache_.get('modulation-select');
+    if (modulationSelect) {
+      const handler = (e: Event) => this.modulationHandler_(e);
+      modulationSelect.addEventListener('change', handler);
+      this.boundHandlers.set('modulation', handler);
+    }
+
+    const fecSelect = this.domCache_.get('fec-select');
+    if (fecSelect) {
+      const handler = (e: Event) => this.fecHandler_(e);
+      fecSelect.addEventListener('change', handler);
+      this.boundHandlers.set('fec', handler);
     }
 
     // Apply button
@@ -276,6 +294,16 @@ export class TransmitterAdapter {
     if (!isNaN(value)) {
       this.transmitter.handlePowerChange(value);
     }
+  }
+
+  private modulationHandler_(e: Event): void {
+    const value = (e.target as HTMLSelectElement).value;
+    this.transmitter.handleModulationChange(value);
+  }
+
+  private fecHandler_(e: Event): void {
+    const value = (e.target as HTMLSelectElement).value;
+    this.transmitter.handleFecChange(value);
   }
 
   private applyHandler_(): void {
@@ -410,6 +438,18 @@ export class TransmitterAdapter {
       }
     }
 
+    // Modulation selector - skip if user is focused
+    const modulationSelect = this.domCache_.get('modulation-select') as HTMLSelectElement;
+    if (modulationSelect && document.activeElement !== modulationSelect) {
+      modulationSelect.value = modem.ifSignal.modulation;
+    }
+
+    // FEC selector - skip if user is focused
+    const fecSelect = this.domCache_.get('fec-select') as HTMLSelectElement;
+    if (fecSelect && document.activeElement !== fecSelect) {
+      fecSelect.value = modem.ifSignal.fec;
+    }
+
     // Update validation visual feedback
     this.updateValidationDisplay_();
   }
@@ -437,6 +477,18 @@ export class TransmitterAdapter {
     const powerCurrent = this.domCache_.get('power-current');
     if (powerCurrent) {
       powerCurrent.textContent = `${modem.ifSignal.power} dBm`;
+    }
+
+    // Modulation current value
+    const modulationCurrent = this.domCache_.get('modulation-current');
+    if (modulationCurrent) {
+      modulationCurrent.textContent = modem.ifSignal.modulation;
+    }
+
+    // FEC current value
+    const fecCurrent = this.domCache_.get('fec-current');
+    if (fecCurrent) {
+      fecCurrent.textContent = modem.ifSignal.fec;
     }
   }
 
@@ -618,7 +670,15 @@ export class TransmitterAdapter {
         btn?.removeEventListener('click', handler);
       } else {
         const el = this.domCache_.get(key);
-        const eventType = key.includes('switch') ? 'change' : key.includes('btn') ? 'click' : 'input';
+        // Determine event type based on handler key
+        let eventType: string;
+        if (key.includes('switch') || key === 'antenna' || key === 'modulation' || key === 'fec') {
+          eventType = 'change';
+        } else if (key.includes('btn') || key === 'apply' || key === 'fault-reset') {
+          eventType = 'click';
+        } else {
+          eventType = 'input';
+        }
         el?.removeEventListener(eventType, handler);
       }
     });

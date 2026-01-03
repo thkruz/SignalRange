@@ -130,7 +130,7 @@ export const scenario3Data: ScenarioData = {
               power: -7 as dBm,
               bandwidth: 36e6 as Hertz, // Match payload bandwidth
               modulation: 'QPSK' as ModulationType,
-              fec: '3/4' as FECType,
+              fec: '1/2' as FECType,
             },
           }],
         }],

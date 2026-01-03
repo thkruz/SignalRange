@@ -53,6 +53,17 @@ export const scenario4Data: ScenarioData = {
             hpa: { isHpaEnabled: false },
           }),
         ],
+        receivers: [
+          {
+            ...vermontGroundStation.receivers[0],
+            modems: [
+              {
+                ...vermontGroundStation.receivers[0].modems[0],
+                fec: "1/2",
+              },
+            ],
+          }
+        ]
       },
       {
         ...vermontGroundStation,

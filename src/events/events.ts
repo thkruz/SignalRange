@@ -337,6 +337,7 @@ export enum Events {
 
   // Dialog events
   DIALOG_HISTORY_CHANGED = 'dialog:history:changed',
+  DIALOG_DISMISSED = 'dialog:dismissed',
 
   // Traffic Control / Handover events
   HANDOVER_INITIATED = 'handover:initiated',
@@ -419,6 +420,7 @@ export interface EventMap {
 
   // Dialog events
   [Events.DIALOG_HISTORY_CHANGED]: [];
+  [Events.DIALOG_DISMISSED]: [];
 
   // Handover events
   [Events.HANDOVER_INITIATED]: [HandoverInitiatedData];

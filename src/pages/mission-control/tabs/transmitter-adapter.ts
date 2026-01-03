@@ -527,8 +527,13 @@ export class TransmitterAdapter {
     }
 
     if (alarms.length === 0) {
-      statusBar.className = 'alert alert-info mt-3';
-      statusBar.textContent = 'Ready';
+      if (this.transmitter.state.modems[this.transmitter.state.activeModem - 1]?.isTransmitting) {
+        statusBar.className = 'alert alert-success mt-3';
+        statusBar.textContent = 'Transmitting';
+      } else {
+        statusBar.className = 'alert alert-info mt-3';
+        statusBar.textContent = 'Ready';
+      }
     } else {
       // Show first alarm (highest priority)
       const alarm = alarms[0];

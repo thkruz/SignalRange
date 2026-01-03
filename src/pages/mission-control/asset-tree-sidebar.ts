@@ -64,6 +64,38 @@ export class AssetTreeSidebar extends BaseElement {
     this.missionBriefUrl_ = ScenarioManager.getInstance().settings.missionBriefUrl ?? null;
     this.renderAssetTree_();
     this.initMissionSection_();
+    this.initSidebarLock_();
+  }
+
+  /**
+   * Initialize sidebar lock state if scenario has a freezing objective
+   */
+  private initSidebarLock_(): void {
+    // Scenarios with mission briefs start locked - the user must acknowledge
+    // the mission brief before other sidebar items become accessible.
+    // The SCENARIO_UNLOCKED event (emitted when freezing objective completes)
+    // will unlock the sidebar.
+    if (this.missionBriefUrl_) {
+      // Check if we're resuming a scenario where mission brief was already acknowledged
+      // Use static methods that safely handle uninitialized state
+      const objectivesLoaded = ObjectivesManager.hasLoadedObjectives();
+      const isLocked = ObjectivesManager.isScenarioLocked();
+
+      // Only stay unlocked if objectives have loaded AND confirm we're unlocked
+      // (i.e., no incomplete freezing objectives)
+      const alreadyUnlocked = objectivesLoaded && !isLocked;
+
+      if (!alreadyUnlocked) {
+        this.dom_.classList.add('sidebar-locked');
+      }
+    }
+  }
+
+  /**
+   * Unlock the sidebar when the scenario is unlocked
+   */
+  private unlockSidebar_(): void {
+    this.dom_.classList.remove('sidebar-locked');
   }
 
   protected addEventListeners_(): void {
@@ -85,6 +117,11 @@ export class AssetTreeSidebar extends BaseElement {
     // Listen for asset selection from other components (e.g., Mission Overview cards)
     EventBus.getInstance().on(Events.ASSET_SELECTED, (data) => {
       this.updateSelectionUI_(data.id);
+    });
+
+    // Listen for scenario unlock to enable sidebar items
+    EventBus.getInstance().on(Events.SCENARIO_UNLOCKED, () => {
+      this.unlockSidebar_();
     });
   }
 

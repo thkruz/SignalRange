@@ -55,7 +55,7 @@ export class SatelliteDashboardTab extends BaseElement {
       <div class="satellite-dashboard-tab">
         <div class="row g-2 pb-6">
           <!-- Satellite Info Card -->
-          <div class="col-lg-4">
+          <div class="col-lg-6">
             <div class="card h-100">
               <div class="card-header">
                 <h3 class="card-title">Satellite Information</h3>
@@ -90,7 +90,7 @@ export class SatelliteDashboardTab extends BaseElement {
           </div>
 
           <!-- Transponders Card -->
-          <div class="col-lg-4">
+          <div class="col-lg-6">
             <div class="card h-100">
               <div class="card-header">
                 <h3 class="card-title">Transponders</h3>
@@ -107,35 +107,6 @@ export class SatelliteDashboardTab extends BaseElement {
                 <hr class="my-2" />
                 <div class="transponder-list">
                   ${this.renderTransponderList_()}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Signal Status Card -->
-          <div class="col-lg-4">
-            <div class="card h-100">
-              <div class="card-header">
-                <h3 class="card-title">Signal Status</h3>
-              </div>
-              <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                  <span class="text-muted small">RX Signals:</span>
-                  <span id="sat-rx-count" class="fw-bold font-monospace">${this.satellite.rxSignal.length + this.satellite.externalSignal.length}</span>
-                </div>
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                  <span class="text-muted small">TX Signals:</span>
-                  <span id="sat-tx-count" class="fw-bold font-monospace">${this.satellite.txSignal.length}</span>
-                </div>
-                <hr class="my-2" />
-                <div class="mb-3">
-                  <label class="form-label text-muted small text-uppercase">Degradation Config</label>
-                  <div class="d-flex flex-wrap gap-2">
-                    <span class="badge ${this.satellite.degradationConfig.atmosphericEffects ? 'bg-primary' : 'bg-secondary'}">Atmospheric</span>
-                    <span class="badge ${this.satellite.degradationConfig.powerVariation ? 'bg-primary' : 'bg-secondary'}">Power Var</span>
-                    <span class="badge ${this.satellite.degradationConfig.randomDropout ? 'bg-primary' : 'bg-secondary'}">Dropout</span>
-                    <span class="badge ${this.satellite.degradationConfig.interference ? 'bg-primary' : 'bg-secondary'}">Interference</span>
-                  </div>
                 </div>
               </div>
             </div>
@@ -211,7 +182,6 @@ export class SatelliteDashboardTab extends BaseElement {
     const ids = [
       'sat-azimuth', 'sat-elevation', 'sat-rotation',
       'sat-health-badge', 'sat-active-transponders',
-      'sat-rx-count', 'sat-tx-count'
     ];
 
     ids.forEach(id => {

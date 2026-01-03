@@ -61,7 +61,9 @@ export class ObjectivesManager {
     if (scenarioTimeLimit !== undefined && scenarioTimeLimit > 0) {
       this.scenarioTimeLimit_ = scenarioTimeLimit;
       this.scenarioTimeRemaining_ = scenarioTimeLimit;
-      this.scenarioTimerRunning_ = true;
+      // Don't start timer if any objective freezes it
+      const hasFreezingObjective = objectives.some(obj => obj.freezesScenarioTimer);
+      this.scenarioTimerRunning_ = !hasFreezingObjective;
     }
 
     // Initialize objective states
@@ -179,6 +181,29 @@ export class ObjectivesManager {
       return ObjectivesManager.openedBoxIds_.has(boxId);
     }
     return ObjectivesManager.openedBoxIds_.size > 0;
+  }
+
+  /**
+   * Check if the scenario is currently locked (has an incomplete freezing objective)
+   */
+  static isScenarioLocked(): boolean {
+    if (!ObjectivesManager.instance_) {
+      return false;
+    }
+    return ObjectivesManager.instance_.objectiveStates_.some(
+      state => state.objective.freezesScenarioTimer && !state.isCompleted
+    );
+  }
+
+  /**
+   * Check if objectives have been loaded into the manager
+   * Used to distinguish "no freezing objectives" from "objectives not loaded yet"
+   */
+  static hasLoadedObjectives(): boolean {
+    if (!ObjectivesManager.instance_) {
+      return false;
+    }
+    return ObjectivesManager.instance_.objectiveStates_.length > 0;
   }
 
   /**
@@ -348,8 +373,15 @@ export class ObjectivesManager {
     this.isQuizPassed_ = false;
     this.passedObjectiveId_ = null;
 
-    // Resume scenario timer
-    if (this.scenarioTimeLimit_ !== null && this.scenarioTimeRemaining_ > 0) {
+    // Resume scenario timer only if:
+    // 1. Scenario has a time limit
+    // 2. Time remains
+    // 3. Not all objectives complete
+    // 4. No incomplete freezing objectives (scenario is unlocked)
+    if (this.scenarioTimeLimit_ !== null &&
+        this.scenarioTimeRemaining_ > 0 &&
+        !this.areAllObjectivesCompleted() &&
+        !ObjectivesManager.isScenarioLocked()) {
       this.scenarioTimerRunning_ = true;
     }
     // Note: objective timer doesn't resume - it will be replaced by next objective's timer
@@ -632,6 +664,13 @@ export class ObjectivesManager {
 
         // Activate any objectives that were waiting for this prerequisite
         this.activateDependentObjectives_(objectiveState.objective.id);
+
+        // If this was a freezing objective, start the scenario timer now
+        if (objectiveState.objective.freezesScenarioTimer) {
+          this.scenarioTimerRunning_ = true;
+          this.scenarioStartTime_ = Date.now(); // Reset start time so elapsed time is from now
+          this.eventBus_.emit(Events.SCENARIO_UNLOCKED);
+        }
 
         // Check if all objectives are complete
         if (this.areAllObjectivesCompleted()) {
@@ -1552,8 +1591,14 @@ export class ObjectivesManager {
         return this.evaluateEquipment_(gs.transmitters, condition.params, (transmitter) => {
           const modemNum = condition.params?.modemNumber ?? transmitter.state.activeModem;
           const modem = transmitter.state.modems.find(m => m.modem_number === modemNum);
-          if (!modem?.isPowered) return false;
-          return modem.ifSignal.fec === targetFec;
+          if (!modem?.isPowered) {
+            console.log(`[tx-modem-fec-set] Modem ${modemNum} not powered. isPowered=${modem?.isPowered}`);
+            return false;
+          }
+          const actualFec = modem.ifSignal.fec;
+          const result = actualFec === targetFec;
+          console.log(`[tx-modem-fec-set] gs=${gs.state.id}, modem=${modemNum}, targetFec=${targetFec}, actualFec=${actualFec}, result=${result}`);
+          return result;
         });
       }
 

@@ -5,7 +5,7 @@ import { PowerSwitch } from '../../components/power-switch/power-switch';
 import { html } from "../../engine/utils/development/formatter";
 import { qs } from "../../engine/utils/query-selector";
 import { Events } from "../../events/events";
-import { dBi, dBm, Hertz, IfFrequency, IfSignal } from "../../types";
+import { dBi, dBm, FECType, Hertz, IfFrequency, IfSignal, ModulationType } from "../../types";
 import { AlarmStatus, BaseEquipment } from "../base-equipment";
 import './transmitter.css';
 
@@ -122,8 +122,8 @@ export class Transmitter extends BaseEquipment {
           frequency: (1400 * 1e6) as IfFrequency, // 1.4 GHz IF
           power: -20 as dBm,
           bandwidth: (10 * 1e6) as Hertz, // 10 MHz
-          modulation: 'null',
-          fec: 'null',
+          modulation: 'QPSK',
+          fec: '1/2',
           feed: '',
           polarization: null,
           isDegraded: false,
@@ -238,6 +238,29 @@ export class Transmitter extends BaseEquipment {
                 <span class="current-value">${this.activeModem.ifSignal.power} dBm</span>
               </div>
 
+              <div class="config-row">
+                <label>Modulation</label>
+                <select class="input-tx-modulation" data-param="modulation">
+                  <option value="BPSK" ${this.inputData.ifSignal?.modulation === 'BPSK' ? 'selected' : ''}>BPSK</option>
+                  <option value="QPSK" ${this.inputData.ifSignal?.modulation === 'QPSK' ? 'selected' : ''}>QPSK</option>
+                  <option value="8QAM" ${this.inputData.ifSignal?.modulation === '8QAM' ? 'selected' : ''}>8QAM</option>
+                  <option value="16QAM" ${this.inputData.ifSignal?.modulation === '16QAM' ? 'selected' : ''}>16QAM</option>
+                </select>
+                <span class="current-value">${this.activeModem.ifSignal.modulation}</span>
+              </div>
+
+              <div class="config-row">
+                <label>FEC</label>
+                <select class="input-tx-fec" data-param="fec">
+                  <option value="1/2" ${this.inputData.ifSignal?.fec === '1/2' ? 'selected' : ''}>1/2</option>
+                  <option value="2/3" ${this.inputData.ifSignal?.fec === '2/3' ? 'selected' : ''}>2/3</option>
+                  <option value="3/4" ${this.inputData.ifSignal?.fec === '3/4' ? 'selected' : ''}>3/4</option>
+                  <option value="5/6" ${this.inputData.ifSignal?.fec === '5/6' ? 'selected' : ''}>5/6</option>
+                  <option value="7/8" ${this.inputData.ifSignal?.fec === '7/8' ? 'selected' : ''}>7/8</option>
+                </select>
+                <span class="current-value">${this.activeModem.ifSignal.fec}</span>
+              </div>
+
               <div class="config-actions">
                 <button class="btn-apply" data-action="apply">Apply</button>
               </div>
@@ -301,6 +324,8 @@ export class Transmitter extends BaseEquipment {
     this.domCache['inputFrequency'] = qs('.input-tx-frequency', parentDom);
     this.domCache['inputBandwidth'] = qs('.input-tx-bandwidth', parentDom);
     this.domCache['inputPower'] = qs('.input-tx-power', parentDom);
+    this.domCache['inputModulation'] = qs('.input-tx-modulation', parentDom);
+    this.domCache['inputFec'] = qs('.input-tx-fec', parentDom);
     this.domCache['btnApply'] = qs('.btn-apply', parentDom);
     this.domCache['powerBar'] = qs('.power-bar', parentDom);
     this.domCache['powerPercentage'] = qs('.power-percentage', parentDom);
@@ -468,6 +493,12 @@ export class Transmitter extends BaseEquipment {
       case 'antenna_id':
         this.inputData.antenna_id = Number.parseInt(value);
         break;
+      case 'modulation':
+        this.inputData.ifSignal.modulation = value as ModulationType;
+        break;
+      case 'fec':
+        this.inputData.ifSignal.fec = value as FECType;
+        break;
       default:
         throw new Error(`Unknown parameter '${param}' in transmitter input change`);
     }
@@ -606,6 +637,20 @@ export class Transmitter extends BaseEquipment {
     this.inputData.ifSignal.power = powerDbm as dBm;
   }
 
+  public handleModulationChange(modulation: string): void {
+    if (!this.inputData.ifSignal?.signalId) {
+      this.inputData.ifSignal = { ...this.activeModem.ifSignal };
+    }
+    this.inputData.ifSignal.modulation = modulation as ModulationType;
+  }
+
+  public handleFecChange(fec: string): void {
+    if (!this.inputData.ifSignal?.signalId) {
+      this.inputData.ifSignal = { ...this.activeModem.ifSignal };
+    }
+    this.inputData.ifSignal.fec = fec as FECType;
+  }
+
   /**
    * Public API for adapters - Control switches
    */
@@ -670,7 +715,10 @@ export class Transmitter extends BaseEquipment {
 
     // Find the correct array index for the active modem
     const modemIndex = this.state.modems.findIndex(m => m.modem_number === this.state.activeModem);
-    if (modemIndex === -1) return;
+    if (modemIndex === -1) {
+      console.warn('[Transmitter.applyChanges] Could not find modem with modem_number:', this.state.activeModem);
+      return;
+    }
 
     // Update the modem configuration, merging ifSignal properties
     this.state.modems[modemIndex] = {
@@ -687,6 +735,9 @@ export class Transmitter extends BaseEquipment {
       modem: this.state.activeModem,
       config: this.state.modems[modemIndex]
     });
+
+    // Reset inputData to match the newly applied state
+    this.inputData = structuredClone(this.state.modems[modemIndex]);
 
     this.syncDomWithState();
   }
@@ -737,14 +788,18 @@ export class Transmitter extends BaseEquipment {
     (this.domCache['inputBandwidth'] as HTMLInputElement).value = bwHz ? String(bwHz / 1e6) : '';
 
     (this.domCache['inputPower'] as HTMLInputElement).value = String(this.inputData.ifSignal?.power ?? activeModem.ifSignal.power ?? '');
+    (this.domCache['inputModulation'] as HTMLSelectElement).value = String(this.inputData.ifSignal?.modulation ?? activeModem.ifSignal.modulation ?? '');
+    (this.domCache['inputFec'] as HTMLSelectElement).value = String(this.inputData.ifSignal?.fec ?? activeModem.ifSignal.fec ?? '');
 
-    // Update current-value labels (antenna, freq, bw, power)
+    // Update current-value labels (antenna, freq, bw, power, modulation, fec)
     const currentValueEls = parentDom.querySelectorAll('.tx-modem-config .current-value');
-    if (activeModem && currentValueEls.length >= 4) {
+    if (activeModem && currentValueEls.length >= 6) {
       (currentValueEls[0] as HTMLElement).textContent = String(activeModem.antenna_id);
       (currentValueEls[1] as HTMLElement).textContent = `${activeModem.ifSignal.frequency / 1e6} MHz`;
       (currentValueEls[2] as HTMLElement).textContent = `${activeModem.ifSignal.bandwidth / 1e6} MHz`;
       (currentValueEls[3] as HTMLElement).textContent = `${activeModem.ifSignal.power} dBm`;
+      (currentValueEls[4] as HTMLElement).textContent = String(activeModem.ifSignal.modulation);
+      (currentValueEls[5] as HTMLElement).textContent = String(activeModem.ifSignal.fec);
     }
 
     // Update power meter

@@ -153,16 +153,16 @@ export class LevelCompleteModal extends DraggableModal {
 
     const { campaignId, scenarioId } = this.options_;
 
-    // Clear checkpoint and scenario progress so it starts fresh
+    // Reset progress (preserves completedAt so prerequisites stay unlocked) and clear checkpoint
     try {
       const userDataService = getUserDataService();
       await Promise.all([
-        userDataService.deleteScenarioProgress(scenarioId),
+        userDataService.resetScenarioForReplay(scenarioId),
         userDataService.deleteCheckpoint(scenarioId),
       ]);
-      Logger.info(`Cleared progress and checkpoint for Play Again: ${scenarioId}`);
+      Logger.info(`Reset progress and cleared checkpoint for Play Again: ${scenarioId}`);
     } catch (error) {
-      Logger.error('Failed to clear progress for Play Again:', error);
+      Logger.error('Failed to reset progress for Play Again:', error);
       // Continue anyway - user wants to play again
     }
 

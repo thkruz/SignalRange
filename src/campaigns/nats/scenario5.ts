@@ -152,14 +152,46 @@ export const scenario5Data: ScenarioData = {
       tidemark2Satellite
     ],
   },
-  timeLimitSeconds: 1800, // 30 minutes
+  timeLimitSeconds: 1200, // 20 minutes
   objectives: [
+    {
+      id: 'open-mission-brief',
+      title: 'Review Mission Brief',
+      description: 'Open and read the mission brief, then acknowledge you are ready to proceed.',
+      groundStation: 'VT-01',
+      freezesScenarioTimer: true,
+      conditions: [
+        {
+          type: 'mission-brief-opened',
+          description: 'Mission Brief Document Opened',
+          params: { boxId: 'mission-brief' },
+          mustMaintain: false,
+        },
+        {
+          type: 'status-check',
+          description: 'Ready to Proceed',
+          params: {
+            question: 'Have you reviewed the mission brief and are you ready to begin?',
+            options: [
+              'Yes, I have read the mission brief and I am ready to proceed.',
+            ],
+            correctIndex: 0,
+            explanation: 'The mission timer has started. Good luck!',
+            pointPenalty: 0,
+          },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 5,
+    },
     // Phase 1: Confirm the customer complaint
     {
       id: 'phase-1-observe-degradation',
       title: 'Confirm Signal Degradation',
       description: 'Check the receiver modem to confirm the customer\'s report of degraded service.',
       groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['open-mission-brief'],
       timeLimitSeconds: 2 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
@@ -422,6 +454,11 @@ export const scenario5Data: ScenarioData = {
           maintainUntilObjectiveComplete: true,
         },
       ],
+      timePenalty: {
+        elapsedTimeThreshold: 15 * 60, // 15 minutes
+        pointsDeducted: 30,
+        message: "We just violated the SLA! This is going to cost us a lot of money.",
+      },
       conditionLogic: 'AND',
       points: 25,
     },
@@ -464,7 +501,7 @@ export const scenario5Data: ScenarioData = {
         Got a trouble ticket from SeaLink - their customer is reporting packet errors on TIDEMARK-1. Something's degraded the link but I haven't had time to dig into it yet.
       </p>
       <p>
-        Start by checking the receiver to confirm there's actually a problem, then work through the diagnosis. I'll check in as you go.
+        First things first - read through the mission brief to get the full details on the issue. Let me know when you're ready to proceed.
       </p>
       `,
       character: Character.CHARLIE_BROOKS,
@@ -472,6 +509,16 @@ export const scenario5Data: ScenarioData = {
       audioUrl: getAssetUrl('/assets/campaigns/nats/6/intro.mp3'),
     },
     objectives: {
+      'open-mission-brief': {
+        text: `
+        <p>
+          Start by checking the receiver to confirm there's actually a problem, then work through the diagnosis. I'll check in as you go.
+        </p>
+        `,
+        character: Character.CHARLIE_BROOKS,
+        emotion: Emotion.NEUTRAL,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/6/obj-mission-brief.mp3'),
+      },
       'phase-1-observe-degradation': {
         text: `
         <p>

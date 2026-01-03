@@ -281,6 +281,8 @@ export interface Objective {
   timerStartTrigger?: 'on-activate' | 'on-scenario-load';
   /** Optional time penalty: deducts points if completed after elapsed time threshold */
   timePenalty?: TimePenalty;
+  /** If true, scenario timer will not start until this objective is completed */
+  freezesScenarioTimer?: boolean;
 }
 
 /**

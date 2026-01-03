@@ -50,6 +50,7 @@ export class ScenarioDialogManager {
 
   destroy(): void {
     this.eventBus.off(Events.OBJECTIVE_COMPLETED, this.boundHandleObjectiveCompleted);
+    DialogManager.getInstance().clearQueue();
   }
 
   static reset(): void {

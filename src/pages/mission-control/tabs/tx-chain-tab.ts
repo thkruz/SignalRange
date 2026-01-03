@@ -347,6 +347,31 @@ export class TxChainTab extends BaseElement {
                         <small class="text-muted">Current: <span id="tx-power-current">--</span></small>
                       </div>
 
+                      <!-- Modulation selector -->
+                      <div class="mb-2">
+                        <label class="form-label small">Modulation</label>
+                        <select id="tx-modulation-select" class="form-select form-select-sm">
+                          <option value="BPSK">BPSK</option>
+                          <option value="QPSK">QPSK</option>
+                          <option value="8QAM">8QAM</option>
+                          <option value="16QAM">16QAM</option>
+                        </select>
+                        <small class="text-muted">Current: <span id="tx-modulation-current">--</span></small>
+                      </div>
+
+                      <!-- FEC selector -->
+                      <div class="mb-2">
+                        <label class="form-label small">FEC</label>
+                        <select id="tx-fec-select" class="form-select form-select-sm">
+                          <option value="1/2">1/2</option>
+                          <option value="2/3">2/3</option>
+                          <option value="3/4">3/4</option>
+                          <option value="5/6">5/6</option>
+                          <option value="7/8">7/8</option>
+                        </select>
+                        <small class="text-muted">Current: <span id="tx-fec-current">--</span></small>
+                      </div>
+
                       <button id="tx-apply-btn" class="btn btn-primary btn-sm w-100">Apply Changes</button>
                     </div>
                   </div>

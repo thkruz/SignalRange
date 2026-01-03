@@ -53,6 +53,17 @@ export const scenario4Data: ScenarioData = {
             hpa: { isHpaEnabled: false },
           }),
         ],
+        receivers: [
+          {
+            ...vermontGroundStation.receivers[0],
+            modems: [
+              {
+                ...vermontGroundStation.receivers[0].modems[0],
+                fec: "1/2",
+              },
+            ],
+          }
+        ]
       },
       {
         ...vermontGroundStation,
@@ -62,7 +73,7 @@ export const scenario4Data: ScenarioData = {
         isOperational: true,
       }
     ],
-    missionBriefUrl: 'https://docs.signalrange.space/scenarios/scenario-2?content-only=true&dark=true',
+    missionBriefUrl: 'https://docs.signalrange.space/scenarios/scenario-4?content-only=true&dark=true',
     isExtraSatellitesVisible: true,
     satellites: [
       tidemark1Satellite,
@@ -75,8 +86,9 @@ export const scenario4Data: ScenarioData = {
     {
       id: 'review-mission-brief',
       title: 'Review Mission Brief',
-      description: 'Open the mission brief to understand the switchover requirements.',
+      description: 'Open the mission brief to understand the switchover requirements, then acknowledge you are ready to proceed.',
       groundStation: 'VT-01',
+      freezesScenarioTimer: true,
       prerequisiteObjectiveIds: [],
       conditions: [
         {
@@ -84,6 +96,20 @@ export const scenario4Data: ScenarioData = {
           description: 'Mission Brief Reviewed',
           params: {
             boxId: 'mission-brief',
+          },
+          mustMaintain: false,
+        },
+        {
+          type: 'status-check',
+          description: 'Ready to Proceed',
+          params: {
+            question: 'Have you reviewed the mission brief and are you ready to begin?',
+            options: [
+              'Yes, I have read the mission brief and I am ready to proceed.',
+            ],
+            correctIndex: 0,
+            explanation: 'The mission timer has started. Good luck!',
+            pointPenalty: 0,
           },
           mustMaintain: false,
         },
@@ -229,7 +255,6 @@ export const scenario4Data: ScenarioData = {
             minPower: -95 as dBm,
           },
           mustMaintain: true,
-          maintainDuration: 30,
         },
       ],
       conditionLogic: 'AND',

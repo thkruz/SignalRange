@@ -20,7 +20,10 @@ export class ScenarioSelectionPage extends BasePage {
   id = 'scenario-selection-page';
   private static instance_: ScenarioSelectionPage;
   private readonly scenarioCheckpoints_: Map<string, boolean> = new Map();
+  /** Scenarios with completedAt set - used for prerequisite checks (ever completed) */
   private completedScenarioIds_: string[] = [];
+  /** Scenarios with score > 0 - used for UI display (currently showing as completed) */
+  private currentlyCompletedScenarioIds_: string[] = [];
   private checkpointsLoaded_ = false;
   private currentCampaignId_: string | null = null;
   private currentCampaign_: CampaignData | null = null;
@@ -99,11 +102,18 @@ export class ScenarioSelectionPage extends BasePage {
         // Clear previous data
         this.scenarioCheckpoints_.clear();
         this.completedScenarioIds_ = [];
+        this.currentlyCompletedScenarioIds_ = [];
 
         // Track completed scenarios from progress records
         for (const scenarioProgress of progressResponse.scenarios) {
+          // completedAt = ever completed (for prerequisites)
           if (scenarioProgress.completedAt) {
             this.completedScenarioIds_.push(scenarioProgress.scenarioId);
+          }
+          // score > 0 = currently completed (for UI display)
+          // After resetScenarioForReplay(), score is 0 so this will be false
+          if (scenarioProgress.score > 0) {
+            this.currentlyCompletedScenarioIds_.push(scenarioProgress.scenarioId);
           }
         }
 
@@ -227,10 +237,15 @@ export class ScenarioSelectionPage extends BasePage {
 
   private renderScenarioCard_(scenario: ScenarioData): string {
     const hasCheckpoint = this.scenarioCheckpoints_.get(scenario.id);
+    // Use completedScenarioIds_ (based on completedAt) for prerequisite checks and badge
     const isLocked = isScenarioLocked(scenario, this.completedScenarioIds_);
     const prerequisiteNames = isLocked ? getPrerequisiteScenarioNames(scenario) : [];
     const isDisabledOrLocked = scenario.isDisabled || isLocked;
-    const isCompleted = this.completedScenarioIds_.includes(scenario.id);
+    // hasEverCompleted = has completedAt (for badge display)
+    const hasEverCompleted = this.completedScenarioIds_.includes(scenario.id);
+    // isCurrentlyCompleted = has score > 0 (for button: "Play Again" vs "Start")
+    // After Play Again reset, score is 0 so this shows "Start" instead of "Play Again"
+    const isCurrentlyCompleted = this.currentlyCompletedScenarioIds_.includes(scenario.id);
 
     let statusBanner = '';
     if (scenario.isDisabled) {
@@ -253,7 +268,7 @@ export class ScenarioSelectionPage extends BasePage {
 
     let actionButtons = '';
     if (!isDisabledOrLocked) {
-      if (isCompleted) {
+      if (isCurrentlyCompleted) {
         actionButtons = `
           <div class="scenario-checkpoint-actions">
           <button type="button" class="btn-play-again" data-scenario-id="${scenario.id}" data-scenario-url="${scenario.url}">
@@ -284,7 +299,7 @@ export class ScenarioSelectionPage extends BasePage {
     }
 
     let progressBanner = '';
-    if (isCompleted && !isDisabledOrLocked) {
+    if (hasEverCompleted && !isDisabledOrLocked) {
       progressBanner = `
         <div class="completed-banner">
           <span class="completed-icon">🏆</span>
@@ -438,7 +453,7 @@ export class ScenarioSelectionPage extends BasePage {
 
   /**
    * Handle Play Again button click for completed scenarios
-   * Removes scenario from completed list before starting fresh
+   * Resets score/objectives but preserves completion status so prerequisites stay unlocked
    */
   private async handlePlayAgain_(event: Event): Promise<void> {
     event.stopPropagation(); // Prevent card selection
@@ -449,13 +464,13 @@ export class ScenarioSelectionPage extends BasePage {
       return;
     }
 
-    // Remove from completed scenarios list and clear checkpoint using direct API (no confirmation needed for Play Again)
-    // Use individual .catch() so 404 errors (nothing to delete) don't prevent other cleanup
+    // Reset progress (preserves completedAt) and clear checkpoint for fresh start
+    // Use individual .catch() so errors don't prevent other cleanup
     const userDataService = getUserDataService();
 
     await Promise.all([
-      userDataService.deleteScenarioProgress(scenarioId).catch(error => {
-        Logger.warn(`deleteScenarioProgress failed (may not exist): ${error.message}`);
+      userDataService.resetScenarioForReplay(scenarioId).catch(error => {
+        Logger.warn(`resetScenarioForReplay failed: ${error.message}`);
       }),
       userDataService.deleteCheckpoint(scenarioId).catch(error => {
         Logger.warn(`deleteCheckpoint failed (may not exist): ${error.message}`);

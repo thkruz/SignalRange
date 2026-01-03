@@ -258,7 +258,7 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
    */
   private isInPassband_(frequencyHz: number): boolean {
     return frequencyHz >= this.state.filterLowHz
-        && frequencyHz <= this.state.filterHighHz;
+      && frequencyHz <= this.state.filterHighHz;
   }
 
   /**

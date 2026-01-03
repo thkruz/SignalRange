@@ -1,9 +1,19 @@
 import { html } from '@app/engine/utils/development/formatter';
 import { qs } from '@app/engine/utils/query-selector';
+import { EventBus } from '@app/events/event-bus';
+import { Events } from '@app/events/events';
 import SoundManager from '@app/sound/sound-manager';
 import { Character, CharacterCompany, CharacterNames, CharacterTitles, Emotion, getCharacterAvatarUrl } from './character-enum';
 import { DialogHistoryManager } from './dialog-history-manager';
 import './dialog-manager.css';
+
+interface QueuedDialog {
+  text: string;
+  character: Character;
+  audioUrl: string;
+  title: string;
+  emotion?: Emotion;
+}
 
 declare global {
   interface Window {
@@ -18,6 +28,7 @@ export class DialogManager {
   private animationFrameId: number | null = null;
   currentAudioUrl: string | null = null;
   private isHolding: boolean = false;
+  private dialogQueue_: QueuedDialog[] = [];
 
   private constructor() { }
 
@@ -33,8 +44,10 @@ export class DialogManager {
   }
 
   show(text: string, character: Character, audioUrl: string, title: string = 'Dialog', emotion?: Emotion): void {
+    // If a dialog is currently showing, queue this one
     if (this.dialogElement) {
-      this.hide();
+      this.dialogQueue_.push({ text, character, audioUrl, title, emotion });
+      return;
     }
 
     // Track this dialog in history
@@ -220,6 +233,26 @@ export class DialogManager {
       if (this.dialogElement === overlay) {
         this.dialogElement = null;
       }
+
+      // Emit dismissed event
+      EventBus.getInstance().emit(Events.DIALOG_DISMISSED);
+
+      // Process next queued dialog
+      this.processQueue_();
     }, 300); // Match CSS transition duration
+  }
+
+  private processQueue_(): void {
+    const next = this.dialogQueue_.shift();
+    if (!next) return;
+
+    // Small delay to let fade-out complete visually
+    setTimeout(() => {
+      this.show(next.text, next.character, next.audioUrl, next.title, next.emotion);
+    }, 50);
+  }
+
+  clearQueue(): void {
+    this.dialogQueue_ = [];
   }
 }

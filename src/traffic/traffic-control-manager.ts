@@ -178,7 +178,7 @@ export class TrafficControlManager {
       EventBus.getInstance().emit(Events.HANDOVER_READY, {
         satelliteId,
         sourceStationId: ownership.owningGroundStationId,
-        targetStationId: ownership.handoverTargetStationId!,
+        targetStationId: ownership.handoverTargetStationId,
       });
     }
   }
@@ -198,7 +198,7 @@ export class TrafficControlManager {
     if (!ownership.sourceStationReady || !ownership.targetStationReady) return false;
 
     const previousOwner = ownership.owningGroundStationId;
-    const newOwner = ownership.handoverTargetStationId!;
+    const newOwner = ownership.handoverTargetStationId;
 
     // Disable transmission on source station FIRST (HPA off, BUC mute)
     this.disableTransmission_(previousOwner);
@@ -402,6 +402,7 @@ export class TrafficControlManager {
 
     // Then turn on HPA
     if (!rfFrontEnd.hpaModule.state.isHpaEnabled) {
+      rfFrontEnd.hpaModule.state.isHpaSwitchEnabled = false; // Ensure switch is off before toggling
       rfFrontEnd.hpaModule.handleHpaToggle();
     }
   }

@@ -86,8 +86,9 @@ export const scenario4Data: ScenarioData = {
     {
       id: 'review-mission-brief',
       title: 'Review Mission Brief',
-      description: 'Open the mission brief to understand the switchover requirements.',
+      description: 'Open the mission brief to understand the switchover requirements, then acknowledge you are ready to proceed.',
       groundStation: 'VT-01',
+      freezesScenarioTimer: true,
       prerequisiteObjectiveIds: [],
       conditions: [
         {
@@ -95,6 +96,20 @@ export const scenario4Data: ScenarioData = {
           description: 'Mission Brief Reviewed',
           params: {
             boxId: 'mission-brief',
+          },
+          mustMaintain: false,
+        },
+        {
+          type: 'status-check',
+          description: 'Ready to Proceed',
+          params: {
+            question: 'Have you reviewed the mission brief and are you ready to begin?',
+            options: [
+              'Yes, I have read the mission brief and I am ready to proceed.',
+            ],
+            correctIndex: 0,
+            explanation: 'The mission timer has started. Good luck!',
+            pointPenalty: 0,
           },
           mustMaintain: false,
         },

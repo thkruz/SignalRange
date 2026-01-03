@@ -70,19 +70,34 @@ export const scenario2Data: ScenarioData = {
   objectives: [
     {
       id: 'mission-brief-opened',
-      title: 'Open Mission Brief',
-      description: 'Open and read the mission brief document including safety brief.',
+      title: 'Review Mission Brief',
+      description: 'Open and read the mission brief document including safety brief, then acknowledge you are ready to proceed.',
       groundStation: 'VT-01',
+      freezesScenarioTimer: true,
       conditions: [
         {
           type: 'mission-brief-opened',
           description: 'Mission Brief Document Opened',
+          params: { boxId: 'mission-brief' },
+          mustMaintain: false,
+        },
+        {
+          type: 'status-check',
+          description: 'Ready to Proceed',
+          params: {
+            question: 'Have you reviewed the mission brief and are you ready to begin?',
+            options: [
+              'Yes, I have read the mission brief and I am ready to proceed.',
+            ],
+            correctIndex: 0,
+            explanation: 'The mission timer has started. Good luck!',
+            pointPenalty: 0,
+          },
           mustMaintain: false,
         },
       ],
       conditionLogic: 'AND',
       points: 5,
-      timeLimitSeconds: 3 * 60, // 3 minutes
     },
     {
       id: 'safety-briefing',

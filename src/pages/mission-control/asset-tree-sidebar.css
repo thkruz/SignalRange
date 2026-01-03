@@ -299,3 +299,15 @@
 #asset-tree-sidebar-container.collapsed .list-group-item[data-tooltip]:hover::before {
   opacity: 1;
 }
+
+/* === Sidebar Locked State === */
+/* When scenario is locked (awaiting mission brief acknowledgment), disable all items except mission brief and checklist */
+.asset-tree-sidebar.sidebar-locked .list-group-item-action:not(.mission-brief-icon):not(.checklist-icon) {
+  opacity: 0.4;
+  pointer-events: none;
+  cursor: not-allowed;
+}
+
+.asset-tree-sidebar.sidebar-locked .list-group-item-action:not(.mission-brief-icon):not(.checklist-icon) .item-status {
+  opacity: 0.3;
+}

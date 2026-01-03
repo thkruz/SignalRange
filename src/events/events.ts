@@ -309,6 +309,7 @@ export enum Events {
   OBJECTIVE_FAILED = 'objective:failed',
   SCENARIO_TIME_EXPIRED = 'scenario:time:expired',
   TIME_PENALTY_APPLIED = 'time:penalty:applied',
+  SCENARIO_UNLOCKED = 'scenario:unlocked',
 
   // Quiz events (for status-check conditions)
   QUIZ_SHOW = 'quiz:show',
@@ -396,6 +397,7 @@ export interface EventMap {
   [Events.OBJECTIVE_FAILED]: [ObjectiveFailedData];
   [Events.SCENARIO_TIME_EXPIRED]: [ScenarioTimeExpiredData];
   [Events.TIME_PENALTY_APPLIED]: [TimePenaltyAppliedData];
+  [Events.SCENARIO_UNLOCKED]: [];
 
   [Events.QUIZ_SHOW]: [QuizShowData];
   [Events.QUIZ_ANSWERED]: [QuizAnsweredData];

@@ -163,10 +163,42 @@ export const scenario3Data: ScenarioData = {
   },
   objectives: [
     {
+      id: 'open-mission-brief',
+      title: 'Review Mission Brief',
+      description: 'Open and read the mission brief, then acknowledge you are ready to proceed.',
+      groundStation: 'VT-01',
+      freezesScenarioTimer: true,
+      conditions: [
+        {
+          type: 'mission-brief-opened',
+          description: 'Mission Brief Document Opened',
+          params: { boxId: 'mission-brief' },
+          mustMaintain: false,
+        },
+        {
+          type: 'status-check',
+          description: 'Ready to Proceed',
+          params: {
+            question: 'Have you reviewed the mission brief and are you ready to begin?',
+            options: [
+              'Yes, I have read the mission brief and I am ready to proceed.',
+            ],
+            correctIndex: 0,
+            explanation: 'The mission timer has started. Good luck!',
+            pointPenalty: 0,
+          },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 5,
+    },
+    {
       id: 'enable-vt01-heater',
       title: 'Activate Weather Protection',
       description: 'Ice accumulation on the antenna feed can degrade signal quality and damage the waveguide. Enable the feed heater on VT-01 before the storm arrives - this prevents ice from forming on critical RF components.',
       groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['open-mission-brief'],
       timeLimitSeconds: 240, // 4 minutes
       timerStartTrigger: 'on-activate',
       conditions: [

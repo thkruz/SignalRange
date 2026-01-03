@@ -1,10 +1,10 @@
-import { Transmitter, TransmitterModem, TransmitterState } from '@app/equipment/transmitter/transmitter';
 import { CardAlarmBadge } from "@app/components/card-alarm-badge/card-alarm-badge";
 import { qs } from "@app/engine/utils/query-selector";
+import { ValidationError, validateModemBandwidth, validateModemFrequency } from '@app/equipment/modem/modem-constraints';
+import { Transmitter, TransmitterModem, TransmitterState } from '@app/equipment/transmitter/transmitter';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
-import { ValidationError, validateModemFrequency, validateModemBandwidth } from '@app/equipment/modem/modem-constraints';
-import { formatFrequencyMHz, formatBandwidthMHz } from '@app/utils/format-number';
+import { formatBandwidthMHz, formatFrequencyMHz } from '@app/utils/format-number';
 import { parseLocalizedNumber } from '@app/utils/parse-number';
 
 /**
@@ -587,6 +587,8 @@ export class TransmitterAdapter {
           : '';
         statusBar.innerHTML = '<strong>' + err.message + '</strong>' + hint;
       }
+    } else {
+      this.updateStatusBar_();
     }
   }
 

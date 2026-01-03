@@ -348,8 +348,10 @@ export class ObjectivesManager {
     this.isQuizPassed_ = false;
     this.passedObjectiveId_ = null;
 
-    // Resume scenario timer
-    if (this.scenarioTimeLimit_ !== null && this.scenarioTimeRemaining_ > 0) {
+    // Resume scenario timer only if scenario is not yet complete
+    if (this.scenarioTimeLimit_ !== null &&
+        this.scenarioTimeRemaining_ > 0 &&
+        !this.areAllObjectivesCompleted()) {
       this.scenarioTimerRunning_ = true;
     }
     // Note: objective timer doesn't resume - it will be replaced by next objective's timer

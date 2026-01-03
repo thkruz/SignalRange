@@ -353,6 +353,29 @@ export class UserDataService {
   }
 
   /**
+   * Reset scenario progress for replay without losing completion status.
+   * Clears score and objectives but preserves completedAt so prerequisites stay unlocked.
+   */
+  async resetScenarioForReplay(scenarioId: string): Promise<ScenarioProgress | null> {
+    // Check if progress exists first
+    const existing = await this.getScenarioProgress(scenarioId);
+    if (!existing) {
+      return null; // No progress to reset
+    }
+
+    // Reset all gameplay fields but preserve completedAt
+    return this.updateScenarioProgress(scenarioId, {
+      completedObjectives: [],
+      score: 0,
+      basePoints: 0,
+      timeBonus: 0,
+      quizPenalties: 0,
+      timePenalties: 0,
+      // Note: NOT including completedAt - this preserves the existing value
+    });
+  }
+
+  /**
    * Get checkpoint for a specific scenario (new API)
    */
   async getCheckpoint(scenarioId: string): Promise<Checkpoint | null> {

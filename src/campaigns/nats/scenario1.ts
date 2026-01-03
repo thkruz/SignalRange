@@ -380,18 +380,25 @@ export const scenario1Data: ScenarioData = {
     <p>
       If you need to review something later, the buttons on the left are your friends - Mission Brief, Checklist, Dialog History. I'm not repeating myself, but the system will.
     </p>
-    <p>
-      Alright. First thing, always - the GPSDO. GPS-Disciplined Oscillator. It's the timing heart of this whole rack. Every piece of equipment keys off that 10 MHz reference. If the GPSDO is unhappy, nothing else matters.
-    </p>
-    <p>
-      Click Vermont Ground Station, then GPS Timing tab. Tell me what the lock indicator shows. It'll be locked, holdover, unlocked, or off. Go.
-    </p>
     `,
       character: Character.CHARLIE_BROOKS,
       emotion: Emotion.CONFIDENT,
       audioUrl: getAssetUrl('/assets/campaigns/nats/1/intro-v2.mp3'),
     },
     objectives: {
+      'open-mission-brief': {
+        text: `
+      <p>
+        Alright. First thing, always - the GPSDO. GPS-Disciplined Oscillator. It's the timing heart of this whole rack. Every piece of equipment keys off that 10 MHz reference. If the GPSDO is unhappy, nothing else matters.
+      </p>
+      <p>
+        Click Vermont Ground Station, then GPS Timing tab. Tell me what the lock indicator shows. It'll be locked, holdover, unlocked, or off. Go.
+      </p>
+      `,
+        character: Character.CHARLIE_BROOKS,
+        emotion: Emotion.NEUTRAL,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/1/v2/obj-open-mission-brief.mp3'),
+      },
       'phase-1-gpsdo': {
         text: `
       <p>

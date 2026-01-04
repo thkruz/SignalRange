@@ -262,6 +262,8 @@ export interface Condition {
 export interface Objective {
   /** Unique identifier for this objective */
   id: string;
+  /** NICE Framework codes this objective aligns with (e.g., ['K0645', 'T0153']) */
+  nice?: string[];
   /** Display name shown to user */
   title: string;
   /** Detailed description of what the student must do */

@@ -3,7 +3,7 @@ import { BaseElement } from '@app/components/base-element';
 import { FineAdjustControl } from '@app/components/fine-adjust-control/fine-adjust-control';
 import { PolarPlot } from '@app/components/polar-plot/polar-plot';
 import { html } from '@app/engine/utils/development/formatter';
-import { qs, qsa } from '@app/engine/utils/query-selector';
+import { qs } from '@app/engine/utils/query-selector';
 import { TrackingMode } from '@app/equipment/antenna/antenna-core';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
@@ -18,7 +18,7 @@ import { OMTAdapter } from './omt-adapter';
  * ACUControlTab - Antenna Control Unit tab for ground station equipment
  *
  * Displays:
- * - ACU identification (model, serial number)
+ * - ACU identification (model, serial number, antenna info)
  * - Tracking mode selector (Stow, Maintenance, Manual, Program Track, Step Track)
  * - Antenna controls (azimuth, elevation, polarization) with fine adjustment buttons
  * - Beacon tracking controls (frequency, search bandwidth)
@@ -26,10 +26,13 @@ import { OMTAdapter } from './omt-adapter';
  * - OMT/Duplexer status
  * - RF metrics
  *
- * Uses adapters to bridge equipment Core classes to modern web controls
+ * Uses adapters to bridge equipment Core classes to modern web controls.
+ * Supports multiple instances per ground station (one per antenna) via unique ID prefixes.
  */
 export class ACUControlTab extends BaseElement {
   private readonly groundStation: GroundStation;
+  private readonly antennaIndex_: number;
+  private readonly uniquePrefix_: string;
   private antennaAdapter: AntennaAdapter | null = null;
   private omtAdapter: OMTAdapter | null = null;
   private polarPlot_: PolarPlot | null = null;
@@ -49,37 +52,73 @@ export class ACUControlTab extends BaseElement {
   // Active target satellite (only updates when "Move to Target" is clicked)
   private activeTargetSatelliteId_: number | null = null;
 
-  protected html_ = html`
-    <div class="acu-control-tab">
+  // Event handler cleanup tracking
+  private readonly boundHandlers_: Map<string, { element: Element; event: string; handler: EventListener }> = new Map();
+
+  // HTML template is generated dynamically to support unique IDs
+  protected html_: string;
+
+  constructor(groundStation: GroundStation, containerId: string, antennaIndex: number = 0) {
+    super();
+    this.groundStation = groundStation;
+    this.antennaIndex_ = antennaIndex;
+    this.uniquePrefix_ = `acu-${groundStation.uuid}-ant${antennaIndex}-`;
+
+    // Generate HTML with unique prefixed IDs
+    this.html_ = this.generateHtml_();
+
+    this.init_(containerId, 'replace');
+    this.dom_ = qs(`.acu-control-tab-${this.uniquePrefix_}`);
+
+    // Call initializeEquipment if not already initialized
+    if (this.groundStation.antennas.length === 0) {
+      this.groundStation.initializeEquipment();
+    }
+
+    this.addEventListenersLate_();
+  }
+
+  /**
+   * Generate HTML template with prefixed IDs for multi-instance support
+   */
+  private generateHtml_(): string {
+    const p = this.uniquePrefix_;
+    const antenna = this.groundStation.antennas[this.antennaIndex_];
+    const config = antenna?.config;
+    const antennaInfo = config ? `${config.band}-Band ${config.diameter}m` : '';
+
+    return html`
+    <div class="acu-control-tab acu-control-tab-${p}">
       <!-- ACU Header: Identification + Tracking Mode -->
       <div class="card mb-3 acu-header-card">
         <div class="card-body py-2">
           <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
             <!-- ACU Identification -->
             <div class="acu-identification">
-              <span id="acu-model" class="acu-model">Kratos NGC-2200</span>
-              <span id="acu-serial" class="acu-serial">(ACU-01)</span>
-              <span id="acu-status-led" class="led led-green ms-2"></span>
+              <span id="${p}model" class="acu-model">Kratos NGC-2200</span>
+              <span id="${p}serial" class="acu-serial">(ACU-01)</span>
+              <span id="${p}antenna-info" class="acu-antenna-info text-muted ms-2">| ${antennaInfo}</span>
+              <span id="${p}status-led" class="led led-green ms-2"></span>
             </div>
 
             <!-- Tracking Mode Selector -->
             <div class="tracking-mode-selector btn-group" role="group" aria-label="Tracking mode selection">
-              <button type="button" class="btn btn-tracking" data-mode="stow">STOW</button>
-              <button type="button" class="btn btn-tracking" data-mode="maintenance">MAINT</button>
-              <button type="button" class="btn btn-tracking active" data-mode="manual">MANUAL</button>
-              <button type="button" class="btn btn-tracking" data-mode="program-track">PROGRAM</button>
-              <button type="button" class="btn btn-tracking" data-mode="step-track">STEP</button>
+              <button type="button" class="btn btn-tracking ${p}btn-tracking" data-mode="stow">STOW</button>
+              <button type="button" class="btn btn-tracking ${p}btn-tracking" data-mode="maintenance">MAINT</button>
+              <button type="button" class="btn btn-tracking ${p}btn-tracking active" data-mode="manual">MANUAL</button>
+              <button type="button" class="btn btn-tracking ${p}btn-tracking" data-mode="program-track">PROGRAM</button>
+              <button type="button" class="btn btn-tracking ${p}btn-tracking" data-mode="step-track">STEP</button>
             </div>
 
             <!-- Power & Loopback -->
             <div class="d-flex gap-3">
               <div class="form-check form-switch mb-0">
-                <input class="form-check-input" type="checkbox" role="switch" id="power-switch" checked>
-                <label class="form-check-label" for="power-switch">Power</label>
+                <input class="form-check-input" type="checkbox" role="switch" id="${p}power-switch" checked>
+                <label class="form-check-label" for="${p}power-switch">Power</label>
               </div>
               <div class="form-check form-switch mb-0">
-                <input class="form-check-input" type="checkbox" role="switch" id="loopback-switch">
-                <label class="form-check-label" for="loopback-switch">Loopback</label>
+                <input class="form-check-input" type="checkbox" role="switch" id="${p}loopback-switch">
+                <label class="form-check-label" for="${p}loopback-switch">Loopback</label>
               </div>
             </div>
           </div>
@@ -94,7 +133,7 @@ export class ACUControlTab extends BaseElement {
               <h3 class="card-title">Antenna Position</h3>
             </div>
             <div class="card-body d-flex justify-content-center align-items-center">
-              <div id="polar-plot-container"></div>
+              <div id="${p}polar-plot-container"></div>
             </div>
           </div>
         </div>
@@ -105,15 +144,15 @@ export class ACUControlTab extends BaseElement {
             <div class="card-header d-flex justify-content-between align-items-center">
               <h3 class="card-title mb-0">Antenna Positioning</h3>
               <div class="d-flex gap-2">
-                <button id="discard-changes-btn" class="btn btn-sm btn-secondary" disabled>CANCEL</button>
-                <button id="apply-changes-btn" class="btn btn-sm btn-apply" disabled>APPLY</button>
+                <button id="${p}discard-changes-btn" class="btn btn-sm btn-secondary" disabled>CANCEL</button>
+                <button id="${p}apply-changes-btn" class="btn btn-sm btn-apply" disabled>APPLY</button>
               </div>
             </div>
             <div class="card-body">
               <!-- Fine adjustment controls will be injected here -->
-              <div id="fine-adjust-container"></div>
+              <div id="${p}fine-adjust-container"></div>
               <!-- Fault message display -->
-              <div id="fault-message" class="alert alert-danger mt-2" style="display: none;"></div>
+              <div id="${p}fault-message" class="alert alert-danger mt-2" style="display: none;"></div>
             </div>
           </div>
         </div>
@@ -122,32 +161,32 @@ export class ACUControlTab extends BaseElement {
         <div class="col-xl-4">
           <div class="card h-100">
             <div class="card-header">
-              <h3 class="card-title" id="context-panel-title">Tracking</h3>
+              <h3 class="card-title" id="${p}context-panel-title">Tracking</h3>
             </div>
             <div class="card-body">
               <!-- Program Track: Satellite Selection -->
-              <div id="program-track-section" class="tracking-section" style="display: none;">
+              <div id="${p}program-track-section" class="tracking-section" style="display: none;">
                 <div class="mb-3">
                   <label class="form-label">Current Target</label>
-                  <input type="text" id="current-target-display" class="form-control font-monospace" value="No Target" readonly style="cursor: default;">
+                  <input type="text" id="${p}current-target-display" class="form-control font-monospace" value="No Target" readonly style="cursor: default;">
                 </div>
                 <div class="mb-3">
-                  <label for="satellite-select" class="form-label">Target Satellite</label>
-                  <select id="satellite-select" class="form-select">
+                  <label for="${p}satellite-select" class="form-label">Target Satellite</label>
+                  <select id="${p}satellite-select" class="form-select">
                     <option value="">-- Select Satellite --</option>
                   </select>
                 </div>
-                <button id="move-to-target-btn" class="btn btn-primary w-100" disabled>
+                <button id="${p}move-to-target-btn" class="btn btn-primary w-100" disabled>
                   Move to Target
                 </button>
               </div>
 
               <!-- Step Track: Beacon Controls -->
-              <div id="step-track-section" class="tracking-section" style="display: none;">
+              <div id="${p}step-track-section" class="tracking-section" style="display: none;">
                 <div class="mb-3">
                   <label class="form-label">Beacon Frequency</label>
                   <div class="input-group">
-                    <input type="number" class="form-control font-monospace" id="beacon-freq"
+                    <input type="number" class="form-control font-monospace" id="${p}beacon-freq"
                            value="3948" step="0.1" min="1000" max="50000">
                     <span class="input-group-text">MHz</span>
                   </div>
@@ -155,45 +194,45 @@ export class ACUControlTab extends BaseElement {
                 <div class="mb-3">
                   <label class="form-label">Search Bandwidth</label>
                   <div class="input-group">
-                    <input type="number" class="form-control font-monospace" id="beacon-search-bw"
+                    <input type="number" class="form-control font-monospace" id="${p}beacon-search-bw"
                            value="500" step="50" min="100" max="2000">
                     <span class="input-group-text">kHz</span>
                   </div>
                 </div>
-                <button id="step-track-toggle-btn" class="btn btn-primary w-100">
+                <button id="${p}step-track-toggle-btn" class="btn btn-primary w-100">
                   START TRACKING
                 </button>
               </div>
 
               <!-- Manual/Stow/Maintenance: Status Info -->
-              <div id="manual-section" class="tracking-section">
+              <div id="${p}manual-section" class="tracking-section">
                 <div class="status-info">
                   <div class="d-flex justify-content-between mb-2">
                     <span class="text-muted">Mode:</span>
-                    <span id="tracking-mode-display" class="fw-bold font-monospace">MANUAL</span>
+                    <span id="${p}tracking-mode-display" class="fw-bold font-monospace">MANUAL</span>
                   </div>
                   <div class="d-flex justify-content-between mb-2">
                     <span class="text-muted">Lock Status:</span>
-                    <span id="lock-status-display" class="fw-bold">UNLOCKED</span>
+                    <span id="${p}lock-status-display" class="fw-bold">UNLOCKED</span>
                   </div>
                   <div class="d-flex justify-content-between">
                     <span class="text-muted">Signals:</span>
-                    <span id="signals-count-display" class="fw-bold font-monospace">0</span>
+                    <span id="${p}signals-count-display" class="fw-bold font-monospace">0</span>
                   </div>
                 </div>
               </div>
 
               <!-- Beacon C/N Display - visible in manual, program-track, step-track modes -->
-              <div id="beacon-display-section" class="mt-3" style="display: none;">
+              <div id="${p}beacon-display-section" class="mt-3" style="display: none;">
                 <div class="beacon-strength-container">
                   <label class="form-label">Beacon C/N</label>
                   <div class="beacon-strength-bar">
-                    <div class="beacon-strength-fill" id="beacon-strength-fill"></div>
-                    <span class="beacon-strength-value" id="beacon-cn-value">-- dB</span>
+                    <div class="beacon-strength-fill" id="${p}beacon-strength-fill"></div>
+                    <span class="beacon-strength-value" id="${p}beacon-cn-value">-- dB</span>
                   </div>
                   <div class="d-flex justify-content-between mt-1">
                     <span class="text-muted small">Lock Status:</span>
-                    <span id="beacon-lock-status" class="fw-bold">--</span>
+                    <span id="${p}beacon-lock-status" class="fw-bold">--</span>
                   </div>
                 </div>
               </div>
@@ -213,19 +252,19 @@ export class ACUControlTab extends BaseElement {
             <div class="card-body">
               <div class="d-flex justify-content-between align-items-center mb-2">
                 <span class="text-muted small">TX Polarization:</span>
-                <span id="omt-tx-pol" class="fw-bold font-monospace">--</span>
+                <span id="${p}omt-tx-pol" class="fw-bold font-monospace">--</span>
               </div>
               <div class="d-flex justify-content-between align-items-center mb-2">
                 <span class="text-muted small">RX Polarization:</span>
-                <span id="omt-rx-pol" class="fw-bold font-monospace">--</span>
+                <span id="${p}omt-rx-pol" class="fw-bold font-monospace">--</span>
               </div>
               <div class="d-flex justify-content-between align-items-center mb-2">
                 <span class="text-muted small">Cross-Pol Isolation:</span>
-                <span id="omt-isolation" class="fw-bold font-monospace">-- dB</span>
+                <span id="${p}omt-isolation" class="fw-bold font-monospace">-- dB</span>
               </div>
               <div class="d-flex justify-content-between align-items-center">
                 <span class="text-muted small">Status:</span>
-                <span id="omt-fault-led" class="led led-green"></span>
+                <span id="${p}omt-fault-led" class="led led-green"></span>
               </div>
             </div>
           </div>
@@ -244,9 +283,9 @@ export class ACUControlTab extends BaseElement {
                   <div class="text-muted small">Prevents ice buildup</div>
                 </div>
                 <div class="d-flex align-items-center gap-2">
-                  <span id="heater-led" class="led led-off"></span>
+                  <span id="${p}heater-led" class="led led-off"></span>
                   <div class="form-check form-switch mb-0">
-                    <input class="form-check-input" type="checkbox" id="heater-switch">
+                    <input class="form-check-input" type="checkbox" id="${p}heater-switch">
                   </div>
                 </div>
               </div>
@@ -256,21 +295,21 @@ export class ACUControlTab extends BaseElement {
                   <div class="text-muted small">Clears radome</div>
                 </div>
                 <div class="d-flex align-items-center gap-2">
-                  <span id="blower-led" class="led led-off"></span>
+                  <span id="${p}blower-led" class="led led-off"></span>
                   <div class="form-check form-switch mb-0">
-                    <input class="form-check-input" type="checkbox" id="blower-switch">
+                    <input class="form-check-input" type="checkbox" id="${p}blower-switch">
                   </div>
                 </div>
               </div>
               <div class="d-flex justify-content-between align-items-center pt-2 border-top">
                 <span class="text-muted small">Precipitation:</span>
-                <span id="precip-status" class="fw-bold">
+                <span id="${p}precip-status" class="fw-bold">
                   <span class="led led-off me-1"></span>CLEAR
                 </span>
               </div>
               <div class="d-flex justify-content-between align-items-center pt-2 mt-2 border-top">
                 <span class="text-muted small">Ice Accumulation:</span>
-                <span id="ice-accumulation-display" class="fw-bold font-monospace">0.0 dB</span>
+                <span id="${p}ice-accumulation-display" class="fw-bold font-monospace">0.0 dB</span>
               </div>
             </div>
           </div>
@@ -287,37 +326,37 @@ export class ACUControlTab extends BaseElement {
                 <div class="col-4">
                   <div class="rf-metric-box">
                     <div class="rf-metric-label">Frequency</div>
-                    <div id="rf-metric-freq" class="rf-metric-value">-- GHz</div>
+                    <div id="${p}rf-metric-freq" class="rf-metric-value">-- GHz</div>
                   </div>
                 </div>
                 <div class="col-4">
                   <div class="rf-metric-box">
                     <div class="rf-metric-label">Gain</div>
-                    <div id="rf-metric-gain" class="rf-metric-value">-- dBi</div>
+                    <div id="${p}rf-metric-gain" class="rf-metric-value">-- dBi</div>
                   </div>
                 </div>
                 <div class="col-4">
                   <div class="rf-metric-box">
                     <div class="rf-metric-label">HPBW</div>
-                    <div id="rf-metric-beamwidth" class="rf-metric-value">-- deg</div>
+                    <div id="${p}rf-metric-beamwidth" class="rf-metric-value">-- deg</div>
                   </div>
                 </div>
                 <div class="col-4">
                   <div class="rf-metric-box">
                     <div class="rf-metric-label">G/T</div>
-                    <div id="rf-metric-gt" class="rf-metric-value">-- dB/K</div>
+                    <div id="${p}rf-metric-gt" class="rf-metric-value">-- dB/K</div>
                   </div>
                 </div>
                 <div class="col-4">
                   <div class="rf-metric-box">
                     <div class="rf-metric-label">Pol Loss</div>
-                    <div id="rf-metric-pol-loss" class="rf-metric-value">-- dB</div>
+                    <div id="${p}rf-metric-pol-loss" class="rf-metric-value">-- dB</div>
                   </div>
                 </div>
                 <div class="col-4">
                   <div class="rf-metric-box">
                     <div class="rf-metric-label">Sky Temp</div>
-                    <div id="rf-metric-sky-temp" class="rf-metric-value">-- K</div>
+                    <div id="${p}rf-metric-sky-temp" class="rf-metric-value">-- K</div>
                   </div>
                 </div>
               </div>
@@ -327,38 +366,47 @@ export class ACUControlTab extends BaseElement {
       </div>
     </div>
   `;
+  }
 
-  constructor(groundStation: GroundStation, containerId: string) {
-    super();
-    this.groundStation = groundStation;
-    this.init_(containerId, 'replace');
-    this.dom_ = qs('.acu-control-tab');
+  /**
+   * Helper to query elements with the unique prefix
+   */
+  private qs_<T extends HTMLElement>(id: string): T | null {
+    return this.dom_?.querySelector(`#${this.uniquePrefix_}${id}`) as T | null;
+  }
 
-    // Call initializeEquipment if not already initialized
-    if (this.groundStation.antennas.length === 0) {
-      this.groundStation.initializeEquipment();
-    }
+  /**
+   * Helper to query all elements with a class that includes the unique prefix
+   */
+  private qsa_(className: string): NodeListOf<Element> {
+    return this.dom_?.querySelectorAll(`.${this.uniquePrefix_}${className}`) ?? ([] as unknown as NodeListOf<Element>);
+  }
 
-    this.addEventListenersLate_();
+  /**
+   * Register an event handler for cleanup
+   */
+  private addHandler_(key: string, element: Element, event: string, handler: EventListener): void {
+    element.addEventListener(event, handler);
+    this.boundHandlers_.set(key, { element, event, handler });
   }
 
   protected addEventListeners_(): void {
-    // Not ready yet
+    // Not ready yet - deferred to addEventListenersLate_
   }
 
   protected addEventListenersLate_(): void {
     // Get equipment references
-    const antenna = this.groundStation.antennas[0];
-    const rfFrontEnd = this.groundStation.rfFrontEnds[0];
+    const antenna = this.groundStation.antennas[this.antennaIndex_];
+    const rfFrontEnd = this.groundStation.rfFrontEnds[this.antennaIndex_];
 
     if (!antenna || !rfFrontEnd) {
-      console.error('ACUControlTab: Equipment not found in ground station');
+      console.error(`ACUControlTab: Equipment not found for antenna index ${this.antennaIndex_}`);
       return;
     }
 
-    // Create adapters
+    // Create adapters with prefixed element IDs
     this.antennaAdapter = new AntennaAdapter(antenna, this.dom_);
-    this.omtAdapter = new OMTAdapter(rfFrontEnd.omtModule, this.dom_);
+    this.omtAdapter = new OMTAdapter(rfFrontEnd.omtModule, this.dom_, this.uniquePrefix_);
 
     // Initialize fine adjustment controls
     this.initFineAdjustControls_(antenna);
@@ -378,14 +426,17 @@ export class ACUControlTab extends BaseElement {
     // Initialize environmental controls
     this.initEnvironmentalControls_(antenna);
 
-    // Create and initialize polar plot
+    // Initialize power and loopback controls
+    this.initPowerControls_(antenna);
+
+    // Create and initialize polar plot with unique ID
     this.polarPlot_ = PolarPlot.create(
-      `polar-plot-${this.groundStation.uuid}`,
+      `polar-plot-${this.groundStation.uuid}-ant${this.antennaIndex_}`,
       { width: 300, height: 300, showGrid: true, showLabels: true }
     );
 
     // Inject polar plot HTML into container
-    const polarPlotContainer = this.dom_.querySelector('#polar-plot-container');
+    const polarPlotContainer = this.qs_('polar-plot-container');
     if (polarPlotContainer) {
       polarPlotContainer.innerHTML = this.polarPlot_.html;
     }
@@ -422,27 +473,27 @@ export class ACUControlTab extends BaseElement {
   }
 
   private initFineAdjustControls_(antenna: typeof this.groundStation.antennas[0]): void {
-    const container = qs('#fine-adjust-container', this.dom_);
+    const container = this.qs_('fine-adjust-container');
     if (!container) return;
 
     // Create fine adjustment controls with ACTUAL position values
     // Red display shows current position (matches polar plot)
     this.azFineControl_ = FineAdjustControl.create(
-      `az-fine-${this.groundStation.uuid}`,
+      `az-fine-${this.groundStation.uuid}-ant${this.antennaIndex_}`,
       'Azimuth',
       antenna.state.azimuth,
       '°'
     );
 
     this.elFineControl_ = FineAdjustControl.create(
-      `el-fine-${this.groundStation.uuid}`,
+      `el-fine-${this.groundStation.uuid}-ant${this.antennaIndex_}`,
       'Elevation',
       antenna.state.elevation,
       '°'
     );
 
     this.polFineControl_ = FineAdjustControl.create(
-      `pol-fine-${this.groundStation.uuid}`,
+      `pol-fine-${this.groundStation.uuid}-ant${this.antennaIndex_}`,
       'Polarization',
       antenna.state.polarization,
       '°'
@@ -470,24 +521,26 @@ export class ACUControlTab extends BaseElement {
   }
 
   private initApplyCancelButtons_(antenna: typeof this.groundStation.antennas[0]): void {
-    const applyBtn = qs('#apply-changes-btn', this.dom_) as HTMLButtonElement;
-    const cancelBtn = qs('#discard-changes-btn', this.dom_) as HTMLButtonElement;
+    const applyBtn = this.qs_<HTMLButtonElement>('apply-changes-btn');
+    const cancelBtn = this.qs_<HTMLButtonElement>('discard-changes-btn');
 
     if (!applyBtn || !cancelBtn) return;
 
-    applyBtn.addEventListener('click', () => {
+    const applyHandler = () => {
       antenna.applyChanges();
-    });
+    };
+    this.addHandler_('apply-btn', applyBtn, 'click', applyHandler);
 
-    cancelBtn.addEventListener('click', () => {
+    const cancelHandler = () => {
       antenna.discardChanges();
-    });
+    };
+    this.addHandler_('cancel-btn', cancelBtn, 'click', cancelHandler);
   }
 
   private initTrackingModeSelector_(antenna: typeof this.groundStation.antennas[0]): void {
-    const buttons = qsa('.btn-tracking', this.dom_);
-    buttons.forEach(btn => {
-      btn.addEventListener('click', () => {
+    const buttons = this.qsa_('btn-tracking');
+    buttons.forEach((btn, index) => {
+      const handler = () => {
         const mode = (btn as HTMLElement).dataset.mode as TrackingMode;
 
         // Clear active target when leaving program-track mode
@@ -496,13 +549,14 @@ export class ACUControlTab extends BaseElement {
         }
 
         antenna.handleTrackingModeChange(mode);
-      });
+      };
+      this.addHandler_(`tracking-mode-${index}`, btn, 'click', handler);
     });
   }
 
   private initSatelliteDropdown_(antenna: typeof this.groundStation.antennas[0]): void {
-    const select = qs('#satellite-select', this.dom_) as HTMLSelectElement;
-    const moveBtn = qs('#move-to-target-btn', this.dom_) as HTMLButtonElement;
+    const select = this.qs_<HTMLSelectElement>('satellite-select');
+    const moveBtn = this.qs_<HTMLButtonElement>('move-to-target-btn');
 
     if (!select || !moveBtn) return;
 
@@ -517,22 +571,24 @@ export class ACUControlTab extends BaseElement {
       ).join('');
 
     // Handle selection change
-    select.addEventListener('change', () => {
+    const selectHandler = () => {
       const noradId = parseInt(select.value) || null;
       antenna.handleTargetSatelliteChange(noradId);
       moveBtn.disabled = noradId === null;
-    });
+    };
+    this.addHandler_('satellite-select', select, 'change', selectHandler);
 
     // Handle move button
-    moveBtn.addEventListener('click', () => {
+    const moveHandler = () => {
       this.activeTargetSatelliteId_ = antenna.state.targetSatelliteId;
       antenna.moveToTargetSatellite();
-    });
+    };
+    this.addHandler_('move-to-target', moveBtn, 'click', moveHandler);
   }
 
   private initBeaconControls_(antenna: typeof this.groundStation.antennas[0]): void {
-    const freqInput = qs('#beacon-freq', this.dom_) as HTMLInputElement;
-    const bwInput = qs('#beacon-search-bw', this.dom_) as HTMLInputElement;
+    const freqInput = this.qs_<HTMLInputElement>('beacon-freq');
+    const bwInput = this.qs_<HTMLInputElement>('beacon-search-bw');
 
     if (!freqInput || !bwInput) return;
 
@@ -541,70 +597,94 @@ export class ACUControlTab extends BaseElement {
     bwInput.value = (antenna.state.beaconSearchBwHz / 1e3).toString();
 
     // Handle frequency change - use staging method
-    freqInput.addEventListener('change', () => {
+    const freqHandler = () => {
       const freqMHz = parseLocalizedNumber(freqInput.value);
       if (!isNaN(freqMHz)) {
         antenna.stageBeaconFrequencyChange(freqMHz * 1e6);
       }
-    });
+    };
+    this.addHandler_('beacon-freq', freqInput, 'change', freqHandler);
 
     // Handle bandwidth change - use staging method
-    bwInput.addEventListener('change', () => {
+    const bwHandler = () => {
       const bwKHz = parseLocalizedNumber(bwInput.value);
       if (!isNaN(bwKHz)) {
         antenna.stageBeaconSearchBwChange(bwKHz * 1e3);
       }
-    });
+    };
+    this.addHandler_('beacon-bw', bwInput, 'change', bwHandler);
 
     // Handle step track toggle button
-    const toggleBtn = qs('#step-track-toggle-btn', this.dom_) as HTMLButtonElement;
+    const toggleBtn = this.qs_<HTMLButtonElement>('step-track-toggle-btn');
     if (toggleBtn) {
-      toggleBtn.addEventListener('click', () => {
+      const toggleHandler = () => {
         if (antenna.state.isAutoTrackEnabled) {
           antenna.stopStepTrack();
         } else {
           antenna.startStepTrack();
         }
-      });
+      };
+      this.addHandler_('step-track-toggle', toggleBtn, 'click', toggleHandler);
     }
   }
 
   private initEnvironmentalControls_(antenna: typeof this.groundStation.antennas[0]): void {
-    const heaterSwitch = qs('#heater-switch', this.dom_) as HTMLInputElement;
-    const blowerSwitch = qs('#blower-switch', this.dom_) as HTMLInputElement;
+    const heaterSwitch = this.qs_<HTMLInputElement>('heater-switch');
+    const blowerSwitch = this.qs_<HTMLInputElement>('blower-switch');
 
     if (!heaterSwitch || !blowerSwitch) return;
 
-    heaterSwitch.addEventListener('change', () => {
+    const heaterHandler = () => {
       antenna.handleHeaterToggle(heaterSwitch.checked);
-    });
+    };
+    this.addHandler_('heater-switch', heaterSwitch, 'change', heaterHandler);
 
-    blowerSwitch.addEventListener('change', () => {
+    const blowerHandler = () => {
       antenna.handleRainBlowerToggle(blowerSwitch.checked);
-    });
+    };
+    this.addHandler_('blower-switch', blowerSwitch, 'change', blowerHandler);
+  }
+
+  private initPowerControls_(antenna: typeof this.groundStation.antennas[0]): void {
+    const powerSwitch = this.qs_<HTMLInputElement>('power-switch');
+    const loopbackSwitch = this.qs_<HTMLInputElement>('loopback-switch');
+
+    if (powerSwitch) {
+      const powerHandler = () => {
+        antenna.handlePowerToggle(powerSwitch.checked);
+      };
+      this.addHandler_('power-switch', powerSwitch, 'change', powerHandler);
+    }
+
+    if (loopbackSwitch) {
+      const loopbackHandler = () => {
+        antenna.handleLoopbackToggle(loopbackSwitch.checked);
+      };
+      this.addHandler_('loopback-switch', loopbackSwitch, 'change', loopbackHandler);
+    }
   }
 
   private syncUiWithState_(antenna: typeof this.groundStation.antennas[0]): void {
     const state = antenna.state;
 
     // Sync ACU identification
-    const modelEl = qs('#acu-model', this.dom_);
-    const serialEl = qs('#acu-serial', this.dom_);
+    const modelEl = this.qs_('model');
+    const serialEl = this.qs_('serial');
     if (modelEl) modelEl.textContent = state.acuModel;
     if (serialEl) serialEl.textContent = `(${state.acuSerialNumber})`;
 
     // Sync tracking mode buttons
-    const modeButtons = qsa('.btn-tracking', this.dom_);
+    const modeButtons = this.qsa_('btn-tracking');
     modeButtons.forEach(btn => {
       const mode = (btn as HTMLElement).dataset.mode;
       btn.classList.toggle('active', mode === state.trackingMode);
     });
 
     // Show/hide tracking sections based on mode
-    const programSection = qs('#program-track-section', this.dom_);
-    const stepSection = qs('#step-track-section', this.dom_);
-    const manualSection = qs('#manual-section', this.dom_);
-    const beaconDisplaySection = qs('#beacon-display-section', this.dom_);
+    const programSection = this.qs_('program-track-section');
+    const stepSection = this.qs_('step-track-section');
+    const manualSection = this.qs_('manual-section');
+    const beaconDisplaySection = this.qs_('beacon-display-section');
 
     if (programSection) programSection.style.display = state.trackingMode === 'program-track' ? 'block' : 'none';
     if (stepSection) stepSection.style.display = state.trackingMode === 'step-track' ? 'block' : 'none';
@@ -613,18 +693,18 @@ export class ACUControlTab extends BaseElement {
     if (beaconDisplaySection) beaconDisplaySection.style.display = ['manual', 'program-track', 'step-track'].includes(state.trackingMode) ? 'block' : 'none';
 
     // Update tracking mode display
-    const modeDisplay = qs('#tracking-mode-display', this.dom_);
+    const modeDisplay = this.qs_('tracking-mode-display');
     if (modeDisplay) modeDisplay.textContent = state.trackingMode.toUpperCase().replace('-', ' ');
 
     // Update lock status
-    const lockDisplay = qs('#lock-status-display', this.dom_);
+    const lockDisplay = this.qs_('lock-status-display');
     if (lockDisplay) {
       lockDisplay.textContent = state.isLocked || state.isBeaconLocked ? 'LOCKED' : 'UNLOCKED';
       lockDisplay.classList.toggle('text-success', state.isLocked || state.isBeaconLocked);
     }
 
     // Update signals count
-    const signalsDisplay = qs('#signals-count-display', this.dom_);
+    const signalsDisplay = this.qs_('signals-count-display');
     if (signalsDisplay) signalsDisplay.textContent = state.rxSignalsIn.length.toString();
 
     // Sync fine adjustment controls with actual position and staged values
@@ -640,13 +720,13 @@ export class ACUControlTab extends BaseElement {
     this.polFineControl_?.setEnabled(state.isPowered);
 
     // Update Apply/Cancel button states
-    const applyBtn = qs('#apply-changes-btn', this.dom_) as HTMLButtonElement;
-    const cancelBtn = qs('#discard-changes-btn', this.dom_) as HTMLButtonElement;
+    const applyBtn = this.qs_<HTMLButtonElement>('apply-changes-btn');
+    const cancelBtn = this.qs_<HTMLButtonElement>('discard-changes-btn');
     if (applyBtn) applyBtn.disabled = !state.hasStagedChanges;
     if (cancelBtn) cancelBtn.disabled = !state.hasStagedChanges;
 
     // Display fault message if present
-    const faultEl = qs('#fault-message', this.dom_);
+    const faultEl = this.qs_('fault-message');
     if (faultEl) {
       if (state.hasFault && state.faultMessage) {
         faultEl.textContent = state.faultMessage;
@@ -659,7 +739,7 @@ export class ACUControlTab extends BaseElement {
     // Beacon C/N display is updated by syncBeaconMetrics_() on each UPDATE event
 
     // Update step track toggle button
-    const stepTrackBtn = qs('#step-track-toggle-btn', this.dom_) as HTMLButtonElement;
+    const stepTrackBtn = this.qs_<HTMLButtonElement>('step-track-toggle-btn');
     if (stepTrackBtn) {
       if (state.isAutoTrackEnabled && state.trackingMode === 'step-track') {
         stepTrackBtn.textContent = 'STOP TRACKING';
@@ -673,10 +753,10 @@ export class ACUControlTab extends BaseElement {
     }
 
     // Sync environmental controls
-    const heaterLed = qs('#heater-led', this.dom_);
-    const blowerLed = qs('#blower-led', this.dom_);
-    const heaterSwitch = qs('#heater-switch', this.dom_) as HTMLInputElement;
-    const blowerSwitch = qs('#blower-switch', this.dom_) as HTMLInputElement;
+    const heaterLed = this.qs_('heater-led');
+    const blowerLed = this.qs_('blower-led');
+    const heaterSwitch = this.qs_<HTMLInputElement>('heater-switch');
+    const blowerSwitch = this.qs_<HTMLInputElement>('blower-switch');
 
     if (heaterLed) {
       heaterLed.className = `led ${state.isHeaterEnabled ? 'led-amber' : 'led-off'}`;
@@ -688,11 +768,11 @@ export class ACUControlTab extends BaseElement {
     if (blowerSwitch) blowerSwitch.checked = state.isRainBlowerEnabled;
 
     // Sync power switch
-    const powerSwitch = qs('#power-switch', this.dom_) as HTMLInputElement;
+    const powerSwitch = this.qs_<HTMLInputElement>('power-switch');
     if (powerSwitch) powerSwitch.checked = state.isPowered;
 
     // Sync ACU status LED
-    const statusLed = qs('#acu-status-led', this.dom_);
+    const statusLed = this.qs_('status-led');
     if (statusLed) {
       if (!state.isPowered) {
         statusLed.className = 'led led-off ms-2';
@@ -704,13 +784,13 @@ export class ACUControlTab extends BaseElement {
     }
 
     // Sync loopback switch
-    const loopbackSwitch = qs<HTMLInputElement>('#loopback-switch', this.dom_);
+    const loopbackSwitch = this.qs_<HTMLInputElement>('loopback-switch');
     if (loopbackSwitch) loopbackSwitch.checked = state.isLoopback;
 
     // Precipitation status is synced by syncIceAccumulation_() using WeatherManager
 
     // Sync context panel title based on tracking mode
-    const contextTitle = qs('#context-panel-title', this.dom_);
+    const contextTitle = this.qs_('context-panel-title');
     if (contextTitle) {
       switch (state.trackingMode) {
         case 'program-track':
@@ -725,19 +805,19 @@ export class ACUControlTab extends BaseElement {
     }
 
     // Sync move-to-target button disabled state
-    const moveToTargetBtn = qs<HTMLButtonElement>('#move-to-target-btn', this.dom_);
+    const moveToTargetBtn = this.qs_<HTMLButtonElement>('move-to-target-btn');
     if (moveToTargetBtn) {
       moveToTargetBtn.disabled = state.trackingMode !== 'program-track' || state.targetSatelliteId === null;
     }
 
     // Sync satellite dropdown selection (skip if user is interacting)
-    const satelliteSelect = qs<HTMLSelectElement>('#satellite-select', this.dom_);
+    const satelliteSelect = this.qs_<HTMLSelectElement>('satellite-select');
     if (satelliteSelect && document.activeElement !== satelliteSelect) {
       satelliteSelect.value = state.targetSatelliteId?.toString() ?? '';
     }
 
     // Sync current target display (only shows active target, not dropdown selection)
-    const currentTargetDisplay = qs<HTMLInputElement>('#current-target-display', this.dom_);
+    const currentTargetDisplay = this.qs_<HTMLInputElement>('current-target-display');
     if (currentTargetDisplay) {
       const satellite = this.activeTargetSatelliteId_ === null
         ? null
@@ -748,14 +828,14 @@ export class ACUControlTab extends BaseElement {
     }
 
     // Sync beacon frequency input (skip if user is typing)
-    const beaconFreqInput = qs<HTMLInputElement>('#beacon-freq', this.dom_);
+    const beaconFreqInput = this.qs_<HTMLInputElement>('beacon-freq');
     if (beaconFreqInput && document.activeElement !== beaconFreqInput) {
       const freqMHz = (state.stagedBeaconFrequencyHz ?? state.beaconFrequencyHz) / 1e6;
       beaconFreqInput.value = freqMHz.toString();
     }
 
     // Sync beacon search bandwidth input (skip if user is typing)
-    const beaconBwInput = qs<HTMLInputElement>('#beacon-search-bw', this.dom_);
+    const beaconBwInput = this.qs_<HTMLInputElement>('beacon-search-bw');
     if (beaconBwInput && document.activeElement !== beaconBwInput) {
       const bwKHz = (state.stagedBeaconSearchBwHz ?? state.beaconSearchBwHz) / 1e3;
       beaconBwInput.value = bwKHz.toString();
@@ -769,12 +849,12 @@ export class ACUControlTab extends BaseElement {
     const metrics = antenna.state.rfMetrics;
     if (!metrics) return;
 
-    const freqEl = this.dom_.querySelector('#rf-metric-freq');
-    const gainEl = this.dom_.querySelector('#rf-metric-gain');
-    const bwEl = this.dom_.querySelector('#rf-metric-beamwidth');
-    const gtEl = this.dom_.querySelector('#rf-metric-gt');
-    const polLossEl = this.dom_.querySelector('#rf-metric-pol-loss');
-    const skyTempEl = this.dom_.querySelector('#rf-metric-sky-temp');
+    const freqEl = this.qs_('rf-metric-freq');
+    const gainEl = this.qs_('rf-metric-gain');
+    const bwEl = this.qs_('rf-metric-beamwidth');
+    const gtEl = this.qs_('rf-metric-gt');
+    const polLossEl = this.qs_('rf-metric-pol-loss');
+    const skyTempEl = this.qs_('rf-metric-sky-temp');
 
     if (freqEl) freqEl.textContent = `${metrics.frequency_GHz.toFixed(3)} GHz`;
     if (gainEl) gainEl.textContent = `${metrics.gain_dBi.toFixed(1)} dBi`;
@@ -787,9 +867,9 @@ export class ACUControlTab extends BaseElement {
   private syncBeaconMetrics_(antenna: typeof this.groundStation.antennas[0]): void {
     const state = antenna.state;
 
-    const beaconCnEl = qs('#beacon-cn-value', this.dom_);
-    const beaconFillEl = qs('#beacon-strength-fill', this.dom_) as HTMLElement;
-    const beaconLockEl = qs('#beacon-lock-status', this.dom_);
+    const beaconCnEl = this.qs_('beacon-cn-value');
+    const beaconFillEl = this.qs_<HTMLElement>('beacon-strength-fill');
+    const beaconLockEl = this.qs_('beacon-lock-status');
 
     if (beaconCnEl) {
       beaconCnEl.textContent = state.beaconCN !== null ? `${state.beaconCN.toFixed(1)} dB` : '-- dB';
@@ -840,7 +920,7 @@ export class ACUControlTab extends BaseElement {
   }
 
   private syncIceAccumulation_(antenna: typeof this.groundStation.antennas[0]): void {
-    const iceDisplay = qs('#ice-accumulation-display', this.dom_);
+    const iceDisplay = this.qs_('ice-accumulation-display');
     if (iceDisplay) {
       const ice = antenna.state.iceAccumulation_dB;
       iceDisplay.textContent = `${ice.toFixed(1)} dB`;
@@ -857,7 +937,7 @@ export class ACUControlTab extends BaseElement {
     }
 
     // Update precipitation status based on weather manager
-    const precipStatus = qs('#precip-status', this.dom_);
+    const precipStatus = this.qs_('precip-status');
     if (precipStatus) {
       const gsId = this.groundStation.state.id;
       const isPrecip = WeatherManager.getInstance().isPrecipitationActive(gsId);
@@ -881,9 +961,15 @@ export class ACUControlTab extends BaseElement {
   }
 
   public dispose(): void {
-    // Remove event listeners
+    // Remove all tracked event listeners
+    this.boundHandlers_.forEach(({ element, event, handler }) => {
+      element.removeEventListener(event, handler);
+    });
+    this.boundHandlers_.clear();
+
+    // Remove EventBus listeners
     if (this.antennaStateHandler_) {
-      EventBus.getInstance().off(Events.ANTENNA_STATE_CHANGED, this.antennaStateHandler_);
+      EventBus.getInstance().off(Events.UPDATE, this.antennaStateHandler_);
       this.antennaStateHandler_ = null;
     }
     if (this.drawHandler_) {

@@ -13,17 +13,20 @@ import { Events } from '@app/events/events';
  * - Clean up event listeners on dispose
  *
  * Note: OMT is read-only (no user controls)
+ * Supports multi-instance mode via optional idPrefix parameter.
  */
 export class OMTAdapter {
   private readonly omtModule: OMTModule;
   private readonly containerEl: HTMLElement;
+  private readonly idPrefix_: string;
   private lastStateString: string = '';
   private readonly domCache_: Map<string, HTMLElement> = new Map();
   private readonly stateChangeHandler: (state: Partial<OMTState>) => void;
 
-  constructor(omtModule: OMTModule, containerEl: HTMLElement) {
+  constructor(omtModule: OMTModule, containerEl: HTMLElement, idPrefix: string = '') {
     this.omtModule = omtModule;
     this.containerEl = containerEl;
+    this.idPrefix_ = idPrefix;
 
     // Bind state change handler
     this.stateChangeHandler = (state: Partial<OMTState>) => {
@@ -45,10 +48,11 @@ export class OMTAdapter {
   }
 
   private setupDomCache_(): void {
-    const txPolDisplay = this.containerEl.querySelector('#omt-tx-pol');
-    const rxPolDisplay = this.containerEl.querySelector('#omt-rx-pol');
-    const isolationDisplay = this.containerEl.querySelector('#omt-isolation');
-    const faultLed = this.containerEl.querySelector('#omt-fault-led');
+    const p = this.idPrefix_;
+    const txPolDisplay = this.containerEl.querySelector(`#${p}omt-tx-pol`);
+    const rxPolDisplay = this.containerEl.querySelector(`#${p}omt-rx-pol`);
+    const isolationDisplay = this.containerEl.querySelector(`#${p}omt-isolation`);
+    const faultLed = this.containerEl.querySelector(`#${p}omt-fault-led`);
 
     if (txPolDisplay) this.domCache_.set('txPolDisplay', txPolDisplay as HTMLElement);
     if (rxPolDisplay) this.domCache_.set('rxPolDisplay', rxPolDisplay as HTMLElement);

@@ -121,6 +121,7 @@ export class TabbedCanvas extends BaseElement {
 
   /**
    * Render tabs for ground station equipment
+   * Dynamically generates one ACU tab per antenna when multiple antennas exist
    */
   private renderGroundStationTabs_(): void {
     const groundStation = SimulationManager.getInstance().groundStations.find(
@@ -132,13 +133,30 @@ export class TabbedCanvas extends BaseElement {
       return;
     }
 
-    const tabs = [
+    const tabs: Array<{ id: string; label: string; icon: string; isDisabled?: boolean }> = [
       { id: 'dashboard', label: 'Dashboard', icon: dashboardPng },
-      { id: 'acu-control', label: 'ACU Control', icon: radarPng, isDisabled: groundStation.state.isOperational === false },
+    ];
+
+    // Add one ACU tab per antenna with band/size label
+    groundStation.antennas.forEach((antenna, index) => {
+      const config = antenna.config;
+      const label = groundStation.antennas.length === 1
+        ? 'ACU Control'
+        : `ACU: ${config.band}-Band ${config.diameter}m`;
+      tabs.push({
+        id: `acu-control-${index}`,
+        label,
+        icon: radarPng,
+        isDisabled: groundStation.state.isOperational === false
+      });
+    });
+
+    // Add remaining tabs
+    tabs.push(
       { id: 'rx-analysis', label: 'RX Analysis', icon: downlinkPng, isDisabled: groundStation.state.isOperational === false },
       { id: 'tx-chain', label: 'TX Chain', icon: uplinkPng, isDisabled: groundStation.state.isOperational === false },
       { id: 'gps-timing', label: 'GPS Timing', icon: gpsPng, isDisabled: groundStation.state.isOperational === false },
-    ];
+    );
 
     this.renderTabs_(tabs);
     this.switchTab_('dashboard');
@@ -258,15 +276,16 @@ export class TabbedCanvas extends BaseElement {
     // Deactivate all existing tabs
     this.tabInstances_.forEach(tab => tab.deactivate());
 
-    // Phase 4: ACU Control implemented
-    // Phase 5+: Actual tab implementations for other tabs (RxAnalysisTab, etc.)
+    // Handle dynamic acu-control-N tabs
+    if (tabId.startsWith('acu-control-')) {
+      const antennaIndex = parseInt(tabId.split('-')[2], 10);
+      this.renderACUControlTab_(content, antennaIndex);
+      return;
+    }
+
     switch (tabId) {
       case 'dashboard':
         this.renderDashboardTab_(content);
-        break;
-
-      case 'acu-control':
-        this.renderACUControlTab_(content);
         break;
 
       case 'rx-analysis':
@@ -331,9 +350,11 @@ export class TabbedCanvas extends BaseElement {
   }
 
   /**
-   * Render ACU Control tab (Phase 4)
+   * Render ACU Control tab for a specific antenna
+   * @param content - The content container element
+   * @param antennaIndex - Index of the antenna to control (default 0)
    */
-  private renderACUControlTab_(content: HTMLElement): void {
+  private renderACUControlTab_(content: HTMLElement, antennaIndex: number = 0): void {
     const groundStation = SimulationManager.getInstance().groundStations.find(
       gs => gs.state.id === this.selectedAssetId_
     );
@@ -349,7 +370,7 @@ export class TabbedCanvas extends BaseElement {
     }
 
     // Check if tab instance already exists and its DOM is still attached
-    const tabKey = `acu-control-${this.selectedAssetId_}`;
+    const tabKey = `acu-control-${this.selectedAssetId_}-ant${antennaIndex}`;
     let acuTab = this.tabInstances_.get(tabKey) as ACUControlTab;
 
     if (acuTab && !document.contains(acuTab.dom)) {
@@ -360,8 +381,8 @@ export class TabbedCanvas extends BaseElement {
     }
 
     if (!acuTab) {
-      // Create new tab instance
-      acuTab = new ACUControlTab(groundStation, 'canvas-content');
+      // Create new tab instance with antenna index
+      acuTab = new ACUControlTab(groundStation, 'canvas-content', antennaIndex);
       this.tabInstances_.set(tabKey, acuTab);
     }
 

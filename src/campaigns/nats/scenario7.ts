@@ -67,7 +67,15 @@ export const scenario7Data: ScenarioData = {
     //   secondaryFault: 300, // LNB temp alarm at 5 minutes
     // },
     groundStations: [
-      vermontGroundStation,
+      {
+        ...vermontGroundStation,
+        // Dual antennas to test backup GPSDO - must also duplicate rfFrontEnds to match
+        antennas: [vermontGroundStation.antennas[0], vermontGroundStation.antennas[0]],
+        antennasState: vermontGroundStation.antennasState
+          ? [vermontGroundStation.antennasState[0], vermontGroundStation.antennasState[0]]
+          : undefined,
+        rfFrontEnds: [vermontGroundStation.rfFrontEnds[0], vermontGroundStation.rfFrontEnds[0]],
+      },
       maineGroundStation,
     ],
     satellites: [

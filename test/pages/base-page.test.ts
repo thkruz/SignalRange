@@ -30,6 +30,11 @@ jest.mock('../../src/scenario-manager', () => ({
         dialogClips: null,
         timeLimitSeconds: 300,
       },
+      settings: {
+        scenarioStartWallTime: Date.now(),
+        scenarioStartDate: new Date().toISOString(),
+        previousShiftLogs: [],
+      },
     })),
   },
 }));
@@ -140,6 +145,13 @@ jest.mock('../../src/user-account/user-data-service', () => ({
 
 jest.mock('../../src/sync/storage', () => ({
   AppState: {},
+}));
+
+jest.mock('../../src/ops-log/ops-log-manager', () => ({
+  OpsLogManager: {
+    initialize: jest.fn(),
+    isInitialized: jest.fn(() => false),
+  },
 }));
 
 // Import after mocks
@@ -280,6 +292,11 @@ describe('BasePage', () => {
           dialogClips: null,
           timeLimitSeconds: 300,
         },
+        settings: {
+          scenarioStartWallTime: Date.now(),
+          scenarioStartDate: new Date().toISOString(),
+          previousShiftLogs: [],
+        },
       });
 
       await page.testInitializeObjectivesAndDialogs();
@@ -308,6 +325,11 @@ describe('BasePage', () => {
             },
           },
           timeLimitSeconds: null,
+        },
+        settings: {
+          scenarioStartWallTime: Date.now(),
+          scenarioStartDate: new Date().toISOString(),
+          previousShiftLogs: [],
         },
       });
 
@@ -340,6 +362,11 @@ describe('BasePage', () => {
           },
           timeLimitSeconds: null,
         },
+        settings: {
+          scenarioStartWallTime: Date.now(),
+          scenarioStartDate: new Date().toISOString(),
+          previousShiftLogs: [],
+        },
       });
 
       page.setNavigationOptions({ continueFromCheckpoint: true });
@@ -365,6 +392,11 @@ describe('BasePage', () => {
           objectives: [{ id: 'obj1', title: 'Test' }],
           dialogClips: null,
           timeLimitSeconds: 300,
+        },
+        settings: {
+          scenarioStartWallTime: Date.now(),
+          scenarioStartDate: new Date().toISOString(),
+          previousShiftLogs: [],
         },
       });
 

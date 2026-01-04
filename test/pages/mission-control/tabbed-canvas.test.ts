@@ -22,6 +22,14 @@ jest.mock('../../../src/simulation/simulation-manager', () => ({
             name: 'Miami Station',
             isOperational: true,
           },
+          antennas: [
+            {
+              config: {
+                band: 'C',
+                diameter: 9,
+              },
+            },
+          ],
         },
       ],
       satellites: [
@@ -320,7 +328,7 @@ describe('TabbedCanvas', () => {
         (call: [string, Function]) => call[0] === Events.SWITCH_TAB
       )?.[1];
 
-      switchTabHandler?.({ tabId: 'acu-control' });
+      switchTabHandler?.({ tabId: 'acu-control-0' });
 
       const { ACUControlTab } = require('../../../src/pages/mission-control/tabs/acu-control-tab');
       expect(ACUControlTab).toHaveBeenCalled();
@@ -338,11 +346,55 @@ describe('TabbedCanvas', () => {
     });
 
     it('should switch tab when nav-link clicked', () => {
-      const acuTab = document.querySelector('[data-tab-id="acu-control"]') as HTMLElement;
+      const acuTab = document.querySelector('[data-tab-id="acu-control-0"]') as HTMLElement;
       acuTab?.click();
 
       const { ACUControlTab } = require('../../../src/pages/mission-control/tabs/acu-control-tab');
       expect(ACUControlTab).toHaveBeenCalled();
+    });
+
+    it('should create RxAnalysisTab when switching to rx-analysis', () => {
+      const switchTabHandler = mockEventBus.on.mock.calls.find(
+        (call: [string, Function]) => call[0] === Events.SWITCH_TAB
+      )?.[1];
+
+      switchTabHandler?.({ tabId: 'rx-analysis' });
+
+      const { RxAnalysisTab } = require('../../../src/pages/mission-control/tabs/rx-analysis-tab');
+      expect(RxAnalysisTab).toHaveBeenCalled();
+    });
+
+    it('should create TxChainTab when switching to tx-chain', () => {
+      const switchTabHandler = mockEventBus.on.mock.calls.find(
+        (call: [string, Function]) => call[0] === Events.SWITCH_TAB
+      )?.[1];
+
+      switchTabHandler?.({ tabId: 'tx-chain' });
+
+      const { TxChainTab } = require('../../../src/pages/mission-control/tabs/tx-chain-tab');
+      expect(TxChainTab).toHaveBeenCalled();
+    });
+
+    it('should create GPSTimingTab when switching to gps-timing', () => {
+      const switchTabHandler = mockEventBus.on.mock.calls.find(
+        (call: [string, Function]) => call[0] === Events.SWITCH_TAB
+      )?.[1];
+
+      switchTabHandler?.({ tabId: 'gps-timing' });
+
+      const { GPSTimingTab } = require('../../../src/pages/mission-control/tabs/gps-timing-tab');
+      expect(GPSTimingTab).toHaveBeenCalled();
+    });
+
+    it('should show unknown tab message for undefined tab', () => {
+      const switchTabHandler = mockEventBus.on.mock.calls.find(
+        (call: [string, Function]) => call[0] === Events.SWITCH_TAB
+      )?.[1];
+
+      switchTabHandler?.({ tabId: 'unknown-tab' });
+
+      const content = document.querySelector('#canvas-content');
+      expect(content?.innerHTML).toContain('Unknown Tab');
     });
   });
 
@@ -372,7 +424,7 @@ describe('TabbedCanvas', () => {
         (call: [string, Function]) => call[0] === Events.SWITCH_TAB
       )?.[1];
 
-      switchTabHandler?.({ tabId: 'acu-control' });
+      switchTabHandler?.({ tabId: 'acu-control-0' });
 
       const { ACUControlTab } = require('../../../src/pages/mission-control/tabs/acu-control-tab');
       expect(ACUControlTab).toHaveBeenCalled();
@@ -434,6 +486,14 @@ describe('TabbedCanvas with non-operational ground station', () => {
             name: 'Miami Station',
             isOperational: false,
           },
+          antennas: [
+            {
+              config: {
+                band: 'C',
+                diameter: 9,
+              },
+            },
+          ],
         },
       ],
       satellites: [],
@@ -468,7 +528,7 @@ describe('TabbedCanvas with non-operational ground station', () => {
 
     assetSelectedHandler?.({ type: 'ground-station', id: 'GS-001' });
 
-    const acuTab = document.querySelector('[data-tab-id="acu-control"]');
+    const acuTab = document.querySelector('[data-tab-id="acu-control-0"]');
     expect(acuTab?.classList.contains('disabled')).toBe(true);
   });
 

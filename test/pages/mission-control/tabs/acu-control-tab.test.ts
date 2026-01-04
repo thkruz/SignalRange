@@ -48,6 +48,10 @@ describe('ACUControlTab', () => {
   let tab: ACUControlTab;
   let mockEventBus: { on: jest.Mock; off: jest.Mock; emit: jest.Mock };
 
+  // The unique prefix is: acu-${groundStation.uuid}-ant${antennaIndex}-
+  // With uuid='test-uuid' and antennaIndex=0, prefix = 'acu-test-uuid-ant0-'
+  const PREFIX = 'acu-test-uuid-ant0-';
+
   const mockAntennaState = {
     acuModel: 'Kratos NGC-2200',
     acuSerialNumber: 'ACU-001',
@@ -179,7 +183,7 @@ describe('ACUControlTab', () => {
 
   describe('HTML rendering', () => {
     it('should render ACU identification', () => {
-      const modelEl = document.querySelector('#acu-model');
+      const modelEl = document.querySelector(`#${PREFIX}model`);
       expect(modelEl?.textContent).toContain('Kratos');
     });
 
@@ -189,17 +193,17 @@ describe('ACUControlTab', () => {
     });
 
     it('should render power switch', () => {
-      const powerSwitch = document.querySelector('#power-switch');
+      const powerSwitch = document.querySelector(`#${PREFIX}power-switch`);
       expect(powerSwitch).not.toBeNull();
     });
 
     it('should render loopback switch', () => {
-      const loopbackSwitch = document.querySelector('#loopback-switch');
+      const loopbackSwitch = document.querySelector(`#${PREFIX}loopback-switch`);
       expect(loopbackSwitch).not.toBeNull();
     });
 
     it('should render polar plot container', () => {
-      const polarPlotContainer = document.querySelector('#polar-plot-container');
+      const polarPlotContainer = document.querySelector(`#${PREFIX}polar-plot-container`);
       expect(polarPlotContainer).not.toBeNull();
     });
 
@@ -244,51 +248,51 @@ describe('ACUControlTab', () => {
 
   describe('environmental controls', () => {
     it('should render heater switch', () => {
-      const heaterSwitch = document.querySelector('#heater-switch');
+      const heaterSwitch = document.querySelector(`#${PREFIX}heater-switch`);
       expect(heaterSwitch).not.toBeNull();
     });
 
     it('should render blower switch', () => {
-      const blowerSwitch = document.querySelector('#blower-switch');
+      const blowerSwitch = document.querySelector(`#${PREFIX}blower-switch`);
       expect(blowerSwitch).not.toBeNull();
     });
 
     it('should render ice accumulation display', () => {
-      const iceDisplay = document.querySelector('#ice-accumulation-display');
+      const iceDisplay = document.querySelector(`#${PREFIX}ice-accumulation-display`);
       expect(iceDisplay).not.toBeNull();
     });
   });
 
   describe('RF metrics display', () => {
     it('should render frequency metric', () => {
-      const freqMetric = document.querySelector('#rf-metric-freq');
+      const freqMetric = document.querySelector(`#${PREFIX}rf-metric-freq`);
       expect(freqMetric).not.toBeNull();
     });
 
     it('should render gain metric', () => {
-      const gainMetric = document.querySelector('#rf-metric-gain');
+      const gainMetric = document.querySelector(`#${PREFIX}rf-metric-gain`);
       expect(gainMetric).not.toBeNull();
     });
 
     it('should render beamwidth metric', () => {
-      const bwMetric = document.querySelector('#rf-metric-beamwidth');
+      const bwMetric = document.querySelector(`#${PREFIX}rf-metric-beamwidth`);
       expect(bwMetric).not.toBeNull();
     });
 
     it('should render G/T metric', () => {
-      const gtMetric = document.querySelector('#rf-metric-gt');
+      const gtMetric = document.querySelector(`#${PREFIX}rf-metric-gt`);
       expect(gtMetric).not.toBeNull();
     });
   });
 
   describe('apply/cancel buttons', () => {
     it('should render apply button', () => {
-      const applyBtn = document.querySelector('#apply-changes-btn');
+      const applyBtn = document.querySelector(`#${PREFIX}apply-changes-btn`);
       expect(applyBtn).not.toBeNull();
     });
 
     it('should render cancel button', () => {
-      const cancelBtn = document.querySelector('#discard-changes-btn');
+      const cancelBtn = document.querySelector(`#${PREFIX}discard-changes-btn`);
       expect(cancelBtn).not.toBeNull();
     });
   });
@@ -343,7 +347,7 @@ describe('ACUControlTab', () => {
   describe('apply/cancel button interactions', () => {
     it('should call applyChanges when apply button is clicked', () => {
       const antenna = mockGroundStation.antennas[0];
-      const applyBtn = document.querySelector('#apply-changes-btn') as HTMLButtonElement;
+      const applyBtn = document.querySelector(`#${PREFIX}apply-changes-btn`) as HTMLButtonElement;
       applyBtn.disabled = false;
       applyBtn.click();
 
@@ -352,7 +356,7 @@ describe('ACUControlTab', () => {
 
     it('should call discardChanges when cancel button is clicked', () => {
       const antenna = mockGroundStation.antennas[0];
-      const cancelBtn = document.querySelector('#discard-changes-btn') as HTMLButtonElement;
+      const cancelBtn = document.querySelector(`#${PREFIX}discard-changes-btn`) as HTMLButtonElement;
       cancelBtn.disabled = false;
       cancelBtn.click();
 
@@ -363,7 +367,7 @@ describe('ACUControlTab', () => {
   describe('environmental control interactions', () => {
     it('should call handleHeaterToggle when heater switch is changed', () => {
       const antenna = mockGroundStation.antennas[0];
-      const heaterSwitch = document.querySelector('#heater-switch') as HTMLInputElement;
+      const heaterSwitch = document.querySelector(`#${PREFIX}heater-switch`) as HTMLInputElement;
       heaterSwitch.checked = true;
       heaterSwitch.dispatchEvent(new Event('change'));
 
@@ -372,7 +376,7 @@ describe('ACUControlTab', () => {
 
     it('should call handleRainBlowerToggle when blower switch is changed', () => {
       const antenna = mockGroundStation.antennas[0];
-      const blowerSwitch = document.querySelector('#blower-switch') as HTMLInputElement;
+      const blowerSwitch = document.querySelector(`#${PREFIX}blower-switch`) as HTMLInputElement;
       blowerSwitch.checked = true;
       blowerSwitch.dispatchEvent(new Event('change'));
 
@@ -398,7 +402,7 @@ describe('ACUControlTab', () => {
       const tab2 = new ACUControlTab(mockGroundStation, 'acu-control-container-sat');
 
       const antenna = mockGroundStation.antennas[0];
-      const select = document.querySelector('#satellite-select') as HTMLSelectElement;
+      const select = document.querySelector(`#${PREFIX}satellite-select`) as HTMLSelectElement;
       select.value = '12345';
       select.dispatchEvent(new Event('change'));
 
@@ -408,7 +412,7 @@ describe('ACUControlTab', () => {
 
     it('should call moveToTargetSatellite when move button is clicked', () => {
       const antenna = mockGroundStation.antennas[0];
-      const moveBtn = document.querySelector('#move-to-target-btn') as HTMLButtonElement;
+      const moveBtn = document.querySelector(`#${PREFIX}move-to-target-btn`) as HTMLButtonElement;
       moveBtn.disabled = false;
       moveBtn.click();
 
@@ -419,7 +423,7 @@ describe('ACUControlTab', () => {
   describe('beacon controls interactions', () => {
     it('should call stageBeaconFrequencyChange when frequency is changed', () => {
       const antenna = mockGroundStation.antennas[0];
-      const freqInput = document.querySelector('#beacon-freq') as HTMLInputElement;
+      const freqInput = document.querySelector(`#${PREFIX}beacon-freq`) as HTMLInputElement;
       freqInput.value = '4000';
       freqInput.dispatchEvent(new Event('change'));
 
@@ -428,7 +432,7 @@ describe('ACUControlTab', () => {
 
     it('should call stageBeaconSearchBwChange when bandwidth is changed', () => {
       const antenna = mockGroundStation.antennas[0];
-      const bwInput = document.querySelector('#beacon-search-bw') as HTMLInputElement;
+      const bwInput = document.querySelector(`#${PREFIX}beacon-search-bw`) as HTMLInputElement;
       bwInput.value = '600';
       bwInput.dispatchEvent(new Event('change'));
 
@@ -438,7 +442,7 @@ describe('ACUControlTab', () => {
     it('should call startStepTrack when step track button is clicked and not tracking', () => {
       const antenna = mockGroundStation.antennas[0];
       antenna.state.isAutoTrackEnabled = false;
-      const toggleBtn = document.querySelector('#step-track-toggle-btn') as HTMLButtonElement;
+      const toggleBtn = document.querySelector(`#${PREFIX}step-track-toggle-btn`) as HTMLButtonElement;
       toggleBtn.click();
 
       expect(antenna.startStepTrack).toHaveBeenCalled();
@@ -447,7 +451,7 @@ describe('ACUControlTab', () => {
     it('should call stopStepTrack when step track button is clicked and tracking', () => {
       const antenna = mockGroundStation.antennas[0];
       antenna.state.isAutoTrackEnabled = true;
-      const toggleBtn = document.querySelector('#step-track-toggle-btn') as HTMLButtonElement;
+      const toggleBtn = document.querySelector(`#${PREFIX}step-track-toggle-btn`) as HTMLButtonElement;
       toggleBtn.click();
 
       expect(antenna.stopStepTrack).toHaveBeenCalled();
@@ -469,7 +473,7 @@ describe('ACUControlTab', () => {
       jest.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();
 
-      const programSection = document.querySelector('#program-track-section') as HTMLElement;
+      const programSection = document.querySelector(`#${PREFIX}program-track-section`) as HTMLElement;
       expect(programSection?.style.display).toBe('block');
     });
 
@@ -486,7 +490,7 @@ describe('ACUControlTab', () => {
       jest.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandlers.forEach(handler => handler());
 
-      const beaconCnEl = document.querySelector('#beacon-cn-value');
+      const beaconCnEl = document.querySelector(`#${PREFIX}beacon-cn-value`);
       expect(beaconCnEl?.textContent).toBe('15.5 dB');
     });
   });
@@ -504,7 +508,7 @@ describe('ACUControlTab', () => {
 
       drawHandler();
 
-      const freqEl = document.querySelector('#rf-metric-freq');
+      const freqEl = document.querySelector(`#${PREFIX}rf-metric-freq`);
       expect(freqEl?.textContent).toBe('14.500 GHz');
     });
   });
@@ -522,7 +526,7 @@ describe('ACUControlTab', () => {
       jest.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();
 
-      const faultEl = document.querySelector('#fault-message') as HTMLElement;
+      const faultEl = document.querySelector(`#${PREFIX}fault-message`) as HTMLElement;
       expect(faultEl?.style.display).toBe('block');
       expect(faultEl?.textContent).toBe('Motor failure');
     });
@@ -539,7 +543,7 @@ describe('ACUControlTab', () => {
       jest.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();
 
-      const toggleBtn = document.querySelector('#step-track-toggle-btn') as HTMLButtonElement;
+      const toggleBtn = document.querySelector(`#${PREFIX}step-track-toggle-btn`) as HTMLButtonElement;
       expect(toggleBtn?.textContent).toBe('STOP TRACKING');
       expect(toggleBtn?.classList.contains('btn-danger')).toBe(true);
     });
@@ -555,7 +559,7 @@ describe('ACUControlTab', () => {
       jest.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();
 
-      const contextTitle = document.querySelector('#context-panel-title');
+      const contextTitle = document.querySelector(`#${PREFIX}context-panel-title`);
       expect(contextTitle?.textContent).toBe('Program Track');
     });
 
@@ -570,7 +574,7 @@ describe('ACUControlTab', () => {
       jest.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();
 
-      const contextTitle = document.querySelector('#context-panel-title');
+      const contextTitle = document.querySelector(`#${PREFIX}context-panel-title`);
       expect(contextTitle?.textContent).toBe('Step Track');
     });
 
@@ -586,7 +590,7 @@ describe('ACUControlTab', () => {
       jest.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();
 
-      const statusLed = document.querySelector('#acu-status-led');
+      const statusLed = document.querySelector(`#${PREFIX}status-led`);
       expect(statusLed?.className).toContain('led-amber');
     });
 
@@ -601,7 +605,7 @@ describe('ACUControlTab', () => {
       jest.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();
 
-      const statusLed = document.querySelector('#acu-status-led');
+      const statusLed = document.querySelector(`#${PREFIX}status-led`);
       expect(statusLed?.className).toContain('led-off');
     });
 
@@ -616,7 +620,7 @@ describe('ACUControlTab', () => {
       jest.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();
 
-      const iceDisplay = document.querySelector('#ice-accumulation-display');
+      const iceDisplay = document.querySelector(`#${PREFIX}ice-accumulation-display`);
       expect(iceDisplay?.textContent).toBe('3.5 dB');
       expect(iceDisplay?.classList.contains('text-warning')).toBe(true);
     });
@@ -632,7 +636,7 @@ describe('ACUControlTab', () => {
       jest.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();
 
-      const iceDisplay = document.querySelector('#ice-accumulation-display');
+      const iceDisplay = document.querySelector(`#${PREFIX}ice-accumulation-display`);
       expect(iceDisplay?.classList.contains('text-danger')).toBe(true);
     });
   });
@@ -650,7 +654,7 @@ describe('ACUControlTab', () => {
       jest.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();
 
-      const beaconCnEl = document.querySelector('#beacon-cn-value');
+      const beaconCnEl = document.querySelector(`#${PREFIX}beacon-cn-value`);
       expect(beaconCnEl?.textContent).toBe('-- dB');
     });
 
@@ -667,7 +671,7 @@ describe('ACUControlTab', () => {
       jest.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandlers.forEach(handler => handler());
 
-      const beaconFillEl = document.querySelector('#beacon-strength-fill') as HTMLElement;
+      const beaconFillEl = document.querySelector(`#${PREFIX}beacon-strength-fill`) as HTMLElement;
       expect(beaconFillEl?.classList.contains('cn-green')).toBe(true);
     });
 
@@ -683,7 +687,7 @@ describe('ACUControlTab', () => {
       jest.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandlers.forEach(handler => handler());
 
-      const beaconFillEl = document.querySelector('#beacon-strength-fill') as HTMLElement;
+      const beaconFillEl = document.querySelector(`#${PREFIX}beacon-strength-fill`) as HTMLElement;
       expect(beaconFillEl?.classList.contains('cn-amber')).toBe(true);
     });
 
@@ -699,7 +703,7 @@ describe('ACUControlTab', () => {
       jest.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandlers.forEach(handler => handler());
 
-      const beaconFillEl = document.querySelector('#beacon-strength-fill') as HTMLElement;
+      const beaconFillEl = document.querySelector(`#${PREFIX}beacon-strength-fill`) as HTMLElement;
       expect(beaconFillEl?.classList.contains('cn-red')).toBe(true);
     });
 
@@ -715,7 +719,7 @@ describe('ACUControlTab', () => {
       jest.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandlers.forEach(handler => handler());
 
-      const beaconLockEl = document.querySelector('#beacon-lock-status');
+      const beaconLockEl = document.querySelector(`#${PREFIX}beacon-lock-status`);
       expect(beaconLockEl?.textContent).toBe('IDLE');
     });
 
@@ -732,7 +736,7 @@ describe('ACUControlTab', () => {
       jest.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandlers.forEach(handler => handler());
 
-      const beaconLockEl = document.querySelector('#beacon-lock-status');
+      const beaconLockEl = document.querySelector(`#${PREFIX}beacon-lock-status`);
       expect(beaconLockEl?.textContent).toBe('SEARCHING');
     });
 
@@ -749,7 +753,7 @@ describe('ACUControlTab', () => {
       jest.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandlers.forEach(handler => handler());
 
-      const beaconLockEl = document.querySelector('#beacon-lock-status');
+      const beaconLockEl = document.querySelector(`#${PREFIX}beacon-lock-status`);
       expect(beaconLockEl?.textContent).toBe('LOCKED');
     });
   });
@@ -768,7 +772,7 @@ describe('ACUControlTab', () => {
       jest.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();
 
-      const precipStatus = document.querySelector('#precip-status');
+      const precipStatus = document.querySelector(`#${PREFIX}precip-status`);
       const led = precipStatus?.querySelector('.led');
       expect(led?.className).toContain('led-amber');
     });
@@ -793,7 +797,7 @@ describe('ACUControlTab', () => {
       document.body.appendChild(containerEl2);
       const tab2 = new ACUControlTab(mockGroundStation, 'acu-control-container-target');
 
-      const moveBtn = document.querySelector('#move-to-target-btn') as HTMLButtonElement;
+      const moveBtn = document.querySelector(`#${PREFIX}move-to-target-btn`) as HTMLButtonElement;
       moveBtn.disabled = false;
       moveBtn.click();
 
@@ -804,7 +808,7 @@ describe('ACUControlTab', () => {
       jest.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();
 
-      const currentTargetDisplay = document.querySelector('#current-target-display') as HTMLInputElement;
+      const currentTargetDisplay = document.querySelector(`#${PREFIX}current-target-display`) as HTMLInputElement;
       expect(currentTargetDisplay?.value).toBe('Test Satellite 1');
       tab2.dispose();
     });

@@ -81,7 +81,7 @@ describe('GlobalCommandBar', () => {
     it('should render UTC clock element', () => {
       const clock = document.querySelector('#utc-clock');
       expect(clock).not.toBeNull();
-      expect(clock?.textContent).toBe('Loading...');
+      expect(clock?.textContent).toBe('-- --- ---- --:--:--');
     });
 
     it('should render AOS countdown section', () => {
@@ -413,6 +413,306 @@ describe('GlobalCommandBar', () => {
 
       expect(objectiveValue?.textContent).toBe('--:--');
       expect(scenarioValue?.textContent).toBe('--:--');
+    });
+
+    it('should show unlimited indicator when no scenario time limit', () => {
+      const { ObjectivesManager } = require('../../../src/objectives/objectives-manager');
+      ObjectivesManager.getInstance.mockReturnValue({
+        hasScenarioTimer: jest.fn(() => false),
+        getObjectiveStates: jest.fn(() => []),
+        isQuizPassed: jest.fn(() => false),
+      });
+
+      jest.advanceTimersByTime(1000);
+
+      const scenarioValue = document.querySelector('#scenario-timer-value');
+      expect(scenarioValue?.textContent).toBe('∞');
+    });
+
+    it('should show scenario time remaining when timer is active', () => {
+      const { ObjectivesManager } = require('../../../src/objectives/objectives-manager');
+      ObjectivesManager.getInstance.mockReturnValue({
+        hasScenarioTimer: jest.fn(() => true),
+        getScenarioTimeRemaining: jest.fn(() => 120),
+        formatTimeRemaining: jest.fn(() => '02:00'),
+        getObjectiveStates: jest.fn(() => []),
+        isQuizPassed: jest.fn(() => false),
+      });
+
+      jest.advanceTimersByTime(1000);
+
+      const scenarioValue = document.querySelector('#scenario-timer-value');
+      expect(scenarioValue?.textContent).toBe('02:00');
+    });
+
+    it('should show FAIL when scenario timer expires', () => {
+      const { ObjectivesManager } = require('../../../src/objectives/objectives-manager');
+      ObjectivesManager.getInstance.mockReturnValue({
+        hasScenarioTimer: jest.fn(() => true),
+        getScenarioTimeRemaining: jest.fn(() => 0),
+        getObjectiveStates: jest.fn(() => []),
+        isQuizPassed: jest.fn(() => false),
+      });
+
+      jest.advanceTimersByTime(1000);
+
+      const scenarioValue = document.querySelector('#scenario-timer-value');
+      const scenarioTimer = document.querySelector('#scenario-timer-display');
+      expect(scenarioValue?.textContent).toBe('FAIL');
+      expect(scenarioTimer?.classList.contains('timer-failed')).toBe(true);
+    });
+
+    it('should add timer-urgent class when under 60 seconds', () => {
+      const { ObjectivesManager } = require('../../../src/objectives/objectives-manager');
+      ObjectivesManager.getInstance.mockReturnValue({
+        hasScenarioTimer: jest.fn(() => true),
+        getScenarioTimeRemaining: jest.fn(() => 30),
+        formatTimeRemaining: jest.fn(() => '00:30'),
+        getObjectiveStates: jest.fn(() => []),
+        isQuizPassed: jest.fn(() => false),
+      });
+
+      jest.advanceTimersByTime(1000);
+
+      const scenarioTimer = document.querySelector('#scenario-timer-display');
+      expect(scenarioTimer?.classList.contains('timer-urgent')).toBe(true);
+    });
+
+    it('should add timer-warning class when under 300 seconds', () => {
+      const { ObjectivesManager } = require('../../../src/objectives/objectives-manager');
+      ObjectivesManager.getInstance.mockReturnValue({
+        hasScenarioTimer: jest.fn(() => true),
+        getScenarioTimeRemaining: jest.fn(() => 180),
+        formatTimeRemaining: jest.fn(() => '03:00'),
+        getObjectiveStates: jest.fn(() => []),
+        isQuizPassed: jest.fn(() => false),
+      });
+
+      jest.advanceTimersByTime(1000);
+
+      const scenarioTimer = document.querySelector('#scenario-timer-display');
+      expect(scenarioTimer?.classList.contains('timer-warning')).toBe(true);
+    });
+
+    it('should show objective timer with active timed objective', () => {
+      const { ObjectivesManager } = require('../../../src/objectives/objectives-manager');
+      ObjectivesManager.getInstance.mockReturnValue({
+        hasScenarioTimer: jest.fn(() => false),
+        isQuizPassed: jest.fn(() => false),
+        formatTimeRemaining: jest.fn(() => '01:30'),
+        getObjectiveStates: jest.fn(() => [
+          {
+            objective: { id: 'obj1', title: 'Test Objective', timeLimitSeconds: 120 },
+            isTimerRunning: true,
+            isCompleted: false,
+            isFailed: false,
+            timeRemainingSeconds: 90,
+          },
+        ]),
+      });
+
+      jest.advanceTimersByTime(1000);
+
+      const objectiveValue = document.querySelector('#objective-timer-value');
+      expect(objectiveValue?.textContent).toBe('01:30');
+    });
+
+    it('should show PASS when quiz is passed', () => {
+      const { ObjectivesManager } = require('../../../src/objectives/objectives-manager');
+      ObjectivesManager.getInstance.mockReturnValue({
+        hasScenarioTimer: jest.fn(() => false),
+        isQuizPassed: jest.fn(() => true),
+        getPassedObjectiveId: jest.fn(() => 'obj1'),
+        getObjectiveStates: jest.fn(() => [
+          {
+            objective: { id: 'obj1', title: 'Quiz Objective' },
+            isCompleted: true,
+          },
+        ]),
+      });
+
+      jest.advanceTimersByTime(1000);
+
+      const objectiveValue = document.querySelector('#objective-timer-value');
+      const objectiveTimer = document.querySelector('#objective-timer-display');
+      expect(objectiveValue?.textContent).toBe('PASS');
+      expect(objectiveTimer?.classList.contains('timer-passed')).toBe(true);
+    });
+
+    it('should show FAIL when objective fails', () => {
+      const { ObjectivesManager } = require('../../../src/objectives/objectives-manager');
+      ObjectivesManager.getInstance.mockReturnValue({
+        hasScenarioTimer: jest.fn(() => false),
+        isQuizPassed: jest.fn(() => false),
+        getObjectiveStates: jest.fn(() => [
+          {
+            objective: { id: 'obj1', title: 'Failed Objective', timeLimitSeconds: 60 },
+            isFailed: true,
+          },
+        ]),
+      });
+
+      jest.advanceTimersByTime(1000);
+
+      const objectiveValue = document.querySelector('#objective-timer-value');
+      const objectiveTimer = document.querySelector('#objective-timer-display');
+      expect(objectiveValue?.textContent).toBe('FAIL');
+      expect(objectiveTimer?.classList.contains('timer-failed')).toBe(true);
+    });
+
+    it('should add objective timer-urgent class when under 30 seconds', () => {
+      const { ObjectivesManager } = require('../../../src/objectives/objectives-manager');
+      ObjectivesManager.getInstance.mockReturnValue({
+        hasScenarioTimer: jest.fn(() => false),
+        isQuizPassed: jest.fn(() => false),
+        formatTimeRemaining: jest.fn(() => '00:20'),
+        getObjectiveStates: jest.fn(() => [
+          {
+            objective: { id: 'obj1', title: 'Test', timeLimitSeconds: 60 },
+            isTimerRunning: true,
+            isCompleted: false,
+            isFailed: false,
+            timeRemainingSeconds: 20,
+          },
+        ]),
+      });
+
+      jest.advanceTimersByTime(1000);
+
+      const objectiveTimer = document.querySelector('#objective-timer-display');
+      expect(objectiveTimer?.classList.contains('timer-urgent')).toBe(true);
+    });
+
+    it('should add objective timer-warning class when under 60 seconds', () => {
+      const { ObjectivesManager } = require('../../../src/objectives/objectives-manager');
+      ObjectivesManager.getInstance.mockReturnValue({
+        hasScenarioTimer: jest.fn(() => false),
+        isQuizPassed: jest.fn(() => false),
+        formatTimeRemaining: jest.fn(() => '00:45'),
+        getObjectiveStates: jest.fn(() => [
+          {
+            objective: { id: 'obj1', title: 'Test', timeLimitSeconds: 120 },
+            isTimerRunning: true,
+            isCompleted: false,
+            isFailed: false,
+            timeRemainingSeconds: 45,
+          },
+        ]),
+      });
+
+      jest.advanceTimersByTime(1000);
+
+      const objectiveTimer = document.querySelector('#objective-timer-display');
+      expect(objectiveTimer?.classList.contains('timer-warning')).toBe(true);
+    });
+
+    it('should show unlimited indicator when no active objective timer', () => {
+      const { ObjectivesManager } = require('../../../src/objectives/objectives-manager');
+      ObjectivesManager.getInstance.mockReturnValue({
+        hasScenarioTimer: jest.fn(() => false),
+        isQuizPassed: jest.fn(() => false),
+        getObjectiveStates: jest.fn(() => []),
+      });
+
+      jest.advanceTimersByTime(1000);
+
+      const objectiveValue = document.querySelector('#objective-timer-value');
+      const objectiveTimer = document.querySelector('#objective-timer-display');
+      expect(objectiveValue?.textContent).toBe('∞');
+      expect(objectiveTimer?.classList.contains('timer-unlimited')).toBe(true);
+    });
+  });
+
+  describe('simulated time handling', () => {
+    it('should subscribe to SIMULATED_TIME_TICK events', () => {
+      expect(mockEventBus.on).toHaveBeenCalledWith(
+        Events.SIMULATED_TIME_TICK,
+        expect.any(Function)
+      );
+    });
+
+    it('should update clock on SIMULATED_TIME_TICK event', () => {
+      const timeTickHandler = mockEventBus.on.mock.calls.find(
+        (call: [string, Function]) => call[0] === Events.SIMULATED_TIME_TICK
+      )?.[1];
+
+      timeTickHandler?.({ timeFormatted: '01 Jan 2024 12:34:56' });
+
+      const clock = document.querySelector('#utc-clock');
+      expect(clock?.textContent).toBe('01 Jan 2024 12:34:56');
+    });
+
+    it('should unsubscribe from SIMULATED_TIME_TICK on dispose', () => {
+      commandBar.dispose();
+
+      expect(mockEventBus.off).toHaveBeenCalledWith(
+        Events.SIMULATED_TIME_TICK,
+        expect.any(Function)
+      );
+    });
+  });
+
+  describe('alarm severity colors and icons', () => {
+    it('should apply success color for unknown severity', () => {
+      const alarmHandler = mockEventBus.on.mock.calls.find(
+        (call: [string, Function]) => call[0] === Events.ALARM_STATE_CHANGED
+      )?.[1];
+
+      const mockAlarms: AggregatedAlarm[] = [
+        {
+          alarmId: 'success-1',
+          assetId: 'GS-001',
+          equipmentType: 'antenna',
+          equipmentIndex: 0,
+          severity: 'success' as any,
+          message: 'Success message',
+          timestamp: Date.now(),
+        },
+      ];
+
+      alarmHandler?.({
+        alarms: mockAlarms,
+        highestSeverity: 'success',
+      });
+
+      const alarmItem = document.querySelector('.alarm-item');
+      expect(alarmItem?.classList.contains('text-green-400')).toBe(true);
+    });
+
+    it('should render info count badge', () => {
+      const alarmHandler = mockEventBus.on.mock.calls.find(
+        (call: [string, Function]) => call[0] === Events.ALARM_STATE_CHANGED
+      )?.[1];
+
+      const mockAlarms: AggregatedAlarm[] = [
+        {
+          alarmId: 'info-1',
+          assetId: 'GS-001',
+          equipmentType: 'antenna',
+          equipmentIndex: 0,
+          severity: 'info',
+          message: 'Info 1',
+          timestamp: Date.now(),
+        },
+        {
+          alarmId: 'info-2',
+          assetId: 'GS-001',
+          equipmentType: 'receiver',
+          equipmentIndex: 0,
+          severity: 'info',
+          message: 'Info 2',
+          timestamp: Date.now(),
+        },
+      ];
+
+      alarmHandler?.({
+        alarms: mockAlarms,
+        highestSeverity: 'info',
+      });
+
+      const infoBadge = document.querySelector('.alarm-count.info');
+      expect(infoBadge).not.toBeNull();
+      expect(infoBadge?.textContent).toContain('2');
     });
   });
 

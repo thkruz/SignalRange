@@ -69,6 +69,13 @@ jest.mock('../../../src/modal/quiz-manager', () => ({
 }));
 jest.mock('../../../src/modal/draggable-html-box');
 jest.mock('../../../src/modal/dialog-history-box');
+jest.mock('../../../src/ops-log/ops-log-modal', () => ({
+  OpsLogModal: {
+    getInstance: jest.fn(() => ({
+      open: jest.fn(),
+    })),
+  },
+}));
 jest.mock('../../../src/engine/utils/query-selector', () => ({
   qs: jest.fn((selector: string, parent?: Element) => {
     const root = parent || global.document;
@@ -424,6 +431,212 @@ describe('AssetTreeSidebar with mission brief', () => {
   it('should add sidebar-locked class when scenario is locked', () => {
     const sidebarEl = document.querySelector('.asset-tree-sidebar');
     expect(sidebarEl?.classList.contains('sidebar-locked')).toBe(true);
+  });
+
+  it('should open mission brief box when Mission Brief clicked', () => {
+    const { DraggableHtmlBox } = require('../../../src/modal/draggable-html-box');
+    const mockOpen = jest.fn();
+    const mockBox = { open: mockOpen };
+    DraggableHtmlBox.mockImplementation(() => mockBox);
+
+    // Setup SimulationManager to allow assignment
+    const { SimulationManager } = require('../../../src/simulation/simulation-manager');
+    const simInstance = {
+      groundStations: [],
+      satellites: [],
+      missionBriefBox: null,
+      checklistBox: null,
+      dialogHistoryBox: null,
+    };
+    SimulationManager.getInstance.mockReturnValue(simInstance);
+
+    const missionBriefItem = document.querySelector('.mission-brief-icon') as HTMLElement;
+    missionBriefItem?.click();
+
+    expect(DraggableHtmlBox).toHaveBeenCalledWith(
+      'Mission Brief',
+      'mission-brief',
+      '/briefs/test-mission.html',
+      'app-shell-page'
+    );
+    expect(mockOpen).toHaveBeenCalled();
+  });
+
+  it('should open dialog history box when Dialog History clicked', () => {
+    const { DialogHistoryBox } = require('../../../src/modal/dialog-history-box');
+    const mockOpen = jest.fn();
+    const mockBox = { open: mockOpen };
+    DialogHistoryBox.mockImplementation(() => mockBox);
+
+    // Setup SimulationManager to allow assignment
+    const { SimulationManager } = require('../../../src/simulation/simulation-manager');
+    const simInstance = {
+      groundStations: [],
+      satellites: [],
+      missionBriefBox: null,
+      checklistBox: null,
+      dialogHistoryBox: null,
+    };
+    SimulationManager.getInstance.mockReturnValue(simInstance);
+
+    const dialogItem = document.querySelector('.dialog-icon') as HTMLElement;
+    dialogItem?.click();
+
+    expect(DialogHistoryBox).toHaveBeenCalledWith('app-shell-page');
+    expect(mockOpen).toHaveBeenCalled();
+  });
+
+  it('should open checklist box when Checklist clicked', () => {
+    const { DraggableHtmlBox } = require('../../../src/modal/draggable-html-box');
+    const mockOpen = jest.fn();
+    const mockUpdateContent = jest.fn();
+    DraggableHtmlBox.mockImplementation(() => ({
+      open: mockOpen,
+      updateContent: mockUpdateContent,
+      isOpen: false,
+      popupDom: document.createElement('div'),
+    }));
+
+    const { SimulationManager } = require('../../../src/simulation/simulation-manager');
+    SimulationManager.getInstance.mockReturnValue({
+      groundStations: [],
+      satellites: [],
+      missionBriefBox: null,
+      checklistBox: null,
+      dialogHistoryBox: null,
+    });
+
+    const checklistItem = document.querySelector('.checklist-icon') as HTMLElement;
+    checklistItem?.click();
+
+    expect(mockOpen).toHaveBeenCalled();
+    expect(mockUpdateContent).toHaveBeenCalled();
+  });
+
+  it('should register for DOM_READY events when objectives not loaded', () => {
+    expect(mockEventBus.on).toHaveBeenCalledWith(
+      Events.DOM_READY,
+      expect.any(Function)
+    );
+  });
+
+  it('should check and update lock state on DOM_READY', () => {
+    const { ObjectivesManager } = require('../../../src/objectives');
+    ObjectivesManager.isScenarioLocked.mockReturnValue(false);
+
+    const domReadyHandler = mockEventBus.on.mock.calls.find(
+      (call: [string, Function]) => call[0] === Events.DOM_READY
+    )?.[1];
+
+    domReadyHandler?.();
+
+    const sidebarEl = document.querySelector('.asset-tree-sidebar');
+    expect(sidebarEl?.classList.contains('sidebar-locked')).toBe(false);
+  });
+
+  it('should register for OBJECTIVE_ACTIVATED events', () => {
+    expect(mockEventBus.on).toHaveBeenCalledWith(
+      Events.OBJECTIVE_ACTIVATED,
+      expect.any(Function)
+    );
+  });
+
+  it('should stop checklist refresh timer on ROUTE_CHANGED', () => {
+    // First open the checklist to start the timer
+    const { DraggableHtmlBox } = require('../../../src/modal/draggable-html-box');
+    const mockOpen = jest.fn();
+    const mockUpdateContent = jest.fn();
+    const mockPopupDom = document.createElement('div');
+
+    DraggableHtmlBox.mockImplementation(() => ({
+      open: mockOpen,
+      updateContent: mockUpdateContent,
+      isOpen: true,
+      popupDom: mockPopupDom,
+      onClose: null,
+    }));
+
+    const { SimulationManager } = require('../../../src/simulation/simulation-manager');
+    SimulationManager.getInstance.mockReturnValue({
+      groundStations: [],
+      satellites: [],
+      missionBriefBox: null,
+      checklistBox: null,
+      dialogHistoryBox: null,
+    });
+
+    const checklistItem = document.querySelector('.checklist-icon') as HTMLElement;
+    checklistItem?.click();
+
+    // Trigger ROUTE_CHANGED
+    const routeChangedHandler = mockEventBus.on.mock.calls.find(
+      (call: [string, Function]) => call[0] === Events.ROUTE_CHANGED
+    )?.[1];
+
+    routeChangedHandler?.();
+
+    // No error should occur - timer was stopped
+  });
+
+  it('should open ops log modal when Ops Log clicked', () => {
+    const { OpsLogModal } = require('../../../src/ops-log/ops-log-modal');
+    const mockOpen = jest.fn();
+    OpsLogModal.getInstance.mockReturnValue({
+      open: mockOpen,
+    });
+
+    const opsLogItem = document.querySelector('.ops-log-icon') as HTMLElement;
+    opsLogItem?.click();
+
+    expect(mockOpen).toHaveBeenCalled();
+  });
+});
+
+describe('AssetTreeSidebar with already unlocked scenario', () => {
+  let containerEl: HTMLElement;
+  let sidebar: AssetTreeSidebar;
+  let mockEventBus: { on: jest.Mock; off: jest.Mock; emit: jest.Mock };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+
+    // Mock ScenarioManager to have a mission brief URL
+    const { ScenarioManager } = require('../../../src/scenario-manager');
+    ScenarioManager.getInstance.mockReturnValue({
+      settings: {
+        missionBriefUrl: '/briefs/test-mission.html',
+      },
+    });
+
+    // Mock ObjectivesManager to show already loaded and unlocked
+    const { ObjectivesManager } = require('../../../src/objectives');
+    ObjectivesManager.hasLoadedObjectives.mockReturnValue(true);
+    ObjectivesManager.isScenarioLocked.mockReturnValue(false);
+
+    // Setup mock EventBus
+    mockEventBus = {
+      on: jest.fn(),
+      off: jest.fn(),
+      emit: jest.fn(),
+    };
+    (EventBus.getInstance as jest.Mock).mockReturnValue(mockEventBus);
+
+    // Setup container
+    containerEl = document.createElement('div');
+    containerEl.id = 'asset-tree-sidebar-container';
+    document.body.appendChild(containerEl);
+
+    sidebar = new AssetTreeSidebar('asset-tree-sidebar-container');
+  });
+
+  afterEach(() => {
+    sidebar.destroy();
+    document.body.innerHTML = '';
+  });
+
+  it('should not add sidebar-locked class when already unlocked', () => {
+    const sidebarEl = document.querySelector('.asset-tree-sidebar');
+    expect(sidebarEl?.classList.contains('sidebar-locked')).toBe(false);
   });
 });
 

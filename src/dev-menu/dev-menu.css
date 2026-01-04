@@ -1,0 +1,51 @@
+.dev-menu {
+  padding: 0.75rem;
+  min-width: 280px;
+}
+
+.dev-menu__section {
+  margin-bottom: 1rem;
+}
+
+.dev-menu__section:last-child {
+  margin-bottom: 0;
+}
+
+.dev-menu__section .form-label {
+  color: var(--mc-text-secondary);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.5rem;
+}
+
+.dev-menu__section .form-check-label {
+  color: var(--mc-text-primary);
+}
+
+.dev-menu__section .btn {
+  font-size: 0.875rem;
+}
+
+.dev-menu__section .form-control {
+  background-color: var(--mc-surface-1);
+  border-color: var(--mc-surface-3);
+  color: var(--mc-text-primary);
+}
+
+.dev-menu__section .form-control:focus {
+  background-color: var(--mc-surface-2);
+  border-color: var(--mc-accent-red);
+  box-shadow: 0 0 0 0.2rem rgba(186, 22, 12, 0.25);
+}
+
+/* Hide number input spinners */
+.dev-menu__section input[type="number"]::-webkit-outer-spin-button,
+.dev-menu__section input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.dev-menu__section input[type="number"] {
+  -moz-appearance: textfield;
+}

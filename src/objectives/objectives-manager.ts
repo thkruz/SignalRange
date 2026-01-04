@@ -281,6 +281,105 @@ export class ObjectivesManager {
   }
 
   /**
+   * Force complete the current active objective and advance to next.
+   * Used by developer menu for testing/debugging.
+   * @returns true if an objective was completed, false if none available
+   */
+  forceCompleteCurrentObjective(): boolean {
+    // Find first active, non-completed, non-failed objective
+    const activeObjective = this.objectiveStates_.find(
+      (state) => state.isActive && !state.isCompleted && !state.isFailed
+    );
+
+    if (!activeObjective) {
+      return false;
+    }
+
+    // Mark all conditions as satisfied and maintenance complete
+    for (const condState of activeObjective.conditionStates) {
+      condState.isSatisfied = true;
+      condState.isMaintenanceComplete = true;
+      condState.satisfiedAt = Date.now();
+    }
+
+    // Mark objective as complete
+    activeObjective.isCompleted = true;
+    activeObjective.completedAt = Date.now();
+    activeObjective.isTimerRunning = false;
+
+    // Collapse the objective
+    this.collapsedObjectiveIds_.add(activeObjective.objective.id);
+
+    // Emit completion event
+    this.eventBus_.emit(Events.OBJECTIVE_COMPLETED, {
+      objectiveId: activeObjective.objective.id,
+      objective: activeObjective.objective,
+      completedAt: activeObjective.completedAt,
+    });
+
+    // Activate dependent objectives
+    this.activateDependentObjectives_(activeObjective.objective.id);
+
+    // Handle freezing objectives - start scenario timer and resume simulated time
+    if (activeObjective.objective.freezesScenarioTimer) {
+      this.scenarioTimerRunning_ = true;
+      this.scenarioStartTime_ = Date.now();
+      if (OpsLogManager.isInitialized()) {
+        OpsLogManager.getInstance().resume();
+      }
+      this.eventBus_.emit(Events.SCENARIO_UNLOCKED);
+    }
+
+    // Check if all objectives are complete
+    if (this.areAllObjectivesCompleted()) {
+      this.stopAllTimers();
+      if (OpsLogManager.isInitialized()) {
+        OpsLogManager.getInstance().pause();
+      }
+      this.eventBus_.emit(Events.OBJECTIVES_ALL_COMPLETED, {
+        completedObjectives: this.objectiveStates_,
+        totalTime: this.getElapsedTime(),
+      });
+    }
+
+    return true;
+  }
+
+  /**
+   * Set the scenario time remaining to a specific value.
+   * Used by developer menu for testing/debugging.
+   * @param seconds The new time remaining in seconds
+   */
+  setScenarioTimeRemaining(seconds: number): void {
+    // Initialize scenario timer if it wasn't set
+    this.scenarioTimeLimit_ ??= seconds;
+    this.scenarioTimeRemaining_ = Math.max(0, seconds);
+    this.scenarioTimerRunning_ = seconds > 0 && !this.areAllObjectivesCompleted();
+  }
+
+  /**
+   * Set the current active objective's timer to a specific value.
+   * Used by developer menu for testing/debugging.
+   * @param seconds The new time remaining in seconds
+   * @returns true if an objective timer was set, false if no active objective with timer
+   */
+  setCurrentObjectiveTimeRemaining(seconds: number): boolean {
+    // Find first active, non-completed, non-failed objective with a timer
+    const activeObjective = this.objectiveStates_.find(
+      (state) => state.isActive && !state.isCompleted && !state.isFailed && state.timeRemainingSeconds !== undefined
+    );
+
+    if (!activeObjective) {
+      return false;
+    }
+
+    activeObjective.timeRemainingSeconds = Math.max(0, seconds);
+    activeObjective.isTimerRunning = seconds > 0;
+
+    return true;
+  }
+
+  /**
    * Start the 1-second timer interval for countdown updates
    */
   private startTimerInterval_(): void {

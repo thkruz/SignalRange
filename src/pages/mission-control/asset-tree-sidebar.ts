@@ -90,6 +90,23 @@ export class AssetTreeSidebar extends BaseElement {
       if (!alreadyUnlocked) {
         this.dom_.classList.add('sidebar-locked');
       }
+
+      // If objectives aren't loaded yet, listen for DOM_READY which fires after
+      // ObjectivesManager initializes AND checkpoint states are restored.
+      if (!objectivesLoaded) {
+        EventBus.getInstance().on(Events.DOM_READY, () => {
+          this.checkAndUpdateLockState_();
+        });
+      }
+    }
+  }
+
+  /**
+   * Re-check lock state after objectives are loaded
+   */
+  private checkAndUpdateLockState_(): void {
+    if (!ObjectivesManager.isScenarioLocked()) {
+      this.unlockSidebar_();
     }
   }
 

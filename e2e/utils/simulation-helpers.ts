@@ -124,3 +124,86 @@ export async function isVisible(page: Page, selector: string): Promise<boolean> 
     return false;
   }
 }
+
+/**
+ * Wait for the quiz modal to appear.
+ * If the quiz isn't auto-shown, clicks the pending quiz indicator to open it.
+ */
+export async function waitForQuizToAppear(page: Page, timeout = 30000): Promise<void> {
+  const quizModal = page.locator('#quiz-modal, .quiz-box');
+
+  // First check if quiz is already visible
+  try {
+    await expect(quizModal).toBeVisible({ timeout: 3000 });
+    return;
+  } catch {
+    // Quiz not visible, try to open via pending indicator
+  }
+
+  // Click the pending quiz indicator if visible
+  const pendingIndicator = page.locator('.pending-quiz-indicator__open-btn');
+  try {
+    await expect(pendingIndicator).toBeVisible({ timeout: 5000 });
+    await pendingIndicator.click();
+    await expect(quizModal).toBeVisible({ timeout: 5000 });
+    return;
+  } catch {
+    // Pending indicator not found, try checklist
+  }
+
+  // Try clicking quiz button in checklist
+  const checklistQuizBtn = page.locator('.condition-quiz-btn, .quiz-btn, [data-quiz-btn]');
+  try {
+    await expect(checklistQuizBtn.first()).toBeVisible({ timeout: 5000 });
+    await checklistQuizBtn.first().click();
+    await expect(quizModal).toBeVisible({ timeout: 5000 });
+    return;
+  } catch {
+    // Still no quiz, wait for it with full timeout
+  }
+
+  // Final attempt - just wait for the quiz modal
+  await expect(quizModal).toBeVisible({ timeout });
+}
+
+/**
+ * Answer a quiz by finding the option with matching text content.
+ * This handles shuffled quiz options by matching text rather than index.
+ * @param answerText The text content of the correct answer option
+ */
+export async function answerQuizByText(page: Page, answerText: string): Promise<void> {
+  const quizModal = page.locator('#quiz-modal, .quiz-box');
+  await expect(quizModal).toBeVisible({ timeout: 10000 });
+
+  // Find the option button containing the answer text
+  const option = quizModal.locator('.quiz-option-btn', { hasText: answerText });
+  await expect(option).toBeVisible({ timeout: 5000 });
+  await option.click();
+
+  // Wait for the continue button to appear and click it
+  const continueButton = quizModal.locator('#quiz-continue-btn');
+  await expect(continueButton).toBeVisible({ timeout: 5000 });
+  await continueButton.click();
+
+  // Wait for quiz to process the answer
+  await page.waitForTimeout(500);
+}
+
+/**
+ * Dismiss dialog overlay if present.
+ * Used to dismiss objective completion dialogs between quizzes.
+ */
+export async function dismissDialogIfPresent(page: Page): Promise<void> {
+  const dialogOverlay = page.locator('.dialog-overlay.dialog-visible');
+  try {
+    if (await dialogOverlay.isVisible({ timeout: 2000 })) {
+      const closeBtn = dialogOverlay.locator('button:has-text("Continue"), button:has-text("OK"), .close-btn, .dialog-close').first();
+      if (await closeBtn.isVisible({ timeout: 1000 })) {
+        await closeBtn.click();
+        await expect(dialogOverlay).not.toBeVisible({ timeout: 5000 });
+      }
+    }
+  } catch {
+    // No dialog present, continue
+  }
+}

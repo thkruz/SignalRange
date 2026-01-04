@@ -20,6 +20,7 @@ import './tx-chain-tab.css';
  * Modulator → BUC → HPA → OMT → Antenna
  */
 export class TxChainTab extends BaseElement {
+  protected html_!: string;
   private readonly groundStation: GroundStation;
   private bucAdapter: BUCAdapter | null = null;
   private hpaAdapter: HPAAdapter | null = null;
@@ -34,13 +35,17 @@ export class TxChainTab extends BaseElement {
       this.groundStation.initializeEquipment();
     }
 
+    // Must set html_ here (after groundStation is set) for dynamic antenna options
+    this.html_ = this.buildHtml_();
+
     this.init_(containerId, 'replace');
     this.dom_ = qs('.tx-chain-tab');
 
     this.addEventListenersLate_();
   }
 
-  protected html_ = html`
+  private buildHtml_(): string {
+    return html`
     <div class="tx-chain-tab">
       <div class="row g-2 pb-6">
         <!-- BUC Control Card -->
@@ -321,8 +326,7 @@ export class TxChainTab extends BaseElement {
                       <div class="mb-2">
                         <label class="form-label small">Antenna</label>
                         <select id="tx-antenna-select" class="form-select form-select-sm">
-                          <option value="1">Antenna 1</option>
-                          <option value="2">Antenna 2</option>
+                          ${this.generateAntennaOptions_()}
                         </select>
                       </div>
 
@@ -463,6 +467,14 @@ export class TxChainTab extends BaseElement {
       </div>
     </div>
   `;
+  }
+
+  private generateAntennaOptions_(): string {
+    return this.groundStation.antennas.map((_, index) => {
+      const antennaNumber = index + 1;
+      return `<option value="${antennaNumber}">Antenna ${antennaNumber}</option>`;
+    }).join('');
+  }
 
   protected addEventListeners_(): void {
     // Add event listeners late

@@ -94,6 +94,17 @@ export class HPAAdapter {
       this.updateStagedDisplay_();
     }
 
+    // Update Input Power display - shows BUC output, or "--" when BUC in loopback
+    const inputPowerDisplay = this.domCache_.get('inputPowerDisplay');
+    if (inputPowerDisplay) {
+      const inputSignals = this.hpaModule.inputSignals;
+      if (isPowered && inputSignals.length > 0) {
+        inputPowerDisplay.textContent = `${inputSignals[0].power.toFixed(1)} dBm`;
+      } else {
+        inputPowerDisplay.textContent = '-- dBm';
+      }
+    }
+
     // Update Power Output displays
     const outputPowerDisplay = this.domCache_.get('outputPowerDisplay');
     if (outputPowerDisplay) {
@@ -189,7 +200,8 @@ export class HPAAdapter {
     this.domCache_.set('powerSwitch', qs('#hpa-power', this.containerEl));
     this.domCache_.set('hpaEnableSwitch', qs('#hpa-enable', this.containerEl));
 
-    // Power Output displays
+    // Power displays
+    this.domCache_.set('inputPowerDisplay', qs('#hpa-input-power-display', this.containerEl));
     this.domCache_.set('outputPowerDisplay', qs('#hpa-output-power-display', this.containerEl));
     this.domCache_.set('powerMeter', qs('#hpa-power-meter', this.containerEl));
     this.domCache_.set('powerWatts', qs('#hpa-power-watts', this.containerEl));
@@ -326,6 +338,17 @@ export class HPAAdapter {
     if (state.isHpaEnabled !== undefined) {
       const hpaEnableSwitch = this.domCache_.get('hpaEnableSwitch') as HTMLInputElement;
       if (hpaEnableSwitch) hpaEnableSwitch.checked = state.isHpaEnabled;
+    }
+
+    // Update Input Power display - shows BUC output, or "--" when BUC in loopback
+    const inputPowerDisplay = this.domCache_.get('inputPowerDisplay');
+    if (inputPowerDisplay) {
+      const inputSignals = this.hpaModule.inputSignals;
+      if (isPowered && inputSignals.length > 0) {
+        inputPowerDisplay.textContent = `${inputSignals[0].power.toFixed(1)} dBm`;
+      } else {
+        inputPowerDisplay.textContent = '-- dBm';
+      }
     }
 
     // Update Power Output displays - show "--" when powered off

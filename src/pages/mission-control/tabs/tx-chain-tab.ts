@@ -115,6 +115,10 @@ export class TxChainTab extends BaseElement {
                       <input type="checkbox" id="buc-mute" class="form-check-input" role="switch" />
                       <label for="buc-mute" class="form-check-label small">Mute</label>
                     </div>
+                    <div class="form-check form-switch">
+                      <input type="checkbox" id="buc-loopback" class="form-check-input" role="switch" />
+                      <label for="buc-loopback" class="form-check-label small">Loopback</label>
+                    </div>
                   </div>
                 </div>
                 <!-- RF Status Column -->
@@ -232,7 +236,11 @@ export class TxChainTab extends BaseElement {
                 <!-- Power Output Column -->
                 <div class="col-7">
                   <div class="metric-group h-100">
-                    <div class="metric-group-title">Power Output</div>
+                    <div class="metric-group-title">Power</div>
+                    <div class="metric-row">
+                      <span class="metric-label">Input:</span>
+                      <span id="hpa-input-power-display" class="metric-value">-- dBm</span>
+                    </div>
                     <div class="metric-row">
                       <span class="metric-label">Output:</span>
                       <span id="hpa-output-power-display" class="metric-value">50.0 dBm</span>

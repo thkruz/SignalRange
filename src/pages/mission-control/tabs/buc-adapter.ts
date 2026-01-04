@@ -87,10 +87,14 @@ export class BUCAdapter {
     const state = this.bucModule.state;
     const isPowered = state.isPowered;
 
-    // Update RF Status displays
+    // Update RF Status displays - show actual output signal power for consistency with HPA input
     const outputPowerDisplay = this.domCache_.get('outputPowerDisplay');
     if (outputPowerDisplay) {
-      outputPowerDisplay.textContent = isPowered ? `${state.outputPower.toFixed(1)} dBm` : '-- dBm';
+      if (isPowered && this.bucModule.outputSignals.length > 0) {
+        outputPowerDisplay.textContent = `${this.bucModule.outputSignals[0].power.toFixed(1)} dBm`;
+      } else {
+        outputPowerDisplay.textContent = '-- dBm';
+      }
     }
 
     // Display RF output frequency (after LO mixing and bandpass filter)
@@ -208,6 +212,7 @@ export class BUCAdapter {
     // Switches
     this.domCache_.set('powerSwitch', qs('#buc-power', this.containerEl));
     this.domCache_.set('muteSwitch', qs('#buc-mute', this.containerEl));
+    this.domCache_.set('loopbackSwitch', qs('#buc-loopback', this.containerEl));
 
     // Sideband status
     this.domCache_.set('sidebandStatus', qs('#buc-sideband-status', this.containerEl));
@@ -276,6 +281,11 @@ export class BUCAdapter {
     const muteSwitch = this.domCache_.get('muteSwitch') as HTMLInputElement;
     muteSwitch?.addEventListener('change', this.muteHandler_.bind(this));
     this.boundHandlers.set('mute', this.muteHandler_.bind(this));
+
+    // Loopback switch - immediate effect
+    const loopbackSwitch = this.domCache_.get('loopbackSwitch') as HTMLInputElement;
+    loopbackSwitch?.addEventListener('change', this.loopbackHandler_.bind(this));
+    this.boundHandlers.set('loopback', this.loopbackHandler_.bind(this));
   }
 
   private loFreqInputHandler_(e: Event): void {
@@ -353,6 +363,12 @@ export class BUCAdapter {
     this.syncDomWithState_(this.bucModule.state);
   }
 
+  private loopbackHandler_(e: Event): void {
+    const isChecked = (e.target as HTMLInputElement).checked;
+    this.bucModule.handleLoopbackToggle(isChecked);
+    this.syncDomWithState_(this.bucModule.state);
+  }
+
   update(): void {
     this.syncDomWithState_(this.bucModule.state);
   }
@@ -386,12 +402,18 @@ export class BUCAdapter {
       if (muteSwitch) muteSwitch.checked = state.isMuted;
     }
 
-    // Update RF Status displays - show "--" when powered off
+    // Update Loopback switch
+    if (state.isLoopback !== undefined) {
+      const loopbackSwitch = this.domCache_.get('loopbackSwitch') as HTMLInputElement;
+      if (loopbackSwitch) loopbackSwitch.checked = state.isLoopback;
+    }
+
+    // Update RF Status displays - show actual output signal power for consistency with HPA input
     const outputPowerDisplay = this.domCache_.get('outputPowerDisplay');
     if (outputPowerDisplay) {
-      if (isPowered && state.outputPower !== undefined) {
-        outputPowerDisplay.textContent = `${state.outputPower.toFixed(1)} dBm`;
-      } else if (!isPowered) {
+      if (isPowered && this.bucModule.outputSignals.length > 0) {
+        outputPowerDisplay.textContent = `${this.bucModule.outputSignals[0].power.toFixed(1)} dBm`;
+      } else {
         outputPowerDisplay.textContent = '-- dBm';
       }
     }
@@ -519,16 +541,19 @@ export class BUCAdapter {
     const gainInput = this.domCache_.get('gainInput') as HTMLInputElement;
     const powerSwitch = this.domCache_.get('powerSwitch') as HTMLInputElement;
     const muteSwitch = this.domCache_.get('muteSwitch') as HTMLInputElement;
+    const loopbackSwitch = this.domCache_.get('loopbackSwitch') as HTMLInputElement;
 
     const loFreqHandler = this.boundHandlers.get('loFreqInput');
     const gainHandler = this.boundHandlers.get('gainInput');
     const powerHandler = this.boundHandlers.get('power');
     const muteHandler = this.boundHandlers.get('mute');
+    const loopbackHandler = this.boundHandlers.get('loopback');
 
     if (loFreqInput && loFreqHandler) loFreqInput.removeEventListener('change', loFreqHandler);
     if (gainInput && gainHandler) gainInput.removeEventListener('change', gainHandler);
     if (powerSwitch && powerHandler) powerSwitch.removeEventListener('change', powerHandler);
     if (muteSwitch && muteHandler) muteSwitch.removeEventListener('change', muteHandler);
+    if (loopbackSwitch && loopbackHandler) loopbackSwitch.removeEventListener('change', loopbackHandler);
 
     // Note: Button click handlers use inline arrow functions and are cleaned up when DOM is removed
     this.boundHandlers.clear();

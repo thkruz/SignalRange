@@ -28,6 +28,7 @@ import { TxChainTab } from './tabs/tx-chain-tab';
  */
 export class TabbedCanvas extends BaseElement {
   static readonly containerId = 'tabbed-canvas-container';
+  private static instance_: TabbedCanvas | null = null;
 
   private activeTab_: string = 'mission-overview';
   private selectedAssetId_: string | null = null;
@@ -44,9 +45,18 @@ export class TabbedCanvas extends BaseElement {
 
   constructor(parentId: string) {
     super();
+    TabbedCanvas.instance_ = this;
     this.init_(parentId, 'replace');
     this.dom_ = qs('.tabbed-canvas');
     this.renderMissionOverview_();
+  }
+
+  /**
+   * Get the currently active tab ID
+   * Used by ObjectivesManager for tab-active condition evaluation
+   */
+  static getActiveTab(): string | null {
+    return TabbedCanvas.instance_?.activeTab_ ?? null;
   }
 
   protected addEventListeners_(): void {

@@ -69,7 +69,8 @@ export type ConditionType =
   | 'service-continuity' // No packet loss during handover (placeholder - always passes)
   | 'ground-station-selected' // Ground station selected in UI
   // UI interaction conditions
-  | 'mission-brief-opened'; // Mission brief document has been opened
+  | 'mission-brief-opened' // Mission brief document has been opened
+  | 'tab-active'; // Specific tab is currently active in TabbedCanvas
 
 /**
  * Equipment references for condition checking
@@ -215,6 +216,8 @@ export interface ConditionParams {
   groundStationId?: string;
   /** For mission-brief-opened: specific box ID that must be opened (defaults to any 'mission-brief*' box) */
   boxId?: string;
+  /** For tab-active: tab ID prefix to match (e.g., 'acu-control' matches 'acu-control-0') */
+  tab?: string;
   /** Additional context-specific parameters */
   [key: string]: unknown;
 }

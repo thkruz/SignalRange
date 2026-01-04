@@ -7,6 +7,7 @@
 import { GroundStation } from '@app/assets/ground-station/ground-station';
 import { TapPoint } from "@app/equipment/rf-front-end/coupler-module/tap-points";
 import { EventBus } from '@app/events/event-bus';
+import { TabbedCanvas } from '@app/pages/mission-control/tabbed-canvas';
 import { Events, QuizCompletedData, QuizPassedData } from '@app/events/events';
 import { QuizManager } from '@app/modal/quiz-manager';
 import { OpsLogManager } from '@app/ops-log/ops-log-manager';
@@ -1858,6 +1859,17 @@ export class ObjectivesManager {
           }
         }
         return false;
+      }
+
+      case 'tab-active': {
+        const targetTab = condition.params?.tab;
+        if (!targetTab) return false;
+
+        const activeTab = TabbedCanvas.getActiveTab();
+        if (!activeTab) return false;
+
+        // Match exact tab ID or prefix (e.g., 'acu-control' matches 'acu-control-0')
+        return activeTab === targetTab || activeTab.startsWith(`${targetTab}-`);
       }
 
       default:

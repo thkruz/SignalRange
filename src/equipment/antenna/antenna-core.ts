@@ -640,9 +640,20 @@ export abstract class AntennaCore extends BaseEquipment {
 
   /**
    * Set target satellite for program track mode
+   * Also sets beacon frequency from the satellite's transponder configuration
    */
   handleTargetSatelliteChange(noradId: number | null): void {
     this.state.targetSatelliteId = noradId;
+
+    // Set beacon frequency from satellite's transponder beacon (if available)
+    if (noradId !== null) {
+      const sat = SimulationManager.getInstance().getSatByNoradId(noradId);
+      const beacon = sat?.transponders[0]?.beacon;
+      if (beacon?.frequency) {
+        this.state.beaconFrequencyHz = beacon.frequency as number;
+      }
+    }
+
     this.notifyStateChange_();
   }
 
@@ -672,6 +683,12 @@ export abstract class AntennaCore extends BaseEquipment {
     // Use shortest path calculation to avoid rotating the long way around
     this.state.targetAzimuth = this.calculateShortestPathTarget_(this.state.azimuth, sat.az);
     this.state.targetElevation = sat.el;
+
+    // Set beacon frequency from satellite's transponder beacon (if available)
+    const beacon = sat.transponders[0]?.beacon;
+    if (beacon?.frequency) {
+      this.state.beaconFrequencyHz = beacon.frequency as number;
+    }
 
     this.updateSignals_();
     this.notifyStateChange_();

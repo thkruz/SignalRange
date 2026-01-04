@@ -563,6 +563,11 @@ export class ACUControlTab extends BaseElement {
     // Initialize active target from current state
     this.activeTargetSatelliteId_ = antenna.state.targetSatelliteId;
 
+    // If a target satellite is pre-configured, set the beacon frequency from it
+    if (antenna.state.targetSatelliteId !== null) {
+      antenna.handleTargetSatelliteChange(antenna.state.targetSatelliteId);
+    }
+
     // Populate satellite dropdown
     const satellites = SimulationManager.getInstance().satellites;
     select.innerHTML = '<option value="">-- Select Satellite --</option>' +

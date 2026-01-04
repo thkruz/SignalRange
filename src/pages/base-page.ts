@@ -72,6 +72,7 @@ export abstract class BasePage extends BaseElement {
     // Initialize ops log manager (always, for all scenarios)
     OpsLogManager.initialize(
       scenario.settings.scenarioStartWallTime,
+      scenario.settings.scenarioStartDate,
       scenario.settings.previousShiftLogs
     );
 
@@ -110,6 +111,10 @@ export abstract class BasePage extends BaseElement {
           });
         }
       }
+    } else if (OpsLogManager.isInitialized()) {
+      // No objectives - resume simulated time immediately
+      // (OpsLogManager starts paused by default, waiting for scenario to unlock)
+      OpsLogManager.getInstance().resume();
     }
 
     EventBus.getInstance().emit(Events.DOM_READY);
@@ -174,6 +179,14 @@ export abstract class BasePage extends BaseElement {
       const checkpoint = await this.progressSaveManager_.loadCheckpoint(scenario.data.id) as {
         state: AppState;
       };
+
+      // Restore OpsLogManager state if available
+      if (checkpoint?.state?.opsLogState) {
+        if (OpsLogManager.isInitialized()) {
+          OpsLogManager.getInstance().restoreState(checkpoint.state.opsLogState);
+          Logger.info('OpsLogManager state restored from checkpoint');
+        }
+      }
 
       if (checkpoint?.state?.objectiveStates) {
         const objectivesManager = ObjectivesManager.getInstance();

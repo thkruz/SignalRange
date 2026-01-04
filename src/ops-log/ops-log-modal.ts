@@ -6,7 +6,7 @@ import { DraggableModal } from '@app/engine/ui/draggable-modal';
 import { html } from '@app/engine/utils/development/formatter';
 import { getEl } from '@app/engine/utils/get-el';
 import { EventBus } from '@app/events/event-bus';
-import { Events } from '@app/events/events';
+import { Events, SimulatedTimeTickData } from '@app/events/events';
 import { OpsLogManager } from './ops-log-manager';
 import { OpsLogEntry } from './ops-log-types';
 import './ops-log-modal.css';
@@ -16,6 +16,7 @@ export class OpsLogModal extends DraggableModal {
   private static instance_: OpsLogModal | null = null;
 
   private readonly boundEntryAddedHandler_: (entry: OpsLogEntry) => void;
+  private readonly boundTimeTickHandler_: (data: SimulatedTimeTickData) => void;
 
   private constructor() {
     super(OpsLogModal.id, {
@@ -24,7 +25,9 @@ export class OpsLogModal extends DraggableModal {
     });
 
     this.boundEntryAddedHandler_ = this.handleEntryAdded_.bind(this);
+    this.boundTimeTickHandler_ = this.handleTimeTick_.bind(this);
     EventBus.getInstance().on(Events.OPS_LOG_ENTRY_ADDED, this.boundEntryAddedHandler_);
+    EventBus.getInstance().on(Events.SIMULATED_TIME_TICK, this.boundTimeTickHandler_);
   }
 
   static getInstance(): OpsLogModal {
@@ -37,6 +40,10 @@ export class OpsLogModal extends DraggableModal {
       EventBus.getInstance().off(
         Events.OPS_LOG_ENTRY_ADDED,
         OpsLogModal.instance_.boundEntryAddedHandler_
+      );
+      EventBus.getInstance().off(
+        Events.SIMULATED_TIME_TICK,
+        OpsLogModal.instance_.boundTimeTickHandler_
       );
       OpsLogModal.instance_.close();
       OpsLogModal.instance_ = null;
@@ -117,6 +124,13 @@ export class OpsLogModal extends DraggableModal {
     // Re-render entries if modal is open
     if (this.boxEl && this.boxEl.style.display !== 'none') {
       this.renderEntries_();
+      this.updateClock_();
+    }
+  }
+
+  private handleTimeTick_(_data: SimulatedTimeTickData): void {
+    // Update clock display if modal is open
+    if (this.boxEl && this.boxEl.style.display !== 'none') {
       this.updateClock_();
     }
   }

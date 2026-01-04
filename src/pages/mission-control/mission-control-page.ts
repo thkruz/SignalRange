@@ -109,9 +109,6 @@ export class MissionControlPage extends BasePage {
     this.assetTreeSidebar_ = new AssetTreeSidebar('asset-tree-sidebar-container');
     this.tabbedCanvas_ = new TabbedCanvas('tabbed-canvas-container');
 
-    // Start clock
-    this.startClock_();
-
     // Initialize progress save manager
     this.initProgressSaveManager_();
 
@@ -246,23 +243,6 @@ export class MissionControlPage extends BasePage {
       // Checkpoint load failed - skip completion modal and start fresh
       this.navigationOptions_.forceReplay = true;
     }
-  }
-
-  /**
-   * Start UTC clock
-   */
-  private startClock_(): void {
-    const updateClock = () => {
-      const now = new Date();
-      const utcString = now.toISOString().replace('T', ' ').split('.')[0] + ' UTC';
-      const clockElement = qs('#utc-clock', this.dom_);
-      if (clockElement) {
-        clockElement.textContent = utcString;
-      }
-    };
-
-    updateClock();
-    setInterval(updateClock, 1000);
   }
 
   protected addEventListeners_(): void {

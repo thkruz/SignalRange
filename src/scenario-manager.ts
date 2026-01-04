@@ -75,6 +75,8 @@ export interface SimulationSettings {
   }>;
   /** Scenario start wall-clock time in HH:MM:SS format (e.g., "22:00:00" for 10 PM) */
   scenarioStartWallTime?: string;
+  /** Scenario start date in YYYY-MM-DD format (e.g., "2025-03-15") */
+  scenarioStartDate?: string;
   /** Previous shift maintenance/ops log entries */
   previousShiftLogs?: PreviousShiftLogEntry[];
 }

@@ -1,7 +1,7 @@
 import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
 import { EventBus } from "@app/events/event-bus";
-import { AggregatedAlarm, AlarmStateChangedData, Events } from "@app/events/events";
+import { AggregatedAlarm, AlarmStateChangedData, Events, SimulatedTimeTickData } from "@app/events/events";
 import { ObjectivesManager } from "@app/objectives/objectives-manager";
 
 /**
@@ -24,15 +24,19 @@ export class GlobalCommandBar {
   private objectiveTimerEl_: HTMLElement | null = null;
   private scenarioTimerEl_: HTMLElement | null = null;
   private readonly boundOnAlarmStateChanged_: (data: AlarmStateChangedData) => void;
+  private readonly boundOnSimulatedTimeTick_: (data: SimulatedTimeTickData) => void;
   private timerUpdateInterval_: number | null = null;
+  private clockEl_: HTMLElement | null = null;
 
   /** Maximum number of alarms to show inline */
   private readonly MAX_INLINE_ALARMS_ = 3;
 
   constructor(private readonly parentContainerId_: string) {
     this.boundOnAlarmStateChanged_ = this.onAlarmStateChanged_.bind(this);
+    this.boundOnSimulatedTimeTick_ = this.onSimulatedTimeTick_.bind(this);
     this.init_();
     this.subscribeToAlarms_();
+    this.subscribeToSimulatedTime_();
     this.startTimerUpdates_();
   }
 
@@ -45,7 +49,7 @@ export class GlobalCommandBar {
         <i class="fa-solid fa-earth-americas text-blue-500 text-xl mr-3"></i>
         <div>
           <div class="font-bold tracking-wide text-white">ORBITAL<span class="text-blue-500">OPS</span></div>
-          <div class="text-[10px] text-slate-400 font-mono" id="utc-clock">Loading...</div>
+          <div class="text-[10px] text-slate-400 font-mono" id="utc-clock">-- --- ---- --:--:--</div>
         </div>
       </div>
 
@@ -96,10 +100,21 @@ export class GlobalCommandBar {
     this.messagesEl_ = qs('#alarm-messages', parentDom);
     this.objectiveTimerEl_ = parentDom?.querySelector('#objective-timer-display') ?? null;
     this.scenarioTimerEl_ = parentDom?.querySelector('#scenario-timer-display') ?? null;
+    this.clockEl_ = parentDom?.querySelector('#utc-clock') ?? null;
   }
 
   private subscribeToAlarms_(): void {
     EventBus.getInstance().on(Events.ALARM_STATE_CHANGED, this.boundOnAlarmStateChanged_);
+  }
+
+  private subscribeToSimulatedTime_(): void {
+    EventBus.getInstance().on(Events.SIMULATED_TIME_TICK, this.boundOnSimulatedTimeTick_);
+  }
+
+  private onSimulatedTimeTick_(data: SimulatedTimeTickData): void {
+    if (this.clockEl_) {
+      this.clockEl_.textContent = data.timeFormatted;
+    }
   }
 
   private onAlarmStateChanged_(data: AlarmStateChangedData): void {
@@ -396,6 +411,7 @@ export class GlobalCommandBar {
 
   dispose(): void {
     EventBus.getInstance().off(Events.ALARM_STATE_CHANGED, this.boundOnAlarmStateChanged_);
+    EventBus.getInstance().off(Events.SIMULATED_TIME_TICK, this.boundOnSimulatedTimeTick_);
 
     if (this.timerUpdateInterval_) {
       clearInterval(this.timerUpdateInterval_);

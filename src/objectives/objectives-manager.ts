@@ -9,6 +9,7 @@ import { TapPoint } from "@app/equipment/rf-front-end/coupler-module/tap-points"
 import { EventBus } from '@app/events/event-bus';
 import { Events, QuizCompletedData, QuizPassedData } from '@app/events/events';
 import { QuizManager } from '@app/modal/quiz-manager';
+import { OpsLogManager } from '@app/ops-log/ops-log-manager';
 import { SimulationManager } from '@app/simulation/simulation-manager';
 import { TrafficControlManager } from '@app/traffic/traffic-control-manager';
 import { Milliseconds } from 'ootk';
@@ -125,6 +126,14 @@ export class ObjectivesManager {
     }
 
     ObjectivesManager.instance_ = new ObjectivesManager(objectives, scenarioTimeLimit);
+
+    // If there's no freezing objective, resume simulated time immediately
+    // (OpsLogManager starts paused by default, waiting for scenario to unlock)
+    const hasFreezingObjective = objectives.some(obj => obj.freezesScenarioTimer);
+    if (!hasFreezingObjective && OpsLogManager.isInitialized()) {
+      OpsLogManager.getInstance().resume();
+    }
+
     return ObjectivesManager.instance_;
   }
 
@@ -286,6 +295,11 @@ export class ObjectivesManager {
    * Called every second to update timers
    */
   private tickTimers_(): void {
+    // Don't tick if OpsLogManager is paused - keep timers in sync with simulated time
+    if (OpsLogManager.isInitialized() && OpsLogManager.getInstance().isPaused()) {
+      return;
+    }
+
     // Update scenario timer
     if (this.scenarioTimerRunning_ && this.scenarioTimeRemaining_ > 0) {
       this.scenarioTimeRemaining_--;
@@ -317,6 +331,11 @@ export class ObjectivesManager {
     // Stop ALL timers when any objective fails
     this.stopAllTimers();
 
+    // Pause simulated time
+    if (OpsLogManager.isInitialized()) {
+      OpsLogManager.getInstance().pause();
+    }
+
     this.eventBus_.emit(Events.OBJECTIVE_FAILED, {
       objectiveId: state.objective.id,
       objective: state.objective,
@@ -330,6 +349,11 @@ export class ObjectivesManager {
    */
   private handleScenarioTimeout_(): void {
     this.stopAllTimers();
+
+    // Pause simulated time
+    if (OpsLogManager.isInitialized()) {
+      OpsLogManager.getInstance().pause();
+    }
 
     this.eventBus_.emit(Events.SCENARIO_TIME_EXPIRED, {
       elapsedTime: this.getElapsedTime(),
@@ -363,6 +387,11 @@ export class ObjectivesManager {
     if (state) {
       state.isTimerRunning = false;
     }
+
+    // Pause simulated time
+    if (OpsLogManager.isInitialized()) {
+      OpsLogManager.getInstance().pause();
+    }
   }
 
   /**
@@ -385,6 +414,11 @@ export class ObjectivesManager {
       this.scenarioTimerRunning_ = true;
     }
     // Note: objective timer doesn't resume - it will be replaced by next objective's timer
+
+    // Resume simulated time
+    if (OpsLogManager.isInitialized()) {
+      OpsLogManager.getInstance().resume();
+    }
   }
 
   /**
@@ -496,6 +530,15 @@ export class ObjectivesManager {
       if (currentState.isCompleted) {
         this.activateDependentObjectives_(currentState.objective.id);
       }
+    }
+
+    // Resume OpsLogManager if no freezing objective is incomplete
+    // (scenario should be unlocked if freezing objective was already completed)
+    const hasIncompleteFreezingObjective = this.objectiveStates_.some(
+      state => state.objective.freezesScenarioTimer && !state.isCompleted
+    );
+    if (!hasIncompleteFreezingObjective && OpsLogManager.isInitialized()) {
+      OpsLogManager.getInstance().resume();
     }
   }
 
@@ -665,10 +708,16 @@ export class ObjectivesManager {
         // Activate any objectives that were waiting for this prerequisite
         this.activateDependentObjectives_(objectiveState.objective.id);
 
-        // If this was a freezing objective, start the scenario timer now
+        // If this was a freezing objective, start the scenario timer and resume simulated time
         if (objectiveState.objective.freezesScenarioTimer) {
           this.scenarioTimerRunning_ = true;
           this.scenarioStartTime_ = Date.now(); // Reset start time so elapsed time is from now
+
+          // Resume simulated time (OpsLogManager starts paused until scenario unlocks)
+          if (OpsLogManager.isInitialized()) {
+            OpsLogManager.getInstance().resume();
+          }
+
           this.eventBus_.emit(Events.SCENARIO_UNLOCKED);
         }
 
@@ -676,6 +725,11 @@ export class ObjectivesManager {
         if (this.areAllObjectivesCompleted()) {
           // Freeze all timers when scenario is completed
           this.stopAllTimers();
+
+          // Pause simulated time
+          if (OpsLogManager.isInitialized()) {
+            OpsLogManager.getInstance().pause();
+          }
 
           this.eventBus_.emit(Events.OBJECTIVES_ALL_COMPLETED, {
             completedObjectives: this.objectiveStates_,

@@ -256,6 +256,14 @@ export interface DualTransmissionViolationData {
   detectedAt: number;
 }
 
+// Simulated Time Event specific interfaces
+export interface SimulatedTimeTickData {
+  /** Military format datetime string, e.g., "15 MAR 2025 22:05:15" */
+  timeFormatted: string;
+  /** Unix timestamp in milliseconds */
+  timestampMs: number;
+}
+
 export enum Events {
   // Antenna events
   ANTENNA_STATE_CHANGED = 'antenna:state:changed',
@@ -350,6 +358,9 @@ export enum Events {
 
   // Ops Log events
   OPS_LOG_ENTRY_ADDED = 'ops-log:entry:added',
+
+  // Simulated Time events
+  SIMULATED_TIME_TICK = 'simulated-time:tick',
 }
 
 export interface EventMap {
@@ -437,4 +448,7 @@ export interface EventMap {
 
   // Ops Log events
   [Events.OPS_LOG_ENTRY_ADDED]: [OpsLogEntry];
+
+  // Simulated Time events
+  [Events.SIMULATED_TIME_TICK]: [SimulatedTimeTickData];
 }

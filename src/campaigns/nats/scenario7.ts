@@ -45,6 +45,7 @@ export const scenario7Data: ScenarioData = {
     isExtraSatellitesVisible: true,
     missionBriefUrl: getAssetUrl('/assets/campaigns/nats/7/mission-brief.html'),
     scenarioStartWallTime: '22:00:00', // 10 PM - night shift
+    scenarioStartDate: '2025-03-15',
     previousShiftLogs: [
       {
         timestamp: '17:30',

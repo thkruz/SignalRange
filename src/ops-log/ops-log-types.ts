@@ -34,6 +34,6 @@ export interface PreviousShiftLogEntry {
 export interface OpsLogState {
   /** All log entries (previous shift + current session) */
   entries: OpsLogEntry[];
-  /** Current fictional clock time in seconds since midnight */
-  currentTimeSeconds: number;
+  /** Current simulated time as Unix timestamp in milliseconds */
+  currentTimestampMs: number;
 }

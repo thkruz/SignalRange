@@ -121,6 +121,41 @@ jobs:
             echo "Line coverage: ${COVERAGE}%" >> $GITHUB_STEP_SUMMARY
           fi
 
+  e2e-tests:
+    name: E2E Tests
+    needs: [lint, type-check, test]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Node Project
+        uses: ./.github/actions/setup-node-project
+
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run E2E Tests
+        run: npm run test:e2e
+
+      - name: Upload Playwright Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
+      - name: E2E Test Summary
+        if: always()
+        run: |
+          echo "### E2E Test Results" >> $GITHUB_STEP_SUMMARY
+          if [ -d playwright-report ]; then
+            echo "E2E tests completed. See artifact for details." >> $GITHUB_STEP_SUMMARY
+          fi
+
   security-audit:
     name: Security Audit
     runs-on: ubuntu-latest
@@ -154,7 +189,7 @@ jobs:
 
   build:
     name: Build
-    needs: [lint, type-check, test, security-audit]
+    needs: [lint, type-check, test, security-audit, e2e-tests]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code

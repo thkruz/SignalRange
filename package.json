@@ -20,7 +20,11 @@
     "test": "npx jest --config jest.config.js",
     "test:coverage": "npx jest --config jest.config.js --coverage",
     "lint": "npx eslint --config .eslintrc",
-    "lcov": "npx tsx build/open-lcov.ts"
+    "lcov": "npx tsx build/open-lcov.ts",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:debug": "playwright test --debug",
+    "test:e2e:report": "playwright show-report"
   },
   "keywords": [
     "space",
@@ -30,6 +34,7 @@
   "author": "Theodore Kruczek",
   "license": "AGPL-3.0",
   "devDependencies": {
+    "@playwright/test": "^1.48.0",
     "@babel/preset-env": "^7.28.5",
     "@babel/preset-typescript": "^7.28.5",
     "@types/draggabilly": "^3.0.0",

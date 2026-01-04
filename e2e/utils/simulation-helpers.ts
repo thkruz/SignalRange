@@ -1,0 +1,126 @@
+import { Page, expect } from '@playwright/test';
+
+/**
+ * Wait for the simulation to initialize and stabilize.
+ * The app has async initialization in MissionControlPage.
+ */
+export async function waitForSimulationReady(page: Page): Promise<void> {
+  // Wait for the app shell to be visible
+  await expect(page.locator('#app-shell-page')).toBeVisible({ timeout: 15000 });
+
+  // Wait for ground stations to appear in the asset tree
+  const gsItems = page.locator('[data-asset-type="ground-station"], .ground-station-item, .asset-tree-item');
+  await expect(gsItems.first()).toBeVisible({ timeout: 15000 });
+
+  // Give the simulation time to start the game loop
+  await page.waitForTimeout(2000);
+}
+
+/**
+ * Wait for a specific DOM state in the simulation.
+ * Useful for waiting on equipment state changes.
+ */
+export async function waitForDomState(
+  page: Page,
+  selector: string,
+  expectedText: string,
+  timeout = 30000
+): Promise<void> {
+  await page.waitForFunction(
+    ({ sel, text }) => {
+      const element = document.querySelector(sel);
+      return element?.textContent?.includes(text) ?? false;
+    },
+    { sel: selector, text: expectedText },
+    { timeout }
+  );
+}
+
+/**
+ * Wait for an objective to become active.
+ */
+export async function waitForObjectiveActive(page: Page, objectiveId: string): Promise<void> {
+  await page.waitForFunction(
+    (id) => {
+      const objective = document.querySelector(`[data-objective-id="${id}"]`);
+      return objective?.classList.contains('active') ?? false;
+    },
+    objectiveId,
+    { timeout: 30000 }
+  );
+}
+
+/**
+ * Wait for an objective to be completed.
+ */
+export async function waitForObjectiveCompleted(page: Page, objectiveId: string): Promise<void> {
+  await page.waitForFunction(
+    (id) => {
+      const objective = document.querySelector(`[data-objective-id="${id}"]`);
+      return objective?.classList.contains('completed') ||
+             objective?.querySelector('.completed') !== null;
+    },
+    objectiveId,
+    { timeout: 30000 }
+  );
+}
+
+/**
+ * Wait for a dialog/modal to appear.
+ */
+export async function waitForDialog(page: Page): Promise<void> {
+  await page.locator('.dialog-box, .scenario-dialog, .modal-confirm').waitFor({ state: 'visible', timeout: 10000 });
+}
+
+/**
+ * Dismiss any visible dialog.
+ */
+export async function dismissDialog(page: Page): Promise<void> {
+  const dialog = page.locator('.dialog-box, .scenario-dialog');
+  if (await dialog.isVisible()) {
+    const closeButton = dialog.locator('.close-btn, button:has-text("Continue"), button:has-text("OK")').first();
+    await closeButton.click();
+    await expect(dialog).not.toBeVisible();
+  }
+}
+
+/**
+ * Clear browser storage to start fresh.
+ */
+export async function clearStorage(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+  });
+}
+
+/**
+ * Wait for the quiz modal to appear and answer it.
+ * @param optionIndex 0-based index of the correct answer
+ */
+export async function answerQuiz(page: Page, optionIndex: number): Promise<void> {
+  const quizModal = page.locator('.quiz-modal');
+  await expect(quizModal).toBeVisible({ timeout: 10000 });
+
+  const options = quizModal.locator('.quiz-option');
+  await options.nth(optionIndex).click();
+
+  const continueButton = quizModal.locator('.quiz-continue-btn, .quiz-submit-btn, button:has-text("Continue")');
+  await continueButton.click();
+
+  // Wait for quiz to close or show result
+  await page.waitForTimeout(500);
+}
+
+/**
+ * Check if an element exists and is visible.
+ */
+export async function isVisible(page: Page, selector: string): Promise<boolean> {
+  const element = page.locator(selector);
+  try {
+    await expect(element).toBeVisible({ timeout: 1000 });
+    return true;
+  } catch {
+    return false;
+  }
+}

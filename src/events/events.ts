@@ -15,6 +15,7 @@ import { Milliseconds } from "ootk";
 import { ReceiverModemState } from "../equipment/receiver/receiver";
 import { TransmitterModem } from "../equipment/transmitter/transmitter";
 import { ConditionState, Objective, ObjectiveState } from "../objectives/objective-types";
+import { OpsLogEntry } from "../ops-log/ops-log-types";
 import { RfSignal } from "../types";
 
 // Antenna Event specific interfaces
@@ -346,6 +347,9 @@ export enum Events {
   HANDOVER_COMPLETE = 'handover:complete',
   HANDOVER_CANCELLED = 'handover:cancelled',
   DUAL_TRANSMISSION_VIOLATION = 'handover:dual-transmission-violation',
+
+  // Ops Log events
+  OPS_LOG_ENTRY_ADDED = 'ops-log:entry:added',
 }
 
 export interface EventMap {
@@ -430,4 +434,7 @@ export interface EventMap {
   [Events.HANDOVER_COMPLETE]: [HandoverCompleteData];
   [Events.HANDOVER_CANCELLED]: [HandoverCancelledData];
   [Events.DUAL_TRANSMISSION_VIOLATION]: [DualTransmissionViolationData];
+
+  // Ops Log events
+  [Events.OPS_LOG_ENTRY_ADDED]: [OpsLogEntry];
 }

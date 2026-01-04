@@ -9,6 +9,7 @@ import { ObjectiveFailedModal } from "@app/modal/objective-failed-modal";
 import { QuizModal } from "@app/modal/quiz-modal";
 import { TimePenaltyToast } from "@app/modal/time-penalty-toast";
 import { ObjectivesManager } from "@app/objectives/objectives-manager";
+import { OpsLogManager } from "@app/ops-log/ops-log-manager";
 import { NavigationOptions, Router } from "@app/router";
 import { ScenarioManager } from "@app/scenario-manager";
 import { ScenarioDialogManager } from "@app/scenarios/scenario-dialog-manager";
@@ -67,6 +68,12 @@ export abstract class BasePage extends BaseElement {
         return; // Skip normal initialization - no timers started
       }
     }
+
+    // Initialize ops log manager (always, for all scenarios)
+    OpsLogManager.initialize(
+      scenario.settings.scenarioStartWallTime,
+      scenario.settings.previousShiftLogs
+    );
 
     // Initialize objectives manager if scenario has objectives
     if (scenario.data?.objectives && scenario.data.objectives.length > 0) {

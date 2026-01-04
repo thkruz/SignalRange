@@ -1,4 +1,5 @@
 import { GroundStationConfig } from './assets/ground-station/ground-station-state';
+import { PreviousShiftLogEntry } from './ops-log/ops-log-types';
 import { scenario1Data } from './campaigns/nats/scenario1';
 import { scenario2Data } from "./campaigns/nats/scenario2";
 import { scenario3Data } from './campaigns/nats/scenario3';
@@ -72,6 +73,10 @@ export interface SimulationSettings {
     /** Initial owner ground station ID */
     initialOwnerId: string;
   }>;
+  /** Scenario start wall-clock time in HH:MM:SS format (e.g., "22:00:00" for 10 PM) */
+  scenarioStartWallTime?: string;
+  /** Previous shift maintenance/ops log entries */
+  previousShiftLogs?: PreviousShiftLogEntry[];
 }
 
 export class ScenarioManager {

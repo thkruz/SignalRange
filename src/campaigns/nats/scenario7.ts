@@ -1,17 +1,9 @@
-import { type AntennaState } from '@app/equipment/antenna';
-import { ANTENNA_CONFIG_KEYS } from "@app/equipment/antenna/antenna-config-keys";
-import { Receiver } from '@app/equipment/receiver/receiver';
-import { BUCModuleCore } from '@app/equipment/rf-front-end/buc-module';
-import { CouplerState } from '@app/equipment/rf-front-end/coupler-module/coupler-module';
-import { TapPoint } from '@app/equipment/rf-front-end/coupler-module/tap-points';
-import { IfFilterBankModuleCore } from '@app/equipment/rf-front-end/filter-module';
-import { HPAModuleCore } from '@app/equipment/rf-front-end/hpa-module';
-import { OMTModule } from '@app/equipment/rf-front-end/omt-module/omt-module';
-import { Satellite } from '@app/equipment/satellite/satellite';
+import { Character, Emotion } from '@app/modal/character-enum';
+import { Objective } from '@app/objectives';
 import type { ScenarioData } from '@app/ScenarioData';
-import { SignalOrigin } from '@app/signal-origin';
-import type { dB, dBi, dBm, FECType, Hertz, MHz, ModulationType, RfFrequency } from '@app/types';
-import type { Degrees } from 'ootk';
+import { getAssetUrl } from '@app/utils/asset-url';
+import { maineGroundStation, vermontGroundStation } from './ground-stations';
+import { tidemark1Satellite, tidemark2Satellite } from './satellites';
 
 /**
  * NATS Level 7: "Equipment Cascade"
@@ -29,8 +21,8 @@ import type { Degrees } from 'ootk';
 
 export const scenario7Data: ScenarioData = {
   id: 'nats-level-7-equipment-cascade',
-  isDisabled: true,
-  prerequisiteScenarioIds: ['nats-level-6-interference-hunt'],
+  // prerequisiteScenarioIds: ['nats-level-6-interference-hunt'],
+  prerequisiteScenarioIds: [],
   url: 'nats/level-7/equipment-cascade',
   imageUrl: 'nats/7/card.png',
   number: 7,
@@ -50,262 +42,560 @@ export const scenario7Data: ScenarioData = {
   ],
   settings: {
     isSync: true,
+    isExtraSatellitesVisible: true,
+    missionBriefUrl: getAssetUrl('/assets/campaigns/nats/7/mission-brief.html'),
+    scenarioStartWallTime: '22:00:00', // 10 PM - night shift
+    previousShiftLogs: [
+      {
+        timestamp: '17:30',
+        entry: 'Roof maintenance crew reported GPS antenna cable may have been disturbed during snow removal',
+        source: 'Day Shift',
+      },
+      {
+        timestamp: '18:15',
+        entry: 'GPSDO showing intermittent satellite count fluctuations - monitoring',
+        source: 'Day Shift',
+      },
+      {
+        timestamp: '21:45',
+        entry: 'Charlie heading to dinner break - will be back in 45 minutes',
+        source: 'Charlie',
+      },
+    ],
     // cascadeEventTimings: {
     //   primaryFault: 0, // GPSDO holdover at mission start
     //   secondaryFault: 300, // LNB temp alarm at 5 minutes
     // },
     groundStations: [
-      {
-        id: 'VT-01',
-        name: 'Vermont Ground Station',
-        location: {
-          latitude: 44.5588,
-          longitude: -72.5778,
-          elevation: 350,
-        },
-        antennas: [ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK],
-        antennasState: [
-          {
-            // Currently serving TIDEMARK-1
-            isPowered: true,
-            azimuth: 214.2 as Degrees,
-            elevation: 24.8 as Degrees,
-            polarization: 0 as Degrees,
-            isTracking: true,
-            trackingMode: 'step-track',
-          } as Partial<AntennaState>,
-        ],
-        rfFrontEnds: [
-          {
-            // Primary RF front end
-            omt: OMTModule.getDefaultState(),
-            buc: {
-              ...BUCModuleCore.getDefaultState(),
-              isPowered: false,
-              loFrequency: 2225 as MHz,
-              outputPower: 0 as dBm,
-              isMuted: true,
-              isExtRefLocked: true, // Still locked, but to degrading reference
-            },
-            hpa: {
-              ...HPAModuleCore.getDefaultState(),
-              isPowered: false,
-              isHpaEnabled: false,
-              outputPower: 0 as dBm,
-            },
-            filter: {
-              ...IfFilterBankModuleCore.getDefaultState(),
-              isPowered: true,
-              bandwidthIndex: 3,
-            },
-            lnb: {
-              isPowered: true,
-              loFrequency: 5150 as MHz,
-              gain: 55 as dB,
-              lnaNoiseFigure: 0.6,
-              mixerNoiseFigure: 16.0,
-              noiseTemperature: 65, // Will rise to 95 at 5-minute mark
-              noiseTemperatureStabilizationTime: 0,
-              isExtRefLocked: true,
-              noiseFloor: -140,
-              frequencyError: 0, // Will increase over time due to GPSDO drift
-              temperature: 45, // Will rise to 85 at 5-minute mark (ALARM)
-              thermalStabilizationTime: 0,
-              // temperatureAlarmThreshold: 75, // °C
-            },
-            coupler: {
-              isPowered: true,
-              tapPointA: TapPoint.TX_IF,
-              tapPointB: TapPoint.RX_IF,
-              availableTapPointsA: [TapPoint.TX_IF, TapPoint.TX_RF_POST_BUC],
-              availableTapPointsB: [TapPoint.RX_IF],
-              couplingFactorA: -40,
-              couplingFactorB: -39,
-              isActiveA: true,
-              isActiveB: true,
-            } as CouplerState,
-            gpsdo: {
-              isPowered: true,
-              isLocked: false, // *** PRIMARY FAULT: GNSS lock lost ***
-              warmupTimeRemaining: 0,
-              temperature: 65,
-              gnssSignalPresent: false, // GPS antenna cable disconnected
-              isGnssSwitchUp: false,
-              isGnssAcquiringLock: false,
-              satelliteCount: 0,
-              utcAccuracy: 0,
-              constellation: 'GPS',
-              lockDuration: 0,
-              frequencyAccuracy: 1e-9, // Degrading in holdover
-              allanDeviation: 5e-11, // Worse than locked
-              phaseNoise: -130, // Worse than locked
-              isInHoldover: true, // *** HOLDOVER MODE ***
-              holdoverDuration: 0, // Just entered holdover
-              holdoverError: 0, // Will accumulate over time
-              // holdoverStability: 1e-9, // Degrades at this rate
-              // maxHoldoverTime: 1200, // 20 minutes before unacceptable drift
-              active10MHzOutputs: 5, // Still feeding equipment
-              max10MHzOutputs: 5,
-              output10MHzLevel: 0,
-              ppsOutputsEnabled: true,
-              operatingHours: 86400,
-              selfTestPassed: true,
-              agingRate: 1e-10,
-            },
-          },
-          {
-            // Backup RF front end (hot spare, can be switched to)
-            omt: OMTModule.getDefaultState(),
-            buc: {
-              ...BUCModuleCore.getDefaultState(),
-              isPowered: false,
-              loFrequency: 2225 as MHz,
-              outputPower: 0 as dBm,
-              isMuted: true,
-              isExtRefLocked: false,
-            },
-            hpa: {
-              ...HPAModuleCore.getDefaultState(),
-              isPowered: false,
-              isHpaEnabled: false,
-              outputPower: 0 as dBm,
-            },
-            filter: {
-              ...IfFilterBankModuleCore.getDefaultState(),
-              isPowered: false,
-              bandwidthIndex: 0,
-            },
-            lnb: {
-              // Backup LNB - cold spare, needs configuration
-              isPowered: false,
-              loFrequency: 5150 as MHz,
-              gain: 55 as dB,
-              lnaNoiseFigure: 0.6,
-              mixerNoiseFigure: 16.0,
-              noiseTemperature: 20, // Cold
-              noiseTemperatureStabilizationTime: 180,
-              isExtRefLocked: false,
-              noiseFloor: -140,
-              frequencyError: 0,
-              temperature: 18, // Cold
-              thermalStabilizationTime: 180,
-              // temperatureAlarmThreshold: 75,
-            },
-            coupler: {
-              isPowered: false,
-              tapPointA: TapPoint.TX_IF,
-              tapPointB: TapPoint.RX_IF,
-              availableTapPointsA: [TapPoint.TX_IF, TapPoint.TX_RF_POST_BUC],
-              availableTapPointsB: [TapPoint.RX_IF],
-              couplingFactorA: -40,
-              couplingFactorB: -39,
-              isActiveA: false,
-              isActiveB: false,
-            } as CouplerState,
-            gpsdo: {
-              // Backup GPSDO - available if needed
-              isPowered: true,
-              isLocked: true,
-              warmupTimeRemaining: 0,
-              temperature: 60,
-              gnssSignalPresent: true,
-              isGnssSwitchUp: true,
-              isGnssAcquiringLock: false,
-              satelliteCount: 9,
-              utcAccuracy: 20,
-              constellation: 'GPS',
-              lockDuration: 86400,
-              frequencyAccuracy: 1e-12,
-              allanDeviation: 6e-13,
-              phaseNoise: -138,
-              isInHoldover: false,
-              holdoverDuration: 0,
-              holdoverError: 0,
-              active10MHzOutputs: 0, // Not currently feeding anything
-              max10MHzOutputs: 5,
-              output10MHzLevel: 0,
-              ppsOutputsEnabled: true,
-              operatingHours: 86400,
-              selfTestPassed: true,
-              agingRate: 1.2e-10,
-            },
-          },
-        ],
-        spectrumAnalyzers: [
-          {
-            referenceLevel: -50,
-            centerFrequency: 3947.8e6 as Hertz,
-            span: 10e6 as Hertz,
-            rbw: 10e3 as Hertz,
-            minAmplitude: -170,
-            maxAmplitude: 0,
-            scaleDbPerDiv: 12 as dB,
-            screenMode: 'both',
-            inputUnit: 'MHz',
-            inputValue: '',
-            traces: [
-              { isVisible: true, isUpdating: true, mode: 'clearwrite' },
-              { isVisible: false, isUpdating: false, mode: 'clearwrite' },
-              { isVisible: false, isUpdating: false, mode: 'clearwrite' },
-            ],
-            selectedTrace: 1,
-          }
-        ],
-        transmitters: [],
-        receivers: [Receiver.getDefaultState()],
-      },
+      vermontGroundStation,
+      maineGroundStation,
     ],
     satellites: [
-      new Satellite(
-        'TIDEMARK-1',
-        1,
-        [
-          {
-            signalId: 'tidemark-1-beacon',
-            serverId: 1,
-            noradId: 1,
-            frequency: 3947.8e6 as RfFrequency,
-            polarization: 'H',
-            power: -95 as dBm,
-            bandwidth: 1e3 as Hertz,
-            modulation: 'CW' as ModulationType,
-            fec: 'none' as FECType,
-            feed: null,
-            isDegraded: false,
-            origin: SignalOrigin.SATELLITE_TX,
-            noiseFloor: null,
-            gainInPath: 0 as dBi,
-          },
-          {
-            signalId: 'tidemark-1-carrier',
-            serverId: 1,
-            noradId: 1,
-            frequency: 3952.5e6 as RfFrequency,
-            polarization: 'H',
-            power: -87 as dBm,
-            bandwidth: 5e6 as Hertz,
-            modulation: '16APSK' as ModulationType,
-            fec: '3/4' as FECType,
-            feed: 'maritime-data.mp4',
-            isDegraded: false, // Not degraded yet, but will be if faults not fixed
-            origin: SignalOrigin.SATELLITE_TX,
-            noiseFloor: null,
-            gainInPath: 0 as dBi,
-          }
-        ],
-        [],
-        {
-          az: 214.2 as Degrees,
-          el: 24.8 as Degrees,
-          frequencyOffset: 2.225e9 as Hertz,
-        }
-      ),
+      tidemark1Satellite,
+      tidemark2Satellite,
     ],
-    // maintenanceLogs: [
-    //   {
-    //     timestamp: 'Earlier Today',
-    //     entry: 'Roof maintenance crew reported GPS antenna cable may have been disturbed during snow removal',
-    //   }
-    // ],
+  },
+  timeLimitSeconds: 1200, // 20 minutes
+  objectives: [
+    {
+      id: 'open-mission-brief',
+      title: 'Review Mission Brief',
+      description: 'Open and read the mission brief, then acknowledge you are ready to proceed.',
+      groundStation: 'VT-01',
+      freezesScenarioTimer: true,
+      conditions: [
+        {
+          type: 'mission-brief-opened',
+          description: 'Mission Brief Document Opened',
+          params: { boxId: 'mission-brief' },
+          mustMaintain: false,
+        },
+        {
+          type: 'status-check',
+          description: 'Ready to Proceed',
+          params: {
+            question: 'Have you reviewed the mission brief and are you ready to begin?',
+            options: [
+              'Yes, I have read the mission brief and I am ready to proceed.',
+            ],
+            correctIndex: 0,
+            explanation: 'The mission timer has started. Good luck!',
+            pointPenalty: 0,
+          },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 5,
+    },
+    {
+      id: 'phase-1-gpsdo',
+      title: 'GPSDO Status Check',
+      description: 'Click on the GPSDO panel and verify all status indicators show normal operation.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['open-mission-brief'],
+      conditions: [
+        {
+          type: 'status-check',
+          description: 'Verify GPSDO Status',
+          params: {
+            question: 'What does the GPSDO "Lock" indicator show?',
+            options: [
+              'Locked (green) - stable frequency reference',
+              'Unlocked (red) - no frequency reference',
+              'Holdover (yellow) - using backup oscillator',
+              'Off - GPSDO is powered down',
+            ],
+            correctIndex: 0,
+            explanation: 'The green "Locked" indicator means the GPSDO is receiving GPS timing signals and providing a stable 10 MHz reference to all equipment in the rack.',
+            pointPenalty: 10,
+          },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 20,
+      timeLimitSeconds: 5 * 60, // 5 minutes
+    },
+    {
+      id: 'phase-2-lnb',
+      title: 'LNB Status Check',
+      description: 'Review the LNB panel. Learn what each indicator means for the receive chain.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['phase-1-gpsdo'],
+      conditions: [
+        {
+          type: 'status-check',
+          description: 'Verify LNB Noise Temperature',
+          params: {
+            question: 'What is the LNB noise temperature reading, and is it within spec?',
+            options: [
+              '43K - within spec (good receive sensitivity)',
+              '150K - above spec (degraded sensitivity)',
+              '290K - far above spec (major problem)',
+              'No reading - LNB is offline',
+            ],
+            correctIndex: 0,
+            explanation: 'The LNB noise temperature of 43K is excellent. Lower noise temperature means better receive sensitivity. Anything under 100K is considered good for C-band.',
+            pointPenalty: 10,
+          },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 20,
+      timeLimitSeconds: 5 * 60, // 5 minutes
+    },
+    {
+      id: 'phase-3-hpa',
+      title: 'HPA Status Check',
+      description: 'Review the High Power Amplifier panel. Learn how to verify it is in a safe standby state.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['phase-2-lnb'],
+      conditions: [
+        {
+          type: 'status-check',
+          description: 'Verify HPA Status',
+          params: {
+            question: 'What is the current state of the HPA (High Power Amplifier)?',
+            options: [
+              'Transmitting with 10 db backoff',
+              'Powered on but not enabled (safe standby)',
+              'Transmitting at full power',
+              'Powered off completely',
+            ],
+            correctIndex: 0,
+            explanation: 'The HPA is powered on and transmitting with 10 dB backoff, which is a safe condition for routine operations. This reduces stress on the amplifier while still allowing signal transmission.',
+            pointPenalty: 10,
+          },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 20,
+      timeLimitSeconds: 5 * 60, // 5 minutes
+    },
+    {
+      id: 'phase-4-antenna',
+      title: 'Antenna Tracking Status',
+      description: 'Check the antenna control unit. The antenna should be actively tracking TIDEMARK-1.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['phase-3-hpa'],
+      conditions: [
+        {
+          type: 'status-check',
+          description: 'Verify Antenna Tracking Mode',
+          params: {
+            question: 'What tracking mode is the antenna currently using?',
+            options: [
+              'Step-track - actively tracking beacon signal',
+              'Program-track - following predicted orbital position',
+              'Manual - operator-controlled pointing',
+              'Stow - antenna in safe position',
+            ],
+            correctIndex: 1,
+            explanation: 'Program-track mode follows the predicted orbital position of the satellite based on ephemeris data. This mode is used when the beacon signal is not available, during initial acquisition, or when the satellite is GEO stationary and we don\'t want the ACU to make constant adjustments.',
+            pointPenalty: 10,
+          },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 20,
+      timeLimitSeconds: 5 * 60, // 5 minutes
+    },
+    {
+      id: 'phase-5-polarization',
+      title: 'ACU Polarization Check',
+      description: 'Verify the antenna polarization setting matches the satellite requirements.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['phase-4-antenna'],
+      conditions: [
+        {
+          type: 'status-check',
+          description: 'Verify Polarization Setting',
+          params: {
+            question: 'What is the current polarization angle shown on the ACU, and why is it set to that value?',
+            options: [
+              '14° - matched to TIDEMARK-1 satellite polarization',
+              '0° - default horizontal polarization',
+              '90° - vertical polarization',
+              '45° - circular polarization',
+            ],
+            correctIndex: 0,
+            explanation: 'The polarization is set to 14° to match TIDEMARK-1\'s polarization angle. Proper polarization alignment maximizes signal strength and minimizes cross-pol interference.',
+            pointPenalty: 10,
+          },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 20,
+      timeLimitSeconds: 5 * 60, // 5 minutes
+    },
+    {
+      id: 'phase-6-spectrum',
+      title: 'Spectrum Analyzer Reading',
+      description: 'Look at the spectrum analyzer display. You should see the TIDEMARK-1 beacon signal.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['phase-5-polarization'],
+      conditions: [
+        {
+          type: 'status-check',
+          description: 'Identify Beacon Signal',
+          params: {
+            question: 'What do you see at the center of the spectrum analyzer display?',
+            options: [
+              'A clear spike - the TIDEMARK-1 beacon signal',
+              'Only noise floor - no signal detected',
+              'Multiple interference spikes - contaminated spectrum',
+              'Flat line at 0 dBm - equipment malfunction',
+            ],
+            correctIndex: 0,
+            explanation: 'The beacon signal appears as a narrow spike rising above the noise floor. This CW (continuous wave) intermediate frequency signal confirms the satellite is in view and the receive chain is working.',
+            pointPenalty: 10,
+          },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 20,
+      timeLimitSeconds: 5 * 60, // 5 minutes
+    },
+    {
+      id: 'phase-7-speca-settings',
+      title: 'Spectrum Analyzer Settings',
+      description: 'Review the spectrum analyzer settings to understand how it is configured for beacon observation.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['phase-6-spectrum'],
+      conditions: [
+        {
+          type: 'status-check',
+          description: 'Verify Spectrum Analyzer Configuration',
+          params: {
+            question: 'What center frequency and reference level are set on the spectrum analyzer?',
+            options: [
+              '1074.5 MHz center, -91 dBm reference - configured for TIDEMARK-1 beacon IF',
+              '1532 MHz center, -50 dBm reference - configured for TIDEMARK-1 RF frequency',
+              '0.002 MHz center, -30 dBm reference - configured for baseband',
+              '40 MHz bandwidth, 1.8 dB insertion loss - configured for low noise floor',
+            ],
+            correctIndex: 0,
+            explanation: 'The spectrum analyzer is set to 1074.5 MHz (beacon IF frequency for TIDEMARK-1 after LNB downconversion) with a -91 dBm reference level to properly display the weak beacon signal above the noise floor.',
+            pointPenalty: 10,
+          },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 20,
+      timeLimitSeconds: 5 * 60, // 5 minutes
+    },
+    {
+      id: 'phase-8-receiver',
+      title: 'Receiver Modem Check',
+      description: 'Verify the receiver modem is locked and the link quality is good.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['phase-7-speca-settings'],
+      conditions: [
+        {
+          type: 'status-check',
+          description: 'Verify Link Quality',
+          params: {
+            question: 'What does the receiver modem C/N indicate for a QPSK link?',
+            options: [
+              '≥ 8 dB - Strong link with good operating margin',
+              '5-7 dB - Usable link; FEC working normally',
+              '3-4 dB - Near lock threshold; errors likely',
+              '< 3 dB - Below demodulation threshold; no reliable lock',
+            ],
+            correctIndex: 0,
+            explanation: 'A C/N ratio above 10 dB indicates a healthy link with adequate margin for reliable data reception. This confirms the entire receive chain from antenna to modem is functioning properly.',
+            pointPenalty: 10,
+          },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 20,
+      timeLimitSeconds: 5 * 60, // 5 minutes
+    },
+    {
+      id: 'phase-9-constellation',
+      title: 'I&Q Constellation Check',
+      description: 'Examine the I&Q constellation diagram to verify signal quality and modulation.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['phase-8-receiver'],
+      conditions: [
+        {
+          type: 'status-check',
+          description: 'Interpret I&Q Constellation',
+          params: {
+            question: 'What does the I&Q constellation diagram show about the received signal?',
+            options: [
+              'Tight clusters at symbol points - clean QPSK modulation',
+              'Scattered points in a circle - high noise, poor signal',
+              'Points along a line - phase-only modulation issue',
+              'Empty display - no signal lock',
+            ],
+            correctIndex: 0,
+            explanation: 'The tight clusters at the four QPSK symbol points indicate clean demodulation with good signal-to-noise ratio. Spread or scattered points would indicate noise, interference, or phase problems.',
+            pointPenalty: 10,
+          },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 20,
+      timeLimitSeconds: 5 * 60, // 5 minutes
+    },
+    {
+      id: 'phase-10-alarms',
+      title: 'Dashboard Alarm Check',
+      description: 'Final step: review the alarm dashboard to confirm no active alarms.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['phase-9-constellation'],
+      conditions: [
+        {
+          type: 'status-check',
+          description: 'Verify Alarm Status',
+          params: {
+            question: 'What is the current alarm status shown on the dashboard?',
+            options: [
+              'No active alarms - all systems nominal',
+              'Warning: LNB temperature high',
+              'Error: GPSDO holdover mode',
+              'Critical: Antenna tracking lost',
+            ],
+            correctIndex: 0,
+            explanation: 'A clean alarm dashboard with no active alarms confirms all equipment is operating within normal parameters. This is the final confirmation of a healthy ground station.',
+            pointPenalty: 10,
+          },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 20,
+      timeLimitSeconds: 5 * 60, // 5 minutes
+    },
+  ] as Objective[],
+  dialogClips: {
+    intro: {
+      text: `
+      <p>
+        You must be the new hire. Good - I was starting to think HR forgot about me. I'm Charlie Brooks, senior operator. I've been here six years, but I'm transferring to one of the European stations next month. Family stuff.
+      </p>
+      <p>
+        Point is, I've got three of you to get up to speed before I leave, and not a lot of time to do it. Let's not waste any.
+      </p>
+      <p>
+        TIDEMARK-1 is already online at 53 West, serving customer traffic for SeaLink. Today's a health check - you watch, I explain. You'll learn what each panel shows, what the indicators mean, and what "normal" looks like. Tomorrow we'll see if any of it stuck.
+      </p>
+      <p>
+        If you need to review something later, the buttons on the left are your friends - Mission Brief, Checklist, Dialog History. I'm not repeating myself, but the system will.
+      </p>
+      `,
+      character: Character.CHARLIE_BROOKS,
+      emotion: Emotion.CONFIDENT,
+      audioUrl: getAssetUrl('/assets/campaigns/nats/1/intro-v2.mp3'),
+    },
+    objectives: {
+      'open-mission-brief': {
+        text: `
+        <p>
+          Alright. First thing, always - the GPSDO. GPS-Disciplined Oscillator. It's the timing heart of this whole rack. Every piece of equipment keys off that 10 MHz reference. If the GPSDO is unhappy, nothing else matters.
+        </p>
+        <p>
+          Click Vermont Ground Station, then GPS Timing tab. Tell me what the lock indicator shows. It'll be locked, holdover, unlocked, or off. Go.
+        </p>
+        `,
+        character: Character.CHARLIE_BROOKS,
+        emotion: Emotion.NEUTRAL,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/1/v2/obj-open-mission-brief.mp3'),
+      },
+      'phase-1-gpsdo': {
+        text: `
+        <p>
+          Locked. Good start. That green light means we have a stable frequency reference - everything downstream can trust the timing. If you ever see it drop to holdover, you've got maybe twenty minutes before drift becomes a problem. Unlocked means stop what you're doing and fix it.
+        </p>
+        <p>
+          Next is the LNB - Low Noise Block downconverter. It's mounted at the antenna feed, converts C-band down to IF. The spec that matters is noise temperature, measured in Kelvin. Lower is better. Under 100K is acceptable.
+        </p>
+        <p>
+          RX Analysis tab. Find the noise temperature reading on the LNB panel.
+        </p>
+        `,
+        character: Character.CHARLIE_BROOKS,
+        emotion: Emotion.CONFIDENT,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/1/v2/obj-phase-1-gpsdo.mp3'),
+      },
+      'phase-2-lnb': {
+        text: `
+        <p>
+          43K - that's solid. The cooler the LNB runs, the less noise it adds to your signal. You start seeing that number climb, it's an early warning. Equipment doesn't fail all at once - it degrades. Your job is to catch it before the customer does.
+        </p>
+        <p>
+          Now the HPA - High Power Amplifier. This is the muscle. Takes your milliwatt signal and turns it into real power to reach the satellite. It's also the equipment most likely to ruin your day if you're not paying attention.
+        </p>
+        <p>
+          TX Chain tab. The HPA can be transmitting with backoff, muted for safety, powered off, or faulted. Which is it?
+        </p>
+        `,
+        character: Character.CHARLIE_BROOKS,
+        emotion: Emotion.HAPPY,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/1/v2/obj-phase-2-lnb.mp3'),
+      },
+      'phase-3-hpa': {
+        text: `
+        <p>
+          Transmitting with 10 dB backoff - that's normal ops. We run with headroom so we're not stressing the amplifier. The day you see that backoff at zero, you better have a good reason.
+        </p>
+        <p>
+          One thing - never assume the HPA is muted. I've seen guys reach into the waveguide thinking RF was off. It wasn't. Always verify. Anyway.
+        </p>
+        <p>
+          ACU Control tab - antenna control unit. The dish needs to stay pointed at TIDEMARK-1. There are different tracking modes: program-track follows ephemeris predictions, step-track hunts for peak signal, manual is operator-controlled, stow parks it safe. What mode are we in?
+        </p>
+        `,
+        character: Character.CHARLIE_BROOKS,
+        emotion: Emotion.CONFIDENT,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/1/v2/obj-phase-3-hpa.mp3'),
+      },
+      'phase-4-antenna': {
+        text: `
+        <p>
+          Program-track. Right answer for a GEO bird. TIDEMARK-1 sits in essentially the same spot, so we follow the math instead of constantly hunting. Eight years old now, starting to drift a bit in its box, but nothing the ephemeris can't handle.
+        </p>
+        <p>
+          Stay on ACU Control. Next is polarization - how the wave is oriented. Has to match what the satellite expects or you lose signal. Could be horizontal at 0 degrees, vertical at 90, or something in between. Cross-polarized means cross-eyed - you'll see almost nothing.
+        </p>
+        <p>
+          What's our polarization angle?
+        </p>
+        `,
+        character: Character.CHARLIE_BROOKS,
+        emotion: Emotion.CONFIDENT,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/1/v2/obj-phase-4-antenna.mp3'),
+      },
+      'phase-5-polarization': {
+        text: `
+        <p>
+          14 degrees - matched to TIDEMARK-1. That's a detail people overlook. Wrong polarization costs you dBs, and dBs are money. Or in bad weather, dBs are the difference between link and no link.
+        </p>
+        <p>
+          Alright, spectrum analyzer time. This is where you'll live as an operator. Shows you the RF environment in real time - what's there, what's not, what shouldn't be.
+        </p>
+        <p>
+          RX Analysis tab. You're looking for the beacon - TIDEMARK-1's CW carrier. Should be a clean spike above the noise floor. Could also be just noise, interference, or a flatline if something's wrong. What do you see?
+        </p>
+        `,
+        character: Character.CHARLIE_BROOKS,
+        emotion: Emotion.HAPPY,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/1/v2/obj-phase-5-polarization.mp3'),
+      },
+      'phase-6-spectrum': {
+        text: `
+        <p>
+          There it is. Clean beacon. That carrier is your canary - if you can see it, the receive path is working. If it disappears or goes ragged, something changed. Could be weather, could be equipment, could be the satellite. But you'll know something's wrong before the alarms even trip.
+        </p>
+        <p>
+          Now check the analyzer settings. Center frequency and reference level - they determine what you're actually looking at.
+        </p>
+        <p>
+          We're viewing IF after the LNB downconverts. The beacon comes down at 3902.5 MHz, LNB shifts it to 1074.5 MHz. Reference level is set to see weak signals without clipping. What values do you see?
+        </p>
+        `,
+        character: Character.CHARLIE_BROOKS,
+        emotion: Emotion.HAPPY,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/1/v2/obj-phase-6-spectrum.mp3'),
+      },
+      'phase-7-speca-settings': {
+        text: `
+        <p>
+          1074.5 center, reference around -91. That's the setup for beacon watch. Get these wrong and you're either staring at the wrong frequency or your signal's buried in the noise floor. I've seen new ops spend an hour troubleshooting a "missing" signal that was just off-screen. Don't be that person.
+        </p>
+        <p>
+          Receiver modem next. This is where RF becomes data. The number you care about is C/N - Carrier-to-Noise ratio.
+        </p>
+        <p>
+          Stay on RX Analysis, check the modem panel. Above 8 dB for QPSK means healthy margin. Around 5 is marginal. Below threshold and the link falls apart. Where are we?
+        </p>
+        `,
+        character: Character.CHARLIE_BROOKS,
+        emotion: Emotion.CONFIDENT,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/1/v2/obj-phase-7-speca-settings.mp3'),
+      },
+      'phase-8-receiver': {
+        text: `
+        <p>
+          Good margin. That headroom is what keeps you online when a storm rolls through or the satellite has a bad day. C/N is your primary health metric - know it, watch it, respect it.
+        </p>
+        <p>
+          Last thing on the receive side - the constellation diagram. Visual representation of the demodulated symbols.
+        </p>
+        <p>
+          QPSK gives you four clusters, one per symbol. Tight clusters mean clean demod. Scattered means noise. Rotating means phase problems. Empty means no lock. What's the constellation showing?
+        </p>
+        `,
+        character: Character.CHARLIE_BROOKS,
+        emotion: Emotion.HAPPY,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/1/v2/obj-phase-8-receiver.mp3'),
+      },
+      'phase-9-constellation': {
+        text: `
+        <p>
+          Tight clusters. That's the picture of a healthy link. After a while you'll glance at that diagram and know instantly if something's off. Noise spreads the points, phase errors rotate them, interference makes them dance. You'll learn to read it like a face.
+        </p>
+        <p>
+          One more check, then we're done for today. The alarm dashboard - aggregates everything into one view.
+        </p>
+        <p>
+          Dashboard tab. Could be clean, could be warnings, could be critical faults. This is your early warning system. What's it showing?
+        </p>
+        `,
+        character: Character.CHARLIE_BROOKS,
+        emotion: Emotion.CONFIDENT,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/1/v2/obj-phase-9-constellation.mp3'),
+      },
+      'phase-10-alarms': {
+        text: `
+        <p>
+          Clean board. That's what right looks like. Remember it.
+        </p>
+        <p>
+          Alright - GPSDO, LNB, HPA, tracking mode, polarization, beacon, analyzer settings, C/N, constellation, alarms. That's your health check. Ten items, maybe fifteen minutes once you know what you're doing. Do it at the start of every shift, do it after any anomaly, do it whenever something feels off.
+        </p>
+        <p>
+          You did fine. Tomorrow we'll actually touch some controls - power sequencing, safe states, that kind of thing. I need to know you won't break anything before I leave you alone with the equipment.
+        </p>
+        <p>
+          Go get some coffee or something. I've got logs to finish.
+        </p>
+        `,
+        character: Character.CHARLIE_BROOKS,
+        emotion: Emotion.HAPPY,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/1/v2/obj-phase-10-alarms.mp3'),
+      },
+    },
   },
 };

@@ -10,8 +10,10 @@ import { DraggableHtmlBox } from "@app/modal/draggable-html-box";
 import { PendingQuizIndicator } from "@app/modal/pending-quiz-indicator";
 import { QuizManager } from "@app/modal/quiz-manager";
 import { ObjectivesManager } from "@app/objectives";
+import { OpsLogModal } from "@app/ops-log/ops-log-modal";
 import { ScenarioManager } from "@app/scenario-manager";
 import { SimulationManager } from "@app/simulation/simulation-manager";
+import activityPng from '../../assets/icons/activity.png';
 import antennaPng from '../../assets/icons/antenna.png';
 import checklistPng from "../../assets/icons/checklist.png";
 import dashboardPng from '../../assets/icons/dashboard.png';
@@ -148,6 +150,7 @@ export class AssetTreeSidebar extends BaseElement {
    */
   private initMissionSection_(): void {
     if (!this.missionBriefUrl_) {
+      console.warn('No mission brief URL set; hiding mission section.');
       return;
     }
 
@@ -161,6 +164,7 @@ export class AssetTreeSidebar extends BaseElement {
     this.addMissionBriefListener_();
     this.addChecklistListener_();
     this.addDialogHistoryListener_();
+    this.addOpsLogListener_();
   }
 
   private addMissionBriefListener_(): void {
@@ -235,6 +239,13 @@ export class AssetTreeSidebar extends BaseElement {
     });
   }
 
+  private addOpsLogListener_(): void {
+    const btn = qs('.ops-log-icon', this.dom_);
+    btn?.addEventListener('click', () => {
+      OpsLogModal.getInstance().open();
+    });
+  }
+
   private startChecklistRefreshTimer_(draggableBox: DraggableHtmlBox): void {
     this.stopChecklistRefreshTimer_();
 
@@ -306,6 +317,12 @@ export class AssetTreeSidebar extends BaseElement {
             <img src="${historyPng}" alt="Dialog History"/>
           </span>
           <span class="flex-fill">Dialog History</span>
+        </a>
+        <a class="list-group-item list-group-item-action d-flex align-items-center ops-log-icon" data-tooltip="Operations Log">
+          <span class="item-icon">
+            <img src="${activityPng}" alt="Operations Log"/>
+          </span>
+          <span class="flex-fill">Ops Log</span>
         </a>
       </div>
 

@@ -177,7 +177,6 @@ export class MissionControlPage extends BasePage {
     await this.dismissDialogIfPresent();
     const gsItem = this.assetTreeSidebar.locator(`[data-asset-id="${gsId}"], [data-gs-id="${gsId}"]`);
     await gsItem.click();
-    await this.page.waitForTimeout(500);
   }
 
   /**
@@ -189,12 +188,19 @@ export class MissionControlPage extends BasePage {
 
   /**
    * Select a tab by clicking it.
+   * Supports prefix matching for tabs like 'acu-control' which become 'acu-control-0'.
    */
   async selectTab(tabId: string): Promise<void> {
     await this.dismissDialogIfPresent();
-    const tab = this.tabBar.locator(`.nav-link[data-tab-id="${tabId}"]`);
-    await tab.click();
-    await this.page.waitForTimeout(300);
+    // Try exact match first, then prefix match (for dynamic tabs like acu-control-0)
+    const exactTab = this.tabBar.locator(`.nav-link[data-tab-id="${tabId}"]`);
+    const prefixTab = this.tabBar.locator(`.nav-link[data-tab-id^="${tabId}-"]`);
+
+    if (await exactTab.count() > 0) {
+      await exactTab.click();
+    } else {
+      await prefixTab.first().click();
+    }
   }
 
   /**

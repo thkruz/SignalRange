@@ -431,19 +431,19 @@ export class TxChainTab extends BaseElement {
                       <div class="mb-2">
                         <div class="d-flex justify-content-around">
                           <div class="text-center">
-                            <div id="tx-transmit-led" class="led led-gray mb-1"></div>
+                            <div id="tx-transmit-led" class="card-alarm-led off mb-1"></div>
                             <small class="text-muted" style="font-size: 0.65rem;">TX</small>
                           </div>
                           <div class="text-center">
-                            <div id="tx-fault-led" class="led led-gray mb-1"></div>
+                            <div id="tx-fault-led" class="card-alarm-led off mb-1"></div>
                             <small class="text-muted" style="font-size: 0.65rem;">Fault</small>
                           </div>
                           <div class="text-center">
-                            <div id="tx-loopback-led" class="led led-gray mb-1"></div>
+                            <div id="tx-loopback-led" class="card-alarm-led off mb-1"></div>
                             <small class="text-muted" style="font-size: 0.65rem;">Loop</small>
                           </div>
                           <div class="text-center">
-                            <div id="tx-online-led" class="led led-gray mb-1"></div>
+                            <div id="tx-online-led" class="card-alarm-led off mb-1"></div>
                             <small class="text-muted" style="font-size: 0.65rem;">Online</small>
                           </div>
                         </div>

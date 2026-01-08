@@ -89,6 +89,26 @@ export interface SignalDegradationConfig {
   interferencePower: dBm;
 }
 
+/** Satellite orbit type determining position behavior */
+export type OrbitType = 'geostationary' | 'geosynchronous';
+
+/**
+ * Configuration for geosynchronous (inclined) orbit figure-8 pattern.
+ * The satellite traces an analemma pattern due to orbital inclination.
+ */
+export interface GeosyncOrbitConfig {
+  /** Minimum azimuth of the figure-8 pattern (degrees) */
+  minAz: Degrees;
+  /** Maximum azimuth of the figure-8 pattern (degrees) */
+  maxAz: Degrees;
+  /** Minimum elevation of the figure-8 pattern (degrees) */
+  minEl: Degrees;
+  /** Maximum elevation of the figure-8 pattern (degrees) */
+  maxEl: Degrees;
+  /** Initial phase offset (radians, 0-2*PI) - where satellite starts in pattern */
+  initialPhase?: number;
+}
+
 export interface SatelliteState {
   rotation?: Degrees; // Random rotation if not specified
   az: Degrees;
@@ -98,6 +118,10 @@ export interface SatelliteState {
   degradationConfig?: Partial<SignalDegradationConfig>;
   /** Explicit transponder configurations (takes precedence over legacy signal-derived transponders) */
   transponderConfigs?: TransponderConfig[];
+  /** Orbit type: 'geostationary' (fixed position) or 'geosynchronous' (figure-8 pattern). Default: 'geostationary' */
+  orbitType?: OrbitType;
+  /** Configuration for geosynchronous orbit pattern (required if orbitType is 'geosynchronous') */
+  geosyncConfig?: GeosyncOrbitConfig;
 }
 
 /**
@@ -141,6 +165,29 @@ export class Satellite {
   rotation: Degrees = ((Math.random() * 90) - 45) as Degrees;
   name: string;
 
+  /** Orbit type - geostationary (fixed) or geosynchronous (figure-8 pattern) */
+  readonly orbitType: OrbitType;
+
+  /** Geosynchronous orbit configuration (null for geostationary) */
+  private readonly geosyncConfig_: {
+    centerAz: number;
+    centerEl: number;
+    azAmplitude: number;
+    elAmplitude: number;
+  } | null = null;
+
+  /** Current phase in the figure-8 pattern (radians, 0 to 2*PI) */
+  private phase_: number = 0;
+
+  /** Timestamp of last position update (ms) - for throttling */
+  private lastPositionUpdateTime_: number = 0;
+
+  /** Position update interval (ms) */
+  private static readonly POSITION_UPDATE_INTERVAL_MS = 1000;
+
+  /** Rate of position change: 0.1 degrees per 30 seconds (peak velocity) */
+  private static readonly POSITION_RATE_DEG_PER_MS = 0.1 / 30000;
+
   constructor(
     name: string,
     norad: number,
@@ -171,6 +218,27 @@ export class Satellite {
       interferencePower: -110 as dBm,
       ...satelliteState.degradationConfig
     };
+
+    // Initialize orbit type and configuration
+    this.orbitType = satelliteState.orbitType ?? 'geostationary';
+
+    if (this.orbitType === 'geosynchronous') {
+      if (!satelliteState.geosyncConfig) {
+        throw new Error(`Satellite ${name}: geosyncConfig required for geosynchronous orbit`);
+      }
+      const config = satelliteState.geosyncConfig;
+      // Convert min/max to center/amplitude for parametric equations
+      this.geosyncConfig_ = {
+        centerAz: (config.minAz + config.maxAz) / 2,
+        centerEl: (config.minEl + config.maxEl) / 2,
+        azAmplitude: (config.maxAz - config.minAz) / 2,
+        elAmplitude: (config.maxEl - config.minEl) / 2,
+      };
+      this.phase_ = config.initialPhase ?? 0;
+      // Set initial position based on phase
+      this.az = (this.geosyncConfig_.centerAz + this.geosyncConfig_.azAmplitude * Math.sin(2 * this.phase_)) as Degrees;
+      this.el = (this.geosyncConfig_.centerEl + this.geosyncConfig_.elAmplitude * Math.sin(this.phase_)) as Degrees;
+    }
 
     // Initialize transponders: use explicit config if provided, otherwise derive from signals
     if (satelliteState.transponderConfigs?.length) {
@@ -262,11 +330,53 @@ export class Satellite {
   }
 
   /**
+   * Update satellite position for geosynchronous orbit.
+   * Traces a figure-8 (analemma) pattern using parametric equations.
+   * Throttled to 1 second intervals to reduce computation.
+   */
+  private updatePosition_(): void {
+    if (this.orbitType !== 'geosynchronous' || !this.geosyncConfig_) {
+      return;
+    }
+
+    // Throttle position updates
+    const now = Date.now();
+    const elapsed = now - this.lastPositionUpdateTime_;
+    if (elapsed < Satellite.POSITION_UPDATE_INTERVAL_MS) {
+      return;
+    }
+    this.lastPositionUpdateTime_ = now;
+
+    // Advance phase based on elapsed time
+    // Phase rate calculated so peak velocity = 0.1 deg/30s
+    const phaseRate = Satellite.POSITION_RATE_DEG_PER_MS / this.geosyncConfig_.elAmplitude;
+    this.phase_ += phaseRate * elapsed;
+
+    // Wrap phase to [0, 2*PI]
+    this.phase_ = this.phase_ % (2 * Math.PI);
+    if (this.phase_ < 0) this.phase_ += 2 * Math.PI;
+
+    // Calculate new position using parametric equations:
+    // Elevation: single-frequency sine (one cycle per orbit)
+    // Azimuth: double-frequency sine (creates figure-8 crossover)
+    const config = this.geosyncConfig_;
+    this.el = (config.centerEl + config.elAmplitude * Math.sin(this.phase_)) as Degrees;
+    this.az = (config.centerAz + config.azAmplitude * Math.sin(2 * this.phase_)) as Degrees;
+
+    // Normalize azimuth to [0, 360)
+    while (this.az < 0) this.az = (this.az + 360) as Degrees;
+    while (this.az >= 360) this.az = (this.az - 360) as Degrees;
+  }
+
+  /**
    * Update satellite state and process signals.
    */
   update(): void {
     this.randomCache_.clear();
     this.createRandomValues_();
+
+    // Update position for geosynchronous satellites
+    this.updatePosition_();
 
     // Process signals through transponders
     // Note: rxSignal is populated by antenna.updateTxSignals_() each frame

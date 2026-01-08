@@ -132,6 +132,8 @@ export interface QuizShowData {
   pointPenalty: number;
   /** Which character asks the question (default: CHARLIE_BROOKS) */
   character?: Character;
+  /** If true, options will not be randomized (use for "All of the above" questions) */
+  preserveOptionOrder?: boolean;
 }
 
 export interface QuizAnsweredData {

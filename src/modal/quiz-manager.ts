@@ -16,6 +16,7 @@ interface QuizState {
   explanation?: string;
   pointPenalty: number;
   character?: Character;
+  preserveOptionOrder?: boolean;
   attempts: number;
   totalPointsDeducted: number;
   isComplete: boolean;
@@ -66,7 +67,8 @@ export class QuizManager {
     correctIndex: number,
     explanation?: string,
     pointPenalty: number = 5,
-    character?: Character
+    character?: Character,
+    preserveOptionOrder?: boolean
   ): void {
     const key = this.getKey_(objectiveId, conditionIndex);
 
@@ -80,6 +82,7 @@ export class QuizManager {
         explanation,
         pointPenalty,
         character,
+        preserveOptionOrder,
         attempts: 0,
         totalPointsDeducted: 0,
         isComplete: false,
@@ -167,6 +170,7 @@ export class QuizManager {
       explanation: state.explanation,
       pointPenalty: state.pointPenalty,
       character: state.character,
+      preserveOptionOrder: state.preserveOptionOrder,
     };
 
     EventBus.getInstance().emit(Events.QUIZ_SHOW, showData);

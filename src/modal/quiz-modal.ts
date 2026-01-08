@@ -472,15 +472,15 @@ export class QuizModal extends DraggableBox {
 
   /**
    * Fisher-Yates shuffle to randomize answer order
-   * For single-option quizzes, no shuffle is needed
+   * For single-option quizzes or when preserveOptionOrder is true, no shuffle is performed
    */
   private shuffleIndices_(): number[] {
     if (!this.currentQuiz_) return [];
     const count = this.currentQuiz_.options.length;
     const indices = Array.from({ length: count }, (_, i) => i);
 
-    // Don't shuffle single-option quizzes
-    if (count === 1) return indices;
+    // Don't shuffle single-option quizzes or when order must be preserved (e.g., "All of the above")
+    if (count === 1 || this.currentQuiz_.preserveOptionOrder) return indices;
 
     for (let i = indices.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));

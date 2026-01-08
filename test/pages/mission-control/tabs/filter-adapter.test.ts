@@ -2,9 +2,17 @@ import { FilterAdapter } from '../../../../src/pages/mission-control/tabs/filter
 import { IfFilterBankModuleCore, IfFilterBankState } from '../../../../src/equipment/rf-front-end/filter-module/filter-module-core';
 import { EventBus } from '../../../../src/events/event-bus';
 import { Events } from '../../../../src/events/events';
+import { ScenarioManager } from '../../../../src/scenario-manager';
 
 // Mock dependencies
 jest.mock('../../../../src/events/event-bus');
+jest.mock('../../../../src/scenario-manager', () => ({
+  ScenarioManager: {
+    getInstance: jest.fn().mockReturnValue({
+      data: { difficulty: 'beginner' },
+    }),
+  },
+}));
 jest.mock('../../../../src/equipment/rf-front-end/filter-module/filter-module-core', () => ({
   IfFilterBankModuleCore: jest.fn(),
   FILTER_BANDWIDTH_CONFIGS: [

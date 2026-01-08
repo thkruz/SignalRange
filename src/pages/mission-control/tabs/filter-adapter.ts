@@ -1,6 +1,8 @@
 import { EventBus } from "@app/events/event-bus";
 import { Events } from "@app/events/events";
 import { FILTER_BANDWIDTH_CONFIGS, IfFilterBankModuleCore, IfFilterBankState } from "@app/equipment/rf-front-end/filter-module/filter-module-core";
+import { Receiver } from "@app/equipment/receiver/receiver";
+import { ScenarioManager } from "@app/scenario-manager";
 import { qs } from "@app/engine/utils/query-selector";
 
 /**
@@ -15,19 +17,25 @@ import { qs } from "@app/engine/utils/query-selector";
 export class FilterAdapter {
   private readonly filterModule: IfFilterBankModuleCore;
   private readonly containerEl: HTMLElement;
+  private readonly receiver_: Receiver | null;
   private lastStateString: string = '';
   private readonly domCache_: Map<string, HTMLElement> = new Map();
   private readonly boundHandlers: Map<string, EventListener> = new Map();
   private readonly stateChangeHandler: (state: Partial<IfFilterBankState>) => void;
+  private readonly boundUpdateHandler_: () => void;
 
-  constructor(filterModule: IfFilterBankModuleCore, containerEl: HTMLElement) {
+  constructor(filterModule: IfFilterBankModuleCore, containerEl: HTMLElement, receiver: Receiver | null = null) {
     this.filterModule = filterModule;
     this.containerEl = containerEl;
+    this.receiver_ = receiver;
 
     // Bind state change handler
     this.stateChangeHandler = (state: Partial<IfFilterBankState>) => {
       this.syncDomWithState_(state);
     };
+
+    // Bind update handler for signal status (needs simulation tick to have processed signals)
+    this.boundUpdateHandler_ = this.updateSignalStatus_.bind(this);
 
     this.initialize();
   }
@@ -42,6 +50,9 @@ export class FilterAdapter {
     // Listen to Filter state changes via EventBus
     EventBus.getInstance().on(Events.RF_FE_FILTER_CHANGED, this.stateChangeHandler as any);
 
+    // Listen to UPDATE for signal status (needs simulation tick to process signals through filter)
+    EventBus.getInstance().on(Events.UPDATE, this.boundUpdateHandler_);
+
     // Initial sync
     this.syncDomWithState_(this.filterModule.state);
   }
@@ -51,6 +62,13 @@ export class FilterAdapter {
     this.domCache_.set('bandwidthDisplay', qs('#filter-bandwidth-display', this.containerEl));
     this.domCache_.set('insertionLossDisplay', qs('#filter-insertion-loss-display', this.containerEl));
     this.domCache_.set('noiseFloorDisplay', qs('#filter-noise-floor-display', this.containerEl));
+
+    // Signal status indicator (optional - may not exist in tests)
+    const statusRow = this.containerEl.querySelector('#filter-signal-status-row');
+    if (statusRow) this.domCache_.set('signalStatusRow', statusRow as HTMLElement);
+
+    const signalStatus = this.containerEl.querySelector('#filter-signal-status');
+    if (signalStatus) this.domCache_.set('signalStatus', signalStatus as HTMLElement);
   }
 
   private setupInputListeners_(): void {
@@ -103,9 +121,50 @@ export class FilterAdapter {
     }
   }
 
+  /**
+   * Update the signal status indicator based on bandwidth clipping.
+   * Shows "Nominal" when filter bandwidth is sufficient, "Clipped" when too narrow.
+   * Hidden on advanced difficulty.
+   */
+  private updateSignalStatus_(): void {
+    const statusRow = this.domCache_.get('signalStatusRow');
+    const statusEl = this.domCache_.get('signalStatus');
+
+    if (!statusRow || !statusEl) return;
+
+    // Check difficulty - hide on advanced
+    const difficulty = ScenarioManager.getInstance().data.difficulty;
+    if (difficulty === 'advanced') {
+      statusRow.classList.add('d-none');
+      return;
+    }
+    statusRow.classList.remove('d-none');
+
+    // Get signal info from receiver
+    if (!this.receiver_) {
+      statusEl.textContent = '--';
+      statusEl.className = 'status-badge status-badge-none';
+      return;
+    }
+
+    const signalInfo = this.receiver_.getSignalsInBandwidth();
+
+    if (!signalInfo.hasCarrier) {
+      statusEl.textContent = '--';
+      statusEl.className = 'status-badge status-badge-none';
+    } else if (signalInfo.isBandwidthClipped) {
+      statusEl.textContent = 'Clipped';
+      statusEl.className = 'status-badge status-badge-degraded';
+    } else {
+      statusEl.textContent = 'Nominal';
+      statusEl.className = 'status-badge status-badge-good';
+    }
+  }
+
   dispose(): void {
     // Remove EventBus listeners
     EventBus.getInstance().off(Events.RF_FE_FILTER_CHANGED, this.stateChangeHandler as any);
+    EventBus.getInstance().off(Events.UPDATE, this.boundUpdateHandler_);
 
     // Remove DOM event listeners
     const bandwidthSelect = qs('#filter-bandwidth', this.containerEl) as HTMLSelectElement;

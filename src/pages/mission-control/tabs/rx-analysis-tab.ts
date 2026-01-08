@@ -212,6 +212,10 @@ export class RxAnalysisTab extends BaseElement {
                   <span class="metric-label">Noise Floor:</span>
                   <span id="filter-noise-floor-display" class="metric-value">-101 dBm</span>
                 </div>
+                <div class="metric-row" id="filter-signal-status-row">
+                  <span class="metric-label">Signal:</span>
+                  <span id="filter-signal-status" class="status-badge status-badge-none">--</span>
+                </div>
               </div>
             </div>
           </div>
@@ -711,7 +715,7 @@ export class RxAnalysisTab extends BaseElement {
     // Create adapters
     this.lnbAdapter = new LNBAdapter(rfFrontEnd.lnbModule, this.dom_!);
     this.agcAdapter = new AGCAdapter(rfFrontEnd.agcModule, this.dom_!);
-    this.filterAdapter = new FilterAdapter(rfFrontEnd.filterModule, this.dom_!);
+    this.filterAdapter = new FilterAdapter(rfFrontEnd.filterModule, this.dom_!, receiver ?? null);
     this.notchFilterAdapter = new NotchFilterAdapter(rfFrontEnd.notchFilterModule, this.dom_!);
     this.spectrumAnalyzerAdapter = new SpectrumAnalyzerAdapter(spectrumAnalyzer, this.dom_!);
 

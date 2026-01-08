@@ -3,7 +3,9 @@ import { BaseElement } from "@app/components/base-element";
 import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
 import { BUCAdapter } from './buc-adapter';
+import { EncryptionAdapter } from './encryption-adapter';
 import { HPAAdapter } from './hpa-adapter';
+import { PayloadAdapter } from './payload-adapter';
 import { TransmitterAdapter } from './transmitter-adapter';
 import './tx-chain-tab.css';
 
@@ -25,6 +27,8 @@ export class TxChainTab extends BaseElement {
   private bucAdapter: BUCAdapter | null = null;
   private hpaAdapter: HPAAdapter | null = null;
   private transmitterAdapter: TransmitterAdapter | null = null;
+  private encryptionAdapter_: EncryptionAdapter | null = null;
+  private payloadAdapter_: PayloadAdapter | null = null;
 
   constructor(groundStation: GroundStation, containerId: string) {
     super();
@@ -460,18 +464,153 @@ export class TxChainTab extends BaseElement {
           </div>
         </div>
 
-        <!-- Redundancy Controller Placeholder Card -->
-        <!-- <div class="col-lg-4">
+        <!-- Encryption Module Card -->
+        <div class="col-lg-6">
           <div class="card h-100">
-            <div class="card-header">
-              <h3 class="card-title">Redundancy Controller</h3>
+            <div class="card-header d-flex justify-content-between align-items-center">
+              <h3 class="card-title">Encryption Module</h3>
+              <div id="enc-alarm-badge"></div>
             </div>
-            <div class="card-body text-center d-flex flex-column justify-content-center">
-              <p class="text-muted mb-2">Redundancy controller coming in future phase</p>
-              <p class="text-muted small mb-0">Status: Not Implemented</p>
+            <div class="card-body">
+              <!-- Encryption Status and Key Management Row -->
+              <div class="row g-2 mb-2">
+                <!-- Encryption Status Column -->
+                <div class="col-6">
+                  <div class="metric-group h-100">
+                    <div class="metric-group-title">Encryption Status</div>
+                    <div class="metric-row">
+                      <span class="metric-label">Mode:</span>
+                      <span id="enc-mode" class="status-badge status-badge-green">ACTIVE</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Algorithm:</span>
+                      <span id="enc-algorithm" class="metric-value">AES-256-GCM</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Classification:</span>
+                      <span id="enc-classification" class="metric-value">UNCLASSIFIED</span>
+                    </div>
+                  </div>
+                </div>
+                <!-- Key Management Column -->
+                <div class="col-6">
+                  <div class="metric-group h-100">
+                    <div class="metric-group-title">Key Management</div>
+                    <div class="metric-row">
+                      <span class="metric-label">Key ID:</span>
+                      <span id="enc-key-id" class="metric-value font-monospace">TANGO-2024-0847</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Status:</span>
+                      <span id="enc-key-status" class="status-badge status-badge-green">Valid</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Expires:</span>
+                      <span id="enc-expires" class="metric-value">47 days</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Last Rotation:</span>
+                      <span id="enc-last-rotation" class="metric-value">2024-11-21</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Security Indicators Row -->
+              <div class="row g-2">
+                <div class="col-12">
+                  <div class="metric-group">
+                    <div class="metric-group-title">Security Indicators</div>
+                    <div class="metric-row">
+                      <span class="metric-label">Strength:</span>
+                      <span id="enc-strength" class="metric-value">256-bit</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Cipher Mode:</span>
+                      <span id="enc-cipher-mode" class="metric-value">GCM</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Auth Tag:</span>
+                      <span id="enc-auth-tag" class="status-badge status-badge-green">Verified</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-        </div> -->
+        </div>
+
+        <!-- Payload Data Card -->
+        <div class="col-lg-6">
+          <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+              <h3 class="card-title">Payload Data</h3>
+              <div id="payload-alarm-badge"></div>
+            </div>
+            <div class="card-body">
+              <!-- Data Channel and Data Integrity Row -->
+              <div class="row g-2 mb-2">
+                <!-- Data Channel Column -->
+                <div class="col-6">
+                  <div class="metric-group h-100">
+                    <div class="metric-group-title">Data Channel</div>
+                    <div class="metric-row">
+                      <span class="metric-label">Data Rate:</span>
+                      <span id="payload-data-rate" class="metric-value">2.048 Mbps</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Payload Type:</span>
+                      <span id="payload-type" class="metric-value">Command</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Channel:</span>
+                      <span id="payload-channel" class="metric-value">Primary</span>
+                    </div>
+                  </div>
+                </div>
+                <!-- Data Integrity Column -->
+                <div class="col-6">
+                  <div class="metric-group h-100">
+                    <div class="metric-group-title">Data Integrity</div>
+                    <div class="metric-row">
+                      <span class="metric-label">CRC:</span>
+                      <span id="payload-crc" class="metric-value">CRC-32</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Frame Sync:</span>
+                      <span id="payload-frame-sync" class="status-badge status-badge-green">Locked</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Bit Errors:</span>
+                      <span id="payload-bit-errors" class="metric-value">0</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Throughput Row -->
+              <div class="row g-2">
+                <div class="col-12">
+                  <div class="metric-group">
+                    <div class="metric-group-title">Throughput</div>
+                    <div class="metric-row">
+                      <span class="metric-label">Frames/sec:</span>
+                      <span id="payload-frames-sec" class="metric-value">1,024</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Efficiency:</span>
+                      <span id="payload-efficiency" class="metric-value">94.2%</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Errors:</span>
+                      <span id="payload-errors" class="metric-value">0</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   `;
@@ -505,6 +644,12 @@ export class TxChainTab extends BaseElement {
     if (transmitter && this.dom_) {
       this.transmitterAdapter = new TransmitterAdapter(transmitter, this.dom_);
     }
+
+    // Setup encryption and payload adapters (static display for training)
+    if (this.dom_) {
+      this.encryptionAdapter_ = new EncryptionAdapter(this.dom_);
+      this.payloadAdapter_ = new PayloadAdapter(this.dom_);
+    }
   }
 
   /**
@@ -532,10 +677,14 @@ export class TxChainTab extends BaseElement {
     this.bucAdapter?.dispose();
     this.hpaAdapter?.dispose();
     this.transmitterAdapter?.dispose();
+    this.encryptionAdapter_?.dispose();
+    this.payloadAdapter_?.dispose();
 
     this.bucAdapter = null;
     this.hpaAdapter = null;
     this.transmitterAdapter = null;
+    this.encryptionAdapter_ = null;
+    this.payloadAdapter_ = null;
 
     this.dom_?.remove();
   }

@@ -1,5 +1,6 @@
 import { GroundStationState } from "@app/assets/ground-station/ground-station-state";
 import { AntennaState } from "@app/equipment/antenna";
+import type { Character } from "@app/modal/character-enum";
 import { RealTimeSpectrumAnalyzerState } from "@app/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer";
 import { AGCState } from "@app/equipment/rf-front-end/agc-module";
 import { BUCState } from "@app/equipment/rf-front-end/buc-module";
@@ -129,6 +130,8 @@ export interface QuizShowData {
   correctIndex: number;
   explanation?: string;
   pointPenalty: number;
+  /** Which character asks the question (default: CHARLIE_BROOKS) */
+  character?: Character;
 }
 
 export interface QuizAnsweredData {

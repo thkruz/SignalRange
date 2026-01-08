@@ -5,6 +5,7 @@
 
 import { EventBus } from '@app/events/event-bus';
 import { Events, QuizAnsweredData, QuizCompletedData, QuizDismissedData, QuizPassedData, QuizPendingData, QuizShowData } from '@app/events/events';
+import type { Character } from './character-enum';
 
 interface QuizState {
   objectiveId: string;
@@ -14,6 +15,7 @@ interface QuizState {
   correctIndex: number;
   explanation?: string;
   pointPenalty: number;
+  character?: Character;
   attempts: number;
   totalPointsDeducted: number;
   isComplete: boolean;
@@ -63,7 +65,8 @@ export class QuizManager {
     options: string[],
     correctIndex: number,
     explanation?: string,
-    pointPenalty: number = 5
+    pointPenalty: number = 5,
+    character?: Character
   ): void {
     const key = this.getKey_(objectiveId, conditionIndex);
 
@@ -76,6 +79,7 @@ export class QuizManager {
         correctIndex,
         explanation,
         pointPenalty,
+        character,
         attempts: 0,
         totalPointsDeducted: 0,
         isComplete: false,
@@ -162,6 +166,7 @@ export class QuizManager {
       correctIndex: state.correctIndex,
       explanation: state.explanation,
       pointPenalty: state.pointPenalty,
+      character: state.character,
     };
 
     EventBus.getInstance().emit(Events.QUIZ_SHOW, showData);

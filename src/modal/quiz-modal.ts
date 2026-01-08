@@ -19,6 +19,7 @@ export class QuizModal extends DraggableBox {
   private static instance_: QuizModal | null = null;
 
   private currentQuiz_: QuizShowData | null = null;
+  private currentCharacter_: Character = Character.CHARLIE_BROOKS;
   private attempts_: number = 0;
   private totalPointsDeducted_: number = 0;
   private isShowingFeedback_: boolean = false;
@@ -91,6 +92,7 @@ export class QuizModal extends DraggableBox {
 
   private handleShowQuiz_(data: QuizShowData): void {
     this.currentQuiz_ = data;
+    this.currentCharacter_ = data.character ?? Character.CHARLIE_BROOKS;
     this.attempts_ = 0;
     this.totalPointsDeducted_ = 0;
     this.isShowingFeedback_ = false;
@@ -139,10 +141,17 @@ export class QuizModal extends DraggableBox {
 
     if (!questionEl || !optionsEl || !feedbackEl || !penaltyEl) return;
 
-    // Update avatar to show confident emotion
+    // Update avatar and name for current character
     const avatarEl = getEl('quiz-avatar') as HTMLImageElement;
     if (avatarEl) {
-      avatarEl.src = getCharacterAvatarUrl(Character.CHARLIE_BROOKS, Emotion.CONFIDENT);
+      avatarEl.src = getCharacterAvatarUrl(this.currentCharacter_, Emotion.CONFIDENT);
+      avatarEl.alt = CharacterNames[this.currentCharacter_];
+    }
+
+    // Update character name
+    const nameEl = this.boxEl?.querySelector('.quiz-character-name');
+    if (nameEl) {
+      nameEl.textContent = CharacterNames[this.currentCharacter_];
     }
 
     // Set question text
@@ -274,7 +283,7 @@ export class QuizModal extends DraggableBox {
     const avatarEl = getEl('quiz-avatar') as HTMLImageElement;
 
     if (avatarEl) {
-      avatarEl.src = getCharacterAvatarUrl(Character.CHARLIE_BROOKS, Emotion.HAPPY);
+      avatarEl.src = getCharacterAvatarUrl(this.currentCharacter_, Emotion.HAPPY);
     }
 
     if (feedbackEl) {
@@ -383,7 +392,7 @@ export class QuizModal extends DraggableBox {
     const avatarEl = getEl('quiz-avatar') as HTMLImageElement;
 
     if (avatarEl) {
-      avatarEl.src = getCharacterAvatarUrl(Character.CHARLIE_BROOKS, Emotion.CONCERNED);
+      avatarEl.src = getCharacterAvatarUrl(this.currentCharacter_, Emotion.CONCERNED);
     }
 
     if (feedbackEl) {
@@ -419,7 +428,7 @@ export class QuizModal extends DraggableBox {
     // Reset avatar after a short delay
     setTimeout(() => {
       if (avatarEl && !this.isShowingFeedback_) {
-        avatarEl.src = getCharacterAvatarUrl(Character.CHARLIE_BROOKS, Emotion.CONFIDENT);
+        avatarEl.src = getCharacterAvatarUrl(this.currentCharacter_, Emotion.CONFIDENT);
       }
     }, 1500);
   }

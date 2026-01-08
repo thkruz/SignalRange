@@ -1810,7 +1810,8 @@ export class ObjectivesManager {
             params.options,
             params.correctIndex,
             params.explanation,
-            params.pointPenalty ?? 5
+            params.pointPenalty ?? 5,
+            params.character
           );
         }
 

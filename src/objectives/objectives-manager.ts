@@ -1164,6 +1164,28 @@ export class ObjectivesManager {
         });
       }
 
+      case 'buc-loopback-enabled': {
+        return this.evaluateEquipment_(gs.rfFrontEnds, condition.params, (rfFrontEnd) => {
+          const bucState = rfFrontEnd.bucModule.state;
+          return bucState.isPowered && bucState.isLoopback;
+        });
+      }
+
+      case 'buc-loopback-disabled': {
+        return this.evaluateEquipment_(gs.rfFrontEnds, condition.params, (rfFrontEnd) => {
+          const bucState = rfFrontEnd.bucModule.state;
+          return bucState.isPowered && !bucState.isLoopback;
+        });
+      }
+
+      case 'buc-temperature-normal': {
+        const maxTemp = condition.params?.maxTemperature ?? 70;
+        return this.evaluateEquipment_(gs.rfFrontEnds, condition.params, (rfFrontEnd) => {
+          const bucState = rfFrontEnd.bucModule.state;
+          return bucState.isPowered && bucState.temperature <= maxTemp;
+        });
+      }
+
       case 'lnb-reference-locked': {
         return this.evaluateEquipment_(gs.rfFrontEnds, condition.params, (rfFrontEnd) => {
           const lnbState = rfFrontEnd.lnbModule.state;

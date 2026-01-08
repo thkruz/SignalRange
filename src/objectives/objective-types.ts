@@ -3,6 +3,8 @@
  * @description Defines objectives for scenario-based learning and assessment
  */
 
+import type { Character } from '@app/modal/character-enum';
+
 /**
  * Condition types that can be checked during simulation
  */
@@ -16,6 +18,9 @@ export type ConditionType =
   | 'buc-locked' // BUC is locked to external reference
   | 'buc-reference-locked' // BUC locked to 10MHz reference
   | 'buc-muted' // BUC RF output is muted (safety check)
+  | 'buc-loopback-enabled' // BUC loopback mode is enabled
+  | 'buc-loopback-disabled' // BUC loopback mode is disabled
+  | 'buc-temperature-normal' // BUC temperature within normal range (below max threshold)
   | 'buc-current-normal' // BUC current draw within normal range
   | 'buc-not-saturated' // BUC output not in compression
   | 'lnb-reference-locked' // LNB locked to 10MHz reference
@@ -114,6 +119,8 @@ export interface ConditionParams {
   maxNoiseTemperature?: number;
   /** For buc-current-normal: maximum current draw in Amperes */
   maxCurrentDraw?: number;
+  /** For buc-temperature-normal: maximum temperature in °C (default: 70) */
+  maxTemperature?: number;
   /** For speca-span-set: target span in Hz */
   span?: number;
   /** For speca-rbw-set: target RBW in Hz */
@@ -200,6 +207,8 @@ export interface ConditionParams {
   explanation?: string;
   /** For status-check: points deducted per wrong answer (default: 5) */
   pointPenalty?: number;
+  /** For status-check: which character asks the question (default: CHARLIE_BROOKS) */
+  character?: Character;
   /** For signal-detected/signal-level-correct: signal identifier to match */
   signalId?: string;
   /** For signal-detected/signal-level-correct: minimum power level in dBm */

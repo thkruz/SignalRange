@@ -1786,6 +1786,15 @@ export class ObjectivesManager {
         });
       }
 
+      case 'tx-modem-not-transmitting': {
+        return this.evaluateEquipment_(gs.transmitters, condition.params, (transmitter) => {
+          const modemNum = condition.params?.modemNumber ?? transmitter.state.activeModem;
+          const modem = transmitter.state.modems.find(m => m.modem_number === modemNum);
+          // Modem must be powered but NOT transmitting
+          return modem?.isPowered === true && modem?.isTransmitting === false;
+        });
+      }
+
       case 'status-check': {
         // Quiz-based condition - requires player to answer correctly
         const params = condition.params;
@@ -1811,7 +1820,8 @@ export class ObjectivesManager {
             params.correctIndex,
             params.explanation,
             params.pointPenalty ?? 5,
-            params.character
+            params.character,
+            params.preserveOptionOrder
           );
         }
 

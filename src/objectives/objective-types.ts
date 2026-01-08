@@ -65,6 +65,7 @@ export type ConditionType =
   | 'tx-modem-modulation-set' // Transmitter modem modulation type set
   | 'tx-modem-fec-set' // Transmitter modem FEC rate set
   | 'tx-modem-transmitting' // Transmitter modem actively transmitting
+  | 'tx-modem-not-transmitting' // Transmitter modem NOT transmitting (transmission stopped)
   | 'status-check' // Interactive quiz to verify player found the correct information
   | 'custom' // Custom condition with evaluator function
   // Handover and traffic control conditions
@@ -209,6 +210,8 @@ export interface ConditionParams {
   pointPenalty?: number;
   /** For status-check: which character asks the question (default: CHARLIE_BROOKS) */
   character?: Character;
+  /** For status-check: if true, options will not be randomized (use for "All of the above" questions) */
+  preserveOptionOrder?: boolean;
   /** For signal-detected/signal-level-correct: signal identifier to match */
   signalId?: string;
   /** For signal-detected/signal-level-correct: minimum power level in dBm */

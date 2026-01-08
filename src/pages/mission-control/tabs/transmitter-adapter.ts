@@ -538,29 +538,29 @@ export class TransmitterAdapter {
       powerSwitch.checked = activeModem.isPowered;
     }
 
-    // LEDs
+    // LEDs (using card-alarm-led flat style)
     const txLed = this.domCache_.get('tx-led');
     if (txLed) {
-      txLed.classList.remove('led-gray', 'led-green', 'led-red');
-      txLed.classList.add(activeModem.isTransmitting ? 'led-red' : 'led-gray');
+      txLed.classList.remove('off', 'success', 'error', 'warning');
+      txLed.classList.add(activeModem.isTransmitting ? 'error' : 'off');
     }
 
     const faultLed = this.domCache_.get('fault-led');
     if (faultLed) {
-      faultLed.classList.remove('led-gray', 'led-green', 'led-red');
-      faultLed.classList.add(activeModem.isFaulted ? 'led-red' : 'led-gray');
+      faultLed.classList.remove('off', 'success', 'error', 'warning');
+      faultLed.classList.add(activeModem.isFaulted ? 'error' : 'off');
     }
 
     const loopbackLed = this.domCache_.get('loopback-led');
     if (loopbackLed) {
-      loopbackLed.classList.remove('led-gray', 'led-amber');
-      loopbackLed.classList.add(activeModem.isLoopback ? 'led-amber' : 'led-gray');
+      loopbackLed.classList.remove('off', 'success', 'error', 'warning');
+      loopbackLed.classList.add(activeModem.isLoopback ? 'warning' : 'off');
     }
 
     const onlineLed = this.domCache_.get('online-led');
     if (onlineLed) {
-      onlineLed.classList.remove('led-gray', 'led-green');
-      onlineLed.classList.add(activeModem.isPowered ? 'led-green' : 'led-gray');
+      onlineLed.classList.remove('off', 'success', 'error', 'warning');
+      onlineLed.classList.add(activeModem.isPowered ? 'success' : 'off');
     }
   }
 

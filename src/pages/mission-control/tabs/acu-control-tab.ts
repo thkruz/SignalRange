@@ -98,7 +98,7 @@ export class ACUControlTab extends BaseElement {
               <span id="${p}model" class="acu-model">Kratos NGC-2200</span>
               <span id="${p}serial" class="acu-serial">(ACU-01)</span>
               <span id="${p}antenna-info" class="acu-antenna-info text-muted ms-2">| ${antennaInfo}</span>
-              <span id="${p}status-led" class="led led-green ms-2"></span>
+              <span id="${p}status-led" class="card-alarm-led success ms-2"></span>
             </div>
 
             <!-- Tracking Mode Selector -->
@@ -264,7 +264,7 @@ export class ACUControlTab extends BaseElement {
               </div>
               <div class="d-flex justify-content-between align-items-center">
                 <span class="text-muted small">Status:</span>
-                <span id="${p}omt-fault-led" class="led led-green"></span>
+                <span id="${p}omt-fault-led" class="card-alarm-led success"></span>
               </div>
             </div>
           </div>
@@ -283,7 +283,7 @@ export class ACUControlTab extends BaseElement {
                   <div class="text-muted small">Prevents ice buildup</div>
                 </div>
                 <div class="d-flex align-items-center gap-2">
-                  <span id="${p}heater-led" class="led led-off"></span>
+                  <span id="${p}heater-led" class="card-alarm-led off"></span>
                   <div class="form-check form-switch mb-0">
                     <input class="form-check-input" type="checkbox" id="${p}heater-switch">
                   </div>
@@ -295,7 +295,7 @@ export class ACUControlTab extends BaseElement {
                   <div class="text-muted small">Clears radome</div>
                 </div>
                 <div class="d-flex align-items-center gap-2">
-                  <span id="${p}blower-led" class="led led-off"></span>
+                  <span id="${p}blower-led" class="card-alarm-led off"></span>
                   <div class="form-check form-switch mb-0">
                     <input class="form-check-input" type="checkbox" id="${p}blower-switch">
                   </div>
@@ -304,7 +304,7 @@ export class ACUControlTab extends BaseElement {
               <div class="d-flex justify-content-between align-items-center pt-2 border-top">
                 <span class="text-muted small">Precipitation:</span>
                 <span id="${p}precip-status" class="fw-bold">
-                  <span class="led led-off me-1"></span>CLEAR
+                  <span class="card-alarm-led off me-1"></span>CLEAR
                 </span>
               </div>
               <div class="d-flex justify-content-between align-items-center pt-2 mt-2 border-top">
@@ -764,10 +764,10 @@ export class ACUControlTab extends BaseElement {
     const blowerSwitch = this.qs_<HTMLInputElement>('blower-switch');
 
     if (heaterLed) {
-      heaterLed.className = `led ${state.isHeaterEnabled ? 'led-amber' : 'led-off'}`;
+      heaterLed.className = `card-alarm-led ${state.isHeaterEnabled ? 'warning' : 'off'}`;
     }
     if (blowerLed) {
-      blowerLed.className = `led ${state.isRainBlowerEnabled ? 'led-green' : 'led-off'}`;
+      blowerLed.className = `card-alarm-led ${state.isRainBlowerEnabled ? 'success' : 'off'}`;
     }
     if (heaterSwitch) heaterSwitch.checked = state.isHeaterEnabled;
     if (blowerSwitch) blowerSwitch.checked = state.isRainBlowerEnabled;
@@ -780,11 +780,11 @@ export class ACUControlTab extends BaseElement {
     const statusLed = this.qs_('status-led');
     if (statusLed) {
       if (!state.isPowered) {
-        statusLed.className = 'led led-off ms-2';
+        statusLed.className = 'card-alarm-led off ms-2';
       } else if (!state.isOperational) {
-        statusLed.className = 'led led-amber ms-2';
+        statusLed.className = 'card-alarm-led warning ms-2';
       } else {
-        statusLed.className = 'led led-green ms-2';
+        statusLed.className = 'card-alarm-led success ms-2';
       }
     }
 
@@ -946,8 +946,8 @@ export class ACUControlTab extends BaseElement {
     if (precipStatus) {
       const gsId = this.groundStation.state.id;
       const isPrecip = WeatherManager.getInstance().isPrecipitationActive(gsId);
-      const led = precipStatus.querySelector('.led');
-      if (led) led.className = `led ${isPrecip ? 'led-amber' : 'led-off'} me-1`;
+      const led = precipStatus.querySelector('.card-alarm-led');
+      if (led) led.className = `card-alarm-led ${isPrecip ? 'warning' : 'off'} me-1`;
       const textNode = precipStatus.childNodes[precipStatus.childNodes.length - 1];
       if (textNode) textNode.textContent = isPrecip ? 'ACTIVE' : 'CLEAR';
     }

@@ -173,7 +173,7 @@ export class DashboardTab extends BaseElement {
             <div class="card h-100 summary-card clickable-card" data-target-tab="acu-control">
               <div class="card-header d-flex justify-content-between align-items-center">
                 <h3 class="card-title mb-0">Antenna</h3>
-                <span id="antenna-fault-led" class="led led-off"></span>
+                <span id="antenna-fault-led" class="card-alarm-led off"></span>
               </div>
               <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center mb-2">
@@ -187,7 +187,7 @@ export class DashboardTab extends BaseElement {
                 <div class="d-flex justify-content-between align-items-center mb-2">
                   <span class="text-muted small">Lock:</span>
                   <span id="antenna-lock" class="d-flex align-items-center gap-1">
-                    <span class="led led-off"></span>
+                    <span class="card-alarm-led off"></span>
                     <span class="small">UNLOCKED</span>
                   </span>
                 </div>
@@ -209,7 +209,7 @@ export class DashboardTab extends BaseElement {
                 <div class="d-flex justify-content-between align-items-center mb-2">
                   <span class="text-muted small">Lock:</span>
                   <span id="gpsdo-lock" class="d-flex align-items-center gap-1">
-                    <span class="led led-off"></span>
+                    <span class="card-alarm-led off"></span>
                     <span class="small">UNLOCKED</span>
                   </span>
                 </div>
@@ -239,7 +239,7 @@ export class DashboardTab extends BaseElement {
                 <div class="d-flex justify-content-between align-items-center mb-2">
                   <span class="text-muted small">LNB Lock:</span>
                   <span id="lnb-lock" class="d-flex align-items-center gap-1">
-                    <span class="led led-off"></span>
+                    <span class="card-alarm-led off"></span>
                     <span class="small">UNLOCKED</span>
                   </span>
                 </div>
@@ -253,7 +253,7 @@ export class DashboardTab extends BaseElement {
                 </div>
                 <div class="d-flex justify-content-between align-items-center">
                   <span class="text-muted small">LNB Power:</span>
-                  <span id="lnb-power" class="led led-off"></span>
+                  <span id="lnb-power" class="card-alarm-led off"></span>
                 </div>
               </div>
             </div>
@@ -269,7 +269,7 @@ export class DashboardTab extends BaseElement {
                 <div class="d-flex justify-content-between align-items-center mb-2">
                   <span class="text-muted small">BUC Lock:</span>
                   <span id="buc-lock" class="d-flex align-items-center gap-1">
-                    <span class="led led-off"></span>
+                    <span class="card-alarm-led off"></span>
                     <span class="small">UNLOCKED</span>
                   </span>
                 </div>
@@ -314,7 +314,7 @@ export class DashboardTab extends BaseElement {
                     </div>
                     <div class="d-flex justify-content-between align-items-center">
                       <span class="text-muted small">Quality:</span>
-                      <span id="rx-quality" class="led led-off"></span>
+                      <span id="rx-quality" class="card-alarm-led off"></span>
                     </div>
                   </div>
                 </div>
@@ -347,7 +347,7 @@ export class DashboardTab extends BaseElement {
                     </div>
                     <div class="d-flex justify-content-between align-items-center">
                       <span class="text-muted small">Faults:</span>
-                      <span id="tx-fault" class="led led-off"></span>
+                      <span id="tx-fault" class="card-alarm-led off"></span>
                     </div>
                   </div>
                 </div>
@@ -536,9 +536,9 @@ export class DashboardTab extends BaseElement {
     const lockEl = this.domCache_.get('antenna-lock');
     if (lockEl) {
       const isLocked = state.isLocked || state.isBeaconLocked;
-      const led = lockEl.querySelector('.led');
+      const led = lockEl.querySelector('.card-alarm-led');
       const text = lockEl.querySelector('.small');
-      if (led) led.className = `led ${isLocked ? 'led-green' : 'led-off'}`;
+      if (led) led.className = `card-alarm-led ${isLocked ? 'success' : 'off'}`;
       if (text) text.textContent = isLocked ? 'LOCKED' : 'UNLOCKED';
     }
 
@@ -551,7 +551,7 @@ export class DashboardTab extends BaseElement {
     // Fault LED
     const faultEl = this.domCache_.get('antenna-fault-led');
     if (faultEl) {
-      faultEl.className = `led ${state.hasFault ? 'led-red' : 'led-off'}`;
+      faultEl.className = `card-alarm-led ${state.hasFault ? 'error' : 'off'}`;
     }
   }
 
@@ -564,9 +564,9 @@ export class DashboardTab extends BaseElement {
     // Lock status
     const lockEl = this.domCache_.get('gpsdo-lock');
     if (lockEl) {
-      const led = lockEl.querySelector('.led');
+      const led = lockEl.querySelector('.card-alarm-led');
       const text = lockEl.querySelector('.small');
-      if (led) led.className = `led ${state.isLocked ? 'led-green' : 'led-off'}`;
+      if (led) led.className = `card-alarm-led ${state.isLocked ? 'success' : 'off'}`;
       if (text) text.textContent = state.isLocked ? 'LOCKED' : 'UNLOCKED';
     }
 
@@ -614,10 +614,10 @@ export class DashboardTab extends BaseElement {
     // LNB Lock
     const lnbLockEl = this.domCache_.get('lnb-lock');
     if (lnbLockEl && rfFe.lnbModule) {
-      const led = lnbLockEl.querySelector('.led');
+      const led = lnbLockEl.querySelector('.card-alarm-led');
       const text = lnbLockEl.querySelector('.small');
       const isLocked = rfFe.lnbModule.state.isExtRefLocked;
-      if (led) led.className = `led ${isLocked ? 'led-green' : 'led-off'}`;
+      if (led) led.className = `card-alarm-led ${isLocked ? 'success' : 'off'}`;
       if (text) text.textContent = isLocked ? 'LOCKED' : 'UNLOCKED';
     }
 
@@ -637,7 +637,7 @@ export class DashboardTab extends BaseElement {
     // LNB Power LED
     const powerEl = this.domCache_.get('lnb-power');
     if (powerEl && rfFe.lnbModule) {
-      powerEl.className = `led ${rfFe.lnbModule.state.isPowered ? 'led-green' : 'led-off'}`;
+      powerEl.className = `card-alarm-led ${rfFe.lnbModule.state.isPowered ? 'success' : 'off'}`;
     }
   }
 
@@ -648,10 +648,10 @@ export class DashboardTab extends BaseElement {
     // BUC Lock
     const bucLockEl = this.domCache_.get('buc-lock');
     if (bucLockEl && rfFe.bucModule) {
-      const led = bucLockEl.querySelector('.led');
+      const led = bucLockEl.querySelector('.card-alarm-led');
       const text = bucLockEl.querySelector('.small');
       const isLocked = rfFe.bucModule.state.isExtRefLocked;
-      if (led) led.className = `led ${isLocked ? 'led-green' : 'led-off'}`;
+      if (led) led.className = `card-alarm-led ${isLocked ? 'success' : 'off'}`;
       if (text) text.textContent = isLocked ? 'LOCKED' : 'UNLOCKED';
     }
 
@@ -725,11 +725,11 @@ export class DashboardTab extends BaseElement {
       const signals = receiver.state.availableSignals ?? [];
       const hasDegraded = signals.some(s => s.isDegraded);
       if (signals.length === 0) {
-        qualityEl.className = 'led led-off';
+        qualityEl.className = 'card-alarm-led off';
       } else if (hasDegraded) {
-        qualityEl.className = 'led led-amber';
+        qualityEl.className = 'card-alarm-led warning';
       } else {
-        qualityEl.className = 'led led-green';
+        qualityEl.className = 'card-alarm-led success';
       }
     }
   }
@@ -766,7 +766,7 @@ export class DashboardTab extends BaseElement {
     // Fault LED
     const faultEl = this.domCache_.get('tx-fault');
     if (faultEl) {
-      faultEl.className = `led ${faultedModems > 0 ? 'led-red' : 'led-off'}`;
+      faultEl.className = `card-alarm-led ${faultedModems > 0 ? 'error' : 'off'}`;
     }
   }
 

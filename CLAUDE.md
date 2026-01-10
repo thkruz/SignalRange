@@ -151,6 +151,23 @@ new Satellite(
   - Example: Uplink at 5943 MHz with `frequencyOffset: 2.225e9` → Downlink at 3718 MHz
 - **Don't duplicate**: If a signal is in the uplink array, the transponder creates the downlink automatically. Don't add it to both arrays.
 
+## TypeScript Type Checking
+
+**Always use the npm script to check for TypeScript errors:**
+
+```bash
+npm run type-check
+```
+
+**Do NOT run tsc directly on individual files:**
+
+```bash
+# WRONG - will fail with module resolution errors
+npx tsc --noEmit src/campaigns/nats/scenario5.ts
+```
+
+This project uses `@app/*` path aliases (e.g., `@app/types`, `@app/equipment/...`) that require the full tsconfig.json configuration. Running tsc on individual files bypasses this and produces false "Cannot find module" errors.
+
 ## Planning
 
 When you use Plan Mode or create multi-step plans in this repo:

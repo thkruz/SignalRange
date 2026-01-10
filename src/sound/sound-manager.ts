@@ -41,8 +41,17 @@ class SoundManager {
   private readonly currentlyPlaying: Map<Sfx, HTMLAudioElement> = new Map();
   private customAudio: HTMLAudioElement | null = null;
   private readonly customAudioCache: Map<string, HTMLAudioElement> = new Map();
+  private ttsEnabled_: boolean = false;
 
   private constructor() { }
+
+  setTtsEnabled(enabled: boolean): void {
+    this.ttsEnabled_ = enabled;
+  }
+
+  isTtsEnabled(): boolean {
+    return this.ttsEnabled_;
+  }
 
   static getInstance(): SoundManager {
     if (!SoundManager.instance) {
@@ -211,6 +220,10 @@ class SoundManager {
   }
 
   private tryTtsFallback_(text?: string, onTtsFallback?: (isTts: boolean) => void): void {
+    if (!this.ttsEnabled_) {
+      return;
+    }
+
     if (!text) {
       console.error('No fallback text provided for TTS');
       return;

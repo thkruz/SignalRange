@@ -9,6 +9,7 @@ import { IQConstellationAdapter } from './iq-constellation-adapter';
 import { LNBAdapter } from './lnb-adapter';
 import { NotchFilterAdapter } from './notch-filter-adapter';
 import { ReceiverAdapter } from './receiver-adapter';
+import { RxPayloadAdapter } from './rx-payload-adapter';
 import './rx-analysis-tab.css';
 import { SpectrumAnalyzerAdapter } from './spectrum-analyzer-adapter';
 import { SpectrumAnalyzerAdvancedAdapter } from './spectrum-analyzer-advanced-adapter';
@@ -37,6 +38,7 @@ export class RxAnalysisTab extends BaseElement {
   private spectrumAnalyzerAdvancedAdapter: SpectrumAnalyzerAdvancedAdapter | null = null;
   private receiverAdapter: ReceiverAdapter | null = null;
   private iqConstellationAdapter: IQConstellationAdapter | null = null;
+  private rxPayloadAdapter_: RxPayloadAdapter | null = null;
 
   constructor(groundStation: GroundStation, containerId: string) {
     super();
@@ -619,6 +621,155 @@ export class RxAnalysisTab extends BaseElement {
             </div>
           </div>
         </div>
+
+        <!-- RX Payload Data Integrity Card -->
+        <div class="col-lg-12">
+          <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+              <h3 class="card-title">Payload Data Integrity</h3>
+              <div id="rx-payload-alarm-badge"></div>
+            </div>
+            <div class="card-body">
+              <div class="row g-2">
+                <!-- Frame Synchronization Column -->
+                <div class="col-lg-3">
+                  <div class="metric-group h-100">
+                    <div class="metric-group-title">Frame Synchronization</div>
+                    <div class="metric-row">
+                      <span class="metric-label">Sync Status:</span>
+                      <span id="rx-payload-frame-sync" class="status-badge status-badge-green">Locked</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Sync Pattern:</span>
+                      <span id="rx-payload-sync-pattern" class="metric-value font-monospace">1ACFFC1D</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">BER:</span>
+                      <span id="rx-payload-ber" class="metric-value font-monospace">1.2e-7</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">CRC Type:</span>
+                      <span id="rx-payload-crc-type" class="metric-value">CRC-32</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">CRC Status:</span>
+                      <span id="rx-payload-crc-status" class="status-badge status-badge-green">Valid</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">CRC Errors:</span>
+                      <span id="rx-payload-crc-errors" class="metric-value">0</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Reed-Solomon Decoder Column -->
+                <div class="col-lg-3">
+                  <div class="metric-group h-100">
+                    <div class="metric-group-title">Reed-Solomon Decoder</div>
+                    <div class="metric-row">
+                      <span class="metric-label">Status:</span>
+                      <span id="rx-payload-rs-status" class="status-badge status-badge-green">Active</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Code Rate:</span>
+                      <span id="rx-payload-rs-code-rate" class="metric-value">223/255</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Corrected (Frame):</span>
+                      <span id="rx-payload-rs-corrected" class="metric-value">0</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Corrected (Total):</span>
+                      <span id="rx-payload-rs-total" class="metric-value">12</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Uncorrectable:</span>
+                      <span id="rx-payload-rs-uncorrectable" class="metric-value">0</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Viterbi Decoder Column -->
+                <div class="col-lg-3">
+                  <div class="metric-group h-100">
+                    <div class="metric-group-title">Viterbi Decoder</div>
+                    <div class="metric-row">
+                      <span class="metric-label">Status:</span>
+                      <span id="rx-payload-viterbi-status" class="status-badge status-badge-green">Enabled</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Code Rate:</span>
+                      <span id="rx-payload-viterbi-code-rate" class="metric-value">1/2</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Path Metric:</span>
+                      <span id="rx-payload-viterbi-path-metric" class="metric-value font-monospace">0.92</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Traceback Depth:</span>
+                      <span id="rx-payload-viterbi-traceback" class="metric-value">35</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Constraint:</span>
+                      <span id="rx-payload-viterbi-k" class="metric-value">K=7</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- RX Decryption Column -->
+                <div class="col-lg-3">
+                  <div class="metric-group h-100">
+                    <div class="metric-group-title">RX Decryption</div>
+                    <div class="metric-row">
+                      <span class="metric-label">Mode:</span>
+                      <span id="rx-payload-dec-mode" class="status-badge status-badge-green">ACTIVE</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Algorithm:</span>
+                      <span id="rx-payload-dec-algorithm" class="metric-value">AES-256-GCM</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Key ID:</span>
+                      <span id="rx-payload-dec-key-id" class="metric-value font-monospace">FOXTROT-2024-0293</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Key Status:</span>
+                      <span id="rx-payload-dec-key-status" class="status-badge status-badge-green">Valid</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Expires:</span>
+                      <span id="rx-payload-dec-expires" class="metric-value">62 days</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Auth Tag:</span>
+                      <span id="rx-payload-dec-auth-tag" class="status-badge status-badge-green">Verified</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Decryption:</span>
+                      <span id="rx-payload-dec-success" class="status-badge status-badge-green">Success</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Channel Summary Row -->
+              <div class="row g-2 mt-2">
+                <div class="col-lg-12">
+                  <div class="d-flex justify-content-between align-items-center p-2 bg-dark rounded">
+                    <div class="d-flex align-items-center gap-3">
+                      <span class="text-muted small">Data Rate:</span>
+                      <span id="rx-payload-data-rate" class="fw-bold">2.048 Mbps</span>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                      <span class="text-muted small">Channel Status:</span>
+                      <span id="rx-payload-channel-status" class="status-badge status-badge-green">Good</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   `;
@@ -736,6 +887,15 @@ export class RxAnalysisTab extends BaseElement {
     if (receiver && this.dom_) {
       this.iqConstellationAdapter = new IQConstellationAdapter(receiver, this.dom_);
     }
+
+    // Create RX payload adapter for data integrity display
+    if (this.dom_) {
+      this.rxPayloadAdapter_ = new RxPayloadAdapter(
+        this.dom_,
+        receiver,
+        this.groundStation.uuid
+      );
+    }
   }
 
   /**
@@ -768,6 +928,7 @@ export class RxAnalysisTab extends BaseElement {
     this.spectrumAnalyzerAdvancedAdapter?.dispose();
     this.receiverAdapter?.dispose();
     this.iqConstellationAdapter?.dispose();
+    this.rxPayloadAdapter_?.dispose();
 
     this.lnbAdapter = null;
     this.agcAdapter = null;
@@ -777,6 +938,7 @@ export class RxAnalysisTab extends BaseElement {
     this.spectrumAnalyzerAdvancedAdapter = null;
     this.receiverAdapter = null;
     this.iqConstellationAdapter = null;
+    this.rxPayloadAdapter_ = null;
 
     this.dom_?.remove();
   }

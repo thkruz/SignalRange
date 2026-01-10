@@ -76,7 +76,20 @@ export type ConditionType =
   | 'ground-station-selected' // Ground station selected in UI
   // UI interaction conditions
   | 'mission-brief-opened' // Mission brief document has been opened
-  | 'tab-active'; // Specific tab is currently active in TabbedCanvas
+  | 'tab-active' // Specific tab is currently active in TabbedCanvas
+  // FEC/Payload conditions
+  | 'rx-frame-sync-locked' // RX frame synchronization locked/unlocked
+  | 'rx-ber-threshold' // RX BER below/above threshold
+  | 'rx-rs-uncorrectable' // RS decoder has uncorrectable blocks
+  | 'rx-channel-status' // RX channel status matches value
+  // Crypto conditions
+  | 'rx-crypto-status' // RX decryption mode matches value
+  | 'rx-key-status' // RX decryption key status matches value
+  | 'tx-crypto-status' // TX encryption mode matches value
+  | 'tx-key-status' // TX encryption key status matches value
+  // Fault injection conditions
+  | 'fault-active' // Check if specific fault is currently injected
+  | 'fault-cleared'; // Check if specific fault has been cleared
 
 /**
  * Equipment references for condition checking
@@ -230,6 +243,27 @@ export interface ConditionParams {
   boxId?: string;
   /** For tab-active: tab ID prefix to match (e.g., 'acu-control' matches 'acu-control-0') */
   tab?: string;
+
+  // FEC/Payload condition parameters
+  /** For rx-frame-sync-locked: expected lock state (default: true) */
+  locked?: boolean;
+  /** For rx-ber-threshold: BER threshold value */
+  berThreshold?: number;
+  /** For rx-ber-threshold: comparison operator ('below' or 'above', default: 'below') */
+  berComparison?: 'below' | 'above';
+  /** For rx-channel-status: expected channel status */
+  channelStatus?: 'Good' | 'Degraded' | 'Critical' | 'No Lock';
+
+  // Crypto condition parameters
+  /** For rx-crypto-status/tx-crypto-status: expected crypto mode */
+  cryptoMode?: 'ACTIVE' | 'DISABLED' | 'BYPASSED';
+  /** For rx-key-status/tx-key-status: expected key status */
+  keyStatus?: 'Valid' | 'Expired' | 'Pending Rotation' | 'Mismatch' | 'Zeroized';
+
+  // Fault injection condition parameters
+  /** For fault-active/fault-cleared: fault ID to check */
+  faultId?: string;
+
   /** Additional context-specific parameters */
   [key: string]: unknown;
 }

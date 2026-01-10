@@ -12,6 +12,12 @@ import { HPAState } from "@app/equipment/rf-front-end/hpa-module";
 import { LNBState } from "@app/equipment/rf-front-end/lnb-module";
 import { OMTState } from "@app/equipment/rf-front-end/omt-module/omt-module";
 import { RFFrontEndState } from "@app/equipment/rf-front-end/rf-front-end-core";
+import type {
+  CryptoKeyExpiredData,
+  CryptoKeyRotatedData,
+  CryptoStateChangedData,
+  CryptoZeroizedData,
+} from "@app/equipment/crypto/crypto-types";
 import { Milliseconds } from "ootk";
 import { ReceiverModemState } from "../equipment/receiver/receiver";
 import { TransmitterModem } from "../equipment/transmitter/transmitter";
@@ -366,6 +372,18 @@ export enum Events {
 
   // Simulated Time events
   SIMULATED_TIME_TICK = 'simulated-time:tick',
+
+  // Scenario lifecycle events
+  SCENARIO_CHANGED = 'scenario:changed',
+
+  // Crypto events
+  CRYPTO_STATE_CHANGED = 'crypto:state:changed',
+  CRYPTO_KEY_ROTATED = 'crypto:key:rotated',
+  CRYPTO_KEY_EXPIRED = 'crypto:key:expired',
+  CRYPTO_ZEROIZED = 'crypto:zeroized',
+
+  // Fault injection events
+  FAULT_CHANGED = 'fault:changed',
 }
 
 export interface EventMap {
@@ -456,4 +474,16 @@ export interface EventMap {
 
   // Simulated Time events
   [Events.SIMULATED_TIME_TICK]: [SimulatedTimeTickData];
+
+  // Scenario lifecycle events
+  [Events.SCENARIO_CHANGED]: [{ scenarioId: string }];
+
+  // Crypto events
+  [Events.CRYPTO_STATE_CHANGED]: [CryptoStateChangedData];
+  [Events.CRYPTO_KEY_ROTATED]: [CryptoKeyRotatedData];
+  [Events.CRYPTO_KEY_EXPIRED]: [CryptoKeyExpiredData];
+  [Events.CRYPTO_ZEROIZED]: [CryptoZeroizedData];
+
+  // Fault injection events
+  [Events.FAULT_CHANGED]: [{ id: string; action: 'injected' | 'cleared' }];
 }

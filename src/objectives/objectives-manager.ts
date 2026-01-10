@@ -5,10 +5,12 @@
  */
 
 import { GroundStation } from '@app/assets/ground-station/ground-station';
+import { CryptoModule } from '@app/equipment/crypto';
 import { TapPoint } from "@app/equipment/rf-front-end/coupler-module/tap-points";
 import { EventBus } from '@app/events/event-bus';
 import { TabbedCanvas } from '@app/pages/mission-control/tabbed-canvas';
 import { Events, QuizCompletedData, QuizPassedData } from '@app/events/events';
+import { FaultInjector } from '@app/faults';
 import { QuizManager } from '@app/modal/quiz-manager';
 import { OpsLogManager } from '@app/ops-log/ops-log-manager';
 import { SimulationManager } from '@app/simulation/simulation-manager';
@@ -1903,6 +1905,182 @@ export class ObjectivesManager {
 
         // Match exact tab ID or prefix (e.g., 'acu-control' matches 'acu-control-0')
         return activeTab === targetTab || activeTab.startsWith(`${targetTab}-`);
+      }
+
+      // ═══════════════════════════════════════════════════════════════
+      // FEC Conditions
+      // ═══════════════════════════════════════════════════════════════
+
+      case 'rx-frame-sync-locked': {
+        // Check if frame sync is locked (from RxPayloadAdapter state)
+        // This evaluates the current FEC state from the ground station's receiver
+        const expectedLocked = condition.params?.locked ?? true;
+        if (!gs) return false;
+
+        // Get first receiver and check frame sync via FECSimulator
+        const receiver = gs.receivers[0];
+        if (!receiver) return false;
+
+        // Get signal info from receiver
+        const signalInfo = receiver.getSignalsInBandwidth();
+        const modem = receiver.activeModem;
+
+        // FECSimulator calculates frame sync from signal conditions
+        const { FECSimulator } = require('@app/equipment/receiver/fec-simulator');
+        const fecSim = new FECSimulator();
+        const metrics = fecSim.calculate({
+          cnRatio_dB: signalInfo.cnRatio_dB,
+          hasCarrier: signalInfo.hasCarrier,
+          hasLock: signalInfo.hasLock,
+          modulation: modem.modulation,
+          fec: modem.fec,
+        });
+
+        return metrics.frameSyncLocked === expectedLocked;
+      }
+
+      case 'rx-ber-threshold': {
+        // Check if BER is above or below a threshold
+        const threshold = condition.params?.berThreshold;
+        const comparison = condition.params?.berComparison ?? 'below';
+        if (threshold === undefined) return false;
+        if (!gs) return false;
+
+        const receiver = gs.receivers[0];
+        if (!receiver) return false;
+
+        const signalInfo = receiver.getSignalsInBandwidth();
+        const modem = receiver.activeModem;
+
+        const { FECSimulator } = require('@app/equipment/receiver/fec-simulator');
+        const fecSim = new FECSimulator();
+        const metrics = fecSim.calculate({
+          cnRatio_dB: signalInfo.cnRatio_dB,
+          hasCarrier: signalInfo.hasCarrier,
+          hasLock: signalInfo.hasLock,
+          modulation: modem.modulation,
+          fec: modem.fec,
+        });
+
+        if (comparison === 'below') {
+          return metrics.ber < threshold;
+        } else {
+          return metrics.ber >= threshold;
+        }
+      }
+
+      case 'rx-rs-uncorrectable': {
+        // Check if there are uncorrectable Reed-Solomon blocks
+        if (!gs) return false;
+
+        const receiver = gs.receivers[0];
+        if (!receiver) return false;
+
+        const signalInfo = receiver.getSignalsInBandwidth();
+        const modem = receiver.activeModem;
+
+        const { FECSimulator } = require('@app/equipment/receiver/fec-simulator');
+        const fecSim = new FECSimulator();
+        const metrics = fecSim.calculate({
+          cnRatio_dB: signalInfo.cnRatio_dB,
+          hasCarrier: signalInfo.hasCarrier,
+          hasLock: signalInfo.hasLock,
+          modulation: modem.modulation,
+          fec: modem.fec,
+        });
+
+        return metrics.rsUncorrectableBlocks > 0;
+      }
+
+      case 'rx-channel-status': {
+        // Check if channel status matches expected value
+        const expectedStatus = condition.params?.channelStatus;
+        if (!expectedStatus) return false;
+        if (!gs) return false;
+
+        const receiver = gs.receivers[0];
+        if (!receiver) return false;
+
+        const signalInfo = receiver.getSignalsInBandwidth();
+        const modem = receiver.activeModem;
+
+        const { FECSimulator } = require('@app/equipment/receiver/fec-simulator');
+        const fecSim = new FECSimulator();
+        const metrics = fecSim.calculate({
+          cnRatio_dB: signalInfo.cnRatio_dB,
+          hasCarrier: signalInfo.hasCarrier,
+          hasLock: signalInfo.hasLock,
+          modulation: modem.modulation,
+          fec: modem.fec,
+        });
+
+        return metrics.channelStatus === expectedStatus;
+      }
+
+      // ═══════════════════════════════════════════════════════════════
+      // Crypto Conditions
+      // ═══════════════════════════════════════════════════════════════
+
+      case 'rx-crypto-status': {
+        // Check RX decryption mode
+        const expectedMode = condition.params?.cryptoMode;
+        if (!expectedMode) return false;
+
+        const crypto = CryptoModule.getInstance();
+        const rxState = crypto.getRxState();
+        return rxState.decryptionMode === expectedMode;
+      }
+
+      case 'rx-key-status': {
+        // Check RX key status
+        const expectedStatus = condition.params?.keyStatus;
+        if (!expectedStatus) return false;
+
+        const crypto = CryptoModule.getInstance();
+        const rxState = crypto.getRxState();
+        return rxState.decryptionKeyStatus === expectedStatus;
+      }
+
+      case 'tx-crypto-status': {
+        // Check TX encryption mode
+        const expectedMode = condition.params?.cryptoMode;
+        if (!expectedMode) return false;
+
+        const crypto = CryptoModule.getInstance();
+        const txState = crypto.getTxState();
+        return txState.encryptionMode === expectedMode;
+      }
+
+      case 'tx-key-status': {
+        // Check TX key status
+        const expectedStatus = condition.params?.keyStatus;
+        if (!expectedStatus) return false;
+
+        const crypto = CryptoModule.getInstance();
+        const txState = crypto.getTxState();
+        return txState.encryptionKeyStatus === expectedStatus;
+      }
+
+      // ═══════════════════════════════════════════════════════════════
+      // Fault Injection Conditions
+      // ═══════════════════════════════════════════════════════════════
+
+      case 'fault-active': {
+        // Check if a specific fault is currently active
+        const faultId = condition.params?.faultId;
+        if (!faultId) return false;
+
+        const faultInjector = FaultInjector.getInstance();
+        return faultInjector.isActive(faultId);
+      }
+
+      case 'fault-cleared': {
+        // Check if a specific fault has been cleared (not active)
+        const faultId = condition.params?.faultId;
+        if (!faultId) return false;
+
+        const faultInjector = FaultInjector.getInstance();
+        return !faultInjector.isActive(faultId);
       }
 
       default:

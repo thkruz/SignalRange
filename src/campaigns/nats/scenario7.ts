@@ -60,7 +60,7 @@ import { ses10Satellite, tidemark1Satellite } from './satellites';
 export const scenario7Data: ScenarioData = {
   id: 'nats-scenario7',
   url: 'nats/scenarios/nats-scenario7',
-  // prerequisiteScenarioIds: ['nats-scenario6'],
+  prerequisiteScenarioIds: ['nats-scenario6'],
   imageUrl: 'nats/7/card.png',
   number: 7,
   title: 'Uplink Validation',

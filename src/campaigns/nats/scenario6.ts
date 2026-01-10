@@ -62,7 +62,7 @@ import { aurora7Satellite, ses10Satellite, tidemark1Satellite } from './satellit
 export const scenario6Data: ScenarioData = {
   id: 'nats-scenario6',
   url: 'nats/scenarios/nats-scenario6',
-  // prerequisiteScenarioIds: ['nats-scenario5'],
+  prerequisiteScenarioIds: ['nats-scenario5'],
   imageUrl: 'nats/6/card.png',
   number: 6,
   title: 'Old Faithful',

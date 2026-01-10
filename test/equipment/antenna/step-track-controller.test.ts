@@ -2,7 +2,6 @@ import { Degrees } from 'ootk';
 import { StepTrackController } from '../../../src/equipment/antenna/step-track-controller';
 import { AntennaCore, AntennaState } from '../../../src/equipment/antenna/antenna-core';
 import { ANTENNA_CONFIG_KEYS } from '../../../src/equipment/antenna/antenna-config-keys';
-import { Hertz } from '../../../src/types';
 
 // Mock SimulationManager
 jest.mock('../../../src/simulation/simulation-manager', () => ({
@@ -11,7 +10,11 @@ jest.mock('../../../src/simulation/simulation-manager', () => ({
       update: jest.fn(),
       draw: jest.fn(),
       sync: jest.fn(),
-      getSatByNoradId: jest.fn(),
+      getSatByNoradId: jest.fn((id: number) => ({
+        noradId: id,
+        ephemerisErrorAz: 0.15 as Degrees,
+        ephemerisErrorEl: 0.10 as Degrees,
+      })),
       getSatsByAzEl: () => [],
       satellites: [],
       isDeveloperMode: false,
@@ -66,12 +69,16 @@ describe('StepTrackController', () => {
     antenna = new MockAntennaCore(ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK, {
       isPowered: true,
       isOperational: true,
-      trackingMode: 'step-track',
+      trackingMode: 'program-track',
+      isStepTrackEnabled: true,
+      stepTrackAzOffset: 0 as Degrees,
+      stepTrackElOffset: 0 as Degrees,
       beaconFrequencyHz: 3_948_000_000,
       beaconSearchBwHz: 500_000,
       beaconTrackingBwHz: 1_000,
       targetAzimuth: 100 as Degrees,
       targetElevation: 45 as Degrees,
+      targetSatelliteId: 12345,
     });
 
     controller = (antenna as any).stepTrackController_;
@@ -93,21 +100,17 @@ describe('StepTrackController', () => {
       expect(controller.isActive).toBe(true);
     });
 
-    it('should reset controller state on start', () => {
-      // First run for a while
+    it('should set target offsets from satellite ephemeris error', () => {
       controller.start();
-      const state1 = controller.getState();
+      const state = controller.getState();
+      // Target should be negative of ephemeris error
+      expect(state.targetAzOffset).toBe(-0.15);
+      expect(state.targetElOffset).toBe(-0.10);
+    });
 
-      // Stop and start again
-      controller.stop();
+    it('should reset convergence state on start', () => {
       controller.start();
-      const state2 = controller.getState();
-
-      // Should have reset values
-      expect(state2.stepSize).toBe(0.02);
-      expect(state2.searchAxis).toBe('az');
-      expect(state2.searchDirection).toBe(1);
-      expect(state2.lastPower).toBeNull();
+      expect(controller.isConverged).toBe(false);
     });
   });
 
@@ -132,29 +135,37 @@ describe('StepTrackController', () => {
 
   describe('update', () => {
     it('should not do anything when not active', () => {
-      const initialState = controller.getState();
+      const initialAzOffset = antenna.state.stepTrackAzOffset;
+      const initialElOffset = antenna.state.stepTrackElOffset;
 
       controller.update();
 
-      const afterState = controller.getState();
-      expect(afterState).toEqual(initialState);
+      expect(antenna.state.stepTrackAzOffset).toBe(initialAzOffset);
+      expect(antenna.state.stepTrackElOffset).toBe(initialElOffset);
     });
 
-    it('should be rate limited', () => {
-      controller.start();
+    it('should update offsets when active', () => {
+      const originalDateNow = Date.now;
+      let mockTime = 1000000;
+      Date.now = jest.fn(() => mockTime);
 
-      // Without RF front-end, updates will exit early
-      // But we can verify rate limiting by checking update counter
-      const state1 = controller.getState();
+      try {
+        controller.start();
 
-      // Call update multiple times within rate limit
-      for (let i = 0; i < 5; i++) {
+        // Advance time a bit (5 seconds)
+        mockTime += 5000;
         controller.update();
-      }
 
-      // State should not have changed significantly
-      const state2 = controller.getState();
-      expect(state2.isActive).toBe(true);
+        // Offsets should have started moving toward target
+        const azOffset = antenna.state.stepTrackAzOffset as number;
+        const elOffset = antenna.state.stepTrackElOffset as number;
+
+        // Should be non-zero and in the right direction
+        expect(azOffset).toBeLessThan(0); // Moving toward -0.15
+        expect(elOffset).toBeLessThan(0); // Moving toward -0.10
+      } finally {
+        Date.now = originalDateNow;
+      }
     });
 
     describe('with mock RF front-end', () => {
@@ -167,7 +178,7 @@ describe('StepTrackController', () => {
               loFrequency: 5150, // 5150 MHz LO
             },
           },
-          filterModule: {
+          agcModule: {
             outputSignals: [],
           },
           couplerModule: {
@@ -182,24 +193,9 @@ describe('StepTrackController', () => {
         antenna.setMockRfFrontEnd(mockRfFrontEnd);
       });
 
-      it('should clear beacon metrics when no signals found', () => {
-        controller.start();
-
-        // Run enough updates to get past rate limiting and startup grace
-        for (let i = 0; i < 50; i++) {
-          controller.update();
-        }
-
-        // With no signals, beacon power and C/N should be null
-        // Note: auto-disable may have triggered
-        expect(antenna.state.beaconPower).toBeNull();
-      });
-
       it('should measure beacon power when signals are present', () => {
-        // Add a mock beacon signal at the expected IF frequency
-        // Beacon at 3948 MHz, LO at 5150 MHz -> IF = 5150 - 3948 = 1202 MHz
         const beaconIfFreq = 5150e6 - 3_948_000_000;
-        mockRfFrontEnd.filterModule.outputSignals = [
+        mockRfFrontEnd.agcModule.outputSignals = [
           {
             frequency: beaconIfFreq,
             power: -60,
@@ -209,18 +205,17 @@ describe('StepTrackController', () => {
 
         controller.start();
 
-        // Run updates to get past rate limiting
-        for (let i = 0; i < 15; i++) {
+        // Run updates to get past rate limiting (60 updates per cycle)
+        for (let i = 0; i < 65; i++) {
           controller.update();
         }
 
-        // Should have measured beacon power
         expect(antenna.state.beaconPower).toBe(-60);
       });
 
       it('should calculate C/N ratio', () => {
         const beaconIfFreq = 5150e6 - 3_948_000_000;
-        mockRfFrontEnd.filterModule.outputSignals = [
+        mockRfFrontEnd.agcModule.outputSignals = [
           {
             frequency: beaconIfFreq,
             power: -60,
@@ -230,87 +225,119 @@ describe('StepTrackController', () => {
 
         controller.start();
 
-        for (let i = 0; i < 15; i++) {
+        for (let i = 0; i < 65; i++) {
           controller.update();
         }
 
         // C/N = signal power (-60) - noise floor (-120) = 60 dB
-        // But smoothing will affect this
         expect(antenna.state.beaconCN).toBeGreaterThan(50);
       });
 
       it('should acquire lock when C/N exceeds threshold', () => {
         const beaconIfFreq = 5150e6 - 3_948_000_000;
-        mockRfFrontEnd.filterModule.outputSignals = [
+        mockRfFrontEnd.agcModule.outputSignals = [
           {
             frequency: beaconIfFreq,
-            power: -50, // Strong signal for good C/N
+            power: -50,
             bandwidth: 25000,
           },
         ];
 
         controller.start();
 
-        // Run updates to acquire lock
-        for (let i = 0; i < 30; i++) {
+        for (let i = 0; i < 65; i++) {
           controller.update();
         }
 
         expect(antenna.state.isBeaconLocked).toBe(true);
       });
 
-      it('should auto-disable when C/N is too low for too long', () => {
-        // Signal too weak to produce sufficient C/N
+      it('should auto-disable when C/N is too low', () => {
         const beaconIfFreq = 5150e6 - 3_948_000_000;
-        mockRfFrontEnd.filterModule.outputSignals = [
+        mockRfFrontEnd.agcModule.outputSignals = [
           {
             frequency: beaconIfFreq,
-            power: -125, // Very weak signal, C/N = -125 - (-120) = -5 dB < 3 dB threshold
+            power: -125, // Very weak signal
             bandwidth: 25000,
           },
         ];
 
         controller.start();
 
-        // Run many updates to get past startup grace period
-        for (let i = 0; i < 50; i++) {
+        for (let i = 0; i < 65; i++) {
           controller.update();
         }
 
-        // Should have auto-disabled
         expect(controller.isActive).toBe(false);
         expect(antenna.state.isAutoTrackEnabled).toBe(false);
       });
+    });
+  });
 
-      it('should adjust step size based on power improvement', () => {
-        const beaconIfFreq = 5150e6 - 3_948_000_000;
-        let currentPower = -70;
+  describe('convergence', () => {
+    it('should converge over time', () => {
+      // Mock Date.now to control time
+      const originalDateNow = Date.now;
+      let mockTime = 1000000;
+      Date.now = jest.fn(() => mockTime);
 
-        // Simulate improving signal
-        mockRfFrontEnd.filterModule.outputSignals = [
-          {
-            frequency: beaconIfFreq,
-            get power() { return currentPower; },
-            bandwidth: 25000,
-          },
-        ];
+      try {
+        controller.start();
+        expect(controller.isConverged).toBe(false);
 
+        // Advance time past convergence duration (25 seconds)
+        mockTime += 30000;
+        controller.update();
+
+        expect(controller.isConverged).toBe(true);
+        expect(controller.getState().progress).toBe(1);
+      } finally {
+        Date.now = originalDateNow;
+      }
+    });
+
+    it('should reach target offsets when converged', () => {
+      const originalDateNow = Date.now;
+      let mockTime = 1000000;
+      Date.now = jest.fn(() => mockTime);
+
+      try {
         controller.start();
 
-        // Get initial step size
-        const initialState = controller.getState();
+        // Advance time past convergence duration
+        mockTime += 30000;
+        controller.update();
 
-        // Simulate consecutive improvements
-        for (let i = 0; i < 80; i++) {
-          currentPower += 0.5; // Steadily improving
-          controller.update();
-        }
+        // Should have reached target offsets
+        expect(antenna.state.stepTrackAzOffset).toBeCloseTo(-0.15, 2);
+        expect(antenna.state.stepTrackElOffset).toBeCloseTo(-0.10, 2);
+      } finally {
+        Date.now = originalDateNow;
+      }
+    });
 
-        // After many consecutive improvements, step size may have increased
-        const finalState = controller.getState();
-        // Can't guarantee exact behavior due to rate limiting and smoothing
-        expect(finalState.isActive || !finalState.isActive).toBe(true); // Valid state
-      });
+    it('should use easing for smooth convergence', () => {
+      const originalDateNow = Date.now;
+      let mockTime = 1000000;
+      Date.now = jest.fn(() => mockTime);
+
+      try {
+        controller.start();
+
+        // At 50% time, should be more than 50% of the way due to easeOutQuad
+        mockTime += 12500; // Half of 25 seconds
+        controller.update();
+
+        const progress = controller.getState().progress;
+        expect(progress).toBe(0.5);
+
+        // With easeOutQuad, 50% time = 75% progress toward target
+        const azOffset = antenna.state.stepTrackAzOffset as number;
+        // easeOutQuad(0.5) = 1 - (1-0.5)^2 = 1 - 0.25 = 0.75
+        expect(azOffset).toBeCloseTo(-0.15 * 0.75, 2);
+      } finally {
+        Date.now = originalDateNow;
+      }
     });
   });
 
@@ -319,12 +346,10 @@ describe('StepTrackController', () => {
       const state = controller.getState();
 
       expect(state).toHaveProperty('isActive');
-      expect(state).toHaveProperty('stepSize');
-      expect(state).toHaveProperty('searchAxis');
-      expect(state).toHaveProperty('searchDirection');
-      expect(state).toHaveProperty('lastPower');
-      expect(state).toHaveProperty('smoothedPower');
-      expect(state).toHaveProperty('confirmationCount');
+      expect(state).toHaveProperty('isConverged');
+      expect(state).toHaveProperty('targetAzOffset');
+      expect(state).toHaveProperty('targetElOffset');
+      expect(state).toHaveProperty('progress');
       expect(state).toHaveProperty('isLocked');
       expect(state).toHaveProperty('isLockStable');
     });
@@ -339,15 +364,9 @@ describe('StepTrackController', () => {
       expect(controller.getState().isActive).toBe(false);
     });
 
-    it('should return correct initial values', () => {
+    it('should return zero progress when not active', () => {
       const state = controller.getState();
-
-      expect(state.stepSize).toBe(0.02);
-      expect(state.searchAxis).toBe('az');
-      expect(state.searchDirection).toBe(1);
-      expect(state.lastPower).toBeNull();
-      expect(state.smoothedPower).toBeNull();
-      expect(state.confirmationCount).toBe(0);
+      expect(state.progress).toBe(0);
     });
   });
 
@@ -368,132 +387,10 @@ describe('StepTrackController', () => {
     });
   });
 
-  describe('step execution', () => {
-    let mockRfFrontEnd: any;
-
-    beforeEach(() => {
-      mockRfFrontEnd = {
-        lnbModule: {
-          state: {
-            loFrequency: 5150,
-          },
-        },
-        filterModule: {
-          outputSignals: [],
-        },
-        couplerModule: {
-          signalPathManager: {
-            getNoiseFloorAt: jest.fn(() => ({
-              noiseFloorNoGain: -120,
-              shouldApplyGain: false,
-            })),
-          },
-        },
-      };
-      antenna.setMockRfFrontEnd(mockRfFrontEnd);
-    });
-
-    it('should modify target position during step-track', () => {
-      const beaconIfFreq = 5150e6 - 3_948_000_000;
-      mockRfFrontEnd.filterModule.outputSignals = [
-        {
-          frequency: beaconIfFreq,
-          power: -60, // Good signal but not perfect
-          bandwidth: 25000,
-        },
-      ];
-
-      const initialAz = antenna.state.targetAzimuth;
-
+  describe('isConverged getter', () => {
+    it('should return false initially', () => {
       controller.start();
-
-      // Run updates
-      for (let i = 0; i < 50; i++) {
-        controller.update();
-      }
-
-      // Target position may have changed
-      // Due to rate limiting and step logic, exact values are hard to predict
-      // But controller should still be active or have auto-disabled properly
-      const state = controller.getState();
-      expect(typeof state.isActive).toBe('boolean');
-    });
-
-    it('should handle weak signal by increasing step size', () => {
-      const beaconIfFreq = 5150e6 - 3_948_000_000;
-      mockRfFrontEnd.filterModule.outputSignals = [
-        {
-          frequency: beaconIfFreq,
-          power: -100, // Weak signal
-          bandwidth: 25000,
-        },
-      ];
-
-      controller.start();
-
-      // After several updates with weak signal, step size should increase
-      for (let i = 0; i < 50; i++) {
-        controller.update();
-      }
-
-      // Weak signal handling - can't easily verify step size changes
-      // but can verify no crash
-      expect(true).toBe(true);
-    });
-  });
-
-  describe('axis switching', () => {
-    it('should have azimuth as initial search axis', () => {
-      expect(controller.getState().searchAxis).toBe('az');
-    });
-
-    it('should switch axes after consecutive degradations', () => {
-      // This is hard to test directly without manipulating internal state
-      // The switching happens after confirmationsRequired degradations
-      expect(controller.getState().searchAxis).toBe('az');
-    });
-  });
-
-  describe('direction reversal', () => {
-    it('should start with positive direction', () => {
-      expect(controller.getState().searchDirection).toBe(1);
-    });
-  });
-
-  describe('startup grace period', () => {
-    let mockRfFrontEnd: any;
-
-    beforeEach(() => {
-      mockRfFrontEnd = {
-        lnbModule: {
-          state: {
-            loFrequency: 5150,
-          },
-        },
-        filterModule: {
-          outputSignals: [],
-        },
-        couplerModule: {
-          signalPathManager: {
-            getNoiseFloorAt: jest.fn(() => ({
-              noiseFloorNoGain: -120,
-              shouldApplyGain: false,
-            })),
-          },
-        },
-      };
-      antenna.setMockRfFrontEnd(mockRfFrontEnd);
-    });
-
-    it('should not auto-disable during startup grace period', () => {
-      // No signal - would normally auto-disable
-      controller.start();
-
-      // First few updates should not auto-disable
-      controller.update();
-
-      // Should still be active during grace period
-      expect(controller.isActive).toBe(true);
+      expect(controller.isConverged).toBe(false);
     });
   });
 });

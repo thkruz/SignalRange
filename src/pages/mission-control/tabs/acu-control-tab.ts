@@ -19,7 +19,7 @@ import { OMTAdapter } from './omt-adapter';
  *
  * Displays:
  * - ACU identification (model, serial number, antenna info)
- * - Tracking mode selector (Stow, Maintenance, Manual, Program Track, Step Track)
+ * - Tracking mode selector (Stow, Maintenance, Manual, Program Track)
  * - Antenna controls (azimuth, elevation, polarization) with fine adjustment buttons
  * - Beacon tracking controls (frequency, search bandwidth)
  * - Environmental controls (heater, rain blower, precipitation sensor)
@@ -107,7 +107,6 @@ export class ACUControlTab extends BaseElement {
               <button type="button" class="btn btn-tracking ${p}btn-tracking" data-mode="maintenance">MAINT</button>
               <button type="button" class="btn btn-tracking ${p}btn-tracking active" data-mode="manual">MANUAL</button>
               <button type="button" class="btn btn-tracking ${p}btn-tracking" data-mode="program-track">PROGRAM</button>
-              <button type="button" class="btn btn-tracking ${p}btn-tracking" data-mode="step-track">STEP</button>
             </div>
 
             <!-- Power & Loopback -->
@@ -164,7 +163,7 @@ export class ACUControlTab extends BaseElement {
               <h3 class="card-title" id="${p}context-panel-title">Tracking</h3>
             </div>
             <div class="card-body">
-              <!-- Program Track: Satellite Selection -->
+              <!-- Program Track: Satellite Selection + Step-Track Optimization -->
               <div id="${p}program-track-section" class="tracking-section" style="display: none;">
                 <div class="mb-3">
                   <label class="form-label">Current Target</label>
@@ -179,29 +178,57 @@ export class ACUControlTab extends BaseElement {
                 <button id="${p}move-to-target-btn" class="btn btn-primary w-100" disabled>
                   Move to Target
                 </button>
-              </div>
 
-              <!-- Step Track: Beacon Controls -->
-              <div id="${p}step-track-section" class="tracking-section" style="display: none;">
-                <div class="mb-3">
-                  <label class="form-label">Beacon Frequency</label>
-                  <div class="input-group">
-                    <input type="number" class="form-control font-monospace" id="${p}beacon-freq"
-                           value="3948" step="0.1" min="1000" max="50000">
-                    <span class="input-group-text">MHz</span>
+                <!-- Step-Track Optimization Toggle -->
+                <div class="border-top pt-3 mt-3">
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div>
+                      <span class="fw-bold">Step-Track Optimization</span>
+                      <div class="text-muted small">Fine beacon correction</div>
+                    </div>
+                    <div class="form-check form-switch mb-0">
+                      <input class="form-check-input" type="checkbox" id="${p}step-track-toggle">
+                    </div>
+                  </div>
+
+                  <!-- LEO Warning -->
+                  <div id="${p}leo-warning" class="alert alert-warning small py-2 mb-2" style="display: none;">
+                    <i class="ti ti-alert-triangle me-1"></i>Not recommended for fast-moving satellites
+                  </div>
+
+                  <!-- Beacon Controls (shown when step-track enabled) -->
+                  <div id="${p}beacon-controls" style="display: none;">
+                    <div class="mb-2">
+                      <label class="form-label small mb-1">Beacon Frequency</label>
+                      <div class="input-group input-group-sm">
+                        <input type="number" class="form-control font-monospace" id="${p}beacon-freq"
+                               value="3948" step="0.1" min="1000" max="50000">
+                        <span class="input-group-text">MHz</span>
+                      </div>
+                    </div>
+                    <div class="mb-2">
+                      <label class="form-label small mb-1">Search Bandwidth</label>
+                      <div class="input-group input-group-sm">
+                        <input type="number" class="form-control font-monospace" id="${p}beacon-search-bw"
+                               value="500" step="50" min="100" max="2000">
+                        <span class="input-group-text">kHz</span>
+                      </div>
+                    </div>
+
+                    <!-- Offset Display -->
+                    <div class="d-flex justify-content-between small mb-1">
+                      <span class="text-muted">Az Offset:</span>
+                      <span id="${p}az-offset" class="font-monospace">0.000°</span>
+                    </div>
+                    <div class="d-flex justify-content-between small mb-2">
+                      <span class="text-muted">El Offset:</span>
+                      <span id="${p}el-offset" class="font-monospace">0.000°</span>
+                    </div>
+                    <button id="${p}clear-offsets-btn" class="btn btn-sm btn-outline-secondary w-100">
+                      Clear Offsets
+                    </button>
                   </div>
                 </div>
-                <div class="mb-3">
-                  <label class="form-label">Search Bandwidth</label>
-                  <div class="input-group">
-                    <input type="number" class="form-control font-monospace" id="${p}beacon-search-bw"
-                           value="500" step="50" min="100" max="2000">
-                    <span class="input-group-text">kHz</span>
-                  </div>
-                </div>
-                <button id="${p}step-track-toggle-btn" class="btn btn-primary w-100">
-                  START TRACKING
-                </button>
               </div>
 
               <!-- Manual/Stow/Maintenance: Status Info -->
@@ -222,7 +249,7 @@ export class ACUControlTab extends BaseElement {
                 </div>
               </div>
 
-              <!-- Beacon C/N Display - visible in manual, program-track, step-track modes -->
+              <!-- Beacon C/N Display - visible in manual and program-track modes -->
               <div id="${p}beacon-display-section" class="mt-3" style="display: none;">
                 <div class="beacon-strength-container">
                   <label class="form-label">Beacon C/N</label>
@@ -619,17 +646,22 @@ export class ACUControlTab extends BaseElement {
     };
     this.addHandler_('beacon-bw', bwInput, 'change', bwHandler);
 
-    // Handle step track toggle button
-    const toggleBtn = this.qs_<HTMLButtonElement>('step-track-toggle-btn');
-    if (toggleBtn) {
+    // Handle step track toggle switch (within program-track mode)
+    const stepTrackToggle = this.qs_<HTMLInputElement>('step-track-toggle');
+    if (stepTrackToggle) {
       const toggleHandler = () => {
-        if (antenna.state.isAutoTrackEnabled) {
-          antenna.stopStepTrack();
-        } else {
-          antenna.startStepTrack();
-        }
+        antenna.handleStepTrackToggle(stepTrackToggle.checked);
       };
-      this.addHandler_('step-track-toggle', toggleBtn, 'click', toggleHandler);
+      this.addHandler_('step-track-toggle', stepTrackToggle, 'change', toggleHandler);
+    }
+
+    // Handle clear offsets button
+    const clearOffsetsBtn = this.qs_<HTMLButtonElement>('clear-offsets-btn');
+    if (clearOffsetsBtn) {
+      const clearHandler = () => {
+        antenna.clearStepTrackOffsets();
+      };
+      this.addHandler_('clear-offsets', clearOffsetsBtn, 'click', clearHandler);
     }
   }
 
@@ -687,15 +719,13 @@ export class ACUControlTab extends BaseElement {
 
     // Show/hide tracking sections based on mode
     const programSection = this.qs_('program-track-section');
-    const stepSection = this.qs_('step-track-section');
     const manualSection = this.qs_('manual-section');
     const beaconDisplaySection = this.qs_('beacon-display-section');
 
     if (programSection) programSection.style.display = state.trackingMode === 'program-track' ? 'block' : 'none';
-    if (stepSection) stepSection.style.display = state.trackingMode === 'step-track' ? 'block' : 'none';
     if (manualSection) manualSection.style.display = ['manual', 'stow', 'maintenance'].includes(state.trackingMode) ? 'block' : 'none';
     // Beacon C/N display visible in active tracking modes (not stow/maintenance)
-    if (beaconDisplaySection) beaconDisplaySection.style.display = ['manual', 'program-track', 'step-track'].includes(state.trackingMode) ? 'block' : 'none';
+    if (beaconDisplaySection) beaconDisplaySection.style.display = ['manual', 'program-track'].includes(state.trackingMode) ? 'block' : 'none';
 
     // Update tracking mode display
     const modeDisplay = this.qs_('tracking-mode-display');
@@ -743,19 +773,36 @@ export class ACUControlTab extends BaseElement {
 
     // Beacon C/N display is updated by syncBeaconMetrics_() on each UPDATE event
 
-    // Update step track toggle button
-    const stepTrackBtn = this.qs_<HTMLButtonElement>('step-track-toggle-btn');
-    if (stepTrackBtn) {
-      if (state.isAutoTrackEnabled && state.trackingMode === 'step-track') {
-        stepTrackBtn.textContent = 'STOP TRACKING';
-        stepTrackBtn.classList.remove('btn-primary');
-        stepTrackBtn.classList.add('btn-danger');
-      } else {
-        stepTrackBtn.textContent = 'START TRACKING';
-        stepTrackBtn.classList.remove('btn-danger');
-        stepTrackBtn.classList.add('btn-primary');
-      }
+    // Update step-track toggle checkbox and beacon controls visibility
+    const stepTrackToggle = this.qs_<HTMLInputElement>('step-track-toggle');
+    const beaconControls = this.qs_('beacon-controls');
+    const leoWarning = this.qs_('leo-warning');
+
+    if (stepTrackToggle && document.activeElement !== stepTrackToggle) {
+      stepTrackToggle.checked = state.isStepTrackEnabled;
     }
+
+    // Show beacon controls when step-track is enabled
+    if (beaconControls) {
+      beaconControls.style.display = state.isStepTrackEnabled ? 'block' : 'none';
+    }
+
+    // Show LEO warning for fast-moving satellites (when step-track enabled and velocity > 0.1°/s)
+    // For now, we'll show warning based on satellite type if we can determine it
+    if (leoWarning && state.targetSatelliteId !== null) {
+      const sat = SimulationManager.getInstance().getSatByNoradId(state.targetSatelliteId);
+      // Show warning if satellite is LEO (not geostationary/geosynchronous)
+      const isLeo = sat && sat.orbitType !== 'geostationary' && sat.orbitType !== 'geosynchronous';
+      leoWarning.style.display = (state.isStepTrackEnabled && isLeo) ? 'block' : 'none';
+    } else if (leoWarning) {
+      leoWarning.style.display = 'none';
+    }
+
+    // Update step-track offset display
+    const azOffset = this.qs_('az-offset');
+    const elOffset = this.qs_('el-offset');
+    if (azOffset) azOffset.textContent = `${(state.stepTrackAzOffset as number).toFixed(3)}°`;
+    if (elOffset) elOffset.textContent = `${(state.stepTrackElOffset as number).toFixed(3)}°`;
 
     // Sync environmental controls
     const heaterLed = this.qs_('heater-led');
@@ -797,15 +844,11 @@ export class ACUControlTab extends BaseElement {
     // Sync context panel title based on tracking mode
     const contextTitle = this.qs_('context-panel-title');
     if (contextTitle) {
-      switch (state.trackingMode) {
-        case 'program-track':
-          contextTitle.textContent = 'Program Track';
-          break;
-        case 'step-track':
-          contextTitle.textContent = 'Step Track';
-          break;
-        default:
-          contextTitle.textContent = 'Tracking';
+      if (state.trackingMode === 'program-track') {
+        // Show "Program Track" or "Program + Step Track" based on step-track state
+        contextTitle.textContent = state.isStepTrackEnabled ? 'Program + Step Track' : 'Program Track';
+      } else {
+        contextTitle.textContent = 'Tracking';
       }
     }
 
@@ -898,9 +941,9 @@ export class ACUControlTab extends BaseElement {
       }
     }
     if (beaconLockEl) {
-      // Lock status depends on tracking mode
-      if (state.trackingMode === 'step-track') {
-        // Step-track mode: IDLE (tracking off), SEARCHING (tracking on), LOCKED
+      // Lock status depends on whether step-track optimization is enabled
+      if (state.isStepTrackEnabled) {
+        // Step-track enabled: IDLE (tracking off), SEARCHING (tracking on), LOCKED
         if (!state.isAutoTrackEnabled) {
           beaconLockEl.textContent = 'IDLE';
           beaconLockEl.classList.remove('text-success');
@@ -912,7 +955,7 @@ export class ACUControlTab extends BaseElement {
           beaconLockEl.classList.remove('text-success');
         }
       } else {
-        // Manual/Program-track mode: UNLOCKED or LOCKED based on C/N
+        // Manual/Program-track without step-track: UNLOCKED or LOCKED based on C/N
         if (state.isBeaconLocked) {
           beaconLockEl.textContent = 'LOCKED';
           beaconLockEl.classList.add('text-success');

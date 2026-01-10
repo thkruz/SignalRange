@@ -31,6 +31,7 @@ jest.mock('../../../../src/simulation/simulation-manager', () => ({
   SimulationManager: {
     getInstance: jest.fn(() => ({
       satellites: [],
+      getSatByNoradId: jest.fn(() => null),
     })),
   },
 }));
@@ -89,6 +90,9 @@ describe('ACUControlTab', () => {
     isAutoTrackEnabled: false,
     stagedBeaconFrequencyHz: null,
     stagedBeaconSearchBwHz: null,
+    isStepTrackEnabled: false,
+    stepTrackAzOffset: 0,
+    stepTrackElOffset: 0,
   };
 
   beforeEach(() => {
@@ -121,6 +125,7 @@ describe('ACUControlTab', () => {
           stageBeaconSearchBwChange: jest.fn(),
           startStepTrack: jest.fn(),
           stopStepTrack: jest.fn(),
+          handleStepTrackToggle: jest.fn(),
           handleHeaterToggle: jest.fn(),
           handleRainBlowerToggle: jest.fn(),
         },
@@ -189,7 +194,8 @@ describe('ACUControlTab', () => {
 
     it('should render tracking mode selector', () => {
       const trackingBtns = document.querySelectorAll('.btn-tracking');
-      expect(trackingBtns.length).toBe(5);
+      // STOW, MAINT, MANUAL, PROGRAM (step-track is now a toggle within program-track)
+      expect(trackingBtns.length).toBe(4);
     });
 
     it('should render power switch', () => {
@@ -240,9 +246,9 @@ describe('ACUControlTab', () => {
       expect(programBtn).not.toBeNull();
     });
 
-    it('should render STEP button', () => {
-      const stepBtn = document.querySelector('[data-mode="step-track"]');
-      expect(stepBtn).not.toBeNull();
+    it('should render step-track toggle', () => {
+      const stepTrackToggle = document.querySelector(`#${PREFIX}step-track-toggle`);
+      expect(stepTrackToggle).not.toBeNull();
     });
   });
 
@@ -392,6 +398,7 @@ describe('ACUControlTab', () => {
           { noradId: 12345, name: 'Test Satellite 1' },
           { noradId: 67890, name: 'Test Satellite 2' },
         ],
+        getSatByNoradId: jest.fn(() => null),
       });
 
       // Recreate tab to get updated dropdown
@@ -439,22 +446,24 @@ describe('ACUControlTab', () => {
       expect(antenna.stageBeaconSearchBwChange).toHaveBeenCalledWith(600e3);
     });
 
-    it('should call startStepTrack when step track button is clicked and not tracking', () => {
+    it('should call handleStepTrackToggle when step track toggle is enabled', () => {
       const antenna = mockGroundStation.antennas[0];
-      antenna.state.isAutoTrackEnabled = false;
-      const toggleBtn = document.querySelector(`#${PREFIX}step-track-toggle-btn`) as HTMLButtonElement;
-      toggleBtn.click();
+      antenna.state.isStepTrackEnabled = false;
+      const toggle = document.querySelector(`#${PREFIX}step-track-toggle`) as HTMLInputElement;
+      toggle.checked = true;
+      toggle.dispatchEvent(new Event('change'));
 
-      expect(antenna.startStepTrack).toHaveBeenCalled();
+      expect(antenna.handleStepTrackToggle).toHaveBeenCalledWith(true);
     });
 
-    it('should call stopStepTrack when step track button is clicked and tracking', () => {
+    it('should call handleStepTrackToggle when step track toggle is disabled', () => {
       const antenna = mockGroundStation.antennas[0];
-      antenna.state.isAutoTrackEnabled = true;
-      const toggleBtn = document.querySelector(`#${PREFIX}step-track-toggle-btn`) as HTMLButtonElement;
-      toggleBtn.click();
+      antenna.state.isStepTrackEnabled = true;
+      const toggle = document.querySelector(`#${PREFIX}step-track-toggle`) as HTMLInputElement;
+      toggle.checked = false;
+      toggle.dispatchEvent(new Event('change'));
 
-      expect(antenna.stopStepTrack).toHaveBeenCalled();
+      expect(antenna.handleStepTrackToggle).toHaveBeenCalledWith(false);
     });
   });
 
@@ -531,21 +540,20 @@ describe('ACUControlTab', () => {
       expect(faultEl?.textContent).toBe('Motor failure');
     });
 
-    it('should update step track button to STOP when auto track is enabled', () => {
+    it('should update step track toggle when step-track is enabled', () => {
       const updateHandler = mockEventBus.on.mock.calls.find(
         (call: unknown[]) => call[0] === Events.UPDATE
       )?.[1];
 
       const antenna = mockGroundStation.antennas[0];
-      antenna.state.isAutoTrackEnabled = true;
-      antenna.state.trackingMode = 'step-track';
+      antenna.state.trackingMode = 'program-track';
+      antenna.state.isStepTrackEnabled = true;
 
       jest.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();
 
-      const toggleBtn = document.querySelector(`#${PREFIX}step-track-toggle-btn`) as HTMLButtonElement;
-      expect(toggleBtn?.textContent).toBe('STOP TRACKING');
-      expect(toggleBtn?.classList.contains('btn-danger')).toBe(true);
+      const toggle = document.querySelector(`#${PREFIX}step-track-toggle`) as HTMLInputElement;
+      expect(toggle?.checked).toBe(true);
     });
 
     it('should update context panel title for program-track mode', () => {
@@ -555,6 +563,7 @@ describe('ACUControlTab', () => {
 
       const antenna = mockGroundStation.antennas[0];
       antenna.state.trackingMode = 'program-track';
+      antenna.state.isStepTrackEnabled = false;
 
       jest.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();
@@ -563,22 +572,23 @@ describe('ACUControlTab', () => {
       expect(contextTitle?.textContent).toBe('Program Track');
     });
 
-    it('should update context panel title for step-track mode', () => {
+    it('should update context panel title for program-track with step-track enabled', () => {
       const updateHandler = mockEventBus.on.mock.calls.find(
         (call: unknown[]) => call[0] === Events.UPDATE
       )?.[1];
 
       const antenna = mockGroundStation.antennas[0];
-      antenna.state.trackingMode = 'step-track';
+      antenna.state.trackingMode = 'program-track';
+      antenna.state.isStepTrackEnabled = true;
 
       jest.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();
 
       const contextTitle = document.querySelector(`#${PREFIX}context-panel-title`);
-      expect(contextTitle?.textContent).toBe('Step Track');
+      expect(contextTitle?.textContent).toBe('Program + Step Track');
     });
 
-    it('should show amber ACU status LED when not operational', () => {
+    it('should show warning ACU status LED when not operational', () => {
       const updateHandler = mockEventBus.on.mock.calls.find(
         (call: unknown[]) => call[0] === Events.UPDATE
       )?.[1];
@@ -591,7 +601,7 @@ describe('ACUControlTab', () => {
       updateHandler();
 
       const statusLed = document.querySelector(`#${PREFIX}status-led`);
-      expect(statusLed?.className).toContain('led-amber');
+      expect(statusLed?.className).toContain('card-alarm-led warning');
     });
 
     it('should show off ACU status LED when not powered', () => {
@@ -606,7 +616,7 @@ describe('ACUControlTab', () => {
       updateHandler();
 
       const statusLed = document.querySelector(`#${PREFIX}status-led`);
-      expect(statusLed?.className).toContain('led-off');
+      expect(statusLed?.className).toContain('card-alarm-led off');
     });
 
     it('should update ice accumulation display', () => {
@@ -707,13 +717,14 @@ describe('ACUControlTab', () => {
       expect(beaconFillEl?.classList.contains('cn-red')).toBe(true);
     });
 
-    it('should show IDLE status for step-track when not auto-tracking', () => {
+    it('should show IDLE status for step-track when enabled but not auto-tracking', () => {
       const updateHandlers = mockEventBus.on.mock.calls
         .filter((call: unknown[]) => call[0] === Events.UPDATE)
         .map((call: unknown[]) => call[1]);
 
       const antenna = mockGroundStation.antennas[0];
-      antenna.state.trackingMode = 'step-track';
+      antenna.state.trackingMode = 'program-track';
+      antenna.state.isStepTrackEnabled = true;
       antenna.state.isAutoTrackEnabled = false;
 
       jest.spyOn(Date, 'now').mockReturnValue(2000);
@@ -729,7 +740,8 @@ describe('ACUControlTab', () => {
         .map((call: unknown[]) => call[1]);
 
       const antenna = mockGroundStation.antennas[0];
-      antenna.state.trackingMode = 'step-track';
+      antenna.state.trackingMode = 'program-track';
+      antenna.state.isStepTrackEnabled = true;
       antenna.state.isAutoTrackEnabled = true;
       antenna.state.isBeaconLocked = false;
 
@@ -746,7 +758,8 @@ describe('ACUControlTab', () => {
         .map((call: unknown[]) => call[1]);
 
       const antenna = mockGroundStation.antennas[0];
-      antenna.state.trackingMode = 'step-track';
+      antenna.state.trackingMode = 'program-track';
+      antenna.state.isStepTrackEnabled = true;
       antenna.state.isAutoTrackEnabled = true;
       antenna.state.isBeaconLocked = true;
 
@@ -773,8 +786,8 @@ describe('ACUControlTab', () => {
       updateHandler();
 
       const precipStatus = document.querySelector(`#${PREFIX}precip-status`);
-      const led = precipStatus?.querySelector('.led');
-      expect(led?.className).toContain('led-amber');
+      const led = precipStatus?.querySelector('.card-alarm-led');
+      expect(led?.className).toContain('card-alarm-led warning');
     });
   });
 
@@ -785,6 +798,7 @@ describe('ACUControlTab', () => {
         satellites: [
           { noradId: 12345, name: 'Test Satellite 1' },
         ],
+        getSatByNoradId: jest.fn(() => null),
       });
 
       const antenna = mockGroundStation.antennas[0];

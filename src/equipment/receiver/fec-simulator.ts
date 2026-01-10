@@ -87,6 +87,9 @@ export class FECSimulator {
   // Fault injection overrides
   private overrides_: FECOverrides = {};
 
+  // Hysteresis for channel status to prevent oscillation around thresholds
+  private lastChannelStatus_: 'Good' | 'Degraded' | 'Critical' | 'No Lock' = 'Good';
+
   /**
    * Modulation offsets for Eb/N0 calculation (dB)
    * Higher order modulations require higher C/N for same BER
@@ -124,22 +127,20 @@ export class FECSimulator {
 
     // Calculate base metrics
     const frameSyncLocked = this.calculateFrameSync_(input, effectiveCn);
-    const rawBer = this.calculateRawBer_(effectiveCn, input.modulation);
-    const rawViterbi = this.calculateRawViterbiMetric_(effectiveCn, input.fec);
-
-    // Update smoothed values for display (side effect updates internal state)
+    // Update smoothed values for display stability
     this.calculateBer_(effectiveCn, input.modulation);
     this.calculateViterbiMetric_(effectiveCn, input.fec);
 
     // Update RS counters (use smoothed BER for realistic accumulation)
     this.updateReedSolomon_(this.smoothedBer_, deltaTime);
 
-    // Determine channel status using RAW metrics for responsiveness
-    // (smoothed values are for display stability, not status determination)
+    // Determine channel status using SMOOTHED metrics for stability
+    // Combined with hysteresis in determineChannelStatus_, this prevents
+    // status flickering when signal quality hovers near thresholds
     const channelStatus = this.determineChannelStatus_(
       frameSyncLocked,
-      rawBer,
-      rawViterbi,
+      this.smoothedBer_,
+      this.smoothedViterbi_,
       this.rsUncorrectableRecent_
     );
 
@@ -191,6 +192,7 @@ export class FECSimulator {
     this.smoothedBer_ = 1e-12;
     this.smoothedViterbi_ = 0.95;
     this.overrides_ = {};
+    this.lastChannelStatus_ = 'Good';
   }
 
   /**
@@ -371,6 +373,10 @@ export class FECSimulator {
    * - Degraded: BER 1e-5 to 1e-3, moderate Viterbi confidence
    * - Critical: BER > 1e-3, poor Viterbi, or uncorrectable blocks
    * - No Lock: No frame synchronization
+   *
+   * Uses hysteresis to prevent oscillation around thresholds:
+   * - Requires crossing threshold by a margin to change status
+   * - Prevents flicker when signal is borderline
    */
   private determineChannelStatus_(
     frameSyncLocked: boolean,
@@ -378,27 +384,79 @@ export class FECSimulator {
     viterbiMetric: number,
     rsUncorrectable: number
   ): 'Good' | 'Degraded' | 'Critical' | 'No Lock' {
-    // No frame sync = No Lock
+    // No frame sync = No Lock (no hysteresis needed - binary condition)
     if (!frameSyncLocked) {
+      this.lastChannelStatus_ = 'No Lock';
       return 'No Lock';
     }
 
-    // RS uncorrectable blocks = Critical (data corruption occurring)
+    // RS uncorrectable blocks = Critical (no hysteresis - binary condition)
     if (rsUncorrectable > 0) {
+      this.lastChannelStatus_ = 'Critical';
       return 'Critical';
     }
 
-    // High BER (>0.1%) or very low Viterbi = Critical
+    // Determine raw status without hysteresis
+    let rawStatus: 'Good' | 'Degraded' | 'Critical' | 'No Lock';
     if (ber > 1e-3 || viterbiMetric < 0.4) {
-      return 'Critical';
+      rawStatus = 'Critical';
+    } else if (ber > 1e-5 || viterbiMetric < 0.6) {
+      rawStatus = 'Degraded';
+    } else {
+      rawStatus = 'Good';
     }
 
-    // Elevated BER (>0.001%) or degraded Viterbi = Degraded
-    if (ber > 1e-5 || viterbiMetric < 0.6) {
-      return 'Degraded';
+    // Apply hysteresis: require margin to improve status (not worsen)
+    // This prevents oscillation when values hover near thresholds
+    const lastStatus = this.lastChannelStatus_;
+
+    // Worsening always applies immediately
+    if (this.isWorse_(rawStatus, lastStatus)) {
+      this.lastChannelStatus_ = rawStatus;
+      return rawStatus;
     }
 
-    return 'Good';
+    // Improving requires crossing threshold with margin
+    if (this.isBetter_(rawStatus, lastStatus)) {
+      // To go from Degraded → Good: BER must be well below threshold
+      if (lastStatus === 'Degraded' && rawStatus === 'Good') {
+        // Require BER < 5e-6 (half threshold) AND viterbi > 0.65 to improve
+        if (ber < 5e-6 && viterbiMetric > 0.65) {
+          this.lastChannelStatus_ = 'Good';
+          return 'Good';
+        }
+        return 'Degraded'; // Stay degraded until clearly good
+      }
+      // To go from Critical → Degraded: BER must be well below threshold
+      if (lastStatus === 'Critical' && rawStatus !== 'Critical') {
+        if (ber < 5e-4 && viterbiMetric > 0.45) {
+          this.lastChannelStatus_ = rawStatus;
+          return rawStatus;
+        }
+        return 'Critical'; // Stay critical until clearly better
+      }
+    }
+
+    // No change
+    return lastStatus;
+  }
+
+  /** Check if newStatus is worse than oldStatus */
+  private isWorse_(
+    newStatus: 'Good' | 'Degraded' | 'Critical' | 'No Lock',
+    oldStatus: 'Good' | 'Degraded' | 'Critical' | 'No Lock'
+  ): boolean {
+    const rank = { 'Good': 0, 'Degraded': 1, 'Critical': 2, 'No Lock': 3 };
+    return rank[newStatus] > rank[oldStatus];
+  }
+
+  /** Check if newStatus is better than oldStatus */
+  private isBetter_(
+    newStatus: 'Good' | 'Degraded' | 'Critical' | 'No Lock',
+    oldStatus: 'Good' | 'Degraded' | 'Critical' | 'No Lock'
+  ): boolean {
+    const rank = { 'Good': 0, 'Degraded': 1, 'Critical': 2, 'No Lock': 3 };
+    return rank[newStatus] < rank[oldStatus];
   }
 
   /**

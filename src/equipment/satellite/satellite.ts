@@ -122,6 +122,11 @@ export interface SatelliteState {
   orbitType?: OrbitType;
   /** Configuration for geosynchronous orbit pattern (required if orbitType is 'geosynchronous') */
   geosyncConfig?: GeosyncOrbitConfig;
+  // === Ephemeris Error (simulates TLE inaccuracy) ===
+  /** Azimuth error in TLE prediction (degrees). Program-track points to az + this error. */
+  ephemerisErrorAz?: Degrees;
+  /** Elevation error in TLE prediction (degrees). Program-track points to el + this error. */
+  ephemerisErrorEl?: Degrees;
 }
 
 /**
@@ -165,6 +170,11 @@ export class Satellite {
   rotation: Degrees = ((Math.random() * 90) - 45) as Degrees;
   name: string;
 
+  /** Ephemeris error in azimuth (degrees) - simulates TLE inaccuracy */
+  ephemerisErrorAz: Degrees = 0 as Degrees;
+  /** Ephemeris error in elevation (degrees) - simulates TLE inaccuracy */
+  ephemerisErrorEl: Degrees = 0 as Degrees;
+
   /** Orbit type - geostationary (fixed) or geosynchronous (figure-8 pattern) */
   readonly orbitType: OrbitType;
 
@@ -204,6 +214,8 @@ export class Satellite {
     this.az = satelliteState.az;
     this.el = satelliteState.el;
     this.rotation = satelliteState.rotation ?? this.rotation;
+    this.ephemerisErrorAz = satelliteState.ephemerisErrorAz ?? (0 as Degrees);
+    this.ephemerisErrorEl = satelliteState.ephemerisErrorEl ?? (0 as Degrees);
 
     this.name = name ?? `NORAD-${this.noradId}`;
 
@@ -672,6 +684,36 @@ export class Satellite {
    */
   getUplinkFromDownlink(frequency: RfFrequency): RfFrequency {
     return (frequency + this.frequencyOffset) as RfFrequency;
+  }
+
+  // === Ephemeris Error Methods ===
+
+  /**
+   * Get predicted azimuth (true position + ephemeris error).
+   * This is what program-track calculates from TLE data.
+   * The beacon signal comes from the true position (this.az), but the antenna
+   * points to the predicted position.
+   */
+  get predictedAz(): Degrees {
+    return ((this.az as number) + (this.ephemerisErrorAz as number)) as Degrees;
+  }
+
+  /**
+   * Get predicted elevation (true position + ephemeris error).
+   * This is what program-track calculates from TLE data.
+   */
+  get predictedEl(): Degrees {
+    return ((this.el as number) + (this.ephemerisErrorEl as number)) as Degrees;
+  }
+
+  /**
+   * Update ephemeris error (simulates TLE aging or refresh).
+   * @param azError - New azimuth error in degrees
+   * @param elError - New elevation error in degrees
+   */
+  setEphemerisError(azError: Degrees, elError: Degrees): void {
+    this.ephemerisErrorAz = azError;
+    this.ephemerisErrorEl = elError;
   }
 
   private getDownlinkFromUplink(frequency: RfFrequency): RfFrequency {

@@ -519,7 +519,7 @@ export class DashboardTab extends BaseElement {
       modeEl.className = 'status-badge';
       if (state.trackingMode === 'stow') {
         modeEl.classList.add('status-badge-gray');
-      } else if (state.trackingMode === 'program-track' || state.trackingMode === 'step-track') {
+      } else if (state.trackingMode === 'program-track') {
         modeEl.classList.add('status-badge-green');
       } else {
         modeEl.classList.add('status-badge-info');

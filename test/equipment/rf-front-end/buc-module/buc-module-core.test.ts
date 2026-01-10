@@ -232,16 +232,17 @@ describe('BUCModuleCore', () => {
         expect(bucModule.outputSignals[0].power).toBeLessThan(-100);
       });
 
-      it('should attenuate signals when not powered', () => {
+      it('should not produce output signals when not powered', () => {
         // Verify we have input signals
         expect(bucModule.inputSignals.length).toBeGreaterThan(0);
 
         bucModule.state.isPowered = false;
         bucModule.update();
 
-        // When not powered, gain is -170 dB, signals are heavily attenuated
-        expect(bucModule.outputSignals.length).toBeGreaterThan(0);
-        expect(bucModule.outputSignals[0].power).toBeLessThan(-100);
+        // When not powered, lock is lost and frequency drift may cause signals
+        // to be out of band, or no RF output is produced. Either way, no valid
+        // output signals should be present.
+        expect(bucModule.outputSignals.length).toBe(0);
       });
 
       it('should reject out-of-band signals', () => {

@@ -46,6 +46,7 @@ describe('HPAAdapter', () => {
     // Setup mock HPAModuleCore
     mockHpaModule = {
       state: { ...mockState },
+      inputSignals: [],
       handleBackOffChange: jest.fn(),
       handlePowerToggle: jest.fn((checked, callback) => {
         if (callback) callback(mockHpaModule.state);
@@ -66,6 +67,7 @@ describe('HPAAdapter', () => {
       <button id="hpa-apply-btn">Apply</button>
       <input type="checkbox" id="hpa-power" />
       <input type="checkbox" id="hpa-enable" />
+      <span id="hpa-input-power-display"></span>
       <span id="hpa-output-power-display"></span>
       <div id="hpa-power-meter">
         ${Array(10).fill('<div class="power-segment led-off"></div>').join('')}

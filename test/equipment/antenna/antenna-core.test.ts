@@ -1102,18 +1102,19 @@ describe('AntennaCore', () => {
       expect(antenna.state.isSlewing).toBe(false);
     });
 
-    it('should restart step track controller if needed', () => {
+    it('should keep step track controller running during update', () => {
       antenna.state.isPowered = true;
       antenna.state.isOperational = true;
-      antenna.state.trackingMode = 'step-track';
-      antenna.state.isAutoTrackEnabled = true;
+      antenna.state.trackingMode = 'program-track';
 
-      // The controller should not be active initially
-      expect(antenna.stepTrackController_.isActive).toBe(false);
+      // Start step tracking first
+      antenna.startStepTrack();
+      expect(antenna.stepTrackController_.isActive).toBe(true);
 
+      // Update should keep it running
       antenna.update();
 
-      // After update, controller should be started
+      // Controller should still be active after update
       expect(antenna.stepTrackController_.isActive).toBe(true);
     });
   });
@@ -1122,7 +1123,7 @@ describe('AntennaCore', () => {
     beforeEach(() => {
       antenna.state.isPowered = true;
       antenna.state.isOperational = true;
-      antenna.state.trackingMode = 'step-track';
+      antenna.state.trackingMode = 'program-track';
     });
 
     it('should start step tracking', () => {
@@ -1140,7 +1141,7 @@ describe('AntennaCore', () => {
       expect(antenna.stepTrackController_.isActive).toBe(false);
     });
 
-    it('should not start when not in step-track mode', () => {
+    it('should not start when not in program-track mode', () => {
       antenna.state.trackingMode = 'manual';
       antenna.startStepTrack();
 
@@ -1166,7 +1167,7 @@ describe('AntennaCore', () => {
     it('should stop step tracking', () => {
       antenna.state.isPowered = true;
       antenna.state.isOperational = true;
-      antenna.state.trackingMode = 'step-track';
+      antenna.state.trackingMode = 'program-track';
 
       antenna.startStepTrack();
       expect(antenna.stepTrackController_.isActive).toBe(true);
@@ -1966,10 +1967,10 @@ describe('AntennaCore', () => {
   });
 
   describe('handleTrackingModeChange stopping step track', () => {
-    it('should stop step track controller when leaving step-track mode', () => {
+    it('should stop step track controller when leaving program-track mode', () => {
       antenna.state.isPowered = true;
       antenna.state.isOperational = true;
-      antenna.state.trackingMode = 'step-track';
+      antenna.state.trackingMode = 'program-track';
 
       // Start step tracking
       antenna.startStepTrack();

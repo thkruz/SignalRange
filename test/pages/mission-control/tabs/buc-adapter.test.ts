@@ -49,11 +49,12 @@ describe('BUCAdapter', () => {
     // Setup mock BUCModuleCore
     mockBucModule = {
       state: { ...mockState },
-      outputSignals: [{ frequency: 5943e6 }],
+      outputSignals: [{ frequency: 5943e6, power: 35 }],
       handleLoFrequencyChange: jest.fn(),
       handleGainChange: jest.fn(),
       handlePowerToggle: jest.fn(),
       handleMuteToggle: jest.fn(),
+      handleLoopbackToggle: jest.fn(),
       getActiveInjectionMode: jest.fn().mockReturnValue('low'),
       getAlarms: jest.fn().mockReturnValue([]),
     } as unknown as jest.Mocked<BUCModuleCore>;
@@ -75,6 +76,7 @@ describe('BUCAdapter', () => {
       <button id="buc-apply-btn">Apply</button>
       <input type="checkbox" id="buc-power" />
       <input type="checkbox" id="buc-mute" />
+      <input type="checkbox" id="buc-loopback" />
       <span id="buc-sideband-status"></span>
       <span id="buc-output-power-display"></span>
       <span id="buc-rf-frequency-display"></span>
@@ -325,8 +327,8 @@ describe('BUCAdapter', () => {
       )?.[1];
       expect(updateHandler).toBeDefined();
 
-      // Update module state
-      mockBucModule.state.outputPower = 42.5;
+      // Update module state - note: output power now comes from outputSignals
+      mockBucModule.outputSignals[0].power = 42.5;
       mockBucModule.state.temperature = 55;
 
       // Trigger update with time past throttle

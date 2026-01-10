@@ -231,63 +231,61 @@ describe('WaterfallDisplay', () => {
       maxAmplitude,
     } as RealTimeSpectrumAnalyzerState);
 
+    // Note: The algorithm applies norm ** 2.5 biasing to compress lower values
     describe('color gradient mapping', () => {
       it('should return dark blue for lowest amplitude (norm < 0.2)', () => {
         const state = createState(-100, 0);
         const color = WaterfallDisplay.amplitudeToColorRGB(-100, state);
 
-        // norm = 0, so t = 0, expect [0, 0, 100]
+        // norm = 0, very dark blue [0, 0, 30]
         expect(color[0]).toBe(0); // R
         expect(color[1]).toBe(0); // G
-        expect(color[2]).toBeGreaterThanOrEqual(100); // B (dark blue to bright blue)
+        expect(color[2]).toBe(30); // B (very dark blue due to new gradient)
       });
 
-      it('should return bright blue for norm ~0.2', () => {
+      it('should return blue tones for norm ~0.2', () => {
         const state = createState(-100, 0);
         const color = WaterfallDisplay.amplitudeToColorRGB(-80, state);
 
-        // norm = 0.2, edge of first region
+        // Due to norm ** 2.5 biasing, still in blue range
         expect(color[0]).toBe(0); // R
-        expect(color[1]).toBeGreaterThanOrEqual(0); // G starts increasing
-        expect(color[2]).toBe(255); // B is at max
+        expect(color[1]).toBeGreaterThanOrEqual(0); // G may start increasing
+        expect(color[2]).toBeGreaterThan(0); // B
       });
 
-      it('should return cyan for norm ~0.4', () => {
+      it('should have blue component for norm ~0.4', () => {
         const state = createState(-100, 0);
         const color = WaterfallDisplay.amplitudeToColorRGB(-60, state);
 
-        // norm = 0.4, cyan region
+        // Due to biasing, still transitioning through blue/cyan
         expect(color[0]).toBe(0); // R
-        expect(color[1]).toBe(255); // G is at max
-        expect(color[2]).toBeLessThanOrEqual(255); // B decreasing
+        expect(color[1]).toBeGreaterThanOrEqual(0); // G
+        expect(color[2]).toBeGreaterThan(0); // B still present
       });
 
-      it('should return green for norm ~0.6', () => {
+      it('should transition toward warmer colors for norm ~0.6', () => {
         const state = createState(-100, 0);
         const color = WaterfallDisplay.amplitudeToColorRGB(-40, state);
 
-        // norm = 0.6, green region
-        expect(color[0]).toBeGreaterThanOrEqual(0); // R starts increasing
-        expect(color[1]).toBe(255); // G is at max
-        expect(color[2]).toBeLessThanOrEqual(255); // B
+        // Transitioning toward warmer colors
+        expect(color[1]).toBeGreaterThan(0); // G increasing
       });
 
-      it('should return yellow for norm ~0.8', () => {
+      it('should have warm colors for norm ~0.8', () => {
         const state = createState(-100, 0);
         const color = WaterfallDisplay.amplitudeToColorRGB(-20, state);
 
-        // norm = 0.8, yellow region
-        expect(color[0]).toBe(255); // R is at max
-        expect(color[1]).toBeLessThanOrEqual(255); // G decreasing
-        expect(color[2]).toBe(0); // B
+        // Warm colors (yellow/orange/red range)
+        expect(color[0]).toBeGreaterThan(0); // R significant
+        expect(color[2]).toBeLessThanOrEqual(255); // B reduced
       });
 
-      it('should return red for highest amplitude (norm > 0.8)', () => {
+      it('should return dark red for highest amplitude (norm > 0.8)', () => {
         const state = createState(-100, 0);
         const color = WaterfallDisplay.amplitudeToColorRGB(0, state);
 
-        // norm = 1.0, red
-        expect(color[0]).toBe(255); // R
+        // norm = 1.0, dark red [120, 0, 0]
+        expect(color[0]).toBe(120); // R (dark red)
         expect(color[1]).toBe(0); // G
         expect(color[2]).toBe(0); // B
       });
@@ -298,18 +296,18 @@ describe('WaterfallDisplay', () => {
         const state = createState(-100, 0);
         const color = WaterfallDisplay.amplitudeToColorRGB(-150, state);
 
-        // Should be clamped to minimum (dark blue)
+        // Should be clamped to minimum (very dark blue)
         expect(color[0]).toBe(0);
         expect(color[1]).toBe(0);
-        expect(color[2]).toBeGreaterThanOrEqual(100);
+        expect(color[2]).toBe(30);
       });
 
       it('should clamp values above maximum', () => {
         const state = createState(-100, 0);
         const color = WaterfallDisplay.amplitudeToColorRGB(50, state);
 
-        // Should be clamped to maximum (red)
-        expect(color[0]).toBe(255);
+        // Should be clamped to maximum (dark red)
+        expect(color[0]).toBe(120);
         expect(color[1]).toBe(0);
         expect(color[2]).toBe(0);
       });

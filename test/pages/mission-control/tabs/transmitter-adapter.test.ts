@@ -277,7 +277,7 @@ describe('TransmitterAdapter', () => {
       (adapter as any).syncDomWithState_(mockTransmitter.state);
 
       const txLed = containerEl.querySelector('#tx-transmit-led') as HTMLElement;
-      expect(txLed.classList.contains('led-red')).toBe(true);
+      expect(txLed.classList.contains('error')).toBe(true);
     });
 
     it('should update fault LED when faulted', () => {
@@ -285,7 +285,7 @@ describe('TransmitterAdapter', () => {
       (adapter as any).syncDomWithState_(mockTransmitter.state);
 
       const faultLed = containerEl.querySelector('#tx-fault-led') as HTMLElement;
-      expect(faultLed.classList.contains('led-red')).toBe(true);
+      expect(faultLed.classList.contains('error')).toBe(true);
     });
 
     it('should update online LED when powered', () => {
@@ -293,7 +293,7 @@ describe('TransmitterAdapter', () => {
       (adapter as any).syncDomWithState_(mockTransmitter.state);
 
       const onlineLed = containerEl.querySelector('#tx-online-led') as HTMLElement;
-      expect(onlineLed.classList.contains('led-green')).toBe(true);
+      expect(onlineLed.classList.contains('success')).toBe(true);
     });
   });
 

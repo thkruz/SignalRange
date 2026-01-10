@@ -1,101 +1,167 @@
 import { Character, Emotion } from '@app/modal/character-enum';
-import { Objective } from '@app/objectives';
+import type { Objective } from '@app/objectives/objective-types';
 import type { ScenarioData } from '@app/ScenarioData';
+import { SignalOrigin } from '@app/signal-origin';
+import type { dB, dBi, dBm, Hertz, IfFrequency, MHz } from '@app/types';
 import { getAssetUrl } from '@app/utils/asset-url';
+import { createRfFrontEnd } from '../rf-front-end-factory';
 import { maineGroundStation, vermontGroundStation } from './ground-stations';
-import { tidemark1Satellite, tidemark2Satellite } from './satellites';
+import { ses10Satellite, tidemark1Satellite } from './satellites';
+
 
 /**
- * NATS Level 7: "Equipment Cascade"
+ * NATS Level 7: "Uplink Validation"
  *
- * Phase: Pressure
- * Time Pressure: High (20 minutes before frequency drift causes service loss)
- * Calculation Required: As needed
- * New UI Elements: Fault isolation tools, backup system controls, holdover monitoring
+ * Phase: Core Mechanics (Phase 1, Scenario 7 of 8)
+ * Time Pressure: Moderate (per-objective timers)
+ * Calculation Required: YES - IF frequency calculations for uplink
+ * New UI Elements: BUC loopback mode, TX modem configuration, uplink power verification
  *
- * Premise: 10 PM shift. GPSDO has lost GNSS lock and entered holdover mode. Charlie
- * is at dinner but reachable by phone. You're solo on console and need to maintain
- * TIDEMARK-1 service while troubleshooting. 5 minutes in, LNB temperature alarm appears.
- * Cascade failure scenario - manage multiple simultaneous faults.
+ * NICE Framework Alignment:
+ * Primary Codes:
+ *   - S0077: Skill in securing network communications
+ *   - T1313: Test network infrastructure, including software and hardware devices
+ *
+ * Supporting Codes:
+ *   - K0773: Knowledge of telecommunications principles and practices
+ *   - K0792: Knowledge of network configurations
+ *   - S0421: Skill in operating network equipment
+ *   - S0582: Skill in troubleshooting system performance
+ *   - T0153: Monitor network capacity and performance
+ *   - T0081: Diagnose network connectivity problems
+ *
+ * Premise: Routine post-maintenance uplink validation. The Vermont station completed
+ * overnight maintenance on the transmit chain. Charlie is off-site but calls to check
+ * in briefly. Dana Torres (Shift Supervisor) is on-site handling admin tasks but will
+ * check in at key decision points. Player must work independently.
+ *
+ * Key Learning Objectives:
+ * 1. Independent verification of RX chain status
+ * 2. TX modem IF frequency calculation (RF - BUC LO = IF)
+ * 3. BUC loopback mode for pre-transmission validation
+ * 4. Troubleshooting a minor fault (BUC reference unlock)
+ * 5. Full uplink enable sequence with encryption awareness
+ *
+ * Technical Reference (TIDEMARK-1):
+ *   - Uplink RF: 5943 MHz (TP-1 center)
+ *   - BUC LO: 4900 MHz
+ *   - TX IF: 1043 MHz (5943 - 4900 = 1043)
+ *   - Beacon RF: 4175.5 MHz
+ *   - LNB LO: 5250 MHz
+ *   - Beacon IF: 1074.5 MHz (5250 - 4175.5 = 1074.5)
+ *
+ * Character Notes:
+ *   - Charlie Brooks: Off-site, brief intro call and final check-in only
+ *   - Dana Torres: Shift Supervisor, on-site but busy, peer-level, slightly skeptical
+ *     of new hire's readiness. Checks in at key decision points. "Just making sure
+ *     neither of us gets in trouble."
  */
 
 export const scenario7Data: ScenarioData = {
-  id: 'nats-level-7-equipment-cascade',
-  // prerequisiteScenarioIds: ['nats-level-6-interference-hunt'],
-  prerequisiteScenarioIds: [],
-  url: 'nats/level-7/equipment-cascade',
+  id: 'nats-scenario7',
+  url: 'nats/scenarios/nats-scenario7',
+  // prerequisiteScenarioIds: ['nats-scenario6'],
   imageUrl: 'nats/7/card.png',
   number: 7,
-  title: 'Level 7: "Equipment Cascade"',
-  subtitle: 'Multiple Fault Management',
-  duration: '25-30 min (20 min deadline)',
-  difficulty: 'advanced',
-  missionType: 'Pressure Phase',
-  description: `It's 10 PM. You're solo on the night shift. Charlie just left for dinner - he'll be back in 45 minutes.<br><br>The GPSDO alarm sounds. GNSS lock lost - the reference oscillator has entered holdover mode. It's still providing a 10 MHz reference, but the frequency accuracy is slowly degrading. You have approximately 20 minutes before accumulated drift causes loss of service on TIDEMARK-1.<br><br>5 minutes into troubleshooting the GPSDO issue, a second alarm: LNB temperature rising above operational limits. Now you're managing two simultaneous equipment faults while trying to keep the customer link online.<br><br>Charlie is reachable by phone for guidance, but he can't physically help. This is cascade failure management - prioritize, troubleshoot methodically, decide when to use backup systems. Keep the service running.`,
+  title: 'Uplink Validation',
+  subtitle: 'Transmit Enable Sequence & Power Verification',
+  duration: '25-35 min',
+  difficulty: 'intermediate',
+  missionType: 'Operations Phase',
+  description: `The Vermont station completed overnight maintenance on the transmit chain - waveguide inspection and HPA tube replacement. Before resuming normal operations, you need to validate the entire uplink path.<br><br>Charlie is off-site today. Dana Torres, the shift supervisor, is handling paperwork but will check in periodically. You're expected to handle this independently.<br><br>Verify the receive chain, configure the transmitter, use BUC loopback to validate your signal, then bring the uplink online.<br><br>Key lesson: Always validate before you radiate.`,
   equipment: [
     '9-meter C-band Antenna',
-    'RF Front End (with backup GPSDO reference)',
-    'Backup LNB (hot spare)',
+    'RF Front End (BUC with Loopback)',
     'Spectrum Analyzer',
     'Receiver Modem',
-    'Fault Isolation Tools',
+    'Transmitter Modem',
+    'High Power Amplifier',
   ],
+  timeLimitSeconds: 35 * 60,
   settings: {
     isSync: true,
-    isExtraSatellitesVisible: true,
-    missionBriefUrl: getAssetUrl('/assets/campaigns/nats/7/mission-brief.html'),
-    scenarioStartWallTime: '22:00:00', // 10 PM - night shift
-    scenarioStartDate: '2025-03-15',
-    previousShiftLogs: [
-      {
-        timestamp: '17:30',
-        entry: 'Roof maintenance crew reported GPS antenna cable may have been disturbed during snow removal',
-        source: 'Day Shift',
-      },
-      {
-        timestamp: '18:15',
-        entry: 'GPSDO showing intermittent satellite count fluctuations - monitoring',
-        source: 'Day Shift',
-      },
-      {
-        timestamp: '21:45',
-        entry: 'Charlie heading to dinner break - will be back in 45 minutes',
-        source: 'Charlie',
-      },
-    ],
-    // cascadeEventTimings: {
-    //   primaryFault: 0, // GPSDO holdover at mission start
-    //   secondaryFault: 300, // LNB temp alarm at 5 minutes
-    // },
     groundStations: [
       {
         ...vermontGroundStation,
-        // Dual antennas to test backup GPSDO - must also duplicate rfFrontEnds to match
-        antennas: [vermontGroundStation.antennas[0], vermontGroundStation.antennas[0]],
-        antennasState: vermontGroundStation.antennasState
-          ? [vermontGroundStation.antennasState[0], vermontGroundStation.antennasState[0]]
-          : undefined,
-        rfFrontEnds: [vermontGroundStation.rfFrontEnds[0], vermontGroundStation.rfFrontEnds[0]],
+        rfFrontEnds: [
+          createRfFrontEnd(vermontGroundStation.rfFrontEnds[0], {
+            // Post-maintenance state: TX chain disabled, RX operational
+            buc: {
+              isMuted: true,
+              isLoopback: false,
+              loFrequency: 4900 as MHz,
+              isExtRefLocked: true,
+              gain: 35 as dB, // High gain causing over-temperature condition
+              temperature: 75, // Over temperature threshold (>70°C triggers alarm)
+            },
+            hpa: {
+              isHpaEnabled: false,
+              isHpaSwitchEnabled: false,
+              outputPower: 0 as dBm,
+            },
+            lnb: {
+              isPowered: true,
+              loFrequency: 5250 as MHz,
+              gain: 60,
+            },
+          }),
+        ],
+        transmitters: [
+          {
+            ...vermontGroundStation.transmitters[0],
+            modems: [
+              {
+                ...vermontGroundStation.transmitters[0].modems[0],
+                ifSignal: {
+                  frequency: 950e6 as IfFrequency, // Incorrect - needs to be set to 1043 MHz
+                  bandwidth: 36e6 as Hertz,
+                  power: -10 as dBm,
+                  modulation: 'QPSK',
+                  fec: '3/4',
+                  signalId: 'VT-01-TX-Modem-1-IF',
+                  serverId: 1,
+                  noradId: null,
+                  polarization: 'H',
+                  feed: 'TX',
+                  isDegraded: false,
+                  origin: SignalOrigin.TRANSMITTER,
+                  noiseFloor: -140 as dBm,
+                  gainInPath: 0 as dBi,
+                },
+              },
+            ],
+          },
+        ],
+        spectrumAnalyzers: [
+          {
+            ...vermontGroundStation.spectrumAnalyzers[0],
+            centerFrequency: 950e6 as Hertz, // Not tuned to beacon - player must configure
+          },
+        ],
       },
-      maineGroundStation,
+      { ...maineGroundStation, isOperational: false },
     ],
-    satellites: [
-      tidemark1Satellite,
-      tidemark2Satellite,
-    ],
+    missionBriefUrl: 'https://docs.signalrange.space/scenarios/scenario-7?content-only=true&dark=true',
+    isExtraSatellitesVisible: true,
+    satellites: [tidemark1Satellite, ses10Satellite],
   },
-  timeLimitSeconds: 1200, // 20 minutes
   objectives: [
+    // ============================================================
+    // MISSION PREPARATION
+    // ============================================================
     {
-      id: 'open-mission-brief',
+      id: 'review-mission-brief',
+      // K0645: Knowledge of standard operating procedures (SOPs)
+      nice: ['K0645'],
       title: 'Review Mission Brief',
-      description: 'Open and read the mission brief, then acknowledge you are ready to proceed.',
+      description: 'Open the mission brief to understand the post-maintenance validation requirements.',
       groundStation: 'VT-01',
       freezesScenarioTimer: true,
+      prerequisiteObjectiveIds: [],
       conditions: [
         {
           type: 'mission-brief-opened',
-          description: 'Mission Brief Document Opened',
+          description: 'Mission Brief Reviewed',
           params: { boxId: 'mission-brief' },
           mustMaintain: false,
         },
@@ -104,12 +170,81 @@ export const scenario7Data: ScenarioData = {
           description: 'Ready to Proceed',
           params: {
             question: 'Have you reviewed the mission brief and are you ready to begin?',
-            options: [
-              'Yes, I have read the mission brief and I am ready to proceed.',
-            ],
+            options: ['Yes, I have read the mission brief and I am ready to proceed.'],
             correctIndex: 0,
             explanation: 'The mission timer has started. Good luck!',
             pointPenalty: 0,
+            character: Character.DANA_TORRES,
+          },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 5,
+    },
+
+    // ============================================================
+    // RECEIVE CHAIN VERIFICATION
+    // ============================================================
+    {
+      id: 'select-vermont-station',
+      // S0421: Skill in operating network equipment
+      nice: ['S0421'],
+      title: 'Access Vermont Ground Station',
+      description: 'Select the Vermont Ground Station to begin system checks.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['review-mission-brief'],
+      timeLimitSeconds: 1 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'ground-station-selected',
+          description: 'Vermont Ground Station Selected',
+          params: { groundStationId: 'VT-01' },
+          mustMaintain: true,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 5,
+    },
+    {
+      id: 'verify-antenna-status',
+      // S0421: Skill in operating network equipment
+      nice: ['S0421'],
+      title: 'Verify Antenna Status',
+      description: 'Check the ACU Control tab and confirm antenna configuration.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['select-vermont-station'],
+      timeLimitSeconds: 2 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'ground-station-selected',
+          description: 'Vermont Station Active',
+          params: { groundStationId: 'VT-01' },
+          mustMaintain: true,
+        },
+        {
+          type: 'tab-active',
+          description: 'ACU Control Tab Open',
+          params: { tab: 'acu-control' },
+          mustMaintain: false,
+        },
+        {
+          type: 'status-check',
+          description: 'Antenna Status Verified',
+          params: {
+            question: 'What is the current antenna tracking mode and target satellite?',
+            options: [
+              'Program Track - TIDEMARK-1',
+              'Program Track - TIDEMARK-2',
+              'Step Track - TIDEMARK-1',
+              'Maintenance - Stowed',
+            ],
+            correctIndex: 0,
+            explanation: 'The antenna is in Program Track mode, locked on TIDEMARK-1 at Az: 161.8°, El: 34.2°.',
+            pointPenalty: 5,
+            character: Character.DANA_TORRES,
           },
           mustMaintain: false,
         },
@@ -118,492 +253,811 @@ export const scenario7Data: ScenarioData = {
       points: 5,
     },
     {
-      id: 'phase-1-gpsdo',
-      title: 'GPSDO Status Check',
-      description: 'Click on the GPSDO panel and verify all status indicators show normal operation.',
+      id: 'verify-lnb-operational',
+      // T0153: Monitor network capacity and performance
+      nice: ['T0153'],
+      title: 'Verify LNB Operational',
+      description: 'Navigate to the RX Analysis tab, verify LNB operational status, and confirm your understanding of the displayed parameters.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['open-mission-brief'],
+      prerequisiteObjectiveIds: ['verify-antenna-status'],
+      timeLimitSeconds: 2 * 60,
+      timerStartTrigger: 'on-activate',
       conditions: [
         {
+          type: 'tab-active',
+          description: 'RX Analysis Tab Open',
+          params: { tab: 'rx-analysis' },
+          mustMaintain: true,
+        },
+        {
+          type: 'equipment-powered',
+          description: 'LNB Powered',
+          params: { equipment: 'lnb' },
+          mustMaintain: true,
+        },
+        {
+          type: 'lnb-thermally-stable',
+          description: 'LNB Thermally Stabilized',
+          mustMaintain: true,
+        },
+        {
           type: 'status-check',
-          description: 'Verify GPSDO Status',
+          description: 'LNB Lock Status Observed',
           params: {
-            question: 'What does the GPSDO "Lock" indicator show?',
+            question: 'What is the current LNB reference lock status indicator showing?',
             options: [
-              'Locked (green) - stable frequency reference',
-              'Unlocked (red) - no frequency reference',
-              'Holdover (yellow) - using backup oscillator',
-              'Off - GPSDO is powered down',
+              'Locked',
+              'Unlocked',
+              'Warning',
+              'No indicator is displayed',
             ],
             correctIndex: 0,
-            explanation: 'The green "Locked" indicator means the GPSDO is receiving GPS timing signals and providing a stable 10 MHz reference to all equipment in the rack.',
-            pointPenalty: 10,
+            explanation:
+              'The LNB lock indicator shows "Locked" when the local oscillator is synchronized to the external 10 MHz GPSDO reference. This ensures frequency stability.',
+            pointPenalty: 5,
+            character: Character.DANA_TORRES,
           },
           mustMaintain: false,
         },
-      ],
-      conditionLogic: 'AND',
-      points: 20,
-      timeLimitSeconds: 5 * 60, // 5 minutes
-    },
-    {
-      id: 'phase-2-lnb',
-      title: 'LNB Status Check',
-      description: 'Review the LNB panel. Learn what each indicator means for the receive chain.',
-      groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['phase-1-gpsdo'],
-      conditions: [
         {
           type: 'status-check',
-          description: 'Verify LNB Noise Temperature',
+          description: 'Noise Temperature Understanding',
           params: {
-            question: 'What is the LNB noise temperature reading, and is it within spec?',
+            question:
+              'What does the LNB noise temperature value indicate about receiver performance?',
             options: [
-              '43K - within spec (good receive sensitivity)',
-              '150K - above spec (degraded sensitivity)',
-              '290K - far above spec (major problem)',
-              'No reading - LNB is offline',
+              'Lower noise temperature means better sensitivity and signal-to-noise ratio',
+              'Higher noise temperature means better sensitivity',
+              'Noise temperature only affects transmit power',
+              'Noise temperature has no impact on signal quality',
             ],
             correctIndex: 0,
-            explanation: 'The LNB noise temperature of 43K is excellent. Lower noise temperature means better receive sensitivity. Anything under 100K is considered good for C-band.',
-            pointPenalty: 10,
+            explanation:
+              'Noise temperature quantifies the thermal noise added by the LNB. Lower values (e.g., 45K) mean less noise is added to the received signal, improving the signal-to-noise ratio and receiver sensitivity.',
+            pointPenalty: 5,
+            character: Character.DANA_TORRES,
           },
           mustMaintain: false,
         },
       ],
       conditionLogic: 'AND',
-      points: 20,
-      timeLimitSeconds: 5 * 60, // 5 minutes
+      points: 5,
     },
     {
-      id: 'phase-3-hpa',
-      title: 'HPA Status Check',
-      description: 'Review the High Power Amplifier panel. Learn how to verify it is in a safe standby state.',
+      id: 'acquire-beacon',
+      // K0773: Knowledge of telecommunications principles and practices
+      nice: ['K0773'],
+      title: 'Acquire TIDEMARK-1 Beacon',
+      description: 'Configure the spectrum analyzer (center frequency, span, and amplitude range) to properly display and identify the satellite beacon.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['phase-2-lnb'],
+      prerequisiteObjectiveIds: ['verify-lnb-operational'],
+      timeLimitSeconds: 3 * 60,
+      timerStartTrigger: 'on-activate',
       conditions: [
         {
-          type: 'status-check',
-          description: 'Verify HPA Status',
+          type: 'tab-active',
+          description: 'RX Analysis Tab Open',
+          params: { tab: 'rx-analysis' },
+          mustMaintain: true,
+        },
+        {
+          type: 'speca-center-frequency',
+          description: 'Center Frequency Set',
           params: {
-            question: 'What is the current state of the HPA (High Power Amplifier)?',
+            frequency: 1074.5e6 as Hertz,
+            frequencyTolerance: 1e6 as Hertz,
+          },
+          mustMaintain: true,
+        },
+        {
+          type: 'speca-span-set',
+          description: 'Span Configured',
+          params: {
+            span: 20e6 as Hertz,
+            spanTolerance: 10e6 as Hertz,
+          },
+          mustMaintain: true,
+        },
+        {
+          type: 'speca-reference-level-set',
+          description: 'Reference Level Set',
+          params: {
+            referenceLevel: -70 as dBm,
+            referenceLevelTolerance: 20,
+          },
+          mustMaintain: true,
+        },
+        {
+          type: 'speca-min-amplitude',
+          description: 'Min Amplitude Set',
+          params: {
+            minAmplitude: -120 as dBm,
+            minAmplitudeTolerance: 10,
+          },
+          mustMaintain: true,
+        },
+        {
+          type: 'speca-max-amplitude',
+          description: 'Max Amplitude Set',
+          params: {
+            maxAmplitude: -50 as dBm,
+            maxAmplitudeTolerance: 20,
+          },
+          mustMaintain: true,
+        },
+        {
+          type: 'signal-detected',
+          description: 'Beacon Signal Detected',
+          params: {
+            signalId: 'TIDEMARK-1-Beacon',
+            minPower: -100 as dBm,
+          },
+          mustMaintain: true,
+        },
+        {
+          type: 'status-check',
+          description: 'Beacon Identification',
+          params: {
+            question:
+              'What distinguishes the beacon signal from other signals on the spectrum display?',
             options: [
-              'Transmitting with 10 db backoff',
-              'Powered on but not enabled (safe standby)',
-              'Transmitting at full power',
-              'Powered off completely',
+              'Beacon is a narrow CW carrier spike, while data signals have wider bandwidth',
+              'Beacon is wider than data signals',
+              'Beacon has modulation visible in the spectrum shape',
+              'Beacon power level is always exactly -50 dBm',
             ],
             correctIndex: 0,
-            explanation: 'The HPA is powered on and transmitting with 10 dB backoff, which is a safe condition for routine operations. This reduces stress on the amplifier while still allowing signal transmission.',
-            pointPenalty: 10,
+            explanation:
+              'Beacons are unmodulated Continuous Wave (CW) carriers that appear as narrow spikes. Their purpose is to provide a frequency and power reference independent of traffic.',
+            pointPenalty: 5,
+            character: Character.DANA_TORRES,
           },
           mustMaintain: false,
         },
-      ],
-      conditionLogic: 'AND',
-      points: 20,
-      timeLimitSeconds: 5 * 60, // 5 minutes
-    },
-    {
-      id: 'phase-4-antenna',
-      title: 'Antenna Tracking Status',
-      description: 'Check the antenna control unit. The antenna should be actively tracking TIDEMARK-1.',
-      groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['phase-3-hpa'],
-      conditions: [
         {
           type: 'status-check',
-          description: 'Verify Antenna Tracking Mode',
+          description: 'Beacon Purpose',
           params: {
-            question: 'What tracking mode is the antenna currently using?',
+            question:
+              'What does successful beacon acquisition confirm about the receive chain?',
             options: [
-              'Step-track - actively tracking beacon signal',
-              'Program-track - following predicted orbital position',
-              'Manual - operator-controlled pointing',
-              'Stow - antenna in safe position',
-            ],
-            correctIndex: 1,
-            explanation: 'Program-track mode follows the predicted orbital position of the satellite based on ephemeris data. This mode is used when the beacon signal is not available, during initial acquisition, or when the satellite is GEO stationary and we don\'t want the ACU to make constant adjustments.',
-            pointPenalty: 10,
-          },
-          mustMaintain: false,
-        },
-      ],
-      conditionLogic: 'AND',
-      points: 20,
-      timeLimitSeconds: 5 * 60, // 5 minutes
-    },
-    {
-      id: 'phase-5-polarization',
-      title: 'ACU Polarization Check',
-      description: 'Verify the antenna polarization setting matches the satellite requirements.',
-      groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['phase-4-antenna'],
-      conditions: [
-        {
-          type: 'status-check',
-          description: 'Verify Polarization Setting',
-          params: {
-            question: 'What is the current polarization angle shown on the ACU, and why is it set to that value?',
-            options: [
-              '14° - matched to TIDEMARK-1 satellite polarization',
-              '0° - default horizontal polarization',
-              '90° - vertical polarization',
-              '45° - circular polarization',
+              'All of the above',
+              'Antenna is pointed at the satellite',
+              'LNB is functioning and converting RF to IF',
+              'Signal path from antenna to spectrum analyzer is operational',
             ],
             correctIndex: 0,
-            explanation: 'The polarization is set to 14° to match TIDEMARK-1\'s polarization angle. Proper polarization alignment maximizes signal strength and minimizes cross-pol interference.',
-            pointPenalty: 10,
+            explanation:
+              'The beacon validates the entire receive chain: antenna pointing, LNB operation, and signal routing. If any component fails, the beacon disappears.',
+            pointPenalty: 5,
+            preserveOptionOrder: true,
+            character: Character.DANA_TORRES,
           },
           mustMaintain: false,
         },
       ],
       conditionLogic: 'AND',
-      points: 20,
-      timeLimitSeconds: 5 * 60, // 5 minutes
+      points: 15,
     },
     {
-      id: 'phase-6-spectrum',
-      title: 'Spectrum Analyzer Reading',
-      description: 'Look at the spectrum analyzer display. You should see the TIDEMARK-1 beacon signal.',
+      id: 'quiz-beacon-frequency',
+      // K0773: Knowledge of telecommunications principles and practices
+      nice: ['K0773'],
+      title: 'Confirm Beacon IF Frequency',
+      description: 'Verify understanding of the beacon frequency conversion.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['phase-5-polarization'],
+      prerequisiteObjectiveIds: ['acquire-beacon'],
+      timeLimitSeconds: 2 * 60,
+      timerStartTrigger: 'on-activate',
       conditions: [
         {
           type: 'status-check',
-          description: 'Identify Beacon Signal',
+          description: 'Beacon IF Calculation',
           params: {
-            question: 'What do you see at the center of the spectrum analyzer display?',
+            question: 'The TIDEMARK-1 beacon is at 4,175.5 MHz RF. With an LNB LO of 5,250 MHz, what IF frequency is the beacon at?',
             options: [
-              'A clear spike - the TIDEMARK-1 beacon signal',
-              'Only noise floor - no signal detected',
-              'Multiple interference spikes - contaminated spectrum',
-              'Flat line at 0 dBm - equipment malfunction',
+              '1,074.5 MHz',
+              '1,174.5 MHz',
+              '9,425.5 MHz',
+              '925.5 MHz',
             ],
             correctIndex: 0,
-            explanation: 'The beacon signal appears as a narrow spike rising above the noise floor. This CW (continuous wave) intermediate frequency signal confirms the satellite is in view and the receive chain is working.',
+            explanation: 'IF = LO - RF = 5,250 - 4,175.5 = 1,074.5 MHz. The LNB downconverts C-band RF to L-band IF.',
             pointPenalty: 10,
+            character: Character.DANA_TORRES,
           },
           mustMaintain: false,
         },
       ],
       conditionLogic: 'AND',
-      points: 20,
-      timeLimitSeconds: 5 * 60, // 5 minutes
+      points: 10,
     },
+
+    // ============================================================
+    // TRANSMIT CHAIN CONFIGURATION
+    // ============================================================
     {
-      id: 'phase-7-speca-settings',
-      title: 'Spectrum Analyzer Settings',
-      description: 'Review the spectrum analyzer settings to understand how it is configured for beacon observation.',
+      id: 'calculate-tx-if',
+      // K0773: Knowledge of telecommunications principles and practices
+      nice: ['K0773'],
+      title: 'Calculate TX IF Frequency',
+      description: 'Determine the correct transmitter modem IF frequency.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['phase-6-spectrum'],
+      prerequisiteObjectiveIds: ['quiz-beacon-frequency'],
+      timeLimitSeconds: 3 * 60,
+      timerStartTrigger: 'on-activate',
       conditions: [
         {
           type: 'status-check',
-          description: 'Verify Spectrum Analyzer Configuration',
+          description: 'TX IF Frequency Calculated',
           params: {
-            question: 'What center frequency and reference level are set on the spectrum analyzer?',
+            question: 'TIDEMARK-1 TP-1 uplink is 5,943 MHz RF. The BUC LO is 4,900 MHz. What TX IF frequency is required?',
             options: [
-              '1074.5 MHz center, -91 dBm reference - configured for TIDEMARK-1 beacon IF',
-              '1532 MHz center, -50 dBm reference - configured for TIDEMARK-1 RF frequency',
-              '0.002 MHz center, -30 dBm reference - configured for baseband',
-              '40 MHz bandwidth, 1.8 dB insertion loss - configured for low noise floor',
+              '1,043 MHz',
+              '10,843 MHz',
+              '943 MHz',
+              '1,143 MHz',
             ],
             correctIndex: 0,
-            explanation: 'The spectrum analyzer is set to 1074.5 MHz (beacon IF frequency for TIDEMARK-1 after LNB downconversion) with a -91 dBm reference level to properly display the weak beacon signal above the noise floor.',
+            explanation: 'TX IF = RF - BUC LO = 5,943 - 4,900 = 1,043 MHz. The BUC upconverts IF to RF.',
             pointPenalty: 10,
+            character: Character.DANA_TORRES,
           },
           mustMaintain: false,
         },
       ],
       conditionLogic: 'AND',
-      points: 20,
-      timeLimitSeconds: 5 * 60, // 5 minutes
+      points: 15,
     },
     {
-      id: 'phase-8-receiver',
-      title: 'Receiver Modem Check',
-      description: 'Verify the receiver modem is locked and the link quality is good.',
+      id: 'configure-tx-modem',
+      // K0792: Knowledge of network configurations
+      nice: ['K0792'],
+      title: 'Configure TX Modem',
+      description: 'Set the transmitter modem frequency, bandwidth, modulation, and power.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['phase-7-speca-settings'],
+      prerequisiteObjectiveIds: ['calculate-tx-if'],
+      timeLimitSeconds: 4 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'tab-active',
+          description: 'TX Chain Tab Open',
+          params: { tab: 'tx-chain' },
+          mustMaintain: true,
+        },
+        {
+          type: 'tx-modem-frequency-set',
+          description: 'TX Frequency: 1,043 MHz',
+          params: {
+            frequency: 1043e6,
+            frequencyTolerance: 1e6,
+          },
+          maintainUntilObjectiveComplete: true,
+        },
+        {
+          type: 'tx-modem-bandwidth-set',
+          description: 'TX Bandwidth: 36 MHz',
+          params: {
+            bandwidth: 36e6,
+            bandwidthTolerance: 1e6,
+          },
+          maintainUntilObjectiveComplete: true,
+        },
+        {
+          type: 'tx-modem-modulation-set',
+          description: 'TX Modulation: QPSK',
+          params: { modulation: 'QPSK' },
+          maintainUntilObjectiveComplete: true,
+        },
+        {
+          type: 'tx-modem-fec-set',
+          description: 'TX FEC: 3/4',
+          params: { fec: '3/4' },
+          maintainUntilObjectiveComplete: true,
+        },
+        {
+          type: 'tx-modem-power-set',
+          description: 'TX Power: -7 dBm',
+          params: {
+            power: -7,
+            powerTolerance: 1,
+          },
+          maintainUntilObjectiveComplete: true,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 15,
+    },
+
+    // ============================================================
+    // BUC FAULT DIAGNOSIS & LOOPBACK VALIDATION
+    // ============================================================
+    {
+      id: 'check-buc-status',
+      // S0582: Skill in troubleshooting system performance
+      nice: ['S0582'],
+      title: 'Check BUC Status',
+      description: 'Inspect the BUC panel for any fault conditions.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['configure-tx-modem'],
+      timeLimitSeconds: 2 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'tab-active',
+          description: 'TX Chain Tab Open',
+          params: { tab: 'tx-chain' },
+          mustMaintain: true,
+        },
+        {
+          type: 'status-check',
+          description: 'BUC Fault Identified',
+          params: {
+            question: 'What fault condition is indicated on the BUC panel?',
+            options: [
+              'Over Temperature',
+              '10 MHz Reference Unlocked',
+              'Output Saturated',
+              'No Fault - All Normal',
+            ],
+            correctIndex: 0,
+            explanation: 'The BUC is over temperature (>70°C). High gain settings increase power dissipation and heat. Reducing the gain will lower the temperature to a safe operating range.',
+            pointPenalty: 5,
+            character: Character.DANA_TORRES,
+          },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 10,
+    },
+    {
+      id: 'resolve-buc-fault',
+      // T0081: Diagnose network connectivity problems
+      nice: ['T0081'],
+      title: 'Resolve BUC Temperature Fault',
+      description: 'Lower the BUC gain to reduce temperature to safe operating range.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['check-buc-status'],
+      timeLimitSeconds: 2 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'tab-active',
+          description: 'TX Chain Tab Open',
+          params: { tab: 'tx-chain' },
+          mustMaintain: true,
+        },
+        {
+          type: 'buc-temperature-normal',
+          description: 'BUC Temperature Normal',
+          params: { maxTemperature: 70 },
+          mustMaintain: true,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 10,
+    },
+    {
+      id: 'enable-loopback',
+      // T1313: Test network infrastructure, including software and hardware devices
+      nice: ['T1313'],
+      title: 'Enable BUC Loopback',
+      description: 'Enable loopback mode to test the TX signal without transmitting.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['resolve-buc-fault'],
+      timeLimitSeconds: 2 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'tab-active',
+          description: 'TX Chain Tab Open',
+          params: { tab: 'tx-chain' },
+          mustMaintain: true,
+        },
+        {
+          type: 'buc-loopback-enabled',
+          description: 'BUC Loopback Enabled',
+          mustMaintain: true,
+        },
+        {
+          type: 'buc-unmuted',
+          description: 'BUC Unmuted',
+          mustMaintain: true,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 10,
+    },
+    {
+      id: 'verify-loopback-signal',
+      // T1313: Test network infrastructure, including software and hardware devices
+      nice: ['T1313'],
+      title: 'Verify Loopback Signal',
+      description: 'Confirm the TX signal is visible on the spectrum analyzer.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['enable-loopback'],
+      timeLimitSeconds: 3 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'tab-active',
+          description: 'RX Analysis Tab Open',
+          params: { tab: 'rx-analysis' },
+          mustMaintain: true,
+        },
+        {
+          type: 'speca-center-frequency',
+          description: 'Spectrum Analyzer at TX IF',
+          params: {
+            centerFrequency: 1043e6 as Hertz,
+            centerFrequencyTolerance: 5e6,
+          },
+          mustMaintain: true,
+        },
+        {
+          type: 'speca-span-set',
+          description: 'Span Set for Signal View',
+          params: {
+            span: 50e6,
+            frequencyTolerance: 20e6,
+          },
+          mustMaintain: true,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 10,
+    },
+    {
+      id: 'quiz-loopback-purpose',
+      // T1313: Test network infrastructure, including software and hardware devices
+      nice: ['T1313'],
+      title: 'Confirm Loopback Understanding',
+      description: 'Verify understanding of the loopback test.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['verify-loopback-signal'],
+      timeLimitSeconds: 2 * 60,
+      timerStartTrigger: 'on-activate',
       conditions: [
         {
           type: 'status-check',
-          description: 'Verify Link Quality',
+          description: 'Loopback Purpose Understood',
           params: {
-            question: 'What does the receiver modem C/N indicate for a QPSK link?',
+            question: 'What does a successful loopback test verify?',
             options: [
-              '≥ 8 dB - Strong link with good operating margin',
-              '5-7 dB - Usable link; FEC working normally',
-              '3-4 dB - Near lock threshold; errors likely',
-              '< 3 dB - Below demodulation threshold; no reliable lock',
+              'TX modem output and BUC signal path are functioning',
+              'The satellite transponder is responding',
+              'The HPA is at full power',
+              'The antenna is pointed correctly',
             ],
             correctIndex: 0,
-            explanation: 'A C/N ratio above 10 dB indicates a healthy link with adequate margin for reliable data reception. This confirms the entire receive chain from antenna to modem is functioning properly.',
-            pointPenalty: 10,
+            explanation: 'Loopback testing verifies the low-power transmit chain (modem and BUC) without engaging the HPA or transmitting. This catches configuration errors before they cause interference.',
+            pointPenalty: 5,
+            character: Character.DANA_TORRES,
           },
           mustMaintain: false,
         },
       ],
       conditionLogic: 'AND',
-      points: 20,
-      timeLimitSeconds: 5 * 60, // 5 minutes
+      points: 5,
+    },
+
+    // ============================================================
+    // UPLINK ENABLE SEQUENCE
+    // ============================================================
+    {
+      id: 'disable-loopback',
+      // S0421: Skill in operating network equipment
+      nice: ['S0421'],
+      title: 'Disable Loopback Mode',
+      description: 'Disable loopback and mute BUC to prepare for HPA enable.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['quiz-loopback-purpose'],
+      timeLimitSeconds: 2 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'tab-active',
+          description: 'TX Chain Tab Open',
+          params: { tab: 'tx-chain' },
+          mustMaintain: true,
+        },
+        {
+          type: 'buc-loopback-disabled',
+          description: 'BUC Loopback Disabled',
+          mustMaintain: true,
+        },
+        {
+          type: 'buc-muted',
+          description: 'BUC Muted',
+          mustMaintain: true,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 5,
     },
     {
-      id: 'phase-9-constellation',
-      title: 'I&Q Constellation Check',
-      description: 'Examine the I&Q constellation diagram to verify signal quality and modulation.',
+      id: 'power-on-hpa',
+      // S0421: Skill in operating network equipment
+      nice: ['S0421'],
+      title: 'Power On HPA',
+      description: 'Power on the High Power Amplifier.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['phase-8-receiver'],
+      prerequisiteObjectiveIds: ['disable-loopback'],
+      timeLimitSeconds: 2 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'tab-active',
+          description: 'TX Chain Tab Open',
+          params: { tab: 'tx-chain' },
+          mustMaintain: true,
+        },
+        {
+          type: 'equipment-powered',
+          description: 'HPA Powered On',
+          params: { equipment: 'hpa' },
+          maintainUntilObjectiveComplete: true,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 5,
+    },
+    {
+      id: 'quiz-encryption-status',
+      // S0077: Skill in securing network communications
+      nice: ['S0077'],
+      title: 'Verify Encryption Status',
+      description: 'Confirm link security configuration before transmission.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['power-on-hpa'],
+      timeLimitSeconds: 2 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'tab-active',
+          description: 'TX Chain Tab Open',
+          params: { tab: 'tx-chain' },
+          mustMaintain: true,
+        },
+        {
+          type: 'status-check',
+          description: 'Encryption Status Verified',
+          params: {
+            question: 'What is the encryption status for this uplink?',
+            options: [
+              'AES-256 Enabled',
+              'AES-128 Enabled',
+              'Encryption Disabled',
+              'Key Expired - Renewal Required',
+            ],
+            correctIndex: 0,
+            explanation: 'Link encryption is AES-256 per the TIDEMARK-1 service agreement. Never transmit without verifying encryption status.',
+            pointPenalty: 10,
+            character: Character.DANA_TORRES,
+          },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 10,
+    },
+    {
+      id: 'enable-hpa-output',
+      // S0421: Skill in operating network equipment
+      nice: ['S0421'],
+      title: 'Enable HPA Output',
+      description: 'Enable the HPA output stage.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['quiz-encryption-status'],
+      timeLimitSeconds: 2 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'tab-active',
+          description: 'TX Chain Tab Open',
+          params: { tab: 'tx-chain' },
+          mustMaintain: true,
+        },
+        {
+          type: 'hpa-enabled',
+          description: 'HPA Output Enabled',
+          maintainUntilObjectiveComplete: true,
+        },
+        {
+          type: 'hpa-not-overdriven',
+          description: 'HPA Not Overdriven',
+          maintainUntilObjectiveComplete: true,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 10,
+    },
+    {
+      id: 'unmute-buc-transmit',
+      // S0421: Skill in operating network equipment
+      nice: ['S0421'],
+      title: 'Unmute BUC - Begin Transmission',
+      description: 'Unmute the BUC to begin live transmission.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['enable-hpa-output'],
+      timeLimitSeconds: 1 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'tab-active',
+          description: 'TX Chain Tab Open',
+          params: { tab: 'tx-chain' },
+          mustMaintain: true,
+        },
+        {
+          type: 'buc-unmuted',
+          description: 'BUC Unmuted - Transmitting',
+          maintainUntilObjectiveComplete: true,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 5,
+    },
+
+    // ============================================================
+    // FINAL VERIFICATION
+    // ============================================================
+    {
+      id: 'verify-hpa-power',
+      // T0153: Monitor network capacity and performance
+      nice: ['T0153'],
+      title: 'Verify HPA Output Power',
+      description: 'Confirm HPA output power is within operational limits.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['unmute-buc-transmit'],
+      timeLimitSeconds: 2 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'tab-active',
+          description: 'TX Chain Tab Open',
+          params: { tab: 'tx-chain' },
+          mustMaintain: true,
+        },
+        {
+          type: 'hpa-output-power-set',
+          description: 'HPA Output Power Nominal',
+          params: { minOutputPower: 100 },
+          maintainUntilObjectiveComplete: true,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 10,
+    },
+    {
+      id: 'final-verification',
+      // T1313: Test network infrastructure, including software and hardware devices
+      nice: ['T1313'],
+      title: 'Final Configuration Verification',
+      description: 'Confirm complete uplink configuration.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['verify-hpa-power'],
+      timeLimitSeconds: 2 * 60,
+      timerStartTrigger: 'on-activate',
       conditions: [
         {
           type: 'status-check',
-          description: 'Interpret I&Q Constellation',
+          description: 'Configuration Verified',
           params: {
-            question: 'What does the I&Q constellation diagram show about the received signal?',
+            question: 'Which statement correctly describes the validated uplink?',
             options: [
-              'Tight clusters at symbol points - clean QPSK modulation',
-              'Scattered points in a circle - high noise, poor signal',
-              'Points along a line - phase-only modulation issue',
-              'Empty display - no signal lock',
+              'TX IF: 1,043 MHz → RF: 5,943 MHz, QPSK 3/4, AES-256',
+              'TX IF: 943 MHz → RF: 5,843 MHz, QPSK 1/2, AES-128',
+              'TX IF: 1,043 MHz → RF: 5,943 MHz, 8PSK 3/4, Unencrypted',
+              'TX IF: 1,143 MHz → RF: 6,043 MHz, QPSK 3/4, AES-256',
             ],
             correctIndex: 0,
-            explanation: 'The tight clusters at the four QPSK symbol points indicate clean demodulation with good signal-to-noise ratio. Spread or scattered points would indicate noise, interference, or phase problems.',
-            pointPenalty: 10,
+            explanation: 'The validated uplink: TX IF 1,043 MHz upconverted to 5,943 MHz RF (BUC LO 4,900 MHz), QPSK modulation with 3/4 FEC, AES-256 encryption.',
+            pointPenalty: 5,
+            character: Character.DANA_TORRES,
           },
           mustMaintain: false,
         },
       ],
       conditionLogic: 'AND',
-      points: 20,
-      timeLimitSeconds: 5 * 60, // 5 minutes
-    },
-    {
-      id: 'phase-10-alarms',
-      title: 'Dashboard Alarm Check',
-      description: 'Final step: review the alarm dashboard to confirm no active alarms.',
-      groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['phase-9-constellation'],
-      conditions: [
-        {
-          type: 'status-check',
-          description: 'Verify Alarm Status',
-          params: {
-            question: 'What is the current alarm status shown on the dashboard?',
-            options: [
-              'No active alarms - all systems nominal',
-              'Warning: LNB temperature high',
-              'Error: GPSDO holdover mode',
-              'Critical: Antenna tracking lost',
-            ],
-            correctIndex: 0,
-            explanation: 'A clean alarm dashboard with no active alarms confirms all equipment is operating within normal parameters. This is the final confirmation of a healthy ground station.',
-            pointPenalty: 10,
-          },
-          mustMaintain: false,
-        },
-      ],
-      conditionLogic: 'AND',
-      points: 20,
-      timeLimitSeconds: 5 * 60, // 5 minutes
+      points: 10,
     },
   ] as Objective[],
   dialogClips: {
     intro: {
       text: `
       <p>
-        You must be the new hire. Good - I was starting to think HR forgot about me. I'm Charlie Brooks, senior operator. I've been here six years, but I'm transferring to one of the European stations next month. Family stuff.
+        Hey, it's Charlie. Quick call - I'm stuck at the main office all day. Paperwork.
       </p>
       <p>
-        Point is, I've got three of you to get up to speed before I leave, and not a lot of time to do it. Let's not waste any.
+        Overnight crew finished the HPA work. You need to validate the uplink before we go live. Standard post-maintenance procedure.
       </p>
       <p>
-        TIDEMARK-1 is already online at 53 West, serving customer traffic for SeaLink. Today's a health check - you watch, I explain. You'll learn what each panel shows, what the indicators mean, and what "normal" looks like. Tomorrow we'll see if any of it stuck.
-      </p>
-      <p>
-        If you need to review something later, the buttons on the left are your friends - Mission Brief, Checklist, Dialog History. I'm not repeating myself, but the system will.
+        Dana's on shift if you need anything, but you should be able to handle this. Mission Brief has the details.
       </p>
       `,
       character: Character.CHARLIE_BROOKS,
-      emotion: Emotion.CONFIDENT,
-      audioUrl: getAssetUrl('/assets/campaigns/nats/1/intro-v2.mp3'),
+      emotion: Emotion.NEUTRAL,
+      audioUrl: getAssetUrl('/assets/campaigns/nats/7/intro.mp3'),
     },
     objectives: {
-      'open-mission-brief': {
+      'review-mission-brief': {
         text: `
         <p>
-          Alright. First thing, always - the GPSDO. GPS-Disciplined Oscillator. It's the timing heart of this whole rack. Every piece of equipment keys off that 10 MHz reference. If the GPSDO is unhappy, nothing else matters.
+          Dana Torres, shift supervisor. Don't think we've met yet. Charlie mentioned you'd be handling the uplink validation solo today.
         </p>
         <p>
-          Click Vermont Ground Station, then GPS Timing tab. Tell me what the lock indicator shows. It'll be locked, holdover, unlocked, or off. Go.
+          Just making sure neither of us gets in trouble - I'll check in at a few points. Don't wait for me though. Get started.
         </p>
         `,
-        character: Character.CHARLIE_BROOKS,
+        character: Character.DANA_TORRES,
         emotion: Emotion.NEUTRAL,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/1/v2/obj-open-mission-brief.mp3'),
+        audioUrl: getAssetUrl('/assets/campaigns/nats/7/obj-review-mission-brief.mp3'),
       },
-      'phase-1-gpsdo': {
+      'acquire-beacon': {
         text: `
         <p>
-          Locked. Good start. That green light means we have a stable frequency reference - everything downstream can trust the timing. If you ever see it drop to holdover, you've got maybe twenty minutes before drift becomes a problem. Unlocked means stop what you're doing and fix it.
-        </p>
-        <p>
-          Next is the LNB - Low Noise Block downconverter. It's mounted at the antenna feed, converts C-band down to IF. The spec that matters is noise temperature, measured in Kelvin. Lower is better. Under 100K is acceptable.
-        </p>
-        <p>
-          RX Analysis tab. Find the noise temperature reading on the LNB panel.
+          RX chain confirmed. Moving on.
         </p>
         `,
-        character: Character.CHARLIE_BROOKS,
+        character: Character.DANA_TORRES,
+        emotion: Emotion.NEUTRAL,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/7/obj-acquire-beacon.mp3'),
+      },
+      'check-buc-status': {
+        text: `
+        <p>
+          Over temperature. Gain is too high. Reduce it to bring the temperature down.
+        </p>
+        `,
+        character: Character.DANA_TORRES,
+        emotion: Emotion.NEUTRAL,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/7/obj-check-buc-status.mp3'),
+      },
+      'resolve-buc-fault': {
+        text: `
+        <p>
+          Temperature is back in normal range. Good.
+        </p>
+        `,
+        character: Character.DANA_TORRES,
+        emotion: Emotion.NEUTRAL,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/7/obj-resolve-buc-fault.mp3'),
+      },
+      'quiz-loopback-purpose': {
+        text: `
+        <p>
+          Loopback passed. Proceed with HPA.
+        </p>
+        `,
+        character: Character.DANA_TORRES,
+        emotion: Emotion.NEUTRAL,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/7/obj-quiz-loopback-purpose.mp3'),
+      },
+      'quiz-encryption-status': {
+        text: `
+        <p>
+          Encryption verified. Continue.
+        </p>
+        `,
+        character: Character.DANA_TORRES,
+        emotion: Emotion.NEUTRAL,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/7/obj-quiz-encryption-status.mp3'),
+      },
+      'final-verification': {
+        text: `
+        <p>
+          TIDEMARK-1 uplink validated and operational.
+        </p>
+        <p>
+          You handled the temperature fault, used loopback correctly, brought it up clean. I'll let Charlie know.
+        </p>
+        `,
+        character: Character.DANA_TORRES,
         emotion: Emotion.CONFIDENT,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/1/v2/obj-phase-1-gpsdo.mp3'),
-      },
-      'phase-2-lnb': {
-        text: `
-        <p>
-          43K - that's solid. The cooler the LNB runs, the less noise it adds to your signal. You start seeing that number climb, it's an early warning. Equipment doesn't fail all at once - it degrades. Your job is to catch it before the customer does.
-        </p>
-        <p>
-          Now the HPA - High Power Amplifier. This is the muscle. Takes your milliwatt signal and turns it into real power to reach the satellite. It's also the equipment most likely to ruin your day if you're not paying attention.
-        </p>
-        <p>
-          TX Chain tab. The HPA can be transmitting with backoff, muted for safety, powered off, or faulted. Which is it?
-        </p>
-        `,
-        character: Character.CHARLIE_BROOKS,
-        emotion: Emotion.HAPPY,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/1/v2/obj-phase-2-lnb.mp3'),
-      },
-      'phase-3-hpa': {
-        text: `
-        <p>
-          Transmitting with 10 dB backoff - that's normal ops. We run with headroom so we're not stressing the amplifier. The day you see that backoff at zero, you better have a good reason.
-        </p>
-        <p>
-          One thing - never assume the HPA is muted. I've seen guys reach into the waveguide thinking RF was off. It wasn't. Always verify. Anyway.
-        </p>
-        <p>
-          ACU Control tab - antenna control unit. The dish needs to stay pointed at TIDEMARK-1. There are different tracking modes: program-track follows ephemeris predictions, step-track hunts for peak signal, manual is operator-controlled, stow parks it safe. What mode are we in?
-        </p>
-        `,
-        character: Character.CHARLIE_BROOKS,
-        emotion: Emotion.CONFIDENT,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/1/v2/obj-phase-3-hpa.mp3'),
-      },
-      'phase-4-antenna': {
-        text: `
-        <p>
-          Program-track. Right answer for a GEO bird. TIDEMARK-1 sits in essentially the same spot, so we follow the math instead of constantly hunting. Eight years old now, starting to drift a bit in its box, but nothing the ephemeris can't handle.
-        </p>
-        <p>
-          Stay on ACU Control. Next is polarization - how the wave is oriented. Has to match what the satellite expects or you lose signal. Could be horizontal at 0 degrees, vertical at 90, or something in between. Cross-polarized means cross-eyed - you'll see almost nothing.
-        </p>
-        <p>
-          What's our polarization angle?
-        </p>
-        `,
-        character: Character.CHARLIE_BROOKS,
-        emotion: Emotion.CONFIDENT,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/1/v2/obj-phase-4-antenna.mp3'),
-      },
-      'phase-5-polarization': {
-        text: `
-        <p>
-          14 degrees - matched to TIDEMARK-1. That's a detail people overlook. Wrong polarization costs you dBs, and dBs are money. Or in bad weather, dBs are the difference between link and no link.
-        </p>
-        <p>
-          Alright, spectrum analyzer time. This is where you'll live as an operator. Shows you the RF environment in real time - what's there, what's not, what shouldn't be.
-        </p>
-        <p>
-          RX Analysis tab. You're looking for the beacon - TIDEMARK-1's CW carrier. Should be a clean spike above the noise floor. Could also be just noise, interference, or a flatline if something's wrong. What do you see?
-        </p>
-        `,
-        character: Character.CHARLIE_BROOKS,
-        emotion: Emotion.HAPPY,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/1/v2/obj-phase-5-polarization.mp3'),
-      },
-      'phase-6-spectrum': {
-        text: `
-        <p>
-          There it is. Clean beacon. That carrier is your canary - if you can see it, the receive path is working. If it disappears or goes ragged, something changed. Could be weather, could be equipment, could be the satellite. But you'll know something's wrong before the alarms even trip.
-        </p>
-        <p>
-          Now check the analyzer settings. Center frequency and reference level - they determine what you're actually looking at.
-        </p>
-        <p>
-          We're viewing IF after the LNB downconverts. The beacon comes down at 3902.5 MHz, LNB shifts it to 1074.5 MHz. Reference level is set to see weak signals without clipping. What values do you see?
-        </p>
-        `,
-        character: Character.CHARLIE_BROOKS,
-        emotion: Emotion.HAPPY,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/1/v2/obj-phase-6-spectrum.mp3'),
-      },
-      'phase-7-speca-settings': {
-        text: `
-        <p>
-          1074.5 center, reference around -91. That's the setup for beacon watch. Get these wrong and you're either staring at the wrong frequency or your signal's buried in the noise floor. I've seen new ops spend an hour troubleshooting a "missing" signal that was just off-screen. Don't be that person.
-        </p>
-        <p>
-          Receiver modem next. This is where RF becomes data. The number you care about is C/N - Carrier-to-Noise ratio.
-        </p>
-        <p>
-          Stay on RX Analysis, check the modem panel. Above 8 dB for QPSK means healthy margin. Around 5 is marginal. Below threshold and the link falls apart. Where are we?
-        </p>
-        `,
-        character: Character.CHARLIE_BROOKS,
-        emotion: Emotion.CONFIDENT,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/1/v2/obj-phase-7-speca-settings.mp3'),
-      },
-      'phase-8-receiver': {
-        text: `
-        <p>
-          Good margin. That headroom is what keeps you online when a storm rolls through or the satellite has a bad day. C/N is your primary health metric - know it, watch it, respect it.
-        </p>
-        <p>
-          Last thing on the receive side - the constellation diagram. Visual representation of the demodulated symbols.
-        </p>
-        <p>
-          QPSK gives you four clusters, one per symbol. Tight clusters mean clean demod. Scattered means noise. Rotating means phase problems. Empty means no lock. What's the constellation showing?
-        </p>
-        `,
-        character: Character.CHARLIE_BROOKS,
-        emotion: Emotion.HAPPY,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/1/v2/obj-phase-8-receiver.mp3'),
-      },
-      'phase-9-constellation': {
-        text: `
-        <p>
-          Tight clusters. That's the picture of a healthy link. After a while you'll glance at that diagram and know instantly if something's off. Noise spreads the points, phase errors rotate them, interference makes them dance. You'll learn to read it like a face.
-        </p>
-        <p>
-          One more check, then we're done for today. The alarm dashboard - aggregates everything into one view.
-        </p>
-        <p>
-          Dashboard tab. Could be clean, could be warnings, could be critical faults. This is your early warning system. What's it showing?
-        </p>
-        `,
-        character: Character.CHARLIE_BROOKS,
-        emotion: Emotion.CONFIDENT,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/1/v2/obj-phase-9-constellation.mp3'),
-      },
-      'phase-10-alarms': {
-        text: `
-        <p>
-          Clean board. That's what right looks like. Remember it.
-        </p>
-        <p>
-          Alright - GPSDO, LNB, HPA, tracking mode, polarization, beacon, analyzer settings, C/N, constellation, alarms. That's your health check. Ten items, maybe fifteen minutes once you know what you're doing. Do it at the start of every shift, do it after any anomaly, do it whenever something feels off.
-        </p>
-        <p>
-          You did fine. Tomorrow we'll actually touch some controls - power sequencing, safe states, that kind of thing. I need to know you won't break anything before I leave you alone with the equipment.
-        </p>
-        <p>
-          Go get some coffee or something. I've got logs to finish.
-        </p>
-        `,
-        character: Character.CHARLIE_BROOKS,
-        emotion: Emotion.HAPPY,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/1/v2/obj-phase-10-alarms.mp3'),
+        audioUrl: getAssetUrl('/assets/campaigns/nats/7/obj-final-verification.mp3'),
       },
     },
   },

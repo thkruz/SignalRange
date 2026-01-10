@@ -14,7 +14,7 @@ import { ses10Satellite, tidemark1Satellite } from './satellites';
  * Phase: Introduction (Phase 1, Scenario 2 of 8)
  * Time Pressure: Moderate (maintenance window constraint)
  * Calculation Required: NO - all values provided by Charlie
- * New UI Elements: Equipment power controls, RF mute switches, antenna positioning
+ * New UI Elements: Equipment power controls, modem transmit controls, antenna positioning
  *
  * NICE Framework Alignment:
  * Primary Codes:
@@ -370,15 +370,15 @@ export const scenario2Data: ScenarioData = {
     // POWER-DOWN SEQUENCE: BUC
     // ============================================================
     {
-      id: 'mute-buc',
+      id: 'power-off-buc',
       // T1567: Configure system hardware, software, and peripheral equipment -
-      // muting BUC RF output as part of safe shutdown sequence
-      // S0421: Skill in operating network equipment - executing the BUC mute control
+      // powering off BUC as part of safe shutdown sequence
+      // S0421: Skill in operating network equipment - executing the BUC power control
       // K0770: Knowledge of system administration principles and practices -
-      // understanding that even milliwatts can cause interference during maintenance
+      // understanding complete power-down for maintenance safety
       nice: ['T1567', 'S0421', 'K0770'],
-      title: 'Mute BUC RF Output',
-      description: 'Mute the Block Upconverter to stop all RF transmission. Even without the HPA, the BUC still outputs a few milliwatts.',
+      title: 'Power Off BUC',
+      description: 'Power off the Block Upconverter completely. Even without the HPA, the BUC still outputs a few milliwatts - we want it completely cold.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['power-off-hpa'],
       timeLimitSeconds: 2 * 60,
@@ -391,8 +391,9 @@ export const scenario2Data: ScenarioData = {
           mustMaintain: true,
         },
         {
-          type: 'buc-muted',
-          description: 'BUC RF Output Muted',
+          type: 'equipment-not-powered',
+          description: 'BUC Powered Off',
+          params: { equipment: 'buc' },
           mustMaintain: true,
         },
       ],
@@ -400,14 +401,14 @@ export const scenario2Data: ScenarioData = {
       points: 10,
     },
     {
-      id: 'verify-buc-muted-quiz',
-      // K0741: Knowledge of system availability measures - understanding BUC mute
+      id: 'verify-buc-powered-off-quiz',
+      // K0741: Knowledge of system availability measures - understanding BUC power
       // state as confirmation of complete transmit chain shutdown
       nice: ['K0741'],
-      title: 'Confirm BUC Muted',
-      description: 'Verify the BUC RF output is now muted.',
+      title: 'Confirm BUC Powered Off',
+      description: 'Verify the BUC is now completely powered down.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['mute-buc'],
+      prerequisiteObjectiveIds: ['power-off-buc'],
       timeLimitSeconds: 2 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
@@ -419,20 +420,48 @@ export const scenario2Data: ScenarioData = {
         },
         {
           type: 'status-check',
-          description: 'Confirm BUC Muted',
+          description: 'Confirm BUC Powered Off',
           params: {
-            question: 'The transmit chain is now silent. What does the BUC status show?',
+            question: 'The BUC is now powered off. What does the BUC status show?',
             options: [
-              'RF Mute indicator is ON - no RF output from BUC',
-              'BUC is powered off completely',
+              'BUC power indicator is OFF - completely de-energized',
+              'BUC is muted but still powered',
               'BUC still outputting at low power',
               'BUC reference unlocked',
             ],
             correctIndex: 0,
-            explanation: 'The RF Mute indicator shows the BUC is silenced. The transmit chain is now completely quiet - no RF energy is being radiated from the antenna.',
+            explanation: 'The BUC power indicator is OFF - the upconverter is completely de-energized. No RF energy can be generated from this equipment.',
             pointPenalty: 10,
           },
           mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 10,
+    },
+    {
+      id: 'stop-modem-transmitting',
+      // T1567: Configure system hardware, software, and peripheral equipment -
+      // stopping modem transmission as part of shutdown sequence
+      // S0421: Skill in operating network equipment - executing modem transmit control
+      nice: ['T1567', 'S0421'],
+      title: 'Stop Modem Transmission',
+      description: 'Stop the transmitter modem from transmitting. The modem should remain powered but not actively transmitting.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['verify-buc-powered-off-quiz'],
+      timeLimitSeconds: 2 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'tab-active',
+          description: 'TX Chain Tab Open',
+          params: { tab: 'tx-chain' },
+          mustMaintain: true,
+        },
+        {
+          type: 'tx-modem-not-transmitting',
+          description: 'Modem Transmission Stopped',
+          mustMaintain: true,
         },
       ],
       conditionLogic: 'AND',
@@ -450,7 +479,7 @@ export const scenario2Data: ScenarioData = {
       title: 'Open RX Analysis Tab',
       description: 'Click the RX Analysis tab to access the LNB power controls.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['verify-buc-muted-quiz'],
+      prerequisiteObjectiveIds: ['stop-modem-transmitting'],
       timeLimitSeconds: 2 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
@@ -853,6 +882,7 @@ export const scenario2Data: ScenarioData = {
             correctIndex: 3,
             explanation: 'All three indicators should be confirmed: thermal stability ensures consistent gain and noise performance, LO frequency accuracy ensures correct downconversion, and reference lock ensures frequency stability from the GPSDO.',
             pointPenalty: 10,
+            preserveOptionOrder: true,
           },
           mustMaintain: false,
         },
@@ -980,15 +1010,13 @@ export const scenario2Data: ScenarioData = {
       points: 5,
     },
     {
-      id: 'unmute-buc',
+      id: 'start-modem-transmitting',
       // T1567: Configure system hardware, software, and peripheral equipment -
-      // restoring BUC RF output as first step in transmit restoration
-      // S0421: Skill in operating network equipment - executing BUC unmute control
-      // K0770: Knowledge of system administration principles and practices -
-      // understanding proper startup sequencing (low-power before high-power)
-      nice: ['T1567', 'S0421', 'K0770'],
-      title: 'Unmute BUC RF Output',
-      description: 'Unmute the Block Upconverter to allow RF transmission. We bring up low-power stages before high-power ones.',
+      // restarting modem transmission as first step in transmit restoration
+      // S0421: Skill in operating network equipment - executing modem transmit control
+      nice: ['T1567', 'S0421'],
+      title: 'Start Modem Transmission',
+      description: 'Enable transmission on the transmitter modem. We start the modem before bringing up the RF chain.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['navigate-tx-chain-restore'],
       timeLimitSeconds: 2 * 60,
@@ -1001,8 +1029,39 @@ export const scenario2Data: ScenarioData = {
           mustMaintain: true,
         },
         {
-          type: 'buc-unmuted',
-          description: 'BUC RF Output Unmuted',
+          type: 'tx-modem-transmitting',
+          description: 'Modem Transmitting',
+          maintainUntilObjectiveComplete: true,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 10,
+    },
+    {
+      id: 'power-on-buc',
+      // T1567: Configure system hardware, software, and peripheral equipment -
+      // restoring BUC power as part of transmit chain restoration
+      // S0421: Skill in operating network equipment - executing BUC power control
+      // K0770: Knowledge of system administration principles and practices -
+      // understanding proper startup sequencing (low-power before high-power)
+      nice: ['T1567', 'S0421', 'K0770'],
+      title: 'Power On BUC',
+      description: 'Power on the Block Upconverter. We bring up low-power stages before high-power ones.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['start-modem-transmitting'],
+      timeLimitSeconds: 2 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'tab-active',
+          description: 'TX Chain Tab Open',
+          params: { tab: 'tx-chain' },
+          mustMaintain: true,
+        },
+        {
+          type: 'equipment-powered',
+          description: 'BUC Powered On',
+          params: { equipment: 'buc' },
           maintainUntilObjectiveComplete: true,
         },
       ],
@@ -1022,7 +1081,7 @@ export const scenario2Data: ScenarioData = {
       title: 'Power On HPA',
       description: 'Power on the High Power Amplifier.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['unmute-buc'],
+      prerequisiteObjectiveIds: ['power-on-buc'],
       timeLimitSeconds: 2 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
@@ -1094,13 +1153,13 @@ export const scenario2Data: ScenarioData = {
           params: {
             question: 'TIDEMARK-1 should now be back in full service. What\'s the correct sequence for future scheduled maintenance?',
             options: [
-              'Shutdown: HPA → BUC → LNB → Antenna. Restore: Antenna → LNB → BUC → HPA',
+              'Shutdown: HPA → BUC → Modem TX → LNB → Antenna. Restore: Antenna → LNB → Modem TX → BUC → HPA',
               'Shutdown: Antenna → LNB → BUC → HPA. Restore: HPA → BUC → LNB → Antenna',
               'Shutdown: LNB → BUC → HPA → Antenna. Restore: Antenna → HPA → BUC → LNB',
               'Sequence doesn\'t matter as long as all equipment is powered down',
             ],
             correctIndex: 0,
-            explanation: 'Correct! Shutdown sequence is HPA (high-power) → BUC (low-power) → LNB → Antenna. Restoration is the reverse: Antenna → LNB → BUC → HPA. Always shut down high-power equipment first for safety, and restore low-power equipment first to verify signal before applying high power.',
+            explanation: 'Correct! Shutdown sequence is HPA (high-power) → BUC (low-power) → Modem TX → LNB → Antenna. Restoration is the reverse: Antenna → LNB → Modem TX → BUC → HPA. Always shut down high-power equipment first for safety, and restore low-power equipment first to verify signal before applying high power.',
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -1120,7 +1179,7 @@ export const scenario2Data: ScenarioData = {
         First things first - you need to acknowledge the RF safety briefing. Someone forgot that step once. Maintenance tech caught about fifty watts to the face. He's fine now, but the paperwork wasn't.
       </p>
       <p>
-        After that, we shut down in sequence: HPA first, then BUC, then LNB, then stow the antenna. Never skip steps, never reverse order. Go.
+        After that, we shut down in sequence: HPA first, then BUC, then stop the modem, then LNB, then stow the antenna. Never skip steps, never reverse order. Go.
       </p>
       `,
       character: Character.CHARLIE_BROOKS,
@@ -1227,7 +1286,7 @@ export const scenario2Data: ScenarioData = {
           HPA's down. Now the BUC.
         </p>
         <p>
-          Even without the HPA, the BUC still outputs a few milliwatts. Not enough to hurt anyone, but enough to cause interference if we're moving the antenna around. Mute it. Same tab, find the BUC panel.
+          Even without the HPA, the BUC still outputs a few milliwatts. Not enough to hurt anyone, but enough to cause interference if we're moving the antenna around. Power it off completely. Same tab, find the BUC panel.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -1238,20 +1297,33 @@ export const scenario2Data: ScenarioData = {
       // ============================================================
       // BUC SHUTDOWN
       // ============================================================
-      'mute-buc': {
+      'power-off-buc': {
         text: `
         <p>
-          Good. Now verify the BUC is actually muted - what does the status show?
+          Good. BUC's powered down. Now verify it's actually off - what does the status show?
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/2/obj-mute-buc.mp3'),
+        audioUrl: getAssetUrl('/assets/campaigns/nats/2/obj-power-off-buc.mp3'),
       },
-      'verify-buc-muted-quiz': {
+      'verify-buc-powered-off-quiz': {
         text: `
         <p>
-          BUC's muted. Transmit chain is completely silent now.
+          BUC's completely off. No power, no RF output possible.
+        </p>
+        <p>
+          Now stop the modem from transmitting. Even though nothing's getting through the RF chain right now, we want to make sure the modem isn't trying to send data when we power back up.
+        </p>
+        `,
+        character: Character.CHARLIE_BROOKS,
+        emotion: Emotion.NEUTRAL,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/2/obj-verify-buc-powered-off-quiz.mp3'),
+      },
+      'stop-modem-transmitting': {
+        text: `
+        <p>
+          Modem's stopped transmitting. Good. Transmit chain is completely silent now.
         </p>
         <p>
           Power down the LNB next. We don't need it during maintenance, and there's no point leaving equipment energized when the antenna's not pointed at anything useful. Click the RX Analysis tab.
@@ -1259,7 +1331,7 @@ export const scenario2Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/2/obj-verify-buc-muted-quiz.mp3'),
+        audioUrl: getAssetUrl('/assets/campaigns/nats/2/obj-stop-modem-transmitting.mp3'),
       },
 
       // ============================================================
@@ -1441,7 +1513,7 @@ export const scenario2Data: ScenarioData = {
           Right. LO minus RF equals IF. Basic downconversion. You'll be doing that calculation a lot.
         </p>
         <p>
-          Now we can restore transmit. Click the TX Chain tab. Unmute the BUC first - we bring up the low-power stages before the high-power ones.
+          Now we can restore transmit. Click the TX Chain tab. Start the modem transmitting first, then power on the BUC - we bring up low-power stages before high-power ones.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -1450,19 +1522,29 @@ export const scenario2Data: ScenarioData = {
       },
 
       // ============================================================
-      // SERVICE RESTORATION: BUC
+      // SERVICE RESTORATION: MODEM AND BUC
       // ============================================================
       'navigate-tx-chain-restore': {
         text: `
         <p>
-          Find the BUC panel. Unmute the RF output.
+          Find the transmitter modem panel. Enable transmission first.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
         audioUrl: getAssetUrl('/assets/campaigns/nats/2/obj-navigate-tx-chain-restore.mp3'),
       },
-      'unmute-buc': {
+      'start-modem-transmitting': {
+        text: `
+        <p>
+          Modem's transmitting. Now power on the BUC. Same tab, BUC panel.
+        </p>
+        `,
+        character: Character.CHARLIE_BROOKS,
+        emotion: Emotion.NEUTRAL,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/2/obj-start-modem-transmitting.mp3'),
+      },
+      'power-on-buc': {
         text: `
         <p>
           BUC's live. Now power on the HPA. Same tab, HPA panel.
@@ -1470,7 +1552,7 @@ export const scenario2Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/2/obj-unmute-buc.mp3'),
+        audioUrl: getAssetUrl('/assets/campaigns/nats/2/obj-power-on-buc.mp3'),
       },
 
       // ============================================================

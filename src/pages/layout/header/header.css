@@ -130,3 +130,12 @@
   width: 24px;
   height: 24px;
 }
+
+.header-icon-button--active {
+  background-color: rgba(186, 22, 12, 0.25);
+  color: var(--color-primary);
+}
+
+.header-icon-button--active:hover {
+  background-color: rgba(186, 22, 12, 0.35);
+}

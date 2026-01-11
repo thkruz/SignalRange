@@ -251,12 +251,8 @@ export class RxAnalysisTab extends BaseElement {
         <!-- Tap Point Selection Card -->
         <div class="col-lg-3">
           <div class="card h-100">
-            <div class="card-header d-flex justify-content-between align-items-center">
+            <div class="card-header">
               <h3 class="card-title">Tap Points</h3>
-              <div class="form-check form-switch">
-                <input type="checkbox" id="tap-engineering-mode" class="form-check-input" role="switch" />
-                <label for="tap-engineering-mode" class="form-check-label small">Engineering</label>
-              </div>
             </div>
             <div class="card-body" id="tap-points-body">
               <!-- Default Mode: Single Tap Point -->

@@ -4,6 +4,7 @@ import { CouplerModule, CouplerState } from "@app/equipment/rf-front-end/coupler
 import { RealTimeSpectrumAnalyzer } from "@app/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer";
 import { qs } from "@app/engine/utils/query-selector";
 import { TapPoint } from "@app/equipment/rf-front-end/coupler-module/tap-points";
+import { EngineeringModeService } from "@app/engineering-mode/engineering-mode-service";
 
 /**
  * TapPointAdapter - Bridges CouplerModule state to web controls
@@ -56,6 +57,9 @@ export class TapPointAdapter {
     // Setup DOM event listeners for user input
     this.setupInputListeners_();
 
+    // Setup engineering mode listener (uses global ENGINEERING_MODE)
+    this.setupEngineeringModeListener_();
+
     // Listen to coupler state changes via EventBus
     EventBus.getInstance().on(Events.RF_FE_COUPLER_CHANGED, this.stateChangeHandler as any);
 
@@ -101,9 +105,6 @@ export class TapPointAdapter {
   }
 
   private setupDomCache_(): void {
-    // Engineering mode toggle
-    this.domCache_.set('engineeringToggle', qs('#tap-engineering-mode', this.containerEl));
-
     // Default mode elements
     this.domCache_.set('defaultModeContainer', qs('#tap-default-mode', this.containerEl));
     this.domCache_.set('defaultEnable', qs('#tap-default-enable', this.containerEl));
@@ -128,12 +129,6 @@ export class TapPointAdapter {
   }
 
   private setupInputListeners_(): void {
-    // Engineering mode toggle
-    const engToggle = this.domCache_.get('engineeringToggle') as HTMLInputElement;
-    const engHandler = this.engineeringModeHandler_.bind(this);
-    engToggle?.addEventListener('change', engHandler);
-    this.boundHandlers.set('engineeringToggle', engHandler);
-
     // Default mode handlers
     const defaultEnable = this.domCache_.get('defaultEnable') as HTMLInputElement;
     const defaultSelect = this.domCache_.get('defaultSelect') as HTMLSelectElement;
@@ -174,8 +169,19 @@ export class TapPointAdapter {
     this.boundHandlers.set('tapBSelect', tapBSelectHandler);
   }
 
-  private engineeringModeHandler_(e: Event): void {
-    const isEngineering = (e.target as HTMLInputElement).checked;
+  private setupEngineeringModeListener_(): void {
+    const engService = EngineeringModeService.getInstance();
+
+    // Listen for engineering mode changes
+    engService.onChange((enabled) => {
+      this.handleEngineeringModeChange_(enabled);
+    });
+
+    // Set initial visibility based on current engineering mode
+    this.handleEngineeringModeChange_(engService.isEnabled());
+  }
+
+  private handleEngineeringModeChange_(isEngineering: boolean): void {
     this.couplerModule.setEngineeringMode(isEngineering);
     this.updateModeVisibility_(isEngineering);
     this.syncSpectrumAnalyzerTaps_();
@@ -272,10 +278,8 @@ export class TapPointAdapter {
 
     const fullState = this.couplerModule.state;
 
-    // Update engineering mode toggle
+    // Update mode visibility based on engineering mode state
     if (state.isEngineeringMode !== undefined) {
-      const engToggle = this.domCache_.get('engineeringToggle') as HTMLInputElement;
-      if (engToggle) engToggle.checked = state.isEngineeringMode;
       this.updateModeVisibility_(state.isEngineeringMode);
     }
 
@@ -352,7 +356,6 @@ export class TapPointAdapter {
     EventBus.getInstance().off(Events.RF_FE_COUPLER_CHANGED, this.stateChangeHandler as any);
 
     // Remove DOM event listeners
-    const engToggle = this.domCache_.get('engineeringToggle') as HTMLInputElement;
     const defaultEnable = this.domCache_.get('defaultEnable') as HTMLInputElement;
     const defaultSelect = this.domCache_.get('defaultSelect') as HTMLSelectElement;
     const tapAEnable = this.domCache_.get('tapAEnable') as HTMLInputElement;
@@ -360,7 +363,6 @@ export class TapPointAdapter {
     const tapBEnable = this.domCache_.get('tapBEnable') as HTMLInputElement;
     const tapBSelect = this.domCache_.get('tapBSelect') as HTMLSelectElement;
 
-    const engHandler = this.boundHandlers.get('engineeringToggle');
     const defaultEnableHandler = this.boundHandlers.get('defaultEnable');
     const defaultSelectHandler = this.boundHandlers.get('defaultSelect');
     const tapAEnableHandler = this.boundHandlers.get('tapAEnable');
@@ -368,7 +370,6 @@ export class TapPointAdapter {
     const tapBEnableHandler = this.boundHandlers.get('tapBEnable');
     const tapBSelectHandler = this.boundHandlers.get('tapBSelect');
 
-    if (engToggle && engHandler) engToggle.removeEventListener('change', engHandler);
     if (defaultEnable && defaultEnableHandler) defaultEnable.removeEventListener('change', defaultEnableHandler);
     if (defaultSelect && defaultSelectHandler) defaultSelect.removeEventListener('change', defaultSelectHandler);
     if (tapAEnable && tapAEnableHandler) tapAEnable.removeEventListener('change', tapAEnableHandler);

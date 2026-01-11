@@ -1,20 +1,65 @@
 # Scenario Development Guide
 
+**Document Type:** Development Standards  
+**Audience:** Scenario developers  
+**Last Updated:** January 2026
+
 This guide establishes standards for creating educational satellite ground station training scenarios. Scenarios should teach concepts, not just test button-clicking.
 
-## Quality Metrics
+---
+
+## 1. Quality Metrics
 
 A well-developed scenario should have:
+
 - **Depth ratio**: ~50-100 lines of code per objective (including dialog)
 - **Quiz ratio**: At least one verification quiz for every 2-3 action objectives
 - **Dialog density**: Every objective should have a meaningful dialog clip (150+ words for key moments)
 - **Character voice**: Consistent personality with teaching moments, not just task direction
 
-## Scenario Structure
+---
 
-### 1. Mission Preparation Phase
+## 2. Scenario File Structure
 
-Every scenario MUST begin with:
+Scenario files are located in `src/campaigns/<campaign>/scenario<N>.ts` and export a `ScenarioData` object containing:
+
+- Metadata (id, title, description, difficulty)
+- Settings (ground stations, satellites, equipment layout)
+- Objectives array
+- Dialog clips
+
+```typescript
+export const scenario1Data: ScenarioData = {
+  id: 'nats-scenario1',
+  url: 'nats/scenarios/nats-scenario1',
+  prerequisiteScenarioIds: [],
+  imageUrl: 'nats/1/card.png',
+  number: 1,
+  title: 'First Day',
+  subtitle: 'TIDEMARK-1 Health Check',
+  duration: '25-35 min',
+  difficulty: 'beginner',
+  missionType: 'Routine Operations',
+  description: `...`,
+  equipment: [...],
+  settings: {
+    isSync: true,
+    groundStations: [...],
+    satellites: [...],
+  },
+  timeLimitSeconds: 35 * 60,
+  objectives: [...],
+  dialogClips: {...},
+};
+```
+
+---
+
+## 3. Objective Patterns
+
+### 3.1 Mission Preparation Phase
+
+Every scenario MUST begin with a mission brief objective:
 
 ```typescript
 {
@@ -50,7 +95,7 @@ Every scenario MUST begin with:
 }
 ```
 
-### 2. Navigation Objectives
+### 3.2 Navigation Objectives
 
 Before any equipment configuration, include an explicit navigation objective:
 
@@ -71,11 +116,13 @@ Before any equipment configuration, include an explicit navigation objective:
   conditions: [
     {
       type: 'ground-station-selected',
+      description: 'Vermont Station Active',
       params: { groundStationId: 'VT-01' },
       mustMaintain: true,
     },
     {
       type: 'tab-active',
+      description: 'RX Analysis Tab Open',
       params: { tab: 'rx-analysis' },
       mustMaintain: true,
     },
@@ -89,19 +136,12 @@ Before any equipment configuration, include an explicit navigation objective:
 }
 ```
 
-### 3. Verify-Before-Modify Pattern
+### 3.3 Verify-Before-Modify Pattern
 
 Before changing equipment state, verify current state first:
 
 ```typescript
-// BAD: Just tell them to disable something
-{
-  id: 'disable-hpa',
-  title: 'Disable HPA Output',
-  // ...
-}
-
-// GOOD: Verify current state, then modify, then confirm
+// Sequence: Verify → Modify → Confirm
 {
   id: 'verify-hpa-initial-state',
   title: 'Verify Current HPA State',
@@ -121,6 +161,7 @@ Before changing equipment state, verify current state first:
         explanation: 'The HPA is currently enabled and transmitting...',
         pointPenalty: 10,
       },
+      mustMaintain: false,
     },
   ],
 },
@@ -134,22 +175,38 @@ Before changing equipment state, verify current state first:
   id: 'verify-hpa-disabled-quiz',
   prerequisiteObjectiveIds: ['disable-hpa-output'],
   title: 'Confirm HPA Output Disabled',
-  description: 'Verify the HPA output indicator shows disabled state.',
-  conditions: [
-    {
-      type: 'status-check',
-      params: {
-        question: 'The HPA output is now disabled. What should you observe on the HPA panel?',
-        // ... quiz options
-      },
-    },
-  ],
+  // ... verification quiz
 }
 ```
 
-### 4. Educational Quiz Types
+### 3.4 Phase Organization
 
-#### Understanding Quizzes (Why)
+Organize objectives into clear phases with comments:
+
+```typescript
+// ============================================================
+// PHASE 1: MISSION PREPARATION
+// ============================================================
+
+// ============================================================
+// PHASE 2: VERIFY CURRENT STATE
+// ============================================================
+
+// ============================================================
+// PHASE 3: EQUIPMENT CONFIGURATION
+// ============================================================
+
+// ============================================================
+// PHASE 4: VERIFICATION AND VALIDATION
+// ============================================================
+```
+
+---
+
+## 4. Educational Quiz Types
+
+### 4.1 Understanding Quizzes (Why)
+
 Test comprehension of principles, not just observation:
 
 ```typescript
@@ -169,7 +226,8 @@ Test comprehension of principles, not just observation:
 }
 ```
 
-#### Calculation Verification Quizzes
+### 4.2 Calculation Verification Quizzes
+
 Ensure operators understand the math:
 
 ```typescript
@@ -189,7 +247,8 @@ Ensure operators understand the math:
 }
 ```
 
-#### Consequence Quizzes
+### 4.3 Consequence Quizzes
+
 Help operators understand what happens when things go wrong:
 
 ```typescript
@@ -204,19 +263,22 @@ Help operators understand what happens when things go wrong:
       'Maine has a bigger antenna with more gain',
     ],
     correctIndex: 0,
-    explanation: 'AGC can only compensate within its gain range. The forecast predicts 8+ dB of degradation...',
+    explanation: 'AGC can only compensate within its gain range...',
   },
 }
 ```
 
-### 5. Dialog Clip Standards
+---
 
-#### Minimum Length Guidelines
+## 5. Dialog Standards
+
+### 5.1 Minimum Length Guidelines
+
 - **Intro clip**: 150-250 words - Set the scene, establish urgency, provide context
 - **Objective completion clips**: 75-150 words - Explain what just happened and what's next
 - **Key learning moment clips**: 150-200 words - Deeper explanations of concepts
 
-#### Character Voice Requirements
+### 5.2 Character Voice Requirements
 
 Each character should have:
 - Consistent personality traits
@@ -246,25 +308,21 @@ text: `
 - Provides sanity checks
 - Collaborative approach
 
-```typescript
-// GOOD Catherine dialog
-text: `
-<p>
-  Hey, it's Catherine. Just got to the station - roads are fine up here, clear skies. I saw the antenna moving when I pulled in.
-</p>
-<p>
-  I did a quick sanity check that you weren't inputting the same az/el for ME-02 that you were using at VT-01. We had a new guy mess that up a few months ago...
-</p>
-`,
-```
+### 5.3 Dialog Should NOT
 
-#### Dialog Should NOT:
 - Be generic instructions that could apply anywhere
 - Lack personality or teaching moments
 - Skip explanation of "why"
 - Be under 50 words for significant objectives
 
-### 6. NICE Framework Integration
+### 5.4 Frequency Mentions in Dialog
+
+- Spell out frequencies: "1,070 megahertz" not "1070MHz"
+- Must match the objective's actual parameters
+
+---
+
+## 6. NICE Framework Integration
 
 Every objective MUST have appropriate NICE codes with inline comments explaining the alignment:
 
@@ -281,9 +339,22 @@ Every objective MUST have appropriate NICE codes with inline comments explaining
 }
 ```
 
-### 7. Time Pressure and Penalties
+See `nice-framework-guide.md` for complete code reference and mapping rules.
 
-Use time limits to create appropriate urgency without frustration:
+---
+
+## 7. Time Limits and Penalties
+
+### 7.1 Timer Configuration
+
+Per-objective timers require two fields:
+
+```typescript
+timeLimitSeconds: 3 * 60,        // Duration in seconds
+timerStartTrigger: 'on-activate' // When timer starts
+```
+
+### 7.2 Guidelines by Scenario Phase
 
 ```typescript
 // Tutorial scenarios (1-3): Generous time, few penalties
@@ -296,62 +367,247 @@ timerStartTrigger: 'on-activate',
 timePenalty: {
   elapsedTimeThreshold: 15 * 60,
   pointsDeducted: 30,
-  message: "Vermont's link has degraded significantly. The handover should have been complete by now.",
+  message: "Vermont's link has degraded significantly.",
 },
 
-// Advanced scenarios (7-8): Real pressure with consequences
+// Advanced scenarios (7+): Real pressure with consequences
 timeLimitSeconds: 90,
 timerStartTrigger: 'on-activate',
 timePenalty: {
   elapsedTimeThreshold: 10 * 60,
   pointsDeducted: 50,
-  message: "We just violated the SLA! This is going to cost us a lot of money.",
+  message: "We just violated the SLA!",
 },
 ```
 
-### 8. Phase Organization
+### 7.3 Timer Guidelines by Task Type
 
-Organize objectives into clear phases with comments:
+| Task Type | Suggested Time |
+|-----------|----------------|
+| Simple tasks (quizzes, toggles) | 2 minutes |
+| Configuration tasks (frequency, modulation) | 2-3 minutes |
+| Multi-step tasks (antenna slew + verify) | 3 minutes |
+| Mission brief review | No timer (`freezesScenarioTimer: true`) |
+
+---
+
+## 8. Points Distribution
+
+| Task Type | Points |
+|-----------|--------|
+| Simple navigation | 5 |
+| Simple tasks | 5-10 |
+| Configuration tasks | 10-15 |
+| Verification/lock tasks | 15-25 |
+| Quiz penalties | 5-10 per wrong answer |
+
+---
+
+## 9. Condition Types Reference
+
+### 9.1 UI Interaction Conditions
+
+| Condition | Description | Key Params |
+|-----------|-------------|------------|
+| `ground-station-selected` | Ground station selected in UI | `groundStationId` |
+| `tab-active` | Specific tab is active | `tab` (prefix match) |
+| `mission-brief-opened` | Mission brief document opened | `boxId` |
+
+### 9.2 GPSDO Conditions
+
+| Condition | Description | Key Params |
+|-----------|-------------|------------|
+| `gpsdo-locked` | GPSDO has achieved stable lock | - |
+| `gpsdo-warmed-up` | GPSDO at operating temperature | - |
+| `gpsdo-gnss-locked` | GPS antenna has satellite lock (≥4) | - |
+| `gpsdo-stability` | Frequency accuracy meets threshold | `maxFrequencyAccuracy` |
+| `gpsdo-not-in-holdover` | Not in holdover mode | - |
+
+### 9.3 Antenna Conditions
+
+| Condition | Description | Key Params |
+|-----------|-------------|------------|
+| `antenna-locked` | Antenna locked on satellite | `satelliteId` |
+| `antenna-position` | At specific az/el | `azimuth`, `elevation`, `tolerance` |
+| `antenna-beacon-frequency-set` | Beacon frequency configured | `beaconFrequency` |
+| `antenna-tracking-mode-set` | Tracking mode set | `trackingMode` |
+| `antenna-beacon-locked` | Beacon signal locked | - |
+| `feed-heater-enabled` | Feed heater is enabled | - |
+
+### 9.4 LNB Conditions
+
+| Condition | Description | Key Params |
+|-----------|-------------|------------|
+| `lnb-reference-locked` | Locked to 10 MHz reference | - |
+| `lnb-lo-set` | LO frequency set | `loFrequency`, `loFrequencyTolerance` |
+| `lnb-gain-set` | Gain set | `gain`, `gainTolerance` |
+| `lnb-thermally-stable` | Thermal stabilization complete | - |
+| `lnb-noise-performance` | Noise temp within spec | `maxNoiseTemperature` |
+| `equipment-powered` | LNB powered on | `equipment: 'lnb'` |
+
+### 9.5 BUC Conditions
+
+| Condition | Description | Key Params |
+|-----------|-------------|------------|
+| `buc-locked` | Locked to external reference | - |
+| `buc-reference-locked` | Locked to 10 MHz reference | - |
+| `buc-muted` | RF output muted | - |
+| `buc-unmuted` | RF output enabled | - |
+| `buc-loopback-enabled` | Loopback mode enabled | - |
+| `buc-loopback-disabled` | Loopback mode disabled | - |
+| `buc-temperature-normal` | Temperature within range | `maxTemperature` |
+| `buc-current-normal` | Current draw normal | `maxCurrentDraw` |
+| `buc-not-saturated` | Output not in compression | - |
+
+### 9.6 HPA Conditions
+
+| Condition | Description | Key Params |
+|-----------|-------------|------------|
+| `hpa-enabled` | HPA output enabled | - |
+| `hpa-disabled` | HPA output disabled | - |
+| `hpa-back-off-set` | Back-off level configured | `backOff`, `backOffTolerance` |
+| `hpa-output-power-set` | Output power above threshold | `minOutputPower` |
+| `hpa-not-overdriven` | Not in overdrive | `maxImdLevel` |
+
+### 9.7 Spectrum Analyzer Conditions
+
+| Condition | Description | Key Params |
+|-----------|-------------|------------|
+| `signal-detected` | Signal detected | `signalId`, `minPower` |
+| `signal-level-correct` | Signal at/above min power | `signalId`, `minPower` |
+| `speca-center-frequency` | Center frequency set | `centerFrequency`, `centerFrequencyTolerance` |
+| `speca-span-set` | Span set | `span` |
+| `speca-rbw-set` | RBW set | `rbw` |
+| `speca-reference-level-set` | Reference level set | `referenceLevel`, `referenceLevelTolerance` |
+| `speca-noise-floor-visible` | Shows clean baseline | `maxSignalStrength` |
+| `filter-bandwidth-set` | IF filter bandwidth set | `bandwidthIndex` |
+| `notch-filter-configured` | Notch filter configured | `notchCenterFrequency`, `notchBandwidth`, `notchDepth` |
+
+### 9.8 Modem Conditions
+
+**Receiver:**
+
+| Condition | Description | Key Params |
+|-----------|-------------|------------|
+| `receiver-signal-locked` | Demodulation lock | `modemNumber` |
+| `receiver-snr-threshold` | C/N ratio meets threshold | `minCNRatio`, `modemNumber` |
+| `rx-modem-frequency-set` | Center frequency set | `frequency`, `frequencyTolerance` |
+| `rx-modem-bandwidth-set` | Bandwidth set | `bandwidth`, `bandwidthTolerance` |
+| `rx-modem-modulation-set` | Modulation type set | `modulation` |
+| `rx-modem-fec-set` | FEC rate set | `fec` |
+| `rx-frame-sync-locked` | Frame sync locked | `locked` |
+| `rx-ber-threshold` | BER below/above threshold | `berThreshold`, `berComparison` |
+
+**Transmitter:**
+
+| Condition | Description | Key Params |
+|-----------|-------------|------------|
+| `tx-modem-frequency-set` | Center frequency set | `frequency`, `frequencyTolerance` |
+| `tx-modem-power-set` | Power set | `power`, `powerTolerance` |
+| `tx-modem-bandwidth-set` | Bandwidth set | `bandwidth`, `bandwidthTolerance` |
+| `tx-modem-modulation-set` | Modulation type set | `modulation` |
+| `tx-modem-fec-set` | FEC rate set | `fec` |
+| `tx-modem-transmitting` | Actively transmitting | - |
+| `tx-modem-not-transmitting` | Not transmitting | - |
+
+### 9.9 Crypto Conditions
+
+| Condition | Description | Key Params |
+|-----------|-------------|------------|
+| `rx-crypto-status` | RX decryption mode | `cryptoMode` |
+| `rx-key-status` | RX key status | `keyStatus` |
+| `tx-crypto-status` | TX encryption mode | `cryptoMode` |
+| `tx-key-status` | TX key status | `keyStatus` |
+
+### 9.10 Traffic/Handover Conditions
+
+| Condition | Description | Key Params |
+|-----------|-------------|------------|
+| `handover-complete` | Handover completed | `targetGroundStationId` |
+| `traffic-owner` | Station owns traffic | `targetGroundStationId` |
+| `traffic-transferred` | Traffic transferred | `sourceStation`, `targetStation` |
+
+### 9.11 Interactive Conditions
+
+| Condition | Description | Key Params |
+|-----------|-------------|------------|
+| `status-check` | Quiz question | `question`, `options`, `correctIndex`, `explanation`, `pointPenalty`, `character` |
+| `custom` | Custom evaluator | `evaluator` function |
+
+### 9.12 Fault Conditions
+
+| Condition | Description | Key Params |
+|-----------|-------------|------------|
+| `fault-active` | Fault is injected | `faultId` |
+| `fault-cleared` | Fault has been cleared | `faultId` |
+
+---
+
+## 10. Condition Maintenance Flags
+
+| Flag | Use Case |
+|------|----------|
+| `mustMaintain: false` | One-time actions (open brief, answer quiz) |
+| `mustMaintain: true` | Continuous conditions during objective |
+| `maintainUntilObjectiveComplete: true` | Settings that must persist across multi-step objectives |
+| `maintainDuration: 30` | Stability check (hold for N seconds) |
+
+---
+
+## 11. Parameter Type Conventions
 
 ```typescript
-// ============================================================
-// PHASE 1: MISSION PREPARATION
-// ============================================================
+// Frequencies should be in Hz
+{ type: 'speca-center-frequency', params: { centerFrequency: 1070e6 } }
 
-// ============================================================
-// PHASE 2: VERIFY CURRENT STATE
-// ============================================================
+// Angles need type casting
+{ type: 'antenna-position', params: { azimuth: 219.7 as Degrees } }
 
-// ============================================================
-// PHASE 3: EQUIPMENT CONFIGURATION
-// ============================================================
+// Power levels in dBm
+{ type: 'signal-detected', params: { minPower: -95 as dBm } }
 
-// ============================================================
-// PHASE 4: VERIFICATION AND VALIDATION
-// ============================================================
-
-// ============================================================
-// PHASE 5: FINAL CONFIRMATION
-// ============================================================
+// LO frequencies in MHz (exception - check param name)
+{ type: 'lnb-lo-set', params: { loFrequency: 5250, loFrequencyTolerance: 0 } }
 ```
 
-### 9. Objective Checklist
+**Common mistakes:**
+- Using MHz instead of Hz for frequency params
+- Missing tolerance values
+- Forgetting `as Degrees` or `as dBm` casts
 
-Before finalizing a scenario, verify each objective has:
+---
 
-- [ ] Clear, specific title (action verb + equipment/concept)
-- [ ] Detailed description (what to do AND context)
-- [ ] Appropriate NICE codes with inline comments
-- [ ] Reasonable time limit with `timerStartTrigger: 'on-activate'`
-- [ ] Prerequisite objectives defined
-- [ ] Corresponding dialog clip in `dialogClips.objectives`
-- [ ] For action objectives: verification quiz afterward
-- [ ] For quiz objectives: educational explanation in the answer
-- [ ] Appropriate point value (5-20 based on complexity)
+## 12. Equipment Initial State
 
-### 10. Anti-Patterns to Avoid
+Configure initial equipment state in `settings.groundStations`:
 
-#### Shallow Objectives
+```typescript
+settings: {
+  groundStations: [
+    {
+      ...vermontGroundStation,
+      rfFrontEnds: [
+        createRfFrontEnd(vermontGroundStation.rfFrontEnds[0], {
+          buc: { isMuted: true },
+          hpa: { isHpaEnabled: false },
+        }),
+      ],
+    },
+  ],
+}
+```
+
+**Verify:**
+- Initial state matches scenario premise
+- Player has something to do (don't pre-configure everything)
+- State is achievable from objectives
+
+---
+
+## 13. Anti-Patterns to Avoid
+
+### Shallow Objectives
+
 ```typescript
 // BAD: No depth, no verification
 {
@@ -363,18 +619,19 @@ Before finalizing a scenario, verify each objective has:
 }
 ```
 
-#### Missing Navigation
+### Missing Navigation
+
 ```typescript
 // BAD: Assumes user knows where to go
 {
   id: 'configure-antenna',
   title: 'Configure Antenna',
   prerequisiteObjectiveIds: ['power-up-lnb'],  // Was just on RX tab!
-  // ...
 }
 ```
 
-#### Generic Dialog
+### Generic Dialog
+
 ```typescript
 // BAD: No personality, no teaching
 dialogClips: {
@@ -384,7 +641,8 @@ dialogClips: {
 }
 ```
 
-#### Missing "Why" Explanations
+### Missing "Why" Explanations
+
 ```typescript
 // BAD: Just instructions, no understanding
 explanation: 'The frequency is now set correctly.',
@@ -393,257 +651,62 @@ explanation: 'The frequency is now set correctly.',
 explanation: 'The LNB performs downconversion by mixing the incoming RF signal with its Local Oscillator. LO (5,250 MHz) minus RF (4,175.5 MHz) equals IF (1,074.5 MHz). This confirms the LO is set correctly and the receive path is working.',
 ```
 
-## Example: Well-Structured Objective Sequence
+---
 
-Here's a complete example showing proper depth for configuring an LNB:
+## 14. Review Checklist
 
-```typescript
-// ============================================================
-// LNB CONFIGURATION
-// ============================================================
-{
-  id: 'navigate-rx-analysis',
-  // S0421: Skill in operating network equipment - navigating to the receive
-  // chain panel within the ground station control interface
-  nice: ['S0421'],
-  title: 'Open RX Analysis Tab',
-  description: 'Click the RX Analysis tab to access the receive chain equipment.',
-  groundStation: 'ME-02',
-  prerequisiteObjectiveIds: ['previous-objective'],
-  timeLimitSeconds: 2 * 60,
-  timerStartTrigger: 'on-activate',
-  conditions: [
-    {
-      type: 'ground-station-selected',
-      description: 'Maine Station Active',
-      params: { groundStationId: 'ME-02' },
-      mustMaintain: true,
-    },
-    {
-      type: 'tab-active',
-      description: 'RX Analysis Tab Open',
-      params: { tab: 'rx-analysis' },
-      mustMaintain: true,
-    },
-  ],
-  conditionLogic: 'AND',
-  points: 5,
-},
-{
-  id: 'verify-lnb-initial-state',
-  // T0431: Check system hardware availability - verifying LNB power state
-  // before attempting configuration
-  nice: ['T0431'],
-  title: 'Check LNB Status',
-  description: 'Verify the current state of the LNB before powering it on.',
-  groundStation: 'ME-02',
-  prerequisiteObjectiveIds: ['navigate-rx-analysis'],
-  timeLimitSeconds: 2 * 60,
-  timerStartTrigger: 'on-activate',
-  conditions: [
-    {
-      type: 'tab-active',
-      description: 'RX Analysis Tab Open',
-      params: { tab: 'rx-analysis' },
-      mustMaintain: true,
-    },
-    {
-      type: 'status-check',
-      description: 'Verify LNB Power State',
-      params: {
-        question: 'What is the current state of the LNB?',
-        options: [
-          'Powered off - needs to be configured and powered on',
-          'Powered on but not locked to reference',
-          'Powered on and locked - ready for use',
-          'Faulted - showing error condition',
-        ],
-        correctIndex: 0,
-        explanation: 'The LNB is currently powered off. This is expected for a backup station that hasn\'t been activated. We\'ll need to power it on and configure the LO frequency before we can receive signals.',
-        pointPenalty: 5,
-      },
-      mustMaintain: false,
-    },
-  ],
-  conditionLogic: 'AND',
-  points: 10,
-},
-{
-  id: 'configure-lnb',
-  // T1567: Configure system hardware - powering on and configuring LNB
-  // S0421: Skill in operating network equipment - executing LNB configuration
-  // K0792: Knowledge of network configurations - matching LNB settings to
-  // primary site for consistent downconversion
-  nice: ['T1567', 'S0421', 'K0792'],
-  title: 'Power Up and Configure LNB',
-  description: 'Power on the LNB and configure it to match Vermont: LO frequency 5,250 MHz, Gain 60 dB. Wait for thermal stabilization.',
-  groundStation: 'ME-02',
-  prerequisiteObjectiveIds: ['verify-lnb-initial-state'],
-  timeLimitSeconds: 3 * 60,
-  timerStartTrigger: 'on-activate',
-  conditions: [
-    {
-      type: 'tab-active',
-      description: 'RX Analysis Tab Open',
-      params: { tab: 'rx-analysis' },
-      mustMaintain: true,
-    },
-    {
-      type: 'equipment-powered',
-      description: 'LNB Powered On',
-      params: { equipment: 'lnb' },
-      maintainUntilObjectiveComplete: true,
-    },
-    {
-      type: 'lnb-lo-set',
-      description: 'LNB LO Set to 5,250 MHz',
-      params: { loFrequency: 5250, loFrequencyTolerance: 0 },
-      maintainUntilObjectiveComplete: true,
-    },
-    {
-      type: 'lnb-gain-set',
-      description: 'LNB Gain Set to 60 dB',
-      params: { gain: 60, gainTolerance: 0 },
-      maintainUntilObjectiveComplete: true,
-    },
-    {
-      type: 'lnb-thermally-stable',
-      description: 'LNB Thermally Stabilized',
-      maintainUntilObjectiveComplete: true,
-    },
-  ],
-  conditionLogic: 'AND',
-  points: 15,
-},
-{
-  id: 'verify-lnb-config-quiz',
-  // K0792: Knowledge of network configurations - understanding why LNB
-  // settings must match between sites
-  // K0773: Knowledge of telecommunications principles - understanding
-  // LO frequency and IF calculation
-  nice: ['K0792', 'K0773'],
-  title: 'Verify LNB Configuration Understanding',
-  description: 'Confirm you understand why the LNB settings must match Vermont.',
-  groundStation: 'ME-02',
-  prerequisiteObjectiveIds: ['configure-lnb'],
-  timeLimitSeconds: 2 * 60,
-  timerStartTrigger: 'on-activate',
-  conditions: [
-    {
-      type: 'status-check',
-      description: 'Understand LNB Matching',
-      params: {
-        question: 'Why must Maine\'s LNB LO frequency match Vermont\'s exactly?',
-        options: [
-          'Same LO frequency produces the same IF frequency, so downstream equipment configuration is identical',
-          'Different LO frequencies would cause interference between the two sites',
-          'The satellite requires all ground stations to use the same LO frequency',
-          'It\'s just company policy for consistency',
-        ],
-        correctIndex: 0,
-        explanation: 'With the same LO frequency (5,250 MHz), the TIDEMARK-1 beacon at 4,175.5 MHz RF produces the same 1,074.5 MHz IF at both sites. This means the spectrum analyzer, receiver modem, and all downstream equipment use identical frequency settings, simplifying handover and reducing configuration errors.',
-        pointPenalty: 10,
-      },
-      mustMaintain: false,
-    },
-  ],
-  conditionLogic: 'AND',
-  points: 10,
-},
-```
-
-With corresponding dialog clips:
-
-```typescript
-dialogClips: {
-  objectives: {
-    'navigate-rx-analysis': {
-      text: `
-      <p>
-        While the antenna settles, let's get the receive chain configured. The LNB is currently powered down - standard procedure for a backup station that's been on standby.
-      </p>
-      <p>
-        We need to power it on and set the local oscillator frequency to match Vermont. Same LO means same IF frequencies downstream, which means all our other equipment settings stay identical.
-      </p>
-      `,
-      character: Character.CHARLIE_BROOKS,
-      emotion: Emotion.NEUTRAL,
-      audioUrl: getAssetUrl('/assets/campaigns/nats/3/obj-navigate-rx-analysis.mp3'),
-    },
-    'verify-lnb-initial-state': {
-      text: `
-      <p>
-        Good habit - checking the state before making changes. In this case the LNB is cold, as expected. But I've seen operators assume equipment is off when it's actually in a fault state, or assume it's on when someone else powered it down.
-      </p>
-      <p>
-        The extra few seconds to verify saves you from chasing phantom problems later.
-      </p>
-      `,
-      character: Character.CHARLIE_BROOKS,
-      emotion: Emotion.NEUTRAL,
-      audioUrl: getAssetUrl('/assets/campaigns/nats/3/obj-verify-lnb-initial-state.mp3'),
-    },
-    'configure-lnb': {
-      text: `
-      <p>
-        LNB's powered and warming up. Watch the thermal indicator - we need it stable before we can trust the receive path.
-      </p>
-      <p>
-        Cold LNBs drift. The local oscillator frequency shifts as the components warm up, which means your IF frequency shifts too. That's why we wait for thermal stability before trying to acquire signals.
-      </p>
-      `,
-      character: Character.CHARLIE_BROOKS,
-      emotion: Emotion.NEUTRAL,
-      audioUrl: getAssetUrl('/assets/campaigns/nats/3/obj-configure-lnb.mp3'),
-    },
-    'verify-lnb-config-quiz': {
-      text: `
-      <p>
-        Exactly. Same LO means same IF. Makes everything downstream identical between sites. Less to think about, fewer mistakes.
-      </p>
-      <p>
-        Now let's verify we're actually seeing the satellite. The beacon should appear at 1,074.5 MHz IF - that's 5,250 minus 4,175.5. If the math checks out on the spectrum analyzer, we know the LNB is working correctly.
-      </p>
-      `,
-      character: Character.CHARLIE_BROOKS,
-      emotion: Emotion.CONFIDENT,
-      audioUrl: getAssetUrl('/assets/campaigns/nats/3/obj-verify-lnb-config-quiz.mp3'),
-    },
-  },
-},
-```
-
-## Scenario Review Checklist
-
-Before submitting a scenario for review:
+Before submitting a scenario for review, verify:
 
 ### Structure
-- [ ] Mission brief objective with timer freeze
+- [ ] Mission brief objective with `freezesScenarioTimer: true`
 - [ ] Clear phase organization with comments
 - [ ] Navigation objectives before configuration objectives
 - [ ] Verify-before-modify pattern for state changes
 - [ ] Verification quizzes after significant actions
+- [ ] Every objective has `groundStation` set
+- [ ] Prerequisite chain is correct (first objective has `[]`)
 
 ### Educational Depth
 - [ ] At least one "why" quiz per phase
 - [ ] Calculations explained, not just performed
 - [ ] Consequences of errors explained
 - [ ] NICE codes with inline comments
+- [ ] ~50-100 lines per objective including dialog
+- [ ] Quiz:action ratio of at least 1:3
 
 ### Dialog Quality
 - [ ] Intro clip sets scene and urgency (150+ words)
 - [ ] Character voice consistent throughout
 - [ ] Teaching moments, not just instructions
 - [ ] No generic or shallow dialog clips
+- [ ] Frequencies spelled out ("1,070 megahertz")
 
 ### Technical Accuracy
-- [ ] Correct frequency calculations
+- [ ] Correct frequency calculations (see `nats-technical-reference.md`)
+- [ ] Frequency values match across: condition params, descriptions, dialog
 - [ ] Realistic equipment behavior
 - [ ] Proper sequencing (e.g., safety procedures)
 - [ ] Accurate NICE framework alignment
+- [ ] Equipment initial state matches scenario premise
 
-### Balance
-- [ ] ~50-100 lines per objective including dialog
-- [ ] Quiz:action ratio of at least 1:3
-- [ ] Appropriate time limits with penalties
-- [ ] Point values reflect complexity
+### Timing and Scoring
+- [ ] Appropriate time limits with `timerStartTrigger: 'on-activate'`
+- [ ] Point values reflect complexity (5-25 range)
+- [ ] Quiz penalties appropriate (typically 5-10)
+
+### TypeScript
+- [ ] No type errors: `npx tsc --noEmit src/campaigns/<campaign>/scenario<N>.ts`
+- [ ] Correct type casts (`as Degrees`, `as dBm`, `as MHz`)
+- [ ] No unused imports
+
+---
+
+## 15. Related Documentation
+
+| Document | Content |
+|----------|---------|
+| `signalrange-platform-guide.md` | Platform architecture and concepts |
+| `nice-framework-guide.md` | NICE code mapping rules |
+| `nats-campaign-plan.md` | Campaign structure and progression |
+| `nats-character-guide.md` | Character dialog writing guide |
+| `nats-technical-reference.md` | Frequencies, ground stations, equipment specs |

@@ -1,3 +1,4 @@
+import { EngineeringModeService } from '@app/engineering-mode/engineering-mode-service';
 import { OMTModule, OMTState } from '@app/equipment/rf-front-end/omt-module/omt-module';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
@@ -43,8 +44,54 @@ export class OMTAdapter {
     // Listen to OMT state changes
     EventBus.getInstance().on(Events.RF_FE_OMT_CHANGED, this.stateChangeHandler as any);
 
+    // Setup engineering mode listener
+    this.setupEngineeringModeListener_();
+
+    // Setup reverse polarization switch handler
+    this.setupReversePolHandler_();
+
     // Initial sync
     this.syncDomWithState_(this.omtModule.state);
+  }
+
+  private setupEngineeringModeListener_(): void {
+    const engService = EngineeringModeService.getInstance();
+
+    // Listen for engineering mode changes
+    engService.onChange((enabled) => {
+      this.updateEngineeringModeVisibility_(enabled);
+    });
+
+    // Set initial visibility
+    this.updateEngineeringModeVisibility_(engService.isEnabled());
+  }
+
+  private updateEngineeringModeVisibility_(enabled: boolean): void {
+    const container = this.domCache_.get('engineeringControls');
+    if (container) {
+      container.style.display = enabled ? 'block' : 'none';
+    }
+  }
+
+  private setupReversePolHandler_(): void {
+    const reversePolSwitch = this.domCache_.get('reversePolSwitch') as HTMLInputElement | null;
+    if (!reversePolSwitch) return;
+
+    // Set initial state based on OMT module (reversed when txPolarization is 'V')
+    reversePolSwitch.checked = this.omtModule.state.txPolarization === 'V';
+
+    reversePolSwitch.addEventListener('change', () => {
+      // Toggle polarization: 'H' (normal) or 'V' (reversed)
+      const newPol = reversePolSwitch.checked ? 'V' : 'H';
+      this.omtModule.state.txPolarization = newPol;
+      this.omtModule.state.rxPolarization = reversePolSwitch.checked ? 'H' : 'V';
+
+      // Trigger update to recalculate effective polarization
+      this.omtModule.update();
+
+      // Sync DOM with new state
+      this.syncDomWithState_(this.omtModule.state);
+    });
   }
 
   private setupDomCache_(): void {
@@ -52,12 +99,16 @@ export class OMTAdapter {
     const txPolDisplay = this.containerEl.querySelector(`#${p}omt-tx-pol`);
     const rxPolDisplay = this.containerEl.querySelector(`#${p}omt-rx-pol`);
     const isolationDisplay = this.containerEl.querySelector(`#${p}omt-isolation`);
-    const faultLed = this.containerEl.querySelector(`#${p}omt-fault-led`);
+    const statusBadge = this.containerEl.querySelector(`#${p}omt-status`);
+    const engineeringControls = this.containerEl.querySelector(`#${p}omt-engineering-controls`);
+    const reversePolSwitch = this.containerEl.querySelector(`#${p}omt-reverse-pol`);
 
     if (txPolDisplay) this.domCache_.set('txPolDisplay', txPolDisplay as HTMLElement);
     if (rxPolDisplay) this.domCache_.set('rxPolDisplay', rxPolDisplay as HTMLElement);
     if (isolationDisplay) this.domCache_.set('isolationDisplay', isolationDisplay as HTMLElement);
-    if (faultLed) this.domCache_.set('faultLed', faultLed as HTMLElement);
+    if (statusBadge) this.domCache_.set('statusBadge', statusBadge as HTMLElement);
+    if (engineeringControls) this.domCache_.set('engineeringControls', engineeringControls as HTMLElement);
+    if (reversePolSwitch) this.domCache_.set('reversePolSwitch', reversePolSwitch as HTMLElement);
   }
 
   update(): void {
@@ -96,11 +147,14 @@ export class OMTAdapter {
       }
     }
 
-    // Update fault LED
+    // Update status badge
     if (state.isFaulted !== undefined) {
-      const led = this.domCache_.get('faultLed');
-      if (led) {
-        led.className = state.isFaulted ? 'led led-red' : 'led led-green';
+      const statusBadge = this.domCache_.get('statusBadge');
+      if (statusBadge) {
+        statusBadge.className = state.isFaulted
+          ? 'status-badge status-badge-red'
+          : 'status-badge status-badge-green';
+        statusBadge.textContent = state.isFaulted ? 'FAULT' : 'OK';
       }
     }
   }

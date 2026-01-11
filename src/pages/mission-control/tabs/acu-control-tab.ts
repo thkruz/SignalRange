@@ -291,7 +291,16 @@ export class ACUControlTab extends BaseElement {
               </div>
               <div class="d-flex justify-content-between align-items-center">
                 <span class="text-muted small">Status:</span>
-                <span id="${p}omt-fault-led" class="card-alarm-led success"></span>
+                <span id="${p}omt-status" class="status-badge status-badge-green">OK</span>
+              </div>
+              <!-- Engineering Mode: Polarization Reversal -->
+              <div id="${p}omt-engineering-controls" class="border-top pt-2 mt-2" style="display: none;">
+                <div class="d-flex justify-content-between align-items-center">
+                  <span class="text-muted small">Reverse Polarization:</span>
+                  <div class="form-check form-switch mb-0">
+                    <input class="form-check-input" type="checkbox" role="switch" id="${p}omt-reverse-pol">
+                  </div>
+                </div>
               </div>
             </div>
           </div>

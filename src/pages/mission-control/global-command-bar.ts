@@ -59,12 +59,7 @@ export class GlobalCommandBar {
         <!-- AOS Countdown -->
         <div class="aos-countdown">
           <div id="scenario-info" class="absolute left-4 flex items-center gap-2 text-xs text-slate-500">
-            <span class="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700">SCENARIO --</span>
-          </div>
-          <div class="flex items-baseline gap-2">
-            <span class="text-xs text-slate-400 font-medium tracking-widest">NEXT AOS IN</span>
-            <span class="text-2xl font-mono font-bold text-white tracking-widest">00:14:32</span>
-            <span class="text-[10px] text-slate-500">EL 12.5° RISING</span>
+            <span class="px-1.5 py-0.5">SCENARIO --</span>
           </div>
         </div>
         <!-- Static Alarm Bar -->
@@ -114,7 +109,7 @@ export class GlobalCommandBar {
       const number = scenarioData.number;
       const title = scenarioData.title;
       this.scenarioInfoEl_.innerHTML = `
-        <span class="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700">
+        <span class="px-1.5 py-0.5">
           SCENARIO ${number}: ${title}
         </span>
       `;

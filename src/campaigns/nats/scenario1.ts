@@ -320,6 +320,47 @@ export const scenario1Data: ScenarioData = {
       points: 10,
     },
     {
+      id: 'verify-tap-points',
+      // K0773: Knowledge of telecommunications principles and practices - understanding
+      // signal routing and tap points in the receive chain for spectrum analysis
+      // S0421: Skill in operating network equipment - recognizing the tap point
+      // selector and its role in the monitoring workflow
+      nice: ['K0773', 'S0421'],
+      title: 'Tap Points Configuration',
+      description: 'Review the Tap Points card to understand signal monitoring points.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['verify-lnb-quiz'],
+      timeLimitSeconds: 2 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'tab-active',
+          description: 'RX Analysis Tab Open',
+          params: { tab: 'rx-analysis' },
+          mustMaintain: true,
+        },
+        {
+          type: 'status-check',
+          description: 'Understand Tap Points',
+          params: {
+            question: 'What does the Tap Points card show, and what is its purpose?',
+            options: [
+              'RX IF selected - monitoring the receive chain after downconversion',
+              'TX IF selected - monitoring the transmit chain',
+              'Both TX and RX IF active - dual monitoring mode',
+              'No tap point selected - spectrum analyzer disabled',
+            ],
+            correctIndex: 0,
+            explanation: 'The Tap Points card selects where in the signal chain the spectrum analyzer takes its input. RX IF monitors the receive path after the LNB downconverts from RF to IF - this is the standard monitoring point for receive operations.',
+            pointPenalty: 10,
+          },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 10,
+    },
+    {
       id: 'identify-beacon',
       // T0153: Monitor network capacity and performance - locating and confirming
       // the satellite beacon signal on the spectrum analyzer
@@ -329,7 +370,7 @@ export const scenario1Data: ScenarioData = {
       title: 'Identify Beacon Signal',
       description: 'Locate the TIDEMARK-1 beacon signal on the spectrum analyzer.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['verify-lnb-quiz'],
+      prerequisiteObjectiveIds: ['verify-tap-points'],
       timeLimitSeconds: 3 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
@@ -987,12 +1028,28 @@ export const scenario1Data: ScenarioData = {
         43K - that's solid. The cooler the LNB runs, the less noise it adds to your signal. You start seeing that number climb, it's an early warning. Equipment doesn't fail all at once - it degrades. Your job is to catch it before the customer does.
       </p>
       <p>
-        Now look at the spectrum analyzer. This is where you'll live as an operator. Shows you the RF environment in real time.
+        Now before we check the spectrum analyzer, take a look at the Tap Points card. That controls where the analyzer takes its signal from.
       </p>
       `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.HAPPY,
         audioUrl: getAssetUrl('/assets/campaigns/nats/1/v2/obj-phase-2-lnb.mp3'),
+      },
+      'verify-tap-points': {
+        text: `
+      <p>
+        Before we look at the spectrum analyzer, check the Tap Points card. This tells you where in the signal chain the analyzer is taking its input.
+      </p>
+      <p>
+        RX IF means you're looking at the receive path after the LNB downconverts from RF. That's what you want for monitoring the downlink. TX IF would show you the transmit side before it goes to the BUC.
+      </p>
+      <p>
+        For a health check, RX IF is the standard choice. What's it set to now?
+      </p>
+      `,
+        character: Character.CHARLIE_BROOKS,
+        emotion: Emotion.NEUTRAL,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/1/v2/obj-verify-tap-points.mp3'),
       },
       'identify-beacon': {
         text: `

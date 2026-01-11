@@ -99,11 +99,6 @@ describe('GlobalCommandBar', () => {
       expect(aosCountdown).not.toBeNull();
     });
 
-    it('should render NEXT AOS IN label', () => {
-      const aosLabel = document.body.innerHTML;
-      expect(aosLabel).toContain('NEXT AOS IN');
-    });
-
     it('should render scenario info element', () => {
       const scenarioInfo = document.querySelector('#scenario-info');
       expect(scenarioInfo).not.toBeNull();

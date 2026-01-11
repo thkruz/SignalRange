@@ -1,9 +1,9 @@
+import { CardAlarmBadge } from "@app/components/card-alarm-badge/card-alarm-badge";
 import { qs } from "@app/engine/utils/query-selector";
+import { AlarmStatus } from "@app/equipment/base-equipment";
 import { HPAModuleCore, HPAState } from "@app/equipment/rf-front-end/hpa-module/hpa-module-core";
 import { EventBus } from "@app/events/event-bus";
 import { Events } from "@app/events/events";
-import { CardAlarmBadge } from "@app/components/card-alarm-badge/card-alarm-badge";
-import { AlarmStatus } from "@app/equipment/base-equipment";
 import { parseLocalizedNumber } from "@app/utils/parse-number";
 
 /**
@@ -151,7 +151,7 @@ export class HPAAdapter {
       if (isPowered) {
         overdriveStatus.textContent = state.isOverdriven ? 'OVERDRIVE' : 'Normal';
         overdriveStatus.className = state.isOverdriven
-          ? 'status-badge status-badge-danger'
+          ? 'status-badge status-badge-warning'
           : 'status-badge status-badge-good';
       } else {
         overdriveStatus.textContent = '--';
@@ -405,7 +405,7 @@ export class HPAAdapter {
       if (isPowered && state.isOverdriven !== undefined) {
         overdriveStatus.textContent = state.isOverdriven ? 'OVERDRIVE' : 'Normal';
         overdriveStatus.className = state.isOverdriven
-          ? 'status-badge status-badge-danger'
+          ? 'status-badge status-badge-warning'
           : 'status-badge status-badge-good';
       } else if (!isPowered) {
         overdriveStatus.textContent = '--';

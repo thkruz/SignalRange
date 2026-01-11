@@ -1,7 +1,7 @@
-import { HPAAdapter } from '../../../../src/pages/mission-control/tabs/hpa-adapter';
 import { HPAModuleCore, HPAState } from '../../../../src/equipment/rf-front-end/hpa-module/hpa-module-core';
 import { EventBus } from '../../../../src/events/event-bus';
 import { Events } from '../../../../src/events/events';
+import { HPAAdapter } from '../../../../src/pages/mission-control/tabs/hpa-adapter';
 
 // Mock dependencies
 jest.mock('../../../../src/events/event-bus');
@@ -214,7 +214,7 @@ describe('HPAAdapter', () => {
 
       const display = containerEl.querySelector('#hpa-overdrive-status') as HTMLElement;
       expect(display.textContent).toBe('OVERDRIVE');
-      expect(display.className).toContain('status-badge-danger');
+      expect(display.className).toContain('status-badge-warning');
     });
 
     it('should show placeholder values when powered off', () => {

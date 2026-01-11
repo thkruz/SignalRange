@@ -16,7 +16,7 @@ export class DraggableHtmlBox extends DraggableBox {
         parentId,
         boxContentHtml: html`
       <div id="draggable-html-box-content-${id}" style="width:100%;height:100%;">
-        ${url ? `<iframe src="${url}" style="width:600px;height:600px;border:none;"></iframe>` : ''}
+        ${url ? `<iframe src="${url}" style="width:600px;height:600px;max-height:calc(70vh - 5px);border:none;"></iframe>` : ''}
       </div>
     `.trim()
       });

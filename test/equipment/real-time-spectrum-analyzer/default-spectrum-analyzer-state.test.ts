@@ -3,11 +3,11 @@ import { Hertz, dB } from '../../../src/types';
 
 describe('defaultSpectrumAnalyzerState', () => {
   describe('Tap Settings', () => {
-    it('should have tap A enabled by default', () => {
-      expect(defaultSpectrumAnalyzerState.isUseTapA).toBe(true);
+    it('should have tap A (TX IF) disabled by default to avoid confusion with RX signals', () => {
+      expect(defaultSpectrumAnalyzerState.isUseTapA).toBe(false);
     });
 
-    it('should have tap B enabled by default', () => {
+    it('should have tap B (RX IF) enabled by default as the primary tap', () => {
       expect(defaultSpectrumAnalyzerState.isUseTapB).toBe(true);
     });
   });

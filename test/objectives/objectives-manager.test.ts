@@ -1854,7 +1854,10 @@ describe('ObjectivesManager', () => {
     });
 
     it('should evaluate antenna-tracking-mode-set condition', () => {
-      mockAntennaState.trackingMode = 'step-track';
+      // Step-track is an optimization layer on top of program-track,
+      // so we need program-track mode with isStepTrackEnabled = true
+      mockAntennaState.trackingMode = 'program-track';
+      (mockAntennaState as Record<string, unknown>).isStepTrackEnabled = true;
 
       const objectives = [
         createTestObjective({

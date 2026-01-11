@@ -6,6 +6,7 @@ import { DialogHistoryBox } from '@app/modal/dialog-history-box';
 import { DraggableHtmlBox } from '@app/modal/draggable-html-box';
 import { QuizManager } from '@app/modal/quiz-manager';
 import { ObjectivesManager } from '@app/objectives';
+import { EventAutoLogger } from '@app/ops-log/event-auto-logger';
 import { OpsLogManager } from '@app/ops-log/ops-log-manager';
 import { OpsLogModal } from '@app/ops-log/ops-log-modal';
 import { Equipment } from '@app/pages/sandbox/equipment';
@@ -118,6 +119,7 @@ export class SimulationManager {
     // Clean up singleton managers
     ObjectivesManager.destroy();
     QuizManager.destroy();
+    EventAutoLogger.destroy();
     OpsLogManager.destroy();
     OpsLogModal.destroy();
   }

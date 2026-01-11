@@ -9,6 +9,7 @@ import { ObjectiveFailedModal } from "@app/modal/objective-failed-modal";
 import { QuizModal } from "@app/modal/quiz-modal";
 import { TimePenaltyToast } from "@app/modal/time-penalty-toast";
 import { ObjectivesManager } from "@app/objectives/objectives-manager";
+import { EventAutoLogger } from "@app/ops-log/event-auto-logger";
 import { OpsLogManager } from "@app/ops-log/ops-log-manager";
 import { NavigationOptions, Router } from "@app/router";
 import { ScenarioManager } from "@app/scenario-manager";
@@ -75,6 +76,9 @@ export abstract class BasePage extends BaseElement {
       scenario.settings.scenarioStartDate,
       scenario.settings.previousShiftLogs
     );
+
+    // Initialize event auto-logger (logs equipment events for beginner/intermediate)
+    EventAutoLogger.getInstance().initialize();
 
     // Initialize objectives manager if scenario has objectives
     if (scenario.data?.objectives && scenario.data.objectives.length > 0) {

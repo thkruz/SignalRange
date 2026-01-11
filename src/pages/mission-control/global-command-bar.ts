@@ -3,6 +3,7 @@ import { qs } from "@app/engine/utils/query-selector";
 import { EventBus } from "@app/events/event-bus";
 import { AggregatedAlarm, AlarmStateChangedData, Events, SimulatedTimeTickData } from "@app/events/events";
 import { ObjectivesManager } from "@app/objectives/objectives-manager";
+import { ScenarioManager } from "@app/scenario-manager";
 
 /**
  * GlobalCommandBar
@@ -27,6 +28,7 @@ export class GlobalCommandBar {
   private readonly boundOnSimulatedTimeTick_: (data: SimulatedTimeTickData) => void;
   private timerUpdateInterval_: number | null = null;
   private clockEl_: HTMLElement | null = null;
+  private scenarioInfoEl_: HTMLElement | null = null;
 
   /** Maximum number of alarms to show inline */
   private readonly MAX_INLINE_ALARMS_ = 3;
@@ -56,9 +58,8 @@ export class GlobalCommandBar {
       <div id="${this.id}" class="command-bar-center">
         <!-- AOS Countdown -->
         <div class="aos-countdown">
-          <div class="absolute left-4 flex items-center gap-2 text-xs text-slate-500">
-            <span class="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700">PASS ID: 9942</span>
-            <span>SAT: GALAXY-19</span>
+          <div id="scenario-info" class="absolute left-4 flex items-center gap-2 text-xs text-slate-500">
+            <span class="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700">SCENARIO --</span>
           </div>
           <div class="flex items-baseline gap-2">
             <span class="text-xs text-slate-400 font-medium tracking-widest">NEXT AOS IN</span>
@@ -101,6 +102,25 @@ export class GlobalCommandBar {
     this.objectiveTimerEl_ = parentDom?.querySelector('#objective-timer-display') ?? null;
     this.scenarioTimerEl_ = parentDom?.querySelector('#scenario-timer-display') ?? null;
     this.clockEl_ = parentDom?.querySelector('#utc-clock') ?? null;
+    this.scenarioInfoEl_ = parentDom?.querySelector('#scenario-info') ?? null;
+    this.updateScenarioInfo_();
+  }
+
+  private updateScenarioInfo_(): void {
+    if (!this.scenarioInfoEl_) return;
+
+    try {
+      const scenarioData = ScenarioManager.getInstance().data;
+      const number = scenarioData.number;
+      const title = scenarioData.title;
+      this.scenarioInfoEl_.innerHTML = `
+        <span class="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700">
+          SCENARIO ${number}: ${title}
+        </span>
+      `;
+    } catch {
+      // ScenarioManager not initialized yet - keep placeholder
+    }
   }
 
   private subscribeToAlarms_(): void {

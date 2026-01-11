@@ -11,6 +11,16 @@ jest.mock('../../../src/objectives/objectives-manager', () => ({
     }),
   },
 }));
+jest.mock('../../../src/scenario-manager', () => ({
+  ScenarioManager: {
+    getInstance: jest.fn(() => ({
+      data: {
+        number: 1,
+        title: 'First Day',
+      },
+    })),
+  },
+}));
 jest.mock('../../../src/engine/utils/query-selector', () => ({
   qs: jest.fn((selector: string, parent?: Element) => {
     const root = parent || global.document;
@@ -94,14 +104,14 @@ describe('GlobalCommandBar', () => {
       expect(aosLabel).toContain('NEXT AOS IN');
     });
 
-    it('should render pass ID', () => {
-      const passId = document.body.innerHTML;
-      expect(passId).toContain('PASS ID: 9942');
+    it('should render scenario info element', () => {
+      const scenarioInfo = document.querySelector('#scenario-info');
+      expect(scenarioInfo).not.toBeNull();
     });
 
-    it('should render satellite info', () => {
-      const satInfo = document.body.innerHTML;
-      expect(satInfo).toContain('SAT: GALAXY-19');
+    it('should render scenario number and title', () => {
+      const scenarioInfo = document.querySelector('#scenario-info');
+      expect(scenarioInfo?.textContent).toContain('SCENARIO 1: First Day');
     });
 
     it('should render alarm bar', () => {

@@ -180,7 +180,9 @@ export class Header extends BaseElement {
 
   private updateDevMenuVisibility_(isDev: boolean): void {
     if (this.devMenuBtn) {
-      this.devMenuBtn.style.display = isDev ? 'flex' : 'none';
+      // Show if user is on whitelist OR if DEVELOPER_MODE is enabled
+      const shouldShow = isDev || window.DEVELOPER_MODE === true;
+      this.devMenuBtn.style.display = shouldShow ? 'flex' : 'none';
     }
   }
 

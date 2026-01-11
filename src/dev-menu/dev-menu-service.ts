@@ -1,5 +1,11 @@
 import { Auth } from '@app/user-account/auth';
 
+declare global {
+  interface Window {
+    DEVELOPER_MODE?: boolean;
+  }
+}
+
 /**
  * Service that manages developer menu access based on user whitelist.
  * Checks if current user ID is in the PUBLIC_DEV_USER_IDS environment variable.
@@ -28,10 +34,11 @@ export class DevMenuService {
   }
 
   /**
-   * Returns true if the current user is a developer (on the whitelist).
+   * Returns true if the current user is a developer (on the whitelist)
+   * or if DEVELOPER_MODE is enabled.
    */
   isDev(): boolean {
-    return this.isDev_;
+    return this.isDev_ || window.DEVELOPER_MODE === true;
   }
 
   /**

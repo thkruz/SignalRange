@@ -7,11 +7,13 @@ import { DraggableBox } from '@engine/ui/draggable-box';
 import { html } from '@engine/utils/development/formatter';
 import { getEl, showEl } from '@engine/utils/get-el';
 import { ObjectivesManager } from '@app/objectives/objectives-manager';
+import { ScenarioSelectionPage } from '@app/pages/scenario-selection';
 import './dev-menu.css';
 
 declare global {
   interface Window {
     AUTO_CLOSE_DIALOGS?: boolean;
+    UNLOCK_ALL_SCENARIOS?: boolean;
   }
 }
 
@@ -54,6 +56,10 @@ export class DevMenuBox extends DraggableBox {
     this.open();
   }
 
+  private getUnlockScenariosChecked_(): string {
+    return window.UNLOCK_ALL_SCENARIOS ? 'checked' : '';
+  }
+
   protected getBoxContentHtml(): string {
     const autoSkipChecked = window.AUTO_CLOSE_DIALOGS ? 'checked' : '';
 
@@ -63,6 +69,10 @@ export class DevMenuBox extends DraggableBox {
           <div class="form-check form-switch">
             <input type="checkbox" id="dev-auto-skip" class="form-check-input" role="switch" ${autoSkipChecked} />
             <label for="dev-auto-skip" class="form-check-label">Auto-Skip Dialogs</label>
+          </div>
+          <div class="form-check form-switch mt-2">
+            <input type="checkbox" id="dev-unlock-scenarios" class="form-check-input" role="switch" ${this.getUnlockScenariosChecked_()} />
+            <label for="dev-unlock-scenarios" class="form-check-label">Unlock All Scenarios</label>
           </div>
         </div>
         <div class="dev-menu__section">
@@ -115,6 +125,7 @@ export class DevMenuBox extends DraggableBox {
   private setupEventListeners_(): void {
     // Cache DOM elements
     const autoSkipToggle = getEl('dev-auto-skip') as HTMLInputElement;
+    const unlockScenariosToggle = getEl('dev-unlock-scenarios') as HTMLInputElement;
     const completeObjectiveBtn = getEl('dev-complete-objective');
     const missionTimerInput = getEl('dev-mission-timer-value') as HTMLInputElement;
     const setMissionTimerBtn = getEl('dev-set-mission-timer');
@@ -122,6 +133,7 @@ export class DevMenuBox extends DraggableBox {
     const setObjectiveTimerBtn = getEl('dev-set-objective-timer');
 
     this.domCache_.set('autoSkipToggle', autoSkipToggle);
+    this.domCache_.set('unlockScenariosToggle', unlockScenariosToggle);
     this.domCache_.set('completeObjectiveBtn', completeObjectiveBtn);
     this.domCache_.set('missionTimerInput', missionTimerInput);
     this.domCache_.set('setMissionTimerBtn', setMissionTimerBtn);
@@ -131,6 +143,11 @@ export class DevMenuBox extends DraggableBox {
     // Auto-skip dialogs toggle
     autoSkipToggle.addEventListener('change', () => {
       this.handleAutoSkipToggle_(autoSkipToggle.checked);
+    });
+
+    // Unlock all scenarios toggle
+    unlockScenariosToggle.addEventListener('change', () => {
+      this.handleUnlockScenariosToggle_(unlockScenariosToggle.checked);
     });
 
     // Complete current objective button
@@ -166,6 +183,18 @@ export class DevMenuBox extends DraggableBox {
   private handleAutoSkipToggle_(checked: boolean): void {
     window.AUTO_CLOSE_DIALOGS = checked;
     console.log(`[DevMenu] Auto-skip dialogs: ${checked ? 'enabled' : 'disabled'}`);
+  }
+
+  private handleUnlockScenariosToggle_(checked: boolean): void {
+    window.UNLOCK_ALL_SCENARIOS = checked;
+    console.log(`[DevMenu] Unlock all scenarios: ${checked ? 'enabled' : 'disabled'}`);
+
+    // Refresh scenario selection page if it exists
+    try {
+      ScenarioSelectionPage.getInstance().refreshCards();
+    } catch {
+      // Page not instantiated yet - will pick up flag on next render
+    }
   }
 
   private handleCompleteObjective_(): void {
@@ -242,10 +271,15 @@ export class DevMenuBox extends DraggableBox {
     this.boxEl.style.top = `${window.scrollY + (window.innerHeight - this.boxEl.offsetHeight) / 2}px`;
     this.boxEl.style.left = `${(window.innerWidth - this.boxEl.offsetWidth) / 2}px`;
 
-    // Update auto-skip checkbox to reflect current state
+    // Update checkboxes to reflect current state
     const autoSkipToggle = this.domCache_.get('autoSkipToggle') as HTMLInputElement;
     if (autoSkipToggle) {
       autoSkipToggle.checked = window.AUTO_CLOSE_DIALOGS ?? false;
+    }
+
+    const unlockScenariosToggle = this.domCache_.get('unlockScenariosToggle') as HTMLInputElement;
+    if (unlockScenariosToggle) {
+      unlockScenariosToggle.checked = window.UNLOCK_ALL_SCENARIOS ?? false;
     }
 
     if (cb) {

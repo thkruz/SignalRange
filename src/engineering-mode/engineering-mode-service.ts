@@ -9,6 +9,7 @@
 declare global {
   interface Window {
     ENGINEERING_MODE?: boolean;
+    FORCE_ENGINEERING_BUTTON?: boolean;
   }
 }
 

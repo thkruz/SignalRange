@@ -7,6 +7,7 @@ import { DraggableBox } from '@engine/ui/draggable-box';
 import { html } from '@engine/utils/development/formatter';
 import { getEl, showEl } from '@engine/utils/get-el';
 import { ObjectivesManager } from '@app/objectives/objectives-manager';
+import { Header } from '@app/pages/layout/header/header';
 import { ScenarioSelectionPage } from '@app/pages/scenario-selection';
 import './dev-menu.css';
 
@@ -60,6 +61,10 @@ export class DevMenuBox extends DraggableBox {
     return window.UNLOCK_ALL_SCENARIOS ? 'checked' : '';
   }
 
+  private getForceEngButtonChecked_(): string {
+    return window.FORCE_ENGINEERING_BUTTON ? 'checked' : '';
+  }
+
   protected getBoxContentHtml(): string {
     const autoSkipChecked = window.AUTO_CLOSE_DIALOGS ? 'checked' : '';
 
@@ -73,6 +78,10 @@ export class DevMenuBox extends DraggableBox {
           <div class="form-check form-switch mt-2">
             <input type="checkbox" id="dev-unlock-scenarios" class="form-check-input" role="switch" ${this.getUnlockScenariosChecked_()} />
             <label for="dev-unlock-scenarios" class="form-check-label">Unlock All Scenarios</label>
+          </div>
+          <div class="form-check form-switch mt-2">
+            <input type="checkbox" id="dev-force-eng-button" class="form-check-input" role="switch" ${this.getForceEngButtonChecked_()} />
+            <label for="dev-force-eng-button" class="form-check-label">Force Engineering Button</label>
           </div>
         </div>
         <div class="dev-menu__section">
@@ -126,6 +135,7 @@ export class DevMenuBox extends DraggableBox {
     // Cache DOM elements
     const autoSkipToggle = getEl('dev-auto-skip') as HTMLInputElement;
     const unlockScenariosToggle = getEl('dev-unlock-scenarios') as HTMLInputElement;
+    const forceEngButtonToggle = getEl('dev-force-eng-button') as HTMLInputElement;
     const completeObjectiveBtn = getEl('dev-complete-objective');
     const missionTimerInput = getEl('dev-mission-timer-value') as HTMLInputElement;
     const setMissionTimerBtn = getEl('dev-set-mission-timer');
@@ -134,6 +144,7 @@ export class DevMenuBox extends DraggableBox {
 
     this.domCache_.set('autoSkipToggle', autoSkipToggle);
     this.domCache_.set('unlockScenariosToggle', unlockScenariosToggle);
+    this.domCache_.set('forceEngButtonToggle', forceEngButtonToggle);
     this.domCache_.set('completeObjectiveBtn', completeObjectiveBtn);
     this.domCache_.set('missionTimerInput', missionTimerInput);
     this.domCache_.set('setMissionTimerBtn', setMissionTimerBtn);
@@ -148,6 +159,11 @@ export class DevMenuBox extends DraggableBox {
     // Unlock all scenarios toggle
     unlockScenariosToggle.addEventListener('change', () => {
       this.handleUnlockScenariosToggle_(unlockScenariosToggle.checked);
+    });
+
+    // Force engineering button toggle
+    forceEngButtonToggle.addEventListener('change', () => {
+      this.handleForceEngButtonToggle_(forceEngButtonToggle.checked);
     });
 
     // Complete current objective button
@@ -194,6 +210,18 @@ export class DevMenuBox extends DraggableBox {
       ScenarioSelectionPage.getInstance().refreshCards();
     } catch {
       // Page not instantiated yet - will pick up flag on next render
+    }
+  }
+
+  private handleForceEngButtonToggle_(checked: boolean): void {
+    window.FORCE_ENGINEERING_BUTTON = checked;
+    console.log(`[DevMenu] Force engineering button: ${checked ? 'enabled' : 'disabled'}`);
+
+    // Refresh header ENG button visibility
+    try {
+      Header.getInstance().refreshEngButtonVisibility();
+    } catch {
+      // Header not instantiated yet
     }
   }
 
@@ -280,6 +308,11 @@ export class DevMenuBox extends DraggableBox {
     const unlockScenariosToggle = this.domCache_.get('unlockScenariosToggle') as HTMLInputElement;
     if (unlockScenariosToggle) {
       unlockScenariosToggle.checked = window.UNLOCK_ALL_SCENARIOS ?? false;
+    }
+
+    const forceEngButtonToggle = this.domCache_.get('forceEngButtonToggle') as HTMLInputElement;
+    if (forceEngButtonToggle) {
+      forceEngButtonToggle.checked = window.FORCE_ENGINEERING_BUTTON ?? false;
     }
 
     if (cb) {

@@ -46,6 +46,109 @@
   overflow: hidden;
 }
 
+/* Spectrum Analyzer Primary Actions */
+.sa-primary-actions {
+  padding: 0.5rem;
+  background: var(--mc-surface-2, #1a1a1a);
+  border-radius: 4px;
+  border: 1px solid var(--mc-border, #333);
+}
+
+/* Spectrum Analyzer Engineering Controls */
+.sa-engineering-controls {
+  padding: 0.75rem;
+  background: rgba(186, 22, 12, 0.08);
+  border-radius: 4px;
+  border: 2px solid var(--mc-accent-red, #ba160c);
+}
+
+.sa-engineering-controls::before {
+  content: 'ENGINEERING';
+  display: block;
+  font-size: 0.7rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  color: var(--mc-accent-red-bright, #ff4136);
+  margin-bottom: 0.75rem;
+  letter-spacing: 0.15em;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(186, 22, 12, 0.3);
+}
+
+/* Engineering controls - improved label contrast */
+.sa-engineering-controls .form-label {
+  color: var(--mc-accent-red-bright, #ff4136);
+  font-weight: 600;
+}
+
+/* Engineering controls - improved input contrast */
+.sa-engineering-controls .form-control,
+.sa-engineering-controls .form-select {
+  background-color: rgba(0, 0, 0, 0.4);
+  border-color: var(--mc-accent-red, #ba160c);
+  color: #fff;
+}
+
+.sa-engineering-controls .form-control:focus,
+.sa-engineering-controls .form-select:focus {
+  border-color: var(--mc-accent-red-bright, #ff4136);
+  box-shadow: 0 0 0 0.2rem rgba(186, 22, 12, 0.25);
+}
+
+.sa-engineering-controls .input-group-text {
+  background-color: rgba(186, 22, 12, 0.2);
+  border-color: var(--mc-accent-red, #ba160c);
+  color: var(--mc-accent-red-bright, #ff4136);
+}
+
+/* Engineering controls - column spacing */
+.sa-engineering-controls .col-4 {
+  margin-bottom: 0.5rem;
+}
+
+/* Engineering controls - vertically center toggle switches */
+.sa-engineering-controls .form-check {
+  display: flex;
+  align-items: center;
+  min-height: calc(1.5em + 0.5rem + 2px); /* Match form-control-sm height */
+}
+
+.sa-engineering-controls .form-check-label {
+  margin-bottom: 0;
+  margin-left: 0.5rem;
+}
+
+/* Engineering controls - peak info display styling */
+.sa-engineering-controls #sa-marker-info {
+  padding: 0.35rem 0.5rem;
+  min-height: calc(1.5em + 0.5rem + 2px);
+  line-height: 1.5;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85rem;
+  color: var(--mc-accent-red-bright, #ff4136);
+  background-color: rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--mc-accent-red, #ba160c);
+  border-radius: 4px;
+  text-shadow: 0 0 4px rgba(255, 65, 54, 0.5);
+}
+
+/* Display Mode & Actions - 2-element grid */
+.sa-display-mode-actions {
+  margin: 1rem 0;
+}
+
+/* Trace controls - vertically center all elements */
+.sa-trace-controls .form-check {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0;
+}
+
+.sa-trace-controls .form-check-label {
+  margin-bottom: 0;
+  margin-left: 0.5rem;
+}
+
 /* Modem Button Signal Quality States */
 .modem-btn.btn-rx-signal-good {
   border: 2px solid #22c55e;
@@ -130,13 +233,11 @@
 .signal-degraded-overlay {
   position: absolute;
   inset: 0;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 2px,
-    rgba(0, 0, 0, 0.1) 2px,
-    rgba(0, 0, 0, 0.1) 4px
-  );
+  background: repeating-linear-gradient(0deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 0, 0, 0.1) 2px,
+      rgba(0, 0, 0, 0.1) 4px);
   display: none;
   pointer-events: none;
   animation: scanline 8s linear infinite;
@@ -153,17 +254,41 @@
 }
 
 @keyframes scanline {
-  0% { transform: translateY(0); }
-  100% { transform: translateY(100%); }
+  0% {
+    transform: translateY(0);
+  }
+
+  100% {
+    transform: translateY(100%);
+  }
 }
 
 @keyframes glitch {
-  0%, 90% { transform: translate(0); }
-  92% { transform: translate(-2px, 1px); }
-  94% { transform: translate(2px, -1px); }
-  96% { transform: translate(-1px, 2px); }
-  98% { transform: translate(1px, -2px); }
-  100% { transform: translate(0); }
+
+  0%,
+  90% {
+    transform: translate(0);
+  }
+
+  92% {
+    transform: translate(-2px, 1px);
+  }
+
+  94% {
+    transform: translate(2px, -1px);
+  }
+
+  96% {
+    transform: translate(-1px, 2px);
+  }
+
+  98% {
+    transform: translate(1px, -2px);
+  }
+
+  100% {
+    transform: translate(0);
+  }
 }
 
 /* Compact nested cards for modems */

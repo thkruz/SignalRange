@@ -44,6 +44,7 @@ supabase/
 # Notes
 *.notes.*
 notes
+.archive
 
 # Unused Icons
 src/assets/icons/wip

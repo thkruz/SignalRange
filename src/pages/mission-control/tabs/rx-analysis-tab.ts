@@ -13,6 +13,7 @@ import { RxPayloadAdapter } from './rx-payload-adapter';
 import './rx-analysis-tab.css';
 import { SpectrumAnalyzerAdapter } from './spectrum-analyzer-adapter';
 import { SpectrumAnalyzerAdvancedAdapter } from './spectrum-analyzer-advanced-adapter';
+import { TapPointAdapter } from './tap-point-adapter';
 
 /**
  * RxAnalysisTab - Receiver chain analysis and control
@@ -39,6 +40,7 @@ export class RxAnalysisTab extends BaseElement {
   private receiverAdapter: ReceiverAdapter | null = null;
   private iqConstellationAdapter: IQConstellationAdapter | null = null;
   private rxPayloadAdapter_: RxPayloadAdapter | null = null;
+  private tapPointAdapter_: TapPointAdapter | null = null;
 
   constructor(groundStation: GroundStation, containerId: string) {
     super();
@@ -224,8 +226,8 @@ export class RxAnalysisTab extends BaseElement {
         </div>
 
         <!-- Notch Filter Control Card -->
-        <div class="col-lg-12">
-          <div class="card">
+        <div class="col-lg-9">
+          <div class="card h-100">
             <div class="card-header d-flex justify-content-between align-items-center">
               <h3 class="card-title">Notch Filter</h3>
               <div class="form-check form-switch">
@@ -241,6 +243,107 @@ export class RxAnalysisTab extends BaseElement {
               </div>
               <div class="mt-3">
                 <button id="notch-apply-btn" class="btn btn-primary btn-sm">Apply Changes</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tap Point Selection Card -->
+        <div class="col-lg-3">
+          <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+              <h3 class="card-title">Tap Points</h3>
+              <div class="form-check form-switch">
+                <input type="checkbox" id="tap-engineering-mode" class="form-check-input" role="switch" />
+                <label for="tap-engineering-mode" class="form-check-label small">Engineering</label>
+              </div>
+            </div>
+            <div class="card-body" id="tap-points-body">
+              <!-- Default Mode: Single Tap Point -->
+              <div id="tap-default-mode">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                  <label class="form-label text-muted small text-uppercase mb-0">Tap Point</label>
+                  <div class="form-check form-switch">
+                    <input type="checkbox" id="tap-default-enable" class="form-check-input" role="switch" checked />
+                  </div>
+                </div>
+                <select id="tap-default-select" class="form-select mb-2">
+                  <option value="TX IF">TX IF</option>
+                  <option value="RX IF" selected>RX IF</option>
+                </select>
+                <div class="metric-group">
+                  <div class="metric-row">
+                    <span class="metric-label">Status:</span>
+                    <span id="tap-default-status" class="text-success">Active</span>
+                  </div>
+                  <div class="metric-row">
+                    <span class="metric-label">Coupling:</span>
+                    <span id="tap-default-coupling" class="metric-value font-monospace">-20 dB</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Engineering Mode: Dual Tap Points -->
+              <div id="tap-engineering-mode-container" class="d-none">
+                <!-- Tap A -->
+                <div class="mb-3">
+                  <div class="d-flex align-items-center justify-content-between mb-2">
+                    <label class="form-label text-muted small text-uppercase mb-0">Tap Point A</label>
+                    <div class="form-check form-switch">
+                      <input type="checkbox" id="tap-a-enable" class="form-check-input" role="switch" />
+                    </div>
+                  </div>
+                  <select id="tap-a-select" class="form-select mb-2">
+                    <option value="TX IF">TX IF</option>
+                    <option value="RX IF">RX IF</option>
+                    <option value="TX RF POST BUC">TX RF POST BUC</option>
+                    <option value="TX RF POST HPA">TX RF POST HPA</option>
+                    <option value="TX RF POST OMT">TX RF POST OMT</option>
+                    <option value="RX RF PRE OMT">RX RF PRE OMT</option>
+                    <option value="RX RF POST OMT">RX RF POST OMT</option>
+                    <option value="RX RF POST LNA">RX RF POST LNA</option>
+                  </select>
+                  <div class="metric-group">
+                    <div class="metric-row">
+                      <span class="metric-label">Status:</span>
+                      <span id="tap-a-status">--</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Coupling:</span>
+                      <span id="tap-a-coupling" class="metric-value font-monospace">-30 dB</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Tap B -->
+                <div>
+                  <div class="d-flex align-items-center justify-content-between mb-2">
+                    <label class="form-label text-muted small text-uppercase mb-0">Tap Point B</label>
+                    <div class="form-check form-switch">
+                      <input type="checkbox" id="tap-b-enable" class="form-check-input" role="switch" checked />
+                    </div>
+                  </div>
+                  <select id="tap-b-select" class="form-select mb-2">
+                    <option value="TX IF">TX IF</option>
+                    <option value="RX IF" selected>RX IF</option>
+                    <option value="TX RF POST BUC">TX RF POST BUC</option>
+                    <option value="TX RF POST HPA">TX RF POST HPA</option>
+                    <option value="TX RF POST OMT">TX RF POST OMT</option>
+                    <option value="RX RF PRE OMT">RX RF PRE OMT</option>
+                    <option value="RX RF POST OMT">RX RF POST OMT</option>
+                    <option value="RX RF POST LNA">RX RF POST LNA</option>
+                  </select>
+                  <div class="metric-group">
+                    <div class="metric-row">
+                      <span class="metric-label">Status:</span>
+                      <span id="tap-b-status" class="text-success">Active</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Coupling:</span>
+                      <span id="tap-b-coupling" class="metric-value font-monospace">-20 dB</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -878,6 +981,15 @@ export class RxAnalysisTab extends BaseElement {
       );
     }
 
+    // Create tap point adapter
+    if (rfFrontEnd.couplerModule && spectrumAnalyzer && this.dom_) {
+      this.tapPointAdapter_ = new TapPointAdapter(
+        rfFrontEnd.couplerModule,
+        spectrumAnalyzer,
+        this.dom_
+      );
+    }
+
     // Create receiver adapter if receiver exists
     if (receiver && this.dom_) {
       this.receiverAdapter = new ReceiverAdapter(receiver, this.dom_);
@@ -929,6 +1041,7 @@ export class RxAnalysisTab extends BaseElement {
     this.receiverAdapter?.dispose();
     this.iqConstellationAdapter?.dispose();
     this.rxPayloadAdapter_?.dispose();
+    this.tapPointAdapter_?.dispose();
 
     this.lnbAdapter = null;
     this.agcAdapter = null;
@@ -939,6 +1052,7 @@ export class RxAnalysisTab extends BaseElement {
     this.receiverAdapter = null;
     this.iqConstellationAdapter = null;
     this.rxPayloadAdapter_ = null;
+    this.tapPointAdapter_ = null;
 
     this.dom_?.remove();
   }

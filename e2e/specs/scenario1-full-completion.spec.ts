@@ -99,6 +99,13 @@ const SCENARIO_1_OBJECTIVES: Scenario1Objective[] = [
     type: 'quiz',
     correctAnswer: 'Tight clusters at symbol points - clean QPSK modulation',
   },
+  // Phase 4b: RX Payload Data
+  {
+    id: 'verify-rx-payload',
+    title: 'RX Payload Data Check',
+    type: 'quiz',
+    correctAnswer: 'Frame sync locked, CRC valid, Reed-Solomon active - data path healthy',
+  },
   // Phase 5: Transmit Chain
   {
     id: 'navigate-tx-chain',
@@ -111,6 +118,13 @@ const SCENARIO_1_OBJECTIVES: Scenario1Objective[] = [
     title: 'HPA Status Check',
     type: 'quiz',
     correctAnswer: 'Transmitting with 10 dB backoff',
+  },
+  // Phase 5b: TX Payload Data
+  {
+    id: 'verify-tx-payload',
+    title: 'TX Payload Data Check',
+    type: 'quiz',
+    correctAnswer: 'Source feed active, encryption enabled, buffer healthy - ready to transmit',
   },
   // Phase 6: Antenna Control
   {

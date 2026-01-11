@@ -60,6 +60,13 @@ export class OpsLogModal extends DraggableModal {
         <div class="ops-log-entries" id="ops-log-entries">
           <!-- Log entries rendered here -->
         </div>
+        <div class="ops-log-input-row">
+          <input type="text"
+                 id="ops-log-manual-input"
+                 class="form-control form-control-sm"
+                 placeholder="Add log entry..." />
+          <button id="ops-log-submit-btn" class="btn btn-sm btn-primary">Log</button>
+        </div>
       </div>
     `;
   }
@@ -68,8 +75,49 @@ export class OpsLogModal extends DraggableModal {
     super.open(() => {
       this.renderEntries_();
       this.updateClock_();
+      this.setupInputHandlers_();
       if (cb) cb();
     });
+  }
+
+  /**
+   * Set up event handlers for manual log entry input
+   */
+  private setupInputHandlers_(): void {
+    const input = getEl('ops-log-manual-input') as HTMLInputElement | null;
+    const submitBtn = getEl('ops-log-submit-btn');
+
+    if (input) {
+      input.addEventListener('keydown', (e: KeyboardEvent) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          this.submitManualEntry_();
+        }
+      });
+    }
+
+    if (submitBtn) {
+      submitBtn.addEventListener('click', () => this.submitManualEntry_());
+    }
+  }
+
+  /**
+   * Submit a manual log entry from user input
+   */
+  private submitManualEntry_(): void {
+    const input = getEl('ops-log-manual-input') as HTMLInputElement | null;
+    if (!input) return;
+
+    const message = input.value.trim();
+    if (!message) return;
+
+    try {
+      OpsLogManager.getInstance().log(message, 'action');
+      input.value = '';
+      input.focus();
+    } catch {
+      // OpsLogManager not initialized
+    }
   }
 
   private renderEntries_(): void {

@@ -117,3 +117,29 @@
 .ops-log-entries::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.25);
 }
+
+/* Manual entry input row */
+.ops-log-input-row {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border-top: 1px solid var(--mc-border-color, #444);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.ops-log-input-row input {
+  flex: 1;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--mc-border-color, #444);
+  color: var(--mc-text-primary, #e9ecef);
+}
+
+.ops-log-input-row input::placeholder {
+  color: var(--mc-text-muted, #868e96);
+}
+
+.ops-log-input-row input:focus {
+  border-color: var(--mc-text-accent, #4dabf7);
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(77, 171, 247, 0.15);
+}

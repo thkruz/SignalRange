@@ -27,31 +27,32 @@ describe('CouplerModule', () => {
     it('should return correct default state', () => {
       const defaultState = CouplerModule.getDefaultState();
 
-      expect(defaultState.isPowered).toBe(true);
+      expect(defaultState.isPowered).toBe(true);  // Always true for passive coupler
+      expect(defaultState.isEngineeringMode).toBe(false);
       expect(defaultState.tapPointA).toBe(TapPoint.TX_IF);
       expect(defaultState.tapPointB).toBe(TapPoint.RX_IF);
       expect(defaultState.couplingFactorA).toBe(-30);
       expect(defaultState.couplingFactorB).toBe(-20);
-      expect(defaultState.isActiveA).toBe(true);
+      expect(defaultState.isEnabledA).toBe(false);
+      expect(defaultState.isEnabledB).toBe(true);
+      expect(defaultState.isActiveA).toBe(false);
       expect(defaultState.isActiveB).toBe(true);
     });
 
-    it('should have available tap points for A channel', () => {
+    it('should have default mode available tap points (TX_IF and RX_IF only)', () => {
       const defaultState = CouplerModule.getDefaultState();
 
       expect(defaultState.availableTapPointsA).toContain(TapPoint.TX_IF);
-      expect(defaultState.availableTapPointsA).toContain(TapPoint.TX_RF_POST_BUC);
-      expect(defaultState.availableTapPointsA).toContain(TapPoint.TX_RF_POST_HPA);
-      expect(defaultState.availableTapPointsA).toContain(TapPoint.TX_RF_POST_OMT);
+      expect(defaultState.availableTapPointsA).toContain(TapPoint.RX_IF);
+      expect(defaultState.availableTapPointsA).toHaveLength(2);
     });
 
-    it('should have available tap points for B channel', () => {
+    it('should have default mode available tap points for B channel', () => {
       const defaultState = CouplerModule.getDefaultState();
 
+      expect(defaultState.availableTapPointsB).toContain(TapPoint.TX_IF);
       expect(defaultState.availableTapPointsB).toContain(TapPoint.RX_IF);
-      expect(defaultState.availableTapPointsB).toContain(TapPoint.RX_RF_PRE_OMT);
-      expect(defaultState.availableTapPointsB).toContain(TapPoint.RX_RF_POST_OMT);
-      expect(defaultState.availableTapPointsB).toContain(TapPoint.RX_RF_POST_LNA);
+      expect(defaultState.availableTapPointsB).toHaveLength(2);
     });
   });
 
@@ -59,6 +60,7 @@ describe('CouplerModule', () => {
     it('should create module with correct initial state', () => {
       expect(couplerModule).toBeDefined();
       expect(couplerModule.state.isPowered).toBe(true);
+      expect(couplerModule.state.isEngineeringMode).toBe(false);
       expect(couplerModule.state.tapPointA).toBe(TapPoint.TX_IF);
       expect(couplerModule.state.tapPointB).toBe(TapPoint.RX_IF);
     });
@@ -92,16 +94,27 @@ describe('CouplerModule', () => {
   });
 
   describe('getLEDs', () => {
-    it('should return LED status functions', () => {
+    it('should return LED status functions based on enabled state', () => {
+      // Default: A disabled, B enabled
+      const leds = couplerModule.getLEDs();
+
+      expect(leds.activeA()).toBe('led-off');
+      expect(leds.activeB()).toBe('led-green');
+    });
+
+    it('should return led-green when tap points are enabled', () => {
+      couplerModule.setEnabledA(true);
+      couplerModule.setEnabledB(true);
+
       const leds = couplerModule.getLEDs();
 
       expect(leds.activeA()).toBe('led-green');
       expect(leds.activeB()).toBe('led-green');
     });
 
-    it('should return led-off when tap points are inactive', () => {
-      couplerModule.state.isActiveA = false;
-      couplerModule.state.isActiveB = false;
+    it('should return led-off when tap points are disabled', () => {
+      couplerModule.setEnabledA(false);
+      couplerModule.setEnabledB(false);
 
       const leds = couplerModule.getLEDs();
 
@@ -119,9 +132,11 @@ describe('CouplerModule', () => {
   });
 
   describe('update', () => {
-    it('should update active states based on tap points', () => {
+    it('should update active states based on enabled and tap points', () => {
       couplerModule.state.tapPointA = TapPoint.TX_IF;
       couplerModule.state.tapPointB = TapPoint.RX_IF;
+      couplerModule.state.isEnabledA = true;
+      couplerModule.state.isEnabledB = true;
 
       couplerModule.update();
 
@@ -129,7 +144,21 @@ describe('CouplerModule', () => {
       expect(couplerModule.state.isActiveB).toBe(true);
     });
 
-    it('should mark TX tap points as active', () => {
+    it('should mark tap points as inactive when disabled', () => {
+      couplerModule.state.tapPointA = TapPoint.TX_IF;
+      couplerModule.state.tapPointB = TapPoint.RX_IF;
+      couplerModule.state.isEnabledA = false;
+      couplerModule.state.isEnabledB = false;
+
+      couplerModule.update();
+
+      expect(couplerModule.state.isActiveA).toBe(false);
+      expect(couplerModule.state.isActiveB).toBe(false);
+    });
+
+    it('should mark TX tap points as active when enabled', () => {
+      couplerModule.state.isEnabledA = true;
+
       couplerModule.state.tapPointA = TapPoint.TX_RF_POST_BUC;
       couplerModule.update();
       expect(couplerModule.state.isActiveA).toBe(true);
@@ -143,7 +172,9 @@ describe('CouplerModule', () => {
       expect(couplerModule.state.isActiveA).toBe(true);
     });
 
-    it('should mark RX tap points as active', () => {
+    it('should mark RX tap points as active when enabled', () => {
+      couplerModule.state.isEnabledB = true;
+
       couplerModule.state.tapPointB = TapPoint.RX_RF_PRE_OMT;
       couplerModule.update();
       expect(couplerModule.state.isActiveB).toBe(true);
@@ -155,6 +186,62 @@ describe('CouplerModule', () => {
       couplerModule.state.tapPointB = TapPoint.RX_RF_POST_LNA;
       couplerModule.update();
       expect(couplerModule.state.isActiveB).toBe(true);
+    });
+  });
+
+  describe('setEngineeringMode', () => {
+    it('should make all tap points available in both selectors when engineering mode is enabled', () => {
+      couplerModule.setEngineeringMode(true);
+
+      expect(couplerModule.state.isEngineeringMode).toBe(true);
+
+      // All 8 tap points should be available in both A and B
+      const allTapPoints = [
+        TapPoint.TX_IF, TapPoint.RX_IF,
+        TapPoint.TX_RF_POST_BUC, TapPoint.TX_RF_POST_HPA, TapPoint.TX_RF_POST_OMT,
+        TapPoint.RX_RF_PRE_OMT, TapPoint.RX_RF_POST_OMT, TapPoint.RX_RF_POST_LNA
+      ];
+
+      expect(couplerModule.state.availableTapPointsA).toHaveLength(8);
+      expect(couplerModule.state.availableTapPointsB).toHaveLength(8);
+
+      for (const tapPoint of allTapPoints) {
+        expect(couplerModule.state.availableTapPointsA).toContain(tapPoint);
+        expect(couplerModule.state.availableTapPointsB).toContain(tapPoint);
+      }
+    });
+
+    it('should reset to default tap points when engineering mode is disabled', () => {
+      couplerModule.setEngineeringMode(true);
+      couplerModule.setEngineeringMode(false);
+
+      expect(couplerModule.state.isEngineeringMode).toBe(false);
+      expect(couplerModule.state.availableTapPointsA).toEqual([TapPoint.TX_IF, TapPoint.RX_IF]);
+      expect(couplerModule.state.availableTapPointsB).toEqual([TapPoint.TX_IF, TapPoint.RX_IF]);
+    });
+  });
+
+  describe('setEnabledA', () => {
+    it('should update enabled state for tap A', () => {
+      couplerModule.setEnabledA(true);
+      expect(couplerModule.state.isEnabledA).toBe(true);
+      expect(couplerModule.state.isActiveA).toBe(true);
+
+      couplerModule.setEnabledA(false);
+      expect(couplerModule.state.isEnabledA).toBe(false);
+      expect(couplerModule.state.isActiveA).toBe(false);
+    });
+  });
+
+  describe('setEnabledB', () => {
+    it('should update enabled state for tap B', () => {
+      couplerModule.setEnabledB(true);
+      expect(couplerModule.state.isEnabledB).toBe(true);
+      expect(couplerModule.state.isActiveB).toBe(true);
+
+      couplerModule.setEnabledB(false);
+      expect(couplerModule.state.isEnabledB).toBe(false);
+      expect(couplerModule.state.isActiveB).toBe(false);
     });
   });
 
@@ -240,11 +327,12 @@ describe('CouplerModule', () => {
       const selectA = document.querySelector('.input-coupler-tap-a') as HTMLSelectElement;
       expect(selectA).not.toBeNull();
 
-      selectA.value = TapPoint.TX_RF_POST_BUC;
+      // Use RX_IF which is available in default mode (TX_IF and RX_IF)
+      selectA.value = TapPoint.RX_IF;
       selectA.dispatchEvent(new Event('change'));
 
       expect(callback).toHaveBeenCalled();
-      expect(couplerModule.state.tapPointA).toBe(TapPoint.TX_RF_POST_BUC);
+      expect(couplerModule.state.tapPointA).toBe(TapPoint.RX_IF);
     });
 
     it('should add change listener for tap point B select', () => {
@@ -254,11 +342,12 @@ describe('CouplerModule', () => {
       const selectB = document.querySelector('.input-coupler-tap-b') as HTMLSelectElement;
       expect(selectB).not.toBeNull();
 
-      selectB.value = TapPoint.RX_RF_POST_LNA;
+      // Use TX_IF which is available in default mode (TX_IF and RX_IF)
+      selectB.value = TapPoint.TX_IF;
       selectB.dispatchEvent(new Event('change'));
 
       expect(callback).toHaveBeenCalled();
-      expect(couplerModule.state.tapPointB).toBe(TapPoint.RX_RF_POST_LNA);
+      expect(couplerModule.state.tapPointB).toBe(TapPoint.TX_IF);
     });
 
     it('should throw when coupler module is not in DOM', () => {

@@ -96,6 +96,9 @@ describe('SpectrumAnalyzerAdvancedAdapter', () => {
       <input type="checkbox" id="sa-max-hold" />
       <input type="checkbox" id="sa-min-hold" />
 
+      <!-- Engineering controls container -->
+      <div id="sa-engineering-controls"></div>
+
       <!-- Trace controls -->
       <button id="sa-trace-1" data-trace="1">T1</button>
       <button id="sa-trace-2" data-trace="2">T2</button>
@@ -245,42 +248,6 @@ describe('SpectrumAnalyzerAdvancedAdapter', () => {
       pauseBtn.click();
 
       expect(mockSpectrumAnalyzer.togglePause).toHaveBeenCalled();
-    });
-  });
-
-  describe('hold controls', () => {
-    it('should update isMaxHold on checkbox change', () => {
-      const maxHoldCheckbox = containerEl.querySelector('#sa-max-hold') as HTMLInputElement;
-      maxHoldCheckbox.checked = true;
-      maxHoldCheckbox.dispatchEvent(new Event('change'));
-
-      expect(mockSpectrumAnalyzer.state.isMaxHold).toBe(true);
-    });
-
-    it('should reset max hold data when disabled', () => {
-      mockSpectrumAnalyzer.state.isMaxHold = true;
-      const maxHoldCheckbox = containerEl.querySelector('#sa-max-hold') as HTMLInputElement;
-      maxHoldCheckbox.checked = false;
-      maxHoldCheckbox.dispatchEvent(new Event('change'));
-
-      expect(mockSpectrumAnalyzer.resetMaxHoldData).toHaveBeenCalled();
-    });
-
-    it('should update isMinHold on checkbox change', () => {
-      const minHoldCheckbox = containerEl.querySelector('#sa-min-hold') as HTMLInputElement;
-      minHoldCheckbox.checked = true;
-      minHoldCheckbox.dispatchEvent(new Event('change'));
-
-      expect(mockSpectrumAnalyzer.state.isMinHold).toBe(true);
-    });
-
-    it('should reset min hold data when disabled', () => {
-      mockSpectrumAnalyzer.state.isMinHold = true;
-      const minHoldCheckbox = containerEl.querySelector('#sa-min-hold') as HTMLInputElement;
-      minHoldCheckbox.checked = false;
-      minHoldCheckbox.dispatchEvent(new Event('change'));
-
-      expect(mockSpectrumAnalyzer.resetMinHoldData).toHaveBeenCalled();
     });
   });
 

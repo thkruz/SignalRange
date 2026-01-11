@@ -41,7 +41,7 @@ describe('OMTAdapter', () => {
       <span id="omt-tx-pol"></span>
       <span id="omt-rx-pol"></span>
       <span id="omt-isolation"></span>
-      <div id="omt-fault-led" class="led led-green"></div>
+      <span id="omt-status" class="status-badge status-badge-green">OK</span>
     `;
     document.body.appendChild(containerEl);
 
@@ -88,19 +88,19 @@ describe('OMTAdapter', () => {
       expect(display.textContent).toBe('30.5 dB');
     });
 
-    it('should update fault LED when not faulted', () => {
+    it('should update status badge when not faulted', () => {
       adapter.update();
 
-      const led = containerEl.querySelector('#omt-fault-led') as HTMLElement;
-      expect(led.className).toBe('led led-green');
+      const badge = containerEl.querySelector('#omt-status') as HTMLElement;
+      expect(badge.className).toBe('status-badge status-badge-green');
     });
 
-    it('should update fault LED when faulted', () => {
+    it('should update status badge when faulted', () => {
       mockOmtModule.state.isFaulted = true;
       adapter.update();
 
-      const led = containerEl.querySelector('#omt-fault-led') as HTMLElement;
-      expect(led.className).toBe('led led-red');
+      const badge = containerEl.querySelector('#omt-status') as HTMLElement;
+      expect(badge.className).toBe('status-badge status-badge-red');
     });
 
     it('should show None when polarization is empty', () => {

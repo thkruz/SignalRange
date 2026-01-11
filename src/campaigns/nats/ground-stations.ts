@@ -115,14 +115,16 @@ export const vermontGroundStation = {
       minGain: -60 as dB,
     },
     coupler: {
-      isPowered: true,
+      isEngineeringMode: false,
       tapPointA: TapPoint.TX_IF,
       tapPointB: TapPoint.RX_IF,
-      availableTapPointsA: [TapPoint.TX_IF, TapPoint.TX_RF_POST_BUC],
-      availableTapPointsB: [TapPoint.RX_IF],
+      availableTapPointsA: [TapPoint.TX_IF, TapPoint.RX_IF],
+      availableTapPointsB: [TapPoint.TX_IF, TapPoint.RX_IF],
       couplingFactorA: -40, // dB
       couplingFactorB: -39, // dB
-      isActiveA: true,
+      isEnabledA: false,
+      isEnabledB: true,
+      isActiveA: false,
       isActiveB: true,
     } as CouplerState,
     gpsdo: {
@@ -306,14 +308,16 @@ export const maineGroundStation = {
       minGain: -60 as dB,
     },
     coupler: {
-      isPowered: true,
+      isEngineeringMode: false,
       tapPointA: TapPoint.TX_IF,
       tapPointB: TapPoint.RX_IF,
-      availableTapPointsA: [TapPoint.TX_IF, TapPoint.TX_RF_POST_BUC],
-      availableTapPointsB: [TapPoint.RX_IF],
+      availableTapPointsA: [TapPoint.TX_IF, TapPoint.RX_IF],
+      availableTapPointsB: [TapPoint.TX_IF, TapPoint.RX_IF],
       couplingFactorA: -40, // dB
       couplingFactorB: -39, // dB
-      isActiveA: true,
+      isEnabledA: false,
+      isEnabledB: true,
+      isActiveA: false,
       isActiveB: true,
     } as CouplerState,
     gpsdo: {

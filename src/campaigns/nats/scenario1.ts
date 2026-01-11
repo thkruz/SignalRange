@@ -518,6 +518,51 @@ export const scenario1Data: ScenarioData = {
     },
 
     // ============================================================
+    // RX PAYLOAD DATA
+    // ============================================================
+    {
+      id: 'verify-rx-payload',
+      // K0740: Knowledge of system performance indicators - understanding frame sync,
+      // BER, and CRC as indicators of data integrity in the receive chain
+      // K0773: Knowledge of telecommunications principles and practices -
+      // understanding forward error correction and data validation
+      nice: ['K0740', 'K0773'],
+      title: 'RX Payload Data Check',
+      description: 'Review the Payload Data Integrity card to verify the receive data path is healthy.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['verify-constellation'],
+      timeLimitSeconds: 3 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'tab-active',
+          description: 'RX Analysis Tab Open',
+          params: { tab: 'rx-analysis' },
+          mustMaintain: true,
+        },
+        {
+          type: 'status-check',
+          description: 'Verify RX Payload Status',
+          params: {
+            question: 'What does the Payload Data Integrity card show about the received data?',
+            options: [
+              'Frame sync locked, CRC valid, Reed-Solomon active - data path healthy',
+              'Frame sync unlocked - no data being received',
+              'CRC errors detected - data corruption',
+              'Viterbi decoder disabled - no error correction',
+            ],
+            correctIndex: 0,
+            explanation: 'The Payload Data Integrity card confirms the data path is healthy: frame sync is locked (receiving valid frames), CRC checks pass (no corruption), and the Reed-Solomon decoder is actively correcting any bit errors.',
+            pointPenalty: 10,
+          },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 10,
+    },
+
+    // ============================================================
     // TRANSMIT CHAIN
     // ============================================================
     {
@@ -528,7 +573,7 @@ export const scenario1Data: ScenarioData = {
       title: 'Open TX Chain Tab',
       description: 'Click the TX Chain tab to view the transmit equipment.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['verify-constellation'],
+      prerequisiteObjectiveIds: ['verify-rx-payload'],
       timeLimitSeconds: 2 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
@@ -591,6 +636,51 @@ export const scenario1Data: ScenarioData = {
     },
 
     // ============================================================
+    // TX PAYLOAD DATA
+    // ============================================================
+    {
+      id: 'verify-tx-payload',
+      // K0740: Knowledge of system performance indicators - understanding data rate,
+      // buffer status, and encryption indicators in the transmit chain
+      // K0773: Knowledge of telecommunications principles and practices -
+      // understanding data encoding and encryption for secure communications
+      nice: ['K0740', 'K0773'],
+      title: 'TX Payload Data Check',
+      description: 'Review the TX Payload Data card to verify the transmit data path is ready.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['verify-hpa-status'],
+      timeLimitSeconds: 3 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'tab-active',
+          description: 'TX Chain Tab Open',
+          params: { tab: 'tx-chain' },
+          mustMaintain: true,
+        },
+        {
+          type: 'status-check',
+          description: 'Verify TX Payload Status',
+          params: {
+            question: 'What does the TX Payload Data card show about the transmit data path?',
+            options: [
+              'Source feed active, encryption enabled, buffer healthy - ready to transmit',
+              'Source feed inactive - no data available',
+              'Encryption disabled - transmitting in clear',
+              'Buffer overflow - data loss occurring',
+            ],
+            correctIndex: 0,
+            explanation: 'The TX Payload Data card shows the transmit path is healthy: source feed is active, encryption is enabled with a valid key, and the buffer utilization is within normal range with no overflows or underruns.',
+            pointPenalty: 10,
+          },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 10,
+    },
+
+    // ============================================================
     // ANTENNA CONTROL
     // ============================================================
     {
@@ -601,7 +691,7 @@ export const scenario1Data: ScenarioData = {
       title: 'Open ACU Control Tab',
       description: 'Click the ACU Control tab to view the antenna control unit.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['verify-hpa-status'],
+      prerequisiteObjectiveIds: ['verify-tx-payload'],
       timeLimitSeconds: 2 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
@@ -965,12 +1055,29 @@ export const scenario1Data: ScenarioData = {
         Tight clusters. That's the picture of a healthy link. After a while you'll glance at that diagram and know instantly if something's off. Noise spreads the points, phase errors rotate them, interference makes them dance.
       </p>
       <p>
-        Receive chain is good. Now let's check the transmit side. Click the TX Chain tab.
+        One more thing on the receive side - scroll down to the Payload Data Integrity card. This shows you the data path after demodulation. Frame sync, error correction, decryption status - the whole pipeline.
       </p>
       `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.CONFIDENT,
         audioUrl: getAssetUrl('/assets/campaigns/nats/1/v2/obj-phase-9-constellation.mp3'),
+      },
+
+      // ============================================================
+      // RX PAYLOAD DATA
+      // ============================================================
+      'verify-rx-payload': {
+        text: `
+      <p>
+        Good. Frame sync locked, CRC passing, Reed-Solomon doing its job. That's what a clean data path looks like. The Viterbi decoder and encryption are pre-configured for TIDEMARK-1's downlink - you just need to verify they're working.
+      </p>
+      <p>
+        Receive chain is done. Now let's check the transmit side. Click the TX Chain tab.
+      </p>
+      `,
+        character: Character.CHARLIE_BROOKS,
+        emotion: Emotion.HAPPY,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/1/v2/obj-verify-rx-payload.mp3'),
       },
 
       // ============================================================
@@ -998,12 +1105,29 @@ export const scenario1Data: ScenarioData = {
         One thing - never assume the HPA is muted. I've seen guys reach into the waveguide thinking RF was off. It wasn't. Always verify.
       </p>
       <p>
-        Now let's check the antenna. Click ACU Control.
+        Check the TX Payload Data card next - that's the data side of transmission. Source status, encryption, buffer health.
       </p>
       `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.CONFIDENT,
         audioUrl: getAssetUrl('/assets/campaigns/nats/1/v2/obj-phase-3-hpa.mp3'),
+      },
+
+      // ============================================================
+      // TX PAYLOAD DATA
+      // ============================================================
+      'verify-tx-payload': {
+        text: `
+      <p>
+        Source active, encryption enabled, buffer healthy. That's what you want. Encryption is mandatory for TIDEMARK-1 traffic - SeaLink's customers pay for secure maritime comms.
+      </p>
+      <p>
+        Transmit chain is good. Now let's check the antenna. Click ACU Control.
+      </p>
+      `,
+        character: Character.CHARLIE_BROOKS,
+        emotion: Emotion.HAPPY,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/1/v2/obj-verify-tx-payload.mp3'),
       },
 
       // ============================================================

@@ -30,6 +30,7 @@ import { ses10Satellite, tidemark1Satellite } from './satellites';
  *   - K0645: Knowledge of standard operating procedures (SOPs)
  *   - K0740: Knowledge of system performance indicators
  *   - K0741: Knowledge of system availability measures
+ *   - K0770: Knowledge of system administration concepts (handover procedures)
  *   - K0773: Knowledge of telecommunications principles and practices
  *   - K0792: Knowledge of network configurations
  *   - K1032: Knowledge of satellite-based communication systems and software
@@ -314,6 +315,40 @@ export const scenario3Data: ScenarioData = {
       points: 10,
     },
     {
+      id: 'understand-prioritization',
+      // K0721: Knowledge of operational priorities - understanding the priority
+      // framework for handling multiple operational concerns
+      // S0593: Skill in prioritizing operational tasks
+      nice: ['K0721', 'S0593'],
+      title: 'Understand Operational Priorities',
+      description: 'Learn the priority framework for handling multiple operational concerns.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['enable-vt01-heater'],
+      timeLimitSeconds: 2 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'status-check',
+          description: 'Priority Framework',
+          params: {
+            question: 'When multiple issues need attention simultaneously, what is the correct priority order?',
+            options: [
+              'Safety → Customer Impact → Equipment Protection → Efficiency',
+              'Customer Impact → Safety → Efficiency → Equipment Protection',
+              'Efficiency → Customer Impact → Safety → Equipment Protection',
+              'Equipment Protection → Safety → Customer Impact → Efficiency',
+            ],
+            correctIndex: 0,
+            explanation: 'Safety always comes first - protecting personnel from RF hazards or other dangers. Next is customer impact - maintaining service. Then equipment protection - preventing damage. Finally, efficiency - doing things the optimal way. This framework guides every operational decision.',
+            pointPenalty: 10,
+          },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 10,
+    },
+    {
       id: 'verify-heater-quiz',
       // K0741: Knowledge of system availability measures - understanding why
       // feed heaters are critical during precipitation events
@@ -323,7 +358,7 @@ export const scenario3Data: ScenarioData = {
       title: 'Understand Feed Heater Purpose',
       description: 'Confirm you understand why the feed heater is important during snow events.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['enable-vt01-heater'],
+      prerequisiteObjectiveIds: ['understand-prioritization'],
       timeLimitSeconds: 2 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
@@ -422,6 +457,40 @@ export const scenario3Data: ScenarioData = {
       points: 10,
     },
     {
+      id: 'estimate-time-remaining',
+      // K0740: Knowledge of system performance indicators - understanding AGC
+      // headroom and degradation rate
+      // T0153: Monitor network capacity and performance - assessing link margin
+      nice: ['K0740', 'T0153'],
+      title: 'Estimate Time Remaining',
+      description: 'Assess the current link margin and estimate how long until the link becomes unusable.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['verify-agc-status'],
+      timeLimitSeconds: 2 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'status-check',
+          description: 'Time Estimation',
+          params: {
+            question: 'The weather forecast predicts 8 dB total degradation. Current AGC shows 2 dB of compensation already applied, with 6 dB of headroom remaining. At the current degradation rate of approximately 1 dB per minute, how much time do you have before the link fails?',
+            options: [
+              'Approximately 6 minutes - we need to move quickly',
+              'Approximately 30 minutes - plenty of time',
+              'Approximately 2 minutes - almost no time left',
+              'Cannot be estimated from this information',
+            ],
+            correctIndex: 0,
+            explanation: 'With 6 dB of headroom remaining and degradation at ~1 dB/minute, you have roughly 6 minutes before the AGC maxes out and the link drops below threshold. This is why weather handovers require urgency - the math is unforgiving.',
+            pointPenalty: 10,
+          },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 10,
+    },
+    {
       id: 'verify-agc-limits-quiz',
       // K0740: Knowledge of system performance indicators - understanding AGC
       // limitations and why handover is necessary
@@ -431,7 +500,7 @@ export const scenario3Data: ScenarioData = {
       title: 'Understand AGC Limitations',
       description: 'Understand why AGC alone cannot solve the weather problem.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['verify-agc-status'],
+      prerequisiteObjectiveIds: ['estimate-time-remaining'],
       timeLimitSeconds: 2 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
@@ -457,6 +526,47 @@ export const scenario3Data: ScenarioData = {
       points: 10,
     },
 
+    {
+      id: 'acknowledge-agc-alarm',
+      // K0741: Knowledge of system availability measures - understanding alarm
+      // acknowledgment as operator awareness indicator
+      // T0153: Monitor network capacity and performance - alarm management
+      nice: ['K0741', 'T0153'],
+      title: 'Acknowledge AGC Limit Alarm',
+      description: 'The AGC has reached its compensation limit. Acknowledge the alarm to indicate you are aware of the condition.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['verify-agc-limits-quiz'],
+      timeLimitSeconds: 2 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'tab-active',
+          description: 'Dashboard Tab Open',
+          params: { tab: 'dashboard' },
+          mustMaintain: true,
+        },
+        {
+          type: 'status-check',
+          description: 'Understand Alarm Acknowledgment',
+          params: {
+            question: 'What does acknowledging an alarm indicate?',
+            options: [
+              'You are aware of the condition but it is not yet resolved',
+              'The problem has been fixed',
+              'The alarm was a false positive',
+              'You are ignoring the alarm',
+            ],
+            correctIndex: 0,
+            explanation: 'Acknowledging an alarm tells the system (and other operators) that you have seen the condition. The alarm remains active until the underlying issue is resolved. This prevents the same alarm from repeatedly alerting and helps track operator awareness.',
+            pointPenalty: 5,
+          },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 10,
+    },
+
     // ============================================================
     // SWITCH TO MAINE STATION
     // ============================================================
@@ -470,7 +580,7 @@ export const scenario3Data: ScenarioData = {
       title: 'Access Maine Backup Station',
       description: 'Use the asset tree on the left to select ME-02 (Maine). Vermont will continue serving traffic in the background while you configure Maine.',
       groundStation: 'ME-02',
-      prerequisiteObjectiveIds: ['verify-agc-limits-quiz'],
+      prerequisiteObjectiveIds: ['acknowledge-agc-alarm'],
       timeLimitSeconds: 2 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
@@ -1296,7 +1406,8 @@ export const scenario3Data: ScenarioData = {
       // understanding what traffic handover does at the network level
       // K0741: Knowledge of system availability measures - understanding
       // service continuity during handover
-      nice: ['K0689', 'K0741'],
+      // K0770: Knowledge of system administration concepts (handover procedures)
+      nice: ['K0689', 'K0741', 'K0770'],
       title: 'Understand Handover Process',
       description: 'Understand what happens during traffic handover.',
       groundStation: 'ME-02',
@@ -1330,7 +1441,8 @@ export const scenario3Data: ScenarioData = {
       // S0421: Skill in operating network equipment - executing traffic handover
       // K0741: Knowledge of system availability measures - ensuring service
       // continuity during site transition
-      nice: ['S0421', 'K0741'],
+      // K0770: Knowledge of system administration concepts (handover procedures)
+      nice: ['S0421', 'K0741', 'K0770'],
       title: 'Execute Traffic Handover',
       description: 'Transfer active customer traffic from VT-01 to ME-02. The handover process will automatically coordinate the transmitter switching.',
       groundStation: 'ME-02',
@@ -1519,6 +1631,57 @@ export const scenario3Data: ScenarioData = {
       conditionLogic: 'AND',
       points: 10,
     },
+    {
+      id: 'document-handover-event',
+      // T1606: Knowledge of documentation requirements - understanding event
+      // logging requirements for operational events
+      nice: ['T1606'],
+      title: 'Document Handover Event',
+      description: 'Understand the documentation requirements for weather-related handover events.',
+      groundStation: 'ME-02',
+      prerequisiteObjectiveIds: ['verify-stow-quiz'],
+      timeLimitSeconds: 2 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'status-check',
+          description: 'Documentation Requirements',
+          params: {
+            question: 'What information should be logged for this weather handover event?',
+            options: [
+              'All of the above',
+              'Time of degradation onset and handover completion',
+              'Affected satellite and services',
+              'Primary and backup station identifiers',
+            ],
+            correctIndex: 0,
+            explanation: 'Complete event documentation includes: timestamps for degradation and handover, affected assets, stations involved, weather conditions, and any anomalies observed. This information is critical for post-incident review and pattern analysis.',
+            pointPenalty: 5,
+            preserveOptionOrder: true,
+          },
+          mustMaintain: false,
+        },
+        {
+          type: 'status-check',
+          description: 'Documentation Purpose',
+          params: {
+            question: 'Why is documenting routine handover events important?',
+            options: [
+              'Enables pattern analysis and improves future response procedures',
+              'Required only for customer billing purposes',
+              'Only necessary if something went wrong',
+              'Documentation is optional for weather events',
+            ],
+            correctIndex: 0,
+            explanation: 'Even routine events should be documented. Over time, this data reveals patterns - which sites are most affected by weather, average handover times, seasonal trends. This drives infrastructure improvements and procedure refinements.',
+            pointPenalty: 5,
+          },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 10,
+    },
   ] as Objective[],
   dialogClips: {
     intro: {
@@ -1581,15 +1744,28 @@ export const scenario3Data: ScenarioData = {
       'enable-vt01-heater': {
         text: `
         <p>
-          Heater's on. The feed assembly will stay clear of ice buildup now.
+          Heater's on. Good instinct getting that enabled quickly.
         </p>
         <p>
-          Quick question before we move on - make sure you understand why we did that.
+          Quick lesson while the heater warms up. In this job, you'll often have multiple things demanding attention at once. You need a framework for deciding what comes first.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
-        emotion: Emotion.NEUTRAL,
+        emotion: Emotion.CONFIDENT,
         audioUrl: getAssetUrl('/assets/campaigns/nats/3/obj-enable-vt01-heater.mp3'),
+      },
+      'understand-prioritization': {
+        text: `
+        <p>
+          Safety, customer, equipment, efficiency. Memorize it. When things get hectic, that order will keep you out of trouble.
+        </p>
+        <p>
+          Now - why did we enable the heater? What's it actually protecting?
+        </p>
+        `,
+        character: Character.CHARLIE_BROOKS,
+        emotion: Emotion.CONFIDENT,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/3/obj-understand-prioritization.mp3'),
       },
       'verify-heater-quiz': {
         text: `
@@ -1621,25 +1797,54 @@ export const scenario3Data: ScenarioData = {
       'verify-agc-status': {
         text: `
         <p>
-          See it climbing? That's the AGC trying to compensate - cranking up the gain to maintain output level as the input drops. Clever system, but it has limits.
+          Good observation. The AGC is doing its job - for now. But look at how much headroom we have left.
+        </p>
+        <p>
+          Quick mental math - how much time do we have before the AGC runs out of room to compensate?
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
-        emotion: Emotion.NEUTRAL,
+        emotion: Emotion.CONCERNED,
         audioUrl: getAssetUrl('/assets/campaigns/nats/3/obj-verify-agc-status.mp3'),
       },
-      'verify-agc-limits-quiz': {
+      'estimate-time-remaining': {
         text: `
         <p>
-          Exactly. AGC buys us time, but it can't work miracles. Once it maxes out, the C/N drops and we lose lock. That's why we need Maine - they're 150 miles away with clear skies.
+          Six minutes. Maybe less if the storm intensifies. That's not much time to bring up a backup site.
         </p>
         <p>
-          Time to bring up the backup site. Click Maine Ground Station in the asset tree.
+          This is why we practice handovers when there's no pressure. When the clock is ticking, you need to execute from muscle memory.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.CONFIDENT,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/3/obj-estimate-time-remaining.mp3'),
+      },
+      'verify-agc-limits-quiz': {
+        text: `
+        <p>
+          Right. AGC has limits. Once we hit maximum gain, any further signal loss means we lose lock. That's why we're handing over to Maine.
+        </p>
+        <p>
+          Before we switch focus to Maine, there's an alarm that just triggered. Click the Dashboard tab - you need to acknowledge the AGC limit alarm. Acknowledging doesn't fix anything, but it tells the system you're aware.
+        </p>
+        `,
+        character: Character.CHARLIE_BROOKS,
+        emotion: Emotion.CONCERNED,
         audioUrl: getAssetUrl('/assets/campaigns/nats/3/obj-verify-agc-limits-quiz.mp3'),
+      },
+      'acknowledge-agc-alarm': {
+        text: `
+        <p>
+          Good. The alarm is acknowledged. It'll stay yellow until the condition clears - which won't happen until the weather passes or we hand over to Maine.
+        </p>
+        <p>
+          Now let's get Maine online. Click Maine Backup Station in the asset tree on the left.
+        </p>
+        `,
+        character: Character.CHARLIE_BROOKS,
+        emotion: Emotion.NEUTRAL,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/3/obj-acknowledge-agc-alarm.mp3'),
       },
 
       // ============================================================
@@ -1990,6 +2195,19 @@ export const scenario3Data: ScenarioData = {
       'verify-stow-quiz': {
         text: `
         <p>
+          Maine is fully operational. TIDEMARK-1 traffic is now being served from ME-02. Vermont is in standby until the weather clears.
+        </p>
+        <p>
+          One more thing before we're done - documentation. Every handover event gets logged, even routine weather ones.
+        </p>
+        `,
+        character: Character.CHARLIE_BROOKS,
+        emotion: Emotion.CONFIDENT,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/3/obj-verify-stow-quiz.mp3'),
+      },
+      'document-handover-event': {
+        text: `
+        <p>
           Hey, it's Catherine again. I've got things under control here - good C/N, clean traffic flow, no alarms. You did good work getting us set up.
         </p>
         <p>
@@ -2001,7 +2219,7 @@ export const scenario3Data: ScenarioData = {
         `,
         character: Character.CATHERINE_VEGA,
         emotion: Emotion.HAPPY,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/3/obj-verify-stow-quiz.mp3'),
+        audioUrl: getAssetUrl('/assets/campaigns/nats/3/obj-document-handover-event.mp3'),
       },
     },
   },

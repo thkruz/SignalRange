@@ -321,13 +321,13 @@ export const scenario2Data: ScenarioData = {
           params: {
             question: 'The HPA output is now disabled. What should you observe on the HPA panel?',
             options: [
-              'HPA Enable indicator shows OFF - no RF output, but tubes still hot',
+              'HPA Enable indicator shows OFF - no RF output, but amplifier still energized',
               'HPA completely powered down - all indicators off',
               'HPA still transmitting at reduced power',
               'HPA showing warning alarm',
             ],
             correctIndex: 0,
-            explanation: 'The HPA Enable indicator shows OFF, meaning no RF is being transmitted. However, the amplifier tubes are still energized and hot - we need to power it off completely before it\'s safe.',
+            explanation: 'The HPA Enable indicator shows OFF, meaning no RF is being transmitted. However, the amplifier is still powered and components are hot - we need to power it off completely before it\'s safe.',
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -343,7 +343,7 @@ export const scenario2Data: ScenarioData = {
       // S0421: Skill in operating network equipment - executing the HPA power control
       nice: ['T1567', 'S0421'],
       title: 'Power Off HPA',
-      description: 'Power off the High Power Amplifier completely. The tubes need to cool before anyone touches anything upstream.',
+      description: 'Power off the High Power Amplifier completely. The amplifier needs to cool before anyone touches anything upstream.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['verify-hpa-disabled-quiz'],
       timeLimitSeconds: 2 * 60,
@@ -551,7 +551,7 @@ export const scenario2Data: ScenarioData = {
               'GPSDO and control systems only - all RF equipment is off',
               'LNB is still receiving signals passively',
               'BUC is still energized but muted',
-              'HPA tubes are still warming up',
+              'HPA is still warming up',
             ],
             correctIndex: 0,
             explanation: 'Correct. The GPSDO and control systems remain powered for timing and monitoring, but all RF equipment (LNB, BUC, HPA) is completely de-energized. The antenna is safe for maintenance personnel to approach.',
@@ -1270,7 +1270,7 @@ export const scenario2Data: ScenarioData = {
       'verify-hpa-disabled-quiz': {
         text: `
         <p>
-          Right. The enable indicator is off but the power indicator is still on. Tubes are hot. If you touched the waveguide right now, you'd burn yourself.
+          Right. The enable indicator is off but the power indicator is still on. Amplifier's still hot. If you touched the waveguide right now, you'd burn yourself.
         </p>
         <p>
           Power it off completely. Same panel, hit the power switch.

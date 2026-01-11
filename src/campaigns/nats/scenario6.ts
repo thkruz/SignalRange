@@ -14,7 +14,7 @@ import { aurora7Satellite, ses10Satellite, tidemark1Satellite } from './satellit
  *
  * Phase: Intermediate (first intermediate scenario)
  * Time Pressure: Moderate (30-minute scenario timer)
- * Calculation Required: YES - beacon IF frequency calculation
+ * Calculation Required: YES - TX IF frequency calculation (uplink, for variety)
  * New UI Elements: Step-track mode, encryption/payload cards awareness
  *
  * NICE Framework Alignment:
@@ -27,6 +27,7 @@ import { aurora7Satellite, ses10Satellite, tidemark1Satellite } from './satellit
  *   - K0773: Knowledge of telecommunications principles and practices
  *   - S0077: Skill in securing network communications
  *   - K0740: Knowledge of system performance indicators
+ *   - T1567: Equipment configuration happens throughout
  *
  * Premise: This is a training exercise to practice step-track mode on AURORA-7,
  * a legacy satellite with an inclined orbit. Charlie Brooks has pre-configured
@@ -35,21 +36,21 @@ import { aurora7Satellite, ses10Satellite, tidemark1Satellite } from './satellit
  *
  * Key Learning Objectives:
  * 1. Understand why inclined orbits require step-track
- * 2. Configure beacon frequency for step-track acquisition
- * 3. Enable step-track mode and achieve beacon lock
- * 4. Configure RX modem for downlink reception
- * 5. Understand encryption and payload card functions
- * 6. Enable transmit path
+ * 2. Enable step-track mode and achieve beacon lock (beacon pre-configured)
+ * 3. Configure RX modem for downlink reception
+ * 4. Understand encryption and payload card functions
+ * 5. Calculate TX IF frequency (uplink calculation - adds curriculum variety)
+ * 6. Configure TX modem and enable transmit path
  *
  * Technical Reference (AURORA-7):
  *   - Uplink RF: 5830 MHz
  *   - Downlink RF: 3605 MHz
  *   - Beacon RF: 4165 MHz
  *   - LNB LO: 5250 MHz
- *   - Beacon IF: 1085 MHz (5250 - 4165)
+ *   - Beacon IF: 1085 MHz (5250 - 4165) - PRE-CONFIGURED by Charlie
  *   - Downlink IF: 1645 MHz (5250 - 3605)
  *   - BUC LO: 4925 MHz
- *   - TX IF: 905 MHz (5830 - 4925)
+ *   - TX IF: 905 MHz (5830 - 4925) - STUDENT CALCULATES THIS
  *   - Bandwidth: 24 MHz
  *
  * Key Differences from Scenario 4:
@@ -69,9 +70,9 @@ export const scenario6Data: ScenarioData = {
   subtitle: 'Step-Track Operations on Inclined Orbit',
   duration: '25-30 min',
   timeLimitSeconds: 30 * 60,
-  difficulty: 'intermediate',
+  difficulty: 'beginner',
   missionType: 'Training Exercise',
-  description: `AURORA-7 is a legacy C-band satellite that's been in service for over 15 years. To conserve fuel, the operators stopped north-south station-keeping, so the orbit is now inclined. The satellite traces a figure-8 pattern in the sky - you can't just point and forget.<br><br>This is a training exercise to practice step-track mode. Unlike program-track which follows predicted orbital elements, step-track uses the beacon signal to continuously adjust antenna pointing. It's essential for tracking satellites with inclined orbits.<br><br>Charlie has pre-configured the encryption and payload settings. Your job is to acquire the satellite using step-track, establish receive lock, and bring up the transmit path.<br><br>Take your time and pay attention to the beacon - it's your guide.`,
+  description: `AURORA-7 is a legacy C-band satellite that's been in service for over 15 years. To conserve fuel, the operators stopped north-south station-keeping, so the orbit is now inclined. The satellite traces a figure-8 pattern in the sky - you can't just point and forget.<br><br>This is a training exercise to practice step-track mode. Unlike program-track which follows predicted orbital elements, step-track uses the beacon signal to continuously adjust antenna pointing. It's essential for tracking satellites with inclined orbits.<br><br>Charlie has pre-configured the beacon frequency, encryption, and payload settings. Your job is to acquire the satellite using step-track, establish receive lock, calculate the TX IF frequency, and bring up the transmit path.<br><br>Take your time - this is practice.`,
   equipment: [
     '9-meter C-band Antenna',
     'RF Front End',
@@ -100,7 +101,7 @@ export const scenario6Data: ScenarioData = {
             targetPolarization: 0 as Degrees,
             slewing: false,
             beaconCN: 0 as dB,
-            beaconFrequencyHz: 0 as Hertz, // Not configured - student must set
+            beaconFrequencyHz: 1085e6 as Hertz, // Pre-configured by Charlie
             isLocked: true, // Program-track is locked on TIDEMARK-1
           } as Partial<AntennaState>,
         ],
@@ -156,7 +157,7 @@ export const scenario6Data: ScenarioData = {
                 ...vermontGroundStation.transmitters[0].modems[0],
                 ifSignal: {
                   ...vermontGroundStation.transmitters[0].modems[0].ifSignal,
-                  frequency: 905e6 as IfFrequency, // Pre-configured for AURORA-7
+                  frequency: 1050e6 as IfFrequency, // Wrong - student must calculate TX IF
                   bandwidth: 24e6 as Hertz,
                   power: -7 as dBm,
                 },
@@ -335,68 +336,46 @@ export const scenario6Data: ScenarioData = {
     // PHASE 2: STEP-TRACK CONFIGURATION
     // ============================================================
     {
-      id: 'calculate-beacon-if',
+      id: 'verify-beacon-config',
       // K0773: Knowledge of telecommunications principles and practices
       nice: ['K0773'],
-      title: 'Calculate Beacon IF Frequency',
-      description: 'AURORA-7\'s beacon is at 4165 MHz RF. Calculate the IF frequency with your LNB LO at 5250 MHz.',
+      title: 'Verify Beacon Configuration',
+      description: 'Charlie pre-configured the beacon frequency for step-track. Check the ACU to verify the beacon IF is set to 1085 MHz.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['quiz-program-track-limitation'],
-      timeLimitSeconds: 3 * 60,
+      timeLimitSeconds: 2 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
         {
           type: 'status-check',
-          description: 'Beacon IF Calculated',
+          description: 'Beacon Configuration Verified',
           params: {
-            question: 'What IF frequency should you configure for the AURORA-7 beacon?',
+            question: 'Charlie pre-configured the beacon IF at 1085 MHz. How was this value calculated?',
             options: [
-              '1085 MHz (5250 - 4165 = 1085)',
-              '1165 MHz (4165 + 1000 = 1165)',
-              '9415 MHz (5250 + 4165 = 9415)',
-              '915 MHz (4165 - 3250 = 915)',
+              'LNB LO (5250 MHz) minus beacon RF (4165 MHz) = 1085 MHz',
+              'Beacon RF (4165 MHz) minus a standard offset (3080 MHz)',
+              'It\'s the satellite\'s default beacon IF setting',
+              'BUC LO (4925 MHz) minus beacon RF (4165 MHz) = 760 MHz',
             ],
             correctIndex: 0,
-            explanation: 'The LNB local oscillator is at 5250 MHz. For high-side injection: IF = LO - RF = 5250 - 4165 = 1085 MHz.',
-            pointPenalty: 10,
+            explanation: 'The beacon IF is calculated using high-side LO injection: IF = LO - RF = 5250 - 4165 = 1085 MHz. The LNB converts the RF signal down to IF for processing.',
+            pointPenalty: 5,
           },
           mustMaintain: false,
         },
       ],
       conditionLogic: 'AND',
-      points: 10,
-    },
-    {
-      id: 'configure-beacon-frequency',
-      // S0421: Skill in operating network equipment
-      nice: ['S0421'],
-      title: 'Configure Beacon Frequency',
-      description: 'Set the beacon frequency in the ACU to 1085 MHz for step-track acquisition.',
-      groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['calculate-beacon-if'],
-      timeLimitSeconds: 3 * 60,
-      timerStartTrigger: 'on-activate',
-      conditions: [
-        {
-          type: 'antenna-beacon-frequency-set',
-          description: 'Beacon Frequency: 1085 MHz',
-          params: {
-            beaconFrequency: 1085e6,
-          },
-          mustMaintain: true,
-        },
-      ],
-      conditionLogic: 'AND',
-      points: 10,
+      points: 5,
     },
     {
       id: 'enable-step-track',
       // S0421: Skill in operating network equipment
-      nice: ['S0421'],
+      // T1567: Equipment configuration happens throughout
+      nice: ['S0421', 'T1567'],
       title: 'Enable Step-Track Mode',
-      description: 'Switch the antenna to step-track mode and start tracking.',
+      description: 'Switch the antenna to step-track mode. The beacon is already configured - just enable tracking.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['configure-beacon-frequency'],
+      prerequisiteObjectiveIds: ['verify-beacon-config'],
       timeLimitSeconds: 2 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
@@ -442,7 +421,8 @@ export const scenario6Data: ScenarioData = {
       id: 'configure-speca-downlink',
       // K0773: Knowledge of telecommunications principles and practices
       // S0421: Skill in operating network equipment
-      nice: ['K0773', 'S0421'],
+      // T1567: Equipment configuration happens throughout
+      nice: ['K0773', 'S0421', 'T1567'],
       title: 'Configure Spectrum Analyzer for Downlink',
       description: 'Reconfigure the spectrum analyzer to view the main downlink signal at IF 1645 MHz.',
       groundStation: 'VT-01',
@@ -476,7 +456,8 @@ export const scenario6Data: ScenarioData = {
       id: 'configure-rx-modem',
       // K0773: Knowledge of telecommunications principles and practices
       // S0421: Skill in operating network equipment
-      nice: ['K0773', 'S0421'],
+      // T1567: Equipment configuration happens throughout
+      nice: ['K0773', 'S0421', 'T1567'],
       title: 'Configure RX Modem',
       description: 'Set the receiver modem to the AURORA-7 downlink IF frequency (1645 MHz) with correct bandwidth and modulation.',
       groundStation: 'VT-01',
@@ -593,17 +574,75 @@ export const scenario6Data: ScenarioData = {
       points: 10,
     },
     // ============================================================
-    // PHASE 5: TRANSMIT ENABLE
+    // PHASE 5: TRANSMIT CONFIGURATION
     // ============================================================
+    {
+      id: 'calculate-tx-if',
+      // K0773: Knowledge of telecommunications principles and practices
+      nice: ['K0773'],
+      title: 'Calculate TX IF Frequency',
+      description: 'AURORA-7\'s uplink is at 5830 MHz RF. Calculate the TX IF frequency using the BUC LO at 4925 MHz.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['quiz-encryption'],
+      timeLimitSeconds: 3 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'status-check',
+          description: 'TX IF Calculated',
+          params: {
+            question: 'What TX IF frequency should you configure to transmit at 5830 MHz RF?',
+            options: [
+              '905 MHz (5830 - 4925 = 905)',
+              '1050 MHz (5830 - 4780 = 1050)',
+              '10755 MHz (5830 + 4925 = 10755)',
+              '755 MHz (4925 - 4170 = 755)',
+            ],
+            correctIndex: 0,
+            explanation: 'For uplink, the BUC upconverts the IF to RF: RF = IF + LO, so IF = RF - LO = 5830 - 4925 = 905 MHz. This is different from downlink calculation because the BUC uses low-side injection.',
+            pointPenalty: 10,
+          },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 15,
+    },
+    {
+      id: 'configure-tx-modem',
+      // S0421: Skill in operating network equipment
+      // T1567: Equipment configuration happens throughout
+      nice: ['S0421', 'T1567'],
+      title: 'Configure TX Modem',
+      description: 'Set the TX modem frequency to 905 MHz to transmit on AURORA-7\'s uplink.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['calculate-tx-if'],
+      timeLimitSeconds: 2 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'tx-modem-frequency-set',
+          description: 'TX Frequency: 905 MHz',
+          params: {
+            frequency: 905e6,
+            frequencyTolerance: 1e6,
+          },
+          mustMaintain: true,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 10,
+    },
     {
       id: 'enable-transmit-path',
       // T0431: Check system hardware availability, functionality, integrity
       // K0741: Knowledge of system availability measures
-      nice: ['T0431', 'K0741'],
+      // T1567: Equipment configuration happens throughout
+      nice: ['T0431', 'K0741', 'T1567'],
       title: 'Enable Transmit Path',
-      description: 'The TX modem is already configured. Unmute the BUC and enable the HPA to begin transmission.',
+      description: 'Unmute the BUC and enable the HPA to begin transmission.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['quiz-encryption'],
+      prerequisiteObjectiveIds: ['configure-tx-modem'],
       timeLimitSeconds: 3 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
@@ -676,7 +715,7 @@ export const scenario6Data: ScenarioData = {
         Step-track uses the beacon signal to continuously adjust antenna pointing. The algorithm hunts for maximum signal, making small adjustments to keep the antenna optimized.
       </p>
       <p>
-        I've already configured the encryption and payload settings. Your job is to get the antenna tracking, establish receive lock, and bring up the transmit path. Take your time - this is practice.
+        I've already configured the beacon frequency, encryption, and payload settings. Your job is to get the antenna tracking, establish receive lock, and configure the transmit path. You'll need to calculate the TX IF frequency yourself. Take your time - this is practice.
       </p>
       `,
       character: Character.CHARLIE_BROOKS,
@@ -739,32 +778,22 @@ export const scenario6Data: ScenarioData = {
           Right. Program-track assumes the satellite stays put. AURORA-7's inclined orbit means it drifts throughout the day, so the predictions are only good for rough pointing.
         </p>
         <p>
-          That's why we need step-track - it actively follows the beacon signal instead of relying on predictions. First, calculate the beacon IF frequency. AURORA-7's beacon is at 4,165 megahertz RF. Your LNB local oscillator is at 5,250 megahertz.
+          That's why we need step-track - it actively follows the beacon signal instead of relying on predictions. I've already configured the beacon frequency at 1,085 megahertz IF. Let's verify that configuration before switching modes.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
         audioUrl: getAssetUrl('/assets/campaigns/nats/6/obj-quiz-program-track-limitation.mp3'),
       },
-      'calculate-beacon-if': {
+      'verify-beacon-config': {
         text: `
         <p>
-          1,085 megahertz. Good. Now go to the ACU Control tab and set the beacon frequency to 1,085 megahertz.
+          Good - you understand how the beacon IF was calculated. Now switch the antenna to step-track mode. The beacon is ready - the algorithm will start searching as soon as you enable it.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/6/obj-calculate-beacon-if.mp3'),
-      },
-      'configure-beacon-frequency': {
-        text: `
-        <p>
-          Beacon frequency is set. Now switch the antenna to step-track mode. The algorithm will start searching for the beacon once you enable it.
-        </p>
-        `,
-        character: Character.CHARLIE_BROOKS,
-        emotion: Emotion.NEUTRAL,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/6/obj-configure-beacon-frequency.mp3'),
+        audioUrl: getAssetUrl('/assets/campaigns/nats/6/obj-verify-beacon-config.mp3'),
       },
       'enable-step-track': {
         text: `
@@ -828,12 +857,32 @@ export const scenario6Data: ScenarioData = {
           Correct. AES-256-GCM is the standard for our links. Never transmit without verifying encryption status.
         </p>
         <p>
-          The TX modem is already configured at 905 megahertz IF. All you need to do is unmute the BUC and enable the HPA.
+          Now here's your main calculation for this mission. The TX modem is set to the wrong frequency. AURORA-7's uplink is at 5,830 megahertz RF, and your BUC local oscillator is at 4,925 megahertz. Calculate the correct TX IF frequency.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
         audioUrl: getAssetUrl('/assets/campaigns/nats/6/obj-quiz-encryption.mp3'),
+      },
+      'calculate-tx-if': {
+        text: `
+        <p>
+          905 megahertz. Good work. The BUC upconverts from IF to RF, so it's a different calculation than the downlink. Set the TX modem to 905 megahertz.
+        </p>
+        `,
+        character: Character.CHARLIE_BROOKS,
+        emotion: Emotion.NEUTRAL,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/6/obj-calculate-tx-if.mp3'),
+      },
+      'configure-tx-modem': {
+        text: `
+        <p>
+          TX modem configured. Now unmute the BUC and enable the HPA to begin transmission.
+        </p>
+        `,
+        character: Character.CHARLIE_BROOKS,
+        emotion: Emotion.NEUTRAL,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/6/obj-configure-tx-modem.mp3'),
       },
       'enable-transmit-path': {
         text: `

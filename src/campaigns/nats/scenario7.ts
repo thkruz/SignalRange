@@ -23,12 +23,15 @@ import { ses10Satellite, tidemark1Satellite } from './satellites';
  *   - T1313: Test network infrastructure, including software and hardware devices
  *
  * Supporting Codes:
+ *   - K0740: Knowledge of network performance management
  *   - K0773: Knowledge of telecommunications principles and practices
  *   - K0792: Knowledge of network configurations
+ *   - K1032: Knowledge of satellite communication systems
  *   - S0421: Skill in operating network equipment
  *   - S0582: Skill in troubleshooting system performance
  *   - T0153: Monitor network capacity and performance
  *   - T0081: Diagnose network connectivity problems
+ *   - T1567: Equipment configuration happens throughout
  *
  * Premise: Routine post-maintenance uplink validation. The Vermont station completed
  * overnight maintenance on the transmit chain. Charlie is off-site but calls to check
@@ -66,7 +69,7 @@ export const scenario7Data: ScenarioData = {
   title: 'Uplink Validation',
   subtitle: 'Transmit Enable Sequence & Power Verification',
   duration: '25-35 min',
-  difficulty: 'intermediate',
+  difficulty: 'beginner',
   missionType: 'Operations Phase',
   description: `The Vermont station completed overnight maintenance on the transmit chain - waveguide inspection and HPA tube replacement. Before resuming normal operations, you need to validate the entire uplink path.<br><br>Charlie is off-site today. Dana Torres, the shift supervisor, is handling paperwork but will check in periodically. You're expected to handle this independently.<br><br>Verify the receive chain, configure the transmitter, use BUC loopback to validate your signal, then bring the uplink online.<br><br>Key lesson: Always validate before you radiate.`,
   equipment: [
@@ -92,7 +95,7 @@ export const scenario7Data: ScenarioData = {
               loFrequency: 4900 as MHz,
               isExtRefLocked: true,
               gain: 35 as dB, // High gain causing over-temperature condition
-              temperature: 75, // Over temperature threshold (>70°C triggers alarm)
+              temperature: 75, // Above 70°C threshold - requires attention
             },
             hpa: {
               isHpaEnabled: false,
@@ -208,13 +211,161 @@ export const scenario7Data: ScenarioData = {
       points: 5,
     },
     {
+      id: 'check-dashboard-status',
+      // T0153: Monitor network capacity and performance - checking system status
+      // K0741: Knowledge of system availability measures - alarm awareness
+      nice: ['T0153', 'K0741'],
+      title: 'Check Dashboard for Alarms',
+      description: 'Before proceeding with validation, check the Dashboard for any active alarms.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['select-vermont-station'],
+      timeLimitSeconds: 2 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'tab-active',
+          description: 'Dashboard Tab Open',
+          params: { tab: 'dashboard' },
+          mustMaintain: true,
+        },
+        {
+          type: 'status-check',
+          description: 'Identify Active Alarms',
+          params: {
+            question: 'What alarm condition is currently displayed on the Dashboard?',
+            options: [
+              'BUC Over-Temperature Warning',
+              'LNB Reference Unlocked',
+              'HPA Output Fault',
+              'No active alarms',
+            ],
+            correctIndex: 0,
+            explanation: 'The BUC is showing an over-temperature warning. The temperature is above the 70°C threshold. This must be addressed before we can safely proceed with transmit chain validation.',
+            pointPenalty: 10,
+            character: Character.DANA_TORRES,
+          },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 10,
+    },
+    {
+      id: 'diagnose-buc-overtemp',
+      // T0081: Diagnose network connectivity problems - fault diagnosis
+      // S0582: Skill in troubleshooting system performance
+      nice: ['T0081', 'S0582'],
+      title: 'Diagnose BUC Over-Temperature',
+      description: 'Navigate to the TX Chain and identify the cause of the BUC over-temperature condition.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['check-dashboard-status'],
+      timeLimitSeconds: 3 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'tab-active',
+          description: 'TX Chain Tab Open',
+          params: { tab: 'tx-chain' },
+          mustMaintain: true,
+        },
+        {
+          type: 'status-check',
+          description: 'Identify Cause',
+          params: {
+            question: 'Looking at the BUC panel, what is the most likely cause of the over-temperature condition?',
+            options: [
+              'BUC gain is set too high (35 dB) - excessive amplification generates heat',
+              'BUC is not receiving external reference',
+              'BUC output is unmuted',
+              'BUC local oscillator frequency is incorrect',
+            ],
+            correctIndex: 0,
+            explanation: 'The BUC gain is set to 35 dB, which is higher than typical operating levels. High gain means the amplifier is working harder, generating more heat. The maintenance crew may have left it at a test setting.',
+            pointPenalty: 10,
+            character: Character.DANA_TORRES,
+          },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 10,
+    },
+    {
+      id: 'resolve-buc-overtemp',
+      // S0582: Skill in troubleshooting system performance - fault resolution
+      // K0740: Knowledge of network performance management
+      nice: ['S0582', 'K0740'],
+      title: 'Resolve BUC Over-Temperature',
+      description: 'Reduce the BUC gain to a normal operating level and verify the temperature alarm clears.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['diagnose-buc-overtemp'],
+      timeLimitSeconds: 2 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'tab-active',
+          description: 'TX Chain Tab Open',
+          params: { tab: 'tx-chain' },
+          mustMaintain: true,
+        },
+        {
+          type: 'buc-temperature-normal',
+          description: 'BUC Temperature Normal',
+          params: { maxTemperature: 70 },
+          mustMaintain: true,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 15,
+    },
+    {
+      id: 'verify-fault-cleared',
+      // K0741: Knowledge of system availability measures - alarm verification
+      // T0153: Monitor network capacity and performance - confirming resolution
+      nice: ['K0741', 'T0153'],
+      title: 'Verify Fault Cleared',
+      description: 'Confirm the Dashboard no longer shows the BUC over-temperature alarm.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['resolve-buc-overtemp'],
+      timeLimitSeconds: 2 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'tab-active',
+          description: 'Dashboard Tab Open',
+          params: { tab: 'dashboard' },
+          mustMaintain: true,
+        },
+        {
+          type: 'status-check',
+          description: 'Confirm Alarm Cleared',
+          params: {
+            question: 'What is the current BUC status on the Dashboard?',
+            options: [
+              'Normal - no active alarms',
+              'Warning - temperature still elevated',
+              'Fault - BUC offline',
+              'Unknown - BUC not reporting',
+            ],
+            correctIndex: 0,
+            explanation: 'The BUC temperature has returned to normal range and the alarm has cleared. Always verify alarm resolution on the Dashboard before proceeding.',
+            pointPenalty: 5,
+            character: Character.DANA_TORRES,
+          },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 10,
+    },
+    {
       id: 'verify-antenna-status',
       // S0421: Skill in operating network equipment
       nice: ['S0421'],
       title: 'Verify Antenna Status',
       description: 'Check the ACU Control tab and confirm antenna configuration.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['select-vermont-station'],
+      prerequisiteObjectiveIds: ['verify-fault-cleared'],
       timeLimitSeconds: 2 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
@@ -228,6 +379,12 @@ export const scenario7Data: ScenarioData = {
           type: 'tab-active',
           description: 'ACU Control Tab Open',
           params: { tab: 'acu-control' },
+          mustMaintain: false,
+        },
+        {
+          type: 'antenna-locked',
+          description: 'Antenna Locked on TIDEMARK-1',
+          params: { satelliteId: 61525 },
           mustMaintain: false,
         },
         {
@@ -281,23 +438,9 @@ export const scenario7Data: ScenarioData = {
           mustMaintain: true,
         },
         {
-          type: 'status-check',
-          description: 'LNB Lock Status Observed',
-          params: {
-            question: 'What is the current LNB reference lock status indicator showing?',
-            options: [
-              'Locked',
-              'Unlocked',
-              'Warning',
-              'No indicator is displayed',
-            ],
-            correctIndex: 0,
-            explanation:
-              'The LNB lock indicator shows "Locked" when the local oscillator is synchronized to the external 10 MHz GPSDO reference. This ensures frequency stability.',
-            pointPenalty: 5,
-            character: Character.DANA_TORRES,
-          },
-          mustMaintain: false,
+          type: 'lnb-reference-locked',
+          description: 'LNB Reference Locked',
+          mustMaintain: true,
         },
         {
           type: 'status-check',
@@ -326,7 +469,8 @@ export const scenario7Data: ScenarioData = {
     {
       id: 'acquire-beacon',
       // K0773: Knowledge of telecommunications principles and practices
-      nice: ['K0773'],
+      // K1032: Knowledge of satellite communication systems
+      nice: ['K0773', 'K1032'],
       title: 'Acquire TIDEMARK-1 Beacon',
       description: 'Configure the spectrum analyzer (center frequency, span, and amplitude range) to properly display and identify the satellite beacon.',
       groundStation: 'VT-01',
@@ -512,7 +656,8 @@ export const scenario7Data: ScenarioData = {
     {
       id: 'configure-tx-modem',
       // K0792: Knowledge of network configurations
-      nice: ['K0792'],
+      // T1567: Equipment configuration happens throughout
+      nice: ['K0792', 'T1567'],
       title: 'Configure TX Modem',
       description: 'Set the transmitter modem frequency, bandwidth, modulation, and power.',
       groundStation: 'VT-01',
@@ -591,6 +736,11 @@ export const scenario7Data: ScenarioData = {
           mustMaintain: true,
         },
         {
+          type: 'buc-reference-locked',
+          description: 'BUC Reference Status Checked',
+          mustMaintain: false,
+        },
+        {
           type: 'status-check',
           description: 'BUC Fault Identified',
           params: {
@@ -615,7 +765,8 @@ export const scenario7Data: ScenarioData = {
     {
       id: 'resolve-buc-fault',
       // T0081: Diagnose network connectivity problems
-      nice: ['T0081'],
+      // T1567: Equipment configuration happens throughout
+      nice: ['T0081', 'T1567'],
       title: 'Resolve BUC Temperature Fault',
       description: 'Lower the BUC gain to reduce temperature to safe operating range.',
       groundStation: 'VT-01',
@@ -635,6 +786,25 @@ export const scenario7Data: ScenarioData = {
           params: { maxTemperature: 70 },
           mustMaintain: true,
         },
+        {
+          type: 'status-check',
+          description: 'Gain Reduction Understanding',
+          params: {
+            question: 'What setting did you adjust to resolve the BUC over-temperature condition?',
+            options: [
+              'Reduced BUC gain to decrease power dissipation',
+              'Increased BUC LO frequency to shift heat',
+              'Enabled loopback mode to bypass the amplifier',
+              'Muted the BUC to stop signal flow',
+            ],
+            correctIndex: 0,
+            explanation:
+              'Reducing BUC gain decreases power dissipation in the amplifier, which lowers operating temperature.',
+            pointPenalty: 5,
+            character: Character.DANA_TORRES,
+          },
+          mustMaintain: false,
+        },
       ],
       conditionLogic: 'AND',
       points: 10,
@@ -642,9 +812,10 @@ export const scenario7Data: ScenarioData = {
     {
       id: 'enable-loopback',
       // T1313: Test network infrastructure, including software and hardware devices
-      nice: ['T1313'],
+      // T1567: Equipment configuration happens throughout
+      nice: ['T1313', 'T1567'],
       title: 'Enable BUC Loopback',
-      description: 'Enable loopback mode to test the TX signal without transmitting.',
+      description: 'Toggle loopback mode ON to route the TX signal back to the receive chain for testing without transmitting to the satellite.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['resolve-buc-fault'],
       timeLimitSeconds: 2 * 60,
@@ -666,6 +837,24 @@ export const scenario7Data: ScenarioData = {
           description: 'BUC Unmuted',
           mustMaintain: true,
         },
+        {
+          type: 'status-check',
+          description: 'Loopback Mode Understanding',
+          params: {
+            question: 'What does enabling BUC loopback mode do?',
+            options: [
+              'Routes the TX IF signal back to the RX chain without transmitting RF',
+              'Increases BUC output power for testing',
+              'Disables the BUC for maintenance',
+              'Bypasses the HPA to reduce power consumption',
+            ],
+            correctIndex: 0,
+            explanation: 'Loopback mode internally routes the BUC input signal back to the receive chain, allowing you to verify the TX modem and BUC are working without actually transmitting RF power through the antenna.',
+            pointPenalty: 5,
+            character: Character.DANA_TORRES,
+          },
+          mustMaintain: false,
+        },
       ],
       conditionLogic: 'AND',
       points: 10,
@@ -675,7 +864,7 @@ export const scenario7Data: ScenarioData = {
       // T1313: Test network infrastructure, including software and hardware devices
       nice: ['T1313'],
       title: 'Verify Loopback Signal',
-      description: 'Confirm the TX signal is visible on the spectrum analyzer.',
+      description: 'Tune the spectrum analyzer to the TX IF frequency and confirm the loopback signal is visible.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['enable-loopback'],
       timeLimitSeconds: 3 * 60,
@@ -704,6 +893,24 @@ export const scenario7Data: ScenarioData = {
             frequencyTolerance: 20e6,
           },
           mustMaintain: true,
+        },
+        {
+          type: 'status-check',
+          description: 'Loopback Signal Verified',
+          params: {
+            question: 'What do you observe on the spectrum analyzer at 1,043 MHz?',
+            options: [
+              'A 36 MHz wide signal centered at 1,043 MHz - the TX modem output via loopback',
+              'No signal visible at 1,043 MHz',
+              'Only the beacon signal at 1,074.5 MHz',
+              'A narrow CW carrier spike',
+            ],
+            correctIndex: 0,
+            explanation: 'The loopback signal should appear as a 36 MHz wide modulated carrier centered at 1,043 MHz. This confirms the TX modem is outputting correctly and the BUC loopback path is working.',
+            pointPenalty: 10,
+            character: Character.DANA_TORRES,
+          },
+          mustMaintain: false,
         },
       ],
       conditionLogic: 'AND',
@@ -749,7 +956,8 @@ export const scenario7Data: ScenarioData = {
     {
       id: 'disable-loopback',
       // S0421: Skill in operating network equipment
-      nice: ['S0421'],
+      // T1567: Equipment configuration happens throughout
+      nice: ['S0421', 'T1567'],
       title: 'Disable Loopback Mode',
       description: 'Disable loopback and mute BUC to prepare for HPA enable.',
       groundStation: 'VT-01',
@@ -780,7 +988,8 @@ export const scenario7Data: ScenarioData = {
     {
       id: 'power-on-hpa',
       // S0421: Skill in operating network equipment
-      nice: ['S0421'],
+      // T1567: Equipment configuration happens throughout
+      nice: ['S0421', 'T1567'],
       title: 'Power On HPA',
       description: 'Power on the High Power Amplifier.',
       groundStation: 'VT-01',
@@ -822,6 +1031,18 @@ export const scenario7Data: ScenarioData = {
           mustMaintain: true,
         },
         {
+          type: 'tx-crypto-status',
+          description: 'TX Encryption Active',
+          params: { cryptoMode: 'ACTIVE' },
+          mustMaintain: false,
+        },
+        {
+          type: 'tx-key-status',
+          description: 'TX Encryption Key Valid',
+          params: { keyStatus: 'Valid' },
+          mustMaintain: false,
+        },
+        {
           type: 'status-check',
           description: 'Encryption Status Verified',
           params: {
@@ -833,7 +1054,8 @@ export const scenario7Data: ScenarioData = {
               'Key Expired - Renewal Required',
             ],
             correctIndex: 0,
-            explanation: 'Link encryption is AES-256 per the TIDEMARK-1 service agreement. Never transmit without verifying encryption status.',
+            explanation:
+              'Link encryption is AES-256 per the TIDEMARK-1 service agreement. Never transmit without verifying encryption status.',
             pointPenalty: 10,
             character: Character.DANA_TORRES,
           },
@@ -846,7 +1068,8 @@ export const scenario7Data: ScenarioData = {
     {
       id: 'enable-hpa-output',
       // S0421: Skill in operating network equipment
-      nice: ['S0421'],
+      // T1567: Equipment configuration happens throughout
+      nice: ['S0421', 'T1567'],
       title: 'Enable HPA Output',
       description: 'Enable the HPA output stage.',
       groundStation: 'VT-01',
@@ -877,7 +1100,8 @@ export const scenario7Data: ScenarioData = {
     {
       id: 'unmute-buc-transmit',
       // S0421: Skill in operating network equipment
-      nice: ['S0421'],
+      // T1567: Equipment configuration happens throughout
+      nice: ['S0421', 'T1567'],
       title: 'Unmute BUC - Begin Transmission',
       description: 'Unmute the BUC to begin live transmission.',
       groundStation: 'VT-01',
@@ -907,7 +1131,8 @@ export const scenario7Data: ScenarioData = {
     {
       id: 'verify-hpa-power',
       // T0153: Monitor network capacity and performance
-      nice: ['T0153'],
+      // K0740: Knowledge of network performance management
+      nice: ['T0153', 'K0740'],
       title: 'Verify HPA Output Power',
       description: 'Confirm HPA output power is within operational limits.',
       groundStation: 'VT-01',
@@ -925,6 +1150,15 @@ export const scenario7Data: ScenarioData = {
           type: 'hpa-output-power-set',
           description: 'HPA Output Power Nominal',
           params: { minOutputPower: 100 },
+          maintainUntilObjectiveComplete: true,
+        },
+        {
+          type: 'hpa-back-off-set',
+          description: 'HPA Backoff Configured',
+          params: {
+            backOff: 3,
+            backOffTolerance: 1,
+          },
           maintainUntilObjectiveComplete: true,
         },
       ],
@@ -996,6 +1230,65 @@ export const scenario7Data: ScenarioData = {
         emotion: Emotion.NEUTRAL,
         audioUrl: getAssetUrl('/assets/campaigns/nats/7/obj-review-mission-brief.mp3'),
       },
+      'select-vermont-station': {
+        text: `
+        <p>
+          Vermont Ground Station selected. Before we dive into the uplink validation, let's check the Dashboard for any active alarms.
+        </p>
+        <p>
+          Good habit to have - always check system status before you start working on something. Click the Dashboard tab.
+        </p>
+        `,
+        character: Character.DANA_TORRES,
+        emotion: Emotion.NEUTRAL,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/7/obj-select-vermont-station.mp3'),
+      },
+      'check-dashboard-status': {
+        text: `
+        <p>
+          There's your problem. BUC is running hot. That needs to be fixed before we do anything with the transmit chain.
+        </p>
+        <p>
+          Click the TX Chain tab and take a look at the BUC panel. See if you can figure out why it's over-temp.
+        </p>
+        `,
+        character: Character.DANA_TORRES,
+        emotion: Emotion.CONCERNED,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/7/obj-check-dashboard-status.mp3'),
+      },
+      'diagnose-buc-overtemp': {
+        text: `
+        <p>
+          Right - gain is way too high. Maintenance probably left it there after testing. Reduce it to around 25 dB. That's normal operating level for this BUC.
+        </p>
+        `,
+        character: Character.DANA_TORRES,
+        emotion: Emotion.NEUTRAL,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/7/obj-diagnose-buc-overtemp.mp3'),
+      },
+      'resolve-buc-overtemp': {
+        text: `
+        <p>
+          Good. Temperature is dropping. Let's verify on the Dashboard that the alarm has cleared before we continue.
+        </p>
+        `,
+        character: Character.DANA_TORRES,
+        emotion: Emotion.CONFIDENT,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/7/obj-resolve-buc-overtemp.mp3'),
+      },
+      'verify-fault-cleared': {
+        text: `
+        <p>
+          Dashboard is clean. That's how it should look before you start any validation work.
+        </p>
+        <p>
+          Now let's verify the antenna status. Open the ACU Control tab.
+        </p>
+        `,
+        character: Character.DANA_TORRES,
+        emotion: Emotion.HAPPY,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/7/obj-verify-fault-cleared.mp3'),
+      },
       'acquire-beacon': {
         text: `
         <p>
@@ -1025,6 +1318,32 @@ export const scenario7Data: ScenarioData = {
         character: Character.DANA_TORRES,
         emotion: Emotion.NEUTRAL,
         audioUrl: getAssetUrl('/assets/campaigns/nats/7/obj-resolve-buc-fault.mp3'),
+      },
+      'enable-loopback': {
+        text: `
+        <p>
+          Before we transmit for real, we need to verify the TX signal path. That's what loopback mode is for.
+        </p>
+        <p>
+          Toggle loopback ON in the BUC panel, then unmute. The signal will route back to our spectrum analyzer instead of going to the antenna.
+        </p>
+        `,
+        character: Character.DANA_TORRES,
+        emotion: Emotion.NEUTRAL,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/7/obj-enable-loopback.mp3'),
+      },
+      'verify-loopback-signal': {
+        text: `
+        <p>
+          Now switch to RX Analysis and tune the spectrum analyzer to 1,043 MHz - that's your TX IF frequency.
+        </p>
+        <p>
+          You should see a 36 MHz wide signal. That confirms the TX modem output is reaching the BUC and looping back correctly.
+        </p>
+        `,
+        character: Character.DANA_TORRES,
+        emotion: Emotion.NEUTRAL,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/7/obj-verify-loopback-signal.mp3'),
       },
       'quiz-loopback-purpose': {
         text: `

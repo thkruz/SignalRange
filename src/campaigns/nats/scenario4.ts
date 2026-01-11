@@ -29,6 +29,7 @@ import { ses10Satellite, tidemark1Satellite, tidemark2Satellite } from './satell
  *   - K0770: Knowledge of system administration principles
  *   - T0153: Monitor network capacity and performance
  *   - T0431: Check system hardware availability, functionality, integrity
+ *   - T1567: Equipment configuration happens throughout
  *
  * Premise: ME-02 is maintaining primary operations on TIDEMARK-1. TIDEMARK-2 has
  * just completed station-keeping at 45°W and the Halifax spacecraft team has handed
@@ -55,7 +56,7 @@ export const scenario4Data: ScenarioData = {
   subtitle: 'Satellite Switchover Operations',
   duration: '25-30 min',
   timeLimitSeconds: 30 * 60,
-  difficulty: 'intermediate',
+  difficulty: 'beginner',
   missionType: 'Operations Phase',
   description: `ME-02 is maintaining primary communications with TIDEMARK-1. The spacecraft operations team in Halifax has just confirmed that TIDEMARK-2 has completed station-keeping at 45°W and the communications payload is ready for ground operations.<br><br>Your task at VT-01 is to switch from monitoring TIDEMARK-1 to establishing full uplink and downlink with TIDEMARK-2. You'll need to repoint the antenna, acquire the new beacon, reconfigure the modems for the new frequencies, and bring up the transmit path.<br><br>Marcus Chen from Halifax spacecraft ops will confirm payload status. Take your time - ME-02 has primary coverage while you complete the switchover.`,
   equipment: [
@@ -429,7 +430,8 @@ export const scenario4Data: ScenarioData = {
       // span and RBW for CW beacon observation
       // S0421: Skill in operating network equipment - configuring spectrum analyzer parameters
       // including center frequency, span, RBW, and reference level
-      nice: ['K0773', 'S0421'],
+      // T1567: Equipment configuration happens throughout
+      nice: ['K0773', 'S0421', 'T1567'],
       title: 'Configure Spectrum Analyzer for TIDEMARK-2 Beacon',
       description: 'Set spectrum analyzer to view TIDEMARK-2 beacon at IF frequency 1070 MHz.',
       groundStation: 'VT-01',
@@ -592,7 +594,8 @@ export const scenario4Data: ScenarioData = {
       // downlink IF frequency from transponder RF output and LNB local oscillator
       // S0421: Skill in operating network equipment - configuring receiver modem
       // frequency and bandwidth parameters to match satellite transponder output
-      nice: ['K0773', 'S0421'],
+      // T1567: Equipment configuration happens throughout
+      nice: ['K0773', 'S0421', 'T1567'],
       title: 'Configure RX Modem Frequency',
       description: 'Set receiver modem to TIDEMARK-2 downlink IF frequency (1458 MHz). This is calculated from the transponder downlink RF and the LNB LO.',
       groundStation: 'VT-01',
@@ -627,7 +630,8 @@ export const scenario4Data: ScenarioData = {
       // K0773: Knowledge of telecommunications principles and practices - understanding
       // digital modulation schemes (QPSK) and forward error correction (FEC) rates
       // and their relationship to link performance
-      nice: ['K0773'],
+      // T1567: Equipment configuration happens throughout
+      nice: ['K0773', 'T1567'],
       title: 'Configure RX Modem Modulation',
       description: 'Set receiver modem modulation and FEC to match TIDEMARK-2 signal format.',
       groundStation: 'VT-01',
@@ -804,7 +808,8 @@ export const scenario4Data: ScenarioData = {
       // uplink parameters including IF frequency, bandwidth, power level, and modulation
       // S0421: Skill in operating network equipment - setting transmitter modem parameters
       // to establish uplink through the satellite transponder
-      nice: ['K0773', 'S0421'],
+      // T1567: Equipment configuration happens throughout
+      nice: ['K0773', 'S0421', 'T1567'],
       title: 'Configure TX Modem',
       description: 'Set transmitter modem parameters for TIDEMARK-2 uplink.',
       groundStation: 'VT-01',
@@ -900,7 +905,8 @@ export const scenario4Data: ScenarioData = {
       // verifying BUC and HPA readiness before enabling RF transmission
       // K0741: Knowledge of system availability measures - understanding the significance
       // of unmuting BUC and enabling HPA for full duplex satellite communications
-      nice: ['T0431', 'K0741'],
+      // T1567: Equipment configuration happens throughout
+      nice: ['T0431', 'K0741', 'T1567'],
       title: 'Enable Transmit Path',
       description: 'Unmute BUC and enable HPA for transmission, in the correct sequence.',
       groundStation: 'VT-01',
@@ -988,6 +994,9 @@ export const scenario4Data: ScenarioData = {
         text: `
         <p>
           Good, you've got the mission brief open. This is a standard satellite switchover, but it's your first time doing one end-to-end, so let's be thorough.
+        </p>
+        <p>
+          Since you're new, I'll be handling your training directly. Once I think you're ready, you'll be assigned to a shift rotation with a supervisor like Dana Torres. She runs second shift and keeps her crew sharp. But for now, you're with me.
         </p>
         <p>
           VT-01 is currently locked on TIDEMARK-1 at azimuth 161.8, elevation 34.2. TIDEMARK-2 is about 58 degrees away in azimuth, at a lower elevation - that's a significant slew across the sky.

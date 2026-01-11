@@ -1,47 +1,68 @@
-import { AntennaState } from '@app/equipment/antenna';
-import { ANTENNA_CONFIG_KEYS } from "@app/equipment/antenna/antenna-config-keys";
-import { Receiver } from '@app/equipment/receiver/receiver';
-import { BUCModuleCore } from '@app/equipment/rf-front-end/buc-module';
-import { CouplerState } from '@app/equipment/rf-front-end/coupler-module/coupler-module';
-import { TapPoint } from '@app/equipment/rf-front-end/coupler-module/tap-points';
-import { IfFilterBankModuleCore } from '@app/equipment/rf-front-end/filter-module';
-import { HPAModuleCore } from '@app/equipment/rf-front-end/hpa-module';
-import { OMTModule } from '@app/equipment/rf-front-end/omt-module/omt-module';
-import { Satellite } from '@app/equipment/satellite/satellite';
-import { Transmitter } from '@app/equipment/transmitter/transmitter';
+import type { AntennaState } from '@app/equipment/antenna';
+import { Character, Emotion } from '@app/modal/character-enum';
+import type { Objective } from '@app/objectives/objective-types';
 import type { ScenarioData } from '@app/ScenarioData';
-import { SignalOrigin } from '@app/signal-origin';
-import type { dB, dBi, dBm, FECType, Hertz, MHz, ModulationType, RfFrequency } from '@app/types';
+import type { dB, dBm, Hertz, MHz } from '@app/types';
+import { getAssetUrl } from '@app/utils/asset-url';
 import type { Degrees } from 'ootk';
+import { createRfFrontEnd } from '../rf-front-end-factory';
+import { vermontGroundStation } from './ground-stations';
+import { aurora7Satellite, tidemark1Satellite } from './satellites';
 
 /**
- * NATS Level 8: "First Light Solo"
+ * NATS Level 8: "Night Shift"
  *
- * Phase: Final Evaluation
- * Time Pressure: Moderate (45 minutes - realistic first light timeline)
- * Calculation Required: Yes (all frequencies, no assistance)
+ * Phase: Final Evaluation (Graduation Exam)
+ * Time Pressure: Moderate (30-40 minutes total)
+ * Calculation Required: YES - IF frequency calculations for AURORA-7
  * New UI Elements: None (mastery of all existing systems)
  *
- * Premise: Charlie's last day is tomorrow. Today, you conduct first light for
- * TIDEMARK-4 independently while he observes. This is your final evaluation before
- * he leaves. Complete end-to-end acquisition procedure. Minor realistic complications
- * will occur. Handle them independently. Charlie is present but silent unless you
- * make a critical safety error.
+ * NICE Framework Alignment:
+ * Primary Codes:
+ *   - T0081: Diagnose network connectivity problems
+ *   - S0421: Skill in operating network equipment
+ *   - K0773: Knowledge of telecommunications principles and practices
+ *   - T0153: Monitor network capacity and performance
+ *   - S0582: Skill in troubleshooting system performance
+ *
+ * Supporting Codes:
+ *   - K0645: Knowledge of standard operating procedures (SOPs)
+ *   - K0740: Knowledge of system performance indicators
+ *   - K0741: Knowledge of system availability measures
+ *   - K1032: Knowledge of satellite-based communication systems
+ *   - T0431: Check system hardware availability, functionality
+ *   - T1567: Configure system hardware, software, and equipment
+ *
+ * Premise: It's 2 AM on a Saturday night. You're alone at the Vermont station
+ * for your first solo night shift. Charlie is visiting family out of state.
+ * Dana is on-call but sleeping - she'll only answer if it's truly urgent.
+ *
+ * A customer reports intermittent connectivity on AURORA-7, an aging satellite
+ * with an inclined orbit. You must independently:
+ * 1. Perform initial system health check (Scenario 1)
+ * 2. Diagnose and resolve an LNB fault (Scenario 7)
+ * 3. Make weather-related operational decisions (Scenario 3)
+ * 4. Calculate IF frequencies for AURORA-7 (Scenarios 4, 6)
+ * 5. Use spectrum analysis to verify signals (Scenario 5)
+ * 6. Execute proper power sequencing for emergency maintenance (Scenario 2)
+ *
+ * This is your graduation exam - minimal hand-holding, multiple tasks,
+ * and time pressure. Show that you're ready for solo operations.
  */
 
 export const scenario8Data: ScenarioData = {
-  id: 'nats-level-8-first-light-solo',
-  prerequisiteScenarioIds: ['nats-level-7-equipment-cascade'],
-  url: 'nats/level-8/first-light-solo',
+  id: 'nats-level-8-night-shift',
+  prerequisiteScenarioIds: ['nats-scenario7'],
+  url: 'nats/level-8/night-shift',
   imageUrl: 'nats/8/card.png',
   number: 8,
-  isDisabled: true,
+  isDisabled: false,
   difficulty: 'advanced',
-  title: 'Level 8: "First Light Solo"',
-  subtitle: 'Final Evaluation',
-  duration: '45-50 min',
+  title: 'Level 8: Night Shift',
+  subtitle: 'Solo Operations Evaluation',
+  duration: '30-40 min',
   missionType: 'Final Evaluation',
-  description: `Charlie's last day is tomorrow. He's finishing paperwork, closing out projects, preparing to hand over operations to you and the other trained operators. Today is your final evaluation.<br><br>TIDEMARK-4 just reached its operational slot at 29°W. The spacecraft team has confirmed station-keeping and handed the communications payload over to ground operations. You will conduct the complete first light procedure - from cold equipment to bidirectional link establishment - independently while Charlie observes.<br><br>You have 45 minutes, which is a realistic timeline for first light operations. Charlie will be present in the room but silent unless you're about to make a critical safety error. Minor complications will occur - equipment won't be perfect. Handle them professionally.<br><br>This is it. Show Charlie you're ready for solo operations.`,
+  description: `It's 2 AM on a Saturday night - your first solo night shift at the Vermont station. Charlie is visiting family out of state. Dana is on-call but sleeping; she's made it clear she only wants to be woken for genuine emergencies.<br><br>A customer reports intermittent connectivity issues on AURORA-7, an aging C-band satellite with an inclined orbit. You'll need to investigate independently, diagnose any equipment issues, verify the link, and handle whatever complications arise.<br><br>This is your graduation exam. Everything you've learned in Scenarios 1-7 comes together here. No one is going to walk you through each step. Make good decisions, work methodically, and prove you're ready for solo operations.`,
   equipment: [
     '9-meter C-band Antenna',
     'Complete RF Front End',
@@ -49,194 +70,974 @@ export const scenario8Data: ScenarioData = {
     'RX/TX Modems',
     'All Control Systems',
   ],
+  timeLimitSeconds: 40 * 60, // 40 minutes
   settings: {
     isSync: true,
-    // evaluationMode: true, // Charlie observing, minimal intervention
     groundStations: [
       {
-        id: 'VT-01',
-        name: 'Vermont Ground Station',
-        location: {
-          latitude: 44.5588,
-          longitude: -72.5778,
-          elevation: 350,
-        },
-        antennas: [ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK],
+        ...vermontGroundStation,
         antennasState: [
           {
-            // Antenna stowed initially
+            // Antenna tracking AURORA-7 in program-track (needs step-track for inclined orbit)
             isPowered: true,
-            azimuth: 0 as Degrees,
-            elevation: 90 as Degrees,
+            azimuth: 190 as Degrees,
+            elevation: 32 as Degrees,
             polarization: 0 as Degrees,
-            isTracking: false,
-            trackingMode: 'manual',
-            slewRateLimited: true, // Will take longer than expected
-            actualSlewRate: 0.75, // degrees/second (slower than spec'd 1.0)
+            trackingMode: 'program-track',
+            isBeaconLocked: false,
+            targetSatelliteId: 28899,
+            targetAzimuth: 190 as Degrees,
+            targetElevation: 32 as Degrees,
+            targetPolarization: 0 as Degrees,
+            slewing: false,
+            beaconCN: 5.2 as dB, // Marginal due to tracking error
+            beaconFrequencyHz: 1085e6 as Hertz, // AURORA-7 beacon IF
+            isLocked: true,
           } as Partial<AntennaState>,
         ],
-        rfFrontEnds: [{
-          omt: OMTModule.getDefaultState(),
-          buc: {
-            ...BUCModuleCore.getDefaultState(),
-            isPowered: false,
-            loFrequency: 2225 as MHz,
-            outputPower: 0 as dBm,
-            isMuted: true,
-            isExtRefLocked: false,
-          },
-          hpa: {
-            ...HPAModuleCore.getDefaultState(),
-            isPowered: false,
-            isHpaEnabled: false,
-            outputPower: 0 as dBm,
-          },
-          filter: {
-            ...IfFilterBankModuleCore.getDefaultState(),
-            isPowered: false,
-            bandwidthIndex: 0,
-          },
-          lnb: {
-            isPowered: false,
-            loFrequency: 0 as MHz, // Student must calculate
-            gain: 0 as dB,
-            lnaNoiseFigure: 0.6,
-            mixerNoiseFigure: 16.0,
-            noiseTemperature: 20,
-            noiseTemperatureStabilizationTime: 180,
-            isExtRefLocked: false,
-            noiseFloor: -140,
-            frequencyError: 0,
-            temperature: 18,
-            thermalStabilizationTime: 180,
-          },
-          coupler: {
-            isPowered: true,
-            tapPointA: TapPoint.TX_IF,
-            tapPointB: TapPoint.RX_IF,
-            availableTapPointsA: [TapPoint.TX_IF, TapPoint.TX_RF_POST_BUC],
-            availableTapPointsB: [TapPoint.RX_IF],
-            couplingFactorA: -40,
-            couplingFactorB: -39,
-            isActiveA: true,
-            isActiveB: true,
-          } as CouplerState,
-          gpsdo: {
-            isPowered: true,
-            isLocked: true,
-            warmupTimeRemaining: 0,
-            temperature: 65,
-            gnssSignalPresent: true,
-            isGnssSwitchUp: true,
-            isGnssAcquiringLock: false,
-            satelliteCount: 11,
-            utcAccuracy: 18,
-            constellation: 'GPS',
-            lockDuration: 172800, // 2 days
-            frequencyAccuracy: 1e-12,
-            allanDeviation: 5e-13,
-            phaseNoise: -140,
-            isInHoldover: false,
-            holdoverDuration: 0,
-            holdoverError: 0,
-            active10MHzOutputs: 1,
-            max10MHzOutputs: 5,
-            output10MHzLevel: 0,
-            ppsOutputsEnabled: true,
-            operatingHours: 172800,
-            selfTestPassed: true,
-            agingRate: 1e-10,
-          },
-        }],
+        rfFrontEnds: [
+          createRfFrontEnd(vermontGroundStation.rfFrontEnds[0], {
+            // LNB has reference unlock issue (fault to diagnose)
+            lnb: {
+              isPowered: true,
+              loFrequency: 5250 as MHz,
+              gain: 60 as dB,
+              isExtRefLocked: false, // Fault condition
+              hasRefLockFault: true, // Sticky fault - clears on power cycle
+              noiseTemperature: 55, // Slightly elevated
+              temperature: 32,
+            },
+            buc: {
+              isPowered: true,
+              isMuted: true,
+              isLoopback: false,
+              loFrequency: 4925 as MHz, // AURORA-7 BUC LO
+              isExtRefLocked: true,
+              gain: 23 as dB,
+            },
+            hpa: {
+              isPowered: true,
+              isHpaEnabled: false,
+              isHpaSwitchEnabled: false,
+              outputPower: 0 as dBm,
+            },
+            gpsdo: {
+              isPowered: true,
+              isLocked: true,
+              gnssSignalPresent: true,
+              isGnssSwitchUp: true,
+            },
+          }),
+        ],
         spectrumAnalyzers: [
           {
-            referenceLevel: 0,
-            centerFrequency: 1e9 as Hertz,
+            ...vermontGroundStation.spectrumAnalyzers[0],
+            centerFrequency: 1000e6 as Hertz, // Not configured - player must set
             span: 100e6 as Hertz,
             rbw: 1e6 as Hertz,
-            minAmplitude: -170,
-            maxAmplitude: 0,
-            scaleDbPerDiv: 17 as dB,
-            screenMode: 'both',
-            inputUnit: 'MHz',
-            inputValue: '',
-            traces: [
-              { isVisible: true, isUpdating: true, mode: 'clearwrite' },
-              { isVisible: false, isUpdating: false, mode: 'clearwrite' },
-              { isVisible: false, isUpdating: false, mode: 'clearwrite' },
-            ],
-            selectedTrace: 1,
-          }
-        ],
-        transmitters: [Transmitter.getDefaultState()],
-        receivers: [Receiver.getDefaultState()],
-      },
-    ],
-    satellites: [
-      new Satellite(
-        'TIDEMARK-4',
-        4, // TIDEMARK-4
-        [
-          {
-            signalId: 'tidemark-4-beacon',
-            serverId: 1,
-            noradId: 4,
-            frequency: 4023.7e6 as RfFrequency, // Given in ops note
-            polarization: 'H',
-            power: -98 as dBm, // 3 dB weaker than predicted (Complication 1)
-            bandwidth: 1e3 as Hertz,
-            modulation: 'CW' as ModulationType,
-            fec: 'none' as FECType,
-            feed: null,
-            isDegraded: false,
-            origin: SignalOrigin.SATELLITE_TX,
-            noiseFloor: null,
-            gainInPath: 0 as dBi,
+            referenceLevel: -50 as dBm,
+            minAmplitude: -120 as dBm,
+            maxAmplitude: -30 as dBm,
+            scaleDbPerDiv: 10 as dB,
           },
         ],
-        [],
-        {
-          az: 224.8 as Degrees, // 29°W from Vermont
-          el: 25.9 as Degrees,
-          frequencyOffset: 2.225e9 as Hertz,
-        }
-      ),
+      },
     ],
-    // operationsNote: {
-    //   satelliteName: 'TIDEMARK-4',
-    //   orbitalSlot: '29°W',
-    //   beaconFrequency: '4,023.7 MHz',
-    //   expectedSignalLevel: '-95 dBm ± 2 dB',
-    //   polarization: 'Horizontal',
-    //   targetIF: '1,247.5 MHz (standard)',
-    //   antennaPointing: 'Az 224.8°, El 25.9° (from VT-01)',
-    //   notes: [
-    //     'Final TIDEMARK constellation satellite',
-    //     'Commissioning phase - first RF contact critical',
-    //     'Standard C-band configuration',
-    //     'Report any anomalies to spacecraft team',
-    //   ]
-    // },
-    //   complications: [
-    //     {
-    //       id: 'weak-beacon-signal',
-    //       triggeredAt: 900, // 15 minutes - when beacon first acquired
-    //       type: 'signal-level-deviation',
-    //       description: 'Beacon signal 3 dB weaker than predicted',
-    //       expectedValue: -95 as dBm,
-    //       actualValue: -98 as dBm,
-    //       correctAction: 'increase-lnb-gain', // Increase gain from 55 to 58 dB
-    //     },
-    //     {
-    //       id: 'slow-antenna-slew',
-    //       triggeredAt: 600, // 10 minutes - during antenna movement
-    //       type: 'equipment-performance',
-    //       description: 'Antenna slew rate slower than expected',
-    //       expectedDuration: 300, // 5 minutes expected
-    //       actualDuration: 480, // 8 minutes actual (25% slower)
-    //       correctAction: 'wait-for-completion', // Not a fault, just patience
-    //     },
-    //   ],
-    // },
+    satellites: [aurora7Satellite, tidemark1Satellite],
+    missionBriefUrl: 'https://docs.signalrange.space/scenarios/scenario-8?content-only=true&dark=true',
+    isExtraSatellitesVisible: true,
+  },
+  objectives: [
+    // ============================================================
+    // MISSION PREPARATION
+    // ============================================================
+    {
+      id: 'review-mission-brief',
+      nice: ['K0645'],
+      title: 'Review Customer Trouble Ticket',
+      description: 'Review the trouble ticket details and acknowledge you are ready to investigate.',
+      groundStation: 'VT-01',
+      freezesScenarioTimer: true,
+      prerequisiteObjectiveIds: [],
+      conditions: [
+        {
+          type: 'mission-brief-opened',
+          description: 'Trouble Ticket Reviewed',
+          params: { boxId: 'mission-brief' },
+          mustMaintain: false,
+        },
+        {
+          type: 'status-check',
+          description: 'Ready to Investigate',
+          params: {
+            question: 'Customer reports intermittent connectivity on AURORA-7. You are alone at the station. How will you proceed?',
+            options: [
+              'Begin systematic troubleshooting - check timing, RX chain, antenna, then TX if needed',
+              'Call Dana immediately to report the issue',
+              'Wait until morning shift to investigate',
+              'Reboot all equipment and hope it fixes itself',
+            ],
+            correctIndex: 0,
+            explanation: 'Systematic troubleshooting is the professional approach. You have the skills to investigate this independently.',
+            pointPenalty: 15,
+          },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 10,
+    },
+
+    // ============================================================
+    // PHASE 1: INITIAL HEALTH CHECK (Scenario 1 Skills)
+    // ============================================================
+    {
+      id: 'access-vermont-station',
+      nice: ['S0421'],
+      title: 'Access Ground Station',
+      description: 'Select Vermont Ground Station to begin your investigation.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['review-mission-brief'],
+      timeLimitSeconds: 1 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'ground-station-selected',
+          description: 'Vermont Ground Station Selected',
+          params: { groundStationId: 'VT-01' },
+          mustMaintain: true,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 5,
+    },
+    {
+      id: 'check-dashboard-alarms',
+      nice: ['T0153', 'K0741'],
+      title: 'Check Dashboard for Alarms',
+      description: 'Review the Dashboard for any active fault conditions.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['access-vermont-station'],
+      timeLimitSeconds: 2 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'tab-active',
+          description: 'Dashboard Tab Open',
+          params: { tab: 'dashboard' },
+          mustMaintain: true,
+        },
+        {
+          type: 'status-check',
+          description: 'Identify Alarm Condition',
+          params: {
+            question: 'What alarm is displayed on the Dashboard?',
+            options: [
+              'LNB Reference Unlocked',
+              'BUC Over-Temperature',
+              'HPA Output Fault',
+              'No active alarms',
+            ],
+            correctIndex: 0,
+            explanation: 'The LNB shows a reference unlock condition. This means the LNB is not locked to the GPSDO 10 MHz reference, which can cause frequency drift and degraded receive performance.',
+            pointPenalty: 10,
+          },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 10,
+    },
+    {
+      id: 'verify-gpsdo-status',
+      nice: ['T0431', 'K0740'],
+      title: 'Verify GPSDO Status',
+      description: 'Check the GPS Timing tab to verify the timing reference is operational.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['check-dashboard-alarms'],
+      timeLimitSeconds: 2 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'tab-active',
+          description: 'GPS Timing Tab Open',
+          params: { tab: 'gps-timing' },
+          mustMaintain: true,
+        },
+        {
+          type: 'gpsdo-locked',
+          description: 'GPSDO Locked',
+          mustMaintain: true,
+        },
+        {
+          type: 'status-check',
+          description: 'GPSDO Status Verified',
+          params: {
+            question: 'The GPSDO shows locked status. What does this tell you about the LNB reference unlock alarm?',
+            options: [
+              'The 10 MHz reference is available - the problem is likely the cable or LNB input',
+              'The GPSDO is faulty and causing the LNB problem',
+              'The LNB alarm is a false positive',
+              'We need to restart the GPSDO',
+            ],
+            correctIndex: 0,
+            explanation: 'The GPSDO is generating a valid 10 MHz reference. Since the LNB shows unlocked, the issue is downstream - either the reference cable to the LNB or the LNB reference input itself.',
+            pointPenalty: 10,
+          },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 10,
+    },
+
+    // ============================================================
+    // PHASE 2: FAULT DIAGNOSIS (Scenario 7 Skills)
+    // ============================================================
+    {
+      id: 'diagnose-lnb-fault',
+      nice: ['T0081', 'S0582'],
+      title: 'Diagnose LNB Reference Fault',
+      description: 'Navigate to RX Analysis and investigate the LNB reference unlock condition.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['verify-gpsdo-status'],
+      timeLimitSeconds: 3 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'tab-active',
+          description: 'RX Analysis Tab Open',
+          params: { tab: 'rx-analysis' },
+          mustMaintain: true,
+        },
+        {
+          type: 'equipment-powered',
+          description: 'LNB Powered',
+          params: { equipment: 'lnb' },
+          mustMaintain: true,
+        },
+        {
+          type: 'status-check',
+          description: 'Fault Diagnosis',
+          params: {
+            question: 'The LNB is powered but shows reference unlocked. What is the most likely corrective action?',
+            options: [
+              'Power cycle the LNB to re-acquire the external reference',
+              'Replace the LNB immediately',
+              'Increase LNB gain to compensate',
+              'Switch to internal oscillator mode',
+            ],
+            correctIndex: 0,
+            explanation: 'Power cycling the LNB will force it to re-acquire the external 10 MHz reference. This is a common fix for reference lock issues, especially after thermal cycling or power glitches.',
+            pointPenalty: 10,
+          },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 15,
+    },
+    {
+      id: 'resolve-lnb-fault',
+      nice: ['S0582', 'T1567'],
+      title: 'Resolve LNB Reference Fault',
+      description: 'Power cycle the LNB to restore reference lock. Power OFF, wait for status to update, then power ON.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['diagnose-lnb-fault'],
+      timeLimitSeconds: 3 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'tab-active',
+          description: 'RX Analysis Tab Open',
+          params: { tab: 'rx-analysis' },
+          mustMaintain: true,
+        },
+        {
+          type: 'equipment-powered',
+          description: 'LNB Powered',
+          params: { equipment: 'lnb' },
+          maintainUntilObjectiveComplete: true,
+        },
+        {
+          type: 'lnb-reference-locked',
+          description: 'LNB Reference Locked',
+          maintainUntilObjectiveComplete: true,
+        },
+        {
+          type: 'lnb-thermally-stable',
+          description: 'LNB Thermally Stable',
+          maintainUntilObjectiveComplete: true,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 15,
+    },
+    {
+      id: 'verify-fault-cleared',
+      nice: ['K0741', 'T0153'],
+      title: 'Verify Fault Cleared',
+      description: 'Confirm the Dashboard no longer shows the LNB reference alarm.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['resolve-lnb-fault'],
+      timeLimitSeconds: 2 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'tab-active',
+          description: 'Dashboard Tab Open',
+          params: { tab: 'dashboard' },
+          mustMaintain: true,
+        },
+        {
+          type: 'lnb-reference-locked',
+          description: 'LNB Reference Locked',
+          mustMaintain: true,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 10,
+    },
+
+    // ============================================================
+    // PHASE 3: IF FREQUENCY CALCULATION (Scenarios 4, 6 Skills)
+    // ============================================================
+    {
+      id: 'calculate-aurora7-beacon-if',
+      nice: ['K0773', 'K1032'],
+      title: 'Calculate AURORA-7 Beacon IF',
+      description: 'Determine the correct IF frequency to view the AURORA-7 beacon on the spectrum analyzer.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['verify-fault-cleared'],
+      timeLimitSeconds: 3 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'status-check',
+          description: 'Beacon IF Calculation',
+          params: {
+            question: 'AURORA-7 beacon is at 4165 MHz RF. The LNB LO is 5250 MHz. What IF frequency should you tune the spectrum analyzer to?',
+            options: [
+              '1085 MHz (LO - RF = 5250 - 4165)',
+              '9415 MHz (LO + RF)',
+              '915 MHz (incorrect calculation)',
+              '4165 MHz (RF frequency directly)',
+            ],
+            correctIndex: 0,
+            explanation: 'IF = LO - RF = 5250 - 4165 = 1085 MHz. The LNB downconverts by subtracting the RF frequency from the LO frequency.',
+            pointPenalty: 15,
+          },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 15,
+    },
+    {
+      id: 'configure-speca-beacon',
+      nice: ['S0421', 'K0773'],
+      title: 'Configure Spectrum Analyzer for Beacon',
+      description: 'Set up the spectrum analyzer to observe the AURORA-7 beacon at 1085 MHz IF.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['calculate-aurora7-beacon-if'],
+      timeLimitSeconds: 3 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'tab-active',
+          description: 'RX Analysis Tab Open',
+          params: { tab: 'rx-analysis' },
+          mustMaintain: true,
+        },
+        {
+          type: 'speca-center-frequency',
+          description: 'Center Frequency at 1085 MHz',
+          params: {
+            centerFrequency: 1085e6 as Hertz,
+            centerFrequencyTolerance: 2e6,
+          },
+          maintainUntilObjectiveComplete: true,
+        },
+        {
+          type: 'speca-span-set',
+          description: 'Span Configured to 10 kHz',
+          params: {
+            span: 0.01e6 as Hertz,
+            spanTolerance: 0.01e6,
+          },
+          maintainUntilObjectiveComplete: true,
+        },
+        {
+          type: 'speca-max-amplitude',
+          description: 'Max Amplitude Set to -65 dBm',
+          params: {
+            maxAmplitude: -65 as dBm,
+            maxAmplitudeTolerance: 5 as dBm,
+          },
+          maintainUntilObjectiveComplete: true,
+        },
+        {
+          type: 'speca-min-amplitude',
+          description: 'Min Amplitude Set to -85 dBm',
+          params: {
+            minAmplitude: -85 as dBm,
+            minAmplitudeTolerance: 5 as dBm,
+          },
+          maintainUntilObjectiveComplete: true,
+        },
+        {
+          type: 'speca-rbw-set',
+          description: 'RBW Configured to 1 kHz',
+          params: {
+            rbw: 0.001e6 as Hertz,
+            rbwTolerance: 0.001e6,
+          },
+          maintainUntilObjectiveComplete: true,
+        }
+      ],
+      conditionLogic: 'AND',
+      points: 10,
+    },
+
+    // ============================================================
+    // PHASE 4: ANTENNA TRACKING (Scenario 6 Skills)
+    // ============================================================
+    {
+      id: 'identify-tracking-problem',
+      nice: ['T0081', 'K1032'],
+      title: 'Identify Tracking Problem',
+      description: 'The beacon signal is weak or absent. Investigate the antenna tracking mode.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['configure-speca-beacon'],
+      timeLimitSeconds: 3 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'tab-active',
+          description: 'ACU Control Tab Open',
+          params: { tab: 'acu-control' },
+          mustMaintain: true,
+        },
+        {
+          type: 'status-check',
+          description: 'Tracking Mode Analysis',
+          params: {
+            question: 'AURORA-7 is a legacy satellite with an inclined orbit. The antenna is in program-track mode. Why might this cause tracking problems?',
+            options: [
+              'Inclined orbits require step-track to follow satellite drift - program-track cannot compensate',
+              'Program-track mode is only for LEO satellites',
+              'The antenna motors are too slow for program-track',
+              'Program-track requires manual polarization adjustment',
+            ],
+            correctIndex: 0,
+            explanation: 'AURORA-7 has stopped north-south station-keeping, causing its orbit to become inclined. This makes the satellite trace a figure-8 pattern in the sky. Program-track follows predicted positions, but step-track actively hunts for peak signal, which is required for drifting satellites.',
+            pointPenalty: 15,
+          },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 15,
+    },
+    {
+      id: 'enable-step-track',
+      nice: ['S0421', 'T1567'],
+      title: 'Enable Step-Track Mode',
+      description: 'Switch the antenna to step-track mode to actively track the inclined-orbit satellite.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['identify-tracking-problem'],
+      timeLimitSeconds: 2 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'tab-active',
+          description: 'ACU Control Tab Open',
+          params: { tab: 'acu-control' },
+          mustMaintain: true,
+        },
+        {
+          type: 'antenna-tracking-mode-set',
+          description: 'Step-Track Mode Enabled',
+          params: { trackingMode: 'step-track' },
+          mustMaintain: true,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 10,
+    },
+    {
+      id: 'verify-beacon-lock',
+      nice: ['T0153', 'K0740'],
+      title: 'Verify Beacon Acquisition',
+      description: 'Confirm the antenna has acquired beacon lock and the signal is now visible on the spectrum analyzer.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['enable-step-track'],
+      timeLimitSeconds: 3 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'tab-active',
+          description: 'RX Analysis Tab Open',
+          params: { tab: 'rx-analysis' },
+          mustMaintain: true,
+        },
+        {
+          type: 'antenna-beacon-locked',
+          description: 'Beacon Lock Acquired',
+          mustMaintain: true,
+        },
+        {
+          type: 'signal-detected',
+          description: 'Beacon Signal Visible',
+          params: {
+            signalId: 'AURORA-7-Beacon',
+            minPower: -95 as dBm,
+          },
+          mustMaintain: true,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 15,
+    },
+
+    // ============================================================
+    // PHASE 5: WEATHER DECISION (Scenario 3 Skills)
+    // ============================================================
+    {
+      id: 'weather-alert-decision',
+      nice: ['K0741', 'K0740'],
+      title: 'Weather Alert Assessment',
+      description: 'A weather alert notification appears. Assess the situation and decide on appropriate action.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['verify-beacon-lock'],
+      timeLimitSeconds: 2 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'status-check',
+          description: 'Weather Decision',
+          params: {
+            question: 'Weather service reports freezing rain expected in 2 hours. AURORA-7 link is now stable. What is the appropriate action?',
+            options: [
+              'Enable feed heater now as a precaution, continue monitoring the link',
+              'Immediately stow the antenna to protect it',
+              'Call Dana to report the weather forecast',
+              'Ignore the weather alert - it is 2 hours away',
+            ],
+            correctIndex: 0,
+            explanation: 'Enabling the feed heater proactively prevents ice accumulation. The link is stable so there is no need to stow yet, but preparing for weather is good practice. This is not urgent enough to wake Dana at 2 AM.',
+            pointPenalty: 10,
+          },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 10,
+    },
+    {
+      id: 'enable-feed-heater',
+      nice: ['S0421', 'K0741'],
+      title: 'Enable Feed Heater',
+      description: 'Enable the feed heater on the ACU Control tab as a weather precaution.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['weather-alert-decision'],
+      timeLimitSeconds: 2 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'tab-active',
+          description: 'ACU Control Tab Open',
+          params: { tab: 'acu-control' },
+          mustMaintain: true,
+        },
+        {
+          type: 'feed-heater-enabled',
+          description: 'Feed Heater Enabled',
+          mustMaintain: true,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 10,
+    },
+
+    // ============================================================
+    // PHASE 6: TX CHAIN VERIFICATION (Scenarios 2, 7 Skills)
+    // ============================================================
+    {
+      id: 'calculate-aurora7-uplink-if',
+      nice: ['K0773', 'K1032'],
+      title: 'Calculate AURORA-7 Uplink IF',
+      description: 'Calculate the correct TX modem IF frequency for AURORA-7 uplink.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['enable-feed-heater'],
+      timeLimitSeconds: 3 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'status-check',
+          description: 'Uplink IF Calculation',
+          params: {
+            question: 'AURORA-7 uplink RF is 5830 MHz. The BUC LO is 4925 MHz. What TX IF frequency is required?',
+            options: [
+              '1075 MHz (RF - BUC LO = 6000 - 4925)',
+              '10755 MHz (RF + BUC LO)',
+              '1043 MHz (wrong BUC LO assumed)',
+              '5830 MHz (RF frequency directly)',
+            ],
+            correctIndex: 0,
+            explanation: 'TX IF = RF - BUC LO = 6000 - 4925 = 1075 MHz. The BUC upconverts by adding the LO frequency to the IF.',
+            pointPenalty: 15,
+          },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 15,
+    },
+    {
+      id: 'configure-tx-modem',
+      nice: ['S0421', 'T1567'],
+      title: 'Configure TX Modem',
+      description: 'Set the transmitter modem to the calculated IF frequency for AURORA-7.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['calculate-aurora7-uplink-if'],
+      timeLimitSeconds: 3 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'tab-active',
+          description: 'TX Chain Tab Open',
+          params: { tab: 'tx-chain' },
+          mustMaintain: true,
+        },
+        {
+          type: 'tx-modem-frequency-set',
+          description: 'TX Frequency Set to 1075 MHz',
+          params: {
+            frequency: 1075e6,
+            frequencyTolerance: 2e6,
+          },
+          maintainUntilObjectiveComplete: true,
+        },
+        {
+          type: 'tx-modem-bandwidth-set',
+          description: 'TX Bandwidth Set to 24 MHz',
+          params: {
+            bandwidth: 24e6,
+            bandwidthTolerance: 2e6,
+          },
+          maintainUntilObjectiveComplete: true,
+        },
+        {
+          type: 'tx-modem-modulation-set',
+          description: 'TX Modulation: QPSK',
+          params: { modulation: 'QPSK' },
+          maintainUntilObjectiveComplete: true,
+        },
+        {
+          type: 'tx-modem-fec-set',
+          description: 'TX FEC: 3/4',
+          params: { fec: '3/4' },
+          maintainUntilObjectiveComplete: true,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 15,
+    },
+    {
+      id: 'verify-buc-loopback',
+      nice: ['T1313', 'S0582'],
+      title: 'Verify TX Chain with Loopback',
+      description: 'Use BUC loopback mode to verify the TX modem configuration before going live.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['configure-tx-modem'],
+      timeLimitSeconds: 3 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'tab-active',
+          description: 'TX Chain Tab Open',
+          params: { tab: 'tx-chain' },
+          mustMaintain: true,
+        },
+        {
+          type: 'buc-loopback-enabled',
+          description: 'BUC Loopback Enabled',
+          mustMaintain: true,
+        },
+        {
+          type: 'buc-unmuted',
+          description: 'BUC Unmuted for Test',
+          mustMaintain: true,
+        },
+        {
+          type: 'status-check',
+          description: 'Loopback Purpose',
+          params: {
+            question: 'Why is loopback testing important before enabling the uplink?',
+            options: [
+              'Verifies TX modem and BUC signal path without radiating RF through the antenna',
+              'Loopback increases the output power for better signal',
+              'It is required by FCC regulations',
+              'Loopback tests the HPA tubes',
+            ],
+            correctIndex: 0,
+            explanation: 'Loopback testing validates the low-power transmit chain without engaging the HPA or radiating RF. This catches configuration errors safely.',
+            pointPenalty: 10,
+          },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 15,
+    },
+    {
+      id: 'verify-loopback-signal',
+      nice: ['T0153', 'K0740'],
+      title: 'Verify Loopback Signal',
+      description: 'Check the spectrum analyzer at 905 MHz to confirm the loopback signal is present.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['verify-buc-loopback'],
+      timeLimitSeconds: 2 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'tab-active',
+          description: 'RX Analysis Tab Open',
+          params: { tab: 'rx-analysis' },
+          mustMaintain: true,
+        },
+        {
+          type: 'speca-center-frequency',
+          description: 'Spectrum Analyzer at TX IF',
+          params: {
+            centerFrequency: 905e6 as Hertz,
+            centerFrequencyTolerance: 5e6,
+          },
+          mustMaintain: true,
+        },
+        {
+          type: 'status-check',
+          description: 'Loopback Signal Verified',
+          params: {
+            question: 'What should you observe on the spectrum analyzer at 905 MHz?',
+            options: [
+              'A 24 MHz wide modulated signal - confirming TX modem output',
+              'A narrow CW spike like the beacon',
+              'No signal - loopback does not produce visible output',
+              'The AURORA-7 beacon signal',
+            ],
+            correctIndex: 0,
+            explanation: 'The loopback signal appears as a 24 MHz wide modulated carrier (matching AURORA-7 bandwidth), confirming the TX modem is generating the correct signal and the BUC loopback path is working.',
+            pointPenalty: 10,
+          },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 10,
+    },
+
+    // ============================================================
+    // PHASE 7: UPLINK ENABLE (Scenario 2 Power Sequencing)
+    // ============================================================
+    {
+      id: 'disable-loopback-prepare-uplink',
+      nice: ['S0421', 'T1567'],
+      title: 'Prepare for Live Uplink',
+      description: 'Disable loopback mode and mute BUC in preparation for HPA enable.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['verify-loopback-signal'],
+      timeLimitSeconds: 2 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'tab-active',
+          description: 'TX Chain Tab Open',
+          params: { tab: 'tx-chain' },
+          mustMaintain: true,
+        },
+        {
+          type: 'buc-loopback-disabled',
+          description: 'Loopback Disabled',
+          mustMaintain: true,
+        },
+        {
+          type: 'buc-muted',
+          description: 'BUC Muted',
+          mustMaintain: true,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 5,
+    },
+    {
+      id: 'enable-hpa-sequence',
+      nice: ['S0421', 'K0770'],
+      title: 'Enable HPA',
+      description: 'Power on and enable the HPA output stage following proper sequencing.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['disable-loopback-prepare-uplink'],
+      timeLimitSeconds: 2 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'tab-active',
+          description: 'TX Chain Tab Open',
+          params: { tab: 'tx-chain' },
+          mustMaintain: true,
+        },
+        {
+          type: 'equipment-powered',
+          description: 'HPA Powered',
+          params: { equipment: 'hpa' },
+          maintainUntilObjectiveComplete: true,
+        },
+        {
+          type: 'hpa-enabled',
+          description: 'HPA Output Enabled',
+          maintainUntilObjectiveComplete: true,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 10,
+    },
+    {
+      id: 'unmute-buc-go-live',
+      nice: ['S0421', 'T1567'],
+      title: 'Unmute BUC - Go Live',
+      description: 'Unmute the BUC to begin live transmission to AURORA-7.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['enable-hpa-sequence'],
+      timeLimitSeconds: 1 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'tab-active',
+          description: 'TX Chain Tab Open',
+          params: { tab: 'tx-chain' },
+          mustMaintain: true,
+        },
+        {
+          type: 'buc-unmuted',
+          description: 'BUC Unmuted - Transmitting',
+          mustMaintain: true,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 10,
+    },
+
+    // ============================================================
+    // FINAL VERIFICATION
+    // ============================================================
+    {
+      id: 'verify-link-operational',
+      nice: ['T0153', 'K0741'],
+      title: 'Verify Link Operational',
+      description: 'Confirm the AURORA-7 link is fully operational with both RX and TX paths verified.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['unmute-buc-go-live'],
+      timeLimitSeconds: 2 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'tab-active',
+          description: 'Dashboard Tab Open',
+          params: { tab: 'dashboard' },
+          mustMaintain: true,
+        },
+        {
+          type: 'status-check',
+          description: 'Link Status Verification',
+          params: {
+            question: 'What indicators confirm the AURORA-7 link is now operational?',
+            options: [
+              'All of the above',
+              'No active alarms on Dashboard',
+              'Antenna in step-track with beacon lock',
+              'HPA enabled and BUC unmuted',
+            ],
+            correctIndex: 0,
+            explanation: 'A fully operational link shows: no Dashboard alarms, antenna tracking with beacon lock (step-track for inclined orbit), and active TX chain (HPA enabled, BUC unmuted). All conditions must be met.',
+            pointPenalty: 10,
+            preserveOptionOrder: true,
+          },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 15,
+    },
+    {
+      id: 'final-summary',
+      nice: ['K0645', 'T0153'],
+      title: 'Document Resolution',
+      description: 'Summarize the actions taken to resolve the customer issue.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['verify-link-operational'],
+      timeLimitSeconds: 2 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'status-check',
+          description: 'Resolution Summary',
+          params: {
+            question: 'Which summary correctly describes the root cause and resolution?',
+            options: [
+              'LNB reference unlock caused RX degradation; program-track inadequate for inclined orbit. Fixed by power cycling LNB and enabling step-track.',
+              'HPA fault caused TX failure; fixed by replacing the HPA tube.',
+              'Weather degradation caused link loss; handed over to backup station.',
+              'Customer equipment issue; no action required at ground station.',
+            ],
+            correctIndex: 0,
+            explanation: 'The customer intermittent connectivity had two causes: (1) LNB reference unlock degraded receive quality, (2) program-track mode could not follow AURORA-7\'s inclined orbit drift. Both were resolved without waking Dana or escalating.',
+            pointPenalty: 15,
+          },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 20,
+    },
+  ] as Objective[],
+  dialogClips: {
+    intro: {
+      text: `
+      <p>
+        <em>[Text message from Dana at 2:17 AM]</em>
+      </p>
+      <p>
+        "Hey - NOC just forwarded a trouble ticket. Customer reports intermittent connectivity on AURORA-7, signal dropouts every few minutes. I'm on-call but heading back to sleep. You've got this."
+      </p>
+      <p>
+        "Charlie's out of state visiting family. Don't call unless it's a genuine emergency. Good luck."
+      </p>
+      `,
+      character: Character.DANA_TORRES,
+      emotion: Emotion.NEUTRAL,
+      audioUrl: getAssetUrl('/assets/campaigns/nats/8/intro.mp3'),
+    },
+    objectives: {
+      'final-summary': {
+        text: `
+        <p>
+          <em>[Text message from Dana at 4:45 AM]</em>
+        </p>
+        <p>
+          "Saw the ticket resolution come through. LNB reference issue and tracking mode - good catches. You handled it right. No need to wake me for that."
+        </p>
+        <p>
+          "Charlie will be proud. See you at shift change."
+        </p>
+        <p>
+          <strong>Congratulations. You've demonstrated the skills for solo operations.</strong>
+        </p>
+        `,
+        character: Character.DANA_TORRES,
+        emotion: Emotion.HAPPY,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/8/obj-final-summary.mp3'),
+      },
+    },
   },
 };

@@ -10,7 +10,7 @@ import { maineGroundStation, vermontGroundStation } from './ground-stations';
 import { ses10Satellite, tidemark2Satellite } from './satellites';
 
 /**
- * NATS Level 6: "Interference Hunt"
+ * NATS Level 5: "Interference Hunt"
  *
  * Phase: Intermediate
  * Time Pressure: Moderate
@@ -53,7 +53,7 @@ export const scenario5Data: ScenarioData = {
   title: 'Interference Hunt',
   subtitle: 'Spectrum Analysis and Mitigation',
   duration: '20-25 min',
-  difficulty: 'intermediate',
+  difficulty: 'beginner',
   missionType: 'Troubleshooting',
   description: `Customer reports degraded service on TIDEMARK-1. The C/N ratio has dropped significantly, causing packet errors.<br><br>The spectrum analyzer is currently configured for beacon tracking - you'll need to reconfigure it to investigate the main signal. Something's causing interference, and you'll need to find it, understand what's happening, and apply the right mitigation.<br><br>Charlie will guide you through the troubleshooting process and provide hints along the way.`,
   equipment: [
@@ -72,7 +72,7 @@ export const scenario5Data: ScenarioData = {
         isOperational: true,
       },
     ],
-    missionBriefUrl: 'https://docs.signalrange.space/scenarios/scenario-6?content-only=true&dark=true',
+    missionBriefUrl: 'https://docs.signalrange.space/scenarios/scenario-5?content-only=true&dark=true',
     isExtraSatellitesVisible: true,
     satellites: [
       new Satellite(
@@ -168,7 +168,7 @@ export const scenario5Data: ScenarioData = {
     // PHASE 1: MISSION PREPARATION
     // =========================================================================
     {
-      id: 'open-mission-brief',
+      id: 'review-mission-brief',
       nice: ['K0645'], // K0645: Knowledge of media interface concepts (knowledge of how to receive and understand operational communications)
       title: 'Review Mission Brief',
       description: 'Open and read the mission brief, then acknowledge you are ready to proceed.',
@@ -201,11 +201,13 @@ export const scenario5Data: ScenarioData = {
     },
     {
       id: 'select-vermont-station',
-      nice: ['S0164'], // S0164: Skill to access information on a network
+      // S0421: Skill in operating network equipment - accessing the ground station
+      // control interface is the fundamental skill for all subsequent operations
+      nice: ['S0421'],
       title: 'Select Vermont Ground Station',
       description: 'Navigate to the VT-01 ground station where the affected customer link terminates.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['open-mission-brief'],
+      prerequisiteObjectiveIds: ['review-mission-brief'],
       conditions: [
         {
           type: 'ground-station-selected',
@@ -223,16 +225,18 @@ export const scenario5Data: ScenarioData = {
     // =========================================================================
     {
       id: 'navigate-rx-analysis',
-      nice: ['S0164'], // S0164: Skill to access information on a network
+      // S0421: Skill in operating network equipment - navigating to the receive
+      // chain panel within the ground station control interface
+      nice: ['S0421'],
       title: 'Navigate to Receiver',
       description: 'Navigate to the Receiver Modem tab to check the current signal status.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['select-vermont-station'],
       conditions: [
         {
-          type: 'tab-selected',
+          type: 'tab-active',
           description: 'Receiver Modem Tab Open',
-          params: { tabId: 'rx-modem' },
+          params: { tab: 'rx-modem' },
           mustMaintain: true,
         },
       ],
@@ -306,16 +310,18 @@ export const scenario5Data: ScenarioData = {
     // =========================================================================
     {
       id: 'navigate-speca-config',
-      nice: ['S0164'], // S0164: Skill to access information on a network
+      // S0421: Skill in operating network equipment - navigating to the spectrum
+      // analyzer panel within the ground station control interface
+      nice: ['S0421'],
       title: 'Navigate to Spectrum Analyzer',
       description: 'Navigate to the Spectrum Analyzer tab to investigate the signal.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['verify-receiver-state-quiz'],
       conditions: [
         {
-          type: 'tab-selected',
+          type: 'tab-active',
           description: 'Spectrum Analyzer Tab Open',
-          params: { tabId: 'speca' },
+          params: { tab: 'speca' },
           mustMaintain: true,
         },
       ],
@@ -324,7 +330,7 @@ export const scenario5Data: ScenarioData = {
     },
     {
       id: 'verify-speca-initial-state',
-      nice: ['K1032', 'T0153'], // K1032: Knowledge of RF propagation, T0153: Monitor network capacity and performance
+      nice: ['K0737', 'K1032', 'T0153'], // K0737: Knowledge of RF spectrum characteristics, K1032: Knowledge of RF propagation, T0153: Monitor network capacity and performance
       title: 'Assess Current Configuration',
       description: 'Before adjusting the spectrum analyzer, understand why its current configuration is inadequate.',
       groundStation: 'VT-01',
@@ -354,7 +360,7 @@ export const scenario5Data: ScenarioData = {
     },
     {
       id: 'phase-2-configure-span',
-      nice: ['S0421', 'T0153'], // S0421: Skill in using test equipment, T0153: Monitor network capacity and performance
+      nice: ['K0737', 'S0421', 'T0153'], // K0737: Knowledge of RF spectrum characteristics, S0421: Skill in using test equipment, T0153: Monitor network capacity and performance
       title: 'Widen Spectrum View',
       description: 'The spectrum analyzer is currently configured for beacon observation. Widen the frequency span to see the full signal bandwidth.',
       groundStation: 'VT-01',
@@ -479,7 +485,7 @@ export const scenario5Data: ScenarioData = {
     },
     {
       id: 'phase-5-characterize-interference',
-      nice: ['K0773', 'K0740'], // K0773: Knowledge of signal analysis, K0740: Knowledge of network performance parameters
+      nice: ['K0737', 'K0773', 'K0740'], // K0737: Knowledge of RF spectrum characteristics, K0773: Knowledge of signal analysis, K0740: Knowledge of network performance parameters
       title: 'Characterize the Interference',
       description: 'Look closely at the interference. What can you determine about its bandwidth compared to our main signal?',
       groundStation: 'VT-01',
@@ -620,7 +626,7 @@ export const scenario5Data: ScenarioData = {
     // =========================================================================
     {
       id: 'understand-mitigation-options',
-      nice: ['K0773', 'S0582'], // K0773: Knowledge of signal analysis, S0582: Skill in troubleshooting RF systems
+      nice: ['K0737', 'K0773', 'S0582'], // K0737: Knowledge of RF spectrum characteristics, K0773: Knowledge of signal analysis, S0582: Skill in troubleshooting RF systems
       title: 'Evaluate Mitigation Approaches',
       description: 'Consider the available options for mitigating this interference.',
       groundStation: 'VT-01',
@@ -654,16 +660,18 @@ export const scenario5Data: ScenarioData = {
     // =========================================================================
     {
       id: 'navigate-filter-bank',
-      nice: ['S0164'], // S0164: Skill to access information on a network
+      // S0421: Skill in operating network equipment - navigating to the IF filter
+      // bank panel within the ground station control interface
+      nice: ['S0421'],
       title: 'Navigate to Filter Bank',
       description: 'Navigate to the IF Filter Bank tab to configure the notch filter.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['understand-mitigation-options'],
       conditions: [
         {
-          type: 'tab-selected',
+          type: 'tab-active',
           description: 'Filter Bank Tab Open',
-          params: { tabId: 'if-filter' },
+          params: { tab: 'if-filter' },
           mustMaintain: true,
         },
       ],
@@ -672,7 +680,7 @@ export const scenario5Data: ScenarioData = {
     },
     {
       id: 'phase-8-apply-notch-filter',
-      nice: ['S0582', 'S0421'], // S0582: Skill in troubleshooting RF systems, S0421: Skill in using test equipment
+      nice: ['K0737', 'S0582', 'S0421'], // K0737: Knowledge of RF spectrum characteristics, S0582: Skill in troubleshooting RF systems, S0421: Skill in using test equipment
       title: 'Configure Notch Filter',
       description: 'Configure a notch filter to surgically remove the interference spike. Match the filter settings to what you observed on the spectrum.',
       groundStation: 'VT-01',
@@ -715,9 +723,9 @@ export const scenario5Data: ScenarioData = {
       prerequisiteObjectiveIds: ['phase-8-apply-notch-filter'],
       conditions: [
         {
-          type: 'tab-selected',
+          type: 'tab-active',
           description: 'Spectrum Analyzer Tab Open',
-          params: { tabId: 'speca' },
+          params: { tab: 'speca' },
           mustMaintain: false,
         },
         {
@@ -825,7 +833,7 @@ export const scenario5Data: ScenarioData = {
       audioUrl: getAssetUrl('/assets/campaigns/nats/6/intro.mp3'),
     },
     objectives: {
-      'open-mission-brief': {
+      'review-mission-brief': {
         text: `
         <p>
           Good. Now let's approach this systematically. The customer is reporting packet errors, which usually means a C/N problem somewhere in the chain. Start by checking the receiver modem to see what's actually happening with the signal quality.

@@ -19,6 +19,12 @@ export interface LNBState extends RFFrontEndModuleState {
   thermalStabilizationTime: number; // seconds (time for physical temp to stabilize after power-on)
   frequencyError: number; // Hz (LO frequency drift)
   isExtRefLocked: boolean;
+  /**
+   * Sticky fault that prevents reference lock acquisition.
+   * Set to true to simulate a reference lock fault condition.
+   * Clears automatically when LNB is power cycled (OFF then ON).
+   */
+  hasRefLockFault?: boolean;
 }
 
 /**
@@ -279,9 +285,16 @@ export abstract class LNBModuleCore extends RFFrontEndModule<LNBState> {
 
   /**
    * Update lock status based on power and external reference
-   * Uses base class implementation
+   * Checks for sticky fault condition before allowing lock acquisition
    */
   private updateLockStatus_(): void {
+    // If sticky fault is active, force unlock and prevent lock acquisition
+    if (this.state.hasRefLockFault) {
+      this.state.isExtRefLocked = false;
+      return;
+    }
+
+    // Normal lock status update via base class
     this.updateLockStatus();
   }
 
@@ -367,6 +380,8 @@ export abstract class LNBModuleCore extends RFFrontEndModule<LNBState> {
 
   // Public handlers for UI layer
   public handlePowerToggle(isPowered?: boolean): void {
+    const wasPowered = this.state.isPowered;
+
     if (isPowered !== undefined) {
       this.state.isPowered = isPowered;
     } else {
@@ -376,6 +391,11 @@ export abstract class LNBModuleCore extends RFFrontEndModule<LNBState> {
     // Track power-on time for noise temperature stabilization
     if (this.state.isPowered) {
       this.powerOnTimestamp_ = Date.now();
+
+      // Clear sticky fault on power-on (simulates power cycle clearing transient faults)
+      if (!wasPowered && this.state.hasRefLockFault) {
+        this.state.hasRefLockFault = false;
+      }
     } else {
       this.powerOnTimestamp_ = null;
     }

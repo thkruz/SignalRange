@@ -1529,6 +1529,11 @@ export class ObjectivesManager {
         if (!condition.params?.trackingMode) return false;
         const targetMode = condition.params.trackingMode;
         return this.evaluateEquipment_(gs.antennas, condition.params, (antenna) => {
+          // Step-track is an optimization layer on top of program-track, not a separate mode
+          if (targetMode === 'step-track') {
+            return antenna.state.trackingMode === 'program-track' &&
+                   antenna.state.isStepTrackEnabled === true;
+          }
           return antenna.state.trackingMode === targetMode;
         });
       }

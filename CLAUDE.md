@@ -168,6 +168,18 @@ npx tsc --noEmit src/campaigns/nats/scenario5.ts
 
 This project uses `@app/*` path aliases (e.g., `@app/types`, `@app/equipment/...`) that require the full tsconfig.json configuration. Running tsc on individual files bypasses this and produces false "Cannot find module" errors.
 
+## Git Commits
+
+- Do NOT add `Co-Authored-By` lines to commit messages
+- Use conventional commit format: `type(scope): description`
+- Use emoji in commit titles for clarity:
+  - Example: feat: :sparkles: Add new frequency adjustment control
+  - ✨ `:sparkles:` for new features
+  - 🐛 `:bug:` for bug fixes
+  - ♻️ `:recycle:` for refactoring
+  - 📝 `:memo:` for documentation changes
+- Common types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`
+
 ## Planning
 
 When you use Plan Mode or create multi-step plans in this repo:

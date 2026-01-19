@@ -339,7 +339,7 @@ export const scenario3Data: ScenarioData = {
               'Equipment Protection → Safety → Customer Impact → Efficiency',
             ],
             correctIndex: 0,
-            explanation: 'Safety always comes first - protecting personnel from RF hazards or other dangers. Next is customer impact - maintaining service. Then equipment protection - preventing damage. Finally, efficiency - doing things the optimal way. This framework guides every operational decision.',
+            explanation: "Safety always comes first - protecting personnel from RF hazards or other dangers. Next is customer impact - maintaining service. Then equipment protection - preventing damage. Finally, efficiency - doing things the optimal way. This framework guides what to address first when multiple concerns compete for attention - it's about prioritization, not about sacrificing lower priorities.",
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -355,8 +355,8 @@ export const scenario3Data: ScenarioData = {
       // K0773: Knowledge of telecommunications principles and practices -
       // understanding how ice affects RF performance
       nice: ['K0741', 'K0773'],
-      title: 'Understand Feed Heater Purpose',
-      description: 'Confirm you understand why the feed heater is important during snow events.',
+      title: 'Understand Feed Heater Consequences',
+      description: 'Understand what would happen if the feed heater was turned off during this storm.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['understand-prioritization'],
       timeLimitSeconds: 2 * 60,
@@ -364,17 +364,17 @@ export const scenario3Data: ScenarioData = {
       conditions: [
         {
           type: 'status-check',
-          description: 'Understand Feed Heater Function',
+          description: 'Understand Feed Heater Consequences',
           params: {
-            question: 'Why is enabling the feed heater critical during a snow event?',
+            question: 'What would happen if the feed heater was turned off during this snow event?',
             options: [
-              'Ice on the feed horn and waveguide attenuates RF signal and can physically damage components',
-              'The heater keeps the LNB warm for better noise performance',
-              'It prevents the antenna motors from freezing',
-              'Snow on the dish reflector needs to be melted',
+              'Ice would accumulate on the feed horn and waveguide, causing signal attenuation and potential physical damage',
+              'The LNB would cool down and produce more noise',
+              'The antenna motors would freeze and stop tracking',
+              'Snow would build up on the dish reflector',
             ],
             correctIndex: 0,
-            explanation: 'Ice accumulation on the feed horn and waveguide causes signal attenuation and can physically damage the feed assembly. The heater prevents ice from forming on these critical RF components. The dish reflector is a different concern - snow there causes pointing errors but is handled differently.',
+            explanation: 'Without the heater, ice would accumulate on the feed horn and waveguide. This causes signal attenuation (making the weather degradation even worse) and can physically damage the feed assembly. The heater prevents ice from forming on these critical RF components.',
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -422,8 +422,8 @@ export const scenario3Data: ScenarioData = {
       // K0740: Knowledge of system performance indicators - understanding AGC
       // as an indicator of signal level changes
       nice: ['T0153', 'K0740'],
-      title: 'Monitor AGC Status',
-      description: 'Observe the AGC (Automatic Gain Control) indicator on the RX Analysis tab. The AGC automatically adjusts gain to compensate for signal level changes.',
+      title: 'Understand AGC Function',
+      description: 'Understand what the AGC (Automatic Gain Control) does and why it matters during weather degradation.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['navigate-rx-vt01-agc'],
       timeLimitSeconds: 3 * 60,
@@ -437,17 +437,17 @@ export const scenario3Data: ScenarioData = {
         },
         {
           type: 'status-check',
-          description: 'Identify AGC Function',
+          description: 'Understand AGC Consequences',
           params: {
-            question: 'What is the AGC (Automatic Gain Control) doing as the weather degrades the signal?',
+            question: 'What would happen if the AGC was disabled during this weather event?',
             options: [
-              'Increasing gain to compensate for signal attenuation from the snow',
-              'Decreasing gain to prevent amplifier saturation',
-              'Maintaining constant gain regardless of input level',
-              'Shutting down to protect the receiver',
+              'The output signal level would drop as weather attenuated the input, eventually causing loss of lock',
+              'The receiver would overheat from trying to process a weak signal',
+              'The LNB would automatically increase its own gain to compensate',
+              'Nothing - AGC only matters for clear weather conditions',
             ],
             correctIndex: 0,
-            explanation: 'The AGC automatically increases gain to compensate for signal attenuation caused by the snow. This keeps the output level stable as long as the input signal remains above the noise floor. However, AGC has limits - once the signal degrades too far, even maximum gain cannot recover it.',
+            explanation: 'Without AGC, the output level would drop proportionally as the snow attenuates the input signal. Once the signal falls below the demodulation threshold, the receiver loses lock and data is lost. AGC compensates by automatically increasing gain to maintain a stable output level - but it has limits.',
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -458,12 +458,12 @@ export const scenario3Data: ScenarioData = {
     },
     {
       id: 'estimate-time-remaining',
-      // K0740: Knowledge of system performance indicators - understanding AGC
-      // headroom and degradation rate
-      // T0153: Monitor network capacity and performance - assessing link margin
+      // K0740: Knowledge of system performance indicators - understanding why
+      // weather handovers are time-critical
+      // T0153: Monitor network capacity and performance - understanding urgency
       nice: ['K0740', 'T0153'],
-      title: 'Estimate Time Remaining',
-      description: 'Assess the current link margin and estimate how long until the link becomes unusable.',
+      title: 'Understand Time Pressure',
+      description: 'Understand why weather handovers are time-critical operations.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['verify-agc-status'],
       timeLimitSeconds: 2 * 60,
@@ -471,17 +471,17 @@ export const scenario3Data: ScenarioData = {
       conditions: [
         {
           type: 'status-check',
-          description: 'Time Estimation',
+          description: 'Understand Urgency',
           params: {
-            question: 'The weather forecast predicts 8 dB total degradation. Current AGC shows 2 dB of compensation already applied, with 6 dB of headroom remaining. At the current degradation rate of approximately 1 dB per minute, how much time do you have before the link fails?',
+            question: 'I mentioned you have about six minutes before the link fails. What makes weather handovers so time-critical?',
             options: [
-              'Approximately 6 minutes - we need to move quickly',
-              'Approximately 30 minutes - plenty of time',
-              'Approximately 2 minutes - almost no time left',
-              'Cannot be estimated from this information',
+              'Weather degradation is progressive - once AGC runs out of compensation range, the link fails rapidly',
+              'The antenna motors slow down in cold weather and take longer to move',
+              'Customer data must be backed up before switching sites',
+              'Maine operators need time to physically travel to the station',
             ],
             correctIndex: 0,
-            explanation: 'With 6 dB of headroom remaining and degradation at ~1 dB/minute, you have roughly 6 minutes before the AGC maxes out and the link drops below threshold. This is why weather handovers require urgency - the math is unforgiving.',
+            explanation: 'Weather degradation is continuous and progressive. The AGC compensates up to a point, but once it maxes out, any further signal loss causes rapid link failure. There\'s no graceful degradation - you either have enough margin or you don\'t. This is why we start the handover process well before the predicted failure point.',
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -525,48 +525,6 @@ export const scenario3Data: ScenarioData = {
       conditionLogic: 'AND',
       points: 10,
     },
-
-    {
-      id: 'acknowledge-agc-alarm',
-      // K0741: Knowledge of system availability measures - understanding alarm
-      // acknowledgment as operator awareness indicator
-      // T0153: Monitor network capacity and performance - alarm management
-      nice: ['K0741', 'T0153'],
-      title: 'Acknowledge AGC Limit Alarm',
-      description: 'The AGC has reached its compensation limit. Acknowledge the alarm to indicate you are aware of the condition.',
-      groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['verify-agc-limits-quiz'],
-      timeLimitSeconds: 2 * 60,
-      timerStartTrigger: 'on-activate',
-      conditions: [
-        {
-          type: 'tab-active',
-          description: 'Dashboard Tab Open',
-          params: { tab: 'dashboard' },
-          mustMaintain: true,
-        },
-        {
-          type: 'status-check',
-          description: 'Understand Alarm Acknowledgment',
-          params: {
-            question: 'What does acknowledging an alarm indicate?',
-            options: [
-              'You are aware of the condition but it is not yet resolved',
-              'The problem has been fixed',
-              'The alarm was a false positive',
-              'You are ignoring the alarm',
-            ],
-            correctIndex: 0,
-            explanation: 'Acknowledging an alarm tells the system (and other operators) that you have seen the condition. The alarm remains active until the underlying issue is resolved. This prevents the same alarm from repeatedly alerting and helps track operator awareness.',
-            pointPenalty: 5,
-          },
-          mustMaintain: false,
-        },
-      ],
-      conditionLogic: 'AND',
-      points: 10,
-    },
-
     // ============================================================
     // SWITCH TO MAINE STATION
     // ============================================================
@@ -580,7 +538,7 @@ export const scenario3Data: ScenarioData = {
       title: 'Access Maine Backup Station',
       description: 'Use the asset tree on the left to select ME-02 (Maine). Vermont will continue serving traffic in the background while you configure Maine.',
       groundStation: 'ME-02',
-      prerequisiteObjectiveIds: ['acknowledge-agc-alarm'],
+      prerequisiteObjectiveIds: ['verify-agc-limits-quiz'],
       timeLimitSeconds: 2 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
@@ -834,7 +792,7 @@ export const scenario3Data: ScenarioData = {
           type: 'status-check',
           description: 'Acknowledge Catherine\'s Check',
           params: {
-            question: 'Catherine asks: "I see you used program-track mode. Good choice. Do you know why I was checking the antenna pointing?"',
+            question: "I see you used program-track mode. Good choice. Do you know why I was checking the antenna pointing?",
             options: [
               'Because look angles to a satellite depend on the ground station\'s geographic location',
               'Because the antenna might have been damaged during storage',
@@ -844,6 +802,7 @@ export const scenario3Data: ScenarioData = {
             correctIndex: 0,
             explanation: 'Each ground station has unique look angles to any given satellite based on its latitude and longitude. Maine is about 150 miles from Vermont, so the azimuth and elevation are slightly different. Program-track mode calculates this automatically, but a common mistake for new operators is manually entering Vermont\'s angles at Maine.',
             pointPenalty: 10,
+            character: Character.CATHERINE_VEGA,
           },
           mustMaintain: false,
         },
@@ -984,7 +943,7 @@ export const scenario3Data: ScenarioData = {
       // setting correct IF frequency for beacon observation
       nice: ['S0421', 'K0773'],
       title: 'Configure Spectrum Analyzer',
-      description: 'Set the spectrum analyzer to observe the TIDEMARK-1 beacon: Center frequency 1,074.5 MHz, Reference level -91 dBm.',
+      description: 'Set the spectrum analyzer to observe the TIDEMARK-1 beacon: Center frequency 1,074.5 MHz, Span 2 kHz, Minimum Amplitude -65 dBm, Maximum Amplitude -50 dBm.',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['verify-lnb-config-quiz'],
       timeLimitSeconds: 3 * 60,
@@ -1006,11 +965,29 @@ export const scenario3Data: ScenarioData = {
           maintainUntilObjectiveComplete: true,
         },
         {
-          type: 'speca-reference-level-set',
-          description: 'Reference Level Set to -91 dBm',
+          type: 'speca-span-set',
+          description: 'Span Set to 2 kHz',
           params: {
-            referenceLevel: -91,
-            referenceLevelTolerance: 5,
+            span: 2e3 as Hertz,
+            spanTolerance: 100,
+          },
+          maintainUntilObjectiveComplete: true,
+        },
+        {
+          type: 'speca-min-amplitude',
+          description: 'Minimum Amplitude Set to -65 dBm',
+          params: {
+            minAmplitude: -65 as dBm,
+            minAmplitudeTolerance: 2,
+          },
+          maintainUntilObjectiveComplete: true,
+        },
+        {
+          type: 'speca-max-amplitude',
+          description: 'Maximum Amplitude Set to -50 dBm',
+          params: {
+            maxAmplitude: -50 as dBm,
+            maxAmplitudeTolerance: 2,
           },
           maintainUntilObjectiveComplete: true,
         },
@@ -1374,26 +1351,20 @@ export const scenario3Data: ScenarioData = {
     // ============================================================
     {
       id: 'navigate-dashboard-handover',
-      // S0421: Skill in operating network equipment - navigating to dashboard
-      // for traffic handover execution
+      // S0421: Skill in operating network equipment - navigating to satellite
+      // dashboard for traffic handover execution
       nice: ['S0421'],
-      title: 'Open Dashboard Tab',
-      description: 'Click the Dashboard tab to access the traffic handover controls.',
+      title: 'Open Satellite Dashboard',
+      description: 'Click on TIDEMARK-1 in the map to access the traffic handover controls.',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['configure-maine-tx-modem'],
       timeLimitSeconds: 2 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
         {
-          type: 'ground-station-selected',
-          description: 'Maine Station Active',
-          params: { groundStationId: 'ME-02' },
-          mustMaintain: true,
-        },
-        {
-          type: 'tab-active',
-          description: 'Dashboard Tab Open',
-          params: { tab: 'dashboard' },
+          type: 'satellite-selected',
+          description: 'TIDEMARK-1 Selected',
+          params: { assetSatelliteId: 'sat-61525' },
           mustMaintain: true,
         },
       ],
@@ -1649,12 +1620,12 @@ export const scenario3Data: ScenarioData = {
           params: {
             question: 'What information should be logged for this weather handover event?',
             options: [
-              'All of the above',
               'Time of degradation onset and handover completion',
               'Affected satellite and services',
               'Primary and backup station identifiers',
+              'All of the above',
             ],
-            correctIndex: 0,
+            correctIndex: 3,
             explanation: 'Complete event documentation includes: timestamps for degradation and handover, affected assets, stations involved, weather conditions, and any anomalies observed. This information is critical for post-incident review and pattern analysis.',
             pointPenalty: 5,
             preserveOptionOrder: true,
@@ -1760,7 +1731,7 @@ export const scenario3Data: ScenarioData = {
           Safety, customer, equipment, efficiency. Memorize it. When things get hectic, that order will keep you out of trouble.
         </p>
         <p>
-          Now - why did we enable the heater? What's it actually protecting?
+          Now - what would happen if we turned the heater off during this storm?
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -1787,7 +1758,10 @@ export const scenario3Data: ScenarioData = {
       'navigate-rx-vt01-agc': {
         text: `
         <p>
-          Look at the AGC indicator - top of the panel, next to the LNB card. AGC stands for Automatic Gain Control. Watch what it's doing as the snow attenuates our signal.
+          Look at the AGC indicator - top of the panel, next to the LNB card. AGC stands for Automatic Gain Control. See how it's compensating as the snow attenuates our signal?
+        </p>
+        <p>
+          Think about what would happen if we didn't have AGC right now.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -1797,10 +1771,10 @@ export const scenario3Data: ScenarioData = {
       'verify-agc-status': {
         text: `
         <p>
-          Good observation. The AGC is doing its job - for now. But look at how much headroom we have left.
+          Right. Without AGC, we'd have lost lock minutes ago. It's buying us time - but based on the forecast, we've got maybe six minutes before the AGC runs out of room to compensate.
         </p>
         <p>
-          Quick mental math - how much time do we have before the AGC runs out of room to compensate?
+          Do you understand why weather handovers are so time-critical?
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -1810,7 +1784,7 @@ export const scenario3Data: ScenarioData = {
       'estimate-time-remaining': {
         text: `
         <p>
-          Six minutes. Maybe less if the storm intensifies. That's not much time to bring up a backup site.
+          Exactly. Weather degradation doesn't plateau - it keeps getting worse until you lose the link entirely. Six minutes isn't much time to bring up a backup site.
         </p>
         <p>
           This is why we practice handovers when there's no pressure. When the clock is ticking, you need to execute from muscle memory.
@@ -1826,25 +1800,12 @@ export const scenario3Data: ScenarioData = {
           Right. AGC has limits. Once we hit maximum gain, any further signal loss means we lose lock. That's why we're handing over to Maine.
         </p>
         <p>
-          Before we switch focus to Maine, there's an alarm that just triggered. Click the Dashboard tab - you need to acknowledge the AGC limit alarm. Acknowledging doesn't fix anything, but it tells the system you're aware.
+          Let's get Maine online. Click Maine Backup Station in the asset tree on the left.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.CONCERNED,
         audioUrl: getAssetUrl('/assets/campaigns/nats/3/obj-verify-agc-limits-quiz.mp3'),
-      },
-      'acknowledge-agc-alarm': {
-        text: `
-        <p>
-          Good. The alarm is acknowledged. It'll stay yellow until the condition clears - which won't happen until the weather passes or we hand over to Maine.
-        </p>
-        <p>
-          Now let's get Maine online. Click Maine Backup Station in the asset tree on the left.
-        </p>
-        `,
-        character: Character.CHARLIE_BROOKS,
-        emotion: Emotion.NEUTRAL,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/3/obj-acknowledge-agc-alarm.mp3'),
       },
 
       // ============================================================
@@ -1854,9 +1815,6 @@ export const scenario3Data: ScenarioData = {
         text: `
         <p>
           You're now looking at Maine's equipment. Notice Vermont's still running in the background - customers are still being served from there.
-        </p>
-        <p>
-          First thing on any cold start: verify the frequency reference. Everything keys off the GPSDO.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -1869,7 +1827,7 @@ export const scenario3Data: ScenarioData = {
           Right. Switching your view doesn't affect operations. Vermont keeps running, customers stay connected. You're just changing which control panel you're looking at.
         </p>
         <p>
-          GPS Timing tab. Let's verify Maine's GPSDO is locked.
+          First thing on any cold start - verify the frequency reference. Everything keys off the GPSDO. Go to the GPS Timing tab. Let's verify Maine's GPSDO is locked.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,

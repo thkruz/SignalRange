@@ -31,6 +31,7 @@ export class ObjectivesManager {
   private static instance_: ObjectivesManager | null = null;
   private static openedBoxIds_: Set<string> = new Set();
   private static selectedGroundStationId_: string | null = null;
+  private static selectedSatelliteId_: string | null = null;
   private readonly objectiveStates_: ObjectiveState[] = [];
   private readonly eventBus_: EventBus;
   private readonly collapsedObjectiveIds_: Set<string> = new Set();
@@ -349,6 +350,50 @@ export class ObjectivesManager {
   }
 
   /**
+   * Uncomplete the most recently completed objective.
+   * Used by developer menu for testing/debugging.
+   * @returns true if an objective was uncompleted, false if none available
+   */
+  uncompleteLastObjective(): boolean {
+    // Find the most recently completed objective
+    const completedObjectives = this.objectiveStates_.filter(
+      (state) => state.isCompleted && state.completedAt
+    );
+    if (completedObjectives.length === 0) {
+      return false;
+    }
+
+    const lastCompleted = completedObjectives.reduce((latest, current) =>
+      (current.completedAt ?? 0) > (latest.completedAt ?? 0) ? current : latest
+    , completedObjectives[0]);
+
+    // Reset objective state
+    lastCompleted.isCompleted = false;
+    lastCompleted.completedAt = undefined;
+
+    // Reset condition states
+    for (const condState of lastCompleted.conditionStates) {
+      condState.isSatisfied = false;
+      condState.satisfiedAt = undefined;
+      condState.maintainedDuration = 0;
+      condState.isMaintenanceComplete = false;
+    }
+
+    // Remove from collapsed set
+    this.collapsedObjectiveIds_.delete(lastCompleted.objective.id);
+
+    // Deactivate dependent objectives
+    this.deactivateDependentObjectives_(lastCompleted.objective.id);
+
+    // Handle freezing objectives - stop scenario timer
+    if (lastCompleted.objective.freezesScenarioTimer) {
+      this.scenarioTimerRunning_ = false;
+    }
+
+    return true;
+  }
+
+  /**
    * Set the scenario time remaining to a specific value.
    * Used by developer menu for testing/debugging.
    * @param seconds The new time remaining in seconds
@@ -544,9 +589,14 @@ export class ObjectivesManager {
   private handleAssetSelected_(data: { type: string; id: string }): void {
     if (data.type === 'ground-station') {
       ObjectivesManager.selectedGroundStationId_ = data.id;
-    } else {
-      // Non-ground-station selected (satellite, mission-overview, etc.)
+      ObjectivesManager.selectedSatelliteId_ = null;
+    } else if (data.type === 'satellite') {
+      ObjectivesManager.selectedSatelliteId_ = data.id;
       ObjectivesManager.selectedGroundStationId_ = null;
+    } else {
+      // Non-asset selected (mission-overview, etc.)
+      ObjectivesManager.selectedGroundStationId_ = null;
+      ObjectivesManager.selectedSatelliteId_ = null;
     }
   }
 
@@ -555,6 +605,13 @@ export class ObjectivesManager {
    */
   static getSelectedGroundStationId(): string | null {
     return ObjectivesManager.selectedGroundStationId_;
+  }
+
+  /**
+   * Get the currently selected satellite ID
+   */
+  static getSelectedSatelliteId(): string | null {
+    return ObjectivesManager.selectedSatelliteId_;
   }
 
   /**
@@ -919,6 +976,39 @@ export class ObjectivesManager {
           objective: objectiveState.objective,
           activatedAt: now,
         });
+      }
+    }
+  }
+
+  /**
+   * Deactivate objectives that depend on a given objective.
+   * Used when uncompleting an objective to revert dependent objectives.
+   */
+  private deactivateDependentObjectives_(objectiveId: string): void {
+    for (const objectiveState of this.objectiveStates_) {
+      // Skip objectives that aren't active or are already completed
+      if (!objectiveState.isActive || objectiveState.isCompleted) {
+        continue;
+      }
+
+      // Check if this objective has the given objective as a prerequisite
+      const prerequisites = objectiveState.objective.prerequisiteObjectiveIds || [];
+      if (prerequisites.includes(objectiveId)) {
+        // Deactivate this objective
+        objectiveState.isActive = false;
+        objectiveState.activatedAt = undefined;
+        objectiveState.isTimerRunning = false;
+
+        // Reset condition states
+        for (const condState of objectiveState.conditionStates) {
+          condState.isSatisfied = false;
+          condState.satisfiedAt = undefined;
+          condState.maintainedDuration = 0;
+          condState.isMaintenanceComplete = false;
+        }
+
+        // Recursively deactivate objectives that depend on this one
+        this.deactivateDependentObjectives_(objectiveState.objective.id);
       }
     }
   }
@@ -1862,6 +1952,14 @@ export class ObjectivesManager {
         if (!targetGsId) return false;
 
         return ObjectivesManager.selectedGroundStationId_ === targetGsId;
+      }
+
+      case 'satellite-selected': {
+        // Check if specific satellite is selected in the asset tree sidebar
+        const targetSatId = condition.params?.assetSatelliteId;
+        if (!targetSatId) return false;
+
+        return ObjectivesManager.selectedSatelliteId_ === targetSatId;
       }
 
       case 'traffic-transferred': {

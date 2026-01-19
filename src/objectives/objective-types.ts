@@ -74,6 +74,7 @@ export type ConditionType =
   | 'traffic-transferred' // Traffic transferred from source to target station
   | 'service-continuity' // No packet loss during handover (placeholder - always passes)
   | 'ground-station-selected' // Ground station selected in UI
+  | 'satellite-selected' // Satellite selected in UI asset tree
   // UI interaction conditions
   | 'mission-brief-opened' // Mission brief document has been opened
   | 'tab-active' // Specific tab is currently active in TabbedCanvas
@@ -239,6 +240,8 @@ export interface ConditionParams {
   maxPacketLoss?: number;
   /** For ground-station-selected: ground station ID that must be selected */
   groundStationId?: string;
+  /** For satellite-selected: asset tree satellite ID (e.g., 'sat-61525') */
+  assetSatelliteId?: string;
   /** For mission-brief-opened: specific box ID that must be opened (defaults to any 'mission-brief*' box) */
   boxId?: string;
   /** For tab-active: tab ID prefix to match (e.g., 'acu-control' matches 'acu-control-0') */

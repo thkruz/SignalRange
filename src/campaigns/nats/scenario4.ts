@@ -87,7 +87,18 @@ export const scenario4Data: ScenarioData = {
               },
             ],
           }
-        ]
+        ],
+        transmitters: [
+          {
+            ...vermontGroundStation.transmitters[0],
+            modems: [
+              {
+                ...vermontGroundStation.transmitters[0].modems[0],
+                isTransmitting: false,
+              },
+            ],
+          }
+        ],
       },
       {
         ...vermontGroundStation,
@@ -228,7 +239,7 @@ export const scenario4Data: ScenarioData = {
               'None - antenna is stowed',
             ],
             correctIndex: 0,
-            explanation: 'VT-01 is currently tracking TIDEMARK-1. The antenna is pointed at Az: 161.8°, El: 34.2° with beacon lock confirmed. We need to switch to TIDEMARK-2 at Az: 219.7°, El: 26.3°.',
+            explanation: 'VT-01 is currently tracking TIDEMARK-1. The antenna is pointed at Az: 161.9°, El: 34.2° with beacon lock confirmed. We need to switch to TIDEMARK-2 at Az: 219.7°, El: 26.3°.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -860,6 +871,14 @@ export const scenario4Data: ScenarioData = {
           },
           maintainUntilObjectiveComplete: true,
         },
+        {
+          type: "tx-modem-transmitting",
+          description: "TX Modem Set to Transmitting",
+          params: {
+            transmitting: true,
+          },
+          maintainUntilObjectiveComplete: true,
+        }
       ],
       conditionLogic: 'AND',
       points: 15,

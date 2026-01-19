@@ -1,3 +1,7 @@
+#objective-failed-modal-container {
+  z-index: 100000;
+}
+
 .failure-modal {
   text-align: center;
   padding: 1rem;

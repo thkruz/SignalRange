@@ -1,14 +1,12 @@
 import { BaseElement } from "@app/components/base-element";
 import { DevMenuBox } from "@app/dev-menu/dev-menu-box";
 import { DevMenuService } from "@app/dev-menu/dev-menu-service";
-import { EventBus } from "@app/events/event-bus";
 import { qs } from "@app/engine/utils/query-selector";
 import { EngineeringModeService } from "@app/engineering-mode/engineering-mode-service";
+import { EventBus } from "@app/events/event-bus";
 import { Events } from "@app/events/events";
 import { Router } from "@app/router";
 import { ScenarioManager } from "@app/scenario-manager";
-import { Sfx } from "@app/sound/sfx-enum";
-import SoundManager from "@app/sound/sound-manager";
 import { Auth } from "@app/user-account/auth";
 import { ModalLogin } from "@app/user-account/modal-login";
 import { ModalProfile } from "@app/user-account/modal-profile";
@@ -131,7 +129,6 @@ export class Header extends BaseElement {
     // Login button click
     if (this.loginBtn) {
       this.loginBtn.addEventListener('click', () => {
-        SoundManager.getInstance().play(Sfx.TOGGLE_ON);
         ModalLogin.getInstance().open();
       });
     }
@@ -139,7 +136,6 @@ export class Header extends BaseElement {
     // Profile button click
     if (this.profileBtn) {
       this.profileBtn.addEventListener('click', () => {
-        SoundManager.getInstance().play(Sfx.TOGGLE_ON);
         ModalProfile.getInstance().open();
       });
     }
@@ -174,7 +170,6 @@ export class Header extends BaseElement {
 
       // Click handler to toggle engineering mode
       this.engModeBtn.addEventListener('click', () => {
-        SoundManager.getInstance().play(Sfx.TOGGLE_ON);
         engService.toggle();
       });
 
@@ -229,7 +224,6 @@ export class Header extends BaseElement {
     if (this.devMenuBtn) {
       // Click handler to toggle dev menu
       this.devMenuBtn.addEventListener('click', () => {
-        SoundManager.getInstance().play(Sfx.TOGGLE_ON);
         DevMenuBox.toggle();
       });
 

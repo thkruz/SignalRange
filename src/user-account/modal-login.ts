@@ -2,8 +2,6 @@ import { DraggableModal } from '@app/engine/ui/draggable-modal';
 import { html } from '@app/engine/utils/development/formatter';
 import { errorManagerInstance } from '@app/engine/utils/errorManager';
 import { hideEl } from '@app/engine/utils/get-el';
-import { Sfx } from '@app/sound/sfx-enum';
-import SoundManager from '@app/sound/sound-manager';
 import { Auth, UserProfile } from './auth';
 
 type OAuthProvider = 'google' | 'linkedin_oidc' | 'github' | 'facebook';
@@ -221,8 +219,6 @@ export class ModalLogin extends DraggableModal {
     const button = this.getElement(buttonConfig.id) as HTMLButtonElement;
 
     try {
-      SoundManager.getInstance().play(Sfx.TOGGLE_ON);
-
       this.setButtonLoading(button, buttonConfig.provider);
 
       const { user } = await Auth.signInWithOAuthProvider(buttonConfig.provider, `${buttonConfig.provider} Sign In`);
@@ -335,7 +331,6 @@ export class ModalLogin extends DraggableModal {
     this.setSubmitLoading_(true);
     try {
       await this.login_(email, password);
-      SoundManager.getInstance().play(Sfx.POWER_ON);
       hideEl(this.boxEl!);
     } catch (error) {
       const message = (error as Error).message;

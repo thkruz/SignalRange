@@ -90,6 +90,11 @@ export class DevMenuBox extends DraggableBox {
           </button>
         </div>
         <div class="dev-menu__section">
+          <button id="dev-uncomplete-objective" class="btn btn-warning w-100">
+            Uncomplete Last Objective
+          </button>
+        </div>
+        <div class="dev-menu__section">
           <label class="form-label">Mission Timer (seconds)</label>
           <div class="d-flex gap-2">
             <input type="number" id="dev-mission-timer-value" class="form-control" placeholder="300" min="0" />
@@ -137,6 +142,7 @@ export class DevMenuBox extends DraggableBox {
     const unlockScenariosToggle = getEl('dev-unlock-scenarios') as HTMLInputElement;
     const forceEngButtonToggle = getEl('dev-force-eng-button') as HTMLInputElement;
     const completeObjectiveBtn = getEl('dev-complete-objective');
+    const uncompleteObjectiveBtn = getEl('dev-uncomplete-objective');
     const missionTimerInput = getEl('dev-mission-timer-value') as HTMLInputElement;
     const setMissionTimerBtn = getEl('dev-set-mission-timer');
     const objectiveTimerInput = getEl('dev-objective-timer-value') as HTMLInputElement;
@@ -146,6 +152,7 @@ export class DevMenuBox extends DraggableBox {
     this.domCache_.set('unlockScenariosToggle', unlockScenariosToggle);
     this.domCache_.set('forceEngButtonToggle', forceEngButtonToggle);
     this.domCache_.set('completeObjectiveBtn', completeObjectiveBtn);
+    this.domCache_.set('uncompleteObjectiveBtn', uncompleteObjectiveBtn);
     this.domCache_.set('missionTimerInput', missionTimerInput);
     this.domCache_.set('setMissionTimerBtn', setMissionTimerBtn);
     this.domCache_.set('objectiveTimerInput', objectiveTimerInput);
@@ -169,6 +176,11 @@ export class DevMenuBox extends DraggableBox {
     // Complete current objective button
     completeObjectiveBtn.addEventListener('click', () => {
       this.handleCompleteObjective_();
+    });
+
+    // Uncomplete last objective button
+    uncompleteObjectiveBtn.addEventListener('click', () => {
+      this.handleUncompleteObjective_();
     });
 
     // Set mission timer button
@@ -233,6 +245,20 @@ export class DevMenuBox extends DraggableBox {
         console.log('[DevMenu] Completed current objective');
       } else {
         console.warn('[DevMenu] No active objective to complete');
+      }
+    } catch {
+      console.warn('[DevMenu] ObjectivesManager not initialized');
+    }
+  }
+
+  private handleUncompleteObjective_(): void {
+    try {
+      const manager = ObjectivesManager.getInstance();
+      const success = manager.uncompleteLastObjective();
+      if (success) {
+        console.log('[DevMenu] Uncompleted last objective');
+      } else {
+        console.warn('[DevMenu] No completed objectives to uncomplete');
       }
     } catch {
       console.warn('[DevMenu] ObjectivesManager not initialized');

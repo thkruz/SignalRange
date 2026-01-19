@@ -157,7 +157,7 @@ export const scenario2Data: ScenarioData = {
               'I have received and understood the RF safety briefing for today\'s maintenance work.',
             ],
             correctIndex: 0,
-            explanation: 'Acknowledging the RF safety briefing ensures all personnel understand the hazards and procedures before maintenance work begins. The HPA outputs several hundred watts - enough to cause serious RF burns.',
+            explanation: 'Acknowledging the RF safety briefing ensures all personnel understand the hazards and procedures before maintenance work begins. An HPA can output several hundred watts - enough to cause serious RF burns.',
             pointPenalty: 0,
           },
           mustMaintain: false,
@@ -604,7 +604,7 @@ export const scenario2Data: ScenarioData = {
       // understanding antenna positioning for maintenance access
       nice: ['T1567', 'S0421', 'K1032'],
       title: 'Move Antenna to Maintenance Position',
-      description: 'Set tracking mode to MAINTENANCE to command antenna to azimuth 0°, elevation 5°.',
+      description: 'Set tracking mode to MAINTENANCE to command antenna to elevation 5°.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['navigate-acu-control-maintenance'],
       timeLimitSeconds: 2 * 60,
@@ -731,7 +731,7 @@ export const scenario2Data: ScenarioData = {
       // understanding program-track mode for GEO satellites
       nice: ['T1567', 'S0421', 'K1032'],
       title: 'Repoint Antenna at TIDEMARK-1',
-      description: 'Set tracking mode to PROGRAM TRACK and command antenna to Az 161.8°, El 34.2°.',
+      description: 'Set tracking mode to PROGRAM TRACK and command antenna to Az 161.9°, El 34.2°.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['maintenance-complete'],
       timeLimitSeconds: 2 * 60,
@@ -753,7 +753,7 @@ export const scenario2Data: ScenarioData = {
           type: 'antenna-position',
           description: 'Antenna Pointed at TIDEMARK-1',
           params: {
-            azimuth: 161.8 as Degrees,
+            azimuth: 161.9 as Degrees,
             elevation: 34.2 as Degrees,
             tolerance: 0.1,
           },
@@ -1176,10 +1176,7 @@ export const scenario2Data: ScenarioData = {
         Maintenance crew needs access to the antenna feed assembly in fifteen minutes. We're taking TIDEMARK-1 offline for the window.
       </p>
       <p>
-        First things first - you need to acknowledge the RF safety briefing. Someone forgot that step once. Maintenance tech caught about fifty watts to the face. He's fine now, but the paperwork wasn't.
-      </p>
-      <p>
-        After that, we shut down in sequence: HPA first, then BUC, then stop the modem, then LNB, then stow the antenna. Never skip steps, never reverse order. Go.
+        We will shut down in sequence: HPA first, then BUC, then stop the modem, then LNB, then stow the antenna. Never skip steps, never reverse order. Read the Mission Brief. Go.
       </p>
       `,
       character: Character.CHARLIE_BROOKS,
@@ -1193,7 +1190,7 @@ export const scenario2Data: ScenarioData = {
       'review-mission-brief': {
         text: `
         <p>
-          Good. You've reviewed the procedures. Now I need you to acknowledge the RF safety briefing - it's a company requirement before any maintenance work.
+          Ok before we proceed, I need you to acknowledge the RF safety briefing. Someone skipped that step once. Maintenance tech caught about fifty watts to the face. He's fine now, but I'm not doing that paperwork again.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -1230,7 +1227,7 @@ export const scenario2Data: ScenarioData = {
       'navigate-tx-chain-shutdown': {
         text: `
         <p>
-          This is the transmit chain. HPA at the top, BUC below it. Before you touch anything, tell me what state the HPA is in right now.
+          This is the transmit chain. HPA at the top right and BUC at the top left. Before you touch anything, tell me what state the HPA is in right now.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -1257,10 +1254,10 @@ export const scenario2Data: ScenarioData = {
       'disable-hpa-output': {
         text: `
         <p>
-          Output's disabled. No more RF coming out of the amplifier. But here's the thing - it's still powered on and the tubes are still hot.
+          Good, you've toggled the output off. Now take a look at the panel indicators.
         </p>
         <p>
-          Check the panel. What should you see now that the output is disabled?
+          What do you observe about the HPA's current state?
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -1380,7 +1377,7 @@ export const scenario2Data: ScenarioData = {
       'navigate-acu-control-maintenance': {
         text: `
         <p>
-          Set tracking mode to MAINTENANCE. That'll command it to azimuth zero, elevation five degrees. Low enough for the crew to access the feed, high enough to clear any obstructions.
+          Set tracking mode to MAINTENANCE. That'll command it to elevation of five degrees. Low enough for the crew to access the feed, high enough to clear any obstructions.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -1423,10 +1420,10 @@ export const scenario2Data: ScenarioData = {
       'maintenance-complete': {
         text: `
         <p>
-          Maintenance is complete. Crew's clear of the tower. Time to bring the link back up.
+          Maintenance is complete. Crew's clear of the antenna. Time to bring the link back up.
         </p>
         <p>
-          We restore in reverse order: antenna first, then receive chain, then transmit chain. Set tracking mode back to PROGRAM TRACK and command the antenna to azimuth 161.8, elevation 34.2. That's where TIDEMARK-1 sits.
+          We restore in reverse order: antenna first, then receive chain, then transmit chain. Set tracking mode back to PROGRAM TRACK and command the antenna to azimuth 161.9, elevation 34.2. That's where TIDEMARK-1 sits.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,

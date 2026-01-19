@@ -246,15 +246,19 @@ export const scenario1Data: ScenarioData = {
       points: 5,
     },
     {
-      id: 'verify-lnb-equipment',
+      id: 'verify-lnb',
       // T0431: Check system hardware availability, functionality, integrity, and efficiency -
       // confirming the LNB is powered on and thermally stabilized before operations
-      nice: ['T0431'],
-      title: 'Verify LNB Equipment Status',
-      description: 'Check that the LNB is powered and thermally stable.',
+      // K0740: Knowledge of system performance indicators - interpreting noise temperature
+      // as a key metric for receive sensitivity and system health
+      // K0773: Knowledge of telecommunications principles and practices - understanding
+      // how LNB noise temperature affects overall receive chain performance
+      nice: ['T0431', 'K0740', 'K0773'],
+      title: 'Verify LNB Status',
+      description: 'Check that the LNB is powered, thermally stable, and noise temperature is within spec.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['navigate-rx-analysis'],
-      timeLimitSeconds: 2 * 60,
+      timeLimitSeconds: 5 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
         {
@@ -272,30 +276,6 @@ export const scenario1Data: ScenarioData = {
         {
           type: 'lnb-thermally-stable',
           description: 'LNB Thermally Stabilized',
-          mustMaintain: true,
-        },
-      ],
-      conditionLogic: 'AND',
-      points: 5,
-    },
-    {
-      id: 'verify-lnb-quiz',
-      // K0740: Knowledge of system performance indicators - interpreting noise temperature
-      // as a key metric for receive sensitivity and system health
-      // K0773: Knowledge of telecommunications principles and practices - understanding
-      // how LNB noise temperature affects overall receive chain performance
-      nice: ['K0740', 'K0773'],
-      title: 'LNB Performance Check',
-      description: 'Verify the LNB noise temperature is within acceptable limits.',
-      groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['verify-lnb-equipment'],
-      timeLimitSeconds: 3 * 60,
-      timerStartTrigger: 'on-activate',
-      conditions: [
-        {
-          type: 'tab-active',
-          description: 'RX Analysis Tab Open',
-          params: { tab: 'rx-analysis' },
           mustMaintain: true,
         },
         {
@@ -317,7 +297,7 @@ export const scenario1Data: ScenarioData = {
         },
       ],
       conditionLogic: 'AND',
-      points: 10,
+      points: 15,
     },
     {
       id: 'verify-tap-points',
@@ -329,7 +309,7 @@ export const scenario1Data: ScenarioData = {
       title: 'Tap Points Configuration',
       description: 'Review the Tap Points card to understand signal monitoring points.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['verify-lnb-quiz'],
+      prerequisiteObjectiveIds: ['verify-lnb'],
       timeLimitSeconds: 2 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
@@ -366,12 +346,14 @@ export const scenario1Data: ScenarioData = {
       // the satellite beacon signal on the spectrum analyzer
       // K1032: Knowledge of satellite-based communication systems and software -
       // understanding that the beacon is a satellite telemetry signal used for link verification
-      nice: ['T0153', 'K1032'],
+      // K0773: Knowledge of telecommunications principles and practices -
+      // interpreting spectrum analyzer display to identify signal characteristics
+      nice: ['T0153', 'K1032', 'K0773'],
       title: 'Identify Beacon Signal',
-      description: 'Locate the TIDEMARK-1 beacon signal on the spectrum analyzer.',
+      description: 'Locate the TIDEMARK-1 beacon signal on the spectrum analyzer and confirm receive chain status.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['verify-tap-points'],
-      timeLimitSeconds: 3 * 60,
+      timeLimitSeconds: 6 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
         {
@@ -387,30 +369,6 @@ export const scenario1Data: ScenarioData = {
             signalId: 'TIDEMARK-1-Beacon',
             minPower: -100 as dBm,
           },
-          mustMaintain: true,
-        },
-      ],
-      conditionLogic: 'AND',
-      points: 10,
-    },
-    {
-      id: 'verify-beacon-quiz',
-      // K1032: Knowledge of satellite-based communication systems and software -
-      // understanding what the beacon signal indicates about satellite link status
-      // K0773: Knowledge of telecommunications principles and practices -
-      // interpreting spectrum analyzer display to identify signal characteristics
-      nice: ['K1032', 'K0773'],
-      title: 'Beacon Signal Analysis',
-      description: 'Understand what the beacon signal tells you about the receive chain.',
-      groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['identify-beacon'],
-      timeLimitSeconds: 3 * 60,
-      timerStartTrigger: 'on-activate',
-      conditions: [
-        {
-          type: 'tab-active',
-          description: 'RX Analysis Tab Open',
-          params: { tab: 'rx-analysis' },
           mustMaintain: true,
         },
         {
@@ -432,7 +390,7 @@ export const scenario1Data: ScenarioData = {
         },
       ],
       conditionLogic: 'AND',
-      points: 10,
+      points: 20,
     },
     {
       id: 'verify-speca-settings',
@@ -444,7 +402,7 @@ export const scenario1Data: ScenarioData = {
       title: 'Spectrum Analyzer Settings',
       description: 'Review the spectrum analyzer configuration for beacon observation.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['verify-beacon-quiz'],
+      prerequisiteObjectiveIds: ['identify-beacon'],
       timeLimitSeconds: 3 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
@@ -458,15 +416,15 @@ export const scenario1Data: ScenarioData = {
           type: 'status-check',
           description: 'Verify Spectrum Analyzer Configuration',
           params: {
-            question: 'What center frequency and reference level are set on the spectrum analyzer?',
+            question: 'What center frequency and span are set on the spectrum analyzer?',
             options: [
-              '1074.5 MHz center, -91 dBm reference - configured for TIDEMARK-1 beacon IF',
-              '1532 MHz center, -50 dBm reference - configured for TIDEMARK-1 RF frequency',
-              '0.002 MHz center, -30 dBm reference - configured for baseband',
-              '40 MHz bandwidth, 1.8 dB insertion loss - configured for low noise floor',
+              '1074.5 MHz center, 2 kHz span',
+              '1532 MHz center, 2 kHz span',
+              '0.002 MHz center, 1074.5 MHz span',
+              '1074.5 MHz center, 2 MHz span',
             ],
             correctIndex: 0,
-            explanation: 'The spectrum analyzer is set to 1074.5 MHz (beacon IF frequency for TIDEMARK-1 after LNB downconversion) with a -91 dBm reference level to properly display the weak beacon signal above the noise floor.',
+            explanation: 'The spectrum analyzer is set to 1074.5 MHz (beacon IF frequency for TIDEMARK-1 after LNB downconversion) with a 2 kHz span. This narrow span allows you to clearly see the beacon signal above the noise floor.',
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -972,6 +930,8 @@ export const scenario1Data: ScenarioData = {
         This is the GPS Timing panel. The GPSDO locks to GPS satellites and generates a 10 MHz reference signal. Everything in the rack - LNB, BUC, modems - uses this reference to stay on frequency.
       </p>
       <p>
+        You might notice that its labeled GNSS instead of GPS. Modern timing units can use multiple Global Navigation Satellite Systems - GPS, GLONASS, Galileo, BeiDou - to improve accuracy and reliability.
+      <p>
         Look at the lock indicator. Tell me what it shows - locked, holdover, unlocked, or off.
       </p>
       `,
@@ -1009,23 +969,13 @@ export const scenario1Data: ScenarioData = {
         emotion: Emotion.NEUTRAL,
         audioUrl: getAssetUrl('/assets/campaigns/nats/1/v2/obj-navigate-rx-analysis.mp3'),
       },
-      'verify-lnb-equipment': {
+      'verify-lnb': {
         text: `
       <p>
         LNB is powered and temperature is stable. That's what you want to see. Cold LNBs drift. Hot LNBs fail. Stable is the goal.
       </p>
       <p>
-        Now check the noise temperature reading. The spec that matters is measured in Kelvin. Lower is better. Under 100K is acceptable for C-band.
-      </p>
-      `,
-        character: Character.CHARLIE_BROOKS,
-        emotion: Emotion.NEUTRAL,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/1/v2/obj-verify-lnb-equipment.mp3'),
-      },
-      'verify-lnb-quiz': {
-        text: `
-      <p>
-        43K - that's solid. The cooler the LNB runs, the less noise it adds to your signal. You start seeing that number climb, it's an early warning. Equipment doesn't fail all at once - it degrades. Your job is to catch it before the customer does.
+        43K noise temperature - that's solid. The cooler the LNB runs, the less noise it adds to your signal. Under 100K is acceptable for C-band. You start seeing that number climb, it's an early warning. Equipment doesn't fail all at once - it degrades. Your job is to catch it before the customer does.
       </p>
       <p>
         Now before we check the spectrum analyzer, take a look at the Tap Points card. That controls where the analyzer takes its signal from.
@@ -1038,13 +988,10 @@ export const scenario1Data: ScenarioData = {
       'verify-tap-points': {
         text: `
       <p>
-        Before we look at the spectrum analyzer, check the Tap Points card. This tells you where in the signal chain the analyzer is taking its input.
+        Good. The Tap Points card tells you where in the signal chain the spectrum analyzer takes its input. RX IF means you're looking at the receive path after the LNB downconverts from RF - that's what you want for monitoring the downlink. TX IF would show you the transmit side before it goes to the BUC.
       </p>
       <p>
-        RX IF means you're looking at the receive path after the LNB downconverts from RF. That's what you want for monitoring the downlink. TX IF would show you the transmit side before it goes to the BUC.
-      </p>
-      <p>
-        For a health check, RX IF is the standard choice. What's it set to now?
+        For a health check, RX IF is the standard choice. Now let's move to the spectrum analyzer.
       </p>
       `,
         character: Character.CHARLIE_BROOKS,
@@ -1054,18 +1001,8 @@ export const scenario1Data: ScenarioData = {
       'identify-beacon': {
         text: `
       <p>
-        You're looking for the beacon - TIDEMARK-1's CW carrier. It's already configured to show it. Should be a clean spike above the noise floor.
+        You're looking for the beacon - TIDEMARK-1's CW carrier. It's already configured to show it. Should be a clean spike above the noise floor. If you don't see it, check the center frequency. Beacon IF is 1074.5 MHz after the LNB downconverts from RF.
       </p>
-      <p>
-        If you don't see it, check the center frequency. Beacon IF is 1074.5 MHz after the LNB downconverts from RF.
-      </p>
-      `,
-        character: Character.CHARLIE_BROOKS,
-        emotion: Emotion.NEUTRAL,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/1/v2/obj-identify-beacon.mp3'),
-      },
-      'verify-beacon-quiz': {
-        text: `
       <p>
         There it is. Clean beacon. That carrier is your canary - if you can see it, the receive path is working. If it disappears or goes ragged, something changed. Could be weather, could be equipment, could be the satellite.
       </p>
@@ -1080,7 +1017,7 @@ export const scenario1Data: ScenarioData = {
       'verify-speca-settings': {
         text: `
       <p>
-        1074.5 center, reference around -91. That's the setup for beacon watch. Get these wrong and you're either staring at the wrong frequency or your signal's buried in the noise floor. I've seen new ops spend an hour troubleshooting a "missing" signal that was just off-screen. Don't be that person.
+        1074.5 center, span set to 2kHz. That's the setup for beacon watch. Get these wrong and you're either staring at the wrong frequency or your signal's buried in the noise floor. I've seen new ops spend an hour troubleshooting a "missing" signal that was just off-screen. Don't be that person.
       </p>
       <p>
         Receiver modem next. This is where RF becomes data. The number you care about is C/N - Carrier-to-Noise ratio.
@@ -1143,7 +1080,7 @@ export const scenario1Data: ScenarioData = {
       'navigate-tx-chain': {
         text: `
       <p>
-        TX Chain - your transmit path. BUC at the top, HPA in the middle, transmitter modem at the bottom. Signal flows from data to antenna.
+        TX Chain - your transmit path. BUC at the top left, HPA at the top right, transmitter modem at the bottom left, and payload data at the bottom right. Signal flows from data to antenna.
       </p>
       <p>
         The HPA - High Power Amplifier - is the muscle. Takes your milliwatt signal and turns it into real power. It's also the equipment most likely to ruin your day if you're not paying attention.
@@ -1196,7 +1133,7 @@ export const scenario1Data: ScenarioData = {
         ACU Control - antenna control unit. The dish needs to stay pointed at TIDEMARK-1.
       </p>
       <p>
-        There are different tracking modes: program-track follows ephemeris predictions, step-track hunts for peak signal, manual is operator-controlled, stow parks it safe. What mode are we in?
+        There are different tracking modes: program-track follows ephemeris predictions, manual is operator-controlled, stow parks it safe. What mode are we in?
       </p>
       `,
         character: Character.CHARLIE_BROOKS,

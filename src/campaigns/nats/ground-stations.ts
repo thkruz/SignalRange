@@ -53,7 +53,7 @@ export const vermontGroundStation = {
       isLoopback: false,
       temperature: 25,
       currentDraw: 0,
-      loFrequency: 6425 as MHz,
+      loFrequency: 7000 as MHz,
       filterHighHz: FrequencyBand.c.upHigh,
       filterLowHz: FrequencyBand.c.upLow,
       filterRejectionDb: 40 as dB,

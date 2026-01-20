@@ -1,9 +1,9 @@
-import { test, expect } from '../fixtures/test-fixtures';
+import { expect, test } from '../fixtures/test-fixtures';
 import {
-  waitForSimulationReady,
-  waitForQuizToAppear,
   answerQuizByText,
   dismissDialogIfPresent,
+  waitForQuizToAppear,
+  waitForSimulationReady,
 } from '../utils/simulation-helpers';
 
 /**
@@ -71,6 +71,12 @@ const SCENARIO_1_OBJECTIVES: Scenario1Objective[] = [
     correctAnswer: '43K - within spec (good receive sensitivity)',
   },
   {
+    id: 'verify-tap-points',
+    title: 'Tap Points Configuration',
+    type: 'quiz',
+    correctAnswer: 'RX IF selected - monitoring the receive chain after downconversion',
+  },
+  {
     id: 'identify-beacon',
     title: 'Identify Beacon Signal',
     type: 'auto',  // signal-detected - auto-satisfied when on RX Analysis tab
@@ -85,7 +91,7 @@ const SCENARIO_1_OBJECTIVES: Scenario1Objective[] = [
     id: 'verify-speca-settings',
     title: 'Spectrum Analyzer Settings',
     type: 'quiz',
-    correctAnswer: '1074.5 MHz center, -91 dBm reference - configured for TIDEMARK-1 beacon IF',
+    correctAnswer: '1074.5 MHz center, 2 kHz span',
   },
   {
     id: 'verify-receiver',

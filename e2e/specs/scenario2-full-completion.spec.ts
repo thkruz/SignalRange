@@ -21,7 +21,6 @@ import {
 type ObjectiveType =
   | 'quiz'
   | 'select-station'
-  | 'click-tab'
   | 'auto'
   | 'toggle-switch'
   | 'set-tracking-mode'
@@ -97,7 +96,7 @@ const SCENARIO_2_OBJECTIVES: Scenario2Objective[] = [
     id: 'verify-hpa-disabled-quiz',
     title: 'Confirm HPA Output Disabled',
     type: 'quiz',
-    correctAnswer: 'HPA Enable indicator shows OFF - no RF output, but tubes still hot',
+    correctAnswer: 'HPA Enable indicator shows OFF - no RF output',
   },
   {
     id: 'power-off-hpa',
@@ -111,17 +110,24 @@ const SCENARIO_2_OBJECTIVES: Scenario2Objective[] = [
   // POWER-DOWN SEQUENCE: BUC
   // ============================================================
   {
-    id: 'mute-buc',
-    title: 'Mute BUC RF Output',
+    id: 'power-off-buc',
+    title: 'Power Off BUC',
     type: 'toggle-switch',
-    switchId: 'buc-mute',
-    switchState: true,
+    switchId: 'buc-power',
+    switchState: false,
   },
   {
-    id: 'verify-buc-muted-quiz',
-    title: 'Confirm BUC Muted',
+    id: 'verify-buc-powered-off-quiz',
+    title: 'Confirm BUC Powered Off',
     type: 'quiz',
-    correctAnswer: 'RF Mute indicator is ON - no RF output from BUC',
+    correctAnswer: 'BUC power indicator is OFF - completely de-energized',
+  },
+  {
+    id: 'stop-modem-transmitting',
+    title: 'Stop Modem Transmission',
+    type: 'toggle-switch',
+    switchId: 'tx-transmit-switch',
+    switchState: false,
   },
 
   // ============================================================
@@ -241,11 +247,18 @@ const SCENARIO_2_OBJECTIVES: Scenario2Objective[] = [
     tabId: 'tx-chain',
   },
   {
-    id: 'unmute-buc',
-    title: 'Unmute BUC RF Output',
+    id: 'start-modem-transmitting',
+    title: 'Start Modem Transmission',
     type: 'toggle-switch',
-    switchId: 'buc-mute',
-    switchState: false,
+    switchId: 'tx-transmit-switch',
+    switchState: true,
+  },
+  {
+    id: 'power-on-buc',
+    title: 'Power On BUC',
+    type: 'toggle-switch',
+    switchId: 'buc-power',
+    switchState: true,
   },
 
   // ============================================================
@@ -274,7 +287,7 @@ const SCENARIO_2_OBJECTIVES: Scenario2Objective[] = [
     title: 'Confirm Service Restored',
     type: 'quiz',
     correctAnswer:
-      'Shutdown: HPA → BUC → LNB → Antenna. Restore: Antenna → LNB → BUC → HPA',
+      'Shutdown: HPA → BUC → Modem TX → LNB → Antenna. Restore: Antenna → LNB → Modem TX → BUC → HPA',
   },
 ];
 

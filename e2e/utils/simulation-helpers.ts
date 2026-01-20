@@ -175,15 +175,78 @@ export async function answerQuizByText(page: Page, answerText: string): Promise<
   const quizModal = page.locator('#quiz-modal, .quiz-box');
   await expect(quizModal).toBeVisible({ timeout: 10000 });
 
-  // Find the option button containing the answer text
-  const option = quizModal.locator('.quiz-option-btn', { hasText: answerText });
-  await expect(option).toBeVisible({ timeout: 5000 });
-  await option.click();
+  const optionButtons = quizModal.locator('.quiz-option-btn');
+  await expect(optionButtons.first()).toBeVisible({ timeout: 10000 });
+
+  const normalize = (value: string): string =>
+    value
+      .toLowerCase()
+      .replace(/[\u2018\u2019]/g, "'")
+      .replace(/[\u201C\u201D]/g, '"')
+      .replace(/[\u2013\u2014]/g, '-')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+  const toWordSet = (value: string): Set<string> => {
+    const cleaned = normalize(value).replace(/[^a-z0-9\s-]/g, ' ');
+    return new Set(cleaned.split(/\s+/g).filter(Boolean));
+  };
+
+  const answerNorm = normalize(answerText);
+  const answerWords = toWordSet(answerText);
+
+  const optionTexts = await optionButtons.allTextContents();
+
+  let bestIndex = -1;
+  let bestScore = -1;
+
+  for (let i = 0; i < optionTexts.length; i++) {
+    const optionText = optionTexts[i] ?? '';
+    const optionNorm = normalize(optionText);
+
+    // Fast path: substring match ignoring whitespace/punctuation variants.
+    if (optionNorm.includes(answerNorm) || answerNorm.includes(optionNorm)) {
+      bestIndex = i;
+      bestScore = Number.POSITIVE_INFINITY;
+      break;
+    }
+
+    // Fallback: token overlap (helps when copy is tweaked slightly).
+    const optionWords = toWordSet(optionText);
+    if (answerWords.size === 0 || optionWords.size === 0) continue;
+
+    let overlap = 0;
+    for (const w of answerWords) {
+      if (optionWords.has(w)) overlap++;
+    }
+
+    const score = overlap / Math.max(answerWords.size, optionWords.size);
+    if (score > bestScore) {
+      bestScore = score;
+      bestIndex = i;
+    }
+  }
+
+  // Require a minimum similarity unless we hit the fast-path.
+  if (!Number.isFinite(bestScore) && bestIndex < 0) {
+    throw new Error(`No quiz options found (answer: ${answerText})`);
+  }
+
+  if (bestScore !== Number.POSITIVE_INFINITY && bestScore < 0.45) {
+    const available = optionTexts.map((t) => `- ${t.trim()}`).join('\n');
+    throw new Error(
+      `Could not match quiz answer.\nAnswer: ${answerText}\nOptions:\n${available}`
+    );
+  }
+
+  await optionButtons.nth(bestIndex).click();
 
   // Wait for the continue button to appear and click it
-  const continueButton = quizModal.locator('#quiz-continue-btn');
-  await expect(continueButton).toBeVisible({ timeout: 5000 });
-  await continueButton.click();
+  const continueButton = quizModal.locator(
+    '#quiz-continue-btn, .quiz-continue-btn, .quiz-submit-btn, button:has-text("Continue")'
+  );
+  await expect(continueButton.first()).toBeVisible({ timeout: 5000 });
+  await continueButton.first().click();
 
   // Wait for quiz to process the answer
   await page.waitForTimeout(500);

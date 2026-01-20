@@ -31,17 +31,16 @@ import { ses10Satellite, tidemark2Satellite } from './satellites';
  * 2. Navigate to receiver and observe degraded C/N
  * 3. Understand the full impact of the degradation
  * 4. Navigate to spectrum analyzer and understand its current configuration
- * 5. Widen span to see full signal bandwidth
- * 6. Center on downlink and locate interference spike
- * 7. Identify and characterize the interference
- * 8. Measure exact frequency with marker
- * 9. Understand cross-polarization cause
- * 10. Understand AGC impact mechanism
- * 11. Evaluate mitigation options
- * 12. Navigate to filter bank and configure notch filter
- * 13. Verify interference removed on spectrum
- * 14. Verify C/N restored
- * 15. Understand documentation requirements
+ * 5. Configure spectrum view (widen span, center on downlink IF)
+ * 6. Identify and characterize the interference
+ * 7. Record the interference frequency
+ * 8. Understand cross-polarization cause
+ * 9. Understand AGC impact mechanism
+ * 10. Evaluate mitigation options
+ * 11. Navigate to filter bank and configure notch filter
+ * 12. Verify interference removed on spectrum
+ * 13. Verify C/N restored
+ * 14. Understand documentation requirements
  */
 
 export const scenario5Data: ScenarioData = {
@@ -72,7 +71,7 @@ export const scenario5Data: ScenarioData = {
         isOperational: true,
       },
     ],
-    missionBriefUrl: 'https://docs.signalrange.space/scenarios/scenario-5?content-only=true&dark=true',
+    missionBriefUrl: 'https://docs.signalrange.space/campaign-1/scenario-5?content-only=true&dark=true',
     isExtraSatellitesVisible: true,
     satellites: [
       new Satellite(
@@ -235,8 +234,8 @@ export const scenario5Data: ScenarioData = {
       conditions: [
         {
           type: 'tab-active',
-          description: 'Receiver Modem Tab Open',
-          params: { tab: 'rx-modem' },
+          description: 'RX Analysis Tab Open',
+          params: { tab: 'rx-analysis' },
           mustMaintain: true,
         },
       ],
@@ -309,33 +308,19 @@ export const scenario5Data: ScenarioData = {
     // PHASE 3: CONFIGURE SPECTRUM ANALYZER
     // =========================================================================
     {
-      id: 'navigate-speca-config',
-      // S0421: Skill in operating network equipment - navigating to the spectrum
-      // analyzer panel within the ground station control interface
-      nice: ['S0421'],
-      title: 'Navigate to Spectrum Analyzer',
-      description: 'Navigate to the Spectrum Analyzer tab to investigate the signal.',
+      id: 'verify-speca-initial-state',
+      nice: ['K0737', 'K1032', 'T0153', 'S0421'], // K0737: Knowledge of RF spectrum characteristics, K1032: Knowledge of RF propagation, T0153: Monitor network capacity and performance
+      title: 'Assess Current Configuration',
+      description: 'Before adjusting the spectrum analyzer, understand why its current configuration is inadequate.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['verify-receiver-state-quiz'],
       conditions: [
         {
           type: 'tab-active',
-          description: 'Spectrum Analyzer Tab Open',
-          params: { tab: 'speca' },
+          description: 'RX Analysis Tab Open',
+          params: { tab: 'rx-analysis' },
           mustMaintain: true,
         },
-      ],
-      conditionLogic: 'AND',
-      points: 5,
-    },
-    {
-      id: 'verify-speca-initial-state',
-      nice: ['K0737', 'K1032', 'T0153'], // K0737: Knowledge of RF spectrum characteristics, K1032: Knowledge of RF propagation, T0153: Monitor network capacity and performance
-      title: 'Assess Current Configuration',
-      description: 'Before adjusting the spectrum analyzer, understand why its current configuration is inadequate.',
-      groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['navigate-speca-config'],
-      conditions: [
         {
           type: 'status-check',
           description: 'Understand Span Limitation',
@@ -358,14 +343,17 @@ export const scenario5Data: ScenarioData = {
       conditionLogic: 'AND',
       points: 10,
     },
+    // =========================================================================
+    // PHASE 4: LOCATE AND IDENTIFY INTERFERENCE
+    // =========================================================================
     {
-      id: 'phase-2-configure-span',
-      nice: ['K0737', 'S0421', 'T0153'], // K0737: Knowledge of RF spectrum characteristics, S0421: Skill in using test equipment, T0153: Monitor network capacity and performance
-      title: 'Widen Spectrum View',
-      description: 'The spectrum analyzer is currently configured for beacon observation. Widen the frequency span to see the full signal bandwidth.',
+      id: 'phase-2-configure-and-locate',
+      nice: ['K0737', 'S0421', 'T0153', 'K1032'], // K0737: Knowledge of RF spectrum characteristics, S0421: Skill in using test equipment, T0153: Monitor network capacity and performance, K1032: Knowledge of RF propagation
+      title: 'Configure Spectrum View',
+      description: 'The spectrum analyzer is currently configured for beacon observation. Reconfigure it to see the full wideband signal - widen the span and center on the downlink IF frequency.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['verify-speca-initial-state'],
-      timeLimitSeconds: 2 * 60,
+      timeLimitSeconds: 3 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
         {
@@ -387,10 +375,10 @@ export const scenario5Data: ScenarioData = {
         },
         {
           type: 'speca-center-frequency',
-          description: 'Center frequency set to see full signal',
+          description: 'Center frequency set to see main signal',
           params: {
-            centerFrequency: 1532e6 as Hertz, // Beacon IF is 1520 MHz, signal is 10 MHz higher
-            centerFrequencyTolerance: 1e6, // Allow +/- 1 MHz
+            centerFrequency: 1532e6 as Hertz, // Main signal IF
+            centerFrequencyTolerance: 5e6, // Allow 1527-1537 MHz
           },
           mustMaintain: true,
         },
@@ -398,7 +386,7 @@ export const scenario5Data: ScenarioData = {
           type: 'speca-min-amplitude',
           description: 'Min amplitude set just below noise floor',
           params: {
-            minAmplitude: -115 as dBm,
+            minAmplitude: -100 as dBm,
             minAmplitudeTolerance: 20 as dBm,
           },
           mustMaintain: true,
@@ -407,50 +395,14 @@ export const scenario5Data: ScenarioData = {
           type: 'speca-max-amplitude',
           description: 'Max amplitude set just above signal peak',
           params: {
-            maxAmplitude: 0 as dBm,
-            maxAmplitudeTolerance: 30 as dBm,
-          },
-          mustMaintain: true,
-        }
-      ],
-      conditionLogic: 'AND',
-      points: 15,
-    },
-
-    // =========================================================================
-    // PHASE 4: LOCATE AND IDENTIFY INTERFERENCE
-    // =========================================================================
-    {
-      id: 'phase-3-locate-signal',
-      nice: ['T0153', 'K1032'], // T0153: Monitor network capacity and performance, K1032: Knowledge of RF propagation
-      title: 'Center on Downlink Signal',
-      description: 'Move the spectrum analyzer center frequency to observe the main downlink signal. Think about where the signal should appear at IF.',
-      groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['phase-2-configure-span'],
-      timeLimitSeconds: 2 * 60,
-      timerStartTrigger: 'on-activate',
-      conditions: [
-        {
-          type: 'speca-center-frequency',
-          description: 'Center frequency set to see main signal',
-          params: {
-            centerFrequency: 1532e6 as Hertz, // Main signal IF
-            centerFrequencyTolerance: 20e6, // Allow 1512-1552 MHz
-          },
-          mustMaintain: true,
-        },
-        {
-          type: 'signal-detected',
-          description: 'Main signal visible',
-          params: {
-            signalId: 'TIDEMARK-1-TDMA-Composite',
-            minPower: -100 as dBm,
+            maxAmplitude: -30 as dBm,
+            maxAmplitudeTolerance: 20 as dBm,
           },
           mustMaintain: true,
         },
       ],
       conditionLogic: 'AND',
-      points: 15,
+      points: 20,
     },
     {
       id: 'phase-4-identify-interference',
@@ -458,7 +410,7 @@ export const scenario5Data: ScenarioData = {
       title: 'Identify Interference',
       description: 'Look at the spectrum analyzer display. Our wideband signal should be visible - is there anything else that shouldn\'t be there?',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['phase-3-locate-signal'],
+      prerequisiteObjectiveIds: ['phase-2-configure-and-locate'],
       timeLimitSeconds: 2 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
@@ -517,22 +469,13 @@ export const scenario5Data: ScenarioData = {
     {
       id: 'measure-interference-frequency',
       nice: ['S0421', 'T0153'], // S0421: Skill in using test equipment, T0153: Monitor network capacity and performance
-      title: 'Measure Interference Frequency',
-      description: 'Use the spectrum analyzer marker to measure the exact center frequency of the interference spike. This will be critical for notch filter configuration.',
+      title: 'Record Interference Frequency',
+      description: 'Observe the spectrum analyzer display and identify the approximate center frequency of the interference spike. This will be critical for notch filter configuration.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['phase-5-characterize-interference'],
       timeLimitSeconds: 2 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
-        {
-          type: 'speca-marker-placed',
-          description: 'Marker on Interference',
-          params: {
-            frequency: 1515e6 as Hertz, // IF frequency of interference
-            frequencyTolerance: 2e6, // Allow +/- 2 MHz
-          },
-          mustMaintain: false,
-        },
         {
           type: 'status-check',
           description: 'Record Frequency',
@@ -545,7 +488,7 @@ export const scenario5Data: ScenarioData = {
               '1500 MHz',
             ],
             correctIndex: 0,
-            explanation: 'The interference is centered at approximately 1515 MHz IF. This corresponds to a downlink frequency of 3735 MHz (using our 5250 MHz LO). You\'ll need this exact frequency to configure the notch filter.',
+            explanation: 'The interference is centered at approximately 1515 MHz IF. You\'ll use this frequency to configure the notch filter in the next steps.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -553,6 +496,37 @@ export const scenario5Data: ScenarioData = {
       ],
       conditionLogic: 'AND',
       points: 15,
+    },
+
+    // Ask a quiz question about whether we use IF or RF for notch filter configuration
+    {
+      id: 'understand-notch-frequency-domain',
+      nice: ['K0737'], // K0737: Knowledge of RF spectrum characteristics
+      title: 'Understand Frequency Domain for Notch Filter',
+      description: 'Consider whether the notch filter should be configured using IF or RF frequency.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['measure-interference-frequency'],
+      timeLimitSeconds: 2 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'status-check',
+          description: 'Frequency Domain for Notch Filter',
+          params: {
+            question: 'Should the notch filter be configured using IF or RF frequency?',
+            options: [
+              'IF frequency',
+              'RF frequency',
+            ],
+            correctIndex: 0,
+            explanation: 'The notch filter is configured using the IF frequency because it operates on the intermediate frequency signal after downconversion.',
+            pointPenalty: 5,
+          },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 10,
     },
 
     // =========================================================================
@@ -564,7 +538,7 @@ export const scenario5Data: ScenarioData = {
       title: 'Understand the Interference Source',
       description: 'Determine what\'s causing this in-band interference.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['measure-interference-frequency'],
+      prerequisiteObjectiveIds: ['understand-notch-frequency-domain'],
       timeLimitSeconds: 2 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
@@ -659,35 +633,21 @@ export const scenario5Data: ScenarioData = {
     // PHASE 7: APPLY NOTCH FILTER
     // =========================================================================
     {
-      id: 'navigate-filter-bank',
-      // S0421: Skill in operating network equipment - navigating to the IF filter
-      // bank panel within the ground station control interface
-      nice: ['S0421'],
-      title: 'Navigate to Filter Bank',
-      description: 'Navigate to the IF Filter Bank tab to configure the notch filter.',
-      groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['understand-mitigation-options'],
-      conditions: [
-        {
-          type: 'tab-active',
-          description: 'Filter Bank Tab Open',
-          params: { tab: 'if-filter' },
-          mustMaintain: true,
-        },
-      ],
-      conditionLogic: 'AND',
-      points: 5,
-    },
-    {
       id: 'phase-8-apply-notch-filter',
       nice: ['K0737', 'S0582', 'S0421'], // K0737: Knowledge of RF spectrum characteristics, S0582: Skill in troubleshooting RF systems, S0421: Skill in using test equipment
       title: 'Configure Notch Filter',
       description: 'Configure a notch filter to surgically remove the interference spike. Match the filter settings to what you observed on the spectrum.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['navigate-filter-bank'],
+      prerequisiteObjectiveIds: ['understand-mitigation-options'],
       timeLimitSeconds: 3 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
+        {
+          type: 'tab-active',
+          description: 'RX Analysis Tab Open',
+          params: { tab: 'rx-analysis' },
+          mustMaintain: true,
+        },
         {
           type: 'notch-filter-configured',
           description: 'Notch Filter Configured',
@@ -724,9 +684,9 @@ export const scenario5Data: ScenarioData = {
       conditions: [
         {
           type: 'tab-active',
-          description: 'Spectrum Analyzer Tab Open',
-          params: { tab: 'speca' },
-          mustMaintain: false,
+          description: 'RX Analysis Tab Open',
+          params: { tab: 'rx-analysis' },
+          mustMaintain: true,
         },
         {
           type: 'status-check',
@@ -898,19 +858,6 @@ export const scenario5Data: ScenarioData = {
         emotion: Emotion.NEUTRAL,
         audioUrl: getAssetUrl('/assets/campaigns/nats/6/obj-verify-receiver.mp3'),
       },
-      'navigate-speca-config': {
-        text: `
-        <p>
-          Here's the spectrum analyzer. Right now it's configured with a narrow span focused on the beacon frequency - that's how we left it after the last calibration check.
-        </p>
-        <p>
-          For troubleshooting the customer signal, we need a much wider view. Think about what settings you'll need to change to see the full 36 megahertz wideband carrier where the customer traffic lives.
-        </p>
-        `,
-        character: Character.CHARLIE_BROOKS,
-        emotion: Emotion.NEUTRAL,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/6/obj-navigate-speca.mp3'),
-      },
       'verify-speca-initial-state': {
         text: `
         <p>
@@ -927,31 +874,18 @@ export const scenario5Data: ScenarioData = {
         emotion: Emotion.NEUTRAL,
         audioUrl: getAssetUrl('/assets/campaigns/nats/6/obj-verify-speca.mp3'),
       },
-      'phase-2-configure-span': {
+      'phase-2-configure-and-locate': {
         text: `
         <p>
-          Good. Now we can see the bigger picture. With a wider span and proper center frequency, you should be able to see our full wideband carrier.
+          Good. Now we can see the bigger picture. With a wider span and proper center frequency, you should be able to see our full wideband carrier - the 36 megahertz signal should be clearly visible as a raised plateau of energy.
         </p>
         <p>
-          Take a careful look at the spectrum display. Our 36 megahertz signal should be clearly visible as a raised plateau of energy. But we're troubleshooting because something's wrong - so look carefully for anything that doesn't belong.
+          But look carefully within that bandwidth. There's something else in there that shouldn't be. In-band interference is the worst kind because you can't just filter it out with a narrower passband - it's sitting right on top of your wanted signal. See if you can spot what's contaminating our spectrum.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
         audioUrl: getAssetUrl('/assets/campaigns/nats/6/obj-phase-2.mp3'),
-      },
-      'phase-3-locate-signal': {
-        text: `
-        <p>
-          There's our wideband signal - you can see the 36 megahertz carrier clearly now. But look carefully within that bandwidth. There's something else in there that shouldn't be.
-        </p>
-        <p>
-          In-band interference is the worst kind because you can't just filter it out with a narrower passband - it's sitting right on top of your wanted signal. See if you can spot what's contaminating our spectrum.
-        </p>
-        `,
-        character: Character.CHARLIE_BROOKS,
-        emotion: Emotion.NEUTRAL,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/6/obj-phase-3.mp3'),
       },
       'phase-4-identify-interference': {
         text: `
@@ -972,7 +906,7 @@ export const scenario5Data: ScenarioData = {
           It's narrowband - just a spike compared to our 36 megahertz wideband carrier. That's actually good news for us. A narrowband interferer means we can potentially use a notch filter to surgically remove it.
         </p>
         <p>
-          Before we apply any mitigation, we need to measure exactly where this spike is sitting. Use the spectrum analyzer's marker function to get a precise frequency reading. That's the target for our notch filter.
+          Before we apply any mitigation, we need to identify where this spike is sitting. Look at the spectrum display and estimate the center frequency of the interference. That's the target for our notch filter.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -982,7 +916,7 @@ export const scenario5Data: ScenarioData = {
       'measure-interference-frequency': {
         text: `
         <p>
-          Good - 1,515 megahertz IF. That's our target frequency. Now let's figure out what's causing this.
+          Right - 1,515 megahertz IF. That's our target frequency. Now let's figure out what's causing this.
         </p>
         <p>
           Think about what could put a narrowband signal inside our transponder bandwidth. We're using horizontal polarization on this transponder. Satellite transponders often have matching transponders on the orthogonal polarization for frequency reuse - another operator might be using that vertical pol slot.
@@ -1039,22 +973,6 @@ export const scenario5Data: ScenarioData = {
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.CONFIDENT,
         audioUrl: getAssetUrl('/assets/campaigns/nats/6/obj-understand-mitigation.mp3'),
-      },
-      'navigate-filter-bank': {
-        text: `
-        <p>
-          Here's the IF filter bank. This is where we can configure notch filters to remove unwanted signals from the receive path.
-        </p>
-        <p>
-          You'll need to set three parameters: center frequency (1,515 megahertz based on your measurement), bandwidth (narrow enough to just cover the spike - 1 megahertz should work), and depth (how much attenuation - 40 dB will push the spike well below the noise floor).
-        </p>
-        <p>
-          Double-check your values before applying. A notch in the wrong place could affect our wanted signal.
-        </p>
-        `,
-        character: Character.CHARLIE_BROOKS,
-        emotion: Emotion.CONFIDENT,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/6/obj-navigate-filter.mp3'),
       },
       'phase-8-apply-notch-filter': {
         text: `

@@ -144,7 +144,7 @@ export const scenario8Data: ScenarioData = {
       },
     ],
     satellites: [aurora7Satellite, tidemark1Satellite],
-    missionBriefUrl: 'https://docs.signalrange.space/scenarios/scenario-8?content-only=true&dark=true',
+    missionBriefUrl: 'https://docs.signalrange.space/campaign-1/scenario-8?content-only=true&dark=true',
     isExtraSatellitesVisible: true,
   },
   objectives: [

@@ -190,7 +190,7 @@ export const scenario3Data: ScenarioData = {
         initialOwnerId: 'VT-01', // Vermont initially owns traffic
       }
     ],
-    missionBriefUrl: 'https://docs.signalrange.space/scenarios/scenario-3?content-only=true&dark=true',
+    missionBriefUrl: 'https://docs.signalrange.space/campaign-1/scenario-3?content-only=true&dark=true',
     isExtraSatellitesVisible: true,
   },
   objectives: [

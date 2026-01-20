@@ -167,7 +167,7 @@ export const scenario6Data: ScenarioData = {
         ],
       },
     ],
-    missionBriefUrl: 'https://docs.signalrange.space/scenarios/scenario-6?content-only=true&dark=true',
+    missionBriefUrl: 'https://docs.signalrange.space/campaign-1/scenario-6?content-only=true&dark=true',
     isExtraSatellitesVisible: true,
     satellites: [aurora7Satellite, tidemark1Satellite, ses10Satellite],
   },

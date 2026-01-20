@@ -88,7 +88,7 @@ export const scenario2Data: ScenarioData = {
       },
       { ...maineGroundStation, isOperational: false },
     ],
-    missionBriefUrl: 'https://docs.signalrange.space/scenarios/scenario-2?content-only=true&dark=true',
+    missionBriefUrl: 'https://docs.signalrange.space/campaign-1/scenario-2?content-only=true&dark=true',
     isExtraSatellitesVisible: true,
     satellites: [
       tidemark1Satellite,

@@ -93,6 +93,7 @@ describe('DashboardTab', () => {
               isPowered: true,
             },
           },
+          getStatusAlarms: jest.fn().mockReturnValue([]),
         },
       ],
       transmitters: [

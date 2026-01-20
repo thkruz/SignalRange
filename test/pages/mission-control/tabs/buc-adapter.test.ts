@@ -149,11 +149,11 @@ describe('BUCAdapter', () => {
     it('should clamp LO frequency to valid range', () => {
       const loInput = containerEl.querySelector('#buc-lo-frequency') as HTMLInputElement;
 
-      // Set value above max (7000)
+      // Set value above max (7500)
       loInput.value = '8000';
       loInput.dispatchEvent(new Event('change'));
 
-      expect(loInput.value).toBe('7000');
+      expect(loInput.value).toBe('7500');
     });
 
     it('should clamp gain to valid range', () => {

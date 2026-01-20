@@ -418,13 +418,13 @@ export const scenario1Data: ScenarioData = {
           params: {
             question: 'What center frequency and span are set on the spectrum analyzer?',
             options: [
-              '1074.5 MHz center, 2 kHz span',
+              '1074.5 MHz center, 0.002 MHz span',
               '1532 MHz center, 2 kHz span',
               '0.002 MHz center, 1074.5 MHz span',
               '1074.5 MHz center, 2 MHz span',
             ],
             correctIndex: 0,
-            explanation: 'The spectrum analyzer is set to 1074.5 MHz (beacon IF frequency for TIDEMARK-1 after LNB downconversion) with a 2 kHz span. This narrow span allows you to clearly see the beacon signal above the noise floor.',
+            explanation: 'The spectrum analyzer is set to 1074.5 MHz (beacon IF frequency for TIDEMARK-1 after LNB downconversion) with a 2 kHz (0.002 MHz) span. This narrow span allows you to clearly see the beacon signal above the noise floor.',
             pointPenalty: 10,
           },
           mustMaintain: false,

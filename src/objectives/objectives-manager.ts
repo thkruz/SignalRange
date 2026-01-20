@@ -8,11 +8,11 @@ import { GroundStation } from '@app/assets/ground-station/ground-station';
 import { CryptoModule } from '@app/equipment/crypto';
 import { TapPoint } from "@app/equipment/rf-front-end/coupler-module/tap-points";
 import { EventBus } from '@app/events/event-bus';
-import { TabbedCanvas } from '@app/pages/mission-control/tabbed-canvas';
 import { Events, QuizCompletedData, QuizPassedData } from '@app/events/events';
 import { FaultInjector } from '@app/faults';
 import { QuizManager } from '@app/modal/quiz-manager';
 import { OpsLogManager } from '@app/ops-log/ops-log-manager';
+import { TabbedCanvas } from '@app/pages/mission-control/tabbed-canvas';
 import { SimulationManager } from '@app/simulation/simulation-manager';
 import { TrafficControlManager } from '@app/traffic/traffic-control-manager';
 import { Milliseconds } from 'ootk';
@@ -365,7 +365,7 @@ export class ObjectivesManager {
 
     const lastCompleted = completedObjectives.reduce((latest, current) =>
       (current.completedAt ?? 0) > (latest.completedAt ?? 0) ? current : latest
-    , completedObjectives[0]);
+      , completedObjectives[0]);
 
     // Reset objective state
     lastCompleted.isCompleted = false;
@@ -555,9 +555,9 @@ export class ObjectivesManager {
     // 3. Not all objectives complete
     // 4. No incomplete freezing objectives (scenario is unlocked)
     if (this.scenarioTimeLimit_ !== null &&
-        this.scenarioTimeRemaining_ > 0 &&
-        !this.areAllObjectivesCompleted() &&
-        !ObjectivesManager.isScenarioLocked()) {
+      this.scenarioTimeRemaining_ > 0 &&
+      !this.areAllObjectivesCompleted() &&
+      !ObjectivesManager.isScenarioLocked()) {
       this.scenarioTimerRunning_ = true;
     }
     // Note: objective timer doesn't resume - it will be replaced by next objective's timer
@@ -1635,7 +1635,7 @@ export class ObjectivesManager {
           // Step-track is an optimization layer on top of program-track, not a separate mode
           if (targetMode === 'step-track') {
             return antenna.state.trackingMode === 'program-track' &&
-                   antenna.state.isStepTrackEnabled === true;
+              antenna.state.isStepTrackEnabled === true;
           }
           return antenna.state.trackingMode === targetMode;
         });

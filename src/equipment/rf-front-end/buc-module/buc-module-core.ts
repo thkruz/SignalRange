@@ -213,6 +213,10 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
       alarms.push('BUC phase noise degraded (unlocked)');
     }
 
+    if (this.state.isLoopback) {
+      alarms.push('BUC in loopback mode');
+    }
+
     return alarms;
   }
 

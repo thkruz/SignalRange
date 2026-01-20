@@ -1,11 +1,11 @@
-import { EventBus } from "@app/events/event-bus";
-import { Events } from "@app/events/events";
-import { qs } from "@app/engine/utils/query-selector";
 import { CardAlarmBadge } from "@app/components/card-alarm-badge/card-alarm-badge";
+import { qs } from "@app/engine/utils/query-selector";
 import { AlarmStatus } from "@app/equipment/base-equipment";
 import { CryptoModule } from "@app/equipment/crypto";
 import { FECSimulator, FECSimulatorInput } from "@app/equipment/receiver/fec-simulator";
 import { Receiver } from "@app/equipment/receiver/receiver";
+import { EventBus } from "@app/events/event-bus";
+import { Events } from "@app/events/events";
 import { FaultInjector } from "@app/faults";
 
 /**
@@ -402,7 +402,7 @@ export class RxPayloadAdapter {
     if (state.rsUncorrectableBlocks > 0) {
       return { text: 'Overload', class: 'status-badge-red' };
     }
-    if (state.rsCorrectedErrors > 0) {
+    if (state.rsCorrectedErrors > 0 || state.rsCorrectedTotal > 0) {
       return { text: 'Active', class: 'status-badge-green' };
     }
     return { text: 'Idle', class: 'status-badge-green' };

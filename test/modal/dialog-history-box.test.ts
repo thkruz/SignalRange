@@ -1,8 +1,8 @@
 import { EventBus } from '../../src/events/event-bus';
 import { Events } from '../../src/events/events';
-import { DialogHistoryBox } from '../../src/modal/dialog-history-box';
-import { DialogHistoryManager, DialogHistoryEntry } from '../../src/modal/dialog-history-manager';
 import { Character, Emotion } from '../../src/modal/character-enum';
+import { DialogHistoryBox } from '../../src/modal/dialog-history-box';
+import { DialogHistoryEntry } from '../../src/modal/dialog-history-manager';
 
 // Mock DraggableHtmlBox
 jest.mock('../../src/modal/draggable-html-box', () => ({
@@ -41,7 +41,7 @@ jest.mock('../../src/modal/draggable-html-box', () => ({
       this._isOpen = false;
     }
 
-    protected onOpen(): void {}
+    protected onOpen(): void { }
   },
 }));
 
@@ -68,6 +68,9 @@ jest.mock('../../src/modal/dialog-history-manager', () => ({
 jest.mock('../../src/modal/character-enum', () => ({
   Character: {
     CHARLIE_BROOKS: 'charlie_brooks',
+  },
+  CharacterNames: {
+    charlie_brooks: 'Charlie Brooks',
   },
   Emotion: {
     NEUTRAL: 'neutral',
@@ -141,7 +144,7 @@ describe('DialogHistoryBox', () => {
       expect(html).toContain('dialog-history-container');
       expect(html).toContain('dialog-history-item');
       expect(html).toContain('Test Dialog');
-      expect(html).toContain('charlie_brooks');
+      expect(html).toContain('Charlie Brooks');
       expect(html).toContain('Replay');
     });
 

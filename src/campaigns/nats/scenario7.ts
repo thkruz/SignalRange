@@ -486,43 +486,33 @@ export const scenario7Data: ScenarioData = {
         },
         {
           type: 'speca-center-frequency',
-          description: 'Center Frequency Set',
+          description: 'Center Frequency: 1074.5 MHz',
           params: {
-            frequency: 1074.5e6 as Hertz,
-            frequencyTolerance: 1e6 as Hertz,
+            centerFrequency: 1074.5e6 as Hertz,
           },
           mustMaintain: true,
         },
         {
           type: 'speca-span-set',
-          description: 'Span Configured',
+          description: 'Span: 2 kHz (narrow for CW beacon)',
           params: {
-            span: 20e6 as Hertz,
-            spanTolerance: 10e6 as Hertz,
-          },
-          mustMaintain: true,
-        },
-        {
-          type: 'speca-reference-level-set',
-          description: 'Reference Level Set',
-          params: {
-            referenceLevel: -70 as dBm,
-            referenceLevelTolerance: 20,
+            span: 0.002e6 as Hertz,
+            spanTolerance: 0.002e6 as Hertz,
           },
           mustMaintain: true,
         },
         {
           type: 'speca-min-amplitude',
-          description: 'Min Amplitude Set',
+          description: 'Min Amplitude: around -100 dBm',
           params: {
-            minAmplitude: -120 as dBm,
+            minAmplitude: -100 as dBm,
             minAmplitudeTolerance: 10,
           },
           mustMaintain: true,
         },
         {
           type: 'speca-max-amplitude',
-          description: 'Max Amplitude Set',
+          description: 'Max Amplitude: around -50 dBm',
           params: {
             maxAmplitude: -50 as dBm,
             maxAmplitudeTolerance: 20,
@@ -534,7 +524,7 @@ export const scenario7Data: ScenarioData = {
           description: 'Beacon Signal Detected',
           params: {
             signalId: 'TIDEMARK-1-Beacon',
-            minPower: -100 as dBm,
+            minPower: -40 as dBm,
           },
           mustMaintain: true,
         },
@@ -1197,6 +1187,35 @@ export const scenario7Data: ScenarioData = {
         character: Character.DANA_TORRES,
         emotion: Emotion.HAPPY,
         audioUrl: getAssetUrl('/assets/campaigns/nats/7/obj-verify-fault-cleared.mp3'),
+      },
+      'verify-antenna-status': {
+        text: `
+        <p>
+          Antenna's tracking. Now we verify the receive chain by acquiring the beacon. Go to the RX Analysis tab.
+        </p>
+        <p>
+          Check that the LNB is powered with a locked reference. Then we'll tune the spectrum analyzer to find the beacon.
+        </p>
+        `,
+        character: Character.DANA_TORRES,
+        emotion: Emotion.NEUTRAL,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/7/obj-verify-antenna-status.mp3'),
+      },
+      'verify-lnb-operational': {
+        text: `
+        <p>
+          LNB looks good. Now we need to find the TIDEMARK-1 beacon. The beacon is at 4,175.5 MHz RF.
+        </p>
+        <p>
+          With the LNB LO at 5,250 MHz, that puts the beacon at 1,074.5 MHz IF. Set your center frequency there.
+        </p>
+        <p>
+          Beacons are CW carriers - very narrow. Set your span to just 2 kHz so you can see the spike clearly. Reference level around -50 dBm, minimum around -100 dBm.
+        </p>
+        `,
+        character: Character.DANA_TORRES,
+        emotion: Emotion.NEUTRAL,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/7/obj-verify-lnb-operational.mp3'),
       },
       'acquire-beacon': {
         text: `

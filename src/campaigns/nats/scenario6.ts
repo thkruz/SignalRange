@@ -448,6 +448,32 @@ export const scenario6Data: ScenarioData = {
           },
           mustMaintain: true,
         },
+        {
+          type: 'speca-max-amplitude',
+          description: 'Max Amplitude: -20 dBm',
+          params: {
+            maxAmplitude: -20 as dBm,
+            amplitudeTolerance: 5 as dB,
+          },
+          mustMaintain: true,
+        },
+        {
+          type: 'speca-min-amplitude',
+          description: 'Min Amplitude: -50 dBm',
+          params: {
+            minAmplitude: -50 as dBm,
+            amplitudeTolerance: 5 as dB,
+          },
+          mustMaintain: true,
+        },
+        {
+          type: 'speca-rbw-set',
+          description: 'RBW set to automatic',
+          params: {
+            rbw: null, // Automatic RBW
+          },
+          mustMaintain: true,
+        },
       ],
       conditionLogic: 'AND',
       points: 10,

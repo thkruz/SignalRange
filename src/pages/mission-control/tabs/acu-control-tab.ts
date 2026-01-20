@@ -199,7 +199,7 @@ export class ACUControlTab extends BaseElement {
                   <!-- Beacon Controls (shown when step-track enabled) -->
                   <div id="${p}beacon-controls" style="display: none;">
                     <div class="mb-2">
-                      <label class="form-label small mb-1">Beacon Frequency</label>
+                      <label class="form-label small mb-1">Beacon Frequency (RF)</label>
                       <div class="input-group input-group-sm">
                         <input type="number" class="form-control font-monospace" id="${p}beacon-freq"
                                value="3948" step="0.1" min="1000" max="50000">
@@ -879,8 +879,8 @@ export class ACUControlTab extends BaseElement {
       const satellite = this.activeTargetSatelliteId_ === null
         ? null
         : SimulationManager.getInstance().satellites.find(
-            sat => sat.noradId === this.activeTargetSatelliteId_
-          );
+          sat => sat.noradId === this.activeTargetSatelliteId_
+        );
       currentTargetDisplay.value = satellite?.name ?? 'No Target';
     }
 

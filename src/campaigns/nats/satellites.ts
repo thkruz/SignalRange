@@ -213,8 +213,8 @@ export const ses10Satellite = new Satellite(
  * from ground stations. Requires step-track mode for reliable tracking.
  *
  * Frequency Plan:
- * - Uplink RF: 5830 MHz (TP-1 center)
- * - Downlink RF: 3605 MHz (5830 - 2225 offset)
+ * - Uplink RF: 6053 MHz (TP-1 center)
+ * - Downlink RF: 3828 MHz (6053 - 2225 offset)
  * - Beacon RF: 4165 MHz (CW)
  * - Bandwidth: 24 MHz (narrower than newer satellites)
  *
@@ -222,8 +222,8 @@ export const ses10Satellite = new Satellite(
  * - Beacon IF: 1085 MHz (5250 - 4165)
  * - Downlink IF: 1645 MHz (5250 - 3605)
  *
- * With BUC LO at 4925 MHz:
- * - TX IF: 905 MHz (5830 - 4925)
+ * With BUC LO at 7500 MHz:
+ * - TX IF: 1447 MHz (7500 - 6053)
  */
 export const aurora7Satellite = new Satellite(
   'AURORA-7',
@@ -234,7 +234,7 @@ export const aurora7Satellite = new Satellite(
       signalId: 'AURORA-7-TDMA-Composite',
       serverId: 1,
       noradId: 28899,
-      frequency: 5830e6 as RfFrequency,
+      frequency: 6053e6 as RfFrequency,
       polarization: 'H',
       power: 18 as dBm, // Slightly lower power for legacy bird
       bandwidth: 24e6 as Hertz, // Narrower bandwidth
@@ -266,7 +266,7 @@ export const aurora7Satellite = new Satellite(
     transponderConfigs: [
       {
         id: 'TP-1',
-        uplinkCenterFrequency: 5830e6 as RfFrequency,
+        uplinkCenterFrequency: 6053e6 as RfFrequency,
         bandwidth: 24e6 as Hertz, // Narrower than TIDEMARK
         frequencyOffset: 2.225e9 as Hertz, // Downlink at 3605 MHz
         polarization: 'H',

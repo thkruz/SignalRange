@@ -21,6 +21,7 @@ import {
 type ObjectiveType =
   | 'quiz'
   | 'select-station'
+  | 'click-tab'
   | 'auto'
   | 'toggle-switch'
   | 'set-tracking-mode'
@@ -96,7 +97,7 @@ const SCENARIO_2_OBJECTIVES: Scenario2Objective[] = [
     id: 'verify-hpa-disabled-quiz',
     title: 'Confirm HPA Output Disabled',
     type: 'quiz',
-    correctAnswer: 'HPA Enable indicator shows OFF - no RF output',
+    correctAnswer: 'HPA Enable indicator shows OFF - no RF output, but amplifier still energized',
   },
   {
     id: 'power-off-hpa',

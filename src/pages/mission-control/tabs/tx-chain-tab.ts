@@ -549,7 +549,10 @@ export class TxChainTab extends BaseElement {
                 <!-- Buffer Status Column -->
                 <div class="col-6">
                   <div class="metric-group h-100">
-                    <div class="metric-group-title">Buffer Status</div>
+                    <div class="metric-group-title d-flex justify-content-between align-items-center">
+                      <span>Buffer Status</span>
+                      <span id="tx-payload-buffer-status" class="status-badge status-badge-good">Healthy</span>
+                    </div>
                     <div class="metric-row">
                       <span class="metric-label">Utilization:</span>
                       <div class="d-flex align-items-center gap-2">

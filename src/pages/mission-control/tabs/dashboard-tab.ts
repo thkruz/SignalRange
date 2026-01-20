@@ -464,6 +464,9 @@ export class DashboardTab extends BaseElement {
   private syncDomWithState_(): void {
     const gs = this.groundStation;
 
+    // Collect alarms from all equipment
+    this.collectAlarms_();
+
     const statusEl = this.domCache_.get('station-status');
     if (statusEl) {
       statusEl.textContent = gs.state.isOperational ? 'OPERATIONAL' : 'OFFLINE';
@@ -767,6 +770,64 @@ export class DashboardTab extends BaseElement {
     const faultEl = this.domCache_.get('tx-fault');
     if (faultEl) {
       faultEl.className = `card-alarm-led ${faultedModems > 0 ? 'error' : 'off'}`;
+    }
+  }
+
+  /**
+   * Collect alarms from all equipment modules
+   * Updates the alarms_ array and the alarm list display
+   */
+  private collectAlarms_(): void {
+    // Clear existing alarms
+    this.alarms_.length = 0;
+
+    const gs = this.groundStation;
+
+    // Collect from RF Front-Ends (TX chain: rfcase=1, RX chain: rfcase=2)
+    gs.rfFrontEnds.forEach((rfFe) => {
+      const txAlarms = rfFe.getStatusAlarms(1);
+      const rxAlarms = rfFe.getStatusAlarms(2);
+
+      [...txAlarms, ...rxAlarms].forEach(alarm => {
+        this.alarms_.push({
+          id: `rfFe-${alarm.message}`,
+          level: alarm.severity === 'error' ? 'critical' : 'warning',
+          message: alarm.message,
+          timestamp: new Date()
+        });
+      });
+    });
+
+    // Collect from Antennas
+    gs.antennas.forEach((antenna, antIdx) => {
+      if (antenna.state.hasFault) {
+        this.alarms_.push({
+          id: `antenna-fault-${antIdx}`,
+          level: 'critical',
+          message: `Antenna ${antIdx + 1} has fault`,
+          timestamp: new Date()
+        });
+      }
+    });
+
+    // Collect from Transmitters
+    gs.transmitters.forEach((tx, txIdx) => {
+      tx.state.modems.forEach((modem, modemIdx) => {
+        if (modem.isFaulted) {
+          this.alarms_.push({
+            id: `tx-modem-fault-${txIdx}-${modemIdx}`,
+            level: 'warning',
+            message: `Transmitter modem ${modemIdx + 1} faulted`,
+            timestamp: new Date()
+          });
+        }
+      });
+    });
+
+    // Update the alarm list DOM
+    const alarmListEl = this.domCache_.get('alarm-list');
+    if (alarmListEl) {
+      alarmListEl.innerHTML = this.renderAlarmList_();
     }
   }
 

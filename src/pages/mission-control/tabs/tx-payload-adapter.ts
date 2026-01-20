@@ -164,6 +164,7 @@ export class TxPayloadAdapter {
     this.cacheElement_('tx-payload-buffer-pct', 'bufferPct');
     this.cacheElement_('tx-payload-overflows', 'overflows');
     this.cacheElement_('tx-payload-underruns', 'underruns');
+    this.cacheElement_('tx-payload-buffer-status', 'bufferStatus');
   }
 
   private cacheElement_(htmlId: string, cacheKey: string): void {
@@ -233,6 +234,14 @@ export class TxPayloadAdapter {
     this.updateTextContent_('overflows', state.bufferOverflows.toLocaleString());
     this.updateTextContent_('underruns', state.bufferUnderruns.toLocaleString());
 
+    // Buffer Health Status Badge
+    const bufferStatusEl = this.domCache_.get('bufferStatus');
+    if (bufferStatusEl) {
+      const health = this.getBufferHealthStatus_(state);
+      bufferStatusEl.textContent = health.text;
+      bufferStatusEl.className = health.className;
+    }
+
     // Update alarm badge
     const alarms = this.getAlarms_();
     this.alarmBadge_.update(alarms);
@@ -292,6 +301,18 @@ export class TxPayloadAdapter {
       return 'progress-bar bg-warning';
     }
     return 'progress-bar bg-primary';
+  }
+
+  private getBufferHealthStatus_(state: TxPayloadState): { text: string; className: string } {
+    const isWarning =
+      state.bufferOverflows > 0 ||
+      state.bufferUnderruns > 0 ||
+      state.bufferUtilization === 0 ||
+      state.bufferUtilization === 100;
+
+    return isWarning
+      ? { text: 'Warning', className: 'status-badge status-badge-warning' }
+      : { text: 'Healthy', className: 'status-badge status-badge-good' };
   }
 
   private getAlarms_(): AlarmStatus[] {

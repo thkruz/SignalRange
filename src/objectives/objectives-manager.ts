@@ -1152,11 +1152,24 @@ export class ObjectivesManager {
           if (!state.isLocked) return false;
 
           // If a specific satellite is required, check it
-          if (condition.params?.satelliteId !== undefined) {
-            const targetSat = sim.getSatByNoradId(condition.params.satelliteId);
+          const requiredNoradId =
+            (condition.params?.noradId as number | undefined) ??
+            (condition.params?.satelliteId as number | undefined);
+
+          if (requiredNoradId !== undefined) {
+            const targetSat = sim.getSatByNoradId(requiredNoradId);
             if (!targetSat) return false;
 
-            const azDiff = Math.abs(state.azimuth - targetSat.az);
+            // If the antenna has an explicit target satellite selected, it must match.
+            // This prevents passing when the antenna is locked on the wrong satellite.
+            const targetedNoradId = (state as { targetSatelliteId?: number | null }).targetSatelliteId;
+            if (targetedNoradId !== undefined && targetedNoradId !== null && targetedNoradId !== requiredNoradId) {
+              return false;
+            }
+
+            // Handle 360° wraparound for azimuth
+            let azDiff = Math.abs(state.azimuth - targetSat.az);
+            if (azDiff > 180) azDiff = 360 - azDiff;
             const elDiff = Math.abs(state.elevation - targetSat.el);
             return azDiff <= 1.5 && elDiff <= 1.5;
           }

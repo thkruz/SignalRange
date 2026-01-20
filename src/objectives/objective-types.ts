@@ -112,7 +112,9 @@ export type EquipmentRef =
  * Parameters for different condition types
  */
 export interface ConditionParams {
-  /** For antenna-locked: which satellite (noradId) */
+  /** For antenna-locked: which satellite (NORAD ID) */
+  noradId?: number;
+  /** For antenna-locked: legacy alias for noradId (kept for backwards compatibility) */
   satelliteId?: number;
   /** For equipment-powered: which equipment */
   equipment?: EquipmentRef;

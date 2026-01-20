@@ -1,9 +1,9 @@
+import { CardAlarmBadge } from "@app/components/card-alarm-badge/card-alarm-badge";
+import { qs } from "@app/engine/utils/query-selector";
+import { AlarmStatus } from "@app/equipment/base-equipment";
+import { BUCModuleCore, BUCState } from "@app/equipment/rf-front-end/buc-module/buc-module-core";
 import { EventBus } from "@app/events/event-bus";
 import { Events } from "@app/events/events";
-import { BUCModuleCore, BUCState } from "@app/equipment/rf-front-end/buc-module/buc-module-core";
-import { qs } from "@app/engine/utils/query-selector";
-import { CardAlarmBadge } from "@app/components/card-alarm-badge/card-alarm-badge";
-import { AlarmStatus } from "@app/equipment/base-equipment";
 import { parseLocalizedNumber } from "@app/utils/parse-number";
 
 /**
@@ -291,13 +291,13 @@ export class BUCAdapter {
   private loFreqInputHandler_(e: Event): void {
     const value = parseLocalizedNumber((e.target as HTMLInputElement).value);
     if (!isNaN(value)) {
-      this.stagedLoFrequency_ = Math.max(6000, Math.min(7000, value));
+      this.stagedLoFrequency_ = Math.max(6000, Math.min(7500, value));
       this.updateStagedDisplay_();
     }
   }
 
   private adjustStagedLoFrequency_(delta: number): void {
-    this.stagedLoFrequency_ = Math.max(6000, Math.min(7000, this.stagedLoFrequency_ + delta));
+    this.stagedLoFrequency_ = Math.max(6000, Math.min(7500, this.stagedLoFrequency_ + delta));
     this.updateStagedDisplay_();
   }
 

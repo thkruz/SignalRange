@@ -4,9 +4,9 @@ import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
 import { BUCAdapter } from './buc-adapter';
 import { HPAAdapter } from './hpa-adapter';
-import { TxPayloadAdapter } from './tx-payload-adapter';
 import { TransmitterAdapter } from './transmitter-adapter';
 import './tx-chain-tab.css';
+import { TxPayloadAdapter } from './tx-payload-adapter';
 
 /**
  * TxChainTab - Transmitter chain control and monitoring
@@ -68,7 +68,7 @@ export class TxChainTab extends BaseElement {
                   </div>
                   <div class="equip-adjust-display">
                     <input type="number" id="buc-lo-frequency" class="equip-adjust-input"
-                           min="6000" max="7000" step="1" value="6425" />
+                           min="6000" max="7500" step="1" value="6425" />
                   </div>
                   <div class="equip-adjust-buttons equip-adjust-increase">
                     <button id="buc-lo-inc-fine" class="btn-equip" title="+10 MHz">+10</button>

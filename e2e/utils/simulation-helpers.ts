@@ -58,7 +58,7 @@ export async function waitForObjectiveCompleted(page: Page, objectiveId: string)
     (id) => {
       const objective = document.querySelector(`[data-objective-id="${id}"]`);
       return objective?.classList.contains('completed') ||
-             objective?.querySelector('.completed') !== null;
+        objective?.querySelector('.completed') !== null;
     },
     objectiveId,
     { timeout: 30000 }

@@ -48,9 +48,9 @@ import { aurora7Satellite, ses10Satellite, tidemark1Satellite } from './satellit
  *   - Beacon RF: 4165 MHz
  *   - LNB LO: 5250 MHz
  *   - Beacon IF: 1085 MHz (5250 - 4165) - PRE-CONFIGURED by Charlie
- *   - Downlink IF: 1645 MHz (5250 - 3605)
- *   - BUC LO: 4925 MHz
- *   - TX IF: 905 MHz (5830 - 4925) - STUDENT CALCULATES THIS
+ *   - Downlink IF: 1422 MHz (5250 - 3828)
+ *   - BUC LO: 7500 MHz
+ *   - TX IF: 1447 MHz (5830 - 7500) - STUDENT CALCULATES THIS
  *   - Bandwidth: 24 MHz
  *
  * Key Differences from Scenario 4:
@@ -110,7 +110,7 @@ export const scenario6Data: ScenarioData = {
             // TX chain pre-configured by Charlie but disabled
             buc: {
               isMuted: true,
-              loFrequency: 4925 as MHz, // Set for AURORA-7
+              loFrequency: 7500 as MHz, // Set for AURORA-7
               isExtRefLocked: true,
             },
             hpa: {
@@ -355,7 +355,7 @@ export const scenario6Data: ScenarioData = {
               'LNB LO (5250 MHz) minus beacon RF (4165 MHz) = 1085 MHz',
               'Beacon RF (4165 MHz) minus a standard offset (3080 MHz)',
               'It\'s the satellite\'s default beacon IF setting',
-              'BUC LO (4925 MHz) minus beacon RF (4165 MHz) = 760 MHz',
+              'BUC LO (7500 MHz) minus beacon RF (4165 MHz) = 3355 MHz',
             ],
             correctIndex: 0,
             explanation: 'The beacon IF is calculated using high-side LO injection: IF = LO - RF = 5250 - 4165 = 1085 MHz. The LNB converts the RF signal down to IF for processing.',
@@ -424,7 +424,7 @@ export const scenario6Data: ScenarioData = {
       // T1567: Equipment configuration happens throughout
       nice: ['K0773', 'S0421', 'T1567'],
       title: 'Configure Spectrum Analyzer for Downlink',
-      description: 'Reconfigure the spectrum analyzer to view the main downlink signal at IF 1645 MHz.',
+      description: 'Reconfigure the spectrum analyzer to view the main downlink signal at IF 1422 MHz.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['acquire-beacon-lock'],
       timeLimitSeconds: 3 * 60,
@@ -432,9 +432,9 @@ export const scenario6Data: ScenarioData = {
       conditions: [
         {
           type: 'speca-center-frequency',
-          description: 'Center: 1645 MHz',
+          description: 'Center: 1422 MHz',
           params: {
-            centerFrequency: 1645e6 as Hertz,
+            centerFrequency: 1422e6 as Hertz,
             centerFrequencyTolerance: 5e6,
           },
           mustMaintain: true,
@@ -485,7 +485,7 @@ export const scenario6Data: ScenarioData = {
       // T1567: Equipment configuration happens throughout
       nice: ['K0773', 'S0421', 'T1567'],
       title: 'Configure RX Modem',
-      description: 'Set the receiver modem to the AURORA-7 downlink IF frequency (1645 MHz) with correct bandwidth and modulation.',
+      description: 'Set the receiver modem to the AURORA-7 downlink IF frequency (1422 MHz) with correct bandwidth and modulation.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['configure-speca-downlink'],
       timeLimitSeconds: 3 * 60,
@@ -493,9 +493,9 @@ export const scenario6Data: ScenarioData = {
       conditions: [
         {
           type: 'rx-modem-frequency-set',
-          description: 'RX Frequency: 1645 MHz',
+          description: 'RX Frequency: 1422 MHz',
           params: {
-            frequency: 1645e6,
+            frequency: 1422e6 as Hertz,
             frequencyTolerance: 1e6,
           },
           maintainUntilObjectiveComplete: true,
@@ -607,7 +607,7 @@ export const scenario6Data: ScenarioData = {
       // K0773: Knowledge of telecommunications principles and practices
       nice: ['K0773'],
       title: 'Calculate TX IF Frequency',
-      description: 'AURORA-7\'s uplink is at 5830 MHz RF. Calculate the TX IF frequency using the BUC LO at 4925 MHz.',
+      description: 'AURORA-7\'s uplink is at 6053 MHz RF. Calculate the TX IF frequency using the BUC LO at 7500 MHz.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['quiz-encryption'],
       timeLimitSeconds: 3 * 60,
@@ -617,15 +617,15 @@ export const scenario6Data: ScenarioData = {
           type: 'status-check',
           description: 'TX IF Calculated',
           params: {
-            question: 'What TX IF frequency should you configure to transmit at 5830 MHz RF?',
+            question: 'What TX IF frequency should you configure to transmit at 6053 MHz RF?',
             options: [
-              '905 MHz (5830 - 4925 = 905)',
-              '1050 MHz (5830 - 4780 = 1050)',
-              '10755 MHz (5830 + 4925 = 10755)',
-              '755 MHz (4925 - 4170 = 755)',
+              '1447 MHz (7500 - 6053 = 1447)',
+              '13553 MHz (6053 + 7500 = 13553)',
+              '2303 MHz (6053 - 7500 / 2 = 2303)',
+              '755 MHz (7500 - 4170 = 755)',
             ],
             correctIndex: 0,
-            explanation: 'For uplink, the BUC upconverts the IF to RF: RF = IF + LO, so IF = RF - LO = 5830 - 4925 = 905 MHz. This is different from downlink calculation because the BUC uses low-side injection.',
+            explanation: 'For uplink, the BUC upconverts the IF to RF: RF = IF + LO, so IF = LO - RF = 7500 - 6053 = 1447 MHz. This is similar to the downlink calculation because the BUC is also using low-side injection.',
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -640,7 +640,7 @@ export const scenario6Data: ScenarioData = {
       // T1567: Equipment configuration happens throughout
       nice: ['S0421', 'T1567'],
       title: 'Configure TX Modem',
-      description: 'Set the TX modem frequency to 905 MHz to transmit on AURORA-7\'s uplink.',
+      description: 'Set the TX modem frequency to 1447 MHz to transmit on AURORA-7\'s uplink.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['calculate-tx-if'],
       timeLimitSeconds: 2 * 60,
@@ -648,9 +648,9 @@ export const scenario6Data: ScenarioData = {
       conditions: [
         {
           type: 'tx-modem-frequency-set',
-          description: 'TX Frequency: 905 MHz',
+          description: 'TX Frequency: 1447 MHz',
           params: {
-            frequency: 905e6,
+            frequency: 1447e6,
             frequencyTolerance: 1e6,
           },
           mustMaintain: true,
@@ -712,13 +712,13 @@ export const scenario6Data: ScenarioData = {
           params: {
             question: 'Which statement best describes your operational link to AURORA-7?',
             options: [
-              'Step-track maintaining lock on beacon, RX at 1645 MHz IF, TX at 905 MHz IF, AES-256 encrypted',
+              'Step-track maintaining lock on beacon, RX at 1422 MHz IF, TX at 1447 MHz IF, AES-256 encrypted',
               'Program-track following TLE, RX at 1085 MHz IF, TX at 1043 MHz IF, unencrypted',
               'Manual pointing, RX at 1532 MHz IF, TX at 1094 MHz IF, AES-128 encrypted',
               'Step-track on beacon, RX at 3605 MHz RF, TX at 5830 MHz RF, no encryption',
             ],
             correctIndex: 0,
-            explanation: 'Your link uses step-track mode to maintain pointing on the inclined-orbit AURORA-7 satellite. The receiver is configured for 1645 MHz IF (downlink), transmitter for 905 MHz IF (uplink), and AES-256-GCM encryption is active.',
+            explanation: 'Your link uses step-track mode to maintain pointing on the inclined-orbit AURORA-7 satellite. The receiver is configured for 1422 MHz IF (downlink), transmitter for 1447 MHz IF (uplink), and AES-256-GCM encryption is active.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -893,7 +893,7 @@ export const scenario6Data: ScenarioData = {
       'calculate-tx-if': {
         text: `
         <p>
-          905 megahertz. Good work. The BUC upconverts from IF to RF, so it's a different calculation than the downlink. Set the TX modem to 905 megahertz.
+          1447 megahertz. Good work. The BUC upconverts from IF to RF, so it's a different calculation than the downlink. Set the TX modem to 1447 megahertz.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,

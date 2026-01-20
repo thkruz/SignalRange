@@ -139,6 +139,14 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
     // Update thermal parameters
     this.updateThermalState_();
 
+    // If the module is unpowered, the RF output chain is inactive.
+    // We still update derived state above (lock, drift, thermal, etc.),
+    // but no output signals should be emitted.
+    if (!this.state.isPowered) {
+      this.outputSignals = [];
+      return;
+    }
+
     // Check for alarms is currently handled by RFFrontEndCore
 
     // Calculate post-BUC signals (apply upconversion and gain if powered)
@@ -149,7 +157,7 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
         const inBand = this.isInPassband_(rfFreq);
         if (!inBand) return null;  // Reject out-of-band signals
 
-        const gain = this.state.isPowered && !this.state.isMuted
+        const gain = !this.state.isMuted
           ? this.state.gain
           : -170;
         return {

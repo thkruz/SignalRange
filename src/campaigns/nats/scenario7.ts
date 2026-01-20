@@ -42,7 +42,7 @@ import { ses10Satellite, tidemark1Satellite } from './satellites';
  * 1. Independent verification of RX chain status
  * 2. TX modem IF frequency calculation (RF - BUC LO = IF)
  * 3. BUC loopback mode for pre-transmission validation
- * 4. Troubleshooting a minor fault (BUC reference unlock)
+ * 4. Troubleshooting a minor fault (BUC left in loopback mode)
  * 5. Full uplink enable sequence with encryption awareness
  *
  * Technical Reference (TIDEMARK-1):
@@ -89,13 +89,14 @@ export const scenario7Data: ScenarioData = {
         rfFrontEnds: [
           createRfFrontEnd(vermontGroundStation.rfFrontEnds[0], {
             // Post-maintenance state: TX chain disabled, RX operational
+            // BUC left in loopback mode by maintenance crew - must be disabled
             buc: {
               isMuted: true,
-              isLoopback: false,
+              isLoopback: true, // Fault: maintenance left loopback enabled
               loFrequency: 4900 as MHz,
               isExtRefLocked: true,
-              gain: 35 as dB, // High gain causing over-temperature condition
-              temperature: 75, // Above 70°C threshold - requires attention
+              gain: 25 as dB, // Normal operating gain
+              temperature: 45, // Normal operating temperature
             },
             hpa: {
               isHpaEnabled: false,
@@ -234,13 +235,13 @@ export const scenario7Data: ScenarioData = {
           params: {
             question: 'What alarm condition is currently displayed on the Dashboard?',
             options: [
-              'BUC Over-Temperature Warning',
+              'BUC Loopback Mode Enabled',
               'LNB Reference Unlocked',
               'HPA Output Fault',
               'No active alarms',
             ],
             correctIndex: 0,
-            explanation: 'The BUC is showing an over-temperature warning. The temperature is above the 70°C threshold. This must be addressed before we can safely proceed with transmit chain validation.',
+            explanation: 'The BUC is in loopback mode. This was likely left enabled by the maintenance crew during testing. Loopback must be disabled before we can transmit to the satellite.',
             pointPenalty: 10,
             character: Character.DANA_TORRES,
           },
@@ -251,12 +252,12 @@ export const scenario7Data: ScenarioData = {
       points: 10,
     },
     {
-      id: 'diagnose-buc-overtemp',
+      id: 'diagnose-buc-loopback',
       // T0081: Diagnose network connectivity problems - fault diagnosis
       // S0582: Skill in troubleshooting system performance
       nice: ['T0081', 'S0582'],
-      title: 'Diagnose BUC Over-Temperature',
-      description: 'Navigate to the TX Chain and identify the cause of the BUC over-temperature condition.',
+      title: 'Diagnose BUC Loopback Issue',
+      description: 'Navigate to the TX Chain and confirm the BUC loopback status.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['check-dashboard-status'],
       timeLimitSeconds: 3 * 60,
@@ -272,15 +273,15 @@ export const scenario7Data: ScenarioData = {
           type: 'status-check',
           description: 'Identify Cause',
           params: {
-            question: 'Looking at the BUC panel, what is the most likely cause of the over-temperature condition?',
+            question: 'Looking at the BUC panel, why is loopback mode a problem for normal operations?',
             options: [
-              'BUC gain is set too high (35 dB) - excessive amplification generates heat',
-              'BUC is not receiving external reference',
-              'BUC output is unmuted',
-              'BUC local oscillator frequency is incorrect',
+              'Loopback routes TX signal back to RX chain instead of to the antenna',
+              'Loopback increases BUC temperature',
+              'Loopback disables the external reference',
+              'Loopback changes the LO frequency',
             ],
             correctIndex: 0,
-            explanation: 'The BUC gain is set to 35 dB, which is higher than typical operating levels. High gain means the amplifier is working harder, generating more heat. The maintenance crew may have left it at a test setting.',
+            explanation: 'Loopback mode is used for testing - it routes the transmit signal back to the receive chain internally. With loopback enabled, no RF power reaches the antenna, so the satellite never receives our signal. The maintenance crew left it on after testing.',
             pointPenalty: 10,
             character: Character.DANA_TORRES,
           },
@@ -291,14 +292,14 @@ export const scenario7Data: ScenarioData = {
       points: 10,
     },
     {
-      id: 'resolve-buc-overtemp',
+      id: 'resolve-buc-loopback',
       // S0582: Skill in troubleshooting system performance - fault resolution
       // K0740: Knowledge of network performance management
       nice: ['S0582', 'K0740'],
-      title: 'Resolve BUC Over-Temperature',
-      description: 'Reduce the BUC gain to a normal operating level and verify the temperature alarm clears.',
+      title: 'Disable BUC Loopback',
+      description: 'Disable loopback mode on the BUC to prepare for normal operations.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['diagnose-buc-overtemp'],
+      prerequisiteObjectiveIds: ['diagnose-buc-loopback'],
       timeLimitSeconds: 2 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
@@ -309,9 +310,8 @@ export const scenario7Data: ScenarioData = {
           mustMaintain: true,
         },
         {
-          type: 'buc-temperature-normal',
-          description: 'BUC Temperature Normal',
-          params: { maxTemperature: 70 },
+          type: 'buc-loopback-disabled',
+          description: 'BUC Loopback Disabled',
           mustMaintain: true,
         },
       ],
@@ -324,9 +324,9 @@ export const scenario7Data: ScenarioData = {
       // T0153: Monitor network capacity and performance - confirming resolution
       nice: ['K0741', 'T0153'],
       title: 'Verify Fault Cleared',
-      description: 'Confirm the Dashboard no longer shows the BUC over-temperature alarm.',
+      description: 'Confirm the Dashboard no longer shows the BUC loopback alarm.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['resolve-buc-overtemp'],
+      prerequisiteObjectiveIds: ['resolve-buc-loopback'],
       timeLimitSeconds: 2 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
@@ -342,13 +342,13 @@ export const scenario7Data: ScenarioData = {
           params: {
             question: 'What is the current BUC status on the Dashboard?',
             options: [
-              'Normal - no active alarms',
-              'Warning - temperature still elevated',
+              'Normal - loopback disabled, no active alarms',
+              'Warning - loopback still enabled',
               'Fault - BUC offline',
               'Unknown - BUC not reporting',
             ],
             correctIndex: 0,
-            explanation: 'The BUC temperature has returned to normal range and the alarm has cleared. Always verify alarm resolution on the Dashboard before proceeding.',
+            explanation: 'The BUC loopback has been disabled and the alarm has cleared. Always verify alarm resolution on the Dashboard before proceeding.',
             pointPenalty: 5,
             character: Character.DANA_TORRES,
           },
@@ -716,99 +716,8 @@ export const scenario7Data: ScenarioData = {
     },
 
     // ============================================================
-    // BUC FAULT DIAGNOSIS & LOOPBACK VALIDATION
+    // LOOPBACK VALIDATION
     // ============================================================
-    {
-      id: 'check-buc-status',
-      // S0582: Skill in troubleshooting system performance
-      nice: ['S0582'],
-      title: 'Check BUC Status',
-      description: 'Inspect the BUC panel for any fault conditions.',
-      groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['configure-tx-modem'],
-      timeLimitSeconds: 2 * 60,
-      timerStartTrigger: 'on-activate',
-      conditions: [
-        {
-          type: 'tab-active',
-          description: 'TX Chain Tab Open',
-          params: { tab: 'tx-chain' },
-          mustMaintain: true,
-        },
-        {
-          type: 'buc-reference-locked',
-          description: 'BUC Reference Status Checked',
-          mustMaintain: false,
-        },
-        {
-          type: 'status-check',
-          description: 'BUC Fault Identified',
-          params: {
-            question: 'What fault condition is indicated on the BUC panel?',
-            options: [
-              'Over Temperature',
-              '10 MHz Reference Unlocked',
-              'Output Saturated',
-              'No Fault - All Normal',
-            ],
-            correctIndex: 0,
-            explanation: 'The BUC is over temperature (>70°C). High gain settings increase power dissipation and heat. Reducing the gain will lower the temperature to a safe operating range.',
-            pointPenalty: 5,
-            character: Character.DANA_TORRES,
-          },
-          mustMaintain: false,
-        },
-      ],
-      conditionLogic: 'AND',
-      points: 10,
-    },
-    {
-      id: 'resolve-buc-fault',
-      // T0081: Diagnose network connectivity problems
-      // T1567: Equipment configuration happens throughout
-      nice: ['T0081', 'T1567'],
-      title: 'Resolve BUC Temperature Fault',
-      description: 'Lower the BUC gain to reduce temperature to safe operating range.',
-      groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['check-buc-status'],
-      timeLimitSeconds: 2 * 60,
-      timerStartTrigger: 'on-activate',
-      conditions: [
-        {
-          type: 'tab-active',
-          description: 'TX Chain Tab Open',
-          params: { tab: 'tx-chain' },
-          mustMaintain: true,
-        },
-        {
-          type: 'buc-temperature-normal',
-          description: 'BUC Temperature Normal',
-          params: { maxTemperature: 70 },
-          mustMaintain: true,
-        },
-        {
-          type: 'status-check',
-          description: 'Gain Reduction Understanding',
-          params: {
-            question: 'What setting did you adjust to resolve the BUC over-temperature condition?',
-            options: [
-              'Reduced BUC gain to decrease power dissipation',
-              'Increased BUC LO frequency to shift heat',
-              'Enabled loopback mode to bypass the amplifier',
-              'Muted the BUC to stop signal flow',
-            ],
-            correctIndex: 0,
-            explanation:
-              'Reducing BUC gain decreases power dissipation in the amplifier, which lowers operating temperature.',
-            pointPenalty: 5,
-            character: Character.DANA_TORRES,
-          },
-          mustMaintain: false,
-        },
-      ],
-      conditionLogic: 'AND',
-      points: 10,
-    },
     {
       id: 'enable-loopback',
       // T1313: Test network infrastructure, including software and hardware devices
@@ -817,7 +726,7 @@ export const scenario7Data: ScenarioData = {
       title: 'Enable BUC Loopback',
       description: 'Toggle loopback mode ON to route the TX signal back to the receive chain for testing without transmitting to the satellite.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['resolve-buc-fault'],
+      prerequisiteObjectiveIds: ['configure-tx-modem'],
       timeLimitSeconds: 2 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
@@ -1246,35 +1155,35 @@ export const scenario7Data: ScenarioData = {
       'check-dashboard-status': {
         text: `
         <p>
-          There's your problem. BUC is running hot. That needs to be fixed before we do anything with the transmit chain.
+          There's your problem. BUC is still in loopback mode. Maintenance must have left it that way after testing.
         </p>
         <p>
-          Click the TX Chain tab and take a look at the BUC panel. See if you can figure out why it's over-temp.
+          Click the TX Chain tab and take a look at the BUC panel. We need to disable loopback before we can transmit to the satellite.
         </p>
         `,
         character: Character.DANA_TORRES,
         emotion: Emotion.CONCERNED,
         audioUrl: getAssetUrl('/assets/campaigns/nats/7/obj-check-dashboard-status.mp3'),
       },
-      'diagnose-buc-overtemp': {
+      'diagnose-buc-loopback': {
         text: `
         <p>
-          Right - gain is way too high. Maintenance probably left it there after testing. Reduce it to around 25 dB. That's normal operating level for this BUC.
+          Right - loopback is enabled. That routes the transmit signal back to our receive chain instead of sending it out the antenna. Useful for testing, but we need to disable it for normal operations.
         </p>
         `,
         character: Character.DANA_TORRES,
         emotion: Emotion.NEUTRAL,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/7/obj-diagnose-buc-overtemp.mp3'),
+        audioUrl: getAssetUrl('/assets/campaigns/nats/7/obj-diagnose-buc-loopback.mp3'),
       },
-      'resolve-buc-overtemp': {
+      'resolve-buc-loopback': {
         text: `
         <p>
-          Good. Temperature is dropping. Let's verify on the Dashboard that the alarm has cleared before we continue.
+          Good. Loopback is disabled. Let's verify on the Dashboard that the alarm has cleared before we continue.
         </p>
         `,
         character: Character.DANA_TORRES,
         emotion: Emotion.CONFIDENT,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/7/obj-resolve-buc-overtemp.mp3'),
+        audioUrl: getAssetUrl('/assets/campaigns/nats/7/obj-resolve-buc-loopback.mp3'),
       },
       'verify-fault-cleared': {
         text: `
@@ -1299,30 +1208,10 @@ export const scenario7Data: ScenarioData = {
         emotion: Emotion.NEUTRAL,
         audioUrl: getAssetUrl('/assets/campaigns/nats/7/obj-acquire-beacon.mp3'),
       },
-      'check-buc-status': {
-        text: `
-        <p>
-          Over temperature. Gain is too high. Reduce it to bring the temperature down.
-        </p>
-        `,
-        character: Character.DANA_TORRES,
-        emotion: Emotion.NEUTRAL,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/7/obj-check-buc-status.mp3'),
-      },
-      'resolve-buc-fault': {
-        text: `
-        <p>
-          Temperature is back in normal range. Good.
-        </p>
-        `,
-        character: Character.DANA_TORRES,
-        emotion: Emotion.NEUTRAL,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/7/obj-resolve-buc-fault.mp3'),
-      },
       'enable-loopback': {
         text: `
         <p>
-          Before we transmit for real, we need to verify the TX signal path. That's what loopback mode is for.
+          TX modem is configured. Before we transmit for real, we need to verify the TX signal path. Now we enable loopback intentionally - this is the proper test procedure.
         </p>
         <p>
           Toggle loopback ON in the BUC panel, then unmute. The signal will route back to our spectrum analyzer instead of going to the antenna.
@@ -1371,7 +1260,7 @@ export const scenario7Data: ScenarioData = {
           TIDEMARK-1 uplink validated and operational.
         </p>
         <p>
-          You handled the temperature fault, used loopback correctly, brought it up clean. I'll let Charlie know.
+          You caught that maintenance left loopback enabled, used it correctly for testing, brought it up clean. I'll let Charlie know.
         </p>
         `,
         character: Character.DANA_TORRES,

@@ -42,13 +42,13 @@ import { ses10Satellite, tidemark1Satellite } from './satellites';
  * 1. Independent verification of RX chain status
  * 2. TX modem IF frequency calculation (RF - BUC LO = IF)
  * 3. BUC loopback mode for pre-transmission validation
- * 4. Troubleshooting a minor fault (BUC left in loopback mode)
+ * 4. Troubleshooting a minor fault (BUC left unmuted in loopback causing high current)
  * 5. Full uplink enable sequence with encryption awareness
  *
  * Technical Reference (TIDEMARK-1):
  *   - Uplink RF: 5943 MHz (TP-1 center)
- *   - BUC LO: 4900 MHz
- *   - TX IF: 1043 MHz (5943 - 4900 = 1043)
+ *   - BUC LO: 7000 MHz
+ *   - TX IF: 1057 MHz (7000 - 5943 = 1057)
  *   - Beacon RF: 4175.5 MHz
  *   - LNB LO: 5250 MHz
  *   - Beacon IF: 1074.5 MHz (5250 - 4175.5 = 1074.5)
@@ -89,14 +89,15 @@ export const scenario7Data: ScenarioData = {
         rfFrontEnds: [
           createRfFrontEnd(vermontGroundStation.rfFrontEnds[0], {
             // Post-maintenance state: TX chain disabled, RX operational
-            // BUC left in loopback mode by maintenance crew - must be disabled
+            // BUC left unmuted in loopback mode by maintenance crew - causing high current draw
             buc: {
-              isMuted: true,
-              isLoopback: true, // Fault: maintenance left loopback enabled
-              loFrequency: 4900 as MHz,
+              isMuted: false, // Left unmuted by maintenance
+              isLoopback: true, // Left in loopback mode by maintenance
+              loFrequency: 7000 as MHz,
               isExtRefLocked: true,
-              gain: 25 as dB, // Normal operating gain
-              temperature: 45, // Normal operating temperature
+              gain: 50 as dB, // Normal operating gain
+              temperature: 52, // Elevated due to active loopback
+              currentDraw: 5.2, // High current draw alarm triggered
             },
             hpa: {
               isHpaEnabled: false,
@@ -117,7 +118,7 @@ export const scenario7Data: ScenarioData = {
               {
                 ...vermontGroundStation.transmitters[0].modems[0],
                 ifSignal: {
-                  frequency: 950e6 as IfFrequency, // Incorrect - needs to be set to 1043 MHz
+                  frequency: 950e6 as IfFrequency, // Incorrect - needs to be set to 1057 MHz
                   bandwidth: 36e6 as Hertz,
                   power: -10 as dBm,
                   modulation: 'QPSK',
@@ -235,13 +236,13 @@ export const scenario7Data: ScenarioData = {
           params: {
             question: 'What alarm condition is currently displayed on the Dashboard?',
             options: [
-              'BUC Loopback Mode Enabled',
+              'BUC High Current Draw',
               'LNB Reference Unlocked',
               'HPA Output Fault',
               'No active alarms',
             ],
             correctIndex: 0,
-            explanation: 'The BUC is in loopback mode. This was likely left enabled by the maintenance crew during testing. Loopback must be disabled before we can transmit to the satellite.',
+            explanation: 'The BUC is drawing too much current. The maintenance crew left it unmuted while in loopback mode, which means it\'s actively processing signal. We need to mute it and disable loopback before proceeding.',
             pointPenalty: 10,
             character: Character.DANA_TORRES,
           },
@@ -252,12 +253,12 @@ export const scenario7Data: ScenarioData = {
       points: 10,
     },
     {
-      id: 'diagnose-buc-loopback',
+      id: 'diagnose-buc-high-current',
       // T0081: Diagnose network connectivity problems - fault diagnosis
       // S0582: Skill in troubleshooting system performance
       nice: ['T0081', 'S0582'],
-      title: 'Diagnose BUC Loopback Issue',
-      description: 'Navigate to the TX Chain and confirm the BUC loopback status.',
+      title: 'Diagnose BUC High Current',
+      description: 'Navigate to the TX Chain and identify the cause of the high current draw.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['check-dashboard-status'],
       timeLimitSeconds: 3 * 60,
@@ -273,15 +274,15 @@ export const scenario7Data: ScenarioData = {
           type: 'status-check',
           description: 'Identify Cause',
           params: {
-            question: 'Looking at the BUC panel, why is loopback mode a problem for normal operations?',
+            question: 'Looking at the BUC panel, what is the likely cause of the high current draw?',
             options: [
-              'Loopback routes TX signal back to RX chain instead of to the antenna',
-              'Loopback increases BUC temperature',
-              'Loopback disables the external reference',
-              'Loopback changes the LO frequency',
+              'BUC is unmuted while in loopback mode - actively processing signal',
+              'BUC gain is set too high',
+              'External reference is unlocked',
+              'BUC temperature is too low',
             ],
             correctIndex: 0,
-            explanation: 'Loopback mode is used for testing - it routes the transmit signal back to the receive chain internally. With loopback enabled, no RF power reaches the antenna, so the satellite never receives our signal. The maintenance crew left it on after testing.',
+            explanation: 'The BUC is unmuted while in loopback mode. This means it\'s actively processing and amplifying signal internally, which draws significant current. The maintenance crew left it in this state after testing. We need to mute the BUC and disable loopback.',
             pointPenalty: 10,
             character: Character.DANA_TORRES,
           },
@@ -292,14 +293,14 @@ export const scenario7Data: ScenarioData = {
       points: 10,
     },
     {
-      id: 'resolve-buc-loopback',
+      id: 'resolve-buc-high-current',
       // S0582: Skill in troubleshooting system performance - fault resolution
       // K0740: Knowledge of network performance management
       nice: ['S0582', 'K0740'],
-      title: 'Disable BUC Loopback',
-      description: 'Disable loopback mode on the BUC to prepare for normal operations.',
+      title: 'Secure BUC State',
+      description: 'Mute the BUC and disable loopback to stop the unnecessary current draw.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['diagnose-buc-loopback'],
+      prerequisiteObjectiveIds: ['diagnose-buc-high-current'],
       timeLimitSeconds: 2 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
@@ -307,6 +308,11 @@ export const scenario7Data: ScenarioData = {
           type: 'tab-active',
           description: 'TX Chain Tab Open',
           params: { tab: 'tx-chain' },
+          mustMaintain: true,
+        },
+        {
+          type: 'buc-muted',
+          description: 'BUC Muted',
           mustMaintain: true,
         },
         {
@@ -324,9 +330,9 @@ export const scenario7Data: ScenarioData = {
       // T0153: Monitor network capacity and performance - confirming resolution
       nice: ['K0741', 'T0153'],
       title: 'Verify Fault Cleared',
-      description: 'Confirm the Dashboard no longer shows the BUC loopback alarm.',
+      description: 'Confirm the Dashboard no longer shows the BUC high current alarm.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['resolve-buc-loopback'],
+      prerequisiteObjectiveIds: ['resolve-buc-high-current'],
       timeLimitSeconds: 2 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
@@ -342,13 +348,13 @@ export const scenario7Data: ScenarioData = {
           params: {
             question: 'What is the current BUC status on the Dashboard?',
             options: [
-              'Normal - loopback disabled, no active alarms',
-              'Warning - loopback still enabled',
+              'Normal - current draw within limits, no active alarms',
+              'Warning - current still too high',
               'Fault - BUC offline',
               'Unknown - BUC not reporting',
             ],
             correctIndex: 0,
-            explanation: 'The BUC loopback has been disabled and the alarm has cleared. Always verify alarm resolution on the Dashboard before proceeding.',
+            explanation: 'The BUC has been muted and loopback disabled. The high current alarm has cleared. Always verify alarm resolution on the Dashboard before proceeding.',
             pointPenalty: 5,
             character: Character.DANA_TORRES,
           },
@@ -555,12 +561,12 @@ export const scenario7Data: ScenarioData = {
             question:
               'What does successful beacon acquisition confirm about the receive chain?',
             options: [
-              'All of the above',
               'Antenna is pointed at the satellite',
               'LNB is functioning and converting RF to IF',
               'Signal path from antenna to spectrum analyzer is operational',
+              'All of the above',
             ],
-            correctIndex: 0,
+            correctIndex: 3,
             explanation:
               'The beacon validates the entire receive chain: antenna pointing, LNB operation, and signal routing. If any component fails, the beacon disappears.',
             pointPenalty: 5,
@@ -625,15 +631,15 @@ export const scenario7Data: ScenarioData = {
           type: 'status-check',
           description: 'TX IF Frequency Calculated',
           params: {
-            question: 'TIDEMARK-1 TP-1 uplink is 5,943 MHz RF. The BUC LO is 4,900 MHz. What TX IF frequency is required?',
+            question: 'TIDEMARK-1 TP-1 uplink is 5,943 MHz RF. The BUC LO is 7,000 MHz. What TX IF frequency is required?',
             options: [
-              '1,043 MHz',
-              '10,843 MHz',
-              '943 MHz',
-              '1,143 MHz',
+              '1,057 MHz',
+              '12,943 MHz',
+              '957 MHz',
+              '1,157 MHz',
             ],
             correctIndex: 0,
-            explanation: 'TX IF = RF - BUC LO = 5,943 - 4,900 = 1,043 MHz. The BUC upconverts IF to RF.',
+            explanation: 'TX IF = BUC LO - RF = 7,000 - 5,943 = 1,057 MHz. The BUC upconverts IF to RF.',
             pointPenalty: 10,
             character: Character.DANA_TORRES,
           },
@@ -663,9 +669,9 @@ export const scenario7Data: ScenarioData = {
         },
         {
           type: 'tx-modem-frequency-set',
-          description: 'TX Frequency: 1,043 MHz',
+          description: 'TX Frequency: 1,057 MHz',
           params: {
-            frequency: 1043e6,
+            frequency: 1057e6,
             frequencyTolerance: 1e6,
           },
           maintainUntilObjectiveComplete: true,
@@ -779,7 +785,7 @@ export const scenario7Data: ScenarioData = {
           type: 'speca-center-frequency',
           description: 'Spectrum Analyzer at TX IF',
           params: {
-            centerFrequency: 1043e6 as Hertz,
+            centerFrequency: 1057e6 as Hertz,
             centerFrequencyTolerance: 5e6,
           },
           mustMaintain: true,
@@ -797,15 +803,15 @@ export const scenario7Data: ScenarioData = {
           type: 'status-check',
           description: 'Loopback Signal Verified',
           params: {
-            question: 'What do you observe on the spectrum analyzer at 1,043 MHz?',
+            question: 'What do you observe on the spectrum analyzer at 1,057 MHz?',
             options: [
-              'A 36 MHz wide signal centered at 1,043 MHz - the TX modem output via loopback',
-              'No signal visible at 1,043 MHz',
+              'A 36 MHz wide signal centered at 1,057 MHz - the TX modem output via loopback',
+              'No signal visible at 1,057 MHz',
               'Only the beacon signal at 1,074.5 MHz',
               'A narrow CW carrier spike',
             ],
             correctIndex: 0,
-            explanation: 'The loopback signal should appear as a 36 MHz wide modulated carrier centered at 1,043 MHz. This confirms the TX modem is outputting correctly and the BUC loopback path is working.',
+            explanation: 'The loopback signal should appear as a 36 MHz wide modulated carrier centered at 1,057 MHz. This confirms the TX modem is outputting correctly and the BUC loopback path is working.',
             pointPenalty: 10,
             character: Character.DANA_TORRES,
           },
@@ -1081,13 +1087,13 @@ export const scenario7Data: ScenarioData = {
           params: {
             question: 'Which statement correctly describes the validated uplink?',
             options: [
-              'TX IF: 1,043 MHz → RF: 5,943 MHz, QPSK 3/4, AES-256',
-              'TX IF: 943 MHz → RF: 5,843 MHz, QPSK 1/2, AES-128',
-              'TX IF: 1,043 MHz → RF: 5,943 MHz, 8PSK 3/4, Unencrypted',
-              'TX IF: 1,143 MHz → RF: 6,043 MHz, QPSK 3/4, AES-256',
+              'TX IF: 1,057 MHz → RF: 5,943 MHz, QPSK 3/4, AES-256',
+              'TX IF: 957 MHz → RF: 5,843 MHz, QPSK 1/2, AES-128',
+              'TX IF: 1,057 MHz → RF: 5,943 MHz, 8PSK 3/4, Unencrypted',
+              'TX IF: 1,157 MHz → RF: 6,043 MHz, QPSK 3/4, AES-256',
             ],
             correctIndex: 0,
-            explanation: 'The validated uplink: TX IF 1,043 MHz upconverted to 5,943 MHz RF (BUC LO 4,900 MHz), QPSK modulation with 3/4 FEC, AES-256 encryption.',
+            explanation: 'The validated uplink: TX IF 1,057 MHz upconverted to 5,943 MHz RF (BUC LO 7,000 MHz), QPSK modulation with 3/4 FEC, AES-256 encryption.',
             pointPenalty: 5,
             character: Character.DANA_TORRES,
           },
@@ -1145,35 +1151,35 @@ export const scenario7Data: ScenarioData = {
       'check-dashboard-status': {
         text: `
         <p>
-          There's your problem. BUC is still in loopback mode. Maintenance must have left it that way after testing.
+          There's your problem. BUC is showing a high current draw alarm. Maintenance must have left it unmuted while in loopback mode.
         </p>
         <p>
-          Click the TX Chain tab and take a look at the BUC panel. We need to disable loopback before we can transmit to the satellite.
+          Click the TX Chain tab and take a look at the BUC panel. We need to mute it and disable loopback before we can proceed.
         </p>
         `,
         character: Character.DANA_TORRES,
         emotion: Emotion.CONCERNED,
         audioUrl: getAssetUrl('/assets/campaigns/nats/7/obj-check-dashboard-status.mp3'),
       },
-      'diagnose-buc-loopback': {
+      'diagnose-buc-high-current': {
         text: `
         <p>
-          Right - loopback is enabled. That routes the transmit signal back to our receive chain instead of sending it out the antenna. Useful for testing, but we need to disable it for normal operations.
+          See that? BUC is unmuted and loopback is enabled. It's actively processing signal internally, which is drawing all that current. We need to secure the BUC state.
         </p>
         `,
         character: Character.DANA_TORRES,
         emotion: Emotion.NEUTRAL,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/7/obj-diagnose-buc-loopback.mp3'),
+        audioUrl: getAssetUrl('/assets/campaigns/nats/7/obj-diagnose-buc-high-current.mp3'),
       },
-      'resolve-buc-loopback': {
+      'resolve-buc-high-current': {
         text: `
         <p>
-          Good. Loopback is disabled. Let's verify on the Dashboard that the alarm has cleared before we continue.
+          Good. BUC is muted and loopback is off. Current draw should drop to normal levels. Let's verify on the Dashboard that the alarm has cleared.
         </p>
         `,
         character: Character.DANA_TORRES,
         emotion: Emotion.CONFIDENT,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/7/obj-resolve-buc-loopback.mp3'),
+        audioUrl: getAssetUrl('/assets/campaigns/nats/7/obj-resolve-buc-high-current.mp3'),
       },
       'verify-fault-cleared': {
         text: `
@@ -1243,7 +1249,7 @@ export const scenario7Data: ScenarioData = {
       'verify-loopback-signal': {
         text: `
         <p>
-          Now switch to RX Analysis and tune the spectrum analyzer to 1,043 MHz - that's your TX IF frequency.
+          Now switch to RX Analysis and tune the spectrum analyzer to 1,057 MHz - that's your TX IF frequency.
         </p>
         <p>
           You should see a 36 MHz wide signal. That confirms the TX modem output is reaching the BUC and looping back correctly.
@@ -1279,7 +1285,7 @@ export const scenario7Data: ScenarioData = {
           TIDEMARK-1 uplink validated and operational.
         </p>
         <p>
-          You caught that maintenance left loopback enabled, used it correctly for testing, brought it up clean. I'll let Charlie know.
+          You caught that maintenance left the BUC unmuted in loopback, secured the equipment, then used loopback correctly for your own testing. Brought it up clean. I'll let Charlie know.
         </p>
         `,
         character: Character.DANA_TORRES,

@@ -1,9 +1,9 @@
-import { test, expect } from '../fixtures/test-fixtures';
+import { expect, test } from '../fixtures/test-fixtures';
 import {
-  waitForSimulationReady,
-  waitForQuizToAppear,
   answerQuizByText,
   dismissDialogIfPresent,
+  waitForQuizToAppear,
+  waitForSimulationReady,
 } from '../utils/simulation-helpers';
 
 /**

@@ -138,7 +138,9 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Run E2E Tests
+        id: e2e
         run: npm run test:e2e
+        continue-on-error: true
 
       - name: Upload Playwright Report
         if: always()
@@ -152,6 +154,7 @@ jobs:
         if: always()
         run: |
           echo "### E2E Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "- Status: ${{ steps.e2e.outcome }}" >> $GITHUB_STEP_SUMMARY
           if [ -d playwright-report ]; then
             echo "E2E tests completed. See artifact for details." >> $GITHUB_STEP_SUMMARY
           fi

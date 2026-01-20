@@ -10,12 +10,11 @@ import {
  * Scenario 1 objectives - expanded tutorial with interactive conditions and quizzes.
  *
  * Objectives can be:
- * - 'quiz': Requires answering a quiz question
+ * - 'quiz': Requires answering a quiz question (may have auto conditions that are auto-satisfied)
  * - 'select-station': Requires clicking on ground station in asset tree
  * - 'click-tab': Requires clicking a specific tab
- * - 'auto': Automatically satisfied by game state (equipment-powered, signal-detected, etc.)
  */
-type ObjectiveType = 'quiz' | 'select-station' | 'click-tab' | 'auto';
+type ObjectiveType = 'quiz' | 'select-station' | 'click-tab';
 
 interface Scenario1Objective {
   id: string;
@@ -60,13 +59,8 @@ const SCENARIO_1_OBJECTIVES: Scenario1Objective[] = [
     tabId: 'rx-analysis',
   },
   {
-    id: 'verify-lnb-equipment',
-    title: 'Verify LNB Equipment Status',
-    type: 'auto',  // equipment-powered + lnb-thermally-stable - auto-satisfied
-  },
-  {
-    id: 'verify-lnb-quiz',
-    title: 'LNB Performance Check',
+    id: 'verify-lnb',
+    title: 'Verify LNB Status',
     type: 'quiz',
     correctAnswer: '43K - within spec (good receive sensitivity)',
   },
@@ -79,11 +73,6 @@ const SCENARIO_1_OBJECTIVES: Scenario1Objective[] = [
   {
     id: 'identify-beacon',
     title: 'Identify Beacon Signal',
-    type: 'auto',  // signal-detected - auto-satisfied when on RX Analysis tab
-  },
-  {
-    id: 'verify-beacon-quiz',
-    title: 'Beacon Signal Analysis',
     type: 'quiz',
     correctAnswer: 'A clear spike - the TIDEMARK-1 beacon signal',
   },
@@ -91,7 +80,7 @@ const SCENARIO_1_OBJECTIVES: Scenario1Objective[] = [
     id: 'verify-speca-settings',
     title: 'Spectrum Analyzer Settings',
     type: 'quiz',
-    correctAnswer: '1074.5 MHz center, 2 kHz span',
+    correctAnswer: '1074.5 MHz center, 0.002 MHz span',
   },
   {
     id: 'verify-receiver',
@@ -218,12 +207,6 @@ test.describe('Scenario 1 Full Completion', () => {
         case 'click-tab':
           // Click on the specified tab using data-tab-id selector
           await missionControlPage.selectTab(objective.tabId!);
-          break;
-
-        case 'auto':
-          // Auto-satisfied objectives complete when conditions are met
-          // The objective system evaluates on UPDATE ticks, brief wait is sufficient
-          await page.waitForTimeout(100);
           break;
       }
 

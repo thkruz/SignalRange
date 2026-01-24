@@ -4,6 +4,7 @@
  */
 
 import type { Character } from '@app/modal/character-enum';
+import { MHz } from '@app/types';
 
 /**
  * Condition types that can be checked during simulation
@@ -49,6 +50,7 @@ export type ConditionType =
   | 'antenna-position' // Antenna at specific azimuth/elevation position
   | 'feed-heater-enabled' // Antenna feed heater is enabled
   | 'buc-unmuted' // BUC RF output enabled (inverse of muted)
+  | 'buc-gain-set' // BUC gain set to specific value
   | 'hpa-enabled' // HPA output enabled (dual-action switch)
   | 'hpa-back-off-set' // HPA back-off level configured
   | 'hpa-not-overdriven' // HPA not in overdrive (IMD check)
@@ -123,7 +125,7 @@ export interface ConditionParams {
   /** For frequency-set: tolerance in Hz */
   frequencyTolerance?: number;
   /** For lnb-lo-set: target local oscillator frequency in Hz */
-  loFrequency?: number;
+  loFrequency?: MHz;
   /** For lnb-lo-set: local oscillator frequency tolerance in Hz */
   loFrequencyTolerance?: number;
   /** For lnb-gain-set: target gain in dB */

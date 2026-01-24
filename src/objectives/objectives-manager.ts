@@ -1691,6 +1691,19 @@ export class ObjectivesManager {
         });
       }
 
+      case 'buc-gain-set': {
+        if (!condition.params?.gain) return false;
+        const targetGain = condition.params.gain;
+        const tolerance = condition.params.gainTolerance ?? 0;
+        return this.evaluateEquipment_(gs.rfFrontEnds, condition.params, (rfFrontEnd) => {
+          const bucState = rfFrontEnd.bucModule.state;
+          return (
+            bucState.isPowered &&
+            Math.abs(bucState.gain - targetGain) <= tolerance
+          );
+        });
+      }
+
       case 'hpa-enabled': {
         return this.evaluateEquipment_(gs.rfFrontEnds, condition.params, (rfFrontEnd) => {
           const hpaState = rfFrontEnd.hpaModule.state;

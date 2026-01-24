@@ -405,7 +405,7 @@ export const scenario7Data: ScenarioData = {
               'Maintenance - Stowed',
             ],
             correctIndex: 0,
-            explanation: 'The antenna is in Program Track mode, locked on TIDEMARK-1 at Az: 161.8°, El: 34.2°.',
+            explanation: 'The antenna is in Program Track mode, locked on TIDEMARK-1.',
             pointPenalty: 5,
             character: Character.DANA_TORRES,
           },
@@ -748,13 +748,13 @@ export const scenario7Data: ScenarioData = {
           params: {
             question: 'What does enabling BUC loopback mode do?',
             options: [
-              'Routes the TX IF signal back to the RX chain without transmitting RF',
+              'Routes the TX RF signal to the LNB instead of the HPA',
               'Increases BUC output power for testing',
               'Disables the BUC for maintenance',
-              'Bypasses the HPA to reduce power consumption',
+              'Bypasses the HPA to reduce power consumption and improve performance',
             ],
             correctIndex: 0,
-            explanation: 'Loopback mode internally routes the BUC input signal back to the receive chain, allowing you to verify the TX modem and BUC are working without actually transmitting RF power through the antenna.',
+            explanation: 'Loopback mode internally routes the BUC output signal back to the receive chain, allowing you to verify the TX modem and BUC are working without actually transmitting RF power through the antenna.',
             pointPenalty: 5,
             character: Character.DANA_TORRES,
           },
@@ -765,20 +765,60 @@ export const scenario7Data: ScenarioData = {
       points: 10,
     },
     {
+      id: 'reduce-buc-gain',
+      // S0582: Skill in troubleshooting system performance
+      nice: ['S0582'],
+      title: 'Reduce BUC Gain for Loopback',
+      description: 'Lower the BUC gain to prevent overloading the receive chain during loopback testing.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['enable-loopback'],
+      timeLimitSeconds: 2 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'tab-active',
+          description: 'TX Chain Tab Open',
+          params: { tab: 'tx-chain' },
+          mustMaintain: true,
+        },
+        {
+          type: 'buc-gain-set',
+          description: 'BUC Gain Reduced to 20 dB',
+          params: {
+            gain: 20 as dB,
+            gainTolerance: 2 as dB,
+          },
+          mustMaintain: true,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 5,
+    },
+    {
       id: 'verify-loopback-signal',
       // T1313: Test network infrastructure, including software and hardware devices
       nice: ['T1313'],
       title: 'Verify Loopback Signal',
-      description: 'Tune the spectrum analyzer to the TX IF frequency and confirm the loopback signal is visible.',
+      description:
+        'Configure the spectrum analyzer and LNB to view the loopback signal. Set the LNB LO to 7000 MHz to match the BUC LO for direct IF comparison, then tune to the TX IF frequency.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['enable-loopback'],
-      timeLimitSeconds: 3 * 60,
+      prerequisiteObjectiveIds: ['reduce-buc-gain'],
+      timeLimitSeconds: 5 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
         {
           type: 'tab-active',
           description: 'RX Analysis Tab Open',
           params: { tab: 'rx-analysis' },
+          mustMaintain: true,
+        },
+        {
+          type: 'lnb-lo-set',
+          description: 'LNB LO Set to 7000 MHz',
+          params: {
+            loFrequency: 7000 as MHz,
+            loFrequencyTolerance: 1,
+          },
           mustMaintain: true,
         },
         {
@@ -800,10 +840,37 @@ export const scenario7Data: ScenarioData = {
           mustMaintain: true,
         },
         {
+          type: 'speca-min-amplitude',
+          description: 'Min Amplitude Set to -100 dBm',
+          params: {
+            minAmplitude: -100,
+            minAmplitudeTolerance: 5,
+          },
+          mustMaintain: true,
+        },
+        {
+          type: 'speca-max-amplitude',
+          description: 'Max Amplitude Set to -20 dBm',
+          params: {
+            maxAmplitude: -20,
+            maxAmplitudeTolerance: 5,
+          },
+          mustMaintain: true,
+        },
+        {
+          type: 'speca-rbw-set',
+          description: 'RBW Set to Auto',
+          params: {
+            rbw: null as unknown as number,
+          },
+          mustMaintain: true,
+        },
+        {
           type: 'status-check',
           description: 'Loopback Signal Verified',
           params: {
-            question: 'What do you observe on the spectrum analyzer at 1,057 MHz?',
+            question:
+              'With the LNB LO at 7000 MHz and spectrum analyzer centered at 1,057 MHz, what do you observe?',
             options: [
               'A 36 MHz wide signal centered at 1,057 MHz - the TX modem output via loopback',
               'No signal visible at 1,057 MHz',
@@ -811,7 +878,8 @@ export const scenario7Data: ScenarioData = {
               'A narrow CW carrier spike',
             ],
             correctIndex: 0,
-            explanation: 'The loopback signal should appear as a 36 MHz wide modulated carrier centered at 1,057 MHz. This confirms the TX modem is outputting correctly and the BUC loopback path is working.',
+            explanation:
+              'By setting the LNB LO to 7000 MHz (matching the BUC LO), we can directly compare TX and RX IF frequencies. The loopback signal appears as a 36 MHz wide modulated carrier at 1,057 MHz, confirming the TX modem output and BUC loopback path are working correctly.',
             pointPenalty: 10,
             character: Character.DANA_TORRES,
           },
@@ -859,73 +927,13 @@ export const scenario7Data: ScenarioData = {
     // UPLINK ENABLE SEQUENCE
     // ============================================================
     {
-      id: 'disable-loopback',
-      // S0421: Skill in operating network equipment
-      // T1567: Equipment configuration happens throughout
-      nice: ['S0421', 'T1567'],
-      title: 'Disable Loopback Mode',
-      description: 'Disable loopback and mute BUC to prepare for HPA enable.',
-      groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['quiz-loopback-purpose'],
-      timeLimitSeconds: 2 * 60,
-      timerStartTrigger: 'on-activate',
-      conditions: [
-        {
-          type: 'tab-active',
-          description: 'TX Chain Tab Open',
-          params: { tab: 'tx-chain' },
-          mustMaintain: true,
-        },
-        {
-          type: 'buc-loopback-disabled',
-          description: 'BUC Loopback Disabled',
-          mustMaintain: true,
-        },
-        {
-          type: 'buc-muted',
-          description: 'BUC Muted',
-          mustMaintain: true,
-        },
-      ],
-      conditionLogic: 'AND',
-      points: 5,
-    },
-    {
-      id: 'power-on-hpa',
-      // S0421: Skill in operating network equipment
-      // T1567: Equipment configuration happens throughout
-      nice: ['S0421', 'T1567'],
-      title: 'Power On HPA',
-      description: 'Power on the High Power Amplifier.',
-      groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['disable-loopback'],
-      timeLimitSeconds: 2 * 60,
-      timerStartTrigger: 'on-activate',
-      conditions: [
-        {
-          type: 'tab-active',
-          description: 'TX Chain Tab Open',
-          params: { tab: 'tx-chain' },
-          mustMaintain: true,
-        },
-        {
-          type: 'equipment-powered',
-          description: 'HPA Powered On',
-          params: { equipment: 'hpa' },
-          maintainUntilObjectiveComplete: true,
-        },
-      ],
-      conditionLogic: 'AND',
-      points: 5,
-    },
-    {
       id: 'quiz-encryption-status',
       // S0077: Skill in securing network communications
       nice: ['S0077'],
       title: 'Verify Encryption Status',
       description: 'Confirm link security configuration before transmission.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['power-on-hpa'],
+      prerequisiteObjectiveIds: ['quiz-loopback-purpose'],
       timeLimitSeconds: 2 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
@@ -971,6 +979,33 @@ export const scenario7Data: ScenarioData = {
       points: 10,
     },
     {
+      id: 'disable-loopback',
+      // S0421: Skill in operating network equipment
+      // T1567: Equipment configuration happens throughout
+      nice: ['S0421', 'T1567'],
+      title: 'Disable Loopback Mode',
+      description: 'Disable loopback to prepare for HPA enable.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['quiz-encryption-status'],
+      timeLimitSeconds: 2 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'tab-active',
+          description: 'TX Chain Tab Open',
+          params: { tab: 'tx-chain' },
+          mustMaintain: true,
+        },
+        {
+          type: 'buc-loopback-disabled',
+          description: 'BUC Loopback Disabled',
+          mustMaintain: true,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 5,
+    },
+    {
       id: 'enable-hpa-output',
       // S0421: Skill in operating network equipment
       // T1567: Equipment configuration happens throughout
@@ -978,7 +1013,7 @@ export const scenario7Data: ScenarioData = {
       title: 'Enable HPA Output',
       description: 'Enable the HPA output stage.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['quiz-encryption-status'],
+      prerequisiteObjectiveIds: ['disable-loopback'],
       timeLimitSeconds: 2 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
@@ -1005,13 +1040,12 @@ export const scenario7Data: ScenarioData = {
     {
       id: 'unmute-buc-transmit',
       // S0421: Skill in operating network equipment
-      // T1567: Equipment configuration happens throughout
-      nice: ['S0421', 'T1567'],
-      title: 'Unmute BUC - Begin Transmission',
-      description: 'Unmute the BUC to begin live transmission.',
+      nice: ['S0421'],
+      title: 'Unmute BUC for Transmission',
+      description: 'Unmute the BUC to allow signal to flow through the HPA to the antenna.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['enable-hpa-output'],
-      timeLimitSeconds: 1 * 60,
+      timeLimitSeconds: 2 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
         {
@@ -1022,8 +1056,8 @@ export const scenario7Data: ScenarioData = {
         },
         {
           type: 'buc-unmuted',
-          description: 'BUC Unmuted - Transmitting',
-          maintainUntilObjectiveComplete: true,
+          description: 'BUC Unmuted',
+          mustMaintain: true,
         },
       ],
       conditionLogic: 'AND',
@@ -1038,8 +1072,9 @@ export const scenario7Data: ScenarioData = {
       // T0153: Monitor network capacity and performance
       // K0740: Knowledge of network performance management
       nice: ['T0153', 'K0740'],
-      title: 'Verify HPA Output Power',
-      description: 'Confirm HPA output power is within operational limits.',
+      title: 'Increase HPA Output Power',
+      description:
+        'Lower the HPA backoff to reach the minimum output power required for reliable uplink.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['unmute-buc-transmit'],
       timeLimitSeconds: 2 * 60,
@@ -1053,17 +1088,8 @@ export const scenario7Data: ScenarioData = {
         },
         {
           type: 'hpa-output-power-set',
-          description: 'HPA Output Power Nominal',
-          params: { minOutputPower: 100 },
-          maintainUntilObjectiveComplete: true,
-        },
-        {
-          type: 'hpa-back-off-set',
-          description: 'HPA Backoff Configured',
-          params: {
-            backOff: 3,
-            backOffTolerance: 1,
-          },
+          description: 'HPA Output Power Above 50 W',
+          params: { minOutputPower: 50 },
           maintainUntilObjectiveComplete: true,
         },
       ],
@@ -1128,7 +1154,7 @@ export const scenario7Data: ScenarioData = {
           Dana Torres, shift supervisor. Don't think we've met yet. Charlie mentioned you'd be handling the uplink validation solo today.
         </p>
         <p>
-          Just making sure neither of us gets in trouble - I'll check in at a few points. Don't wait for me though. Get started.
+          Just making sure neither of us gets in trouble - I'll check in at a few points. Don't wait for me though. Open your checklist and get started.
         </p>
         `,
         character: Character.DANA_TORRES,
@@ -1138,10 +1164,10 @@ export const scenario7Data: ScenarioData = {
       'select-vermont-station': {
         text: `
         <p>
-          Vermont Ground Station selected. Before we dive into the uplink validation, let's check the Dashboard for any active alarms.
+          Before you dive into the uplink validation, be sure to check the Dashboard tab for any active alarms.
         </p>
         <p>
-          Good habit to have - always check system status before you start working on something. Click the Dashboard tab.
+          Good habit to have - always check system status before you start working on something.
         </p>
         `,
         character: Character.DANA_TORRES,
@@ -1151,10 +1177,10 @@ export const scenario7Data: ScenarioData = {
       'check-dashboard-status': {
         text: `
         <p>
-          There's your problem. BUC is showing a high current draw alarm. Maintenance must have left it unmuted while in loopback mode.
+          That's definitely a problem. BUC is showing a high current draw alarm. Maintenance must have left it unmuted while in loopback mode.
         </p>
         <p>
-          Click the TX Chain tab and take a look at the BUC panel. We need to mute it and disable loopback before we can proceed.
+          Click the TX Chain tab and take a look at the BUC panel. You need to mute it and disable loopback before you can proceed.
         </p>
         `,
         character: Character.DANA_TORRES,
@@ -1164,7 +1190,7 @@ export const scenario7Data: ScenarioData = {
       'diagnose-buc-high-current': {
         text: `
         <p>
-          See that? BUC is unmuted and loopback is enabled. It's actively processing signal internally, which is drawing all that current. We need to secure the BUC state.
+          Confirmed! BUC is unmuted and loopback is enabled. It's actively processing signal internally, which is drawing all that current. You definitely need to fix the BUC state.
         </p>
         `,
         character: Character.DANA_TORRES,
@@ -1233,7 +1259,7 @@ export const scenario7Data: ScenarioData = {
         emotion: Emotion.NEUTRAL,
         audioUrl: getAssetUrl('/assets/campaigns/nats/7/obj-acquire-beacon.mp3'),
       },
-      'enable-loopback': {
+      'configure-tx-modem': {
         text: `
         <p>
           TX modem is configured. Before we transmit for real, we need to verify the TX signal path. Now we enable loopback intentionally - this is the proper test procedure.
@@ -1246,7 +1272,20 @@ export const scenario7Data: ScenarioData = {
         emotion: Emotion.NEUTRAL,
         audioUrl: getAssetUrl('/assets/campaigns/nats/7/obj-enable-loopback.mp3'),
       },
-      'verify-loopback-signal': {
+      'enable-loopback': {
+        text: `
+        <p>
+          Drawing too much power again just like before. But this time we can't just mute the BUC - we need it unmuted to test the loopback signal.
+        </p>
+        <p>
+          To fix this we can turn down the gain until the current draw is normal. Reduce the gain in the BUC panel until the alarm clears.
+        </p>
+        `,
+        character: Character.DANA_TORRES,
+        emotion: Emotion.NEUTRAL,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/7/obj-enable-loopback.mp3'),
+      },
+      'reduce-buc-gain': {
         text: `
         <p>
           Now switch to RX Analysis and tune the spectrum analyzer to 1,057 MHz - that's your TX IF frequency.
@@ -1262,7 +1301,7 @@ export const scenario7Data: ScenarioData = {
       'quiz-loopback-purpose': {
         text: `
         <p>
-          Loopback passed. Proceed with HPA.
+          Loopback passed. Before we enable the HPA, verify encryption status on the TX chain. Never transmit without confirming link security.
         </p>
         `,
         character: Character.DANA_TORRES,
@@ -1272,12 +1311,52 @@ export const scenario7Data: ScenarioData = {
       'quiz-encryption-status': {
         text: `
         <p>
-          Encryption verified. Continue.
+          Encryption verified. Now disable loopback and bring up the HPA.
         </p>
         `,
         character: Character.DANA_TORRES,
         emotion: Emotion.NEUTRAL,
         audioUrl: getAssetUrl('/assets/campaigns/nats/7/obj-quiz-encryption-status.mp3'),
+      },
+      'disable-loopback': {
+        text: `
+        <p>
+          Loopback disabled. Now enable the HPA output.
+        </p>
+        `,
+        character: Character.DANA_TORRES,
+        emotion: Emotion.NEUTRAL,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/7/obj-disable-loopback.mp3'),
+      },
+      'enable-hpa-output': {
+        text: `
+        <p>
+          HPA is enabled. Now unmute the BUC so signal can flow through to the antenna.
+        </p>
+        `,
+        character: Character.DANA_TORRES,
+        emotion: Emotion.NEUTRAL,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/7/obj-enable-hpa-output.mp3'),
+      },
+      'unmute-buc-transmit': {
+        text: `
+        <p>
+          BUC is unmuted and we're transmitting. Check the HPA output power - we need at least 50 watts for reliable uplink. Lower the backoff if needed.
+        </p>
+        `,
+        character: Character.DANA_TORRES,
+        emotion: Emotion.NEUTRAL,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/7/obj-unmute-buc-transmit.mp3'),
+      },
+      'verify-hpa-power': {
+        text: `
+        <p>
+          Output power is good. We're transmitting at the required level.
+        </p>
+        `,
+        character: Character.DANA_TORRES,
+        emotion: Emotion.CONFIDENT,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/7/obj-verify-hpa-power.mp3'),
       },
       'final-verification': {
         text: `

@@ -2059,7 +2059,7 @@ export const scenario3Data: ScenarioData = {
           Maine's transmitter is ready. Time to execute the handover.
         </p>
         <p>
-          Dashboard tab. That's where the traffic control is.
+          Go to Tidemark-1's satellite page in the asset tree. That's where the traffic control is.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,

@@ -112,7 +112,7 @@ export const vermontGroundStation = {
       attackTime: 10,
       releaseTime: 100,
       maxGain: 10 as dB,
-      minGain: -60 as dB,
+      minGain: -100 as dB,
     },
     coupler: {
       isEngineeringMode: false,

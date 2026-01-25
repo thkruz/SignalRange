@@ -133,6 +133,8 @@ export const scenario7Data: ScenarioData = {
                   noiseFloor: -140 as dBm,
                   gainInPath: 0 as dBi,
                 },
+                isTransmitting: false, // Not transmitting yet
+                isTransmittingSwitchUp: false,
               },
             ],
           },
@@ -206,7 +208,7 @@ export const scenario7Data: ScenarioData = {
           type: 'ground-station-selected',
           description: 'Vermont Ground Station Selected',
           params: { groundStationId: 'VT-01' },
-          mustMaintain: true,
+          maintainUntilObjectiveComplete: true,
         },
       ],
       conditionLogic: 'AND',
@@ -228,7 +230,7 @@ export const scenario7Data: ScenarioData = {
           type: 'tab-active',
           description: 'Dashboard Tab Open',
           params: { tab: 'dashboard' },
-          mustMaintain: true,
+          maintainUntilObjectiveComplete: true,
         },
         {
           type: 'status-check',
@@ -268,7 +270,7 @@ export const scenario7Data: ScenarioData = {
           type: 'tab-active',
           description: 'TX Chain Tab Open',
           params: { tab: 'tx-chain' },
-          mustMaintain: true,
+          maintainUntilObjectiveComplete: true,
         },
         {
           type: 'status-check',
@@ -276,13 +278,13 @@ export const scenario7Data: ScenarioData = {
           params: {
             question: 'Looking at the BUC panel, what is the likely cause of the high current draw?',
             options: [
-              'BUC is unmuted while in loopback mode - actively processing signal',
+              'BUC has been on for a few hours and is overheating',
               'BUC gain is set too high',
               'External reference is unlocked',
               'BUC temperature is too low',
             ],
-            correctIndex: 0,
-            explanation: 'The BUC is unmuted while in loopback mode. This means it\'s actively processing and amplifying signal internally, which draws significant current. The maintenance crew left it in this state after testing. We need to mute the BUC and disable loopback.',
+            correctIndex: 1,
+            explanation: 'The BUC gain is set to 50 dB and since it\'s in loopback mode and unmuted, it\'s actively processing signal, leading to high current draw. The maintenance crew likely forgot to mute it after testing.',
             pointPenalty: 10,
             character: Character.DANA_TORRES,
           },
@@ -308,17 +310,17 @@ export const scenario7Data: ScenarioData = {
           type: 'tab-active',
           description: 'TX Chain Tab Open',
           params: { tab: 'tx-chain' },
-          mustMaintain: true,
+          maintainUntilObjectiveComplete: true,
         },
         {
           type: 'buc-muted',
           description: 'BUC Muted',
-          mustMaintain: true,
+          maintainUntilObjectiveComplete: true,
         },
         {
           type: 'buc-loopback-disabled',
           description: 'BUC Loopback Disabled',
-          mustMaintain: true,
+          maintainUntilObjectiveComplete: true,
         },
       ],
       conditionLogic: 'AND',
@@ -340,7 +342,7 @@ export const scenario7Data: ScenarioData = {
           type: 'tab-active',
           description: 'Dashboard Tab Open',
           params: { tab: 'dashboard' },
-          mustMaintain: true,
+          maintainUntilObjectiveComplete: true,
         },
         {
           type: 'status-check',
@@ -379,7 +381,7 @@ export const scenario7Data: ScenarioData = {
           type: 'ground-station-selected',
           description: 'Vermont Station Active',
           params: { groundStationId: 'VT-01' },
-          mustMaintain: true,
+          maintainUntilObjectiveComplete: true,
         },
         {
           type: 'tab-active',
@@ -430,23 +432,23 @@ export const scenario7Data: ScenarioData = {
           type: 'tab-active',
           description: 'RX Analysis Tab Open',
           params: { tab: 'rx-analysis' },
-          mustMaintain: true,
+          maintainUntilObjectiveComplete: true,
         },
         {
           type: 'equipment-powered',
           description: 'LNB Powered',
           params: { equipment: 'lnb' },
-          mustMaintain: true,
+          maintainUntilObjectiveComplete: true,
         },
         {
           type: 'lnb-thermally-stable',
           description: 'LNB Thermally Stabilized',
-          mustMaintain: true,
+          maintainUntilObjectiveComplete: true,
         },
         {
           type: 'lnb-reference-locked',
           description: 'LNB Reference Locked',
-          mustMaintain: true,
+          maintainUntilObjectiveComplete: true,
         },
         {
           type: 'status-check',
@@ -488,7 +490,7 @@ export const scenario7Data: ScenarioData = {
           type: 'tab-active',
           description: 'RX Analysis Tab Open',
           params: { tab: 'rx-analysis' },
-          mustMaintain: true,
+          maintainUntilObjectiveComplete: true,
         },
         {
           type: 'speca-center-frequency',
@@ -496,7 +498,7 @@ export const scenario7Data: ScenarioData = {
           params: {
             centerFrequency: 1074.5e6 as Hertz,
           },
-          mustMaintain: true,
+          maintainUntilObjectiveComplete: true,
         },
         {
           type: 'speca-span-set',
@@ -505,7 +507,7 @@ export const scenario7Data: ScenarioData = {
             span: 0.002e6 as Hertz,
             spanTolerance: 0.002e6 as Hertz,
           },
-          mustMaintain: true,
+          maintainUntilObjectiveComplete: true,
         },
         {
           type: 'speca-min-amplitude',
@@ -514,7 +516,7 @@ export const scenario7Data: ScenarioData = {
             minAmplitude: -100 as dBm,
             minAmplitudeTolerance: 10,
           },
-          mustMaintain: true,
+          maintainUntilObjectiveComplete: true,
         },
         {
           type: 'speca-max-amplitude',
@@ -523,7 +525,7 @@ export const scenario7Data: ScenarioData = {
             maxAmplitude: -50 as dBm,
             maxAmplitudeTolerance: 20,
           },
-          mustMaintain: true,
+          maintainUntilObjectiveComplete: true,
         },
         {
           type: 'signal-detected',
@@ -532,7 +534,7 @@ export const scenario7Data: ScenarioData = {
             signalId: 'TIDEMARK-1-Beacon',
             minPower: -40 as dBm,
           },
-          mustMaintain: true,
+          maintainUntilObjectiveComplete: true,
         },
         {
           type: 'status-check',
@@ -665,7 +667,7 @@ export const scenario7Data: ScenarioData = {
           type: 'tab-active',
           description: 'TX Chain Tab Open',
           params: { tab: 'tx-chain' },
-          mustMaintain: true,
+          maintainUntilObjectiveComplete: true,
         },
         {
           type: 'tx-modem-frequency-set',
@@ -706,6 +708,14 @@ export const scenario7Data: ScenarioData = {
           },
           maintainUntilObjectiveComplete: true,
         },
+        {
+          type: 'tx-modem-transmitting',
+          description: 'TX Modem Transmitting',
+          params: {
+            isTransmitting: true
+          },
+          maintainUntilObjectiveComplete: true,
+        }
       ],
       conditionLogic: 'AND',
       points: 15,
@@ -715,12 +725,11 @@ export const scenario7Data: ScenarioData = {
     // LOOPBACK VALIDATION
     // ============================================================
     {
-      id: 'enable-loopback',
-      // T1313: Test network infrastructure, including software and hardware devices
-      // T1567: Equipment configuration happens throughout
-      nice: ['T1313', 'T1567'],
-      title: 'Enable BUC Loopback',
-      description: 'Toggle loopback mode ON to route the TX signal back to the receive chain for testing without transmitting to the satellite.',
+      id: 'reduce-buc-gain',
+      // S0582: Skill in troubleshooting system performance
+      nice: ['S0582'],
+      title: 'Reduce BUC Gain for Loopback',
+      description: 'Lower the BUC gain to prevent overloading the receive chain during loopback testing.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['configure-tx-modem'],
       timeLimitSeconds: 2 * 60,
@@ -730,17 +739,48 @@ export const scenario7Data: ScenarioData = {
           type: 'tab-active',
           description: 'TX Chain Tab Open',
           params: { tab: 'tx-chain' },
-          mustMaintain: true,
+          maintainUntilObjectiveComplete: true,
+        },
+        {
+          type: 'buc-gain-set',
+          description: 'BUC Gain Reduced to 20 dB',
+          params: {
+            gain: 20 as dB,
+            gainTolerance: 2 as dB,
+          },
+          maintainUntilObjectiveComplete: true,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 5,
+    },
+    {
+      id: 'enable-loopback',
+      // T1313: Test network infrastructure, including software and hardware devices
+      // T1567: Equipment configuration happens throughout
+      nice: ['T1313', 'T1567'],
+      title: 'Enable BUC Loopback',
+      description: 'Toggle loopback mode ON to route the TX signal back to the receive chain for testing without transmitting to the satellite.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['reduce-buc-gain'],
+      timeLimitSeconds: 2 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'tab-active',
+          description: 'TX Chain Tab Open',
+          params: { tab: 'tx-chain' },
+          maintainUntilObjectiveComplete: true,
         },
         {
           type: 'buc-loopback-enabled',
           description: 'BUC Loopback Enabled',
-          mustMaintain: true,
+          maintainUntilObjectiveComplete: true,
         },
         {
           type: 'buc-unmuted',
           description: 'BUC Unmuted',
-          mustMaintain: true,
+          maintainUntilObjectiveComplete: true,
         },
         {
           type: 'status-check',
@@ -765,36 +805,6 @@ export const scenario7Data: ScenarioData = {
       points: 10,
     },
     {
-      id: 'reduce-buc-gain',
-      // S0582: Skill in troubleshooting system performance
-      nice: ['S0582'],
-      title: 'Reduce BUC Gain for Loopback',
-      description: 'Lower the BUC gain to prevent overloading the receive chain during loopback testing.',
-      groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['enable-loopback'],
-      timeLimitSeconds: 2 * 60,
-      timerStartTrigger: 'on-activate',
-      conditions: [
-        {
-          type: 'tab-active',
-          description: 'TX Chain Tab Open',
-          params: { tab: 'tx-chain' },
-          mustMaintain: true,
-        },
-        {
-          type: 'buc-gain-set',
-          description: 'BUC Gain Reduced to 20 dB',
-          params: {
-            gain: 20 as dB,
-            gainTolerance: 2 as dB,
-          },
-          mustMaintain: true,
-        },
-      ],
-      conditionLogic: 'AND',
-      points: 5,
-    },
-    {
       id: 'verify-loopback-signal',
       // T1313: Test network infrastructure, including software and hardware devices
       nice: ['T1313'],
@@ -802,7 +812,7 @@ export const scenario7Data: ScenarioData = {
       description:
         'Configure the spectrum analyzer and LNB to view the loopback signal. Set the LNB LO to 7000 MHz to match the BUC LO for direct IF comparison, then tune to the TX IF frequency.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['reduce-buc-gain'],
+      prerequisiteObjectiveIds: ['enable-loopback'],
       timeLimitSeconds: 5 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
@@ -810,7 +820,7 @@ export const scenario7Data: ScenarioData = {
           type: 'tab-active',
           description: 'RX Analysis Tab Open',
           params: { tab: 'rx-analysis' },
-          mustMaintain: true,
+          maintainUntilObjectiveComplete: true,
         },
         {
           type: 'lnb-lo-set',
@@ -819,7 +829,7 @@ export const scenario7Data: ScenarioData = {
             loFrequency: 7000 as MHz,
             loFrequencyTolerance: 1,
           },
-          mustMaintain: true,
+          maintainUntilObjectiveComplete: true,
         },
         {
           type: 'speca-center-frequency',
@@ -828,7 +838,7 @@ export const scenario7Data: ScenarioData = {
             centerFrequency: 1057e6 as Hertz,
             centerFrequencyTolerance: 5e6,
           },
-          mustMaintain: true,
+          maintainUntilObjectiveComplete: true,
         },
         {
           type: 'speca-span-set',
@@ -837,7 +847,7 @@ export const scenario7Data: ScenarioData = {
             span: 50e6,
             frequencyTolerance: 20e6,
           },
-          mustMaintain: true,
+          maintainUntilObjectiveComplete: true,
         },
         {
           type: 'speca-min-amplitude',
@@ -846,7 +856,7 @@ export const scenario7Data: ScenarioData = {
             minAmplitude: -100,
             minAmplitudeTolerance: 5,
           },
-          mustMaintain: true,
+          maintainUntilObjectiveComplete: true,
         },
         {
           type: 'speca-max-amplitude',
@@ -855,7 +865,7 @@ export const scenario7Data: ScenarioData = {
             maxAmplitude: -20,
             maxAmplitudeTolerance: 5,
           },
-          mustMaintain: true,
+          maintainUntilObjectiveComplete: true,
         },
         {
           type: 'speca-rbw-set',
@@ -863,7 +873,7 @@ export const scenario7Data: ScenarioData = {
           params: {
             rbw: null as unknown as number,
           },
-          mustMaintain: true,
+          maintainUntilObjectiveComplete: true,
         },
         {
           type: 'status-check',
@@ -941,7 +951,7 @@ export const scenario7Data: ScenarioData = {
           type: 'tab-active',
           description: 'TX Chain Tab Open',
           params: { tab: 'tx-chain' },
-          mustMaintain: true,
+          maintainUntilObjectiveComplete: true,
         },
         {
           type: 'tx-crypto-status',
@@ -994,12 +1004,12 @@ export const scenario7Data: ScenarioData = {
           type: 'tab-active',
           description: 'TX Chain Tab Open',
           params: { tab: 'tx-chain' },
-          mustMaintain: true,
+          maintainUntilObjectiveComplete: true,
         },
         {
           type: 'buc-loopback-disabled',
           description: 'BUC Loopback Disabled',
-          mustMaintain: true,
+          maintainUntilObjectiveComplete: true,
         },
       ],
       conditionLogic: 'AND',
@@ -1021,7 +1031,7 @@ export const scenario7Data: ScenarioData = {
           type: 'tab-active',
           description: 'TX Chain Tab Open',
           params: { tab: 'tx-chain' },
-          mustMaintain: true,
+          maintainUntilObjectiveComplete: true,
         },
         {
           type: 'hpa-enabled',
@@ -1037,32 +1047,6 @@ export const scenario7Data: ScenarioData = {
       conditionLogic: 'AND',
       points: 10,
     },
-    {
-      id: 'unmute-buc-transmit',
-      // S0421: Skill in operating network equipment
-      nice: ['S0421'],
-      title: 'Unmute BUC for Transmission',
-      description: 'Unmute the BUC to allow signal to flow through the HPA to the antenna.',
-      groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['enable-hpa-output'],
-      timeLimitSeconds: 2 * 60,
-      timerStartTrigger: 'on-activate',
-      conditions: [
-        {
-          type: 'tab-active',
-          description: 'TX Chain Tab Open',
-          params: { tab: 'tx-chain' },
-          mustMaintain: true,
-        },
-        {
-          type: 'buc-unmuted',
-          description: 'BUC Unmuted',
-          mustMaintain: true,
-        },
-      ],
-      conditionLogic: 'AND',
-      points: 5,
-    },
 
     // ============================================================
     // FINAL VERIFICATION
@@ -1076,7 +1060,7 @@ export const scenario7Data: ScenarioData = {
       description:
         'Lower the HPA backoff to reach the minimum output power required for reliable uplink.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['unmute-buc-transmit'],
+      prerequisiteObjectiveIds: ['enable-hpa-output'],
       timeLimitSeconds: 2 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
@@ -1084,12 +1068,12 @@ export const scenario7Data: ScenarioData = {
           type: 'tab-active',
           description: 'TX Chain Tab Open',
           params: { tab: 'tx-chain' },
-          mustMaintain: true,
+          maintainUntilObjectiveComplete: true,
         },
         {
           type: 'hpa-output-power-set',
-          description: 'HPA Output Power Above 50 W',
-          params: { minOutputPower: 50 },
+          description: 'HPA Output Power Above 400 W',
+          params: { minOutputPower: 400 },
           maintainUntilObjectiveComplete: true,
         },
       ],
@@ -1161,26 +1145,10 @@ export const scenario7Data: ScenarioData = {
         emotion: Emotion.NEUTRAL,
         audioUrl: getAssetUrl('/assets/campaigns/nats/7/obj-review-mission-brief.mp3'),
       },
-      'select-vermont-station': {
-        text: `
-        <p>
-          Before you dive into the uplink validation, be sure to check the Dashboard tab for any active alarms.
-        </p>
-        <p>
-          Good habit to have - always check system status before you start working on something.
-        </p>
-        `,
-        character: Character.DANA_TORRES,
-        emotion: Emotion.NEUTRAL,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/7/obj-select-vermont-station.mp3'),
-      },
       'check-dashboard-status': {
         text: `
         <p>
-          That's definitely a problem. BUC is showing a high current draw alarm. Maintenance must have left it unmuted while in loopback mode.
-        </p>
-        <p>
-          Click the TX Chain tab and take a look at the BUC panel. You need to mute it and disable loopback before you can proceed.
+          Heads up - I see there's a BUC alarm on the board. Looks like maintenance may have left something misconfigured.
         </p>
         `,
         character: Character.DANA_TORRES,
@@ -1190,7 +1158,7 @@ export const scenario7Data: ScenarioData = {
       'diagnose-buc-high-current': {
         text: `
         <p>
-          Confirmed! BUC is unmuted and loopback is enabled. It's actively processing signal internally, which is drawing all that current. You definitely need to fix the BUC state.
+          Bingo. We will worry about the gain later, for now just mute it and disable loopback so we can clear that alarm. That will stop the high current draw.
         </p>
         `,
         character: Character.DANA_TORRES,
@@ -1200,54 +1168,12 @@ export const scenario7Data: ScenarioData = {
       'resolve-buc-high-current': {
         text: `
         <p>
-          Good. BUC is muted and loopback is off. Current draw should drop to normal levels. Let's verify on the Dashboard that the alarm has cleared.
+          Good catch. Current draw should normalize now.
         </p>
         `,
         character: Character.DANA_TORRES,
         emotion: Emotion.CONFIDENT,
         audioUrl: getAssetUrl('/assets/campaigns/nats/7/obj-resolve-buc-high-current.mp3'),
-      },
-      'verify-fault-cleared': {
-        text: `
-        <p>
-          Dashboard is clean. That's how it should look before you start any validation work.
-        </p>
-        <p>
-          Now let's verify the antenna status. Open the ACU Control tab.
-        </p>
-        `,
-        character: Character.DANA_TORRES,
-        emotion: Emotion.HAPPY,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/7/obj-verify-fault-cleared.mp3'),
-      },
-      'verify-antenna-status': {
-        text: `
-        <p>
-          Antenna's tracking. Now we verify the receive chain by acquiring the beacon. Go to the RX Analysis tab.
-        </p>
-        <p>
-          Check that the LNB is powered with a locked reference. Then we'll tune the spectrum analyzer to find the beacon.
-        </p>
-        `,
-        character: Character.DANA_TORRES,
-        emotion: Emotion.NEUTRAL,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/7/obj-verify-antenna-status.mp3'),
-      },
-      'verify-lnb-operational': {
-        text: `
-        <p>
-          LNB looks good. Now we need to find the TIDEMARK-1 beacon. The beacon is at 4,175.5 MHz RF.
-        </p>
-        <p>
-          With the LNB LO at 5,250 MHz, that puts the beacon at 1,074.5 MHz IF. Set your center frequency there.
-        </p>
-        <p>
-          Beacons are CW carriers - very narrow. Set your span to just 2 kHz so you can see the spike clearly. Reference level around -50 dBm, minimum around -100 dBm.
-        </p>
-        `,
-        character: Character.DANA_TORRES,
-        emotion: Emotion.NEUTRAL,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/7/obj-verify-lnb-operational.mp3'),
       },
       'acquire-beacon': {
         text: `
@@ -1259,104 +1185,15 @@ export const scenario7Data: ScenarioData = {
         emotion: Emotion.NEUTRAL,
         audioUrl: getAssetUrl('/assets/campaigns/nats/7/obj-acquire-beacon.mp3'),
       },
-      'configure-tx-modem': {
-        text: `
-        <p>
-          TX modem is configured. Before we transmit for real, we need to verify the TX signal path. Now we enable loopback intentionally - this is the proper test procedure.
-        </p>
-        <p>
-          Toggle loopback ON in the BUC panel, then unmute. The signal will route back to our spectrum analyzer instead of going to the antenna.
-        </p>
-        `,
-        character: Character.DANA_TORRES,
-        emotion: Emotion.NEUTRAL,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/7/obj-enable-loopback.mp3'),
-      },
       'enable-loopback': {
         text: `
         <p>
-          Drawing too much power again just like before. But this time we can't just mute the BUC - we need it unmuted to test the loopback signal.
-        </p>
-        <p>
-          To fix this we can turn down the gain until the current draw is normal. Reduce the gain in the BUC panel until the alarm clears.
+          Same high current issue. You'll need to work around that for the loopback test.
         </p>
         `,
         character: Character.DANA_TORRES,
         emotion: Emotion.NEUTRAL,
         audioUrl: getAssetUrl('/assets/campaigns/nats/7/obj-enable-loopback.mp3'),
-      },
-      'reduce-buc-gain': {
-        text: `
-        <p>
-          Now switch to RX Analysis and tune the spectrum analyzer to 1,057 MHz - that's your TX IF frequency.
-        </p>
-        <p>
-          You should see a 36 MHz wide signal. That confirms the TX modem output is reaching the BUC and looping back correctly.
-        </p>
-        `,
-        character: Character.DANA_TORRES,
-        emotion: Emotion.NEUTRAL,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/7/obj-verify-loopback-signal.mp3'),
-      },
-      'quiz-loopback-purpose': {
-        text: `
-        <p>
-          Loopback passed. Before we enable the HPA, verify encryption status on the TX chain. Never transmit without confirming link security.
-        </p>
-        `,
-        character: Character.DANA_TORRES,
-        emotion: Emotion.NEUTRAL,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/7/obj-quiz-loopback-purpose.mp3'),
-      },
-      'quiz-encryption-status': {
-        text: `
-        <p>
-          Encryption verified. Now disable loopback and bring up the HPA.
-        </p>
-        `,
-        character: Character.DANA_TORRES,
-        emotion: Emotion.NEUTRAL,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/7/obj-quiz-encryption-status.mp3'),
-      },
-      'disable-loopback': {
-        text: `
-        <p>
-          Loopback disabled. Now enable the HPA output.
-        </p>
-        `,
-        character: Character.DANA_TORRES,
-        emotion: Emotion.NEUTRAL,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/7/obj-disable-loopback.mp3'),
-      },
-      'enable-hpa-output': {
-        text: `
-        <p>
-          HPA is enabled. Now unmute the BUC so signal can flow through to the antenna.
-        </p>
-        `,
-        character: Character.DANA_TORRES,
-        emotion: Emotion.NEUTRAL,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/7/obj-enable-hpa-output.mp3'),
-      },
-      'unmute-buc-transmit': {
-        text: `
-        <p>
-          BUC is unmuted and we're transmitting. Check the HPA output power - we need at least 50 watts for reliable uplink. Lower the backoff if needed.
-        </p>
-        `,
-        character: Character.DANA_TORRES,
-        emotion: Emotion.NEUTRAL,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/7/obj-unmute-buc-transmit.mp3'),
-      },
-      'verify-hpa-power': {
-        text: `
-        <p>
-          Output power is good. We're transmitting at the required level.
-        </p>
-        `,
-        character: Character.DANA_TORRES,
-        emotion: Emotion.CONFIDENT,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/7/obj-verify-hpa-power.mp3'),
       },
       'final-verification': {
         text: `

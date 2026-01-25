@@ -196,7 +196,7 @@ export class TxChainTab extends BaseElement {
             <div class="card-body">
               <!-- Back-off Control -->
               <div class="equip-adjust-control">
-                <label class="equip-adjust-label">Back-off from P1dB</label>
+                <label class="equip-adjust-label">Back-off from Max Output Power</label>
                 <div class="equip-adjust-row">
                   <div class="equip-adjust-buttons equip-adjust-decrease">
                     <button id="hpa-backoff-dec-coarse" class="btn-equip" title="-5 dB">-5</button>

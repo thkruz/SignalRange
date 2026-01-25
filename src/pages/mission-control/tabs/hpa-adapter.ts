@@ -136,7 +136,7 @@ export class HPAAdapter {
     // Update P1dB display
     const p1dbDisplay = this.domCache_.get('p1dbDisplay');
     if (p1dbDisplay) {
-      p1dbDisplay.textContent = isPowered ? '50.0 dBm' : '-- dBm';
+      p1dbDisplay.textContent = isPowered ? `${this.hpaModule.p1db.toFixed(1)} dBm` : '-- dBm';
     }
 
     // Update temperature display
@@ -448,7 +448,7 @@ export class HPAAdapter {
 
     // P1dB is 50 dBm, so scale from ~30 dBm (low) to 50 dBm (max)
     const minPower = 30;
-    const maxPower = 50;
+    const maxPower = 63;
     const normalized = Math.max(0, Math.min(1, (outputPowerDbm - minPower) / (maxPower - minPower)));
     const activeSegments = Math.round(normalized * 10);
 

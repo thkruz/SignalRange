@@ -295,6 +295,8 @@ export interface Condition {
   type: ConditionType;
   /** Human-readable description */
   description: string;
+  /** Hint or tip to help achieve the condition (optional) */
+  hint?: string;
   /** Parameters specific to this condition type */
   params?: ConditionParams;
   /** Whether this condition must be maintained (true) or just achieved once (false) */
@@ -371,6 +373,8 @@ export interface ObjectiveState {
   timePenaltyApplied?: boolean;
   /** Points deducted due to time penalty */
   timePenaltyPoints?: number;
+  /** Points deducted from requesting hints (50% of objective points if any hint requested) */
+  hintPenaltyPoints?: number;
 }
 
 /**
@@ -389,4 +393,6 @@ export interface ConditionState {
   isMaintenanceComplete: boolean;
   /** History of when condition was lost (for debugging/analysis) */
   lostTimestamps?: number[];
+  /** Whether a hint was requested for this condition */
+  hintRequested?: boolean;
 }

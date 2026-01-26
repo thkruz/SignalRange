@@ -12,6 +12,8 @@ export enum Character {
   /** Satellite Operations Engineer from Halifax. Canadian with subtle Canadian-isms. */
   MARCUS_CHEN = 'marcus_chen',
   DANA_TORRES = "dana_torres",
+  /** System/Self-check - no avatar, used for solo scenarios where no NPC is present */
+  SYSTEM = 'system',
 }
 
 export enum Emotion {
@@ -34,6 +36,7 @@ export const CharacterAvatars: Record<Character, string> = {
   [Character.FRANCIS_MARTIN]: getAssetUrl('/assets/characters/francis-martin.png'),
   [Character.MARCUS_CHEN]: getAssetUrl('/assets/characters/marcus-chen.png'),
   [Character.DANA_TORRES]: getAssetUrl('/assets/characters/dana-torres.png'),
+  [Character.SYSTEM]: '',
 };
 
 export const CharacterNames: Record<Character, string> = {
@@ -43,6 +46,7 @@ export const CharacterNames: Record<Character, string> = {
   [Character.JAMES_OKAFOR]: 'James Okafor',
   [Character.FRANCIS_MARTIN]: 'Francis Martin',
   [Character.MARCUS_CHEN]: 'Marcus Chen',
+  [Character.SYSTEM]: 'Knowledge Check',
 };
 
 export const CharacterTitles: Record<Character, string> = {
@@ -52,6 +56,7 @@ export const CharacterTitles: Record<Character, string> = {
   [Character.JAMES_OKAFOR]: 'Fleet Captain',
   [Character.FRANCIS_MARTIN]: 'Board Member',
   [Character.MARCUS_CHEN]: 'Satellite Operations Engineer',
+  [Character.SYSTEM]: '',
 };
 
 export const CharacterCompany: Record<Character, string> = {
@@ -61,6 +66,7 @@ export const CharacterCompany: Record<Character, string> = {
   [Character.JAMES_OKAFOR]: 'Atlantic Shipping Alliance',
   [Character.FRANCIS_MARTIN]: 'SeaLink',
   [Character.MARCUS_CHEN]: 'SeaLink Maritime (Halifax)',
+  [Character.SYSTEM]: '',
 };
 
 export function getCharacterAvatarUrl(character: Character, emotion?: Emotion): string {

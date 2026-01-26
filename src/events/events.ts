@@ -175,6 +175,20 @@ export interface QuizPassedData {
   pointsDeducted: number;
 }
 
+// Hint Event specific interfaces
+export interface HintRequestedData {
+  objectiveId: string;
+  conditionIndex: number;
+  hint: string;
+  penaltyPoints: number;
+}
+
+export interface HintShownData {
+  objectiveId: string;
+  conditionIndex: number;
+  hint: string;
+}
+
 export interface ScenarioTimeExpiredData {
   elapsedTime: number;
   timeLimit: number;
@@ -339,6 +353,10 @@ export enum Events {
   QUIZ_PENDING = 'quiz:pending',
   QUIZ_PASSED = 'quiz:passed',
 
+  // Hint events (for condition hints with 50% point penalty)
+  HINT_REQUESTED = 'hint:requested',
+  HINT_SHOWN = 'hint:shown',
+
   // Progress Save events
   PROGRESS_SAVE_START = 'progress:save:start',
   PROGRESS_SAVE_SUCCESS = 'progress:save:success',
@@ -443,6 +461,9 @@ export interface EventMap {
   [Events.QUIZ_DISMISSED]: [QuizDismissedData];
   [Events.QUIZ_PENDING]: [QuizPendingData];
   [Events.QUIZ_PASSED]: [QuizPassedData];
+
+  [Events.HINT_REQUESTED]: [HintRequestedData];
+  [Events.HINT_SHOWN]: [HintShownData];
 
   [Events.PROGRESS_SAVE_START]: [ProgressSaveStartData];
   [Events.PROGRESS_SAVE_SUCCESS]: [ProgressSaveSuccessData];

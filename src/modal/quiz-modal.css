@@ -27,6 +27,22 @@
   object-fit: cover;
 }
 
+/* Self-check mode icon (replaces avatar for solo scenarios) */
+.quiz-self-check-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 2px solid var(--hm-accent, #ff3535);
+  background: rgba(255, 53, 53, 0.15);
+  color: var(--hm-accent, #ff3535);
+  font-size: 1.5rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
 .quiz-header-text {
   display: flex;
   flex-direction: column;

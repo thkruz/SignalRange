@@ -141,17 +141,30 @@ export class QuizModal extends DraggableBox {
 
     if (!questionEl || !optionsEl || !feedbackEl || !penaltyEl) return;
 
-    // Update avatar and name for current character
-    const avatarEl = getEl('quiz-avatar') as HTMLImageElement;
-    if (avatarEl) {
-      avatarEl.src = getCharacterAvatarUrl(this.currentCharacter_, Emotion.CONFIDENT);
-      avatarEl.alt = CharacterNames[this.currentCharacter_];
-    }
+    // Update header based on character type
+    const isSystemMode = this.currentCharacter_ === Character.SYSTEM;
+    const headerEl = this.boxEl?.querySelector('.quiz-header') as HTMLElement;
 
-    // Update character name
-    const nameEl = this.boxEl?.querySelector('.quiz-character-name');
-    if (nameEl) {
-      nameEl.textContent = CharacterNames[this.currentCharacter_];
+    if (headerEl) {
+      if (isSystemMode) {
+        // Self-check mode: show icon instead of NPC avatar
+        headerEl.innerHTML = html`
+          <div class="quiz-self-check-icon">?</div>
+          <div class="quiz-header-text">
+            <span class="quiz-character-name">Knowledge Check</span>
+            <span class="quiz-prompt-label">Verify your understanding</span>
+          </div>
+        `;
+      } else {
+        // NPC mode: show avatar and name
+        headerEl.innerHTML = html`
+          <img id="quiz-avatar" class="quiz-avatar" src="${getCharacterAvatarUrl(this.currentCharacter_, Emotion.CONFIDENT)}" alt="${CharacterNames[this.currentCharacter_]}">
+          <div class="quiz-header-text">
+            <span class="quiz-character-name">${CharacterNames[this.currentCharacter_]}</span>
+            <span class="quiz-prompt-label">asks:</span>
+          </div>
+        `;
+      }
     }
 
     // Set question text
@@ -280,10 +293,13 @@ export class QuizModal extends DraggableBox {
     this.showOverlay_();
 
     const feedbackEl = getEl('quiz-feedback');
-    const avatarEl = getEl('quiz-avatar') as HTMLImageElement;
 
-    if (avatarEl) {
-      avatarEl.src = getCharacterAvatarUrl(this.currentCharacter_, Emotion.HAPPY);
+    // Update avatar emotion (skip for SYSTEM mode - no avatar)
+    if (this.currentCharacter_ !== Character.SYSTEM) {
+      const avatarEl = getEl('quiz-avatar') as HTMLImageElement;
+      if (avatarEl) {
+        avatarEl.src = getCharacterAvatarUrl(this.currentCharacter_, Emotion.HAPPY);
+      }
     }
 
     if (feedbackEl) {
@@ -389,10 +405,13 @@ export class QuizModal extends DraggableBox {
 
     const feedbackEl = getEl('quiz-feedback');
     const penaltyEl = getEl('quiz-penalty-notice');
-    const avatarEl = getEl('quiz-avatar') as HTMLImageElement;
 
-    if (avatarEl) {
-      avatarEl.src = getCharacterAvatarUrl(this.currentCharacter_, Emotion.CONCERNED);
+    // Update avatar emotion (skip for SYSTEM mode - no avatar)
+    if (this.currentCharacter_ !== Character.SYSTEM) {
+      const avatarEl = getEl('quiz-avatar') as HTMLImageElement;
+      if (avatarEl) {
+        avatarEl.src = getCharacterAvatarUrl(this.currentCharacter_, Emotion.CONCERNED);
+      }
     }
 
     if (feedbackEl) {
@@ -425,12 +444,15 @@ export class QuizModal extends DraggableBox {
       wrongBtn.classList.add('disabled');
     }
 
-    // Reset avatar after a short delay
-    setTimeout(() => {
-      if (avatarEl && !this.isShowingFeedback_) {
-        avatarEl.src = getCharacterAvatarUrl(this.currentCharacter_, Emotion.CONFIDENT);
-      }
-    }, 1500);
+    // Reset avatar after a short delay (skip for SYSTEM mode - no avatar)
+    if (this.currentCharacter_ !== Character.SYSTEM) {
+      setTimeout(() => {
+        const avatarEl = getEl('quiz-avatar') as HTMLImageElement;
+        if (avatarEl && !this.isShowingFeedback_) {
+          avatarEl.src = getCharacterAvatarUrl(this.currentCharacter_, Emotion.CONFIDENT);
+        }
+      }, 1500);
+    }
   }
 
   private disableOptions_(): void {

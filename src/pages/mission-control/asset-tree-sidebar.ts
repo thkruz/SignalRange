@@ -7,6 +7,8 @@ import { EventBus } from "@app/events/event-bus";
 import { Events } from "@app/events/events";
 import { DialogHistoryBox } from "@app/modal/dialog-history-box";
 import { DraggableHtmlBox } from "@app/modal/draggable-html-box";
+import { HintManager } from "@app/modal/hint-manager";
+import { HintModal } from "@app/modal/hint-modal";
 import { PendingQuizIndicator } from "@app/modal/pending-quiz-indicator";
 import { QuizManager } from "@app/modal/quiz-manager";
 import { ObjectivesManager } from "@app/objectives";
@@ -222,7 +224,7 @@ export class AssetTreeSidebar extends BaseElement {
   }
 
   /**
-   * Set up event delegation for quiz buttons in the checklist
+   * Set up event delegation for quiz and hint buttons in the checklist
    * Since checklist content regenerates every second, we delegate on the container
    */
   private setupQuizButtonDelegation_(): void {
@@ -233,14 +235,50 @@ export class AssetTreeSidebar extends BaseElement {
 
     checklistBox.popupDom.addEventListener('click', (e: Event) => {
       const target = e.target as HTMLElement;
-      const quizBtn = target.closest<HTMLButtonElement>('.condition-quiz-btn');
 
+      // Handle quiz button clicks
+      const quizBtn = target.closest<HTMLButtonElement>('.condition-quiz-btn');
       if (quizBtn) {
         const objectiveId = quizBtn.dataset.objectiveId;
         const conditionIndex = parseInt(quizBtn.dataset.conditionIndex ?? '0', 10);
 
         if (objectiveId) {
           QuizManager.getInstance().showQuiz(objectiveId, conditionIndex);
+        }
+        return;
+      }
+
+      // Handle hint button clicks
+      const hintBtn = target.closest<HTMLButtonElement>('.condition-hint-btn');
+      if (hintBtn) {
+        const objectiveId = hintBtn.dataset.objectiveId;
+        const conditionIndex = parseInt(hintBtn.dataset.conditionIndex ?? '0', 10);
+        const isHintAlreadyUsed = hintBtn.dataset.hintUsed === 'true';
+
+        if (objectiveId) {
+          const hintManager = HintManager.getInstance();
+          const hint = hintManager.getHint(objectiveId, conditionIndex);
+
+          if (hint) {
+            if (isHintAlreadyUsed) {
+              // Hint already revealed - show directly without confirmation
+              HintModal.getInstance().showHintDirectly(objectiveId, conditionIndex, hint);
+            } else {
+              // First time - show confirmation with penalty warning
+              const penaltyPoints = hintManager.getPenaltyPoints(objectiveId);
+              const objectiveTitle = ObjectivesManager.getInstance()
+                .getObjectiveStates()
+                .find(s => s.objective.id === objectiveId)?.objective.title ?? 'Unknown';
+
+              HintModal.getInstance().showConfirmation(
+                objectiveId,
+                conditionIndex,
+                hint,
+                penaltyPoints,
+                objectiveTitle
+              );
+            }
+          }
         }
       }
     });

@@ -91,7 +91,7 @@ export const vermontGroundStation = {
     lnb: {
       isPowered: true,
       loFrequency: 5250 as MHz,
-      gain: 60 as dB,
+      gain: 65 as dB,
       lnaNoiseFigure: 0.6, // dB
       mixerNoiseFigure: 16.0, // dB
       noiseTemperature: 43, // K - stable

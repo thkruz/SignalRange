@@ -140,7 +140,7 @@ export abstract class DraggableBox {
     }
   }
 
-  private sendToFront() {
+  protected sendToFront() {
     getEl(`${this.boxId}`)!.style.zIndex = DraggableBox.increaseMaxZIndex().toString();
   }
 

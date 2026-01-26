@@ -62,6 +62,7 @@ export abstract class DraggableModal extends DraggableBox {
       }
       modalContent.style.top = `${(window.innerHeight - modalContent.offsetHeight) / 2}px`;
       modalContent.style.left = `${(window.innerWidth - modalContent.offsetWidth) / 2}px`;
+      this.sendToFront();
       if (cb) {
         cb();
       }
@@ -78,10 +79,16 @@ export abstract class DraggableModal extends DraggableBox {
         containment: getEl(`${this.boxId}-container`)!,
       });
 
+      // Bring modal to front when clicked or dragged
+      this.draggie.on('pointerDown', () => {
+        this.sendToFront();
+      });
+
       boxContent.addEventListener('mousedown', (e: MouseEvent) => {
         if (e.button === 2) {
           boxContent.style.top = `${(window.innerHeight - boxContent.offsetHeight) / 2}px`;
           boxContent.style.left = `${(window.innerWidth - boxContent.offsetWidth) / 2}px`;
+          this.sendToFront();
         }
       });
     }

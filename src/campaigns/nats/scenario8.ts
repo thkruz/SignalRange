@@ -57,7 +57,7 @@ export const scenario8Data: ScenarioData = {
   imageUrl: 'nats/8/card.png',
   number: 8,
   isDisabled: false,
-  difficulty: 'advanced',
+  difficulty: 'intermediate',
   title: 'Level 8: Night Shift',
   subtitle: 'Solo Operations Evaluation',
   duration: '30-40 min',
@@ -170,6 +170,7 @@ export const scenario8Data: ScenarioData = {
           type: 'status-check',
           description: 'Ready to Investigate',
           params: {
+            character: Character.SYSTEM,
             question: 'Customer reports intermittent connectivity on AURORA-7. You are alone at the station. How will you proceed?',
             options: [
               'Begin systematic troubleshooting - check timing, RX chain, antenna, then TX if needed',
@@ -231,6 +232,7 @@ export const scenario8Data: ScenarioData = {
           type: 'status-check',
           description: 'Identify Alarm Condition',
           params: {
+            character: Character.SYSTEM,
             question: 'What alarm is displayed on the Dashboard?',
             options: [
               'LNB Reference Unlocked',
@@ -273,6 +275,7 @@ export const scenario8Data: ScenarioData = {
           type: 'status-check',
           description: 'GPSDO Status Verified',
           params: {
+            character: Character.SYSTEM,
             question: 'The GPSDO shows locked status. What does this tell you about the LNB reference unlock alarm?',
             options: [
               'The 10 MHz reference is available - the problem is likely the cable or LNB input',
@@ -320,6 +323,7 @@ export const scenario8Data: ScenarioData = {
           type: 'status-check',
           description: 'Fault Diagnosis',
           params: {
+            character: Character.SYSTEM,
             question: 'The LNB is powered but shows reference unlocked. What is the most likely corrective action?',
             options: [
               'Power cycle the LNB to re-acquire the external reference',
@@ -416,12 +420,13 @@ export const scenario8Data: ScenarioData = {
           type: 'status-check',
           description: 'Beacon IF Calculation',
           params: {
+            character: Character.SYSTEM,
             question: 'AURORA-7 beacon is at 4165 MHz RF. The LNB LO is 5250 MHz. What IF frequency should you tune the spectrum analyzer to?',
             options: [
-              '1085 MHz (LO - RF = 5250 - 4165)',
-              '9415 MHz (LO + RF)',
-              '915 MHz (incorrect calculation)',
-              '4165 MHz (RF frequency directly)',
+              '1085 MHz',
+              '9415 MHz',
+              '915 MHz',
+              '4165 MHz',
             ],
             correctIndex: 0,
             explanation: 'IF = LO - RF = 5250 - 4165 = 1085 MHz. The LNB downconverts by subtracting the RF frequency from the LO frequency.',
@@ -451,7 +456,8 @@ export const scenario8Data: ScenarioData = {
         },
         {
           type: 'speca-center-frequency',
-          description: 'Center Frequency at 1085 MHz',
+          description: 'Center Frequency',
+          hint: 'Set the spectrum analyzer center frequency to 1085 MHz to view the AURORA-7 beacon.',
           params: {
             centerFrequency: 1085e6 as Hertz,
             centerFrequencyTolerance: 2e6,
@@ -460,7 +466,8 @@ export const scenario8Data: ScenarioData = {
         },
         {
           type: 'speca-span-set',
-          description: 'Span Configured to 10 kHz',
+          description: 'Span Configured',
+          hint: 'Set a narrow span to clearly see the beacon signal.',
           params: {
             span: 0.01e6 as Hertz,
             spanTolerance: 0.01e6,
@@ -469,28 +476,29 @@ export const scenario8Data: ScenarioData = {
         },
         {
           type: 'speca-max-amplitude',
-          description: 'Max Amplitude Set to -65 dBm',
+          description: 'Max Amplitude Set',
+          hint: 'Set the maximum amplitude to -50 dBm to properly view the beacon signal.',
           params: {
-            maxAmplitude: -65 as dBm,
-            maxAmplitudeTolerance: 5 as dBm,
+            maxAmplitude: -50 as dBm,
+            maxAmplitudeTolerance: 15 as dBm,
           },
           maintainUntilObjectiveComplete: true,
         },
         {
           type: 'speca-min-amplitude',
-          description: 'Min Amplitude Set to -85 dBm',
+          description: 'Min Amplitude Set',
+          hint: 'Set the minimum amplitude to -100 dBm to properly view the beacon signal.',
           params: {
-            minAmplitude: -85 as dBm,
-            minAmplitudeTolerance: 5 as dBm,
+            minAmplitude: -100 as dBm,
+            minAmplitudeTolerance: 15 as dBm,
           },
           maintainUntilObjectiveComplete: true,
         },
         {
           type: 'speca-rbw-set',
-          description: 'RBW Configured to 1 kHz',
+          description: 'RBW Configured to Auto',
           params: {
-            rbw: 0.001e6 as Hertz,
-            rbwTolerance: 0.001e6,
+            rbw: null,
           },
           maintainUntilObjectiveComplete: true,
         }
@@ -522,6 +530,7 @@ export const scenario8Data: ScenarioData = {
           type: 'status-check',
           description: 'Tracking Mode Analysis',
           params: {
+            character: Character.SYSTEM,
             question: 'AURORA-7 is a legacy satellite with an inclined orbit. The antenna is in program-track mode. Why might this cause tracking problems?',
             options: [
               'Inclined orbits require step-track to follow satellite drift - program-track cannot compensate',
@@ -617,6 +626,7 @@ export const scenario8Data: ScenarioData = {
           type: 'status-check',
           description: 'Weather Decision',
           params: {
+            character: Character.SYSTEM,
             question: 'Weather service reports freezing rain expected in 2 hours. AURORA-7 link is now stable. What is the appropriate action?',
             options: [
               'Enable feed heater now as a precaution, continue monitoring the link',
@@ -677,6 +687,7 @@ export const scenario8Data: ScenarioData = {
           type: 'status-check',
           description: 'Uplink IF Calculation',
           params: {
+            character: Character.SYSTEM,
             question: 'AURORA-7 uplink RF is 5830 MHz. The BUC LO is 4925 MHz. What TX IF frequency is required?',
             options: [
               '1075 MHz (RF - BUC LO = 6000 - 4925)',
@@ -774,6 +785,7 @@ export const scenario8Data: ScenarioData = {
           type: 'status-check',
           description: 'Loopback Purpose',
           params: {
+            character: Character.SYSTEM,
             question: 'Why is loopback testing important before enabling the uplink?',
             options: [
               'Verifies TX modem and BUC signal path without radiating RF through the antenna',
@@ -820,6 +832,7 @@ export const scenario8Data: ScenarioData = {
           type: 'status-check',
           description: 'Loopback Signal Verified',
           params: {
+            character: Character.SYSTEM,
             question: 'What should you observe on the spectrum analyzer at 905 MHz?',
             options: [
               'A 24 MHz wide modulated signal - confirming TX modem output',
@@ -951,6 +964,7 @@ export const scenario8Data: ScenarioData = {
           type: 'status-check',
           description: 'Link Status Verification',
           params: {
+            character: Character.SYSTEM,
             question: 'What indicators confirm the AURORA-7 link is now operational?',
             options: [
               'All of the above',
@@ -983,6 +997,7 @@ export const scenario8Data: ScenarioData = {
           type: 'status-check',
           description: 'Resolution Summary',
           params: {
+            character: Character.SYSTEM,
             question: 'Which summary correctly describes the root cause and resolution?',
             options: [
               'LNB reference unlock caused RX degradation; program-track inadequate for inclined orbit. Fixed by power cycling LNB and enabling step-track.',
@@ -1011,7 +1026,7 @@ export const scenario8Data: ScenarioData = {
         "Hey - NOC just forwarded a trouble ticket. Customer reports intermittent connectivity on AURORA-7, signal dropouts every few minutes. I'm on-call but heading back to sleep. You've got this."
       </p>
       <p>
-        "Charlie's out of state visiting family. Don't call unless it's a genuine emergency. Good luck."
+        "Charlie's out of state visiting family. Please don't call me unless it's a genuine emergency. Good luck."
       </p>
       `,
       character: Character.DANA_TORRES,

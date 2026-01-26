@@ -10,12 +10,14 @@ import { TapPoint } from "@app/equipment/rf-front-end/coupler-module/tap-points"
 import { EventBus } from '@app/events/event-bus';
 import { Events, QuizCompletedData, QuizPassedData } from '@app/events/events';
 import { FaultInjector } from '@app/faults';
+import { HintManager } from '@app/modal/hint-manager';
 import { QuizManager } from '@app/modal/quiz-manager';
 import { OpsLogManager } from '@app/ops-log/ops-log-manager';
 import { TabbedCanvas } from '@app/pages/mission-control/tabbed-canvas';
 import { SimulationManager } from '@app/simulation/simulation-manager';
 import { TrafficControlManager } from '@app/traffic/traffic-control-manager';
 import { Milliseconds } from 'ootk';
+import bulbPng from '../assets/icons/bulb.png';
 import {
   Condition,
   ConditionParams,
@@ -130,6 +132,18 @@ export class ObjectivesManager {
     }
 
     ObjectivesManager.instance_ = new ObjectivesManager(objectives, scenarioTimeLimit);
+
+    // Register objectives and hints with HintManager
+    const hintManager = HintManager.getInstance();
+    for (const objective of objectives) {
+      hintManager.registerObjective(objective);
+      for (let i = 0; i < objective.conditions.length; i++) {
+        const condition = objective.conditions[i];
+        if (condition.hint && condition.hint.trim() !== '') {
+          hintManager.registerHint(objective.id, i, condition.hint);
+        }
+      }
+    }
 
     // If there's no freezing objective, resume simulated time immediately
     // (OpsLogManager starts paused by default, waiting for scenario to unlock)
@@ -774,6 +788,7 @@ export class ObjectivesManager {
       html += '<ul class="conditions-list">';
 
       const quizManager = QuizManager.getInstance();
+      const hintManager = HintManager.getInstance();
 
       for (let i = 0; i < objective.conditions.length; i++) {
         const condition = objective.conditions[i];
@@ -785,12 +800,27 @@ export class ObjectivesManager {
         const isQuizComplete = hasQuiz && quizManager.isQuizComplete(objective.id, i);
         const isQuizPending = hasQuiz && !isQuizComplete;
 
+        // Check if this condition has a hint
+        const hasHint = hintManager.hasHint(objective.id, i);
+        const isHintRequested = hasHint && hintManager.isHintRequested(objective.id, i);
+
         html += `<li class="condition-item ${conditionCompleted ? 'completed' : 'incomplete'}">`;
         html += `<span class="condition-text">${condition.description}</span>`;
 
         // Add quiz button for pending quizzes
         if (isQuizPending) {
           html += `<button class="condition-quiz-btn" data-objective-id="${objective.id}" data-condition-index="${i}" title="Take Quiz">?</button>`;
+        }
+
+        // Add hint button if hint is available and condition not yet completed
+        if (hasHint && !conditionCompleted) {
+          if (isHintRequested) {
+            // Hint already used - clickable to reopen (no penalty)
+            html += `<button class="condition-hint-btn condition-hint-used" data-objective-id="${objective.id}" data-condition-index="${i}" data-hint-used="true" title="View Hint (no additional penalty)">&#128161;</button>`;
+          } else {
+            // Hint available - show request button
+            html += `<button class="condition-hint-btn" data-objective-id="${objective.id}" data-condition-index="${i}" title="Request Hint (-50% points)"><img src="${bulbPng}" alt="Hint Icon" /></button>`;
+          }
         }
 
         html += '</li>';

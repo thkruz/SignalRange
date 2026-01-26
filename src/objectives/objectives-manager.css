@@ -1,9 +1,14 @@
 .objectives-checklist {
+  padding: 2rem;
+
   .objective-item {
     margin-bottom: 1em;
+    list-style: none;
+    margin-left: -2rem;
 
     &.locked {
       opacity: 0.5;
+
       strong {
         background: gray;
       }
@@ -152,12 +157,62 @@
   }
 
   @keyframes quiz-btn-pulse {
-    0%, 100% {
+
+    0%,
+    100% {
       box-shadow: 0 0 0 0 rgba(255, 53, 53, 0.4);
     }
+
     50% {
       box-shadow: 0 0 0 4px rgba(255, 53, 53, 0);
     }
+  }
+
+  /* Hint button for conditions with available hints */
+  .condition-hint-btn {
+    background: var(--mc-status-warning, #ba160c);
+    border: none;
+    border-radius: 50%;
+    width: 22px;
+    height: 22px;
+    min-width: 22px;
+    min-height: 22px;
+    flex-shrink: 0;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    transition: background 0.2s, transform 0.1s;
+    margin-left: 4px;
+
+    img {
+      display: block;
+      width: 14px;
+      height: 14px;
+      max-width: 14px;
+      max-height: 14px;
+      filter: invert(1);
+    }
+  }
+
+  .condition-hint-btn:hover {
+    transform: scale(1.1);
+  }
+
+  .condition-hint-btn:active {
+    transform: scale(0.95);
+  }
+
+  /* Hint used indicator (already revealed - clickable to reopen) */
+  .condition-hint-btn.condition-hint-used {
+    opacity: 0.5;
+    background: var(--mc-status-info, #6c757d);
+  }
+
+  .condition-hint-btn.condition-hint-used:hover {
+    opacity: 0.7;
+    background: var(--mc-status-info, #6c757d);
   }
 
   /* Timer display styling */
@@ -179,6 +234,13 @@
 }
 
 @keyframes timer-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.6; }
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.6;
+  }
 }

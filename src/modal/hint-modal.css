@@ -1,0 +1,120 @@
+/**
+ * Hint Modal Styles
+ * Styles for the hint confirmation and display modal
+ */
+
+#hint-modal-container {
+  z-index: 100000;
+
+  .draggable-box {
+    min-height: auto !important;
+  }
+}
+
+.hint-modal-content {
+  padding: 1rem;
+  text-align: center;
+}
+
+.hint-confirmation,
+.hint-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.hint-warning-icon {
+  font-size: 2.5rem;
+  margin-bottom: 0.25rem;
+
+  img {
+    height: 5rem;
+    filter: invert(1);
+  }
+}
+
+.hint-warning-text {
+  color: var(--mc-text-secondary, #adb5bd);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.hint-warning-text strong {
+  color: var(--mc-text-primary, #f8f9fa);
+}
+
+.hint-penalty-amount {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--mc-status-warning, #ffc107);
+  margin: 0.25rem 0;
+}
+
+.hint-buttons {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 2.5rem;
+  justify-content: center;
+  position: absolute;
+  bottom: 1rem;
+  width: 100%;
+}
+
+.hint-btn {
+  padding: 0.5rem 1.25rem;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.15s ease, transform 0.1s ease;
+}
+
+.hint-btn:hover {
+  transform: translateY(-1px);
+}
+
+.hint-btn:active {
+  transform: translateY(0);
+}
+
+.hint-btn-cancel {
+  background-color: var(--mc-bg-tertiary, #495057);
+  color: var(--mc-text-primary, #f8f9fa);
+}
+
+.hint-btn-cancel:hover {
+  background-color: var(--mc-bg-quaternary, #6c757d);
+}
+
+.hint-btn-confirm {
+  background-color: var(--mc-accent-primary, #ba160c);
+  color: white;
+}
+
+.hint-btn-confirm:hover {
+  background-color: var(--mc-accent-hover, #cb1d14);
+}
+
+/* Hint display styles */
+.hint-label {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--mc-text-tertiary, #6c757d);
+  margin-bottom: 0.25rem;
+}
+
+.hint-text {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--mc-text-primary, #f8f9fa);
+  background-color: var(--mc-bg-secondary, #343a40);
+  padding: 1rem;
+  border-radius: 4px;
+  border-left: 3px solid var(--mc-accent-primary, #ba160c);
+  text-align: left;
+  margin: 0;
+}

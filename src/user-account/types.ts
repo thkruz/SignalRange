@@ -78,6 +78,8 @@ export interface ScenarioProgressEntry {
   quizPenalties?: number;
   /** Points deducted from time-based objective penalties */
   timePenalties?: number;
+  /** Points deducted from requesting hints (50% per objective) */
+  hintPenalties?: number;
   /** ISO timestamp when scenario was completed */
   completedAt?: string;
   lastPlayed: string;
@@ -301,6 +303,7 @@ export interface UpdateScenarioProgressRequest {
   timeBonus?: number;
   quizPenalties?: number;
   timePenalties?: number;
+  hintPenalties?: number;
   completedAt?: string;
   lastPlayed?: string;
   scenarioNumber?: number;

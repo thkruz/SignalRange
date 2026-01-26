@@ -28,6 +28,7 @@ export class LevelCompleteModal extends DraggableModal {
       timeBonus: 0,
       quizPenalties: 0,
       timePenalties: 0,
+      hintPenalties: 0,
       totalScore: 0,
       objectiveBreakdown: [],
       timeRemainingSeconds: 0,
@@ -97,6 +98,13 @@ export class LevelCompleteModal extends DraggableModal {
               <span class="breakdown-value negative">-${score.timePenalties}</span>
             </div>
             <div class="breakdown-detail">${score.timePenalties} points deducted</div>
+            ` : ''}
+            ${score.hintPenalties > 0 ? `
+            <div class="breakdown-row">
+              <span class="breakdown-label">Hint Penalties</span>
+              <span class="breakdown-value negative">-${score.hintPenalties}</span>
+            </div>
+            <div class="breakdown-detail">${score.hintPenalties} points deducted for hints used</div>
             ` : ''}
           </div>
         </div>

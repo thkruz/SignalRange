@@ -12,6 +12,8 @@ export interface ScoreBreakdown {
   quizPenalties: number;
   /** Points deducted from time-based objective penalties */
   timePenalties: number;
+  /** Points deducted from requesting hints (50% per objective) */
+  hintPenalties: number;
   /** Final calculated score */
   totalScore: number;
 
@@ -34,12 +36,14 @@ export class ScoreCalculator {
    * @param timeRemainingSeconds - Seconds remaining on scenario timer (0 if no timer)
    * @param quizPenalties - Total points deducted from wrong quiz answers
    * @param timePenalties - Total points deducted from time-based objective penalties
+   * @param hintPenalties - Total points deducted from requesting hints
    */
   static calculate(
     objectives: ObjectiveState[],
     timeRemainingSeconds: number,
     quizPenalties: number,
-    timePenalties: number = 0
+    timePenalties: number = 0,
+    hintPenalties: number = 0
   ): ScoreBreakdown {
     // Sum objective points (default to 0 if undefined)
     const basePoints = objectives.reduce((sum, objState) => {
@@ -54,9 +58,10 @@ export class ScoreCalculator {
     // Ensure penalties are non-negative
     const sanitizedQuizPenalties = Math.max(0, quizPenalties);
     const sanitizedTimePenalties = Math.max(0, timePenalties);
+    const sanitizedHintPenalties = Math.max(0, hintPenalties);
 
     // Calculate total (minimum 0)
-    const totalScore = Math.max(0, basePoints + timeBonus - sanitizedQuizPenalties - sanitizedTimePenalties);
+    const totalScore = Math.max(0, basePoints + timeBonus - sanitizedQuizPenalties - sanitizedTimePenalties - sanitizedHintPenalties);
 
     // Build objective breakdown for display
     const objectiveBreakdown = objectives.map((objState) => ({
@@ -68,6 +73,7 @@ export class ScoreCalculator {
       timeBonus,
       quizPenalties: sanitizedQuizPenalties,
       timePenalties: sanitizedTimePenalties,
+      hintPenalties: sanitizedHintPenalties,
       totalScore,
       objectiveBreakdown,
       timeRemainingSeconds,

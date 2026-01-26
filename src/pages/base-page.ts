@@ -274,6 +274,7 @@ export abstract class BasePage extends BaseElement {
           timeBonus,
           quizPenalties: savedProgress.quizPenalties ?? 0,
           timePenalties: savedProgress.timePenalties ?? 0,
+          hintPenalties: savedProgress.hintPenalties ?? 0,
           totalScore: savedProgress.score ?? 0,
           objectiveBreakdown: [], // Not saved, show empty for replays
           timeRemainingSeconds: timeBonus * ScoreCalculator.TIME_BONUS_DIVISOR,

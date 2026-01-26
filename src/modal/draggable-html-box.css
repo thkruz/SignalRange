@@ -13,8 +13,9 @@
   }
 
   #draggable-html-box-content-checklist {
+    padding: 1rem;
     overflow-y: auto;
-    max-height: calc(80vh - 8rem);
+    max-height: calc(70vh - 8rem);
 
     div {
       padding: 0.5rem;

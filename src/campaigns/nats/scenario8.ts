@@ -2,7 +2,8 @@ import type { AntennaState } from '@app/equipment/antenna';
 import { Character, Emotion } from '@app/modal/character-enum';
 import type { Objective } from '@app/objectives/objective-types';
 import type { ScenarioData } from '@app/ScenarioData';
-import type { dB, dBm, Hertz, MHz } from '@app/types';
+import { SignalOrigin } from '@app/signal-origin';
+import type { dB, dBm, FECType, Hertz, IfFrequency, MHz, ModulationType } from '@app/types';
 import { getAssetUrl } from '@app/utils/asset-url';
 import type { Degrees } from 'ootk';
 import { createRfFrontEnd } from '../rf-front-end-factory';
@@ -101,7 +102,7 @@ export const scenario8Data: ScenarioData = {
             lnb: {
               isPowered: true,
               loFrequency: 5250 as MHz,
-              gain: 60 as dB,
+              gain: 65 as dB,
               isExtRefLocked: false, // Fault condition
               hasRefLockFault: true, // Sticky fault - clears on power cycle
               noiseTemperature: 55, // Slightly elevated
@@ -109,17 +110,17 @@ export const scenario8Data: ScenarioData = {
             },
             buc: {
               isPowered: true,
-              isMuted: true,
+              isMuted: false, // Link was operational - BUC was transmitting
               isLoopback: false,
-              loFrequency: 4925 as MHz, // AURORA-7 BUC LO
+              loFrequency: 7100 as MHz, // AURORA-7 BUC LO (RF 6000 - IF 1047 = 4925)
               isExtRefLocked: true,
               gain: 23 as dB,
             },
             hpa: {
               isPowered: true,
-              isHpaEnabled: false,
-              isHpaSwitchEnabled: false,
-              outputPower: 0 as dBm,
+              isHpaEnabled: true, // Link was operational - HPA was enabled
+              isHpaSwitchEnabled: true,
+              outputPower: 50 as dBm,
             },
             gpsdo: {
               isPowered: true,
@@ -139,6 +140,33 @@ export const scenario8Data: ScenarioData = {
             minAmplitude: -120 as dBm,
             maxAmplitude: -30 as dBm,
             scaleDbPerDiv: 10 as dB,
+          },
+        ],
+        transmitters: [
+          {
+            ...vermontGroundStation.transmitters[0],
+            activeModem: 1,
+            modems: [
+              {
+                // Modem 1: Configured for AURORA-7 but has intermittent hardware fault
+                ...vermontGroundStation.transmitters[0].modems[0],
+                modem_number: 1,
+                intermittentFault: true, // Hardware fault causing periodic signal dropout
+                isTransmitting: true, // Was trying to transmit
+                isTransmittingSwitchUp: true,
+                ifSignal: {
+                  ...vermontGroundStation.transmitters[0].modems[0].ifSignal,
+                  signalId: 'AURORA-7-Uplink',
+                  noradId: 28899,
+                  frequency: 1047e6 as IfFrequency, // Correct IF for AURORA-7
+                  bandwidth: 24e6 as Hertz,
+                  modulation: 'QPSK' as ModulationType,
+                  fec: '3/4' as FECType,
+                  origin: SignalOrigin.TRANSMITTER,
+                },
+              },
+              // Modem 2-4: Default/unconfigured (player will configure Modem 2)
+            ],
           },
         ],
       },
@@ -264,12 +292,12 @@ export const scenario8Data: ScenarioData = {
           type: 'tab-active',
           description: 'GPS Timing Tab Open',
           params: { tab: 'gps-timing' },
-          mustMaintain: true,
+          maintainUntilObjectiveComplete: true,
         },
         {
           type: 'gpsdo-locked',
           description: 'GPSDO Locked',
-          mustMaintain: true,
+          maintainUntilObjectiveComplete: true,
         },
         {
           type: 'status-check',
@@ -287,7 +315,7 @@ export const scenario8Data: ScenarioData = {
             explanation: 'The GPSDO is generating a valid 10 MHz reference. Since the LNB shows unlocked, the issue is downstream - either the reference cable to the LNB or the LNB reference input itself.',
             pointPenalty: 10,
           },
-          mustMaintain: false,
+          maintainUntilObjectiveComplete: true,
         },
       ],
       conditionLogic: 'AND',
@@ -479,7 +507,7 @@ export const scenario8Data: ScenarioData = {
           description: 'Max Amplitude Set',
           hint: 'Set the maximum amplitude to -50 dBm to properly view the beacon signal.',
           params: {
-            maxAmplitude: -50 as dBm,
+            maxAmplitude: -70 as dBm,
             maxAmplitudeTolerance: 15 as dBm,
           },
           maintainUntilObjectiveComplete: true,
@@ -671,15 +699,83 @@ export const scenario8Data: ScenarioData = {
     },
 
     // ============================================================
-    // PHASE 6: TX CHAIN VERIFICATION (Scenarios 2, 7 Skills)
+    // PHASE 6: TX MODEM FAULT DIAGNOSIS
+    // ============================================================
+    {
+      id: 'diagnose-tx-fault',
+      nice: ['T0081', 'S0582'],
+      title: 'Diagnose TX Chain Issue',
+      description: 'With RX stable, investigate why the customer still reports intermittent service. Check the TX Chain for faults.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['enable-feed-heater'],
+      timeLimitSeconds: 2 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'tab-active',
+          description: 'TX Chain Tab Open',
+          params: { tab: 'tx-chain' },
+          mustMaintain: true,
+        },
+        {
+          type: 'status-check',
+          description: 'Fault Identified',
+          params: {
+            character: Character.SYSTEM,
+            question: 'What issue do you see in the TX Chain?',
+            options: [
+              'Modem 1 signal drops intermittently',
+              'BUC is overheating',
+              'HPA output is low',
+              'No issues visible',
+            ],
+            correctIndex: 0,
+            explanation: 'Modem 1 has an intermittent hardware fault causing periodic signal dropouts. Use loopback mode to observe the signal cutting out every few seconds. You\'ll need to switch to Modem 2.',
+            pointPenalty: 10,
+          },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 10,
+    },
+    {
+      id: 'switch-to-modem-2',
+      nice: ['S0421', 'T1567'],
+      title: 'Switch to Backup Modem',
+      description: 'Select Modem 2 as the active transmitter to replace the faulted Modem 1.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['diagnose-tx-fault'],
+      timeLimitSeconds: 1 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'tab-active',
+          description: 'TX Chain Tab Open',
+          params: { tab: 'tx-chain' },
+          mustMaintain: true,
+        },
+        {
+          type: 'tx-active-modem',
+          description: 'Modem 2 Selected',
+          params: { modemNumber: 2 },
+          mustMaintain: true,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 5,
+    },
+
+    // ============================================================
+    // PHASE 7: MODEM 2 CONFIGURATION (Scenarios 4, 6 Skills)
     // ============================================================
     {
       id: 'calculate-aurora7-uplink-if',
       nice: ['K0773', 'K1032'],
       title: 'Calculate AURORA-7 Uplink IF',
-      description: 'Calculate the correct TX modem IF frequency for AURORA-7 uplink.',
+      description: 'Calculate the correct TX modem IF frequency to configure Modem 2 for AURORA-7 uplink.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['enable-feed-heater'],
+      prerequisiteObjectiveIds: ['switch-to-modem-2'],
       timeLimitSeconds: 3 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
@@ -688,15 +784,15 @@ export const scenario8Data: ScenarioData = {
           description: 'Uplink IF Calculation',
           params: {
             character: Character.SYSTEM,
-            question: 'AURORA-7 uplink RF is 5830 MHz. The BUC LO is 4925 MHz. What TX IF frequency is required?',
+            question: 'AURORA-7 uplink RF is 7100 MHz. The BUC LO is 6053 MHz. What TX IF frequency is required?',
             options: [
-              '1075 MHz (RF - BUC LO = 6000 - 4925)',
-              '10755 MHz (RF + BUC LO)',
-              '1043 MHz (wrong BUC LO assumed)',
-              '5830 MHz (RF frequency directly)',
+              '1047 MHz',
+              '13153 MHz',
+              '1043 MHz',
+              '6000 MHz',
             ],
             correctIndex: 0,
-            explanation: 'TX IF = RF - BUC LO = 6000 - 4925 = 1075 MHz. The BUC upconverts by adding the LO frequency to the IF.',
+            explanation: 'TX IF = RF - BUC LO = 7100 - 6053 = 1047 MHz. The BUC upconverts by adding the LO frequency to the IF.',
             pointPenalty: 15,
           },
           mustMaintain: false,
@@ -708,8 +804,8 @@ export const scenario8Data: ScenarioData = {
     {
       id: 'configure-tx-modem',
       nice: ['S0421', 'T1567'],
-      title: 'Configure TX Modem',
-      description: 'Set the transmitter modem to the calculated IF frequency for AURORA-7.',
+      title: 'Configure Modem 2 for AURORA-7',
+      description: 'Configure Modem 2 with the correct settings for AURORA-7 uplink.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['calculate-aurora7-uplink-if'],
       timeLimitSeconds: 3 * 60,
@@ -723,9 +819,9 @@ export const scenario8Data: ScenarioData = {
         },
         {
           type: 'tx-modem-frequency-set',
-          description: 'TX Frequency Set to 1075 MHz',
+          description: 'TX Frequency Set to 1047 MHz',
           params: {
-            frequency: 1075e6,
+            frequency: 1047e6,
             frequencyTolerance: 2e6,
           },
           maintainUntilObjectiveComplete: true,
@@ -746,6 +842,12 @@ export const scenario8Data: ScenarioData = {
           maintainUntilObjectiveComplete: true,
         },
         {
+          type: 'tx-modem-power-set',
+          description: 'TX Power: -7 dBm',
+          params: { power: -7 as dBm, powerTolerance: 1 as dBm },
+          maintainUntilObjectiveComplete: true,
+        },
+        {
           type: 'tx-modem-fec-set',
           description: 'TX FEC: 3/4',
           params: { fec: '3/4' },
@@ -755,11 +857,15 @@ export const scenario8Data: ScenarioData = {
       conditionLogic: 'AND',
       points: 15,
     },
+
+    // ============================================================
+    // PHASE 8: BUC LOOPBACK TESTING
+    // ============================================================
     {
-      id: 'verify-buc-loopback',
+      id: 'test-buc-loopback',
       nice: ['T1313', 'S0582'],
-      title: 'Verify TX Chain with Loopback',
-      description: 'Use BUC loopback mode to verify the TX modem configuration before going live.',
+      title: 'Test Modem 2 with BUC Loopback',
+      description: 'Disable the faulted Modem 1, then enable BUC loopback to test Modem 2 through the full low-power TX chain.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['configure-tx-modem'],
       timeLimitSeconds: 3 * 60,
@@ -772,29 +878,41 @@ export const scenario8Data: ScenarioData = {
           mustMaintain: true,
         },
         {
+          type: 'tx-modem-not-transmitting',
+          description: 'Modem 1 Disabled',
+          params: { modemNumber: 1 },
+          mustMaintain: true,
+        },
+        {
+          type: 'tx-modem-transmitting',
+          description: 'Modem 2 Transmitting',
+          params: { modemNumber: 2 },
+          mustMaintain: true,
+        },
+        {
           type: 'buc-loopback-enabled',
           description: 'BUC Loopback Enabled',
           mustMaintain: true,
         },
         {
           type: 'buc-unmuted',
-          description: 'BUC Unmuted for Test',
+          description: 'BUC Unmuted',
           mustMaintain: true,
         },
         {
           type: 'status-check',
-          description: 'Loopback Purpose',
+          description: 'BUC Loopback Purpose',
           params: {
             character: Character.SYSTEM,
-            question: 'Why is loopback testing important before enabling the uplink?',
+            question: 'What does BUC loopback test that modem loopback does not?',
             options: [
-              'Verifies TX modem and BUC signal path without radiating RF through the antenna',
-              'Loopback increases the output power for better signal',
-              'It is required by FCC regulations',
-              'Loopback tests the HPA tubes',
+              'The full signal path from modem through BUC, without engaging the HPA',
+              'The HPA output power level',
+              'The antenna pointing accuracy',
+              'The satellite transponder response',
             ],
             correctIndex: 0,
-            explanation: 'Loopback testing validates the low-power transmit chain without engaging the HPA or radiating RF. This catches configuration errors safely.',
+            explanation: 'BUC loopback tests the complete modem-to-BUC signal path while keeping the HPA disengaged. This verifies the full low-power TX chain.',
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -807,9 +925,9 @@ export const scenario8Data: ScenarioData = {
       id: 'verify-loopback-signal',
       nice: ['T0153', 'K0740'],
       title: 'Verify Loopback Signal',
-      description: 'Check the spectrum analyzer at 905 MHz to confirm the loopback signal is present.',
+      description: 'Check the spectrum analyzer at 1047 MHz to confirm the loopback signal is present.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['verify-buc-loopback'],
+      prerequisiteObjectiveIds: ['test-buc-loopback'],
       timeLimitSeconds: 2 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
@@ -823,7 +941,7 @@ export const scenario8Data: ScenarioData = {
           type: 'speca-center-frequency',
           description: 'Spectrum Analyzer at TX IF',
           params: {
-            centerFrequency: 905e6 as Hertz,
+            centerFrequency: 1047e6 as Hertz,
             centerFrequencyTolerance: 5e6,
           },
           mustMaintain: true,
@@ -833,7 +951,7 @@ export const scenario8Data: ScenarioData = {
           description: 'Loopback Signal Verified',
           params: {
             character: Character.SYSTEM,
-            question: 'What should you observe on the spectrum analyzer at 905 MHz?',
+            question: 'What should you observe on the spectrum analyzer at 1047 MHz?',
             options: [
               'A 24 MHz wide modulated signal - confirming TX modem output',
               'A narrow CW spike like the beacon',
@@ -852,7 +970,7 @@ export const scenario8Data: ScenarioData = {
     },
 
     // ============================================================
-    // PHASE 7: UPLINK ENABLE (Scenario 2 Power Sequencing)
+    // PHASE 10: UPLINK ENABLE (Scenario 2 Power Sequencing)
     // ============================================================
     {
       id: 'disable-loopback-prepare-uplink',

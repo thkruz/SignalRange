@@ -1763,10 +1763,13 @@ export class ObjectivesManager {
 
       case 'hpa-output-power-set': {
         if (condition.params?.minOutputPower === undefined) return false;
-        const minPower = condition.params.minOutputPower;
+        // minOutputPower is specified in watts for intuitive scenario authoring
+        // Convert watts to dBm for comparison: P(dBm) = 10 * log10(P(W) * 1000)
+        const minPowerWatts = condition.params.minOutputPower;
+        const minPowerDbm = 10 * Math.log10(minPowerWatts * 1000);
         return this.evaluateEquipment_(gs.rfFrontEnds, condition.params, (rfFrontEnd) => {
           const hpaState = rfFrontEnd.hpaModule.state;
-          return hpaState.isPowered && hpaState.isHpaEnabled && hpaState.outputPower >= minPower;
+          return hpaState.isPowered && hpaState.isHpaEnabled && hpaState.outputPower >= minPowerDbm;
         });
       }
 

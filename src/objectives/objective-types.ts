@@ -201,7 +201,7 @@ export interface ConditionParams {
   backOffTolerance?: number;
   /** For hpa-not-overdriven: maximum IMD level in dBc (optional, defaults to checking isOverdriven) */
   maxImdLevel?: number;
-  /** For hpa-output-power-set: minimum output power in dBm */
+  /** For hpa-output-power-set: minimum output power in watts */
   minOutputPower?: number;
   /** For receiver-signal-locked/receiver-snr-threshold: which modem (1-4), defaults to active modem */
   modemNumber?: number;

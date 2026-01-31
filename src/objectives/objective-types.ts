@@ -68,6 +68,9 @@ export type ConditionType =
   | 'tx-modem-fec-set' // Transmitter modem FEC rate set
   | 'tx-modem-transmitting' // Transmitter modem actively transmitting
   | 'tx-modem-not-transmitting' // Transmitter modem NOT transmitting (transmission stopped)
+  | 'tx-active-modem' // Transmitter active modem selection
+  | 'tx-modem-loopback-enabled' // TX modem loopback enabled
+  | 'tx-modem-loopback-disabled' // TX modem loopback disabled
   | 'status-check' // Interactive quiz to verify player found the correct information
   | 'custom' // Custom condition with evaluator function
   // Handover and traffic control conditions

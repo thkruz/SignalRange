@@ -1948,6 +1948,30 @@ export class ObjectivesManager {
         });
       }
 
+      case 'tx-active-modem': {
+        if (condition.params?.modemNumber === undefined) return false;
+        const targetModem = condition.params.modemNumber;
+        return this.evaluateEquipment_(gs.transmitters, condition.params, (transmitter) => {
+          return transmitter.state.activeModem === targetModem;
+        });
+      }
+
+      case 'tx-modem-loopback-enabled': {
+        return this.evaluateEquipment_(gs.transmitters, condition.params, (transmitter) => {
+          const modemNum = condition.params?.modemNumber ?? transmitter.state.activeModem;
+          const modem = transmitter.state.modems.find(m => m.modem_number === modemNum);
+          return modem?.isPowered === true && modem?.isLoopback === true;
+        });
+      }
+
+      case 'tx-modem-loopback-disabled': {
+        return this.evaluateEquipment_(gs.transmitters, condition.params, (transmitter) => {
+          const modemNum = condition.params?.modemNumber ?? transmitter.state.activeModem;
+          const modem = transmitter.state.modems.find(m => m.modem_number === modemNum);
+          return modem?.isPowered === true && modem?.isLoopback === false;
+        });
+      }
+
       case 'status-check': {
         // Quiz-based condition - requires player to answer correctly
         const params = condition.params;

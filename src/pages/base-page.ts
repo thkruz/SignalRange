@@ -1,6 +1,6 @@
 import { BaseElement } from "@app/components/base-element";
 import { EventBus } from "@app/events/event-bus";
-import { DualTransmissionViolationData, Events, ObjectiveFailedData, ScenarioTimeExpiredData } from "@app/events/events";
+import { DualTransmissionViolationData, Events, HpaNoiseAmplificationData, ObjectiveFailedData, ScenarioTimeExpiredData } from "@app/events/events";
 import { Logger } from "@app/logging/logger";
 import { DialogHistoryManager } from "@app/modal/dialog-history-manager";
 import { DialogManager } from "@app/modal/dialog-manager";
@@ -165,6 +165,15 @@ export abstract class BasePage extends BaseElement {
       ObjectiveFailedModal.getInstance().showFailure({
         title: 'Mission Failed',
         message: `CRITICAL ERROR: Dual transmission detected! Ground stations ${data.groundStation1Id} and ${data.groundStation2Id} are both transmitting to satellite ${data.satelliteNoradId}. This causes satellite interference and mission failure.`,
+        isScenarioTimeout: false,
+      });
+    });
+
+    eventBus.on(Events.HPA_NOISE_AMPLIFICATION, (data: HpaNoiseAmplificationData) => {
+      const bucStatus = data.bucMuted ? 'muted' : 'off';
+      ObjectiveFailedModal.getInstance().showFailure({
+        title: 'Mission Failed',
+        message: `CRITICAL ERROR: HPA is amplifying noise! The BUC is ${bucStatus} but HPA is enabled. Always disable HPA before muting or turning off the BUC to prevent equipment damage.`,
         isScenarioTimeout: false,
       });
     });

@@ -1,4 +1,5 @@
-import { expect, test } from '../fixtures/test-fixtures';
+import { expect, test } from '@playwright/test';
+import { MissionControlPage } from '../pages/mission-control.page';
 import {
   answerQuizByText,
   dismissDialogIfPresent,
@@ -292,104 +293,6 @@ const SCENARIO_2_OBJECTIVES: Scenario2Objective[] = [
   },
 ];
 
-test.describe('Scenario 2 Full Completion', () => {
-  test('completes all objectives from campaign selection to mission complete', async ({
-    page,
-    missionControlPage,
-  }) => {
-    // Configure longer timeout (8 minutes) for full scenario completion
-    // Scenario 2 is longer due to equipment operations and antenna movement
-    test.setTimeout(480000);
-
-    // Navigate directly to scenario 2 (bypasses prerequisite check)
-    // In production, scenario 2 requires scenario 1 completion, but for e2e testing
-    // we access the URL directly
-    await missionControlPage.gotoScenario('nats', 'nats-scenario2');
-    await waitForSimulationReady(page);
-
-    // Step 1: Dismiss intro dialog
-    await missionControlPage.dismissDialogIfPresent();
-
-    // Step 2: Open mission brief (required for first objective's mission-brief-opened condition)
-    await missionControlPage.openMissionBrief();
-    // Close mission brief so it doesn't block subsequent UI interactions
-    await missionControlPage.closeMissionBrief();
-
-    // Step 3: Complete each objective based on its type
-    for (const objective of SCENARIO_2_OBJECTIVES) {
-      // Log current objective for debugging
-      console.log(`Processing objective: ${objective.id} (${objective.type})`);
-
-      switch (objective.type) {
-        case 'quiz':
-          // Wait for quiz to appear and answer it
-          await waitForQuizToAppear(page);
-          await answerQuizByText(page, objective.correctAnswer!);
-          break;
-
-        case 'select-station':
-          // Click on Vermont Ground Station in the asset tree using data-asset-id
-          await missionControlPage.selectGroundStation('VT-01');
-          break;
-
-        case 'click-tab':
-          // Click on the specified tab using data-tab-id selector
-          await missionControlPage.selectTab(objective.tabId!);
-          break;
-
-        case 'toggle-switch':
-          // Toggle a switch to the specified state
-          await toggleSwitch(page, objective.switchId!, objective.switchState!);
-          break;
-
-        case 'set-tracking-mode':
-          // Click a tracking mode button
-          await setTrackingMode(page, objective.trackingMode!);
-          // For program-track, need to select satellite and click Move to Target
-          if (objective.trackingMode === 'program-track') {
-            await selectSatelliteAndMove(page);
-          }
-          // Wait for antenna to reach position if needed
-          if (objective.waitForAntennaPosition) {
-            await waitForAntennaMovement(page);
-          }
-          break;
-
-        case 'configure-lnb':
-          // Power on LNB and configure settings
-          await configureLnb(page, objective.lnbConfig!);
-          break;
-
-        case 'auto':
-          // Auto-satisfied objectives complete when conditions are met
-          // The objective system evaluates on UPDATE ticks, brief wait is sufficient
-          await page.waitForTimeout(500);
-          break;
-      }
-
-      // Dismiss any dialog that appears after objective completion
-      await dismissDialogIfPresent(page);
-    }
-
-    // Step 4: Verify Level Complete modal appears
-    const levelCompleteModal = page.locator('#level-complete-modal');
-    await expect(levelCompleteModal).toBeVisible({ timeout: 30000 });
-
-    // Step 5: Verify "Mission Complete!" text is shown
-    const modalTitle = levelCompleteModal.locator('.complete-modal__title');
-    await expect(modalTitle).toContainText('Mission Complete');
-
-    // Step 6: Verify score is displayed
-    const totalScore = levelCompleteModal.locator('.total-value');
-    await expect(totalScore).toBeVisible();
-
-    // Optionally verify the score is positive (all objectives should give points)
-    const scoreText = await totalScore.textContent();
-    const score = parseInt(scoreText || '0', 10);
-    expect(score).toBeGreaterThan(0);
-  });
-});
-
 // ============================================================
 // Helper Functions
 // ============================================================
@@ -449,7 +352,7 @@ async function setTrackingMode(
     // Wait for Apply button to be enabled (indicates pending changes)
     await expect(applyBtn).toBeEnabled({ timeout: 3000 });
     await applyBtn.click();
-    console.log(`Clicked Apply button after setting tracking mode to ${trackingMode}`);
+    // console.log(`Clicked Apply button after setting tracking mode to ${trackingMode}`);
     await page.waitForTimeout(200);
   }
 }
@@ -512,17 +415,17 @@ async function waitForAntennaMovement(
         stableCount++;
         // Position stable for 3 consecutive checks = movement complete
         if (stableCount >= 3) {
-          console.log(`Antenna stabilized at elevation: ${currentPosition}`);
+          // console.log(`Antenna stabilized at elevation: ${currentPosition}`);
           return;
         }
       } else {
         stableCount = 0;
         lastPosition = currentPosition || '';
-        console.log(`Antenna moving... elevation: ${currentPosition}`);
+        // console.log(`Antenna moving... elevation: ${currentPosition}`);
       }
     } catch {
       // Display not found, log and retry
-      console.log(`Waiting for elevation display... (${Date.now() - startTime}ms elapsed)`);
+      // console.log(`Waiting for elevation display... (${Date.now() - startTime}ms elapsed)`);
       await page.waitForTimeout(500);
     }
   }
@@ -574,3 +477,343 @@ async function configureLnb(
   // Verify thermal stability indicator shows green (if visible)
   // The objective condition checks for lnb-thermally-stable, so we wait
 }
+
+/**
+ * Execute an objective based on its type.
+ */
+async function executeObjective(
+  page: import('@playwright/test').Page,
+  missionControlPage: MissionControlPage,
+  objective: Scenario2Objective
+): Promise<void> {
+  switch (objective.type) {
+    case 'quiz':
+      // Wait for quiz to appear and answer it
+      await waitForQuizToAppear(page);
+      await answerQuizByText(page, objective.correctAnswer!);
+      break;
+
+    case 'select-station':
+      // Click on Vermont Ground Station in the asset tree using data-asset-id
+      await missionControlPage.selectGroundStation('VT-01');
+      break;
+
+    case 'click-tab':
+      // Click on the specified tab using data-tab-id selector
+      await missionControlPage.selectTab(objective.tabId!);
+      break;
+
+    case 'toggle-switch':
+      // Toggle a switch to the specified state
+      await toggleSwitch(page, objective.switchId!, objective.switchState!);
+      break;
+
+    case 'set-tracking-mode':
+      // Click a tracking mode button
+      await setTrackingMode(page, objective.trackingMode!);
+      // For program-track, need to select satellite and click Move to Target
+      if (objective.trackingMode === 'program-track') {
+        await selectSatelliteAndMove(page);
+      }
+      // Wait for antenna to reach position if needed
+      if (objective.waitForAntennaPosition) {
+        await waitForAntennaMovement(page);
+      }
+      break;
+
+    case 'configure-lnb':
+      // Power on LNB and configure settings
+      await configureLnb(page, objective.lnbConfig!);
+      break;
+
+    case 'auto':
+      // Auto-satisfied objectives complete when conditions are met
+      // The objective system evaluates on UPDATE ticks, brief wait is sufficient
+      await page.waitForTimeout(500);
+      break;
+  }
+
+  // Dismiss any dialog that appears after objective completion
+  await dismissDialogIfPresent(page);
+}
+
+// ============================================================
+// Test Suite
+// ============================================================
+
+test.describe('Scenario 2 Full Completion', () => {
+  // Configure serial execution - tests must run in order
+  test.describe.configure({ mode: 'serial' });
+
+  // Shared state across all tests in this describe block
+  let page: import('@playwright/test').Page;
+  let missionControlPage: MissionControlPage;
+  let context: import('@playwright/test').BrowserContext;
+
+  test.beforeAll(async ({ browser }) => {
+    // Create a new context and page that will be shared across all tests
+    context = await browser.newContext();
+    page = await context.newPage();
+
+    // Set up test mode: auto-close dialogs and clear storage
+    await page.addInitScript(() => {
+      (window as unknown as { AUTO_CLOSE_DIALOGS: boolean }).AUTO_CLOSE_DIALOGS = true;
+      localStorage.clear();
+      sessionStorage.clear();
+    });
+
+    missionControlPage = new MissionControlPage(page);
+
+    // Navigate directly to scenario 2 (bypasses prerequisite check)
+    await missionControlPage.gotoScenario('nats', 'nats-scenario2');
+    await waitForSimulationReady(page);
+
+    // Dismiss intro dialog
+    await missionControlPage.dismissDialogIfPresent();
+
+    // Open mission brief (required for first objective's mission-brief-opened condition)
+    await missionControlPage.openMissionBrief();
+    // Close mission brief so it doesn't block subsequent UI interactions
+    await missionControlPage.closeMissionBrief();
+  });
+
+  test.afterAll(async () => {
+    await context.close();
+  });
+
+  // Configure timeout for individual objective tests
+  // Most objectives complete quickly, but antenna movement can take longer
+  test.beforeEach(async () => {
+    // Default timeout of 60 seconds per objective
+    test.setTimeout(60000);
+  });
+
+  // ============================================================
+  // MISSION PREPARATION
+  // ============================================================
+
+  test('Objective: Review Mission Brief', async () => {
+    const objective = SCENARIO_2_OBJECTIVES.find(o => o.id === 'review-mission-brief')!;
+    await executeObjective(page, missionControlPage, objective);
+  });
+
+  test('Objective: Acknowledge RF Safety Briefing', async () => {
+    const objective = SCENARIO_2_OBJECTIVES.find(o => o.id === 'safety-briefing')!;
+    await executeObjective(page, missionControlPage, objective);
+  });
+
+  // ============================================================
+  // STATION ACCESS - TRANSMIT CHAIN
+  // ============================================================
+
+  test('Objective: Access Vermont Ground Station', async () => {
+    const objective = SCENARIO_2_OBJECTIVES.find(o => o.id === 'select-vermont-station')!;
+    await executeObjective(page, missionControlPage, objective);
+  });
+
+  test('Objective: Open TX Chain Tab', async () => {
+    const objective = SCENARIO_2_OBJECTIVES.find(o => o.id === 'navigate-tx-chain-shutdown')!;
+    await executeObjective(page, missionControlPage, objective);
+  });
+
+  // ============================================================
+  // POWER-DOWN SEQUENCE: HPA
+  // ============================================================
+
+  test('Objective: Verify Current HPA State', async () => {
+    const objective = SCENARIO_2_OBJECTIVES.find(o => o.id === 'verify-hpa-initial-state')!;
+    await executeObjective(page, missionControlPage, objective);
+  });
+
+  test('Objective: Disable HPA Output', async () => {
+    const objective = SCENARIO_2_OBJECTIVES.find(o => o.id === 'disable-hpa-output')!;
+    await executeObjective(page, missionControlPage, objective);
+  });
+
+  test('Objective: Confirm HPA Output Disabled', async () => {
+    const objective = SCENARIO_2_OBJECTIVES.find(o => o.id === 'verify-hpa-disabled-quiz')!;
+    await executeObjective(page, missionControlPage, objective);
+  });
+
+  test('Objective: Power Off HPA', async () => {
+    const objective = SCENARIO_2_OBJECTIVES.find(o => o.id === 'power-off-hpa')!;
+    await executeObjective(page, missionControlPage, objective);
+  });
+
+  // ============================================================
+  // POWER-DOWN SEQUENCE: BUC
+  // ============================================================
+
+  test('Objective: Power Off BUC', async () => {
+    const objective = SCENARIO_2_OBJECTIVES.find(o => o.id === 'power-off-buc')!;
+    await executeObjective(page, missionControlPage, objective);
+  });
+
+  test('Objective: Confirm BUC Powered Off', async () => {
+    const objective = SCENARIO_2_OBJECTIVES.find(o => o.id === 'verify-buc-powered-off-quiz')!;
+    await executeObjective(page, missionControlPage, objective);
+  });
+
+  test('Objective: Stop Modem Transmission', async () => {
+    const objective = SCENARIO_2_OBJECTIVES.find(o => o.id === 'stop-modem-transmitting')!;
+    await executeObjective(page, missionControlPage, objective);
+  });
+
+  // ============================================================
+  // POWER-DOWN SEQUENCE: LNB
+  // ============================================================
+
+  test('Objective: Open RX Analysis Tab (Shutdown)', async () => {
+    const objective = SCENARIO_2_OBJECTIVES.find(o => o.id === 'navigate-rx-analysis-shutdown')!;
+    await executeObjective(page, missionControlPage, objective);
+  });
+
+  test('Objective: Power Down LNB', async () => {
+    const objective = SCENARIO_2_OBJECTIVES.find(o => o.id === 'power-down-lnb')!;
+    await executeObjective(page, missionControlPage, objective);
+  });
+
+  test('Objective: Confirm RF Chain Shutdown', async () => {
+    const objective = SCENARIO_2_OBJECTIVES.find(o => o.id === 'verify-rf-chain-shutdown-quiz')!;
+    await executeObjective(page, missionControlPage, objective);
+  });
+
+  // ============================================================
+  // ANTENNA POSITIONING
+  // ============================================================
+
+  test('Objective: Open ACU Control Tab', async () => {
+    const objective = SCENARIO_2_OBJECTIVES.find(o => o.id === 'navigate-acu-control-maintenance')!;
+    await executeObjective(page, missionControlPage, objective);
+  });
+
+  test('Objective: Move Antenna to Maintenance Position', async () => {
+    // Antenna movement can take up to 90 seconds
+    test.setTimeout(120000);
+    const objective = SCENARIO_2_OBJECTIVES.find(o => o.id === 'antenna-to-maintenance')!;
+    await executeObjective(page, missionControlPage, objective);
+  });
+
+  test('Objective: Confirm Maintenance Position', async () => {
+    const objective = SCENARIO_2_OBJECTIVES.find(o => o.id === 'verify-maintenance-position-quiz')!;
+    await executeObjective(page, missionControlPage, objective);
+  });
+
+  // ============================================================
+  // MAINTENANCE WINDOW (SIMULATED)
+  // ============================================================
+
+  test('Objective: Maintenance Window Complete', async () => {
+    const objective = SCENARIO_2_OBJECTIVES.find(o => o.id === 'maintenance-complete')!;
+    await executeObjective(page, missionControlPage, objective);
+  });
+
+  // ============================================================
+  // SERVICE RESTORATION: ANTENNA
+  // ============================================================
+
+  test('Objective: Repoint Antenna at TIDEMARK-1', async () => {
+    // Antenna movement can take up to 90 seconds
+    test.setTimeout(120000);
+    const objective = SCENARIO_2_OBJECTIVES.find(o => o.id === 'repoint-antenna')!;
+    await executeObjective(page, missionControlPage, objective);
+  });
+
+  // ============================================================
+  // SERVICE RESTORATION: LNB
+  // ============================================================
+
+  test('Objective: Open RX Analysis Tab (Restore)', async () => {
+    const objective = SCENARIO_2_OBJECTIVES.find(o => o.id === 'navigate-rx-analysis-restore')!;
+    await executeObjective(page, missionControlPage, objective);
+  });
+
+  test('Objective: Restore LNB', async () => {
+    const objective = SCENARIO_2_OBJECTIVES.find(o => o.id === 'power-up-lnb')!;
+    await executeObjective(page, missionControlPage, objective);
+  });
+
+  test('Objective: Verify LNB Restoration', async () => {
+    const objective = SCENARIO_2_OBJECTIVES.find(o => o.id === 'verify-lnb-restored-quiz')!;
+    await executeObjective(page, missionControlPage, objective);
+  });
+
+  // ============================================================
+  // SERVICE RESTORATION: VERIFY BEACON
+  // ============================================================
+
+  test('Objective: Verify Beacon Reception', async () => {
+    const objective = SCENARIO_2_OBJECTIVES.find(o => o.id === 'verify-beacon')!;
+    await executeObjective(page, missionControlPage, objective);
+  });
+
+  test('Objective: Confirm Beacon Analysis', async () => {
+    const objective = SCENARIO_2_OBJECTIVES.find(o => o.id === 'verify-beacon-quiz')!;
+    await executeObjective(page, missionControlPage, objective);
+  });
+
+  // ============================================================
+  // SERVICE RESTORATION: BUC
+  // ============================================================
+
+  test('Objective: Open TX Chain Tab (Restore)', async () => {
+    const objective = SCENARIO_2_OBJECTIVES.find(o => o.id === 'navigate-tx-chain-restore')!;
+    await executeObjective(page, missionControlPage, objective);
+  });
+
+  test('Objective: Start Modem Transmission', async () => {
+    const objective = SCENARIO_2_OBJECTIVES.find(o => o.id === 'start-modem-transmitting')!;
+    await executeObjective(page, missionControlPage, objective);
+  });
+
+  test('Objective: Power On BUC', async () => {
+    const objective = SCENARIO_2_OBJECTIVES.find(o => o.id === 'power-on-buc')!;
+    await executeObjective(page, missionControlPage, objective);
+  });
+
+  // ============================================================
+  // SERVICE RESTORATION: HPA
+  // ============================================================
+
+  test('Objective: Power On HPA', async () => {
+    const objective = SCENARIO_2_OBJECTIVES.find(o => o.id === 'power-on-hpa')!;
+    await executeObjective(page, missionControlPage, objective);
+  });
+
+  test('Objective: Enable HPA Output', async () => {
+    const objective = SCENARIO_2_OBJECTIVES.find(o => o.id === 'enable-hpa-output')!;
+    await executeObjective(page, missionControlPage, objective);
+  });
+
+  // ============================================================
+  // FINAL VERIFICATION
+  // ============================================================
+
+  test('Objective: Confirm Service Restored', async () => {
+    const objective = SCENARIO_2_OBJECTIVES.find(o => o.id === 'final-verification')!;
+    await executeObjective(page, missionControlPage, objective);
+  });
+
+  // ============================================================
+  // MISSION COMPLETE VERIFICATION
+  // ============================================================
+
+  test('Mission Complete: Verify Level Complete Modal', async () => {
+    // Verify Level Complete modal appears
+    const levelCompleteModal = page.locator('#level-complete-modal');
+    await expect(levelCompleteModal).toBeVisible({ timeout: 30000 });
+
+    // Verify "Mission Complete!" text is shown
+    const modalTitle = levelCompleteModal.locator('.complete-modal__title');
+    await expect(modalTitle).toContainText('Mission Complete');
+
+    // Verify score is displayed
+    const totalScore = levelCompleteModal.locator('.total-value');
+    await expect(totalScore).toBeVisible();
+
+    // Verify the score is positive (all objectives should give points)
+    const scoreText = await totalScore.textContent();
+    const score = parseInt(scoreText || '0', 10);
+    expect(score).toBeGreaterThan(0);
+  });
+});

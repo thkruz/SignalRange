@@ -281,6 +281,13 @@ export interface DualTransmissionViolationData {
   detectedAt: number;
 }
 
+export interface HpaNoiseAmplificationData {
+  groundStationId: string;
+  bucMuted: boolean;
+  bucOff: boolean;
+  detectedAt: number;
+}
+
 // Simulated Time Event specific interfaces
 export interface SimulatedTimeTickData {
   /** Military format datetime string, e.g., "15 MAR 2025 22:05:15" */
@@ -384,6 +391,9 @@ export enum Events {
   HANDOVER_COMPLETE = 'handover:complete',
   HANDOVER_CANCELLED = 'handover:cancelled',
   DUAL_TRANSMISSION_VIOLATION = 'handover:dual-transmission-violation',
+
+  // RF Safety violations
+  HPA_NOISE_AMPLIFICATION = 'rf:hpa-noise-amplification',
 
   // Ops Log events
   OPS_LOG_ENTRY_ADDED = 'ops-log:entry:added',
@@ -489,6 +499,9 @@ export interface EventMap {
   [Events.HANDOVER_COMPLETE]: [HandoverCompleteData];
   [Events.HANDOVER_CANCELLED]: [HandoverCancelledData];
   [Events.DUAL_TRANSMISSION_VIOLATION]: [DualTransmissionViolationData];
+
+  // RF Safety violations
+  [Events.HPA_NOISE_AMPLIFICATION]: [HpaNoiseAmplificationData];
 
   // Ops Log events
   [Events.OPS_LOG_ENTRY_ADDED]: [OpsLogEntry];

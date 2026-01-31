@@ -141,6 +141,7 @@ export async function waitForQuizToAppear(page: Page, timeout = 30000): Promise<
   }
 
   // Click the pending quiz indicator if visible
+  // Be more specific to avoid matching wrong buttons
   const pendingIndicator = page.locator('.pending-quiz-indicator__open-btn');
   try {
     await expect(pendingIndicator).toBeVisible({ timeout: 5000 });
@@ -148,7 +149,18 @@ export async function waitForQuizToAppear(page: Page, timeout = 30000): Promise<
     await expect(quizModal).toBeVisible({ timeout: 5000 });
     return;
   } catch {
-    // Pending indicator not found, try checklist
+    // Pending indicator class not found, try generic Open Quiz button
+  }
+
+  // Try the generic "Open Quiz" button in the pending quiz toast (bottom left)
+  const openQuizBtn = page.locator('.pending-quiz-toast button:has-text("Open Quiz"), .toast button:has-text("Open Quiz")');
+  try {
+    await expect(openQuizBtn.first()).toBeVisible({ timeout: 3000 });
+    await openQuizBtn.first().click();
+    await expect(quizModal).toBeVisible({ timeout: 5000 });
+    return;
+  } catch {
+    // Toast button not found, try checklist
   }
 
   // Try clicking quiz button in checklist
@@ -242,8 +254,9 @@ export async function answerQuizByText(page: Page, answerText: string): Promise<
   await optionButtons.nth(bestIndex).click();
 
   // Wait for the continue button to appear and click it
+  // Exclude quiz option buttons that might contain text matching "Continue" (e.g., "continues")
   const continueButton = quizModal.locator(
-    '#quiz-continue-btn, .quiz-continue-btn, .quiz-submit-btn, button:has-text("Continue")'
+    '#quiz-continue-btn, .quiz-continue-btn, .quiz-submit-btn, button:has-text("Continue"):not(.quiz-option-btn)'
   );
   await expect(continueButton.first()).toBeVisible({ timeout: 5000 });
   await continueButton.first().click();

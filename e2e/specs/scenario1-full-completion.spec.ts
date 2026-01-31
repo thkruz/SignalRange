@@ -1,4 +1,7 @@
-import { expect, test } from '../fixtures/test-fixtures';
+import { test as base, expect, Page, BrowserContext } from '@playwright/test';
+import { CampaignSelectionPage } from '../pages/campaign-selection.page';
+import { ScenarioSelectionPage } from '../pages/scenario-selection.page';
+import { MissionControlPage } from '../pages/mission-control.page';
 import {
   answerQuizByText,
   dismissDialogIfPresent,
@@ -20,8 +23,8 @@ interface Scenario1Objective {
   id: string;
   title: string;
   type: ObjectiveType;
-  correctAnswer?: string;  // For quiz type
-  tabId?: string;          // For click-tab type
+  correctAnswer?: string; // For quiz type
+  tabId?: string; // For click-tab type
 }
 
 const SCENARIO_1_OBJECTIVES: Scenario1Objective[] = [
@@ -155,16 +158,68 @@ const SCENARIO_1_OBJECTIVES: Scenario1Objective[] = [
   },
 ];
 
-test.describe('Scenario 1 Full Completion', () => {
-  test('completes all objectives from campaign selection to mission complete', async ({
-    page,
-    campaignSelectionPage,
-    scenarioSelectionPage,
-    missionControlPage,
-  }) => {
-    // Configure longer timeout (5 minutes) for full scenario completion
-    test.setTimeout(300000);
+/**
+ * Helper to complete a single objective
+ */
+async function completeObjective(
+  page: Page,
+  missionControlPage: MissionControlPage,
+  objective: Scenario1Objective
+): Promise<void> {
+  switch (objective.type) {
+    case 'quiz':
+      await waitForQuizToAppear(page);
+      await answerQuizByText(page, objective.correctAnswer!);
+      break;
 
+    case 'select-station':
+      await missionControlPage.selectGroundStation('VT-01');
+      break;
+
+    case 'click-tab':
+      await missionControlPage.selectTab(objective.tabId!);
+      break;
+  }
+
+  // Dismiss any dialog that appears after objective completion
+  await dismissDialogIfPresent(page);
+}
+
+base.describe.serial('Scenario 1 Full Completion', () => {
+  // Shared state across all tests in this serial block
+  let context: BrowserContext;
+  let page: Page;
+  let campaignSelectionPage: CampaignSelectionPage;
+  let scenarioSelectionPage: ScenarioSelectionPage;
+  let missionControlPage: MissionControlPage;
+
+  base.beforeAll(async ({ browser }) => {
+    // Configure longer timeout for the entire test suite
+    base.setTimeout(300000);
+
+    // Create a shared browser context and page
+    context = await browser.newContext();
+    page = await context.newPage();
+
+    // Set up test mode flags
+    await page.addInitScript(() => {
+      (window as any).AUTO_CLOSE_DIALOGS = true;
+      localStorage.clear();
+      sessionStorage.clear();
+    });
+
+    // Initialize page objects
+    campaignSelectionPage = new CampaignSelectionPage(page);
+    scenarioSelectionPage = new ScenarioSelectionPage(page);
+    missionControlPage = new MissionControlPage(page);
+  });
+
+  base.afterAll(async () => {
+    await page?.close();
+    await context?.close();
+  });
+
+  base('setup: navigate to scenario and prepare', async () => {
     // Step 1: Start at campaign selection
     await campaignSelectionPage.goto();
     await expect(campaignSelectionPage.pageTitle).toHaveText('Signal Range Training');
@@ -189,44 +244,29 @@ test.describe('Scenario 1 Full Completion', () => {
     await missionControlPage.openMissionBrief();
     // Close mission brief so it doesn't block subsequent UI interactions
     await missionControlPage.closeMissionBrief();
+  });
 
-    // Step 7: Complete each objective based on its type
-    for (const objective of SCENARIO_1_OBJECTIVES) {
-      switch (objective.type) {
-        case 'quiz':
-          // Wait for quiz to appear and answer it
-          await waitForQuizToAppear(page);
-          await answerQuizByText(page, objective.correctAnswer!);
-          break;
+  // Generate a test for each objective
+  for (const objective of SCENARIO_1_OBJECTIVES) {
+    base(`completes objective: ${objective.title}`, async () => {
+      await completeObjective(page, missionControlPage, objective);
+    });
+  }
 
-        case 'select-station':
-          // Click on Vermont Ground Station in the asset tree using data-asset-id
-          await missionControlPage.selectGroundStation('VT-01');
-          break;
-
-        case 'click-tab':
-          // Click on the specified tab using data-tab-id selector
-          await missionControlPage.selectTab(objective.tabId!);
-          break;
-      }
-
-      // Dismiss any dialog that appears after objective completion
-      await dismissDialogIfPresent(page);
-    }
-
-    // Step 8: Verify Level Complete modal appears
+  base('verifies mission complete', async () => {
+    // Verify Level Complete modal appears
     const levelCompleteModal = page.locator('#level-complete-modal');
     await expect(levelCompleteModal).toBeVisible({ timeout: 30000 });
 
-    // Step 9: Verify "Mission Complete!" text is shown
+    // Verify "Mission Complete!" text is shown
     const modalTitle = levelCompleteModal.locator('.complete-modal__title');
     await expect(modalTitle).toContainText('Mission Complete');
 
-    // Step 10: Verify score is displayed
+    // Verify score is displayed
     const totalScore = levelCompleteModal.locator('.total-value');
     await expect(totalScore).toBeVisible();
 
-    // Optionally verify the score is positive (all objectives should give points)
+    // Verify the score is positive (all objectives should give points)
     const scoreText = await totalScore.textContent();
     const score = parseInt(scoreText || '0', 10);
     expect(score).toBeGreaterThan(0);

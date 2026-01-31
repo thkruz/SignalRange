@@ -252,6 +252,31 @@ export class QuizManager {
     state.isComplete = true;
     state.attempts = data.totalAttempts;
     state.totalPointsDeducted = data.totalPointsDeducted;
+
+    // Check if there are other incomplete quizzes in the same objective
+    // and emit QUIZ_PENDING for the first one found
+    this.emitPendingForNextIncompleteQuiz_(data.objectiveId);
+  }
+
+  /**
+   * Find and emit QUIZ_PENDING for the next incomplete quiz in the given objective.
+   * This ensures that when one quiz is completed, any remaining quizzes get their
+   * pending indicator shown.
+   */
+  private emitPendingForNextIncompleteQuiz_(objectiveId: string): void {
+    for (const [key, state] of this.quizStates_) {
+      if (state.objectiveId === objectiveId && !state.isComplete) {
+        // Found an incomplete quiz in this objective - set it as pending
+        this.pendingQuizKey_ = key;
+
+        const pendingData: QuizPendingData = {
+          objectiveId: state.objectiveId,
+          conditionIndex: state.conditionIndex,
+        };
+        EventBus.getInstance().emit(Events.QUIZ_PENDING, pendingData);
+        return;
+      }
+    }
   }
 
   /**

@@ -229,7 +229,10 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
   get inputSignals(): IfSignal[] {
     return this.rfFrontEnd_.transmitters
       .flatMap((tx) => tx.state.modems
-        .filter((modem) => modem.isTransmitting && !modem.isFaulted && !modem.isLoopback)
+        .filter((modem) => modem.isTransmitting
+          && !modem.isFaulted
+          && !modem.isLoopback
+          && !tx.isModemInIntermittentDropout(modem))
         .map((modem) => modem.ifSignal));
   }
 

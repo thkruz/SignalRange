@@ -275,7 +275,7 @@ export const aurora7Satellite = new Satellite(
           signalId: 'AURORA-7-Beacon',
           serverId: 1,
           noradId: 28899,
-          power: 28 as dBm, // Slightly weaker beacon (aging satellite)
+          power: 6 as dBm, // Slightly weaker beacon (aging satellite)
           bandwidth: 1e3 as Hertz,
           modulation: 'CW' as ModulationType,
           fec: 'null' as FECType,

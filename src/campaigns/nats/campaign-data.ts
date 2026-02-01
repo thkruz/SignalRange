@@ -1,4 +1,5 @@
 import type { CampaignData } from '../campaign-types';
+import { sandboxData } from './sandbox';
 import { scenario1Data } from './scenario1';
 import { scenario2Data } from './scenario2';
 import { scenario3Data } from './scenario3';
@@ -26,6 +27,7 @@ export const natsCampaignData: CampaignData = {
   totalDuration: '175-240 min',
   campaignType: 'GEO Commercial Communications',
   scenarios: [
+    sandboxData,
     scenario1Data,
     scenario2Data,
     scenario3Data,
@@ -33,7 +35,7 @@ export const natsCampaignData: CampaignData = {
     scenario5Data,
     scenario6Data,
     scenario7Data,
-    scenario8Data
+    scenario8Data,
   ],
   isLocked: false,
   isDisabled: false,

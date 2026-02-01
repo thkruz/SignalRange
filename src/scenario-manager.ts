@@ -8,6 +8,7 @@ import { scenario5Data } from './campaigns/nats/scenario5';
 import { scenario6Data } from './campaigns/nats/scenario6';
 import { scenario7Data } from './campaigns/nats/scenario7';
 import { scenario8Data } from './campaigns/nats/scenario8';
+import { sandboxData as natsSandboxData } from './campaigns/nats/sandbox';
 import { AntennaState } from './equipment/antenna';
 import { ANTENNA_CONFIG_KEYS } from "./equipment/antenna/antenna-config-keys";
 import { defaultSpectrumAnalyzerState } from './equipment/real-time-spectrum-analyzer/defaultSpectrumAnalyzerState';
@@ -146,6 +147,7 @@ export class ScenarioManager {
 
 export const SCENARIOS: ScenarioData[] = [
   sandboxData,
+  natsSandboxData,
   scenario1Data,
   scenario2Data,
   scenario3Data,

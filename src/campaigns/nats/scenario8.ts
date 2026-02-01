@@ -66,10 +66,9 @@ export const scenario8Data: ScenarioData = {
   description: `It's 2 AM on a Saturday night - your first solo night shift at the Vermont station. Charlie is visiting family out of state. Dana is on-call but sleeping; she's made it clear she only wants to be woken for genuine emergencies.<br><br>A customer reports intermittent connectivity issues on AURORA-7, an aging C-band satellite with an inclined orbit. You'll need to investigate independently, diagnose any equipment issues, verify the link, and handle whatever complications arise.<br><br>This is your graduation exam. Everything you've learned in Scenarios 1-7 comes together here. No one is going to walk you through each step. Make good decisions, work methodically, and prove you're ready for solo operations.`,
   equipment: [
     '9-meter C-band Antenna',
-    'Complete RF Front End',
+    'RF Front End',
     'Spectrum Analyzer',
     'RX/TX Modems',
-    'All Control Systems',
   ],
   timeLimitSeconds: 40 * 60, // 40 minutes
   settings: {

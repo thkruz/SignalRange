@@ -71,11 +71,11 @@ export const scenario3Data: ScenarioData = {
   missionType: 'Emergency Operations',
   description: `Heavy snow is already falling on Vermont - the link margin to TIDEMARK-1 is degrading fast. You've got maybe 15 minutes before the signal drops below operational threshold.<br><br>Your job: bring the Maine backup station online, configure it to match Vermont's parameters exactly, verify signal acquisition, and execute a clean traffic handover before Vermont goes dark. Catherine from Maine is on her way in and will take over once the handover is complete.<br><br>This is your first time managing multiple ground stations simultaneously. Weather handovers happen several times each winter in the Northeast - routine procedure, but time-critical. Don't rush, but don't dawdle either.`,
   equipment: [
-    '9-meter C-band Antenna (×2)',
-    'RF Front End (×2)',
-    'Spectrum Analyzer (×2)',
-    'Receiver Modem (×2)',
-    'Transmitter Modem (×2)',
+    '9-meter C-band Antenna',
+    'RF Front End',
+    'Spectrum Analyzer',
+    'RX/TX Modems',
+    'ME-02: Available',
   ],
   timeLimitSeconds: 30 * 60, // 30 minutes
   settings: {

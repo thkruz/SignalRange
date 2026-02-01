@@ -65,8 +65,8 @@ export const scenario2Data: ScenarioData = {
     '9-meter C-band Antenna',
     'RF Front End',
     'Spectrum Analyzer',
-    'Receiver Modem (pre-configured)',
-    'Transmitter Modem (pre-configured)',
+    'RX/TX Modems',
+    'ME-02: Unavailable',
   ],
   timeLimitSeconds: 35 * 60, // 35 minutes
   settings: {

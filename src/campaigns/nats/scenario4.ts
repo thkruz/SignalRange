@@ -63,8 +63,8 @@ export const scenario4Data: ScenarioData = {
     '9-meter C-band Antenna',
     'RF Front End',
     'Spectrum Analyzer',
-    'Receiver Modem',
-    'Transmitter Modem',
+    'RX/TX Modems',
+    'ME-02: Available',
   ],
   settings: {
     isSync: true,

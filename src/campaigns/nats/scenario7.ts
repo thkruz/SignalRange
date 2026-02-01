@@ -74,11 +74,10 @@ export const scenario7Data: ScenarioData = {
   description: `The Vermont station completed overnight maintenance on the transmit chain - waveguide inspection and HPA tube replacement. Before resuming normal operations, you need to validate the entire uplink path.<br><br>Charlie is off-site today. Dana Torres, the shift supervisor, is handling paperwork but will check in periodically. You're expected to handle this independently.<br><br>Verify the receive chain, configure the transmitter, use BUC loopback to validate your signal, then bring the uplink online.<br><br>Key lesson: Always validate before you radiate.`,
   equipment: [
     '9-meter C-band Antenna',
-    'RF Front End (BUC with Loopback)',
+    'RF Front End',
     'Spectrum Analyzer',
-    'Receiver Modem',
-    'Transmitter Modem',
-    'High Power Amplifier',
+    'RX/TX Modems',
+    'ME-02: Unavailable',
   ],
   timeLimitSeconds: 35 * 60,
   settings: {

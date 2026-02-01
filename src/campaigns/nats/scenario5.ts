@@ -59,8 +59,8 @@ export const scenario5Data: ScenarioData = {
     '9-meter C-band Antenna',
     'RF Front End',
     'Spectrum Analyzer',
-    'Receiver Modem',
     'IF Filter Bank',
+    'ME-02: Available',
   ],
   settings: {
     isSync: true,

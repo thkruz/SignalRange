@@ -3,7 +3,6 @@ import { CampaignData } from "@app/campaigns/campaign-types";
 import { qs } from "@app/engine/utils/query-selector";
 import { Logger } from "@app/logging/logger";
 import { Router } from "@app/router";
-import { sandboxData } from "@app/scenarios/sandbox";
 import { Auth } from "@app/user-account/auth";
 import { getUserDataService } from "@app/user-account/user-data-service";
 import { getAssetUrl } from "@app/utils/asset-url";
@@ -86,7 +85,7 @@ export class CampaignSelectionPage extends BasePage {
    * Show or hide the login warning message
    */
   private updateLoginWarning_(show: boolean): void {
-    const warning = this.dom_.querySelector('.login-warning') as HTMLElement;
+    const warning: HTMLElement = this.dom_.querySelector('.login-warning');
     if (warning) {
       warning.style.display = show ? 'flex' : 'none';
     }
@@ -104,10 +103,7 @@ export class CampaignSelectionPage extends BasePage {
     const completedCampaignIds = campaignManager.getCompletedCampaigns(this.completedScenarioIds_);
 
     // Re-render all campaign cards with updated progress data
-    campaignGrid.innerHTML = [
-      ...campaigns.map(campaign => this.renderCampaignCard_(campaign, completedCampaignIds)),
-      this.renderSandboxCard_()
-    ].join('');
+    campaignGrid.innerHTML = campaigns.map(campaign => this.renderCampaignCard_(campaign, completedCampaignIds)).join('');
 
     // Re-attach event listeners for the new cards
     this.attachCampaignCardListeners_();
@@ -117,7 +113,7 @@ export class CampaignSelectionPage extends BasePage {
    * Attach event listeners to campaign cards
    */
   private attachCampaignCardListeners_(): void {
-    const campaignCards = this.dom_.querySelectorAll('.campaign-card:not(.disabled)');
+    const campaignCards = this.dom_.querySelectorAll('.campaign-card:not(.disabled):not(.locked)');
     campaignCards.forEach(card => {
       card.addEventListener('click', this.handleCampaignClick_.bind(this));
     });
@@ -150,10 +146,7 @@ export class CampaignSelectionPage extends BasePage {
     const campaignManager = CampaignManager.getInstance();
     const campaigns = campaignManager.getAllCampaigns();
 
-    return [
-      ...campaigns.map(campaign => this.renderCampaignCard_(campaign, [])),
-      this.renderSandboxCard_()
-    ].join('');
+    return campaigns.map(campaign => this.renderCampaignCard_(campaign, [])).join('');
   }
 
   /**
@@ -163,19 +156,19 @@ export class CampaignSelectionPage extends BasePage {
     const campaignManager = CampaignManager.getInstance();
     const progress = campaignManager.getCampaignProgress(campaign.id, this.completedScenarioIds_);
     const isLocked = campaignManager.isCampaignLocked(campaign, completedCampaignIds);
-    const isDisabledOrLocked = campaign.isDisabled || isLocked;
+    const isDisabledOrLocked = campaign.isDisabled || isLocked || campaign.isLocked;
     const isCompleted = progress.isCompleted;
 
     let statusBanner = '';
     if (campaign.isDisabled) {
       statusBanner = `
-        <div class="coming-soon-banner">Coming Soon</div>
+        <div class="coming-soon-banner">${campaign.disabledText || 'Coming Soon'}</div>
       `;
-    } else if (isLocked) {
+    } else if (isLocked || campaign.isLocked) {
       statusBanner = `
-        <div class="locked-banner" title="Complete prerequisite campaigns to unlock">
+        <div class="locked-banner">
           <div>
-            <span class="locked-icon">🔒</span> Locked
+            <span class="locked-icon">${campaign.lockedText || '🔒 Locked'}</span>
           </div>
         </div>
       `;
@@ -199,7 +192,7 @@ export class CampaignSelectionPage extends BasePage {
     }
 
     return html`
-      <div class="campaign-card ${isDisabledOrLocked ? 'disabled' : ''}" data-campaign-id="${campaign.id}">
+      <div class="campaign-card ${isLocked || campaign.isLocked ? 'locked' : ''}${campaign.isDisabled ? 'disabled' : ''}" data-campaign-id="${campaign.id}">
         ${statusBanner}
         ${progressBanner}
         <div class="campaign-card-inner">
@@ -237,44 +230,6 @@ export class CampaignSelectionPage extends BasePage {
     `;
   }
 
-  /**
-   * Render the sandbox card (special case)
-   */
-  private renderSandboxCard_(): string {
-    return html`
-      <div class="campaign-card sandbox-card disabled">
-      <div class="coming-soon-banner">Coming Soon</div>
-
-      <div class="campaign-card-inner">
-        <div class="campaign-card-header">
-        <div class="campaign-badges">
-          <span class="badge special">Sandbox</span>
-        </div>
-        </div>
-
-        <div class="campaign-image">
-        <img src="${getAssetUrl('/assets/campaigns/sandbox/' + sandboxData.imageUrl)}" alt="${sandboxData.title}" onerror="this.onerror=null; this.src='/images/placeholder.png'"/>
-        <div class="campaign-image-overlay">
-          <h2 class="campaign-title">${sandboxData.title}</h2>
-          <div class="campaign-subtitle">${sandboxData.subtitle}</div>
-        </div>
-        </div>
-
-        <div class="campaign-card-body">
-        <p class="campaign-description">${sandboxData.description}</p>
-
-        <div class="campaign-info">''
-          <div class="campaign-info-item">
-          <div class="info-label">Mode</div>
-          <div class="info-value">Free Play</div>
-          </div>
-        </div>
-        </div>
-      </div>
-      </div>
-    `;
-  }
-
   protected initDom_(parentId: string, type: 'add' | 'replace' = 'replace'): HTMLElement {
     const parentDom = super.initDom_(parentId, type);
     this.dom_ = qs(`#${this.id}`, parentDom);
@@ -303,7 +258,7 @@ export class CampaignSelectionPage extends BasePage {
    * Handle campaign card click
    */
   private handleCampaignClick_(event: Event): void {
-    const card = (event.currentTarget as HTMLElement).closest('.campaign-card') as HTMLElement;
+    const card: HTMLElement = (event.currentTarget as HTMLElement).closest('.campaign-card');
     if (!card) return;
 
     const campaignId = card.dataset.campaignId;

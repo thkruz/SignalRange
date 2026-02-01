@@ -94,7 +94,17 @@
 
 .campaign-card.disabled .campaign-card-inner {
   opacity: 0.35;
-  filter: blur(5px);
+  filter: blur(3.5px);
+  pointer-events: none;
+}
+
+.campaign-card.locked {
+  cursor: not-allowed;
+}
+
+.campaign-card.locked .campaign-card-inner {
+  opacity: 0.35;
+  filter: blur(2px);
   pointer-events: none;
 }
 
@@ -104,21 +114,6 @@
     0 6px 16px rgba(0, 0, 0, 0.8),
     inset 0 1px 1px rgba(255, 255, 255, 0.15);
   transform: translateY(-2px);
-}
-
-/* Special styling for sandbox card */
-.campaign-card.sandbox-card {
-  border-color: #4caf50;
-  box-shadow:
-    0 4px 12px rgba(76, 175, 80, 0.3),
-    inset 0 1px 1px rgba(255, 255, 255, 0.1);
-}
-
-.campaign-card.sandbox-card:hover {
-  border-color: #66bb6a;
-  box-shadow:
-    0 6px 16px rgba(76, 175, 80, 0.5),
-    inset 0 1px 1px rgba(255, 255, 255, 0.15);
 }
 
 /* Status Banners */

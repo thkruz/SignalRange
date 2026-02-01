@@ -35,11 +35,17 @@ export interface CampaignData {
   /** Whether this campaign is locked (requires prerequisite campaigns) */
   isLocked?: boolean;
 
+  /** Text to display on campaign card when the campaign is locked */
+  lockedText?: string;
+
   /** IDs of campaigns that must be completed before this one unlocks */
   prerequisiteCampaignIds?: string[];
 
   /** Whether this campaign is coming soon (disabled) */
   isDisabled?: boolean;
+
+  /** Optional coming soon text to display on campaign card */
+  disabledText?: string;
 }
 
 /**

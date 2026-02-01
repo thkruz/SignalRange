@@ -266,7 +266,8 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  height: 60px;
+  min-height: 35px;
+  height: 35px;
   padding: 0 24px;
   background: linear-gradient(180deg, #3a3a3a 0%, #2a2a2a 100%);
   border-bottom: 2px solid #444;

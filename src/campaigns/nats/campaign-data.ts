@@ -24,7 +24,7 @@ export const natsCampaignData: CampaignData = {
   imageUrl: 'nats/north-atlantic-teleport-services.png',
   difficulty: 'beginner',
   totalDuration: '175-240 min',
-  campaignType: 'Commercial Communications',
+  campaignType: 'GEO Commercial Communications',
   scenarios: [
     scenario1Data,
     scenario2Data,
@@ -38,3 +38,73 @@ export const natsCampaignData: CampaignData = {
   isLocked: false,
   isDisabled: false,
 };
+
+export const natsEuCampaignData: CampaignData = {
+  id: 'nats-eu',
+  title: 'North Atlantic Teleport Services EU',
+  subtitle: 'Commercial Ground Station Operations',
+  description: `This campaign follows the North Atlantic Teleport Services EU branch, focusing on Low Earth Orbit (LEO) satellite communications. As a ground station operator, you'll work through a series of scenarios to establish and maintain RF links with various LEO satellites, gaining hands-on experience with tracking fast-moving targets and optimizing communication parameters for reliable data transmission.<br><br>Through these scenarios, you'll develop essential skills in antenna tracking, Doppler shift compensation, and link budget analysis, all while supporting the operational needs of cutting-edge LEO satellite constellations.`,
+  imageUrl: 'nats/north-atlantic-teleport-services.png',
+  difficulty: 'intermediate',
+  totalDuration: '160-220 min',
+  campaignType: 'LEO Commercial Communications',
+  scenarios: [
+
+  ],
+  isLocked: true,
+  lockedText: 'Under Development',
+  isDisabled: false,
+};
+
+export const hamSdrCampaignData: CampaignData = {
+  id: 'ham-sdr',
+  title: 'Ham Radio SDR Station',
+  subtitle: 'Amateur Radio Operations with Software-Defined Radio',
+  description: `This campaign focuses on amateur radio operations using software-defined radio (SDR) technology. As an amateur radio operator, you'll engage in a series of scenarios that involve setting up and configuring SDR equipment, establishing communication links with other ham radio operators, and exploring various modes of transmission.<br><br>Through these scenarios, you'll gain practical experience in antenna tuning, signal propagation analysis, and digital mode operation, all while adhering to amateur radio regulations and best practices.`,
+  imageUrl: 'nats/north-atlantic-teleport-services.png',
+  difficulty: 'intermediate',
+  totalDuration: '160-220 min',
+  campaignType: 'Amateur Radio Operations',
+  scenarios: [
+
+  ],
+  isLocked: false,
+  isDisabled: true,
+  disabledText: 'Access Denied',
+};
+
+export const ccsCampaignData: CampaignData = {
+  id: 'ccs',
+  title: '9th Electronic Warfare Squadron',
+  subtitle: 'Counter Communications Systems',
+  description: `This campaign delves into the realm of electronic warfare and counter communications systems. As a specialist in this field, you'll navigate through a series of scenarios that challenge you to identify, analyze, and disrupt hostile communication signals while ensuring the integrity of friendly communications.<br><br>Through these scenarios, you'll develop expertise in signal intelligence, jamming techniques, and electronic countermeasures, all while operating within the constraints of modern electronic warfare environments.`,
+  imageUrl: 'nats/north-atlantic-teleport-services.png',
+  difficulty: 'advanced',
+  totalDuration: '200-260 min',
+  campaignType: 'Electronic Warfare',
+  scenarios: [
+
+  ],
+  isLocked: false,
+  isDisabled: true,
+  disabledText: 'Access Denied',
+};
+
+export const geolocationCampaignData: CampaignData = {
+  id: 'ccs',
+  title: '22nd Electronic Warfare Squadron',
+  subtitle: 'Geolocation of Interference Sources',
+  description: `This campaign focuses on the geolocation of interference sources in electronic warfare scenarios. As a member of the 22 Electronic Warfare Squadron, you'll engage in a series of scenarios that require you to accurately locate and identify sources of signal interference while maintaining the integrity of friendly communications.<br><br>Through these scenarios, you'll hone your skills in direction finding, triangulation techniques, and signal analysis, all while operating within the dynamic landscape of electronic warfare.`,
+  imageUrl: 'nats/north-atlantic-teleport-services.png',
+  difficulty: 'advanced',
+  totalDuration: '200-260 min',
+  campaignType: 'Electronic Warfare',
+  scenarios: [
+
+  ],
+  isLocked: false,
+  isDisabled: true,
+  disabledText: 'Access Denied',
+};
+
+

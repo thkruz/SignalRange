@@ -217,7 +217,7 @@ export class CampaignSelectionPage extends BasePage {
             <div class="campaign-info">
               <div class="campaign-info-item">
                 <div class="info-label">Scenarios</div>
-                <div class="info-value">${campaign.scenarios.length}</div>
+                <div class="info-value">${campaign.scenarios.filter(s => s.missionType !== 'Sandbox').length}</div>
               </div>
               <div class="campaign-info-item">
                 <div class="info-label">Type</div>

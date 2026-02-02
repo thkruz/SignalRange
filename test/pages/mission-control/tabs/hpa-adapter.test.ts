@@ -47,6 +47,7 @@ describe('HPAAdapter', () => {
     mockHpaModule = {
       state: { ...mockState },
       inputSignals: [],
+      p1db: 59, // P1dB compression point in dBm
       handleBackOffChange: jest.fn(),
       handlePowerToggle: jest.fn((checked, callback) => {
         if (callback) callback(mockHpaModule.state);
@@ -247,11 +248,11 @@ describe('HPAAdapter', () => {
       const meter = containerEl.querySelector('#hpa-power-meter') as HTMLElement;
       const segments = meter.querySelectorAll('.power-segment');
 
-      // 44 dBm normalized: (44-30)/(50-30) = 0.7 = 7 segments
+      // 44 dBm normalized: (44-30)/(63-30) ≈ 0.424 = 4 segments (rounded)
       const activeSegments = Array.from(segments).filter(
         s => !s.className.includes('led-off')
       );
-      expect(activeSegments.length).toBe(7);
+      expect(activeSegments.length).toBe(4);
     });
   });
 
@@ -354,7 +355,7 @@ describe('HPAAdapter', () => {
         (call: unknown[]) => call[0] === Events.UPDATE
       )?.[1];
 
-      mockHpaModule.state.outputPower = 50; // Max power
+      mockHpaModule.state.outputPower = 63; // Max power (63 dBm)
 
       jest.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();

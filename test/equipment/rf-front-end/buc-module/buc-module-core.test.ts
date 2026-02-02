@@ -54,6 +54,7 @@ function createMockTransmitter(modems: any[] = []): any {
         } as IfSignal,
       }],
     },
+    isModemInIntermittentDropout: () => false, // Mock method - no dropout
   };
 }
 
@@ -962,16 +963,19 @@ describe('BUCModuleCore', () => {
       it('should return compression amount in saturation', () => {
         bucModule.state.gain = 30 as dB;
         bucModule.state.saturationPower = 15 as dBm;
-        // Linear output = -10 + 30 = 20 dBm, 5 dB above P1dB
-        // Compression = min(5 * 0.5, 3) = 2.5 dB
-        expect(bucModule.getCompressionDb()).toBeCloseTo(2.5, 1);
+        // Linear output = -10 + 30 = 20 dBm
+        // maxOutput = saturation (15) + 2 = 17 dBm
+        // Compression = 20 - 17 = 3 dB
+        expect(bucModule.getCompressionDb()).toBeCloseTo(3, 1);
       });
 
-      it('should cap compression at 3 dB', () => {
+      it('should return higher compression when further into saturation', () => {
         bucModule.state.gain = 50 as dB;
         bucModule.state.saturationPower = 15 as dBm;
-        // Very high compression scenario
-        expect(bucModule.getCompressionDb()).toBeLessThanOrEqual(3);
+        // Linear output = -10 + 50 = 40 dBm
+        // maxOutput = 15 + 2 = 17 dBm
+        // Compression = 40 - 17 = 23 dB
+        expect(bucModule.getCompressionDb()).toBeCloseTo(23, 1);
       });
     });
 

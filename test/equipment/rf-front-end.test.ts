@@ -137,10 +137,9 @@ describe('RFFrontEndCore class', () => {
 
       rfFrontEnd.update();
 
-      // Output = -10 + 60 = 50, but compression kicks in (50 > 15 dBm saturation)
-      // Compression = min((50-15)*0.5, 3) = 3 dB
-      // Final output = 50 - 3 = 47 dBm
-      expect(rfFrontEnd.state.buc.outputPower).toBe(47);
+      // Output = min(inputPower + gain, saturationPower + 2)
+      // = min(-10 + 60, 15 + 2) = min(50, 17) = 17 dBm (saturated)
+      expect(rfFrontEnd.state.buc.outputPower).toBe(17);
     });
 
     it('should set BUC output power to minimum when muted', () => {
@@ -149,6 +148,7 @@ describe('RFFrontEndCore class', () => {
 
       rfFrontEnd.update();
 
+      // When muted, BUC outputs -170 dBm (effectively off)
       expect(rfFrontEnd.state.buc.outputPower).toBe(-170);
     });
 

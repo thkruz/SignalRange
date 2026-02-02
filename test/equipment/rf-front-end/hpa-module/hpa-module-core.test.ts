@@ -39,8 +39,28 @@ class TestHPAModule extends HPAModuleCore {
   }
 }
 
+// Create a mock RF signal for HPA input
+function createMockRfSignal(power: dBm = 0 as dBm): RfSignal {
+  return {
+    signalId: 'test-signal',
+    serverId: 1,
+    noradId: 12345,
+    frequency: 6e9 as any, // 6 GHz
+    polarization: 'H',
+    power,
+    bandwidth: 36e6 as any,
+    modulation: 'QPSK' as any,
+    fec: '3/4' as any,
+    feed: '',
+    isDegraded: false,
+    origin: SignalOrigin.TRANSMITTER,
+    noiseFloor: null,
+    gainInPath: 0 as dB,
+  };
+}
+
 // Mock BUC module
-function createMockBucModule(overrides: Partial<BUCModuleCore> = {}): BUCModuleCore {
+function createMockBucModule(overrides: Partial<BUCModuleCore> = {}, includeSignal = true): BUCModuleCore {
   return {
     state: {
       isPowered: true,
@@ -49,7 +69,7 @@ function createMockBucModule(overrides: Partial<BUCModuleCore> = {}): BUCModuleC
       gain: 30 as dB,
       isMuted: false,
     },
-    outputSignals: [],
+    outputSignals: includeSignal ? [createMockRfSignal(0 as dBm)] : [],
     ...overrides,
   } as unknown as BUCModuleCore;
 }
@@ -165,8 +185,10 @@ describe('HPAModuleCore', () => {
 
         hpaModule.update();
 
-        // P1dB (50) - backOff (10) = 40 dBm
-        expect(hpaModule.state.outputPower).toBe(40);
+        // With 0 dBm input: output = input + gain - backOff
+        // gain = (maxPower - backOff) - input = (63 - 10) - 0 = 53 dB
+        // output = 0 + 53 - 10 = 43 dBm
+        expect(hpaModule.state.outputPower).toBe(43);
       });
 
       it('should set output power to -90 when powered but not enabled', () => {
@@ -193,11 +215,13 @@ describe('HPAModuleCore', () => {
 
         hpaModule.state.backOff = 0;
         hpaModule.update();
-        expect(hpaModule.state.outputPower).toBe(50); // P1dB
+        // With 0 dBm input and backOff 0: output = 0 + 63 - 0 = 63 dBm
+        expect(hpaModule.state.outputPower).toBe(63);
 
         hpaModule.state.backOff = 20;
         hpaModule.update();
-        expect(hpaModule.state.outputPower).toBe(30); // P1dB - 20
+        // With 0 dBm input and backOff 20: output = 0 + (63-20-0) - 20 = 23 dBm
+        expect(hpaModule.state.outputPower).toBe(23);
       });
     });
 
@@ -209,8 +233,9 @@ describe('HPAModuleCore', () => {
 
         hpaModule.update();
 
-        // At 40 dBm: 10W, dissipated = 5W (50% efficiency), temp = 25 + 50 = 75
-        expect(hpaModule.state.temperature).toBeCloseTo(75, 0);
+        // At 43 dBm: ~20W, dissipated = 20 * 0.15 = 3W (85% efficiency)
+        // temp = 25 + (3 * 0.5) ≈ 26.5
+        expect(hpaModule.state.temperature).toBeCloseTo(26.5, 0);
       });
 
       it('should set temperature to ambient when not powered', () => {
@@ -441,8 +466,9 @@ describe('HPAModuleCore', () => {
     it('should recalculate output power immediately', () => {
       hpaModule.handleBackOffChange(5);
 
-      // P1dB (50) - backOff (5) = 45 dBm
-      expect(hpaModule.state.outputPower).toBe(45);
+      // With 0 dBm input and backOff 5: gain = 63 - 5 = 58 dB
+      // output = 0 + 58 - 5 = 53 dBm
+      expect(hpaModule.state.outputPower).toBe(53);
     });
 
     it('should recalculate IMD immediately', () => {
@@ -784,15 +810,16 @@ describe('HPAModuleCore', () => {
     });
 
     it('should render yellow segments at higher power', () => {
-      // Yellow threshold is at 80% of max (23 dBW), so need ~19 dBW
-      const html = hpaModule.testRenderPowerMeter(19);
+      // Yellow is at 60-80% of max. Max = (63dBm - 30) = 33 dBW
+      // Need >= 60% → 0.6 * 33 = 19.8, so use 27 dBW for ~82%
+      const html = hpaModule.testRenderPowerMeter(27);
 
       expect(html).toContain('led-yellow');
     });
 
     it('should render red segments at high power', () => {
-      // Red threshold is at 100% of max (23 dBW)
-      const html = hpaModule.testRenderPowerMeter(24);
+      // Red is at 80-100% of max (33 dBW). Need >= 80% → 0.8 * 33 = 26.4
+      const html = hpaModule.testRenderPowerMeter(34);
 
       expect(html).toContain('led-red');
     });
@@ -807,12 +834,12 @@ describe('HPAModuleCore', () => {
       );
     });
 
-    it('should apply max gain limit of 50 dB', () => {
+    it('should apply max gain limit of 63 dB', () => {
       // Very low input power would require very high gain
       const power = hpaModule.getOutputPower(-100);
 
-      // Output should be limited by max gain
-      expect(power).toBeLessThanOrEqual(-100 + 50);
+      // Output should be limited by max gain of 63 dB
+      expect(power).toBeLessThanOrEqual(-100 + 63);
     });
 
     it('should apply compression when input is near saturation', () => {
@@ -820,7 +847,7 @@ describe('HPAModuleCore', () => {
       const power = hpaModule.getOutputPower(45);
 
       // Gain should be reduced due to compression
-      expect(power).toBeLessThan(45 + 50);
+      expect(power).toBeLessThan(45 + 63);
     });
 
     it('should update state.gain based on processed signals', () => {

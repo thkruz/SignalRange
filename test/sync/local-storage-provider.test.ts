@@ -1,3 +1,4 @@
+import { Mock, vi } from 'vitest';
 import { LocalStorageProvider } from '../../src/sync/local-storage-provider';
 
 describe('LocalStorageProvider', () => {
@@ -12,11 +13,11 @@ describe('LocalStorageProvider', () => {
     // Mock localStorage
     Object.defineProperty(globalThis, 'localStorage', {
       value: {
-        getItem: jest.fn((key: string) => mockStorage[key] ?? null),
-        setItem: jest.fn((key: string, value: string) => {
+        getItem: vi.fn((key: string) => mockStorage[key] ?? null),
+        setItem: vi.fn((key: string, value: string) => {
           mockStorage[key] = value;
         }),
-        removeItem: jest.fn((key: string) => {
+        removeItem: vi.fn((key: string) => {
           delete mockStorage[key];
         }),
       },
@@ -24,12 +25,12 @@ describe('LocalStorageProvider', () => {
     });
 
     // Mock addEventListener/removeEventListener for storage events
-    jest.spyOn(globalThis, 'addEventListener').mockImplementation((type, handler) => {
+    vi.spyOn(globalThis, 'addEventListener').mockImplementation((type, handler) => {
       if (type === 'storage') {
         storageEventListeners.push(handler as (e: StorageEvent) => void);
       }
     });
-    jest.spyOn(globalThis, 'removeEventListener').mockImplementation((type, handler) => {
+    vi.spyOn(globalThis, 'removeEventListener').mockImplementation((type, handler) => {
       if (type === 'storage') {
         const index = storageEventListeners.indexOf(handler as (e: StorageEvent) => void);
         if (index > -1) storageEventListeners.splice(index, 1);
@@ -40,7 +41,7 @@ describe('LocalStorageProvider', () => {
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   describe('constructor', () => {
@@ -76,7 +77,7 @@ describe('LocalStorageProvider', () => {
 
     it('notifies subscribers when storage event fires for the correct key', async () => {
       await provider.initialize();
-      const subscriber = jest.fn();
+      const subscriber = vi.fn();
       provider.subscribe(subscriber);
 
       // Simulate storage event from another tab
@@ -91,7 +92,7 @@ describe('LocalStorageProvider', () => {
 
     it('ignores storage events for different keys', async () => {
       await provider.initialize();
-      const subscriber = jest.fn();
+      const subscriber = vi.fn();
       provider.subscribe(subscriber);
 
       const event = {
@@ -104,11 +105,11 @@ describe('LocalStorageProvider', () => {
     });
 
     it('handles JSON parse errors in storage events', async () => {
-      const onError = jest.fn();
+      const onError = vi.fn();
       provider = new LocalStorageProvider({ onError });
       await provider.initialize();
 
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation();
       const event = {
         key: '__APP_STORE__',
         newValue: 'invalid-json',
@@ -137,11 +138,11 @@ describe('LocalStorageProvider', () => {
     });
 
     it('returns null and calls onError when JSON parsing fails', async () => {
-      const onError = jest.fn();
+      const onError = vi.fn();
       provider = new LocalStorageProvider({ onError });
       mockStorage['__APP_STORE__'] = 'invalid-json';
 
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation();
       const result = await provider.read();
 
       expect(result).toBeNull();
@@ -161,7 +162,7 @@ describe('LocalStorageProvider', () => {
     });
 
     it('notifies local subscribers after writing', async () => {
-      const subscriber = jest.fn();
+      const subscriber = vi.fn();
       provider.subscribe(subscriber);
 
       await provider.write({ key: 'value' });
@@ -170,13 +171,13 @@ describe('LocalStorageProvider', () => {
     });
 
     it('calls onError when write fails', async () => {
-      const onError = jest.fn();
+      const onError = vi.fn();
       provider = new LocalStorageProvider({ onError });
-      (localStorage.setItem as jest.Mock).mockImplementation(() => {
+      (localStorage.setItem as Mock).mockImplementation(() => {
         throw new Error('Storage full');
       });
 
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation();
       await provider.write({ key: 'value' });
 
       expect(onError).toHaveBeenCalled();
@@ -194,7 +195,7 @@ describe('LocalStorageProvider', () => {
     });
 
     it('notifies subscribers with null after clearing', async () => {
-      const subscriber = jest.fn();
+      const subscriber = vi.fn();
       provider.subscribe(subscriber);
 
       await provider.clear();
@@ -203,13 +204,13 @@ describe('LocalStorageProvider', () => {
     });
 
     it('calls onError when clear fails', async () => {
-      const onError = jest.fn();
+      const onError = vi.fn();
       provider = new LocalStorageProvider({ onError });
-      (localStorage.removeItem as jest.Mock).mockImplementation(() => {
+      (localStorage.removeItem as Mock).mockImplementation(() => {
         throw new Error('Clear failed');
       });
 
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation();
       await provider.clear();
 
       expect(onError).toHaveBeenCalled();
@@ -219,7 +220,7 @@ describe('LocalStorageProvider', () => {
 
   describe('subscribe()', () => {
     it('adds callback to subscribers', async () => {
-      const subscriber = jest.fn();
+      const subscriber = vi.fn();
       provider.subscribe(subscriber);
 
       await provider.write({ data: 'test' });
@@ -228,8 +229,8 @@ describe('LocalStorageProvider', () => {
     });
 
     it('supports multiple subscribers', async () => {
-      const subscriber1 = jest.fn();
-      const subscriber2 = jest.fn();
+      const subscriber1 = vi.fn();
+      const subscriber2 = vi.fn();
       provider.subscribe(subscriber1);
       provider.subscribe(subscriber2);
 
@@ -240,7 +241,7 @@ describe('LocalStorageProvider', () => {
     });
 
     it('returns unsubscribe function that removes the callback', async () => {
-      const subscriber = jest.fn();
+      const subscriber = vi.fn();
       const unsubscribe = provider.subscribe(subscriber);
 
       unsubscribe();
@@ -250,14 +251,14 @@ describe('LocalStorageProvider', () => {
     });
 
     it('handles subscriber errors without affecting others', async () => {
-      const errorSubscriber = jest.fn().mockImplementation(() => {
+      const errorSubscriber = vi.fn(function () {
         throw new Error('Subscriber error');
       });
-      const normalSubscriber = jest.fn();
+      const normalSubscriber = vi.fn();
       provider.subscribe(errorSubscriber);
       provider.subscribe(normalSubscriber);
 
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation();
       await provider.write({ data: 'test' });
 
       expect(normalSubscriber).toHaveBeenCalledWith({ data: 'test' });
@@ -273,7 +274,7 @@ describe('LocalStorageProvider', () => {
     });
 
     it('returns false when localStorage throws', () => {
-      (localStorage.setItem as jest.Mock).mockImplementation(() => {
+      (localStorage.setItem as Mock).mockImplementation(() => {
         throw new Error('Not available');
       });
 
@@ -296,7 +297,7 @@ describe('LocalStorageProvider', () => {
     });
 
     it('clears all subscribers', async () => {
-      const subscriber = jest.fn();
+      const subscriber = vi.fn();
       provider.subscribe(subscriber);
 
       await provider.dispose();

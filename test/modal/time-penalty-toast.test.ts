@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { EventBus } from '../../src/events/event-bus';
 import { Events } from '../../src/events/events';
 import { TimePenaltyToast } from '../../src/modal/time-penalty-toast';
@@ -17,7 +18,7 @@ describe('TimePenaltyToast', () => {
     document.body.innerHTML = '';
     eventBus = EventBus.getInstance();
     toast = TimePenaltyToast.getInstance();
-    jest.useFakeTimers();
+    vi.useFakeTimers();
 
     // Mock requestAnimationFrame to run synchronously
     originalRAF = window.requestAnimationFrame;
@@ -33,8 +34,8 @@ describe('TimePenaltyToast', () => {
     }
     document.body.innerHTML = '';
     EventBus.destroy();
-    jest.clearAllTimers();
-    jest.useRealTimers();
+    vi.clearAllTimers();
+    vi.useRealTimers();
     window.requestAnimationFrame = originalRAF;
   });
 
@@ -120,7 +121,7 @@ describe('TimePenaltyToast', () => {
       const toastElement = document.querySelector('.time-penalty-toast');
       expect(toastElement?.classList.contains('show')).toBe(true);
 
-      jest.advanceTimersByTime(5000);
+      vi.advanceTimersByTime(5000);
 
       expect(toastElement?.classList.contains('show')).toBe(false);
     });
@@ -139,7 +140,7 @@ describe('TimePenaltyToast', () => {
     });
 
     it('should clear auto-hide timeout', () => {
-      const clearTimeoutSpy = jest.spyOn(window, 'clearTimeout');
+      const clearTimeoutSpy = vi.spyOn(window, 'clearTimeout');
 
       toast.show(10);
       toast.hide();
@@ -152,7 +153,7 @@ describe('TimePenaltyToast', () => {
   describe('Close Button', () => {
     it('should hide toast when close button is clicked', () => {
       toast.show(10);
-      jest.runAllTimers();
+      vi.runAllTimers();
 
       const closeButton = document.querySelector('.time-penalty-toast__close') as HTMLElement;
       closeButton?.click();
@@ -196,7 +197,7 @@ describe('TimePenaltyToast', () => {
     });
 
     it('should clear auto-hide timeout', () => {
-      const clearTimeoutSpy = jest.spyOn(window, 'clearTimeout');
+      const clearTimeoutSpy = vi.spyOn(window, 'clearTimeout');
 
       toast.show(10);
       toast.destroy();
@@ -212,7 +213,7 @@ describe('TimePenaltyToast', () => {
       (TimePenaltyToast as any).instance_ = null;
       const newToast = TimePenaltyToast.getInstance();
 
-      const callback = jest.fn();
+      const callback = vi.fn();
       const originalShow = newToast.show.bind(newToast);
       newToast.show = callback;
 
@@ -253,7 +254,7 @@ describe('TimePenaltyToast', () => {
   describe('Multiple Shows', () => {
     it('should update content when showing again', () => {
       toast.show(5, 'First message');
-      jest.runAllTimers();
+      vi.runAllTimers();
 
       toast.show(15, 'Second message');
 
@@ -266,17 +267,17 @@ describe('TimePenaltyToast', () => {
 
     it('should clear previous auto-hide timeout when showing again', () => {
       toast.show(5);
-      jest.advanceTimersByTime(3000); // Advance 3 seconds
+      vi.advanceTimersByTime(3000); // Advance 3 seconds
 
       toast.show(10);
-      jest.advanceTimersByTime(3000); // Advance another 3 seconds
+      vi.advanceTimersByTime(3000); // Advance another 3 seconds
 
       // Toast should still be visible because new show() reset the timer
-      jest.runAllTimers();
+      vi.runAllTimers();
       const toastElement = document.querySelector('.time-penalty-toast');
 
       // After the full 5 seconds from the second show, it should hide
-      jest.advanceTimersByTime(2000);
+      vi.advanceTimersByTime(2000);
       expect(toastElement?.classList.contains('show')).toBe(false);
     });
   });

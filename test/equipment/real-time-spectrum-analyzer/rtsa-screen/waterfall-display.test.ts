@@ -1,5 +1,6 @@
-import { WaterfallDisplay } from '../../../../src/equipment/real-time-spectrum-analyzer/rtsa-screen/waterfall-display';
+import { vi } from 'vitest';
 import { RealTimeSpectrumAnalyzer, RealTimeSpectrumAnalyzerState } from '../../../../src/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer';
+import { WaterfallDisplay } from '../../../../src/equipment/real-time-spectrum-analyzer/rtsa-screen/waterfall-display';
 import { SpectrumDataProcessor } from '../../../../src/equipment/real-time-spectrum-analyzer/spectrum-data-processor';
 import { Hertz } from '../../../../src/types';
 
@@ -13,7 +14,7 @@ describe('WaterfallDisplay', () => {
   const DEFAULT_HEIGHT = 230;
 
   beforeEach(() => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
 
     // Create canvas with parent element for resize
     canvas = document.createElement('canvas');
@@ -51,11 +52,11 @@ describe('WaterfallDisplay', () => {
       rfFrontEnd_: {
         couplerModule: {
           signalPathManager: {
-            getTotalRxGain: jest.fn().mockReturnValue(10),
+            getTotalRxGain: vi.fn().mockReturnValue(10),
           },
         },
         lnbModule: {
-          getTotalGain: jest.fn().mockReturnValue(30),
+          getTotalGain: vi.fn().mockReturnValue(30),
         },
       },
     } as unknown as RealTimeSpectrumAnalyzer;
@@ -64,14 +65,14 @@ describe('WaterfallDisplay', () => {
     mockDataProcessor = {
       combinedData: new Float32Array(DEFAULT_WIDTH).fill(-80),
       noiseData: new Float32Array(DEFAULT_WIDTH).fill(-100),
-      setFrequencyRange: jest.fn(),
-      generateData: jest.fn(),
+      setFrequencyRange: vi.fn(),
+      generateData: vi.fn(),
     } as unknown as SpectrumDataProcessor;
   });
 
   afterEach(() => {
-    jest.useRealTimers();
-    jest.clearAllMocks();
+    vi.useRealTimers();
+    vi.clearAllMocks();
     document.body.innerHTML = '';
   });
 
@@ -118,7 +119,7 @@ describe('WaterfallDisplay', () => {
       waterfall = new WaterfallDisplay(canvas, mockSpecA, mockDataProcessor, DEFAULT_WIDTH, DEFAULT_HEIGHT);
 
       // Advance timers to ensure running is true
-      jest.advanceTimersByTime(1100);
+      vi.advanceTimersByTime(1100);
 
       expect(waterfall).toBeDefined();
     });
@@ -160,7 +161,7 @@ describe('WaterfallDisplay', () => {
   describe('update', () => {
     beforeEach(() => {
       waterfall = new WaterfallDisplay(canvas, mockSpecA, mockDataProcessor, DEFAULT_WIDTH, DEFAULT_HEIGHT);
-      jest.advanceTimersByTime(1100); // Ensure running is true
+      vi.advanceTimersByTime(1100); // Ensure running is true
     });
 
     it('should not update when paused', () => {
@@ -206,12 +207,12 @@ describe('WaterfallDisplay', () => {
   describe('draw', () => {
     beforeEach(() => {
       waterfall = new WaterfallDisplay(canvas, mockSpecA, mockDataProcessor, DEFAULT_WIDTH, DEFAULT_HEIGHT);
-      jest.advanceTimersByTime(1100);
+      vi.advanceTimersByTime(1100);
     });
 
     it('should not draw when paused', () => {
       mockSpecA.state.isPaused = true;
-      const putImageDataSpy = jest.spyOn(canvas.getContext('2d')!, 'putImageData');
+      const putImageDataSpy = vi.spyOn(canvas.getContext('2d')!, 'putImageData');
 
       waterfall.draw();
 

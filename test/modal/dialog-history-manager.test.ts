@@ -1,19 +1,23 @@
+import { vi, Mock } from 'vitest';
 import { EventBus } from '../../src/events/event-bus';
 import { Events } from '../../src/events/events';
-import { DialogHistoryManager } from '../../src/modal/dialog-history-manager';
 import { Character, Emotion } from '../../src/modal/character-enum';
+import { DialogHistoryManager } from '../../src/modal/dialog-history-manager';
 
 // Mock DialogManager
-jest.mock('../../src/modal/dialog-manager', () => ({
+vi.mock('../../src/modal/dialog-manager', () => ({
   DialogManager: {
-    getInstance: jest.fn(() => ({
-      show: jest.fn(),
+    getInstance: vi.fn(() => ({
+      show: vi.fn(),
     })),
   },
 }));
 
+// Import after mock
+import { DialogManager } from '../../src/modal/dialog-manager';
+
 // Mock character-enum
-jest.mock('../../src/modal/character-enum', () => ({
+vi.mock('../../src/modal/character-enum', () => ({
   Character: {
     CHARLIE_BROOKS: 'charlie_brooks',
     CATHERINE_VEGA: 'catherine_vega',
@@ -119,7 +123,7 @@ describe('DialogHistoryManager', () => {
     });
 
     it('should emit DIALOG_HISTORY_CHANGED event', () => {
-      const callback = jest.fn();
+      const callback = vi.fn();
       eventBus.on(Events.DIALOG_HISTORY_CHANGED, callback);
 
       historyManager.addEntry(
@@ -140,7 +144,7 @@ describe('DialogHistoryManager', () => {
         'First'
       );
 
-      const callback = jest.fn();
+      const callback = vi.fn();
       eventBus.on(Events.DIALOG_HISTORY_CHANGED, callback);
 
       historyManager.addEntry(
@@ -224,9 +228,8 @@ describe('DialogHistoryManager', () => {
 
   describe('replayDialog', () => {
     it('should call DialogManager.show with entry data', () => {
-      const mockShow = jest.fn();
-      const DialogManager = require('../../src/modal/dialog-manager').DialogManager;
-      DialogManager.getInstance.mockReturnValue({ show: mockShow });
+      const mockShow = vi.fn();
+      (DialogManager.getInstance as Mock).mockReturnValue({ show: mockShow });
 
       const entry = {
         text: 'Test message',

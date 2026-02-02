@@ -1,13 +1,14 @@
 import { dBm, FECType, Hertz, IfSignal, MHz, ModulationType } from '@app/types';
-import { TapPoint } from '../../../src/equipment/rf-front-end/coupler-module/tap-points';
+import { vi } from 'vitest';
 import { Receiver, ReceiverModemState, ReceiverState } from '../../../src/equipment/receiver/receiver';
+import { TapPoint } from '../../../src/equipment/rf-front-end/coupler-module/tap-points';
 import { EventBus } from '../../../src/events/event-bus';
 import { Events } from '../../../src/events/events';
 
 // Mock HTMLMediaElement.prototype.play for jsdom compatibility
 Object.defineProperty(HTMLMediaElement.prototype, 'play', {
   configurable: true,
-  value: jest.fn().mockResolvedValue(undefined),
+  value: vi.fn().mockResolvedValue(undefined),
 });
 
 // Helper to create mock IF signals
@@ -74,7 +75,7 @@ describe('Receiver class', () => {
   let parentElement: HTMLElement;
 
   beforeEach(() => {
-    jest.resetModules();
+    vi.resetModules();
 
     // Create a clean DOM root
     document.body.innerHTML = '<div id="test-root"></div>';
@@ -88,7 +89,7 @@ describe('Receiver class', () => {
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     document.body.innerHTML = '';
   });
 
@@ -175,7 +176,7 @@ describe('Receiver class', () => {
     });
 
     it('should subscribe to EventBus events', () => {
-      const onSpy = jest.spyOn(EventBus.getInstance(), 'on');
+      const onSpy = vi.spyOn(EventBus.getInstance(), 'on');
 
       receiver = new Receiver('test-root', []);
 
@@ -225,7 +226,7 @@ describe('Receiver class', () => {
     });
 
     it('should emit RX_ACTIVE_MODEM_CHANGED event', () => {
-      const emitSpy = jest.spyOn(receiver, 'emit');
+      const emitSpy = vi.spyOn(receiver, 'emit');
 
       receiver.setActiveModem(2);
 
@@ -304,7 +305,7 @@ describe('Receiver class', () => {
     });
 
     it('should emit RX_CONFIG_CHANGED event', () => {
-      const emitSpy = jest.spyOn(receiver, 'emit');
+      const emitSpy = vi.spyOn(receiver, 'emit');
 
       receiver.handleFrequencyChange(1600);
       receiver.applyChanges();
@@ -990,7 +991,7 @@ describe('Receiver class', () => {
     });
 
     it('should call syncDomWithState', () => {
-      const syncSpy = jest.spyOn(receiver as any, 'syncDomWithState');
+      const syncSpy = vi.spyOn(receiver as any, 'syncDomWithState');
 
       receiver.update();
 
@@ -999,7 +1000,7 @@ describe('Receiver class', () => {
     });
 
     it('should check for alarms', () => {
-      const alarmSpy = jest.spyOn(receiver as any, 'checkForAlarms_');
+      const alarmSpy = vi.spyOn(receiver as any, 'checkForAlarms_');
 
       receiver.update();
 
@@ -1027,27 +1028,27 @@ describe('Receiver class', () => {
   describe('handlePowerToggle', () => {
     beforeEach(() => {
       receiver = new Receiver('test-root', []);
-      jest.useFakeTimers();
+      vi.useFakeTimers();
     });
 
     afterEach(() => {
-      jest.useRealTimers();
+      vi.useRealTimers();
     });
 
     it('should toggle power state after delay', () => {
       receiver.handlePowerToggle(false);
 
       // Power off has 250ms delay
-      jest.advanceTimersByTime(300);
+      vi.advanceTimersByTime(300);
 
       expect(receiver.activeModem.isPowered).toBe(false);
     });
 
     it('should emit RX_CONFIG_CHANGED on power toggle', () => {
-      const emitSpy = jest.spyOn(receiver, 'emit');
+      const emitSpy = vi.spyOn(receiver, 'emit');
 
       receiver.handlePowerToggle(false);
-      jest.advanceTimersByTime(300);
+      vi.advanceTimersByTime(300);
 
       expect(emitSpy).toHaveBeenCalledWith(
         Events.RX_CONFIG_CHANGED,
@@ -1236,7 +1237,7 @@ describe('Receiver class', () => {
       const lastState = JSON.stringify(receiver.state);
 
       // Second update with same state
-      const syncSpy = jest.spyOn(receiver as any, 'syncDomWithState');
+      const syncSpy = vi.spyOn(receiver as any, 'syncDomWithState');
       receiver.update();
 
       // State should still be the same

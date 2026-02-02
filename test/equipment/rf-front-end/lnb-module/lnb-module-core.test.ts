@@ -1,10 +1,11 @@
+import { vi } from 'vitest';
 import { LNBModuleCore, LNBState } from '../../../../src/equipment/rf-front-end/lnb-module/lnb-module-core';
-import { createRFFrontEnd } from '../../../../src/equipment/rf-front-end/rf-front-end-factory';
 import { RFFrontEndCore } from '../../../../src/equipment/rf-front-end/rf-front-end-core';
+import { createRFFrontEnd } from '../../../../src/equipment/rf-front-end/rf-front-end-factory';
 import { EventBus } from '../../../../src/events/event-bus';
 import { Events } from '../../../../src/events/events';
-import { dB, dBi, dBm, Hertz, MHz, RfFrequency, RfSignal } from '../../../../src/types';
 import { SignalOrigin } from '../../../../src/signal-origin';
+import { dB, dBi, dBm, Hertz, MHz, RfFrequency, RfSignal } from '../../../../src/types';
 
 describe('LNBModuleCore', () => {
   let rfFrontEnd: RFFrontEndCore;
@@ -21,8 +22,8 @@ describe('LNBModuleCore', () => {
 
   afterEach(() => {
     document.body.innerHTML = '';
-    jest.clearAllMocks();
-    jest.useRealTimers();
+    vi.clearAllMocks();
+    vi.useRealTimers();
   });
 
   describe('getDefaultState', () => {
@@ -68,7 +69,7 @@ describe('LNBModuleCore', () => {
         gainInPath: 30 as dBi,
       };
 
-      jest.spyOn(lnbModule, 'rxSignalsIn', 'get').mockReturnValue([mockSignal]);
+      vi.spyOn(lnbModule, 'rxSignalsIn', 'get').mockReturnValue([mockSignal]);
 
       lnbModule.state.isPowered = true;
       lnbModule.state.gain = 50 as dB;
@@ -89,7 +90,7 @@ describe('LNBModuleCore', () => {
         gainInPath: 30 as dBi,
       };
 
-      jest.spyOn(lnbModule, 'rxSignalsIn', 'get').mockReturnValue([mockSignal]);
+      vi.spyOn(lnbModule, 'rxSignalsIn', 'get').mockReturnValue([mockSignal]);
 
       lnbModule.state.isPowered = false;
       lnbModule.update();
@@ -108,7 +109,7 @@ describe('LNBModuleCore', () => {
         gainInPath: 30 as dBi,
       };
 
-      jest.spyOn(lnbModule, 'rxSignalsIn', 'get').mockReturnValue([mockSignal]);
+      vi.spyOn(lnbModule, 'rxSignalsIn', 'get').mockReturnValue([mockSignal]);
 
       lnbModule.state.loFrequency = 6080 as MHz;
       lnbModule.state.frequencyError = 0;
@@ -131,7 +132,7 @@ describe('LNBModuleCore', () => {
         gainInPath: 30 as dBi,
       };
 
-      jest.spyOn(lnbModule, 'rxSignalsIn', 'get').mockReturnValue([mockSignal]);
+      vi.spyOn(lnbModule, 'rxSignalsIn', 'get').mockReturnValue([mockSignal]);
 
       lnbModule.state.loFrequency = 6080 as MHz;
       lnbModule.state.gain = 0 as dB;
@@ -230,7 +231,7 @@ describe('LNBModuleCore', () => {
       lnbModule.state.isExtRefLocked = false;
 
       // Need to mock isExtRefPresent to return true
-      jest.spyOn(lnbModule, 'isExtRefPresent').mockReturnValue(true);
+      vi.spyOn(lnbModule, 'isExtRefPresent').mockReturnValue(true);
 
       const alarms = lnbModule.getAlarms();
 
@@ -309,11 +310,11 @@ describe('LNBModuleCore', () => {
 
   describe('thermal stabilization', () => {
     beforeEach(() => {
-      jest.useFakeTimers();
+      vi.useFakeTimers();
     });
 
     afterEach(() => {
-      jest.useRealTimers();
+      vi.useRealTimers();
     });
 
     it('should set temperature to ambient when powered off', () => {
@@ -329,7 +330,7 @@ describe('LNBModuleCore', () => {
       lnbModule.handlePowerToggle(true);
 
       // Advance time past stabilization period
-      jest.advanceTimersByTime(200000); // 200 seconds
+      vi.advanceTimersByTime(200000); // 200 seconds
 
       lnbModule.updateThermalState_();
 
@@ -342,13 +343,13 @@ describe('LNBModuleCore', () => {
       lnbModule.state.isExtRefLocked = true;
 
       // Mock GPSDO as warmed up
-      jest.spyOn(rfFrontEnd.gpsdoModule, 'get10MhzOutput').mockReturnValue({
+      vi.spyOn(rfFrontEnd.gpsdoModule, 'get10MhzOutput').mockReturnValue({
         frequency: 10e6 as any,
         power: -10,
         isWarmedUp: true,
         isEnabled: true
       });
-      jest.spyOn(lnbModule, 'isExtRefPresent').mockReturnValue(true);
+      vi.spyOn(lnbModule, 'isExtRefPresent').mockReturnValue(true);
 
       lnbModule.update();
 

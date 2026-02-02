@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { GroundStation } from '../../../src/assets/ground-station/ground-station';
 import { createGroundStation } from '../../../src/assets/ground-station/ground-station-factory';
 import type { GroundStationConfig } from '../../../src/assets/ground-station/ground-station-state';
@@ -8,54 +9,62 @@ import { SimulationManager } from '../../../src/simulation/simulation-manager';
 // Mock HTMLMediaElement.prototype.play for jsdom compatibility
 Object.defineProperty(HTMLMediaElement.prototype, 'play', {
   configurable: true,
-  value: jest.fn().mockResolvedValue(undefined),
+  value: vi.fn().mockResolvedValue(undefined),
 });
 
 // Mock equipment modules to avoid complex DOM setup
-jest.mock('../../../src/equipment/antenna/antenna-ui-headless', () => ({
-  AntennaUIHeadless: jest.fn().mockImplementation((containerId, configId, initialState, teamId) => ({
-    containerId,
-    configId,
-    teamId,
-    state: { uuid: 'mock-antenna-uuid', isPowered: true, ...initialState },
-    transmitters: [],
-    attachRfFrontEnd: jest.fn(),
-    sync: jest.fn(),
-    destroy: jest.fn(),
-  })),
+vi.mock('../../../src/equipment/antenna/antenna-ui-headless', () => ({
+  AntennaUIHeadless: vi.fn(function (containerId, configId, initialState, teamId) {
+    return {
+      containerId,
+      configId,
+      teamId,
+      state: { uuid: 'mock-antenna-uuid', isPowered: true, ...initialState },
+      transmitters: [],
+      attachRfFrontEnd: vi.fn(),
+      sync: vi.fn(),
+      destroy: vi.fn(),
+    };
+  }),
 }));
 
-jest.mock('../../../src/equipment/rf-front-end/rf-front-end-factory', () => ({
-  createRFFrontEnd: jest.fn().mockImplementation((containerId, config, type) => ({
-    containerId,
-    type,
-    state: { uuid: 'mock-rf-uuid', isPowered: true, ...config },
-    connectAntenna: jest.fn(),
-    connectTransmitter: jest.fn(),
-    sync: jest.fn(),
-    destroy: jest.fn(),
-  })),
+vi.mock('../../../src/equipment/rf-front-end/rf-front-end-factory', () => ({
+  createRFFrontEnd: vi.fn(function (containerId, config, type) {
+    return {
+      containerId,
+      type,
+      state: { uuid: 'mock-rf-uuid', isPowered: true, ...config },
+      connectAntenna: vi.fn(),
+      connectTransmitter: vi.fn(),
+      sync: vi.fn(),
+      destroy: vi.fn(),
+    };
+  }),
 }));
 
-jest.mock('../../../src/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer', () => ({
-  RealTimeSpectrumAnalyzer: jest.fn().mockImplementation((containerId, rfFrontEnd, config, teamId) => ({
-    containerId,
-    teamId,
-    state: { uuid: 'mock-spec-uuid', isPowered: true, ...config },
-    sync: jest.fn(),
-    destroy: jest.fn(),
-  })),
+vi.mock('../../../src/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer', () => ({
+  RealTimeSpectrumAnalyzer: vi.fn(function (containerId, _rfFrontEnd, config, teamId) {
+    return {
+      containerId,
+      teamId,
+      state: { uuid: 'mock-spec-uuid', ...config },
+      sync: vi.fn(),
+      destroy: vi.fn(),
+    };
+  }),
 }));
 
-jest.mock('../../../src/equipment/transmitter/transmitter', () => {
-  const mockTransmitter = jest.fn().mockImplementation((containerId: string, config: any, teamId: number) => ({
-    containerId,
-    teamId,
-    state: { uuid: 'mock-tx-uuid', isPowered: true, ...config },
-    sync: jest.fn(),
-    destroy: jest.fn(),
-  }));
-  (mockTransmitter as any).getDefaultState = jest.fn().mockReturnValue({
+vi.mock('../../../src/equipment/transmitter/transmitter', () => {
+  const mockTransmitter = vi.fn(function (containerId: string, config: any, teamId: number) {
+    return {
+      containerId,
+      teamId,
+      state: { uuid: 'mock-tx-uuid', isPowered: true, ...config },
+      sync: vi.fn(),
+      destroy: vi.fn(),
+    };
+  });
+  (mockTransmitter as any).getDefaultState = vi.fn().mockReturnValue({
     uuid: 'default-tx-uuid',
     isPowered: true,
     modems: [],
@@ -63,17 +72,19 @@ jest.mock('../../../src/equipment/transmitter/transmitter', () => {
   return { Transmitter: mockTransmitter };
 });
 
-jest.mock('../../../src/equipment/receiver/receiver', () => {
-  const mockReceiver = jest.fn().mockImplementation((containerId: string, antennas: any[], config: any, teamId: number) => ({
-    containerId,
-    teamId,
-    antennas,
-    state: { uuid: 'mock-rx-uuid', isPowered: true, ...config },
-    connectRfFrontEnd: jest.fn(),
-    sync: jest.fn(),
-    destroy: jest.fn(),
-  }));
-  (mockReceiver as any).getDefaultState = jest.fn().mockReturnValue({
+vi.mock('../../../src/equipment/receiver/receiver', () => {
+  const mockReceiver = vi.fn(function (containerId: string, antennas: any[], config: any, teamId: number) {
+    return {
+      containerId,
+      teamId,
+      antennas,
+      state: { uuid: 'mock-rx-uuid', isPowered: true, ...config },
+      connectRfFrontEnd: vi.fn(),
+      sync: vi.fn(),
+      destroy: vi.fn(),
+    };
+  });
+  (mockReceiver as any).getDefaultState = vi.fn().mockReturnValue({
     uuid: 'default-rx-uuid',
     isPowered: true,
     modems: [],
@@ -86,7 +97,7 @@ describe('GroundStation', () => {
   let mockConfig: GroundStationConfig;
 
   beforeEach(() => {
-    jest.resetModules();
+    vi.resetModules();
 
     // Create a clean DOM root
     document.body.innerHTML = '<div id="test-root"></div>';
@@ -112,20 +123,20 @@ describe('GroundStation', () => {
       },
       antennas: ['STANDARD_9M', 'STANDARD_9M'],
       rfFrontEnds: [
-        { isPowered: true },
-        { isPowered: true },
+        {},
+        {},
       ],
       spectrumAnalyzers: [
-        { isPowered: true },
-        { isPowered: true },
+        {},
+        {},
       ],
       transmitters: [
-        { isPowered: true },
-        { isPowered: true },
+        {},
+        {},
       ],
       receivers: [
-        { isPowered: true },
-        { isPowered: true },
+        {},
+        {},
       ],
       teamId: 1,
       serverId: 1,
@@ -133,7 +144,7 @@ describe('GroundStation', () => {
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     document.body.innerHTML = '';
   });
 
@@ -179,7 +190,7 @@ describe('GroundStation', () => {
     });
 
     it('should register UPDATE event listener', () => {
-      const onSpy = jest.spyOn(EventBus.getInstance(), 'on');
+      const onSpy = vi.spyOn(EventBus.getInstance(), 'on');
 
       groundStation = new GroundStation(mockConfig);
 
@@ -407,7 +418,7 @@ describe('GroundStation', () => {
     });
 
     it('should sync RF front-end states', () => {
-      const rfState = { isPowered: false };
+      const rfState = { teamId: 2 };
 
       groundStation.sync({
         uuid: groundStation.uuid,
@@ -420,7 +431,7 @@ describe('GroundStation', () => {
     });
 
     it('should sync spectrum analyzer states', () => {
-      const specState = { isPowered: false };
+      const specState = { isPaused: true };
 
       groundStation.sync({
         uuid: groundStation.uuid,
@@ -433,7 +444,7 @@ describe('GroundStation', () => {
     });
 
     it('should sync transmitter states', () => {
-      const txState = { isPowered: false };
+      const txState = { activeModem: 2 };
 
       groundStation.sync({
         uuid: groundStation.uuid,
@@ -446,7 +457,7 @@ describe('GroundStation', () => {
     });
 
     it('should sync receiver states', () => {
-      const rxState = { isPowered: false };
+      const rxState = { activeModem: 2 };
 
       groundStation.sync({
         uuid: groundStation.uuid,
@@ -495,22 +506,21 @@ describe('GroundStation', () => {
     });
 
     it('should emit events through EventBus', () => {
-      const emitSpy = jest.spyOn(EventBus.getInstance(), 'emit');
+      const emitSpy = vi.spyOn(EventBus.getInstance(), 'emit');
 
-      groundStation.emit(Events.UPDATE);
+      groundStation.emit(Events.UPDATE, 16 as any);
 
-      expect(emitSpy).toHaveBeenCalledWith(Events.UPDATE);
+      expect(emitSpy).toHaveBeenCalledWith(Events.UPDATE, 16);
 
       emitSpy.mockRestore();
     });
 
     it('should pass arguments to emit', () => {
-      const emitSpy = jest.spyOn(EventBus.getInstance(), 'emit');
-      const mockData = { test: 'data' };
+      const emitSpy = vi.spyOn(EventBus.getInstance(), 'emit');
 
-      groundStation.emit(Events.SYNC, mockData as any);
+      groundStation.emit(Events.SYNC);
 
-      expect(emitSpy).toHaveBeenCalledWith(Events.SYNC, mockData);
+      expect(emitSpy).toHaveBeenCalledWith(Events.SYNC);
 
       emitSpy.mockRestore();
     });
@@ -522,7 +532,7 @@ describe('GroundStation', () => {
     });
 
     it('should unsubscribe from UPDATE event', () => {
-      const offSpy = jest.spyOn(EventBus.getInstance(), 'off');
+      const offSpy = vi.spyOn(EventBus.getInstance(), 'off');
 
       groundStation.destroy();
 
@@ -585,7 +595,7 @@ describe('GroundStation', () => {
       const configWithMismatch: GroundStationConfig = {
         ...mockConfig,
         antennas: ['STANDARD_9M', 'STANDARD_9M', 'STANDARD_9M'],
-        rfFrontEnds: [{ isPowered: true }],
+        rfFrontEnds: [{}],
       };
 
       groundStation = new GroundStation(configWithMismatch);
@@ -603,12 +613,12 @@ describe('GroundStation', () => {
       const configWithMismatch: GroundStationConfig = {
         ...mockConfig,
         antennas: ['STANDARD_9M'],
-        rfFrontEnds: [{ isPowered: true }],
+        rfFrontEnds: [{}],
         spectrumAnalyzers: [
-          { isPowered: true },
-          { isPowered: true },
-          { isPowered: true }, // Would need rfFrontEnd[1]
-          { isPowered: true }, // Would need rfFrontEnd[1]
+          {},
+          {},
+          {}, // Would need rfFrontEnd[1]
+          {}, // Would need rfFrontEnd[1]
         ],
       };
 
@@ -623,16 +633,16 @@ describe('GroundStation', () => {
   describe('Equipment wiring logic', () => {
     beforeEach(() => {
       mockConfig.transmitters = [
-        { isPowered: true },
-        { isPowered: true },
-        { isPowered: true },
-        { isPowered: true },
+        {},
+        {},
+        {},
+        {},
       ];
       mockConfig.receivers = [
-        { isPowered: true },
-        { isPowered: true },
-        { isPowered: true },
-        { isPowered: true },
+        {},
+        {},
+        {},
+        {},
       ];
       groundStation = new GroundStation(mockConfig);
       groundStation.initializeEquipment();
@@ -693,13 +703,13 @@ describe('createGroundStation factory', () => {
         elevation: 10,
       },
       antennas: ['STANDARD_9M'],
-      rfFrontEnds: [{ isPowered: true }],
+      rfFrontEnds: [{}],
       teamId: 1,
     };
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('should create a GroundStation instance', () => {

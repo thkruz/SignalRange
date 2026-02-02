@@ -1,25 +1,26 @@
-import { BUCAdapter } from '../../../../src/pages/mission-control/tabs/buc-adapter';
+import { Mock, Mocked, vi } from 'vitest';
 import { BUCModuleCore, BUCState } from '../../../../src/equipment/rf-front-end/buc-module/buc-module-core';
 import { EventBus } from '../../../../src/events/event-bus';
 import { Events } from '../../../../src/events/events';
+import { BUCAdapter } from '../../../../src/pages/mission-control/tabs/buc-adapter';
 
 // Mock dependencies
-jest.mock('../../../../src/events/event-bus');
-jest.mock('../../../../src/components/card-alarm-badge/card-alarm-badge', () => ({
+vi.mock('../../../../src/events/event-bus');
+vi.mock('../../../../src/components/card-alarm-badge/card-alarm-badge', () => ({
   CardAlarmBadge: {
-    create: jest.fn(() => ({
+    create: vi.fn(() => ({
       html: '<div class="mock-badge"></div>',
-      update: jest.fn(),
-      dispose: jest.fn(),
+      update: vi.fn(),
+      dispose: vi.fn(),
     })),
   },
 }));
 
 describe('BUCAdapter', () => {
-  let mockBucModule: jest.Mocked<BUCModuleCore>;
+  let mockBucModule: Mocked<BUCModuleCore>;
   let containerEl: HTMLElement;
   let adapter: BUCAdapter;
-  let mockEventBus: { on: jest.Mock; off: jest.Mock; emit: jest.Mock };
+  let mockEventBus: { on: Mock; off: Mock; emit: Mock };
 
   const mockState: BUCState = {
     isPowered: true,
@@ -33,31 +34,31 @@ describe('BUCAdapter', () => {
     currentDraw: 2.5,
     phaseNoise: -80,
     frequencyError: 50,
-  };
+  } as BUCState;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Setup mock EventBus
     mockEventBus = {
-      on: jest.fn(),
-      off: jest.fn(),
-      emit: jest.fn(),
+      on: vi.fn(),
+      off: vi.fn(),
+      emit: vi.fn(),
     };
-    (EventBus.getInstance as jest.Mock).mockReturnValue(mockEventBus);
+    (EventBus.getInstance as Mock).mockReturnValue(mockEventBus);
 
     // Setup mock BUCModuleCore
     mockBucModule = {
       state: { ...mockState },
       outputSignals: [{ frequency: 5943e6, power: 35 }],
-      handleLoFrequencyChange: jest.fn(),
-      handleGainChange: jest.fn(),
-      handlePowerToggle: jest.fn(),
-      handleMuteToggle: jest.fn(),
-      handleLoopbackToggle: jest.fn(),
-      getActiveInjectionMode: jest.fn().mockReturnValue('low'),
-      getAlarms: jest.fn().mockReturnValue([]),
-    } as unknown as jest.Mocked<BUCModuleCore>;
+      handleLoFrequencyChange: vi.fn(),
+      handleGainChange: vi.fn(),
+      handlePowerToggle: vi.fn(),
+      handleMuteToggle: vi.fn(),
+      handleLoopbackToggle: vi.fn(),
+      getActiveInjectionMode: vi.fn().mockReturnValue('low'),
+      getAlarms: vi.fn().mockReturnValue([]),
+    } as unknown as Mocked<BUCModuleCore>;
 
     // Setup container with required DOM elements
     containerEl = document.createElement('div');
@@ -332,7 +333,7 @@ describe('BUCAdapter', () => {
       mockBucModule.state.temperature = 55;
 
       // Trigger update with time past throttle
-      jest.spyOn(Date, 'now').mockReturnValue(2000);
+      vi.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();
 
       const outputDisplay = containerEl.querySelector('#buc-output-power-display') as HTMLElement;
@@ -350,7 +351,7 @@ describe('BUCAdapter', () => {
       mockBucModule.state.outputPower = 42.5;
 
       // First call at time 0 - should not sync due to initial throttle
-      jest.spyOn(Date, 'now').mockReturnValue(0);
+      vi.spyOn(Date, 'now').mockReturnValue(0);
       updateHandler();
 
       // Output should still be from initial sync
@@ -365,7 +366,7 @@ describe('BUCAdapter', () => {
 
       mockBucModule.state.isExtRefLocked = false;
 
-      jest.spyOn(Date, 'now').mockReturnValue(2000);
+      vi.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();
 
       const lockStatus = containerEl.querySelector('#buc-lock-status') as HTMLElement;
@@ -381,7 +382,7 @@ describe('BUCAdapter', () => {
       mockBucModule.state.outputPower = 38;
       mockBucModule.state.saturationPower = 40;
 
-      jest.spyOn(Date, 'now').mockReturnValue(2000);
+      vi.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();
 
       const p1dbDisplay = containerEl.querySelector('#buc-p1db-margin-display') as HTMLElement;
@@ -395,7 +396,7 @@ describe('BUCAdapter', () => {
 
       mockBucModule.state.currentDraw = 3.25;
 
-      jest.spyOn(Date, 'now').mockReturnValue(2000);
+      vi.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();
 
       const currentDisplay = containerEl.querySelector('#buc-current-display') as HTMLElement;
@@ -409,7 +410,7 @@ describe('BUCAdapter', () => {
 
       mockBucModule.state.phaseNoise = -85;
 
-      jest.spyOn(Date, 'now').mockReturnValue(2000);
+      vi.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();
 
       const phaseNoiseDisplay = containerEl.querySelector('#buc-phase-noise-display') as HTMLElement;
@@ -423,7 +424,7 @@ describe('BUCAdapter', () => {
 
       mockBucModule.state.isPowered = false;
 
-      jest.spyOn(Date, 'now').mockReturnValue(2000);
+      vi.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();
 
       const outputDisplay = containerEl.querySelector('#buc-output-power-display') as HTMLElement;
@@ -442,7 +443,7 @@ describe('BUCAdapter', () => {
         (call: unknown[]) => call[0] === Events.UPDATE
       )?.[1];
 
-      jest.spyOn(Date, 'now').mockReturnValue(2000);
+      vi.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();
 
       const status = containerEl.querySelector('#buc-sideband-status') as HTMLElement;
@@ -457,7 +458,7 @@ describe('BUCAdapter', () => {
         (call: unknown[]) => call[0] === Events.UPDATE
       )?.[1];
 
-      jest.spyOn(Date, 'now').mockReturnValue(2000);
+      vi.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();
 
       const status = containerEl.querySelector('#buc-sideband-status') as HTMLElement;
@@ -472,7 +473,7 @@ describe('BUCAdapter', () => {
         (call: unknown[]) => call[0] === Events.UPDATE
       )?.[1];
 
-      jest.spyOn(Date, 'now').mockReturnValue(2000);
+      vi.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();
 
       const status = containerEl.querySelector('#buc-sideband-status') as HTMLElement;
@@ -487,7 +488,7 @@ describe('BUCAdapter', () => {
         (call: unknown[]) => call[0] === Events.UPDATE
       )?.[1];
 
-      jest.spyOn(Date, 'now').mockReturnValue(2000);
+      vi.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();
 
       const status = containerEl.querySelector('#buc-sideband-status') as HTMLElement;
@@ -504,7 +505,7 @@ describe('BUCAdapter', () => {
         (call: unknown[]) => call[0] === Events.UPDATE
       )?.[1];
 
-      jest.spyOn(Date, 'now').mockReturnValue(2000);
+      vi.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();
 
       // Verify getAlarms was called during sync
@@ -518,7 +519,7 @@ describe('BUCAdapter', () => {
         (call: unknown[]) => call[0] === Events.UPDATE
       )?.[1];
 
-      jest.spyOn(Date, 'now').mockReturnValue(2000);
+      vi.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();
 
       expect(mockBucModule.getAlarms).toHaveBeenCalled();
@@ -531,7 +532,7 @@ describe('BUCAdapter', () => {
         (call: unknown[]) => call[0] === Events.UPDATE
       )?.[1];
 
-      jest.spyOn(Date, 'now').mockReturnValue(2000);
+      vi.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();
 
       expect(mockBucModule.getAlarms).toHaveBeenCalled();
@@ -544,7 +545,7 @@ describe('BUCAdapter', () => {
         (call: unknown[]) => call[0] === Events.UPDATE
       )?.[1];
 
-      jest.spyOn(Date, 'now').mockReturnValue(2000);
+      vi.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();
 
       expect(mockBucModule.getAlarms).toHaveBeenCalled();

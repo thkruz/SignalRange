@@ -1,16 +1,17 @@
+import { vi } from 'vitest';
 import {
   Character,
-  Emotion,
   CharacterAvatars,
+  CharacterCompany,
   CharacterNames,
   CharacterTitles,
-  CharacterCompany,
+  Emotion,
   getCharacterAvatarUrl,
 } from '../../src/modal/character-enum';
 
 // Mock getAssetUrl
-jest.mock('../../src/utils/asset-url', () => ({
-  getAssetUrl: jest.fn((path: string) => path),
+vi.mock('../../src/utils/asset-url', () => ({
+  getAssetUrl: vi.fn((path: string) => path),
 }));
 
 describe('character-enum', () => {

@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { EventBus } from '../../src/events/event-bus';
 import { Events, QuizCompletedData, QuizPassedData } from '../../src/events/events';
 import { Objective, ObjectiveState } from '../../src/objectives/objective-types';
@@ -140,17 +141,17 @@ const createMockGroundStation = () => ({
     notchFilterModule: { state: mockNotchFilterState },
     couplerModule: {
       signalPathManager: {
-        getTotalGainTo: jest.fn(() => 0),
+        getTotalGainTo: vi.fn(() => 0),
       },
     },
   }],
   spectrumAnalyzers: [{
     state: mockSpectrumAnalyzerState,
-    getInputSignals: jest.fn(() => mockInputSignals),
+    getInputSignals: vi.fn(() => mockInputSignals),
     rfFrontEnd_: {
       couplerModule: {
         signalPathManager: {
-          getTotalGainTo: jest.fn(() => 0),
+          getTotalGainTo: vi.fn(() => 0),
         },
       },
     },
@@ -160,8 +161,8 @@ const createMockGroundStation = () => ({
       activeModem: 1,
       modems: [mockReceiverModemState],
     },
-    getSignalsInBandwidth: jest.fn(() => ({ hasLock: mockReceiverHasLock })),
-    getSnrForModem: jest.fn(() => mockReceiverSnr),
+    getSignalsInBandwidth: vi.fn(() => ({ hasLock: mockReceiverHasLock })),
+    getSnrForModem: vi.fn(() => mockReceiverSnr),
   }],
   transmitters: [{
     state: {
@@ -172,11 +173,11 @@ const createMockGroundStation = () => ({
 });
 
 // Mock dependencies
-jest.mock('../../src/simulation/simulation-manager', () => ({
+vi.mock('../../src/simulation/simulation-manager', () => ({
   SimulationManager: {
-    getInstance: jest.fn(() => ({
+    getInstance: vi.fn(() => ({
       groundStations: [createMockGroundStation()],
-      getSatByNoradId: jest.fn((id: number) => {
+      getSatByNoradId: vi.fn((id: number) => {
         if (id === 12345) {
           return { az: 180, el: 45 };
         }
@@ -187,22 +188,22 @@ jest.mock('../../src/simulation/simulation-manager', () => ({
   },
 }));
 
-jest.mock('../../src/modal/quiz-manager', () => ({
+vi.mock('../../src/modal/quiz-manager', () => ({
   QuizManager: {
-    getInstance: jest.fn(() => ({
-      hasQuiz: jest.fn(() => false),
-      isQuizComplete: jest.fn(() => false),
-      registerQuiz: jest.fn(),
+    getInstance: vi.fn(() => ({
+      hasQuiz: vi.fn(() => false),
+      isQuizComplete: vi.fn(() => false),
+      registerQuiz: vi.fn(),
     })),
   },
 }));
 
 let mockTrafficOwner: string | null = null;
 
-jest.mock('../../src/traffic/traffic-control-manager', () => ({
+vi.mock('../../src/traffic/traffic-control-manager', () => ({
   TrafficControlManager: {
-    getInstance: jest.fn(() => ({
-      getOwner: jest.fn(() => mockTrafficOwner),
+    getInstance: vi.fn(() => ({
+      getOwner: vi.fn(() => mockTrafficOwner),
     })),
   },
 }));
@@ -229,7 +230,7 @@ describe('ObjectivesManager', () => {
   let eventBus: EventBus;
 
   beforeEach(() => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     EventBus.destroy();
     ObjectivesManager.destroy();
     eventBus = EventBus.getInstance();
@@ -239,9 +240,9 @@ describe('ObjectivesManager', () => {
   afterEach(() => {
     ObjectivesManager.destroy();
     EventBus.destroy();
-    jest.clearAllTimers();
-    jest.useRealTimers();
-    jest.clearAllMocks();
+    vi.clearAllTimers();
+    vi.useRealTimers();
+    vi.clearAllMocks();
   });
 
   const createTestObjective = (overrides: Partial<Objective> = {}): Objective => ({
@@ -275,7 +276,7 @@ describe('ObjectivesManager', () => {
     });
 
     it('should warn and destroy previous instance on re-initialize', () => {
-      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
+      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation();
 
       const objectives1 = [createTestObjective({ id: 'obj-1' })];
       const manager1 = ObjectivesManager.initialize(objectives1);
@@ -371,7 +372,7 @@ describe('ObjectivesManager', () => {
       expect(manager.getScenarioTimeRemaining()).toBe(60);
 
       // Advance time by 1 second (timer interval)
-      jest.advanceTimersByTime(1000);
+      vi.advanceTimersByTime(1000);
 
       expect(manager.getScenarioTimeRemaining()).toBe(59);
     });
@@ -385,13 +386,13 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const failedCallback = jest.fn();
+      const failedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_FAILED, failedCallback);
 
       ObjectivesManager.initialize(objectives, 60);
 
       // Advance timer past the objective timeout
-      jest.advanceTimersByTime(6000);
+      vi.advanceTimersByTime(6000);
 
       expect(failedCallback).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -403,13 +404,13 @@ describe('ObjectivesManager', () => {
 
     it('should emit SCENARIO_TIME_EXPIRED when scenario timer reaches zero', () => {
       const objectives = [createTestObjective()];
-      const expiredCallback = jest.fn();
+      const expiredCallback = vi.fn();
       eventBus.on(Events.SCENARIO_TIME_EXPIRED, expiredCallback);
 
       ObjectivesManager.initialize(objectives, 3);
 
       // Advance time past the scenario timeout
-      jest.advanceTimersByTime(4000);
+      vi.advanceTimersByTime(4000);
 
       expect(expiredCallback).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -424,7 +425,7 @@ describe('ObjectivesManager', () => {
       const objectives = [createTestObjective()];
       const manager = ObjectivesManager.initialize(objectives, 300);
 
-      jest.advanceTimersByTime(10000); // 10 seconds
+      vi.advanceTimersByTime(10000); // 10 seconds
 
       expect(manager.getElapsedTime()).toBe(10);
     });
@@ -434,7 +435,7 @@ describe('ObjectivesManager', () => {
       const manager = ObjectivesManager.initialize(objectives);
 
       const now = Date.now();
-      jest.setSystemTime(now + 15000);
+      vi.setSystemTime(now + 15000);
 
       expect(manager.getElapsedTime()).toBe(15);
     });
@@ -448,7 +449,7 @@ describe('ObjectivesManager', () => {
       expect(manager.getScenarioTimeRemaining()).toBe(60);
 
       // Advance 5 seconds
-      jest.advanceTimersByTime(5000);
+      vi.advanceTimersByTime(5000);
       expect(manager.getScenarioTimeRemaining()).toBe(55);
 
       // Emit quiz passed event
@@ -461,7 +462,7 @@ describe('ObjectivesManager', () => {
       eventBus.emit(Events.QUIZ_PASSED, quizPassedData);
 
       // Timer should be paused
-      jest.advanceTimersByTime(5000);
+      vi.advanceTimersByTime(5000);
       expect(manager.getScenarioTimeRemaining()).toBe(55); // No change
 
       expect(manager.isQuizPassed()).toBe(true);
@@ -483,7 +484,7 @@ describe('ObjectivesManager', () => {
         pointsDeducted: 0,
       });
 
-      jest.advanceTimersByTime(5000);
+      vi.advanceTimersByTime(5000);
       const timeAfterPause = manager.getScenarioTimeRemaining();
 
       // Emit quiz completed event
@@ -498,7 +499,7 @@ describe('ObjectivesManager', () => {
       expect(manager.isQuizPassed()).toBe(false);
 
       // Timer should resume
-      jest.advanceTimersByTime(3000);
+      vi.advanceTimersByTime(3000);
       expect(manager.getScenarioTimeRemaining()).toBeLessThan(timeAfterPause);
     });
   });
@@ -824,7 +825,7 @@ describe('ObjectivesManager', () => {
 
       const manager = ObjectivesManager.initialize(objectives);
 
-      jest.advanceTimersByTime(5000);
+      vi.advanceTimersByTime(5000);
 
       expect(manager.getObjectiveTimeRemaining('timed-obj')).toBe(55);
     });
@@ -842,7 +843,7 @@ describe('ObjectivesManager', () => {
       const manager = ObjectivesManager.initialize(objectives, 300);
 
       // Timer should not countdown
-      jest.advanceTimersByTime(5000);
+      vi.advanceTimersByTime(5000);
 
       expect(manager.getScenarioTimeRemaining()).toBe(300);
     });
@@ -855,7 +856,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const unlockedCallback = jest.fn();
+      const unlockedCallback = vi.fn();
       eventBus.on(Events.SCENARIO_UNLOCKED, unlockedCallback);
 
       const manager = ObjectivesManager.initialize(objectives, 300);
@@ -883,13 +884,13 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const penaltyCallback = jest.fn();
+      const penaltyCallback = vi.fn();
       eventBus.on(Events.TIME_PENALTY_APPLIED, penaltyCallback);
 
       ObjectivesManager.initialize(objectives, 300);
 
       // Advance time past threshold
-      jest.advanceTimersByTime(35000);
+      vi.advanceTimersByTime(35000);
 
       // Complete the objective
       ObjectivesManager.registerOpenedBox('mission-brief-1');
@@ -915,13 +916,13 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const penaltyCallback = jest.fn();
+      const penaltyCallback = vi.fn();
       eventBus.on(Events.TIME_PENALTY_APPLIED, penaltyCallback);
 
       ObjectivesManager.initialize(objectives, 300);
 
       // Advance time but stay under threshold
-      jest.advanceTimersByTime(15000);
+      vi.advanceTimersByTime(15000);
 
       // Complete the objective
       ObjectivesManager.registerOpenedBox('mission-brief-1');
@@ -944,7 +945,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -974,7 +975,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -998,7 +999,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -1027,7 +1028,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -1098,7 +1099,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const activatedCallback = jest.fn();
+      const activatedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_ACTIVATED, activatedCallback);
 
       const manager = ObjectivesManager.initialize(objectives);
@@ -1193,7 +1194,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -1224,7 +1225,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -1250,7 +1251,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -1277,7 +1278,7 @@ describe('ObjectivesManager', () => {
       const manager = ObjectivesManager.initialize(objectives);
 
       // Let the objective timeout
-      jest.advanceTimersByTime(3000);
+      vi.advanceTimersByTime(3000);
 
       const html = manager.generateHtmlChecklist();
 
@@ -1341,12 +1342,12 @@ describe('ObjectivesManager', () => {
       const objectives = [createTestObjective()];
       const manager = ObjectivesManager.initialize(objectives, 60);
 
-      jest.advanceTimersByTime(5000);
+      vi.advanceTimersByTime(5000);
       expect(manager.getScenarioTimeRemaining()).toBe(55);
 
       manager.stopAllTimers();
 
-      jest.advanceTimersByTime(5000);
+      vi.advanceTimersByTime(5000);
       expect(manager.getScenarioTimeRemaining()).toBe(55); // No change
     });
 
@@ -1366,13 +1367,13 @@ describe('ObjectivesManager', () => {
 
       const manager = ObjectivesManager.initialize(objectives);
 
-      jest.advanceTimersByTime(5000);
+      vi.advanceTimersByTime(5000);
       expect(manager.getObjectiveTimeRemaining('timed-1')).toBe(55);
       expect(manager.getObjectiveTimeRemaining('timed-2')).toBe(115);
 
       manager.stopAllTimers();
 
-      jest.advanceTimersByTime(5000);
+      vi.advanceTimersByTime(5000);
       expect(manager.getObjectiveTimeRemaining('timed-1')).toBe(55);
       expect(manager.getObjectiveTimeRemaining('timed-2')).toBe(115);
     });
@@ -1385,7 +1386,7 @@ describe('ObjectivesManager', () => {
         createTestObjective({ id: 'obj-2' }),
       ];
 
-      const allCompletedCallback = jest.fn();
+      const allCompletedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVES_ALL_COMPLETED, allCompletedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -1408,7 +1409,7 @@ describe('ObjectivesManager', () => {
 
       const manager = ObjectivesManager.initialize(objectives, 300);
 
-      jest.advanceTimersByTime(10000);
+      vi.advanceTimersByTime(10000);
       expect(manager.getScenarioTimeRemaining()).toBe(290);
 
       // Complete the objective
@@ -1416,7 +1417,7 @@ describe('ObjectivesManager', () => {
       eventBus.emit(Events.UPDATE, 16);
 
       // Timer should be stopped
-      jest.advanceTimersByTime(10000);
+      vi.advanceTimersByTime(10000);
       expect(manager.getScenarioTimeRemaining()).toBe(290);
     });
   });
@@ -1425,7 +1426,7 @@ describe('ObjectivesManager', () => {
     it('should emit OBJECTIVE_CONDITION_CHANGED when condition becomes satisfied', () => {
       const objectives = [createTestObjective({ id: 'obj-1' })];
 
-      const conditionChangedCallback = jest.fn();
+      const conditionChangedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_CONDITION_CHANGED, conditionChangedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -1466,7 +1467,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const conditionChangedCallback = jest.fn();
+      const conditionChangedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_CONDITION_CHANGED, conditionChangedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -1579,13 +1580,13 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
 
       // Let the objective timeout
-      jest.advanceTimersByTime(3000);
+      vi.advanceTimersByTime(3000);
 
       // Try to satisfy conditions after failure
       ObjectivesManager.registerOpenedBox('mission-brief-1');
@@ -1606,7 +1607,7 @@ describe('ObjectivesManager', () => {
       const manager = ObjectivesManager.initialize(objectives);
 
       // Let the objective timeout
-      jest.advanceTimersByTime(3000);
+      vi.advanceTimersByTime(3000);
 
       const state = manager.getObjectiveState('failed-obj');
       expect(state?.isFailed).toBe(true);
@@ -1634,7 +1635,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -1662,7 +1663,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -1688,7 +1689,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -1711,7 +1712,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -1739,7 +1740,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -1765,7 +1766,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -1792,7 +1793,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -1818,7 +1819,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -1844,7 +1845,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -1873,7 +1874,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -1894,7 +1895,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -1915,7 +1916,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -1938,7 +1939,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -1961,7 +1962,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -1984,7 +1985,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -2014,7 +2015,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -2036,7 +2037,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -2059,7 +2060,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -2082,7 +2083,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -2104,7 +2105,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -2126,7 +2127,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -2153,7 +2154,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -2176,7 +2177,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -2201,7 +2202,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -2228,7 +2229,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -2255,7 +2256,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -2279,7 +2280,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -2306,7 +2307,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -2330,7 +2331,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -2352,7 +2353,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -2379,7 +2380,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -2401,7 +2402,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -2429,7 +2430,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -2457,7 +2458,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -2483,7 +2484,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -2509,7 +2510,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -2535,7 +2536,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -2561,7 +2562,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -2587,7 +2588,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -2611,7 +2612,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -2637,7 +2638,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -2663,7 +2664,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -2689,7 +2690,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -2715,7 +2716,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -2741,7 +2742,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -2765,7 +2766,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -2789,7 +2790,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -2812,7 +2813,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -2838,7 +2839,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -2864,7 +2865,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -2890,7 +2891,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -2916,7 +2917,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -2942,7 +2943,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -2968,7 +2969,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -2994,7 +2995,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -3020,7 +3021,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -3046,7 +3047,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -3072,7 +3073,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -3098,7 +3099,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -3124,7 +3125,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -3152,7 +3153,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -3187,7 +3188,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -3221,7 +3222,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -3244,7 +3245,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -3270,7 +3271,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -3296,7 +3297,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -3322,7 +3323,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -3348,7 +3349,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -3374,7 +3375,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -3402,7 +3403,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -3428,7 +3429,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -3454,7 +3455,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -3480,7 +3481,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -3506,7 +3507,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -3528,7 +3529,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -3556,7 +3557,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -3582,7 +3583,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -3612,7 +3613,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -3624,7 +3625,7 @@ describe('ObjectivesManager', () => {
 
   describe('Edge Cases and Error Handling', () => {
     it('should warn for unknown condition type', () => {
-      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
+      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation();
 
       const objectives = [
         createTestObjective({
@@ -3657,8 +3658,8 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
-      const completedCallback = jest.fn();
+      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -3683,7 +3684,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -3693,7 +3694,7 @@ describe('ObjectivesManager', () => {
     });
 
     it('should handle antenna-position without required params', () => {
-      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
+      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation();
 
       const objectives = [
         createTestObjective({
@@ -3709,7 +3710,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);
@@ -3720,7 +3721,7 @@ describe('ObjectivesManager', () => {
     });
 
     it('should handle notch-filter-configured without center frequency', () => {
-      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
+      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation();
 
       const objectives = [
         createTestObjective({
@@ -3736,7 +3737,7 @@ describe('ObjectivesManager', () => {
         }),
       ];
 
-      const completedCallback = jest.fn();
+      const completedCallback = vi.fn();
       eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
 
       ObjectivesManager.initialize(objectives);

@@ -1,24 +1,25 @@
+import { vi, Mock } from 'vitest';
 import { EventBus } from '../../../src/events/event-bus';
 import { Events } from '../../../src/events/events';
 
 // Mock dependencies before imports
-jest.mock('../../../src/events/event-bus');
+vi.mock('../../../src/events/event-bus');
 
-jest.mock('../../../src/engine/utils/query-selector', () => ({
-  qs: jest.fn(),
+vi.mock('../../../src/engine/utils/query-selector', () => ({
+  qs: vi.fn(),
 }));
 
-jest.mock('../../../src/logging/logger', () => ({
+vi.mock('../../../src/logging/logger', () => ({
   Logger: {
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
   },
 }));
 
-jest.mock('../../../src/scenario-manager', () => ({
+vi.mock('../../../src/scenario-manager', () => ({
   ScenarioManager: {
-    getInstance: jest.fn(() => ({
+    getInstance: vi.fn(() => ({
       settings: {
         missionBriefUrl: '/mission-brief.html',
       },
@@ -33,81 +34,90 @@ const mockSimulationManagerInstance = {
   dialogHistoryBox: null as any,
 };
 
-jest.mock('../../../src/simulation/simulation-manager', () => ({
+vi.mock('../../../src/simulation/simulation-manager', () => ({
   SimulationManager: {
-    getInstance: jest.fn(() => mockSimulationManagerInstance),
+    getInstance: vi.fn(() => mockSimulationManagerInstance),
   },
 }));
 
-jest.mock('../../../src/objectives', () => ({
+vi.mock('../../../src/objectives', () => ({
   ObjectivesManager: {
-    getInstance: jest.fn(() => ({
-      syncCollapsedStatesFromDOM: jest.fn(),
-      generateHtmlChecklist: jest.fn(() => '<div>Checklist</div>'),
+    getInstance: vi.fn(() => ({
+      syncCollapsedStatesFromDOM: vi.fn(),
+      generateHtmlChecklist: vi.fn(() => '<div>Checklist</div>'),
     })),
   },
 }));
 
-jest.mock('../../../src/modal/draggable-html-box', () => ({
-  DraggableHtmlBox: jest.fn().mockImplementation(() => ({
-    open: jest.fn(),
-    updateContent: jest.fn(),
-    isOpen: false,
-    onClose: null,
-  })),
+vi.mock('../../../src/modal/draggable-html-box', () => ({
+  DraggableHtmlBox: vi.fn(function (this: any) {
+    this.open = vi.fn();
+    this.updateContent = vi.fn();
+    this.isOpen = false;
+    this.onClose = null;
+    return this;
+  }),
 }));
 
-jest.mock('../../../src/modal/dialog-history-box', () => ({
-  DialogHistoryBox: jest.fn().mockImplementation(() => ({
-    open: jest.fn(),
-  })),
+vi.mock('../../../src/modal/dialog-history-box', () => ({
+  DialogHistoryBox: vi.fn(function (this: any) {
+    this.open = vi.fn();
+    return this;
+  }),
 }));
 
-jest.mock('../../../src/equipment/antenna', () => ({
+vi.mock('../../../src/equipment/antenna', () => ({
   ANTENNA_CONFIG_KEYS: {
     C_BAND_9M_VORTEK: 'c-band-9m-vortek',
     KU_BAND_9M_LIMIT: 'ku-band-9m-limit',
   },
-  AntennaCore: jest.fn(),
-  AntennaUIBasic: jest.fn().mockImplementation(() => ({
-    transmitters: [],
-    attachRfFrontEnd: jest.fn(),
+  AntennaCore: vi.fn(),
+  AntennaUIBasic: vi.fn(function (this: any) {
+    this.transmitters = [];
+    this.attachRfFrontEnd = vi.fn();
+    return this;
+  }),
+}));
+
+vi.mock('../../../src/equipment/antenna/antenna-ui-modern', () => ({
+  AntennaUIModern: vi.fn(function (this: any) {
+    this.transmitters = [];
+    this.attachRfFrontEnd = vi.fn();
+    return this;
+  }),
+}));
+
+vi.mock('../../../src/equipment/rf-front-end/rf-front-end-core', () => ({
+  RFFrontEndCore: vi.fn(),
+}));
+
+vi.mock('../../../src/equipment/rf-front-end/rf-front-end-factory', () => ({
+  createRFFrontEnd: vi.fn(() => ({
+    connectAntenna: vi.fn(),
+    connectTransmitter: vi.fn(),
   })),
 }));
 
-jest.mock('../../../src/equipment/antenna/antenna-ui-modern', () => ({
-  AntennaUIModern: jest.fn().mockImplementation(() => ({
-    transmitters: [],
-    attachRfFrontEnd: jest.fn(),
-  })),
+vi.mock('../../../src/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer', () => ({
+  RealTimeSpectrumAnalyzer: vi.fn(function (this: any) {
+    return this;
+  }),
 }));
 
-jest.mock('../../../src/equipment/rf-front-end/rf-front-end-core', () => ({
-  RFFrontEndCore: jest.fn(),
+vi.mock('../../../src/equipment/receiver/receiver', () => ({
+  Receiver: vi.fn(function (this: any) {
+    this.connectRfFrontEnd = vi.fn();
+    return this;
+  }),
 }));
 
-jest.mock('../../../src/equipment/rf-front-end/rf-front-end-factory', () => ({
-  createRFFrontEnd: jest.fn(() => ({
-    connectAntenna: jest.fn(),
-    connectTransmitter: jest.fn(),
-  })),
+vi.mock('../../../src/equipment/transmitter/transmitter', () => ({
+  Transmitter: vi.fn(function (this: any) {
+    return this;
+  }),
 }));
 
-jest.mock('../../../src/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer', () => ({
-  RealTimeSpectrumAnalyzer: jest.fn().mockImplementation(() => ({})),
-}));
-
-jest.mock('../../../src/equipment/receiver/receiver', () => ({
-  Receiver: jest.fn().mockImplementation(() => ({
-    connectRfFrontEnd: jest.fn(),
-  })),
-}));
-
-jest.mock('../../../src/equipment/transmitter/transmitter', () => ({
-  Transmitter: jest.fn().mockImplementation(() => ({})),
-}));
-
-jest.mock('../../../src/pages/sandbox-page', () => ({
+vi.mock('../../../src/pages/sandbox-page', () => ({
   SandboxPage: {
     containerId: 'sandbox-page-container',
   },
@@ -124,15 +134,16 @@ import { Receiver } from '../../../src/equipment/receiver/receiver';
 import { DraggableHtmlBox } from '../../../src/modal/draggable-html-box';
 import { DialogHistoryBox } from '../../../src/modal/dialog-history-box';
 import { SimulationManager } from '../../../src/simulation/simulation-manager';
+import { ScenarioManager } from '../../../src/scenario-manager';
 import { qs } from '../../../src/engine/utils/query-selector';
 
 // Mock elements for event listener setup
-const mockMissionBriefIcon = { addEventListener: jest.fn() };
-const mockChecklistIcon = { addEventListener: jest.fn() };
-const mockDialogIcon = { addEventListener: jest.fn() };
+const mockMissionBriefIcon = { addEventListener: vi.fn() };
+const mockChecklistIcon = { addEventListener: vi.fn() };
+const mockDialogIcon = { addEventListener: vi.fn() };
 
 // Setup qs mock to return mock elements or use actual DOM
-const mockQs = qs as jest.Mock;
+const mockQs = qs as Mock;
 mockQs.mockImplementation((selector: string, parent?: Element) => {
   // Return mock elements for icon selectors (these are needed before DOM is set up)
   if (selector === '.mission-brief-icon') return mockMissionBriefIcon;
@@ -146,7 +157,7 @@ mockQs.mockImplementation((selector: string, parent?: Element) => {
 
 describe('Equipment', () => {
   let container: HTMLElement;
-  let mockEventBus: { on: jest.Mock; off: jest.Mock; emit: jest.Mock };
+  let mockEventBus: { on: Mock; off: Mock; emit: Mock };
 
   const createMockSettings = (overrides = {}) => ({
     antennas: ['basic-antenna'],
@@ -160,7 +171,7 @@ describe('Equipment', () => {
   });
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Clear mock icon event listeners
     mockMissionBriefIcon.addEventListener.mockClear();
@@ -174,11 +185,11 @@ describe('Equipment', () => {
 
     // Setup mock EventBus
     mockEventBus = {
-      on: jest.fn(),
-      off: jest.fn(),
-      emit: jest.fn(),
+      on: vi.fn(),
+      off: vi.fn(),
+      emit: vi.fn(),
     };
-    (EventBus.getInstance as jest.Mock).mockReturnValue(mockEventBus);
+    (EventBus.getInstance as Mock).mockReturnValue(mockEventBus);
 
     // Setup container
     container = document.createElement('div');
@@ -254,7 +265,7 @@ describe('Equipment', () => {
 
     it('should connect RF front end to antenna', () => {
       new Equipment(createMockSettings({ antennas: ['basic-antenna'], rfFrontEnds: ['rf-fe-1'] }));
-      const mockRfFe = (createRFFrontEnd as jest.Mock).mock.results[0]?.value;
+      const mockRfFe = (createRFFrontEnd as Mock).mock.results[0]?.value;
       expect(mockRfFe?.connectAntenna).toHaveBeenCalled();
     });
   });
@@ -284,7 +295,7 @@ describe('Equipment', () => {
 
     it('should connect transmitters to RF front ends', () => {
       new Equipment(createMockSettings({ antennas: ['basic-antenna'], rfFrontEnds: ['rf-fe-1'], transmitters: ['tx-config-1'] }));
-      const mockRfFe = (createRFFrontEnd as jest.Mock).mock.results[0]?.value;
+      const mockRfFe = (createRFFrontEnd as Mock).mock.results[0]?.value;
       expect(mockRfFe?.connectTransmitter).toHaveBeenCalled();
     });
   });
@@ -302,7 +313,7 @@ describe('Equipment', () => {
 
     it('should connect receivers to RF front ends', () => {
       new Equipment(createMockSettings({ antennas: ['basic-antenna'], rfFrontEnds: ['rf-fe-1'], receivers: ['rx-config-1'] }));
-      const mockReceiver = (Receiver as jest.Mock).mock.results[0]?.value;
+      const mockReceiver = (Receiver as Mock).mock.results[0]?.value;
       expect(mockReceiver?.connectRfFrontEnd).toHaveBeenCalled();
     });
   });
@@ -318,12 +329,13 @@ describe('Equipment', () => {
     });
 
     it('should open mission brief box on click', () => {
-      const mockOpen = jest.fn();
-      (DraggableHtmlBox as jest.Mock).mockImplementation(() => ({
-        open: mockOpen,
-        updateContent: jest.fn(),
-        isOpen: false,
-      }));
+      const mockOpen = vi.fn();
+      (DraggableHtmlBox as Mock).mockImplementation(function (this: any) {
+        this.open = mockOpen;
+        this.updateContent = vi.fn();
+        this.isOpen = false;
+        return this;
+      });
 
       new Equipment(createMockSettings());
 
@@ -353,12 +365,13 @@ describe('Equipment', () => {
     });
 
     it('should update checklist content on open', () => {
-      const mockUpdateContent = jest.fn();
-      (DraggableHtmlBox as jest.Mock).mockImplementation(() => ({
-        open: jest.fn(),
-        updateContent: mockUpdateContent,
-        isOpen: false,
-      }));
+      const mockUpdateContent = vi.fn();
+      (DraggableHtmlBox as Mock).mockImplementation(function (this: any) {
+        this.open = vi.fn();
+        this.updateContent = mockUpdateContent;
+        this.isOpen = false;
+        return this;
+      });
 
       new Equipment(createMockSettings());
 
@@ -392,10 +405,11 @@ describe('Equipment', () => {
     });
 
     it('should open dialog history box on click', () => {
-      const mockOpen = jest.fn();
-      (DialogHistoryBox as jest.Mock).mockImplementation(() => ({
-        open: mockOpen,
-      }));
+      const mockOpen = vi.fn();
+      (DialogHistoryBox as Mock).mockImplementation(function (this: any) {
+        this.open = mockOpen;
+        return this;
+      });
 
       new Equipment(createMockSettings());
 
@@ -412,8 +426,7 @@ describe('Equipment', () => {
 
   describe('no mission brief URL', () => {
     it('should not add listeners when no mission brief URL', () => {
-      const { ScenarioManager } = require('../../../src/scenario-manager');
-      ScenarioManager.getInstance.mockReturnValue({
+      (ScenarioManager.getInstance as Mock).mockReturnValue({
         settings: {
           missionBriefUrl: null,
         },
@@ -464,11 +477,11 @@ describe('Equipment', () => {
 
   describe('checklist refresh timer', () => {
     beforeEach(() => {
-      jest.useFakeTimers();
+      vi.useFakeTimers();
     });
 
     afterEach(() => {
-      jest.useRealTimers();
+      vi.useRealTimers();
     });
 
     it('should stop checklist refresh timer on route change', () => {

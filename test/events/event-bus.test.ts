@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { EventBus } from '../../src/events/event-bus';
 import { Events } from '../../src/events/events';
 
@@ -25,7 +26,7 @@ describe('EventBus', () => {
 
   describe('on and emit', () => {
     it('should allow subscribing to events and emit them', () => {
-      const callback = jest.fn();
+      const callback = vi.fn();
 
       eventBus.on(Events.UPDATE, callback);
       eventBus.emit(Events.UPDATE, 123);
@@ -35,8 +36,8 @@ describe('EventBus', () => {
     });
 
     it('should call multiple callbacks for the same event', () => {
-      const callback1 = jest.fn();
-      const callback2 = jest.fn();
+      const callback1 = vi.fn();
+      const callback2 = vi.fn();
 
       eventBus.on(Events.DRAW, callback1);
       eventBus.on(Events.DRAW, callback2);
@@ -47,7 +48,7 @@ describe('EventBus', () => {
     });
 
     it('should pass multiple arguments to callbacks', () => {
-      const callback = jest.fn();
+      const callback = vi.fn();
 
       eventBus.on(Events.SYNC, callback);
       eventBus.emit(Events.SYNC);
@@ -64,7 +65,7 @@ describe('EventBus', () => {
 
   describe('off', () => {
     it('should unsubscribe a callback from an event', () => {
-      const callback = jest.fn();
+      const callback = vi.fn();
 
       eventBus.on(Events.UPDATE, callback);
       eventBus.off(Events.UPDATE, callback);
@@ -74,8 +75,8 @@ describe('EventBus', () => {
     });
 
     it('should only remove the specified callback', () => {
-      const callback1 = jest.fn();
-      const callback2 = jest.fn();
+      const callback1 = vi.fn();
+      const callback2 = vi.fn();
 
       eventBus.on(Events.DRAW, callback1);
       eventBus.on(Events.DRAW, callback2);
@@ -87,7 +88,7 @@ describe('EventBus', () => {
     });
 
     it('should not throw error when removing non-existent callback', () => {
-      const callback = jest.fn();
+      const callback = vi.fn();
 
       expect(() => {
         eventBus.off(Events.UPDATE, callback);
@@ -97,7 +98,7 @@ describe('EventBus', () => {
 
   describe('once', () => {
     it('should only call the callback once', () => {
-      const callback = jest.fn();
+      const callback = vi.fn();
 
       eventBus.once(Events.UPDATE, callback);
       eventBus.emit(Events.UPDATE, 1);
@@ -109,7 +110,7 @@ describe('EventBus', () => {
     });
 
     it('should automatically unsubscribe after first call', () => {
-      const callback = jest.fn();
+      const callback = vi.fn();
 
       eventBus.once(Events.DRAW, callback);
       eventBus.emit(Events.DRAW, 100);
@@ -126,8 +127,8 @@ describe('EventBus', () => {
 
   describe('clear', () => {
     it('should remove all callbacks for an event', () => {
-      const callback1 = jest.fn();
-      const callback2 = jest.fn();
+      const callback1 = vi.fn();
+      const callback2 = vi.fn();
 
       eventBus.on(Events.UPDATE, callback1);
       eventBus.on(Events.UPDATE, callback2);
@@ -139,8 +140,8 @@ describe('EventBus', () => {
     });
 
     it('should only clear callbacks for the specified event', () => {
-      const updateCallback = jest.fn();
-      const drawCallback = jest.fn();
+      const updateCallback = vi.fn();
+      const drawCallback = vi.fn();
 
       eventBus.on(Events.UPDATE, updateCallback);
       eventBus.on(Events.DRAW, drawCallback);

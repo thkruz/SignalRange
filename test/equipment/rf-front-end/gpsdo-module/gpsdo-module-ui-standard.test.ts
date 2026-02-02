@@ -1,14 +1,15 @@
+import { vi } from 'vitest';
+import { GPSDOModuleCore } from '../../../../src/equipment/rf-front-end/gpsdo-module/gpsdo-module-core';
+import { GPSDOModuleUIStandard } from '../../../../src/equipment/rf-front-end/gpsdo-module/gpsdo-module-ui-standard';
+import { defaultGpsdoState, GPSDOState } from '../../../../src/equipment/rf-front-end/gpsdo-module/gpsdo-state';
+import { RFFrontEndCore } from '../../../../src/equipment/rf-front-end/rf-front-end-core';
 import { EventBus } from '../../../../src/events/event-bus';
 import { Events } from '../../../../src/events/events';
-import { RFFrontEndCore } from '../../../../src/equipment/rf-front-end/rf-front-end-core';
-import { GPSDOModuleUIStandard } from '../../../../src/equipment/rf-front-end/gpsdo-module/gpsdo-module-ui-standard';
-import { GPSDOModuleCore } from '../../../../src/equipment/rf-front-end/gpsdo-module/gpsdo-module-core';
-import { defaultGpsdoState, GPSDOState } from '../../../../src/equipment/rf-front-end/gpsdo-module/gpsdo-state';
 
 // Mock SimulationManager
-jest.mock('../../../../src/simulation/simulation-manager', () => ({
+vi.mock('../../../../src/simulation/simulation-manager', () => ({
   SimulationManager: {
-    getInstance: jest.fn(() => ({
+    getInstance: vi.fn(() => ({
       isDeveloperMode: false,
     })),
   },
@@ -17,7 +18,7 @@ jest.mock('../../../../src/simulation/simulation-manager', () => ({
 // Mock HTMLMediaElement.prototype.play for jsdom compatibility
 Object.defineProperty(HTMLMediaElement.prototype, 'play', {
   configurable: true,
-  value: jest.fn().mockResolvedValue(undefined),
+  value: vi.fn().mockResolvedValue(undefined),
 });
 
 // Mock RFFrontEndCore
@@ -39,8 +40,8 @@ describe('GPSDOModuleUIStandard', () => {
   let mockRfFrontEnd: RFFrontEndCore;
 
   beforeEach(() => {
-    jest.useFakeTimers();
-    jest.clearAllMocks();
+    vi.useFakeTimers();
+    vi.clearAllMocks();
 
     document.body.innerHTML = '<div id="test-root"></div>';
 
@@ -53,7 +54,7 @@ describe('GPSDOModuleUIStandard', () => {
   });
 
   afterEach(() => {
-    jest.useRealTimers();
+    vi.useRealTimers();
     document.body.innerHTML = '';
   });
 
@@ -134,7 +135,7 @@ describe('GPSDOModuleUIStandard', () => {
     });
 
     it('should register for SYNC events', () => {
-      const onSpy = jest.spyOn(EventBus.getInstance(), 'on');
+      const onSpy = vi.spyOn(EventBus.getInstance(), 'on');
 
       gpsdoModule = new GPSDOModuleUIStandard(
         { ...defaultGpsdoState },
@@ -422,7 +423,7 @@ describe('GPSDOModuleUIStandard', () => {
 
     it('should sync power switch when isPowered changes', () => {
       const components = gpsdoModule.getComponents();
-      const syncSpy = jest.spyOn(components.powerSwitch, 'sync');
+      const syncSpy = vi.spyOn(components.powerSwitch, 'sync');
 
       gpsdoModule.sync({ isPowered: false });
 
@@ -431,7 +432,7 @@ describe('GPSDOModuleUIStandard', () => {
 
     it('should sync GNSS switch when gnssSignalPresent changes', () => {
       const components = gpsdoModule.getComponents();
-      const syncSpy = jest.spyOn(components.gnssSwitch, 'sync');
+      const syncSpy = vi.spyOn(components.gnssSwitch, 'sync');
 
       gpsdoModule.sync({ gnssSignalPresent: false });
 
@@ -521,7 +522,7 @@ describe('GPSDOModuleUIStandard', () => {
       gpsdoModule.sync({ temperature: 71 });
 
       // Check if stability monitor started by advancing time
-      jest.advanceTimersByTime(5000);
+      vi.advanceTimersByTime(5000);
 
       // Lock duration should have increased if monitor is running
       expect(gpsdoModule.state.lockDuration).toBeGreaterThan(0);
@@ -539,7 +540,7 @@ describe('GPSDOModuleUIStandard', () => {
     });
 
     it('should call handlePowerToggle when power changes', () => {
-      const handlePowerToggleSpy = jest.spyOn(gpsdoModule, 'handlePowerToggle');
+      const handlePowerToggleSpy = vi.spyOn(gpsdoModule, 'handlePowerToggle');
 
       // Simulate calling the handler directly as if triggered by switch
       gpsdoModule.handlePowerToggle(false);
@@ -549,11 +550,11 @@ describe('GPSDOModuleUIStandard', () => {
     });
 
     it('should call handleGnssToggle when GNSS switch changes', () => {
-      const handleGnssToggleSpy = jest.spyOn(gpsdoModule, 'handleGnssToggle');
+      const handleGnssToggleSpy = vi.spyOn(gpsdoModule, 'handleGnssToggle');
       gpsdoModule.state.isPowered = true;
       gpsdoModule.state.isLocked = true;
 
-      const callback = jest.fn();
+      const callback = vi.fn();
       gpsdoModule.handleGnssToggle(false, callback);
 
       expect(handleGnssToggleSpy).toHaveBeenCalledWith(false, callback);
@@ -591,7 +592,7 @@ describe('GPSDOModuleUIStandard', () => {
       const initialText = warmupDisplay?.textContent;
 
       // Advance warmup timer
-      jest.advanceTimersByTime(1000);
+      vi.advanceTimersByTime(1000);
 
       expect(warmupDisplay?.textContent).not.toBe(initialText);
     });
@@ -607,7 +608,7 @@ describe('GPSDOModuleUIStandard', () => {
       const freqAccuracyBefore = gpsdoModule.state.frequencyAccuracy;
 
       // Advance stability monitor
-      jest.advanceTimersByTime(5000);
+      vi.advanceTimersByTime(5000);
 
       // State should have been updated (lock duration increases)
       expect(gpsdoModule.state.lockDuration).toBeGreaterThan(0);
@@ -620,12 +621,12 @@ describe('GPSDOModuleUIStandard', () => {
       gpsdoModule.state.gnssSignalPresent = true;
 
       // Trigger GNSS off to enter holdover
-      gpsdoModule.handleGnssToggle(false, () => {});
+      gpsdoModule.handleGnssToggle(false, () => { });
 
       const holdoverDisplay = document.querySelector('.gpsdo-holdover');
 
       // Advance holdover monitor
-      jest.advanceTimersByTime(2000);
+      vi.advanceTimersByTime(2000);
 
       // Holdover error should have increased
       expect(gpsdoModule.state.holdoverDuration).toBeGreaterThan(0);

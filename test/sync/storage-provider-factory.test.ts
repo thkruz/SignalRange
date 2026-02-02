@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { D1StorageProvider } from '../../src/sync/d1-storage-provider';
 import { LocalStorageProvider } from '../../src/sync/local-storage-provider';
 import {
@@ -73,7 +74,7 @@ describe('StorageProviderFactory', () => {
     });
 
     it('passes config options to LocalStorageProvider', () => {
-      const onError = jest.fn();
+      const onError = vi.fn();
       const config: StorageFactoryConfig = {
         type: StorageProviderType.LOCAL_STORAGE,
         storageKey: 'custom-key',
@@ -112,7 +113,7 @@ describe('StorageProviderFactory', () => {
     });
 
     it('creates a WebSocketStorageProvider with custom config', () => {
-      const onReconnect = jest.fn();
+      const onReconnect = vi.fn();
       const provider = StorageProviderFactory.createWebSocket('ws://localhost:8080', {
         onReconnect,
         autoSync: true,
@@ -130,7 +131,7 @@ describe('StorageProviderFactory', () => {
     });
 
     it('creates a D1StorageProvider with custom config', () => {
-      const onError = jest.fn();
+      const onError = vi.fn();
       const provider = StorageProviderFactory.createD1('https://api.example.com', {
         onError,
         syncInterval: 10000,

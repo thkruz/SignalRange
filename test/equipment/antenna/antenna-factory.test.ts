@@ -1,35 +1,36 @@
 import { Degrees } from 'ootk';
-import { createAntenna, AntennaUIType } from '../../../src/equipment/antenna/antenna-factory';
+import { vi } from 'vitest';
+import { ANTENNA_CONFIG_KEYS } from '../../../src/equipment/antenna/antenna-config-keys';
 import { AntennaCore, AntennaState } from '../../../src/equipment/antenna/antenna-core';
-import { AntennaUIStandard } from '../../../src/equipment/antenna/antenna-ui-standard';
+import { AntennaUIType, createAntenna } from '../../../src/equipment/antenna/antenna-factory';
 import { AntennaUIBasic } from '../../../src/equipment/antenna/antenna-ui-basic';
 import { AntennaUIHeadless } from '../../../src/equipment/antenna/antenna-ui-headless';
 import { AntennaUIModern } from '../../../src/equipment/antenna/antenna-ui-modern';
-import { ANTENNA_CONFIG_KEYS } from '../../../src/equipment/antenna/antenna-config-keys';
+import { AntennaUIStandard } from '../../../src/equipment/antenna/antenna-ui-standard';
 
 // Mock SimulationManager
-jest.mock('../../../src/simulation/simulation-manager', () => ({
+vi.mock('../../../src/simulation/simulation-manager', () => ({
   SimulationManager: {
-    getInstance: jest.fn(() => ({
-      update: jest.fn(),
-      draw: jest.fn(),
-      sync: jest.fn(),
-      getSatByNoradId: jest.fn(),
+    getInstance: vi.fn(() => ({
+      update: vi.fn(),
+      draw: vi.fn(),
+      sync: vi.fn(),
+      getSatByNoradId: vi.fn(),
       getSatsByAzEl: () => [],
       satellites: [],
       isDeveloperMode: false,
     })),
-    destroy: jest.fn(),
+    destroy: vi.fn(),
   },
 }));
 
 // Mock EventBus
-jest.mock('../../../src/events/event-bus', () => ({
+vi.mock('../../../src/events/event-bus', () => ({
   EventBus: {
-    getInstance: jest.fn(() => ({
-      on: jest.fn(),
-      off: jest.fn(),
-      emit: jest.fn(),
+    getInstance: vi.fn(() => ({
+      on: vi.fn(),
+      off: vi.fn(),
+      emit: vi.fn(),
     })),
   },
 }));

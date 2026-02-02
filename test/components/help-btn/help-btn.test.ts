@@ -1,24 +1,25 @@
+import { Mock, Mocked, vi } from 'vitest';
 import { HelpButton } from '../../../src/components/help-btn/help-btn';
 import { EventBus } from '../../../src/events/event-bus';
 import { Events } from '../../../src/events/events';
 import { ModalManager } from '../../../src/modal/modal-manager';
 
-jest.mock('../../../src/modal/modal-manager');
+vi.mock('../../../src/modal/modal-manager');
 
 describe('HelpButton', () => {
-  let mockModalManager: jest.Mocked<ModalManager>;
+  let mockModalManager: Mocked<ModalManager>;
   let container: HTMLElement;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     EventBus.destroy();
 
     mockModalManager = {
-      show: jest.fn(),
-      hide: jest.fn(),
-      isShowing: jest.fn().mockReturnValue(false),
-    } as unknown as jest.Mocked<ModalManager>;
-    (ModalManager.getInstance as jest.Mock).mockReturnValue(mockModalManager);
+      show: vi.fn(),
+      hide: vi.fn(),
+      isShowing: vi.fn().mockReturnValue(false),
+    } as unknown as Mocked<ModalManager>;
+    (ModalManager.getInstance as Mock).mockReturnValue(mockModalManager);
 
     container = document.createElement('div');
     container.id = 'test-container';
@@ -80,7 +81,7 @@ describe('HelpButton', () => {
 
     it('should register DOM_READY event listener', () => {
       const eventBus = EventBus.getInstance();
-      const onSpy = jest.spyOn(eventBus, 'on');
+      const onSpy = vi.spyOn(eventBus, 'on');
 
       new HelpButton('event-btn', 'Title', 'Content');
 
@@ -212,7 +213,7 @@ describe('HelpButton', () => {
         bubbles: true,
         cancelable: true,
       });
-      const preventDefaultSpy = jest.spyOn(clickEvent, 'preventDefault');
+      const preventDefaultSpy = vi.spyOn(clickEvent, 'preventDefault');
 
       btnEl.dispatchEvent(clickEvent);
 

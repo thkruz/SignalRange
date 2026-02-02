@@ -1,56 +1,60 @@
-import { SatelliteDashboardTab } from '../../../../src/pages/mission-control/tabs/satellite-dashboard-tab';
+import { Mock, Mocked, vi } from 'vitest';
 import { Satellite } from '../../../../src/equipment/satellite/satellite';
 import { EventBus } from '../../../../src/events/event-bus';
 import { Events } from '../../../../src/events/events';
+import { SatelliteDashboardTab } from '../../../../src/pages/mission-control/tabs/satellite-dashboard-tab';
 
 // Mock dependencies
-jest.mock('../../../../src/events/event-bus');
-jest.mock('../../../../src/scenario-manager', () => ({
+vi.mock('../../../../src/events/event-bus');
+vi.mock('../../../../src/scenario-manager', () => ({
   ScenarioManager: {
-    getInstance: jest.fn(() => ({
+    getInstance: vi.fn(() => ({
       settings: {
         trafficOwnership: null,
       },
     })),
   },
 }));
-jest.mock('../../../../src/simulation/simulation-manager', () => ({
+vi.mock('../../../../src/simulation/simulation-manager', () => ({
   SimulationManager: {
-    getInstance: jest.fn(() => ({
+    getInstance: vi.fn(() => ({
       groundStations: [],
     })),
   },
 }));
-jest.mock('../../../../src/traffic/traffic-control-manager', () => ({
+vi.mock('../../../../src/traffic/traffic-control-manager', () => ({
   TrafficControlManager: {
-    getInstance: jest.fn(() => ({
-      getOwnershipState: jest.fn(),
-      checkStationReadiness: jest.fn(),
-      initiateHandover: jest.fn(),
-      executeHandover: jest.fn(),
+    getInstance: vi.fn(() => ({
+      getOwnershipState: vi.fn(),
+      checkStationReadiness: vi.fn(),
+      initiateHandover: vi.fn(),
+      executeHandover: vi.fn(),
     })),
   },
 }));
 
 // Mock image imports
-jest.mock('../../../../src/assets/icons/satellite.png', () => 'satellite.png');
+vi.mock('../../../../src/assets/icons/satellite.png', () => ({ default: 'satellite.png' }));
 
+import { ScenarioManager } from '../../../../src/scenario-manager';
+import { SimulationManager } from '../../../../src/simulation/simulation-manager';
+import { TrafficControlManager } from '../../../../src/traffic/traffic-control-manager';
 describe('SatelliteDashboardTab', () => {
-  let mockSatellite: jest.Mocked<Satellite>;
+  let mockSatellite: Mocked<Satellite>;
   let containerEl: HTMLElement;
   let tab: SatelliteDashboardTab;
-  let mockEventBus: { on: jest.Mock; off: jest.Mock; emit: jest.Mock };
+  let mockEventBus: { on: Mock; off: Mock; emit: Mock };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Setup mock EventBus
     mockEventBus = {
-      on: jest.fn(),
-      off: jest.fn(),
-      emit: jest.fn(),
+      on: vi.fn(),
+      off: vi.fn(),
+      emit: vi.fn(),
     };
-    (EventBus.getInstance as jest.Mock).mockReturnValue(mockEventBus);
+    (EventBus.getInstance as Mock).mockReturnValue(mockEventBus);
 
     // Setup mock Satellite
     mockSatellite = {
@@ -67,7 +71,7 @@ describe('SatelliteDashboardTab', () => {
       rxSignal: [],
       externalSignal: [],
       txSignal: [],
-    } as unknown as jest.Mocked<Satellite>;
+    } as unknown as Mocked<Satellite>;
 
     // Setup container
     containerEl = document.createElement('div');
@@ -164,6 +168,9 @@ describe('SatelliteDashboardTab', () => {
     });
 
     it('should show Degraded status for health >= 0.5 and < 0.9', () => {
+      // Dispose first tab to avoid duplicate ID conflicts
+      tab.dispose();
+
       mockSatellite.health = 0.7;
       const containerEl2 = document.createElement('div');
       containerEl2.id = 'sat-container-2';
@@ -174,9 +181,15 @@ describe('SatelliteDashboardTab', () => {
       expect(healthEl?.textContent).toContain('Degraded');
       expect(healthEl?.className).toContain('status-badge-amber');
       tab2.dispose();
+
+      // Recreate original tab for afterEach cleanup
+      tab = new SatelliteDashboardTab(mockSatellite, 'satellite-dashboard-container');
     });
 
     it('should show Critical status for health < 0.5', () => {
+      // Dispose first tab to avoid duplicate ID conflicts
+      tab.dispose();
+
       mockSatellite.health = 0.3;
       const containerEl2 = document.createElement('div');
       containerEl2.id = 'sat-container-3';
@@ -187,6 +200,9 @@ describe('SatelliteDashboardTab', () => {
       expect(healthEl?.textContent).toContain('Critical');
       expect(healthEl?.className).toContain('status-badge-red');
       tab2.dispose();
+
+      // Recreate original tab for afterEach cleanup
+      tab = new SatelliteDashboardTab(mockSatellite, 'satellite-dashboard-container');
     });
   });
 
@@ -302,41 +318,39 @@ describe('SatelliteDashboardTab', () => {
 });
 
 describe('SatelliteDashboardTab with Traffic Control', () => {
-  let mockSatellite: jest.Mocked<Satellite>;
+  let mockSatellite: Mocked<Satellite>;
   let containerEl: HTMLElement;
   let tab: SatelliteDashboardTab;
-  let mockEventBus: { on: jest.Mock; off: jest.Mock; emit: jest.Mock };
+  let mockEventBus: { on: Mock; off: Mock; emit: Mock };
   let mockTrafficControlManager: {
-    getOwnershipState: jest.Mock;
-    checkStationReadiness: jest.Mock;
-    initiateHandover: jest.Mock;
-    executeHandover: jest.Mock;
+    getOwnershipState: Mock;
+    checkStationReadiness: Mock;
+    initiateHandover: Mock;
+    executeHandover: Mock;
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Setup mock EventBus
     mockEventBus = {
-      on: jest.fn(),
-      off: jest.fn(),
-      emit: jest.fn(),
+      on: vi.fn(),
+      off: vi.fn(),
+      emit: vi.fn(),
     };
-    (EventBus.getInstance as jest.Mock).mockReturnValue(mockEventBus);
+    (EventBus.getInstance as Mock).mockReturnValue(mockEventBus);
 
     // Setup mock TrafficControlManager
     mockTrafficControlManager = {
-      getOwnershipState: jest.fn(),
-      checkStationReadiness: jest.fn(),
-      initiateHandover: jest.fn(),
-      executeHandover: jest.fn(),
+      getOwnershipState: vi.fn(),
+      checkStationReadiness: vi.fn(),
+      initiateHandover: vi.fn(),
+      executeHandover: vi.fn(),
     };
 
-    const { TrafficControlManager } = require('../../../../src/traffic/traffic-control-manager');
     TrafficControlManager.getInstance.mockReturnValue(mockTrafficControlManager);
 
     // Setup mock ScenarioManager with traffic ownership
-    const { ScenarioManager } = require('../../../../src/scenario-manager');
     ScenarioManager.getInstance.mockReturnValue({
       settings: {
         trafficOwnership: [
@@ -346,7 +360,6 @@ describe('SatelliteDashboardTab with Traffic Control', () => {
     });
 
     // Setup mock SimulationManager with ground stations
-    const { SimulationManager } = require('../../../../src/simulation/simulation-manager');
     SimulationManager.getInstance.mockReturnValue({
       groundStations: [
         { state: { id: 'GS-001', name: 'Station 1' } },
@@ -368,7 +381,7 @@ describe('SatelliteDashboardTab with Traffic Control', () => {
       rxSignal: [],
       externalSignal: [],
       txSignal: [],
-    } as unknown as jest.Mocked<Satellite>;
+    } as unknown as Mocked<Satellite>;
 
     // Setup container
     containerEl = document.createElement('div');
@@ -476,7 +489,7 @@ describe('SatelliteDashboardTab with Traffic Control', () => {
       )?.[1];
 
       // Force past throttle by manipulating time
-      jest.spyOn(Date, 'now').mockReturnValue(2000);
+      vi.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();
 
       const ownerEl = document.querySelector('#sat-traffic-owner');
@@ -501,7 +514,7 @@ describe('SatelliteDashboardTab with Traffic Control', () => {
         (call: unknown[]) => call[0] === Events.UPDATE
       )?.[1];
 
-      jest.spyOn(Date, 'now').mockReturnValue(2000);
+      vi.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();
 
       const statusEl = document.querySelector('#sat-target-status');
@@ -527,7 +540,7 @@ describe('SatelliteDashboardTab with Traffic Control', () => {
         (call: unknown[]) => call[0] === Events.UPDATE
       )?.[1];
 
-      jest.spyOn(Date, 'now').mockReturnValue(2000);
+      vi.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();
 
       const statusEl = document.querySelector('#sat-target-status');
@@ -551,7 +564,7 @@ describe('SatelliteDashboardTab with Traffic Control', () => {
         (call: unknown[]) => call[0] === Events.UPDATE
       )?.[1];
 
-      jest.spyOn(Date, 'now').mockReturnValue(2000);
+      vi.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();
 
       const cnEl = document.querySelector('#sat-target-cn');
@@ -574,7 +587,7 @@ describe('SatelliteDashboardTab with Traffic Control', () => {
         (call: unknown[]) => call[0] === Events.UPDATE
       )?.[1];
 
-      jest.spyOn(Date, 'now').mockReturnValue(2000);
+      vi.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();
 
       const cnEl = document.querySelector('#sat-target-cn');
@@ -591,7 +604,7 @@ describe('SatelliteDashboardTab with Traffic Control', () => {
         (call: unknown[]) => call[0] === Events.UPDATE
       )?.[1];
 
-      jest.spyOn(Date, 'now').mockReturnValue(2000);
+      vi.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();
 
       const statusEl = document.querySelector('#sat-target-status');
@@ -617,7 +630,7 @@ describe('SatelliteDashboardTab with Traffic Control', () => {
         (call: unknown[]) => call[0] === Events.UPDATE
       )?.[1];
 
-      jest.spyOn(Date, 'now').mockReturnValue(2000);
+      vi.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();
 
       const btn = document.querySelector('#sat-execute-handover') as HTMLButtonElement;
@@ -634,7 +647,7 @@ describe('SatelliteDashboardTab with Traffic Control', () => {
         (call: unknown[]) => call[0] === Events.UPDATE
       )?.[1];
 
-      jest.spyOn(Date, 'now').mockReturnValue(2000);
+      vi.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();
 
       const btn = document.querySelector('#sat-execute-handover') as HTMLButtonElement;
@@ -648,7 +661,7 @@ describe('SatelliteDashboardTab with Traffic Control', () => {
         (call: unknown[]) => call[0] === Events.UPDATE
       )?.[1];
 
-      jest.spyOn(Date, 'now').mockReturnValue(2000);
+      vi.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();
 
       const ownerEl = document.querySelector('#sat-traffic-owner');
@@ -668,18 +681,18 @@ describe('SatelliteDashboardTab with Traffic Control', () => {
       )?.[1];
 
       // First call at time 1000 (past initial throttle)
-      jest.spyOn(Date, 'now').mockReturnValue(1000);
+      vi.spyOn(Date, 'now').mockReturnValue(1000);
       updateHandler();
       expect(mockTrafficControlManager.getOwnershipState).toHaveBeenCalledTimes(1);
 
       // Second call at time 1500ms (within 1000ms throttle interval)
-      jest.spyOn(Date, 'now').mockReturnValue(1500);
+      vi.spyOn(Date, 'now').mockReturnValue(1500);
       updateHandler();
       // Should still be 1 call since throttle prevents the second call
       expect(mockTrafficControlManager.getOwnershipState).toHaveBeenCalledTimes(1);
 
       // Third call at time 2500ms (past throttle interval)
-      jest.spyOn(Date, 'now').mockReturnValue(2500);
+      vi.spyOn(Date, 'now').mockReturnValue(2500);
       updateHandler();
       // Now should have 2 calls
       expect(mockTrafficControlManager.getOwnershipState).toHaveBeenCalledTimes(2);

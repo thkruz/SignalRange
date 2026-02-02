@@ -1,22 +1,23 @@
 import type { AuthChangeEvent, Session, User } from '@supabase/supabase-js';
+import { Mock, vi } from 'vitest';
 
 describe('Auth', () => {
   const mockErrorManager = {
-    error: jest.fn(),
-    warn: jest.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
   };
 
   const mockSupabaseAuth = {
-    getSession: jest.fn(),
-    signUp: jest.fn(),
-    signInWithPassword: jest.fn(),
-    signInWithOAuth: jest.fn(),
-    updateUser: jest.fn(),
-    signOut: jest.fn(),
-    getUser: jest.fn(),
-    setSession: jest.fn(),
-    refreshSession: jest.fn(),
-    onAuthStateChange: jest.fn(),
+    getSession: vi.fn(),
+    signUp: vi.fn(),
+    signInWithPassword: vi.fn(),
+    signInWithOAuth: vi.fn(),
+    updateUser: vi.fn(),
+    signOut: vi.fn(),
+    getUser: vi.fn(),
+    setSession: vi.fn(),
+    refreshSession: vi.fn(),
+    onAuthStateChange: vi.fn(),
   };
 
   const makeUser = (overrides?: Partial<User>): User =>
@@ -40,22 +41,22 @@ describe('Auth', () => {
   } as unknown as Session);
 
   beforeEach(() => {
-    jest.resetModules();
-    jest.clearAllMocks();
+    vi.resetModules();
+    vi.clearAllMocks();
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   const loadAuth = async () => {
-    jest.unmock('../../src/user-account/auth');
+    vi.unmock('../../src/user-account/auth');
 
-    jest.doMock('../../src/engine/utils/errorManager', () => ({
+    vi.doMock('../../src/engine/utils/errorManager', () => ({
       errorManagerInstance: mockErrorManager,
     }));
 
-    jest.doMock('../../src/user-account/supabase-client', () => ({
+    vi.doMock('../../src/user-account/supabase-client', () => ({
       supabase: {
         auth: mockSupabaseAuth,
       },
@@ -140,14 +141,14 @@ describe('Auth', () => {
   it('isTokenExpired returns true when no session', async () => {
     const Auth = await loadAuth();
 
-    jest.spyOn(Auth, 'getSession').mockResolvedValueOnce(null);
+    vi.spyOn(Auth, 'getSession').mockResolvedValueOnce(null);
     await expect(Auth.isTokenExpired()).resolves.toBe(true);
   });
 
   it('isTokenExpired returns false when expires_at missing', async () => {
     const Auth = await loadAuth();
 
-    jest.spyOn(Auth, 'getSession').mockResolvedValueOnce({ ...(makeSession() as any), expires_at: undefined });
+    vi.spyOn(Auth, 'getSession').mockResolvedValueOnce({ ...(makeSession() as any), expires_at: undefined });
     await expect(Auth.isTokenExpired()).resolves.toBe(false);
   });
 
@@ -155,22 +156,22 @@ describe('Auth', () => {
     const Auth = await loadAuth();
 
     const now = Date.now();
-    jest.spyOn(Date, 'now').mockReturnValue(now);
+    vi.spyOn(Date, 'now').mockReturnValue(now);
 
     const expiresSoon = Math.floor((now + 30_000) / 1000); // 30s
-    jest.spyOn(Auth, 'getSession').mockResolvedValueOnce({ ...(makeSession() as any), expires_at: expiresSoon });
+    vi.spyOn(Auth, 'getSession').mockResolvedValueOnce({ ...(makeSession() as any), expires_at: expiresSoon });
     await expect(Auth.isTokenExpired(60)).resolves.toBe(true);
 
     const expiresLater = Math.floor((now + 120_000) / 1000); // 120s
-    jest.spyOn(Auth, 'getSession').mockResolvedValueOnce({ ...(makeSession() as any), expires_at: expiresLater });
+    vi.spyOn(Auth, 'getSession').mockResolvedValueOnce({ ...(makeSession() as any), expires_at: expiresLater });
     await expect(Auth.isTokenExpired(60)).resolves.toBe(false);
   });
 
   it('getValidAccessToken refreshes when expired', async () => {
     const Auth = await loadAuth();
 
-    jest.spyOn(Auth, 'isTokenExpired').mockResolvedValueOnce(true);
-    jest.spyOn(Auth, 'refreshSession').mockResolvedValueOnce(makeSession({ access_token: 'new-token' } as any));
+    vi.spyOn(Auth, 'isTokenExpired').mockResolvedValueOnce(true);
+    vi.spyOn(Auth, 'refreshSession').mockResolvedValueOnce(makeSession({ access_token: 'new-token' } as any));
 
     await expect(Auth.getValidAccessToken()).resolves.toBe('new-token');
   });
@@ -178,8 +179,8 @@ describe('Auth', () => {
   it('getValidAccessToken returns current token when not expired', async () => {
     const Auth = await loadAuth();
 
-    jest.spyOn(Auth, 'isTokenExpired').mockResolvedValueOnce(false);
-    jest.spyOn(Auth, 'getAccessToken').mockResolvedValueOnce('current-token');
+    vi.spyOn(Auth, 'isTokenExpired').mockResolvedValueOnce(false);
+    vi.spyOn(Auth, 'getAccessToken').mockResolvedValueOnce('current-token');
 
     await expect(Auth.getValidAccessToken()).resolves.toBe('current-token');
   });
@@ -190,11 +191,11 @@ describe('Auth', () => {
     const user = makeUser({ user_metadata: { hello: 'world' } } as any);
     const session = makeSession({ access_token: 'tok', user } as any);
 
-    const cb = jest.fn();
+    const cb = vi.fn();
 
     mockSupabaseAuth.onAuthStateChange.mockImplementation((handler: any) => {
       handler('SIGNED_IN' as AuthChangeEvent, session);
-      return { data: { subscription: { unsubscribe: jest.fn() } } };
+      return { data: { subscription: { unsubscribe: vi.fn() } } };
     });
 
     Auth.onAuthStateChange(cb);
@@ -459,13 +460,13 @@ describe('Auth', () => {
 
   describe('signInWithOAuthProvider', () => {
     let originalOpen: typeof window.open;
-    let mockPopup: { location: { href: string }; close: jest.Mock; closed: boolean };
+    let mockPopup: { location: { href: string }; close: Mock; closed: boolean };
 
     beforeEach(() => {
       originalOpen = window.open;
       mockPopup = {
         location: { href: '' },
-        close: jest.fn(),
+        close: vi.fn(),
         closed: false,
       };
     });
@@ -477,7 +478,7 @@ describe('Auth', () => {
     it('rejects when popup is blocked', async () => {
       const Auth = await loadAuth();
 
-      window.open = jest.fn().mockReturnValue(null);
+      window.open = vi.fn().mockReturnValue(null);
 
       await expect(Auth.signInWithOAuthProvider('google')).rejects.toThrow('Popup blocked');
     });
@@ -485,7 +486,7 @@ describe('Auth', () => {
     it('rejects when OAuth call returns error', async () => {
       const Auth = await loadAuth();
 
-      window.open = jest.fn().mockReturnValue(mockPopup);
+      window.open = vi.fn().mockReturnValue(mockPopup);
       mockSupabaseAuth.signInWithOAuth.mockResolvedValue({
         data: { url: null },
         error: new Error('OAuth error'),
@@ -498,7 +499,7 @@ describe('Auth', () => {
     it('sets popup location on successful OAuth call', async () => {
       const Auth = await loadAuth();
 
-      window.open = jest.fn().mockReturnValue(mockPopup);
+      window.open = vi.fn().mockReturnValue(mockPopup);
       mockSupabaseAuth.signInWithOAuth.mockResolvedValue({
         data: { url: 'https://auth.example.com/oauth' },
         error: null,
@@ -522,7 +523,7 @@ describe('Auth', () => {
       const Auth = await loadAuth();
       const user = makeUser({ id: 'oauth-user' } as any);
 
-      window.open = jest.fn().mockReturnValue(mockPopup);
+      window.open = vi.fn().mockReturnValue(mockPopup);
       mockSupabaseAuth.signInWithOAuth.mockResolvedValue({
         data: { url: 'https://auth.example.com' },
         error: null,
@@ -551,7 +552,7 @@ describe('Auth', () => {
     it('rejects on SUPABASE_AUTH_ERROR message', async () => {
       const Auth = await loadAuth();
 
-      window.open = jest.fn().mockReturnValue(mockPopup);
+      window.open = vi.fn().mockReturnValue(mockPopup);
       mockSupabaseAuth.signInWithOAuth.mockResolvedValue({
         data: { url: 'https://auth.example.com' },
         error: null,
@@ -575,7 +576,7 @@ describe('Auth', () => {
     it('ignores messages from other sources', async () => {
       const Auth = await loadAuth();
 
-      window.open = jest.fn().mockReturnValue(mockPopup);
+      window.open = vi.fn().mockReturnValue(mockPopup);
       mockSupabaseAuth.signInWithOAuth.mockResolvedValue({
         data: { url: 'https://auth.example.com' },
         error: null,
@@ -602,7 +603,7 @@ describe('Auth', () => {
     it('uses custom popup name when provided', async () => {
       const Auth = await loadAuth();
 
-      window.open = jest.fn().mockReturnValue(mockPopup);
+      window.open = vi.fn().mockReturnValue(mockPopup);
       mockSupabaseAuth.signInWithOAuth.mockResolvedValue({
         data: { url: 'https://auth.example.com' },
         error: null,
@@ -626,11 +627,11 @@ describe('Auth', () => {
   describe('onAuthStateChange with null session', () => {
     it('passes null values when session is null', async () => {
       const Auth = await loadAuth();
-      const cb = jest.fn();
+      const cb = vi.fn();
 
       mockSupabaseAuth.onAuthStateChange.mockImplementation((handler: any) => {
         handler('SIGNED_OUT', null);
-        return { data: { subscription: { unsubscribe: jest.fn() } } };
+        return { data: { subscription: { unsubscribe: vi.fn() } } };
       });
 
       Auth.onAuthStateChange(cb);

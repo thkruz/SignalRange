@@ -1,4 +1,5 @@
-import { dBm, FECType, Hertz, IfFrequency, ModulationType } from '@app/types';
+import { dBm, Hertz, IfFrequency } from '@app/types';
+import { vi } from 'vitest';
 import { Transmitter, TransmitterModem, TransmitterState } from '../../../src/equipment/transmitter/transmitter';
 import { EventBus } from '../../../src/events/event-bus';
 import { Events } from '../../../src/events/events';
@@ -7,7 +8,7 @@ import { SignalOrigin } from '../../../src/signal-origin';
 // Mock HTMLMediaElement.prototype.play for jsdom compatibility
 Object.defineProperty(HTMLMediaElement.prototype, 'play', {
   configurable: true,
-  value: jest.fn().mockResolvedValue(undefined),
+  value: vi.fn().mockResolvedValue(undefined),
 });
 
 describe('Transmitter class', () => {
@@ -15,7 +16,7 @@ describe('Transmitter class', () => {
   let parentElement: HTMLElement;
 
   beforeEach(() => {
-    jest.resetModules();
+    vi.resetModules();
 
     // Create a clean DOM root
     document.body.innerHTML = '<div id="test-root"></div>';
@@ -29,7 +30,7 @@ describe('Transmitter class', () => {
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     document.body.innerHTML = '';
   });
 
@@ -171,7 +172,7 @@ describe('Transmitter class', () => {
     });
 
     it('should subscribe to EventBus events', () => {
-      const onSpy = jest.spyOn(EventBus.getInstance(), 'on');
+      const onSpy = vi.spyOn(EventBus.getInstance(), 'on');
 
       transmitter = new Transmitter('test-root');
 
@@ -254,7 +255,7 @@ describe('Transmitter class', () => {
     });
 
     it('should emit TX_ACTIVE_MODEM_CHANGED event', () => {
-      const emitSpy = jest.spyOn(transmitter, 'emit');
+      const emitSpy = vi.spyOn(transmitter, 'emit');
 
       transmitter.setActiveModem(2);
 
@@ -366,7 +367,7 @@ describe('Transmitter class', () => {
     });
 
     it('should emit TX_CONFIG_CHANGED event', () => {
-      const emitSpy = jest.spyOn(transmitter, 'emit');
+      const emitSpy = vi.spyOn(transmitter, 'emit');
 
       transmitter.handleFrequencyChange(1600);
       transmitter.applyChanges();
@@ -394,7 +395,7 @@ describe('Transmitter class', () => {
 
     it('should not apply if modem not found', () => {
       transmitter.state.activeModem = 99; // Invalid
-      const warnSpy = jest.spyOn(console, 'warn').mockImplementation();
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation();
 
       transmitter.applyChanges();
 
@@ -592,7 +593,7 @@ describe('Transmitter class', () => {
 
     it('should emit TX_CONFIG_CHANGED event', () => {
       transmitter.activeModem.isPowered = true;
-      const emitSpy = jest.spyOn(transmitter, 'emit');
+      const emitSpy = vi.spyOn(transmitter, 'emit');
 
       transmitter.handleTransmitToggle(true);
 
@@ -632,7 +633,7 @@ describe('Transmitter class', () => {
     });
 
     it('should emit TX_CONFIG_CHANGED event', () => {
-      const emitSpy = jest.spyOn(transmitter, 'emit');
+      const emitSpy = vi.spyOn(transmitter, 'emit');
 
       transmitter.handleLoopbackToggle(true);
 
@@ -645,11 +646,11 @@ describe('Transmitter class', () => {
   describe('handlePowerToggle', () => {
     beforeEach(() => {
       transmitter = new Transmitter('test-root');
-      jest.useFakeTimers();
+      vi.useFakeTimers();
     });
 
     afterEach(() => {
-      jest.useRealTimers();
+      vi.useRealTimers();
     });
 
     it('should turn on power after boot delay', () => {
@@ -660,7 +661,7 @@ describe('Transmitter class', () => {
       // Power on has 4000ms delay
       expect(transmitter.activeModem.isPowered).toBe(false);
 
-      jest.advanceTimersByTime(4100);
+      vi.advanceTimersByTime(4100);
 
       expect(transmitter.activeModem.isPowered).toBe(true);
     });
@@ -673,7 +674,7 @@ describe('Transmitter class', () => {
       // Power off has 250ms delay
       expect(transmitter.activeModem.isPowered).toBe(true);
 
-      jest.advanceTimersByTime(300);
+      vi.advanceTimersByTime(300);
 
       expect(transmitter.activeModem.isPowered).toBe(false);
     });
@@ -698,13 +699,13 @@ describe('Transmitter class', () => {
     });
 
     it('should emit TX_CONFIG_CHANGED after delay', () => {
-      const emitSpy = jest.spyOn(transmitter, 'emit');
+      const emitSpy = vi.spyOn(transmitter, 'emit');
 
       transmitter.handlePowerToggle(false);
 
       expect(emitSpy).not.toHaveBeenCalledWith(Events.TX_CONFIG_CHANGED, expect.any(Object));
 
-      jest.advanceTimersByTime(300);
+      vi.advanceTimersByTime(300);
 
       expect(emitSpy).toHaveBeenCalledWith(Events.TX_CONFIG_CHANGED, expect.any(Object));
 
@@ -715,11 +716,11 @@ describe('Transmitter class', () => {
   describe('handleFaultReset', () => {
     beforeEach(() => {
       transmitter = new Transmitter('test-root');
-      jest.useFakeTimers();
+      vi.useFakeTimers();
     });
 
     afterEach(() => {
-      jest.useRealTimers();
+      vi.useRealTimers();
     });
 
     it('should set fault switch up immediately', () => {
@@ -734,7 +735,7 @@ describe('Transmitter class', () => {
 
       transmitter.handleFaultReset();
 
-      jest.advanceTimersByTime(300);
+      vi.advanceTimersByTime(300);
 
       expect(transmitter.activeModem.isFaulted).toBe(false);
       expect(transmitter.activeModem.isFaultSwitchUp).toBe(false);
@@ -746,20 +747,20 @@ describe('Transmitter class', () => {
 
       transmitter.handleFaultReset();
 
-      jest.advanceTimersByTime(300);
+      vi.advanceTimersByTime(300);
 
       expect(transmitter.activeModem.isFaulted).toBe(true);
     });
 
     it('should emit TX_CONFIG_CHANGED events', () => {
-      const emitSpy = jest.spyOn(transmitter, 'emit');
+      const emitSpy = vi.spyOn(transmitter, 'emit');
 
       transmitter.handleFaultReset();
 
       // Should emit immediately
       expect(emitSpy).toHaveBeenCalledWith(Events.TX_CONFIG_CHANGED, expect.any(Object));
 
-      jest.advanceTimersByTime(300);
+      vi.advanceTimersByTime(300);
 
       // Should emit again after timeout
       expect(emitSpy).toHaveBeenCalledTimes(2);
@@ -790,7 +791,7 @@ describe('Transmitter class', () => {
     });
 
     it('should call checkForAlarms_', () => {
-      const alarmSpy = jest.spyOn(transmitter as any, 'checkForAlarms_');
+      const alarmSpy = vi.spyOn(transmitter as any, 'checkForAlarms_');
 
       transmitter.update();
 
@@ -980,7 +981,7 @@ describe('Transmitter class', () => {
 
       // Spy on DOM operations
       const ledElement = (transmitter as any).domCache['led'];
-      const classNameSetter = jest.spyOn(ledElement, 'className', 'set');
+      const classNameSetter = vi.spyOn(ledElement, 'className', 'set');
 
       // Second sync with same state
       (transmitter as any).syncDomWithState();

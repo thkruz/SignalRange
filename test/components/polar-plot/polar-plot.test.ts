@@ -1,5 +1,6 @@
-import { PolarPlot, PolarPlotConfig } from '../../../src/components/polar-plot/polar-plot';
 import { Degrees } from 'ootk';
+import { vi } from 'vitest';
+import { PolarPlot, PolarPlotConfig } from '../../../src/components/polar-plot/polar-plot';
 
 describe('PolarPlot', () => {
   let container: HTMLElement;
@@ -99,8 +100,8 @@ describe('PolarPlot', () => {
       const plot = createPlotInDom('context-setup-plot');
       const canvas = container.querySelector('.polar-plot-canvas') as HTMLCanvasElement;
       const ctx = canvas.getContext('2d')!;
-      const fontSpy = jest.spyOn(ctx, 'font', 'set');
-      const baselineSpy = jest.spyOn(ctx, 'textBaseline', 'set');
+      const fontSpy = vi.spyOn(ctx, 'font', 'set');
+      const baselineSpy = vi.spyOn(ctx, 'textBaseline', 'set');
 
       plot.onDomReady();
 
@@ -112,7 +113,7 @@ describe('PolarPlot', () => {
       const plot = createPlotInDom('initial-draw-plot');
       const canvas = container.querySelector('.polar-plot-canvas') as HTMLCanvasElement;
       const ctx = canvas.getContext('2d')!;
-      const clearRectSpy = jest.spyOn(ctx, 'clearRect');
+      const clearRectSpy = vi.spyOn(ctx, 'clearRect');
 
       plot.onDomReady();
 
@@ -128,7 +129,7 @@ describe('PolarPlot', () => {
 
       const canvas = container.querySelector('.polar-plot-canvas') as HTMLCanvasElement;
       const ctx = canvas.getContext('2d')!;
-      const clearRectSpy = jest.spyOn(ctx, 'clearRect');
+      const clearRectSpy = vi.spyOn(ctx, 'clearRect');
 
       // Initial call in onDomReady clears rect, clear the mock
       clearRectSpy.mockClear();
@@ -144,7 +145,7 @@ describe('PolarPlot', () => {
 
       const canvas = container.querySelector('.polar-plot-canvas') as HTMLCanvasElement;
       const ctx = canvas.getContext('2d')!;
-      const clearRectSpy = jest.spyOn(ctx, 'clearRect');
+      const clearRectSpy = vi.spyOn(ctx, 'clearRect');
 
       clearRectSpy.mockClear();
 
@@ -163,7 +164,7 @@ describe('PolarPlot', () => {
       // First draw to set initial position
       plot.draw(45 as Degrees, 30 as Degrees);
 
-      const clearRectSpy = jest.spyOn(ctx, 'clearRect');
+      const clearRectSpy = vi.spyOn(ctx, 'clearRect');
       clearRectSpy.mockClear();
 
       // Same position - should not redraw
@@ -187,7 +188,7 @@ describe('PolarPlot', () => {
 
       const canvas = container.querySelector('.polar-plot-canvas') as HTMLCanvasElement;
       const ctx = canvas.getContext('2d')!;
-      const clearRectSpy = jest.spyOn(ctx, 'clearRect');
+      const clearRectSpy = vi.spyOn(ctx, 'clearRect');
       clearRectSpy.mockClear();
 
       // Only azimuth changes
@@ -204,7 +205,7 @@ describe('PolarPlot', () => {
 
       const canvas = container.querySelector('.polar-plot-canvas') as HTMLCanvasElement;
       const ctx = canvas.getContext('2d')!;
-      const clearRectSpy = jest.spyOn(ctx, 'clearRect');
+      const clearRectSpy = vi.spyOn(ctx, 'clearRect');
       clearRectSpy.mockClear();
 
       // Only elevation changes
@@ -290,7 +291,7 @@ describe('PolarPlot', () => {
       const plot = createPlotInDom('bg-draw-plot');
       const canvas = container.querySelector('.polar-plot-canvas') as HTMLCanvasElement;
       const ctx = canvas.getContext('2d')!;
-      const fillRectSpy = jest.spyOn(ctx, 'fillRect');
+      const fillRectSpy = vi.spyOn(ctx, 'fillRect');
 
       plot.onDomReady();
 
@@ -301,7 +302,7 @@ describe('PolarPlot', () => {
       const plot = createPlotInDom('grid-circles-plot', { showGrid: true });
       const canvas = container.querySelector('.polar-plot-canvas') as HTMLCanvasElement;
       const ctx = canvas.getContext('2d')!;
-      const arcSpy = jest.spyOn(ctx, 'arc');
+      const arcSpy = vi.spyOn(ctx, 'arc');
 
       plot.onDomReady();
 
@@ -313,8 +314,8 @@ describe('PolarPlot', () => {
       const plot = createPlotInDom('grid-radials-plot', { showGrid: true });
       const canvas = container.querySelector('.polar-plot-canvas') as HTMLCanvasElement;
       const ctx = canvas.getContext('2d')!;
-      const moveToSpy = jest.spyOn(ctx, 'moveTo');
-      const lineToSpy = jest.spyOn(ctx, 'lineTo');
+      const moveToSpy = vi.spyOn(ctx, 'moveTo');
+      const lineToSpy = vi.spyOn(ctx, 'lineTo');
 
       plot.onDomReady();
 
@@ -328,7 +329,7 @@ describe('PolarPlot', () => {
       const plotNoGrid = createPlotInDom('no-grid-draw-plot', { showGrid: false, showLabels: false });
       const canvasNoGrid = container.querySelector('.polar-plot-canvas') as HTMLCanvasElement;
       const ctxNoGrid = canvasNoGrid.getContext('2d')!;
-      const strokeSpyNoGrid = jest.spyOn(ctxNoGrid, 'stroke');
+      const strokeSpyNoGrid = vi.spyOn(ctxNoGrid, 'stroke');
 
       plotNoGrid.onDomReady();
       const noGridStrokeCalls = strokeSpyNoGrid.mock.calls.length;
@@ -338,7 +339,7 @@ describe('PolarPlot', () => {
       const plotWithGrid = createPlotInDom('with-grid-draw-plot', { showGrid: true, showLabels: false });
       const canvasWithGrid = container.querySelector('.polar-plot-canvas') as HTMLCanvasElement;
       const ctxWithGrid = canvasWithGrid.getContext('2d')!;
-      const strokeSpyWithGrid = jest.spyOn(ctxWithGrid, 'stroke');
+      const strokeSpyWithGrid = vi.spyOn(ctxWithGrid, 'stroke');
 
       plotWithGrid.onDomReady();
       const withGridStrokeCalls = strokeSpyWithGrid.mock.calls.length;
@@ -351,7 +352,7 @@ describe('PolarPlot', () => {
       const plot = createPlotInDom('labels-draw-plot', { showLabels: true });
       const canvas = container.querySelector('.polar-plot-canvas') as HTMLCanvasElement;
       const ctx = canvas.getContext('2d')!;
-      const fillTextSpy = jest.spyOn(ctx, 'fillText');
+      const fillTextSpy = vi.spyOn(ctx, 'fillText');
 
       plot.onDomReady();
 
@@ -368,7 +369,7 @@ describe('PolarPlot', () => {
       const plot = createPlotInDom('el-labels-draw-plot', { showLabels: true });
       const canvas = container.querySelector('.polar-plot-canvas') as HTMLCanvasElement;
       const ctx = canvas.getContext('2d')!;
-      const fillTextSpy = jest.spyOn(ctx, 'fillText');
+      const fillTextSpy = vi.spyOn(ctx, 'fillText');
 
       plot.onDomReady();
 
@@ -382,7 +383,7 @@ describe('PolarPlot', () => {
       const plot = createPlotInDom('no-labels-draw-plot', { showLabels: false, showGrid: false });
       const canvas = container.querySelector('.polar-plot-canvas') as HTMLCanvasElement;
       const ctx = canvas.getContext('2d')!;
-      const fillTextSpy = jest.spyOn(ctx, 'fillText');
+      const fillTextSpy = vi.spyOn(ctx, 'fillText');
 
       plot.onDomReady();
 
@@ -394,7 +395,7 @@ describe('PolarPlot', () => {
       const plot = createPlotInDom('antenna-circle-plot', { showGrid: false, showLabels: false });
       const canvas = container.querySelector('.polar-plot-canvas') as HTMLCanvasElement;
       const ctx = canvas.getContext('2d')!;
-      const arcSpy = jest.spyOn(ctx, 'arc');
+      const arcSpy = vi.spyOn(ctx, 'arc');
 
       plot.onDomReady();
 
@@ -406,8 +407,8 @@ describe('PolarPlot', () => {
       const plot = createPlotInDom('crosshair-plot', { showGrid: false, showLabels: false });
       const canvas = container.querySelector('.polar-plot-canvas') as HTMLCanvasElement;
       const ctx = canvas.getContext('2d')!;
-      const moveToSpy = jest.spyOn(ctx, 'moveTo');
-      const lineToSpy = jest.spyOn(ctx, 'lineTo');
+      const moveToSpy = vi.spyOn(ctx, 'moveTo');
+      const lineToSpy = vi.spyOn(ctx, 'lineTo');
 
       plot.onDomReady();
 
@@ -513,7 +514,7 @@ describe('PolarPlot', () => {
 
       const canvas = container.querySelector('.polar-plot-canvas') as HTMLCanvasElement;
       const ctx = canvas.getContext('2d')!;
-      const arcSpy = jest.spyOn(ctx, 'arc');
+      const arcSpy = vi.spyOn(ctx, 'arc');
 
       arcSpy.mockClear();
       plot.draw(0 as Degrees, 90 as Degrees);
@@ -535,7 +536,7 @@ describe('PolarPlot', () => {
 
       const canvas = container.querySelector('.polar-plot-canvas') as HTMLCanvasElement;
       const ctx = canvas.getContext('2d')!;
-      const arcSpy = jest.spyOn(ctx, 'arc');
+      const arcSpy = vi.spyOn(ctx, 'arc');
 
       // First draw to a different position to force change (initial is 0,0)
       plot.draw(45 as Degrees, 45 as Degrees);
@@ -559,7 +560,7 @@ describe('PolarPlot', () => {
 
       const canvas = container.querySelector('.polar-plot-canvas') as HTMLCanvasElement;
       const ctx = canvas.getContext('2d')!;
-      const arcSpy = jest.spyOn(ctx, 'arc');
+      const arcSpy = vi.spyOn(ctx, 'arc');
 
       arcSpy.mockClear();
       plot.draw(0 as Degrees, 45 as Degrees);
@@ -579,7 +580,7 @@ describe('PolarPlot', () => {
 
       const canvas = container.querySelector('.polar-plot-canvas') as HTMLCanvasElement;
       const ctx = canvas.getContext('2d')!;
-      const arcSpy = jest.spyOn(ctx, 'arc');
+      const arcSpy = vi.spyOn(ctx, 'arc');
 
       arcSpy.mockClear();
       plot.draw(90 as Degrees, 45 as Degrees);
@@ -599,7 +600,7 @@ describe('PolarPlot', () => {
 
       const canvas = container.querySelector('.polar-plot-canvas') as HTMLCanvasElement;
       const ctx = canvas.getContext('2d')!;
-      const arcSpy = jest.spyOn(ctx, 'arc');
+      const arcSpy = vi.spyOn(ctx, 'arc');
 
       arcSpy.mockClear();
       plot.draw(180 as Degrees, 45 as Degrees);
@@ -619,7 +620,7 @@ describe('PolarPlot', () => {
 
       const canvas = container.querySelector('.polar-plot-canvas') as HTMLCanvasElement;
       const ctx = canvas.getContext('2d')!;
-      const arcSpy = jest.spyOn(ctx, 'arc');
+      const arcSpy = vi.spyOn(ctx, 'arc');
 
       arcSpy.mockClear();
       plot.draw(270 as Degrees, 45 as Degrees);
@@ -658,7 +659,7 @@ describe('PolarPlot', () => {
 
       const canvas = container.querySelector('.polar-plot-canvas') as HTMLCanvasElement;
       const ctx = canvas.getContext('2d')!;
-      const arcSpy = jest.spyOn(ctx, 'arc');
+      const arcSpy = vi.spyOn(ctx, 'arc');
 
       // Draw to a different position first (initial is 0,0)
       plot.draw(45 as Degrees, 45 as Degrees);
@@ -673,7 +674,7 @@ describe('PolarPlot', () => {
       const plot = createPlotInDom('bg-color-plot');
       const canvas = container.querySelector('.polar-plot-canvas') as HTMLCanvasElement;
       const ctx = canvas.getContext('2d')!;
-      const fillStyleSpy = jest.spyOn(ctx, 'fillStyle', 'set');
+      const fillStyleSpy = vi.spyOn(ctx, 'fillStyle', 'set');
 
       plot.onDomReady();
 
@@ -684,7 +685,7 @@ describe('PolarPlot', () => {
       const plot = createPlotInDom('antenna-color-plot', { showGrid: false, showLabels: false });
       const canvas = container.querySelector('.polar-plot-canvas') as HTMLCanvasElement;
       const ctx = canvas.getContext('2d')!;
-      const fillStyleSpy = jest.spyOn(ctx, 'fillStyle', 'set');
+      const fillStyleSpy = vi.spyOn(ctx, 'fillStyle', 'set');
 
       plot.onDomReady();
 
@@ -695,7 +696,7 @@ describe('PolarPlot', () => {
       const plot = createPlotInDom('antenna-outline-plot', { showGrid: false, showLabels: false });
       const canvas = container.querySelector('.polar-plot-canvas') as HTMLCanvasElement;
       const ctx = canvas.getContext('2d')!;
-      const strokeStyleSpy = jest.spyOn(ctx, 'strokeStyle', 'set');
+      const strokeStyleSpy = vi.spyOn(ctx, 'strokeStyle', 'set');
 
       plot.onDomReady();
 
@@ -706,7 +707,7 @@ describe('PolarPlot', () => {
       const plot = createPlotInDom('crosshair-color-plot', { showGrid: false, showLabels: false });
       const canvas = container.querySelector('.polar-plot-canvas') as HTMLCanvasElement;
       const ctx = canvas.getContext('2d')!;
-      const strokeStyleSpy = jest.spyOn(ctx, 'strokeStyle', 'set');
+      const strokeStyleSpy = vi.spyOn(ctx, 'strokeStyle', 'set');
 
       plot.onDomReady();
 

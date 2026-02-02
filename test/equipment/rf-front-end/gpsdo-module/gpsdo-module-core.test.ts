@@ -1,14 +1,14 @@
-import { EventBus } from '../../../../src/events/event-bus';
-import { Events } from '../../../../src/events/events';
-import { RFFrontEndCore } from '../../../../src/equipment/rf-front-end/rf-front-end-core';
+import { vi } from 'vitest';
 import { GPSDOModuleCore } from '../../../../src/equipment/rf-front-end/gpsdo-module/gpsdo-module-core';
 import { GPSDOState, defaultGpsdoState } from '../../../../src/equipment/rf-front-end/gpsdo-module/gpsdo-state';
-import { SimulationManager } from '../../../../src/simulation/simulation-manager';
+import { RFFrontEndCore } from '../../../../src/equipment/rf-front-end/rf-front-end-core';
+import { EventBus } from '../../../../src/events/event-bus';
+import { Events } from '../../../../src/events/events';
 
 // Mock SimulationManager
-jest.mock('../../../../src/simulation/simulation-manager', () => ({
+vi.mock('../../../../src/simulation/simulation-manager', () => ({
   SimulationManager: {
-    getInstance: jest.fn(() => ({
+    getInstance: vi.fn(() => ({
       isDeveloperMode: false,
     })),
   },
@@ -17,7 +17,7 @@ jest.mock('../../../../src/simulation/simulation-manager', () => ({
 // Mock HTMLMediaElement.prototype.play for jsdom compatibility
 Object.defineProperty(HTMLMediaElement.prototype, 'play', {
   configurable: true,
-  value: jest.fn().mockResolvedValue(undefined),
+  value: vi.fn().mockResolvedValue(undefined),
 });
 
 // Concrete test implementation of abstract GPSDOModuleCore
@@ -114,8 +114,8 @@ describe('GPSDOModuleCore', () => {
   let mockRfFrontEnd: RFFrontEndCore;
 
   beforeEach(() => {
-    jest.useFakeTimers();
-    jest.clearAllMocks();
+    vi.useFakeTimers();
+    vi.clearAllMocks();
 
     document.body.innerHTML = '<div id="test-root"></div>';
 
@@ -133,7 +133,7 @@ describe('GPSDOModuleCore', () => {
       gpsdoModule.testStopStabilityMonitor();
       gpsdoModule.testStopHoldoverMonitor();
     }
-    jest.useRealTimers();
+    vi.useRealTimers();
     document.body.innerHTML = '';
   });
 
@@ -400,7 +400,7 @@ describe('GPSDOModuleCore', () => {
     it('should set acquiring state when enabling GNSS', () => {
       gpsdoModule.state.isGnssSwitchUp = false;
 
-      const callback = jest.fn();
+      const callback = vi.fn();
       gpsdoModule.handleGnssToggle(true, callback);
 
       expect(gpsdoModule.state.isGnssSwitchUp).toBe(true);
@@ -412,11 +412,11 @@ describe('GPSDOModuleCore', () => {
       gpsdoModule.state.isGnssSwitchUp = false;
       gpsdoModule.state.isLocked = false;
 
-      const callback = jest.fn();
+      const callback = vi.fn();
       gpsdoModule.handleGnssToggle(true, callback);
 
       // Fast-forward 5 seconds
-      jest.advanceTimersByTime(5000);
+      vi.advanceTimersByTime(5000);
 
       expect(gpsdoModule.state.gnssSignalPresent).toBe(true);
       expect(gpsdoModule.state.isGnssAcquiringLock).toBe(false);
@@ -431,7 +431,7 @@ describe('GPSDOModuleCore', () => {
       gpsdoModule.state.gnssSignalPresent = true;
       gpsdoModule.state.satelliteCount = 8;
 
-      const callback = jest.fn();
+      const callback = vi.fn();
       gpsdoModule.handleGnssToggle(false, callback);
 
       expect(gpsdoModule.state.isGnssSwitchUp).toBe(false);
@@ -444,7 +444,7 @@ describe('GPSDOModuleCore', () => {
       gpsdoModule.state.isGnssSwitchUp = true;
       gpsdoModule.state.isLocked = true;
 
-      const callback = jest.fn();
+      const callback = vi.fn();
       gpsdoModule.handleGnssToggle(false, callback);
 
       expect(gpsdoModule.getHoldoverInterval()).not.toBeNull();
@@ -469,7 +469,7 @@ describe('GPSDOModuleCore', () => {
     it('should decrement warmup time each second', () => {
       gpsdoModule.testStartWarmupTimer();
 
-      jest.advanceTimersByTime(1000);
+      vi.advanceTimersByTime(1000);
 
       expect(gpsdoModule.state.warmupTimeRemaining).toBe(9);
     });
@@ -478,7 +478,7 @@ describe('GPSDOModuleCore', () => {
       gpsdoModule.testStartWarmupTimer();
       const initialTemp = gpsdoModule.state.temperature;
 
-      jest.advanceTimersByTime(1000);
+      vi.advanceTimersByTime(1000);
 
       expect(gpsdoModule.state.temperature).toBeGreaterThan(initialTemp);
     });
@@ -487,7 +487,7 @@ describe('GPSDOModuleCore', () => {
       gpsdoModule.state.frequencyAccuracy = 1000;
       gpsdoModule.testStartWarmupTimer();
 
-      jest.advanceTimersByTime(1000);
+      vi.advanceTimersByTime(1000);
 
       expect(gpsdoModule.state.frequencyAccuracy).toBeLessThan(1000);
     });
@@ -495,7 +495,7 @@ describe('GPSDOModuleCore', () => {
     it('should call onWarmupTick each second', () => {
       gpsdoModule.testStartWarmupTimer();
 
-      jest.advanceTimersByTime(3000);
+      vi.advanceTimersByTime(3000);
 
       expect(gpsdoModule.warmupTickCount).toBe(3);
     });
@@ -507,11 +507,11 @@ describe('GPSDOModuleCore', () => {
       gpsdoModule.testStartWarmupTimer();
 
       // First tick: decrements warmupTimeRemaining from 1 to 0
-      jest.advanceTimersByTime(1000);
+      vi.advanceTimersByTime(1000);
       expect(gpsdoModule.state.warmupTimeRemaining).toBe(0);
 
       // Second tick: enters else branch and achieves lock
-      jest.advanceTimersByTime(1000);
+      vi.advanceTimersByTime(1000);
       expect(gpsdoModule.state.isLocked).toBe(true);
     });
 
@@ -519,7 +519,7 @@ describe('GPSDOModuleCore', () => {
       gpsdoModule.testStartWarmupTimer();
       gpsdoModule.state.isPowered = false;
 
-      jest.advanceTimersByTime(1000);
+      vi.advanceTimersByTime(1000);
 
       expect(gpsdoModule.getWarmupInterval()).toBeNull();
     });
@@ -555,7 +555,7 @@ describe('GPSDOModuleCore', () => {
     it('should increment lock duration every 5 seconds', () => {
       gpsdoModule.testStartStabilityMonitor();
 
-      jest.advanceTimersByTime(5000);
+      vi.advanceTimersByTime(5000);
 
       expect(gpsdoModule.state.lockDuration).toBe(5);
     });
@@ -564,7 +564,7 @@ describe('GPSDOModuleCore', () => {
       const initialHours = gpsdoModule.state.operatingHours;
       gpsdoModule.testStartStabilityMonitor();
 
-      jest.advanceTimersByTime(5000);
+      vi.advanceTimersByTime(5000);
 
       expect(gpsdoModule.state.operatingHours).toBeCloseTo(initialHours + 5 / 3600, 6);
     });
@@ -572,7 +572,7 @@ describe('GPSDOModuleCore', () => {
     it('should call onStabilityTick every 5 seconds', () => {
       gpsdoModule.testStartStabilityMonitor();
 
-      jest.advanceTimersByTime(15000);
+      vi.advanceTimersByTime(15000);
 
       expect(gpsdoModule.stabilityTickCount).toBe(3);
     });
@@ -583,7 +583,7 @@ describe('GPSDOModuleCore', () => {
 
       // Run multiple times to increase chance of satellite count change
       for (let i = 0; i < 20; i++) {
-        jest.advanceTimersByTime(5000);
+        vi.advanceTimersByTime(5000);
       }
 
       // Satellite count should stay within bounds
@@ -595,7 +595,7 @@ describe('GPSDOModuleCore', () => {
       gpsdoModule.state.isLocked = false;
       gpsdoModule.testStartStabilityMonitor();
 
-      jest.advanceTimersByTime(5000);
+      vi.advanceTimersByTime(5000);
 
       expect(gpsdoModule.state.lockDuration).toBe(0);
     });
@@ -629,7 +629,7 @@ describe('GPSDOModuleCore', () => {
     it('should increment holdover duration every second', () => {
       gpsdoModule.testStartHoldoverMonitor();
 
-      jest.advanceTimersByTime(1000);
+      vi.advanceTimersByTime(1000);
 
       expect(gpsdoModule.state.holdoverDuration).toBe(1);
     });
@@ -638,7 +638,7 @@ describe('GPSDOModuleCore', () => {
       gpsdoModule.testStartHoldoverMonitor();
 
       // 3600 seconds = 1 hour, should have ~1.67 μs error
-      jest.advanceTimersByTime(3600 * 1000);
+      vi.advanceTimersByTime(3600 * 1000);
 
       expect(gpsdoModule.state.holdoverError).toBeCloseTo(1.67, 1);
     });
@@ -647,7 +647,7 @@ describe('GPSDOModuleCore', () => {
       const initialAccuracy = gpsdoModule.state.frequencyAccuracy;
       gpsdoModule.testStartHoldoverMonitor();
 
-      jest.advanceTimersByTime(1000);
+      vi.advanceTimersByTime(1000);
 
       expect(gpsdoModule.state.frequencyAccuracy).toBeGreaterThan(initialAccuracy);
     });
@@ -655,7 +655,7 @@ describe('GPSDOModuleCore', () => {
     it('should call onHoldoverTick every second', () => {
       gpsdoModule.testStartHoldoverMonitor();
 
-      jest.advanceTimersByTime(5000);
+      vi.advanceTimersByTime(5000);
 
       expect(gpsdoModule.holdoverTickCount).toBe(5);
     });
@@ -664,7 +664,7 @@ describe('GPSDOModuleCore', () => {
       gpsdoModule.testStartHoldoverMonitor();
       gpsdoModule.state.isInHoldover = false;
 
-      jest.advanceTimersByTime(1000);
+      vi.advanceTimersByTime(1000);
 
       expect(gpsdoModule.getHoldoverInterval()).toBeNull();
     });
@@ -673,7 +673,7 @@ describe('GPSDOModuleCore', () => {
       gpsdoModule.testStartHoldoverMonitor();
       gpsdoModule.state.isPowered = false;
 
-      jest.advanceTimersByTime(1000);
+      vi.advanceTimersByTime(1000);
 
       expect(gpsdoModule.getHoldoverInterval()).toBeNull();
     });

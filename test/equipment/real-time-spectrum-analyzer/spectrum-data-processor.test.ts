@@ -1,15 +1,16 @@
-import { SpectrumDataProcessor } from '../../../src/equipment/real-time-spectrum-analyzer/spectrum-data-processor';
+import { Mock, Mocked, vi } from 'vitest';
 import { RealTimeSpectrumAnalyzer, RealTimeSpectrumAnalyzerState } from '../../../src/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer';
+import { SpectrumDataProcessor } from '../../../src/equipment/real-time-spectrum-analyzer/spectrum-data-processor';
 import { Hertz, IfSignal } from '../../../src/types';
 
 // Mock HTMLMediaElement.prototype.play for jsdom compatibility
 Object.defineProperty(HTMLMediaElement.prototype, 'play', {
   configurable: true,
-  value: jest.fn().mockResolvedValue(undefined),
+  value: vi.fn().mockResolvedValue(undefined),
 });
 
 describe('SpectrumDataProcessor', () => {
-  let mockSpecA: jest.Mocked<Partial<RealTimeSpectrumAnalyzer>>;
+  let mockSpecA: Mocked<Partial<RealTimeSpectrumAnalyzer>>;
   let processor: SpectrumDataProcessor;
   const testWidth = 100;
 
@@ -23,7 +24,7 @@ describe('SpectrumDataProcessor', () => {
 
   // Create mock signal path manager
   const createMockSignalPathManager = () => ({
-    getTotalRxGain: jest.fn().mockReturnValue(0),
+    getTotalRxGain: vi.fn().mockReturnValue(0),
   });
 
   // Create mock coupler module
@@ -270,7 +271,7 @@ describe('SpectrumDataProcessor', () => {
     it('should add gain when isSkipLnaGainDuringDraw is false', () => {
       mockSpecA.state!.isSkipLnaGainDuringDraw = false;
       const expectedGain = 30;
-      (mockSpecA.rfFrontEnd_!.couplerModule.signalPathManager.getTotalRxGain as jest.Mock)
+      (mockSpecA.rfFrontEnd_!.couplerModule.signalPathManager.getTotalRxGain as Mock)
         .mockReturnValue(expectedGain);
 
       processor.setFrequencyRange(500e6 as Hertz, 600e6 as Hertz);

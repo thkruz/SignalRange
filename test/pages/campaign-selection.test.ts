@@ -1,40 +1,47 @@
+import { Mock, vi } from 'vitest';
 import { EventBus } from '../../src/events/event-bus';
 
-// Mock dependencies before imports
-jest.mock('../../src/events/event-bus');
-
-jest.mock('../../src/engine/utils/query-selector', () => ({
-  qs: jest.fn(),
-}));
-
-jest.mock('../../src/logging/logger', () => ({
-  Logger: {
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
+// Create shared mock for Router using vi.hoisted()
+const { mockNavigate, mockRouter } = vi.hoisted(() => ({
+  mockNavigate: vi.fn(),
+  mockRouter: {
+    navigate: vi.fn(),
+    getCurrentPath: vi.fn(() => '/campaigns'),
   },
 }));
 
-jest.mock('../../src/router', () => ({
+// Mock dependencies before imports
+vi.mock('../../src/events/event-bus');
+
+vi.mock('../../src/engine/utils/query-selector', () => ({
+  qs: vi.fn(),
+}));
+
+vi.mock('../../src/logging/logger', () => ({
+  Logger: {
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+  },
+}));
+
+vi.mock('../../src/router', () => ({
   Router: {
-    getInstance: jest.fn(() => ({
-      navigate: jest.fn(),
-      getCurrentPath: jest.fn(() => '/campaigns'),
-    })),
+    getInstance: vi.fn(() => mockRouter),
   },
   NavigationOptions: {},
 }));
 
-jest.mock('../../src/app', () => ({
+vi.mock('../../src/app', () => ({
   App: {
     authReady: Promise.resolve(),
   },
 }));
 
-jest.mock('../../src/campaigns/campaign-manager', () => ({
+vi.mock('../../src/campaigns/campaign-manager', () => ({
   CampaignManager: {
-    getInstance: jest.fn(() => ({
-      getAllCampaigns: jest.fn(() => [
+    getInstance: vi.fn(() => ({
+      getAllCampaigns: vi.fn(() => [
         {
           id: 'nats',
           title: 'North Atlantic Teleport Services',
@@ -60,31 +67,31 @@ jest.mock('../../src/campaigns/campaign-manager', () => ({
           isDisabled: true,
         },
       ]),
-      getCampaignProgress: jest.fn(() => ({
+      getCampaignProgress: vi.fn(() => ({
         completedScenarios: [],
         totalScenarios: 1,
         completionPercentage: 0,
         isCompleted: false,
       })),
-      getCompletedCampaigns: jest.fn(() => []),
-      isCampaignLocked: jest.fn(() => false),
+      getCompletedCampaigns: vi.fn(() => []),
+      isCampaignLocked: vi.fn(() => false),
     })),
   },
 }));
 
-jest.mock('../../src/user-account/auth', () => ({
+vi.mock('../../src/user-account/auth', () => ({
   Auth: {
-    isLoggedIn: jest.fn(() => Promise.resolve(false)),
+    isLoggedIn: vi.fn(() => Promise.resolve(false)),
   },
 }));
 
-jest.mock('../../src/user-account/user-data-service', () => ({
-  getUserDataService: jest.fn(() => ({
-    getAllScenariosProgress: jest.fn(() => Promise.resolve({ scenarios: [] })),
+vi.mock('../../src/user-account/user-data-service', () => ({
+  getUserDataService: vi.fn(() => ({
+    getAllScenariosProgress: vi.fn(() => Promise.resolve({ scenarios: [] })),
   })),
 }));
 
-jest.mock('../../src/scenarios/sandbox', () => ({
+vi.mock('../../src/scenarios/sandbox', () => ({
   sandboxData: {
     title: 'Sandbox',
     subtitle: 'Free Play Mode',
@@ -93,11 +100,11 @@ jest.mock('../../src/scenarios/sandbox', () => ({
   },
 }));
 
-jest.mock('../../src/utils/asset-url', () => ({
-  getAssetUrl: jest.fn((path: string) => path),
+vi.mock('../../src/utils/asset-url', () => ({
+  getAssetUrl: vi.fn((path: string) => path),
 }));
 
-jest.mock('../../src/pages/base-page', () => {
+vi.mock('../../src/pages/base-page', () => {
   return {
     BasePage: class {
       protected dom_: HTMLElement | null = null;
@@ -119,6 +126,8 @@ jest.mock('../../src/pages/base-page', () => {
           }
           this.dom_ = root.lastElementChild as HTMLElement;
         }
+        // Call addEventListeners_ like the real BaseElement does
+        this.addEventListeners_();
       }
 
       show(): void {
@@ -133,29 +142,31 @@ jest.mock('../../src/pages/base-page', () => {
         }
       }
 
-      protected initProgressSaveManager_(): void {}
-      protected disposeProgressSaveManager_(): void {}
-      protected async initializeObjectivesAndDialogs_(): Promise<void> {}
+      // Abstract method to be overridden by subclasses
+      protected addEventListeners_(): void { }
+      protected initProgressSaveManager_(): void { }
+      protected disposeProgressSaveManager_(): void { }
+      protected async initializeObjectivesAndDialogs_(): Promise<void> { }
     },
   };
 });
 
-jest.mock('../../src/pages/layout/body/body', () => ({
+vi.mock('../../src/pages/layout/body/body', () => ({
   Body: {
     containerId: 'body-content-container',
   },
 }));
 
 // Import after mocks
+import { CampaignManager } from '../../src/campaigns/campaign-manager';
+import { qs } from '../../src/engine/utils/query-selector';
 import { CampaignSelectionPage } from '../../src/pages/campaign-selection';
 import { Router } from '../../src/router';
-import { CampaignManager } from '../../src/campaigns/campaign-manager';
 import { Auth } from '../../src/user-account/auth';
 import { getUserDataService } from '../../src/user-account/user-data-service';
-import { qs } from '../../src/engine/utils/query-selector';
 
 // Setup qs mock to use actual DOM
-const mockQs = qs as jest.Mock;
+const mockQs = qs as Mock;
 mockQs.mockImplementation((selector: string, parent?: Element) => {
   const root = parent || global.document;
   return root.querySelector(selector);
@@ -163,21 +174,21 @@ mockQs.mockImplementation((selector: string, parent?: Element) => {
 
 describe('CampaignSelectionPage', () => {
   let bodyContainer: HTMLElement;
-  let mockEventBus: { on: jest.Mock; off: jest.Mock; emit: jest.Mock };
+  let mockEventBus: { on: Mock; off: Mock; emit: Mock };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Reset singleton
     (CampaignSelectionPage as any).instance_ = undefined;
 
     // Setup mock EventBus
     mockEventBus = {
-      on: jest.fn(),
-      off: jest.fn(),
-      emit: jest.fn(),
+      on: vi.fn(),
+      off: vi.fn(),
+      emit: vi.fn(),
     };
-    (EventBus.getInstance as jest.Mock).mockReturnValue(mockEventBus);
+    (EventBus.getInstance as Mock).mockReturnValue(mockEventBus);
 
     // Setup body container
     bodyContainer = document.createElement('div');
@@ -333,29 +344,23 @@ describe('CampaignSelectionPage', () => {
     });
 
     it('should navigate to campaign scenarios on card click', () => {
-      const mockNavigate = jest.fn();
-      (Router.getInstance as jest.Mock).mockReturnValue({ navigate: mockNavigate });
-
       // Get the enabled campaign card and click it
       const cards = document.querySelectorAll('.campaign-card:not(.disabled)');
       const enabledCard = cards[0] as HTMLElement;
 
       if (enabledCard) {
         enabledCard.click();
-        expect(mockNavigate).toHaveBeenCalledWith('/campaigns/nats');
+        expect(mockRouter.navigate).toHaveBeenCalledWith('/campaigns/nats');
       }
     });
 
     it('should not navigate when clicking disabled card', () => {
-      const mockNavigate = jest.fn();
-      (Router.getInstance as jest.Mock).mockReturnValue({ navigate: mockNavigate });
-
       // Disabled cards should not have click handlers attached
       const disabledCard = document.querySelector('.campaign-card.disabled') as HTMLElement;
       disabledCard?.click();
 
       // Since disabled cards don't have click listeners, navigate should not be called
-      expect(mockNavigate).not.toHaveBeenCalled();
+      expect(mockRouter.navigate).not.toHaveBeenCalled();
     });
   });
 
@@ -383,15 +388,15 @@ describe('CampaignSelectionPage', () => {
 
   describe('campaign progress display', () => {
     it('should show progress banner for in-progress campaigns', async () => {
-      const mockGetProgress = jest.fn(() => ({
+      const mockGetProgress = vi.fn(() => ({
         completedScenarios: [{ id: 'scenario1' }],
         totalScenarios: 2,
         completionPercentage: 50,
         isCompleted: false,
       }));
 
-      (CampaignManager.getInstance as jest.Mock).mockReturnValue({
-        getAllCampaigns: jest.fn(() => [
+      (CampaignManager.getInstance as Mock).mockReturnValue({
+        getAllCampaigns: vi.fn(() => [
           {
             id: 'nats',
             title: 'Test Campaign',
@@ -406,8 +411,8 @@ describe('CampaignSelectionPage', () => {
           },
         ]),
         getCampaignProgress: mockGetProgress,
-        getCompletedCampaigns: jest.fn(() => []),
-        isCampaignLocked: jest.fn(() => false),
+        getCompletedCampaigns: vi.fn(() => []),
+        isCampaignLocked: vi.fn(() => false),
       });
 
       CampaignSelectionPage.getInstance();
@@ -420,15 +425,15 @@ describe('CampaignSelectionPage', () => {
     });
 
     it('should show completed banner for finished campaigns', async () => {
-      const mockGetProgress = jest.fn(() => ({
+      const mockGetProgress = vi.fn(() => ({
         completedScenarios: [{ id: 'scenario1' }],
         totalScenarios: 1,
         completionPercentage: 100,
         isCompleted: true,
       }));
 
-      (CampaignManager.getInstance as jest.Mock).mockReturnValue({
-        getAllCampaigns: jest.fn(() => [
+      (CampaignManager.getInstance as Mock).mockReturnValue({
+        getAllCampaigns: vi.fn(() => [
           {
             id: 'nats',
             title: 'Test Campaign',
@@ -443,8 +448,8 @@ describe('CampaignSelectionPage', () => {
           },
         ]),
         getCampaignProgress: mockGetProgress,
-        getCompletedCampaigns: jest.fn(() => ['nats']),
-        isCampaignLocked: jest.fn(() => false),
+        getCompletedCampaigns: vi.fn(() => ['nats']),
+        isCampaignLocked: vi.fn(() => false),
       });
 
       CampaignSelectionPage.getInstance();
@@ -459,8 +464,8 @@ describe('CampaignSelectionPage', () => {
 
   describe('locked campaigns', () => {
     it('should show locked banner for campaigns with unmet prerequisites', async () => {
-      (CampaignManager.getInstance as jest.Mock).mockReturnValue({
-        getAllCampaigns: jest.fn(() => [
+      (CampaignManager.getInstance as Mock).mockReturnValue({
+        getAllCampaigns: vi.fn(() => [
           {
             id: 'locked-campaign',
             title: 'Locked Campaign',
@@ -474,14 +479,14 @@ describe('CampaignSelectionPage', () => {
             isDisabled: false,
           },
         ]),
-        getCampaignProgress: jest.fn(() => ({
+        getCampaignProgress: vi.fn(() => ({
           completedScenarios: [],
           totalScenarios: 1,
           completionPercentage: 0,
           isCompleted: false,
         })),
-        getCompletedCampaigns: jest.fn(() => []),
-        isCampaignLocked: jest.fn(() => true),
+        getCompletedCampaigns: vi.fn(() => []),
+        isCampaignLocked: vi.fn(() => true),
       });
 
       CampaignSelectionPage.getInstance();

@@ -1,72 +1,73 @@
+import { Mock, vi } from 'vitest';
 import { EventBus } from '../../../src/events/event-bus';
 import { Events } from '../../../src/events/events';
 
 // Mock uuid
-jest.mock('uuid', () => ({
-  v4: jest.fn(() => 'test-uuid-1234'),
+vi.mock('uuid', () => ({
+  v4: vi.fn(() => 'test-uuid-1234'),
 }));
 
 // Mock EventBus
-jest.mock('../../../src/events/event-bus');
+vi.mock('../../../src/events/event-bus');
 
 // Create mock equipment instances
 const mockAntennaInstance = {
   state: { azimuth: 180, elevation: 45 },
-  update: jest.fn(),
-  sync: jest.fn(),
-  syncDomWithState: jest.fn(),
+  update: vi.fn(),
+  sync: vi.fn(),
+  syncDomWithState: vi.fn(),
 };
 
 const mockRfFrontEndInstance = {
   state: { isPowered: true },
-  update: jest.fn(),
-  sync: jest.fn(),
-  syncDomWithState: jest.fn(),
-  connectAntenna: jest.fn(),
-  connectTransmitter: jest.fn(),
+  update: vi.fn(),
+  sync: vi.fn(),
+  syncDomWithState: vi.fn(),
+  connectAntenna: vi.fn(),
+  connectTransmitter: vi.fn(),
 };
 
 const mockSpectrumAnalyzerInstance = {
   state: { isEnabled: true },
-  update: jest.fn(),
-  sync: jest.fn(),
-  syncDomWithState: jest.fn(),
+  update: vi.fn(),
+  sync: vi.fn(),
+  syncDomWithState: vi.fn(),
 };
 
 const mockTransmitterInstance = {
   state: { isPowered: false },
-  update: jest.fn(),
-  sync: jest.fn(),
-  syncDomWithState: jest.fn(),
+  update: vi.fn(),
+  sync: vi.fn(),
+  syncDomWithState: vi.fn(),
 };
 
 const mockReceiverInstance = {
   state: { isLocked: false },
-  update: jest.fn(),
-  sync: jest.fn(),
-  syncDomWithState: jest.fn(),
-  connectRfFrontEnd: jest.fn(),
+  update: vi.fn(),
+  sync: vi.fn(),
+  syncDomWithState: vi.fn(),
+  connectRfFrontEnd: vi.fn(),
 };
 
 // Mock equipment factories and classes
-jest.mock('../../../src/equipment/antenna/antenna-factory', () => ({
-  createAntenna: jest.fn(() => mockAntennaInstance),
+vi.mock('../../../src/equipment/antenna/antenna-factory', () => ({
+  createAntenna: vi.fn(() => mockAntennaInstance),
 }));
 
-jest.mock('../../../src/equipment/rf-front-end/rf-front-end-factory', () => ({
-  createRFFrontEnd: jest.fn(() => mockRfFrontEndInstance),
+vi.mock('../../../src/equipment/rf-front-end/rf-front-end-factory', () => ({
+  createRFFrontEnd: vi.fn(() => mockRfFrontEndInstance),
 }));
 
-jest.mock('../../../src/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer', () => ({
-  RealTimeSpectrumAnalyzer: jest.fn().mockImplementation(() => mockSpectrumAnalyzerInstance),
+vi.mock('../../../src/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer', () => ({
+  RealTimeSpectrumAnalyzer: vi.fn(function () { return mockSpectrumAnalyzerInstance; }),
 }));
 
-jest.mock('../../../src/equipment/transmitter/transmitter', () => ({
-  Transmitter: jest.fn().mockImplementation(() => mockTransmitterInstance),
+vi.mock('../../../src/equipment/transmitter/transmitter', () => ({
+  Transmitter: vi.fn(function () { return mockTransmitterInstance; }),
 }));
 
-jest.mock('../../../src/equipment/receiver/receiver', () => ({
-  Receiver: jest.fn().mockImplementation(() => mockReceiverInstance),
+vi.mock('../../../src/equipment/receiver/receiver', () => ({
+  Receiver: vi.fn(function () { return mockReceiverInstance; }),
 }));
 
 // Import after mocks
@@ -74,7 +75,7 @@ import { GroundStation } from '../../../src/pages/mission-control/ground-station
 
 describe('GroundStation (mission-control)', () => {
   let groundStation: GroundStation;
-  let mockEventBus: { on: jest.Mock; off: jest.Mock; emit: jest.Mock; getInstance: jest.Mock };
+  let mockEventBus: { on: Mock; off: Mock; emit: Mock; getInstance: Mock };
 
   const mockConfig = {
     id: 'GS-001',
@@ -87,7 +88,7 @@ describe('GroundStation (mission-control)', () => {
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Reset mock equipment instances
     mockAntennaInstance.update.mockClear();
@@ -111,12 +112,12 @@ describe('GroundStation (mission-control)', () => {
 
     // Setup mock EventBus
     mockEventBus = {
-      on: jest.fn(),
-      off: jest.fn(),
-      emit: jest.fn(),
-      getInstance: jest.fn(),
+      on: vi.fn(),
+      off: vi.fn(),
+      emit: vi.fn(),
+      getInstance: vi.fn(),
     };
-    (EventBus.getInstance as jest.Mock).mockReturnValue(mockEventBus);
+    (EventBus.getInstance as Mock).mockReturnValue(mockEventBus);
 
     groundStation = new GroundStation(mockConfig);
   });

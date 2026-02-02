@@ -1,10 +1,11 @@
+import { vi } from 'vitest';
 import { OMTModule } from '../../../../src/equipment/rf-front-end/omt-module/omt-module';
-import { createRFFrontEnd } from '../../../../src/equipment/rf-front-end/rf-front-end-factory';
 import { RFFrontEndCore } from '../../../../src/equipment/rf-front-end/rf-front-end-core';
+import { createRFFrontEnd } from '../../../../src/equipment/rf-front-end/rf-front-end-factory';
 import { EventBus } from '../../../../src/events/event-bus';
 import { Events } from '../../../../src/events/events';
-import { dBi, dBm, RfSignal } from '../../../../src/types';
 import { SignalOrigin } from '../../../../src/signal-origin';
+import { dBi, dBm, RfSignal } from '../../../../src/types';
 
 describe('OMTModule Additional Coverage', () => {
   let rfFrontEnd: RFFrontEndCore;
@@ -21,7 +22,7 @@ describe('OMTModule Additional Coverage', () => {
 
   afterEach(() => {
     document.body.innerHTML = '';
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('loopback mode', () => {
@@ -34,11 +35,11 @@ describe('OMTModule Additional Coverage', () => {
           bandwidth: 1e6,
           power: 10 as dBm,
           polarization: 'H',
-          origin: SignalOrigin.HPA,
+          origin: SignalOrigin.HIGH_POWER_AMPLIFIER,
           gainInPath: 0 as dBi,
         };
 
-        jest.spyOn(omtModule, 'txSignalsIn', 'get').mockReturnValue([mockTxSignal]);
+        vi.spyOn(omtModule, 'txSignalsIn', 'get').mockReturnValue([mockTxSignal]);
         omtModule.update();
 
         const rxSignals = omtModule.rxSignalsIn;
@@ -167,7 +168,7 @@ describe('OMTModule Additional Coverage', () => {
       rfFrontEnd.antenna.state.polarization = 0;
       rfFrontEnd.antenna.state.rxSignalsIn = [matchingSignal];
       omtModule.state.txPolarization = 'H';
-      jest.spyOn(omtModule, 'rxSignalsIn', 'get').mockReturnValue([matchingSignal]);
+      vi.spyOn(omtModule, 'rxSignalsIn', 'get').mockReturnValue([matchingSignal]);
 
       omtModule.update();
 

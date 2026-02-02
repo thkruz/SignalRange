@@ -1,25 +1,26 @@
-import { ReceiverAdapter } from '../../../../src/pages/mission-control/tabs/receiver-adapter';
+import { Mock, Mocked, vi } from 'vitest';
 import { Receiver, ReceiverModemState } from '../../../../src/equipment/receiver/receiver';
 import { EventBus } from '../../../../src/events/event-bus';
 import { Events } from '../../../../src/events/events';
+import { ReceiverAdapter } from '../../../../src/pages/mission-control/tabs/receiver-adapter';
 
 // Mock dependencies
-jest.mock('../../../../src/events/event-bus');
-jest.mock('../../../../src/components/card-alarm-badge/card-alarm-badge', () => ({
+vi.mock('../../../../src/events/event-bus');
+vi.mock('../../../../src/components/card-alarm-badge/card-alarm-badge', () => ({
   CardAlarmBadge: {
-    create: jest.fn(() => ({
+    create: vi.fn(() => ({
       html: '<div class="mock-badge"></div>',
-      update: jest.fn(),
-      dispose: jest.fn(),
+      update: vi.fn(),
+      dispose: vi.fn(),
     })),
   },
 }));
 
 describe('ReceiverAdapter', () => {
-  let mockReceiver: jest.Mocked<Receiver>;
+  let mockReceiver: Mocked<Receiver>;
   let containerEl: HTMLElement;
   let adapter: ReceiverAdapter;
-  let mockEventBus: { on: jest.Mock; off: jest.Mock; emit: jest.Mock };
+  let mockEventBus: { on: Mock; off: Mock; emit: Mock };
 
   const mockModem: ReceiverModemState = {
     modemNumber: 1,
@@ -42,39 +43,39 @@ describe('ReceiverAdapter', () => {
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Setup mock EventBus
     mockEventBus = {
-      on: jest.fn(),
-      off: jest.fn(),
-      emit: jest.fn(),
+      on: vi.fn(),
+      off: vi.fn(),
+      emit: vi.fn(),
     };
-    (EventBus.getInstance as jest.Mock).mockReturnValue(mockEventBus);
+    (EventBus.getInstance as Mock).mockReturnValue(mockEventBus);
 
     // Setup mock Receiver
     mockReceiver = {
       state: JSON.parse(JSON.stringify(mockState)),
-      setActiveModem: jest.fn(),
-      handleAntennaChange: jest.fn(),
-      handleFrequencyChange: jest.fn(),
-      handleBandwidthChange: jest.fn(),
-      handleModulationChange: jest.fn(),
-      handleFecChange: jest.fn(),
-      applyChanges: jest.fn(),
-      handlePowerToggle: jest.fn(),
-      getVisibleSignals: jest.fn().mockReturnValue([]),
-      hasSignalForModem: jest.fn().mockReturnValue(false),
-      isSignalDegraded: jest.fn().mockReturnValue(false),
-      getSnrForModem: jest.fn().mockReturnValue(0),
-      getPowerForModem: jest.fn().mockReturnValue(-100),
-      getSignalsInBandwidth: jest.fn().mockReturnValue({
+      setActiveModem: vi.fn(),
+      handleAntennaChange: vi.fn(),
+      handleFrequencyChange: vi.fn(),
+      handleBandwidthChange: vi.fn(),
+      handleModulationChange: vi.fn(),
+      handleFecChange: vi.fn(),
+      applyChanges: vi.fn(),
+      handlePowerToggle: vi.fn(),
+      getVisibleSignals: vi.fn().mockReturnValue([]),
+      hasSignalForModem: vi.fn().mockReturnValue(false),
+      isSignalDegraded: vi.fn().mockReturnValue(false),
+      getSnrForModem: vi.fn().mockReturnValue(0),
+      getPowerForModem: vi.fn().mockReturnValue(-100),
+      getSignalsInBandwidth: vi.fn().mockReturnValue({
         hasCarrier: false,
         hasLock: false,
         cnRatio_dB: 0,
         effectiveCnRatio_dB: 0,
       }),
-    } as unknown as jest.Mocked<Receiver>;
+    } as unknown as Mocked<Receiver>;
 
     // Setup container with required DOM elements
     containerEl = document.createElement('div');
@@ -305,7 +306,7 @@ describe('ReceiverAdapter', () => {
         (call: unknown[]) => call[0] === Events.UPDATE
       )?.[1];
 
-      jest.spyOn(Date, 'now').mockReturnValue(500);
+      vi.spyOn(Date, 'now').mockReturnValue(500);
       updateHandler();
 
       expect(mockReceiver.getVisibleSignals).toHaveBeenCalled();
@@ -317,12 +318,12 @@ describe('ReceiverAdapter', () => {
       )?.[1];
 
       // First call
-      jest.spyOn(Date, 'now').mockReturnValue(0);
+      vi.spyOn(Date, 'now').mockReturnValue(0);
       updateHandler();
       const callCountAfterFirst = mockReceiver.getVisibleSignals.mock.calls.length;
 
       // Second call within throttle
-      jest.spyOn(Date, 'now').mockReturnValue(100);
+      vi.spyOn(Date, 'now').mockReturnValue(100);
       updateHandler();
 
       expect(mockReceiver.getVisibleSignals.mock.calls.length).toBe(callCountAfterFirst);

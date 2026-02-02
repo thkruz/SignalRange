@@ -1,14 +1,15 @@
+import { vi } from 'vitest';
+import { BUCModuleCore, BUCState } from '../../../../src/equipment/rf-front-end/buc-module/buc-module-core';
+import { RFFrontEndCore } from '../../../../src/equipment/rf-front-end/rf-front-end-core';
 import { EventBus } from '../../../../src/events/event-bus';
 import { Events } from '../../../../src/events/events';
-import { RFFrontEndCore } from '../../../../src/equipment/rf-front-end/rf-front-end-core';
-import { BUCModuleCore, BUCState } from '../../../../src/equipment/rf-front-end/buc-module/buc-module-core';
 import { SignalOrigin } from '../../../../src/signal-origin';
 import type { dB, dBm, Hertz, IfSignal, MHz } from '../../../../src/types';
 
 // Mock HTMLMediaElement.prototype.play for jsdom compatibility
 Object.defineProperty(HTMLMediaElement.prototype, 'play', {
   configurable: true,
-  value: jest.fn().mockResolvedValue(undefined),
+  value: vi.fn().mockResolvedValue(undefined),
 });
 
 // Concrete test implementation of abstract BUCModuleCore
@@ -87,8 +88,8 @@ describe('BUCModuleCore', () => {
   let mockRfFrontEnd: RFFrontEndCore;
 
   beforeEach(() => {
-    jest.clearAllMocks();
-    jest.useFakeTimers();
+    vi.clearAllMocks();
+    vi.useFakeTimers();
 
     document.body.innerHTML = '<div id="test-root"></div>';
 
@@ -102,7 +103,7 @@ describe('BUCModuleCore', () => {
 
   afterEach(() => {
     document.body.innerHTML = '';
-    jest.useRealTimers();
+    vi.useRealTimers();
   });
 
   describe('getDefaultState()', () => {
@@ -389,7 +390,7 @@ describe('BUCModuleCore', () => {
         bucModule.update();
 
         // Fast forward timers to complete lock acquisition
-        jest.advanceTimersByTime(6000);
+        vi.advanceTimersByTime(6000);
 
         expect(bucModule.state.isExtRefLocked).toBe(true);
       });

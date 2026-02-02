@@ -1,92 +1,92 @@
+import { vi } from 'vitest';
 import { EventBus } from '../src/events/event-bus';
-import { Events } from '../src/events/events';
 import { Router } from '../src/router';
 
 // Mock dependencies
-jest.mock('../src/campaigns/campaign-manager', () => ({
+vi.mock('../src/campaigns/campaign-manager', () => ({
   CampaignManager: {
-    getInstance: jest.fn(() => ({
-      registerCampaign: jest.fn(),
+    getInstance: vi.fn(() => ({
+      registerCampaign: vi.fn(),
     })),
   },
 }));
 
-jest.mock('../src/campaigns/nats/campaign-data', () => ({
+vi.mock('../src/campaigns/nats/campaign-data', () => ({
   natsCampaignData: {},
 }));
 
-jest.mock('../src/pages/campaign-selection', () => ({
+vi.mock('../src/pages/campaign-selection', () => ({
   CampaignSelectionPage: {
-    getInstance: jest.fn(() => ({
-      show: jest.fn(),
-      hide: jest.fn(),
+    getInstance: vi.fn(() => ({
+      show: vi.fn(),
+      hide: vi.fn(),
     })),
   },
 }));
 
-jest.mock('../src/pages/scenario-selection', () => ({
+vi.mock('../src/pages/scenario-selection', () => ({
   ScenarioSelectionPage: {
-    getInstance: jest.fn(() => ({
-      show: jest.fn(),
-      hide: jest.fn(),
-      setCampaign: jest.fn(),
+    getInstance: vi.fn(() => ({
+      show: vi.fn(),
+      hide: vi.fn(),
+      setCampaign: vi.fn(),
     })),
   },
 }));
 
-jest.mock('../src/pages/sandbox-page', () => ({
+vi.mock('../src/pages/sandbox-page', () => ({
   SandboxPage: {
-    create: jest.fn(),
-    getInstance: jest.fn(() => ({
-      show: jest.fn(),
-      hide: jest.fn(),
+    create: vi.fn(),
+    getInstance: vi.fn(() => ({
+      show: vi.fn(),
+      hide: vi.fn(),
     })),
   },
 }));
 
-jest.mock('../src/pages/mission-control/mission-control-page', () => ({
+vi.mock('../src/pages/mission-control/mission-control-page', () => ({
   MissionControlPage: {
-    create: jest.fn(),
-    getInstance: jest.fn(() => ({
-      show: jest.fn(),
-      hide: jest.fn(),
+    create: vi.fn(),
+    getInstance: vi.fn(() => ({
+      show: vi.fn(),
+      hide: vi.fn(),
     })),
   },
 }));
 
-jest.mock('../src/pages/layout/header/header', () => ({
+vi.mock('../src/pages/layout/header/header', () => ({
   Header: {
-    getInstance: jest.fn(() => ({
-      makeSmall: jest.fn(),
+    getInstance: vi.fn(() => ({
+      makeSmall: vi.fn(),
     })),
   },
 }));
 
-jest.mock('../src/pages/layout/footer/footer', () => ({
+vi.mock('../src/pages/layout/footer/footer', () => ({
   Footer: {
-    getInstance: jest.fn(() => ({
-      makeSmall: jest.fn(),
+    getInstance: vi.fn(() => ({
+      makeSmall: vi.fn(),
     })),
   },
 }));
 
-jest.mock('../src/scenario-manager', () => ({
+vi.mock('../src/scenario-manager', () => ({
   ScenarioManager: {
-    getInstance: jest.fn(() => ({
+    getInstance: vi.fn(() => ({
       scenario: null,
     })),
   },
 }));
 
-jest.mock('../src/simulation/simulation-manager', () => ({
+vi.mock('../src/simulation/simulation-manager', () => ({
   SimulationManager: {
-    destroy: jest.fn(),
+    destroy: vi.fn(),
   },
 }));
 
 describe('Router', () => {
   let router: Router;
-  let pushStateSpy: jest.SpyInstance;
+  let pushStateSpy: SpyInstance;
 
   beforeEach(() => {
     // Reset singletons
@@ -97,7 +97,7 @@ describe('Router', () => {
     window.history.pushState({}, '', '/');
 
     // Spy on pushState to track navigation calls
-    pushStateSpy = jest.spyOn(window.history, 'pushState');
+    pushStateSpy = vi.spyOn(window.history, 'pushState');
 
     router = Router.getInstance();
   });

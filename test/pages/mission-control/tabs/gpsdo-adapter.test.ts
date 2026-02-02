@@ -1,16 +1,17 @@
-import { GPSDOAdapter } from '../../../../src/pages/mission-control/tabs/gpsdo-adapter';
+import { Mock, Mocked, vi } from 'vitest';
 import { GPSDOModuleCore } from '../../../../src/equipment/rf-front-end/gpsdo-module/gpsdo-module-core';
 import { EventBus } from '../../../../src/events/event-bus';
 import { Events } from '../../../../src/events/events';
+import { GPSDOAdapter } from '../../../../src/pages/mission-control/tabs/gpsdo-adapter';
 
 // Mock dependencies
-jest.mock('../../../../src/events/event-bus');
+vi.mock('../../../../src/events/event-bus');
 
 describe('GPSDOAdapter', () => {
-  let mockGpsdoModule: jest.Mocked<GPSDOModuleCore>;
+  let mockGpsdoModule: Mocked<GPSDOModuleCore>;
   let containerEl: HTMLElement;
   let adapter: GPSDOAdapter;
-  let mockEventBus: { on: jest.Mock; off: jest.Mock; emit: jest.Mock };
+  let mockEventBus: { on: Mock; off: Mock; emit: Mock };
 
   const mockState = {
     isPowered: true,
@@ -35,28 +36,28 @@ describe('GPSDOAdapter', () => {
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Setup mock EventBus
     mockEventBus = {
-      on: jest.fn(),
-      off: jest.fn(),
-      emit: jest.fn(),
+      on: vi.fn(),
+      off: vi.fn(),
+      emit: vi.fn(),
     };
-    (EventBus.getInstance as jest.Mock).mockReturnValue(mockEventBus);
+    (EventBus.getInstance as Mock).mockReturnValue(mockEventBus);
 
     // Setup mock GPSDOModuleCore
     mockGpsdoModule = {
       state: { ...mockState },
-      handlePowerToggle: jest.fn(),
-      handleGnssToggle: jest.fn((checked, callback) => {
+      handlePowerToggle: vi.fn(),
+      handleGnssToggle: vi.fn((checked, callback) => {
         if (callback) callback();
       }),
-      getLockLedStatus_: jest.fn().mockReturnValue('led-green'),
-      getGnssLedStatus_: jest.fn().mockReturnValue('led-green'),
-      getWarmupLedStatus_: jest.fn().mockReturnValue('led-green'),
-      formatWarmupTime_: jest.fn().mockReturnValue('READY'),
-    } as unknown as jest.Mocked<GPSDOModuleCore>;
+      getLockLedStatus_: vi.fn().mockReturnValue('led-green'),
+      getGnssLedStatus_: vi.fn().mockReturnValue('led-green'),
+      getWarmupLedStatus_: vi.fn().mockReturnValue('led-green'),
+      formatWarmupTime_: vi.fn().mockReturnValue('READY'),
+    } as unknown as Mocked<GPSDOModuleCore>;
 
     // Setup container with required DOM elements
     containerEl = document.createElement('div');

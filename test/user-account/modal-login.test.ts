@@ -1,49 +1,50 @@
 // Mock all dependencies before imports
-jest.mock('@app/engine/ui/draggable-modal', () => ({
+vi.mock('@app/engine/ui/draggable-modal', () => ({
   DraggableModal: class MockDraggableModal {
     protected boxEl: HTMLElement | null = null;
-    constructor(_id: string, _options?: unknown) {}
-    protected onOpen(): void {}
+    constructor(_id: string, _options?: unknown) { }
+    protected onOpen(): void { }
     open(): void { this.onOpen(); }
-    close(): void {}
+    close(): void { }
   },
 }));
 
-jest.mock('@app/engine/utils/development/formatter', () => ({
+vi.mock('@app/engine/utils/development/formatter', () => ({
   html: (strings: TemplateStringsArray, ...values: unknown[]) =>
     strings.reduce((result, str, i) => result + str + (values[i] ?? ''), ''),
 }));
 
-jest.mock('@app/engine/utils/errorManager', () => ({
-  errorManagerInstance: { error: jest.fn(), warn: jest.fn(), info: jest.fn() },
+vi.mock('@app/engine/utils/errorManager', () => ({
+  errorManagerInstance: { error: vi.fn(), warn: vi.fn(), info: vi.fn() },
 }));
 
-jest.mock('@app/engine/utils/get-el', () => ({
-  hideEl: jest.fn(),
+vi.mock('@app/engine/utils/get-el', () => ({
+  hideEl: vi.fn(),
 }));
 
-jest.mock('@app/sound/sound-manager', () => ({
-  default: { getInstance: () => ({ play: jest.fn() }) },
+vi.mock('@app/sound/sound-manager', () => ({
+  default: { getInstance: () => ({ play: vi.fn() }) },
 }));
 
-jest.mock('@app/sound/sfx-enum', () => ({
+vi.mock('@app/sound/sfx-enum', () => ({
   Sfx: { TOGGLE_ON: 'TOGGLE_ON', POWER_ON: 'POWER_ON' },
 }));
 
-jest.mock('@app/user-account/auth', () => ({
+vi.mock('@app/user-account/auth', () => ({
   Auth: {
-    signUp: jest.fn(),
-    signIn: jest.fn(),
-    signInWithOAuthProvider: jest.fn(),
+    signUp: vi.fn(),
+    signIn: vi.fn(),
+    signInWithOAuthProvider: vi.fn(),
   },
   UserProfile: {},
 }));
 
+import { Mock, vi } from 'vitest';
 import { ModalLogin } from '../../src/user-account/modal-login';
 
 describe('ModalLogin', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     // Reset singleton between tests
     (ModalLogin as unknown as { instance_: null }).instance_ = null;
   });
@@ -332,19 +333,19 @@ describe('ModalLogin', () => {
 
   describe('handleSignUp', () => {
     let modal: ModalLogin;
-    let mockAuth: { signUp: jest.Mock };
-    let mockHideEl: jest.Mock;
+    let mockAuth: { signUp: Mock };
+    let mockHideEl: Mock;
 
     beforeEach(async () => {
-      jest.resetModules();
-      mockAuth = { signUp: jest.fn() };
-      mockHideEl = jest.fn();
+      vi.resetModules();
+      mockAuth = { signUp: vi.fn() };
+      mockHideEl = vi.fn();
 
-      jest.doMock('@app/user-account/auth', () => ({
+      vi.doMock('@app/user-account/auth', () => ({
         Auth: mockAuth,
         UserProfile: {},
       }));
-      jest.doMock('@app/engine/utils/get-el', () => ({
+      vi.doMock('@app/engine/utils/get-el', () => ({
         hideEl: mockHideEl,
       }));
 
@@ -401,7 +402,7 @@ describe('ModalLogin', () => {
 
     it('should hide modal on successful login', async () => {
       // Mock the internal login_ method to succeed
-      jest.spyOn(modal as any, 'login_').mockResolvedValue(true);
+      vi.spyOn(modal as any, 'login_').mockResolvedValue(true);
 
       await (modal as any).handleEmailLogin('test@example.com', 'password123');
 
@@ -412,7 +413,7 @@ describe('ModalLogin', () => {
 
     it('should show error on signIn failure', async () => {
       // Mock the internal login_ method to throw an error
-      jest.spyOn(modal as any, 'login_').mockRejectedValue(new Error('Invalid login credentials'));
+      vi.spyOn(modal as any, 'login_').mockRejectedValue(new Error('Invalid login credentials'));
 
       await (modal as any).handleEmailLogin('test@example.com', 'wrongpassword');
 
@@ -429,7 +430,7 @@ describe('ModalLogin', () => {
       const loginPromise = new Promise<boolean>((resolve) => {
         resolveLogin = resolve;
       });
-      jest.spyOn(modal as any, 'login_').mockReturnValue(loginPromise);
+      vi.spyOn(modal as any, 'login_').mockReturnValue(loginPromise);
 
       const handlePromise = (modal as any).handleEmailLogin('test@example.com', 'password');
 
@@ -449,13 +450,13 @@ describe('ModalLogin', () => {
 
   describe('login_', () => {
     let modal: ModalLogin;
-    let mockAuth: { signIn: jest.Mock };
+    let mockAuth: { signIn: Mock };
 
     beforeEach(async () => {
-      jest.resetModules();
-      mockAuth = { signIn: jest.fn() };
+      vi.resetModules();
+      mockAuth = { signIn: vi.fn() };
 
-      jest.doMock('@app/user-account/auth', () => ({
+      vi.doMock('@app/user-account/auth', () => ({
         Auth: mockAuth,
         UserProfile: {},
       }));
@@ -493,13 +494,13 @@ describe('ModalLogin', () => {
 
   describe('signUp_', () => {
     let modal: ModalLogin;
-    let mockAuth: { signUp: jest.Mock };
+    let mockAuth: { signUp: Mock };
 
     beforeEach(async () => {
-      jest.resetModules();
-      mockAuth = { signUp: jest.fn() };
+      vi.resetModules();
+      mockAuth = { signUp: vi.fn() };
 
-      jest.doMock('@app/user-account/auth', () => ({
+      vi.doMock('@app/user-account/auth', () => ({
         Auth: mockAuth,
         UserProfile: {},
       }));

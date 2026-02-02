@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { RFFrontEndCore } from '../../../src/equipment/rf-front-end/rf-front-end-core';
 import { createRFFrontEnd } from '../../../src/equipment/rf-front-end/rf-front-end-factory';
 import { EventBus } from '../../../src/events/event-bus';
@@ -6,14 +7,14 @@ import { Events } from '../../../src/events/events';
 // Mock HTMLMediaElement.prototype.play for jsdom compatibility
 Object.defineProperty(HTMLMediaElement.prototype, 'play', {
   configurable: true,
-  value: jest.fn().mockResolvedValue(undefined),
+  value: vi.fn().mockResolvedValue(undefined),
 });
 
 describe('RFFrontEndUIStandard', () => {
   let rfFrontEnd: RFFrontEndCore;
 
   beforeEach(() => {
-    jest.resetModules();
+    vi.resetModules();
 
     document.body.innerHTML = '<div id="test-root"></div>';
 
@@ -22,7 +23,7 @@ describe('RFFrontEndUIStandard', () => {
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     EventBus.destroy();
     document.body.innerHTML = '';
   });
@@ -44,7 +45,7 @@ describe('RFFrontEndUIStandard', () => {
     // Re-attach listeners so the new input is wired
     (rfFrontEnd as any).attachEventListeners();
 
-    const syncSpy = jest.spyOn(rfFrontEnd, 'syncDomWithState');
+    const syncSpy = vi.spyOn(rfFrontEnd, 'syncDomWithState');
 
     input.dispatchEvent(new Event('input', { bubbles: true }));
 
@@ -90,7 +91,7 @@ describe('RFFrontEndUIStandard', () => {
     (rfFrontEnd as any).attachEventListeners();
 
     const originalGain = rfFrontEnd.state.buc.gain;
-    const syncSpy = jest.spyOn(rfFrontEnd, 'syncDomWithState');
+    const syncSpy = vi.spyOn(rfFrontEnd, 'syncDomWithState');
 
     input.dispatchEvent(new Event('change', { bubbles: true }));
 
@@ -115,7 +116,7 @@ describe('RFFrontEndUIStandard', () => {
     (rfFrontEnd as any).attachEventListeners();
 
     const originalGain = rfFrontEnd.state.buc.gain;
-    const syncSpy = jest.spyOn(rfFrontEnd, 'syncDomWithState');
+    const syncSpy = vi.spyOn(rfFrontEnd, 'syncDomWithState');
 
     input.dispatchEvent(new Event('input', { bubbles: true }));
 

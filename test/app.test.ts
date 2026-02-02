@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { App } from "../src/app";
 import { EventBus } from "../src/events/event-bus";
 import { Events } from "../src/events/events";
@@ -11,7 +12,7 @@ declare const global: any;
 
 describe('App class', () => {
   beforeEach(() => {
-    jest.resetModules();
+    vi.resetModules();
     App.__resetAll__();
 
 
@@ -22,12 +23,12 @@ describe('App class', () => {
     // App.gameLoop_ calls requestAnimationFrame at the end; we stub it so it doesn't call the callback.
     // The first frame still runs because App.create() calls gameLoop_() synchronously.
     // @ts-ignore
-    global.requestAnimationFrame = jest.fn(() => 1);
+    global.requestAnimationFrame = vi.fn(() => 1);
   });
 
   afterEach(() => {
     // Clear module registry so singletons are reset between tests
-    jest.resetModules();
+    vi.resetModules();
     // @ts-ignore
     global.requestAnimationFrame = undefined;
     // Clear any global set by App
@@ -36,7 +37,7 @@ describe('App class', () => {
   });
 
   it('create() should instantiate App, set window.signalRange and emit UPDATE and DRAW once', () => {
-    const emitSpy = jest.spyOn(EventBus.getInstance(), 'emit');
+    const emitSpy = vi.spyOn(EventBus.getInstance(), 'emit');
 
     const app = App.create();
 
@@ -60,7 +61,7 @@ describe('App class', () => {
   });
 
   it('sync() should emit Events.SYNC', () => {
-    const emitSpy = jest.spyOn(EventBus.getInstance(), 'emit');
+    const emitSpy = vi.spyOn(EventBus.getInstance(), 'emit');
     const app = App.create();
 
     app.sync();

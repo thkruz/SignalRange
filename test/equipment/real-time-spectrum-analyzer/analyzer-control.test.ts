@@ -1,29 +1,30 @@
+import { Mocked, vi } from 'vitest';
 import { AnalyzerControl, AnalyzerControlOptions } from '../../../src/equipment/real-time-spectrum-analyzer/analyzer-control';
+import { TraceMode } from '../../../src/equipment/real-time-spectrum-analyzer/analyzer-control/ac-trace-btn/ac-trace-btn';
 import { RealTimeSpectrumAnalyzer, RealTimeSpectrumAnalyzerState } from '../../../src/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer';
-import { Hertz } from '../../../src/types';
 import { EventBus } from '../../../src/events/event-bus';
 import { Events } from '../../../src/events/events';
-import { TraceMode } from '../../../src/equipment/real-time-spectrum-analyzer/analyzer-control/ac-trace-btn/ac-trace-btn';
+import { Hertz } from '../../../src/types';
 
 // Mock HTMLMediaElement.prototype.play for jsdom compatibility
 Object.defineProperty(HTMLMediaElement.prototype, 'play', {
   configurable: true,
-  value: jest.fn().mockResolvedValue(undefined),
+  value: vi.fn().mockResolvedValue(undefined),
 });
 
 // Mock SoundManager to prevent actual sound playing
-jest.mock('@app/sound/sound-manager', () => ({
+vi.mock('@app/sound/sound-manager', () => ({
   __esModule: true,
   default: {
-    getInstance: jest.fn().mockReturnValue({
-      play: jest.fn(),
+    getInstance: vi.fn().mockReturnValue({
+      play: vi.fn(),
     }),
   },
 }));
 
 describe('AnalyzerControl', () => {
   let analyzerControl: AnalyzerControl;
-  let mockSpecA: jest.Mocked<Partial<RealTimeSpectrumAnalyzer>>;
+  let mockSpecA: Mocked<Partial<RealTimeSpectrumAnalyzer>>;
   let mockState: RealTimeSpectrumAnalyzerState;
   let parentElement: HTMLElement;
 
@@ -78,10 +79,10 @@ describe('AnalyzerControl', () => {
     // Create mock spectrum analyzer
     mockSpecA = {
       state: mockState,
-      syncDomWithState: jest.fn(),
-      freqAutoTune: jest.fn(),
-      resetMaxHoldData: jest.fn(),
-      resetMinHoldData: jest.fn(),
+      syncDomWithState: vi.fn(),
+      freqAutoTune: vi.fn(),
+      resetMaxHoldData: vi.fn(),
+      resetMinHoldData: vi.fn(),
     };
 
     // Create analyzer control
@@ -96,7 +97,7 @@ describe('AnalyzerControl', () => {
 
   afterEach(() => {
     document.body.innerHTML = '';
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('Initialization', () => {
@@ -297,7 +298,7 @@ describe('AnalyzerControl', () => {
     });
 
     it('should call onEnterPressed on control selection', () => {
-      const enterSpy = jest.spyOn(analyzerControl.controlSelection!, 'onEnterPressed');
+      const enterSpy = vi.spyOn(analyzerControl.controlSelection!, 'onEnterPressed');
 
       mockState.inputValue = '700';
       mockState.inputUnit = 'MHz';

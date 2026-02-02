@@ -1,3 +1,4 @@
+import { Mock, vi } from 'vitest';
 import { WebSocketStorageProvider } from '../../src/sync/websocket-storage-provider';
 
 describe('WebSocketStorageProvider', () => {
@@ -7,23 +8,23 @@ describe('WebSocketStorageProvider', () => {
     onmessage?: (event: { data: string }) => void;
     onerror?: (error: unknown) => void;
     onclose?: () => void;
-    send: jest.Mock;
-    close: jest.Mock;
+    send: Mock;
+    close: Mock;
     readyState: number;
   };
   const WS_URL = 'ws://localhost:8080';
 
   beforeEach(() => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
 
     mockWs = {
-      send: jest.fn(),
-      close: jest.fn(),
+      send: vi.fn(),
+      close: vi.fn(),
       readyState: WebSocket.OPEN,
     };
 
     // Mock WebSocket constructor
-    (global as any).WebSocket = jest.fn().mockImplementation(() => mockWs);
+    (global as any).WebSocket = vi.fn(function () { return mockWs; });
     (global as any).WebSocket.OPEN = 1;
     (global as any).WebSocket.CLOSED = 3;
 
@@ -31,13 +32,13 @@ describe('WebSocketStorageProvider', () => {
   });
 
   afterEach(() => {
-    jest.useRealTimers();
-    jest.restoreAllMocks();
+    vi.useRealTimers();
+    vi.restoreAllMocks();
   });
 
   describe('constructor', () => {
     it('stores the WebSocket URL and config', () => {
-      const onReconnect = jest.fn();
+      const onReconnect = vi.fn();
       provider = new WebSocketStorageProvider(WS_URL, { onReconnect });
 
       expect(provider).toBeInstanceOf(WebSocketStorageProvider);
@@ -63,12 +64,12 @@ describe('WebSocketStorageProvider', () => {
     });
 
     it('calls onReconnect callback when connection opens', async () => {
-      const onReconnect = jest.fn();
+      const onReconnect = vi.fn();
       provider = new WebSocketStorageProvider(WS_URL, { onReconnect });
       const initPromise = provider.initialize();
 
       // Need to get the new mock ws
-      mockWs = (global.WebSocket as jest.Mock).mock.results[0].value;
+      mockWs = (global.WebSocket as Mock).mock.results[0].value;
       mockWs.onopen?.();
       await initPromise;
 
@@ -76,7 +77,7 @@ describe('WebSocketStorageProvider', () => {
     });
 
     it('rejects on WebSocket error', async () => {
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation();
       const initPromise = provider.initialize();
       mockWs.onerror?.(new Error('Connection failed'));
 
@@ -85,12 +86,12 @@ describe('WebSocketStorageProvider', () => {
     });
 
     it('calls onError callback on error', async () => {
-      const onError = jest.fn();
+      const onError = vi.fn();
       provider = new WebSocketStorageProvider(WS_URL, { onError });
       const initPromise = provider.initialize();
 
-      mockWs = (global.WebSocket as jest.Mock).mock.results[0].value;
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+      mockWs = (global.WebSocket as Mock).mock.results[0].value;
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation();
       mockWs.onerror?.(new Error('Connection failed'));
 
       try {
@@ -108,17 +109,17 @@ describe('WebSocketStorageProvider', () => {
       mockWs.onopen?.();
       await initPromise;
 
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation();
 
       // Simulate disconnect
       mockWs.onclose?.();
 
       // Should attempt reconnect after 5 seconds
-      expect((global.WebSocket as jest.Mock).mock.calls.length).toBe(1);
+      expect((global.WebSocket as Mock).mock.calls.length).toBe(1);
 
-      jest.advanceTimersByTime(5000);
+      vi.advanceTimersByTime(5000);
 
-      expect((global.WebSocket as jest.Mock).mock.calls.length).toBe(2);
+      expect((global.WebSocket as Mock).mock.calls.length).toBe(2);
       consoleSpy.mockRestore();
     });
   });
@@ -142,7 +143,7 @@ describe('WebSocketStorageProvider', () => {
       mockWs.onopen?.();
       await initPromise;
 
-      const subscriber = jest.fn();
+      const subscriber = vi.fn();
       provider.subscribe(subscriber);
 
       const data = { updated: true };
@@ -152,14 +153,14 @@ describe('WebSocketStorageProvider', () => {
     });
 
     it('calls onError for invalid JSON', async () => {
-      const onError = jest.fn();
+      const onError = vi.fn();
       provider = new WebSocketStorageProvider(WS_URL, { onError });
       const initPromise = provider.initialize();
-      mockWs = (global.WebSocket as jest.Mock).mock.results[0].value;
+      mockWs = (global.WebSocket as Mock).mock.results[0].value;
       mockWs.onopen?.();
       await initPromise;
 
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation();
       mockWs.onmessage?.({ data: 'invalid-json' });
 
       expect(onError).toHaveBeenCalled();
@@ -218,7 +219,7 @@ describe('WebSocketStorageProvider', () => {
 
       const readPromise = provider.read();
 
-      jest.advanceTimersByTime(5000);
+      vi.advanceTimersByTime(5000);
 
       const result = await readPromise;
       expect(result).toBeNull();
@@ -300,7 +301,7 @@ describe('WebSocketStorageProvider', () => {
       );
 
       // Advance timers to let the timeout resolve
-      jest.advanceTimersByTime(5000);
+      vi.advanceTimersByTime(5000);
       await readPromise;
     });
 
@@ -309,7 +310,7 @@ describe('WebSocketStorageProvider', () => {
       mockWs.onopen?.();
       await initPromise;
 
-      const subscriber = jest.fn();
+      const subscriber = vi.fn();
       provider.subscribe(subscriber);
 
       await provider.clear();
@@ -337,7 +338,7 @@ describe('WebSocketStorageProvider', () => {
       mockWs.onopen?.();
       await initPromise;
 
-      const subscriber = jest.fn();
+      const subscriber = vi.fn();
       provider.subscribe(subscriber);
 
       const data = { test: true };
@@ -351,7 +352,7 @@ describe('WebSocketStorageProvider', () => {
       mockWs.onopen?.();
       await initPromise;
 
-      const subscriber = jest.fn();
+      const subscriber = vi.fn();
       const unsubscribe = provider.subscribe(subscriber);
 
       unsubscribe();
@@ -366,14 +367,14 @@ describe('WebSocketStorageProvider', () => {
       mockWs.onopen?.();
       await initPromise;
 
-      const errorSubscriber = jest.fn().mockImplementation(() => {
+      const errorSubscriber = vi.fn(function () {
         throw new Error('Subscriber error');
       });
-      const normalSubscriber = jest.fn();
+      const normalSubscriber = vi.fn();
       provider.subscribe(errorSubscriber);
       provider.subscribe(normalSubscriber);
 
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation();
       mockWs.onmessage?.({ data: JSON.stringify({ test: true }) });
 
       expect(normalSubscriber).toHaveBeenCalled();
@@ -421,15 +422,15 @@ describe('WebSocketStorageProvider', () => {
       mockWs.onopen?.();
       await initPromise;
 
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation();
       mockWs.onclose?.(); // Trigger reconnect timer
 
       await provider.dispose();
 
       // Advancing time should not trigger reconnect
-      const callCountBeforeAdvance = (global.WebSocket as jest.Mock).mock.calls.length;
-      jest.advanceTimersByTime(10000);
-      expect((global.WebSocket as jest.Mock).mock.calls.length).toBe(callCountBeforeAdvance);
+      const callCountBeforeAdvance = (global.WebSocket as Mock).mock.calls.length;
+      vi.advanceTimersByTime(10000);
+      expect((global.WebSocket as Mock).mock.calls.length).toBe(callCountBeforeAdvance);
 
       consoleSpy.mockRestore();
     });
@@ -439,7 +440,7 @@ describe('WebSocketStorageProvider', () => {
       mockWs.onopen?.();
       await initPromise;
 
-      const subscriber = jest.fn();
+      const subscriber = vi.fn();
       provider.subscribe(subscriber);
 
       await provider.dispose();
@@ -459,17 +460,17 @@ describe('WebSocketStorageProvider', () => {
       mockWs.onopen?.();
       await initPromise;
 
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation();
 
       // Trigger multiple close events
       mockWs.onclose?.();
       mockWs.onclose?.();
       mockWs.onclose?.();
 
-      jest.advanceTimersByTime(5000);
+      vi.advanceTimersByTime(5000);
 
       // Should only have one reconnect attempt (2 total calls including initial)
-      expect((global.WebSocket as jest.Mock).mock.calls.length).toBe(2);
+      expect((global.WebSocket as Mock).mock.calls.length).toBe(2);
 
       consoleSpy.mockRestore();
     });

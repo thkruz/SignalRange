@@ -1,4 +1,5 @@
-import { SaveProgressToast, ToastState } from '../../src/modal/save-progress-toast';
+import { vi } from 'vitest';
+import { SaveProgressToast } from '../../src/modal/save-progress-toast';
 
 describe('SaveProgressToast', () => {
   let toast: SaveProgressToast;
@@ -11,7 +12,7 @@ describe('SaveProgressToast', () => {
     }
     document.body.innerHTML = '';
     toast = SaveProgressToast.getInstance();
-    jest.useFakeTimers();
+    vi.useFakeTimers();
 
     // Mock requestAnimationFrame to run synchronously
     originalRAF = window.requestAnimationFrame;
@@ -27,8 +28,8 @@ describe('SaveProgressToast', () => {
       toast.destroy();
     }
     document.body.innerHTML = '';
-    jest.clearAllTimers();
-    jest.useRealTimers();
+    vi.clearAllTimers();
+    vi.useRealTimers();
     window.requestAnimationFrame = originalRAF;
   });
 
@@ -139,7 +140,7 @@ describe('SaveProgressToast', () => {
       const toastElement = document.querySelector('.save-progress-toast');
       expect(toastElement?.classList.contains('show')).toBe(true);
 
-      jest.advanceTimersByTime(3000);
+      vi.advanceTimersByTime(3000);
 
       expect(toastElement?.classList.contains('show')).toBe(false);
     });
@@ -149,10 +150,10 @@ describe('SaveProgressToast', () => {
 
       const toastElement = document.querySelector('.save-progress-toast');
 
-      jest.advanceTimersByTime(4000);
+      vi.advanceTimersByTime(4000);
       expect(toastElement?.classList.contains('show')).toBe(true);
 
-      jest.advanceTimersByTime(1000);
+      vi.advanceTimersByTime(1000);
       expect(toastElement?.classList.contains('show')).toBe(false);
     });
 
@@ -161,7 +162,7 @@ describe('SaveProgressToast', () => {
 
       const toastElement = document.querySelector('.save-progress-toast');
 
-      jest.advanceTimersByTime(10000);
+      vi.advanceTimersByTime(10000);
       expect(toastElement?.classList.contains('show')).toBe(true);
     });
   });
@@ -202,7 +203,7 @@ describe('SaveProgressToast', () => {
       const toastElement = document.querySelector('.save-progress-toast');
       expect(toastElement?.classList.contains('show')).toBe(true);
 
-      jest.advanceTimersByTime(5000);
+      vi.advanceTimersByTime(5000);
 
       expect(toastElement?.classList.contains('show')).toBe(false);
     });
@@ -221,7 +222,7 @@ describe('SaveProgressToast', () => {
     });
 
     it('should clear auto-hide timeout', () => {
-      const clearTimeoutSpy = jest.spyOn(window, 'clearTimeout');
+      const clearTimeoutSpy = vi.spyOn(window, 'clearTimeout');
 
       toast.showSuccess();
       toast.hide();
@@ -288,15 +289,15 @@ describe('SaveProgressToast', () => {
 
     it('should clear previous timeout when showing new state', () => {
       toast.showSuccess('First', 5000);
-      jest.advanceTimersByTime(2000);
+      vi.advanceTimersByTime(2000);
 
       toast.showSuccess('Second', 5000);
-      jest.advanceTimersByTime(4000);
+      vi.advanceTimersByTime(4000);
 
       // Should still be visible because new show() reset the timer
       expect(toast.isVisible()).toBe(true);
 
-      jest.advanceTimersByTime(1000);
+      vi.advanceTimersByTime(1000);
       expect(toast.isVisible()).toBe(false);
     });
   });
@@ -305,7 +306,7 @@ describe('SaveProgressToast', () => {
     it('should clear auto-hide timeout when destroyed', () => {
       toast.showSuccess('Test', 3000);
 
-      const clearTimeoutSpy = jest.spyOn(window, 'clearTimeout');
+      const clearTimeoutSpy = vi.spyOn(window, 'clearTimeout');
       toast.destroy();
 
       expect(clearTimeoutSpy).toHaveBeenCalled();

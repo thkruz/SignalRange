@@ -1,13 +1,14 @@
+import { Mock, vi } from 'vitest';
 import { EventBus } from '../../src/events/event-bus';
 import { Events } from '../../src/events/events';
 import { PendingQuizIndicator } from '../../src/modal/pending-quiz-indicator';
 import { QuizManager } from '../../src/modal/quiz-manager';
 
 // Mock QuizManager
-jest.mock('../../src/modal/quiz-manager', () => ({
+vi.mock('../../src/modal/quiz-manager', () => ({
   QuizManager: {
-    getInstance: jest.fn(() => ({
-      reopenPendingQuiz: jest.fn(),
+    getInstance: vi.fn(() => ({
+      reopenPendingQuiz: vi.fn(),
     })),
   },
 }));
@@ -24,16 +25,16 @@ describe('PendingQuizIndicator', () => {
     document.body.innerHTML = '';
     eventBus = EventBus.getInstance();
     indicator = PendingQuizIndicator.getInstance();
-    jest.useFakeTimers();
+    vi.useFakeTimers();
   });
 
   afterEach(() => {
     PendingQuizIndicator.destroy();
     document.body.innerHTML = '';
     EventBus.destroy();
-    jest.clearAllTimers();
-    jest.useRealTimers();
-    jest.clearAllMocks();
+    vi.clearAllTimers();
+    vi.useRealTimers();
+    vi.clearAllMocks();
   });
 
   describe('Singleton Pattern', () => {
@@ -81,7 +82,7 @@ describe('PendingQuizIndicator', () => {
         conditionIndex: 0,
       });
 
-      jest.runAllTimers();
+      vi.runAllTimers();
 
       expect(indicator.isVisible()).toBe(true);
     });
@@ -98,8 +99,8 @@ describe('PendingQuizIndicator', () => {
       expect(indicator.isVisible()).toBe(false);
 
       // Wait for the delay
-      jest.advanceTimersByTime(5000);
-      jest.runAllTimers();
+      vi.advanceTimersByTime(5000);
+      vi.runAllTimers();
 
       expect(indicator.isVisible()).toBe(true);
     });
@@ -110,7 +111,7 @@ describe('PendingQuizIndicator', () => {
         conditionIndex: 0,
       });
 
-      jest.advanceTimersByTime(5000);
+      vi.advanceTimersByTime(5000);
 
       const messageElement = document.querySelector('.pending-quiz-indicator__message');
       expect(messageElement?.textContent).toBe('Complete the quiz to continue');
@@ -122,7 +123,7 @@ describe('PendingQuizIndicator', () => {
         conditionIndex: 0,
       });
 
-      jest.advanceTimersByTime(3000);
+      vi.advanceTimersByTime(3000);
 
       // New pending event
       eventBus.emit(Events.QUIZ_PENDING, {
@@ -131,14 +132,14 @@ describe('PendingQuizIndicator', () => {
       });
 
       // Wait only 3 more seconds (total 6 from first event, 3 from second)
-      jest.advanceTimersByTime(3000);
+      vi.advanceTimersByTime(3000);
 
       // Should not be visible yet (need 5 seconds from second event)
       expect(indicator.isVisible()).toBe(false);
 
       // Complete the remaining time
-      jest.advanceTimersByTime(2000);
-      jest.runAllTimers();
+      vi.advanceTimersByTime(2000);
+      vi.runAllTimers();
 
       expect(indicator.isVisible()).toBe(true);
     });
@@ -151,7 +152,7 @@ describe('PendingQuizIndicator', () => {
         objectiveId: 'obj-1',
         conditionIndex: 0,
       });
-      jest.runAllTimers();
+      vi.runAllTimers();
 
       expect(indicator.isVisible()).toBe(true);
 
@@ -174,7 +175,7 @@ describe('PendingQuizIndicator', () => {
         conditionIndex: 0,
       });
 
-      jest.advanceTimersByTime(3000);
+      vi.advanceTimersByTime(3000);
 
       eventBus.emit(Events.QUIZ_SHOW, {
         objectiveId: 'obj-1',
@@ -186,8 +187,8 @@ describe('PendingQuizIndicator', () => {
       });
 
       // Wait for the remaining pending time
-      jest.advanceTimersByTime(3000);
-      jest.runAllTimers();
+      vi.advanceTimersByTime(3000);
+      vi.runAllTimers();
 
       // Should not show because timeout was cancelled
       expect(indicator.isVisible()).toBe(false);
@@ -201,7 +202,7 @@ describe('PendingQuizIndicator', () => {
         conditionIndex: 0,
       });
 
-      jest.runAllTimers();
+      vi.runAllTimers();
 
       expect(indicator.isVisible()).toBe(true);
     });
@@ -224,7 +225,7 @@ describe('PendingQuizIndicator', () => {
         objectiveId: 'obj-1',
         conditionIndex: 0,
       });
-      jest.runAllTimers();
+      vi.runAllTimers();
 
       expect(indicator.isVisible()).toBe(true);
 
@@ -245,7 +246,7 @@ describe('PendingQuizIndicator', () => {
         conditionIndex: 0,
       });
 
-      jest.advanceTimersByTime(3000);
+      vi.advanceTimersByTime(3000);
 
       eventBus.emit(Events.QUIZ_COMPLETED, {
         objectiveId: 'obj-1',
@@ -254,8 +255,8 @@ describe('PendingQuizIndicator', () => {
         totalPointsDeducted: 0,
       });
 
-      jest.advanceTimersByTime(3000);
-      jest.runAllTimers();
+      vi.advanceTimersByTime(3000);
+      vi.runAllTimers();
 
       expect(indicator.isVisible()).toBe(false);
     });
@@ -268,7 +269,7 @@ describe('PendingQuizIndicator', () => {
         objectiveId: 'obj-1',
         conditionIndex: 0,
       });
-      jest.runAllTimers();
+      vi.runAllTimers();
 
       expect(indicator.isVisible()).toBe(true);
 
@@ -289,7 +290,7 @@ describe('PendingQuizIndicator', () => {
         conditionIndex: 0,
       });
 
-      jest.advanceTimersByTime(3000);
+      vi.advanceTimersByTime(3000);
 
       eventBus.emit(Events.QUIZ_PASSED, {
         objectiveId: 'obj-1',
@@ -298,8 +299,8 @@ describe('PendingQuizIndicator', () => {
         pointsDeducted: 0,
       });
 
-      jest.advanceTimersByTime(3000);
-      jest.runAllTimers();
+      vi.advanceTimersByTime(3000);
+      vi.runAllTimers();
 
       expect(indicator.isVisible()).toBe(false);
     });
@@ -307,8 +308,8 @@ describe('PendingQuizIndicator', () => {
 
   describe('Open Button', () => {
     it('should call QuizManager.reopenPendingQuiz when clicked', () => {
-      const mockReopenPendingQuiz = jest.fn();
-      (QuizManager.getInstance as jest.Mock).mockReturnValue({
+      const mockReopenPendingQuiz = vi.fn();
+      (QuizManager.getInstance as Mock).mockReturnValue({
         reopenPendingQuiz: mockReopenPendingQuiz,
       });
 
@@ -325,7 +326,7 @@ describe('PendingQuizIndicator', () => {
         objectiveId: 'obj-1',
         conditionIndex: 0,
       });
-      jest.runAllTimers();
+      vi.runAllTimers();
 
       expect(indicator.isVisible()).toBe(true);
 
@@ -341,7 +342,7 @@ describe('PendingQuizIndicator', () => {
         objectiveId: 'obj-1',
         conditionIndex: 0,
       });
-      jest.runAllTimers();
+      vi.runAllTimers();
 
       expect(indicator.isVisible()).toBe(false);
     });
@@ -352,12 +353,12 @@ describe('PendingQuizIndicator', () => {
         conditionIndex: 0,
       });
 
-      jest.advanceTimersByTime(3000);
+      vi.advanceTimersByTime(3000);
 
       indicator.suppress();
 
-      jest.advanceTimersByTime(3000);
-      jest.runAllTimers();
+      vi.advanceTimersByTime(3000);
+      vi.runAllTimers();
 
       expect(indicator.isVisible()).toBe(false);
     });
@@ -380,8 +381,8 @@ describe('PendingQuizIndicator', () => {
 
       indicator.dispose();
 
-      jest.advanceTimersByTime(6000);
-      jest.runAllTimers();
+      vi.advanceTimersByTime(6000);
+      vi.runAllTimers();
 
       // Element is removed, so isVisible will return false
       expect((indicator as any).indicatorElement_).toBeNull();
@@ -398,7 +399,7 @@ describe('PendingQuizIndicator', () => {
         objectiveId: 'obj-1',
         conditionIndex: 0,
       });
-      jest.runAllTimers();
+      vi.runAllTimers();
 
       // Only new indicator should be visible
       expect(newIndicator.isVisible()).toBe(true);
@@ -422,7 +423,7 @@ describe('PendingQuizIndicator', () => {
 
   describe('destroy (static)', () => {
     it('should call dispose on the instance', () => {
-      const disposeSpy = jest.spyOn(indicator, 'dispose');
+      const disposeSpy = vi.spyOn(indicator, 'dispose');
 
       PendingQuizIndicator.destroy();
 

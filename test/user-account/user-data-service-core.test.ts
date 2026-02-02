@@ -1,15 +1,17 @@
+import { Mock, vi } from 'vitest';
 // NOTE: jest.setup.js globally mocks user-account modules.
 // These tests explicitly unmock to validate the real implementation.
 
 const mockErrorManager = {
-  warn: jest.fn(),
-  error: jest.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
 };
 
-jest.mock('../../src/engine/utils/errorManager', () => ({
+vi.mock('../../src/engine/utils/errorManager', () => ({
   errorManagerInstance: mockErrorManager,
 }));
 
+import { getUserDataService, initUserDataService } from '../../src/user-account/user-data-service';
 type MockResponse = {
   ok: boolean;
   status: number;
@@ -42,9 +44,9 @@ describe('UserDataService', () => {
   const apiBaseUrl = 'https://api.example';
 
   const loadReal = async () => {
-    jest.resetModules();
-    jest.unmock('../../src/user-account/user-data-service');
-    jest.unmock('../../src/user-account/user-data-service-error');
+    vi.resetModules();
+    vi.unmock('../../src/user-account/user-data-service');
+    vi.unmock('../../src/user-account/user-data-service-error');
 
     const { UserDataService, getUserDataService, initUserDataService } = await import(
       '../../src/user-account/user-data-service'
@@ -55,33 +57,32 @@ describe('UserDataService', () => {
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
-    (globalThis as any).fetch = jest.fn();
+    vi.clearAllMocks();
+    (globalThis as any).fetch = vi.fn();
   });
 
-  it('throws if singleton is not initialized', () => {
+  it('throws if singleton is not initialized', async () => {
     // Use isolated import so previous tests don't initialize the singleton.
-    jest.isolateModules(() => {
-      jest.unmock('../../src/user-account/user-data-service');
-      const { getUserDataService } = require('../../src/user-account/user-data-service');
-      expect(() => getUserDataService()).toThrow('UserDataService not initialized. Call initUserDataService() first.');
-    });
+    vi.resetModules();
+    vi.unmock('../../src/user-account/user-data-service');
+
+    const { getUserDataService: freshGetService } = await import('../../src/user-account/user-data-service');
+    expect(() => freshGetService()).toThrow('UserDataService not initialized. Call initUserDataService() first.');
   });
 
-  it('initializes and returns singleton', () => {
-    jest.isolateModules(() => {
-      jest.unmock('../../src/user-account/user-data-service');
-      const { initUserDataService, getUserDataService } = require('../../src/user-account/user-data-service');
+  it('initializes and returns singleton', async () => {
+    vi.resetModules();
+    vi.unmock('../../src/user-account/user-data-service');
 
-      const svc = initUserDataService({ apiBaseUrl, getAccessToken: () => 't' });
-      expect(getUserDataService()).toBe(svc);
-    });
+    const { getUserDataService: freshGetService, initUserDataService: freshInitService } = await import('../../src/user-account/user-data-service');
+    const svc = freshInitService({ apiBaseUrl, getAccessToken: () => 't' });
+    expect(freshGetService()).toBe(svc);
   });
 
   it('adds Authorization header and JSON body', async () => {
     const { UserDataService } = await loadReal();
     const svc = new UserDataService({ apiBaseUrl, getAccessToken: () => 'token' });
-    (globalThis.fetch as jest.Mock).mockResolvedValue(makeJsonResponse({ ok: true, body: { ok: 1 } }));
+    (globalThis.fetch as Mock).mockResolvedValue(makeJsonResponse({ ok: true, body: { ok: 1 } }));
 
     await expect((svc as any).request('/x', 'PUT', { a: 1 })).resolves.toEqual({ ok: 1 });
 
@@ -98,7 +99,7 @@ describe('UserDataService', () => {
   it('returns undefined for HEAD and DELETE', async () => {
     const { UserDataService } = await loadReal();
     const svc = new UserDataService({ apiBaseUrl, getAccessToken: () => 'token' });
-    (globalThis.fetch as jest.Mock).mockResolvedValue(makeJsonResponse({ ok: true, body: { ignored: true } }));
+    (globalThis.fetch as Mock).mockResolvedValue(makeJsonResponse({ ok: true, body: { ignored: true } }));
 
     await expect((svc as any).request('/x', 'HEAD')).resolves.toBeUndefined();
     await expect((svc as any).request('/x', 'DELETE')).resolves.toBeUndefined();
@@ -108,10 +109,10 @@ describe('UserDataService', () => {
     const { UserDataService } = await loadReal();
     const svc = new UserDataService({ apiBaseUrl, getAccessToken: () => 'token' });
 
-    (globalThis.fetch as jest.Mock).mockResolvedValue(makeJsonResponse({ ok: true, status: 204, body: null }));
+    (globalThis.fetch as Mock).mockResolvedValue(makeJsonResponse({ ok: true, status: 204, body: null }));
     await expect((svc as any).request('/x', 'GET')).resolves.toBeUndefined();
 
-    (globalThis.fetch as jest.Mock).mockResolvedValue(makeJsonResponse({ ok: true, status: 200, body: null, contentLength: '0' }));
+    (globalThis.fetch as Mock).mockResolvedValue(makeJsonResponse({ ok: true, status: 200, body: null, contentLength: '0' }));
     await expect((svc as any).request('/x', 'GET')).resolves.toBeUndefined();
   });
 
@@ -119,7 +120,7 @@ describe('UserDataService', () => {
     const { UserDataService, UserDataServiceError } = await loadReal();
     const svc = new UserDataService({ apiBaseUrl, getAccessToken: () => 'token', enableRetry: false });
 
-    (globalThis.fetch as jest.Mock).mockResolvedValue(
+    (globalThis.fetch as Mock).mockResolvedValue(
       makeJsonResponse({ ok: false, status: 400, statusText: 'Bad', body: { error: 'Nope', code: 'X', details: { a: 1 } } }),
     );
 
@@ -133,12 +134,12 @@ describe('UserDataService', () => {
   });
 
   it('retries on network errors with exponential backoff', async () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
 
     const { UserDataService } = await loadReal();
     const svc = new UserDataService({ apiBaseUrl, getAccessToken: () => 'token', maxRetries: 2, retryDelay: 10 });
 
-    (globalThis.fetch as jest.Mock)
+    (globalThis.fetch as Mock)
       .mockRejectedValueOnce(new Error('net'))
       .mockRejectedValueOnce(new Error('net2'))
       .mockResolvedValueOnce(makeJsonResponse({ ok: true, body: { ok: true } }));
@@ -146,24 +147,24 @@ describe('UserDataService', () => {
     const promise = (svc as any).request('/x', 'GET');
 
     // 10ms then 20ms
-    await jest.advanceTimersByTimeAsync(10);
+    await vi.advanceTimersByTimeAsync(10);
     await Promise.resolve();
-    await jest.advanceTimersByTimeAsync(20);
+    await vi.advanceTimersByTimeAsync(20);
 
     await expect(promise).resolves.toEqual({ ok: true });
     expect(mockErrorManager.warn).toHaveBeenCalled();
 
-    jest.useRealTimers();
+    vi.useRealTimers();
   });
 
   it('retries on 429 but not on 400', async () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
 
     const { UserDataService, UserDataServiceError } = await loadReal();
     const svc = new UserDataService({ apiBaseUrl, getAccessToken: () => 'token', maxRetries: 1, retryDelay: 5 });
 
     // 400 should not retry
-    (globalThis.fetch as jest.Mock).mockResolvedValueOnce(
+    (globalThis.fetch as Mock).mockResolvedValueOnce(
       makeJsonResponse({ ok: false, status: 400, statusText: 'Bad', body: { error: 'bad' } }),
     );
 
@@ -171,24 +172,24 @@ describe('UserDataService', () => {
     expect(globalThis.fetch).toHaveBeenCalledTimes(1);
 
     // 429 retries then succeeds
-    (globalThis.fetch as jest.Mock).mockReset();
-    (globalThis.fetch as jest.Mock)
+    (globalThis.fetch as Mock).mockReset();
+    (globalThis.fetch as Mock)
       .mockResolvedValueOnce(makeJsonResponse({ ok: false, status: 429, statusText: 'Too Many', body: { error: 'rate limited' } }))
       .mockResolvedValueOnce(makeJsonResponse({ ok: true, body: { ok: 1 } }));
 
     const p = (svc as any).request('/rl', 'GET');
-    await jest.advanceTimersByTimeAsync(5);
+    await vi.advanceTimersByTimeAsync(5);
     await expect(p).resolves.toEqual({ ok: 1 });
     expect(globalThis.fetch).toHaveBeenCalledTimes(2);
 
-    jest.useRealTimers();
+    vi.useRealTimers();
   });
 
   it('getScenarioProgress returns null on 404', async () => {
     const { UserDataService } = await loadReal();
     const svc = new UserDataService({ apiBaseUrl, getAccessToken: () => 'token', enableRetry: false, appId: 'signalrange' });
 
-    (globalThis.fetch as jest.Mock).mockResolvedValueOnce(
+    (globalThis.fetch as Mock).mockResolvedValueOnce(
       makeJsonResponse({ ok: false, status: 404, statusText: 'Not Found', body: { error: 'missing' } }),
     );
 
@@ -199,7 +200,7 @@ describe('UserDataService', () => {
     const { UserDataService } = await loadReal();
     const svc = new UserDataService({ apiBaseUrl, getAccessToken: () => 'token', enableRetry: false });
 
-    (globalThis.fetch as jest.Mock).mockResolvedValueOnce(
+    (globalThis.fetch as Mock).mockResolvedValueOnce(
       makeJsonResponse({
         ok: true,
         body: {
@@ -251,7 +252,7 @@ describe('UserDataService', () => {
     const { UserDataService } = await loadReal();
     const svc = new UserDataService({ apiBaseUrl, getAccessToken: () => 'token', enableRetry: false });
 
-    (globalThis.fetch as jest.Mock).mockResolvedValueOnce(
+    (globalThis.fetch as Mock).mockResolvedValueOnce(
       makeJsonResponse({
         ok: true,
         body: {

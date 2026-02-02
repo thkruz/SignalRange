@@ -1,3 +1,4 @@
+import { Mock, vi } from 'vitest';
 import { Sfx } from '../../src/sound/sfx-enum';
 import SoundManager from '../../src/sound/sound-manager';
 
@@ -38,20 +39,20 @@ describe('SoundManager.getInstance', () => {
       // Mock HTMLAudioElement
       mockAudio = {
         volume: 1,
-        pause: jest.fn(),
+        pause: vi.fn(),
         currentTime: 0,
-        play: jest.fn().mockResolvedValue(undefined),
-        cloneNode: jest.fn().mockReturnThis(),
-        addEventListener: jest.fn(),
+        play: vi.fn().mockResolvedValue(undefined),
+        cloneNode: vi.fn().mockReturnThis(),
+        addEventListener: vi.fn(),
         loop: false,
       } as any;
 
-      global.Audio = jest.fn().mockReturnValue(mockAudio) as any;
-      jest.useFakeTimers();
+      global.Audio = vi.fn(function() { return mockAudio; }) as any;
+      vi.useFakeTimers();
     });
 
     afterEach(() => {
-      jest.useRealTimers();
+      vi.useRealTimers();
     });
 
     it('should do nothing if sound is not currently playing', () => {
@@ -66,7 +67,7 @@ describe('SoundManager.getInstance', () => {
       manager.stop(Sfx.POWER_ON);
 
       // Fast-forward through all fade steps
-      jest.runAllTimers();
+      vi.runAllTimers();
 
       expect(mockAudio.pause).toHaveBeenCalled();
       expect(mockAudio.currentTime).toBe(0);
@@ -81,11 +82,11 @@ describe('SoundManager.getInstance', () => {
       manager.stop(Sfx.POWER_ON);
 
       // Check volume at step 15 (halfway)
-      jest.advanceTimersByTime(150); // 300ms / 30 steps * 15
+      vi.advanceTimersByTime(150); // 300ms / 30 steps * 15
       expect(mockAudio.volume).toBeCloseTo(0.5, 1);
 
       // Complete the fade
-      jest.runAllTimers();
+      vi.runAllTimers();
       expect(mockAudio.volume).toBe(1); // Restored
     });
 
@@ -94,7 +95,7 @@ describe('SoundManager.getInstance', () => {
       (manager as any).currentlyPlaying.set(Sfx.POWER_ON, mockAudio);
 
       manager.stop(Sfx.POWER_ON);
-      jest.runAllTimers();
+      vi.runAllTimers();
 
       expect(mockAudio.volume).toBe(0.7);
     });
@@ -105,7 +106,7 @@ describe('SoundManager.getInstance', () => {
       manager.stop(Sfx.POWER_ON);
       expect((manager as any).currentlyPlaying.has(Sfx.POWER_ON)).toBe(true);
 
-      jest.runAllTimers();
+      vi.runAllTimers();
       expect((manager as any).currentlyPlaying.has(Sfx.POWER_ON)).toBe(false);
     });
 
@@ -119,20 +120,20 @@ describe('SoundManager.getInstance', () => {
 
         mockAudio = {
           volume: 1,
-          pause: jest.fn(),
+          pause: vi.fn(),
           currentTime: 0,
-          play: jest.fn().mockResolvedValue(undefined),
-          cloneNode: jest.fn().mockReturnThis(),
-          addEventListener: jest.fn(),
+          play: vi.fn().mockResolvedValue(undefined),
+          cloneNode: vi.fn().mockReturnThis(),
+          addEventListener: vi.fn(),
           loop: false,
         } as any;
 
-        global.Audio = jest.fn().mockReturnValue(mockAudio) as any;
-        jest.useFakeTimers();
+        global.Audio = vi.fn(function() { return mockAudio; }) as any;
+        vi.useFakeTimers();
       });
 
       afterEach(() => {
-        jest.useRealTimers();
+        vi.useRealTimers();
       });
 
       it('should create and play a new audio element', () => {
@@ -152,7 +153,7 @@ describe('SoundManager.getInstance', () => {
         expect(mockAudio.play).toHaveBeenCalledTimes(1); // Should not play
 
         // Advance past throttle period (200ms for SWITCH)
-        jest.advanceTimersByTime(201);
+        vi.advanceTimersByTime(201);
         manager.play(Sfx.SWITCH);
         expect(mockAudio.play).toHaveBeenCalledTimes(2);
       });
@@ -214,7 +215,7 @@ describe('SoundManager.getInstance', () => {
       it('should remove from currentlyPlaying when ended event fires for non-looping restart sounds', () => {
         manager.play(Sfx.POWER_ON);
 
-        const endedCallback = (mockAudio.addEventListener as jest.Mock).mock.calls[0][1];
+        const endedCallback = (mockAudio.addEventListener as Mock).mock.calls[0][1];
         endedCallback();
 
         expect((manager as any).currentlyPlaying.has(Sfx.POWER_ON)).toBe(false);

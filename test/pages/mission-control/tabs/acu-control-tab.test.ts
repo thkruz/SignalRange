@@ -1,53 +1,56 @@
-import { ACUControlTab } from '../../../../src/pages/mission-control/tabs/acu-control-tab';
+import { Mock, Mocked, vi } from 'vitest';
 import { GroundStation } from '../../../../src/assets/ground-station/ground-station';
 import { EventBus } from '../../../../src/events/event-bus';
 import { Events } from '../../../../src/events/events';
+import { ACUControlTab } from '../../../../src/pages/mission-control/tabs/acu-control-tab';
 
 // Mock dependencies
-jest.mock('../../../../src/events/event-bus');
-jest.mock('../../../../src/assets/ground-station/ground-station');
-jest.mock('../../../../src/pages/mission-control/tabs/antenna-adapter');
-jest.mock('../../../../src/pages/mission-control/tabs/omt-adapter');
-jest.mock('../../../../src/components/fine-adjust-control/fine-adjust-control', () => ({
+vi.mock('../../../../src/events/event-bus');
+vi.mock('../../../../src/assets/ground-station/ground-station');
+vi.mock('../../../../src/pages/mission-control/tabs/antenna-adapter');
+vi.mock('../../../../src/pages/mission-control/tabs/omt-adapter');
+vi.mock('../../../../src/components/fine-adjust-control/fine-adjust-control', () => ({
   FineAdjustControl: {
-    create: jest.fn(() => ({
+    create: vi.fn(() => ({
       html: '<div class="mock-fine-adjust"></div>',
-      addEventListeners: jest.fn(),
-      sync: jest.fn(),
-      setEnabled: jest.fn(),
+      addEventListeners: vi.fn(),
+      sync: vi.fn(),
+      setEnabled: vi.fn(),
     })),
   },
 }));
-jest.mock('../../../../src/components/polar-plot/polar-plot', () => ({
+vi.mock('../../../../src/components/polar-plot/polar-plot', () => ({
   PolarPlot: {
-    create: jest.fn(() => ({
+    create: vi.fn(() => ({
       html: '<div class="mock-polar-plot"></div>',
-      onDomReady: jest.fn(),
-      draw: jest.fn(),
+      onDomReady: vi.fn(),
+      draw: vi.fn(),
     })),
   },
 }));
-jest.mock('../../../../src/simulation/simulation-manager', () => ({
+vi.mock('../../../../src/simulation/simulation-manager', () => ({
   SimulationManager: {
-    getInstance: jest.fn(() => ({
+    getInstance: vi.fn(() => ({
       satellites: [],
-      getSatByNoradId: jest.fn(() => null),
+      getSatByNoradId: vi.fn(() => null),
     })),
   },
 }));
-jest.mock('../../../../src/weather/weather-manager', () => ({
+vi.mock('../../../../src/weather/weather-manager', () => ({
   WeatherManager: {
-    getInstance: jest.fn(() => ({
-      isPrecipitationActive: jest.fn(() => false),
+    getInstance: vi.fn(() => ({
+      isPrecipitationActive: vi.fn(() => false),
     })),
   },
 }));
 
+import { SimulationManager } from '../../../../src/simulation/simulation-manager';
+import { WeatherManager } from '../../../../src/weather/weather-manager';
 describe('ACUControlTab', () => {
-  let mockGroundStation: jest.Mocked<GroundStation>;
+  let mockGroundStation: Mocked<GroundStation>;
   let containerEl: HTMLElement;
   let tab: ACUControlTab;
-  let mockEventBus: { on: jest.Mock; off: jest.Mock; emit: jest.Mock };
+  let mockEventBus: { on: Mock; off: Mock; emit: Mock };
 
   // The unique prefix is: acu-${groundStation.uuid}-ant${antennaIndex}-
   // With uuid='test-uuid' and antennaIndex=0, prefix = 'acu-test-uuid-ant0-'
@@ -96,15 +99,15 @@ describe('ACUControlTab', () => {
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Setup mock EventBus
     mockEventBus = {
-      on: jest.fn(),
-      off: jest.fn(),
-      emit: jest.fn(),
+      on: vi.fn(),
+      off: vi.fn(),
+      emit: vi.fn(),
     };
-    (EventBus.getInstance as jest.Mock).mockReturnValue(mockEventBus);
+    (EventBus.getInstance as Mock).mockReturnValue(mockEventBus);
 
     // Setup mock GroundStation
     mockGroundStation = {
@@ -113,21 +116,21 @@ describe('ACUControlTab', () => {
       antennas: [
         {
           state: mockAntennaState,
-          stageAzimuthChange: jest.fn(),
-          stageElevationChange: jest.fn(),
-          stagePolarizationChange: jest.fn(),
-          applyChanges: jest.fn(),
-          discardChanges: jest.fn(),
-          handleTrackingModeChange: jest.fn(),
-          handleTargetSatelliteChange: jest.fn(),
-          moveToTargetSatellite: jest.fn(),
-          stageBeaconFrequencyChange: jest.fn(),
-          stageBeaconSearchBwChange: jest.fn(),
-          startStepTrack: jest.fn(),
-          stopStepTrack: jest.fn(),
-          handleStepTrackToggle: jest.fn(),
-          handleHeaterToggle: jest.fn(),
-          handleRainBlowerToggle: jest.fn(),
+          stageAzimuthChange: vi.fn(),
+          stageElevationChange: vi.fn(),
+          stagePolarizationChange: vi.fn(),
+          applyChanges: vi.fn(),
+          discardChanges: vi.fn(),
+          handleTrackingModeChange: vi.fn(),
+          handleTargetSatelliteChange: vi.fn(),
+          moveToTargetSatellite: vi.fn(),
+          stageBeaconFrequencyChange: vi.fn(),
+          stageBeaconSearchBwChange: vi.fn(),
+          startStepTrack: vi.fn(),
+          stopStepTrack: vi.fn(),
+          handleStepTrackToggle: vi.fn(),
+          handleHeaterToggle: vi.fn(),
+          handleRainBlowerToggle: vi.fn(),
         },
       ],
       rfFrontEnds: [
@@ -135,8 +138,8 @@ describe('ACUControlTab', () => {
           omtModule: { state: {} },
         },
       ],
-      initializeEquipment: jest.fn(),
-    } as unknown as jest.Mocked<GroundStation>;
+      initializeEquipment: vi.fn(),
+    } as unknown as Mocked<GroundStation>;
 
     // Setup container
     containerEl = document.createElement('div');
@@ -161,7 +164,7 @@ describe('ACUControlTab', () => {
         ...mockGroundStation,
         antennas: [],
         rfFrontEnds: [],
-      } as unknown as jest.Mocked<GroundStation>;
+      } as unknown as Mocked<GroundStation>;
 
       const containerEl2 = document.createElement('div');
       containerEl2.id = 'acu-control-container-2';
@@ -392,13 +395,12 @@ describe('ACUControlTab', () => {
 
   describe('satellite dropdown interactions', () => {
     it('should call handleTargetSatelliteChange when satellite is selected', () => {
-      const { SimulationManager } = require('../../../../src/simulation/simulation-manager');
       SimulationManager.getInstance.mockReturnValue({
         satellites: [
           { noradId: 12345, name: 'Test Satellite 1' },
           { noradId: 67890, name: 'Test Satellite 2' },
         ],
-        getSatByNoradId: jest.fn(() => null),
+        getSatByNoradId: vi.fn(() => null),
       });
 
       // Recreate tab to get updated dropdown
@@ -479,7 +481,7 @@ describe('ACUControlTab', () => {
       antenna.state.trackingMode = 'program-track';
 
       // Trigger update (bypass throttle)
-      jest.spyOn(Date, 'now').mockReturnValue(2000);
+      vi.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();
 
       const programSection = document.querySelector(`#${PREFIX}program-track-section`) as HTMLElement;
@@ -496,7 +498,7 @@ describe('ACUControlTab', () => {
       antenna.state.beaconCN = 15.5;
       antenna.state.trackingMode = 'manual';
 
-      jest.spyOn(Date, 'now').mockReturnValue(2000);
+      vi.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandlers.forEach(handler => handler());
 
       const beaconCnEl = document.querySelector(`#${PREFIX}beacon-cn-value`);
@@ -532,7 +534,7 @@ describe('ACUControlTab', () => {
       antenna.state.hasFault = true;
       antenna.state.faultMessage = 'Motor failure';
 
-      jest.spyOn(Date, 'now').mockReturnValue(2000);
+      vi.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();
 
       const faultEl = document.querySelector(`#${PREFIX}fault-message`) as HTMLElement;
@@ -549,7 +551,7 @@ describe('ACUControlTab', () => {
       antenna.state.trackingMode = 'program-track';
       antenna.state.isStepTrackEnabled = true;
 
-      jest.spyOn(Date, 'now').mockReturnValue(2000);
+      vi.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();
 
       const toggle = document.querySelector(`#${PREFIX}step-track-toggle`) as HTMLInputElement;
@@ -565,7 +567,7 @@ describe('ACUControlTab', () => {
       antenna.state.trackingMode = 'program-track';
       antenna.state.isStepTrackEnabled = false;
 
-      jest.spyOn(Date, 'now').mockReturnValue(2000);
+      vi.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();
 
       const contextTitle = document.querySelector(`#${PREFIX}context-panel-title`);
@@ -581,7 +583,7 @@ describe('ACUControlTab', () => {
       antenna.state.trackingMode = 'program-track';
       antenna.state.isStepTrackEnabled = true;
 
-      jest.spyOn(Date, 'now').mockReturnValue(2000);
+      vi.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();
 
       const contextTitle = document.querySelector(`#${PREFIX}context-panel-title`);
@@ -597,7 +599,7 @@ describe('ACUControlTab', () => {
       antenna.state.isPowered = true;
       antenna.state.isOperational = false;
 
-      jest.spyOn(Date, 'now').mockReturnValue(2000);
+      vi.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();
 
       const statusLed = document.querySelector(`#${PREFIX}status-led`);
@@ -612,7 +614,7 @@ describe('ACUControlTab', () => {
       const antenna = mockGroundStation.antennas[0];
       antenna.state.isPowered = false;
 
-      jest.spyOn(Date, 'now').mockReturnValue(2000);
+      vi.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();
 
       const statusLed = document.querySelector(`#${PREFIX}status-led`);
@@ -627,7 +629,7 @@ describe('ACUControlTab', () => {
       const antenna = mockGroundStation.antennas[0];
       antenna.state.iceAccumulation_dB = 3.5;
 
-      jest.spyOn(Date, 'now').mockReturnValue(2000);
+      vi.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();
 
       const iceDisplay = document.querySelector(`#${PREFIX}ice-accumulation-display`);
@@ -643,7 +645,7 @@ describe('ACUControlTab', () => {
       const antenna = mockGroundStation.antennas[0];
       antenna.state.iceAccumulation_dB = 6.0;
 
-      jest.spyOn(Date, 'now').mockReturnValue(2000);
+      vi.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();
 
       const iceDisplay = document.querySelector(`#${PREFIX}ice-accumulation-display`);
@@ -661,7 +663,7 @@ describe('ACUControlTab', () => {
       antenna.state.beaconCN = null;
       antenna.state.trackingMode = 'manual';
 
-      jest.spyOn(Date, 'now').mockReturnValue(2000);
+      vi.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();
 
       const beaconCnEl = document.querySelector(`#${PREFIX}beacon-cn-value`);
@@ -678,7 +680,7 @@ describe('ACUControlTab', () => {
       antenna.state.beaconCN = 15.0;
       antenna.state.trackingMode = 'manual';
 
-      jest.spyOn(Date, 'now').mockReturnValue(2000);
+      vi.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandlers.forEach(handler => handler());
 
       const beaconFillEl = document.querySelector(`#${PREFIX}beacon-strength-fill`) as HTMLElement;
@@ -694,7 +696,7 @@ describe('ACUControlTab', () => {
       antenna.state.beaconCN = 7.0;
       antenna.state.trackingMode = 'manual';
 
-      jest.spyOn(Date, 'now').mockReturnValue(2000);
+      vi.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandlers.forEach(handler => handler());
 
       const beaconFillEl = document.querySelector(`#${PREFIX}beacon-strength-fill`) as HTMLElement;
@@ -710,7 +712,7 @@ describe('ACUControlTab', () => {
       antenna.state.beaconCN = 3.0;
       antenna.state.trackingMode = 'manual';
 
-      jest.spyOn(Date, 'now').mockReturnValue(2000);
+      vi.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandlers.forEach(handler => handler());
 
       const beaconFillEl = document.querySelector(`#${PREFIX}beacon-strength-fill`) as HTMLElement;
@@ -727,7 +729,7 @@ describe('ACUControlTab', () => {
       antenna.state.isStepTrackEnabled = true;
       antenna.state.isAutoTrackEnabled = false;
 
-      jest.spyOn(Date, 'now').mockReturnValue(2000);
+      vi.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandlers.forEach(handler => handler());
 
       const beaconLockEl = document.querySelector(`#${PREFIX}beacon-lock-status`);
@@ -745,7 +747,7 @@ describe('ACUControlTab', () => {
       antenna.state.isAutoTrackEnabled = true;
       antenna.state.isBeaconLocked = false;
 
-      jest.spyOn(Date, 'now').mockReturnValue(2000);
+      vi.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandlers.forEach(handler => handler());
 
       const beaconLockEl = document.querySelector(`#${PREFIX}beacon-lock-status`);
@@ -763,7 +765,7 @@ describe('ACUControlTab', () => {
       antenna.state.isAutoTrackEnabled = true;
       antenna.state.isBeaconLocked = true;
 
-      jest.spyOn(Date, 'now').mockReturnValue(2000);
+      vi.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandlers.forEach(handler => handler());
 
       const beaconLockEl = document.querySelector(`#${PREFIX}beacon-lock-status`);
@@ -773,16 +775,15 @@ describe('ACUControlTab', () => {
 
   describe('precipitation status', () => {
     it('should update precipitation status from weather manager', () => {
-      const { WeatherManager } = require('../../../../src/weather/weather-manager');
       WeatherManager.getInstance.mockReturnValue({
-        isPrecipitationActive: jest.fn(() => true),
+        isPrecipitationActive: vi.fn(() => true),
       });
 
       const updateHandler = mockEventBus.on.mock.calls.find(
         (call: unknown[]) => call[0] === Events.UPDATE
       )?.[1];
 
-      jest.spyOn(Date, 'now').mockReturnValue(2000);
+      vi.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();
 
       const precipStatus = document.querySelector(`#${PREFIX}precip-status`);
@@ -793,12 +794,12 @@ describe('ACUControlTab', () => {
 
   describe('current target display', () => {
     it('should display satellite name when target is active', () => {
-      const { SimulationManager } = require('../../../../src/simulation/simulation-manager');
+
       SimulationManager.getInstance.mockReturnValue({
         satellites: [
           { noradId: 12345, name: 'Test Satellite 1' },
         ],
-        getSatByNoradId: jest.fn(() => null),
+        getSatByNoradId: vi.fn(() => null),
       });
 
       const antenna = mockGroundStation.antennas[0];
@@ -819,7 +820,7 @@ describe('ACUControlTab', () => {
         (call: unknown[]) => call[0] === Events.UPDATE
       )?.[1];
 
-      jest.spyOn(Date, 'now').mockReturnValue(2000);
+      vi.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();
 
       const currentTargetDisplay = document.querySelector(`#${PREFIX}current-target-display`) as HTMLInputElement;

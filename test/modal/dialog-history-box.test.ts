@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { EventBus } from '../../src/events/event-bus';
 import { Events } from '../../src/events/events';
 import { Character, Emotion } from '../../src/modal/character-enum';
@@ -5,7 +6,7 @@ import { DialogHistoryBox } from '../../src/modal/dialog-history-box';
 import { DialogHistoryEntry } from '../../src/modal/dialog-history-manager';
 
 // Mock DraggableHtmlBox
-jest.mock('../../src/modal/draggable-html-box', () => ({
+vi.mock('../../src/modal/draggable-html-box', () => ({
   DraggableHtmlBox: class MockDraggableHtmlBox {
     protected title: string;
     protected boxId: string;
@@ -46,18 +47,18 @@ jest.mock('../../src/modal/draggable-html-box', () => ({
 }));
 
 // Mock html utility
-jest.mock('../../src/engine/utils/development/formatter', () => ({
+vi.mock('../../src/engine/utils/development/formatter', () => ({
   html: (strings: TemplateStringsArray, ...values: unknown[]) => {
     return strings.reduce((result, str, i) => result + str + (values[i] ?? ''), '');
   },
 }));
 
 // Mock DialogHistoryManager
-const mockGetHistory = jest.fn();
-const mockReplayDialog = jest.fn();
-jest.mock('../../src/modal/dialog-history-manager', () => ({
+const mockGetHistory = vi.fn();
+const mockReplayDialog = vi.fn();
+vi.mock('../../src/modal/dialog-history-manager', () => ({
   DialogHistoryManager: {
-    getInstance: jest.fn(() => ({
+    getInstance: vi.fn(() => ({
       getHistory: mockGetHistory,
       replayDialog: mockReplayDialog,
     })),
@@ -65,7 +66,7 @@ jest.mock('../../src/modal/dialog-history-manager', () => ({
 }));
 
 // Mock character-enum
-jest.mock('../../src/modal/character-enum', () => ({
+vi.mock('../../src/modal/character-enum', () => ({
   Character: {
     CHARLIE_BROOKS: 'charlie_brooks',
   },
@@ -92,7 +93,7 @@ describe('DialogHistoryBox', () => {
 
   afterEach(() => {
     EventBus.destroy();
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('constructor', () => {
@@ -179,7 +180,7 @@ describe('DialogHistoryBox', () => {
   describe('onOpen', () => {
     it('should update content when opened', () => {
       mockGetHistory.mockReturnValue([]);
-      const updateContentSpy = jest.spyOn(historyBox, 'updateContent');
+      const updateContentSpy = vi.spyOn(historyBox, 'updateContent');
 
       (historyBox as any).onOpen();
 
@@ -214,7 +215,7 @@ describe('DialogHistoryBox', () => {
   describe('open', () => {
     it('should call super.open and update content', () => {
       mockGetHistory.mockReturnValue([]);
-      const updateContentSpy = jest.spyOn(historyBox, 'updateContent');
+      const updateContentSpy = vi.spyOn(historyBox, 'updateContent');
 
       historyBox.open();
 
@@ -228,7 +229,7 @@ describe('DialogHistoryBox', () => {
       mockGetHistory.mockReturnValue([]);
       (historyBox as any)._isOpen = false;
 
-      const updateContentSpy = jest.spyOn(historyBox, 'updateContent');
+      const updateContentSpy = vi.spyOn(historyBox, 'updateContent');
       mockGetHistory.mockClear();
 
       eventBus.emit(Events.DIALOG_HISTORY_CHANGED);
@@ -242,7 +243,7 @@ describe('DialogHistoryBox', () => {
       mockGetHistory.mockReturnValue([]);
       (historyBox as any)._isOpen = true;
 
-      const updateContentSpy = jest.spyOn(historyBox, 'updateContent');
+      const updateContentSpy = vi.spyOn(historyBox, 'updateContent');
 
       eventBus.emit(Events.DIALOG_HISTORY_CHANGED);
 

@@ -1,12 +1,13 @@
-import { AssetTreeSidebar } from '../../../src/pages/mission-control/asset-tree-sidebar';
+import { Mock, vi } from 'vitest';
 import { EventBus } from '../../../src/events/event-bus';
 import { Events } from '../../../src/events/events';
+import { AssetTreeSidebar } from '../../../src/pages/mission-control/asset-tree-sidebar';
 
 // Mock dependencies
-jest.mock('../../../src/events/event-bus');
-jest.mock('../../../src/simulation/simulation-manager', () => ({
+vi.mock('../../../src/events/event-bus');
+vi.mock('../../../src/simulation/simulation-manager', () => ({
   SimulationManager: {
-    getInstance: jest.fn(() => ({
+    getInstance: vi.fn(() => ({
       groundStations: [
         {
           state: {
@@ -36,68 +37,82 @@ jest.mock('../../../src/simulation/simulation-manager', () => ({
     })),
   },
 }));
-jest.mock('../../../src/scenario-manager', () => ({
+vi.mock('../../../src/scenario-manager', () => ({
   ScenarioManager: {
-    getInstance: jest.fn(() => ({
+    getInstance: vi.fn(() => ({
       settings: {
         missionBriefUrl: null,
       },
     })),
   },
 }));
-jest.mock('../../../src/objectives', () => ({
+vi.mock('../../../src/objectives', () => ({
   ObjectivesManager: {
-    hasLoadedObjectives: jest.fn(() => false),
-    isScenarioLocked: jest.fn(() => false),
-    getInstance: jest.fn(() => ({
-      syncCollapsedStatesFromDOM: jest.fn(),
-      generateHtmlChecklist: jest.fn(() => '<div>Checklist</div>'),
+    hasLoadedObjectives: vi.fn(() => false),
+    isScenarioLocked: vi.fn(() => false),
+    getInstance: vi.fn(() => ({
+      syncCollapsedStatesFromDOM: vi.fn(),
+      generateHtmlChecklist: vi.fn(() => '<div>Checklist</div>'),
     })),
   },
 }));
-jest.mock('../../../src/modal/pending-quiz-indicator', () => ({
+vi.mock('../../../src/modal/pending-quiz-indicator', () => ({
   PendingQuizIndicator: {
-    getInstance: jest.fn(),
+    getInstance: vi.fn(),
   },
 }));
-jest.mock('../../../src/modal/quiz-manager', () => ({
+vi.mock('../../../src/modal/quiz-manager', () => ({
   QuizManager: {
-    getInstance: jest.fn(() => ({
-      showQuiz: jest.fn(),
+    getInstance: vi.fn(() => ({
+      showQuiz: vi.fn(),
     })),
   },
 }));
-jest.mock('../../../src/modal/draggable-html-box');
-jest.mock('../../../src/modal/dialog-history-box');
-jest.mock('../../../src/ops-log/ops-log-modal', () => ({
+vi.mock('../../../src/modal/draggable-html-box', () => ({
+  DraggableHtmlBox: vi.fn(function () {
+    return { open: vi.fn(), updateContent: vi.fn(), isOpen: false };
+  }),
+}));
+vi.mock('../../../src/modal/dialog-history-box', () => ({
+  DialogHistoryBox: vi.fn(function () {
+    return { open: vi.fn() };
+  }),
+}));
+vi.mock('../../../src/ops-log/ops-log-modal', () => ({
   OpsLogModal: {
-    getInstance: jest.fn(() => ({
-      open: jest.fn(),
+    getInstance: vi.fn(() => ({
+      open: vi.fn(),
     })),
   },
 }));
-jest.mock('../../../src/engine/utils/query-selector', () => ({
-  qs: jest.fn((selector: string, parent?: Element) => {
+vi.mock('../../../src/engine/utils/query-selector', () => ({
+  qs: vi.fn((selector: string, parent?: Element) => {
     const root = parent || global.document;
     return root.querySelector(selector);
   }),
 }));
 
+import { DialogHistoryBox } from '../../../src/modal/dialog-history-box';
+import { DraggableHtmlBox } from '../../../src/modal/draggable-html-box';
+import { ObjectivesManager } from '../../../src/objectives';
+import { OpsLogModal } from '../../../src/ops-log/ops-log-modal';
+import { ScenarioManager } from '../../../src/scenario-manager';
+import { SimulationManager } from '../../../src/simulation/simulation-manager';
 describe('AssetTreeSidebar', () => {
   let containerEl: HTMLElement;
   let sidebar: AssetTreeSidebar;
-  let mockEventBus: { on: jest.Mock; off: jest.Mock; emit: jest.Mock };
+  let mockEventBus: { on: Mock; off: Mock; emit: Mock };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Setup mock EventBus
     mockEventBus = {
-      on: jest.fn(),
-      off: jest.fn(),
-      emit: jest.fn(),
+      on: vi.fn(),
+      off: vi.fn(),
+      emit: vi.fn(),
     };
-    (EventBus.getInstance as jest.Mock).mockReturnValue(mockEventBus);
+    (EventBus.getInstance as Mock).mockReturnValue(mockEventBus);
 
     // Setup container
     containerEl = document.createElement('div');
@@ -370,13 +385,12 @@ describe('AssetTreeSidebar', () => {
 describe('AssetTreeSidebar with mission brief', () => {
   let containerEl: HTMLElement;
   let sidebar: AssetTreeSidebar;
-  let mockEventBus: { on: jest.Mock; off: jest.Mock; emit: jest.Mock };
+  let mockEventBus: { on: Mock; off: Mock; emit: Mock };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Mock ScenarioManager to have a mission brief URL
-    const { ScenarioManager } = require('../../../src/scenario-manager');
     ScenarioManager.getInstance.mockReturnValue({
       settings: {
         missionBriefUrl: '/briefs/test-mission.html',
@@ -385,11 +399,11 @@ describe('AssetTreeSidebar with mission brief', () => {
 
     // Setup mock EventBus
     mockEventBus = {
-      on: jest.fn(),
-      off: jest.fn(),
-      emit: jest.fn(),
+      on: vi.fn(),
+      off: vi.fn(),
+      emit: vi.fn(),
     };
-    (EventBus.getInstance as jest.Mock).mockReturnValue(mockEventBus);
+    (EventBus.getInstance as Mock).mockReturnValue(mockEventBus);
 
     // Setup container
     containerEl = document.createElement('div');
@@ -434,13 +448,11 @@ describe('AssetTreeSidebar with mission brief', () => {
   });
 
   it('should open mission brief box when Mission Brief clicked', () => {
-    const { DraggableHtmlBox } = require('../../../src/modal/draggable-html-box');
-    const mockOpen = jest.fn();
+    const mockOpen = vi.fn();
     const mockBox = { open: mockOpen };
-    DraggableHtmlBox.mockImplementation(() => mockBox);
+    DraggableHtmlBox.mockImplementation(function () { return mockBox; });
 
     // Setup SimulationManager to allow assignment
-    const { SimulationManager } = require('../../../src/simulation/simulation-manager');
     const simInstance = {
       groundStations: [],
       satellites: [],
@@ -463,13 +475,12 @@ describe('AssetTreeSidebar with mission brief', () => {
   });
 
   it('should open dialog history box when Dialog History clicked', () => {
-    const { DialogHistoryBox } = require('../../../src/modal/dialog-history-box');
-    const mockOpen = jest.fn();
+    const mockOpen = vi.fn();
     const mockBox = { open: mockOpen };
-    DialogHistoryBox.mockImplementation(() => mockBox);
+    DialogHistoryBox.mockImplementation(function () { return mockBox; });
 
     // Setup SimulationManager to allow assignment
-    const { SimulationManager } = require('../../../src/simulation/simulation-manager');
+
     const simInstance = {
       groundStations: [],
       satellites: [],
@@ -487,17 +498,18 @@ describe('AssetTreeSidebar with mission brief', () => {
   });
 
   it('should open checklist box when Checklist clicked', () => {
-    const { DraggableHtmlBox } = require('../../../src/modal/draggable-html-box');
-    const mockOpen = jest.fn();
-    const mockUpdateContent = jest.fn();
-    DraggableHtmlBox.mockImplementation(() => ({
-      open: mockOpen,
-      updateContent: mockUpdateContent,
-      isOpen: false,
-      popupDom: document.createElement('div'),
-    }));
 
-    const { SimulationManager } = require('../../../src/simulation/simulation-manager');
+    const mockOpen = vi.fn();
+    const mockUpdateContent = vi.fn();
+    DraggableHtmlBox.mockImplementation(function () {
+      return {
+        open: mockOpen,
+        updateContent: mockUpdateContent,
+        isOpen: false,
+        popupDom: document.createElement('div'),
+      };
+    });
+
     SimulationManager.getInstance.mockReturnValue({
       groundStations: [],
       satellites: [],
@@ -521,7 +533,6 @@ describe('AssetTreeSidebar with mission brief', () => {
   });
 
   it('should check and update lock state on DOM_READY', () => {
-    const { ObjectivesManager } = require('../../../src/objectives');
     ObjectivesManager.isScenarioLocked.mockReturnValue(false);
 
     const domReadyHandler = mockEventBus.on.mock.calls.find(
@@ -543,20 +554,21 @@ describe('AssetTreeSidebar with mission brief', () => {
 
   it('should stop checklist refresh timer on ROUTE_CHANGED', () => {
     // First open the checklist to start the timer
-    const { DraggableHtmlBox } = require('../../../src/modal/draggable-html-box');
-    const mockOpen = jest.fn();
-    const mockUpdateContent = jest.fn();
+    const mockOpen = vi.fn();
+    const mockUpdateContent = vi.fn();
     const mockPopupDom = document.createElement('div');
 
-    DraggableHtmlBox.mockImplementation(() => ({
-      open: mockOpen,
-      updateContent: mockUpdateContent,
-      isOpen: true,
-      popupDom: mockPopupDom,
-      onClose: null,
-    }));
+    DraggableHtmlBox.mockImplementation(function () {
+      return {
+        open: mockOpen,
+        updateContent: mockUpdateContent,
+        isOpen: true,
+        popupDom: mockPopupDom,
+        onClose: null,
+      };
+    });
 
-    const { SimulationManager } = require('../../../src/simulation/simulation-manager');
+
     SimulationManager.getInstance.mockReturnValue({
       groundStations: [],
       satellites: [],
@@ -579,8 +591,7 @@ describe('AssetTreeSidebar with mission brief', () => {
   });
 
   it('should open ops log modal when Ops Log clicked', () => {
-    const { OpsLogModal } = require('../../../src/ops-log/ops-log-modal');
-    const mockOpen = jest.fn();
+    const mockOpen = vi.fn();
     OpsLogModal.getInstance.mockReturnValue({
       open: mockOpen,
     });
@@ -595,13 +606,13 @@ describe('AssetTreeSidebar with mission brief', () => {
 describe('AssetTreeSidebar with already unlocked scenario', () => {
   let containerEl: HTMLElement;
   let sidebar: AssetTreeSidebar;
-  let mockEventBus: { on: jest.Mock; off: jest.Mock; emit: jest.Mock };
+  let mockEventBus: { on: Mock; off: Mock; emit: Mock };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Mock ScenarioManager to have a mission brief URL
-    const { ScenarioManager } = require('../../../src/scenario-manager');
+
     ScenarioManager.getInstance.mockReturnValue({
       settings: {
         missionBriefUrl: '/briefs/test-mission.html',
@@ -609,17 +620,17 @@ describe('AssetTreeSidebar with already unlocked scenario', () => {
     });
 
     // Mock ObjectivesManager to show already loaded and unlocked
-    const { ObjectivesManager } = require('../../../src/objectives');
+
     ObjectivesManager.hasLoadedObjectives.mockReturnValue(true);
     ObjectivesManager.isScenarioLocked.mockReturnValue(false);
 
     // Setup mock EventBus
     mockEventBus = {
-      on: jest.fn(),
-      off: jest.fn(),
-      emit: jest.fn(),
+      on: vi.fn(),
+      off: vi.fn(),
+      emit: vi.fn(),
     };
-    (EventBus.getInstance as jest.Mock).mockReturnValue(mockEventBus);
+    (EventBus.getInstance as Mock).mockReturnValue(mockEventBus);
 
     // Setup container
     containerEl = document.createElement('div');
@@ -643,13 +654,12 @@ describe('AssetTreeSidebar with already unlocked scenario', () => {
 describe('AssetTreeSidebar with no satellites', () => {
   let containerEl: HTMLElement;
   let sidebar: AssetTreeSidebar;
-  let mockEventBus: { on: jest.Mock; off: jest.Mock; emit: jest.Mock };
+  let mockEventBus: { on: Mock; off: Mock; emit: Mock };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Mock SimulationManager to have no satellites
-    const { SimulationManager } = require('../../../src/simulation/simulation-manager');
     SimulationManager.getInstance.mockReturnValue({
       groundStations: [],
       satellites: [],
@@ -660,11 +670,11 @@ describe('AssetTreeSidebar with no satellites', () => {
 
     // Setup mock EventBus
     mockEventBus = {
-      on: jest.fn(),
-      off: jest.fn(),
-      emit: jest.fn(),
+      on: vi.fn(),
+      off: vi.fn(),
+      emit: vi.fn(),
     };
-    (EventBus.getInstance as jest.Mock).mockReturnValue(mockEventBus);
+    (EventBus.getInstance as Mock).mockReturnValue(mockEventBus);
 
     // Setup container
     containerEl = document.createElement('div');

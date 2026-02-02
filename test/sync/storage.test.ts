@@ -1,3 +1,4 @@
+import { Mock, vi } from 'vitest';
 /**
  * Tests for the public storage API (storage.ts)
  *
@@ -6,30 +7,30 @@
  */
 
 const mockEventBus = {
-  getInstance: jest.fn(() => ({
-    on: jest.fn(),
-    emit: jest.fn(),
+  getInstance: vi.fn(() => ({
+    on: vi.fn(),
+    emit: vi.fn(),
   })),
 };
 
 const mockSimulationManager = {
-  getInstance: jest.fn(() => ({
+  getInstance: vi.fn(() => ({
     objectivesManager: {
-      getObjectiveStates: jest.fn().mockReturnValue([]),
-      restoreState: jest.fn(),
-      hasScenarioTimer: jest.fn().mockReturnValue(false),
-      getScenarioTimeRemaining: jest.fn().mockReturnValue(0),
+      getObjectiveStates: vi.fn().mockReturnValue([]),
+      restoreState: vi.fn(),
+      hasScenarioTimer: vi.fn().mockReturnValue(false),
+      getScenarioTimeRemaining: vi.fn().mockReturnValue(0),
     },
-    sync: jest.fn(),
+    sync: vi.fn(),
   })),
 };
 
-jest.mock('../../src/events/event-bus', () => ({
+vi.mock('../../src/events/event-bus', () => ({
   __esModule: true,
   EventBus: mockEventBus,
 }));
 
-jest.mock('../../src/events/events', () => ({
+vi.mock('../../src/events/events', () => ({
   __esModule: true,
   Events: {
     STORAGE_ERROR: 'STORAGE_ERROR',
@@ -43,38 +44,38 @@ jest.mock('../../src/events/events', () => ({
   },
 }));
 
-jest.mock('../../src/simulation/simulation-manager', () => ({
+vi.mock('../../src/simulation/simulation-manager', () => ({
   __esModule: true,
   SimulationManager: mockSimulationManager,
 }));
 
-jest.mock('../../src/sync/webpack-hot-module', () => ({}));
+vi.mock('../../src/sync/webpack-hot-module', () => ({}));
 
 // Mock localStorage
 const mockStorage: Record<string, string> = {};
 Object.defineProperty(globalThis, 'localStorage', {
   value: {
-    getItem: jest.fn((key: string) => mockStorage[key] ?? null),
-    setItem: jest.fn((key: string, value: string) => {
+    getItem: vi.fn((key: string) => mockStorage[key] ?? null),
+    setItem: vi.fn((key: string, value: string) => {
       mockStorage[key] = value;
     }),
-    removeItem: jest.fn((key: string) => {
+    removeItem: vi.fn((key: string) => {
       delete mockStorage[key];
     }),
   },
   writable: true,
 });
 
-jest.spyOn(globalThis, 'addEventListener').mockImplementation(() => {});
-jest.spyOn(globalThis, 'removeEventListener').mockImplementation(() => {});
+vi.spyOn(globalThis, 'addEventListener').mockImplementation(() => { });
+vi.spyOn(globalThis, 'removeEventListener').mockImplementation(() => { });
 
 describe('Storage Public API', () => {
   let storageModule: typeof import('../../src/sync/storage');
 
   beforeEach(() => {
-    jest.resetModules();
+    vi.resetModules();
     Object.keys(mockStorage).forEach(key => delete mockStorage[key]);
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('getStore()', () => {
@@ -140,7 +141,7 @@ describe('Storage Public API', () => {
       await storageModule.getStore();
 
       // Clear the spy to check dispose behavior
-      (globalThis.removeEventListener as jest.Mock).mockClear();
+      (globalThis.removeEventListener as Mock).mockClear();
 
       await storageModule.disposeStorage();
 
@@ -162,20 +163,20 @@ describe('Storage Public API', () => {
 
 describe('syncEquipmentWithStore()', () => {
   let storageModule: typeof import('../../src/sync/storage');
-  let mockEventBusInstance: { on: jest.Mock; emit: jest.Mock };
+  let mockEventBusInstance: { on: Mock; emit: Mock };
 
   beforeEach(() => {
-    jest.resetModules();
+    vi.resetModules();
     Object.keys(mockStorage).forEach(key => delete mockStorage[key]);
-    jest.clearAllMocks();
-    jest.useFakeTimers();
+    vi.clearAllMocks();
+    vi.useFakeTimers();
 
-    mockEventBusInstance = { on: jest.fn(), emit: jest.fn() };
+    mockEventBusInstance = { on: vi.fn(), emit: vi.fn() };
     mockEventBus.getInstance.mockReturnValue(mockEventBusInstance);
   });
 
   afterEach(() => {
-    jest.useRealTimers();
+    vi.useRealTimers();
   });
 
   it('sets equipment and loads from storage', async () => {
@@ -193,8 +194,8 @@ describe('syncEquipmentWithStore()', () => {
     storageModule = await import('../../src/sync/storage');
 
     const mockEquipment = {
-      spectrumAnalyzers: [{ state: { id: 'sa1' }, sync: jest.fn() }],
-      antennas: [{ state: { id: 'ant1' }, sync: jest.fn() }],
+      spectrumAnalyzers: [{ state: { id: 'sa1' }, sync: vi.fn() }],
+      antennas: [{ state: { id: 'ant1' }, sync: vi.fn() }],
       rfFrontEnds: [],
       transmitters: [],
       receivers: [],
@@ -242,7 +243,7 @@ describe('syncEquipmentWithStore()', () => {
     storageModule = await import('../../src/sync/storage');
 
     const mockEquipment = {
-      spectrumAnalyzers: [{ state: { id: 'sa1' }, sync: jest.fn() }],
+      spectrumAnalyzers: [{ state: { id: 'sa1' }, sync: vi.fn() }],
       antennas: [],
       rfFrontEnds: [],
       transmitters: [],
@@ -257,7 +258,7 @@ describe('syncEquipmentWithStore()', () => {
     )?.[1];
 
     // Clear previous setItem calls
-    (localStorage.setItem as jest.Mock).mockClear();
+    (localStorage.setItem as Mock).mockClear();
 
     // Trigger multiple rapid changes
     antennaChangeHandler();
@@ -268,7 +269,7 @@ describe('syncEquipmentWithStore()', () => {
     expect(localStorage.setItem).not.toHaveBeenCalled();
 
     // Advance timers past debounce delay (500ms)
-    jest.advanceTimersByTime(500);
+    vi.advanceTimersByTime(500);
     await Promise.resolve();
 
     // Should save once after debounce
@@ -286,13 +287,13 @@ describe('syncEquipmentWithStore()', () => {
 
   it('calls SimulationManager.sync()', async () => {
     // Create a fresh mock for this test
-    const syncFn = jest.fn();
+    const syncFn = vi.fn();
     mockSimulationManager.getInstance.mockReturnValue({
       objectivesManager: {
-        getObjectiveStates: jest.fn().mockReturnValue([]),
-        restoreState: jest.fn(),
-        hasScenarioTimer: jest.fn().mockReturnValue(false),
-        getScenarioTimeRemaining: jest.fn().mockReturnValue(0),
+        getObjectiveStates: vi.fn().mockReturnValue([]),
+        restoreState: vi.fn(),
+        hasScenarioTimer: vi.fn().mockReturnValue(false),
+        getScenarioTimeRemaining: vi.fn().mockReturnValue(0),
       },
       sync: syncFn,
     });
@@ -317,9 +318,9 @@ describe('swapStorageProvider()', () => {
   let storageModule: typeof import('../../src/sync/storage');
 
   beforeEach(() => {
-    jest.resetModules();
+    vi.resetModules();
     Object.keys(mockStorage).forEach(key => delete mockStorage[key]);
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('creates new provider and swaps', async () => {

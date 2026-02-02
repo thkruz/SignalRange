@@ -1,13 +1,14 @@
 // Mock query-selector to return elements from DOM
-jest.mock('../../../../src/engine/utils/query-selector', () => ({
-  qs: jest.fn(),
+vi.mock('../../../../src/engine/utils/query-selector', () => ({
+  qs: vi.fn(),
 }));
 
-import { Body } from '../../../../src/pages/layout/body/body';
+import { Mock, vi } from 'vitest';
 import { qs } from '../../../../src/engine/utils/query-selector';
+import { Body } from '../../../../src/pages/layout/body/body';
 
 // Setup qs mock to use actual DOM
-const mockQs = qs as jest.Mock;
+const mockQs = qs as Mock;
 mockQs.mockImplementation((selector: string, parent?: Element) => {
   const root = parent || global.document;
   return root.querySelector(selector);
@@ -17,7 +18,7 @@ describe('Body', () => {
   let rootElement: HTMLElement;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Reset singleton
     (Body as any).instance_ = undefined;

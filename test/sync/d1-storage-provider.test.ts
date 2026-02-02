@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { D1StorageProvider } from '../../src/sync/d1-storage-provider';
 
 describe('D1StorageProvider', () => {
@@ -5,18 +6,18 @@ describe('D1StorageProvider', () => {
   const API_ENDPOINT = 'https://api.example.com';
 
   beforeEach(() => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     provider = new D1StorageProvider(API_ENDPOINT);
   });
 
   afterEach(() => {
-    jest.useRealTimers();
-    jest.restoreAllMocks();
+    vi.useRealTimers();
+    vi.restoreAllMocks();
   });
 
   describe('constructor', () => {
     it('stores the API endpoint and config', () => {
-      const onError = jest.fn();
+      const onError = vi.fn();
       provider = new D1StorageProvider(API_ENDPOINT, { onError });
 
       // Provider should be created without throwing
@@ -26,7 +27,7 @@ describe('D1StorageProvider', () => {
 
   describe('initialize()', () => {
     it('checks health endpoint and loads initial state', async () => {
-      const mockFetch = jest.fn()
+      const mockFetch = vi.fn()
         .mockResolvedValueOnce({ ok: true }) // health check
         .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ data: 'initial' }) }); // read
       global.fetch = mockFetch;
@@ -38,21 +39,21 @@ describe('D1StorageProvider', () => {
     });
 
     it('throws when health check fails', async () => {
-      const mockFetch = jest.fn().mockResolvedValue({ ok: false });
+      const mockFetch = vi.fn().mockResolvedValue({ ok: false });
       global.fetch = mockFetch;
 
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation();
       await expect(provider.initialize()).rejects.toThrow('D1 backend not available');
       consoleSpy.mockRestore();
     });
 
     it('calls onError when initialization fails', async () => {
-      const onError = jest.fn();
+      const onError = vi.fn();
       provider = new D1StorageProvider(API_ENDPOINT, { onError });
-      const mockFetch = jest.fn().mockRejectedValue(new Error('Network error'));
+      const mockFetch = vi.fn().mockRejectedValue(new Error('Network error'));
       global.fetch = mockFetch;
 
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation();
       await expect(provider.initialize()).rejects.toThrow();
       expect(onError).toHaveBeenCalled();
       consoleSpy.mockRestore();
@@ -60,7 +61,7 @@ describe('D1StorageProvider', () => {
 
     it('starts polling when autoSync is enabled', async () => {
       provider = new D1StorageProvider(API_ENDPOINT, { autoSync: true, syncInterval: 1000 });
-      const mockFetch = jest.fn()
+      const mockFetch = vi.fn()
         .mockResolvedValueOnce({ ok: true })
         .mockResolvedValue({ ok: true, json: () => Promise.resolve({ data: 'state' }) });
       global.fetch = mockFetch;
@@ -68,7 +69,7 @@ describe('D1StorageProvider', () => {
       await provider.initialize();
       const initialCallCount = mockFetch.mock.calls.length;
 
-      jest.advanceTimersByTime(1000);
+      vi.advanceTimersByTime(1000);
       await Promise.resolve(); // Flush promises
 
       expect(mockFetch.mock.calls.length).toBeGreaterThan(initialCallCount);
@@ -78,7 +79,7 @@ describe('D1StorageProvider', () => {
   describe('read()', () => {
     it('fetches state from API and caches it', async () => {
       const mockData = { equipment: { antenna: 'test' } };
-      const mockFetch = jest.fn().mockResolvedValue({
+      const mockFetch = vi.fn().mockResolvedValue({
         ok: true,
         json: () => Promise.resolve(mockData),
       });
@@ -96,13 +97,13 @@ describe('D1StorageProvider', () => {
     it('returns cached state on error', async () => {
       // First, successfully read to cache
       const mockData = { cached: true };
-      const mockFetch = jest.fn()
+      const mockFetch = vi.fn()
         .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(mockData) })
         .mockRejectedValueOnce(new Error('Network error'));
       global.fetch = mockFetch;
 
       await provider.read(); // Cache the data
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation();
       const result = await provider.read(); // This should fail but return cache
 
       expect(result).toEqual(mockData);
@@ -110,14 +111,14 @@ describe('D1StorageProvider', () => {
     });
 
     it('throws HTTP error for non-OK responses', async () => {
-      const mockFetch = jest.fn().mockResolvedValue({
+      const mockFetch = vi.fn().mockResolvedValue({
         ok: false,
         status: 500,
         statusText: 'Internal Server Error',
       });
       global.fetch = mockFetch;
 
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation();
       const result = await provider.read();
 
       // Returns cached state (null initially)
@@ -128,7 +129,7 @@ describe('D1StorageProvider', () => {
 
   describe('write()', () => {
     it('posts state to API', async () => {
-      const mockFetch = jest.fn().mockResolvedValue({ ok: true });
+      const mockFetch = vi.fn().mockResolvedValue({ ok: true });
       global.fetch = mockFetch;
       const data = { equipment: { test: true } };
 
@@ -142,9 +143,9 @@ describe('D1StorageProvider', () => {
     });
 
     it('notifies subscribers after successful write', async () => {
-      const mockFetch = jest.fn().mockResolvedValue({ ok: true });
+      const mockFetch = vi.fn().mockResolvedValue({ ok: true });
       global.fetch = mockFetch;
-      const subscriber = jest.fn();
+      const subscriber = vi.fn();
       provider.subscribe(subscriber);
       const data = { test: 'value' };
 
@@ -154,25 +155,25 @@ describe('D1StorageProvider', () => {
     });
 
     it('throws on HTTP error', async () => {
-      const mockFetch = jest.fn().mockResolvedValue({
+      const mockFetch = vi.fn().mockResolvedValue({
         ok: false,
         status: 400,
         statusText: 'Bad Request',
       });
       global.fetch = mockFetch;
 
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation();
       await expect(provider.write({ data: 'test' })).rejects.toThrow();
       consoleSpy.mockRestore();
     });
 
     it('calls onError when write fails', async () => {
-      const onError = jest.fn();
+      const onError = vi.fn();
       provider = new D1StorageProvider(API_ENDPOINT, { onError });
-      const mockFetch = jest.fn().mockRejectedValue(new Error('Network error'));
+      const mockFetch = vi.fn().mockRejectedValue(new Error('Network error'));
       global.fetch = mockFetch;
 
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation();
       await expect(provider.write({ data: 'test' })).rejects.toThrow();
       expect(onError).toHaveBeenCalled();
       consoleSpy.mockRestore();
@@ -181,7 +182,7 @@ describe('D1StorageProvider', () => {
 
   describe('clear()', () => {
     it('sends DELETE request to API', async () => {
-      const mockFetch = jest.fn().mockResolvedValue({ ok: true });
+      const mockFetch = vi.fn().mockResolvedValue({ ok: true });
       global.fetch = mockFetch;
 
       await provider.clear();
@@ -193,9 +194,9 @@ describe('D1StorageProvider', () => {
     });
 
     it('clears cached state and notifies subscribers with null', async () => {
-      const mockFetch = jest.fn().mockResolvedValue({ ok: true });
+      const mockFetch = vi.fn().mockResolvedValue({ ok: true });
       global.fetch = mockFetch;
-      const subscriber = jest.fn();
+      const subscriber = vi.fn();
       provider.subscribe(subscriber);
 
       await provider.clear();
@@ -204,14 +205,14 @@ describe('D1StorageProvider', () => {
     });
 
     it('throws on HTTP error', async () => {
-      const mockFetch = jest.fn().mockResolvedValue({
+      const mockFetch = vi.fn().mockResolvedValue({
         ok: false,
         status: 500,
         statusText: 'Internal Server Error',
       });
       global.fetch = mockFetch;
 
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation();
       await expect(provider.clear()).rejects.toThrow();
       consoleSpy.mockRestore();
     });
@@ -219,9 +220,9 @@ describe('D1StorageProvider', () => {
 
   describe('subscribe()', () => {
     it('adds callback to subscribers', async () => {
-      const mockFetch = jest.fn().mockResolvedValue({ ok: true });
+      const mockFetch = vi.fn().mockResolvedValue({ ok: true });
       global.fetch = mockFetch;
-      const subscriber = jest.fn();
+      const subscriber = vi.fn();
       provider.subscribe(subscriber);
 
       await provider.write({ data: 'test' });
@@ -230,9 +231,9 @@ describe('D1StorageProvider', () => {
     });
 
     it('returns unsubscribe function', async () => {
-      const mockFetch = jest.fn().mockResolvedValue({ ok: true });
+      const mockFetch = vi.fn().mockResolvedValue({ ok: true });
       global.fetch = mockFetch;
-      const subscriber = jest.fn();
+      const subscriber = vi.fn();
       const unsubscribe = provider.subscribe(subscriber);
 
       unsubscribe();
@@ -242,16 +243,16 @@ describe('D1StorageProvider', () => {
     });
 
     it('handles subscriber errors without affecting others', async () => {
-      const mockFetch = jest.fn().mockResolvedValue({ ok: true });
+      const mockFetch = vi.fn().mockResolvedValue({ ok: true });
       global.fetch = mockFetch;
-      const errorSubscriber = jest.fn().mockImplementation(() => {
+      const errorSubscriber = vi.fn(function () {
         throw new Error('Subscriber error');
       });
-      const normalSubscriber = jest.fn();
+      const normalSubscriber = vi.fn();
       provider.subscribe(errorSubscriber);
       provider.subscribe(normalSubscriber);
 
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation();
       await provider.write({ data: 'test' });
 
       expect(normalSubscriber).toHaveBeenCalledWith({ data: 'test' });
@@ -265,7 +266,7 @@ describe('D1StorageProvider', () => {
     });
 
     it('returns true after successful read', async () => {
-      const mockFetch = jest.fn().mockResolvedValue({
+      const mockFetch = vi.fn().mockResolvedValue({
         ok: true,
         json: () => Promise.resolve({ data: 'state' }),
       });
@@ -280,7 +281,7 @@ describe('D1StorageProvider', () => {
   describe('dispose()', () => {
     it('stops polling', async () => {
       provider = new D1StorageProvider(API_ENDPOINT, { autoSync: true, syncInterval: 1000 });
-      const mockFetch = jest.fn()
+      const mockFetch = vi.fn()
         .mockResolvedValueOnce({ ok: true })
         .mockResolvedValue({ ok: true, json: () => Promise.resolve({}) });
       global.fetch = mockFetch;
@@ -289,13 +290,13 @@ describe('D1StorageProvider', () => {
       await provider.dispose();
       const callCountAfterDispose = mockFetch.mock.calls.length;
 
-      jest.advanceTimersByTime(5000);
+      vi.advanceTimersByTime(5000);
 
       expect(mockFetch.mock.calls.length).toBe(callCountAfterDispose);
     });
 
     it('clears subscribers and cached state', async () => {
-      const mockFetch = jest.fn().mockResolvedValue({
+      const mockFetch = vi.fn().mockResolvedValue({
         ok: true,
         json: () => Promise.resolve({ data: 'state' }),
       });
@@ -313,7 +314,7 @@ describe('D1StorageProvider', () => {
   describe('polling', () => {
     it('uses default interval of 30 seconds when not specified', async () => {
       provider = new D1StorageProvider(API_ENDPOINT, { autoSync: true });
-      const mockFetch = jest.fn()
+      const mockFetch = vi.fn()
         .mockResolvedValueOnce({ ok: true })
         .mockResolvedValue({ ok: true, json: () => Promise.resolve({}) });
       global.fetch = mockFetch;
@@ -322,19 +323,19 @@ describe('D1StorageProvider', () => {
       const initialCallCount = mockFetch.mock.calls.length;
 
       // Advance less than 30 seconds - should not poll yet
-      jest.advanceTimersByTime(29000);
+      vi.advanceTimersByTime(29000);
       await Promise.resolve();
       expect(mockFetch.mock.calls.length).toBe(initialCallCount);
 
       // Advance past 30 seconds - should poll
-      jest.advanceTimersByTime(2000);
+      vi.advanceTimersByTime(2000);
       await Promise.resolve();
       expect(mockFetch.mock.calls.length).toBeGreaterThan(initialCallCount);
     });
 
     it('polls the server at the configured interval', async () => {
       provider = new D1StorageProvider(API_ENDPOINT, { autoSync: true, syncInterval: 1000 });
-      const mockFetch = jest.fn()
+      const mockFetch = vi.fn()
         .mockResolvedValueOnce({ ok: true }) // health
         .mockResolvedValue({ ok: true, json: () => Promise.resolve({ data: 'state' }) }); // reads
       global.fetch = mockFetch;
@@ -343,7 +344,7 @@ describe('D1StorageProvider', () => {
       const callsAfterInit = mockFetch.mock.calls.length;
 
       // Advance past polling interval
-      jest.advanceTimersByTime(1000);
+      vi.advanceTimersByTime(1000);
       await Promise.resolve();
       await Promise.resolve();
 

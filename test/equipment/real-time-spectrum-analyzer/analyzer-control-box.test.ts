@@ -1,54 +1,55 @@
+import { Mocked, vi } from 'vitest';
 import { AnalyzerControlBox } from '../../../src/equipment/real-time-spectrum-analyzer/analyzer-control-box';
+import { TraceMode } from '../../../src/equipment/real-time-spectrum-analyzer/analyzer-control/ac-trace-btn/ac-trace-btn';
 import { RealTimeSpectrumAnalyzer, RealTimeSpectrumAnalyzerState } from '../../../src/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer';
 import { EventBus } from '../../../src/events/event-bus';
 import { Events } from '../../../src/events/events';
 import { Hertz, dB } from '../../../src/types';
-import { TraceMode } from '../../../src/equipment/real-time-spectrum-analyzer/analyzer-control/ac-trace-btn/ac-trace-btn';
 
 // Mock HTMLMediaElement.prototype.play for jsdom compatibility
 Object.defineProperty(HTMLMediaElement.prototype, 'play', {
   configurable: true,
-  value: jest.fn().mockResolvedValue(undefined),
+  value: vi.fn().mockResolvedValue(undefined),
 });
 
 // Mock SoundManager
-jest.mock('@app/sound/sound-manager', () => ({
+vi.mock('@app/sound/sound-manager', () => ({
   __esModule: true,
   default: {
-    getInstance: jest.fn().mockReturnValue({
-      play: jest.fn(),
+    getInstance: vi.fn().mockReturnValue({
+      play: vi.fn(),
     }),
   },
 }));
 
 // Mock getEl to return mock DOM elements
-jest.mock('@app/engine/utils/get-el', () => {
+vi.mock('@app/engine/utils/get-el', () => {
   // Define the mock element factory inside the factory function
   const mockElement = (id: string) => ({
     id,
     innerHTML: '',
     style: { display: '' },
-    appendChild: jest.fn(),
-    addEventListener: jest.fn(),
-    removeEventListener: jest.fn(),
+    appendChild: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
     classList: {
-      add: jest.fn(),
-      remove: jest.fn(),
-      toggle: jest.fn(),
-      contains: jest.fn(),
+      add: vi.fn(),
+      remove: vi.fn(),
+      toggle: vi.fn(),
+      contains: vi.fn(),
     },
   });
 
   return {
-    getEl: jest.fn().mockImplementation((id: string) => mockElement(id)),
-    showEl: jest.fn(),
-    hideEl: jest.fn(),
-    setInnerHtml: jest.fn(),
+    getEl: vi.fn(function (id: string) { return mockElement(id); }),
+    showEl: vi.fn(),
+    hideEl: vi.fn(),
+    setInnerHtml: vi.fn(),
   };
 });
 
 // Mock DraggableBox - simple mock class
-jest.mock('@app/engine/ui/draggable-box', () => {
+vi.mock('@app/engine/ui/draggable-box', () => {
   class MockDraggableBox {
     id: string;
     title: string;
@@ -67,20 +68,20 @@ jest.mock('@app/engine/ui/draggable-box', () => {
       this.isOpen = false;
       if (cb) cb();
     }
-    protected onOpen() {}
+    protected onOpen() { }
   }
   return { DraggableBox: MockDraggableBox };
 });
 
 // Mock AnalyzerControl
-jest.mock('@app/equipment/real-time-spectrum-analyzer/analyzer-control', () => ({
+vi.mock('@app/equipment/real-time-spectrum-analyzer/analyzer-control', () => ({
   AnalyzerControl: class MockAnalyzerControl {
-    init_() {}
+    init_() { }
   }
 }));
 
 describe('AnalyzerControlBox', () => {
-  let mockSpecA: jest.Mocked<Partial<RealTimeSpectrumAnalyzer>>;
+  let mockSpecA: Mocked<Partial<RealTimeSpectrumAnalyzer>>;
   let mockState: RealTimeSpectrumAnalyzerState;
   let controlBox: AnalyzerControlBox;
 
@@ -137,17 +138,17 @@ describe('AnalyzerControlBox', () => {
     // Create mock spectrum analyzer
     mockSpecA = {
       state: mockState,
-      syncDomWithState: jest.fn(),
-      freqAutoTune: jest.fn(),
-      resetMaxHoldData: jest.fn(),
-      resetMinHoldData: jest.fn(),
-      updateScreenVisibility: jest.fn(),
+      syncDomWithState: vi.fn(),
+      freqAutoTune: vi.fn(),
+      resetMaxHoldData: vi.fn(),
+      resetMinHoldData: vi.fn(),
+      updateScreenVisibility: vi.fn(),
     };
   });
 
   afterEach(() => {
     document.body.innerHTML = '';
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('Construction', () => {
@@ -192,7 +193,7 @@ describe('AnalyzerControlBox', () => {
     });
 
     it('should call callback when close is called with callback', () => {
-      const callback = jest.fn();
+      const callback = vi.fn();
 
       controlBox.open();
       controlBox.close(callback);

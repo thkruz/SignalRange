@@ -1,8 +1,9 @@
+import { vi } from 'vitest';
 import { TimelineDeck } from '../../../src/pages/mission-control/timeline-deck';
 
 // Mock dependencies
-jest.mock('../../../src/engine/utils/query-selector', () => ({
-  qs: jest.fn((selector: string, parent?: Element) => {
+vi.mock('../../../src/engine/utils/query-selector', () => ({
+  qs: vi.fn((selector: string, parent?: Element) => {
     const root = parent || global.document;
     return root.querySelector(selector);
   }),
@@ -13,7 +14,7 @@ describe('TimelineDeck', () => {
   let timelineDeck: TimelineDeck;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Setup container
     containerEl = document.createElement('div');

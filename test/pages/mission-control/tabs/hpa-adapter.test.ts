@@ -1,25 +1,26 @@
+import { Mock, Mocked, vi } from 'vitest';
 import { HPAModuleCore, HPAState } from '../../../../src/equipment/rf-front-end/hpa-module/hpa-module-core';
 import { EventBus } from '../../../../src/events/event-bus';
 import { Events } from '../../../../src/events/events';
 import { HPAAdapter } from '../../../../src/pages/mission-control/tabs/hpa-adapter';
 
 // Mock dependencies
-jest.mock('../../../../src/events/event-bus');
-jest.mock('../../../../src/components/card-alarm-badge/card-alarm-badge', () => ({
+vi.mock('../../../../src/events/event-bus');
+vi.mock('../../../../src/components/card-alarm-badge/card-alarm-badge', () => ({
   CardAlarmBadge: {
-    create: jest.fn(() => ({
+    create: vi.fn(() => ({
       html: '<div class="mock-badge"></div>',
-      update: jest.fn(),
-      dispose: jest.fn(),
+      update: vi.fn(),
+      dispose: vi.fn(),
     })),
   },
 }));
 
 describe('HPAAdapter', () => {
-  let mockHpaModule: jest.Mocked<HPAModuleCore>;
+  let mockHpaModule: Mocked<HPAModuleCore>;
   let containerEl: HTMLElement;
   let adapter: HPAAdapter;
-  let mockEventBus: { on: jest.Mock; off: jest.Mock; emit: jest.Mock };
+  let mockEventBus: { on: Mock; off: Mock; emit: Mock };
 
   const mockState: HPAState = {
     isPowered: true,
@@ -30,31 +31,31 @@ describe('HPAAdapter', () => {
     temperature: 55,
     isOverdriven: false,
     imdLevel: -30,
-  };
+  } as HPAState;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Setup mock EventBus
     mockEventBus = {
-      on: jest.fn(),
-      off: jest.fn(),
-      emit: jest.fn(),
+      on: vi.fn(),
+      off: vi.fn(),
+      emit: vi.fn(),
     };
-    (EventBus.getInstance as jest.Mock).mockReturnValue(mockEventBus);
+    (EventBus.getInstance as Mock).mockReturnValue(mockEventBus);
 
     // Setup mock HPAModuleCore
     mockHpaModule = {
       state: { ...mockState },
       inputSignals: [],
       p1db: 59, // P1dB compression point in dBm
-      handleBackOffChange: jest.fn(),
-      handlePowerToggle: jest.fn((checked, callback) => {
+      handleBackOffChange: vi.fn(),
+      handlePowerToggle: vi.fn((checked, callback) => {
         if (callback) callback(mockHpaModule.state);
       }),
-      handleHpaToggle: jest.fn(),
-      getAlarms: jest.fn().mockReturnValue([]),
-    } as unknown as jest.Mocked<HPAModuleCore>;
+      handleHpaToggle: vi.fn(),
+      getAlarms: vi.fn().mockReturnValue([]),
+    } as unknown as Mocked<HPAModuleCore>;
 
     // Setup container with required DOM elements
     containerEl = document.createElement('div');
@@ -281,7 +282,7 @@ describe('HPAAdapter', () => {
       mockHpaModule.state.outputPower = 48;
       mockHpaModule.state.temperature = 60;
 
-      jest.spyOn(Date, 'now').mockReturnValue(2000);
+      vi.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();
 
       const outputDisplay = containerEl.querySelector('#hpa-output-power-display') as HTMLElement;
@@ -298,7 +299,7 @@ describe('HPAAdapter', () => {
 
       mockHpaModule.state.outputPower = 48;
 
-      jest.spyOn(Date, 'now').mockReturnValue(0);
+      vi.spyOn(Date, 'now').mockReturnValue(0);
       updateHandler();
 
       const outputDisplay = containerEl.querySelector('#hpa-output-power-display') as HTMLElement;
@@ -312,7 +313,7 @@ describe('HPAAdapter', () => {
 
       mockHpaModule.state.gain = 25;
 
-      jest.spyOn(Date, 'now').mockReturnValue(2000);
+      vi.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();
 
       const gainDisplay = containerEl.querySelector('#hpa-gain-display') as HTMLElement;
@@ -326,7 +327,7 @@ describe('HPAAdapter', () => {
 
       mockHpaModule.state.imdLevel = -25;
 
-      jest.spyOn(Date, 'now').mockReturnValue(2000);
+      vi.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();
 
       const imdDisplay = containerEl.querySelector('#hpa-imd-display') as HTMLElement;
@@ -340,7 +341,7 @@ describe('HPAAdapter', () => {
 
       mockHpaModule.state.isPowered = false;
 
-      jest.spyOn(Date, 'now').mockReturnValue(2000);
+      vi.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();
 
       const outputDisplay = containerEl.querySelector('#hpa-output-power-display') as HTMLElement;
@@ -357,7 +358,7 @@ describe('HPAAdapter', () => {
 
       mockHpaModule.state.outputPower = 63; // Max power (63 dBm)
 
-      jest.spyOn(Date, 'now').mockReturnValue(2000);
+      vi.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();
 
       const meter = containerEl.querySelector('#hpa-power-meter') as HTMLElement;
@@ -419,7 +420,7 @@ describe('HPAAdapter', () => {
         (call: unknown[]) => call[0] === Events.UPDATE
       )?.[1];
 
-      jest.spyOn(Date, 'now').mockReturnValue(2000);
+      vi.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();
 
       expect(mockHpaModule.getAlarms).toHaveBeenCalled();
@@ -432,7 +433,7 @@ describe('HPAAdapter', () => {
         (call: unknown[]) => call[0] === Events.UPDATE
       )?.[1];
 
-      jest.spyOn(Date, 'now').mockReturnValue(2000);
+      vi.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();
 
       expect(mockHpaModule.getAlarms).toHaveBeenCalled();
@@ -445,7 +446,7 @@ describe('HPAAdapter', () => {
         (call: unknown[]) => call[0] === Events.UPDATE
       )?.[1];
 
-      jest.spyOn(Date, 'now').mockReturnValue(2000);
+      vi.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();
 
       expect(mockHpaModule.getAlarms).toHaveBeenCalled();

@@ -1,11 +1,12 @@
-import { NotchFilterModuleCore, NotchFilterState, NotchConfig, DEFAULT_NOTCH } from '../../../../src/equipment/rf-front-end/notch-filter-module/notch-filter-module-core';
+import { vi } from 'vitest';
+import { DEFAULT_NOTCH, NotchFilterModuleCore, NotchFilterState } from '../../../../src/equipment/rf-front-end/notch-filter-module/notch-filter-module-core';
 import { NotchFilterModuleUIHeadless } from '../../../../src/equipment/rf-front-end/notch-filter-module/notch-filter-module-ui-headless';
-import { createRFFrontEnd } from '../../../../src/equipment/rf-front-end/rf-front-end-factory';
 import { RFFrontEndCore } from '../../../../src/equipment/rf-front-end/rf-front-end-core';
+import { createRFFrontEnd } from '../../../../src/equipment/rf-front-end/rf-front-end-factory';
 import { EventBus } from '../../../../src/events/event-bus';
 import { Events } from '../../../../src/events/events';
-import { dBm, IfSignal, MHz } from '../../../../src/types';
 import { SignalOrigin } from '../../../../src/signal-origin';
+import { dBm, IfSignal, MHz } from '../../../../src/types';
 
 describe('NotchFilterModuleCore', () => {
   let rfFrontEnd: RFFrontEndCore;
@@ -22,7 +23,7 @@ describe('NotchFilterModuleCore', () => {
 
   afterEach(() => {
     document.body.innerHTML = '';
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('DEFAULT_NOTCH', () => {
@@ -82,7 +83,7 @@ describe('NotchFilterModuleCore', () => {
         gainInPath: 0,
       };
 
-      jest.spyOn(notchFilterModule, 'inputSignals', 'get').mockReturnValue([mockSignal]);
+      vi.spyOn(notchFilterModule, 'inputSignals', 'get').mockReturnValue([mockSignal]);
 
       notchFilterModule.state.isPowered = false;
       notchFilterModule.update();
@@ -102,7 +103,7 @@ describe('NotchFilterModuleCore', () => {
         gainInPath: 0,
       };
 
-      jest.spyOn(notchFilterModule, 'inputSignals', 'get').mockReturnValue([mockSignal]);
+      vi.spyOn(notchFilterModule, 'inputSignals', 'get').mockReturnValue([mockSignal]);
 
       // Ensure all notches are disabled
       notchFilterModule.state.notches[0].enabled = false;
@@ -125,7 +126,7 @@ describe('NotchFilterModuleCore', () => {
         gainInPath: 0,
       };
 
-      jest.spyOn(notchFilterModule, 'inputSignals', 'get').mockReturnValue([mockSignal]);
+      vi.spyOn(notchFilterModule, 'inputSignals', 'get').mockReturnValue([mockSignal]);
 
       // Enable notch 1 (1500 MHz center, 1 MHz bandwidth, 20 dB depth)
       notchFilterModule.state.notches[1].enabled = true;
@@ -150,7 +151,7 @@ describe('NotchFilterModuleCore', () => {
         gainInPath: 0,
       };
 
-      jest.spyOn(notchFilterModule, 'inputSignals', 'get').mockReturnValue([mockSignal]);
+      vi.spyOn(notchFilterModule, 'inputSignals', 'get').mockReturnValue([mockSignal]);
 
       // Enable notch at 1500.5 MHz with 1 MHz bandwidth
       // This overlaps half of the signal
@@ -177,7 +178,7 @@ describe('NotchFilterModuleCore', () => {
         gainInPath: 0,
       };
 
-      jest.spyOn(notchFilterModule, 'inputSignals', 'get').mockReturnValue([mockSignal]);
+      vi.spyOn(notchFilterModule, 'inputSignals', 'get').mockReturnValue([mockSignal]);
 
       // Enable notch at 1800 MHz - far from signal
       notchFilterModule.state.notches[2].enabled = true;
@@ -201,7 +202,7 @@ describe('NotchFilterModuleCore', () => {
         gainInPath: 0,
       };
 
-      jest.spyOn(notchFilterModule, 'inputSignals', 'get').mockReturnValue([mockSignal]);
+      vi.spyOn(notchFilterModule, 'inputSignals', 'get').mockReturnValue([mockSignal]);
 
       // Enable multiple overlapping notches
       notchFilterModule.state.notches[0].enabled = true;

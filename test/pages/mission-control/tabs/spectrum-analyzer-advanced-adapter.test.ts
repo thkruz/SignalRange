@@ -1,16 +1,17 @@
-import { SpectrumAnalyzerAdvancedAdapter } from '../../../../src/pages/mission-control/tabs/spectrum-analyzer-advanced-adapter';
+import { Mock, Mocked, vi } from 'vitest';
 import { RealTimeSpectrumAnalyzer } from '../../../../src/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer';
 import { EventBus } from '../../../../src/events/event-bus';
 import { Events } from '../../../../src/events/events';
+import { SpectrumAnalyzerAdvancedAdapter } from '../../../../src/pages/mission-control/tabs/spectrum-analyzer-advanced-adapter';
 
 // Mock dependencies
-jest.mock('../../../../src/events/event-bus');
+vi.mock('../../../../src/events/event-bus');
 
 describe('SpectrumAnalyzerAdvancedAdapter', () => {
-  let mockSpectrumAnalyzer: jest.Mocked<RealTimeSpectrumAnalyzer>;
+  let mockSpectrumAnalyzer: Mocked<RealTimeSpectrumAnalyzer>;
   let containerEl: HTMLElement;
   let adapter: SpectrumAnalyzerAdvancedAdapter;
-  let mockEventBus: { on: jest.Mock; off: jest.Mock; emit: jest.Mock };
+  let mockEventBus: { on: Mock; off: Mock; emit: Mock };
 
   const mockState = {
     uuid: 'test-uuid',
@@ -38,27 +39,27 @@ describe('SpectrumAnalyzerAdvancedAdapter', () => {
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Setup mock EventBus
     mockEventBus = {
-      on: jest.fn(),
-      off: jest.fn(),
-      emit: jest.fn(),
+      on: vi.fn(),
+      off: vi.fn(),
+      emit: vi.fn(),
     };
-    (EventBus.getInstance as jest.Mock).mockReturnValue(mockEventBus);
+    (EventBus.getInstance as Mock).mockReturnValue(mockEventBus);
 
     // Setup mock RealTimeSpectrumAnalyzer
     mockSpectrumAnalyzer = {
       state: JSON.parse(JSON.stringify(mockState)),
-      changeCenterFreq: jest.fn(),
-      changeBandwidth: jest.fn(),
-      freqAutoTune: jest.fn(),
-      togglePause: jest.fn(),
-      resetMaxHoldData: jest.fn(),
-      resetMinHoldData: jest.fn(),
-      updateScreenVisibility: jest.fn(),
-    } as unknown as jest.Mocked<RealTimeSpectrumAnalyzer>;
+      changeCenterFreq: vi.fn(),
+      changeBandwidth: vi.fn(),
+      freqAutoTune: vi.fn(),
+      togglePause: vi.fn(),
+      resetMaxHoldData: vi.fn(),
+      resetMinHoldData: vi.fn(),
+      updateScreenVisibility: vi.fn(),
+    } as unknown as Mocked<RealTimeSpectrumAnalyzer>;
 
     // Setup container with required DOM elements
     containerEl = document.createElement('div');

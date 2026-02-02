@@ -1,9 +1,10 @@
+import { Mock, vi } from 'vitest';
 import { EventBus } from '../../src/events/event-bus';
 import { Events, SimulatedTimeTickData } from '../../src/events/events';
 import { OpsLogEntry } from '../../src/ops-log/ops-log-types';
 
 // Mock DraggableModal (parent class) to avoid DOM issues
-jest.mock('../../src/engine/ui/draggable-modal', () => ({
+vi.mock('../../src/engine/ui/draggable-modal', () => ({
   DraggableModal: class MockDraggableModal {
     protected boxId: string;
     protected width: string;
@@ -34,7 +35,7 @@ jest.mock('../../src/engine/ui/draggable-modal', () => ({
 }));
 
 // Mock html utility
-jest.mock('../../src/engine/utils/development/formatter', () => ({
+vi.mock('../../src/engine/utils/development/formatter', () => ({
   html: (strings: TemplateStringsArray, ...values: unknown[]) => {
     return strings.reduce((result, str, i) => result + str + (values[i] ?? ''), '');
   },
@@ -43,7 +44,7 @@ jest.mock('../../src/engine/utils/development/formatter', () => ({
 // Mock getEl
 const mockElements: Map<string, HTMLElement> = new Map();
 
-jest.mock('../../src/engine/utils/get-el', () => ({
+vi.mock('../../src/engine/utils/get-el', () => ({
   getEl: (id: string) => mockElements.get(id) || null,
   showEl: (el: HTMLElement) => {
     if (el) el.style.display = 'block';
@@ -51,26 +52,26 @@ jest.mock('../../src/engine/utils/get-el', () => ({
 }));
 
 // Mock CSS import
-jest.mock('../../src/ops-log/ops-log-modal.css', () => ({}));
+vi.mock('../../src/ops-log/ops-log-modal.css', () => ({}));
 
 // Mock OpsLogManager
 const mockManagerInstance = {
-  getEntries: jest.fn(() => []),
-  getCurrentTimeFormatted: jest.fn(() => '01 JAN 2026 12:00:00'),
+  getEntries: vi.fn(() => []),
+  getCurrentTimeFormatted: vi.fn(() => '01 JAN 2026 12:00:00'),
 };
 
-jest.mock('../../src/ops-log/ops-log-manager', () => ({
+vi.mock('../../src/ops-log/ops-log-manager', () => ({
   OpsLogManager: {
-    getInstance: jest.fn(() => mockManagerInstance),
-    initialize: jest.fn(),
-    destroy: jest.fn(),
-    isInitialized: jest.fn(() => true),
+    getInstance: vi.fn(() => mockManagerInstance),
+    initialize: vi.fn(),
+    destroy: vi.fn(),
+    isInitialized: vi.fn(() => true),
   },
 }));
 
 // Import after mocks
-import { OpsLogModal } from '../../src/ops-log/ops-log-modal';
 import { OpsLogManager } from '../../src/ops-log/ops-log-manager';
+import { OpsLogModal } from '../../src/ops-log/ops-log-modal';
 
 describe('OpsLogModal', () => {
   let modal: OpsLogModal;
@@ -133,7 +134,7 @@ describe('OpsLogModal', () => {
     });
 
     it('should register OPS_LOG_ENTRY_ADDED event listener', () => {
-      const onSpy = jest.spyOn(eventBus, 'on');
+      const onSpy = vi.spyOn(eventBus, 'on');
 
       (OpsLogModal as any).instance_ = null;
       OpsLogModal.getInstance();
@@ -142,7 +143,7 @@ describe('OpsLogModal', () => {
     });
 
     it('should register SIMULATED_TIME_TICK event listener', () => {
-      const onSpy = jest.spyOn(eventBus, 'on');
+      const onSpy = vi.spyOn(eventBus, 'on');
 
       (OpsLogModal as any).instance_ = null;
       OpsLogModal.getInstance();
@@ -153,7 +154,7 @@ describe('OpsLogModal', () => {
 
   describe('destroy', () => {
     it('should unsubscribe from OPS_LOG_ENTRY_ADDED event', () => {
-      const offSpy = jest.spyOn(eventBus, 'off');
+      const offSpy = vi.spyOn(eventBus, 'off');
 
       OpsLogModal.destroy();
 
@@ -161,7 +162,7 @@ describe('OpsLogModal', () => {
     });
 
     it('should unsubscribe from SIMULATED_TIME_TICK event', () => {
-      const offSpy = jest.spyOn(eventBus, 'off');
+      const offSpy = vi.spyOn(eventBus, 'off');
 
       OpsLogModal.destroy();
 
@@ -204,7 +205,7 @@ describe('OpsLogModal', () => {
 
   describe('open', () => {
     it('should call callback when provided', () => {
-      const callback = jest.fn();
+      const callback = vi.fn();
 
       modal.open(callback);
 
@@ -298,7 +299,7 @@ describe('OpsLogModal', () => {
     });
 
     it('should handle OpsLogManager not initialized gracefully', () => {
-      (OpsLogManager.getInstance as jest.Mock).mockImplementation(() => {
+      (OpsLogManager.getInstance as Mock).mockImplementation(() => {
         throw new Error('OpsLogManager not initialized');
       });
       const container = mockElements.get('ops-log-entries')!;
@@ -308,7 +309,7 @@ describe('OpsLogModal', () => {
       expect(container.innerHTML).toContain('Operations log not available.');
 
       // Restore mock
-      (OpsLogManager.getInstance as jest.Mock).mockReturnValue(mockManagerInstance);
+      (OpsLogManager.getInstance as Mock).mockReturnValue(mockManagerInstance);
     });
 
     it('should handle missing container element gracefully', () => {
@@ -330,7 +331,7 @@ describe('OpsLogModal', () => {
     });
 
     it('should show fallback when OpsLogManager not initialized', () => {
-      (OpsLogManager.getInstance as jest.Mock).mockImplementation(() => {
+      (OpsLogManager.getInstance as Mock).mockImplementation(() => {
         throw new Error('OpsLogManager not initialized');
       });
       const clockEl = mockElements.get('ops-log-clock')!;
@@ -340,7 +341,7 @@ describe('OpsLogModal', () => {
       expect(clockEl.textContent).toBe('--:--:--');
 
       // Restore mock
-      (OpsLogManager.getInstance as jest.Mock).mockReturnValue(mockManagerInstance);
+      (OpsLogManager.getInstance as Mock).mockReturnValue(mockManagerInstance);
     });
 
     it('should handle missing clock element gracefully', () => {
@@ -595,7 +596,7 @@ describe('OpsLogModal', () => {
       expect(mockManagerInstance.getCurrentTimeFormatted).toHaveBeenCalled();
 
       // Destroy
-      const offSpy = jest.spyOn(eventBus, 'off');
+      const offSpy = vi.spyOn(eventBus, 'off');
       OpsLogModal.destroy();
 
       // Verify cleanup

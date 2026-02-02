@@ -1,28 +1,28 @@
+import { vi } from 'vitest';
 import { RealTimeSpectrumAnalyzer, RealTimeSpectrumAnalyzerState } from '../../../src/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer';
+import { TapPoint } from '../../../src/equipment/rf-front-end/coupler-module/tap-points';
 import { EventBus } from '../../../src/events/event-bus';
 import { Events } from '../../../src/events/events';
-import { Hertz, dB } from '../../../src/types';
-import { TraceMode } from '../../../src/equipment/real-time-spectrum-analyzer/analyzer-control/ac-trace-btn/ac-trace-btn';
-import { TapPoint } from '../../../src/equipment/rf-front-end/coupler-module/tap-points';
+import { Hertz } from '../../../src/types';
 
 // Mock HTMLMediaElement.prototype.play for jsdom compatibility
 Object.defineProperty(HTMLMediaElement.prototype, 'play', {
   configurable: true,
-  value: jest.fn().mockResolvedValue(undefined),
+  value: vi.fn().mockResolvedValue(undefined),
 });
 
 // Mock SoundManager
-jest.mock('@app/sound/sound-manager', () => ({
+vi.mock('@app/sound/sound-manager', () => ({
   __esModule: true,
   default: {
-    getInstance: jest.fn().mockReturnValue({
-      play: jest.fn(),
+    getInstance: vi.fn().mockReturnValue({
+      play: vi.fn(),
     }),
   },
 }));
 
 // Mock getEl to return mock DOM elements
-jest.mock('@app/engine/utils/get-el', () => {
+vi.mock('@app/engine/utils/get-el', () => {
   // Define the mock element factory inside the factory function
   const mockElement = (id: string) => {
     if (id.includes('specA') || id.includes('canvas')) {
@@ -32,22 +32,22 @@ jest.mock('@app/engine/utils/get-el', () => {
         width: 800,
         height: 400,
         style: { display: '' },
-        getContext: jest.fn().mockReturnValue({
-          fillRect: jest.fn(),
-          clearRect: jest.fn(),
-          drawImage: jest.fn(),
-          putImageData: jest.fn(),
-          getImageData: jest.fn().mockReturnValue({ data: new Uint8ClampedArray(800 * 400 * 4) }),
-          createImageData: jest.fn().mockReturnValue({ data: new Uint8ClampedArray(800 * 400 * 4) }),
+        getContext: vi.fn().mockReturnValue({
+          fillRect: vi.fn(),
+          clearRect: vi.fn(),
+          drawImage: vi.fn(),
+          putImageData: vi.fn(),
+          getImageData: vi.fn().mockReturnValue({ data: new Uint8ClampedArray(800 * 400 * 4) }),
+          createImageData: vi.fn().mockReturnValue({ data: new Uint8ClampedArray(800 * 400 * 4) }),
         }),
-        appendChild: jest.fn(),
-        addEventListener: jest.fn(),
-        removeEventListener: jest.fn(),
+        appendChild: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
         classList: {
-          add: jest.fn(),
-          remove: jest.fn(),
-          toggle: jest.fn(),
-          contains: jest.fn(),
+          add: vi.fn(),
+          remove: vi.fn(),
+          toggle: vi.fn(),
+          contains: vi.fn(),
         },
       };
     }
@@ -55,72 +55,72 @@ jest.mock('@app/engine/utils/get-el', () => {
       id,
       innerHTML: '',
       style: { display: '' },
-      appendChild: jest.fn(),
-      addEventListener: jest.fn(),
-      removeEventListener: jest.fn(),
+      appendChild: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
       classList: {
-        add: jest.fn(),
-        remove: jest.fn(),
-        toggle: jest.fn(),
-        contains: jest.fn(),
+        add: vi.fn(),
+        remove: vi.fn(),
+        toggle: vi.fn(),
+        contains: vi.fn(),
       },
     };
   };
 
   return {
-    getEl: jest.fn().mockImplementation((id: string) => mockElement(id)),
-    showEl: jest.fn(),
-    hideEl: jest.fn(),
-    setInnerHtml: jest.fn(),
+    getEl: vi.fn(function (id: string) { return mockElement(id); }),
+    showEl: vi.fn(),
+    hideEl: vi.fn(),
+    setInnerHtml: vi.fn(),
   };
 });
 
 // Mock HelpButton
-jest.mock('@app/components/help-btn/help-btn', () => ({
+vi.mock('@app/components/help-btn/help-btn', () => ({
   HelpButton: {
-    create: jest.fn().mockReturnValue({
+    create: vi.fn().mockReturnValue({
       html: '<button class="help-btn">?</button>',
     }),
   },
 }));
 
 // Mock AnalyzerControlBox
-jest.mock('@app/equipment/real-time-spectrum-analyzer/analyzer-control-box', () => ({
+vi.mock('@app/equipment/real-time-spectrum-analyzer/analyzer-control-box', () => ({
   AnalyzerControlBox: class MockAnalyzerControlBox {
-    open() {}
-    close() {}
+    open() { }
+    close() { }
   }
 }));
 
 // Mock DraggableBox
-jest.mock('@app/engine/ui/draggable-box', () => ({
+vi.mock('@app/engine/ui/draggable-box', () => ({
   DraggableBox: class MockDraggableBox {
-    constructor() {}
-    open() {}
-    close() {}
+    constructor() { }
+    open() { }
+    close() { }
   }
 }));
 
 // Mock RTSAScreen, SpectralDensityPlot, WaterfallDisplay
-jest.mock('@app/equipment/real-time-spectrum-analyzer/rtsa-screen/spectral-density-plot', () => ({
+vi.mock('@app/equipment/real-time-spectrum-analyzer/rtsa-screen/spectral-density-plot', () => ({
   SpectralDensityPlot: class MockSpectralDensityPlot {
     canvas = { id: 'mock-spectral-canvas' };
-    setFrequencyRange() {}
-    draw() {}
-    resetMaxHold() {}
-    resetMinHold() {}
-    resetMaxHold_() {}
-    resetMinHold_() {}
+    setFrequencyRange() { }
+    draw() { }
+    resetMaxHold() { }
+    resetMinHold() { }
+    resetMaxHold_() { }
+    resetMinHold_() { }
   }
 }));
 
-jest.mock('@app/equipment/real-time-spectrum-analyzer/rtsa-screen/waterfall-display', () => ({
+vi.mock('@app/equipment/real-time-spectrum-analyzer/rtsa-screen/waterfall-display', () => ({
   WaterfallDisplay: class MockWaterfallDisplay {
     canvas = { id: 'mock-waterfall-canvas' };
-    setFrequencyRange() {}
-    draw() {}
-    resetMaxHold() {}
-    resetMinHold() {}
+    setFrequencyRange() { }
+    draw() { }
+    resetMaxHold() { }
+    resetMinHold() { }
   }
 }));
 
@@ -131,9 +131,9 @@ describe('RealTimeSpectrumAnalyzer', () => {
 
   // Create mock signal path manager
   const createMockSignalPathManager = () => ({
-    getTotalRxGain: jest.fn().mockReturnValue(30),
-    getTotalGainTo: jest.fn().mockReturnValue(30),
-    getNoiseFloorAt: jest.fn().mockReturnValue({
+    getTotalRxGain: vi.fn().mockReturnValue(30),
+    getTotalGainTo: vi.fn().mockReturnValue(30),
+    getNoiseFloorAt: vi.fn().mockReturnValue({
       noiseFloorNoGain: -104,
       shouldApplyGain: true,
     }),
@@ -201,7 +201,7 @@ describe('RealTimeSpectrumAnalyzer', () => {
       lnbModule: {
         ...createMockModule(),
         postLNASignals: [],
-        getTotalGain: jest.fn().mockReturnValue(30),
+        getTotalGain: vi.fn().mockReturnValue(30),
       },
       agcModule: {
         outputSignals: [],
@@ -213,7 +213,7 @@ describe('RealTimeSpectrumAnalyzer', () => {
 
   afterEach(() => {
     document.body.innerHTML = '';
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('Construction', () => {
@@ -256,7 +256,7 @@ describe('RealTimeSpectrumAnalyzer', () => {
     });
 
     it('should subscribe to UPDATE event', () => {
-      const onSpy = jest.spyOn(EventBus.getInstance(), 'on');
+      const onSpy = vi.spyOn(EventBus.getInstance(), 'on');
 
       specA = new RealTimeSpectrumAnalyzer('test-root', mockRfFrontEnd);
 
@@ -264,7 +264,7 @@ describe('RealTimeSpectrumAnalyzer', () => {
     });
 
     it('should subscribe to SYNC event', () => {
-      const onSpy = jest.spyOn(EventBus.getInstance(), 'on');
+      const onSpy = vi.spyOn(EventBus.getInstance(), 'on');
 
       specA = new RealTimeSpectrumAnalyzer('test-root', mockRfFrontEnd);
 
@@ -272,7 +272,7 @@ describe('RealTimeSpectrumAnalyzer', () => {
     });
 
     it('should subscribe to DRAW event', () => {
-      const onSpy = jest.spyOn(EventBus.getInstance(), 'on');
+      const onSpy = vi.spyOn(EventBus.getInstance(), 'on');
 
       specA = new RealTimeSpectrumAnalyzer('test-root', mockRfFrontEnd);
 
@@ -325,7 +325,7 @@ describe('RealTimeSpectrumAnalyzer', () => {
     });
 
     it('should call syncDomWithState after sync', () => {
-      const syncDomSpy = jest.spyOn(specA, 'syncDomWithState');
+      const syncDomSpy = vi.spyOn(specA, 'syncDomWithState');
 
       specA.sync({ isPaused: true } as RealTimeSpectrumAnalyzerState);
 
@@ -345,7 +345,7 @@ describe('RealTimeSpectrumAnalyzer', () => {
     });
 
     it('should call syncDomWithState', () => {
-      const syncDomSpy = jest.spyOn(specA, 'syncDomWithState');
+      const syncDomSpy = vi.spyOn(specA, 'syncDomWithState');
 
       specA.changeCenterFreq(1.5e9);
 
@@ -365,7 +365,7 @@ describe('RealTimeSpectrumAnalyzer', () => {
     });
 
     it('should call syncDomWithState', () => {
-      const syncDomSpy = jest.spyOn(specA, 'syncDomWithState');
+      const syncDomSpy = vi.spyOn(specA, 'syncDomWithState');
 
       specA.changeBandwidth(50e6);
 
@@ -395,7 +395,7 @@ describe('RealTimeSpectrumAnalyzer', () => {
     });
 
     it('should emit SPEC_A_CONFIG_CHANGED event', () => {
-      const emitSpy = jest.spyOn(specA, 'emit');
+      const emitSpy = vi.spyOn(specA, 'emit');
 
       specA.togglePause();
 
@@ -491,7 +491,7 @@ describe('RealTimeSpectrumAnalyzer', () => {
       specA.state.screenMode = 'spectralDensity';
       // Set screen reference to spectralDensity (simulating what toggleScreenMode does)
       specA.screen = specA.spectralDensity;
-      const resetSpy = jest.spyOn(specA.screen!, 'resetMaxHold');
+      const resetSpy = vi.spyOn(specA.screen!, 'resetMaxHold');
 
       specA.resetMaxHoldData();
 
@@ -500,8 +500,8 @@ describe('RealTimeSpectrumAnalyzer', () => {
 
     it('should call resetMaxHold on both screens in both mode', () => {
       specA.state.screenMode = 'both';
-      const spectralResetSpy = jest.spyOn(specA.spectralDensityBoth!, 'resetMaxHold_');
-      const waterfallResetSpy = jest.spyOn(specA.waterfallBoth!, 'resetMaxHold');
+      const spectralResetSpy = vi.spyOn(specA.spectralDensityBoth!, 'resetMaxHold_');
+      const waterfallResetSpy = vi.spyOn(specA.waterfallBoth!, 'resetMaxHold');
 
       specA.resetMaxHoldData();
 
@@ -519,7 +519,7 @@ describe('RealTimeSpectrumAnalyzer', () => {
       specA.state.screenMode = 'spectralDensity';
       // Set screen reference to spectralDensity (simulating what toggleScreenMode does)
       specA.screen = specA.spectralDensity;
-      const resetSpy = jest.spyOn(specA.screen!, 'resetMinHold');
+      const resetSpy = vi.spyOn(specA.screen!, 'resetMinHold');
 
       specA.resetMinHoldData();
 
@@ -528,8 +528,8 @@ describe('RealTimeSpectrumAnalyzer', () => {
 
     it('should call resetMinHold on both screens in both mode', () => {
       specA.state.screenMode = 'both';
-      const spectralResetSpy = jest.spyOn(specA.spectralDensityBoth!, 'resetMinHold_');
-      const waterfallResetSpy = jest.spyOn(specA.waterfallBoth!, 'resetMinHold');
+      const spectralResetSpy = vi.spyOn(specA.spectralDensityBoth!, 'resetMinHold_');
+      const waterfallResetSpy = vi.spyOn(specA.waterfallBoth!, 'resetMinHold');
 
       specA.resetMinHoldData();
 

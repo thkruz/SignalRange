@@ -1,31 +1,32 @@
 import { Degrees } from 'ootk';
-import { AntennaUIBasic } from '../../../src/equipment/antenna/antenna-ui-basic';
-import { AntennaState } from '../../../src/equipment/antenna/antenna-core';
+import { vi } from 'vitest';
 import { ANTENNA_CONFIG_KEYS } from '../../../src/equipment/antenna/antenna-config-keys';
+import { AntennaState } from '../../../src/equipment/antenna/antenna-core';
+import { AntennaUIBasic } from '../../../src/equipment/antenna/antenna-ui-basic';
 
 // Mock SimulationManager
-jest.mock('../../../src/simulation/simulation-manager', () => ({
+vi.mock('../../../src/simulation/simulation-manager', () => ({
   SimulationManager: {
-    getInstance: jest.fn(() => ({
-      update: jest.fn(),
-      draw: jest.fn(),
-      sync: jest.fn(),
-      getSatByNoradId: jest.fn(),
+    getInstance: vi.fn(() => ({
+      update: vi.fn(),
+      draw: vi.fn(),
+      sync: vi.fn(),
+      getSatByNoradId: vi.fn(),
       getSatsByAzEl: () => [],
       satellites: [],
       isDeveloperMode: false,
     })),
-    destroy: jest.fn(),
+    destroy: vi.fn(),
   },
 }));
 
 // Mock EventBus
-jest.mock('../../../src/events/event-bus', () => ({
+vi.mock('../../../src/events/event-bus', () => ({
   EventBus: {
-    getInstance: jest.fn(() => ({
-      on: jest.fn(),
-      off: jest.fn(),
-      emit: jest.fn(),
+    getInstance: vi.fn(() => ({
+      on: vi.fn(),
+      off: vi.fn(),
+      emit: vi.fn(),
     })),
   },
 }));
@@ -134,7 +135,7 @@ describe('AntennaUIBasic', () => {
       antenna.syncDomWithState();
 
       // Second sync with same state should be a no-op
-      const spy = jest.spyOn(antenna, 'getStatusAlarms');
+      const spy = vi.spyOn(antenna, 'getStatusAlarms');
       antenna.syncDomWithState();
 
       // Should not call getStatusAlarms on second call because state didn't change
@@ -153,7 +154,7 @@ describe('AntennaUIBasic', () => {
       antenna.state.isPowered = !antenna.state.isPowered;
 
       // Should update
-      const spy = jest.spyOn(antenna, 'getStatusAlarms');
+      const spy = vi.spyOn(antenna, 'getStatusAlarms');
       antenna.syncDomWithState();
       expect(spy).toHaveBeenCalled();
       spy.mockRestore();
@@ -168,10 +169,10 @@ describe('AntennaUIBasic', () => {
   });
 
   describe('disabled features', () => {
-    let consoleSpy: jest.SpyInstance;
+    let consoleSpy: SpyInstance;
 
     beforeEach(() => {
-      consoleSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => { });
     });
 
     afterEach(() => {

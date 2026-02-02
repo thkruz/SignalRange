@@ -1,29 +1,30 @@
+import { vi, Mock } from 'vitest';
 import { EventBus } from '../../src/events/event-bus';
 import { Events } from '../../src/events/events';
 
 // Mock dependencies before imports
-jest.mock('../../src/events/event-bus');
-jest.mock('../../src/logging/logger', () => ({
+vi.mock('../../src/events/event-bus');
+vi.mock('../../src/logging/logger', () => ({
   Logger: {
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
   },
 }));
 
-jest.mock('../../src/router', () => ({
+vi.mock('../../src/router', () => ({
   Router: {
-    getInstance: jest.fn(() => ({
-      getCurrentPath: jest.fn(() => '/campaigns/nats/scenarios/test'),
-      navigate: jest.fn(),
+    getInstance: vi.fn(() => ({
+      getCurrentPath: vi.fn(() => '/campaigns/nats/scenarios/test'),
+      navigate: vi.fn(),
     })),
   },
   NavigationOptions: {},
 }));
 
-jest.mock('../../src/scenario-manager', () => ({
+vi.mock('../../src/scenario-manager', () => ({
   ScenarioManager: {
-    getInstance: jest.fn(() => ({
+    getInstance: vi.fn(() => ({
       data: {
         id: 'test-scenario',
         objectives: [],
@@ -39,118 +40,119 @@ jest.mock('../../src/scenario-manager', () => ({
   },
 }));
 
-jest.mock('../../src/simulation/simulation-manager', () => ({
+vi.mock('../../src/simulation/simulation-manager', () => ({
   SimulationManager: {
-    getInstance: jest.fn(() => ({
+    getInstance: vi.fn(() => ({
       objectivesManager: null,
     })),
   },
 }));
 
-jest.mock('../../src/objectives/objectives-manager', () => ({
+vi.mock('../../src/objectives/objectives-manager', () => ({
   ObjectivesManager: {
-    initialize: jest.fn(),
-    getInstance: jest.fn(() => ({
-      areAllObjectivesCompleted: jest.fn(() => false),
-      getObjectiveStates: jest.fn(() => []),
-      getElapsedTime: jest.fn(() => 0),
-      stopAllTimers: jest.fn(),
-      restoreState: jest.fn(),
+    initialize: vi.fn(),
+    getInstance: vi.fn(() => ({
+      areAllObjectivesCompleted: vi.fn(() => false),
+      getObjectiveStates: vi.fn(() => []),
+      getElapsedTime: vi.fn(() => 0),
+      stopAllTimers: vi.fn(),
+      restoreState: vi.fn(),
     })),
-    destroy: jest.fn(),
+    destroy: vi.fn(),
   },
 }));
 
-jest.mock('../../src/modal/dialog-manager', () => ({
+vi.mock('../../src/modal/dialog-manager', () => ({
   DialogManager: {
-    getInstance: jest.fn(() => ({
-      show: jest.fn(),
+    getInstance: vi.fn(() => ({
+      show: vi.fn(),
     })),
   },
 }));
 
-jest.mock('../../src/modal/dialog-history-manager', () => ({
+vi.mock('../../src/modal/dialog-history-manager', () => ({
   DialogHistoryManager: {
-    getInstance: jest.fn(() => ({
-      reconstructFromCompletedObjectives: jest.fn(),
+    getInstance: vi.fn(() => ({
+      reconstructFromCompletedObjectives: vi.fn(),
     })),
   },
 }));
 
-jest.mock('../../src/modal/level-complete-modal', () => ({
+vi.mock('../../src/modal/level-complete-modal', () => ({
   LevelCompleteModal: {
-    getInstance: jest.fn(() => ({
-      showCompletion: jest.fn(),
+    getInstance: vi.fn(() => ({
+      showCompletion: vi.fn(),
     })),
   },
 }));
 
-jest.mock('../../src/modal/objective-failed-modal', () => ({
+vi.mock('../../src/modal/objective-failed-modal', () => ({
   ObjectiveFailedModal: {
-    getInstance: jest.fn(() => ({
-      showFailure: jest.fn(),
+    getInstance: vi.fn(() => ({
+      showFailure: vi.fn(),
     })),
   },
 }));
 
-jest.mock('../../src/modal/quiz-modal', () => ({
+vi.mock('../../src/modal/quiz-modal', () => ({
   QuizModal: {
-    getInstance: jest.fn(),
-    destroy: jest.fn(),
+    getInstance: vi.fn(),
+    destroy: vi.fn(),
   },
 }));
 
-jest.mock('../../src/modal/time-penalty-toast', () => ({
+vi.mock('../../src/modal/time-penalty-toast', () => ({
   TimePenaltyToast: {
-    getInstance: jest.fn(),
+    getInstance: vi.fn(),
   },
 }));
 
-jest.mock('../../src/scenarios/scenario-dialog-manager', () => ({
+vi.mock('../../src/scenarios/scenario-dialog-manager', () => ({
   ScenarioDialogManager: {
-    getInstance: jest.fn(() => ({
-      initialize: jest.fn(),
+    getInstance: vi.fn(() => ({
+      initialize: vi.fn(),
     })),
   },
 }));
 
-jest.mock('../../src/scoring/scenario-completion-handler', () => ({
+vi.mock('../../src/scoring/scenario-completion-handler', () => ({
   ScenarioCompletionHandler: {
-    getInstance: jest.fn(() => ({
-      initialize: jest.fn(),
+    getInstance: vi.fn(() => ({
+      initialize: vi.fn(),
     })),
-    destroy: jest.fn(),
+    destroy: vi.fn(),
   },
 }));
 
-jest.mock('../../src/scoring/score-calculator', () => ({
+vi.mock('../../src/scoring/score-calculator', () => ({
   ScoreCalculator: {
     TIME_BONUS_DIVISOR: 10,
   },
 }));
 
-jest.mock('../../src/user-account/progress-save-manager', () => ({
-  ProgressSaveManager: jest.fn().mockImplementation(() => ({
-    initialize: jest.fn(),
-    dispose: jest.fn(),
-    loadCheckpoint: jest.fn(() => Promise.resolve(null)),
+vi.mock('../../src/user-account/progress-save-manager', () => ({
+  ProgressSaveManager: vi.fn(function (this: any) {
+    this.initialize = vi.fn();
+    this.dispose = vi.fn();
+    this.loadCheckpoint = vi.fn(() => Promise.resolve(null));
+    return this;
+  }),
+}));
+
+vi.mock('../../src/user-account/user-data-service', () => ({
+  getUserDataService: vi.fn(() => ({
+    getScenarioProgress: vi.fn(() => Promise.resolve(null)),
   })),
 }));
 
-jest.mock('../../src/user-account/user-data-service', () => ({
-  getUserDataService: jest.fn(() => ({
-    getScenarioProgress: jest.fn(() => Promise.resolve(null)),
-  })),
-}));
-
-jest.mock('../../src/sync/storage', () => ({
+vi.mock('../../src/sync/storage', () => ({
   AppState: {},
 }));
 
-jest.mock('../../src/ops-log/ops-log-manager', () => ({
+vi.mock('../../src/ops-log/ops-log-manager', () => ({
   OpsLogManager: {
-    initialize: jest.fn(),
-    isInitialized: jest.fn(() => false),
+    initialize: vi.fn(),
+    isInitialized: vi.fn(() => false),
   },
 }));
 
@@ -160,6 +162,10 @@ import { ObjectivesManager } from '../../src/objectives/objectives-manager';
 import { DialogManager } from '../../src/modal/dialog-manager';
 import { ObjectiveFailedModal } from '../../src/modal/objective-failed-modal';
 import { ScenarioCompletionHandler } from '../../src/scoring/scenario-completion-handler';
+import { ScenarioManager } from '../../src/scenario-manager';
+import { ProgressSaveManager } from '../../src/user-account/progress-save-manager';
+import { LevelCompleteModal } from '../../src/modal/level-complete-modal';
+import { getUserDataService } from '../../src/user-account/user-data-service';
 
 // Create a concrete implementation for testing
 class TestPage extends BasePage {
@@ -214,18 +220,18 @@ class TestPage extends BasePage {
 
 describe('BasePage', () => {
   let page: TestPage;
-  let mockEventBus: { on: jest.Mock; off: jest.Mock; emit: jest.Mock };
+  let mockEventBus: { on: Mock; off: Mock; emit: Mock };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Setup mock EventBus
     mockEventBus = {
-      on: jest.fn(),
-      off: jest.fn(),
-      emit: jest.fn(),
+      on: vi.fn(),
+      off: vi.fn(),
+      emit: vi.fn(),
     };
-    (EventBus.getInstance as jest.Mock).mockReturnValue(mockEventBus);
+    (EventBus.getInstance as Mock).mockReturnValue(mockEventBus);
 
     page = new TestPage();
     page.createDom();
@@ -284,8 +290,7 @@ describe('BasePage', () => {
     });
 
     it('should initialize ObjectivesManager when scenario has objectives', async () => {
-      const { ScenarioManager } = require('../../src/scenario-manager');
-      ScenarioManager.getInstance.mockReturnValue({
+            ScenarioManager.getInstance.mockReturnValue({
         data: {
           id: 'test-scenario',
           objectives: [{ id: 'obj1', title: 'Test Objective' }],
@@ -308,11 +313,10 @@ describe('BasePage', () => {
     });
 
     it('should show intro dialog if available and not continuing from checkpoint', async () => {
-      const mockShow = jest.fn();
-      (DialogManager.getInstance as jest.Mock).mockReturnValue({ show: mockShow });
+      const mockShow = vi.fn();
+      (DialogManager.getInstance as Mock).mockReturnValue({ show: mockShow });
 
-      const { ScenarioManager } = require('../../src/scenario-manager');
-      ScenarioManager.getInstance.mockReturnValue({
+            ScenarioManager.getInstance.mockReturnValue({
         data: {
           id: 'test-scenario',
           objectives: [],
@@ -346,11 +350,10 @@ describe('BasePage', () => {
     });
 
     it('should not show intro dialog when continuing from checkpoint', async () => {
-      const mockShow = jest.fn();
-      (DialogManager.getInstance as jest.Mock).mockReturnValue({ show: mockShow });
+      const mockShow = vi.fn();
+      (DialogManager.getInstance as Mock).mockReturnValue({ show: mockShow });
 
-      const { ScenarioManager } = require('../../src/scenario-manager');
-      ScenarioManager.getInstance.mockReturnValue({
+            ScenarioManager.getInstance.mockReturnValue({
         data: {
           id: 'test-scenario',
           objectives: [],
@@ -377,16 +380,15 @@ describe('BasePage', () => {
 
     it('should trigger completion flow if all objectives already completed', async () => {
       const mockObjManager = {
-        areAllObjectivesCompleted: jest.fn(() => true),
-        getObjectiveStates: jest.fn(() => [{ id: 'obj1', status: 'completed' }]),
-        getElapsedTime: jest.fn(() => 120),
-        stopAllTimers: jest.fn(),
-        restoreState: jest.fn(),
+        areAllObjectivesCompleted: vi.fn(() => true),
+        getObjectiveStates: vi.fn(() => [{ id: 'obj1', status: 'completed' }]),
+        getElapsedTime: vi.fn(() => 120),
+        stopAllTimers: vi.fn(),
+        restoreState: vi.fn(),
       };
-      (ObjectivesManager.getInstance as jest.Mock).mockReturnValue(mockObjManager);
+      (ObjectivesManager.getInstance as Mock).mockReturnValue(mockObjManager);
 
-      const { ScenarioManager } = require('../../src/scenario-manager');
-      ScenarioManager.getInstance.mockReturnValue({
+            ScenarioManager.getInstance.mockReturnValue({
         data: {
           id: 'test-scenario',
           objectives: [{ id: 'obj1', title: 'Test' }],
@@ -440,8 +442,8 @@ describe('BasePage', () => {
     });
 
     it('should show failure modal on OBJECTIVE_FAILED', () => {
-      const mockShowFailure = jest.fn();
-      (ObjectiveFailedModal.getInstance as jest.Mock).mockReturnValue({
+      const mockShowFailure = vi.fn();
+      (ObjectiveFailedModal.getInstance as Mock).mockReturnValue({
         showFailure: mockShowFailure,
       });
 
@@ -466,8 +468,8 @@ describe('BasePage', () => {
     });
 
     it('should show failure modal on SCENARIO_TIME_EXPIRED', () => {
-      const mockShowFailure = jest.fn();
-      (ObjectiveFailedModal.getInstance as jest.Mock).mockReturnValue({
+      const mockShowFailure = vi.fn();
+      (ObjectiveFailedModal.getInstance as Mock).mockReturnValue({
         showFailure: mockShowFailure,
       });
 
@@ -488,8 +490,8 @@ describe('BasePage', () => {
     });
 
     it('should use singular minute for 1 minute time limit', () => {
-      const mockShowFailure = jest.fn();
-      (ObjectiveFailedModal.getInstance as jest.Mock).mockReturnValue({
+      const mockShowFailure = vi.fn();
+      (ObjectiveFailedModal.getInstance as Mock).mockReturnValue({
         showFailure: mockShowFailure,
       });
 
@@ -509,8 +511,8 @@ describe('BasePage', () => {
     });
 
     it('should show failure modal on DUAL_TRANSMISSION_VIOLATION', () => {
-      const mockShowFailure = jest.fn();
-      (ObjectiveFailedModal.getInstance as jest.Mock).mockReturnValue({
+      const mockShowFailure = vi.fn();
+      (ObjectiveFailedModal.getInstance as Mock).mockReturnValue({
         showFailure: mockShowFailure,
       });
 
@@ -541,28 +543,28 @@ describe('BasePage', () => {
     });
 
     it('should restore objective states from checkpoint', async () => {
-      const mockRestoreState = jest.fn();
-      (ObjectivesManager.getInstance as jest.Mock).mockReturnValue({
+      const mockRestoreState = vi.fn();
+      (ObjectivesManager.getInstance as Mock).mockReturnValue({
         restoreState: mockRestoreState,
-        areAllObjectivesCompleted: jest.fn(() => false),
-        getObjectiveStates: jest.fn(() => []),
-        getElapsedTime: jest.fn(() => 0),
-        stopAllTimers: jest.fn(),
+        areAllObjectivesCompleted: vi.fn(() => false),
+        getObjectiveStates: vi.fn(() => []),
+        getElapsedTime: vi.fn(() => 0),
+        stopAllTimers: vi.fn(),
       });
 
-      const mockLoadCheckpoint = jest.fn(() => Promise.resolve({
+      const mockLoadCheckpoint = vi.fn(() => Promise.resolve({
         state: {
           objectiveStates: [{ id: 'obj1', status: 'completed' }],
           scenarioTimeRemaining: 200,
         },
       }));
 
-      const { ProgressSaveManager } = require('../../src/user-account/progress-save-manager');
-      ProgressSaveManager.mockImplementation(() => ({
-        initialize: jest.fn(),
-        dispose: jest.fn(),
-        loadCheckpoint: mockLoadCheckpoint,
-      }));
+      (ProgressSaveManager as Mock).mockImplementation(function (this: any) {
+        this.initialize = vi.fn();
+        this.dispose = vi.fn();
+        this.loadCheckpoint = mockLoadCheckpoint;
+        return this;
+      });
 
       page.testInitProgressSaveManager();
       await page.testRestoreObjectiveStatesFromCheckpoint();
@@ -575,14 +577,14 @@ describe('BasePage', () => {
     });
 
     it('should handle errors gracefully', async () => {
-      const mockLoadCheckpoint = jest.fn(() => Promise.reject(new Error('Load failed')));
+      const mockLoadCheckpoint = vi.fn(() => Promise.reject(new Error('Load failed')));
 
-      const { ProgressSaveManager } = require('../../src/user-account/progress-save-manager');
-      ProgressSaveManager.mockImplementation(() => ({
-        initialize: jest.fn(),
-        dispose: jest.fn(),
-        loadCheckpoint: mockLoadCheckpoint,
-      }));
+      (ProgressSaveManager as Mock).mockImplementation(function (this: any) {
+        this.initialize = vi.fn();
+        this.dispose = vi.fn();
+        this.loadCheckpoint = mockLoadCheckpoint;
+        return this;
+      });
 
       page.testInitProgressSaveManager();
 
@@ -591,25 +593,25 @@ describe('BasePage', () => {
     });
 
     it('should not restore if checkpoint has no objective states', async () => {
-      const mockRestoreState = jest.fn();
-      (ObjectivesManager.getInstance as jest.Mock).mockReturnValue({
+      const mockRestoreState = vi.fn();
+      (ObjectivesManager.getInstance as Mock).mockReturnValue({
         restoreState: mockRestoreState,
-        areAllObjectivesCompleted: jest.fn(() => false),
-        getObjectiveStates: jest.fn(() => []),
-        getElapsedTime: jest.fn(() => 0),
-        stopAllTimers: jest.fn(),
+        areAllObjectivesCompleted: vi.fn(() => false),
+        getObjectiveStates: vi.fn(() => []),
+        getElapsedTime: vi.fn(() => 0),
+        stopAllTimers: vi.fn(),
       });
 
-      const mockLoadCheckpoint = jest.fn(() => Promise.resolve({
+      const mockLoadCheckpoint = vi.fn(() => Promise.resolve({
         state: {},
       }));
 
-      const { ProgressSaveManager } = require('../../src/user-account/progress-save-manager');
-      ProgressSaveManager.mockImplementation(() => ({
-        initialize: jest.fn(),
-        dispose: jest.fn(),
-        loadCheckpoint: mockLoadCheckpoint,
-      }));
+      (ProgressSaveManager as Mock).mockImplementation(function (this: any) {
+        this.initialize = vi.fn();
+        this.dispose = vi.fn();
+        this.loadCheckpoint = mockLoadCheckpoint;
+        return this;
+      });
 
       page.testInitProgressSaveManager();
       await page.testRestoreObjectiveStatesFromCheckpoint();
@@ -620,15 +622,13 @@ describe('BasePage', () => {
 
   describe('initializeObjectivesAndDialogs_ with already complete scenario', () => {
     it('should show completion modal when scenario is already complete', async () => {
-      const mockShowCompletion = jest.fn();
-      const { LevelCompleteModal } = require('../../src/modal/level-complete-modal');
-      (LevelCompleteModal.getInstance as jest.Mock).mockReturnValue({
+      const mockShowCompletion = vi.fn();
+            (LevelCompleteModal.getInstance as Mock).mockReturnValue({
         showCompletion: mockShowCompletion,
       });
 
-      const { getUserDataService } = require('../../src/user-account/user-data-service');
-      (getUserDataService as jest.Mock).mockReturnValue({
-        getScenarioProgress: jest.fn(() => Promise.resolve({
+            (getUserDataService as Mock).mockReturnValue({
+        getScenarioProgress: vi.fn(() => Promise.resolve({
           completedAt: '2024-01-01T00:00:00Z',
           score: 1000,
           basePoints: 800,
@@ -646,15 +646,13 @@ describe('BasePage', () => {
     });
 
     it('should not show completion modal when forceReplay is true', async () => {
-      const mockShowCompletion = jest.fn();
-      const { LevelCompleteModal } = require('../../src/modal/level-complete-modal');
-      (LevelCompleteModal.getInstance as jest.Mock).mockReturnValue({
+      const mockShowCompletion = vi.fn();
+            (LevelCompleteModal.getInstance as Mock).mockReturnValue({
         showCompletion: mockShowCompletion,
       });
 
-      const { getUserDataService } = require('../../src/user-account/user-data-service');
-      (getUserDataService as jest.Mock).mockReturnValue({
-        getScenarioProgress: jest.fn(() => Promise.resolve({
+            (getUserDataService as Mock).mockReturnValue({
+        getScenarioProgress: vi.fn(() => Promise.resolve({
           completedAt: '2024-01-01T00:00:00Z',
           score: 1000,
         })),
@@ -667,9 +665,8 @@ describe('BasePage', () => {
     });
 
     it('should not show completion modal when continueFromCheckpoint is true', async () => {
-      const mockShowCompletion = jest.fn();
-      const { LevelCompleteModal } = require('../../src/modal/level-complete-modal');
-      (LevelCompleteModal.getInstance as jest.Mock).mockReturnValue({
+      const mockShowCompletion = vi.fn();
+            (LevelCompleteModal.getInstance as Mock).mockReturnValue({
         showCompletion: mockShowCompletion,
       });
 

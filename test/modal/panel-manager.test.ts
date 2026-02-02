@@ -1,7 +1,8 @@
+import { vi } from 'vitest';
 import { PanelManager } from '../../src/modal/panel-manager';
 
 // Mock html utility
-jest.mock('../../src/engine/utils/development/formatter', () => ({
+vi.mock('../../src/engine/utils/development/formatter', () => ({
   html: (strings: TemplateStringsArray, ...values: unknown[]) => {
     return strings.reduce((result, str, i) => {
       return result + str + (values[i] ?? '');
@@ -10,8 +11,8 @@ jest.mock('../../src/engine/utils/development/formatter', () => ({
 }));
 
 // Mock qs utility
-jest.mock('../../src/engine/utils/query-selector', () => ({
-  qs: jest.fn((selector: string, parent?: HTMLElement) => {
+vi.mock('../../src/engine/utils/query-selector', () => ({
+  qs: vi.fn((selector: string, parent?: HTMLElement) => {
     const context = parent ?? global.document;
     return context?.querySelector(selector);
   }),
@@ -25,14 +26,14 @@ describe('PanelManager', () => {
     (PanelManager as any).instance = null;
     document.body.innerHTML = '';
     panelManager = PanelManager.getInstance();
-    jest.useFakeTimers();
+    vi.useFakeTimers();
   });
 
   afterEach(() => {
     document.body.innerHTML = '';
     (PanelManager as any).instance = null;
-    jest.clearAllTimers();
-    jest.useRealTimers();
+    vi.clearAllTimers();
+    vi.useRealTimers();
   });
 
   describe('Singleton Pattern', () => {
@@ -133,7 +134,7 @@ describe('PanelManager', () => {
       panelManager.show('Test', '<p>Content</p>');
 
       // Run animation frame
-      jest.runAllTimers();
+      vi.runAllTimers();
 
       const panel = document.querySelector('.hm-panel');
       expect(panel?.classList.contains('hm-panel-visible')).toBe(true);
@@ -157,7 +158,7 @@ describe('PanelManager', () => {
       closeBtn?.click();
 
       // Wait for animation
-      jest.advanceTimersByTime(350);
+      vi.advanceTimersByTime(350);
 
       expect(panelManager.isShowing()).toBe(false);
     });
@@ -191,7 +192,7 @@ describe('PanelManager', () => {
   describe('hide', () => {
     it('should remove visible class first', () => {
       panelManager.show('Test', '<p>Content</p>');
-      jest.runAllTimers();
+      vi.runAllTimers();
 
       const panel = document.querySelector('.hm-panel');
       expect(panel?.classList.contains('hm-panel-visible')).toBe(true);
@@ -212,7 +213,7 @@ describe('PanelManager', () => {
       expect(document.querySelector('.hm-panel')).toBeTruthy();
 
       // After animation delay
-      jest.advanceTimersByTime(350);
+      vi.advanceTimersByTime(350);
 
       expect(document.querySelector('.hm-panel')).toBeFalsy();
     });
@@ -228,7 +229,7 @@ describe('PanelManager', () => {
       expect(panelManager.isShowing('Test Title')).toBe(true);
 
       panelManager.hide();
-      jest.advanceTimersByTime(350);
+      vi.advanceTimersByTime(350);
 
       expect(panelManager.isShowing('Test Title')).toBe(false);
     });
@@ -236,44 +237,44 @@ describe('PanelManager', () => {
 
   describe('onHide', () => {
     it('should call registered callback when panel is hidden', () => {
-      const callback = jest.fn();
+      const callback = vi.fn();
       panelManager.onHide(callback);
 
       panelManager.show('Test', '<p>Content</p>');
       panelManager.hide();
 
       // Wait for animation
-      jest.advanceTimersByTime(350);
+      vi.advanceTimersByTime(350);
 
       expect(callback).toHaveBeenCalledTimes(1);
     });
 
     it('should call multiple callbacks when panel is hidden', () => {
-      const callback1 = jest.fn();
-      const callback2 = jest.fn();
+      const callback1 = vi.fn();
+      const callback2 = vi.fn();
       panelManager.onHide(callback1);
       panelManager.onHide(callback2);
 
       panelManager.show('Test', '<p>Content</p>');
       panelManager.hide();
 
-      jest.advanceTimersByTime(350);
+      vi.advanceTimersByTime(350);
 
       expect(callback1).toHaveBeenCalledTimes(1);
       expect(callback2).toHaveBeenCalledTimes(1);
     });
 
     it('should clear callbacks after hide', () => {
-      const callback = jest.fn();
+      const callback = vi.fn();
       panelManager.onHide(callback);
 
       panelManager.show('First', '<p>First</p>');
       panelManager.hide();
-      jest.advanceTimersByTime(350);
+      vi.advanceTimersByTime(350);
 
       panelManager.show('Second', '<p>Second</p>');
       panelManager.hide();
-      jest.advanceTimersByTime(350);
+      vi.advanceTimersByTime(350);
 
       expect(callback).toHaveBeenCalledTimes(1);
     });

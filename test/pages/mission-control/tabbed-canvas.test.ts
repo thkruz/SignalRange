@@ -1,20 +1,21 @@
-import { TabbedCanvas } from '../../../src/pages/mission-control/tabbed-canvas';
+import { Mock, vi } from 'vitest';
 import { EventBus } from '../../../src/events/event-bus';
 import { Events } from '../../../src/events/events';
+import { TabbedCanvas } from '../../../src/pages/mission-control/tabbed-canvas';
 
 // Create mock tab factory
 const createMockTab = () => ({
   get dom() { return global.document.createElement('div'); },
-  activate: jest.fn(),
-  deactivate: jest.fn(),
-  dispose: jest.fn(),
+  activate: vi.fn(),
+  deactivate: vi.fn(),
+  dispose: vi.fn(),
 });
 
 // Mock dependencies
-jest.mock('../../../src/events/event-bus');
-jest.mock('../../../src/simulation/simulation-manager', () => ({
+vi.mock('../../../src/events/event-bus');
+vi.mock('../../../src/simulation/simulation-manager', () => ({
   SimulationManager: {
-    getInstance: jest.fn(() => ({
+    getInstance: vi.fn(() => ({
       groundStations: [
         {
           state: {
@@ -39,7 +40,7 @@ jest.mock('../../../src/simulation/simulation-manager', () => ({
           health: 0.95,
         },
       ],
-      getSatByNoradId: jest.fn((id: number) => {
+      getSatByNoradId: vi.fn((id: number) => {
         if (id === 12345) {
           return {
             noradId: 12345,
@@ -52,49 +53,57 @@ jest.mock('../../../src/simulation/simulation-manager', () => ({
     })),
   },
 }));
-jest.mock('../../../src/pages/mission-control/tabs/acu-control-tab', () => ({
-  ACUControlTab: jest.fn().mockImplementation(() => createMockTab()),
+vi.mock('../../../src/pages/mission-control/tabs/acu-control-tab', () => ({
+  ACUControlTab: vi.fn(function () { return createMockTab(); }),
 }));
-jest.mock('../../../src/pages/mission-control/tabs/dashboard-tab', () => ({
-  DashboardTab: jest.fn().mockImplementation(() => createMockTab()),
+vi.mock('../../../src/pages/mission-control/tabs/dashboard-tab', () => ({
+  DashboardTab: vi.fn(function () { return createMockTab(); }),
 }));
-jest.mock('../../../src/pages/mission-control/tabs/gps-timing-tab', () => ({
-  GPSTimingTab: jest.fn().mockImplementation(() => createMockTab()),
+vi.mock('../../../src/pages/mission-control/tabs/gps-timing-tab', () => ({
+  GPSTimingTab: vi.fn(function () { return createMockTab(); }),
 }));
-jest.mock('../../../src/pages/mission-control/tabs/mission-overview-tab', () => ({
-  MissionOverviewTab: jest.fn().mockImplementation(() => createMockTab()),
+vi.mock('../../../src/pages/mission-control/tabs/mission-overview-tab', () => ({
+  MissionOverviewTab: vi.fn(function () { return createMockTab(); }),
 }));
-jest.mock('../../../src/pages/mission-control/tabs/rx-analysis-tab', () => ({
-  RxAnalysisTab: jest.fn().mockImplementation(() => createMockTab()),
+vi.mock('../../../src/pages/mission-control/tabs/rx-analysis-tab', () => ({
+  RxAnalysisTab: vi.fn(function () { return createMockTab(); }),
 }));
-jest.mock('../../../src/pages/mission-control/tabs/satellite-dashboard-tab', () => ({
-  SatelliteDashboardTab: jest.fn().mockImplementation(() => createMockTab()),
+vi.mock('../../../src/pages/mission-control/tabs/satellite-dashboard-tab', () => ({
+  SatelliteDashboardTab: vi.fn(function () { return createMockTab(); }),
 }));
-jest.mock('../../../src/pages/mission-control/tabs/tx-chain-tab', () => ({
-  TxChainTab: jest.fn().mockImplementation(() => createMockTab()),
+vi.mock('../../../src/pages/mission-control/tabs/tx-chain-tab', () => ({
+  TxChainTab: vi.fn(function () { return createMockTab(); }),
 }));
-jest.mock('../../../src/engine/utils/query-selector', () => ({
-  qs: jest.fn((selector: string, parent?: Element) => {
+vi.mock('../../../src/engine/utils/query-selector', () => ({
+  qs: vi.fn((selector: string, parent?: Element) => {
     const root = parent || global.document;
     return root.querySelector(selector);
   }),
 }));
 
+import { ACUControlTab } from '../../../src/pages/mission-control/tabs/acu-control-tab';
+import { DashboardTab } from '../../../src/pages/mission-control/tabs/dashboard-tab';
+import { GPSTimingTab } from '../../../src/pages/mission-control/tabs/gps-timing-tab';
+import { MissionOverviewTab } from '../../../src/pages/mission-control/tabs/mission-overview-tab';
+import { RxAnalysisTab } from '../../../src/pages/mission-control/tabs/rx-analysis-tab';
+import { SatelliteDashboardTab } from '../../../src/pages/mission-control/tabs/satellite-dashboard-tab';
+import { TxChainTab } from '../../../src/pages/mission-control/tabs/tx-chain-tab';
+import { SimulationManager } from '../../../src/simulation/simulation-manager';
 describe('TabbedCanvas', () => {
   let containerEl: HTMLElement;
   let tabbedCanvas: TabbedCanvas;
-  let mockEventBus: { on: jest.Mock; off: jest.Mock; emit: jest.Mock };
+  let mockEventBus: { on: Mock; off: Mock; emit: Mock };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Setup mock EventBus
     mockEventBus = {
-      on: jest.fn(),
-      off: jest.fn(),
-      emit: jest.fn(),
+      on: vi.fn(),
+      off: vi.fn(),
+      emit: vi.fn(),
     };
-    (EventBus.getInstance as jest.Mock).mockReturnValue(mockEventBus);
+    (EventBus.getInstance as Mock).mockReturnValue(mockEventBus);
 
     // Setup container
     containerEl = document.createElement('div');
@@ -141,7 +150,6 @@ describe('TabbedCanvas', () => {
     });
 
     it('should render Mission Overview by default', () => {
-      const { MissionOverviewTab } = require('../../../src/pages/mission-control/tabs/mission-overview-tab');
       expect(MissionOverviewTab).toHaveBeenCalled();
     });
   });
@@ -232,7 +240,6 @@ describe('TabbedCanvas', () => {
 
       assetSelectedHandler?.({ type: 'ground-station', id: 'GS-001' });
 
-      const { DashboardTab } = require('../../../src/pages/mission-control/tabs/dashboard-tab');
       expect(DashboardTab).toHaveBeenCalled();
     });
   });
@@ -245,7 +252,6 @@ describe('TabbedCanvas', () => {
 
       assetSelectedHandler?.({ type: 'satellite', id: 'sat-12345' });
 
-      const { SatelliteDashboardTab } = require('../../../src/pages/mission-control/tabs/satellite-dashboard-tab');
       expect(SatelliteDashboardTab).toHaveBeenCalled();
     });
 
@@ -288,7 +294,7 @@ describe('TabbedCanvas', () => {
 
       overviewHandler?.();
 
-      const { MissionOverviewTab } = require('../../../src/pages/mission-control/tabs/mission-overview-tab');
+
       // MissionOverviewTab should be called (once in constructor, once after overview selected)
       expect(MissionOverviewTab).toHaveBeenCalled();
     });
@@ -330,7 +336,6 @@ describe('TabbedCanvas', () => {
 
       switchTabHandler?.({ tabId: 'acu-control-0' });
 
-      const { ACUControlTab } = require('../../../src/pages/mission-control/tabs/acu-control-tab');
       expect(ACUControlTab).toHaveBeenCalled();
     });
 
@@ -349,7 +354,7 @@ describe('TabbedCanvas', () => {
       const acuTab = document.querySelector('[data-tab-id="acu-control-0"]') as HTMLElement;
       acuTab?.click();
 
-      const { ACUControlTab } = require('../../../src/pages/mission-control/tabs/acu-control-tab');
+
       expect(ACUControlTab).toHaveBeenCalled();
     });
 
@@ -360,7 +365,6 @@ describe('TabbedCanvas', () => {
 
       switchTabHandler?.({ tabId: 'rx-analysis' });
 
-      const { RxAnalysisTab } = require('../../../src/pages/mission-control/tabs/rx-analysis-tab');
       expect(RxAnalysisTab).toHaveBeenCalled();
     });
 
@@ -371,7 +375,6 @@ describe('TabbedCanvas', () => {
 
       switchTabHandler?.({ tabId: 'tx-chain' });
 
-      const { TxChainTab } = require('../../../src/pages/mission-control/tabs/tx-chain-tab');
       expect(TxChainTab).toHaveBeenCalled();
     });
 
@@ -382,7 +385,6 @@ describe('TabbedCanvas', () => {
 
       switchTabHandler?.({ tabId: 'gps-timing' });
 
-      const { GPSTimingTab } = require('../../../src/pages/mission-control/tabs/gps-timing-tab');
       expect(GPSTimingTab).toHaveBeenCalled();
     });
 
@@ -407,7 +409,7 @@ describe('TabbedCanvas', () => {
 
       assetSelectedHandler?.({ type: 'ground-station', id: 'GS-001' });
 
-      const { DashboardTab } = require('../../../src/pages/mission-control/tabs/dashboard-tab');
+
       expect(DashboardTab).toHaveBeenCalled();
     });
 
@@ -426,7 +428,6 @@ describe('TabbedCanvas', () => {
 
       switchTabHandler?.({ tabId: 'acu-control-0' });
 
-      const { ACUControlTab } = require('../../../src/pages/mission-control/tabs/acu-control-tab');
       expect(ACUControlTab).toHaveBeenCalled();
     });
 
@@ -471,13 +472,12 @@ describe('TabbedCanvas', () => {
 describe('TabbedCanvas with non-operational ground station', () => {
   let containerEl: HTMLElement;
   let tabbedCanvas: TabbedCanvas;
-  let mockEventBus: { on: jest.Mock; off: jest.Mock; emit: jest.Mock };
+  let mockEventBus: { on: Mock; off: Mock; emit: Mock };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Mock ground station as non-operational
-    const { SimulationManager } = require('../../../src/simulation/simulation-manager');
     SimulationManager.getInstance.mockReturnValue({
       groundStations: [
         {
@@ -497,16 +497,16 @@ describe('TabbedCanvas with non-operational ground station', () => {
         },
       ],
       satellites: [],
-      getSatByNoradId: jest.fn(() => null),
+      getSatByNoradId: vi.fn(() => null),
     });
 
     // Setup mock EventBus
     mockEventBus = {
-      on: jest.fn(),
-      off: jest.fn(),
-      emit: jest.fn(),
+      on: vi.fn(),
+      off: vi.fn(),
+      emit: vi.fn(),
     };
-    (EventBus.getInstance as jest.Mock).mockReturnValue(mockEventBus);
+    (EventBus.getInstance as Mock).mockReturnValue(mockEventBus);
 
     // Setup container
     containerEl = document.createElement('div');

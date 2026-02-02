@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { EventBus } from '../../src/events/event-bus';
 import { Events } from '../../src/events/events';
 import { OpsLogManager } from '../../src/ops-log/ops-log-manager';
@@ -46,7 +47,7 @@ describe('OpsLogManager', () => {
     });
 
     it('should warn and destroy previous instance when reinitializing', () => {
-      const warnSpy = jest.spyOn(console, 'warn').mockImplementation();
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation();
 
       OpsLogManager.initialize('10:00:00', '2026-01-01');
       const secondManager = OpsLogManager.initialize('14:00:00', '2026-06-15');
@@ -177,7 +178,7 @@ describe('OpsLogManager', () => {
     it('should emit OPS_LOG_ENTRY_ADDED event when logging', () => {
       OpsLogManager.initialize('14:30:45', '2026-01-01');
       const manager = OpsLogManager.getInstance();
-      const callback = jest.fn();
+      const callback = vi.fn();
 
       eventBus.on(Events.OPS_LOG_ENTRY_ADDED, callback);
       manager.log('Test entry', 'alert', 'Source');
@@ -257,7 +258,7 @@ describe('OpsLogManager', () => {
     it('should emit SIMULATED_TIME_TICK on second boundary crossing', () => {
       OpsLogManager.initialize('12:00:00', '2026-01-01');
       const manager = OpsLogManager.getInstance();
-      const callback = jest.fn();
+      const callback = vi.fn();
 
       eventBus.on(Events.SIMULATED_TIME_TICK, callback);
       callback.mockClear(); // Clear initial emit from constructor
@@ -276,7 +277,7 @@ describe('OpsLogManager', () => {
     it('should not emit SIMULATED_TIME_TICK within same second', () => {
       OpsLogManager.initialize('12:00:00', '2026-01-01');
       const manager = OpsLogManager.getInstance();
-      const callback = jest.fn();
+      const callback = vi.fn();
 
       eventBus.on(Events.SIMULATED_TIME_TICK, callback);
       callback.mockClear(); // Clear initial emit
@@ -289,7 +290,7 @@ describe('OpsLogManager', () => {
     });
 
     it('should emit initial time tick on initialization', () => {
-      const callback = jest.fn();
+      const callback = vi.fn();
       eventBus.on(Events.SIMULATED_TIME_TICK, callback);
 
       OpsLogManager.initialize('14:30:45', '2026-03-15');
@@ -373,7 +374,7 @@ describe('OpsLogManager', () => {
     it('should emit time tick after restore', () => {
       OpsLogManager.initialize('12:00:00', '2026-01-01');
       const manager = OpsLogManager.getInstance();
-      const callback = jest.fn();
+      const callback = vi.fn();
 
       eventBus.on(Events.SIMULATED_TIME_TICK, callback);
       callback.mockClear();
@@ -450,7 +451,7 @@ describe('OpsLogManager', () => {
     it('should handle multiple rapid updates correctly', () => {
       OpsLogManager.initialize('12:00:00', '2026-01-01');
       const manager = OpsLogManager.getInstance();
-      const callback = jest.fn();
+      const callback = vi.fn();
 
       eventBus.on(Events.SIMULATED_TIME_TICK, callback);
       callback.mockClear();

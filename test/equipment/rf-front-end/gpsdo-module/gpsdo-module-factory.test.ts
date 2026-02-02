@@ -1,15 +1,16 @@
-import { EventBus } from '../../../../src/events/event-bus';
-import { Events } from '../../../../src/events/events';
-import { RFFrontEndCore } from '../../../../src/equipment/rf-front-end/rf-front-end-core';
-import { createGPSDO, GPSDOModuleUIType } from '../../../../src/equipment/rf-front-end/gpsdo-module/gpsdo-module-factory';
+import { vi } from 'vitest';
 import { GPSDOModuleCore } from '../../../../src/equipment/rf-front-end/gpsdo-module/gpsdo-module-core';
+import { createGPSDO, GPSDOModuleUIType } from '../../../../src/equipment/rf-front-end/gpsdo-module/gpsdo-module-factory';
 import { GPSDOModuleUIStandard } from '../../../../src/equipment/rf-front-end/gpsdo-module/gpsdo-module-ui-standard';
 import { defaultGpsdoState, GPSDOState } from '../../../../src/equipment/rf-front-end/gpsdo-module/gpsdo-state';
+import { RFFrontEndCore } from '../../../../src/equipment/rf-front-end/rf-front-end-core';
+import { EventBus } from '../../../../src/events/event-bus';
+import { Events } from '../../../../src/events/events';
 
 // Mock SimulationManager
-jest.mock('../../../../src/simulation/simulation-manager', () => ({
+vi.mock('../../../../src/simulation/simulation-manager', () => ({
   SimulationManager: {
-    getInstance: jest.fn(() => ({
+    getInstance: vi.fn(() => ({
       isDeveloperMode: false,
     })),
   },
@@ -18,7 +19,7 @@ jest.mock('../../../../src/simulation/simulation-manager', () => ({
 // Mock HTMLMediaElement.prototype.play for jsdom compatibility
 Object.defineProperty(HTMLMediaElement.prototype, 'play', {
   configurable: true,
-  value: jest.fn().mockResolvedValue(undefined),
+  value: vi.fn().mockResolvedValue(undefined),
 });
 
 // Mock RFFrontEndCore
@@ -39,7 +40,7 @@ describe('createGPSDO factory', () => {
   let mockRfFrontEnd: RFFrontEndCore;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     document.body.innerHTML = '<div id="test-root"></div>';
 

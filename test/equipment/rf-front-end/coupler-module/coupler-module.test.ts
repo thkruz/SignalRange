@@ -1,7 +1,8 @@
+import { vi } from 'vitest';
 import { CouplerModule, CouplerState } from '../../../../src/equipment/rf-front-end/coupler-module/coupler-module';
 import { TapPoint } from '../../../../src/equipment/rf-front-end/coupler-module/tap-points';
-import { createRFFrontEnd } from '../../../../src/equipment/rf-front-end/rf-front-end-factory';
 import { RFFrontEndCore } from '../../../../src/equipment/rf-front-end/rf-front-end-core';
+import { createRFFrontEnd } from '../../../../src/equipment/rf-front-end/rf-front-end-factory';
 import { EventBus } from '../../../../src/events/event-bus';
 import { Events } from '../../../../src/events/events';
 
@@ -20,7 +21,7 @@ describe('CouplerModule', () => {
 
   afterEach(() => {
     document.body.innerHTML = '';
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('getDefaultState', () => {
@@ -321,7 +322,7 @@ describe('CouplerModule', () => {
     });
 
     it('should add change listener for tap point A select', () => {
-      const callback = jest.fn();
+      const callback = vi.fn();
       couplerModule.addEventListeners(callback);
 
       const selectA = document.querySelector('.input-coupler-tap-a') as HTMLSelectElement;
@@ -336,7 +337,7 @@ describe('CouplerModule', () => {
     });
 
     it('should add change listener for tap point B select', () => {
-      const callback = jest.fn();
+      const callback = vi.fn();
       couplerModule.addEventListeners(callback);
 
       const selectB = document.querySelector('.input-coupler-tap-b') as HTMLSelectElement;
@@ -352,7 +353,7 @@ describe('CouplerModule', () => {
 
     it('should throw when coupler module is not in DOM', () => {
       document.body.innerHTML = '';
-      const callback = jest.fn();
+      const callback = vi.fn();
 
       // qs() throws when element not found
       expect(() => {

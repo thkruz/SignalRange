@@ -1,11 +1,12 @@
+import { vi } from 'vitest';
 import { AGCModuleCore, AGCState } from '../../../../src/equipment/rf-front-end/agc-module/agc-module-core';
 import { AGCModuleUIHeadless } from '../../../../src/equipment/rf-front-end/agc-module/agc-module-ui-headless';
-import { createRFFrontEnd } from '../../../../src/equipment/rf-front-end/rf-front-end-factory';
 import { RFFrontEndCore } from '../../../../src/equipment/rf-front-end/rf-front-end-core';
+import { createRFFrontEnd } from '../../../../src/equipment/rf-front-end/rf-front-end-factory';
 import { EventBus } from '../../../../src/events/event-bus';
 import { Events } from '../../../../src/events/events';
-import { dB, dBm, IfSignal } from '../../../../src/types';
 import { SignalOrigin } from '../../../../src/signal-origin';
+import { dB, dBm, IfSignal } from '../../../../src/types';
 
 describe('AGCModuleCore', () => {
   let rfFrontEnd: RFFrontEndCore;
@@ -22,7 +23,7 @@ describe('AGCModuleCore', () => {
 
   afterEach(() => {
     document.body.innerHTML = '';
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('getDefaultState', () => {
@@ -65,7 +66,7 @@ describe('AGCModuleCore', () => {
         gainInPath: 0,
       };
 
-      jest.spyOn(agcModule, 'inputSignals', 'get').mockReturnValue([mockSignal]);
+      vi.spyOn(agcModule, 'inputSignals', 'get').mockReturnValue([mockSignal]);
 
       agcModule.state.isBypassed = true;
       agcModule.update();
@@ -86,7 +87,7 @@ describe('AGCModuleCore', () => {
         gainInPath: 0,
       };
 
-      jest.spyOn(agcModule, 'inputSignals', 'get').mockReturnValue([mockSignal]);
+      vi.spyOn(agcModule, 'inputSignals', 'get').mockReturnValue([mockSignal]);
 
       agcModule.state.isBypassed = true;
       agcModule.update();
@@ -117,7 +118,7 @@ describe('AGCModuleCore', () => {
         }
       ];
 
-      jest.spyOn(agcModule, 'inputSignals', 'get').mockReturnValue(mockSignals);
+      vi.spyOn(agcModule, 'inputSignals', 'get').mockReturnValue(mockSignals);
 
       agcModule.state.isBypassed = false;
       agcModule.update();
@@ -127,7 +128,7 @@ describe('AGCModuleCore', () => {
     });
 
     it('should set input power to -120 when no signals', () => {
-      jest.spyOn(agcModule, 'inputSignals', 'get').mockReturnValue([]);
+      vi.spyOn(agcModule, 'inputSignals', 'get').mockReturnValue([]);
 
       agcModule.update();
 
@@ -144,7 +145,7 @@ describe('AGCModuleCore', () => {
         gainInPath: 0,
       };
 
-      jest.spyOn(agcModule, 'inputSignals', 'get').mockReturnValue([mockSignal]);
+      vi.spyOn(agcModule, 'inputSignals', 'get').mockReturnValue([mockSignal]);
 
       agcModule.state.isBypassed = false;
       agcModule.state.currentGain = 10 as dB;
@@ -165,7 +166,7 @@ describe('AGCModuleCore', () => {
         gainInPath: 0,
       };
 
-      jest.spyOn(agcModule, 'inputSignals', 'get').mockReturnValue([mockSignal]);
+      vi.spyOn(agcModule, 'inputSignals', 'get').mockReturnValue([mockSignal]);
 
       agcModule.state.isBypassed = false;
       agcModule.state.targetLevel = -30 as dBm;
@@ -190,7 +191,7 @@ describe('AGCModuleCore', () => {
         gainInPath: 0,
       };
 
-      jest.spyOn(agcModule, 'inputSignals', 'get').mockReturnValue([mockSignal]);
+      vi.spyOn(agcModule, 'inputSignals', 'get').mockReturnValue([mockSignal]);
 
       agcModule.state.isBypassed = false;
       agcModule.state.targetLevel = -30 as dBm;
@@ -215,7 +216,7 @@ describe('AGCModuleCore', () => {
         gainInPath: 0,
       };
 
-      jest.spyOn(agcModule, 'inputSignals', 'get').mockReturnValue([mockSignal]);
+      vi.spyOn(agcModule, 'inputSignals', 'get').mockReturnValue([mockSignal]);
 
       agcModule.state.isBypassed = false;
       agcModule.state.currentGain = 0 as dB;
@@ -237,7 +238,7 @@ describe('AGCModuleCore', () => {
         gainInPath: 0,
       };
 
-      jest.spyOn(agcModule, 'inputSignals', 'get').mockReturnValue([mockSignal]);
+      vi.spyOn(agcModule, 'inputSignals', 'get').mockReturnValue([mockSignal]);
 
       agcModule.state.isBypassed = false;
       agcModule.state.currentGain = 0 as dB;

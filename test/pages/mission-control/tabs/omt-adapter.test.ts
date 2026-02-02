@@ -1,16 +1,17 @@
-import { OMTAdapter } from '../../../../src/pages/mission-control/tabs/omt-adapter';
+import { Mock, Mocked, vi } from 'vitest';
 import { OMTModule, OMTState } from '../../../../src/equipment/rf-front-end/omt-module/omt-module';
 import { EventBus } from '../../../../src/events/event-bus';
 import { Events } from '../../../../src/events/events';
+import { OMTAdapter } from '../../../../src/pages/mission-control/tabs/omt-adapter';
 
 // Mock dependencies
-jest.mock('../../../../src/events/event-bus');
+vi.mock('../../../../src/events/event-bus');
 
 describe('OMTAdapter', () => {
-  let mockOmtModule: jest.Mocked<OMTModule>;
+  let mockOmtModule: Mocked<OMTModule>;
   let containerEl: HTMLElement;
   let adapter: OMTAdapter;
-  let mockEventBus: { on: jest.Mock; off: jest.Mock; emit: jest.Mock };
+  let mockEventBus: { on: Mock; off: Mock; emit: Mock };
 
   const mockState: OMTState = {
     effectiveTxPol: 'RHCP',
@@ -20,20 +21,20 @@ describe('OMTAdapter', () => {
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Setup mock EventBus
     mockEventBus = {
-      on: jest.fn(),
-      off: jest.fn(),
-      emit: jest.fn(),
+      on: vi.fn(),
+      off: vi.fn(),
+      emit: vi.fn(),
     };
-    (EventBus.getInstance as jest.Mock).mockReturnValue(mockEventBus);
+    (EventBus.getInstance as Mock).mockReturnValue(mockEventBus);
 
     // Setup mock OMTModule
     mockOmtModule = {
       state: { ...mockState },
-    } as unknown as jest.Mocked<OMTModule>;
+    } as unknown as Mocked<OMTModule>;
 
     // Setup container with required DOM elements
     containerEl = document.createElement('div');

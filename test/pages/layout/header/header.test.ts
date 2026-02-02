@@ -1,71 +1,71 @@
 // Mock query-selector
-jest.mock('../../../../src/engine/utils/query-selector', () => ({
-  qs: jest.fn(),
+vi.mock('../../../../src/engine/utils/query-selector', () => ({
+  qs: vi.fn(),
 }));
 
-jest.mock('../../../../src/router', () => ({
+vi.mock('../../../../src/router', () => ({
   Router: {
-    getInstance: jest.fn(() => ({
-      navigate: jest.fn(),
+    getInstance: vi.fn(() => ({
+      navigate: vi.fn(),
     })),
   },
 }));
 
-jest.mock('../../../../src/sound/sound-manager', () => {
+vi.mock('../../../../src/sound/sound-manager', () => {
   return {
     default: {
-      getInstance: jest.fn(() => ({
-        play: jest.fn(),
+      getInstance: vi.fn(() => ({
+        play: vi.fn(),
       })),
     },
     __esModule: true,
   };
 });
 
-jest.mock('../../../../src/sound/sfx-enum', () => ({
+vi.mock('../../../../src/sound/sfx-enum', () => ({
   Sfx: {
     TOGGLE_ON: 'toggle-on',
   },
 }));
 
-jest.mock('../../../../src/user-account/auth', () => ({
+vi.mock('../../../../src/user-account/auth', () => ({
   Auth: {
-    onAuthStateChange: jest.fn(),
-    getCurrentUser: jest.fn(() => Promise.resolve(null)),
-    isLoggedIn: jest.fn(() => Promise.resolve(false)),
+    onAuthStateChange: vi.fn(),
+    getCurrentUser: vi.fn(() => Promise.resolve(null)),
+    isLoggedIn: vi.fn(() => Promise.resolve(false)),
   },
 }));
 
-jest.mock('../../../../src/user-account/modal-login', () => ({
+vi.mock('../../../../src/user-account/modal-login', () => ({
   ModalLogin: {
-    getInstance: jest.fn(() => ({
-      open: jest.fn(),
+    getInstance: vi.fn(() => ({
+      open: vi.fn(),
     })),
   },
 }));
 
-jest.mock('../../../../src/user-account/modal-profile', () => ({
+vi.mock('../../../../src/user-account/modal-profile', () => ({
   ModalProfile: {
-    getInstance: jest.fn(() => ({
-      open: jest.fn(),
+    getInstance: vi.fn(() => ({
+      open: vi.fn(),
     })),
   },
 }));
 
-jest.mock('../../../../src/user-account/supabase-client', () => ({
+vi.mock('../../../../src/user-account/supabase-client', () => ({
   isSupabaseApprovedDomain: true,
 }));
 
+import { Mock, vi } from 'vitest';
+import { qs } from '../../../../src/engine/utils/query-selector';
 import { Header } from '../../../../src/pages/layout/header/header';
 import { Router } from '../../../../src/router';
-import SoundManager from '../../../../src/sound/sound-manager';
 import { Auth } from '../../../../src/user-account/auth';
 import { ModalLogin } from '../../../../src/user-account/modal-login';
 import { ModalProfile } from '../../../../src/user-account/modal-profile';
-import { qs } from '../../../../src/engine/utils/query-selector';
 
 // Setup qs mock to use actual DOM
-const mockQs = qs as jest.Mock;
+const mockQs = qs as Mock;
 mockQs.mockImplementation((selector: string, parent?: Element) => {
   const root = parent || global.document;
   return root.querySelector(selector);
@@ -75,7 +75,7 @@ describe('Header', () => {
   let rootElement: HTMLElement;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Reset singleton
     (Header as any).instance_ = undefined;
@@ -190,8 +190,8 @@ describe('Header', () => {
     it('should navigate to home when logo is clicked', () => {
       Header.create('app-root');
       const logo = document.querySelector('.header-logo-section img') as HTMLElement;
-      const mockNavigate = jest.fn();
-      (Router.getInstance as jest.Mock).mockReturnValue({ navigate: mockNavigate });
+      const mockNavigate = vi.fn();
+      (Router.getInstance as Mock).mockReturnValue({ navigate: mockNavigate });
 
       logo?.click();
 
@@ -201,8 +201,8 @@ describe('Header', () => {
 
   describe('login button click', () => {
     it('should open login modal when clicked', () => {
-      const mockOpen = jest.fn();
-      (ModalLogin.getInstance as jest.Mock).mockReturnValue({ open: mockOpen });
+      const mockOpen = vi.fn();
+      (ModalLogin.getInstance as Mock).mockReturnValue({ open: mockOpen });
 
       Header.create('app-root');
       const loginBtn = document.querySelector('#user-account__login-btn') as HTMLElement;
@@ -215,8 +215,8 @@ describe('Header', () => {
 
   describe('profile button click', () => {
     it('should open profile modal when clicked', () => {
-      const mockOpen = jest.fn();
-      (ModalProfile.getInstance as jest.Mock).mockReturnValue({ open: mockOpen });
+      const mockOpen = vi.fn();
+      (ModalProfile.getInstance as Mock).mockReturnValue({ open: mockOpen });
 
       Header.create('app-root');
       const profileBtn = document.querySelector('#user-account__profile-btn') as HTMLElement;
@@ -242,7 +242,7 @@ describe('Header', () => {
       Header.create('app-root');
 
       // Get the callback passed to onAuthStateChange
-      const authCallback = (Auth.onAuthStateChange as jest.Mock).mock.calls[0][0];
+      const authCallback = (Auth.onAuthStateChange as Mock).mock.calls[0][0];
 
       // Simulate login
       const mockUser = {
@@ -261,7 +261,7 @@ describe('Header', () => {
     it('should show login button when user logs out', async () => {
       Header.create('app-root');
 
-      const authCallback = (Auth.onAuthStateChange as jest.Mock).mock.calls[0][0];
+      const authCallback = (Auth.onAuthStateChange as Mock).mock.calls[0][0];
 
       // Simulate logout
       await authCallback('SIGNED_OUT', null);
@@ -277,7 +277,7 @@ describe('Header', () => {
   describe('profile button content', () => {
     it('should display user initials when no profile image', async () => {
       Header.create('app-root');
-      const authCallback = (Auth.onAuthStateChange as jest.Mock).mock.calls[0][0];
+      const authCallback = (Auth.onAuthStateChange as Mock).mock.calls[0][0];
 
       const mockUser = {
         user_metadata: { full_name: 'John Doe' },
@@ -291,7 +291,7 @@ describe('Header', () => {
 
     it('should display profile image when available', async () => {
       Header.create('app-root');
-      const authCallback = (Auth.onAuthStateChange as jest.Mock).mock.calls[0][0];
+      const authCallback = (Auth.onAuthStateChange as Mock).mock.calls[0][0];
 
       const mockUser = {
         user_metadata: { picture: 'https://example.com/avatar.jpg' },
@@ -306,7 +306,7 @@ describe('Header', () => {
 
     it('should use avatar_url for GitHub OAuth', async () => {
       Header.create('app-root');
-      const authCallback = (Auth.onAuthStateChange as jest.Mock).mock.calls[0][0];
+      const authCallback = (Auth.onAuthStateChange as Mock).mock.calls[0][0];
 
       const mockUser = {
         user_metadata: { avatar_url: 'https://github.com/avatar.jpg' },
@@ -320,7 +320,7 @@ describe('Header', () => {
 
     it('should fallback to default initials when no name or email', async () => {
       Header.create('app-root');
-      const authCallback = (Auth.onAuthStateChange as jest.Mock).mock.calls[0][0];
+      const authCallback = (Auth.onAuthStateChange as Mock).mock.calls[0][0];
 
       const mockUser = {
         user_metadata: {},

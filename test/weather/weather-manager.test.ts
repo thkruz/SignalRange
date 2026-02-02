@@ -1,16 +1,17 @@
-import { WeatherManager, IceAccumulationConfig, WeatherEventRuntime } from '../../src/weather/weather-manager';
-import { WeatherEventData, Events } from '../../src/events/events';
+import { vi } from 'vitest';
+import { Events, WeatherEventData } from '../../src/events/events';
+import { IceAccumulationConfig, WeatherEventRuntime, WeatherManager } from '../../src/weather/weather-manager';
 
 // Mock EventBus
 const mockEventBusInstance = {
-  on: jest.fn(),
-  off: jest.fn(),
-  emit: jest.fn(),
+  on: vi.fn(),
+  off: vi.fn(),
+  emit: vi.fn(),
 };
 
-jest.mock('../../src/events/event-bus', () => ({
+vi.mock('../../src/events/event-bus', () => ({
   EventBus: {
-    getInstance: jest.fn(() => mockEventBusInstance),
+    getInstance: vi.fn(() => mockEventBusInstance),
   },
 }));
 
@@ -19,9 +20,9 @@ const mockScenarioSettings = {
   weatherEvents: [] as WeatherEventData[],
 };
 
-jest.mock('../../src/scenario-manager', () => ({
+vi.mock('../../src/scenario-manager', () => ({
   ScenarioManager: {
-    getInstance: jest.fn(() => ({
+    getInstance: vi.fn(() => ({
       settings: mockScenarioSettings,
     })),
   },
@@ -34,7 +35,7 @@ const createMockAntenna = (uuid: string, isHeaterEnabled = false, iceAccumulatio
     isHeaterEnabled,
     iceAccumulation_dB,
   },
-  updateIceAccumulation: jest.fn((value: number) => {
+  updateIceAccumulation: vi.fn((value: number) => {
     // Update the mock state when called
     mockAntennas.find(a => a.state.uuid === uuid)!.state.iceAccumulation_dB = value;
   }),
@@ -43,9 +44,9 @@ const createMockAntenna = (uuid: string, isHeaterEnabled = false, iceAccumulatio
 let mockAntennas: ReturnType<typeof createMockAntenna>[] = [];
 const mockGroundStations: { state: { id: string }; antennas: typeof mockAntennas }[] = [];
 
-jest.mock('../../src/simulation/simulation-manager', () => ({
+vi.mock('../../src/simulation/simulation-manager', () => ({
   SimulationManager: {
-    getInstance: jest.fn(() => ({
+    getInstance: vi.fn(() => ({
       groundStations: mockGroundStations,
     })),
   },
@@ -57,18 +58,18 @@ describe('WeatherManager', () => {
     WeatherManager.destroy();
 
     // Reset mocks
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockScenarioSettings.weatherEvents = [];
     mockAntennas = [];
     mockGroundStations.length = 0;
 
     // Reset Date.now mock if any
-    jest.useRealTimers();
+    vi.useRealTimers();
   });
 
   afterEach(() => {
     WeatherManager.destroy();
-    jest.useRealTimers();
+    vi.useRealTimers();
   });
 
   describe('Singleton Pattern', () => {
@@ -177,14 +178,14 @@ describe('WeatherManager', () => {
 
   describe('Elapsed Mission Time', () => {
     it('should return elapsed time in seconds', () => {
-      jest.useFakeTimers();
+      vi.useFakeTimers();
       const startTime = Date.now();
-      jest.setSystemTime(startTime);
+      vi.setSystemTime(startTime);
 
       const manager = WeatherManager.getInstance();
 
       // Advance time by 5 seconds
-      jest.setSystemTime(startTime + 5000);
+      vi.setSystemTime(startTime + 5000);
 
       expect(manager.getElapsedMissionTime()).toBeCloseTo(5, 1);
     });
@@ -203,9 +204,9 @@ describe('WeatherManager', () => {
     });
 
     it('should activate event when elapsed time reaches start time', () => {
-      jest.useFakeTimers();
+      vi.useFakeTimers();
       const startTime = Date.now();
-      jest.setSystemTime(startTime);
+      vi.setSystemTime(startTime);
 
       mockScenarioSettings.weatherEvents = [
         {
@@ -225,7 +226,7 @@ describe('WeatherManager', () => {
       const manager = WeatherManager.getInstance();
 
       // Advance time to 15 seconds (past start time)
-      jest.setSystemTime(startTime + 15000);
+      vi.setSystemTime(startTime + 15000);
       updateHandler(1000);
 
       expect(mockEventBusInstance.emit).toHaveBeenCalledWith(
@@ -235,9 +236,9 @@ describe('WeatherManager', () => {
     });
 
     it('should deactivate event when elapsed time exceeds start + duration', () => {
-      jest.useFakeTimers();
+      vi.useFakeTimers();
       const startTime = Date.now();
-      jest.setSystemTime(startTime);
+      vi.setSystemTime(startTime);
 
       mockScenarioSettings.weatherEvents = [
         {
@@ -256,7 +257,7 @@ describe('WeatherManager', () => {
       const manager = WeatherManager.getInstance();
 
       // Activate the event first
-      jest.setSystemTime(startTime + 8000);
+      vi.setSystemTime(startTime + 8000);
       updateHandler(1000);
 
       expect(mockEventBusInstance.emit).toHaveBeenCalledWith(
@@ -265,7 +266,7 @@ describe('WeatherManager', () => {
       );
 
       // Deactivate the event
-      jest.setSystemTime(startTime + 20000); // Past 5 + 10 = 15 seconds
+      vi.setSystemTime(startTime + 20000); // Past 5 + 10 = 15 seconds
       updateHandler(1000);
 
       expect(mockEventBusInstance.emit).toHaveBeenCalledWith(
@@ -275,9 +276,9 @@ describe('WeatherManager', () => {
     });
 
     it('should not emit events when state does not change', () => {
-      jest.useFakeTimers();
+      vi.useFakeTimers();
       const startTime = Date.now();
-      jest.setSystemTime(startTime);
+      vi.setSystemTime(startTime);
 
       mockScenarioSettings.weatherEvents = [
         {
@@ -296,23 +297,23 @@ describe('WeatherManager', () => {
       WeatherManager.getInstance();
 
       // Activate
-      jest.setSystemTime(startTime + 10000);
+      vi.setSystemTime(startTime + 10000);
       updateHandler(1000);
 
       // Clear emit mock
       mockEventBusInstance.emit.mockClear();
 
       // Call update again without state change
-      jest.setSystemTime(startTime + 11000);
+      vi.setSystemTime(startTime + 11000);
       updateHandler(1000);
 
       expect(mockEventBusInstance.emit).not.toHaveBeenCalled();
     });
 
     it('should handle multiple events with different timings', () => {
-      jest.useFakeTimers();
+      vi.useFakeTimers();
       const startTime = Date.now();
-      jest.setSystemTime(startTime);
+      vi.setSystemTime(startTime);
 
       mockScenarioSettings.weatherEvents = [
         {
@@ -340,7 +341,7 @@ describe('WeatherManager', () => {
       WeatherManager.getInstance();
 
       // Activate first event
-      jest.setSystemTime(startTime + 15000);
+      vi.setSystemTime(startTime + 15000);
       updateHandler(1000);
 
       expect(mockEventBusInstance.emit).toHaveBeenCalledWith(
@@ -349,7 +350,7 @@ describe('WeatherManager', () => {
       );
 
       // First event ends, second not started yet
-      jest.setSystemTime(startTime + 45000);
+      vi.setSystemTime(startTime + 45000);
       updateHandler(1000);
 
       expect(mockEventBusInstance.emit).toHaveBeenCalledWith(
@@ -358,7 +359,7 @@ describe('WeatherManager', () => {
       );
 
       // Activate second event
-      jest.setSystemTime(startTime + 55000);
+      vi.setSystemTime(startTime + 55000);
       updateHandler(1000);
 
       expect(mockEventBusInstance.emit).toHaveBeenCalledWith(
@@ -380,9 +381,9 @@ describe('WeatherManager', () => {
     });
 
     it('should accumulate ice exponentially when heater is OFF during ice-producing weather', () => {
-      jest.useFakeTimers();
+      vi.useFakeTimers();
       const startTime = Date.now();
-      jest.setSystemTime(startTime);
+      vi.setSystemTime(startTime);
 
       mockScenarioSettings.weatherEvents = [
         {
@@ -402,7 +403,7 @@ describe('WeatherManager', () => {
       WeatherManager.getInstance();
 
       // Simulate 60 seconds of ice accumulation
-      jest.setSystemTime(startTime + 5000);
+      vi.setSystemTime(startTime + 5000);
       updateHandler(5000); // 5 second dt
 
       // Check that updateIceAccumulation was called
@@ -420,9 +421,9 @@ describe('WeatherManager', () => {
     });
 
     it('should NOT accumulate ice when heater is ON', () => {
-      jest.useFakeTimers();
+      vi.useFakeTimers();
       const startTime = Date.now();
-      jest.setSystemTime(startTime);
+      vi.setSystemTime(startTime);
 
       mockScenarioSettings.weatherEvents = [
         {
@@ -442,7 +443,7 @@ describe('WeatherManager', () => {
 
       WeatherManager.getInstance();
 
-      jest.setSystemTime(startTime + 60000);
+      vi.setSystemTime(startTime + 60000);
       updateHandler(60000);
 
       // updateIceAccumulation should NOT be called when heater is ON and no existing ice
@@ -450,9 +451,9 @@ describe('WeatherManager', () => {
     });
 
     it('should NOT accumulate ice for non-ice-producing weather types', () => {
-      jest.useFakeTimers();
+      vi.useFakeTimers();
       const startTime = Date.now();
-      jest.setSystemTime(startTime);
+      vi.setSystemTime(startTime);
 
       mockScenarioSettings.weatherEvents = [
         {
@@ -471,7 +472,7 @@ describe('WeatherManager', () => {
 
       WeatherManager.getInstance();
 
-      jest.setSystemTime(startTime + 60000);
+      vi.setSystemTime(startTime + 60000);
       updateHandler(60000);
 
       // updateIceAccumulation should NOT be called for rain
@@ -479,9 +480,9 @@ describe('WeatherManager', () => {
     });
 
     it('should accumulate ice for hail weather', () => {
-      jest.useFakeTimers();
+      vi.useFakeTimers();
       const startTime = Date.now();
-      jest.setSystemTime(startTime);
+      vi.setSystemTime(startTime);
 
       mockScenarioSettings.weatherEvents = [
         {
@@ -500,16 +501,16 @@ describe('WeatherManager', () => {
 
       WeatherManager.getInstance();
 
-      jest.setSystemTime(startTime + 10000);
+      vi.setSystemTime(startTime + 10000);
       updateHandler(10000);
 
       expect(mockAntennas[0].updateIceAccumulation).toHaveBeenCalled();
     });
 
     it('should accumulate ice for ice weather', () => {
-      jest.useFakeTimers();
+      vi.useFakeTimers();
       const startTime = Date.now();
-      jest.setSystemTime(startTime);
+      vi.setSystemTime(startTime);
 
       mockScenarioSettings.weatherEvents = [
         {
@@ -528,7 +529,7 @@ describe('WeatherManager', () => {
 
       WeatherManager.getInstance();
 
-      jest.setSystemTime(startTime + 10000);
+      vi.setSystemTime(startTime + 10000);
       updateHandler(10000);
 
       expect(mockAntennas[0].updateIceAccumulation).toHaveBeenCalled();
@@ -544,9 +545,9 @@ describe('WeatherManager', () => {
     });
 
     it('should track ice accumulation time per antenna', () => {
-      jest.useFakeTimers();
+      vi.useFakeTimers();
       const startTime = Date.now();
-      jest.setSystemTime(startTime);
+      vi.setSystemTime(startTime);
 
       mockScenarioSettings.weatherEvents = [
         {
@@ -566,13 +567,13 @@ describe('WeatherManager', () => {
       const manager = WeatherManager.getInstance();
 
       // First update
-      jest.setSystemTime(startTime + 10000);
+      vi.setSystemTime(startTime + 10000);
       updateHandler(10000);
 
       expect(manager.getIceAccumulationTime('antenna-1')).toBe(10);
 
       // Second update
-      jest.setSystemTime(startTime + 25000);
+      vi.setSystemTime(startTime + 25000);
       updateHandler(15000);
 
       expect(manager.getIceAccumulationTime('antenna-1')).toBe(25);
@@ -591,9 +592,9 @@ describe('WeatherManager', () => {
     });
 
     it('should melt ice linearly when heater is ON', () => {
-      jest.useFakeTimers();
+      vi.useFakeTimers();
       const startTime = Date.now();
-      jest.setSystemTime(startTime);
+      vi.setSystemTime(startTime);
 
       mockScenarioSettings.weatherEvents = [];
 
@@ -604,7 +605,7 @@ describe('WeatherManager', () => {
       WeatherManager.getInstance();
 
       // Simulate 60 seconds (should melt 1 dB)
-      jest.setSystemTime(startTime + 60000);
+      vi.setSystemTime(startTime + 60000);
       updateHandler(60000);
 
       // Melt rate is 1 dB per minute
@@ -613,9 +614,9 @@ describe('WeatherManager', () => {
     });
 
     it('should not allow ice to go below 0', () => {
-      jest.useFakeTimers();
+      vi.useFakeTimers();
       const startTime = Date.now();
-      jest.setSystemTime(startTime);
+      vi.setSystemTime(startTime);
 
       mockScenarioSettings.weatherEvents = [];
 
@@ -626,16 +627,16 @@ describe('WeatherManager', () => {
       WeatherManager.getInstance();
 
       // Simulate 60 seconds (would melt 1 dB, but only 0.5 available)
-      jest.setSystemTime(startTime + 60000);
+      vi.setSystemTime(startTime + 60000);
       updateHandler(60000);
 
       expect(mockAntennas[0].updateIceAccumulation).toHaveBeenCalledWith(0);
     });
 
     it('should reset accumulation time to 0 when ice fully melts', () => {
-      jest.useFakeTimers();
+      vi.useFakeTimers();
       const startTime = Date.now();
-      jest.setSystemTime(startTime);
+      vi.setSystemTime(startTime);
 
       mockScenarioSettings.weatherEvents = [];
 
@@ -645,7 +646,7 @@ describe('WeatherManager', () => {
       const manager = WeatherManager.getInstance();
 
       // Melt all ice
-      jest.setSystemTime(startTime + 60000);
+      vi.setSystemTime(startTime + 60000);
       updateHandler(60000);
 
       expect(manager.getIceAccumulationTime('antenna-1')).toBe(0);
@@ -657,9 +658,9 @@ describe('WeatherManager', () => {
     });
 
     it('should handle melting when ice ratio is at or above max (ratio >= 1)', () => {
-      jest.useFakeTimers();
+      vi.useFakeTimers();
       const startTime = Date.now();
-      jest.setSystemTime(startTime);
+      vi.setSystemTime(startTime);
 
       // Use "minor" severity which has maxDegradation_dB of 2
       // But antenna has ice of 3 dB (more than minor's max) - could happen if
@@ -683,7 +684,7 @@ describe('WeatherManager', () => {
       const manager = WeatherManager.getInstance();
 
       // Simulate 30 seconds (should melt 0.5 dB, leaving 2.5 dB)
-      jest.setSystemTime(startTime + 30000);
+      vi.setSystemTime(startTime + 30000);
       updateHandler(30000);
 
       // Ice should be melted by 0.5 dB (30s * 1/60 dB/s)
@@ -709,9 +710,9 @@ describe('WeatherManager', () => {
 
     describe('getActiveWeatherEvents', () => {
       it('should return only active events for the specified ground station', () => {
-        jest.useFakeTimers();
+        vi.useFakeTimers();
         const startTime = Date.now();
-        jest.setSystemTime(startTime);
+        vi.setSystemTime(startTime);
 
         mockScenarioSettings.weatherEvents = [
           {
@@ -751,7 +752,7 @@ describe('WeatherManager', () => {
         const manager = WeatherManager.getInstance();
 
         // Activate events
-        jest.setSystemTime(startTime + 50000);
+        vi.setSystemTime(startTime + 50000);
         updateHandler(50000);
 
         const gs1Events = manager.getActiveWeatherEvents('gs-1');
@@ -779,9 +780,9 @@ describe('WeatherManager', () => {
 
     describe('isPrecipitationActive', () => {
       it('should return true for snow precipitation', () => {
-        jest.useFakeTimers();
+        vi.useFakeTimers();
         const startTime = Date.now();
-        jest.setSystemTime(startTime);
+        vi.setSystemTime(startTime);
 
         mockScenarioSettings.weatherEvents = [
           {
@@ -799,16 +800,16 @@ describe('WeatherManager', () => {
 
         const manager = WeatherManager.getInstance();
 
-        jest.setSystemTime(startTime + 10000);
+        vi.setSystemTime(startTime + 10000);
         updateHandler(10000);
 
         expect(manager.isPrecipitationActive('gs-1')).toBe(true);
       });
 
       it('should return true for rain precipitation', () => {
-        jest.useFakeTimers();
+        vi.useFakeTimers();
         const startTime = Date.now();
-        jest.setSystemTime(startTime);
+        vi.setSystemTime(startTime);
 
         mockScenarioSettings.weatherEvents = [
           {
@@ -826,16 +827,16 @@ describe('WeatherManager', () => {
 
         const manager = WeatherManager.getInstance();
 
-        jest.setSystemTime(startTime + 10000);
+        vi.setSystemTime(startTime + 10000);
         updateHandler(10000);
 
         expect(manager.isPrecipitationActive('gs-1')).toBe(true);
       });
 
       it('should return true for hail precipitation', () => {
-        jest.useFakeTimers();
+        vi.useFakeTimers();
         const startTime = Date.now();
-        jest.setSystemTime(startTime);
+        vi.setSystemTime(startTime);
 
         mockScenarioSettings.weatherEvents = [
           {
@@ -853,16 +854,16 @@ describe('WeatherManager', () => {
 
         const manager = WeatherManager.getInstance();
 
-        jest.setSystemTime(startTime + 10000);
+        vi.setSystemTime(startTime + 10000);
         updateHandler(10000);
 
         expect(manager.isPrecipitationActive('gs-1')).toBe(true);
       });
 
       it('should return true for ice precipitation', () => {
-        jest.useFakeTimers();
+        vi.useFakeTimers();
         const startTime = Date.now();
-        jest.setSystemTime(startTime);
+        vi.setSystemTime(startTime);
 
         mockScenarioSettings.weatherEvents = [
           {
@@ -880,16 +881,16 @@ describe('WeatherManager', () => {
 
         const manager = WeatherManager.getInstance();
 
-        jest.setSystemTime(startTime + 10000);
+        vi.setSystemTime(startTime + 10000);
         updateHandler(10000);
 
         expect(manager.isPrecipitationActive('gs-1')).toBe(true);
       });
 
       it('should return false for non-precipitation weather (fog)', () => {
-        jest.useFakeTimers();
+        vi.useFakeTimers();
         const startTime = Date.now();
-        jest.setSystemTime(startTime);
+        vi.setSystemTime(startTime);
 
         mockScenarioSettings.weatherEvents = [
           {
@@ -907,16 +908,16 @@ describe('WeatherManager', () => {
 
         const manager = WeatherManager.getInstance();
 
-        jest.setSystemTime(startTime + 10000);
+        vi.setSystemTime(startTime + 10000);
         updateHandler(10000);
 
         expect(manager.isPrecipitationActive('gs-1')).toBe(false);
       });
 
       it('should return false for non-precipitation weather (wind)', () => {
-        jest.useFakeTimers();
+        vi.useFakeTimers();
         const startTime = Date.now();
-        jest.setSystemTime(startTime);
+        vi.setSystemTime(startTime);
 
         mockScenarioSettings.weatherEvents = [
           {
@@ -934,7 +935,7 @@ describe('WeatherManager', () => {
 
         const manager = WeatherManager.getInstance();
 
-        jest.setSystemTime(startTime + 10000);
+        vi.setSystemTime(startTime + 10000);
         updateHandler(10000);
 
         expect(manager.isPrecipitationActive('gs-1')).toBe(false);
@@ -969,9 +970,9 @@ describe('WeatherManager', () => {
     });
 
     it('should handle multiple antennas with different heater states', () => {
-      jest.useFakeTimers();
+      vi.useFakeTimers();
       const startTime = Date.now();
-      jest.setSystemTime(startTime);
+      vi.setSystemTime(startTime);
 
       mockScenarioSettings.weatherEvents = [
         {
@@ -993,7 +994,7 @@ describe('WeatherManager', () => {
 
       WeatherManager.getInstance();
 
-      jest.setSystemTime(startTime + 60000);
+      vi.setSystemTime(startTime + 60000);
       updateHandler(60000);
 
       // Antenna 1: Should accumulate ice
@@ -1006,9 +1007,9 @@ describe('WeatherManager', () => {
     });
 
     it('should handle multiple ground stations independently', () => {
-      jest.useFakeTimers();
+      vi.useFakeTimers();
       const startTime = Date.now();
-      jest.setSystemTime(startTime);
+      vi.setSystemTime(startTime);
 
       mockScenarioSettings.weatherEvents = [
         {
@@ -1036,7 +1037,7 @@ describe('WeatherManager', () => {
 
       WeatherManager.getInstance();
 
-      jest.setSystemTime(startTime + 60000);
+      vi.setSystemTime(startTime + 60000);
       updateHandler(60000);
 
       // gs-1 antenna should accumulate ice
@@ -1059,9 +1060,9 @@ describe('WeatherManager', () => {
     });
 
     it('should reset accumulation time when no weather and no ice', () => {
-      jest.useFakeTimers();
+      vi.useFakeTimers();
       const startTime = Date.now();
-      jest.setSystemTime(startTime);
+      vi.setSystemTime(startTime);
 
       mockScenarioSettings.weatherEvents = [];
 
@@ -1071,16 +1072,16 @@ describe('WeatherManager', () => {
 
       const manager = WeatherManager.getInstance();
 
-      jest.setSystemTime(startTime + 60000);
+      vi.setSystemTime(startTime + 60000);
       updateHandler(60000);
 
       expect(manager.getIceAccumulationTime('antenna-1')).toBe(0);
     });
 
     it('should handle event at exactly start time boundary', () => {
-      jest.useFakeTimers();
+      vi.useFakeTimers();
       const startTime = Date.now();
-      jest.setSystemTime(startTime);
+      vi.setSystemTime(startTime);
 
       mockScenarioSettings.weatherEvents = [
         {
@@ -1099,7 +1100,7 @@ describe('WeatherManager', () => {
       WeatherManager.getInstance();
 
       // Exactly at start time
-      jest.setSystemTime(startTime + 10000);
+      vi.setSystemTime(startTime + 10000);
       updateHandler(1000);
 
       expect(mockEventBusInstance.emit).toHaveBeenCalledWith(
@@ -1109,9 +1110,9 @@ describe('WeatherManager', () => {
     });
 
     it('should handle event at exactly end time boundary', () => {
-      jest.useFakeTimers();
+      vi.useFakeTimers();
       const startTime = Date.now();
-      jest.setSystemTime(startTime);
+      vi.setSystemTime(startTime);
 
       mockScenarioSettings.weatherEvents = [
         {
@@ -1130,11 +1131,11 @@ describe('WeatherManager', () => {
       WeatherManager.getInstance();
 
       // Activate
-      jest.setSystemTime(startTime + 5000);
+      vi.setSystemTime(startTime + 5000);
       updateHandler(5000);
 
       // Exactly at end time (startTime + duration = 10)
-      jest.setSystemTime(startTime + 10000);
+      vi.setSystemTime(startTime + 10000);
       updateHandler(5000);
 
       expect(mockEventBusInstance.emit).toHaveBeenCalledWith(
@@ -1144,9 +1145,9 @@ describe('WeatherManager', () => {
     });
 
     it('should handle zero duration event', () => {
-      jest.useFakeTimers();
+      vi.useFakeTimers();
       const startTime = Date.now();
-      jest.setSystemTime(startTime);
+      vi.setSystemTime(startTime);
 
       mockScenarioSettings.weatherEvents = [
         {
@@ -1165,7 +1166,7 @@ describe('WeatherManager', () => {
       const manager = WeatherManager.getInstance();
 
       // Event should never be active due to zero duration
-      jest.setSystemTime(startTime + 5000);
+      vi.setSystemTime(startTime + 5000);
       updateHandler(5000);
 
       // Should not emit started event

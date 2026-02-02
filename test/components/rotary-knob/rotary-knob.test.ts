@@ -1,24 +1,25 @@
+import { Mock, Mocked, vi } from 'vitest';
 import { RotaryKnob } from '../../../src/components/rotary-knob/rotary-knob';
 import { EventBus } from '../../../src/events/event-bus';
 import { Events } from '../../../src/events/events';
-import SoundManager from '../../../src/sound/sound-manager';
 import { Sfx } from '../../../src/sound/sfx-enum';
+import SoundManager from '../../../src/sound/sound-manager';
 
-jest.mock('../../../src/sound/sound-manager');
+vi.mock('../../../src/sound/sound-manager');
 
 describe('RotaryKnob', () => {
-  let mockSoundManager: jest.Mocked<SoundManager>;
+  let mockSoundManager: Mocked<SoundManager>;
   let container: HTMLElement;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     EventBus.destroy();
 
     mockSoundManager = {
-      play: jest.fn(),
-      stop: jest.fn(),
-    } as unknown as jest.Mocked<SoundManager>;
-    (SoundManager.getInstance as jest.Mock).mockReturnValue(mockSoundManager);
+      play: vi.fn(),
+      stop: vi.fn(),
+    } as unknown as Mocked<SoundManager>;
+    (SoundManager.getInstance as Mock).mockReturnValue(mockSoundManager);
 
     container = document.createElement('div');
     container.id = 'test-container';
@@ -46,7 +47,7 @@ describe('RotaryKnob', () => {
 
   describe('constructor', () => {
     it('should create instance with provided parameters', () => {
-      const callback = jest.fn();
+      const callback = vi.fn();
       const knob = createKnobInDom('test-knob', 25, 0, 50, 5, callback);
 
       expect(knob.html).toContain('id="test-knob"');
@@ -75,7 +76,7 @@ describe('RotaryKnob', () => {
 
     it('should register DOM_READY event listener', () => {
       const eventBus = EventBus.getInstance();
-      const onSpy = jest.spyOn(eventBus, 'on');
+      const onSpy = vi.spyOn(eventBus, 'on');
 
       new RotaryKnob('event-knob');
 
@@ -87,7 +88,7 @@ describe('RotaryKnob', () => {
     it('should attach mousedown listener to knob body', () => {
       const knob = createKnobInDom('ready-knob');
       const knobBody = knob.dom.querySelector('.knob-body') as HTMLElement;
-      const addEventListenerSpy = jest.spyOn(knobBody, 'addEventListener');
+      const addEventListenerSpy = vi.spyOn(knobBody, 'addEventListener');
 
       EventBus.getInstance().emit(Events.DOM_READY);
 
@@ -96,7 +97,7 @@ describe('RotaryKnob', () => {
 
     it('should attach mousemove listener to document', () => {
       const knob = createKnobInDom('mousemove-knob');
-      const addEventListenerSpy = jest.spyOn(document, 'addEventListener');
+      const addEventListenerSpy = vi.spyOn(document, 'addEventListener');
 
       EventBus.getInstance().emit(Events.DOM_READY);
 
@@ -105,7 +106,7 @@ describe('RotaryKnob', () => {
 
     it('should attach mouseup listener to document', () => {
       const knob = createKnobInDom('mouseup-knob');
-      const addEventListenerSpy = jest.spyOn(document, 'addEventListener');
+      const addEventListenerSpy = vi.spyOn(document, 'addEventListener');
 
       EventBus.getInstance().emit(Events.DOM_READY);
 
@@ -115,7 +116,7 @@ describe('RotaryKnob', () => {
     it('should attach wheel listener to knob body', () => {
       const knob = createKnobInDom('wheel-knob');
       const knobBody = knob.dom.querySelector('.knob-body') as HTMLElement;
-      const addEventListenerSpy = jest.spyOn(knobBody, 'addEventListener');
+      const addEventListenerSpy = vi.spyOn(knobBody, 'addEventListener');
 
       EventBus.getInstance().emit(Events.DOM_READY);
 
@@ -213,7 +214,7 @@ describe('RotaryKnob', () => {
       const knobBody = knob.dom.querySelector('.knob-body') as HTMLElement;
 
       // Mock getBoundingClientRect
-      jest.spyOn(knob.dom, 'getBoundingClientRect').mockReturnValue({
+      vi.spyOn(knob.dom, 'getBoundingClientRect').mockReturnValue({
         left: 0,
         top: 0,
         width: 50,
@@ -252,7 +253,7 @@ describe('RotaryKnob', () => {
 
       const knobBody = knob.dom.querySelector('.knob-body') as HTMLElement;
 
-      jest.spyOn(knob.dom, 'getBoundingClientRect').mockReturnValue({
+      vi.spyOn(knob.dom, 'getBoundingClientRect').mockReturnValue({
         left: 0,
         top: 0,
         width: 50,
@@ -332,7 +333,7 @@ describe('RotaryKnob', () => {
         bubbles: true,
         cancelable: true,
       });
-      const preventDefaultSpy = jest.spyOn(wheelEvent, 'preventDefault');
+      const preventDefaultSpy = vi.spyOn(wheelEvent, 'preventDefault');
 
       knobBody.dispatchEvent(wheelEvent);
 
@@ -429,7 +430,7 @@ describe('RotaryKnob', () => {
     });
 
     it('should call callback when value changes', () => {
-      const callback = jest.fn();
+      const callback = vi.fn();
       const knob = createKnobInDom('callback-knob', 50, 0, 100, 1, callback);
       EventBus.getInstance().emit(Events.DOM_READY);
 
@@ -446,7 +447,7 @@ describe('RotaryKnob', () => {
     });
 
     it('should not call callback when value does not change', () => {
-      const callback = jest.fn();
+      const callback = vi.fn();
       const knob = createKnobInDom('no-callback-knob', 100, 0, 100, 1, callback); // At max
       EventBus.getInstance().emit(Events.DOM_READY);
 
@@ -502,7 +503,7 @@ describe('RotaryKnob', () => {
 
   describe('sync', () => {
     it('should update value without triggering callback', () => {
-      const callback = jest.fn();
+      const callback = vi.fn();
       const knob = createKnobInDom('sync-knob', 50, 0, 100, 1, callback);
       EventBus.getInstance().emit(Events.DOM_READY);
 
@@ -591,7 +592,7 @@ describe('RotaryKnob', () => {
     });
 
     it('should create with callback', () => {
-      const callback = jest.fn();
+      const callback = vi.fn();
       const knob = RotaryKnob.create('static-callback-knob', 25, 0, 50, 5, callback);
       container.innerHTML = knob.html;
 

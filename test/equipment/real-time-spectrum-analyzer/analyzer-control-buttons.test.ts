@@ -1,21 +1,22 @@
+import { Mocked, vi } from 'vitest';
+import { AnalyzerControl } from '../../../src/equipment/real-time-spectrum-analyzer/analyzer-control';
 import { ACFreqBtn } from '../../../src/equipment/real-time-spectrum-analyzer/analyzer-control/ac-freq-btn/ac-freq-btn';
 import { ACSpanBtn } from '../../../src/equipment/real-time-spectrum-analyzer/analyzer-control/ac-span-btn/ac-span-btn';
 import { ACTraceBtn, TraceMode } from '../../../src/equipment/real-time-spectrum-analyzer/analyzer-control/ac-trace-btn/ac-trace-btn';
-import { AnalyzerControl } from '../../../src/equipment/real-time-spectrum-analyzer/analyzer-control';
 import { RealTimeSpectrumAnalyzer, RealTimeSpectrumAnalyzerState } from '../../../src/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer';
-import { Hertz } from '../../../src/types';
 import { EventBus } from '../../../src/events/event-bus';
 import { Events } from '../../../src/events/events';
+import { Hertz } from '../../../src/types';
 
 // Mock HTMLMediaElement.prototype.play for jsdom compatibility
 Object.defineProperty(HTMLMediaElement.prototype, 'play', {
   configurable: true,
-  value: jest.fn().mockResolvedValue(undefined),
+  value: vi.fn().mockResolvedValue(undefined),
 });
 
 describe('Analyzer Control Buttons', () => {
-  let mockAnalyzerControl: jest.Mocked<Partial<AnalyzerControl>>;
-  let mockSpecA: jest.Mocked<Partial<RealTimeSpectrumAnalyzer>>;
+  let mockAnalyzerControl: Mocked<Partial<AnalyzerControl>>;
+  let mockSpecA: Mocked<Partial<RealTimeSpectrumAnalyzer>>;
   let mockState: RealTimeSpectrumAnalyzerState;
 
   // Create mock DOM cache
@@ -78,23 +79,23 @@ describe('Analyzer Control Buttons', () => {
     // Create mock spectrum analyzer
     mockSpecA = {
       state: mockState,
-      syncDomWithState: jest.fn(),
-      freqAutoTune: jest.fn(),
-      resetMaxHoldData: jest.fn(),
-      resetMinHoldData: jest.fn(),
+      syncDomWithState: vi.fn(),
+      freqAutoTune: vi.fn(),
+      resetMaxHoldData: vi.fn(),
+      resetMinHoldData: vi.fn(),
     };
 
     // Create mock analyzer control
     mockAnalyzerControl = {
       specA: mockSpecA as any,
       domCache: createMockDomCache(),
-      updateSubMenu: jest.fn(),
+      updateSubMenu: vi.fn(),
     };
   });
 
   afterEach(() => {
     document.body.innerHTML = '';
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('ACFreqBtn', () => {
@@ -147,7 +148,7 @@ describe('Analyzer Control Buttons', () => {
       });
 
       it('should reject frequency out of range', () => {
-        jest.spyOn(window, 'alert').mockImplementation(() => { });
+        vi.spyOn(window, 'alert').mockImplementation(() => { });
 
         freqBtn.click();
         mockAnalyzerControl.domCache!['label-select-button-1'].click();
@@ -462,7 +463,7 @@ describe('Analyzer Control Buttons', () => {
       });
 
       it('should reject invalid trace selection via enter', () => {
-        jest.spyOn(window, 'alert').mockImplementation(() => { });
+        vi.spyOn(window, 'alert').mockImplementation(() => { });
 
         traceBtn.click();
         mockAnalyzerControl.domCache!['label-select-button-1'].click();
@@ -498,7 +499,7 @@ describe('Analyzer Control Buttons', () => {
       });
 
       it('should reject trace selection out of bounds via tick', () => {
-        jest.spyOn(window, 'alert').mockImplementation(() => { });
+        vi.spyOn(window, 'alert').mockImplementation(() => { });
         mockState.selectedTrace = 3;
 
         traceBtn.click();

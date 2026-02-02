@@ -1,17 +1,18 @@
-import { ScenarioDialogManager } from '../../src/scenarios/scenario-dialog-manager';
+import { Mock, Mocked, vi } from 'vitest';
 import { EventBus } from '../../src/events/event-bus';
 import { Events, ObjectiveCompletedData } from '../../src/events/events';
+import type { Character, Emotion } from '../../src/modal/character-enum';
 import { DialogManager } from '../../src/modal/dialog-manager';
 import { ScenarioManager } from '../../src/scenario-manager';
 import type { ScenarioData } from '../../src/ScenarioData';
-import type { Character, Emotion } from '../../src/modal/character-enum';
+import { ScenarioDialogManager } from '../../src/scenarios/scenario-dialog-manager';
 
-jest.mock('../../src/modal/dialog-manager');
-jest.mock('../../src/scenario-manager');
+vi.mock('../../src/modal/dialog-manager');
+vi.mock('../../src/scenario-manager');
 
 describe('ScenarioDialogManager', () => {
-  let mockDialogManager: jest.Mocked<DialogManager>;
-  let mockScenarioManager: jest.Mocked<ScenarioManager>;
+  let mockDialogManager: Mocked<DialogManager>;
+  let mockScenarioManager: Mocked<ScenarioManager>;
 
   // Reset singleton and mocks between tests
   const resetInstance = (): void => {
@@ -40,26 +41,26 @@ describe('ScenarioDialogManager', () => {
   });
 
   beforeEach(() => {
-    jest.clearAllMocks();
-    jest.useFakeTimers();
+    vi.clearAllMocks();
+    vi.useFakeTimers();
     EventBus.destroy();
     resetInstance();
 
     mockDialogManager = {
-      show: jest.fn(),
-      clearQueue: jest.fn(),
-      hide: jest.fn(),
-    } as unknown as jest.Mocked<DialogManager>;
-    (DialogManager.getInstance as jest.Mock).mockReturnValue(mockDialogManager);
+      show: vi.fn(),
+      clearQueue: vi.fn(),
+      hide: vi.fn(),
+    } as unknown as Mocked<DialogManager>;
+    (DialogManager.getInstance as Mock).mockReturnValue(mockDialogManager);
 
     mockScenarioManager = {
       data: createMockScenarioData(),
-    } as unknown as jest.Mocked<ScenarioManager>;
-    (ScenarioManager.getInstance as jest.Mock).mockReturnValue(mockScenarioManager);
+    } as unknown as Mocked<ScenarioManager>;
+    (ScenarioManager.getInstance as Mock).mockReturnValue(mockScenarioManager);
   });
 
   afterEach(() => {
-    jest.useRealTimers();
+    vi.useRealTimers();
     EventBus.destroy();
     resetInstance();
   });
@@ -82,7 +83,7 @@ describe('ScenarioDialogManager', () => {
   describe('initialize', () => {
     it('should register OBJECTIVE_COMPLETED event listener', () => {
       const eventBus = EventBus.getInstance();
-      const onSpy = jest.spyOn(eventBus, 'on');
+      const onSpy = vi.spyOn(eventBus, 'on');
 
       const manager = ScenarioDialogManager.getInstance();
       manager.initialize();
@@ -120,7 +121,7 @@ describe('ScenarioDialogManager', () => {
       EventBus.getInstance().emit(Events.OBJECTIVE_COMPLETED, eventData);
 
       // Fast-forward the 500ms timeout
-      jest.advanceTimersByTime(500);
+      vi.advanceTimersByTime(500);
 
       expect(mockDialogManager.show).toHaveBeenCalledWith(
         'Great job finding the beacon!',
@@ -147,7 +148,7 @@ describe('ScenarioDialogManager', () => {
       const eventData: ObjectiveCompletedData = { objectiveId: 'obj-1' };
       EventBus.getInstance().emit(Events.OBJECTIVE_COMPLETED, eventData);
 
-      jest.advanceTimersByTime(500);
+      vi.advanceTimersByTime(500);
 
       expect(mockDialogManager.show).not.toHaveBeenCalled();
     });
@@ -165,7 +166,7 @@ describe('ScenarioDialogManager', () => {
       const eventData: ObjectiveCompletedData = { objectiveId: 'obj-1' };
       EventBus.getInstance().emit(Events.OBJECTIVE_COMPLETED, eventData);
 
-      jest.advanceTimersByTime(500);
+      vi.advanceTimersByTime(500);
 
       expect(mockDialogManager.show).not.toHaveBeenCalled();
     });
@@ -190,7 +191,7 @@ describe('ScenarioDialogManager', () => {
       const eventData: ObjectiveCompletedData = { objectiveId: 'obj-no-title' };
       EventBus.getInstance().emit(Events.OBJECTIVE_COMPLETED, eventData);
 
-      jest.advanceTimersByTime(500);
+      vi.advanceTimersByTime(500);
 
       expect(mockDialogManager.show).toHaveBeenCalledWith(
         'Dialog text',
@@ -225,11 +226,11 @@ describe('ScenarioDialogManager', () => {
       expect(mockDialogManager.show).not.toHaveBeenCalled();
 
       // Not called at 400ms
-      jest.advanceTimersByTime(400);
+      vi.advanceTimersByTime(400);
       expect(mockDialogManager.show).not.toHaveBeenCalled();
 
       // Called at 500ms
-      jest.advanceTimersByTime(100);
+      vi.advanceTimersByTime(100);
       expect(mockDialogManager.show).toHaveBeenCalled();
     });
   });
@@ -237,7 +238,7 @@ describe('ScenarioDialogManager', () => {
   describe('destroy', () => {
     it('should unregister OBJECTIVE_COMPLETED event listener', () => {
       const eventBus = EventBus.getInstance();
-      const offSpy = jest.spyOn(eventBus, 'off');
+      const offSpy = vi.spyOn(eventBus, 'off');
 
       const manager = ScenarioDialogManager.getInstance();
       manager.initialize();
@@ -278,7 +279,7 @@ describe('ScenarioDialogManager', () => {
       const eventData: ObjectiveCompletedData = { objectiveId: 'obj-1' };
       EventBus.getInstance().emit(Events.OBJECTIVE_COMPLETED, eventData);
 
-      jest.advanceTimersByTime(500);
+      vi.advanceTimersByTime(500);
 
       expect(mockDialogManager.show).not.toHaveBeenCalled();
     });
@@ -333,7 +334,7 @@ describe('ScenarioDialogManager', () => {
 
       expect(() => {
         EventBus.getInstance().emit(Events.OBJECTIVE_COMPLETED, eventData);
-        jest.advanceTimersByTime(500);
+        vi.advanceTimersByTime(500);
       }).not.toThrow();
     });
 
@@ -365,7 +366,7 @@ describe('ScenarioDialogManager', () => {
       EventBus.getInstance().emit(Events.OBJECTIVE_COMPLETED, { objectiveId: 'obj-1' });
       EventBus.getInstance().emit(Events.OBJECTIVE_COMPLETED, { objectiveId: 'obj-2' });
 
-      jest.advanceTimersByTime(500);
+      vi.advanceTimersByTime(500);
 
       expect(mockDialogManager.show).toHaveBeenCalledTimes(2);
     });

@@ -1,43 +1,44 @@
+import { vi } from 'vitest';
 /**
  * Tests for the antenna module index exports
  * Ensures all public API is properly exported
  */
 import {
+  ANTENNA_CONFIG_KEYS,
+  ANTENNA_CONFIGS,
+  AntennaConfig,
   AntennaCore,
   AntennaState,
   AntennaUIBasic,
   AntennaUIHeadless,
   AntennaUIStandard,
-  createAntenna,
   AntennaUIType,
-  ANTENNA_CONFIG_KEYS,
-  ANTENNA_CONFIGS,
-  AntennaConfig,
+  createAntenna,
 } from '../../../src/equipment/antenna';
 
 // Mock SimulationManager
-jest.mock('../../../src/simulation/simulation-manager', () => ({
+vi.mock('../../../src/simulation/simulation-manager', () => ({
   SimulationManager: {
-    getInstance: jest.fn(() => ({
-      update: jest.fn(),
-      draw: jest.fn(),
-      sync: jest.fn(),
-      getSatByNoradId: jest.fn(),
+    getInstance: vi.fn(() => ({
+      update: vi.fn(),
+      draw: vi.fn(),
+      sync: vi.fn(),
+      getSatByNoradId: vi.fn(),
       getSatsByAzEl: () => [],
       satellites: [],
       isDeveloperMode: false,
     })),
-    destroy: jest.fn(),
+    destroy: vi.fn(),
   },
 }));
 
 // Mock EventBus
-jest.mock('../../../src/events/event-bus', () => ({
+vi.mock('../../../src/events/event-bus', () => ({
   EventBus: {
-    getInstance: jest.fn(() => ({
-      on: jest.fn(),
-      off: jest.fn(),
-      emit: jest.fn(),
+    getInstance: vi.fn(() => ({
+      on: vi.fn(),
+      off: vi.fn(),
+      emit: vi.fn(),
     })),
   },
 }));

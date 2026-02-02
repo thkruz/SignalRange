@@ -1,10 +1,11 @@
+import { vi } from 'vitest';
 import { CardAlarmBadge } from '../../src/components/card-alarm-badge/card-alarm-badge';
 import type { AlarmStatus } from '../../src/equipment/base-equipment';
 
 describe('CardAlarmBadge', () => {
   afterEach(() => {
     document.body.innerHTML = '';
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   function mount(badge: CardAlarmBadge): void {

@@ -1,63 +1,64 @@
 // Mock all dependencies before imports
-jest.mock('@app/engine/ui/draggable-modal', () => ({
+vi.mock('@app/engine/ui/draggable-modal', () => ({
   DraggableModal: class MockDraggableModal {
     protected boxEl: HTMLElement | null = null;
-    constructor(_id: string, _options?: unknown) {}
-    protected onOpen(): void {}
+    constructor(_id: string, _options?: unknown) { }
+    protected onOpen(): void { }
     open(): void { this.onOpen(); }
-    close(): void {}
+    close(): void { }
   },
 }));
 
-jest.mock('@app/engine/ui/modal-confirm', () => ({
+vi.mock('@app/engine/ui/modal-confirm', () => ({
   ModalConfirm: {
-    getInstance: () => ({ open: jest.fn() }),
+    getInstance: () => ({ open: vi.fn() }),
   },
 }));
 
-jest.mock('@app/engine/utils/development/formatter', () => ({
+vi.mock('@app/engine/utils/development/formatter', () => ({
   html: (strings: TemplateStringsArray, ...values: unknown[]) =>
     strings.reduce((result, str, i) => result + str + (values[i] ?? ''), ''),
 }));
 
-jest.mock('@app/engine/utils/errorManager', () => ({
-  errorManagerInstance: { error: jest.fn(), warn: jest.fn(), info: jest.fn() },
+vi.mock('@app/engine/utils/errorManager', () => ({
+  errorManagerInstance: { error: vi.fn(), warn: vi.fn(), info: vi.fn() },
 }));
 
-jest.mock('@app/sound/sound-manager', () => ({
-  default: { getInstance: () => ({ play: jest.fn() }) },
+vi.mock('@app/sound/sound-manager', () => ({
+  default: { getInstance: () => ({ play: vi.fn() }) },
 }));
 
-jest.mock('@app/sound/sfx-enum', () => ({
+vi.mock('@app/sound/sfx-enum', () => ({
   Sfx: { TOGGLE_OFF: 'TOGGLE_OFF' },
 }));
 
-jest.mock('@app/sync/storage', () => ({
-  syncManager: { clearStorage: jest.fn() },
+vi.mock('@app/sync/storage', () => ({
+  syncManager: { clearStorage: vi.fn() },
 }));
 
-jest.mock('@app/user-account/auth', () => ({
+vi.mock('@app/user-account/auth', () => ({
   Auth: {
-    getCurrentUser: jest.fn(),
-    getUserProfile: jest.fn(),
-    signOut: jest.fn(),
+    getCurrentUser: vi.fn(),
+    getUserProfile: vi.fn(),
+    signOut: vi.fn(),
   },
 }));
 
-jest.mock('@app/user-account/user-data-service', () => ({
+vi.mock('@app/user-account/user-data-service', () => ({
   getUserDataService: () => ({
-    getAllScenariosProgress: jest.fn().mockResolvedValue({
+    getAllScenariosProgress: vi.fn().mockResolvedValue({
       summary: { totalScore: 0, completedScenarioCount: 0 },
     }),
-    deleteAllProgress: jest.fn(),
+    deleteAllProgress: vi.fn(),
   }),
 }));
 
+import { Mock, vi } from 'vitest';
 import { ModalProfile } from '../../src/user-account/modal-profile';
 
 describe('ModalProfile', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     // Reset singleton between tests
     (ModalProfile as unknown as { instance_: null }).instance_ = null;
   });
@@ -166,16 +167,16 @@ describe('ModalProfile', () => {
 
   describe('loadUserProfile', () => {
     let modal: ModalProfile;
-    let mockAuth: { getCurrentUser: jest.Mock; getUserProfile: jest.Mock };
+    let mockAuth: { getCurrentUser: Mock; getUserProfile: Mock };
 
     beforeEach(async () => {
-      jest.resetModules();
+      vi.resetModules();
       mockAuth = {
-        getCurrentUser: jest.fn(),
-        getUserProfile: jest.fn(),
+        getCurrentUser: vi.fn(),
+        getUserProfile: vi.fn(),
       };
 
-      jest.doMock('@app/user-account/auth', () => ({
+      vi.doMock('@app/user-account/auth', () => ({
         Auth: mockAuth,
       }));
 
@@ -257,15 +258,15 @@ describe('ModalProfile', () => {
 
   describe('loadProgressStats', () => {
     let modal: ModalProfile;
-    let mockUserDataService: { getAllScenariosProgress: jest.Mock };
+    let mockUserDataService: { getAllScenariosProgress: Mock };
 
     beforeEach(async () => {
-      jest.resetModules();
+      vi.resetModules();
       mockUserDataService = {
-        getAllScenariosProgress: jest.fn(),
+        getAllScenariosProgress: vi.fn(),
       };
 
-      jest.doMock('@app/user-account/user-data-service', () => ({
+      vi.doMock('@app/user-account/user-data-service', () => ({
         getUserDataService: () => mockUserDataService,
       }));
 
@@ -325,13 +326,13 @@ describe('ModalProfile', () => {
 
   describe('handleClearProgress', () => {
     let modal: ModalProfile;
-    let mockConfirmModal: { open: jest.Mock };
+    let mockConfirmModal: { open: Mock };
 
     beforeEach(async () => {
-      jest.resetModules();
-      mockConfirmModal = { open: jest.fn() };
+      vi.resetModules();
+      mockConfirmModal = { open: vi.fn() };
 
-      jest.doMock('@app/engine/ui/modal-confirm', () => ({
+      vi.doMock('@app/engine/ui/modal-confirm', () => ({
         ModalConfirm: {
           getInstance: () => mockConfirmModal,
         },
@@ -380,13 +381,13 @@ describe('ModalProfile', () => {
 
   describe('initializeButtons', () => {
     let modal: ModalProfile;
-    let mockHandleLogout: jest.Mock;
-    let mockHandleClearProgress: jest.Mock;
+    let mockHandleLogout: Mock;
+    let mockHandleClearProgress: Mock;
 
     beforeEach(() => {
       modal = ModalProfile.getInstance();
-      mockHandleLogout = jest.fn();
-      mockHandleClearProgress = jest.fn();
+      mockHandleLogout = vi.fn();
+      mockHandleClearProgress = vi.fn();
       (modal as any).handleLogout = mockHandleLogout;
       (modal as any).handleClearProgress = mockHandleClearProgress;
 
@@ -424,16 +425,16 @@ describe('ModalProfile', () => {
 
   describe('profile name fallback chain', () => {
     let modal: ModalProfile;
-    let mockAuth: { getCurrentUser: jest.Mock; getUserProfile: jest.Mock };
+    let mockAuth: { getCurrentUser: Mock; getUserProfile: Mock };
 
     beforeEach(async () => {
-      jest.resetModules();
+      vi.resetModules();
       mockAuth = {
-        getCurrentUser: jest.fn(),
-        getUserProfile: jest.fn(),
+        getCurrentUser: vi.fn(),
+        getUserProfile: vi.fn(),
       };
 
-      jest.doMock('@app/user-account/auth', () => ({
+      vi.doMock('@app/user-account/auth', () => ({
         Auth: mockAuth,
       }));
 

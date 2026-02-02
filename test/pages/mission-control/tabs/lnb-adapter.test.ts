@@ -1,25 +1,26 @@
-import { LNBAdapter } from '../../../../src/pages/mission-control/tabs/lnb-adapter';
+import { Mock, Mocked, vi } from 'vitest';
 import { LNBModuleCore, LNBState } from '../../../../src/equipment/rf-front-end/lnb-module/lnb-module-core';
 import { EventBus } from '../../../../src/events/event-bus';
 import { Events } from '../../../../src/events/events';
+import { LNBAdapter } from '../../../../src/pages/mission-control/tabs/lnb-adapter';
 
 // Mock dependencies
-jest.mock('../../../../src/events/event-bus');
-jest.mock('../../../../src/components/card-alarm-badge/card-alarm-badge', () => ({
+vi.mock('../../../../src/events/event-bus');
+vi.mock('../../../../src/components/card-alarm-badge/card-alarm-badge', () => ({
   CardAlarmBadge: {
-    create: jest.fn(() => ({
+    create: vi.fn(() => ({
       html: '<div class="mock-badge"></div>',
-      update: jest.fn(),
-      dispose: jest.fn(),
+      update: vi.fn(),
+      dispose: vi.fn(),
     })),
   },
 }));
 
 describe('LNBAdapter', () => {
-  let mockLnbModule: jest.Mocked<LNBModuleCore>;
+  let mockLnbModule: Mocked<LNBModuleCore>;
   let containerEl: HTMLElement;
   let adapter: LNBAdapter;
-  let mockEventBus: { on: jest.Mock; off: jest.Mock; emit: jest.Mock };
+  let mockEventBus: { on: Mock; off: Mock; emit: Mock };
 
   const mockState: LNBState = {
     isPowered: true,
@@ -30,24 +31,24 @@ describe('LNBAdapter', () => {
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Setup mock EventBus
     mockEventBus = {
-      on: jest.fn(),
-      off: jest.fn(),
-      emit: jest.fn(),
+      on: vi.fn(),
+      off: vi.fn(),
+      emit: vi.fn(),
     };
-    (EventBus.getInstance as jest.Mock).mockReturnValue(mockEventBus);
+    (EventBus.getInstance as Mock).mockReturnValue(mockEventBus);
 
     // Setup mock LNBModuleCore
     mockLnbModule = {
       state: { ...mockState },
-      handleLoFrequencyChange: jest.fn(),
-      handleGainChange: jest.fn(),
-      handlePowerToggle: jest.fn(),
-      getAlarms: jest.fn().mockReturnValue([]),
-    } as unknown as jest.Mocked<LNBModuleCore>;
+      handleLoFrequencyChange: vi.fn(),
+      handleGainChange: vi.fn(),
+      handlePowerToggle: vi.fn(),
+      getAlarms: vi.fn().mockReturnValue([]),
+    } as unknown as Mocked<LNBModuleCore>;
 
     // Setup container with required DOM elements
     containerEl = document.createElement('div');

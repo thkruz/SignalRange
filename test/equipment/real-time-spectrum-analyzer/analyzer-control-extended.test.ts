@@ -1,48 +1,49 @@
+import { Mocked, vi } from 'vitest';
+import { AnalyzerControl } from '../../../src/equipment/real-time-spectrum-analyzer/analyzer-control';
 import { ACAmptBtn } from '../../../src/equipment/real-time-spectrum-analyzer/analyzer-control/ac-ampt-btn/ac-ampt-btn';
 import { ACBWBtn } from '../../../src/equipment/real-time-spectrum-analyzer/analyzer-control/ac-bw-btn/ac-bw-btn';
 import { ACGhzBtn } from '../../../src/equipment/real-time-spectrum-analyzer/analyzer-control/ac-ghz-btn/ac-ghz-btn';
-import { ACMhzBtn } from '../../../src/equipment/real-time-spectrum-analyzer/analyzer-control/ac-mhz-btn/ac-mhz-btn';
-import { ACKhzBtn } from '../../../src/equipment/real-time-spectrum-analyzer/analyzer-control/ac-khz-btn/ac-khz-btn';
 import { ACHzBtn } from '../../../src/equipment/real-time-spectrum-analyzer/analyzer-control/ac-hz-btn/ac-hz-btn';
+import { ACKhzBtn } from '../../../src/equipment/real-time-spectrum-analyzer/analyzer-control/ac-khz-btn/ac-khz-btn';
+import { ACMhzBtn } from '../../../src/equipment/real-time-spectrum-analyzer/analyzer-control/ac-mhz-btn/ac-mhz-btn';
 import { ACMkrBtn } from '../../../src/equipment/real-time-spectrum-analyzer/analyzer-control/ac-mkr-btn/ac-mkr-btn';
 import { ACMkr2Btn } from '../../../src/equipment/real-time-spectrum-analyzer/analyzer-control/ac-mkr2-btn/ac-mkr2-btn';
 import { ACModeBtn } from '../../../src/equipment/real-time-spectrum-analyzer/analyzer-control/ac-mode-btn/ac-mode-btn';
 import { ACSaveBtn } from '../../../src/equipment/real-time-spectrum-analyzer/analyzer-control/ac-save-btn/ac-save-btn';
 import { ACSweepBtn } from '../../../src/equipment/real-time-spectrum-analyzer/analyzer-control/ac-sweep-btn/ac-sweep-btn';
-import { AnalyzerControl } from '../../../src/equipment/real-time-spectrum-analyzer/analyzer-control';
+import { TraceMode } from '../../../src/equipment/real-time-spectrum-analyzer/analyzer-control/ac-trace-btn/ac-trace-btn';
 import { RealTimeSpectrumAnalyzer, RealTimeSpectrumAnalyzerState } from '../../../src/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer';
-import { Hertz, dB } from '../../../src/types';
 import { EventBus } from '../../../src/events/event-bus';
 import { Events } from '../../../src/events/events';
-import { TraceMode } from '../../../src/equipment/real-time-spectrum-analyzer/analyzer-control/ac-trace-btn/ac-trace-btn';
+import { Hertz, dB } from '../../../src/types';
 
 // Mock HTMLMediaElement.prototype.play for jsdom compatibility
 Object.defineProperty(HTMLMediaElement.prototype, 'play', {
   configurable: true,
-  value: jest.fn().mockResolvedValue(undefined),
+  value: vi.fn().mockResolvedValue(undefined),
 });
 
 // Mock SoundManager to prevent actual sound playing
-jest.mock('@app/sound/sound-manager', () => ({
+vi.mock('@app/sound/sound-manager', () => ({
   __esModule: true,
   default: {
-    getInstance: jest.fn().mockReturnValue({
-      play: jest.fn(),
+    getInstance: vi.fn().mockReturnValue({
+      play: vi.fn(),
     }),
   },
 }));
 
 // Mock getEl for save button tests
-jest.mock('@app/engine/utils/get-el', () => ({
-  getEl: jest.fn().mockReturnValue({
+vi.mock('@app/engine/utils/get-el', () => ({
+  getEl: vi.fn().mockReturnValue({
     id: 'test-canvas',
-    toDataURL: jest.fn().mockReturnValue('data:image/png;base64,mock'),
+    toDataURL: vi.fn().mockReturnValue('data:image/png;base64,mock'),
   }),
 }));
 
 describe('Analyzer Control Extended Buttons', () => {
-  let mockAnalyzerControl: jest.Mocked<Partial<AnalyzerControl>>;
-  let mockSpecA: jest.Mocked<Partial<RealTimeSpectrumAnalyzer>>;
+  let mockAnalyzerControl: Mocked<Partial<AnalyzerControl>>;
+  let mockSpecA: Mocked<Partial<RealTimeSpectrumAnalyzer>>;
   let mockState: RealTimeSpectrumAnalyzerState;
 
   // Create mock DOM cache
@@ -110,11 +111,11 @@ describe('Analyzer Control Extended Buttons', () => {
     // Create mock spectrum analyzer
     mockSpecA = {
       state: mockState,
-      syncDomWithState: jest.fn(),
-      freqAutoTune: jest.fn(),
-      resetMaxHoldData: jest.fn(),
-      resetMinHoldData: jest.fn(),
-      updateScreenVisibility: jest.fn(),
+      syncDomWithState: vi.fn(),
+      freqAutoTune: vi.fn(),
+      resetMaxHoldData: vi.fn(),
+      resetMinHoldData: vi.fn(),
+      updateScreenVisibility: vi.fn(),
       spectralDensity: mockScreen as any,
       waterfall: mockScreen as any,
       spectralDensityBoth: mockScreen as any,
@@ -126,13 +127,13 @@ describe('Analyzer Control Extended Buttons', () => {
     mockAnalyzerControl = {
       specA: mockSpecA as any,
       domCache: createMockDomCache(),
-      updateSubMenu: jest.fn(),
+      updateSubMenu: vi.fn(),
     };
   });
 
   afterEach(() => {
     document.body.innerHTML = '';
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('ACAmptBtn', () => {
@@ -361,7 +362,7 @@ describe('Analyzer Control Extended Buttons', () => {
       });
 
       it('should reject RBW below 1 Hz', () => {
-        jest.spyOn(window, 'alert').mockImplementation(() => { });
+        vi.spyOn(window, 'alert').mockImplementation(() => { });
 
         bwBtn.click();
         mockAnalyzerControl.domCache!['label-select-button-1'].click();
@@ -374,7 +375,7 @@ describe('Analyzer Control Extended Buttons', () => {
       });
 
       it('should reject RBW above 300 MHz', () => {
-        jest.spyOn(window, 'alert').mockImplementation(() => { });
+        vi.spyOn(window, 'alert').mockImplementation(() => { });
 
         bwBtn.click();
         mockAnalyzerControl.domCache!['label-select-button-1'].click();
@@ -794,7 +795,7 @@ describe('Analyzer Control Extended Buttons', () => {
       });
 
       it('should emit SPEC_A_CONFIG_CHANGED event', () => {
-        const emitSpy = jest.spyOn(EventBus.getInstance(), 'emit');
+        const emitSpy = vi.spyOn(EventBus.getInstance(), 'emit');
 
         modeBtn.click();
 
@@ -819,9 +820,9 @@ describe('Analyzer Control Extended Buttons', () => {
       const mockLink = {
         download: '',
         href: '',
-        click: jest.fn(),
+        click: vi.fn(),
       };
-      jest.spyOn(document, 'createElement').mockReturnValue(mockLink as any);
+      vi.spyOn(document, 'createElement').mockReturnValue(mockLink as any);
     });
 
     describe('Construction', () => {
@@ -858,20 +859,20 @@ describe('Analyzer Control Extended Buttons', () => {
         const mockLink = {
           download: '',
           href: '',
-          click: jest.fn(),
+          click: vi.fn(),
         };
         const mockCanvas = {
           width: 800,
           height: 400,
-          getContext: jest.fn().mockReturnValue({
-            drawImage: jest.fn(),
+          getContext: vi.fn().mockReturnValue({
+            drawImage: vi.fn(),
           }),
-          toDataURL: jest.fn().mockReturnValue('data:image/png;base64,mock'),
+          toDataURL: vi.fn().mockReturnValue('data:image/png;base64,mock'),
         };
 
         // Return canvas first, then link
         let callCount = 0;
-        jest.spyOn(document, 'createElement').mockImplementation((tag: string) => {
+        vi.spyOn(document, 'createElement').mockImplementation((tag: string) => {
           callCount++;
           if (tag === 'canvas') {
             return mockCanvas as any;

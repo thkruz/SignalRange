@@ -1,16 +1,17 @@
 import { Degrees } from 'ootk';
-import { StepTrackController } from '../../../src/equipment/antenna/step-track-controller';
-import { AntennaCore, AntennaState } from '../../../src/equipment/antenna/antenna-core';
+import { vi } from 'vitest';
 import { ANTENNA_CONFIG_KEYS } from '../../../src/equipment/antenna/antenna-config-keys';
+import { AntennaCore, AntennaState } from '../../../src/equipment/antenna/antenna-core';
+import { StepTrackController } from '../../../src/equipment/antenna/step-track-controller';
 
 // Mock SimulationManager
-jest.mock('../../../src/simulation/simulation-manager', () => ({
+vi.mock('../../../src/simulation/simulation-manager', () => ({
   SimulationManager: {
-    getInstance: jest.fn(() => ({
-      update: jest.fn(),
-      draw: jest.fn(),
-      sync: jest.fn(),
-      getSatByNoradId: jest.fn((id: number) => ({
+    getInstance: vi.fn(() => ({
+      update: vi.fn(),
+      draw: vi.fn(),
+      sync: vi.fn(),
+      getSatByNoradId: vi.fn((id: number) => ({
         noradId: id,
         ephemerisErrorAz: 0.15 as Degrees,
         ephemerisErrorEl: 0.10 as Degrees,
@@ -19,17 +20,17 @@ jest.mock('../../../src/simulation/simulation-manager', () => ({
       satellites: [],
       isDeveloperMode: false,
     })),
-    destroy: jest.fn(),
+    destroy: vi.fn(),
   },
 }));
 
 // Mock EventBus
-jest.mock('../../../src/events/event-bus', () => ({
+vi.mock('../../../src/events/event-bus', () => ({
   EventBus: {
-    getInstance: jest.fn(() => ({
-      on: jest.fn(),
-      off: jest.fn(),
-      emit: jest.fn(),
+    getInstance: vi.fn(() => ({
+      on: vi.fn(),
+      off: vi.fn(),
+      emit: vi.fn(),
     })),
   },
 }));
@@ -47,9 +48,9 @@ class MockAntennaCore extends AntennaCore {
     super(configId, initialState, 1, 1);
   }
 
-  protected override addListeners_(): void {}
-  syncDomWithState(): void {}
-  draw(): void {}
+  protected override addListeners_(): void { }
+  syncDomWithState(): void { }
+  draw(): void { }
 
   // Override rfFrontEnd getter to return mock
   override get rfFrontEnd() {
@@ -147,7 +148,7 @@ describe('StepTrackController', () => {
     it('should update offsets when active', () => {
       const originalDateNow = Date.now;
       let mockTime = 1000000;
-      Date.now = jest.fn(() => mockTime);
+      Date.now = vi.fn(() => mockTime);
 
       try {
         controller.start();
@@ -183,7 +184,7 @@ describe('StepTrackController', () => {
           },
           couplerModule: {
             signalPathManager: {
-              getNoiseFloorAt: jest.fn(() => ({
+              getNoiseFloorAt: vi.fn(() => ({
                 noiseFloorNoGain: -120,
                 shouldApplyGain: false,
               })),
@@ -279,7 +280,7 @@ describe('StepTrackController', () => {
       // Mock Date.now to control time
       const originalDateNow = Date.now;
       let mockTime = 1000000;
-      Date.now = jest.fn(() => mockTime);
+      Date.now = vi.fn(() => mockTime);
 
       try {
         controller.start();
@@ -299,7 +300,7 @@ describe('StepTrackController', () => {
     it('should reach target offsets when converged', () => {
       const originalDateNow = Date.now;
       let mockTime = 1000000;
-      Date.now = jest.fn(() => mockTime);
+      Date.now = vi.fn(() => mockTime);
 
       try {
         controller.start();
@@ -319,7 +320,7 @@ describe('StepTrackController', () => {
     it('should use easing for smooth convergence', () => {
       const originalDateNow = Date.now;
       let mockTime = 1000000;
-      Date.now = jest.fn(() => mockTime);
+      Date.now = vi.fn(() => mockTime);
 
       try {
         controller.start();

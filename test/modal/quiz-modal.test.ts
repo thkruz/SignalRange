@@ -1,9 +1,10 @@
+import { vi } from 'vitest';
 import { EventBus } from '../../src/events/event-bus';
 import { Events, QuizShowData } from '../../src/events/events';
 import { QuizModal } from '../../src/modal/quiz-modal';
 
 // Mock DraggableBox
-jest.mock('../../src/engine/ui/draggable-box', () => ({
+vi.mock('../../src/engine/ui/draggable-box', () => ({
   DraggableBox: class MockDraggableBox {
     protected boxId: string;
     protected width: string;
@@ -47,7 +48,7 @@ jest.mock('../../src/engine/ui/draggable-box', () => ({
 }));
 
 // Mock html utility
-jest.mock('../../src/engine/utils/development/formatter', () => ({
+vi.mock('../../src/engine/utils/development/formatter', () => ({
   html: (strings: TemplateStringsArray, ...values: unknown[]) => {
     return strings.reduce((result, str, i) => result + str + (values[i] ?? ''), '');
   },
@@ -56,7 +57,7 @@ jest.mock('../../src/engine/utils/development/formatter', () => ({
 // Mock getEl and showEl
 const mockElements: Map<string, HTMLElement> = new Map();
 
-jest.mock('../../src/engine/utils/get-el', () => ({
+vi.mock('../../src/engine/utils/get-el', () => ({
   getEl: (id: string) => mockElements.get(id) || global.document.getElementById(id),
   showEl: (el: HTMLElement) => {
     if (el) el.style.display = 'block';
@@ -64,7 +65,7 @@ jest.mock('../../src/engine/utils/get-el', () => ({
 }));
 
 // Mock character-enum
-jest.mock('../../src/modal/character-enum', () => ({
+vi.mock('../../src/modal/character-enum', () => ({
   Character: {
     CHARLIE_BROOKS: 'charlie_brooks',
   },
@@ -84,7 +85,7 @@ jest.mock('../../src/modal/character-enum', () => ({
 }));
 
 // Mock CSS import
-jest.mock('../../src/modal/quiz-modal.css', () => ({}));
+vi.mock('../../src/modal/quiz-modal.css', () => ({}));
 
 describe('QuizModal', () => {
   let modal: QuizModal;
@@ -113,7 +114,7 @@ describe('QuizModal', () => {
     eventBus = EventBus.getInstance();
     modal = QuizModal.getInstance();
 
-    jest.useFakeTimers();
+    vi.useFakeTimers();
   });
 
   afterEach(() => {
@@ -121,8 +122,8 @@ describe('QuizModal', () => {
     EventBus.destroy();
     document.body.innerHTML = '';
     mockElements.clear();
-    jest.clearAllTimers();
-    jest.useRealTimers();
+    vi.clearAllTimers();
+    vi.useRealTimers();
   });
 
   describe('Singleton Pattern', () => {
@@ -136,7 +137,7 @@ describe('QuizModal', () => {
 
   describe('Constructor', () => {
     it('should register QUIZ_SHOW event listener', () => {
-      const onSpy = jest.spyOn(eventBus, 'on');
+      const onSpy = vi.spyOn(eventBus, 'on');
 
       // Reset and recreate to capture the spy
       (QuizModal as any).instance_ = null;
@@ -352,7 +353,7 @@ describe('QuizModal', () => {
     });
 
     it('should emit QUIZ_PASSED when correct answer selected', () => {
-      const emitSpy = jest.spyOn(eventBus, 'emit');
+      const emitSpy = vi.spyOn(eventBus, 'emit');
       const quizData = createMockQuizData({ correctIndex: 1 });
       (modal as any).currentQuiz_ = quizData;
       (modal as any).shuffledIndices_ = [0, 1, 2, 3];
@@ -371,7 +372,7 @@ describe('QuizModal', () => {
     });
 
     it('should emit QUIZ_ANSWERED when incorrect answer selected', () => {
-      const emitSpy = jest.spyOn(eventBus, 'emit');
+      const emitSpy = vi.spyOn(eventBus, 'emit');
       const quizData = createMockQuizData({ correctIndex: 1, pointPenalty: 15 });
       (modal as any).currentQuiz_ = quizData;
       (modal as any).shuffledIndices_ = [0, 1, 2, 3];
@@ -608,7 +609,7 @@ describe('QuizModal', () => {
     });
 
     it('should emit QUIZ_COMPLETED event', () => {
-      const emitSpy = jest.spyOn(eventBus, 'emit');
+      const emitSpy = vi.spyOn(eventBus, 'emit');
       const quizData = createMockQuizData();
       (modal as any).currentQuiz_ = quizData;
       (modal as any).attempts_ = 2;
@@ -644,7 +645,7 @@ describe('QuizModal', () => {
 
     it('should close modal when no quiz is active', () => {
       (modal as any).currentQuiz_ = null;
-      const closeSpy = jest.spyOn(modal, 'close');
+      const closeSpy = vi.spyOn(modal, 'close');
 
       (modal as any).handleContinueClick_();
 
@@ -668,7 +669,7 @@ describe('QuizModal', () => {
     });
 
     it('should emit QUIZ_DISMISSED when closing without completing', () => {
-      const emitSpy = jest.spyOn(eventBus, 'emit');
+      const emitSpy = vi.spyOn(eventBus, 'emit');
       const quizData = createMockQuizData();
       (modal as any).currentQuiz_ = quizData;
       (modal as any).isShowingFeedback_ = false;
@@ -682,7 +683,7 @@ describe('QuizModal', () => {
     });
 
     it('should not emit QUIZ_DISMISSED when showing feedback (completed)', () => {
-      const emitSpy = jest.spyOn(eventBus, 'emit');
+      const emitSpy = vi.spyOn(eventBus, 'emit');
       const quizData = createMockQuizData();
       (modal as any).currentQuiz_ = quizData;
       (modal as any).isShowingFeedback_ = true;
@@ -793,7 +794,7 @@ describe('QuizModal', () => {
 
   describe('dispose', () => {
     it('should unsubscribe from QUIZ_SHOW event', () => {
-      const offSpy = jest.spyOn(eventBus, 'off');
+      const offSpy = vi.spyOn(eventBus, 'off');
 
       modal.dispose();
 
@@ -803,8 +804,8 @@ describe('QuizModal', () => {
 
   describe('destroy', () => {
     it('should dispose and close the modal', () => {
-      const disposeSpy = jest.spyOn(modal, 'dispose');
-      const closeSpy = jest.spyOn(modal, 'close');
+      const disposeSpy = vi.spyOn(modal, 'dispose');
+      const closeSpy = vi.spyOn(modal, 'close');
 
       QuizModal.destroy();
 

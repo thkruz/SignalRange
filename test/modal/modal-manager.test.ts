@@ -1,7 +1,8 @@
+import { vi } from 'vitest';
 import { ModalManager } from '../../src/modal/modal-manager';
 
 // Mock html utility
-jest.mock('../../src/engine/utils/development/formatter', () => ({
+vi.mock('../../src/engine/utils/development/formatter', () => ({
   html: (strings: TemplateStringsArray, ...values: unknown[]) => {
     return strings.reduce((result, str, i) => {
       return result + str + (values[i] ?? '');
@@ -10,8 +11,8 @@ jest.mock('../../src/engine/utils/development/formatter', () => ({
 }));
 
 // Mock qs utility
-jest.mock('../../src/engine/utils/query-selector', () => ({
-  qs: jest.fn((selector: string, parent?: HTMLElement) => {
+vi.mock('../../src/engine/utils/query-selector', () => ({
+  qs: vi.fn((selector: string, parent?: HTMLElement) => {
     const context = parent ?? global.document;
     return context?.querySelector(selector);
   }),
@@ -198,7 +199,7 @@ describe('ModalManager', () => {
 
   describe('onHide', () => {
     it('should call registered callback when modal is hidden', () => {
-      const callback = jest.fn();
+      const callback = vi.fn();
       modalManager.onHide(callback);
 
       modalManager.show('Test', '<p>Content</p>');
@@ -208,8 +209,8 @@ describe('ModalManager', () => {
     });
 
     it('should call multiple callbacks when modal is hidden', () => {
-      const callback1 = jest.fn();
-      const callback2 = jest.fn();
+      const callback1 = vi.fn();
+      const callback2 = vi.fn();
       modalManager.onHide(callback1);
       modalManager.onHide(callback2);
 
@@ -221,7 +222,7 @@ describe('ModalManager', () => {
     });
 
     it('should clear callbacks after hide', () => {
-      const callback = jest.fn();
+      const callback = vi.fn();
       modalManager.onHide(callback);
 
       modalManager.show('First', '<p>First</p>');

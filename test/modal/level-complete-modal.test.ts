@@ -1,8 +1,9 @@
+import { vi } from 'vitest';
 import { LevelCompleteModal } from '../../src/modal/level-complete-modal';
 import { ScoreBreakdown } from '../../src/scoring/score-calculator';
 
 // Mock all dependencies - use global.document to avoid Jest mock scoping issues
-jest.mock('../../src/engine/ui/draggable-modal', () => ({
+vi.mock('../../src/engine/ui/draggable-modal', () => ({
   DraggableModal: class MockDraggableModal {
     protected boxId: string;
     protected title: string;
@@ -25,83 +26,83 @@ jest.mock('../../src/engine/ui/draggable-modal', () => ({
       this.boxEl = null;
     }
 
-    protected onOpen(): void {}
+    protected onOpen(): void { }
     protected getModalContentHtml(): string { return ''; }
   },
 }));
 
-jest.mock('../../src/engine/utils/development/formatter', () => ({
+vi.mock('../../src/engine/utils/development/formatter', () => ({
   html: (strings: TemplateStringsArray, ...values: unknown[]) => {
     return strings.reduce((result, str, i) => result + str + (values[i] ?? ''), '');
   },
 }));
 
-jest.mock('../../src/logging/logger', () => ({
+vi.mock('../../src/logging/logger', () => ({
   Logger: {
-    info: jest.fn(),
-    error: jest.fn(),
+    info: vi.fn(),
+    error: vi.fn(),
   },
 }));
 
-const mockNavigate = jest.fn();
-jest.mock('../../src/router', () => ({
+const mockNavigate = vi.fn();
+vi.mock('../../src/router', () => ({
   Router: {
-    getInstance: jest.fn(() => ({
+    getInstance: vi.fn(() => ({
       navigate: mockNavigate,
     })),
   },
 }));
 
-jest.mock('../../src/scoring/score-calculator', () => ({
+vi.mock('../../src/scoring/score-calculator', () => ({
   ScoreCalculator: {
     TIME_BONUS_DIVISOR: 10,
   },
 }));
 
-jest.mock('../../src/simulation/simulation-manager', () => ({
+vi.mock('../../src/simulation/simulation-manager', () => ({
   SimulationManager: {
-    getInstance: jest.fn(() => ({
-      checklistBox: { close: jest.fn() },
-      missionBriefBox: { close: jest.fn() },
+    getInstance: vi.fn(() => ({
+      checklistBox: { close: vi.fn() },
+      missionBriefBox: { close: vi.fn() },
     })),
   },
 }));
 
-jest.mock('../../src/sync/storage', () => ({
-  clearPersistedStore: jest.fn().mockResolvedValue(undefined),
+vi.mock('../../src/sync/storage', () => ({
+  clearPersistedStore: vi.fn().mockResolvedValue(undefined),
 }));
 
-const mockResetScenarioForReplay = jest.fn().mockResolvedValue(undefined);
-const mockDeleteCheckpoint = jest.fn().mockResolvedValue(undefined);
-jest.mock('../../src/user-account/user-data-service', () => ({
-  getUserDataService: jest.fn(() => ({
+const mockResetScenarioForReplay = vi.fn().mockResolvedValue(undefined);
+const mockDeleteCheckpoint = vi.fn().mockResolvedValue(undefined);
+vi.mock('../../src/user-account/user-data-service', () => ({
+  getUserDataService: vi.fn(() => ({
     resetScenarioForReplay: mockResetScenarioForReplay,
     deleteCheckpoint: mockDeleteCheckpoint,
   })),
 }));
 
-const mockDialogManagerHide = jest.fn();
-jest.mock('../../src/modal/dialog-manager', () => ({
+const mockDialogManagerHide = vi.fn();
+vi.mock('../../src/modal/dialog-manager', () => ({
   DialogManager: {
-    getInstance: jest.fn(() => ({
+    getInstance: vi.fn(() => ({
       hide: mockDialogManagerHide,
     })),
   },
 }));
 
-const mockQuizModalClose = jest.fn();
-jest.mock('../../src/modal/quiz-modal', () => ({
+const mockQuizModalClose = vi.fn();
+vi.mock('../../src/modal/quiz-modal', () => ({
   QuizModal: {
-    getInstance: jest.fn(() => ({
+    getInstance: vi.fn(() => ({
       close: mockQuizModalClose,
     })),
   },
 }));
 
-const mockPendingQuizIndicatorSuppress = jest.fn();
-jest.mock('../../src/modal/pending-quiz-indicator', () => ({
+const mockPendingQuizIndicatorSuppress = vi.fn();
+vi.mock('../../src/modal/pending-quiz-indicator', () => ({
   PendingQuizIndicator: {
-    getInstance: jest.fn(() => ({
+    getInstance: vi.fn(() => ({
       suppress: mockPendingQuizIndicatorSuppress,
     })),
   },
@@ -123,7 +124,7 @@ describe('LevelCompleteModal', () => {
     (LevelCompleteModal as any).instance_ = null;
     document.body.innerHTML = '';
     modal = LevelCompleteModal.getInstance();
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   afterEach(() => {
@@ -178,7 +179,7 @@ describe('LevelCompleteModal', () => {
     });
 
     it('should store the callback', () => {
-      const callback = jest.fn();
+      const callback = vi.fn();
 
       modal.showCompletion(
         {

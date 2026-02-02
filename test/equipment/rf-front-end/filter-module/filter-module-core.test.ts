@@ -1,10 +1,11 @@
-import { IfFilterBankModuleCore, IfFilterBankState, FILTER_BANDWIDTH_CONFIGS } from '../../../../src/equipment/rf-front-end/filter-module/filter-module-core';
-import { createRFFrontEnd } from '../../../../src/equipment/rf-front-end/rf-front-end-factory';
+import { vi } from 'vitest';
+import { FILTER_BANDWIDTH_CONFIGS, IfFilterBankModuleCore, IfFilterBankState } from '../../../../src/equipment/rf-front-end/filter-module/filter-module-core';
 import { RFFrontEndCore } from '../../../../src/equipment/rf-front-end/rf-front-end-core';
+import { createRFFrontEnd } from '../../../../src/equipment/rf-front-end/rf-front-end-factory';
 import { EventBus } from '../../../../src/events/event-bus';
 import { Events } from '../../../../src/events/events';
-import { dBm, Hertz, IfSignal, MHz } from '../../../../src/types';
 import { SignalOrigin } from '../../../../src/signal-origin';
+import { dBm, Hertz, IfSignal, MHz } from '../../../../src/types';
 
 describe('IfFilterBankModuleCore', () => {
   let rfFrontEnd: RFFrontEndCore;
@@ -21,7 +22,7 @@ describe('IfFilterBankModuleCore', () => {
 
   afterEach(() => {
     document.body.innerHTML = '';
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('FILTER_BANDWIDTH_CONFIGS', () => {
@@ -102,7 +103,7 @@ describe('IfFilterBankModuleCore', () => {
         gainInPath: 0,
       };
 
-      jest.spyOn(filterModule, 'inputSignals', 'get').mockReturnValue([mockSignal]);
+      vi.spyOn(filterModule, 'inputSignals', 'get').mockReturnValue([mockSignal]);
 
       filterModule.state.bandwidth = 20 as MHz; // 20 MHz filter
       filterModule.update();
@@ -121,7 +122,7 @@ describe('IfFilterBankModuleCore', () => {
         gainInPath: 0,
       };
 
-      jest.spyOn(filterModule, 'inputSignals', 'get').mockReturnValue([mockSignal]);
+      vi.spyOn(filterModule, 'inputSignals', 'get').mockReturnValue([mockSignal]);
 
       filterModule.state.bandwidth = 20 as MHz;
       filterModule.update();
@@ -140,7 +141,7 @@ describe('IfFilterBankModuleCore', () => {
         gainInPath: 0,
       };
 
-      jest.spyOn(filterModule, 'inputSignals', 'get').mockReturnValue([mockSignal]);
+      vi.spyOn(filterModule, 'inputSignals', 'get').mockReturnValue([mockSignal]);
 
       filterModule.state.insertionLoss = 2.0;
       filterModule.update();
@@ -159,7 +160,7 @@ describe('IfFilterBankModuleCore', () => {
         gainInPath: 0,
       };
 
-      jest.spyOn(filterModule, 'inputSignals', 'get').mockReturnValue([mockSignal]);
+      vi.spyOn(filterModule, 'inputSignals', 'get').mockReturnValue([mockSignal]);
 
       filterModule.update();
 
@@ -186,7 +187,7 @@ describe('IfFilterBankModuleCore', () => {
         }
       ];
 
-      jest.spyOn(filterModule, 'inputSignals', 'get').mockReturnValue(mockSignals);
+      vi.spyOn(filterModule, 'inputSignals', 'get').mockReturnValue(mockSignals);
 
       filterModule.state.insertionLoss = 2.0;
       filterModule.update();

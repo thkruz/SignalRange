@@ -1,3 +1,4 @@
+import { Mock, vi } from 'vitest';
 import { Events } from '../../src/events/events';
 import { AlarmService } from '../../src/services/alarm-service';
 
@@ -14,28 +15,28 @@ type GroundStationLike = {
 let updateHandler: ((dt: any) => void) | null = null;
 
 const mockEventBus = {
-  on: jest.fn((event: string, cb: (dt: any) => void) => {
+  on: vi.fn((event: string, cb: (dt: any) => void) => {
     if (event === Events.UPDATE) updateHandler = cb;
   }),
-  off: jest.fn(),
-  emit: jest.fn(),
-  once: jest.fn(),
-  clear: jest.fn(),
+  off: vi.fn(),
+  emit: vi.fn(),
+  once: vi.fn(),
+  clear: vi.fn(),
 };
 
 const mockSimulationManager = {
   groundStations: [] as GroundStationLike[],
 };
 
-const mockSimulationGetInstance = jest.fn(() => mockSimulationManager);
+const mockSimulationGetInstance = vi.fn(() => mockSimulationManager);
 
-jest.mock('@app/events/event-bus', () => ({
+vi.mock('@app/events/event-bus', () => ({
   EventBus: {
     getInstance: () => mockEventBus,
   },
 }));
 
-jest.mock('@app/simulation/simulation-manager', () => ({
+vi.mock('@app/simulation/simulation-manager', () => ({
   SimulationManager: {
     getInstance: () => mockSimulationGetInstance(),
   },
@@ -68,14 +69,14 @@ describe('AlarmService', () => {
 
     mockSimulationGetInstance.mockClear();
 
-    jest.spyOn(Date, 'now').mockReturnValue(1000);
+    vi.spyOn(Date, 'now').mockReturnValue(1000);
   });
 
   afterEach(() => {
-    (Date.now as jest.Mock).mockRestore?.();
+    (Date.now as Mock).mockRestore?.();
     (AlarmService as any).instance_ = null;
     updateHandler = null;
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('registers an UPDATE handler and aggregates alarms by highest severity', () => {
@@ -89,14 +90,14 @@ describe('AlarmService', () => {
       state: { id: 'alpha', isOperational: true },
       antennas: [
         {
-          getStatusAlarms: jest
+          getStatusAlarms: vi
             .fn()
             .mockReturnValue([alarm('error', 'ANT FAIL'), alarm('success', 'OK')]),
         },
       ],
       rfFrontEnds: [
         {
-          getStatusAlarms: jest
+          getStatusAlarms: vi
             .fn()
             .mockImplementation((rfCase: number) =>
               rfCase === 1 ? [alarm('warning', 'RF WARN')] : [alarm('info', 'RF INFO')]
@@ -104,16 +105,16 @@ describe('AlarmService', () => {
         },
       ],
       transmitters: [
-        { getStatusAlarms: jest.fn().mockReturnValue([alarm('info', 'TX INFO')]) },
+        { getStatusAlarms: vi.fn().mockReturnValue([alarm('info', 'TX INFO')]) },
       ],
       receivers: [
-        { getStatusAlarms: jest.fn().mockReturnValue([alarm('warning', 'RX WARN')]) },
+        { getStatusAlarms: vi.fn().mockReturnValue([alarm('warning', 'RX WARN')]) },
       ],
     });
 
     const nonOperational = gs({
       state: { id: 'beta', isOperational: false },
-      antennas: [{ getStatusAlarms: jest.fn().mockReturnValue([alarm('error', 'NOPE')]) }],
+      antennas: [{ getStatusAlarms: vi.fn().mockReturnValue([alarm('error', 'NOPE')]) }],
     });
 
     mockSimulationManager.groundStations = [operational, nonOperational];
@@ -147,12 +148,12 @@ describe('AlarmService', () => {
 
     const operational = gs({
       state: { id: 'alpha', isOperational: true },
-      antennas: [{ getStatusAlarms: jest.fn().mockReturnValue([alarm('warning', 'W')]) }],
+      antennas: [{ getStatusAlarms: vi.fn().mockReturnValue([alarm('warning', 'W')]) }],
     });
 
     mockSimulationManager.groundStations = [operational];
 
-    (Date.now as jest.Mock).mockReturnValueOnce(1000).mockReturnValueOnce(2500);
+    (Date.now as Mock).mockReturnValueOnce(1000).mockReturnValueOnce(2500);
 
     updateHandler?.(16);
     updateHandler?.(16);
@@ -167,9 +168,9 @@ describe('AlarmService', () => {
 
     const operational = gs({
       state: { id: 'alpha', isOperational: true },
-      antennas: [{ getStatusAlarms: jest.fn().mockReturnValue([alarm('success', 'OK')]) }],
-      transmitters: [{ getStatusAlarms: jest.fn().mockReturnValue([]) }],
-      receivers: [{ getStatusAlarms: jest.fn().mockReturnValue([]) }],
+      antennas: [{ getStatusAlarms: vi.fn().mockReturnValue([alarm('success', 'OK')]) }],
+      transmitters: [{ getStatusAlarms: vi.fn().mockReturnValue([]) }],
+      receivers: [{ getStatusAlarms: vi.fn().mockReturnValue([]) }],
     });
 
     mockSimulationManager.groundStations = [operational];

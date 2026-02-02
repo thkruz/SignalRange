@@ -1,7 +1,8 @@
+import { vi } from 'vitest';
 import { ObjectiveFailedModal } from '../../src/modal/objective-failed-modal';
 
 // Mock all dependencies - use global.document to avoid Jest mock scoping issues
-jest.mock('../../src/engine/ui/draggable-modal', () => ({
+vi.mock('../../src/engine/ui/draggable-modal', () => ({
   DraggableModal: class MockDraggableModal {
     protected boxId: string;
     protected title: string;
@@ -24,66 +25,68 @@ jest.mock('../../src/engine/ui/draggable-modal', () => ({
       this.boxEl = null;
     }
 
-    protected onOpen(): void {}
+    protected onOpen(): void { }
     protected getModalContentHtml(): string { return ''; }
   },
 }));
 
-jest.mock('../../src/engine/utils/development/formatter', () => ({
+vi.mock('../../src/engine/utils/development/formatter', () => ({
   html: (strings: TemplateStringsArray, ...values: unknown[]) => {
     return strings.reduce((result, str, i) => result + str + (values[i] ?? ''), '');
   },
 }));
 
-jest.mock('../../src/scenario-manager', () => ({
+vi.mock('../../src/scenario-manager', () => ({
   ScenarioManager: {
-    getInstance: jest.fn(() => ({
+    getInstance: vi.fn(() => ({
       data: { id: 'scenario-1' },
     })),
   },
 }));
 
-jest.mock('../../src/sync/storage', () => ({
-  clearPersistedStore: jest.fn().mockResolvedValue(undefined),
+vi.mock('../../src/sync/storage', () => ({
+  clearPersistedStore: vi.fn().mockResolvedValue(undefined),
 }));
 
-const mockHasCheckpoint = jest.fn().mockResolvedValue(false);
-const mockClearCheckpoint = jest.fn().mockResolvedValue(undefined);
-jest.mock('../../src/user-account/progress-save-manager', () => ({
-  ProgressSaveManager: jest.fn().mockImplementation(() => ({
-    hasCheckpoint: mockHasCheckpoint,
-    clearCheckpoint: mockClearCheckpoint,
-  })),
+const mockHasCheckpoint = vi.fn().mockResolvedValue(false);
+const mockClearCheckpoint = vi.fn().mockResolvedValue(undefined);
+vi.mock('../../src/user-account/progress-save-manager', () => ({
+  ProgressSaveManager: vi.fn(function () {
+    return {
+      hasCheckpoint: mockHasCheckpoint,
+      clearCheckpoint: mockClearCheckpoint,
+    };
+  }),
 }));
 
-const mockDialogManagerHide = jest.fn();
-jest.mock('../../src/modal/dialog-manager', () => ({
+const mockDialogManagerHide = vi.fn();
+vi.mock('../../src/modal/dialog-manager', () => ({
   DialogManager: {
-    getInstance: jest.fn(() => ({
+    getInstance: vi.fn(() => ({
       hide: mockDialogManagerHide,
     })),
   },
 }));
 
-const mockQuizModalClose = jest.fn();
-jest.mock('../../src/modal/quiz-modal', () => ({
+const mockQuizModalClose = vi.fn();
+vi.mock('../../src/modal/quiz-modal', () => ({
   QuizModal: {
-    getInstance: jest.fn(() => ({
+    getInstance: vi.fn(() => ({
       close: mockQuizModalClose,
     })),
   },
 }));
 
-const mockPendingQuizIndicatorSuppress = jest.fn();
-jest.mock('../../src/modal/pending-quiz-indicator', () => ({
+const mockPendingQuizIndicatorSuppress = vi.fn();
+vi.mock('../../src/modal/pending-quiz-indicator', () => ({
   PendingQuizIndicator: {
-    getInstance: jest.fn(() => ({
+    getInstance: vi.fn(() => ({
       suppress: mockPendingQuizIndicatorSuppress,
     })),
   },
 }));
 
-jest.mock('../../src/assets/icons/stopwatch.png', () => 'stopwatch.png');
+vi.mock('../../src/assets/icons/stopwatch.png', () => ({ default: 'stopwatch.png' }));
 
 describe('ObjectiveFailedModal', () => {
   let modal: ObjectiveFailedModal;
@@ -92,7 +95,7 @@ describe('ObjectiveFailedModal', () => {
     (ObjectiveFailedModal as any).instance_ = null;
     document.body.innerHTML = '';
     modal = ObjectiveFailedModal.getInstance();
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   afterEach(() => {

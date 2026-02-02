@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { FineAdjustControl } from '../../../src/components/fine-adjust-control/fine-adjust-control';
 
 describe('FineAdjustControl', () => {
@@ -181,7 +182,7 @@ describe('FineAdjustControl', () => {
       const control = new FineAdjustControl('event-control', 'Events', 0, '°', [10, 1]);
       mountControl(control);
 
-      const callback = jest.fn();
+      const callback = vi.fn();
       control.addEventListeners(callback);
 
       const increaseButton = container.querySelector('.btn-fine-increase') as HTMLButtonElement;
@@ -194,7 +195,7 @@ describe('FineAdjustControl', () => {
       const control = new FineAdjustControl('decrease-event', 'Decrease', 0, '°', [10, 1]);
       mountControl(control);
 
-      const callback = jest.fn();
+      const callback = vi.fn();
       control.addEventListeners(callback);
 
       const decreaseButton = container.querySelector('.btn-fine-decrease') as HTMLButtonElement;
@@ -207,7 +208,7 @@ describe('FineAdjustControl', () => {
       const control = new FineAdjustControl('all-buttons', 'All', 0, '°', [100, 10, 1]);
       mountControl(control);
 
-      const callback = jest.fn();
+      const callback = vi.fn();
       control.addEventListeners(callback);
 
       const allButtons = container.querySelectorAll('.btn-fine');

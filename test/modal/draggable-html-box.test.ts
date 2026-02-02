@@ -1,17 +1,18 @@
+import { Mock, vi } from 'vitest';
 import { DraggableBox } from '../../src/engine/ui/draggable-box';
 import { getEl } from '../../src/engine/utils/get-el';
 import { DraggableHtmlBox } from '../../src/modal/draggable-html-box';
 
-jest.mock('../../src/engine/ui/draggable-box');
-jest.mock('../../src/engine/utils/get-el');
+vi.mock('../../src/engine/ui/draggable-box');
+vi.mock('../../src/engine/utils/get-el');
 
 describe('DraggableHtmlBox', () => {
   let mockElement: HTMLElement;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockElement = document.createElement('div');
-    (getEl as jest.Mock).mockReturnValue(mockElement);
+    (getEl as Mock).mockReturnValue(mockElement);
   });
 
   describe('constructor', () => {
@@ -75,7 +76,7 @@ describe('DraggableHtmlBox', () => {
 
     it('should call onClose callback if defined', () => {
       const box = new DraggableHtmlBox('Test', 'test-id');
-      const mockOnClose = jest.fn();
+      const mockOnClose = vi.fn();
       box.onClose = mockOnClose;
 
       box.close();
@@ -85,7 +86,7 @@ describe('DraggableHtmlBox', () => {
 
     it('should call parent close with callback', () => {
       const box = new DraggableHtmlBox('Test', 'test-id');
-      const mockCallback = jest.fn();
+      const mockCallback = vi.fn();
 
       box.close(mockCallback);
 

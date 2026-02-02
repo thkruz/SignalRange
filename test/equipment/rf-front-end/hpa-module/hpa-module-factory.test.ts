@@ -1,53 +1,54 @@
-import { RFFrontEndCore } from '../../../../src/equipment/rf-front-end/rf-front-end-core';
+import { vi } from 'vitest';
 import { HPAModuleCore, HPAState } from '../../../../src/equipment/rf-front-end/hpa-module/hpa-module-core';
-import { HPAModuleUIStandard } from '../../../../src/equipment/rf-front-end/hpa-module/hpa-module-ui-standard';
 import { createHPA, HPAModuleUIType } from '../../../../src/equipment/rf-front-end/hpa-module/hpa-module-factory';
+import { HPAModuleUIStandard } from '../../../../src/equipment/rf-front-end/hpa-module/hpa-module-ui-standard';
+import { RFFrontEndCore } from '../../../../src/equipment/rf-front-end/rf-front-end-core';
 import { EventBus } from '../../../../src/events/event-bus';
 import { Events } from '../../../../src/events/events';
 
 // Mock HTMLMediaElement.prototype.play for jsdom compatibility
 Object.defineProperty(HTMLMediaElement.prototype, 'play', {
   configurable: true,
-  value: jest.fn().mockResolvedValue(undefined),
+  value: vi.fn().mockResolvedValue(undefined),
 });
 
 // Mock UI components that require DOM
-jest.mock('../../../../src/components/rotary-knob/rotary-knob', () => ({
+vi.mock('../../../../src/components/rotary-knob/rotary-knob', () => ({
   RotaryKnob: {
-    create: jest.fn(() => ({
+    create: vi.fn(() => ({
       html: '<div class="mock-knob"></div>',
-      sync: jest.fn(),
-      dispose: jest.fn(),
+      sync: vi.fn(),
+      dispose: vi.fn(),
     })),
   },
 }));
 
-jest.mock('../../../../src/components/power-switch/power-switch', () => ({
+vi.mock('../../../../src/components/power-switch/power-switch', () => ({
   PowerSwitch: {
-    create: jest.fn(() => ({
+    create: vi.fn(() => ({
       html: '<div class="mock-switch"></div>',
-      sync: jest.fn(),
-      addEventListeners: jest.fn(),
-      dispose: jest.fn(),
+      sync: vi.fn(),
+      addEventListeners: vi.fn(),
+      dispose: vi.fn(),
     })),
   },
 }));
 
-jest.mock('../../../../src/components/secure-toggle-switch/secure-toggle-switch', () => ({
+vi.mock('../../../../src/components/secure-toggle-switch/secure-toggle-switch', () => ({
   SecureToggleSwitch: {
-    create: jest.fn(() => ({
+    create: vi.fn(() => ({
       html: '<div class="mock-toggle"></div>',
-      sync: jest.fn(),
-      dispose: jest.fn(),
+      sync: vi.fn(),
+      dispose: vi.fn(),
     })),
   },
 }));
 
-jest.mock('../../../../src/components/help-btn/help-btn', () => ({
+vi.mock('../../../../src/components/help-btn/help-btn', () => ({
   HelpButton: {
-    create: jest.fn(() => ({
+    create: vi.fn(() => ({
       html: '<div class="mock-help"></div>',
-      dispose: jest.fn(),
+      dispose: vi.fn(),
     })),
   },
 }));
@@ -82,7 +83,7 @@ describe('createHPA factory', () => {
   let defaultState: HPAState;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     document.body.innerHTML = '<div id="test-container"></div>';
 

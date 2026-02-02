@@ -1,31 +1,32 @@
+import { vi, Mock } from 'vitest';
 import { EventBus } from '../../src/events/event-bus';
 
 // Mock dependencies before imports
-jest.mock('../../src/events/event-bus');
+vi.mock('../../src/events/event-bus');
 
-jest.mock('../../src/engine/utils/get-el', () => ({
-  getEl: jest.fn(),
+vi.mock('../../src/engine/utils/get-el', () => ({
+  getEl: vi.fn(),
 }));
 
-jest.mock('../../src/engine/utils/query-selector', () => ({
-  qs: jest.fn(),
+vi.mock('../../src/engine/utils/query-selector', () => ({
+  qs: vi.fn(),
 }));
 
-jest.mock('../../src/logging/logger', () => ({
+vi.mock('../../src/logging/logger', () => ({
   Logger: {
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
   },
 }));
 
-jest.mock('../../src/router', () => ({
+vi.mock('../../src/router', () => ({
   NavigationOptions: {},
 }));
 
-jest.mock('../../src/scenario-manager', () => ({
+vi.mock('../../src/scenario-manager', () => ({
   ScenarioManager: {
-    getInstance: jest.fn(() => ({
+    getInstance: vi.fn(() => ({
       data: {
         id: 'sandbox',
         objectives: [],
@@ -37,99 +38,101 @@ jest.mock('../../src/scenario-manager', () => ({
   },
 }));
 
-jest.mock('../../src/simulation/simulation-manager', () => ({
+vi.mock('../../src/simulation/simulation-manager', () => ({
   SimulationManager: {
-    getInstance: jest.fn(() => ({
+    getInstance: vi.fn(() => ({
       equipment: null,
-      sync: jest.fn(),
+      sync: vi.fn(),
     })),
-    destroy: jest.fn(),
+    destroy: vi.fn(),
   },
 }));
 
-jest.mock('../../src/objectives/objectives-manager', () => ({
+vi.mock('../../src/objectives/objectives-manager', () => ({
   ObjectivesManager: {
-    initialize: jest.fn(),
-    getInstance: jest.fn(() => ({
-      areAllObjectivesCompleted: jest.fn(() => false),
-      getObjectiveStates: jest.fn(() => []),
-      getElapsedTime: jest.fn(() => 0),
-      stopAllTimers: jest.fn(),
+    initialize: vi.fn(),
+    getInstance: vi.fn(() => ({
+      areAllObjectivesCompleted: vi.fn(() => false),
+      getObjectiveStates: vi.fn(() => []),
+      getElapsedTime: vi.fn(() => 0),
+      stopAllTimers: vi.fn(),
     })),
-    destroy: jest.fn(),
+    destroy: vi.fn(),
   },
 }));
 
-jest.mock('../../src/modal/quiz-modal', () => ({
+vi.mock('../../src/modal/quiz-modal', () => ({
   QuizModal: {
-    getInstance: jest.fn(),
-    destroy: jest.fn(),
+    getInstance: vi.fn(),
+    destroy: vi.fn(),
   },
 }));
 
-jest.mock('../../src/scenarios/scenario-dialog-manager', () => ({
+vi.mock('../../src/scenarios/scenario-dialog-manager', () => ({
   ScenarioDialogManager: {
-    getInstance: jest.fn(() => ({
-      initialize: jest.fn(),
+    getInstance: vi.fn(() => ({
+      initialize: vi.fn(),
     })),
-    reset: jest.fn(),
+    reset: vi.fn(),
   },
 }));
 
-jest.mock('../../src/sync/storage', () => ({
-  syncEquipmentWithStore: jest.fn(),
-  clearPersistedStore: jest.fn(() => Promise.resolve()),
+vi.mock('../../src/sync/storage', () => ({
+  syncEquipmentWithStore: vi.fn(),
+  clearPersistedStore: vi.fn(() => Promise.resolve()),
   syncManager: {
-    setEquipment: jest.fn(),
+    setEquipment: vi.fn(),
     provider: {
-      write: jest.fn(() => Promise.resolve()),
+      write: vi.fn(() => Promise.resolve()),
     },
   },
   AppState: {},
 }));
 
-jest.mock('../../src/user-account/progress-save-manager', () => ({
-  ProgressSaveManager: jest.fn().mockImplementation(() => ({
-    initialize: jest.fn(),
-    dispose: jest.fn(),
-    loadCheckpoint: jest.fn(() => Promise.resolve(null)),
-  })),
+vi.mock('../../src/user-account/progress-save-manager', () => ({
+  ProgressSaveManager: vi.fn(function (this: any) {
+    this.initialize = vi.fn();
+    this.dispose = vi.fn();
+    this.loadCheckpoint = vi.fn(() => Promise.resolve(null));
+    return this;
+  }),
 }));
 
-jest.mock('../../src/scoring/scenario-completion-handler', () => ({
+vi.mock('../../src/scoring/scenario-completion-handler', () => ({
   ScenarioCompletionHandler: {
-    getInstance: jest.fn(() => ({
-      initialize: jest.fn(),
+    getInstance: vi.fn(() => ({
+      initialize: vi.fn(),
     })),
-    destroy: jest.fn(),
+    destroy: vi.fn(),
   },
 }));
 
-jest.mock('../../src/modal/time-penalty-toast', () => ({
+vi.mock('../../src/modal/time-penalty-toast', () => ({
   TimePenaltyToast: {
-    getInstance: jest.fn(),
+    getInstance: vi.fn(),
   },
 }));
 
-jest.mock('../../src/modal/dialog-manager', () => ({
+vi.mock('../../src/modal/dialog-manager', () => ({
   DialogManager: {
-    getInstance: jest.fn(() => ({
-      show: jest.fn(),
+    getInstance: vi.fn(() => ({
+      show: vi.fn(),
     })),
   },
 }));
 
-jest.mock('../../src/pages/sandbox/equipment', () => ({
-  Equipment: jest.fn().mockImplementation(() => ({
-    spectrumAnalyzers: [],
-    antennas: [],
-    rfFrontEnds: [],
-    transmitters: [],
-    receivers: [],
-  })),
+vi.mock('../../src/pages/sandbox/equipment', () => ({
+  Equipment: vi.fn(function (this: any) {
+    this.spectrumAnalyzers = [];
+    this.antennas = [];
+    this.rfFrontEnds = [];
+    this.transmitters = [];
+    this.receivers = [];
+    return this;
+  }),
 }));
 
-jest.mock('../../src/pages/layout/body/body', () => ({
+vi.mock('../../src/pages/layout/body/body', () => ({
   Body: {
     containerId: 'body-content-container',
   },
@@ -145,37 +148,39 @@ import { Equipment } from '../../src/pages/sandbox/equipment';
 import { clearPersistedStore } from '../../src/sync/storage';
 import { qs } from '../../src/engine/utils/query-selector';
 import { getEl } from '../../src/engine/utils/get-el';
+import { ScenarioManager } from '../../src/scenario-manager';
+import { ProgressSaveManager } from '../../src/user-account/progress-save-manager';
 
 // Setup qs mock to use actual DOM
-const mockQs = qs as jest.Mock;
+const mockQs = qs as Mock;
 mockQs.mockImplementation((selector: string, parent?: Element) => {
   const root = parent || global.document;
   return root.querySelector(selector);
 });
 
 // Setup getEl mock to use actual DOM
-const mockGetEl = getEl as jest.Mock;
+const mockGetEl = getEl as Mock;
 mockGetEl.mockImplementation((id: string) => global.document.getElementById(id));
 
 describe('SandboxPage', () => {
   let bodyContainer: HTMLElement;
-  let mockEventBus: { on: jest.Mock; off: jest.Mock; emit: jest.Mock; destroy: jest.Mock };
+  let mockEventBus: { on: Mock; off: Mock; emit: Mock; destroy: Mock };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Reset singleton
     (SandboxPage as any).instance_ = null;
 
     // Setup mock EventBus
     mockEventBus = {
-      on: jest.fn(),
-      off: jest.fn(),
-      emit: jest.fn(),
-      destroy: jest.fn(),
+      on: vi.fn(),
+      off: vi.fn(),
+      emit: vi.fn(),
+      destroy: vi.fn(),
     };
-    (EventBus.getInstance as jest.Mock).mockReturnValue(mockEventBus);
-    (EventBus.destroy as jest.Mock) = jest.fn();
+    (EventBus.getInstance as Mock).mockReturnValue(mockEventBus);
+    (EventBus.destroy as Mock) = vi.fn();
 
     // Setup body container
     bodyContainer = document.createElement('div');
@@ -256,9 +261,9 @@ describe('SandboxPage', () => {
     it('should set equipment on SimulationManager', async () => {
       const mockSimManager = {
         equipment: null,
-        sync: jest.fn(),
+        sync: vi.fn(),
       };
-      (SimulationManager.getInstance as jest.Mock).mockReturnValue(mockSimManager);
+      (SimulationManager.getInstance as Mock).mockReturnValue(mockSimManager);
 
       SandboxPage.create();
 
@@ -277,8 +282,7 @@ describe('SandboxPage', () => {
     });
 
     it('should clear local storage when not continuing from checkpoint', async () => {
-      const { ScenarioManager } = require('../../src/scenario-manager');
-      ScenarioManager.getInstance.mockReturnValue({
+      (ScenarioManager.getInstance as Mock).mockReturnValue({
         data: { id: 'sandbox', objectives: [] },
         settings: { isSync: true },
       });
@@ -386,13 +390,12 @@ describe('SandboxPage', () => {
 
   describe('checkpoint loading', () => {
     it('should load checkpoint when continuing from checkpoint', async () => {
-      const { ScenarioManager } = require('../../src/scenario-manager');
-      ScenarioManager.getInstance.mockReturnValue({
+      (ScenarioManager.getInstance as Mock).mockReturnValue({
         data: { id: 'sandbox', objectives: [] },
         settings: { isSync: true },
       });
 
-      const mockLoadCheckpoint = jest.fn(() =>
+      const mockLoadCheckpoint = vi.fn(() =>
         Promise.resolve({
           state: {
             equipment: { test: 'data' },
@@ -400,12 +403,12 @@ describe('SandboxPage', () => {
         })
       );
 
-      const { ProgressSaveManager } = require('../../src/user-account/progress-save-manager');
-      ProgressSaveManager.mockImplementation(() => ({
-        initialize: jest.fn(),
-        dispose: jest.fn(),
-        loadCheckpoint: mockLoadCheckpoint,
-      }));
+      (ProgressSaveManager as Mock).mockImplementation(function (this: any) {
+        this.initialize = vi.fn();
+        this.dispose = vi.fn();
+        this.loadCheckpoint = mockLoadCheckpoint;
+        return this;
+      });
 
       SandboxPage.create({ continueFromCheckpoint: true });
 
@@ -418,20 +421,19 @@ describe('SandboxPage', () => {
     });
 
     it('should not load checkpoint when starting fresh', async () => {
-      const { ScenarioManager } = require('../../src/scenario-manager');
-      ScenarioManager.getInstance.mockReturnValue({
+      (ScenarioManager.getInstance as Mock).mockReturnValue({
         data: { id: 'sandbox', objectives: [] },
         settings: { isSync: true },
       });
 
-      const mockLoadCheckpoint = jest.fn(() => Promise.resolve(null));
+      const mockLoadCheckpoint = vi.fn(() => Promise.resolve(null));
 
-      const { ProgressSaveManager } = require('../../src/user-account/progress-save-manager');
-      ProgressSaveManager.mockImplementation(() => ({
-        initialize: jest.fn(),
-        dispose: jest.fn(),
-        loadCheckpoint: mockLoadCheckpoint,
-      }));
+      (ProgressSaveManager as Mock).mockImplementation(function (this: any) {
+        this.initialize = vi.fn();
+        this.dispose = vi.fn();
+        this.loadCheckpoint = mockLoadCheckpoint;
+        return this;
+      });
 
       SandboxPage.create({ forceReplay: true });
 

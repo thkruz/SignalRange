@@ -1,15 +1,16 @@
+import { vi } from 'vitest';
+import { BUCModuleCore } from '../../../../src/equipment/rf-front-end/buc-module/buc-module-core';
+import { HPAModuleCore, HPAState } from '../../../../src/equipment/rf-front-end/hpa-module/hpa-module-core';
+import { RFFrontEndCore } from '../../../../src/equipment/rf-front-end/rf-front-end-core';
 import { EventBus } from '../../../../src/events/event-bus';
 import { Events } from '../../../../src/events/events';
-import { RFFrontEndCore } from '../../../../src/equipment/rf-front-end/rf-front-end-core';
-import { HPAModuleCore, HPAState } from '../../../../src/equipment/rf-front-end/hpa-module/hpa-module-core';
-import { BUCModuleCore } from '../../../../src/equipment/rf-front-end/buc-module/buc-module-core';
 import { SignalOrigin } from '../../../../src/signal-origin';
 import type { dB, dBm, RfSignal } from '../../../../src/types';
 
 // Mock HTMLMediaElement.prototype.play for jsdom compatibility
 Object.defineProperty(HTMLMediaElement.prototype, 'play', {
   configurable: true,
-  value: jest.fn().mockResolvedValue(undefined),
+  value: vi.fn().mockResolvedValue(undefined),
 });
 
 // Concrete test implementation of abstract HPAModuleCore
@@ -95,7 +96,7 @@ describe('HPAModuleCore', () => {
   let mockRfFrontEnd: RFFrontEndCore;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     document.body.innerHTML = '<div id="test-root"></div>';
 
@@ -353,7 +354,7 @@ describe('HPAModuleCore', () => {
           frequency: 14000e6,
           power: 0 as dBm,
           bandwidth: 36e6,
-          origin: SignalOrigin.BLOCK_UPCONVERTER,
+          origin: SignalOrigin.BUC,
         };
 
         (mockRfFrontEnd.bucModule as any).outputSignals = [inputSignal];
@@ -374,7 +375,7 @@ describe('HPAModuleCore', () => {
           frequency: 14000e6,
           power: 0 as dBm,
           bandwidth: 36e6,
-          origin: SignalOrigin.BLOCK_UPCONVERTER,
+          origin: SignalOrigin.BUC,
         };
 
         (mockRfFrontEnd.bucModule as any).outputSignals = [inputSignal];
@@ -414,7 +415,7 @@ describe('HPAModuleCore', () => {
 
     it('should enable power when BUC is powered', () => {
       hpaModule.state.isPowered = false;
-      const callback = jest.fn();
+      const callback = vi.fn();
 
       hpaModule.handlePowerToggle(true, callback);
 
@@ -424,7 +425,7 @@ describe('HPAModuleCore', () => {
 
     it('should disable power', () => {
       hpaModule.state.isPowered = true;
-      const callback = jest.fn();
+      const callback = vi.fn();
 
       hpaModule.handlePowerToggle(false, callback);
 
@@ -439,7 +440,7 @@ describe('HPAModuleCore', () => {
         mockRfFrontEnd,
         1
       );
-      const callback = jest.fn();
+      const callback = vi.fn();
 
       hpaModule.handlePowerToggle(true, callback);
 
@@ -741,7 +742,7 @@ describe('HPAModuleCore', () => {
 
     it('should return BUC output signals when not in loopback', () => {
       const testSignals: RfSignal[] = [
-        { frequency: 14000e6, power: 10 as dBm, bandwidth: 36e6, origin: SignalOrigin.BLOCK_UPCONVERTER },
+        { frequency: 14000e6, power: 10 as dBm, bandwidth: 36e6, origin: SignalOrigin.BUC },
       ];
       (mockRfFrontEnd.bucModule as any).state.isLoopback = false;
       (mockRfFrontEnd.bucModule as any).outputSignals = testSignals;
@@ -855,7 +856,7 @@ describe('HPAModuleCore', () => {
         frequency: 14000e6,
         power: 0 as dBm,
         bandwidth: 36e6,
-        origin: SignalOrigin.BLOCK_UPCONVERTER,
+        origin: SignalOrigin.BUC,
       };
 
       (mockRfFrontEnd.bucModule as any).outputSignals = [inputSignal];

@@ -1,10 +1,11 @@
-import { OMTModule, OMTState, PolarizationType } from '../../../../src/equipment/rf-front-end/omt-module/omt-module';
-import { createRFFrontEnd } from '../../../../src/equipment/rf-front-end/rf-front-end-factory';
+import { vi } from 'vitest';
+import { OMTModule } from '../../../../src/equipment/rf-front-end/omt-module/omt-module';
 import { RFFrontEndCore } from '../../../../src/equipment/rf-front-end/rf-front-end-core';
+import { createRFFrontEnd } from '../../../../src/equipment/rf-front-end/rf-front-end-factory';
 import { EventBus } from '../../../../src/events/event-bus';
 import { Events } from '../../../../src/events/events';
-import { dB, dBi, dBm, RfSignal } from '../../../../src/types';
 import { SignalOrigin } from '../../../../src/signal-origin';
+import { dBi, dBm, RfSignal } from '../../../../src/types';
 
 describe('OMTModule', () => {
   let rfFrontEnd: RFFrontEndCore;
@@ -21,7 +22,7 @@ describe('OMTModule', () => {
 
   afterEach(() => {
     document.body.innerHTML = '';
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('getDefaultState', () => {
@@ -114,7 +115,7 @@ describe('OMTModule', () => {
 
   describe('addEventListeners', () => {
     it('should not throw when called', () => {
-      const callback = jest.fn();
+      const callback = vi.fn();
 
       expect(() => {
         omtModule.addEventListeners(callback);
@@ -143,7 +144,7 @@ describe('OMTModule', () => {
       };
 
       // Mock the rxSignalsIn getter
-      jest.spyOn(omtModule, 'rxSignalsIn', 'get').mockReturnValue([mockSignal]);
+      vi.spyOn(omtModule, 'rxSignalsIn', 'get').mockReturnValue([mockSignal]);
 
       omtModule.update();
 
@@ -163,7 +164,7 @@ describe('OMTModule', () => {
       omtModule.state.effectiveRxPol = 'V';
       omtModule.state.crossPolIsolation = 30;
 
-      jest.spyOn(omtModule, 'rxSignalsIn', 'get').mockReturnValue([mockSignal]);
+      vi.spyOn(omtModule, 'rxSignalsIn', 'get').mockReturnValue([mockSignal]);
 
       omtModule.update();
 
@@ -194,7 +195,7 @@ describe('OMTModule', () => {
       omtModule.state.txPolarization = 'H'; // Non-reversed mode
       omtModule.state.crossPolIsolation = 30;
 
-      jest.spyOn(omtModule, 'rxSignalsIn', 'get').mockReturnValue([mockSignal]);
+      vi.spyOn(omtModule, 'rxSignalsIn', 'get').mockReturnValue([mockSignal]);
 
       omtModule.update();
 
@@ -213,14 +214,14 @@ describe('OMTModule', () => {
         bandwidth: 1e6,
         power: 10 as dBm,
         polarization: null,
-        origin: SignalOrigin.HPA,
+        origin: SignalOrigin.HIGH_POWER_AMPLIFIER,
         gainInPath: 0 as dBi,
       };
 
       omtModule.state.txPolarization = 'H';
 
-      jest.spyOn(omtModule, 'txSignalsIn', 'get').mockReturnValue([mockTxSignal]);
-      jest.spyOn(omtModule, 'rxSignalsIn', 'get').mockReturnValue([]);
+      vi.spyOn(omtModule, 'txSignalsIn', 'get').mockReturnValue([mockTxSignal]);
+      vi.spyOn(omtModule, 'rxSignalsIn', 'get').mockReturnValue([]);
 
       omtModule.update();
 

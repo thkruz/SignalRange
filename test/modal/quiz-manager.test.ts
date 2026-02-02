@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { EventBus } from '../../src/events/event-bus';
 import { Events } from '../../src/events/events';
 import { QuizManager } from '../../src/modal/quiz-manager';
@@ -45,7 +46,7 @@ describe('QuizManager', () => {
     });
 
     it('should emit QUIZ_PENDING event when registering', () => {
-      const callback = jest.fn();
+      const callback = vi.fn();
       eventBus.on(Events.QUIZ_PENDING, callback);
 
       quizManager.registerQuiz(
@@ -63,7 +64,7 @@ describe('QuizManager', () => {
     });
 
     it('should not re-register an existing quiz', () => {
-      const callback = jest.fn();
+      const callback = vi.fn();
 
       quizManager.registerQuiz('objective-1', 0, 'First question', ['A', 'B'], 0);
 
@@ -79,7 +80,7 @@ describe('QuizManager', () => {
       quizManager.registerQuiz('objective-1', 0, 'Question?', ['A', 'B'], 0);
 
       // Show the quiz to verify point penalty is used
-      const callback = jest.fn();
+      const callback = vi.fn();
       eventBus.on(Events.QUIZ_SHOW, callback);
 
       quizManager.showQuiz('objective-1', 0);
@@ -176,7 +177,7 @@ describe('QuizManager', () => {
 
   describe('showQuiz', () => {
     it('should emit QUIZ_SHOW event with quiz data', () => {
-      const callback = jest.fn();
+      const callback = vi.fn();
       eventBus.on(Events.QUIZ_SHOW, callback);
 
       quizManager.registerQuiz(
@@ -203,7 +204,7 @@ describe('QuizManager', () => {
     });
 
     it('should log error for non-existent quiz', () => {
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation();
 
       quizManager.showQuiz('non-existent', 0);
 
@@ -215,7 +216,7 @@ describe('QuizManager', () => {
     });
 
     it('should not show already completed quiz', () => {
-      const callback = jest.fn();
+      const callback = vi.fn();
       eventBus.on(Events.QUIZ_SHOW, callback);
 
       quizManager.registerQuiz('objective-1', 0, 'Question?', ['A', 'B'], 0);
@@ -247,7 +248,7 @@ describe('QuizManager', () => {
 
   describe('reopenPendingQuiz', () => {
     it('should do nothing if no pending quiz', () => {
-      const callback = jest.fn();
+      const callback = vi.fn();
       eventBus.on(Events.QUIZ_SHOW, callback);
 
       quizManager.reopenPendingQuiz();
@@ -256,7 +257,7 @@ describe('QuizManager', () => {
     });
 
     it('should show the pending quiz', () => {
-      const callback = jest.fn();
+      const callback = vi.fn();
       eventBus.on(Events.QUIZ_SHOW, callback);
 
       quizManager.registerQuiz('objective-1', 0, 'Question?', ['A', 'B'], 0);
@@ -388,7 +389,7 @@ describe('QuizManager', () => {
       const quizManager2 = QuizManager.getInstance();
 
       // Old event handlers should not be triggered
-      const callback = jest.fn();
+      const callback = vi.fn();
       newEventBus.on(Events.QUIZ_PENDING, callback);
 
       quizManager2.registerQuiz('objective-2', 0, 'New Question?', ['X', 'Y'], 0);

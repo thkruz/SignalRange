@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { ContinuousRotaryKnob } from '../../../src/components/rotary-knob/continuous-rotary-knob';
 import { EventBus } from '../../../src/events/event-bus';
 import { Events } from '../../../src/events/events';
@@ -6,7 +7,7 @@ describe('ContinuousRotaryKnob', () => {
   let container: HTMLElement;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     EventBus.destroy();
 
     container = document.createElement('div');
@@ -33,7 +34,7 @@ describe('ContinuousRotaryKnob', () => {
 
   describe('constructor', () => {
     it('should create instance with provided parameters', () => {
-      const callback = jest.fn();
+      const callback = vi.fn();
       const knob = createKnobInDom('test-knob', 45, 5, callback);
 
       expect(knob.html).toContain('id="test-knob"');
@@ -62,7 +63,7 @@ describe('ContinuousRotaryKnob', () => {
 
     it('should register DOM_READY event listener', () => {
       const eventBus = EventBus.getInstance();
-      const onSpy = jest.spyOn(eventBus, 'on');
+      const onSpy = vi.spyOn(eventBus, 'on');
 
       new ContinuousRotaryKnob('event-knob');
 
@@ -74,7 +75,7 @@ describe('ContinuousRotaryKnob', () => {
     it('should attach mousedown listener to knob body', () => {
       const knob = createKnobInDom('ready-knob');
       const knobBody = knob.dom.querySelector('.knob-body') as HTMLElement;
-      const addEventListenerSpy = jest.spyOn(knobBody, 'addEventListener');
+      const addEventListenerSpy = vi.spyOn(knobBody, 'addEventListener');
 
       EventBus.getInstance().emit(Events.DOM_READY);
 
@@ -83,7 +84,7 @@ describe('ContinuousRotaryKnob', () => {
 
     it('should attach mousemove listener to document', () => {
       const knob = createKnobInDom('mousemove-knob');
-      const addEventListenerSpy = jest.spyOn(document, 'addEventListener');
+      const addEventListenerSpy = vi.spyOn(document, 'addEventListener');
 
       EventBus.getInstance().emit(Events.DOM_READY);
 
@@ -92,7 +93,7 @@ describe('ContinuousRotaryKnob', () => {
 
     it('should attach mouseup listener to document', () => {
       const knob = createKnobInDom('mouseup-knob');
-      const addEventListenerSpy = jest.spyOn(document, 'addEventListener');
+      const addEventListenerSpy = vi.spyOn(document, 'addEventListener');
 
       EventBus.getInstance().emit(Events.DOM_READY);
 
@@ -102,7 +103,7 @@ describe('ContinuousRotaryKnob', () => {
     it('should attach wheel listener to knob body', () => {
       const knob = createKnobInDom('wheel-knob');
       const knobBody = knob.dom.querySelector('.knob-body') as HTMLElement;
-      const addEventListenerSpy = jest.spyOn(knobBody, 'addEventListener');
+      const addEventListenerSpy = vi.spyOn(knobBody, 'addEventListener');
 
       EventBus.getInstance().emit(Events.DOM_READY);
 
@@ -125,7 +126,7 @@ describe('ContinuousRotaryKnob', () => {
       knobBody.dispatchEvent(mousedownEvent);
 
       // Verify drag started by triggering mousemove and checking angle change
-      jest.spyOn(knob.dom, 'getBoundingClientRect').mockReturnValue({
+      vi.spyOn(knob.dom, 'getBoundingClientRect').mockReturnValue({
         left: 0, top: 0, width: 50, height: 50, right: 50, bottom: 50, x: 0, y: 0, toJSON: () => ({}),
       });
       Object.defineProperty(knob.dom, 'offsetWidth', { value: 50 });
@@ -146,7 +147,7 @@ describe('ContinuousRotaryKnob', () => {
 
       const initialAngle = knob.getAngle();
 
-      jest.spyOn(knob.dom, 'getBoundingClientRect').mockReturnValue({
+      vi.spyOn(knob.dom, 'getBoundingClientRect').mockReturnValue({
         left: 0, top: 0, width: 50, height: 50, right: 50, bottom: 50, x: 0, y: 0, toJSON: () => ({}),
       });
       Object.defineProperty(knob.dom, 'offsetWidth', { value: 50 });
@@ -167,7 +168,7 @@ describe('ContinuousRotaryKnob', () => {
 
       const knobBody = knob.dom.querySelector('.knob-body') as HTMLElement;
 
-      jest.spyOn(knob.dom, 'getBoundingClientRect').mockReturnValue({
+      vi.spyOn(knob.dom, 'getBoundingClientRect').mockReturnValue({
         left: 0, top: 0, width: 50, height: 50, right: 50, bottom: 50, x: 0, y: 0, toJSON: () => ({}),
       });
       Object.defineProperty(knob.dom, 'offsetWidth', { value: 50 });
@@ -203,7 +204,7 @@ describe('ContinuousRotaryKnob', () => {
 
       const knobBody = knob.dom.querySelector('.knob-body') as HTMLElement;
 
-      jest.spyOn(knob.dom, 'getBoundingClientRect').mockReturnValue({
+      vi.spyOn(knob.dom, 'getBoundingClientRect').mockReturnValue({
         left: 0, top: 0, width: 50, height: 50, right: 50, bottom: 50, x: 0, y: 0, toJSON: () => ({}),
       });
       Object.defineProperty(knob.dom, 'offsetWidth', { value: 50 });
@@ -272,7 +273,7 @@ describe('ContinuousRotaryKnob', () => {
         bubbles: true,
         cancelable: true,
       });
-      const preventDefaultSpy = jest.spyOn(wheelEvent, 'preventDefault');
+      const preventDefaultSpy = vi.spyOn(wheelEvent, 'preventDefault');
 
       knobBody.dispatchEvent(wheelEvent);
 
@@ -282,7 +283,7 @@ describe('ContinuousRotaryKnob', () => {
 
   describe('setAngle_ and callback', () => {
     it('should call callback with delta when angle changes', () => {
-      const callback = jest.fn();
+      const callback = vi.fn();
       const knob = createKnobInDom('callback-knob', 0, 10, callback);
       EventBus.getInstance().emit(Events.DOM_READY);
 
@@ -299,7 +300,7 @@ describe('ContinuousRotaryKnob', () => {
     });
 
     it('should not call callback when delta is zero', () => {
-      const callback = jest.fn();
+      const callback = vi.fn();
       const knob = createKnobInDom('no-delta-knob', 10, 10, callback);
       EventBus.getInstance().emit(Events.DOM_READY);
 
@@ -439,7 +440,7 @@ describe('ContinuousRotaryKnob', () => {
     });
 
     it('should call callback with delta when resetting', () => {
-      const callback = jest.fn();
+      const callback = vi.fn();
       const knob = createKnobInDom('reset-callback-knob', 90, 1, callback);
       EventBus.getInstance().emit(Events.DOM_READY);
 
@@ -492,7 +493,7 @@ describe('ContinuousRotaryKnob', () => {
 
   describe('sync', () => {
     it('should update angle without triggering callback', () => {
-      const callback = jest.fn();
+      const callback = vi.fn();
       const knob = createKnobInDom('sync-knob', 0, 1, callback);
       EventBus.getInstance().emit(Events.DOM_READY);
 
@@ -541,7 +542,7 @@ describe('ContinuousRotaryKnob', () => {
     });
 
     it('should create with callback', () => {
-      const callback = jest.fn();
+      const callback = vi.fn();
       const knob = ContinuousRotaryKnob.create('static-callback-knob', 0, 10, callback);
       container.innerHTML = knob.html;
 

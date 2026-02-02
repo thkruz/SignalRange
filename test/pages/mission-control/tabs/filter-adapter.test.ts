@@ -1,20 +1,20 @@
-import { FilterAdapter } from '../../../../src/pages/mission-control/tabs/filter-adapter';
+import { Mock, Mocked, vi } from 'vitest';
 import { IfFilterBankModuleCore, IfFilterBankState } from '../../../../src/equipment/rf-front-end/filter-module/filter-module-core';
 import { EventBus } from '../../../../src/events/event-bus';
 import { Events } from '../../../../src/events/events';
-import { ScenarioManager } from '../../../../src/scenario-manager';
+import { FilterAdapter } from '../../../../src/pages/mission-control/tabs/filter-adapter';
 
 // Mock dependencies
-jest.mock('../../../../src/events/event-bus');
-jest.mock('../../../../src/scenario-manager', () => ({
+vi.mock('../../../../src/events/event-bus');
+vi.mock('../../../../src/scenario-manager', () => ({
   ScenarioManager: {
-    getInstance: jest.fn().mockReturnValue({
+    getInstance: vi.fn().mockReturnValue({
       data: { difficulty: 'beginner' },
     }),
   },
 }));
-jest.mock('../../../../src/equipment/rf-front-end/filter-module/filter-module-core', () => ({
-  IfFilterBankModuleCore: jest.fn(),
+vi.mock('../../../../src/equipment/rf-front-end/filter-module/filter-module-core', () => ({
+  IfFilterBankModuleCore: vi.fn(),
   FILTER_BANDWIDTH_CONFIGS: [
     { label: '1 MHz', bandwidth: 1e6 },
     { label: '6 MHz', bandwidth: 6e6 },
@@ -25,34 +25,34 @@ jest.mock('../../../../src/equipment/rf-front-end/filter-module/filter-module-co
 }));
 
 describe('FilterAdapter', () => {
-  let mockFilterModule: jest.Mocked<IfFilterBankModuleCore>;
+  let mockFilterModule: Mocked<IfFilterBankModuleCore>;
   let containerEl: HTMLElement;
   let adapter: FilterAdapter;
-  let mockEventBus: { on: jest.Mock; off: jest.Mock; emit: jest.Mock };
+  let mockEventBus: { on: Mock; off: Mock; emit: Mock };
 
   const mockState: IfFilterBankState = {
     bandwidthIndex: 2,
     bandwidth: 18e6,
     insertionLoss: 1.5,
     noiseFloor: -120,
-  };
+  } as IfFilterBankState;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Setup mock EventBus
     mockEventBus = {
-      on: jest.fn(),
-      off: jest.fn(),
-      emit: jest.fn(),
+      on: vi.fn(),
+      off: vi.fn(),
+      emit: vi.fn(),
     };
-    (EventBus.getInstance as jest.Mock).mockReturnValue(mockEventBus);
+    (EventBus.getInstance as Mock).mockReturnValue(mockEventBus);
 
     // Setup mock IfFilterBankModuleCore
     mockFilterModule = {
       state: { ...mockState },
-      handleBandwidthChange: jest.fn(),
-    } as unknown as jest.Mocked<IfFilterBankModuleCore>;
+      handleBandwidthChange: vi.fn(),
+    } as unknown as Mocked<IfFilterBankModuleCore>;
 
     // Setup container with required DOM elements
     containerEl = document.createElement('div');

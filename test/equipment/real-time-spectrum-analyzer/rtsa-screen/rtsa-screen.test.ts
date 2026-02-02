@@ -1,5 +1,6 @@
-import { RTSAScreen } from '../../../../src/equipment/real-time-spectrum-analyzer/rtsa-screen/rtsa-screen';
+import { vi } from 'vitest';
 import { RealTimeSpectrumAnalyzer } from '../../../../src/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer';
+import { RTSAScreen } from '../../../../src/equipment/real-time-spectrum-analyzer/rtsa-screen/rtsa-screen';
 
 // Concrete implementation of abstract RTSAScreen for testing
 class TestableRTSAScreen extends RTSAScreen {
@@ -67,7 +68,7 @@ describe('RTSAScreen', () => {
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('constructor', () => {
@@ -100,7 +101,7 @@ describe('RTSAScreen', () => {
 
     it('should throw error if canvas context is unavailable', () => {
       const mockCanvas = {
-        getContext: jest.fn().mockReturnValue(null),
+        getContext: vi.fn().mockReturnValue(null),
         width: 0,
         height: 0,
       } as unknown as HTMLCanvasElement;

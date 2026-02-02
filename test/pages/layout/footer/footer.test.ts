@@ -1,17 +1,18 @@
 // Mock query-selector
-jest.mock('../../../../src/engine/utils/query-selector', () => ({
-  qs: jest.fn(),
+vi.mock('../../../../src/engine/utils/query-selector', () => ({
+  qs: vi.fn(),
 }));
 
 // Mock global build variables
 (global as any).__APP_VERSION__ = '1.0.0';
 (global as any).__GIT_COMMIT_SHA__ = 'abc123';
 
-import { Footer } from '../../../../src/pages/layout/footer/footer';
+import { Mock, vi } from 'vitest';
 import { qs } from '../../../../src/engine/utils/query-selector';
+import { Footer } from '../../../../src/pages/layout/footer/footer';
 
 // Setup qs mock to use actual DOM
-const mockQs = qs as jest.Mock;
+const mockQs = qs as Mock;
 mockQs.mockImplementation((selector: string, parent?: Element) => {
   const root = parent || global.document;
   return root.querySelector(selector);
@@ -21,7 +22,7 @@ describe('Footer', () => {
   let rootElement: HTMLElement;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Reset singleton
     (Footer as any).instance_ = undefined;

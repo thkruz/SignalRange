@@ -1,34 +1,46 @@
 import { Degrees } from 'ootk';
-import { AntennaCore, AntennaState, TrackingMode } from '../../../src/equipment/antenna/antenna-core';
+import { vi } from 'vitest';
 import { ANTENNA_CONFIG_KEYS } from '../../../src/equipment/antenna/antenna-config-keys';
-import { ANTENNA_CONFIGS } from '../../../src/equipment/antenna/antenna-configs';
-import { Hertz, dBm } from '../../../src/types';
+import { AntennaCore, AntennaState } from '../../../src/equipment/antenna/antenna-core';
+import { Hertz } from '../../../src/types';
 
 // Mock SimulationManager
-jest.mock('../../../src/simulation/simulation-manager', () => ({
+vi.mock('../../../src/simulation/simulation-manager', () => ({
   SimulationManager: {
-    getInstance: jest.fn(() => ({
-      update: jest.fn(),
-      draw: jest.fn(),
-      sync: jest.fn(),
-      getSatByNoradId: jest.fn(),
+    getInstance: vi.fn(() => ({
+      update: vi.fn(),
+      draw: vi.fn(),
+      sync: vi.fn(),
+      getSatByNoradId: vi.fn(),
       getSatsByAzEl: () => [],
       satellites: [],
       isDeveloperMode: false,
     })),
-    destroy: jest.fn(),
+    destroy: vi.fn(),
   },
 }));
 
 // Mock EventBus
-jest.mock('../../../src/events/event-bus', () => ({
+vi.mock('../../../src/events/event-bus', () => ({
   EventBus: {
-    getInstance: jest.fn(() => ({
-      on: jest.fn(),
-      off: jest.fn(),
-      emit: jest.fn(),
+    getInstance: vi.fn(() => ({
+      on: vi.fn(),
+      off: vi.fn(),
+      emit: vi.fn(),
     })),
   },
+}));
+
+// Mock StepTrackController
+vi.mock('../../../src/equipment/antenna/step-track-controller', () => ({
+  StepTrackController: vi.fn(function (this: any) {
+    this.isActive = false;
+    this.start = vi.fn(() => { this.isActive = true; });
+    this.stop = vi.fn(() => { this.isActive = false; });
+    this.isRunning = vi.fn(() => this.isActive);
+    this.update = vi.fn();
+    return this;
+  }),
 }));
 
 /**
@@ -62,7 +74,7 @@ class TestableAntennaCore extends AntennaCore {
   }
 
   // Expose stepTrackController for testing
-  get stepTrackController_() {
+  getStepTrackController() {
     return (this as any).stepTrackController_;
   }
 
@@ -387,7 +399,7 @@ describe('AntennaCore', () => {
 
     it('should reset to manual mode when powering off', () => {
       antenna.state.isPowered = true;
-      antenna.state.trackingMode = 'step-track';
+      antenna.state.trackingMode = 'program-track';
       antenna.handlePowerToggle(false);
 
       expect(antenna.state.trackingMode).toBe('manual');
@@ -413,7 +425,7 @@ describe('AntennaCore', () => {
     it('should not change mode when not powered', () => {
       antenna.state.isPowered = false;
       antenna.state.trackingMode = 'manual';
-      antenna.handleTrackingModeChange('step-track');
+      antenna.handleTrackingModeChange('program-track');
 
       expect(antenna.state.trackingMode).toBe('manual');
     });
@@ -421,7 +433,7 @@ describe('AntennaCore', () => {
     it('should not change mode when not operational', () => {
       antenna.state.isOperational = false;
       antenna.state.trackingMode = 'manual';
-      antenna.handleTrackingModeChange('step-track');
+      antenna.handleTrackingModeChange('program-track');
 
       expect(antenna.state.trackingMode).toBe('manual');
     });
@@ -574,7 +586,7 @@ describe('AntennaCore', () => {
     });
 
     it('should not adjust when not in manual mode', () => {
-      antenna.state.trackingMode = 'step-track';
+      antenna.state.trackingMode = 'program-track';
       antenna.adjustAzimuth(10);
 
       expect(antenna.state.azimuth).toBe(100);
@@ -1109,13 +1121,13 @@ describe('AntennaCore', () => {
 
       // Start step tracking first
       antenna.startStepTrack();
-      expect(antenna.stepTrackController_.isActive).toBe(true);
+      expect(antenna.getStepTrackController().isActive).toBe(true);
 
       // Update should keep it running
       antenna.update();
 
       // Controller should still be active after update
-      expect(antenna.stepTrackController_.isActive).toBe(true);
+      expect(antenna.getStepTrackController().isActive).toBe(true);
     });
   });
 
@@ -1129,7 +1141,7 @@ describe('AntennaCore', () => {
     it('should start step tracking', () => {
       antenna.startStepTrack();
 
-      expect(antenna.stepTrackController_.isActive).toBe(true);
+      expect(antenna.getStepTrackController().isActive).toBe(true);
       expect(antenna.state.isAutoTrackEnabled).toBe(true);
       expect(antenna.state.isAutoTrackSwitchUp).toBe(true);
     });
@@ -1138,14 +1150,14 @@ describe('AntennaCore', () => {
       antenna.state.isPowered = false;
       antenna.startStepTrack();
 
-      expect(antenna.stepTrackController_.isActive).toBe(false);
+      expect(antenna.getStepTrackController().isActive).toBe(false);
     });
 
     it('should not start when not in program-track mode', () => {
       antenna.state.trackingMode = 'manual';
       antenna.startStepTrack();
 
-      expect(antenna.stepTrackController_.isActive).toBe(false);
+      expect(antenna.getStepTrackController().isActive).toBe(false);
     });
 
     it('should apply staged beacon settings', () => {
@@ -1170,11 +1182,11 @@ describe('AntennaCore', () => {
       antenna.state.trackingMode = 'program-track';
 
       antenna.startStepTrack();
-      expect(antenna.stepTrackController_.isActive).toBe(true);
+      expect(antenna.getStepTrackController().isActive).toBe(true);
 
       antenna.stopStepTrack();
 
-      expect(antenna.stepTrackController_.isActive).toBe(false);
+      expect(antenna.getStepTrackController().isActive).toBe(false);
       expect(antenna.state.isAutoTrackEnabled).toBe(false);
       expect(antenna.state.isAutoTrackSwitchUp).toBe(false);
       expect(antenna.state.isBeaconLocked).toBe(false);
@@ -1894,8 +1906,8 @@ describe('AntennaCore', () => {
       antenna.state.elevation = 45 as Degrees;
     });
 
-    it('should not adjust when in step-track mode', () => {
-      antenna.state.trackingMode = 'step-track';
+    it('should not adjust when in program-track mode', () => {
+      antenna.state.trackingMode = 'program-track';
       antenna.adjustElevation(10);
       expect(antenna.state.elevation).toBe(45);
     });
@@ -1915,8 +1927,8 @@ describe('AntennaCore', () => {
       antenna.state.targetElevation = 50 as Degrees;
     });
 
-    it('should not stage when in step-track mode', () => {
-      antenna.state.trackingMode = 'step-track';
+    it('should not stage when in program-track mode', () => {
+      antenna.state.trackingMode = 'program-track';
       antenna.stageElevationChange(10);
       expect(antenna.state.stagedTargetElevation).toBeNull();
     });
@@ -1974,19 +1986,19 @@ describe('AntennaCore', () => {
 
       // Start step tracking
       antenna.startStepTrack();
-      expect(antenna.stepTrackController_.isActive).toBe(true);
+      expect(antenna.getStepTrackController().isActive).toBe(true);
 
       // Change to manual mode
       antenna.handleTrackingModeChange('manual');
 
-      expect(antenna.stepTrackController_.isActive).toBe(false);
+      expect(antenna.getStepTrackController().isActive).toBe(false);
       expect(antenna.state.trackingMode).toBe('manual');
     });
   });
 
   describe('antennaGain_dBi frequency warnings', () => {
     it('should log warning for out-of-band frequency', () => {
-      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
+      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => { });
 
       // Use frequency outside both Rx and Tx ranges
       antenna.antennaGain_dBi(1e9 as Hertz); // 1 GHz, way below C-band
@@ -2027,7 +2039,7 @@ describe('AntennaCore', () => {
 
     it('should not sync target in non-manual mode', () => {
       antenna.state.isPowered = true;
-      antenna.state.trackingMode = 'step-track';
+      antenna.state.trackingMode = 'program-track';
       antenna.state.elevation = 30 as Degrees;
       antenna.state.targetElevation = 60 as Degrees;
 
@@ -2040,7 +2052,7 @@ describe('AntennaCore', () => {
 
   describe('handlePowerToggle extended', () => {
     it('should set isOperational after power-up delay', () => {
-      jest.useFakeTimers();
+      vi.useFakeTimers();
 
       antenna.state.isPowered = false;
       antenna.state.isOperational = false;
@@ -2051,15 +2063,15 @@ describe('AntennaCore', () => {
       // isOperational should not be immediately true
 
       // Fast-forward power-up delay
-      jest.advanceTimersByTime(3100);
+      vi.advanceTimersByTime(3100);
 
       expect(antenna.state.isOperational).toBe(true);
 
-      jest.useRealTimers();
+      vi.useRealTimers();
     });
 
     it('should clear lock acquisition timeout when powering off', () => {
-      jest.useFakeTimers();
+      vi.useFakeTimers();
 
       antenna.state.isPowered = true;
       antenna.state.isOperational = true;
@@ -2073,7 +2085,7 @@ describe('AntennaCore', () => {
       expect(antenna.state.isPowered).toBe(false);
       expect(antenna.state.isLocked).toBe(false);
 
-      jest.useRealTimers();
+      vi.useRealTimers();
     });
   });
 
@@ -2129,10 +2141,10 @@ describe('AntennaCore', () => {
       expect(antenna.state.stagedTargetAzimuth).toBeNull();
     });
 
-    it('should not stage when in step-track mode', () => {
+    it('should not stage when in program-track mode', () => {
       antenna.state.isPowered = true;
       antenna.state.isOperational = true;
-      antenna.state.trackingMode = 'step-track';
+      antenna.state.trackingMode = 'program-track';
       antenna.stageAzimuthChange(10);
       expect(antenna.state.stagedTargetAzimuth).toBeNull();
     });
@@ -2227,11 +2239,11 @@ describe('AntennaCore', () => {
     it('should not start when not operational', () => {
       antenna.state.isPowered = true;
       antenna.state.isOperational = false;
-      antenna.state.trackingMode = 'step-track';
+      antenna.state.trackingMode = 'program-track';
 
       antenna.startStepTrack();
 
-      expect(antenna.stepTrackController_.isActive).toBe(false);
+      expect(antenna.getStepTrackController().isActive).toBe(false);
     });
   });
 
@@ -2343,8 +2355,8 @@ describe('AntennaCore', () => {
     });
   });
 
-  describe('update with step-track restart', () => {
-    it('should not restart step track controller when not in step-track mode', () => {
+  describe('update with program-track restart', () => {
+    it('should not restart step track controller when not in program-track mode', () => {
       antenna.state.isPowered = true;
       antenna.state.isOperational = true;
       antenna.state.trackingMode = 'manual';
@@ -2352,7 +2364,7 @@ describe('AntennaCore', () => {
 
       antenna.update();
 
-      expect(antenna.stepTrackController_.isActive).toBe(false);
+      expect(antenna.getStepTrackController().isActive).toBe(false);
     });
   });
 

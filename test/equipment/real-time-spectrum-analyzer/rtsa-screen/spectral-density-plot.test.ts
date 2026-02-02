@@ -1,13 +1,14 @@
-import { SpectralDensityPlot } from '../../../../src/equipment/real-time-spectrum-analyzer/rtsa-screen/spectral-density-plot';
+import { Mock, vi } from 'vitest';
 import { RealTimeSpectrumAnalyzer } from '../../../../src/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer';
+import { SpectralDensityPlot } from '../../../../src/equipment/real-time-spectrum-analyzer/rtsa-screen/spectral-density-plot';
 import { SpectrumDataProcessor } from '../../../../src/equipment/real-time-spectrum-analyzer/spectrum-data-processor';
-import { Hertz } from '../../../../src/types';
 import { SimulationManager } from '../../../../src/simulation/simulation-manager';
+import { Hertz } from '../../../../src/types';
 
 // Mock SimulationManager
-jest.mock('../../../../src/simulation/simulation-manager', () => ({
+vi.mock('../../../../src/simulation/simulation-manager', () => ({
   SimulationManager: {
-    getInstance: jest.fn().mockReturnValue({
+    getInstance: vi.fn().mockReturnValue({
       isDeveloperMode: false,
     }),
   },
@@ -23,7 +24,7 @@ describe('SpectralDensityPlot', () => {
   const DEFAULT_HEIGHT = 230;
 
   beforeEach(() => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
 
     // Create canvas
     canvas = document.createElement('canvas');
@@ -56,11 +57,11 @@ describe('SpectralDensityPlot', () => {
       rfFrontEnd_: {
         couplerModule: {
           signalPathManager: {
-            getTotalRxGain: jest.fn().mockReturnValue(10),
+            getTotalRxGain: vi.fn().mockReturnValue(10),
           },
         },
         lnbModule: {
-          getTotalGain: jest.fn().mockReturnValue(30),
+          getTotalGain: vi.fn().mockReturnValue(30),
         },
       },
     } as unknown as RealTimeSpectrumAnalyzer;
@@ -69,14 +70,14 @@ describe('SpectralDensityPlot', () => {
     mockDataProcessor = {
       combinedData: new Float32Array(DEFAULT_WIDTH).fill(-80),
       noiseData: new Float32Array(DEFAULT_WIDTH).fill(-100),
-      setFrequencyRange: jest.fn(),
-      generateData: jest.fn(),
+      setFrequencyRange: vi.fn(),
+      generateData: vi.fn(),
     } as unknown as SpectrumDataProcessor;
   });
 
   afterEach(() => {
-    jest.useRealTimers();
-    jest.clearAllMocks();
+    vi.useRealTimers();
+    vi.clearAllMocks();
   });
 
   describe('constructor', () => {
@@ -98,7 +99,7 @@ describe('SpectralDensityPlot', () => {
       plot = new SpectralDensityPlot(canvas, mockSpecA, mockDataProcessor, DEFAULT_WIDTH, DEFAULT_HEIGHT);
 
       // Before setTimeout fires, update should not draw
-      const ctxSpy = jest.spyOn(canvas.getContext('2d')!, 'stroke');
+      const ctxSpy = vi.spyOn(canvas.getContext('2d')!, 'stroke');
       plot.update();
 
       // Not running yet, so no stroke calls
@@ -109,7 +110,7 @@ describe('SpectralDensityPlot', () => {
       plot = new SpectralDensityPlot(canvas, mockSpecA, mockDataProcessor, DEFAULT_WIDTH, DEFAULT_HEIGHT);
 
       // Advance timers to ensure running is true
-      jest.advanceTimersByTime(1100);
+      vi.advanceTimersByTime(1100);
 
       // Now the plot should be running (we can't directly check running, but we can verify it processes)
       expect(plot).toBeDefined();
@@ -187,7 +188,7 @@ describe('SpectralDensityPlot', () => {
   describe('update', () => {
     beforeEach(() => {
       plot = new SpectralDensityPlot(canvas, mockSpecA, mockDataProcessor, DEFAULT_WIDTH, DEFAULT_HEIGHT);
-      jest.advanceTimersByTime(1100); // Ensure running is true
+      vi.advanceTimersByTime(1100); // Ensure running is true
     });
 
     it('should not update when paused', () => {
@@ -228,12 +229,12 @@ describe('SpectralDensityPlot', () => {
   describe('draw', () => {
     beforeEach(() => {
       plot = new SpectralDensityPlot(canvas, mockSpecA, mockDataProcessor, DEFAULT_WIDTH, DEFAULT_HEIGHT);
-      jest.advanceTimersByTime(1100);
+      vi.advanceTimersByTime(1100);
     });
 
     it('should not draw when paused', () => {
       mockSpecA.state.isPaused = true;
-      const putImageDataSpy = jest.spyOn(canvas.getContext('2d')!, 'putImageData');
+      const putImageDataSpy = vi.spyOn(canvas.getContext('2d')!, 'putImageData');
 
       plot.draw();
 
@@ -267,7 +268,7 @@ describe('SpectralDensityPlot', () => {
   describe('trace modes', () => {
     beforeEach(() => {
       plot = new SpectralDensityPlot(canvas, mockSpecA, mockDataProcessor, DEFAULT_WIDTH, DEFAULT_HEIGHT);
-      jest.advanceTimersByTime(1100);
+      vi.advanceTimersByTime(1100);
     });
 
     it('should handle clearwrite mode', () => {
@@ -336,11 +337,11 @@ describe('SpectralDensityPlot', () => {
   describe('developer mode', () => {
     beforeEach(() => {
       plot = new SpectralDensityPlot(canvas, mockSpecA, mockDataProcessor, DEFAULT_WIDTH, DEFAULT_HEIGHT);
-      jest.advanceTimersByTime(1100);
+      vi.advanceTimersByTime(1100);
     });
 
     it('should handle developer mode enabled', () => {
-      (SimulationManager.getInstance as jest.Mock).mockReturnValue({
+      (SimulationManager.getInstance as Mock).mockReturnValue({
         isDeveloperMode: true,
       });
 
@@ -357,7 +358,7 @@ describe('SpectralDensityPlot', () => {
     });
 
     it('should handle developer mode disabled', () => {
-      (SimulationManager.getInstance as jest.Mock).mockReturnValue({
+      (SimulationManager.getInstance as Mock).mockReturnValue({
         isDeveloperMode: false,
       });
 
@@ -368,7 +369,7 @@ describe('SpectralDensityPlot', () => {
   describe('marker updates', () => {
     beforeEach(() => {
       plot = new SpectralDensityPlot(canvas, mockSpecA, mockDataProcessor, DEFAULT_WIDTH, DEFAULT_HEIGHT);
-      jest.advanceTimersByTime(1100);
+      vi.advanceTimersByTime(1100);
     });
 
     it('should update markers when isUpdateMarkers is true', () => {

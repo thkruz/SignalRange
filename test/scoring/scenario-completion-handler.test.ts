@@ -1,123 +1,124 @@
+import { Mock, vi } from 'vitest';
 import { EventBus } from '../../src/events/event-bus';
 import { Events } from '../../src/events/events';
 
 // Mock all dependencies before imports
-jest.mock('../../src/events/event-bus');
+vi.mock('../../src/events/event-bus');
 
-jest.mock('../../src/logging/logger', () => ({
+vi.mock('../../src/logging/logger', () => ({
   Logger: {
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
   },
 }));
 
-jest.mock('../../src/objectives/objectives-manager', () => ({
+vi.mock('../../src/objectives/objectives-manager', () => ({
   ObjectivesManager: {
-    getInstance: jest.fn(),
+    getInstance: vi.fn(),
   },
 }));
 
-jest.mock('../../src/scenario-manager', () => ({
+vi.mock('../../src/scenario-manager', () => ({
   ScenarioManager: {
-    getInstance: jest.fn(),
+    getInstance: vi.fn(),
   },
 }));
 
-jest.mock('../../src/modal/level-complete-modal', () => ({
+vi.mock('../../src/modal/level-complete-modal', () => ({
   LevelCompleteModal: {
-    getInstance: jest.fn(),
+    getInstance: vi.fn(),
   },
 }));
 
-jest.mock('../../src/modal/quiz-manager', () => ({
+vi.mock('../../src/modal/quiz-manager', () => ({
   QuizManager: {
-    getInstance: jest.fn(),
+    getInstance: vi.fn(),
   },
 }));
 
-jest.mock('../../src/router', () => ({
+vi.mock('../../src/router', () => ({
   Router: {
-    getInstance: jest.fn(),
+    getInstance: vi.fn(),
   },
 }));
 
-jest.mock('../../src/user-account/user-data-service', () => ({
-  getUserDataService: jest.fn(),
+vi.mock('../../src/user-account/user-data-service', () => ({
+  getUserDataService: vi.fn(),
 }));
 
 // Import after mocks
-import { ScenarioCompletionHandler } from '../../src/scoring/scenario-completion-handler';
 import { Logger } from '../../src/logging/logger';
-import { ObjectivesManager } from '../../src/objectives/objectives-manager';
-import { ScenarioManager } from '../../src/scenario-manager';
 import { LevelCompleteModal } from '../../src/modal/level-complete-modal';
 import { QuizManager } from '../../src/modal/quiz-manager';
+import { ObjectivesManager } from '../../src/objectives/objectives-manager';
 import { Router } from '../../src/router';
+import { ScenarioManager } from '../../src/scenario-manager';
+import { ScenarioCompletionHandler } from '../../src/scoring/scenario-completion-handler';
 import { getUserDataService } from '../../src/user-account/user-data-service';
 
 describe('ScenarioCompletionHandler', () => {
-  let mockEventBus: { on: jest.Mock; off: jest.Mock; emit: jest.Mock };
+  let mockEventBus: { on: Mock; off: Mock; emit: Mock };
   let mockObjectivesManager: {
-    getObjectiveStates: jest.Mock;
-    getScenarioTimeRemaining: jest.Mock;
+    getObjectiveStates: Mock;
+    getScenarioTimeRemaining: Mock;
   };
   let mockScenarioManager: { data: { id: string; number: number } };
-  let mockLevelCompleteModal: { showCompletion: jest.Mock };
-  let mockQuizManager: { getPointsDeducted: jest.Mock };
-  let mockRouter: { getCurrentPath: jest.Mock };
-  let mockUserDataService: { updateScenarioProgress: jest.Mock };
+  let mockLevelCompleteModal: { showCompletion: Mock };
+  let mockQuizManager: { getPointsDeducted: Mock };
+  let mockRouter: { getCurrentPath: Mock };
+  let mockUserDataService: { updateScenarioProgress: Mock };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Reset singleton between tests
     ScenarioCompletionHandler.destroy();
 
     // Setup mock EventBus
     mockEventBus = {
-      on: jest.fn(),
-      off: jest.fn(),
-      emit: jest.fn(),
+      on: vi.fn(),
+      off: vi.fn(),
+      emit: vi.fn(),
     };
-    (EventBus.getInstance as jest.Mock).mockReturnValue(mockEventBus);
+    (EventBus.getInstance as Mock).mockReturnValue(mockEventBus);
 
     // Setup mock ObjectivesManager
     mockObjectivesManager = {
-      getObjectiveStates: jest.fn().mockReturnValue([]),
-      getScenarioTimeRemaining: jest.fn().mockReturnValue(0),
+      getObjectiveStates: vi.fn().mockReturnValue([]),
+      getScenarioTimeRemaining: vi.fn().mockReturnValue(0),
     };
-    (ObjectivesManager.getInstance as jest.Mock).mockReturnValue(mockObjectivesManager);
+    (ObjectivesManager.getInstance as Mock).mockReturnValue(mockObjectivesManager);
 
     // Setup mock ScenarioManager
     mockScenarioManager = {
       data: { id: 'test-scenario', number: 1 },
     };
-    (ScenarioManager.getInstance as jest.Mock).mockReturnValue(mockScenarioManager);
+    (ScenarioManager.getInstance as Mock).mockReturnValue(mockScenarioManager);
 
     // Setup mock LevelCompleteModal
     mockLevelCompleteModal = {
-      showCompletion: jest.fn(),
+      showCompletion: vi.fn(),
     };
-    (LevelCompleteModal.getInstance as jest.Mock).mockReturnValue(mockLevelCompleteModal);
+    (LevelCompleteModal.getInstance as Mock).mockReturnValue(mockLevelCompleteModal);
 
     // Setup mock QuizManager
     mockQuizManager = {
-      getPointsDeducted: jest.fn().mockReturnValue(0),
+      getPointsDeducted: vi.fn().mockReturnValue(0),
     };
-    (QuizManager.getInstance as jest.Mock).mockReturnValue(mockQuizManager);
+    (QuizManager.getInstance as Mock).mockReturnValue(mockQuizManager);
 
     // Setup mock Router
     mockRouter = {
-      getCurrentPath: jest.fn().mockReturnValue('/campaigns/nats/scenarios/test'),
+      getCurrentPath: vi.fn().mockReturnValue('/campaigns/nats/scenarios/test'),
     };
-    (Router.getInstance as jest.Mock).mockReturnValue(mockRouter);
+    (Router.getInstance as Mock).mockReturnValue(mockRouter);
 
     // Setup mock UserDataService
     mockUserDataService = {
-      updateScenarioProgress: jest.fn().mockResolvedValue(undefined),
+      updateScenarioProgress: vi.fn().mockResolvedValue(undefined),
     };
-    (getUserDataService as jest.Mock).mockReturnValue(mockUserDataService);
+    (getUserDataService as Mock).mockReturnValue(mockUserDataService);
   });
 
   afterEach(() => {
@@ -224,7 +225,7 @@ describe('ScenarioCompletionHandler', () => {
       ScenarioCompletionHandler.destroy();
 
       // Clear mocks to check new instance behavior
-      jest.clearAllMocks();
+      vi.clearAllMocks();
 
       // Getting instance should create a new one (not the same reference)
       const newHandler = ScenarioCompletionHandler.getInstance();

@@ -1,15 +1,16 @@
+import { vi } from 'vitest';
 import { EventBus } from '../../src/events/event-bus';
 import { Events } from '../../src/events/events';
-import { DialogManager } from '../../src/modal/dialog-manager';
 import { Character, Emotion } from '../../src/modal/character-enum';
+import { DialogManager } from '../../src/modal/dialog-manager';
 
-// Create mock functions outside of jest.mock factory
-const mockPlayCustom = jest.fn();
-const mockStopCustom = jest.fn();
-const mockIsCustomAudioPlaying = jest.fn(() => false);
+// Create mock functions outside of vi.mock factory
+const mockPlayCustom = vi.fn();
+const mockStopCustom = vi.fn();
+const mockIsCustomAudioPlaying = vi.fn(() => false);
 
 // Mock SoundManager
-jest.mock('../../src/sound/sound-manager', () => {
+vi.mock('../../src/sound/sound-manager', () => {
   return {
     __esModule: true,
     default: {
@@ -23,16 +24,16 @@ jest.mock('../../src/sound/sound-manager', () => {
 });
 
 // Mock DialogHistoryManager
-jest.mock('../../src/modal/dialog-history-manager', () => ({
+vi.mock('../../src/modal/dialog-history-manager', () => ({
   DialogHistoryManager: {
-    getInstance: jest.fn(() => ({
-      addEntry: jest.fn(),
+    getInstance: vi.fn(() => ({
+      addEntry: vi.fn(),
     })),
   },
 }));
 
 // Mock character utilities
-jest.mock('../../src/modal/character-enum', () => ({
+vi.mock('../../src/modal/character-enum', () => ({
   Character: {
     CHARLIE_BROOKS: 'charlie_brooks',
     CATHERINE_VEGA: 'catherine_vega',
@@ -54,11 +55,11 @@ jest.mock('../../src/modal/character-enum', () => ({
     charlie_brooks: 'SeaLink Satellite',
     catherine_vega: 'SeaLink Satellite',
   },
-  getCharacterAvatarUrl: jest.fn(() => '/test-avatar.png'),
+  getCharacterAvatarUrl: vi.fn(() => '/test-avatar.png'),
 }));
 
 // Mock html utility
-jest.mock('../../src/engine/utils/development/formatter', () => ({
+vi.mock('../../src/engine/utils/development/formatter', () => ({
   html: (strings: TemplateStringsArray, ...values: unknown[]) => {
     return strings.reduce((result, str, i) => {
       return result + str + (values[i] ?? '');
@@ -67,8 +68,8 @@ jest.mock('../../src/engine/utils/development/formatter', () => ({
 }));
 
 // Mock qs utility - note: can't use document directly in mock factory
-jest.mock('../../src/engine/utils/query-selector', () => ({
-  qs: jest.fn((selector: string, parent?: HTMLElement) => {
+vi.mock('../../src/engine/utils/query-selector', () => ({
+  qs: vi.fn((selector: string, parent?: HTMLElement) => {
     const context = parent ?? global.document;
     return context?.querySelector(selector);
   }),
@@ -92,7 +93,7 @@ describe('DialogManager', () => {
     // Disable auto-close for testing
     window.AUTO_CLOSE_DIALOGS = false;
 
-    jest.useFakeTimers();
+    vi.useFakeTimers();
   });
 
   afterEach(() => {
@@ -100,9 +101,9 @@ describe('DialogManager', () => {
     document.body.innerHTML = '';
     (DialogManager as any).instance = null;
     EventBus.destroy();
-    jest.clearAllTimers();
-    jest.useRealTimers();
-    jest.clearAllMocks();
+    vi.clearAllTimers();
+    vi.useRealTimers();
+    vi.clearAllMocks();
   });
 
   describe('Singleton Pattern', () => {
@@ -162,7 +163,7 @@ describe('DialogManager', () => {
       );
 
       // Run animation frame
-      jest.runAllTimers();
+      vi.runAllTimers();
 
       const overlay = document.querySelector('.dialog-overlay');
       expect(overlay?.classList.contains('dialog-visible')).toBe(true);
@@ -219,7 +220,7 @@ describe('DialogManager', () => {
       dialogManager.hide();
 
       // Wait for fade-out transition (300ms) and queue processing (50ms)
-      jest.advanceTimersByTime(400);
+      vi.advanceTimersByTime(400);
 
       // Second dialog should now be visible
       expect(dialogManager.isShowing()).toBe(true);
@@ -250,7 +251,7 @@ describe('DialogManager', () => {
 
       // Hide current dialog
       dialogManager.hide();
-      jest.advanceTimersByTime(400);
+      vi.advanceTimersByTime(400);
 
       // No more dialogs should appear
       expect(dialogManager.isShowing()).toBe(false);
@@ -270,7 +271,7 @@ describe('DialogManager', () => {
       dialogManager.hide();
 
       // Wait for fade-out transition
-      jest.advanceTimersByTime(350);
+      vi.advanceTimersByTime(350);
 
       expect(dialogManager.isShowing()).toBe(false);
       expect(document.querySelector('.dialog-overlay')).toBeFalsy();
@@ -291,7 +292,7 @@ describe('DialogManager', () => {
     });
 
     it('should emit DIALOG_DISMISSED event when hiding', () => {
-      const callback = jest.fn();
+      const callback = vi.fn();
       eventBus.on(Events.DIALOG_DISMISSED, callback);
 
       dialogManager.show(
@@ -301,7 +302,7 @@ describe('DialogManager', () => {
       );
 
       dialogManager.hide();
-      jest.advanceTimersByTime(350);
+      vi.advanceTimersByTime(350);
 
       expect(callback).toHaveBeenCalled();
     });
@@ -430,7 +431,7 @@ describe('DialogManager', () => {
 
       // Verify dialog was queued (queue is private, so we test behavior)
       dialogManager.hide();
-      jest.advanceTimersByTime(400);
+      vi.advanceTimersByTime(400);
 
       expect(dialogManager.isShowing()).toBe(true);
     });

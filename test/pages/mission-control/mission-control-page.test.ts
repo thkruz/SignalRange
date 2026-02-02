@@ -1,73 +1,84 @@
+import { Mock, vi } from 'vitest';
 import { EventBus } from '../../../src/events/event-bus';
 
 // Mock Router to break circular import chain (router → campaign-selection → BasePage)
-jest.mock('../../../src/router', () => ({
+vi.mock('../../../src/router', () => ({
   router: {
-    navigateTo: jest.fn(),
-    getCurrentRoute: jest.fn(),
+    navigateTo: vi.fn(),
+    getCurrentRoute: vi.fn(),
   },
   NavigationOptions: {},
 }));
 
 // Mock level-complete-modal which imports router
-jest.mock('../../../src/modal/level-complete-modal', () => ({
+vi.mock('../../../src/modal/level-complete-modal', () => ({
   LevelCompleteModal: {
-    show: jest.fn(),
-    hide: jest.fn(),
+    show: vi.fn(),
+    hide: vi.fn(),
   },
 }));
 
 // Mock dependencies
-jest.mock('../../../src/events/event-bus');
-jest.mock('../../../src/app', () => ({
+vi.mock('../../../src/events/event-bus');
+vi.mock('../../../src/app', () => ({
   App: {
     authReady: Promise.resolve(),
   },
 }));
-jest.mock('../../../src/pages/layout/body/body', () => ({
+vi.mock('../../../src/pages/layout/body/body', () => ({
   Body: {
     containerId: 'body-container',
   },
 }));
-jest.mock('../../../src/pages/mission-control/global-command-bar', () => ({
-  GlobalCommandBar: jest.fn().mockImplementation(() => ({
-    dispose: jest.fn(),
-  })),
+vi.mock('../../../src/pages/mission-control/global-command-bar', () => ({
+  GlobalCommandBar: vi.fn(function () {
+    return {
+      dispose: vi.fn(),
+    };
+  }),
 }));
-jest.mock('../../../src/pages/mission-control/timeline-deck', () => ({
-  TimelineDeck: jest.fn().mockImplementation(() => ({
-    dispose: jest.fn(),
-  })),
+vi.mock('../../../src/pages/mission-control/timeline-deck', () => ({
+  TimelineDeck: vi.fn(function () {
+    return {
+      dispose: vi.fn(),
+    };
+  }),
 }));
-jest.mock('../../../src/pages/mission-control/asset-tree-sidebar', () => ({
-  AssetTreeSidebar: jest.fn().mockImplementation(() => ({
-    destroy: jest.fn(),
-    refresh: jest.fn(),
-  })),
+vi.mock('../../../src/pages/mission-control/asset-tree-sidebar', () => ({
+  AssetTreeSidebar: vi.fn(function () {
+    return {
+      destroy: vi.fn(),
+      refresh: vi.fn(),
+    };
+  }),
 }));
-jest.mock('../../../src/pages/mission-control/tabbed-canvas', () => ({
-  TabbedCanvas: jest.fn().mockImplementation(() => ({
-    destroy: jest.fn(),
-  })),
+vi.mock('../../../src/pages/mission-control/tabbed-canvas', () => ({
+  TabbedCanvas: vi.fn(function () {
+    return {
+      destroy: vi.fn(),
+    };
+  }),
 }));
-jest.mock('../../../src/assets/ground-station/ground-station', () => ({
-  GroundStation: jest.fn().mockImplementation(() => ({
-    state: { id: 'GS-001', name: 'Test Station' },
-    antennas: [],
-    rfFrontEnds: [],
-    spectrumAnalyzers: [],
-    transmitters: [],
-    receivers: [],
-    initializeEquipment: jest.fn(),
-    sync: jest.fn(),
-  })),
+vi.mock('../../../src/assets/ground-station/ground-station', () => ({
+  GroundStation: vi.fn(function () {
+    return {
+      state: { id: 'GS-001', name: 'Test Station' },
+      antennas: [],
+      rfFrontEnds: [],
+      spectrumAnalyzers: [],
+      transmitters: [],
+      receivers: [],
+      initializeEquipment: vi.fn(),
+      sync: vi.fn(),
+    };
+  }),
 }));
-jest.mock('../../../src/scenario-manager', () => ({
+vi.mock('../../../src/scenario-manager', () => ({
   ScenarioManager: {
-    getInstance: jest.fn(() => ({
+    getInstance: vi.fn(() => ({
       data: { id: 'test-scenario' },
       settings: { missionBriefUrl: null },
-      getScenario: jest.fn(() => ({
+      getScenario: vi.fn(() => ({
         groundStations: [
           {
             id: 'GS-001',
@@ -79,93 +90,107 @@ jest.mock('../../../src/scenario-manager', () => ({
     })),
   },
 }));
-jest.mock('../../../src/simulation/simulation-manager', () => ({
+vi.mock('../../../src/simulation/simulation-manager', () => ({
   SimulationManager: {
-    getInstance: jest.fn(() => ({
+    getInstance: vi.fn(() => ({
       groundStations: [],
       satellites: [],
     })),
-    destroy: jest.fn(),
+    destroy: vi.fn(),
   },
 }));
-jest.mock('../../../src/services/alarm-service', () => ({
+vi.mock('../../../src/services/alarm-service', () => ({
   AlarmService: {
-    getInstance: jest.fn(),
-    destroy: jest.fn(),
+    getInstance: vi.fn(),
+    destroy: vi.fn(),
   },
 }));
-jest.mock('../../../src/objectives/objectives-manager', () => ({
+vi.mock('../../../src/objectives/objectives-manager', () => ({
   ObjectivesManager: {
-    getInstance: jest.fn(() => ({
-      initialize: jest.fn(),
+    getInstance: vi.fn(() => ({
+      initialize: vi.fn(),
     })),
-    destroy: jest.fn(),
+    destroy: vi.fn(),
   },
 }));
-jest.mock('../../../src/scenarios/scenario-dialog-manager', () => ({
+vi.mock('../../../src/scenarios/scenario-dialog-manager', () => ({
   ScenarioDialogManager: {
-    reset: jest.fn(),
+    reset: vi.fn(),
   },
 }));
-jest.mock('../../../src/modal/quiz-modal', () => ({
+vi.mock('../../../src/modal/quiz-modal', () => ({
   QuizModal: {
-    destroy: jest.fn(),
+    destroy: vi.fn(),
   },
 }));
-jest.mock('../../../src/modal/pending-quiz-indicator', () => ({
+vi.mock('../../../src/modal/pending-quiz-indicator', () => ({
   PendingQuizIndicator: {
-    destroy: jest.fn(),
+    destroy: vi.fn(),
   },
 }));
-jest.mock('../../../src/sync', () => ({
-  syncEquipmentWithStore: jest.fn(),
+vi.mock('../../../src/sync', () => ({
+  syncEquipmentWithStore: vi.fn(),
 }));
-jest.mock('../../../src/sync/storage', () => ({
+vi.mock('../../../src/sync/storage', () => ({
   syncManager: {
     provider: {
-      write: jest.fn(),
+      write: vi.fn(),
     },
   },
 }));
-jest.mock('../../../src/user-account/auth', () => ({
+vi.mock('../../../src/user-account/auth', () => ({
   Auth: {
-    isLoggedIn: jest.fn(() => Promise.resolve(false)),
+    isLoggedIn: vi.fn(() => Promise.resolve(false)),
   },
 }));
-jest.mock('../../../src/logging/logger', () => ({
+vi.mock('../../../src/logging/logger', () => ({
   Logger: {
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
   },
 }));
-jest.mock('../../../src/engine/utils/query-selector', () => ({
-  qs: jest.fn((selector: string, parent?: Element) => {
+vi.mock('../../../src/engine/utils/query-selector', () => ({
+  qs: vi.fn((selector: string, parent?: Element) => {
     const root = parent || global.document;
     return root.querySelector(selector);
   }),
 }));
 
+import { GroundStation } from '../../../src/assets/ground-station/ground-station';
+import { Logger } from '../../../src/logging/logger';
+import { PendingQuizIndicator } from '../../../src/modal/pending-quiz-indicator';
+import { QuizModal } from '../../../src/modal/quiz-modal';
+import { ObjectivesManager } from '../../../src/objectives/objectives-manager';
+import { AssetTreeSidebar } from '../../../src/pages/mission-control/asset-tree-sidebar';
+import { GlobalCommandBar } from '../../../src/pages/mission-control/global-command-bar';
+import { TabbedCanvas } from '../../../src/pages/mission-control/tabbed-canvas';
+import { TimelineDeck } from '../../../src/pages/mission-control/timeline-deck';
+import { ScenarioDialogManager } from '../../../src/scenarios/scenario-dialog-manager';
+import { AlarmService } from '../../../src/services/alarm-service';
+import { SimulationManager } from '../../../src/simulation/simulation-manager';
+import { syncEquipmentWithStore } from '../../../src/sync';
+import { Auth } from '../../../src/user-account/auth';
 // Import after mocks are set up
 import { MissionControlPage } from '../../../src/pages/mission-control/mission-control-page';
 
 describe('MissionControlPage', () => {
   let bodyContainer: HTMLElement;
-  let mockEventBus: { on: jest.Mock; off: jest.Mock; emit: jest.Mock; destroy: jest.Mock };
+  let mockEventBus: { on: Mock; off: Mock; emit: Mock; destroy: Mock };
 
   beforeEach(() => {
-    jest.clearAllMocks();
-    jest.useFakeTimers();
+    vi.clearAllMocks();
+    vi.useFakeTimers();
 
     // Setup mock EventBus
     mockEventBus = {
-      on: jest.fn(),
-      off: jest.fn(),
-      emit: jest.fn(),
-      destroy: jest.fn(),
+      on: vi.fn(),
+      off: vi.fn(),
+      emit: vi.fn(),
+      destroy: vi.fn(),
     };
-    (EventBus.getInstance as jest.Mock).mockReturnValue(mockEventBus);
-    (EventBus.destroy as jest.Mock) = jest.fn();
+    (EventBus.getInstance as Mock).mockReturnValue(mockEventBus);
+    (EventBus.destroy as Mock) = vi.fn();
 
     // Setup body container
     bodyContainer = document.createElement('div');
@@ -177,7 +202,7 @@ describe('MissionControlPage', () => {
     // Destroy the singleton
     MissionControlPage.destroy();
     document.body.innerHTML = '';
-    jest.useRealTimers();
+    vi.useRealTimers();
   });
 
   describe('singleton pattern', () => {
@@ -255,22 +280,18 @@ describe('MissionControlPage', () => {
     });
 
     it('should create GlobalCommandBar', () => {
-      const { GlobalCommandBar } = require('../../../src/pages/mission-control/global-command-bar');
       expect(GlobalCommandBar).toHaveBeenCalledWith('global-command-bar-container');
     });
 
     it('should create TimelineDeck', () => {
-      const { TimelineDeck } = require('../../../src/pages/mission-control/timeline-deck');
       expect(TimelineDeck).toHaveBeenCalledWith('app-shell-page');
     });
 
     it('should create AssetTreeSidebar', () => {
-      const { AssetTreeSidebar } = require('../../../src/pages/mission-control/asset-tree-sidebar');
       expect(AssetTreeSidebar).toHaveBeenCalledWith('asset-tree-sidebar-container');
     });
 
     it('should create TabbedCanvas', () => {
-      const { TabbedCanvas } = require('../../../src/pages/mission-control/tabbed-canvas');
       expect(TabbedCanvas).toHaveBeenCalledWith('tabbed-canvas-container');
     });
   });
@@ -281,12 +302,11 @@ describe('MissionControlPage', () => {
     });
 
     it('should create ground stations from scenario config', () => {
-      const { GroundStation } = require('../../../src/assets/ground-station/ground-station');
       expect(GroundStation).toHaveBeenCalled();
     });
 
     it('should initialize equipment for each ground station', () => {
-      const { GroundStation } = require('../../../src/assets/ground-station/ground-station');
+
       const mockGsInstance = GroundStation.mock.results[0]?.value;
       expect(mockGsInstance?.initializeEquipment).toHaveBeenCalled();
     });
@@ -297,7 +317,7 @@ describe('MissionControlPage', () => {
       const page = MissionControlPage.create();
 
       // Clock starts running - advance timers to verify no errors
-      jest.advanceTimersByTime(2000);
+      vi.advanceTimersByTime(2000);
 
       // Page should be created successfully with clock running
       expect(page).toBeInstanceOf(MissionControlPage);
@@ -310,9 +330,8 @@ describe('MissionControlPage', () => {
 
       // Let async init complete
       await Promise.resolve();
-      jest.advanceTimersByTime(100);
+      vi.advanceTimersByTime(100);
 
-      const { SimulationManager } = require('../../../src/simulation/simulation-manager');
       expect(SimulationManager.getInstance).toHaveBeenCalled();
     });
 
@@ -321,9 +340,8 @@ describe('MissionControlPage', () => {
 
       // Let async init complete
       await Promise.resolve();
-      jest.advanceTimersByTime(100);
+      vi.advanceTimersByTime(100);
 
-      const { AlarmService } = require('../../../src/services/alarm-service');
       expect(AlarmService.getInstance).toHaveBeenCalled();
     });
 
@@ -334,10 +352,9 @@ describe('MissionControlPage', () => {
       await Promise.resolve();
       await Promise.resolve();
       await Promise.resolve();
-      jest.advanceTimersByTime(100);
+      vi.advanceTimersByTime(100);
       await Promise.resolve();
 
-      const { syncEquipmentWithStore } = require('../../../src/sync');
       expect(syncEquipmentWithStore).toHaveBeenCalled();
     });
   });
@@ -364,7 +381,7 @@ describe('MissionControlPage', () => {
       MissionControlPage.create();
       MissionControlPage.destroy();
 
-      const { AlarmService } = require('../../../src/services/alarm-service');
+
       expect(AlarmService.destroy).toHaveBeenCalled();
     });
 
@@ -372,7 +389,7 @@ describe('MissionControlPage', () => {
       MissionControlPage.create();
       MissionControlPage.destroy();
 
-      const { SimulationManager } = require('../../../src/simulation/simulation-manager');
+
       expect(SimulationManager.destroy).toHaveBeenCalled();
     });
 
@@ -380,7 +397,6 @@ describe('MissionControlPage', () => {
       MissionControlPage.create();
       MissionControlPage.destroy();
 
-      const { ObjectivesManager } = require('../../../src/objectives/objectives-manager');
       expect(ObjectivesManager.destroy).toHaveBeenCalled();
     });
 
@@ -388,7 +404,6 @@ describe('MissionControlPage', () => {
       MissionControlPage.create();
       MissionControlPage.destroy();
 
-      const { ScenarioDialogManager } = require('../../../src/scenarios/scenario-dialog-manager');
       expect(ScenarioDialogManager.reset).toHaveBeenCalled();
     });
 
@@ -396,7 +411,6 @@ describe('MissionControlPage', () => {
       MissionControlPage.create();
       MissionControlPage.destroy();
 
-      const { QuizModal } = require('../../../src/modal/quiz-modal');
       expect(QuizModal.destroy).toHaveBeenCalled();
     });
 
@@ -404,7 +418,6 @@ describe('MissionControlPage', () => {
       MissionControlPage.create();
       MissionControlPage.destroy();
 
-      const { PendingQuizIndicator } = require('../../../src/modal/pending-quiz-indicator');
       expect(PendingQuizIndicator.destroy).toHaveBeenCalled();
     });
 
@@ -430,9 +443,8 @@ describe('MissionControlPage', () => {
       MissionControlPage.create({ forceReplay: true });
 
       await Promise.resolve();
-      jest.advanceTimersByTime(100);
+      vi.advanceTimersByTime(100);
 
-      const { Logger } = require('../../../src/logging/logger');
       expect(Logger.info).toHaveBeenCalledWith(
         expect.stringContaining('Skipping checkpoint load due to forceReplay')
       );
@@ -442,25 +454,24 @@ describe('MissionControlPage', () => {
 
 describe('MissionControlPage with logged in user', () => {
   let bodyContainer: HTMLElement;
-  let mockEventBus: { on: jest.Mock; off: jest.Mock; emit: jest.Mock; destroy: jest.Mock };
+  let mockEventBus: { on: Mock; off: Mock; emit: Mock; destroy: Mock };
 
   beforeEach(() => {
-    jest.clearAllMocks();
-    jest.useFakeTimers();
+    vi.clearAllMocks();
+    vi.useFakeTimers();
 
     // Mock Auth to return logged in
-    const { Auth } = require('../../../src/user-account/auth');
     Auth.isLoggedIn.mockReturnValue(Promise.resolve(true));
 
     // Setup mock EventBus
     mockEventBus = {
-      on: jest.fn(),
-      off: jest.fn(),
-      emit: jest.fn(),
-      destroy: jest.fn(),
+      on: vi.fn(),
+      off: vi.fn(),
+      emit: vi.fn(),
+      destroy: vi.fn(),
     };
-    (EventBus.getInstance as jest.Mock).mockReturnValue(mockEventBus);
-    (EventBus.destroy as jest.Mock) = jest.fn();
+    (EventBus.getInstance as Mock).mockReturnValue(mockEventBus);
+    (EventBus.destroy as Mock) = vi.fn();
 
     // Setup body container
     bodyContainer = document.createElement('div');
@@ -471,7 +482,7 @@ describe('MissionControlPage with logged in user', () => {
   afterEach(() => {
     MissionControlPage.destroy();
     document.body.innerHTML = '';
-    jest.useRealTimers();
+    vi.useRealTimers();
   });
 
   it('should attempt to load checkpoint when user is logged in', async () => {
@@ -481,9 +492,9 @@ describe('MissionControlPage with logged in user', () => {
     await Promise.resolve();
     await Promise.resolve();
     await Promise.resolve();
-    jest.advanceTimersByTime(100);
+    vi.advanceTimersByTime(100);
 
-    const { Logger } = require('../../../src/logging/logger');
+
     expect(Logger.info).toHaveBeenCalledWith(
       expect.stringContaining('Loading checkpoint for scenario')
     );
@@ -492,20 +503,20 @@ describe('MissionControlPage with logged in user', () => {
 
 describe('MissionControlPage existing instance cleanup', () => {
   let bodyContainer: HTMLElement;
-  let mockEventBus: { on: jest.Mock; off: jest.Mock; emit: jest.Mock; destroy: jest.Mock };
+  let mockEventBus: { on: Mock; off: Mock; emit: Mock; destroy: Mock };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Setup mock EventBus
     mockEventBus = {
-      on: jest.fn(),
-      off: jest.fn(),
-      emit: jest.fn(),
-      destroy: jest.fn(),
+      on: vi.fn(),
+      off: vi.fn(),
+      emit: vi.fn(),
+      destroy: vi.fn(),
     };
-    (EventBus.getInstance as jest.Mock).mockReturnValue(mockEventBus);
-    (EventBus.destroy as jest.Mock) = jest.fn();
+    (EventBus.getInstance as Mock).mockReturnValue(mockEventBus);
+    (EventBus.destroy as Mock) = vi.fn();
 
     // Setup body container with existing app-shell-page
     bodyContainer = document.createElement('div');

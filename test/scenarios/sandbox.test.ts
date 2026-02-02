@@ -1,5 +1,4 @@
 import { sandboxData } from '../../src/scenarios/sandbox';
-import { SignalOrigin } from '../../src/signal-origin';
 import type { ScenarioData } from '../../src/ScenarioData';
 
 describe('sandbox scenario', () => {
@@ -11,8 +10,8 @@ describe('sandbox scenario', () => {
       expect(sandboxData.url).toBe('sandbox');
     });
 
-    it('should be marked as disabled', () => {
-      expect(sandboxData.isDisabled).toBe(true);
+    it('should not be disabled', () => {
+      expect(sandboxData.isDisabled).toBe(false);
     });
 
     it('should have beginner difficulty', () => {
@@ -34,10 +33,14 @@ describe('sandbox scenario', () => {
 
     it('should list equipment', () => {
       expect(sandboxData.equipment).toContain('9-meter C-band Antenna');
-      expect(sandboxData.equipment).toContain('RF Front End');
+      expect(sandboxData.equipment).toContain('Complete RF Front End');
       expect(sandboxData.equipment).toContain('Spectrum Analyzer');
-      expect(sandboxData.equipment).toContain('Transmitter');
-      expect(sandboxData.equipment).toContain('Receiver');
+      expect(sandboxData.equipment).toContain('RX/TX Modems');
+      expect(sandboxData.equipment).toContain('All Control Systems');
+    });
+
+    it('should have empty objectives for free play', () => {
+      expect(sandboxData.objectives).toEqual([]);
     });
   });
 
@@ -46,125 +49,131 @@ describe('sandbox scenario', () => {
       expect(sandboxData.settings.isSync).toBe(true);
     });
 
-    it('should have empty ground stations array', () => {
-      expect(sandboxData.settings.groundStations).toEqual([]);
+    it('should have one ground station', () => {
+      expect(sandboxData.settings.groundStations).toBeDefined();
+      expect(sandboxData.settings.groundStations!.length).toBe(1);
     });
 
-    it('should have antenna configuration', () => {
-      expect(sandboxData.settings.antennas).toBeDefined();
-      expect(sandboxData.settings.antennas.length).toBeGreaterThan(0);
+    it('should have extra satellites visible', () => {
+      expect(sandboxData.settings.isExtraSatellitesVisible).toBe(true);
     });
 
-    it('should have RF front-end configuration', () => {
-      expect(sandboxData.settings.rfFrontEnds).toBeDefined();
-      expect(sandboxData.settings.rfFrontEnds!.length).toBe(1);
+    describe('ground station configuration', () => {
+      const groundStation = () => sandboxData.settings.groundStations![0];
 
-      const rfFe = sandboxData.settings.rfFrontEnds![0];
-      expect(rfFe.omt).toBeDefined();
-      expect(rfFe.buc).toBeDefined();
-      expect(rfFe.hpa).toBeDefined();
-      expect(rfFe.filter).toBeDefined();
-      expect(rfFe.lnb).toBeDefined();
-      expect(rfFe.coupler).toBeDefined();
-      expect(rfFe.gpsdo).toBeDefined();
+      it('should have antenna state configuration', () => {
+        expect(groundStation().antennasState).toBeDefined();
+        expect(groundStation().antennasState!.length).toBe(1);
+      });
+
+      it('should have antenna powered on', () => {
+        expect(groundStation().antennasState![0].isPowered).toBe(true);
+      });
+
+      it('should have antenna in manual tracking mode', () => {
+        expect(groundStation().antennasState![0].trackingMode).toBe('manual');
+      });
+
+      it('should have RF front-end configuration', () => {
+        expect(groundStation().rfFrontEnds).toBeDefined();
+        expect(groundStation().rfFrontEnds!.length).toBe(1);
+      });
+
+      it('should have spectrum analyzer configuration', () => {
+        expect(groundStation().spectrumAnalyzers).toBeDefined();
+        expect(groundStation().spectrumAnalyzers!.length).toBe(1);
+      });
+
+      it('should have transmitter configuration', () => {
+        expect(groundStation().transmitters).toBeDefined();
+        expect(groundStation().transmitters!.length).toBe(1);
+      });
     });
 
-    it('should have two spectrum analyzers', () => {
-      expect(sandboxData.settings.spectrumAnalyzers).toBeDefined();
-      expect(sandboxData.settings.spectrumAnalyzers!.length).toBe(2);
-    });
+    describe('RF front-end initial state', () => {
+      const rfFrontEnd = () => sandboxData.settings.groundStations![0].rfFrontEnds![0];
 
-    it('should have transmitter configuration', () => {
-      expect(sandboxData.settings.transmitters).toBeDefined();
-      expect(sandboxData.settings.transmitters!.length).toBe(1);
-    });
+      it('should have LNB powered on', () => {
+        expect(rfFrontEnd().lnb?.isPowered).toBe(true);
+      });
 
-    it('should have receiver configuration', () => {
-      expect(sandboxData.settings.receivers).toBeDefined();
-      expect(sandboxData.settings.receivers!.length).toBe(1);
-    });
+      it('should have LNB LO frequency at 5250 MHz', () => {
+        expect(rfFrontEnd().lnb?.loFrequency).toBe(5250);
+      });
 
-    it('should have layout HTML', () => {
-      expect(sandboxData.settings.layout).toBeDefined();
-      expect(sandboxData.settings.layout).toContain('student-equipment');
+      it('should have BUC powered on', () => {
+        expect(rfFrontEnd().buc?.isPowered).toBe(true);
+      });
+
+      it('should have BUC muted initially', () => {
+        expect(rfFrontEnd().buc?.isMuted).toBe(true);
+      });
+
+      it('should have HPA powered but not enabled', () => {
+        expect(rfFrontEnd().hpa?.isPowered).toBe(true);
+        expect(rfFrontEnd().hpa?.isHpaEnabled).toBe(false);
+      });
+
+      it('should have GPSDO powered and locked', () => {
+        expect(rfFrontEnd().gpsdo?.isPowered).toBe(true);
+        expect(rfFrontEnd().gpsdo?.isLocked).toBe(true);
+      });
     });
   });
 
   describe('satellites configuration', () => {
-    it('should have three satellites', () => {
+    it('should have two satellites', () => {
       expect(sandboxData.settings.satellites).toBeDefined();
-      expect(sandboxData.settings.satellites.length).toBe(3);
+      expect(sandboxData.settings.satellites.length).toBe(2);
     });
 
-    describe('first satellite (Fake Sat 1)', () => {
+    describe('first satellite (AURORA-7)', () => {
       const satellite = () => sandboxData.settings.satellites[0];
 
       it('should have correct NORAD ID', () => {
-        expect(satellite().noradId).toBe(1);
+        expect(satellite().noradId).toBe(28899);
       });
 
       it('should have correct position', () => {
-        expect(satellite().az).toBe(247.3);
-        expect(satellite().el).toBe(78.2);
+        expect(satellite().az).toBe(190);
+        expect(satellite().el).toBe(32);
       });
 
-      it('should have two external signals (uplinks)', () => {
-        // The Satellite class stores rxSignal constructor param as externalSignal
-        expect(satellite().externalSignal.length).toBe(2);
+      it('should have one external signal (uplink)', () => {
+        expect(satellite().externalSignal.length).toBe(1);
       });
 
-      it('should have signals with SATELLITE_RX origin', () => {
-        satellite().externalSignal.forEach(signal => {
-          expect(signal.origin).toBe(SignalOrigin.SATELLITE_RX);
-        });
+      it('should have uplink signal at 6053 MHz', () => {
+        expect(satellite().externalSignal[0].frequency).toBe(6053e6);
       });
 
-      it('should have first signal at 5935 MHz', () => {
-        expect(satellite().externalSignal[0].frequency).toBe(5935e6);
-      });
-
-      it('should have second signal at 5945 MHz', () => {
-        expect(satellite().externalSignal[1].frequency).toBe(5945e6);
+      it('should use QPSK modulation', () => {
+        expect(satellite().externalSignal[0].modulation).toBe('QPSK');
       });
     });
 
-    describe('second satellite (Fake Sat 2)', () => {
+    describe('second satellite (TIDEMARK-1)', () => {
       const satellite = () => sandboxData.settings.satellites[1];
 
       it('should have correct NORAD ID', () => {
-        expect(satellite().noradId).toBe(2);
+        expect(satellite().noradId).toBe(61525);
       });
 
-      it('should have slightly different azimuth', () => {
-        expect(satellite().az).toBe(247.6);
-      });
-
-      it('should have one external signal (uplink)', () => {
-        expect(satellite().externalSignal.length).toBe(1);
-      });
-
-      it('should have signal at 5925 MHz', () => {
-        expect(satellite().externalSignal[0].frequency).toBe(5925e6);
-      });
-    });
-
-    describe('third satellite (Fake Sat 3)', () => {
-      const satellite = () => sandboxData.settings.satellites[2];
-
-      it('should have correct NORAD ID', () => {
-        expect(satellite().noradId).toBe(3);
+      it('should have correct position', () => {
+        expect(satellite().az).toBe(161.8);
+        expect(satellite().el).toBe(34.2);
       });
 
       it('should have one external signal (uplink)', () => {
         expect(satellite().externalSignal.length).toBe(1);
       });
 
-      it('should have higher power signal (20W)', () => {
-        expect(satellite().externalSignal[0].power).toBe(43); // 43 dBm = ~20W
+      it('should have uplink signal at 5943 MHz', () => {
+        expect(satellite().externalSignal[0].frequency).toBe(5943e6);
       });
 
-      it('should have signal at 5915 MHz', () => {
-        expect(satellite().externalSignal[0].frequency).toBe(5915e6);
+      it('should use QPSK modulation', () => {
+        expect(satellite().externalSignal[0].modulation).toBe('QPSK');
       });
     });
   });
@@ -178,10 +187,10 @@ describe('sandbox scenario', () => {
       });
     });
 
-    it('should use 8QAM modulation', () => {
+    it('should use QPSK modulation', () => {
       sandboxData.settings.satellites.forEach(sat => {
         sat.externalSignal.forEach(signal => {
-          expect(signal.modulation).toBe('8QAM');
+          expect(signal.modulation).toBe('QPSK');
         });
       });
     });

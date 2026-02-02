@@ -409,6 +409,14 @@ export class TxChainTab extends BaseElement {
                         </div>
                       </div>
 
+                      <!-- Output Power Display -->
+                      <div class="mb-2">
+                        <label class="form-label small d-flex justify-content-between">
+                          <span>Output Power</span>
+                          <span id="tx-output-power" class="fw-bold font-monospace">-- dBm</span>
+                        </label>
+                      </div>
+
                       <!-- Switches -->
                       <div class="mb-2">
                         <div class="form-check form-switch mb-1">

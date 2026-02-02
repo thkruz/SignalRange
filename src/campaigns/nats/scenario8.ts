@@ -141,6 +141,18 @@ export const scenario8Data: ScenarioData = {
             scaleDbPerDiv: 10 as dB,
           },
         ],
+        receivers: [
+          {
+            ...vermontGroundStation.receivers[0],
+            modems: [
+              {
+                ...vermontGroundStation.receivers[0].modems[0],
+                frequency: 1422 as MHz, // AURORA-7 downlink RF
+                bandwidth: 24 as MHz,
+              }
+            ],
+          },
+        ],
         transmitters: [
           {
             ...vermontGroundStation.transmitters[0],
@@ -189,7 +201,7 @@ export const scenario8Data: ScenarioData = {
       conditions: [
         {
           type: 'mission-brief-opened',
-          description: 'Trouble Ticket Reviewed',
+          description: 'Mission Brief Reviewed',
           params: { boxId: 'mission-brief' },
           mustMaintain: false,
         },
@@ -504,9 +516,9 @@ export const scenario8Data: ScenarioData = {
         {
           type: 'speca-max-amplitude',
           description: 'Max Amplitude Set',
-          hint: 'Set the maximum amplitude to -50 dBm to properly view the beacon signal.',
+          hint: 'Set the maximum amplitude to -108 dBm to properly view the beacon signal.',
           params: {
-            maxAmplitude: -70 as dBm,
+            maxAmplitude: -95 as dBm,
             maxAmplitudeTolerance: 15 as dBm,
           },
           maintainUntilObjectiveComplete: true,
@@ -514,9 +526,9 @@ export const scenario8Data: ScenarioData = {
         {
           type: 'speca-min-amplitude',
           description: 'Min Amplitude Set',
-          hint: 'Set the minimum amplitude to -100 dBm to properly view the beacon signal.',
+          hint: 'Set the minimum amplitude to -120 dBm to properly view the beacon signal.',
           params: {
-            minAmplitude: -100 as dBm,
+            minAmplitude: -130 as dBm,
             minAmplitudeTolerance: 15 as dBm,
           },
           maintainUntilObjectiveComplete: true,
@@ -541,7 +553,7 @@ export const scenario8Data: ScenarioData = {
       id: 'identify-tracking-problem',
       nice: ['T0081', 'K1032'],
       title: 'Identify Tracking Problem',
-      description: 'The beacon signal is weak or absent. Investigate the antenna tracking mode.',
+      description: 'The beacon keeps dropping out. Analyze the antenna tracking mode to identify potential issues.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['configure-speca-beacon'],
       timeLimitSeconds: 3 * 60,
@@ -701,12 +713,104 @@ export const scenario8Data: ScenarioData = {
     // PHASE 6: TX MODEM FAULT DIAGNOSIS
     // ============================================================
     {
-      id: 'diagnose-tx-fault',
-      nice: ['T0081', 'S0582'],
-      title: 'Diagnose TX Chain Issue',
-      description: 'With RX stable, investigate why the customer still reports intermittent service. Check the TX Chain for faults.',
+      id: 'verify-acu-tracking-stable',
+      nice: ['T0081', 'K0740'],
+      title: 'Verify Antenna Tracking Stable',
+      description: 'Customer still reports intermittent errors. First, confirm the antenna tracking is stable after enabling step-track.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['enable-feed-heater'],
+      timeLimitSeconds: 2 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'tab-active',
+          description: 'ACU Control Tab Open',
+          params: { tab: 'acu-control' },
+          mustMaintain: true,
+        },
+        {
+          type: 'antenna-beacon-locked',
+          description: 'Beacon Lock Confirmed',
+          mustMaintain: true,
+        },
+        {
+          type: 'status-check',
+          description: 'Tracking Analysis',
+          params: {
+            character: Character.SYSTEM,
+            question: 'The customer still reports intermittent errors. The ACU shows stable step-track with beacon lock. What does this tell you?',
+            options: [
+              'The antenna is tracking properly - the intermittent issue is not caused by tracking problems',
+              'The beacon frequency is drifting and causing lock instability',
+              'The polarization needs to be adjusted for the inclined orbit',
+              'Step-track mode is inadequate for AURORA-7',
+            ],
+            correctIndex: 0,
+            explanation: 'With stable beacon lock in step-track mode, we can rule out antenna tracking as the cause of intermittent errors. The antenna is correctly following the satellite. We need to look elsewhere.',
+            pointPenalty: 10,
+          },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 10,
+    },
+    {
+      id: 'verify-rx-path-healthy',
+      nice: ['T0153', 'K0740'],
+      title: 'Verify RX Path Health',
+      description: 'Check the receiver modem to confirm the RX path is healthy after the LNB fix.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['verify-acu-tracking-stable'],
+      timeLimitSeconds: 2 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'tab-active',
+          description: 'RX Analysis Tab Open',
+          params: { tab: 'rx-analysis' },
+          mustMaintain: true,
+        },
+        {
+          type: 'receiver-signal-locked',
+          description: 'Receiver Modem Locked',
+          mustMaintain: true,
+        },
+        {
+          type: 'receiver-snr-threshold',
+          description: 'C/N Ratio Adequate',
+          params: { minCNRatio: 8 },
+          mustMaintain: true,
+        },
+        {
+          type: 'status-check',
+          description: 'RX Path Analysis',
+          params: {
+            character: Character.SYSTEM,
+            question: 'The receiver shows stable lock with good C/N. What does this indicate about the customer\'s intermittent errors?',
+            options: [
+              'The RX path is healthy - the problem must be in the transmit direction',
+              'The receiver is masking the real problem with AGC',
+              'We need to check the LNB temperature before concluding',
+              'The C/N margin is still too low for reliable service',
+            ],
+            correctIndex: 0,
+            explanation: 'With stable receiver lock and good C/N, the downlink (RX) path is working correctly. Since the customer reports bidirectional issues, and RX is healthy, the problem must be in the uplink (TX) direction.',
+            pointPenalty: 10,
+          },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 10,
+    },
+    {
+      id: 'check-tx-chain-status',
+      nice: ['T0081', 'S0582'],
+      title: 'Investigate TX Chain',
+      description: 'Navigate to the TX Chain tab to investigate the transmit path for intermittent faults.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['verify-rx-path-healthy'],
       timeLimitSeconds: 2 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
@@ -718,18 +822,18 @@ export const scenario8Data: ScenarioData = {
         },
         {
           type: 'status-check',
-          description: 'Fault Identified',
+          description: 'TX Chain Inspection',
           params: {
             character: Character.SYSTEM,
-            question: 'What issue do you see in the TX Chain?',
+            question: 'When investigating an intermittent TX fault, which indicator would show evidence of the problem?',
             options: [
-              'Modem 1 signal drops intermittently',
-              'BUC is overheating',
-              'HPA output is low',
-              'No issues visible',
+              'The modem Output Power display - it shows DROPOUT during fault periods',
+              'The HPA reflected power - it increases during modem faults',
+              'The BUC temperature - it spikes during signal dropouts',
+              'The GPSDO holdover counter - it increments during TX faults',
             ],
             correctIndex: 0,
-            explanation: 'Modem 1 has an intermittent hardware fault causing periodic signal dropouts. Use loopback mode to observe the signal cutting out every few seconds. You\'ll need to switch to Modem 2.',
+            explanation: 'The TX modem Output Power display directly indicates when an intermittent hardware fault causes a signal dropout. During fault periods, the display shows "DROPOUT" in red, making it easy to identify the source of the problem.',
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -744,7 +848,7 @@ export const scenario8Data: ScenarioData = {
       title: 'Switch to Backup Modem',
       description: 'Select Modem 2 as the active transmitter to replace the faulted Modem 1.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['diagnose-tx-fault'],
+      prerequisiteObjectiveIds: ['check-tx-chain-status'],
       timeLimitSeconds: 1 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
@@ -820,6 +924,7 @@ export const scenario8Data: ScenarioData = {
           type: 'tx-modem-frequency-set',
           description: 'TX Frequency Set to 1047 MHz',
           params: {
+            modemNumber: 2,
             frequency: 1047e6,
             frequencyTolerance: 2e6,
           },
@@ -829,6 +934,7 @@ export const scenario8Data: ScenarioData = {
           type: 'tx-modem-bandwidth-set',
           description: 'TX Bandwidth Set to 24 MHz',
           params: {
+            modemNumber: 2,
             bandwidth: 24e6,
             bandwidthTolerance: 2e6,
           },
@@ -837,19 +943,19 @@ export const scenario8Data: ScenarioData = {
         {
           type: 'tx-modem-modulation-set',
           description: 'TX Modulation: QPSK',
-          params: { modulation: 'QPSK' },
+          params: { modemNumber: 2, modulation: 'QPSK' },
           maintainUntilObjectiveComplete: true,
         },
         {
           type: 'tx-modem-power-set',
           description: 'TX Power: -7 dBm',
-          params: { power: -7 as dBm, powerTolerance: 1 as dBm },
+          params: { modemNumber: 2, power: -7 as dBm, powerTolerance: 1 as dBm },
           maintainUntilObjectiveComplete: true,
         },
         {
           type: 'tx-modem-fec-set',
           description: 'TX FEC: 3/4',
-          params: { fec: '3/4' },
+          params: { modemNumber: 2, fec: '3/4' },
           maintainUntilObjectiveComplete: true,
         },
       ],
@@ -861,13 +967,13 @@ export const scenario8Data: ScenarioData = {
     // PHASE 8: BUC LOOPBACK TESTING
     // ============================================================
     {
-      id: 'test-buc-loopback',
+      id: 'prepare-buc-loopback',
       nice: ['T1313', 'S0582'],
-      title: 'Test Modem 2 with BUC Loopback',
-      description: 'Disable the faulted Modem 1, then enable BUC loopback to test Modem 2 through the full low-power TX chain.',
+      title: 'Prepare BUC for Loopback Test',
+      description: 'Before transmitting on a new modem, disable the faulted Modem 1 and enable BUC loopback mode for safe testing.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['configure-tx-modem'],
-      timeLimitSeconds: 3 * 60,
+      timeLimitSeconds: 2 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
         {
@@ -883,9 +989,56 @@ export const scenario8Data: ScenarioData = {
           mustMaintain: true,
         },
         {
-          type: 'tx-modem-transmitting',
-          description: 'Modem 2 Transmitting',
-          params: { modemNumber: 2 },
+          type: 'buc-loopback-enabled',
+          description: 'BUC Loopback Enabled',
+          mustMaintain: true,
+        },
+        {
+          type: 'buc-unmuted',
+          description: 'BUC Unmuted',
+          mustMaintain: true,
+        },
+        {
+          type: 'hpa-disabled',
+          description: 'HPA Disabled',
+          mustMaintain: true,
+        },
+        {
+          type: 'status-check',
+          description: 'Loopback Safety',
+          params: {
+            character: Character.SYSTEM,
+            question: 'Why must BUC loopback be enabled BEFORE starting transmission on a new modem?',
+            options: [
+              'To prevent accidental RF transmission through the HPA until the new modem is verified',
+              'To reduce power consumption during testing',
+              'To improve signal quality measurements',
+              'To synchronize the modem clock with the BUC',
+            ],
+            correctIndex: 0,
+            explanation: 'Enabling loopback before transmission ensures the signal is routed back to the receiver for testing, rather than going to the HPA and antenna. This prevents accidental RF transmission until the new modem configuration is verified.',
+            pointPenalty: 10,
+          },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 10,
+    },
+    {
+      id: 'test-modem2-loopback',
+      nice: ['T1313', 'S0582'],
+      title: 'Test Modem 2 Transmission',
+      description: 'With BUC loopback engaged, enable Modem 2 transmission to test the signal path.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['prepare-buc-loopback'],
+      timeLimitSeconds: 2 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'tab-active',
+          description: 'TX Chain Tab Open',
+          params: { tab: 'tx-chain' },
           mustMaintain: true,
         },
         {
@@ -894,8 +1047,9 @@ export const scenario8Data: ScenarioData = {
           mustMaintain: true,
         },
         {
-          type: 'buc-unmuted',
-          description: 'BUC Unmuted',
+          type: 'tx-modem-transmitting',
+          description: 'Modem 2 Transmitting',
+          params: { modemNumber: 2 },
           mustMaintain: true,
         },
         {
@@ -918,15 +1072,44 @@ export const scenario8Data: ScenarioData = {
         },
       ],
       conditionLogic: 'AND',
-      points: 15,
+      points: 10,
+    },
+    {
+      id: 'configure-lnb-for-loopback',
+      nice: ['T0153', 'K0740'],
+      title: 'Configure LNB for Loopback Test',
+      description: 'Set the LNB LO to 7000 MHz to view the BUC loopback signal. The BUC LO is 7100 MHz, so the 1047 MHz TX IF becomes 6053 MHz RF, which downconverts to 947 MHz with a 7000 MHz LNB.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['test-modem2-loopback'],
+      timeLimitSeconds: 2 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'tab-active',
+          description: 'RX Analysis Tab Open',
+          params: { tab: 'rx-analysis' },
+          maintainUntilObjectiveComplete: true,
+        },
+        {
+          type: 'lnb-lo-set',
+          description: 'LNB LO Set to 7000 MHz',
+          params: {
+            loFrequency: 7000 as MHz,
+            loFrequencyTolerance: 10 as MHz,
+          },
+          maintainUntilObjectiveComplete: true,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 5,
     },
     {
       id: 'verify-loopback-signal',
       nice: ['T0153', 'K0740'],
       title: 'Verify Loopback Signal',
-      description: 'Check the spectrum analyzer at 1047 MHz to confirm the loopback signal is present.',
+      description: 'Check the spectrum analyzer at 947 MHz to confirm the BUC loopback signal is present.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['test-buc-loopback'],
+      prerequisiteObjectiveIds: ['configure-lnb-for-loopback'],
       timeLimitSeconds: 2 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
@@ -938,9 +1121,9 @@ export const scenario8Data: ScenarioData = {
         },
         {
           type: 'speca-center-frequency',
-          description: 'Spectrum Analyzer at TX IF',
+          description: 'Spectrum Analyzer at 947 MHz',
           params: {
-            centerFrequency: 1047e6 as Hertz,
+            centerFrequency: 947e6 as Hertz,
             centerFrequencyTolerance: 5e6,
           },
           mustMaintain: true,
@@ -950,15 +1133,15 @@ export const scenario8Data: ScenarioData = {
           description: 'Loopback Signal Verified',
           params: {
             character: Character.SYSTEM,
-            question: 'What should you observe on the spectrum analyzer at 1047 MHz?',
+            question: 'What should you observe on the spectrum analyzer at 947 MHz?',
             options: [
-              'A 24 MHz wide modulated signal - confirming TX modem output',
+              'A 24 MHz wide modulated signal - confirming TX chain is working',
               'A narrow CW spike like the beacon',
               'No signal - loopback does not produce visible output',
               'The AURORA-7 beacon signal',
             ],
             correctIndex: 0,
-            explanation: 'The loopback signal appears as a 24 MHz wide modulated carrier (matching AURORA-7 bandwidth), confirming the TX modem is generating the correct signal and the BUC loopback path is working.',
+            explanation: 'The loopback signal appears as a 24 MHz wide modulated carrier at 947 MHz (TX IF 1047 MHz upconverted by BUC LO 7100 MHz to 6053 MHz RF, then downconverted by LNB LO 7000 MHz). This confirms Modem 2 and the BUC are working correctly.',
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -966,6 +1149,35 @@ export const scenario8Data: ScenarioData = {
       ],
       conditionLogic: 'AND',
       points: 10,
+    },
+    {
+      id: 'restore-lnb-frequency',
+      nice: ['T0153', 'K0740'],
+      title: 'Restore LNB Frequency',
+      description: 'Return the LNB LO to 5250 MHz for normal satellite reception.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['verify-loopback-signal'],
+      timeLimitSeconds: 1 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'tab-active',
+          description: 'RX Analysis Tab Open',
+          params: { tab: 'rx-analysis' },
+          mustMaintain: true,
+        },
+        {
+          type: 'lnb-lo-set',
+          description: 'LNB LO Restored to 5250 MHz',
+          params: {
+            loFrequency: 5250 as MHz,
+            loFrequencyTolerance: 10 as MHz,
+          },
+          mustMaintain: true,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 5,
     },
 
     // ============================================================
@@ -977,7 +1189,7 @@ export const scenario8Data: ScenarioData = {
       title: 'Prepare for Live Uplink',
       description: 'Disable loopback mode and mute BUC in preparation for HPA enable.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['verify-loopback-signal'],
+      prerequisiteObjectiveIds: ['restore-lnb-frequency'],
       timeLimitSeconds: 2 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
@@ -990,11 +1202,6 @@ export const scenario8Data: ScenarioData = {
         {
           type: 'buc-loopback-disabled',
           description: 'Loopback Disabled',
-          mustMaintain: true,
-        },
-        {
-          type: 'buc-muted',
-          description: 'BUC Muted',
           mustMaintain: true,
         },
       ],
@@ -1032,31 +1239,6 @@ export const scenario8Data: ScenarioData = {
       conditionLogic: 'AND',
       points: 10,
     },
-    {
-      id: 'unmute-buc-go-live',
-      nice: ['S0421', 'T1567'],
-      title: 'Unmute BUC - Go Live',
-      description: 'Unmute the BUC to begin live transmission to AURORA-7.',
-      groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['enable-hpa-sequence'],
-      timeLimitSeconds: 1 * 60,
-      timerStartTrigger: 'on-activate',
-      conditions: [
-        {
-          type: 'tab-active',
-          description: 'TX Chain Tab Open',
-          params: { tab: 'tx-chain' },
-          mustMaintain: true,
-        },
-        {
-          type: 'buc-unmuted',
-          description: 'BUC Unmuted - Transmitting',
-          mustMaintain: true,
-        },
-      ],
-      conditionLogic: 'AND',
-      points: 10,
-    },
 
     // ============================================================
     // FINAL VERIFICATION
@@ -1067,7 +1249,7 @@ export const scenario8Data: ScenarioData = {
       title: 'Verify Link Operational',
       description: 'Confirm the AURORA-7 link is fully operational with both RX and TX paths verified.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['unmute-buc-go-live'],
+      prerequisiteObjectiveIds: ['enable-hpa-sequence'],
       timeLimitSeconds: 2 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
@@ -1084,12 +1266,12 @@ export const scenario8Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'What indicators confirm the AURORA-7 link is now operational?',
             options: [
-              'All of the above',
               'No active alarms on Dashboard',
               'Antenna in step-track with beacon lock',
               'HPA enabled and BUC unmuted',
+              'All of the above',
             ],
-            correctIndex: 0,
+            correctIndex: 3,
             explanation: 'A fully operational link shows: no Dashboard alarms, antenna tracking with beacon lock (step-track for inclined orbit), and active TX chain (HPA enabled, BUC unmuted). All conditions must be met.',
             pointPenalty: 10,
             preserveOptionOrder: true,
@@ -1117,13 +1299,13 @@ export const scenario8Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Which summary correctly describes the root cause and resolution?',
             options: [
-              'LNB reference unlock caused RX degradation; program-track inadequate for inclined orbit. Fixed by power cycling LNB and enabling step-track.',
+              'LNB reference unlock caused RX degradation; program-track inadequate for inclined orbit; TX Modem 1 intermittent fault. Fixed by power cycling LNB, enabling step-track, and switching to Modem 2.',
               'HPA fault caused TX failure; fixed by replacing the HPA tube.',
               'Weather degradation caused link loss; handed over to backup station.',
               'Customer equipment issue; no action required at ground station.',
             ],
             correctIndex: 0,
-            explanation: 'The customer intermittent connectivity had two causes: (1) LNB reference unlock degraded receive quality, (2) program-track mode could not follow AURORA-7\'s inclined orbit drift. Both were resolved without waking Dana or escalating.',
+            explanation: 'The customer intermittent connectivity had three causes: (1) LNB reference unlock degraded receive quality, (2) program-track mode could not follow AURORA-7\'s inclined orbit drift, (3) TX Modem 1 had an intermittent hardware fault. All were resolved without waking Dana or escalating.',
             pointPenalty: 15,
           },
           mustMaintain: false,
@@ -1140,10 +1322,10 @@ export const scenario8Data: ScenarioData = {
         <em>[Text message from Dana at 2:17 AM]</em>
       </p>
       <p>
-        "Hey - NOC just forwarded a trouble ticket. Customer reports intermittent connectivity on AURORA-7, signal dropouts every few minutes. I'm on-call but heading back to sleep. You've got this."
+        "Hey - just got a trouble ticket. Customer reports intermittent connectivity on AURORA-7, signal dropouts every few minutes. I'm on-call but heading back to sleep. You've got this."
       </p>
       <p>
-        "Charlie's out of state visiting family. Please don't call me unless it's a genuine emergency. Good luck."
+        "Charlie's out of state visiting family. Call me only if it's a genuine emergency. Good luck."
       </p>
       `,
       character: Character.DANA_TORRES,
@@ -1157,7 +1339,7 @@ export const scenario8Data: ScenarioData = {
           <em>[Text message from Dana at 4:45 AM]</em>
         </p>
         <p>
-          "Saw the ticket resolution come through. LNB reference issue and tracking mode - good catches. You handled it right. No need to wake me for that."
+          "Saw the ticket resolution come through. LNB reference issue, tracking mode, and good call switching to Modem 2. You handled it right. No need to wake me for that."
         </p>
         <p>
           "Charlie will be proud. See you at shift change."

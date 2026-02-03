@@ -17,7 +17,6 @@ export class CampaignSelectionPage extends BasePage {
 
   // Campaign cards
   readonly campaignCards: Locator;
-  readonly sandboxCard: Locator;
 
   constructor(page: Page) {
     super(page);
@@ -27,7 +26,6 @@ export class CampaignSelectionPage extends BasePage {
     this.campaignGrid = page.locator('.campaign-grid');
     this.loginWarning = page.locator('.login-warning');
     this.campaignCards = page.locator('.campaign-card');
-    this.sandboxCard = page.locator('.sandbox-card');
   }
 
   protected async waitForPageLoad(): Promise<void> {

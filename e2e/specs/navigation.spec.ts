@@ -17,13 +17,6 @@ test.describe('Navigation', () => {
     await expect(natsCard).not.toHaveClass(/disabled/);
   });
 
-  test('should display sandbox card as coming soon', async ({ campaignSelectionPage }) => {
-    await campaignSelectionPage.goto();
-
-    await expect(campaignSelectionPage.sandboxCard).toBeVisible();
-    await expect(campaignSelectionPage.sandboxCard).toHaveClass(/disabled/);
-  });
-
   test('should navigate to scenario selection when campaign is clicked', async ({
     campaignSelectionPage,
     page,

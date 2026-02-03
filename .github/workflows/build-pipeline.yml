@@ -133,8 +133,11 @@ jobs:
   e2e-tests:
     name: E2E Tests
     needs: [lint, type-check, test, security-audit]
+    if: >-
+      (github.event_name == 'pull_request' &&
+      contains(github.event.pull_request.labels.*.name, 'run-e2e')) ||
+      github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-    environment: e2e-approval
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4

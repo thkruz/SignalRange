@@ -1,23 +1,24 @@
-import { DashboardTab } from '../../../../src/pages/mission-control/tabs/dashboard-tab';
+import { Mock, Mocked, vi } from 'vitest';
 import { GroundStation } from '../../../../src/assets/ground-station/ground-station';
 import { EventBus } from '../../../../src/events/event-bus';
 import { Events } from '../../../../src/events/events';
+import { DashboardTab } from '../../../../src/pages/mission-control/tabs/dashboard-tab';
 
 // Mock dependencies
-jest.mock('../../../../src/events/event-bus');
-jest.mock('../../../../src/assets/ground-station/ground-station');
+vi.mock('../../../../src/events/event-bus');
+vi.mock('../../../../src/assets/ground-station/ground-station');
 
 // Mock image imports
-jest.mock('../../../../src/assets/icons/antenna.png', () => 'antenna.png');
-jest.mock('../../../../src/assets/icons/radio.png', () => 'radio.png');
-jest.mock('../../../../src/assets/icons/arrow-big-down-lines.png', () => 'rx.png');
-jest.mock('../../../../src/assets/icons/arrow-big-up-lines.png', () => 'tx.png');
+vi.mock('../../../../src/assets/icons/antenna.png', () => ({ default: 'antenna.png' }));
+vi.mock('../../../../src/assets/icons/radio.png', () => ({ default: 'radio.png' }));
+vi.mock('../../../../src/assets/icons/arrow-big-down-lines.png', () => ({ default: 'rx.png' }));
+vi.mock('../../../../src/assets/icons/arrow-big-up-lines.png', () => ({ default: 'tx.png' }));
 
 describe('DashboardTab', () => {
-  let mockGroundStation: jest.Mocked<GroundStation>;
+  let mockGroundStation: Mocked<GroundStation>;
   let containerEl: HTMLElement;
   let tab: DashboardTab;
-  let mockEventBus: { on: jest.Mock; off: jest.Mock; emit: jest.Mock };
+  let mockEventBus: { on: Mock; off: Mock; emit: Mock };
 
   const mockLocation = {
     latitude: 38.897,
@@ -26,15 +27,15 @@ describe('DashboardTab', () => {
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Setup mock EventBus
     mockEventBus = {
-      on: jest.fn(),
-      off: jest.fn(),
-      emit: jest.fn(),
+      on: vi.fn(),
+      off: vi.fn(),
+      emit: vi.fn(),
     };
-    (EventBus.getInstance as jest.Mock).mockReturnValue(mockEventBus);
+    (EventBus.getInstance as Mock).mockReturnValue(mockEventBus);
 
     // Setup mock GroundStation
     mockGroundStation = {
@@ -93,6 +94,7 @@ describe('DashboardTab', () => {
               isPowered: true,
             },
           },
+          getStatusAlarms: vi.fn().mockReturnValue([]),
         },
       ],
       transmitters: [
@@ -103,7 +105,7 @@ describe('DashboardTab', () => {
               { isPowered: false, isTransmitting: false, isFaulted: false },
             ],
           },
-          getPowerPercentage: jest.fn().mockReturnValue(50),
+          getPowerPercentage: vi.fn().mockReturnValue(50),
         },
       ],
       receivers: [
@@ -115,11 +117,11 @@ describe('DashboardTab', () => {
             ],
             availableSignals: [],
           },
-          getSnrForModem: jest.fn().mockReturnValue(15),
+          getSnrForModem: vi.fn().mockReturnValue(15),
         },
       ],
-      initializeEquipment: jest.fn(),
-    } as unknown as jest.Mocked<GroundStation>;
+      initializeEquipment: vi.fn(),
+    } as unknown as Mocked<GroundStation>;
 
     // Setup container
     containerEl = document.createElement('div');
@@ -146,7 +148,7 @@ describe('DashboardTab', () => {
         rfFrontEnds: [],
         transmitters: [],
         receivers: [],
-      } as unknown as jest.Mocked<GroundStation>;
+      } as unknown as Mocked<GroundStation>;
 
       const containerEl2 = document.createElement('div');
       containerEl2.id = 'dashboard-container-2';

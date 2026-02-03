@@ -24,8 +24,13 @@ export class TransmitterAdapter {
   private readonly domCache_: Map<string, HTMLElement> = new Map();
   private readonly boundHandlers: Map<string, EventListener> = new Map();
   private readonly stateChangeHandler_: () => void;
+  private readonly updateHandler_: () => void;
   private lastStateString: string = '';
   private readonly alarmBadge_: CardAlarmBadge;
+
+  // Throttling for UPDATE events (intermittent fault display)
+  private static readonly UPDATE_INTERVAL_MS = 250;
+  private lastUpdateTime_: number = 0;
 
   // Staged input strings for exact user input preservation
   private stagedInputStrings_: Map<string, string> = new Map();
@@ -49,6 +54,11 @@ export class TransmitterAdapter {
       this.syncDomWithState_(this.transmitter.state);
     };
 
+    // Create update handler for intermittent fault display (throttled)
+    this.updateHandler_ = () => {
+      this.throttledOutputPowerUpdate_();
+    };
+
     // Initialize
     this.setupDomCache_();
     this.setupEventListeners_();
@@ -66,6 +76,8 @@ export class TransmitterAdapter {
     EventBus.getInstance().on(Events.TX_ACTIVE_MODEM_CHANGED, this.stateChangeHandler_);
     EventBus.getInstance().on(Events.TX_TRANSMIT_CHANGED, this.stateChangeHandler_);
     EventBus.getInstance().on(Events.SYNC, this.stateChangeHandler_);
+    // Subscribe to UPDATE for intermittent fault output power display
+    EventBus.getInstance().on(Events.UPDATE, this.updateHandler_);
   }
 
   /**
@@ -97,6 +109,9 @@ export class TransmitterAdapter {
     // Power budget visualization
     this.cacheElement_('tx-power-bar', 'power-bar');
     this.cacheElement_('tx-power-percentage', 'power-percentage');
+
+    // Output power display (for intermittent fault visibility)
+    this.cacheElement_('tx-output-power', 'output-power');
 
     // Switches
     this.cacheElement_('tx-transmit-switch', 'tx-switch');
@@ -366,6 +381,9 @@ export class TransmitterAdapter {
     // Update power budget visualization
     this.updatePowerBudgetBar_();
 
+    // Update output power display (intermittent fault visibility)
+    this.updateOutputPowerDisplay_();
+
     // Update switches/LEDs
     this.updateSwitchesAndLeds_();
 
@@ -516,6 +534,59 @@ export class TransmitterAdapter {
     }
   }
 
+  /**
+   * Throttled update for output power display during intermittent faults.
+   * Called on every UPDATE event but throttled to avoid performance issues.
+   */
+  private throttledOutputPowerUpdate_(): void {
+    const now = Date.now();
+    if (now - this.lastUpdateTime_ < TransmitterAdapter.UPDATE_INTERVAL_MS) return;
+    this.lastUpdateTime_ = now;
+
+    this.updateOutputPowerDisplay_();
+  }
+
+  /**
+   * Update the output power display based on modem state and intermittent fault.
+   * Shows actual visible output power, accounting for dropout periods.
+   */
+  private updateOutputPowerDisplay_(): void {
+    const outputPowerEl = this.domCache_.get('output-power');
+    if (!outputPowerEl) return;
+
+    const activeModem = this.getActiveModem_();
+    if (!activeModem) {
+      outputPowerEl.textContent = '-- dBm';
+      outputPowerEl.classList.remove('text-warning', 'text-danger');
+      return;
+    }
+
+    // Not powered or not transmitting
+    if (!activeModem.isPowered || !activeModem.isTransmitting) {
+      outputPowerEl.textContent = '-- dBm';
+      outputPowerEl.classList.remove('text-warning', 'text-danger');
+      return;
+    }
+
+    // Check for intermittent fault dropout
+    const isInDropout = this.transmitter.isModemInIntermittentDropout(activeModem);
+
+    if (isInDropout) {
+      outputPowerEl.textContent = 'DROPOUT';
+      outputPowerEl.classList.remove('text-warning');
+      outputPowerEl.classList.add('text-danger');
+    } else if (activeModem.intermittentFault) {
+      // Transmitting but with intermittent fault (currently in "on" phase)
+      outputPowerEl.textContent = `${activeModem.ifSignal.power} dBm`;
+      outputPowerEl.classList.remove('text-danger');
+      outputPowerEl.classList.add('text-warning');
+    } else {
+      // Normal transmission
+      outputPowerEl.textContent = `${activeModem.ifSignal.power} dBm`;
+      outputPowerEl.classList.remove('text-warning', 'text-danger');
+    }
+  }
+
   private updateSwitchesAndLeds_(): void {
     const activeModem = this.getActiveModem_();
     if (!activeModem) return;
@@ -538,29 +609,29 @@ export class TransmitterAdapter {
       powerSwitch.checked = activeModem.isPowered;
     }
 
-    // LEDs
+    // LEDs (using card-alarm-led flat style)
     const txLed = this.domCache_.get('tx-led');
     if (txLed) {
-      txLed.classList.remove('led-gray', 'led-green', 'led-red');
-      txLed.classList.add(activeModem.isTransmitting ? 'led-red' : 'led-gray');
+      txLed.classList.remove('off', 'success', 'error', 'warning');
+      txLed.classList.add(activeModem.isTransmitting ? 'error' : 'off');
     }
 
     const faultLed = this.domCache_.get('fault-led');
     if (faultLed) {
-      faultLed.classList.remove('led-gray', 'led-green', 'led-red');
-      faultLed.classList.add(activeModem.isFaulted ? 'led-red' : 'led-gray');
+      faultLed.classList.remove('off', 'success', 'error', 'warning');
+      faultLed.classList.add(activeModem.isFaulted ? 'error' : 'off');
     }
 
     const loopbackLed = this.domCache_.get('loopback-led');
     if (loopbackLed) {
-      loopbackLed.classList.remove('led-gray', 'led-amber');
-      loopbackLed.classList.add(activeModem.isLoopback ? 'led-amber' : 'led-gray');
+      loopbackLed.classList.remove('off', 'success', 'error', 'warning');
+      loopbackLed.classList.add(activeModem.isLoopback ? 'warning' : 'off');
     }
 
     const onlineLed = this.domCache_.get('online-led');
     if (onlineLed) {
-      onlineLed.classList.remove('led-gray', 'led-green');
-      onlineLed.classList.add(activeModem.isPowered ? 'led-green' : 'led-gray');
+      onlineLed.classList.remove('off', 'success', 'error', 'warning');
+      onlineLed.classList.add(activeModem.isPowered ? 'success' : 'off');
     }
   }
 
@@ -661,6 +732,7 @@ export class TransmitterAdapter {
     EventBus.getInstance().off(Events.TX_ACTIVE_MODEM_CHANGED, this.stateChangeHandler_);
     EventBus.getInstance().off(Events.TX_TRANSMIT_CHANGED, this.stateChangeHandler_);
     EventBus.getInstance().off(Events.SYNC, this.stateChangeHandler_);
+    EventBus.getInstance().off(Events.UPDATE, this.updateHandler_);
 
     // Remove all event listeners
     this.boundHandlers.forEach((handler, key) => {

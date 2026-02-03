@@ -1,20 +1,21 @@
 import { Degrees } from 'ootk';
+import { vi } from 'vitest';
+import { ANTENNA_CONFIG_KEYS } from '../../src/equipment/antenna';
 import { AntennaState } from '../../src/equipment/antenna/antenna-core';
 import { AntennaUIHeadless } from '../../src/equipment/antenna/antenna-ui-headless';
-import { ANTENNA_CONFIG_KEYS } from '../../src/equipment/antenna';
 
-jest.mock('../../src/simulation/simulation-manager', () => {
+vi.mock('../../src/simulation/simulation-manager', () => {
   return {
     SimulationManager: {
-      getInstance: jest.fn(() => ({
-        update: jest.fn(),
-        draw: jest.fn(),
-        sync: jest.fn(),
-        getSatByNoradId: jest.fn(),
+      getInstance: vi.fn(() => ({
+        update: vi.fn(),
+        draw: vi.fn(),
+        sync: vi.fn(),
+        getSatByNoradId: vi.fn(),
         getSatsByAzEl: () => [],
         satellites: [],
       })),
-      destroy: jest.fn(),
+      destroy: vi.fn(),
     }
   };
 });

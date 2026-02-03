@@ -13,6 +13,12 @@ import { html } from "../engine/utils/development/formatter";
 import { BasePage } from "./base-page";
 import "./scenario-selection.css";
 
+declare global {
+  interface Window {
+    UNLOCK_ALL_SCENARIOS?: boolean;
+  }
+}
+
 /**
  * Scenario selection page implementation
  */
@@ -238,7 +244,8 @@ export class ScenarioSelectionPage extends BasePage {
   private renderScenarioCard_(scenario: ScenarioData): string {
     const hasCheckpoint = this.scenarioCheckpoints_.get(scenario.id);
     // Use completedScenarioIds_ (based on completedAt) for prerequisite checks and badge
-    const isLocked = isScenarioLocked(scenario, this.completedScenarioIds_);
+    // UNLOCK_ALL_SCENARIOS bypasses lock check for dev/testing
+    const isLocked = window.UNLOCK_ALL_SCENARIOS ? false : isScenarioLocked(scenario, this.completedScenarioIds_);
     const prerequisiteNames = isLocked ? getPrerequisiteScenarioNames(scenario) : [];
     const isDisabledOrLocked = scenario.isDisabled || isLocked;
     // hasEverCompleted = has completedAt (for badge display)
@@ -370,6 +377,14 @@ export class ScenarioSelectionPage extends BasePage {
     this.loadCheckpointsAndUpdate_().catch(error => {
       Logger.error('Failed to refresh scenario data:', error);
     });
+  }
+
+  /**
+   * Refresh the scenario cards without reloading checkpoint data.
+   * Used by dev menu to immediately reflect unlock state changes.
+   */
+  refreshCards(): void {
+    this.updateScenarioCards_();
   }
 
   protected addEventListeners_(): void {

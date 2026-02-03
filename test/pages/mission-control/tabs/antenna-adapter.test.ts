@@ -1,18 +1,19 @@
-import { AntennaAdapter } from '../../../../src/pages/mission-control/tabs/antenna-adapter';
+import { Degrees } from 'ootk';
+import { Mock, Mocked, vi } from 'vitest';
 import { AntennaCore, AntennaState } from '../../../../src/equipment/antenna';
 import { EventBus } from '../../../../src/events/event-bus';
 import { Events } from '../../../../src/events/events';
-import { Degrees } from 'ootk';
+import { AntennaAdapter } from '../../../../src/pages/mission-control/tabs/antenna-adapter';
 
 // Mock dependencies
-jest.mock('../../../../src/events/event-bus');
-jest.mock('../../../../src/equipment/antenna/antenna-core');
+vi.mock('../../../../src/events/event-bus');
+vi.mock('../../../../src/equipment/antenna/antenna-core');
 
 describe('AntennaAdapter', () => {
-  let mockAntennaCore: jest.Mocked<AntennaCore>;
+  let mockAntennaCore: Mocked<AntennaCore>;
   let containerEl: HTMLElement;
   let adapter: AntennaAdapter;
-  let mockEventBus: { on: jest.Mock; off: jest.Mock; getInstance: jest.Mock };
+  let mockEventBus: { on: Mock; off: Mock; getInstance: Mock };
 
   const mockState: AntennaState = {
     azimuth: 180 as Degrees,
@@ -28,32 +29,32 @@ describe('AntennaAdapter', () => {
       gOverT_dBK: 15.0,
       polLoss_dB: 0.1,
       skyTemp_K: 290,
-    },
-  };
+    }
+  } as AntennaState;
 
   beforeEach(() => {
     // Reset mocks
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Setup mock EventBus
     mockEventBus = {
-      on: jest.fn(),
-      off: jest.fn(),
-      getInstance: jest.fn(),
+      on: vi.fn(),
+      off: vi.fn(),
+      getInstance: vi.fn(),
     };
     mockEventBus.getInstance.mockReturnValue(mockEventBus);
-    (EventBus.getInstance as jest.Mock).mockReturnValue(mockEventBus);
+    (EventBus.getInstance as Mock).mockReturnValue(mockEventBus);
 
     // Setup mock AntennaCore
     mockAntennaCore = {
       state: { ...mockState },
-      handleAzimuthChange: jest.fn(),
-      handleElevationChange: jest.fn(),
-      handlePolarizationChange: jest.fn(),
-      handlePowerToggle: jest.fn(),
-      handleAutoTrackToggle: jest.fn(),
-      handleLoopbackToggle: jest.fn(),
-    } as unknown as jest.Mocked<AntennaCore>;
+      handleAzimuthChange: vi.fn(),
+      handleElevationChange: vi.fn(),
+      handlePolarizationChange: vi.fn(),
+      handlePowerToggle: vi.fn(),
+      handleAutoTrackToggle: vi.fn(),
+      handleLoopbackToggle: vi.fn(),
+    } as unknown as Mocked<AntennaCore>;
 
     // Setup container with required DOM elements
     containerEl = document.createElement('div');

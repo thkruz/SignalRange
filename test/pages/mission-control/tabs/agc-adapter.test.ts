@@ -1,51 +1,52 @@
-import { AGCAdapter } from '../../../../src/pages/mission-control/tabs/agc-adapter';
+import { Mock, Mocked, vi } from 'vitest';
 import { AGCModuleCore, AGCState } from '../../../../src/equipment/rf-front-end/agc-module/agc-module-core';
 import { EventBus } from '../../../../src/events/event-bus';
 import { Events } from '../../../../src/events/events';
+import { AGCAdapter } from '../../../../src/pages/mission-control/tabs/agc-adapter';
 
 // Mock dependencies
-jest.mock('../../../../src/events/event-bus');
-jest.mock('../../../../src/components/card-alarm-badge/card-alarm-badge', () => ({
+vi.mock('../../../../src/events/event-bus');
+vi.mock('../../../../src/components/card-alarm-badge/card-alarm-badge', () => ({
   CardAlarmBadge: {
-    create: jest.fn(() => ({
+    create: vi.fn(() => ({
       html: '<div class="mock-badge"></div>',
-      update: jest.fn(),
-      dispose: jest.fn(),
+      update: vi.fn(),
+      dispose: vi.fn(),
     })),
   },
 }));
 
 describe('AGCAdapter', () => {
-  let mockAgcModule: jest.Mocked<AGCModuleCore>;
+  let mockAgcModule: Mocked<AGCModuleCore>;
   let containerEl: HTMLElement;
   let adapter: AGCAdapter;
-  let mockEventBus: { on: jest.Mock; off: jest.Mock; emit: jest.Mock };
+  let mockEventBus: { on: Mock; off: Mock; emit: Mock };
 
   const mockState: AGCState = {
     isBypassed: false,
     currentGain: 15.5,
     inputPower: -30,
     outputPower: -14.5,
-  };
+  } as AGCState;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Setup mock EventBus
     mockEventBus = {
-      on: jest.fn(),
-      off: jest.fn(),
-      emit: jest.fn(),
+      on: vi.fn(),
+      off: vi.fn(),
+      emit: vi.fn(),
     };
-    (EventBus.getInstance as jest.Mock).mockReturnValue(mockEventBus);
+    (EventBus.getInstance as Mock).mockReturnValue(mockEventBus);
 
     // Setup mock AGCModuleCore
     mockAgcModule = {
       state: { ...mockState },
-      handleBypassToggle: jest.fn(),
-      getStatus: jest.fn().mockReturnValue('active'),
-      getAlarms: jest.fn().mockReturnValue([]),
-    } as unknown as jest.Mocked<AGCModuleCore>;
+      handleBypassToggle: vi.fn(),
+      getStatus: vi.fn().mockReturnValue('active'),
+      getAlarms: vi.fn().mockReturnValue([]),
+    } as unknown as Mocked<AGCModuleCore>;
 
     // Setup container with required DOM elements
     containerEl = document.createElement('div');

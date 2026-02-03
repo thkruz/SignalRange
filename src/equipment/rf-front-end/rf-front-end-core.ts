@@ -1,5 +1,5 @@
 import { EventBus } from "@app/events/event-bus";
-import { Events } from "../../events/events";
+import { Events, HpaNoiseAmplificationData } from "../../events/events";
 import { SignalPathManager } from '../../simulation/signal-path-manager';
 import { dBm, Hertz, IfFrequency, RfFrequency } from "../../types";
 import { AntennaCore } from "../antenna";
@@ -46,6 +46,9 @@ export abstract class RFFrontEndCore extends BaseEquipment {
   // State
   private readonly state_: RFFrontEndState;
   private lastRenderState: string = '';
+
+  /** Flag to prevent repeated HPA noise amplification violation events */
+  private hpaNoiseViolationEmitted_: boolean = false;
 
   // Module references (typed as Core for polymorphism)
   omtModule!: OMTModule;
@@ -144,8 +147,39 @@ export abstract class RFFrontEndCore extends BaseEquipment {
 
     this.updateSystemNoiseFigure_();
 
+    // Check for safety violations (causes scenario failure)
+    this.checkHpaNoiseAmplification_();
+
     // Check for alarms and faults
     this.checkForAlarms_();
+  }
+
+  /**
+   * Check for HPA noise amplification violation.
+   * If HPA is enabled but BUC is muted or off, the HPA amplifies noise,
+   * causing potential equipment damage. This triggers scenario failure.
+   */
+  private checkHpaNoiseAmplification_(): void {
+    // Skip if we've already emitted a violation
+    if (this.hpaNoiseViolationEmitted_) return;
+
+    const hpaEnabled = this.hpaModule.state.isHpaEnabled;
+    const bucMuted = this.bucModule.state.isMuted;
+    const bucOff = !this.bucModule.state.isPowered;
+
+    // HPA enabled + BUC muted/off = noise amplification violation
+    if (hpaEnabled && (bucMuted || bucOff)) {
+      this.hpaNoiseViolationEmitted_ = true;
+
+      const eventData: HpaNoiseAmplificationData = {
+        groundStationId: this.state_.uuid,
+        bucMuted,
+        bucOff,
+        detectedAt: Date.now(),
+      };
+
+      EventBus.getInstance().emit(Events.HPA_NOISE_AMPLIFICATION, eventData);
+    }
   }
 
   /**

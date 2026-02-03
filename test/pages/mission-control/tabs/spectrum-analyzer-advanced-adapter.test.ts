@@ -1,16 +1,17 @@
-import { SpectrumAnalyzerAdvancedAdapter } from '../../../../src/pages/mission-control/tabs/spectrum-analyzer-advanced-adapter';
+import { Mock, Mocked, vi } from 'vitest';
 import { RealTimeSpectrumAnalyzer } from '../../../../src/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer';
 import { EventBus } from '../../../../src/events/event-bus';
 import { Events } from '../../../../src/events/events';
+import { SpectrumAnalyzerAdvancedAdapter } from '../../../../src/pages/mission-control/tabs/spectrum-analyzer-advanced-adapter';
 
 // Mock dependencies
-jest.mock('../../../../src/events/event-bus');
+vi.mock('../../../../src/events/event-bus');
 
 describe('SpectrumAnalyzerAdvancedAdapter', () => {
-  let mockSpectrumAnalyzer: jest.Mocked<RealTimeSpectrumAnalyzer>;
+  let mockSpectrumAnalyzer: Mocked<RealTimeSpectrumAnalyzer>;
   let containerEl: HTMLElement;
   let adapter: SpectrumAnalyzerAdvancedAdapter;
-  let mockEventBus: { on: jest.Mock; off: jest.Mock; emit: jest.Mock };
+  let mockEventBus: { on: Mock; off: Mock; emit: Mock };
 
   const mockState = {
     uuid: 'test-uuid',
@@ -38,27 +39,27 @@ describe('SpectrumAnalyzerAdvancedAdapter', () => {
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Setup mock EventBus
     mockEventBus = {
-      on: jest.fn(),
-      off: jest.fn(),
-      emit: jest.fn(),
+      on: vi.fn(),
+      off: vi.fn(),
+      emit: vi.fn(),
     };
-    (EventBus.getInstance as jest.Mock).mockReturnValue(mockEventBus);
+    (EventBus.getInstance as Mock).mockReturnValue(mockEventBus);
 
     // Setup mock RealTimeSpectrumAnalyzer
     mockSpectrumAnalyzer = {
       state: JSON.parse(JSON.stringify(mockState)),
-      changeCenterFreq: jest.fn(),
-      changeBandwidth: jest.fn(),
-      freqAutoTune: jest.fn(),
-      togglePause: jest.fn(),
-      resetMaxHoldData: jest.fn(),
-      resetMinHoldData: jest.fn(),
-      updateScreenVisibility: jest.fn(),
-    } as unknown as jest.Mocked<RealTimeSpectrumAnalyzer>;
+      changeCenterFreq: vi.fn(),
+      changeBandwidth: vi.fn(),
+      freqAutoTune: vi.fn(),
+      togglePause: vi.fn(),
+      resetMaxHoldData: vi.fn(),
+      resetMinHoldData: vi.fn(),
+      updateScreenVisibility: vi.fn(),
+    } as unknown as Mocked<RealTimeSpectrumAnalyzer>;
 
     // Setup container with required DOM elements
     containerEl = document.createElement('div');
@@ -95,6 +96,9 @@ describe('SpectrumAnalyzerAdvancedAdapter', () => {
       <!-- Hold toggles -->
       <input type="checkbox" id="sa-max-hold" />
       <input type="checkbox" id="sa-min-hold" />
+
+      <!-- Engineering controls container -->
+      <div id="sa-engineering-controls"></div>
 
       <!-- Trace controls -->
       <button id="sa-trace-1" data-trace="1">T1</button>
@@ -245,42 +249,6 @@ describe('SpectrumAnalyzerAdvancedAdapter', () => {
       pauseBtn.click();
 
       expect(mockSpectrumAnalyzer.togglePause).toHaveBeenCalled();
-    });
-  });
-
-  describe('hold controls', () => {
-    it('should update isMaxHold on checkbox change', () => {
-      const maxHoldCheckbox = containerEl.querySelector('#sa-max-hold') as HTMLInputElement;
-      maxHoldCheckbox.checked = true;
-      maxHoldCheckbox.dispatchEvent(new Event('change'));
-
-      expect(mockSpectrumAnalyzer.state.isMaxHold).toBe(true);
-    });
-
-    it('should reset max hold data when disabled', () => {
-      mockSpectrumAnalyzer.state.isMaxHold = true;
-      const maxHoldCheckbox = containerEl.querySelector('#sa-max-hold') as HTMLInputElement;
-      maxHoldCheckbox.checked = false;
-      maxHoldCheckbox.dispatchEvent(new Event('change'));
-
-      expect(mockSpectrumAnalyzer.resetMaxHoldData).toHaveBeenCalled();
-    });
-
-    it('should update isMinHold on checkbox change', () => {
-      const minHoldCheckbox = containerEl.querySelector('#sa-min-hold') as HTMLInputElement;
-      minHoldCheckbox.checked = true;
-      minHoldCheckbox.dispatchEvent(new Event('change'));
-
-      expect(mockSpectrumAnalyzer.state.isMinHold).toBe(true);
-    });
-
-    it('should reset min hold data when disabled', () => {
-      mockSpectrumAnalyzer.state.isMinHold = true;
-      const minHoldCheckbox = containerEl.querySelector('#sa-min-hold') as HTMLInputElement;
-      minHoldCheckbox.checked = false;
-      minHoldCheckbox.dispatchEvent(new Event('change'));
-
-      expect(mockSpectrumAnalyzer.resetMinHoldData).toHaveBeenCalled();
     });
   });
 

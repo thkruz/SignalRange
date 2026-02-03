@@ -1,91 +1,97 @@
+import { vi, Mock } from 'vitest';
 import packageJson from '../../package.json';
 import { Events } from '../../src/events/events';
 
-const mockEventBus = {
-  on: jest.fn(),
-  emit: jest.fn(),
-  off: jest.fn(),
-};
-
-const mockToast = {
-  showSaving: jest.fn(),
-  showSuccess: jest.fn(),
-  showError: jest.fn(),
-};
-
-const mockScenarioManager = {
-  data: { id: 'scenario-123' },
-};
-
-const mockSyncManager = {
-  getCurrentState: jest.fn(),
-};
-
-const mockUserDataService = {
-  getUserProgress: jest.fn(),
-  updateUserProgress: jest.fn(),
-  saveCheckpoint: jest.fn(),
-  getCheckpoint: jest.fn(),
-  deleteCheckpoint: jest.fn(),
-  checkpointExists: jest.fn(),
-  updateScenarioProgress: jest.fn(),
-};
-
-jest.mock('@app/events/event-bus', () => ({
-  __esModule: true,
-  EventBus: { getInstance: jest.fn(() => mockEventBus) },
+// Create shared mock objects using vi.hoisted()
+const { mockEventBus, mockToast, mockUserDataService, mockSyncManager } = vi.hoisted(() => ({
+  mockEventBus: {
+    on: vi.fn(),
+    emit: vi.fn(),
+    off: vi.fn(),
+  },
+  mockToast: {
+    showSaving: vi.fn(),
+    showSuccess: vi.fn(),
+    showError: vi.fn(),
+  },
+  mockUserDataService: {
+    getUserProgress: vi.fn(),
+    updateUserProgress: vi.fn(),
+    saveCheckpoint: vi.fn(),
+    getCheckpoint: vi.fn(),
+    deleteCheckpoint: vi.fn(),
+    checkpointExists: vi.fn(),
+    updateScenarioProgress: vi.fn(),
+  },
+  mockSyncManager: {
+    getCurrentState: vi.fn(),
+  },
 }));
 
-jest.mock('@app/modal/save-progress-toast', () => ({
+vi.mock('@app/events/event-bus', () => ({
   __esModule: true,
-  SaveProgressToast: { getInstance: jest.fn(() => mockToast) },
+  EventBus: {
+    getInstance: vi.fn(() => mockEventBus),
+  },
 }));
 
-jest.mock('@app/scenario-manager', () => ({
+vi.mock('@app/modal/save-progress-toast', () => ({
   __esModule: true,
-  ScenarioManager: { getInstance: jest.fn(() => mockScenarioManager) },
+  SaveProgressToast: {
+    getInstance: vi.fn(() => mockToast),
+  },
 }));
 
-jest.mock('@app/sync/storage', () => ({
+vi.mock('@app/scenario-manager', () => ({
+  __esModule: true,
+  ScenarioManager: {
+    getInstance: vi.fn(() => ({
+      data: { id: 'scenario-123' },
+    })),
+  },
+}));
+
+vi.mock('@app/sync/storage', () => ({
   __esModule: true,
   syncManager: mockSyncManager,
 }));
 
-jest.mock('@app/user-account/user-data-service', () => ({
+vi.mock('@app/user-account/user-data-service', () => ({
   __esModule: true,
-  getUserDataService: jest.fn(() => mockUserDataService),
+  getUserDataService: vi.fn(() => mockUserDataService),
 }));
 
-jest.mock('@app/logging/logger', () => ({
+vi.mock('@app/logging/logger', () => ({
   __esModule: true,
   Logger: {
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
   },
 }));
 
+// Import after mocks are defined
+import { ProgressSaveManager } from '../../src/user-account/progress-save-manager';
+
 describe('ProgressSaveManager', () => {
-  let ProgressSaveManagerClass: typeof import('../../src/user-account/progress-save-manager').ProgressSaveManager;
-  let manager: import('../../src/user-account/progress-save-manager').ProgressSaveManager;
+  let manager: ProgressSaveManager;
 
   beforeEach(() => {
-    jest.clearAllMocks();
-    ({ ProgressSaveManager: ProgressSaveManagerClass } = require('../../src/user-account/progress-save-manager'));
-    mockScenarioManager.data = { id: 'scenario-123' };
-    manager = new ProgressSaveManagerClass();
+    vi.clearAllMocks();
+    manager = new ProgressSaveManager();
   });
 
   it('initializes once and registers the objective listener', () => {
     manager.initialize();
     manager.initialize();
 
-    expect(mockEventBus.on).toHaveBeenCalledTimes(2); // Two calls per initialize attempt, so we want 2 not 4
+    // Should only register once (2 calls for first initialize: OBJECTIVE_COMPLETED + OBJECTIVES_ALL_COMPLETED)
+    expect(mockEventBus.on).toHaveBeenCalledTimes(2);
     expect(mockEventBus.on).toHaveBeenCalledWith(Events.OBJECTIVE_COMPLETED, expect.any(Function));
   });
 
   it('skips handling when a save is already in progress', async () => {
-    const saveSpy = jest.spyOn(manager as any, 'saveCheckpoint').mockResolvedValue(undefined);
+    const saveSpy = vi.spyOn(manager as any, 'saveCheckpoint').mockResolvedValue(undefined);
     (manager as any).isSaving = true;
 
     await (manager as any).handleObjectiveCompleted();
@@ -94,7 +100,7 @@ describe('ProgressSaveManager', () => {
   });
 
   it('saves when an objective completes and resets the guard flag', async () => {
-    const saveSpy = jest.spyOn(manager as any, 'saveCheckpoint').mockResolvedValue(undefined);
+    const saveSpy = vi.spyOn(manager as any, 'saveCheckpoint').mockResolvedValue(undefined);
 
     await (manager as any).handleObjectiveCompleted();
 

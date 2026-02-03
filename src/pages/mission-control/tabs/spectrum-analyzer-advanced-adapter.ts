@@ -1,4 +1,5 @@
 import { qs } from "@app/engine/utils/query-selector";
+import { EngineeringModeService } from "@app/engineering-mode/engineering-mode-service";
 import { EventBus } from "@app/events/event-bus";
 import { Events } from "@app/events/events";
 import { parseLocalizedNumber } from "@app/utils/parse-number";
@@ -17,8 +18,10 @@ import type { dB, Hertz } from "@app/types";
  * - Amplitude: reference level, scale, min/max amplitude
  * - Display: screen mode, pause, refresh rate
  * - Traces: selection, visibility, updating, mode
- * - Hold modes: max hold, min hold
  * - Markers: enable, index
+ *
+ * Engineering mode controls (Ref Level, Scale, Refresh, Markers) are hidden
+ * by default and shown when ENGINEERING_MODE is enabled.
  *
  * All frequency inputs are in MHz and converted to Hz when updating state.
  */
@@ -39,6 +42,7 @@ export class SpectrumAnalyzerAdvancedAdapter {
     this.setupDomCache_();
     this.setupEventListeners_();
     this.subscribeToStateChanges_();
+    this.setupEngineeringModeListener_();
     this.syncDomWithState_();
 
     // TODO: Implement keyboard shortcuts later
@@ -73,7 +77,8 @@ export class SpectrumAnalyzerAdvancedAdapter {
       'sa-refresh',
       'sa-mode-spectral', 'sa-mode-waterfall', 'sa-mode-both',
       'sa-auto-tune', 'sa-pause',
-      'sa-max-hold', 'sa-min-hold',
+      // Engineering controls container
+      'sa-engineering-controls',
       // Trace controls
       'sa-trace-1', 'sa-trace-2', 'sa-trace-3',
       'sa-trace-visible', 'sa-trace-updating', 'sa-trace-mode',
@@ -112,10 +117,6 @@ export class SpectrumAnalyzerAdvancedAdapter {
     // Action buttons
     this.addClickHandler_('sa-auto-tune', this.handleAutoTune_.bind(this));
     this.addClickHandler_('sa-pause', this.handlePauseToggle_.bind(this));
-
-    // Hold toggles
-    this.addChangeHandler_('sa-max-hold', this.handleMaxHoldChange_.bind(this));
-    this.addChangeHandler_('sa-min-hold', this.handleMinHoldChange_.bind(this));
 
     // Trace controls
     this.addClickHandler_('sa-trace-1', () => this.handleTraceSelect_(1));
@@ -166,6 +167,27 @@ export class SpectrumAnalyzerAdvancedAdapter {
       return;
     }
     this.syncDomWithState_();
+  }
+
+  // ============ Engineering Mode ============
+
+  private setupEngineeringModeListener_(): void {
+    const engService = EngineeringModeService.getInstance();
+
+    // Listen for engineering mode changes
+    engService.onChange((enabled) => {
+      this.updateEngineeringModeVisibility_(enabled);
+    });
+
+    // Set initial visibility
+    this.updateEngineeringModeVisibility_(engService.isEnabled());
+  }
+
+  private updateEngineeringModeVisibility_(enabled: boolean): void {
+    const container = this.domCache_.get('sa-engineering-controls');
+    if (container) {
+      container.style.display = enabled ? 'block' : 'none';
+    }
   }
 
   // ============ Control Handlers ============
@@ -236,6 +258,7 @@ export class SpectrumAnalyzerAdvancedAdapter {
     this.spectrumAnalyzer.state.screenMode = mode;
     this.spectrumAnalyzer.updateScreenVisibility();
     this.updateModeButtons_(mode);
+    this.updateTraceControlsEnabled_(mode);
     this.emitStateChange_();
   }
 
@@ -247,24 +270,6 @@ export class SpectrumAnalyzerAdvancedAdapter {
   private handlePauseToggle_(): void {
     this.spectrumAnalyzer.togglePause();
     this.updatePauseButton_();
-  }
-
-  private handleMaxHoldChange_(e: Event): void {
-    const checked = (e.target as HTMLInputElement).checked;
-    this.spectrumAnalyzer.state.isMaxHold = checked;
-    if (!checked) {
-      this.spectrumAnalyzer.resetMaxHoldData();
-    }
-    this.emitStateChange_();
-  }
-
-  private handleMinHoldChange_(e: Event): void {
-    const checked = (e.target as HTMLInputElement).checked;
-    this.spectrumAnalyzer.state.isMinHold = checked;
-    if (!checked) {
-      this.spectrumAnalyzer.resetMinHoldData();
-    }
-    this.emitStateChange_();
   }
 
   private handleTraceSelect_(traceNum: number): void {
@@ -340,8 +345,6 @@ export class SpectrumAnalyzerAdvancedAdapter {
       refreshRate: state.refreshRate,
       screenMode: state.screenMode,
       isPaused: state.isPaused,
-      isMaxHold: state.isMaxHold,
-      isMinHold: state.isMinHold,
       selectedTrace: state.selectedTrace,
       traces: state.traces,
       isMarkerOn: state.isMarkerOn,
@@ -389,13 +392,10 @@ export class SpectrumAnalyzerAdvancedAdapter {
     // Pause button
     this.updatePauseButton_();
 
-    // Hold toggles
-    this.setCheckboxValue_('sa-max-hold', state.isMaxHold);
-    this.setCheckboxValue_('sa-min-hold', state.isMinHold);
-
     // Trace controls
     this.updateTraceButtons_();
     this.updateTraceControls_();
+    this.updateTraceControlsEnabled_(state.screenMode);
 
     // Marker controls
     this.setCheckboxValue_('sa-marker-enabled', state.isMarkerOn);
@@ -475,6 +475,31 @@ export class SpectrumAnalyzerAdvancedAdapter {
         modeSelect.value = trace.mode;
       }
     }
+  }
+
+  /**
+   * Enable/disable trace controls based on screen mode.
+   * Traces are only relevant for spectral and both modes, not waterfall-only.
+   */
+  private updateTraceControlsEnabled_(mode: 'spectralDensity' | 'waterfall' | 'both'): void {
+    const isEnabled = mode !== 'waterfall';
+
+    // Trace selection buttons
+    for (let i = 1; i <= 3; i++) {
+      const btn = this.domCache_.get(`sa-trace-${i}`) as HTMLButtonElement;
+      if (btn) {
+        btn.disabled = !isEnabled;
+      }
+    }
+
+    // Trace toggles and mode select
+    const visibleCheckbox = this.domCache_.get('sa-trace-visible') as HTMLInputElement;
+    const updatingCheckbox = this.domCache_.get('sa-trace-updating') as HTMLInputElement;
+    const modeSelect = this.domCache_.get('sa-trace-mode') as HTMLSelectElement;
+
+    if (visibleCheckbox) visibleCheckbox.disabled = !isEnabled;
+    if (updatingCheckbox) updatingCheckbox.disabled = !isEnabled;
+    if (modeSelect) modeSelect.disabled = !isEnabled;
   }
 
   private updateMarkerInfo_(): void {

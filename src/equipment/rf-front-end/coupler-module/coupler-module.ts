@@ -11,13 +11,16 @@ import { TapPoint } from "./tap-points";
  * Spectrum Analyzer coupler module state
  */
 export interface CouplerState {
-  isPowered: boolean;
+  isPowered: boolean;  // Required by base interface, always true for passive coupler
+  isEngineeringMode: boolean;
   tapPointA: TapPoint;
   tapPointB: TapPoint;
   availableTapPointsA?: TapPoint[];
   availableTapPointsB?: TapPoint[];
   couplingFactorA: number; // dB (typically -30)
   couplingFactorB: number; // dB (typically -30)
+  isEnabledA: boolean;
+  isEnabledB: boolean;
   isActiveA: boolean;
   isActiveB: boolean;
 }
@@ -30,14 +33,17 @@ export class CouplerModule extends RFFrontEndModule<CouplerState> {
    */
   static getDefaultState(): CouplerState {
     return {
-      isPowered: true,
+      isPowered: true,  // Always true for passive coupler
+      isEngineeringMode: false,
       tapPointA: TapPoint.TX_IF,
       tapPointB: TapPoint.RX_IF,
-      availableTapPointsA: [TapPoint.TX_IF, TapPoint.TX_RF_POST_BUC, TapPoint.TX_RF_POST_HPA, TapPoint.TX_RF_POST_OMT],
-      availableTapPointsB: [TapPoint.RX_IF, TapPoint.RX_RF_PRE_OMT, TapPoint.RX_RF_POST_OMT, TapPoint.RX_RF_POST_LNA],
+      availableTapPointsA: [TapPoint.TX_IF, TapPoint.RX_IF],
+      availableTapPointsB: [TapPoint.TX_IF, TapPoint.RX_IF],
       couplingFactorA: -30, // dB
       couplingFactorB: -20, // dB
-      isActiveA: true,
+      isEnabledA: false,
+      isEnabledB: true,  // RX enabled by default
+      isActiveA: false,
       isActiveB: true,
     };
   }
@@ -189,14 +195,56 @@ export class CouplerModule extends RFFrontEndModule<CouplerState> {
   }
 
   /**
-   * Update active states based on signal flow direction and power
+   * Update active states based on enabled toggles and signal flow
    */
   private updateActiveStates_(): void {
-    // Tap Point A is active if powered and on the appropriate path
-    this.state.isActiveA = this.isTapPointActive_(this.state.tapPointA);
+    // Active = enabled by user AND tap point has signal
+    this.state.isActiveA = this.state.isEnabledA && this.isTapPointActive_(this.state.tapPointA);
+    this.state.isActiveB = this.state.isEnabledB && this.isTapPointActive_(this.state.tapPointB);
+  }
 
-    // Tap Point B is active if powered and on the appropriate path
-    this.state.isActiveB = this.isTapPointActive_(this.state.tapPointB);
+  /**
+   * Set engineering mode and update available tap points
+   */
+  setEngineeringMode(enabled: boolean): void {
+    this.state.isEngineeringMode = enabled;
+    this.updateAvailableTapPoints_();
+    this.updateActiveStates_();
+  }
+
+  /**
+   * Set enable state for tap point A
+   */
+  setEnabledA(enabled: boolean): void {
+    this.state.isEnabledA = enabled;
+    this.updateActiveStates_();
+  }
+
+  /**
+   * Set enable state for tap point B
+   */
+  setEnabledB(enabled: boolean): void {
+    this.state.isEnabledB = enabled;
+    this.updateActiveStates_();
+  }
+
+  /**
+   * Update available tap points based on engineering mode
+   */
+  private updateAvailableTapPoints_(): void {
+    if (this.state.isEngineeringMode) {
+      // All 8 tap points available in both selectors
+      const allTapPoints = [
+        TapPoint.TX_IF, TapPoint.RX_IF,
+        TapPoint.TX_RF_POST_BUC, TapPoint.TX_RF_POST_HPA, TapPoint.TX_RF_POST_OMT,
+        TapPoint.RX_RF_PRE_OMT, TapPoint.RX_RF_POST_OMT, TapPoint.RX_RF_POST_LNA
+      ];
+      this.state.availableTapPointsA = allTapPoints;
+      this.state.availableTapPointsB = allTapPoints;
+    } else {
+      this.state.availableTapPointsA = [TapPoint.TX_IF, TapPoint.RX_IF];
+      this.state.availableTapPointsB = [TapPoint.TX_IF, TapPoint.RX_IF];
+    }
   }
 
   /**

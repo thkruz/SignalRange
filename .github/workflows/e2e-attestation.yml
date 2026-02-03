@@ -1,0 +1,42 @@
+---
+name: E2E Attestation
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+    branches:
+      - main
+      - develop
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  e2e-attestation:
+    name: E2E Attestation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check E2E Attestation
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = context.payload.pull_request.body || '';
+            const pattern = /- \[x\]\s+E2E tests pass locally/i;
+
+            if (!pattern.test(body)) {
+              core.setFailed(
+                'E2E attestation required: Please check the box in the PR description ' +
+                'confirming you have run E2E tests locally and they pass.\n\n' +
+                'Add this to your PR description:\n' +
+                '- [x] E2E tests pass locally (`npm run test:e2e`)'
+              );
+              return;
+            }
+
+            core.info('E2E attestation confirmed.');
+
+            await core.summary
+              .addHeading('E2E Attestation', 3)
+              .addRaw('Developer has attested that E2E tests were run locally and pass.')
+              .write();

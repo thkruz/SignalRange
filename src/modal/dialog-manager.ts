@@ -7,6 +7,15 @@ import { Character, CharacterCompany, CharacterNames, CharacterTitles, Emotion, 
 import { DialogHistoryManager } from './dialog-history-manager';
 import './dialog-manager.css';
 
+/**
+ * Strip HTML tags from text for TTS fallback
+ */
+function stripHtmlTags(htmlContent: string): string {
+  const temp = document.createElement('div');
+  temp.innerHTML = htmlContent;
+  return temp.textContent || temp.innerText || '';
+}
+
 interface QueuedDialog {
   text: string;
   character: Character;
@@ -29,6 +38,7 @@ export class DialogManager {
   currentAudioUrl: string | null = null;
   private isHolding: boolean = false;
   private dialogQueue_: QueuedDialog[] = [];
+  private isTtsActive_ = false;
 
   private constructor() { }
 
@@ -75,6 +85,9 @@ export class DialogManager {
               <div class="dialog-character-name">${characterName}</div>
               <div class="dialog-character-title">${characterTitle}</div>
               <div class="dialog-character-company">${characterCompany}</div>
+              <div class="dialog-tts-indicator" style="display: none;">
+                <span class="dialog-tts-badge">TTS</span>
+              </div>
             </div>
           </div>
           <div class="dialog-text-container col-8">
@@ -99,8 +112,12 @@ export class DialogManager {
       overlay.classList.add('dialog-visible');
     });
 
-    // Play audio
-    SoundManager.getInstance().playCustom(audioUrl);
+    // Play audio with TTS fallback
+    const plainText = stripHtmlTags(text);
+    SoundManager.getInstance().playCustom(audioUrl, plainText, (isTts) => {
+      this.isTtsActive_ = isTts;
+      this.updateTtsIndicator_();
+    });
 
     // Debug: auto-close dialogs for faster testing
     if (window.AUTO_CLOSE_DIALOGS) {
@@ -203,12 +220,21 @@ export class DialogManager {
     }
   }
 
+  private updateTtsIndicator_(): void {
+    if (!this.dialogElement) return;
+    const indicator = this.dialogElement.querySelector<HTMLElement>('.dialog-tts-indicator');
+    if (indicator) {
+      indicator.style.display = this.isTtsActive_ ? 'block' : 'none';
+    }
+  }
+
   hide(): void {
     if (!this.dialogElement) return;
 
     // Stop audio
     SoundManager.getInstance().stopCustom();
     this.currentAudioUrl = null;
+    this.isTtsActive_ = false;
 
     // Cancel any ongoing hold timer
     this.cancelHoldTimer();

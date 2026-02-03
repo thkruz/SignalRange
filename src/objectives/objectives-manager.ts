@@ -5,13 +5,19 @@
  */
 
 import { GroundStation } from '@app/assets/ground-station/ground-station';
+import { CryptoModule } from '@app/equipment/crypto';
 import { TapPoint } from "@app/equipment/rf-front-end/coupler-module/tap-points";
 import { EventBus } from '@app/events/event-bus';
 import { Events, QuizCompletedData, QuizPassedData } from '@app/events/events';
+import { FaultInjector } from '@app/faults';
+import { HintManager } from '@app/modal/hint-manager';
 import { QuizManager } from '@app/modal/quiz-manager';
+import { OpsLogManager } from '@app/ops-log/ops-log-manager';
+import { TabbedCanvas } from '@app/pages/mission-control/tabbed-canvas';
 import { SimulationManager } from '@app/simulation/simulation-manager';
 import { TrafficControlManager } from '@app/traffic/traffic-control-manager';
 import { Milliseconds } from 'ootk';
+import bulbPng from '../assets/icons/bulb.png';
 import {
   Condition,
   ConditionParams,
@@ -27,6 +33,7 @@ export class ObjectivesManager {
   private static instance_: ObjectivesManager | null = null;
   private static openedBoxIds_: Set<string> = new Set();
   private static selectedGroundStationId_: string | null = null;
+  private static selectedSatelliteId_: string | null = null;
   private readonly objectiveStates_: ObjectiveState[] = [];
   private readonly eventBus_: EventBus;
   private readonly collapsedObjectiveIds_: Set<string> = new Set();
@@ -125,6 +132,26 @@ export class ObjectivesManager {
     }
 
     ObjectivesManager.instance_ = new ObjectivesManager(objectives, scenarioTimeLimit);
+
+    // Register objectives and hints with HintManager
+    const hintManager = HintManager.getInstance();
+    for (const objective of objectives) {
+      hintManager.registerObjective(objective);
+      for (let i = 0; i < objective.conditions.length; i++) {
+        const condition = objective.conditions[i];
+        if (condition.hint && condition.hint.trim() !== '') {
+          hintManager.registerHint(objective.id, i, condition.hint);
+        }
+      }
+    }
+
+    // If there's no freezing objective, resume simulated time immediately
+    // (OpsLogManager starts paused by default, waiting for scenario to unlock)
+    const hasFreezingObjective = objectives.some(obj => obj.freezesScenarioTimer);
+    if (!hasFreezingObjective && OpsLogManager.isInitialized()) {
+      OpsLogManager.getInstance().resume();
+    }
+
     return ObjectivesManager.instance_;
   }
 
@@ -272,6 +299,149 @@ export class ObjectivesManager {
   }
 
   /**
+   * Force complete the current active objective and advance to next.
+   * Used by developer menu for testing/debugging.
+   * @returns true if an objective was completed, false if none available
+   */
+  forceCompleteCurrentObjective(): boolean {
+    // Find first active, non-completed, non-failed objective
+    const activeObjective = this.objectiveStates_.find(
+      (state) => state.isActive && !state.isCompleted && !state.isFailed
+    );
+
+    if (!activeObjective) {
+      return false;
+    }
+
+    // Mark all conditions as satisfied and maintenance complete
+    for (const condState of activeObjective.conditionStates) {
+      condState.isSatisfied = true;
+      condState.isMaintenanceComplete = true;
+      condState.satisfiedAt = Date.now();
+    }
+
+    // Mark objective as complete
+    activeObjective.isCompleted = true;
+    activeObjective.completedAt = Date.now();
+    activeObjective.isTimerRunning = false;
+
+    // Collapse the objective
+    this.collapsedObjectiveIds_.add(activeObjective.objective.id);
+
+    // Emit completion event
+    this.eventBus_.emit(Events.OBJECTIVE_COMPLETED, {
+      objectiveId: activeObjective.objective.id,
+      objective: activeObjective.objective,
+      completedAt: activeObjective.completedAt,
+    });
+
+    // Activate dependent objectives
+    this.activateDependentObjectives_(activeObjective.objective.id);
+
+    // Handle freezing objectives - start scenario timer and resume simulated time
+    if (activeObjective.objective.freezesScenarioTimer) {
+      this.scenarioTimerRunning_ = true;
+      this.scenarioStartTime_ = Date.now();
+      if (OpsLogManager.isInitialized()) {
+        OpsLogManager.getInstance().resume();
+      }
+      this.eventBus_.emit(Events.SCENARIO_UNLOCKED);
+    }
+
+    // Check if all objectives are complete
+    if (this.areAllObjectivesCompleted()) {
+      this.stopAllTimers();
+      if (OpsLogManager.isInitialized()) {
+        OpsLogManager.getInstance().pause();
+      }
+      this.eventBus_.emit(Events.OBJECTIVES_ALL_COMPLETED, {
+        completedObjectives: this.objectiveStates_,
+        totalTime: this.getElapsedTime(),
+      });
+    }
+
+    return true;
+  }
+
+  /**
+   * Uncomplete the most recently completed objective.
+   * Used by developer menu for testing/debugging.
+   * @returns true if an objective was uncompleted, false if none available
+   */
+  uncompleteLastObjective(): boolean {
+    // Find the most recently completed objective
+    const completedObjectives = this.objectiveStates_.filter(
+      (state) => state.isCompleted && state.completedAt
+    );
+    if (completedObjectives.length === 0) {
+      return false;
+    }
+
+    const lastCompleted = completedObjectives.reduce((latest, current) =>
+      (current.completedAt ?? 0) > (latest.completedAt ?? 0) ? current : latest
+      , completedObjectives[0]);
+
+    // Reset objective state
+    lastCompleted.isCompleted = false;
+    lastCompleted.completedAt = undefined;
+
+    // Reset condition states
+    for (const condState of lastCompleted.conditionStates) {
+      condState.isSatisfied = false;
+      condState.satisfiedAt = undefined;
+      condState.maintainedDuration = 0;
+      condState.isMaintenanceComplete = false;
+    }
+
+    // Remove from collapsed set
+    this.collapsedObjectiveIds_.delete(lastCompleted.objective.id);
+
+    // Deactivate dependent objectives
+    this.deactivateDependentObjectives_(lastCompleted.objective.id);
+
+    // Handle freezing objectives - stop scenario timer
+    if (lastCompleted.objective.freezesScenarioTimer) {
+      this.scenarioTimerRunning_ = false;
+    }
+
+    return true;
+  }
+
+  /**
+   * Set the scenario time remaining to a specific value.
+   * Used by developer menu for testing/debugging.
+   * @param seconds The new time remaining in seconds
+   */
+  setScenarioTimeRemaining(seconds: number): void {
+    // Initialize scenario timer if it wasn't set
+    this.scenarioTimeLimit_ ??= seconds;
+    this.scenarioTimeRemaining_ = Math.max(0, seconds);
+    this.scenarioTimerRunning_ = seconds > 0 && !this.areAllObjectivesCompleted();
+  }
+
+  /**
+   * Set the current active objective's timer to a specific value.
+   * Used by developer menu for testing/debugging.
+   * @param seconds The new time remaining in seconds
+   * @returns true if an objective timer was set, false if no active objective with timer
+   */
+  setCurrentObjectiveTimeRemaining(seconds: number): boolean {
+    // Find first active, non-completed, non-failed objective with a timer
+    const activeObjective = this.objectiveStates_.find(
+      (state) => state.isActive && !state.isCompleted && !state.isFailed && state.timeRemainingSeconds !== undefined
+    );
+
+    if (!activeObjective) {
+      return false;
+    }
+
+    activeObjective.timeRemainingSeconds = Math.max(0, seconds);
+    activeObjective.isTimerRunning = seconds > 0;
+
+    return true;
+  }
+
+  /**
    * Start the 1-second timer interval for countdown updates
    */
   private startTimerInterval_(): void {
@@ -286,6 +456,11 @@ export class ObjectivesManager {
    * Called every second to update timers
    */
   private tickTimers_(): void {
+    // Don't tick if OpsLogManager is paused - keep timers in sync with simulated time
+    if (OpsLogManager.isInitialized() && OpsLogManager.getInstance().isPaused()) {
+      return;
+    }
+
     // Update scenario timer
     if (this.scenarioTimerRunning_ && this.scenarioTimeRemaining_ > 0) {
       this.scenarioTimeRemaining_--;
@@ -317,6 +492,11 @@ export class ObjectivesManager {
     // Stop ALL timers when any objective fails
     this.stopAllTimers();
 
+    // Pause simulated time
+    if (OpsLogManager.isInitialized()) {
+      OpsLogManager.getInstance().pause();
+    }
+
     this.eventBus_.emit(Events.OBJECTIVE_FAILED, {
       objectiveId: state.objective.id,
       objective: state.objective,
@@ -330,6 +510,11 @@ export class ObjectivesManager {
    */
   private handleScenarioTimeout_(): void {
     this.stopAllTimers();
+
+    // Pause simulated time
+    if (OpsLogManager.isInitialized()) {
+      OpsLogManager.getInstance().pause();
+    }
 
     this.eventBus_.emit(Events.SCENARIO_TIME_EXPIRED, {
       elapsedTime: this.getElapsedTime(),
@@ -363,6 +548,11 @@ export class ObjectivesManager {
     if (state) {
       state.isTimerRunning = false;
     }
+
+    // Pause simulated time
+    if (OpsLogManager.isInitialized()) {
+      OpsLogManager.getInstance().pause();
+    }
   }
 
   /**
@@ -379,12 +569,17 @@ export class ObjectivesManager {
     // 3. Not all objectives complete
     // 4. No incomplete freezing objectives (scenario is unlocked)
     if (this.scenarioTimeLimit_ !== null &&
-        this.scenarioTimeRemaining_ > 0 &&
-        !this.areAllObjectivesCompleted() &&
-        !ObjectivesManager.isScenarioLocked()) {
+      this.scenarioTimeRemaining_ > 0 &&
+      !this.areAllObjectivesCompleted() &&
+      !ObjectivesManager.isScenarioLocked()) {
       this.scenarioTimerRunning_ = true;
     }
     // Note: objective timer doesn't resume - it will be replaced by next objective's timer
+
+    // Resume simulated time
+    if (OpsLogManager.isInitialized()) {
+      OpsLogManager.getInstance().resume();
+    }
   }
 
   /**
@@ -408,9 +603,14 @@ export class ObjectivesManager {
   private handleAssetSelected_(data: { type: string; id: string }): void {
     if (data.type === 'ground-station') {
       ObjectivesManager.selectedGroundStationId_ = data.id;
-    } else {
-      // Non-ground-station selected (satellite, mission-overview, etc.)
+      ObjectivesManager.selectedSatelliteId_ = null;
+    } else if (data.type === 'satellite') {
+      ObjectivesManager.selectedSatelliteId_ = data.id;
       ObjectivesManager.selectedGroundStationId_ = null;
+    } else {
+      // Non-asset selected (mission-overview, etc.)
+      ObjectivesManager.selectedGroundStationId_ = null;
+      ObjectivesManager.selectedSatelliteId_ = null;
     }
   }
 
@@ -419,6 +619,13 @@ export class ObjectivesManager {
    */
   static getSelectedGroundStationId(): string | null {
     return ObjectivesManager.selectedGroundStationId_;
+  }
+
+  /**
+   * Get the currently selected satellite ID
+   */
+  static getSelectedSatelliteId(): string | null {
+    return ObjectivesManager.selectedSatelliteId_;
   }
 
   /**
@@ -497,6 +704,15 @@ export class ObjectivesManager {
         this.activateDependentObjectives_(currentState.objective.id);
       }
     }
+
+    // Resume OpsLogManager if no freezing objective is incomplete
+    // (scenario should be unlocked if freezing objective was already completed)
+    const hasIncompleteFreezingObjective = this.objectiveStates_.some(
+      state => state.objective.freezesScenarioTimer && !state.isCompleted
+    );
+    if (!hasIncompleteFreezingObjective && OpsLogManager.isInitialized()) {
+      OpsLogManager.getInstance().resume();
+    }
   }
 
   /**
@@ -572,6 +788,7 @@ export class ObjectivesManager {
       html += '<ul class="conditions-list">';
 
       const quizManager = QuizManager.getInstance();
+      const hintManager = HintManager.getInstance();
 
       for (let i = 0; i < objective.conditions.length; i++) {
         const condition = objective.conditions[i];
@@ -583,12 +800,27 @@ export class ObjectivesManager {
         const isQuizComplete = hasQuiz && quizManager.isQuizComplete(objective.id, i);
         const isQuizPending = hasQuiz && !isQuizComplete;
 
+        // Check if this condition has a hint
+        const hasHint = hintManager.hasHint(objective.id, i);
+        const isHintRequested = hasHint && hintManager.isHintRequested(objective.id, i);
+
         html += `<li class="condition-item ${conditionCompleted ? 'completed' : 'incomplete'}">`;
         html += `<span class="condition-text">${condition.description}</span>`;
 
         // Add quiz button for pending quizzes
         if (isQuizPending) {
           html += `<button class="condition-quiz-btn" data-objective-id="${objective.id}" data-condition-index="${i}" title="Take Quiz">?</button>`;
+        }
+
+        // Add hint button if hint is available and condition not yet completed
+        if (hasHint && !conditionCompleted) {
+          if (isHintRequested) {
+            // Hint already used - clickable to reopen (no penalty)
+            html += `<button class="condition-hint-btn condition-hint-used" data-objective-id="${objective.id}" data-condition-index="${i}" data-hint-used="true" title="View Hint (no additional penalty)">&#128161;</button>`;
+          } else {
+            // Hint available - show request button
+            html += `<button class="condition-hint-btn" data-objective-id="${objective.id}" data-condition-index="${i}" title="Request Hint (-50% points)"><img src="${bulbPng}" alt="Hint Icon" /></button>`;
+          }
         }
 
         html += '</li>';
@@ -665,10 +897,16 @@ export class ObjectivesManager {
         // Activate any objectives that were waiting for this prerequisite
         this.activateDependentObjectives_(objectiveState.objective.id);
 
-        // If this was a freezing objective, start the scenario timer now
+        // If this was a freezing objective, start the scenario timer and resume simulated time
         if (objectiveState.objective.freezesScenarioTimer) {
           this.scenarioTimerRunning_ = true;
           this.scenarioStartTime_ = Date.now(); // Reset start time so elapsed time is from now
+
+          // Resume simulated time (OpsLogManager starts paused until scenario unlocks)
+          if (OpsLogManager.isInitialized()) {
+            OpsLogManager.getInstance().resume();
+          }
+
           this.eventBus_.emit(Events.SCENARIO_UNLOCKED);
         }
 
@@ -676,6 +914,11 @@ export class ObjectivesManager {
         if (this.areAllObjectivesCompleted()) {
           // Freeze all timers when scenario is completed
           this.stopAllTimers();
+
+          // Pause simulated time
+          if (OpsLogManager.isInitialized()) {
+            OpsLogManager.getInstance().pause();
+          }
 
           this.eventBus_.emit(Events.OBJECTIVES_ALL_COMPLETED, {
             completedObjectives: this.objectiveStates_,
@@ -763,6 +1006,39 @@ export class ObjectivesManager {
           objective: objectiveState.objective,
           activatedAt: now,
         });
+      }
+    }
+  }
+
+  /**
+   * Deactivate objectives that depend on a given objective.
+   * Used when uncompleting an objective to revert dependent objectives.
+   */
+  private deactivateDependentObjectives_(objectiveId: string): void {
+    for (const objectiveState of this.objectiveStates_) {
+      // Skip objectives that aren't active or are already completed
+      if (!objectiveState.isActive || objectiveState.isCompleted) {
+        continue;
+      }
+
+      // Check if this objective has the given objective as a prerequisite
+      const prerequisites = objectiveState.objective.prerequisiteObjectiveIds || [];
+      if (prerequisites.includes(objectiveId)) {
+        // Deactivate this objective
+        objectiveState.isActive = false;
+        objectiveState.activatedAt = undefined;
+        objectiveState.isTimerRunning = false;
+
+        // Reset condition states
+        for (const condState of objectiveState.conditionStates) {
+          condState.isSatisfied = false;
+          condState.satisfiedAt = undefined;
+          condState.maintainedDuration = 0;
+          condState.isMaintenanceComplete = false;
+        }
+
+        // Recursively deactivate objectives that depend on this one
+        this.deactivateDependentObjectives_(objectiveState.objective.id);
       }
     }
   }
@@ -906,11 +1182,24 @@ export class ObjectivesManager {
           if (!state.isLocked) return false;
 
           // If a specific satellite is required, check it
-          if (condition.params?.satelliteId !== undefined) {
-            const targetSat = sim.getSatByNoradId(condition.params.satelliteId);
+          const requiredNoradId =
+            (condition.params?.noradId as number | undefined) ??
+            (condition.params?.satelliteId as number | undefined);
+
+          if (requiredNoradId !== undefined) {
+            const targetSat = sim.getSatByNoradId(requiredNoradId);
             if (!targetSat) return false;
 
-            const azDiff = Math.abs(state.azimuth - targetSat.az);
+            // If the antenna has an explicit target satellite selected, it must match.
+            // This prevents passing when the antenna is locked on the wrong satellite.
+            const targetedNoradId = (state as { targetSatelliteId?: number | null }).targetSatelliteId;
+            if (targetedNoradId !== undefined && targetedNoradId !== null && targetedNoradId !== requiredNoradId) {
+              return false;
+            }
+
+            // Handle 360° wraparound for azimuth
+            let azDiff = Math.abs(state.azimuth - targetSat.az);
+            if (azDiff > 180) azDiff = 360 - azDiff;
             const elDiff = Math.abs(state.elevation - targetSat.el);
             return azDiff <= 1.5 && elDiff <= 1.5;
           }
@@ -1007,6 +1296,28 @@ export class ObjectivesManager {
             bucState.isPowered &&
             bucState.outputPower <= (bucState.saturationPower - 2)
           );
+        });
+      }
+
+      case 'buc-loopback-enabled': {
+        return this.evaluateEquipment_(gs.rfFrontEnds, condition.params, (rfFrontEnd) => {
+          const bucState = rfFrontEnd.bucModule.state;
+          return bucState.isPowered && bucState.isLoopback;
+        });
+      }
+
+      case 'buc-loopback-disabled': {
+        return this.evaluateEquipment_(gs.rfFrontEnds, condition.params, (rfFrontEnd) => {
+          const bucState = rfFrontEnd.bucModule.state;
+          return bucState.isPowered && !bucState.isLoopback;
+        });
+      }
+
+      case 'buc-temperature-normal': {
+        const maxTemp = condition.params?.maxTemperature ?? 70;
+        return this.evaluateEquipment_(gs.rfFrontEnds, condition.params, (rfFrontEnd) => {
+          const bucState = rfFrontEnd.bucModule.state;
+          return bucState.isPowered && bucState.temperature <= maxTemp;
         });
       }
 
@@ -1351,6 +1662,11 @@ export class ObjectivesManager {
         if (!condition.params?.trackingMode) return false;
         const targetMode = condition.params.trackingMode;
         return this.evaluateEquipment_(gs.antennas, condition.params, (antenna) => {
+          // Step-track is an optimization layer on top of program-track, not a separate mode
+          if (targetMode === 'step-track') {
+            return antenna.state.trackingMode === 'program-track' &&
+              antenna.state.isStepTrackEnabled === true;
+          }
           return antenna.state.trackingMode === targetMode;
         });
       }
@@ -1405,6 +1721,19 @@ export class ObjectivesManager {
         });
       }
 
+      case 'buc-gain-set': {
+        if (!condition.params?.gain) return false;
+        const targetGain = condition.params.gain;
+        const tolerance = condition.params.gainTolerance ?? 0;
+        return this.evaluateEquipment_(gs.rfFrontEnds, condition.params, (rfFrontEnd) => {
+          const bucState = rfFrontEnd.bucModule.state;
+          return (
+            bucState.isPowered &&
+            Math.abs(bucState.gain - targetGain) <= tolerance
+          );
+        });
+      }
+
       case 'hpa-enabled': {
         return this.evaluateEquipment_(gs.rfFrontEnds, condition.params, (rfFrontEnd) => {
           const hpaState = rfFrontEnd.hpaModule.state;
@@ -1434,10 +1763,13 @@ export class ObjectivesManager {
 
       case 'hpa-output-power-set': {
         if (condition.params?.minOutputPower === undefined) return false;
-        const minPower = condition.params.minOutputPower;
+        // minOutputPower is specified in watts for intuitive scenario authoring
+        // Convert watts to dBm for comparison: P(dBm) = 10 * log10(P(W) * 1000)
+        const minPowerWatts = condition.params.minOutputPower;
+        const minPowerDbm = 10 * Math.log10(minPowerWatts * 1000);
         return this.evaluateEquipment_(gs.rfFrontEnds, condition.params, (rfFrontEnd) => {
           const hpaState = rfFrontEnd.hpaModule.state;
-          return hpaState.isPowered && hpaState.isHpaEnabled && hpaState.outputPower >= minPower;
+          return hpaState.isPowered && hpaState.isHpaEnabled && hpaState.outputPower >= minPowerDbm;
         });
       }
 
@@ -1610,6 +1942,39 @@ export class ObjectivesManager {
         });
       }
 
+      case 'tx-modem-not-transmitting': {
+        return this.evaluateEquipment_(gs.transmitters, condition.params, (transmitter) => {
+          const modemNum = condition.params?.modemNumber ?? transmitter.state.activeModem;
+          const modem = transmitter.state.modems.find(m => m.modem_number === modemNum);
+          // Modem must be powered but NOT transmitting
+          return modem?.isPowered === true && modem?.isTransmitting === false;
+        });
+      }
+
+      case 'tx-active-modem': {
+        if (condition.params?.modemNumber === undefined) return false;
+        const targetModem = condition.params.modemNumber;
+        return this.evaluateEquipment_(gs.transmitters, condition.params, (transmitter) => {
+          return transmitter.state.activeModem === targetModem;
+        });
+      }
+
+      case 'tx-modem-loopback-enabled': {
+        return this.evaluateEquipment_(gs.transmitters, condition.params, (transmitter) => {
+          const modemNum = condition.params?.modemNumber ?? transmitter.state.activeModem;
+          const modem = transmitter.state.modems.find(m => m.modem_number === modemNum);
+          return modem?.isPowered === true && modem?.isLoopback === true;
+        });
+      }
+
+      case 'tx-modem-loopback-disabled': {
+        return this.evaluateEquipment_(gs.transmitters, condition.params, (transmitter) => {
+          const modemNum = condition.params?.modemNumber ?? transmitter.state.activeModem;
+          const modem = transmitter.state.modems.find(m => m.modem_number === modemNum);
+          return modem?.isPowered === true && modem?.isLoopback === false;
+        });
+      }
+
       case 'status-check': {
         // Quiz-based condition - requires player to answer correctly
         const params = condition.params;
@@ -1634,7 +1999,9 @@ export class ObjectivesManager {
             params.options,
             params.correctIndex,
             params.explanation,
-            params.pointPenalty ?? 5
+            params.pointPenalty ?? 5,
+            params.character,
+            params.preserveOptionOrder
           );
         }
 
@@ -1668,6 +2035,14 @@ export class ObjectivesManager {
         if (!targetGsId) return false;
 
         return ObjectivesManager.selectedGroundStationId_ === targetGsId;
+      }
+
+      case 'satellite-selected': {
+        // Check if specific satellite is selected in the asset tree sidebar
+        const targetSatId = condition.params?.assetSatelliteId;
+        if (!targetSatId) return false;
+
+        return ObjectivesManager.selectedSatelliteId_ === targetSatId;
       }
 
       case 'traffic-transferred': {
@@ -1705,6 +2080,193 @@ export class ObjectivesManager {
           }
         }
         return false;
+      }
+
+      case 'tab-active': {
+        const targetTab = condition.params?.tab;
+        if (!targetTab) return false;
+
+        const activeTab = TabbedCanvas.getActiveTab();
+        if (!activeTab) return false;
+
+        // Match exact tab ID or prefix (e.g., 'acu-control' matches 'acu-control-0')
+        return activeTab === targetTab || activeTab.startsWith(`${targetTab}-`);
+      }
+
+      // ═══════════════════════════════════════════════════════════════
+      // FEC Conditions
+      // ═══════════════════════════════════════════════════════════════
+
+      case 'rx-frame-sync-locked': {
+        // Check if frame sync is locked (from RxPayloadAdapter state)
+        // This evaluates the current FEC state from the ground station's receiver
+        const expectedLocked = condition.params?.locked ?? true;
+        if (!gs) return false;
+
+        // Get first receiver and check frame sync via FECSimulator
+        const receiver = gs.receivers[0];
+        if (!receiver) return false;
+
+        // Get signal info from receiver
+        const signalInfo = receiver.getSignalsInBandwidth();
+        const modem = receiver.activeModem;
+
+        // FECSimulator calculates frame sync from signal conditions
+        const { FECSimulator } = require('@app/equipment/receiver/fec-simulator');
+        const fecSim = new FECSimulator();
+        const metrics = fecSim.calculate({
+          cnRatio_dB: signalInfo.cnRatio_dB,
+          hasCarrier: signalInfo.hasCarrier,
+          hasLock: signalInfo.hasLock,
+          modulation: modem.modulation,
+          fec: modem.fec,
+        });
+
+        return metrics.frameSyncLocked === expectedLocked;
+      }
+
+      case 'rx-ber-threshold': {
+        // Check if BER is above or below a threshold
+        const threshold = condition.params?.berThreshold;
+        const comparison = condition.params?.berComparison ?? 'below';
+        if (threshold === undefined) return false;
+        if (!gs) return false;
+
+        const receiver = gs.receivers[0];
+        if (!receiver) return false;
+
+        const signalInfo = receiver.getSignalsInBandwidth();
+        const modem = receiver.activeModem;
+
+        const { FECSimulator } = require('@app/equipment/receiver/fec-simulator');
+        const fecSim = new FECSimulator();
+        const metrics = fecSim.calculate({
+          cnRatio_dB: signalInfo.cnRatio_dB,
+          hasCarrier: signalInfo.hasCarrier,
+          hasLock: signalInfo.hasLock,
+          modulation: modem.modulation,
+          fec: modem.fec,
+        });
+
+        if (comparison === 'below') {
+          return metrics.ber < threshold;
+        } else {
+          return metrics.ber >= threshold;
+        }
+      }
+
+      case 'rx-rs-uncorrectable': {
+        // Check if there are uncorrectable Reed-Solomon blocks
+        if (!gs) return false;
+
+        const receiver = gs.receivers[0];
+        if (!receiver) return false;
+
+        const signalInfo = receiver.getSignalsInBandwidth();
+        const modem = receiver.activeModem;
+
+        const { FECSimulator } = require('@app/equipment/receiver/fec-simulator');
+        const fecSim = new FECSimulator();
+        const metrics = fecSim.calculate({
+          cnRatio_dB: signalInfo.cnRatio_dB,
+          hasCarrier: signalInfo.hasCarrier,
+          hasLock: signalInfo.hasLock,
+          modulation: modem.modulation,
+          fec: modem.fec,
+        });
+
+        return metrics.rsUncorrectableBlocks > 0;
+      }
+
+      case 'rx-channel-status': {
+        // Check if channel status matches expected value
+        const expectedStatus = condition.params?.channelStatus;
+        if (!expectedStatus) return false;
+        if (!gs) return false;
+
+        const receiver = gs.receivers[0];
+        if (!receiver) return false;
+
+        const signalInfo = receiver.getSignalsInBandwidth();
+        const modem = receiver.activeModem;
+
+        const { FECSimulator } = require('@app/equipment/receiver/fec-simulator');
+        const fecSim = new FECSimulator();
+        const metrics = fecSim.calculate({
+          cnRatio_dB: signalInfo.cnRatio_dB,
+          hasCarrier: signalInfo.hasCarrier,
+          hasLock: signalInfo.hasLock,
+          modulation: modem.modulation,
+          fec: modem.fec,
+        });
+
+        return metrics.channelStatus === expectedStatus;
+      }
+
+      // ═══════════════════════════════════════════════════════════════
+      // Crypto Conditions
+      // ═══════════════════════════════════════════════════════════════
+
+      case 'rx-crypto-status': {
+        // Check RX decryption mode
+        const expectedMode = condition.params?.cryptoMode;
+        if (!expectedMode) return false;
+
+        const crypto = CryptoModule.getInstance();
+        const rxState = crypto.getRxState();
+        return rxState.decryptionMode === expectedMode;
+      }
+
+      case 'rx-key-status': {
+        // Check RX key status
+        const expectedStatus = condition.params?.keyStatus;
+        if (!expectedStatus) return false;
+
+        const crypto = CryptoModule.getInstance();
+        const rxState = crypto.getRxState();
+        return rxState.decryptionKeyStatus === expectedStatus;
+      }
+
+      case 'tx-crypto-status': {
+        // Check TX encryption mode
+        const expectedMode = condition.params?.cryptoMode;
+        if (!expectedMode) return false;
+
+        const crypto = CryptoModule.getInstance();
+        const txState = crypto.getTxState();
+        return txState.encryptionMode === expectedMode;
+      }
+
+      case 'tx-key-status': {
+        // Check TX key status
+        const expectedStatus = condition.params?.keyStatus;
+        if (!expectedStatus) return false;
+
+        const crypto = CryptoModule.getInstance();
+        const txState = crypto.getTxState();
+        return txState.encryptionKeyStatus === expectedStatus;
+      }
+
+      // ═══════════════════════════════════════════════════════════════
+      // Fault Injection Conditions
+      // ═══════════════════════════════════════════════════════════════
+
+      case 'fault-active': {
+        // Check if a specific fault is currently active
+        const faultId = condition.params?.faultId;
+        if (!faultId) return false;
+
+        const faultInjector = FaultInjector.getInstance();
+        return faultInjector.isActive(faultId);
+      }
+
+      case 'fault-cleared': {
+        // Check if a specific fault has been cleared (not active)
+        const faultId = condition.params?.faultId;
+        if (!faultId) return false;
+
+        const faultInjector = FaultInjector.getInstance();
+        return !faultInjector.isActive(faultId);
       }
 
       default:

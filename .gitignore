@@ -30,6 +30,12 @@ yarn-error.log*
 coverage/
 .nyc_output/
 
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+
 # Temporary files
 tmp/
 temp/
@@ -38,6 +44,7 @@ supabase/
 # Notes
 *.notes.*
 notes
+.archive
 
 # Unused Icons
 src/assets/icons/wip

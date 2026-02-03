@@ -1,9 +1,9 @@
+import { CardAlarmBadge } from "@app/components/card-alarm-badge/card-alarm-badge";
 import { qs } from "@app/engine/utils/query-selector";
+import { AlarmStatus } from "@app/equipment/base-equipment";
 import { HPAModuleCore, HPAState } from "@app/equipment/rf-front-end/hpa-module/hpa-module-core";
 import { EventBus } from "@app/events/event-bus";
 import { Events } from "@app/events/events";
-import { CardAlarmBadge } from "@app/components/card-alarm-badge/card-alarm-badge";
-import { AlarmStatus } from "@app/equipment/base-equipment";
 import { parseLocalizedNumber } from "@app/utils/parse-number";
 
 /**
@@ -94,6 +94,17 @@ export class HPAAdapter {
       this.updateStagedDisplay_();
     }
 
+    // Update Input Power display - shows BUC output, or "--" when BUC in loopback
+    const inputPowerDisplay = this.domCache_.get('inputPowerDisplay');
+    if (inputPowerDisplay) {
+      const inputSignals = this.hpaModule.inputSignals;
+      if (isPowered && inputSignals.length > 0) {
+        inputPowerDisplay.textContent = `${inputSignals[0].power.toFixed(1)} dBm`;
+      } else {
+        inputPowerDisplay.textContent = '-- dBm';
+      }
+    }
+
     // Update Power Output displays
     const outputPowerDisplay = this.domCache_.get('outputPowerDisplay');
     if (outputPowerDisplay) {
@@ -125,7 +136,7 @@ export class HPAAdapter {
     // Update P1dB display
     const p1dbDisplay = this.domCache_.get('p1dbDisplay');
     if (p1dbDisplay) {
-      p1dbDisplay.textContent = isPowered ? '50.0 dBm' : '-- dBm';
+      p1dbDisplay.textContent = isPowered ? `${this.hpaModule.p1db.toFixed(1)} dBm` : '-- dBm';
     }
 
     // Update temperature display
@@ -140,7 +151,7 @@ export class HPAAdapter {
       if (isPowered) {
         overdriveStatus.textContent = state.isOverdriven ? 'OVERDRIVE' : 'Normal';
         overdriveStatus.className = state.isOverdriven
-          ? 'status-badge status-badge-danger'
+          ? 'status-badge status-badge-warning'
           : 'status-badge status-badge-good';
       } else {
         overdriveStatus.textContent = '--';
@@ -189,7 +200,8 @@ export class HPAAdapter {
     this.domCache_.set('powerSwitch', qs('#hpa-power', this.containerEl));
     this.domCache_.set('hpaEnableSwitch', qs('#hpa-enable', this.containerEl));
 
-    // Power Output displays
+    // Power displays
+    this.domCache_.set('inputPowerDisplay', qs('#hpa-input-power-display', this.containerEl));
     this.domCache_.set('outputPowerDisplay', qs('#hpa-output-power-display', this.containerEl));
     this.domCache_.set('powerMeter', qs('#hpa-power-meter', this.containerEl));
     this.domCache_.set('powerWatts', qs('#hpa-power-watts', this.containerEl));
@@ -328,6 +340,17 @@ export class HPAAdapter {
       if (hpaEnableSwitch) hpaEnableSwitch.checked = state.isHpaEnabled;
     }
 
+    // Update Input Power display - shows BUC output, or "--" when BUC in loopback
+    const inputPowerDisplay = this.domCache_.get('inputPowerDisplay');
+    if (inputPowerDisplay) {
+      const inputSignals = this.hpaModule.inputSignals;
+      if (isPowered && inputSignals.length > 0) {
+        inputPowerDisplay.textContent = `${inputSignals[0].power.toFixed(1)} dBm`;
+      } else {
+        inputPowerDisplay.textContent = '-- dBm';
+      }
+    }
+
     // Update Power Output displays - show "--" when powered off
     const outputPowerDisplay = this.domCache_.get('outputPowerDisplay');
     if (outputPowerDisplay) {
@@ -382,7 +405,7 @@ export class HPAAdapter {
       if (isPowered && state.isOverdriven !== undefined) {
         overdriveStatus.textContent = state.isOverdriven ? 'OVERDRIVE' : 'Normal';
         overdriveStatus.className = state.isOverdriven
-          ? 'status-badge status-badge-danger'
+          ? 'status-badge status-badge-warning'
           : 'status-badge status-badge-good';
       } else if (!isPowered) {
         overdriveStatus.textContent = '--';
@@ -425,7 +448,7 @@ export class HPAAdapter {
 
     // P1dB is 50 dBm, so scale from ~30 dBm (low) to 50 dBm (max)
     const minPower = 30;
-    const maxPower = 50;
+    const maxPower = 63;
     const normalized = Math.max(0, Math.min(1, (outputPowerDbm - minPower) / (maxPower - minPower)));
     const activeSegments = Math.round(normalized * 10);
 

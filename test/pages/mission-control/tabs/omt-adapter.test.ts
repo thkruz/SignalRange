@@ -1,16 +1,17 @@
-import { OMTAdapter } from '../../../../src/pages/mission-control/tabs/omt-adapter';
+import { Mock, Mocked, vi } from 'vitest';
 import { OMTModule, OMTState } from '../../../../src/equipment/rf-front-end/omt-module/omt-module';
 import { EventBus } from '../../../../src/events/event-bus';
 import { Events } from '../../../../src/events/events';
+import { OMTAdapter } from '../../../../src/pages/mission-control/tabs/omt-adapter';
 
 // Mock dependencies
-jest.mock('../../../../src/events/event-bus');
+vi.mock('../../../../src/events/event-bus');
 
 describe('OMTAdapter', () => {
-  let mockOmtModule: jest.Mocked<OMTModule>;
+  let mockOmtModule: Mocked<OMTModule>;
   let containerEl: HTMLElement;
   let adapter: OMTAdapter;
-  let mockEventBus: { on: jest.Mock; off: jest.Mock; emit: jest.Mock };
+  let mockEventBus: { on: Mock; off: Mock; emit: Mock };
 
   const mockState: OMTState = {
     effectiveTxPol: 'RHCP',
@@ -20,20 +21,20 @@ describe('OMTAdapter', () => {
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Setup mock EventBus
     mockEventBus = {
-      on: jest.fn(),
-      off: jest.fn(),
-      emit: jest.fn(),
+      on: vi.fn(),
+      off: vi.fn(),
+      emit: vi.fn(),
     };
-    (EventBus.getInstance as jest.Mock).mockReturnValue(mockEventBus);
+    (EventBus.getInstance as Mock).mockReturnValue(mockEventBus);
 
     // Setup mock OMTModule
     mockOmtModule = {
       state: { ...mockState },
-    } as unknown as jest.Mocked<OMTModule>;
+    } as unknown as Mocked<OMTModule>;
 
     // Setup container with required DOM elements
     containerEl = document.createElement('div');
@@ -41,7 +42,7 @@ describe('OMTAdapter', () => {
       <span id="omt-tx-pol"></span>
       <span id="omt-rx-pol"></span>
       <span id="omt-isolation"></span>
-      <div id="omt-fault-led" class="led led-green"></div>
+      <span id="omt-status" class="status-badge status-badge-green">OK</span>
     `;
     document.body.appendChild(containerEl);
 
@@ -88,19 +89,19 @@ describe('OMTAdapter', () => {
       expect(display.textContent).toBe('30.5 dB');
     });
 
-    it('should update fault LED when not faulted', () => {
+    it('should update status badge when not faulted', () => {
       adapter.update();
 
-      const led = containerEl.querySelector('#omt-fault-led') as HTMLElement;
-      expect(led.className).toBe('led led-green');
+      const badge = containerEl.querySelector('#omt-status') as HTMLElement;
+      expect(badge.className).toBe('status-badge status-badge-green');
     });
 
-    it('should update fault LED when faulted', () => {
+    it('should update status badge when faulted', () => {
       mockOmtModule.state.isFaulted = true;
       adapter.update();
 
-      const led = containerEl.querySelector('#omt-fault-led') as HTMLElement;
-      expect(led.className).toBe('led led-red');
+      const badge = containerEl.querySelector('#omt-status') as HTMLElement;
+      expect(badge.className).toBe('status-badge status-badge-red');
     });
 
     it('should show None when polarization is empty', () => {

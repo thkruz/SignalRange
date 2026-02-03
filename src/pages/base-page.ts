@@ -1,6 +1,6 @@
 import { BaseElement } from "@app/components/base-element";
 import { EventBus } from "@app/events/event-bus";
-import { DualTransmissionViolationData, Events, ObjectiveFailedData, ScenarioTimeExpiredData } from "@app/events/events";
+import { DualTransmissionViolationData, Events, HpaNoiseAmplificationData, ObjectiveFailedData, ScenarioTimeExpiredData } from "@app/events/events";
 import { Logger } from "@app/logging/logger";
 import { DialogHistoryManager } from "@app/modal/dialog-history-manager";
 import { DialogManager } from "@app/modal/dialog-manager";
@@ -9,6 +9,8 @@ import { ObjectiveFailedModal } from "@app/modal/objective-failed-modal";
 import { QuizModal } from "@app/modal/quiz-modal";
 import { TimePenaltyToast } from "@app/modal/time-penalty-toast";
 import { ObjectivesManager } from "@app/objectives/objectives-manager";
+import { EventAutoLogger } from "@app/ops-log/event-auto-logger";
+import { OpsLogManager } from "@app/ops-log/ops-log-manager";
 import { NavigationOptions, Router } from "@app/router";
 import { ScenarioManager } from "@app/scenario-manager";
 import { ScenarioDialogManager } from "@app/scenarios/scenario-dialog-manager";
@@ -68,6 +70,16 @@ export abstract class BasePage extends BaseElement {
       }
     }
 
+    // Initialize ops log manager (always, for all scenarios)
+    OpsLogManager.initialize(
+      scenario.settings.scenarioStartWallTime,
+      scenario.settings.scenarioStartDate,
+      scenario.settings.previousShiftLogs
+    );
+
+    // Initialize event auto-logger (logs equipment events for beginner/intermediate)
+    EventAutoLogger.getInstance().initialize();
+
     // Initialize objectives manager if scenario has objectives
     if (scenario.data?.objectives && scenario.data.objectives.length > 0) {
       // Pass scenario time limit if defined
@@ -103,6 +115,10 @@ export abstract class BasePage extends BaseElement {
           });
         }
       }
+    } else if (OpsLogManager.isInitialized()) {
+      // No objectives - resume simulated time immediately
+      // (OpsLogManager starts paused by default, waiting for scenario to unlock)
+      OpsLogManager.getInstance().resume();
     }
 
     EventBus.getInstance().emit(Events.DOM_READY);
@@ -152,6 +168,15 @@ export abstract class BasePage extends BaseElement {
         isScenarioTimeout: false,
       });
     });
+
+    eventBus.on(Events.HPA_NOISE_AMPLIFICATION, (data: HpaNoiseAmplificationData) => {
+      const bucStatus = data.bucMuted ? 'muted' : 'off';
+      ObjectiveFailedModal.getInstance().showFailure({
+        title: 'Mission Failed',
+        message: `CRITICAL ERROR: HPA is amplifying noise! The BUC is ${bucStatus} but HPA is enabled. Always disable HPA before muting or turning off the BUC to prevent equipment damage.`,
+        isScenarioTimeout: false,
+      });
+    });
   }
 
   /**
@@ -167,6 +192,14 @@ export abstract class BasePage extends BaseElement {
       const checkpoint = await this.progressSaveManager_.loadCheckpoint(scenario.data.id) as {
         state: AppState;
       };
+
+      // Restore OpsLogManager state if available
+      if (checkpoint?.state?.opsLogState) {
+        if (OpsLogManager.isInitialized()) {
+          OpsLogManager.getInstance().restoreState(checkpoint.state.opsLogState);
+          Logger.info('OpsLogManager state restored from checkpoint');
+        }
+      }
 
       if (checkpoint?.state?.objectiveStates) {
         const objectivesManager = ObjectivesManager.getInstance();
@@ -250,6 +283,7 @@ export abstract class BasePage extends BaseElement {
           timeBonus,
           quizPenalties: savedProgress.quizPenalties ?? 0,
           timePenalties: savedProgress.timePenalties ?? 0,
+          hintPenalties: savedProgress.hintPenalties ?? 0,
           totalScore: savedProgress.score ?? 0,
           objectiveBreakdown: [], // Not saved, show empty for replays
           timeRemainingSeconds: timeBonus * ScoreCalculator.TIME_BONUS_DIVISOR,

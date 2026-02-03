@@ -120,10 +120,11 @@ export class OMTModule extends RFFrontEndModule<OMTState> {
    * Update component state and check for faults
    */
   update(): void {
-    this.updateCrossPolIsolation_();
-
-    // Calculate effective polarization based on antenna skew
+    // Calculate effective polarization based on antenna skew FIRST
+    // (cross-pol isolation check depends on effective polarization)
     this.updateEffectivePolarization_(this.rfFrontEnd_.antenna?.state.polarization ?? null);
+
+    this.updateCrossPolIsolation_();
 
     this.rxSignalsOut = this.rxSignalsIn.map(sig => {
       if (sig.polarization !== this.state.effectiveRxPol) {

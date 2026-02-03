@@ -1,4 +1,5 @@
 import { GroundStationConfig } from './assets/ground-station/ground-station-state';
+import { PreviousShiftLogEntry } from './ops-log/ops-log-types';
 import { scenario1Data } from './campaigns/nats/scenario1';
 import { scenario2Data } from "./campaigns/nats/scenario2";
 import { scenario3Data } from './campaigns/nats/scenario3';
@@ -7,6 +8,7 @@ import { scenario5Data } from './campaigns/nats/scenario5';
 import { scenario6Data } from './campaigns/nats/scenario6';
 import { scenario7Data } from './campaigns/nats/scenario7';
 import { scenario8Data } from './campaigns/nats/scenario8';
+import { sandboxData as natsSandboxData } from './campaigns/nats/sandbox';
 import { AntennaState } from './equipment/antenna';
 import { ANTENNA_CONFIG_KEYS } from "./equipment/antenna/antenna-config-keys";
 import { defaultSpectrumAnalyzerState } from './equipment/real-time-spectrum-analyzer/defaultSpectrumAnalyzerState';
@@ -72,6 +74,12 @@ export interface SimulationSettings {
     /** Initial owner ground station ID */
     initialOwnerId: string;
   }>;
+  /** Scenario start wall-clock time in HH:MM:SS format (e.g., "22:00:00" for 10 PM) */
+  scenarioStartWallTime?: string;
+  /** Scenario start date in YYYY-MM-DD format (e.g., "2025-03-15") */
+  scenarioStartDate?: string;
+  /** Previous shift maintenance/ops log entries */
+  previousShiftLogs?: PreviousShiftLogEntry[];
 }
 
 export class ScenarioManager {
@@ -139,6 +147,7 @@ export class ScenarioManager {
 
 export const SCENARIOS: ScenarioData[] = [
   sandboxData,
+  natsSandboxData,
   scenario1Data,
   scenario2Data,
   scenario3Data,

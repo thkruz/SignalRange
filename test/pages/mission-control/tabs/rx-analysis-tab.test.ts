@@ -1,35 +1,36 @@
-import { RxAnalysisTab } from '../../../../src/pages/mission-control/tabs/rx-analysis-tab';
+import { Mock, Mocked, vi } from 'vitest';
 import { GroundStation } from '../../../../src/assets/ground-station/ground-station';
 import { EventBus } from '../../../../src/events/event-bus';
+import { RxAnalysisTab } from '../../../../src/pages/mission-control/tabs/rx-analysis-tab';
 
 // Mock dependencies
-jest.mock('../../../../src/events/event-bus');
-jest.mock('../../../../src/assets/ground-station/ground-station');
-jest.mock('../../../../src/pages/mission-control/tabs/lnb-adapter');
-jest.mock('../../../../src/pages/mission-control/tabs/agc-adapter');
-jest.mock('../../../../src/pages/mission-control/tabs/filter-adapter');
-jest.mock('../../../../src/pages/mission-control/tabs/notch-filter-adapter');
-jest.mock('../../../../src/pages/mission-control/tabs/spectrum-analyzer-adapter');
-jest.mock('../../../../src/pages/mission-control/tabs/spectrum-analyzer-advanced-adapter');
-jest.mock('../../../../src/pages/mission-control/tabs/receiver-adapter');
-jest.mock('../../../../src/pages/mission-control/tabs/iq-constellation-adapter');
+vi.mock('../../../../src/events/event-bus');
+vi.mock('../../../../src/assets/ground-station/ground-station');
+vi.mock('../../../../src/pages/mission-control/tabs/lnb-adapter');
+vi.mock('../../../../src/pages/mission-control/tabs/agc-adapter');
+vi.mock('../../../../src/pages/mission-control/tabs/filter-adapter');
+vi.mock('../../../../src/pages/mission-control/tabs/notch-filter-adapter');
+vi.mock('../../../../src/pages/mission-control/tabs/spectrum-analyzer-adapter');
+vi.mock('../../../../src/pages/mission-control/tabs/spectrum-analyzer-advanced-adapter');
+vi.mock('../../../../src/pages/mission-control/tabs/receiver-adapter');
+vi.mock('../../../../src/pages/mission-control/tabs/iq-constellation-adapter');
 
 describe('RxAnalysisTab', () => {
-  let mockGroundStation: jest.Mocked<GroundStation>;
+  let mockGroundStation: Mocked<GroundStation>;
   let containerEl: HTMLElement;
   let tab: RxAnalysisTab;
-  let mockEventBus: { on: jest.Mock; off: jest.Mock; emit: jest.Mock };
+  let mockEventBus: { on: Mock; off: Mock; emit: Mock };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Setup mock EventBus
     mockEventBus = {
-      on: jest.fn(),
-      off: jest.fn(),
-      emit: jest.fn(),
+      on: vi.fn(),
+      off: vi.fn(),
+      emit: vi.fn(),
     };
-    (EventBus.getInstance as jest.Mock).mockReturnValue(mockEventBus);
+    (EventBus.getInstance as Mock).mockReturnValue(mockEventBus);
 
     // Setup mock GroundStation with full equipment
     mockGroundStation = {
@@ -45,9 +46,9 @@ describe('RxAnalysisTab', () => {
       spectrumAnalyzers: [
         {
           state: {},
-          getCanvas: jest.fn().mockReturnValue(document.createElement('canvas')),
-          getSpectralCanvas: jest.fn().mockReturnValue(document.createElement('canvas')),
-          getWaterfallCanvas: jest.fn().mockReturnValue(document.createElement('canvas')),
+          getCanvas: vi.fn().mockReturnValue(document.createElement('canvas')),
+          getSpectralCanvas: vi.fn().mockReturnValue(document.createElement('canvas')),
+          getWaterfallCanvas: vi.fn().mockReturnValue(document.createElement('canvas')),
         },
       ],
       receivers: [
@@ -58,8 +59,8 @@ describe('RxAnalysisTab', () => {
           },
         },
       ],
-      initializeEquipment: jest.fn(),
-    } as unknown as jest.Mocked<GroundStation>;
+      initializeEquipment: vi.fn(),
+    } as unknown as Mocked<GroundStation>;
 
     // Setup container
     containerEl = document.createElement('div');
@@ -83,7 +84,7 @@ describe('RxAnalysisTab', () => {
       const emptyGs = {
         ...mockGroundStation,
         antennas: [],
-      } as unknown as jest.Mocked<GroundStation>;
+      } as unknown as Mocked<GroundStation>;
 
       const containerEl2 = document.createElement('div');
       containerEl2.id = 'rx-analysis-container-2';

@@ -10,8 +10,10 @@ import { LNBAdapter } from './lnb-adapter';
 import { NotchFilterAdapter } from './notch-filter-adapter';
 import { ReceiverAdapter } from './receiver-adapter';
 import './rx-analysis-tab.css';
+import { RxPayloadAdapter } from './rx-payload-adapter';
 import { SpectrumAnalyzerAdapter } from './spectrum-analyzer-adapter';
 import { SpectrumAnalyzerAdvancedAdapter } from './spectrum-analyzer-advanced-adapter';
+import { TapPointAdapter } from './tap-point-adapter';
 
 /**
  * RxAnalysisTab - Receiver chain analysis and control
@@ -37,6 +39,8 @@ export class RxAnalysisTab extends BaseElement {
   private spectrumAnalyzerAdvancedAdapter: SpectrumAnalyzerAdvancedAdapter | null = null;
   private receiverAdapter: ReceiverAdapter | null = null;
   private iqConstellationAdapter: IQConstellationAdapter | null = null;
+  private rxPayloadAdapter_: RxPayloadAdapter | null = null;
+  private tapPointAdapter_: TapPointAdapter | null = null;
 
   constructor(groundStation: GroundStation, containerId: string) {
     super();
@@ -212,14 +216,18 @@ export class RxAnalysisTab extends BaseElement {
                   <span class="metric-label">Noise Floor:</span>
                   <span id="filter-noise-floor-display" class="metric-value">-101 dBm</span>
                 </div>
+                <div class="metric-row" id="filter-signal-status-row">
+                  <span class="metric-label">Signal:</span>
+                  <span id="filter-signal-status" class="status-badge status-badge-none">--</span>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
         <!-- Notch Filter Control Card -->
-        <div class="col-lg-12">
-          <div class="card">
+        <div class="col-lg-9">
+          <div class="card h-100">
             <div class="card-header d-flex justify-content-between align-items-center">
               <h3 class="card-title">Notch Filter</h3>
               <div class="form-check form-switch">
@@ -240,9 +248,106 @@ export class RxAnalysisTab extends BaseElement {
           </div>
         </div>
 
+        <!-- Tap Point Selection Card -->
+        <div class="col-lg-3">
+          <div class="card h-100">
+            <div class="card-header">
+              <h3 class="card-title">Tap Points</h3>
+            </div>
+            <div class="card-body" id="tap-points-body">
+              <!-- Default Mode: Single Tap Point -->
+              <div id="tap-default-mode">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                  <label class="form-label text-muted small text-uppercase mb-0">Tap Point</label>
+                  <div class="form-check form-switch">
+                    <input type="checkbox" id="tap-default-enable" class="form-check-input" role="switch" checked />
+                  </div>
+                </div>
+                <select id="tap-default-select" class="form-select mb-2">
+                  <option value="TX IF">TX IF</option>
+                  <option value="RX IF" selected>RX IF</option>
+                </select>
+                <div class="metric-group">
+                  <div class="metric-row">
+                    <span class="metric-label">Status:</span>
+                    <span id="tap-default-status" class="text-success">Active</span>
+                  </div>
+                  <div class="metric-row">
+                    <span class="metric-label">Coupling:</span>
+                    <span id="tap-default-coupling" class="metric-value font-monospace">-20 dB</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Engineering Mode: Dual Tap Points -->
+              <div id="tap-engineering-mode-container" class="d-none">
+                <!-- Tap A -->
+                <div class="mb-3">
+                  <div class="d-flex align-items-center justify-content-between mb-2">
+                    <label class="form-label text-muted small text-uppercase mb-0">Tap Point A</label>
+                    <div class="form-check form-switch">
+                      <input type="checkbox" id="tap-a-enable" class="form-check-input" role="switch" />
+                    </div>
+                  </div>
+                  <select id="tap-a-select" class="form-select mb-2">
+                    <option value="TX IF">TX IF</option>
+                    <option value="RX IF">RX IF</option>
+                    <option value="TX RF POST BUC">TX RF POST BUC</option>
+                    <option value="TX RF POST HPA">TX RF POST HPA</option>
+                    <option value="TX RF POST OMT">TX RF POST OMT</option>
+                    <option value="RX RF PRE OMT">RX RF PRE OMT</option>
+                    <option value="RX RF POST OMT">RX RF POST OMT</option>
+                    <option value="RX RF POST LNA">RX RF POST LNA</option>
+                  </select>
+                  <div class="metric-group">
+                    <div class="metric-row">
+                      <span class="metric-label">Status:</span>
+                      <span id="tap-a-status">--</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Coupling:</span>
+                      <span id="tap-a-coupling" class="metric-value font-monospace">-30 dB</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Tap B -->
+                <div>
+                  <div class="d-flex align-items-center justify-content-between mb-2">
+                    <label class="form-label text-muted small text-uppercase mb-0">Tap Point B</label>
+                    <div class="form-check form-switch">
+                      <input type="checkbox" id="tap-b-enable" class="form-check-input" role="switch" checked />
+                    </div>
+                  </div>
+                  <select id="tap-b-select" class="form-select mb-2">
+                    <option value="TX IF">TX IF</option>
+                    <option value="RX IF" selected>RX IF</option>
+                    <option value="TX RF POST BUC">TX RF POST BUC</option>
+                    <option value="TX RF POST HPA">TX RF POST HPA</option>
+                    <option value="TX RF POST OMT">TX RF POST OMT</option>
+                    <option value="RX RF PRE OMT">RX RF PRE OMT</option>
+                    <option value="RX RF POST OMT">RX RF POST OMT</option>
+                    <option value="RX RF POST LNA">RX RF POST LNA</option>
+                  </select>
+                  <div class="metric-group">
+                    <div class="metric-row">
+                      <span class="metric-label">Status:</span>
+                      <span id="tap-b-status" class="text-success">Active</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Coupling:</span>
+                      <span id="tap-b-coupling" class="metric-value font-monospace">-20 dB</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Spectrum Analyzer Canvas Card -->
-        <div class="col-6">
-          <div class="card">
+        <div class="col-8 d-flex">
+          <div class="card flex-fill">
             <div class="card-header">
               <h3 class="card-title">Spectrum Analyzer</h3>
             </div>
@@ -255,12 +360,19 @@ export class RxAnalysisTab extends BaseElement {
         </div>
 
         <!-- Spectrum Analyzer Controls Card -->
-        <div class="col-6">
-          <div class="card">
+        <div class="col-4 d-flex">
+          <div class="card flex-fill">
             <div class="card-header">
               <h3 class="card-title">Spectrum Analyzer Controls</h3>
             </div>
-            <div class="card-body" id="spec-analyzer-controls">
+            <div class="card-body d-flex flex-column" id="spec-analyzer-controls">
+              <!-- Primary Action: Auto-Tune -->
+              <div class="sa-primary-actions mb-3">
+                <button id="sa-auto-tune" class="btn btn-lg btn-danger w-100">
+                  <strong>AUTO-TUNE</strong>
+                </button>
+              </div>
+
               <!-- Frequency Row -->
               <div class="row g-2 mb-2">
                 <div class="col-6">
@@ -279,23 +391,16 @@ export class RxAnalysisTab extends BaseElement {
                 </div>
               </div>
 
-              <!-- Amplitude Row -->
+              <!-- Amplitude Row (always visible) -->
               <div class="row g-2 mb-2">
-                <div class="col-4">
-                  <label class="form-label text-muted small text-uppercase">Ref Level</label>
-                  <div class="input-group input-group-sm">
-                    <input type="number" id="sa-ref-level" class="form-control" step="1">
-                    <span class="input-group-text">dBm</span>
-                  </div>
-                </div>
-                <div class="col-4">
+                <div class="col-6">
                   <label class="form-label text-muted small text-uppercase">Min Amp</label>
                   <div class="input-group input-group-sm">
                     <input type="number" id="sa-min-amp" class="form-control" step="1">
                     <span class="input-group-text">dBm</span>
                   </div>
                 </div>
-                <div class="col-4">
+                <div class="col-6">
                   <label class="form-label text-muted small text-uppercase">Max Amp</label>
                   <div class="input-group input-group-sm">
                     <input type="number" id="sa-max-amp" class="form-control" step="1">
@@ -304,19 +409,9 @@ export class RxAnalysisTab extends BaseElement {
                 </div>
               </div>
 
-              <!-- Settings Row -->
+              <!-- RBW Row (always visible) -->
               <div class="row g-2 mb-2">
-                <div class="col-4">
-                  <label class="form-label text-muted small text-uppercase">Scale</label>
-                  <select id="sa-scale" class="form-select form-select-sm">
-                    <option value="1">1 dB/div</option>
-                    <option value="2">2 dB/div</option>
-                    <option value="5">5 dB/div</option>
-                    <option value="6" selected>6 dB/div</option>
-                    <option value="10">10 dB/div</option>
-                  </select>
-                </div>
-                <div class="col-4">
+                <div class="col-6">
                   <label class="form-label text-muted small text-uppercase">RBW</label>
                   <select id="sa-rbw" class="form-select form-select-sm">
                     <option value="auto">Auto</option>
@@ -327,57 +422,88 @@ export class RxAnalysisTab extends BaseElement {
                     <option value="1">1 MHz</option>
                   </select>
                 </div>
-                <div class="col-4">
-                  <label class="form-label text-muted small text-uppercase">Refresh</label>
-                  <select id="sa-refresh" class="form-select form-select-sm">
-                    <option value="1">1 Hz</option>
-                    <option value="5">5 Hz</option>
-                    <option value="10" selected>10 Hz</option>
-                    <option value="15">15 Hz</option>
-                    <option value="20">20 Hz</option>
-                    <option value="30">30 Hz</option>
-                  </select>
+              </div>
+
+              <!-- Engineering Controls (hidden by default, shown with ENGINEERING_MODE) -->
+              <div id="sa-engineering-controls" class="sa-engineering-controls mb-2" style="display: none;">
+                <div class="row g-2">
+                  <div class="col-4">
+                    <label class="form-label text-muted small text-uppercase">Ref Level</label>
+                    <div class="input-group input-group-sm">
+                      <input type="number" id="sa-ref-level" class="form-control" step="1">
+                      <span class="input-group-text">dBm</span>
+                    </div>
+                  </div>
+                  <div class="col-4">
+                    <label class="form-label text-muted small text-uppercase">Scale</label>
+                    <select id="sa-scale" class="form-select form-select-sm">
+                      <option value="1">1 dB/div</option>
+                      <option value="2">2 dB/div</option>
+                      <option value="5">5 dB/div</option>
+                      <option value="6" selected>6 dB/div</option>
+                      <option value="10">10 dB/div</option>
+                    </select>
+                  </div>
+                  <div class="col-4">
+                    <label class="form-label text-muted small text-uppercase">Refresh</label>
+                    <select id="sa-refresh" class="form-select form-select-sm">
+                      <option value="1">1 Hz</option>
+                      <option value="5">5 Hz</option>
+                      <option value="10" selected>10 Hz</option>
+                      <option value="15">15 Hz</option>
+                      <option value="20">20 Hz</option>
+                      <option value="30">30 Hz</option>
+                    </select>
+                  </div>
+                  <div class="col-4">
+                    <label class="form-label text-muted small text-uppercase">Markers</label>
+                    <div class="form-check form-switch mb-0">
+                      <input type="checkbox" id="sa-marker-enabled" class="form-check-input" role="switch">
+                      <label for="sa-marker-enabled" class="form-check-label">Enable</label>
+                    </div>
+                  </div>
+                  <div class="col-4">
+                    <label class="form-label text-muted small text-uppercase">Index</label>
+                    <input type="number" id="sa-marker-index" class="form-control form-control-sm" min="0">
+                  </div>
+                  <div class="col-4">
+                    <label class="form-label text-muted small text-uppercase">Peak</label>
+                    <div id="sa-marker-info" class="form-control-plaintext font-monospace small">--- MHz @ --- dBm</div>
+                  </div>
                 </div>
               </div>
 
               <!-- Display Mode & Actions -->
-              <div class="row g-2 mb-2">
-                <div class="col-12">
-                  <div class="d-flex flex-wrap gap-2 align-items-center">
+              <div class="sa-display-mode-actions">
+                <div class="row g-2">
+                  <div class="col-6 d-flex justify-content-center align-items-center">
                     <div class="btn-group btn-group-sm">
                       <button id="sa-mode-spectral" class="btn btn-outline-primary active">Spectral</button>
                       <button id="sa-mode-waterfall" class="btn btn-outline-primary">Waterfall</button>
                       <button id="sa-mode-both" class="btn btn-outline-primary">Both</button>
                     </div>
-                    <button id="sa-auto-tune" class="btn btn-primary btn-sm">Auto-Tune</button>
+                  </div>
+                  <div class="col-6 d-flex justify-content-center align-items-center">
                     <button id="sa-pause" class="btn btn-warning btn-sm">Pause</button>
-                    <div class="form-check form-switch ms-2">
-                      <input type="checkbox" id="sa-max-hold" class="form-check-input" role="switch">
-                      <label for="sa-max-hold" class="form-check-label">Max Hold</label>
-                    </div>
-                    <div class="form-check form-switch">
-                      <input type="checkbox" id="sa-min-hold" class="form-check-input" role="switch">
-                      <label for="sa-min-hold" class="form-check-label">Min Hold</label>
-                    </div>
                   </div>
                 </div>
               </div>
 
               <!-- Trace Controls -->
-              <div class="row g-2 mb-2">
+              <div class="row g-2 mb-2 sa-trace-controls">
                 <div class="col-12">
                   <label class="form-label text-muted small text-uppercase">Traces</label>
-                  <div class="d-flex flex-wrap gap-2 align-items-center">
+                  <div class="d-flex justify-content-between align-items-center">
                     <div class="btn-group btn-group-sm">
                       <button id="sa-trace-1" class="btn btn-outline-primary active" data-trace="1">T1</button>
                       <button id="sa-trace-2" class="btn btn-outline-primary" data-trace="2">T2</button>
                       <button id="sa-trace-3" class="btn btn-outline-primary" data-trace="3">T3</button>
                     </div>
-                    <div class="form-check form-switch">
+                    <div class="form-check form-switch mb-0">
                       <input type="checkbox" id="sa-trace-visible" class="form-check-input" role="switch" checked>
                       <label for="sa-trace-visible" class="form-check-label">Visible</label>
                     </div>
-                    <div class="form-check form-switch">
+                    <div class="form-check form-switch mb-0">
                       <input type="checkbox" id="sa-trace-updating" class="form-check-input" role="switch" checked>
                       <label for="sa-trace-updating" class="form-check-label">Updating</label>
                     </div>
@@ -387,23 +513,6 @@ export class RxAnalysisTab extends BaseElement {
                       <option value="minhold">Min Hold</option>
                       <option value="average">Average</option>
                     </select>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Markers -->
-              <div class="row g-2">
-                <div class="col-12">
-                  <div class="d-flex gap-3 align-items-center">
-                    <div class="form-check form-switch">
-                      <input type="checkbox" id="sa-marker-enabled" class="form-check-input" role="switch">
-                      <label for="sa-marker-enabled" class="form-check-label">Markers</label>
-                    </div>
-                    <div class="input-group input-group-sm" style="width: auto;">
-                      <span class="input-group-text">Index</span>
-                      <input type="number" id="sa-marker-index" class="form-control" min="0" style="width: 60px;">
-                    </div>
-                    <span id="sa-marker-info" class="text-muted small font-monospace">Peak: --- MHz @ --- dBm</span>
                   </div>
                 </div>
               </div>
@@ -615,6 +724,155 @@ export class RxAnalysisTab extends BaseElement {
             </div>
           </div>
         </div>
+
+        <!-- RX Payload Data Integrity Card -->
+        <div class="col-lg-12">
+          <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+              <h3 class="card-title">Payload Data Integrity</h3>
+              <div id="rx-payload-alarm-badge"></div>
+            </div>
+            <div class="card-body">
+              <div class="row g-2">
+                <!-- Frame Synchronization Column -->
+                <div class="col-lg-3">
+                  <div class="metric-group h-100">
+                    <div class="metric-group-title">Frame Synchronization</div>
+                    <div class="metric-row">
+                      <span class="metric-label">Sync Status:</span>
+                      <span id="rx-payload-frame-sync" class="status-badge status-badge-green">Locked</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Sync Pattern:</span>
+                      <span id="rx-payload-sync-pattern" class="metric-value font-monospace">1ACFFC1D</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">BER:</span>
+                      <span id="rx-payload-ber" class="metric-value font-monospace">1.2e-7</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">CRC Type:</span>
+                      <span id="rx-payload-crc-type" class="metric-value">CRC-32</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">CRC Status:</span>
+                      <span id="rx-payload-crc-status" class="status-badge status-badge-green">Valid</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">CRC Errors:</span>
+                      <span id="rx-payload-crc-errors" class="metric-value">0</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Reed-Solomon Decoder Column -->
+                <div class="col-lg-3">
+                  <div class="metric-group h-100">
+                    <div class="metric-group-title">Reed-Solomon Decoder</div>
+                    <div class="metric-row">
+                      <span class="metric-label">Status:</span>
+                      <span id="rx-payload-rs-status" class="status-badge status-badge-green">Active</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Code Rate:</span>
+                      <span id="rx-payload-rs-code-rate" class="metric-value">223/255</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Corrected (Frame):</span>
+                      <span id="rx-payload-rs-corrected" class="metric-value">0</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Corrected (Total):</span>
+                      <span id="rx-payload-rs-total" class="metric-value">12</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Uncorrectable:</span>
+                      <span id="rx-payload-rs-uncorrectable" class="metric-value">0</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Viterbi Decoder Column -->
+                <div class="col-lg-3">
+                  <div class="metric-group h-100">
+                    <div class="metric-group-title">Viterbi Decoder</div>
+                    <div class="metric-row">
+                      <span class="metric-label">Status:</span>
+                      <span id="rx-payload-viterbi-status" class="status-badge status-badge-green">Enabled</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Code Rate:</span>
+                      <span id="rx-payload-viterbi-code-rate" class="metric-value">1/2</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Path Metric:</span>
+                      <span id="rx-payload-viterbi-path-metric" class="metric-value font-monospace">0.92</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Traceback Depth:</span>
+                      <span id="rx-payload-viterbi-traceback" class="metric-value">35</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Constraint:</span>
+                      <span id="rx-payload-viterbi-k" class="metric-value">K=7</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- RX Decryption Column -->
+                <div class="col-lg-3">
+                  <div class="metric-group h-100">
+                    <div class="metric-group-title">RX Decryption</div>
+                    <div class="metric-row">
+                      <span class="metric-label">Mode:</span>
+                      <span id="rx-payload-dec-mode" class="status-badge status-badge-green">ACTIVE</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Algorithm:</span>
+                      <span id="rx-payload-dec-algorithm" class="metric-value">AES-256-GCM</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Key ID:</span>
+                      <span id="rx-payload-dec-key-id" class="metric-value font-monospace">FOXTROT-2024-0293</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Key Status:</span>
+                      <span id="rx-payload-dec-key-status" class="status-badge status-badge-green">Valid</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Expires:</span>
+                      <span id="rx-payload-dec-expires" class="metric-value">62 days</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Auth Tag:</span>
+                      <span id="rx-payload-dec-auth-tag" class="status-badge status-badge-green">Verified</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Decryption:</span>
+                      <span id="rx-payload-dec-success" class="status-badge status-badge-green">Success</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Channel Summary Row -->
+              <div class="row g-2 mt-2">
+                <div class="col-lg-12">
+                  <div class="d-flex justify-content-between align-items-center p-2 bg-dark rounded">
+                    <div class="d-flex align-items-center gap-3">
+                      <span class="text-muted small">Data Rate:</span>
+                      <span id="rx-payload-data-rate" class="fw-bold">2.048 Mbps</span>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                      <span class="text-muted small">Channel Status:</span>
+                      <span id="rx-payload-channel-status" class="status-badge status-badge-green">Good</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   `;
@@ -711,13 +969,22 @@ export class RxAnalysisTab extends BaseElement {
     // Create adapters
     this.lnbAdapter = new LNBAdapter(rfFrontEnd.lnbModule, this.dom_!);
     this.agcAdapter = new AGCAdapter(rfFrontEnd.agcModule, this.dom_!);
-    this.filterAdapter = new FilterAdapter(rfFrontEnd.filterModule, this.dom_!);
+    this.filterAdapter = new FilterAdapter(rfFrontEnd.filterModule, this.dom_!, receiver ?? null);
     this.notchFilterAdapter = new NotchFilterAdapter(rfFrontEnd.notchFilterModule, this.dom_!);
     this.spectrumAnalyzerAdapter = new SpectrumAnalyzerAdapter(spectrumAnalyzer, this.dom_!);
 
     // Create advanced spectrum analyzer adapter
     if (spectrumAnalyzer && this.dom_) {
       this.spectrumAnalyzerAdvancedAdapter = new SpectrumAnalyzerAdvancedAdapter(
+        spectrumAnalyzer,
+        this.dom_
+      );
+    }
+
+    // Create tap point adapter
+    if (rfFrontEnd.couplerModule && spectrumAnalyzer && this.dom_) {
+      this.tapPointAdapter_ = new TapPointAdapter(
+        rfFrontEnd.couplerModule,
         spectrumAnalyzer,
         this.dom_
       );
@@ -731,6 +998,15 @@ export class RxAnalysisTab extends BaseElement {
     // Create I&Q constellation adapter if receiver exists
     if (receiver && this.dom_) {
       this.iqConstellationAdapter = new IQConstellationAdapter(receiver, this.dom_);
+    }
+
+    // Create RX payload adapter for data integrity display
+    if (this.dom_) {
+      this.rxPayloadAdapter_ = new RxPayloadAdapter(
+        this.dom_,
+        receiver,
+        this.groundStation.uuid
+      );
     }
   }
 
@@ -764,6 +1040,8 @@ export class RxAnalysisTab extends BaseElement {
     this.spectrumAnalyzerAdvancedAdapter?.dispose();
     this.receiverAdapter?.dispose();
     this.iqConstellationAdapter?.dispose();
+    this.rxPayloadAdapter_?.dispose();
+    this.tapPointAdapter_?.dispose();
 
     this.lnbAdapter = null;
     this.agcAdapter = null;
@@ -773,6 +1051,8 @@ export class RxAnalysisTab extends BaseElement {
     this.spectrumAnalyzerAdvancedAdapter = null;
     this.receiverAdapter = null;
     this.iqConstellationAdapter = null;
+    this.rxPayloadAdapter_ = null;
+    this.tapPointAdapter_ = null;
 
     this.dom_?.remove();
   }

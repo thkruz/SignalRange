@@ -576,11 +576,10 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
 
     // Adjust the amplitude range to fit the signal's power
     this.state.maxAmplitude = Math.ceil(strongestSignal.power / 10) * 10; // Round up to nearest 10 dB
-    this.state.minAmplitude = this.state.maxAmplitude - 60; // 60 dB range
     Logger.info(`Set amplitude range: ${this.state.minAmplitude} dBm to ${this.state.maxAmplitude} dBm.`);
 
     // Adjust the min amplitude to the noise floor if necessary
-    this.state.minAmplitude = this.noiseFloorAndGain - 6; // 6 dB below noise floor
+    this.state.minAmplitude = Math.floor(this.noiseFloorAndGain / 10) * 10; // Round down to nearest 10 dB
     Logger.info(`Adjusted min amplitude to noise floor: ${this.noiseFloorAndGain} dBm.`);
 
     // Ensure max is at least 12 dB above min

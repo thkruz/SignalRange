@@ -53,7 +53,7 @@ export const vermontGroundStation = {
       isLoopback: false,
       temperature: 25,
       currentDraw: 0,
-      loFrequency: 6425 as MHz,
+      loFrequency: 7000 as MHz,
       filterHighHz: FrequencyBand.c.upHigh,
       filterLowHz: FrequencyBand.c.upLow,
       filterRejectionDb: 40 as dB,
@@ -91,7 +91,7 @@ export const vermontGroundStation = {
     lnb: {
       isPowered: true,
       loFrequency: 5250 as MHz,
-      gain: 60 as dB,
+      gain: 65 as dB,
       lnaNoiseFigure: 0.6, // dB
       mixerNoiseFigure: 16.0, // dB
       noiseTemperature: 43, // K - stable
@@ -112,17 +112,19 @@ export const vermontGroundStation = {
       attackTime: 10,
       releaseTime: 100,
       maxGain: 10 as dB,
-      minGain: -60 as dB,
+      minGain: -100 as dB,
     },
     coupler: {
-      isPowered: true,
+      isEngineeringMode: false,
       tapPointA: TapPoint.TX_IF,
       tapPointB: TapPoint.RX_IF,
-      availableTapPointsA: [TapPoint.TX_IF, TapPoint.TX_RF_POST_BUC],
-      availableTapPointsB: [TapPoint.RX_IF],
+      availableTapPointsA: [TapPoint.TX_IF, TapPoint.RX_IF],
+      availableTapPointsB: [TapPoint.TX_IF, TapPoint.RX_IF],
       couplingFactorA: -40, // dB
       couplingFactorB: -39, // dB
-      isActiveA: true,
+      isEnabledA: false,
+      isEnabledB: true,
+      isActiveA: false,
       isActiveB: true,
     } as CouplerState,
     gpsdo: {
@@ -306,14 +308,16 @@ export const maineGroundStation = {
       minGain: -60 as dB,
     },
     coupler: {
-      isPowered: true,
+      isEngineeringMode: false,
       tapPointA: TapPoint.TX_IF,
       tapPointB: TapPoint.RX_IF,
-      availableTapPointsA: [TapPoint.TX_IF, TapPoint.TX_RF_POST_BUC],
-      availableTapPointsB: [TapPoint.RX_IF],
+      availableTapPointsA: [TapPoint.TX_IF, TapPoint.RX_IF],
+      availableTapPointsB: [TapPoint.TX_IF, TapPoint.RX_IF],
       couplingFactorA: -40, // dB
       couplingFactorB: -39, // dB
-      isActiveA: true,
+      isEnabledA: false,
+      isEnabledB: true,
+      isActiveA: false,
       isActiveB: true,
     } as CouplerState,
     gpsdo: {

@@ -28,11 +28,11 @@ export interface HPAState {
  */
 export abstract class HPAModuleCore extends RFFrontEndModule<HPAState> {
   // HPA characteristics
-  protected readonly p1db_ = 50 as dBm; // dBm (100W) output power at 1dB compression point
-  protected readonly maxOutputPower_ = 53 as dBm; // dBm (200W) maximum output power
+  readonly p1db = 59 as dBm; // dBm (800W) output power at 1dB compression point
+  protected readonly maxOutputPower_ = 63 as dBm; // dBm (2000W) maximum output power
   protected readonly minBackOffDb_ = 0;
   protected readonly maxBackOffDb_ = 30;
-  private readonly thermalEfficiency_ = 0.5; // 50% typical for SSPA
+  private readonly thermalEfficiency_ = 0.85;
 
   // Signals
   rfSignalsIn: RfSignal[] = [];
@@ -79,15 +79,28 @@ export abstract class HPAModuleCore extends RFFrontEndModule<HPAState> {
   }
 
   /**
-   * Calculate HPA output power based on input and back-off
+   * Calculate HPA output power based on input signals and back-off
    */
   private updateOutputPower_(): void {
-    if (this.state.isPowered && this.state.isHpaEnabled) {
-      // Calculate output power: P1dB - back-off
-      this.state.outputPower = this.p1db_ - this.state.backOff as dBm;
-    } else {
-      this.state.outputPower = -90 as dBm; // dBm (effectively off)
+    if (!this.state.isPowered || !this.state.isHpaEnabled) {
+      this.state.outputPower = -90 as dBm;
+      return;
     }
+
+    const inputs = this.inputSignals;
+    if (inputs.length === 0) {
+      // Powered but no input - show noise floor
+      this.state.outputPower = -90 as dBm;
+      return;
+    }
+
+    // Calculate output power based on actual input signals (same as processSignals_)
+    const outputPowers = inputs.map(sig => {
+      const gain = this.calculateGain_(sig.power);
+      return sig.power + gain - this.state.backOff;
+    });
+
+    this.state.outputPower = Math.max(...outputPowers) as dBm;
   }
 
   /**
@@ -99,8 +112,8 @@ export abstract class HPAModuleCore extends RFFrontEndModule<HPAState> {
       const powerWatts = Math.pow(10, (this.state.outputPower - 30) / 10); // Convert dBm to Watts
       const dissipatedPower = powerWatts * (1 - this.thermalEfficiency_);
 
-      // Simple thermal model: ambient + thermal rise
-      this.state.temperature = 25 + (dissipatedPower * 10);
+      // Simple thermal model: ambient + thermal rise (0.5°C per Watt dissipated)
+      this.state.temperature = 25 + (dissipatedPower * 0.5);
     } else {
       this.state.temperature = 25; // Ambient temperature
     }
@@ -159,11 +172,11 @@ export abstract class HPAModuleCore extends RFFrontEndModule<HPAState> {
     }
 
     // Ideal linear gain would bring signal to P1dB - backOff
-    const targetOutputDbm = this.p1db_ - this.state.backOff;
+    const targetOutputDbm = this.maxOutputPower_ - this.state.backOff;
     let linearGain = targetOutputDbm - inputPowerDbm;
 
     // Maximum gain limit (e.g., 50 dB typical for HPA)
-    const maxGain = 50;
+    const maxGain = 63;
     if (linearGain > maxGain) {
       linearGain = maxGain;
     }

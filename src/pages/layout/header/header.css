@@ -108,7 +108,7 @@
   font-size: 24px;
   width: 48px;
   height: 48px;
-  border-radius: 50%;
+  border-radius: 0;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -129,4 +129,21 @@
 .header-icon-button svg.icon {
   width: 24px;
   height: 24px;
+}
+
+#eng-mode-btn {
+  color: #60a5fa;
+}
+
+#eng-mode-btn:hover {
+  background-color: rgba(96, 165, 250, 0.1);
+}
+
+.header-icon-button--active {
+  background-color: rgba(96, 165, 250, 0.25);
+  color: #60a5fa;
+}
+
+.header-icon-button--active:hover {
+  background-color: rgba(96, 165, 250, 0.35);
 }

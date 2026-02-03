@@ -5,14 +5,14 @@ import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
 import { EventBus } from "@app/events/event-bus";
 import { Logger } from "@app/logging/logger";
+import { PendingQuizIndicator } from "@app/modal/pending-quiz-indicator";
+import { QuizModal } from "@app/modal/quiz-modal";
 import { ObjectivesManager } from "@app/objectives/objectives-manager";
 import { NavigationOptions } from "@app/router";
 import { ScenarioManager } from "@app/scenario-manager";
 import { ScenarioDialogManager } from "@app/scenarios/scenario-dialog-manager";
 import { AlarmService } from "@app/services/alarm-service";
 import { SimulationManager } from "@app/simulation/simulation-manager";
-import { PendingQuizIndicator } from "@app/modal/pending-quiz-indicator";
-import { QuizModal } from "@app/modal/quiz-modal";
 import { syncEquipmentWithStore } from "@app/sync";
 import { AppState, syncManager } from "@app/sync/storage";
 import { Auth } from "@app/user-account/auth";
@@ -49,7 +49,15 @@ export class MissionControlPage extends BasePage {
     this.navigationOptions_ = options || {};
     this.init_()
 
-    console.log(this.commandBarCenter_, this.timelineDeck_, this.assetTreeSidebar_, this.tabbedCanvas_, this.groundStations_);
+    Logger.info(
+      `
+        ${this.commandBarCenter_},
+        ${this.timelineDeck_},
+        ${this.assetTreeSidebar_},
+        ${this.tabbedCanvas_},
+        ${this.groundStations_}
+      `
+    );
   }
 
   static create(options?: NavigationOptions): MissionControlPage {
@@ -108,9 +116,6 @@ export class MissionControlPage extends BasePage {
     // Initialize components
     this.assetTreeSidebar_ = new AssetTreeSidebar('asset-tree-sidebar-container');
     this.tabbedCanvas_ = new TabbedCanvas('tabbed-canvas-container');
-
-    // Start clock
-    this.startClock_();
 
     // Initialize progress save manager
     this.initProgressSaveManager_();
@@ -246,23 +251,6 @@ export class MissionControlPage extends BasePage {
       // Checkpoint load failed - skip completion modal and start fresh
       this.navigationOptions_.forceReplay = true;
     }
-  }
-
-  /**
-   * Start UTC clock
-   */
-  private startClock_(): void {
-    const updateClock = () => {
-      const now = new Date();
-      const utcString = now.toISOString().replace('T', ' ').split('.')[0] + ' UTC';
-      const clockElement = qs('#utc-clock', this.dom_);
-      if (clockElement) {
-        clockElement.textContent = utcString;
-      }
-    };
-
-    updateClock();
-    setInterval(updateClock, 1000);
   }
 
   protected addEventListeners_(): void {

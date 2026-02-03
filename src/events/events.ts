@@ -1,5 +1,6 @@
 import { GroundStationState } from "@app/assets/ground-station/ground-station-state";
 import { AntennaState } from "@app/equipment/antenna";
+import type { Character } from "@app/modal/character-enum";
 import { RealTimeSpectrumAnalyzerState } from "@app/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer";
 import { AGCState } from "@app/equipment/rf-front-end/agc-module";
 import { BUCState } from "@app/equipment/rf-front-end/buc-module";
@@ -11,10 +12,17 @@ import { HPAState } from "@app/equipment/rf-front-end/hpa-module";
 import { LNBState } from "@app/equipment/rf-front-end/lnb-module";
 import { OMTState } from "@app/equipment/rf-front-end/omt-module/omt-module";
 import { RFFrontEndState } from "@app/equipment/rf-front-end/rf-front-end-core";
+import type {
+  CryptoKeyExpiredData,
+  CryptoKeyRotatedData,
+  CryptoStateChangedData,
+  CryptoZeroizedData,
+} from "@app/equipment/crypto/crypto-types";
 import { Milliseconds } from "ootk";
 import { ReceiverModemState } from "../equipment/receiver/receiver";
 import { TransmitterModem } from "../equipment/transmitter/transmitter";
 import { ConditionState, Objective, ObjectiveState } from "../objectives/objective-types";
+import { OpsLogEntry } from "../ops-log/ops-log-types";
 import { RfSignal } from "../types";
 
 // Antenna Event specific interfaces
@@ -128,6 +136,10 @@ export interface QuizShowData {
   correctIndex: number;
   explanation?: string;
   pointPenalty: number;
+  /** Which character asks the question (default: CHARLIE_BROOKS) */
+  character?: Character;
+  /** If true, options will not be randomized (use for "All of the above" questions) */
+  preserveOptionOrder?: boolean;
 }
 
 export interface QuizAnsweredData {
@@ -161,6 +173,20 @@ export interface QuizPassedData {
   conditionIndex: number;
   attempts: number;
   pointsDeducted: number;
+}
+
+// Hint Event specific interfaces
+export interface HintRequestedData {
+  objectiveId: string;
+  conditionIndex: number;
+  hint: string;
+  penaltyPoints: number;
+}
+
+export interface HintShownData {
+  objectiveId: string;
+  conditionIndex: number;
+  hint: string;
 }
 
 export interface ScenarioTimeExpiredData {
@@ -255,6 +281,21 @@ export interface DualTransmissionViolationData {
   detectedAt: number;
 }
 
+export interface HpaNoiseAmplificationData {
+  groundStationId: string;
+  bucMuted: boolean;
+  bucOff: boolean;
+  detectedAt: number;
+}
+
+// Simulated Time Event specific interfaces
+export interface SimulatedTimeTickData {
+  /** Military format datetime string, e.g., "15 MAR 2025 22:05:15" */
+  timeFormatted: string;
+  /** Unix timestamp in milliseconds */
+  timestampMs: number;
+}
+
 export enum Events {
   // Antenna events
   ANTENNA_STATE_CHANGED = 'antenna:state:changed',
@@ -319,6 +360,10 @@ export enum Events {
   QUIZ_PENDING = 'quiz:pending',
   QUIZ_PASSED = 'quiz:passed',
 
+  // Hint events (for condition hints with 50% point penalty)
+  HINT_REQUESTED = 'hint:requested',
+  HINT_SHOWN = 'hint:shown',
+
   // Progress Save events
   PROGRESS_SAVE_START = 'progress:save:start',
   PROGRESS_SAVE_SUCCESS = 'progress:save:success',
@@ -346,6 +391,27 @@ export enum Events {
   HANDOVER_COMPLETE = 'handover:complete',
   HANDOVER_CANCELLED = 'handover:cancelled',
   DUAL_TRANSMISSION_VIOLATION = 'handover:dual-transmission-violation',
+
+  // RF Safety violations
+  HPA_NOISE_AMPLIFICATION = 'rf:hpa-noise-amplification',
+
+  // Ops Log events
+  OPS_LOG_ENTRY_ADDED = 'ops-log:entry:added',
+
+  // Simulated Time events
+  SIMULATED_TIME_TICK = 'simulated-time:tick',
+
+  // Scenario lifecycle events
+  SCENARIO_CHANGED = 'scenario:changed',
+
+  // Crypto events
+  CRYPTO_STATE_CHANGED = 'crypto:state:changed',
+  CRYPTO_KEY_ROTATED = 'crypto:key:rotated',
+  CRYPTO_KEY_EXPIRED = 'crypto:key:expired',
+  CRYPTO_ZEROIZED = 'crypto:zeroized',
+
+  // Fault injection events
+  FAULT_CHANGED = 'fault:changed',
 }
 
 export interface EventMap {
@@ -406,6 +472,9 @@ export interface EventMap {
   [Events.QUIZ_PENDING]: [QuizPendingData];
   [Events.QUIZ_PASSED]: [QuizPassedData];
 
+  [Events.HINT_REQUESTED]: [HintRequestedData];
+  [Events.HINT_SHOWN]: [HintShownData];
+
   [Events.PROGRESS_SAVE_START]: [ProgressSaveStartData];
   [Events.PROGRESS_SAVE_SUCCESS]: [ProgressSaveSuccessData];
   [Events.PROGRESS_SAVE_ERROR]: [ProgressSaveErrorData];
@@ -430,4 +499,25 @@ export interface EventMap {
   [Events.HANDOVER_COMPLETE]: [HandoverCompleteData];
   [Events.HANDOVER_CANCELLED]: [HandoverCancelledData];
   [Events.DUAL_TRANSMISSION_VIOLATION]: [DualTransmissionViolationData];
+
+  // RF Safety violations
+  [Events.HPA_NOISE_AMPLIFICATION]: [HpaNoiseAmplificationData];
+
+  // Ops Log events
+  [Events.OPS_LOG_ENTRY_ADDED]: [OpsLogEntry];
+
+  // Simulated Time events
+  [Events.SIMULATED_TIME_TICK]: [SimulatedTimeTickData];
+
+  // Scenario lifecycle events
+  [Events.SCENARIO_CHANGED]: [{ scenarioId: string }];
+
+  // Crypto events
+  [Events.CRYPTO_STATE_CHANGED]: [CryptoStateChangedData];
+  [Events.CRYPTO_KEY_ROTATED]: [CryptoKeyRotatedData];
+  [Events.CRYPTO_KEY_EXPIRED]: [CryptoKeyExpiredData];
+  [Events.CRYPTO_ZEROIZED]: [CryptoZeroizedData];
+
+  // Fault injection events
+  [Events.FAULT_CHANGED]: [{ id: string; action: 'injected' | 'cleared' }];
 }

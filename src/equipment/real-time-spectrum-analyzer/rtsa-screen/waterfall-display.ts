@@ -199,42 +199,34 @@ export class WaterfallDisplay extends RTSAScreen {
 
     let norm = (amplitude - minDb) / (maxDb - minDb);
     norm = Math.max(0, Math.min(1, norm));
+    // Bias towards darker blue to make signals stand out from noise
+    norm = norm ** 2.5;
 
-    const brightness = 1;
-
-    // Smooth linear gradient: dark blue -> blue -> cyan -> green -> yellow -> red
+    // Realistic spectrum analyzer gradient: dark blue -> light blue -> yellow -> orange -> red -> dark red
     if (norm < 0.2) {
-      // Dark Blue to Bright Blue
+      // Very Dark Blue to Light Blue
       const t = norm / 0.2;
-      return [0, 0, Math.floor((100 + 155 * t) * brightness)];
+      return [0, Math.floor(100 * t), Math.floor(30 + 225 * t)];
     } else if (norm < 0.4) {
-      // Blue to Cyan
+      // Light Blue to Yellow
       const t = (norm - 0.2) / 0.2;
-      return [0, Math.floor(255 * t * brightness), Math.floor(255 * brightness)];
+      return [
+        Math.floor(255 * t),
+        Math.floor(100 + 155 * t),
+        Math.floor(255 * (1 - t))
+      ];
     } else if (norm < 0.6) {
-      // Cyan to Green
+      // Yellow to Orange
       const t = (norm - 0.4) / 0.2;
-      return [
-        0,
-        Math.floor(255 * brightness),
-        Math.floor(255 * (1 - t) * brightness)
-      ];
+      return [255, Math.floor(255 - 127 * t), 0];
     } else if (norm < 0.8) {
-      // Green to Yellow
+      // Orange to Red
       const t = (norm - 0.6) / 0.2;
-      return [
-        Math.floor(255 * t * brightness),
-        Math.floor(255 * brightness),
-        0
-      ];
+      return [255, Math.floor(128 * (1 - t)), 0];
     } else {
-      // Yellow to Red
+      // Red to Very Dark Red
       const t = (norm - 0.8) / 0.2;
-      return [
-        Math.floor(255 * brightness),
-        Math.floor(255 * (1 - t) * brightness),
-        0
-      ];
+      return [Math.floor(255 - 135 * t), 0, 0];
     }
   }
 

@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { createAntenna } from "../../src/equipment/antenna";
 import { BUCState } from "../../src/equipment/rf-front-end/buc-module/buc-module-core";
 import { TapPoint } from "../../src/equipment/rf-front-end/coupler-module/tap-points";
@@ -16,7 +17,7 @@ import { Events } from "../../src/events/events";
 // Mock HTMLMediaElement.prototype.play for jsdom compatibility
 Object.defineProperty(HTMLMediaElement.prototype, 'play', {
   configurable: true,
-  value: jest.fn().mockResolvedValue(undefined),
+  value: vi.fn().mockResolvedValue(undefined),
 });
 
 describe('RFFrontEndCore class', () => {
@@ -24,7 +25,7 @@ describe('RFFrontEndCore class', () => {
   let parentElement: HTMLElement;
 
   beforeEach(() => {
-    jest.resetModules();
+    vi.resetModules();
 
     // Create a clean DOM root for BaseElement.init_ calls
     document.body.innerHTML = '<div id="test-root"></div>';
@@ -36,7 +37,7 @@ describe('RFFrontEndCore class', () => {
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     document.body.innerHTML = '';
   });
 
@@ -86,7 +87,7 @@ describe('RFFrontEndCore class', () => {
     });
 
     it('should subscribe to UPDATE and SYNC events', () => {
-      const onSpy = jest.spyOn(EventBus.getInstance(), 'on');
+      const onSpy = vi.spyOn(EventBus.getInstance(), 'on');
 
       rfFrontEnd = createRFFrontEnd('test-root');
 
@@ -137,10 +138,9 @@ describe('RFFrontEndCore class', () => {
 
       rfFrontEnd.update();
 
-      // Output = -10 + 60 = 50, but compression kicks in (50 > 15 dBm saturation)
-      // Compression = min((50-15)*0.5, 3) = 3 dB
-      // Final output = 50 - 3 = 47 dBm
-      expect(rfFrontEnd.state.buc.outputPower).toBe(47);
+      // Output = min(inputPower + gain, saturationPower + 2)
+      // = min(-10 + 60, 15 + 2) = min(50, 17) = 17 dBm (saturated)
+      expect(rfFrontEnd.state.buc.outputPower).toBe(17);
     });
 
     it('should set BUC output power to minimum when muted', () => {
@@ -149,6 +149,7 @@ describe('RFFrontEndCore class', () => {
 
       rfFrontEnd.update();
 
+      // When muted, BUC outputs -170 dBm (effectively off)
       expect(rfFrontEnd.state.buc.outputPower).toBe(-170);
     });
 
@@ -337,10 +338,10 @@ describe('RFFrontEndCore class', () => {
     });
 
     it('should update all modules on update()', () => {
-      const omtUpdateSpy = jest.spyOn(rfFrontEnd.omtModule, 'update');
-      const bucUpdateSpy = jest.spyOn(rfFrontEnd.bucModule, 'update');
-      const hpaUpdateSpy = jest.spyOn(rfFrontEnd.hpaModule, 'update');
-      const lnbUpdateSpy = jest.spyOn(rfFrontEnd.lnbModule, 'update');
+      const omtUpdateSpy = vi.spyOn(rfFrontEnd.omtModule, 'update');
+      const bucUpdateSpy = vi.spyOn(rfFrontEnd.bucModule, 'update');
+      const hpaUpdateSpy = vi.spyOn(rfFrontEnd.hpaModule, 'update');
+      const lnbUpdateSpy = vi.spyOn(rfFrontEnd.lnbModule, 'update');
 
       rfFrontEnd.update();
 

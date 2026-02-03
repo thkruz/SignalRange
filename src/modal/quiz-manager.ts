@@ -5,6 +5,7 @@
 
 import { EventBus } from '@app/events/event-bus';
 import { Events, QuizAnsweredData, QuizCompletedData, QuizDismissedData, QuizPassedData, QuizPendingData, QuizShowData } from '@app/events/events';
+import type { Character } from './character-enum';
 
 interface QuizState {
   objectiveId: string;
@@ -14,6 +15,8 @@ interface QuizState {
   correctIndex: number;
   explanation?: string;
   pointPenalty: number;
+  character?: Character;
+  preserveOptionOrder?: boolean;
   attempts: number;
   totalPointsDeducted: number;
   isComplete: boolean;
@@ -63,7 +66,9 @@ export class QuizManager {
     options: string[],
     correctIndex: number,
     explanation?: string,
-    pointPenalty: number = 5
+    pointPenalty: number = 5,
+    character?: Character,
+    preserveOptionOrder?: boolean
   ): void {
     const key = this.getKey_(objectiveId, conditionIndex);
 
@@ -76,6 +81,8 @@ export class QuizManager {
         correctIndex,
         explanation,
         pointPenalty,
+        character,
+        preserveOptionOrder,
         attempts: 0,
         totalPointsDeducted: 0,
         isComplete: false,
@@ -162,6 +169,8 @@ export class QuizManager {
       correctIndex: state.correctIndex,
       explanation: state.explanation,
       pointPenalty: state.pointPenalty,
+      character: state.character,
+      preserveOptionOrder: state.preserveOptionOrder,
     };
 
     EventBus.getInstance().emit(Events.QUIZ_SHOW, showData);
@@ -243,6 +252,31 @@ export class QuizManager {
     state.isComplete = true;
     state.attempts = data.totalAttempts;
     state.totalPointsDeducted = data.totalPointsDeducted;
+
+    // Check if there are other incomplete quizzes in the same objective
+    // and emit QUIZ_PENDING for the first one found
+    this.emitPendingForNextIncompleteQuiz_(data.objectiveId);
+  }
+
+  /**
+   * Find and emit QUIZ_PENDING for the next incomplete quiz in the given objective.
+   * This ensures that when one quiz is completed, any remaining quizzes get their
+   * pending indicator shown.
+   */
+  private emitPendingForNextIncompleteQuiz_(objectiveId: string): void {
+    for (const [key, state] of this.quizStates_) {
+      if (state.objectiveId === objectiveId && !state.isComplete) {
+        // Found an incomplete quiz in this objective - set it as pending
+        this.pendingQuizKey_ = key;
+
+        const pendingData: QuizPendingData = {
+          objectiveId: state.objectiveId,
+          conditionIndex: state.conditionIndex,
+        };
+        EventBus.getInstance().emit(Events.QUIZ_PENDING, pendingData);
+        return;
+      }
+    }
   }
 
   /**

@@ -2,8 +2,8 @@ import { Hertz, dB } from "@app/types";
 import { RealTimeSpectrumAnalyzerState } from "./real-time-spectrum-analyzer";
 
 export const defaultSpectrumAnalyzerState: Partial<RealTimeSpectrumAnalyzerState> = {
-  isUseTapA: true,
-  isUseTapB: true,
+  isUseTapA: false,  // TX IF - disabled by default to avoid confusion with RX signals
+  isUseTapB: true,   // RX IF - primary tap for receive analysis
   isPaused: false,
   isMaxHold: false,
   isMinHold: false,

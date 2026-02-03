@@ -6,6 +6,7 @@ import { BUCAdapter } from './buc-adapter';
 import { HPAAdapter } from './hpa-adapter';
 import { TransmitterAdapter } from './transmitter-adapter';
 import './tx-chain-tab.css';
+import { TxPayloadAdapter } from './tx-payload-adapter';
 
 /**
  * TxChainTab - Transmitter chain control and monitoring
@@ -20,10 +21,12 @@ import './tx-chain-tab.css';
  * Modulator → BUC → HPA → OMT → Antenna
  */
 export class TxChainTab extends BaseElement {
+  protected html_!: string;
   private readonly groundStation: GroundStation;
   private bucAdapter: BUCAdapter | null = null;
   private hpaAdapter: HPAAdapter | null = null;
   private transmitterAdapter: TransmitterAdapter | null = null;
+  private payloadAdapter_: TxPayloadAdapter | null = null;
 
   constructor(groundStation: GroundStation, containerId: string) {
     super();
@@ -34,13 +37,17 @@ export class TxChainTab extends BaseElement {
       this.groundStation.initializeEquipment();
     }
 
+    // Must set html_ here (after groundStation is set) for dynamic antenna options
+    this.html_ = this.buildHtml_();
+
     this.init_(containerId, 'replace');
     this.dom_ = qs('.tx-chain-tab');
 
     this.addEventListenersLate_();
   }
 
-  protected html_ = html`
+  private buildHtml_(): string {
+    return html`
     <div class="tx-chain-tab">
       <div class="row g-2 pb-6">
         <!-- BUC Control Card -->
@@ -61,7 +68,7 @@ export class TxChainTab extends BaseElement {
                   </div>
                   <div class="equip-adjust-display">
                     <input type="number" id="buc-lo-frequency" class="equip-adjust-input"
-                           min="6000" max="7000" step="1" value="6425" />
+                           min="6000" max="7500" step="1" value="6425" />
                   </div>
                   <div class="equip-adjust-buttons equip-adjust-increase">
                     <button id="buc-lo-inc-fine" class="btn-equip" title="+10 MHz">+10</button>
@@ -109,6 +116,10 @@ export class TxChainTab extends BaseElement {
                     <div class="form-check form-switch">
                       <input type="checkbox" id="buc-mute" class="form-check-input" role="switch" />
                       <label for="buc-mute" class="form-check-label small">Mute</label>
+                    </div>
+                    <div class="form-check form-switch">
+                      <input type="checkbox" id="buc-loopback" class="form-check-input" role="switch" />
+                      <label for="buc-loopback" class="form-check-label small">Loopback</label>
                     </div>
                   </div>
                 </div>
@@ -185,7 +196,7 @@ export class TxChainTab extends BaseElement {
             <div class="card-body">
               <!-- Back-off Control -->
               <div class="equip-adjust-control">
-                <label class="equip-adjust-label">Back-off from P1dB</label>
+                <label class="equip-adjust-label">Back-off from Max Output Power</label>
                 <div class="equip-adjust-row">
                   <div class="equip-adjust-buttons equip-adjust-decrease">
                     <button id="hpa-backoff-dec-coarse" class="btn-equip" title="-5 dB">-5</button>
@@ -227,7 +238,11 @@ export class TxChainTab extends BaseElement {
                 <!-- Power Output Column -->
                 <div class="col-7">
                   <div class="metric-group h-100">
-                    <div class="metric-group-title">Power Output</div>
+                    <div class="metric-group-title">Power</div>
+                    <div class="metric-row">
+                      <span class="metric-label">Input:</span>
+                      <span id="hpa-input-power-display" class="metric-value">-- dBm</span>
+                    </div>
                     <div class="metric-row">
                       <span class="metric-label">Output:</span>
                       <span id="hpa-output-power-display" class="metric-value">50.0 dBm</span>
@@ -321,8 +336,7 @@ export class TxChainTab extends BaseElement {
                       <div class="mb-2">
                         <label class="form-label small">Antenna</label>
                         <select id="tx-antenna-select" class="form-select form-select-sm">
-                          <option value="1">Antenna 1</option>
-                          <option value="2">Antenna 2</option>
+                          ${this.generateAntennaOptions_()}
                         </select>
                       </div>
 
@@ -395,6 +409,14 @@ export class TxChainTab extends BaseElement {
                         </div>
                       </div>
 
+                      <!-- Output Power Display -->
+                      <div class="mb-2">
+                        <label class="form-label small d-flex justify-content-between">
+                          <span>Output Power</span>
+                          <span id="tx-output-power" class="fw-bold font-monospace">-- dBm</span>
+                        </label>
+                      </div>
+
                       <!-- Switches -->
                       <div class="mb-2">
                         <div class="form-check form-switch mb-1">
@@ -415,19 +437,19 @@ export class TxChainTab extends BaseElement {
                       <div class="mb-2">
                         <div class="d-flex justify-content-around">
                           <div class="text-center">
-                            <div id="tx-transmit-led" class="led led-gray mb-1"></div>
+                            <div id="tx-transmit-led" class="card-alarm-led off mb-1"></div>
                             <small class="text-muted" style="font-size: 0.65rem;">TX</small>
                           </div>
                           <div class="text-center">
-                            <div id="tx-fault-led" class="led led-gray mb-1"></div>
+                            <div id="tx-fault-led" class="card-alarm-led off mb-1"></div>
                             <small class="text-muted" style="font-size: 0.65rem;">Fault</small>
                           </div>
                           <div class="text-center">
-                            <div id="tx-loopback-led" class="led led-gray mb-1"></div>
+                            <div id="tx-loopback-led" class="card-alarm-led off mb-1"></div>
                             <small class="text-muted" style="font-size: 0.65rem;">Loop</small>
                           </div>
                           <div class="text-center">
-                            <div id="tx-online-led" class="led led-gray mb-1"></div>
+                            <div id="tx-online-led" class="card-alarm-led off mb-1"></div>
                             <small class="text-muted" style="font-size: 0.65rem;">Online</small>
                           </div>
                         </div>
@@ -448,21 +470,131 @@ export class TxChainTab extends BaseElement {
           </div>
         </div>
 
-        <!-- Redundancy Controller Placeholder Card -->
-        <!-- <div class="col-lg-4">
+        <!-- TX Payload Data Card -->
+        <div class="col-lg-6">
           <div class="card h-100">
-            <div class="card-header">
-              <h3 class="card-title">Redundancy Controller</h3>
+            <div class="card-header d-flex justify-content-between align-items-center">
+              <h3 class="card-title">TX Payload Data</h3>
+              <div id="tx-payload-alarm-badge"></div>
             </div>
-            <div class="card-body text-center d-flex flex-column justify-content-center">
-              <p class="text-muted mb-2">Redundancy controller coming in future phase</p>
-              <p class="text-muted small mb-0">Status: Not Implemented</p>
+            <div class="card-body">
+              <!-- Source Status and TX Encryption Row -->
+              <div class="row g-2 mb-2">
+                <!-- Source Status Column -->
+                <div class="col-6">
+                  <div class="metric-group h-100">
+                    <div class="metric-group-title">Source Status</div>
+                    <div class="metric-row">
+                      <span class="metric-label">Data Rate:</span>
+                      <span id="tx-payload-data-rate" class="metric-value">2.048 Mbps</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Payload Type:</span>
+                      <span id="tx-payload-type" class="metric-value">Command</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Channel:</span>
+                      <span id="tx-payload-channel" class="metric-value">Primary</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Source Feed:</span>
+                      <span id="tx-payload-source-feed" class="status-badge status-badge-green">Active</span>
+                    </div>
+                  </div>
+                </div>
+                <!-- TX Encryption Column -->
+                <div class="col-6">
+                  <div class="metric-group h-100">
+                    <div class="metric-group-title">TX Encryption</div>
+                    <div class="metric-row">
+                      <span class="metric-label">Mode:</span>
+                      <span id="tx-payload-enc-mode" class="status-badge status-badge-green">ACTIVE</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Algorithm:</span>
+                      <span id="tx-payload-enc-algorithm" class="metric-value">AES-256-GCM</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Key ID:</span>
+                      <span id="tx-payload-enc-key-id" class="metric-value font-monospace">TANGO-2024-0847</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Key Status:</span>
+                      <span id="tx-payload-enc-key-status" class="status-badge status-badge-green">Valid</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Expires:</span>
+                      <span id="tx-payload-enc-expires" class="metric-value">47 days</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Auth Tag:</span>
+                      <span id="tx-payload-enc-auth-tag" class="status-badge status-badge-green">Verified</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Throughput and Buffer Status Row -->
+              <div class="row g-2">
+                <!-- Throughput Column -->
+                <div class="col-6">
+                  <div class="metric-group h-100">
+                    <div class="metric-group-title">Throughput</div>
+                    <div class="metric-row">
+                      <span class="metric-label">Frames/sec:</span>
+                      <span id="tx-payload-frames-sec" class="metric-value font-monospace">1,024</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Efficiency:</span>
+                      <span id="tx-payload-efficiency" class="metric-value">94.2%</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Errors:</span>
+                      <span id="tx-payload-errors" class="metric-value">0</span>
+                    </div>
+                  </div>
+                </div>
+                <!-- Buffer Status Column -->
+                <div class="col-6">
+                  <div class="metric-group h-100">
+                    <div class="metric-group-title d-flex justify-content-between align-items-center">
+                      <span>Buffer Status</span>
+                      <span id="tx-payload-buffer-status" class="status-badge status-badge-good">Healthy</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Utilization:</span>
+                      <div class="d-flex align-items-center gap-2">
+                        <div class="progress flex-grow-1" style="height: 6px;">
+                          <div id="tx-payload-buffer-bar" class="progress-bar" style="width: 45%"></div>
+                        </div>
+                        <span id="tx-payload-buffer-pct" class="metric-value" style="min-width: 32px;">45%</span>
+                      </div>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Overflows:</span>
+                      <span id="tx-payload-overflows" class="metric-value">0</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Underruns:</span>
+                      <span id="tx-payload-underruns" class="metric-value">0</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-        </div> -->
+        </div>
       </div>
     </div>
   `;
+  }
+
+  private generateAntennaOptions_(): string {
+    return this.groundStation.antennas.map((_, index) => {
+      const antennaNumber = index + 1;
+      return `<option value="${antennaNumber}">Antenna ${antennaNumber}</option>`;
+    }).join('');
+  }
 
   protected addEventListeners_(): void {
     // Add event listeners late
@@ -484,6 +616,11 @@ export class TxChainTab extends BaseElement {
     const transmitter = this.groundStation.transmitters[0];
     if (transmitter && this.dom_) {
       this.transmitterAdapter = new TransmitterAdapter(transmitter, this.dom_);
+    }
+
+    // Setup payload adapter (static display for training)
+    if (this.dom_) {
+      this.payloadAdapter_ = new TxPayloadAdapter(this.dom_, this.groundStation.uuid);
     }
   }
 
@@ -512,10 +649,12 @@ export class TxChainTab extends BaseElement {
     this.bucAdapter?.dispose();
     this.hpaAdapter?.dispose();
     this.transmitterAdapter?.dispose();
+    this.payloadAdapter_?.dispose();
 
     this.bucAdapter = null;
     this.hpaAdapter = null;
     this.transmitterAdapter = null;
+    this.payloadAdapter_ = null;
 
     this.dom_?.remove();
   }

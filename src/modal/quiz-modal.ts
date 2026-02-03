@@ -19,6 +19,7 @@ export class QuizModal extends DraggableBox {
   private static instance_: QuizModal | null = null;
 
   private currentQuiz_: QuizShowData | null = null;
+  private currentCharacter_: Character = Character.CHARLIE_BROOKS;
   private attempts_: number = 0;
   private totalPointsDeducted_: number = 0;
   private isShowingFeedback_: boolean = false;
@@ -91,6 +92,7 @@ export class QuizModal extends DraggableBox {
 
   private handleShowQuiz_(data: QuizShowData): void {
     this.currentQuiz_ = data;
+    this.currentCharacter_ = data.character ?? Character.CHARLIE_BROOKS;
     this.attempts_ = 0;
     this.totalPointsDeducted_ = 0;
     this.isShowingFeedback_ = false;
@@ -139,10 +141,30 @@ export class QuizModal extends DraggableBox {
 
     if (!questionEl || !optionsEl || !feedbackEl || !penaltyEl) return;
 
-    // Update avatar to show confident emotion
-    const avatarEl = getEl('quiz-avatar') as HTMLImageElement;
-    if (avatarEl) {
-      avatarEl.src = getCharacterAvatarUrl(Character.CHARLIE_BROOKS, Emotion.CONFIDENT);
+    // Update header based on character type
+    const isSystemMode = this.currentCharacter_ === Character.SYSTEM;
+    const headerEl = this.boxEl?.querySelector('.quiz-header') as HTMLElement;
+
+    if (headerEl) {
+      if (isSystemMode) {
+        // Self-check mode: show icon instead of NPC avatar
+        headerEl.innerHTML = html`
+          <div class="quiz-self-check-icon">?</div>
+          <div class="quiz-header-text">
+            <span class="quiz-character-name">Knowledge Check</span>
+            <span class="quiz-prompt-label">Verify your understanding</span>
+          </div>
+        `;
+      } else {
+        // NPC mode: show avatar and name
+        headerEl.innerHTML = html`
+          <img id="quiz-avatar" class="quiz-avatar" src="${getCharacterAvatarUrl(this.currentCharacter_, Emotion.CONFIDENT)}" alt="${CharacterNames[this.currentCharacter_]}">
+          <div class="quiz-header-text">
+            <span class="quiz-character-name">${CharacterNames[this.currentCharacter_]}</span>
+            <span class="quiz-prompt-label">asks:</span>
+          </div>
+        `;
+      }
     }
 
     // Set question text
@@ -271,10 +293,13 @@ export class QuizModal extends DraggableBox {
     this.showOverlay_();
 
     const feedbackEl = getEl('quiz-feedback');
-    const avatarEl = getEl('quiz-avatar') as HTMLImageElement;
 
-    if (avatarEl) {
-      avatarEl.src = getCharacterAvatarUrl(Character.CHARLIE_BROOKS, Emotion.HAPPY);
+    // Update avatar emotion (skip for SYSTEM mode - no avatar)
+    if (this.currentCharacter_ !== Character.SYSTEM) {
+      const avatarEl = getEl('quiz-avatar') as HTMLImageElement;
+      if (avatarEl) {
+        avatarEl.src = getCharacterAvatarUrl(this.currentCharacter_, Emotion.HAPPY);
+      }
     }
 
     if (feedbackEl) {
@@ -380,10 +405,13 @@ export class QuizModal extends DraggableBox {
 
     const feedbackEl = getEl('quiz-feedback');
     const penaltyEl = getEl('quiz-penalty-notice');
-    const avatarEl = getEl('quiz-avatar') as HTMLImageElement;
 
-    if (avatarEl) {
-      avatarEl.src = getCharacterAvatarUrl(Character.CHARLIE_BROOKS, Emotion.CONCERNED);
+    // Update avatar emotion (skip for SYSTEM mode - no avatar)
+    if (this.currentCharacter_ !== Character.SYSTEM) {
+      const avatarEl = getEl('quiz-avatar') as HTMLImageElement;
+      if (avatarEl) {
+        avatarEl.src = getCharacterAvatarUrl(this.currentCharacter_, Emotion.CONCERNED);
+      }
     }
 
     if (feedbackEl) {
@@ -416,12 +444,15 @@ export class QuizModal extends DraggableBox {
       wrongBtn.classList.add('disabled');
     }
 
-    // Reset avatar after a short delay
-    setTimeout(() => {
-      if (avatarEl && !this.isShowingFeedback_) {
-        avatarEl.src = getCharacterAvatarUrl(Character.CHARLIE_BROOKS, Emotion.CONFIDENT);
-      }
-    }, 1500);
+    // Reset avatar after a short delay (skip for SYSTEM mode - no avatar)
+    if (this.currentCharacter_ !== Character.SYSTEM) {
+      setTimeout(() => {
+        const avatarEl = getEl('quiz-avatar') as HTMLImageElement;
+        if (avatarEl && !this.isShowingFeedback_) {
+          avatarEl.src = getCharacterAvatarUrl(this.currentCharacter_, Emotion.CONFIDENT);
+        }
+      }, 1500);
+    }
   }
 
   private disableOptions_(): void {
@@ -463,15 +494,15 @@ export class QuizModal extends DraggableBox {
 
   /**
    * Fisher-Yates shuffle to randomize answer order
-   * For single-option quizzes, no shuffle is needed
+   * For single-option quizzes or when preserveOptionOrder is true, no shuffle is performed
    */
   private shuffleIndices_(): number[] {
     if (!this.currentQuiz_) return [];
     const count = this.currentQuiz_.options.length;
     const indices = Array.from({ length: count }, (_, i) => i);
 
-    // Don't shuffle single-option quizzes
-    if (count === 1) return indices;
+    // Don't shuffle single-option quizzes or when order must be preserved (e.g., "All of the above")
+    if (count === 1 || this.currentQuiz_.preserveOptionOrder) return indices;
 
     for (let i = indices.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));

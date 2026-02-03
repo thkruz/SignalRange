@@ -6,6 +6,9 @@ import { DialogHistoryBox } from '@app/modal/dialog-history-box';
 import { DraggableHtmlBox } from '@app/modal/draggable-html-box';
 import { QuizManager } from '@app/modal/quiz-manager';
 import { ObjectivesManager } from '@app/objectives';
+import { EventAutoLogger } from '@app/ops-log/event-auto-logger';
+import { OpsLogManager } from '@app/ops-log/ops-log-manager';
+import { OpsLogModal } from '@app/ops-log/ops-log-modal';
 import { Equipment } from '@app/pages/sandbox/equipment';
 import { ScenarioManager } from '@app/scenario-manager';
 import { ProgressSaveManager } from '@app/user-account/progress-save-manager';
@@ -16,6 +19,8 @@ import { RfSignal } from './../types';
 export class SimulationManager {
   private static instance_: SimulationManager;
   private lastFrameTime: number;
+  private animationFrameId_: number | null = null;
+  private isDestroyed_ = false;
   equipment: Equipment | null = null;
   groundStations: GroundStation[] = [];
   isDeveloperMode = false;
@@ -58,13 +63,18 @@ export class SimulationManager {
 
 
   private gameLoop_(): void {
+    // Stop the loop if destroyed
+    if (this.isDestroyed_) {
+      return;
+    }
+
     const now = Date.now();
     this.dt = (now - this.lastFrameTime) as Milliseconds;
     this.lastFrameTime = now;
 
     this.update(this.dt);
     this.draw(this.dt);
-    requestAnimationFrame(this.gameLoop_.bind(this));
+    this.animationFrameId_ = requestAnimationFrame(this.gameLoop_.bind(this));
   }
 
   private update(_dt: Milliseconds): void {
@@ -93,12 +103,24 @@ export class SimulationManager {
   }
 
   static destroy(): void {
-    SimulationManager.instance_?.checklistBox?.close();
-    SimulationManager.instance_?.missionBriefBox?.close();
-    SimulationManager.instance_ = null;
+    if (SimulationManager.instance_) {
+      // Stop the animation loop
+      SimulationManager.instance_.isDestroyed_ = true;
+      if (SimulationManager.instance_.animationFrameId_ !== null) {
+        cancelAnimationFrame(SimulationManager.instance_.animationFrameId_);
+        SimulationManager.instance_.animationFrameId_ = null;
+      }
+
+      SimulationManager.instance_.checklistBox?.close();
+      SimulationManager.instance_.missionBriefBox?.close();
+      SimulationManager.instance_ = null;
+    }
 
     // Clean up singleton managers
     ObjectivesManager.destroy();
     QuizManager.destroy();
+    EventAutoLogger.destroy();
+    OpsLogManager.destroy();
+    OpsLogModal.destroy();
   }
 }

@@ -1,5 +1,5 @@
 import { CampaignManager } from "./campaigns/campaign-manager";
-import { natsCampaignData } from "./campaigns/nats/campaign-data";
+import { ccsCampaignData, geolocationCampaignData, hamSdrCampaignData, natsCampaignData, natsEuCampaignData } from "./campaigns/nats/campaign-data";
 import { EventBus } from "./events/event-bus";
 import { Events } from "./events/events";
 import { CampaignSelectionPage } from "./pages/campaign-selection";
@@ -41,6 +41,10 @@ export class Router {
     // Register campaigns
     const campaignManager = CampaignManager.getInstance();
     campaignManager.registerCampaign(natsCampaignData);
+    campaignManager.registerCampaign(natsEuCampaignData);
+    campaignManager.registerCampaign(hamSdrCampaignData);
+    campaignManager.registerCampaign(ccsCampaignData);
+    campaignManager.registerCampaign(geolocationCampaignData);
 
     // Listen for popstate (back/forward buttons)
     globalThis.addEventListener('popstate', () => this.handleRoute());

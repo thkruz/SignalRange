@@ -1,6 +1,7 @@
 import { EventBus } from '@app/events/event-bus';
 import { Events, ObjectivesAllCompletedData } from '@app/events/events';
 import { Logger } from '@app/logging/logger';
+import { HintManager } from '@app/modal/hint-manager';
 import { LevelCompleteModal } from '@app/modal/level-complete-modal';
 import { QuizManager } from '@app/modal/quiz-manager';
 import { ObjectivesManager } from '@app/objectives';
@@ -84,8 +85,11 @@ export class ScenarioCompletionHandler {
     // Aggregate time penalties
     const timePenalties = this.aggregateTimePenalties_(objectives);
 
+    // Aggregate hint penalties
+    const hintPenalties = this.aggregateHintPenalties_(objectives);
+
     // Calculate score
-    const score = ScoreCalculator.calculate(objectives, timeRemaining, quizPenalties, timePenalties);
+    const score = ScoreCalculator.calculate(objectives, timeRemaining, quizPenalties, timePenalties, hintPenalties);
 
     Logger.info('Score calculated:', score);
 
@@ -134,6 +138,17 @@ export class ScenarioCompletionHandler {
   }
 
   /**
+   * Aggregate hint penalties across all objectives
+   * Returns 50% of objective points for each objective that had hints requested
+   */
+  private aggregateHintPenalties_(objectives: readonly ReturnType<ObjectivesManager['getObjectiveStates']>[number][]): number {
+    const hintManager = HintManager.getInstance();
+    return objectives.reduce((total, objState) => {
+      return total + hintManager.getHintPenalty(objState.objective.id);
+    }, 0);
+  }
+
+  /**
    * Extract campaign ID from current route
    * Route format: /campaigns/{campaignId}/scenarios/{scenarioId}
    */
@@ -159,6 +174,7 @@ export class ScenarioCompletionHandler {
         timeBonus: score.timeBonus,
         quizPenalties: score.quizPenalties,
         timePenalties: score.timePenalties,
+        hintPenalties: score.hintPenalties,
         completedAt: new Date().toISOString(),
         lastPlayed: new Date().toISOString(),
         scenarioNumber,

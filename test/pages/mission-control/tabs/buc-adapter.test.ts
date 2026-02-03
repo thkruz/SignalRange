@@ -1,25 +1,26 @@
-import { BUCAdapter } from '../../../../src/pages/mission-control/tabs/buc-adapter';
+import { Mock, Mocked, vi } from 'vitest';
 import { BUCModuleCore, BUCState } from '../../../../src/equipment/rf-front-end/buc-module/buc-module-core';
 import { EventBus } from '../../../../src/events/event-bus';
 import { Events } from '../../../../src/events/events';
+import { BUCAdapter } from '../../../../src/pages/mission-control/tabs/buc-adapter';
 
 // Mock dependencies
-jest.mock('../../../../src/events/event-bus');
-jest.mock('../../../../src/components/card-alarm-badge/card-alarm-badge', () => ({
+vi.mock('../../../../src/events/event-bus');
+vi.mock('../../../../src/components/card-alarm-badge/card-alarm-badge', () => ({
   CardAlarmBadge: {
-    create: jest.fn(() => ({
+    create: vi.fn(() => ({
       html: '<div class="mock-badge"></div>',
-      update: jest.fn(),
-      dispose: jest.fn(),
+      update: vi.fn(),
+      dispose: vi.fn(),
     })),
   },
 }));
 
 describe('BUCAdapter', () => {
-  let mockBucModule: jest.Mocked<BUCModuleCore>;
+  let mockBucModule: Mocked<BUCModuleCore>;
   let containerEl: HTMLElement;
   let adapter: BUCAdapter;
-  let mockEventBus: { on: jest.Mock; off: jest.Mock; emit: jest.Mock };
+  let mockEventBus: { on: Mock; off: Mock; emit: Mock };
 
   const mockState: BUCState = {
     isPowered: true,
@@ -33,30 +34,31 @@ describe('BUCAdapter', () => {
     currentDraw: 2.5,
     phaseNoise: -80,
     frequencyError: 50,
-  };
+  } as BUCState;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Setup mock EventBus
     mockEventBus = {
-      on: jest.fn(),
-      off: jest.fn(),
-      emit: jest.fn(),
+      on: vi.fn(),
+      off: vi.fn(),
+      emit: vi.fn(),
     };
-    (EventBus.getInstance as jest.Mock).mockReturnValue(mockEventBus);
+    (EventBus.getInstance as Mock).mockReturnValue(mockEventBus);
 
     // Setup mock BUCModuleCore
     mockBucModule = {
       state: { ...mockState },
-      outputSignals: [{ frequency: 5943e6 }],
-      handleLoFrequencyChange: jest.fn(),
-      handleGainChange: jest.fn(),
-      handlePowerToggle: jest.fn(),
-      handleMuteToggle: jest.fn(),
-      getActiveInjectionMode: jest.fn().mockReturnValue('low'),
-      getAlarms: jest.fn().mockReturnValue([]),
-    } as unknown as jest.Mocked<BUCModuleCore>;
+      outputSignals: [{ frequency: 5943e6, power: 35 }],
+      handleLoFrequencyChange: vi.fn(),
+      handleGainChange: vi.fn(),
+      handlePowerToggle: vi.fn(),
+      handleMuteToggle: vi.fn(),
+      handleLoopbackToggle: vi.fn(),
+      getActiveInjectionMode: vi.fn().mockReturnValue('low'),
+      getAlarms: vi.fn().mockReturnValue([]),
+    } as unknown as Mocked<BUCModuleCore>;
 
     // Setup container with required DOM elements
     containerEl = document.createElement('div');
@@ -75,6 +77,7 @@ describe('BUCAdapter', () => {
       <button id="buc-apply-btn">Apply</button>
       <input type="checkbox" id="buc-power" />
       <input type="checkbox" id="buc-mute" />
+      <input type="checkbox" id="buc-loopback" />
       <span id="buc-sideband-status"></span>
       <span id="buc-output-power-display"></span>
       <span id="buc-rf-frequency-display"></span>
@@ -147,11 +150,11 @@ describe('BUCAdapter', () => {
     it('should clamp LO frequency to valid range', () => {
       const loInput = containerEl.querySelector('#buc-lo-frequency') as HTMLInputElement;
 
-      // Set value above max (7000)
+      // Set value above max (7500)
       loInput.value = '8000';
       loInput.dispatchEvent(new Event('change'));
 
-      expect(loInput.value).toBe('7000');
+      expect(loInput.value).toBe('7500');
     });
 
     it('should clamp gain to valid range', () => {
@@ -314,6 +317,313 @@ describe('BUCAdapter', () => {
 
       const display = containerEl.querySelector('#buc-freq-error-display') as HTMLElement;
       expect(display.textContent).toBe('500 Hz');
+    });
+  });
+
+  describe('throttled sync via UPDATE event', () => {
+    it('should sync read-only displays when UPDATE event fires past throttle', () => {
+      // Find UPDATE handler
+      const updateHandler = mockEventBus.on.mock.calls.find(
+        (call: unknown[]) => call[0] === Events.UPDATE
+      )?.[1];
+      expect(updateHandler).toBeDefined();
+
+      // Update module state - note: output power now comes from outputSignals
+      mockBucModule.outputSignals[0].power = 42.5;
+      mockBucModule.state.temperature = 55;
+
+      // Trigger update with time past throttle
+      vi.spyOn(Date, 'now').mockReturnValue(2000);
+      updateHandler();
+
+      const outputDisplay = containerEl.querySelector('#buc-output-power-display') as HTMLElement;
+      expect(outputDisplay.textContent).toBe('42.5 dBm');
+
+      const tempDisplay = containerEl.querySelector('#buc-temperature-display') as HTMLElement;
+      expect(tempDisplay.textContent).toBe('55.0 °C');
+    });
+
+    it('should not sync if within throttle interval', () => {
+      const updateHandler = mockEventBus.on.mock.calls.find(
+        (call: unknown[]) => call[0] === Events.UPDATE
+      )?.[1];
+
+      mockBucModule.state.outputPower = 42.5;
+
+      // First call at time 0 - should not sync due to initial throttle
+      vi.spyOn(Date, 'now').mockReturnValue(0);
+      updateHandler();
+
+      // Output should still be from initial sync
+      const outputDisplay = containerEl.querySelector('#buc-output-power-display') as HTMLElement;
+      expect(outputDisplay.textContent).toBe('35.0 dBm');
+    });
+
+    it('should update lock status during throttled sync', () => {
+      const updateHandler = mockEventBus.on.mock.calls.find(
+        (call: unknown[]) => call[0] === Events.UPDATE
+      )?.[1];
+
+      mockBucModule.state.isExtRefLocked = false;
+
+      vi.spyOn(Date, 'now').mockReturnValue(2000);
+      updateHandler();
+
+      const lockStatus = containerEl.querySelector('#buc-lock-status') as HTMLElement;
+      expect(lockStatus.textContent).toBe('Unlocked');
+      expect(lockStatus.className).toContain('status-badge-unlocked');
+    });
+
+    it('should update P1dB margin during throttled sync', () => {
+      const updateHandler = mockEventBus.on.mock.calls.find(
+        (call: unknown[]) => call[0] === Events.UPDATE
+      )?.[1];
+
+      mockBucModule.state.outputPower = 38;
+      mockBucModule.state.saturationPower = 40;
+
+      vi.spyOn(Date, 'now').mockReturnValue(2000);
+      updateHandler();
+
+      const p1dbDisplay = containerEl.querySelector('#buc-p1db-margin-display') as HTMLElement;
+      expect(p1dbDisplay.textContent).toBe('2.0 dB');
+    });
+
+    it('should update current draw during throttled sync', () => {
+      const updateHandler = mockEventBus.on.mock.calls.find(
+        (call: unknown[]) => call[0] === Events.UPDATE
+      )?.[1];
+
+      mockBucModule.state.currentDraw = 3.25;
+
+      vi.spyOn(Date, 'now').mockReturnValue(2000);
+      updateHandler();
+
+      const currentDisplay = containerEl.querySelector('#buc-current-display') as HTMLElement;
+      expect(currentDisplay.textContent).toBe('3.25 A');
+    });
+
+    it('should update phase noise during throttled sync', () => {
+      const updateHandler = mockEventBus.on.mock.calls.find(
+        (call: unknown[]) => call[0] === Events.UPDATE
+      )?.[1];
+
+      mockBucModule.state.phaseNoise = -85;
+
+      vi.spyOn(Date, 'now').mockReturnValue(2000);
+      updateHandler();
+
+      const phaseNoiseDisplay = containerEl.querySelector('#buc-phase-noise-display') as HTMLElement;
+      expect(phaseNoiseDisplay.textContent).toBe('-85 dBc/Hz');
+    });
+
+    it('should show placeholder values when powered off during throttled sync', () => {
+      const updateHandler = mockEventBus.on.mock.calls.find(
+        (call: unknown[]) => call[0] === Events.UPDATE
+      )?.[1];
+
+      mockBucModule.state.isPowered = false;
+
+      vi.spyOn(Date, 'now').mockReturnValue(2000);
+      updateHandler();
+
+      const outputDisplay = containerEl.querySelector('#buc-output-power-display') as HTMLElement;
+      expect(outputDisplay.textContent).toBe('-- dBm');
+
+      const rfFreqDisplay = containerEl.querySelector('#buc-rf-frequency-display') as HTMLElement;
+      expect(rfFreqDisplay.textContent).toBe('-- MHz');
+    });
+  });
+
+  describe('sideband status display', () => {
+    it('should show USB for low injection mode', () => {
+      mockBucModule.getActiveInjectionMode.mockReturnValue('low');
+
+      const updateHandler = mockEventBus.on.mock.calls.find(
+        (call: unknown[]) => call[0] === Events.UPDATE
+      )?.[1];
+
+      vi.spyOn(Date, 'now').mockReturnValue(2000);
+      updateHandler();
+
+      const status = containerEl.querySelector('#buc-sideband-status') as HTMLElement;
+      expect(status.textContent).toBe('USB');
+      expect(status.className).toContain('status-badge-good');
+    });
+
+    it('should show LSB for high injection mode', () => {
+      mockBucModule.getActiveInjectionMode.mockReturnValue('high');
+
+      const updateHandler = mockEventBus.on.mock.calls.find(
+        (call: unknown[]) => call[0] === Events.UPDATE
+      )?.[1];
+
+      vi.spyOn(Date, 'now').mockReturnValue(2000);
+      updateHandler();
+
+      const status = containerEl.querySelector('#buc-sideband-status') as HTMLElement;
+      expect(status.textContent).toBe('LSB');
+      expect(status.className).toContain('status-badge-good');
+    });
+
+    it('should show Out of Band for no valid injection mode', () => {
+      mockBucModule.getActiveInjectionMode.mockReturnValue(null);
+
+      const updateHandler = mockEventBus.on.mock.calls.find(
+        (call: unknown[]) => call[0] === Events.UPDATE
+      )?.[1];
+
+      vi.spyOn(Date, 'now').mockReturnValue(2000);
+      updateHandler();
+
+      const status = containerEl.querySelector('#buc-sideband-status') as HTMLElement;
+      expect(status.textContent).toBe('Out of Band');
+      expect(status.className).toContain('status-badge-warning');
+    });
+
+    it('should show placeholder when powered off', () => {
+      mockBucModule.state.isPowered = false;
+
+      const updateHandler = mockEventBus.on.mock.calls.find(
+        (call: unknown[]) => call[0] === Events.UPDATE
+      )?.[1];
+
+      vi.spyOn(Date, 'now').mockReturnValue(2000);
+      updateHandler();
+
+      const status = containerEl.querySelector('#buc-sideband-status') as HTMLElement;
+      expect(status.textContent).toBe('--');
+      expect(status.className).toContain('status-badge-off');
+    });
+  });
+
+  describe('alarm classification', () => {
+    it('should classify error alarms correctly', () => {
+      mockBucModule.getAlarms.mockReturnValue(['Phase Lock Error']);
+
+      const updateHandler = mockEventBus.on.mock.calls.find(
+        (call: unknown[]) => call[0] === Events.UPDATE
+      )?.[1];
+
+      vi.spyOn(Date, 'now').mockReturnValue(2000);
+      updateHandler();
+
+      // Verify getAlarms was called during sync
+      expect(mockBucModule.getAlarms).toHaveBeenCalled();
+    });
+
+    it('should classify warning alarms correctly', () => {
+      mockBucModule.getAlarms.mockReturnValue(['Reference not locked']);
+
+      const updateHandler = mockEventBus.on.mock.calls.find(
+        (call: unknown[]) => call[0] === Events.UPDATE
+      )?.[1];
+
+      vi.spyOn(Date, 'now').mockReturnValue(2000);
+      updateHandler();
+
+      expect(mockBucModule.getAlarms).toHaveBeenCalled();
+    });
+
+    it('should classify fault alarms as error', () => {
+      mockBucModule.getAlarms.mockReturnValue(['Hardware Fault']);
+
+      const updateHandler = mockEventBus.on.mock.calls.find(
+        (call: unknown[]) => call[0] === Events.UPDATE
+      )?.[1];
+
+      vi.spyOn(Date, 'now').mockReturnValue(2000);
+      updateHandler();
+
+      expect(mockBucModule.getAlarms).toHaveBeenCalled();
+    });
+
+    it('should classify saturation alarms as warning', () => {
+      mockBucModule.getAlarms.mockReturnValue(['Approaching saturation']);
+
+      const updateHandler = mockEventBus.on.mock.calls.find(
+        (call: unknown[]) => call[0] === Events.UPDATE
+      )?.[1];
+
+      vi.spyOn(Date, 'now').mockReturnValue(2000);
+      updateHandler();
+
+      expect(mockBucModule.getAlarms).toHaveBeenCalled();
+    });
+  });
+
+  describe('RF_FE_BUC_CHANGED event handler', () => {
+    it('should sync DOM when BUC state changes', () => {
+      const stateHandler = mockEventBus.on.mock.calls.find(
+        (call: unknown[]) => call[0] === Events.RF_FE_BUC_CHANGED
+      )?.[1];
+      expect(stateHandler).toBeDefined();
+
+      const newState: Partial<BUCState> = {
+        isPowered: true,
+        loFrequency: 6500,
+        gain: 60,
+        outputPower: 40,
+      };
+
+      stateHandler(newState);
+
+      const loInput = containerEl.querySelector('#buc-lo-frequency') as HTMLInputElement;
+      expect(loInput.value).toBe('6500');
+
+      const gainInput = containerEl.querySelector('#buc-gain') as HTMLInputElement;
+      expect(gainInput.value).toBe('60');
+    });
+
+    it('should update power switch from state change', () => {
+      const stateHandler = mockEventBus.on.mock.calls.find(
+        (call: unknown[]) => call[0] === Events.RF_FE_BUC_CHANGED
+      )?.[1];
+
+      stateHandler({ isPowered: false });
+
+      const powerSwitch = containerEl.querySelector('#buc-power') as HTMLInputElement;
+      expect(powerSwitch.checked).toBe(false);
+    });
+
+    it('should update mute switch from state change', () => {
+      const stateHandler = mockEventBus.on.mock.calls.find(
+        (call: unknown[]) => call[0] === Events.RF_FE_BUC_CHANGED
+      )?.[1];
+
+      stateHandler({ isMuted: true });
+
+      const muteSwitch = containerEl.querySelector('#buc-mute') as HTMLInputElement;
+      expect(muteSwitch.checked).toBe(true);
+    });
+  });
+
+  describe('button adjustment boundary handling', () => {
+    it('should clamp LO frequency at minimum', () => {
+      // Set staged value near minimum
+      mockBucModule.state.loFrequency = 6010;
+      adapter = new BUCAdapter(mockBucModule, containerEl);
+
+      const decBtn = containerEl.querySelector('#buc-lo-dec-coarse') as HTMLButtonElement;
+      const loInput = containerEl.querySelector('#buc-lo-frequency') as HTMLInputElement;
+
+      // Click multiple times to go below minimum
+      decBtn.click();
+      decBtn.click();
+
+      expect(loInput.value).toBe('6000');
+    });
+
+    it('should clamp gain at minimum', () => {
+      mockBucModule.state.gain = 0.5;
+      adapter = new BUCAdapter(mockBucModule, containerEl);
+
+      const decBtn = containerEl.querySelector('#buc-gain-dec-coarse') as HTMLButtonElement;
+      const gainInput = containerEl.querySelector('#buc-gain') as HTMLInputElement;
+
+      decBtn.click();
+
+      expect(gainInput.value).toBe('0');
     });
   });
 });

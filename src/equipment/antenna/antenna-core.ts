@@ -20,13 +20,16 @@ const GEO_SATELLITE_DISTANCE_KM = 38000; // Approximate slant range to GEO satel
 
 /**
  * ACU Tracking Modes
- * - stow: Safe storage position (Az=0°, El=0°)
+ * - stow: Safe storage position (Az=0°, El=90°)
  * - maintenance: Feed access position (El=5°)
  * - manual: Operator controls Az/El/Pol directly
- * - step-track: Auto-adjust to maximize beacon signal power
- * - program-track: Follow TLE ephemeris (placeholder)
+ * - program-track: Continuously follow TLE ephemeris with optional step-track optimization
+ *
+ * Note: Step-track is NOT a separate mode. It's an optimization layer that applies
+ * small az/el offsets on top of program-track to maximize beacon signal strength.
+ * Enable step-track via isStepTrackEnabled when in program-track mode.
  */
-export type TrackingMode = 'stow' | 'maintenance' | 'manual' | 'step-track' | 'program-track';
+export type TrackingMode = 'stow' | 'maintenance' | 'manual' | 'program-track';
 
 export interface AntennaState {
   /** Current pointing elevation angle */
@@ -87,6 +90,14 @@ export interface AntennaState {
   beaconCN: number | null;
   /** Is beacon locked */
   isBeaconLocked: boolean;
+
+  // === Step-Track Optimization (within program-track mode) ===
+  /** Is step-track optimization enabled (only applies in program-track mode) */
+  isStepTrackEnabled: boolean;
+  /** Step-track azimuth offset from program-track predicted position (degrees) */
+  stepTrackAzOffset: Degrees;
+  /** Step-track elevation offset from program-track predicted position (degrees) */
+  stepTrackElOffset: Degrees;
 
   // === Environmental Controls ===
   /** Is feed heater enabled */
@@ -213,6 +224,10 @@ export abstract class AntennaCore extends BaseEquipment {
       beaconPower: null,
       beaconCN: null,
       isBeaconLocked: false,
+      // Step-Track Optimization
+      isStepTrackEnabled: false,
+      stepTrackAzOffset: 0 as Degrees,
+      stepTrackElOffset: 0 as Degrees,
       // Environmental Controls
       isHeaterEnabled: false,
       isRainBlowerEnabled: false,
@@ -309,31 +324,34 @@ export abstract class AntennaCore extends BaseEquipment {
   }
 
   update(): void {
-    // Update step track controller if in step-track mode
-    if (this.state.trackingMode === 'step-track' && this.state.isPowered && this.state.isOperational) {
-      // Restart controller if state says tracking enabled but controller is inactive
-      // (handles page refresh where state is restored but controller wasn't started)
-      if (this.state.isAutoTrackEnabled && !this.stepTrackController_.isActive) {
-        this.stepTrackController_.start();
-      }
+    // Update program-track position continuously when tracking a satellite
+    // This is the base tracking - always follows ephemeris
+    if (this.state.trackingMode === 'program-track' &&
+        this.state.targetSatelliteId !== null &&
+        this.state.isPowered &&
+        this.state.isOperational) {
+      this.updateProgramTrackPosition_();
+    }
+
+    // Update step-track controller if step-track optimization is enabled (within program-track)
+    if (this.state.isStepTrackEnabled && this.state.isPowered && this.state.isOperational) {
       this.stepTrackController_.update();
     }
 
     // Slew actual position toward target at maxRate_deg_s
     this.updateSlew_();
 
-    // Check for program-track lock when antenna arrives at target
+    // Check for program-track lock when antenna arrives near target
     if (this.state.trackingMode === 'program-track' &&
-      this.state.targetSatelliteId !== null &&
-      !this.state.isSlewing) {
+        this.state.targetSatelliteId !== null &&
+        !this.state.isSlewing) {
       this.checkProgramTrackLock_();
     }
 
-    // Update beacon metrics for all active modes (manual, program-track)
-    // Step-track controller handles its own beacon measurement with specialized smoothing
-    if (this.state.trackingMode !== 'step-track') {
-      this.updateBeaconMetrics_();
-    }
+    // Update beacon metrics for all modes
+    // Step-track controller handles its own beacon measurement with specialized smoothing,
+    // but we still update the display metrics here
+    this.updateBeaconMetrics_();
 
     this.updateSignals_();
     this.computeRfMetrics_();
@@ -412,6 +430,40 @@ export abstract class AntennaCore extends BaseEquipment {
       this.state.isLocked = false;
       this.notifyStateChange_();
     }
+  }
+
+  /**
+   * Update antenna target position continuously based on satellite ephemeris.
+   * Called every update cycle when in program-track mode with a target satellite.
+   * If step-track optimization is enabled, applies az/el offsets on top of predicted position.
+   */
+  private updateProgramTrackPosition_(): void {
+    const sat = SimulationManager.getInstance().getSatByNoradId(this.state.targetSatelliteId!);
+    if (!sat) {
+      return;
+    }
+
+    // Use PREDICTED position (includes ephemeris error from TLE inaccuracy)
+    // The beacon signal comes from the TRUE position (sat.az, sat.el),
+    // but program-track points to where TLE predicts the satellite to be.
+    let targetAz = sat.predictedAz as number;
+    let targetEl = sat.predictedEl as number;
+
+    // Step-track offsets correct the ephemeris error by finding the beacon peak
+    if (this.state.isStepTrackEnabled) {
+      targetAz += this.state.stepTrackAzOffset as number;
+      targetEl += this.state.stepTrackElOffset as number;
+    }
+
+    // Clamp elevation to valid range
+    targetEl = Math.max(0, Math.min(90, targetEl));
+
+    // Use shortest path calculation for azimuth to avoid long slews
+    this.state.targetAzimuth = this.calculateShortestPathTarget_(
+      this.state.azimuth,
+      targetAz as Degrees
+    );
+    this.state.targetElevation = targetEl as Degrees;
   }
 
   sync(data: Partial<AntennaState>): void {
@@ -568,11 +620,10 @@ export abstract class AntennaCore extends BaseEquipment {
 
   /**
    * Handle tracking mode change
-   * Stow: Move to Az=0°, El=0° (safe storage)
+   * Stow: Move to Az=0°, El=90° (safe storage)
    * Maintenance: Move to El=5° for feed access
    * Manual: Operator controls Az/El/Pol directly
-   * Step Track: Auto-adjust to maximize beacon signal
-   * Program Track: Follow TLE ephemeris (placeholder)
+   * Program Track: Continuously follow TLE ephemeris (with optional step-track optimization)
    */
   handleTrackingModeChange(mode: TrackingMode): void {
     if (!this.state.isPowered || !this.state.isOperational) {
@@ -585,8 +636,8 @@ export abstract class AntennaCore extends BaseEquipment {
       this.lockAcquisitionTimeout_ = null;
     }
 
-    // Stop step track controller if leaving step-track mode
-    if (this.state.trackingMode === 'step-track') {
+    // Stop step-track controller if step-track was enabled
+    if (this.state.isStepTrackEnabled) {
       this.stepTrackController_.stop();
     }
 
@@ -602,9 +653,14 @@ export abstract class AntennaCore extends BaseEquipment {
     this.smoothedBeaconCN_ = null;
     this.state.targetSatelliteId = null;
 
+    // Clear step-track optimization state
+    this.state.isStepTrackEnabled = false;
+    this.state.stepTrackAzOffset = 0 as Degrees;
+    this.state.stepTrackElOffset = 0 as Degrees;
+
     switch (mode) {
       case 'stow':
-        // Stage target to safe storage position (Az=0°, El=0°)
+        // Stage target to safe storage position (Az=0°, El=90°)
         // Requires Apply button before antenna moves
         this.state.stagedTargetAzimuth = 0 as Degrees;
         this.state.stagedTargetElevation = 90 as Degrees;
@@ -619,7 +675,6 @@ export abstract class AntennaCore extends BaseEquipment {
         break;
 
       case 'manual':
-      case 'step-track':
       case 'program-track':
         // Set target to current position to prevent unintended movement
         // Clear any staged position changes from previous modes (e.g., stow → manual)
@@ -640,9 +695,20 @@ export abstract class AntennaCore extends BaseEquipment {
 
   /**
    * Set target satellite for program track mode
+   * Also sets beacon frequency from the satellite's transponder configuration
    */
   handleTargetSatelliteChange(noradId: number | null): void {
     this.state.targetSatelliteId = noradId;
+
+    // Set beacon frequency from satellite's transponder beacon (if available)
+    if (noradId !== null) {
+      const sat = SimulationManager.getInstance().getSatByNoradId(noradId);
+      const beacon = sat?.transponders[0]?.beacon;
+      if (beacon?.frequency) {
+        this.state.beaconFrequencyHz = beacon.frequency as number;
+      }
+    }
+
     this.notifyStateChange_();
   }
 
@@ -672,6 +738,12 @@ export abstract class AntennaCore extends BaseEquipment {
     // Use shortest path calculation to avoid rotating the long way around
     this.state.targetAzimuth = this.calculateShortestPathTarget_(this.state.azimuth, sat.az);
     this.state.targetElevation = sat.el;
+
+    // Set beacon frequency from satellite's transponder beacon (if available)
+    const beacon = sat.transponders[0]?.beacon;
+    if (beacon?.frequency) {
+      this.state.beaconFrequencyHz = beacon.frequency as number;
+    }
 
     this.updateSignals_();
     this.notifyStateChange_();
@@ -725,9 +797,9 @@ export abstract class AntennaCore extends BaseEquipment {
       }
       this.state.beaconCN = this.smoothedBeaconCN_;
 
-      // Update lock state based on C/N threshold (only in non-step-track modes)
+      // Update lock state based on C/N threshold (only when step-track is not enabled)
       // Step-track manages its own lock state with different thresholds
-      if (this.state.trackingMode !== 'step-track') {
+      if (!this.state.isStepTrackEnabled) {
         const wasLocked = this.state.isBeaconLocked;
         if (!wasLocked && this.smoothedBeaconCN_ >= this.beaconLockAcquireCN_) {
           this.state.isBeaconLocked = true;
@@ -740,7 +812,7 @@ export abstract class AntennaCore extends BaseEquipment {
       // This preserves scenario-seeded initial values until real signals arrive
       this.smoothedBeaconCN_ = null;
       this.state.beaconCN = null;
-      if (this.state.trackingMode !== 'step-track') {
+      if (!this.state.isStepTrackEnabled) {
         this.state.isBeaconLocked = false;
       }
     }
@@ -962,14 +1034,35 @@ export abstract class AntennaCore extends BaseEquipment {
   }
 
   /**
-   * Start step tracking - begins the hill-climbing algorithm
-   * Should be called after beacon frequency is configured
+   * Toggle step-track optimization on/off within program-track mode.
+   * Step-track applies small az/el offsets on top of the program-track position
+   * to maximize beacon signal strength.
+   */
+  handleStepTrackToggle(enabled: boolean): void {
+    if (!this.state.isPowered || !this.state.isOperational) {
+      return;
+    }
+    if (this.state.trackingMode !== 'program-track') {
+      return;
+    }
+
+    if (enabled) {
+      this.startStepTrack();
+    } else {
+      this.stopStepTrack();
+    }
+  }
+
+  /**
+   * Start step tracking optimization - begins the hill-climbing algorithm.
+   * Step-track applies small az/el offsets on top of the program-track position.
+   * Should be called after beacon frequency is configured and in program-track mode.
    */
   startStepTrack(): void {
     if (!this.state.isPowered || !this.state.isOperational) {
       return;
     }
-    if (this.state.trackingMode !== 'step-track') {
+    if (this.state.trackingMode !== 'program-track') {
       return;
     }
 
@@ -984,6 +1077,7 @@ export abstract class AntennaCore extends BaseEquipment {
     }
     this.state.hasStagedChanges = false;
 
+    this.state.isStepTrackEnabled = true;
     this.stepTrackController_.start();
     this.state.isAutoTrackEnabled = true;
     this.state.isAutoTrackSwitchUp = true;
@@ -991,13 +1085,27 @@ export abstract class AntennaCore extends BaseEquipment {
   }
 
   /**
-   * Stop step tracking
+   * Stop step tracking optimization.
+   * Clears the az/el offsets and returns to pure program-track following.
    */
   stopStepTrack(): void {
     this.stepTrackController_.stop();
+    this.state.isStepTrackEnabled = false;
+    this.state.stepTrackAzOffset = 0 as Degrees;
+    this.state.stepTrackElOffset = 0 as Degrees;
     this.state.isAutoTrackEnabled = false;
     this.state.isAutoTrackSwitchUp = false;
     this.state.isBeaconLocked = false;
+    this.notifyStateChange_();
+  }
+
+  /**
+   * Clear step-track offsets without stopping the optimization.
+   * Useful for resetting to the pure program-track position while keeping step-track active.
+   */
+  clearStepTrackOffsets(): void {
+    this.state.stepTrackAzOffset = 0 as Degrees;
+    this.state.stepTrackElOffset = 0 as Degrees;
     this.notifyStateChange_();
   }
 

@@ -1,14 +1,15 @@
+import { vi } from 'vitest';
 import { ScenarioData } from '../src/ScenarioData';
 import {
-  ScenarioManager,
-  SCENARIOS,
-  isScenarioLocked,
   getNextPrerequisiteScenario,
   getPrerequisiteScenarioNames,
+  isScenarioLocked,
+  ScenarioManager,
+  SCENARIOS,
 } from '../src/scenario-manager';
 
 // Mock all scenario data imports
-jest.mock('../src/campaigns/nats/scenario1', () => ({
+vi.mock('../src/campaigns/nats/scenario1', () => ({
   scenario1Data: {
     id: 'scenario-1',
     number: 1,
@@ -25,7 +26,7 @@ jest.mock('../src/campaigns/nats/scenario1', () => ({
   },
 }));
 
-jest.mock('../src/campaigns/nats/scenario2', () => ({
+vi.mock('../src/campaigns/nats/scenario2', () => ({
   scenario2Data: {
     id: 'scenario-2',
     number: 2,
@@ -42,7 +43,7 @@ jest.mock('../src/campaigns/nats/scenario2', () => ({
   },
 }));
 
-jest.mock('../src/campaigns/nats/scenario3', () => ({
+vi.mock('../src/campaigns/nats/scenario3', () => ({
   scenario3Data: {
     id: 'scenario-3',
     number: 3,
@@ -59,7 +60,7 @@ jest.mock('../src/campaigns/nats/scenario3', () => ({
   },
 }));
 
-jest.mock('../src/campaigns/nats/scenario4', () => ({
+vi.mock('../src/campaigns/nats/scenario4', () => ({
   scenario4Data: {
     id: 'scenario-4',
     number: 4,
@@ -76,7 +77,7 @@ jest.mock('../src/campaigns/nats/scenario4', () => ({
   },
 }));
 
-jest.mock('../src/campaigns/nats/scenario5', () => ({
+vi.mock('../src/campaigns/nats/scenario5', () => ({
   scenario5Data: {
     id: 'scenario-5',
     number: 5,
@@ -92,7 +93,7 @@ jest.mock('../src/campaigns/nats/scenario5', () => ({
   },
 }));
 
-jest.mock('../src/campaigns/nats/scenario6', () => ({
+vi.mock('../src/campaigns/nats/scenario6', () => ({
   scenario6Data: {
     id: 'scenario-6',
     number: 6,
@@ -108,7 +109,7 @@ jest.mock('../src/campaigns/nats/scenario6', () => ({
   },
 }));
 
-jest.mock('../src/campaigns/nats/scenario7', () => ({
+vi.mock('../src/campaigns/nats/scenario7', () => ({
   scenario7Data: {
     id: 'scenario-7',
     number: 7,
@@ -124,7 +125,7 @@ jest.mock('../src/campaigns/nats/scenario7', () => ({
   },
 }));
 
-jest.mock('../src/campaigns/nats/scenario8', () => ({
+vi.mock('../src/campaigns/nats/scenario8', () => ({
   scenario8Data: {
     id: 'scenario-8',
     number: 8,
@@ -140,7 +141,7 @@ jest.mock('../src/campaigns/nats/scenario8', () => ({
   },
 }));
 
-jest.mock('../src/scenarios/sandbox', () => ({
+vi.mock('../src/scenarios/sandbox', () => ({
   sandboxData: {
     id: 'sandbox',
     number: 0,
@@ -157,47 +158,47 @@ jest.mock('../src/scenarios/sandbox', () => ({
 }));
 
 // Mock equipment modules
-jest.mock('../src/equipment/rf-front-end/buc-module', () => ({
+vi.mock('../src/equipment/rf-front-end/buc-module', () => ({
   BUCModuleCore: { getDefaultState: () => ({}) },
 }));
 
-jest.mock('../src/equipment/rf-front-end/hpa-module', () => ({
+vi.mock('../src/equipment/rf-front-end/hpa-module', () => ({
   HPAModuleCore: { getDefaultState: () => ({}) },
 }));
 
-jest.mock('../src/equipment/rf-front-end/filter-module', () => ({
+vi.mock('../src/equipment/rf-front-end/filter-module', () => ({
   IfFilterBankModuleCore: { getDefaultState: () => ({}) },
 }));
 
-jest.mock('../src/equipment/rf-front-end/lnb-module', () => ({
+vi.mock('../src/equipment/rf-front-end/lnb-module', () => ({
   LNBModuleCore: { getDefaultState: () => ({}) },
 }));
 
-jest.mock('../src/equipment/rf-front-end/omt-module/omt-module', () => ({
+vi.mock('../src/equipment/rf-front-end/omt-module/omt-module', () => ({
   OMTModule: { getDefaultState: () => ({}) },
 }));
 
-jest.mock('../src/equipment/rf-front-end/coupler-module/coupler-module', () => ({
+vi.mock('../src/equipment/rf-front-end/coupler-module/coupler-module', () => ({
   CouplerModule: { getDefaultState: () => ({}) },
 }));
 
-jest.mock('../src/equipment/rf-front-end/gpsdo-module/gpsdo-state', () => ({
+vi.mock('../src/equipment/rf-front-end/gpsdo-module/gpsdo-state', () => ({
   defaultGpsdoState: {},
 }));
 
-jest.mock('../src/equipment/real-time-spectrum-analyzer/defaultSpectrumAnalyzerState', () => ({
+vi.mock('../src/equipment/real-time-spectrum-analyzer/defaultSpectrumAnalyzerState', () => ({
   defaultSpectrumAnalyzerState: {},
 }));
 
-jest.mock('../src/equipment/transmitter/transmitter', () => ({
+vi.mock('../src/equipment/transmitter/transmitter', () => ({
   Transmitter: { getDefaultState: () => ({}) },
 }));
 
-jest.mock('../src/equipment/receiver/receiver', () => ({
+vi.mock('../src/equipment/receiver/receiver', () => ({
   Receiver: { getDefaultState: () => ({}) },
 }));
 
-jest.mock('../src/equipment/antenna/antenna-config-keys', () => ({
+vi.mock('../src/equipment/antenna/antenna-config-keys', () => ({
   ANTENNA_CONFIG_KEYS: {
     C_BAND_3M_ANTESTAR: 'c-band-3m',
     KU_BAND_3M_ANTESTAR: 'ku-band-3m',
@@ -215,7 +216,7 @@ describe('ScenarioManager', () => {
   afterEach(() => {
     (ScenarioManager as any).instance_ = null;
     window.DEVELOPER_MODE = false;
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('Singleton Pattern', () => {

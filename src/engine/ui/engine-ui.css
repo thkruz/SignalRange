@@ -75,7 +75,6 @@
   min-height: 250px;
   height: 100%;
   max-height: 70vh;
-  overflow-y: auto;
 }
 
 .draggable-box__btn {

@@ -2,8 +2,6 @@ import { DraggableModal } from '@app/engine/ui/draggable-modal';
 import { ModalConfirm } from '@app/engine/ui/modal-confirm';
 import { html } from '@app/engine/utils/development/formatter';
 import { errorManagerInstance } from '@app/engine/utils/errorManager';
-import { Sfx } from '@app/sound/sfx-enum';
-import SoundManager from '@app/sound/sound-manager';
 import { syncManager } from '@app/sync/storage';
 import { Auth } from './auth';
 import { getUserDataService } from './user-data-service';
@@ -155,8 +153,6 @@ export class ModalProfile extends DraggableModal {
 
   private async handleLogout(): Promise<void> {
     try {
-      SoundManager.getInstance().play(Sfx.TOGGLE_OFF);
-
       const { error } = await Auth.signOut();
 
       if (error) {
@@ -190,8 +186,6 @@ export class ModalProfile extends DraggableModal {
 
   private async performClearProgress(): Promise<void> {
     try {
-      SoundManager.getInstance().play(Sfx.TOGGLE_OFF);
-
       const userDataService = getUserDataService();
 
       // Delete all progress and checkpoints using the new bulk delete API

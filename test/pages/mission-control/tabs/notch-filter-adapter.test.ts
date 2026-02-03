@@ -1,17 +1,18 @@
-import { NotchFilterAdapter } from '../../../../src/pages/mission-control/tabs/notch-filter-adapter';
-import { NotchFilterModuleCore, NotchFilterState, NotchConfig } from '../../../../src/equipment/rf-front-end/notch-filter-module';
+import { Mock, Mocked, vi } from 'vitest';
+import { NotchConfig, NotchFilterModuleCore, NotchFilterState } from '../../../../src/equipment/rf-front-end/notch-filter-module';
 import { EventBus } from '../../../../src/events/event-bus';
 import { Events } from '../../../../src/events/events';
+import { NotchFilterAdapter } from '../../../../src/pages/mission-control/tabs/notch-filter-adapter';
 import { MHz, dB } from '../../../../src/types';
 
 // Mock dependencies
-jest.mock('../../../../src/events/event-bus');
+vi.mock('../../../../src/events/event-bus');
 
 describe('NotchFilterAdapter', () => {
-  let mockNotchModule: jest.Mocked<NotchFilterModuleCore>;
+  let mockNotchModule: Mocked<NotchFilterModuleCore>;
   let containerEl: HTMLElement;
   let adapter: NotchFilterAdapter;
-  let mockEventBus: { on: jest.Mock; off: jest.Mock; emit: jest.Mock };
+  let mockEventBus: { on: Mock; off: Mock; emit: Mock };
 
   const defaultNotch: NotchConfig = {
     enabled: false,
@@ -30,22 +31,22 @@ describe('NotchFilterAdapter', () => {
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Setup mock EventBus
     mockEventBus = {
-      on: jest.fn(),
-      off: jest.fn(),
-      emit: jest.fn(),
+      on: vi.fn(),
+      off: vi.fn(),
+      emit: vi.fn(),
     };
-    (EventBus.getInstance as jest.Mock).mockReturnValue(mockEventBus);
+    (EventBus.getInstance as Mock).mockReturnValue(mockEventBus);
 
     // Setup mock NotchFilterModuleCore
     mockNotchModule = {
       state: JSON.parse(JSON.stringify(mockState)),
-      handleNotchChange: jest.fn(),
-      handlePowerToggle: jest.fn(),
-    } as unknown as jest.Mocked<NotchFilterModuleCore>;
+      handleNotchChange: vi.fn(),
+      handlePowerToggle: vi.fn(),
+    } as unknown as Mocked<NotchFilterModuleCore>;
 
     // Setup container with required DOM elements for 3 notch slots
     containerEl = document.createElement('div');

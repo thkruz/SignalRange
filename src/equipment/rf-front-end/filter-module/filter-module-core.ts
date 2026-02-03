@@ -109,7 +109,10 @@ export abstract class IfFilterBankModuleCore extends RFFrontEndModule<IfFilterBa
     const lnbSignals = this.rfFrontEnd_.lnbModule.ifSignals;
     const txLoopbackSignals = this.rfFrontEnd_.transmitters
       .flatMap((tx) => tx.state.modems
-        .filter((modem) => modem.isTransmitting && !modem.isFaulted && modem.isLoopback)
+        .filter((modem) => modem.isTransmitting
+          && !modem.isFaulted
+          && modem.isLoopback
+          && !tx.isModemInIntermittentDropout(modem))
         .map((modem) => modem.ifSignal));
 
     return [...lnbSignals, ...txLoopbackSignals];

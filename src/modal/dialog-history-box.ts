@@ -2,6 +2,7 @@ import { html } from "@app/engine/utils/development/formatter";
 import { EventBus } from "@app/events/event-bus";
 import { Events } from "@app/events/events";
 import './dialog-history-box.css';
+import { CharacterNames } from "./character-enum";
 import { DialogHistoryManager } from "./dialog-history-manager";
 import { DraggableHtmlBox } from "./draggable-html-box";
 
@@ -43,7 +44,7 @@ export class DialogHistoryBox extends DraggableHtmlBox {
             <span class="dialog-history-title">${entry.title}</span>
             <span class="dialog-history-time">${timeStr}</span>
           </div>
-          <div class="dialog-history-character">${entry.character}</div>
+          <div class="dialog-history-character">${CharacterNames[entry.character]}</div>
           <button class="dialog-history-replay-btn" data-index="${index}">
             ▶ Replay
           </button>

@@ -23,6 +23,12 @@ export interface TransmitterModem {
   isTransmittingSwitchUp: boolean;
   /** The active IF signal of this modem */
   ifSignal: IfSignal;
+  /** Intermittent hardware fault causing periodic signal dropout (defaults to false) */
+  intermittentFault?: boolean;
+  /** Internal timing state: cycle start timestamp */
+  intermittentFaultCycleStart?: number;
+  /** True when signal is currently suppressed due to intermittent fault */
+  isIntermittentDropout?: boolean;
 }
 
 export interface TransmitterState {
@@ -48,6 +54,11 @@ export class Transmitter extends BaseEquipment {
 
   // Power management
   private readonly powerBudget = 10 as dBm; // dBm (10W) total power budget
+
+  // Intermittent fault timing constants (milliseconds)
+  private static readonly FAULT_ON_MS = 4000;   // ~4s signal active
+  private static readonly FAULT_OFF_MS = 1000;  // ~1s dropout
+  private static readonly FAULT_VARIATION_MS = 500; // +-500ms variation
   powerSwitch: PowerSwitch;
   txToggleSwitch: ToggleSwitch;
   loopbackSwitch: ToggleSwitch;
@@ -137,6 +148,9 @@ export class Transmitter extends BaseEquipment {
         isLoopback: false,
         isFaulted: false,
         isFaultSwitchUp: false,
+        intermittentFault: false,
+        intermittentFaultCycleStart: undefined,
+        isIntermittentDropout: false,
       };
     });
 
@@ -150,9 +164,78 @@ export class Transmitter extends BaseEquipment {
   }
 
   update(): void {
-    // Check for alarms and faults
+    this.updateIntermittentFaultState_();
     this.checkForAlarms_();
   }
+
+  /**
+   * Update intermittent fault timing state for all modems.
+   * Toggles signal dropout on a ~5 second cycle with variation.
+   */
+  private updateIntermittentFaultState_(): void {
+    const now = Date.now();
+
+    for (const modem of this.state.modems) {
+      if (!modem.intermittentFault) {
+        modem.isIntermittentDropout = false;
+        modem.intermittentFaultCycleStart = undefined;
+        continue;
+      }
+
+      // Initialize cycle start if needed
+      modem.intermittentFaultCycleStart ??= now;
+
+      // Compute current dropout state (also stored for UI display)
+      modem.isIntermittentDropout = this.computeIntermittentDropout_(modem, now);
+    }
+  }
+
+  /**
+   * Compute whether a modem is currently in intermittent dropout state.
+   * This is computed dynamically based on timing to avoid stale state issues.
+   */
+  private computeIntermittentDropout_(modem: TransmitterModem, now: number): boolean {
+    if (!modem.intermittentFault) return false;
+    if (modem.intermittentFaultCycleStart === undefined) return false;
+
+    // Calculate cycle position
+    const cycleIndex = Math.floor(now / 10000);
+    const variation = Math.sin(modem.id * 12.9898 + cycleIndex) * Transmitter.FAULT_VARIATION_MS;
+    const onPeriod = Transmitter.FAULT_ON_MS + variation;
+
+    // Calculate time within current cycle
+    const timeSinceStart = now - modem.intermittentFaultCycleStart;
+    const cyclePosition = timeSinceStart % (onPeriod + Transmitter.FAULT_OFF_MS);
+
+    // In dropout if we're past the on period
+    return cyclePosition >= onPeriod;
+  }
+
+  /**
+   * Check if a modem is currently in intermittent dropout state.
+   * Called by RF front-end modules to get real-time dropout status.
+   */
+  public isModemInIntermittentDropout(modem: TransmitterModem): boolean {
+    const now = Date.now();
+    const result = this.computeIntermittentDropout_(modem, now);
+
+    // Debug logging (remove after debugging)
+    if (modem.intermittentFault && Math.floor(now / 1000) !== this.lastDebugSecond_) {
+      this.lastDebugSecond_ = Math.floor(now / 1000);
+      const cycleStart = modem.intermittentFaultCycleStart ?? 0;
+      const timeSinceStart = now - cycleStart;
+      const cycleIndex = Math.floor(now / 10000);
+      const variation = Math.sin(modem.id * 12.9898 + cycleIndex) * Transmitter.FAULT_VARIATION_MS;
+      const onPeriod = Transmitter.FAULT_ON_MS + variation;
+      const cycleLen = onPeriod + Transmitter.FAULT_OFF_MS;
+      const cyclePosition = timeSinceStart % cycleLen;
+      console.log(`[IntermittentFault] Modem ${modem.modem_number}: dropout=${result}, cyclePos=${cyclePosition.toFixed(0)}/${cycleLen.toFixed(0)}, onPeriod=${onPeriod.toFixed(0)}`);
+    }
+
+    return result;
+  }
+
+  private lastDebugSecond_: number = 0;
 
   initialSync(): void {
     this.inputData = structuredClone(this.activeModem);
@@ -385,6 +468,12 @@ export class Transmitter extends BaseEquipment {
         alarms.push({
           message: `Modem ${modem.modem_number} Faulted`,
           severity: 'error'
+        });
+      }
+      if (modem.intermittentFault) {
+        alarms.push({
+          message: `Modem ${modem.modem_number} Intermittent Fault`,
+          severity: 'warning'
         });
       }
       if (modem.isLoopback) {

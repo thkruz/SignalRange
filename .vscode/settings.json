@@ -35,7 +35,10 @@
   },
   "github.copilot.chat.commitMessageGeneration.instructions": [
     {
-      "text": "Format: <type>: :emoji: <description>"
+      "text": "Format: <type>(<scope>): :emoji: <description>"
+    },
+    {
+      "text": "<scope> is optional and can be omitted if not needed"
     },
     {
       "text": "ALWAYS include the emoji - this is required"

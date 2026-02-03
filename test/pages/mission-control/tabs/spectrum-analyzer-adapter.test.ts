@@ -1,8 +1,9 @@
-import { SpectrumAnalyzerAdapter } from '../../../../src/pages/mission-control/tabs/spectrum-analyzer-adapter';
+import { Mocked, vi } from 'vitest';
 import { RealTimeSpectrumAnalyzer } from '../../../../src/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer';
+import { SpectrumAnalyzerAdapter } from '../../../../src/pages/mission-control/tabs/spectrum-analyzer-adapter';
 
 describe('SpectrumAnalyzerAdapter', () => {
-  let mockSpectrumAnalyzer: jest.Mocked<RealTimeSpectrumAnalyzer>;
+  let mockSpectrumAnalyzer: Mocked<RealTimeSpectrumAnalyzer>;
   let containerEl: HTMLElement;
   let adapter: SpectrumAnalyzerAdapter;
   let mockCanvas: HTMLCanvasElement;
@@ -10,7 +11,7 @@ describe('SpectrumAnalyzerAdapter', () => {
   let mockWaterfallCanvas: HTMLCanvasElement;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Create mock canvas elements
     mockCanvas = document.createElement('canvas');
@@ -22,10 +23,10 @@ describe('SpectrumAnalyzerAdapter', () => {
 
     // Setup mock RealTimeSpectrumAnalyzer
     mockSpectrumAnalyzer = {
-      getCanvas: jest.fn().mockReturnValue(mockCanvas),
-      getSpectralCanvas: jest.fn().mockReturnValue(mockSpectralCanvas),
-      getWaterfallCanvas: jest.fn().mockReturnValue(mockWaterfallCanvas),
-    } as unknown as jest.Mocked<RealTimeSpectrumAnalyzer>;
+      getCanvas: vi.fn().mockReturnValue(mockCanvas),
+      getSpectralCanvas: vi.fn().mockReturnValue(mockSpectralCanvas),
+      getWaterfallCanvas: vi.fn().mockReturnValue(mockWaterfallCanvas),
+    } as unknown as Mocked<RealTimeSpectrumAnalyzer>;
 
     // Setup container with required DOM elements
     containerEl = document.createElement('div');

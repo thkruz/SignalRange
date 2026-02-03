@@ -28,6 +28,8 @@ export type dBm = Distinct<number, 'dBm'>;
 export type dBi = Distinct<number, 'dBi'>;
 /** Decibels Full Scale (relative to ADC clipping point) */
 export type dBFS = Distinct<number, 'dBFS'>;
+/** Angular velocity in degrees per second */
+export type DegreesPerSecond = Distinct<number, 'DegreesPerSecond'>;
 /** Radio Frequency in Hz */
 export type RfFrequency = Distinct<Hertz, 'RfFrequency'>;
 /** Intermediate Frequency in Hz */

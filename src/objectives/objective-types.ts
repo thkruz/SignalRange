@@ -3,6 +3,9 @@
  * @description Defines objectives for scenario-based learning and assessment
  */
 
+import type { Character } from '@app/modal/character-enum';
+import { MHz } from '@app/types';
+
 /**
  * Condition types that can be checked during simulation
  */
@@ -16,6 +19,9 @@ export type ConditionType =
   | 'buc-locked' // BUC is locked to external reference
   | 'buc-reference-locked' // BUC locked to 10MHz reference
   | 'buc-muted' // BUC RF output is muted (safety check)
+  | 'buc-loopback-enabled' // BUC loopback mode is enabled
+  | 'buc-loopback-disabled' // BUC loopback mode is disabled
+  | 'buc-temperature-normal' // BUC temperature within normal range (below max threshold)
   | 'buc-current-normal' // BUC current draw within normal range
   | 'buc-not-saturated' // BUC output not in compression
   | 'lnb-reference-locked' // LNB locked to 10MHz reference
@@ -44,6 +50,7 @@ export type ConditionType =
   | 'antenna-position' // Antenna at specific azimuth/elevation position
   | 'feed-heater-enabled' // Antenna feed heater is enabled
   | 'buc-unmuted' // BUC RF output enabled (inverse of muted)
+  | 'buc-gain-set' // BUC gain set to specific value
   | 'hpa-enabled' // HPA output enabled (dual-action switch)
   | 'hpa-back-off-set' // HPA back-off level configured
   | 'hpa-not-overdriven' // HPA not in overdrive (IMD check)
@@ -60,6 +67,10 @@ export type ConditionType =
   | 'tx-modem-modulation-set' // Transmitter modem modulation type set
   | 'tx-modem-fec-set' // Transmitter modem FEC rate set
   | 'tx-modem-transmitting' // Transmitter modem actively transmitting
+  | 'tx-modem-not-transmitting' // Transmitter modem NOT transmitting (transmission stopped)
+  | 'tx-active-modem' // Transmitter active modem selection
+  | 'tx-modem-loopback-enabled' // TX modem loopback enabled
+  | 'tx-modem-loopback-disabled' // TX modem loopback disabled
   | 'status-check' // Interactive quiz to verify player found the correct information
   | 'custom' // Custom condition with evaluator function
   // Handover and traffic control conditions
@@ -68,8 +79,23 @@ export type ConditionType =
   | 'traffic-transferred' // Traffic transferred from source to target station
   | 'service-continuity' // No packet loss during handover (placeholder - always passes)
   | 'ground-station-selected' // Ground station selected in UI
+  | 'satellite-selected' // Satellite selected in UI asset tree
   // UI interaction conditions
-  | 'mission-brief-opened'; // Mission brief document has been opened
+  | 'mission-brief-opened' // Mission brief document has been opened
+  | 'tab-active' // Specific tab is currently active in TabbedCanvas
+  // FEC/Payload conditions
+  | 'rx-frame-sync-locked' // RX frame synchronization locked/unlocked
+  | 'rx-ber-threshold' // RX BER below/above threshold
+  | 'rx-rs-uncorrectable' // RS decoder has uncorrectable blocks
+  | 'rx-channel-status' // RX channel status matches value
+  // Crypto conditions
+  | 'rx-crypto-status' // RX decryption mode matches value
+  | 'rx-key-status' // RX decryption key status matches value
+  | 'tx-crypto-status' // TX encryption mode matches value
+  | 'tx-key-status' // TX encryption key status matches value
+  // Fault injection conditions
+  | 'fault-active' // Check if specific fault is currently injected
+  | 'fault-cleared'; // Check if specific fault has been cleared
 
 /**
  * Equipment references for condition checking
@@ -91,7 +117,9 @@ export type EquipmentRef =
  * Parameters for different condition types
  */
 export interface ConditionParams {
-  /** For antenna-locked: which satellite (noradId) */
+  /** For antenna-locked: which satellite (NORAD ID) */
+  noradId?: number;
+  /** For antenna-locked: legacy alias for noradId (kept for backwards compatibility) */
   satelliteId?: number;
   /** For equipment-powered: which equipment */
   equipment?: EquipmentRef;
@@ -100,7 +128,7 @@ export interface ConditionParams {
   /** For frequency-set: tolerance in Hz */
   frequencyTolerance?: number;
   /** For lnb-lo-set: target local oscillator frequency in Hz */
-  loFrequency?: number;
+  loFrequency?: MHz;
   /** For lnb-lo-set: local oscillator frequency tolerance in Hz */
   loFrequencyTolerance?: number;
   /** For lnb-gain-set: target gain in dB */
@@ -113,6 +141,8 @@ export interface ConditionParams {
   maxNoiseTemperature?: number;
   /** For buc-current-normal: maximum current draw in Amperes */
   maxCurrentDraw?: number;
+  /** For buc-temperature-normal: maximum temperature in °C (default: 70) */
+  maxTemperature?: number;
   /** For speca-span-set: target span in Hz */
   span?: number;
   /** For speca-rbw-set: target RBW in Hz */
@@ -171,7 +201,7 @@ export interface ConditionParams {
   backOffTolerance?: number;
   /** For hpa-not-overdriven: maximum IMD level in dBc (optional, defaults to checking isOverdriven) */
   maxImdLevel?: number;
-  /** For hpa-output-power-set: minimum output power in dBm */
+  /** For hpa-output-power-set: minimum output power in watts */
   minOutputPower?: number;
   /** For receiver-signal-locked/receiver-snr-threshold: which modem (1-4), defaults to active modem */
   modemNumber?: number;
@@ -199,6 +229,10 @@ export interface ConditionParams {
   explanation?: string;
   /** For status-check: points deducted per wrong answer (default: 5) */
   pointPenalty?: number;
+  /** For status-check: which character asks the question (default: CHARLIE_BROOKS) */
+  character?: Character;
+  /** For status-check: if true, options will not be randomized (use for "All of the above" questions) */
+  preserveOptionOrder?: boolean;
   /** For signal-detected/signal-level-correct: signal identifier to match */
   signalId?: string;
   /** For signal-detected/signal-level-correct: minimum power level in dBm */
@@ -213,8 +247,33 @@ export interface ConditionParams {
   maxPacketLoss?: number;
   /** For ground-station-selected: ground station ID that must be selected */
   groundStationId?: string;
+  /** For satellite-selected: asset tree satellite ID (e.g., 'sat-61525') */
+  assetSatelliteId?: string;
   /** For mission-brief-opened: specific box ID that must be opened (defaults to any 'mission-brief*' box) */
   boxId?: string;
+  /** For tab-active: tab ID prefix to match (e.g., 'acu-control' matches 'acu-control-0') */
+  tab?: string;
+
+  // FEC/Payload condition parameters
+  /** For rx-frame-sync-locked: expected lock state (default: true) */
+  locked?: boolean;
+  /** For rx-ber-threshold: BER threshold value */
+  berThreshold?: number;
+  /** For rx-ber-threshold: comparison operator ('below' or 'above', default: 'below') */
+  berComparison?: 'below' | 'above';
+  /** For rx-channel-status: expected channel status */
+  channelStatus?: 'Good' | 'Degraded' | 'Critical' | 'No Lock';
+
+  // Crypto condition parameters
+  /** For rx-crypto-status/tx-crypto-status: expected crypto mode */
+  cryptoMode?: 'ACTIVE' | 'DISABLED' | 'BYPASSED';
+  /** For rx-key-status/tx-key-status: expected key status */
+  keyStatus?: 'Valid' | 'Expired' | 'Pending Rotation' | 'Mismatch' | 'Zeroized';
+
+  // Fault injection condition parameters
+  /** For fault-active/fault-cleared: fault ID to check */
+  faultId?: string;
+
   /** Additional context-specific parameters */
   [key: string]: unknown;
 }
@@ -239,6 +298,8 @@ export interface Condition {
   type: ConditionType;
   /** Human-readable description */
   description: string;
+  /** Hint or tip to help achieve the condition (optional) */
+  hint?: string;
   /** Parameters specific to this condition type */
   params?: ConditionParams;
   /** Whether this condition must be maintained (true) or just achieved once (false) */
@@ -259,6 +320,8 @@ export interface Condition {
 export interface Objective {
   /** Unique identifier for this objective */
   id: string;
+  /** NICE Framework codes this objective aligns with (e.g., ['K0645', 'T0153']) */
+  nice?: string[];
   /** Display name shown to user */
   title: string;
   /** Detailed description of what the student must do */
@@ -313,6 +376,8 @@ export interface ObjectiveState {
   timePenaltyApplied?: boolean;
   /** Points deducted due to time penalty */
   timePenaltyPoints?: number;
+  /** Points deducted from requesting hints (50% of objective points if any hint requested) */
+  hintPenaltyPoints?: number;
 }
 
 /**
@@ -331,4 +396,6 @@ export interface ConditionState {
   isMaintenanceComplete: boolean;
   /** History of when condition was lost (for debugging/analysis) */
   lostTimestamps?: number[];
+  /** Whether a hint was requested for this condition */
+  hintRequested?: boolean;
 }

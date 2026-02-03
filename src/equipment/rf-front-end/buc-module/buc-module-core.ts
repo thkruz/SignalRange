@@ -139,23 +139,33 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
     // Update thermal parameters
     this.updateThermalState_();
 
+    // If the module is unpowered, the RF output chain is inactive.
+    // We still update derived state above (lock, drift, thermal, etc.),
+    // but no output signals should be emitted.
+    if (!this.state.isPowered) {
+      this.outputSignals = [];
+      return;
+    }
+
     // Check for alarms is currently handled by RFFrontEndCore
 
     // Calculate post-BUC signals (apply upconversion and gain if powered)
     // Bandpass filter rejects out-of-band signals entirely
+    const maxOutputPower = this.state.saturationPower + 2; // Hard saturation limit
     this.outputSignals = this.inputSignals
       .map(sig => {
         const rfFreq = this.calculateRfFrequency(sig.frequency);
         const inBand = this.isInPassband_(rfFreq);
         if (!inBand) return null;  // Reject out-of-band signals
 
-        const gain = this.state.isPowered && !this.state.isMuted
+        const gain = !this.state.isMuted
           ? this.state.gain
           : -170;
+        const linearPower = sig.power + gain;
         return {
           ...sig,
           frequency: rfFreq,
-          power: sig.power + gain,
+          power: Math.min(linearPower, maxOutputPower) as dBm,
           bandwidth: sig.bandwidth,
           origin: SignalOrigin.BUC,
         } as RfSignal;
@@ -205,6 +215,10 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
       alarms.push('BUC phase noise degraded (unlocked)');
     }
 
+    if (this.state.isLoopback) {
+      alarms.push('BUC in loopback mode');
+    }
+
     return alarms;
   }
 
@@ -215,7 +229,10 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
   get inputSignals(): IfSignal[] {
     return this.rfFrontEnd_.transmitters
       .flatMap((tx) => tx.state.modems
-        .filter((modem) => modem.isTransmitting && !modem.isFaulted && !modem.isLoopback)
+        .filter((modem) => modem.isTransmitting
+          && !modem.isFaulted
+          && !modem.isLoopback
+          && !tx.isModemInIntermittentDropout(modem))
         .map((modem) => modem.ifSignal));
   }
 
@@ -315,7 +332,7 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
 
   /**
    * Calculate BUC output power with saturation/compression modeling
-   * Models P1dB compression point where gain drops by 1dB
+   * Models P1dB compression point where output hard-limits at saturation
    */
   private updateOutputPower_(): void {
     if (!this.state.isPowered || this.state.isMuted) {
@@ -326,19 +343,10 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
     const inputPower = -10 as dBm; // dBm typical IF input
     const linearOutputPower = inputPower + this.state.gain;
 
-    // Model amplifier compression (P1dB)
-    // When output approaches saturation power, gain compresses
-    if (linearOutputPower >= this.state.saturationPower) {
-      // Above P1dB, output is compressed
-      const compressionDb = Math.min(
-        (linearOutputPower - this.state.saturationPower) * 0.5,
-        3 // Max 3dB compression beyond P1dB
-      );
-      this.state.outputPower = linearOutputPower - compressionDb as dBm;
-    } else {
-      // Linear region - no compression
-      this.state.outputPower = linearOutputPower as dBm;
-    }
+    // Model amplifier saturation (P1dB)
+    // Real amplifiers hard-limit at saturation - output cannot exceed saturation by much
+    const maxOutputPower = this.state.saturationPower + 2; // Max 2 dB above P1dB (hard saturation)
+    this.state.outputPower = Math.min(linearOutputPower, maxOutputPower) as dBm;
   }
 
   /**
@@ -508,9 +516,9 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
   }
 
   /**
-   * Get output power for given input power with compression modeling
+   * Get output power for given input power with saturation modeling
    * @param inputPowerDbm Input IF power in dBm
-   * @returns Output RF power in dBm (with P1dB compression applied)
+   * @returns Output RF power in dBm (clamped at saturation)
    */
   getOutputPower(inputPowerDbm: number): number {
     if (!this.state.isPowered || this.state.isMuted) {
@@ -519,16 +527,9 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
 
     const linearOutputPower = inputPowerDbm + this.state.gain;
 
-    // Apply compression if approaching saturation
-    if (linearOutputPower >= this.state.saturationPower) {
-      const compressionDb = Math.min(
-        (linearOutputPower - this.state.saturationPower) * 0.5,
-        3 // Max 3dB compression
-      );
-      return linearOutputPower - compressionDb;
-    }
-
-    return linearOutputPower;
+    // Hard-limit at saturation (max 2 dB above P1dB)
+    const maxOutputPower = this.state.saturationPower + 2;
+    return Math.min(linearOutputPower, maxOutputPower);
   }
 
   /**
@@ -542,12 +543,11 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
 
     const inputPower = -10; // Typical IF input
     const linearOutputPower = inputPower + this.state.gain;
+    const maxOutputPower = this.state.saturationPower + 2;
 
-    if (linearOutputPower >= this.state.saturationPower) {
-      return Math.min(
-        (linearOutputPower - this.state.saturationPower) * 0.5,
-        3
-      );
+    if (linearOutputPower > maxOutputPower) {
+      // Compression = how much we're clipping
+      return linearOutputPower - maxOutputPower;
     }
 
     return 0;

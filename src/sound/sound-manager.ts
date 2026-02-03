@@ -1,4 +1,5 @@
 import { Sfx } from "./sfx-enum";
+import TtsService from "./tts-service";
 
 const SFX_FILE_MAP: Record<Sfx, string> = {
   [Sfx.POWER_ON]: '/sfx/startup-sound.mp3',
@@ -40,8 +41,17 @@ class SoundManager {
   private readonly currentlyPlaying: Map<Sfx, HTMLAudioElement> = new Map();
   private customAudio: HTMLAudioElement | null = null;
   private readonly customAudioCache: Map<string, HTMLAudioElement> = new Map();
+  private ttsEnabled_: boolean = false;
 
   private constructor() { }
+
+  setTtsEnabled(enabled: boolean): void {
+    this.ttsEnabled_ = enabled;
+  }
+
+  isTtsEnabled(): boolean {
+    return this.ttsEnabled_;
+  }
 
   static getInstance(): SoundManager {
     if (!SoundManager.instance) {
@@ -139,38 +149,102 @@ class SoundManager {
     }
   }
 
-  playCustom(audioUrl: string): void {
-    // Stop any currently playing custom audio
+  playCustom(audioUrl: string, fallbackText?: string, onTtsFallback?: (isTts: boolean) => void): void {
+    // Stop any currently playing custom audio or TTS
     if (this.customAudio) {
       this.customAudio.pause();
       this.customAudio.currentTime = 0;
     }
+    TtsService.getInstance().stop();
 
-    // Check cache or create new audio element
-    let audio = this.customAudioCache.get(audioUrl);
-    if (!audio) {
-      audio = new Audio(audioUrl);
-      this.customAudioCache.set(audioUrl, audio);
-    }
+    // Try to load and play audio
+    this.loadAudio_(audioUrl)
+      .then((audio) => {
+        audio.currentTime = 0;
+        audio.play().catch(() => {
+          // Playback failed (e.g., user hasn't interacted with page)
+          this.tryTtsFallback_(fallbackText, onTtsFallback);
+        });
 
-    // Clone to allow the same audio to be played multiple times if needed
-    audio = audio.cloneNode(true) as HTMLAudioElement;
-    audio.currentTime = 0;
-    audio.play().catch(() => {
-      console.error(`Audio file not found: ${audioUrl}. Run 'npm run r2:pull' to fetch assets.`);
-    });
+        this.customAudio = audio;
+        onTtsFallback?.(false);
 
-    this.customAudio = audio;
+        // Clean up reference when audio ends
+        audio.addEventListener('ended', () => {
+          if (this.customAudio === audio) {
+            this.customAudio = null;
+          }
+        });
+      })
+      .catch(() => {
+        // Audio failed to load, use TTS fallback
+        console.warn(`Audio file not found: ${audioUrl}. Using TTS fallback.`);
+        this.tryTtsFallback_(fallbackText, onTtsFallback);
+      });
+  }
 
-    // Clean up reference when audio ends
-    audio.addEventListener('ended', () => {
-      if (this.customAudio === audio) {
-        this.customAudio = null;
+  private loadAudio_(audioUrl: string): Promise<HTMLAudioElement> {
+    return new Promise((resolve, reject) => {
+      // Check cache first
+      const cached = this.customAudioCache.get(audioUrl);
+      if (cached) {
+        // Clone cached audio
+        resolve(cached.cloneNode(true) as HTMLAudioElement);
+        return;
       }
+
+      // Create new audio element
+      const audio = new Audio();
+
+      const handleCanPlay = () => {
+        cleanup();
+        this.customAudioCache.set(audioUrl, audio.cloneNode(true) as HTMLAudioElement);
+        resolve(audio);
+      };
+
+      const handleError = () => {
+        cleanup();
+        reject(new Error(`Failed to load audio: ${audioUrl}`));
+      };
+
+      const cleanup = () => {
+        audio.removeEventListener('canplaythrough', handleCanPlay);
+        audio.removeEventListener('error', handleError);
+      };
+
+      audio.addEventListener('canplaythrough', handleCanPlay, { once: true });
+      audio.addEventListener('error', handleError, { once: true });
+      audio.src = audioUrl;
+      audio.load();
     });
   }
 
+  private tryTtsFallback_(text?: string, onTtsFallback?: (isTts: boolean) => void): void {
+    if (!this.ttsEnabled_) {
+      return;
+    }
+
+    if (!text) {
+      console.error('No fallback text provided for TTS');
+      return;
+    }
+
+    const tts = TtsService.getInstance();
+    if (!tts.isAvailable()) {
+      console.error('TTS not available and audio failed to load');
+      return;
+    }
+
+    this.customAudio = null;
+    onTtsFallback?.(true);
+
+    tts.speak(text);
+  }
+
   stopCustom(): void {
+    // Stop TTS if active
+    TtsService.getInstance().stop();
+
     if (this.customAudio) {
       // Fade out over 300ms
       const fadeDuration = 300;
@@ -200,6 +274,11 @@ class SoundManager {
   }
 
   isCustomAudioPlaying(): boolean {
+    // Check TTS first
+    if (TtsService.getInstance().isSpeaking()) {
+      return true;
+    }
+    // Check audio playback
     return this.customAudio !== null && !this.customAudio.paused && !this.customAudio.ended;
   }
 }

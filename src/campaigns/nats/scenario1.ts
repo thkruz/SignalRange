@@ -1,15 +1,48 @@
 import { Character, Emotion } from '@app/modal/character-enum';
 import type { Objective } from '@app/objectives/objective-types';
 import type { ScenarioData } from '@app/ScenarioData';
+import type { dBm } from '@app/types';
 import { getAssetUrl } from '@app/utils/asset-url';
 import { vermontGroundStation } from './ground-stations';
 import { tidemark1Satellite } from './satellites';
 
 /**
- * Scenario 1: "First Day" - TIDEMARK-1 Health Check
+ * NATS Level 1: "First Day" - TIDEMARK-1 Health Check
  *
- * A beginner-level tutorial where Charlie Brooks walks you through a routine
- * health check on an already-operational satellite ground station.
+ * Phase: Introduction (Phase 1, Scenario 1 of 8)
+ * Time Pressure: None (tutorial pacing)
+ * Calculation Required: NO - observation and familiarization only
+ * New UI Elements: All panels introduced - asset tree, tabs, equipment displays
+ *
+ * NICE Framework Alignment:
+ * Primary Codes:
+ *   - K0740: Knowledge of system performance indicators
+ *   - K0741: Knowledge of system availability measures
+ *   - T0153: Monitor network capacity and performance
+ *
+ * Supporting Codes:
+ *   - K0645: Knowledge of standard operating procedures (SOPs)
+ *   - K0773: Knowledge of telecommunications principles and practices
+ *   - K1032: Knowledge of satellite-based communication systems and software
+ *   - S0421: Skill in operating network equipment
+ *   - T0431: Check system hardware availability, functionality, integrity, and efficiency
+ *
+ * Premise: First day at North Atlantic Teleport Services. Charlie Brooks, senior
+ * operator transferring to Europe next month, walks you through a routine health
+ * check on TIDEMARK-1. This is observation and familiarization - learn what each
+ * panel shows, what the indicators mean, and what "normal" looks like.
+ *
+ * Key Learning Objectives:
+ * 1. Navigate the ground station UI (asset tree, tabs)
+ * 2. Identify key equipment panels (GPSDO, LNB, HPA, Spectrum Analyzer, Modems)
+ * 3. Understand what "normal" readings look like for each system
+ * 4. Learn the systematic health check workflow (timing → RX → TX → antenna → alarms)
+ * 5. Build foundation for independent operations in later scenarios
+ *
+ * Character Notes:
+ *   - Charlie Brooks: Senior operator, 6 years experience, transferring soon.
+ *     Direct, efficient, no-nonsense. Won't repeat himself but the system will.
+ *     Wants to get you up to speed quickly before he leaves.
  */
 
 export const scenario1Data: ScenarioData = {
@@ -27,28 +60,34 @@ export const scenario1Data: ScenarioData = {
     '9-meter C-band Antenna',
     'RF Front End',
     'Spectrum Analyzer',
-    'Receiver Modem (pre-configured)',
-    'Transmitter Modem (pre-configured)',
+    'RX/TX Modems',
   ],
   settings: {
     isSync: true,
     groundStations: [
       vermontGroundStation,
     ],
-    missionBriefUrl: 'https://docs.signalrange.space/scenarios/scenario-1?content-only=true&dark=true',
+    missionBriefUrl: 'https://docs.signalrange.space/campaign-1/scenario-1?content-only=true&dark=true',
     isExtraSatellitesVisible: true,
     satellites: [
       tidemark1Satellite,
     ]
   },
-  timeLimitSeconds: 20 * 60, // 20 minutes
+  timeLimitSeconds: 35 * 60, // 35 minutes
   objectives: [
+    // ============================================================
+    // MISSION PREPARATION
+    // ============================================================
     {
-      id: 'open-mission-brief',
+      id: 'review-mission-brief',
+      // K0645: Knowledge of standard operating procedures (SOPs) - reviewing the mission brief
+      // establishes the procedural framework for the health check workflow
+      nice: ['K0645'],
       title: 'Review Mission Brief',
       description: 'Open and read the mission brief, then acknowledge you are ready to proceed.',
       groundStation: 'VT-01',
       freezesScenarioTimer: true,
+      prerequisiteObjectiveIds: [],
       conditions: [
         {
           type: 'mission-brief-opened',
@@ -74,13 +113,84 @@ export const scenario1Data: ScenarioData = {
       conditionLogic: 'AND',
       points: 5,
     },
+
+    // ============================================================
+    // STATION ACCESS
+    // ============================================================
     {
-      id: 'phase-1-gpsdo',
-      title: 'GPSDO Status Check',
-      description: 'Click on the GPSDO panel and verify all status indicators show normal operation.',
+      id: 'select-vermont-station',
+      // S0421: Skill in operating network equipment - accessing the ground station
+      // control interface is the fundamental skill for all subsequent operations
+      nice: ['S0421'],
+      title: 'Access Vermont Ground Station',
+      description: 'Select the Vermont Ground Station in the asset tree to access its equipment panels.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['open-mission-brief'],
+      prerequisiteObjectiveIds: ['review-mission-brief'],
+      timeLimitSeconds: 2 * 60,
+      timerStartTrigger: 'on-activate',
       conditions: [
+        {
+          type: 'ground-station-selected',
+          description: 'Vermont Ground Station Selected',
+          params: { groundStationId: 'VT-01' },
+          mustMaintain: true,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 5,
+    },
+
+    // ============================================================
+    // TIMING REFERENCE
+    // ============================================================
+    {
+      id: 'navigate-gps-timing',
+      // S0421: Skill in operating network equipment - navigating to the GPS timing
+      // subsystem panel within the ground station control interface
+      nice: ['S0421'],
+      title: 'Open GPS Timing Tab',
+      description: 'Click the GPS Timing tab to view the timing reference equipment.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['select-vermont-station'],
+      timeLimitSeconds: 2 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'ground-station-selected',
+          description: 'Vermont Station Active',
+          params: { groundStationId: 'VT-01' },
+          mustMaintain: true,
+        },
+        {
+          type: 'tab-active',
+          description: 'GPS Timing Tab Open',
+          params: { tab: 'gps-timing' },
+          mustMaintain: true,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 5,
+    },
+    {
+      id: 'verify-gpsdo-status',
+      // T0431: Check system hardware availability, functionality, integrity, and efficiency -
+      // verifying the GPSDO is locked and providing stable timing reference
+      // K0741: Knowledge of system availability measures - understanding what "Locked" status
+      // indicates about the timing reference availability to downstream equipment
+      nice: ['T0431', 'K0741'],
+      title: 'GPSDO Status Check',
+      description: 'Verify the GPSDO is locked and providing a stable timing reference.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['navigate-gps-timing'],
+      timeLimitSeconds: 3 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'tab-active',
+          description: 'GPS Timing Tab Open',
+          params: { tab: 'gps-timing' },
+          mustMaintain: true,
+        },
         {
           type: 'status-check',
           description: 'Verify GPSDO Status',
@@ -100,16 +210,73 @@ export const scenario1Data: ScenarioData = {
         },
       ],
       conditionLogic: 'AND',
-      points: 20,
-      timeLimitSeconds: 5 * 60, // 5 minutes
+      points: 10,
+    },
+
+    // ============================================================
+    // RECEIVE CHAIN
+    // ============================================================
+    {
+      id: 'navigate-rx-analysis',
+      // S0421: Skill in operating network equipment - navigating to the receive
+      // chain analysis panel within the ground station control interface
+      nice: ['S0421'],
+      title: 'Open RX Analysis Tab',
+      description: 'Click the RX Analysis tab to view the receive chain equipment.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['verify-gpsdo-status'],
+      timeLimitSeconds: 2 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'ground-station-selected',
+          description: 'Vermont Station Active',
+          params: { groundStationId: 'VT-01' },
+          mustMaintain: true,
+        },
+        {
+          type: 'tab-active',
+          description: 'RX Analysis Tab Open',
+          params: { tab: 'rx-analysis' },
+          mustMaintain: true,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 5,
     },
     {
-      id: 'phase-2-lnb',
-      title: 'LNB Status Check',
-      description: 'Review the LNB panel. Learn what each indicator means for the receive chain.',
+      id: 'verify-lnb',
+      // T0431: Check system hardware availability, functionality, integrity, and efficiency -
+      // confirming the LNB is powered on and thermally stabilized before operations
+      // K0740: Knowledge of system performance indicators - interpreting noise temperature
+      // as a key metric for receive sensitivity and system health
+      // K0773: Knowledge of telecommunications principles and practices - understanding
+      // how LNB noise temperature affects overall receive chain performance
+      nice: ['T0431', 'K0740', 'K0773'],
+      title: 'Verify LNB Status',
+      description: 'Check that the LNB is powered, thermally stable, and noise temperature is within spec.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['phase-1-gpsdo'],
+      prerequisiteObjectiveIds: ['navigate-rx-analysis'],
+      timeLimitSeconds: 5 * 60,
+      timerStartTrigger: 'on-activate',
       conditions: [
+        {
+          type: 'tab-active',
+          description: 'RX Analysis Tab Open',
+          params: { tab: 'rx-analysis' },
+          mustMaintain: true,
+        },
+        {
+          type: 'equipment-powered',
+          description: 'LNB Powered',
+          params: { equipment: 'lnb' },
+          mustMaintain: true,
+        },
+        {
+          type: 'lnb-thermally-stable',
+          description: 'LNB Thermally Stabilized',
+          mustMaintain: true,
+        },
         {
           type: 'status-check',
           description: 'Verify LNB Noise Temperature',
@@ -129,103 +296,80 @@ export const scenario1Data: ScenarioData = {
         },
       ],
       conditionLogic: 'AND',
-      points: 20,
-      timeLimitSeconds: 5 * 60, // 5 minutes
+      points: 15,
     },
     {
-      id: 'phase-3-hpa',
-      title: 'HPA Status Check',
-      description: 'Review the High Power Amplifier panel. Learn how to verify it is in a safe standby state.',
+      id: 'verify-tap-points',
+      // K0773: Knowledge of telecommunications principles and practices - understanding
+      // signal routing and tap points in the receive chain for spectrum analysis
+      // S0421: Skill in operating network equipment - recognizing the tap point
+      // selector and its role in the monitoring workflow
+      nice: ['K0773', 'S0421'],
+      title: 'Tap Points Configuration',
+      description: 'Review the Tap Points card to understand signal monitoring points.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['phase-2-lnb'],
+      prerequisiteObjectiveIds: ['verify-lnb'],
+      timeLimitSeconds: 2 * 60,
+      timerStartTrigger: 'on-activate',
       conditions: [
         {
+          type: 'tab-active',
+          description: 'RX Analysis Tab Open',
+          params: { tab: 'rx-analysis' },
+          mustMaintain: true,
+        },
+        {
           type: 'status-check',
-          description: 'Verify HPA Status',
+          description: 'Understand Tap Points',
           params: {
-            question: 'What is the current state of the HPA (High Power Amplifier)?',
+            question: 'What does the Tap Points card show, and what is its purpose?',
             options: [
-              'Transmitting with 10 db backoff',
-              'Powered on but not enabled (safe standby)',
-              'Transmitting at full power',
-              'Powered off completely',
+              'RX IF selected - monitoring the receive chain after downconversion',
+              'TX IF selected - monitoring the transmit chain',
+              'Both TX and RX IF active - dual monitoring mode',
+              'No tap point selected - spectrum analyzer disabled',
             ],
             correctIndex: 0,
-            explanation: 'The HPA is powered on and transmitting with 10 dB backoff, which is a safe condition for routine operations. This reduces stress on the amplifier while still allowing signal transmission.',
+            explanation: 'The Tap Points card selects where in the signal chain the spectrum analyzer takes its input. RX IF monitors the receive path after the LNB downconverts from RF to IF - this is the standard monitoring point for receive operations.',
             pointPenalty: 10,
           },
           mustMaintain: false,
         },
       ],
       conditionLogic: 'AND',
-      points: 20,
-      timeLimitSeconds: 5 * 60, // 5 minutes
+      points: 10,
     },
     {
-      id: 'phase-4-antenna',
-      title: 'Antenna Tracking Status',
-      description: 'Check the antenna control unit. The antenna should be actively tracking TIDEMARK-1.',
+      id: 'identify-beacon',
+      // T0153: Monitor network capacity and performance - locating and confirming
+      // the satellite beacon signal on the spectrum analyzer
+      // K1032: Knowledge of satellite-based communication systems and software -
+      // understanding that the beacon is a satellite telemetry signal used for link verification
+      // K0773: Knowledge of telecommunications principles and practices -
+      // interpreting spectrum analyzer display to identify signal characteristics
+      nice: ['T0153', 'K1032', 'K0773'],
+      title: 'Identify Beacon Signal',
+      description: 'Locate the TIDEMARK-1 beacon signal on the spectrum analyzer and confirm receive chain status.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['phase-3-hpa'],
+      prerequisiteObjectiveIds: ['verify-tap-points'],
+      timeLimitSeconds: 6 * 60,
+      timerStartTrigger: 'on-activate',
       conditions: [
         {
-          type: 'status-check',
-          description: 'Verify Antenna Tracking Mode',
-          params: {
-            question: 'What tracking mode is the antenna currently using?',
-            options: [
-              'Step-track - actively tracking beacon signal',
-              'Program-track - following predicted orbital position',
-              'Manual - operator-controlled pointing',
-              'Stow - antenna in safe position',
-            ],
-            correctIndex: 1,
-            explanation: 'Program-track mode follows the predicted orbital position of the satellite based on ephemeris data. This mode is used when the beacon signal is not available, during initial acquisition, or when the satellite is GEO stationary and we don\'t want the ACU to make constant adjustments.',
-            pointPenalty: 10,
-          },
-          mustMaintain: false,
+          type: 'tab-active',
+          description: 'RX Analysis Tab Open',
+          params: { tab: 'rx-analysis' },
+          mustMaintain: true,
         },
-      ],
-      conditionLogic: 'AND',
-      points: 20,
-      timeLimitSeconds: 5 * 60, // 5 minutes
-    },
-    {
-      id: 'phase-5-polarization',
-      title: 'ACU Polarization Check',
-      description: 'Verify the antenna polarization setting matches the satellite requirements.',
-      groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['phase-4-antenna'],
-      conditions: [
         {
-          type: 'status-check',
-          description: 'Verify Polarization Setting',
+          type: 'signal-detected',
+          description: 'Beacon Signal Detected',
           params: {
-            question: 'What is the current polarization angle shown on the ACU, and why is it set to that value?',
-            options: [
-              '14° - matched to TIDEMARK-1 satellite polarization',
-              '0° - default horizontal polarization',
-              '90° - vertical polarization',
-              '45° - circular polarization',
-            ],
-            correctIndex: 0,
-            explanation: 'The polarization is set to 14° to match TIDEMARK-1\'s polarization angle. Proper polarization alignment maximizes signal strength and minimizes cross-pol interference.',
-            pointPenalty: 10,
+            signalId: 'TIDEMARK-1-Beacon',
+            minPower: -100 as dBm,
           },
-          mustMaintain: false,
+          mustMaintain: true,
         },
-      ],
-      conditionLogic: 'AND',
-      points: 20,
-      timeLimitSeconds: 5 * 60, // 5 minutes
-    },
-    {
-      id: 'phase-6-spectrum',
-      title: 'Spectrum Analyzer Reading',
-      description: 'Look at the spectrum analyzer display. You should see the TIDEMARK-1 beacon signal.',
-      groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['phase-5-polarization'],
-      conditions: [
         {
           type: 'status-check',
           description: 'Identify Beacon Signal',
@@ -246,44 +390,68 @@ export const scenario1Data: ScenarioData = {
       ],
       conditionLogic: 'AND',
       points: 20,
-      timeLimitSeconds: 5 * 60, // 5 minutes
     },
     {
-      id: 'phase-7-speca-settings',
+      id: 'verify-speca-settings',
+      // K0773: Knowledge of telecommunications principles and practices - understanding
+      // IF frequency configuration and reference levels for signal observation
+      // K0740: Knowledge of system performance indicators - recognizing correct
+      // spectrum analyzer settings as baseline for monitoring
+      nice: ['K0773', 'K0740'],
       title: 'Spectrum Analyzer Settings',
-      description: 'Review the spectrum analyzer settings to understand how it is configured for beacon observation.',
+      description: 'Review the spectrum analyzer configuration for beacon observation.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['phase-6-spectrum'],
+      prerequisiteObjectiveIds: ['identify-beacon'],
+      timeLimitSeconds: 3 * 60,
+      timerStartTrigger: 'on-activate',
       conditions: [
+        {
+          type: 'tab-active',
+          description: 'RX Analysis Tab Open',
+          params: { tab: 'rx-analysis' },
+          mustMaintain: true,
+        },
         {
           type: 'status-check',
           description: 'Verify Spectrum Analyzer Configuration',
           params: {
-            question: 'What center frequency and reference level are set on the spectrum analyzer?',
+            question: 'What center frequency and span are set on the spectrum analyzer?',
             options: [
-              '1074.5 MHz center, -91 dBm reference - configured for TIDEMARK-1 beacon IF',
-              '1532 MHz center, -50 dBm reference - configured for TIDEMARK-1 RF frequency',
-              '0.002 MHz center, -30 dBm reference - configured for baseband',
-              '40 MHz bandwidth, 1.8 dB insertion loss - configured for low noise floor',
+              '1074.5 MHz center, 0.002 MHz span',
+              '1532 MHz center, 2 kHz span',
+              '0.002 MHz center, 1074.5 MHz span',
+              '1074.5 MHz center, 2 MHz span',
             ],
             correctIndex: 0,
-            explanation: 'The spectrum analyzer is set to 1074.5 MHz (beacon IF frequency for TIDEMARK-1 after LNB downconversion) with a -91 dBm reference level to properly display the weak beacon signal above the noise floor.',
+            explanation: 'The spectrum analyzer is set to 1074.5 MHz (beacon IF frequency for TIDEMARK-1 after LNB downconversion) with a 2 kHz (0.002 MHz) span. This narrow span allows you to clearly see the beacon signal above the noise floor.',
             pointPenalty: 10,
           },
           mustMaintain: false,
         },
       ],
       conditionLogic: 'AND',
-      points: 20,
-      timeLimitSeconds: 5 * 60, // 5 minutes
+      points: 10,
     },
     {
-      id: 'phase-8-receiver',
+      id: 'verify-receiver',
+      // T0153: Monitor network capacity and performance - evaluating C/N ratio
+      // to assess link quality and available margin
+      // K0740: Knowledge of system performance indicators - understanding C/N
+      // thresholds and what constitutes healthy link margin for QPSK
+      nice: ['T0153', 'K0740'],
       title: 'Receiver Modem Check',
       description: 'Verify the receiver modem is locked and the link quality is good.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['phase-7-speca-settings'],
+      prerequisiteObjectiveIds: ['verify-speca-settings'],
+      timeLimitSeconds: 3 * 60,
+      timerStartTrigger: 'on-activate',
       conditions: [
+        {
+          type: 'tab-active',
+          description: 'RX Analysis Tab Open',
+          params: { tab: 'rx-analysis' },
+          mustMaintain: true,
+        },
         {
           type: 'status-check',
           description: 'Verify Link Quality',
@@ -303,16 +471,28 @@ export const scenario1Data: ScenarioData = {
         },
       ],
       conditionLogic: 'AND',
-      points: 20,
-      timeLimitSeconds: 5 * 60, // 5 minutes
+      points: 10,
     },
     {
-      id: 'phase-9-constellation',
+      id: 'verify-constellation',
+      // K0773: Knowledge of telecommunications principles and practices - interpreting
+      // I&Q constellation diagrams to assess QPSK demodulation quality
+      // K0740: Knowledge of system performance indicators - recognizing tight clusters
+      // as visual confirmation of healthy signal-to-noise conditions
+      nice: ['K0773', 'K0740'],
       title: 'I&Q Constellation Check',
-      description: 'Examine the I&Q constellation diagram to verify signal quality and modulation.',
+      description: 'Examine the I&Q constellation diagram to verify signal quality.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['phase-8-receiver'],
+      prerequisiteObjectiveIds: ['verify-receiver'],
+      timeLimitSeconds: 3 * 60,
+      timerStartTrigger: 'on-activate',
       conditions: [
+        {
+          type: 'tab-active',
+          description: 'RX Analysis Tab Open',
+          params: { tab: 'rx-analysis' },
+          mustMaintain: true,
+        },
         {
           type: 'status-check',
           description: 'Interpret I&Q Constellation',
@@ -332,16 +512,337 @@ export const scenario1Data: ScenarioData = {
         },
       ],
       conditionLogic: 'AND',
-      points: 20,
-      timeLimitSeconds: 5 * 60, // 5 minutes
+      points: 10,
+    },
+
+    // ============================================================
+    // RX PAYLOAD DATA
+    // ============================================================
+    {
+      id: 'verify-rx-payload',
+      // K0740: Knowledge of system performance indicators - understanding frame sync,
+      // BER, and CRC as indicators of data integrity in the receive chain
+      // K0773: Knowledge of telecommunications principles and practices -
+      // understanding forward error correction and data validation
+      nice: ['K0740', 'K0773'],
+      title: 'RX Payload Data Check',
+      description: 'Review the Payload Data Integrity card to verify the receive data path is healthy.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['verify-constellation'],
+      timeLimitSeconds: 3 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'tab-active',
+          description: 'RX Analysis Tab Open',
+          params: { tab: 'rx-analysis' },
+          mustMaintain: true,
+        },
+        {
+          type: 'status-check',
+          description: 'Verify RX Payload Status',
+          params: {
+            question: 'What does the Payload Data Integrity card show about the received data?',
+            options: [
+              'Frame sync locked, CRC valid, Reed-Solomon active - data path healthy',
+              'Frame sync unlocked - no data being received',
+              'CRC errors detected - data corruption',
+              'Viterbi decoder disabled - no error correction',
+            ],
+            correctIndex: 0,
+            explanation: 'The Payload Data Integrity card confirms the data path is healthy: frame sync is locked (receiving valid frames), CRC checks pass (no corruption), and the Reed-Solomon decoder is actively correcting any bit errors.',
+            pointPenalty: 10,
+          },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 10,
+    },
+
+    // ============================================================
+    // TRANSMIT CHAIN
+    // ============================================================
+    {
+      id: 'navigate-tx-chain',
+      // S0421: Skill in operating network equipment - navigating to the transmit
+      // chain panel within the ground station control interface
+      nice: ['S0421'],
+      title: 'Open TX Chain Tab',
+      description: 'Click the TX Chain tab to view the transmit equipment.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['verify-rx-payload'],
+      timeLimitSeconds: 2 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'ground-station-selected',
+          description: 'Vermont Station Active',
+          params: { groundStationId: 'VT-01' },
+          mustMaintain: true,
+        },
+        {
+          type: 'tab-active',
+          description: 'TX Chain Tab Open',
+          params: { tab: 'tx-chain' },
+          mustMaintain: true,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 5,
     },
     {
-      id: 'phase-10-alarms',
-      title: 'Dashboard Alarm Check',
-      description: 'Final step: review the alarm dashboard to confirm no active alarms.',
+      id: 'verify-hpa-status',
+      // T0431: Check system hardware availability, functionality, integrity, and efficiency -
+      // verifying the HPA operational state and transmit status
+      // K0740: Knowledge of system performance indicators - understanding backoff levels
+      // as indicators of amplifier operating margin and stress
+      nice: ['T0431', 'K0740'],
+      title: 'HPA Status Check',
+      description: 'Verify the High Power Amplifier is operating correctly.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['phase-9-constellation'],
+      prerequisiteObjectiveIds: ['navigate-tx-chain'],
+      timeLimitSeconds: 3 * 60,
+      timerStartTrigger: 'on-activate',
       conditions: [
+        {
+          type: 'tab-active',
+          description: 'TX Chain Tab Open',
+          params: { tab: 'tx-chain' },
+          mustMaintain: true,
+        },
+        {
+          type: 'status-check',
+          description: 'Verify HPA Status',
+          params: {
+            question: 'What is the current state of the HPA (High Power Amplifier)?',
+            options: [
+              'Transmitting with 10 dB backoff',
+              'Powered on but not enabled (safe standby)',
+              'Transmitting at full power',
+              'Powered off completely',
+            ],
+            correctIndex: 0,
+            explanation: 'The HPA is powered on and transmitting with 10 dB backoff, which is a safe condition for routine operations. This reduces stress on the amplifier while still allowing signal transmission.',
+            pointPenalty: 10,
+          },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 10,
+    },
+
+    // ============================================================
+    // TX PAYLOAD DATA
+    // ============================================================
+    {
+      id: 'verify-tx-payload',
+      // K0740: Knowledge of system performance indicators - understanding data rate,
+      // buffer status, and encryption indicators in the transmit chain
+      // K0773: Knowledge of telecommunications principles and practices -
+      // understanding data encoding and encryption for secure communications
+      nice: ['K0740', 'K0773'],
+      title: 'TX Payload Data Check',
+      description: 'Review the TX Payload Data card to verify the transmit data path is ready.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['verify-hpa-status'],
+      timeLimitSeconds: 3 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'tab-active',
+          description: 'TX Chain Tab Open',
+          params: { tab: 'tx-chain' },
+          mustMaintain: true,
+        },
+        {
+          type: 'status-check',
+          description: 'Verify TX Payload Status',
+          params: {
+            question: 'What does the TX Payload Data card show about the transmit data path?',
+            options: [
+              'Source feed active, encryption enabled, buffer healthy - ready to transmit',
+              'Source feed inactive - no data available',
+              'Encryption disabled - transmitting in clear',
+              'Buffer overflow - data loss occurring',
+            ],
+            correctIndex: 0,
+            explanation: 'The TX Payload Data card shows the transmit path is healthy: source feed is active, encryption is enabled with a valid key, and the buffer utilization is within normal range with no overflows or underruns.',
+            pointPenalty: 10,
+          },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 10,
+    },
+
+    // ============================================================
+    // ANTENNA CONTROL
+    // ============================================================
+    {
+      id: 'navigate-acu-control',
+      // S0421: Skill in operating network equipment - navigating to the antenna
+      // control unit panel within the ground station control interface
+      nice: ['S0421'],
+      title: 'Open ACU Control Tab',
+      description: 'Click the ACU Control tab to view the antenna control unit.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['verify-tx-payload'],
+      timeLimitSeconds: 2 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'ground-station-selected',
+          description: 'Vermont Station Active',
+          params: { groundStationId: 'VT-01' },
+          mustMaintain: true,
+        },
+        {
+          type: 'tab-active',
+          description: 'ACU Control Tab Open',
+          params: { tab: 'acu-control' },
+          mustMaintain: true,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 5,
+    },
+    {
+      id: 'verify-tracking-mode',
+      // K1032: Knowledge of satellite-based communication systems and software -
+      // understanding antenna tracking modes and their application to GEO satellites
+      // T0153: Monitor network capacity and performance - verifying antenna is
+      // correctly tracking the target satellite
+      nice: ['K1032', 'T0153'],
+      title: 'Antenna Tracking Status',
+      description: 'Verify the antenna is correctly tracking TIDEMARK-1.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['navigate-acu-control'],
+      timeLimitSeconds: 3 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'tab-active',
+          description: 'ACU Control Tab Open',
+          params: { tab: 'acu-control' },
+          mustMaintain: true,
+        },
+        {
+          type: 'status-check',
+          description: 'Verify Antenna Tracking Mode',
+          params: {
+            question: 'What tracking mode is the antenna currently using?',
+            options: [
+              'Step-track - actively tracking beacon signal',
+              'Program-track - following predicted orbital position',
+              'Manual - operator-controlled pointing',
+              'Stow - antenna in safe position',
+            ],
+            correctIndex: 1,
+            explanation: 'Program-track mode follows the predicted orbital position of the satellite based on ephemeris data. This mode is used when the beacon signal is not available, during initial acquisition, or when the satellite is GEO stationary and we don\'t want the ACU to make constant adjustments.',
+            pointPenalty: 10,
+          },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 10,
+    },
+    {
+      id: 'verify-polarization',
+      // K1032: Knowledge of satellite-based communication systems and software -
+      // understanding polarization alignment requirements for satellite links
+      // K0773: Knowledge of telecommunications principles and practices -
+      // understanding how polarization mismatch affects signal strength and cross-pol interference
+      nice: ['K1032', 'K0773'],
+      title: 'Polarization Check',
+      description: 'Verify the antenna polarization matches TIDEMARK-1 requirements.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['verify-tracking-mode'],
+      timeLimitSeconds: 3 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'tab-active',
+          description: 'ACU Control Tab Open',
+          params: { tab: 'acu-control' },
+          mustMaintain: true,
+        },
+        {
+          type: 'status-check',
+          description: 'Verify Polarization Setting',
+          params: {
+            question: 'What is the current polarization angle shown on the ACU, and why is it set to that value?',
+            options: [
+              '14° - matched to TIDEMARK-1 satellite polarization',
+              '0° - default horizontal polarization',
+              '90° - vertical polarization',
+              '45° - circular polarization',
+            ],
+            correctIndex: 0,
+            explanation: 'The polarization is set to 14° to match TIDEMARK-1\'s polarization angle. Proper polarization alignment maximizes signal strength and minimizes cross-pol interference.',
+            pointPenalty: 10,
+          },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 10,
+    },
+
+    // ============================================================
+    // FINAL VERIFICATION
+    // ============================================================
+    {
+      id: 'navigate-dashboard',
+      // S0421: Skill in operating network equipment - navigating to the alarm
+      // dashboard within the ground station control interface
+      nice: ['S0421'],
+      title: 'Open Dashboard Tab',
+      description: 'Click the Dashboard tab to view the alarm summary.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['verify-polarization'],
+      timeLimitSeconds: 2 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'ground-station-selected',
+          description: 'Vermont Station Active',
+          params: { groundStationId: 'VT-01' },
+          mustMaintain: true,
+        },
+        {
+          type: 'tab-active',
+          description: 'Dashboard Tab Open',
+          params: { tab: 'dashboard' },
+          mustMaintain: true,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 5,
+    },
+    {
+      id: 'verify-alarm-status',
+      // T0153: Monitor network capacity and performance - reviewing aggregated
+      // alarm status to confirm overall system health
+      // K0741: Knowledge of system availability measures - understanding alarm
+      // dashboard as indicator of system operational status
+      nice: ['T0153', 'K0741'],
+      title: 'Dashboard Alarm Check',
+      description: 'Confirm no active alarms on the dashboard.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['navigate-dashboard'],
+      timeLimitSeconds: 3 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'tab-active',
+          description: 'Dashboard Tab Open',
+          params: { tab: 'dashboard' },
+          mustMaintain: true,
+        },
         {
           type: 'status-check',
           description: 'Verify Alarm Status',
@@ -361,8 +862,7 @@ export const scenario1Data: ScenarioData = {
         },
       ],
       conditionLogic: 'AND',
-      points: 20,
-      timeLimitSeconds: 5 * 60, // 5 minutes
+      points: 10,
     },
   ] as Objective[],
   dialogClips: {
@@ -386,132 +886,147 @@ export const scenario1Data: ScenarioData = {
       audioUrl: getAssetUrl('/assets/campaigns/nats/1/intro-v2.mp3'),
     },
     objectives: {
-      'open-mission-brief': {
+      // ============================================================
+      // MISSION PREPARATION
+      // ============================================================
+      'review-mission-brief': {
         text: `
       <p>
         Alright. First thing, always - the GPSDO. GPS-Disciplined Oscillator. It's the timing heart of this whole rack. Every piece of equipment keys off that 10 MHz reference. If the GPSDO is unhappy, nothing else matters.
       </p>
       <p>
-        Click Vermont Ground Station, then GPS Timing tab. Tell me what the lock indicator shows. It'll be locked, holdover, unlocked, or off. Go.
+        Start by clicking Vermont Ground Station in the asset tree on the left. That'll give you access to the equipment panels.
       </p>
       `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
         audioUrl: getAssetUrl('/assets/campaigns/nats/1/v2/obj-open-mission-brief.mp3'),
       },
-      'phase-1-gpsdo': {
+
+      // ============================================================
+      // STATION ACCESS
+      // ============================================================
+      'select-vermont-station': {
+        text: `
+      <p>
+        Good. You've got Vermont selected. See the tabs across the top? Dashboard, ACU Control, RX Analysis, TX Chain, GPS Timing. Each one shows different equipment.
+      </p>
+      <p>
+        Click GPS Timing. That's where we check the GPSDO.
+      </p>
+      `,
+        character: Character.CHARLIE_BROOKS,
+        emotion: Emotion.NEUTRAL,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/1/v2/obj-select-vermont-station.mp3'),
+      },
+
+      // ============================================================
+      // TIMING REFERENCE
+      // ============================================================
+      'navigate-gps-timing': {
+        text: `
+      <p>
+        This is the GPS Timing panel. The GPSDO locks to GPS satellites and generates a 10 MHz reference signal. Everything in the rack - LNB, BUC, modems - uses this reference to stay on frequency.
+      </p>
+      <p>
+        You might notice that its labeled GNSS instead of GPS. Modern timing units can use multiple Global Navigation Satellite Systems - GPS, GLONASS, Galileo, BeiDou - to improve accuracy and reliability.
+      <p>
+        Look at the lock indicator. Tell me what it shows - locked, holdover, unlocked, or off.
+      </p>
+      `,
+        character: Character.CHARLIE_BROOKS,
+        emotion: Emotion.NEUTRAL,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/1/v2/obj-navigate-gps-timing.mp3'),
+      },
+      'verify-gpsdo-status': {
         text: `
       <p>
         Locked. Good start. That green light means we have a stable frequency reference - everything downstream can trust the timing. If you ever see it drop to holdover, you've got maybe twenty minutes before drift becomes a problem. Unlocked means stop what you're doing and fix it.
       </p>
       <p>
-        Next is the LNB - Low Noise Block downconverter. It's mounted at the antenna feed, converts C-band down to IF. The spec that matters is noise temperature, measured in Kelvin. Lower is better. Under 100K is acceptable.
-      </p>
-      <p>
-        RX Analysis tab. Find the noise temperature reading on the LNB panel.
+        Now let's check the receive chain. Click the RX Analysis tab.
       </p>
       `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.CONFIDENT,
         audioUrl: getAssetUrl('/assets/campaigns/nats/1/v2/obj-phase-1-gpsdo.mp3'),
       },
-      'phase-2-lnb': {
+
+      // ============================================================
+      // RECEIVE CHAIN
+      // ============================================================
+      'navigate-rx-analysis': {
         text: `
       <p>
-        43K - that's solid. The cooler the LNB runs, the less noise it adds to your signal. You start seeing that number climb, it's an early warning. Equipment doesn't fail all at once - it degrades. Your job is to catch it before the customer does.
+        RX Analysis - this is your receive chain. LNB at the top, spectrum analyzer in the middle, receiver modem at the bottom. Signal flows from antenna to data.
       </p>
       <p>
-        Now the HPA - High Power Amplifier. This is the muscle. Takes your milliwatt signal and turns it into real power to reach the satellite. It's also the equipment most likely to ruin your day if you're not paying attention.
+        The LNB - Low Noise Block downconverter - sits at the antenna feed. Converts C-band RF down to IF so it can travel through coax. First, verify it's powered and thermally stable.
+      </p>
+      `,
+        character: Character.CHARLIE_BROOKS,
+        emotion: Emotion.NEUTRAL,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/1/v2/obj-navigate-rx-analysis.mp3'),
+      },
+      'verify-lnb': {
+        text: `
+      <p>
+        LNB is powered and temperature is stable. That's what you want to see. Cold LNBs drift. Hot LNBs fail. Stable is the goal.
       </p>
       <p>
-        TX Chain tab. The HPA can be transmitting with backoff, muted for safety, powered off, or faulted. Which is it?
+        43K noise temperature - that's solid. The cooler the LNB runs, the less noise it adds to your signal. Under 100K is acceptable for C-band. You start seeing that number climb, it's an early warning. Equipment doesn't fail all at once - it degrades. Your job is to catch it before the customer does.
+      </p>
+      <p>
+        Now before we check the spectrum analyzer, take a look at the Tap Points card. That controls where the analyzer takes its signal from.
       </p>
       `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.HAPPY,
         audioUrl: getAssetUrl('/assets/campaigns/nats/1/v2/obj-phase-2-lnb.mp3'),
       },
-      'phase-3-hpa': {
+      'verify-tap-points': {
         text: `
       <p>
-        Transmitting with 10 dB backoff - that's normal ops. We run with headroom so we're not stressing the amplifier. The day you see that backoff at zero, you better have a good reason.
+        Good. The Tap Points card tells you where in the signal chain the spectrum analyzer takes its input. RX IF means you're looking at the receive path after the LNB downconverts from RF - that's what you want for monitoring the downlink. TX IF would show you the transmit side before it goes to the BUC.
       </p>
       <p>
-        One thing - never assume the HPA is muted. I've seen guys reach into the waveguide thinking RF was off. It wasn't. Always verify. Anyway.
-      </p>
-      <p>
-        ACU Control tab - antenna control unit. The dish needs to stay pointed at TIDEMARK-1. There are different tracking modes: program-track follows ephemeris predictions, step-track hunts for peak signal, manual is operator-controlled, stow parks it safe. What mode are we in?
+        For a health check, RX IF is the standard choice. Now let's move to the spectrum analyzer.
       </p>
       `,
         character: Character.CHARLIE_BROOKS,
-        emotion: Emotion.CONFIDENT,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/1/v2/obj-phase-3-hpa.mp3'),
+        emotion: Emotion.NEUTRAL,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/1/v2/obj-verify-tap-points.mp3'),
       },
-      'phase-4-antenna': {
+      'identify-beacon': {
         text: `
       <p>
-        Program-track. Right answer for a GEO bird. TIDEMARK-1 sits in essentially the same spot, so we follow the math instead of constantly hunting. Eight years old now, starting to drift a bit in its box, but nothing the ephemeris can't handle.
+        You're looking for the beacon - TIDEMARK-1's CW carrier. It's already configured to show it. Should be a clean spike above the noise floor. If you don't see it, check the center frequency. Beacon IF is 1074.5 MHz after the LNB downconverts from RF.
       </p>
       <p>
-        Stay on ACU Control. Next is polarization - how the wave is oriented. Has to match what the satellite expects or you lose signal. Could be horizontal at 0 degrees, vertical at 90, or something in between. Cross-polarized means cross-eyed - you'll see almost nothing.
+        There it is. Clean beacon. That carrier is your canary - if you can see it, the receive path is working. If it disappears or goes ragged, something changed. Could be weather, could be equipment, could be the satellite.
       </p>
       <p>
-        What's our polarization angle?
-      </p>
-      `,
-        character: Character.CHARLIE_BROOKS,
-        emotion: Emotion.CONFIDENT,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/1/v2/obj-phase-4-antenna.mp3'),
-      },
-      'phase-5-polarization': {
-        text: `
-      <p>
-        14 degrees - matched to TIDEMARK-1. That's a detail people overlook. Wrong polarization costs you dBs, and dBs are money. Or in bad weather, dBs are the difference between link and no link.
-      </p>
-      <p>
-        Alright, spectrum analyzer time. This is where you'll live as an operator. Shows you the RF environment in real time - what's there, what's not, what shouldn't be.
-      </p>
-      <p>
-        RX Analysis tab. You're looking for the beacon - TIDEMARK-1's CW carrier. Should be a clean spike above the noise floor. Could also be just noise, interference, or a flatline if something's wrong. What do you see?
-      </p>
-      `,
-        character: Character.CHARLIE_BROOKS,
-        emotion: Emotion.HAPPY,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/1/v2/obj-phase-5-polarization.mp3'),
-      },
-      'phase-6-spectrum': {
-        text: `
-      <p>
-        There it is. Clean beacon. That carrier is your canary - if you can see it, the receive path is working. If it disappears or goes ragged, something changed. Could be weather, could be equipment, could be the satellite. But you'll know something's wrong before the alarms even trip.
-      </p>
-      <p>
-        Now check the analyzer settings. Center frequency and reference level - they determine what you're actually looking at.
-      </p>
-      <p>
-        We're viewing IF after the LNB downconverts. The beacon comes down at 3902.5 MHz, LNB shifts it to 1074.5 MHz. Reference level is set to see weak signals without clipping. What values do you see?
+        Now check the analyzer settings. Center frequency and reference level determine what you're actually looking at.
       </p>
       `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.HAPPY,
         audioUrl: getAssetUrl('/assets/campaigns/nats/1/v2/obj-phase-6-spectrum.mp3'),
       },
-      'phase-7-speca-settings': {
+      'verify-speca-settings': {
         text: `
       <p>
-        1074.5 center, reference around -91. That's the setup for beacon watch. Get these wrong and you're either staring at the wrong frequency or your signal's buried in the noise floor. I've seen new ops spend an hour troubleshooting a "missing" signal that was just off-screen. Don't be that person.
+        1074.5 center, span set to 2kHz. That's the setup for beacon watch. Get these wrong and you're either staring at the wrong frequency or your signal's buried in the noise floor. I've seen new ops spend an hour troubleshooting a "missing" signal that was just off-screen. Don't be that person.
       </p>
       <p>
         Receiver modem next. This is where RF becomes data. The number you care about is C/N - Carrier-to-Noise ratio.
-      </p>
-      <p>
-        Stay on RX Analysis, check the modem panel. Above 8 dB for QPSK means healthy margin. Around 5 is marginal. Below threshold and the link falls apart. Where are we?
       </p>
       `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.CONFIDENT,
         audioUrl: getAssetUrl('/assets/campaigns/nats/1/v2/obj-phase-7-speca-settings.mp3'),
       },
-      'phase-8-receiver': {
+      'verify-receiver': {
         text: `
       <p>
         Good margin. That headroom is what keeps you online when a storm rolls through or the satellite has a bad day. C/N is your primary health metric - know it, watch it, respect it.
@@ -520,36 +1035,160 @@ export const scenario1Data: ScenarioData = {
         Last thing on the receive side - the constellation diagram. Visual representation of the demodulated symbols.
       </p>
       <p>
-        QPSK gives you four clusters, one per symbol. Tight clusters mean clean demod. Scattered means noise. Rotating means phase problems. Empty means no lock. What's the constellation showing?
+        QPSK gives you four clusters, one per symbol. Tight clusters mean clean demod. Scattered means noise. Rotating means phase problems. Empty means no lock.
       </p>
       `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.HAPPY,
         audioUrl: getAssetUrl('/assets/campaigns/nats/1/v2/obj-phase-8-receiver.mp3'),
       },
-      'phase-9-constellation': {
+      'verify-constellation': {
         text: `
       <p>
-        Tight clusters. That's the picture of a healthy link. After a while you'll glance at that diagram and know instantly if something's off. Noise spreads the points, phase errors rotate them, interference makes them dance. You'll learn to read it like a face.
+        Tight clusters. That's the picture of a healthy link. After a while you'll glance at that diagram and know instantly if something's off. Noise spreads the points, phase errors rotate them, interference makes them dance.
       </p>
       <p>
-        One more check, then we're done for today. The alarm dashboard - aggregates everything into one view.
-      </p>
-      <p>
-        Dashboard tab. Could be clean, could be warnings, could be critical faults. This is your early warning system. What's it showing?
+        One more thing on the receive side - scroll down to the Payload Data Integrity card. This shows you the data path after demodulation. Frame sync, error correction, decryption status - the whole pipeline.
       </p>
       `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.CONFIDENT,
         audioUrl: getAssetUrl('/assets/campaigns/nats/1/v2/obj-phase-9-constellation.mp3'),
       },
-      'phase-10-alarms': {
+
+      // ============================================================
+      // RX PAYLOAD DATA
+      // ============================================================
+      'verify-rx-payload': {
+        text: `
+      <p>
+        Good. Frame sync locked, CRC passing, Reed-Solomon doing its job. That's what a clean data path looks like. The Viterbi decoder and encryption are pre-configured for TIDEMARK-1's downlink - you just need to verify they're working.
+      </p>
+      <p>
+        Receive chain is done. Now let's check the transmit side. Click the TX Chain tab.
+      </p>
+      `,
+        character: Character.CHARLIE_BROOKS,
+        emotion: Emotion.HAPPY,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/1/v2/obj-verify-rx-payload.mp3'),
+      },
+
+      // ============================================================
+      // TRANSMIT CHAIN
+      // ============================================================
+      'navigate-tx-chain': {
+        text: `
+      <p>
+        TX Chain - your transmit path. BUC at the top left, HPA at the top right, transmitter modem at the bottom left, and payload data at the bottom right. Signal flows from data to antenna.
+      </p>
+      <p>
+        The HPA - High Power Amplifier - is the muscle. Takes your milliwatt signal and turns it into real power. It's also the equipment most likely to ruin your day if you're not paying attention.
+      </p>
+      `,
+        character: Character.CHARLIE_BROOKS,
+        emotion: Emotion.NEUTRAL,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/1/v2/obj-navigate-tx-chain.mp3'),
+      },
+      'verify-hpa-status': {
+        text: `
+      <p>
+        Transmitting with 10 dB backoff - that's normal ops. We run with headroom so we're not stressing the amplifier. The day you see that backoff at zero, you better have a good reason.
+      </p>
+      <p>
+        One thing - never assume the HPA is muted. I've seen guys reach into the waveguide thinking RF was off. It wasn't. Always verify.
+      </p>
+      <p>
+        Check the TX Payload Data card next - that's the data side of transmission. Source status, encryption, buffer health.
+      </p>
+      `,
+        character: Character.CHARLIE_BROOKS,
+        emotion: Emotion.CONFIDENT,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/1/v2/obj-phase-3-hpa.mp3'),
+      },
+
+      // ============================================================
+      // TX PAYLOAD DATA
+      // ============================================================
+      'verify-tx-payload': {
+        text: `
+      <p>
+        Source active, encryption enabled, buffer healthy. That's what you want. Encryption is mandatory for TIDEMARK-1 traffic - SeaLink's customers pay for secure maritime comms.
+      </p>
+      <p>
+        Transmit chain is good. Now let's check the antenna. Click ACU Control.
+      </p>
+      `,
+        character: Character.CHARLIE_BROOKS,
+        emotion: Emotion.HAPPY,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/1/v2/obj-verify-tx-payload.mp3'),
+      },
+
+      // ============================================================
+      // ANTENNA CONTROL
+      // ============================================================
+      'navigate-acu-control': {
+        text: `
+      <p>
+        ACU Control - antenna control unit. The dish needs to stay pointed at TIDEMARK-1.
+      </p>
+      <p>
+        There are different tracking modes: program-track follows ephemeris predictions, manual is operator-controlled, stow parks it safe. What mode are we in?
+      </p>
+      `,
+        character: Character.CHARLIE_BROOKS,
+        emotion: Emotion.NEUTRAL,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/1/v2/obj-navigate-acu-control.mp3'),
+      },
+      'verify-tracking-mode': {
+        text: `
+      <p>
+        Program-track. Right answer for a GEO bird. TIDEMARK-1 sits in essentially the same spot, so we follow the math instead of constantly hunting. Eight years old now, starting to drift a bit in its box, but nothing the ephemeris can't handle.
+      </p>
+      <p>
+        Next is polarization - how the wave is oriented. Has to match what the satellite expects or you lose signal. Could be horizontal at 0 degrees, vertical at 90, or something in between.
+      </p>
+      `,
+        character: Character.CHARLIE_BROOKS,
+        emotion: Emotion.CONFIDENT,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/1/v2/obj-phase-4-antenna.mp3'),
+      },
+      'verify-polarization': {
+        text: `
+      <p>
+        14 degrees - matched to TIDEMARK-1. That's a detail people overlook. Wrong polarization costs you dBs, and dBs are money. Or in bad weather, dBs are the difference between link and no link.
+      </p>
+      <p>
+        One more check, then we're done. The alarm dashboard aggregates everything into one view. Click the Dashboard tab.
+      </p>
+      `,
+        character: Character.CHARLIE_BROOKS,
+        emotion: Emotion.HAPPY,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/1/v2/obj-phase-5-polarization.mp3'),
+      },
+
+      // ============================================================
+      // FINAL VERIFICATION
+      // ============================================================
+      'navigate-dashboard': {
+        text: `
+      <p>
+        Dashboard - your early warning system. Shows status of all equipment at a glance. Green is good. Yellow needs attention. Red means stop and investigate.
+      </p>
+      <p>
+        Could be clean, could be warnings, could be critical faults. What's it showing?
+      </p>
+      `,
+        character: Character.CHARLIE_BROOKS,
+        emotion: Emotion.NEUTRAL,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/1/v2/obj-navigate-dashboard.mp3'),
+      },
+      'verify-alarm-status': {
         text: `
       <p>
         Clean board. That's what right looks like. Remember it.
       </p>
       <p>
-        Alright - GPSDO, LNB, HPA, tracking mode, polarization, beacon, analyzer settings, C/N, constellation, alarms. That's your health check. Ten items, maybe fifteen minutes once you know what you're doing. Do it at the start of every shift, do it after any anomaly, do it whenever something feels off.
+        Alright - GPSDO, LNB, beacon, spectrum analyzer, receiver, HPA, tracking mode, polarization, alarms. That's your health check. Do it at the start of every shift, do it after any anomaly, do it whenever something feels off.
       </p>
       <p>
         You did fine. Tomorrow we'll actually touch some controls - power sequencing, safe states, that kind of thing. I need to know you won't break anything before I leave you alone with the equipment.

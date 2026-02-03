@@ -1,16 +1,17 @@
-import { IQConstellationAdapter } from '../../../../src/pages/mission-control/tabs/iq-constellation-adapter';
+import { Mock, Mocked, vi } from 'vitest';
 import { Receiver } from '../../../../src/equipment/receiver/receiver';
 import { EventBus } from '../../../../src/events/event-bus';
 import { Events } from '../../../../src/events/events';
+import { IQConstellationAdapter } from '../../../../src/pages/mission-control/tabs/iq-constellation-adapter';
 
 // Mock dependencies
-jest.mock('../../../../src/events/event-bus');
+vi.mock('../../../../src/events/event-bus');
 
 describe('IQConstellationAdapter', () => {
-  let mockReceiver: jest.Mocked<Receiver>;
+  let mockReceiver: Mocked<Receiver>;
   let containerEl: HTMLElement;
   let adapter: IQConstellationAdapter;
-  let mockEventBus: { on: jest.Mock; off: jest.Mock; emit: jest.Mock };
+  let mockEventBus: { on: Mock; off: Mock; emit: Mock };
   let mockCanvas: HTMLCanvasElement;
   let mockContext: CanvasRenderingContext2D;
 
@@ -29,15 +30,15 @@ describe('IQConstellationAdapter', () => {
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Setup mock EventBus
     mockEventBus = {
-      on: jest.fn(),
-      off: jest.fn(),
-      emit: jest.fn(),
+      on: vi.fn(),
+      off: vi.fn(),
+      emit: vi.fn(),
     };
-    (EventBus.getInstance as jest.Mock).mockReturnValue(mockEventBus);
+    (EventBus.getInstance as Mock).mockReturnValue(mockEventBus);
 
     // Setup mock canvas context
     mockContext = {
@@ -46,23 +47,23 @@ describe('IQConstellationAdapter', () => {
       lineWidth: 0,
       font: '',
       textAlign: 'left',
-      fillRect: jest.fn(),
-      fillText: jest.fn(),
-      beginPath: jest.fn(),
-      moveTo: jest.fn(),
-      lineTo: jest.fn(),
-      arc: jest.fn(),
-      stroke: jest.fn(),
-      fill: jest.fn(),
-      setLineDash: jest.fn(),
+      fillRect: vi.fn(),
+      fillText: vi.fn(),
+      beginPath: vi.fn(),
+      moveTo: vi.fn(),
+      lineTo: vi.fn(),
+      arc: vi.fn(),
+      stroke: vi.fn(),
+      fill: vi.fn(),
+      setLineDash: vi.fn(),
     } as unknown as CanvasRenderingContext2D;
 
     // Mock createElement to return canvas with mock context
     const originalCreateElement = document.createElement.bind(document);
-    jest.spyOn(document, 'createElement').mockImplementation((tagName: string) => {
+    vi.spyOn(document, 'createElement').mockImplementation((tagName: string) => {
       if (tagName === 'canvas') {
         mockCanvas = originalCreateElement('canvas');
-        mockCanvas.getContext = jest.fn().mockReturnValue(mockContext);
+        mockCanvas.getContext = vi.fn().mockReturnValue(mockContext);
         return mockCanvas;
       }
       return originalCreateElement(tagName);
@@ -71,7 +72,7 @@ describe('IQConstellationAdapter', () => {
     // Setup mock Receiver
     mockReceiver = {
       state: JSON.parse(JSON.stringify(mockReceiverState)),
-      getSignalsInBandwidth: jest.fn().mockReturnValue({
+      getSignalsInBandwidth: vi.fn().mockReturnValue({
         hasCarrier: true,
         hasLock: true,
         cnRatio_dB: 15,
@@ -83,7 +84,7 @@ describe('IQConstellationAdapter', () => {
         isBandwidthClipped: false,
         adcDegradation: null,
       }),
-    } as unknown as jest.Mocked<Receiver>;
+    } as unknown as Mocked<Receiver>;
 
     // Setup container with required DOM elements
     containerEl = document.createElement('div');
@@ -98,7 +99,7 @@ describe('IQConstellationAdapter', () => {
   afterEach(() => {
     adapter.dispose();
     document.body.innerHTML = '';
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   describe('constructor', () => {

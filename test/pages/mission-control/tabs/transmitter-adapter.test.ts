@@ -1,25 +1,26 @@
-import { TransmitterAdapter } from '../../../../src/pages/mission-control/tabs/transmitter-adapter';
+import { Mock, Mocked, vi } from 'vitest';
 import { Transmitter, TransmitterState } from '../../../../src/equipment/transmitter/transmitter';
 import { EventBus } from '../../../../src/events/event-bus';
 import { Events } from '../../../../src/events/events';
+import { TransmitterAdapter } from '../../../../src/pages/mission-control/tabs/transmitter-adapter';
 
 // Mock dependencies
-jest.mock('../../../../src/events/event-bus');
-jest.mock('../../../../src/components/card-alarm-badge/card-alarm-badge', () => ({
+vi.mock('../../../../src/events/event-bus');
+vi.mock('../../../../src/components/card-alarm-badge/card-alarm-badge', () => ({
   CardAlarmBadge: {
-    create: jest.fn(() => ({
+    create: vi.fn(() => ({
       html: '<div class="mock-badge"></div>',
-      update: jest.fn(),
-      dispose: jest.fn(),
+      update: vi.fn(),
+      dispose: vi.fn(),
     })),
   },
 }));
 
 describe('TransmitterAdapter', () => {
-  let mockTransmitter: jest.Mocked<Transmitter>;
+  let mockTransmitter: Mocked<Transmitter>;
   let containerEl: HTMLElement;
   let adapter: TransmitterAdapter;
-  let mockEventBus: { on: jest.Mock; off: jest.Mock; emit: jest.Mock };
+  let mockEventBus: { on: Mock; off: Mock; emit: Mock };
 
   const mockModem = {
     modem_number: 1,
@@ -48,34 +49,34 @@ describe('TransmitterAdapter', () => {
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Setup mock EventBus
     mockEventBus = {
-      on: jest.fn(),
-      off: jest.fn(),
-      emit: jest.fn(),
+      on: vi.fn(),
+      off: vi.fn(),
+      emit: vi.fn(),
     };
-    (EventBus.getInstance as jest.Mock).mockReturnValue(mockEventBus);
+    (EventBus.getInstance as Mock).mockReturnValue(mockEventBus);
 
     // Setup mock Transmitter
     mockTransmitter = {
       state: JSON.parse(JSON.stringify(mockState)),
-      setActiveModem: jest.fn(),
-      handleAntennaChange: jest.fn(),
-      handleFrequencyChange: jest.fn(),
-      handleBandwidthChange: jest.fn(),
-      handlePowerChange: jest.fn(),
-      handleModulationChange: jest.fn(),
-      handleFecChange: jest.fn(),
-      applyChanges: jest.fn(),
-      handleTransmitToggle: jest.fn(),
-      handleFaultReset: jest.fn(),
-      handleLoopbackToggle: jest.fn(),
-      handlePowerToggle: jest.fn(),
-      getPowerPercentage: jest.fn().mockReturnValue(50),
-      getStatusAlarms: jest.fn().mockReturnValue([]),
-    } as unknown as jest.Mocked<Transmitter>;
+      setActiveModem: vi.fn(),
+      handleAntennaChange: vi.fn(),
+      handleFrequencyChange: vi.fn(),
+      handleBandwidthChange: vi.fn(),
+      handlePowerChange: vi.fn(),
+      handleModulationChange: vi.fn(),
+      handleFecChange: vi.fn(),
+      applyChanges: vi.fn(),
+      handleTransmitToggle: vi.fn(),
+      handleFaultReset: vi.fn(),
+      handleLoopbackToggle: vi.fn(),
+      handlePowerToggle: vi.fn(),
+      getPowerPercentage: vi.fn().mockReturnValue(50),
+      getStatusAlarms: vi.fn().mockReturnValue([]),
+    } as unknown as Mocked<Transmitter>;
 
     // Setup container with required DOM elements
     containerEl = document.createElement('div');
@@ -277,7 +278,7 @@ describe('TransmitterAdapter', () => {
       (adapter as any).syncDomWithState_(mockTransmitter.state);
 
       const txLed = containerEl.querySelector('#tx-transmit-led') as HTMLElement;
-      expect(txLed.classList.contains('led-red')).toBe(true);
+      expect(txLed.classList.contains('error')).toBe(true);
     });
 
     it('should update fault LED when faulted', () => {
@@ -285,7 +286,7 @@ describe('TransmitterAdapter', () => {
       (adapter as any).syncDomWithState_(mockTransmitter.state);
 
       const faultLed = containerEl.querySelector('#tx-fault-led') as HTMLElement;
-      expect(faultLed.classList.contains('led-red')).toBe(true);
+      expect(faultLed.classList.contains('error')).toBe(true);
     });
 
     it('should update online LED when powered', () => {
@@ -293,7 +294,7 @@ describe('TransmitterAdapter', () => {
       (adapter as any).syncDomWithState_(mockTransmitter.state);
 
       const onlineLed = containerEl.querySelector('#tx-online-led') as HTMLElement;
-      expect(onlineLed.classList.contains('led-green')).toBe(true);
+      expect(onlineLed.classList.contains('success')).toBe(true);
     });
   });
 

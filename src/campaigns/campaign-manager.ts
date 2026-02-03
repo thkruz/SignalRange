@@ -98,12 +98,14 @@ export class CampaignManager {
       };
     }
 
-    const campaignScenarioIds = campaign.scenarios.map(s => s.id);
+    // Exclude sandbox scenarios from progress tracking
+    const countableScenarios = campaign.scenarios.filter(s => s.missionType !== 'Sandbox');
+    const campaignScenarioIds = countableScenarios.map(s => s.id);
     const completedInCampaign = completedScenarioIds.filter(id =>
       campaignScenarioIds.includes(id)
     );
 
-    const totalScenarios = campaign.scenarios.length;
+    const totalScenarios = countableScenarios.length;
     const completionPercentage = totalScenarios > 0
       ? Math.round((completedInCampaign.length / totalScenarios) * 100)
       : 0;

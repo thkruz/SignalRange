@@ -1,12 +1,13 @@
+import { vi } from 'vitest';
 import { EventBus } from '../../src/events/event-bus';
 import { Events } from '../../src/events/events';
 import { TrafficControlManager } from '../../src/traffic/traffic-control-manager';
 
 // Mock SimulationManager
 const mockGroundStations: any[] = [];
-jest.mock('../../src/simulation/simulation-manager', () => ({
+vi.mock('../../src/simulation/simulation-manager', () => ({
   SimulationManager: {
-    getInstance: jest.fn(() => ({
+    getInstance: vi.fn(() => ({
       groundStations: mockGroundStations,
       satellites: [],
     })),
@@ -14,9 +15,9 @@ jest.mock('../../src/simulation/simulation-manager', () => ({
 }));
 
 // Mock ScenarioManager
-jest.mock('../../src/scenario-manager', () => ({
+vi.mock('../../src/scenario-manager', () => ({
   ScenarioManager: {
-    getInstance: jest.fn(() => ({
+    getInstance: vi.fn(() => ({
       settings: {
         trafficOwnership: [],
       },
@@ -39,7 +40,7 @@ describe('TrafficControlManager', () => {
   afterEach(() => {
     TrafficControlManager.destroy();
     EventBus.destroy();
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('Singleton Pattern', () => {
@@ -97,7 +98,7 @@ describe('TrafficControlManager', () => {
       const manager = TrafficControlManager.getInstance();
       manager.initializeOwnership(12345, 'gs-1');
 
-      const callback = jest.fn();
+      const callback = vi.fn();
       eventBus.on(Events.HANDOVER_INITIATED, callback);
 
       const result = manager.initiateHandover(12345, 'gs-2');
@@ -170,7 +171,7 @@ describe('TrafficControlManager', () => {
       manager.initializeOwnership(12345, 'gs-1');
       manager.initiateHandover(12345, 'gs-2');
 
-      const callback = jest.fn();
+      const callback = vi.fn();
       eventBus.on(Events.HANDOVER_READY, callback);
 
       // Source station is already ready by default
@@ -187,7 +188,7 @@ describe('TrafficControlManager', () => {
       const manager = TrafficControlManager.getInstance();
       manager.initializeOwnership(12345, 'gs-1');
 
-      const callback = jest.fn();
+      const callback = vi.fn();
       eventBus.on(Events.HANDOVER_READY, callback);
 
       manager.setStationReady(12345, 'gs-2', true);
@@ -210,17 +211,17 @@ describe('TrafficControlManager', () => {
         rfFrontEnds: [{
           hpaModule: {
             state: { isHpaEnabled: true },
-            handleHpaToggle: jest.fn(),
+            handleHpaToggle: vi.fn(),
           },
           bucModule: {
             state: { isMuted: false },
-            handleMuteToggle: jest.fn(),
+            handleMuteToggle: vi.fn(),
           },
         }],
         receivers: [{
           state: { activeModem: 1, modems: [] },
-          getSignalsInBandwidth: jest.fn(() => ({ hasLock: false })),
-          getSnrForModem: jest.fn(() => null),
+          getSignalsInBandwidth: vi.fn(() => ({ hasLock: false })),
+          getSnrForModem: vi.fn(() => null),
         }],
       });
 
@@ -230,17 +231,17 @@ describe('TrafficControlManager', () => {
         rfFrontEnds: [{
           hpaModule: {
             state: { isHpaEnabled: false, isHpaSwitchEnabled: false },
-            handleHpaToggle: jest.fn(),
+            handleHpaToggle: vi.fn(),
           },
           bucModule: {
             state: { isMuted: true },
-            handleMuteToggle: jest.fn(),
+            handleMuteToggle: vi.fn(),
           },
         }],
         receivers: [{
           state: { activeModem: 1, modems: [{ modemNumber: 1, isPowered: true }] },
-          getSignalsInBandwidth: jest.fn(() => ({ hasLock: true })),
-          getSnrForModem: jest.fn(() => 15),
+          getSignalsInBandwidth: vi.fn(() => ({ hasLock: true })),
+          getSnrForModem: vi.fn(() => 15),
         }],
       });
     });
@@ -249,7 +250,7 @@ describe('TrafficControlManager', () => {
       manager.initiateHandover(12345, 'gs-2');
       manager.setStationReady(12345, 'gs-2', true);
 
-      const callback = jest.fn();
+      const callback = vi.fn();
       eventBus.on(Events.HANDOVER_COMPLETE, callback);
 
       const result = manager.executeHandover(12345);
@@ -303,7 +304,7 @@ describe('TrafficControlManager', () => {
       manager.initializeOwnership(12345, 'gs-1');
       manager.initiateHandover(12345, 'gs-2');
 
-      const callback = jest.fn();
+      const callback = vi.fn();
       eventBus.on(Events.HANDOVER_CANCELLED, callback);
 
       manager.cancelHandover(12345);
@@ -319,7 +320,7 @@ describe('TrafficControlManager', () => {
       const manager = TrafficControlManager.getInstance();
       manager.initializeOwnership(12345, 'gs-1');
 
-      const callback = jest.fn();
+      const callback = vi.fn();
       eventBus.on(Events.HANDOVER_CANCELLED, callback);
 
       manager.cancelHandover(12345);
@@ -352,8 +353,8 @@ describe('TrafficControlManager', () => {
             activeModem: 1,
             modems: [{ modemNumber: 1, isPowered: true }],
           },
-          getSignalsInBandwidth: jest.fn(() => ({ hasLock: true })),
-          getSnrForModem: jest.fn(() => 12),
+          getSignalsInBandwidth: vi.fn(() => ({ hasLock: true })),
+          getSnrForModem: vi.fn(() => 12),
         }],
       });
 
@@ -377,8 +378,8 @@ describe('TrafficControlManager', () => {
             activeModem: 1,
             modems: [{ modemNumber: 1, isPowered: true }],
           },
-          getSignalsInBandwidth: jest.fn(() => ({ hasLock: true })),
-          getSnrForModem: jest.fn(() => 5), // Below 8 dB threshold
+          getSignalsInBandwidth: vi.fn(() => ({ hasLock: true })),
+          getSnrForModem: vi.fn(() => 5), // Below 8 dB threshold
         }],
       });
 

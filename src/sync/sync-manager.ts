@@ -8,6 +8,8 @@ import { RealTimeSpectrumAnalyzerState } from '../equipment/real-time-spectrum-a
 import { ReceiverState } from '../equipment/receiver/receiver';
 import { TransmitterState } from '../equipment/transmitter/transmitter';
 import { Logger } from '../logging/logger';
+import { OpsLogManager } from '../ops-log/ops-log-manager';
+import { OpsLogState } from '../ops-log/ops-log-types';
 import type { Equipment } from '../pages/sandbox/equipment';
 import type { StorageProvider } from './storage-provider';
 
@@ -182,9 +184,20 @@ export class SyncManager {
       objectiveStates = undefined;
     }
 
+    // Get ops log state if available
+    let opsLogState: OpsLogState | undefined;
+    try {
+      if (OpsLogManager.isInitialized()) {
+        opsLogState = OpsLogManager.getInstance().getState();
+      }
+    } catch (error) {
+      console.debug('OpsLogManager not available when building state:', error);
+    }
+
     return {
       objectiveStates,
       scenarioTimeRemaining,
+      opsLogState,
       groundStationStates: this.groundStations.map(gs => gs.state),
       equipment: {
         spectrumAnalyzersState: this.equipment.spectrumAnalyzers?.map(sa => sa.state),
@@ -272,6 +285,17 @@ export class SyncManager {
         console.debug('ObjectivesManager not available when syncing from storage:', error);
       }
     }
+
+    // Sync Ops Log State if available
+    if (state.opsLogState) {
+      try {
+        if (OpsLogManager.isInitialized()) {
+          OpsLogManager.getInstance().restoreState(state.opsLogState);
+        }
+      } catch (error) {
+        console.debug('OpsLogManager not available when syncing from storage:', error);
+      }
+    }
   }
 }
 
@@ -281,6 +305,7 @@ export class SyncManager {
 export interface AppState {
   objectiveStates?: ObjectiveState[];
   scenarioTimeRemaining?: number;
+  opsLogState?: OpsLogState;
   groundStationStates?: GroundStationState[];
   equipment?: {
     spectrumAnalyzersState?: RealTimeSpectrumAnalyzerState[];

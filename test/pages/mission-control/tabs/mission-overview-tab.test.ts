@@ -1,12 +1,13 @@
-import { MissionOverviewTab } from '../../../../src/pages/mission-control/tabs/mission-overview-tab';
+import { Mock, vi } from 'vitest';
 import { EventBus } from '../../../../src/events/event-bus';
 import { Events } from '../../../../src/events/events';
+import { MissionOverviewTab } from '../../../../src/pages/mission-control/tabs/mission-overview-tab';
 
 // Mock dependencies
-jest.mock('../../../../src/events/event-bus');
-jest.mock('../../../../src/simulation/simulation-manager', () => ({
+vi.mock('../../../../src/events/event-bus');
+vi.mock('../../../../src/simulation/simulation-manager', () => ({
   SimulationManager: {
-    getInstance: jest.fn(() => ({
+    getInstance: vi.fn(() => ({
       groundStations: [
         {
           state: {
@@ -59,24 +60,24 @@ jest.mock('../../../../src/simulation/simulation-manager', () => ({
 }));
 
 // Mock image imports
-jest.mock('../../../../src/assets/icons/antenna.png', () => 'antenna.png');
-jest.mock('../../../../src/assets/icons/satellite.png', () => 'satellite.png');
+vi.mock('../../../../src/assets/icons/antenna.png', () => ({ default: 'antenna.png' }));
+vi.mock('../../../../src/assets/icons/satellite.png', () => ({ default: 'satellite.png' }));
 
 describe('MissionOverviewTab', () => {
   let containerEl: HTMLElement;
   let tab: MissionOverviewTab;
-  let mockEventBus: { on: jest.Mock; off: jest.Mock; emit: jest.Mock };
+  let mockEventBus: { on: Mock; off: Mock; emit: Mock };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Setup mock EventBus
     mockEventBus = {
-      on: jest.fn(),
-      off: jest.fn(),
-      emit: jest.fn(),
+      on: vi.fn(),
+      off: vi.fn(),
+      emit: vi.fn(),
     };
-    (EventBus.getInstance as jest.Mock).mockReturnValue(mockEventBus);
+    (EventBus.getInstance as Mock).mockReturnValue(mockEventBus);
 
     // Setup container
     containerEl = document.createElement('div');
@@ -224,9 +225,9 @@ describe('MissionOverviewTab', () => {
   describe('empty scenario handling', () => {
     it('should show message when no ground stations', () => {
       // Reset SimulationManager mock
-      jest.doMock('../../../../src/simulation/simulation-manager', () => ({
+      vi.doMock('../../../../src/simulation/simulation-manager', () => ({
         SimulationManager: {
-          getInstance: jest.fn(() => ({
+          getInstance: vi.fn(() => ({
             groundStations: [],
             satellites: [],
           })),

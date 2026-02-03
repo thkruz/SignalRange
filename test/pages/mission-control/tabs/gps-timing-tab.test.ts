@@ -1,36 +1,37 @@
-import { GPSTimingTab } from '../../../../src/pages/mission-control/tabs/gps-timing-tab';
+import { Mock, Mocked, vi } from 'vitest';
 import { GroundStation } from '../../../../src/assets/ground-station/ground-station';
 import { EventBus } from '../../../../src/events/event-bus';
+import { GPSTimingTab } from '../../../../src/pages/mission-control/tabs/gps-timing-tab';
 
 // Mock dependencies
-jest.mock('../../../../src/events/event-bus');
-jest.mock('../../../../src/assets/ground-station/ground-station');
-jest.mock('../../../../src/pages/mission-control/tabs/gpsdo-adapter');
+vi.mock('../../../../src/events/event-bus');
+vi.mock('../../../../src/assets/ground-station/ground-station');
+vi.mock('../../../../src/pages/mission-control/tabs/gpsdo-adapter');
 
 // Mock image imports
-jest.mock('../../../../src/assets/icons/activity.png', () => 'activity.png');
-jest.mock('../../../../src/assets/icons/heart-rate-monitor.png', () => 'heart-rate-monitor.png');
-jest.mock('../../../../src/assets/icons/power.png', () => 'power.png');
-jest.mock('../../../../src/assets/icons/satellite.png', () => 'satellite.png');
-jest.mock('../../../../src/assets/icons/share.png', () => 'share.png');
-jest.mock('../../../../src/assets/icons/temperature.png', () => 'temperature.png');
+vi.mock('../../../../src/assets/icons/activity.png', () => ({ default: 'activity.png' }));
+vi.mock('../../../../src/assets/icons/heart-rate-monitor.png', () => ({ default: 'heart-rate-monitor.png' }));
+vi.mock('../../../../src/assets/icons/power.png', () => ({ default: 'power.png' }));
+vi.mock('../../../../src/assets/icons/satellite.png', () => ({ default: 'satellite.png' }));
+vi.mock('../../../../src/assets/icons/share.png', () => ({ default: 'share.png' }));
+vi.mock('../../../../src/assets/icons/temperature.png', () => ({ default: 'temperature.png' }));
 
 describe('GPSTimingTab', () => {
-  let mockGroundStation: jest.Mocked<GroundStation>;
+  let mockGroundStation: Mocked<GroundStation>;
   let containerEl: HTMLElement;
   let tab: GPSTimingTab;
-  let mockEventBus: { on: jest.Mock; off: jest.Mock; emit: jest.Mock };
+  let mockEventBus: { on: Mock; off: Mock; emit: Mock };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Setup mock EventBus
     mockEventBus = {
-      on: jest.fn(),
-      off: jest.fn(),
-      emit: jest.fn(),
+      on: vi.fn(),
+      off: vi.fn(),
+      emit: vi.fn(),
     };
-    (EventBus.getInstance as jest.Mock).mockReturnValue(mockEventBus);
+    (EventBus.getInstance as Mock).mockReturnValue(mockEventBus);
 
     // Setup mock GroundStation
     mockGroundStation = {
@@ -48,8 +49,8 @@ describe('GPSTimingTab', () => {
           },
         },
       ],
-      initializeEquipment: jest.fn(),
-    } as unknown as jest.Mocked<GroundStation>;
+      initializeEquipment: vi.fn(),
+    } as unknown as Mocked<GroundStation>;
 
     // Setup container
     containerEl = document.createElement('div');
@@ -73,7 +74,7 @@ describe('GPSTimingTab', () => {
       const emptyGs = {
         ...mockGroundStation,
         antennas: [],
-      } as unknown as jest.Mocked<GroundStation>;
+      } as unknown as Mocked<GroundStation>;
 
       const containerEl2 = document.createElement('div');
       containerEl2.id = 'gps-timing-container-2';

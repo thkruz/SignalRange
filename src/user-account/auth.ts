@@ -114,6 +114,10 @@ export class Auth {
           return;
         }
 
+        // TODO: Validate origin for security - we are using cross-origin messaging here, so
+        // the fix is more complicated than just checking event.origin - we need a whitelist of allowed origins
+        // and it would be better to store that in .env rather than hardcoding
+
         if (event.data.type === 'SUPABASE_AUTH_SUCCESS') {
           popup.close();
           window.removeEventListener('message', messageHandler);

@@ -93,7 +93,7 @@ jobs:
           timezoneLinux: 'America/New_York'
 
       - name: Run Tests with Coverage
-        run: npm test -- --coverage --coverage.reporter=text --coverage.reporter=lcov --coverage.reporter=json-summary
+        run: npm test -- --coverage --coverage.reporter=text --coverage.reporter=lcov --coverage.reporter=json-summary --coverage.reporter=json
 
       - name: Upload Coverage Artifact
         uses: actions/upload-artifact@v4

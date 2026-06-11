@@ -8,6 +8,14 @@ import { scenario5Data } from './campaigns/nats/scenario5';
 import { scenario6Data } from './campaigns/nats/scenario6';
 import { scenario7Data } from './campaigns/nats/scenario7';
 import { scenario8Data } from './campaigns/nats/scenario8';
+import { scenario9Data } from './campaigns/nats/scenario9';
+import { scenario10Data } from './campaigns/nats/scenario10';
+import { scenario11Data } from './campaigns/nats/scenario11';
+import { scenario12Data } from './campaigns/nats/scenario12';
+import { scenario13Data } from './campaigns/nats/scenario13';
+import { scenario14Data } from './campaigns/nats/scenario14';
+import { scenario15Data } from './campaigns/nats/scenario15';
+import { scenario16Data } from './campaigns/nats/scenario16';
 import { sandboxData as natsSandboxData } from './campaigns/nats/sandbox';
 import { AntennaState } from './equipment/antenna';
 import { ANTENNA_CONFIG_KEYS } from "./equipment/antenna/antenna-config-keys";
@@ -156,6 +164,14 @@ export const SCENARIOS: ScenarioData[] = [
   scenario6Data,
   scenario7Data,
   scenario8Data,
+  scenario9Data,
+  scenario10Data,
+  scenario11Data,
+  scenario12Data,
+  scenario13Data,
+  scenario14Data,
+  scenario15Data,
+  scenario16Data,
 ];
 
 export function isScenarioLocked(scenario: ScenarioData, completedScenarioIds: string[]): boolean {

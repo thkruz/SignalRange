@@ -110,6 +110,9 @@ export interface AntennaState {
   iceAccumulation_dB: number;
   /** Elevated sky-noise degradation in dB on the receive path (e.g., sun transit). 0 = nominal sky. */
   skyNoiseDegradation_dB: number;
+  /** ACU automation controller fault: program-track, step-track, and target
+   *  slewing are unavailable; manual/stow/maintenance servo control still works. */
+  isAcuAutomationFaulted: boolean;
 
   // === ACU Identification ===
   /** ACU model number */
@@ -236,6 +239,7 @@ export abstract class AntennaCore extends BaseEquipment {
       precipitationDetected: false,
       iceAccumulation_dB: 0,
       skyNoiseDegradation_dB: 0,
+      isAcuAutomationFaulted: false,
       // ACU Identification
       acuModel: this.config.acuModel ?? 'Kratos NGC-2200',
       acuSerialNumber: this.config.acuSerialNumber ?? 'ACU-01',
@@ -327,9 +331,15 @@ export abstract class AntennaCore extends BaseEquipment {
   }
 
   update(): void {
+    // ACU automation fault: the automation processor (program-track,
+    // step-track, lock logic) is offline. Servos and manual control still
+    // work - updateSlew_ keeps running so manual/stow/maintenance moves do.
+    const automationAvailable = !this.state.isAcuAutomationFaulted;
+
     // Update program-track position continuously when tracking a satellite
     // This is the base tracking - always follows ephemeris
-    if (this.state.trackingMode === 'program-track' &&
+    if (automationAvailable &&
+        this.state.trackingMode === 'program-track' &&
         this.state.targetSatelliteId !== null &&
         this.state.isPowered &&
         this.state.isOperational) {
@@ -337,7 +347,7 @@ export abstract class AntennaCore extends BaseEquipment {
     }
 
     // Update step-track controller if step-track optimization is enabled (within program-track)
-    if (this.state.isStepTrackEnabled && this.state.isPowered && this.state.isOperational) {
+    if (automationAvailable && this.state.isStepTrackEnabled && this.state.isPowered && this.state.isOperational) {
       this.stepTrackController_.update();
     }
 
@@ -345,7 +355,8 @@ export abstract class AntennaCore extends BaseEquipment {
     this.updateSlew_();
 
     // Check for program-track lock when antenna arrives near target
-    if (this.state.trackingMode === 'program-track' &&
+    if (automationAvailable &&
+        this.state.trackingMode === 'program-track' &&
         this.state.targetSatelliteId !== null &&
         !this.state.isSlewing) {
       this.checkProgramTrackLock_();
@@ -1343,6 +1354,11 @@ export abstract class AntennaCore extends BaseEquipment {
     const absolutePolarization = Math.abs(this.state.polarization);
     if (absolutePolarization > 45) {
       alarms.push({ severity: 'warning', message: `HIGH POLARIZATION (${this.state.polarization}°)` });
+    }
+
+    // ACU automation controller fault
+    if (this.state.isAcuAutomationFaulted) {
+      alarms.push({ severity: 'error', message: 'ACU AUTOMATION FAULT - MANUAL CONTROL ONLY' });
     }
 
     // Elevated sky-noise warning (sun transit)

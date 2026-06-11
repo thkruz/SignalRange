@@ -14,7 +14,7 @@ Mechanical "how to build a scenario" guidance lives in the [scenario-developer](
 |-------|-----------|-------|--------|
 | 1 | 1-8 | Foundations — Guided learning with Charlie Brooks | Built |
 | 2 | 9-16 | Qualified Operations — Solo shifts, real customers, operational judgment | Built |
-| 3 | 17-24 | Crisis Operations — High-stakes, multi-system, mentoring | S17-S20 built; S21-S24 to build |
+| 3 | 17-24 | Crisis Operations — High-stakes, multi-system, mentoring | Built |
 
 ---
 
@@ -318,7 +318,7 @@ End-of-Phase-1 state (pre-S9):
 | Field | Value |
 |-------|-------|
 | Subtitle | Suspected Intentional Interference |
-| Status | To build |
+| Status | Built |
 | Premise | Unusual interference appears on TIDEMARK-2: broadband-ish noise that doesn't fit cross-pol patterns or known terrestrial sources, intermittent in a pattern that suggests deliberation. Operator must document signature, distinguish from natural causes, coordinate with regulator (rendered as in-game ticket workflow), apply receive-side countermeasures while the investigation runs. |
 | Duration | 30-35 min |
 | Objectives | 22-28 |
@@ -339,7 +339,7 @@ End-of-Phase-1 state (pre-S9):
 | Field | Value |
 |-------|-------|
 | Subtitle | AURORA-7 Sunset Recommendation |
-| Status | To build |
+| Status | Built |
 | Premise | Trend data shows AURORA-7's beacon power has been declining for months. The board (Francis Martin) wants a recommendation on retirement timing. Operator runs final data collection, generates a trend report, evaluates business risk, prepares an executive-level impact summary. Light on RF, heavy on analysis and communication. |
 | Duration | 25-30 min |
 | Objectives | 18-22 |
@@ -360,7 +360,7 @@ End-of-Phase-1 state (pre-S9):
 | Field | Value |
 |-------|-------|
 | Subtitle | Manual Operations During Automation Failure |
-| Status | To build |
+| Status | Built |
 | Premise | The ACU automation controller crashes mid-shift. Antenna positioning, beacon tracking, and program-track all unavailable. Operator must use manual tracking-mode controls to keep the link alive while IT works the root cause. Reveals what the automation was doing under the hood. |
 | Duration | 25-30 min |
 | Objectives | 20-25 |
@@ -381,7 +381,7 @@ End-of-Phase-1 state (pre-S9):
 | Field | Value |
 |-------|-------|
 | Subtitle | Campaign Capstone |
-| Status | To build |
+| Status | Built |
 | Premise | Compound emergency: simultaneous degradation on TIDEMARK-1 and TIDEMARK-2, AURORA-7 in step-track with a marginal beacon, an inbound weather event on VT-01, two customers escalating, and a board notification cycle to manage. Operator orchestrates across both stations, all four satellites, all communication channels. The final exam. |
 | Duration | 40-50 min |
 | Objectives | 30-38 |

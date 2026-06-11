@@ -15,6 +15,7 @@ import { NavigationOptions, Router } from "@app/router";
 import { ScenarioManager } from "@app/scenario-manager";
 import { ScenarioDialogManager } from "@app/scenarios/scenario-dialog-manager";
 import { WorkingDocumentManager } from "@app/scenarios/working-document-manager";
+import { InterferenceManager } from "@app/interference/interference-manager";
 import { WeatherManager } from "@app/weather/weather-manager";
 import { ScenarioCompletionHandler } from "@app/scoring/scenario-completion-handler";
 import { ScoreCalculator } from "@app/scoring/score-calculator";
@@ -102,6 +103,11 @@ export abstract class BasePage extends BaseElement {
       // tick from scenario start rather than first ACU-tab render
       if ((scenario.settings.weatherEvents?.length ?? 0) > 0) {
         WeatherManager.getInstance();
+      }
+
+      // Start scheduled interference events (uplink jammers etc.)
+      if ((scenario.settings.interferenceEvents?.length ?? 0) > 0) {
+        InterferenceManager.getInstance();
       }
 
       // Initialize quiz modal for status-check objective conditions

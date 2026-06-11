@@ -719,11 +719,18 @@ export class ACUControlTab extends BaseElement {
     if (modelEl) modelEl.textContent = state.acuModel;
     if (serialEl) serialEl.textContent = `(${state.acuSerialNumber})`;
 
-    // Sync tracking mode buttons
+    // Sync tracking mode buttons. Under an ACU automation fault the
+    // program-track button is disabled - the automation processor is down;
+    // servos (manual/stow/maintenance) still work.
+    const acuFaulted = state.isAcuAutomationFaulted === true;
     const modeButtons = this.qsa_('btn-tracking');
     modeButtons.forEach(btn => {
       const mode = (btn as HTMLElement).dataset.mode;
       btn.classList.toggle('active', mode === state.trackingMode);
+      if (mode === 'program-track') {
+        (btn as HTMLButtonElement).disabled = acuFaulted;
+        btn.classList.toggle('disabled', acuFaulted);
+      }
     });
 
     // Show/hide tracking sections based on mode
@@ -861,10 +868,19 @@ export class ACUControlTab extends BaseElement {
       }
     }
 
-    // Sync move-to-target button disabled state
+    // Sync move-to-target button disabled state (also disabled under ACU fault)
     const moveToTargetBtn = this.qs_<HTMLButtonElement>('move-to-target-btn');
     if (moveToTargetBtn) {
-      moveToTargetBtn.disabled = state.trackingMode !== 'program-track' || state.targetSatelliteId === null;
+      moveToTargetBtn.disabled = acuFaulted ||
+        state.trackingMode !== 'program-track' || state.targetSatelliteId === null;
+    }
+    const satelliteSelectEl = this.qs_<HTMLSelectElement>('satellite-select');
+    if (satelliteSelectEl) {
+      satelliteSelectEl.disabled = acuFaulted;
+    }
+    const stepTrackToggleEl = this.qs_<HTMLInputElement>('step-track-toggle');
+    if (stepTrackToggleEl) {
+      stepTrackToggleEl.disabled = acuFaulted;
     }
 
     // Sync satellite dropdown selection (skip if user is interacting)

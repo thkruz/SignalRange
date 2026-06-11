@@ -20,6 +20,10 @@ import { scenario17Data } from './campaigns/nats/scenario17';
 import { scenario18Data } from './campaigns/nats/scenario18';
 import { scenario19Data } from './campaigns/nats/scenario19';
 import { scenario20Data } from './campaigns/nats/scenario20';
+import { scenario21Data } from './campaigns/nats/scenario21';
+import { scenario22Data } from './campaigns/nats/scenario22';
+import { scenario23Data } from './campaigns/nats/scenario23';
+import { scenario24Data } from './campaigns/nats/scenario24';
 import { sandboxData as natsSandboxData } from './campaigns/nats/sandbox';
 import { AntennaState } from './equipment/antenna';
 import { ANTENNA_CONFIG_KEYS } from "./equipment/antenna/antenna-config-keys";
@@ -78,6 +82,26 @@ export interface SimulationSettings {
     duration: number;
     /** dB degradation to link margin */
     linkMarginDegradation: number;
+  }>;
+  /** Scheduled, duty-cycled RF interference injected at a satellite's
+   *  transponder (relayed to all stations - uplink interference). */
+  interferenceEvents?: Array<{
+    id: string;
+    satelliteNoradId: number;
+    /** Interferer RF center frequency (uplink, Hz) */
+    frequency: number;
+    bandwidth: number;
+    /** Power at the transponder input (dBm) */
+    power: number;
+    polarization: 'H' | 'V';
+    /** Seconds since mission start when the envelope opens */
+    startTime: number;
+    /** Envelope duration (s); on/off windows repeat inside it */
+    duration: number;
+    /** Window cycle period (s) */
+    periodSeconds: number;
+    /** Transmit-on seconds per period */
+    onSeconds: number;
   }>;
   /** Working Document panel: an in-scenario document that accumulates a line
    *  per passed quiz whose condition declares params.documentLine. */
@@ -186,6 +210,10 @@ export const SCENARIOS: ScenarioData[] = [
   scenario18Data,
   scenario19Data,
   scenario20Data,
+  scenario21Data,
+  scenario22Data,
+  scenario23Data,
+  scenario24Data,
 ];
 
 export function isScenarioLocked(scenario: ScenarioData, completedScenarioIds: string[]): boolean {

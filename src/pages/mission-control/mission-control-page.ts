@@ -12,6 +12,8 @@ import { NavigationOptions } from "@app/router";
 import { ScenarioManager } from "@app/scenario-manager";
 import { ScenarioDialogManager } from "@app/scenarios/scenario-dialog-manager";
 import { WorkingDocumentManager } from "@app/scenarios/working-document-manager";
+import { InterferenceManager } from "@app/interference/interference-manager";
+import { WeatherManager } from "@app/weather/weather-manager";
 import { AlarmService } from "@app/services/alarm-service";
 import { SimulationManager } from "@app/simulation/simulation-manager";
 import { syncEquipmentWithStore } from "@app/sync";
@@ -284,6 +286,8 @@ export class MissionControlPage extends BasePage {
     ObjectivesManager.destroy();
     ScenarioDialogManager.reset();
     WorkingDocumentManager.reset();
+    WeatherManager.destroy();
+    InterferenceManager.destroy();
     QuizModal.destroy();
     PendingQuizIndicator.destroy();
     EventBus.destroy();

@@ -16,6 +16,10 @@ import { scenario13Data } from './campaigns/nats/scenario13';
 import { scenario14Data } from './campaigns/nats/scenario14';
 import { scenario15Data } from './campaigns/nats/scenario15';
 import { scenario16Data } from './campaigns/nats/scenario16';
+import { scenario17Data } from './campaigns/nats/scenario17';
+import { scenario18Data } from './campaigns/nats/scenario18';
+import { scenario19Data } from './campaigns/nats/scenario19';
+import { scenario20Data } from './campaigns/nats/scenario20';
 import { sandboxData as natsSandboxData } from './campaigns/nats/sandbox';
 import { AntennaState } from './equipment/antenna';
 import { ANTENNA_CONFIG_KEYS } from "./equipment/antenna/antenna-config-keys";
@@ -66,7 +70,7 @@ export interface SimulationSettings {
   weatherEvents?: Array<{
     id: string;
     groundStationId: string;
-    type: "snow" | "rain" | "fog" | "wind" | "dust" | "hail" | "ice" | "storm";
+    type: "snow" | "rain" | "fog" | "wind" | "dust" | "hail" | "ice" | "storm" | "sun-transit";
     severity: "minor" | "moderate" | "severe";
     /** Seconds since mission start */
     startTime: number;
@@ -75,6 +79,12 @@ export interface SimulationSettings {
     /** dB degradation to link margin */
     linkMarginDegradation: number;
   }>;
+  /** Working Document panel: an in-scenario document that accumulates a line
+   *  per passed quiz whose condition declares params.documentLine. */
+  workingDocument?: {
+    title: string;
+    description?: string;
+  };
   /** Traffic ownership configuration for handover scenarios */
   trafficOwnership?: Array<{
     /** Satellite NORAD ID */
@@ -172,6 +182,10 @@ export const SCENARIOS: ScenarioData[] = [
   scenario14Data,
   scenario15Data,
   scenario16Data,
+  scenario17Data,
+  scenario18Data,
+  scenario19Data,
+  scenario20Data,
 ];
 
 export function isScenarioLocked(scenario: ScenarioData, completedScenarioIds: string[]): boolean {

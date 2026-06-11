@@ -108,6 +108,8 @@ export interface AntennaState {
   precipitationDetected: boolean;
   /** Ice accumulation on feed horn in dB (0 = no ice) */
   iceAccumulation_dB: number;
+  /** Elevated sky-noise degradation in dB on the receive path (e.g., sun transit). 0 = nominal sky. */
+  skyNoiseDegradation_dB: number;
 
   // === ACU Identification ===
   /** ACU model number */
@@ -233,6 +235,7 @@ export abstract class AntennaCore extends BaseEquipment {
       isRainBlowerEnabled: false,
       precipitationDetected: false,
       iceAccumulation_dB: 0,
+      skyNoiseDegradation_dB: 0,
       // ACU Identification
       acuModel: this.config.acuModel ?? 'Kratos NGC-2200',
       acuSerialNumber: this.config.acuSerialNumber ?? 'ACU-01',
@@ -901,6 +904,16 @@ export abstract class AntennaCore extends BaseEquipment {
     this.notifyStateChange_();
   }
 
+  /**
+   * Update elevated sky-noise degradation on the receive path (called by
+   * WeatherManager for sun-transit events). RX-only: the uplink is unaffected.
+   * @param degradation_dB - Current sky-noise degradation in dB (0 = nominal)
+   */
+  updateSkyNoiseDegradation(degradation_dB: number): void {
+    this.state.skyNoiseDegradation_dB = degradation_dB;
+    this.notifyStateChange_();
+  }
+
   // ========================================================================
   // FINE ADJUSTMENT METHODS
   // ========================================================================
@@ -1330,6 +1343,18 @@ export abstract class AntennaCore extends BaseEquipment {
     const absolutePolarization = Math.abs(this.state.polarization);
     if (absolutePolarization > 45) {
       alarms.push({ severity: 'warning', message: `HIGH POLARIZATION (${this.state.polarization}°)` });
+    }
+
+    // Elevated sky-noise warning (sun transit)
+    if (this.state.skyNoiseDegradation_dB > 0.5) {
+      const sky = this.state.skyNoiseDegradation_dB;
+      if (sky >= 6) {
+        alarms.push({ severity: 'error', message: `SUN TRANSIT: SKY NOISE CRITICAL (${sky.toFixed(1)} dB)` });
+      } else if (sky >= 2) {
+        alarms.push({ severity: 'warning', message: `SUN TRANSIT: ELEVATED SKY NOISE (${sky.toFixed(1)} dB)` });
+      } else {
+        alarms.push({ severity: 'info', message: `ELEVATED SKY NOISE (${sky.toFixed(1)} dB)` });
+      }
     }
 
     // Ice accumulation warning
@@ -1790,8 +1815,9 @@ export abstract class AntennaCore extends BaseEquipment {
     const Latm = this.calculateAtmosphericLoss_(frequency, elevation);
     const Lfeed = this.feedLossAt_(frequency) + (this.config.rxChainLoss_dB ?? 0);
 
-    // Ice accumulation adds to feed loss (ice on feed horn acts as lossy medium)
-    const Lice = this.state.iceAccumulation_dB;
+    // Ice accumulation adds to feed loss (ice on feed horn acts as lossy medium).
+    // Elevated sky noise (sun transit) is modeled as equivalent RX-path loss.
+    const Lice = this.state.iceAccumulation_dB + this.state.skyNoiseDegradation_dB;
     const LfeedTotal = Lfeed + Lice;
 
     const Tant = Tsky + this.noiseFromLossK_(Latm, 260); // Atm ~260 K slab
@@ -1856,8 +1882,10 @@ export abstract class AntennaCore extends BaseEquipment {
     // Use pattern gain (accounts for off-axis angle) instead of just peak gain
     const Grx_dBi = this.patternGain_dBi_(offAxis_deg, f_Hz);
 
-    // Feed loss (frequency-dependent) + ice accumulation on feed horn
-    const feedLoss = this.feedLossAt_(f_Hz) + this.state.iceAccumulation_dB;
+    // Feed loss (frequency-dependent) + ice accumulation on feed horn +
+    // elevated sky noise (sun transit) as equivalent RX loss
+    const feedLoss = this.feedLossAt_(f_Hz) + this.state.iceAccumulation_dB +
+      this.state.skyNoiseDegradation_dB;
 
     // Pointing loss (if any off-axis error from wind/jitter)
     const pointingLoss = this.pointingLoss_dB_(offAxis_deg, f_Hz);

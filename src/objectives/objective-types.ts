@@ -233,6 +233,10 @@ export interface ConditionParams {
   character?: Character;
   /** For status-check: if true, options will not be randomized (use for "All of the above" questions) */
   preserveOptionOrder?: boolean;
+  /** For status-check: line appended to the Working Document panel when this quiz is passed */
+  documentLine?: string;
+  /** For status-check: Working Document section the documentLine belongs to (default: "Notes") */
+  documentSection?: string;
   /** For signal-detected/signal-level-correct: signal identifier to match */
   signalId?: string;
   /** For signal-detected/signal-level-correct: minimum power level in dBm */

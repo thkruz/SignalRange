@@ -16,6 +16,10 @@ import { scenario13Data } from './scenario13';
 import { scenario14Data } from './scenario14';
 import { scenario15Data } from './scenario15';
 import { scenario16Data } from './scenario16';
+import { scenario17Data } from './scenario17';
+import { scenario18Data } from './scenario18';
+import { scenario19Data } from './scenario19';
+import { scenario20Data } from './scenario20';
 
 /**
  * NATS Campaign: North Atlantic Teleport Services
@@ -52,6 +56,10 @@ export const natsCampaignData: CampaignData = {
     scenario14Data,
     scenario15Data,
     scenario16Data,
+    scenario17Data,
+    scenario18Data,
+    scenario19Data,
+    scenario20Data,
   ],
   isLocked: false,
   isDisabled: false,

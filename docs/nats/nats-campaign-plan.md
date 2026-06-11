@@ -14,7 +14,7 @@ Mechanical "how to build a scenario" guidance lives in the [scenario-developer](
 |-------|-----------|-------|--------|
 | 1 | 1-8 | Foundations — Guided learning with Charlie Brooks | Built |
 | 2 | 9-16 | Qualified Operations — Solo shifts, real customers, operational judgment | Built |
-| 3 | 17-24 | Crisis Operations — High-stakes, multi-system, mentoring | To build |
+| 3 | 17-24 | Crisis Operations — High-stakes, multi-system, mentoring | S17-S20 built; S21-S24 to build |
 
 ---
 
@@ -234,7 +234,7 @@ End-of-Phase-1 state (pre-S9):
 | Field | Value |
 |-------|-------|
 | Subtitle | Sun Transit Outage |
-| Status | To build |
+| Status | Built |
 | Premise | The semiannual sun transit window arrives — the Sun passes directly behind TIDEMARK-1 from VT-01's perspective for ~8 minutes, raising the noise floor catastrophically. The event is predictable and mitigatable: pre-coordinate with sister teleport, accept the degradation, ride it out, document customer impact. No equipment failure; just astronomy. |
 | Duration | 25-30 min |
 | Objectives | 18-22 |
@@ -255,7 +255,7 @@ End-of-Phase-1 state (pre-S9):
 | Field | Value |
 |-------|-------|
 | Subtitle | TIDEMARK-2 Station-Keeping Drift |
-| Status | To build |
+| Status | Built |
 | Premise | Marcus reports from Halifax: TIDEMARK-2's station-keeping thrusters degraded; the bird is drifting more than expected. Ground operator must switch from program-track to step-track to maintain lock, monitor C/N stability, prepare customer impact assessment. The spacecraft team is the prime decision-maker; ground role is to keep the link alive while they diagnose. |
 | Duration | 30-35 min |
 | Objectives | 22-26 |
@@ -276,7 +276,7 @@ End-of-Phase-1 state (pre-S9):
 | Field | Value |
 |-------|-------|
 | Subtitle | Producing the Quick-Reference Card |
-| Status | To build |
+| Status | Built |
 | Premise | Dana asks the player to draft a quick-reference card for an incoming new hire by **performing the procedure correctly while selecting which callouts and common-mistake warnings to highlight**. Implementation: SYSTEM-voiced quizzes throughout each phase prompt the player to choose the right teaching emphasis ("Which warning belongs on this step?", "What is the most common new-hire mistake here?"). The output is an in-game training document accumulated across the scenario. |
 | Duration | 30-35 min |
 | Objectives | 22-28 |
@@ -297,7 +297,7 @@ End-of-Phase-1 state (pre-S9):
 | Field | Value |
 |-------|-------|
 | Subtitle | Concurrent Site Loss — Prioritized Recovery |
-| Status | To build |
+| Status | Built |
 | Premise | A storm front knocks VT-01 receive offline (heavy rain attenuation beyond AGC range). Simultaneously, ME-02 hits an HPA fault. Multiple customers are affected. Operator must prioritize which site to restore first based on SLA exposure, customer mix, and recovery time estimates. |
 | Duration | 35-45 min |
 | Objectives | 26-32 |

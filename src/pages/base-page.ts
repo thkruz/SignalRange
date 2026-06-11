@@ -14,6 +14,8 @@ import { OpsLogManager } from "@app/ops-log/ops-log-manager";
 import { NavigationOptions, Router } from "@app/router";
 import { ScenarioManager } from "@app/scenario-manager";
 import { ScenarioDialogManager } from "@app/scenarios/scenario-dialog-manager";
+import { WorkingDocumentManager } from "@app/scenarios/working-document-manager";
+import { WeatherManager } from "@app/weather/weather-manager";
 import { ScenarioCompletionHandler } from "@app/scoring/scenario-completion-handler";
 import { ScoreCalculator } from "@app/scoring/score-calculator";
 import { SimulationManager } from "@app/simulation/simulation-manager";
@@ -91,6 +93,16 @@ export abstract class BasePage extends BaseElement {
 
       // Initialize scenario dialog manager for objective completion dialogs
       ScenarioDialogManager.getInstance().initialize();
+
+      // Initialize the Working Document panel (no-op unless the scenario
+      // declares settings.workingDocument)
+      WorkingDocumentManager.getInstance().initialize();
+
+      // Warm up the weather manager so scheduled events (rain, sun transit)
+      // tick from scenario start rather than first ACU-tab render
+      if ((scenario.settings.weatherEvents?.length ?? 0) > 0) {
+        WeatherManager.getInstance();
+      }
 
       // Initialize quiz modal for status-check objective conditions
       QuizModal.getInstance();

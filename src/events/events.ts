@@ -236,7 +236,7 @@ export interface AlarmStateChangedData {
 export interface WeatherEventData {
   id: string;
   groundStationId: string;
-  type: 'snow' | 'rain' | 'fog' | 'wind' | 'dust' | 'hail' | 'ice' | 'storm';
+  type: 'snow' | 'rain' | 'fog' | 'wind' | 'dust' | 'hail' | 'ice' | 'storm' | 'sun-transit';
   severity: 'minor' | 'moderate' | 'severe';
   startTime: number;
   duration: number;

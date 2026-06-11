@@ -98,6 +98,43 @@ export class WeatherManager {
 
     // Update ice accumulation for all antennas
     this.updateIceAccumulation_(dtSeconds);
+
+    // Update sun-transit sky-noise degradation for all antennas
+    this.updateSunTransit_(elapsedSeconds);
+  }
+
+  /**
+   * Apply sun-transit sky-noise degradation to affected ground stations.
+   *
+   * The Sun crossing the antenna boresight raises the noise floor following a
+   * smooth rise-peak-fall profile: sin^2(pi * progress) scaled by the event's
+   * linkMarginDegradation (peak dB). Degradation is RX-only and clears
+   * automatically when the event ends - there is no operator mitigation, by
+   * design: the training point is to anticipate, ride through, and document.
+   */
+  private updateSunTransit_(elapsedSeconds: number): void {
+    const sim = SimulationManager.getInstance();
+
+    for (const gs of sim.groundStations) {
+      const sunEvent = this.weatherEvents_.find(e =>
+        e.groundStationId === gs.state.id &&
+        e.type === 'sun-transit' &&
+        e.isActive
+      );
+
+      let degradation = 0;
+      if (sunEvent) {
+        const progress = (elapsedSeconds - sunEvent.startTime) / sunEvent.duration;
+        const profile = Math.sin(Math.PI * Math.min(1, Math.max(0, progress))) ** 2;
+        degradation = sunEvent.linkMarginDegradation * profile;
+      }
+
+      for (const antenna of gs.antennas) {
+        if (antenna.state.skyNoiseDegradation_dB !== degradation) {
+          antenna.updateSkyNoiseDegradation(degradation);
+        }
+      }
+    }
   }
 
   /** Check and update which weather events are active */

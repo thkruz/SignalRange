@@ -265,7 +265,21 @@ export abstract class BasePage extends BaseElement {
     if (!scenarioId) return null;
 
     try {
-      const progress = await getUserDataService().getScenarioProgress(scenarioId);
+      // Cap how long the remote progress check can block scenario start. The
+      // request retries failed fetches with exponential backoff (~7s total),
+      // and this call is awaited before the screen transitions - so a slow or
+      // unreachable backend (offline, or a CORS-blocked dev origin) would stall
+      // "Start" for several seconds. If the check does not answer quickly,
+      // proceed into the scenario; the worst case is replaying an
+      // already-complete scenario, which is harmless.
+      const COMPLETION_CHECK_TIMEOUT_MS = 1500;
+      const progress = await Promise.race([
+        // Swallow the eventual rejection so that when the timeout wins the race
+        // the still-pending request (which keeps retrying in the background)
+        // does not surface as an unhandled promise rejection.
+        getUserDataService().getScenarioProgress(scenarioId).catch(() => null),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), COMPLETION_CHECK_TIMEOUT_MS)),
+      ]);
 
       // Return null if no progress or not completed
       if (!progress?.completedAt) return null;

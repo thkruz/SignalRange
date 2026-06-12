@@ -219,6 +219,7 @@ export const scenario9Data: ScenarioData = {
       conditions: [
         {
           type: 'tab-active',
+          hidden: true,
           description: 'Dashboard Open',
           params: { tab: 'dashboard' },
           mustMaintain: true,
@@ -257,6 +258,7 @@ export const scenario9Data: ScenarioData = {
       conditions: [
         {
           type: 'tab-active',
+          hidden: true,
           description: 'GPS Timing Open',
           params: { tab: 'gps-timing' },
           mustMaintain: true,
@@ -264,6 +266,7 @@ export const scenario9Data: ScenarioData = {
         {
           type: 'gpsdo-locked',
           description: 'GPSDO Locked',
+          params: { requiresObservation: true, observationTab: 'gps-timing' },
           mustMaintain: true,
         },
         {
@@ -300,6 +303,7 @@ export const scenario9Data: ScenarioData = {
       conditions: [
         {
           type: 'tab-active',
+          hidden: true,
           description: 'RX Analysis Open',
           params: { tab: 'rx-analysis' },
           mustMaintain: true,
@@ -310,13 +314,15 @@ export const scenario9Data: ScenarioData = {
           params: {
             signalId: 'TIDEMARK-1-Beacon',
             minPower: -100 as dBm,
+            requiresObservation: true,
+            observationTab: 'rx-analysis',
           },
           mustMaintain: true,
         },
         {
           type: 'receiver-signal-locked',
           description: 'Receiver Locked',
-          params: { modemNumber: 1 },
+          params: { modemNumber: 1, requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: true,
         },
       ],
@@ -335,6 +341,7 @@ export const scenario9Data: ScenarioData = {
       conditions: [
         {
           type: 'tab-active',
+          hidden: true,
           description: 'TX Chain Open',
           params: { tab: 'tx-chain' },
           mustMaintain: true,
@@ -342,11 +349,13 @@ export const scenario9Data: ScenarioData = {
         {
           type: 'hpa-enabled',
           description: 'HPA Output Enabled',
+          params: { requiresObservation: true, observationTab: 'tx-chain' },
           mustMaintain: true,
         },
         {
           type: 'hpa-not-overdriven',
           description: 'HPA Within Operating Limits',
+          params: { requiresObservation: true, observationTab: 'tx-chain' },
           mustMaintain: true,
         },
         {
@@ -407,6 +416,7 @@ export const scenario9Data: ScenarioData = {
       conditions: [
         {
           type: 'tab-active',
+          hidden: true,
           description: 'Dashboard Open',
           params: { tab: 'dashboard' },
           mustMaintain: true,
@@ -445,6 +455,7 @@ export const scenario9Data: ScenarioData = {
       conditions: [
         {
           type: 'tab-active',
+          hidden: true,
           description: 'RX Analysis Open',
           params: { tab: 'rx-analysis' },
           mustMaintain: true,
@@ -452,12 +463,13 @@ export const scenario9Data: ScenarioData = {
         {
           type: 'equipment-powered',
           description: 'LNB Powered',
-          params: { equipment: 'lnb' },
+          params: { equipment: 'lnb', requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: true,
         },
         {
           type: 'lnb-thermally-stable',
           description: 'LNB Thermally Stable',
+          params: { requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: true,
         },
         {
@@ -466,6 +478,8 @@ export const scenario9Data: ScenarioData = {
           params: {
             signalId: 'TIDEMARK-2-Beacon',
             minPower: -100 as dBm,
+            requiresObservation: true,
+            observationTab: 'rx-analysis',
           },
           mustMaintain: true,
         },
@@ -485,6 +499,7 @@ export const scenario9Data: ScenarioData = {
       conditions: [
         {
           type: 'tab-active',
+          hidden: true,
           description: 'ACU Control Open',
           params: { tab: 'acu-control' },
           mustMaintain: true,
@@ -492,7 +507,7 @@ export const scenario9Data: ScenarioData = {
         {
           type: 'antenna-locked',
           description: 'Locked on TIDEMARK-2',
-          params: { noradId: 61526 },
+          params: { noradId: 61526, requiresObservation: true, observationTab: 'acu-control' },
           mustMaintain: true,
         },
         {
@@ -585,6 +600,7 @@ export const scenario9Data: ScenarioData = {
       conditions: [
         {
           type: 'tab-active',
+          hidden: true,
           description: 'ACU Control Open',
           params: { tab: 'acu-control' },
           mustMaintain: true,
@@ -617,6 +633,7 @@ export const scenario9Data: ScenarioData = {
       conditions: [
         {
           type: 'tab-active',
+          hidden: true,
           description: 'RX Analysis Open',
           params: { tab: 'rx-analysis' },
           mustMaintain: true,
@@ -636,6 +653,8 @@ export const scenario9Data: ScenarioData = {
           params: {
             signalId: 'TIDEMARK-3-Beacon',
             minPower: -100 as dBm,
+            requiresObservation: true,
+            observationTab: 'rx-analysis',
           },
           mustMaintain: true,
         },
@@ -720,6 +739,7 @@ export const scenario9Data: ScenarioData = {
       conditions: [
         {
           type: 'tab-active',
+          hidden: true,
           description: 'Dashboard Open',
           params: { tab: 'dashboard' },
           mustMaintain: true,

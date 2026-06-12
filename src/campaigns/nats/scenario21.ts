@@ -576,7 +576,7 @@ export const scenario21Data: ScenarioData = {
         {
           type: 'receiver-signal-locked',
           description: 'Receiver Still Locked',
-          params: { modemNumber: 1 },
+          params: { modemNumber: 1, requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: true,
         },
       ],

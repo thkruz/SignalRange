@@ -395,13 +395,13 @@ export const scenario23Data: ScenarioData = {
         {
           type: 'receiver-signal-locked',
           description: 'Receiver Locked',
-          params: { modemNumber: 1 },
+          params: { modemNumber: 1, requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: true,
         },
         {
           type: 'receiver-snr-threshold',
           description: 'C/N ≥ 9 dB',
-          params: { minCNRatio: 9 },
+          params: { minCNRatio: 9, requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: true,
         },
       ],

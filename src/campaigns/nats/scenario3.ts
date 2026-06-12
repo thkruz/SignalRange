@@ -640,6 +640,7 @@ export const scenario3Data: ScenarioData = {
         {
           type: 'gpsdo-locked',
           description: 'GPSDO Locked',
+          params: { requiresObservation: true, observationTab: 'gps-timing' },
           mustMaintain: true,
         },
         {
@@ -1021,6 +1022,8 @@ export const scenario3Data: ScenarioData = {
           params: {
             signalId: 'TIDEMARK-1-Beacon',
             minPower: -100 as dBm,
+            requiresObservation: true,
+            observationTab: 'rx-analysis',
           },
           mustMaintain: true,
         },
@@ -1184,6 +1187,7 @@ export const scenario3Data: ScenarioData = {
         {
           type: 'receiver-signal-locked',
           description: 'Receiver Modem Locked',
+          params: { requiresObservation: true, observationTab: 'rx-analysis' },
           maintainUntilObjectiveComplete: true,
         },
         {
@@ -1191,6 +1195,8 @@ export const scenario3Data: ScenarioData = {
           description: 'C/N Ratio ≥ 10 dB',
           params: {
             minCNRatio: 10,
+            requiresObservation: true,
+            observationTab: 'rx-analysis',
           },
           maintainUntilObjectiveComplete: true,
         },

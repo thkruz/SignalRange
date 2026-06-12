@@ -545,6 +545,8 @@ export const scenario6Data: ScenarioData = {
           description: 'Receiver Locked',
           params: {
             modemNumber: 1,
+            requiresObservation: true,
+            observationTab: 'rx-analysis',
           },
           maintainUntilObjectiveComplete: true,
         },
@@ -554,6 +556,8 @@ export const scenario6Data: ScenarioData = {
           params: {
             minCNRatio: 8,
             modemNumber: 1,
+            requiresObservation: true,
+            observationTab: 'rx-analysis',
           },
           maintainUntilObjectiveComplete: true,
           maintainDuration: 15,

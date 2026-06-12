@@ -284,6 +284,7 @@ export const scenario20Data: ScenarioData = {
       conditions: [
         {
           type: 'tab-active',
+          hidden: true,
           description: 'Dashboard Open',
           params: { tab: 'dashboard' },
           mustMaintain: true,
@@ -322,6 +323,7 @@ export const scenario20Data: ScenarioData = {
       conditions: [
         {
           type: 'tab-active',
+          hidden: true,
           description: 'ACU Control Open',
           params: { tab: 'acu-control' },
           mustMaintain: true,
@@ -371,6 +373,7 @@ export const scenario20Data: ScenarioData = {
       conditions: [
         {
           type: 'tab-active',
+          hidden: true,
           description: 'Dashboard Open',
           params: { tab: 'dashboard' },
           mustMaintain: true,
@@ -473,6 +476,7 @@ export const scenario20Data: ScenarioData = {
       conditions: [
         {
           type: 'tab-active',
+          hidden: true,
           description: 'TX Chain Open',
           params: { tab: 'tx-chain' },
           mustMaintain: true,
@@ -498,6 +502,7 @@ export const scenario20Data: ScenarioData = {
       conditions: [
         {
           type: 'tab-active',
+          hidden: true,
           description: 'TX Chain Open',
           params: { tab: 'tx-chain' },
           mustMaintain: true,
@@ -527,6 +532,7 @@ export const scenario20Data: ScenarioData = {
       conditions: [
         {
           type: 'tab-active',
+          hidden: true,
           description: 'TX Chain Open',
           params: { tab: 'tx-chain' },
           mustMaintain: true,

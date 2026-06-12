@@ -278,6 +278,7 @@ export const scenario11Data: ScenarioData = {
       conditions: [
         {
           type: 'tab-active',
+          hidden: true,
           description: 'Dashboard Open',
           params: { tab: 'dashboard' },
           mustMaintain: true,
@@ -316,6 +317,7 @@ export const scenario11Data: ScenarioData = {
       conditions: [
         {
           type: 'tab-active',
+          hidden: true,
           description: 'ACU Control Open',
           params: { tab: 'acu-control' },
           mustMaintain: true,
@@ -323,7 +325,7 @@ export const scenario11Data: ScenarioData = {
         {
           type: 'antenna-locked',
           description: 'Locked on TIDEMARK-1',
-          params: { noradId: 61525 },
+          params: { noradId: 61525, requiresObservation: true, observationTab: 'acu-control' },
           mustMaintain: true,
         },
         {
@@ -374,6 +376,7 @@ export const scenario11Data: ScenarioData = {
       conditions: [
         {
           type: 'tab-active',
+          hidden: true,
           description: 'ACU Control Open',
           params: { tab: 'acu-control' },
           mustMaintain: true,
@@ -381,7 +384,7 @@ export const scenario11Data: ScenarioData = {
         {
           type: 'antenna-locked',
           description: 'ME-02 Locked on TIDEMARK-1',
-          params: { noradId: 61525 },
+          params: { noradId: 61525, requiresObservation: true, observationTab: 'acu-control' },
           mustMaintain: true,
         },
       ],
@@ -400,6 +403,7 @@ export const scenario11Data: ScenarioData = {
       conditions: [
         {
           type: 'tab-active',
+          hidden: true,
           description: 'RX Analysis Open',
           params: { tab: 'rx-analysis' },
           mustMaintain: true,
@@ -410,13 +414,15 @@ export const scenario11Data: ScenarioData = {
           params: {
             signalId: 'TIDEMARK-1-Beacon',
             minPower: -100 as dBm,
+            requiresObservation: true,
+            observationTab: 'rx-analysis',
           },
           mustMaintain: true,
         },
         {
           type: 'receiver-signal-locked',
           description: 'ME-02 Receiver Locked',
-          params: { modemNumber: 1 },
+          params: { modemNumber: 1, requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: true,
         },
         {
@@ -425,6 +431,8 @@ export const scenario11Data: ScenarioData = {
           params: {
             minCNRatio: 10,
             modemNumber: 1,
+            requiresObservation: true,
+            observationTab: 'rx-analysis',
           },
           mustMaintain: true,
         },
@@ -448,6 +456,7 @@ export const scenario11Data: ScenarioData = {
       conditions: [
         {
           type: 'tab-active',
+          hidden: true,
           description: 'TX Chain Open',
           params: { tab: 'tx-chain' },
           mustMaintain: true,
@@ -647,6 +656,7 @@ export const scenario11Data: ScenarioData = {
       conditions: [
         {
           type: 'tab-active',
+          hidden: true,
           description: 'TX Chain Open',
           params: { tab: 'tx-chain' },
           mustMaintain: true,
@@ -654,11 +664,13 @@ export const scenario11Data: ScenarioData = {
         {
           type: 'hpa-disabled',
           description: 'HPA Disabled',
+          params: { requiresObservation: true, observationTab: 'tx-chain' },
           maintainUntilObjectiveComplete: true,
         },
         {
           type: 'buc-muted',
           description: 'BUC Muted',
+          params: { requiresObservation: true, observationTab: 'tx-chain' },
           maintainUntilObjectiveComplete: true,
         },
       ],
@@ -677,6 +689,7 @@ export const scenario11Data: ScenarioData = {
       conditions: [
         {
           type: 'tab-active',
+          hidden: true,
           description: 'ACU Control Open',
           params: { tab: 'acu-control' },
           mustMaintain: true,

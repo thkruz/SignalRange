@@ -309,6 +309,7 @@ export const scenario12Data: ScenarioData = {
       conditions: [
         {
           type: 'tab-active',
+          hidden: true,
           description: 'Dashboard Open',
           params: { tab: 'dashboard' },
           mustMaintain: true,
@@ -351,6 +352,7 @@ export const scenario12Data: ScenarioData = {
       conditions: [
         {
           type: 'tab-active',
+          hidden: true,
           description: 'ACU Control Open',
           params: { tab: 'acu-control' },
           mustMaintain: true,
@@ -387,6 +389,7 @@ export const scenario12Data: ScenarioData = {
       conditions: [
         {
           type: 'tab-active',
+          hidden: true,
           description: 'RX Analysis Open',
           params: { tab: 'rx-analysis' },
           mustMaintain: true,
@@ -423,6 +426,7 @@ export const scenario12Data: ScenarioData = {
       conditions: [
         {
           type: 'tab-active',
+          hidden: true,
           description: 'RX Analysis Open',
           params: { tab: 'rx-analysis' },
           mustMaintain: true,
@@ -462,13 +466,13 @@ export const scenario12Data: ScenarioData = {
         {
           type: 'receiver-signal-locked',
           description: 'Receiver Locked',
-          params: { modemNumber: 1 },
+          params: { modemNumber: 1, requiresObservation: true, observationTab: 'rx-analysis' },
           maintainUntilObjectiveComplete: true,
         },
         {
           type: 'receiver-snr-threshold',
           description: 'C/N ≥ 10 dB',
-          params: { minCNRatio: 10 },
+          params: { minCNRatio: 10, requiresObservation: true, observationTab: 'rx-analysis' },
           maintainUntilObjectiveComplete: true,
         },
       ],
@@ -491,6 +495,7 @@ export const scenario12Data: ScenarioData = {
       conditions: [
         {
           type: 'tab-active',
+          hidden: true,
           description: 'TX Chain Open',
           params: { tab: 'tx-chain' },
           mustMaintain: true,
@@ -532,6 +537,7 @@ export const scenario12Data: ScenarioData = {
       conditions: [
         {
           type: 'tab-active',
+          hidden: true,
           description: 'TX Chain Open',
           params: { tab: 'tx-chain' },
           mustMaintain: true,
@@ -568,6 +574,7 @@ export const scenario12Data: ScenarioData = {
       conditions: [
         {
           type: 'tab-active',
+          hidden: true,
           description: 'TX Chain Open',
           params: { tab: 'tx-chain' },
           mustMaintain: true,
@@ -597,6 +604,7 @@ export const scenario12Data: ScenarioData = {
       conditions: [
         {
           type: 'tab-active',
+          hidden: true,
           description: 'TX Chain Open',
           params: { tab: 'tx-chain' },
           mustMaintain: true,
@@ -623,6 +631,7 @@ export const scenario12Data: ScenarioData = {
       conditions: [
         {
           type: 'tab-active',
+          hidden: true,
           description: 'TX Chain Open',
           params: { tab: 'tx-chain' },
           mustMaintain: true,
@@ -648,6 +657,7 @@ export const scenario12Data: ScenarioData = {
       conditions: [
         {
           type: 'tab-active',
+          hidden: true,
           description: 'TX Chain Open',
           params: { tab: 'tx-chain' },
           mustMaintain: true,
@@ -877,6 +887,7 @@ export const scenario12Data: ScenarioData = {
       conditions: [
         {
           type: 'tab-active',
+          hidden: true,
           description: 'Dashboard Open',
           params: { tab: 'dashboard' },
           mustMaintain: true,

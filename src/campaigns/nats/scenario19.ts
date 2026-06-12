@@ -199,6 +199,7 @@ export const scenario19Data: ScenarioData = {
       conditions: [
         {
           type: 'tab-active',
+          hidden: true,
           description: 'ACU Control Open',
           params: { tab: 'acu-control' },
           mustMaintain: true,
@@ -265,6 +266,7 @@ export const scenario19Data: ScenarioData = {
       conditions: [
         {
           type: 'tab-active',
+          hidden: true,
           description: 'RX Analysis Open',
           params: { tab: 'rx-analysis' },
           mustMaintain: true,
@@ -375,6 +377,7 @@ export const scenario19Data: ScenarioData = {
       conditions: [
         {
           type: 'tab-active',
+          hidden: true,
           description: 'ACU Control Open',
           params: { tab: 'acu-control' },
           mustMaintain: true,
@@ -527,6 +530,7 @@ export const scenario19Data: ScenarioData = {
       conditions: [
         {
           type: 'tab-active',
+          hidden: true,
           description: 'RX Analysis Open',
           params: { tab: 'rx-analysis' },
           mustMaintain: true,

@@ -274,6 +274,7 @@ export const scenario21Data: ScenarioData = {
       conditions: [
         {
           type: 'tab-active',
+          hidden: true,
           description: 'RX Analysis Open',
           params: { tab: 'rx-analysis' },
           mustMaintain: true,
@@ -539,6 +540,7 @@ export const scenario21Data: ScenarioData = {
       conditions: [
         {
           type: 'tab-active',
+          hidden: true,
           description: 'RX Analysis Open',
           params: { tab: 'rx-analysis' },
           mustMaintain: true,

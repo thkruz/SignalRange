@@ -260,6 +260,7 @@ export const scenario10Data: ScenarioData = {
       conditions: [
         {
           type: 'tab-active',
+          hidden: true,
           description: 'Dashboard Open',
           params: { tab: 'dashboard' },
           mustMaintain: true,
@@ -330,6 +331,7 @@ export const scenario10Data: ScenarioData = {
       conditions: [
         {
           type: 'tab-active',
+          hidden: true,
           description: 'ACU Control Open',
           params: { tab: 'acu-control' },
           mustMaintain: true,
@@ -380,6 +382,7 @@ export const scenario10Data: ScenarioData = {
       conditions: [
         {
           type: 'tab-active',
+          hidden: true,
           description: 'RX Analysis Open',
           params: { tab: 'rx-analysis' },
           mustMaintain: true,
@@ -387,13 +390,13 @@ export const scenario10Data: ScenarioData = {
         {
           type: 'receiver-signal-locked',
           description: 'RX Modem Locked',
-          params: { modemNumber: 1 },
+          params: { modemNumber: 1, requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: true,
         },
         {
           type: 'receiver-snr-threshold',
           description: 'C/N Above 8 dB',
-          params: { modemNumber: 1, minCNRatio: 8 },
+          params: { modemNumber: 1, minCNRatio: 8, requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: true,
         },
       ],
@@ -444,6 +447,7 @@ export const scenario10Data: ScenarioData = {
       conditions: [
         {
           type: 'tab-active',
+          hidden: true,
           description: 'TX Chain Open',
           params: { tab: 'tx-chain' },
           mustMaintain: true,
@@ -451,16 +455,19 @@ export const scenario10Data: ScenarioData = {
         {
           type: 'buc-unmuted',
           description: 'BUC Unmuted',
+          params: { requiresObservation: true, observationTab: 'tx-chain' },
           mustMaintain: true,
         },
         {
           type: 'hpa-enabled',
           description: 'HPA Enabled',
+          params: { requiresObservation: true, observationTab: 'tx-chain' },
           mustMaintain: true,
         },
         {
           type: 'hpa-not-overdriven',
           description: 'HPA Not Overdriven',
+          params: { requiresObservation: true, observationTab: 'tx-chain' },
           mustMaintain: true,
         },
       ],
@@ -515,6 +522,7 @@ export const scenario10Data: ScenarioData = {
       conditions: [
         {
           type: 'tab-active',
+          hidden: true,
           description: 'TX Chain Open',
           params: { tab: 'tx-chain' },
           mustMaintain: true,

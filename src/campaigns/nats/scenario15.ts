@@ -376,6 +376,7 @@ export const scenario15Data: ScenarioData = {
       conditions: [
         {
           type: 'tab-active',
+          hidden: true,
           description: 'TX Chain Open',
           params: { tab: 'tx-chain' },
           mustMaintain: true,
@@ -396,6 +397,7 @@ export const scenario15Data: ScenarioData = {
       conditions: [
         {
           type: 'tab-active',
+          hidden: true,
           description: 'TX Chain Open',
           params: { tab: 'tx-chain' },
           mustMaintain: true,
@@ -452,6 +454,7 @@ export const scenario15Data: ScenarioData = {
       conditions: [
         {
           type: 'tab-active',
+          hidden: true,
           description: 'TX Chain Open',
           params: { tab: 'tx-chain' },
           mustMaintain: true,
@@ -564,6 +567,7 @@ export const scenario15Data: ScenarioData = {
       conditions: [
         {
           type: 'tab-active',
+          hidden: true,
           description: 'TX Chain Open',
           params: { tab: 'tx-chain' },
           mustMaintain: true,
@@ -593,6 +597,7 @@ export const scenario15Data: ScenarioData = {
       conditions: [
         {
           type: 'tab-active',
+          hidden: true,
           description: 'TX Chain Open',
           params: { tab: 'tx-chain' },
           mustMaintain: true,
@@ -600,6 +605,7 @@ export const scenario15Data: ScenarioData = {
         {
           type: 'hpa-enabled',
           description: 'HPA Enabled',
+          params: { requiresObservation: true, observationTab: 'tx-chain' },
           mustMaintain: true,
         },
         {
@@ -633,6 +639,7 @@ export const scenario15Data: ScenarioData = {
       conditions: [
         {
           type: 'tab-active',
+          hidden: true,
           description: 'RX Analysis Open',
           params: { tab: 'rx-analysis' },
           mustMaintain: true,
@@ -653,6 +660,7 @@ export const scenario15Data: ScenarioData = {
       conditions: [
         {
           type: 'tab-active',
+          hidden: true,
           description: 'RX Analysis Open',
           params: { tab: 'rx-analysis' },
           mustMaintain: true,
@@ -749,7 +757,7 @@ export const scenario15Data: ScenarioData = {
         {
           type: 'receiver-signal-locked',
           description: 'Receiver Locked',
-          params: { modemNumber: 1 },
+          params: { modemNumber: 1, requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: true,
         },
       ],

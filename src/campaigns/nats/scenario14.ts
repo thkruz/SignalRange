@@ -281,6 +281,7 @@ export const scenario14Data: ScenarioData = {
       conditions: [
         {
           type: 'tab-active',
+          hidden: true,
           description: 'Dashboard Open',
           params: { tab: 'dashboard' },
           mustMaintain: true,
@@ -319,6 +320,7 @@ export const scenario14Data: ScenarioData = {
       conditions: [
         {
           type: 'tab-active',
+          hidden: true,
           description: 'ACU Control Open',
           params: { tab: 'acu-control' },
           mustMaintain: true,
@@ -380,6 +382,7 @@ export const scenario14Data: ScenarioData = {
       conditions: [
         {
           type: 'tab-active',
+          hidden: true,
           description: 'RX Analysis Open',
           params: { tab: 'rx-analysis' },
           mustMaintain: true,
@@ -404,19 +407,21 @@ export const scenario14Data: ScenarioData = {
           params: {
             signalId: 'TIDEMARK-1-Beacon',
             minPower: -95 as dBm,
+            requiresObservation: true,
+            observationTab: 'rx-analysis',
           },
           mustMaintain: true,
         },
         {
           type: 'receiver-signal-locked',
           description: 'Receiver Locked',
-          params: { modemNumber: 1 },
+          params: { modemNumber: 1, requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: true,
         },
         {
           type: 'receiver-snr-threshold',
           description: 'Baseline C/N ≥ 10 dB',
-          params: { minCNRatio: 10 },
+          params: { minCNRatio: 10, requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: true,
         },
       ],
@@ -471,6 +476,7 @@ export const scenario14Data: ScenarioData = {
       conditions: [
         {
           type: 'tab-active',
+          hidden: true,
           description: 'RX Analysis Open',
           params: { tab: 'rx-analysis' },
           mustMaintain: true,
@@ -478,20 +484,20 @@ export const scenario14Data: ScenarioData = {
         {
           type: 'receiver-signal-locked',
           description: 'Receiver Lock Maintained',
-          params: { modemNumber: 1 },
+          params: { modemNumber: 1, requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: true,
         },
         {
           type: 'receiver-snr-threshold',
           description: 'C/N Above Storm Threshold (≥ 7 dB)',
-          params: { minCNRatio: 7 },
+          params: { minCNRatio: 7, requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: true,
           maintainDuration: 20,
         },
         {
           type: 'antenna-locked',
           description: 'Antenna Locked on TIDEMARK-1',
-          params: { noradId: 61525 },
+          params: { noradId: 61525, requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: true,
         },
       ],
@@ -578,6 +584,7 @@ export const scenario14Data: ScenarioData = {
       conditions: [
         {
           type: 'tab-active',
+          hidden: true,
           description: 'TX Chain Open',
           params: { tab: 'tx-chain' },
           mustMaintain: true,
@@ -630,6 +637,7 @@ export const scenario14Data: ScenarioData = {
       conditions: [
         {
           type: 'tab-active',
+          hidden: true,
           description: 'TX Chain Open',
           params: { tab: 'tx-chain' },
           mustMaintain: true,
@@ -637,6 +645,7 @@ export const scenario14Data: ScenarioData = {
         {
           type: 'hpa-enabled',
           description: 'HPA Output Enabled',
+          params: { requiresObservation: true, observationTab: 'tx-chain' },
           mustMaintain: true,
         },
         {

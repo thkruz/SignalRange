@@ -58,8 +58,8 @@
     "vitest-canvas-mock": "^1.1.3",
     "webpack": "^5.89.0",
     "webpack-cli": "^5.1.4",
-    "webpack-dev-server": "^5.2.2",
-    "wrangler": "^4.54.0"
+    "webpack-dev-server": "^5.2.5",
+    "wrangler": "^4.100.0"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.81.1",
@@ -68,7 +68,14 @@
     "draggabilly": "^3.0.0",
     "gl-matrix": "^3.4.4",
     "ootk": "^5.1.1",
-    "socket.io-client": "^4.5.4",
     "uuid": "^13.0.0"
+  },
+  "overrides": {
+    "esbuild": "^0.28.1",
+    "ws": "^8.21.0",
+    "serialize-javascript": "^7.0.5",
+    "sockjs": {
+      "uuid": "^11.1.1"
+    }
   }
 }

@@ -34,10 +34,15 @@ const createMockAntenna = (uuid: string, isHeaterEnabled = false, iceAccumulatio
     uuid,
     isHeaterEnabled,
     iceAccumulation_dB,
+    skyNoiseDegradation_dB: 0,
   },
   updateIceAccumulation: vi.fn((value: number) => {
     // Update the mock state when called
     mockAntennas.find(a => a.state.uuid === uuid)!.state.iceAccumulation_dB = value;
+  }),
+  updateSkyNoiseDegradation: vi.fn((value: number) => {
+    // Update the mock state when called (sun-transit sky-noise path)
+    mockAntennas.find(a => a.state.uuid === uuid)!.state.skyNoiseDegradation_dB = value;
   }),
 });
 

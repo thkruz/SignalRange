@@ -3,7 +3,7 @@ import type { Objective } from '@app/objectives/objective-types';
 import type { ScenarioData } from '@app/ScenarioData';
 import type { dB, dBm, MHz } from '@app/types';
 import { getAssetUrl } from '@app/utils/asset-url';
-import { createRfFrontEnd } from '../rf-front-end-factory';
+import { createRfFrontEnd } from '@app/campaigns/rf-front-end-factory';
 import { maineGroundStation, vermontGroundStation } from './ground-stations';
 import { tidemark1Satellite, tidemark2Satellite } from './satellites';
 

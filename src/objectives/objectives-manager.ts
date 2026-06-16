@@ -17,7 +17,7 @@ import { TabbedCanvas } from '@app/pages/mission-control/tabbed-canvas';
 import { SimulationManager } from '@app/simulation/simulation-manager';
 import { TrafficControlManager } from '@app/traffic/traffic-control-manager';
 import { Milliseconds } from 'ootk';
-import bulbPng from '../assets/icons/bulb.png';
+import bulbPng from '@app/assets/icons/bulb.png';
 import {
   Condition,
   ConditionParams,

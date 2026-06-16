@@ -1,21 +1,21 @@
 import { EventBus } from "@app/events/event-bus";
-import { Events, HpaNoiseAmplificationData } from "../../events/events";
-import { SignalPathManager } from '../../simulation/signal-path-manager';
-import { dBm, Hertz, IfFrequency, RfFrequency } from "../../types";
-import { AntennaCore } from "../antenna";
-import { AlarmStatus, BaseEquipment } from "../base-equipment";
-import { Transmitter } from '../transmitter/transmitter';
-import { AGCModuleCore, AGCState } from './agc-module/agc-module-core';
-import { BUCModuleCore, BUCState } from './buc-module/buc-module-core';
-import { CouplerModule, CouplerState } from './coupler-module/coupler-module';
-import { TapPoint } from "./coupler-module/tap-points";
-import { IfFilterBankModuleCore, IfFilterBankState } from './filter-module/filter-module-core';
-import { GPSDOModuleCore } from './gpsdo-module/gpsdo-module-core';
-import { defaultGpsdoState, GPSDOState } from "./gpsdo-module/gpsdo-state";
-import { HPAModuleCore, HPAState } from './hpa-module/hpa-module-core';
-import { LNBModuleCore, LNBState } from './lnb-module/lnb-module-core';
-import { NotchFilterModuleCore, NotchFilterState } from './notch-filter-module/notch-filter-module-core';
-import { OMTModule, OMTState } from './omt-module/omt-module';
+import { Events, HpaNoiseAmplificationData } from "@app/events/events";
+import { SignalPathManager } from '@app/simulation/signal-path-manager';
+import { dBm, Hertz, IfFrequency, RfFrequency } from "@app/types";
+import { AntennaCore } from "@app/equipment/antenna";
+import { AlarmStatus, BaseEquipment } from "@app/equipment/base-equipment";
+import { Transmitter } from '@app/equipment/transmitter/transmitter';
+import { AGCModuleCore, AGCState } from '@app/equipment/rf-front-end/agc-module/agc-module-core';
+import { BUCModuleCore, BUCState } from '@app/equipment/rf-front-end/buc-module/buc-module-core';
+import { CouplerModule, CouplerState } from '@app/equipment/rf-front-end/coupler-module/coupler-module';
+import { TapPoint } from "@app/equipment/rf-front-end/coupler-module/tap-points";
+import { IfFilterBankModuleCore, IfFilterBankState } from '@app/equipment/rf-front-end/filter-module/filter-module-core';
+import { GPSDOModuleCore } from '@app/equipment/rf-front-end/gpsdo-module/gpsdo-module-core';
+import { defaultGpsdoState, GPSDOState } from "@app/equipment/rf-front-end/gpsdo-module/gpsdo-state";
+import { HPAModuleCore, HPAState } from '@app/equipment/rf-front-end/hpa-module/hpa-module-core';
+import { LNBModuleCore, LNBState } from '@app/equipment/rf-front-end/lnb-module/lnb-module-core';
+import { NotchFilterModuleCore, NotchFilterState } from '@app/equipment/rf-front-end/notch-filter-module/notch-filter-module-core';
+import { OMTModule, OMTState } from '@app/equipment/rf-front-end/omt-module/omt-module';
 
 /**
  * Complete RF Front-End state

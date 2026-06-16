@@ -1,4 +1,4 @@
-import { RFFrontEndCore } from '../rf-front-end-core';
+import { RFFrontEndCore } from '@app/equipment/rf-front-end/rf-front-end-core';
 import { GPSDOModuleCore } from './gpsdo-module-core';
 import { GPSDOModuleUIStandard } from './gpsdo-module-ui-standard';
 import { GPSDOState } from './gpsdo-state';

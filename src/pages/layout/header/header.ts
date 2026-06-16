@@ -13,7 +13,7 @@ import { ModalProfile } from "@app/user-account/modal-profile";
 import { isSupabaseApprovedDomain } from "@app/user-account/supabase-client";
 import '@app/user-account/user-account.css';
 import type { User } from "@supabase/supabase-js";
-import { html } from "../../../engine/utils/development/formatter";
+import { html } from "@app/engine/utils/development/formatter";
 import './header.css';
 
 /**

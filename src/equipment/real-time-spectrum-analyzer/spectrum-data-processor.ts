@@ -1,4 +1,4 @@
-import { Hertz, IfSignal, RfSignal } from "../../types";
+import { Hertz, IfSignal, RfSignal } from "@app/types";
 import { RealTimeSpectrumAnalyzer } from "./real-time-spectrum-analyzer";
 
 /**

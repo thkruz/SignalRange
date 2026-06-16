@@ -1,4 +1,4 @@
-import type { CampaignData } from '../campaign-types';
+import type { CampaignData } from '@app/campaigns/campaign-types';
 import { sandboxData } from './sandbox';
 import { scenario1Data } from './scenario1';
 import { scenario2Data } from './scenario2';

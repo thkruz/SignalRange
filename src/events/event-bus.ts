@@ -1,4 +1,4 @@
-import { Logger } from "../logging/logger";
+import { Logger } from "@app/logging/logger";
 import { EventMap, Events } from "./events";
 
 type EventHandlersMap = Partial<Record<Events, Array<(...args: EventMap[Events]) => void>>>;

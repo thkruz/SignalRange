@@ -1,4 +1,4 @@
-import { RFFrontEndCore } from '../rf-front-end-core';
+import { RFFrontEndCore } from '@app/equipment/rf-front-end/rf-front-end-core';
 import { IfFilterBankModuleCore, IfFilterBankState } from './filter-module-core';
 import { IfFilterBankModuleUIStandard } from './filter-module-ui-standard';
 

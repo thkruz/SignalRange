@@ -5,10 +5,10 @@
 
 import { EventBus } from '@app/events/event-bus';
 import { Events, HintShownData } from '@app/events/events';
-import { DraggableModal } from '@engine/ui/draggable-modal';
-import { html } from '@engine/utils/development/formatter';
-import { getEl } from '@engine/utils/get-el';
-import bulbPng from '../assets/icons/bulb.png';
+import { DraggableModal } from '@app/engine/ui/draggable-modal';
+import { html } from '@app/engine/utils/development/formatter';
+import { getEl } from '@app/engine/utils/get-el';
+import bulbPng from '@app/assets/icons/bulb.png';
 import { HintManager } from './hint-manager';
 import './hint-modal.css';
 

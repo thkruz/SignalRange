@@ -2,8 +2,8 @@ import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
 import { SignalPathManager } from "@app/simulation/signal-path-manager";
 import { IfFrequency, RfFrequency } from "@app/types";
-import { RFFrontEndCore } from "../rf-front-end-core";
-import { RFFrontEndModule } from '../rf-front-end-module';
+import { RFFrontEndCore } from "@app/equipment/rf-front-end/rf-front-end-core";
+import { RFFrontEndModule } from '@app/equipment/rf-front-end/rf-front-end-module';
 import './coupler-module.css';
 import { TapPoint } from "./tap-points";
 

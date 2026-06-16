@@ -4,13 +4,13 @@ import { AntennaState } from '@app/equipment/antenna';
 import { RFFrontEndState } from '@app/equipment/rf-front-end/rf-front-end-core';
 import { ObjectiveState } from '@app/objectives';
 import { SimulationManager } from '@app/simulation/simulation-manager';
-import { RealTimeSpectrumAnalyzerState } from '../equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer';
-import { ReceiverState } from '../equipment/receiver/receiver';
-import { TransmitterState } from '../equipment/transmitter/transmitter';
-import { Logger } from '../logging/logger';
-import { OpsLogManager } from '../ops-log/ops-log-manager';
-import { OpsLogState } from '../ops-log/ops-log-types';
-import type { Equipment } from '../pages/sandbox/equipment';
+import { RealTimeSpectrumAnalyzerState } from '@app/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer';
+import { ReceiverState } from '@app/equipment/receiver/receiver';
+import { TransmitterState } from '@app/equipment/transmitter/transmitter';
+import { Logger } from '@app/logging/logger';
+import { OpsLogManager } from '@app/ops-log/ops-log-manager';
+import { OpsLogState } from '@app/ops-log/ops-log-types';
+import type { Equipment } from '@app/pages/sandbox/equipment';
 import type { StorageProvider } from './storage-provider';
 
 /**

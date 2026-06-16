@@ -1,6 +1,6 @@
 import { dB } from "@app/types";
-import { AnalyzerControl } from "../../analyzer-control";
-import { BaseControlButton } from "../base-control-button";
+import { AnalyzerControl } from "@app/equipment/real-time-spectrum-analyzer/analyzer-control";
+import { BaseControlButton } from "@app/equipment/real-time-spectrum-analyzer/analyzer-control/base-control-button";
 import './ac-ampt-btn.css';
 
 export class ACAmptBtn extends BaseControlButton {

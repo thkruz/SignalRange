@@ -1,11 +1,11 @@
 import { generateUuid } from '@app/engine/utils/uuid';
-import { EventBus } from '../events/event-bus';
-import { EventMap, Events } from '../events/events';
+import { EventBus } from '@app/events/event-bus';
+import { EventMap, Events } from '@app/events/events';
 import { AntennaState } from './antenna';
-import { RealTimeSpectrumAnalyzerState } from './real-time-spectrum-analyzer/real-time-spectrum-analyzer';
-import { ReceiverState } from './receiver/receiver';
-import { RFFrontEndState } from './rf-front-end/rf-front-end-core';
-import { TransmitterState } from './transmitter/transmitter';
+import { RealTimeSpectrumAnalyzerState } from '@app/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer';
+import { ReceiverState } from '@app/equipment/receiver/receiver';
+import { RFFrontEndState } from '@app/equipment/rf-front-end/rf-front-end-core';
+import { TransmitterState } from '@app/equipment/transmitter/transmitter';
 
 import './base-equipment.css';
 

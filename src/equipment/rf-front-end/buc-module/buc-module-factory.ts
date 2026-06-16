@@ -1,4 +1,4 @@
-import { RFFrontEndCore } from '../rf-front-end-core';
+import { RFFrontEndCore } from '@app/equipment/rf-front-end/rf-front-end-core';
 import { BUCModuleCore, BUCState } from './buc-module-core';
 import { BUCModuleUIStandard } from './buc-module-ui-standard';
 

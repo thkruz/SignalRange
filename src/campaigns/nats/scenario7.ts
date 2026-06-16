@@ -4,7 +4,7 @@ import type { ScenarioData } from '@app/ScenarioData';
 import { SignalOrigin } from '@app/signal-origin';
 import type { dB, dBi, dBm, Hertz, IfFrequency, MHz } from '@app/types';
 import { getAssetUrl } from '@app/utils/asset-url';
-import { createRfFrontEnd } from '../rf-front-end-factory';
+import { createRfFrontEnd } from '@app/campaigns/rf-front-end-factory';
 import { maineGroundStation, vermontGroundStation } from './ground-stations';
 import { ses10Satellite, tidemark1Satellite } from './satellites';
 

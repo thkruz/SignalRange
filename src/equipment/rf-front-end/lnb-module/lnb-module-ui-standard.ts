@@ -3,7 +3,7 @@ import { RotaryKnob } from "@app/components/rotary-knob/rotary-knob";
 import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
 import { IfFrequency } from "@app/types";
-import { RFFrontEndCore } from "../rf-front-end-core";
+import { RFFrontEndCore } from "@app/equipment/rf-front-end/rf-front-end-core";
 import { LNBModuleCore, LNBState } from './lnb-module-core';
 import './lnb-module.css';
 

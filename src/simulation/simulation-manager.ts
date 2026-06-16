@@ -14,7 +14,7 @@ import { ScenarioManager } from '@app/scenario-manager';
 import { ProgressSaveManager } from '@app/user-account/progress-save-manager';
 import { UserDataService } from '@app/user-account/user-data-service';
 import { Degrees, Milliseconds } from 'ootk';
-import { RfSignal } from './../types';
+import { RfSignal } from '@app/types';
 
 export class SimulationManager {
   private static instance_: SimulationManager;

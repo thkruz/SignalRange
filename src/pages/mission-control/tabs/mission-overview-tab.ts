@@ -6,8 +6,8 @@ import { Satellite } from "@app/equipment/satellite/satellite";
 import { EventBus } from "@app/events/event-bus";
 import { Events } from "@app/events/events";
 import { SimulationManager } from "@app/simulation/simulation-manager";
-import antennaPng from '../../../assets/icons/antenna.png';
-import satellitePng from '../../../assets/icons/satellite.png';
+import antennaPng from '@app/assets/icons/antenna.png';
+import satellitePng from '@app/assets/icons/satellite.png';
 import './mission-overview-tab.css';
 
 /**

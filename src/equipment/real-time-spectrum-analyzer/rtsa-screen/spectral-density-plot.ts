@@ -1,8 +1,8 @@
 import { SimulationManager } from "@app/simulation/simulation-manager";
-import { Hertz, IfSignal, MHz, RfSignal } from "../../../types";
-import type { TraceMode } from "../analyzer-control/ac-trace-btn/ac-trace-btn";
-import { RealTimeSpectrumAnalyzer } from "../real-time-spectrum-analyzer";
-import { SpectrumDataProcessor } from "../spectrum-data-processor";
+import { Hertz, IfSignal, MHz, RfSignal } from "@app/types";
+import type { TraceMode } from "@app/equipment/real-time-spectrum-analyzer/analyzer-control/ac-trace-btn/ac-trace-btn";
+import { RealTimeSpectrumAnalyzer } from "@app/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer";
+import { SpectrumDataProcessor } from "@app/equipment/real-time-spectrum-analyzer/spectrum-data-processor";
 import { RTSAScreen } from "./rtsa-screen";
 
 /**

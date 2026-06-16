@@ -5,7 +5,7 @@ import { SecureToggleSwitch } from '@app/components/secure-toggle-switch/secure-
 import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
 import type { dBW } from '@app/types';
-import { RFFrontEndCore } from '../rf-front-end-core';
+import { RFFrontEndCore } from '@app/equipment/rf-front-end/rf-front-end-core';
 import { HPAModuleCore, HPAState } from './hpa-module-core';
 import './hpa-module.css';
 

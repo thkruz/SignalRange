@@ -6,7 +6,7 @@ import { Router } from "@app/router";
 import { Auth } from "@app/user-account/auth";
 import { getUserDataService } from "@app/user-account/user-data-service";
 import { getAssetUrl } from "@app/utils/asset-url";
-import { html } from "../engine/utils/development/formatter";
+import { html } from "@app/engine/utils/development/formatter";
 import { BasePage } from "./base-page";
 import "./campaign-selection.css";
 
@@ -56,7 +56,7 @@ export class CampaignSelectionPage extends BasePage {
   private async loadUserDataAndUpdate_(): Promise<void> {
     try {
       // Wait for auth to be initialized before trying to load user data
-      const { App } = await import('../app');
+      const { App } = await import('@app/app');
       await App.authReady;
 
       // Check if user is logged in and update the warning visibility

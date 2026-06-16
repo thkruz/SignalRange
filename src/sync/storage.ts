@@ -7,9 +7,9 @@
 
 import { GroundStation } from '@app/assets/ground-station/ground-station';
 import { SimulationManager } from '@app/simulation/simulation-manager';
-import { EventBus } from '../events/event-bus';
-import { Events } from '../events/events';
-import type { Equipment } from '../pages/sandbox/equipment';
+import { EventBus } from '@app/events/event-bus';
+import { Events } from '@app/events/events';
+import type { Equipment } from '@app/pages/sandbox/equipment';
 import { StorageProviderFactory, StorageProviderType } from './storage-provider-factory';
 import { SyncManager, type AppState } from './sync-manager';
 import './webpack-hot-module';

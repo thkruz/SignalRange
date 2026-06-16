@@ -5,7 +5,7 @@ import { Events } from "@app/events/events";
 import { Logger } from "@app/logging/logger";
 import { Sfx } from "@app/sound/sfx-enum";
 import SoundManager from "@app/sound/sound-manager";
-import { AnalyzerControl } from "../analyzer-control";
+import { AnalyzerControl } from "@app/equipment/real-time-spectrum-analyzer/analyzer-control";
 
 export abstract class BaseControlButton {
   private readonly html_: string;

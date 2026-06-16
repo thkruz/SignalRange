@@ -12,11 +12,11 @@ import { SimulationManager } from "@app/simulation/simulation-manager";
 import { QuizModal } from "@app/modal/quiz-modal";
 import { AppState, syncManager } from "@app/sync/storage";
 import { ObjectivesManager } from "@app/objectives/objectives-manager";
-import { html } from "../engine/utils/development/formatter";
-import { clearPersistedStore, syncEquipmentWithStore } from '../sync/storage';
+import { html } from "@app/engine/utils/development/formatter";
+import { clearPersistedStore, syncEquipmentWithStore } from '@app/sync/storage';
 import { BasePage } from "./base-page";
-import { Body } from "./layout/body/body";
-import { Equipment } from './sandbox/equipment';
+import { Body } from "@app/pages/layout/body/body";
+import { Equipment } from '@app/pages/sandbox/equipment';
 
 /**
  * Student page implementation

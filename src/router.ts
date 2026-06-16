@@ -1,15 +1,15 @@
-import { CampaignManager } from "./campaigns/campaign-manager";
-import { ccsCampaignData, geolocationCampaignData, hamSdrCampaignData, natsCampaignData, natsEuCampaignData } from "./campaigns/nats/campaign-data";
-import { EventBus } from "./events/event-bus";
-import { Events } from "./events/events";
-import { CampaignSelectionPage } from "./pages/campaign-selection";
-import { Footer } from "./pages/layout/footer/footer";
-import { Header } from "./pages/layout/header/header";
-import { MissionControlPage } from "./pages/mission-control/mission-control-page";
-import { SandboxPage } from "./pages/sandbox-page";
-import { ScenarioSelectionPage } from "./pages/scenario-selection";
+import { CampaignManager } from "@app/campaigns/campaign-manager";
+import { ccsCampaignData, geolocationCampaignData, hamSdrCampaignData, natsCampaignData, natsEuCampaignData } from "@app/campaigns/nats/campaign-data";
+import { EventBus } from "@app/events/event-bus";
+import { Events } from "@app/events/events";
+import { CampaignSelectionPage } from "@app/pages/campaign-selection";
+import { Footer } from "@app/pages/layout/footer/footer";
+import { Header } from "@app/pages/layout/header/header";
+import { MissionControlPage } from "@app/pages/mission-control/mission-control-page";
+import { SandboxPage } from "@app/pages/sandbox-page";
+import { ScenarioSelectionPage } from "@app/pages/scenario-selection";
 import { ScenarioManager } from "./scenario-manager";
-import { SimulationManager } from "./simulation/simulation-manager";
+import { SimulationManager } from "@app/simulation/simulation-manager";
 
 /**
  * Navigation options for router

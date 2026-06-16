@@ -3,9 +3,9 @@
  * @description Draggable box providing dev tools: auto-skip dialogs, complete objective, set timer
  */
 
-import { DraggableBox } from '@engine/ui/draggable-box';
-import { html } from '@engine/utils/development/formatter';
-import { getEl, showEl } from '@engine/utils/get-el';
+import { DraggableBox } from '@app/engine/ui/draggable-box';
+import { html } from '@app/engine/utils/development/formatter';
+import { getEl, showEl } from '@app/engine/utils/get-el';
 import { ObjectivesManager } from '@app/objectives/objectives-manager';
 import { Header } from '@app/pages/layout/header/header';
 import { ScenarioSelectionPage } from '@app/pages/scenario-selection';

@@ -7,7 +7,7 @@ import { Events } from "@app/events/events";
 import { ScenarioManager } from "@app/scenario-manager";
 import { SimulationManager } from "@app/simulation/simulation-manager";
 import { TrafficControlManager } from "@app/traffic/traffic-control-manager";
-import satellitePng from '../../../assets/icons/satellite.png';
+import satellitePng from '@app/assets/icons/satellite.png';
 import './satellite-dashboard-tab.css';
 
 /**

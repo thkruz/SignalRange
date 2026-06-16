@@ -1,4 +1,4 @@
-import { RFFrontEndCore } from '../rf-front-end-core';
+import { RFFrontEndCore } from '@app/equipment/rf-front-end/rf-front-end-core';
 import { NotchFilterModuleCore, NotchFilterState } from './notch-filter-module-core';
 
 /**

@@ -1,6 +1,6 @@
 import { BaseElement } from "@app/components/base-element";
 import { qs } from "@app/engine/utils/query-selector";
-import { html } from "../../../engine/utils/development/formatter";
+import { html } from "@app/engine/utils/development/formatter";
 import './footer.css';
 
 /**

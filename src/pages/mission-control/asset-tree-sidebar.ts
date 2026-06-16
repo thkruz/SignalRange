@@ -16,16 +16,16 @@ import { ObjectivesManager } from "@app/objectives";
 import { OpsLogModal } from "@app/ops-log/ops-log-modal";
 import { ScenarioManager } from "@app/scenario-manager";
 import { SimulationManager } from "@app/simulation/simulation-manager";
-import activityPng from '../../assets/icons/activity.png';
-import antennaPng from '../../assets/icons/antenna.png';
-import checklistPng from "../../assets/icons/checklist.png";
-import dashboardPng from '../../assets/icons/dashboard.png';
-import historyPng from '../../assets/icons/history.png';
-import layoutSidebarLeftCollapsePng from '../../assets/icons/layout-sidebar-left-collapse.png';
-import layoutSidebarLeftExpandPng from '../../assets/icons/layout-sidebar-left-expand.png';
-import satelliteOffPng from '../../assets/icons/satellite-off.png';
-import satellitePng from '../../assets/icons/satellite.png';
-import targetArrowPng from '../../assets/icons/target-arrow.png';
+import activityPng from '@app/assets/icons/activity.png';
+import antennaPng from '@app/assets/icons/antenna.png';
+import checklistPng from "@app/assets/icons/checklist.png";
+import dashboardPng from '@app/assets/icons/dashboard.png';
+import historyPng from '@app/assets/icons/history.png';
+import layoutSidebarLeftCollapsePng from '@app/assets/icons/layout-sidebar-left-collapse.png';
+import layoutSidebarLeftExpandPng from '@app/assets/icons/layout-sidebar-left-expand.png';
+import satelliteOffPng from '@app/assets/icons/satellite-off.png';
+import satellitePng from '@app/assets/icons/satellite.png';
+import targetArrowPng from '@app/assets/icons/target-arrow.png';
 import './asset-tree-sidebar.css';
 
 /**

@@ -1,7 +1,7 @@
 import { SimulationManager } from '@app/simulation/simulation-manager';
 import { clamp } from 'ootk';
-import { RFFrontEndCore } from '../rf-front-end-core';
-import { RFFrontEndModule } from '../rf-front-end-module';
+import { RFFrontEndCore } from '@app/equipment/rf-front-end/rf-front-end-core';
+import { RFFrontEndModule } from '@app/equipment/rf-front-end/rf-front-end-module';
 import { defaultGpsdoState, GPSDOState } from './gpsdo-state';
 
 /**

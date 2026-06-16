@@ -9,7 +9,7 @@ import { ScenarioData } from '@app/ScenarioData';
 import { clearPersistedStore } from "@app/sync/storage";
 import { getUserDataService } from "@app/user-account/user-data-service";
 import { getAssetUrl } from "@app/utils/asset-url";
-import { html } from "../engine/utils/development/formatter";
+import { html } from "@app/engine/utils/development/formatter";
 import { BasePage } from "./base-page";
 import "./scenario-selection.css";
 
@@ -96,7 +96,7 @@ export class ScenarioSelectionPage extends BasePage {
   private async loadCheckpointsAndUpdate_(): Promise<void> {
     try {
       // Wait for auth to be initialized before trying to load user data
-      const { App } = await import('../app');
+      const { App } = await import('@app/app');
       await App.authReady;
 
       const userDataService = getUserDataService();

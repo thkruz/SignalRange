@@ -137,6 +137,83 @@ export const tidemark2Satellite = new Satellite(
   }
 );
 
+/**
+ * TIDEMARK-3: Newest TIDEMARK constellation bird
+ *
+ * Commissioned by the overnight commissioning crew post-S8. Sits at 47°W,
+ * between TIDEMARK-1 (53°W) and SES-10 (67°W). Standard 36 MHz C-band
+ * transponder with H-pol uplink, V-pol beacon.
+ *
+ * Frequency Plan:
+ * - Uplink RF: 5985 MHz (TP-1 center)
+ * - Downlink RF: 3760 MHz (5985 - 2225 offset)
+ * - Beacon RF: 4172 MHz (CW)
+ *
+ * With VT-01 LNB LO at 5250 MHz:
+ * - Beacon IF: 1078 MHz (5250 - 4172)
+ *
+ * With VT-01 BUC LO at 7000 MHz:
+ * - TX IF: 1015 MHz (7000 - 5985)
+ */
+export const tidemark3Satellite = new Satellite(
+  'TIDEMARK-3',
+  61527,
+  [
+    // Uplink signals - routed to transponders based on frequency and polarization
+    {
+      signalId: 'TIDEMARK-3-TDMA-Composite',
+      serverId: 1,
+      noradId: 61527,
+      frequency: 5985e6 as RfFrequency,
+      polarization: 'H',
+      power: 20 as dBm,
+      bandwidth: 36e6 as Hertz,
+      modulation: 'QPSK' as ModulationType,
+      fec: '3/4' as FECType,
+      feed: '',
+      isDegraded: false,
+      origin: SignalOrigin.SATELLITE_RX,
+      noiseFloor: null,
+      gainInPath: 0 as dBi,
+    }
+  ],
+  [], // Beacons defined in transponderConfigs
+  {
+    az: 140.5 as Degrees,
+    el: 37.8 as Degrees,
+    rotation: 8 as Degrees,
+    frequencyOffset: 2.225e9 as Hertz,
+    // Ephemeris error: smallest of the constellation (newest bird, freshest TLE)
+    ephemerisErrorAz: 0.10 as Degrees,
+    ephemerisErrorEl: 0.07 as Degrees,
+    transponderConfigs: [
+      {
+        id: 'TP-1',
+        uplinkCenterFrequency: 5985e6 as RfFrequency,
+        bandwidth: 36e6 as Hertz,
+        frequencyOffset: 2.225e9 as Hertz, // Downlink center: 3760 MHz
+        polarization: 'H',
+        beacon: {
+          frequency: 4172e6 as RfFrequency,
+          signalId: 'TIDEMARK-3-Beacon',
+          serverId: 1,
+          noradId: 61527,
+          power: 30 as dBm,
+          bandwidth: 1e3 as Hertz,
+          modulation: 'CW' as ModulationType,
+          fec: 'null' as FECType,
+          polarization: 'V',
+          feed: '',
+          isDegraded: false,
+          origin: SignalOrigin.TRANSMITTER,
+          noiseFloor: null,
+          gainInPath: 0 as dBi,
+        },
+      } as TransponderConfig,
+    ],
+  }
+);
+
 export const ses10Satellite = new Satellite(
   'SES-10',
   42432,
@@ -220,7 +297,7 @@ export const ses10Satellite = new Satellite(
  *
  * With VT-01 LNB LO at 5250 MHz:
  * - Beacon IF: 1085 MHz (5250 - 4165)
- * - Downlink IF: 1645 MHz (5250 - 3605)
+ * - Downlink IF: 1422 MHz (5250 - 3828)
  *
  * With BUC LO at 7500 MHz:
  * - TX IF: 1447 MHz (7500 - 6053)
@@ -268,7 +345,7 @@ export const aurora7Satellite = new Satellite(
         id: 'TP-1',
         uplinkCenterFrequency: 6053e6 as RfFrequency,
         bandwidth: 24e6 as Hertz, // Narrower than TIDEMARK
-        frequencyOffset: 2.225e9 as Hertz, // Downlink at 3605 MHz
+        frequencyOffset: 2.225e9 as Hertz, // Downlink at 3828 MHz
         polarization: 'H',
         beacon: {
           frequency: 4165e6 as RfFrequency,

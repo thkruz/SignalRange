@@ -3,9 +3,9 @@ import { html } from "@app/engine/utils/development/formatter";
 import { Logger } from '@app/logging/logger';
 import { SignalOrigin } from "@app/signal-origin";
 import type { dBi, dBm, RfSignal } from '@app/types';
-import { dB } from '../../../types';
-import { RFFrontEndCore } from '../rf-front-end-core';
-import { RFFrontEndModule } from '../rf-front-end-module';
+import { dB } from '@app/types';
+import { RFFrontEndCore } from '@app/equipment/rf-front-end/rf-front-end-core';
+import { RFFrontEndModule } from '@app/equipment/rf-front-end/rf-front-end-module';
 
 /**
  * Polarization types for OMT/Duplexer

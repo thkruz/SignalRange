@@ -1,7 +1,7 @@
 import { EventBus } from "@app/events/event-bus";
 import { Events } from "@app/events/events";
-import { AnalyzerControl } from "../../analyzer-control";
-import { BaseControlButton } from "../base-control-button";
+import { AnalyzerControl } from "@app/equipment/real-time-spectrum-analyzer/analyzer-control";
+import { BaseControlButton } from "@app/equipment/real-time-spectrum-analyzer/analyzer-control/base-control-button";
 import './ac-mode-btn.css';
 
 export class ACModeBtn extends BaseControlButton {

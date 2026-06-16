@@ -4,10 +4,10 @@ import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
 import { EventBus } from "@app/events/event-bus";
 import { Events } from "@app/events/events";
-import antennaPng from '../../../assets/icons/antenna.png';
-import modemPng from '../../../assets/icons/radio.png';
-import receiverPng from '../../../assets/icons/arrow-big-down-lines.png';
-import transmitterPng from '../../../assets/icons/arrow-big-up-lines.png';
+import antennaPng from '@app/assets/icons/antenna.png';
+import modemPng from '@app/assets/icons/radio.png';
+import receiverPng from '@app/assets/icons/arrow-big-down-lines.png';
+import transmitterPng from '@app/assets/icons/arrow-big-up-lines.png';
 import './dashboard-tab.css';
 
 interface AlarmEntry {

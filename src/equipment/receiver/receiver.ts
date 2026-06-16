@@ -1,13 +1,13 @@
 import { PowerSwitch } from "@app/components/power-switch/power-switch";
 import { EventBus } from "@app/events/event-bus";
-import { html } from "../../engine/utils/development/formatter";
-import { qs } from "../../engine/utils/query-selector";
-import { Events } from "../../events/events";
-import { dBm, FECType, Hertz, IfSignal, MHz, ModulationType } from "../../types";
-import { AntennaCore } from "../antenna";
-import { AlarmStatus, BaseEquipment } from "../base-equipment";
-import { TapPoint } from "../rf-front-end/coupler-module/tap-points";
-import { RFFrontEndCore } from "../rf-front-end/rf-front-end-core";
+import { html } from "@app/engine/utils/development/formatter";
+import { qs } from "@app/engine/utils/query-selector";
+import { Events } from "@app/events/events";
+import { dBm, FECType, Hertz, IfSignal, MHz, ModulationType } from "@app/types";
+import { AntennaCore } from "@app/equipment/antenna";
+import { AlarmStatus, BaseEquipment } from "@app/equipment/base-equipment";
+import { TapPoint } from "@app/equipment/rf-front-end/coupler-module/tap-points";
+import { RFFrontEndCore } from "@app/equipment/rf-front-end/rf-front-end-core";
 import { ADCDegradationResult, calculateADCDegradation } from './adc-degradation';
 import './receiver.css';
 

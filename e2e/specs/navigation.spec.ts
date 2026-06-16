@@ -36,8 +36,9 @@ test.describe('Navigation', () => {
     await expect(scenarioSelectionPage.backButton).toBeVisible();
     await scenarioSelectionPage.backButton.click();
 
-    // App may redirect to / or /campaigns/
-    await page.waitForURL(/^http:\/\/localhost:3000\/(campaigns\/?)?$/);
+    // App may redirect to / or /campaigns/ (host-agnostic: baseURL may be
+    // localhost or 127.0.0.1)
+    await page.waitForURL(/^http:\/\/(localhost|127\.0\.0\.1):3000\/(campaigns\/?)?$/);
   });
 
   test('should handle unknown routes gracefully', async ({ page }) => {

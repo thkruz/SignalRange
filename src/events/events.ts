@@ -19,11 +19,11 @@ import type {
   CryptoZeroizedData,
 } from "@app/equipment/crypto/crypto-types";
 import { Milliseconds } from "ootk";
-import { ReceiverModemState } from "../equipment/receiver/receiver";
-import { TransmitterModem } from "../equipment/transmitter/transmitter";
-import { ConditionState, Objective, ObjectiveState } from "../objectives/objective-types";
-import { OpsLogEntry } from "../ops-log/ops-log-types";
-import { RfSignal } from "../types";
+import { ReceiverModemState } from "@app/equipment/receiver/receiver";
+import { TransmitterModem } from "@app/equipment/transmitter/transmitter";
+import { ConditionState, Objective, ObjectiveState } from "@app/objectives/objective-types";
+import { OpsLogEntry } from "@app/ops-log/ops-log-types";
+import { RfSignal } from "@app/types";
 
 // Antenna Event specific interfaces
 export interface AntennaLoopbackChangedData {
@@ -236,7 +236,7 @@ export interface AlarmStateChangedData {
 export interface WeatherEventData {
   id: string;
   groundStationId: string;
-  type: 'snow' | 'rain' | 'fog' | 'wind' | 'dust' | 'hail' | 'ice' | 'storm';
+  type: 'snow' | 'rain' | 'fog' | 'wind' | 'dust' | 'hail' | 'ice' | 'storm' | 'sun-transit';
   severity: 'minor' | 'moderate' | 'severe';
   startTime: number;
   duration: number;

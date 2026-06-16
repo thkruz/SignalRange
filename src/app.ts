@@ -1,16 +1,16 @@
-import { BaseElement } from './components/base-element';
-import { getEl } from './engine/utils/get-el';
-import { Body } from './pages/layout/body/body';
-import { Footer } from './pages/layout/footer/footer';
-import { Header } from './pages/layout/header/header';
-import { SandboxPage } from './pages/sandbox-page';
-import { ScenarioSelectionPage } from './pages/scenario-selection';
+import { BaseElement } from '@app/components/base-element';
+import { getEl } from '@app/engine/utils/get-el';
+import { Body } from '@app/pages/layout/body/body';
+import { Footer } from '@app/pages/layout/footer/footer';
+import { Header } from '@app/pages/layout/header/header';
+import { SandboxPage } from '@app/pages/sandbox-page';
+import { ScenarioSelectionPage } from '@app/pages/scenario-selection';
 import { Router } from './router';
-import { SimulationManager } from './simulation/simulation-manager';
-import { Auth } from './user-account/auth';
-import { initUserDataService } from './user-account/user-data-service';
-import { EventBus } from './events/event-bus';
-import { Events } from './events/events';
+import { SimulationManager } from '@app/simulation/simulation-manager';
+import { Auth } from '@app/user-account/auth';
+import { initUserDataService } from '@app/user-account/user-data-service';
+import { EventBus } from '@app/events/event-bus';
+import { Events } from '@app/events/events';
 
 /**
  * Main Application Class

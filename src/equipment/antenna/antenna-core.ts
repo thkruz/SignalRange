@@ -1,14 +1,14 @@
 import { EventBus } from "@app/events/event-bus";
 import { SignalOrigin } from "@app/signal-origin";
 import { Degrees } from "ootk";
-import { Events } from "../../events/events";
-import { SimulationManager } from "../../simulation/simulation-manager";
-import { dB, dBm, Hertz, RfSignal } from "../../types";
-import { AlarmStatus, BaseEquipment } from '../base-equipment';
-import { TapPoint } from "../rf-front-end/coupler-module/tap-points";
-import { RFFrontEndCore } from "../rf-front-end/rf-front-end-core";
-import { Satellite } from "../satellite/satellite";
-import { Transmitter } from "../transmitter/transmitter";
+import { Events } from "@app/events/events";
+import { SimulationManager } from "@app/simulation/simulation-manager";
+import { dB, dBm, Hertz, RfSignal } from "@app/types";
+import { AlarmStatus, BaseEquipment } from '@app/equipment/base-equipment';
+import { TapPoint } from "@app/equipment/rf-front-end/coupler-module/tap-points";
+import { RFFrontEndCore } from "@app/equipment/rf-front-end/rf-front-end-core";
+import { Satellite } from "@app/equipment/satellite/satellite";
+import { Transmitter } from "@app/equipment/transmitter/transmitter";
 import { ANTENNA_CONFIG_KEYS } from "./antenna-config-keys";
 import { ANTENNA_CONFIGS, AntennaConfig } from "./antenna-configs";
 import { StepTrackController } from "./step-track-controller";
@@ -108,6 +108,11 @@ export interface AntennaState {
   precipitationDetected: boolean;
   /** Ice accumulation on feed horn in dB (0 = no ice) */
   iceAccumulation_dB: number;
+  /** Elevated sky-noise degradation in dB on the receive path (e.g., sun transit). 0 = nominal sky. */
+  skyNoiseDegradation_dB: number;
+  /** ACU automation controller fault: program-track, step-track, and target
+   *  slewing are unavailable; manual/stow/maintenance servo control still works. */
+  isAcuAutomationFaulted: boolean;
 
   // === ACU Identification ===
   /** ACU model number */
@@ -233,6 +238,8 @@ export abstract class AntennaCore extends BaseEquipment {
       isRainBlowerEnabled: false,
       precipitationDetected: false,
       iceAccumulation_dB: 0,
+      skyNoiseDegradation_dB: 0,
+      isAcuAutomationFaulted: false,
       // ACU Identification
       acuModel: this.config.acuModel ?? 'Kratos NGC-2200',
       acuSerialNumber: this.config.acuSerialNumber ?? 'ACU-01',
@@ -324,9 +331,15 @@ export abstract class AntennaCore extends BaseEquipment {
   }
 
   update(): void {
+    // ACU automation fault: the automation processor (program-track,
+    // step-track, lock logic) is offline. Servos and manual control still
+    // work - updateSlew_ keeps running so manual/stow/maintenance moves do.
+    const automationAvailable = !this.state.isAcuAutomationFaulted;
+
     // Update program-track position continuously when tracking a satellite
     // This is the base tracking - always follows ephemeris
-    if (this.state.trackingMode === 'program-track' &&
+    if (automationAvailable &&
+        this.state.trackingMode === 'program-track' &&
         this.state.targetSatelliteId !== null &&
         this.state.isPowered &&
         this.state.isOperational) {
@@ -334,7 +347,7 @@ export abstract class AntennaCore extends BaseEquipment {
     }
 
     // Update step-track controller if step-track optimization is enabled (within program-track)
-    if (this.state.isStepTrackEnabled && this.state.isPowered && this.state.isOperational) {
+    if (automationAvailable && this.state.isStepTrackEnabled && this.state.isPowered && this.state.isOperational) {
       this.stepTrackController_.update();
     }
 
@@ -342,7 +355,8 @@ export abstract class AntennaCore extends BaseEquipment {
     this.updateSlew_();
 
     // Check for program-track lock when antenna arrives near target
-    if (this.state.trackingMode === 'program-track' &&
+    if (automationAvailable &&
+        this.state.trackingMode === 'program-track' &&
         this.state.targetSatelliteId !== null &&
         !this.state.isSlewing) {
       this.checkProgramTrackLock_();
@@ -901,6 +915,16 @@ export abstract class AntennaCore extends BaseEquipment {
     this.notifyStateChange_();
   }
 
+  /**
+   * Update elevated sky-noise degradation on the receive path (called by
+   * WeatherManager for sun-transit events). RX-only: the uplink is unaffected.
+   * @param degradation_dB - Current sky-noise degradation in dB (0 = nominal)
+   */
+  updateSkyNoiseDegradation(degradation_dB: number): void {
+    this.state.skyNoiseDegradation_dB = degradation_dB;
+    this.notifyStateChange_();
+  }
+
   // ========================================================================
   // FINE ADJUSTMENT METHODS
   // ========================================================================
@@ -1330,6 +1354,23 @@ export abstract class AntennaCore extends BaseEquipment {
     const absolutePolarization = Math.abs(this.state.polarization);
     if (absolutePolarization > 45) {
       alarms.push({ severity: 'warning', message: `HIGH POLARIZATION (${this.state.polarization}°)` });
+    }
+
+    // ACU automation controller fault
+    if (this.state.isAcuAutomationFaulted) {
+      alarms.push({ severity: 'error', message: 'ACU AUTOMATION FAULT - MANUAL CONTROL ONLY' });
+    }
+
+    // Elevated sky-noise warning (sun transit)
+    if (this.state.skyNoiseDegradation_dB > 0.5) {
+      const sky = this.state.skyNoiseDegradation_dB;
+      if (sky >= 6) {
+        alarms.push({ severity: 'error', message: `SUN TRANSIT: SKY NOISE CRITICAL (${sky.toFixed(1)} dB)` });
+      } else if (sky >= 2) {
+        alarms.push({ severity: 'warning', message: `SUN TRANSIT: ELEVATED SKY NOISE (${sky.toFixed(1)} dB)` });
+      } else {
+        alarms.push({ severity: 'info', message: `ELEVATED SKY NOISE (${sky.toFixed(1)} dB)` });
+      }
     }
 
     // Ice accumulation warning
@@ -1790,8 +1831,9 @@ export abstract class AntennaCore extends BaseEquipment {
     const Latm = this.calculateAtmosphericLoss_(frequency, elevation);
     const Lfeed = this.feedLossAt_(frequency) + (this.config.rxChainLoss_dB ?? 0);
 
-    // Ice accumulation adds to feed loss (ice on feed horn acts as lossy medium)
-    const Lice = this.state.iceAccumulation_dB;
+    // Ice accumulation adds to feed loss (ice on feed horn acts as lossy medium).
+    // Elevated sky noise (sun transit) is modeled as equivalent RX-path loss.
+    const Lice = this.state.iceAccumulation_dB + this.state.skyNoiseDegradation_dB;
     const LfeedTotal = Lfeed + Lice;
 
     const Tant = Tsky + this.noiseFromLossK_(Latm, 260); // Atm ~260 K slab
@@ -1856,8 +1898,10 @@ export abstract class AntennaCore extends BaseEquipment {
     // Use pattern gain (accounts for off-axis angle) instead of just peak gain
     const Grx_dBi = this.patternGain_dBi_(offAxis_deg, f_Hz);
 
-    // Feed loss (frequency-dependent) + ice accumulation on feed horn
-    const feedLoss = this.feedLossAt_(f_Hz) + this.state.iceAccumulation_dB;
+    // Feed loss (frequency-dependent) + ice accumulation on feed horn +
+    // elevated sky noise (sun transit) as equivalent RX loss
+    const feedLoss = this.feedLossAt_(f_Hz) + this.state.iceAccumulation_dB +
+      this.state.skyNoiseDegradation_dB;
 
     // Pointing loss (if any off-axis error from wind/jitter)
     const pointingLoss = this.pointingLoss_dB_(offAxis_deg, f_Hz);

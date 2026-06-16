@@ -17,7 +17,7 @@ import { TabbedCanvas } from '@app/pages/mission-control/tabbed-canvas';
 import { SimulationManager } from '@app/simulation/simulation-manager';
 import { TrafficControlManager } from '@app/traffic/traffic-control-manager';
 import { Milliseconds } from 'ootk';
-import bulbPng from '../assets/icons/bulb.png';
+import bulbPng from '@app/assets/icons/bulb.png';
 import {
   Condition,
   ConditionParams,
@@ -318,6 +318,7 @@ export class ObjectivesManager {
       condState.isSatisfied = true;
       condState.isMaintenanceComplete = true;
       condState.satisfiedAt = Date.now();
+      condState.observed = true; // a force-completed objective counts as observed
     }
 
     // Mark objective as complete
@@ -391,6 +392,7 @@ export class ObjectivesManager {
       condState.satisfiedAt = undefined;
       condState.maintainedDuration = 0;
       condState.isMaintenanceComplete = false;
+      condState.observed = false; // re-doing the objective requires re-observing
     }
 
     // Remove from collapsed set
@@ -692,6 +694,7 @@ export class ObjectivesManager {
           currentCondState.satisfiedAt = savedCondState.satisfiedAt;
           currentCondState.maintainedDuration = savedCondState.maintainedDuration;
           currentCondState.isMaintenanceComplete = savedCondState.isMaintenanceComplete;
+          currentCondState.observed = savedCondState.observed;
           currentCondState.lostTimestamps = savedCondState.lostTimestamps || [];
         }
       });
@@ -792,6 +795,14 @@ export class ObjectivesManager {
 
       for (let i = 0; i < objective.conditions.length; i++) {
         const condition = objective.conditions[i];
+
+        // Hidden conditions are still enforced for completion but not shown
+        // (e.g. the tab-active requirement on qualified-operator scenarios,
+        // where we don't spell out which tab to open).
+        if (condition.hidden) {
+          continue;
+        }
+
         const conditionState = objectiveState.conditionStates[i];
         const conditionCompleted = conditionState.isMaintenanceComplete;
 
@@ -1035,6 +1046,7 @@ export class ObjectivesManager {
           condState.satisfiedAt = undefined;
           condState.maintainedDuration = 0;
           condState.isMaintenanceComplete = false;
+          condState.observed = false; // re-observe after a prerequisite reset
         }
 
         // Recursively deactivate objectives that depend on this one
@@ -1058,7 +1070,22 @@ export class ObjectivesManager {
       }
 
       const wasSatisfied = conditionState.isSatisfied;
-      const isNowSatisfied = this.evaluateCondition_(conditionState.condition, objectiveState);
+      let isNowSatisfied = this.evaluateCondition_(conditionState.condition, objectiveState);
+
+      // Observation gate: a flagged passive condition does not count from
+      // ambient simulation state alone. It must be seen on the correct tab
+      // once, after which it latches satisfied (stays checked even if the
+      // operator navigates away or the live value changes).
+      const condParams = conditionState.condition.params;
+      if (condParams?.requiresObservation && condParams?.observationTab) {
+        if (conditionState.observed) {
+          isNowSatisfied = true; // already observed - latched
+        } else if (isNowSatisfied && this.isObservationContextActive_(conditionState.condition)) {
+          conditionState.observed = true; // observed for the first time - latch
+        } else {
+          isNowSatisfied = false; // value not yet observed on the right tab
+        }
+      }
 
       // Update satisfied state
       conditionState.isSatisfied = isNowSatisfied;
@@ -1162,6 +1189,19 @@ export class ObjectivesManager {
 
     // No index specified - check if ANY equipment satisfies
     return equipmentArray.some(checker);
+  }
+
+  /**
+   * Whether the operator is currently viewing the observation context (tab)
+   * required to "observe" a requiresObservation condition. Mirrors the
+   * tab-active matching (exact id or prefix).
+   */
+  private isObservationContextActive_(condition: Condition): boolean {
+    const targetTab = condition.params?.observationTab;
+    if (!targetTab) return false;
+    const activeTab = TabbedCanvas.getActiveTab();
+    if (!activeTab) return false;
+    return activeTab === targetTab || activeTab.startsWith(`${targetTab}-`);
   }
 
   /**
@@ -2092,6 +2132,8 @@ export class ObjectivesManager {
         // Match exact tab ID or prefix (e.g., 'acu-control' matches 'acu-control-0')
         return activeTab === targetTab || activeTab.startsWith(`${targetTab}-`);
       }
+
+      // (observation-context helper isObservationContextActive_ lives below)
 
       // ═══════════════════════════════════════════════════════════════
       // FEC Conditions

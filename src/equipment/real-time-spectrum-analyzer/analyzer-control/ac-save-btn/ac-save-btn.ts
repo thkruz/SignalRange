@@ -1,6 +1,6 @@
 import { getEl } from "@app/engine/utils/get-el";
-import { AnalyzerControl } from "../../analyzer-control";
-import { BaseControlButton } from "../base-control-button";
+import { AnalyzerControl } from "@app/equipment/real-time-spectrum-analyzer/analyzer-control";
+import { BaseControlButton } from "@app/equipment/real-time-spectrum-analyzer/analyzer-control/base-control-button";
 import './ac-save-btn.css';
 
 export class ACSaveBtn extends BaseControlButton {

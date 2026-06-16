@@ -1,32 +1,48 @@
-import { GroundStationConfig } from './assets/ground-station/ground-station-state';
-import { PreviousShiftLogEntry } from './ops-log/ops-log-types';
-import { scenario1Data } from './campaigns/nats/scenario1';
-import { scenario2Data } from "./campaigns/nats/scenario2";
-import { scenario3Data } from './campaigns/nats/scenario3';
-import { scenario4Data } from './campaigns/nats/scenario4';
-import { scenario5Data } from './campaigns/nats/scenario5';
-import { scenario6Data } from './campaigns/nats/scenario6';
-import { scenario7Data } from './campaigns/nats/scenario7';
-import { scenario8Data } from './campaigns/nats/scenario8';
-import { sandboxData as natsSandboxData } from './campaigns/nats/sandbox';
-import { AntennaState } from './equipment/antenna';
-import { ANTENNA_CONFIG_KEYS } from "./equipment/antenna/antenna-config-keys";
-import { defaultSpectrumAnalyzerState } from './equipment/real-time-spectrum-analyzer/defaultSpectrumAnalyzerState';
-import { RealTimeSpectrumAnalyzerState } from './equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer';
-import { Receiver, ReceiverState } from './equipment/receiver/receiver';
-import { BUCModuleCore } from './equipment/rf-front-end/buc-module';
-import { CouplerModule } from './equipment/rf-front-end/coupler-module/coupler-module';
-import { IfFilterBankModuleCore } from './equipment/rf-front-end/filter-module';
-import { defaultGpsdoState } from './equipment/rf-front-end/gpsdo-module/gpsdo-state';
-import { HPAModuleCore } from './equipment/rf-front-end/hpa-module';
-import { LNBModuleCore } from './equipment/rf-front-end/lnb-module';
-import { OMTModule } from './equipment/rf-front-end/omt-module/omt-module';
-import { RFFrontEndState } from './equipment/rf-front-end/rf-front-end-core';
-import { Satellite } from './equipment/satellite/satellite';
-import { Transmitter, TransmitterState } from './equipment/transmitter/transmitter';
-import { Character, Emotion } from './modal/character-enum';
+import { GroundStationConfig } from '@app/assets/ground-station/ground-station-state';
+import { PreviousShiftLogEntry } from '@app/ops-log/ops-log-types';
+import { scenario1Data } from '@app/campaigns/nats/scenario1';
+import { scenario2Data } from "@app/campaigns/nats/scenario2";
+import { scenario3Data } from '@app/campaigns/nats/scenario3';
+import { scenario4Data } from '@app/campaigns/nats/scenario4';
+import { scenario5Data } from '@app/campaigns/nats/scenario5';
+import { scenario6Data } from '@app/campaigns/nats/scenario6';
+import { scenario7Data } from '@app/campaigns/nats/scenario7';
+import { scenario8Data } from '@app/campaigns/nats/scenario8';
+import { scenario9Data } from '@app/campaigns/nats/scenario9';
+import { scenario10Data } from '@app/campaigns/nats/scenario10';
+import { scenario11Data } from '@app/campaigns/nats/scenario11';
+import { scenario12Data } from '@app/campaigns/nats/scenario12';
+import { scenario13Data } from '@app/campaigns/nats/scenario13';
+import { scenario14Data } from '@app/campaigns/nats/scenario14';
+import { scenario15Data } from '@app/campaigns/nats/scenario15';
+import { scenario16Data } from '@app/campaigns/nats/scenario16';
+import { scenario17Data } from '@app/campaigns/nats/scenario17';
+import { scenario18Data } from '@app/campaigns/nats/scenario18';
+import { scenario19Data } from '@app/campaigns/nats/scenario19';
+import { scenario20Data } from '@app/campaigns/nats/scenario20';
+import { scenario21Data } from '@app/campaigns/nats/scenario21';
+import { scenario22Data } from '@app/campaigns/nats/scenario22';
+import { scenario23Data } from '@app/campaigns/nats/scenario23';
+import { scenario24Data } from '@app/campaigns/nats/scenario24';
+import { sandboxData as natsSandboxData } from '@app/campaigns/nats/sandbox';
+import { AntennaState } from '@app/equipment/antenna';
+import { ANTENNA_CONFIG_KEYS } from "@app/equipment/antenna/antenna-config-keys";
+import { defaultSpectrumAnalyzerState } from '@app/equipment/real-time-spectrum-analyzer/defaultSpectrumAnalyzerState';
+import { RealTimeSpectrumAnalyzerState } from '@app/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer';
+import { Receiver, ReceiverState } from '@app/equipment/receiver/receiver';
+import { BUCModuleCore } from '@app/equipment/rf-front-end/buc-module';
+import { CouplerModule } from '@app/equipment/rf-front-end/coupler-module/coupler-module';
+import { IfFilterBankModuleCore } from '@app/equipment/rf-front-end/filter-module';
+import { defaultGpsdoState } from '@app/equipment/rf-front-end/gpsdo-module/gpsdo-state';
+import { HPAModuleCore } from '@app/equipment/rf-front-end/hpa-module';
+import { LNBModuleCore } from '@app/equipment/rf-front-end/lnb-module';
+import { OMTModule } from '@app/equipment/rf-front-end/omt-module/omt-module';
+import { RFFrontEndState } from '@app/equipment/rf-front-end/rf-front-end-core';
+import { Satellite } from '@app/equipment/satellite/satellite';
+import { Transmitter, TransmitterState } from '@app/equipment/transmitter/transmitter';
+import { Character, Emotion } from '@app/modal/character-enum';
 import { ScenarioData } from './ScenarioData';
-import { sandboxData } from './scenarios/sandbox';
+import { sandboxData } from '@app/scenarios/sandbox';
 
 declare global {
   interface Window {
@@ -58,7 +74,7 @@ export interface SimulationSettings {
   weatherEvents?: Array<{
     id: string;
     groundStationId: string;
-    type: "snow" | "rain" | "fog" | "wind" | "dust" | "hail" | "ice" | "storm";
+    type: "snow" | "rain" | "fog" | "wind" | "dust" | "hail" | "ice" | "storm" | "sun-transit";
     severity: "minor" | "moderate" | "severe";
     /** Seconds since mission start */
     startTime: number;
@@ -67,6 +83,32 @@ export interface SimulationSettings {
     /** dB degradation to link margin */
     linkMarginDegradation: number;
   }>;
+  /** Scheduled, duty-cycled RF interference injected at a satellite's
+   *  transponder (relayed to all stations - uplink interference). */
+  interferenceEvents?: Array<{
+    id: string;
+    satelliteNoradId: number;
+    /** Interferer RF center frequency (uplink, Hz) */
+    frequency: number;
+    bandwidth: number;
+    /** Power at the transponder input (dBm) */
+    power: number;
+    polarization: 'H' | 'V';
+    /** Seconds since mission start when the envelope opens */
+    startTime: number;
+    /** Envelope duration (s); on/off windows repeat inside it */
+    duration: number;
+    /** Window cycle period (s) */
+    periodSeconds: number;
+    /** Transmit-on seconds per period */
+    onSeconds: number;
+  }>;
+  /** Working Document panel: an in-scenario document that accumulates a line
+   *  per passed quiz whose condition declares params.documentLine. */
+  workingDocument?: {
+    title: string;
+    description?: string;
+  };
   /** Traffic ownership configuration for handover scenarios */
   trafficOwnership?: Array<{
     /** Satellite NORAD ID */
@@ -156,6 +198,22 @@ export const SCENARIOS: ScenarioData[] = [
   scenario6Data,
   scenario7Data,
   scenario8Data,
+  scenario9Data,
+  scenario10Data,
+  scenario11Data,
+  scenario12Data,
+  scenario13Data,
+  scenario14Data,
+  scenario15Data,
+  scenario16Data,
+  scenario17Data,
+  scenario18Data,
+  scenario19Data,
+  scenario20Data,
+  scenario21Data,
+  scenario22Data,
+  scenario23Data,
+  scenario24Data,
 ];
 
 export function isScenarioLocked(scenario: ScenarioData, completedScenarioIds: string[]): boolean {

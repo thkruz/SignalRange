@@ -11,11 +11,11 @@ import { DraggableHtmlBox } from "@app/modal/draggable-html-box";
 import { ObjectivesManager } from "@app/objectives";
 import { ScenarioManager, SimulationSettings } from "@app/scenario-manager";
 import { SimulationManager } from "@app/simulation/simulation-manager";
-import { html } from "../../engine/utils/development/formatter";
-import { RealTimeSpectrumAnalyzer } from '../../equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer';
-import { Receiver } from '../../equipment/receiver/receiver';
-import { Transmitter } from '../../equipment/transmitter/transmitter';
-import { SandboxPage } from "../sandbox-page";
+import { html } from "@app/engine/utils/development/formatter";
+import { RealTimeSpectrumAnalyzer } from '@app/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer';
+import { Receiver } from '@app/equipment/receiver/receiver';
+import { Transmitter } from '@app/equipment/transmitter/transmitter';
+import { SandboxPage } from "@app/pages/sandbox-page";
 import './equipment.css';
 
 /**

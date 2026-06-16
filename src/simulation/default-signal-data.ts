@@ -1,6 +1,6 @@
 // @ts-nocheck
 
-import { FECType, Hertz, ModulationType, RfFrequency, RfSignal } from "../types";
+import { FECType, Hertz, ModulationType, RfFrequency, RfSignal } from "@app/types";
 
 const meteoSat9Signals: RfSignal[] = [
   {

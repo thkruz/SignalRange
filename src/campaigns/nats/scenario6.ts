@@ -5,7 +5,7 @@ import type { ScenarioData } from '@app/ScenarioData';
 import type { dB, dBm, Hertz, IfFrequency, MHz } from '@app/types';
 import { getAssetUrl } from '@app/utils/asset-url';
 import type { Degrees } from 'ootk';
-import { createRfFrontEnd } from '../rf-front-end-factory';
+import { createRfFrontEnd } from '@app/campaigns/rf-front-end-factory';
 import { vermontGroundStation } from './ground-stations';
 import { aurora7Satellite, ses10Satellite, tidemark1Satellite } from './satellites';
 
@@ -545,6 +545,8 @@ export const scenario6Data: ScenarioData = {
           description: 'Receiver Locked',
           params: {
             modemNumber: 1,
+            requiresObservation: true,
+            observationTab: 'rx-analysis',
           },
           maintainUntilObjectiveComplete: true,
         },
@@ -554,6 +556,8 @@ export const scenario6Data: ScenarioData = {
           params: {
             minCNRatio: 8,
             modemNumber: 1,
+            requiresObservation: true,
+            observationTab: 'rx-analysis',
           },
           maintainUntilObjectiveComplete: true,
           maintainDuration: 15,

@@ -1,4 +1,4 @@
-import { RFFrontEndCore } from '../rf-front-end-core';
+import { RFFrontEndCore } from '@app/equipment/rf-front-end/rf-front-end-core';
 import { LNBModuleCore, LNBState } from './lnb-module-core';
 import { LNBModuleUIStandard } from './lnb-module-ui-standard';
 

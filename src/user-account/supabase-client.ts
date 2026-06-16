@@ -5,6 +5,7 @@ export const SUPABASE_ANON_KEY = process.env.PUBLIC_SUPABASE_ANON_KEY;
 
 export const isSupabaseApprovedDomain =
   window.location.hostname === 'localhost' ||
+  window.location.hostname === '127.0.0.1' ||
   window.location.hostname.endsWith('signalrange.space') ||
   window.location.hostname.endsWith('keeptrack.space') ||
   window.location.hostname.endsWith('workers.dev');

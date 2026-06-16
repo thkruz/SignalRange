@@ -11,13 +11,13 @@ import { EventBus } from "@app/events/event-bus";
 import { Events } from "@app/events/events";
 import { SimulationManager } from "@app/simulation/simulation-manager";
 import './tabbed-canvas.css';
-import { ACUControlTab } from './tabs/acu-control-tab';
-import { DashboardTab } from './tabs/dashboard-tab';
-import { GPSTimingTab } from './tabs/gps-timing-tab';
-import { MissionOverviewTab } from './tabs/mission-overview-tab';
-import { RxAnalysisTab } from './tabs/rx-analysis-tab';
-import { SatelliteDashboardTab } from './tabs/satellite-dashboard-tab';
-import { TxChainTab } from './tabs/tx-chain-tab';
+import { ACUControlTab } from '@app/pages/mission-control/tabs/acu-control-tab';
+import { DashboardTab } from '@app/pages/mission-control/tabs/dashboard-tab';
+import { GPSTimingTab } from '@app/pages/mission-control/tabs/gps-timing-tab';
+import { MissionOverviewTab } from '@app/pages/mission-control/tabs/mission-overview-tab';
+import { RxAnalysisTab } from '@app/pages/mission-control/tabs/rx-analysis-tab';
+import { SatelliteDashboardTab } from '@app/pages/mission-control/tabs/satellite-dashboard-tab';
+import { TxChainTab } from '@app/pages/mission-control/tabs/tx-chain-tab';
 
 /**
  * TabbedCanvas - Dynamic tabbed interface for ground station equipment

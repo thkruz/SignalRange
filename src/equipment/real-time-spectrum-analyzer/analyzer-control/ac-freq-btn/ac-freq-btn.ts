@@ -1,8 +1,8 @@
 import { Logger } from "@app/logging/logger";
 import { Hertz } from "@app/types";
 import { parseLocalizedNumber } from "@app/utils/parse-number";
-import { AnalyzerControl } from "../../analyzer-control";
-import { BaseControlButton } from "../base-control-button";
+import { AnalyzerControl } from "@app/equipment/real-time-spectrum-analyzer/analyzer-control";
+import { BaseControlButton } from "@app/equipment/real-time-spectrum-analyzer/analyzer-control/base-control-button";
 import './ac-freq-btn.css';
 
 export class ACFreqBtn extends BaseControlButton {

@@ -1,7 +1,7 @@
 import { SignalOrigin } from "@app/signal-origin";
 import { dB, dBm, IfSignal, MHz } from '@app/types';
-import { RFFrontEndCore } from "../rf-front-end-core";
-import { RFFrontEndModule, RFFrontEndModuleState } from '../rf-front-end-module';
+import { RFFrontEndCore } from "@app/equipment/rf-front-end/rf-front-end-core";
+import { RFFrontEndModule, RFFrontEndModuleState } from '@app/equipment/rf-front-end/rf-front-end-module';
 
 /**
  * Single notch configuration

@@ -14,7 +14,7 @@ import { ScenarioManager } from '@app/scenario-manager';
 import { ProgressSaveManager } from '@app/user-account/progress-save-manager';
 import { UserDataService } from '@app/user-account/user-data-service';
 import { Degrees, Milliseconds } from 'ootk';
-import { RfSignal } from './../types';
+import { RfSignal } from '@app/types';
 
 export class SimulationManager {
   private static instance_: SimulationManager;
@@ -50,7 +50,14 @@ export class SimulationManager {
     this.satelliteSignals = this.satellites.flatMap(sat => sat.txSignal);
 
     this.lastFrameTime = Date.now();
-    this.gameLoop_();
+    // Start the loop on the NEXT frame, not synchronously. Running update()
+    // inside the constructor emits Events.UPDATE before getInstance() has
+    // assigned `instance_`; any condition/handler that calls
+    // SimulationManager.getInstance() during that first tick would re-enter
+    // this constructor and recurse infinitely (Maximum call stack size
+    // exceeded). Deferring to requestAnimationFrame lets the constructor
+    // return and `instance_` be assigned before the first tick fires.
+    this.animationFrameId_ = requestAnimationFrame(this.gameLoop_.bind(this));
   }
 
   static getInstance(): SimulationManager {

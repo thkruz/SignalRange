@@ -1,4 +1,4 @@
-import { RFFrontEndCore } from '../rf-front-end-core';
+import { RFFrontEndCore } from '@app/equipment/rf-front-end/rf-front-end-core';
 import { CouplerModule, CouplerState } from './coupler-module';
 
 export type CouplerModuleUIType = 'standard' | 'basic' | 'headless';

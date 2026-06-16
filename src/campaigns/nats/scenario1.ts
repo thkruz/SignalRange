@@ -269,12 +269,13 @@ export const scenario1Data: ScenarioData = {
         {
           type: 'equipment-powered',
           description: 'LNB Powered',
-          params: { equipment: 'lnb' },
+          params: { equipment: 'lnb', requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: true,
         },
         {
           type: 'lnb-thermally-stable',
           description: 'LNB Thermally Stabilized',
+          params: { requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: true,
         },
         {
@@ -367,6 +368,8 @@ export const scenario1Data: ScenarioData = {
           params: {
             signalId: 'TIDEMARK-1-Beacon',
             minPower: -100 as dBm,
+            requiresObservation: true,
+            observationTab: 'rx-analysis',
           },
           mustMaintain: true,
         },

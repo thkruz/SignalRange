@@ -1,4 +1,4 @@
-import { html } from "../../engine/utils/development/formatter";
+import { html } from "@app/engine/utils/development/formatter";
 
 html`
 <div class="analyzer-control-lcd-outer">

@@ -233,6 +233,10 @@ export interface ConditionParams {
   character?: Character;
   /** For status-check: if true, options will not be randomized (use for "All of the above" questions) */
   preserveOptionOrder?: boolean;
+  /** For status-check: line appended to the Working Document panel when this quiz is passed */
+  documentLine?: string;
+  /** For status-check: Working Document section the documentLine belongs to (default: "Notes") */
+  documentSection?: string;
   /** For signal-detected/signal-level-correct: signal identifier to match */
   signalId?: string;
   /** For signal-detected/signal-level-correct: minimum power level in dBm */
@@ -274,6 +278,24 @@ export interface ConditionParams {
   /** For fault-active/fault-cleared: fault ID to check */
   faultId?: string;
 
+  // Observation-gating parameters
+  /**
+   * If true, this (typically passive) condition does not count as satisfied
+   * from ambient simulation state alone. It latches satisfied only after the
+   * underlying value is true WHILE the operator is viewing the observation
+   * context (params.observationTab). Once observed it stays satisfied even if
+   * the operator navigates away. Use for checks that would otherwise show
+   * pre-ticked before the player ever looked (signal-detected, receiver lock,
+   * beacon lock, gpsdo lock, etc.).
+   */
+  requiresObservation?: boolean;
+  /**
+   * For requiresObservation: the tab that must be active to "observe" the
+   * value (e.g. 'rx-analysis', 'tx-chain', 'acu-control', 'gps-timing',
+   * 'dashboard'). Matched by exact id or prefix, like the tab-active condition.
+   */
+  observationTab?: string;
+
   /** Additional context-specific parameters */
   [key: string]: unknown;
 }
@@ -300,6 +322,13 @@ export interface Condition {
   description: string;
   /** Hint or tip to help achieve the condition (optional) */
   hint?: string;
+  /**
+   * If true, this condition is still enforced for objective completion but is
+   * NOT rendered as a row in the checklist. Used to require the operator be on
+   * the correct tab without spelling out which tab (qualified-operator scenarios
+   * expect the player to know where to look).
+   */
+  hidden?: boolean;
   /** Parameters specific to this condition type */
   params?: ConditionParams;
   /** Whether this condition must be maintained (true) or just achieved once (false) */
@@ -398,4 +427,10 @@ export interface ConditionState {
   lostTimestamps?: number[];
   /** Whether a hint was requested for this condition */
   hintRequested?: boolean;
+  /**
+   * For requiresObservation conditions: latches true once the value has been
+   * observed on the correct tab. After that the condition counts as satisfied
+   * regardless of tab or live value.
+   */
+  observed?: boolean;
 }

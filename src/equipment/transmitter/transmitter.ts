@@ -1,12 +1,12 @@
 import { ToggleSwitch } from "@app/components/toggle-switch/toggle-switch";
 import { EventBus } from "@app/events/event-bus";
 import { SignalOrigin } from "@app/signal-origin";
-import { PowerSwitch } from '../../components/power-switch/power-switch';
-import { html } from "../../engine/utils/development/formatter";
-import { qs } from "../../engine/utils/query-selector";
-import { Events } from "../../events/events";
-import { dBi, dBm, FECType, Hertz, IfFrequency, IfSignal, ModulationType } from "../../types";
-import { AlarmStatus, BaseEquipment } from "../base-equipment";
+import { PowerSwitch } from '@app/components/power-switch/power-switch';
+import { html } from "@app/engine/utils/development/formatter";
+import { qs } from "@app/engine/utils/query-selector";
+import { Events } from "@app/events/events";
+import { dBi, dBm, FECType, Hertz, IfFrequency, IfSignal, ModulationType } from "@app/types";
+import { AlarmStatus, BaseEquipment } from "@app/equipment/base-equipment";
 import './transmitter.css';
 
 export interface TransmitterModem {

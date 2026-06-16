@@ -6,7 +6,7 @@ import { qs } from "@app/engine/utils/query-selector";
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
 import { GPSDOState } from '.';
-import { RFFrontEndCore } from '../rf-front-end-core';
+import { RFFrontEndCore } from '@app/equipment/rf-front-end/rf-front-end-core';
 import { GPSDOModuleCore } from './gpsdo-module-core';
 import './gpsdo-module.css';
 

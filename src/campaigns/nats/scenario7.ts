@@ -4,7 +4,7 @@ import type { ScenarioData } from '@app/ScenarioData';
 import { SignalOrigin } from '@app/signal-origin';
 import type { dB, dBi, dBm, Hertz, IfFrequency, MHz } from '@app/types';
 import { getAssetUrl } from '@app/utils/asset-url';
-import { createRfFrontEnd } from '../rf-front-end-factory';
+import { createRfFrontEnd } from '@app/campaigns/rf-front-end-factory';
 import { maineGroundStation, vermontGroundStation } from './ground-stations';
 import { ses10Satellite, tidemark1Satellite } from './satellites';
 
@@ -391,7 +391,7 @@ export const scenario7Data: ScenarioData = {
         {
           type: 'antenna-locked',
           description: 'Antenna Locked on TIDEMARK-1',
-          params: { satelliteId: 61525 },
+          params: { satelliteId: 61525, requiresObservation: true, observationTab: 'acu-control' },
           mustMaintain: false,
         },
         {
@@ -436,17 +436,19 @@ export const scenario7Data: ScenarioData = {
         {
           type: 'equipment-powered',
           description: 'LNB Powered',
-          params: { equipment: 'lnb' },
+          params: { equipment: 'lnb', requiresObservation: true, observationTab: 'rx-analysis' },
           maintainUntilObjectiveComplete: true,
         },
         {
           type: 'lnb-thermally-stable',
           description: 'LNB Thermally Stabilized',
+          params: { requiresObservation: true, observationTab: 'rx-analysis' },
           maintainUntilObjectiveComplete: true,
         },
         {
           type: 'lnb-reference-locked',
           description: 'LNB Reference Locked',
+          params: { requiresObservation: true, observationTab: 'rx-analysis' },
           maintainUntilObjectiveComplete: true,
         },
         {

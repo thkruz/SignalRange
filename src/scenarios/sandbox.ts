@@ -2,9 +2,9 @@ import type { AntennaState } from '@app/equipment/antenna';
 import type { ScenarioData } from '@app/ScenarioData';
 import type { dB, dBm, Hertz, MHz } from '@app/types';
 import type { Degrees } from 'ootk';
-import { createRfFrontEnd } from '../campaigns/rf-front-end-factory';
-import { vermontGroundStation } from '../campaigns/nats/ground-stations';
-import { aurora7Satellite, tidemark1Satellite } from '../campaigns/nats/satellites';
+import { createRfFrontEnd } from '@app/campaigns/rf-front-end-factory';
+import { vermontGroundStation } from '@app/campaigns/nats/ground-stations';
+import { aurora7Satellite, tidemark1Satellite } from '@app/campaigns/nats/satellites';
 
 /**
  * Sandbox Mode

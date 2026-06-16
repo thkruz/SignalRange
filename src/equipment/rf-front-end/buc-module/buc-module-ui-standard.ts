@@ -3,7 +3,7 @@ import { RotaryKnob } from '@app/components/rotary-knob/rotary-knob';
 import { ToggleSwitch } from '@app/components/toggle-switch/toggle-switch';
 import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
-import { RFFrontEndCore } from '../rf-front-end-core';
+import { RFFrontEndCore } from '@app/equipment/rf-front-end/rf-front-end-core';
 import { BUCModuleCore, BUCState } from './buc-module-core';
 import './buc-module.css';
 

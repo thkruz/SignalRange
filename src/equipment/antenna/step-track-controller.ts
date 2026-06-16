@@ -1,7 +1,7 @@
 import { Hertz } from "@app/types";
 import { Degrees } from "ootk";
 import { SimulationManager } from "@app/simulation/simulation-manager";
-import { TapPoint } from "../rf-front-end/coupler-module/tap-points";
+import { TapPoint } from "@app/equipment/rf-front-end/coupler-module/tap-points";
 import { AntennaCore } from "./antenna-core";
 
 /**

@@ -2,7 +2,7 @@ import { HelpButton } from '@app/components/help-btn/help-btn';
 import { RotaryKnob } from "@app/components/rotary-knob/rotary-knob";
 import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
-import { RFFrontEndCore } from '../rf-front-end-core';
+import { RFFrontEndCore } from '@app/equipment/rf-front-end/rf-front-end-core';
 import { FILTER_BANDWIDTH_CONFIGS, IfFilterBankModuleCore, IfFilterBankState } from './filter-module-core';
 import './filter-module.css';
 

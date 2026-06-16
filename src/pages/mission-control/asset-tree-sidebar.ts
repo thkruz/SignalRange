@@ -1,4 +1,5 @@
 import { GroundStation } from "@app/assets/ground-station/ground-station";
+import { WorkingDocumentManager } from '@app/scenarios/working-document-manager';
 import { BaseElement } from "@app/components/base-element";
 import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
@@ -15,16 +16,16 @@ import { ObjectivesManager } from "@app/objectives";
 import { OpsLogModal } from "@app/ops-log/ops-log-modal";
 import { ScenarioManager } from "@app/scenario-manager";
 import { SimulationManager } from "@app/simulation/simulation-manager";
-import activityPng from '../../assets/icons/activity.png';
-import antennaPng from '../../assets/icons/antenna.png';
-import checklistPng from "../../assets/icons/checklist.png";
-import dashboardPng from '../../assets/icons/dashboard.png';
-import historyPng from '../../assets/icons/history.png';
-import layoutSidebarLeftCollapsePng from '../../assets/icons/layout-sidebar-left-collapse.png';
-import layoutSidebarLeftExpandPng from '../../assets/icons/layout-sidebar-left-expand.png';
-import satelliteOffPng from '../../assets/icons/satellite-off.png';
-import satellitePng from '../../assets/icons/satellite.png';
-import targetArrowPng from '../../assets/icons/target-arrow.png';
+import activityPng from '@app/assets/icons/activity.png';
+import antennaPng from '@app/assets/icons/antenna.png';
+import checklistPng from "@app/assets/icons/checklist.png";
+import dashboardPng from '@app/assets/icons/dashboard.png';
+import historyPng from '@app/assets/icons/history.png';
+import layoutSidebarLeftCollapsePng from '@app/assets/icons/layout-sidebar-left-collapse.png';
+import layoutSidebarLeftExpandPng from '@app/assets/icons/layout-sidebar-left-expand.png';
+import satelliteOffPng from '@app/assets/icons/satellite-off.png';
+import satellitePng from '@app/assets/icons/satellite.png';
+import targetArrowPng from '@app/assets/icons/target-arrow.png';
 import './asset-tree-sidebar.css';
 
 /**
@@ -184,6 +185,21 @@ export class AssetTreeSidebar extends BaseElement {
     this.addChecklistListener_();
     this.addDialogHistoryListener_();
     this.addOpsLogListener_();
+    this.addWorkingDocListener_();
+  }
+
+  private addWorkingDocListener_(): void {
+    const btn = qs('.working-doc-icon', this.dom_);
+    if (!btn) return;
+
+    // Only surface the icon for scenarios that declare a working document
+    if (WorkingDocumentManager.isEnabled()) {
+      (btn as HTMLElement).style.display = '';
+    }
+
+    btn.addEventListener('click', () => {
+      WorkingDocumentManager.getInstance().open();
+    });
   }
 
   private addMissionBriefListener_(): void {
@@ -366,6 +382,12 @@ export class AssetTreeSidebar extends BaseElement {
             <img src="${checklistPng}" alt="Checklist"/>
           </span>
           <span class="flex-fill">Checklist</span>
+        </a>
+        <a class="list-group-item list-group-item-action d-flex align-items-center working-doc-icon" data-tooltip="Working Document" style="display: none;">
+          <span class="item-icon">
+            <img src="${checklistPng}" alt="Working Document"/>
+          </span>
+          <span class="flex-fill">Working Doc</span>
         </a>
         <a class="list-group-item list-group-item-action d-flex align-items-center dialog-icon" data-tooltip="Dialog History">
           <span class="item-icon">

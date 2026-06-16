@@ -1,6 +1,6 @@
-import { Hertz } from "../../../types";
-import { RealTimeSpectrumAnalyzer, RealTimeSpectrumAnalyzerState } from "../real-time-spectrum-analyzer";
-import { SpectrumDataProcessor } from "../spectrum-data-processor";
+import { Hertz } from "@app/types";
+import { RealTimeSpectrumAnalyzer, RealTimeSpectrumAnalyzerState } from "@app/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer";
+import { SpectrumDataProcessor } from "@app/equipment/real-time-spectrum-analyzer/spectrum-data-processor";
 import { RTSAScreen } from "./rtsa-screen";
 
 export class WaterfallDisplay extends RTSAScreen {

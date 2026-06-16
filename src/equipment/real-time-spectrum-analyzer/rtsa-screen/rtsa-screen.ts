@@ -1,5 +1,5 @@
 import { Logger } from "@app/logging/logger";
-import { RealTimeSpectrumAnalyzer } from "../real-time-spectrum-analyzer";
+import { RealTimeSpectrumAnalyzer } from "@app/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer";
 
 export abstract class RTSAScreen {
   // Canvas elements

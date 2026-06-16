@@ -6,7 +6,7 @@ import { SignalOrigin } from '@app/signal-origin';
 import type { dB, dBm, FECType, Hertz, IfFrequency, MHz, ModulationType } from '@app/types';
 import { getAssetUrl } from '@app/utils/asset-url';
 import type { Degrees } from 'ootk';
-import { createRfFrontEnd } from '../rf-front-end-factory';
+import { createRfFrontEnd } from '@app/campaigns/rf-front-end-factory';
 import { vermontGroundStation } from './ground-stations';
 import { aurora7Satellite, tidemark1Satellite } from './satellites';
 
@@ -308,6 +308,7 @@ export const scenario8Data: ScenarioData = {
         {
           type: 'gpsdo-locked',
           description: 'GPSDO Locked',
+          params: { requiresObservation: true, observationTab: 'gps-timing' },
           maintainUntilObjectiveComplete: true,
         },
         {
@@ -435,6 +436,7 @@ export const scenario8Data: ScenarioData = {
         {
           type: 'lnb-reference-locked',
           description: 'LNB Reference Locked',
+          params: { requiresObservation: true, observationTab: 'dashboard' },
           mustMaintain: true,
         },
       ],
@@ -774,12 +776,13 @@ export const scenario8Data: ScenarioData = {
         {
           type: 'receiver-signal-locked',
           description: 'Receiver Modem Locked',
+          params: { requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: true,
         },
         {
           type: 'receiver-snr-threshold',
           description: 'C/N Ratio Adequate',
-          params: { minCNRatio: 8 },
+          params: { minCNRatio: 8, requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: true,
         },
         {

@@ -1,5 +1,5 @@
 import { BaseElement } from "@app/components/base-element";
-import { html } from "../../../engine/utils/development/formatter";
+import { html } from "@app/engine/utils/development/formatter";
 import './body.css';
 
 /**

@@ -4,7 +4,7 @@ import type { ScenarioData } from '@app/ScenarioData';
 import type { dBm, Hertz, MHz } from '@app/types';
 import { getAssetUrl } from '@app/utils/asset-url';
 import type { Degrees } from 'ootk';
-import { createRfFrontEnd } from '../rf-front-end-factory';
+import { createRfFrontEnd } from '@app/campaigns/rf-front-end-factory';
 import { maineGroundStation, vermontGroundStation } from './ground-stations';
 import { ses10Satellite, tidemark1Satellite } from './satellites';
 
@@ -920,6 +920,8 @@ export const scenario2Data: ScenarioData = {
           params: {
             signalId: 'TIDEMARK-1-Beacon',
             minPower: -100 as dBm,
+            requiresObservation: true,
+            observationTab: 'rx-analysis',
           },
           mustMaintain: true,
         },

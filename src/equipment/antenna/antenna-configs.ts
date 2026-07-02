@@ -210,6 +210,39 @@ export const ANTENNA_CONFIGS: Record<ANTENNA_CONFIG_KEYS, AntennaConfig> = {
     rxPhysTemp_K: 290,
   },
 
+  // ───────────────────────────────── Ku-Band LEO (4 m) ─────────────────────────────
+  // Fast-pedestal Ku tracking antenna for LEO downlink stations (NATS Europe).
+  // Modeled on X-band remote-sensing pedestals but with Ku feed: full-hemisphere
+  // coverage, continuous azimuth, and slew rates sized for high-elevation passes.
+  KU_BAND_4M_LEO_TRACKER: {
+    name: 'Leonis 4.0m Ku-Band LEO Tracker',
+    diameter: 4.0,
+    efficiency: 0.63,
+    band: 'Ku',
+    minRxFrequency: 10.7e9 as Hertz,
+    maxRxFrequency: 12.75e9 as Hertz,
+    minTxFrequency: 13.75e9 as Hertz,
+    maxTxFrequency: 14.5e9 as Hertz,
+    feedLoss: 0.3,
+
+    surfaceRms_m: 0.0004,
+    blockageFraction: 0.06,
+    xpd_dB: 32,
+    polType: 'linear',
+    feedLossModel: { a: 0.25, b: 0.1, c: 0.01 },
+
+    kBeamConst: 70,
+    patternModel: 'ITU465',
+    pointingSigma_deg: 0.05,   // servo position rms during rate tracking
+    elRange_deg: [0, 90],
+    azContinuous: true,
+    maxRate_deg_s: 5.0,        // fast pedestal for near-zenith LEO passes
+
+    lnaNF_dB: 1.0,
+    rxChainLoss_dB: 0.6,
+    rxPhysTemp_K: 290,
+  },
+
   KU_BAND_3M_ANTESTAR: {
     name: 'Antestar 3.0m Ku-Band VSAT',
     diameter: 3.0,

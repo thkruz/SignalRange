@@ -36,7 +36,7 @@ export class GroundStation {
       equipment: {}
     };
 
-    this.createEquipment_();
+    this.createEquipment_(config);
     this.wireEquipment_();
     this.registerWithEventBus_();
   }
@@ -47,8 +47,12 @@ export class GroundStation {
         </div>
       `;
 
-  private createEquipment_(): void {
-    const modernAntenna = createAntenna(this.id, 'modern') as AntennaUIModern;
+  private createEquipment_(config: GroundStationConfig): void {
+    // antennaConfigKey is opt-in (Campaign 2+); omitting it keeps the factory
+    // default so legacy campaigns are unaffected
+    const modernAntenna = (config.antennaConfigKey
+      ? createAntenna(this.id, 'modern', config.antennaConfigKey)
+      : createAntenna(this.id, 'modern')) as AntennaUIModern;
     // Create one of each for now, mirroring `sandbox/equipment.ts`
     this.antennas.push(modernAntenna);
     this.rfFrontEnds.push(createRFFrontEnd(this.id));

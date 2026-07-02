@@ -161,6 +161,75 @@ body.campaign-nats-eu {
 }
 
 /* ==========================================================================
+   Per-Campaign Theme: Backyard Operator (ham-sdr)
+   Deliberately reads as 2000s hobbyist freeware instead of a professional
+   mission-control product: phosphor-green accent, system fonts, zero border
+   radius, beveled buttons. Scoped to body.campaign-ham-sdr (Router-applied),
+   so no other campaign is affected. --mc-danger* stays untouched: faults are
+   red in every campaign.
+   ========================================================================== */
+
+body.campaign-ham-sdr {
+  /* Primary accent: SDR-software phosphor green */
+  --tblr-primary: #3fb950 !important;
+  --tblr-primary-rgb: 63, 185, 80 !important;
+  --tblr-primary-text-emphasis: #4ade80 !important;
+  --tblr-primary-bg-subtle: rgba(63, 185, 80, 0.15) !important;
+  --tblr-primary-border-subtle: rgba(63, 185, 80, 0.3) !important;
+
+  --tblr-link-color: #3fb950 !important;
+  --tblr-link-hover-color: #4ade80 !important;
+
+  /* Semantic accent slots (names historic, values per-campaign) */
+  --mc-accent-red: #3fb950;
+  --mc-accent-red-bright: #4ade80;
+  --mc-accent-red-light: #46c455;
+  --mc-accent-red-dark: #1f7a2e;
+  --mc-accent-red-rgb: 63, 185, 80;
+  --mc-accent-red-bright-rgb: 74, 222, 128;
+  --mc-accent-text-dark: #5cbf6b;
+
+  /* Cheap dark-theme surfaces with a blue-black cast */
+  --mc-surface-0: #16181d;
+  --mc-surface-1: #1e2128;
+  --mc-surface-2: #2b2f38;
+  --mc-surface-3: #3a3f4a;
+  --mc-surface-4: #4a505c;
+  --mc-border: #3a3f4a;
+
+  --tblr-body-bg: #16181d !important;
+  --tblr-secondary-bg: #1e2128 !important;
+  --tblr-tertiary-bg: #2b2f38 !important;
+  --tblr-border-color: #3a3f4a !important;
+
+  /* Freeware typography and chrome */
+  --tblr-font-sans-serif: Verdana, Tahoma, 'MS Sans Serif', sans-serif !important;
+  --tblr-border-radius: 0 !important;
+  --tblr-border-radius-sm: 0 !important;
+  --tblr-border-radius-lg: 0 !important;
+
+  font-family: Verdana, Tahoma, 'MS Sans Serif', sans-serif;
+}
+
+/* Boxy, beveled component chrome for the hobbyist campaign only */
+body.campaign-ham-sdr .card,
+body.campaign-ham-sdr .btn,
+body.campaign-ham-sdr .nav-tabs .nav-link,
+body.campaign-ham-sdr .form-control,
+body.campaign-ham-sdr .form-select,
+body.campaign-ham-sdr .modal-content {
+  border-radius: 0 !important;
+}
+
+body.campaign-ham-sdr .btn {
+  border: 2px outset #6b7280 !important;
+}
+
+body.campaign-ham-sdr .btn:active {
+  border-style: inset !important;
+}
+
+/* ==========================================================================
    Card Component Overrides
    ========================================================================== */
 

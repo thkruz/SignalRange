@@ -1,0 +1,33 @@
+/**
+ * Pass Schedule Tab - multi-contact mission planning (Campaign 2+)
+ */
+
+.pass-schedule-tab {
+  padding: 1rem;
+}
+
+.pass-schedule-title {
+  color: var(--mc-text-primary);
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 0;
+}
+
+.pass-schedule-table th {
+  color: var(--mc-text-tertiary);
+  font-size: 0.7rem;
+  letter-spacing: 0.05em;
+}
+
+.pass-row-active {
+  background-color: var(--mc-surface-2);
+}
+
+.pass-status-active {
+  color: var(--color-success);
+  font-weight: 600;
+}
+
+.pass-status-upcoming {
+  color: var(--mc-text-secondary);
+}

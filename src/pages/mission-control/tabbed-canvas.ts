@@ -4,6 +4,7 @@ import dashboardPng from '@app/assets/icons/dashboard.png';
 import gpsPng from '@app/assets/icons/gps.png';
 import radarPng from '@app/assets/icons/radar.png';
 import satellitePng from '@app/assets/icons/satellite.png';
+import stopwatchPng from '@app/assets/icons/stopwatch.png';
 import { BaseElement } from "@app/components/base-element";
 import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
@@ -15,6 +16,7 @@ import { ACUControlTab } from '@app/pages/mission-control/tabs/acu-control-tab';
 import { DashboardTab } from '@app/pages/mission-control/tabs/dashboard-tab';
 import { GPSTimingTab } from '@app/pages/mission-control/tabs/gps-timing-tab';
 import { MissionOverviewTab } from '@app/pages/mission-control/tabs/mission-overview-tab';
+import { PassScheduleTab } from '@app/pages/mission-control/tabs/pass-schedule-tab';
 import { RxAnalysisTab } from '@app/pages/mission-control/tabs/rx-analysis-tab';
 import { SatelliteDashboardTab } from '@app/pages/mission-control/tabs/satellite-dashboard-tab';
 import { TxChainTab } from '@app/pages/mission-control/tabs/tx-chain-tab';
@@ -32,7 +34,7 @@ export class TabbedCanvas extends BaseElement {
 
   private activeTab_: string = 'mission-overview';
   private selectedAssetId_: string | null = null;
-  private readonly tabInstances_: Map<string, ACUControlTab | DashboardTab | RxAnalysisTab | TxChainTab | GPSTimingTab | SatelliteDashboardTab | MissionOverviewTab> = new Map();
+  private readonly tabInstances_: Map<string, ACUControlTab | DashboardTab | RxAnalysisTab | TxChainTab | GPSTimingTab | SatelliteDashboardTab | MissionOverviewTab | PassScheduleTab> = new Map();
 
   protected html_ = html`
     <div class="tabbed-canvas">
@@ -167,6 +169,11 @@ export class TabbedCanvas extends BaseElement {
       { id: 'tx-chain', label: 'TX Chain', icon: uplinkPng, isDisabled: groundStation.state.isOperational === false },
       { id: 'gps-timing', label: 'GPS Timing', icon: gpsPng, isDisabled: groundStation.state.isOperational === false },
     );
+
+    // Pass Schedule only exists for scenarios with orbital (SGP4) satellites
+    if (SimulationManager.getInstance().satellites.some((sat) => sat.orbitType === 'leo')) {
+      tabs.push({ id: 'pass-schedule', label: 'Pass Schedule', icon: stopwatchPng, isDisabled: groundStation.state.isOperational === false });
+    }
 
     this.renderTabs_(tabs);
     this.switchTab_('dashboard');
@@ -308,6 +315,10 @@ export class TabbedCanvas extends BaseElement {
 
       case 'gps-timing':
         this.renderGPSTimingTab_(content);
+        break;
+
+      case 'pass-schedule':
+        this.renderPassScheduleTab_();
         break;
 
       default:
@@ -515,6 +526,27 @@ export class TabbedCanvas extends BaseElement {
 
     // Activate the tab
     gpsTab.activate();
+  }
+
+  /**
+   * Render Pass Schedule tab (Campaign 2+ orbital satellites)
+   */
+  private renderPassScheduleTab_(): void {
+    const tabKey = 'pass-schedule';
+    let passTab = this.tabInstances_.get(tabKey) as PassScheduleTab;
+
+    if (passTab && !document.contains(passTab.dom)) {
+      passTab.dispose();
+      this.tabInstances_.delete(tabKey);
+      passTab = null!;
+    }
+
+    if (!passTab) {
+      passTab = new PassScheduleTab('canvas-content');
+      this.tabInstances_.set(tabKey, passTab);
+    }
+
+    passTab.activate();
   }
 
   /**

@@ -35,8 +35,8 @@ body {
   --tblr-primary: #ba160c !important;
   --tblr-primary-rgb: 186, 22, 12 !important;
   --tblr-primary-text-emphasis: #ff2827 !important;
-  --tblr-primary-bg-subtle: rgba(186, 22, 12, 0.15) !important;
-  --tblr-primary-border-subtle: rgba(186, 22, 12, 0.3) !important;
+  --tblr-primary-bg-subtle: rgba(var(--mc-accent-red-rgb), 0.15) !important;
+  --tblr-primary-border-subtle: rgba(var(--mc-accent-red-rgb), 0.3) !important;
 
   /* Dark Theme Background Colors */
   --tblr-body-bg: #1f1f1f !important;
@@ -84,12 +84,25 @@ body {
   --mc-accent-red-bright: #ff2827;
   --mc-accent-red-light: #e01a0e;
   --mc-accent-red-dark: #860f08;
+  /* Comma-separated RGB triplets for rgba() tints/glows of the accent */
+  --mc-accent-red-rgb: 186, 22, 12;
+  --mc-accent-red-bright-rgb: 255, 40, 39;
+  /* Darker accent used for dark-surface text highlights */
+  --mc-accent-text-dark: #dd382f;
+
+  /* Semantic danger/fault colors - campaign themes must NOT override these:
+     alarms stay red even when the brand accent changes */
+  --mc-danger: #ba160c;
+  --mc-danger-bright: #ff2827;
+  --mc-danger-rgb: 186, 22, 12;
 
   /* Backward Compatibility - Map old variables to new system */
   --color-primary: var(--mc-accent-red);
+  --color-primary-light: var(--mc-accent-red-light);
+  --color-primary-dark: var(--mc-accent-red-dark);
   --color-dark-background: var(--mc-surface-0);
   --color-dark-border: var(--mc-border);
-  --color-dark-text-accent: #dd382f;
+  --color-dark-text-accent: var(--mc-accent-text-dark);
   --color-dark-text-muted: var(--mc-text-muted);
   --color-text-accent: var(--mc-accent-red-bright);
 
@@ -102,6 +115,49 @@ body {
   --color-text-primary: var(--mc-text-primary);
   --color-text-secondary: var(--mc-text-secondary);
   --color-text-tertiary: var(--mc-text-tertiary);
+}
+
+/* ==========================================================================
+   Per-Campaign Theme: NATS Europe (North Atlantic blue)
+   Applied via body.campaign-<id> class set by the Router. Same layout and
+   components as the base theme; only the accent shifts from Mission Control
+   red to a maritime blue, with subtly cooler surfaces, so the EU station
+   feels like a different facility without disorienting the user.
+   ========================================================================== */
+
+body.campaign-nats-eu {
+  /* Primary accent: North Atlantic blue */
+  --tblr-primary: #0f62ac !important;
+  --tblr-primary-rgb: 15, 98, 172 !important;
+  --tblr-primary-text-emphasis: #3aa0ff !important;
+  --tblr-primary-bg-subtle: rgba(15, 98, 172, 0.15) !important;
+  --tblr-primary-border-subtle: rgba(15, 98, 172, 0.3) !important;
+
+  --tblr-link-color: #1878d4 !important;
+  --tblr-link-hover-color: #3aa0ff !important;
+
+  /* The --mc-accent-red-* names are kept (they are the semantic "accent"
+     slots consumed everywhere); only their values change per campaign */
+  --mc-accent-red: #0f62ac;
+  --mc-accent-red-bright: #3aa0ff;
+  --mc-accent-red-light: #1878d4;
+  --mc-accent-red-dark: #0a4478;
+  --mc-accent-red-rgb: 15, 98, 172;
+  --mc-accent-red-bright-rgb: 58, 160, 255;
+  --mc-accent-text-dark: #4b93d4;
+
+  /* Slightly cooler surfaces for the EU facility */
+  --mc-surface-0: #1d2023;
+  --mc-surface-1: #26292e;
+  --mc-surface-2: #363a40;
+  --mc-surface-3: #464b52;
+  --mc-surface-4: #565c64;
+  --mc-border: #363a40;
+
+  --tblr-body-bg: #1d2023 !important;
+  --tblr-secondary-bg: #26292e !important;
+  --tblr-tertiary-bg: #363a40 !important;
+  --tblr-border-color: #363a40 !important;
 }
 
 /* ==========================================================================
@@ -171,7 +227,7 @@ body {
 
 .form-check-input:focus {
   border-color: var(--mc-accent-red-light) !important;
-  box-shadow: 0 0 0 0.25rem rgba(186, 22, 12, 0.25) !important;
+  box-shadow: 0 0 0 0.25rem rgba(var(--mc-accent-red-rgb), 0.25) !important;
 }
 
 /* Form labels */
@@ -197,7 +253,7 @@ body {
   background-color: var(--mc-surface-2);
   border-color: var(--mc-accent-red);
   color: var(--mc-text-primary);
-  box-shadow: 0 0 0 0.25rem rgba(186, 22, 12, 0.25);
+  box-shadow: 0 0 0 0.25rem rgba(var(--mc-accent-red-rgb), 0.25);
 }
 
 /* ==========================================================================
@@ -373,7 +429,7 @@ body {
 .btn-primary:focus {
   background-color: var(--mc-accent-red-dark);
   border-color: var(--mc-accent-red-dark);
-  box-shadow: 0 0 0 0.25rem rgba(186, 22, 12, 0.5);
+  box-shadow: 0 0 0 0.25rem rgba(var(--mc-accent-red-rgb), 0.5);
 }
 
 /* ==========================================================================
@@ -522,11 +578,11 @@ body {
   background-color: var(--mc-accent-red);
   border-color: var(--mc-accent-red);
   color: #ffffff;
-  box-shadow: 0 0 8px rgba(186, 22, 12, 0.4);
+  box-shadow: 0 0 8px rgba(var(--mc-accent-red-rgb), 0.4);
 }
 
 .btn.btn-tracking:focus {
-  box-shadow: 0 0 0 0.25rem rgba(186, 22, 12, 0.25);
+  box-shadow: 0 0 0 0.25rem rgba(var(--mc-accent-red-rgb), 0.25);
 }
 
 /* Apply Button - Red accent for primary actions */
@@ -553,7 +609,7 @@ body {
 }
 
 .btn.btn-apply:focus {
-  box-shadow: 0 0 0 0.25rem rgba(186, 22, 12, 0.25);
+  box-shadow: 0 0 0 0.25rem rgba(var(--mc-accent-red-rgb), 0.25);
 }
 
 /* ==========================================================================
@@ -634,8 +690,8 @@ body {
    ========================================================================== */
 
 .alert-primary {
-  background-color: var(--mc-primary-bg-subtle, rgba(186, 22, 12, 0.15));
-  border-color: var(--mc-primary-border-subtle, rgba(186, 22, 12, 0.3));
+  background-color: var(--mc-primary-bg-subtle, rgba(var(--mc-accent-red-rgb), 0.15));
+  border-color: var(--mc-primary-border-subtle, rgba(var(--mc-accent-red-rgb), 0.3));
   color: var(--mc-accent-red-bright);
 }
 
@@ -658,9 +714,9 @@ body {
 }
 
 .alert-danger {
-  background-color: rgba(186, 22, 12, 0.15);
-  border-color: rgba(186, 22, 12, 0.3);
-  color: var(--mc-accent-red-bright);
+  background-color: rgba(var(--mc-danger-rgb), 0.15);
+  border-color: rgba(var(--mc-danger-rgb), 0.3);
+  color: var(--mc-danger-bright);
 }
 
 /* ==========================================================================

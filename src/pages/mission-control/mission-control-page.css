@@ -60,7 +60,7 @@
 
 .command-bar-left i {
   font-size: 20px;
-  color: #ba160c;
+  color: var(--mc-accent-red, #ba160c);
 }
 
 /* ===== Static Alarm Bar ===== */
@@ -89,12 +89,13 @@
 }
 
 .command-bar-alarm-bar.alarm {
-  background-color: rgba(186, 22, 12, 0.2);
-  border-top: 1px solid rgba(186, 22, 12, 0.3);
+  /* Semantic alarm state - stays red regardless of campaign accent */
+  background-color: rgba(var(--mc-danger-rgb, 186, 22, 12), 0.2);
+  border-top: 1px solid rgba(var(--mc-danger-rgb, 186, 22, 12), 0.3);
 }
 
 .command-bar-left .text-blue-500 {
-  color: #ba160c;
+  color: var(--mc-accent-red, #ba160c);
 }
 
 /* Alarm Count Badges */
@@ -116,7 +117,8 @@
 }
 
 .alarm-count.error {
-  background: rgba(186, 22, 12, 0.3);
+  /* Semantic error count - stays red regardless of campaign accent */
+  background: rgba(var(--mc-danger-rgb, 186, 22, 12), 0.3);
   color: #fca5a5;
 }
 

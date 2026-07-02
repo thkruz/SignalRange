@@ -103,9 +103,10 @@
 }
 
 .status-badge-red {
-  background-color: rgba(186, 22, 12, 0.15);
-  color: var(--mc-accent-red-bright, #ff2827);
-  border: 1px solid rgba(186, 22, 12, 0.3);
+  /* Semantic fault indicator - stays red regardless of campaign accent */
+  background-color: rgba(var(--mc-danger-rgb, 186, 22, 12), 0.15);
+  color: var(--mc-danger-bright, #ff2827);
+  border: 1px solid rgba(var(--mc-danger-rgb, 186, 22, 12), 0.3);
 }
 
 .status-badge-amber {

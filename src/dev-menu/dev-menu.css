@@ -36,7 +36,7 @@
 .dev-menu__section .form-control:focus {
   background-color: var(--mc-surface-2);
   border-color: var(--mc-accent-red);
-  box-shadow: 0 0 0 0.2rem rgba(186, 22, 12, 0.25);
+  box-shadow: 0 0 0 0.2rem rgba(var(--mc-accent-red-rgb, 186, 22, 12), 0.25);
 }
 
 /* Hide number input spinners */

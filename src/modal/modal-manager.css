@@ -15,10 +15,10 @@
   --hm-bg-end: #1f1f1f;
   --hm-text: #eaeaea;
   --hm-muted: #bfc3c6;
-  --hm-accent: #ff3535;
-  --hm-accent-2: #ff2827;
+  --hm-accent: var(--mc-accent-red-bright, #ff3535);
+  --hm-accent-2: var(--mc-accent-red-bright, #ff2827);
   /* subtle application theme color for accents */
-  --hm-theme: #ba160c;
+  --hm-theme: var(--mc-accent-red, #ba160c);
   --hm-border: #444;
   --hm-radius: 10px;
   --hm-max-width: 1000px;
@@ -207,13 +207,13 @@
     color: var(--hm-text);
     font-size: 0.8rem;
     font-weight: 700;
-    border: 1px solid rgba(186, 22, 12, 0.14);
+    border: 1px solid rgba(var(--mc-accent-red-rgb, 186, 22, 12), 0.14);
     vertical-align: middle;
   }
 
   strong.red {
     background: var(--hm-theme);
-    border-color: rgba(255, 40, 39, 0.14);
+    border-color: rgba(var(--mc-accent-red-bright-rgb, 255, 40, 39), 0.14);
   }
 
   strong.green {

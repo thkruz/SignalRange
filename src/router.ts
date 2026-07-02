@@ -73,6 +73,10 @@ export class Router {
     const path = globalThis.location.pathname;
     this.currentPath = path;
 
+    // Tag <body> with the active campaign so per-campaign themes
+    // (e.g. .campaign-nats-eu) can scope CSS variable overrides
+    this.updateCampaignBodyClass_(/^\/campaigns\/([^/]+)/.exec(path)?.[1]);
+
     // Hide all pages
     this.hideAll();
 
@@ -117,6 +121,18 @@ export class Router {
 
     // Emit route change event
     EventBus.getInstance().emit(Events.ROUTE_CHANGED, { path });
+  }
+
+  private updateCampaignBodyClass_(campaignId?: string): void {
+    const body = document.body;
+    for (const cls of Array.from(body.classList)) {
+      if (cls.startsWith('campaign-')) {
+        body.classList.remove(cls);
+      }
+    }
+    if (campaignId) {
+      body.classList.add(`campaign-${campaignId}`);
+    }
   }
 
   private hideAll(): void {

@@ -168,7 +168,7 @@
 
   /* Hint button for conditions with available hints */
   .condition-hint-btn {
-    background: var(--mc-status-warning, #ba160c);
+    background: var(--mc-status-warning, var(--mc-accent-red, #ba160c));
     border: none;
     border-radius: 50%;
     width: 22px;

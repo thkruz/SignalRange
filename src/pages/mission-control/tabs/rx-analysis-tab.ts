@@ -368,7 +368,7 @@ export class RxAnalysisTab extends BaseElement {
             <div class="card-body d-flex flex-column" id="spec-analyzer-controls">
               <!-- Primary Action: Auto-Tune -->
               <div class="sa-primary-actions mb-3">
-                <button id="sa-auto-tune" class="btn btn-lg btn-danger w-100">
+                <button id="sa-auto-tune" class="btn btn-lg btn-primary w-100">
                   <strong>AUTO-TUNE</strong>
                 </button>
               </div>

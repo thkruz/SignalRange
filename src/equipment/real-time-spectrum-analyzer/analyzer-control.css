@@ -238,7 +238,7 @@
 
         /* Bottom Row: Power Button */
         .power-button {
-          background: #ba160c !important;
+          background: var(--mc-accent-red, #ba160c) !important;
           color: #fff;
           font-size: 0.8em;
           width: 60px;

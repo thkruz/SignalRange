@@ -85,7 +85,7 @@
 }
 
 .dialog-character-title {
-  color: #ff3535;
+  color: var(--mc-accent-red-bright, #ff3535);
   font-size: 1rem;
   font-weight: 500;
   letter-spacing: 0.3px;
@@ -113,12 +113,12 @@
 }
 
 .dialog-text-container::-webkit-scrollbar-thumb {
-  background: #ff3535;
+  background: var(--mc-accent-red-bright, #ff3535);
   border-radius: 4px;
 }
 
 .dialog-text-container::-webkit-scrollbar-thumb:hover {
-  background: #ff2827;
+  background: var(--mc-accent-red-bright, #ff2827);
 }
 
 /* Dialog Text Content */
@@ -176,7 +176,7 @@
 
 .dialog-skip-progress-fill {
   fill: none;
-  stroke: #ff3535;
+  stroke: var(--mc-accent-red-bright, #ff3535);
   stroke-width: 2;
   stroke-linecap: round;
   stroke-dasharray: 100.53;

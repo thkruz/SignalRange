@@ -224,7 +224,7 @@
 .scenario-card.selected {
   border-color: var(--color-primary);
   box-shadow:
-    0 6px 20px rgba(186, 22, 12, 0.4),
+    0 6px 20px rgba(var(--mc-accent-red-rgb, 186, 22, 12), 0.4),
     inset 0 1px 1px rgba(255, 255, 255, 0.15);
 }
 
@@ -498,7 +498,7 @@
 
 .btn-start:hover {
   background: linear-gradient(135deg, var(--color-primary-light) 0%, var(--color-primary) 100%);
-  box-shadow: 0 4px 10px rgba(186, 22, 12, 0.8);
+  box-shadow: 0 4px 10px rgba(var(--mc-accent-red-rgb, 186, 22, 12), 0.8);
 }
 
 .btn-start-fresh {
@@ -563,7 +563,7 @@
 
 .scenario-card.selected .status-dot {
   background-color: var(--color-primary);
-  box-shadow: 0 0 8px rgba(186, 22, 12, 0.8);
+  box-shadow: 0 0 8px rgba(var(--mc-accent-red-rgb, 186, 22, 12), 0.8);
 }
 
 /* Action Buttons */

@@ -1,4 +1,5 @@
 import type { CampaignData } from '@app/campaigns/campaign-types';
+import { hamSdrSandboxData } from '@app/campaigns/ham-sdr/sandbox';
 import { natsEuScenario1Data } from '@app/campaigns/nats-eu/scenario1';
 import { sandboxData } from './sandbox';
 import { scenario1Data } from './scenario1';
@@ -92,19 +93,18 @@ export const natsEuCampaignData: CampaignData = {
 
 export const hamSdrCampaignData: CampaignData = {
   id: 'ham-sdr',
-  title: 'Ham Radio SDR Station',
-  subtitle: 'Amateur Radio Operations with Software-Defined Radio',
-  description: `This campaign focuses on amateur radio operations using software-defined radio (SDR) technology. As an amateur radio operator, you'll engage in a series of scenarios that involve setting up and configuring SDR equipment, establishing communication links with other ham radio operators, and exploring various modes of transmission.<br><br>Through these scenarios, you'll gain practical experience in antenna tuning, signal propagation analysis, and digital mode operation, all while adhering to amateur radio regulations and best practices.`,
+  title: 'Backyard Operator',
+  subtitle: 'DIY Satellite Tracking with Software-Defined Radio',
+  description: `Charlie's niece Riley teaches you how to track satellites from your backyard. No mission control, no nine-meter dish - just software-defined radio, DIY antennas, and physics.<br><br>Catch weather satellites on a hand-wound quadrifilar helix, chase cubesat Doppler with a crossed yagi on a TV rotator, learn why circular polarization handedness matters, and find the GPS constellation hiding under the noise floor. Everything Uncle Charlie does with big iron, done with eighty dollars of parts and a SatNOGS mindset.`,
   imageUrl: 'nats/north-atlantic-teleport-services.png',
-  difficulty: 'intermediate',
-  totalDuration: '160-220 min',
+  difficulty: 'beginner',
+  totalDuration: '30-60 min',
   campaignType: 'Amateur Radio Operations',
   scenarios: [
-
+    hamSdrSandboxData,
   ],
   isLocked: false,
-  isDisabled: true,
-  disabledText: 'Access Denied',
+  isDisabled: false,
 };
 
 export const ccsCampaignData: CampaignData = {
@@ -125,7 +125,9 @@ export const ccsCampaignData: CampaignData = {
 };
 
 export const geolocationCampaignData: CampaignData = {
-  id: 'ccs',
+  // Was 'ccs', a duplicate of ccsCampaignData's id (both disabled placeholders,
+  // so no stored progress referenced the old value)
+  id: 'geolocation',
   title: '22nd Electronic Warfare Squadron',
   subtitle: 'Geolocation of Interference Sources',
   description: `This campaign focuses on the geolocation of interference sources in electronic warfare scenarios. As a member of the 22 Electronic Warfare Squadron, you'll engage in a series of scenarios that require you to accurately locate and identify sources of signal interference while maintaining the integrity of friendly communications.<br><br>Through these scenarios, you'll hone your skills in direction finding, triangulation techniques, and signal analysis, all while operating within the dynamic landscape of electronic warfare.`,

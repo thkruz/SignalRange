@@ -12,6 +12,8 @@ export enum Character {
   /** Satellite Operations Engineer from Halifax. Canadian with subtle Canadian-isms. */
   MARCUS_CHEN = 'marcus_chen',
   DANA_TORRES = "dana_torres",
+  /** Charlie's teenage niece. Licensed ham (KD2RLY), SatNOGS contributor, teaches backyard satellite tracking with infectious enthusiasm. */
+  RILEY_BROOKS = 'riley_brooks',
   /** System/Self-check - no avatar, used for solo scenarios where no NPC is present */
   SYSTEM = 'system',
 }
@@ -36,6 +38,7 @@ export const CharacterAvatars: Record<Character, string> = {
   [Character.FRANCIS_MARTIN]: getAssetUrl('/assets/characters/francis-martin.png'),
   [Character.MARCUS_CHEN]: getAssetUrl('/assets/characters/marcus-chen.png'),
   [Character.DANA_TORRES]: getAssetUrl('/assets/characters/dana-torres.png'),
+  [Character.RILEY_BROOKS]: getAssetUrl('/assets/characters/riley-brooks.png'),
   [Character.SYSTEM]: '',
 };
 
@@ -46,6 +49,7 @@ export const CharacterNames: Record<Character, string> = {
   [Character.JAMES_OKAFOR]: 'James Okafor',
   [Character.FRANCIS_MARTIN]: 'Francis Martin',
   [Character.MARCUS_CHEN]: 'Marcus Chen',
+  [Character.RILEY_BROOKS]: 'Riley Brooks',
   [Character.SYSTEM]: 'Knowledge Check',
 };
 
@@ -56,6 +60,7 @@ export const CharacterTitles: Record<Character, string> = {
   [Character.JAMES_OKAFOR]: 'Fleet Captain',
   [Character.FRANCIS_MARTIN]: 'Board Member',
   [Character.MARCUS_CHEN]: 'Satellite Operations Engineer',
+  [Character.RILEY_BROOKS]: 'Amateur Radio Operator - KD2RLY',
   [Character.SYSTEM]: '',
 };
 
@@ -66,6 +71,7 @@ export const CharacterCompany: Record<Character, string> = {
   [Character.JAMES_OKAFOR]: 'Atlantic Shipping Alliance',
   [Character.FRANCIS_MARTIN]: 'SeaLink',
   [Character.MARCUS_CHEN]: 'SeaLink Maritime (Halifax)',
+  [Character.RILEY_BROOKS]: 'Backyard / AMSAT Member',
   [Character.SYSTEM]: '',
 };
 

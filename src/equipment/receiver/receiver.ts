@@ -19,6 +19,12 @@ export interface ReceiverModemState {
   modulation: ModulationType;
   fec: FECType;
   isPowered: boolean;
+  /**
+   * Automatic frequency control: when enabled the modem center frequency slews
+   * toward the received carrier (rate-limited), tracking Doppler drift.
+   * Opt-in: when omitted/false tuning is fully manual (legacy behavior).
+   */
+  isAfcEnabled?: boolean;
 }
 
 export interface ReceiverState {
@@ -154,8 +160,66 @@ export class Receiver extends BaseEquipment {
   }
 
   update(): void {
+    this.updateAfc_();
     this.checkForAlarms_();
     this.syncDomWithState();
+  }
+
+  /** Max AFC retune per update tick (Hz) — slow enough to feel like a tracking loop */
+  private static readonly AFC_MAX_STEP_HZ = 200;
+  /** Offsets below this are considered centered; AFC holds (Hz) */
+  private static readonly AFC_DEADBAND_HZ = 10;
+
+  /**
+   * Automatic frequency control: slew each AFC-enabled modem toward the
+   * carrier it is receiving. Only acts when a carrier is present; opt-in per
+   * modem via isAfcEnabled (absent on all legacy configs).
+   */
+  private updateAfc_(): void {
+    for (const modem of this.state.modems) {
+      if (!modem.isAfcEnabled || !modem.isPowered) continue;
+
+      const info = this.getSignalsInBandwidth(modem);
+      if (!info.hasCarrier) continue;
+
+      const offsetHz = info.frequencyOffset_Hz;
+      if (Math.abs(offsetHz) < Receiver.AFC_DEADBAND_HZ) continue;
+
+      const stepHz = Math.max(-Receiver.AFC_MAX_STEP_HZ, Math.min(Receiver.AFC_MAX_STEP_HZ, offsetHz));
+      modem.frequency = (modem.frequency + stepHz / 1e6) as MHz;
+    }
+  }
+
+  public handleAfcToggle(modemNumber: number, isEnabled: boolean): void {
+    const modem = this.state.modems.find(m => m.modemNumber === modemNumber);
+    if (modem) {
+      modem.isAfcEnabled = isEnabled;
+    }
+  }
+
+  public handleModemFrequencyChange(modemNumber: number, frequencyMHz: number): void {
+    const modem = this.state.modems.find(m => m.modemNumber === modemNumber);
+    if (modem) {
+      modem.frequency = frequencyMHz as MHz;
+    }
+  }
+
+  public handleModemConfigChange(
+    modemNumber: number,
+    config: { modulation?: ModulationType; fec?: FECType; bandwidthMHz?: number },
+  ): void {
+    const modem = this.state.modems.find(m => m.modemNumber === modemNumber);
+    if (!modem) return;
+
+    if (config.modulation !== undefined) {
+      modem.modulation = config.modulation;
+    }
+    if (config.fec !== undefined) {
+      modem.fec = config.fec;
+    }
+    if (config.bandwidthMHz !== undefined && config.bandwidthMHz > 0) {
+      modem.bandwidth = config.bandwidthMHz as MHz;
+    }
   }
 
   initialSync(): void {

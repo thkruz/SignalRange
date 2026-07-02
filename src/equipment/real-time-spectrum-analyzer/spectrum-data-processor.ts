@@ -130,6 +130,8 @@ export class SpectrumDataProcessor {
     // Initialize signal data with minimum amplitude
     this.signalData.fill(this.specA.state.minAmplitude);
 
+    const rbw = this.specA.state.rbw;
+
     // Process each input signal
     this.specA.inputSignals.forEach((signal) => {
       const center = ((signal.frequency - this.minFreq) / (this.maxFreq - this.minFreq)) * this.width;
@@ -145,7 +147,15 @@ export class SpectrumDataProcessor {
       // Out-of-band width is the total distance from center to signal edge
       const outOfBandWidth = halfBandwidthPixels;
 
-      this.addSignalToData(signal, center, inBandWidth, outOfBandWidth);
+      // Spectral density: a signal wider than the RBW shows per-bin power
+      // (total power spread across bandwidth/RBW bins), matching how a real
+      // analyzer renders wideband signals. Narrow signals are unaffected, and
+      // the displayed noise floor is already per-RBW, so heights stay honest.
+      const psdCorrection_dB = rbw && signal.bandwidth > rbw
+        ? 10 * Math.log10(signal.bandwidth / rbw)
+        : 0;
+
+      this.addSignalToData(signal, center, inBandWidth, outOfBandWidth, psdCorrection_dB);
     });
   }
 
@@ -157,12 +167,16 @@ export class SpectrumDataProcessor {
     signal: IfSignal | RfSignal,
     center: number,
     inBandWidth: number,
-    outOfBandWidth: number
+    outOfBandWidth: number,
+    psdCorrection_dB: number = 0
   ): void {
     // inBandWidth = flat-top region (e.g., 17.5 MHz from center for 36 MHz signal)
     // outOfBandWidth = total signal edge (e.g., 18 MHz from center = half-bandwidth)
     // Roll-off region spans from inBandWidth to outOfBandWidth
     const rollOffWidth = outOfBandWidth - inBandWidth;
+
+    // Displayed level: per-RBW-bin power for wideband signals (see generateSignals)
+    const displayPower = signal.power - psdCorrection_dB;
 
     // Only process pixels within the signal's influence region
     const startX = Math.max(0, Math.floor(center - outOfBandWidth));
@@ -176,7 +190,7 @@ export class SpectrumDataProcessor {
 
       // Flat-top region - near peak amplitude
       if (absDist <= inBandWidth) {
-        y = signal.power;
+        y = displayPower;
 
         // Add noise-like variation similar to noise floor
         // Base random variation
@@ -203,7 +217,7 @@ export class SpectrumDataProcessor {
         const rolloff = 0.5 * (1 + Math.cos(Math.PI * rollOffProgress));
         const rolloffDb = 20 * Math.log10(Math.max(rolloff, 1e-10));
 
-        y = signal.power + rolloffDb;
+        y = displayPower + rolloffDb;
 
         // Add variation that increases as we move away from center
         y += this.gaussianRandom_(0, 0.5 + rollOffProgress * 0.3);

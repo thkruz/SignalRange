@@ -73,6 +73,11 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
   // Data processor - centralized data generation
   private dataProcessor: SpectrumDataProcessor;
 
+  /** Shared spectrum data source (read-only view for campaign UIs like the SDR Console) */
+  get spectrumDataProcessor(): SpectrumDataProcessor {
+    return this.dataProcessor;
+  }
+
   // Screen renderer
   screen: SpectralDensityPlot | WaterfallDisplay | null = null;
   spectralDensity: SpectralDensityPlot | null = null;
@@ -396,13 +401,11 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
       }
     }
 
-    // Create copies when clamping bandwidth to avoid mutating original signals
-    signals = signals.map(sig => {
-      if (sig.bandwidth > bandwidth) {
-        return { ...sig, bandwidth };
-      }
-      return sig;
-    });
+    // NOTE: signals are deliberately NOT clamped to the RBW. RBW sets the
+    // display resolution and noise floor, not a signal's occupied bandwidth —
+    // a 2 MHz signal viewed with a 30 kHz RBW still spans 2 MHz on screen.
+    // (The renderer applies the matching PSD correction so wideband signals
+    // show per-bin power, not total power.)
 
     // Update state with the maximum noise floor found
     this.state.noiseFloorNoGain = maxNoiseFloorNoGain;

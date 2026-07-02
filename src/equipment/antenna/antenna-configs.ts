@@ -13,7 +13,7 @@ export interface AntennaConfig {
   /** Antenna efficiency (0-1, typically 0.5-0.7 for parabolic dishes) - illumination/spill only (surface Ruze applied separately) */
   efficiency: number;
   /** Primary frequency band (for display/identification) */
-  band: 'L' | 'S' | 'C' | 'X' | 'Ku' | 'Ka' | 'Q' | 'V';
+  band: 'VHF' | 'UHF' | 'L' | 'S' | 'C' | 'X' | 'Ku' | 'Ka' | 'Q' | 'V';
   /** Minimum receiving frequency in Hz */
   minRxFrequency: Hertz;
   /** Maximum receiving frequency in Hz */
@@ -36,6 +36,27 @@ export interface AntennaConfig {
   polType?: 'linear' | 'circular';
   /** Frequency-dependent feed loss model: L(f) = a + b*sqrt(f_GHz) + c*f_GHz (dB) */
   feedLossModel?: { a: number; b: number; c: number };
+  /**
+   * Cross-polarization loss (dB) applied when a circular-pol antenna receives the
+   * wrong handedness (e.g. RHCP antenna vs LHCP signal). Opt-in: when omitted the
+   * legacy 3 dB constant applies, preserving existing circular-pol antenna behavior.
+   */
+  circularCrossPolLoss_dB?: number;
+
+  // --- Gain Model (non-parabolic antennas) ---
+  /**
+   * Gain model selector. Opt-in: when omitted (all dish configs) the parabolic
+   * aperture math (Ruze/blockage, HPBW = k*λ/D) applies unchanged. 'fixed' uses
+   * fixedGain_dBi/fixedBeamwidth3dB_deg directly — for wire antennas (yagi, QFH,
+   * patch) where diameter-based formulas are meaningless.
+   */
+  gainModel?: 'parabolic' | 'fixed';
+  /** Boresight gain in dBi when gainModel === 'fixed' */
+  fixedGain_dBi?: number;
+  /** 3 dB beamwidth in degrees when gainModel === 'fixed' */
+  fixedBeamwidth3dB_deg?: number;
+  /** Front-to-back ratio (dB) capping off-axis rolloff when gainModel === 'fixed' (default 20) */
+  fixedFrontToBack_dB?: number;
 
   // --- Pattern / Pointing Parameters ---
   /** Beamwidth constant k for HPBW ≈ k*λ/D (degrees), typically 70 */
@@ -504,5 +525,104 @@ export const ANTENNA_CONFIGS: Record<ANTENNA_CONFIG_KEYS, AntennaConfig> = {
     minTxFrequency: 7.25e9 as Hertz,
     maxTxFrequency: 8.4e9 as Hertz,
     feedLoss: 0.6,
+  },
+
+  // ───────────────────────────────── Backyard / DIY (Campaign 3) ───────────────────
+  // Non-parabolic antennas using the fixed gain model. Receive-only stations:
+  // Tx ranges mirror Rx so the range checks never trip (no transmitter is wired).
+
+  // DIY quadrifilar helix for 137 MHz weather satellites. Near-hemispheric
+  // pattern — no rotator, mounted pointing straight up.
+  VHF_QFH_137: {
+    name: 'DIY 137 MHz Quadrifilar Helix',
+    diameter: 0.4,               // physical size only; gain comes from fixed model
+    efficiency: 0.6,
+    band: 'VHF',
+    minRxFrequency: 130e6 as Hertz,
+    maxRxFrequency: 148e6 as Hertz,
+    minTxFrequency: 130e6 as Hertz,
+    maxTxFrequency: 148e6 as Hertz,
+    feedLoss: 0.5,               // coax run to the shack
+
+    gainModel: 'fixed',
+    fixedGain_dBi: 3.0,
+    fixedBeamwidth3dB_deg: 140,
+    fixedFrontToBack_dB: 10,     // some response even toward the horizon/ground
+
+    xpd_dB: 20,
+    polType: 'circular',
+    circularCrossPolLoss_dB: 12, // hand-wound helix, modest discrimination
+
+    pointingSigma_deg: 0.5,      // it's zip-tied to a fence post
+    elRange_deg: [85, 90],       // fixed skyward (nudge the mast by hand)
+    azContinuous: false,
+    maxRate_deg_s: 0.5,          // walking over and re-aiming the mast
+
+    lnaNF_dB: 1.5,               // budget SDR front end
+    rxChainLoss_dB: 1.0,
+    rxPhysTemp_K: 290,
+  },
+
+  // Crossed yagi on a repurposed TV rotator: switchable RHCP/LHCP feed.
+  UHF_CROSSED_YAGI_70CM: {
+    name: 'DIY 70cm Crossed Yagi',
+    diameter: 1.5,               // boom length; gain comes from fixed model
+    efficiency: 0.6,
+    band: 'UHF',
+    minRxFrequency: 420e6 as Hertz,
+    maxRxFrequency: 450e6 as Hertz,
+    minTxFrequency: 420e6 as Hertz,
+    maxTxFrequency: 450e6 as Hertz,
+    feedLoss: 0.8,
+
+    gainModel: 'fixed',
+    fixedGain_dBi: 12.0,
+    fixedBeamwidth3dB_deg: 40,
+    fixedFrontToBack_dB: 18,
+
+    xpd_dB: 20,
+    polType: 'circular',
+    circularCrossPolLoss_dB: 18, // wrong handedness decisively kills lock
+
+    pointingSigma_deg: 0.8,      // TV rotator has real backlash
+    elRange_deg: [0, 90],
+    azContinuous: false,
+    azRange_deg: [0, 360],
+    maxRate_deg_s: 6.0,          // typical hobby az/el rotator
+
+    lnaNF_dB: 1.2,
+    rxChainLoss_dB: 1.0,
+    rxPhysTemp_K: 290,
+  },
+
+  // GPS patch antenna on a mast, fixed skyward, for L1 reception.
+  L_BAND_GPS_PATCH: {
+    name: 'GPS L1 Patch Antenna',
+    diameter: 0.08,
+    efficiency: 0.6,
+    band: 'L',
+    minRxFrequency: 1560e6 as Hertz,
+    maxRxFrequency: 1610e6 as Hertz,
+    minTxFrequency: 1560e6 as Hertz,
+    maxTxFrequency: 1610e6 as Hertz,
+    feedLoss: 0.4,
+
+    gainModel: 'fixed',
+    fixedGain_dBi: 5.0,
+    fixedBeamwidth3dB_deg: 100,
+    fixedFrontToBack_dB: 15,
+
+    xpd_dB: 25,
+    polType: 'circular',
+    circularCrossPolLoss_dB: 15,
+
+    pointingSigma_deg: 0.5,
+    elRange_deg: [85, 90],       // fixed skyward (nudge the mast by hand)
+    azContinuous: false,
+    maxRate_deg_s: 0.5,          // walking over and re-aiming the mast
+
+    lnaNF_dB: 1.0,               // active patch with built-in LNA
+    rxChainLoss_dB: 0.5,
+    rxPhysTemp_K: 290,
   },
 };

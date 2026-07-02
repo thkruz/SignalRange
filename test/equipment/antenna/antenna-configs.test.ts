@@ -44,7 +44,7 @@ describe('ANTENNA_CONFIGS', () => {
 
     it.each(allConfigs)('%s should have a valid band', (key, config) => {
       expect(config.band).toBeDefined();
-      expect(['L', 'S', 'C', 'X', 'Ku', 'Ka', 'Q', 'V']).toContain(config.band);
+      expect(['VHF', 'UHF', 'L', 'S', 'C', 'X', 'Ku', 'Ka', 'Q', 'V']).toContain(config.band);
     });
 
     it.each(allConfigs)('%s should have valid receive frequencies', (key, config) => {

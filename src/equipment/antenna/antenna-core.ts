@@ -46,6 +46,12 @@ export interface AntennaState {
   serverId: number;
   /** Antenna skew between -90 and 90 degrees */
   polarization: Degrees;
+  /**
+   * Feed handedness for circular-pol antennas with a switchable feed (e.g. a
+   * crossed yagi). Opt-in: when undefined the legacy circular-pol behavior
+   * applies (any circular signal treated as matched).
+   */
+  circularHandedness?: 'LHCP' | 'RHCP';
   /** is loopback enabled */
   isLoopback: boolean;
   /** is antenna locked on a satellite */
@@ -497,6 +503,14 @@ export abstract class AntennaCore extends BaseEquipment {
       return;
     }
     this.state.polarization = value as Degrees;
+    this.notifyStateChange_();
+  }
+
+  handleCircularHandednessChange(handedness: 'LHCP' | 'RHCP'): void {
+    if (!this.state.isPowered) {
+      return;
+    }
+    this.state.circularHandedness = handedness;
     this.notifyStateChange_();
   }
 
@@ -1305,6 +1319,17 @@ export abstract class AntennaCore extends BaseEquipment {
       ) {
         return true;
       }
+
+      // Wide-beam antennas (fixed gain model, Campaign 3+): accept satellites
+      // out to one full HPBW off boresight, using true angular separation (the
+      // planar box above breaks down near zenith). Off-axis loss is still
+      // charged by the pattern model. Parabolic antennas (HPBW << 1 deg) keep
+      // the legacy 1-degree box, so existing campaigns are unaffected.
+      if (this.config.gainModel === 'fixed') {
+        const sep = this.angularSeparationDeg_(sat.az, sat.el);
+        return sep <= (this.config.fixedBeamwidth3dB_deg ?? 90);
+      }
+
       return false;
     });
 
@@ -1318,6 +1343,21 @@ export abstract class AntennaCore extends BaseEquipment {
 
   attachRfFrontEnd(rfFrontEnd: RFFrontEndCore): void {
     this.rfFrontEnd_ = rfFrontEnd;
+  }
+
+  /**
+   * True angular separation (degrees) between the antenna boresight and a
+   * target az/el, via the spherical law of cosines. Unlike the planar
+   * hypot(dAz, dEl) approximation this stays correct near zenith and for
+   * large angles (wide-beam Campaign 3 antennas).
+   */
+  private angularSeparationDeg_(targetAz: number, targetEl: number): number {
+    const d2r = Math.PI / 180;
+    const el1 = this.state.elevation * d2r;
+    const el2 = targetEl * d2r;
+    const dAz = (targetAz - this.normalizedAzimuth) * d2r;
+    const cosSep = Math.sin(el1) * Math.sin(el2) + Math.cos(el1) * Math.cos(el2) * Math.cos(dAz);
+    return Math.acos(Math.max(-1, Math.min(1, cosSep))) / d2r;
   }
 
   // ========================================================================
@@ -1708,6 +1748,10 @@ export abstract class AntennaCore extends BaseEquipment {
    * HPBW ≈ k*λ/D where k is typically 70 for parabolic dishes
    */
   private beamwidth3dB_deg_(f_Hz: number): number {
+    if (this.config.gainModel === 'fixed') {
+      return this.config.fixedBeamwidth3dB_deg ?? 90;
+    }
+
     const k = this.config.kBeamConst ?? 70;
     const lambda = 3e8 / f_Hz;
     return (k * lambda) / this.config.diameter; // Result in degrees
@@ -1729,6 +1773,14 @@ export abstract class AntennaCore extends BaseEquipment {
   private patternGain_dBi_(theta_deg: number, f_Hz: number): number {
     const Gmax = this.antennaGain_dBi(f_Hz as Hertz);
     const bw = this.beamwidth3dB_deg_(f_Hz);
+
+    // Fixed gain model (wire antennas): main-lobe rolloff capped at the
+    // front-to-back ratio — the diameter-based sidelobe envelope below is
+    // meaningless for a yagi/QFH/patch.
+    if (this.config.gainModel === 'fixed') {
+      const drop = 12 * Math.pow(theta_deg / bw, 2);
+      return Gmax - Math.min(drop, this.config.fixedFrontToBack_dB ?? 20);
+    }
 
     // Main lobe approximation (within ~1.2 beamwidths)
     if (theta_deg <= 1.2 * bw) {
@@ -1759,6 +1811,14 @@ export abstract class AntennaCore extends BaseEquipment {
         (signalPol === 'RHCP' && this.config.polType === 'circular') ||
         (signalPol === 'LHCP' && this.config.polType === 'circular')
       ) {
+        // Switchable-feed antennas (circularHandedness set) discriminate by
+        // handedness; wrong-handed reception costs the configured cross-pol
+        // loss. Legacy circular antennas (handedness unset) keep the old
+        // matched-by-default behavior.
+        const handedness = this.state.circularHandedness;
+        if (handedness !== undefined && handedness !== signalPol) {
+          return (this.config.circularCrossPolLoss_dB ?? 3) as dB;
+        }
         return 0.5 as dB; // Small imperfection
       }
       return 3 as dB; // Mismatched handedness
@@ -1877,10 +1937,15 @@ export abstract class AntennaCore extends BaseEquipment {
     const f_Hz = signal.frequency as number;
     const elev_deg = this.state.elevation;
 
-    // Calculate off-axis angle between antenna pointing and satellite position
+    // Calculate off-axis angle between antenna pointing and satellite position.
+    // Fixed-gain (wide-beam) antennas use true angular separation - the planar
+    // approximation overestimates badly near zenith, where the QFH points.
+    // Parabolic antennas keep the legacy planar math bit-identically.
     const deltaAz = satellite.az - this.normalizedAzimuth;
     const deltaEl = satellite.el - this.state.elevation;
-    const offAxis_deg = Math.hypot(deltaAz, deltaEl);
+    const offAxis_deg = this.config.gainModel === 'fixed'
+      ? this.angularSeparationDeg_(satellite.az, satellite.el)
+      : Math.hypot(deltaAz, deltaEl);
 
     // Calculate free-space path loss (downlink from satellite to ground).
     // Orbital satellites report true slant range; legacy fixed-telemetry
@@ -1948,6 +2013,12 @@ export abstract class AntennaCore extends BaseEquipment {
         `${this.config.minTxFrequency / 1e9} - ${this.config.maxTxFrequency / 1e9} GHz for Tx). ` +
         `Gain calculation may be inaccurate.`
       );
+    }
+
+    // Fixed gain model (wire antennas): boresight gain comes straight from
+    // config — aperture/Ruze/blockage math does not apply.
+    if (this.config.gainModel === 'fixed') {
+      return this.config.fixedGain_dBi ?? 0;
     }
 
     // Use new aperture efficiency model (includes Ruze + blockage)

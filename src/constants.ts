@@ -40,6 +40,22 @@ export const DEFAULT_SPEC_A = {
 };
 
 export const FrequencyBand = {
+  vhf: {
+    // Weather-satellite APT (137-138 MHz) and 2m amateur (144-146 MHz)
+    downLow: 137e6 as Hertz,
+    downHigh: 146e6 as Hertz,
+    upLow: 144e6 as Hertz,
+    upHigh: 146e6 as Hertz,
+    transponderBandwidthHz: [15e3 as Hertz, 50e3 as Hertz], // APT / narrowband FM
+  },
+  uhf: {
+    // 70cm amateur satellite band
+    downLow: 435e6 as Hertz,
+    downHigh: 438e6 as Hertz,
+    upLow: 435e6 as Hertz,
+    upHigh: 438e6 as Hertz,
+    transponderBandwidthHz: [15e3 as Hertz, 30e3 as Hertz], // FM transponders
+  },
   l: {
     // Inmarsat, Iridium, narrowband
     downLow: 1525e6 as Hertz,

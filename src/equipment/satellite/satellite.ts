@@ -89,8 +89,13 @@ export interface SignalDegradationConfig {
   interferencePower: dBm;
 }
 
-/** Satellite orbit type determining position behavior */
-export type OrbitType = 'geostationary' | 'geosynchronous';
+/**
+ * Satellite orbit type determining position behavior.
+ * - 'geostationary': fixed az/el (default)
+ * - 'geosynchronous': parametric figure-8 (analemma) pattern
+ * - 'leo': real SGP4-propagated orbit; only valid on OrbitalSatellite subclass
+ */
+export type OrbitType = 'geostationary' | 'geosynchronous' | 'leo';
 
 /**
  * Configuration for geosynchronous (inclined) orbit figure-8 pattern.
@@ -190,10 +195,18 @@ export class Satellite {
   private phase_: number = 0;
 
   /** Timestamp of last position update (ms) - for throttling */
-  private lastPositionUpdateTime_: number = 0;
+  protected lastPositionUpdateTime_: number = 0;
 
   /** Position update interval (ms) */
-  private static readonly POSITION_UPDATE_INTERVAL_MS = 1000;
+  protected static readonly POSITION_UPDATE_INTERVAL_MS = 1000;
+
+  /**
+   * Slant range from the ground station to the satellite (km).
+   * Null for legacy fixed-telemetry satellites, in which case the antenna
+   * falls back to the nominal GEO slant range for path-loss calculations.
+   * Populated each position update by OrbitalSatellite.
+   */
+  rangeKm: number | null = null;
 
   /** Rate of position change: 0.1 degrees per 30 seconds (peak velocity) */
   private static readonly POSITION_RATE_DEG_PER_MS = 0.1 / 30000;
@@ -346,7 +359,7 @@ export class Satellite {
    * Traces a figure-8 (analemma) pattern using parametric equations.
    * Throttled to 1 second intervals to reduce computation.
    */
-  private updatePosition_(): void {
+  protected updatePosition_(): void {
     if (this.orbitType !== 'geosynchronous' || !this.geosyncConfig_) {
       return;
     }

@@ -1882,8 +1882,10 @@ export abstract class AntennaCore extends BaseEquipment {
     const deltaEl = satellite.el - this.state.elevation;
     const offAxis_deg = Math.hypot(deltaAz, deltaEl);
 
-    // Calculate free-space path loss (downlink from GEO satellite to ground)
-    const fspl = this.calculateFreeSpacePathLoss_(signal.frequency, GEO_SATELLITE_DISTANCE_KM);
+    // Calculate free-space path loss (downlink from satellite to ground).
+    // Orbital satellites report true slant range; legacy fixed-telemetry
+    // satellites fall back to the nominal GEO slant range.
+    const fspl = this.calculateFreeSpacePathLoss_(signal.frequency, satellite.rangeKm ?? GEO_SATELLITE_DISTANCE_KM);
 
     // Calculate atmospheric loss using realistic model
     const atmosphericLoss = this.calculateAtmosphericLoss_(signal.frequency, elev_deg);

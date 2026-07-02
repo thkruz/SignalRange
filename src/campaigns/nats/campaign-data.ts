@@ -1,4 +1,5 @@
 import type { CampaignData } from '@app/campaigns/campaign-types';
+import { natsEuScenario1Data } from '@app/campaigns/nats-eu/scenario1';
 import { sandboxData } from './sandbox';
 import { scenario1Data } from './scenario1';
 import { scenario2Data } from './scenario2';
@@ -83,10 +84,9 @@ export const natsEuCampaignData: CampaignData = {
   totalDuration: '160-220 min',
   campaignType: 'LEO Commercial Communications',
   scenarios: [
-
+    natsEuScenario1Data,
   ],
-  isLocked: true,
-  lockedText: 'Under Development',
+  isLocked: false,
   isDisabled: false,
 };
 

@@ -126,8 +126,13 @@ export class OMTModule extends RFFrontEndModule<OMTState> {
 
     this.updateCrossPolIsolation_();
 
+    // Circular-feed mode (rxPolarization LHCP/RHCP, Campaign 3+): the OMT is a
+    // pass-through — handedness discrimination is modeled once, at the antenna
+    // feed (circularHandedness), so applying isolation here would double-count.
+    const isCircularMode = this.state.rxPolarization === 'LHCP' || this.state.rxPolarization === 'RHCP';
+
     this.rxSignalsOut = this.rxSignalsIn.map(sig => {
-      if (sig.polarization !== this.state.effectiveRxPol) {
+      if (!isCircularMode && sig.polarization !== this.state.effectiveRxPol) {
         // Apply cross-pol isolation loss
         const isolatedPower = sig.power - this.state.crossPolIsolation;
         return {
@@ -208,6 +213,15 @@ export class OMTModule extends RFFrontEndModule<OMTState> {
    * @param skew Antenna skew in degrees
    */
   private updateEffectivePolarization_(skew: number | null): void {
+    // Circular-feed mode: effective polarization is the configured handedness;
+    // the linear skew logic below does not apply. Opt-in — legacy configs are
+    // always H/V so this branch never runs for existing campaigns.
+    if (this.state.rxPolarization === 'LHCP' || this.state.rxPolarization === 'RHCP') {
+      this.state.effectiveTxPol = this.state.txPolarization;
+      this.state.effectiveRxPol = this.state.rxPolarization;
+      return;
+    }
+
     if (skew === null) {
       this.state.effectiveTxPol = null;
       this.state.effectiveRxPol = null;

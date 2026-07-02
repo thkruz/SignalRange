@@ -25,7 +25,18 @@ export interface LNBState extends RFFrontEndModuleState {
    * Clears automatically when LNB is power cycled (OFF then ON).
    */
   hasRefLockFault?: boolean;
+  /**
+   * Direct-sampling mode (SDR front ends): bypasses the mixer so RF passes
+   * through at its original frequency, with a wide SDR passband instead of the
+   * 950-2150 MHz L-band IF filter. Opt-in: when omitted/false the legacy
+   * block-downconversion path is unchanged.
+   */
+  isDirectSampling?: boolean;
 }
+
+/** Direct-sampling (SDR) passband limits, modeled on common RTL-SDR tuners */
+export const DIRECT_SAMPLING_PASSBAND_LOW_HZ = 24e6;
+export const DIRECT_SAMPLING_PASSBAND_HIGH_HZ = 1766e6;
 
 /**
  * LNB Module Core - Business Logic Layer
@@ -98,21 +109,26 @@ export abstract class LNBModuleCore extends RFFrontEndModule<LNBState> {
       } as RfSignal;
     });
 
-    // Calculate IF signals after LNB based on LO frequency
+    // Calculate IF signals after LNB based on LO frequency.
+    // Direct sampling (SDR): RF passes through unmixed with a wide tuner
+    // passband; legacy path applies the 950-2150 MHz L-band IF filter.
+    const passbandLow = this.state.isDirectSampling ? DIRECT_SAMPLING_PASSBAND_LOW_HZ : 950e6;
+    const passbandHigh = this.state.isDirectSampling ? DIRECT_SAMPLING_PASSBAND_HIGH_HZ : 2150e6;
+
     this.ifSignals = this.postLNASignals.map(sig => {
       const ifFreq = this.calculateIfFrequency(sig.frequency);
 
-      // If frequency is outside of 950e6 or 2150e6, drop signal 40 dB to simulate the bandpass filters
-      let filteredPower = (ifFreq < 950e6 || ifFreq > 2150e6) ? sig.power - 40 : sig.power;
+      // If frequency is outside the passband, drop signal 40 dB to simulate the bandpass filters
+      let filteredPower = (ifFreq < passbandLow || ifFreq > passbandHigh) ? sig.power - 40 : sig.power;
 
       // If it is on the edge and the bandwidth causes it to partially roll off, apply partial attenuation
       const halfBw = sig.bandwidth / 2;
-      if (ifFreq - halfBw < 950e6) {
-        const overlapHz = 950e6 - (ifFreq - halfBw);
+      if (ifFreq - halfBw < passbandLow) {
+        const overlapHz = passbandLow - (ifFreq - halfBw);
         const overlapFraction = overlapHz / sig.bandwidth;
         filteredPower -= 40 * overlapFraction;
-      } else if (ifFreq + halfBw > 2150e6) {
-        const overlapHz = (ifFreq + halfBw) - 2150e6;
+      } else if (ifFreq + halfBw > passbandHigh) {
+        const overlapHz = (ifFreq + halfBw) - passbandHigh;
         const overlapFraction = overlapHz / sig.bandwidth;
         filteredPower -= 40 * overlapFraction;
       }
@@ -348,6 +364,11 @@ export abstract class LNBModuleCore extends RFFrontEndModule<LNBState> {
    * @returns IF output frequency in Hz
    */
   calculateIfFrequency(rfFrequency: RfFrequency): IfFrequency {
+    // Direct sampling (SDR): no mixer, RF frequency passes through unchanged
+    if (this.state.isDirectSampling) {
+      return rfFrequency as number as IfFrequency;
+    }
+
     // Apply frequency error to LO (error is 0 when locked and warmed up)
     const effectiveLO = this.state.loFrequency * 1e6 + this.state.frequencyError;
 

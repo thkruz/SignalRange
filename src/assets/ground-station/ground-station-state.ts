@@ -35,6 +35,8 @@ export interface GroundStationState {
   location: GroundStationLocation;
   isOperational: boolean;
   equipment: Partial<GroundStationEquipmentState>;
+  /** Station class (see GroundStationConfig.stationClass); undefined = professional */
+  stationClass?: 'professional' | 'backyard';
 }
 
 /**
@@ -59,4 +61,10 @@ export interface GroundStationConfig {
   receivers?: Partial<ReceiverState>[]; // Initial receiver states (optional, parallel to receivers)
   teamId?: number;
   serverId?: number;
+  /**
+   * Station class. Opt-in: 'backyard' (Campaign 3+) enables the hobbyist SDR
+   * Console tab and hides the TX chain; when omitted the station renders as a
+   * professional site exactly as before.
+   */
+  stationClass?: 'professional' | 'backyard';
 }

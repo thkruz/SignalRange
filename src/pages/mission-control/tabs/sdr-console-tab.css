@@ -1,0 +1,474 @@
+/*
+ * SDR Console tab (Campaign 3 backyard stations).
+ * Deliberately styled like 2000s hobbyist freeware (SDR++/SDR# lineage):
+ * collapsible left menu, beveled chrome, system fonts, phosphor-green
+ * readouts. Scoped under .sdr-console-tab so nothing leaks into the
+ * professional mission-control styling.
+ */
+
+.sdr-console-tab {
+  height: 100%;
+  padding: 0.5rem;
+  font-family: Verdana, Tahoma, 'MS Sans Serif', sans-serif;
+  font-size: 12px;
+}
+
+.sdr-window {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  border: 2px outset #6b7280;
+  background: #1a1d21;
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.4);
+}
+
+/* ── Title bar ─────────────────────────────────────────────────────────── */
+
+.sdr-titlebar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 3px 8px;
+  background: linear-gradient(90deg, #0a3d62, #1e6091);
+  color: #fff;
+  font-weight: bold;
+  font-size: 12px;
+  user-select: none;
+}
+
+.sdr-titlebar-buttons {
+  letter-spacing: 4px;
+  font-family: monospace;
+}
+
+/* ── Top bar: fake buttons, VFO digits, signal meter ───────────────────── */
+
+.sdr-topbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+  padding: 4px 8px;
+  background: #2b2f36;
+  border-bottom: 2px groove #4b5563;
+}
+
+.sdr-fakebtns {
+  display: flex;
+  gap: 4px;
+}
+
+.sdr-fakebtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 24px;
+  border: 2px outset #6b7280;
+  background: #374151;
+  color: #9ca3af;
+  font-size: 12px;
+  user-select: none;
+}
+
+.sdr-vfo-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.sdr-freq-digits {
+  display: flex;
+  align-items: baseline;
+  padding: 2px 10px;
+  border: 2px inset #6b7280;
+  background: #000;
+  font-family: 'Courier New', monospace;
+  font-size: 26px;
+  font-weight: bold;
+  color: #4ade80;
+  user-select: none;
+}
+
+.sdr-digit {
+  cursor: ns-resize;
+  padding: 0 1px;
+}
+
+.sdr-digit:hover {
+  background: #14532d;
+}
+
+.sdr-digit.dim,
+.sdr-digit-sep.dim {
+  color: #1f3d2a;
+}
+
+.sdr-btn {
+  min-width: 26px;
+  padding: 2px 6px;
+  border: 2px outset #6b7280;
+  background: #374151;
+  color: #d1d5db;
+  font-family: Verdana, Tahoma, sans-serif;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.sdr-btn:active {
+  border-style: inset;
+}
+
+.sdr-pol-btn.active {
+  border-style: inset;
+  background: #14532d;
+  color: #4ade80;
+}
+
+.sdr-meter-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.sdr-meter {
+  width: 120px;
+  height: 12px;
+  border: 2px inset #6b7280;
+  background: #000;
+}
+
+.sdr-meter-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #16a34a, #eab308, #dc2626);
+  transition: width 0.2s linear;
+}
+
+/* ── Shared field styles ───────────────────────────────────────────────── */
+
+.sdr-label {
+  font-size: 10px;
+  color: #9ca3af;
+  text-transform: uppercase;
+}
+
+.sdr-readout {
+  font-family: 'Courier New', monospace;
+  color: #4ade80;
+}
+
+.sdr-adc-bad {
+  color: #eab308;
+}
+
+.sdr-lock {
+  padding: 1px 6px;
+  border: 1px solid #6b7280;
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  color: #9ca3af;
+  background: #111;
+}
+
+.sdr-lock.locked {
+  color: #4ade80;
+  border-color: #4ade80;
+}
+
+/* Diagnostic hints (BW TOO WIDE / BW TOO NARROW / MODE?) */
+.sdr-lock.hint {
+  color: #eab308;
+  border-color: #eab308;
+}
+
+.sdr-check {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #d1d5db;
+  cursor: pointer;
+}
+
+.sdr-select,
+.sdr-input {
+  padding: 2px 4px;
+  border: 2px inset #6b7280;
+  background: #000;
+  color: #4ade80;
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  min-width: 0;
+}
+
+.sdr-input {
+  width: 5rem;
+  text-align: right;
+}
+
+.sdr-pol-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+
+/* ── Body: left menu + right displays ──────────────────────────────────── */
+
+.sdr-body {
+  display: flex;
+  gap: 8px;
+  padding: 8px;
+  align-items: stretch;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.sdr-menu {
+  flex: 0 0 290px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.sdr-section {
+  border: 1px solid #3a3f4a;
+  background: #22262d;
+}
+
+.sdr-section-header {
+  padding: 3px 6px;
+  background: #2b2f36;
+  color: #d1d5db;
+  font-size: 10px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.sdr-section-header:hover {
+  background: #343a44;
+}
+
+.sdr-section-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px;
+}
+
+.sdr-section.collapsed .sdr-section-body {
+  display: none;
+}
+
+.sdr-field-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sdr-field-row .sdr-label {
+  flex: 0 0 3.5rem;
+}
+
+.sdr-field-row .sdr-select {
+  flex: 1 1 auto;
+}
+
+.sdr-field-row input[type='range'] {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.sdr-stub-text {
+  color: #6b7280;
+  font-family: 'Courier New', monospace;
+  font-size: 10px;
+}
+
+/* ── Frequency manager (bookmarks) ─────────────────────────────────────── */
+
+.sdr-bookmark-list {
+  max-height: 130px;
+  overflow-y: auto;
+}
+
+.sdr-bookmark {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  width: 100%;
+  padding: 2px 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #d1d5db;
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sdr-bookmark:hover {
+  background: #14532d;
+  border-color: #1f7a2e;
+}
+
+.sdr-bookmark-freq {
+  color: #4ade80;
+}
+
+/* ── Rotator ───────────────────────────────────────────────────────────── */
+
+.sdr-rot-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  color: #9ca3af;
+  font-size: 11px;
+}
+
+.sdr-rot-fixed {
+  color: #6b7280;
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  letter-spacing: 1px;
+}
+
+/* ── Decoder ───────────────────────────────────────────────────────────── */
+
+.sdr-decode-panel {
+  height: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px inset #6b7280;
+  background: #000;
+  overflow: hidden;
+}
+
+.sdr-decode-nosignal {
+  font-family: 'Courier New', monospace;
+  color: #374151;
+  letter-spacing: 2px;
+}
+
+.sdr-decode-media {
+  max-width: 100%;
+  max-height: 100%;
+}
+
+/* ── Displays: spectrum, band plan, waterfall, VFO overlay ─────────────── */
+
+.sdr-display {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.sdr-display-stack {
+  position: relative;
+  border: 2px inset #6b7280;
+  background: #000814;
+  cursor: crosshair;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+#sdr-spectrum,
+#sdr-waterfall {
+  width: 100%;
+  display: block;
+}
+
+#sdr-spectrum {
+  flex: 0 0 140px;
+  height: 140px;
+  border-bottom: 1px solid #1f2530;
+}
+
+/* Waterfall stretches to fill remaining height (buffer rows scale vertically) */
+#sdr-waterfall {
+  flex: 1 1 auto;
+  min-height: 160px;
+  height: auto;
+}
+
+.sdr-bandplan {
+  position: relative;
+  flex: 0 0 16px;
+  height: 16px;
+  background: #0a0f18;
+  border-top: 1px solid #1f2530;
+  border-bottom: 1px solid #1f2530;
+  overflow: hidden;
+}
+
+.sdr-bandplan-seg {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(30, 96, 145, 0.55);
+  color: #cbe6ff;
+  font-size: 9px;
+  letter-spacing: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  border-left: 1px solid rgba(103, 232, 249, 0.4);
+  border-right: 1px solid rgba(103, 232, 249, 0.4);
+}
+
+.sdr-vfo-overlay {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.08);
+  border-left: 1px solid rgba(255, 255, 255, 0.35);
+  border-right: 1px solid rgba(255, 255, 255, 0.35);
+  pointer-events: none;
+}
+
+.sdr-vfo-center {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  background: rgba(255, 80, 80, 0.6);
+}
+
+.sdr-freq-scale {
+  display: flex;
+  justify-content: space-between;
+  padding: 2px 4px;
+  font-family: 'Courier New', monospace;
+  font-size: 10px;
+  color: #9ca3af;
+}
+
+/* ── Status bar ────────────────────────────────────────────────────────── */
+
+.sdr-statusbar {
+  display: flex;
+  justify-content: space-between;
+  padding: 3px 8px;
+  border-top: 2px groove #4b5563;
+  background: #2b2f36;
+  color: #6b7280;
+  font-size: 10px;
+}
+
+#sdr-status-tuning {
+  font-family: 'Courier New', monospace;
+  color: #9ca3af;
+}

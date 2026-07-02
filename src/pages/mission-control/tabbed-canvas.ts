@@ -19,7 +19,9 @@ import { MissionOverviewTab } from '@app/pages/mission-control/tabs/mission-over
 import { PassScheduleTab } from '@app/pages/mission-control/tabs/pass-schedule-tab';
 import { RxAnalysisTab } from '@app/pages/mission-control/tabs/rx-analysis-tab';
 import { SatelliteDashboardTab } from '@app/pages/mission-control/tabs/satellite-dashboard-tab';
+import { SdrConsoleTab } from '@app/pages/mission-control/tabs/sdr-console-tab';
 import { TxChainTab } from '@app/pages/mission-control/tabs/tx-chain-tab';
+import { OrbitalSatellite } from '@app/equipment/satellite/orbital-satellite';
 
 /**
  * TabbedCanvas - Dynamic tabbed interface for ground station equipment
@@ -34,7 +36,7 @@ export class TabbedCanvas extends BaseElement {
 
   private activeTab_: string = 'mission-overview';
   private selectedAssetId_: string | null = null;
-  private readonly tabInstances_: Map<string, ACUControlTab | DashboardTab | RxAnalysisTab | TxChainTab | GPSTimingTab | SatelliteDashboardTab | MissionOverviewTab | PassScheduleTab> = new Map();
+  private readonly tabInstances_: Map<string, ACUControlTab | DashboardTab | RxAnalysisTab | TxChainTab | GPSTimingTab | SatelliteDashboardTab | MissionOverviewTab | PassScheduleTab | SdrConsoleTab> = new Map();
 
   protected html_ = html`
     <div class="tabbed-canvas">
@@ -145,6 +147,24 @@ export class TabbedCanvas extends BaseElement {
       return;
     }
 
+    const hasOrbitalSats = SimulationManager.getInstance().satellites.some((sat) => sat instanceof OrbitalSatellite);
+
+    // Backyard stations (Campaign 3+) are hobbyist SDR rigs: no ACU racks, no
+    // professional RX/TX chains, no dashboard of links to those tabs. The SDR
+    // Console (with its rotator panel) is the whole rig; Observations covers
+    // planning. Absent stationClass renders the professional tab set as before.
+    if (groundStation.state.stationClass === 'backyard') {
+      const backyardTabs: Array<{ id: string; label: string; icon: string; isDisabled?: boolean }> = [
+        { id: 'sdr-console', label: 'SDR Console', icon: radarPng, isDisabled: groundStation.state.isOperational === false },
+      ];
+      if (hasOrbitalSats) {
+        backyardTabs.push({ id: 'pass-schedule', label: 'Observations', icon: stopwatchPng, isDisabled: groundStation.state.isOperational === false });
+      }
+      this.renderTabs_(backyardTabs);
+      this.switchTab_('sdr-console');
+      return;
+    }
+
     const tabs: Array<{ id: string; label: string; icon: string; isDisabled?: boolean }> = [
       { id: 'dashboard', label: 'Dashboard', icon: dashboardPng },
     ];
@@ -170,8 +190,9 @@ export class TabbedCanvas extends BaseElement {
       { id: 'gps-timing', label: 'GPS Timing', icon: gpsPng, isDisabled: groundStation.state.isOperational === false },
     );
 
-    // Pass Schedule only exists for scenarios with orbital (SGP4) satellites
-    if (SimulationManager.getInstance().satellites.some((sat) => sat.orbitType === 'leo')) {
+    // Pass Schedule only exists for scenarios with orbital (SGP4) satellites.
+    // (Any OrbitalSatellite qualifies — MEO birds like GPS included.)
+    if (hasOrbitalSats) {
       tabs.push({ id: 'pass-schedule', label: 'Pass Schedule', icon: stopwatchPng, isDisabled: groundStation.state.isOperational === false });
     }
 
@@ -319,6 +340,10 @@ export class TabbedCanvas extends BaseElement {
 
       case 'pass-schedule':
         this.renderPassScheduleTab_();
+        break;
+
+      case 'sdr-console':
+        this.renderSdrConsoleTab_(content);
         break;
 
       default:
@@ -547,6 +572,41 @@ export class TabbedCanvas extends BaseElement {
     }
 
     passTab.activate();
+  }
+
+  /**
+   * Render SDR Console tab (Campaign 3+ backyard stations)
+   */
+  private renderSdrConsoleTab_(content: HTMLElement): void {
+    const groundStation = SimulationManager.getInstance().groundStations.find(
+      gs => gs.state.id === this.selectedAssetId_
+    );
+
+    if (!groundStation) {
+      content.innerHTML = html`
+        <div class="tab-content-placeholder">
+          <h3>Error</h3>
+          <p>Ground station not found.</p>
+        </div>
+      `;
+      return;
+    }
+
+    const tabKey = `sdr-console-${this.selectedAssetId_}`;
+    let sdrTab = this.tabInstances_.get(tabKey) as SdrConsoleTab;
+
+    if (sdrTab && !document.contains(sdrTab.dom)) {
+      sdrTab.dispose();
+      this.tabInstances_.delete(tabKey);
+      sdrTab = null!;
+    }
+
+    if (!sdrTab) {
+      sdrTab = new SdrConsoleTab(groundStation, 'canvas-content');
+      this.tabInstances_.set(tabKey, sdrTab);
+    }
+
+    sdrTab.activate();
   }
 
   /**

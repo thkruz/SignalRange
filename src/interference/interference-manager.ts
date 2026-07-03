@@ -20,6 +20,20 @@ import { SimulationManager } from '@app/simulation/simulation-manager';
 import type { dBi, dBm, FECType, Hertz, ModulationType, RfFrequency, RfSignal } from '@app/types';
 import type { Milliseconds } from 'ootk';
 
+/**
+ * Ground-truth location of a terrestrial interference source (Campaign 5+).
+ * Never rendered to the player directly - it drives geolocation measurement
+ * synthesis and objective grading only.
+ */
+export interface EmitterGroundTruth {
+  /** WGS-84 latitude, degrees */
+  latitude: number;
+  /** WGS-84 longitude, degrees */
+  longitude: number;
+  /** Altitude above the WGS-84 ellipsoid, km. Default: 0 */
+  altitudeKm?: number;
+}
+
 export interface InterferenceEventConfig {
   id: string;
   /** NORAD ID of the satellite whose transponder relays the interferer */
@@ -40,6 +54,12 @@ export interface InterferenceEventConfig {
   periodSeconds: number;
   /** Transmit-on time per period (s) */
   onSeconds: number;
+  /**
+   * Opt-in (Campaign 5+): where on Earth the interferer transmits from.
+   * When omitted, behavior is identical to before - the event is a pure
+   * transponder injection with no geolocation observables.
+   */
+  emitter?: EmitterGroundTruth;
 }
 
 export class InterferenceManager {
@@ -73,6 +93,16 @@ export class InterferenceManager {
   /** Whether the event's interferer is currently transmitting */
   isEventActive(eventId: string): boolean {
     return this.activeSignalIds_.has(InterferenceManager.signalIdFor(eventId));
+  }
+
+  /** Event config by id (undefined when the scenario doesn't declare it) */
+  getEvent(eventId: string): InterferenceEventConfig | undefined {
+    return this.events_.find((event) => event.id === eventId);
+  }
+
+  /** All events carrying geolocatable emitter ground truth (Campaign 5+) */
+  getEventsWithEmitters(): InterferenceEventConfig[] {
+    return this.events_.filter((event) => event.emitter !== undefined);
   }
 
   static signalIdFor(eventId: string): string {

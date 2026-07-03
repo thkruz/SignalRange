@@ -10,6 +10,7 @@ import { TapPoint } from "@app/equipment/rf-front-end/coupler-module/tap-points"
 import { EventBus } from '@app/events/event-bus';
 import { Events, QuizCompletedData, QuizPassedData } from '@app/events/events';
 import { FaultInjector } from '@app/faults';
+import { GeolocationConsoleCore } from '@app/equipment/geolocation-console/geolocation-console-core';
 import { HintManager } from '@app/modal/hint-manager';
 import { QuizManager } from '@app/modal/quiz-manager';
 import { OpsLogManager } from '@app/ops-log/ops-log-manager';
@@ -2309,6 +2310,26 @@ export class ObjectivesManager {
 
         const faultInjector = FaultInjector.getInstance();
         return !faultInjector.isActive(faultId);
+      }
+
+      case 'geolocation-measurements-collected': {
+        // >= minCount TDOA/FDOA captures collected on the geolocation console
+        if (!GeolocationConsoleCore.isInitialized()) return false;
+        const minCount = condition.params?.minCount ?? 1;
+        const eventId = condition.params?.interferenceEventId;
+        const measurements = GeolocationConsoleCore.getInstance().state.measurements;
+        const count = eventId
+          ? measurements.filter((m) => m.interferenceEventId === eventId).length
+          : measurements.length;
+        return count >= minCount;
+      }
+
+      case 'geolocation-fix-accuracy': {
+        // Computed fix within maxErrorKm of the emitter ground truth
+        if (!GeolocationConsoleCore.isInitialized()) return false;
+        const maxErrorKm = condition.params?.maxErrorKm ?? 25;
+        const state = GeolocationConsoleCore.getInstance().state;
+        return state.fix !== null && state.fixErrorKm !== null && state.fixErrorKm <= maxErrorKm;
       }
 
       default:

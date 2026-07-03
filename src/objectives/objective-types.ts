@@ -95,7 +95,10 @@ export type ConditionType =
   | 'tx-key-status' // TX encryption key status matches value
   // Fault injection conditions
   | 'fault-active' // Check if specific fault is currently injected
-  | 'fault-cleared'; // Check if specific fault has been cleared
+  | 'fault-cleared' // Check if specific fault has been cleared
+  // Geolocation conditions (Campaign 5)
+  | 'geolocation-measurements-collected' // >= N TDOA/FDOA captures collected
+  | 'geolocation-fix-accuracy'; // Computed fix within N km of the emitter truth
 
 /**
  * Equipment references for condition checking
@@ -277,6 +280,14 @@ export interface ConditionParams {
   // Fault injection condition parameters
   /** For fault-active/fault-cleared: fault ID to check */
   faultId?: string;
+
+  // Geolocation condition parameters (Campaign 5)
+  /** For geolocation-measurements-collected: minimum capture count */
+  minCount?: number;
+  /** For geolocation-fix-accuracy: maximum fix error vs truth, km */
+  maxErrorKm?: number;
+  /** For geolocation conditions: restrict to captures against this interference event */
+  interferenceEventId?: string;
 
   // Observation-gating parameters
   /**

@@ -230,6 +230,48 @@ body.campaign-ham-sdr .btn:active {
 }
 
 /* ==========================================================================
+   Per-Campaign Theme: Signal Hunter (22nd EWS - black-ops / coyote brown)
+   A military electronic-warfare posture: near-black surfaces with a coyote
+   brown accent, distinct from Campaign 1 (red) and Campaign 2 (blue). Scoped
+   to body.campaign-signal-hunter (Router-applied). --mc-danger* untouched, so
+   faults/alarms stay red in every campaign.
+   ========================================================================== */
+
+body.campaign-signal-hunter {
+  /* Primary accent: coyote brown */
+  --tblr-primary: #8f6f46 !important;
+  --tblr-primary-rgb: 143, 111, 70 !important;
+  --tblr-primary-text-emphasis: #d2a86a !important;
+  --tblr-primary-bg-subtle: rgba(143, 111, 70, 0.15) !important;
+  --tblr-primary-border-subtle: rgba(143, 111, 70, 0.3) !important;
+
+  --tblr-link-color: #b08d5a !important;
+  --tblr-link-hover-color: #d2a86a !important;
+
+  /* Semantic accent slots (names historic, values per-campaign) */
+  --mc-accent-red: #8f6f46;
+  --mc-accent-red-bright: #d2a86a;
+  --mc-accent-red-light: #a5834f;
+  --mc-accent-red-dark: #5f4a2e;
+  --mc-accent-red-rgb: 143, 111, 70;
+  --mc-accent-red-bright-rgb: 210, 168, 106;
+  --mc-accent-text-dark: #b08d5a;
+
+  /* Black-ops surfaces: near-black with low-contrast borders */
+  --mc-surface-0: #121314;
+  --mc-surface-1: #1a1b1d;
+  --mc-surface-2: #242628;
+  --mc-surface-3: #303235;
+  --mc-surface-4: #3d4043;
+  --mc-border: #242628;
+
+  --tblr-body-bg: #121314 !important;
+  --tblr-secondary-bg: #1a1b1d !important;
+  --tblr-tertiary-bg: #242628 !important;
+  --tblr-border-color: #242628 !important;
+}
+
+/* ==========================================================================
    Card Component Overrides
    ========================================================================== */
 

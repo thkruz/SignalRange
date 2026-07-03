@@ -1,6 +1,7 @@
 import type { CampaignData } from '@app/campaigns/campaign-types';
 import { hamSdrSandboxData } from '@app/campaigns/ham-sdr/sandbox';
 import { natsEuScenario1Data } from '@app/campaigns/nats-eu/scenario1';
+import { signalHunterSandboxData } from '@app/campaigns/signal-hunter/sandbox';
 import { sandboxData } from './sandbox';
 import { scenario1Data } from './scenario1';
 import { scenario2Data } from './scenario2';
@@ -125,22 +126,22 @@ export const ccsCampaignData: CampaignData = {
 };
 
 export const geolocationCampaignData: CampaignData = {
-  // Was 'ccs', a duplicate of ccsCampaignData's id (both disabled placeholders,
-  // so no stored progress referenced the old value)
-  id: 'geolocation',
+  // Campaign 5: "Signal Hunter" (README Q4). Was id 'ccs', a duplicate of
+  // ccsCampaignData; renamed to a unique id matching its /campaigns/:id route
+  // and body theme class (.campaign-signal-hunter).
+  id: 'signal-hunter',
   title: '22nd Electronic Warfare Squadron',
-  subtitle: 'Geolocation of Interference Sources',
-  description: `This campaign focuses on the geolocation of interference sources in electronic warfare scenarios. As a member of the 22 Electronic Warfare Squadron, you'll engage in a series of scenarios that require you to accurately locate and identify sources of signal interference while maintaining the integrity of friendly communications.<br><br>Through these scenarios, you'll hone your skills in direction finding, triangulation techniques, and signal analysis, all while operating within the dynamic landscape of electronic warfare.`,
+  subtitle: 'Signal Hunter — Geolocation of Interference Sources',
+  description: `Someone is jamming allied satellites. As a member of the 22nd Electronic Warfare Squadron, you'll locate the sources of hostile interference using advanced RF geolocation.<br><br>Learn the two-satellite TDOA/FDOA cross-fix technique: an uplink jammer leaks into a neighboring satellite's sidelobes, and correlating the two downlinks lets you draw crossing lines of position over the emitter. Detect, characterize, and geolocate intermittent interference, then hand a fix and error ellipse to the incident response cell.`,
   imageUrl: 'nats/north-atlantic-teleport-services.png',
   difficulty: 'advanced',
   totalDuration: '200-260 min',
   campaignType: 'Electronic Warfare',
   scenarios: [
-
+    signalHunterSandboxData,
   ],
   isLocked: false,
-  isDisabled: true,
-  disabledText: 'Access Denied',
+  isDisabled: false,
 };
 
 

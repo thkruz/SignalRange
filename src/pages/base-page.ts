@@ -16,6 +16,7 @@ import { ScenarioManager } from "@app/scenario-manager";
 import { ScenarioDialogManager } from "@app/scenarios/scenario-dialog-manager";
 import { WorkingDocumentManager } from "@app/scenarios/working-document-manager";
 import { InterferenceManager } from "@app/interference/interference-manager";
+import { GeolocationConsoleCore } from "@app/equipment/geolocation-console/geolocation-console-core";
 import { WeatherManager } from "@app/weather/weather-manager";
 import { ScenarioCompletionHandler } from "@app/scoring/scenario-completion-handler";
 import { ScoreCalculator } from "@app/scoring/score-calculator";
@@ -108,6 +109,12 @@ export abstract class BasePage extends BaseElement {
       // Start scheduled interference events (uplink jammers etc.)
       if ((scenario.settings.interferenceEvents?.length ?? 0) > 0) {
         InterferenceManager.getInstance();
+      }
+
+      // Start the geolocation console engine (Campaign 5). Must come after
+      // InterferenceManager so it can query active emitter events.
+      if (scenario.settings.geolocation) {
+        GeolocationConsoleCore.getInstance();
       }
 
       // Initialize quiz modal for status-check objective conditions

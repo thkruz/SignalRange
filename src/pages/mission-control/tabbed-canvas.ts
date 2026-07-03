@@ -10,10 +10,12 @@ import { html } from "@app/engine/utils/development/formatter";
 import { qs } from "@app/engine/utils/query-selector";
 import { EventBus } from "@app/events/event-bus";
 import { Events } from "@app/events/events";
+import { ScenarioManager } from "@app/scenario-manager";
 import { SimulationManager } from "@app/simulation/simulation-manager";
 import './tabbed-canvas.css';
 import { ACUControlTab } from '@app/pages/mission-control/tabs/acu-control-tab';
 import { DashboardTab } from '@app/pages/mission-control/tabs/dashboard-tab';
+import { GeolocationTab } from '@app/pages/mission-control/tabs/geolocation-tab';
 import { GPSTimingTab } from '@app/pages/mission-control/tabs/gps-timing-tab';
 import { MissionOverviewTab } from '@app/pages/mission-control/tabs/mission-overview-tab';
 import { PassScheduleTab } from '@app/pages/mission-control/tabs/pass-schedule-tab';
@@ -36,7 +38,7 @@ export class TabbedCanvas extends BaseElement {
 
   private activeTab_: string = 'mission-overview';
   private selectedAssetId_: string | null = null;
-  private readonly tabInstances_: Map<string, ACUControlTab | DashboardTab | RxAnalysisTab | TxChainTab | GPSTimingTab | SatelliteDashboardTab | MissionOverviewTab | PassScheduleTab | SdrConsoleTab> = new Map();
+  private readonly tabInstances_: Map<string, ACUControlTab | DashboardTab | RxAnalysisTab | TxChainTab | GPSTimingTab | SatelliteDashboardTab | MissionOverviewTab | PassScheduleTab | SdrConsoleTab | GeolocationTab> = new Map();
 
   protected html_ = html`
     <div class="tabbed-canvas">
@@ -196,6 +198,12 @@ export class TabbedCanvas extends BaseElement {
       tabs.push({ id: 'pass-schedule', label: 'Pass Schedule', icon: stopwatchPng, isDisabled: groundStation.state.isOperational === false });
     }
 
+    // Geolocation console only exists for scenarios that opt in via
+    // settings.geolocation (Campaign 5). Invisible to all other campaigns.
+    if (ScenarioManager.getInstance().settings.geolocation) {
+      tabs.push({ id: 'geolocation', label: 'Geolocation', icon: radarPng, isDisabled: groundStation.state.isOperational === false });
+    }
+
     this.renderTabs_(tabs);
     this.switchTab_('dashboard');
   }
@@ -340,6 +348,10 @@ export class TabbedCanvas extends BaseElement {
 
       case 'pass-schedule':
         this.renderPassScheduleTab_();
+        break;
+
+      case 'geolocation':
+        this.renderGeolocationTab_();
         break;
 
       case 'sdr-console':
@@ -572,6 +584,27 @@ export class TabbedCanvas extends BaseElement {
     }
 
     passTab.activate();
+  }
+
+  /**
+   * Render Geolocation tab (Campaign 5 interference geolocation console)
+   */
+  private renderGeolocationTab_(): void {
+    const tabKey = 'geolocation';
+    let geoTab = this.tabInstances_.get(tabKey) as GeolocationTab;
+
+    if (geoTab && !document.contains(geoTab.dom)) {
+      geoTab.dispose();
+      this.tabInstances_.delete(tabKey);
+      geoTab = null!;
+    }
+
+    if (!geoTab) {
+      geoTab = new GeolocationTab('canvas-content');
+      this.tabInstances_.set(tabKey, geoTab);
+    }
+
+    geoTab.activate();
   }
 
   /**

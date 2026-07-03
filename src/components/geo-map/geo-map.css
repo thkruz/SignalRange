@@ -1,0 +1,20 @@
+.geo-map {
+  display: block;
+  width: 100%;
+  line-height: 0;
+  border: 1px solid var(--mc-border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.geo-map-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  cursor: grab;
+  touch-action: none; /* let the canvas own wheel/drag gestures */
+}
+
+.geo-map-canvas:active {
+  cursor: grabbing;
+}

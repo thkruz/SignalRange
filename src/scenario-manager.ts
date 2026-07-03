@@ -27,6 +27,7 @@ import { scenario24Data } from '@app/campaigns/nats/scenario24';
 import { sandboxData as natsSandboxData } from '@app/campaigns/nats/sandbox';
 import { natsEuScenario1Data } from '@app/campaigns/nats-eu/scenario1';
 import { hamSdrSandboxData } from '@app/campaigns/ham-sdr/sandbox';
+import { signalHunterSandboxData } from '@app/campaigns/signal-hunter/sandbox';
 import { AntennaState } from '@app/equipment/antenna';
 import { ANTENNA_CONFIG_KEYS } from "@app/equipment/antenna/antenna-config-keys";
 import { defaultSpectrumAnalyzerState } from '@app/equipment/real-time-spectrum-analyzer/defaultSpectrumAnalyzerState';
@@ -104,7 +105,32 @@ export interface SimulationSettings {
     periodSeconds: number;
     /** Transmit-on seconds per period */
     onSeconds: number;
+    /** Opt-in (Campaign 5+): emitter ground truth for geolocation gameplay */
+    emitter?: {
+      latitude: number;
+      longitude: number;
+      altitudeKm?: number;
+    };
   }>;
+  /**
+   * Opt-in (Campaign 5+): two-satellite TDOA/FDOA geolocation console.
+   * When present, the Geolocation tab is registered in Mission Control and
+   * the GeolocationConsoleCore singleton is started. Absent in Campaigns 1-4.
+   */
+  geolocation?: {
+    /** NORAD ID of the victim (primary) satellite */
+    primaryNoradId: number;
+    /** NORAD IDs of selectable adjacent (sidelobe-collection) satellites */
+    adjacentNoradIds: number[];
+    /** 1-sigma TDOA measurement noise, seconds (difficulty knob) */
+    tdoaSigmaS: number;
+    /** 1-sigma FDOA measurement noise, Hz (difficulty knob) */
+    fdoaSigmaHz: number;
+    /** Solver search area and map extent */
+    areaOfInterest: { latMin: number; latMax: number; lonMin: number; lonMax: number };
+    /** Correlation integration window, simulated seconds. Default: 10 */
+    captureWindowS?: number;
+  };
   /** Working Document panel: an in-scenario document that accumulates a line
    *  per passed quiz whose condition declares params.documentLine. */
   workingDocument?: {
@@ -218,6 +244,7 @@ export const SCENARIOS: ScenarioData[] = [
   scenario24Data,
   natsEuScenario1Data,
   hamSdrSandboxData,
+  signalHunterSandboxData,
 ];
 
 export function isScenarioLocked(scenario: ScenarioData, completedScenarioIds: string[]): boolean {

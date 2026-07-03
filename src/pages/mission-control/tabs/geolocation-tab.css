@@ -1,0 +1,87 @@
+.geolocation-tab {
+  padding: 0.75rem;
+}
+
+.geolocation-tab .geo-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.geolocation-tab .geo-label {
+  font-size: 0.7rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--mc-text-tertiary);
+}
+
+.geolocation-tab .geo-capture-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.geolocation-tab .geo-capture-row .btn {
+  flex: 1 1 auto;
+}
+
+/* AUTO toggle: filled when actively running the capture loop */
+.geolocation-tab #geo-auto-btn.is-active {
+  background: var(--mc-accent-red);
+  border-color: var(--mc-accent-red);
+  color: #fff;
+}
+
+.geolocation-tab .geo-progress {
+  height: 6px;
+  margin-top: 0.5rem;
+  background: var(--mc-surface-2);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.geolocation-tab .geo-progress-bar {
+  height: 100%;
+  width: 0;
+  background: var(--mc-accent-red);
+  transition: width 0.2s linear;
+}
+
+.geolocation-tab .geo-progress-bar.is-integrating {
+  background: var(--mc-accent-red-bright);
+}
+
+.geolocation-tab .geo-capture-msg {
+  margin-top: 0.5rem;
+  min-height: 1.2rem;
+  font-size: 0.8rem;
+}
+
+.geolocation-tab .geo-msg-success {
+  color: var(--mc-accent-red-bright);
+}
+
+.geolocation-tab .geo-msg-failed {
+  color: var(--mc-danger, #e05a4f);
+}
+
+.geolocation-tab .geo-map-mount {
+  display: block;
+  width: 100%;
+}
+
+.geolocation-tab .geo-measurement-scroll {
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.geolocation-tab .geo-measurement-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--mc-surface-2);
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  color: var(--mc-text-tertiary);
+}

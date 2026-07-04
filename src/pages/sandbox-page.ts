@@ -9,6 +9,13 @@ import { WorkingDocumentManager } from "@app/scenarios/working-document-manager"
 import { InterferenceManager } from "@app/interference/interference-manager";
 import { ElectronicAttackManager } from "@app/electronic-attack/electronic-attack-manager";
 import { HardwareFaultManager } from "@app/faults/hardware-fault-manager";
+import { LinkBudgetManager } from "@app/link-budget/link-budget-manager";
+import { CommandingManager } from "@app/commanding/commanding-manager";
+import { ContactScheduleManager } from "@app/contact-schedule/contact-schedule-manager";
+import { SpaceEventManager } from "@app/space-events/space-event-manager";
+import { SecurityConsoleCore } from "@app/security-console/security-console-core";
+import { TransecManager } from "@app/transec/transec-manager";
+import { GnssThreatManager } from "@app/gnss-threat/gnss-threat-manager";
 import { WeatherManager } from "@app/weather/weather-manager";
 import { SimulationManager } from "@app/simulation/simulation-manager";
 import { QuizModal } from "@app/modal/quiz-modal";
@@ -184,6 +191,13 @@ export class SandboxPage extends BasePage {
     InterferenceManager.destroy();
     ElectronicAttackManager.destroy();
     HardwareFaultManager.destroy();
+    LinkBudgetManager.destroy();
+    CommandingManager.destroy();
+    ContactScheduleManager.destroy();
+    SpaceEventManager.destroy();
+    SecurityConsoleCore.destroy();
+    TransecManager.destroy();
+    GnssThreatManager.destroy();
     QuizModal.destroy();
     EventBus.destroy();
     const container = getEl(SandboxPage.containerId);

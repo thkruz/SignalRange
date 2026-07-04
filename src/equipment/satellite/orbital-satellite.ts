@@ -64,7 +64,7 @@ export interface OrbitalSatelliteConfig {
  * Below `minElevation` the satellite transmits nothing (LOS behavior).
  */
 export class OrbitalSatellite extends Satellite {
-  private readonly ootkSat_: OotkSatellite;
+  private ootkSat_: OotkSatellite;
   private readonly observer_: GroundObject;
   private readonly isDopplerEnabled_: boolean;
   private readonly minElevation_: Degrees;
@@ -116,6 +116,18 @@ export class OrbitalSatellite extends Satellite {
   /** The underlying ootk satellite (for pass planning and dashboards). */
   get ootkSatellite(): OotkSatellite {
     return this.ootkSat_;
+  }
+
+  /**
+   * Replace the propagation TLE at runtime and immediately re-seed telemetry
+   * (Campaign 2 M4 space-domain events). After a maneuver the authored TLE is
+   * stale; loading the updated ephemeris restores accurate az/el/range so the
+   * operator can reacquire. Backward-compatible: unused unless a scenario drives
+   * a space event.
+   */
+  reloadTle(tle1: TleLine1, tle2: TleLine2): void {
+    this.ootkSat_ = new OotkSatellite({ name: this.ootkSat_.name, tle1, tle2 });
+    this.propagateTo_(getSimulatedNowMs());
   }
 
   /** The ground station observer used for relative telemetry. */

@@ -1,6 +1,7 @@
 import type { CampaignData } from '@app/campaigns/campaign-types';
 import { hamSdrSandboxData } from '@app/campaigns/ham-sdr/sandbox';
 import { natsEuScenario1Data } from '@app/campaigns/nats-eu/scenario1';
+import { natsEuSandboxData } from '@app/campaigns/nats-eu/sandbox';
 import { ccsScenario1Data } from '@app/campaigns/ccs/scenario1';
 import { signalHunterSandboxData } from '@app/campaigns/signal-hunter/sandbox';
 import { sandboxData } from './sandbox';
@@ -87,6 +88,7 @@ export const natsEuCampaignData: CampaignData = {
   totalDuration: '160-220 min',
   campaignType: 'LEO Commercial Communications',
   scenarios: [
+    natsEuSandboxData,
     natsEuScenario1Data,
   ],
   isLocked: false,

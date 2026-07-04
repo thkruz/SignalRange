@@ -101,7 +101,31 @@ export type ConditionType =
   | 'geolocation-fix-accuracy' // Computed fix within N km of the emitter truth
   // Electronic-attack / SATCOM denial conditions (Campaign 4)
   | 'jamming-uplink-active' // Jam waveform radiating in the target uplink band
-  | 'jamming-effective'; // J/S at the target transponder meets the denial threshold
+  | 'jamming-effective' // J/S at the target transponder meets the denial threshold
+  // ── nats-eu (Campaign 2 European Operations) mechanics ──────────────────────
+  // M1 Link-budget / EIRP planning console
+  | 'link-budget-computed' // Operator's computed C/N worksheet matches truth within tolerance
+  | 'link-margin-met' // Applied link achieves margin at/above the required threshold
+  // M2 LEO uplink ops (uplink Doppler + TT&C commanding)
+  | 'uplink-doppler-comp-enabled' // Uplink Doppler compensation engaged on the command link
+  | 'command-acknowledged' // A TT&C command was sent inside a valid window and ACKed
+  // M5 Command-link auth / key ops (over the existing crypto model)
+  | 'key-rotation-completed' // A scheduled command-link key rotation has completed
+  | 'zeroize-executed' // The command-link key has been zeroized (emergency destruction)
+  // M3 Multi-station pass scheduling
+  | 'contact-assigned' // A pass/contact has been allocated to a ground station
+  | 'contact-plan-valid' // The contact plan has no conflicts and covers all required passes
+  // M4 Space-domain events (maneuvers / stale TLEs)
+  | 'ephemeris-updated' // Fresh ephemeris (TLE) has been loaded after a maneuver
+  // M6 SOC-lite security console (audit log + access control)
+  | 'audit-log-reviewed' // The station audit log has been opened and reviewed
+  | 'security-event-acknowledged' // A specific audit-log event has been acknowledged/flagged
+  | 'access-control-set' // A station account was moved to the target access state
+  // M7 TRANSEC anti-jam waveform
+  | 'transec-mode-set' // The modem TRANSEC waveform mode matches the target (fixed/hopping)
+  | 'transec-sync-locked' // The TRANSEC hop set is keyed and hop-sync is locked
+  // M8 GNSS spoofing / timing attack
+  | 'gpsdo-reference-mode-set'; // The GPSDO reference/discipline mode matches the target
 
 /**
  * Equipment references for condition checking
@@ -299,6 +323,24 @@ export interface ConditionParams {
   maxErrorKm?: number;
   /** For geolocation conditions: restrict to captures against this interference event */
   interferenceEventId?: string;
+
+  // ── nats-eu (Campaign 2) condition parameters ──────────────────────────────
+  /** For link-budget-computed / link-margin-met: minimum required margin in dB (default 0) */
+  minMarginDb?: number;
+  /** For command-acknowledged: specific command id to require (any acked command if omitted) */
+  commandId?: string;
+  /** For contact-assigned / ephemeris-updated / security-event-acknowledged: target entity id */
+  eventId?: string;
+  /** For contact-assigned: pass/contact id that must be allocated */
+  contactId?: string;
+  /** For access-control-set: station account id to check */
+  accountId?: string;
+  /** For access-control-set: target account access state */
+  accountStatus?: 'active' | 'disabled' | 'expired';
+  /** For transec-mode-set: target TRANSEC waveform mode */
+  transecMode?: 'fixed' | 'hopping';
+  /** For gpsdo-reference-mode-set: target GPSDO reference/discipline mode */
+  referenceMode?: 'gnss' | 'holdover' | 'manual';
 
   // Observation-gating parameters
   /**

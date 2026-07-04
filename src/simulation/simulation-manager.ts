@@ -68,6 +68,11 @@ export class SimulationManager {
     return this.instance_;
   }
 
+  /** Whether a SimulationManager already exists (does not construct one). */
+  static hasInstance(): boolean {
+    return !!this.instance_;
+  }
+
 
   private gameLoop_(): void {
     // Stop the loop if destroyed

@@ -26,6 +26,7 @@ import { scenario23Data } from '@app/campaigns/nats/scenario23';
 import { scenario24Data } from '@app/campaigns/nats/scenario24';
 import { sandboxData as natsSandboxData } from '@app/campaigns/nats/sandbox';
 import { natsEuScenario1Data } from '@app/campaigns/nats-eu/scenario1';
+import { natsEuSandboxData } from '@app/campaigns/nats-eu/sandbox';
 import { hamSdrSandboxData } from '@app/campaigns/ham-sdr/sandbox';
 import { signalHunterSandboxData } from '@app/campaigns/signal-hunter/sandbox';
 import { ccsScenario1Data } from '@app/campaigns/ccs/scenario1';
@@ -220,6 +221,100 @@ export interface SimulationSettings {
   scenarioStartDate?: string;
   /** Previous shift maintenance/ops log entries */
   previousShiftLogs?: PreviousShiftLogEntry[];
+
+  // ── nats-eu (Campaign 2 European Operations) opt-in mechanics ───────────────
+  // Each block, when present, starts a singleton manager and unlocks its
+  // objective conditions. Absent = the mechanic never instantiates, so all other
+  // campaigns are unaffected. Shapes mirror the config interfaces in the
+  // corresponding manager modules (kept inline to avoid an import cycle).
+
+  /** M1: link-budget / EIRP planning console. Starts LinkBudgetManager. */
+  linkBudget?: {
+    label?: string;
+    /** Ground-truth C/N (dB) the correct worksheet must yield */
+    expectedCNRDb: number;
+    /** Tolerance (dB) for accepting the operator's computed C/N (default 1.0) */
+    toleranceDb?: number;
+    /** Demod C/N threshold (dB) the margin is measured against */
+    thresholdCNRDb: number;
+    /** Required margin (dB) above threshold for acceptance (default 3) */
+    requiredMarginDb?: number;
+  };
+
+  /** M2/M5: LEO uplink ops + command-link key ops. Starts CommandingManager. */
+  commanding?: {
+    groundStationId?: string;
+    targetNoradId?: number;
+    /** Command window open/close, seconds since mission start (omit = always open) */
+    windowStartS?: number;
+    windowEndS?: number;
+    /** Require a Valid key for a command to ACK (default true) */
+    requireValidKey?: boolean;
+    /** Require uplink Doppler compensation for a command to ACK (default true) */
+    requireDopplerComp?: boolean;
+    /** Canned TT&C commands the console offers as one-click sends */
+    commands?: Array<{ id: string; label?: string }>;
+  };
+
+  /** M3: multi-station pass scheduling. Starts ContactScheduleManager. */
+  contactSchedule?: {
+    contacts: Array<{
+      id: string;
+      satelliteNoradId: number;
+      label?: string;
+      priority: number;
+      windowStartS: number;
+      windowEndS: number;
+    }>;
+    stationIds: string[];
+    /** Contacts with priority <= this must all be assigned for a valid plan */
+    requiredPriorityAtOrAbove?: number;
+  };
+
+  /** M4: space-domain events (maneuvers / stale TLEs). Starts SpaceEventManager. */
+  spaceEvents?: Array<{
+    id: string;
+    satelliteNoradId: number;
+    maneuverAtS: number;
+    newTle: { tle1: string; tle2: string };
+    label?: string;
+  }>;
+
+  /** M6: SOC-lite security console (audit log + access control). Starts SecurityConsoleCore. */
+  security?: {
+    accounts: Array<{
+      id: string;
+      name: string;
+      role: string;
+      status: 'active' | 'disabled' | 'expired';
+    }>;
+    events: Array<{
+      id: string;
+      timeS?: number;
+      timestampLabel?: string;
+      actor: string;
+      action: string;
+      category: 'auth' | 'config' | 'command' | 'access';
+      severity: 'info' | 'warning' | 'critical';
+      isAnomaly?: boolean;
+    }>;
+  };
+
+  /** M7: TRANSEC anti-jam waveform. Starts TransecManager. */
+  transec?: {
+    groundStationId?: string;
+    hopChannelsHz?: number[];
+    /** Whether a hop-set key must be loaded for sync to lock (default true) */
+    requireKey?: boolean;
+  };
+
+  /** M8: GNSS spoofing / timing attack. Starts GnssThreatManager. */
+  gnssThreat?: {
+    groundStationIds?: string[];
+    spoofStartS: number;
+    spoofEndS?: number;
+    offsetDriftUsPerS?: number;
+  };
 }
 
 export class ScenarioManager {
@@ -312,6 +407,7 @@ export const SCENARIOS: ScenarioData[] = [
   scenario22Data,
   scenario23Data,
   scenario24Data,
+  natsEuSandboxData,
   natsEuScenario1Data,
   hamSdrSandboxData,
   signalHunterSandboxData,

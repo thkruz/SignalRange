@@ -8,6 +8,13 @@ import { GroundStation } from '@app/assets/ground-station/ground-station';
 import { CryptoModule } from '@app/equipment/crypto';
 import { TapPoint } from "@app/equipment/rf-front-end/coupler-module/tap-points";
 import { ElectronicAttackManager } from '@app/electronic-attack/electronic-attack-manager';
+import { LinkBudgetManager } from '@app/link-budget/link-budget-manager';
+import { CommandingManager } from '@app/commanding/commanding-manager';
+import { ContactScheduleManager } from '@app/contact-schedule/contact-schedule-manager';
+import { SpaceEventManager } from '@app/space-events/space-event-manager';
+import { SecurityConsoleCore } from '@app/security-console/security-console-core';
+import { TransecManager } from '@app/transec/transec-manager';
+import { GnssThreatManager } from '@app/gnss-threat/gnss-threat-manager';
 import { EventBus } from '@app/events/event-bus';
 import { Events, QuizCompletedData, QuizPassedData } from '@app/events/events';
 import { FaultInjector } from '@app/faults';
@@ -2350,6 +2357,112 @@ export class ObjectivesManager {
         if (!ElectronicAttackManager.isInitialized()) return false;
         const assessment = ElectronicAttackManager.getInstance().getAssessment();
         return assessment?.isEffective === true;
+      }
+
+      // ═══════════════════════════════════════════════════════════════
+      // nats-eu (Campaign 2 European Operations) Conditions
+      // ═══════════════════════════════════════════════════════════════
+
+      case 'link-budget-computed': {
+        // Operator's computed C/N worksheet matches the acceptance truth
+        if (!LinkBudgetManager.isInitialized()) return false;
+        return LinkBudgetManager.getInstance().isBudgetComputedCorrectly();
+      }
+
+      case 'link-margin-met': {
+        // Committed link achieves the required margin over the demod threshold
+        if (!LinkBudgetManager.isInitialized()) return false;
+        return LinkBudgetManager.getInstance().isMarginMet(condition.params?.minMarginDb);
+      }
+
+      case 'uplink-doppler-comp-enabled': {
+        // Uplink Doppler compensation engaged on the command link
+        if (!CommandingManager.isInitialized()) return false;
+        return CommandingManager.getInstance().state.dopplerCompEnabled;
+      }
+
+      case 'command-acknowledged': {
+        // A TT&C command (or a specific one) was sent in-window and ACKed
+        if (!CommandingManager.isInitialized()) return false;
+        return CommandingManager.getInstance().isCommandAcknowledged(condition.params?.commandId);
+      }
+
+      case 'key-rotation-completed': {
+        // A scheduled command-link key rotation has completed
+        if (!CommandingManager.isInitialized()) return false;
+        return CommandingManager.getInstance().state.keyRotationCompleted;
+      }
+
+      case 'zeroize-executed': {
+        // The command-link key has been zeroized (emergency destruction)
+        if (!CommandingManager.isInitialized()) return false;
+        return CommandingManager.getInstance().state.zeroized;
+      }
+
+      case 'contact-assigned': {
+        // A pass/contact has been allocated (to a specific station if given)
+        if (!ContactScheduleManager.isInitialized()) return false;
+        const contactId = condition.params?.contactId;
+        if (!contactId) return false;
+        return ContactScheduleManager.getInstance().isContactAssigned(
+          contactId,
+          condition.params?.groundStationId,
+        );
+      }
+
+      case 'contact-plan-valid': {
+        // The contact plan has no conflicts and covers all required passes
+        if (!ContactScheduleManager.isInitialized()) return false;
+        return ContactScheduleManager.getInstance().isPlanValid();
+      }
+
+      case 'ephemeris-updated': {
+        // Fresh ephemeris loaded after a maneuver (specific event if given)
+        if (!SpaceEventManager.isInitialized()) return false;
+        return SpaceEventManager.getInstance().isEphemerisUpdated(condition.params?.eventId);
+      }
+
+      case 'audit-log-reviewed': {
+        // The station audit log has been opened and reviewed
+        if (!SecurityConsoleCore.isInitialized()) return false;
+        return SecurityConsoleCore.getInstance().isReviewed;
+      }
+
+      case 'security-event-acknowledged': {
+        // A specific audit-log event has been acknowledged/flagged
+        if (!SecurityConsoleCore.isInitialized()) return false;
+        const eventId = condition.params?.eventId;
+        if (!eventId) return false;
+        return SecurityConsoleCore.getInstance().isEventAcknowledged(eventId);
+      }
+
+      case 'access-control-set': {
+        // A station account is at the target access state (default 'disabled')
+        if (!SecurityConsoleCore.isInitialized()) return false;
+        const accountId = condition.params?.accountId;
+        if (!accountId) return false;
+        const target = condition.params?.accountStatus ?? 'disabled';
+        return SecurityConsoleCore.getInstance().getAccountStatus(accountId) === target;
+      }
+
+      case 'transec-mode-set': {
+        // The modem TRANSEC waveform mode matches the target
+        if (!TransecManager.isInitialized()) return false;
+        const mode = condition.params?.transecMode ?? 'hopping';
+        return TransecManager.getInstance().isModeSet(mode);
+      }
+
+      case 'transec-sync-locked': {
+        // The TRANSEC hop set is keyed and hop-sync is locked
+        if (!TransecManager.isInitialized()) return false;
+        return TransecManager.getInstance().isSyncLocked();
+      }
+
+      case 'gpsdo-reference-mode-set': {
+        // The GPSDO reference/discipline mode matches the target (default 'holdover')
+        if (!GnssThreatManager.isInitialized()) return false;
+        const mode = condition.params?.referenceMode ?? 'holdover';
+        return GnssThreatManager.getInstance().isReferenceModeSet(mode);
       }
 
       default:

@@ -19,6 +19,13 @@ import { InterferenceManager } from "@app/interference/interference-manager";
 import { GeolocationConsoleCore } from "@app/equipment/geolocation-console/geolocation-console-core";
 import { ElectronicAttackManager } from "@app/electronic-attack/electronic-attack-manager";
 import { HardwareFaultManager } from "@app/faults/hardware-fault-manager";
+import { LinkBudgetManager } from "@app/link-budget/link-budget-manager";
+import { CommandingManager } from "@app/commanding/commanding-manager";
+import { ContactScheduleManager } from "@app/contact-schedule/contact-schedule-manager";
+import { SpaceEventManager } from "@app/space-events/space-event-manager";
+import { SecurityConsoleCore } from "@app/security-console/security-console-core";
+import { TransecManager } from "@app/transec/transec-manager";
+import { GnssThreatManager } from "@app/gnss-threat/gnss-threat-manager";
 import { WeatherManager } from "@app/weather/weather-manager";
 import { ScenarioCompletionHandler } from "@app/scoring/scenario-completion-handler";
 import { ScoreCalculator } from "@app/scoring/score-calculator";
@@ -128,6 +135,30 @@ export abstract class BasePage extends BaseElement {
       // Start scheduled transmit-string hardware faults (Campaign 4 redundancy)
       if ((scenario.settings.hardwareFaultEvents?.length ?? 0) > 0) {
         HardwareFaultManager.getInstance();
+      }
+
+      // Start the nats-eu (Campaign 2) opt-in mechanics. Each is gated by its
+      // own settings block, so no other campaign instantiates them.
+      if (scenario.settings.linkBudget) {
+        LinkBudgetManager.getInstance();
+      }
+      if (scenario.settings.commanding) {
+        CommandingManager.getInstance();
+      }
+      if (scenario.settings.contactSchedule) {
+        ContactScheduleManager.getInstance();
+      }
+      if ((scenario.settings.spaceEvents?.length ?? 0) > 0) {
+        SpaceEventManager.getInstance();
+      }
+      if (scenario.settings.security) {
+        SecurityConsoleCore.getInstance();
+      }
+      if (scenario.settings.transec) {
+        TransecManager.getInstance();
+      }
+      if (scenario.settings.gnssThreat) {
+        GnssThreatManager.getInstance();
       }
 
       // Initialize quiz modal for status-check objective conditions

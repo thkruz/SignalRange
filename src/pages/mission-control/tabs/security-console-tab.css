@@ -1,0 +1,60 @@
+/* Station Security console tab (nats-eu M6 SOC-lite + M7 TRANSEC) */
+
+.security-console-tab {
+  padding: 0.75rem;
+}
+
+.security-console-tab .sec-title {
+  font-size: 1.1rem;
+  margin: 0;
+  color: var(--mc-text-primary);
+}
+
+.security-console-tab .sec-audit th,
+.security-console-tab .sec-audit td,
+.security-console-tab .sec-accounts th,
+.security-console-tab .sec-accounts td {
+  padding: 0.35rem 0.75rem;
+  border-color: var(--mc-border);
+  color: var(--mc-text-secondary);
+  vertical-align: middle;
+}
+
+.security-console-tab .sec-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem 0.625rem;
+  border-radius: 9999px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  font-family: 'JetBrains Mono', monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.25px;
+  min-width: 4.5rem;
+}
+
+.security-console-tab .sec-badge-muted {
+  background-color: rgba(75, 75, 75, 0.15);
+  color: var(--mc-text-muted, #6b6b6b);
+  border: 1px solid rgba(75, 75, 75, 0.3);
+}
+
+.security-console-tab .sec-badge-good {
+  background-color: rgba(34, 197, 94, 0.15);
+  color: #22c55e;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.security-console-tab .sec-badge-warn {
+  background-color: rgba(234, 179, 8, 0.15);
+  color: #eab308;
+  border: 1px solid rgba(234, 179, 8, 0.3);
+}
+
+/* Semantic fault indicator - stays red regardless of campaign accent */
+.security-console-tab .sec-badge-bad {
+  background-color: rgba(var(--mc-danger-rgb, 186, 22, 12), 0.15);
+  color: var(--mc-danger-bright, #ff2827);
+  border: 1px solid rgba(var(--mc-danger-rgb, 186, 22, 12), 0.3);
+}

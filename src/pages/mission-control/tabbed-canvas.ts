@@ -1,9 +1,13 @@
+import activityPng from '@app/assets/icons/activity.png';
 import downlinkPng from '@app/assets/icons/arrow-big-down-lines.png';
 import uplinkPng from '@app/assets/icons/arrow-big-up-lines.png';
+import checklistPng from '@app/assets/icons/checklist.png';
 import dashboardPng from '@app/assets/icons/dashboard.png';
 import gpsPng from '@app/assets/icons/gps.png';
 import radarPng from '@app/assets/icons/radar.png';
+import radioPng from '@app/assets/icons/radio.png';
 import satellitePng from '@app/assets/icons/satellite.png';
+import sharePng from '@app/assets/icons/share.png';
 import stopwatchPng from '@app/assets/icons/stopwatch.png';
 import { BaseElement } from "@app/components/base-element";
 import { html } from "@app/engine/utils/development/formatter";
@@ -14,15 +18,19 @@ import { ScenarioManager } from "@app/scenario-manager";
 import { SimulationManager } from "@app/simulation/simulation-manager";
 import './tabbed-canvas.css';
 import { ACUControlTab } from '@app/pages/mission-control/tabs/acu-control-tab';
+import { CommandingTab } from '@app/pages/mission-control/tabs/commanding-tab';
+import { ContactScheduleTab } from '@app/pages/mission-control/tabs/contact-schedule-tab';
 import { DashboardTab } from '@app/pages/mission-control/tabs/dashboard-tab';
 import { EaAssessmentTab } from '@app/pages/mission-control/tabs/ea-assessment-tab';
 import { GeolocationTab } from '@app/pages/mission-control/tabs/geolocation-tab';
 import { GPSTimingTab } from '@app/pages/mission-control/tabs/gps-timing-tab';
+import { LinkBudgetTab } from '@app/pages/mission-control/tabs/link-budget-tab';
 import { MissionOverviewTab } from '@app/pages/mission-control/tabs/mission-overview-tab';
 import { PassScheduleTab } from '@app/pages/mission-control/tabs/pass-schedule-tab';
 import { RxAnalysisTab } from '@app/pages/mission-control/tabs/rx-analysis-tab';
 import { SatelliteDashboardTab } from '@app/pages/mission-control/tabs/satellite-dashboard-tab';
 import { SdrConsoleTab } from '@app/pages/mission-control/tabs/sdr-console-tab';
+import { SecurityConsoleTab } from '@app/pages/mission-control/tabs/security-console-tab';
 import { TxChainTab } from '@app/pages/mission-control/tabs/tx-chain-tab';
 import { OrbitalSatellite } from '@app/equipment/satellite/orbital-satellite';
 
@@ -39,7 +47,7 @@ export class TabbedCanvas extends BaseElement {
 
   private activeTab_: string = 'mission-overview';
   private selectedAssetId_: string | null = null;
-  private readonly tabInstances_: Map<string, ACUControlTab | DashboardTab | RxAnalysisTab | TxChainTab | GPSTimingTab | SatelliteDashboardTab | MissionOverviewTab | PassScheduleTab | SdrConsoleTab | GeolocationTab | EaAssessmentTab> = new Map();
+  private readonly tabInstances_: Map<string, ACUControlTab | DashboardTab | RxAnalysisTab | TxChainTab | GPSTimingTab | SatelliteDashboardTab | MissionOverviewTab | PassScheduleTab | SdrConsoleTab | GeolocationTab | EaAssessmentTab | LinkBudgetTab | CommandingTab | ContactScheduleTab | SecurityConsoleTab> = new Map();
 
   protected html_ = html`
     <div class="tabbed-canvas">
@@ -211,6 +219,23 @@ export class TabbedCanvas extends BaseElement {
       tabs.push({ id: 'ea-assessment', label: 'EA Assessment', icon: radarPng, isDisabled: groundStation.state.isOperational === false });
     }
 
+    // nats-eu (Campaign 2 European Operations) operator consoles. Each tab only
+    // exists for scenarios that opt in via its settings block, so legacy
+    // campaigns are unaffected.
+    const settings = ScenarioManager.getInstance().settings;
+    if (settings.linkBudget) {
+      tabs.push({ id: 'link-budget', label: 'Link Analysis', icon: checklistPng, isDisabled: groundStation.state.isOperational === false });
+    }
+    if (settings.commanding) {
+      tabs.push({ id: 'commanding', label: 'TT&C', icon: radioPng, isDisabled: groundStation.state.isOperational === false });
+    }
+    if (settings.contactSchedule) {
+      tabs.push({ id: 'contact-schedule', label: 'Contact Plan', icon: sharePng, isDisabled: groundStation.state.isOperational === false });
+    }
+    if (settings.security || settings.transec) {
+      tabs.push({ id: 'security-console', label: 'Security', icon: activityPng, isDisabled: groundStation.state.isOperational === false });
+    }
+
     this.renderTabs_(tabs);
     this.switchTab_('dashboard');
   }
@@ -363,6 +388,22 @@ export class TabbedCanvas extends BaseElement {
 
       case 'ea-assessment':
         this.renderEaAssessmentTab_();
+        break;
+
+      case 'link-budget':
+        this.renderLinkBudgetTab_(content);
+        break;
+
+      case 'commanding':
+        this.renderCommandingTab_();
+        break;
+
+      case 'contact-schedule':
+        this.renderContactScheduleTab_();
+        break;
+
+      case 'security-console':
+        this.renderSecurityConsoleTab_();
         break;
 
       case 'sdr-console':
@@ -637,6 +678,104 @@ export class TabbedCanvas extends BaseElement {
     }
 
     eaTab.activate();
+  }
+
+  /**
+   * Render Link Budget tab (nats-eu M1 link planning console)
+   */
+  private renderLinkBudgetTab_(content: HTMLElement): void {
+    const groundStation = SimulationManager.getInstance().groundStations.find(
+      gs => gs.state.id === this.selectedAssetId_
+    );
+
+    if (!groundStation) {
+      content.innerHTML = html`
+        <div class="tab-content-placeholder">
+          <h3>Error</h3>
+          <p>Ground station not found.</p>
+        </div>
+      `;
+      return;
+    }
+
+    const tabKey = `link-budget-${this.selectedAssetId_}`;
+    let lbTab = this.tabInstances_.get(tabKey) as LinkBudgetTab;
+
+    if (lbTab && !document.contains(lbTab.dom)) {
+      lbTab.dispose();
+      this.tabInstances_.delete(tabKey);
+      lbTab = null!;
+    }
+
+    if (!lbTab) {
+      lbTab = new LinkBudgetTab(groundStation, 'canvas-content');
+      this.tabInstances_.set(tabKey, lbTab);
+    }
+
+    lbTab.activate();
+  }
+
+  /**
+   * Render Commanding tab (nats-eu M2/M5 TT&C commanding console)
+   */
+  private renderCommandingTab_(): void {
+    const tabKey = 'commanding';
+    let cmdTab = this.tabInstances_.get(tabKey) as CommandingTab;
+
+    if (cmdTab && !document.contains(cmdTab.dom)) {
+      cmdTab.dispose();
+      this.tabInstances_.delete(tabKey);
+      cmdTab = null!;
+    }
+
+    if (!cmdTab) {
+      cmdTab = new CommandingTab('canvas-content');
+      this.tabInstances_.set(tabKey, cmdTab);
+    }
+
+    cmdTab.activate();
+  }
+
+  /**
+   * Render Contact Schedule tab (nats-eu M3 multi-station pass allocation)
+   */
+  private renderContactScheduleTab_(): void {
+    const tabKey = 'contact-schedule';
+    let csTab = this.tabInstances_.get(tabKey) as ContactScheduleTab;
+
+    if (csTab && !document.contains(csTab.dom)) {
+      csTab.dispose();
+      this.tabInstances_.delete(tabKey);
+      csTab = null!;
+    }
+
+    if (!csTab) {
+      csTab = new ContactScheduleTab('canvas-content');
+      this.tabInstances_.set(tabKey, csTab);
+    }
+
+    csTab.activate();
+  }
+
+  /**
+   * Render Security tab (nats-eu M6 SOC-lite console + M7 TRANSEC)
+   */
+  private renderSecurityConsoleTab_(): void {
+    const tabKey = 'security-console';
+    let secTab = this.tabInstances_.get(tabKey) as SecurityConsoleTab;
+
+    if (secTab && !document.contains(secTab.dom)) {
+      secTab.dispose();
+      this.tabInstances_.delete(tabKey);
+      secTab = null!;
+    }
+
+    if (!secTab) {
+      secTab = new SecurityConsoleTab('canvas-content');
+      this.tabInstances_.set(tabKey, secTab);
+    }
+
+    secTab.activate();
   }
 
   /**

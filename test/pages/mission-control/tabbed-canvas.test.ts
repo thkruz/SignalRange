@@ -88,6 +88,7 @@ import { MissionOverviewTab } from '../../../src/pages/mission-control/tabs/miss
 import { RxAnalysisTab } from '../../../src/pages/mission-control/tabs/rx-analysis-tab';
 import { SatelliteDashboardTab } from '../../../src/pages/mission-control/tabs/satellite-dashboard-tab';
 import { TxChainTab } from '../../../src/pages/mission-control/tabs/tx-chain-tab';
+import { ScenarioManager, type SimulationSettings } from '../../../src/scenario-manager';
 import { SimulationManager } from '../../../src/simulation/simulation-manager';
 describe('TabbedCanvas', () => {
   let containerEl: HTMLElement;
@@ -541,5 +542,89 @@ describe('TabbedCanvas with non-operational ground station', () => {
 
     const dashboardTab = document.querySelector('[data-tab-id="dashboard"]');
     expect(dashboardTab?.classList.contains('disabled')).toBe(false);
+  });
+});
+
+describe('TabbedCanvas nats-eu console tab gating', () => {
+  const NATS_EU_TAB_IDS = ['link-budget', 'commanding', 'contact-schedule', 'security-console'];
+
+  let tabbedCanvas: TabbedCanvas;
+  let mockEventBus: { on: Mock; off: Mock; emit: Mock };
+  let savedSettings: SimulationSettings;
+
+  const selectGroundStation = (): void => {
+    const assetSelectedHandler = mockEventBus.on.mock.calls.find(
+      (call: [string, Function]) => call[0] === Events.ASSET_SELECTED
+    )?.[1];
+
+    assetSelectedHandler?.({ type: 'ground-station', id: 'GS-001' });
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+
+    SimulationManager.getInstance.mockReturnValue({
+      groundStations: [
+        {
+          state: { id: 'GS-001', name: 'Miami Station', isOperational: true },
+          antennas: [{ config: { band: 'C', diameter: 9 } }],
+        },
+      ],
+      satellites: [],
+      getSatByNoradId: vi.fn(() => null),
+    });
+
+    mockEventBus = { on: vi.fn(), off: vi.fn(), emit: vi.fn() };
+    (EventBus.getInstance as Mock).mockReturnValue(mockEventBus);
+
+    savedSettings = ScenarioManager.getInstance().settings;
+
+    const containerEl = document.createElement('div');
+    containerEl.id = 'tabbed-canvas-container';
+    document.body.appendChild(containerEl);
+
+    tabbedCanvas = new TabbedCanvas('tabbed-canvas-container');
+  });
+
+  afterEach(() => {
+    ScenarioManager.getInstance().settings = savedSettings;
+    tabbedCanvas.destroy();
+    document.body.innerHTML = '';
+  });
+
+  it('does not register any nats-eu console tab without its settings block', () => {
+    selectGroundStation();
+
+    NATS_EU_TAB_IDS.forEach((tabId) => {
+      expect(document.querySelector(`[data-tab-id="${tabId}"]`)).toBeNull();
+    });
+  });
+
+  it('registers each console tab when its opt-in settings block is present', () => {
+    ScenarioManager.getInstance().settings = {
+      ...savedSettings,
+      linkBudget: { expectedCNRDb: 14, thresholdCNRDb: 8 },
+      commanding: {},
+      contactSchedule: { contacts: [], stationIds: [] },
+      security: { accounts: [], events: [] },
+    };
+
+    selectGroundStation();
+
+    NATS_EU_TAB_IDS.forEach((tabId) => {
+      expect(document.querySelector(`[data-tab-id="${tabId}"]`)).not.toBeNull();
+    });
+  });
+
+  it('registers the security tab for a transec-only scenario', () => {
+    ScenarioManager.getInstance().settings = {
+      ...savedSettings,
+      transec: {},
+    };
+
+    selectGroundStation();
+
+    expect(document.querySelector('[data-tab-id="security-console"]')).not.toBeNull();
+    expect(document.querySelector('[data-tab-id="link-budget"]')).toBeNull();
   });
 });

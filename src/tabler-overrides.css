@@ -272,6 +272,50 @@ body.campaign-signal-hunter {
 }
 
 /* ==========================================================================
+   Per-Campaign Theme: Counter Communications (ccs - 9th EWS, black-ops / OD green)
+   Offensive electronic-attack posture: near-black surfaces with an olive-drab
+   (OD green) accent. Deliberately a sibling to the 22nd EWS "Signal Hunter"
+   military look (coyote brown) but distinct - two EW squadrons, two accents -
+   and clearly apart from Campaign 1 (red) and Campaign 2 (blue). Scoped to
+   body.campaign-ccs (Router-applied). --mc-danger* untouched: alarms/faults
+   (and the deconfliction/fratricide warnings) stay red in every campaign.
+   ========================================================================== */
+
+body.campaign-ccs {
+  /* Primary accent: olive drab (OD green) */
+  --tblr-primary: #6b7539 !important;
+  --tblr-primary-rgb: 107, 117, 57 !important;
+  --tblr-primary-text-emphasis: #a8b86a !important;
+  --tblr-primary-bg-subtle: rgba(107, 117, 57, 0.15) !important;
+  --tblr-primary-border-subtle: rgba(107, 117, 57, 0.3) !important;
+
+  --tblr-link-color: #8a9a52 !important;
+  --tblr-link-hover-color: #a8b86a !important;
+
+  /* Semantic accent slots (names historic, values per-campaign) */
+  --mc-accent-red: #6b7539;
+  --mc-accent-red-bright: #a8b86a;
+  --mc-accent-red-light: #7d8a44;
+  --mc-accent-red-dark: #454e22;
+  --mc-accent-red-rgb: 107, 117, 57;
+  --mc-accent-red-bright-rgb: 168, 184, 106;
+  --mc-accent-text-dark: #8a9a52;
+
+  /* Black-ops surfaces: near-black with a faint cool-green cast */
+  --mc-surface-0: #101311;
+  --mc-surface-1: #171b18;
+  --mc-surface-2: #212722;
+  --mc-surface-3: #2d332d;
+  --mc-surface-4: #3a413a;
+  --mc-border: #212722;
+
+  --tblr-body-bg: #101311 !important;
+  --tblr-secondary-bg: #171b18 !important;
+  --tblr-tertiary-bg: #212722 !important;
+  --tblr-border-color: #212722 !important;
+}
+
+/* ==========================================================================
    Card Component Overrides
    ========================================================================== */
 

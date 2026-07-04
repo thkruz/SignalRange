@@ -98,7 +98,10 @@ export type ConditionType =
   | 'fault-cleared' // Check if specific fault has been cleared
   // Geolocation conditions (Campaign 5)
   | 'geolocation-measurements-collected' // >= N TDOA/FDOA captures collected
-  | 'geolocation-fix-accuracy'; // Computed fix within N km of the emitter truth
+  | 'geolocation-fix-accuracy' // Computed fix within N km of the emitter truth
+  // Electronic-attack / SATCOM denial conditions (Campaign 4)
+  | 'jamming-uplink-active' // Jam waveform radiating in the target uplink band
+  | 'jamming-effective'; // J/S at the target transponder meets the denial threshold
 
 /**
  * Equipment references for condition checking
@@ -210,6 +213,14 @@ export interface ConditionParams {
   modemNumber?: number;
   /** For receiver-snr-threshold: minimum C/N ratio in dB */
   minCNRatio?: number;
+  /**
+   * For receiver-snr-threshold: maximum C/N ratio in dB. When set, the
+   * condition passes while the modem's C/N is at or BELOW this value - used to
+   * assert a link has been degraded/denied (e.g. a jammed victim downlink
+   * observed on a monitor receiver). May be combined with minCNRatio to require
+   * a band. Optional; existing scenarios use only minCNRatio.
+   */
+  maxCNRatio?: number;
   /** For rx-modem-bandwidth-set: target bandwidth in Hz */
   bandwidth?: number;
   /** For rx-modem-bandwidth-set: bandwidth tolerance in Hz */

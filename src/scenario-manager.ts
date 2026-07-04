@@ -28,6 +28,7 @@ import { sandboxData as natsSandboxData } from '@app/campaigns/nats/sandbox';
 import { natsEuScenario1Data } from '@app/campaigns/nats-eu/scenario1';
 import { hamSdrSandboxData } from '@app/campaigns/ham-sdr/sandbox';
 import { signalHunterSandboxData } from '@app/campaigns/signal-hunter/sandbox';
+import { ccsScenario1Data } from '@app/campaigns/ccs/scenario1';
 import { AntennaState } from '@app/equipment/antenna';
 import { ANTENNA_CONFIG_KEYS } from "@app/equipment/antenna/antenna-config-keys";
 import { defaultSpectrumAnalyzerState } from '@app/equipment/real-time-spectrum-analyzer/defaultSpectrumAnalyzerState';
@@ -131,6 +132,75 @@ export interface SimulationSettings {
     /** Correlation integration window, simulated seconds. Default: 10 */
     captureWindowS?: number;
   };
+  /**
+   * Opt-in (Campaign 4): offensive electronic-attack / SATCOM denial. When
+   * present, the ElectronicAttackManager is started (a player-driven interferer,
+   * the counterpart of interferenceEvents) and the EA Assessment tab is
+   * registered in Mission Control. Absent in Campaigns 1-3 and 5, so those
+   * campaigns are unaffected.
+   */
+  electronicAttack?: {
+    /** Ground station (by id) that mounts the jam chain */
+    groundStationId: string;
+    /** NORAD ID of the target (adversary) satellite being denied */
+    targetNoradId: number;
+    /** Antenna index that must be trained on the target to radiate the jam (default 0) */
+    jamAntennaIndex?: number;
+    /** Victim service carrier power at the transponder input, dBm (the "S" in J/S) */
+    victimCarrierPowerDbm: number;
+    /** Target transponder uplink passband the jam RF must fall within (Hz) */
+    targetUplinkLowHz: number;
+    /** Target transponder uplink passband upper edge (Hz) */
+    targetUplinkHighHz: number;
+    /** Uplink polarization the jam must match to route through the transponder */
+    targetPolarization: 'H' | 'V';
+    /**
+     * Calibration: dB added to the jam chain HPA output power to yield the
+     * jammer power at the transponder input. Folds uplink path loss + antenna
+     * gain into one term so the scenario stays winnable without a full uplink
+     * budget (mirrors how interferenceEvents specify power at the transponder).
+     */
+    jamPathGainDb: number;
+    /** Pointing tolerance (deg) for the jam antenna vs the target (default 5) */
+    pointingToleranceDeg?: number;
+    /** J/S ratio (dB) at/above which denial is considered effective (default 6) */
+    effectiveJtoSDb?: number;
+  };
+  /**
+   * Opt-in (Campaign 4): scheduled RF-chain / transmit-string hardware faults
+   * for redundancy training. Mirrors interferenceEvents' time trigger. When a
+   * fault trips, the targeted transmit modem on the given ground station faults
+   * (stops radiating), forcing failover to the backup transmit string. Absent
+   * = no scheduled faults, so legacy campaigns are unaffected.
+   */
+  hardwareFaultEvents?: Array<{
+    id: string;
+    /** Ground station whose equipment faults */
+    groundStationId: string;
+    /** Transmitter case index (default 0) */
+    transmitterIndex?: number;
+    /** Modem number (1-4) that faults - the "primary" transmit string */
+    modemNumber: number;
+    /** Seconds since mission start when the fault trips */
+    startTime: number;
+    /** Optional label for the ops log / alarm */
+    label?: string;
+  }>;
+  /**
+   * Opt-in (Campaign 4): own-force deconfliction. Radiating a jam waveform that
+   * overlaps any protected friendly range is an instant mission fail
+   * (fratricide), in the spirit of the HPA / dual-transmission RF-safety
+   * invariants. Only armed when electronicAttack is also present; absent = the
+   * interlock never fires.
+   */
+  protectedFrequencies?: Array<{
+    id: string;
+    label: string;
+    /** Protected uplink range lower edge (Hz) that must never be jammed */
+    minHz: number;
+    /** Protected uplink range upper edge (Hz) */
+    maxHz: number;
+  }>;
   /** Working Document panel: an in-scenario document that accumulates a line
    *  per passed quiz whose condition declares params.documentLine. */
   workingDocument?: {
@@ -245,6 +315,7 @@ export const SCENARIOS: ScenarioData[] = [
   natsEuScenario1Data,
   hamSdrSandboxData,
   signalHunterSandboxData,
+  ccsScenario1Data,
 ];
 
 export function isScenarioLocked(scenario: ScenarioData, completedScenarioIds: string[]): boolean {

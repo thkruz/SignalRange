@@ -1,6 +1,7 @@
 import type { CampaignData } from '@app/campaigns/campaign-types';
 import { hamSdrSandboxData } from '@app/campaigns/ham-sdr/sandbox';
 import { natsEuScenario1Data } from '@app/campaigns/nats-eu/scenario1';
+import { ccsScenario1Data } from '@app/campaigns/ccs/scenario1';
 import { signalHunterSandboxData } from '@app/campaigns/signal-hunter/sandbox';
 import { sandboxData } from './sandbox';
 import { scenario1Data } from './scenario1';
@@ -118,11 +119,10 @@ export const ccsCampaignData: CampaignData = {
   totalDuration: '200-260 min',
   campaignType: 'Electronic Warfare',
   scenarios: [
-
+    ccsScenario1Data,
   ],
   isLocked: false,
-  isDisabled: true,
-  disabledText: 'Access Denied',
+  isDisabled: false,
 };
 
 export const geolocationCampaignData: CampaignData = {

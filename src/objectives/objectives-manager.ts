@@ -7,6 +7,7 @@
 import { GroundStation } from '@app/assets/ground-station/ground-station';
 import { CryptoModule } from '@app/equipment/crypto';
 import { TapPoint } from "@app/equipment/rf-front-end/coupler-module/tap-points";
+import { ElectronicAttackManager } from '@app/electronic-attack/electronic-attack-manager';
 import { EventBus } from '@app/events/event-bus';
 import { Events, QuizCompletedData, QuizPassedData } from '@app/events/events';
 import { FaultInjector } from '@app/faults';
@@ -1840,14 +1841,19 @@ export class ObjectivesManager {
       }
 
       case 'receiver-snr-threshold': {
-        const minCNRatio = condition.params?.minCNRatio ?? 10;
+        // minCNRatio: C/N must be at or above (default). maxCNRatio (optional):
+        // C/N must be at or below - used to assert a link has been denied. When
+        // only maxCNRatio is given, the lower bound defaults to -Infinity.
+        const hasMax = condition.params?.maxCNRatio !== undefined;
+        const minCNRatio = condition.params?.minCNRatio ?? (hasMax ? -Infinity : 10);
+        const maxCNRatio = condition.params?.maxCNRatio ?? Infinity;
         return this.evaluateEquipment_(gs.receivers, condition.params, (receiver) => {
           const modemNum = condition.params?.modemNumber ?? receiver.state.activeModem;
           const modem = receiver.state.modems.find(m => m.modemNumber === modemNum);
           if (!modem?.isPowered) return false;
 
           const snr = receiver.getSnrForModem(modem);
-          return snr !== null && snr >= minCNRatio;
+          return snr !== null && snr >= minCNRatio && snr <= maxCNRatio;
         });
       }
 
@@ -2330,6 +2336,20 @@ export class ObjectivesManager {
         const maxErrorKm = condition.params?.maxErrorKm ?? 25;
         const state = GeolocationConsoleCore.getInstance().state;
         return state.fix !== null && state.fixErrorKm !== null && state.fixErrorKm <= maxErrorKm;
+      }
+
+      case 'jamming-uplink-active': {
+        // A jam waveform is radiating in the target transponder's uplink band
+        if (!ElectronicAttackManager.isInitialized()) return false;
+        const assessment = ElectronicAttackManager.getInstance().getAssessment();
+        return assessment?.isRadiatingInBand === true;
+      }
+
+      case 'jamming-effective': {
+        // Denial achieved: radiating on target with J/S at/above the threshold
+        if (!ElectronicAttackManager.isInitialized()) return false;
+        const assessment = ElectronicAttackManager.getInstance().getAssessment();
+        return assessment?.isEffective === true;
       }
 
       default:

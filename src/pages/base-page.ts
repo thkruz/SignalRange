@@ -1,6 +1,6 @@
 import { BaseElement } from "@app/components/base-element";
 import { EventBus } from "@app/events/event-bus";
-import { DualTransmissionViolationData, Events, HpaNoiseAmplificationData, ObjectiveFailedData, ScenarioTimeExpiredData } from "@app/events/events";
+import { DualTransmissionViolationData, Events, HpaNoiseAmplificationData, ObjectiveFailedData, ProtectedFreqViolationData, ScenarioTimeExpiredData } from "@app/events/events";
 import { Logger } from "@app/logging/logger";
 import { DialogHistoryManager } from "@app/modal/dialog-history-manager";
 import { DialogManager } from "@app/modal/dialog-manager";
@@ -17,6 +17,8 @@ import { ScenarioDialogManager } from "@app/scenarios/scenario-dialog-manager";
 import { WorkingDocumentManager } from "@app/scenarios/working-document-manager";
 import { InterferenceManager } from "@app/interference/interference-manager";
 import { GeolocationConsoleCore } from "@app/equipment/geolocation-console/geolocation-console-core";
+import { ElectronicAttackManager } from "@app/electronic-attack/electronic-attack-manager";
+import { HardwareFaultManager } from "@app/faults/hardware-fault-manager";
 import { WeatherManager } from "@app/weather/weather-manager";
 import { ScenarioCompletionHandler } from "@app/scoring/scenario-completion-handler";
 import { ScoreCalculator } from "@app/scoring/score-calculator";
@@ -117,6 +119,17 @@ export abstract class BasePage extends BaseElement {
         GeolocationConsoleCore.getInstance();
       }
 
+      // Start the electronic-attack engine (Campaign 4): a player-driven jam
+      // injector + J/S assessment + own-force deconfliction interlock.
+      if (scenario.settings.electronicAttack) {
+        ElectronicAttackManager.getInstance();
+      }
+
+      // Start scheduled transmit-string hardware faults (Campaign 4 redundancy)
+      if ((scenario.settings.hardwareFaultEvents?.length ?? 0) > 0) {
+        HardwareFaultManager.getInstance();
+      }
+
       // Initialize quiz modal for status-check objective conditions
       QuizModal.getInstance();
 
@@ -199,6 +212,14 @@ export abstract class BasePage extends BaseElement {
       ObjectiveFailedModal.getInstance().showFailure({
         title: 'Mission Failed',
         message: `CRITICAL ERROR: HPA is amplifying noise! The BUC is ${bucStatus} but HPA is enabled. Always disable HPA before muting or turning off the BUC to prevent equipment damage.`,
+        isScenarioTimeout: false,
+      });
+    });
+
+    eventBus.on(Events.PROTECTED_FREQ_VIOLATION, (data: ProtectedFreqViolationData) => {
+      ObjectiveFailedModal.getInstance().showFailure({
+        title: 'Mission Failed',
+        message: `FRATRICIDE: your jam waveform at ${(data.jamFrequencyHz / 1e6).toFixed(1)} MHz overlaps the protected ${data.protectedBandLabel}. Deconflict the jam frequency against friendly SATCOM before keying the transmitter - own-force interference is a mission-ending error.`,
         isScenarioTimeout: false,
       });
     });

@@ -15,6 +15,7 @@ import { SimulationManager } from "@app/simulation/simulation-manager";
 import './tabbed-canvas.css';
 import { ACUControlTab } from '@app/pages/mission-control/tabs/acu-control-tab';
 import { DashboardTab } from '@app/pages/mission-control/tabs/dashboard-tab';
+import { EaAssessmentTab } from '@app/pages/mission-control/tabs/ea-assessment-tab';
 import { GeolocationTab } from '@app/pages/mission-control/tabs/geolocation-tab';
 import { GPSTimingTab } from '@app/pages/mission-control/tabs/gps-timing-tab';
 import { MissionOverviewTab } from '@app/pages/mission-control/tabs/mission-overview-tab';
@@ -38,7 +39,7 @@ export class TabbedCanvas extends BaseElement {
 
   private activeTab_: string = 'mission-overview';
   private selectedAssetId_: string | null = null;
-  private readonly tabInstances_: Map<string, ACUControlTab | DashboardTab | RxAnalysisTab | TxChainTab | GPSTimingTab | SatelliteDashboardTab | MissionOverviewTab | PassScheduleTab | SdrConsoleTab | GeolocationTab> = new Map();
+  private readonly tabInstances_: Map<string, ACUControlTab | DashboardTab | RxAnalysisTab | TxChainTab | GPSTimingTab | SatelliteDashboardTab | MissionOverviewTab | PassScheduleTab | SdrConsoleTab | GeolocationTab | EaAssessmentTab> = new Map();
 
   protected html_ = html`
     <div class="tabbed-canvas">
@@ -204,6 +205,12 @@ export class TabbedCanvas extends BaseElement {
       tabs.push({ id: 'geolocation', label: 'Geolocation', icon: radarPng, isDisabled: groundStation.state.isOperational === false });
     }
 
+    // EA Assessment console only exists for scenarios that opt in via
+    // settings.electronicAttack (Campaign 4). Invisible to all other campaigns.
+    if (ScenarioManager.getInstance().settings.electronicAttack) {
+      tabs.push({ id: 'ea-assessment', label: 'EA Assessment', icon: radarPng, isDisabled: groundStation.state.isOperational === false });
+    }
+
     this.renderTabs_(tabs);
     this.switchTab_('dashboard');
   }
@@ -352,6 +359,10 @@ export class TabbedCanvas extends BaseElement {
 
       case 'geolocation':
         this.renderGeolocationTab_();
+        break;
+
+      case 'ea-assessment':
+        this.renderEaAssessmentTab_();
         break;
 
       case 'sdr-console':
@@ -605,6 +616,27 @@ export class TabbedCanvas extends BaseElement {
     }
 
     geoTab.activate();
+  }
+
+  /**
+   * Render EA Assessment tab (Campaign 4 electronic-attack / denial BDA)
+   */
+  private renderEaAssessmentTab_(): void {
+    const tabKey = 'ea-assessment';
+    let eaTab = this.tabInstances_.get(tabKey) as EaAssessmentTab;
+
+    if (eaTab && !document.contains(eaTab.dom)) {
+      eaTab.dispose();
+      this.tabInstances_.delete(tabKey);
+      eaTab = null!;
+    }
+
+    if (!eaTab) {
+      eaTab = new EaAssessmentTab('canvas-content');
+      this.tabInstances_.set(tabKey, eaTab);
+    }
+
+    eaTab.activate();
   }
 
   /**

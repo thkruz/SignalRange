@@ -14,6 +14,8 @@ import { ScenarioDialogManager } from "@app/scenarios/scenario-dialog-manager";
 import { WorkingDocumentManager } from "@app/scenarios/working-document-manager";
 import { InterferenceManager } from "@app/interference/interference-manager";
 import { GeolocationConsoleCore } from "@app/equipment/geolocation-console/geolocation-console-core";
+import { ElectronicAttackManager } from "@app/electronic-attack/electronic-attack-manager";
+import { HardwareFaultManager } from "@app/faults/hardware-fault-manager";
 import { WeatherManager } from "@app/weather/weather-manager";
 import { AlarmService } from "@app/services/alarm-service";
 import { SimulationManager } from "@app/simulation/simulation-manager";
@@ -290,6 +292,8 @@ export class MissionControlPage extends BasePage {
     WeatherManager.destroy();
     InterferenceManager.destroy();
     GeolocationConsoleCore.destroy();
+    ElectronicAttackManager.destroy();
+    HardwareFaultManager.destroy();
     QuizModal.destroy();
     PendingQuizIndicator.destroy();
     EventBus.destroy();

@@ -7,6 +7,8 @@ import { ScenarioManager } from "@app/scenario-manager";
 import { ScenarioDialogManager } from "@app/scenarios/scenario-dialog-manager";
 import { WorkingDocumentManager } from "@app/scenarios/working-document-manager";
 import { InterferenceManager } from "@app/interference/interference-manager";
+import { ElectronicAttackManager } from "@app/electronic-attack/electronic-attack-manager";
+import { HardwareFaultManager } from "@app/faults/hardware-fault-manager";
 import { WeatherManager } from "@app/weather/weather-manager";
 import { SimulationManager } from "@app/simulation/simulation-manager";
 import { QuizModal } from "@app/modal/quiz-modal";
@@ -180,6 +182,8 @@ export class SandboxPage extends BasePage {
     WorkingDocumentManager.reset();
     WeatherManager.destroy();
     InterferenceManager.destroy();
+    ElectronicAttackManager.destroy();
+    HardwareFaultManager.destroy();
     QuizModal.destroy();
     EventBus.destroy();
     const container = getEl(SandboxPage.containerId);

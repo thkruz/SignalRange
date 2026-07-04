@@ -1,0 +1,48 @@
+/* Electronic Attack Assessment tab (Campaign 4) */
+
+.ea-assessment-tab {
+  padding: 0.75rem;
+}
+
+.ea-assessment-tab .ea-title {
+  font-size: 1.1rem;
+  margin: 0;
+  color: var(--mc-text-primary);
+}
+
+.ea-assessment-tab .ea-status-badge {
+  font-weight: 700;
+  font-size: 1.75rem;
+  letter-spacing: 0.15em;
+  padding: 0.5rem 1.25rem;
+  border: 2px solid currentColor;
+  border-radius: 0.25rem;
+  text-align: center;
+}
+
+/* Standby: no jam radiating */
+.ea-assessment-tab .ea-status-standby {
+  color: var(--mc-text-tertiary);
+}
+
+/* Degraded: jam up but not achieving the denial threshold (uses the campaign accent) */
+.ea-assessment-tab .ea-status-degraded {
+  color: var(--mc-accent-red-bright);
+}
+
+/* Denied: effective denial - semantic danger red for the adversary link going down */
+.ea-assessment-tab .ea-status-denied {
+  color: var(--mc-danger-bright);
+  box-shadow: 0 0 12px rgba(var(--mc-danger-rgb), 0.4);
+}
+
+.ea-assessment-tab .ea-metrics td {
+  padding: 0.35rem 0.5rem;
+  border-color: var(--mc-border);
+  color: var(--mc-text-secondary);
+}
+
+.ea-assessment-tab .ea-jts-row td {
+  font-weight: 700;
+  color: var(--mc-text-primary);
+}

@@ -288,6 +288,15 @@ export interface HpaNoiseAmplificationData {
   detectedAt: number;
 }
 
+export interface ProtectedFreqViolationData {
+  groundStationId: string;
+  /** Human-readable protected band that was jammed */
+  protectedBandLabel: string;
+  /** Jam waveform center frequency that overlapped the protected band (Hz) */
+  jamFrequencyHz: number;
+  detectedAt: number;
+}
+
 // Simulated Time Event specific interfaces
 export interface SimulatedTimeTickData {
   /** Military format datetime string, e.g., "15 MAR 2025 22:05:15" */
@@ -394,6 +403,7 @@ export enum Events {
 
   // RF Safety violations
   HPA_NOISE_AMPLIFICATION = 'rf:hpa-noise-amplification',
+  PROTECTED_FREQ_VIOLATION = 'rf:protected-freq-violation',
 
   // Ops Log events
   OPS_LOG_ENTRY_ADDED = 'ops-log:entry:added',
@@ -502,6 +512,7 @@ export interface EventMap {
 
   // RF Safety violations
   [Events.HPA_NOISE_AMPLIFICATION]: [HpaNoiseAmplificationData];
+  [Events.PROTECTED_FREQ_VIOLATION]: [ProtectedFreqViolationData];
 
   // Ops Log events
   [Events.OPS_LOG_ENTRY_ADDED]: [OpsLogEntry];

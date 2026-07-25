@@ -1,4 +1,5 @@
 import { GroundStationConfig } from '@app/assets/ground-station/ground-station-state';
+import type { Degrees } from 'ootk';
 import { PreviousShiftLogEntry } from '@app/ops-log/ops-log-types';
 import { scenario1Data } from '@app/campaigns/nats/scenario1';
 import { scenario2Data } from "@app/campaigns/nats/scenario2";
@@ -269,6 +270,26 @@ export interface SimulationSettings {
     stationIds: string[];
     /** Contacts with priority <= this must all be assigned for a valid plan */
     requiredPriorityAtOrAbove?: number;
+  };
+
+  /**
+   * Access/contact timeline deck along the bottom of Mission Control.
+   *
+   * Opt-in: when this block is absent the deck is not mounted at all, so
+   * campaigns that predate it (Campaign 1's GEO work, where every link is
+   * permanent and a contact timeline says nothing) keep their original layout.
+   * The operator can still collapse the deck; this only controls whether it
+   * exists.
+   */
+  contactTimeline?: {
+    /** How far ahead the deck plots, in hours. Default 6. */
+    horizonHours?: number;
+    /** Elevation defining AOS/LOS for the contact blocks. Default 5 deg. */
+    minElevation?: Degrees;
+    /** Draw the sunlight/eclipse lane. Default true. */
+    showLighting?: boolean;
+    /** Start the deck collapsed (operator can expand). Default false. */
+    startCollapsed?: boolean;
   };
 
   /** M4: space-domain events (maneuvers / stale TLEs). Starts SpaceEventManager. */

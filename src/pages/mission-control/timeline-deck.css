@@ -1,13 +1,12 @@
 /*
- * Styles for the TimelineDeck component.
- * This component displays the mission timeline at the bottom of the shell.
+ * Styles for the TimelineDeck component - the access/contact timeline along the
+ * bottom of the Mission Control shell.
+ *
+ * The deck used to be hard-disabled here (`display: none`) while it rendered
+ * placeholder data. It is now mounted only when the scenario opts in via
+ * settings.contactTimeline, so the visibility decision lives in the page rather
+ * than in CSS.
  */
-
-
-/* Disabled until after version 1 */
-#timeline-deck-container {
-  display: none;
-}
 
 .app-shell-timeline {
   height: 12rem;
@@ -152,14 +151,15 @@
 .timeline-tracks {
   position: absolute;
   inset: 0;
-  top: 1.5rem;
-  /* top-6 */
+  top: 0.5rem;
   padding: 0 1rem;
   /* px-4 */
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-  /* space-y-4 */
+  gap: 0.5rem;
+  /* A constellation can have more rows than the deck is tall; scroll rather
+     than letting the lanes overflow into the axis. */
+  overflow-y: auto;
 }
 
 .timeline-track {
@@ -172,13 +172,18 @@
 }
 
 .timeline-track-label {
-  width: 6rem;
-  /* w-24 */
+  width: 8rem;
+  flex-shrink: 0;
   font-size: 10px;
   color: #bdbdbd;
   /* text-slate-500 */
   font-weight: 700;
   /* font-bold */
+  /* Satellite names can be long; keep the lane width predictable. */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-right: 0.5rem;
 }
 
 .timeline-track-lane {
@@ -193,73 +198,105 @@
   overflow: hidden;
 }
 
-/* Timeline Blocks */
+/* ===== Lighting background (sunlit / eclipse), drawn under the passes ===== */
+
+.timeline-lighting {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  pointer-events: none;
+}
+
+.lighting-sun {
+  background-color: rgba(245, 158, 11, 0.14);
+}
+
+.lighting-eclipse {
+  background-color: rgba(8, 10, 16, 0.85);
+}
+
+/* ===== Contact blocks (AOS -> LOS), colored by max elevation ===== */
+
 .timeline-block {
   position: absolute;
   height: 100%;
+  /* Short passes are a sliver of a 24 h window; keep them visible and hoverable. */
+  min-width: 3px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 9px;
   border-radius: 0.25rem;
-  /* rounded */
+  overflow: hidden;
+  cursor: help;
 }
 
-.pass-active {
-  background-color: rgba(16, 185, 129, 0.2);
-  /* bg-green-900/50 */
+/* Strong pass: high max elevation, best link margin. */
+.pass-good {
+  background-color: rgba(16, 185, 129, 0.35);
   border: 1px solid #15803d;
-  /* border-green-700 */
-  color: #4ade80;
-  /* text-green-400 */
+  color: #86efac;
 }
 
-.pass-inactive {
-  background-color: #292929;
-  /* bg-slate-800 */
-  border: 1px solid #475569;
-  /* border-slate-600 */
-  color: #94a3b8;
-  /* text-slate-400 */
+/* Usable pass. */
+.pass-average {
+  background-color: rgba(59, 130, 246, 0.3);
+  border: 1px solid #2563eb;
+  color: #93c5fd;
 }
 
-.sun {
-  background-color: rgba(245, 158, 11, 0.2);
-  /* bg-amber-500/20 */
-  border-left: 1px solid rgba(245, 158, 11, 0.5);
-  /* border-l border-amber-500/50 */
-  border-radius: 0;
+/* Low pass: short, high path loss, tight margin. */
+.pass-marginal {
+  background-color: rgba(245, 158, 11, 0.28);
+  border: 1px solid #b45309;
+  color: #fcd34d;
 }
 
-.eclipse {
-  background-color: #121212;
-  /* bg-slate-950 */
-  border: 1px solid #575757;
-  /* border-slate-700 */
-  color: #878787;
-  /* text-slate-500 */
+/* ===== Header legend ===== */
+
+.timeline-legend {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
 }
 
-.activity-downlink {
-  background-color: #2563eb;
-  /* bg-blue-600 */
-  cursor: pointer;
+.timeline-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 10px !important;
+  font-weight: 500 !important;
+  letter-spacing: normal !important;
+  text-transform: none !important;
+  color: #9a9a9a !important;
 }
 
-.activity-downlink:hover {
-  background-color: #3b82f6;
-  /* hover:bg-blue-500 */
+.timeline-swatch {
+  display: inline-block;
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 2px;
 }
 
-.activity-fsw {
-  background-color: #9333ea;
-  /* bg-purple-600 */
-  cursor: pointer;
+/* ===== Playhead ===== */
+
+.timeline-cursor {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  background-color: #ea3c2b;
+  box-shadow: 0 0 6px rgba(234, 60, 43, 0.7);
+  pointer-events: none;
+  z-index: 2;
 }
 
-.activity-fsw:hover {
-  background-color: #a855f7;
-  /* hover:bg-purple-500 */
+.timeline-empty {
+  padding: 1.5rem 1rem;
+  font-size: 11px;
+  color: #7a7a7a;
+  text-align: center;
 }
 
 /* Time Axis */

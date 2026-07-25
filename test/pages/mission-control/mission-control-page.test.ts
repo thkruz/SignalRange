@@ -73,11 +73,19 @@ vi.mock('../../../src/assets/ground-station/ground-station', () => ({
     };
   }),
 }));
+/**
+ * Scenario settings the page reads. Mutable so a test can opt the scenario in
+ * to the contact-timeline deck (which is otherwise absent by design).
+ */
+let mockSettings: Record<string, unknown> = { missionBriefUrl: null };
+
 vi.mock('../../../src/scenario-manager', () => ({
   ScenarioManager: {
     getInstance: vi.fn(() => ({
       data: { id: 'test-scenario' },
-      settings: { missionBriefUrl: null },
+      get settings() {
+        return mockSettings;
+      },
       getScenario: vi.fn(() => ({
         groundStations: [
           {
@@ -283,8 +291,22 @@ describe('MissionControlPage', () => {
       expect(GlobalCommandBar).toHaveBeenCalledWith('global-command-bar-container');
     });
 
-    it('should create TimelineDeck', () => {
-      expect(TimelineDeck).toHaveBeenCalledWith('app-shell-page');
+    it('should NOT create TimelineDeck when the scenario does not opt in', () => {
+      // The deck is opt-in via settings.contactTimeline; campaigns without it
+      // (Campaign 1) keep the original shell layout.
+      expect(TimelineDeck).not.toHaveBeenCalled();
+    });
+
+    it('should create TimelineDeck when the scenario declares contactTimeline', () => {
+      MissionControlPage.destroy();
+      vi.mocked(TimelineDeck).mockClear();
+      mockSettings = { missionBriefUrl: null, contactTimeline: { horizonHours: 2 } };
+
+      MissionControlPage.create();
+
+      expect(TimelineDeck).toHaveBeenCalledWith('app-shell-page', { horizonHours: 2 });
+
+      mockSettings = { missionBriefUrl: null };
     });
 
     it('should create AssetTreeSidebar', () => {

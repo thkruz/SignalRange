@@ -51,7 +51,8 @@ export class MissionControlPage extends BasePage {
 
   // Components
   private commandBarCenter_!: GlobalCommandBar;
-  private timelineDeck_!: TimelineDeck;
+  /** Only constructed when the scenario opts in via settings.contactTimeline. */
+  private timelineDeck_: TimelineDeck | null = null;
   private assetTreeSidebar_!: AssetTreeSidebar;
   private tabbedCanvas_!: TabbedCanvas;
 
@@ -121,7 +122,14 @@ export class MissionControlPage extends BasePage {
 
     this.commandBarCenter_ = new GlobalCommandBar('global-command-bar-container');
 
-    this.timelineDeck_ = new TimelineDeck(this.id);
+    // Opt-in per scenario: campaigns that don't declare settings.contactTimeline
+    // (Campaign 1's GEO work) never mount the deck, so the shell keeps its
+    // original layout.
+    const timelineConfig = ScenarioManager.getInstance().settings.contactTimeline;
+
+    if (timelineConfig) {
+      this.timelineDeck_ = new TimelineDeck(this.id, timelineConfig);
+    }
 
     // Create ground stations BEFORE UI components (they depend on ground stations existing)
     this.createGroundStationsFromScenario_();
@@ -284,9 +292,13 @@ export class MissionControlPage extends BasePage {
       // Clean up progress save manager
       MissionControlPage.instance_.disposeProgressSaveManager_();
 
-      // TODO: Clean up components and ground stations
+      // The deck subscribes to Events.UPDATE, so it must be torn down or it
+      // keeps predicting passes for a scenario that is gone.
+      MissionControlPage.instance_.timelineDeck_?.dispose();
+      MissionControlPage.instance_.timelineDeck_ = null;
+
+      // TODO: Clean up remaining components and ground stations
       // this.commandBarCenter_.destroy();
-      // this.timelineDeck_.destroy();
       MissionControlPage.instance_ = null;
     }
 

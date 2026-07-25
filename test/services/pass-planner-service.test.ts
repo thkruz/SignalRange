@@ -1,5 +1,5 @@
 import { OrbitalSatellite } from '@app/equipment/satellite/orbital-satellite';
-import { PassPlannerService } from '@app/services/pass-planner-service';
+import { DEFAULT_CONTACT_MIN_ELEVATION, PassPlannerService, scenarioMinElevation } from '@app/services/pass-planner-service';
 import type { Degrees, Kilometers, TleLine1, TleLine2 } from 'ootk';
 import { describe, expect, it } from 'vitest';
 
@@ -83,5 +83,52 @@ describe('PassPlannerService', () => {
     const passes = planner.getPasses(SAT_A, startMs, { horizonHours: 0.5 });
 
     expect(passes).toHaveLength(0);
+  });
+});
+
+/**
+ * The Pass Schedule tab and the contact timeline deck both predict passes. They
+ * must resolve the SAME elevation mask or they show different AOS/LOS for the
+ * same pass - which is exactly what happened before this helper existed.
+ */
+describe('scenarioMinElevation', () => {
+  it('is 0 for scenarios that never opted into the contact timeline', () => {
+    // Legacy campaigns keep the historical behaviour.
+    expect(scenarioMinElevation({})).toBe(0);
+  });
+
+  it('defaults to the shared 5 deg mask once a scenario declares the timeline', () => {
+    expect(scenarioMinElevation({ contactTimeline: {} })).toBe(DEFAULT_CONTACT_MIN_ELEVATION);
+    expect(DEFAULT_CONTACT_MIN_ELEVATION).toBe(5);
+  });
+
+  it('honours an explicit mask', () => {
+    expect(scenarioMinElevation({ contactTimeline: { minElevation: 10 as Degrees } })).toBe(10);
+  });
+
+  it('changes which passes are reported, proving the mask actually bites', () => {
+    const planner = new PassPlannerService();
+    const atHorizon = planner.getPasses(SAT_A, SCENARIO_START_MS, {
+      horizonHours: 12,
+      minElevation: scenarioMinElevation({}),
+    });
+    const masked = planner.getPasses(SAT_A, SCENARIO_START_MS, {
+      horizonHours: 12,
+      minElevation: scenarioMinElevation({ contactTimeline: {} }),
+    });
+
+    // A 5 deg mask can only drop passes, never add them, and never keeps one
+    // that fails the mask. (This TLE happens to have no sub-5 deg grazers in a
+    // 12 h window, so the counts may legitimately match - the narrowing below
+    // is what proves the mask is applied.)
+    expect(masked.length).toBeLessThanOrEqual(atHorizon.length);
+    expect(masked.every((pass) => pass.maxEl >= 5)).toBe(true);
+
+    const shared = masked[0];
+    const wide = atHorizon.find((pass) => Math.abs(pass.maxElMs - shared.maxElMs) < 60_000);
+
+    expect(wide).toBeDefined();
+    expect(shared.aosMs).toBeGreaterThan(wide!.aosMs);
+    expect(shared.losMs).toBeLessThan(wide!.losMs);
   });
 });

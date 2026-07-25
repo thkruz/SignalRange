@@ -47,6 +47,34 @@ export interface PassPlannerOptions {
 const REFINE_ITERATIONS = 6;
 
 /**
+ * Elevation mask a scenario gets by declaring `contactTimeline` without naming
+ * one. A real station cannot work a pass that never clears the local horizon
+ * clutter, so 5 deg is the honest default once a campaign cares about contact
+ * windows at all.
+ */
+export const DEFAULT_CONTACT_MIN_ELEVATION = 5 as Degrees;
+
+/**
+ * The scenario's elevation mask, shared by every surface that predicts passes
+ * (Pass Schedule tab, contact timeline deck).
+ *
+ * Without this they each passed their own options and visibly disagreed: the
+ * deck honoured a 5 deg mask while the Pass Schedule tab used the service
+ * default of 0 deg, so the tab listed 2 deg "passes" the station could not
+ * actually work and every window it showed was wider than the deck's.
+ *
+ * Opt-in: scenarios that declare no `contactTimeline` block keep the historical
+ * 0 deg behaviour, so campaigns predating the deck are unaffected.
+ */
+export function scenarioMinElevation(settings: { contactTimeline?: { minElevation?: Degrees } }): Degrees {
+  if (!settings.contactTimeline) {
+    return 0 as Degrees;
+  }
+
+  return settings.contactTimeline.minElevation ?? DEFAULT_CONTACT_MIN_ELEVATION;
+}
+
+/**
  * Predicts contact windows for orbital satellites.
  * Stateless: every call samples the orbit fresh from the requested start time,
  * so it works with the simulated scenario clock and after checkpoint restores.

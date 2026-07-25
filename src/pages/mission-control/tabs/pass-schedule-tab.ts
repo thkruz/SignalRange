@@ -4,7 +4,8 @@ import { qs } from "@app/engine/utils/query-selector";
 import { OrbitalSatellite } from "@app/equipment/satellite/orbital-satellite";
 import { EventBus } from "@app/events/event-bus";
 import { Events, SimulatedTimeTickData } from "@app/events/events";
-import { PassPlannerService, SatellitePass } from "@app/services/pass-planner-service";
+import { ScenarioManager } from "@app/scenario-manager";
+import { PassPlannerService, SatellitePass, scenarioMinElevation } from "@app/services/pass-planner-service";
 import { getSimulatedNowMs } from "@app/simulation/sim-time";
 import { SimulationManager } from "@app/simulation/simulation-manager";
 import './pass-schedule-tab.css';
@@ -91,8 +92,11 @@ export class PassScheduleTab extends BaseElement {
   private refreshSchedule_(nowMs: number): void {
     this.lastComputeMs_ = nowMs;
     // Include a pass that is already in progress by searching from 20 min ago
-    this.passes_ = this.passPlanner_.getContactSchedule(this.satellites_, nowMs - 20 * 60 * 1000)
-      .filter((pass) => pass.losMs > nowMs);
+    // Same elevation mask the contact timeline deck uses, so the two surfaces
+    // never show different AOS/LOS for the same pass.
+    this.passes_ = this.passPlanner_.getContactSchedule(this.satellites_, nowMs - 20 * 60 * 1000, {
+      minElevation: scenarioMinElevation(ScenarioManager.getInstance().settings),
+    }).filter((pass) => pass.losMs > nowMs);
   }
 
   private renderRows_(nowMs: number): void {

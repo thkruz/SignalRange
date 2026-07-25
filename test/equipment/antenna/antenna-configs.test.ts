@@ -172,7 +172,10 @@ describe('ANTENNA_CONFIGS', () => {
     it.each(allConfigs)('%s maxRate_deg_s should be positive if defined', (key, config) => {
       if (config.maxRate_deg_s !== undefined) {
         expect(config.maxRate_deg_s).toBeGreaterThan(0);
-        expect(config.maxRate_deg_s).toBeLessThanOrEqual(10); // Realistic slew rate
+        // Realistic slew rate. Big GEO/general dishes are a few deg/s; purpose-
+        // built LEO trackers (e.g. KU_BAND_4M_LEO_TRACKER) run 20-30 deg/s in
+        // azimuth to hold a narrow beam through a pass.
+        expect(config.maxRate_deg_s).toBeLessThanOrEqual(30);
       }
     });
 

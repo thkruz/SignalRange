@@ -257,7 +257,13 @@ export const ANTENNA_CONFIGS: Record<ANTENNA_CONFIG_KEYS, AntennaConfig> = {
     pointingSigma_deg: 0.05,   // servo position rms during rate tracking
     elRange_deg: [0, 90],
     azContinuous: true,
-    maxRate_deg_s: 5.0,        // fast pedestal for near-zenith LEO passes
+    // Purpose-built LEO tracker: real Ku LEO pedestals slew ~20-30 deg/s in
+    // azimuth to hold the narrow beam through moderate-to-high passes. At this
+    // rate a ~40 deg pass tracks cleanly; only a near-zenith pass still hits an
+    // azimuth keyhole (rate -> infinity at the zenith), which is reserved as a
+    // dedicated later-scenario lesson. Validated by the real-program-track
+    // assertions in test/campaigns/nats-eu-rf-validation.test.ts.
+    maxRate_deg_s: 20.0,
 
     lnaNF_dB: 1.0,
     rxChainLoss_dB: 0.6,

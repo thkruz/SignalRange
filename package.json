@@ -16,6 +16,8 @@
     "r2:pull": "node scripts/sync-r2-assets.js --pull",
     "r2:pull:dry": "node scripts/sync-r2-assets.js --pull --dry-run",
     "type-check": "tsc --noEmit",
+    "nice-coverage": "node scripts/nice-coverage.mjs",
+    "nice-catalog": "node scripts/gen-nice-catalog.mjs",
     "clean": "rm -rf dist",
     "test": "vitest run",
     "test:watch": "vitest",

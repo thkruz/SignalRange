@@ -149,7 +149,7 @@ export const signalHunterSandboxData: ScenarioData = {
       description: 'Tune the correlator to the interferer uplink (6013 MHz, ~5 MHz bandwidth), select SENTRY-9 as the adjacent collector, and CAPTURE at least three times while the jammer is transmitting.',
       groundStation: 'PA-22',
       prerequisiteObjectiveIds: ['open-geolocation-console'],
-      nice: ['K0926', 'K0108'],
+      nice: ['K0926', 'K1032'],
       conditions: [
         {
           type: 'geolocation-measurements-collected',
@@ -167,7 +167,7 @@ export const signalHunterSandboxData: ScenarioData = {
       description: 'Run COMPUTE FIX and refine until the fix falls within 40 km of the true emitter. Spreading captures across several duty cycles gives the satellites time to move, which tightens the error ellipse and resolves the geometry.',
       groundStation: 'PA-22',
       prerequisiteObjectiveIds: ['collect-measurements'],
-      nice: ['K0108'],
+      nice: ['K1032'],
       conditions: [
         {
           type: 'geolocation-fix-accuracy',

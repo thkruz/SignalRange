@@ -56,6 +56,11 @@ export class OpsLogManager {
     this.boundUpdateHandler_ = this.handleUpdate_.bind(this);
     this.eventBus_.on(Events.UPDATE, this.boundUpdateHandler_);
 
+    // Developer/E2E hook for LEO pass scenarios (see advanceClock JSDoc);
+    // same pattern as window.debugSignalPath in RFFrontEndCore.
+    (window as unknown as { advanceSimClock?: (deltaMs: number) => void }).advanceSimClock =
+      this.advanceClock.bind(this);
+
     // Emit initial time tick
     this.emitTimeTick_();
   }
@@ -105,6 +110,7 @@ export class OpsLogManager {
         Events.UPDATE,
         OpsLogManager.instance_.boundUpdateHandler_
       );
+      delete (window as unknown as { advanceSimClock?: (deltaMs: number) => void }).advanceSimClock;
       OpsLogManager.instance_ = null;
     }
   }
@@ -196,6 +202,29 @@ export class OpsLogManager {
     this.isPaused_ = false;
 
     // Emit time tick after restore
+    this.emitTimeTick_();
+  }
+
+  /**
+   * Advance the scenario clock by deltaMs in a single step.
+   *
+   * Developer/E2E hook (exposed as window.advanceSimClock): LEO pass scenarios
+   * put objectives many sim-minutes apart, so tests jump the clock instead of
+   * waiting wall-clock time. All orbital physics read absolute sim time via
+   * getSimulatedNowMs() and follow on the next update tick; mission/objective
+   * timers tick on real update deltas and are NOT affected by the jump.
+   */
+  advanceClock(deltaMs: number): void {
+    if (!Number.isFinite(deltaMs) || deltaMs <= 0) {
+      return;
+    }
+
+    this.currentTimestampMs_ += deltaMs;
+
+    const currentWholeSecond = Math.floor(this.currentTimestampMs_ / 1000);
+    if (currentWholeSecond > this.lastWholeSecond_) {
+      this.lastWholeSecond_ = currentWholeSecond;
+    }
     this.emitTimeTick_();
   }
 

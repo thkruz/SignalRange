@@ -1,9 +1,14 @@
 /**
- * @file GeoMap - Interactive geographic geolocation map (Campaign 5)
- * @description A dependency-free canvas map for plotting an interference
- * geolocation fix over a real Earth basemap (earthmap4k.jpg): satellite
- * subpoints, TDOA/FDOA lines of position, the computed fix circle + error
- * ellipse, and (post-solve) the ground station and truth markers.
+ * @file GeoMap - Interactive geographic canvas map
+ * @description A dependency-free canvas map over a real Earth basemap
+ * (earthmap4k.jpg). Two consumers today:
+ *
+ * - the Campaign 5 geolocation console: satellite subpoints, TDOA/FDOA lines of
+ *   position, the computed fix circle + error ellipse, truth markers;
+ * - the ground-track tab (Campaign 2+): sub-satellite tracks split past/future,
+ *   ground-station visibility circles, and the day/night terminator.
+ *
+ * Every layer is optional, so a consumer only pays for what it sets.
  *
  * The view is a pannable/zoomable window onto the globe, independent of the
  * solver's area of interest: it opens fully zoomed out on the whole world and
@@ -19,6 +24,15 @@
 import { html } from '@app/engine/utils/development/formatter';
 import { qs } from '@app/engine/utils/query-selector';
 import type { ErrorEllipse } from '@app/services/geolocation-service';
+import {
+  interpolateGroundPoint,
+  nightPolygon,
+  splitAtAntimeridian,
+  subsolarPoint,
+  visibilityCircle,
+  type GroundPoint,
+  type LonLat,
+} from '@app/services/ground-track-math';
 import './geo-map.css';
 
 export interface GeoMarker {
@@ -40,10 +54,40 @@ export interface GeoLop {
   kind: 'tdoa' | 'fdoa';
 }
 
+/**
+ * A sub-satellite ground track. `nowMs` splits it into a solid past leg and a
+ * dotted future leg, so the operator can read the direction of travel at a
+ * glance without an animation.
+ */
+export interface GeoTrack {
+  points: GroundPoint[];
+  nowMs: number;
+  label: string;
+  color: string;
+  /** Draw thicker and label the live sub-point (the focused satellite). */
+  isHighlighted?: boolean;
+}
+
+/**
+ * A ground-station access circle: the region within which a satellite at the
+ * given angular radius clears the station's elevation mask. Radius comes from
+ * `visibilityRadiusDeg` so the map and the pass planner share one definition.
+ */
+export interface GeoFootprint {
+  lat: number;
+  lon: number;
+  radiusDeg: number;
+  label: string;
+}
+
 export interface GeoMapLayers {
   markers: GeoMarker[];
   lops: GeoLop[];
   fix?: { lat: number; lon: number; ellipse: ErrorEllipse | null } | null;
+  tracks?: GeoTrack[];
+  footprints?: GeoFootprint[];
+  /** Render the day/night terminator for this instant (scenario time, not wall clock). */
+  terminator?: Date | null;
 }
 
 /** Current view window onto the globe (uniform degrees per pixel). */
@@ -56,6 +100,8 @@ interface Viewport {
 const KM_PER_DEG_LAT = 111.32;
 /** Full-Earth equirectangular basemap served from public/images */
 const EARTH_BASEMAP_URL = '/images/earthmap4k.jpg';
+/** City-lights companion to the day basemap, clipped to the night polygon */
+const EARTH_NIGHT_BASEMAP_URL = '/images/earthmap-night4k.jpg';
 /** Tightest zoom (deg/px) - ~a third of a degree across a 600px canvas */
 const MIN_DEG_PER_PX = 0.0005;
 /** Scroll-wheel zoom factor per notch */
@@ -72,11 +118,14 @@ export class GeoMap {
   private readonly boundPointerMove_: (e: PointerEvent) => void;
   private readonly boundPointerUp_: (e: PointerEvent) => void;
 
+  private readonly nightImage_: HTMLImageElement;
+
   private dom_: HTMLElement | null = null;
   private canvas_: HTMLCanvasElement | null = null;
   private ctx_: CanvasRenderingContext2D | null = null;
   private layers_: GeoMapLayers = { markers: [], lops: [] };
   private earthLoaded_ = false;
+  private nightLoaded_ = false;
   private readonly view_: Viewport;
   private dragLast_: { x: number; y: number } | null = null;
   private drawScheduled_ = false;
@@ -108,6 +157,15 @@ export class GeoMap {
       this.draw();
     };
     this.earthImage_.src = EARTH_BASEMAP_URL;
+
+    // Night lights are only used when a consumer asks for the terminator; the
+    // shading falls back to a flat dark fill until (or if) this loads.
+    this.nightImage_ = new Image();
+    this.nightImage_.onload = () => {
+      this.nightLoaded_ = true;
+      this.draw();
+    };
+    this.nightImage_.src = EARTH_NIGHT_BASEMAP_URL;
   }
 
   get outerHtml(): string {
@@ -146,6 +204,20 @@ export class GeoMap {
     this.draw();
   }
 
+  /**
+   * Recenter the view without changing zoom. Consumers use this to open on an
+   * asset of interest; the operator's pan/zoom afterwards is never overridden.
+   */
+  centerOn(lat: number, lon: number, degPerPx?: number): void {
+    if (degPerPx !== undefined) {
+      this.view_.degPerPx = Math.min(this.maxDegPerPx_(), Math.max(MIN_DEG_PER_PX, degPerPx));
+    }
+    this.view_.centerLat = lat;
+    this.view_.centerLon = lon;
+    this.clampView_();
+    this.draw();
+  }
+
   /** Coalesce rapid interaction redraws (pan/zoom) to one per animation frame */
   private scheduleDraw_(): void {
     if (this.drawScheduled_) {
@@ -171,7 +243,8 @@ export class GeoMap {
 
     ctx.clearRect(0, 0, this.width_, this.height_);
 
-    if (this.drawBasemap_(ctx)) {
+    if (this.drawBasemap_(ctx, this.earthImage_, this.earthLoaded_)) {
+      this.drawTerminator_(ctx);
       // Slight veil so overlay lines, labels, and markers stay legible over
       // the imagery without washing the map out.
       ctx.fillStyle = 'rgba(8, 12, 18, 0.28)';
@@ -182,6 +255,8 @@ export class GeoMap {
     }
 
     this.drawGraticule_(ctx);
+    this.drawFootprints_(ctx);
+    this.drawTracks_(ctx);
     this.drawLops_(ctx, accentBright);
     this.drawFix_(ctx, accentBright, accentRgb);
     this.drawMarkers_(ctx);
@@ -278,12 +353,11 @@ export class GeoMap {
   // ── Layers ────────────────────────────────────────────────────────────────
 
   /**
-   * Draw the Earth basemap for the current view window. Returns false (caller
-   * falls back to a solid surface) until the image has loaded.
+   * Draw an equirectangular basemap for the current view window. Returns false
+   * (caller falls back to a solid surface) until the image has loaded.
    */
-  private drawBasemap_(ctx: CanvasRenderingContext2D): boolean {
-    const img = this.earthImage_;
-    if (!this.earthLoaded_ || !img.naturalWidth) {
+  private drawBasemap_(ctx: CanvasRenderingContext2D, img: HTMLImageElement, loaded: boolean): boolean {
+    if (!loaded || !img.naturalWidth) {
       return false;
     }
 
@@ -299,6 +373,164 @@ export class GeoMap {
     ctx.drawImage(img, sx, sy, sw, sh, 0, 0, this.width_, this.height_);
 
     return true;
+  }
+
+  /**
+   * Shade the night side, clipped to the terminator polygon. Where the city-
+   * lights basemap is available it is drawn inside the clip so the dark side
+   * stays readable; otherwise a flat darkening does the job.
+   *
+   * The polygon is traced in *screen* space, so it follows the current pan/zoom
+   * for free.
+   *
+   * Its longitudes are already monotonic (-180 → 180, then the two closing
+   * points at the dark pole), so they are projected literally. Do NOT "unwrap"
+   * them: the deliberate 180 → -180 step in the closing pair is what runs the
+   * path along the pole edge, and smoothing it out closes the polygon with a
+   * diagonal across the map instead.
+   *
+   * Near an equinox the curve is genuinely near-vertical (the terminator runs
+   * pole to pole), so lat(lon) jumps between ±88° between adjacent samples.
+   * That is physically correct, not an artifact — the fill handles it because
+   * each column still spans from the curve to the dark pole.
+   */
+  private drawTerminator_(ctx: CanvasRenderingContext2D): void {
+    const date = this.layers_.terminator;
+
+    if (!date) {
+      return;
+    }
+
+    const polygon = nightPolygon(subsolarPoint(date));
+
+    ctx.save();
+    ctx.beginPath();
+
+    for (const [i, point] of polygon.entries()) {
+      const { x, y } = this.project_(point.lat, point.lon);
+
+      if (i === 0) {
+        ctx.moveTo(x, y);
+      } else {
+        ctx.lineTo(x, y);
+      }
+    }
+
+    ctx.closePath();
+    ctx.clip();
+
+    if (!this.drawBasemap_(ctx, this.nightImage_, this.nightLoaded_)) {
+      ctx.fillStyle = 'rgba(2, 6, 14, 0.55)';
+      ctx.fillRect(0, 0, this.width_, this.height_);
+    } else {
+      // Even with city lights, keep the night side clearly darker than day.
+      ctx.fillStyle = 'rgba(2, 6, 14, 0.35)';
+      ctx.fillRect(0, 0, this.width_, this.height_);
+    }
+
+    ctx.restore();
+  }
+
+  /**
+   * Ground-station access circles. Drawn under the tracks so a track crossing
+   * into a footprint reads as "this is the pass" without hiding the line.
+   */
+  private drawFootprints_(ctx: CanvasRenderingContext2D): void {
+    for (const footprint of this.layers_.footprints ?? []) {
+      const ring = visibilityCircle({ lat: footprint.lat, lon: footprint.lon }, footprint.radiusDeg);
+
+      if (ring.length === 0) {
+        continue;
+      }
+
+      ctx.lineWidth = 1.25;
+      ctx.strokeStyle = 'rgba(90, 169, 220, 0.85)';
+      ctx.setLineDash([4, 3]);
+
+      for (const segment of splitAtAntimeridian(ring)) {
+        this.strokePath_(ctx, segment);
+      }
+
+      ctx.setLineDash([]);
+    }
+  }
+
+  /**
+   * Sub-satellite tracks: solid behind the satellite, dotted ahead of it, with
+   * a marker at the live sub-point. Each leg is split at the antimeridian so it
+   * runs to the map edge instead of streaking back across the world.
+   */
+  private drawTracks_(ctx: CanvasRenderingContext2D): void {
+    for (const track of this.layers_.tracks ?? []) {
+      if (track.points.length < 2) {
+        continue;
+      }
+
+      const past = track.points.filter((p) => p.t <= track.nowMs);
+      const future = track.points.filter((p) => p.t >= track.nowMs);
+      const width = track.isHighlighted ? 2 : 1.25;
+
+      const drawLeg = (points: GroundPoint[], dash: number[]): void => {
+        if (points.length < 2) {
+          return;
+        }
+        ctx.setLineDash(dash);
+        for (const segment of splitAtAntimeridian(points)) {
+          // Dark halo keeps the line readable over bright terrain.
+          ctx.lineWidth = width + 2;
+          ctx.strokeStyle = 'rgba(0, 0, 0, 0.6)';
+          this.strokePath_(ctx, segment);
+          ctx.lineWidth = width;
+          ctx.strokeStyle = track.color;
+          this.strokePath_(ctx, segment);
+        }
+        ctx.setLineDash([]);
+      };
+
+      drawLeg(past, []);
+      drawLeg(future, [5, 4]);
+
+      const now = interpolateGroundPoint(track.points, track.nowMs);
+
+      if (now) {
+        const { x, y } = this.project_(now.lat, now.lon);
+
+        ctx.beginPath();
+        ctx.arc(x, y, track.isHighlighted ? 5 : 3.5, 0, 2 * Math.PI);
+        ctx.fillStyle = track.color;
+        ctx.fill();
+        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.7)';
+        ctx.stroke();
+
+        ctx.font = track.isHighlighted ? 'bold 11px monospace' : '10px monospace';
+        ctx.textBaseline = 'bottom';
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.7)';
+        ctx.strokeText(track.label, x + 8, y - 2);
+        ctx.fillStyle = track.color;
+        ctx.fillText(track.label, x + 8, y - 2);
+      }
+    }
+  }
+
+  /** Stroke a lon/lat polyline as a single projected path. */
+  private strokePath_(ctx: CanvasRenderingContext2D, points: LonLat[]): void {
+    if (points.length < 2) {
+      return;
+    }
+
+    ctx.beginPath();
+    for (const [i, point] of points.entries()) {
+      const { x, y } = this.project_(point.lat, point.lon);
+
+      if (i === 0) {
+        ctx.moveTo(x, y);
+      } else {
+        ctx.lineTo(x, y);
+      }
+    }
+    ctx.stroke();
   }
 
   private drawGraticule_(ctx: CanvasRenderingContext2D): void {

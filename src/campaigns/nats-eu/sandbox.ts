@@ -1,4 +1,5 @@
 import type { ScenarioData } from '@app/ScenarioData';
+import type { Degrees } from 'ootk';
 import { galwayGroundStation } from './ground-stations';
 import { meridianSar1Satellite, meridianSar2Satellite } from './satellites';
 
@@ -55,6 +56,14 @@ export const natsEuSandboxData: ScenarioData = {
     isExtraSatellitesVisible: true,
     scenarioStartDate: '2027-03-15',
     scenarioStartWallTime: '14:00:00',
+
+    // Contact timeline deck. A 6 h horizon in the sandbox so every mechanic can
+    // be exercised against several upcoming windows.
+    contactTimeline: {
+      horizonHours: 6,
+      minElevation: 5 as Degrees,
+      showLighting: true,
+    },
 
     // M1 - Link-budget / EIRP planning console.
     // A correct worksheet for the max-el MERIDIAN-SAR-1 downlink yields ~14 dB C/N.

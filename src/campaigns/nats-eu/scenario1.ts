@@ -1,6 +1,7 @@
 import { Character } from '@app/modal/character-enum';
 import type { ScenarioData } from '@app/ScenarioData';
 import type { dBm } from '@app/types';
+import type { Degrees } from 'ootk';
 import { galwayGroundStation } from './ground-stations';
 import { meridianSar1Satellite, meridianSar2Satellite } from './satellites';
 
@@ -65,6 +66,14 @@ export const natsEuScenario1Data: ScenarioData = {
     scenarioStartDate: '2027-03-15',
     scenarioStartWallTime: '14:00:00',
     missionBriefUrl: 'https://docs.signalrange.space/campaign-2/scenario-1?content-only=true&dark=true',
+
+    // Contact timeline deck. The whole scenario is "wait for AOS, work the
+    // pass" - seeing when the next window opens is the point.
+    contactTimeline: {
+      horizonHours: 2,
+      minElevation: 5 as Degrees,
+      showLighting: true,
+    },
   },
   objectives: [
     {

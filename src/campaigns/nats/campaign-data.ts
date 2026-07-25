@@ -1,7 +1,5 @@
 import type { CampaignData } from '@app/campaigns/campaign-types';
 import { hamSdrSandboxData } from '@app/campaigns/ham-sdr/sandbox';
-import { natsEuScenario1Data } from '@app/campaigns/nats-eu/scenario1';
-import { natsEuSandboxData } from '@app/campaigns/nats-eu/sandbox';
 import { ccsScenario1Data } from '@app/campaigns/ccs/scenario1';
 import { signalHunterSandboxData } from '@app/campaigns/signal-hunter/sandbox';
 import { sandboxData } from './sandbox';
@@ -73,23 +71,6 @@ export const natsCampaignData: CampaignData = {
     scenario22Data,
     scenario23Data,
     scenario24Data,
-  ],
-  isLocked: false,
-  isDisabled: false,
-};
-
-export const natsEuCampaignData: CampaignData = {
-  id: 'nats-eu',
-  title: 'North Atlantic Teleport Services EU',
-  subtitle: 'Commercial Ground Station Operations',
-  description: `This campaign follows the North Atlantic Teleport Services EU branch, focusing on Low Earth Orbit (LEO) satellite communications. As a ground station operator, you'll work through a series of scenarios to establish and maintain RF links with various LEO satellites, gaining hands-on experience with tracking fast-moving targets and optimizing communication parameters for reliable data transmission.<br><br>Through these scenarios, you'll develop essential skills in antenna tracking, Doppler shift compensation, and link budget analysis, all while supporting the operational needs of cutting-edge LEO satellite constellations.`,
-  imageUrl: 'nats/north-atlantic-teleport-services.png',
-  difficulty: 'intermediate',
-  totalDuration: '160-220 min',
-  campaignType: 'LEO Commercial Communications',
-  scenarios: [
-    natsEuSandboxData,
-    natsEuScenario1Data,
   ],
   isLocked: false,
   isDisabled: false,

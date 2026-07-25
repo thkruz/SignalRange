@@ -3,8 +3,8 @@ import {
   geolocationCampaignData,
   hamSdrCampaignData,
   natsCampaignData,
-  natsEuCampaignData,
 } from '@app/campaigns/nats/campaign-data';
+import { natsEuCampaignData } from '@app/campaigns/nats-eu/campaign-data';
 import type { CampaignData } from '@app/campaigns/campaign-types';
 import { describe, expect, it } from 'vitest';
 

@@ -1,5 +1,6 @@
 import { CampaignManager } from "@app/campaigns/campaign-manager";
-import { ccsCampaignData, geolocationCampaignData, hamSdrCampaignData, natsCampaignData, natsEuCampaignData } from "@app/campaigns/nats/campaign-data";
+import { ccsCampaignData, geolocationCampaignData, hamSdrCampaignData, natsCampaignData } from "@app/campaigns/nats/campaign-data";
+import { natsEuCampaignData } from "@app/campaigns/nats-eu/campaign-data";
 import { EventBus } from "@app/events/event-bus";
 import { Events } from "@app/events/events";
 import { CampaignSelectionPage } from "@app/pages/campaign-selection";

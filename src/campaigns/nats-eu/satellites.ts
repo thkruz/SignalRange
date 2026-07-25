@@ -11,10 +11,22 @@ import type { Degrees, Kilometers, TleLine1, TleLine2 } from 'ootk';
  * az/el/range are computed from the TLE against the simulated scenario clock
  * relative to the Galway ground station, with Doppler applied to downlinks.
  *
- * TLE epochs are authored for the 2027-03-15 14:00:00 UTC scenario start:
- * - MERIDIAN-SAR-1: AOS T+2.0 min, max el 88.3 deg at T+8, LOS T+14.5 min
- * - MERIDIAN-SAR-2: AOS T+17.5 min, max el 83.9 deg at T+24, LOS T+31.5 min
- * Both make follow-up passes ~97 min later for multi-contact planning.
+ * TLE epochs are authored for the 2027-03-15 14:00:00 UTC scenario start
+ * (via scripts/author-passes.mjs):
+ * - MERIDIAN-SAR-1: AOS T+2.0 min, max el 28.0 deg at T+6.7, LOS T+11.5 min
+ * - MERIDIAN-SAR-2: AOS T+17.5 min, max el 25.0 deg at T+22.2, LOS T+26.9 min
+ * Both make follow-up passes ~93+ min later for multi-contact planning.
+ *
+ * The geometry pairs a low, strong orbit (mean motion 15.6, ~360 km -> ~760 km
+ * slant range at max el, ample C/N margin) with a modest max elevation
+ * (~25-28 deg). At the LEO tracker's realistic 20 deg/s slew (see
+ * KU_BAND_4M_LEO_TRACKER) the pedestal holds the narrow (~0.45 deg) Ku beam on
+ * the bird within the ephemeris-error floor (~0.1 deg) through the whole pass,
+ * so C/N peaks at max elevation as expected. A higher or near-zenith pass grows
+ * a pointing lag (and ultimately an azimuth keyhole, rate -> infinity at the
+ * zenith) that craters C/N at culmination; that steep-pass case is verified as
+ * a regression in test/campaigns/nats-eu-rf-validation.test.ts and reserved as
+ * a dedicated later-scenario lesson (see the campaign design plan).
  */
 
 /** Galway Ground Station (GW-01) observer used for relative telemetry */
@@ -32,7 +44,7 @@ export const meridianSar1Satellite = new OrbitalSatellite(
   [], // Beacons defined in transponderConfigs
   {
     tle1: '1 61701U 27015A   27074.58333333  .00001000  00000-0  10000-3 0  9996' as TleLine1,
-    tle2: '2 61701  97.6000  26.0000 0010000  90.0000 294.0000 14.90000000123451' as TleLine2,
+    tle2: '2 61701  97.2000 176.0000 0010000  90.0000   8.0000 15.60000000123454' as TleLine2,
     observer: galwayObserver,
   },
   {
@@ -47,7 +59,11 @@ export const meridianSar1Satellite = new OrbitalSatellite(
         frequencyOffset: 2.255e9 as Hertz, // Transponded downlink: 11750 MHz
         polarization: 'H',
         beacon: {
-          frequency: 11699e6 as RfFrequency, // Ku telemetry beacon (CW)
+          // Ku telemetry beacon (CW). Must stay OUTSIDE the video carrier's
+          // occupied band (11686 +/- 18 MHz): a CW tone inside a ~23 dB
+          // stronger co-channel carrier is blocked by the antenna's
+          // adjacency filter (Phase A RF validation finding).
+          frequency: 11711e6 as RfFrequency,
           signalId: 'MERIDIAN-SAR-1-Beacon',
           serverId: 1,
           noradId: 61701,
@@ -69,13 +85,16 @@ export const meridianSar1Satellite = new OrbitalSatellite(
         bandwidth: 40e6 as Hertz,
         frequencyOffset: 2.4e9 as Hertz,
         polarization: 'H',
-        // Direct-transmit SAR imagery downlink (modeled as a transponder beacon)
+        // Direct-transmit SAR imagery downlink (modeled as a transponder beacon).
+        // 28 dBm EIRP closes the link at C/N >= 8 dB from ~20 deg elevation
+        // (peak ~14 dB at max el) on the GW-01 4m Ku tracker; the original
+        // 22 dBm peaked at 8.1 dB with zero margin (Phase A RF validation).
         beacon: {
           frequency: 11686e6 as RfFrequency,
           signalId: 'MERIDIAN-SAR-1-VIDEO',
           serverId: 1,
           noradId: 61701,
-          power: 22 as dBm,
+          power: 28 as dBm,
           bandwidth: 36e6 as Hertz,
           modulation: 'QPSK' as ModulationType,
           fec: '3/4' as FECType,
@@ -98,7 +117,7 @@ export const meridianSar2Satellite = new OrbitalSatellite(
   [],
   {
     tle1: '1 61702U 27015A   27074.58333333  .00001000  00000-0  10000-3 0  9997' as TleLine1,
-    tle2: '2 61702  98.1000  30.0000 0010000  90.0000 236.0000 14.60000000123456' as TleLine2,
+    tle2: '2 61702  98.4000  42.0000 0010000  90.0000 240.0000 15.60000000123458' as TleLine2,
     observer: galwayObserver,
   },
   {
@@ -135,12 +154,14 @@ export const meridianSar2Satellite = new OrbitalSatellite(
         bandwidth: 40e6 as Hertz,
         frequencyOffset: 2.4e9 as Hertz,
         polarization: 'H',
+        // 28 dBm EIRP for the same link-closure reason as SAR-1 (SAR-2 flies
+        // ~100 km higher, so it peaked at only 6.8 dB C/N at 22 dBm).
         beacon: {
           frequency: 11730e6 as RfFrequency,
           signalId: 'MERIDIAN-SAR-2-VIDEO',
           serverId: 1,
           noradId: 61702,
-          power: 22 as dBm,
+          power: 28 as dBm,
           bandwidth: 36e6 as Hertz,
           modulation: 'QPSK' as ModulationType,
           fec: '3/4' as FECType,

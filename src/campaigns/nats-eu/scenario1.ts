@@ -1,3 +1,4 @@
+import { Character } from '@app/modal/character-enum';
 import type { ScenarioData } from '@app/ScenarioData';
 import type { dBm } from '@app/types';
 import { galwayGroundStation } from './ground-stations';
@@ -15,8 +16,23 @@ import { meridianSar1Satellite, meridianSar2Satellite } from './satellites';
  * - Video feed decoding of the SAR imagery downlink during the pass
  *
  * Pass timeline (scenario clock starts 2027-03-15 14:00:00 UTC):
- * - MERIDIAN-SAR-1: AOS T+2.0 min, max el 88 deg T+8, LOS T+14.5 min
- * - MERIDIAN-SAR-2: AOS T+17.5 min, max el 84 deg T+24, LOS T+31.5 min
+ * - MERIDIAN-SAR-1: AOS T+2.0 min, max el 28 deg T+6.7, LOS T+11.5 min
+ * - MERIDIAN-SAR-2: AOS T+17.5 min, max el 25 deg T+22.2, LOS T+26.9 min
+ * Moderate max elevations so the 4m Ku pedestal tracks cleanly (a near-zenith
+ * pass hits an azimuth keyhole — see satellites.ts). RF envelope (locked by
+ * test/campaigns/nats-eu-rf-validation.test.ts): video C/N peaks ~11 dB at max
+ * el under real program-track; the >= 8 dB decode window runs roughly
+ * T+5 .. T+8.5 (SAR-1) and T+20.5 .. T+24 (SAR-2).
+ *
+ * NICE Framework Alignment:
+ * Primary Codes:
+ *   - S0421: Skill in operating network equipment
+ *   - T0153: Monitor network capacity and performance
+ *   - K1032: Knowledge of satellite-based communication systems and software
+ *
+ * Supporting Codes:
+ *   - K0645: Knowledge of standard operating procedures (SOPs)
+ *   - K0740: Knowledge of system performance indicators
  */
 export const natsEuScenario1Data: ScenarioData = {
   id: 'nats-eu-scenario1',
@@ -25,6 +41,9 @@ export const natsEuScenario1Data: ScenarioData = {
   number: 1,
   isDisabled: false,
   difficulty: 'intermediate',
+  // Campaign 2 assumes a qualified Campaign 1 operator: gate on the S8
+  // night-shift graduation, not full Campaign 1 completion (design plan §2).
+  prerequisiteScenarioIds: ['nats-level-8-night-shift'],
   title: 'First Light Over Galway',
   subtitle: 'LEO Pass Operations',
   duration: '35 min',
@@ -45,13 +64,48 @@ export const natsEuScenario1Data: ScenarioData = {
     isExtraSatellitesVisible: true,
     scenarioStartDate: '2027-03-15',
     scenarioStartWallTime: '14:00:00',
+    missionBriefUrl: 'https://docs.signalrange.space/campaign-2/scenario-1?content-only=true&dark=true',
   },
   objectives: [
     {
+      id: 'review-mission-brief',
+      nice: ['K0645'],
+      title: 'Review the Shift Brief',
+      description: 'Open the shift brief and acknowledge you are ready to take the first MERIDIAN contact.',
+      groundStation: 'GW-01',
+      freezesScenarioTimer: true,
+      prerequisiteObjectiveIds: [],
+      conditions: [
+        {
+          type: 'mission-brief-opened',
+          description: 'Shift Brief Opened',
+          params: { boxId: 'mission-brief' },
+          mustMaintain: false,
+        },
+        {
+          type: 'status-check',
+          description: 'Ready for First Contact',
+          params: {
+            character: Character.SYSTEM,
+            question: 'Have you reviewed the shift brief and are you ready to work your first MERIDIAN pass?',
+            options: ['Yes, brief reviewed. Ready for AOS.'],
+            correctIndex: 0,
+            explanation: 'Shift clock started. MERIDIAN-SAR-1 rises in two minutes.',
+            pointPenalty: 0,
+          },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 5,
+    },
+    {
       id: 'review-pass-schedule',
+      nice: ['K1032', 'S0421'],
       title: 'Review the Contact Schedule',
       description: 'Open the Pass Schedule tab and review the upcoming MERIDIAN contacts. Note the AOS time and azimuth for MERIDIAN-SAR-1.',
       groundStation: 'GW-01',
+      prerequisiteObjectiveIds: ['review-mission-brief'],
       conditions: [
         {
           type: 'tab-active',
@@ -65,8 +119,9 @@ export const natsEuScenario1Data: ScenarioData = {
     },
     {
       id: 'track-meridian-1',
+      nice: ['S0421', 'K1032'],
       title: 'Track MERIDIAN-SAR-1',
-      description: 'Set the antenna to program-track so it follows MERIDIAN-SAR-1 through the pass. The 4m pedestal slews at up to 5 deg/s - it will need it near zenith.',
+      description: 'Set the antenna to program-track so it follows MERIDIAN-SAR-1 through the pass. The 4m pedestal slews at up to 20 deg/s - plenty to hold this ~28 deg pass.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['review-pass-schedule'],
       conditions: [
@@ -93,6 +148,7 @@ export const natsEuScenario1Data: ScenarioData = {
     },
     {
       id: 'decode-sar-video',
+      nice: ['T0153', 'K0740'],
       title: 'Decode the SAR Imagery Downlink',
       description: 'With the receiver tuned to 1414 MHz (11686 MHz RF), lock the QPSK 3/4 downlink and confirm the imagery feed decodes on the monitor before LOS.',
       groundStation: 'GW-01',
@@ -116,6 +172,7 @@ export const natsEuScenario1Data: ScenarioData = {
     },
     {
       id: 'second-contact',
+      nice: ['S0421', 'K1032', 'T0153'],
       title: 'Capture the Second Contact',
       description: 'MERIDIAN-SAR-2 rises at T+17.5 min. Retarget the tracker, retune the receiver to 1370 MHz (11730 MHz RF), and decode its downlink.',
       groundStation: 'GW-01',

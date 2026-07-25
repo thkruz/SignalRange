@@ -13,9 +13,11 @@ import type { Degrees } from 'ootk';
  *
  * Ku-band LEO downlink station on the Irish west coast. Frequency plan:
  * - LNB LO 13100 MHz (high-side): 11686 MHz video -> 1414 MHz IF,
- *   11699 MHz beacon -> 1401 MHz IF (both inside the 950-2150 MHz L-band IF)
+ *   11711 MHz beacon -> 1389 MHz IF (both inside the 950-2150 MHz L-band IF;
+ *   the beacon sits above the video's 11668-11704 MHz occupied band so the
+ *   CW tone is not blocked by the stronger co-channel carrier)
  * - BUC LO 12600 MHz (low-side): 1405 MHz IF -> 14005 MHz Ku uplink
- * - Fast 4m pedestal (KU_BAND_4M_LEO_TRACKER) sized for near-zenith passes
+ * - Fast 4m pedestal (KU_BAND_4M_LEO_TRACKER, 20 deg/s) for LEO tracking
  */
 export const galwayGroundStation = {
   id: 'GW-01',
@@ -29,18 +31,18 @@ export const galwayGroundStation = {
   antennaConfigKey: ANTENNA_CONFIG_KEYS.KU_BAND_4M_LEO_TRACKER,
   antennasState: [
     {
-      // Powered and parked near the MERIDIAN-SAR-1 AOS azimuth; the operator
-      // selects the target and enables program-track for the pass
+      // Powered and parked near the MERIDIAN-SAR-1 AOS azimuth (~5 deg); the
+      // operator selects the target and enables program-track for the pass
       isPowered: true,
-      azimuth: 165 as Degrees,
+      azimuth: 5 as Degrees,
       elevation: 3 as Degrees,
       polarization: 0 as Degrees,
       trackingMode: 'manual',
-      targetAzimuth: 165 as Degrees,
+      targetAzimuth: 5 as Degrees,
       targetElevation: 3 as Degrees,
       targetPolarization: 0 as Degrees,
       slewing: false,
-      beaconFrequencyHz: 11699e6 as Hertz, // MERIDIAN-SAR-1 telemetry beacon
+      beaconFrequencyHz: 11711e6 as Hertz, // MERIDIAN-SAR-1 telemetry beacon
       beaconSearchBwHz: 1e6, // Wide enough for +/-273 kHz LEO Doppler
       beaconTrackingBwHz: 1e3,
       isLocked: false,

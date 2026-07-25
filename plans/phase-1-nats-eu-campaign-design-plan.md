@@ -102,6 +102,21 @@ Solo shifts, customers, judgment. Charlie hands-off; Erik (customer) and Anneke 
 | 15 | **Rotation Day** / Fleet COMSEC Under Tempo | Fleet-wide scheduled key rotation across a full day of passes; mid-rotation key mismatch on SAR-2; recover without missing tasking | `key-rotation-completed`, `tx-key-status`, `rx-key-status`, `fault-cleared` | K0876, S0844, S0593 |
 | 16 | **Cascade** / Network Multi-Failure *(Phase 2 capstone)* | Three unrelated failures during the densest pass window: SH-02 BUC over-temp, GW-01 GPSDO holdover, schedule conflict from a slipped pass. Triage + SLA. | `buc-temperature-normal`, `gpsdo-not-in-holdover`, `contact-plan-valid` | T0531, S0677, S0807 |
 
+> **Candidate scenario — "Overhead" / Tracking Through the Zenith Keyhole (Phase 2, slot ~S13–S15).**
+> Scenario 1 was deliberately given moderate-elevation (~25–28°) passes because a
+> near-zenith pass exposes a real, physics-faithful failure mode: the antenna's
+> azimuth rate goes to infinity at the zenith, so even the fast (20°/s) 4m Ku
+> pedestal cannot slew through the "keyhole" — the narrow beam falls off the bird
+> at culmination and C/N craters to nothing right when the pass is highest. This
+> is a great **advanced tracking lesson**: give the operator a high (>~80°)
+> priority pass, let them watch the link die at the top, and teach the mitigations
+> (accept the brief keyhole outage and reacquire on the descending leg; or, if the
+> station had one, an X/Y or tilted pedestal). The keyhole is already reproduced
+> and asserted as a regression in `test/campaigns/nats-eu-rf-validation.test.ts`,
+> so the geometry and RF numbers for this scenario are on file. Pairs naturally
+> with S13 (pass-performance trending) or as its own "why did we lose the bird at
+> max elevation?" puzzle. Discovered during Phase A (see the phase-4 retro).
+
 ### Phase 3 — Crisis Operations: "Gray Zone" (S17–S24)
 
 One escalating, deliberately ambiguous adversary thread (plausible-deniability harassment of commercial SATCOM — never formally attributed). Priya Sharma (CSIRT) drives incident discipline. Each scenario teaches a distinct NICE incident-response/threat family. TRANSEC (M7) and GNSS spoofing (M8) debut here as *response* mechanics, following the NATS precedent of Phase-3 engine additions.

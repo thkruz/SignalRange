@@ -24,6 +24,7 @@ import { DashboardTab } from '@app/pages/mission-control/tabs/dashboard-tab';
 import { EaAssessmentTab } from '@app/pages/mission-control/tabs/ea-assessment-tab';
 import { GeolocationTab } from '@app/pages/mission-control/tabs/geolocation-tab';
 import { GPSTimingTab } from '@app/pages/mission-control/tabs/gps-timing-tab';
+import { GroundTrackTab } from '@app/pages/mission-control/tabs/ground-track-tab';
 import { LinkBudgetTab } from '@app/pages/mission-control/tabs/link-budget-tab';
 import { MissionOverviewTab } from '@app/pages/mission-control/tabs/mission-overview-tab';
 import { PassScheduleTab } from '@app/pages/mission-control/tabs/pass-schedule-tab';
@@ -47,7 +48,7 @@ export class TabbedCanvas extends BaseElement {
 
   private activeTab_: string = 'mission-overview';
   private selectedAssetId_: string | null = null;
-  private readonly tabInstances_: Map<string, ACUControlTab | DashboardTab | RxAnalysisTab | TxChainTab | GPSTimingTab | SatelliteDashboardTab | MissionOverviewTab | PassScheduleTab | SdrConsoleTab | GeolocationTab | EaAssessmentTab | LinkBudgetTab | CommandingTab | ContactScheduleTab | SecurityConsoleTab> = new Map();
+  private readonly tabInstances_: Map<string, ACUControlTab | DashboardTab | RxAnalysisTab | TxChainTab | GPSTimingTab | SatelliteDashboardTab | MissionOverviewTab | PassScheduleTab | SdrConsoleTab | GeolocationTab | EaAssessmentTab | LinkBudgetTab | CommandingTab | ContactScheduleTab | SecurityConsoleTab | GroundTrackTab> = new Map();
 
   protected html_ = html`
     <div class="tabbed-canvas">
@@ -117,10 +118,20 @@ export class TabbedCanvas extends BaseElement {
    * Render mission overview (no asset selected)
    */
   private renderMissionOverview_(): void {
-    const tabBar = qs('#tab-bar', this.dom_);
+    const hasOrbitalSats = SimulationManager.getInstance().satellites.some(
+      (sat) => sat instanceof OrbitalSatellite,
+    );
 
-    // Clear tab bar - mission overview has no tabs
-    tabBar.innerHTML = '';
+    // With orbital satellites the overview gains a whole-world map alongside
+    // it; otherwise it keeps its historical no-tab-bar look.
+    if (hasOrbitalSats) {
+      this.renderTabs_([
+        { id: 'mission-overview', label: 'Overview', icon: dashboardPng },
+        { id: 'ground-track', label: 'World Map', icon: radarPng },
+      ]);
+    } else {
+      qs('#tab-bar', this.dom_).innerHTML = '';
+    }
 
     // Deactivate all existing tabs
     this.tabInstances_.forEach(tab => tab.deactivate());
@@ -267,6 +278,12 @@ export class TabbedCanvas extends BaseElement {
       { id: 'sat-dashboard', label: 'Dashboard', icon: satellitePng },
     ];
 
+    // Ground Track sits next to the satellite it tracks. Only SGP4 birds have
+    // a meaningful sub-point path, so fixed/GEO-modeled satellites don't get it.
+    if (satellite instanceof OrbitalSatellite) {
+      tabs.push({ id: 'ground-track', label: 'Ground Track', icon: radarPng });
+    }
+
     this.renderTabs_(tabs);
     this.activeTab_ = 'sat-dashboard';
 
@@ -408,6 +425,18 @@ export class TabbedCanvas extends BaseElement {
 
       case 'sdr-console':
         this.renderSdrConsoleTab_(content);
+        break;
+
+      case 'mission-overview':
+        this.renderMissionOverview_();
+        break;
+
+      case 'sat-dashboard':
+        this.renderSatelliteDashboard_();
+        break;
+
+      case 'ground-track':
+        this.renderGroundTrackTab_();
         break;
 
       default:
@@ -657,6 +686,40 @@ export class TabbedCanvas extends BaseElement {
     }
 
     geoTab.activate();
+  }
+
+  /**
+   * Render the Ground Track tab (2D world map).
+   *
+   * One component, two placements: keyed per focused satellite when opened
+   * from the satellite tab set, and once as 'all' for the mission-overview
+   * world map. Keying by focus means switching satellites builds a fresh map
+   * centered on the new bird instead of reusing the previous one's view.
+   */
+  private renderGroundTrackTab_(): void {
+    const noradId = this.selectedAssetId_?.startsWith('sat-')
+      ? parseInt(this.selectedAssetId_.replace('sat-', ''), 10)
+      : null;
+    const satellite = noradId === null
+      ? undefined
+      : SimulationManager.getInstance().getSatByNoradId(noradId);
+    const focus = satellite instanceof OrbitalSatellite ? satellite : undefined;
+
+    const tabKey = `ground-track-${focus?.noradId ?? 'all'}`;
+    let gtTab = this.tabInstances_.get(tabKey) as GroundTrackTab;
+
+    if (gtTab && !document.contains(gtTab.dom)) {
+      gtTab.dispose();
+      this.tabInstances_.delete(tabKey);
+      gtTab = null!;
+    }
+
+    if (!gtTab) {
+      gtTab = new GroundTrackTab('canvas-content', focus);
+      this.tabInstances_.set(tabKey, gtTab);
+    }
+
+    gtTab.activate();
   }
 
   /**

@@ -1,0 +1,37 @@
+/* Ground Track tab - 2D world map of live satellite positions (Campaign 2+) */
+
+.ground-track-tab {
+  padding: 0.75rem;
+}
+
+.ground-track-tab .gt-title {
+  font-size: 1.1rem;
+  margin: 0;
+  color: var(--mc-text-primary);
+}
+
+/* The map is authored at 1200x600 and scaled to the card width by geo-map.css;
+   this just caps it so it stays readable on very wide monitors. */
+.ground-track-tab .gt-map-mount {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* Color key linking each table row to its track on the map. */
+.ground-track-tab .gt-swatch {
+  display: inline-block;
+  width: 0.65rem;
+  height: 0.65rem;
+  margin-right: 0.5rem;
+  border-radius: 2px;
+  vertical-align: middle;
+}
+
+/* The satellite this tab was opened for (absent on the overview world map). */
+.ground-track-tab .gt-row-focus {
+  background: rgba(var(--mc-accent-red-rgb), 0.10);
+}
+
+.ground-track-tab .gt-row-focus td {
+  font-weight: 600;
+}

@@ -1,7 +1,16 @@
+import type { Degrees, Kilometers, TleLine1, TleLine2 } from 'ootk';
 import { Mock, vi } from 'vitest';
+import { OrbitalSatellite } from '../../../src/equipment/satellite/orbital-satellite';
 import { EventBus } from '../../../src/events/event-bus';
 import { Events } from '../../../src/events/events';
 import { TabbedCanvas } from '../../../src/pages/mission-control/tabbed-canvas';
+
+/** A genuinely SGP4-propagated satellite, for the instanceof-based tab gates. */
+const ORBITAL_SAT = new OrbitalSatellite('TEST-LEO', 61701, [], [], {
+  tle1: '1 61701U 27015A   27074.58333333  .00001000  00000-0  10000-3 0  9996' as TleLine1,
+  tle2: '2 61701  97.6000  26.0000 0010000  90.0000 294.0000 14.90000000123451' as TleLine2,
+  observer: { lat: 53.27 as Degrees, lon: -9.05 as Degrees, alt: 0.02 as Kilometers },
+});
 
 // Create mock tab factory
 const createMockTab = () => ({
@@ -10,6 +19,20 @@ const createMockTab = () => ({
   deactivate: vi.fn(),
   dispose: vi.fn(),
 });
+
+/**
+ * Satellites the mocked SimulationManager reports. Mutable so the ground-track
+ * gating tests can swap in a real OrbitalSatellite (the gate is an
+ * `instanceof` check, so a plain object is deliberately not enough).
+ */
+const DEFAULT_SATELLITES = [
+  {
+    noradId: 12345,
+    name: 'GALAXY-19',
+    health: 0.95,
+  },
+];
+let mockSatellites: unknown[] = DEFAULT_SATELLITES;
 
 // Mock dependencies
 vi.mock('../../../src/events/event-bus');
@@ -33,23 +56,11 @@ vi.mock('../../../src/simulation/simulation-manager', () => ({
           ],
         },
       ],
-      satellites: [
-        {
-          noradId: 12345,
-          name: 'GALAXY-19',
-          health: 0.95,
-        },
-      ],
-      getSatByNoradId: vi.fn((id: number) => {
-        if (id === 12345) {
-          return {
-            noradId: 12345,
-            name: 'GALAXY-19',
-            health: 0.95,
-          };
-        }
-        return null;
-      }),
+      get satellites() {
+        return mockSatellites;
+      },
+      getSatByNoradId: vi.fn((id: number) =>
+        (mockSatellites as Array<{ noradId: number }>).find((sat) => sat.noradId === id) ?? null),
     })),
   },
 }));
@@ -61,6 +72,9 @@ vi.mock('../../../src/pages/mission-control/tabs/dashboard-tab', () => ({
 }));
 vi.mock('../../../src/pages/mission-control/tabs/gps-timing-tab', () => ({
   GPSTimingTab: vi.fn(function () { return createMockTab(); }),
+}));
+vi.mock('../../../src/pages/mission-control/tabs/ground-track-tab', () => ({
+  GroundTrackTab: vi.fn(function () { return createMockTab(); }),
 }));
 vi.mock('../../../src/pages/mission-control/tabs/mission-overview-tab', () => ({
   MissionOverviewTab: vi.fn(function () { return createMockTab(); }),
@@ -84,6 +98,7 @@ vi.mock('../../../src/engine/utils/query-selector', () => ({
 import { ACUControlTab } from '../../../src/pages/mission-control/tabs/acu-control-tab';
 import { DashboardTab } from '../../../src/pages/mission-control/tabs/dashboard-tab';
 import { GPSTimingTab } from '../../../src/pages/mission-control/tabs/gps-timing-tab';
+import { GroundTrackTab } from '../../../src/pages/mission-control/tabs/ground-track-tab';
 import { MissionOverviewTab } from '../../../src/pages/mission-control/tabs/mission-overview-tab';
 import { RxAnalysisTab } from '../../../src/pages/mission-control/tabs/rx-analysis-tab';
 import { SatelliteDashboardTab } from '../../../src/pages/mission-control/tabs/satellite-dashboard-tab';
@@ -276,6 +291,75 @@ describe('TabbedCanvas', () => {
 
       const content = document.querySelector('#canvas-content');
       expect(content?.innerHTML).toContain('Satellite Not Found');
+    });
+  });
+
+  /**
+   * The Ground Track tab is gated on the satellite actually being SGP4
+   * propagated - a fixed/GEO-modeled satellite has no sub-point path worth
+   * drawing, so it must not appear for one.
+   */
+  describe('ground track tab gating', () => {
+    const selectSatellite = (id: string): void => {
+      const handler = mockEventBus.on.mock.calls.find(
+        (call: [string, Function]) => call[0] === Events.ASSET_SELECTED
+      )?.[1];
+
+      handler?.({ type: 'satellite', id });
+    };
+
+    const selectOverview = (): void => {
+      const handler = mockEventBus.on.mock.calls.find(
+        (call: [string, Function]) => call[0] === Events.MISSION_OVERVIEW_SELECTED
+      )?.[1];
+
+      handler?.();
+    };
+
+    afterEach(() => {
+      mockSatellites = DEFAULT_SATELLITES;
+    });
+
+    it('is absent for a non-orbital satellite', () => {
+      selectSatellite('sat-12345');
+
+      expect(document.querySelector('#tab-bar')?.innerHTML).not.toContain('Ground Track');
+    });
+
+    it('is offered for an SGP4-propagated satellite', () => {
+      mockSatellites = [ORBITAL_SAT];
+      selectSatellite(`sat-${ORBITAL_SAT.noradId}`);
+
+      expect(document.querySelector('#tab-bar')?.innerHTML).toContain('Ground Track');
+    });
+
+    it('constructs the tab focused on the selected satellite when switched to', () => {
+      mockSatellites = [ORBITAL_SAT];
+      selectSatellite(`sat-${ORBITAL_SAT.noradId}`);
+
+      const switchHandler = mockEventBus.on.mock.calls.find(
+        (call: [string, Function]) => call[0] === Events.SWITCH_TAB
+      )?.[1];
+
+      switchHandler?.({ tabId: 'ground-track' });
+
+      expect(GroundTrackTab).toHaveBeenCalledWith('canvas-content', ORBITAL_SAT);
+    });
+
+    it('adds a World Map tab to mission overview when orbital sats exist', () => {
+      mockSatellites = [ORBITAL_SAT];
+      selectOverview();
+
+      const tabBar = document.querySelector('#tab-bar');
+
+      expect(tabBar?.innerHTML).toContain('World Map');
+      expect(tabBar?.innerHTML).toContain('Overview');
+    });
+
+    it('leaves mission overview tab-less without orbital sats', () => {
+      selectOverview();
+
+      expect(document.querySelector('#tab-bar')?.innerHTML).toBe('');
     });
   });
 

@@ -8,6 +8,7 @@
 
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
+import { missionNowMs } from '@app/simulation/mission-clock';
 import type {
   CryptoAlgorithm,
   CryptoMode,
@@ -63,6 +64,16 @@ export class CryptoModule {
   }
 
   /**
+   * Whether a module already exists. Unlike getInstance() this does not create
+   * one, so callers that only want to inspect crypto state (the time-skip
+   * pre-flight check) do not bring a COMSEC unit into being on a scenario that
+   * has none.
+   */
+  static hasInstance(): boolean {
+    return CryptoModule.instance_ !== null;
+  }
+
+  /**
    * Reset singleton (for testing)
    */
   static resetInstance(): void {
@@ -82,7 +93,7 @@ export class CryptoModule {
       algorithm: 'AES-256-GCM',
       keyStatus: 'Valid',
       keyExpiresInDays: 62,
-      keyLoadedAt: Date.now(),
+      keyLoadedAt: missionNowMs(),
       keyValidDays: 90,
 
       // TX Encryption
@@ -190,7 +201,7 @@ export class CryptoModule {
     }
 
     this.state_.keyId = newKeyId;
-    this.state_.keyLoadedAt = Date.now();
+    this.state_.keyLoadedAt = missionNowMs();
     this.state_.keyValidDays = validDays;
     this.state_.keyExpiresInDays = validDays;
     this.state_.keyStatus = 'Valid';
@@ -299,6 +310,24 @@ export class CryptoModule {
   }
 
   /**
+   * Remaining life of the loaded key in milliseconds of mission time.
+   *
+   * Returns Infinity when key age is not being tracked (zeroized, or a
+   * fault-injected mismatch), so a caller asking "would skipping X expire the
+   * key?" gets a straight no rather than a special case.
+   */
+  getKeyLifeRemainingMs(): number {
+    if (this.state_.isZeroized || this.state_.keyStatus === 'Zeroized' || this.state_.keyStatus === 'Mismatch') {
+      return Infinity;
+    }
+
+    const validMs = this.state_.keyValidDays * 24 * 60 * 60 * 1000;
+    const agedMs = (missionNowMs() - this.state_.keyLoadedAt) * this.timeScaleFactor_;
+
+    return Math.max(0, (validMs - agedMs) / this.timeScaleFactor_);
+  }
+
+  /**
    * Set time scale factor for accelerated training
    */
   setTimeScale(factor: number): void {
@@ -383,8 +412,10 @@ export class CryptoModule {
       return;
     }
 
-    // Calculate elapsed time with scaling
-    const msElapsed = (Date.now() - this.state_.keyLoadedAt) * this.timeScaleFactor_;
+    // Calculate elapsed time with scaling. Key age runs on the mission clock,
+    // so a fast-forward ages the loaded key exactly as if the operator had sat
+    // through the wait.
+    const msElapsed = (missionNowMs() - this.state_.keyLoadedAt) * this.timeScaleFactor_;
     const daysElapsed = msElapsed / (24 * 60 * 60 * 1000);
     const daysRemaining = this.state_.keyValidDays - daysElapsed;
 

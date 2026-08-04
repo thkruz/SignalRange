@@ -11,6 +11,8 @@ import { OpsLogManager } from '@app/ops-log/ops-log-manager';
 import { OpsLogModal } from '@app/ops-log/ops-log-modal';
 import { Equipment } from '@app/pages/sandbox/equipment';
 import { ScenarioManager } from '@app/scenario-manager';
+import { resetMissionClock } from '@app/simulation/mission-clock';
+import { TimeSkipController } from '@app/simulation/time-skip-controller';
 import { ProgressSaveManager } from '@app/user-account/progress-save-manager';
 import { UserDataService } from '@app/user-account/user-data-service';
 import { Degrees, Milliseconds } from 'ootk';
@@ -127,6 +129,12 @@ export class SimulationManager {
       SimulationManager.instance_.missionBriefBox?.close();
       SimulationManager.instance_ = null;
     }
+
+    // Stop any running fast-forward before the clocks it drives go away, then
+    // drop the skipped time - otherwise the next scenario starts with its
+    // elapsed-keyed mechanics already past their trigger times.
+    TimeSkipController.destroy();
+    resetMissionClock();
 
     // Clean up singleton managers
     ObjectivesManager.destroy();

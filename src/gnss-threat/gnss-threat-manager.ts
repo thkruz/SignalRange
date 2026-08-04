@@ -17,6 +17,7 @@
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
 import { ScenarioManager } from '@app/scenario-manager';
+import { missionNowMs } from '@app/simulation/mission-clock';
 import type { Milliseconds } from 'ootk';
 
 export type GpsdoReferenceMode = 'gnss' | 'holdover' | 'manual';
@@ -45,7 +46,7 @@ export class GnssThreatManager {
 
   private readonly config_: GnssThreatConfig;
   private readonly state_: GnssThreatState = { spoofActive: false, timeOffsetUs: 0, referenceMode: 'gnss' };
-  private readonly missionStartTime_ = Date.now();
+  private readonly missionStartTime_ = missionNowMs();
   private lastElapsedS_ = 0;
   private readonly boundUpdateHandler_: (dt: Milliseconds) => void;
 
@@ -116,7 +117,7 @@ export class GnssThreatManager {
   }
 
   private update_(): void {
-    const elapsed = (Date.now() - this.missionStartTime_) / 1000;
+    const elapsed = (missionNowMs() - this.missionStartTime_) / 1000;
     const inWindow = elapsed >= this.config_.spoofStartS
       && (this.config_.spoofEndS === undefined || elapsed < this.config_.spoofEndS);
     this.state_.spoofActive = inWindow;

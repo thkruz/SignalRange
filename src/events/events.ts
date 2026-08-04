@@ -305,6 +305,33 @@ export interface SimulatedTimeTickData {
   timestampMs: number;
 }
 
+export interface TimeSkipStartedData {
+  /** Satellite whose AOS the skip is aiming at */
+  satelliteName: string;
+  /** Scenario-clock timestamp the skip stops at, Unix ms */
+  targetMs: number;
+  /** Total scenario time the skip will cover, ms */
+  totalMs: number;
+}
+
+export interface TimeSkipProgressData {
+  /** Fraction of the skip completed, 0..1 */
+  progress: number;
+  /** Scenario-clock time reached so far, Unix ms */
+  simNowMs: number;
+  /** Scenario time skipped so far, ms */
+  skippedMs: number;
+  /** Total scenario time the skip covers, ms */
+  totalMs: number;
+}
+
+export interface TimeSkipEndedData {
+  /** False when the skip aborted early (scenario paused, objective failed) */
+  isCompleted: boolean;
+  /** Scenario time actually skipped, ms */
+  skippedMs: number;
+}
+
 export enum Events {
   // Antenna events
   ANTENNA_STATE_CHANGED = 'antenna:state:changed',
@@ -410,6 +437,11 @@ export enum Events {
 
   // Simulated Time events
   SIMULATED_TIME_TICK = 'simulated-time:tick',
+
+  // Operator time-skip (fast-forward to the next contact)
+  TIME_SKIP_STARTED = 'time-skip:started',
+  TIME_SKIP_PROGRESS = 'time-skip:progress',
+  TIME_SKIP_ENDED = 'time-skip:ended',
 
   // Scenario lifecycle events
   SCENARIO_CHANGED = 'scenario:changed',
@@ -519,6 +551,11 @@ export interface EventMap {
 
   // Simulated Time events
   [Events.SIMULATED_TIME_TICK]: [SimulatedTimeTickData];
+
+  // Operator time-skip
+  [Events.TIME_SKIP_STARTED]: [TimeSkipStartedData];
+  [Events.TIME_SKIP_PROGRESS]: [TimeSkipProgressData];
+  [Events.TIME_SKIP_ENDED]: [TimeSkipEndedData];
 
   // Scenario lifecycle events
   [Events.SCENARIO_CHANGED]: [{ scenarioId: string }];

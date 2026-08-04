@@ -13,6 +13,7 @@
  */
 
 import { ScenarioManager } from '@app/scenario-manager';
+import { missionNowMs } from '@app/simulation/mission-clock';
 
 export type CommandKeyStatus = 'Valid' | 'Pending Rotation' | 'Zeroized';
 export type CommandStatus = 'pending' | 'acked' | 'rejected';
@@ -54,7 +55,7 @@ export class CommandingManager {
   private static instance_: CommandingManager | null = null;
 
   private readonly config_: CommandingConfig;
-  private readonly missionStartTime_ = Date.now();
+  private readonly missionStartTime_ = missionNowMs();
   private readonly state_: CommandingState = {
     dopplerCompEnabled: false,
     keyStatus: 'Valid',
@@ -94,7 +95,7 @@ export class CommandingManager {
    * clock (used by tests); omit in-app to use the real elapsed time.
    */
   isWindowOpen(atElapsedS?: number): boolean {
-    const elapsed = atElapsedS ?? (Date.now() - this.missionStartTime_) / 1000;
+    const elapsed = atElapsedS ?? (missionNowMs() - this.missionStartTime_) / 1000;
 
     return this.isWithinWindow_(elapsed);
   }
@@ -134,7 +135,7 @@ export class CommandingManager {
    */
   sendCommand(id: string, atElapsedS?: number): CommandRecord {
     const record: CommandRecord = { id, status: 'pending' };
-    const elapsed = atElapsedS ?? (Date.now() - this.missionStartTime_) / 1000;
+    const elapsed = atElapsedS ?? (missionNowMs() - this.missionStartTime_) / 1000;
 
     if ((this.config_.requireDopplerComp ?? true) && !this.state_.dopplerCompEnabled) {
       record.status = 'rejected';

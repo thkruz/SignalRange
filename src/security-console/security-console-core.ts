@@ -15,6 +15,7 @@
  */
 
 import { ScenarioManager } from '@app/scenario-manager';
+import { missionNowMs } from '@app/simulation/mission-clock';
 
 export type AccountStatus = 'active' | 'disabled' | 'expired';
 export type AuditCategory = 'auth' | 'config' | 'command' | 'access';
@@ -53,7 +54,7 @@ export class SecurityConsoleCore {
   private static instance_: SecurityConsoleCore | null = null;
 
   private readonly config_: SecurityConfig;
-  private readonly missionStartTime_ = Date.now();
+  private readonly missionStartTime_ = missionNowMs();
   private readonly acknowledged_ = new Set<string>();
   private readonly accountStatus_ = new Map<string, AccountStatus>();
   private reviewed_ = false;
@@ -89,7 +90,7 @@ export class SecurityConsoleCore {
 
   /** Audit-log entries visible at the given elapsed time (real mission clock if omitted). */
   getVisibleLog(atElapsedS?: number): AuditEventConfig[] {
-    const elapsed = atElapsedS ?? (Date.now() - this.missionStartTime_) / 1000;
+    const elapsed = atElapsedS ?? (missionNowMs() - this.missionStartTime_) / 1000;
 
     return this.config_.events.filter((e) => (e.timeS ?? 0) <= elapsed);
   }

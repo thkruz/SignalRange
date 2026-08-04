@@ -6,11 +6,20 @@
 
 import { EventBus } from '@app/events/event-bus';
 import { Events, SimulatedTimeTickData } from '@app/events/events';
+import { addSkippedTime, getSkippedMs } from '@app/simulation/mission-clock';
 import { Milliseconds } from 'ootk';
 import { OpsLogEntry, OpsLogState, PreviousShiftLogEntry } from './ops-log-types';
 
 /** Month abbreviations for military datetime format */
 const MONTH_ABBREVS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+
+/** Developer/E2E clock hooks installed on window while a scenario is loaded. */
+interface SimClockDevHooks {
+  advanceSimClock?: (deltaMs: number) => void;
+  advanceMissionClock?: (deltaMs: number) => void;
+  simClockMs?: () => number;
+  missionSkippedMs?: () => number;
+}
 
 /**
  * Manages operations logging for scenario-based simulations
@@ -56,10 +65,26 @@ export class OpsLogManager {
     this.boundUpdateHandler_ = this.handleUpdate_.bind(this);
     this.eventBus_.on(Events.UPDATE, this.boundUpdateHandler_);
 
-    // Developer/E2E hook for LEO pass scenarios (see advanceClock JSDoc);
-    // same pattern as window.debugSignalPath in RFFrontEndCore.
-    (window as unknown as { advanceSimClock?: (deltaMs: number) => void }).advanceSimClock =
-      this.advanceClock.bind(this);
+    // Developer/E2E hooks for LEO pass scenarios (see advanceClock JSDoc);
+    // same pattern as window.debugSignalPath in RFFrontEndCore. The two readers
+    // let a spec assert that an operator time skip moved the scenario clock and
+    // the mission clock by the same amount - the invariant the whole feature
+    // rests on, and one that is invisible from the DOM.
+    const devHooks = window as unknown as SimClockDevHooks;
+
+    devHooks.advanceSimClock = this.advanceClock.bind(this);
+    // Advance BOTH clocks together - the operator-time-skip invariant. For
+    // specs that must cross mission-elapsed thresholds (gnssThreat windows,
+    // interference envelopes, commanding windows) without waiting wall time.
+    devHooks.advanceMissionClock = (deltaMs: number) => {
+      if (!Number.isFinite(deltaMs) || deltaMs <= 0) {
+        return;
+      }
+      addSkippedTime(deltaMs);
+      this.advanceClock(deltaMs);
+    };
+    devHooks.simClockMs = () => this.currentTimestampMs_;
+    devHooks.missionSkippedMs = () => getSkippedMs();
 
     // Emit initial time tick
     this.emitTimeTick_();
@@ -110,7 +135,12 @@ export class OpsLogManager {
         Events.UPDATE,
         OpsLogManager.instance_.boundUpdateHandler_
       );
-      delete (window as unknown as { advanceSimClock?: (deltaMs: number) => void }).advanceSimClock;
+      const devHooks = window as unknown as SimClockDevHooks;
+
+      delete devHooks.advanceSimClock;
+      delete devHooks.advanceMissionClock;
+      delete devHooks.simClockMs;
+      delete devHooks.missionSkippedMs;
       OpsLogManager.instance_ = null;
     }
   }

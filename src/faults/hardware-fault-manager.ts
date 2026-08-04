@@ -15,6 +15,7 @@
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
 import { ScenarioManager } from '@app/scenario-manager';
+import { missionNowMs } from '@app/simulation/mission-clock';
 import { SimulationManager } from '@app/simulation/simulation-manager';
 
 export interface HardwareFaultEventConfig {
@@ -37,7 +38,7 @@ export class HardwareFaultManager {
   private readonly boundUpdateHandler_: () => void;
 
   private constructor() {
-    this.missionStartTime_ = Date.now();
+    this.missionStartTime_ = missionNowMs();
     this.boundUpdateHandler_ = this.update_.bind(this);
     this.events_ = (ScenarioManager.getInstance().settings.hardwareFaultEvents as HardwareFaultEventConfig[] | undefined) ?? [];
     EventBus.getInstance().on(Events.UPDATE, this.boundUpdateHandler_);
@@ -69,7 +70,7 @@ export class HardwareFaultManager {
     if (this.events_.length === 0) {
       return;
     }
-    const elapsed = (Date.now() - this.missionStartTime_) / 1000;
+    const elapsed = (missionNowMs() - this.missionStartTime_) / 1000;
     const sim = SimulationManager.getInstance();
 
     for (const event of this.events_) {

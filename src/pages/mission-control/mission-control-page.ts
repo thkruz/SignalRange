@@ -297,8 +297,17 @@ export class MissionControlPage extends BasePage {
       MissionControlPage.instance_.timelineDeck_?.dispose();
       MissionControlPage.instance_.timelineDeck_ = null;
 
+      // The command bar holds a 1 Hz interval and (when the scenario opts into
+      // settings.timeSkip) the fast-forward overlay's EventBus subscriptions,
+      // so leaving it up meant a second scenario stacked a second overlay.
+      MissionControlPage.instance_.commandBarCenter_?.dispose();
+
+      // The canvas owns every open tab, and a tab's dispose() releases things
+      // the EventBus teardown below cannot - GeoMap's canvas pointer/wheel
+      // handlers, detached DOM. Without this the tabs were simply abandoned.
+      MissionControlPage.instance_.tabbedCanvas_?.destroy();
+
       // TODO: Clean up remaining components and ground stations
-      // this.commandBarCenter_.destroy();
       MissionControlPage.instance_ = null;
     }
 

@@ -7,6 +7,7 @@
 import { EventBus } from '@app/events/event-bus';
 import { Events, WeatherEventData } from '@app/events/events';
 import { ScenarioManager } from '@app/scenario-manager';
+import { missionNowMs } from '@app/simulation/mission-clock';
 import { SimulationManager } from '@app/simulation/simulation-manager';
 import type { Milliseconds } from 'ootk';
 
@@ -55,7 +56,7 @@ export class WeatherManager {
   private readonly boundUpdateHandler_: (dt: Milliseconds) => void;
 
   private constructor() {
-    this.missionStartTime_ = Date.now();
+    this.missionStartTime_ = missionNowMs();
     this.boundUpdateHandler_ = this.update_.bind(this);
 
     this.loadWeatherEvents_();
@@ -85,7 +86,7 @@ export class WeatherManager {
 
   /** Get elapsed mission time in seconds */
   getElapsedMissionTime(): number {
-    return (Date.now() - this.missionStartTime_) / 1000;
+    return (missionNowMs() - this.missionStartTime_) / 1000;
   }
 
   /** Main update loop - called on each simulation tick */

@@ -7,6 +7,7 @@ import { Events } from "@app/events/events";
 import { ScenarioManager } from "@app/scenario-manager";
 import { SimulationManager } from "@app/simulation/simulation-manager";
 import { TrafficControlManager } from "@app/traffic/traffic-control-manager";
+import { formatFrequencyMHz } from "@app/utils/format-number";
 import satellitePng from '@app/assets/icons/satellite.png';
 import './satellite-dashboard-tab.css';
 
@@ -166,16 +167,35 @@ export class SatelliteDashboardTab extends BaseElement {
       <div class="transponder-item">
         <div>
           <div class="transponder-id">${tp.id}</div>
-          <div class="transponder-freq">
-            UL: ${(tp.uplinkFrequency / 1e9).toFixed(3)} GHz
-            / DL: ${(tp.downlinkFrequency / 1e9).toFixed(3)} GHz
-          </div>
+          ${this.renderTransponderFrequencies_(tp)}
         </div>
         <span class="status-badge ${tp.isActive ? 'status-badge-green' : 'status-badge-off'}">
           ${tp.isActive ? 'ON' : 'OFF'}
         </span>
       </div>
     `).join('');
+  }
+
+  /**
+   * Render the frequency lines for one transponder.
+   *
+   * A transponder with `frequencyOffset === 0` has no translated path - its
+   * "downlink" is just the (unused) uplink slot echoed back, which reads as a
+   * wrong frequency on the dashboard. Those entries carry a beacon instead, so
+   * show the beacon frequency the operator actually tunes.
+   */
+  private renderTransponderFrequencies_(tp: Transponder): string {
+    const lines: string[] = [];
+    const isBeaconOnly = !tp.frequencyOffset && !!tp.beacon;
+
+    if (!isBeaconOnly) {
+      lines.push(`UL: ${formatFrequencyMHz(tp.uplinkFrequency)} MHz / DL: ${formatFrequencyMHz(tp.downlinkFrequency)} MHz`);
+    }
+    if (tp.beacon) {
+      lines.push(`Beacon: ${formatFrequencyMHz(tp.beacon.frequency)} MHz`);
+    }
+
+    return lines.map((line) => html`<div class="transponder-freq">${line}</div>`).join('');
   }
 
   private cacheDomElements_(): void {

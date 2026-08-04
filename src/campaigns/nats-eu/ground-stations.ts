@@ -229,3 +229,37 @@ export const galwayGroundStation = {
     }],
   }],
 } as GroundStationConfig;
+
+/**
+ * NATS Europe - Shetland Ground Station (SH-02)
+ *
+ * The second EU site, debuting in scenario 5. Deliberately the SAME hardware as
+ * GW-01 (4m Ku LEO tracker, identical frequency plan) so the lesson the
+ * two-station scenarios teach is *scheduling*, not new equipment.
+ *
+ * Its higher latitude (60.15 N vs Galway's 53.27 N) gives complementary pass
+ * geometry on sun-synchronous birds - more passes per day, and overlap windows
+ * with Galway that the operator has to deconflict.
+ *
+ * KNOWN MODELING LIMIT: OrbitalSatellite carries a single observer (Galway), so
+ * satellite az/el/range telemetry is Galway-relative everywhere. Contact
+ * planning across the two sites is therefore modeled abstractly by
+ * ContactScheduleManager (windows + conflicts) rather than by propagating each
+ * station separately. Scenarios must not ask the operator to *track* from
+ * SH-02; they allocate contacts to it. Lifting this needs per-station
+ * propagation in OrbitalSatellite.
+ */
+export const shetlandGroundStation = {
+  // Deep clone, NOT a spread: the config's nested antennasState / rfFrontEnds /
+  // receivers objects are handed to the equipment constructors and mutated at
+  // runtime, so a shallow copy would make Shetland and Galway share one
+  // antenna's live state.
+  ...structuredClone(galwayGroundStation),
+  id: 'SH-02',
+  name: 'Shetland Ground Station',
+  location: {
+    latitude: 60.15,
+    longitude: -1.15,
+    elevation: 35,
+  },
+} as GroundStationConfig;

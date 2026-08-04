@@ -158,6 +158,38 @@ describe('SatelliteDashboardTab', () => {
       const transponderItems = document.querySelectorAll('.transponder-item');
       expect(transponderItems.length).toBe(2);
     });
+
+    it('should display translated transponder frequencies in MHz', () => {
+      const freqEl = document.querySelector('.transponder-item .transponder-freq');
+      expect(freqEl?.textContent).toContain('UL: 14000 MHz');
+      expect(freqEl?.textContent).toContain('DL: 12000 MHz');
+    });
+
+    it('should display the beacon frequency, not the unused uplink slot, for beacon-only transponders', () => {
+      // Matches the ham-sdr APT transponder: unused 148 MHz uplink slot,
+      // zero offset, real downlink is the 137.1 MHz beacon.
+      mockSatellite.transponders = [
+        {
+          id: 'APT',
+          uplinkFrequency: 148e6,
+          downlinkFrequency: 148e6,
+          frequencyOffset: 0,
+          beacon: { frequency: 137.1e6 },
+          isActive: true,
+        },
+      ] as unknown as Satellite['transponders'];
+
+      const containerEl2 = document.createElement('div');
+      containerEl2.id = 'sat-container-beacon';
+      document.body.appendChild(containerEl2);
+      const tab2 = new SatelliteDashboardTab(mockSatellite, 'sat-container-beacon');
+
+      const text = containerEl2.querySelector('.transponder-list')?.textContent ?? '';
+      expect(text).toContain('Beacon: 137.1 MHz');
+      expect(text).not.toContain('148');
+      expect(text).not.toContain('GHz');
+      tab2.dispose();
+    });
   });
 
   describe('health status badge', () => {

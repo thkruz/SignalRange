@@ -29,9 +29,17 @@ const TRACK_COLORS = ['#e8ebee', '#7ad0ff', '#ffd07a', '#8fe388', '#ff9ecb', '#c
 /**
  * GroundTrackTab - live 2D world map of where the satellites actually are.
  *
- * Renders every orbital satellite's sub-point and ground track (solid behind,
- * dotted ahead), each ground station with its access circle at a 5 deg mask,
- * and the day/night terminator for the current *scenario* time.
+ * Renders every orbital satellite's sub-point, ground track (solid behind,
+ * dotted ahead) and coverage footprint at a 5 deg mask, each ground station as
+ * a marker, and the day/night terminator for the current *scenario* time.
+ *
+ * Two visibility circles are available and mean different things. Coverage
+ * (blue, on by default) rides the satellite: everywhere that can work this
+ * bird. Station access (amber, opt-in) rides the station: everywhere the bird
+ * could be and still clear the mask. The second is only offered on the focused
+ * satellite tab, because its radius depends on which satellite you mean - an
+ * unlabeled station-centered circle is what made a GEO target look like the
+ * site could see to northern Japan.
  *
  * The same component serves two placements: with a `focusSatellite` it is the
  * per-satellite tab in the satellite asset tab set (that bird highlighted and
@@ -54,6 +62,12 @@ export class GroundTrackTab extends BaseElement {
   private lastTrackBuildMs_ = 0;
   private tracks_ = new Map<number, GroundPoint[]>();
   private showFootprints_ = true;
+  /**
+   * Station access circles. Off by default and only offered on the focused
+   * satellite tab: the radius depends on which bird you mean, so on the
+   * all-assets overview map there is no honest answer to draw.
+   */
+  private showAccess_ = false;
   private showTerminator_ = true;
   private hasCentered_ = false;
 
@@ -86,7 +100,7 @@ export class GroundTrackTab extends BaseElement {
           <div class="col-12">
             <div class="d-flex justify-content-between align-items-center">
               <h2 class="gt-title">Ground Track</h2>
-              <span class="text-muted small">Sub-satellite point · station access · day/night</span>
+              <span class="text-muted small">Sub-satellite point · coverage footprint · station access · day/night</span>
             </div>
           </div>
 
@@ -97,8 +111,14 @@ export class GroundTrackTab extends BaseElement {
                 <div class="d-flex align-items-center gap-3">
                   <label class="form-check form-switch mb-0">
                     <input class="form-check-input" type="checkbox" id="gt-toggle-footprints" checked />
-                    <span class="form-check-label small">Access circles</span>
+                    <span class="form-check-label small">Sat coverage</span>
                   </label>
+                  ${this.focusNoradId_ === null ? '' : html`
+                    <label class="form-check form-switch mb-0">
+                      <input class="form-check-input" type="checkbox" id="gt-toggle-access" />
+                      <span class="form-check-label small">Station access</span>
+                    </label>
+                  `}
                   <label class="form-check form-switch mb-0">
                     <input class="form-check-input" type="checkbox" id="gt-toggle-terminator" checked />
                     <span class="form-check-label small">Day/night</span>
@@ -148,6 +168,13 @@ export class GroundTrackTab extends BaseElement {
 
     footprints?.addEventListener('change', () => {
       this.showFootprints_ = footprints.checked;
+      this.renderMap_();
+    });
+
+    const access = this.cache_('gt-toggle-access') as HTMLInputElement | null;
+
+    access?.addEventListener('change', () => {
+      this.showAccess_ = access.checked;
       this.renderMap_();
     });
 
@@ -236,26 +263,47 @@ export class GroundTrackTab extends BaseElement {
       });
     });
 
+    // The focused bird, if this is the per-satellite placement. Its altitude is
+    // what makes a station access circle answerable.
+    const focus = satellites.find((sat) => sat.noradId === this.focusNoradId_);
+    const focusAltKm = focus?.lla?.alt ?? 0;
+
     for (const station of SimulationManager.getInstance().groundStations) {
       const { latitude, longitude } = station.state.location;
 
       markers.push({ lat: latitude, lon: longitude, label: station.state.id, kind: 'station' });
 
-      if (!this.showFootprints_) {
-        continue;
-      }
-
-      // Size the circle for the focused satellite's current altitude (or the
-      // first one) - access geometry is altitude-dependent, so a single fixed
-      // radius would be a lie.
-      const altKm = this.referenceAltitudeKm_(satellites);
-
-      if (altKm > 0) {
+      if (this.showAccess_ && focus && focusAltKm > 0) {
         footprints.push({
           lat: latitude,
           lon: longitude,
+          radiusDeg: visibilityRadiusDeg(focusAltKm, FOOTPRINT_MIN_ELEVATION),
+          label: `${station.state.id} access to ${focus.name}`,
+          kind: 'access',
+        });
+      }
+    }
+
+    // Coverage circles ride the satellites, not the stations. Drawn around a
+    // station the circle is the region a bird at that altitude would clear the
+    // mask from - true, but for a GEO target it is a fixed 76 deg blob centered
+    // on the site, which reads as "this station can see to northern Japan".
+    // Centered on the sub-point it is the ordinary satellite footprint: the
+    // area that can work the bird, with the station either inside it or not.
+    if (this.showFootprints_) {
+      for (const sat of satellites) {
+        const altKm = sat.lla?.alt ?? 0;
+
+        if (!sat.lla || altKm <= 0) {
+          continue;
+        }
+
+        footprints.push({
+          lat: sat.lla.lat,
+          lon: sat.lla.lon,
           radiusDeg: visibilityRadiusDeg(altKm, FOOTPRINT_MIN_ELEVATION),
-          label: station.state.id,
+          label: sat.name,
+          kind: 'coverage',
         });
       }
     }
@@ -280,13 +328,6 @@ export class GroundTrackTab extends BaseElement {
         this.hasCentered_ = true;
       }
     }
-  }
-
-  /** Altitude the access circles are drawn for: the focused bird, else the first. */
-  private referenceAltitudeKm_(satellites: OrbitalSatellite[]): number {
-    const focus = satellites.find((sat) => sat.noradId === this.focusNoradId_) ?? satellites[0];
-
-    return focus?.lla?.alt ?? 0;
   }
 
   private syncDomWithState_(): void {

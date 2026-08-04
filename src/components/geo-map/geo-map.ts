@@ -69,15 +69,23 @@ export interface GeoTrack {
 }
 
 /**
- * A ground-station access circle: the region within which a satellite at the
- * given angular radius clears the station's elevation mask. Radius comes from
- * `visibilityRadiusDeg` so the map and the pass planner share one definition.
+ * A visibility circle. Same math either way - `visibilityRadiusDeg`, shared
+ * with the pass planner - but two different questions, so they are drawn
+ * differently:
+ *
+ * - `coverage` (default): centered on a satellite's sub-point. "Everywhere on
+ *   the ground that can work this bird." The conventional satellite footprint.
+ * - `access`: centered on a ground station, sized by one satellite's altitude.
+ *   "Everywhere that bird could be and still clear my mask." Only meaningful
+ *   against a named satellite - the radius is a property of the pair, not of
+ *   the station, which is why an unlabeled one reads as sensor coverage.
  */
 export interface GeoFootprint {
   lat: number;
   lon: number;
   radiusDeg: number;
   label: string;
+  kind?: 'coverage' | 'access';
 }
 
 export interface GeoMapLayers {
@@ -96,6 +104,32 @@ interface Viewport {
   centerLon: number;
   degPerPx: number;
 }
+
+/**
+ * Overlay ink resolved from `--mc-geo-*` CSS custom properties at draw time,
+ * so the map follows the campaign theme like the accent colors already do.
+ * The defaults are the previous hardcoded literals: a campaign that declares
+ * no geo tokens (C1-C3) draws exactly what it always drew.
+ */
+interface GeoMapInk {
+  footprintAccess: string;
+  footprintCoverage: string;
+  lopFdoa: string;
+  markerStation: string;
+  markerSatellite: string;
+  markerFix: string;
+  markerTruth: string;
+}
+
+const DEFAULT_INK: GeoMapInk = {
+  footprintAccess: 'rgba(224, 168, 82, 0.8)',
+  footprintCoverage: 'rgba(90, 169, 220, 0.85)',
+  lopFdoa: '#3ec8ff',
+  markerStation: '#5aa9dc',
+  markerSatellite: '#e8ebee',
+  markerFix: '#ffd07a',
+  markerTruth: '#ff5a4f',
+};
 
 const KM_PER_DEG_LAT = 111.32;
 /** Full-Earth equirectangular basemap served from public/images */
@@ -129,6 +163,8 @@ export class GeoMap {
   private readonly view_: Viewport;
   private dragLast_: { x: number; y: number } | null = null;
   private drawScheduled_ = false;
+  /** Overlay ink for the current frame; re-resolved from CSS in draw() */
+  private ink_: GeoMapInk = DEFAULT_INK;
 
   constructor(uniqueId: string, config: { width?: number; height?: number } = {}) {
     this.uniqueId_ = uniqueId;
@@ -240,6 +276,17 @@ export class GeoMap {
     const surface = styles.getPropertyValue('--mc-surface-0').trim() || '#121314';
     const accentRgb = styles.getPropertyValue('--mc-accent-red-rgb').trim() || '143, 111, 70';
     const accentBright = styles.getPropertyValue('--mc-accent-red-bright').trim() || '#d2a86a';
+
+    const readInk = (name: string, fallback: string): string => styles.getPropertyValue(name).trim() || fallback;
+    this.ink_ = {
+      footprintAccess: readInk('--mc-geo-footprint-access', DEFAULT_INK.footprintAccess),
+      footprintCoverage: readInk('--mc-geo-footprint-coverage', DEFAULT_INK.footprintCoverage),
+      lopFdoa: readInk('--mc-geo-lop-fdoa', DEFAULT_INK.lopFdoa),
+      markerStation: readInk('--mc-geo-marker-station', DEFAULT_INK.markerStation),
+      markerSatellite: readInk('--mc-geo-marker-satellite', DEFAULT_INK.markerSatellite),
+      markerFix: readInk('--mc-geo-marker-fix', DEFAULT_INK.markerFix),
+      markerTruth: readInk('--mc-geo-marker-truth', DEFAULT_INK.markerTruth),
+    };
 
     ctx.clearRect(0, 0, this.width_, this.height_);
 
@@ -432,8 +479,12 @@ export class GeoMap {
   }
 
   /**
-   * Ground-station access circles. Drawn under the tracks so a track crossing
-   * into a footprint reads as "this is the pass" without hiding the line.
+   * Visibility circles. Drawn under the tracks so a track crossing into a
+   * footprint reads as "this is the pass" without hiding the line.
+   *
+   * Satellite coverage is blue and dashed; station access is amber and dotted.
+   * The two can be on at once and mean different things, so they must not share
+   * a style - see GeoFootprint.
    */
   private drawFootprints_(ctx: CanvasRenderingContext2D): void {
     for (const footprint of this.layers_.footprints ?? []) {
@@ -443,9 +494,11 @@ export class GeoMap {
         continue;
       }
 
+      const isAccess = footprint.kind === 'access';
+
       ctx.lineWidth = 1.25;
-      ctx.strokeStyle = 'rgba(90, 169, 220, 0.85)';
-      ctx.setLineDash([4, 3]);
+      ctx.strokeStyle = isAccess ? this.ink_.footprintAccess : this.ink_.footprintCoverage;
+      ctx.setLineDash(isAccess ? [2, 4] : [4, 3]);
 
       for (const segment of splitAtAntimeridian(ring)) {
         this.strokePath_(ctx, segment);
@@ -594,7 +647,7 @@ export class GeoMap {
 
       // Dark halo under a bright line keeps the LOP high-contrast over terrain.
       stroke('rgba(0, 0, 0, 0.75)', 4.5);
-      stroke(lop.kind === 'tdoa' ? tdoaColor : '#3ec8ff', 2);
+      stroke(lop.kind === 'tdoa' ? tdoaColor : this.ink_.lopFdoa, 2);
     }
   }
 
@@ -707,7 +760,7 @@ export class GeoMap {
   private drawMarkers_(ctx: CanvasRenderingContext2D): void {
     for (const marker of this.layers_.markers) {
       const { x, y } = this.project_(marker.lat, marker.lon);
-      const style = GeoMap.markerStyle_(marker.kind);
+      const style = this.markerStyle_(marker.kind);
 
       ctx.fillStyle = style.color;
       ctx.strokeStyle = style.color;
@@ -754,16 +807,16 @@ export class GeoMap {
     }
   }
 
-  private static markerStyle_(kind: GeoMarker['kind']): { color: string } {
+  private markerStyle_(kind: GeoMarker['kind']): { color: string } {
     switch (kind) {
       case 'station':
-        return { color: '#5aa9dc' };
+        return { color: this.ink_.markerStation };
       case 'satellite':
-        return { color: '#e8ebee' };
+        return { color: this.ink_.markerSatellite };
       case 'fix':
-        return { color: '#ffd07a' };
+        return { color: this.ink_.markerFix };
       case 'truth':
-        return { color: '#ff5a4f' };
+        return { color: this.ink_.markerTruth };
     }
   }
 

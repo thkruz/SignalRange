@@ -50,7 +50,20 @@ module.exports = {
       },
       {
         test: /\.css$/,
-        use: ['style-loader', 'css-loader']
+        use: [
+          'style-loader',
+          {
+            loader: 'css-loader',
+            options: {
+              // Root-relative urls are server paths, not module requests. The
+              // self-hosted fonts in src/fonts.css point at /fonts/*.woff2,
+              // which CopyWebpackPlugin puts in the output as-is; without this
+              // filter css-loader tries to resolve them against src/ and the
+              // build fails with "Can't resolve '/fonts/...'".
+              url: { filter: (url) => !url.startsWith('/') }
+            }
+          }
+        ]
       },
       {
         test: /\.(png|jpg|jpeg|gif|svg|otf|ttf|woff|woff2)$/,
@@ -101,6 +114,12 @@ module.exports = {
           globOptions: {
             ignore: ['**/wip/**']
           }
+        },
+        // Self-hosted web fonts. Copied verbatim (not run through the
+        // asset/resource rule) so the URLs in src/fonts.css stay stable.
+        {
+          from: 'public/fonts/',
+          to: 'fonts/'
         },
       ]
     })

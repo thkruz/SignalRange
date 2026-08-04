@@ -58,8 +58,9 @@
   font-size: 0.8rem;
 }
 
+/* A completed capture is a status (Astro "normal"), not a brand moment */
 .geolocation-tab .geo-msg-success {
-  color: var(--mc-accent-red-bright);
+  color: var(--mc-status-normal, var(--mc-accent-red-bright));
 }
 
 .geolocation-tab .geo-msg-failed {

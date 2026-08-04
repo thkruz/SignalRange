@@ -3,7 +3,7 @@
 
 .app-shell-page {
   height: calc(100vh - 80px);
-  background-color: #1f1f1f;
+  background-color: var(--mc-chrome-canvas-bg, var(--mc-surface-0));
   color: #cbd5e1;
   font-family: 'Inter', sans-serif;
   font-size: 14px;
@@ -13,8 +13,8 @@
 /* ===== 1. Global Command Bar (Top) ===== */
 .app-shell-header {
   height: 56px;
-  background-color: #292929;
-  border-bottom: 1px solid #6b6b6b;
+  background-color: var(--mc-chrome-bar-bg, var(--mc-surface-1));
+  border-bottom: 1px solid var(--mc-chrome-bar-border);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -26,20 +26,20 @@
   display: flex;
   align-items: center;
   height: 100%;
-  background-color: #292929;
+  background-color: var(--mc-chrome-bar-bg, var(--mc-surface-1));
   gap: 1rem;
   width: 256px;
-  border-right: 1px solid #6b6b6b;
+  border-right: 1px solid var(--mc-chrome-bar-border);
 }
 
 .command-bar-right {
   display: flex;
   align-items: center;
   height: 100%;
-  background-color: #292929;
+  background-color: var(--mc-chrome-bar-bg, var(--mc-surface-1));
   padding: 0 1rem;
   gap: 1rem;
-  border-left: 1px solid #6b6b6b;
+  border-left: 1px solid var(--mc-chrome-bar-border);
 }
 
 .command-bar-center {
@@ -54,7 +54,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #292929;
+  background-color: var(--mc-chrome-bar-bg, var(--mc-surface-1));
   position: relative;
 }
 
@@ -173,8 +173,8 @@
 /* Layout now handled by Tabler utilities: .flex-shrink-0 */
 /* Sidebar header/content styles moved to asset-tree-sidebar.css */
 .app-shell-sidebar {
-  background-color: #292929;
-  border-right: 1px solid #6b6b6b;
+  background-color: var(--mc-chrome-bar-bg, var(--mc-surface-1));
+  border-right: 1px solid var(--mc-chrome-bar-border);
   width: 256px;
 }
 
@@ -182,7 +182,7 @@
 /* Layout now handled by Tabler utilities: .d-flex .flex-column .flex-fill .overflow-hidden */
 /* Canvas header/content/tab styles moved to tabbed-canvas.css */
 .app-shell-canvas {
-  background-color: #1f1f1f;
+  background-color: var(--mc-chrome-canvas-bg, var(--mc-surface-0));
 }
 
 /* ===== Scrollbar Styles ===== */
@@ -192,16 +192,16 @@
 }
 
 .app-shell-page ::-webkit-scrollbar-track {
-  background: #1f1f1f;
+  background: var(--mc-chrome-scroll-track, var(--mc-surface-0));
 }
 
 .app-shell-page ::-webkit-scrollbar-thumb {
-  background: #6b6b6b;
+  background: var(--mc-chrome-scroll-thumb);
   border-radius: 3px;
 }
 
 .app-shell-page ::-webkit-scrollbar-thumb:hover {
-  background: #475569;
+  background: var(--mc-chrome-scroll-thumb-hover);
 }
 
 /* ===== Timer Displays (Command Bar Right) ===== */

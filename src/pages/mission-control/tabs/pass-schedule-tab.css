@@ -31,3 +31,76 @@
 .pass-status-upcoming {
   color: var(--mc-text-secondary);
 }
+
+/* ===== Ephemeris status panel (M4 space-domain events) =====
+   Only rendered when the scenario declares settings.spaceEvents. This is the
+   operator's only way to clear a stale element set after a maneuver. */
+
+.pass-schedule-tab .ephemeris-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.6rem 0.85rem;
+  border-bottom: 1px solid var(--mc-border);
+}
+
+.pass-schedule-tab .ephemeris-row:last-child {
+  border-bottom: none;
+}
+
+/* A stale ephemeris is an action item, so it gets the danger treatment. */
+.pass-schedule-tab .ephemeris-stale {
+  background: rgba(var(--mc-danger-rgb), 0.08);
+}
+
+.pass-schedule-tab .ephemeris-badge {
+  display: inline-block;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 0.1rem 0.4rem;
+  border: 1px solid currentColor;
+  border-radius: 0.2rem;
+  margin-right: 0.5rem;
+  vertical-align: middle;
+}
+
+.pass-schedule-tab .ephemeris-badge-nominal {
+  color: var(--mc-text-tertiary);
+}
+
+.pass-schedule-tab .ephemeris-badge-stale {
+  color: var(--mc-danger-bright);
+}
+
+.pass-schedule-tab .ephemeris-badge-updated {
+  color: #22c55e;
+}
+
+.pass-schedule-tab .ephemeris-name {
+  font-weight: 600;
+  font-family: var(--mc-font-mono, monospace);
+  color: var(--mc-text-primary);
+}
+
+.pass-schedule-tab .ephemeris-detail {
+  font-size: 0.75rem;
+  color: var(--mc-text-tertiary);
+  margin-top: 0.2rem;
+}
+
+.pass-schedule-tab .btn-ephemeris {
+  flex-shrink: 0;
+  border: 1px solid var(--mc-danger-bright);
+  color: var(--mc-danger-bright);
+  background: transparent;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.pass-schedule-tab .btn-ephemeris:hover {
+  background: rgba(var(--mc-danger-rgb), 0.15);
+  color: var(--mc-danger-bright);
+}

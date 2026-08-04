@@ -17,12 +17,41 @@ body {
 }
 
 /* ==========================================================================
-   Always Full Width
+   Always Full Width, plus the legacy --color-* aliases
+
+   The aliases MUST live here on <body> rather than in :root. A var() inside a
+   custom property is substituted where that property is *declared*, and the
+   result then inherits as a resolved literal. Declared on :root,
+   --color-primary would freeze to the base red, and every campaign theme -
+   which redefines --mc-accent-red on body.campaign-<id> - would be ignored, so
+   anything styled through these aliases rendered Campaign 1 red in all five
+   campaigns (the scenario list's START button was doing exactly that).
+   Declared here they resolve against the campaign's own values, because the
+   campaign class lands on this same element.
    ========================================================================== */
 body {
   width: 100vw;
   height: 100vh;
   overflow: hidden;
+
+  --color-primary: var(--mc-accent-red);
+  --color-primary-light: var(--mc-accent-red-light);
+  --color-primary-dark: var(--mc-accent-red-dark);
+  --color-dark-background: var(--mc-surface-0);
+  --color-dark-border: var(--mc-border);
+  --color-dark-text-accent: var(--mc-accent-text-dark);
+  --color-dark-text-muted: var(--mc-text-muted);
+  --color-text-accent: var(--mc-accent-red-bright);
+
+  --color-surface-0: var(--mc-surface-0);
+  --color-surface-1: var(--mc-surface-1);
+  --color-surface-2: var(--mc-surface-2);
+  --color-surface-3: var(--mc-surface-3);
+  --color-surface-4: var(--mc-surface-4);
+  --color-border: var(--mc-border);
+  --color-text-primary: var(--mc-text-primary);
+  --color-text-secondary: var(--mc-text-secondary);
+  --color-text-tertiary: var(--mc-text-tertiary);
 }
 
 /* ==========================================================================
@@ -80,6 +109,68 @@ body {
 
   --mc-border: #3a3a3a;
 
+  /* App-shell chrome (command bar, sidebar, canvas, scrollbars).
+     These were hardcoded in mission-control-page.css, which is why no campaign
+     theme could recolor the top bar. The border/thumb greys are lighter than
+     --mc-border (#3a3a3a), so they get their own slots rather than being
+     folded into it.
+
+     NOTE: the *background* slots are deliberately NOT declared here. They are
+     consumed as `var(--mc-chrome-bar-bg, var(--mc-surface-1))`, i.e. undefined
+     by default so the fallback resolves against whichever surface value is
+     cascaded onto the element. Declaring `--mc-chrome-bar-bg: var(--mc-surface-1)`
+     on :root does NOT work: the var() would be substituted here, against the
+     base surfaces, and then inherit down as an already-resolved literal - so a
+     campaign redefining --mc-surface-1 on <body> would have no effect on the
+     bar. Only a campaign that wants a bar color *different* from its surface
+     ramp should declare these (see ham-sdr). */
+  --mc-chrome-bar-border: #6b6b6b;
+  --mc-chrome-scroll-thumb: #6b6b6b;
+  --mc-chrome-scroll-thumb-hover: #475569;
+
+  /* Hardware-panel chrome, shared by the equipment faceplates and the scenario
+     list page - that page deliberately draws its cards as physical panels
+     (faceplate gradients, screw highlights) using the same grey ramp.
+     The equipment CSS carried ~319 hardcoded hex
+     values and no vars at all, so every campaign's radios looked the same.
+     Values here are copied verbatim from the literals they replaced, so the
+     base theme is unchanged. Status colors (LED red/green/blue, amber) are
+     deliberately NOT tokenized - they stay campaign-invariant, same rule as
+     --mc-danger* below. */
+  /* Dark ramp, deepest to lightest. Several of these are gradient partners of
+     each other, so they must all be tokenized together - a half-tokenized
+     gradient would shift one stop and leave the other grey. */
+  --mc-equip-bg-deepest: #050505;
+  --mc-equip-bg-deep: #0a0a0a;
+  --mc-equip-shadow: #0f0f0f;
+  --mc-equip-bg-dark: #161616;
+  --mc-equip-bg: #1a1a1a;
+  --mc-equip-bg-alt: #1b1b1b;
+  --mc-equip-bg-raised: #1e1e1e;
+  --mc-equip-shell: #1f1f1f;
+  --mc-equip-panel: #222222;
+  --mc-equip-panel-raised: #2a2a2a;
+  --mc-equip-border: #333333;
+  --mc-equip-border-mid: #383838;
+  --mc-equip-border-alt: #3a3a3a;
+  --mc-equip-border-light: #444444;
+  --mc-equip-control-dim: #4a4a4a;
+  --mc-equip-control: #555555;
+  --mc-equip-control-light: #666666;
+  --mc-equip-control-lighter: #777777;
+  /* Unlit indicator grey (LED/status dot with no state) */
+  --mc-equip-unlit: #757575;
+  --mc-equip-text: #ffffff;
+  --mc-equip-text-dim: #aaaaaa;
+  --mc-equip-text-muted: #888888;
+  --mc-equip-text-bright: #cccccc;
+  /* Radius/typography/relief hooks so a campaign can restyle faceplate chrome
+     without the equipment CSS knowing which campaign is active. Values are
+     the ones .equipment-case hardcoded. */
+  --mc-equip-radius: 8px;
+  --mc-equip-font: 'Roboto', 'Arial', sans-serif;
+  --mc-equip-case-shadow: 0 4px 12px rgba(0, 0, 0, 0.6), inset 0 1px 1px rgba(255, 255, 255, 0.1);
+
   --mc-accent-red: #ba160c;
   --mc-accent-red-bright: #ff2827;
   --mc-accent-red-light: #e01a0e;
@@ -96,26 +187,31 @@ body {
   --mc-danger-bright: #ff2827;
   --mc-danger-rgb: 186, 22, 12;
 
-  /* Backward Compatibility - Map old variables to new system */
-  --color-primary: var(--mc-accent-red);
-  --color-primary-light: var(--mc-accent-red-light);
-  --color-primary-dark: var(--mc-accent-red-dark);
-  --color-dark-background: var(--mc-surface-0);
-  --color-dark-border: var(--mc-border);
-  --color-dark-text-accent: var(--mc-accent-text-dark);
-  --color-dark-text-muted: var(--mc-text-muted);
-  --color-text-accent: var(--mc-accent-red-bright);
+  /* Classification marking colors, from the AstroUX space-ops design system
+     (keeptrack-space/public/css/astroux/css/astro.css). These are a published
+     convention, not a palette choice - a green banner means one thing to
+     everyone who has sat at one of these consoles - so they are campaign-
+     invariant like --mc-danger* above and must not be themed.
 
-  --color-surface-0: var(--mc-surface-0);
-  --color-surface-1: var(--mc-surface-1);
-  --color-surface-2: var(--mc-surface-2);
-  --color-surface-3: var(--mc-surface-3);
-  --color-surface-4: var(--mc-surface-4);
-  --color-border: var(--mc-border);
-  --color-text-primary: var(--mc-text-primary);
-  --color-text-secondary: var(--mc-text-secondary);
-  --color-text-tertiary: var(--mc-text-tertiary);
+     Note: astro.css and keeptrack's own Classification.getColors() disagree on
+     Secret (#c8102e vs #ff0000) and CUI (#502b85 vs #512b85). The astro.css
+     values are the ones used here. */
+  --mc-classification-unclassified-bg: #007a33;
+  --mc-classification-unclassified-fg: #ffffff;
+  --mc-classification-cui-bg: #502b85;
+  --mc-classification-cui-fg: #ffffff;
+  --mc-classification-confidential-bg: #0033a0;
+  --mc-classification-confidential-fg: #ffffff;
+  --mc-classification-secret-bg: #c8102e;
+  --mc-classification-secret-fg: #ffffff;
+  --mc-classification-top-secret-bg: #ff8c00;
+  --mc-classification-top-secret-fg: #000000;
+  --mc-classification-ts-sci-bg: #fce93a;
+  --mc-classification-ts-sci-fg: #000000;
 }
+
+/* The legacy --color-* aliases live in the body rule near the top of this
+   file - see the note there for why they cannot be declared on :root. */
 
 /* ==========================================================================
    Per-Campaign Theme: NATS Europe (North Atlantic blue)
@@ -158,161 +254,1256 @@ body.campaign-nats-eu {
   --tblr-secondary-bg: #26292e !important;
   --tblr-tertiary-bg: #363a40 !important;
   --tblr-border-color: #363a40 !important;
+
+  /* App-shell chrome. The bg slots follow --mc-surface-* automatically; only
+     the divider/thumb greys need restating so the newly-themed command bar
+     is not outlined in the base theme's lighter #6b6b6b. */
+  --mc-chrome-bar-border: #464b52;
+  --mc-chrome-scroll-thumb: #464b52;
+  --mc-chrome-scroll-thumb-hover: #565c64;
 }
 
 /* ==========================================================================
    Per-Campaign Theme: Backyard Operator (ham-sdr)
-   Deliberately reads as 2000s hobbyist freeware instead of a professional
-   mission-control product: phosphor-green accent, system fonts, zero border
-   radius, beveled buttons. Scoped to body.campaign-ham-sdr (Router-applied),
-   so no other campaign is affected. --mc-danger* stays untouched: faults are
-   red in every campaign.
+
+   Reads as a modern software-defined-radio application (GQRX / SDR# / SDRangel)
+   rather than a mission-control product: near-black instrument background, thin
+   1px outlined panels with no fill, a cyan "waterfall" accent, and monospace
+   chrome. Scoped to body.campaign-ham-sdr (Router-applied), so no other
+   campaign is affected.
+
+   Two deliberate constraints:
+   - The accent is cyan, not the teal/green an SDR app would usually use. Green
+     is already spoken for by the hardcoded healthy-emerald (#10b981) in the
+     alarm bar and the #4caf50 status LEDs; a green accent would make state
+     changes hard to read at a glance.
+   - Monospace is scoped to chrome, labels, readouts and tables. Prose (mission
+     overview copy, briefs, dialog) stays in the sans stack - long paragraphs
+     set in mono are measurably harder to scan.
+
+   --mc-danger* and the equipment status colors stay untouched: faults are red
+   in every campaign.
    ========================================================================== */
 
 body.campaign-ham-sdr {
-  /* Primary accent: SDR-software phosphor green */
-  --tblr-primary: #3fb950 !important;
-  --tblr-primary-rgb: 63, 185, 80 !important;
-  --tblr-primary-text-emphasis: #4ade80 !important;
-  --tblr-primary-bg-subtle: rgba(63, 185, 80, 0.15) !important;
-  --tblr-primary-border-subtle: rgba(63, 185, 80, 0.3) !important;
+  /* Primary accent: SDR waterfall cyan */
+  --tblr-primary: #22d3ee !important;
+  --tblr-primary-rgb: 34, 211, 238 !important;
+  --tblr-primary-text-emphasis: #67e8f9 !important;
+  --tblr-primary-bg-subtle: rgba(34, 211, 238, 0.12) !important;
+  --tblr-primary-border-subtle: rgba(34, 211, 238, 0.3) !important;
 
-  --tblr-link-color: #3fb950 !important;
-  --tblr-link-hover-color: #4ade80 !important;
+  --tblr-link-color: #22d3ee !important;
+  --tblr-link-hover-color: #67e8f9 !important;
 
   /* Semantic accent slots (names historic, values per-campaign) */
-  --mc-accent-red: #3fb950;
-  --mc-accent-red-bright: #4ade80;
-  --mc-accent-red-light: #46c455;
-  --mc-accent-red-dark: #1f7a2e;
-  --mc-accent-red-rgb: 63, 185, 80;
-  --mc-accent-red-bright-rgb: 74, 222, 128;
-  --mc-accent-text-dark: #5cbf6b;
+  --mc-accent-red: #22d3ee;
+  --mc-accent-red-bright: #67e8f9;
+  --mc-accent-red-light: #38dcf5;
+  --mc-accent-red-dark: #0e7490;
+  --mc-accent-red-rgb: 34, 211, 238;
+  --mc-accent-red-bright-rgb: 103, 232, 249;
+  --mc-accent-text-dark: #22d3ee;
 
-  /* Cheap dark-theme surfaces with a blue-black cast */
-  --mc-surface-0: #16181d;
-  --mc-surface-1: #1e2128;
-  --mc-surface-2: #2b2f38;
-  --mc-surface-3: #3a3f4a;
-  --mc-surface-4: #4a505c;
-  --mc-border: #3a3f4a;
+  /* Instrument-black surfaces with a cool blue cast */
+  --mc-surface-0: #0b1014;
+  --mc-surface-1: #111a20;
+  --mc-surface-2: #17242c;
+  --mc-surface-3: #1f3038;
+  --mc-surface-4: #2a4049;
+  --mc-border: #22333d;
 
-  --tblr-body-bg: #16181d !important;
-  --tblr-secondary-bg: #1e2128 !important;
-  --tblr-tertiary-bg: #2b2f38 !important;
-  --tblr-border-color: #3a3f4a !important;
+  --mc-text-primary: #dceaf0;
+  --mc-text-secondary: #a7c0cc;
+  --mc-text-tertiary: #7b95a2;
+  --mc-text-muted: #5a7280;
 
-  /* Freeware typography and chrome */
-  --tblr-font-sans-serif: Verdana, Tahoma, 'MS Sans Serif', sans-serif !important;
+  --tblr-body-bg: #0b1014 !important;
+  --tblr-secondary-bg: #111a20 !important;
+  --tblr-tertiary-bg: #17242c !important;
+  --tblr-border-color: #22333d !important;
+
+  /* Tight radii - present but minimal, the way a Qt/GTK SDR app looks */
+  --tblr-border-radius: 2px !important;
+  --tblr-border-radius-sm: 2px !important;
+  --tblr-border-radius-lg: 3px !important;
+
+  /* App-shell chrome: the command bar and sidebar sit *darker* than the
+     canvas here, inverting the base theme's raised-bar look, so the spectrum
+     canvas reads as the lit instrument and the chrome recedes. Only the bar
+     needs declaring - canvas/track fall back to --mc-surface-0 above. */
+  --mc-chrome-bar-bg: #080c0f;
+  --mc-chrome-bar-border: #22333d;
+  --mc-chrome-scroll-thumb: #22333d;
+  --mc-chrome-scroll-thumb-hover: #2a4049;
+
+  /* Input wells sit a shade below the darkest surface, the way a Qt line-edit
+     does. Consumed by the sdr variant as var(--mc-input-well, ...) so the
+     variant block carries no campaign hue of its own. */
+  --mc-input-well: #060b0e;
+
+  /* Dialog tray: same instrument black, cyan avatar ring instead of red */
+  --mc-dialog-bg: #080f13;
+  --mc-dialog-border: #22333d;
+  --mc-dialog-inset: #12212a;
+  --mc-dialog-avatar-ring: #0e7490;
+  --mc-dialog-avatar-glow: rgba(34, 211, 238, 0.25);
+
+  /* Equipment faceplates: flat, near-black, cyan-tinted outlines instead of
+     the base theme's grey moulded plastic. */
+  --mc-equip-bg-deepest: #04070a;
+  --mc-equip-bg-deep: #060a0d;
+  --mc-equip-shadow: #080d11;
+  --mc-equip-bg-dark: #0a1116;
+  --mc-equip-bg: #0c141a;
+  --mc-equip-bg-alt: #0d161c;
+  --mc-equip-bg-raised: #0f1a21;
+  --mc-equip-shell: #101c24;
+  --mc-equip-panel: #12212a;
+  --mc-equip-panel-raised: #162831;
+  --mc-equip-border: #1d323d;
+  --mc-equip-border-mid: #213844;
+  --mc-equip-border-alt: #223c48;
+  --mc-equip-border-light: #2a4d5a;
+  --mc-equip-control: #335663;
+  --mc-equip-control-light: #3f6a79;
+  --mc-equip-control-lighter: #4b7d8e;
+  --mc-equip-unlit: #37505b;
+  --mc-equip-text: #e6fbff;
+  --mc-equip-text-dim: #9fc2cf;
+  --mc-equip-text-muted: #7ba0ae;
+  --mc-equip-text-bright: #c8e8f2;
+  --mc-equip-radius: 2px;
+  --mc-equip-font: var(--mc-sdr-mono);
+  /* Flat: no moulded drop shadow, just a faint cyan edge glow */
+  --mc-equip-case-shadow: 0 0 0 1px rgba(34, 211, 238, 0.08);
+
+  /* Shared mono stack for this campaign's chrome */
+  --mc-sdr-mono: ui-monospace, 'Cascadia Code', 'JetBrains Mono', Consolas,
+    'DejaVu Sans Mono', monospace;
+}
+
+/* ==========================================================================
+   Chrome variant: sdr (Campaign 3)
+
+   Layout, typography and relief only - every color below arrives through the
+   campaign's own token block above, either as a --mc-* var or as an rgba()
+   over --mc-accent-red-rgb. That split is what lets a variant be shared by
+   more than one campaign (see chrome-tactical, which C4 and C5 both wear)
+   without dragging one campaign's hue along with it.
+
+   Applied via body.chrome-<variant> from the Router, alongside
+   body.campaign-<id>. Both classes land on the same element, so a rule here
+   resolves against the active campaign's tokens.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   sdr: monospace chrome.
+   Scoped to chrome, labels, readouts and tabular data. Deliberately NOT on
+   body/.card-body/prose - see the note in the theme block above.
+   -------------------------------------------------------------------------- */
+
+body.chrome-sdr .app-shell-header,
+body.chrome-sdr .command-bar-left,
+body.chrome-sdr .command-bar-right,
+body.chrome-sdr .command-bar-center,
+body.chrome-sdr .timer-display,
+body.chrome-sdr .alarm-count,
+body.chrome-sdr .app-shell-sidebar,
+body.chrome-sdr .nav-tabs .nav-link,
+body.chrome-sdr .card-header,
+body.chrome-sdr .card-title,
+body.chrome-sdr .list-group-item,
+body.chrome-sdr .btn,
+body.chrome-sdr .badge,
+body.chrome-sdr .form-control,
+body.chrome-sdr .form-select,
+body.chrome-sdr .input-group-text,
+body.chrome-sdr .table,
+body.chrome-sdr .metric-group,
+body.chrome-sdr .metric-group-title,
+body.chrome-sdr .modal-header,
+body.chrome-sdr .modal-footer {
+  font-family: var(--mc-sdr-mono) !important;
+}
+
+/* Chrome labels read as instrument legends: small, uppercase, wide-tracked */
+body.chrome-sdr .card-header,
+body.chrome-sdr .metric-group-title,
+body.chrome-sdr .nav-tabs .nav-link,
+body.chrome-sdr .timer-label {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* --------------------------------------------------------------------------
+   sdr: flat outlined panels.
+   An SDR app draws panel *outlines* over one continuous instrument
+   background rather than stacking filled cards, so the card fill is dropped
+   and only the 1px border remains.
+   -------------------------------------------------------------------------- */
+
+body.chrome-sdr .card {
+  background-color: transparent !important;
+  border-color: var(--mc-border) !important;
+  box-shadow: none !important;
+}
+
+body.chrome-sdr .card-header {
+  background-color: rgba(var(--mc-accent-red-rgb), 0.04) !important;
+  border-bottom-color: var(--mc-border) !important;
+  color: var(--mc-accent-red-bright);
+  font-size: 0.6875rem;
+  font-weight: 600;
+}
+
+/* Accent tick at the head of every panel label - the one piece of "chrome
+   jewelry" in an otherwise flat theme */
+body.chrome-sdr .card-header::before {
+  content: '';
+  display: inline-block;
+  width: 2px;
+  height: 0.75rem;
+  margin-right: 0.5rem;
+  background-color: var(--mc-accent-red);
+  vertical-align: -2px;
+}
+
+body.chrome-sdr .card-body {
+  background-color: rgba(0, 0, 0, 0.15);
+}
+
+/* --------------------------------------------------------------------------
+   sdr: Qt/GTK-style tab strip.
+   Square, flush tabs with an accent underline on the active one, replacing
+   the base theme's rounded, lifting tabs.
+   -------------------------------------------------------------------------- */
+
+body.chrome-sdr .nav-tabs .nav-link {
+  background-color: transparent !important;
+  border-color: transparent !important;
+  border-radius: 0 !important;
+  border-bottom: 2px solid transparent !important;
+  font-size: 0.75rem;
+  padding: 0.375rem 0.75rem;
+}
+
+body.chrome-sdr .nav-tabs .nav-link:hover:not(.active):not(.disabled) {
+  background-color: rgba(var(--mc-accent-red-rgb), 0.06) !important;
+  border-color: transparent !important;
+  border-bottom-color: rgba(var(--mc-accent-red-rgb), 0.4) !important;
+  transform: none;
+}
+
+body.chrome-sdr .nav-tabs .nav-link.active {
+  background-color: rgba(var(--mc-accent-red-rgb), 0.08) !important;
+  border-color: transparent !important;
+  border-top: 0 !important;
+  border-bottom: 2px solid var(--mc-accent-red) !important;
+  color: var(--mc-accent-red-bright) !important;
+}
+
+/* The base theme animates a centered underline pseudo-element; the real
+   border-bottom above replaces it here. */
+body.chrome-sdr .nav-tabs .nav-link::after {
+  display: none;
+}
+
+/* --------------------------------------------------------------------------
+   sdr: flat controls.
+   -------------------------------------------------------------------------- */
+
+body.chrome-sdr .btn {
+  border-radius: 2px !important;
+  border-width: 1px !important;
+  border-style: solid !important;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+body.chrome-sdr .form-control,
+body.chrome-sdr .form-select,
+body.chrome-sdr .input-group-text {
+  background-color: var(--mc-input-well, #060b0e) !important;
+  border-color: var(--mc-border) !important;
+  color: var(--mc-accent-red-bright) !important;
+  border-radius: 2px !important;
+}
+
+body.chrome-sdr .form-control:focus,
+body.chrome-sdr .form-select:focus {
+  border-color: var(--mc-accent-red) !important;
+  box-shadow: 0 0 0 2px rgba(var(--mc-accent-red-rgb), 0.15) !important;
+}
+
+/* Sidebar entries as a flat instrument list with an accent bar when selected */
+body.chrome-sdr .list-group-item {
+  background-color: transparent !important;
+  border-color: var(--mc-border) !important;
+  border-radius: 0 !important;
+  font-size: 0.75rem;
+  border-left: 2px solid transparent !important;
+}
+
+body.chrome-sdr .list-group-item.active {
+  background-color: rgba(var(--mc-accent-red-rgb), 0.1) !important;
+  border-left-color: var(--mc-accent-red) !important;
+  color: var(--mc-accent-red-bright) !important;
+}
+
+body.chrome-sdr .modal-content {
+  border-radius: 3px !important;
+  border: 1px solid var(--mc-border) !important;
+}
+
+/* --------------------------------------------------------------------------
+   sdr: equipment faceplates.
+   Color/radius/font/relief all arrive through the --mc-equip-* overrides in
+   the theme block, which .equipment-case consumes directly, so there is only
+   the case border left to flatten here.
+   -------------------------------------------------------------------------- */
+
+body.chrome-sdr .equipment-case {
+  border-width: 1px;
+}
+
+/* ==========================================================================
+   Chrome variant: tactical (currently unworn - C4/C5 moved to `astro` below)
+
+   The two EW squadrons run the same equipment as the commercial teleports, so
+   the engine underneath is identical - but the console they sit at is issued
+   by a different organization, and it should feel like it. The differences are
+   deliberately structural rather than decorative, because that is what the eye
+   reads as "a different system" instead of "the same system in another color":
+
+   - the workspace is mirrored (asset tree right, identity/clock right),
+   - the tab strip runs along the bottom of the canvas,
+   - tracked objects are listed above the sites that track them,
+   - chrome is condensed, uppercase and square-cornered,
+   - a classification strip closes the page.
+
+   All of it is CSS. No template reorders anything, so every selector, unit
+   test and E2E locator still finds what it found before - `row-reverse` and
+   `order` change paint order, not DOM order.
+
+   Hue stays with the campaign: C4 `ccs` is olive drab, C5 `signal-hunter` is
+   coyote brown. Nothing in this block names a color of its own.
+   ========================================================================== */
+
+body.chrome-tactical {
+  /* Issued-equipment square corners */
   --tblr-border-radius: 0 !important;
   --tblr-border-radius-sm: 0 !important;
   --tblr-border-radius-lg: 0 !important;
 
-  font-family: Verdana, Tahoma, 'MS Sans Serif', sans-serif;
+  /* Roboto Condensed is self-hosted (src/fonts.css), so this resolves the same
+     on every platform. The fallbacks matter only if a font file 404s. */
+  --mc-tactical-condensed: 'Roboto Condensed', 'Arial Narrow', 'Roboto', sans-serif;
+
+  /* Faceplates lose their moulded plastic radius and soft drop shadow: hard
+     edges, a black rim and a single specular hairline, like a rack panel. */
+  --mc-equip-radius: 0;
+  --mc-equip-font: var(--mc-tactical-condensed);
+  --mc-equip-case-shadow: 0 2px 6px rgba(0, 0, 0, 0.75), inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+
+  /* Line weight is its own axis of difference, and a cheap one: the eye reads
+     a heavy rule as ruggedized hardware and a hairline as software. The three
+     variants sit at three weights - standard 1px (the base), sdr 1px with the
+     card fill dropped entirely, tactical 2px. */
+  --mc-panel-border-width: 2px;
 }
 
-/* Boxy, beveled component chrome for the hobbyist campaign only */
-body.campaign-ham-sdr .card,
-body.campaign-ham-sdr .btn,
-body.campaign-ham-sdr .nav-tabs .nav-link,
-body.campaign-ham-sdr .form-control,
-body.campaign-ham-sdr .form-select,
-body.campaign-ham-sdr .modal-content {
+/* --------------------------------------------------------------------------
+   tactical: mirrored command bar.
+
+   Identity and clock sit at the trailing edge and the mission timers lead the
+   bar - the first thing an EW crew reads is time remaining, not whose console
+   this is.
+
+   The workspace below is deliberately NOT mirrored. An earlier revision moved
+   the asset tree to the right as well; it looked wrong in use, because the tree
+   is a navigation rail and every other rail in the app (and in the operator's
+   muscle memory) is on the left. Reversing the bar is a signal; reversing the
+   rail is friction.
+   -------------------------------------------------------------------------- */
+
+body.chrome-tactical .app-shell-header {
+  flex-direction: row-reverse;
+  border-bottom-width: var(--mc-panel-border-width);
+}
+
+/* Divider borders follow their panel to the other side, or they end up drawn
+   against the outside edge of the screen where nothing abuts them. */
+body.chrome-tactical .command-bar-left {
+  border-right: 0;
+  border-left: var(--mc-panel-border-width) solid var(--mc-chrome-bar-border);
+}
+
+body.chrome-tactical .command-bar-right {
+  border-left: 0;
+  border-right: var(--mc-panel-border-width) solid var(--mc-chrome-bar-border);
+}
+
+/* --------------------------------------------------------------------------
+   tactical: tracked objects first.
+   An EW crew works the target list, not the site list, so Satellites sits
+   above Ground Stations. Ordered, not reordered - see the note in
+   asset-tree-sidebar.ts.
+   -------------------------------------------------------------------------- */
+
+body.chrome-tactical .asset-group-overview {
+  order: 1;
+}
+
+body.chrome-tactical .asset-group-mission {
+  order: 2;
+}
+
+body.chrome-tactical .asset-group-satellites {
+  order: 3;
+  /* The mb-3 that separated the groups is on the stations group, which is now
+     last and no longer needs it. */
+  margin-bottom: 1rem !important;
+}
+
+body.chrome-tactical .asset-group-stations {
+  order: 4;
+  margin-bottom: 0 !important;
+}
+
+/* --------------------------------------------------------------------------
+   tactical: square tabs.
+
+   The strip stays at the top of the canvas, where it is in every variant. An
+   earlier revision ran it along the bottom; like the mirrored asset tree, it
+   read as a broken build rather than a different system - tabs head a workspace,
+   and moving them cost more orientation than the novelty was worth. Only the
+   corners change here; the accent still rides the top edge from the base theme.
+   -------------------------------------------------------------------------- */
+
+body.chrome-tactical .nav-tabs .nav-link {
   border-radius: 0 !important;
 }
 
-body.campaign-ham-sdr .btn {
-  border: 2px outset #6b7280 !important;
+body.chrome-tactical .canvas-header {
+  border-bottom-width: var(--mc-panel-border-width);
 }
 
-body.campaign-ham-sdr .btn:active {
-  border-style: inset !important;
+/* --------------------------------------------------------------------------
+   tactical: condensed uppercase chrome.
+   Chrome, labels and readouts only. Prose - mission overview copy, briefs,
+   dialog - stays in the sans stack and in sentence case, the same carve-out
+   the sdr variant makes, for the same legibility reason.
+   -------------------------------------------------------------------------- */
+
+body.chrome-tactical .app-shell-header,
+body.chrome-tactical .command-bar-left,
+body.chrome-tactical .command-bar-right,
+body.chrome-tactical .command-bar-center,
+body.chrome-tactical .timer-display,
+body.chrome-tactical .alarm-count,
+body.chrome-tactical .app-shell-sidebar,
+body.chrome-tactical .sidebar-header h3,
+body.chrome-tactical .list-group-header-text,
+body.chrome-tactical .nav-tabs .nav-link,
+body.chrome-tactical .card-header,
+body.chrome-tactical .card-title,
+body.chrome-tactical .btn,
+body.chrome-tactical .badge,
+body.chrome-tactical .table>thead,
+body.chrome-tactical .metric-group-title,
+body.chrome-tactical .metric-label,
+body.chrome-tactical .modal-header,
+body.chrome-tactical .modal-footer {
+  font-family: var(--mc-tactical-condensed) !important;
+}
+
+body.chrome-tactical .card-header,
+body.chrome-tactical .card-title,
+body.chrome-tactical .nav-tabs .nav-link,
+body.chrome-tactical .timer-label,
+body.chrome-tactical .sidebar-header h3,
+body.chrome-tactical .list-group-header-text,
+body.chrome-tactical .metric-group-title,
+body.chrome-tactical .btn,
+body.chrome-tactical .badge {
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+}
+
+/* Panel headers are stencilled plates: square, accent-edged on the leading
+   side, with the label tracked out. */
+body.chrome-tactical .card-header {
+  border-left: 3px solid var(--mc-accent-red) !important;
+  background-color: rgba(var(--mc-accent-red-rgb), 0.06) !important;
+  font-size: 0.6875rem;
+  font-weight: 700;
+}
+
+body.chrome-tactical .btn {
+  font-weight: 700;
+  border-radius: 0 !important;
+}
+
+body.chrome-tactical .list-group-item {
+  border-radius: 0 !important;
+}
+
+body.chrome-tactical .card,
+body.chrome-tactical .modal-content,
+body.chrome-tactical .metric-group,
+body.chrome-tactical .form-control,
+body.chrome-tactical .form-select,
+body.chrome-tactical .input-group-text {
+  border-radius: 0 !important;
+}
+
+/* --------------------------------------------------------------------------
+   tactical: heavy rules.
+   Panel edges and chrome dividers step up to 2px. Only the *-width is set here
+   so each element keeps whichever single edge it already drew; the command bar
+   and canvas header take their width in their own rules above.
+   -------------------------------------------------------------------------- */
+
+body.chrome-tactical .card,
+body.chrome-tactical .modal-content,
+body.chrome-tactical .metric-group,
+body.chrome-tactical .equipment-case {
+  border-width: var(--mc-panel-border-width) !important;
+}
+
+body.chrome-tactical .app-shell-sidebar,
+body.chrome-tactical .asset-tree-sidebar {
+  border-right-width: var(--mc-panel-border-width);
+}
+
+body.chrome-tactical .sidebar-header {
+  border-bottom-width: var(--mc-panel-border-width);
+}
+
+/* --------------------------------------------------------------------------
+   tactical: classification strip.
+
+   A flex item via ::after, so it needs no markup and lands below everything
+   the page mounts - including the contact timeline deck when a scenario has
+   one. The wording is literal: this is unclassified training software.
+
+   Presentation follows the AstroUX classification bar (see
+   keeptrack-space/src/plugins/classification-bar/classification-bar.ts): a
+   solid full-width band of the marking color with contrasting text, 20px tall,
+   centered, monospace. Deliberately NOT accent-colored - a classification
+   marking that changes hue per campaign would be worse than no marking, since
+   the color IS the message.
+
+   Top and bottom, the way a real console banners a marking: whichever edge the
+   operator's eye is at, the marking is in view. ::before is the page's first
+   flex item and ::after its last, so both bands sit inside the page region and
+   the workspace between them just gets 40px shorter.
+
+   To mark a scenario at a different level, override the two vars on the body
+   and restate `content`; the whole ladder is tokenized in :root above.
+   -------------------------------------------------------------------------- */
+
+body.chrome-tactical .app-shell-page::before,
+body.chrome-tactical .app-shell-page::after {
+  content: 'UNCLASSIFIED // TRAINING USE ONLY';
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 20px;
+  background-color: var(--mc-classification-bg, var(--mc-classification-unclassified-bg));
+  color: var(--mc-classification-fg, var(--mc-classification-unclassified-fg));
+  font-family: monospace;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-align: center;
 }
 
 /* ==========================================================================
-   Per-Campaign Theme: Signal Hunter (22nd EWS - black-ops / coyote brown)
-   A military electronic-warfare posture: near-black surfaces with a coyote
-   brown accent, distinct from Campaign 1 (red) and Campaign 2 (blue). Scoped
-   to body.campaign-signal-hunter (Router-applied). --mc-danger* untouched, so
-   faults/alarms stay red in every campaign.
+   Chrome variant: astro (Campaigns 4 and 5)
+
+   The Space Force console look, after the Astro UXDS design system
+   (astrouxds.com) that Space Systems Command's reference apps are built on:
+   3px radii, hairline rules, Roboto chrome, and panel headers as darker
+   plates on lighter surfaces. Astro's spacing scale is deliberately NOT
+   copied - the reference apps are far more padded than this product wants -
+   so this block changes color-slot pairings, type and relief, never padding.
+
+   Carried over from the tactical variant, because they are operational rather
+   than army: the satellites-above-stations asset ordering (an EW crew works
+   the target list) and the classification strip. NOT carried over: the
+   mirrored command bar (the Astro Global Status Bar puts identity at the
+   left), square corners, condensed-uppercase type, and 2px rules.
+
+   Hue stays with the campaign blocks below. Nothing in this block names a
+   color of its own.
+   ========================================================================== */
+
+body.chrome-astro {
+  /* Astro --radius-base */
+  --tblr-border-radius: 3px !important;
+  --tblr-border-radius-sm: 3px !important;
+  --tblr-border-radius-lg: 3px !important;
+
+  /* Roboto is self-hosted (src/fonts.css); Astro's stack ends the same way */
+  --mc-astro-sans: 'Roboto', 'Segoe UI', 'Helvetica Neue', sans-serif;
+
+  /* Faceplates: light rounding, flat relief - software console, not moulded
+     plastic and not a rack panel */
+  --mc-equip-radius: 3px;
+  --mc-equip-font: var(--mc-astro-sans);
+  --mc-equip-case-shadow: 0 2px 6px rgba(0, 0, 0, 0.55), inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+}
+
+/* --------------------------------------------------------------------------
+   astro: chrome typeface.
+   Chrome, labels and readouts move to Roboto; prose keeps the base stack,
+   the same carve-out the sdr and tactical variants make.
+   -------------------------------------------------------------------------- */
+
+body.chrome-astro .app-shell-header,
+body.chrome-astro .command-bar-left,
+body.chrome-astro .command-bar-right,
+body.chrome-astro .command-bar-center,
+body.chrome-astro .timer-display,
+body.chrome-astro .alarm-count,
+body.chrome-astro .app-shell-sidebar,
+body.chrome-astro .sidebar-header h3,
+body.chrome-astro .list-group-header-text,
+body.chrome-astro .nav-tabs .nav-link,
+body.chrome-astro .card-header,
+body.chrome-astro .card-title,
+body.chrome-astro .btn,
+body.chrome-astro .badge,
+body.chrome-astro .table>thead,
+body.chrome-astro .metric-group-title,
+body.chrome-astro .metric-label,
+body.chrome-astro .modal-header,
+body.chrome-astro .modal-footer {
+  font-family: var(--mc-astro-sans) !important;
+}
+
+/* --------------------------------------------------------------------------
+   astro: wordmark accent in the highlight tone.
+   Astro renders interactive text on dark surfaces in the light accent; the
+   base accent slot is this variant's *dark* blue (#005a8f-class), which
+   disappears against the header plate.
+   -------------------------------------------------------------------------- */
+
+body.chrome-astro .command-bar-left .text-blue-500 {
+  color: var(--mc-accent-red-bright, var(--mc-accent-red));
+}
+
+/* --------------------------------------------------------------------------
+   astro: panels as surface pairings.
+
+   Astro builds hierarchy with value, not line weight: a panel is a lighter
+   surface on the page, and its header is a darker plate on the panel
+   (#172635 on #1b2d3e in the reference apps - which is exactly surface-1 on
+   surface-2 in the campaign ramps below). The base theme pairs them the
+   other way around (card = surface-1, header = surface-2), so both slots are
+   restated here.
+   -------------------------------------------------------------------------- */
+
+body.chrome-astro .card,
+body.chrome-astro .metric-group,
+body.chrome-astro .modal-content {
+  background-color: var(--mc-surface-2) !important;
+}
+
+body.chrome-astro .card-header,
+body.chrome-astro .modal-header {
+  background-color: var(--mc-surface-1) !important;
+  font-weight: 600;
+}
+
+/* Input wells drop below their panel, the way Astro draws form fields as
+   recessed slots in a surface. Without this they would sit at surface-2 and
+   dissolve into the repaired card background above. */
+body.chrome-astro .form-control,
+body.chrome-astro .form-select,
+body.chrome-astro .input-group-text {
+  background-color: var(--mc-surface-1) !important;
+}
+
+/* --------------------------------------------------------------------------
+   astro: tracked objects first - same operational ordering as tactical, see
+   the note there.
+   -------------------------------------------------------------------------- */
+
+body.chrome-astro .asset-group-overview {
+  order: 1;
+}
+
+body.chrome-astro .asset-group-mission {
+  order: 2;
+}
+
+body.chrome-astro .asset-group-satellites {
+  order: 3;
+  margin-bottom: 1rem !important;
+}
+
+body.chrome-astro .asset-group-stations {
+  order: 4;
+  margin-bottom: 0 !important;
+}
+
+/* --------------------------------------------------------------------------
+   astro: classification strip, verbatim from the tactical variant - Astro
+   apps banner their classification exactly this way (the marking ladder in
+   :root IS Astro's), and the color must never follow the campaign accent.
+   -------------------------------------------------------------------------- */
+
+body.chrome-astro .app-shell-page::before,
+body.chrome-astro .app-shell-page::after {
+  content: 'UNCLASSIFIED // TRAINING USE ONLY';
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 20px;
+  background-color: var(--mc-classification-bg, var(--mc-classification-unclassified-bg));
+  color: var(--mc-classification-fg, var(--mc-classification-unclassified-fg));
+  font-family: monospace;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-align: center;
+}
+
+/* --------------------------------------------------------------------------
+   astro: Global Status Bar anatomy (phase 11).
+
+   The Astro GSB is a band of discrete blocks - identity, monitoring icons,
+   clocks - not a logo plus a scrolling ticker. Same DOM, different anatomy:
+
+   - identity becomes three lines (micro domain / wordmark / DOY clock), the
+     FA icon retires;
+   - the severity badges become always-visible monitoring chips (the TS side
+     renders all three in this variant, with `zero` on empty ones) labelled
+     by ::before so no template learns the wording;
+   - the alarm strip loses its full-width severity tint - state lives in the
+     chips - and the message ticker drops to a muted micro line;
+   - the timers become Astro clock blocks: no boxes, hairline separators,
+     label over mono digits. Their state *backgrounds* are overridden here
+     (transparent has nothing to pulse), but state still reads because the
+     digit colors come from higher-specificity `.timer-value` rules.
+   -------------------------------------------------------------------------- */
+
+body.chrome-astro .command-bar-left i {
+  display: none;
+}
+
+/* Identity/clock block trails the bar at the far right (order-flip only -
+   DOM stays put): with the TASK/MSN clocks leading at the left, the bar
+   reads time → alarms → who-this-console-is, and the divider border follows
+   the block to its new leading edge. */
+body.chrome-astro .command-bar-left {
+  order: 1;
+  padding-right: 1rem;
+  justify-content: flex-end;
+  text-align: right;
+  border-right: 0;
+  border-left: 1px solid var(--mc-chrome-bar-border);
+}
+
+/* The center block must be allowed to shrink (min-width:auto would hold it
+   at the nowrap ticker's content width) - with the identity block now
+   painted after it, an un-shrinkable center pushes identity off-screen
+   instead of just truncating its own ticker tail. */
+body.chrome-astro .command-bar-center {
+  min-width: 0;
+}
+
+body.chrome-astro .astro-gsb-domain {
+  font-size: 0.5625rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  line-height: 1.2;
+  color: var(--mc-text-tertiary);
+  white-space: nowrap;
+}
+
+/* Chips: outline blocks with mono counts. The severity tint family below is
+   deliberately explicit per state - critical stays in the semantic danger
+   family, caution/info take the Astro status ladder. */
+body.chrome-astro .alarm-count {
+  background: transparent;
+  border: 1px solid currentColor;
+  border-radius: 2px;
+  padding: 0 0.4rem;
+  font-family: var(--font-monospace, monospace);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+}
+
+body.chrome-astro .alarm-count i {
+  display: none;
+}
+
+body.chrome-astro .alarm-count.error::before {
+  content: 'CRIT';
+}
+
+body.chrome-astro .alarm-count.warning::before {
+  content: 'CAUT';
+}
+
+body.chrome-astro .alarm-count.info::before {
+  content: 'INFO';
+}
+
+body.chrome-astro .alarm-count.error {
+  color: var(--mc-status-critical, var(--mc-danger-bright));
+}
+
+body.chrome-astro .alarm-count.warning {
+  color: var(--mc-status-caution, #fce83a);
+}
+
+body.chrome-astro .alarm-count.info {
+  color: var(--mc-status-standby, #2dccff);
+}
+
+/* A zeroed chip is standing information, not an alert */
+body.chrome-astro .alarm-count.zero {
+  color: var(--mc-text-muted);
+}
+
+/* The strip itself goes quiet: no severity wash, hairline top rule */
+body.chrome-astro .command-bar-alarm-bar,
+body.chrome-astro .command-bar-alarm-bar.healthy,
+body.chrome-astro .command-bar-alarm-bar.info,
+body.chrome-astro .command-bar-alarm-bar.warn,
+body.chrome-astro .command-bar-alarm-bar.alarm {
+  background-color: transparent;
+  border-top: 1px solid var(--mc-chrome-bar-border);
+}
+
+/* Ticker demoted to a muted micro line; per-item severity colors neutralized
+   (the chips carry severity now) */
+body.chrome-astro .alarm-messages {
+  font-size: 9px;
+  color: var(--mc-text-tertiary);
+}
+
+body.chrome-astro .alarm-messages .alarm-item,
+body.chrome-astro .alarm-messages .alarm-stable {
+  color: var(--mc-text-tertiary) !important;
+}
+
+/* Timers as Astro clock blocks, leading the bar: the first thing an EW crew
+   reads is time remaining (the phase-9 rationale, kept through the astro
+   look). `order` flips paint order only - DOM order stays put, so locators
+   and qs() calls keep working. The divider border follows the block to its
+   new trailing edge. */
+body.chrome-astro .command-bar-right {
+  order: -1;
+  gap: 0;
+  padding: 0;
+  border-left: 0;
+  border-right: 1px solid var(--mc-chrome-bar-border);
+}
+
+body.chrome-astro .timer-display,
+body.chrome-astro .timer-display.timer-warning,
+body.chrome-astro .timer-display.timer-urgent,
+body.chrome-astro .timer-display.timer-unlimited,
+body.chrome-astro .timer-display.timer-failed,
+body.chrome-astro .timer-display.timer-passed {
+  background: transparent;
+  border: 0;
+  /* Trailing-edge hairline: the timers lead the bar (see .command-bar-right
+     above), so each clock's rule trails it and the last meets the divider
+     instead of a stray rule sitting on the bar edge */
+  border-right: 1px solid var(--mc-chrome-bar-border);
+  border-radius: 0;
+  width: auto;
+  min-width: 88px;
+  align-self: stretch;
+  justify-content: center;
+  animation: none;
+}
+
+body.chrome-astro .timer-display .timer-label {
+  color: var(--mc-text-tertiary);
+}
+
+/* --------------------------------------------------------------------------
+   astro: underline tabs (phase 11).
+   Astro tabs are text on the page base with a 3px underline, riding a full-
+   width hairline - not boxes. Icons retire; the uppercase label carries the
+   tab. Same DOM, so every locator keeps working.
+   -------------------------------------------------------------------------- */
+
+body.chrome-astro .canvas-header {
+  background: var(--mc-chrome-canvas-bg, var(--mc-surface-0));
+  border-bottom: 0;
+}
+
+body.chrome-astro .nav-tabs {
+  padding: 0 0.75rem;
+  gap: 0;
+  border-bottom: 1px solid var(--mc-border) !important;
+}
+
+body.chrome-astro .nav-tabs .nav-link {
+  background: transparent !important;
+  border: 0 !important;
+  border-bottom: 3px solid transparent !important;
+  border-radius: 0 !important;
+  color: var(--mc-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  padding: 0.625rem 0.875rem;
+  margin: 0;
+}
+
+body.chrome-astro .nav-tabs .nav-link .tab-icon {
+  display: none;
+}
+
+body.chrome-astro .nav-tabs .nav-link:hover:not(.active):not(.disabled) {
+  color: var(--mc-text-primary);
+  border-bottom-color: var(--mc-surface-4) !important;
+}
+
+body.chrome-astro .nav-tabs .nav-link.active {
+  color: var(--mc-accent-red-bright);
+  border-bottom-color: var(--mc-accent-red-bright) !important;
+}
+
+/* --------------------------------------------------------------------------
+   astro: asset rail anatomy (phase 11).
+
+   The rail stays LEFT (phase 9: moving navigation reads as a broken build,
+   not a different system) but stops being a card column: it drops to the
+   page base so rail and canvas merge into one dark field, group labels
+   become GRM-style micro table-headers, and rows select with the Astro
+   selected-surface fill plus a highlight left edge.
+
+   The status dots become status *symbols* - color always paired with shape,
+   the Astro colorblind rule: operational = circle (normal), degraded =
+   diamond (caution), offline = square (critical).
+   -------------------------------------------------------------------------- */
+
+body.chrome-astro .app-shell-sidebar,
+body.chrome-astro .asset-tree-sidebar {
+  background: var(--mc-chrome-canvas-bg, var(--mc-surface-0));
+}
+
+body.chrome-astro .sidebar-header {
+  padding: 0.625rem 1rem;
+}
+
+body.chrome-astro .sidebar-header h3 {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--mc-text-tertiary);
+}
+
+body.chrome-astro .sidebar-content {
+  padding: 0;
+}
+
+/* Group labels as micro table-headers on the header surface */
+body.chrome-astro .asset-tree .list-group-header,
+body.chrome-astro .mission-icons-section .list-group-header {
+  background: var(--mc-surface-1) !important;
+  padding: 0.3125rem 1rem;
+  border-top: 1px solid var(--mc-border);
+  border-bottom: 1px solid var(--mc-border);
+}
+
+body.chrome-astro .list-group-header-text {
+  font-size: 0.625rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--mc-text-tertiary);
+}
+
+/* Groups sit flush against each other - the headers are the separators */
+body.chrome-astro .asset-tree .list-group,
+body.chrome-astro .mission-icons-section {
+  margin-bottom: 0 !important;
+}
+
+body.chrome-astro #asset-tree-sidebar-container .list-group-item {
+  background: transparent;
+  border: 0;
+  border-left: 3px solid transparent;
+  padding: 0.4375rem 1rem 0.4375rem 0.8125rem;
+  text-decoration: none !important;
+}
+
+body.chrome-astro #asset-tree-sidebar-container .list-group-item:hover:not(.active) {
+  background: var(--mc-surface-2);
+}
+
+/* Selected: the Astro selected-surface slot (surface-4 in both C4/C5 ramps)
+   with a highlight edge - not a filled accent bar */
+body.chrome-astro #asset-tree-sidebar-container .list-group-item.active {
+  background: var(--mc-surface-4) !important;
+  border-left-color: var(--mc-accent-red-bright);
+  color: #ffffff !important;
+}
+
+/* Status symbols: color + shape, never color alone */
+body.chrome-astro .item-status {
+  width: 10px;
+  height: 10px;
+  box-shadow: none !important;
+}
+
+body.chrome-astro .item-status.operational {
+  border-radius: 50%;
+  background: var(--mc-status-normal, var(--color-success));
+}
+
+body.chrome-astro .item-status.degraded {
+  border-radius: 0;
+  background: var(--mc-status-caution, var(--color-warning));
+  clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+}
+
+body.chrome-astro .item-status.offline {
+  border-radius: 0;
+  background: var(--mc-status-critical, var(--color-error));
+}
+
+/* ==========================================================================
+   Per-Campaign Theme: Signal Hunter (22nd EWS - platinum on dark slate)
+   Space-ops posture, Astro UXDS lineage: the same blue-slate family as the
+   9th EWS block below, but a step darker and desaturated, with a platinum
+   accent - USSF heraldry is exactly this silver-on-dark-blue pair, and the
+   restraint suits the silent-listener mission. Two squadrons, two accents,
+   one obvious shared issuer. Scoped to body.campaign-signal-hunter
+   (Router-applied). --mc-danger* untouched, so faults/alarms stay red in
+   every campaign.
    ========================================================================== */
 
 body.campaign-signal-hunter {
-  /* Primary accent: coyote brown */
-  --tblr-primary: #8f6f46 !important;
-  --tblr-primary-rgb: 143, 111, 70 !important;
-  --tblr-primary-text-emphasis: #d2a86a !important;
-  --tblr-primary-bg-subtle: rgba(143, 111, 70, 0.15) !important;
-  --tblr-primary-border-subtle: rgba(143, 111, 70, 0.3) !important;
+  /* Primary accent: platinum steel */
+  --tblr-primary: #56708a !important;
+  --tblr-primary-rgb: 86, 112, 138 !important;
+  --tblr-primary-text-emphasis: #a8c4dc !important;
+  --tblr-primary-bg-subtle: rgba(86, 112, 138, 0.15) !important;
+  --tblr-primary-border-subtle: rgba(86, 112, 138, 0.3) !important;
 
-  --tblr-link-color: #b08d5a !important;
-  --tblr-link-hover-color: #d2a86a !important;
+  --tblr-link-color: #8aa5bf !important;
+  --tblr-link-hover-color: #c6d8e8 !important;
 
   /* Semantic accent slots (names historic, values per-campaign) */
-  --mc-accent-red: #8f6f46;
-  --mc-accent-red-bright: #d2a86a;
-  --mc-accent-red-light: #a5834f;
-  --mc-accent-red-dark: #5f4a2e;
-  --mc-accent-red-rgb: 143, 111, 70;
-  --mc-accent-red-bright-rgb: 210, 168, 106;
-  --mc-accent-text-dark: #b08d5a;
+  --mc-accent-red: #56708a;
+  --mc-accent-red-bright: #a8c4dc;
+  --mc-accent-red-light: #6d87a1;
+  --mc-accent-red-dark: #3c4f61;
+  --mc-accent-red-rgb: 86, 112, 138;
+  --mc-accent-red-bright-rgb: 168, 196, 220;
+  --mc-accent-text-dark: #8aa5bf;
 
-  /* Black-ops surfaces: near-black with low-contrast borders */
-  --mc-surface-0: #121314;
-  --mc-surface-1: #1a1b1d;
-  --mc-surface-2: #242628;
-  --mc-surface-3: #303235;
-  --mc-surface-4: #3d4043;
-  --mc-border: #242628;
+  /* Dark slate surfaces: the Astro ramp below, darkened and desaturated */
+  --mc-surface-0: #0e141b;
+  --mc-surface-1: #131c26;
+  --mc-surface-2: #172230;
+  --mc-surface-3: #1c2a3b;
+  --mc-surface-4: #223347;
+  --mc-border: #263749;
 
-  --tblr-body-bg: #121314 !important;
-  --tblr-secondary-bg: #1a1b1d !important;
-  --tblr-tertiary-bg: #242628 !important;
-  --tblr-border-color: #242628 !important;
+  --tblr-body-bg: #0e141b !important;
+  --tblr-secondary-bg: #131c26 !important;
+  --tblr-tertiary-bg: #172230 !important;
+  --tblr-border-color: #263749 !important;
+
+  /* App-shell chrome dividers, matching the slate surfaces */
+  --mc-chrome-bar-border: #263749;
+  --mc-chrome-scroll-thumb: #223347;
+  --mc-chrome-scroll-thumb-hover: #2c4257;
+
+  /* Astro UXDS status ladder (astrouxds.com/patterns/status-system/).
+     Declared per-campaign, not on :root, so C1-C3 - whose consoles predate
+     the convention - keep their existing greens and yellows. Status colors
+     are reserved for status; they must not be borrowed as accents. */
+  --mc-status-normal: #56f000;
+  --mc-status-normal-rgb: 86, 240, 0;
+  --mc-status-caution: #fce83a;
+  --mc-status-caution-rgb: 252, 232, 58;
+  --mc-status-serious: #ffb302;
+  --mc-status-serious-rgb: 255, 179, 2;
+  --mc-status-critical: #ff3838;
+  --mc-status-standby: #2dccff;
+  --mc-status-standby-rgb: 45, 204, 255;
+  --mc-status-off: #a4abb6;
+
+  /* Geo map overlays (geo-map.ts reads these at draw time; the fallbacks in
+     code are the pre-Astro colors, so only these two campaigns re-ink the
+     map). Truth markers are a legitimately critical thing to flag. */
+  --mc-geo-footprint-access: rgba(255, 179, 2, 0.8);
+  --mc-geo-footprint-coverage: rgba(77, 172, 255, 0.85);
+  --mc-geo-lop-fdoa: #4dacff;
+  --mc-geo-marker-station: #4dacff;
+  --mc-geo-marker-truth: #ff3838;
+
+  /* Equipment faceplates: steel-tinted, matte. Same fixed darken + hue-bias
+     derivation from the base grey ramp as every campaign ramp (see the
+     phase-9 plan), so the relative steps between tokens - several of which
+     are gradient partners - stay intact. The 9th EWS block below is the same
+     derivation with a stronger blue bias: same issue, two squadrons. */
+  --mc-equip-bg-deepest: #040506;
+  --mc-equip-bg-deep: #08090b;
+  --mc-equip-shadow: #0c0e11;
+  --mc-equip-bg-dark: #12151a;
+  --mc-equip-bg: #16191e;
+  --mc-equip-bg-alt: #171a20;
+  --mc-equip-bg-raised: #191d23;
+  --mc-equip-shell: #1a1e25;
+  --mc-equip-panel: #1c2128;
+  --mc-equip-panel-raised: #232931;
+  --mc-equip-border: #2b323b;
+  --mc-equip-border-mid: #2f3741;
+  --mc-equip-border-alt: #313944;
+  --mc-equip-border-light: #39424e;
+  --mc-equip-control-dim: #3f4955;
+  --mc-equip-control: #485462;
+  --mc-equip-control-light: #566373;
+  --mc-equip-control-lighter: #647384;
+  --mc-equip-unlit: #63717f;
+  --mc-equip-text: #f7fafc;
+  --mc-equip-text-dim: #a6b0ba;
+  --mc-equip-text-muted: #85909b;
+  --mc-equip-text-bright: #c9d3dd;
+
+  /* Classification strip: Secret *style* (the ladder colors stay untouched),
+     with deliberately fictional wording so the banner cannot be mistaken for
+     a real marking. */
+  --mc-classification-bg: var(--mc-classification-secret-bg);
+  --mc-classification-fg: var(--mc-classification-secret-fg);
+}
+
+body.campaign-signal-hunter .app-shell-page::before,
+body.campaign-signal-hunter .app-shell-page::after {
+  content: 'SPECIAL PROGRAM // TRAINING USE ONLY';
 }
 
 /* ==========================================================================
-   Per-Campaign Theme: Counter Communications (ccs - 9th EWS, black-ops / OD green)
-   Offensive electronic-attack posture: near-black surfaces with an olive-drab
-   (OD green) accent. Deliberately a sibling to the 22nd EWS "Signal Hunter"
-   military look (coyote brown) but distinct - two EW squadrons, two accents -
-   and clearly apart from Campaign 1 (red) and Campaign 2 (blue). Scoped to
-   body.campaign-ccs (Router-applied). --mc-danger* untouched: alarms/faults
-   (and the deconfliction/fratricide warnings) stay red in every campaign.
+   Per-Campaign Theme: Counter Communications (ccs - 9th EWS, Astro blue)
+   Offensive electronic-attack posture in Space Force colors: the Astro UXDS
+   dark-theme palette verbatim (astrouxds.com; extracted from SSC's reference
+   apps) - blue-slate surfaces with the Astro interactive blue as the accent.
+   Deliberately a sibling to the 22nd EWS "Signal Hunter" look above (same
+   slate family, platinum accent) but distinct - two EW squadrons, two
+   accents. Sits apart from Campaign 2's maritime blue (#0f62ac) through the
+   astro chrome, the colder slate surfaces and the brighter #4dacff
+   highlight. Scoped to body.campaign-ccs (Router-applied). --mc-danger*
+   untouched: alarms/faults (and the deconfliction/fratricide warnings) stay
+   red in every campaign.
    ========================================================================== */
 
 body.campaign-ccs {
-  /* Primary accent: olive drab (OD green) */
-  --tblr-primary: #6b7539 !important;
-  --tblr-primary-rgb: 107, 117, 57 !important;
-  --tblr-primary-text-emphasis: #a8b86a !important;
-  --tblr-primary-bg-subtle: rgba(107, 117, 57, 0.15) !important;
-  --tblr-primary-border-subtle: rgba(107, 117, 57, 0.3) !important;
+  /* Primary accent: Astro interactive blue (dark #005a8f, highlight #4dacff) */
+  --tblr-primary: #005a8f !important;
+  --tblr-primary-rgb: 0, 90, 143 !important;
+  --tblr-primary-text-emphasis: #4dacff !important;
+  --tblr-primary-bg-subtle: rgba(0, 90, 143, 0.15) !important;
+  --tblr-primary-border-subtle: rgba(0, 90, 143, 0.3) !important;
 
-  --tblr-link-color: #8a9a52 !important;
-  --tblr-link-hover-color: #a8b86a !important;
+  --tblr-link-color: #4dacff !important;
+  --tblr-link-hover-color: #92cbff !important;
 
   /* Semantic accent slots (names historic, values per-campaign) */
-  --mc-accent-red: #6b7539;
-  --mc-accent-red-bright: #a8b86a;
-  --mc-accent-red-light: #7d8a44;
-  --mc-accent-red-dark: #454e22;
-  --mc-accent-red-rgb: 107, 117, 57;
-  --mc-accent-red-bright-rgb: 168, 184, 106;
-  --mc-accent-text-dark: #8a9a52;
+  --mc-accent-red: #005a8f;
+  --mc-accent-red-bright: #4dacff;
+  --mc-accent-red-light: #2b659b;
+  --mc-accent-red-dark: #00436b;
+  --mc-accent-red-rgb: 0, 90, 143;
+  --mc-accent-red-bright-rgb: 77, 172, 255;
+  --mc-accent-text-dark: #3a91c4;
 
-  /* Black-ops surfaces: near-black with a faint cool-green cast */
-  --mc-surface-0: #101311;
-  --mc-surface-1: #171b18;
-  --mc-surface-2: #212722;
-  --mc-surface-3: #2d332d;
-  --mc-surface-4: #3a413a;
-  --mc-border: #212722;
+  /* Astro dark-theme surface ramp, verbatim: base, header, surface, hover,
+     selected. The chrome-astro variant pairs 1-on-2 for panel headers. */
+  --mc-surface-0: #101923;
+  --mc-surface-1: #172635;
+  --mc-surface-2: #1b2d3e;
+  --mc-surface-3: #1c3851;
+  --mc-surface-4: #1c3f5e;
+  --mc-border: #2b405c;
 
-  --tblr-body-bg: #101311 !important;
-  --tblr-secondary-bg: #171b18 !important;
-  --tblr-tertiary-bg: #212722 !important;
-  --tblr-border-color: #212722 !important;
+  --tblr-body-bg: #101923 !important;
+  --tblr-secondary-bg: #172635 !important;
+  --tblr-tertiary-bg: #1b2d3e !important;
+  --tblr-border-color: #2b405c !important;
+
+  /* App-shell chrome dividers, matching the slate surfaces */
+  --mc-chrome-bar-border: #2b405c;
+  --mc-chrome-scroll-thumb: #1c3f5e;
+  --mc-chrome-scroll-thumb-hover: #2b659b;
+
+  /* Astro UXDS status ladder - see the note in the Signal Hunter block */
+  --mc-status-normal: #56f000;
+  --mc-status-normal-rgb: 86, 240, 0;
+  --mc-status-caution: #fce83a;
+  --mc-status-caution-rgb: 252, 232, 58;
+  --mc-status-serious: #ffb302;
+  --mc-status-serious-rgb: 255, 179, 2;
+  --mc-status-critical: #ff3838;
+  --mc-status-standby: #2dccff;
+  --mc-status-standby-rgb: 45, 204, 255;
+  --mc-status-off: #a4abb6;
+
+  /* Geo map overlays - see the note in the Signal Hunter block */
+  --mc-geo-footprint-access: rgba(255, 179, 2, 0.8);
+  --mc-geo-footprint-coverage: rgba(77, 172, 255, 0.85);
+  --mc-geo-lop-fdoa: #4dacff;
+  --mc-geo-marker-station: #4dacff;
+  --mc-geo-marker-truth: #ff3838;
+
+  /* Equipment faceplates: blue-slate-tinted, matte. Same derivation as the
+     22nd EWS ramp above, stronger blue bias - the two squadrons draw the
+     same gear from the same depot. */
+  --mc-equip-bg-deepest: #030507;
+  --mc-equip-bg-deep: #070a0e;
+  --mc-equip-shadow: #0b0f14;
+  --mc-equip-bg-dark: #10161e;
+  --mc-equip-bg: #131a23;
+  --mc-equip-bg-alt: #141b25;
+  --mc-equip-bg-raised: #161e29;
+  --mc-equip-shell: #171f2b;
+  --mc-equip-panel: #19222e;
+  --mc-equip-panel-raised: #1f2a39;
+  --mc-equip-border: #263345;
+  --mc-equip-border-mid: #2a384c;
+  --mc-equip-border-alt: #2b3a4f;
+  --mc-equip-border-light: #334458;
+  --mc-equip-control-dim: #374a61;
+  --mc-equip-control: #405570;
+  --mc-equip-control-light: #4d6685;
+  --mc-equip-control-lighter: #5b7799;
+  --mc-equip-unlit: #5c7590;
+  --mc-equip-text: #f2f8ff;
+  --mc-equip-text-dim: #9fb1c4;
+  --mc-equip-text-muted: #7f8fa1;
+  --mc-equip-text-bright: #c2d4e6;
+
+  /* Classification strip: Top Secret *style* (the ladder colors stay
+     untouched), with deliberately fictional wording so the banner cannot be
+     mistaken for a real marking. */
+  --mc-classification-bg: var(--mc-classification-top-secret-bg);
+  --mc-classification-fg: var(--mc-classification-top-secret-fg);
+}
+
+body.campaign-ccs .app-shell-page::before,
+body.campaign-ccs .app-shell-page::after {
+  content: 'G14 CLASSIFIED // TRAINING USE ONLY';
 }
 
 /* ==========================================================================

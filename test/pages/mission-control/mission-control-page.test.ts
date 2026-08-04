@@ -149,6 +149,8 @@ vi.mock('../../../src/sync/storage', () => ({
 vi.mock('../../../src/user-account/auth', () => ({
   Auth: {
     isLoggedIn: vi.fn(() => Promise.resolve(false)),
+    getSession: vi.fn(() => Promise.resolve(null)),
+    onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe: vi.fn() } } })),
   },
 }));
 vi.mock('../../../src/logging/logger', () => ({

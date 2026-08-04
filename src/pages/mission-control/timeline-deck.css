@@ -11,9 +11,9 @@
 .app-shell-timeline {
   height: 12rem;
   /* h-48 */
-  background-color: #1f1f1f;
+  background-color: var(--mc-chrome-canvas-bg, var(--mc-surface-0));
   /* bg-slate-950 */
-  border-top: 1px solid #6b6b6b;
+  border-top: 1px solid var(--mc-chrome-bar-border);
   /* border-slate-700 */
   flex-shrink: 0;
   display: flex;
@@ -36,9 +36,9 @@
 .timeline-header {
   height: 2rem;
   /* h-8 */
-  background-color: #292929;
+  background-color: var(--mc-chrome-bar-bg, var(--mc-surface-1));
   /* bg-slate-900 */
-  border-bottom: 1px solid #292929;
+  border-bottom: 1px solid var(--mc-chrome-bar-bg, var(--mc-surface-1));
   /* border-slate-800 */
   display: flex;
   justify-content: space-between;
@@ -72,7 +72,7 @@
 .timeline-zoom-controls button {
   font-size: 0.75rem;
   /* text-xs */
-  background-color: #292929;
+  background-color: var(--mc-chrome-bar-bg, var(--mc-surface-1));
   /* bg-slate-800 */
   color: #cbd5e1;
   /* text-slate-300 */
@@ -86,16 +86,16 @@
 }
 
 .timeline-zoom-controls button:hover {
-  background-color: #334155;
+  background-color: var(--mc-surface-3);
   /* hover:bg-slate-700 */
 }
 
 .timeline-zoom-controls button.active {
-  background-color: #a72019;
+  background-color: var(--mc-accent-red-dark);
   /* bg-red-700 */
-  color: #fecaca;
+  color: var(--mc-text-primary);
   /* text-red-200 */
-  border-color: #ed5e56;
+  border-color: var(--mc-accent-red-bright);
   /* border-red-600 */
 }
 
@@ -142,9 +142,9 @@
 .timeline-grid-line {
   width: 1px;
   height: 100%;
-  background-color: #292929;
+  background-color: var(--mc-chrome-bar-bg, var(--mc-surface-1));
   /* bg-slate-800 */
-  border-right: 1px dashed #292929;
+  border-right: 1px dashed var(--mc-chrome-bar-bg, var(--mc-surface-1));
   /* border-r border-slate-800 border-dashed */
 }
 
@@ -190,7 +190,7 @@
   flex: 1;
   height: 1rem;
   /* h-4 */
-  background-color: #292929;
+  background-color: var(--mc-chrome-bar-bg, var(--mc-surface-1));
   /* bg-slate-900 */
   border-radius: 0.25rem;
   /* rounded */
@@ -286,7 +286,7 @@
   bottom: 0;
   width: 2px;
   margin-left: -1px;
-  background-color: #ea3c2b;
+  background-color: var(--mc-accent-red-bright);
   box-shadow: 0 0 6px rgba(234, 60, 43, 0.7);
   pointer-events: none;
   z-index: 2;
@@ -303,7 +303,7 @@
 .timeline-axis {
   height: 1.5rem;
   /* h-6 */
-  background-color: #292929;
+  background-color: var(--mc-chrome-bar-bg, var(--mc-surface-1));
   /* bg-slate-900 */
   display: flex;
   justify-content: space-between;
@@ -314,7 +314,7 @@
   /* text-slate-500 */
   font-family: 'JetBrains Mono', monospace;
   align-items: center;
-  border-top: 1px solid #292929;
+  border-top: 1px solid var(--mc-chrome-bar-bg, var(--mc-surface-1));
   /* border-slate-800 */
 }
 
@@ -323,5 +323,5 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: #ea3c2b;
+  color: var(--mc-accent-red-bright);
 }

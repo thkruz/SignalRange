@@ -74,8 +74,9 @@ export class Router {
     const path = globalThis.location.pathname;
     this.currentPath = path;
 
-    // Tag <body> with the active campaign so per-campaign themes
-    // (e.g. .campaign-nats-eu) can scope CSS variable overrides
+    // Tag <body> with the active campaign and its chrome variant so per-campaign
+    // themes (e.g. .campaign-nats-eu) can scope CSS variable overrides and
+    // shared layouts (e.g. .chrome-tactical) can scope structure
     this.updateCampaignBodyClass_(/^\/campaigns\/([^/]+)/.exec(path)?.[1]);
 
     // Hide all pages
@@ -124,15 +125,28 @@ export class Router {
     EventBus.getInstance().emit(Events.ROUTE_CHANGED, { path });
   }
 
+  /**
+   * Tag <body> with the active campaign and the chrome variant it wears.
+   *
+   * Two classes, two jobs: `campaign-<id>` carries the hue (one accent per
+   * campaign), `chrome-<variant>` carries layout/typography shared by the
+   * campaigns that are meant to feel like the same system. A campaign that
+   * declares no variant gets `chrome-standard`, which is the historic layout
+   * and has no rules of its own.
+   */
   private updateCampaignBodyClass_(campaignId?: string): void {
     const body = document.body;
     for (const cls of Array.from(body.classList)) {
-      if (cls.startsWith('campaign-')) {
+      if (cls.startsWith('campaign-') || cls.startsWith('chrome-')) {
         body.classList.remove(cls);
       }
     }
     if (campaignId) {
       body.classList.add(`campaign-${campaignId}`);
+
+      const variant = CampaignManager.getInstance().getCampaign(campaignId)?.chromeVariant ?? 'standard';
+
+      body.classList.add(`chrome-${variant}`);
     }
   }
 

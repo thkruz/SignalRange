@@ -20,14 +20,17 @@
   text-align: center;
 }
 
-/* Standby: no jam radiating */
+/* Standby: jam armed but not radiating - Astro standby cyan ("available,
+   enabled"), falling back to the old muted grey if the campaign declares no
+   status ladder */
 .ea-assessment-tab .ea-status-standby {
-  color: var(--mc-text-tertiary);
+  color: var(--mc-status-standby, var(--mc-text-tertiary));
 }
 
-/* Degraded: jam up but not achieving the denial threshold (uses the campaign accent) */
+/* Degraded: jam up but not achieving the denial threshold. A status, not a
+   brand moment: Astro "serious" amber (needs attention), not the accent. */
 .ea-assessment-tab .ea-status-degraded {
-  color: var(--mc-accent-red-bright);
+  color: var(--mc-status-serious, var(--mc-accent-red-bright));
 }
 
 /* Denied: effective denial - semantic danger red for the adversary link going down */

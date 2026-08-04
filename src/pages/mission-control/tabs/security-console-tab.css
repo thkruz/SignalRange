@@ -40,16 +40,19 @@
   border: 1px solid rgba(75, 75, 75, 0.3);
 }
 
+/* Good/warn route through the Astro status ladder where a campaign declares
+   one (C4/C5); the fallbacks are the previous literals, so Campaign 2 - which
+   this console was built for - is pixel-identical. */
 .security-console-tab .sec-badge-good {
-  background-color: rgba(34, 197, 94, 0.15);
-  color: #22c55e;
-  border: 1px solid rgba(34, 197, 94, 0.3);
+  background-color: rgba(var(--mc-status-normal-rgb, 34, 197, 94), 0.15);
+  color: var(--mc-status-normal, #22c55e);
+  border: 1px solid rgba(var(--mc-status-normal-rgb, 34, 197, 94), 0.3);
 }
 
 .security-console-tab .sec-badge-warn {
-  background-color: rgba(234, 179, 8, 0.15);
-  color: #eab308;
-  border: 1px solid rgba(234, 179, 8, 0.3);
+  background-color: rgba(var(--mc-status-caution-rgb, 234, 179, 8), 0.15);
+  color: var(--mc-status-caution, #eab308);
+  border: 1px solid rgba(var(--mc-status-caution-rgb, 234, 179, 8), 0.3);
 }
 
 /* Semantic fault indicator - stays red regardless of campaign accent */

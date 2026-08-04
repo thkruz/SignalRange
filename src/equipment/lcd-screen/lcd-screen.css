@@ -24,7 +24,7 @@
   padding: 12px;
   background: #003477;
   box-shadow: 0 0 40px 2px #1ec6ff55 inset;
-  border: 4px solid #444;
+  border: 4px solid var(--mc-equip-border-light);
   border-radius: 8px;
 }
 

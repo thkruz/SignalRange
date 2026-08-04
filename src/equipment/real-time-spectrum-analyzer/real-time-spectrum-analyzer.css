@@ -47,7 +47,7 @@
   width: auto;
   border-radius: 4px;
   margin: 0 12px 5px 12px;
-  background-color: #1a1a1a;
+  background-color: var(--mc-equip-bg);
 
   .spec-a-btn {
     top: 8px;
@@ -55,14 +55,14 @@
     z-index: 10;
     background: rgba(0, 0, 0, 0.7);
     border: none;
-    color: #fff;
+    color: var(--mc-equip-text);
     padding: 2px 12px;
     font-size: 28px;
     font-weight: bold;
     border-radius: 4px;
     cursor: pointer;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
-    text-shadow: 0 1px 2px #000, 0 0 2px #fff;
+    text-shadow: 0 1px 2px #000, 0 0 2px var(--mc-equip-text);
     height: 1.5em;
     margin-right: 0.25em;
   }
@@ -82,7 +82,7 @@
   .spec-a-info {
     display: flex;
     justify-content: space-around;
-    color: #fff;
+    color: var(--mc-equip-text);
     font-size: 14px;
     flex: 1;
   }
@@ -105,7 +105,7 @@
   font-size: 14px;
   font-weight: bold;
   background-color: var(--color-dark-text-muted);
-  color: #fff;
+  color: var(--mc-equip-text);
 }
 
 

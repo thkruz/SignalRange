@@ -23,8 +23,8 @@
     .rf-fe-module {
       display: flex;
       flex-direction: column;
-      background: linear-gradient(180deg, #2a2a2a 0%, #1f1f1f 100%);
-      border: 1px solid #444;
+      background: linear-gradient(180deg, var(--mc-equip-panel-raised) 0%, var(--mc-equip-shell) 100%);
+      border: 1px solid var(--mc-equip-border-light);
       border-radius: 8px;
       padding: 12px;
       box-shadow:
@@ -55,7 +55,7 @@
   text-transform: uppercase;
   margin-bottom: 10px;
   padding-bottom: 6px;
-  border-bottom: 1px solid #444;
+  border-bottom: 1px solid var(--mc-equip-border-light);
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
   display: flex;
   flex-wrap: nowrap;
@@ -87,7 +87,7 @@
 }
 
 .control-group label {
-  color: #aaa;
+  color: var(--mc-equip-text-dim);
   font-size: 10px;
   font-weight: bold;
   text-transform: uppercase;
@@ -132,9 +132,9 @@
 .input-coupler-tap {
   width: 100%;
   padding: 6px 8px;
-  background-color: #1a1a1a;
-  color: #fff;
-  border: 1px solid #444;
+  background-color: var(--mc-equip-bg);
+  color: var(--mc-equip-text);
+  border: 1px solid var(--mc-equip-border-light);
   border-radius: 4px;
   font-size: 13px;
   font-family: 'Roboto', sans-serif;
@@ -156,7 +156,7 @@
 }
 
 .indicator-label {
-  color: #888;
+  color: var(--mc-equip-text-muted);
   font-size: 9px;
   font-weight: bold;
   text-transform: uppercase;
@@ -168,7 +168,7 @@
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  border: 1px solid #222;
+  border: 1px solid var(--mc-equip-panel);
   box-shadow:
     inset 0 1px 1px rgba(0, 0, 0, 0.8),
     0 1px 2px rgba(0, 0, 0, 0.3);
@@ -177,7 +177,7 @@
 
 /* LED Colors */
 .led-off {
-  background: radial-gradient(circle at 40% 40%, #333 0%, #1a1a1a 60%);
+  background: radial-gradient(circle at 40% 40%, var(--mc-equip-border) 0%, var(--mc-equip-bg) 60%);
   box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.9);
 }
 
@@ -265,13 +265,13 @@
   flex-shrink: 0;
   min-width: 52px;
   padding: 2px 6px;
-  background: linear-gradient(180deg, #3a3a3a 0%, #2a2a2a 100%);
+  background: linear-gradient(180deg, var(--mc-equip-border-alt) 0%, var(--mc-equip-panel-raised) 100%);
   color: #d0d0d0;
   font-size: 9px;
   font-weight: bold;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  border: 1px solid #555;
+  border: 1px solid var(--mc-equip-control);
   border-radius: 2px;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.1),
@@ -295,7 +295,7 @@
 }
 
 .meter-label {
-  color: #aaa;
+  color: var(--mc-equip-text-dim);
   font-size: 10px;
   font-weight: bold;
   text-transform: uppercase;
@@ -308,8 +308,8 @@
   gap: 3px;
   align-items: center;
   padding: 6px;
-  background-color: #0a0a0a;
-  border: 1px solid #222;
+  background-color: var(--mc-equip-bg-deep);
+  border: 1px solid var(--mc-equip-panel);
   border-radius: 4px;
   height: 80px;
 }
@@ -324,8 +324,8 @@
   width: 26px;
   height: 12px;
   border-radius: 3px;
-  background: #1a1a1a;
-  border: 1px solid #333;
+  background: var(--mc-equip-bg);
+  border: 1px solid var(--mc-equip-border);
   transition: background 0.3s, box-shadow 0.3s;
 }
 
@@ -345,16 +345,16 @@
 }
 
 .led-segment.led-off {
-  background: #2a2a2a;
+  background: var(--mc-equip-panel-raised);
   box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.5);
 }
 
 /* Mute Button */
 .btn-mute {
   padding: 6px 12px;
-  background: linear-gradient(180deg, #444 0%, #333 100%);
-  color: #aaa;
-  border: 1px solid #555;
+  background: linear-gradient(180deg, var(--mc-equip-border-light) 0%, var(--mc-equip-border) 100%);
+  color: var(--mc-equip-text-dim);
+  border: 1px solid var(--mc-equip-control);
   border-radius: 4px;
   font-size: 11px;
   font-weight: bold;
@@ -365,13 +365,13 @@
 }
 
 .btn-mute:hover {
-  background: linear-gradient(180deg, #555 0%, #444 100%);
-  border-color: #666;
+  background: linear-gradient(180deg, var(--mc-equip-control) 0%, var(--mc-equip-border-light) 100%);
+  border-color: var(--mc-equip-control-light);
 }
 
 .btn-mute.active {
   background: linear-gradient(180deg, #f44336 0%, #d32f2f 100%);
-  color: #fff;
+  color: var(--mc-equip-text);
   border-color: #f44336;
   box-shadow: 0 0 8px rgba(244, 67, 54, 0.4);
 }
@@ -385,7 +385,7 @@
 }
 
 .display-label {
-  color: #888;
+  color: var(--mc-equip-text-muted);
   font-size: 9px;
   font-weight: bold;
   text-transform: uppercase;
@@ -436,17 +436,17 @@
 }
 
 .rf-fe-modules::-webkit-scrollbar-track {
-  background: #1a1a1a;
+  background: var(--mc-equip-bg);
   border-radius: 3px;
 }
 
 .rf-fe-modules::-webkit-scrollbar-thumb {
-  background: #444;
+  background: var(--mc-equip-border-light);
   border-radius: 3px;
 }
 
 .rf-fe-modules::-webkit-scrollbar-thumb:hover {
-  background: #555;
+  background: var(--mc-equip-control);
 }
 
 /* Responsive adjustments */
@@ -485,18 +485,18 @@
 }
 
 .equipment-case[data-powered="false"] .led {
-  background: radial-gradient(circle at 40% 40%, #333 0%, #1a1a1a 60%);
+  background: radial-gradient(circle at 40% 40%, var(--mc-equip-border) 0%, var(--mc-equip-bg) 60%);
   box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.9);
 }
 
 .equipment-case[data-powered="false"] .digital-display {
-  background: #0a0a0a;
+  background: var(--mc-equip-bg-deep);
   color: #001a1a;
   box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.9);
   text-shadow: none;
 }
 
 .equipment-case[data-powered="false"] .bottom-status-bar {
-  color: #333;
+  color: var(--mc-equip-border);
   text-shadow: none;
 }

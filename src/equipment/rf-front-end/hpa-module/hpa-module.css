@@ -50,13 +50,13 @@
     padding: 8px;
     background: rgba(0, 0, 0, 0.3);
     border-radius: 4px;
-    border: 1px solid #444;
+    border: 1px solid var(--mc-equip-border-light);
     width: 60px;
   }
 
   .meter-label {
     font-size: 10px;
-    color: #888;
+    color: var(--mc-equip-text-muted);
     text-transform: uppercase;
     letter-spacing: 0.5px;
   }
@@ -73,8 +73,8 @@
     width: 8px;
     height: 24px;
     border-radius: 2px;
-    background: #222;
-    border: 1px solid #333;
+    background: var(--mc-equip-panel);
+    border: 1px solid var(--mc-equip-border);
     transition: all 0.2s ease;
   }
 
@@ -94,7 +94,7 @@
   }
 
   .led-segment.led-off {
-    background: #222;
+    background: var(--mc-equip-panel);
     box-shadow: none;
   }
 }

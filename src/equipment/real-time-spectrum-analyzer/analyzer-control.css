@@ -2,7 +2,7 @@
 .draggable-box {
 
   .draggable-box__title span {
-    color: #fff;
+    color: var(--mc-equip-text);
     font-size: 16px;
     font-weight: bold;
     letter-spacing: 2px;
@@ -15,7 +15,7 @@
     justify-content: space-between;
     align-items: center;
     height: 40px;
-    border-bottom: 2px solid #444;
+    border-bottom: 2px solid var(--mc-equip-border-light);
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
   }
 
@@ -41,7 +41,7 @@
       background: #6a7b85;
       width: 100px;
       border-radius: 8px;
-      box-shadow: inset 0 2px 4px #3a4a55, 0 1px 2px #222;
+      box-shadow: inset 0 2px 4px #3a4a55, 0 1px 2px var(--mc-equip-panel);
       border: 2px solid #5a6a75;
       padding: 6px 0;
       display: flex;
@@ -68,7 +68,7 @@
     .physical-button.label-select-button {
       width: 35px;
       height: 35px;
-      background: #1b1b1b !important;
+      background: var(--mc-equip-bg-alt) !important;
       font-size: 0.9rem;
     }
 
@@ -86,7 +86,7 @@
       border: 2px solid var(--color-dark-border);
       border-radius: 6px;
       background: linear-gradient(180deg, #f0f0f0 0%, #e2e2e2 100%);
-      color: #1b1b1b;
+      color: var(--mc-equip-bg-alt);
       font-weight: bold;
       transition: all 0.15s ease;
       box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3), inset 0 1px 2px rgba(255, 255, 255, 0.5);
@@ -137,8 +137,8 @@
       width: 40px;
       height: 40px;
       font-size: 0.8rem;
-      background: #1b1b1b !important;
-      color: #fff;
+      background: var(--mc-equip-bg-alt) !important;
+      color: var(--mc-equip-text);
     }
 
     /* Sub-Menu Selection on Left Side */
@@ -214,8 +214,8 @@
 
         /* Reused by POWER button */
         .num-button.special-button {
-          background: #1b1b1b !important;
-          color: #fff;
+          background: var(--mc-equip-bg-alt) !important;
+          color: var(--mc-equip-text);
           font-size: 0.8em;
           width: 60px;
         }
@@ -239,7 +239,7 @@
         /* Bottom Row: Power Button */
         .power-button {
           background: var(--mc-accent-red, #ba160c) !important;
-          color: #fff;
+          color: var(--mc-equip-text);
           font-size: 0.8em;
           width: 60px;
         }

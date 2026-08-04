@@ -355,8 +355,12 @@ export class AssetTreeSidebar extends BaseElement {
 
     const isMissionOverviewSelected = this.selectedAssetId_ === null;
 
+    // The asset-group-* classes carry no styling in the base theme. They exist
+    // so a chrome variant can reorder the sections with `order` instead of
+    // reordering them here - the DOM sequence stays put, which is what keeps
+    // every existing selector and E2E locator valid.
     const treeHtml = html`
-      <div class="list-group list-group-flush mb-3">
+      <div class="list-group list-group-flush mb-3 asset-group-overview">
         <a class="list-group-item list-group-item-action d-flex align-items-center mission-overview-item ${isMissionOverviewSelected ? 'active' : ''}"
            data-asset-type="mission-overview"
            data-tooltip="Mission Overview">
@@ -367,7 +371,7 @@ export class AssetTreeSidebar extends BaseElement {
         </a>
       </div>
 
-      <div id="mission-icons-section" class="mission-icons-section list-group list-group-flush" style="display: none;">
+      <div id="mission-icons-section" class="mission-icons-section list-group list-group-flush asset-group-mission" style="display: none;">
         <div class="list-group-header">
           <span class="list-group-header-text">Mission</span>
         </div>
@@ -403,14 +407,14 @@ export class AssetTreeSidebar extends BaseElement {
         </a>
       </div>
 
-      <div class="list-group list-group-flush mb-3">
+      <div class="list-group list-group-flush mb-3 asset-group-stations">
         <div class="list-group-header sticky-top">
           <span class="list-group-header-text">Ground Stations</span>
         </div>
         ${this.groundStations_.map(gs => this.renderGroundStationNode_(gs)).join('')}
       </div>
 
-      <div class="list-group list-group-flush">
+      <div class="list-group list-group-flush asset-group-satellites">
         <div class="list-group-header sticky-top">
           <span class="list-group-header-text">Satellites</span>
         </div>

@@ -125,6 +125,18 @@
   color: #4ade80;
 }
 
+/* ── Transmit (S8+ rigs) ──────────────────────────────────────────────── */
+.sdr-tx-key.active {
+  border-style: inset;
+  background: #531414;
+  color: #f87171;
+}
+
+.sdr-lock.onair {
+  color: #f87171;
+  border-color: #f87171;
+}
+
 .sdr-meter-group {
   display: flex;
   align-items: center;

@@ -1,4 +1,5 @@
 import { vi } from 'vitest';
+import { CampaignManager } from '../src/campaigns/campaign-manager';
 import { EventBus } from '../src/events/event-bus';
 import { Router } from '../src/router';
 
@@ -7,6 +8,11 @@ vi.mock('../src/campaigns/campaign-manager', () => ({
   CampaignManager: {
     getInstance: vi.fn(() => ({
       registerCampaign: vi.fn(),
+      // The router reads chromeVariant off the campaign to tag <body>. The
+      // campaign data is mocked away here, so this returns undefined and the
+      // router takes its 'standard' fallback - which is the path worth
+      // exercising anyway (a campaign that declares no variant).
+      getCampaign: vi.fn(() => undefined),
     })),
   },
 }));
@@ -148,6 +154,59 @@ describe('Router', () => {
       router.navigate('/sandbox');
 
       expect(router.getCurrentPath()).toBe('/sandbox');
+    });
+  });
+
+  describe('body classes', () => {
+    /**
+     * The chrome variant is what makes two campaigns feel like the same
+     * system. It reaches CSS only through this class, so the tagging is worth
+     * asserting: a wrong or stale class silently renders the wrong console.
+     */
+    const mockActiveCampaign = (campaign: unknown): void => {
+      vi.mocked(CampaignManager.getInstance).mockReturnValue({
+        registerCampaign: vi.fn(),
+        getCampaign: vi.fn(() => campaign),
+      } as unknown as ReturnType<typeof CampaignManager.getInstance>);
+    };
+
+    it('should tag the campaign and its chrome variant', () => {
+      mockActiveCampaign({ id: 'ccs', chromeVariant: 'astro' });
+
+      router.navigate('/campaigns/ccs');
+
+      expect(document.body.classList.contains('campaign-ccs')).toBe(true);
+      expect(document.body.classList.contains('chrome-astro')).toBe(true);
+    });
+
+    it('should fall back to standard chrome when the campaign declares no variant', () => {
+      mockActiveCampaign({ id: 'nats' });
+
+      router.navigate('/campaigns/nats');
+
+      expect(document.body.classList.contains('chrome-standard')).toBe(true);
+    });
+
+    it('should drop the previous campaign and chrome classes on navigation', () => {
+      mockActiveCampaign({ id: 'ccs', chromeVariant: 'astro' });
+      router.navigate('/campaigns/ccs');
+
+      mockActiveCampaign({ id: 'nats', chromeVariant: 'standard' });
+      router.navigate('/campaigns/nats');
+
+      expect(document.body.classList.contains('campaign-ccs')).toBe(false);
+      expect(document.body.classList.contains('chrome-astro')).toBe(false);
+      expect(document.body.classList.contains('chrome-standard')).toBe(true);
+    });
+
+    it('should carry no campaign or chrome class outside a campaign route', () => {
+      mockActiveCampaign({ id: 'ccs', chromeVariant: 'astro' });
+      router.navigate('/campaigns/ccs');
+
+      router.navigate('/sandbox');
+
+      expect([...document.body.classList].some(c => c.startsWith('campaign-'))).toBe(false);
+      expect([...document.body.classList].some(c => c.startsWith('chrome-'))).toBe(false);
     });
   });
 

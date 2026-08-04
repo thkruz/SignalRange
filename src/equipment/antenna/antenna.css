@@ -10,7 +10,7 @@
   .antenna-name {
     font-size: 14px;
     font-weight: bold;
-    color: #fff;
+    color: var(--mc-equip-text);
     text-align: center;
     background: #691915;
     margin: 4px 0 8px 0;
@@ -37,7 +37,7 @@
       display: flex;
       flex-direction: column;
       padding: 12px;
-      background-color: #1a1a1a;
+      background-color: var(--mc-equip-bg);
       border-radius: 8px;
       justify-content: space-evenly;
 
@@ -63,7 +63,7 @@
             flex-direction: column;
             gap: 6px;
             font-size: 11px;
-            color: #aaa;
+            color: var(--mc-equip-text-dim);
             text-align: center;
 
             span {
@@ -96,12 +96,12 @@
 
       .lock-status.locked {
         background-color: #4caf50;
-        color: #fff;
+        color: var(--mc-equip-text);
       }
 
       .lock-status.unlocked {
         background-color: #f44336;
-        color: #fff;
+        color: var(--mc-equip-text);
       }
 
       .physical-switch-container {

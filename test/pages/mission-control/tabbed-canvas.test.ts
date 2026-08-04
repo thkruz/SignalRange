@@ -361,6 +361,31 @@ describe('TabbedCanvas', () => {
 
       expect(document.querySelector('#tab-bar')?.innerHTML).toBe('');
     });
+
+    it('marks the overview tab active when returning from an asset', () => {
+      mockSatellites = [ORBITAL_SAT];
+      selectSatellite(`sat-${ORBITAL_SAT.noradId}`);
+      selectOverview();
+
+      expect(document.querySelector('.nav-link.active')?.getAttribute('data-tab-id'))
+        .toBe('mission-overview');
+    });
+
+    it('reopens the overview on the World Map when it was left there', () => {
+      mockSatellites = [ORBITAL_SAT];
+      selectOverview();
+
+      const switchHandler = mockEventBus.on.mock.calls.find(
+        (call: [string, Function]) => call[0] === Events.SWITCH_TAB
+      )?.[1];
+
+      switchHandler?.({ tabId: 'ground-track' });
+      selectSatellite(`sat-${ORBITAL_SAT.noradId}`);
+      selectOverview();
+
+      expect(document.querySelector('.nav-link.active')?.getAttribute('data-tab-id'))
+        .toBe('ground-track');
+    });
   });
 
   describe('mission overview selection', () => {
@@ -485,6 +510,80 @@ describe('TabbedCanvas', () => {
     });
   });
 
+  /**
+   * Selecting an asset used to leave the tab bar with no `active` class at all
+   * (the class was stamped from the *previous* asset's tab id), and always
+   * reset the operator to the asset's first tab.
+   */
+  describe('active tab across asset switches', () => {
+    const selectAsset = (type: 'ground-station' | 'satellite', id: string): void => {
+      const handler = mockEventBus.on.mock.calls.find(
+        (call: [string, Function]) => call[0] === Events.ASSET_SELECTED
+      )?.[1];
+
+      handler?.({ type, id });
+    };
+
+    const switchTab = (tabId: string): void => {
+      const handler = mockEventBus.on.mock.calls.find(
+        (call: [string, Function]) => call[0] === Events.SWITCH_TAB
+      )?.[1];
+
+      handler?.({ tabId });
+    };
+
+    const activeTabId = (): string | null | undefined =>
+      document.querySelector('.nav-link.active')?.getAttribute('data-tab-id');
+
+    it('marks a tab active after switching from a ground station to a satellite', () => {
+      selectAsset('ground-station', 'GS-001');
+      selectAsset('satellite', 'sat-12345');
+
+      expect(activeTabId()).toBe('sat-dashboard');
+    });
+
+    it('marks exactly one tab active', () => {
+      selectAsset('ground-station', 'GS-001');
+      switchTab('tx-chain');
+
+      expect(document.querySelectorAll('.nav-link.active')).toHaveLength(1);
+    });
+
+    it('reopens a ground station on the tab it was left on', () => {
+      selectAsset('ground-station', 'GS-001');
+      switchTab('rx-analysis');
+
+      selectAsset('satellite', 'sat-12345');
+      selectAsset('ground-station', 'GS-001');
+
+      expect(activeTabId()).toBe('rx-analysis');
+      expect(RxAnalysisTab).toHaveBeenCalledTimes(2);
+    });
+
+    it('remembers each asset independently', () => {
+      selectAsset('ground-station', 'GS-001');
+      switchTab('gps-timing');
+
+      // The satellite has its own (unset) memory, so it opens at its default.
+      selectAsset('satellite', 'sat-12345');
+      expect(activeTabId()).toBe('sat-dashboard');
+
+      selectAsset('ground-station', 'GS-001');
+      expect(activeTabId()).toBe('gps-timing');
+    });
+
+    it('falls back to the default tab when the remembered tab is gone', () => {
+      selectAsset('ground-station', 'GS-001');
+      switchTab('rx-analysis');
+
+      // A satellite has no rx-analysis tab; it must not be left with none active.
+      selectAsset('satellite', 'sat-12345');
+
+      expect(activeTabId()).toBe('sat-dashboard');
+      expect(SatelliteDashboardTab).toHaveBeenCalled();
+    });
+  });
+
   describe('tab management', () => {
     it('should create DashboardTab when switching to dashboard', () => {
       // Select ground station
@@ -530,17 +629,20 @@ describe('TabbedCanvas', () => {
   });
 
   describe('destroy', () => {
+    const registeredHandler = (event: Events): Function | undefined =>
+      mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === event)?.[1];
+
     it('should dispose all tab instances', () => {
       // Select ground station to create tabs
-      const assetSelectedHandler = mockEventBus.on.mock.calls.find(
-        (call: [string, Function]) => call[0] === Events.ASSET_SELECTED
-      )?.[1];
+      const assetSelectedHandler = registeredHandler(Events.ASSET_SELECTED);
 
       assetSelectedHandler?.({ type: 'ground-station', id: 'GS-001' });
 
+      const dashboardInstance = (DashboardTab as unknown as Mock).mock.results[0].value;
+
       tabbedCanvas.destroy();
 
-      // Tabs should be disposed - no errors
+      expect(dashboardInstance.dispose).toHaveBeenCalled();
     });
 
     it('should unregister from EventBus', () => {
@@ -550,6 +652,44 @@ describe('TabbedCanvas', () => {
         Events.ASSET_SELECTED,
         expect.any(Function)
       );
+    });
+
+    /**
+     * EventBus.off() matches by function identity, so unsubscribing anything
+     * other than the exact callback that was registered is a silent no-op.
+     */
+    it.each([
+      Events.ASSET_SELECTED,
+      Events.SWITCH_TAB,
+      Events.MISSION_OVERVIEW_SELECTED,
+    ])('unsubscribes the exact handler it registered for %s', (event) => {
+      const handler = registeredHandler(event);
+
+      expect(handler).toBeDefined();
+
+      tabbedCanvas.destroy();
+
+      expect(mockEventBus.off).toHaveBeenCalledWith(event, handler);
+    });
+
+    it('stops reporting an active tab once destroyed', () => {
+      registeredHandler(Events.ASSET_SELECTED)?.({ type: 'ground-station', id: 'GS-001' });
+      expect(TabbedCanvas.getActiveTab()).toBe('dashboard');
+
+      tabbedCanvas.destroy();
+
+      expect(TabbedCanvas.getActiveTab()).toBeNull();
+    });
+
+    it('does not clear a replacement canvas when an old one is destroyed', () => {
+      const replacement = new TabbedCanvas('tabbed-canvas-container');
+
+      tabbedCanvas.destroy();
+
+      expect(TabbedCanvas.getActiveTab()).toBe('mission-overview');
+
+      // Let afterEach tear the live one down.
+      tabbedCanvas = replacement;
     });
   });
 });
@@ -626,6 +766,24 @@ describe('TabbedCanvas with non-operational ground station', () => {
 
     const dashboardTab = document.querySelector('[data-tab-id="dashboard"]');
     expect(dashboardTab?.classList.contains('disabled')).toBe(false);
+  });
+
+  it('does not reopen a remembered tab that is now disabled', () => {
+    const assetSelectedHandler = mockEventBus.on.mock.calls.find(
+      (call: [string, Function]) => call[0] === Events.ASSET_SELECTED
+    )?.[1];
+    const switchTabHandler = mockEventBus.on.mock.calls.find(
+      (call: [string, Function]) => call[0] === Events.SWITCH_TAB
+    )?.[1];
+
+    assetSelectedHandler?.({ type: 'ground-station', id: 'GS-001' });
+    switchTabHandler?.({ tabId: 'rx-analysis' });
+
+    // Reselecting must not drop the operator back into a disabled console.
+    assetSelectedHandler?.({ type: 'ground-station', id: 'GS-001' });
+
+    expect(document.querySelector('.nav-link.active')?.getAttribute('data-tab-id'))
+      .toBe('dashboard');
   });
 });
 

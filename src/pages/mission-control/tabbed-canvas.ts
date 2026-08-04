@@ -35,6 +35,14 @@ import { SecurityConsoleTab } from '@app/pages/mission-control/tabs/security-con
 import { TxChainTab } from '@app/pages/mission-control/tabs/tx-chain-tab';
 import { OrbitalSatellite } from '@app/equipment/satellite/orbital-satellite';
 
+/** A single entry in the tab bar. */
+interface TabDescriptor {
+  id: string;
+  label: string;
+  icon: string;
+  isDisabled?: boolean;
+}
+
 /**
  * TabbedCanvas - Dynamic tabbed interface for ground station equipment
  *
@@ -46,9 +54,41 @@ export class TabbedCanvas extends BaseElement {
   static readonly containerId = 'tabbed-canvas-container';
   private static instance_: TabbedCanvas | null = null;
 
+  /**
+   * Memory key for the mission overview, which has no asset id. Deliberately
+   * not a valid ground-station or satellite id so it can never collide.
+   */
+  private static readonly OVERVIEW_KEY = '__overview__';
+
   private activeTab_: string = 'mission-overview';
   private selectedAssetId_: string | null = null;
+  /**
+   * Last tab the operator had open on each asset, keyed by asset id.
+   * Reselecting an asset returns to where they left off instead of resetting
+   * to its first tab, so switching between assets doesn't lose a workflow.
+   */
+  private readonly lastTabByAsset_: Map<string, string> = new Map();
   private readonly tabInstances_: Map<string, ACUControlTab | DashboardTab | RxAnalysisTab | TxChainTab | GPSTimingTab | SatelliteDashboardTab | MissionOverviewTab | PassScheduleTab | SdrConsoleTab | GeolocationTab | EaAssessmentTab | LinkBudgetTab | CommandingTab | ContactScheduleTab | SecurityConsoleTab | GroundTrackTab> = new Map();
+
+  /**
+   * Subscriptions are held as stable references because EventBus.off() matches
+   * by function identity - re-binding or re-declaring at teardown removes
+   * nothing and leaves the canvas listening after it is gone.
+   */
+  private readonly boundAssetSelected_ = (data: { type: 'ground-station' | 'satellite', id: string }): void => {
+    this.handleAssetSelected_(data.type, data.id);
+  };
+
+  private readonly boundSwitchTab_ = (data: { tabId: string }): void => {
+    this.switchTab_(data.tabId);
+  };
+
+  private readonly boundMissionOverviewSelected_ = (): void => {
+    this.selectedAssetId_ = null;
+    this.tabInstances_.forEach(tab => tab.dispose());
+    this.tabInstances_.clear();
+    this.showMissionOverview_();
+  };
 
   protected html_ = html`
     <div class="tabbed-canvas">
@@ -64,7 +104,7 @@ export class TabbedCanvas extends BaseElement {
     TabbedCanvas.instance_ = this;
     this.init_(parentId, 'replace');
     this.dom_ = qs('.tabbed-canvas');
-    this.renderMissionOverview_();
+    this.showMissionOverview_();
   }
 
   /**
@@ -76,23 +116,16 @@ export class TabbedCanvas extends BaseElement {
   }
 
   protected addEventListeners_(): void {
+    const eventBus = EventBus.getInstance();
+
     // Listen for asset selection changes
-    EventBus.getInstance().on(Events.ASSET_SELECTED, (data) => {
-      this.handleAssetSelected_(data.type, data.id);
-    });
+    eventBus.on(Events.ASSET_SELECTED, this.boundAssetSelected_);
 
     // Listen for tab switch requests from other components (e.g., dashboard cards)
-    EventBus.getInstance().on(Events.SWITCH_TAB, (data) => {
-      this.switchTab_(data.tabId);
-    });
+    eventBus.on(Events.SWITCH_TAB, this.boundSwitchTab_);
 
     // Listen for mission overview selection
-    EventBus.getInstance().on(Events.MISSION_OVERVIEW_SELECTED, () => {
-      this.selectedAssetId_ = null;
-      this.tabInstances_.forEach(tab => tab.dispose());
-      this.tabInstances_.clear();
-      this.renderMissionOverview_();
-    });
+    eventBus.on(Events.MISSION_OVERVIEW_SELECTED, this.boundMissionOverviewSelected_);
   }
 
   /**
@@ -108,16 +141,34 @@ export class TabbedCanvas extends BaseElement {
     this.selectedAssetId_ = id;
 
     if (type === 'ground-station') {
-      this.renderGroundStationTabs_();
+      this.showGroundStationAsset_();
     } else if (type === 'satellite') {
-      this.renderSatelliteDashboard_();
+      this.showSatelliteAsset_();
     }
   }
 
+  /** Memory key for the asset whose tab set is currently on screen. */
+  private assetKey_(): string {
+    return this.selectedAssetId_ ?? TabbedCanvas.OVERVIEW_KEY;
+  }
+
   /**
-   * Render mission overview (no asset selected)
+   * Pick which tab to open for the asset now being shown: the one the operator
+   * last had open on it, if that tab still exists and is enabled, otherwise the
+   * asset's default first tab.
    */
-  private renderMissionOverview_(): void {
+  private resolveActiveTab_(tabs: TabDescriptor[], defaultTabId: string): string {
+    const remembered = this.lastTabByAsset_.get(this.assetKey_());
+    const match = tabs.find(tab => tab.id === remembered && !tab.isDisabled);
+
+    return match?.id ?? defaultTabId;
+  }
+
+  /**
+   * Show the mission overview (no asset selected): build its tab bar, then open
+   * the remembered tab.
+   */
+  private showMissionOverview_(): void {
     const hasOrbitalSats = SimulationManager.getInstance().satellites.some(
       (sat) => sat instanceof OrbitalSatellite,
     );
@@ -125,18 +176,23 @@ export class TabbedCanvas extends BaseElement {
     // With orbital satellites the overview gains a whole-world map alongside
     // it; otherwise it keeps its historical no-tab-bar look.
     if (hasOrbitalSats) {
-      this.renderTabs_([
+      const tabs: TabDescriptor[] = [
         { id: 'mission-overview', label: 'Overview', icon: dashboardPng },
         { id: 'ground-track', label: 'World Map', icon: radarPng },
-      ]);
+      ];
+
+      this.renderTabs_(tabs);
+      this.switchTab_(this.resolveActiveTab_(tabs, 'mission-overview'));
     } else {
       qs('#tab-bar', this.dom_).innerHTML = '';
+      this.switchTab_('mission-overview');
     }
+  }
 
-    // Deactivate all existing tabs
-    this.tabInstances_.forEach(tab => tab.deactivate());
-
-    // Check if mission overview instance already exists
+  /**
+   * Render the mission overview tab's content (tab bar untouched)
+   */
+  private renderMissionOverviewTab_(): void {
     const tabKey = 'mission-overview';
     let overviewTab = this.tabInstances_.get(tabKey) as MissionOverviewTab;
 
@@ -152,14 +208,13 @@ export class TabbedCanvas extends BaseElement {
     }
 
     overviewTab.activate();
-    this.activeTab_ = 'mission-overview';
   }
 
   /**
-   * Render tabs for ground station equipment
+   * Show a ground station: build its tab bar, then open the remembered tab.
    * Dynamically generates one ACU tab per antenna when multiple antennas exist
    */
-  private renderGroundStationTabs_(): void {
+  private showGroundStationAsset_(): void {
     const groundStation = SimulationManager.getInstance().groundStations.find(
       gs => gs.state.id === this.selectedAssetId_
     );
@@ -176,18 +231,18 @@ export class TabbedCanvas extends BaseElement {
     // Console (with its rotator panel) is the whole rig; Observations covers
     // planning. Absent stationClass renders the professional tab set as before.
     if (groundStation.state.stationClass === 'backyard') {
-      const backyardTabs: Array<{ id: string; label: string; icon: string; isDisabled?: boolean }> = [
+      const backyardTabs: TabDescriptor[] = [
         { id: 'sdr-console', label: 'SDR Console', icon: radarPng, isDisabled: groundStation.state.isOperational === false },
       ];
       if (hasOrbitalSats) {
         backyardTabs.push({ id: 'pass-schedule', label: 'Observations', icon: stopwatchPng, isDisabled: groundStation.state.isOperational === false });
       }
       this.renderTabs_(backyardTabs);
-      this.switchTab_('sdr-console');
+      this.switchTab_(this.resolveActiveTab_(backyardTabs, 'sdr-console'));
       return;
     }
 
-    const tabs: Array<{ id: string; label: string; icon: string; isDisabled?: boolean }> = [
+    const tabs: TabDescriptor[] = [
       { id: 'dashboard', label: 'Dashboard', icon: dashboardPng },
     ];
 
@@ -248,33 +303,49 @@ export class TabbedCanvas extends BaseElement {
     }
 
     this.renderTabs_(tabs);
-    this.switchTab_('dashboard');
+    this.switchTab_(this.resolveActiveTab_(tabs, 'dashboard'));
   }
 
   /**
-   * Render satellite dashboard
+   * The satellite the selected asset id refers to, or null when the asset is
+   * not a satellite (or the NORAD ID is unknown to the simulation).
    */
-  private renderSatelliteDashboard_(): void {
+  private selectedSatellite_() {
+    if (!this.selectedAssetId_?.startsWith('sat-')) {
+      return null;
+    }
+
     // Extract NORAD ID from the asset ID (format: "sat-12345")
+    const noradId = parseInt(this.selectedAssetId_.replace('sat-', ''), 10);
+
+    return SimulationManager.getInstance().getSatByNoradId(noradId);
+  }
+
+  private renderSatelliteNotFound_(content: HTMLElement): void {
     const noradId = parseInt(this.selectedAssetId_?.replace('sat-', '') ?? '0', 10);
-    const satellite = SimulationManager.getInstance().getSatByNoradId(noradId);
+
+    content.innerHTML = html`
+      <div class="placeholder-screen">
+        <div class="placeholder-icon">⚠️</div>
+        <h2>Satellite Not Found</h2>
+        <p>Could not find satellite with NORAD ID ${noradId}.</p>
+      </div>
+    `;
+  }
+
+  /**
+   * Show a satellite: build its tab bar, then open the remembered tab.
+   */
+  private showSatelliteAsset_(): void {
+    const satellite = this.selectedSatellite_();
 
     if (!satellite) {
-      const tabBar = qs('#tab-bar', this.dom_);
-      const content = qs('#canvas-content', this.dom_);
-
-      tabBar.innerHTML = '';
-      content.innerHTML = html`
-        <div class="placeholder-screen">
-          <div class="placeholder-icon">⚠️</div>
-          <h2>Satellite Not Found</h2>
-          <p>Could not find satellite with NORAD ID ${noradId}.</p>
-        </div>
-      `;
+      qs('#tab-bar', this.dom_).innerHTML = '';
+      this.renderSatelliteNotFound_(qs('#canvas-content', this.dom_));
       return;
     }
 
-    const tabs = [
+    const tabs: TabDescriptor[] = [
       { id: 'sat-dashboard', label: 'Dashboard', icon: satellitePng },
     ];
 
@@ -285,9 +356,20 @@ export class TabbedCanvas extends BaseElement {
     }
 
     this.renderTabs_(tabs);
-    this.activeTab_ = 'sat-dashboard';
+    this.switchTab_(this.resolveActiveTab_(tabs, 'sat-dashboard'));
+  }
 
-    // Render the satellite dashboard tab
+  /**
+   * Render the satellite dashboard tab's content (tab bar untouched)
+   */
+  private renderSatelliteDashboardTab_(content: HTMLElement): void {
+    const satellite = this.selectedSatellite_();
+
+    if (!satellite) {
+      this.renderSatelliteNotFound_(content);
+      return;
+    }
+
     const tabKey = `sat-dashboard-${this.selectedAssetId_}`;
     let satTab = this.tabInstances_.get(tabKey) as SatelliteDashboardTab;
 
@@ -308,7 +390,7 @@ export class TabbedCanvas extends BaseElement {
   /**
    * Render tab bar using Bootstrap nav-tabs
    */
-  private renderTabs_(tabs: Array<{ id: string; label: string; icon: string, isDisabled?: boolean }>): void {
+  private renderTabs_(tabs: TabDescriptor[]): void {
     const tabBar = qs('#tab-bar', this.dom_);
 
     tabBar.innerHTML = tabs.map(tab => html`
@@ -347,6 +429,10 @@ export class TabbedCanvas extends BaseElement {
    */
   private switchTab_(tabId: string): void {
     this.activeTab_ = tabId;
+
+    // Remember where the operator was on this asset so reselecting it later
+    // returns here instead of resetting to the asset's first tab.
+    this.lastTabByAsset_.set(this.assetKey_(), tabId);
 
     // Update tab active state using Bootstrap classes
     const tabBar = qs('#tab-bar', this.dom_);
@@ -428,11 +514,11 @@ export class TabbedCanvas extends BaseElement {
         break;
 
       case 'mission-overview':
-        this.renderMissionOverview_();
+        this.renderMissionOverviewTab_();
         break;
 
       case 'sat-dashboard':
-        this.renderSatelliteDashboard_();
+        this.renderSatelliteDashboardTab_(content);
         break;
 
       case 'ground-track':
@@ -697,12 +783,7 @@ export class TabbedCanvas extends BaseElement {
    * centered on the new bird instead of reusing the previous one's view.
    */
   private renderGroundTrackTab_(): void {
-    const noradId = this.selectedAssetId_?.startsWith('sat-')
-      ? parseInt(this.selectedAssetId_.replace('sat-', ''), 10)
-      : null;
-    const satellite = noradId === null
-      ? undefined
-      : SimulationManager.getInstance().getSatByNoradId(noradId);
+    const satellite = this.selectedSatellite_();
     const focus = satellite instanceof OrbitalSatellite ? satellite : undefined;
 
     const tabKey = `ground-track-${focus?.noradId ?? 'all'}`;
@@ -880,11 +961,24 @@ export class TabbedCanvas extends BaseElement {
    * Cleanup
    */
   public destroy(): void {
-    // Dispose all tab instances
+    // Remove event listeners first, so a late event cannot resurrect a tab
+    // while we are tearing them down.
+    const eventBus = EventBus.getInstance();
+
+    eventBus.off(Events.ASSET_SELECTED, this.boundAssetSelected_);
+    eventBus.off(Events.SWITCH_TAB, this.boundSwitchTab_);
+    eventBus.off(Events.MISSION_OVERVIEW_SELECTED, this.boundMissionOverviewSelected_);
+
+    // Dispose all tab instances. Their dispose() releases resources the
+    // EventBus teardown cannot (canvas pointer handlers, detached DOM).
     this.tabInstances_.forEach(tab => tab.dispose());
     this.tabInstances_.clear();
+    this.lastTabByAsset_.clear();
 
-    // Remove event listeners
-    EventBus.getInstance().off(Events.ASSET_SELECTED, this.handleAssetSelected_.bind(this));
+    // A destroyed canvas must stop answering getActiveTab() for the
+    // ObjectivesManager. Guarded so a replacement instance survives.
+    if (TabbedCanvas.instance_ === this) {
+      TabbedCanvas.instance_ = null;
+    }
   }
 }

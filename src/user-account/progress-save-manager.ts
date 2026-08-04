@@ -5,6 +5,7 @@ import { SaveProgressToast } from '@app/modal/save-progress-toast';
 import { ScenarioManager } from '@app/scenario-manager';
 import { syncManager } from '@app/sync/storage';
 import packageJson from '../../package.json';
+import { Auth } from './auth';
 import { getUserDataService } from './user-data-service';
 
 /**
@@ -51,6 +52,13 @@ export class ProgressSaveManager {
       return;
     }
 
+    // Checkpoints only exist server-side; a signed-out session has nowhere to
+    // put one (and would otherwise toast a save error on every objective)
+    if (!(await Auth.getSession())) {
+      Logger.info('Skipping checkpoint save - not signed in');
+      return;
+    }
+
     try {
       this.isSaving = true;
       await this.saveCheckpoint();
@@ -62,6 +70,13 @@ export class ProgressSaveManager {
   }
 
   private async handleAllObjectiveCompleted(): Promise<void> {
+    // Signed out: ScenarioCompletionHandler holds the completion and offers
+    // sign-up at the Mission Complete modal; it saves after a sign-in
+    if (!(await Auth.getSession())) {
+      Logger.info('Completion not saved - not signed in (sign-up offered at Mission Complete)');
+      return;
+    }
+
     Logger.info('All objectives completed, marking scenario as completed...');
     try {
       // Update scenario progress to mark as completed

@@ -70,7 +70,15 @@ vi.mock('@app/logging/logger', () => ({
   },
 }));
 
+vi.mock('../../src/user-account/auth', () => ({
+  __esModule: true,
+  Auth: {
+    getSession: vi.fn(),
+  },
+}));
+
 // Import after mocks are defined
+import { Auth } from '../../src/user-account/auth';
 import { ProgressSaveManager } from '../../src/user-account/progress-save-manager';
 
 describe('ProgressSaveManager', () => {
@@ -78,6 +86,8 @@ describe('ProgressSaveManager', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // Signed in by default; remote saves are skipped entirely when signed out
+    (Auth.getSession as Mock).mockResolvedValue({ access_token: 'test-token' });
     manager = new ProgressSaveManager();
   });
 
@@ -106,6 +116,24 @@ describe('ProgressSaveManager', () => {
 
     expect(saveSpy).toHaveBeenCalledTimes(1);
     expect((manager as any).isSaving).toBe(false);
+  });
+
+  it('skips the checkpoint save entirely when signed out (no error toast spam)', async () => {
+    (Auth.getSession as Mock).mockResolvedValue(null);
+    const saveSpy = vi.spyOn(manager as any, 'saveCheckpoint').mockResolvedValue(undefined);
+
+    await (manager as any).handleObjectiveCompleted();
+
+    expect(saveSpy).not.toHaveBeenCalled();
+    expect(mockToast.showError).not.toHaveBeenCalled();
+  });
+
+  it('skips the completion mark when signed out (funnel handles it)', async () => {
+    (Auth.getSession as Mock).mockResolvedValue(null);
+
+    await (manager as any).handleAllObjectiveCompleted();
+
+    expect(mockUserDataService.updateScenarioProgress).not.toHaveBeenCalled();
   });
 
   it('saves a checkpoint and replaces any existing one for the scenario', async () => {

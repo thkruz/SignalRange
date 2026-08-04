@@ -47,6 +47,13 @@ vi.mock('../../src/user-account/user-data-service', () => ({
   getUserDataService: vi.fn(),
 }));
 
+vi.mock('../../src/user-account/auth', () => ({
+  Auth: {
+    getSession: vi.fn(),
+    onAuthStateChange: vi.fn(),
+  },
+}));
+
 // Import after mocks
 import { Logger } from '../../src/logging/logger';
 import { LevelCompleteModal } from '../../src/modal/level-complete-modal';
@@ -55,6 +62,7 @@ import { ObjectivesManager } from '../../src/objectives/objectives-manager';
 import { Router } from '../../src/router';
 import { ScenarioManager } from '../../src/scenario-manager';
 import { ScenarioCompletionHandler } from '../../src/scoring/scenario-completion-handler';
+import { Auth } from '../../src/user-account/auth';
 import { getUserDataService } from '../../src/user-account/user-data-service';
 
 describe('ScenarioCompletionHandler', () => {
@@ -72,8 +80,15 @@ describe('ScenarioCompletionHandler', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    // Reset singleton between tests
+    // Reset singleton + session-static funnel state between tests
     ScenarioCompletionHandler.destroy();
+    ScenarioCompletionHandler.__resetFunnelStateForTests__();
+
+    // Signed in by default; individual tests override for the funnel cases
+    (Auth.getSession as Mock).mockResolvedValue({ access_token: 'test-token' });
+    (Auth.onAuthStateChange as Mock).mockReturnValue({
+      data: { subscription: { unsubscribe: vi.fn() } },
+    });
 
     // Setup mock EventBus
     mockEventBus = {
@@ -242,7 +257,7 @@ describe('ScenarioCompletionHandler', () => {
   });
 
   describe('handleAllObjectivesCompleted_', () => {
-    it('should calculate and show score when objectives complete', () => {
+    it('should calculate and show score when objectives complete', async () => {
       const mockObjectiveStates = [
         {
           objective: { id: 'obj1', title: 'Test', conditions: [], points: 100 },
@@ -261,7 +276,7 @@ describe('ScenarioCompletionHandler', () => {
 
       // Get the callback and invoke it
       const callback = mockEventBus.on.mock.calls[0][1];
-      callback({ completedObjectives: mockObjectiveStates, totalTime: 120 });
+      await callback({ completedObjectives: mockObjectiveStates, totalTime: 120 });
 
       expect(mockLevelCompleteModal.showCompletion).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -277,7 +292,7 @@ describe('ScenarioCompletionHandler', () => {
       );
     });
 
-    it('should aggregate quiz penalties from status-check conditions', () => {
+    it('should aggregate quiz penalties from status-check conditions', async () => {
       const mockObjectiveStates = [
         {
           objective: {
@@ -320,7 +335,7 @@ describe('ScenarioCompletionHandler', () => {
       handler.initialize();
 
       const callback = mockEventBus.on.mock.calls[0][1];
-      callback({ completedObjectives: mockObjectiveStates, totalTime: 60 });
+      await callback({ completedObjectives: mockObjectiveStates, totalTime: 60 });
 
       // Should have queried quiz manager for status-check conditions only
       expect(mockQuizManager.getPointsDeducted).toHaveBeenCalledWith('obj1', 0);
@@ -338,7 +353,7 @@ describe('ScenarioCompletionHandler', () => {
       );
     });
 
-    it('should aggregate time penalties from objectives', () => {
+    it('should aggregate time penalties from objectives', async () => {
       const mockObjectiveStates = [
         {
           objective: { id: 'obj1', title: 'Test', conditions: [], points: 100 },
@@ -375,7 +390,7 @@ describe('ScenarioCompletionHandler', () => {
       handler.initialize();
 
       const callback = mockEventBus.on.mock.calls[0][1];
-      callback({ completedObjectives: mockObjectiveStates, totalTime: 60 });
+      await callback({ completedObjectives: mockObjectiveStates, totalTime: 60 });
 
       expect(mockLevelCompleteModal.showCompletion).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -389,14 +404,14 @@ describe('ScenarioCompletionHandler', () => {
   });
 
   describe('extractCampaignId_', () => {
-    it('should extract campaign ID from route path', () => {
+    it('should extract campaign ID from route path', async () => {
       mockRouter.getCurrentPath.mockReturnValue('/campaigns/training/scenarios/intro');
 
       const handler = ScenarioCompletionHandler.getInstance();
       handler.initialize();
 
       const callback = mockEventBus.on.mock.calls[0][1];
-      callback({ completedObjectives: [], totalTime: 0 });
+      await callback({ completedObjectives: [], totalTime: 0 });
 
       expect(mockLevelCompleteModal.showCompletion).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -406,14 +421,14 @@ describe('ScenarioCompletionHandler', () => {
       );
     });
 
-    it('should default to "nats" if campaign ID not found', () => {
+    it('should default to "nats" if campaign ID not found', async () => {
       mockRouter.getCurrentPath.mockReturnValue('/unknown/path');
 
       const handler = ScenarioCompletionHandler.getInstance();
       handler.initialize();
 
       const callback = mockEventBus.on.mock.calls[0][1];
-      callback({ completedObjectives: [], totalTime: 0 });
+      await callback({ completedObjectives: [], totalTime: 0 });
 
       expect(mockLevelCompleteModal.showCompletion).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -423,14 +438,14 @@ describe('ScenarioCompletionHandler', () => {
       );
     });
 
-    it('should handle campaign ID with special characters', () => {
+    it('should handle campaign ID with special characters', async () => {
       mockRouter.getCurrentPath.mockReturnValue('/campaigns/camp-2024_v1/scenarios/test');
 
       const handler = ScenarioCompletionHandler.getInstance();
       handler.initialize();
 
       const callback = mockEventBus.on.mock.calls[0][1];
-      callback({ completedObjectives: [], totalTime: 0 });
+      await callback({ completedObjectives: [], totalTime: 0 });
 
       expect(mockLevelCompleteModal.showCompletion).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -460,7 +475,7 @@ describe('ScenarioCompletionHandler', () => {
       handler.initialize();
 
       const callback = mockEventBus.on.mock.calls[0][1];
-      callback({ completedObjectives: [], totalTime: 180 });
+      await callback({ completedObjectives: [], totalTime: 180 });
 
       // Get the onContinue callback from showCompletion
       const onContinueCallback = mockLevelCompleteModal.showCompletion.mock.calls[0][1];
@@ -497,7 +512,7 @@ describe('ScenarioCompletionHandler', () => {
       handler.initialize();
 
       const callback = mockEventBus.on.mock.calls[0][1];
-      callback({ completedObjectives: [], totalTime: 60 });
+      await callback({ completedObjectives: [], totalTime: 60 });
 
       const onContinueCallback = mockLevelCompleteModal.showCompletion.mock.calls[0][1];
       await onContinueCallback();
@@ -516,7 +531,7 @@ describe('ScenarioCompletionHandler', () => {
       handler.initialize();
 
       const callback = mockEventBus.on.mock.calls[0][1];
-      callback({ completedObjectives: [], totalTime: 0 });
+      await callback({ completedObjectives: [], totalTime: 0 });
 
       const onContinueCallback = mockLevelCompleteModal.showCompletion.mock.calls[0][1];
 
@@ -535,7 +550,7 @@ describe('ScenarioCompletionHandler', () => {
       handler.initialize();
 
       const callback = mockEventBus.on.mock.calls[0][1];
-      callback({ completedObjectives: [], totalTime: 0 });
+      await callback({ completedObjectives: [], totalTime: 0 });
 
       const onContinueCallback = mockLevelCompleteModal.showCompletion.mock.calls[0][1];
       await onContinueCallback();
@@ -557,7 +572,7 @@ describe('ScenarioCompletionHandler', () => {
       handler.initialize();
 
       const callback = mockEventBus.on.mock.calls[0][1];
-      callback({ completedObjectives: [], totalTime: 0 });
+      await callback({ completedObjectives: [], totalTime: 0 });
 
       const onContinueCallback = mockLevelCompleteModal.showCompletion.mock.calls[0][1];
       await onContinueCallback();
@@ -617,7 +632,7 @@ describe('ScenarioCompletionHandler', () => {
 
       // Trigger completion event
       const callback = mockEventBus.on.mock.calls[0][1];
-      callback({ completedObjectives: mockObjectiveStates, totalTime: 300 });
+      await callback({ completedObjectives: mockObjectiveStates, totalTime: 300 });
 
       // Verify modal was shown with correct data
       expect(mockLevelCompleteModal.showCompletion).toHaveBeenCalledWith(
@@ -635,6 +650,7 @@ describe('ScenarioCompletionHandler', () => {
           elapsedTimeSeconds: 300,
           campaignId: 'advanced',
           scenarioId: 'final-scenario',
+          isAuthenticated: true,
         },
         expect.any(Function)
       );
@@ -654,6 +670,105 @@ describe('ScenarioCompletionHandler', () => {
           timePenalties: 10,
           scenarioNumber: 10,
         })
+      );
+    });
+  });
+
+  describe('sign-up funnel (completed while signed out)', () => {
+    const flushTimers = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+    beforeEach(() => {
+      (Auth.getSession as Mock).mockResolvedValue(null);
+    });
+
+    it('shows the modal with isAuthenticated false', async () => {
+      const handler = ScenarioCompletionHandler.getInstance();
+      handler.initialize();
+
+      const callback = mockEventBus.on.mock.calls[0][1];
+      await callback({ completedObjectives: [], totalTime: 0 });
+
+      expect(mockLevelCompleteModal.showCompletion).toHaveBeenCalledWith(
+        expect.objectContaining({ isAuthenticated: false }),
+        expect.any(Function)
+      );
+    });
+
+    it('does not save on continue and keeps the completion pending', async () => {
+      const handler = ScenarioCompletionHandler.getInstance();
+      handler.initialize();
+
+      const callback = mockEventBus.on.mock.calls[0][1];
+      await callback({ completedObjectives: [], totalTime: 0 });
+
+      const onContinueCallback = mockLevelCompleteModal.showCompletion.mock.calls[0][1];
+      await onContinueCallback();
+
+      expect(mockUserDataService.updateScenarioProgress).not.toHaveBeenCalled();
+    });
+
+    it('saves the held completion when a sign-in happens later', async () => {
+      const handler = ScenarioCompletionHandler.getInstance();
+      handler.initialize();
+
+      const callback = mockEventBus.on.mock.calls[0][1];
+      await callback({ completedObjectives: [], totalTime: 0 });
+
+      // Player signs in (e.g. via the modal's Sign Up button)
+      const authCallback = (Auth.onAuthStateChange as Mock).mock.calls[0][0];
+      (Auth.getSession as Mock).mockResolvedValue({ access_token: 'new-token' });
+      authCallback('SIGNED_IN', { id: 'user' }, null, 'new-token');
+      await flushTimers();
+
+      expect(mockUserDataService.updateScenarioProgress).toHaveBeenCalledWith(
+        'test-scenario',
+        expect.objectContaining({
+          completedAt: expect.any(String),
+          scenarioNumber: 1,
+        })
+      );
+    });
+
+    it('does not double-save when continue runs after a sign-in already flushed', async () => {
+      const handler = ScenarioCompletionHandler.getInstance();
+      handler.initialize();
+
+      const callback = mockEventBus.on.mock.calls[0][1];
+      await callback({ completedObjectives: [], totalTime: 0 });
+
+      const authCallback = (Auth.onAuthStateChange as Mock).mock.calls[0][0];
+      (Auth.getSession as Mock).mockResolvedValue({ access_token: 'new-token' });
+      authCallback('SIGNED_IN', { id: 'user' }, null, 'new-token');
+      await flushTimers();
+      expect(mockUserDataService.updateScenarioProgress).toHaveBeenCalledTimes(1);
+
+      // Continue after the flush saves again by design (now signed in), but
+      // must not re-flush the pending completion on later auth events
+      authCallback('TOKEN_REFRESHED', { id: 'user' }, null, 'new-token-2');
+      await flushTimers();
+      expect(mockUserDataService.updateScenarioProgress).toHaveBeenCalledTimes(1);
+    });
+
+    it('a pending completion survives page navigation (destroy + re-init)', async () => {
+      const handler = ScenarioCompletionHandler.getInstance();
+      handler.initialize();
+
+      const callback = mockEventBus.on.mock.calls[0][1];
+      await callback({ completedObjectives: [], totalTime: 0 });
+
+      const authCallback = (Auth.onAuthStateChange as Mock).mock.calls[0][0];
+
+      // Leaving the scenario page destroys the handler instance
+      ScenarioCompletionHandler.destroy();
+
+      // Sign-in afterwards still saves the held completion
+      (Auth.getSession as Mock).mockResolvedValue({ access_token: 'new-token' });
+      authCallback('SIGNED_IN', { id: 'user' }, null, 'new-token');
+      await flushTimers();
+
+      expect(mockUserDataService.updateScenarioProgress).toHaveBeenCalledWith(
+        'test-scenario',
+        expect.objectContaining({ completedAt: expect.any(String) })
       );
     });
   });

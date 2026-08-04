@@ -91,6 +91,36 @@
   margin-bottom: 1.25rem;
 }
 
+.complete-modal__signup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1.25rem;
+  border: 1px solid var(--hm-muted, #adb5bd);
+  border-radius: 4px;
+  text-align: left;
+}
+
+.complete-modal__signup-text {
+  font-size: 0.85rem;
+  color: var(--hm-muted, #adb5bd);
+  line-height: 1.4;
+}
+
+.complete-modal__signup-text--saved {
+  color: #28a745;
+}
+
+.complete-modal__signup .btn-primary {
+  width: 100%;
+  padding: 0.6rem 1rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
 .complete-modal__actions {
   display: flex;
   flex-direction: column;

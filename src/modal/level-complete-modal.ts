@@ -5,6 +5,8 @@ import { Router } from '@app/router';
 import { ScoreCalculator, type ScoreBreakdown } from '@app/scoring/score-calculator';
 import { SimulationManager } from '@app/simulation/simulation-manager';
 import { clearPersistedStore } from '@app/sync/storage';
+import { Auth } from '@app/user-account/auth';
+import { ModalLogin } from '@app/user-account/modal-login';
 import { getUserDataService } from '@app/user-account/user-data-service';
 import { DialogManager } from './dialog-manager';
 import './level-complete-modal.css';
@@ -16,6 +18,13 @@ interface CompletionModalOptions {
   elapsedTimeSeconds: number;
   campaignId: string;
   scenarioId: string;
+  /**
+   * Whether the player was signed in when the scenario completed. When false
+   * the modal shows the sign-up funnel: progress only persists to an account,
+   * so this is the moment to convert. Omitted (replay flow) = treated as
+   * signed in, no funnel shown.
+   */
+  isAuthenticated?: boolean;
 }
 
 export class LevelCompleteModal extends DraggableModal {
@@ -40,6 +49,7 @@ export class LevelCompleteModal extends DraggableModal {
 
   private onContinueCallback_: (() => void | Promise<void>) | null = null;
   private isReplayMode_: boolean = false;
+  private authSubscription_: { data: { subscription: { unsubscribe: () => void } } } | null = null;
 
   private constructor() {
     if (LevelCompleteModal.instance_) {
@@ -113,12 +123,55 @@ export class LevelCompleteModal extends DraggableModal {
           ${this.isReplayMode_ ? 'Previously completed' : `Completed in ${elapsedFormatted}`}
         </div>
 
+        ${this.renderSignUpSection_()}
+
         <div class="complete-modal__actions">
           ${this.isReplayMode_ ? '<button id="play-again-btn" class="btn btn-primary">Play Again</button>' : ''}
           <button id="continue-btn" class="btn btn-success">Continue</button>
         </div>
       </div>
     `;
+  }
+
+  /**
+   * Sign-up funnel shown when the scenario was completed while signed out.
+   * Progress only persists to an account, so this completion (and the unlock
+   * it earns) is lost unless the player signs in before moving on.
+   */
+  private renderSignUpSection_(): string {
+    if (this.isReplayMode_ || this.options_.isAuthenticated !== false) {
+      return '';
+    }
+
+    return html`
+      <div id="complete-signup-section" class="complete-modal__signup">
+        <div class="complete-modal__signup-text">
+          You're not signed in, so this completion won't be saved and the
+          next scenario stays locked. Create a free account to keep your
+          progress.
+        </div>
+        <button id="signup-save-btn" class="btn btn-primary">Sign Up / Log In</button>
+      </div>
+    `;
+  }
+
+  /** Swap the sign-up prompt for a confirmation once the player signs in */
+  private handleSignedInWhileOpen_(): void {
+    const section = this.boxEl?.querySelector('#complete-signup-section');
+
+    if (section) {
+      section.innerHTML = html`
+        <div class="complete-modal__signup-text complete-modal__signup-text--saved">
+          Signed in - your progress is being saved to your account.
+        </div>
+      `;
+    }
+    this.unsubscribeAuth_();
+  }
+
+  private unsubscribeAuth_(): void {
+    this.authSubscription_?.data.subscription.unsubscribe();
+    this.authSubscription_ = null;
   }
 
   protected override onOpen(): void {
@@ -139,6 +192,9 @@ export class LevelCompleteModal extends DraggableModal {
 
     const playAgainBtn = this.boxEl?.querySelector('#play-again-btn');
     playAgainBtn?.addEventListener('click', () => this.handlePlayAgain_());
+
+    const signUpBtn = this.boxEl?.querySelector('#signup-save-btn');
+    signUpBtn?.addEventListener('click', () => ModalLogin.getInstance().open());
   }
 
   private async handleContinue_(): Promise<void> {
@@ -185,6 +241,7 @@ export class LevelCompleteModal extends DraggableModal {
    * Actually close the modal (bypasses the override that prevents X/backdrop close)
    */
   private forceClose_(): void {
+    this.unsubscribeAuth_();
     super.close();
   }
 
@@ -230,6 +287,17 @@ export class LevelCompleteModal extends DraggableModal {
     this.options_ = options;
     this.onContinueCallback_ = onContinue ?? null;
     this.isReplayMode_ = isReplay ?? false;
+
+    // While the sign-up funnel is showing, react to a sign-in immediately
+    // (the actual save is handled by ScenarioCompletionHandler's auth flush)
+    this.unsubscribeAuth_();
+    if (!this.isReplayMode_ && options.isAuthenticated === false) {
+      this.authSubscription_ = Auth.onAuthStateChange((_event, _user, _profile, accessToken) => {
+        if (accessToken) {
+          this.handleSignedInWhileOpen_();
+        }
+      });
+    }
 
     // Close any open popups before showing completion modal
     this.closeAllPopups_();

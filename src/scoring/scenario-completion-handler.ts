@@ -7,8 +7,15 @@ import { QuizManager } from '@app/modal/quiz-manager';
 import { ObjectivesManager } from '@app/objectives';
 import { Router } from '@app/router';
 import { ScenarioManager } from '@app/scenario-manager';
+import { Auth } from '@app/user-account/auth';
 import { getUserDataService } from '@app/user-account/user-data-service';
 import { ScoreBreakdown, ScoreCalculator } from './score-calculator';
+
+interface PendingCompletion {
+  scenarioId: string;
+  score: ScoreBreakdown;
+  scenarioNumber: number;
+}
 
 /**
  * Orchestrates the scenario completion flow:
@@ -16,12 +23,22 @@ import { ScoreBreakdown, ScoreCalculator } from './score-calculator';
  * 2. Calculates final score
  * 3. Shows completion modal
  * 4. Saves score and navigates on continue
+ *
+ * Progress persists only to the signed-in account (no local fallback by
+ * design - completion is the sign-up funnel). When the player finishes while
+ * signed out, the completion is held statically for the rest of the session
+ * and flushed the moment a sign-in happens - whether at the Mission Complete
+ * modal's sign-up prompt or later from the header.
  */
 export class ScenarioCompletionHandler {
   private static instance_: ScenarioCompletionHandler | null = null;
 
+  /** Completion awaiting a sign-in; static so it survives page navigation */
+  private static pendingCompletion_: PendingCompletion | null = null;
+  /** The auth flush listener lives for the whole session - register it once */
+  private static isAuthFlushRegistered_ = false;
+
   private readonly eventBus_: EventBus;
-  private readonly userDataService_ = getUserDataService();
   private boundHandler_: ((data: ObjectivesAllCompletedData) => void) | null = null;
   private isInitialized_ = false;
 
@@ -46,8 +63,37 @@ export class ScenarioCompletionHandler {
     this.boundHandler_ = this.handleAllObjectivesCompleted_.bind(this);
     this.eventBus_.on(Events.OBJECTIVES_ALL_COMPLETED, this.boundHandler_);
 
+    ScenarioCompletionHandler.registerAuthFlush_();
+
     this.isInitialized_ = true;
     Logger.info('ScenarioCompletionHandler initialized');
+  }
+
+  /**
+   * Register the session-long listener that saves a held completion as soon
+   * as the player signs in. Deliberately never unsubscribed: the pending
+   * completion must survive leaving the scenario page (this class is
+   * destroyed on navigation), and a sign-in from anywhere should flush it.
+   */
+  private static registerAuthFlush_(): void {
+    if (ScenarioCompletionHandler.isAuthFlushRegistered_) {
+      return;
+    }
+    ScenarioCompletionHandler.isAuthFlushRegistered_ = true;
+
+    Auth.onAuthStateChange((_event, _user, _profile, accessToken) => {
+      if (!accessToken || !ScenarioCompletionHandler.pendingCompletion_) {
+        return;
+      }
+      const pending = ScenarioCompletionHandler.pendingCompletion_;
+      ScenarioCompletionHandler.pendingCompletion_ = null;
+      // Defer one tick: App.create()'s auth listener registered first and
+      // caches the access token UserDataService reads, but don't depend on
+      // subscriber ordering.
+      setTimeout(() => {
+        ScenarioCompletionHandler.saveScore_(pending.scenarioId, pending.score, pending.scenarioNumber);
+      }, 0);
+    });
   }
 
   /**
@@ -67,7 +113,7 @@ export class ScenarioCompletionHandler {
   /**
    * Handle the all objectives completed event
    */
-  private handleAllObjectivesCompleted_(data: ObjectivesAllCompletedData): void {
+  private async handleAllObjectivesCompleted_(data: ObjectivesAllCompletedData): Promise<void> {
     Logger.info('All objectives completed, calculating score...');
 
     const objectivesManager = ObjectivesManager.getInstance();
@@ -96,6 +142,14 @@ export class ScenarioCompletionHandler {
     // Extract campaign ID from current route
     const campaignId = this.extractCampaignId_();
     const scenarioId = scenarioManager.data?.id ?? '';
+    const scenarioNumber = scenarioManager.data?.number ?? 0;
+
+    const isAuthenticated = Boolean(await Auth.getSession());
+    if (!isAuthenticated) {
+      // Hold the completion so a sign-in (now via the modal's prompt, or any
+      // time later this session) persists it to the new account.
+      ScenarioCompletionHandler.pendingCompletion_ = { scenarioId, score, scenarioNumber };
+    }
 
     // Show the completion modal
     LevelCompleteModal.getInstance().showCompletion(
@@ -104,9 +158,27 @@ export class ScenarioCompletionHandler {
         elapsedTimeSeconds: data.totalTime,
         campaignId,
         scenarioId,
+        isAuthenticated,
       },
-      () => this.saveScore_(scenarioId, score, data.totalTime)
+      () => this.saveOnContinue_(scenarioId, score, scenarioNumber)
     );
+  }
+
+  /**
+   * Continue-button save: persists immediately when signed in (including a
+   * sign-in that happened at the modal), otherwise leaves the completion
+   * pending for a later sign-in.
+   */
+  private async saveOnContinue_(scenarioId: string, score: ScoreBreakdown, scenarioNumber: number): Promise<void> {
+    const session = await Auth.getSession();
+
+    if (!session) {
+      Logger.info(`Not signed in - completion of ${scenarioId} held until sign-in`);
+      return;
+    }
+
+    ScenarioCompletionHandler.pendingCompletion_ = null;
+    await ScenarioCompletionHandler.saveScore_(scenarioId, score, scenarioNumber);
   }
 
   /**
@@ -159,16 +231,14 @@ export class ScenarioCompletionHandler {
   }
 
   /**
-   * Save the final score to user progress
-   * Uses direct per-scenario API - no read-modify-write needed
+   * Save the final score to user progress.
+   * Static (and reading the service lazily) because the auth-flush path can
+   * run after the page that created this handler has been destroyed.
    */
-  private async saveScore_(scenarioId: string, score: ScoreBreakdown, _elapsedTime: number): Promise<void> {
+  private static async saveScore_(scenarioId: string, score: ScoreBreakdown, scenarioNumber: number): Promise<void> {
     try {
-      const scenarioManager = ScenarioManager.getInstance();
-      const scenarioNumber = scenarioManager.data?.number ?? 0;
-
       // Direct update to specific scenario - backend handles totalScore aggregation
-      await this.userDataService_.updateScenarioProgress(scenarioId, {
+      await getUserDataService().updateScenarioProgress(scenarioId, {
         score: score.totalScore,
         basePoints: score.basePoints,
         timeBonus: score.timeBonus,
@@ -187,12 +257,21 @@ export class ScenarioCompletionHandler {
   }
 
   /**
-   * Reset for testing or scenario restart
+   * Reset for testing or scenario restart.
+   * Deliberately leaves the pending completion and the auth-flush listener
+   * alone: destroy() runs on page navigation, which is exactly when a held
+   * completion must survive.
    */
   static destroy(): void {
     if (ScenarioCompletionHandler.instance_) {
       ScenarioCompletionHandler.instance_.dispose();
       ScenarioCompletionHandler.instance_ = null;
     }
+  }
+
+  /** Test-only: clear the session-static sign-up-funnel state */
+  static __resetFunnelStateForTests__(): void {
+    ScenarioCompletionHandler.pendingCompletion_ = null;
+    ScenarioCompletionHandler.isAuthFlushRegistered_ = false;
   }
 }

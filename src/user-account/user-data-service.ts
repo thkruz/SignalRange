@@ -323,6 +323,12 @@ export class UserDataService {
     if (updates.quizPenalties !== undefined) {
       apiUpdates.quiz_penalties = updates.quizPenalties;
     }
+    if (updates.timePenalties !== undefined) {
+      apiUpdates.time_penalties = updates.timePenalties;
+    }
+    if (updates.hintPenalties !== undefined) {
+      apiUpdates.hint_penalties = updates.hintPenalties;
+    }
     if (updates.completedAt !== undefined) {
       apiUpdates.completed_at = updates.completedAt;
     }

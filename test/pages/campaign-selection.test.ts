@@ -75,6 +75,7 @@ vi.mock('../../src/campaigns/campaign-manager', () => ({
       })),
       getCompletedCampaigns: vi.fn(() => []),
       isCampaignLocked: vi.fn(() => false),
+      getNextPrerequisiteScenarioForCampaign: vi.fn(() => undefined),
     })),
   },
 }));
@@ -413,6 +414,7 @@ describe('CampaignSelectionPage', () => {
         getCampaignProgress: mockGetProgress,
         getCompletedCampaigns: vi.fn(() => []),
         isCampaignLocked: vi.fn(() => false),
+        getNextPrerequisiteScenarioForCampaign: vi.fn(() => undefined),
       });
 
       CampaignSelectionPage.getInstance();
@@ -450,6 +452,7 @@ describe('CampaignSelectionPage', () => {
         getCampaignProgress: mockGetProgress,
         getCompletedCampaigns: vi.fn(() => ['nats']),
         isCampaignLocked: vi.fn(() => false),
+        getNextPrerequisiteScenarioForCampaign: vi.fn(() => undefined),
       });
 
       CampaignSelectionPage.getInstance();
@@ -487,6 +490,7 @@ describe('CampaignSelectionPage', () => {
         })),
         getCompletedCampaigns: vi.fn(() => []),
         isCampaignLocked: vi.fn(() => true),
+        getNextPrerequisiteScenarioForCampaign: vi.fn(() => undefined),
       });
 
       CampaignSelectionPage.getInstance();

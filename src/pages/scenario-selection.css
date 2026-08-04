@@ -4,8 +4,8 @@
   align-items: center;
   height: calc(100vh - 80px);
   overflow-y: auto;
-  background: linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 100%);
-  color: #fff;
+  background: linear-gradient(135deg, var(--mc-equip-bg) 0%, var(--mc-equip-shadow) 100%);
+  color: var(--mc-equip-text);
   padding: 1rem;
 
   /* all child elements should be the same size */
@@ -33,14 +33,14 @@
   font-weight: bold;
   letter-spacing: 3px;
   text-transform: uppercase;
-  color: #fff;
+  color: var(--mc-equip-text);
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
   margin-bottom: 0.25rem;
 }
 
 .scenario-selection-header .subtitle {
   font-size: 0.9rem;
-  color: #aaa;
+  color: var(--mc-equip-text-dim);
   letter-spacing: 1px;
   text-transform: uppercase;
 }
@@ -52,11 +52,95 @@
   font-weight: bold;
 }
 
+/*
+ * Beta/alpha disclaimer under the campaign title. This is the last screen before
+ * a player commits to a scenario and, unlike the campaign card, nothing here is
+ * a click target - so the reporting links live in this callout.
+ */
+.release-callout {
+  max-width: 820px;
+  margin: 1rem auto 0;
+  padding: 0.85rem 1.1rem;
+  border-radius: 6px;
+  text-align: left;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.release-callout-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.4rem;
+  font-size: 0.9rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.release-callout-icon {
+  font-size: 1.1rem;
+}
+
+.release-callout-body {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: var(--mc-equip-text-dim, #bbb);
+}
+
+.release-callout-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.7rem;
+}
+
+.release-callout-actions a {
+  padding: 0.35rem 0.85rem;
+  border: 1px solid currentcolor;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  text-decoration: none;
+  transition: background-color 0.2s ease;
+}
+
+.release-callout-beta {
+  background: linear-gradient(135deg, rgba(255, 152, 0, 0.15) 0%, rgba(255, 152, 0, 0.07) 100%);
+  border: 1px solid rgba(255, 152, 0, 0.4);
+}
+
+.release-callout-beta .release-callout-title,
+.release-callout-beta .release-callout-body strong,
+.release-callout-beta .release-callout-actions a {
+  color: #ffb74d;
+}
+
+.release-callout-beta .release-callout-actions a:hover {
+  background: rgba(255, 152, 0, 0.18);
+}
+
+.release-callout-alpha {
+  background: linear-gradient(135deg, rgba(230, 81, 0, 0.2) 0%, rgba(230, 81, 0, 0.09) 100%);
+  border: 1px solid rgba(230, 81, 0, 0.55);
+}
+
+.release-callout-alpha .release-callout-title,
+.release-callout-alpha .release-callout-body strong,
+.release-callout-alpha .release-callout-actions a {
+  color: #ff8a3d;
+}
+
+.release-callout-alpha .release-callout-actions a:hover {
+  background: rgba(230, 81, 0, 0.22);
+}
+
 .back-button {
   padding: 8px 16px;
-  background: linear-gradient(135deg, #3a3a3a 0%, #2a2a2a 100%);
-  color: #fff;
-  border: 2px solid #444;
+  background: linear-gradient(135deg, var(--mc-equip-border-alt) 0%, var(--mc-equip-panel-raised) 100%);
+  color: var(--mc-equip-text);
+  border: 2px solid var(--mc-equip-border-light);
   border-radius: 6px;
   font-size: 14px;
   font-weight: bold;
@@ -68,8 +152,8 @@
 }
 
 .back-button:hover {
-  border-color: #666;
-  background: linear-gradient(135deg, #4a4a4a 0%, #3a3a3a 100%);
+  border-color: var(--mc-equip-control-light);
+  background: linear-gradient(135deg, var(--mc-equip-control-dim) 0%, var(--mc-equip-border-alt) 100%);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
   transform: translateY(-1px);
 }
@@ -95,8 +179,8 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(135deg, #2a2a2a 0%, #1f1f1f 100%);
-  border: 2px solid #444;
+  background: linear-gradient(135deg, var(--mc-equip-panel-raised) 0%, var(--mc-equip-shell) 100%);
+  border: 2px solid var(--mc-equip-border-light);
   border-radius: 8px;
   box-shadow:
     0 4px 12px rgba(0, 0, 0, 0.6),
@@ -111,7 +195,7 @@
     left: 0;
     width: 100%;
     background: #b71c0c;
-    color: #fff;
+    color: var(--mc-equip-text);
     padding: 6px 0;
     font-size: 36px;
     font-weight: bold;
@@ -128,8 +212,8 @@
     top: 50%;
     left: 0;
     width: 100%;
-    background: #555;
-    color: #fff;
+    background: var(--mc-equip-control);
+    color: var(--mc-equip-text);
     padding: 0.3em 0;
     font-size: 36px;
     font-weight: bold;
@@ -165,7 +249,7 @@
     align-items: center;
     gap: 6px;
     background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%);
-    color: #fff;
+    color: var(--mc-equip-text);
     padding: 6px 12px;
     font-size: 11px;
     font-weight: bold;
@@ -188,7 +272,7 @@
     align-items: center;
     gap: 6px;
     background: linear-gradient(135deg, #ffd700 0%, #ffb700 100%);
-    color: #1a1a1a;
+    color: var(--mc-equip-bg);
     padding: 6px 12px;
     font-size: 11px;
     font-weight: bold;
@@ -209,12 +293,12 @@
   cursor: not-allowed;
   filter: blur(5px);
   pointer-events: none;
-  border-color: #555;
+  border-color: var(--mc-equip-control);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.05);
 }
 
 .scenario-card:hover {
-  border-color: #666;
+  border-color: var(--mc-equip-control-light);
   box-shadow:
     0 6px 16px rgba(0, 0, 0, 0.8),
     inset 0 1px 1px rgba(255, 255, 255, 0.15);
@@ -235,7 +319,7 @@
   position: absolute;
   width: 8px;
   height: 8px;
-  background: radial-gradient(circle at center, #666 30%, #444 70%, #222 100%);
+  background: radial-gradient(circle at center, var(--mc-equip-control-light) 30%, var(--mc-equip-border-light) 70%, var(--mc-equip-panel) 100%);
   border-radius: 50%;
   box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.8);
   z-index: 10;
@@ -269,8 +353,8 @@
   min-height: 35px;
   height: 35px;
   padding: 0 24px;
-  background: linear-gradient(180deg, #3a3a3a 0%, #2a2a2a 100%);
-  border-bottom: 2px solid #444;
+  background: linear-gradient(180deg, var(--mc-equip-border-alt) 0%, var(--mc-equip-panel-raised) 100%);
+  border-bottom: 2px solid var(--mc-equip-border-light);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
@@ -282,8 +366,8 @@
   min-height: 225px;
   flex-shrink: 0;
   overflow: hidden;
-  background: #0a0a0a;
-  border-bottom: 2px solid #444;
+  background: var(--mc-equip-bg-deep);
+  border-bottom: 2px solid var(--mc-equip-border-light);
 }
 
 .scenario-image-overlay {
@@ -311,8 +395,8 @@
   transform: translate(-50%, -50%);
   width: 80px;
   height: 80px;
-  background: linear-gradient(135deg, #333 0%, #222 100%);
-  border: 2px solid #444;
+  background: linear-gradient(135deg, var(--mc-equip-border) 0%, var(--mc-equip-panel) 100%);
+  border: 2px solid var(--mc-equip-border-light);
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
 }
@@ -325,12 +409,12 @@
   transform: translate(-50%, -50%);
   width: 40px;
   height: 40px;
-  background: linear-gradient(135deg, #555 0%, #333 100%);
+  background: linear-gradient(135deg, var(--mc-equip-control) 0%, var(--mc-equip-border) 100%);
   clip-path: polygon(50% 20%, 90% 80%, 50% 65%, 10% 80%);
 }
 
 .scenario-number {
-  color: #aaa;
+  color: var(--mc-equip-text-dim);
   font-size: 14px;
   font-weight: bold;
   letter-spacing: 2px;
@@ -354,22 +438,22 @@
 
 .badge.difficulty-beginner {
   background-color: #4caf50;
-  color: #fff;
+  color: var(--mc-equip-text);
 }
 
 .badge.difficulty-intermediate {
   background-color: #ff9800;
-  color: #fff;
+  color: var(--mc-equip-text);
 }
 
 .badge.difficulty-advanced {
   background-color: #f44336;
-  color: #fff;
+  color: var(--mc-equip-text);
 }
 
 .badge.duration {
   background-color: #2196f3;
-  color: #fff;
+  color: var(--mc-equip-text);
 }
 
 /* Card Body */
@@ -385,14 +469,14 @@
 .scenario-title {
   font-size: 1.1rem;
   font-weight: bold;
-  color: #fff;
+  color: var(--mc-equip-text);
   margin: 0.35rem 0rem;
   line-height: 1;
 }
 
 .scenario-subtitle {
   font-size: 0.85rem;
-  color: #ccc;
+  color: var(--mc-equip-text-bright);
   margin-bottom: 0.75rem;
   font-style: italic;
 }
@@ -400,11 +484,11 @@
 .scenario-mission-type {
   display: inline-block;
   padding: 3px 10px;
-  background-color: #1a1a1a;
-  border: 1px solid #444;
+  background-color: var(--mc-equip-bg);
+  border: 1px solid var(--mc-equip-border-light);
   border-radius: 4px;
   font-size: 11px;
-  color: #aaa;
+  color: var(--mc-equip-text-dim);
   margin-bottom: 0.75rem;
   letter-spacing: 0.5px;
 }
@@ -424,13 +508,13 @@
 .scenario-equipment {
   margin-top: 0.75rem;
   padding-top: 0.75rem;
-  border-top: 1px solid #333;
+  border-top: 1px solid var(--mc-equip-border);
 }
 
 .scenario-equipment-title {
   font-size: 0.75rem;
   font-weight: bold;
-  color: #aaa;
+  color: var(--mc-equip-text-dim);
   text-transform: uppercase;
   letter-spacing: 1px;
   margin-bottom: 0.5rem;
@@ -447,7 +531,7 @@
   align-items: center;
   gap: 0.25rem;
   font-size: 0.65rem;
-  color: #ccc;
+  color: var(--mc-equip-text-bright);
 }
 
 /* Checkpoint Actions - positioned outside scrollable card body */
@@ -457,8 +541,8 @@
   flex-shrink: 0;
   gap: 0.5rem;
   padding: 1rem;
-  border-top: 1px solid #333;
-  background: linear-gradient(180deg, #2a2a2a 0%, #1f1f1f 100%);
+  border-top: 1px solid var(--mc-equip-border);
+  background: linear-gradient(180deg, var(--mc-equip-panel-raised) 0%, var(--mc-equip-shell) 100%);
   justify-content: space-evenly;
   align-items: center;
 }
@@ -481,7 +565,7 @@
 
 .btn-continue {
   background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%);
-  color: #fff;
+  color: var(--mc-equip-text);
 }
 
 .btn-continue:hover {
@@ -491,7 +575,7 @@
 }
 
 .btn-start {
-  color: #fff;
+  color: var(--mc-equip-text);
   background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
   transform: translateY(-1px);
 }
@@ -502,21 +586,21 @@
 }
 
 .btn-start-fresh {
-  background: linear-gradient(135deg, #3a3a3a 0%, #2a2a2a 100%);
-  color: #fff;
-  border: 1px solid #444;
+  background: linear-gradient(135deg, var(--mc-equip-border-alt) 0%, var(--mc-equip-panel-raised) 100%);
+  color: var(--mc-equip-text);
+  border: 1px solid var(--mc-equip-border-light);
 }
 
 .btn-start-fresh:hover {
-  background: linear-gradient(135deg, #4a4a4a 0%, #3a3a3a 100%);
-  border-color: #666;
+  background: linear-gradient(135deg, var(--mc-equip-control-dim) 0%, var(--mc-equip-border-alt) 100%);
+  border-color: var(--mc-equip-control-light);
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
   transform: translateY(-1px);
 }
 
 .btn-play-again {
   background: linear-gradient(135deg, #ffd700 0%, #ffb700 100%);
-  color: #1a1a1a;
+  color: var(--mc-equip-bg);
   font-weight: bold;
 }
 
@@ -538,8 +622,8 @@
   justify-content: space-between;
   align-items: center;
   padding: 8px 1rem;
-  background: linear-gradient(180deg, #1a1a1a 0%, #0f0f0f 100%);
-  border-top: 1px solid #333;
+  background: linear-gradient(180deg, var(--mc-equip-bg) 0%, var(--mc-equip-shadow) 100%);
+  border-top: 1px solid var(--mc-equip-border);
   box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.6);
 }
 
@@ -548,7 +632,7 @@
   align-items: center;
   gap: 8px;
   font-size: 12px;
-  color: #aaa;
+  color: var(--mc-equip-text-dim);
   font-weight: bold;
   letter-spacing: 1px;
   text-transform: uppercase;
@@ -558,7 +642,7 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background-color: #666;
+  background-color: var(--mc-equip-control-light);
 }
 
 .scenario-card.selected .status-dot {
@@ -578,9 +662,9 @@
 
 .btn-back {
   padding: 10px 32px;
-  background: linear-gradient(135deg, #3a3a3a 0%, #2a2a2a 100%);
-  color: #fff;
-  border: 2px solid #444;
+  background: linear-gradient(135deg, var(--mc-equip-border-alt) 0%, var(--mc-equip-panel-raised) 100%);
+  color: var(--mc-equip-text);
+  border: 2px solid var(--mc-equip-border-light);
   border-radius: 6px;
   font-size: 14px;
   font-weight: bold;
@@ -591,7 +675,7 @@
 }
 
 .btn-back:hover {
-  border-color: #666;
+  border-color: var(--mc-equip-control-light);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
   transform: translateY(-1px);
 }

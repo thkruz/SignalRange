@@ -1,5 +1,6 @@
 import { CampaignManager } from "@app/campaigns/campaign-manager";
 import { CampaignData } from "@app/campaigns/campaign-types";
+import { getReleaseStage, renderReleaseBadge, renderReleaseCardNotice } from "@app/campaigns/release-stage";
 import { qs } from "@app/engine/utils/query-selector";
 import { Logger } from "@app/logging/logger";
 import { Router } from "@app/router";
@@ -155,9 +156,14 @@ export class CampaignSelectionPage extends BasePage {
   private renderCampaignCard_(campaign: CampaignData, completedCampaignIds: string[]): string {
     const campaignManager = CampaignManager.getInstance();
     const progress = campaignManager.getCampaignProgress(campaign.id, this.completedScenarioIds_);
-    const isLocked = campaignManager.isCampaignLocked(campaign, completedCampaignIds);
+    // Same dev bypass the scenario grid applies, so the dev-menu unlock toggle
+    // does not leave an unlocked scenario sitting behind a locked campaign card.
+    const isLocked = window.UNLOCK_ALL_SCENARIOS
+      ? false
+      : campaignManager.isCampaignLocked(campaign, completedCampaignIds, this.completedScenarioIds_);
     const isDisabledOrLocked = campaign.isDisabled || isLocked || campaign.isLocked;
     const isCompleted = progress.isCompleted;
+    const releaseStage = getReleaseStage(campaign);
 
     let statusBanner = '';
     if (campaign.isDisabled) {
@@ -165,10 +171,17 @@ export class CampaignSelectionPage extends BasePage {
         <div class="coming-soon-banner">${campaign.disabledText || 'Coming Soon'}</div>
       `;
     } else if (isLocked || campaign.isLocked) {
+      const nextPrereqScenario = campaignManager.getNextPrerequisiteScenarioForCampaign(
+        campaign,
+        this.completedScenarioIds_
+      );
       statusBanner = `
         <div class="locked-banner">
           <div>
             <span class="locked-icon">${campaign.lockedText || '🔒 Locked'}</span>
+          </div>
+          <div class="locked-requirement">
+            ${nextPrereqScenario ? `<strong>${nextPrereqScenario.title}</strong> must be completed first to unlock this campaign.` : ''}
           </div>
         </div>
       `;
@@ -198,6 +211,7 @@ export class CampaignSelectionPage extends BasePage {
         <div class="campaign-card-inner">
           <div class="campaign-card-header">
             <div class="campaign-badges">
+              ${renderReleaseBadge(releaseStage)}
               <span class="badge duration">${campaign.totalDuration}</span>
               <span class="badge difficulty-${campaign.difficulty}">${campaign.difficulty}</span>
             </div>
@@ -212,6 +226,7 @@ export class CampaignSelectionPage extends BasePage {
           </div>
 
           <div class="campaign-card-body">
+            ${renderReleaseCardNotice(releaseStage)}
             <p class="campaign-description">${campaign.description}</p>
 
             <div class="campaign-info">

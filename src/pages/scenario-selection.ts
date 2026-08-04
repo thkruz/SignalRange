@@ -1,5 +1,6 @@
 import { CampaignManager } from "@app/campaigns/campaign-manager";
 import { CampaignData } from "@app/campaigns/campaign-types";
+import { getReleaseStage, renderReleaseCallout } from "@app/campaigns/release-stage";
 import { ModalConfirm } from "@app/engine/ui/modal-confirm";
 import { qs, qsa } from "@app/engine/utils/query-selector";
 import { Logger } from "@app/logging/logger";
@@ -181,6 +182,7 @@ export class ScenarioSelectionPage extends BasePage {
       headerEl.innerHTML = html`
         <h1>${this.currentCampaign_.title}</h1>
         <div class="subtitle">${this.currentCampaign_.subtitle}</div>
+        ${renderReleaseCallout(getReleaseStage(this.currentCampaign_))}
         <div class="progress-and-navigation">
           <div class="campaign-progress">
             ${progress.completedScenarios.length} of ${progress.totalScenarios} scenarios completed

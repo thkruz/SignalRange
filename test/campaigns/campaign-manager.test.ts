@@ -292,6 +292,101 @@ describe('CampaignManager', () => {
 
       expect(result).toBe(true);
     });
+
+    it('should return true when a prerequisite scenario is not completed', () => {
+      const manager = CampaignManager.getInstance();
+      const campaign = createMockCampaign('camp-2', [], {
+        prerequisiteScenarioIds: ['scn-8'],
+      });
+
+      const result = manager.isCampaignLocked(campaign, [], ['scn-7']);
+
+      expect(result).toBe(true);
+    });
+
+    it('should return false once the prerequisite scenario is completed', () => {
+      const manager = CampaignManager.getInstance();
+      const campaign = createMockCampaign('camp-2', [], {
+        prerequisiteScenarioIds: ['scn-8'],
+      });
+
+      const result = manager.isCampaignLocked(campaign, [], ['scn-8']);
+
+      expect(result).toBe(false);
+    });
+
+    it('should not unlock on a scenario prerequisite while a campaign prerequisite is unmet', () => {
+      const manager = CampaignManager.getInstance();
+      const campaign = createMockCampaign('camp-3', [], {
+        prerequisiteCampaignIds: ['camp-1'],
+        prerequisiteScenarioIds: ['scn-8'],
+      });
+
+      const result = manager.isCampaignLocked(campaign, [], ['scn-8']);
+
+      expect(result).toBe(true);
+    });
+
+    it('should lock when scenario prerequisites exist but no completions are passed', () => {
+      const manager = CampaignManager.getInstance();
+      const campaign = createMockCampaign('camp-2', [], {
+        prerequisiteScenarioIds: ['scn-8'],
+      });
+
+      const result = manager.isCampaignLocked(campaign, []);
+
+      expect(result).toBe(true);
+    });
+
+    it('should bypass every lock in developer mode', () => {
+      const manager = CampaignManager.getInstance();
+      const campaign = createMockCampaign('camp-2', [], {
+        prerequisiteCampaignIds: ['camp-1'],
+        prerequisiteScenarioIds: ['scn-8'],
+      });
+
+      window.DEVELOPER_MODE = true;
+      const result = manager.isCampaignLocked(campaign, [], []);
+      window.DEVELOPER_MODE = false;
+
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('getNextPrerequisiteScenarioForCampaign', () => {
+    it('should return the first unmet prerequisite scenario', () => {
+      const manager = CampaignManager.getInstance();
+      const gate = createMockScenario('scn-8', 'Night Shift');
+      manager.registerCampaign(createMockCampaign('camp-1', [gate]));
+      const campaign = createMockCampaign('camp-2', [], {
+        prerequisiteScenarioIds: ['scn-8'],
+      });
+
+      const result = manager.getNextPrerequisiteScenarioForCampaign(campaign, []);
+
+      expect(result?.title).toBe('Night Shift');
+    });
+
+    it('should return undefined once all prerequisite scenarios are completed', () => {
+      const manager = CampaignManager.getInstance();
+      manager.registerCampaign(createMockCampaign('camp-1', [createMockScenario('scn-8')]));
+      const campaign = createMockCampaign('camp-2', [], {
+        prerequisiteScenarioIds: ['scn-8'],
+      });
+
+      const result = manager.getNextPrerequisiteScenarioForCampaign(campaign, ['scn-8']);
+
+      expect(result).toBeUndefined();
+    });
+
+    it('should return undefined when the campaign has no scenario prerequisites', () => {
+      const manager = CampaignManager.getInstance();
+      const campaign = createMockCampaign('camp-2', []);
+
+      const result = manager.getNextPrerequisiteScenarioForCampaign(campaign, []);
+
+      expect(result).toBeUndefined();
+    });
   });
 
   describe('getCampaignProgress', () => {

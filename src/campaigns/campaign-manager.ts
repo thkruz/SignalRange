@@ -71,16 +71,46 @@ export class CampaignManager {
   }
 
   /**
-   * Check if a campaign is locked based on prerequisites
+   * Check if a campaign is locked based on prerequisites.
+   *
+   * A campaign can be gated on whole campaigns, on individual scenarios, or
+   * both; every prerequisite of either kind has to be satisfied.
    */
-  isCampaignLocked(campaign: CampaignData, completedCampaignIds: string[]): boolean {
-    if (!campaign.prerequisiteCampaignIds || campaign.prerequisiteCampaignIds.length === 0) {
+  isCampaignLocked(
+    campaign: CampaignData,
+    completedCampaignIds: string[],
+    completedScenarioIds: string[] = []
+  ): boolean {
+    // Same escape hatch isScenarioLocked() honours - without it a developer
+    // could open a scenario the campaign card still shows as locked.
+    if (window.DEVELOPER_MODE) {
       return false;
     }
 
-    return !campaign.prerequisiteCampaignIds.every(prereqId =>
+    const campaignPrereqsMet = (campaign.prerequisiteCampaignIds ?? []).every(prereqId =>
       completedCampaignIds.includes(prereqId)
     );
+
+    const scenarioPrereqsMet = (campaign.prerequisiteScenarioIds ?? []).every(prereqId =>
+      completedScenarioIds.includes(prereqId)
+    );
+
+    return !campaignPrereqsMet || !scenarioPrereqsMet;
+  }
+
+  /**
+   * First unmet scenario prerequisite for a campaign, so the locked card can
+   * name what the player has to finish instead of just saying "Locked".
+   */
+  getNextPrerequisiteScenarioForCampaign(
+    campaign: CampaignData,
+    completedScenarioIds: string[]
+  ): ScenarioData | undefined {
+    const nextId = (campaign.prerequisiteScenarioIds ?? []).find(
+      prereqId => !completedScenarioIds.includes(prereqId)
+    );
+
+    return nextId ? this.getAllScenarios().find(s => s.id === nextId) : undefined;
   }
 
   /**

@@ -16,6 +16,7 @@ import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
 import { OrbitalSatellite } from '@app/equipment/satellite/orbital-satellite';
 import { ScenarioManager } from '@app/scenario-manager';
+import { missionNowMs } from '@app/simulation/mission-clock';
 import { SimulationManager } from '@app/simulation/simulation-manager';
 import type { Milliseconds, TleLine1, TleLine2 } from 'ootk';
 
@@ -30,6 +31,14 @@ export interface SpaceEventConfig {
   newTle: { tle1: string; tle2: string };
   /** Ops-log / notice label */
   label?: string;
+  /**
+   * Opt-in (Campaign 3 S6): element set forced onto the satellite when the
+   * manager starts - the "tampered/stale TLE" the scenario BOOTS with, while
+   * newTle carries the authored truth. Applied on every scenario load, so a
+   * replay re-tampers the (module-shared, mutated-by-reloadTle) satellite
+   * instance and the puzzle survives Play Again. Absent = legacy behavior.
+   */
+  initialTle?: { tle1: string; tle2: string };
 }
 
 export type EphemerisPhase = 'nominal' | 'stale' | 'updated';
@@ -39,14 +48,31 @@ export class SpaceEventManager {
 
   private readonly events_: SpaceEventConfig[];
   private readonly phase_ = new Map<string, EphemerisPhase>();
-  private readonly missionStartTime_ = Date.now();
+  private readonly missionStartTime_ = missionNowMs();
   private readonly boundUpdateHandler_: (dt: Milliseconds) => void;
 
   private constructor() {
     this.events_ = (ScenarioManager.getInstance().settings.spaceEvents as SpaceEventConfig[] | undefined) ?? [];
     this.events_.forEach((e) => this.phase_.set(e.id, 'nominal'));
+    this.applyInitialTles_();
     this.boundUpdateHandler_ = this.update_.bind(this);
     EventBus.getInstance().on(Events.UPDATE, this.boundUpdateHandler_);
+  }
+
+  /** Force any authored initial (tampered/stale) element sets onto their birds */
+  private applyInitialTles_(): void {
+    if (!SimulationManager.hasInstance()) {
+      return;
+    }
+    for (const event of this.events_) {
+      if (!event.initialTle) {
+        continue;
+      }
+      const sat = SimulationManager.getInstance().satellites.find((s) => s.noradId === event.satelliteNoradId);
+      if (sat instanceof OrbitalSatellite) {
+        sat.reloadTle(event.initialTle.tle1 as TleLine1, event.initialTle.tle2 as TleLine2);
+      }
+    }
   }
 
   static getInstance(): SpaceEventManager {
@@ -74,6 +100,11 @@ export class SpaceEventManager {
   /** Events whose ephemeris is currently stale (a notice should be shown). */
   getStaleEvents(): SpaceEventConfig[] {
     return this.events_.filter((e) => this.phase_.get(e.id) === 'stale');
+  }
+
+  /** Every configured event, for the operator-facing ephemeris panel. */
+  getEvents(): readonly SpaceEventConfig[] {
+    return this.events_;
   }
 
   /** Force the maneuver (used by the tick and by tests) - marks ephemeris stale. */
@@ -117,7 +148,7 @@ export class SpaceEventManager {
   }
 
   private update_(): void {
-    const elapsed = (Date.now() - this.missionStartTime_) / 1000;
+    const elapsed = (missionNowMs() - this.missionStartTime_) / 1000;
     for (const event of this.events_) {
       if (elapsed >= event.maneuverAtS && this.phase_.get(event.id) === 'nominal') {
         this.phase_.set(event.id, 'stale');

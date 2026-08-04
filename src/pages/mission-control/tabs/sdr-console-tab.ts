@@ -6,11 +6,16 @@ import type { AntennaCore } from "@app/equipment/antenna";
 import type { RealTimeSpectrumAnalyzer } from "@app/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer";
 import { WaterfallDisplay } from "@app/equipment/real-time-spectrum-analyzer/rtsa-screen/waterfall-display";
 import type { Receiver, ReceiverModemState } from "@app/equipment/receiver/receiver";
+import { FILTER_BANDWIDTH_CONFIGS, IfFilterBankModuleCore } from "@app/equipment/rf-front-end/filter-module";
+import type { GPSDOModuleCore } from "@app/equipment/rf-front-end/gpsdo-module/gpsdo-module-core";
 import type { LNBModuleCore } from "@app/equipment/rf-front-end/lnb-module/lnb-module-core";
+import type { NotchFilterModuleCore } from "@app/equipment/rf-front-end/notch-filter-module/notch-filter-module-core";
+import type { Transmitter } from "@app/equipment/transmitter/transmitter";
 import { EventBus } from "@app/events/event-bus";
 import { Events } from "@app/events/events";
+import { GnssThreatManager } from "@app/gnss-threat/gnss-threat-manager";
 import { SimulationManager } from "@app/simulation/simulation-manager";
-import type { FECType, ModulationType } from "@app/types";
+import type { dB, FECType, MHz, ModulationType } from "@app/types";
 import './sdr-console-tab.css';
 
 /** Known allocations painted on the band plan ribbon (RF Hz) */
@@ -49,6 +54,10 @@ export class SdrConsoleTab extends BaseElement {
   private readonly antenna_: AntennaCore | undefined;
   private readonly specA_: RealTimeSpectrumAnalyzer | undefined;
   private readonly lnb_: LNBModuleCore | undefined;
+  private readonly gpsdo_: GPSDOModuleCore | undefined;
+  private readonly filter_: IfFilterBankModuleCore | undefined;
+  private readonly notch_: NotchFilterModuleCore | undefined;
+  private readonly transmitter_: Transmitter | undefined;
   private readonly boundUpdateHandler_: () => void;
 
   private lastSyncTime_: number = 0;
@@ -67,6 +76,10 @@ export class SdrConsoleTab extends BaseElement {
     this.antenna_ = groundStation.antennas[0];
     this.specA_ = groundStation.spectrumAnalyzers[0];
     this.lnb_ = groundStation.rfFrontEnds[0]?.lnbModule;
+    this.gpsdo_ = groundStation.rfFrontEnds[0]?.gpsdoModule;
+    this.filter_ = groundStation.rfFrontEnds[0]?.filterModule;
+    this.notch_ = groundStation.rfFrontEnds[0]?.notchFilterModule;
+    this.transmitter_ = groundStation.transmitters[0];
 
     this.init_(containerId, 'replace');
     this.dom_ = qs('.sdr-console-tab');
@@ -88,6 +101,21 @@ export class SdrConsoleTab extends BaseElement {
   /** Antennas slower than 1 deg/s are fixed mounts (QFH on a fence post, patch on a mast) */
   private get isSteerable_(): boolean {
     return (this.antenna_?.config.maxRate_deg_s ?? 0) >= 1;
+  }
+
+  /**
+   * A backyard rig can transmit only when the scenario authors the TX side
+   * powered (S8's brick amp boots with BUC + HPA on). S1-S7 stations ship
+   * buc.isPowered false, so their consoles render the RX-only stub unchanged.
+   */
+  private get hasTxRig_(): boolean {
+    return this.transmitter_ !== undefined &&
+      this.groundStation_.rfFrontEnds[0]?.bucModule.state.isPowered === true;
+  }
+
+  private get txModem_() {
+    const tx = this.transmitter_;
+    return tx?.state.modems.find((m) => m.modem_number === tx.state.activeModem);
   }
 
   private get modem1_(): ReceiverModemState | undefined {
@@ -136,8 +164,31 @@ export class SdrConsoleTab extends BaseElement {
             TRACK
           </label>
         </div>
+        <div class="sdr-rot-row">
+          <span class="sdr-label">MAN AZ</span>
+          <input type="number" id="sdr-rot-az-input" class="sdr-input" min="0" max="360" step="1" title="Manual azimuth, degrees true" />
+          <button id="sdr-rot-go" class="sdr-btn" title="Disengage TRACK and slew to the entered azimuth">GO</button>
+        </div>
       `
       : html`<div class="sdr-rot-fixed">FIXED MOUNT &mdash; NO ROTATOR</div>`;
+
+    const transmitBody = this.hasTxRig_
+      ? html`
+        <div class="sdr-field-row">
+          <span class="sdr-label">TX FRQ</span>
+          <input type="number" id="sdr-tx-freq" class="sdr-input" step="0.005" min="0" title="Uplink frequency, MHz" />
+          <span class="sdr-label">MHz</span>
+        </div>
+        <div class="sdr-field-row">
+          <span class="sdr-label">PA OUT</span>
+          <span id="sdr-tx-pa-readout" class="sdr-readout">0.0 W</span>
+        </div>
+        <div class="sdr-field-row">
+          <button id="sdr-tx-key" class="sdr-btn sdr-tx-key" title="Key the transmitter">TX</button>
+          <span id="sdr-tx-status" class="sdr-lock">STANDBY</span>
+        </div>
+      `
+      : html`<div class="sdr-rot-fixed">RX ONLY &mdash; NO TRANSMITTER</div>`;
 
     return html`
       <div class="sdr-console-tab">
@@ -185,6 +236,15 @@ export class SdrConsoleTab extends BaseElement {
                     <span class="sdr-label">ADC</span>
                     <span id="sdr-adc-readout" class="sdr-readout">---</span>
                   </div>
+                  <div class="sdr-field-row">
+                    <span class="sdr-label">REF</span>
+                    <span id="sdr-ref-readout" class="sdr-readout">GPS</span>
+                    <button id="sdr-ref-toggle" class="sdr-btn" title="Toggle clock source: GPS disciplined / free-running holdover">HOLD</button>
+                  </div>
+                  <div class="sdr-field-row">
+                    <span class="sdr-label">CLK &Delta;T</span>
+                    <span id="sdr-clk-offset-readout" class="sdr-readout">+0.0 &micro;s</span>
+                  </div>
                 </div>
               </div>
 
@@ -226,6 +286,33 @@ export class SdrConsoleTab extends BaseElement {
                         <button id="sdr-pol-lhcp" class="sdr-btn sdr-pol-btn ${handedness === 'LHCP' ? 'active' : ''}">LHCP</button>
                       </div>
                     ` : ''}
+                  </div>
+                </div>
+              </div>
+
+              <div class="sdr-section" data-section="transmit">
+                <div class="sdr-section-header">&#9662; TRANSMIT</div>
+                <div class="sdr-section-body">
+                  ${transmitBody}
+                </div>
+              </div>
+
+              <div class="sdr-section" data-section="filter">
+                <div class="sdr-section-header">&#9662; FILTER</div>
+                <div class="sdr-section-body">
+                  <div class="sdr-field-row">
+                    <span class="sdr-label">IF BW</span>
+                    <select id="sdr-if-filter-select" class="sdr-select" title="Front-end filter width: narrower = lower noise floor">
+                      ${FILTER_BANDWIDTH_CONFIGS.map((cfg, i) => html`<option value="${i}">${cfg.label}</option>`).join('')}
+                    </select>
+                  </div>
+                  <div class="sdr-field-row">
+                    <label class="sdr-check">
+                      <input type="checkbox" id="sdr-notch-enable" />
+                      NOTCH
+                    </label>
+                    <input type="number" id="sdr-notch-freq" class="sdr-input" step="0.005" min="0" title="Notch center, MHz" />
+                    <span class="sdr-label">MHz</span>
                   </div>
                 </div>
               </div>
@@ -383,6 +470,68 @@ export class SdrConsoleTab extends BaseElement {
       this.receiver_?.handleAfcToggle(1, afcToggle.checked);
     });
 
+    // IF filter width: the front-end noise gate (narrower = lower noise floor)
+    const ifFilterSelect = qs<HTMLSelectElement>('#sdr-if-filter-select', dom);
+    ifFilterSelect.addEventListener('change', () => {
+      this.filter_?.handleBandwidthChange(Number.parseInt(ifFilterSelect.value, 10));
+      this.syncDomWithState_();
+    });
+
+    // One-knob hobbyist notch: fixed 300 kHz / 30 dB at the entered center
+    const notchEnable = qs<HTMLInputElement>('#sdr-notch-enable', dom);
+    const notchFreq = qs<HTMLInputElement>('#sdr-notch-freq', dom);
+    const applyNotch = () => {
+      const centerMhz = Number.parseFloat(notchFreq.value);
+      if (!this.notch_) return;
+      this.notch_.handlePowerToggle(true);
+      this.notch_.handleNotchChange(0, {
+        enabled: notchEnable.checked && Number.isFinite(centerMhz) && centerMhz > 0,
+        centerFrequency: (Number.isFinite(centerMhz) ? centerMhz : 0) as MHz,
+        bandwidth: 0.3 as MHz,
+        depth: 30 as dB,
+      });
+      this.syncDomWithState_();
+    };
+    notchEnable.addEventListener('change', applyNotch);
+    notchFreq.addEventListener('change', applyNotch);
+
+    // Manual rotator slew (rotctl style): disengage TRACK, go to azimuth
+    const manualAzInput = dom.querySelector<HTMLInputElement>('#sdr-rot-az-input');
+    dom.querySelector('#sdr-rot-go')?.addEventListener('click', () => {
+      const az = Number.parseFloat(manualAzInput?.value ?? '');
+      if (!Number.isFinite(az)) return;
+      const trackToggleEl = dom.querySelector<HTMLInputElement>('#sdr-rot-track');
+      if (trackToggleEl) trackToggleEl.checked = false;
+      this.antenna_?.handleTrackingModeChange('manual');
+      this.antenna_?.handleAzimuthChange(((az % 360) + 360) % 360);
+      this.syncDomWithState_();
+    });
+
+    // Transmit section (rendered only when the rig's TX side is powered).
+    // Wired STRAIGHT to the transmitter core, like every other control on
+    // this console - the professional adapter's L-band validator (950-2150
+    // MHz) has no business rejecting a 70cm uplink.
+    const txFreqInput = dom.querySelector<HTMLInputElement>('#sdr-tx-freq');
+    txFreqInput?.addEventListener('change', () => {
+      const mhz = Number.parseFloat(txFreqInput.value);
+      if (!this.transmitter_ || !Number.isFinite(mhz) || mhz <= 0) return;
+      this.transmitter_.handleFrequencyChange(mhz);
+      this.transmitter_.applyChanges();
+      this.syncDomWithState_();
+    });
+    dom.querySelector('#sdr-tx-key')?.addEventListener('click', () => {
+      const modem = this.txModem_;
+      if (!modem) return;
+      this.transmitter_?.handleTransmitToggle(!modem.isTransmitting);
+      this.syncDomWithState_();
+    });
+
+    // Clock reference toggle: GPS disciplined <-> holdover. Drives BOTH the
+    // GPSDO's physical GNSS switch (real holdover physics, gpsdo-* conditions)
+    // AND GnssThreatManager's reference mode (gpsdo-reference-mode-set, spoof
+    // exposure) so the two holdover models stay coherent.
+    qs('#sdr-ref-toggle', dom).addEventListener('click', () => this.handleRefToggle_());
+
     // Polarization handedness switch (only rendered for circular feeds)
     dom.querySelector('#sdr-pol-rhcp')?.addEventListener('click', () => this.setHandedness_('RHCP'));
     dom.querySelector('#sdr-pol-lhcp')?.addEventListener('click', () => this.setHandedness_('LHCP'));
@@ -484,6 +633,21 @@ export class SdrConsoleTab extends BaseElement {
     if (!modem) return;
     const newHz = Math.max(1_000, Math.round(modem.frequency * 1e6) + deltaHz);
     this.receiver_?.handleModemFrequencyChange(1, newHz / 1e6);
+    this.syncDomWithState_();
+  }
+
+  private handleRefToggle_(): void {
+    const gpsdo = this.gpsdo_;
+    if (!gpsdo) return;
+
+    const goingToHoldover = gpsdo.state.isGnssSwitchUp;
+    gpsdo.handleGnssToggle(!goingToHoldover, () => this.syncDomWithState_());
+
+    if (GnssThreatManager.isInitialized()) {
+      // Returning to GPS means trusting GNSS again immediately, even though
+      // reacquisition takes a few seconds - that is the point of the lesson
+      GnssThreatManager.getInstance().setReferenceMode(goingToHoldover ? 'holdover' : 'gnss');
+    }
     this.syncDomWithState_();
   }
 
@@ -747,8 +911,93 @@ export class SdrConsoleTab extends BaseElement {
     qs<HTMLElement>('#sdr-status-tuning', dom).textContent =
       `VFO ${modem.frequency.toFixed(3)} MHz${modem.isAfcEnabled ? ' (AFC)' : ''} | ${modem.modulation} ${modem.fec}`;
 
+    this.syncRefRow_(dom);
+    this.syncFilterSection_(dom);
+    this.syncTransmitSection_(dom);
     this.syncRotatorPanel_(dom);
     this.syncDecodePanel_(modem, dom);
+  }
+
+  /** TX frequency, PA forward power, and the ON AIR pill (S8+ rigs only) */
+  private syncTransmitSection_(dom: HTMLElement): void {
+    const txStatus = dom.querySelector<HTMLElement>('#sdr-tx-status');
+    const modem = this.txModem_;
+    if (!txStatus || !modem) return; // RX-only stub variant
+
+    const freqInput = dom.querySelector<HTMLInputElement>('#sdr-tx-freq');
+    if (freqInput && document.activeElement !== freqInput) {
+      freqInput.value = (modem.ifSignal.frequency / 1e6).toFixed(3);
+    }
+
+    const onAir = modem.isPowered && modem.isTransmitting && !modem.isFaulted;
+    let statusText = 'STANDBY';
+    if (modem.isFaulted) {
+      statusText = 'FAULT';
+    } else if (onAir) {
+      statusText = 'ON AIR';
+    }
+    txStatus.textContent = statusText;
+    txStatus.classList.toggle('onair', onAir);
+    txStatus.classList.toggle('hint', modem.isFaulted);
+    dom.querySelector('#sdr-tx-key')?.classList.toggle('active', onAir);
+
+    const hpa = this.groundStation_.rfFrontEnds[0]?.hpaModule;
+    const paReadout = dom.querySelector<HTMLElement>('#sdr-tx-pa-readout');
+    if (hpa && paReadout) {
+      const watts = onAir ? Math.pow(10, (hpa.state.outputPower - 30) / 10) : 0;
+      paReadout.textContent = `${watts.toFixed(1)} W`;
+    }
+  }
+
+  /** IF filter select + notch row reflect front-end state */
+  private syncFilterSection_(dom: HTMLElement): void {
+    const ifFilterSelect = qs<HTMLSelectElement>('#sdr-if-filter-select', dom);
+    if (this.filter_ && document.activeElement !== ifFilterSelect) {
+      ifFilterSelect.value = String(this.filter_.state.bandwidthIndex);
+    }
+
+    const notchEnable = qs<HTMLInputElement>('#sdr-notch-enable', dom);
+    const notchFreq = qs<HTMLInputElement>('#sdr-notch-freq', dom);
+    const notch = this.notch_?.getNotch(0);
+    if (notch && document.activeElement !== notchEnable) {
+      notchEnable.checked = notch.enabled === true;
+    }
+    if (notch && document.activeElement !== notchFreq && notch.centerFrequency > 0) {
+      notchFreq.value = String(notch.centerFrequency);
+    }
+  }
+
+  /**
+   * Clock-reference row: source state, satellite count, and the accumulated
+   * timing offset. The offset growing while the SATS count stays healthy is
+   * the GNSS-spoof signature (S5's tell); it only moves when a scenario runs
+   * GnssThreatManager, and freezes the moment the operator goes to holdover.
+   */
+  private syncRefRow_(dom: HTMLElement): void {
+    const gpsdo = this.gpsdo_;
+    if (!gpsdo) return;
+
+    const refReadout = qs<HTMLElement>('#sdr-ref-readout', dom);
+    const refToggle = qs<HTMLElement>('#sdr-ref-toggle', dom);
+    const state = gpsdo.state;
+
+    if (state.isGnssAcquiringLock) {
+      refReadout.textContent = 'ACQUIRING…';
+      refToggle.textContent = 'HOLD';
+    } else if (state.isInHoldover || !state.isGnssSwitchUp) {
+      refReadout.textContent = 'HOLDOVER';
+      refToggle.textContent = 'GPS';
+    } else {
+      refReadout.textContent = `GPS · ${state.satelliteCount} SATS`;
+      refToggle.textContent = 'HOLD';
+    }
+
+    const offsetUs = GnssThreatManager.isInitialized()
+      ? GnssThreatManager.getInstance().state.timeOffsetUs
+      : 0;
+    const offsetReadout = qs<HTMLElement>('#sdr-clk-offset-readout', dom);
+    offsetReadout.textContent = `${offsetUs >= 0 ? '+' : ''}${offsetUs.toFixed(1)} µs`;
+    offsetReadout.classList.toggle('sdr-adc-bad', Math.abs(offsetUs) > 20);
   }
 
   /** Digit-wise VFO readout: 0.000.000.000 Hz grouped, leading zeros dimmed */

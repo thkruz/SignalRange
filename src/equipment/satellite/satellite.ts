@@ -462,8 +462,12 @@ export class Satellite {
         frequency: txFrequency,
         power: txPower,
         origin: SignalOrigin.SATELLITE_TX,
-        // Reverse polarization for downlink
-        polarization: signal.polarization === 'H' ? 'V' : 'H',
+        // Reverse linear polarization for downlink; circular polarization is
+        // set by the transponder's own antenna and passes through unchanged
+        // (an RHCP uplink must not come back as 'H' - Campaign 3 S8)
+        polarization: signal.polarization === 'H' ? 'V'
+          : signal.polarization === 'V' ? 'H'
+            : signal.polarization,
       };
 
       // Apply degradation effects

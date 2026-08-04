@@ -3,6 +3,7 @@ import { EventBus } from '../../src/events/event-bus';
 import { Events, QuizCompletedData, QuizPassedData } from '../../src/events/events';
 import { Objective, ObjectiveState } from '../../src/objectives/objective-types';
 import { ObjectivesManager } from '../../src/objectives/objectives-manager';
+import { addSkippedTime, resetMissionClock } from '../../src/simulation/mission-clock';
 
 // Mock equipment state factories
 const createMockAntennaState = (overrides = {}) => ({
@@ -233,6 +234,7 @@ describe('ObjectivesManager', () => {
     vi.useFakeTimers();
     EventBus.destroy();
     ObjectivesManager.destroy();
+    resetMissionClock();
     eventBus = EventBus.getInstance();
     resetMockStates();
   });
@@ -240,6 +242,7 @@ describe('ObjectivesManager', () => {
   afterEach(() => {
     ObjectivesManager.destroy();
     EventBus.destroy();
+    resetMissionClock();
     vi.clearAllTimers();
     vi.useRealTimers();
     vi.clearAllMocks();
@@ -438,6 +441,87 @@ describe('ObjectivesManager', () => {
       vi.setSystemTime(now + 15000);
 
       expect(manager.getElapsedTime()).toBe(15);
+    });
+
+    it('should count skipped time as elapsed time', () => {
+      const objectives = [createTestObjective()];
+      const manager = ObjectivesManager.initialize(objectives);
+
+      // Skipped time is time on shift: the operator chose to spend it.
+      addSkippedTime(120_000);
+
+      expect(manager.getElapsedTime()).toBe(120);
+    });
+  });
+
+  describe('applyTimeSkip', () => {
+    it('should advance the scenario countdown timer', () => {
+      const objectives = [createTestObjective()];
+      const manager = ObjectivesManager.initialize(objectives, 300);
+
+      manager.applyTimeSkip(60_000);
+
+      expect(manager.getScenarioTimeRemaining()).toBe(240);
+    });
+
+    it('should expire the scenario timer when the skip runs past it', () => {
+      const objectives = [createTestObjective()];
+      const expiredCallback = vi.fn();
+      eventBus.on(Events.SCENARIO_TIME_EXPIRED, expiredCallback);
+
+      const manager = ObjectivesManager.initialize(objectives, 60);
+
+      manager.applyTimeSkip(120_000);
+
+      expect(manager.getScenarioTimeRemaining()).toBe(0);
+      expect(expiredCallback).toHaveBeenCalled();
+    });
+
+    it('should fail a timed objective the skip runs past', () => {
+      const objectives = [
+        createTestObjective({
+          id: 'timed-obj',
+          timeLimitSeconds: 30,
+          timerStartTrigger: 'on-scenario-load',
+        }),
+      ];
+      const failedCallback = vi.fn();
+      eventBus.on(Events.OBJECTIVE_FAILED, failedCallback);
+
+      const manager = ObjectivesManager.initialize(objectives);
+
+      manager.applyTimeSkip(45_000);
+
+      expect(failedCallback).toHaveBeenCalledWith(
+        expect.objectContaining({ objectiveId: 'timed-obj', reason: 'timeout' })
+      );
+    });
+
+    it('should ignore non-positive deltas', () => {
+      const objectives = [createTestObjective()];
+      const manager = ObjectivesManager.initialize(objectives, 300);
+
+      manager.applyTimeSkip(0);
+      manager.applyTimeSkip(-5000);
+
+      expect(manager.getScenarioTimeRemaining()).toBe(300);
+    });
+
+    it('should report a running objective timer so a skip can be blocked', () => {
+      const objectives = [
+        createTestObjective({
+          id: 'timed-obj',
+          timeLimitSeconds: 30,
+          timerStartTrigger: 'on-scenario-load',
+        }),
+      ];
+      const manager = ObjectivesManager.initialize(objectives);
+
+      expect(manager.hasRunningObjectiveTimer()).toBe(true);
+
+      manager.stopAllTimers();
+
+      expect(manager.hasRunningObjectiveTimer()).toBe(false);
     });
   });
 
@@ -1883,6 +1967,64 @@ describe('ObjectivesManager', () => {
       expect(completedCallback).toHaveBeenCalled();
     });
 
+    it('should evaluate antenna-polarization-set condition', () => {
+      (mockAntennaState as Record<string, unknown>).circularHandedness = 'RHCP';
+
+      const objectives = [
+        createTestObjective({
+          id: 'pol-obj',
+          conditions: [
+            {
+              type: 'antenna-polarization-set',
+              description: 'Feed on RHCP',
+              mustMaintain: false,
+              params: { circularHandedness: 'RHCP' },
+            },
+          ],
+        }),
+      ];
+
+      const completedCallback = vi.fn();
+      eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
+
+      ObjectivesManager.initialize(objectives);
+      eventBus.emit(Events.UPDATE, 16);
+
+      expect(completedCallback).toHaveBeenCalled();
+    });
+
+    it('should fail antenna-polarization-set on wrong handedness or missing param', () => {
+      (mockAntennaState as Record<string, unknown>).circularHandedness = 'LHCP';
+
+      const objectives = [
+        createTestObjective({
+          id: 'pol-obj',
+          conditions: [
+            {
+              type: 'antenna-polarization-set',
+              description: 'Feed on RHCP',
+              mustMaintain: false,
+              params: { circularHandedness: 'RHCP' },
+            },
+          ],
+        }),
+        createTestObjective({
+          id: 'pol-obj-noparam',
+          conditions: [
+            { type: 'antenna-polarization-set', description: 'No target given', mustMaintain: false },
+          ],
+        }),
+      ];
+
+      const completedCallback = vi.fn();
+      eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
+
+      ObjectivesManager.initialize(objectives);
+      eventBus.emit(Events.UPDATE, 16);
+
+      expect(completedCallback).not.toHaveBeenCalled();
+    });
+
     it('should evaluate antenna-beacon-locked condition', () => {
       mockAntennaState.isBeaconLocked = true;
 
@@ -3278,6 +3420,71 @@ describe('ObjectivesManager', () => {
       eventBus.emit(Events.UPDATE, 16);
 
       expect(completedCallback).toHaveBeenCalled();
+    });
+
+    it('should evaluate receiver-afc-enabled condition (default target: on)', () => {
+      (mockReceiverModemState as any).isAfcEnabled = true;
+
+      const objectives = [
+        createTestObjective({
+          id: 'afc-obj',
+          conditions: [
+            { type: 'receiver-afc-enabled', description: 'AFC engaged', mustMaintain: false },
+          ],
+        }),
+      ];
+
+      const completedCallback = vi.fn();
+      eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
+
+      ObjectivesManager.initialize(objectives);
+      eventBus.emit(Events.UPDATE, 16);
+
+      expect(completedCallback).toHaveBeenCalled();
+    });
+
+    it('should evaluate receiver-afc-enabled with afcEnabled: false (manual tuning)', () => {
+      // isAfcEnabled absent on the modem (legacy shape) counts as off
+      const objectives = [
+        createTestObjective({
+          id: 'manual-obj',
+          conditions: [
+            {
+              type: 'receiver-afc-enabled',
+              description: 'Tuning by hand',
+              mustMaintain: false,
+              params: { afcEnabled: false },
+            },
+          ],
+        }),
+      ];
+
+      const completedCallback = vi.fn();
+      eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
+
+      ObjectivesManager.initialize(objectives);
+      eventBus.emit(Events.UPDATE, 16);
+
+      expect(completedCallback).toHaveBeenCalled();
+    });
+
+    it('should fail receiver-afc-enabled when AFC is off and target is on', () => {
+      const objectives = [
+        createTestObjective({
+          id: 'afc-obj',
+          conditions: [
+            { type: 'receiver-afc-enabled', description: 'AFC engaged', mustMaintain: false },
+          ],
+        }),
+      ];
+
+      const completedCallback = vi.fn();
+      eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
+
+      ObjectivesManager.initialize(objectives);
+      eventBus.emit(Events.UPDATE, 16);
+
+      expect(completedCallback).not.toHaveBeenCalled();
     });
 
     it('should evaluate rx-modem-frequency-set condition', () => {

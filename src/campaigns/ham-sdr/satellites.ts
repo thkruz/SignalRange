@@ -70,48 +70,73 @@ export const wxsat19Satellite = new OrbitalSatellite(
   },
 );
 
-/** Amateur FM cubesat with a 70cm downlink carrying SSTV frames (RHCP) */
-export const cubehop1Satellite = new OrbitalSatellite(
+export const CUBEHOP1_TLE1 = '1 63002U 27042A   27170.66666667  .00001000  00000-0  10000-3 0  9997' as TleLine1;
+export const CUBEHOP1_TLE2 = '2 63002  97.5000  94.0000 0010000  90.0000 226.0000 14.90000000123456' as TleLine2;
+
+/** Fresh options per instance - transponders/beacons must never be shared */
+const makeCubehop1Options = () => ({
+  rotation: 0 as Degrees,
+  ephemerisErrorAz: 0.15 as Degrees,
+  ephemerisErrorEl: 0.15 as Degrees,
+  transponderConfigs: [
+    {
+      // V/U linear transponder (S8 "Callsign"): 435.90 up -> 435.29 down.
+      // The 0.61 MHz offset keeps the return inside the console's 100 kHz
+      // waterfall view and clear of the 435.25 beacon +/- Doppler. Gain is
+      // calibrated against the real uplink budget (backyard ~42 dBm EIRP,
+      // ~147 dB FSPL mid-pass -> about -105 dBm arriving here) so the
+      // transponded downlink leaves at roughly beacon strength. Inert in
+      // S1-S7: nothing transmits on 435.90 until S8.
+      id: 'VU-XPD',
+      uplinkCenterFrequency: 435.90e6 as RfFrequency,
+      bandwidth: 30e3 as Hertz,
+      frequencyOffset: 0.61e6 as Hertz,
+      polarization: 'RHCP',
+      gain: 132 as dBi,
+    } as TransponderConfig,
+    {
+      id: 'FM-DL',
+      uplinkCenterFrequency: 145.9e6 as RfFrequency, // unused uplink slot
+      bandwidth: 15e3 as Hertz,
+      frequencyOffset: 0 as Hertz,
+      polarization: 'RHCP',
+      beacon: {
+        frequency: 435.25e6 as RfFrequency, // ~+/-10 kHz Doppler: exceeds the 15 kHz channel, must be chased
+        signalId: 'CUBEHOP-1-FM',
+        serverId: 1,
+        noradId: 63002,
+        power: 28 as dBm, // ~0.5 W cubesat transmitter
+        bandwidth: 15e3 as Hertz,
+        modulation: 'QPSK' as ModulationType,
+        fec: '1/2' as FECType,
+        polarization: 'RHCP',
+        feed: 'blue-2.mp4', // placeholder for SSTV frame imagery
+        isDegraded: false,
+        origin: SignalOrigin.TRANSMITTER,
+        noiseFloor: null,
+        gainInPath: 0 as dBi,
+      },
+    } as TransponderConfig,
+  ],
+});
+
+/**
+ * Scenario-local CUBEHOP-1 instance. S6 needs its own bird because
+ * SpaceEventManager mutates the instance's TLE (initial tamper + player
+ * update); sharing the roster instance would leak the tamper into S2-S4
+ * within one SPA session.
+ */
+export const makeCubehop1Satellite = (): OrbitalSatellite => new OrbitalSatellite(
   'CUBEHOP-1',
   63002,
   [],
   [],
-  {
-    tle1: '1 63002U 27042A   27170.66666667  .00001000  00000-0  10000-3 0  9997' as TleLine1,
-    tle2: '2 63002  97.5000  94.0000 0010000  90.0000 226.0000 14.90000000123456' as TleLine2,
-    observer: backyardObserver,
-  },
-  {
-    rotation: 0 as Degrees,
-    ephemerisErrorAz: 0.15 as Degrees,
-    ephemerisErrorEl: 0.15 as Degrees,
-    transponderConfigs: [
-      {
-        id: 'FM-DL',
-        uplinkCenterFrequency: 145.9e6 as RfFrequency, // unused uplink slot
-        bandwidth: 15e3 as Hertz,
-        frequencyOffset: 0 as Hertz,
-        polarization: 'RHCP',
-        beacon: {
-          frequency: 435.25e6 as RfFrequency, // ~+/-10 kHz Doppler: exceeds the 15 kHz channel, must be chased
-          signalId: 'CUBEHOP-1-FM',
-          serverId: 1,
-          noradId: 63002,
-          power: 28 as dBm, // ~0.5 W cubesat transmitter
-          bandwidth: 15e3 as Hertz,
-          modulation: 'QPSK' as ModulationType,
-          fec: '1/2' as FECType,
-          polarization: 'RHCP',
-          feed: 'blue-2.mp4', // placeholder for SSTV frame imagery
-          isDegraded: false,
-          origin: SignalOrigin.TRANSMITTER,
-          noiseFloor: null,
-          gainInPath: 0 as dBi,
-        },
-      } as TransponderConfig,
-    ],
-  },
+  { tle1: CUBEHOP1_TLE1, tle2: CUBEHOP1_TLE2, observer: backyardObserver },
+  makeCubehop1Options(),
 );
+
+/** Amateur FM cubesat with a 70cm downlink carrying SSTV frames (RHCP) */
+export const cubehop1Satellite = makeCubehop1Satellite();
 
 /** GPS Block III bird in MEO — L1 spread spectrum, a broad hump near the noise floor */
 export const navstar77Satellite = new OrbitalSatellite(

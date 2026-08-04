@@ -57,8 +57,12 @@ export async function waitForObjectiveCompleted(page: Page, objectiveId: string)
   await page.waitForFunction(
     (id) => {
       const objective = document.querySelector(`[data-objective-id="${id}"]`);
-      return objective?.classList.contains('completed') ||
-        objective?.querySelector('.completed') !== null;
+      // The element must EXIST before its state means anything: without this
+      // guard a missing objective resolved as `undefined !== null` -> true,
+      // so a typo'd id or an unrendered checklist passed instantly.
+      if (!objective) return false;
+      return objective.classList.contains('completed') ||
+        objective.querySelector('.completed') !== null;
     },
     objectiveId,
     { timeout: 30000 }

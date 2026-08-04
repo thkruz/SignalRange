@@ -1,11 +1,12 @@
 /**
  * @file InterferenceManager - Scheduled, time-windowed RF interference
- * @description Injects interference signals into a satellite's uplink path on
- * a configurable duty cycle. Because injection happens at the satellite
- * (externalSignal), the transponder relays the interferer to EVERY receiving
- * station - modeling uplink interference/jamming, which is the
- * discrimination-relevant case (local terrestrial interference would appear
- * at one station only).
+ * @description Two delivery paths, selected per event by `path`:
+ * - 'transponder' (default): injects at the satellite's uplink
+ *   (externalSignal), so the transponder relays the interferer to EVERY
+ *   receiving station - uplink interference/jamming.
+ * - 'terrestrial' (Campaign 3+): a ground-based emitter received directly by
+ *   station antennas (bearing + off-axis pattern, no Doppler) - local RFI,
+ *   fake beacons, GPS spoofers. Appears only at stations that can hear it.
  *
  * Scenarios configure via `settings.interferenceEvents`. The windowed on/off
  * pattern is the training signal: deliberate interference has a duty cycle;
@@ -16,6 +17,7 @@ import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
 import { ScenarioManager } from '@app/scenario-manager';
 import { SignalOrigin } from '@app/signal-origin';
+import { missionNowMs } from '@app/simulation/mission-clock';
 import { SimulationManager } from '@app/simulation/simulation-manager';
 import type { dBi, dBm, FECType, Hertz, ModulationType, RfFrequency, RfSignal } from '@app/types';
 import type { Milliseconds } from 'ootk';
@@ -36,16 +38,22 @@ export interface EmitterGroundTruth {
 
 export interface InterferenceEventConfig {
   id: string;
-  /** NORAD ID of the satellite whose transponder relays the interferer */
-  satelliteNoradId: number;
+  /**
+   * NORAD ID of the satellite whose transponder relays the interferer.
+   * Required for the (default) transponder path; ignored for terrestrial.
+   */
+  satelliteNoradId?: number;
   /** Interferer RF center frequency (uplink, Hz) */
   frequency: number;
   /** Interferer bandwidth (Hz) */
   bandwidth: number;
-  /** Interferer power at the transponder input (dBm) */
+  /**
+   * Interferer power (dBm). Transponder path: power at the transponder
+   * input. Terrestrial path: the emitter's EIRP.
+   */
   power: number;
-  /** Uplink polarization - must match the victim transponder to route */
-  polarization: 'H' | 'V';
+  /** Polarization. Transponder path must match the victim transponder to route */
+  polarization: 'H' | 'V' | 'RHCP' | 'LHCP';
   /** Seconds since mission start when the event envelope opens */
   startTime: number;
   /** Total envelope duration (s); on/off windows repeat inside it */
@@ -55,11 +63,33 @@ export interface InterferenceEventConfig {
   /** Transmit-on time per period (s) */
   onSeconds: number;
   /**
+   * Opt-in (Campaign 3+): how the interferer reaches the player.
+   * - 'transponder' (default, and the behavior when absent): injected at the
+   *   satellite's uplink and relayed to every receiving station.
+   * - 'terrestrial': a ground-based emitter received DIRECTLY by station
+   *   antennas via great-circle bearing and the antenna's off-axis pattern.
+   *   No Doppler is applied - that absence is a diagnostic tell (a "satellite"
+   *   signal that never drifts is transmitting from the ground). Requires
+   *   `emitter`; `satelliteNoradId` is ignored.
+   */
+  path?: 'transponder' | 'terrestrial';
+  /**
    * Opt-in (Campaign 5+): where on Earth the interferer transmits from.
-   * When omitted, behavior is identical to before - the event is a pure
-   * transponder injection with no geolocation observables.
+   * For 'transponder' events it only drives geolocation observables; for
+   * 'terrestrial' events it is REQUIRED - it is the physical signal source.
    */
   emitter?: EmitterGroundTruth;
+}
+
+/** A terrestrial event currently on the air (consumed by AntennaCore) */
+export interface ActiveTerrestrialEmission {
+  signalId: string;
+  frequencyHz: number;
+  bandwidthHz: number;
+  polarization: 'H' | 'V' | 'RHCP' | 'LHCP';
+  /** Emitter EIRP, dBm */
+  eirpDbm: number;
+  emitter: EmitterGroundTruth;
 }
 
 export class InterferenceManager {
@@ -72,7 +102,7 @@ export class InterferenceManager {
   private readonly boundUpdateHandler_: (dt: Milliseconds) => void;
 
   private constructor() {
-    this.missionStartTime_ = Date.now();
+    this.missionStartTime_ = missionNowMs();
     this.boundUpdateHandler_ = this.update_.bind(this);
     this.events_ = ScenarioManager.getInstance().settings.interferenceEvents ?? [];
     EventBus.getInstance().on(Events.UPDATE, this.boundUpdateHandler_);
@@ -81,6 +111,10 @@ export class InterferenceManager {
   static getInstance(): InterferenceManager {
     this.instance_ ??= new InterferenceManager();
     return this.instance_;
+  }
+
+  static isInitialized(): boolean {
+    return this.instance_ !== null;
   }
 
   static destroy(): void {
@@ -105,12 +139,33 @@ export class InterferenceManager {
     return this.events_.filter((event) => event.emitter !== undefined);
   }
 
+  /**
+   * Terrestrial events currently on the air (Campaign 3+). AntennaCore sums
+   * these into each station's received spectrum using bearing, distance, and
+   * its own off-axis pattern - so a directional antenna can DF the emitter.
+   */
+  getActiveTerrestrialEmissions(): ActiveTerrestrialEmission[] {
+    return this.events_
+      .filter((event) =>
+        (event.path ?? 'transponder') === 'terrestrial' &&
+        event.emitter !== undefined &&
+        this.activeSignalIds_.has(InterferenceManager.signalIdFor(event.id)))
+      .map((event) => ({
+        signalId: InterferenceManager.signalIdFor(event.id),
+        frequencyHz: event.frequency,
+        bandwidthHz: event.bandwidth,
+        polarization: event.polarization,
+        eirpDbm: event.power,
+        emitter: event.emitter!,
+      }));
+  }
+
   static signalIdFor(eventId: string): string {
     return `INTERFERER-${eventId}`;
   }
 
   private update_(): void {
-    const elapsed = (Date.now() - this.missionStartTime_) / 1000;
+    const elapsed = (missionNowMs() - this.missionStartTime_) / 1000;
     const sim = SimulationManager.getInstance();
 
     for (const event of this.events_) {
@@ -122,6 +177,17 @@ export class InterferenceManager {
 
       if (shouldTransmit === isInjected) continue;
 
+      // Terrestrial events never touch a satellite - the active set alone
+      // drives reception (AntennaCore polls getActiveTerrestrialEmissions)
+      if ((event.path ?? 'transponder') === 'terrestrial') {
+        if (shouldTransmit) {
+          this.activeSignalIds_.add(signalId);
+        } else {
+          this.activeSignalIds_.delete(signalId);
+        }
+        continue;
+      }
+
       const satellite = sim.satellites.find(s => s.noradId === event.satelliteNoradId);
       if (!satellite) continue;
 
@@ -129,7 +195,7 @@ export class InterferenceManager {
         const signal: RfSignal = {
           signalId,
           serverId: 1,
-          noradId: event.satelliteNoradId,
+          noradId: satellite.noradId,
           frequency: event.frequency as RfFrequency,
           polarization: event.polarization,
           power: event.power as dBm,

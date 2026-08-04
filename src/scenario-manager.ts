@@ -27,8 +27,23 @@ import { scenario23Data } from '@app/campaigns/nats/scenario23';
 import { scenario24Data } from '@app/campaigns/nats/scenario24';
 import { sandboxData as natsSandboxData } from '@app/campaigns/nats/sandbox';
 import { natsEuScenario1Data } from '@app/campaigns/nats-eu/scenario1';
+import { natsEuScenario2Data } from '@app/campaigns/nats-eu/scenario2';
+import { natsEuScenario3Data } from '@app/campaigns/nats-eu/scenario3';
+import { natsEuScenario4Data } from '@app/campaigns/nats-eu/scenario4';
+import { natsEuScenario5Data } from '@app/campaigns/nats-eu/scenario5';
+import { natsEuScenario6Data } from '@app/campaigns/nats-eu/scenario6';
+import { natsEuScenario7Data } from '@app/campaigns/nats-eu/scenario7';
+import { natsEuScenario8Data } from '@app/campaigns/nats-eu/scenario8';
 import { natsEuSandboxData } from '@app/campaigns/nats-eu/sandbox';
 import { hamSdrSandboxData } from '@app/campaigns/ham-sdr/sandbox';
+import { hamSdrScenario1Data } from '@app/campaigns/ham-sdr/scenario1';
+import { hamSdrScenario2Data } from '@app/campaigns/ham-sdr/scenario2';
+import { hamSdrScenario3Data } from '@app/campaigns/ham-sdr/scenario3';
+import { hamSdrScenario4Data } from '@app/campaigns/ham-sdr/scenario4';
+import { hamSdrScenario5Data } from '@app/campaigns/ham-sdr/scenario5';
+import { hamSdrScenario6Data } from '@app/campaigns/ham-sdr/scenario6';
+import { hamSdrScenario7Data } from '@app/campaigns/ham-sdr/scenario7';
+import { hamSdrScenario8Data } from '@app/campaigns/ham-sdr/scenario8';
 import { signalHunterSandboxData } from '@app/campaigns/signal-hunter/sandbox';
 import { ccsScenario1Data } from '@app/campaigns/ccs/scenario1';
 import { AntennaState } from '@app/equipment/antenna';
@@ -89,17 +104,21 @@ export interface SimulationSettings {
     /** dB degradation to link margin */
     linkMarginDegradation: number;
   }>;
-  /** Scheduled, duty-cycled RF interference injected at a satellite's
-   *  transponder (relayed to all stations - uplink interference). */
+  /** Scheduled, duty-cycled RF interference. Default path injects at a
+   *  satellite's transponder (relayed to all stations - uplink interference);
+   *  path: 'terrestrial' (Campaign 3+) is a ground emitter received directly
+   *  by station antennas (bearing + pattern, no Doppler). Mirror of
+   *  InterferenceEventConfig in interference-manager.ts. */
   interferenceEvents?: Array<{
     id: string;
-    satelliteNoradId: number;
+    /** Required for the (default) transponder path; ignored for terrestrial */
+    satelliteNoradId?: number;
     /** Interferer RF center frequency (uplink, Hz) */
     frequency: number;
     bandwidth: number;
-    /** Power at the transponder input (dBm) */
+    /** Transponder path: power at the transponder input (dBm). Terrestrial: emitter EIRP (dBm) */
     power: number;
-    polarization: 'H' | 'V';
+    polarization: 'H' | 'V' | 'RHCP' | 'LHCP';
     /** Seconds since mission start when the envelope opens */
     startTime: number;
     /** Envelope duration (s); on/off windows repeat inside it */
@@ -108,7 +127,9 @@ export interface SimulationSettings {
     periodSeconds: number;
     /** Transmit-on seconds per period */
     onSeconds: number;
-    /** Opt-in (Campaign 5+): emitter ground truth for geolocation gameplay */
+    /** Delivery path; absent = 'transponder' (bit-identical legacy behavior) */
+    path?: 'transponder' | 'terrestrial';
+    /** Emitter ground truth: geolocation gameplay (C5) or REQUIRED terrestrial source (C3+) */
     emitter?: {
       latitude: number;
       longitude: number;
@@ -292,6 +313,25 @@ export interface SimulationSettings {
     startCollapsed?: boolean;
   };
 
+  /**
+   * Operator-driven fast-forward to the next contact.
+   *
+   * Opt-in: without this block no skip control is mounted, so scenarios where
+   * the waiting IS the exercise (and every GEO campaign, where nothing ever
+   * rises) are unaffected. Declare it on LEO scenarios that put long dead sky
+   * between the shift starting and the pass the mission is about.
+   */
+  timeSkip?: {
+    /** Stop this many seconds before AOS, so acquisition is still flown. Default 120. */
+    leadTimeS?: number;
+    /** Real-time duration of the fast-forward animation, ms. Default 2500. */
+    animationMs?: number;
+    /** Do not offer a skip for waits shorter than this, in seconds. Default 300. */
+    minSkipS?: number;
+    /** How far ahead to look for the next pass, in hours. Default 12. */
+    horizonHours?: number;
+  };
+
   /** M4: space-domain events (maneuvers / stale TLEs). Starts SpaceEventManager. */
   spaceEvents?: Array<{
     id: string;
@@ -299,6 +339,8 @@ export interface SimulationSettings {
     maneuverAtS: number;
     newTle: { tle1: string; tle2: string };
     label?: string;
+    /** Opt-in (C3 S6): tampered element set forced onto the bird at scenario load */
+    initialTle?: { tle1: string; tle2: string };
   }>;
 
   /** M6: SOC-lite security console (audit log + access control). Starts SecurityConsoleCore. */
@@ -430,7 +472,22 @@ export const SCENARIOS: ScenarioData[] = [
   scenario24Data,
   natsEuSandboxData,
   natsEuScenario1Data,
+  natsEuScenario2Data,
+  natsEuScenario3Data,
+  natsEuScenario4Data,
+  natsEuScenario5Data,
+  natsEuScenario6Data,
+  natsEuScenario7Data,
+  natsEuScenario8Data,
   hamSdrSandboxData,
+  hamSdrScenario1Data,
+  hamSdrScenario2Data,
+  hamSdrScenario3Data,
+  hamSdrScenario4Data,
+  hamSdrScenario5Data,
+  hamSdrScenario6Data,
+  hamSdrScenario7Data,
+  hamSdrScenario8Data,
   signalHunterSandboxData,
   ccsScenario1Data,
 ];

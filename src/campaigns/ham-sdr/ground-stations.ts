@@ -289,6 +289,56 @@ export const backyardYagiStation = {
   }],
 } as GroundStationConfig;
 
+/**
+ * S8 "Callsign" variant of the yagi rig: same antenna and receiver, plus the
+ * TX side of the SDR transceiver powered up - a ~5 W brick amplifier (HPA
+ * maxOutputPower 37 dBm) behind the always-on upconverter (BUC LO 0,
+ * 130-450 MHz passband, so RF = IF at 435 MHz). BUC boots powered AND
+ * unmuted: the HPA-without-drive insta-fail checks exactly those two flags,
+ * and a ham rig has no separate BUC/HPA panels to sequence them from.
+ * The TX modem boots parked below the transponder passband - entering the
+ * uplink frequency is S8's first-transmission objective.
+ */
+const makeTxFrontEnd = (): Partial<RFFrontEndState> => {
+  const frontEnd = makeSdrFrontEnd(6, 0.2);
+  return {
+    ...frontEnd,
+    buc: { ...frontEnd.buc, isPowered: true, isMuted: false },
+    hpa: {
+      ...frontEnd.hpa,
+      isPowered: true,
+      isHpaEnabled: true,
+      isHpaSwitchEnabled: true,
+      backOff: 3,
+      maxOutputPower: 37 as dBm, // ~5 W brick
+      p1db: 34 as dBm,
+    },
+  };
+};
+
+export const backyardTxStation = {
+  ...backyardYagiStation,
+  name: 'Yagi Rig (70cm + TX)',
+  rfFrontEnds: [makeTxFrontEnd()],
+  transmitters: [{
+    activeModem: 1,
+    modems: [{
+      modem_number: 1,
+      isPowered: true,
+      isTransmitting: false,
+      ifSignal: {
+        frequency: 435.800e6, // parked off the transponder; S8 has you set 435.900
+        power: -20 as dBm,    // drive level; the brick amp does the rest
+        bandwidth: 15e3,      // SSTV-ish channel, fits the 30 kHz transponder
+        modulation: 'QPSK',
+        fec: '1/2',
+        feed: 'blue-2.mp4',   // your own SSTV frame, seen again on the downlink
+        polarization: null,
+      },
+    }],
+  }],
+} as GroundStationConfig;
+
 /** GPS patch on a paint-stick mast: L1 detection experiment */
 export const backyardGpsStation = {
   id: 'BKYD-GPS',

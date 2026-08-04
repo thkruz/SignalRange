@@ -8,6 +8,7 @@ import { AlarmStatus, BaseEquipment } from '@app/equipment/base-equipment';
 import { TapPoint } from "@app/equipment/rf-front-end/coupler-module/tap-points";
 import { RFFrontEndCore } from "@app/equipment/rf-front-end/rf-front-end-core";
 import { Satellite } from "@app/equipment/satellite/satellite";
+import { InterferenceManager } from "@app/interference/interference-manager";
 import { Transmitter } from "@app/equipment/transmitter/transmitter";
 import { ANTENNA_CONFIG_KEYS } from "./antenna-config-keys";
 import { ANTENNA_CONFIGS, AntennaConfig } from "./antenna-configs";
@@ -167,6 +168,21 @@ export abstract class AntennaCore extends BaseEquipment {
   state: AntennaState;
   protected lastRenderState: AntennaState;
   protected rfFrontEnd_: RFFrontEndCore | null = null;
+
+  /**
+   * WGS-84 location of the station this antenna belongs to. Attached by
+   * GroundStation; required only for terrestrial-emitter reception (E1) -
+   * without it the antenna simply hears no ground emitters, as before.
+   */
+  protected stationLocation_: { latitude: number; longitude: number } | null = null;
+
+  /**
+   * Uplink signalIds this antenna pushed onto each satellite last frame
+   * (fixed-gain TX path only). Lets updateTxSignals_ remove exactly its own
+   * stale signals when a satellite leaves the beam, without touching other
+   * stations' uplinks or injected interference.
+   */
+  private readonly txFedSignalIds_ = new Map<number, Set<string>>();
 
   /** Get the attached RF front-end (for signal path calculations) */
   get rfFrontEnd(): RFFrontEndCore | null {
@@ -1345,6 +1361,10 @@ export abstract class AntennaCore extends BaseEquipment {
     this.rfFrontEnd_ = rfFrontEnd;
   }
 
+  attachStationLocation(latitude: number, longitude: number): void {
+    this.stationLocation_ = { latitude, longitude };
+  }
+
   /**
    * True angular separation (degrees) between the antenna boresight and a
    * target az/el, via the spherical law of cosines. Unlike the planar
@@ -1480,9 +1500,13 @@ export abstract class AntennaCore extends BaseEquipment {
   }
 
   private updateRxSignals_() {
-    // Get visible signals from the satellite and apply propagation effects
+    // Get visible signals from the satellite and apply propagation effects,
+    // then add any terrestrial emitters this antenna can hear (E1). Both go
+    // through the same C/I blocking/degradation pass below, so a strong
+    // ground emitter degrades wanted downlinks exactly like any interferer.
     let receivedSignals = this.rxSignals
-      .map(({ sat, signal }) => this.applyPropagationEffects_(sat, signal));
+      .map(({ sat, signal }) => this.applyPropagationEffects_(sat, signal))
+      .concat(this.terrestrialRxSignals_());
 
     // Apply interference and adjacency logic
     receivedSignals = receivedSignals.filter((signal) => {
@@ -1536,24 +1560,184 @@ export abstract class AntennaCore extends BaseEquipment {
     this.state.rxSignalsIn = receivedSignals;
   }
 
+  /**
+   * Terrestrial emitters received directly by this antenna (E1, Campaign 3+).
+   * Each active terrestrial interference event is placed at its great-circle
+   * bearing on the horizon (el 0) and charged FSPL over ground distance plus
+   * this antenna's own off-axis pattern - so sweeping a directional antenna
+   * changes the received power (DF gameplay), and NO Doppler ever applies
+   * (the fake-beacon tell). Returns [] unless a scenario runs terrestrial
+   * events AND the station location is attached - legacy paths unchanged.
+   */
+  private terrestrialRxSignals_(): RfSignal[] {
+    if (!InterferenceManager.isInitialized() || !this.stationLocation_) {
+      return [];
+    }
+
+    const emissions = InterferenceManager.getInstance().getActiveTerrestrialEmissions();
+    if (emissions.length === 0) {
+      return [];
+    }
+
+    const { latitude, longitude } = this.stationLocation_;
+
+    // An antenna only hears emitters inside its own band: the 70cm yagi does
+    // not meaningfully receive a 137 MHz fake beacon (S8 runs both stations
+    // in one yard), and modeling it would also spam the out-of-range warning
+    // in the gain model every frame.
+    const inBand = emissions.filter((emission) =>
+      emission.frequencyHz >= this.config.minRxFrequency &&
+      emission.frequencyHz <= this.config.maxRxFrequency);
+
+    return inBand.map((emission) => {
+      const { bearingDeg, distanceKm } = AntennaCore.groundPath_(
+        latitude, longitude, emission.emitter.latitude, emission.emitter.longitude,
+      );
+
+      const f_Hz = emission.frequencyHz;
+      const offAxis_deg = this.config.gainModel === 'fixed'
+        ? this.angularSeparationDeg_(bearingDeg, 0)
+        : Math.hypot(bearingDeg - this.normalizedAzimuth, this.state.elevation);
+
+      const fspl = this.calculateFreeSpacePathLoss_(f_Hz, Math.max(0.01, distanceKm));
+      const polarizationLoss = this.polMismatchLoss_dB_(
+        emission.polarization,
+        this.config.polType ?? 'linear',
+        Math.abs(this.state.polarization) as Degrees,
+      );
+      const Grx_dBi = this.patternGain_dBi_(offAxis_deg, f_Hz);
+      const feedLoss = this.feedLossAt_(f_Hz) + this.state.iceAccumulation_dB;
+
+      const receivedPower = emission.eirpDbm - fspl - polarizationLoss - feedLoss + Grx_dBi;
+
+      return {
+        signalId: emission.signalId,
+        serverId: 1,
+        noradId: 0,
+        frequency: f_Hz,
+        polarization: emission.polarization,
+        power: receivedPower as dBm,
+        bandwidth: emission.bandwidthHz as Hertz,
+        modulation: 'null',
+        fec: 'null',
+        feed: '',
+        isDegraded: false,
+        origin: SignalOrigin.ANTENNA_RX,
+        noiseFloor: null,
+        gainInPath: 0,
+      } as RfSignal;
+    });
+  }
+
+  /** Great-circle initial bearing (deg true) and distance (km) between two WGS-84 points */
+  private static groundPath_(
+    lat1Deg: number, lon1Deg: number, lat2Deg: number, lon2Deg: number,
+  ): { bearingDeg: number; distanceKm: number } {
+    const d2r = Math.PI / 180;
+    const lat1 = lat1Deg * d2r;
+    const lat2 = lat2Deg * d2r;
+    const dLon = (lon2Deg - lon1Deg) * d2r;
+
+    const y = Math.sin(dLon) * Math.cos(lat2);
+    const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
+    const bearingDeg = ((Math.atan2(y, x) / d2r) + 360) % 360;
+
+    const dLat = (lat2Deg - lat1Deg) * d2r;
+    const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+    const distanceKm = 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    return { bearingDeg, distanceKm };
+  }
+
   private updateTxSignals_() {
-    const sats = SimulationManager.getInstance().getSatsByAzEl(this.normalizedAzimuth, this.state.elevation);
+    // Legacy (parabolic) path: bit-identical to the original behavior. C1/C2
+    // uplinks are calibrated around no-FSPL EIRP-at-satellite numbers, so the
+    // link-budget branch below is fixed-gain (Campaign 3+) only.
+    if (this.config.gainModel !== 'fixed') {
+      const sats = SimulationManager.getInstance().getSatsByAzEl(this.normalizedAzimuth, this.state.elevation);
 
-    // Clear any old signals
-    if (sats.length > 0) {
-      for (const sat of sats) {
-        sat.rxSignal = [];
+      // Clear any old signals
+      if (sats.length > 0) {
+        for (const sat of sats) {
+          sat.rxSignal = [];
 
-        // Check transmitters for signals being sent to this antenna
-        for (const sig of this.txSignalsOut) {
-          if (!this.state.isLoopback) {
-            // Check if this signal already exists on the satellite
-            sat.rxSignal.push({
-              ...sig,
-              origin: SignalOrigin.ANTENNA_TX,
-            });
+          // Check transmitters for signals being sent to this antenna
+          for (const sig of this.txSignalsOut) {
+            if (!this.state.isLoopback) {
+              // Check if this signal already exists on the satellite
+              sat.rxSignal.push({
+                ...sig,
+                origin: SignalOrigin.ANTENNA_TX,
+              });
+            }
           }
         }
+      }
+      return;
+    }
+
+    // Fixed-gain (wide-beam, Campaign 3) uplink path:
+    // - beam gate is the antenna's own HPBW via true angular separation
+    //   (mirrors rxSignals; the +/-2 deg planar box is meaningless at 40 deg)
+    // - real uplink link budget: FSPL over slant range + atmosphere + off-axis
+    //   pattern rolloff, so the power arriving at the satellite is physical
+    // - circular antennas stamp their handedness on the radiated signal so
+    //   the satellite's polarization-matched transponder can accept it
+    // - stale uplinks are cleared when a satellite leaves the beam (otherwise
+    //   the transponder keeps relaying a signal that is no longer arriving)
+    const beamwidth = this.config.fixedBeamwidth3dB_deg ?? 90;
+    const allSats = SimulationManager.getInstance().satellites;
+    const txSignals = this.state.isLoopback ? [] : this.txSignalsOut;
+    const fedIds = this.txFedSignalIds_;
+
+    for (const sat of allSats) {
+      const inBeam = this.angularSeparationDeg_(sat.az, sat.el) <= beamwidth;
+      const prevIds = fedIds.get(sat.noradId);
+
+      // Nothing radiating (or out of beam): withdraw only what THIS antenna
+      // put on the satellite. A receive-only rig must never clear the array -
+      // the same yard can hold a wide-beam RX antenna and a transmitting one,
+      // and a blanket clear would delete the other rig's uplink depending on
+      // station update order. Other stations' signals and injected
+      // interference (externalSignal) are never touched.
+      if (!inBeam || txSignals.length === 0) {
+        if (prevIds) {
+          sat.rxSignal = sat.rxSignal.filter((s) => !prevIds.has(s.signalId));
+          fedIds.delete(sat.noradId);
+        }
+        continue;
+      }
+
+      // Replace this antenna's previous contribution, keep everything else
+      sat.rxSignal = prevIds
+        ? sat.rxSignal.filter((s) => !prevIds.has(s.signalId))
+        : sat.rxSignal;
+      const pushedIds = new Set<string>();
+
+      for (const sig of txSignals) {
+        const f_Hz = sig.frequency as number;
+        const offAxis_deg = this.angularSeparationDeg_(sat.az, sat.el);
+        const fspl = this.calculateFreeSpacePathLoss_(f_Hz, sat.rangeKm ?? GEO_SATELLITE_DISTANCE_KM);
+        const atmosphericLoss = this.calculateAtmosphericLoss_(f_Hz, Math.max(1, sat.el));
+        // txSignalsOut already includes boresight gain; charge only the
+        // off-axis rolloff (capped at front-to-back like the RX pattern)
+        const offAxisDrop = this.antennaGain_dBi(sig.frequency) - this.patternGain_dBi_(offAxis_deg, f_Hz);
+
+        sat.rxSignal.push({
+          ...sig,
+          power: (sig.power - fspl - atmosphericLoss - offAxisDrop) as dBm,
+          polarization: this.config.polType === 'circular'
+            ? (this.state.circularHandedness ?? sig.polarization)
+            : sig.polarization,
+          origin: SignalOrigin.ANTENNA_TX,
+        });
+        pushedIds.add(sig.signalId);
+      }
+
+      if (pushedIds.size > 0) {
+        fedIds.set(sat.noradId, pushedIds);
+      } else {
+        fedIds.delete(sat.noradId);
       }
     }
   }

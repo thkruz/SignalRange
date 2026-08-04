@@ -125,7 +125,10 @@ export type ConditionType =
   | 'transec-mode-set' // The modem TRANSEC waveform mode matches the target (fixed/hopping)
   | 'transec-sync-locked' // The TRANSEC hop set is keyed and hop-sync is locked
   // M8 GNSS spoofing / timing attack
-  | 'gpsdo-reference-mode-set'; // The GPSDO reference/discipline mode matches the target
+  | 'gpsdo-reference-mode-set' // The GPSDO reference/discipline mode matches the target
+  // Campaign 3 SDR receive chain
+  | 'receiver-afc-enabled' // RX modem AFC state matches the target (on by default)
+  | 'antenna-polarization-set'; // Antenna circular handedness matches the target
 
 /**
  * Equipment references for condition checking
@@ -235,6 +238,10 @@ export interface ConditionParams {
   minOutputPower?: number;
   /** For receiver-signal-locked/receiver-snr-threshold: which modem (1-4), defaults to active modem */
   modemNumber?: number;
+  /** For receiver-afc-enabled: required AFC state (default true; false asserts manual tuning) */
+  afcEnabled?: boolean;
+  /** For antenna-polarization-set: required circular handedness on the antenna feed */
+  circularHandedness?: 'LHCP' | 'RHCP';
   /** For receiver-snr-threshold: minimum C/N ratio in dB */
   minCNRatio?: number;
   /**

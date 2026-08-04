@@ -22,6 +22,7 @@ vi.mock('../../../src/equipment/antenna/antenna-ui-headless', () => ({
       state: { uuid: 'mock-antenna-uuid', isPowered: true, ...initialState },
       transmitters: [],
       attachRfFrontEnd: vi.fn(),
+      attachStationLocation: vi.fn(),
       sync: vi.fn(),
       destroy: vi.fn(),
     };

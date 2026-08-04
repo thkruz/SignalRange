@@ -19,6 +19,13 @@ export interface HPAState {
   isHpaEnabled: boolean;
   /** is the HPA switch enabled */
   isHpaSwitchEnabled: boolean;
+  /**
+   * Maximum output power (dBm). Optional config override for small amplifiers
+   * (Campaign 3 backyard ~5 W brick = 37 dBm); absent -> legacy 63 dBm (2 kW).
+   */
+  maxOutputPower?: dBm;
+  /** Output power at 1 dB compression (dBm). Absent -> legacy 59 dBm. */
+  p1db?: dBm;
 }
 
 /**
@@ -27,9 +34,13 @@ export interface HPAState {
  * No UI dependencies
  */
 export abstract class HPAModuleCore extends RFFrontEndModule<HPAState> {
-  // HPA characteristics
-  readonly p1db = 59 as dBm; // dBm (800W) output power at 1dB compression point
-  protected readonly maxOutputPower_ = 63 as dBm; // dBm (2000W) maximum output power
+  // HPA characteristics (config-overridable via HPAState for small amplifiers)
+  get p1db(): dBm {
+    return (this.state.p1db ?? 59) as dBm; // dBm (800W) output power at 1dB compression point
+  }
+  protected get maxOutputPower_(): dBm {
+    return (this.state.maxOutputPower ?? 63) as dBm; // dBm (2000W) maximum output power
+  }
   protected readonly minBackOffDb_ = 0;
   protected readonly maxBackOffDb_ = 30;
   private readonly thermalEfficiency_ = 0.85;

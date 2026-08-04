@@ -23,6 +23,7 @@ import { HintManager } from '@app/modal/hint-manager';
 import { QuizManager } from '@app/modal/quiz-manager';
 import { OpsLogManager } from '@app/ops-log/ops-log-manager';
 import { TabbedCanvas } from '@app/pages/mission-control/tabbed-canvas';
+import { missionNowMs } from '@app/simulation/mission-clock';
 import { SimulationManager } from '@app/simulation/simulation-manager';
 import { TrafficControlManager } from '@app/traffic/traffic-control-manager';
 import { Milliseconds } from 'ootk';
@@ -70,8 +71,9 @@ export class ObjectivesManager {
     this.boundQuizCompletedHandler_ = this.handleQuizCompleted_.bind(this);
     this.boundAssetSelectedHandler_ = this.handleAssetSelected_.bind(this);
 
-    // Track scenario start time for elapsed time calculation
-    this.scenarioStartTime_ = Date.now();
+    // Track scenario start time for elapsed time calculation. Measured on the
+    // mission clock, so time the operator skips counts as time on shift.
+    this.scenarioStartTime_ = missionNowMs();
 
     // Initialize scenario timer if provided
     if (scenarioTimeLimit !== undefined && scenarioTimeLimit > 0) {
@@ -117,6 +119,28 @@ export class ObjectivesManager {
 
     // Subscribe to update loop
     this.eventBus_.on(Events.UPDATE, this.update_.bind(this));
+
+    // Developer/E2E hook (same pattern as window.advanceSimClock): dump the
+    // live per-condition evaluation of one objective. The checklist shows only
+    // the latched result, so a spec that fails on "objective not complete"
+    // cannot tell an unmet condition from an unobserved one from a stale
+    // render - call window.debugObjective('<id>') to see all three.
+    (window as unknown as { debugObjective: (id: string) => unknown }).debugObjective = (objectiveId: string) => {
+      const state = this.objectiveStates_.find((s) => s.objective.id === objectiveId);
+      if (!state) return { error: `no objective '${objectiveId}'` };
+      return {
+        isActive: state.isActive,
+        isCompleted: state.isCompleted,
+        conditions: state.conditionStates.map((cs) => ({
+          type: cs.condition.type,
+          isSatisfied: cs.isSatisfied,
+          observed: cs.observed ?? null,
+          maintenanceComplete: cs.isMaintenanceComplete,
+          evaluatesNow: this.evaluateCondition_(cs.condition, state),
+          observationActive: this.isObservationContextActive_(cs.condition),
+        })),
+      };
+    };
 
     // Subscribe to quiz events for timer control
     this.eventBus_.on(Events.QUIZ_PASSED, this.boundQuizPassedHandler_);
@@ -175,6 +199,15 @@ export class ObjectivesManager {
   }
 
   /**
+   * Whether objectives are being tracked. Unlike getInstance() this does not
+   * throw, so callers outside the scenario lifecycle (the time-skip pre-flight
+   * check, which also runs in the sandbox) can ask safely.
+   */
+  static hasInstance(): boolean {
+    return ObjectivesManager.instance_ !== null;
+  }
+
+  /**
    * Destroy the objectives manager and clean up
    */
   static destroy(): void {
@@ -189,6 +222,8 @@ export class ObjectivesManager {
         clearInterval(ObjectivesManager.instance_.timerInterval_);
         ObjectivesManager.instance_.timerInterval_ = null;
       }
+
+      delete (window as unknown as { debugObjective?: unknown }).debugObjective;
 
       ObjectivesManager.instance_ = null;
     }
@@ -272,7 +307,7 @@ export class ObjectivesManager {
       return this.scenarioTimeLimit_ - this.scenarioTimeRemaining_;
     }
     // No countdown timer - calculate from start time
-    return Math.floor((Date.now() - this.scenarioStartTime_) / 1000);
+    return Math.floor((missionNowMs() - this.scenarioStartTime_) / 1000);
   }
 
   /**
@@ -351,7 +386,7 @@ export class ObjectivesManager {
     // Handle freezing objectives - start scenario timer and resume simulated time
     if (activeObjective.objective.freezesScenarioTimer) {
       this.scenarioTimerRunning_ = true;
-      this.scenarioStartTime_ = Date.now();
+      this.scenarioStartTime_ = missionNowMs();
       if (OpsLogManager.isInitialized()) {
         OpsLogManager.getInstance().resume();
       }
@@ -491,6 +526,60 @@ export class ObjectivesManager {
         }
       }
     }
+  }
+
+  /**
+   * Advance every countdown timer by a skipped interval.
+   *
+   * Elapsed time needs no adjustment here - it is measured on the mission clock
+   * (missionNowMs), which TimeSkipController has already advanced. Countdown
+   * timers are decremented state, not derived, so they must be told.
+   *
+   * TimeSkipController refuses to skip while an objective timer is running, so
+   * in practice this only ever moves the scenario-wide timer. It handles the
+   * objective case anyway rather than depending on a guardrail elsewhere.
+   *
+   * @param deltaMs Skipped interval in milliseconds
+   */
+  applyTimeSkip(deltaMs: number): void {
+    if (!Number.isFinite(deltaMs) || deltaMs <= 0) {
+      return;
+    }
+
+    const deltaS = deltaMs / 1000;
+
+    if (this.scenarioTimerRunning_ && this.scenarioTimeRemaining_ > 0) {
+      this.scenarioTimeRemaining_ = Math.max(0, this.scenarioTimeRemaining_ - deltaS);
+      if (this.scenarioTimeRemaining_ <= 0) {
+        this.handleScenarioTimeout_();
+      }
+    }
+
+    for (const state of this.objectiveStates_) {
+      if (!state.isTimerRunning || state.isCompleted || state.isFailed) {
+        continue;
+      }
+      if (state.timeRemainingSeconds === undefined || state.timeRemainingSeconds <= 0) {
+        continue;
+      }
+
+      state.timeRemainingSeconds = Math.max(0, state.timeRemainingSeconds - deltaS);
+      if (state.timeRemainingSeconds <= 0) {
+        this.failObjective_(state, 'timeout');
+      }
+    }
+  }
+
+  /**
+   * Whether any objective countdown timer is currently running. A time skip is
+   * blocked while one is, because skipping would burn the operator's clock on
+   * an objective they are actively being timed on.
+   */
+  hasRunningObjectiveTimer(): boolean {
+    return this.objectiveStates_.some(
+      (state) => state.isTimerRunning && !state.isCompleted && !state.isFailed &&
+        state.timeRemainingSeconds !== undefined && state.timeRemainingSeconds > 0
+    );
   }
 
   /**
@@ -920,7 +1009,7 @@ export class ObjectivesManager {
         // If this was a freezing objective, start the scenario timer and resume simulated time
         if (objectiveState.objective.freezesScenarioTimer) {
           this.scenarioTimerRunning_ = true;
-          this.scenarioStartTime_ = Date.now(); // Reset start time so elapsed time is from now
+          this.scenarioStartTime_ = missionNowMs(); // Reset start time so elapsed time is from now
 
           // Resume simulated time (OpsLogManager starts paused until scenario unlocks)
           if (OpsLogManager.isInitialized()) {
@@ -1720,6 +1809,14 @@ export class ObjectivesManager {
         });
       }
 
+      case 'antenna-polarization-set': {
+        if (!condition.params?.circularHandedness) return false;
+        const targetHandedness = condition.params.circularHandedness;
+        return this.evaluateEquipment_(gs.antennas, condition.params, (antenna) => {
+          return antenna.state.circularHandedness === targetHandedness;
+        });
+      }
+
       case 'antenna-beacon-locked': {
         return this.evaluateEquipment_(gs.antennas, condition.params, (antenna) => {
           return antenna.state.isBeaconLocked === true;
@@ -1861,6 +1958,19 @@ export class ObjectivesManager {
 
           const snr = receiver.getSnrForModem(modem);
           return snr !== null && snr >= minCNRatio && snr <= maxCNRatio;
+        });
+      }
+
+      case 'receiver-afc-enabled': {
+        // Default target is true (AFC on); afcEnabled: false asserts the
+        // operator is tuning by hand (AFC absent on legacy modems counts as off)
+        const targetAfc = condition.params?.afcEnabled ?? true;
+        return this.evaluateEquipment_(gs.receivers, condition.params, (receiver) => {
+          const modemNum = condition.params?.modemNumber ?? receiver.state.activeModem;
+          const modem = receiver.state.modems.find(m => m.modemNumber === modemNum);
+          if (!modem?.isPowered) return false;
+
+          return (modem.isAfcEnabled === true) === targetAfc;
         });
       }
 

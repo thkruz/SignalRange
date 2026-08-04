@@ -12,7 +12,7 @@ import type { Degrees } from 'ootk';
  * Campaign 4 (9th EWS) - SANDSTORM transportable X-band EA site (SS-01).
  *
  * A two-aperture electronic-attack site:
- * - Antenna 0 (JAM): 5 m X-band, trained on the target COBALT-4 (az 175 / el 30),
+ * - Antenna 0 (JAM): 5 m X-band, trained on the target COBALT-4 (az 175 / el 50),
  *   fed by the TX chain (rfFrontEnd 0). BUC LO 7000 MHz low-side, so a 1125 MHz
  *   IF upconverts to the 8125 MHz target uplink.
  * - Antenna 1 (MONITOR): 3 m X-band look-through aperture for battle-damage
@@ -39,14 +39,19 @@ export const sandstormGroundStation = {
   antennas: [ANTENNA_CONFIG_KEYS.X_BAND_5M, ANTENNA_CONFIG_KEYS.X_BAND_3M_ANTESTAR_RS],
   antennasState: [
     {
-      // JAM aperture: powered and trained on COBALT-4 (az 175 / el 30)
+      // JAM aperture: powered and already trained on COBALT-4, so it starts
+      // boresight-on rather than merely close. These are the bird's true look
+      // angles from its authored GEO slot (115.1W - see ccs/satellites.ts), not
+      // the rounded 175/50 the objective asks the operator for: this is a 5 m
+      // dish with a 0.56 deg beam, and the 0.4 deg of rounding costs ~13 dB of
+      // beacon C/N. The objective's 3 deg tolerance covers both.
       isPowered: true,
-      azimuth: 175 as Degrees,
-      elevation: 30 as Degrees,
+      azimuth: 174.9 as Degrees,
+      elevation: 50.4 as Degrees,
       polarization: 0 as Degrees,
       trackingMode: 'manual',
-      targetAzimuth: 175 as Degrees,
-      targetElevation: 30 as Degrees,
+      targetAzimuth: 174.9 as Degrees,
+      targetElevation: 50.4 as Degrees,
       targetPolarization: 0 as Degrees,
       slewing: false,
       beaconFrequencyHz: 7290e6 as Hertz, // COBALT-4 telemetry beacon

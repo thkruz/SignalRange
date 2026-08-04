@@ -1,16 +1,30 @@
-import { Satellite, TransponderConfig } from '@app/equipment/satellite/satellite';
+import { OrbitalObserver, OrbitalSatellite } from '@app/equipment/satellite/orbital-satellite';
+import { TransponderConfig } from '@app/equipment/satellite/satellite';
 import { SignalOrigin } from '@app/signal-origin';
 import type { FECType, Hertz, ModulationType, RfFrequency, dBi, dBm } from '@app/types';
-import type { Degrees } from 'ootk';
+import type { Degrees, Kilometers, TleLine1, TleLine2 } from 'ootk';
 
 /**
  * Campaign 4 (9th EWS / Counter Communications) satellite roster.
  *
- * COBALT-4 is the adversary X-band SATCOM bird the operator must deny. It is a
- * plain GEO Satellite (no SGP4 needed - Campaign 4 has no fast tracking). Its
+ * COBALT-4 is the adversary X-band SATCOM bird the operator must deny. Its
  * transponder carries the adversary's own service uplink, which is relayed to
  * the co-frequency downlink; the operator's jam, once injected into the same
  * uplink passband, degrades that downlink's C/I (the denial effect).
+ *
+ * SGP4-propagated from a real GEO slot, like Campaign 5's SENTRY birds. It was
+ * a fixed-geometry Satellite with authored az 175 / el 30 until phase 9; those
+ * two angles cannot both hold for a geostationary bird seen from 34 deg N
+ * (azimuth 175 fixes the slot 2.8 deg east of the site meridian, which is 50.4
+ * deg of elevation, not 30). A satellite with no ephemeris also cannot appear
+ * on the world map or ground track. Authoring the orbit fixed both: azimuth was
+ * kept and elevation follows the geometry.
+ *
+ * TLE authored by scripts/author-tle-ccs.mjs against the 2027-11-05 02:00:00
+ * UTC scenario epoch:
+ * - slot 115.1W, inclination 0.05 deg -> az 174.9 / el 50.4 from SANDSTORM,
+ *   holding to within 0.05 deg across the 3-hour scenario window, so the
+ *   authored pointing objectives stay satisfiable at a fixed look angle.
  *
  * X-band plan (mil band: 7.25-7.75 GHz down, 7.9-8.4 GHz up):
  * - Service uplink RF: 8125 MHz (H-pol) -> transponded downlink 7475 MHz
@@ -19,7 +33,16 @@ import type { Degrees } from 'ootk';
  * The jam must land in the 8100-8150 MHz uplink passband to be transponded onto
  * the victim downlink.
  */
-export const cobalt4Satellite = new Satellite(
+
+/** SANDSTORM transportable EA site (southern California desert) */
+export const sandstormObserver: OrbitalObserver = {
+  name: 'SANDSTORM Field Site',
+  lat: 34.0 as Degrees,
+  lon: -118.0 as Degrees,
+  alt: 0.4 as Kilometers,
+};
+
+export const cobalt4Satellite = new OrbitalSatellite(
   'COBALT-4',
   90042, // Fictional NORAD ID (adversary)
   [
@@ -44,8 +67,12 @@ export const cobalt4Satellite = new Satellite(
   ],
   [], // Beacon defined on the transponder config
   {
-    az: 175 as Degrees,
-    el: 30 as Degrees,
+    tle1: '1 90042U 27300A   27309.08333333  .00000010  00000-0  00000-0 0  9995' as TleLine1,
+    tle2: '2 90042   0.0500 318.0000 0001000  90.0000 271.0000  1.00273791123459' as TleLine2,
+    observer: sandstormObserver,
+    isDopplerEnabled: false, // GEO: negligible Doppler; keep the carrier stationary on the SA
+  },
+  {
     rotation: 0 as Degrees,
     frequencyOffset: 0.65e9 as Hertz, // Legacy fallback
     ephemerisErrorAz: 0.05 as Degrees,

@@ -109,20 +109,24 @@ export const ccsScenario1Data: ScenarioData = {
     {
       id: 'coordinate-apertures',
       title: 'Coordinate the Apertures',
-      description: 'The jam antenna is already trained on COBALT-4. Slew the look-through monitor (antenna 2) onto the target as well - azimuth 175, elevation 30.',
+      description: 'The jam antenna is already trained on COBALT-4. Slew the look-through monitor (antenna 2) onto the target as well - azimuth 175, elevation 50.',
       groundStation: 'SS-01',
       prerequisiteObjectiveIds: ['confirm-roe'],
+      // COBALT-4 sits at 115.1W and is seen from SANDSTORM at az 174.9 / el
+      // 50.4, held to within 0.05 deg for the scenario (see ccs/satellites.ts).
+      // The angles were az 175 / el 30 while the bird had no ephemeris; that
+      // pair is not realizable for a GEO satellite from 34 deg N.
       conditions: [
         {
           type: 'antenna-position',
           description: 'Jam Antenna on Target',
-          params: { equipmentIndex: 0, azimuth: 175, elevation: 30, tolerance: 3 },
+          params: { equipmentIndex: 0, azimuth: 175, elevation: 50, tolerance: 3 },
           mustMaintain: true,
         },
         {
           type: 'antenna-position',
           description: 'Monitor Antenna on Target',
-          params: { equipmentIndex: 1, azimuth: 175, elevation: 30, tolerance: 3 },
+          params: { equipmentIndex: 1, azimuth: 175, elevation: 50, tolerance: 3 },
           mustMaintain: true,
         },
       ],

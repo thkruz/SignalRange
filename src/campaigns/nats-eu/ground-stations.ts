@@ -251,13 +251,15 @@ export const galwayGroundStation = {
  * geometry on sun-synchronous birds - more passes per day, and overlap windows
  * with Galway that the operator has to deconflict.
  *
- * KNOWN MODELING LIMIT: OrbitalSatellite carries a single observer (Galway), so
- * satellite az/el/range telemetry is Galway-relative everywhere. Contact
- * planning across the two sites is therefore modeled abstractly by
- * ContactScheduleManager (windows + conflicts) rather than by propagating each
- * station separately. Scenarios must not ask the operator to *track* from
- * SH-02; they allocate contacts to it. Lifting this needs per-station
- * propagation in OrbitalSatellite.
+ * Per-station propagation (phase 16, E1): every antenna sees an orbital
+ * satellite from its own station (OrbitalSatellite.geometryFor), so SH-02
+ * tracks, hears and Doppler-shifts MERIDIAN on Shetland's own horizon, and the
+ * Pass Schedule tab / timeline deck predict from whichever station is
+ * selected. The canonical `az`/`el` on the satellite object remain
+ * Galway-relative (the satellite's configured observer); anything reading
+ * those directly is showing Galway's sky. Contact windows in
+ * `settings.contactSchedule` are still authored numbers; give each one a
+ * `stationId` and the validation harness checks it against that site's pass.
  */
 export const shetlandGroundStation = {
   // Deep clone, NOT a spread: the config's nested antennasState / rfFrontEnds /

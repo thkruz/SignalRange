@@ -1,6 +1,6 @@
 import type { ScenarioData } from '@app/ScenarioData';
 import type { Degrees } from 'ootk';
-import { galwayGroundStation } from './ground-stations';
+import { galwayGroundStation, shetlandGroundStation } from './ground-stations';
 import { meridianSar1Satellite, meridianSar2Satellite } from './satellites';
 
 /**
@@ -18,6 +18,9 @@ import { meridianSar1Satellite, meridianSar2Satellite } from './satellites';
  *  - security        (M6) SOC-lite audit log + access control
  *  - transec         (M7) Anti-jam frequency-hopping waveform
  *  - gnssThreat      (M8) GNSS spoofing / timing attack on the station reference
+ *  - weatherEvents   (E5) Ku rain fade at Galway (phase 16)
+ *  - hardwareFaultEvents (E3) timed BUC cooling fault at SH-02 and GNSS outage at GW-01 (phase 16)
+ *  - two stations    (E1) select SH-02 and the sky, pass schedule and deck are Shetland's (phase 16)
  *
  * The automated proof (test/campaigns/nats-eu-mechanics.test.ts) loads these
  * exact settings and drives each manager to demonstrate every new objective
@@ -51,7 +54,9 @@ export const natsEuSandboxData: ScenarioData = {
   ],
   settings: {
     isSync: true,
-    groundStations: [galwayGroundStation],
+    // Both sites, so per-station propagation (E1) is exercisable: select SH-02
+    // and the sky, the pass schedule and the deck are Shetland's.
+    groundStations: [galwayGroundStation, shetlandGroundStation],
     satellites: [meridianSar1Satellite, meridianSar2Satellite],
     isExtraSatellitesVisible: true,
     scenarioStartDate: '2027-03-15',
@@ -98,6 +103,27 @@ export const natsEuSandboxData: ScenarioData = {
         { id: 'SAR1-P2', satelliteNoradId: 61701, label: 'MERIDIAN-SAR-1 pass 2', priority: 3, windowStartS: 6000, windowEndS: 6600 },
       ],
     },
+
+    // Phase 16 E5 - Ku rain fade at Galway (moderate rain, 12 mm/h at peak:
+    // ~2 dB at 30 deg, ~4 dB at 10 deg on the 12 GHz downlink). Ramps in over
+    // 3 min from T+25 and clears by T+45.
+    weatherEvents: [{ id: 'gw-rain', groundStationId: 'GW-01', type: 'rain', severity: 'moderate', startTime: 1500, duration: 1200, linkMarginDegradation: 3 }],
+
+    // Phase 16 E3 - timed equipment faults. SH-02's BUC loses cooling at T+15
+    // for 10 min (mute it and it settles under the 70 degC alarm); GW-01's GNSS
+    // signal drops at T+40 for 5 min (holdover with the switch still up).
+    hardwareFaultEvents: [
+      {
+        id: 'sh-buc-cooling',
+        groundStationId: 'SH-02',
+        target: 'buc-overtemp',
+        startTime: 900,
+        duration: 600,
+        params: { startTemperatureC: 66 },
+        label: 'SH-02 BUC cooling fault',
+      },
+      { id: 'gw-gnss-outage', groundStationId: 'GW-01', target: 'gpsdo-gnss-loss', startTime: 2400, duration: 300 },
+    ],
 
     // M4 - Space-domain events: SAR-2 performs a conjunction-avoidance burn ~9 min
     // in; its authored TLE goes stale until the operator loads the update.

@@ -27,8 +27,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 /** S2-S7 share scenario 1's validated clock: 2027-03-15 14:00:00 UTC */
 const DAY_START_MS = Date.UTC(2027, 2, 15, 14, 0, 0);
-/** S8 is a genuine night shift: 2027-03-16 00:28:00 UTC */
-const NIGHT_START_MS = Date.UTC(2027, 2, 16, 0, 28, 0);
+/** S8 is a genuine night shift: 2027-03-16 00:15:00 UTC (phase 16 moved it 13 min earlier so the pre-pass beats fit) */
+const NIGHT_START_MS = Date.UTC(2027, 2, 16, 0, 15, 0);
 const MINUTE_MS = 60_000;
 const TICK_HZ = 60;
 
@@ -56,7 +56,7 @@ vi.mock('@app/simulation/simulation-manager', () => ({
   },
 }));
 
-import { galwayGroundStation } from '@app/campaigns/nats-eu/ground-stations';
+import { galwayGroundStation, shetlandGroundStation } from '@app/campaigns/nats-eu/ground-stations';
 import { meridianSar1Satellite, meridianSar2Satellite } from '@app/campaigns/nats-eu/satellites';
 import { natsEuScenario2Data } from '@app/campaigns/nats-eu/scenario2';
 import { natsEuScenario3Data } from '@app/campaigns/nats-eu/scenario3';
@@ -76,6 +76,8 @@ import { EventBus } from '@app/events/event-bus';
 import { LinkBudgetManager } from '@app/link-budget/link-budget-manager';
 import type { ScenarioData } from '@app/ScenarioData';
 import { PassPlannerService } from '@app/services/pass-planner-service';
+import type { MHz } from '@app/types';
+import type { TleLine1, TleLine2 } from 'ootk';
 
 const PHASE_B: ScenarioData[] = [natsEuScenario2Data, natsEuScenario3Data, natsEuScenario4Data, natsEuScenario5Data, natsEuScenario6Data, natsEuScenario7Data, natsEuScenario8Data];
 
@@ -263,10 +265,14 @@ describe('nats-eu Phase B: every condition is reachable', () => {
 
   it('S3, S4 and S8 command windows fall inside the pass they belong to', () => {
     const planner = new PassPlannerService();
+    // Window seconds count from mission start, which is each scenario's own
+    // sim start (phase 16 moved S3/S4 to 13:45 so the pre-pass beats fit).
+    const startOf = (scenario: { settings: { scenarioStartDate?: string; scenarioStartWallTime?: string } }) =>
+      Date.parse(`${scenario.settings.scenarioStartDate}T${scenario.settings.scenarioStartWallTime}Z`);
     const cases = [
-      { scenario: natsEuScenario3Data, start: DAY_START_MS, sat: meridianSar1Satellite },
-      { scenario: natsEuScenario4Data, start: DAY_START_MS, sat: meridianSar1Satellite },
-      { scenario: natsEuScenario8Data, start: NIGHT_START_MS, sat: meridianSar1Satellite },
+      { scenario: natsEuScenario3Data, start: startOf(natsEuScenario3Data), sat: meridianSar1Satellite },
+      { scenario: natsEuScenario4Data, start: startOf(natsEuScenario4Data), sat: meridianSar1Satellite },
+      { scenario: natsEuScenario8Data, start: startOf(natsEuScenario8Data), sat: meridianSar1Satellite },
     ];
 
     for (const { scenario, start, sat } of cases) {
@@ -292,16 +298,27 @@ describe('nats-eu Phase B: link budgets are correct and achievable', () => {
   let frontEnd: RFFrontEndCore;
   let receiver: Receiver;
 
+  /**
+   * Build one station's RX chain. The antenna is attached to the station's
+   * location so it sees the sky from there (phase 16 E1): Shetland flights are
+   * Shetland geometry, not Galway's with a label.
+   */
+  function buildChain(station: typeof galwayGroundStation, rxMHz: number): void {
+    document.body.innerHTML = '<div id="pb-fe"></div><div id="pb-rx"></div>';
+    antenna = new AntennaUIHeadless('pb-ant', ANTENNA_CONFIG_KEYS.KU_BAND_4M_LEO_TRACKER, station.antennasState![0], 1);
+    antenna.attachStationLocation(station.location.latitude, station.location.longitude, station.location.elevation);
+    frontEnd = createRFFrontEnd('pb-fe', station.rfFrontEnds[0], 'standard');
+    frontEnd.connectAntenna(antenna);
+    antenna.attachRfFrontEnd(frontEnd);
+    receiver = new Receiver('pb-rx', [antenna], station.receivers![0], 1);
+    receiver.connectRfFrontEnd(frontEnd);
+    receiver.state.modems[0].frequency = rxMHz as MHz;
+  }
+
   beforeEach(() => {
     simSatellites = [meridianSar1Satellite, meridianSar2Satellite];
     vi.spyOn(Math, 'random').mockReturnValue(0.5);
-    document.body.innerHTML = '<div id="pb-fe"></div><div id="pb-rx"></div>';
-    antenna = new AntennaUIHeadless('pb-ant', ANTENNA_CONFIG_KEYS.KU_BAND_4M_LEO_TRACKER, galwayGroundStation.antennasState![0], 1);
-    frontEnd = createRFFrontEnd('pb-fe', galwayGroundStation.rfFrontEnds[0], 'standard');
-    frontEnd.connectAntenna(antenna);
-    antenna.attachRfFrontEnd(frontEnd);
-    receiver = new Receiver('pb-rx', [antenna], galwayGroundStation.receivers![0], 1);
-    receiver.connectRfFrontEnd(frontEnd);
+    buildChain(galwayGroundStation, 1414);
   });
 
   afterEach(() => {
@@ -346,11 +363,16 @@ describe('nats-eu Phase B: link budgets are correct and achievable', () => {
     {
       scenario: natsEuScenario2Data,
       start: DAY_START_MS,
+      flyFromMin: 1,
+      flyToMin: 12,
       inputs: { eirpDbm: 28, fsplDb: 171.4, rxGainDbi: 51.8, systemNoiseTempK: 88, bandwidthHz: 36e6, miscLossDb: 1 },
     },
     {
       scenario: natsEuScenario8Data,
       start: NIGHT_START_MS,
+      // SAR-1 AOS 00:30 (0 deg), LOS 00:40: T+15 .. T+25 from the 00:15 start
+      flyFromMin: 14,
+      flyToMin: 26,
       inputs: { eirpDbm: 28, fsplDb: 169.1, rxGainDbi: 51.8, systemNoiseTempK: 88, bandwidthHz: 36e6, miscLossDb: 1 },
     },
   ];
@@ -369,7 +391,7 @@ describe('nats-eu Phase B: link budgets are correct and achievable', () => {
     );
   });
 
-  it.each(WORKSHEETS.map((w) => [w.scenario.id, w] as const))('%s: the live chain actually delivers the required margin', (_id, { scenario, start }) => {
+  it.each(WORKSHEETS.map((w) => [w.scenario.id, w] as const))('%s: the live chain actually delivers the required margin', (_id, { scenario, start, flyFromMin, flyToMin }) => {
     const config = (
       scenario.settings as {
         linkBudget: { thresholdCNRDb: number; requiredMarginDb?: number; expectedCNRDb: number };
@@ -377,7 +399,7 @@ describe('nats-eu Phase B: link budgets are correct and achievable', () => {
     ).linkBudget;
     const needed = config.thresholdCNRDb + (config.requiredMarginDb ?? 3);
 
-    const samples = flyPass(meridianSar1Satellite, start + 1 * MINUTE_MS, start + 12 * MINUTE_MS);
+    const samples = flyPass(meridianSar1Satellite, start + flyFromMin * MINUTE_MS, start + flyToMin * MINUTE_MS);
     const peak = samples.reduce((a, b) => (b.cn > a.cn ? b : a));
     const window = samples.filter((s) => s.cn >= needed);
 
@@ -391,10 +413,99 @@ describe('nats-eu Phase B: link budgets are correct and achievable', () => {
 
   it('S8 night pass is the stronger geometry it claims to be', () => {
     const day = flyPass(meridianSar1Satellite, DAY_START_MS + 1 * MINUTE_MS, DAY_START_MS + 12 * MINUTE_MS);
-    const night = flyPass(meridianSar1Satellite, NIGHT_START_MS + 1 * MINUTE_MS, NIGHT_START_MS + 12 * MINUTE_MS);
+    const night = flyPass(meridianSar1Satellite, NIGHT_START_MS + 14 * MINUTE_MS, NIGHT_START_MS + 26 * MINUTE_MS);
     const peakOf = (s: Array<{ cn: number }>) => s.reduce((a, b) => (b.cn > a.cn ? b : a)).cn;
 
     // 40.4 deg / 581 km beats 28 deg / 761 km by ~2.4 dB of path loss.
     expect(peakOf(night)).toBeGreaterThan(peakOf(day) + 1.5);
+  });
+
+  /**
+   * Phase 16 (S5-S8 rewrite): every threshold those scenarios put on a pass
+   * is flown here, from the station the objective names. Numbers in the
+   * scenario headers come from these flights.
+   */
+  describe('phase 16 flights', () => {
+    const peakOf = (s: Array<{ cn: number }>) => s.reduce((a, b) => (b.cn > a.cn ? b : a)).cn;
+    const secondsAtOrAbove = (s: Array<{ cn: number }>, db: number) => s.filter((x) => x.cn >= db).length;
+
+    it('S5: MERIDIAN-SAR-1 worked FROM Shetland decodes at 8 dB and peaks at 9 dB or better', () => {
+      // S5 objectives decode-from-shetland (>= 8 dB) and read-shetland-peak (>= 9 dB):
+      // SH-02 SAR-1 pass 14:01 .. 14:08, max el 23.8 deg at 860 km.
+      buildChain(shetlandGroundStation, 1414);
+      const t0 = Date.UTC(2027, 2, 15, 13, 59, 0);
+      const samples = flyPass(meridianSar1Satellite, t0, t0 + 11 * MINUTE_MS);
+
+      expect(peakOf(samples)).toBeGreaterThan(9 + 0.5);
+      expect(secondsAtOrAbove(samples, 8)).toBeGreaterThanOrEqual(90);
+      // ...and it is a different pass from Galway's: lower, so a lower peak.
+      EventBus.destroy();
+      buildChain(galwayGroundStation, 1414);
+      const galway = flyPass(meridianSar1Satellite, t0, t0 + 12 * MINUTE_MS);
+      expect(peakOf(galway) - peakOf(samples)).toBeGreaterThan(0.5);
+      expect(peakOf(galway) - peakOf(samples)).toBeLessThan(2.5);
+    });
+
+    it('S8: the 13 deg Shetland SAR-2 pass is a telemetry contact (>= 5 dB), not an imagery one', () => {
+      // S8 telemetry-contact: SH-02 SAR-2 02:54 .. 03:00, max el 13.4 deg at 1233 km.
+      buildChain(shetlandGroundStation, 1370);
+      const t0 = Date.UTC(2027, 2, 16, 2, 52, 0);
+      const samples = flyPass(meridianSar2Satellite, t0, t0 + 10 * MINUTE_MS);
+
+      expect(secondsAtOrAbove(samples, 5)).toBeGreaterThanOrEqual(90);
+      expect(peakOf(samples)).toBeGreaterThan(6);
+      expect(peakOf(samples)).toBeLessThan(8); // the brief is right to call it telemetry-only
+    });
+
+    it('S8: the 73 deg Galway SAR-2 pass decodes at 8 dB through the top (no keyhole)', () => {
+      // S8 decode-the-steep-pass: GW-01 SAR-2 04:27 .. 04:35, max el 73.1 deg at 408 km.
+      buildChain(galwayGroundStation, 1370);
+      const t0 = Date.UTC(2027, 2, 16, 4, 26, 0);
+      const samples = flyPass(meridianSar2Satellite, t0, t0 + 10 * MINUTE_MS);
+      const peak = samples.reduce((a, b) => (b.cn > a.cn ? b : a));
+
+      expect(peak.cn).toBeGreaterThan(15);
+      expect(secondsAtOrAbove(samples, 8)).toBeGreaterThanOrEqual(180);
+      // Culmination is the strongest point: the pedestal kept up.
+      expect(peak.tMin).toBeGreaterThan(4.5);
+      expect(peak.tMin).toBeLessThan(6);
+    });
+
+    it('S7: on the pre-burn elements SAR-2 stays below 5 dB and FALLS as it rises; loaded, it decodes at 8 dB', () => {
+      // S7 stale-acquisition-attempt (maxCNRatio 5) and verify-the-reacquisition (>= 8 dB).
+      const event = (natsEuScenario7Data.settings as { spaceEvents: Array<{ newTle: { tle1: string; tle2: string } }> }).spaceEvents[0];
+      const originalTle1 = meridianSar2Satellite.ootkSatellite.tle1 as TleLine1;
+      const originalTle2 = meridianSar2Satellite.ootkSatellite.tle2 as TleLine2;
+      const t0 = Date.UTC(2027, 2, 15, 14, 17, 0);
+
+      try {
+        simNowMs = t0;
+        meridianSar2Satellite.maneuverTo(event.newTle.tle1 as TleLine1, event.newTle.tle2 as TleLine2);
+        expect(meridianSar2Satellite.isPredictionStale).toBe(true);
+        buildChain(galwayGroundStation, 1370);
+        const stale = flyPass(meridianSar2Satellite, t0, t0 + 10 * MINUTE_MS);
+
+        expect(stale.length).toBeGreaterThan(200); // the carrier is present (weak), so C/N is a number
+        expect(peakOf(stale)).toBeLessThan(5);
+        expect(peakOf(stale)).toBeGreaterThan(2); // visible enough to be read, which is the lesson
+        // The tell: C/N at culmination is worse than on the rising leg.
+        const rising = stale.find((x) => x.tMin > 2.5 && x.tMin < 3.5);
+        const top = stale.find((x) => x.tMin > 5 && x.tMin < 5.5);
+        expect(rising && top && top.cn < rising.cn - 3).toBe(true);
+
+        // Load the update: station back on the truth.
+        meridianSar2Satellite.reloadTle(event.newTle.tle1 as TleLine1, event.newTle.tle2 as TleLine2);
+        expect(meridianSar2Satellite.isPredictionStale).toBe(false);
+        EventBus.destroy();
+        buildChain(galwayGroundStation, 1370);
+        const loaded = flyPass(meridianSar2Satellite, t0, t0 + 10 * MINUTE_MS);
+
+        expect(peakOf(loaded)).toBeGreaterThan(9.5);
+        expect(secondsAtOrAbove(loaded, 8)).toBeGreaterThanOrEqual(120);
+      } finally {
+        // The instance is shared by S1-S8: put the authored orbit back.
+        meridianSar2Satellite.reloadTle(originalTle1, originalTle2);
+      }
+    });
   });
 });

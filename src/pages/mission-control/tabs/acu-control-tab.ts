@@ -474,8 +474,18 @@ export class ACUControlTab extends BaseElement {
       polarPlotContainer.innerHTML = this.polarPlot_.html;
     }
 
-    // Wire to antenna state changes - store handler for cleanup
+    // Wire to antenna state changes - store handler for cleanup.
+    //
+    // A tab instance outlives its DOM when the operator switches station: the
+    // canvas replaces the content and only disposes the instance when that
+    // tab is next rendered. Until then the handlers still fire every tick, so
+    // each one bails while the DOM is disconnected. Painting a detached tree
+    // is wasted work, and a lookup that throws here (a fine-adjust display
+    // never resolved while the tab was live) escapes the game loop and stops
+    // the simulation - found by the S9 unattended pass, where Galway's pedestal
+    // starts moving while the Shetland console is selected.
     this.antennaStateHandler_ = () => {
+      if (this.isDetached_()) return;
       if (this.polarPlot_) {
         this.polarPlot_.draw(antenna.state.azimuth, antenna.state.elevation);
       }
@@ -486,12 +496,14 @@ export class ACUControlTab extends BaseElement {
 
     // Wire to draw events for continuous RF metrics updates
     this.drawHandler_ = () => {
+      if (this.isDetached_()) return;
       this.syncRfMetrics_(antenna);
     };
     EventBus.getInstance().on(Events.DRAW, this.drawHandler_);
 
     // Wire to update events for beacon C/N updates (throttled to 1Hz like other adapters)
     this.updateHandler_ = () => {
+      if (this.isDetached_()) return;
       const now = Date.now();
       if (now - this.lastBeaconSyncTime_ < ACUControlTab.BEACON_UPDATE_INTERVAL_MS) return;
       this.lastBeaconSyncTime_ = now;
@@ -503,6 +515,11 @@ export class ACUControlTab extends BaseElement {
     this.polarPlot_.onDomReady();
     this.polarPlot_.draw(antenna.state.azimuth, antenna.state.elevation);
     this.syncUiWithState_(antenna);
+  }
+
+  /** True once the canvas has replaced this tab's DOM (stale instance awaiting disposal). */
+  private isDetached_(): boolean {
+    return this.dom_ !== null && !this.dom_.isConnected;
   }
 
   private initFineAdjustControls_(antenna: (typeof this.groundStation.antennas)[0]): void {

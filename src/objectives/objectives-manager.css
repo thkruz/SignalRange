@@ -224,6 +224,18 @@
     margin-left: auto;
   }
 
+  /* Optional-objective badge: the row does not gate Mission Complete */
+  .objective-optional {
+    font-size: 0.75em;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 1px 6px;
+    border-radius: 4px;
+    border: 1px solid rgba(160, 160, 160, 0.6);
+    color: #b0b0b0;
+    margin-left: 8px;
+  }
+
   .objective-timer.timer-urgent {
     background: rgba(255, 0, 0, 0.3);
     color: #ff4444;

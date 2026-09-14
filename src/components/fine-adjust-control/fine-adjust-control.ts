@@ -140,19 +140,27 @@ export class FineAdjustControl {
    * @param pendingValue Optional pending value (staged but not applied)
    */
   sync(value: number, pendingValue: number | null = null): void {
+    // A control whose DOM has been torn down (a tab instance that outlived a
+    // station switch and is still on the EventBus) tracks the value silently:
+    // there is nothing to paint, and throwing from inside the game loop
+    // stops the simulation.
+    const valueEl = (this.valueDisplay_ ??= this.find_('-value') ?? undefined);
+    const pendingEl = (this.pendingDisplay_ ??= this.find_('-pending') ?? undefined);
+
     // Update active value
     if (this.value_ !== value) {
       this.value_ = value;
-      this.valueDisplay.textContent = this.formatValue_(value);
+      if (valueEl) valueEl.textContent = this.formatValue_(value);
     }
 
     // Update pending value display
     if (this.pendingValue_ !== pendingValue) {
       this.pendingValue_ = pendingValue;
+      if (!pendingEl) return;
       if (pendingValue !== null && pendingValue !== value) {
-        this.pendingDisplay.textContent = `→ ${this.formatValue_(pendingValue)}`;
+        pendingEl.textContent = `→ ${this.formatValue_(pendingValue)}`;
       } else {
-        this.pendingDisplay.textContent = '';
+        pendingEl.textContent = '';
       }
     }
   }
@@ -162,10 +170,17 @@ export class FineAdjustControl {
    * @param enabled Whether the control should be enabled
    */
   setEnabled(enabled: boolean): void {
-    const buttons = qsa('.btn-fine', this.dom);
+    const dom = (this.dom_ ??= this.find_('') ?? undefined);
+    if (!dom) return; // DOM torn down: nothing to enable
+    const buttons = qsa('.btn-fine', dom);
     buttons.forEach((btn) => {
       (btn as HTMLButtonElement).disabled = !enabled;
     });
-    this.dom.classList.toggle('disabled', !enabled);
+    dom.classList.toggle('disabled', !enabled);
+  }
+
+  /** Non-throwing lookup of one of this control's elements; null while unmounted. */
+  private find_(suffix: '' | '-value' | '-pending'): HTMLElement | null {
+    return document.getElementById(`${this.uniqueId}${suffix}`);
   }
 }

@@ -5,8 +5,8 @@
  * mission planning UI for multi-contact scheduling in Campaign 2+.
  */
 
-import { OrbitalSatellite } from '@app/equipment/satellite/orbital-satellite';
-import { Degrees, Kilometers } from 'ootk';
+import { groundObjectFor, type OrbitalObserver, OrbitalSatellite } from '@app/equipment/satellite/orbital-satellite';
+import { Degrees, GroundObject, Kilometers } from 'ootk';
 
 /** A single predicted contact window between a ground station and a satellite. */
 export interface SatellitePass {
@@ -41,6 +41,12 @@ export interface PassPlannerOptions {
   minElevation?: Degrees;
   /** Maximum number of passes to return per satellite. Default: 10 */
   maxPasses?: number;
+  /**
+   * Station to predict from. Default: the satellite's canonical observer.
+   * Multi-station scenarios pass the station the operator is looking at, since
+   * a LEO rises and sets on each site's own horizon.
+   */
+  observer?: OrbitalObserver;
 }
 
 /** Bisection refinement iterations for AOS/LOS edges (~30s / 2^6 < 1s accuracy) */
@@ -90,8 +96,10 @@ export class PassPlannerService {
     const minEl = options.minElevation ?? (0 as Degrees);
     const maxPasses = options.maxPasses ?? 10;
 
-    const ootkSat = satellite.ootkSatellite;
-    const observer = satellite.groundObserver;
+    // The station predicts from the element set it has on file, which lags
+    // the orbit between a manoeuvre and the ephemeris load (phase 16, S7).
+    const ootkSat = satellite.predictionSatellite;
+    const observer = options.observer ? groundObjectFor(options.observer) : satellite.groundObserver;
     const endMs = startMs + horizonHours * 3600 * 1000;
 
     const elAt = (timeMs: number): number => {
@@ -111,7 +119,7 @@ export class PassPlannerService {
         aosMs = this.refineCrossing_(elAt, prevMs, t, minEl, true);
       } else if (!up && prevUp && aosMs !== null) {
         const losMs = this.refineCrossing_(elAt, prevMs, t, minEl, false);
-        const pass = this.buildPass_(satellite, aosMs, losMs, stepS);
+        const pass = this.buildPass_(satellite, observer, aosMs, losMs, stepS);
         if (pass) {
           passes.push(pass);
         }
@@ -154,9 +162,10 @@ export class PassPlannerService {
   }
 
   /** Sample within [aos, los] for max elevation and edge azimuths. */
-  private buildPass_(satellite: OrbitalSatellite, aosMs: number, losMs: number, stepS: number): SatellitePass | null {
-    const ootkSat = satellite.ootkSatellite;
-    const observer = satellite.groundObserver;
+  private buildPass_(satellite: OrbitalSatellite, observer: GroundObject, aosMs: number, losMs: number, stepS: number): SatellitePass | null {
+    // The station predicts from the element set it has on file, which lags
+    // the orbit between a manoeuvre and the ephemeris load (phase 16, S7).
+    const ootkSat = satellite.predictionSatellite;
 
     const aosRae = ootkSat.rae(observer, new Date(aosMs));
     const losRae = ootkSat.rae(observer, new Date(losMs));

@@ -40,7 +40,8 @@
     "test:e2e:debug": "playwright test --debug",
     "test:e2e:report": "playwright show-report",
     "lint:fix": "biome check --write ./src ./test ./e2e ./build",
-    "format": "biome format --write ./src ./test ./e2e ./build"
+    "format": "biome format --write ./src ./test ./e2e ./build",
+    "vo-manifest": "node scripts/vo-manifest.mjs"
   },
   "keywords": [
     "space",

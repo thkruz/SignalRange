@@ -3,6 +3,7 @@ import { qs } from '@app/engine/utils/query-selector';
 import { OrbitalSatellite } from '@app/equipment/satellite/orbital-satellite';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
+import { SelectedStation } from '@app/pages/mission-control/selected-station';
 import { type LightingSpan, lightingSpans } from '@app/services/ground-track-math';
 import { DEFAULT_CONTACT_MIN_ELEVATION, PassPlannerService, type SatellitePass } from '@app/services/pass-planner-service';
 import { getSimulatedNowMs } from '@app/simulation/sim-time';
@@ -61,6 +62,9 @@ export class TimelineDeck {
 
   private readonly config_: Required<TimelineDeckConfig>;
   private readonly planner_ = new PassPlannerService();
+  /** Predict from the station the operator is looking at (multi-site LEO work) */
+  private readonly station_ = new SelectedStation();
+  private lastStationId_: string | null = null;
   private readonly boundUpdateHandler_: () => void;
 
   private horizonHours_: number;
@@ -172,6 +176,8 @@ export class TimelineDeck {
   /** Re-run pass prediction and lighting sampling for the current window. */
   private predict_(nowMs: number): void {
     const endMs = nowMs + this.horizonHours_ * 3600 * 1000;
+    const observer = this.station_.observer;
+    this.lastStationId_ = this.station_.stationId;
 
     this.rows_ = this.orbitalSatellites_().map((sat) => ({
       noradId: sat.noradId,
@@ -180,6 +186,7 @@ export class TimelineDeck {
         horizonHours: this.horizonHours_,
         minElevation: this.config_.minElevation,
         maxPasses: 40,
+        observer,
       }),
       lighting: this.config_.showLighting ? lightingSpans(sat, nowMs, endMs, LIGHTING_STEP_S) : [],
     }));
@@ -197,9 +204,10 @@ export class TimelineDeck {
 
     const simNowMs = getSimulatedNowMs();
 
-    // Re-predict on a schedule, or whenever the clock jumps (advanceSimClock,
-    // checkpoint restore) so the deck never shows a window already past.
-    if (simNowMs - this.lastPredictMs_ > REPREDICT_INTERVAL_MS || simNowMs < this.lastPredictMs_) {
+    // Re-predict on a schedule, whenever the clock jumps (advanceSimClock,
+    // checkpoint restore) so the deck never shows a window already past, or
+    // when the operator switches station and the horizon moves.
+    if (simNowMs - this.lastPredictMs_ > REPREDICT_INTERVAL_MS || simNowMs < this.lastPredictMs_ || this.station_.stationId !== this.lastStationId_) {
       this.predict_(simNowMs);
       this.render_();
 
@@ -331,6 +339,7 @@ export class TimelineDeck {
 
   dispose(): void {
     EventBus.getInstance().off(Events.UPDATE, this.boundUpdateHandler_);
+    this.station_.destroy();
     this.dom_?.remove();
     this.dom_ = null;
   }

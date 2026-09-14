@@ -1041,3 +1041,44 @@ describe('BUCModuleCore', () => {
     });
   });
 });
+
+describe('BUCModuleCore staged cooling fault (phase 16 E3)', () => {
+  let bucModule: TestBUCModule;
+
+  beforeEach(() => {
+    bucModule = new TestBUCModule({ ...BUCModuleCore.getDefaultState(), isPowered: true, temperature: 60 }, createMockRfFrontEnd(), 1);
+  });
+
+  it('is healthy by default: no offset, no cooling alarm, and a warm BUC cools toward its normal target', () => {
+    expect(bucModule.thermalOffsetC).toBe(0);
+    expect(bucModule.getAlarms().some((a) => a.includes('cooling fault'))).toBe(false);
+
+    bucModule.update();
+    expect(bucModule.state.temperature).toBeLessThan(60);
+  });
+
+  it('lifts the thermal target by the offset so the same BUC heats instead of cooling, and raises the cooling alarm', () => {
+    bucModule.setThermalOffset(60);
+
+    expect(bucModule.thermalOffsetC).toBe(60);
+    bucModule.update();
+    expect(bucModule.state.temperature).toBeGreaterThan(60);
+    expect(bucModule.getAlarms().some((a) => a.includes('BUC cooling fault'))).toBe(true);
+  });
+
+  it('with the default 40 degC fault and no drive, settles below the 70 degC alarm (muting is the fix)', () => {
+    bucModule.setThermalOffset(40);
+    for (let i = 0; i < 20_000; i++) {
+      bucModule.update();
+    }
+    expect(bucModule.state.temperature).toBeGreaterThan(60);
+    expect(bucModule.state.temperature).toBeLessThan(70);
+  });
+
+  it('clears when the offset returns to zero and never goes negative', () => {
+    bucModule.setThermalOffset(40);
+    bucModule.setThermalOffset(-5);
+    expect(bucModule.thermalOffsetC).toBe(0);
+    expect(bucModule.getAlarms().some((a) => a.includes('cooling fault'))).toBe(false);
+  });
+});

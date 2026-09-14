@@ -25,6 +25,12 @@ export interface ContactConfig {
   windowStartS: number;
   /** Pass window close, seconds since mission start */
   windowEndS: number;
+  /**
+   * The site whose horizon this window was propagated for. Informational for
+   * the plan (the operator still assigns the contact); the validation harness
+   * checks the window against that site's real pass.
+   */
+  stationId?: string;
 }
 
 /** settings.contactSchedule */

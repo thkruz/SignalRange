@@ -48,6 +48,10 @@ import { natsEuScenario9Data } from '@app/campaigns/nats-eu/scenario9';
 import { natsEuScenario10Data } from '@app/campaigns/nats-eu/scenario10';
 import { natsEuScenario11Data } from '@app/campaigns/nats-eu/scenario11';
 import { natsEuScenario12Data } from '@app/campaigns/nats-eu/scenario12';
+import { natsEuScenario13Data } from '@app/campaigns/nats-eu/scenario13';
+import { natsEuScenario14Data } from '@app/campaigns/nats-eu/scenario14';
+import { natsEuScenario15Data } from '@app/campaigns/nats-eu/scenario15';
+import { natsEuScenario16Data } from '@app/campaigns/nats-eu/scenario16';
 import { signalHunterSandboxData } from '@app/campaigns/signal-hunter/sandbox';
 import { signalHunterScenario1Data } from '@app/campaigns/signal-hunter/scenario1';
 import { AntennaState } from '@app/equipment/antenna';
@@ -107,8 +111,10 @@ export interface SimulationSettings {
     startTime: number;
     /** Duration in seconds */
     duration: number;
-    /** dB degradation to link margin */
+    /** dB degradation to link margin (sun-transit peak; informational for rain, whose loss is computed from rain rate) */
     linkMarginDegradation: number;
+    /** rain/storm: peak rain rate in mm/h. Default by severity: minor 4, moderate 12, severe 30 (storm one step heavier) */
+    rainRateMmPerHour?: number;
   }>;
   /** Scheduled, duty-cycled RF interference. Default path injects at a
    *  satellite's transponder (relayed to all stations - uplink interference);
@@ -197,22 +203,39 @@ export interface SimulationSettings {
   };
   /**
    * Opt-in (Campaign 4): scheduled RF-chain / transmit-string hardware faults
-   * for redundancy training. Mirrors interferenceEvents' time trigger. When a
-   * fault trips, the targeted transmit modem on the given ground station faults
-   * (stops radiating), forcing failover to the backup transmit string. Absent
+   * for redundancy training. Mirrors interferenceEvents' time trigger. Absent
    * = no scheduled faults, so legacy campaigns are unaffected.
+   *
+   * `target` picks the equipment (phase 16, E3): 'tx-modem' (default) faults
+   * the transmit modem so the operator fails over; 'buc-overtemp' degrades the
+   * BUC's cooling so it climbs past the alarm while driven; 'gpsdo-gnss-loss'
+   * drops the GNSS signal so the reference enters holdover; 'crypto-key-mismatch'
+   * puts the crypto key into Mismatch until the operator re-keys. `duration`
+   * self-clears the BUC and GNSS faults. See HardwareFaultManager.
    */
   hardwareFaultEvents?: Array<{
     id: string;
     /** Ground station whose equipment faults */
     groundStationId: string;
-    /** Transmitter case index (default 0) */
+    /** What trips. Default: 'tx-modem' */
+    target?: 'tx-modem' | 'buc-overtemp' | 'gpsdo-gnss-loss' | 'crypto-key-mismatch';
+    /** Transmitter case index (default 0), tx-modem only */
     transmitterIndex?: number;
-    /** Modem number (1-4) that faults - the "primary" transmit string */
-    modemNumber: number;
+    /** Modem number (1-4) that faults - the "primary" transmit string (tx-modem only) */
+    modemNumber?: number;
+    /** RF front-end index (default 0), buc-overtemp / gpsdo-gnss-loss */
+    rfFrontEndIndex?: number;
     /** Seconds since mission start when the fault trips */
     startTime: number;
-    /** Optional label for the ops log / alarm */
+    /** Seconds until a timed fault clears itself; absent = until the operator acts */
+    duration?: number;
+    params?: {
+      /** buc-overtemp: extra degC above the normal thermal target. Default 40 */
+      deltaC?: number;
+      /** buc-overtemp: temperature reading at trip time */
+      startTemperatureC?: number;
+    };
+    /** Written to the ops log when the fault trips (omit to keep it silent) */
     label?: string;
   }>;
   /**
@@ -293,6 +316,8 @@ export interface SimulationSettings {
       priority: number;
       windowStartS: number;
       windowEndS: number;
+      /** Site whose horizon the window was propagated for (validated, not enforced) */
+      stationId?: string;
     }>;
     stationIds: string[];
     /** Contacts with priority <= this must all be assigned for a valid plan */
@@ -480,6 +505,10 @@ export const SCENARIOS: ScenarioData[] = [
   natsEuScenario10Data,
   natsEuScenario11Data,
   natsEuScenario12Data,
+  natsEuScenario13Data,
+  natsEuScenario14Data,
+  natsEuScenario15Data,
+  natsEuScenario16Data,
   hamSdrSandboxData,
   hamSdrScenario1Data,
   hamSdrScenario2Data,

@@ -5,6 +5,7 @@
  */
 
 import { GroundStation } from '@app/assets/ground-station/ground-station';
+import { OrbitalSatellite, observerFromLocation } from '@app/equipment/satellite/orbital-satellite';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
 import { ScenarioManager } from '@app/scenario-manager';
@@ -339,7 +340,9 @@ export class TrafficControlManager {
       const transmittingStations: string[] = [];
 
       for (const gs of sim.groundStations) {
-        if (this.isTransmittingToSatellite_(gs, satellite.az, satellite.el)) {
+        // A LEO sits at a different az/el from each site
+        const view = satellite instanceof OrbitalSatellite ? satellite.geometryFor(observerFromLocation(gs.state.location)) : satellite;
+        if (this.isTransmittingToSatellite_(gs, view.az, view.el)) {
           transmittingStations.push(gs.state.id);
         }
       }

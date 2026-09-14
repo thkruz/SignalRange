@@ -245,6 +245,8 @@ export interface WeatherEventData {
   startTime: number;
   duration: number;
   linkMarginDegradation: number;
+  /** rain/storm: peak rain rate in mm/h (default from severity: 4 / 12 / 30) */
+  rainRateMmPerHour?: number;
 }
 
 export interface WeatherMissionFailureData {

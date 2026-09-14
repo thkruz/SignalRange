@@ -13,6 +13,7 @@ import { CryptoModule } from '@app/equipment/crypto';
 import { GeolocationConsoleCore } from '@app/equipment/geolocation-console/geolocation-console-core';
 import { FECSimulator } from '@app/equipment/receiver/fec-simulator';
 import { TapPoint } from '@app/equipment/rf-front-end/coupler-module/tap-points';
+import { OrbitalSatellite, observerFromLocation } from '@app/equipment/satellite/orbital-satellite';
 import { EventBus } from '@app/events/event-bus';
 import { Events, QuizCompletedData, QuizPassedData } from '@app/events/events';
 import { FaultInjector } from '@app/faults';
@@ -750,6 +751,13 @@ export class ObjectivesManager {
         continue;
       }
 
+      // Condition states restore by index, so a save taken before an objective's
+      // conditions were re-authored would tick the wrong rows. Treat such an
+      // objective as fresh rather than half-restoring it.
+      if (savedState.conditionStates.length !== currentState.conditionStates.length) {
+        continue;
+      }
+
       // Restore activation state and timing
       currentState.isActive = savedState.isActive;
       currentState.activatedAt = savedState.activatedAt;
@@ -862,6 +870,13 @@ export class ObjectivesManager {
       html += `<div class="objective-header" onclick="this.parentElement.classList.toggle('collapsed');">`;
       html += `<span class="accordion-icon"></span>`;
       html += `<strong>${objective.title}</strong> - ${stateLabel}`;
+
+      // Optional objectives do not gate Mission Complete (see
+      // areAllObjectivesCompleted); say so on the row, or the player cannot
+      // tell which rows they may leave.
+      if (objective.isOptional) {
+        html += `<span class="objective-optional" title="Does not gate mission completion">Optional</span>`;
+      }
 
       // Add timer display if objective has a running timer
       if (objectiveState.isTimerRunning && objectiveState.timeRemainingSeconds !== undefined) {
@@ -1395,10 +1410,14 @@ export class ObjectivesManager {
               return false;
             }
 
+            // A LEO sits at a different az/el from each site: judge the lock
+            // from the objective's own station.
+            const view = targetSat instanceof OrbitalSatellite ? targetSat.geometryFor(observerFromLocation(gs.state.location)) : targetSat;
+
             // Handle 360° wraparound for azimuth
-            let azDiff = Math.abs(state.azimuth - targetSat.az);
+            let azDiff = Math.abs(state.azimuth - view.az);
             if (azDiff > 180) azDiff = 360 - azDiff;
-            const elDiff = Math.abs(state.elevation - targetSat.el);
+            const elDiff = Math.abs(state.elevation - view.el);
             return azDiff <= 1.5 && elDiff <= 1.5;
           }
           return true;
@@ -1652,7 +1671,7 @@ export class ObjectivesManager {
       case 'frequency-set': {
         if (!condition.params?.frequency) return false;
         const targetFrequency = condition.params.frequency;
-        const tolerance = condition.params.frequencyTolerance || 1e6;
+        const tolerance = condition.params.frequencyTolerance ?? 1e6;
         return this.evaluateEquipment_(gs.spectrumAnalyzers, condition.params, (specA) => {
           this.observe_(specA.state.centerFrequency);
           const diff = Math.abs(specA.state.centerFrequency - targetFrequency);
@@ -1663,7 +1682,7 @@ export class ObjectivesManager {
       case 'speca-span-set': {
         if (!condition.params?.span) return false;
         const targetSpan = condition.params.span;
-        const tolerance = condition.params.frequencyTolerance || 1e6;
+        const tolerance = condition.params.frequencyTolerance ?? 1e6;
         return this.evaluateEquipment_(gs.spectrumAnalyzers, condition.params, (specA) => {
           this.observe_(specA.state.span);
           const diff = Math.abs(specA.state.span - targetSpan);
@@ -1674,7 +1693,7 @@ export class ObjectivesManager {
       case 'speca-rbw-set': {
         if (condition.params?.rbw === undefined) return false;
         const targetRbw = condition.params.rbw; // null means "Automatic"
-        const tolerance = condition.params.frequencyTolerance || 1e3;
+        const tolerance = condition.params.frequencyTolerance ?? 1e3;
         return this.evaluateEquipment_(gs.spectrumAnalyzers, condition.params, (specA) => {
           this.observe_(specA.state.rbw);
           // Handle "Automatic" mode (null)

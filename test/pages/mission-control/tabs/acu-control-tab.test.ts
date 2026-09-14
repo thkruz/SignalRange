@@ -1,5 +1,6 @@
 import { Mock, Mocked, vi } from 'vitest';
 import { GroundStation } from '../../../../src/assets/ground-station/ground-station';
+import { FineAdjustControl } from '../../../../src/components/fine-adjust-control/fine-adjust-control';
 import { EventBus } from '../../../../src/events/event-bus';
 import { Events } from '../../../../src/events/events';
 import { ACUControlTab } from '../../../../src/pages/mission-control/tabs/acu-control-tab';
@@ -479,6 +480,25 @@ describe('ACUControlTab', () => {
 
       const programSection = document.querySelector(`#${PREFIX}program-track-section`) as HTMLElement;
       expect(programSection?.style.display).toBe('block');
+    });
+
+    it('does nothing once the tab DOM has been replaced (stale instance after a station switch)', () => {
+      // The canvas replaces the content when the operator selects another
+      // station and only disposes this instance when the tab is next rendered;
+      // meanwhile every tick still reaches its handlers. A throw here would
+      // escape the game loop and freeze the simulation (phase 16, S9).
+      const handlers = mockEventBus.on.mock.calls.filter((call: unknown[]) => call[0] === Events.UPDATE || call[0] === Events.DRAW).map((call: unknown[]) => call[1]);
+      const azFineControl = (FineAdjustControl.create as Mock).mock.results[0].value as { sync: Mock };
+      const syncCallsBefore = azFineControl.sync.mock.calls.length;
+
+      containerEl.innerHTML = '';
+      const antenna = mockGroundStation.antennas[0];
+      antenna.state.azimuth = 143;
+      antenna.state.trackingMode = 'program-track';
+      vi.spyOn(Date, 'now').mockReturnValue(5000);
+
+      expect(() => handlers.forEach((handler) => handler())).not.toThrow();
+      expect(azFineControl.sync.mock.calls).toHaveLength(syncCallsBefore);
     });
 
     it('should update beacon metrics on throttled UPDATE', () => {

@@ -14,6 +14,8 @@ export abstract class GPSDOModuleCore extends RFFrontEndModule<GPSDOState> {
   protected warmupInterval_: number | null = null;
   protected stabilityInterval_: number | null = null;
   protected holdoverInterval_: number | null = null;
+  /** Scenario-staged GNSS outage (signal absent regardless of the switch) */
+  private gnssOutage_ = false;
 
   constructor(state: GPSDOState, rfFrontEnd: RFFrontEndCore, unit: number) {
     super({ ...defaultGpsdoState, ...state }, rfFrontEnd, 'rf-fe-gpsdo', unit);
@@ -431,6 +433,42 @@ export abstract class GPSDOModuleCore extends RFFrontEndModule<GPSDOState> {
     }
   }
 
+  /**
+   * Drop or restore the GNSS signal itself, switch position unchanged
+   * (HardwareFaultManager `gpsdo-gnss-loss`). Losing the signal while locked
+   * puts the reference into holdover on its oscillator with the satellite count
+   * at zero - the tell that distinguishes an outage from a switch left down.
+   * When the signal returns with the switch up the receiver re-locks and leaves
+   * holdover, as the switch-up path does.
+   */
+  setGnssSignalPresent(present: boolean): void {
+    this.gnssOutage_ = !present;
+
+    if (!present) {
+      this.state.gnssSignalPresent = false;
+      this.state.satelliteCount = 0;
+      this.state.isGnssAcquiringLock = false;
+      if (this.state.isLocked && this.state.isPowered) {
+        this.state.isInHoldover = true;
+        this.startHoldoverMonitor_();
+      }
+      return;
+    }
+
+    if (this.state.isGnssSwitchUp && this.state.isPowered) {
+      this.state.gnssSignalPresent = true;
+      this.state.satelliteCount = 4 + Math.floor(Math.random() * 8); // 4-12 sats
+      this.state.isInHoldover = false;
+      this.state.holdoverError = 0;
+      this.updateLockStatus_();
+    }
+  }
+
+  /** True while a scenario-staged GNSS outage is in effect. */
+  get isGnssOutage(): boolean {
+    return this.gnssOutage_;
+  }
+
   handleGnssToggle(isGnssSwitchUp: boolean, callback: (state: GPSDOState) => void): void {
     // Change the GNSS switch state
     this.state.isGnssSwitchUp = isGnssSwitchUp;
@@ -439,9 +477,16 @@ export abstract class GPSDOModuleCore extends RFFrontEndModule<GPSDOState> {
     if (isGnssSwitchUp && this.state.isPowered) {
       this.state.isGnssAcquiringLock = true;
       setTimeout(() => {
+        this.state.isGnssAcquiringLock = false;
+        // During a staged outage there is no signal to acquire: the switch is
+        // up, the count stays at zero, holdover continues.
+        if (this.gnssOutage_) {
+          this.state.satelliteCount = 0;
+          callback(this.state);
+          return;
+        }
         // GNSS acquired - exit holdover
         this.state.gnssSignalPresent = true;
-        this.state.isGnssAcquiringLock = false;
         this.state.satelliteCount = 4 + Math.floor(Math.random() * 8); // 4-12 sats
         this.state.isInHoldover = false;
         this.state.holdoverError = 0;

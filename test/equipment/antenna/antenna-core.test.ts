@@ -2379,3 +2379,59 @@ describe('AntennaCore', () => {
     });
   });
 });
+
+describe('rain attenuation (phase 16 E5)', () => {
+  it('is zero when dry and grows with rain rate', () => {
+    const antenna = new TestableAntennaCore(ANTENNA_CONFIG_KEYS.KU_BAND_4M_LEO_TRACKER);
+    expect(antenna.rainAttenuation_dB(12e9, 30)).toBe(0);
+
+    antenna.updateRainRate(5);
+    const light = antenna.rainAttenuation_dB(12e9, 30);
+    antenna.updateRainRate(25);
+    const heavy = antenna.rainAttenuation_dB(12e9, 30);
+
+    expect(light).toBeGreaterThan(0);
+    expect(heavy).toBeGreaterThan(light * 2);
+  });
+
+  it('matches the ITU-R P.838/P.618 ballpark at Ku: about 4 dB at 25 mm/h and 30 deg, roughly double at 10 deg', () => {
+    const antenna = new TestableAntennaCore(ANTENNA_CONFIG_KEYS.KU_BAND_4M_LEO_TRACKER);
+    antenna.updateRainRate(25);
+
+    const at30 = antenna.rainAttenuation_dB(12e9, 30);
+    const at10 = antenna.rainAttenuation_dB(12e9, 10);
+    const uplink = antenna.rainAttenuation_dB(14e9, 30);
+
+    expect(at30).toBeGreaterThan(3);
+    expect(at30).toBeLessThan(5.5);
+    expect(at10).toBeGreaterThan(at30 * 1.6);
+    expect(uplink).toBeGreaterThan(at30);
+  });
+
+  it('barely touches C-band, which is why Campaign 1 never modelled it', () => {
+    const antenna = new TestableAntennaCore(ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK, { elevation: 30 as Degrees });
+    antenna.updateRainRate(25);
+
+    expect(antenna.rainAttenuation_dB(4e9, 30)).toBeLessThan(0.25);
+    expect(antenna.rainAttenuationDb).toBeLessThan(0.25);
+    expect(antenna.getStatusAlarms().some((a) => a.message.includes('RAIN FADE'))).toBe(false);
+  });
+
+  it('raises the system noise temperature and a graded rain-fade alarm at Ku', () => {
+    const antenna = new TestableAntennaCore(ANTENNA_CONFIG_KEYS.KU_BAND_4M_LEO_TRACKER, { elevation: 30 as Degrees });
+    const dryTsys = antenna.testSystemTempK(12e9 as Hertz, 30 as Degrees);
+
+    antenna.updateRainRate(25);
+    const wetTsys = antenna.testSystemTempK(12e9 as Hertz, 30 as Degrees);
+    expect(wetTsys).toBeGreaterThan(dryTsys * 1.5);
+
+    const warning = antenna.getStatusAlarms().find((a) => a.message.includes('RAIN FADE'));
+    expect(warning?.severity).toBe('warning');
+
+    antenna.updateRainRate(60);
+    expect(antenna.getStatusAlarms().find((a) => a.message.includes('RAIN FADE'))?.severity).toBe('error');
+
+    antenna.updateRainRate(0);
+    expect(antenna.getStatusAlarms().some((a) => a.message.includes('RAIN FADE'))).toBe(false);
+  });
+});

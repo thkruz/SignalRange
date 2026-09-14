@@ -1010,3 +1010,76 @@ describe('GPSDOModuleCore', () => {
     });
   });
 });
+
+describe('GPSDOModuleCore staged GNSS outage (phase 16 E3)', () => {
+  let gpsdoModule: TestGPSDOModule;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    gpsdoModule = new TestGPSDOModule(
+      { ...defaultGpsdoState, isPowered: true, isLocked: true, isGnssSwitchUp: true, warmupTimeRemaining: 0, satelliteCount: 9 },
+      createMockRfFrontEnd(),
+      1
+    );
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('losing the signal with the switch up puts a locked reference into holdover with zero satellites', () => {
+    gpsdoModule.setGnssSignalPresent(false);
+
+    expect(gpsdoModule.isGnssOutage).toBe(true);
+    expect(gpsdoModule.state.gnssSignalPresent).toBe(false);
+    expect(gpsdoModule.state.satelliteCount).toBe(0);
+    expect(gpsdoModule.state.isInHoldover).toBe(true);
+    expect(gpsdoModule.state.isGnssSwitchUp).toBe(true);
+
+    vi.advanceTimersByTime(3000);
+    expect(gpsdoModule.state.holdoverDuration).toBe(3);
+    expect(gpsdoModule.holdoverTickCount).toBe(3);
+  });
+
+  it('cycling the switch during an outage does not conjure a signal', () => {
+    gpsdoModule.setGnssSignalPresent(false);
+    const callback = vi.fn();
+
+    gpsdoModule.handleGnssToggle(false, callback);
+    gpsdoModule.handleGnssToggle(true, callback);
+    vi.advanceTimersByTime(5000);
+
+    expect(callback).toHaveBeenCalled();
+    expect(gpsdoModule.state.gnssSignalPresent).toBe(false);
+    expect(gpsdoModule.state.satelliteCount).toBe(0);
+    expect(gpsdoModule.state.isInHoldover).toBe(true);
+  });
+
+  it('re-locks and leaves holdover when the signal returns with the switch up', () => {
+    gpsdoModule.setGnssSignalPresent(false);
+    vi.advanceTimersByTime(10_000);
+
+    gpsdoModule.setGnssSignalPresent(true);
+
+    expect(gpsdoModule.isGnssOutage).toBe(false);
+    expect(gpsdoModule.state.gnssSignalPresent).toBe(true);
+    expect(gpsdoModule.state.isInHoldover).toBe(false);
+    expect(gpsdoModule.state.holdoverError).toBe(0);
+    expect(gpsdoModule.state.satelliteCount).toBeGreaterThanOrEqual(4);
+    expect(gpsdoModule.state.isLocked).toBe(true);
+  });
+
+  it('a returning signal does nothing for a switch left down until the operator raises it', () => {
+    gpsdoModule.setGnssSignalPresent(false);
+    gpsdoModule.handleGnssToggle(false, vi.fn());
+
+    gpsdoModule.setGnssSignalPresent(true);
+    expect(gpsdoModule.state.gnssSignalPresent).toBe(false);
+    expect(gpsdoModule.state.isInHoldover).toBe(true);
+
+    gpsdoModule.handleGnssToggle(true, vi.fn());
+    vi.advanceTimersByTime(5000);
+    expect(gpsdoModule.state.gnssSignalPresent).toBe(true);
+    expect(gpsdoModule.state.isInHoldover).toBe(false);
+  });
+});

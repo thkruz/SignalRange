@@ -35,7 +35,11 @@ const createMockAntenna = (uuid: string, isHeaterEnabled = false, iceAccumulatio
     isHeaterEnabled,
     iceAccumulation_dB,
     skyNoiseDegradation_dB: 0,
+    rainRate_mmh: 0,
   },
+  updateRainRate: vi.fn((value: number) => {
+    mockAntennas.find((a) => a.state.uuid === uuid)!.state.rainRate_mmh = value;
+  }),
   updateIceAccumulation: vi.fn((value: number) => {
     // Update the mock state when called
     mockAntennas.find((a) => a.state.uuid === uuid)!.state.iceAccumulation_dB = value;
@@ -1164,5 +1168,79 @@ describe('WeatherManager', () => {
       };
       expect(event.isActive).toBe(true);
     });
+  });
+});
+
+describe('WeatherManager rain rate (phase 16 E5)', () => {
+  let updateHandler: (dt: number) => void;
+
+  beforeEach(() => {
+    WeatherManager.destroy();
+    vi.clearAllMocks();
+    mockScenarioSettings.weatherEvents = [];
+    mockAntennas = [];
+    mockGroundStations.length = 0;
+    mockEventBusInstance.on.mockImplementation((event: string, handler: any) => {
+      if (event === Events.UPDATE) {
+        updateHandler = handler;
+      }
+    });
+  });
+
+  afterEach(() => {
+    WeatherManager.destroy();
+    vi.useRealTimers();
+  });
+
+  const rainEvent = (overrides: Partial<WeatherEventData> = {}): WeatherEventData => ({
+    id: 'rain-1',
+    groundStationId: 'gs-1',
+    type: 'rain',
+    severity: 'moderate',
+    startTime: 0,
+    duration: 1200,
+    linkMarginDegradation: 3,
+    ...overrides,
+  });
+
+  it('derives the peak rate from severity and ramps in over 15 % of the event', () => {
+    const event = { ...rainEvent(), isActive: true };
+    expect(WeatherManager.rainRateAt(event, 90)).toBeCloseTo(6, 6);
+    expect(WeatherManager.rainRateAt(event, 600)).toBe(12);
+    expect(WeatherManager.rainRateAt(event, 1200 - 90)).toBeCloseTo(6, 6);
+    expect(WeatherManager.rainRateAt(event, 1200)).toBe(0);
+    expect(WeatherManager.rainRateAt(event, -1)).toBe(0);
+  });
+
+  it('honours an authored rain rate, makes a storm one step heavier, and ignores non-rain types', () => {
+    expect(WeatherManager.rainRateAt({ ...rainEvent({ rainRateMmPerHour: 20 }), isActive: true }, 600)).toBe(20);
+    expect(WeatherManager.rainRateAt({ ...rainEvent({ type: 'storm', severity: 'severe' }), isActive: true }, 600)).toBe(50);
+    expect(WeatherManager.rainRateAt({ ...rainEvent({ type: 'storm', severity: 'minor' }), isActive: true }, 600)).toBe(12);
+    expect(WeatherManager.rainRateAt({ ...rainEvent({ type: 'snow' }), isActive: true }, 600)).toBe(0);
+    expect(WeatherManager.rainRateAt({ ...rainEvent({ type: 'sun-transit' }), isActive: true }, 600)).toBe(0);
+  });
+
+  it('pushes the rate to the affected station only and writes zero when the front has passed', () => {
+    vi.useFakeTimers();
+    const start = Date.now();
+    vi.setSystemTime(start);
+
+    mockScenarioSettings.weatherEvents = [rainEvent()];
+    const wet = createMockAntenna('wet-1');
+    const dry = createMockAntenna('dry-1');
+    mockAntennas = [wet, dry];
+    mockGroundStations.push({ state: { id: 'gs-1' }, antennas: [wet] }, { state: { id: 'gs-2' }, antennas: [dry] });
+
+    WeatherManager.getInstance();
+
+    vi.setSystemTime(start + 600_000);
+    updateHandler(1000);
+    expect(wet.updateRainRate).toHaveBeenLastCalledWith(12);
+    expect(dry.updateRainRate).not.toHaveBeenCalled();
+
+    vi.setSystemTime(start + 1_300_000);
+    updateHandler(1000);
+    expect(wet.updateRainRate).toHaveBeenLastCalledWith(0);
+    expect(wet.state.rainRate_mmh).toBe(0);
   });
 });

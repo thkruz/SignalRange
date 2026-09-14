@@ -2,6 +2,7 @@ import { GroundStation } from '@app/assets/ground-station/ground-station';
 import { BaseElement } from '@app/components/base-element';
 import { html } from '@app/engine/utils/development/formatter';
 import { qs } from '@app/engine/utils/query-selector';
+import { CryptoModule } from '@app/equipment/crypto';
 import { BUCAdapter } from './buc-adapter';
 import { HPAAdapter } from './hpa-adapter';
 import { TransmitterAdapter } from './transmitter-adapter';
@@ -523,6 +524,10 @@ export class TxChainTab extends BaseElement {
                       <span id="tx-payload-enc-key-status" class="status-badge status-badge-green">Valid</span>
                     </div>
                     <div class="metric-row">
+                      <span class="metric-label">Re-key:</span>
+                      <button id="tx-payload-rekey-btn" class="btn btn-outline-warning btn-sm" title="Load the next traffic key from the fill device (both directions)">Load New Key</button>
+                    </div>
+                    <div class="metric-row">
                       <span class="metric-label">Expires:</span>
                       <span id="tx-payload-enc-expires" class="metric-value">47 days</span>
                     </div>
@@ -623,6 +628,17 @@ export class TxChainTab extends BaseElement {
     // Setup payload adapter (static display for training)
     if (this.dom_) {
       this.payloadAdapter_ = new TxPayloadAdapter(this.dom_, this.groundStation.uuid);
+
+      // Traffic-key re-key (phase 16, nats-eu S4). The payload crypto is one
+      // symmetric key for both directions, so one load clears a Mismatch or
+      // Expired state on the TX and RX panels together.
+      qs('#tx-payload-rekey-btn', this.dom_)?.addEventListener('click', () => {
+        const crypto = CryptoModule.getInstance();
+        const current = crypto.getTxState().encryptionKeyId ?? 'KEY-0000';
+        const match = /^(.*?)(\d+)$/.exec(current);
+        const next = match ? `${match[1]}${String(Number(match[2]) + 1).padStart(match[2].length, '0')}` : `${current}-1`;
+        crypto.handleKeyRotation(next);
+      });
     }
   }
 

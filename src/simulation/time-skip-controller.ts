@@ -27,7 +27,7 @@
  */
 
 import { CryptoModule } from '@app/equipment/crypto';
-import { OrbitalSatellite } from '@app/equipment/satellite/orbital-satellite';
+import { type OrbitalObserver, OrbitalSatellite, observerFromLocation } from '@app/equipment/satellite/orbital-satellite';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
 import { ObjectivesManager } from '@app/objectives/objectives-manager';
@@ -148,7 +148,8 @@ export class TimeSkipController {
       return 'Scenario clock is paused';
     }
 
-    const inView = this.orbitalSatellites_().filter((sat) => sat.isAboveHorizon);
+    const observers = this.stationObservers_();
+    const inView = this.orbitalSatellites_().filter((sat) => (observers.length === 0 ? sat.isAboveHorizon : observers.some((observer) => sat.isAboveHorizonFor(observer))));
 
     if (inView.length > 0) {
       return `${inView[0].name} is in view - work the pass`;
@@ -175,10 +176,17 @@ export class TimeSkipController {
 
     const nowMs = getSimulatedNowMs();
     const leadMs = this.leadTimeS * 1000;
-    const passes = this.passPlanner_.getContactSchedule(satellites, nowMs, {
+    const options = {
       horizonHours: this.config_.horizonHours ?? DEFAULT_HORIZON_HOURS,
       minElevation: scenarioMinElevation(ScenarioManager.getInstance().settings),
-    });
+    };
+    // A pass at ANY site is a contact the operator may need to work, so the
+    // next pass is the earliest AOS across every station in the scenario.
+    const observers = this.stationObservers_();
+    const passes =
+      observers.length === 0
+        ? this.passPlanner_.getContactSchedule(satellites, nowMs, options)
+        : observers.flatMap((observer) => this.passPlanner_.getContactSchedule(satellites, nowMs, { ...options, observer })).sort((a, b) => a.aosMs - b.aosMs);
 
     // Only ever the NEXT pass, never one beyond it. Searching forward for the
     // first pass with enough lead time would let an operator sitting two
@@ -329,6 +337,15 @@ export class TimeSkipController {
     }
 
     return SimulationManager.getInstance().satellites.filter((sat): sat is OrbitalSatellite => sat instanceof OrbitalSatellite);
+  }
+
+  /** One observer per ground station in the scenario (empty when unknown). */
+  private stationObservers_(): OrbitalObserver[] {
+    if (!SimulationManager.hasInstance()) {
+      return [];
+    }
+
+    return (SimulationManager.getInstance().groundStations ?? []).map((gs) => observerFromLocation(gs.state.location, gs.state.id));
   }
 
   /**

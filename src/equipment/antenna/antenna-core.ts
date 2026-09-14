@@ -1,6 +1,7 @@
 import { AlarmStatus, BaseEquipment } from '@app/equipment/base-equipment';
 import { TapPoint } from '@app/equipment/rf-front-end/coupler-module/tap-points';
 import { RFFrontEndCore } from '@app/equipment/rf-front-end/rf-front-end-core';
+import { type ObserverGeometry, type OrbitalObserver, OrbitalSatellite, observerFromLocation } from '@app/equipment/satellite/orbital-satellite';
 import { Satellite } from '@app/equipment/satellite/satellite';
 import { Transmitter } from '@app/equipment/transmitter/transmitter';
 import { EventBus } from '@app/events/event-bus';
@@ -13,6 +14,16 @@ import { Degrees } from 'ootk';
 import { ANTENNA_CONFIG_KEYS } from './antenna-config-keys';
 import { ANTENNA_CONFIGS, AntennaConfig } from './antenna-configs';
 import { StepTrackController } from './step-track-controller';
+
+/** A satellite's geometry and downlink as seen from one antenna's station. */
+export interface SatelliteView {
+  az: Degrees;
+  el: Degrees;
+  rangeKm: number | null;
+  predictedAz: Degrees;
+  predictedEl: Degrees;
+  txSignal: RfSignal[];
+}
 
 /**
  * RF Propagation constants for GEO satellite communications
@@ -117,6 +128,12 @@ export interface AntennaState {
   iceAccumulation_dB: number;
   /** Elevated sky-noise degradation in dB on the receive path (e.g., sun transit). 0 = nominal sky. */
   skyNoiseDegradation_dB: number;
+  /**
+   * Rain rate over the site in mm/h (WeatherManager rain/storm events). The
+   * antenna turns it into a frequency- and elevation-dependent path loss, so
+   * Ku/Ka links fade in rain and C-band barely notices. 0 = dry.
+   */
+  rainRate_mmh: number;
   /** ACU automation controller fault: program-track, step-track, and target
    *  slewing are unavailable; manual/stow/maintenance servo control still works. */
   isAcuAutomationFaulted: boolean;
@@ -164,6 +181,15 @@ export interface AntennaState {
  * UI implementations extend this class and implement DOM-specific methods
  */
 export abstract class AntennaCore extends BaseEquipment {
+  /** ITU-R P.838-3 rain coefficients (H pol) sampled at these frequencies, GHz */
+  private static readonly RAIN_COEFF_F_GHZ = [1, 2, 4, 6, 8, 10, 12, 15, 20, 25, 30, 40];
+  private static readonly RAIN_COEFF_K = [0.0000387, 0.000154, 0.00065, 0.00175, 0.00454, 0.0101, 0.0188, 0.0367, 0.0751, 0.124, 0.187, 0.35];
+  private static readonly RAIN_COEFF_ALPHA = [0.912, 0.963, 1.121, 1.308, 1.327, 1.276, 1.217, 1.154, 1.099, 1.061, 1.021, 0.939];
+  /** Mean rain height above the station for the mid/high-latitude sites in play, km */
+  private static readonly RAIN_HEIGHT_KM = 2.5;
+  /** Representative frequency per band for the rain-fade alarm */
+  private static readonly BAND_CENTRE_HZ: Record<string, number> = { VHF: 0.15e9, UHF: 0.44e9, L: 1.5e9, S: 2.2e9, C: 4e9, X: 7.5e9, Ku: 12e9, Ka: 20e9, Q: 40e9, V: 40e9 };
+
   /** Current antenna state */
   state: AntennaState;
   protected lastRenderState: AntennaState;
@@ -174,7 +200,9 @@ export abstract class AntennaCore extends BaseEquipment {
    * GroundStation; required only for terrestrial-emitter reception (E1) -
    * without it the antenna simply hears no ground emitters, as before.
    */
-  protected stationLocation_: { latitude: number; longitude: number } | null = null;
+  protected stationLocation_: { latitude: number; longitude: number; elevationM: number } | null = null;
+  /** Same location as an orbital observer; null until the station attaches */
+  protected stationObserver_: OrbitalObserver | null = null;
 
   /**
    * Uplink signalIds this antenna pushed onto each satellite last frame
@@ -256,6 +284,7 @@ export abstract class AntennaCore extends BaseEquipment {
       precipitationDetected: false,
       iceAccumulation_dB: 0,
       skyNoiseDegradation_dB: 0,
+      rainRate_mmh: 0,
       isAcuAutomationFaulted: false,
       // ACU Identification
       acuModel: this.config.acuModel ?? 'Kratos NGC-2200',
@@ -367,8 +396,11 @@ export abstract class AntennaCore extends BaseEquipment {
     // Slew actual position toward target at maxRate_deg_s
     this.updateSlew_();
 
-    // Check for program-track lock when antenna arrives near target
-    if (automationAvailable && this.state.trackingMode === 'program-track' && this.state.targetSatelliteId !== null && !this.state.isSlewing) {
+    // Check for program-track lock whenever a target is being tracked. The
+    // tolerance test decides, not the slew flag: a LEO tracker is slewing for
+    // the whole pass (the target moves every second), so gating on !isSlewing
+    // meant a moving bird could never read LOCKED (phase 16).
+    if (automationAvailable && this.state.trackingMode === 'program-track' && this.state.targetSatelliteId !== null) {
       this.checkProgramTrackLock_();
     }
 
@@ -442,8 +474,14 @@ export abstract class AntennaCore extends BaseEquipment {
       return;
     }
 
-    const azDiff = Math.abs(this.state.azimuth - sat.az);
-    const elDiff = Math.abs(this.state.elevation - sat.el);
+    const view = this.satView_(sat);
+    // Shortest-path slews leave state.azimuth outside 0-360 (a pass through
+    // north reads -138 for 222), so compare on the circle, not the number line.
+    let azDiff = Math.abs(this.normalizedAzimuth - view.az);
+    if (azDiff > 180) {
+      azDiff = 360 - azDiff;
+    }
+    const elDiff = Math.abs(this.state.elevation - view.el);
     const withinTolerance = azDiff <= AntennaCore.LOCK_TOLERANCE_DEG && elDiff <= AntennaCore.LOCK_TOLERANCE_DEG;
 
     if (withinTolerance && !this.state.isLocked) {
@@ -469,8 +507,9 @@ export abstract class AntennaCore extends BaseEquipment {
     // Use PREDICTED position (includes ephemeris error from TLE inaccuracy)
     // The beacon signal comes from the TRUE position (sat.az, sat.el),
     // but program-track points to where TLE predicts the satellite to be.
-    let targetAz = sat.predictedAz as number;
-    let targetEl = sat.predictedEl as number;
+    const view = this.satView_(sat);
+    let targetAz = view.predictedAz as number;
+    let targetEl = view.predictedEl as number;
 
     // Step-track offsets correct the ephemeris error by finding the beacon peak
     if (this.state.isStepTrackEnabled) {
@@ -572,19 +611,28 @@ export abstract class AntennaCore extends BaseEquipment {
 
     this.state.isAutoTrackSwitchUp = isSwitchUp;
     this.state.isAutoTrackEnabled = isSwitchUp;
-    const sats = SimulationManager.getInstance().getSatsByAzEl(this.normalizedAzimuth, this.state.elevation);
-    const strongestSignal = sats.flatMap((sat) => sat.txSignal).reduce((prev, curr) => (prev.power > curr.power ? prev : curr), { power: -Infinity } as RfSignal);
+    const sim = SimulationManager.getInstance();
+    // With a station attached, look at the sky from THIS site (two stations see
+    // one LEO at different az/el); otherwise keep the canonical coarse lookup.
+    const sats = this.stationObserver_
+      ? sim.satellites.filter((sat) => {
+          const view = this.satView_(sat);
+          return Math.abs(view.az - this.normalizedAzimuth) <= 2 && Math.abs(view.el - this.state.elevation) <= 2;
+        })
+      : sim.getSatsByAzEl(this.normalizedAzimuth, this.state.elevation);
+    const strongestSignal = sats.flatMap((sat) => this.satView_(sat).txSignal).reduce((prev, curr) => (prev.power > curr.power ? prev : curr), { power: -Infinity } as RfSignal);
 
     // hardcoded threshold for lock acquisition - TODO: make configurable
     const LOCK_THRESHOLD_DBM = -100;
 
     if (isSwitchUp && strongestSignal.power > LOCK_THRESHOLD_DBM) {
       const sat = SimulationManager.getInstance().getSatByNoradId(strongestSignal.noradId);
+      const view = this.satView_(sat);
 
       // Set target position - actual position will slew in update loop
       // Use shortest path calculation to avoid rotating the long way around
-      this.state.targetAzimuth = this.calculateShortestPathTarget_(this.state.azimuth, sat.az);
-      this.state.targetElevation = sat.el;
+      this.state.targetAzimuth = this.calculateShortestPathTarget_(this.state.azimuth, view.az);
+      this.state.targetElevation = view.el;
 
       // Simulate lock acquisition delay with timeout tracking
       this.lockAcquisitionTimeout_ = window.setTimeout(() => {
@@ -762,8 +810,9 @@ export abstract class AntennaCore extends BaseEquipment {
 
     // Set target position - actual position will slew in update loop
     // Use shortest path calculation to avoid rotating the long way around
-    this.state.targetAzimuth = this.calculateShortestPathTarget_(this.state.azimuth, sat.az);
-    this.state.targetElevation = sat.el;
+    const view = this.satView_(sat);
+    this.state.targetAzimuth = this.calculateShortestPathTarget_(this.state.azimuth, view.az);
+    this.state.targetElevation = view.el;
 
     // Set beacon frequency from satellite's transponder beacon (if available)
     const beacon = sat.transponders[0]?.beacon;
@@ -925,6 +974,56 @@ export abstract class AntennaCore extends BaseEquipment {
   updateSkyNoiseDegradation(degradation_dB: number): void {
     this.state.skyNoiseDegradation_dB = degradation_dB;
     this.notifyStateChange_();
+  }
+
+  /**
+   * Update the rain rate over the site (called by WeatherManager for rain and
+   * storm events). Both link directions see the loss, at their own frequency.
+   * @param rainRate_mmh - Rain rate in mm/h (0 = dry)
+   */
+  updateRainRate(rainRate_mmh: number): void {
+    this.state.rainRate_mmh = Math.max(0, rainRate_mmh);
+    this.notifyStateChange_();
+  }
+
+  /**
+   * Rain attenuation (dB) along the current slant path at frequency `f_Hz`.
+   *
+   * ITU-R P.838 specific attenuation gamma = k * R^alpha (dB/km), coefficients
+   * interpolated log-log over 1-40 GHz (horizontal polarisation, the worse
+   * case), times an effective path length through a 2.5 km rain layer with the
+   * P.618 horizontal reduction factor. Typical results: 25 mm/h at 12 GHz is
+   * about 4 dB at 30 deg elevation and 8 dB at 10 deg; the same rain at 4 GHz
+   * is a tenth of a dB, which is why Campaign 1's C-band links never cared.
+   */
+  rainAttenuation_dB(f_Hz: number, elevation_deg: number = this.state.elevation): number {
+    const R = this.state.rainRate_mmh;
+    if (!(R > 0)) {
+      return 0;
+    }
+
+    const fGHz = Math.min(40, Math.max(1, f_Hz / 1e9));
+    const F = AntennaCore.RAIN_COEFF_F_GHZ;
+    let i = 0;
+    while (i < F.length - 2 && fGHz > F[i + 1]) {
+      i++;
+    }
+    const t = (Math.log(fGHz) - Math.log(F[i])) / (Math.log(F[i + 1]) - Math.log(F[i]));
+    const k = Math.exp(Math.log(AntennaCore.RAIN_COEFF_K[i]) + t * (Math.log(AntennaCore.RAIN_COEFF_K[i + 1]) - Math.log(AntennaCore.RAIN_COEFF_K[i])));
+    const alpha = AntennaCore.RAIN_COEFF_ALPHA[i] + t * (AntennaCore.RAIN_COEFF_ALPHA[i + 1] - AntennaCore.RAIN_COEFF_ALPHA[i]);
+    const gamma_dB_km = k * R ** alpha;
+
+    const elRad = (Math.max(5, elevation_deg) * Math.PI) / 180;
+    const slantKm = AntennaCore.RAIN_HEIGHT_KM / Math.sin(elRad);
+    const groundKm = slantKm * Math.cos(elRad);
+    const reduction = 1 / (1 + groundKm / (35 * Math.exp(-0.015 * R)));
+
+    return gamma_dB_km * slantKm * reduction;
+  }
+
+  /** Rain attenuation at this antenna's band centre and current elevation (for alarms and displays). */
+  get rainAttenuationDb(): number {
+    return this.rainAttenuation_dB(AntennaCore.BAND_CENTRE_HZ[this.config.band] ?? 12e9);
   }
 
   // ========================================================================
@@ -1277,8 +1376,9 @@ export abstract class AntennaCore extends BaseEquipment {
         Math.abs((sig.rotation ?? 0) - this.state.polarization) as Degrees
       );
 
-      // Frequency-dependent feed loss + ice accumulation on feed horn
-      const feedLoss = this.feedLossAt_(f_Hz) + this.state.iceAccumulation_dB;
+      // Frequency-dependent feed loss + ice accumulation on feed horn + rain
+      // on the uplink path (Ku/Ka uplinks fade harder than the downlink)
+      const feedLoss = this.feedLossAt_(f_Hz) + this.state.iceAccumulation_dB + this.rainAttenuation_dB(f_Hz);
 
       // Antenna gain with Ruze + blockage
       const antennaGain = this.antennaGain_dBi(sig.frequency);
@@ -1296,29 +1396,34 @@ export abstract class AntennaCore extends BaseEquipment {
   get rxSignals(): {
     sat: Satellite;
     signal: RfSignal;
+    /** Satellite geometry as seen from this antenna's station */
+    view: SatelliteView;
   }[] {
-    const satellites = SimulationManager.getInstance().satellites.filter((sat) => {
-      if (Math.abs(sat.az - this.normalizedAzimuth) <= 1 && Math.abs(sat.el - this.state.elevation) <= 1) {
-        return true;
-      }
+    const views = SimulationManager.getInstance()
+      .satellites.map((sat) => ({ sat, view: this.satView_(sat) }))
+      .filter(({ view }) => {
+        if (Math.abs(view.az - this.normalizedAzimuth) <= 1 && Math.abs(view.el - this.state.elevation) <= 1) {
+          return true;
+        }
 
-      // Wide-beam antennas (fixed gain model, Campaign 3+): accept satellites
-      // out to one full HPBW off boresight, using true angular separation (the
-      // planar box above breaks down near zenith). Off-axis loss is still
-      // charged by the pattern model. Parabolic antennas (HPBW << 1 deg) keep
-      // the legacy 1-degree box, so existing campaigns are unaffected.
-      if (this.config.gainModel === 'fixed') {
-        const sep = this.angularSeparationDeg_(sat.az, sat.el);
-        return sep <= (this.config.fixedBeamwidth3dB_deg ?? 90);
-      }
+        // Wide-beam antennas (fixed gain model, Campaign 3+): accept satellites
+        // out to one full HPBW off boresight, using true angular separation (the
+        // planar box above breaks down near zenith). Off-axis loss is still
+        // charged by the pattern model. Parabolic antennas (HPBW << 1 deg) keep
+        // the legacy 1-degree box, so existing campaigns are unaffected.
+        if (this.config.gainModel === 'fixed') {
+          const sep = this.angularSeparationDeg_(view.az, view.el);
+          return sep <= (this.config.fixedBeamwidth3dB_deg ?? 90);
+        }
 
-      return false;
-    });
+        return false;
+      });
 
-    return satellites.flatMap((sat) =>
-      sat.txSignal.map((signal) => ({
+    return views.flatMap(({ sat, view }) =>
+      view.txSignal.map((signal) => ({
         sat,
         signal,
+        view,
       }))
     );
   }
@@ -1327,8 +1432,46 @@ export abstract class AntennaCore extends BaseEquipment {
     this.rfFrontEnd_ = rfFrontEnd;
   }
 
-  attachStationLocation(latitude: number, longitude: number): void {
-    this.stationLocation_ = { latitude, longitude };
+  /**
+   * Give the antenna its station's geodetic position. Needed for terrestrial
+   * emitter reception (E1, Campaign 3) and, for orbital satellites, to see the
+   * sky from this site rather than from the satellite's canonical observer
+   * (phase 16, multi-station LEO work).
+   */
+  attachStationLocation(latitude: number, longitude: number, elevationM = 0): void {
+    this.stationLocation_ = { latitude, longitude, elevationM };
+    this.stationObserver_ = observerFromLocation({ latitude, longitude, elevation: elevationM });
+  }
+
+  /**
+   * A satellite as seen from THIS antenna. Orbital satellites are propagated
+   * per observer once a station location is attached: two sites see one LEO at
+   * different az/el/range/Doppler, and its signals rise and set on each site's
+   * own horizon. Everything else (GEO, legacy telemetry, no station attached)
+   * is the satellite's canonical view, unchanged.
+   */
+  protected satView_(sat: Satellite): SatelliteView {
+    if (this.stationObserver_ && sat instanceof OrbitalSatellite) {
+      const g: ObserverGeometry = sat.geometryFor(this.stationObserver_);
+      const predicted = sat.predictedFor(this.stationObserver_);
+      return {
+        az: g.az,
+        el: g.el,
+        rangeKm: g.rangeKm,
+        predictedAz: predicted.az,
+        predictedEl: predicted.el,
+        txSignal: sat.txSignalsFor(this.stationObserver_),
+      };
+    }
+
+    return {
+      az: sat.az,
+      el: sat.el,
+      rangeKm: sat.rangeKm,
+      predictedAz: sat.predictedAz,
+      predictedEl: sat.predictedEl,
+      txSignal: sat.txSignal,
+    };
   }
 
   /**
@@ -1396,6 +1539,18 @@ export abstract class AntennaCore extends BaseEquipment {
         alarms.push({ severity: 'warning', message: `SUN TRANSIT: ELEVATED SKY NOISE (${sky.toFixed(1)} dB)` });
       } else {
         alarms.push({ severity: 'info', message: `ELEVATED SKY NOISE (${sky.toFixed(1)} dB)` });
+      }
+    }
+
+    // Rain fade (frequency dependent: C-band rarely clears the 0.5 dB floor)
+    if (this.state.rainRate_mmh > 0) {
+      const rain = this.rainAttenuationDb;
+      if (rain >= 6) {
+        alarms.push({ severity: 'error', message: `RAIN FADE SEVERE (${rain.toFixed(1)} dB)` });
+      } else if (rain >= 2) {
+        alarms.push({ severity: 'warning', message: `RAIN FADE (${rain.toFixed(1)} dB)` });
+      } else if (rain >= 0.5) {
+        alarms.push({ severity: 'info', message: `LIGHT RAIN FADE (${rain.toFixed(1)} dB)` });
       }
     }
 
@@ -1470,7 +1625,7 @@ export abstract class AntennaCore extends BaseEquipment {
     // then add any terrestrial emitters this antenna can hear (E1). Both go
     // through the same C/I blocking/degradation pass below, so a strong
     // ground emitter degrades wanted downlinks exactly like any interferer.
-    let receivedSignals = this.rxSignals.map(({ sat, signal }) => this.applyPropagationEffects_(sat, signal)).concat(this.terrestrialRxSignals_());
+    let receivedSignals = this.rxSignals.map(({ sat, signal, view }) => this.applyPropagationEffects_(sat, signal, view)).concat(this.terrestrialRxSignals_());
 
     // Apply interference and adjacency logic
     receivedSignals = receivedSignals.filter((signal) => {
@@ -1643,7 +1798,8 @@ export abstract class AntennaCore extends BaseEquipment {
     const fedIds = this.txFedSignalIds_;
 
     for (const sat of allSats) {
-      const inBeam = this.angularSeparationDeg_(sat.az, sat.el) <= beamwidth;
+      const view = this.satView_(sat);
+      const inBeam = this.angularSeparationDeg_(view.az, view.el) <= beamwidth;
       const prevIds = fedIds.get(sat.noradId);
 
       // Nothing radiating (or out of beam): withdraw only what THIS antenna
@@ -1666,9 +1822,9 @@ export abstract class AntennaCore extends BaseEquipment {
 
       for (const sig of txSignals) {
         const f_Hz = sig.frequency as number;
-        const offAxis_deg = this.angularSeparationDeg_(sat.az, sat.el);
-        const fspl = this.calculateFreeSpacePathLoss_(f_Hz, sat.rangeKm ?? GEO_SATELLITE_DISTANCE_KM);
-        const atmosphericLoss = this.calculateAtmosphericLoss_(f_Hz, Math.max(1, sat.el));
+        const offAxis_deg = this.angularSeparationDeg_(view.az, view.el);
+        const fspl = this.calculateFreeSpacePathLoss_(f_Hz, view.rangeKm ?? GEO_SATELLITE_DISTANCE_KM);
+        const atmosphericLoss = this.calculateAtmosphericLoss_(f_Hz, Math.max(1, view.el));
         // txSignalsOut already includes boresight gain; charge only the
         // off-axis rolloff (capped at front-to-back like the RX pattern)
         const offAxisDrop = this.antennaGain_dBi(sig.frequency) - this.patternGain_dBi_(offAxis_deg, f_Hz);
@@ -2015,8 +2171,9 @@ export abstract class AntennaCore extends BaseEquipment {
     const Lfeed = this.feedLossAt_(frequency) + (this.config.rxChainLoss_dB ?? 0);
 
     // Ice accumulation adds to feed loss (ice on feed horn acts as lossy medium).
-    // Elevated sky noise (sun transit) is modeled as equivalent RX-path loss.
-    const Lice = this.state.iceAccumulation_dB + this.state.skyNoiseDegradation_dB;
+    // Elevated sky noise (sun transit) and rain on the path are modeled as
+    // equivalent RX-path loss (a lossy medium both attenuates and radiates).
+    const Lice = this.state.iceAccumulation_dB + this.state.skyNoiseDegradation_dB + this.rainAttenuation_dB(frequency, elevation);
     const LfeedTotal = Lfeed + Lice;
 
     const Tant = Tsky + this.noiseFromLossK_(Latm, 260); // Atm ~260 K slab
@@ -2056,7 +2213,7 @@ export abstract class AntennaCore extends BaseEquipment {
    * Apply propagation effects to a received signal
    * Uses realistic RF physics including Ruze, blockage, polarization, and atmospheric effects
    */
-  private applyPropagationEffects_(satellite: Satellite, signal: RfSignal): RfSignal {
+  private applyPropagationEffects_(satellite: Satellite, signal: RfSignal, view: SatelliteView = this.satView_(satellite)): RfSignal {
     const f_Hz = signal.frequency as number;
     const elev_deg = this.state.elevation;
 
@@ -2064,14 +2221,14 @@ export abstract class AntennaCore extends BaseEquipment {
     // Fixed-gain (wide-beam) antennas use true angular separation - the planar
     // approximation overestimates badly near zenith, where the QFH points.
     // Parabolic antennas keep the legacy planar math bit-identically.
-    const deltaAz = satellite.az - this.normalizedAzimuth;
-    const deltaEl = satellite.el - this.state.elevation;
-    const offAxis_deg = this.config.gainModel === 'fixed' ? this.angularSeparationDeg_(satellite.az, satellite.el) : Math.hypot(deltaAz, deltaEl);
+    const deltaAz = view.az - this.normalizedAzimuth;
+    const deltaEl = view.el - this.state.elevation;
+    const offAxis_deg = this.config.gainModel === 'fixed' ? this.angularSeparationDeg_(view.az, view.el) : Math.hypot(deltaAz, deltaEl);
 
     // Calculate free-space path loss (downlink from satellite to ground).
     // Orbital satellites report true slant range; legacy fixed-telemetry
     // satellites fall back to the nominal GEO slant range.
-    const fspl = this.calculateFreeSpacePathLoss_(signal.frequency, satellite.rangeKm ?? GEO_SATELLITE_DISTANCE_KM);
+    const fspl = this.calculateFreeSpacePathLoss_(signal.frequency, view.rangeKm ?? GEO_SATELLITE_DISTANCE_KM);
 
     // Calculate atmospheric loss using realistic model
     const atmosphericLoss = this.calculateAtmosphericLoss_(signal.frequency, elev_deg);
@@ -2087,8 +2244,8 @@ export abstract class AntennaCore extends BaseEquipment {
     const Grx_dBi = this.patternGain_dBi_(offAxis_deg, f_Hz);
 
     // Feed loss (frequency-dependent) + ice accumulation on feed horn +
-    // elevated sky noise (sun transit) as equivalent RX loss
-    const feedLoss = this.feedLossAt_(f_Hz) + this.state.iceAccumulation_dB + this.state.skyNoiseDegradation_dB;
+    // elevated sky noise (sun transit) as equivalent RX loss + rain on the path
+    const feedLoss = this.feedLossAt_(f_Hz) + this.state.iceAccumulation_dB + this.state.skyNoiseDegradation_dB + this.rainAttenuation_dB(f_Hz, elev_deg);
 
     // Pointing loss (if any off-axis error from wind/jitter)
     const pointingLoss = this.pointingLoss_dB_(offAxis_deg, f_Hz);

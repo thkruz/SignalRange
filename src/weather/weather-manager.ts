@@ -52,6 +52,22 @@ export class WeatherManager {
   /** Melt rate when heater is ON: 1 dB per minute */
   static readonly MELT_RATE_DB_PER_SECOND = 1 / 60;
 
+  /**
+   * Rain rate by severity, mm/h, when an event does not name one. Roughly the
+   * temperate-zone 0.1 % / 0.01 % exceedance rates; a `storm` is one step
+   * heavier than the same severity of `rain`.
+   */
+  static readonly RAIN_RATE_MM_H: Record<string, number> = {
+    minor: 4,
+    moderate: 12,
+    severe: 30,
+    extreme: 50,
+  };
+
+  /** Rain ramps in and out over this fraction of the event, capped at 5 min */
+  static readonly RAIN_RAMP_FRACTION = 0.15;
+  static readonly RAIN_RAMP_MAX_S = 300;
+
   /** Bound handler for cleanup */
   private readonly boundUpdateHandler_: (dt: Milliseconds) => void;
 
@@ -102,6 +118,57 @@ export class WeatherManager {
 
     // Update sun-transit sky-noise degradation for all antennas
     this.updateSunTransit_(elapsedSeconds);
+
+    // Update the rain rate over each site (phase 16, E5)
+    this.updateRain_(elapsedSeconds);
+  }
+
+  /**
+   * Rain rate (mm/h) an event produces at `elapsedSeconds`: its authored or
+   * severity-derived rate with a linear ramp in and out, so a fade builds and
+   * clears the way a front does rather than switching.
+   */
+  static rainRateAt(event: WeatherEventRuntime, elapsedSeconds: number): number {
+    if (event.type !== 'rain' && event.type !== 'storm') {
+      return 0;
+    }
+    const peak = event.rainRateMmPerHour ?? WeatherManager.RAIN_RATE_MM_H[event.type === 'storm' ? WeatherManager.heavierSeverity_(event.severity) : event.severity] ?? 0;
+    const sinceStart = elapsedSeconds - event.startTime;
+    const untilEnd = event.startTime + event.duration - elapsedSeconds;
+    if (sinceStart < 0 || untilEnd <= 0) {
+      return 0;
+    }
+    const rampS = Math.min(WeatherManager.RAIN_RAMP_MAX_S, event.duration * WeatherManager.RAIN_RAMP_FRACTION);
+    const envelope = rampS > 0 ? Math.min(1, sinceStart / rampS, untilEnd / rampS) : 1;
+    return peak * envelope;
+  }
+
+  private static heavierSeverity_(severity: string): string {
+    return severity === 'minor' ? 'moderate' : severity === 'moderate' ? 'severe' : 'extreme';
+  }
+
+  /**
+   * Push the site's rain rate to its antennas. Rain is frequency dependent, so
+   * the manager sends the rate and each antenna prices it at its own band and
+   * elevation (`AntennaCore.rainAttenuation_dB`). Written as 0 when dry.
+   */
+  private updateRain_(elapsedSeconds: number): void {
+    const sim = SimulationManager.getInstance();
+
+    for (const gs of sim.groundStations) {
+      let rate = 0;
+      for (const event of this.weatherEvents_) {
+        if (event.groundStationId === gs.state.id && event.isActive) {
+          rate = Math.max(rate, WeatherManager.rainRateAt(event, elapsedSeconds));
+        }
+      }
+
+      for (const antenna of gs.antennas) {
+        if (antenna.state.rainRate_mmh !== rate) {
+          antenna.updateRainRate(rate);
+        }
+      }
+    }
   }
 
   /**

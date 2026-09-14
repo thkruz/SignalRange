@@ -688,6 +688,60 @@ describe('ObjectivesManager', () => {
 
       expect(() => manager.restoreState([], undefined)).not.toThrow();
     });
+
+    it('treats an objective as fresh when the saved condition count no longer matches', () => {
+      // Phase 16 re-authors nats-eu objectives in place. Condition states restore
+      // by index, so a stale save must not tick the wrong rows.
+      const objectives = [createTestObjective({ id: 'obj-1' })];
+      const manager = ObjectivesManager.initialize(objectives);
+
+      const staleObjective = { ...objectives[0], conditions: [...objectives[0].conditions, ...objectives[0].conditions] };
+      const savedStates: ObjectiveState[] = [
+        {
+          objective: staleObjective,
+          isActive: true,
+          activatedAt: Date.now() - 10000,
+          isCompleted: true,
+          completedAt: Date.now() - 5000,
+          conditionStates: staleObjective.conditions.map((condition) => ({
+            condition,
+            isSatisfied: true,
+            satisfiedAt: Date.now() - 5000,
+            maintainedDuration: 0,
+            isMaintenanceComplete: true,
+          })),
+          isFailed: false,
+          isTimerRunning: false,
+        },
+      ];
+
+      manager.restoreState(savedStates, undefined);
+
+      const state = manager.getObjectiveStates()[0];
+      expect(state.isCompleted).toBe(false);
+      expect(state.conditionStates[0].isSatisfied).toBe(false);
+    });
+
+    it('ignores saved objectives that no longer exist in the scenario', () => {
+      const objectives = [createTestObjective({ id: 'obj-1' })];
+      const manager = ObjectivesManager.initialize(objectives);
+      const removed = createTestObjective({ id: 'obj-removed' });
+
+      const savedStates: ObjectiveState[] = [
+        {
+          objective: removed,
+          isActive: true,
+          isCompleted: true,
+          conditionStates: [{ condition: removed.conditions[0], isSatisfied: true, maintainedDuration: 0, isMaintenanceComplete: true }],
+          isFailed: false,
+          isTimerRunning: false,
+        },
+      ];
+
+      expect(() => manager.restoreState(savedStates, undefined)).not.toThrow();
+      expect(manager.getObjectiveStates()).toHaveLength(1);
+      expect(manager.getObjectiveStates()[0].isCompleted).toBe(false);
+    });
   });
 
   describe('HTML Checklist Generation', () => {
@@ -714,6 +768,19 @@ describe('ObjectivesManager', () => {
 
       expect(html).toContain('completed');
       expect(html).toContain('Completed');
+    });
+
+    it('badges optional objectives and leaves required ones unmarked', () => {
+      const objectives = [createTestObjective({ id: 'req-1', title: 'Required Work' }), createTestObjective({ id: 'opt-1', title: 'Stretch Work', isOptional: true })];
+      const manager = ObjectivesManager.initialize(objectives);
+
+      const html = manager.generateHtmlChecklist();
+      const rows = html.split('<li class="objective-item').slice(1);
+
+      expect(rows).toHaveLength(2);
+      expect(rows[0]).not.toContain('objective-optional');
+      expect(rows[1]).toContain('objective-optional');
+      expect(rows[1]).toContain('Optional');
     });
   });
 

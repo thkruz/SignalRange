@@ -4,6 +4,7 @@ import { qs } from '@app/engine/utils/query-selector';
 import { OrbitalSatellite } from '@app/equipment/satellite/orbital-satellite';
 import { EventBus } from '@app/events/event-bus';
 import { Events, SimulatedTimeTickData } from '@app/events/events';
+import { SelectedStation } from '@app/pages/mission-control/selected-station';
 import { ScenarioManager } from '@app/scenario-manager';
 import { PassPlannerService, SatellitePass, scenarioMinElevation } from '@app/services/pass-planner-service';
 import { getSimulatedNowMs } from '@app/simulation/sim-time';
@@ -28,6 +29,9 @@ export class PassScheduleTab extends BaseElement {
 
   private readonly satellites_: OrbitalSatellite[];
   private readonly passPlanner_ = new PassPlannerService();
+  /** Predict from the station the operator is looking at (multi-site LEO work) */
+  private readonly station_ = new SelectedStation();
+  private lastStationId_: string | null = null;
   /**
    * Amateur (backyard) scenarios reuse this tab as "Observations" and get
    * hobbyist copy - TLEs and rotators, not ephemeris and program-track.
@@ -134,7 +138,10 @@ export class PassScheduleTab extends BaseElement {
   }
 
   private handleTimeTick_(data: SimulatedTimeTickData): void {
-    if (Math.abs(data.timestampMs - this.lastComputeMs_) >= PassScheduleTab.RECOMPUTE_INTERVAL_MS) {
+    // Switching station changes every window; recompute at once rather than
+    // waiting out the throttle.
+    const stationChanged = this.station_.stationId !== this.lastStationId_;
+    if (stationChanged || Math.abs(data.timestampMs - this.lastComputeMs_) >= PassScheduleTab.RECOMPUTE_INTERVAL_MS) {
       this.refreshSchedule_(data.timestampMs);
     }
     this.renderRows_(data.timestampMs);
@@ -217,12 +224,14 @@ export class PassScheduleTab extends BaseElement {
 
   private refreshSchedule_(nowMs: number): void {
     this.lastComputeMs_ = nowMs;
+    this.lastStationId_ = this.station_.stationId;
     // Include a pass that is already in progress by searching from 20 min ago
     // Same elevation mask the contact timeline deck uses, so the two surfaces
     // never show different AOS/LOS for the same pass.
     this.passes_ = this.passPlanner_
       .getContactSchedule(this.satellites_, nowMs - 20 * 60 * 1000, {
         minElevation: scenarioMinElevation(ScenarioManager.getInstance().settings),
+        observer: this.station_.observer,
       })
       .filter((pass) => pass.losMs > nowMs);
   }
@@ -313,6 +322,7 @@ export class PassScheduleTab extends BaseElement {
   public dispose(): void {
     EventBus.getInstance().off(Events.SIMULATED_TIME_TICK, this.boundTimeTickHandler_);
     EventBus.getInstance().off(Events.UPDATE, this.boundUpdateHandler_);
+    this.station_.destroy();
     this.dom_?.remove();
   }
 }

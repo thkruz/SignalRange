@@ -94,7 +94,7 @@ export class GroundStation {
 
       // Terrestrial-emitter reception (E1) needs the station's geodetic
       // position; without it the antenna hears ground emitters never
-      antenna.attachStationLocation(config.location.latitude, config.location.longitude);
+      antenna.attachStationLocation(config.location.latitude, config.location.longitude, config.location.elevation);
 
       this.antennas.push(antenna);
     });

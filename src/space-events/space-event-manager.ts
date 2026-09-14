@@ -107,17 +107,18 @@ export class SpaceEventManager {
     return this.events_;
   }
 
-  /** Force the maneuver (used by the tick and by tests) - marks ephemeris stale. */
+  /** Force the maneuver (used by the tick and by tests): the bird moves, the ephemeris goes stale. */
   triggerManeuver(eventId: string): void {
-    if (this.phase_.get(eventId) === 'nominal') {
-      this.phase_.set(eventId, 'stale');
+    const event = this.events_.find((e) => e.id === eventId);
+    if (event && this.phase_.get(eventId) === 'nominal') {
+      this.fireManeuver_(event);
     }
   }
 
   /**
-   * Load the updated ephemeris after a maneuver: reloads the OrbitalSatellite's
-   * TLE (best-effort - only if the sat is present and orbital) and marks the
-   * event updated.
+   * Load the updated ephemeris after a maneuver: puts the station's element
+   * set (and the spacecraft, which is already there) on `newTle` - best-effort,
+   * only if the sat is present and orbital - and marks the event updated.
    */
   applyEphemerisUpdate(eventId: string): void {
     const event = this.events_.find((e) => e.id === eventId);
@@ -151,8 +152,25 @@ export class SpaceEventManager {
     const elapsed = (missionNowMs() - this.missionStartTime_) / 1000;
     for (const event of this.events_) {
       if (elapsed >= event.maneuverAtS && this.phase_.get(event.id) === 'nominal') {
-        this.phase_.set(event.id, 'stale');
+        this.fireManeuver_(event);
       }
+    }
+  }
+
+  /**
+   * The manoeuvre happens: the spacecraft moves onto `newTle` while the
+   * station's element set stays where it was, so program-track points at the
+   * old orbit until the operator loads the update (OrbitalSatellite.maneuverTo).
+   * Marks the event stale so the ephemeris panel shows the notice.
+   */
+  private fireManeuver_(event: SpaceEventConfig): void {
+    this.phase_.set(event.id, 'stale');
+    if (!SimulationManager.hasInstance()) {
+      return;
+    }
+    const sat = SimulationManager.getInstance().satellites.find((s) => s.noradId === event.satelliteNoradId);
+    if (sat instanceof OrbitalSatellite) {
+      sat.maneuverTo(event.newTle.tle1 as TleLine1, event.newTle.tle2 as TleLine2);
     }
   }
 }

@@ -76,6 +76,9 @@ export interface BUCState extends RFFrontEndModuleState {
  * Contains RF physics, state management, signal processing, module coupling
  */
 export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
+  /** Staged cooling fault, degC above the normal thermal target (0 = healthy) */
+  private thermalOffsetC_ = 0;
+
   // Signals
   outputSignals: RfSignal[] = [];
 
@@ -201,6 +204,11 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
     // High temperature alarm
     if (this.state.temperature > 70) {
       alarms.push(`BUC over-temperature (${this.state.temperature.toFixed(1)} °C)`);
+    }
+
+    // Cooling fault staged by a scenario (HardwareFaultManager buc-overtemp)
+    if (this.thermalOffsetC_ > 0) {
+      alarms.push('BUC cooling fault - fan/heatsink degraded');
     }
 
     // High current draw alarm
@@ -457,6 +465,21 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
   }
 
   /**
+   * Extra degC the BUC settles above its normal thermal target - a degraded fan
+   * or heatsink staged by a scenario (HardwareFaultManager `buc-overtemp`).
+   * With the default 40 degC a driven BUC climbs past the 70 degC alarm and a
+   * muted one settles at 65 degC, so muting is the right first move and
+   * powering off (slower cooling, `buc-temperature-normal` needs power) is not.
+   */
+  setThermalOffset(deltaC: number): void {
+    this.thermalOffsetC_ = Math.max(0, deltaC);
+  }
+
+  get thermalOffsetC(): number {
+    return this.thermalOffsetC_;
+  }
+
+  /**
    * Update thermal and operational state
    */
   private updateThermalState_(): void {
@@ -469,11 +492,12 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
       return;
     }
 
-    // Calculate target temperature based on output power
+    // Calculate target temperature based on output power (plus any staged
+    // cooling fault, which lifts the whole curve so the fix is less drive)
     const ambientTemp = 25; // °C
     const powerDissipation = Math.max(0, this.state.outputPower - -10);
     const thermalRise = powerDissipation * 0.8; // °C per dBm above reference
-    const targetTemp = ambientTemp + thermalRise;
+    const targetTemp = ambientTemp + thermalRise + this.thermalOffsetC_;
 
     // Simulate gradual heating (thermal inertia)
     const heatRate = 0.00005; // Slow heating per update

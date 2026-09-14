@@ -3501,6 +3501,69 @@ describe('ObjectivesManager', () => {
       expect(completedCallback).toHaveBeenCalled();
     });
 
+    it('holds a maxCNRatio reading for cnHoldSeconds before it counts', () => {
+      mockReceiverSnr = 3;
+
+      const objectives = [
+        createTestObjective({
+          id: 'fade-obj',
+          conditions: [
+            {
+              type: 'receiver-snr-threshold',
+              description: 'C/N steadily below 5 dB',
+              mustMaintain: false,
+              params: { maxCNRatio: 5, cnHoldSeconds: 2 },
+            },
+          ],
+        }),
+      ];
+
+      const completedCallback = vi.fn();
+      eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
+
+      ObjectivesManager.initialize(objectives);
+      eventBus.emit(Events.UPDATE, 1000);
+      expect(completedCallback).not.toHaveBeenCalled();
+
+      eventBus.emit(Events.UPDATE, 1000);
+      expect(completedCallback).toHaveBeenCalled();
+    });
+
+    it('resets the cnHoldSeconds run on a frame above maxCNRatio', () => {
+      mockReceiverSnr = 3;
+
+      const objectives = [
+        createTestObjective({
+          id: 'transient-obj',
+          conditions: [
+            {
+              type: 'receiver-snr-threshold',
+              description: 'C/N steadily below 5 dB',
+              mustMaintain: false,
+              params: { maxCNRatio: 5, cnHoldSeconds: 2 },
+            },
+          ],
+        }),
+      ];
+
+      const completedCallback = vi.fn();
+      eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
+
+      ObjectivesManager.initialize(objectives);
+      eventBus.emit(Events.UPDATE, 1500);
+
+      // One transient frame back above the ceiling (the 1 s LEO throttle pattern)
+      mockReceiverSnr = 15;
+      eventBus.emit(Events.UPDATE, 16);
+
+      mockReceiverSnr = 3;
+      eventBus.emit(Events.UPDATE, 1500);
+      expect(completedCallback).not.toHaveBeenCalled();
+
+      eventBus.emit(Events.UPDATE, 500);
+      expect(completedCallback).toHaveBeenCalled();
+    });
+
     it('should evaluate receiver-afc-enabled condition (default target: on)', () => {
       (mockReceiverModemState as any).isAfcEnabled = true;
 

@@ -241,6 +241,17 @@ export interface ConditionParams {
    * a band. Optional; existing scenarios use only minCNRatio.
    */
   maxCNRatio?: number;
+  /**
+   * For receiver-snr-threshold: seconds the live C/N must stay inside the
+   * [minCNRatio, maxCNRatio] band continuously before the condition reads
+   * true; a frame outside the band resets the run. Meant for maxCNRatio: the
+   * 1 s satellite position throttle puts one transient low-C/N frame in every
+   * second of a LEO pass, so an unheld "below X dB" latches anywhere in the
+   * pass. Counted in evaluation time like maintainDuration, and applied before
+   * the observation gate so a requiresObservation latch waits for the hold.
+   * Default 0 (latches on the first frame in band).
+   */
+  cnHoldSeconds?: number;
   /** For rx-modem-bandwidth-set: target bandwidth in Hz */
   bandwidth?: number;
   /** For rx-modem-bandwidth-set: bandwidth tolerance in Hz */
@@ -493,4 +504,9 @@ export interface ConditionState {
    * regardless of tab or live value.
    */
   observed?: boolean;
+  /**
+   * For conditions with a cnHoldSeconds hold: seconds the live reading has
+   * been continuously inside the band. Reset to 0 by a frame outside it.
+   */
+  heldSeconds?: number;
 }

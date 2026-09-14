@@ -1169,7 +1169,7 @@ export class ObjectivesManager {
 
       const wasSatisfied = conditionState.isSatisfied;
       this.lastObserved_ = undefined;
-      let isNowSatisfied = this.evaluateCondition_(conditionState.condition, objectiveState);
+      let isNowSatisfied = this.evaluateCondition_(conditionState.condition, objectiveState, dtSeconds);
 
       // Observation gate: a flagged passive condition does not count from
       // ambient simulation state alone. It must be seen on the correct tab
@@ -1379,9 +1379,11 @@ export class ObjectivesManager {
   }
 
   /**
-   * Evaluate a single condition and return whether it's currently satisfied
+   * Evaluate a single condition and return whether it's currently satisfied.
+   * dtSeconds advances any hold the condition carries (cnHoldSeconds); omit it
+   * for a read-only probe that must not touch the hold state.
    */
-  private evaluateCondition_(condition: Condition, objectiveState: ObjectiveState): boolean {
+  private evaluateCondition_(condition: Condition, objectiveState: ObjectiveState, dtSeconds?: number): boolean {
     const sim = SimulationManager.getInstance();
     const gs = this.getGroundStation_(objectiveState);
 
@@ -1978,7 +1980,7 @@ export class ObjectivesManager {
         const hasMax = condition.params?.maxCNRatio !== undefined;
         const minCNRatio = condition.params?.minCNRatio ?? (hasMax ? -Infinity : 10);
         const maxCNRatio = condition.params?.maxCNRatio ?? Infinity;
-        return this.evaluateEquipment_(gs.receivers, condition.params, (receiver) => {
+        const inBand = this.evaluateEquipment_(gs.receivers, condition.params, (receiver) => {
           const modemNum = condition.params?.modemNumber ?? receiver.state.activeModem;
           const modem = receiver.state.modems.find((m) => m.modemNumber === modemNum);
           if (!modem?.isPowered) return false;
@@ -1987,6 +1989,20 @@ export class ObjectivesManager {
           this.observe_(snr);
           return snr !== null && snr >= minCNRatio && snr <= maxCNRatio;
         });
+
+        // cnHoldSeconds: the reading must stay in band for a continuous run
+        // before the condition reads true. Without it a maxCNRatio ceiling
+        // latches on the one transient low frame the 1 s LEO position
+        // throttle puts in every second of a pass. The run lives on the
+        // condition state; a read-only probe (no dtSeconds) leaves it alone.
+        const holdSeconds = condition.params?.cnHoldSeconds ?? 0;
+        if (holdSeconds <= 0) return inBand;
+        const held = objectiveState.conditionStates.find((cs) => cs.condition === condition);
+        if (!held) return inBand;
+        if (dtSeconds !== undefined) {
+          held.heldSeconds = inBand ? (held.heldSeconds ?? 0) + dtSeconds : 0;
+        }
+        return inBand && (held.heldSeconds ?? 0) >= holdSeconds;
       }
 
       case 'receiver-afc-enabled': {

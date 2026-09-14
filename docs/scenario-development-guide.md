@@ -490,7 +490,7 @@ timePenalty: {
 | Condition | Description | Key Params |
 |-----------|-------------|------------|
 | `receiver-signal-locked` | Demodulation lock | `modemNumber` |
-| `receiver-snr-threshold` | C/N ratio meets threshold | `minCNRatio`, `modemNumber` |
+| `receiver-snr-threshold` | C/N ratio meets threshold (or sits at or below `maxCNRatio`) | `minCNRatio`, `maxCNRatio`, `cnHoldSeconds`, `modemNumber` |
 | `rx-modem-frequency-set` | Center frequency set | `frequency`, `frequencyTolerance` |
 | `rx-modem-bandwidth-set` | Bandwidth set | `bandwidth`, `bandwidthTolerance` |
 | `rx-modem-modulation-set` | Modulation type set | `modulation` |

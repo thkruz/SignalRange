@@ -1,5 +1,7 @@
 import { expect, Page, test } from '@playwright/test';
 import { MissionControlPage } from '../pages/mission-control.page';
+import { domClick, waitForObjectiveComplete } from '../utils/ham-sdr-helpers';
+import { answerSystemQuiz, fillAndChange, setRxModemFrequency } from '../utils/nats-eu-helpers';
 import { dismissDialogIfPresent, waitForQuizToAppear, waitForSimulationReady } from '../utils/simulation-helpers';
 
 /**
@@ -14,13 +16,24 @@ import { dismissDialogIfPresent, waitForQuizToAppear, waitForSimulationReady } f
  * existed, and a scenario whose command window opens at its satellite's AOS
  * breaks silently if only one of them advances.
  *
- * Scenario 7 geometry (2027-03-15 14:00:00 UTC start):
- *   MERIDIAN-SAR-1  AOS T+3.2   LOS T+10.3
- *   MERIDIAN-SAR-2  AOS T+18.7  LOS T+26.9
- *   next SAR-1 pass ~T+95
- * So the spec advances to T+30 - past both first passes - which is exactly the
- * dead hour the control exists for.
+ * Scenario 7 geometry (2027-03-15 13:45:00 UTC start, phase 16):
+ *   MERIDIAN-SAR-1  AOS T+18.2  LOS T+25.3
+ *   MERIDIAN-SAR-2  AOS T+33.7  LOS T+40.7  (Shetland sees it to T+43.4)
+ *   next pass at the 5 deg mask: SAR-2 over Galway at T+125
+ * The skip is also blocked while a timed objective runs, and every pre-pass
+ * objective in the phase-16 scenarios is timed, so the spec works through the
+ * pre-pass beats to the untimed acquisition objective, then advances to T+45,
+ * past both first passes - which is exactly the dead hour the control exists for.
  */
+
+/** Stage repeated fine-adjust clicks on one axis. */
+async function jogAxis(page: Page, axisPrefix: 'az-fine' | 'el-fine', delta: number, clicks: number): Promise<void> {
+  const selector = `[id^="${axisPrefix}"] .btn-fine[data-delta="${delta}"]`;
+  await expect(page.locator(selector).first()).toBeVisible({ timeout: 10000 });
+  for (let i = 0; i < clicks; i++) {
+    await domClick(page, selector);
+  }
+}
 
 const SKIP_BUTTON = '#time-skip-control';
 const SKIP_CONFIRM = '#time-skip-confirm-btn';
@@ -96,13 +109,51 @@ test.describe('nats-eu time skip', () => {
     await page.locator('#quiz-continue-btn').click();
     await dismissDialogIfPresent(page);
 
-    // SAR-1 rises ~3 min in, which is inside the scenario's 5 min minSkipS
-    // floor: short waits are part of the job.
+    // The dashboard sweep that follows the brief is a timed objective, and a
+    // timed objective blocks the skip: the operator is being timed on real
+    // work, not waiting for the sky.
     await expect(page.locator(SKIP_BUTTON)).toBeDisabled({ timeout: 15000 });
+    await expect(page.locator(SKIP_BUTTON)).toHaveAttribute('title', /timed objective/i);
+  });
+
+  test('works the pre-pass beats to the untimed acquisition objective', async () => {
+    test.setTimeout(180000);
+    await missionControl.selectGroundStation('GW-01');
+    await missionControl.selectTab('dashboard');
+    await answerSystemQuiz(page, 'No active alarms');
+    await dismissDialogIfPresent(page);
+    await waitForObjectiveComplete(missionControl, 'GW-01 Dashboard Sweep');
+
+    await missionControl.selectTab('gps-timing');
+    await dismissDialogIfPresent(page);
+    await waitForObjectiveComplete(missionControl, 'Reference Check');
+
+    await missionControl.selectTab('pass-schedule');
+    await answerSystemQuiz(page, 'A manoeuvre, immediately');
+    await dismissDialogIfPresent(page);
+    await waitForObjectiveComplete(missionControl, 'Check the Element Sets');
+
+    await setRxModemFrequency(page, missionControl, 1414);
+    await fillAndChange(page, '#sa-center-freq', '1389');
+    await fillAndChange(page, '#sa-span', '2');
+    await dismissDialogIfPresent(page);
+    await waitForObjectiveComplete(missionControl, 'Set Up the Receiver for SAR-1');
+
+    await missionControl.selectTab('acu-control');
+    await jogAxis(page, 'az-fine', -10, 18);
+    await jogAxis(page, 'el-fine', 1, 2);
+    await domClick(page, '[id$="apply-changes-btn"]');
+    await dismissDialogIfPresent(page);
+    await waitForObjectiveComplete(missionControl, 'Pre-position for AOS', 60000);
+
+    // Acquisition has no timer and SAR-1 is a quarter of an hour out: the
+    // dead air before AOS is exactly what the skip is for.
+    await expect(page.locator(SKIP_BUTTON)).toBeEnabled({ timeout: 15000 });
+    await expect(page.locator(SKIP_BUTTON)).toHaveAttribute('title', /MERIDIAN-SAR-1/u);
   });
 
   test('offers the skip once the sky is empty', async () => {
-    await advanceSimClock(page, 30);
+    await advanceSimClock(page, 45);
 
     await expect(page.locator(SKIP_BUTTON)).toBeEnabled({ timeout: 15000 });
     await expect(page.locator(SKIP_BUTTON)).toContainText(/Skip \d/);
@@ -126,7 +177,7 @@ test.describe('nats-eu time skip', () => {
     const scenarioClockDeltaMs = afterSimMs - beforeSimMs;
     const missionClockDeltaMs = afterSkippedMs - beforeSkippedMs;
 
-    // The next SAR-1 pass is ~65 min out from T+30.
+    // The next pass at the mask is SAR-2 over Galway at T+125, ~80 min out from T+45.
     expect(scenarioClockDeltaMs).toBeGreaterThan(30 * 60_000);
 
     // Both clocks advanced together (a few seconds of real time also elapses

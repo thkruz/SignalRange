@@ -235,11 +235,74 @@ export async function assignContact(page: Page, contactId: string, stationId: st
   await select.selectOption({ value: stationId });
 }
 
+/** Retune the transmit modem on the TX Chain tab (MHz) and apply. */
+export async function setTxModemFrequency(page: Page, missionControl: MissionControlPage, mhz: number): Promise<void> {
+  await missionControl.selectTab('tx-chain');
+  await fillAndChange(page, '#tx-frequency-input', String(mhz));
+  await domClick(page, '#tx-apply-btn');
+  await expect(page.locator('#tx-frequency-current')).toContainText(`${mhz.toFixed(1)} MHz`, { timeout: 5000 });
+}
+
+/** Stage a BUC gain (dB) on the TX Chain tab and apply it. */
+export async function setBucGain(page: Page, missionControl: MissionControlPage, gainDb: number): Promise<void> {
+  await missionControl.selectTab('tx-chain');
+  await fillAndChange(page, '#buc-gain', String(gainDb));
+  await domClick(page, '#buc-apply-btn');
+  await expect(page.locator('#buc-gain')).toHaveValue(String(gainDb));
+}
+
+/** Pick a resolution bandwidth on the RX Analysis spectrum analyzer (select values are MHz strings, e.g. '0.01' = 10 kHz). */
+export async function setSpecaRbw(page: Page, missionControl: MissionControlPage, rbwOptionValue: string): Promise<void> {
+  await missionControl.selectTab('rx-analysis');
+  const select = page.locator('#sa-rbw');
+  await expect(select).toBeVisible({ timeout: 10000 });
+  await select.selectOption(rbwOptionValue);
+}
+
+/** Stage repeated fine-adjust clicks on one axis of the selected station's ACU (apply separately). */
+export async function jogAxis(page: Page, axisPrefix: 'az-fine' | 'el-fine', delta: number, clicks: number): Promise<void> {
+  const selector = `[id^="${axisPrefix}"] .btn-fine[data-delta="${delta}"]`;
+  await expect(page.locator(selector).first()).toBeVisible({ timeout: 10000 });
+  for (let i = 0; i < clicks; i++) {
+    await domClick(page, selector);
+  }
+}
+
+/**
+ * Park the selected station's tracker by jogging from its current staged
+ * azimuth/elevation to a target with the ACU fine buttons, then apply. Jogs
+ * in 10 deg steps and finishes with 1 deg steps; both axes.
+ */
+export async function parkAntenna(page: Page, missionControl: MissionControlPage, from: { az: number; el: number }, to: { az: number; el: number }): Promise<void> {
+  await missionControl.selectTab('acu-control');
+  const azDelta = to.az - from.az;
+  const elDelta = to.el - from.el;
+  const azCoarse = Math.trunc(azDelta / 10);
+  const azFine = azDelta - azCoarse * 10;
+  if (azCoarse !== 0) await jogAxis(page, 'az-fine', azCoarse > 0 ? 10 : -10, Math.abs(azCoarse));
+  if (azFine !== 0) await jogAxis(page, 'az-fine', azFine > 0 ? 1 : -1, Math.abs(azFine));
+  if (elDelta !== 0) await jogAxis(page, 'el-fine', elDelta > 0 ? 1 : -1, Math.abs(elDelta));
+  await domClick(page, '[id$="apply-changes-btn"]');
+}
+
 /** Press Load Updated Ephemeris for a space event once its row reads STALE. */
 export async function loadEphemeris(page: Page, missionControl: MissionControlPage, eventId: string, timeoutMs = 60000): Promise<void> {
   await missionControl.selectTab('pass-schedule');
-  const loadBtn = page.locator(`#ephemeris-panel [data-ephemeris-event="${eventId}"]`);
-  await expect(loadBtn).toBeVisible({ timeout: timeoutMs });
-  await domClick(page, `#ephemeris-panel [data-ephemeris-event="${eventId}"]`);
-  await expect(page.locator('#ephemeris-panel .ephemeris-badge-updated')).toBeVisible({ timeout: 10000 });
+  const selector = `#ephemeris-panel [data-ephemeris-event="${eventId}"]`;
+  await expect(page.locator(selector)).toBeVisible({ timeout: timeoutMs });
+
+  // The panel rebuilds its innerHTML on the update tick, so a button resolved
+  // in one round trip and clicked in the next can be detached by the time the
+  // click fires and never reach the delegated handler. Resolve and click in
+  // one page task, and retry if a re-render swallowed it.
+  const updated = page.locator('#ephemeris-panel .ephemeris-badge-updated');
+  for (let attempt = 0; attempt < 5; attempt++) {
+    await page.evaluate((sel) => (document.querySelector(sel) as HTMLElement | null)?.click(), selector);
+    const ok = await updated
+      .waitFor({ state: 'visible', timeout: 3000 })
+      .then(() => true)
+      .catch(() => false);
+    if (ok) return;
+  }
+  await expect(updated).toBeVisible({ timeout: 10000 });
 }

@@ -196,10 +196,12 @@ export class MissionControlPage extends BasePage {
     const exactTab = this.tabBar.locator(`.nav-link[data-tab-id="${tabId}"]`);
     const prefixTab = this.tabBar.locator(`.nav-link[data-tab-id^="${tabId}-"]`);
 
+    // DOM click: a quiz modal or dialog that surfaces mid-step must not hold a
+    // pointer click hostage until the test times out (phase 16 S12 finding).
     if ((await exactTab.count()) > 0) {
-      await exactTab.click();
+      await exactTab.evaluate((el) => (el as HTMLElement).click());
     } else {
-      await prefixTab.first().click();
+      await prefixTab.first().evaluate((el) => (el as HTMLElement).click());
     }
   }
 

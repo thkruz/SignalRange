@@ -1,97 +1,37 @@
-import { expect, Locator, Page, test } from '@playwright/test';
+import { expect, Page, test } from '@playwright/test';
 import { MissionControlPage } from '../pages/mission-control.page';
-import { dismissDialogIfPresent, waitForQuizToAppear, waitForSimulationReady } from '../utils/simulation-helpers';
+import { advanceMissionClockToUtc, domClick, waitForObjectiveComplete } from '../utils/ham-sdr-helpers';
+import { answerSystemQuiz, closeWorkingDocumentIfOpen, fillAndChange, programTrack, setRxModemFrequency } from '../utils/nats-eu-helpers';
+import { dismissDialogIfPresent, waitForSimulationReady } from '../utils/simulation-helpers';
 
 /**
- * nats-eu Scenario 1 "First Light Over Galway" - full completion.
+ * nats-eu Scenario 1 "First Light Over Galway" - full completion (phase 16).
  *
- * Unlike the GEO scenarios, objectives here are separated by LEO pass
- * geometry: MERIDIAN-SAR-1 rises at T+2 min and the >= 8 dB decode window is
- * roughly T+6..T+10; MERIDIAN-SAR-2's window is T+22..T+26 (envelope locked
- * by test/campaigns/nats-eu-rf-validation.test.ts). Waiting wall-clock for
- * that is not viable in CI, so the spec drives the scenario clock with the
- * window.advanceSimClock developer hook (OpsLogManager) - all orbital physics
- * read absolute sim time and follow on the next tick.
+ * The whole shift, not just the pass: a station sweep and receiver set-up in
+ * the fifteen minutes before AOS, the SAR-1 pass, the retune between contacts,
+ * the SAR-2 pass, and the shift log. Sim clock starts 2027-03-15 13:48:00Z:
+ *   MERIDIAN-SAR-1  AOS 14:03:10Z (5 deg mask)  max el 28.0 at 14:06:45Z  LOS 14:10:18Z
+ *   MERIDIAN-SAR-2  AOS 14:18:42Z               max el 25.0 at 14:22:10Z  LOS 14:25:40Z
  *
- * Completion is verified by reading the actual checklist `.objective-item`
- * state class (the shared waitForObjectiveCompleted helper keys off a quiz
- * button that is absent for these mostly quiz-free objectives). The final
- * objective waits on the Mission Complete modal instead, since it freezes the
- * checklist the moment it appears.
+ * Pre-pass objectives carry 1.5-4 min timers that run on real time, so each
+ * pre-pass step below completes well inside its window. The specs jump with
+ * advanceMissionClockToUtc (sim + mission clock together) to each pass
+ * segment; the dev hook does not decrement objective timers.
  *
- * Objective flow:
- * 1. review-mission-brief  - open brief + SYSTEM readiness quiz
- * 2. review-pass-schedule  - Pass Schedule tab
- * 3. track-meridian-1      - program-track SAR-1 + beacon observed on RX analysis
- * 4. decode-sar-video      - RX lock + C/N >= 8 dB observed during the window
- * 5. second-contact        - OPTIONAL (isOptional), deliberately NOT driven
- *
- * second-contact is isOptional, so the completion gate
- * (areAllObjectivesCompleted) ignores it: Mission Complete pops as soon as
- * decode-sar-video finishes. This spec leaves it untouched on purpose and
- * asserts it is still incomplete when the modal is up, which is the
- * regression check for optional objectives blocking completion.
+ * Objective flow (15):
+ *  1. review-mission-brief    2. dashboard-sweep      3. reference-check
+ *  4. downconversion-plan     5. tune-receiver        6. analyzer-on-beacon
+ *  7. review-pass-schedule    8. preposition-for-aos  9. acquire-sar1
+ * 10. lock-the-downlink      11. read-the-culmination 12. retune-for-sar2
+ * 13. acquire-sar2           14. decode-sar2          15. log-first-light
  */
 
-/**
- * Answer a SYSTEM status-check quiz and dismiss the "Correct!" feedback.
- *
- * A correct answer renders a #quiz-continue-btn inside #quiz-feedback that
- * emits QUIZ_COMPLETED (the shared answerQuizByText helper's broad Continue
- * selector can miss it), so click the option then that specific button.
- * Objective completion is asserted by the caller via the checklist state.
- */
-async function answerReadinessQuiz(page: Page, answerText: string): Promise<void> {
-  await waitForQuizToAppear(page);
-
-  const option = page.locator('.quiz-option-btn', { hasText: answerText });
-  await expect(option).toBeVisible({ timeout: 10000 });
-  await option.click();
-
-  const feedbackContinue = page.locator('#quiz-continue-btn');
-  await expect(feedbackContinue).toBeVisible({ timeout: 5000 });
-  await feedbackContinue.click();
-}
-
-/** Jump the scenario clock forward (sim minutes) and let the sim settle. */
-async function advanceSimClock(page: Page, minutes: number): Promise<void> {
-  await page.waitForFunction(() => typeof (window as any).advanceSimClock === 'function');
-  await page.evaluate((ms) => (window as any).advanceSimClock(ms), minutes * 60_000);
-  await page.waitForTimeout(3000); // pedestal slews onto the post-jump geometry
-}
-
-/** The checklist `.objective-item` whose title matches, regardless of collapse. */
-function objectiveItem(missionControl: MissionControlPage, title: string): Locator {
-  return missionControl.objectivesChecklist.locator('.objective-item', { hasText: title });
-}
-
-/** Poll the checklist until the named objective carries the `completed` class. */
-async function waitForObjectiveComplete(missionControl: MissionControlPage, title: string, timeout = 45000): Promise<void> {
-  if (!(await missionControl.objectivesChecklist.isVisible().catch(() => false))) {
-    await missionControl.openChecklist();
-  }
-  await expect(objectiveItem(missionControl, title)).toHaveClass(/completed/, { timeout });
-}
-
-/** Enable program-track on the ACU tab, then select the target satellite. */
-async function programTrack(page: Page, missionControl: MissionControlPage, noradId: string): Promise<void> {
-  await missionControl.selectTab('acu-control');
-
-  // The target selector only becomes visible once program-track mode is chosen
-  const modeButton = page.locator('.btn-tracking[data-mode="program-track"]');
-  await expect(modeButton).toBeVisible({ timeout: 10000 });
-  await modeButton.click();
-  await page.waitForTimeout(300);
-
-  const satelliteSelect = page.locator('select[id$="satellite-select"]');
-  await expect(satelliteSelect).toBeVisible({ timeout: 10000 });
-  await satelliteSelect.selectOption({ value: noradId });
-
-  const moveBtn = page.locator('button[id$="move-to-target-btn"]');
-  if (await moveBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
-    if (await moveBtn.isEnabled().catch(() => false)) {
-      await moveBtn.click();
-    }
+/** Stage repeated fine-adjust clicks on one axis, then apply. */
+async function jogAxis(page: Page, axisPrefix: 'az-fine' | 'el-fine', delta: number, clicks: number): Promise<void> {
+  const selector = `[id^="${axisPrefix}"] .btn-fine[data-delta="${delta}"]`;
+  await expect(page.locator(selector).first()).toBeVisible({ timeout: 10000 });
+  for (let i = 0; i < clicks; i++) {
+    await domClick(page, selector);
   }
 }
 
@@ -128,49 +68,129 @@ test.describe('nats-eu Scenario 1 Full Completion', () => {
     test.setTimeout(120000);
   });
 
-  test('[review-mission-brief] opens the shift brief and confirms readiness', async () => {
+  test('[review-mission-brief] opens the shift brief and starts the sweep', async () => {
     await missionControl.openMissionBrief();
     await missionControl.closeMissionBrief();
 
-    await answerReadinessQuiz(page, 'Yes, brief reviewed. Ready for AOS.');
+    await answerSystemQuiz(page, 'Starting the pre-pass sweep');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Review the Shift Brief');
   });
 
-  test('[review-pass-schedule] reviews the contact schedule', async () => {
+  test('[dashboard-sweep] confirms a clean board', async () => {
     // Station tabs render only after GW-01 is selected in the asset tree
     await missionControl.selectGroundStation('GW-01');
+    await missionControl.selectTab('dashboard');
+    await answerSystemQuiz(page, 'No active alarms');
+    await dismissDialogIfPresent(page);
+    await waitForObjectiveComplete(missionControl, 'GW-01 Dashboard Sweep');
+  });
+
+  test('[reference-check] observes the GPSDO locked and out of holdover', async () => {
+    await missionControl.selectTab('gps-timing');
+    await dismissDialogIfPresent(page);
+    await waitForObjectiveComplete(missionControl, 'Reference Check');
+  });
+
+  test('[downconversion-plan] reads the LNB LO and does the IF arithmetic', async () => {
+    await missionControl.selectTab('rx-analysis');
+    await answerSystemQuiz(page, '1414 MHz (LO minus RF');
+    await dismissDialogIfPresent(page);
+    await waitForObjectiveComplete(missionControl, 'Confirm the Ku Downconversion Plan');
+  });
+
+  test('[tune-receiver] retunes modem 1 from the test carrier to the imagery downlink', async () => {
+    await missionControl.selectTab('rx-analysis');
+    const freq = page.locator('#frequency-input');
+    await expect(freq).toBeVisible({ timeout: 10000 });
+    await freq.fill('1414');
+    await page.locator('#bandwidth-input').fill('36');
+    await page.locator('#modulation-select').selectOption('QPSK');
+    await page.locator('#fec-select').selectOption('3/4');
+    await domClick(page, '#apply-btn');
+    await dismissDialogIfPresent(page);
+    await waitForObjectiveComplete(missionControl, 'Tune the Receiver for SAR-1');
+  });
+
+  test('[analyzer-on-beacon] centres the analyzer on the beacon with a Doppler-wide span', async () => {
+    await missionControl.selectTab('rx-analysis');
+    await fillAndChange(page, '#sa-center-freq', '1389');
+    await fillAndChange(page, '#sa-span', '2');
+    await answerSystemQuiz(page, 'Doppler walks the beacon');
+    await dismissDialogIfPresent(page);
+    await waitForObjectiveComplete(missionControl, 'Analyzer on the SAR-1 Beacon');
+  });
+
+  test('[review-pass-schedule] reads AOS off the schedule', async () => {
     await missionControl.selectTab('pass-schedule');
+    await answerSystemQuiz(page, '14:03, azimuth 000');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Review the Contact Schedule');
   });
 
-  test('[track-meridian-1] program-tracks SAR-1 and observes the beacon', async () => {
-    // Jump into the SAR-1 pass (AOS T+2) so the bird is up before targeting it
-    await advanceSimClock(page, 4);
-
-    await programTrack(page, missionControl, '61701');
-
-    // Beacon detection requires observation on the RX analysis tab
-    await missionControl.selectTab('rx-analysis');
+  test('[preposition-for-aos] slews the stowed tracker to the rise azimuth', async () => {
+    await missionControl.selectTab('acu-control');
+    // Stowed at az 180 / el 3; the rise is az 000 / el 5 (tolerance 3 deg).
+    await jogAxis(page, 'az-fine', -10, 18);
+    await jogAxis(page, 'el-fine', 1, 2);
+    await domClick(page, '[id$="apply-changes-btn"]');
     await dismissDialogIfPresent(page);
-    await waitForObjectiveComplete(missionControl, 'Track MERIDIAN-SAR-1');
+    // 180 deg at 20 deg/s is nine seconds of slew
+    await waitForObjectiveComplete(missionControl, 'Pre-position for AOS', 60000);
   });
 
-  test('[decode-sar-video] holds RX lock with C/N above 8 dB', async () => {
-    // Modem 1 is pre-tuned to 1414 MHz; observing on RX analysis latches
-    // receiver-signal-locked and receiver-snr-threshold. Select the tab BEFORE
-    // jumping the clock: the objective can complete on the very next tick, and
-    // the Mission Complete modal it pops would intercept any later click.
+  test('[acquire-sar1] program-tracks SAR-1 and observes the beacon', async () => {
+    await advanceMissionClockToUtc(page, '2027-03-15T14:03:40Z');
+    await programTrack(page, missionControl, '61701');
     await missionControl.selectTab('rx-analysis');
     await dismissDialogIfPresent(page);
+    await waitForObjectiveComplete(missionControl, 'Acquire MERIDIAN-SAR-1', 60000);
+  });
 
-    // Move to the high-elevation segment (C/N crosses 8 dB near 25 deg el)
-    await advanceSimClock(page, 2.5);
+  test('[lock-the-downlink] holds RX lock with C/N above 8 dB', async () => {
+    await missionControl.selectTab('rx-analysis');
+    await advanceMissionClockToUtc(page, '2027-03-15T14:05:40Z');
+    await dismissDialogIfPresent(page);
+    await waitForObjectiveComplete(missionControl, 'Lock the Imagery Downlink', 60000);
+  });
 
-    // decode-sar-video is the last REQUIRED objective; its completion pops the
-    // Mission Complete modal (which freezes the checklist), so wait on the
-    // modal itself rather than the checklist objective-item class.
+  test('[read-the-culmination] reads C/N at the top of the pass and the Doppler crossing', async () => {
+    await missionControl.selectTab('rx-analysis');
+    await advanceMissionClockToUtc(page, '2027-03-15T14:06:40Z');
+    await answerSystemQuiz(page, 'Approach raises the RF');
+    await dismissDialogIfPresent(page);
+    await waitForObjectiveComplete(missionControl, 'Read the Pass at Culmination', 60000);
+  });
+
+  test('[retune-for-sar2] retunes the receiver and analyzer after LOS', async () => {
+    await advanceMissionClockToUtc(page, '2027-03-15T14:11:00Z');
+    await setRxModemFrequency(page, missionControl, 1370);
+    await fillAndChange(page, '#sa-center-freq', '1397');
+    await answerSystemQuiz(page, 'Imagery 1370 MHz, beacon 1397 MHz; AOS 14:18');
+    await dismissDialogIfPresent(page);
+    await waitForObjectiveComplete(missionControl, 'Retune for SAR-2');
+  });
+
+  test('[acquire-sar2] retargets the tracker and acquires SAR-2', async () => {
+    await programTrack(page, missionControl, '61702');
+    await advanceMissionClockToUtc(page, '2027-03-15T14:19:20Z');
+    await missionControl.selectTab('rx-analysis');
+    await dismissDialogIfPresent(page);
+    await waitForObjectiveComplete(missionControl, 'Acquire MERIDIAN-SAR-2', 60000);
+  });
+
+  test('[decode-sar2] decodes the second contact above 8 dB', async () => {
+    await missionControl.selectTab('rx-analysis');
+    await advanceMissionClockToUtc(page, '2027-03-15T14:21:40Z');
+    await dismissDialogIfPresent(page);
+    await waitForObjectiveComplete(missionControl, 'Decode the Second Contact', 60000);
+  });
+
+  test('[log-first-light] writes the shift log and completes', async () => {
+    await closeWorkingDocumentIfOpen(page);
+    await answerSystemQuiz(page, 'peak ~11 dB at 28 degrees');
+    // Last objective: its completion pops the Mission Complete modal, which
+    // freezes the checklist, so wait on the modal rather than the row.
     await expect(page.locator('#level-complete-modal')).toBeVisible({ timeout: 45000 });
   });
 
@@ -185,13 +205,5 @@ test.describe('nats-eu Scenario 1 Full Completion', () => {
     await expect(totalScore).toBeVisible();
     const score = parseInt((await totalScore.textContent()) || '0', 10);
     expect(score).toBeGreaterThan(0);
-  });
-
-  test('optional second-contact objective was never completed', async () => {
-    // The modal is up, so the checklist is frozen in its final state: the
-    // optional objective must still be open, proving it did not gate completion.
-    const secondContact = page.locator('.objective-item', { hasText: 'Capture the Second Contact' });
-    await expect(secondContact).toHaveCount(1);
-    await expect(secondContact).not.toHaveClass(/completed/);
   });
 });

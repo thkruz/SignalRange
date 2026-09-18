@@ -19,6 +19,7 @@ import { FaultInjector } from '@app/faults';
 import { GnssThreatManager } from '@app/gnss-threat/gnss-threat-manager';
 import { InterferenceManager } from '@app/interference/interference-manager';
 import { SecurityConsoleCore } from '@app/security-console/security-console-core';
+import { TelemetryManager } from '@app/telemetry/telemetry-manager';
 import { WeatherManager } from '@app/weather/weather-manager';
 import { DecisionFactRule, EVIDENCE_FACT_IDS, EvidenceFactId, OBSERVATION_DWELL_GRACE_SECONDS } from './objective-types';
 
@@ -86,6 +87,12 @@ export const EVIDENCE_FACTS: Record<EvidenceFactId, EvidenceFactResolver> = {
   'command-window-open': () => CommandingManager.isInitialized() && CommandingManager.getInstance().isWindowOpen(),
 
   'evidence-chain-intact': () => !SecurityConsoleCore.isInitialized() || SecurityConsoleCore.getInstance().droppedEvidence.length === 0,
+
+  'soh-red-limit': () => TelemetryManager.isInitialized() && TelemetryManager.getInstance().hasBand('red'),
+
+  'soh-yellow-limit': () => TelemetryManager.isInitialized() && TelemetryManager.getInstance().hasBand('yellow'),
+
+  'telemetry-stale': () => TelemetryManager.isInitialized() && TelemetryManager.getInstance().isStale,
 
   'uplink-jammed': () => CommandingManager.isInitialized() && CommandingManager.getInstance().isUplinkJammed(),
 };

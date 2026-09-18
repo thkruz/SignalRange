@@ -31,6 +31,7 @@ import { SimulationManager } from '@app/simulation/simulation-manager';
 import { SpaceEventManager } from '@app/space-events/space-event-manager';
 import { syncEquipmentWithStore } from '@app/sync';
 import { AppState, syncManager } from '@app/sync/storage';
+import { TelemetryManager } from '@app/telemetry/telemetry-manager';
 import { TransecManager } from '@app/transec/transec-manager';
 import { Auth } from '@app/user-account/auth';
 import { WeatherManager } from '@app/weather/weather-manager';
@@ -332,6 +333,7 @@ export class MissionControlPage extends BasePage {
     SecurityConsoleCore.destroy();
     TransecManager.destroy();
     GnssThreatManager.destroy();
+    TelemetryManager.destroy();
     QuizModal.destroy();
     DecisionModal.destroy();
     DecisionManager.destroy();

@@ -23,6 +23,7 @@ import { SecurityConsoleCore } from '@app/security-console/security-console-core
 import { SimulationManager } from '@app/simulation/simulation-manager';
 import { SpaceEventManager } from '@app/space-events/space-event-manager';
 import { AppState, clearPersistedStore, syncEquipmentWithStore, syncManager } from '@app/sync/storage';
+import { TelemetryManager } from '@app/telemetry/telemetry-manager';
 import { TransecManager } from '@app/transec/transec-manager';
 import { WeatherManager } from '@app/weather/weather-manager';
 import { BasePage } from './base-page';
@@ -198,6 +199,7 @@ export class SandboxPage extends BasePage {
     SecurityConsoleCore.destroy();
     TransecManager.destroy();
     GnssThreatManager.destroy();
+    TelemetryManager.destroy();
     QuizModal.destroy();
     EventBus.destroy();
     const container = getEl(SandboxPage.containerId);

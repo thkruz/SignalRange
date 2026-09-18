@@ -30,6 +30,7 @@ import { SecurityConsoleCore } from '@app/security-console/security-console-core
 import { SimulationManager } from '@app/simulation/simulation-manager';
 import { SpaceEventManager } from '@app/space-events/space-event-manager';
 import { AppState } from '@app/sync/storage';
+import { TelemetryManager } from '@app/telemetry/telemetry-manager';
 import { TransecManager } from '@app/transec/transec-manager';
 import { ProgressSaveManager } from '@app/user-account/progress-save-manager';
 import { ScenarioProgressEntry } from '@app/user-account/types';
@@ -156,6 +157,9 @@ export abstract class BasePage extends BaseElement {
       }
       if (scenario.settings.gnssThreat) {
         GnssThreatManager.getInstance();
+      }
+      if (scenario.settings.telemetry) {
+        TelemetryManager.getInstance();
       }
 
       // Initialize quiz modal for status-check objective conditions

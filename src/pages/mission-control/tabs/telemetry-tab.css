@@ -1,0 +1,60 @@
+/* Spacecraft telemetry tab (phase 18 E) */
+
+.telemetry-tab {
+  padding: 0.75rem;
+}
+
+.telemetry-tab .tlm-title {
+  font-size: 1.1rem;
+  margin: 0;
+  color: var(--mc-text-primary);
+}
+
+.telemetry-tab .tlm-table th {
+  font-size: 0.75rem;
+  color: var(--mc-text-muted, #6b6b6b);
+  text-transform: uppercase;
+  letter-spacing: 0.25px;
+}
+
+.telemetry-tab .tlm-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem 0.625rem;
+  border-radius: 9999px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  font-family: 'JetBrains Mono', monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.25px;
+  min-width: 4.5rem;
+}
+
+.telemetry-tab .tlm-badge-muted {
+  background-color: rgba(75, 75, 75, 0.15);
+  color: var(--mc-text-muted, #6b6b6b);
+  border: 1px solid rgba(75, 75, 75, 0.3);
+}
+
+.telemetry-tab .tlm-badge-good {
+  background-color: rgba(34, 197, 94, 0.15);
+  color: #22c55e;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.telemetry-tab .tlm-badge-warn {
+  background-color: rgba(234, 179, 8, 0.15);
+  color: #eab308;
+  border: 1px solid rgba(234, 179, 8, 0.3);
+}
+
+.telemetry-tab .tlm-badge-bad {
+  background-color: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.telemetry-tab .tlm-stale {
+  opacity: 0.6;
+}

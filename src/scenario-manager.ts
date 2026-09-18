@@ -1,6 +1,9 @@
 import { GroundStationConfig } from '@app/assets/ground-station/ground-station-state';
 import { ccsScenario1Data } from '@app/campaigns/ccs/scenario1';
 import { ccsScenario2Data } from '@app/campaigns/ccs/scenario2';
+import { ccsScenario3Data } from '@app/campaigns/ccs/scenario3';
+import { ccsScenario4Data } from '@app/campaigns/ccs/scenario4';
+import { ccsScenario5Data } from '@app/campaigns/ccs/scenario5';
 import { hamSdrSandboxData } from '@app/campaigns/ham-sdr/sandbox';
 import { hamSdrScenario1Data } from '@app/campaigns/ham-sdr/scenario1';
 import { hamSdrScenario2Data } from '@app/campaigns/ham-sdr/scenario2';
@@ -321,6 +324,16 @@ export interface SimulationSettings {
      * ('uplink-jammed') until TRANSEC is hopping with sync locked.
      */
     uplinkFrequencyHz?: number;
+    /**
+     * Phase 18 E: ranging. A RANGE tone through the command path records the
+     * true slant range to the target; requiredMeasurements of them make an
+     * orbit-determination solution (ranging-measurements condition).
+     */
+    ranging?: {
+      requiredMeasurements: number;
+      /** Command id the tone is logged under (default 'RANGE') */
+      toneId?: string;
+    };
   };
 
   /** M3: multi-station pass scheduling. Starts ContactScheduleManager. */
@@ -421,6 +434,50 @@ export interface SimulationSettings {
     hopChannelsHz?: number[];
     /** Whether a hop-set key must be loaded for sync to lock (default true) */
     requireKey?: boolean;
+  };
+
+  /**
+   * Phase 18 E: read-only spacecraft state-of-health telemetry from one
+   * satellite, with limit bands and scripted excursions. Starts
+   * TelemetryManager and the Telemetry tab. Mirror of TelemetryConfig in
+   * telemetry/telemetry-manager.ts.
+   */
+  telemetry?: {
+    groundStationId: string;
+    satelliteNoradId: number;
+    /** Antenna that must be locked on the bird for frames to flow (default: any) */
+    antennaIndex?: number;
+    /** Frames per second of mission time (default 1) */
+    frameRateHz?: number;
+    /** Seconds without a frame before the stream reads STALE (default 10) */
+    staleAfterS?: number;
+    /** Pointing tolerance (deg) for a manually pointed antenna to count as linked (default 1.5) */
+    pointingToleranceDeg?: number;
+    channels: Array<{
+      id: string;
+      label: string;
+      unit: string;
+      subsystem: string;
+      nominal: number;
+      noise?: number;
+      yellowLow?: number;
+      yellowHigh?: number;
+      redLow?: number;
+      redHigh?: number;
+      decimals?: number;
+    }>;
+    excursions?: Array<{
+      id: string;
+      channelId: string;
+      startTime: number;
+      duration?: number;
+      rampToValue: number;
+      rampSeconds?: number;
+      /** Ends when this command ACKs; recovers over recoverySeconds */
+      endsOnCommandId?: string;
+      recoverySeconds?: number;
+      label?: string;
+    }>;
   };
 
   /** M8: GNSS spoofing / timing attack. Starts GnssThreatManager. */
@@ -553,6 +610,9 @@ export const SCENARIOS: ScenarioData[] = [
   signalHunterScenario1Data,
   ccsScenario1Data,
   ccsScenario2Data,
+  ccsScenario3Data,
+  ccsScenario4Data,
+  ccsScenario5Data,
 ];
 
 export function isScenarioLocked(scenario: ScenarioData, completedScenarioIds: string[]): boolean {

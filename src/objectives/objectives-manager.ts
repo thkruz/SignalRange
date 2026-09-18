@@ -29,6 +29,7 @@ import { SecurityConsoleCore } from '@app/security-console/security-console-core
 import { missionNowMs } from '@app/simulation/mission-clock';
 import { SimulationManager } from '@app/simulation/simulation-manager';
 import { SpaceEventManager } from '@app/space-events/space-event-manager';
+import { TelemetryManager } from '@app/telemetry/telemetry-manager';
 import { TrafficControlManager } from '@app/traffic/traffic-control-manager';
 import { TransecManager } from '@app/transec/transec-manager';
 import { Milliseconds } from 'ootk';
@@ -2775,6 +2776,39 @@ export class ObjectivesManager {
       case 'campaign-document-reviewed': {
         // The campaign record (earlier scenarios' Working Documents) has been opened this run
         return CampaignDocumentStore.isReviewed;
+      }
+
+      case 'telemetry-frames-received': {
+        if (!TelemetryManager.isInitialized()) return false;
+        const count = TelemetryManager.getInstance().frameCount;
+        this.observe_({ frames: count });
+        return count >= (condition.params?.minFrames ?? 1);
+      }
+
+      case 'telemetry-channel-in-band': {
+        // A channel reads in the target band. Pair with requiresObservation on
+        // the telemetry tab so the read counts. Stale streams never match.
+        if (!TelemetryManager.isInitialized()) return false;
+        const channelId = condition.params?.channelId;
+        if (!channelId) return false;
+        const mgr = TelemetryManager.getInstance();
+        const reading = mgr.getReading(channelId);
+        if (!reading || mgr.isStale) return false;
+        this.observe_({ channelId, value: Number(reading.value.toFixed(reading.decimals)), band: reading.band });
+        return reading.band === (condition.params?.telemetryBand ?? 'green');
+      }
+
+      case 'telemetry-soh-nominal': {
+        if (!TelemetryManager.isInitialized()) return false;
+        return TelemetryManager.getInstance().isSohNominal();
+      }
+
+      case 'ranging-measurements': {
+        if (!CommandingManager.isInitialized()) return false;
+        const mgr = CommandingManager.getInstance();
+        const count = mgr.state.rangingMeasurements.length;
+        this.observe_({ measurements: count });
+        return count >= (condition.params?.minCount ?? mgr.getConfig().ranging?.requiredMeasurements ?? 1);
       }
 
       case 'gpsdo-time-offset-stable': {

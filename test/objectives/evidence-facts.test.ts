@@ -16,6 +16,13 @@ const security = {
   dropped: [] as { id: string }[],
 };
 const commanding = { initialized: false, windowOpen: false, jammed: false };
+const telemetry = { initialized: false, red: false, yellow: false, stale: false };
+vi.mock('../../src/telemetry/telemetry-manager', () => ({
+  TelemetryManager: {
+    isInitialized: () => telemetry.initialized,
+    getInstance: () => ({ hasBand: (band: string) => (band === 'red' ? telemetry.red : telemetry.yellow), isStale: telemetry.stale }),
+  },
+}));
 
 vi.mock('../../src/interference/interference-manager', () => ({
   InterferenceManager: {
@@ -83,6 +90,10 @@ beforeEach(() => {
   security.log = [];
   security.acked = new Set();
   commanding.initialized = false;
+  telemetry.initialized = false;
+  telemetry.red = false;
+  telemetry.yellow = false;
+  telemetry.stale = false;
   commanding.windowOpen = false;
   commanding.jammed = false;
 });
@@ -162,6 +173,18 @@ describe('evidence facts - resolvers', () => {
     security.dropped = [{ id: 'evt-kg-replay-log' }];
     expect(EVIDENCE_FACTS['evidence-chain-intact'](ctx())).toBe(false);
     security.dropped = [];
+  });
+
+  it('soh-red-limit, soh-yellow-limit and telemetry-stale read the telemetry manager', () => {
+    telemetry.initialized = true;
+    expect(EVIDENCE_FACTS['soh-red-limit'](ctx())).toBe(false);
+    telemetry.yellow = true;
+    expect(EVIDENCE_FACTS['soh-yellow-limit'](ctx())).toBe(true);
+    expect(EVIDENCE_FACTS['soh-red-limit'](ctx())).toBe(false);
+    telemetry.red = true;
+    expect(EVIDENCE_FACTS['soh-red-limit'](ctx())).toBe(true);
+    telemetry.stale = true;
+    expect(EVIDENCE_FACTS['telemetry-stale'](ctx())).toBe(true);
   });
 
   it('command-window-open and uplink-jammed read the commanding manager', () => {

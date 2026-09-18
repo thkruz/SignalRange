@@ -28,6 +28,21 @@ vi.mock('../../src/interference/interference-manager', () => ({
   },
 }));
 
+const sim = { has: false, rangeKm: 38412.3 };
+vi.mock('../../src/simulation/simulation-manager', () => ({
+  SimulationManager: {
+    hasInstance: () => sim.has,
+    getInstance: () => ({
+      getSatByNoradId: (id: number) => (id === 61702 ? { rangeKm: sim.rangeKm } : undefined),
+      groundStations: [{ state: { id: 'GW-01', location: { latitude: 53.27, longitude: -9.05, elevation: 20 } } }],
+    }),
+  },
+}));
+vi.mock('../../src/equipment/satellite/orbital-satellite', () => ({
+  OrbitalSatellite: class {},
+  observerFromLocation: () => ({}),
+}));
+
 const transec = { initialized: false, synced: false };
 vi.mock('../../src/transec/transec-manager', () => ({
   TransecManager: {
@@ -109,5 +124,55 @@ describe('CommandingManager - uplink jamming', () => {
     commandingConfig.uplinkFrequencyHz = 14035e6;
     interference.initialized = false;
     expect(CommandingManager.getInstance().isUplinkJammed()).toBe(false);
+  });
+});
+
+describe('CommandingManager - ranging (phase 18 E)', () => {
+  beforeEach(() => {
+    for (const key of Object.keys(commandingConfig)) delete commandingConfig[key];
+    Object.assign(commandingConfig, { targetNoradId: 61702, groundStationId: 'GW-01', requireDopplerComp: false, requireValidKey: false, ranging: { requiredMeasurements: 3 } });
+    interference.initialized = false;
+    transec.initialized = false;
+    sim.has = true;
+    sim.rangeKm = 38412.3;
+    CommandingManager.destroy();
+  });
+
+  it('a ranging tone is gated like a command and records the slant range when it ACKs', () => {
+    const mgr = CommandingManager.getInstance();
+    const record = mgr.sendRangingTone(10);
+    expect(record.id).toBe('RANGE');
+    expect(record.status).toBe('acked');
+    expect(record.rangeKm).toBeCloseTo(38412.3, 3);
+    expect(mgr.state.rangingMeasurements).toEqual([{ elapsedS: 10, rangeKm: 38412.3 }]);
+    expect(mgr.isRangingSolutionReady()).toBe(false);
+
+    sim.rangeKm = 38410.9;
+    mgr.sendRangingTone(70);
+    mgr.sendRangingTone(130);
+    // condition ranging-measurements reads state.rangingMeasurements.length against requiredMeasurements
+    expect(mgr.state.rangingMeasurements.map((m) => m.rangeKm)).toEqual([38412.3, 38410.9, 38410.9]);
+    expect(mgr.isRangingSolutionReady()).toBe(true);
+  });
+
+  it('a rejected tone records nothing', () => {
+    commandingConfig.windowStartS = 100;
+    const mgr = CommandingManager.getInstance();
+    const record = mgr.sendRangingTone(10);
+    expect(record.status).toBe('rejected');
+    expect(record.reason).toBe('out-of-window');
+    expect(record.rangeKm).toBeUndefined();
+    expect(mgr.state.rangingMeasurements).toHaveLength(0);
+  });
+
+  it('uses the configured tone id and records nothing when the target is unknown to the simulation', () => {
+    commandingConfig.ranging = { requiredMeasurements: 1, toneId: 'RNG-TONE' };
+    commandingConfig.targetNoradId = 99999;
+    const mgr = CommandingManager.getInstance();
+    const record = mgr.sendRangingTone(5);
+    expect(record.id).toBe('RNG-TONE');
+    expect(record.status).toBe('acked');
+    expect(record.rangeKm).toBeUndefined();
+    expect(mgr.isRangingSolutionReady()).toBe(false);
   });
 });

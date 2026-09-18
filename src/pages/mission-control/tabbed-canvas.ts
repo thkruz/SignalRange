@@ -33,6 +33,7 @@ import { RxAnalysisTab } from '@app/pages/mission-control/tabs/rx-analysis-tab';
 import { SatelliteDashboardTab } from '@app/pages/mission-control/tabs/satellite-dashboard-tab';
 import { SdrConsoleTab } from '@app/pages/mission-control/tabs/sdr-console-tab';
 import { SecurityConsoleTab } from '@app/pages/mission-control/tabs/security-console-tab';
+import { TelemetryTab } from '@app/pages/mission-control/tabs/telemetry-tab';
 import { TxChainTab } from '@app/pages/mission-control/tabs/tx-chain-tab';
 
 /** A single entry in the tab bar. */
@@ -83,6 +84,7 @@ export class TabbedCanvas extends BaseElement {
     | EaAssessmentTab
     | LinkBudgetTab
     | CommandingTab
+    | TelemetryTab
     | ContactScheduleTab
     | SecurityConsoleTab
     | GroundTrackTab
@@ -306,6 +308,9 @@ export class TabbedCanvas extends BaseElement {
     if (settings.contactSchedule) {
       tabs.push({ id: 'contact-schedule', label: 'Contact Plan', icon: sharePng, isDisabled: groundStation.state.isOperational === false });
     }
+    if (settings.telemetry) {
+      tabs.push({ id: 'telemetry', label: 'Telemetry', icon: activityPng, isDisabled: groundStation.state.isOperational === false });
+    }
     if (settings.security || settings.transec) {
       tabs.push({ id: 'security-console', label: 'Security', icon: activityPng, isDisabled: groundStation.state.isOperational === false });
     }
@@ -517,6 +522,10 @@ export class TabbedCanvas extends BaseElement {
 
       case 'security-console':
         this.renderSecurityConsoleTab_();
+        break;
+
+      case 'telemetry':
+        this.renderTelemetryTab_();
         break;
 
       case 'sdr-console':
@@ -876,6 +885,27 @@ export class TabbedCanvas extends BaseElement {
     }
 
     cmdTab.activate();
+  }
+
+  /**
+   * Render Telemetry tab (phase 18 E spacecraft state of health)
+   */
+  private renderTelemetryTab_(): void {
+    const tabKey = 'telemetry';
+    let tlmTab = this.tabInstances_.get(tabKey) as TelemetryTab;
+
+    if (tlmTab && !document.contains(tlmTab.dom)) {
+      tlmTab.dispose();
+      this.tabInstances_.delete(tabKey);
+      tlmTab = null!;
+    }
+
+    if (!tlmTab) {
+      tlmTab = new TelemetryTab('canvas-content');
+      this.tabInstances_.set(tabKey, tlmTab);
+    }
+
+    tlmTab.activate();
   }
 
   /**

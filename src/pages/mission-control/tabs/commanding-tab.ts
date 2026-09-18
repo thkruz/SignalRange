@@ -137,6 +137,18 @@ export class CommandingTab extends BaseElement {
               <div class="card-header"><h3 class="card-title">Command Stack</h3></div>
               <div class="card-body" id="cmd-send-panel">
                 ${stackRows}
+                ${
+                  config.ranging
+                    ? html`
+                <div class="cmd-stack-row d-flex align-items-center justify-content-between">
+                  <div>
+                    <span class="font-monospace fw-bold">${config.ranging.toneId ?? 'RANGE'}</span>
+                    <div class="text-muted small">Ranging tone - <span id="cmd-range-count">0</span> / ${config.ranging.requiredMeasurements} measurements, last <span id="cmd-range-last">--</span></div>
+                  </div>
+                  <button id="cmd-range-tone" class="btn btn-sm btn-outline-secondary">TONE</button>
+                </div>`
+                    : ''
+                }
                 <label class="form-label small mt-2" for="cmd-custom-id">Manual mnemonic</label>
                 <div class="input-group input-group-sm">
                   <input type="text" id="cmd-custom-id" class="form-control font-monospace" placeholder="PLD-SAFE" />
@@ -207,6 +219,12 @@ export class CommandingTab extends BaseElement {
       }
     });
 
+    document.getElementById('cmd-range-tone')?.addEventListener('click', () => {
+      CommandingManager.getInstance().sendRangingTone();
+      this.renderCommandLog_();
+      this.syncDomWithState_();
+    });
+
     document.getElementById('cmd-send-custom')?.addEventListener('click', () => {
       const input = document.getElementById('cmd-custom-id') as HTMLInputElement | null;
       const id = input?.value.trim();
@@ -259,6 +277,15 @@ export class CommandingTab extends BaseElement {
       keyBadge.className = `cmd-badge ${cls}`;
     }
 
+    // Ranging readout
+    const rangeCount = this.cache_('cmd-range-count');
+    if (rangeCount) {
+      const measurements = mgr.state.rangingMeasurements;
+      rangeCount.textContent = String(measurements.length);
+      const last = this.cache_('cmd-range-last');
+      if (last) last.textContent = measurements.length > 0 ? `${measurements[measurements.length - 1].rangeKm.toFixed(1)} km` : '--';
+    }
+
     const zeroized = mgr.state.zeroized;
     const beginBtn = this.dom_?.querySelector<HTMLButtonElement>('#cmd-begin-rotation');
     const completeBtn = this.dom_?.querySelector<HTMLButtonElement>('#cmd-complete-rotation');
@@ -300,7 +327,7 @@ export class CommandingTab extends BaseElement {
         if (cmd.reason) {
           detail = REJECT_REASON_LABELS[cmd.reason];
         } else if (cmd.status === 'acked') {
-          detail = 'ACK received';
+          detail = cmd.rangeKm !== undefined ? `ACK - range ${cmd.rangeKm.toFixed(1)} km` : 'ACK received';
         }
 
         return html`

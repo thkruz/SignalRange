@@ -130,6 +130,11 @@ export type ConditionType =
   | 'gpsdo-time-offset-stable' // The timing offset has not moved for a hold period
   // Campaign record (phase 18 D)
   | 'campaign-document-reviewed' // The campaign record panel (earlier scenarios' Working Documents) has been opened
+  // Spacecraft telemetry and ranging (phase 18 E)
+  | 'telemetry-frames-received' // At least minFrames telemetry frames have arrived from the bird
+  | 'telemetry-channel-in-band' // A telemetry channel reads in the given limit band (green/yellow/red)
+  | 'telemetry-soh-nominal' // Every telemetry channel is green and the stream is fresh
+  | 'ranging-measurements' // At least minCount ranging measurements have been taken through the command path
   // Campaign 3 SDR receive chain
   | 'receiver-afc-enabled' // RX modem AFC state matches the target (on by default)
   | 'antenna-polarization-set' // Antenna circular handedness matches the target
@@ -155,6 +160,9 @@ export const EVIDENCE_FACT_IDS = [
   'command-window-open', // a TT&C command window is open right now
   'uplink-jammed', // the command carrier is denied by interference on the target's uplink, with no TRANSEC sync
   'evidence-chain-intact', // no audit entry carried forward from an earlier scenario was lost to a destroyEvidence there
+  'soh-red-limit', // a telemetry channel reads in its red band with the stream fresh
+  'soh-yellow-limit', // a telemetry channel reads yellow or worse with the stream fresh
+  'telemetry-stale', // the telemetry stream has no fresh frame (link down)
 ] as const;
 
 export type EvidenceFactId = (typeof EVIDENCE_FACT_IDS)[number];
@@ -444,6 +452,12 @@ export interface ConditionParams {
   minOffsetUs?: number;
   /** For gpsdo-time-offset-stable: seconds the offset must have held still (default 30) */
   holdSeconds?: number;
+  /** For telemetry-frames-received: frames required (default 1) */
+  minFrames?: number;
+  /** For telemetry-channel-in-band: the channel to read */
+  channelId?: string;
+  /** For telemetry-channel-in-band: the band the channel must read (default 'green') */
+  telemetryBand?: 'green' | 'yellow' | 'red';
 
   // Observation-gating parameters
   /**

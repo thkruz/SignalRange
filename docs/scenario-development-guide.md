@@ -585,7 +585,8 @@ right answer in a scenario with a different interference schedule or injected fa
 **Evidence facts** (the only vocabulary `correctWhen` may use): `interference-active`,
 `equipment-fault-active`, `crypto-intact`, `gnss-constellation-healthy`, `timing-drifting`,
 `reference-in-holdover`, `weather-attenuation-dominant`, `audit-anomaly-present`, `config-drifted`,
-`command-window-open`, `uplink-jammed`, `evidence-chain-intact`. Every fact is held for the observation grace period so a
+`command-window-open`, `uplink-jammed`, `evidence-chain-intact`, `soh-red-limit`, `soh-yellow-limit`,
+`telemetry-stale`. Every fact is held for the observation grace period so a
 transient frame cannot flip the right answer, and `interference-active` reads the event *envelope*
 (a duty-cycled jammer counts in its off phase too). `uplink-jammed` needs `settings.commanding.uplinkFrequencyHz`
 and a transponder-path interference event on the target bird; TRANSEC hop-sync clears it.
@@ -594,7 +595,29 @@ and a transponder-path interference event on the target bird; TRANSEC hop-sync c
 before those latch, but a correct answer given early scores only `partialCreditUnevidenced`. The
 modal shows the checklist live. Give the sibling conditions an `id` and `requiresObservation`.
 
-### 9.14 Campaign Record
+### 9.14 Spacecraft Telemetry and Ranging
+
+`settings.telemetry` starts `TelemetryManager` and the read-only **Telemetry** tab: channels grouped
+by subsystem with nominal values, noise, yellow/red limit bands and scripted `excursions` on the
+mission clock. Frames flow only while an antenna on the station is locked on the bird
+(`antennaIndex` picks one); a dropped link freezes the last values and the stream reads STALE.
+
+| Condition | Description | Key Params |
+|-----------|-------------|------------|
+| `telemetry-frames-received` | At least `minFrames` frames have arrived | `minFrames` |
+| `telemetry-channel-in-band` | A channel reads in the given band (stale streams never match) | `channelId`, `telemetryBand` |
+| `telemetry-soh-nominal` | Every channel green and the stream fresh | - |
+| `ranging-measurements` | Ranging tones ACKed through the command path | `minCount` |
+
+Facts: `soh-red-limit`, `soh-yellow-limit` (a channel at that band or worse, stream fresh) and
+`telemetry-stale`. Pair the channel read with `requiresObservation` on the `telemetry` tab so a
+state-of-health decision is graded on what the operator looked at.
+
+Ranging is `settings.commanding.ranging: { requiredMeasurements, toneId? }`: the TT&C console gains a
+TONE control; each tone is gated like a command and, when it ACKs, records the true slant range to
+the target. `ranging-measurements` (default `minCount` = `requiredMeasurements`) grades the pass.
+
+### 9.15 Campaign Record
 
 A scenario's Working Document is filed into a campaign-scoped store (`CampaignDocumentStore`,
 localStorage, keyed by campaign id) when the scenario completes, together with any audit-event ids a

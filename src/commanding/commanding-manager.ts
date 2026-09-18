@@ -12,9 +12,11 @@
  * determinism. No other simulation coupling, so it is unit-testable in isolation.
  */
 
+import { OrbitalSatellite, observerFromLocation } from '@app/equipment/satellite/orbital-satellite';
 import { InterferenceManager } from '@app/interference/interference-manager';
 import { ScenarioManager } from '@app/scenario-manager';
 import { missionNowMs } from '@app/simulation/mission-clock';
+import { SimulationManager } from '@app/simulation/simulation-manager';
 import { TransecManager } from '@app/transec/transec-manager';
 
 export type CommandKeyStatus = 'Valid' | 'Pending Rotation' | 'Zeroized';
@@ -48,12 +50,28 @@ export interface CommandingConfig {
    * jamming never touches commanding.
    */
   uplinkFrequencyHz?: number;
+  /**
+   * Phase 18 E: ranging. A RANGE tone through the command path records the
+   * true slant range to the target; requiredMeasurements make an OD solution.
+   */
+  ranging?: { requiredMeasurements: number; toneId?: string };
+}
+
+/** One ranging measurement (phase 18 E) */
+export interface RangingMeasurement {
+  /** Mission elapsed second the tone returned */
+  elapsedS: number;
+  rangeKm: number;
 }
 
 interface CommandRecord {
   id: string;
   status: CommandStatus;
   reason?: CommandRejectReason;
+  /** Ranging tone only: the slant range the tone measured, km */
+  rangeKm?: number;
+  /** Mission elapsed second the record was resolved at */
+  elapsedS?: number;
 }
 
 interface CommandingState {
@@ -62,6 +80,7 @@ interface CommandingState {
   keyRotationCompleted: boolean;
   zeroized: boolean;
   commands: CommandRecord[];
+  rangingMeasurements: RangingMeasurement[];
 }
 
 export class CommandingManager {
@@ -75,6 +94,7 @@ export class CommandingManager {
     keyRotationCompleted: false,
     zeroized: false,
     commands: [],
+    rangingMeasurements: [],
   };
 
   private constructor() {
@@ -147,8 +167,8 @@ export class CommandingManager {
    * real elapsed time.
    */
   sendCommand(id: string, atElapsedS?: number): CommandRecord {
-    const record: CommandRecord = { id, status: 'pending' };
     const elapsed = atElapsedS ?? (missionNowMs() - this.missionStartTime_) / 1000;
+    const record: CommandRecord = { id, status: 'pending', elapsedS: elapsed };
 
     if ((this.config_.requireDopplerComp ?? true) && !this.state_.dopplerCompEnabled) {
       record.status = 'rejected';
@@ -192,6 +212,53 @@ export class CommandingManager {
 
       return interference.isEventInEnvelope(event.id);
     });
+  }
+
+  /**
+   * Send a ranging tone through the command path (phase 18 E). Subject to the
+   * same gates as a command (Doppler, key, window, jamming); when it ACKs the
+   * true slant range from the station to the target is recorded.
+   */
+  sendRangingTone(atElapsedS?: number): CommandRecord {
+    const toneId = this.config_.ranging?.toneId ?? 'RANGE';
+    const record = this.sendCommand(toneId, atElapsedS);
+    if (record.status !== 'acked') return record;
+
+    const rangeKm = this.measureRangeKm_();
+    if (rangeKm !== null) {
+      const elapsed = atElapsedS ?? (missionNowMs() - this.missionStartTime_) / 1000;
+      this.state_.rangingMeasurements.push({ elapsedS: elapsed, rangeKm });
+      record.rangeKm = rangeKm;
+    }
+
+    return record;
+  }
+
+  /** Enough ranging measurements for an orbit-determination solution. */
+  isRangingSolutionReady(): boolean {
+    const required = this.config_.ranging?.requiredMeasurements ?? 1;
+
+    return this.state_.rangingMeasurements.length >= required;
+  }
+
+  /** Slant range from the command station to the target right now, km (null when unknown). */
+  private measureRangeKm_(): number | null {
+    if (this.config_.targetNoradId === undefined || !SimulationManager.hasInstance()) return null;
+    const sim = SimulationManager.getInstance();
+    const sat = sim.getSatByNoradId(this.config_.targetNoradId);
+    if (!sat) return null;
+    const gs = sim.groundStations.find((g) => g.state.id === this.config_.groundStationId) ?? sim.groundStations[0];
+    if (sat instanceof OrbitalSatellite && gs) {
+      return sat.geometryFor(observerFromLocation(gs.state.location)).rangeKm;
+    }
+    const rangeKm = (sat as { rangeKm?: number }).rangeKm;
+
+    return typeof rangeKm === 'number' ? rangeKm : null;
+  }
+
+  /** Mission second a command was first acknowledged at (undefined = never). */
+  acknowledgedAt(commandId: string): number | undefined {
+    return this.state_.commands.find((c) => c.id === commandId && c.status === 'acked')?.elapsedS;
   }
 
   /** Whether a command (or a specific one) has been acknowledged. */

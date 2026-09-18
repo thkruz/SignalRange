@@ -7,7 +7,7 @@ import { dismissDialogIfPresent, waitForSimulationReady } from '../utils/simulat
  *
  * Validates the new two-satellite TDOA/FDOA interference geolocation feature
  * end to end against the sandbox scenario:
- * - the black-ops / coyote-brown campaign theme is applied,
+ * - the black-ops campaign theme (slate accent) is applied,
  * - the Geolocation tab is registered (opt-in via settings.geolocation),
  * - the correlator captures measurements only while the duty-cycled jammer
  *   transmits (captures during OFF windows report NO CORRELATION and retry),
@@ -73,7 +73,7 @@ test.describe('Signal Hunter geolocation console', () => {
     // 1. Black-ops theme is applied via the per-campaign body class
     await expect(page.locator('body')).toHaveClass(/campaign-signal-hunter/);
     const accent = await page.evaluate(() => getComputedStyle(document.body).getPropertyValue('--mc-accent-red').trim());
-    expect(accent.toLowerCase()).toBe('#8f6f46'); // coyote brown
+    expect(accent.toLowerCase()).toBe('#56708a'); // slate accent from the per-campaign chrome
 
     // 2. Select the ground station and open the Geolocation tab
     await missionControl.selectGroundStation('PA-22');
@@ -92,7 +92,7 @@ test.describe('Signal Hunter geolocation console', () => {
     await page.locator('#geo-bw-value').fill('5');
     await page.locator('#geo-bw-value').dispatchEvent('change');
 
-    // 5. Capture across duty cycles until at least 3 measurements land
+    // 5. Capture across duty cycles until at least 3 measurements arrive
     const count = await captureUntil(page, 3);
     expect(count).toBeGreaterThanOrEqual(3);
 

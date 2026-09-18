@@ -1,6 +1,24 @@
 import { vi } from 'vitest';
 import 'vitest-canvas-mock';
 
+// Node 25 turned Web Storage on by default, so `localStorage` and `sessionStorage`
+// already exist on globalThis when vitest builds the jsdom environment. vitest only
+// installs jsdom globals for keys the runtime lacks, so on Node 25 tests would get
+// Node's storage instead: without --localstorage-file that is an empty object with
+// no getItem/clear (TypeError: localStorage.clear is not a function). Point both at
+// the jsdom window so every Node version sees the same Storage.
+const jsdomWindow = (globalThis as { jsdom?: { window: Window } }).jsdom?.window;
+
+if (jsdomWindow) {
+  for (const key of ['localStorage', 'sessionStorage'] as const) {
+    Object.defineProperty(globalThis, key, {
+      get: () => jsdomWindow[key],
+      configurable: true,
+      enumerable: true,
+    });
+  }
+}
+
 // Polyfill for structuredClone in test environment
 if (typeof globalThis.structuredClone !== 'function') {
   globalThis.structuredClone = <T>(obj: T): T => {

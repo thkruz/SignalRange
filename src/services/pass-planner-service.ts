@@ -162,6 +162,16 @@ export class PassPlannerService {
   }
 
   /** Sample within [aos, los] for max elevation and edge azimuths. */
+  /**
+   * Whole-degree azimuth for display, wrapped to 000-359 so a rise a fraction
+   * of a degree west of north reads 000 rather than 360.
+   */
+  static formatAzimuth(az: Degrees): string {
+    const wrapped = ((Math.round(az) % 360) + 360) % 360;
+
+    return String(wrapped).padStart(3, '0');
+  }
+
   private buildPass_(satellite: OrbitalSatellite, observer: GroundObject, aosMs: number, losMs: number, stepS: number): SatellitePass | null {
     // The station predicts from the element set it has on file, which lags
     // the orbit between a manoeuvre and the ephemeris load (phase 16, S7).

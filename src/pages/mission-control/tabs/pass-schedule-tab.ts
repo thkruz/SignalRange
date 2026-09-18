@@ -282,7 +282,7 @@ export class PassScheduleTab extends BaseElement {
         <td class="font-monospace">${PassScheduleTab.formatTime_(pass.losMs)}</td>
         <td class="font-monospace">${PassScheduleTab.formatCountdown_(pass.durationS * 1000)}</td>
         <td class="font-monospace">${pass.maxEl.toFixed(1)}&deg;</td>
-        <td class="font-monospace">${pass.aosAz.toFixed(0)}&deg;</td>
+        <td class="font-monospace">${PassPlannerService.formatAzimuth(pass.aosAz)}&deg;</td>
         <td><span class="${statusClass} font-monospace">${status}</span></td>
       </tr>
     `;

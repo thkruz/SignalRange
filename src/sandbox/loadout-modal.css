@@ -1,0 +1,81 @@
+/* Station loadout modal (sandbox equipment picker). */
+
+.loadout-modal {
+  padding: 0.75rem;
+  min-width: 400px;
+  max-width: 520px;
+}
+
+.loadout-modal__intro {
+  color: var(--mc-text-secondary);
+  font-size: 0.8rem;
+  line-height: 1.4;
+  margin-bottom: 0.75rem;
+}
+
+.loadout-modal__station {
+  margin-bottom: 0.75rem;
+}
+
+.loadout-modal__station-label {
+  color: var(--mc-text-secondary);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.25rem;
+}
+
+.loadout-modal__select {
+  width: 100%;
+  background-color: var(--mc-surface-1);
+  border: 1px solid var(--mc-surface-3);
+  color: var(--mc-text-primary);
+  font-size: 0.8rem;
+}
+
+.loadout-modal__select:focus {
+  background-color: var(--mc-surface-2);
+  border-color: var(--mc-accent-red);
+  box-shadow: 0 0 0 0.2rem rgba(var(--mc-accent-red-rgb, 186, 22, 12), 0.25);
+}
+
+.loadout-modal__actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  margin-top: 1rem;
+}
+
+.loadout-modal__actions .btn {
+  font-size: 0.8rem;
+}
+
+.loadout-modal__empty {
+  color: var(--mc-text-secondary);
+  font-size: 0.8rem;
+}
+
+/* Command bar control. Shares the skip control's plate so the two read as
+   one family of bar-level actions. */
+.loadout-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-left: 0.75rem;
+  padding: 0.25rem 0.6rem;
+  border: 1px solid var(--mc-border);
+  border-radius: 4px;
+  background: var(--mc-surface-1);
+  color: var(--mc-text-secondary);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.loadout-btn:hover {
+  background: var(--mc-surface-2);
+  border-color: var(--mc-accent-red);
+  color: var(--mc-text-primary);
+}

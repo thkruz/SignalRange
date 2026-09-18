@@ -56,6 +56,7 @@ import { signalHunterSandboxData } from '@app/campaigns/signal-hunter/sandbox';
 import { signalHunterScenario1Data } from '@app/campaigns/signal-hunter/scenario1';
 import { AntennaState } from '@app/equipment/antenna';
 import { ANTENNA_CONFIG_KEYS } from '@app/equipment/antenna/antenna-config-keys';
+import type { AntennaConfigId } from '@app/equipment/antenna/antenna-registry';
 import { defaultSpectrumAnalyzerState } from '@app/equipment/real-time-spectrum-analyzer/defaultSpectrumAnalyzerState';
 import { RealTimeSpectrumAnalyzerState } from '@app/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer';
 import { Receiver, ReceiverState } from '@app/equipment/receiver/receiver';
@@ -71,6 +72,7 @@ import { Satellite } from '@app/equipment/satellite/satellite';
 import { Transmitter, TransmitterState } from '@app/equipment/transmitter/transmitter';
 import { Character, Emotion } from '@app/modal/character-enum';
 import { PreviousShiftLogEntry } from '@app/ops-log/ops-log-types';
+import { SandboxLoadoutService } from '@app/sandbox/sandbox-loadout';
 import { sandboxData } from '@app/scenarios/sandbox';
 import type { Degrees } from 'ootk';
 import { ScenarioData } from './ScenarioData';
@@ -91,7 +93,7 @@ export interface DialogClip {
 export interface SimulationSettings {
   isSync: boolean;
   groundStations: GroundStationConfig[];
-  antennas?: ANTENNA_CONFIG_KEYS[];
+  antennas?: AntennaConfigId[];
   antennasState?: Partial<AntennaState>[];
   rfFrontEnds?: Partial<RFFrontEndState>[];
   spectrumAnalyzers?: Partial<RealTimeSpectrumAnalyzerState>[];
@@ -457,7 +459,9 @@ export class ScenarioManager {
   set scenario(scenarioId: string) {
     const scenario = SCENARIOS.find((s) => s.id === scenarioId);
     if (scenario) {
-      this.settings = scenario.settings;
+      // Sandboxes may override their authored equipment (station loadout);
+      // every other scenario gets its settings object back untouched.
+      this.settings = SandboxLoadoutService.getInstance().applyToScenario(scenario);
       this.data = scenario;
     } else {
       throw new Error(`Scenario ${scenarioId} not found`);

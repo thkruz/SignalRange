@@ -5,7 +5,10 @@ import { html } from '@app/engine/utils/development/formatter';
 import { qs } from '@app/engine/utils/query-selector';
 import { EventBus } from '@app/events/event-bus';
 import { AggregatedAlarm, AlarmStateChangedData, Events, SimulatedTimeTickData, TimeSkipEndedData } from '@app/events/events';
+import { t7e } from '@app/locales/i18n';
 import { ObjectivesManager } from '@app/objectives/objectives-manager';
+import { LoadoutModal } from '@app/sandbox/loadout-modal';
+import { SandboxLoadoutService } from '@app/sandbox/sandbox-loadout';
 import { ScenarioManager } from '@app/scenario-manager';
 import { getSimulatedNowMs } from '@app/simulation/sim-time';
 import { SkipTarget, TimeSkipController } from '@app/simulation/time-skip-controller';
@@ -53,6 +56,13 @@ export class GlobalCommandBar {
    * template can leave the control out entirely rather than hide it.
    */
   private readonly isTimeSkipEnabled_ = GlobalCommandBar.readTimeSkipEnabled_();
+
+  /**
+   * Sandboxes carry no authored mission, so their equipment is the operator's
+   * to choose: the loadout control renders only there (see LoadoutModal).
+   * Declared before html_ for the same reason isTimeSkipEnabled_ is.
+   */
+  private readonly isSandbox_ = GlobalCommandBar.readIsSandbox_();
 
   /**
    * Resolved before html_ (declaration order is initialization order) so the
@@ -139,6 +149,16 @@ export class GlobalCommandBar {
     }
   }
 
+  /** Whether the active scenario is a sandbox (equipment is swappable). */
+  private static readIsSandbox_(): boolean {
+    try {
+      return SandboxLoadoutService.isSandboxScenario(ScenarioManager.getInstance().data);
+    } catch {
+      // ScenarioManager not initialized (menus) - no scenario, no loadout.
+      return false;
+    }
+  }
+
   /** Whether the scenario opted into the skip control. */
   private static readTimeSkipEnabled_(): boolean {
     try {
@@ -167,6 +187,16 @@ export class GlobalCommandBar {
           <button id="time-skip-control" class="time-skip-btn" type="button" disabled>
             <i class="fa-solid fa-forward"></i>
             <span id="time-skip-control-label">Skip</span>
+          </button>
+        `
+            : ''
+        }
+        ${
+          this.isSandbox_
+            ? html`
+          <button id="loadout-control" class="loadout-btn" type="button" title="${t7e('loadout.buttonTitle')}">
+            <i class="fa-solid fa-satellite-dish"></i>
+            <span>${t7e('loadout.button')}</span>
           </button>
         `
             : ''
@@ -218,6 +248,18 @@ export class GlobalCommandBar {
     this.scenarioInfoEl_ = parentDom?.querySelector('#scenario-info') ?? null;
     this.updateScenarioInfo_();
     this.initTimeSkip_(parentDom);
+    this.initLoadout_(parentDom);
+  }
+
+  /** Mount the loadout control. No-op outside a sandbox scenario. */
+  private initLoadout_(parentDom: HTMLElement | null): void {
+    if (!this.isSandbox_) {
+      return;
+    }
+
+    parentDom?.querySelector<HTMLButtonElement>('#loadout-control')?.addEventListener('click', () => {
+      LoadoutModal.getInstance().show();
+    });
   }
 
   /**

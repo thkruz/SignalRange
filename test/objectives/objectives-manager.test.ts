@@ -2379,6 +2379,37 @@ describe('ObjectivesManager', () => {
       eventBus.emit(Events.UPDATE, 16);
       expect(isRead()).toBe(true);
     });
+
+    it('keeps the dwell across a false frame shorter than the grace', () => {
+      // A LEO pass drops one throttled low frame every second; that must not
+      // send a C/N read back to zero or the dwell could never be met.
+      ObjectivesManager.initialize([observedGpsdoLock()]);
+      eventBus.emit(Events.UPDATE, 1000);
+      expect(isRead()).toBe(false);
+
+      mockGpsdoState.isLocked = false;
+      eventBus.emit(Events.UPDATE, 16);
+      expect(isRead()).toBe(false);
+
+      mockGpsdoState.isLocked = true;
+      eventBus.emit(Events.UPDATE, 1000);
+      expect(isRead()).toBe(true);
+    });
+
+    it('restarts the dwell once a false gap outlasts the grace', () => {
+      ObjectivesManager.initialize([observedGpsdoLock()]);
+      eventBus.emit(Events.UPDATE, 1000);
+
+      mockGpsdoState.isLocked = false;
+      eventBus.emit(Events.UPDATE, 600);
+
+      mockGpsdoState.isLocked = true;
+      eventBus.emit(Events.UPDATE, 1000);
+      expect(isRead()).toBe(false);
+
+      eventBus.emit(Events.UPDATE, 1000);
+      expect(isRead()).toBe(true);
+    });
   });
 
   describe('BUC Conditions', () => {

@@ -28,6 +28,13 @@ export class LinkBudgetTab extends BaseElement {
   private readonly boundUpdateHandler_: () => void;
   private readonly domCache_ = new Map<string, HTMLElement>();
   private lastSyncTime_ = 0;
+  /**
+   * The measured C/N the operator can currently see. Accept Link commits this
+   * value rather than a fresh sample: the 1 s LEO position throttle drops one
+   * low frame into every second of a pass, and a click that sampled it would
+   * fail the commit on a reading nobody saw.
+   */
+  private displayedLiveCnrDb_: number | null = null;
 
   constructor(groundStation: GroundStation, containerId: string) {
     super();
@@ -171,7 +178,7 @@ export class LinkBudgetTab extends BaseElement {
   }
 
   private commitHandler_(): void {
-    const achievedCNRDb = this.getLiveCNR_();
+    const achievedCNRDb = this.displayedLiveCnrDb_ ?? this.getLiveCNR_();
     if (achievedCNRDb === null) {
       return;
     }
@@ -235,6 +242,7 @@ export class LinkBudgetTab extends BaseElement {
   private syncDomWithState_(): void {
     const config = LinkBudgetManager.getInstance().getConfig();
     const liveCNR = this.getLiveCNR_();
+    this.displayedLiveCnrDb_ = liveCNR;
 
     this.setText_('lb-live-cnr', liveCNR !== null ? `${liveCNR.toFixed(1)} dB` : '—');
     this.setText_('lb-predicted-margin', liveCNR !== null && config ? `${(liveCNR - config.thresholdCNRDb).toFixed(1)} dB` : '—');

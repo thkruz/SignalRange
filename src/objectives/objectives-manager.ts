@@ -30,7 +30,7 @@ import { SpaceEventManager } from '@app/space-events/space-event-manager';
 import { TrafficControlManager } from '@app/traffic/traffic-control-manager';
 import { TransecManager } from '@app/transec/transec-manager';
 import { Milliseconds } from 'ootk';
-import { Condition, ConditionParams, DEFAULT_OBSERVATION_DWELL_SECONDS, Objective, ObjectiveState } from './objective-types';
+import { Condition, ConditionParams, DEFAULT_OBSERVATION_DWELL_SECONDS, OBSERVATION_DWELL_GRACE_SECONDS, Objective, ObjectiveState } from './objective-types';
 import './objectives-manager.css';
 
 /**
@@ -1181,17 +1181,28 @@ export class ObjectivesManager {
       if (condParams?.requiresObservation && condParams?.observationTab) {
         if (conditionState.observed) {
           isNowSatisfied = true; // already observed - latched
-        } else if (isNowSatisfied && this.isObservationContextActive_(conditionState.condition)) {
+        } else if (!this.isObservationContextActive_(conditionState.condition)) {
+          conditionState.observedSeconds = 0; // off-tab: the read starts over
+          conditionState.observedGapSeconds = 0;
+          isNowSatisfied = false; // value not yet observed on the right tab
+        } else if (isNowSatisfied) {
           const dwellSeconds = condParams.observationDwellSeconds ?? DEFAULT_OBSERVATION_DWELL_SECONDS;
           conditionState.observedSeconds = (conditionState.observedSeconds ?? 0) + dtSeconds;
+          conditionState.observedGapSeconds = 0;
           if (conditionState.observedSeconds >= dwellSeconds) {
             conditionState.observed = true; // read for long enough - latch
           } else {
             isNowSatisfied = false; // on the right tab, still reading
           }
         } else {
-          conditionState.observedSeconds = 0; // off-tab or false: the read starts over
-          isNowSatisfied = false; // value not yet observed on the right tab
+          // On the right tab but reading false. A LEO pass drops one low frame
+          // every second (position throttle), so a gap inside the grace keeps
+          // the dwell; a longer one means the value really went away.
+          conditionState.observedGapSeconds = (conditionState.observedGapSeconds ?? 0) + dtSeconds;
+          if (conditionState.observedGapSeconds > OBSERVATION_DWELL_GRACE_SECONDS) {
+            conditionState.observedSeconds = 0;
+          }
+          isNowSatisfied = false;
         }
       }
 

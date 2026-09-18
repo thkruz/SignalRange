@@ -335,14 +335,20 @@ export class OrbitalSatellite extends Satellite {
   }
 
   /**
-   * Propagate to the current simulated time (throttled to the base class
-   * update interval). Replaces the legacy fixed/figure-8 position models.
+   * Propagate to the current simulated time on every frame the clock moves.
+   * Replaces the legacy fixed/figure-8 position models.
+   *
+   * Not throttled to the base class interval: at 1 Hz a LEO bird moves up to
+   * a degree between updates, more than a Ku beamwidth, so program-track
+   * chased a stepping target and the dish read off-beam for a frame or two
+   * every second (the one-frame C/N collapse the hold and dwell logic had to
+   * ride through). Continuous geometry keeps pointing, FSPL and Doppler
+   * consistent from frame to frame.
    */
   protected updatePosition_(): void {
     const nowMs = getSimulatedNowMs();
-    // abs() so restoring a checkpoint (time jumping backwards) still updates
-    if (Math.abs(nowMs - this.lastPositionUpdateTime_) < Satellite.POSITION_UPDATE_INTERVAL_MS) {
-      return;
+    if (nowMs === this.lastPositionUpdateTime_) {
+      return; // paused clock: nothing moved
     }
     this.lastPositionUpdateTime_ = nowMs;
     this.propagateTo_(nowMs);

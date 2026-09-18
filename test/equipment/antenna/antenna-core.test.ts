@@ -1079,6 +1079,33 @@ describe('AntennaCore', () => {
       expect(antenna.state.polarization).toBeGreaterThan(0);
     });
 
+    it('spends a simulated clock jump slewing, so a skip does not strand the pedestal', () => {
+      // A time skip moves the bird minutes ahead in one frame. The pedestal
+      // was tracking for all of it, so it must arrive with the target instead
+      // of chasing it at the rate limit afterwards.
+      vi.useFakeTimers();
+      try {
+        vi.setSystemTime(new Date('2027-03-15T14:00:00Z'));
+        antenna.state.isPowered = true;
+        antenna.state.isOperational = true;
+        antenna.state.azimuth = 50 as Degrees;
+        antenna.state.targetAzimuth = 60 as Degrees;
+
+        antenna.update(16); // ordinary frame: one frame's worth of slew
+        expect(antenna.state.azimuth).toBeLessThan(51);
+
+        vi.setSystemTime(new Date('2027-03-15T14:01:00Z')); // the clock jumps a minute
+        antenna.update(16);
+
+        expect(antenna.state.azimuth).toBe(60);
+
+        antenna.update(16); // settled: the slewing flag clears on the frame after arrival
+        expect(antenna.state.isSlewing).toBe(false);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
     it('should set isSlewing to false when at target', () => {
       antenna.state.isPowered = true;
       antenna.state.isOperational = true;

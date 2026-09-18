@@ -161,13 +161,10 @@ describe('nats-eu Campaign 2 RF validation: MERIDIAN over GW-01 (Phase A gate)',
       antenna.update(); // program-track sets target to prediction; slew is rate-limited
 
       if (tick % TICK_HZ === 0) {
-        // The satellite position is throttled to POSITION_UPDATE_INTERVAL_MS
-        // (1 s), so it steps ~az-rate degrees at a time and the pedestal catches
-        // up within the second. Sample the SETTLED C/N the operator sees ~all
-        // the time by letting the pedestal converge on the (now-static) target,
-        // capped at one interval: a good pass settles in a few ticks; a keyhole
-        // pass (slew < az rate) never catches up and stays cratered.
-        for (let s = 0; s < TICK_HZ && antenna.state.isSlewing; s++) antenna.update();
+        // Orbital truth propagates every frame, so the pedestal tracks a
+        // continuous target and the live state IS what the operator sees: a
+        // good pass stays within tolerance; a keyhole pass (slew < az rate)
+        // falls behind at the top of the pass and craters there.
         frontEnd.update();
         const info = receiver.getSignalsInBandwidth(modem);
         samples.push({

@@ -89,6 +89,39 @@ describe('LinkBudgetTab (M1)', () => {
     tab.dispose();
   });
 
+  it('commits the C/N the operator was shown, not the frame under the click', () => {
+    // The 1 s LEO position throttle drops one low frame into every second of a
+    // pass. A click that sampled it would fail the commit on a reading nobody
+    // saw; Accept Link must commit the displayed value instead.
+    let liveSnrDb = 12;
+    const station = {
+      receivers: [
+        {
+          state: { activeModem: 1, modems: [{ modemNumber: 1, isPowered: true }] },
+          getSnrForModem: () => liveSnrDb,
+        },
+      ],
+    } as unknown as GroundStation;
+    const tab = new LinkBudgetTab(station, 'canvas-content');
+
+    setInput('lb-eirp', '50');
+    setInput('lb-fspl', '180.7');
+    setInput('lb-rxgain', '44.5');
+    setInput('lb-noisetemp', '120');
+    setInput('lb-bandwidth', '36');
+    setInput('lb-miscloss', '2');
+    click('lb-compute');
+    expect(document.getElementById('lb-live-cnr')?.textContent).toBe('12.0 dB');
+
+    liveSnrDb = -6; // the throttled low frame arrives under the click
+    click('lb-commit');
+
+    expect(LinkBudgetManager.getInstance().state.appliedMarginDb).toBe(4);
+    expect(document.getElementById('lb-margin-badge')?.textContent).toBe('LINK GO');
+
+    tab.dispose();
+  });
+
   it('rejects an incomplete worksheet and blocks commit with no carrier', () => {
     const tab = new LinkBudgetTab(stubGroundStation(null), 'canvas-content');
 

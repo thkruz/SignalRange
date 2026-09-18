@@ -402,6 +402,14 @@ export interface TimePenalty {
  */
 export const DEFAULT_OBSERVATION_DWELL_SECONDS = 2;
 
+/**
+ * How long a requiresObservation read may go false on the observation tab
+ * before the dwell resets. The 1 s LEO position throttle puts one transient
+ * low frame into every second of a pass; without a grace no C/N dwell could
+ * ever be read on a LEO downlink. Leaving the tab still resets at once.
+ */
+export const OBSERVATION_DWELL_GRACE_SECONDS = 0.5;
+
 export interface Condition {
   /** Type of condition to check */
   type: ConditionType;
@@ -521,11 +529,17 @@ export interface ConditionState {
    */
   observed?: boolean;
   /**
-   * For requiresObservation conditions: seconds the value has read true
-   * continuously on the observation tab. Reset to 0 off-tab or on a false
-   * frame; the condition latches once it reaches the dwell.
+   * For requiresObservation conditions: seconds the value has read true on
+   * the observation tab. Reset to 0 off-tab, or once a false gap outlasts
+   * OBSERVATION_DWELL_GRACE_SECONDS; the condition latches at the dwell.
    */
   observedSeconds?: number;
+  /**
+   * For requiresObservation conditions: seconds the value has read false on
+   * the observation tab since it last read true. A gap shorter than the
+   * grace keeps the dwell (one throttled low frame a second on a LEO pass).
+   */
+  observedGapSeconds?: number;
   /**
    * For conditions with a cnHoldSeconds hold: seconds the live reading has
    * been continuously inside the band. Reset to 0 by a frame outside it.

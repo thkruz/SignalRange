@@ -8,6 +8,7 @@ import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
 import { InterferenceManager } from '@app/interference/interference-manager';
 import { SignalOrigin } from '@app/signal-origin';
+import { getSimulatedNowMs } from '@app/simulation/sim-time';
 import { SimulationManager } from '@app/simulation/simulation-manager';
 import { dB, dBm, Hertz, RfSignal } from '@app/types';
 import { Degrees } from 'ootk';
@@ -223,6 +224,23 @@ export abstract class AntennaCore extends BaseEquipment {
   /** Antenna physical configuration */
   config: AntennaConfig;
 
+  /**
+   * A clock jump this much beyond the frame time is a time skip (operator
+   * skip, checkpoint restore, E2E hook), not a slow frame.
+   */
+  private static readonly SKIP_DETECT_MS = 250;
+  /** Simulated time at the last update, to detect clock jumps. */
+  private lastSimNowMs_: number | null = null;
+  /**
+   * Skipped simulated time the pedestal still has to spend slewing (ms). A
+   * program-track pedestal was tracking for the whole of a skip, so it must
+   * arrive with the bird rather than chase it at the rate limit afterwards.
+   * Carried for two frames: satellites and antennas share the update event,
+   * so the target may only move after this antenna's own jump-frame update.
+   */
+  private skipSlewBudgetMs_ = 0;
+  private skipSlewFramesLeft_ = 0;
+
   /** Tolerance for program-track lock detection (degrees) */
   private static readonly LOCK_TOLERANCE_DEG = 1.5;
 
@@ -378,7 +396,9 @@ export abstract class AntennaCore extends BaseEquipment {
     this.syncDomWithState();
   }
 
-  update(): void {
+  update(dtMs?: number): void {
+    this.noteClockJump_(dtMs);
+
     // ACU automation fault: the automation processor (program-track,
     // step-track, lock logic) is offline. Servos and manual control still
     // work - updateSlew_ keeps running so manual/stow/maintenance moves do.
@@ -396,7 +416,7 @@ export abstract class AntennaCore extends BaseEquipment {
     }
 
     // Slew actual position toward target at maxRate_deg_s
-    this.updateSlew_();
+    this.updateSlew_(dtMs);
 
     // Check for program-track lock whenever a target is being tracked. The
     // tolerance test decides, not the slew flag: a LEO tracker is slewing for
@@ -416,19 +436,44 @@ export abstract class AntennaCore extends BaseEquipment {
     this.syncDomWithState();
   }
 
+  /** Bank any simulated time that jumped past this frame as slew budget. */
+  private noteClockJump_(dtMs?: number): void {
+    const simNow = getSimulatedNowMs();
+    if (this.lastSimNowMs_ !== null) {
+      const simDeltaMs = simNow - this.lastSimNowMs_;
+      const frameMs = dtMs !== undefined && Number.isFinite(dtMs) && dtMs > 0 ? dtMs : 1000 / 60;
+      if (simDeltaMs > frameMs + AntennaCore.SKIP_DETECT_MS) {
+        this.skipSlewBudgetMs_ += simDeltaMs;
+        this.skipSlewFramesLeft_ = 2;
+      }
+    }
+    this.lastSimNowMs_ = simNow;
+  }
+
   /**
    * Update slew - move actual position toward target at configured slew rate
    * Called each update cycle to simulate mechanical antenna movement
    */
-  private updateSlew_(): void {
+  private updateSlew_(dtMs?: number): void {
     if (!this.state.isPowered || !this.state.isOperational) {
       return;
     }
 
     // Get slew rate from config (default 3°/s if not specified)
     const maxRate = this.config.maxRate_deg_s ?? 3.0;
-    // Assume ~60 FPS update rate
-    const dt = 1 / 60;
+    // Real frame time when the simulation loop supplies it: the clock and the
+    // satellites advanced by the same dt, so the pedestal must too, or one
+    // long frame leaves it a degree behind a LEO target and off-beam for the
+    // frames it takes to catch up. Assume 60 Hz when called without one
+    // (tests and direct callers); cap a stalled tab at a few seconds.
+    let dt = dtMs !== undefined && Number.isFinite(dtMs) && dtMs > 0 ? Math.min(dtMs, 5000) / 1000 : 1 / 60;
+    if (this.skipSlewFramesLeft_ > 0) {
+      dt += this.skipSlewBudgetMs_ / 1000; // the skip's worth of tracking, spent now
+      this.skipSlewFramesLeft_ -= 1;
+      if (this.skipSlewFramesLeft_ === 0) {
+        this.skipSlewBudgetMs_ = 0;
+      }
+    }
     const maxDelta = maxRate * dt;
 
     let isMoving = false;

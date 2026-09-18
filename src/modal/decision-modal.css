@@ -58,3 +58,24 @@
   font-size: 0.85rem;
   margin: 0.4rem 0;
 }
+
+/* Decision box (non-modal draggable box) - the quiz box shape, amber so a call reads differently from a quiz */
+#decision-modal.decision-box {
+  position: absolute;
+  max-width: 570px;
+  background: var(--color-dark-background, #1a1a2e);
+  border: 2px solid var(--mc-warning, #ffb300);
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+#decision-modal .draggable-box__content {
+  max-height: 70vh;
+  overflow-y: auto;
+  border: 0px;
+}
+
+#decision-modal .draggable-box__title-bar {
+  background: rgba(255, 179, 0, 0.1);
+  border-bottom: 1px solid var(--hm-border, #444);
+}

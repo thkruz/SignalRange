@@ -699,13 +699,90 @@ export const natsEuScenario12Data: ScenarioData = {
       points: 15,
     },
     {
+      id: 'call-the-return',
+      nice: ['S0648', 'K0926', 'K0773'],
+      title: 'Call the Return',
+      description:
+        'A strong carrier has been sitting at 1290 MHz IF since the HPA came up, 50 dB over the pattern. Look at the TX chain and the RX key status, then call it: fault, interference, intrusion, or something of your own.',
+      groundStation: 'GW-01',
+      prerequisiteObjectiveIds: ['payload-test-pattern'],
+      timeLimitSeconds: 90,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          id: 'hpa-observed',
+          type: 'hpa-enabled',
+          description: 'HPA state read on TX Chain',
+          params: { requiresObservation: true, observationTab: 'tx-chain' },
+          mustMaintain: false,
+        },
+        {
+          id: 'key-observed',
+          type: 'rx-key-status',
+          description: 'RX key status read on RX Analysis',
+          params: { keyStatus: 'Valid', requiresObservation: true, observationTab: 'rx-analysis' },
+          mustMaintain: false,
+        },
+        {
+          type: 'decision',
+          description: 'Fault, interference, intrusion, or own uplink',
+          params: {
+            character: Character.ANNEKE_VISSER,
+            prompt: 'That carrier at 1290 has been there since your HPA came up and it is 50 dB over my pattern. What is it, and what are you doing about it?',
+            evidence: ['hpa-observed', 'key-observed'],
+            decisionOptions: [
+              {
+                label: 'Receive-chain fault - open a ticket and hold the decode',
+                correctWhen: { fact: 'equipment-fault-active', is: true },
+                feedback: 'Nothing on the RX chain is broken; the AGC is doing exactly what an AGC does with a strong in-band signal.',
+              },
+              {
+                label: 'External interference - characterise it and report',
+                correctWhen: {
+                  all: [
+                    { fact: 'interference-active', is: true },
+                    { fact: 'crypto-intact', is: true },
+                  ],
+                },
+                consequence: { log: 'Interference report opened on the 1290 MHz carrier' },
+                feedback: 'It appeared the moment your own amplifier came up and sits exactly where your uplink transponds to. Look at what you changed.',
+              },
+              {
+                label: 'Intrusion on the link - escalate and hold commanding',
+                correctWhen: { fact: 'crypto-intact', is: false },
+                consequence: { log: 'Escalated to CSIRT: suspected intrusion on the SAR-3 link' },
+                feedback: 'Your key reads Valid and every command has ACKed. There is no sign anyone but you is on this link.',
+              },
+              {
+                label: 'Own uplink transponded back - secure the HPA before the decode',
+                correctWhen: {
+                  all: [
+                    { fact: 'interference-active', is: false },
+                    { fact: 'equipment-fault-active', is: false },
+                    { fact: 'crypto-intact', is: true },
+                  ],
+                },
+                consequence: { log: 'Self-interference identified: 14065 MHz uplink returned at 11810 MHz; securing the HPA before the decode' },
+              },
+            ],
+            explanation:
+              'The station is hearing itself through the bird: co-polar, in the receive band, 50 dB up. No fault, no outsider, no intrusion - the evidence for all three is negative and the timing points straight at your own amplifier. Take the strong signal away and the number comes back.',
+            pointPenalty: 10,
+          },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 15,
+    },
+    {
       id: 'secure-for-decode',
       nice: ['S0675', 'K0773', 'T0153'],
       title: 'Secure the Uplink for the Decode',
       description:
         'Both ACKs are in. Disable the HPA before you touch the receiver: the amplifier has nothing left to do until the next command, and while it is up the decode cannot be trusted.',
       groundStation: 'GW-01',
-      prerequisiteObjectiveIds: ['payload-test-pattern'],
+      prerequisiteObjectiveIds: ['call-the-return'],
       conditions: [
         {
           type: 'hpa-disabled',
@@ -931,7 +1008,17 @@ export const natsEuScenario12Data: ScenarioData = {
       'payload-test-pattern': {
         text: `
         <p>
-          Both acknowledgements on my screen. Payload on, pattern transmitting. Secure your uplink and take the decode; the amplifier has done its job for today.
+          Both acknowledgements on my screen. Payload on, pattern transmitting. Before you take the decode - what is that carrier at 1290 on your analyzer? It has been there since your amplifier came up.
+        </p>
+        `,
+        character: Character.ANNEKE_VISSER,
+        emotion: Emotion.CONCERNED,
+        audioUrl: '',
+      },
+      'call-the-return': {
+        text: `
+        <p>
+          Yes. That is you, through my transponder. Nobody else is on this link and nothing of yours is broken. Secure the amplifier and take the decode; it has done its job for today.
         </p>
         `,
         character: Character.ANNEKE_VISSER,

@@ -19,7 +19,7 @@ import {
   setTxModemFrequency,
   setTxModemOnAir,
 } from '../utils/nats-eu-helpers';
-import { dismissDialogIfPresent, waitForSimulationReady } from '../utils/simulation-helpers';
+import { answerDecision, dismissDialogIfPresent, waitForSimulationReady } from '../utils/simulation-helpers';
 
 /**
  * nats-eu Scenario 12 "LEOP: Commissioning" - full completion (phase 16).
@@ -36,14 +36,20 @@ import { dismissDialogIfPresent, waitForSimulationReady } from '../utils/simulat
  *   command window  mission T+1102 s .. T+1628 s
  *   worksheet truth 10.9 dB; threshold 6 dB + 2 dB required margin
  *
- * Objective flow (19):
+ * Objective flow (20):
  *  1. review-mission-brief    2. dashboard-sweep         3. reference-check
  *  4. predict-acceptance      5. crypto-both-ways        6. tune-the-uplink
  *  7. analyzer-on-sar3        8. preposition-for-aos     9. acquire-sar3
  * 10. carrier-into-muted-buc 11. unmute-the-buc         12. enable-the-hpa
- * 13. payload-power-on       14. payload-test-pattern   15. secure-for-decode
- * 16. first-video            17. chain-down-after-los   18. sign-the-card
- * 19. deliver-to-customer
+ * 13. payload-power-on       14. payload-test-pattern   15. call-the-return
+ * 16. secure-for-decode      17. first-video            18. chain-down-after-los
+ * 19. sign-the-card          20. deliver-to-customer
+ *
+ * call-the-return (phase 18) is the first shipped `decision` condition: the
+ * 1290 MHz transponded return is graded against live evidence facts (no
+ * interference event, no injected fault, crypto intact) so "own uplink" is the
+ * only correct call here; the e2e asserts both evidence latches before it
+ * answers, per the decision e2e rule.
  */
 test.describe('nats-eu Scenario 12 Full Completion', () => {
   test.describe.configure({ mode: 'serial' });
@@ -195,6 +201,21 @@ test.describe('nats-eu Scenario 12 Full Completion', () => {
     await dismissDialogIfPresent(page);
     await closeWorkingDocumentIfOpen(page);
     await waitForObjectiveComplete(missionControl, 'Payload Test Pattern');
+  });
+
+  test('[call-the-return] looks at the HPA and the key, then calls the 1290 MHz carrier as its own uplink', async () => {
+    // Evidence first: the HPA state on TX Chain, the RX key status on RX Analysis.
+    // Each requiresObservation latch needs the tab on screen for the dwell.
+    await missionControl.selectTab('tx-chain');
+    await page.waitForTimeout(3000);
+    await missionControl.selectTab('rx-analysis');
+    await page.waitForTimeout(3000);
+
+    // Decisions are graded on state, so the helper refuses to click until both
+    // evidence items show latched in the modal.
+    await answerDecision(page, 'Own uplink transponded back', ['HPA state read on TX Chain', 'RX key status read on RX Analysis']);
+    await dismissDialogIfPresent(page);
+    await waitForObjectiveComplete(missionControl, 'Call the Return');
   });
 
   test('[secure-for-decode] disables the HPA and reads the transponded return', async () => {

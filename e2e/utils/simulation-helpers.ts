@@ -265,9 +265,28 @@ export async function answerQuizByText(page: Page, answerText: string): Promise<
  * by label without first proving the evidence was in hand proves nothing -
  * the same rule as expectDashboardAlarm before a sweep quiz.
  */
-export async function expectEvidenceLatched(page: Page, labels: string[]): Promise<void> {
+/**
+ * Bring the pending decision modal on screen. Like a quiz, a decision is
+ * registered silently and surfaces through the pending indicator after a
+ * delay, so open it from there when it is not already visible.
+ */
+export async function waitForDecisionToAppear(page: Page, timeout = 30000): Promise<void> {
   const modal = page.locator('#decision-modal');
+  try {
+    await expect(modal).toBeVisible({ timeout: 3000 });
+    return;
+  } catch {
+    // not open yet - use the indicator
+  }
+  const pendingIndicator = page.locator('.pending-quiz-indicator__open-btn');
+  await expect(pendingIndicator).toBeVisible({ timeout });
+  await pendingIndicator.click();
   await expect(modal).toBeVisible({ timeout: 10000 });
+}
+
+export async function expectEvidenceLatched(page: Page, labels: string[]): Promise<void> {
+  await waitForDecisionToAppear(page);
+  const modal = page.locator('#decision-modal');
   for (const label of labels) {
     const item = modal.locator('.decision-evidence-item.ready', { hasText: label });
     await expect(item, `evidence "${label}" should be latched before deciding`).toBeVisible({ timeout: 15000 });

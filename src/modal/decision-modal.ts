@@ -86,6 +86,10 @@ export class DecisionModal extends DraggableBox {
       EventBus.getInstance().emit(Events.DECISION_DISMISSED, dismissed);
     }
     this.hideOverlay_();
+    // Drop the rendered options so no hidden .quiz-option-btn lingers for the
+    // shared e2e locators once the box is closed.
+    const optionsEl = getEl('decision-options');
+    if (optionsEl) optionsEl.innerHTML = '';
     super.close();
   }
 
@@ -101,7 +105,7 @@ export class DecisionModal extends DraggableBox {
     document.body.insertAdjacentHTML(
       'beforeend',
       html`
-        <div id="${this.boxId}" class="draggable-box quiz-box decision-box" style="pointer-events:auto; display:none;">
+        <div id="${this.boxId}" class="draggable-box decision-box" style="pointer-events:auto; display:none;">
           <div class="draggable-box__title-bar">
             <div class="draggable-box__title"><span>${this.title}</span></div>
             <span id="${this.boxId}-close" class="draggable-box__btn draggable-box__close-btn"></span>

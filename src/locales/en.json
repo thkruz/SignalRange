@@ -1,0 +1,28 @@
+{
+  "app": {
+    "name": "SignalRange"
+  },
+  "loadout": {
+    "button": "LOADOUT",
+    "buttonTitle": "Change station equipment (restarts the sandbox)",
+    "title": "Station Loadout",
+    "intro": "Choose the antenna each station starts with. Applying a loadout restarts the sandbox and clears its saved state.",
+    "station": "Station",
+    "antenna": "Antenna",
+    "scenarioDefault": "scenario default",
+    "sourceBuiltin": "built-in",
+    "sourcePlugin": "plugin: {{name}}",
+    "apply": "Apply and Restart",
+    "reset": "Reset to Scenario Defaults",
+    "cancel": "Cancel",
+    "noStations": "This scenario has no ground stations to configure."
+  },
+  "plugins": {},
+  "devMenu": {
+    "pluginsSection": "Plugins",
+    "noPlugins": "No plugins installed.",
+    "pluginFailed": "failed to load",
+    "pluginDisabled": "disabled",
+    "reloadHint": "Toggling a plugin takes effect after a reload."
+  }
+}

@@ -9,6 +9,9 @@ export { AntennaCore } from './antenna-core';
 export type { AntennaUIType } from './antenna-factory';
 // Factory function
 export { createAntenna } from './antenna-factory';
+// Open registry (plugins add hardware configs here)
+export type { AntennaConfigId, AntennaCoreFactory, AntennaRegistryEntry, AntennaSource, RegisterAntennaOptions } from './antenna-registry';
+export { AntennaRegistry } from './antenna-registry';
 // UI implementations
 export { AntennaUIBasic } from './antenna-ui-basic';
 export { AntennaUIHeadless } from './antenna-ui-headless';

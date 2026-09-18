@@ -5,6 +5,7 @@ import { qs } from '@app/engine/utils/query-selector';
 import { Degrees } from 'ootk';
 import { ANTENNA_CONFIG_KEYS } from './antenna-config-keys';
 import { AntennaCore, AntennaState } from './antenna-core';
+import type { AntennaConfigId } from './antenna-registry';
 import './antenna.css';
 
 /**
@@ -29,7 +30,7 @@ export class AntennaUIBasic extends AntennaCore {
 
   constructor(
     parentId: string,
-    configId: ANTENNA_CONFIG_KEYS = ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK,
+    configId: AntennaConfigId = ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK,
     initialState: Partial<AntennaState> = {},
     teamId: number = 1,
     serverId: number = 1

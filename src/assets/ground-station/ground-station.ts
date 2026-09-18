@@ -1,6 +1,6 @@
 import { generateUuid } from '@app/engine/utils/uuid';
-import { ANTENNA_CONFIG_KEYS, AntennaCore } from '@app/equipment/antenna';
-import { AntennaUIHeadless } from '@app/equipment/antenna/antenna-ui-headless';
+import { AntennaCore } from '@app/equipment/antenna';
+import { createAntenna } from '@app/equipment/antenna/antenna-factory';
 import { RealTimeSpectrumAnalyzer } from '@app/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer';
 import { Receiver } from '@app/equipment/receiver/receiver';
 import { RFFrontEndCore } from '@app/equipment/rf-front-end/rf-front-end-core';
@@ -90,7 +90,9 @@ export class GroundStation {
     // Create antennas (headless mode for mission control)
     config.antennas.forEach((antennaConfigId, index) => {
       const initialState = config.antennasState?.[index] ?? {};
-      const antenna = new AntennaUIHeadless(`gs-${this.uuid}-antenna${index + 1}-headless`, antennaConfigId as ANTENNA_CONFIG_KEYS, initialState, config.teamId || 1);
+      // Through the factory so a plugin antenna with its own core class is
+      // honoured; built-ins still get AntennaUIHeadless.
+      const antenna = createAntenna(`gs-${this.uuid}-antenna${index + 1}-headless`, 'headless', antennaConfigId, initialState, config.teamId || 1);
 
       // Terrestrial-emitter reception (E1) needs the station's geodetic
       // position; without it the antenna hears ground emitters never

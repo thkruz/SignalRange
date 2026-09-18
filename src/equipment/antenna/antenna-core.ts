@@ -12,7 +12,8 @@ import { SimulationManager } from '@app/simulation/simulation-manager';
 import { dB, dBm, Hertz, RfSignal } from '@app/types';
 import { Degrees } from 'ootk';
 import { ANTENNA_CONFIG_KEYS } from './antenna-config-keys';
-import { ANTENNA_CONFIGS, AntennaConfig } from './antenna-configs';
+import { AntennaConfig } from './antenna-configs';
+import { type AntennaConfigId, AntennaRegistry } from './antenna-registry';
 import { StepTrackController } from './step-track-controller';
 
 /** A satellite's geometry and downlink as seen from one antenna's station. */
@@ -243,11 +244,12 @@ export abstract class AntennaCore extends BaseEquipment {
   /** C/N threshold to acquire beacon lock */
   private readonly beaconLockAcquireCN_: number = 6.5;
 
-  constructor(configId: ANTENNA_CONFIG_KEYS = ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK, initialState: Partial<AntennaState> = {}, teamId: number = 1, serverId: number = 1) {
+  constructor(configId: AntennaConfigId = ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK, initialState: Partial<AntennaState> = {}, teamId: number = 1, serverId: number = 1) {
     super(teamId);
 
-    // Set antenna configuration
-    this.config = ANTENNA_CONFIGS[configId];
+    // Set antenna configuration. Resolved through the registry so plugin
+    // antennas work everywhere a built-in does.
+    this.config = AntennaRegistry.getInstance().get(configId);
 
     // Initialize state with defaults
     this.state = {
@@ -332,8 +334,8 @@ export abstract class AntennaCore extends BaseEquipment {
     EventBus.getInstance().on(Events.DRAW, this.draw.bind(this));
   }
 
-  set configId(configId: ANTENNA_CONFIG_KEYS) {
-    this.config = ANTENNA_CONFIGS[configId];
+  set configId(configId: AntennaConfigId) {
+    this.config = AntennaRegistry.getInstance().get(configId);
   }
 
   // ========================================================================

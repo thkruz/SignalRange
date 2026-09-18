@@ -585,8 +585,10 @@ right answer in a scenario with a different interference schedule or injected fa
 **Evidence facts** (the only vocabulary `correctWhen` may use): `interference-active`,
 `equipment-fault-active`, `crypto-intact`, `gnss-constellation-healthy`, `timing-drifting`,
 `reference-in-holdover`, `weather-attenuation-dominant`, `audit-anomaly-present`, `config-drifted`,
-`command-window-open`. Every fact is held for the observation grace period so a transient frame
-cannot flip the right answer.
+`command-window-open`, `uplink-jammed`. Every fact is held for the observation grace period so a
+transient frame cannot flip the right answer, and `interference-active` reads the event *envelope*
+(a duty-cycled jammer counts in its off phase too). `uplink-jammed` needs `settings.commanding.uplinkFrequencyHz`
+and a transponder-path interference event on the target bird; TRANSEC hop-sync clears it.
 
 **Evidence gating.** `evidence` names sibling conditions by their `id`. The options stay clickable
 before those latch, but a correct answer given early scores only `partialCreditUnevidenced`. The

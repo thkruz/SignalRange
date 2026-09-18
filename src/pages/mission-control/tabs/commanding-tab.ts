@@ -11,6 +11,7 @@ const REJECT_REASON_LABELS: Record<CommandRejectReason, string> = {
   'no-doppler-comp': 'Uplink not compensated',
   'key-invalid': 'COMSEC key invalid',
   'out-of-window': 'Outside command window',
+  'uplink-jammed': 'Uplink denied - carrier jammed',
 };
 
 /** Command status -> console display (ACK/NAK vocabulary) */

@@ -238,6 +238,21 @@ export async function sendCommandAndExpectAck(page: Page, missionControl: Missio
   await expect(row).toContainText('ACK received');
 }
 
+/**
+ * Transmit a canned command and wait for its NAK row with the given reason
+ * label (e.g. 'Uplink denied - carrier jammed'). The command must be one the
+ * console has not sent before, or the first matching row is an older record.
+ */
+export async function sendCommandAndExpectNak(page: Page, missionControl: MissionControlPage, commandId: string, reasonLabel: string): Promise<void> {
+  await missionControl.selectTab('commanding');
+  await expect(page.locator('#cmd-window-badge')).toHaveText('OPEN', { timeout: 10000 });
+  await domClick(page, `#cmd-send-panel button[data-command-id="${commandId}"]`);
+
+  const row = page.locator('#cmd-log-body tr', { hasText: commandId }).first();
+  await expect(row).toBeVisible({ timeout: 5000 });
+  await expect(row).toContainText(reasonLabel);
+}
+
 /** Allocate a contact to a station on the Contact Plan console. */
 export async function assignContact(page: Page, contactId: string, stationId: string): Promise<void> {
   const select = page.locator(`select.cs-station-select[data-contact-id="${contactId}"]`);

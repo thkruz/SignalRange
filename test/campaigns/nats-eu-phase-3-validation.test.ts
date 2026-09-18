@@ -19,12 +19,13 @@ vi.mock('@app/simulation/sim-time', () => ({
 
 import { natsEuScenario17Data } from '@app/campaigns/nats-eu/scenario17';
 import { natsEuScenario18Data } from '@app/campaigns/nats-eu/scenario18';
+import { natsEuScenario19Data } from '@app/campaigns/nats-eu/scenario19';
 import type { OrbitalSatellite } from '@app/equipment/satellite/orbital-satellite';
 import type { Condition } from '@app/objectives/objective-types';
 import type { ScenarioData } from '@app/ScenarioData';
 import { PassPlannerService } from '@app/services/pass-planner-service';
 
-const PHASE_3: ScenarioData[] = [natsEuScenario17Data, natsEuScenario18Data];
+const PHASE_3: ScenarioData[] = [natsEuScenario17Data, natsEuScenario18Data, natsEuScenario19Data];
 
 interface Phase3Settings {
   satellites: OrbitalSatellite[];
@@ -58,7 +59,7 @@ function firstPass(scenario: ScenarioData, sat: OrbitalSatellite) {
 describe('nats-eu Phase 3: scenario wiring', () => {
   it('registers the Gray Zone scenarios in order, advanced, chained from S16', () => {
     const ids = PHASE_3.map((s) => s.id);
-    expect(ids).toEqual(['nats-eu-scenario17', 'nats-eu-scenario18']);
+    expect(ids).toEqual(['nats-eu-scenario17', 'nats-eu-scenario18', 'nats-eu-scenario19']);
 
     const expectedPrereq = ['nats-eu-scenario16', ...ids.slice(0, -1)];
     PHASE_3.forEach((scenario, i) => {
@@ -207,5 +208,82 @@ describe('S18 Dirty Spectrum', () => {
     const correct = decision.params!.decisionOptions!.filter((o) => o.correctWhen && holds(o.correctWhen));
     expect(correct).toHaveLength(1);
     expect(correct[0].label).toMatch(/^Deliberate interference/);
+  });
+});
+
+describe('S19 Frequency Agility', () => {
+  const scenario = natsEuScenario19Data;
+  type S19Settings = Phase3Settings & {
+    commanding: { targetNoradId: number; windowStartS: number; windowEndS: number; uplinkFrequencyHz: number; commands: Array<{ id: string }> };
+    transec: { hopChannelsHz: number[]; requireKey?: boolean };
+  };
+  const s19 = scenario.settings as unknown as S19Settings;
+
+  it('flies the SAR-2 commanding pass at T+20 peaking 28 deg and SAR-1 at T+42 peaking 25 deg', () => {
+    const start = startMsOf(scenario);
+    const sar2 = firstPass(scenario, satOf(scenario, 61702));
+    const sar1 = firstPass(scenario, satOf(scenario, 61701));
+
+    expect(Math.abs((sar2.aosMs - start) / 60_000 - 20.0)).toBeLessThan(0.25);
+    expect(Math.abs(sar2.maxEl - 27.9)).toBeLessThan(1.0);
+    expect(Math.abs((sar1.aosMs - start) / 60_000 - 42.0)).toBeLessThan(0.25);
+    expect(Math.abs(sar1.maxEl - 25.2)).toBeLessThan(1.0);
+  });
+
+  it('the command window sits inside the SAR-2 pass with guards', () => {
+    const start = startMsOf(scenario);
+    const sar2 = firstPass(scenario, satOf(scenario, 61702));
+    expect(s19.commanding.targetNoradId).toBe(61702);
+    expect(s19.commanding.windowStartS * 1000 + start).toBeGreaterThanOrEqual(sar2.aosMs);
+    expect(s19.commanding.windowEndS * 1000 + start).toBeLessThanOrEqual(sar2.losMs);
+    expect(s19.commanding.windowEndS - s19.commanding.windowStartS).toBeGreaterThan(120);
+  });
+
+  it('the jammer is a transponder-path event on the target bird overlapping the command carrier, opening inside the window with room for the ride-through', () => {
+    const [jam] = s19.interferenceEvents! as Array<{
+      id: string;
+      startTime: number;
+      duration: number;
+      frequency: number;
+      bandwidth: number;
+      satelliteNoradId?: number;
+      path?: string;
+    }>;
+    expect(jam.path).toBeUndefined();
+    expect(jam.satelliteNoradId).toBe(s19.commanding.targetNoradId);
+    expect(Math.abs(jam.frequency - s19.commanding.uplinkFrequencyHz)).toBeLessThanOrEqual(jam.bandwidth / 2);
+    // Opens after the first command has had time to ACK, closes with the window.
+    expect(jam.startTime).toBeGreaterThan(s19.commanding.windowStartS + 60);
+    expect(jam.startTime + jam.duration).toBeGreaterThanOrEqual(s19.commanding.windowEndS);
+    // Six minutes left in the window when it opens: enough to call, key, sync, resend.
+    expect(s19.commanding.windowEndS - jam.startTime).toBeGreaterThan(5 * 60);
+    // The hop set spans the jammed carrier.
+    expect(s19.transec.hopChannelsHz).toContain(s19.commanding.uplinkFrequencyHz);
+    expect(s19.transec.hopChannelsHz.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it('call-the-nak is graded on uplink-jammed with the crypto intact, and only the denial option is satisfiable', () => {
+    const objective = scenario.objectives.find((o) => o.id === 'call-the-nak')!;
+    const decision = objective.conditions.find((c) => c.type === 'decision')!;
+    const siblingIds = new Set(objective.conditions.map((c: Condition) => c.id).filter(Boolean));
+    for (const id of decision.params!.evidence!) expect(siblingIds.has(id)).toBe(true);
+
+    const facts: Record<string, boolean> = { 'uplink-jammed': true, 'crypto-intact': true, 'command-window-open': true };
+    const holds = (rule: unknown): boolean => {
+      const r = rule as { fact?: string; is?: boolean; all?: unknown[]; any?: unknown[] };
+      if (r.fact) return (facts[r.fact] ?? false) === r.is;
+      if (r.all) return r.all.every(holds);
+      return (r.any ?? []).some(holds);
+    };
+    const correct = decision.params!.decisionOptions!.filter((o) => o.correctWhen && holds(o.correctWhen));
+    expect(correct.map((o) => o.label)).toEqual(['Uplink denial - key the hop set at both ends and take the waveform to hopping']);
+  });
+
+  it('the ride-through resends the command that was denied', () => {
+    const denied = 'PLD-STATUS';
+    expect(s19.commanding.commands.map((c) => c.id)).toContain(denied);
+    const ride = scenario.objectives.find((o) => o.id === 'ride-through')!;
+    expect(ride.conditions.find((c) => c.type === 'command-acknowledged')!.params!.commandId).toBe(denied);
+    expect(ride.prerequisiteObjectiveIds).toEqual(['go-to-hopping']);
   });
 });

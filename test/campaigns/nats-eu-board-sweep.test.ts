@@ -101,8 +101,8 @@ describe('nats-eu board sweep quizzes grade the board the simulation shows', () 
       )
   );
 
-  it('finds every dashboard-sweep quiz (eight GW-01 sweeps, the S9 Shetland read, and the S17/S18 Gray Zone sweeps)', () => {
-    expect(sweepQuizzes.map((q) => q.label)).toHaveLength(11);
+  it('finds every dashboard-sweep quiz (eight GW-01 sweeps, the S9 Shetland read, and the S17-S19 Gray Zone sweeps)', () => {
+    expect(sweepQuizzes.map((q) => q.label)).toHaveLength(12);
   });
 
   it.each(sweepQuizzes.map((q) => [q.label, q]))('%s: the correct answer names the AGC rail, never "no active alarms"', (_label, quiz) => {

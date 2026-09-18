@@ -12,12 +12,17 @@
  * determinism. No other simulation coupling, so it is unit-testable in isolation.
  */
 
+import { InterferenceManager } from '@app/interference/interference-manager';
 import { ScenarioManager } from '@app/scenario-manager';
 import { missionNowMs } from '@app/simulation/mission-clock';
+import { TransecManager } from '@app/transec/transec-manager';
 
 export type CommandKeyStatus = 'Valid' | 'Pending Rotation' | 'Zeroized';
 export type CommandStatus = 'pending' | 'acked' | 'rejected';
-export type CommandRejectReason = 'no-doppler-comp' | 'key-invalid' | 'out-of-window';
+export type CommandRejectReason = 'no-doppler-comp' | 'key-invalid' | 'out-of-window' | 'uplink-jammed';
+
+/** Guard either side of the command carrier that an interferer must reach to deny it (Hz) */
+export const UPLINK_JAM_GUARD_HZ = 500e3;
 
 /** settings.commanding */
 export interface CommandingConfig {
@@ -35,6 +40,14 @@ export interface CommandingConfig {
   requireDopplerComp?: boolean;
   /** Canned TT&C commands the console offers as one-click sends */
   commands?: Array<{ id: string; label?: string }>;
+  /**
+   * Command carrier RF (Hz). With it set, a scripted transponder-path
+   * interference event on the target bird that overlaps this frequency denies
+   * the fixed-mode carrier: commands are rejected 'uplink-jammed' until the
+   * TRANSEC waveform is hopping with sync locked (nats-eu M7). Omit it and
+   * jamming never touches commanding.
+   */
+  uplinkFrequencyHz?: number;
 }
 
 interface CommandRecord {
@@ -146,6 +159,9 @@ export class CommandingManager {
     } else if (!this.isWithinWindow_(elapsed)) {
       record.status = 'rejected';
       record.reason = 'out-of-window';
+    } else if (this.isUplinkJammed()) {
+      record.status = 'rejected';
+      record.reason = 'uplink-jammed';
     } else {
       record.status = 'acked';
     }
@@ -153,6 +169,29 @@ export class CommandingManager {
     this.state_.commands.push(record);
 
     return record;
+  }
+
+  /**
+   * Whether the command carrier is currently denied by interference: a
+   * transponder-path event on the target bird, in its envelope, overlapping
+   * `uplinkFrequencyHz` - and no TRANSEC hop-sync to ride over it. A jammer
+   * cannot follow a keyed hop set, so a synced hopping waveform is never
+   * jammed here.
+   */
+  isUplinkJammed(): boolean {
+    const uplinkHz = this.config_.uplinkFrequencyHz;
+    const target = this.config_.targetNoradId;
+    if (uplinkHz === undefined || target === undefined || !InterferenceManager.isInitialized()) return false;
+    if (TransecManager.isInitialized() && TransecManager.getInstance().isSyncLocked()) return false;
+
+    const interference = InterferenceManager.getInstance();
+
+    return interference.getEvents().some((event) => {
+      if ((event.path ?? 'transponder') !== 'transponder' || event.satelliteNoradId !== target) return false;
+      if (Math.abs(event.frequency - uplinkHz) > event.bandwidth / 2 + UPLINK_JAM_GUARD_HZ) return false;
+
+      return interference.isEventInEnvelope(event.id);
+    });
   }
 
   /** Whether a command (or a specific one) has been acknowledged. */

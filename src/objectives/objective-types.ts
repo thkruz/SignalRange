@@ -149,6 +149,7 @@ export const EVIDENCE_FACT_IDS = [
   'audit-anomaly-present', // an anomalous audit-log entry is visible and unacknowledged
   'config-drifted', // an unacknowledged config-change anomaly is in the audit log
   'command-window-open', // a TT&C command window is open right now
+  'uplink-jammed', // the command carrier is denied by interference on the target's uplink, with no TRANSEC sync
 ] as const;
 
 export type EvidenceFactId = (typeof EVIDENCE_FACT_IDS)[number];

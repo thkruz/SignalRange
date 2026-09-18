@@ -54,6 +54,7 @@ import { natsEuScenario15Data } from '@app/campaigns/nats-eu/scenario15';
 import { natsEuScenario16Data } from '@app/campaigns/nats-eu/scenario16';
 import { natsEuScenario17Data } from '@app/campaigns/nats-eu/scenario17';
 import { natsEuScenario18Data } from '@app/campaigns/nats-eu/scenario18';
+import { natsEuScenario19Data } from '@app/campaigns/nats-eu/scenario19';
 import { signalHunterSandboxData } from '@app/campaigns/signal-hunter/sandbox';
 import { signalHunterScenario1Data } from '@app/campaigns/signal-hunter/scenario1';
 import { AntennaState } from '@app/equipment/antenna';
@@ -309,6 +310,12 @@ export interface SimulationSettings {
     requireDopplerComp?: boolean;
     /** Canned TT&C commands the console offers as one-click sends */
     commands?: Array<{ id: string; label?: string }>;
+    /**
+     * Command carrier RF (Hz). With it set, a transponder-path interference
+     * event on the target bird that overlaps it denies fixed-mode commands
+     * ('uplink-jammed') until TRANSEC is hopping with sync locked.
+     */
+    uplinkFrequencyHz?: number;
   };
 
   /** M3: multi-station pass scheduling. Starts ContactScheduleManager. */
@@ -517,6 +524,7 @@ export const SCENARIOS: ScenarioData[] = [
   natsEuScenario16Data,
   natsEuScenario17Data,
   natsEuScenario18Data,
+  natsEuScenario19Data,
   hamSdrSandboxData,
   hamSdrScenario1Data,
   hamSdrScenario2Data,

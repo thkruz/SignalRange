@@ -84,6 +84,8 @@ export const EVIDENCE_FACTS: Record<EvidenceFactId, EvidenceFactResolver> = {
   },
 
   'command-window-open': () => CommandingManager.isInitialized() && CommandingManager.getInstance().isWindowOpen(),
+
+  'uplink-jammed': () => CommandingManager.isInitialized() && CommandingManager.getInstance().isUplinkJammed(),
 };
 
 /** Evaluate a rule against a fact reader (held reads in production, stubs in tests) */

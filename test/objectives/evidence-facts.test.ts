@@ -9,7 +9,7 @@ const crypto = { has: false, rx: { decryptionMode: 'ACTIVE', decryptionKeyStatus
 const gnss = { initialized: false, exposed: false };
 const weather = { events: [] as { linkMarginDegradation: number }[] };
 const security = { initialized: false, anomaly: false, log: [] as { id: string; category: string; isAnomaly?: boolean }[], acked: new Set<string>() };
-const commanding = { initialized: false, windowOpen: false };
+const commanding = { initialized: false, windowOpen: false, jammed: false };
 
 vi.mock('../../src/interference/interference-manager', () => ({
   InterferenceManager: {
@@ -50,7 +50,7 @@ vi.mock('../../src/security-console/security-console-core', () => ({
 vi.mock('../../src/commanding/commanding-manager', () => ({
   CommandingManager: {
     isInitialized: () => commanding.initialized,
-    getInstance: () => ({ isWindowOpen: () => commanding.windowOpen }),
+    getInstance: () => ({ isWindowOpen: () => commanding.windowOpen, isUplinkJammed: () => commanding.jammed }),
   },
 }));
 
@@ -75,6 +75,7 @@ beforeEach(() => {
   security.acked = new Set();
   commanding.initialized = false;
   commanding.windowOpen = false;
+  commanding.jammed = false;
 });
 
 describe('evidence facts - resolvers', () => {
@@ -144,10 +145,13 @@ describe('evidence facts - resolvers', () => {
     expect(EVIDENCE_FACTS['config-drifted'](ctx())).toBe(false);
   });
 
-  it('command-window-open reads the commanding manager', () => {
+  it('command-window-open and uplink-jammed read the commanding manager', () => {
     commanding.initialized = true;
     commanding.windowOpen = true;
     expect(EVIDENCE_FACTS['command-window-open'](ctx())).toBe(true);
+    expect(EVIDENCE_FACTS['uplink-jammed'](ctx())).toBe(false);
+    commanding.jammed = true;
+    expect(EVIDENCE_FACTS['uplink-jammed'](ctx())).toBe(true);
   });
 });
 

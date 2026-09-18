@@ -1,0 +1,22 @@
+{
+  "//": "Editor IntelliSense against the SignalRange engine. Point the paths below at a",
+  "//2": "sibling checkout of SignalRange (or a gitignored .signal-range/ clone).",
+  "//3": "The host build ignores this file; it compiles the plugin with the host's own tsconfig.",
+  "compilerOptions": {
+    "target": "es2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": false,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "baseUrl": ".",
+    "paths": {
+      "@app/*": ["../SignalRange/src/*", "../signal-range/src/*", ".signal-range/src/*"],
+      "@engine/*": ["../SignalRange/src/engine/*", "../signal-range/src/engine/*", ".signal-range/src/engine/*"]
+    }
+  },
+  "include": ["src/**/*.ts", "__tests__/**/*.ts"]
+}

@@ -57,6 +57,9 @@ importers:
       '@types/node':
         specifier: ^20.19.24
         version: 20.19.24
+      '@types/semver':
+        specifier: 7.7.0
+        version: 7.7.0
       '@typescript/native-preview':
         specifier: 7.0.0-dev.20260707.2
         version: 7.0.0-dev.20260707.2
@@ -81,6 +84,9 @@ importers:
       jsdom:
         specifier: ^28.0.0
         version: 28.0.0
+      semver:
+        specifier: 7.7.2
+        version: 7.7.2
       style-loader:
         specifier: ^4.0.0
         version: 4.0.0(webpack@5.107.2(esbuild@0.28.1)(postcss@8.5.15))
@@ -996,6 +1002,9 @@ packages:
   '@types/phoenix@1.6.6':
     resolution: {integrity: sha512-PIzZZlEppgrpoT2QgbnDU+MMzuR6BbCjllj0bM70lWoejMeNJAxCchxnv7J3XFkI8MpygtRpzXrIlmWUBclP5A==}
 
+  '@types/semver@7.7.0':
+    resolution: {integrity: sha512-k107IF4+Xr7UHjwDc7Cfd6PRQfbdkiRabXGRjo07b4WyPahFBZCZ1sE+BNxYIJPPg73UkfOsVOLwqVc/6ETrIA==}
+
   '@types/ws@8.18.1':
     resolution: {integrity: sha512-ThVF6DCVhA8kUGy+aazFQ4kXQ7E1Ty7A3ypFOe0IcJV8O/M511G99AW24irKrW56Wt44yG9+ij8FaqoBGkuBXg==}
 
@@ -1905,6 +1914,11 @@ packages:
   selfsigned@5.5.0:
     resolution: {integrity: sha512-ftnu3TW4+3eBfLRFnDEkzGxSF/10BJBkaLJuBHZX0kiPS7bRdlpZGu6YGt4KngMkdTwJE6MbjavFpqHvqVt+Ew==}
     engines: {node: '>=18'}
+
+  semver@7.7.2:
+    resolution: {integrity: sha512-RF0Fw+rO5AMf9MAyaRXI4AV0Ulj5lMHqVxxdSgiVbixSCXoEmmX/jk0CuJw4+3SqroYO9VoUh+HcuJivvtJemA==}
+    engines: {node: '>=10'}
+    hasBin: true
 
   semver@7.7.3:
     resolution: {integrity: sha512-SdsKMrI9TdgjdweUSR9MweHA4EJ8YxHn8DFaDisvhVlUOe4BF1tLD7GAj0lIqWVl+dPb/rExr0Btby5loQm20Q==}
@@ -3021,6 +3035,8 @@ snapshots:
 
   '@types/phoenix@1.6.6': {}
 
+  '@types/semver@7.7.0': {}
+
   '@types/ws@8.18.1':
     dependencies:
       '@types/node': 20.19.24
@@ -3335,7 +3351,7 @@ snapshots:
       postcss-modules-scope: 3.2.1(postcss@8.5.15)
       postcss-modules-values: 4.0.0(postcss@8.5.15)
       postcss-value-parser: 4.2.0
-      semver: 7.7.3
+      semver: 7.7.2
     optionalDependencies:
       '@rspack/core': 2.0.5
       webpack: 5.107.2(esbuild@0.28.1)(postcss@8.5.15)
@@ -3743,7 +3759,7 @@ snapshots:
 
   make-dir@4.0.0:
     dependencies:
-      semver: 7.7.3
+      semver: 7.7.2
 
   math-intrinsics@1.1.0: {}
 
@@ -3955,6 +3971,8 @@ snapshots:
       '@peculiar/x509': 1.14.3
       pkijs: 3.4.0
     optional: true
+
+  semver@7.7.2: {}
 
   semver@7.7.3: {}
 

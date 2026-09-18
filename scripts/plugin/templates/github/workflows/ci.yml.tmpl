@@ -1,0 +1,38 @@
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      # Check out the SignalRange engine at this plugin's minimum supported version.
+      - name: Checkout SignalRange
+        uses: actions/checkout@v4
+        with:
+          repository: thkruz/SignalRange
+          ref: __ENGINE_REF__
+
+      # Check out this plugin into the engine's external-plugins folder.
+      - name: Checkout plugin
+        uses: actions/checkout@v4
+        with:
+          path: src/plugins-external/__PLUGIN_PKG__
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+
+      # Validate + wire the plugin into the manifest (local add: no clone).
+      - run: pnpm run plugin -- add ./src/plugins-external/__PLUGIN_PKG__ --yes
+
+      - name: Typecheck (host + plugin)
+        run: pnpm run typecheck
+
+      - name: Test plugin
+        run: pnpm run plugin -- test __PLUGIN_PKG__

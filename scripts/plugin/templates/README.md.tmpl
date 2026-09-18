@@ -1,0 +1,54 @@
+# __PLUGIN_PKG__
+
+__DESCRIPTION__
+
+A plugin for [SignalRange](https://github.com/thkruz/SignalRange). It registers
+one antenna (`__ANTENNA_ID__`) that shows up in every sandbox loadout.
+
+## Develop
+
+The plugin needs the SignalRange engine to compile against. Two common setups:
+
+**A. Develop inside a SignalRange checkout (recommended)**
+
+```bash
+git clone https://github.com/thkruz/SignalRange
+cd SignalRange
+pnpm install
+pnpm run plugin -- create my-plugin      # scaffolds src/plugins-external/signal-range-plugin-my-plugin
+pnpm run plugin -- dev __PLUGIN_ID__     # boots a sandbox with only this plugin, live-reload
+```
+
+Edit the files under `src/plugins-external/__PLUGIN_PKG__/`, then push them to
+their own git repo (`git remote add origin …` from inside the plugin folder).
+
+**B. Develop standalone**
+
+Clone this repo next to a `SignalRange` checkout (so the `../SignalRange` paths
+in `tsconfig.json` resolve), or clone SignalRange into `.signal-range/`. Then
+`pnpm install` here for editor type-checking.
+
+## Install (for users)
+
+```bash
+# From a SignalRange checkout:
+pnpm run plugin -- add __REPO_URL__
+pnpm run build   # or restart `pnpm run dev`
+```
+
+## Try it
+
+Open any campaign sandbox, click **LOADOUT** in the command bar, and pick the
+antenna. To skip the picker, append `?antenna=__ANTENNA_ID__` to the sandbox URL.
+
+## The two hard rules
+
+1. The entry (`src/plugin.ts`) must have a **named export** matching `className`
+   in `signal-range-plugin.json` (`__CLASS_NAME__`).
+2. The class's `readonly id` must **equal** the manifest's plugin `id`
+   (`__PLUGIN_ID__`).
+
+## License
+
+MIT. Note: SignalRange itself is AGPL-3.0. A plugin compiled into a SignalRange
+build becomes part of that combined work, so distribute accordingly.

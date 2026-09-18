@@ -11,8 +11,10 @@
       "test/**/*.{js,ts,tsx}",
       "e2e/**/*.ts",
       "build/**/*.ts",
+      "scripts/plugin/**/*.ts",
       "!src/engine/**",
       "!!src/private/**",
+      "!src/plugins-external/**",
       "!**/*.min.*"
     ]
   },

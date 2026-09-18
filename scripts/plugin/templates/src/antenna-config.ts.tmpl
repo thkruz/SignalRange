@@ -1,0 +1,40 @@
+import type { AntennaConfig } from '@app/equipment/antenna/antenna-configs';
+import type { Hertz } from '@app/types';
+
+/** Registry id. Upper snake case, unique across built-ins and installed plugins. */
+export const ANTENNA_ID = '__ANTENNA_ID__';
+
+/**
+ * A 4.5 m Ka-band dish. Distinct band and size from every built-in so it is
+ * obvious in the loadout picker that the plugin is the source. Every field is
+ * documented on AntennaConfig in the engine.
+ */
+export const antennaConfig: AntennaConfig = {
+  name: '__DISPLAY_NAME__ 4.5m Ka-Band',
+  diameter: 4.5,
+  efficiency: 0.65,
+  band: 'Ka',
+  minRxFrequency: 17.7e9 as Hertz,
+  maxRxFrequency: 21.2e9 as Hertz,
+  minTxFrequency: 27.5e9 as Hertz,
+  maxTxFrequency: 31.0e9 as Hertz,
+  feedLoss: 0.5,
+  surfaceRms_m: 0.0003,
+  blockageFraction: 0.07,
+  xpd_dB: 30,
+  polType: 'circular',
+  feedLossModel: { a: 0.2, b: 0.1, c: 0.012 },
+  kBeamConst: 70,
+  patternModel: 'ITU465',
+  pointingSigma_deg: 0.02,
+  elRange_deg: [5, 90],
+  azContinuous: false,
+  azRange_deg: [-180, 540],
+  maxRate_deg_s: 3.0,
+  windDePointingCoef_deg_per_mps: 0.003,
+  lnaNF_dB: 1.2,
+  rxChainLoss_dB: 0.5,
+  rxPhysTemp_K: 290,
+  acuModel: '__DISPLAY_NAME__ ACU',
+  acuSerialNumber: 'ACU-__ELEMENT_BASE__-01',
+};

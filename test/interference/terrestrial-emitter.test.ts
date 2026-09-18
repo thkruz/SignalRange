@@ -186,4 +186,26 @@ describe('E1: terrestrial emitter path', () => {
     located.attachStationLocation(STATION.latitude, STATION.longitude);
     expect(located.terrestrialSignals()).toHaveLength(0);
   });
+
+  it('reports an event in its envelope whether or not it is in an on phase, and honours a force', () => {
+    // 60 s on / 30 s off from T+0: at construction time (elapsed 0) the event is
+    // both radiating and in envelope; a future event is neither; a forced-on
+    // future event is in envelope by the force.
+    scenarioSettings.interferenceEvents = [
+      { ...RFI_EVENT, id: 'cycling', periodSeconds: 90, onSeconds: 60 },
+      { ...RFI_EVENT, id: 'later', startTime: 99999 },
+    ];
+    const manager = InterferenceManager.getInstance();
+    (manager as any).update_();
+
+    expect(manager.isEventInEnvelope('cycling')).toBe(true);
+    expect(manager.isEventInEnvelope('later')).toBe(false);
+    expect(manager.isEventInEnvelope('unknown')).toBe(false);
+    expect(manager.isAnyEventInEnvelope()).toBe(true);
+
+    manager.forceEvent('later', true);
+    expect(manager.isEventInEnvelope('later')).toBe(true);
+    manager.forceEvent('later', null);
+    expect(manager.isEventInEnvelope('later')).toBe(false);
+  });
 });

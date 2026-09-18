@@ -136,6 +136,26 @@ export class InterferenceManager {
     return this.activeSignalIds_.size > 0;
   }
 
+  /**
+   * Whether an event's envelope contains the current mission time - the
+   * interferer is "in progress" even in the off phase of its duty cycle. A
+   * forced event counts while forced on. This, not the instantaneous
+   * radiating state, is what a decision about interference is graded on: a
+   * jammer that cycles 60 s on / 30 s off is one incident, not thirty.
+   */
+  isEventInEnvelope(eventId: string): boolean {
+    const event = this.events_.find((e) => e.id === eventId);
+    if (!event) return false;
+    const forced = this.forced_.get(event.id);
+    if (forced !== undefined) return forced;
+    const elapsed = (missionNowMs() - this.missionStartTime_) / 1000;
+    return elapsed >= event.startTime && elapsed < event.startTime + event.duration;
+  }
+
+  isAnyEventInEnvelope(): boolean {
+    return this.events_.some((event) => this.isEventInEnvelope(event.id));
+  }
+
   /** Every event the scenario declares */
   getEvents(): readonly InterferenceEventConfig[] {
     return this.events_;

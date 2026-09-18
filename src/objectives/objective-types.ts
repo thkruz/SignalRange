@@ -139,7 +139,7 @@ export type ConditionType =
  * evaluators.
  */
 export const EVIDENCE_FACT_IDS = [
-  'interference-active', // a scripted interference event is radiating right now
+  'interference-active', // a scripted interference event is in progress (inside its envelope, on or off phase)
   'equipment-fault-active', // the fault injector has a live fault on this station
   'crypto-intact', // rx key valid and auth tags verifying (true when crypto is not modelled)
   'gnss-constellation-healthy', // GNSS present with >= 4 satellites on the GPSDO

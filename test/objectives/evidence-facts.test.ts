@@ -14,7 +14,8 @@ const commanding = { initialized: false, windowOpen: false };
 vi.mock('../../src/interference/interference-manager', () => ({
   InterferenceManager: {
     isInitialized: () => interference.initialized,
-    getInstance: () => ({ isAnyEventActive: () => interference.anyActive }),
+    // The fact reads the envelope (in progress), not the instantaneous radiating state.
+    getInstance: () => ({ isAnyEventInEnvelope: () => interference.anyActive, isAnyEventActive: () => false }),
   },
 }));
 vi.mock('../../src/faults', () => ({

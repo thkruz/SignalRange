@@ -35,7 +35,13 @@ export const WEATHER_DOMINANT_DB = 3;
 const anyGpsdo = (ctx: EvidenceContext, check: (state: GroundStation['rfFrontEnds'][number]['gpsdoModule']['state']) => boolean): boolean =>
   ctx.gs?.rfFrontEnds.some((fe) => check(fe.gpsdoModule.state)) ?? false;
 
-const interferenceActive = (): boolean => InterferenceManager.isInitialized() && InterferenceManager.getInstance().isAnyEventActive();
+/**
+ * An interference event is in progress: inside its scheduled envelope, whether
+ * or not this instant is an "on" phase of its duty cycle. A jammer that cycles
+ * 60 s on / 30 s off is one incident, and a call about it must not flip every
+ * half minute.
+ */
+const interferenceActive = (): boolean => InterferenceManager.isInitialized() && InterferenceManager.getInstance().isAnyEventInEnvelope();
 
 const faultActive = (ctx: EvidenceContext): boolean => ctx.gs !== null && FaultInjector.getInstance().hasFaults(ctx.gs.state.id);
 

@@ -18,12 +18,13 @@ vi.mock('@app/simulation/sim-time', () => ({
 }));
 
 import { natsEuScenario17Data } from '@app/campaigns/nats-eu/scenario17';
+import { natsEuScenario18Data } from '@app/campaigns/nats-eu/scenario18';
 import type { OrbitalSatellite } from '@app/equipment/satellite/orbital-satellite';
 import type { Condition } from '@app/objectives/objective-types';
 import type { ScenarioData } from '@app/ScenarioData';
 import { PassPlannerService } from '@app/services/pass-planner-service';
 
-const PHASE_3: ScenarioData[] = [natsEuScenario17Data];
+const PHASE_3: ScenarioData[] = [natsEuScenario17Data, natsEuScenario18Data];
 
 interface Phase3Settings {
   satellites: OrbitalSatellite[];
@@ -57,7 +58,7 @@ function firstPass(scenario: ScenarioData, sat: OrbitalSatellite) {
 describe('nats-eu Phase 3: scenario wiring', () => {
   it('registers the Gray Zone scenarios in order, advanced, chained from S16', () => {
     const ids = PHASE_3.map((s) => s.id);
-    expect(ids).toEqual(['nats-eu-scenario17']);
+    expect(ids).toEqual(['nats-eu-scenario17', 'nats-eu-scenario18']);
 
     const expectedPrereq = ['nats-eu-scenario16', ...ids.slice(0, -1)];
     PHASE_3.forEach((scenario, i) => {
@@ -133,5 +134,78 @@ describe('S17 Unusual Activity', () => {
     };
     const correct = decision.params!.decisionOptions!.filter((o) => o.correctWhen && holds(o.correctWhen));
     expect(correct.map((o) => o.label)).toEqual(['External interference - characterise it and report it']);
+  });
+});
+
+describe('S18 Dirty Spectrum', () => {
+  const scenario = natsEuScenario18Data;
+
+  it('flies SAR-2 at T+18 peaking 32 deg then SAR-1 at T+40 peaking 24 deg over Galway', () => {
+    const start = startMsOf(scenario);
+    const sar2 = firstPass(scenario, satOf(scenario, 61702));
+    const sar1 = firstPass(scenario, satOf(scenario, 61701));
+
+    expect(Math.abs((sar2.aosMs - start) / 60_000 - 18.0)).toBeLessThan(0.25);
+    expect(Math.abs(sar2.maxEl - 31.8)).toBeLessThan(1.0);
+    expect(Math.abs((sar1.aosMs - start) / 60_000 - 40.0)).toBeLessThan(0.25);
+    expect(Math.abs(sar1.maxEl - 24.0)).toBeLessThan(1.0);
+    expect(sar2.losMs).toBeLessThan(sar1.aosMs);
+  });
+
+  it('each carrier is terrestrial, cycles, sits in the band of the bird being received, and the first outlives its pass', () => {
+    const start = startMsOf(scenario);
+    const sar2 = firstPass(scenario, satOf(scenario, 61702));
+    const sar1 = firstPass(scenario, satOf(scenario, 61701));
+    const events = settingsOf(scenario).interferenceEvents! as Array<{
+      id: string;
+      startTime: number;
+      duration: number;
+      periodSeconds: number;
+      onSeconds: number;
+      frequency: number;
+      path?: string;
+    }>;
+    const [onSar2, onSar1] = events;
+
+    for (const e of events) {
+      expect(e.path).toBe('terrestrial');
+      expect(e.onSeconds, `${e.id} cycles`).toBeLessThan(e.periodSeconds);
+      expect(e.periodSeconds, `${e.id} keeps a minute-scale beat`).toBe(90);
+    }
+    // In band: within the 36 MHz video occupied band of the bird being received.
+    expect(Math.abs(onSar2.frequency - 11730e6)).toBeLessThan(18e6);
+    expect(Math.abs(onSar1.frequency - 11686e6)).toBeLessThan(18e6);
+
+    expect(onSar2.startTime * 1000 + start).toBeGreaterThan(sar2.maxElMs);
+    expect(onSar2.startTime * 1000 + start).toBeLessThan(sar2.losMs);
+    expect((onSar2.startTime + onSar2.duration) * 1000 + start, 'outlives SAR-2 LOS').toBeGreaterThan(sar2.losMs + 60_000);
+    expect((onSar2.startTime + onSar2.duration) * 1000 + start).toBeLessThan(sar1.aosMs);
+
+    expect(onSar1.startTime * 1000 + start).toBeGreaterThan(sar1.aosMs);
+    expect((onSar1.startTime + onSar1.duration) * 1000 + start).toBeLessThan(sar1.losMs);
+  });
+
+  it('the notches are asked for at the IF of each carrier', () => {
+    const notchOf = (objectiveId: string) => scenario.objectives.find((o) => o.id === objectiveId)!.conditions.find((c) => c.type === 'notch-filter-configured')!.params!;
+    expect(notchOf('notch-the-carrier').notchCenterFrequency).toBe(13100 - 11726);
+    expect(notchOf('decode-sar1-under-it').notchCenterFrequency).toBe(13100 - 11690);
+  });
+
+  it('call-the-cycle is graded on the interference envelope, and only the deliberate-interference option is satisfiable', () => {
+    const objective = scenario.objectives.find((o) => o.id === 'call-the-cycle')!;
+    const decision = objective.conditions.find((c) => c.type === 'decision')!;
+    const siblingIds = new Set(objective.conditions.map((c: Condition) => c.id).filter(Boolean));
+    for (const id of decision.params!.evidence!) expect(siblingIds.has(id)).toBe(true);
+
+    const facts: Record<string, boolean> = { 'interference-active': true, 'equipment-fault-active': false, 'crypto-intact': true, 'weather-attenuation-dominant': false };
+    const holds = (rule: unknown): boolean => {
+      const r = rule as { fact?: string; is?: boolean; all?: unknown[]; any?: unknown[] };
+      if (r.fact) return (facts[r.fact] ?? false) === r.is;
+      if (r.all) return r.all.every(holds);
+      return (r.any ?? []).some(holds);
+    };
+    const correct = decision.params!.decisionOptions!.filter((o) => o.correctWhen && holds(o.correctWhen));
+    expect(correct).toHaveLength(1);
+    expect(correct[0].label).toMatch(/^Deliberate interference/);
   });
 });

@@ -366,6 +366,15 @@ export interface ConditionParams {
    * 'dashboard'). Matched by exact id or prefix, like the tab-active condition.
    */
   observationTab?: string;
+  /**
+   * For requiresObservation: seconds the value must read true continuously
+   * while the observation tab is active before it latches. Gives the operator
+   * time to actually read the panel instead of the checklist ticking the
+   * instant the tab opens. Leaving the tab or a false frame resets the run.
+   * Counted in evaluation time like maintainDuration. Defaults to
+   * DEFAULT_OBSERVATION_DWELL_SECONDS; 0 latches on the first true frame.
+   */
+  observationDwellSeconds?: number;
 
   /** Additional context-specific parameters */
   [key: string]: unknown;
@@ -386,6 +395,13 @@ export interface TimePenalty {
 /**
  * Single condition that must be satisfied
  */
+/**
+ * Default dwell for requiresObservation conditions (see
+ * ConditionParams.observationDwellSeconds): long enough to read a panel,
+ * short enough not to feel like the checklist is stuck.
+ */
+export const DEFAULT_OBSERVATION_DWELL_SECONDS = 2;
+
 export interface Condition {
   /** Type of condition to check */
   type: ConditionType;
@@ -504,6 +520,12 @@ export interface ConditionState {
    * regardless of tab or live value.
    */
   observed?: boolean;
+  /**
+   * For requiresObservation conditions: seconds the value has read true
+   * continuously on the observation tab. Reset to 0 off-tab or on a false
+   * frame; the condition latches once it reaches the dwell.
+   */
+  observedSeconds?: number;
   /**
    * For conditions with a cnHoldSeconds hold: seconds the live reading has
    * been continuously inside the band. Reset to 0 by a frame outside it.

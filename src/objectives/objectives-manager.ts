@@ -30,7 +30,7 @@ import { SpaceEventManager } from '@app/space-events/space-event-manager';
 import { TrafficControlManager } from '@app/traffic/traffic-control-manager';
 import { TransecManager } from '@app/transec/transec-manager';
 import { Milliseconds } from 'ootk';
-import { Condition, ConditionParams, Objective, ObjectiveState } from './objective-types';
+import { Condition, ConditionParams, DEFAULT_OBSERVATION_DWELL_SECONDS, Objective, ObjectiveState } from './objective-types';
 import './objectives-manager.css';
 
 /**
@@ -1173,15 +1173,24 @@ export class ObjectivesManager {
 
       // Observation gate: a flagged passive condition does not count from
       // ambient simulation state alone. It must be seen on the correct tab
-      // once, after which it latches satisfied (stays checked even if the
-      // operator navigates away or the live value changes).
+      // for the dwell (continuously true while the tab is active), after
+      // which it latches satisfied (stays checked even if the operator
+      // navigates away or the live value changes). The dwell is what gives
+      // the operator time to read the panel before the checklist ticks.
       const condParams = conditionState.condition.params;
       if (condParams?.requiresObservation && condParams?.observationTab) {
         if (conditionState.observed) {
           isNowSatisfied = true; // already observed - latched
         } else if (isNowSatisfied && this.isObservationContextActive_(conditionState.condition)) {
-          conditionState.observed = true; // observed for the first time - latch
+          const dwellSeconds = condParams.observationDwellSeconds ?? DEFAULT_OBSERVATION_DWELL_SECONDS;
+          conditionState.observedSeconds = (conditionState.observedSeconds ?? 0) + dtSeconds;
+          if (conditionState.observedSeconds >= dwellSeconds) {
+            conditionState.observed = true; // read for long enough - latch
+          } else {
+            isNowSatisfied = false; // on the right tab, still reading
+          }
         } else {
+          conditionState.observedSeconds = 0; // off-tab or false: the read starts over
           isNowSatisfied = false; // value not yet observed on the right tab
         }
       }

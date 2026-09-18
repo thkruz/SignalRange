@@ -4,6 +4,7 @@ import { EventBus } from '../../src/events/event-bus';
 import { Events, QuizCompletedData, QuizPassedData } from '../../src/events/events';
 import { Objective, ObjectiveState } from '../../src/objectives/objective-types';
 import { ObjectivesManager } from '../../src/objectives/objectives-manager';
+import { TabbedCanvas } from '../../src/pages/mission-control/tabbed-canvas';
 import { addSkippedTime, resetMissionClock } from '../../src/simulation/mission-clock';
 
 // Mock equipment state factories
@@ -2289,6 +2290,94 @@ describe('ObjectivesManager', () => {
       eventBus.emit(Events.UPDATE, 16);
 
       expect(completedCallback).toHaveBeenCalled();
+    });
+  });
+
+  describe('Observation gate dwell', () => {
+    // The gate must not tick the instant the tab opens: the operator needs
+    // time to read the panel. Tab presence is driven through TabbedCanvas.
+    let tabSpy: ReturnType<typeof vi.spyOn>;
+
+    const observedGpsdoLock = (params: Record<string, unknown> = {}) =>
+      createTestObjective({
+        id: 'ref-check',
+        conditions: [
+          {
+            type: 'gpsdo-locked',
+            description: 'GPSDO Locked',
+            mustMaintain: true,
+            params: { requiresObservation: true, observationTab: 'gps-timing', ...params },
+          },
+        ],
+      });
+
+    const isRead = () => ObjectivesManager.getInstance().getObjectiveState('ref-check')?.conditionStates[0].isSatisfied ?? false;
+
+    beforeEach(() => {
+      mockGpsdoState.isLocked = true;
+      tabSpy = vi.spyOn(TabbedCanvas, 'getActiveTab').mockReturnValue('gps-timing');
+    });
+
+    afterEach(() => {
+      tabSpy.mockRestore();
+    });
+
+    it('waits the default dwell on the observation tab before latching', () => {
+      const completedCallback = vi.fn();
+      eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
+
+      ObjectivesManager.initialize([observedGpsdoLock()]);
+      eventBus.emit(Events.UPDATE, 1000);
+      expect(isRead()).toBe(false);
+
+      eventBus.emit(Events.UPDATE, 1000);
+      expect(isRead()).toBe(true);
+
+      // mustMaintain completes on the frame after the latch
+      eventBus.emit(Events.UPDATE, 16);
+      expect(completedCallback).toHaveBeenCalled();
+    });
+
+    it('restarts the dwell when the operator leaves the tab', () => {
+      ObjectivesManager.initialize([observedGpsdoLock()]);
+      eventBus.emit(Events.UPDATE, 1500);
+      expect(isRead()).toBe(false);
+
+      tabSpy.mockReturnValue('dashboard');
+      eventBus.emit(Events.UPDATE, 16);
+
+      tabSpy.mockReturnValue('gps-timing');
+      eventBus.emit(Events.UPDATE, 1500);
+      expect(isRead()).toBe(false);
+
+      eventBus.emit(Events.UPDATE, 500);
+      expect(isRead()).toBe(true);
+    });
+
+    it('never latches while the observation tab is not active', () => {
+      tabSpy.mockReturnValue('dashboard');
+
+      ObjectivesManager.initialize([observedGpsdoLock()]);
+      eventBus.emit(Events.UPDATE, 5000);
+
+      expect(isRead()).toBe(false);
+    });
+
+    it('observationDwellSeconds: 0 keeps the first-frame latch', () => {
+      ObjectivesManager.initialize([observedGpsdoLock({ observationDwellSeconds: 0 })]);
+      eventBus.emit(Events.UPDATE, 16);
+
+      expect(isRead()).toBe(true);
+    });
+
+    it('stays latched after the operator navigates away', () => {
+      ObjectivesManager.initialize([observedGpsdoLock()]);
+      eventBus.emit(Events.UPDATE, 2000);
+      expect(isRead()).toBe(true);
+
+      tabSpy.mockReturnValue('dashboard');
+      eventBus.emit(Events.UPDATE, 16);
+      expect(isRead()).toBe(true);
     });
   });
 

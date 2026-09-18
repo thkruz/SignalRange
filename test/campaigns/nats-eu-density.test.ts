@@ -53,7 +53,7 @@ function floorsFor(number: number): Floors {
     // of 3-7 from S9, with 8-10 allowed on the capstone. S8 is the Phase 1
     // graduation shift and is written closer to the qualified tone (8 clips).
     minClips: isPhase1 ? (number === 8 ? 8 : 10) : 5,
-    maxClips: isPhase1 ? 16 : number === 16 ? 10 : 7,
+    maxClips: isPhase1 ? 16 : number === 16 || number === 24 ? 10 : 7,
     minTimerFraction: 0.6,
     minConditionTypes: 10,
     minPoints: 150,

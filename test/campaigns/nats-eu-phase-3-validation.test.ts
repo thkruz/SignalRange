@@ -21,12 +21,25 @@ import { natsEuScenario17Data } from '@app/campaigns/nats-eu/scenario17';
 import { natsEuScenario18Data } from '@app/campaigns/nats-eu/scenario18';
 import { natsEuScenario19Data } from '@app/campaigns/nats-eu/scenario19';
 import { natsEuScenario20Data } from '@app/campaigns/nats-eu/scenario20';
+import { natsEuScenario21Data } from '@app/campaigns/nats-eu/scenario21';
+import { natsEuScenario22Data } from '@app/campaigns/nats-eu/scenario22';
+import { natsEuScenario23Data } from '@app/campaigns/nats-eu/scenario23';
+import { natsEuScenario24Data } from '@app/campaigns/nats-eu/scenario24';
 import type { OrbitalSatellite } from '@app/equipment/satellite/orbital-satellite';
 import type { Condition } from '@app/objectives/objective-types';
 import type { ScenarioData } from '@app/ScenarioData';
 import { PassPlannerService } from '@app/services/pass-planner-service';
 
-const PHASE_3: ScenarioData[] = [natsEuScenario17Data, natsEuScenario18Data, natsEuScenario19Data, natsEuScenario20Data];
+const PHASE_3: ScenarioData[] = [
+  natsEuScenario17Data,
+  natsEuScenario18Data,
+  natsEuScenario19Data,
+  natsEuScenario20Data,
+  natsEuScenario21Data,
+  natsEuScenario22Data,
+  natsEuScenario23Data,
+  natsEuScenario24Data,
+];
 
 interface Phase3Settings {
   satellites: OrbitalSatellite[];
@@ -60,7 +73,16 @@ function firstPass(scenario: ScenarioData, sat: OrbitalSatellite) {
 describe('nats-eu Phase 3: scenario wiring', () => {
   it('registers the Gray Zone scenarios in order, advanced, chained from S16', () => {
     const ids = PHASE_3.map((s) => s.id);
-    expect(ids).toEqual(['nats-eu-scenario17', 'nats-eu-scenario18', 'nats-eu-scenario19', 'nats-eu-scenario20']);
+    expect(ids).toEqual([
+      'nats-eu-scenario17',
+      'nats-eu-scenario18',
+      'nats-eu-scenario19',
+      'nats-eu-scenario20',
+      'nats-eu-scenario21',
+      'nats-eu-scenario22',
+      'nats-eu-scenario23',
+      'nats-eu-scenario24',
+    ]);
 
     const expectedPrereq = ['nats-eu-scenario16', ...ids.slice(0, -1)];
     PHASE_3.forEach((scenario, i) => {
@@ -376,5 +398,309 @@ describe('S20 False Time', () => {
     expect(mode.mustMaintain).toBe(true);
     expect(mode.params!.referenceMode).toBe('gnss');
     expect(allClear.conditionLogic).toBe('AND');
+  });
+});
+
+describe('S21 Knocking on the Door', () => {
+  const scenario = natsEuScenario21Data;
+  type S21Settings = Phase3Settings & {
+    commanding: { targetNoradId: number; windowStartS: number; windowEndS: number; uplinkFrequencyHz?: number; commands: Array<{ id: string }> };
+  };
+  const s21 = scenario.settings as unknown as S21Settings;
+
+  const holdsWith =
+    (facts: Record<string, boolean>) =>
+    (rule: unknown): boolean => {
+      const r = rule as { fact?: string; is?: boolean; all?: unknown[]; any?: unknown[] };
+      if (r.fact) return (facts[r.fact] ?? false) === r.is;
+      if (r.all) return r.all.every(holdsWith(facts));
+      return (r.any ?? []).some(holdsWith(facts));
+    };
+  const decisionOf = (objectiveId: string) => {
+    const objective = scenario.objectives.find((o) => o.id === objectiveId)!;
+    const decision = objective.conditions.find((c) => c.type === 'decision')!;
+    const siblingIds = new Set(objective.conditions.map((c: Condition) => c.id).filter(Boolean));
+    for (const id of decision.params!.evidence!) expect(siblingIds.has(id)).toBe(true);
+    return decision;
+  };
+  const correctLabels = (objectiveId: string, facts: Record<string, boolean>): string[] =>
+    decisionOf(objectiveId)
+      .params!.decisionOptions!.filter((o) => o.correctWhen && holdsWith(facts)(o.correctWhen))
+      .map((o) => o.label);
+
+  it('flies the SAR-2 commanding pass at T+24 peaking 31 deg with the window inside it', () => {
+    const start = startMsOf(scenario);
+    const sar2 = firstPass(scenario, satOf(scenario, 61702));
+    expect(Math.abs((sar2.aosMs - start) / 60_000 - 24.0)).toBeLessThan(0.25);
+    expect(Math.abs(sar2.maxEl - 30.6)).toBeLessThan(1.0);
+    expect(s21.commanding.targetNoradId).toBe(61702);
+    expect(s21.commanding.windowStartS * 1000 + start).toBeGreaterThanOrEqual(sar2.aosMs);
+    expect(s21.commanding.windowEndS * 1000 + start).toBeLessThanOrEqual(sar2.losMs);
+    // Nothing is jammed today: no carrier coupling, no interference events.
+    expect(s21.commanding.uplinkFrequencyHz).toBeUndefined();
+    expect(s21.interferenceEvents ?? []).toHaveLength(0);
+  });
+
+  it('the knock lands inside the window after the first command, with time to rotate and resend', () => {
+    const events = s21.security!.events;
+    const counter = events.find((e) => e.id === 'evt-rotterdam-counter')!;
+    const unitLog = events.find((e) => e.id === 'evt-kg-replay-log')!;
+    expect(counter.isAnomaly).toBe(true);
+    expect(unitLog.isAnomaly).toBe(true);
+    expect(counter.timeS).toBeGreaterThan(s21.commanding.windowStartS + 60);
+    expect(unitLog.timeS).toBeGreaterThanOrEqual(counter.timeS!);
+    expect(s21.commanding.windowEndS - unitLog.timeS!).toBeGreaterThan(5 * 60);
+    expect(s21.commanding.commands.map((c) => c.id)).toEqual(expect.arrayContaining(['HK-DUMP', 'PLD-STATUS']));
+  });
+
+  it('call-the-knock: only the replay call holds with the key intact (the log entries are flagged evidence by then); the zeroize branch destroys the unit log', () => {
+    expect(correctLabels('call-the-knock', { 'crypto-intact': true, 'audit-anomaly-present': false })).toEqual([
+      'A replay against an intact key - the bird rejected it. Keep the log, rotate to Q2b out of cycle because they hold ciphertext of Q2, and send PLD-STATUS under the new key',
+    ]);
+    const zeroize = decisionOf('call-the-knock').params!.decisionOptions!.find((o) => o.label.startsWith('Key compromised'))!;
+    expect(zeroize.consequence?.destroyEvidence?.auditEventId).toBe('evt-kg-replay-log');
+  });
+
+  it('retain-the-evidence: retaining is right with the key intact; zeroizing destroys the same evidence and costs points', () => {
+    expect(correctLabels('retain-the-evidence', { 'crypto-intact': true })).toEqual([
+      'Retain both under seal for CSIRT: the retired key is out of service, and the KG-01 log is the evidence that ties these frames to the actor',
+    ]);
+    const zeroize = decisionOf('retain-the-evidence').params!.decisionOptions!.find((o) => o.label.startsWith('Zeroize Q2'))!;
+    expect(zeroize.consequence?.destroyEvidence?.auditEventId).toBe('evt-kg-replay-log');
+    expect(zeroize.consequence?.pointDelta).toBeGreaterThan(0);
+  });
+
+  it('the rotation is an incident response between the two commands', () => {
+    const rotate = scenario.objectives.find((o) => o.id === 'rotate-on-order')!;
+    expect(rotate.prerequisiteObjectiveIds).toEqual(['call-the-knock']);
+    expect(rotate.conditions.some((c) => c.type === 'key-rotation-completed')).toBe(true);
+    const second = scenario.objectives.find((o) => o.id === 'second-command')!;
+    expect(second.prerequisiteObjectiveIds).toEqual(['rotate-on-order']);
+    expect(second.conditions.find((c) => c.type === 'command-acknowledged')!.params!.commandId).toBe('PLD-STATUS');
+  });
+});
+
+describe('S22 Connecting the Dots', () => {
+  const scenario = natsEuScenario22Data;
+  type S22Settings = Phase3Settings & {
+    security: { events: Array<{ id: string; isAnomaly?: boolean; requiresCampaignEvidence?: { scenarioId: string; eventId: string } }> };
+  };
+  const s22 = scenario.settings as unknown as S22Settings;
+
+  const holdsWith =
+    (facts: Record<string, boolean>) =>
+    (rule: unknown): boolean => {
+      const r = rule as { fact?: string; is?: boolean; all?: unknown[]; any?: unknown[] };
+      if (r.fact) return (facts[r.fact] ?? false) === r.is;
+      if (r.all) return r.all.every(holdsWith(facts));
+      return (r.any ?? []).some(holdsWith(facts));
+    };
+  const decision = () => {
+    const objective = scenario.objectives.find((o) => o.id === 'attribute-the-actor')!;
+    const d = objective.conditions.find((c) => c.type === 'decision')!;
+    const siblingIds = new Set(objective.conditions.map((c: Condition) => c.id).filter(Boolean));
+    for (const id of d.params!.evidence!) expect(siblingIds.has(id)).toBe(true);
+    return d;
+  };
+
+  it('flies one routine SAR-1 pass at T+30 peaking 24 deg, with no adversary event scheduled', () => {
+    const start = startMsOf(scenario);
+    const sar1 = firstPass(scenario, satOf(scenario, 61701));
+    expect(Math.abs((sar1.aosMs - start) / 60_000 - 30.0)).toBeLessThan(0.25);
+    expect(Math.abs(sar1.maxEl - 23.8)).toBeLessThan(1.0);
+    expect(s22.interferenceEvents ?? []).toHaveLength(0);
+    expect(scenario.settings.gnssThreat).toBeUndefined();
+  });
+
+  it('carries the arc forward as audit entries, and the KG-01 line depends on what S21 preserved', () => {
+    const ids = s22.security.events.map((e) => e.id);
+    expect(ids).toEqual(expect.arrayContaining(['evt-s17-spray', 'evt-s17-export', 'evt-s18-report', 'evt-s19-denial', 'evt-s20-skew', 'evt-s21-kg-log']));
+    const kg = s22.security.events.find((e) => e.id === 'evt-s21-kg-log')!;
+    expect(kg.requiresCampaignEvidence).toEqual({ scenarioId: 'nats-eu-scenario21', eventId: 'evt-kg-replay-log' });
+    // The id it points at exists in S21 and is the one S21's zeroize branches destroy.
+    const s21Events = (natsEuScenario21Data.settings as unknown as S22Settings).security.events;
+    expect(s21Events.some((e) => e.id === 'evt-kg-replay-log')).toBe(true);
+  });
+
+  it('the attribution decision grades on the evidence chain: one actor when intact, the recorded gap (at a cost) when not', () => {
+    const options = decision().params!.decisionOptions!;
+    const intact = options.filter((o) => o.correctWhen && holdsWith({ 'evidence-chain-intact': true })(o.correctWhen));
+    const broken = options.filter((o) => o.correctWhen && holdsWith({ 'evidence-chain-intact': false })(o.correctWhen));
+    expect(intact.map((o) => o.label.slice(0, 22))).toEqual(['One actor, one method:']);
+    expect(broken.map((o) => o.label.slice(0, 23))).toEqual(['One actor for the first']);
+    expect(broken[0].consequence?.pointDelta).toBeGreaterThan(0);
+  });
+
+  it('opens the campaign record before the timeline and reads it as evidence for the attribution', () => {
+    const open = scenario.objectives.find((o) => o.id === 'open-the-record')!;
+    expect(open.conditions.some((c) => c.type === 'campaign-document-reviewed')).toBe(true);
+    const attribute = scenario.objectives.find((o) => o.id === 'attribute-the-actor')!;
+    const record = attribute.conditions.find((c) => c.id === 'record-read')!;
+    expect(record.type).toBe('campaign-document-reviewed');
+    expect(record.mustMaintain).toBe(true); // readiness comes from maintenance, not observation
+  });
+});
+
+describe('S23 Dark Passes', () => {
+  const scenario = natsEuScenario23Data;
+  type S23Settings = Phase3Settings & {
+    commanding: { targetNoradId: number; windowStartS: number; windowEndS: number; uplinkFrequencyHz: number };
+    transec: { hopChannelsHz: number[] };
+    gnssThreat: { groundStationIds?: string[]; spoofStartS: number; spoofEndS?: number };
+    spaceEvents: Array<{ id: string; satelliteNoradId: number; maneuverAtS: number; newTle: { tle2: string }; initialTle?: { tle2: string } }>;
+  };
+  const s23 = scenario.settings as unknown as S23Settings;
+
+  const holdsWith =
+    (facts: Record<string, boolean>) =>
+    (rule: unknown): boolean => {
+      const r = rule as { fact?: string; is?: boolean; all?: unknown[]; any?: unknown[] };
+      if (r.fact) return (facts[r.fact] ?? false) === r.is;
+      if (r.all) return r.all.every(holdsWith(facts));
+      return (r.any ?? []).some(holdsWith(facts));
+    };
+  const correctLabels = (objectiveId: string, facts: Record<string, boolean>): string[] => {
+    const objective = scenario.objectives.find((o) => o.id === objectiveId)!;
+    const decision = objective.conditions.find((c) => c.type === 'decision')!;
+    const siblingIds = new Set(objective.conditions.map((c: Condition) => c.id).filter(Boolean));
+    for (const id of decision.params!.evidence!) expect(siblingIds.has(id)).toBe(true);
+    return decision.params!.decisionOptions!.filter((o) => o.correctWhen && holdsWith(facts)(o.correctWhen)).map((o) => o.label.slice(0, 20));
+  };
+
+  it('flies the SAR-2 commanding pass at T+22 peaking 33 deg on the post-burn set, window inside it', () => {
+    const start = startMsOf(scenario);
+    const sar2 = firstPass(scenario, satOf(scenario, 61702));
+    expect(Math.abs((sar2.aosMs - start) / 60_000 - 22.0)).toBeLessThan(0.25);
+    expect(Math.abs(sar2.maxEl - 32.8)).toBeLessThan(1.0);
+    expect(s23.commanding.windowStartS * 1000 + start).toBeGreaterThanOrEqual(sar2.aosMs);
+    expect(s23.commanding.windowEndS * 1000 + start).toBeLessThanOrEqual(sar2.losMs);
+  });
+
+  it('the surge is simultaneous and before AOS; the jammer opens inside the window with room to hop', () => {
+    const [burn] = s23.spaceEvents;
+    expect(burn.satelliteNoradId).toBe(61702);
+    expect(burn.maneuverAtS).toBe(s23.gnssThreat.spoofStartS);
+    expect(burn.initialTle!.tle2).not.toBe(burn.newTle.tle2); // the station predicts from the pre-burn set
+    expect(s23.gnssThreat.groundStationIds).toEqual(['GW-01']);
+    expect(s23.gnssThreat.spoofEndS).toBeUndefined(); // runs to the end: the reference stays in holdover
+    // Eight minutes from the surge to AOS.
+    expect(s23.commanding.windowStartS - burn.maneuverAtS).toBeGreaterThanOrEqual(8 * 60);
+
+    const [jam] = s23.interferenceEvents!;
+    expect(jam.startTime).toBeGreaterThan(s23.commanding.windowStartS + 60);
+    expect(s23.commanding.windowEndS - jam.startTime).toBeGreaterThan(5 * 60);
+    expect(s23.transec.hopChannelsHz).toContain(s23.commanding.uplinkFrequencyHz);
+  });
+
+  it('triage is graded on the clock: ephemeris first before the jammer is up, hop set first once it is', () => {
+    expect(correctLabels('triage', { 'timing-drifting': true, 'uplink-jammed': false })).toEqual(['Ephemeris first - wi']);
+    expect(correctLabels('triage', { 'timing-drifting': true, 'uplink-jammed': true })).toEqual(['Hop set first - the ']);
+  });
+
+  it('call-the-denial: the denial with the reference in holdover, never the holdover', () => {
+    expect(correctLabels('call-the-denial', { 'uplink-jammed': true, 'crypto-intact': true, 'reference-in-holdover': true })).toEqual(['Uplink denial on the']);
+    const objective = scenario.objectives.find((o) => o.id === 'call-the-denial')!;
+    const ref = objective.conditions.find((c) => c.id === 'reference-seen')!;
+    expect(ref.type).toBe('gpsdo-reference-mode-set');
+    expect(ref.params!.referenceMode).toBe('holdover');
+  });
+
+  it('the priority tasking is PLD-SAFE, resent under TRANSEC after the denial', () => {
+    const ride = scenario.objectives.find((o) => o.id === 'ride-through')!;
+    expect(ride.conditions.find((c) => c.type === 'command-acknowledged')!.params!.commandId).toBe('PLD-SAFE');
+    expect(ride.prerequisiteObjectiveIds).toEqual(['go-to-hopping']);
+    const load = scenario.objectives.find((o) => o.id === 'load-the-ephemeris')!;
+    expect(load.conditions.find((c) => c.type === 'ephemeris-updated')!.params!.eventId).toBe('SAR2-DAM');
+  });
+});
+
+describe('S24 North Atlantic Storm', () => {
+  const scenario = natsEuScenario24Data;
+  type S24Settings = Phase3Settings & {
+    commanding: { targetNoradId: number; windowStartS: number; windowEndS: number; uplinkFrequencyHz: number };
+    transec: { hopChannelsHz: number[] };
+    gnssThreat: { groundStationIds?: string[]; spoofStartS: number };
+    spaceEvents: Array<{ id: string; satelliteNoradId: number; maneuverAtS: number }>;
+    weatherEvents: Array<{ id: string; groundStationId: string; type: string; startTime: number; duration: number }>;
+    contactSchedule: { contacts: Array<{ id: string; satelliteNoradId: number; stationId: string; priority: number; windowStartS: number; windowEndS: number }> };
+  };
+  const s24 = scenario.settings as unknown as S24Settings;
+
+  it('flies SAR-1 at Galway (T+20, 30 deg), SAR-2 at Shetland (T+31, 35 deg) and SAR-3 at Galway (T+52, 28 deg)', () => {
+    const start = startMsOf(scenario);
+    const sar1 = firstPass(scenario, satOf(scenario, 61701));
+    const sar3 = firstPass(scenario, satOf(scenario, 61703));
+    expect(Math.abs((sar1.aosMs - start) / 60_000 - 20.0)).toBeLessThan(0.25);
+    expect(Math.abs(sar1.maxEl - 30.2)).toBeLessThan(1.0);
+    expect(Math.abs((sar3.aosMs - start) / 60_000 - 52.0)).toBeLessThan(0.25);
+    expect(Math.abs(sar3.maxEl - 28.4)).toBeLessThan(1.0);
+    // Galway's two contacts do not overlap; the SAR-3 command window sits inside its pass.
+    expect(sar1.losMs).toBeLessThan(sar3.aosMs);
+    expect(s24.commanding.targetNoradId).toBe(61703);
+    expect(s24.commanding.windowStartS * 1000 + start).toBeGreaterThanOrEqual(sar3.aosMs);
+    expect(s24.commanding.windowEndS * 1000 + start).toBeLessThanOrEqual(sar3.losMs);
+  });
+
+  it('the plan has three P1 contacts, one per bird, each on the only site that can fly it', () => {
+    const contacts = s24.contactSchedule.contacts;
+    expect(contacts.map((c) => [c.satelliteNoradId, c.stationId, c.priority])).toEqual([
+      [61701, 'GW-01', 1],
+      [61702, 'SH-02', 1],
+      [61703, 'GW-01', 1],
+    ]);
+    const gw = contacts.filter((c) => c.stationId === 'GW-01');
+    expect(gw[0].windowEndS).toBeLessThan(gw[1].windowStartS);
+  });
+
+  it('every event of the arc is scheduled once, in the order the network meets it', () => {
+    const start = startMsOf(scenario);
+    const sar1 = firstPass(scenario, satOf(scenario, 61701));
+    const sar3 = firstPass(scenario, satOf(scenario, 61703));
+    const rain = s24.weatherEvents.find((w) => w.type === 'rain')!;
+    const sleet = s24.weatherEvents.find((w) => w.type === 'hail')!;
+    const [burn] = s24.spaceEvents;
+    const carrier = s24.interferenceEvents!.find((e) => e.id === 'gw-carrier-sar1')!;
+    const jam = s24.interferenceEvents!.find((e) => e.id === 'sar3-uplink-jam')!;
+
+    // Rain band clears before SAR-1 rises; sleet arrives after SAR-1 sets and before SAR-3 rises.
+    expect((rain.startTime + rain.duration) * 1000 + start).toBeLessThan(sar1.aosMs);
+    expect(sleet.startTime * 1000 + start).toBeGreaterThan(sar1.losMs);
+    expect(sleet.startTime * 1000 + start).toBeLessThan(sar3.aosMs);
+    // The burn precedes the Shetland pass; the spoof is on Shetland only.
+    expect(burn.satelliteNoradId).toBe(61702);
+    expect(burn.maneuverAtS).toBeLessThan(s24.contactSchedule.contacts[1].windowStartS);
+    expect(s24.gnssThreat.groundStationIds).toEqual(['SH-02']);
+    // The terrestrial carrier sits inside the SAR-1 pass; the jammer opens inside the SAR-3 window with room to hop.
+    expect(carrier.path).toBe('terrestrial');
+    expect(carrier.startTime * 1000 + start).toBeGreaterThan(sar1.aosMs);
+    expect(carrier.startTime * 1000 + start).toBeLessThan(sar1.losMs);
+    expect(jam.startTime).toBeGreaterThan(s24.commanding.windowStartS + 60);
+    expect(s24.commanding.windowEndS - jam.startTime).toBeGreaterThan(5 * 60);
+    expect(s24.transec.hopChannelsHz).toContain(s24.commanding.uplinkFrequencyHz);
+  });
+
+  it('the denial call is graded on uplink-jammed with the crypto intact, and weather is a wrong answer', () => {
+    const objective = scenario.objectives.find((o) => o.id === 'call-the-denial')!;
+    const decision = objective.conditions.find((c) => c.type === 'decision')!;
+    const siblingIds = new Set(objective.conditions.map((c: Condition) => c.id).filter(Boolean));
+    for (const id of decision.params!.evidence!) expect(siblingIds.has(id)).toBe(true);
+    const facts: Record<string, boolean> = { 'uplink-jammed': true, 'crypto-intact': true, 'weather-attenuation-dominant': false };
+    const holds = (rule: unknown): boolean => {
+      const r = rule as { fact?: string; is?: boolean; all?: unknown[]; any?: unknown[] };
+      if (r.fact) return (facts[r.fact] ?? false) === r.is;
+      if (r.all) return r.all.every(holds);
+      return (r.any ?? []).some(holds);
+    };
+    const correct = decision.params!.decisionOptions!.filter((o) => o.correctWhen && holds(o.correctWhen));
+    expect(correct.map((o) => o.label.slice(0, 20))).toEqual(['Uplink denial on the']);
+  });
+
+  it('is the campaign capstone: 20 objectives, closing with the incident log and handover', () => {
+    expect(scenario.objectives).toHaveLength(20);
+    expect(scenario.objectives[0].id).toBe('take-command');
+    expect(scenario.objectives.at(-1)!.id).toBe('incident-log-and-handover');
+    const total = scenario.objectives.reduce((sum, o) => sum + o.points, 0);
+    expect(total).toBeGreaterThanOrEqual(150);
+    expect(total).toBeLessThanOrEqual(300);
   });
 });

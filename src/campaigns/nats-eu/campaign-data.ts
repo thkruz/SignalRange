@@ -20,6 +20,10 @@ import { natsEuScenario17Data } from './scenario17';
 import { natsEuScenario18Data } from './scenario18';
 import { natsEuScenario19Data } from './scenario19';
 import { natsEuScenario20Data } from './scenario20';
+import { natsEuScenario21Data } from './scenario21';
+import { natsEuScenario22Data } from './scenario22';
+import { natsEuScenario23Data } from './scenario23';
+import { natsEuScenario24Data } from './scenario24';
 
 /**
  * NATS-EU Campaign (Campaign 2): North Atlantic Teleport Services EU
@@ -32,11 +36,11 @@ export const natsEuCampaignData: CampaignData = {
   id: 'nats-eu',
   title: 'North Atlantic Teleport Services EU',
   subtitle: 'Commercial Ground Station Operations',
-  description: `This campaign follows the North Atlantic Teleport Services EU branch across two sites: GW-01 Galway, the company's Low Earth Orbit (LEO) downlink station on the Irish west coast, and SH-02 Shetland, the second dish that turns one station into a network. As a Campaign 1 graduate you'll run the MERIDIAN synthetic-aperture radar constellation's passes from both consoles: sweep the station before AOS, acquire and track a target that is gone in ten minutes, decode and command inside the window, safe the uplink at LOS and plan the next contact across both sites.<br><br>Through sixteen scenarios you'll develop essential skills in Ku-band link budgets, Doppler compensation, ephemeris management, command-link COMSEC, rain fade and reference holdover, all while supporting the operational needs of a commercial LEO constellation and its maritime customers.`,
+  description: `This campaign follows the North Atlantic Teleport Services EU branch across two sites: GW-01 Galway, the company's Low Earth Orbit (LEO) downlink station on the Irish west coast, and SH-02 Shetland, the second dish that turns one station into a network. As a Campaign 1 graduate you'll run the MERIDIAN synthetic-aperture radar constellation's passes from both consoles: sweep the station before AOS, acquire and track a target that is gone in ten minutes, decode and command inside the window, safe the uplink at LOS and plan the next contact across both sites.<br><br>Through twenty-four scenarios you'll develop essential skills in Ku-band link budgets, Doppler compensation, ephemeris management, command-link COMSEC, rain fade and reference holdover, all while supporting the operational needs of a commercial LEO constellation and its maritime customers.`,
   imageUrl: 'nats-eu/north-atlantic-teleport-services-eu.png',
   difficulty: 'intermediate',
-  // Sum of the sixteen per-scenario `duration` ranges (30-40 min each).
-  totalDuration: '725-760 min',
+  // Sum of the per-scenario `duration` ranges (30-40 min each; the S24 capstone is 60).
+  totalDuration: '905-940 min',
   campaignType: 'LEO Commercial Communications',
   headerIdentity: {
     name: 'ATLANTIC',
@@ -70,6 +74,10 @@ export const natsEuCampaignData: CampaignData = {
     natsEuScenario18Data,
     natsEuScenario19Data,
     natsEuScenario20Data,
+    natsEuScenario21Data,
+    natsEuScenario22Data,
+    natsEuScenario23Data,
+    natsEuScenario24Data,
   ],
   isLocked: false,
   // Gated on the Campaign 1 graduation shift, matching the prerequisite on this

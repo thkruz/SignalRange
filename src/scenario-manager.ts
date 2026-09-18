@@ -56,6 +56,10 @@ import { natsEuScenario17Data } from '@app/campaigns/nats-eu/scenario17';
 import { natsEuScenario18Data } from '@app/campaigns/nats-eu/scenario18';
 import { natsEuScenario19Data } from '@app/campaigns/nats-eu/scenario19';
 import { natsEuScenario20Data } from '@app/campaigns/nats-eu/scenario20';
+import { natsEuScenario21Data } from '@app/campaigns/nats-eu/scenario21';
+import { natsEuScenario22Data } from '@app/campaigns/nats-eu/scenario22';
+import { natsEuScenario23Data } from '@app/campaigns/nats-eu/scenario23';
+import { natsEuScenario24Data } from '@app/campaigns/nats-eu/scenario24';
 import { signalHunterSandboxData } from '@app/campaigns/signal-hunter/sandbox';
 import { signalHunterScenario1Data } from '@app/campaigns/signal-hunter/scenario1';
 import { AntennaState } from '@app/equipment/antenna';
@@ -403,6 +407,11 @@ export interface SimulationSettings {
       category: 'auth' | 'config' | 'command' | 'access';
       severity: 'info' | 'warning' | 'critical';
       isAnomaly?: boolean;
+      /**
+       * Evidence carried forward from an earlier scenario. Dropped at load if
+       * the campaign record says a decision destroyed it there.
+       */
+      requiresCampaignEvidence?: { scenarioId: string; eventId: string };
     }>;
   };
 
@@ -527,6 +536,10 @@ export const SCENARIOS: ScenarioData[] = [
   natsEuScenario18Data,
   natsEuScenario19Data,
   natsEuScenario20Data,
+  natsEuScenario21Data,
+  natsEuScenario22Data,
+  natsEuScenario23Data,
+  natsEuScenario24Data,
   hamSdrSandboxData,
   hamSdrScenario1Data,
   hamSdrScenario2Data,

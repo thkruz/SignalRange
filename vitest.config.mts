@@ -20,7 +20,9 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     include: ['**/test/**/*.(spec|test).ts?(x)', '**/test/**/*.(spec|test).js?(x)'],
-    exclude: ['node_modules/', 'dist/', 'src/engine/', 'e2e/'],
+    // External plugin tests belong to their own repos; `pnpm run plugin -- test <name>`
+    // runs them through vitest.external.config.mts.
+    exclude: ['node_modules/', 'dist/', 'src/engine/', 'e2e/', 'src/plugins-external/**'],
     coverage: {
       provider: 'v8',
       reportsDirectory: 'coverage',
@@ -39,6 +41,8 @@ export default defineConfig({
         '**/*.spec.ts',
         // Private submodule has its own repo and its own tests.
         'src/private/**',
+        // Installed external plugins are third-party code with their own tests.
+        'src/plugins-external/**',
       ],
       // Keep the report when the run fails, so a red suite still shows what it
       // did and did not reach.
@@ -66,6 +70,7 @@ export default defineConfig({
       '@app': path.resolve(__dirname, './src'),
       '@engine': path.resolve(__dirname, './src/engine'),
       '@private': path.resolve(__dirname, './src/private/app'),
+      '@plugins-external': path.resolve(__dirname, './src/plugins-external'),
     },
   },
 });

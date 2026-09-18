@@ -9,6 +9,7 @@ import { Header } from '@app/pages/layout/header/header';
 import { MissionControlPage } from '@app/pages/mission-control/mission-control-page';
 import { SandboxPage } from '@app/pages/sandbox-page';
 import { ScenarioSelectionPage } from '@app/pages/scenario-selection';
+import { PluginManager } from '@app/plugins/plugin-manager';
 import { SimulationManager } from '@app/simulation/simulation-manager';
 import { ScenarioManager } from './scenario-manager';
 
@@ -41,11 +42,16 @@ export class Router {
   private navigationOptions_: NavigationOptions = {};
   private readonly extraRoutes_: ExtraRoute[] = [];
   /**
-   * Until the private routes have registered, an unknown path is held rather
-   * than redirected to '/', so a deep link to a private page survives the async
-   * import. Always true in the OSS build, where there is nothing to wait for.
+   * Until every plugin has registered, an unknown path is held rather than
+   * redirected to '/' (a deep link to a plugin route survives the async
+   * import) and scenario pages are held too (a sandbox loadout may name a
+   * plugin antenna). PluginManager.isReady is true from the start when the
+   * manifest has nothing to load, so the plugin-free build keeps handling
+   * routes synchronously.
    */
-  private extraRoutesReady_ = !__IS_PRIVATE__;
+  private pluginsReady_ = PluginManager.getInstance().isReady;
+  /** Path deferred while plugins were loading; replayed once they are ready. */
+  private heldPath_: string | null = null;
 
   private constructor() {}
 
@@ -78,20 +84,30 @@ export class Router {
       }
     });
 
-    // Private edition routes (authoring tools). Dead code in the OSS build:
-    // DefinePlugin folds the flag and rspack never resolves '@private'.
-    if (__IS_PRIVATE__) {
-      import('@private/index')
-        .then((mod) => mod.registerPrivateRoutes(this))
-        .catch((err: unknown) => console.warn('[router] private routes unavailable', err))
+    // Plugins (private edition tools, external plugins) register routes and
+    // equipment through the PluginManager, which App starts before init().
+    // Nothing to wait for in a plugin-free build: isReady is already true.
+    const plugins = PluginManager.getInstance();
+
+    if (!plugins.isReady) {
+      plugins.ready
+        .catch((err: unknown) => console.warn('[router] plugins unavailable', err))
         .finally(() => {
-          this.extraRoutesReady_ = true;
-          this.handleRoute();
+          this.pluginsReady_ = true;
+          if (this.heldPath_ !== null) {
+            this.heldPath_ = null;
+            this.handleRoute();
+          }
         });
     }
 
     // Handle initial route
     this.handleRoute();
+  }
+
+  /** Pages that build equipment or may be a plugin route wait for plugins. */
+  private static needsPlugins_(path: string): boolean {
+    return path === '/sandbox' || /^\/campaigns\/[^/]+\/scenarios\/[^/]+$/u.test(path) || path === '/mission-control';
   }
 
   /** Register a route outside the core page set. See ExtraRoute. */
@@ -127,7 +143,14 @@ export class Router {
     // Hide all pages
     this.hideAll();
 
-    // Extra (private) routes take precedence over the core page set
+    // Plugin antennas and plugin routes must exist before these pages build;
+    // the path is replayed from init() once the PluginManager settles.
+    if (!this.pluginsReady_ && Router.needsPlugins_(path)) {
+      this.heldPath_ = path;
+      return;
+    }
+
+    // Extra (plugin) routes take precedence over the core page set
     const extra = this.matchExtraRoute_(path);
     if (extra) {
       SimulationManager.destroy();
@@ -170,8 +193,9 @@ export class Router {
       this.navigate('/campaigns/nats/scenarios/scenario3', this.navigationOptions_);
       return;
     } else {
-      if (!this.extraRoutesReady_) {
-        // Private routes still loading; re-evaluated once they register
+      if (!this.pluginsReady_) {
+        // Plugin routes still loading; re-evaluated once they register
+        this.heldPath_ = path;
         return;
       }
       // Unknown route - redirect to campaign selection

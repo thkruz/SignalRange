@@ -6,9 +6,12 @@
 import { DraggableBox } from '@app/engine/ui/draggable-box';
 import { html } from '@app/engine/utils/development/formatter';
 import { getEl, showEl } from '@app/engine/utils/get-el';
+import { t7e } from '@app/locales/i18n';
 import { ObjectivesManager } from '@app/objectives/objectives-manager';
 import { Header } from '@app/pages/layout/header/header';
 import { ScenarioSelectionPage } from '@app/pages/scenario-selection';
+import { PluginManager } from '@app/plugins/plugin-manager';
+import { SettingsManager } from '@app/settings/settings-manager';
 import './dev-menu.css';
 
 declare global {
@@ -108,8 +111,51 @@ export class DevMenuBox extends DraggableBox {
             <button id="dev-set-objective-timer" class="btn btn-secondary">Set</button>
           </div>
         </div>
+        <div class="dev-menu__section">
+          <label class="form-label">${t7e('devMenu.pluginsSection')}</label>
+          <div id="dev-plugins-list">${this.renderPluginsList_()}</div>
+        </div>
       </div>
     `;
+  }
+
+  /**
+   * One switch per manifest entry. Toggles persist through SettingsManager and
+   * apply on the next load; a plugin with no module in this build (private-only
+   * in the OSS bundle) is shown but cannot be switched on.
+   */
+  private renderPluginsList_(): string {
+    const plugins = PluginManager.getInstance().list();
+
+    if (plugins.length === 0) {
+      return html`<div class="text-muted small">${t7e('devMenu.noPlugins')}</div>`;
+    }
+
+    const statusOf = (plugin: { error?: string; enabled: boolean }): string => {
+      if (plugin.error) {
+        return ` · ${t7e('devMenu.pluginFailed')}`;
+      }
+
+      return plugin.enabled ? '' : ` · ${t7e('devMenu.pluginDisabled')}`;
+    };
+    const rows = plugins
+      .map((plugin) => {
+        const status = statusOf(plugin);
+        const version = plugin.version ? ` v${plugin.version}` : '';
+
+        return html`
+          <div class="form-check form-switch mt-1">
+            <input type="checkbox" id="dev-plugin-${plugin.id}" class="form-check-input" role="switch" data-plugin-id="${plugin.id}"
+              ${plugin.enabled ? 'checked' : ''} ${plugin.unavailable ? 'disabled' : ''} />
+            <label for="dev-plugin-${plugin.id}" class="form-check-label">
+              ${plugin.id} <span class="small text-muted">(${plugin.source}${version}${status})</span>
+            </label>
+          </div>
+        `;
+      })
+      .join('');
+
+    return html`${rows}<div class="text-muted small mt-2">${t7e('devMenu.reloadHint')}</div>`;
   }
 
   private createDom_(): void {
@@ -160,6 +206,15 @@ export class DevMenuBox extends DraggableBox {
     this.domCache_.set('setMissionTimerBtn', setMissionTimerBtn);
     this.domCache_.set('objectiveTimerInput', objectiveTimerInput);
     this.domCache_.set('setObjectiveTimerBtn', setObjectiveTimerBtn);
+
+    // Plugin enable/disable switches (persisted; applied on next load)
+    getEl('dev-plugins-list')
+      .querySelectorAll<HTMLInputElement>('input[data-plugin-id]')
+      .forEach((toggle) => {
+        toggle.addEventListener('change', () => {
+          SettingsManager.getInstance().setPluginEnabled(toggle.dataset.pluginId ?? '', toggle.checked);
+        });
+      });
 
     // Auto-skip dialogs toggle
     autoSkipToggle.addEventListener('change', () => {

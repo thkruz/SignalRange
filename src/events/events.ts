@@ -365,6 +365,10 @@ export enum Events {
   ROUTE_CHANGED = 'route:changed',
   STORAGE_ERROR = 'STORAGE_ERROR',
 
+  // Plugin events
+  /** Every enabled plugin has registered (or failed); fired once per boot */
+  PLUGINS_READY = 'plugins:ready',
+
   // Game loop events
   DOM_READY = 'app:dom-ready',
   /** This event is called every simulation update tick */
@@ -502,6 +506,8 @@ export interface EventMap {
   [Events.ROUTE_CHANGED]: [{ path: string }];
 
   [Events.STORAGE_ERROR]: [Error];
+
+  [Events.PLUGINS_READY]: [{ loaded: string[]; failed: string[] }];
 
   [Events.DOM_READY]: [];
   [Events.UPDATE]: [Milliseconds];

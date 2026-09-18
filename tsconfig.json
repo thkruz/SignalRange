@@ -18,6 +18,9 @@
       "@private/*": [
         "./src/private/app/*"
       ],
+      "@plugins-external/*": [
+        "./src/plugins-external/*"
+      ],
     },
     "moduleResolution": "bundler",
     "strict": false,
@@ -39,6 +42,7 @@
   },
   "include": [
     "src/**/*",
+    "scripts/plugin/**/*.ts",
     "test/equipment/antenna-ui-headless.test.ts"
   ],
   "exclude": [
@@ -46,5 +50,8 @@
     "dist",
     "**/*.spec.ts",
     "**/*.test.ts",
+    // Plugin unit tests run through vitest.external.config.mts with vitest globals.
+    "src/plugins-external/**/__tests__/**",
+    "scripts/plugin/templates/**"
   ]
 }

@@ -56,6 +56,9 @@ const config: rspack.Configuration = {
       '@app': path.resolve(__dirname, 'src'),
       '@engine': path.resolve(__dirname, 'src/engine'),
       '@private': PRIVATE_APP_DIR,
+      // External plugin clones (see scripts/plugin). The generated manifest
+      // only ever imports plugins present on disk, so this never dangles.
+      '@plugins-external': path.resolve(__dirname, 'src/plugins-external'),
     },
   },
   // Production emits maps but keeps the sourceMappingURL out of the bundle,

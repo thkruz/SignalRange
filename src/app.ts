@@ -7,6 +7,7 @@ import { Footer } from '@app/pages/layout/footer/footer';
 import { Header } from '@app/pages/layout/header/header';
 import { SandboxPage } from '@app/pages/sandbox-page';
 import { ScenarioSelectionPage } from '@app/pages/scenario-selection';
+import { PluginManager } from '@app/plugins/plugin-manager';
 import { SimulationManager } from '@app/simulation/simulation-manager';
 import { Auth } from '@app/user-account/auth';
 import { initUserDataService } from '@app/user-account/user-data-service';
@@ -85,10 +86,20 @@ export class App extends BaseElement {
 
     SimulationManager.getInstance();
 
+    // Start loading plugins before the router resolves the first route: a
+    // plugin may contribute routes or the antenna a sandbox loadout names.
+    // The router holds those routes until PluginManager.ready settles.
+    void PluginManager.getInstance().loadAll();
+
     // Initialize router
     this.router.init();
 
     return rootDom;
+  }
+
+  /** Installed plugins (for the dev menu, e2e specs, and the console). */
+  get plugins(): PluginManager {
+    return PluginManager.getInstance();
   }
 
   protected addEventListeners_(): void {

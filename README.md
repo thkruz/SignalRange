@@ -137,6 +137,23 @@ Run `pnpm run typecheck` to see detailed type errors.
 **Port already in use?**
 The dev server defaults to port 3000. Check for other processes or modify `rspack.config.mts`.
 
+## 🔌 Plugins
+
+Equipment and features can come from plugins: small git repositories that the
+engine compiles into its own bundle. The toolchain mirrors keeptrack-space's.
+
+```bash
+pnpm run plugin -- add https://github.com/thkruz/signal-range-plugin-example   # install one
+pnpm run plugin -- create my-dish                                             # scaffold your own
+pnpm run plugin -- dev signal-range-plugin-my-dish                            # boot with only it enabled
+pnpm run plugin -- list                                                       # what is installed
+```
+
+Installed plugins are recorded in `external-plugins.json` and restored by
+`pnpm run plugin -- restore` (the build runs this for you). Plugin antennas
+appear in every sandbox's **LOADOUT** picker. See
+[docs/plugin-development-guide.md](docs/plugin-development-guide.md).
+
 ## 🌐 Deployment
 
 SignalRange is deployed on Cloudflare Workers with static assets. There are two environments:

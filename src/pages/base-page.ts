@@ -10,6 +10,7 @@ import { GnssThreatManager } from '@app/gnss-threat/gnss-threat-manager';
 import { InterferenceManager } from '@app/interference/interference-manager';
 import { LinkBudgetManager } from '@app/link-budget/link-budget-manager';
 import { Logger } from '@app/logging/logger';
+import { DecisionModal } from '@app/modal/decision-modal';
 import { DialogHistoryManager } from '@app/modal/dialog-history-manager';
 import { DialogManager } from '@app/modal/dialog-manager';
 import { LevelCompleteModal } from '@app/modal/level-complete-modal';
@@ -159,6 +160,8 @@ export abstract class BasePage extends BaseElement {
 
       // Initialize quiz modal for status-check objective conditions
       QuizModal.getInstance();
+      // and the decision modal for decision conditions
+      DecisionModal.getInstance();
 
       // If we're continuing from a checkpoint, restore objective states
       if (this.navigationOptions_.continueFromCheckpoint) {
@@ -360,6 +363,7 @@ export abstract class BasePage extends BaseElement {
           quizPenalties: savedProgress.quizPenalties ?? 0,
           timePenalties: savedProgress.timePenalties ?? 0,
           hintPenalties: savedProgress.hintPenalties ?? 0,
+          decisionPenalties: 0, // folded into quizPenalties in the saved record
           totalScore: savedProgress.score ?? 0,
           objectiveBreakdown: [], // Not saved, show empty for replays
           timeRemainingSeconds: timeBonus * ScoreCalculator.TIME_BONUS_DIVISOR,

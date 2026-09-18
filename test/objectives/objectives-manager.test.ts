@@ -2,6 +2,7 @@ import type { Milliseconds } from 'ootk';
 import { vi } from 'vitest';
 import { EventBus } from '../../src/events/event-bus';
 import { Events, QuizCompletedData, QuizPassedData } from '../../src/events/events';
+import { DecisionManager } from '../../src/modal/decision-manager';
 import { Objective, ObjectiveState } from '../../src/objectives/objective-types';
 import { ObjectivesManager } from '../../src/objectives/objectives-manager';
 import { TabbedCanvas } from '../../src/pages/mission-control/tabbed-canvas';
@@ -4296,6 +4297,164 @@ describe('ObjectivesManager', () => {
 
       expect(manager.devCompleteThrough('obj-1')).toEqual([]);
       expect(manager.getObjectiveState('obj-1')?.isActive).toBe(true);
+    });
+  });
+
+  describe('decision conditions (phase 18)', () => {
+    const tick = () => eventBus.emit(Events.UPDATE, 16 as Milliseconds);
+
+    const decisionObjective = (siblingOverrides: Partial<Objective['conditions'][number]> = {}): Objective =>
+      createTestObjective({
+        id: 'call-it',
+        conditions: [
+          {
+            id: 'gnss-read',
+            type: 'gpsdo-gnss-locked',
+            description: 'GNSS constellation observed',
+            mustMaintain: false,
+            ...siblingOverrides,
+          },
+          {
+            type: 'decision',
+            description: 'Fault, interference, or attack',
+            params: {
+              prompt: 'What is this?',
+              evidence: ['gnss-read'],
+              decisionOptions: [
+                { label: 'Fault', correctWhen: { fact: 'equipment-fault-active', is: true } },
+                { label: 'Nothing wrong', correctWhen: { fact: 'interference-active', is: false } },
+              ],
+            },
+            mustMaintain: false,
+          },
+        ],
+      });
+
+    beforeEach(() => {
+      DecisionManager.destroy();
+      vi.spyOn(console, 'warn').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      DecisionManager.destroy();
+    });
+
+    it('registers the decision once, with evidence labels taken from the sibling descriptions', () => {
+      ObjectivesManager.initialize([decisionObjective({ params: { requiresObservation: true, observationTab: 'gps-timing' } })]);
+      tick();
+      tick();
+
+      const decisions = DecisionManager.getInstance();
+      expect(decisions.has('call-it', 1)).toBe(true);
+      expect(decisions.getEvidenceStatus('call-it', 1)).toEqual([{ id: 'gnss-read', label: 'GNSS constellation observed', ready: false }]);
+    });
+
+    it('reports evidence ready once the sibling has latched', () => {
+      ObjectivesManager.initialize([decisionObjective()]);
+      tick();
+
+      expect(DecisionManager.getInstance().getEvidenceStatus('call-it', 1)).toEqual([{ id: 'gnss-read', label: 'GNSS constellation observed', ready: true }]);
+    });
+
+    it('warns and reports not-ready for an evidence id that names no sibling', () => {
+      const objective = decisionObjective();
+      (objective.conditions[1].params as { evidence: string[] }).evidence = ['no-such-condition'];
+      ObjectivesManager.initialize([objective]);
+      tick();
+
+      expect(DecisionManager.getInstance().getEvidenceStatus('call-it', 1)).toEqual([{ id: 'no-such-condition', label: 'no-such-condition', ready: false }]);
+      expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('names no condition'));
+    });
+
+    it('stays incomplete until the decision resolves, then completes on the next update', () => {
+      const manager = ObjectivesManager.initialize([decisionObjective()]);
+      tick();
+      expect(manager.getObjectiveState('call-it')?.isCompleted).toBe(false);
+
+      eventBus.emit(Events.DECISION_RESOLVED, { objectiveId: 'call-it', conditionIndex: 1, totalAttempts: 1, totalPointsDeducted: 0 });
+      tick();
+
+      expect(manager.getObjectiveState('call-it')?.isCompleted).toBe(true);
+    });
+
+    it('does not register a decision that lacks a prompt or options', () => {
+      const objective = decisionObjective();
+      objective.conditions[1].params = { prompt: 'x' };
+      ObjectivesManager.initialize([objective]);
+      tick();
+
+      expect(DecisionManager.getInstance().has('call-it', 1)).toBe(false);
+      expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('missing required params'));
+    });
+
+    it('a correct grade pauses the scenario timer and Continue resumes it, like a quiz', () => {
+      const manager = ObjectivesManager.initialize([decisionObjective()], 300);
+      tick();
+
+      eventBus.emit(Events.DECISION_GRADED, {
+        objectiveId: 'call-it',
+        conditionIndex: 1,
+        optionIndex: 1,
+        correct: true,
+        evidenced: true,
+        missingEvidence: [],
+        attempts: 1,
+        pointsDeducted: 0,
+      });
+      expect(manager.isQuizPassed()).toBe(true);
+
+      eventBus.emit(Events.DECISION_RESOLVED, { objectiveId: 'call-it', conditionIndex: 1, totalAttempts: 1, totalPointsDeducted: 0 });
+      expect(manager.isQuizPassed()).toBe(false);
+    });
+
+    it('a wrong grade does not pause anything', () => {
+      const manager = ObjectivesManager.initialize([decisionObjective()], 300);
+      eventBus.emit(Events.DECISION_GRADED, {
+        objectiveId: 'call-it',
+        conditionIndex: 1,
+        optionIndex: 0,
+        correct: false,
+        evidenced: true,
+        missingEvidence: [],
+        attempts: 1,
+        pointsDeducted: 10,
+      });
+      expect(manager.isQuizPassed()).toBe(false);
+    });
+  });
+
+  describe('activateObjective / deactivateObjective (decision consequences)', () => {
+    const pair = (): Objective[] => [createTestObjective({ id: 'obj-1' }), createTestObjective({ id: 'obj-2', prerequisiteObjectiveIds: ['obj-1'] })];
+
+    it('activates an inactive objective, bypassing prerequisites, once', () => {
+      const manager = ObjectivesManager.initialize(pair());
+      const activated = vi.fn();
+      eventBus.on(Events.OBJECTIVE_ACTIVATED, activated);
+
+      expect(manager.activateObjective('obj-2')).toBe(true);
+      expect(manager.getObjectiveState('obj-2')?.isActive).toBe(true);
+      expect(activated).toHaveBeenCalledWith(expect.objectContaining({ objectiveId: 'obj-2' }));
+
+      expect(manager.activateObjective('obj-2')).toBe(false);
+      expect(manager.activateObjective('obj-1')).toBe(false); // already active
+      expect(manager.activateObjective('nope')).toBe(false);
+    });
+
+    it('deactivates an active objective, resets its conditions, and refuses otherwise', () => {
+      const manager = ObjectivesManager.initialize(pair());
+      manager.activateObjective('obj-2');
+      const state = manager.getObjectiveState('obj-2');
+      if (!state) throw new Error('missing state');
+      state.conditionStates[0].isSatisfied = true;
+      state.conditionStates[0].isMaintenanceComplete = true;
+
+      expect(manager.deactivateObjective('obj-2')).toBe(true);
+      expect(state.isActive).toBe(false);
+      expect(state.conditionStates[0].isSatisfied).toBe(false);
+      expect(state.conditionStates[0].isMaintenanceComplete).toBe(false);
+
+      expect(manager.deactivateObjective('obj-2')).toBe(false);
+      expect(manager.deactivateObjective('nope')).toBe(false);
     });
   });
 });

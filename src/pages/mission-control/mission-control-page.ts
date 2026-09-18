@@ -13,6 +13,8 @@ import { GnssThreatManager } from '@app/gnss-threat/gnss-threat-manager';
 import { InterferenceManager } from '@app/interference/interference-manager';
 import { LinkBudgetManager } from '@app/link-budget/link-budget-manager';
 import { Logger } from '@app/logging/logger';
+import { DecisionManager } from '@app/modal/decision-manager';
+import { DecisionModal } from '@app/modal/decision-modal';
 import { PendingQuizIndicator } from '@app/modal/pending-quiz-indicator';
 import { QuizModal } from '@app/modal/quiz-modal';
 import { ObjectivesManager } from '@app/objectives/objectives-manager';
@@ -329,6 +331,8 @@ export class MissionControlPage extends BasePage {
     TransecManager.destroy();
     GnssThreatManager.destroy();
     QuizModal.destroy();
+    DecisionModal.destroy();
+    DecisionManager.destroy();
     PendingQuizIndicator.destroy();
     EventBus.destroy();
   }

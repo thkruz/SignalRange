@@ -8,6 +8,7 @@ import { clearPersistedStore } from '@app/sync/storage';
 import { Auth } from '@app/user-account/auth';
 import { ModalLogin } from '@app/user-account/modal-login';
 import { getUserDataService } from '@app/user-account/user-data-service';
+import type { DecisionRecord } from './decision-manager';
 import { DialogManager } from './dialog-manager';
 import './level-complete-modal.css';
 import { PendingQuizIndicator } from './pending-quiz-indicator';
@@ -25,6 +26,8 @@ interface CompletionModalOptions {
    * signed in, no funnel shown.
    */
   isAuthenticated?: boolean;
+  /** Decisions made during the scenario, listed under the score breakdown */
+  decisions?: DecisionRecord[];
 }
 
 export class LevelCompleteModal extends DraggableModal {
@@ -38,6 +41,7 @@ export class LevelCompleteModal extends DraggableModal {
       quizPenalties: 0,
       timePenalties: 0,
       hintPenalties: 0,
+      decisionPenalties: 0,
       totalScore: 0,
       objectiveBreakdown: [],
       timeRemainingSeconds: 0,
@@ -132,7 +136,19 @@ export class LevelCompleteModal extends DraggableModal {
             `
                 : ''
             }
+            ${
+              score.decisionPenalties > 0
+                ? `
+            <div class="breakdown-row">
+              <span class="breakdown-label">Decision Penalties</span>
+              <span class="breakdown-value negative">-${score.decisionPenalties}</span>
+            </div>
+            <div class="breakdown-detail">${score.decisionPenalties} points deducted for wrong or unevidenced calls</div>
+            `
+                : ''
+            }
           </div>
+          ${this.renderDecisions_()}
         </div>
 
         <div class="complete-modal__time">
@@ -296,6 +312,29 @@ export class LevelCompleteModal extends DraggableModal {
    * @param onContinue Callback when Continue button is clicked
    * @param isReplay True if showing for an already-completed scenario (adds Play Again button)
    */
+  /** The judgements the player made, when the scenario had any decisions */
+  private renderDecisions_(): string {
+    const decisions = this.options_.decisions ?? [];
+    if (decisions.length === 0) return '';
+
+    const rows = decisions
+      .map((d) => {
+        let mark = '&#10007;';
+        if (d.resolution.correct) mark = d.resolution.evidenced ? '&#10003;' : '&#10003;&#8202;?';
+        const note = d.resolution.evidenced ? '' : ` <span class="decision-summary-note">(decided before checking: ${d.resolution.missingEvidence.join(', ')})</span>`;
+        const tries = d.attempts > 1 ? ` <span class="decision-summary-note">(${d.attempts} attempts)</span>` : '';
+        return `<li class="decision-summary-item"><span class="decision-summary-mark">${mark}</span>${d.prompt} &rarr; <em>${d.resolution.label}</em>${tries}${note}</li>`;
+      })
+      .join('');
+
+    return `
+      <div class="complete-modal__decisions">
+        <div class="breakdown-label">Judgements</div>
+        <ul class="decision-summary-list">${rows}</ul>
+      </div>
+    `;
+  }
+
   showCompletion(options: CompletionModalOptions, onContinue?: () => void | Promise<void>, isReplay?: boolean): void {
     this.options_ = options;
     this.onContinueCallback_ = onContinue ?? null;

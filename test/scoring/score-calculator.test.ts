@@ -218,6 +218,7 @@ describe('ScoreCalculator', () => {
           quizPenalties: 10,
           timePenalties: 5,
           hintPenalties: 0,
+          decisionPenalties: 0,
           totalScore: 97, // 100 + 12 - 10 - 5 = 97
           objectiveBreakdown: [{ points: 100 }],
           timeRemainingSeconds: 60,

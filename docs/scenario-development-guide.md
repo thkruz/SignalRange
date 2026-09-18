@@ -541,6 +541,67 @@ timePenalty: {
 | `fault-active` | Fault is injected | `faultId` |
 | `fault-cleared` | Fault has been cleared | `faultId` |
 
+### 9.13 Decision Conditions
+
+A `status-check` asks *what is true?* and grades against a fixed correct option. A `decision` asks
+*what do you do?* and grades the chosen option against **evidence facts read from the simulation at
+the moment of the answer** — then does something about it. The same option set has a different
+right answer in a scenario with a different interference schedule or injected fault.
+
+| Condition | Description | Key Params |
+|-----------|-------------|------------|
+| `decision` | Judgement graded on live evidence, with consequences | `prompt`, `decisionOptions`, `evidence`, `pointPenalty`, `partialCreditUnevidenced` |
+
+```typescript
+{
+  type: 'decision',
+  description: 'Call it: fault, interference, or attack',
+  params: {
+    character: Character.PRIYA_SHARMA,
+    prompt: 'C/N on GW-01 has dropped 6 dB and is holding. What is this?',
+    // ids of requiresObservation conditions in this objective the player must latch first
+    evidence: ['cn-read', 'speca-read', 'crypto-read'],
+    decisionOptions: [
+      { label: 'Equipment fault - open a maintenance ticket',
+        correctWhen: { fact: 'equipment-fault-active', is: true } },
+      { label: 'Interference - characterise it and report',
+        correctWhen: { all: [{ fact: 'interference-active', is: true }, { fact: 'crypto-intact', is: true }] },
+        consequence: { activateObjective: 'characterise-event' } },
+      { label: 'Intrusion - escalate to security, hold commanding',
+        correctWhen: { fact: 'crypto-intact', is: false },
+        consequence: { auditEvent: { id: 'op-escalation', actor: 'operator', action: 'Escalated to CSIRT', category: 'access', severity: 'warning' } } },
+      { label: 'Propagation - log it and continue',
+        correctWhen: { fact: 'weather-attenuation-dominant', is: true },
+        consequence: { destroyEvidence: { auditEventId: 'probe-0314' } } },
+    ],
+    explanation: 'Interference with crypto intact is RF denial, not intrusion.',
+    pointPenalty: 10,
+    partialCreditUnevidenced: 0.5,
+  },
+  mustMaintain: false,
+}
+```
+
+**Evidence facts** (the only vocabulary `correctWhen` may use): `interference-active`,
+`equipment-fault-active`, `crypto-intact`, `gnss-constellation-healthy`, `timing-drifting`,
+`reference-in-holdover`, `weather-attenuation-dominant`, `audit-anomaly-present`, `config-drifted`,
+`command-window-open`. Every fact is held for the observation grace period so a transient frame
+cannot flip the right answer.
+
+**Evidence gating.** `evidence` names sibling conditions by their `id`. The options stay clickable
+before those latch, but a correct answer given early scores only `partialCreditUnevidenced`. The
+modal shows the checklist live. Give the sibling conditions an `id` and `requiresObservation`.
+
+**Consequences** fire on whichever option is chosen, right or wrong — that is the teaching. Keys:
+`inject` (a `FAULT_TEMPLATES` key), `clearFault`, `startInterference` / `stopInterference` (an
+`interferenceEvents` id, overriding its schedule), `auditEvent`, `destroyEvidence`,
+`activateObjective`, `deactivateObjective`, `pointDelta`, `log`. A per-scenario budget (default 2)
+caps live injected faults plus forced interference so wrong answers cannot cascade.
+
+**Option discipline.** The 2026-09-17 uniformity rule applies: every option in one shape and length
+band, the correct one never the most detailed. A wrong answer costs `pointPenalty` and leaves the
+decision open; a wrong option that carries a consequence still fires it.
+
 ---
 
 ## 10. Condition Maintenance Flags

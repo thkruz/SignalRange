@@ -128,7 +128,77 @@ export type ConditionType =
   | 'gpsdo-reference-mode-set' // The GPSDO reference/discipline mode matches the target
   // Campaign 3 SDR receive chain
   | 'receiver-afc-enabled' // RX modem AFC state matches the target (on by default)
-  | 'antenna-polarization-set'; // Antenna circular handedness matches the target
+  | 'antenna-polarization-set' // Antenna circular handedness matches the target
+  // ── D-tier assessment (phase 18) ─────────────────────────────────────────────
+  | 'decision'; // A judgement graded against live evidence facts, with consequences
+
+/**
+ * Evidence facts a `decision` option can be graded against. Each is a pure,
+ * held read over live simulation state - see evidence-facts.ts. The list is
+ * closed on purpose: authors compose rules from these, they never write
+ * evaluators.
+ */
+export const EVIDENCE_FACT_IDS = [
+  'interference-active', // a scripted interference event is radiating right now
+  'equipment-fault-active', // the fault injector has a live fault on this station
+  'crypto-intact', // rx key valid and auth tags verifying (true when crypto is not modelled)
+  'gnss-constellation-healthy', // GNSS present with >= 4 satellites on the GPSDO
+  'timing-drifting', // GNSS spoof active and the station is still trusting GNSS (the tell)
+  'reference-in-holdover', // the GPSDO is in holdover
+  'weather-attenuation-dominant', // an active weather event is the largest degradation present
+  'audit-anomaly-present', // an anomalous audit-log entry is visible and unacknowledged
+  'config-drifted', // an unacknowledged config-change anomaly is in the audit log
+  'command-window-open', // a TT&C command window is open right now
+] as const;
+
+export type EvidenceFactId = (typeof EVIDENCE_FACT_IDS)[number];
+
+/**
+ * A boolean rule over evidence facts. `{ fact, is }` is a leaf; `all` / `any`
+ * combine. Evaluated at the moment the player answers, not when the decision
+ * is authored - the same option set can have a different right answer in a
+ * scenario with a different interference schedule.
+ */
+export type DecisionFactRule = { fact: EvidenceFactId; is: boolean } | { all: DecisionFactRule[] } | { any: DecisionFactRule[] };
+
+/**
+ * What choosing an option does to the simulation. Every key dispatches to a
+ * subsystem that already exists; the consequence is the teaching, so wrong
+ * options usually carry one too. See consequence-dispatcher.ts.
+ */
+export interface DecisionConsequence {
+  /** Inject a fault from FAULT_TEMPLATES on this objective's ground station */
+  inject?: { template: string; id?: string };
+  /** Clear a previously injected fault by id */
+  clearFault?: string;
+  /** Force a scripted interference event on, regardless of its schedule */
+  startInterference?: string;
+  /** Force a scripted interference event off, regardless of its schedule */
+  stopInterference?: string;
+  /** Add an entry to the security console audit log */
+  auditEvent?: { id: string; actor: string; action: string; category: 'auth' | 'config' | 'command' | 'access'; severity: 'info' | 'warning' | 'critical'; isAnomaly?: boolean };
+  /** Remove evidence the player should have preserved (the 13.6 lesson) */
+  destroyEvidence?: { auditEventId?: string; faultId?: string };
+  /** Activate an objective now, bypassing its prerequisites */
+  activateObjective?: string;
+  /** Deactivate an active objective (and reset its conditions) */
+  deactivateObjective?: string;
+  /** Adjust the decision penalty tally by this many points (negative = award) */
+  pointDelta?: number;
+  /** Line written to the ops log when this option is chosen */
+  log?: string;
+}
+
+export interface DecisionOption {
+  /** Option text. Keep all options in one shape and length band. */
+  label: string;
+  /** When this option is the correct call. Omit for an option that is never correct. */
+  correctWhen?: DecisionFactRule;
+  /** Fired when this option is chosen, right or wrong */
+  consequence?: DecisionConsequence;
+  /** Shown after choosing this option; falls back to the decision's explanation */
+  feedback?: string;
+}
 
 /**
  * Equipment references for condition checking
@@ -189,6 +259,22 @@ export interface ConditionParams {
   maxAmplitudeTolerance?: number;
   /** For custom conditions: custom evaluator function */
   evaluator?: () => boolean;
+
+  // ── decision ─────────────────────────────────────────────────────────────
+  /** For decision: the question put to the operator ("What is this?" / "What do you do?") */
+  prompt?: string;
+  /** For decision: the options, graded against evidence facts when answered */
+  decisionOptions?: DecisionOption[];
+  /**
+   * For decision: ids of requiresObservation conditions in the same objective
+   * that must have latched before an answer counts as evidenced. Answering
+   * before they latch is allowed but scores partialCreditUnevidenced.
+   */
+  evidence?: string[];
+  /** For decision: fraction of full credit for a correct but unevidenced answer (default 0.5) */
+  partialCreditUnevidenced?: number;
+  /** For decision: skip option shuffling (default false) */
+  preserveDecisionOrder?: boolean;
   /** Target specific equipment by index (0-based). If omitted, any equipment satisfies. */
   equipmentIndex?: number;
   /** For filter-bandwidth-set: target bandwidth index (0-12) */
@@ -413,6 +499,12 @@ export const OBSERVATION_DWELL_GRACE_SECONDS = 0.5;
 export interface Condition {
   /** Type of condition to check */
   type: ConditionType;
+  /**
+   * Optional stable identifier, unique within the objective. A `decision`
+   * condition names the requiresObservation conditions it depends on by this
+   * id (params.evidence), so the player cannot decide before looking.
+   */
+  id?: string;
   /** Human-readable description */
   description: string;
   /** Hint or tip to help achieve the condition (optional) */

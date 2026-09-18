@@ -99,6 +99,8 @@ export class InterferenceManager {
   private missionStartTime_ = 0;
   /** Currently-injected signalIds (subset of events) */
   private readonly activeSignalIds_ = new Set<string>();
+  /** Schedule overrides by event id (see forceEvent) */
+  private readonly forced_ = new Map<string, boolean>();
   private readonly boundUpdateHandler_: (dt: Milliseconds) => void;
 
   private constructor() {
@@ -127,6 +129,33 @@ export class InterferenceManager {
   /** Whether the event's interferer is currently transmitting */
   isEventActive(eventId: string): boolean {
     return this.activeSignalIds_.has(InterferenceManager.signalIdFor(eventId));
+  }
+
+  /** Whether any declared interference event is transmitting right now */
+  isAnyEventActive(): boolean {
+    return this.activeSignalIds_.size > 0;
+  }
+
+  /** Every event the scenario declares */
+  getEvents(): readonly InterferenceEventConfig[] {
+    return this.events_;
+  }
+
+  /**
+   * Override an event's schedule: `true` keeps it radiating, `false` keeps it
+   * silent, `null` returns it to its scripted duty cycle. Used by decision
+   * consequences; the next update applies it.
+   */
+  forceEvent(eventId: string, active: boolean | null): void {
+    if (active === null) {
+      this.forced_.delete(eventId);
+    } else {
+      this.forced_.set(eventId, active);
+    }
+  }
+
+  isEventForced(eventId: string): boolean {
+    return this.forced_.has(eventId);
   }
 
   /** Event config by id (undefined when the scenario doesn't declare it) */
@@ -169,7 +198,7 @@ export class InterferenceManager {
       const signalId = InterferenceManager.signalIdFor(event.id);
       const inEnvelope = elapsed >= event.startTime && elapsed < event.startTime + event.duration;
       const phase = (elapsed - event.startTime) % event.periodSeconds;
-      const shouldTransmit = inEnvelope && phase < event.onSeconds;
+      const shouldTransmit = this.forced_.get(event.id) ?? (inEnvelope && phase < event.onSeconds);
       const isInjected = this.activeSignalIds_.has(signalId);
 
       if (shouldTransmit === isInjected) continue;

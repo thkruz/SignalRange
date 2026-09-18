@@ -154,3 +154,34 @@
 .complete-modal__actions .btn-success:hover {
   background-color: #218838;
 }
+
+/* Judgements list (decision conditions) */
+.complete-modal__decisions {
+  margin-top: 0.75rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.decision-summary-list {
+  list-style: none;
+  margin: 0.35rem 0 0;
+  padding: 0;
+  font-size: 0.85rem;
+}
+
+.decision-summary-item {
+  display: flex;
+  gap: 0.5rem;
+  align-items: baseline;
+  padding: 0.15rem 0;
+}
+
+.decision-summary-mark {
+  font-family: monospace;
+  min-width: 1.4em;
+}
+
+.decision-summary-note {
+  opacity: 0.7;
+  font-size: 0.8rem;
+}

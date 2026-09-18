@@ -115,6 +115,33 @@ export class SecurityConsoleCore {
     return this.acknowledged_.has(eventId);
   }
 
+  /** Whether any visible anomaly is still unacknowledged */
+  hasUnacknowledgedAnomaly(atElapsedS?: number): boolean {
+    return this.getVisibleAnomalies(atElapsedS).some((e) => !this.acknowledged_.has(e.id));
+  }
+
+  /**
+   * Add an entry at runtime (decision consequences). Appears now unless the
+   * entry carries its own timeS. An id already in the log is left alone.
+   */
+  injectEvent(event: AuditEventConfig): void {
+    if (this.config_.events.some((e) => e.id === event.id)) return;
+    const now = (missionNowMs() - this.missionStartTime_) / 1000;
+    this.config_.events.push({ ...event, timeS: event.timeS ?? now });
+  }
+
+  /**
+   * Remove an entry from the log entirely - evidence destroyed. Returns
+   * whether anything was removed.
+   */
+  removeEvent(eventId: string): boolean {
+    const index = this.config_.events.findIndex((e) => e.id === eventId);
+    if (index < 0) return false;
+    this.config_.events.splice(index, 1);
+    this.acknowledged_.delete(eventId);
+    return true;
+  }
+
   /** Apply an access-control action to a station account. */
   setAccountStatus(accountId: string, status: AccountStatus): void {
     if (this.accountStatus_.has(accountId)) {

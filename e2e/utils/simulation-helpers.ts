@@ -260,6 +260,40 @@ export async function answerQuizByText(page: Page, answerText: string): Promise<
 }
 
 /**
+ * Assert that the open decision modal shows every named evidence item as
+ * latched. Decisions are graded on simulator state, so an e2e that answers
+ * by label without first proving the evidence was in hand proves nothing -
+ * the same rule as expectDashboardAlarm before a sweep quiz.
+ */
+export async function expectEvidenceLatched(page: Page, labels: string[]): Promise<void> {
+  const modal = page.locator('#decision-modal');
+  await expect(modal).toBeVisible({ timeout: 10000 });
+  for (const label of labels) {
+    const item = modal.locator('.decision-evidence-item.ready', { hasText: label });
+    await expect(item, `evidence "${label}" should be latched before deciding`).toBeVisible({ timeout: 15000 });
+  }
+}
+
+/**
+ * Choose a decision option by its text and press Continue. Refuses to run
+ * until every listed evidence item is latched, so a passing spec cannot be
+ * one that guessed.
+ */
+export async function answerDecision(page: Page, optionText: string, requiredEvidence: string[] = []): Promise<void> {
+  await expectEvidenceLatched(page, requiredEvidence);
+
+  const modal = page.locator('#decision-modal');
+  const option = modal.locator('.quiz-option-btn', { hasText: optionText });
+  await expect(option.first()).toBeVisible({ timeout: 10000 });
+  await option.first().click();
+
+  const continueButton = modal.locator('#decision-continue-btn');
+  await expect(continueButton, `decision option "${optionText}" should grade correct`).toBeVisible({ timeout: 5000 });
+  await continueButton.click();
+  await page.waitForTimeout(500);
+}
+
+/**
  * Dismiss dialog overlay if present.
  * Used to dismiss objective completion dialogs between quizzes.
  */

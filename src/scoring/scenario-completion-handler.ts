@@ -1,6 +1,7 @@
 import { EventBus } from '@app/events/event-bus';
 import { Events, ObjectivesAllCompletedData } from '@app/events/events';
 import { Logger } from '@app/logging/logger';
+import { DecisionManager } from '@app/modal/decision-manager';
 import { HintManager } from '@app/modal/hint-manager';
 import { LevelCompleteModal } from '@app/modal/level-complete-modal';
 import { QuizManager } from '@app/modal/quiz-manager';
@@ -135,7 +136,8 @@ export class ScenarioCompletionHandler {
     const hintPenalties = this.aggregateHintPenalties_(objectives);
 
     // Calculate score
-    const score = ScoreCalculator.calculate(objectives, timeRemaining, quizPenalties, timePenalties, hintPenalties);
+    const decisionPenalties = this.aggregateDecisionPenalties_(objectives);
+    const score = ScoreCalculator.calculate(objectives, timeRemaining, quizPenalties, timePenalties, hintPenalties, decisionPenalties);
 
     Logger.info('Score calculated:', score);
 
@@ -159,6 +161,7 @@ export class ScenarioCompletionHandler {
         campaignId,
         scenarioId,
         isAuthenticated,
+        decisions: DecisionManager.hasInstance() ? DecisionManager.getInstance().getRecords() : undefined,
       },
       () => this.saveOnContinue_(scenarioId, score, scenarioNumber)
     );
@@ -184,6 +187,24 @@ export class ScenarioCompletionHandler {
   /**
    * Aggregate quiz penalties across all objectives
    */
+  /** Sum the penalty tally of every decision condition (zero when no decision was registered) */
+  private aggregateDecisionPenalties_(objectives: readonly ReturnType<ObjectivesManager['getObjectiveStates']>[number][]): number {
+    if (!DecisionManager.hasInstance()) return 0;
+    const decisions = DecisionManager.getInstance();
+    let total = 0;
+
+    for (const objState of objectives) {
+      const conditions = objState.objective.conditions;
+      for (let i = 0; i < conditions.length; i++) {
+        if (conditions[i].type === 'decision') {
+          total += decisions.getPointsDeducted(objState.objective.id, i);
+        }
+      }
+    }
+
+    return total;
+  }
+
   private aggregateQuizPenalties_(objectives: readonly ReturnType<ObjectivesManager['getObjectiveStates']>[number][]): number {
     const quizManager = QuizManager.getInstance();
     let totalPenalties = 0;
@@ -238,7 +259,9 @@ export class ScenarioCompletionHandler {
         score: score.totalScore,
         basePoints: score.basePoints,
         timeBonus: score.timeBonus,
-        quizPenalties: score.quizPenalties,
+        // The progress record has no decision column; fold decisions into the
+        // quiz figure so the persisted parts still sum to the total.
+        quizPenalties: score.quizPenalties + score.decisionPenalties,
         timePenalties: score.timePenalties,
         hintPenalties: score.hintPenalties,
         completedAt: new Date().toISOString(),

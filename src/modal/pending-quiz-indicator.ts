@@ -4,7 +4,20 @@
  */
 
 import { EventBus } from '@app/events/event-bus';
-import { Events, QuizCompletedData, QuizDismissedData, QuizPassedData, QuizPendingData, QuizShowData } from '@app/events/events';
+import {
+  DecisionDismissedData,
+  DecisionGradedData,
+  DecisionPendingData,
+  DecisionResolvedData,
+  DecisionShowData,
+  Events,
+  QuizCompletedData,
+  QuizDismissedData,
+  QuizPassedData,
+  QuizPendingData,
+  QuizShowData,
+} from '@app/events/events';
+import { DecisionManager } from './decision-manager';
 import './pending-quiz-indicator.css';
 import { QuizManager } from './quiz-manager';
 
@@ -29,6 +42,11 @@ export class PendingQuizIndicator {
   private readonly boundQuizCompletedHandler_: (data: QuizCompletedData) => void;
   private readonly boundQuizPendingHandler_: (data: QuizPendingData) => void;
   private readonly boundQuizPassedHandler_: (data: QuizPassedData) => void;
+  private readonly boundDecisionShowHandler_: (data: DecisionShowData) => void;
+  private readonly boundDecisionDismissedHandler_: (data: DecisionDismissedData) => void;
+  private readonly boundDecisionPendingHandler_: (data: DecisionPendingData) => void;
+  private readonly boundDecisionGradedHandler_: (data: DecisionGradedData) => void;
+  private readonly boundDecisionResolvedHandler_: (data: DecisionResolvedData) => void;
 
   private constructor() {
     this.boundQuizShowHandler_ = this.handleQuizShow_.bind(this);
@@ -36,6 +54,11 @@ export class PendingQuizIndicator {
     this.boundQuizCompletedHandler_ = this.handleQuizCompleted_.bind(this);
     this.boundQuizPendingHandler_ = this.handleQuizPending_.bind(this);
     this.boundQuizPassedHandler_ = this.handleQuizPassed_.bind(this);
+    this.boundDecisionShowHandler_ = this.handleDecisionShow_.bind(this);
+    this.boundDecisionDismissedHandler_ = this.handleDecisionDismissed_.bind(this);
+    this.boundDecisionPendingHandler_ = this.handleDecisionPending_.bind(this);
+    this.boundDecisionGradedHandler_ = this.handleDecisionGraded_.bind(this);
+    this.boundDecisionResolvedHandler_ = this.handleDecisionResolved_.bind(this);
 
     this.createIndicatorElement_();
     this.setupEventListeners_();
@@ -81,6 +104,11 @@ export class PendingQuizIndicator {
     eventBus.on(Events.QUIZ_COMPLETED, this.boundQuizCompletedHandler_);
     eventBus.on(Events.QUIZ_PENDING, this.boundQuizPendingHandler_);
     eventBus.on(Events.QUIZ_PASSED, this.boundQuizPassedHandler_);
+    eventBus.on(Events.DECISION_SHOW, this.boundDecisionShowHandler_);
+    eventBus.on(Events.DECISION_DISMISSED, this.boundDecisionDismissedHandler_);
+    eventBus.on(Events.DECISION_PENDING, this.boundDecisionPendingHandler_);
+    eventBus.on(Events.DECISION_GRADED, this.boundDecisionGradedHandler_);
+    eventBus.on(Events.DECISION_RESOLVED, this.boundDecisionResolvedHandler_);
   }
 
   /**
@@ -139,7 +167,44 @@ export class PendingQuizIndicator {
   }
 
   private handleOpenClick_(): void {
+    if (DecisionManager.hasInstance() && DecisionManager.getInstance().hasPending()) {
+      DecisionManager.getInstance().reopenPending();
+      return;
+    }
     QuizManager.getInstance().reopenPendingQuiz();
+  }
+
+  // ── Decision conditions share the indicator ─────────────────────────────
+
+  private handleDecisionShow_(_data: DecisionShowData): void {
+    this.cancelPendingTimeout_();
+    this.hide_();
+  }
+
+  private handleDecisionDismissed_(_data: DecisionDismissedData): void {
+    this.updateMessage_('Make the call to continue');
+    this.show_();
+  }
+
+  private handleDecisionPending_(_data: DecisionPendingData): void {
+    this.cancelPendingTimeout_();
+    this.pendingShowTimeout_ = window.setTimeout(() => {
+      this.updateMessage_('Make the call to continue');
+      this.show_();
+      this.pendingShowTimeout_ = null;
+    }, PendingQuizIndicator.INITIAL_DELAY_MS);
+  }
+
+  /** A correct answer hides the indicator before Continue is pressed */
+  private handleDecisionGraded_(data: DecisionGradedData): void {
+    if (!data.correct) return;
+    this.cancelPendingTimeout_();
+    this.hide_();
+  }
+
+  private handleDecisionResolved_(_data: DecisionResolvedData): void {
+    this.cancelPendingTimeout_();
+    this.hide_();
   }
 
   private updateMessage_(message: string): void {

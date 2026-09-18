@@ -633,6 +633,7 @@ describe('ScenarioCompletionHandler', () => {
             quizPenalties: 5,
             timePenalties: 10,
             hintPenalties: 0,
+            decisionPenalties: 0,
             totalScore: 155, // 150 + 20 - 5 - 10 = 155
             objectiveBreakdown: [{ points: 100 }, { points: 50 }],
             timeRemainingSeconds: 100,

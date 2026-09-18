@@ -15,10 +15,11 @@ import { FECSimulator } from '@app/equipment/receiver/fec-simulator';
 import { TapPoint } from '@app/equipment/rf-front-end/coupler-module/tap-points';
 import { OrbitalSatellite, observerFromLocation } from '@app/equipment/satellite/orbital-satellite';
 import { EventBus } from '@app/events/event-bus';
-import { Events, QuizCompletedData, QuizPassedData } from '@app/events/events';
+import { DecisionGradedData, DecisionResolvedData, Events, QuizCompletedData, QuizPassedData } from '@app/events/events';
 import { FaultInjector } from '@app/faults';
 import { GnssThreatManager } from '@app/gnss-threat/gnss-threat-manager';
 import { LinkBudgetManager } from '@app/link-budget/link-budget-manager';
+import { DecisionManager } from '@app/modal/decision-manager';
 import { HintManager } from '@app/modal/hint-manager';
 import { QuizManager } from '@app/modal/quiz-manager';
 import { OpsLogManager } from '@app/ops-log/ops-log-manager';
@@ -30,6 +31,7 @@ import { SpaceEventManager } from '@app/space-events/space-event-manager';
 import { TrafficControlManager } from '@app/traffic/traffic-control-manager';
 import { TransecManager } from '@app/transec/transec-manager';
 import { Milliseconds } from 'ootk';
+import { EvidenceFactRegistry } from './evidence-facts';
 import { Condition, ConditionParams, DEFAULT_OBSERVATION_DWELL_SECONDS, OBSERVATION_DWELL_GRACE_SECONDS, Objective, ObjectiveState } from './objective-types';
 import './objectives-manager.css';
 
@@ -58,7 +60,16 @@ export class ObjectivesManager {
 
   private readonly boundQuizPassedHandler_: (data: QuizPassedData) => void;
   private readonly boundQuizCompletedHandler_: (data: QuizCompletedData) => void;
+  private readonly boundDecisionGradedHandler_: (data: DecisionGradedData) => void;
+  private readonly boundDecisionResolvedHandler_: (data: DecisionResolvedData) => void;
   private readonly boundAssetSelectedHandler_: (data: { type: string; id: string }) => void;
+
+  /**
+   * Held evidence facts, one registry per ground station (facts such as
+   * equipment-fault-active are station-specific). Ticked lazily by active
+   * decision conditions, so scenarios without one pay nothing.
+   */
+  private readonly evidenceFacts_ = new Map<string, EvidenceFactRegistry>();
 
   private constructor(objectives: Objective[], scenarioTimeLimit?: number) {
     this.eventBus_ = EventBus.getInstance();
@@ -66,6 +77,8 @@ export class ObjectivesManager {
     // Initialize bound handlers
     this.boundQuizPassedHandler_ = this.handleQuizPassed_.bind(this);
     this.boundQuizCompletedHandler_ = this.handleQuizCompleted_.bind(this);
+    this.boundDecisionGradedHandler_ = this.handleDecisionGraded_.bind(this);
+    this.boundDecisionResolvedHandler_ = this.handleDecisionResolved_.bind(this);
     this.boundAssetSelectedHandler_ = this.handleAssetSelected_.bind(this);
 
     // Track scenario start time for elapsed time calculation. Measured on the
@@ -140,6 +153,9 @@ export class ObjectivesManager {
     // Subscribe to quiz events for timer control
     this.eventBus_.on(Events.QUIZ_PASSED, this.boundQuizPassedHandler_);
     this.eventBus_.on(Events.QUIZ_COMPLETED, this.boundQuizCompletedHandler_);
+    // Decisions pause and resume the timers the same way a quiz does
+    this.eventBus_.on(Events.DECISION_GRADED, this.boundDecisionGradedHandler_);
+    this.eventBus_.on(Events.DECISION_RESOLVED, this.boundDecisionResolvedHandler_);
 
     // Subscribe to asset selection events for ground-station-selected condition
     this.eventBus_.on(Events.ASSET_SELECTED, this.boundAssetSelectedHandler_);
@@ -210,6 +226,8 @@ export class ObjectivesManager {
       ObjectivesManager.instance_.eventBus_.off(Events.UPDATE, ObjectivesManager.instance_.update_.bind(ObjectivesManager.instance_));
       ObjectivesManager.instance_.eventBus_.off(Events.QUIZ_PASSED, ObjectivesManager.instance_.boundQuizPassedHandler_);
       ObjectivesManager.instance_.eventBus_.off(Events.QUIZ_COMPLETED, ObjectivesManager.instance_.boundQuizCompletedHandler_);
+      ObjectivesManager.instance_.eventBus_.off(Events.DECISION_GRADED, ObjectivesManager.instance_.boundDecisionGradedHandler_);
+      ObjectivesManager.instance_.eventBus_.off(Events.DECISION_RESOLVED, ObjectivesManager.instance_.boundDecisionResolvedHandler_);
       ObjectivesManager.instance_.eventBus_.off(Events.ASSET_SELECTED, ObjectivesManager.instance_.boundAssetSelectedHandler_);
 
       // Clear timer interval
@@ -629,6 +647,22 @@ export class ObjectivesManager {
    * Handle quiz passed - pause all timers and set passed state
    * Called when user selects correct answer (before clicking Continue)
    */
+  /** A correct decision pauses timers exactly as a passed quiz does */
+  private handleDecisionGraded_(data: DecisionGradedData): void {
+    if (!data.correct) return;
+    this.handleQuizPassed_({ objectiveId: data.objectiveId, conditionIndex: data.conditionIndex, attempts: data.attempts, pointsDeducted: data.pointsDeducted });
+  }
+
+  /** Continue after a decision resumes timers exactly as a completed quiz does */
+  private handleDecisionResolved_(data: DecisionResolvedData): void {
+    this.handleQuizCompleted_({
+      objectiveId: data.objectiveId,
+      conditionIndex: data.conditionIndex,
+      totalAttempts: data.totalAttempts,
+      totalPointsDeducted: data.totalPointsDeducted,
+    });
+  }
+
   private handleQuizPassed_(data: QuizPassedData): void {
     this.isQuizPassed_ = true;
     this.passedObjectiveId_ = data.objectiveId;
@@ -1095,28 +1129,72 @@ export class ObjectivesManager {
 
       // Activate if all prerequisites are met
       if (allPrerequisitesMet) {
-        objectiveState.isActive = true;
-        objectiveState.activatedAt = now;
-
-        // Start timer for objectives with 'on-activate' trigger (default behavior)
-        const objective = objectiveState.objective;
-        if (objective.timeLimitSeconds !== undefined && objective.timerStartTrigger !== 'on-scenario-load') {
-          objectiveState.timeRemainingSeconds = objective.timeLimitSeconds;
-          objectiveState.isTimerRunning = true;
-        }
-
-        // Remove from collapsed set so it expands when it becomes active
-        this.collapsedObjectiveIds_.delete(objectiveState.objective.id);
-
-        // Immediately evaluate conditions for the newly activated objective
-        this.evaluateObjectiveConditions_(objectiveState, 0);
-
-        this.eventBus_.emit(Events.OBJECTIVE_ACTIVATED, {
-          objectiveId: objectiveState.objective.id,
-          objective: objectiveState.objective,
-          activatedAt: now,
-        });
+        this.activateObjectiveState_(objectiveState, now);
       }
+    }
+  }
+
+  /** Make an objective active: timer, checklist expansion, first evaluation, event */
+  private activateObjectiveState_(objectiveState: ObjectiveState, now: number): void {
+    objectiveState.isActive = true;
+    objectiveState.activatedAt = now;
+
+    // Start timer for objectives with 'on-activate' trigger (default behavior)
+    const objective = objectiveState.objective;
+    if (objective.timeLimitSeconds !== undefined && objective.timerStartTrigger !== 'on-scenario-load') {
+      objectiveState.timeRemainingSeconds = objective.timeLimitSeconds;
+      objectiveState.isTimerRunning = true;
+    }
+
+    // Remove from collapsed set so it expands when it becomes active
+    this.collapsedObjectiveIds_.delete(objectiveState.objective.id);
+
+    // Immediately evaluate conditions for the newly activated objective
+    this.evaluateObjectiveConditions_(objectiveState, 0);
+
+    this.eventBus_.emit(Events.OBJECTIVE_ACTIVATED, {
+      objectiveId: objectiveState.objective.id,
+      objective: objectiveState.objective,
+      activatedAt: now,
+    });
+  }
+
+  /**
+   * Activate an objective now, bypassing its prerequisites. Used by decision
+   * consequences (a wrong call opens the objective that deals with it).
+   * Returns false if the objective is unknown, already active, or complete.
+   */
+  activateObjective(objectiveId: string): boolean {
+    const state = this.objectiveStates_.find((s) => s.objective.id === objectiveId);
+    if (!state || state.isActive || state.isCompleted) return false;
+    this.activateObjectiveState_(state, Date.now());
+    return true;
+  }
+
+  /**
+   * Deactivate an active, incomplete objective and reset its conditions, then
+   * cascade to its dependents. Returns false if it was not active.
+   */
+  deactivateObjective(objectiveId: string): boolean {
+    const state = this.objectiveStates_.find((s) => s.objective.id === objectiveId);
+    if (!state || !state.isActive || state.isCompleted) return false;
+    this.deactivateObjectiveState_(state);
+    this.deactivateDependentObjectives_(objectiveId);
+    return true;
+  }
+
+  /** Reset an objective to inactive with untouched conditions */
+  private deactivateObjectiveState_(objectiveState: ObjectiveState): void {
+    objectiveState.isActive = false;
+    objectiveState.activatedAt = undefined;
+    objectiveState.isTimerRunning = false;
+
+    for (const condState of objectiveState.conditionStates) {
+      condState.isSatisfied = false;
+      condState.satisfiedAt = undefined;
+      condState.maintainedDuration = 0;
+      condState.isMaintenanceComplete = false;
+      condState.observed = false; // re-observe after a prerequisite reset
     }
   }
 
@@ -1134,19 +1212,7 @@ export class ObjectivesManager {
       // Check if this objective has the given objective as a prerequisite
       const prerequisites = objectiveState.objective.prerequisiteObjectiveIds || [];
       if (prerequisites.includes(objectiveId)) {
-        // Deactivate this objective
-        objectiveState.isActive = false;
-        objectiveState.activatedAt = undefined;
-        objectiveState.isTimerRunning = false;
-
-        // Reset condition states
-        for (const condState of objectiveState.conditionStates) {
-          condState.isSatisfied = false;
-          condState.satisfiedAt = undefined;
-          condState.maintainedDuration = 0;
-          condState.isMaintenanceComplete = false;
-          condState.observed = false; // re-observe after a prerequisite reset
-        }
+        this.deactivateObjectiveState_(objectiveState);
 
         // Recursively deactivate objectives that depend on this one
         this.deactivateDependentObjectives_(objectiveState.objective.id);
@@ -2243,6 +2309,54 @@ export class ObjectivesManager {
 
         // Check if quiz has been completed
         return quizManager.isQuizComplete(objectiveState.objective.id, conditionIndex);
+      }
+
+      case 'decision': {
+        // A judgement graded against held evidence facts at answer time.
+        // Registration hands DecisionManager live readers; this case only
+        // ticks the facts and reports whether the decision has been resolved.
+        const params = condition.params;
+        if (!params?.prompt || !params.decisionOptions?.length) {
+          console.warn('decision condition missing required params (prompt, decisionOptions)');
+          return false;
+        }
+
+        const gsKey = gs?.state.id ?? '';
+        let registry = this.evidenceFacts_.get(gsKey);
+        if (!registry) {
+          registry = new EvidenceFactRegistry();
+          this.evidenceFacts_.set(gsKey, registry);
+        }
+        registry.tick(dtSeconds ?? 0, { gs });
+
+        const decisions = DecisionManager.getInstance();
+        const conditionIndex = objectiveState.conditionStates.findIndex((cs) => cs.condition === condition);
+        if (!decisions.has(objectiveState.objective.id, conditionIndex)) {
+          const factReader = registry;
+          const evidenceIds = params.evidence ?? [];
+          decisions.register(objectiveState.objective.id, conditionIndex, {
+            prompt: params.prompt,
+            options: params.decisionOptions,
+            explanation: params.explanation,
+            pointPenalty: params.pointPenalty,
+            partialCreditUnevidenced: params.partialCreditUnevidenced,
+            character: params.character,
+            preserveOptionOrder: params.preserveDecisionOrder,
+            groundStationId: objectiveState.objective.groundStation,
+            readFact: (id) => factReader.read(id),
+            evidenceStatus: () =>
+              evidenceIds.map((id) => {
+                const sibling = objectiveState.conditionStates.find((cs) => cs.condition.id === id);
+                if (!sibling) {
+                  console.warn(`decision evidence "${id}" names no condition in objective ${objectiveState.objective.id}`);
+                  return { id, label: id, ready: false };
+                }
+                return { id, label: sibling.condition.description, ready: sibling.observed === true || sibling.isMaintenanceComplete };
+              }),
+          });
+        }
+
+        return decisions.isResolved(objectiveState.objective.id, conditionIndex);
       }
 
       case 'handover-complete': {

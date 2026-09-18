@@ -36,6 +36,7 @@ For each objective:
 | `tab-active` | S0421 | Navigating equipment panels |
 | `equipment-powered` | T0431 | Checking hardware availability |
 | `status-check` (quiz) | K-codes based on question content | Knowledge demonstration |
+| `decision` | S0477, S0648, S0593 plus the domain codes of the facts it reads | Judgement under ambiguity (fault, interference or attack) |
 | `signal-detected` | T0153 | Monitoring performance |
 | `mission-brief-opened` | K0645 | SOP familiarity |
 
@@ -233,6 +234,7 @@ For each objective:
 | `tab-active` | S0421 | Navigating equipment panels |
 | `equipment-powered` | T0431 | Checking hardware availability |
 | `status-check` (quiz) | K-codes based on question content | Knowledge demonstration |
+| `decision` | S0477, S0648, S0593 plus the domain codes of the facts it reads | Judgement under ambiguity (fault, interference or attack) |
 | `signal-detected` | T0153 | Monitoring performance |
 | `mission-brief-opened` | K0645 | SOP familiarity |
 

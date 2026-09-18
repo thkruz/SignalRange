@@ -84,6 +84,11 @@ export class WeatherManager {
     return this.instance_;
   }
 
+  /** Whether a scenario has created the manager (getInstance needs a loaded scenario) */
+  static hasInstance(): boolean {
+    return this.instance_ !== null;
+  }
+
   static destroy(): void {
     if (this.instance_) {
       EventBus.getInstance().off(Events.UPDATE, this.instance_.boundUpdateHandler_);

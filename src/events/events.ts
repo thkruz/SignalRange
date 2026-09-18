@@ -179,6 +179,66 @@ export interface QuizPassedData {
   pointsDeducted: number;
 }
 
+// ── Decision events (for decision conditions, phase 18) ──────────────────────
+
+/** One evidence latch the decision depends on, as shown to the player */
+export interface DecisionEvidenceStatus {
+  id: string;
+  label: string;
+  ready: boolean;
+}
+
+export interface DecisionShowData {
+  objectiveId: string;
+  conditionIndex: number;
+  prompt: string;
+  /** Option labels only - rules and consequences never reach the UI */
+  options: string[];
+  explanation?: string;
+  pointPenalty: number;
+  character?: Character;
+  preserveOptionOrder?: boolean;
+  evidence: DecisionEvidenceStatus[];
+}
+
+/** Modal -> manager: the player chose an option */
+export interface DecisionAnsweredData {
+  objectiveId: string;
+  conditionIndex: number;
+  optionIndex: number;
+}
+
+/** Manager -> modal: how the chosen option graded (and whether timers should pause) */
+export interface DecisionGradedData {
+  objectiveId: string;
+  conditionIndex: number;
+  optionIndex: number;
+  correct: boolean;
+  evidenced: boolean;
+  missingEvidence: string[];
+  feedback?: string;
+  attempts: number;
+  pointsDeducted: number;
+}
+
+/** Modal -> everyone: Continue pressed after a correct answer */
+export interface DecisionResolvedData {
+  objectiveId: string;
+  conditionIndex: number;
+  totalAttempts: number;
+  totalPointsDeducted: number;
+}
+
+export interface DecisionDismissedData {
+  objectiveId: string;
+  conditionIndex: number;
+}
+
+export interface DecisionPendingData {
+  objectiveId: string;
+  conditionIndex: number;
+}
+
 // Hint Event specific interfaces
 export interface HintRequestedData {
   objectiveId: string;
@@ -408,6 +468,14 @@ export enum Events {
   QUIZ_PENDING = 'quiz:pending',
   QUIZ_PASSED = 'quiz:passed',
 
+  // Decision events (for decision conditions)
+  DECISION_SHOW = 'decision:show',
+  DECISION_ANSWERED = 'decision:answered',
+  DECISION_GRADED = 'decision:graded',
+  DECISION_RESOLVED = 'decision:resolved',
+  DECISION_DISMISSED = 'decision:dismissed',
+  DECISION_PENDING = 'decision:pending',
+
   // Hint events (for condition hints with 50% point penalty)
   HINT_REQUESTED = 'hint:requested',
   HINT_SHOWN = 'hint:shown',
@@ -530,6 +598,13 @@ export interface EventMap {
   [Events.QUIZ_DISMISSED]: [QuizDismissedData];
   [Events.QUIZ_PENDING]: [QuizPendingData];
   [Events.QUIZ_PASSED]: [QuizPassedData];
+
+  [Events.DECISION_SHOW]: [DecisionShowData];
+  [Events.DECISION_ANSWERED]: [DecisionAnsweredData];
+  [Events.DECISION_GRADED]: [DecisionGradedData];
+  [Events.DECISION_RESOLVED]: [DecisionResolvedData];
+  [Events.DECISION_DISMISSED]: [DecisionDismissedData];
+  [Events.DECISION_PENDING]: [DecisionPendingData];
 
   [Events.HINT_REQUESTED]: [HintRequestedData];
   [Events.HINT_SHOWN]: [HintShownData];

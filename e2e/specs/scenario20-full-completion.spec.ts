@@ -51,7 +51,7 @@ const SCENARIO_20_OBJECTIVES: Scenario20Objective[] = [
     id: 'vt-read-board',
     title: 'Read the Vermont Board',
     type: 'quiz',
-    correctAnswer: 'The feed heater is OFF - it should have been running before the front arrived; ice is the consequence, the cold heater is the fault',
+    correctAnswer: 'The feed heater is OFF - it should have been running before the front; ice is the consequence, the cold heater is the fault',
   },
   {
     id: 'vt-enable-heater-tab',
@@ -84,22 +84,19 @@ const SCENARIO_20_OBJECTIVES: Scenario20Objective[] = [
     id: 'me-read-board',
     title: 'Read the Maine Board',
     type: 'quiz',
-    correctAnswer:
-      'One fault, two symptoms: back-off at 1 dB drives the amplifier near saturation - IMD rises (overdrive alarm) and the output stage dissipates harder (thermal alarm). Fix the back-off and both clear',
+    correctAnswer: 'One fault, two symptoms: 1 dB back-off drives the HPA near saturation - IMD rises (overdrive) and dissipation climbs (thermal)',
   },
   {
     id: 'coincidence-quiz',
     title: 'Coincidence or Attack?',
     type: 'quiz',
-    correctAnswer:
-      'Hold it open and collect the rule-out evidence as you work: independent causes that each fully explain their own site, no unexplained RF on either spectrum. Answer it with evidence after the fixes, not with a shrug before them',
+    correctAnswer: 'Hold it open and collect rule-out evidence as you work: independent causes for each site, no unexplained RF on either spectrum',
   },
   {
     id: 'triage-order-quiz',
     title: 'Defend the Order',
     type: 'quiz',
-    correctAnswer:
-      "VT's recovery is slow but starts with one switch - starting it first costs ME nothing. ME's fault is actively dangerous (spectrum pollution + amplifier stress) and deterministic to fix, so it gets full attention immediately after",
+    correctAnswer: "VT's fix is one switch that runs unattended; ME's fault is dangerous (spectrum pollution + HPA stress) and needs full attention",
   },
   {
     id: 'me-tx-tab',
@@ -131,8 +128,7 @@ const SCENARIO_20_OBJECTIVES: Scenario20Objective[] = [
     id: 'me-verify-quiz',
     title: 'Confirm Both Symptoms Cleared',
     type: 'quiz',
-    correctAnswer:
-      'It clears on its own - output power dropped ~9 dB, so the output stage dissipates a fraction of the heat; the temperature falls with the dissipation that caused it',
+    correctAnswer: 'It clears on its own - output power dropped ~9 dB, so the output stage dissipates a fraction of the heat and cools',
   },
 
   // PHASE 3: VERIFY VERMONT
@@ -151,7 +147,7 @@ const SCENARIO_20_OBJECTIVES: Scenario20Objective[] = [
     id: 'storm-steady-state-quiz',
     title: 'Steady State in the Storm',
     type: 'quiz',
-    correctAnswer: 'Nothing new - the heater holds ice at bay as fast as it forms; the steady state is heater ON plus periodic margin checks until the front clears',
+    correctAnswer: 'Nothing new - the heater holds ice at bay as fast as it forms; heater ON plus periodic margin checks until the front clears',
   },
 
   // PHASE 4: CUSTOMER, EVIDENCE, LOG
@@ -159,22 +155,19 @@ const SCENARIO_20_OBJECTIVES: Scenario20Objective[] = [
     id: 'james-comms-quiz',
     title: 'Call James Back',
     type: 'quiz',
-    correctAnswer:
-      'Both trunks restored: Vermont was storm icing (heater now running, holding), Maine was an amplifier config fault (corrected, verified). Causes independent and fully explained - the simultaneity was coincidence, and here is why we are confident.',
+    correctAnswer: 'Both trunks up: Vermont was storm icing (heater on), Maine an amplifier config fault (fixed) - coincidence, and here is why',
   },
   {
     id: 'adversarial-ruleout-quiz',
-    title: 'Close the Question Honestly',
+    title: 'Close the Question Cleanly',
     type: 'quiz',
-    correctAnswer:
-      'VT degradation tracked the storm exactly (radar + precip sensor agree, heater-on fixed it); ME fault was a config value with mundane history; no unexplained signals on either spectrum; both recoveries behaved as their diagnoses predicted',
+    correctAnswer: 'VT tracked the storm (radar + precip agree, heater fixed it); ME was a config value with mundane history; both spectra clean',
   },
   {
     id: 'log-dual-outage',
     title: 'Log the Dual Recovery',
     type: 'quiz',
-    correctAnswer:
-      'Concurrent site degradation 0712: VT-01 feed icing (heater off ahead of front - corrected 0716, melt verified) | ME-02 HPA back-off drift to 1 dB (output disabled, 10 dB restored, re-enabled clean by 0734). Causes independent - rule-out documented. Customers notified. Heater discipline flagged for shift-change checklist.',
+    correctAnswer: 'Dual degradation 0712: VT-01 icing (heater on 0716, melted) | ME-02 HPA back-off 1 dB (10 dB restored 0734); causes independent',
   },
 ];
 
@@ -188,7 +181,7 @@ async function toggleSwitch(page: import('@playwright/test').Page, switchId: str
     switchEl = page.locator(`[id$="${switchId}"]`);
   }
   await expect(switchEl.first()).toBeVisible({ timeout: 5000 });
-  // Let the adapter's throttled DOM sync land before reading
+  // Let the adapter's throttled DOM sync settle before reading
   await page.waitForTimeout(1200);
   const isChecked = await switchEl.first().isChecked();
   if (isChecked !== desiredState) {
@@ -253,6 +246,10 @@ async function executeObjective(page: import('@playwright/test').Page, missionCo
 
     case 'click-tab':
       await missionControlPage.selectTab(objective.tabId!);
+      // Observation-gated conditions latch only after the default dwell on
+      // the tab (DEFAULT_OBSERVATION_DWELL_SECONDS); leaving at once would
+      // reset the read and strand the objective.
+      await page.waitForTimeout(3000);
       break;
 
     case 'toggle-switch':

@@ -106,8 +106,8 @@ export const hamSdrScenario1Data: ScenarioData = {
             question: 'The QFH has no rotator and never moves. Why does that work for a satellite screaming by at 7.5 km/s?',
             options: [
               'Its beam is enormous - about 140 degrees wide - so the whole pass happens inside the beam.',
-              'The satellite steers its own signal toward the antenna.',
-              'It does not work; that is why the picture is always noisy.',
+              'The satellite steers its own beam - aimed at the ground below it - so any fixed antenna hears the pass.',
+              'The pass is high enough - 55 degrees at the top - so the bird stays inside even a narrow beam.',
             ],
             correctIndex: 0,
             explanation: 'Right. Gain and beamwidth trade off: 3 dBi of gain buys a beam so fat the bird never leaves it. Big dishes point; little antennas wait.',
@@ -249,8 +249,8 @@ export const hamSdrScenario1Data: ScenarioData = {
             question: 'The bird is moving at 7.5 km/s, which shifts its frequency (Doppler). Why has the lock held without you retuning?',
             options: [
               'At 137 MHz the whole Doppler swing is about +/-3 kHz - the 50 kHz channel swallows it.',
-              'The satellite compensates its transmitter for Doppler.',
-              'The SDR hardware automatically removes Doppler from everything.',
+              'The satellite pre-corrects its own Doppler - the downlink arrives on 137.100 MHz exactly.',
+              'The RTL-SDR strips Doppler in hardware - the VFO readout never sees the shift at all.',
             ],
             correctIndex: 0,
             explanation:

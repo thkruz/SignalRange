@@ -158,14 +158,14 @@ test.describe('nats-eu Scenario 14 Full Completion', () => {
     await advanceMissionClockToUtc(page, '2027-04-02T11:17:00Z');
     await missionControl.selectGroundStation('GW-01');
     await missionControl.selectTab('rx-analysis');
-    await answerSystemQuiz(page, 'About 7 dB of rain attenuation');
+    await answerSystemQuiz(page, 'Rain: about 7 dB of attenuation');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Observe the Galway Fade', 60000);
   });
 
   test('[log-the-collect] logs the collect and the measurement', async () => {
     await closeWorkingDocumentIfOpen(page);
-    await answerSystemQuiz(page, 'Collect worked from SH-02 at 34 degrees');
+    await answerSystemQuiz(page, 'faded to about 2 dB');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Log the Collect');
   });

@@ -31,8 +31,7 @@ const SCENARIO_23_OBJECTIVES: Scenario23Objective[] = [
     id: 'review-mission-brief',
     title: 'Review the Fault',
     type: 'quiz',
-    correctAnswer:
-      'Broken: program-track, step-track, move-to-target, lock logic (the automation brain). Working: servos, manual mode, and the RF chain - the dish can still move, you just have to fly it',
+    correctAnswer: 'Broken: program-track, step-track, move-to-target, lock logic. Working: servos, manual mode, the RF chain - you have to fly it',
   },
   {
     id: 'select-vermont-station',
@@ -52,21 +51,19 @@ const SCENARIO_23_OBJECTIVES: Scenario23Objective[] = [
     id: 'confirm-fault-dashboard',
     title: 'Confirm the Automation Fault',
     type: 'quiz',
-    correctAnswer: 'Current position (Az 161.8 / El 34.2 on TM-1) and that beacon + carrier are still locked - the dish is ON the bird; whatever you do next must not lose that',
+    correctAnswer: 'Current position (Az 161.8 / El 34.2 on TM-1) and that beacon + carrier are still locked - the dish is ON the bird',
   },
   {
     id: 'what-automation-did-quiz',
     title: 'What the Automation Was Doing',
     type: 'quiz',
-    correctAnswer:
-      'Compute the pointing solution (from the prediction sheet), drive the axes manually, and judge lock from the spectrum - the ACU lock indicator is part of the dead automation and cannot be trusted',
+    correctAnswer: 'Compute pointing (from the prediction sheet), drive the axes by hand, and judge lock from the spectrum - not the ACU indicator',
   },
   {
     id: 'no-reboot-quiz',
     title: 'Why Not Reboot It',
     type: 'quiz',
-    correctAnswer:
-      'A reboot can return with stale/defaulted axis calibration and destroys the crash state IT needs for root cause - bypass keeps the link up AND preserves the evidence; IT cycles it on their schedule',
+    correctAnswer: 'A reboot risks defaulted axis calibration and wipes the crash state IT needs - bypass keeps the link up and keeps the evidence',
   },
 
   // PHASE 2: COMMIT TO MANUAL (+ UI gating assertion)
@@ -90,8 +87,7 @@ const SCENARIO_23_OBJECTIVES: Scenario23Objective[] = [
     id: 'manual-deliberate-quiz',
     title: 'Why Deliberate Manual',
     type: 'quiz',
-    correctAnswer:
-      'In program-track the panel implies an automation is flying the dish when none is - manual makes the truth explicit: YOU are the controller, the displays mean what they say, and there is no phantom loop to fight',
+    correctAnswer: 'In program-track the panel implies a loop is flying the dish when none is - manual makes YOU the controller, explicitly',
   },
 
   // PHASE 3: PROVE THE LINK
@@ -117,7 +113,7 @@ const SCENARIO_23_OBJECTIVES: Scenario23Objective[] = [
     id: 'instruments-not-feel-quiz',
     title: 'Fly Instruments, Not Feel',
     type: 'quiz',
-    correctAnswer: 'The beacon at 1074.5 MHz on the spectrum and receiver lock - the RF truth, independent of the dead ACU automation. Never the ACU lock indicator',
+    correctAnswer: 'The beacon at 1074.5 MHz on the spectrum and receiver lock - the RF truth, independent of the dead ACU automation',
   },
 
   // PHASE 4: HOLD AND COORDINATE
@@ -131,22 +127,19 @@ const SCENARIO_23_OBJECTIVES: Scenario23Objective[] = [
     id: 'geo-feasibility-quiz',
     title: 'Why Manual Holds (This Time)',
     type: 'quiz',
-    correctAnswer:
-      'TIDEMARK-1 is a well-behaved GEO bird - it barely moves over hours, so a fixed manual point holds. It would NOT work for an inclined bird like AURORA-7, whose figure-8 needs the step-track this fault disabled',
+    correctAnswer: "TIDEMARK-1 is a well-behaved GEO bird that barely moves, so a fixed point holds - NOT on AURORA-7's inclined figure-8",
   },
   {
     id: 'it-coordination-quiz',
     title: 'Coordinate the Repair',
     type: 'quiz',
-    correctAnswer:
-      'Confirm the link is stable on manual first, agree a window, expect to re-establish program-track and re-verify pointing AFTER recovery - and be ready to fall back to manual if the restart misbehaves',
+    correctAnswer: 'Confirm the link is stable on manual, agree a window, then re-verify pointing on RF after recovery - ready to fall back to manual',
   },
   {
     id: 'log-bypass',
     title: 'Log the Bypass',
     type: 'quiz',
-    correctAnswer:
-      'ACU automation fault 1358 (IT NOC-2026-2231). Bypassed to manual 1404 - TM-1 held on prediction-sheet pointing, beacon + carrier verified on spectrum (ACU lock indicator NOT trusted, driven by failed processor). Link nominal under manual. Controller NOT rebooted - crash state preserved for IT. Recovery to be re-verified on RF post-restart.',
+    correctAnswer: 'ACU fault 1358 (NOC-2026-2231); manual 1404, TM-1 held on sheet pointing, beacon + carrier verified on RF; not rebooted',
   },
 ];
 
@@ -195,6 +188,10 @@ async function executeObjective(page: import('@playwright/test').Page, missionCo
 
     case 'click-tab':
       await missionControlPage.selectTab(objective.tabId!);
+      // Observation-gated conditions latch only after the default dwell on
+      // the tab (DEFAULT_OBSERVATION_DWELL_SECONDS); leaving at once would
+      // reset the read and strand the objective.
+      await page.waitForTimeout(3000);
       break;
 
     case 'set-manual-mode':

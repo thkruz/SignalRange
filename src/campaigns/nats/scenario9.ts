@@ -102,7 +102,7 @@ export const scenario9Data: ScenarioData = {
         ],
         rfFrontEnds: [
           createRfFrontEnd(vermontGroundStation.rfFrontEnds[0], {
-            // Inherits VT-01 LNB LO 5250 MHz so the TM-2 beacon lands at 1070 MHz IF
+            // Inherits VT-01 LNB LO 5250 MHz so the TM-2 beacon comes out at 1070 MHz IF
             // Maine TX is muted - we're not transmitting from ME-02 in this scenario
             buc: { isMuted: true },
             hpa: { isHpaEnabled: false, isHpaSwitchEnabled: false },
@@ -219,7 +219,12 @@ export const scenario9Data: ScenarioData = {
           params: {
             character: Character.SYSTEM,
             question: 'What is the active alarm state on VT-01?',
-            options: ['No active alarms - all systems nominal', 'BUC high current draw', 'LNB reference unlocked', 'HPA output fault'],
+            options: [
+              'No active alarms - all systems nominal',
+              'BUC high current draw - TX chain alarm',
+              'LNB reference unlocked - RX chain alarm',
+              'HPA output fault - transmit path alarm',
+            ],
             correctIndex: 0,
             explanation: 'Clean board on the primary station. Moving on to timing.',
             pointPenalty: 5,
@@ -261,9 +266,9 @@ export const scenario9Data: ScenarioData = {
             question: 'What does the GPSDO lock indicator confirm?',
             options: [
               'Stable 10 MHz reference available to all downstream RF equipment',
-              'GPS receiver is searching for satellites',
-              'External reference is in holdover',
-              'GPSDO is powered off',
+              'GPS receiver has enough satellites to start disciplining the oscillator',
+              'External reference in holdover, oscillator free-running on last correction',
+              '1 PPS output present but the 10 MHz output is still warming up',
             ],
             correctIndex: 0,
             explanation: 'Reference is stable. RX/TX chains can trust their frequencies.',
@@ -350,9 +355,9 @@ export const scenario9Data: ScenarioData = {
             question: 'What does the 10 dB HPA backoff during routine ops indicate?',
             options: [
               'Standard operating margin - reduces stress on the amplifier',
-              'HPA is faulted and limiting itself',
-              'Customer requested low power',
-              'Output stage saturated and clipping',
+              'HPA fault protection - the amplifier is limiting its own output',
+              'Customer requested setting - low power for a light traffic load',
+              'Output stage saturation - the amplifier is clipping at its peak',
             ],
             correctIndex: 0,
             explanation: 'Headroom is the goal. No drama on TIDEMARK-1.',
@@ -411,7 +416,12 @@ export const scenario9Data: ScenarioData = {
           params: {
             character: Character.SYSTEM,
             question: 'What is the alarm state on ME-02?',
-            options: ['No active alarms - station nominal', 'Antenna tracking lost', 'GPSDO holdover', 'LNB over-temperature'],
+            options: [
+              'No active alarms - station nominal',
+              'Antenna tracking lost - ACU alarm active',
+              'GPSDO in holdover - timing alarm',
+              'LNB over-temperature - RX chain alarm',
+            ],
             correctIndex: 0,
             explanation: 'Maine is clean. Catherine has the station in good shape.',
             pointPenalty: 5,
@@ -497,9 +507,9 @@ export const scenario9Data: ScenarioData = {
             question: 'Why is program-track the appropriate mode for TIDEMARK-2 right now?',
             options: [
               'GEO satellite holding station - ephemeris is accurate enough; no need to hunt the beacon',
-              'Step-track is unavailable on ME-02 hardware',
-              'Program-track uses less antenna motion which extends motor life',
-              'TIDEMARK-2 is in an inclined orbit and requires program-track',
+              'Step-track unavailable on ME-02 - ACU has no beacon receiver; program-track is the only mode',
+              'Program-track moves the dish less - fewer motor cycles; saves the drive on a long shift',
+              'TIDEMARK-2 is in an inclined orbit - figure-8 drift is predictable; program-track follows it',
             ],
             correctIndex: 0,
             explanation: 'For a healthy GEO bird with good TLE, program-track is the right default. Save step-track for inclined birds like AURORA-7.',
@@ -529,9 +539,9 @@ export const scenario9Data: ScenarioData = {
             question: 'On a routine spot check, which combination of indicators confirms the downlink data path is healthy?',
             options: [
               'Frame sync locked + CRC valid + FEC engaged (Reed-Solomon active, no uncorrectables)',
-              'High RX power alone is sufficient - if power is good, data is good',
-              'Antenna beacon lock is sufficient confirmation of data integrity',
-              'Modem temperature within range proves the data path is healthy',
+              'RX power high + AGC mid-range + C/N above threshold (strong carrier, data must follow)',
+              'Beacon lock + antenna on peak + program-track holding (RF path proven, data follows)',
+              'Modem temperature in range + fans nominal + no hardware alarms (healthy unit, clean data)',
             ],
             correctIndex: 0,
             explanation: 'Beacon lock proves the RF path. Frame sync + CRC + FEC prove the data path. Different layers, different evidence.',
@@ -659,9 +669,9 @@ export const scenario9Data: ScenarioData = {
             question: 'TIDEMARK-3 beacon RF is 4172 MHz. With VT-01 LNB LO at 5250 MHz, seeing the beacon at 1078 MHz IF confirms what?',
             options: [
               'Antenna pointing is correct AND LNB LO is set correctly (5250 - 4172 = 1078)',
-              'Only the antenna pointing - LO has no effect on where the beacon appears',
-              'Only the LO - antenna pointing is verified by separate means',
-              'Nothing meaningful - any noise spike at 1078 would look like this',
+              'Only the antenna pointing is correct (the beacon sits at 1078 whatever LO the LNB uses)',
+              'Only the LNB LO is correct (5250 - 4172 = 1078 works whether or not the dish is on TM-3)',
+              'Nothing about the chain (any noise spike near 1078 would look the same on a 5250 LO)',
             ],
             correctIndex: 0,
             explanation: 'Both have to be right. Wrong pointing = no signal. Wrong LO = signal at a different IF.',
@@ -731,9 +741,9 @@ export const scenario9Data: ScenarioData = {
             question: 'Summarize the morning round result.',
             options: [
               'TIDEMARK-1 healthy, TIDEMARK-2 healthy, TIDEMARK-3 beacon verified - all three nominal',
-              'TIDEMARK-1 degraded, TIDEMARK-2 nominal, TIDEMARK-3 offline',
-              'TIDEMARK-1 nominal, TIDEMARK-2 not yet checked, TIDEMARK-3 verified',
-              'All three birds in fault state',
+              'TIDEMARK-1 degraded, TIDEMARK-2 healthy, TIDEMARK-3 beacon absent - one bird offline',
+              'TIDEMARK-1 healthy, TIDEMARK-2 not yet checked, TIDEMARK-3 beacon verified - round open',
+              'TIDEMARK-1 healthy, TIDEMARK-2 healthy, TIDEMARK-3 not yet verified - spot-check deferred',
             ],
             correctIndex: 0,
             explanation: 'Clean round. Log it and move on.',
@@ -763,9 +773,9 @@ export const scenario9Data: ScenarioData = {
             question: 'Which line correctly records this shift in the operations log?',
             options: [
               '0700 - Morning rounds complete. VT-01/TM-1, ME-02/TM-2, TM-3 beacon verified via VT-01 spot-check. No anomalies.',
-              '0700 - Morning rounds incomplete. TM-3 spot-check deferred.',
-              '0700 - Multiple alarms cleared. See trouble ticket.',
-              '0700 - Antenna swap performed VT-01 to ME-02.',
+              '0700 - Morning rounds incomplete. VT-01/TM-1, ME-02/TM-2 checked, TM-3 spot-check deferred to next shift. No anomalies.',
+              '0700 - Morning rounds complete. VT-01/TM-1, ME-02/TM-2 checked, multiple alarms cleared on VT-01. See trouble ticket.',
+              '0700 - Morning rounds complete. VT-01 repointed to TM-3 for spot-check, TM-1 traffic swapped to ME-02. No anomalies.',
             ],
             correctIndex: 0,
             explanation: 'Routine work logged routinely. Next operator picks up with full context.',

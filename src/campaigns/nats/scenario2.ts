@@ -240,9 +240,9 @@ export const scenario2Data: ScenarioData = {
             question: 'Before we shut down, confirm the current HPA state. What does the HPA panel show?',
             options: [
               'HPA is enabled and transmitting with 10 dB backoff',
-              'HPA is powered on but output is disabled',
-              'HPA is powered off completely',
-              'HPA shows fault condition - red alarm',
+              'HPA is powered on but output is disabled for standby',
+              'HPA is powered off completely and cooling down',
+              'HPA shows a fault condition with a red alarm active',
             ],
             correctIndex: 0,
             explanation:
@@ -312,9 +312,9 @@ export const scenario2Data: ScenarioData = {
             question: 'The HPA output is now disabled. What should you observe on the HPA panel?',
             options: [
               'HPA Enable indicator shows OFF - no RF output, but amplifier still energized',
-              'HPA completely powered down - all indicators off',
-              'HPA still transmitting at reduced power',
-              'HPA showing warning alarm',
+              'HPA Power indicator shows OFF - amplifier de-energized, all indicators dark',
+              'HPA Enable indicator shows ON - reduced RF output, amplifier still energized',
+              'HPA Alarm indicator shows WARNING - output tripped, amplifier still energized',
             ],
             correctIndex: 0,
             explanation:
@@ -414,7 +414,12 @@ export const scenario2Data: ScenarioData = {
           description: 'Confirm BUC Powered Off',
           params: {
             question: 'The BUC is now powered off. What does the BUC status show?',
-            options: ['BUC power indicator is OFF - completely de-energized', 'BUC is muted but still powered', 'BUC still outputting at low power', 'BUC reference unlocked'],
+            options: [
+              'BUC power indicator is OFF - completely de-energized',
+              'BUC mute indicator is ON - silenced but still powered',
+              'BUC power indicator is ON - outputting at low power',
+              'BUC reference indicator is UNLOCKED - lost 10 MHz lock',
+            ],
             correctIndex: 0,
             explanation: 'The BUC power indicator is OFF - the upconverter is completely de-energized. No RF energy can be generated from this equipment.',
             pointPenalty: 10,
@@ -535,9 +540,9 @@ export const scenario2Data: ScenarioData = {
             question: 'The RF chain should now be completely cold. Which equipment is still powered?',
             options: [
               'GPSDO and control systems only - all RF equipment is off',
-              'LNB is still receiving signals passively',
-              'BUC is still energized but muted',
-              'HPA is still warming up',
+              'GPSDO and LNB only - the receive side still passively powered',
+              'GPSDO and BUC only - the upconverter still energized but muted',
+              'GPSDO and HPA only - the amplifier still warming up on standby',
             ],
             correctIndex: 0,
             explanation:
@@ -654,9 +659,9 @@ export const scenario2Data: ScenarioData = {
             question: 'The antenna is now at maintenance position. Why do we use 5° elevation instead of 0°?',
             options: [
               'Low enough for crew access, high enough to clear obstructions',
-              'Antenna cannot physically reach 0° elevation',
-              'To maintain satellite lock during maintenance',
-              'Required by FCC regulations',
+              'Low enough for crew access, but the mount cannot reach 0° elevation',
+              'High enough to keep satellite lock, low enough for feed access',
+              'Low enough for crew access, and the minimum FCC rules allow',
             ],
             correctIndex: 0,
             explanation:
@@ -955,9 +960,9 @@ export const scenario2Data: ScenarioData = {
             question: 'You see the TIDEMARK-1 beacon at 1,074.5 MHz IF. The RF beacon frequency is 4,175.5 MHz. Which calculation confirms the LNB is set correctly?',
             options: [
               'LO (5,250 MHz) - RF (4,175.5 MHz) = IF (1,074.5 MHz)',
-              'RF (4,175.5 MHz) + IF (1,074.5 MHz) = LO (5,250 MHz)',
-              'IF (1,074.5 MHz) × 4 = RF (4,298 MHz)',
-              'The frequencies are coincidentally correct',
+              'RF (4,175.5 MHz) + LO (5,250 MHz) = IF (9,425.5 MHz)',
+              'RF (4,175.5 MHz) - IF (1,074.5 MHz) = LO (3,101 MHz)',
+              'LO (5,250 MHz) + IF (1,074.5 MHz) = RF (6,324.5 MHz)',
             ],
             correctIndex: 0,
             explanation:
@@ -1147,13 +1152,13 @@ export const scenario2Data: ScenarioData = {
             question: "TIDEMARK-1 should now be back in full service. What's the correct sequence for future scheduled maintenance?",
             options: [
               'Shutdown: HPA → BUC → Modem TX → LNB → Antenna. Restore: Antenna → LNB → Modem TX → BUC → HPA',
-              'Shutdown: Antenna → LNB → BUC → HPA. Restore: HPA → BUC → LNB → Antenna',
-              'Shutdown: LNB → BUC → HPA → Antenna. Restore: Antenna → HPA → BUC → LNB',
-              "Sequence doesn't matter as long as all equipment is powered down",
+              'Shutdown: Antenna → LNB → Modem TX → BUC → HPA. Restore: HPA → BUC → Modem TX → LNB → Antenna',
+              'Shutdown: LNB → Modem TX → BUC → HPA → Antenna. Restore: Antenna → HPA → BUC → Modem TX → LNB',
+              'Shutdown: HPA → BUC → Modem TX → LNB → Antenna. Restore: HPA → BUC → Modem TX → LNB → Antenna',
             ],
             correctIndex: 0,
             explanation:
-              'Correct! Shutdown sequence is HPA (high-power) → BUC (low-power) → Modem TX → LNB → Antenna. Restoration is the reverse: Antenna → LNB → Modem TX → BUC → HPA. Always shut down high-power equipment first for safety, and restore low-power equipment first to verify signal before applying high power.',
+              'Correct! Shutdown sequence is HPA (high-power) → BUC (low-power) → Modem TX → LNB → Antenna. Restoration is the reverse: Antenna → LNB → Modem TX → BUC → HPA. Always shut down high-power equipment first for safety, and restore low-power equipment first to verify signal before applying high power. Restoring in the same order as shutdown would energize the HPA before anything upstream is verified.',
             pointPenalty: 10,
           },
           mustMaintain: false,

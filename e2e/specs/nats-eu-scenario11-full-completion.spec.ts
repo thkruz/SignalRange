@@ -126,7 +126,7 @@ test.describe('nats-eu Scenario 11 Full Completion', () => {
 
   test('[read-the-refined-pass] reads AOS, peak and LOS off the refined schedule', async () => {
     await missionControl.selectTab('pass-schedule');
-    await answerSystemQuiz(page, 'AOS 09:08:59 at azimuth 143');
+    await answerSystemQuiz(page, 'azimuth 143, 31.6 degrees');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Read the Refined Pass');
   });
@@ -163,7 +163,7 @@ test.describe('nats-eu Scenario 11 Full Completion', () => {
   test('[beacon-level] reads the beacon level near culmination and logs it', async () => {
     await advanceMissionClockToUtc(page, '2027-03-22T09:13:00Z');
     await missionControl.selectTab('rx-analysis');
-    await answerSystemQuiz(page, 'A level against the link prediction');
+    await answerSystemQuiz(page, 'A level against the prediction is the transmitter');
     await dismissDialogIfPresent(page);
     await closeWorkingDocumentIfOpen(page);
     await waitForObjectiveComplete(missionControl, 'Beacon Level', 60000);

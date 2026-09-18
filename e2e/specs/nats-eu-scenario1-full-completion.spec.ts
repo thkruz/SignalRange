@@ -95,7 +95,7 @@ test.describe('nats-eu Scenario 1 Full Completion', () => {
 
   test('[downconversion-plan] reads the LNB LO and does the IF arithmetic', async () => {
     await missionControl.selectTab('rx-analysis');
-    await answerSystemQuiz(page, '1414 MHz (LO minus RF');
+    await answerSystemQuiz(page, '1414 MHz');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Confirm the Ku Downconversion Plan');
   });

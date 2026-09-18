@@ -200,8 +200,7 @@ const SCENARIO_12_OBJECTIVES: Scenario12Objective[] = [
     id: 'verify-tx-staged',
     title: 'Confirm TX Staged Cold',
     type: 'quiz',
-    correctAnswer:
-      'Two stations radiating at the same transponder is dual illumination - the handover swaps RF authority in one coordinated action so only one uplink is ever on the air',
+    correctAnswer: 'Two uplinks on one transponder is dual illumination - the handover swaps RF authority so only one is ever on the air',
   },
 
   // ============================================================
@@ -269,8 +268,7 @@ const SCENARIO_12_OBJECTIVES: Scenario12Objective[] = [
     id: 'log-maintenance-complete',
     title: 'Log Maintenance Cycle Complete',
     type: 'quiz',
-    correctAnswer:
-      'VT-01 returned to service post-waveguide-gasket inspection. TM-1 traffic returned from ME-02. Maintenance leftover (BUC gain 50 dB) corrected before energizing. No customer impact.',
+    correctAnswer: 'VT-01 back in service after gasket inspection. TM-1 returned from ME-02. BUC gain leftover (50 dB) corrected before energizing. No customer impact.',
   },
 ];
 
@@ -417,7 +415,7 @@ async function configureBucGain(page: import('@playwright/test').Page, gain: num
 async function toggleSwitch(page: import('@playwright/test').Page, switchId: string, desiredState: boolean): Promise<void> {
   const switchEl = page.locator(`#${switchId}`);
   await expect(switchEl).toBeVisible({ timeout: 5000 });
-  // Let the adapter's throttled DOM sync land before reading - the static
+  // Let the adapter's throttled DOM sync settle before reading - the static
   // template can render a stale checked state right after the tab mounts.
   await page.waitForTimeout(1200);
   const isChecked = await switchEl.isChecked();
@@ -476,6 +474,10 @@ async function executeObjective(page: import('@playwright/test').Page, missionCo
 
     case 'click-tab':
       await missionControlPage.selectTab(objective.tabId!);
+      // Observation-gated conditions latch only after the default dwell on
+      // the tab (DEFAULT_OBSERVATION_DWELL_SECONDS); leaving at once would
+      // reset the read and strand the objective.
+      await page.waitForTimeout(3000);
       break;
 
     case 'set-tracking-mode':

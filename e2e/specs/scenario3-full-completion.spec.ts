@@ -122,7 +122,7 @@ const SCENARIO_3_OBJECTIVES: Scenario3Objective[] = [
     id: 'verify-heater-quiz',
     title: 'Understand Feed Heater Consequences',
     type: 'quiz',
-    correctAnswer: 'Ice would accumulate on the feed horn and waveguide, causing signal attenuation and potential physical damage',
+    correctAnswer: 'Ice would build up on the feed horn and waveguide and attenuate the signal',
   },
 
   // ============================================================
@@ -138,13 +138,13 @@ const SCENARIO_3_OBJECTIVES: Scenario3Objective[] = [
     id: 'verify-agc-status',
     title: 'Understand AGC Function',
     type: 'quiz',
-    correctAnswer: 'The output signal level would drop as weather attenuated the input, eventually causing loss of lock',
+    correctAnswer: 'The output level would fall with the attenuated input until the receiver lost lock',
   },
   {
     id: 'estimate-time-remaining',
     title: 'Understand Time Pressure',
     type: 'quiz',
-    correctAnswer: 'Weather degradation is progressive - once AGC runs out of compensation range, the link fails rapidly',
+    correctAnswer: 'Degradation is progressive - once the AGC runs out of range the link fails fast',
   },
   {
     id: 'verify-agc-limits-quiz',
@@ -236,7 +236,7 @@ const SCENARIO_3_OBJECTIVES: Scenario3Objective[] = [
     id: 'verify-lnb-config-quiz',
     title: 'Verify LNB Configuration',
     type: 'quiz',
-    correctAnswer: 'Same LO frequency produces the same IF frequency, so downstream equipment configuration is identical',
+    correctAnswer: 'Same LO gives the same IF, so downstream equipment configuration is identical',
   },
 
   // ============================================================
@@ -262,7 +262,7 @@ const SCENARIO_3_OBJECTIVES: Scenario3Objective[] = [
     id: 'verify-beacon-reason-quiz',
     title: 'Understand Beacon Verification',
     type: 'quiz',
-    correctAnswer: 'Beacon confirms the entire receive chain is working - antenna, feed, LNB, cables, and spectrum analyzer',
+    correctAnswer: 'Beacon proves the whole receive chain works - antenna, feed, LNB, cables, analyzer',
   },
 
   // ============================================================
@@ -283,7 +283,7 @@ const SCENARIO_3_OBJECTIVES: Scenario3Objective[] = [
     id: 'verify-modem-match-quiz',
     title: 'Understand Parameter Matching',
     type: 'quiz',
-    correctAnswer: 'Both sites are receiving the same satellite carrier - mismatched parameters would fail to demodulate',
+    correctAnswer: 'Both sites receive the same carrier - mismatched parameters would fail to demodulate',
   },
 
   // ============================================================
@@ -337,7 +337,7 @@ const SCENARIO_3_OBJECTIVES: Scenario3Objective[] = [
     id: 'understand-handover-quiz',
     title: 'Understand Handover Process',
     type: 'quiz',
-    correctAnswer: "Maine's transmitter activates fully while Vermont's is disabled - avoiding dual uplinks to the satellite",
+    correctAnswer: "Maine's transmitter comes up while Vermont's is disabled - avoiding a dual uplink",
   },
   {
     id: 'execute-handover',
@@ -817,6 +817,10 @@ async function executeObjective(page: import('@playwright/test').Page, missionCo
     case 'click-tab':
       // Click on the specified tab
       await missionControlPage.selectTab(objective.tabId!);
+      // Observation-gated conditions latch only after the default dwell on
+      // the tab (DEFAULT_OBSERVATION_DWELL_SECONDS); leaving at once would
+      // reset the read and strand the objective.
+      await page.waitForTimeout(3000);
       break;
 
     case 'toggle-switch':

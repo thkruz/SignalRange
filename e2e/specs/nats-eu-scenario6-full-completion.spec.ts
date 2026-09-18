@@ -65,7 +65,7 @@ test.describe('nats-eu Scenario 6 Full Completion', () => {
   test('[review-mission-brief] reads the baseline task', async () => {
     await missionControl.openMissionBrief();
     await missionControl.closeMissionBrief();
-    await answerSystemQuiz(page, 'The whole audit trail read');
+    await answerSystemQuiz(page, 'The whole trail read');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Review the Baseline Task');
   });
@@ -105,7 +105,7 @@ test.describe('nats-eu Scenario 6 Full Completion', () => {
 
   test('[disposition-new-address] flags the Shetland login as benign', async () => {
     await domClick(page, 'button[data-event-id="evt-login-fiona"]');
-    await answerSystemQuiz(page, 'Benign: SH-02 went operational');
+    await answerSystemQuiz(page, 'Benign: SH-02 is new to the rule');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Disposition the New-Address Login');
   });
@@ -136,7 +136,7 @@ test.describe('nats-eu Scenario 6 Full Completion', () => {
     await advanceMissionClockToUtc(page, '2027-03-15T14:10:30Z');
     await missionControl.selectTab('security-console');
     await domClick(page, 'button[data-event-id="evt-authfail"]');
-    await answerSystemQuiz(page, 'Finding: an account that should no longer exist');
+    await answerSystemQuiz(page, 'Finding: an account that should not exist');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Flag the Off-Hours Failures');
   });
@@ -150,7 +150,7 @@ test.describe('nats-eu Scenario 6 Full Completion', () => {
 
   test('[expire-the-relief-account] expires the lapsed relief account', async () => {
     await setAccountStatus(page, 'op-relief', 'expired');
-    await answerSystemQuiz(page, 'Expired records that the authorisation lapsed');
+    await answerSystemQuiz(page, 'Expired records that authorisation lapsed');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Expire the Relief Account');
   });

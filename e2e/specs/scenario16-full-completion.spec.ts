@@ -103,7 +103,7 @@ const SCENARIO_16_OBJECTIVES: Scenario16Objective[] = [
     id: 'disable-hpa-for-safety',
     title: 'Disable the HPA - Confirm Rationale',
     type: 'quiz',
-    correctAnswer: 'It takes the dirty uplink off the air immediately, and an enabled HPA must never be left without BUC drive - it would amplify raw noise into the feed',
+    correctAnswer: 'It takes the dirty uplink off the air, and an enabled HPA left without BUC drive would amplify raw noise into the feed',
   },
   {
     id: 'mute-buc-for-cooldown',
@@ -214,14 +214,14 @@ const SCENARIO_16_OBJECTIVES: Scenario16Objective[] = [
     id: 'customer-notification',
     title: 'Notify the Customer',
     type: 'quiz',
-    correctAnswer: 'Three concurrent faults identified and cleared in priority order. Link is operational. Will follow up with a written impact report within the hour.',
+    correctAnswer: 'Three concurrent faults identified and cleared in priority order. Link is operational. Written impact report to follow within the hour.',
   },
   {
     id: 'log-cascade-event',
     title: 'Log the Cascade Event',
     type: 'quiz',
     correctAnswer:
-      'Concurrent unrelated faults VT-01: BUC over-temp (72°C, high I), LNB ref unlock (sticky), HPA back-off drift (2 dB). Recovery in order: HPA output disabled, BUC muted for cooldown, back-off restored to 10 dB, LNB power cycled, BUC unmuted, HPA restored. Customer (SeaLink) notified.',
+      'VT-01 concurrent unrelated faults: BUC over-temp (72°C), LNB ref unlock (sticky), HPA back-off 2 dB. Cleared in priority order: HPA, BUC, LNB. SeaLink notified.',
   },
 ];
 
@@ -234,7 +234,7 @@ async function toggleSwitch(page: import('@playwright/test').Page, switchId: str
   await expect(switchEl).toBeVisible({ timeout: 5000 });
   // Adapters sync DOM to sim state on a ~1 s throttle; the static template may
   // render a stale checked state right after the tab mounts. Let the first
-  // sync land before reading.
+  // sync settle before reading.
   await page.waitForTimeout(1200);
   const isChecked = await switchEl.isChecked();
   if (isChecked !== desiredState) {
@@ -347,6 +347,10 @@ async function executeObjective(page: import('@playwright/test').Page, missionCo
 
     case 'click-tab':
       await missionControlPage.selectTab(objective.tabId!);
+      // Observation-gated conditions latch only after the default dwell on
+      // the tab (DEFAULT_OBSERVATION_DWELL_SECONDS); leaving at once would
+      // reset the read and strand the objective.
+      await page.waitForTimeout(3000);
       break;
 
     case 'toggle-switch':

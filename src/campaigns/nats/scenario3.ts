@@ -362,10 +362,10 @@ export const scenario3Data: ScenarioData = {
           params: {
             question: 'What would happen if the feed heater was turned off during this snow event?',
             options: [
-              'Ice would accumulate on the feed horn and waveguide, causing signal attenuation and potential physical damage',
-              'The LNB would cool down and produce more noise',
-              'The antenna motors would freeze and stop tracking',
-              'Snow would build up on the dish reflector',
+              'Ice would build up on the feed horn and waveguide and attenuate the signal',
+              'The LNB would cool below spec and its noise temperature would rise',
+              'The antenna drive motors would freeze and the antenna would stop tracking',
+              'Snow would build up on the dish reflector and block the signal path',
             ],
             correctIndex: 0,
             explanation:
@@ -436,10 +436,10 @@ export const scenario3Data: ScenarioData = {
           params: {
             question: 'What would happen if the AGC was disabled during this weather event?',
             options: [
-              'The output signal level would drop as weather attenuated the input, eventually causing loss of lock',
-              'The receiver would overheat from trying to process a weak signal',
-              'The LNB would automatically increase its own gain to compensate',
-              'Nothing - AGC only matters for clear weather conditions',
+              'The output level would fall with the attenuated input until the receiver lost lock',
+              'The receiver would overheat while trying to process the weakened input signal',
+              'The LNB would raise its own gain automatically to make up for the attenuation',
+              'Nothing would change because AGC only matters in clear weather conditions',
             ],
             correctIndex: 0,
             explanation:
@@ -471,10 +471,10 @@ export const scenario3Data: ScenarioData = {
           params: {
             question: 'I mentioned you have about six minutes before the link fails. What makes weather handovers so time-critical?',
             options: [
-              'Weather degradation is progressive - once AGC runs out of compensation range, the link fails rapidly',
-              'The antenna motors slow down in cold weather and take longer to move',
-              'Customer data must be backed up before switching sites',
-              'Maine operators need time to physically travel to the station',
+              'Degradation is progressive - once the AGC runs out of range the link fails fast',
+              'Antenna motors slow in the cold - Maine takes longer to slew onto the satellite',
+              'Customer data must be backed up - the transfer has to finish before the switch',
+              'Maine operators are remote - they need time to physically reach the station',
             ],
             correctIndex: 0,
             explanation:
@@ -508,9 +508,9 @@ export const scenario3Data: ScenarioData = {
             question: 'The AGC is compensating for the weather degradation. Why do we still need to hand over to Maine?',
             options: [
               'AGC has a maximum gain limit - once reached, further signal loss cannot be compensated',
-              'AGC uses too much power during heavy compensation',
-              'AGC introduces phase errors that corrupt the data',
-              'Maine has a bigger antenna with more gain',
+              'AGC uses too much power - during heavy compensation, the receiver may overheat',
+              'AGC introduces phase errors - as gain rises, the demodulator output gets corrupted',
+              'Maine has a bigger antenna - with more gain, its link has margin Vermont lacks',
             ],
             correctIndex: 0,
             explanation:
@@ -569,9 +569,9 @@ export const scenario3Data: ScenarioData = {
             question: 'You switched to Maine in the asset tree. What is happening to Vermont right now?',
             options: [
               'Vermont continues operating normally - customers are still being served from VT-01',
-              'Vermont has been placed in standby mode until we switch back',
-              'Vermont is now being controlled by Maine operators',
-              'Vermont traffic has been automatically paused',
+              'Vermont has dropped to standby - customers are held until we switch back to VT-01',
+              'Vermont is now under Maine control - customers are being served from ME-02',
+              'Vermont traffic is automatically paused - customers wait until the handover',
             ],
             correctIndex: 0,
             explanation:
@@ -684,9 +684,9 @@ export const scenario3Data: ScenarioData = {
             question: "The snow is degrading Vermont's TIDEMARK-1 link. Why isn't the snow affecting Vermont's GPSDO?",
             options: [
               'GPS uses L-band frequencies (~1.5 GHz) which are less affected by precipitation than C-band',
-              'The GPSDO antenna is indoors, protected from weather',
-              'GPS satellites are in a different part of the sky than TIDEMARK-1',
-              'The GPSDO has a backup battery that maintains lock during weather',
+              'The GPSDO antenna is indoors (in the equipment rack) and sheltered from precipitation',
+              'GPS satellites sit in a different part of the sky (nearly overhead) than TIDEMARK-1',
+              'The GPSDO has a backup battery (holdover) that keeps it locked through the weather',
             ],
             correctIndex: 0,
             explanation:
@@ -797,9 +797,9 @@ export const scenario3Data: ScenarioData = {
             question: 'I see you used program-track mode. Good choice. Do you know why I was checking the antenna pointing?',
             options: [
               "Because look angles to a satellite depend on the ground station's geographic location",
-              'Because the antenna might have been damaged during storage',
-              'Because program-track mode sometimes points at the wrong satellite',
-              'Because Maine uses a different antenna model than Vermont',
+              'Because the antenna might have been damaged while it was sitting in storage',
+              'Because program-track mode sometimes locks onto the wrong satellite by mistake',
+              'Because Maine uses a different antenna model than Vermont with its own offsets',
             ],
             correctIndex: 0,
             explanation:
@@ -919,10 +919,10 @@ export const scenario3Data: ScenarioData = {
           params: {
             question: "Why must Maine's LNB LO frequency match Vermont's exactly?",
             options: [
-              'Same LO frequency produces the same IF frequency, so downstream equipment configuration is identical',
-              'Different LO frequencies would cause interference between the two sites',
-              'The satellite requires all ground stations to use the same LO frequency',
-              "It's just company policy for consistency",
+              'Same LO gives the same IF, so downstream equipment configuration is identical',
+              'Different LOs would produce different IFs, so the two sites would interfere',
+              'The satellite expects one LO across all ground stations, so it enforces a match',
+              'It is company policy for consistency, so every site gets the same LO',
             ],
             correctIndex: 0,
             explanation:
@@ -1054,10 +1054,10 @@ export const scenario3Data: ScenarioData = {
           params: {
             question: 'The antenna is in program-track mode, which calculates pointing from ephemeris data. Why did we still verify the beacon on the spectrum analyzer?',
             options: [
-              'Beacon confirms the entire receive chain is working - antenna, feed, LNB, cables, and spectrum analyzer',
-              'Program-track mode only works after the beacon is acquired',
-              'The beacon is needed to calibrate the spectrum analyzer',
-              'Company policy requires visual beacon confirmation',
+              'Beacon proves the whole receive chain works - antenna, feed, LNB, cables, analyzer',
+              'Program-track needs the beacon to engage - the ACU, once locked, holds the pointing',
+              'The beacon calibrates the analyzer - reference level, span, and center frequency',
+              'Company policy requires a visual check - checklist item, sign-off, nothing technical',
             ],
             correctIndex: 0,
             explanation:
@@ -1149,10 +1149,10 @@ export const scenario3Data: ScenarioData = {
           params: {
             question: 'Why must the receiver modem parameters (frequency, bandwidth, modulation, FEC) match Vermont exactly?',
             options: [
-              'Both sites are receiving the same satellite carrier - mismatched parameters would fail to demodulate',
-              'The satellite checks that all ground stations use identical parameters',
-              'Different parameters would cause interference between the two ground stations',
-              "It's easier to copy settings than calculate new ones",
+              'Both sites receive the same carrier - mismatched parameters would fail to demodulate',
+              'The satellite checks every ground station - mismatched parameters would be rejected',
+              'The two sites share one transponder - mismatched parameters would interfere',
+              'Copying settings is faster - calculating new parameters would delay the handover',
             ],
             correctIndex: 0,
             explanation:
@@ -1228,9 +1228,9 @@ export const scenario3Data: ScenarioData = {
             question: 'The modem shows "Locked" status. Why do we also verify the C/N ratio is above 10 dB?',
             options: [
               'Lock can occur at low C/N but with high error rates - we need margin for reliable data',
-              "The lock indicator doesn't work below 10 dB C/N",
-              '10 dB is the minimum for the modem to power on',
-              'C/N below 10 dB would damage the modem',
+              'The lock indicator stops working below 10 dB C/N - we need it to read the status',
+              '10 dB is the minimum for the modem to power on - we need it to keep the modem running',
+              'C/N below 10 dB can damage the modem front end - we need margin to protect hardware',
             ],
             correctIndex: 0,
             explanation:
@@ -1404,10 +1404,10 @@ export const scenario3Data: ScenarioData = {
           params: {
             question: 'What happens when you execute the traffic handover from Vermont to Maine?',
             options: [
-              "Maine's transmitter activates fully while Vermont's is disabled - avoiding dual uplinks to the satellite",
-              'Both stations transmit simultaneously and the satellite selects the stronger signal',
-              'Customer connections are dropped and re-established through Maine',
-              "Vermont's antenna is automatically pointed away from the satellite",
+              "Maine's transmitter comes up while Vermont's is disabled - avoiding a dual uplink",
+              'Both stations transmit at once - the satellite selects the stronger of the two uplinks',
+              'Customer connections are dropped - each one is re-established through Maine',
+              "Vermont's antenna is slewed away from the satellite - pointing prevents a dual uplink",
             ],
             correctIndex: 0,
             explanation:
@@ -1475,9 +1475,9 @@ export const scenario3Data: ScenarioData = {
             question: 'How do you confirm the handover was successful?',
             options: [
               'Traffic indicator shows ME-02 as active, VT-01 TX disabled, no alarms, continuous data flow',
-              "Vermont's antenna has automatically stowed",
-              'The satellite has acknowledged the handover',
-              "Maine's C/N ratio has increased",
+              'Traffic indicator shows ME-02 as active, VT-01 antenna stowed, no alarms, data paused',
+              'Traffic indicator shows both active, satellite acknowledged, no alarms, data flowing',
+              'Traffic indicator shows VT-01 as active, ME-02 C/N increased, no alarms, data flowing',
             ],
             correctIndex: 0,
             explanation:
@@ -1602,9 +1602,9 @@ export const scenario3Data: ScenarioData = {
             question: 'Why does pointing the antenna straight up (90° elevation) protect it during a blizzard?',
             options: [
               'Minimizes wind loading on the dish and prevents snow from accumulating in the reflector',
-              'Gets the antenna above the snow level',
-              'Prevents the feed horn from getting wet',
-              'Reduces electrical interference from the storm',
+              'Raises the dish above the snow level and keeps the reflector edge clear of drifts',
+              'Keeps the feed horn dry and prevents meltwater from running into the waveguide',
+              'Reduces electrical interference from the storm and shields the LNB from lightning',
             ],
             correctIndex: 0,
             explanation:
@@ -1650,9 +1650,9 @@ export const scenario3Data: ScenarioData = {
             question: 'Why is documenting routine handover events important?',
             options: [
               'Enables pattern analysis and improves future response procedures',
-              'Required only for customer billing purposes',
-              'Only necessary if something went wrong',
-              'Documentation is optional for weather events',
+              'Required only for customer billing and service-credit calculations',
+              'Only necessary when something went wrong during the handover itself',
+              'Optional for weather events since they are outside operator control',
             ],
             correctIndex: 0,
             explanation:

@@ -92,7 +92,7 @@ const SCENARIO_14_OBJECTIVES: Scenario14Objective[] = [
     id: 'understand-heater-vs-rain',
     title: 'Heater Purpose for Rain',
     type: 'quiz',
-    correctAnswer: 'Keeping water from beading and sheeting on the feed - dry surfaces attenuate less than wet ones',
+    correctAnswer: 'Keeping water from sheeting on the feed - dry surfaces attenuate less than wet ones',
   },
 
   // ============================================================
@@ -128,7 +128,7 @@ const SCENARIO_14_OBJECTIVES: Scenario14Objective[] = [
     id: 'agc-behavior-quiz',
     title: 'AGC Behavior in the Fade',
     type: 'quiz',
-    correctAnswer: 'AGC is compensating - the demodulator still sees a usable signal, and we still have headroom in the gain stage',
+    correctAnswer: 'AGC is compensating - the demodulator still sees a usable signal, and the gain stage still has headroom',
   },
   {
     id: 'agc-headroom-quiz',
@@ -196,7 +196,7 @@ const SCENARIO_14_OBJECTIVES: Scenario14Objective[] = [
     id: 'document-handover-avoided',
     title: 'Log the Hold',
     type: 'quiz',
-    correctAnswer: 'Moderate rain over VT-01, ~3 dB fade. Held TM-1 service per customer SLA preference; AGC max 3 dB, modem lock maintained throughout, no handover.',
+    correctAnswer: 'Moderate rain over VT-01, ~3 dB fade. Held TM-1 per customer SLA preference; AGC max 3 dB, modem lock maintained, no handover.',
   },
 ];
 
@@ -223,7 +223,7 @@ async function toggleSwitch(page: import('@playwright/test').Page, switchId: str
 
   await expect(switchEl.first()).toBeVisible({ timeout: 5000 });
 
-  // Let the adapter's throttled DOM sync land before reading - the static
+  // Let the adapter's throttled DOM sync settle before reading - the static
   // template can render a stale checked state right after the tab mounts.
   await page.waitForTimeout(1200);
   const isChecked = await switchEl.first().isChecked();
@@ -256,6 +256,10 @@ async function executeObjective(page: import('@playwright/test').Page, missionCo
 
     case 'click-tab':
       await missionControlPage.selectTab(objective.tabId!);
+      // Observation-gated conditions latch only after the default dwell on
+      // the tab (DEFAULT_OBSERVATION_DWELL_SECONDS); leaving at once would
+      // reset the read and strand the objective.
+      await page.waitForTimeout(3000);
       break;
 
     case 'toggle-switch':

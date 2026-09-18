@@ -333,7 +333,12 @@ export const scenario7Data: ScenarioData = {
           description: 'Confirm Alarm Cleared',
           params: {
             question: 'What is the current BUC status on the Dashboard?',
-            options: ['Normal - current draw within limits, no active alarms', 'Warning - current still too high', 'Fault - BUC offline', 'Unknown - BUC not reporting'],
+            options: [
+              'Normal - current draw within limits, no active alarms',
+              'Warning - current draw still above limit, alarm latched',
+              'Fault - BUC offline, current draw at zero, alarm active',
+              'Unknown - BUC not reporting, no current or alarm data',
+            ],
             correctIndex: 0,
             explanation: 'The BUC has been muted and loopback disabled. The high current alarm has cleared. Always verify alarm resolution on the Dashboard before proceeding.',
             pointPenalty: 5,
@@ -433,9 +438,9 @@ export const scenario7Data: ScenarioData = {
             question: 'What does the LNB noise temperature value indicate about receiver performance?',
             options: [
               'Lower noise temperature means better sensitivity and signal-to-noise ratio',
-              'Higher noise temperature means better sensitivity',
-              'Noise temperature only affects transmit power',
-              'Noise temperature has no impact on signal quality',
+              'Higher noise temperature means better sensitivity and signal-to-noise ratio',
+              'Noise temperature sets the transmit power and has no effect on sensitivity',
+              'Noise temperature has no effect on sensitivity or signal-to-noise ratio',
             ],
             correctIndex: 0,
             explanation:
@@ -518,9 +523,9 @@ export const scenario7Data: ScenarioData = {
             question: 'What distinguishes the beacon signal from other signals on the spectrum display?',
             options: [
               'Beacon is a narrow CW carrier spike, while data signals have wider bandwidth',
-              'Beacon is wider than data signals',
-              'Beacon has modulation visible in the spectrum shape',
-              'Beacon power level is always exactly -50 dBm',
+              'Beacon is a wide modulated carrier, while data signals show up as narrow CW spikes',
+              'Beacon shows visible modulation, while data signals appear as flat CW lines',
+              'Beacon sits at exactly -50 dBm, while data signals sit lower on the display',
             ],
             correctIndex: 0,
             explanation:
@@ -845,9 +850,9 @@ export const scenario7Data: ScenarioData = {
             question: 'With the LNB LO at 7000 MHz and spectrum analyzer centered at 1,057 MHz, what do you observe?',
             options: [
               'A 36 MHz wide signal centered at 1,057 MHz - the TX modem output via loopback',
-              'No signal visible at 1,057 MHz',
-              'Only the beacon signal at 1,074.5 MHz',
-              'A narrow CW carrier spike',
+              'No signal anywhere near 1,057 MHz - the loopback path is not visible on RX',
+              'Only a narrow CW spike at 1,074.5 MHz - the TIDEMARK-1 beacon, no loopback',
+              'A narrow CW carrier spike at 1,057 MHz - the BUC LO leaking through the loopback',
             ],
             correctIndex: 0,
             explanation:
@@ -879,9 +884,9 @@ export const scenario7Data: ScenarioData = {
             question: 'What does a successful loopback test verify?',
             options: [
               'TX modem output and BUC signal path are functioning',
-              'The satellite transponder is responding',
-              'The HPA is at full power',
-              'The antenna is pointed correctly',
+              'Satellite transponder and downlink path are responding',
+              'HPA output stage and waveguide path are at full power',
+              'Antenna pointing and feed alignment are on the satellite',
             ],
             correctIndex: 0,
             explanation:

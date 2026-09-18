@@ -130,7 +130,7 @@ test.describe('nats-eu time skip', () => {
     await waitForObjectiveComplete(missionControl, 'Reference Check');
 
     await missionControl.selectTab('pass-schedule');
-    await answerSystemQuiz(page, 'A manoeuvre, immediately');
+    await answerSystemQuiz(page, 'A manoeuvre at once');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Check the Element Sets');
 

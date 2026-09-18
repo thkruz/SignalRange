@@ -94,13 +94,13 @@ export const hamSdrScenario7Data: ScenarioData = {
             character: Character.RILEY_BROOKS,
             question: 'Why does a LOW pass leave less margin than the overhead passes you have worked so far?',
             options: [
-              'The bird is farther away at low elevation (more path loss) and the signal grazes trees and terrain - every dB of extra noise comes straight out of the decode margin.',
-              'Satellites transmit less power when low in the sky.',
-              'The rotator moves too fast on low passes.',
+              'The bird is farther away and the signal grazes the trees - every dB of extra noise comes straight out of the decode margin.',
+              'The bird transmits less power toward the horizon - every dB it holds back at low elevation comes out of the decode margin.',
+              'The rotator has to move faster on a low pass - every degree the beam lags behind the bird costs a dB of decode margin.',
             ],
             correctIndex: 0,
             explanation:
-              'Slant range nearly doubles at 18 degrees versus overhead, and the horizon is full of obstructions. On a fat pass you never notice a noisy band. Tonight you will.',
+              'Slant range nearly doubles at 18 degrees versus overhead - more path loss - and the horizon is full of obstructions. On a fat pass you never notice a noisy band. Tonight you will.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -221,8 +221,8 @@ export const hamSdrScenario7Data: ScenarioData = {
             question: 'What told you the hash was LOCAL rather than a satellite?',
             options: [
               'No Doppler, no predicted pass, and the strength changed with the yagi bearing, not with time - ground signals hold still.',
-              'It was too strong to be a satellite.',
-              'Satellites never transmit near 435.3 MHz.',
+              'Far too strong, no telemetry in it, and it peaked well above anything CUBEHOP has ever shown - satellites arrive faint.',
+              'Wrong frequency, no listing for it, and 435.36 is 110 kHz above the CUBEHOP downlink - satellites never stray off channel.',
             ],
             correctIndex: 0,
             explanation:

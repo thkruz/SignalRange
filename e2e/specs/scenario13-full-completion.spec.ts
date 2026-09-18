@@ -78,7 +78,7 @@ const SCENARIO_13_OBJECTIVES: Scenario13Objective[] = [
     id: 'check-current-draw',
     title: 'Cross-Check Current Draw',
     type: 'quiz',
-    correctAnswer: 'BUC is dissipating more electrical power - consistent with the thermal rise, not a separate fault',
+    correctAnswer: 'BUC is dissipating more power as heat - consistent with the thermal rise, not a separate fault',
   },
   {
     id: 'cross-check-spectrum-tab',
@@ -95,7 +95,7 @@ const SCENARIO_13_OBJECTIVES: Scenario13Objective[] = [
     id: 'record-baseline-readings',
     title: 'Record Baseline Readings',
     type: 'quiz',
-    correctAnswer: 'Time, BUC temperature, BUC current, BUC gain, HPA backoff - so the next operator can rebuild the curve',
+    correctAnswer: 'Time, BUC temperature, BUC current, BUC gain, HPA backoff - the next operator can rebuild the curve',
   },
 
   // ============================================================
@@ -105,19 +105,19 @@ const SCENARIO_13_OBJECTIVES: Scenario13Objective[] = [
     id: 'identify-root-cause',
     title: 'Name the Root Cause',
     type: 'quiz',
-    correctAnswer: 'BUC gain is set higher than required - the module is dissipating the excess as heat instead of useful RF',
+    correctAnswer: 'BUC gain is 10 dB above the operating value - the module is dissipating the excess as heat, not RF',
   },
   {
     id: 'evaluate-options',
     title: 'Choose a Course of Action',
     type: 'quiz',
-    correctAnswer: 'De-rate now: reduce BUC gain ~10 dB to cut dissipation, monitor the trend reverse, schedule a swap during the next planned window',
+    correctAnswer: 'De-rate now - reduce BUC gain ~10 dB, watch the trend reverse, schedule a swap for the next planned window',
   },
   {
     id: 'confirm-action-plan',
     title: 'Confirm the Sequence',
     type: 'quiz',
-    correctAnswer: 'Lower BUC gain ~10 dB, verify HPA still in linear region, verify carrier still nominal, then watch the temperature curve bend',
+    correctAnswer: 'Lower BUC gain ~10 dB, verify HPA still linear, verify carrier still nominal, then watch the temperature curve',
   },
 
   // ============================================================
@@ -144,7 +144,7 @@ const SCENARIO_13_OBJECTIVES: Scenario13Objective[] = [
     id: 'verify-trend-stabilizing',
     title: 'Confirm the Trend Is Bending',
     type: 'quiz',
-    correctAnswer: 'Watch 5-10 minutes: temperature slope flattens then trends down, current draw drops toward nominal, carrier still locked downstream',
+    correctAnswer: 'Watch 5-10 minutes: temperature slope flattens then trends down, current drops toward 3.0A, carrier still locked',
   },
 
   // ============================================================
@@ -154,7 +154,7 @@ const SCENARIO_13_OBJECTIVES: Scenario13Objective[] = [
     id: 'schedule-maintenance-ticket',
     title: 'Open the Maintenance Ticket',
     type: 'quiz',
-    correctAnswer: 'Trend record (15-min curve), de-rate action taken, current BUC gain/backoff settings, recommendation to swap module during next planned window',
+    correctAnswer: 'Trend record (15-min curve), de-rate action taken, current gain/backoff settings, swap recommended for next planned window',
   },
   {
     id: 'final-dashboard-sweep-tab',
@@ -172,8 +172,7 @@ const SCENARIO_13_OBJECTIVES: Scenario13Objective[] = [
     id: 'log-shift-summary',
     title: 'Log the Shift Entry',
     type: 'quiz',
-    correctAnswer:
-      '1003 - VT-01 BUC thermal trend (57°C->62°C over 15 min) addressed by 10 dB gain de-rate. Trend reversing. Swap ticket opened for next planned window. Carrier nominal throughout.',
+    correctAnswer: '1003 - VT-01 BUC thermal trend (57->62°C over 15 min) addressed by 10 dB gain de-rate. Trend reversing, swap ticket open, carrier nominal.',
   },
 ];
 
@@ -217,6 +216,10 @@ async function executeObjective(page: import('@playwright/test').Page, missionCo
 
     case 'click-tab':
       await missionControlPage.selectTab(objective.tabId!);
+      // Observation-gated conditions latch only after the default dwell on
+      // the tab (DEFAULT_OBSERVATION_DWELL_SECONDS); leaving at once would
+      // reset the read and strand the objective.
+      await page.waitForTimeout(3000);
       break;
 
     case 'configure-buc-gain':

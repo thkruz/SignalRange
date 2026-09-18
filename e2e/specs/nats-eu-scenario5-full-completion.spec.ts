@@ -68,7 +68,7 @@ test.describe('nats-eu Scenario 5 Full Completion', () => {
   test('[review-mission-brief] reads the network brief', async () => {
     await missionControl.openMissionBrief();
     await missionControl.closeMissionBrief();
-    await answerSystemQuiz(page, 'One antenna can only point');
+    await answerSystemQuiz(page, 'One antenna points at one satellite');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Review the Network Brief');
   });
@@ -100,7 +100,7 @@ test.describe('nats-eu Scenario 5 Full Completion', () => {
   test('[hand-shetland-the-overlaps] gives Shetland the overlapping pair', async () => {
     await assignContact(page, 'SAR1-SH', 'SH-02');
     await assignContact(page, 'SAR2-SH', 'SH-02');
-    await answerSystemQuiz(page, 'It must be allocated like the others');
+    await answerSystemQuiz(page, 'It must be allocated - priority 2');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Hand Shetland the Overlaps');
   });
@@ -125,7 +125,7 @@ test.describe('nats-eu Scenario 5 Full Completion', () => {
 
   test('[shetland-geometry] reads the pass as Shetland sees it', async () => {
     await missionControl.selectTab('pass-schedule');
-    await answerSystemQuiz(page, 'Southbound pass with the ground track');
+    await answerSystemQuiz(page, 'Southbound track west of Ireland');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, "Read Shetland's Sky");
   });
@@ -205,7 +205,7 @@ test.describe('nats-eu Scenario 5 Full Completion', () => {
 
   test('[log-the-network] writes the network log and completes', async () => {
     await closeWorkingDocumentIfOpen(page);
-    await answerSystemQuiz(page, 'Which site flew each contact');
+    await answerSystemQuiz(page, 'Site and peak per contact');
     await expect(page.locator('#level-complete-modal')).toBeVisible({ timeout: 45000 });
   });
 

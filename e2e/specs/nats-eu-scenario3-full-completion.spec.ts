@@ -153,7 +153,7 @@ test.describe('nats-eu Scenario 3 Full Completion', () => {
 
   test('[confirm-execution] reads the ACK while still on the bird', async () => {
     await missionControl.selectTab('rx-analysis');
-    await answerSystemQuiz(page, 'executed it - it answered on the next telemetry frame');
+    await answerSystemQuiz(page, 'The spacecraft received and executed it');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Confirm Execution', 60000);
   });
@@ -182,7 +182,7 @@ test.describe('nats-eu Scenario 3 Full Completion', () => {
 
   test('[log-the-window] logs the window and completes', async () => {
     await closeWorkingDocumentIfOpen(page);
-    await answerSystemQuiz(page, 'chain secured HPA-BUC-carrier');
+    await answerSystemQuiz(page, 'ACK received; chain secured HPA-BUC-carrier');
     await expect(page.locator('#level-complete-modal')).toBeVisible({ timeout: 45000 });
   });
 

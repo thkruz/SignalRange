@@ -20,7 +20,7 @@ import { ses10Satellite, tidemark2Satellite } from './satellites';
  * Premise: Customer reports degraded service on TIDEMARK-1. C/N ratio has dropped
  * because of a 3 MHz interference spike WITHIN our 36 MHz signal bandwidth. This is
  * caused by a third-party operator's polarization mismatch - their cross-pol leakage
- * is landing in our transponder. The AGC is reducing gain based on the spike, which
+ * is falling in our transponder. The AGC is reducing gain based on the spike, which
  * degrades overall C/N.
  *
  * Solution: Apply a 3 MHz notch filter at the interference frequency to block the
@@ -251,9 +251,9 @@ export const scenario5Data: ScenarioData = {
             question: 'Looking at the receiver modem, what is the current C/N ratio status?',
             options: [
               'C/N is degraded - well below normal operating threshold',
-              'C/N is healthy - operating normally',
-              'C/N is marginal - at threshold',
-              'No signal lock - receiver is offline',
+              'C/N is healthy - well above the normal operating threshold',
+              'C/N is marginal - sitting right at the operating threshold',
+              'No signal lock - receiver is offline with no C/N reading',
             ],
             correctIndex: 0,
             explanation: 'The C/N ratio is well below the normal operating level. This confirms the customer complaint - something is degrading our signal quality.',
@@ -280,9 +280,9 @@ export const scenario5Data: ScenarioData = {
             question: 'Besides low C/N ratio, what other symptoms would you expect to see with this type of degradation?',
             options: [
               'Elevated BER (Bit Error Rate) and increased packet retransmissions',
-              'Higher than normal transmit power from the modem',
-              'Increased antenna tracking errors',
-              'LNB temperature warnings',
+              'Elevated TX power (uplink EIRP) and increased modem drive level',
+              'Elevated tracking error (az/el) and increased ACU step corrections',
+              'Elevated LNB temperature (thermal alarm) and increased noise figure',
             ],
             correctIndex: 0,
             explanation:
@@ -320,10 +320,10 @@ export const scenario5Data: ScenarioData = {
           params: {
             question: 'The spectrum analyzer is currently configured for beacon observation. Why is this configuration inadequate for troubleshooting the customer issue?',
             options: [
-              'The narrow span only shows the beacon, not our 36 MHz wideband signal where the problem likely exists',
-              'The center frequency is wrong for this satellite',
-              'The resolution bandwidth is too high to see small signals',
-              'The reference level is clipping the signal',
+              'The narrow span shows only the beacon, not the 36 MHz wideband carrier with the problem',
+              'The center frequency is wrong for this satellite, not the downlink we are receiving',
+              'The resolution bandwidth is too high, so small signals are lost in the noise floor',
+              'The reference level is clipping the signal, so the peak of the carrier is cut off',
             ],
             correctIndex: 0,
             explanation:
@@ -571,9 +571,9 @@ export const scenario5Data: ScenarioData = {
             question: 'Why is this narrowband spike causing the C/N to drop across our entire wideband signal?',
             options: [
               'The AGC sees the spike as part of the total signal and reduces gain accordingly',
-              'The spike is overloading the LNB causing compression',
-              'The interference is jamming our tracking beacon',
-              'The spike is exactly on our carrier center frequency',
+              'The spike is overloading the LNB and pushing the front end into compression',
+              'The interference is jamming the tracking beacon and pulling the antenna off peak',
+              'The spike sits exactly on the carrier center frequency and corrupts the symbols',
             ],
             correctIndex: 0,
             explanation:
@@ -688,9 +688,9 @@ export const scenario5Data: ScenarioData = {
             question: 'Looking at the spectrum analyzer, what happened to the interference spike?',
             options: [
               'The spike is gone - the notch filter removed it from the passband',
-              'The spike is still visible at the same level',
-              'The spike moved to a different frequency',
-              'The entire signal disappeared',
+              'The spike is still there - the notch filter had no effect on its level',
+              'The spike has moved - the notch filter pushed it to a different frequency',
+              'The whole signal is gone - the notch filter removed the entire passband',
             ],
             correctIndex: 0,
             explanation:
@@ -720,9 +720,9 @@ export const scenario5Data: ScenarioData = {
             question: 'After applying the notch filter, what happened to the signal?',
             options: [
               'C/N restored to normal levels - the spike is notched out and AGC normalized',
-              'C/N unchanged - the filter had no effect',
-              'Signal lock lost - the notch filter blocked our carrier',
-              'C/N dropped further - wrong filter settings',
+              'C/N unchanged from before - the notch filter had no effect on the AGC',
+              'Signal lock lost entirely - the notch filter blocked our own carrier',
+              'C/N dropped even further - the filter settings notched the wrong frequency',
             ],
             correctIndex: 0,
             explanation:
@@ -754,9 +754,9 @@ export const scenario5Data: ScenarioData = {
             question: 'Which of the following is most important to document and report about this interference event?',
             options: [
               'Interference frequency, bandwidth, apparent source, time of occurrence, and mitigation applied',
-              'Just the notch filter settings in case we need to apply them again',
-              "Customer complaint details only - they don't need technical specifics",
-              'Nothing - the problem is fixed so no documentation is needed',
+              'Notch filter center, depth, bandwidth, and time applied, in case we need it again',
+              'Customer name, complaint time, services affected, and resolution, nothing technical',
+              'Ticket number, time closed, and operator on shift, since the problem is already fixed',
             ],
             correctIndex: 0,
             explanation:

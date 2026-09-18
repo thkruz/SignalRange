@@ -113,7 +113,7 @@ test.describe('nats-eu Scenario 15 Full Completion', () => {
     await page.waitForTimeout(2500);
     await missionControl.selectTab('rx-analysis');
     await page.waitForTimeout(2500);
-    await answerSystemQuiz(page, 'The command key authenticates what goes up');
+    await answerSystemQuiz(page, 'Traffic key: downlink, rolled by Rotterdam at 07:27');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'GW-01 Reference and Keys');
   });
@@ -232,7 +232,7 @@ test.describe('nats-eu Scenario 15 Full Completion', () => {
 
   test('[close-the-comsec-record] writes the evidence chain and completes', async () => {
     await closeWorkingDocumentIfOpen(page);
-    await answerSystemQuiz(page, 'The order acknowledged in the audit log');
+    await answerSystemQuiz(page, 'The order acknowledged, the last Q1');
     await dismissDialogIfPresent(page);
 
     // The FINAL objective is asserted through the Mission Complete modal, not

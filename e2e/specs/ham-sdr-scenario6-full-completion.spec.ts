@@ -109,7 +109,7 @@ test.describe('ham-sdr Scenario 6 Full Completion', () => {
   });
 
   test('[supply-chain-log] logs the cross-check habit and completes the mission', async () => {
-    await answerRileyQuiz(page, 'refusing to explain the disagreement away');
+    await answerRileyQuiz(page, 'Comparing two independent sources');
     await missionControl.dismissDialogIfPresent();
 
     await expect(page.locator('#level-complete-modal')).toBeVisible({ timeout: 45000 });

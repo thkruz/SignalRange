@@ -108,9 +108,9 @@ export const signalHunterSandboxData: ScenarioData = {
             question: 'The carrier transmits ~60 s then goes quiet ~45 s, repeating. What does this regular cadence most strongly indicate?',
             options: [
               'Deliberate, duty-cycled interference (jamming)',
-              'A failing power supply on the satellite',
-              'Rain fade cycling on the downlink',
-              'Normal traffic on an allied carrier',
+              'A failing, cycling satellite power supply (brownouts)',
+              'Rain fade cycling on the downlink (passing cells)',
+              'Normal, bursty traffic on an allied carrier (data mode)',
             ],
             correctIndex: 0,
             explanation: 'A stable on/off cadence is a hallmark of intentional interference - accidents are continuous or random, not periodic.',

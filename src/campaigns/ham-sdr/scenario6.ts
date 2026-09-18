@@ -109,8 +109,8 @@ export const hamSdrScenario6Data: ScenarioData = {
             question: 'Where did the TLE your Observations list runs on actually come from?',
             options: [
               'A text file, fetched from a volunteer mirror site, with no signature and no way to verify it.',
-              'Directly from the satellite, which broadcasts its own orbit.',
-              'The rotator measures it during the first pass.',
+              'A telemetry frame, sent down by the satellite itself, with its own orbit and no need to verify it.',
+              'A rotator log, measured during the first pass tonight, with a fitted orbit and nothing to verify.',
             ],
             correctIndex: 0,
             explanation:
@@ -175,8 +175,8 @@ export const hamSdrScenario6Data: ScenarioData = {
             question: "The network's request sheet says CUBEHOP rises at 16:59. Your Observations list says it never rises today. What is the most likely explanation?",
             options: [
               'The local element file is wrong - stale or tampered. Predictions are only as good as the TLE they run on.',
-              'The satellite was destroyed since the request was issued.',
-              'The Observations list only works for weather satellites.',
+              'The satellite is gone - destroyed or decayed since the sheet went out. Predictions cannot show a bird that no longer exists.',
+              'The Observations list is the wrong tool - weather birds only. Predictions for a cubesat have to come from the request sheet.',
             ],
             correctIndex: 0,
             explanation:
@@ -259,9 +259,9 @@ export const hamSdrScenario6Data: ScenarioData = {
             character: Character.RILEY_BROOKS,
             question: 'What actually caught the tampered TLE tonight?',
             options: [
-              'Comparing two independent sources - the network request sheet against local predictions - and refusing to explain the disagreement away.',
-              'Antivirus software on the laptop.',
-              'The rotator refused to point at invalid elements.',
+              'Comparing two independent sources - the network sheet against local predictions - and not explaining the disagreement away.',
+              'Scanning the file with antivirus - the laptop flagged the download as modified - and refusing to load it into the console.',
+              'The rotator refusing bad elements - the tracker rejected the tampered TLE - and holding at stow until a fresh file loaded.',
             ],
             correctIndex: 0,
             explanation:

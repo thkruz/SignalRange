@@ -86,7 +86,11 @@ export const hamSdrScenario3Data: ScenarioData = {
           params: {
             character: Character.RILEY_BROOKS,
             question: 'A right-hand circular (RHCP) signal reflects off a metal roof on its way to you. What arrives?',
-            options: ['A left-hand circular signal - reflection reverses the handedness.', 'A right-hand circular signal, just weaker.', 'A linearly polarized signal.'],
+            options: [
+              'A left-hand circular signal - reflection reverses the handedness.',
+              'A right-hand circular signal - reflection only costs it some strength.',
+              'A linearly polarized signal - reflection collapses the circular twist.',
+            ],
             correctIndex: 0,
             explanation:
               'Reflection flips the screw thread. It is why satellite antennas care so much about handedness - the direct signal and its reflections fight with opposite hands.',
@@ -190,8 +194,8 @@ export const hamSdrScenario3Data: ScenarioData = {
             question: 'Next month a signal is 18 dB weaker than expected, but pointing, frequency, and hardware all check out. What does the symptom pattern suggest first?',
             options: [
               'Polarization mismatch - a large, CONSTANT loss with everything else nominal points at handedness.',
-              'The satellite transmitter is failing.',
-              'Doppler has shifted the signal outside the channel.',
+              'Transmitter failure - a large, growing loss with everything else nominal points at the satellite.',
+              'Doppler error - a large, varying loss with everything else nominal points at the channel edge.',
             ],
             correctIndex: 0,
             explanation:
@@ -207,7 +211,7 @@ export const hamSdrScenario3Data: ScenarioData = {
   ],
   dialogClips: {
     intro: {
-      text: `<p>So. Funny story. I re-terminated the feed harness last night because the old connectors were corroding, and I *may* have left something in the wrong position, and I'm not going to tell you what, because honestly this is the best lesson in the whole campaign and I'd hate to spoil it.</p><p>Bird's up in four minutes. Everything worked yesterday. Something doesn't work today. Go.</p>`,
+      text: `<p>So. Funny story. I re-terminated the feed harness last night because the old connectors were corroding, and I *may* have left something in the wrong position, and I'm not going to tell you what, because this is the best lesson in the whole campaign and I'd hate to spoil it.</p><p>Bird's up in four minutes. Everything worked yesterday. Something doesn't work today. Go.</p>`,
       character: Character.RILEY_BROOKS,
       emotion: Emotion.HAPPY,
       audioUrl: '',

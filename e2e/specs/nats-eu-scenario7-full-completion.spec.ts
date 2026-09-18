@@ -107,7 +107,7 @@ test.describe('nats-eu Scenario 7 Full Completion', () => {
 
   test('[ephemeris-epoch-check] reads both element sets as current', async () => {
     await missionControl.selectTab('pass-schedule');
-    await answerSystemQuiz(page, 'A manoeuvre, immediately');
+    await answerSystemQuiz(page, 'A manoeuvre at once, or age');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Check the Element Sets');
   });
@@ -151,7 +151,7 @@ test.describe('nats-eu Scenario 7 Full Completion', () => {
   test('[log-the-baseline] logs the SAR-1 result after LOS', async () => {
     await advanceMissionClockToUtc(page, '2027-03-15T14:10:30Z');
     await closeWorkingDocumentIfOpen(page);
-    await answerSystemQuiz(page, 'Elements current (epoch 14:00)');
+    await answerSystemQuiz(page, 'program-track locked, decoded, peak C/N about 11 dB');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Log the Baseline');
   });
@@ -189,7 +189,7 @@ test.describe('nats-eu Scenario 7 Full Completion', () => {
 
   test('[load-the-ephemeris] loads the post-burn elements', async () => {
     // Let the panel re-render as STALE on this tab before pressing Load; a
-    // click that lands during the tab switch is lost.
+    // click that arrives during the tab switch is lost.
     await missionControl.selectTab('pass-schedule');
     await expect(page.locator('#ephemeris-panel .ephemeris-badge-stale')).toBeVisible({ timeout: 15000 });
     await loadEphemeris(page, missionControl, 'SAR2-CAM');

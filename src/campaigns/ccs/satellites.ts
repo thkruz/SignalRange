@@ -30,7 +30,7 @@ import type { Degrees, Kilometers, TleLine1, TleLine2 } from 'ootk';
  * - Service uplink RF: 8125 MHz (H-pol) -> transponded downlink 7475 MHz
  *   (frequencyOffset 650 MHz)
  * - Telemetry beacon: 7290 MHz (CW) for target ID on the spectrum
- * The jam must land in the 8100-8150 MHz uplink passband to be transponded onto
+ * The jam must fall inside the 8100-8150 MHz uplink passband to be transponded onto
  * the victim downlink.
  */
 

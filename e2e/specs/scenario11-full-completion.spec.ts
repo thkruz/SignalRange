@@ -72,7 +72,7 @@ const SCENARIO_11_OBJECTIVES: Scenario11Objective[] = [
     id: 'vt-pre-handover-dashboard',
     title: 'VT-01 Pre-Handover Sweep',
     type: 'quiz',
-    correctAnswer: 'A pre-handover snapshot documents what the link looked like healthy, so any post-handover anomaly can be attributed correctly',
+    correctAnswer: 'It records what the link looked like healthy, so any anomaly after the transfer can be attributed',
   },
   {
     id: 'vt-confirm-tm1-locked',
@@ -121,7 +121,7 @@ const SCENARIO_11_OBJECTIVES: Scenario11Objective[] = [
     id: 'understand-commit-point',
     title: 'Understand the Commit Point',
     type: 'quiz',
-    correctAnswer: 'Antenna locked, RX carrier with C/N margin, TX chain staged - modem transmitting into a muted BUC, HPA disabled until the transfer swaps RF authority',
+    correctAnswer: 'Antenna locked, RX carrier with C/N margin, TX staged cold - modem on, BUC muted, HPA disabled until the transfer',
   },
 
   // ============================================================
@@ -209,8 +209,7 @@ const SCENARIO_11_OBJECTIVES: Scenario11Objective[] = [
     id: 'log-handover-entry',
     title: 'Log the Handover',
     type: 'quiz',
-    correctAnswer:
-      '1000 - Planned handover TM-1 VT-01 to ME-02 complete. VT-01 RF chain safed, antenna at maintenance position. Crew on-site for HPA waveguide inspection. ME-02 (Vega) carrying traffic. Return to service next shift.',
+    correctAnswer: '1000 - Planned TM-1 handover to ME-02 complete. VT-01 safed, antenna at maintenance position, crew on-site. Return to service next shift.',
   },
 ];
 
@@ -224,7 +223,7 @@ const SCENARIO_11_OBJECTIVES: Scenario11Objective[] = [
 async function toggleSwitch(page: import('@playwright/test').Page, switchId: string, desiredState: boolean): Promise<void> {
   const switchEl = page.locator(`#${switchId}`);
   await expect(switchEl).toBeVisible({ timeout: 5000 });
-  // Let the adapter's throttled DOM sync land before reading - the static
+  // Let the adapter's throttled DOM sync settle before reading - the static
   // template can render a stale checked state right after the tab mounts.
   await page.waitForTimeout(1200);
   const isChecked = await switchEl.isChecked();
@@ -362,6 +361,10 @@ async function executeObjective(page: import('@playwright/test').Page, missionCo
 
     case 'click-tab':
       await missionControlPage.selectTab(objective.tabId!);
+      // Observation-gated conditions latch only after the default dwell on
+      // the tab (DEFAULT_OBSERVATION_DWELL_SECONDS); leaving at once would
+      // reset the read and strand the objective.
+      await page.waitForTimeout(3000);
       break;
 
     case 'toggle-switch':

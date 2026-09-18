@@ -221,7 +221,7 @@ test.describe('nats-eu Scenario 16 Full Completion', () => {
     await missionControl.selectTab('gps-timing');
     await expect(page.locator('#gpsdo-holdover-badge').filter({ hasText: /^ACTIVE$/u })).toHaveCount(0, { timeout: 15000 });
     await closeWorkingDocumentIfOpen(page);
-    await answerSystemQuiz(page, 'SAR-1: both commands acknowledged inside the window');
+    await answerSystemQuiz(page, 'Shetland unattended on a muted BUC');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Confirm the Galway Reference Recovered', 60000);
   });
@@ -230,7 +230,7 @@ test.describe('nats-eu Scenario 16 Full Completion', () => {
     await missionControl.selectGroundStation('SH-02');
     await missionControl.selectTab('tx-chain');
     await page.waitForTimeout(2500);
-    await answerSystemQuiz(page, 'The contact was receive-only and the BUC is the transmit chain');
+    await answerSystemQuiz(page, 'The contact was receive-only and the BUC is transmit only');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Close the Shetland Alarm', 60000);
   });
@@ -244,7 +244,7 @@ test.describe('nats-eu Scenario 16 Full Completion', () => {
 
   test('[actions-and-open-items] writes the actions line and completes', async () => {
     await closeWorkingDocumentIfOpen(page);
-    await answerSystemQuiz(page, 'Maintenance: GW-01 GNSS antenna fault ticket');
+    await answerSystemQuiz(page, 'Maintenance: GW-01 GNSS antenna, SH-02 BUC fan');
     await dismissDialogIfPresent(page);
 
     // The FINAL objective is asserted through the Mission Complete modal, not

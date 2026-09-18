@@ -208,9 +208,9 @@ export const scenario8Data: ScenarioData = {
             question: 'Customer reports intermittent connectivity on AURORA-7. You are alone at the station. How will you proceed?',
             options: [
               'Begin systematic troubleshooting - check timing, RX chain, antenna, then TX if needed',
-              'Call Dana immediately to report the issue',
-              'Wait until morning shift to investigate',
-              'Reboot all equipment and hope it fixes itself',
+              'Call Dana now - report the ticket, then hold until she directs the troubleshooting',
+              'Wait for morning shift - log the ticket, keep monitoring, let the day crew investigate',
+              'Power cycle everything - reboot LNB, BUC, HPA and modems, then see if the dropouts stop',
             ],
             correctIndex: 0,
             explanation: 'Systematic troubleshooting is the professional approach. You have the skills to investigate this independently.',
@@ -310,9 +310,9 @@ export const scenario8Data: ScenarioData = {
             question: 'The GPSDO shows locked status. What does this tell you about the LNB reference unlock alarm?',
             options: [
               'The 10 MHz reference is available - the problem is likely the cable or LNB input',
-              'The GPSDO is faulty and causing the LNB problem',
-              'The LNB alarm is a false positive',
-              'We need to restart the GPSDO',
+              'The 10 MHz reference is faulty - the GPSDO lock indicator is masking a bad output',
+              'The LNB alarm is a false positive - a locked GPSDO means the LNB must be locked too',
+              'The GPSDO needs a restart - the LNB will re-lock once the reference is re-acquired',
             ],
             correctIndex: 0,
             explanation:
@@ -359,9 +359,9 @@ export const scenario8Data: ScenarioData = {
             question: 'The LNB is powered but shows reference unlocked. What is the most likely corrective action?',
             options: [
               'Power cycle the LNB to re-acquire the external reference',
-              'Replace the LNB immediately',
-              'Increase LNB gain to compensate',
-              'Switch to internal oscillator mode',
+              'Replace the LNB since the reference input has failed',
+              'Increase the LNB gain to compensate for the lost reference',
+              'Switch the LNB to its internal oscillator to bypass the reference',
             ],
             correctIndex: 0,
             explanation:
@@ -563,9 +563,9 @@ export const scenario8Data: ScenarioData = {
             question: 'AURORA-7 is a legacy satellite with an inclined orbit. The antenna is in program-track mode. Why might this cause tracking problems?',
             options: [
               'Inclined orbits require step-track to follow satellite drift - program-track cannot compensate',
-              'Program-track mode is only for LEO satellites',
-              'The antenna motors are too slow for program-track',
-              'Program-track requires manual polarization adjustment',
+              'Program-track is only valid for LEO satellites - a GEO bird needs step-track regardless of orbit',
+              'The antenna motors are too slow for program-track - step-track moves the dish in smaller steps',
+              'Program-track needs manual polarization updates - step-track adjusts polarization on its own',
             ],
             correctIndex: 0,
             explanation:
@@ -660,9 +660,9 @@ export const scenario8Data: ScenarioData = {
             question: 'Weather service reports freezing rain expected in 2 hours. AURORA-7 link is now stable. What is the appropriate action?',
             options: [
               'Enable feed heater now as a precaution, continue monitoring the link',
-              'Immediately stow the antenna to protect it',
-              'Call Dana to report the weather forecast',
-              'Ignore the weather alert - it is 2 hours away',
+              'Stow the antenna now as a precaution, accept the link outage until it passes',
+              'Call Dana now with the forecast, let her decide whether to stow or heat',
+              'Ignore the alert for now since it is 2 hours out, revisit when the rain starts',
             ],
             correctIndex: 0,
             explanation:
@@ -733,9 +733,9 @@ export const scenario8Data: ScenarioData = {
             question: 'The customer still reports intermittent errors. The ACU shows stable step-track with beacon lock. What does this tell you?',
             options: [
               'The antenna is tracking properly - the intermittent issue is not caused by tracking problems',
-              'The beacon frequency is drifting and causing lock instability',
-              'The polarization needs to be adjusted for the inclined orbit',
-              'Step-track mode is inadequate for AURORA-7',
+              'The beacon frequency is drifting - the intermittent issue is caused by lock instability',
+              'The polarization is misaligned - the inclined orbit needs a manual polarization adjustment',
+              'Step-track is inadequate for AURORA-7 - the intermittent issue is the antenna hunting the peak',
             ],
             correctIndex: 0,
             explanation:
@@ -784,9 +784,9 @@ export const scenario8Data: ScenarioData = {
             question: "The receiver shows stable lock with good C/N. What does this indicate about the customer's intermittent errors?",
             options: [
               'The RX path is healthy - the problem must be in the transmit direction',
-              'The receiver is masking the real problem with AGC',
-              'We need to check the LNB temperature before concluding',
-              'The C/N margin is still too low for reliable service',
+              'The AGC is masking a fault - the problem is still in the receive direction',
+              'The LNB temperature is unknown - the problem cannot be isolated yet',
+              'The C/N margin is still too low - the problem is receive-side noise',
             ],
             correctIndex: 0,
             explanation:
@@ -823,9 +823,9 @@ export const scenario8Data: ScenarioData = {
             question: 'When investigating an intermittent TX fault, which indicator would show evidence of the problem?',
             options: [
               'The modem Output Power display - it shows DROPOUT during fault periods',
-              'The HPA reflected power - it increases during modem faults',
-              'The BUC temperature - it spikes during signal dropouts',
-              'The GPSDO holdover counter - it increments during TX faults',
+              'The HPA reflected power readout - it climbs during the modem fault periods',
+              'The BUC temperature readout - it spikes during each signal dropout',
+              'The GPSDO holdover counter - it increments during each TX fault period',
             ],
             correctIndex: 0,
             explanation:
@@ -1002,9 +1002,9 @@ export const scenario8Data: ScenarioData = {
             question: 'Why must BUC loopback be enabled BEFORE starting transmission on a new modem?',
             options: [
               'To prevent accidental RF transmission through the HPA until the new modem is verified',
-              'To reduce power consumption during testing',
-              'To improve signal quality measurements',
-              'To synchronize the modem clock with the BUC',
+              'To reduce power consumption in the BUC and HPA until the new modem is verified',
+              'To give the spectrum analyzer a cleaner signal to measure while the new modem is verified',
+              'To let the new modem clock synchronize to the BUC before the HPA is engaged',
             ],
             correctIndex: 0,
             explanation:
@@ -1052,9 +1052,9 @@ export const scenario8Data: ScenarioData = {
             question: 'What does BUC loopback test that modem loopback does not?',
             options: [
               'The full signal path from modem through BUC, without engaging the HPA',
-              'The HPA output power level',
-              'The antenna pointing accuracy',
-              'The satellite transponder response',
+              'The HPA output stage and its power level, without radiating from the antenna',
+              'The antenna pointing accuracy, without transmitting to the satellite',
+              'The satellite transponder response, without the customer traffic loaded',
             ],
             correctIndex: 0,
             explanation: 'BUC loopback tests the complete modem-to-BUC signal path while keeping the HPA disengaged. This verifies the full low-power TX chain.',
@@ -1129,9 +1129,9 @@ export const scenario8Data: ScenarioData = {
             question: 'What should you observe on the spectrum analyzer at 947 MHz?',
             options: [
               'A 24 MHz wide modulated signal - confirming TX chain is working',
-              'A narrow CW spike like the beacon',
-              'No signal - loopback does not produce visible output',
-              'The AURORA-7 beacon signal',
+              'A narrow CW spike like the beacon - confirming the BUC LO is present',
+              'No signal at all on the display - loopback does not produce visible output',
+              'The AURORA-7 beacon at 947 MHz - confirming the LNB LO change took effect',
             ],
             correctIndex: 0,
             explanation:
@@ -1289,10 +1289,10 @@ export const scenario8Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Which summary correctly describes the root cause and resolution?',
             options: [
-              'LNB reference unlock caused RX degradation; program-track inadequate for inclined orbit; TX Modem 1 intermittent fault. Fixed by power cycling LNB, enabling step-track, and switching to Modem 2.',
-              'HPA fault caused TX failure; fixed by replacing the HPA tube.',
-              'Weather degradation caused link loss; handed over to backup station.',
-              'Customer equipment issue; no action required at ground station.',
+              'LNB reference unlock, program-track drift, Modem 1 fault; fixed by LNB power cycle, step-track, Modem 2',
+              'HPA output fault, program-track drift, Modem 1 fault; fixed by HPA tube swap, step-track, Modem 2',
+              'Freezing rain fade, LNB reference unlock, feed icing; fixed by feed heater, LNB power cycle, backup station',
+              'Customer modem fault, program-track drift, GPSDO holdover; fixed by customer reset, step-track, GPSDO restart',
             ],
             correctIndex: 0,
             explanation:

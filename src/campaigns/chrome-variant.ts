@@ -5,7 +5,7 @@ import { ScenarioManager } from '@app/scenario-manager';
 /**
  * Chrome variant of the campaign that owns the running scenario.
  *
- * Most of the variant lands as CSS through the `chrome-<variant>` body class
+ * Most of the variant is applied as CSS through the `chrome-<variant>` body class
  * the Router applies. This is for the handful of places where the difference is
  * *content* rather than style - the command bar's clock format and timer labels
  * - and cannot be expressed in a stylesheet.

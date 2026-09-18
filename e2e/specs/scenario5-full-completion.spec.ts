@@ -82,7 +82,7 @@ const SCENARIO_5_OBJECTIVES: Scenario5Objective[] = [
     id: 'verify-speca-initial-state',
     title: 'Assess Current Configuration',
     type: 'quiz',
-    correctAnswer: 'The narrow span only shows the beacon, not our 36 MHz wideband signal where the problem likely exists',
+    correctAnswer: 'The narrow span shows only the beacon, not the 36 MHz wideband carrier with the problem',
   },
   {
     id: 'phase-2-configure-and-locate',
@@ -337,6 +337,10 @@ async function executeObjective(page: import('@playwright/test').Page, missionCo
     case 'click-tab':
       // Click on the specified tab
       await missionControlPage.selectTab(objective.tabId!);
+      // Observation-gated conditions latch only after the default dwell on
+      // the tab (DEFAULT_OBSERVATION_DWELL_SECONDS); leaving at once would
+      // reset the read and strand the objective.
+      await page.waitForTimeout(3000);
       break;
 
     case 'configure-speca':

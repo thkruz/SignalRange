@@ -129,7 +129,7 @@ test.describe('nats-eu Scenario 10 Full Completion', () => {
     await setHpaBackOff(page, missionControl, 4);
     await expect(page.locator('#hpa-overdrive-status')).toHaveText('Normal');
     await page.waitForTimeout(2500);
-    await answerSystemQuiz(page, 'Intermodulation products land');
+    await answerSystemQuiz(page, 'Intermodulation products spill');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Raise Uplink EIRP Without Overdriving');
   });

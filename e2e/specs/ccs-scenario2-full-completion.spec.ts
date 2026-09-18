@@ -189,7 +189,7 @@ test.describe('ccs Scenario 2 Full Completion', () => {
     const t0 = Date.now();
     const stamp = (label: string) => console.log(`[recover-string] +${((Date.now() - t0) / 1000).toFixed(1)}s ${label}`);
 
-    await answerStatusCheck(page, 'Select a string that has had time to cool');
+    await answerStatusCheck(page, 'run FAULT RESET with it un-keyed');
     await missionControl.dismissDialogIfPresent();
     stamp('quiz answered');
 

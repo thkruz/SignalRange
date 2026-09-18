@@ -76,8 +76,8 @@ export const hamSdrScenario4Data: ScenarioData = {
             question: 'When AFC is on, what does the receiver measure to decide which way to retune?',
             options: [
               "The carrier's offset from the center of the channel - it slews the VFO to re-center whatever it is locked to.",
-              'The satellite position from the Observations list.',
-              'The rotator azimuth and elevation rates.',
+              "The satellite's position from the Observations list - it computes the Doppler and steps the VFO ahead of it.",
+              "The rotator's azimuth and elevation rates - it converts the pointing speed into a VFO correction.",
             ],
             correctIndex: 0,
             explanation:
@@ -210,13 +210,13 @@ export const hamSdrScenario4Data: ScenarioData = {
             character: Character.RILEY_BROOKS,
             question: 'When would the AFC loop fail you, and manual skills save the pass?',
             options: [
-              'When the carrier disappears from the passband - a deep fade, or drift faster than the loop can slew - AFC has nothing to measure and stops. A human can predict where the signal WILL be.',
-              'Never - the loop is strictly better than a human at all times.',
-              'Only if the rotator loses the satellite.',
+              'When the carrier disappears from the passband - a deep fade, or drift it cannot slew - AFC has nothing to measure.',
+              'Never - the loop measures the carrier hundreds of times a second, faster than any hand - AFC always wins.',
+              'Only when the rotator loses the satellite - the beam swings off the bird - until then AFC never needs a hand.',
             ],
             correctIndex: 0,
             explanation:
-              "AFC follows what it can see. Lose the carrier and the loop goes quiet right when you need it most - it has no model of the orbit, only of the passband. That's why you learned the hand version first.",
+              "AFC follows what it can see. Lose the carrier and the loop goes quiet right when you need it most - it has no model of the orbit, only of the passband. A human can predict where the signal WILL be. That's why you learned the hand version first.",
             pointPenalty: 5,
           },
           mustMaintain: false,

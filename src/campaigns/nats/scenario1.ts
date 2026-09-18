@@ -316,9 +316,9 @@ export const scenario1Data: ScenarioData = {
             question: 'What does the Tap Points card show, and what is its purpose?',
             options: [
               'RX IF selected - monitoring the receive chain after downconversion',
-              'TX IF selected - monitoring the transmit chain',
-              'Both TX and RX IF active - dual monitoring mode',
-              'No tap point selected - spectrum analyzer disabled',
+              'TX IF selected - monitoring the transmit chain before upconversion',
+              'Both TX and RX IF active - monitoring both chains in dual mode',
+              'No tap point selected - spectrum analyzer input is disconnected',
             ],
             correctIndex: 0,
             explanation:
@@ -538,9 +538,9 @@ export const scenario1Data: ScenarioData = {
             question: 'What does the Payload Data Integrity card show about the received data?',
             options: [
               'Frame sync locked, CRC valid, Reed-Solomon active - data path healthy',
-              'Frame sync unlocked - no data being received',
-              'CRC errors detected - data corruption',
-              'Viterbi decoder disabled - no error correction',
+              'Frame sync unlocked, CRC failing, Reed-Solomon idle - no data received',
+              'Frame sync locked, CRC errors present, Reed-Solomon active - data corrupted',
+              'Frame sync locked, CRC valid, Viterbi decoder disabled - no error correction',
             ],
             correctIndex: 0,
             explanation:
@@ -653,9 +653,9 @@ export const scenario1Data: ScenarioData = {
             question: 'What does the TX Payload Data card show about the transmit data path?',
             options: [
               'Source feed active, encryption enabled, buffer healthy - ready to transmit',
-              'Source feed inactive - no data available',
-              'Encryption disabled - transmitting in clear',
-              'Buffer overflow - data loss occurring',
+              'Source feed inactive, encryption enabled, buffer empty - no data to transmit',
+              'Source feed active, encryption disabled, buffer healthy - transmitting in clear',
+              'Source feed active, encryption enabled, buffer overflowing - data loss occurring',
             ],
             correctIndex: 0,
             explanation:
@@ -726,10 +726,10 @@ export const scenario1Data: ScenarioData = {
           params: {
             question: 'What tracking mode is the antenna currently using?',
             options: [
-              'Step-track - actively tracking beacon signal',
+              'Step-track - actively tracking the received beacon signal',
               'Program-track - following predicted orbital position',
-              'Manual - operator-controlled pointing',
-              'Stow - antenna in safe position',
+              'Manual - holding operator-commanded azimuth and elevation',
+              'Stow - antenna parked in its protected survival position',
             ],
             correctIndex: 1,
             explanation:
@@ -767,7 +767,12 @@ export const scenario1Data: ScenarioData = {
           description: 'Verify Polarization Setting',
           params: {
             question: 'What is the current polarization angle shown on the ACU, and why is it set to that value?',
-            options: ['14° - matched to TIDEMARK-1 satellite polarization', '0° - default horizontal polarization', '90° - vertical polarization', '45° - circular polarization'],
+            options: [
+              '14° - matched to TIDEMARK-1 satellite polarization',
+              '0° - default horizontal polarization for C-band',
+              '90° - vertical polarization for the downlink',
+              '45° - midpoint setting for circular polarization',
+            ],
             correctIndex: 0,
             explanation:
               "The polarization is set to 14° to match TIDEMARK-1's polarization angle. Proper polarization alignment maximizes signal strength and minimizes cross-pol interference.",
@@ -836,7 +841,12 @@ export const scenario1Data: ScenarioData = {
           description: 'Verify Alarm Status',
           params: {
             question: 'What is the current alarm status shown on the dashboard?',
-            options: ['No active alarms - all systems nominal', 'Warning: LNB temperature high', 'Error: GPSDO holdover mode', 'Critical: Antenna tracking lost'],
+            options: [
+              'No active alarms - all systems nominal',
+              'Warning alarm - LNB temperature high',
+              'Error alarm - GPSDO in holdover mode',
+              'Critical alarm - antenna tracking lost',
+            ],
             correctIndex: 0,
             explanation:
               'A clean alarm dashboard with no active alarms confirms all equipment is operating within normal parameters. This is the final confirmation of a healthy ground station.',

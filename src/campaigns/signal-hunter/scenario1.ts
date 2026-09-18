@@ -257,7 +257,7 @@ export const signalHunterScenario1Data: ScenarioData = {
             options: [
               'Approximately 30% (40 s on in each 130 s period)',
               'Approximately 57% (60 s on in each 105 s period)',
-              '100% - continuous carrier',
+              'Approximately 100% (on throughout each 130 s period)',
               'Approximately 10% (5 s on in each 50 s period)',
             ],
             correctIndex: 0,
@@ -274,7 +274,12 @@ export const signalHunterScenario1Data: ScenarioData = {
           params: {
             character: Character.SYSTEM,
             question: 'EW-27-0244, field 5 - OCCUPIED BANDWIDTH. From the analyzer, how wide is the interfering carrier?',
-            options: ['About 3 MHz', 'About 8 MHz - the same as the service carrier', 'About 40 MHz - the full transponder', 'Under 100 kHz - a narrowband CW spur'],
+            options: [
+              'About 3 MHz - narrower than the service carrier',
+              'About 8 MHz - the same as the service carrier',
+              'About 40 MHz - the full transponder passband',
+              'Under 100 kHz - a narrowband CW spur on the edge',
+            ],
             correctIndex: 0,
             explanation:
               'Logged. A 3 MHz haystack, well inside the 40 MHz passband and clear of the 8 MHz service carrier - which is why the correlation bandwidth had to be set to match it, not to the transponder.',
@@ -291,14 +296,14 @@ export const signalHunterScenario1Data: ScenarioData = {
             character: Character.SYSTEM,
             question: "EW-27-0244, field 6 - POLARIZATION. The carrier is being relayed by SENTRY-7 TP-1. What is the interferer's uplink polarization, and how do you know?",
             options: [
-              'Horizontal - TP-1 is an H-pol transponder; a cross-polarized uplink would be rejected by ~28 dB and never appear on the downlink at this level',
-              'Vertical - uplinks are always the opposite polarization to the downlink',
-              'Right-hand circular - C-band military transponders are circularly polarized',
-              'Cannot be determined - polarization is lost through a transponder',
+              'Horizontal - TP-1 is an H-pol transponder; a cross-polarized uplink would be rejected and never show at this level',
+              'Vertical - uplinks are the opposite polarization to the downlink; TP-1 comes down H-pol, so the uplink had to go up V-pol',
+              'Right-hand circular - C-band military transponders are circular; a linear uplink would lose 3 dB and never reach this level',
+              'Cannot be determined - polarization is lost through a transponder; only the field team at the emitter can measure the uplink',
             ],
             correctIndex: 0,
             explanation:
-              "Logged. The transponder is the polarization filter: only an H-pol uplink gets through TP-1 at the level you are seeing. That is a fact about the emitter's antenna the field team can use.",
+              "Logged. The transponder is the polarization filter: a cross-polarized uplink is rejected by ~28 dB, so only an H-pol uplink gets through TP-1 at the level you are seeing. That is a fact about the emitter's antenna the field team can use.",
             pointPenalty: 5,
             documentLine: 'Polarization: H (co-polar with TP-1; inferred from transponder routing).',
             documentSection: 'Characterization',

@@ -149,7 +149,7 @@ const SCENARIO_10_OBJECTIVES: Scenario10Objective[] = [
   },
   {
     id: 'imd-tradeoff-check',
-    title: 'Acknowledge the IMD Tradeoff',
+    title: 'Acknowledge the IMD Cost',
     type: 'quiz',
     correctAnswer: 'IMD products rise as the amp moves closer to saturation - monitor for overdrive across the window',
   },
@@ -189,8 +189,7 @@ const SCENARIO_10_OBJECTIVES: Scenario10Objective[] = [
     id: 'log-customer-pass',
     title: 'Log the Customer Pass',
     type: 'quiz',
-    correctAnswer:
-      'SeaLink 30-min high-priority pass on AURORA-7 - step-track engaged, HPA optimized to 6 dB backoff for window then restored to 10 dB. C/N margin sustained, no link events.',
+    correctAnswer: 'SeaLink pass on AURORA-7 - step-track, HPA 6 dB backoff for the window then restored to 10 dB. Margin held, no link events.',
   },
 ];
 
@@ -268,6 +267,10 @@ async function executeObjective(page: import('@playwright/test').Page, missionCo
 
     case 'click-tab':
       await missionControlPage.selectTab(objective.tabId!);
+      // Observation-gated conditions latch only after the default dwell on
+      // the tab (DEFAULT_OBSERVATION_DWELL_SECONDS); leaving at once would
+      // reset the read and strand the objective.
+      await page.waitForTimeout(3000);
       break;
 
     case 'set-tracking-mode':

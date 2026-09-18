@@ -62,7 +62,7 @@ test.describe('ham-sdr Scenario 5 Full Completion', () => {
     await missionControl.selectTab('sdr-console');
     await missionControl.dismissDialogIfPresent();
 
-    await answerRileyQuiz(page, 'different privileges');
+    await answerRileyQuiz(page, 'no despreading code');
     await missionControl.dismissDialogIfPresent();
     await waitForObjectiveComplete(missionControl, 'Find the Noise Bump', 90000);
   });

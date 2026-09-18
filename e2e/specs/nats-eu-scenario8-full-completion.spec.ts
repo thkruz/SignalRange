@@ -107,7 +107,7 @@ test.describe('nats-eu Scenario 8 Full Completion', () => {
   test('[review-mission-brief] takes the shift', async () => {
     await missionControl.openMissionBrief();
     await missionControl.closeMissionBrief();
-    await answerSystemQuiz(page, 'None of them - all three');
+    await answerSystemQuiz(page, 'None of them - the plan');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Take the Shift');
   });
@@ -227,7 +227,7 @@ test.describe('nats-eu Scenario 8 Full Completion', () => {
     await missionControl.selectTab('gps-timing');
     // Both stations' GPS Timing panels stay mounted; only SH-02 is in holdover.
     await expect(page.locator('#gpsdo-holdover-badge').filter({ hasText: /^ACTIVE$/u })).toHaveCount(1, { timeout: 15000 });
-    await answerSystemQuiz(page, 'A GNSS outage at the site');
+    await answerSystemQuiz(page, 'A GNSS outage - the switch');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Read the Shetland Reference');
   });
@@ -254,7 +254,7 @@ test.describe('nats-eu Scenario 8 Full Completion', () => {
     await missionControl.selectTab('gps-timing');
     await expect(page.locator('#gpsdo-holdover-badge').filter({ hasText: /^ACTIVE$/u })).toHaveCount(0, { timeout: 15000 });
     await closeWorkingDocumentIfOpen(page);
-    await answerSystemQuiz(page, 'GNSS outage 02:44 to 02:59');
+    await answerSystemQuiz(page, 'reference held on the oscillator');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Confirm the Shetland Reference Recovered', 60000);
   });

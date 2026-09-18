@@ -85,7 +85,7 @@ export const hamSdrScenario8Data: ScenarioData = {
         id: 'fake-wxsat',
         frequency: 137.1e6,
         bandwidth: 34e3, // dressed up in APT's clothing
-        power: 10, // EIRP dBm at ~2 km: lands ~30 dB hotter than the real bird ever does
+        power: 10, // EIRP dBm at ~2 km: arrives ~30 dB hotter than the real bird ever does
         polarization: 'RHCP',
         startTime: 8200,
         duration: 5400,
@@ -133,9 +133,9 @@ export const hamSdrScenario8Data: ScenarioData = {
             character: Character.RILEY_BROOKS,
             question: 'CUBEHOP-1 listens on 435.900 MHz. Why is it legal for you to transmit there tonight?',
             options: [
-              '435.900 sits in the 70cm amateur satellite sub-band, I hold a license that covers it, and the satellite is open for amateur use - all three have to be true.',
-              'Any frequency is legal at five watts or less.',
-              'Because the receiver can already hear the satellite there.',
+              '435.900 is in the 70cm satellite sub-band, my license covers it, and the bird is open to amateurs - all three have to be true.',
+              'Five watts is under the licensing threshold, my brick amplifier stays below it, and the bird is in range - low power makes it legal.',
+              'The receiver already hears the bird there, the transponder passband is 30 kHz wide, and the beacon is public - hearing it makes it legal.',
             ],
             correctIndex: 0,
             explanation:
@@ -164,13 +164,13 @@ export const hamSdrScenario8Data: ScenarioData = {
             character: Character.RILEY_BROOKS,
             question: 'Why do amateur rules FORBID encrypting transmissions, when every other lesson in this campaign was about untrusted RF?',
             options: [
-              'Amateur radio is self-policing: any operator must be able to identify any transmission and its sender. Openness is the enforcement mechanism - which is also why a pirate is caught by listeners, not by the satellite.',
-              'Encryption uses too much bandwidth on narrow channels.',
-              'Encryption is impossible below 1 GHz.',
+              'Amateur radio is self-policing - any operator must be able to identify any transmission, so openness is the enforcement.',
+              'Amateur channels are too narrow - encryption adds overhead that a 15 kHz FM channel cannot carry, so the rules ban it.',
+              'Amateur bands sit below 1 GHz - encryption needs bandwidth that only exists at microwave, so the rules do not allow it.',
             ],
             correctIndex: 0,
             explanation:
-              "The bands stay usable because everyone can hear everyone. No secrecy means every operator is a sensor - remember that when you meet tonight's uninvited guest.",
+              "The bands stay usable because everyone can hear everyone. No secrecy means every operator is a sensor - which is also why a pirate is caught by listeners, not by the satellite. Remember that when you meet tonight's uninvited guest.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -218,13 +218,13 @@ export const hamSdrScenario8Data: ScenarioData = {
             character: Character.RILEY_BROOKS,
             question: "What stopped the transponder from relaying the pirate's carrier?",
             options: [
-              'Nothing. A bent-pipe transponder amplifies whatever lands in its passband with the right polarization - authorization lives in licenses and listeners on the ground, not in the RF.',
-              'The satellite checked the callsign and let it through by mistake.',
-              'The pirate found a secret command frequency.',
+              'Nothing - a bent pipe amplifies whatever falls in its passband; authorization lives in licenses and listeners on the ground.',
+              'A callsign check - the transponder reads the ID on each uplink; the pirate sent a valid-looking one and it let him through.',
+              'A command channel - the transponder keys only on its control uplink; the pirate found that frequency and opened the passband.',
             ],
             correctIndex: 0,
             explanation:
-              'RF is unauthenticated. The bird cannot tell you from a pirate from a fake - every defense you have learned lives on the ground: band plans, physics, and operators paying attention.',
+              'RF is unauthenticated. Anything in the passband with the right polarization goes through. The bird cannot tell you from a pirate from a fake - every defense you have learned lives on the ground: band plans, physics, and operators paying attention.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -336,13 +336,13 @@ export const hamSdrScenario8Data: ScenarioData = {
             character: Character.RILEY_BROOKS,
             question: 'Which signal is the real WXSAT-19, and how do you know?',
             options: [
-              "Neither - the real bird is below the horizon. The carrier has zero Doppler, no rise or set, never decodes, and is far too strong: ground truth wearing a satellite's frequency.",
-              'The 137.100 carrier - it is on the published beacon frequency.',
-              'Impossible to tell without decrypting it.',
+              'Neither - the real bird is below the horizon; the carrier has no Doppler, no rise or set, no decode, and far too much power.',
+              'The 137.100 carrier - it sits on the published beacon frequency; the power, steady tone, and lack of Doppler put it overhead.',
+              'Impossible to tell - the payload is not decoding; without reading APT frames there is no way to tie a carrier to a bird.',
             ],
             correctIndex: 0,
             explanation:
-              'Frequency is the ONE thing an impostor gets right for free. Doppler, schedule, decode, and power all have to agree with orbital mechanics - and orbital mechanics does not lie. Physics is your authentication. Class dismissed.',
+              "Ground truth wearing a satellite's frequency. Frequency is the ONE thing an impostor gets right for free. Doppler, schedule, decode, and power all have to agree with orbital mechanics - and orbital mechanics does not lie. Physics is your authentication. Class dismissed.",
             pointPenalty: 5,
           },
           mustMaintain: false,

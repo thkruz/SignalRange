@@ -219,9 +219,9 @@ export const scenario6Data: ScenarioData = {
             question: 'Why does AURORA-7 require step-track mode instead of program-track?',
             options: [
               'Inclined orbit causes the satellite to drift in az/el; step-track follows the beacon',
-              'The satellite has a faulty antenna requiring manual adjustment',
-              'Step-track uses less power than program-track',
-              'Program-track only works with newer satellites',
+              'The satellite has a faulty antenna; step-track compensates with manual-style nudges',
+              'Step-track uses less drive power than program-track; the ACU runs cooler on long passes',
+              'Program-track only works with newer satellites; AURORA-7 predates the TLE format',
             ],
             correctIndex: 0,
             explanation:
@@ -312,9 +312,9 @@ export const scenario6Data: ScenarioData = {
             question: "Why can't we stay in program-track mode for AURORA-7?",
             options: [
               "AURORA-7's inclined orbit causes drift - ephemeris predictions aren't accurate enough",
-              'Program-track consumes more power than step-track',
-              "The antenna hardware doesn't support program-track for C-band",
-              'Program-track only works for LEO satellites',
+              "Program-track consumes more drive power than step-track - the ACU can't sustain it",
+              "The antenna hardware doesn't support program-track at C-band - the ACU firmware blocks it",
+              "Program-track only works for LEO satellites - AURORA-7's GEO slot isn't supported",
             ],
             correctIndex: 0,
             explanation:
@@ -586,9 +586,9 @@ export const scenario6Data: ScenarioData = {
             question: 'Looking at the Encryption card, what security configuration is active?',
             options: [
               'AES-256-GCM with valid key - ready for secure transmission',
-              'AES-128-CBC with expired key - needs renewal',
-              'Encryption bypassed - transmitting in clear',
-              'Triple-DES with pending key rotation',
+              'AES-128-CBC with expired key - renewal needed before transmit',
+              'Encryption bypassed with no key - transmitting in the clear',
+              'Triple-DES with rotating key - waiting on the key rotation',
             ],
             correctIndex: 0,
             explanation:

@@ -10,7 +10,7 @@ import { waitForQuizToAppear } from './simulation-helpers';
  * (HPA back-off / enable, modem on air), the TT&C commanding console, the
  * contact plan, the ephemeris panel and the RX modem tuning strip.
  *
- * Every click that lands on a console goes through domClick: the checklist
+ * Every click aimed at a console goes through domClick: the checklist
  * box stays open so the specs can poll it, and as a draggable overlay it can
  * sit on top of a console control and intercept a pointer click. Inputs are
  * filled and then handed a synthetic change event, which is what each adapter

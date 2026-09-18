@@ -153,7 +153,7 @@ test.describe('nats-eu Scenario 13 Full Completion', () => {
     await programTrack(page, missionControl, '61701');
     await missionControl.selectTab('rx-analysis');
     await advanceMissionClockToUtc(page, '2027-03-29T13:34:00Z');
-    await answerSystemQuiz(page, 'Refuses the commit');
+    await answerSystemQuiz(page, '1 dB over the 6 dB threshold');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Measure SAR-1 at Galway', 60000);
   });

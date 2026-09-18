@@ -138,9 +138,9 @@ export const natsEuScenario3Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'MERIDIAN-SAR-1 is in a 360 km orbit closing at roughly 7 km/s. What does that do to your 14005 MHz command carrier as the spacecraft sees it?',
             options: [
-              'Shifts it by hundreds of kilohertz - the spacecraft receiver sees the wrong frequency unless the uplink is pre-compensated.',
-              'Nothing. Doppler only affects the downlink.',
-              'Attenuates it, but the frequency is unchanged.',
+              'Shifts it by hundreds of kilohertz - the spacecraft hears it off frequency unless you pre-compensate.',
+              'Nothing - Doppler only affects the downlink, and the spacecraft receiver is locked to its own reference.',
+              'Attenuates it - the frequency is unchanged, but the fast closing rate costs a few dB of link margin.',
             ],
             correctIndex: 0,
             explanation:
@@ -208,9 +208,9 @@ export const natsEuScenario3Data: ScenarioData = {
             question: 'BUC LO 12600 MHz, low-side. The spacecraft receiver is on 14005 MHz. What IF does the transmit modem need?',
             options: [
               '1405 MHz - RF minus LO, and the spectrum is NOT inverted on this side',
-              '1400 MHz - that is what it is on',
-              '1414 MHz - same as the receive IF',
-              '11195 MHz - LO minus RF',
+              '1400 MHz - what the crew left it on, and the BUC LO makes up the difference',
+              '1414 MHz - same as the receive IF, and the spectrum is inverted on both sides',
+              '11195 MHz - LO minus RF, and the spectrum is inverted on this side too',
             ],
             correctIndex: 0,
             explanation:
@@ -247,9 +247,9 @@ export const natsEuScenario3Data: ScenarioData = {
             question: 'When can REC-PLAYBACK be sent?',
             options: [
               '14:03:40 to 14:10:00 - inside the pass, after the bird has cleared the mask',
-              'Any time - the spacecraft buffers commands',
-              '14:03:10 to 14:10:18 - the whole pass above the mask',
-              'Only at culmination, 14:06:45',
+              'Any time before 14:10:18 - the spacecraft buffers commands until it is over the site',
+              '14:03:10 to 14:10:18 - the whole pass above the mask, from AOS to LOS',
+              '14:06:45 only - at culmination, when the bird is at its shortest range',
             ],
             correctIndex: 0,
             explanation:
@@ -323,13 +323,14 @@ export const natsEuScenario3Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Why does the modem carrier go up before the BUC is unmuted and long before the HPA is enabled?',
             options: [
-              'So the amplifier always has drive behind it: an HPA enabled on an empty BUC amplifies its own noise floor into the feed',
-              'The modem needs time to warm up',
-              'The BUC will not unmute without a carrier present',
-              'It does not matter; the interlocks handle it',
+              'So the amplifier always has drive behind it: an HPA on an empty BUC amplifies its own noise',
+              'So the modem has time to settle: a carrier that is still drifting will not hold the BUC phase lock',
+              'So the BUC can unmute: it will not accept the unmute command without a carrier present at its input',
+              'It does not matter: the interlocks handle the order and block the HPA until there is drive',
             ],
             correctIndex: 0,
-            explanation: 'Drive before amplifier on the way up, amplifier before drive on the way down. There is no interlock; the order is you.',
+            explanation:
+              'Drive before amplifier on the way up, amplifier before drive on the way down. An HPA enabled on an empty BUC amplifies its own noise floor into the feed. There is no interlock; the order is you.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -451,10 +452,10 @@ export const natsEuScenario3Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'A command sent at 14:03:20 comes back NAK. What does the Detail column most likely say, and what do you do?',
             options: [
-              'Out of window - wait for 14:03:40 and send again',
-              'No Doppler compensation - re-engage it',
-              'Key invalid - rotate the key',
-              'Spacecraft fault - abandon the pass',
+              'Out of window - wait for 14:03:40, then send the command again',
+              'No Doppler compensation - re-engage it, then send again by 14:10:00',
+              'Key invalid - rotate the key before 14:10:00, then send it again',
+              'Spacecraft fault - abandon the pass and log the NAK at 14:03:20',
             ],
             correctIndex: 0,
             explanation: 'Twenty seconds early. The spacecraft rejects anything outside its command window; the console tells you why. A NAK is information, not a failure.',
@@ -511,10 +512,10 @@ export const natsEuScenario3Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'REC-PLAYBACK shows ACK received. What does that prove?',
             options: [
-              'The spacecraft received the command on frequency, in the window, and executed it - it answered on the next telemetry frame',
-              'The command left the antenna',
-              'The recorder is now empty',
-              'The HPA reached full power',
+              'The spacecraft received and executed it - it answered on frequency, in the window, on the next frame',
+              'The command left the antenna - the HPA saw drive, the BUC was unmuted, and the carrier went out',
+              'The recorder is now empty - the playback ran, the buffer cleared, and the frame confirms it',
+              'The HPA reached full power - the drive was there, the back-off held, and the carrier was heard',
             ],
             correctIndex: 0,
             explanation:
@@ -622,10 +623,10 @@ export const natsEuScenario3Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'What goes in the command log for the 14:03 window?',
             options: [
-              'REC-PLAYBACK sent in window with Doppler compensation, ACK received; chain secured HPA-BUC-carrier, cold',
-              'Command sent',
-              'REC-PLAYBACK ACK; chain left radiating for the next pass',
-              'Window missed',
+              'REC-PLAYBACK sent in window with Doppler comp, ACK received; chain secured HPA-BUC-carrier, cold',
+              'REC-PLAYBACK sent in window with Doppler comp, ACK received; chain left radiating for the next pass',
+              'REC-PLAYBACK sent at 14:03:20, NAK out of window; chain secured HPA-BUC-carrier, cold',
+              'REC-PLAYBACK sent in window, ACK not logged; chain secured carrier-BUC-HPA, cold',
             ],
             correctIndex: 0,
             explanation: 'What went up, what came back, and that the amplifier is off. The next operator reads this before touching the chain.',
@@ -669,7 +670,7 @@ export const natsEuScenario3Data: ScenarioData = {
       'enable-doppler-comp': {
         text: `
         <p>
-          Doppler cuts both ways. The bird hears us shifted too, so the modem pre-compensates on the way up or the command lands in the wrong bin. It is a toggle on the TT&amp;C console. It is also the whole lesson.
+          Doppler cuts both ways. The bird hears us shifted too, so the modem pre-compensates on the way up or the command ends up in the wrong bin. It is a toggle on the TT&amp;C console. It is also the whole lesson.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,

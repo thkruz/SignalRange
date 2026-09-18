@@ -334,10 +334,10 @@ export const scenario4Data: ScenarioData = {
           params: {
             question: 'The antenna slewed about 58° in azimuth and dropped 8° in elevation. Why such a large change?',
             options: [
-              'TIDEMARK-2 is at a different orbital slot (45°W vs 53°W), requiring different look angles from Vermont',
-              'The antenna was incorrectly pointed at TIDEMARK-1 before',
-              'TIDEMARK-2 has a lower orbit than TIDEMARK-1',
-              'Wind pushed the antenna off-target during the slew',
+              'TIDEMARK-2 sits at a different orbital slot (45°W vs 53°W), so the look angles differ',
+              'The antenna was mispointed at TIDEMARK-1 before (off-peak), so the slew corrected it',
+              'TIDEMARK-2 is in a lower orbit than TIDEMARK-1 (sub-GEO), so it sits lower in the sky',
+              'Wind pushed the antenna off target during the slew (gusts), so it overshot the slot',
             ],
             correctIndex: 0,
             explanation:
@@ -405,7 +405,12 @@ export const scenario4Data: ScenarioData = {
           description: 'Calculate IF Frequency',
           params: {
             question: "TIDEMARK-2's beacon transmits at 4,180 MHz RF. With the LNB LO at 5,250 MHz, what IF frequency should you see the beacon at?",
-            options: ['1,070 MHz (LO minus RF = 5,250 - 4,180)', '9,430 MHz (LO plus RF = 5,250 + 4,180)', '4,180 MHz (same as RF)', '1,074.5 MHz (same as TIDEMARK-1 beacon)'],
+            options: [
+              '1,070 MHz (LO minus RF = 5,250 - 4,180)',
+              '9,430 MHz (LO plus RF = 5,250 + 4,180)',
+              '1,074.5 MHz (LO minus RF = 5,250 - 4,175.5)',
+              '2,090 MHz (RF divided by two = 4,180 / 2)',
+            ],
             correctIndex: 0,
             explanation:
               "The LNB downconverts by mixing with the local oscillator. IF = LO - RF = 5,250 - 4,180 = 1,070 MHz. Note this is slightly different from TIDEMARK-1's beacon at 1,074.5 MHz IF - each satellite has its own beacon frequency.",
@@ -563,10 +568,10 @@ export const scenario4Data: ScenarioData = {
           params: {
             question: 'We verified the beacon on the spectrum analyzer. Why is this important before configuring the receiver modem?',
             options: [
-              'It proves the entire RF path is working - antenna feed, LNB, cables, and signal routing - so we know modem issues would be modem configuration, not upstream problems',
-              'The modem cannot lock without first seeing the beacon',
-              'The beacon automatically configures the modem frequency',
-              "It's just a procedural requirement with no technical purpose",
+              'It proves the RF path works - feed, LNB, cables - so a modem fault would be configuration',
+              'The modem needs the beacon to lock - it acquires carrier, then symbol timing from it',
+              'The beacon configures the modem - center frequency, bandwidth are read from the analyzer',
+              'It is a procedural requirement - a checklist step, sign-off - with no technical purpose',
             ],
             correctIndex: 0,
             explanation:
@@ -713,10 +718,10 @@ export const scenario4Data: ScenarioData = {
           params: {
             question: 'The modem shows "Locked" with C/N above 10 dB. Why do we check the C/N value and not just the lock indicator?',
             options: [
-              'Lock can occur at C/N as low as 3-4 dB, but error rates would be high - we need margin for reliable operation',
-              'The lock indicator is unreliable and often shows false positives',
-              '10 dB is required for the modem hardware to function',
-              'The C/N value determines the data rate we can achieve',
+              'Lock can occur at C/N as low as 3-4 dB, but error rates would be high - we need margin',
+              'The lock indicator is unreliable, often showing false positives - we need a second check',
+              '10 dB is the hardware minimum, below it the modem will not run - we need it to function',
+              'The C/N value sets the data rate, higher is faster - we need to know the throughput',
             ],
             correctIndex: 0,
             explanation:
@@ -788,9 +793,9 @@ export const scenario4Data: ScenarioData = {
             question: "What is the current state of VT-01's transmit chain?",
             options: [
               'BUC is muted and HPA is disabled - no RF output (safe state for switchover)',
-              'BUC and HPA are active but transmitting to TIDEMARK-1',
-              'TX chain is completely powered off',
-              'TX chain is faulted and needs reset',
+              'BUC and HPA are both active - RF output still going to TIDEMARK-1 (not yet safed)',
+              'BUC and HPA are powered off - no RF output (cold chain, full restart needed)',
+              'BUC and HPA are faulted - no RF output (alarm latched, reset required)',
             ],
             correctIndex: 0,
             explanation:
@@ -893,10 +898,10 @@ export const scenario4Data: ScenarioData = {
           params: {
             question: 'You need to enable the transmit path. What is the correct sequence and why?',
             options: [
-              'Unmute BUC first, then enable HPA - drive the amplifier chain from input to output to avoid undriven amplifiers',
-              'Enable HPA first, then unmute BUC - warm up the high-power stage before applying signal',
-              "Both can be enabled simultaneously - order doesn't matter",
-              'The modem automatically sequences them when you press transmit',
+              'Unmute BUC first, then enable HPA - drive the chain from input to output',
+              'Enable HPA first, then unmute BUC - warm up the high-power stage before drive',
+              'Enable both at once, order is irrelevant - the chain settles either way',
+              'Press transmit on the modem, nothing else - the modem sequences them itself',
             ],
             correctIndex: 0,
             explanation:
@@ -963,10 +968,10 @@ export const scenario4Data: ScenarioData = {
           params: {
             question: 'VT-01 now has both receive and transmit paths active to TIDEMARK-2. What confirms full duplex operation?',
             options: [
-              'Receiver locked with good C/N, HPA enabled with proper backoff, no alarms - bidirectional link established',
-              'The satellite has acknowledged our uplink signal',
-              'Both the TX and RX indicators are green',
-              'The modem shows "Full Duplex" mode',
+              'Receiver locked with good C/N, HPA enabled with backoff, no alarms - both directions up',
+              'Receiver locked with good C/N, satellite ack received, no alarms - uplink confirmed',
+              'TX indicator green, RX indicator green, no alarms - both chains showing active',
+              'Modem showing "Full Duplex", HPA enabled, no alarms - mode confirms the link',
             ],
             correctIndex: 0,
             explanation:

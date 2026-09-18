@@ -101,7 +101,7 @@ const SCENARIO_4_OBJECTIVES: Scenario4Objective[] = [
     id: 'verify-antenna-slew-quiz',
     title: 'Understand Position Change',
     type: 'quiz',
-    correctAnswer: 'TIDEMARK-2 is at a different orbital slot (45°W vs 53°W), requiring different look angles from Vermont',
+    correctAnswer: 'TIDEMARK-2 sits at a different orbital slot (45°W vs 53°W), so the look angles differ',
   },
 
   // ============================================================
@@ -145,8 +145,7 @@ const SCENARIO_4_OBJECTIVES: Scenario4Objective[] = [
     id: 'verify-beacon-chain-quiz',
     title: 'Understand Receive Chain Validation',
     type: 'quiz',
-    correctAnswer:
-      'It proves the entire RF path is working - antenna feed, LNB, cables, and signal routing - so we know modem issues would be modem configuration, not upstream problems',
+    correctAnswer: 'It proves the RF path works - feed, LNB, cables - so a modem fault would be configuration',
   },
 
   // ============================================================
@@ -179,7 +178,7 @@ const SCENARIO_4_OBJECTIVES: Scenario4Objective[] = [
     id: 'verify-rx-margin-quiz',
     title: 'Understand Link Margin',
     type: 'quiz',
-    correctAnswer: 'Lock can occur at C/N as low as 3-4 dB, but error rates would be high - we need margin for reliable operation',
+    correctAnswer: 'Lock can occur at C/N as low as 3-4 dB, but error rates would be high - we need margin',
   },
 
   // ============================================================
@@ -214,7 +213,7 @@ const SCENARIO_4_OBJECTIVES: Scenario4Objective[] = [
     id: 'understand-buc-hpa-sequence',
     title: 'Understand TX Sequence',
     type: 'quiz',
-    correctAnswer: 'Unmute BUC first, then enable HPA - drive the amplifier chain from input to output to avoid undriven amplifiers',
+    correctAnswer: 'Unmute BUC first, then enable HPA - drive the chain from input to output',
   },
   {
     id: 'enable-transmit-path',
@@ -227,7 +226,7 @@ const SCENARIO_4_OBJECTIVES: Scenario4Objective[] = [
     id: 'verify-full-duplex-quiz',
     title: 'Verify Full Duplex Operation',
     type: 'quiz',
-    correctAnswer: 'Receiver locked with good C/N, HPA enabled with proper backoff, no alarms - bidirectional link established',
+    correctAnswer: 'Receiver locked with good C/N, HPA enabled with backoff, no alarms - both directions up',
   },
 ];
 
@@ -614,6 +613,10 @@ async function executeObjective(page: import('@playwright/test').Page, missionCo
 
     case 'click-tab':
       await missionControlPage.selectTab(objective.tabId!);
+      // Observation-gated conditions latch only after the default dwell on
+      // the tab (DEFAULT_OBSERVATION_DWELL_SECONDS); leaving at once would
+      // reset the read and strand the objective.
+      await page.waitForTimeout(3000);
       break;
 
     case 'toggle-switch':

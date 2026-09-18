@@ -114,7 +114,7 @@ export const natsEuScenario6Data: ScenarioData = {
     // two benign (Fiona's first login from the new SH-02 address, the
     // monitoring service's scheduled poll-interval change) and one finding
     // (off-hours auth failures against the contractor account, still active
-    // three weeks after the install window). One live entry lands during the
+    // three weeks after the install window). One live entry arrives during the
     // shift so the log is seen to be live.
     security: {
       accounts: [
@@ -223,10 +223,10 @@ export const natsEuScenario6Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'What does the March return require from GW-01?',
             options: [
-              'The whole audit trail read since the last return, every warning-severity entry dispositioned, and every account reconciled against current authorisation',
-              'A search of the log for failed logins',
-              'A list of active accounts',
-              'Nothing unless something happened this month',
+              'The whole trail read, every warning-severity entry dispositioned, and every account reconciled',
+              'A search of the log for failed logins, every hit dispositioned, and the affected accounts locked',
+              'A list of active accounts, every one confirmed by its owner, and the log kept for London to read',
+              'Nothing unless something happened, every incident reported at the time, and the return left blank',
             ],
             correctIndex: 0,
             explanation:
@@ -268,9 +268,9 @@ export const natsEuScenario6Data: ScenarioData = {
             question: 'What is the active alarm state on GW-01 at turnover?',
             options: [
               'RX AGC at max gain (weak signal) - empty sky, not a fault; no hardware alarms',
-              'No active alarms - all systems nominal',
-              'Security console: unacknowledged anomaly',
-              'GPSDO in holdover',
+              'No active alarms (all nominal) - board clear, sweep complete; nothing to carry over',
+              'Security console (unacknowledged anomaly) - flagged to the board, not yet read; one alarm',
+              'GPSDO in holdover (reference alarm) - timing at risk, not a fault; one hardware alarm',
             ],
             correctIndex: 0,
             explanation:
@@ -377,14 +377,14 @@ export const natsEuScenario6Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Three entries carry warning severity. How many of them are findings?',
             options: [
-              'You do not know yet - severity is a hint from the logger, and each one has to be dispositioned on who, what and when',
-              'All three - warning means finding',
-              'None - nothing was breached',
-              'One - only failed authentications count',
+              'You do not know yet - severity is a hint from the logger, and each entry still has to be dispositioned',
+              'All three - warning is the logger flagging a finding, and each one goes straight into the return',
+              'None - nothing was breached, and a finding needs a loss or an intrusion, not just an odd entry',
+              'One - only the failed authentications count, and the two successful entries are routine by definition',
             ],
             correctIndex: 0,
             explanation:
-              'The logger scores rarity; you score meaning. Fiona from a new address, a service account changing its own poll interval, and six failed logins at 02:47 are three different things.',
+              'The logger scores rarity; you score meaning, on who, what and when. Fiona from a new address, a service account changing its own poll interval, and six failed logins at 02:47 are three different things.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -416,14 +416,14 @@ export const natsEuScenario6Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'op-fiona, 06:30, console login from a source address the station has never seen. Finding?',
             options: [
-              'Benign: SH-02 went operational this week and its address is new to the rule; the account, the hour and the site register all agree - note it, no action',
-              'Finding: any unknown source address is an intrusion attempt',
-              'Finding: operators must not log in remotely',
-              'Ignore it: successful logins are never findings',
+              'Benign: SH-02 is new to the rule and the account, hour and site register agree - note it, no action',
+              'Finding: any unknown source address is an intrusion attempt until proven otherwise - lock op-fiona, escalate',
+              'Finding: operators must not log in remotely, whatever the site register says - report it, revoke remote access',
+              'Ignore it: successful logins are never findings, whatever the address - skip it, nothing in the return',
             ],
             correctIndex: 0,
             explanation:
-              'Expected, explained, and checkable against the site register. A rule that fires once for a new site is doing its job; the disposition says so and the rule will not fire for Shetland again.',
+              'SH-02 went operational this week and its address is new to the rule; the account, the hour and the site register all agree. Expected, explained, and checkable against the site register. A rule that fires once for a new site is doing its job; the disposition says so and the rule will not fire for Shetland again.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -455,10 +455,10 @@ export const natsEuScenario6Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'svc-monitor, 03:00, configuration change to its own poll interval, referencing change ticket CHG-0412. Finding?',
             options: [
-              'Benign: a service account making a scheduled change to its own configuration at its scheduled time, with a ticket - verify the ticket, note it',
-              'Finding: service accounts must never change configuration',
-              'Finding: 03:00 is off-hours for any actor',
-              'Benign: config entries are never findings',
+              'Benign: a service account changing its own config on schedule, with a ticket - verify the ticket, note it',
+              'Finding: service accounts must never change configuration, ticket or not - revoke its config rights, report',
+              'Finding: 03:00 is off-hours for any actor, scheduled or not - report it, hold the change until reviewed',
+              'Benign: config entries are never findings, whatever the actor - skip it, no need to check the ticket',
             ],
             correctIndex: 0,
             explanation:
@@ -562,14 +562,14 @@ export const natsEuScenario6Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'op-guest, 02:47, six failed logins, none succeeded. Finding?',
             options: [
-              'Finding: an account that should no longer exist, at an hour nobody authorised should be trying it - the exposure and the attempt are both reportable, whether or not anything got in',
-              'Benign: unsuccessful attempts are noise',
-              'Benign: the contractor probably forgot their password',
-              'Finding only if it happens again',
+              'Finding: an account that should not exist, tried at an hour nobody authorised - report exposure and attempt',
+              'Benign: unsuccessful attempts are noise, and the lockout did its job - note the count, nothing to report',
+              'Benign: the contractor probably forgot their password on a late call-out - ring Kilbride, nothing to report',
+              'Finding only if it repeats: one burst of failures is not a pattern - watch the account, report next month',
             ],
             correctIndex: 0,
             explanation:
-              'Who should not have an account, what looks like a guess sequence, when nobody is on site. You report the exposure and the attempt, not just the damage. Flag first, note the time you saw it, then act on the account.',
+              'Who should not have an account, what looks like a guess sequence, when nobody is on site. You report the exposure and the attempt, not just the damage, whether or not anything got in. Flag first, note the time you saw it, then act on the account.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -602,13 +602,14 @@ export const natsEuScenario6Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'The account was never used after the install. Why disable it rather than leave it for the next feed job?',
             options: [
-              'An account that exists can be attacked; one that is needed again can be re-enabled in a minute. Privilege should match current need, not future convenience.',
-              'Because the contractor was caught attempting access',
-              'Because maintenance accounts expire automatically after 30 days',
-              'It should not be disabled; the return only requires it be noted',
+              'An account that exists can be attacked; one needed again is re-enabled in a minute - privilege follows current need',
+              'Because the contractor was caught attempting access; a live attempt is grounds - the account is now evidence',
+              'Because maintenance accounts expire automatically after 30 days; this one is overdue - the panel is just catching up',
+              'It should not be disabled; the return only requires it be noted - Kilbride will need it for the next feed job',
             ],
             correctIndex: 0,
-            explanation: 'Least privilege is a habit, not a response. The install phase leaves things behind; the baseline is where they get picked up.',
+            explanation:
+              'Privilege should match current need, not future convenience. Least privilege is a habit, not a response. The install phase leaves things behind; the baseline is where they get picked up.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -641,14 +642,14 @@ export const natsEuScenario6Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Why expire the relief account rather than disable it like the contractor?',
             options: [
-              'Expired records that the authorisation lapsed and forces re-authorisation before any use; disabled is a deliberate shut-off. Same effect today, different story in the return.',
-              'Expired keeps the login working in case they come back',
-              'Disabled is only for contractors',
-              'There is no difference; either is fine',
+              'Expired records that authorisation lapsed and forces re-authorisation; disabled is a deliberate shut-off',
+              'Expired keeps the login working in case they come back; disabled would lock T. Nakamura out for good',
+              'Disabled is only for contractors and outside firms; expired is the status for NATS staff who move on',
+              'There is no difference in what the panel enforces; either is fine, and expired just reads better',
             ],
             correctIndex: 0,
             explanation:
-              'The status is part of the record. Somebody reading the roster in six months should be able to tell a lapsed secondment from a closed contractor without asking you.',
+              'Same effect today, different story in the return. The status is part of the record. Somebody reading the roster in six months should be able to tell a lapsed secondment from a closed contractor without asking you.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -738,14 +739,14 @@ export const natsEuScenario6Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'The failed logins never succeeded and nothing was taken. Why is this still a finding worth reporting?',
             options: [
-              'A dormant account with maintenance privileges is exposure regardless of outcome - and somebody was trying it at 02:47.',
-              'It is not; unsuccessful attempts are noise and should be filtered out.',
-              'Because the contractor breached their contract by attempting access.',
-              'Only because Group Security requires at least one finding per return.',
+              'A dormant account with maintenance privileges is exposure whatever the outcome - and somebody was trying it.',
+              'It is not - unsuccessful attempts are noise and should be filtered out before the return goes to London.',
+              'Because the contractor breached their contract by attempting access - the report is a contractual step.',
+              'Only because Group Security requires at least one finding per return - a blank return gets sent back.',
             ],
             correctIndex: 0,
             explanation:
-              'You report the exposure and the attempt, not just the damage. Baseline closed: trail read, three warnings dispositioned, two accounts reconciled, two passes decoded.',
+              'Somebody was trying that account at 02:47. You report the exposure and the attempt, not just the damage. Baseline closed: trail read, three warnings dispositioned, two accounts reconciled, two passes decoded.',
             pointPenalty: 5,
             documentSection: 'Findings',
             documentLine:

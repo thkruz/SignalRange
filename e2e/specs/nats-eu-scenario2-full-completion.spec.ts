@@ -150,7 +150,7 @@ test.describe('nats-eu Scenario 2 Full Completion', () => {
   test('[record-measurements] fills in the measurement section', async () => {
     await advanceMissionClockToUtc(page, '2027-03-15T14:10:30Z');
     await closeWorkingDocumentIfOpen(page);
-    await answerSystemQuiz(page, 'Predicted 11.0 dB; measured 10.9 dB');
+    await answerSystemQuiz(page, 'margin 4.9 dB over 6 dB');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Record the Measurements');
   });
@@ -165,7 +165,7 @@ test.describe('nats-eu Scenario 2 Full Completion', () => {
 
   test('[sign-the-test-card] signs the card and completes without the optional regression', async () => {
     await closeWorkingDocumentIfOpen(page);
-    await answerSystemQuiz(page, 'proves the station is performing as designed');
+    await answerSystemQuiz(page, 'proves the station performs as designed');
     await expect(page.locator('#level-complete-modal')).toBeVisible({ timeout: 45000 });
   });
 

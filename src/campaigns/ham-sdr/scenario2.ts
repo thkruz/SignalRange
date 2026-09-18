@@ -72,9 +72,9 @@ export const hamSdrScenario2Data: ScenarioData = {
             character: Character.RILEY_BROOKS,
             question: 'CUBEHOP-1 rises in a few minutes. Which way does its downlink frequency move over the pass?',
             options: [
-              'Starts ~10 kHz HIGH while the bird approaches, slides through nominal at closest approach, ends ~10 kHz LOW as it recedes.',
-              'Starts low and climbs as the satellite gains elevation.',
-              'It oscillates randomly around 435.25 MHz.',
+              'Starts ~10 kHz HIGH on approach, slides through nominal at closest approach, ends ~10 kHz LOW as it recedes.',
+              'Starts ~10 kHz LOW on the horizon, climbs through nominal as it gains elevation, ends ~10 kHz HIGH at the top.',
+              'Starts on 435.25 MHz nominal, wanders ~10 kHz either side at random, ends back on nominal at LOS.',
             ],
             correctIndex: 0,
             explanation: 'The ambulance siren, in radio: pitch is high approaching, drops as it passes. So start your VFO high and be ready to walk it down all pass.',
@@ -158,8 +158,8 @@ export const hamSdrScenario2Data: ScenarioData = {
             question: 'Near the top of the pass the drift briefly slowed to almost nothing, then sped up again. Why?',
             options: [
               'At closest approach the range rate passes through zero - no motion along the line of sight, no Doppler shift.',
-              'The satellite throttles its transmitter at high elevation.',
-              'The rotator caught up with the bird and cancelled the drift.',
+              'At high elevation the satellite throttles its transmitter - less power on the downlink, less Doppler shift.',
+              'At the top of the pass the rotator caught up with the bird - the beam settled on it and cancelled the drift.',
             ],
             correctIndex: 0,
             explanation:

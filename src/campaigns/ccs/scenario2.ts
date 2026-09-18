@@ -139,9 +139,9 @@ export const ccsScenario2Data: ScenarioData = {
               'The tasking order denies the COBALT-4 service uplink at 8125 MHz. FRIENDLY MILSATCOM uplinks in 8175-8225 MHz through the same slot of sky. Which of these ends the mission immediately?',
             options: [
               'Any jam waveform overlapping 8175-8225 MHz, for any duration',
-              'Letting J/S fall below 6 dB while a string is tripped',
-              'Changing exciters without disabling the HPA first',
-              'Running the monitor aperture off the target',
+              'Letting J/S fall below 6 dB while a string is tripped, for any duration',
+              'Changing exciters without disabling the HPA first, on either string',
+              'Running the monitor aperture off the target, for more than a few seconds',
             ],
             correctIndex: 0,
             explanation:
@@ -285,9 +285,9 @@ export const ccsScenario2Data: ScenarioData = {
               'Transmitter panel: JAM-A shows FAULT. HPA reports enabled, output nominal, no overdrive. BUC unmuted and reference locked. Jam antenna still on target. What failed, and what is the recovery?',
             options: [
               'The JAM-A exciter tripped; the amplifier is healthy - leave the HPA enabled and switch to JAM-B',
-              'The HPA tripped - disable it, wait for cool-down, and re-enable before keying anything',
-              'The BUC lost reference lock - power-cycle the BUC and re-key JAM-A',
-              'The jam antenna lost pointing - re-slew before touching the transmit chain',
+              'The HPA tripped; the exciter is healthy - disable the HPA, wait for cool-down, then re-key JAM-A',
+              'The BUC lost reference lock; the exciter is healthy - power-cycle the BUC and re-key JAM-A',
+              'The jam antenna lost pointing; the chain is healthy - re-slew before touching the transmit chain',
             ],
             correctIndex: 0,
             explanation:
@@ -392,10 +392,10 @@ export const ccsScenario2Data: ScenarioData = {
             question:
               'JAM-B now shows FAULT as well; JAM-A has been sitting un-keyed since its own trip. The HPA is still enabled and nominal. What restores the effect fastest without damaging anything?',
             options: [
-              'Select a string that has had time to cool, run FAULT RESET with it un-keyed, confirm FAULT clears, then key it with the HPA left enabled',
-              'Power-cycle the HPA - a fresh amplifier start clears latched exciter faults downstream',
-              'Key JAM-B again immediately - the fault clears itself once the string is transmitting',
-              'Widen the jam bandwidth on whichever string comes up to make up for the lost time',
+              'Select a cooled string, run FAULT RESET with it un-keyed, confirm FAULT clears, then key it with the HPA left enabled',
+              'Power-cycle the HPA, wait for it to come back nominal, then key JAM-A - a fresh amplifier start clears latched exciter faults',
+              'Key JAM-B again immediately, keep it keyed through the FAULT, then wait - the trip clears itself once the string is transmitting',
+              'Select whichever string comes up, widen its jam bandwidth, then key it - the extra width makes up for the time already lost',
             ],
             correctIndex: 0,
             explanation:

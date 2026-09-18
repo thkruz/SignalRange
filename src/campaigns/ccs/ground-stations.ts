@@ -17,7 +17,7 @@ import type { Degrees } from 'ootk';
  *   IF upconverts to the 8125 MHz target uplink.
  * - Antenna 1 (MONITOR): 3 m X-band look-through aperture for battle-damage
  *   assessment, fed by the RX chain (rfFrontEnd 1). LNB LO 8925 MHz high-side,
- *   so the 7475 MHz victim downlink lands at 1450 MHz IF. Starts parked off the
+ *   so the 7475 MHz victim downlink comes out at 1450 MHz IF. Starts parked off the
  *   target (az 90 / el 10) - the operator slews it on for coordination.
  *
  * Redundancy: the JAM transmitter carries two pre-tuned jam strings - modem 1

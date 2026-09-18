@@ -102,9 +102,9 @@ export const hamSdrScenario5Data: ScenarioData = {
             character: Character.RILEY_BROOKS,
             question: 'GPS arrives ~20 dB BELOW your noise floor, yet a $10 receiver uses it. How?',
             options: [
-              'The signal is spread across 2 MHz by a known code; the receiver correlates against that code and pulls it out of the noise.',
-              'GPS satellites transmit megawatts, so the signal is actually strong.',
-              'The receiver cools itself to reduce the noise floor below the signal.',
+              'It is spread across 2 MHz by a known code; the receiver correlates against that code and pulls it out of the noise.',
+              'The satellites transmit megawatts from orbit; the receiver sees a strong signal and the 2 MHz bump is its sidebands.',
+              'The receiver cools its own front end; its noise floor drops below the signal and the 2 MHz bump is what shows through.',
             ],
             correctIndex: 0,
             explanation:
@@ -144,13 +144,13 @@ export const hamSdrScenario5Data: ScenarioData = {
             character: Character.RILEY_BROOKS,
             question: 'The bump is plainly there, but the lock indicator will never say LOCKED. Why not?',
             options: [
-              'The demodulator has no despreading code - without it the signal IS noise. Detection and demodulation are different privileges.',
-              'The channel bandwidth is set wrong.',
-              'The patch antenna has the wrong handedness.',
+              'The demodulator has no despreading code - without it the signal IS noise, so detection never becomes demodulation.',
+              'The channel bandwidth is set too narrow - the 2 MHz bump spills past the edges, so the demodulator never sees all of it.',
+              'The patch antenna has the wrong handedness - GPS is right-hand circular, so the bump arrives too weak to lock on.',
             ],
             correctIndex: 0,
             explanation:
-              'Right. You can prove energy exists without being able to read it. Remember that direction: it also means something can TRANSMIT energy you cannot vet. Hold that thought.',
+              'Right. Detection and demodulation are different privileges: you can prove energy exists without being able to read it. Remember that direction: it also means something can TRANSMIT energy you cannot vet. Hold that thought.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -198,9 +198,9 @@ export const hamSdrScenario5Data: ScenarioData = {
             character: Character.RILEY_BROOKS,
             question: 'The timing offset is growing steadily but the receiver still reports 8 healthy satellites. What does that combination mean?',
             options: [
-              'Spoofing - a fake GPS signal is being tracked. A real outage LOSES satellites; a spoof keeps them and quietly walks your clock.',
-              'Normal GPSDO aging - all oscillators drift like this.',
-              'The satellite count display is broken.',
+              'Spoofing - a fake GPS signal is being tracked. A real outage LOSES satellites; a spoof keeps them and walks your clock.',
+              'Normal GPSDO aging - the oscillator itself is drifting. Every reference walks like this; the 8 satellites prove GPS is fine.',
+              'A stuck display - the satellite count is frozen. The receiver has actually lost lock; the offset is plain holdover drift.',
             ],
             correctIndex: 0,
             explanation:
@@ -250,8 +250,8 @@ export const hamSdrScenario5Data: ScenarioData = {
             question: 'What did you verify before trusting GPS again?',
             options: [
               'The rogue carrier is gone from the waterfall AND the timing offset has stopped growing - the spoofer is off the air.',
-              'Fifteen minutes passed, which is how long spoofs last.',
-              'The satellite count went back to 8.',
+              'Fifteen minutes have passed on the shift clock AND the offset has settled - a spoof cannot hold a lock longer than that.',
+              'The receiver still reports 8 satellites AND the position fix is steady - a real outage would have dropped them by now.',
             ],
             correctIndex: 0,
             explanation: 'Verify the SIGNAL environment, not the clock face. Satellite count was healthy the whole time - it was never evidence of anything.',
@@ -290,13 +290,13 @@ export const hamSdrScenario5Data: ScenarioData = {
             character: Character.RILEY_BROOKS,
             question: 'What made the spoofer detectable, given that GPS signals carry no authentication at all?',
             options: [
-              'Its physics were wrong: too strong, too clean, and standing still - legitimate signals must obey orbits, and orbits leave fingerprints.',
-              'It used the wrong frequency.',
-              'It transmitted its own callsign.',
+              'Its physics were wrong: too strong, too clean, and standing still - legitimate signals must obey orbits.',
+              'Its frequency was wrong: a few kilohertz off L1, too narrow, and unmodulated - legitimate signals sit on 1575.42 MHz.',
+              'Its identity was wrong: a callsign, no almanac, and no ephemeris - legitimate signals carry a full navigation message.',
             ],
             correctIndex: 0,
             explanation:
-              'RF is unauthenticated; physics is your authentication. A real bird is weak, spread, and moving. Anything else is a claim, not a satellite. The rest of this campaign is that sentence, over and over.',
+              'RF is unauthenticated; physics is your authentication. Orbits leave fingerprints. A real bird is weak, spread, and moving. Anything else is a claim, not a satellite. The rest of this campaign is that sentence, over and over.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -308,7 +308,7 @@ export const hamSdrScenario5Data: ScenarioData = {
   ],
   dialogClips: {
     intro: {
-      text: `<p>New antenna day! Ignore the paint stick, it's load-bearing. Tonight we hunt the weakest signal you will ever chase: GPS. It's up there right now, twenty thousand kilometers out, whispering at every device in the neighborhood.</p><p>Fair warning: you will find it and you will never lock it, and understanding WHY is worth more than a hundred easy passes. Read the note.</p>`,
+      text: `<p>New antenna day! Ignore the paint stick, it is holding the mast up. Tonight we hunt the weakest signal you will ever chase: GPS. It's up there right now, twenty thousand kilometers out, whispering at every device in the neighborhood.</p><p>Fair warning: you will find it and you will never lock it, and understanding WHY is worth more than a hundred easy passes. Read the note.</p>`,
       character: Character.RILEY_BROOKS,
       emotion: Emotion.EXCITED,
       audioUrl: '',

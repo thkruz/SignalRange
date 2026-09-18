@@ -80,7 +80,7 @@ test.describe('nats-eu Scenario 4 Full Completion', () => {
       await missionControl.selectTab(tab);
       await page.waitForTimeout(2500);
     }
-    await answerSystemQuiz(page, 'The command-link authentication key');
+    await answerSystemQuiz(page, 'The command key on the TT&C console');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Read Both Keys');
   });

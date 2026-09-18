@@ -55,14 +55,13 @@ const SCENARIO_18_OBJECTIVES: Scenario18Objective[] = [
     id: 'dashboard-baseline',
     title: 'Station Health vs Link Health',
     type: 'quiz',
-    correctAnswer: "The ground segment is healthy - the degradation is on the space side or in the geometry, which matches Halifax's report exactly",
+    correctAnswer: "The ground segment is healthy - the degradation is on the space side or in the geometry, matching Halifax's report",
   },
   {
     id: 'station-keeping-quiz',
     title: 'What Died on the Spacecraft',
     type: 'quiz',
-    correctAnswer:
-      'Residual inclination accumulates - the bird traces a daily figure-8 in az/el that grows over weeks, and the published ephemeris becomes progressively more wrong',
+    correctAnswer: 'Residual inclination builds - the bird traces a daily figure-8 in az/el that grows over weeks, and the ephemeris gets steadily more wrong',
   },
   {
     id: 'read-program-track-decay-tab',
@@ -74,13 +73,13 @@ const SCENARIO_18_OBJECTIVES: Scenario18Objective[] = [
     id: 'read-program-track-decay',
     title: 'Read the Program-Track Decay',
     type: 'quiz',
-    correctAnswer: 'Program-track IS on target - the ephemeris target. The satellite is somewhere else, and the gap between prediction and reality is being paid in pattern loss',
+    correctAnswer: 'Program-track IS on the ephemeris target - the satellite is somewhere else, and the gap between prediction and reality is paid in pattern loss',
   },
   {
     id: 'beamwidth-risk-quiz',
     title: 'How Long Until It Falls Off',
     type: 'quiz',
-    correctAnswer: 'Already lost - the excursion is several beamwidths and only gets worse; any fix based on following the ephemeris fails until Halifax publishes a corrected one',
+    correctAnswer: 'Already lost - the excursion is several beamwidths and growing; any fix that follows the ephemeris fails until Halifax publishes a corrected one',
   },
 
   // PHASE 2: TRANSITION TO STEP-TRACK
@@ -112,8 +111,7 @@ const SCENARIO_18_OBJECTIVES: Scenario18Objective[] = [
     id: 'no-manual-chase-quiz',
     title: 'Why Not Fly It By Hand',
     type: 'quiz',
-    correctAnswer:
-      'A human chases where the bird WAS; the loop tracks where it IS - manual nudges add pointing error between corrections, fatigue guarantees a missed one, and a bad nudge can drop the beacon entirely',
+    correctAnswer: 'A human chases where the bird WAS; the loop tracks where it IS - nudges add error between corrections, and a bad nudge can drop the beacon',
   },
 
   // PHASE 3: HOLD AND REPORT
@@ -127,28 +125,27 @@ const SCENARIO_18_OBJECTIVES: Scenario18Objective[] = [
     id: 'ground-observations-quiz',
     title: 'Feed the Vehicle Team',
     type: 'quiz',
-    correctAnswer: 'Timestamped step-track pointing history - the dish is physically following the satellite, so its az/el trace IS an independent measurement of the actual orbit',
+    correctAnswer: 'Timestamped step-track pointing history - the dish is physically following the satellite, so its az/el trace is a measurement of the actual orbit',
   },
   {
     id: 'impact-assessment-quiz',
     title: 'Customer Impact Posture',
     type: 'quiz',
     correctAnswer:
-      'No current impact; service nominal under contingency tracking. Elevated risk posture while the vehicle anomaly is open - next decision points are loss of step-track margin or a vehicle-status change from Halifax',
+      'No current impact; service nominal under step-track. Elevated risk while the anomaly is open; decision points are step-track margin loss or a Halifax status change',
   },
   {
     id: 'escalation-boundary-quiz',
     title: 'Escalation Tripwires',
     type: 'quiz',
-    correctAnswer:
-      'Step-track losing the beacon, C/N trending below demod threshold despite good tracking, or Halifax declaring the vehicle unsafe - anything where keeping the link stops being possible or stops being wise',
+    correctAnswer: 'Step-track losing the beacon, C/N below demod threshold despite good tracking, or Halifax declaring the vehicle unsafe',
   },
   {
     id: 'log-shift-summary',
     title: 'Log the Anomaly Response',
     type: 'quiz',
     correctAnswer:
-      'TM-2 vehicle anomaly (Halifax NOC ref): N-S station-keeping suspended, ephemeris stale. ME-02 transitioned to step-track 0935, beacon and carrier recovered, no customer impact. Pointing history streaming to Halifax. Tripwires: step-track margin, vehicle status change. Anomaly OPEN.',
+      'TM-2 vehicle anomaly (Halifax ref): N-S burns suspended, ephemeris stale. ME-02 step-track from 0935, carrier recovered, no impact. Pointing history to Halifax. Anomaly OPEN.',
   },
 ];
 
@@ -189,6 +186,10 @@ async function executeObjective(page: import('@playwright/test').Page, missionCo
 
     case 'click-tab':
       await missionControlPage.selectTab(objective.tabId!);
+      // Observation-gated conditions latch only after the default dwell on
+      // the tab (DEFAULT_OBSERVATION_DWELL_SECONDS); leaving at once would
+      // reset the read and strand the objective.
+      await page.waitForTimeout(3000);
       break;
 
     case 'set-tracking-mode':

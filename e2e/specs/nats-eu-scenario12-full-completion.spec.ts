@@ -122,7 +122,7 @@ test.describe('nats-eu Scenario 12 Full Completion', () => {
       await missionControl.selectTab(tab);
       await page.waitForTimeout(2500);
     }
-    await answerSystemQuiz(page, 'PLD-ON and the pattern command go up under the command key');
+    await answerSystemQuiz(page, 'Command key for PLD-ON and the pattern going up');
     await dismissDialogIfPresent(page);
     await closeWorkingDocumentIfOpen(page);
     await waitForObjectiveComplete(missionControl, 'Crypto Both Ways');
@@ -139,7 +139,7 @@ test.describe('nats-eu Scenario 12 Full Completion', () => {
   test('[analyzer-on-sar3] frames the SAR-3 plan on the analyzer', async () => {
     await missionControl.selectTab('rx-analysis');
     await fillAndChange(page, '#sa-center-freq', '1330');
-    await answerSystemQuiz(page, 'The CW beacon at 1315');
+    await answerSystemQuiz(page, '1290 transponded return of your own uplink');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Analyzer on the SAR-3 Plan');
   });
@@ -204,7 +204,7 @@ test.describe('nats-eu Scenario 12 Full Completion', () => {
     await disableHpa(page, missionControl);
     await expect(page.locator('#hpa-enable')).not.toBeChecked();
     await page.waitForTimeout(3000); // TX Chain stays on screen so the condition latches
-    await answerSystemQuiz(page, "SAR-3's command transponder turns");
+    await answerSystemQuiz(page, "SAR-3's command transponder returns");
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Secure the Uplink for the Decode');
   });
@@ -222,7 +222,7 @@ test.describe('nats-eu Scenario 12 Full Completion', () => {
 
     // Commit with the live C/N at least 8 dB (6 dB threshold + 2 dB margin)
     await commitLinkWithMargin(page, missionControl, 8);
-    await answerSystemQuiz(page, 'The measured C/N alongside the 10.9 dB prediction');
+    await answerSystemQuiz(page, 'The measured C/N beside the 10.9 dB prediction');
     await dismissDialogIfPresent(page);
     await closeWorkingDocumentIfOpen(page);
     await waitForObjectiveComplete(missionControl, 'First Imagery Decode', 60000);
@@ -240,7 +240,7 @@ test.describe('nats-eu Scenario 12 Full Completion', () => {
 
   test('[sign-the-card] records the verdict', async () => {
     await closeWorkingDocumentIfOpen(page);
-    await answerSystemQuiz(page, 'ACCEPTED at the tested performance');
+    await answerSystemQuiz(page, 'PLD-SAFE not exercised');
     await dismissDialogIfPresent(page);
     await closeWorkingDocumentIfOpen(page);
     await waitForObjectiveComplete(missionControl, 'Sign the Card');

@@ -55,6 +55,7 @@ import { natsEuScenario16Data } from '@app/campaigns/nats-eu/scenario16';
 import { natsEuScenario17Data } from '@app/campaigns/nats-eu/scenario17';
 import { natsEuScenario18Data } from '@app/campaigns/nats-eu/scenario18';
 import { natsEuScenario19Data } from '@app/campaigns/nats-eu/scenario19';
+import { natsEuScenario20Data } from '@app/campaigns/nats-eu/scenario20';
 import { signalHunterSandboxData } from '@app/campaigns/signal-hunter/sandbox';
 import { signalHunterScenario1Data } from '@app/campaigns/signal-hunter/scenario1';
 import { AntennaState } from '@app/equipment/antenna';
@@ -525,6 +526,7 @@ export const SCENARIOS: ScenarioData[] = [
   natsEuScenario17Data,
   natsEuScenario18Data,
   natsEuScenario19Data,
+  natsEuScenario20Data,
   hamSdrSandboxData,
   hamSdrScenario1Data,
   hamSdrScenario2Data,

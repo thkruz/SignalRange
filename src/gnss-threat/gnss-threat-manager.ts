@@ -48,6 +48,8 @@ export class GnssThreatManager {
   private readonly state_: GnssThreatState = { spoofActive: false, timeOffsetUs: 0, referenceMode: 'gnss' };
   private readonly missionStartTime_ = missionNowMs();
   private lastElapsedS_ = 0;
+  /** Elapsed second the timing offset last moved (for gpsdo-time-offset-stable) */
+  private lastOffsetChangeElapsedS_ = 0;
   private readonly boundUpdateHandler_: (dt: Milliseconds) => void;
 
   private constructor() {
@@ -82,6 +84,27 @@ export class GnssThreatManager {
   }
 
   /**
+   * Whether a station's timing reference is inside the spoofer's footprint.
+   * A spoofer is a local emitter: with groundStationIds set, only those
+   * stations see the offset walk; a station outside the list reads 0.0 and is
+   * the operator's cross-check. Omit the list and every station is targeted.
+   */
+  affectsStation(groundStationId: string): boolean {
+    const ids = this.config_.groundStationIds;
+    return !ids || ids.length === 0 || ids.includes(groundStationId);
+  }
+
+  /** The timing offset a station's GPSDO displays (0 outside the footprint). */
+  timeOffsetUsFor(groundStationId: string): number {
+    return this.affectsStation(groundStationId) ? this.state_.timeOffsetUs : 0;
+  }
+
+  /** Seconds since the timing offset last moved (mission time). */
+  get secondsSinceOffsetChange(): number {
+    return Math.max(0, this.lastElapsedS_ - this.lastOffsetChangeElapsedS_);
+  }
+
+  /**
    * Whether the timing reference is currently being spoofed AND the operator has
    * not defended against it (still trusting GNSS). This is the "exposed" state a
    * scenario penalizes; once the operator forces holdover/manual it clears.
@@ -110,8 +133,11 @@ export class GnssThreatManager {
    * calls it from the mission clock in-app.
    */
   advance(seconds: number): void {
-    if (this.isExposedToSpoof) {
+    // Tests drive advance() directly, so keep the elapsed clock consistent here too.
+    this.lastElapsedS_ += seconds;
+    if (this.isExposedToSpoof && seconds > 0) {
       this.state_.timeOffsetUs += (this.config_.offsetDriftUsPerS ?? 5) * seconds;
+      this.lastOffsetChangeElapsedS_ = this.lastElapsedS_;
     }
   }
 
@@ -121,7 +147,7 @@ export class GnssThreatManager {
     this.state_.spoofActive = inWindow;
 
     const deltaS = Math.max(0, elapsed - this.lastElapsedS_);
-    this.lastElapsedS_ = elapsed;
+    this.lastElapsedS_ = elapsed - deltaS; // advance() re-adds it
     this.advance(deltaS);
   }
 }

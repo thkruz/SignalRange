@@ -2761,6 +2761,25 @@ export class ObjectivesManager {
         return GnssThreatManager.getInstance().isReferenceModeSet(mode);
       }
 
+      case 'gpsdo-time-offset-exceeds': {
+        // The tell: this station's GNSS-vs-reference offset has walked past the
+        // threshold. Pair with requiresObservation on gps-timing so the read counts.
+        if (!GnssThreatManager.isInitialized()) return false;
+        const minUs = condition.params?.minOffsetUs ?? 20;
+        const offsetUs = GnssThreatManager.getInstance().timeOffsetUsFor(gs.state.id);
+        this.observe_({ timeOffsetUs: Number(offsetUs.toFixed(1)) });
+        return Math.abs(offsetUs) >= minUs;
+      }
+
+      case 'gpsdo-time-offset-stable': {
+        // The offset has held still for the hold period: in holdover that is
+        // always true, so gate it on gpsdo-reference-mode-set 'gnss' to prove
+        // the spoofer is off the air rather than the reference disconnected.
+        if (!GnssThreatManager.isInitialized()) return false;
+        const holdS = condition.params?.holdSeconds ?? 30;
+        return GnssThreatManager.getInstance().secondsSinceOffsetChange >= holdS;
+      }
+
       default:
         console.warn(`Unknown condition type: ${condition.type}`);
         return false;

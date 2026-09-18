@@ -19,6 +19,7 @@ import { natsEuScenario16Data } from './scenario16';
 import { natsEuScenario17Data } from './scenario17';
 import { natsEuScenario18Data } from './scenario18';
 import { natsEuScenario19Data } from './scenario19';
+import { natsEuScenario20Data } from './scenario20';
 
 /**
  * NATS-EU Campaign (Campaign 2): North Atlantic Teleport Services EU
@@ -35,7 +36,7 @@ export const natsEuCampaignData: CampaignData = {
   imageUrl: 'nats-eu/north-atlantic-teleport-services-eu.png',
   difficulty: 'intermediate',
   // Sum of the sixteen per-scenario `duration` ranges (30-40 min each).
-  totalDuration: '685-720 min',
+  totalDuration: '725-760 min',
   campaignType: 'LEO Commercial Communications',
   headerIdentity: {
     name: 'ATLANTIC',
@@ -68,6 +69,7 @@ export const natsEuCampaignData: CampaignData = {
     natsEuScenario17Data,
     natsEuScenario18Data,
     natsEuScenario19Data,
+    natsEuScenario20Data,
   ],
   isLocked: false,
   // Gated on the Campaign 1 graduation shift, matching the prerequisite on this

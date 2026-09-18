@@ -126,6 +126,8 @@ export type ConditionType =
   | 'transec-sync-locked' // The TRANSEC hop set is keyed and hop-sync is locked
   // M8 GNSS spoofing / timing attack
   | 'gpsdo-reference-mode-set' // The GPSDO reference/discipline mode matches the target
+  | 'gpsdo-time-offset-exceeds' // The GNSS-vs-reference timing offset has walked past a threshold
+  | 'gpsdo-time-offset-stable' // The timing offset has not moved for a hold period
   // Campaign 3 SDR receive chain
   | 'receiver-afc-enabled' // RX modem AFC state matches the target (on by default)
   | 'antenna-polarization-set' // Antenna circular handedness matches the target
@@ -435,6 +437,10 @@ export interface ConditionParams {
   transecMode?: 'fixed' | 'hopping';
   /** For gpsdo-reference-mode-set: target GPSDO reference/discipline mode */
   referenceMode?: 'gnss' | 'holdover' | 'manual';
+  /** For gpsdo-time-offset-exceeds: |offset| in microseconds that counts as walked off (default 20) */
+  minOffsetUs?: number;
+  /** For gpsdo-time-offset-stable: seconds the offset must have held still (default 30) */
+  holdSeconds?: number;
 
   // Observation-gating parameters
   /**

@@ -261,4 +261,38 @@ describe('nats-eu M8 - GNSS spoofing / timing attack', () => {
     mgr.advance(60);
     expect(mgr.state.timeOffsetUs).toBe(frozen);
   });
+
+  it('gpsdo-time-offset-exceeds reads the walked offset only inside the spoofer footprint; -stable counts mission seconds since it last moved', () => {
+    ScenarioManager.getInstance().settings = {
+      ...natsEuSandboxData.settings,
+      gnssThreat: { groundStationIds: ['GW-01'], spoofStartS: 0, offsetDriftUsPerS: 2 },
+    };
+    const mgr = GnssThreatManager.getInstance();
+    mgr.setSpoofActive(true);
+    mgr.advance(15); // 30 us walked while trusting GNSS
+
+    // condition gpsdo-time-offset-exceeds reads timeOffsetUsFor(gs.state.id) against minOffsetUs
+    expect(mgr.timeOffsetUsFor('GW-01')).toBeCloseTo(30, 5);
+    expect(mgr.timeOffsetUsFor('SH-02')).toBe(0); // the cross-check station reads clean
+    expect(mgr.affectsStation('GW-01')).toBe(true);
+    expect(mgr.affectsStation('SH-02')).toBe(false);
+
+    // condition gpsdo-time-offset-stable reads secondsSinceOffsetChange >= holdSeconds
+    expect(mgr.secondsSinceOffsetChange).toBe(0);
+    mgr.setReferenceMode('holdover');
+    mgr.advance(30);
+    expect(mgr.secondsSinceOffsetChange).toBe(30); // frozen in holdover
+
+    // Back on GNSS with the spoofer still up: the offset moves again and the hold resets.
+    mgr.setReferenceMode('gnss');
+    mgr.advance(5);
+    expect(mgr.secondsSinceOffsetChange).toBe(0);
+    expect(mgr.timeOffsetUsFor('GW-01')).toBeCloseTo(40, 5);
+
+    // Spoofer off the air: on GNSS and still, the hold accumulates.
+    mgr.setSpoofActive(false);
+    mgr.advance(45);
+    expect(mgr.secondsSinceOffsetChange).toBe(45);
+    expect(mgr.timeOffsetUsFor('GW-01')).toBeCloseTo(40, 5);
+  });
 });

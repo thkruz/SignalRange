@@ -20,12 +20,13 @@ vi.mock('@app/simulation/sim-time', () => ({
 import { natsEuScenario17Data } from '@app/campaigns/nats-eu/scenario17';
 import { natsEuScenario18Data } from '@app/campaigns/nats-eu/scenario18';
 import { natsEuScenario19Data } from '@app/campaigns/nats-eu/scenario19';
+import { natsEuScenario20Data } from '@app/campaigns/nats-eu/scenario20';
 import type { OrbitalSatellite } from '@app/equipment/satellite/orbital-satellite';
 import type { Condition } from '@app/objectives/objective-types';
 import type { ScenarioData } from '@app/ScenarioData';
 import { PassPlannerService } from '@app/services/pass-planner-service';
 
-const PHASE_3: ScenarioData[] = [natsEuScenario17Data, natsEuScenario18Data, natsEuScenario19Data];
+const PHASE_3: ScenarioData[] = [natsEuScenario17Data, natsEuScenario18Data, natsEuScenario19Data, natsEuScenario20Data];
 
 interface Phase3Settings {
   satellites: OrbitalSatellite[];
@@ -59,7 +60,7 @@ function firstPass(scenario: ScenarioData, sat: OrbitalSatellite) {
 describe('nats-eu Phase 3: scenario wiring', () => {
   it('registers the Gray Zone scenarios in order, advanced, chained from S16', () => {
     const ids = PHASE_3.map((s) => s.id);
-    expect(ids).toEqual(['nats-eu-scenario17', 'nats-eu-scenario18', 'nats-eu-scenario19']);
+    expect(ids).toEqual(['nats-eu-scenario17', 'nats-eu-scenario18', 'nats-eu-scenario19', 'nats-eu-scenario20']);
 
     const expectedPrereq = ['nats-eu-scenario16', ...ids.slice(0, -1)];
     PHASE_3.forEach((scenario, i) => {
@@ -285,5 +286,95 @@ describe('S19 Frequency Agility', () => {
     const ride = scenario.objectives.find((o) => o.id === 'ride-through')!;
     expect(ride.conditions.find((c) => c.type === 'command-acknowledged')!.params!.commandId).toBe(denied);
     expect(ride.prerequisiteObjectiveIds).toEqual(['go-to-hopping']);
+  });
+});
+
+describe('S20 False Time', () => {
+  const scenario = natsEuScenario20Data;
+  type S20Settings = Phase3Settings & {
+    gnssThreat: { groundStationIds?: string[]; spoofStartS: number; spoofEndS?: number; offsetDriftUsPerS?: number };
+  };
+  const s20 = scenario.settings as unknown as S20Settings;
+
+  /** Evaluate a DecisionFactRule against a fact table. */
+  const holdsWith =
+    (facts: Record<string, boolean>) =>
+    (rule: unknown): boolean => {
+      const r = rule as { fact?: string; is?: boolean; all?: unknown[]; any?: unknown[] };
+      if (r.fact) return (facts[r.fact] ?? false) === r.is;
+      if (r.all) return r.all.every(holdsWith(facts));
+      return (r.any ?? []).some(holdsWith(facts));
+    };
+  const correctLabels = (objectiveId: string, facts: Record<string, boolean>): string[] => {
+    const objective = scenario.objectives.find((o) => o.id === objectiveId)!;
+    const decision = objective.conditions.find((c) => c.type === 'decision')!;
+    const siblingIds = new Set(objective.conditions.map((c: Condition) => c.id).filter(Boolean));
+    for (const id of decision.params!.evidence!) expect(siblingIds.has(id)).toBe(true);
+    return decision.params!.decisionOptions!.filter((o) => o.correctWhen && holdsWith(facts)(o.correctWhen)).map((o) => o.label);
+  };
+
+  it('flies SAR-1 at T+22 peaking 29 deg and SAR-2 at T+44 peaking 27 deg, both from the north', () => {
+    const start = startMsOf(scenario);
+    const sar1 = firstPass(scenario, satOf(scenario, 61701));
+    const sar2 = firstPass(scenario, satOf(scenario, 61702));
+
+    expect(Math.abs((sar1.aosMs - start) / 60_000 - 22.0)).toBeLessThan(0.25);
+    expect(Math.abs(sar1.maxEl - 29.2)).toBeLessThan(1.0);
+    expect(Math.abs((sar2.aosMs - start) / 60_000 - 44.0)).toBeLessThan(0.25);
+    expect(Math.abs(sar2.maxEl - 27.0)).toBeLessThan(1.0);
+  });
+
+  it('the spoofer is local to GW-01, opens before SAR-1 with time to call it, and leaves the air between the passes', () => {
+    const start = startMsOf(scenario);
+    const sar1 = firstPass(scenario, satOf(scenario, 61701));
+    const sar2 = firstPass(scenario, satOf(scenario, 61702));
+
+    expect(s20.gnssThreat.groundStationIds).toEqual(['GW-01']); // SH-02 is the cross-check
+    // At least ten minutes between onset and AOS: spot it, cross-check, call it, go to holdover.
+    expect(sar1.aosMs - (start + s20.gnssThreat.spoofStartS * 1000)).toBeGreaterThan(10 * 60_000);
+    // Past 20 us within a minute of onset so the read does not stall the pre-pass.
+    expect((s20.gnssThreat.offsetDriftUsPerS ?? 5) * 60).toBeGreaterThanOrEqual(20);
+    // Off the air after SAR-1 LOS (the probe finds it up) and before SAR-2 AOS (flown on GNSS).
+    const endMs = start + s20.gnssThreat.spoofEndS! * 1000;
+    expect(endMs).toBeGreaterThan(sar1.losMs);
+    expect(endMs).toBeLessThan(sar2.aosMs);
+  });
+
+  it("Rotterdam's timestamp-skew audit entry is dated inside the spoof and is the flagged evidence", () => {
+    const skew = s20.security!.events.find((e) => e.id === 'evt-ts-skew')!;
+    expect(skew.timeS).toBeGreaterThan(s20.gnssThreat.spoofStartS);
+    expect(skew.timeS).toBeLessThan(s20.gnssThreat.spoofEndS!);
+    const report = scenario.objectives.find((o) => o.id === 'report-the-attack')!;
+    expect(report.conditions.find((c) => c.type === 'security-event-acknowledged')!.params!.eventId).toBe('evt-ts-skew');
+  });
+
+  it('call-the-lie: only the spoof option holds when the constellation is healthy and the time is drifting', () => {
+    const facts = { 'timing-drifting': true, 'gnss-constellation-healthy': true, 'equipment-fault-active': false };
+    expect(correctLabels('call-the-lie', facts)).toEqual([
+      'GNSS spoof - the constellation is healthy and the time is walking. Take the GNSS switch down and fly SAR-1 on the oscillator',
+    ]);
+    // A real outage would make the outage option right instead - the pair is the signature.
+    expect(correctLabels('call-the-lie', { ...facts, 'gnss-constellation-healthy': false })).toEqual([
+      'GNSS outage - satellites are being lost. Leave GNSS selected and let the GPSDO drop into holdover by itself',
+    ]);
+  });
+
+  it('probe-the-sky grades against the clock: still walking while the spoofer is up, holding still once it is gone', () => {
+    expect(correctLabels('probe-the-sky', { 'timing-drifting': true, 'gnss-constellation-healthy': true })).toEqual([
+      'Still walking - the spoofer is up. GNSS switch back down; probe again later',
+    ]);
+    expect(correctLabels('probe-the-sky', { 'timing-drifting': false, 'gnss-constellation-healthy': true })).toEqual([
+      'Holding still - the spoofer is off the air. Leave GNSS selected and let it re-discipline',
+    ]);
+  });
+
+  it('all-clear gates the stable-offset read on the reference being back on GNSS, both maintained', () => {
+    const allClear = scenario.objectives.find((o) => o.id === 'all-clear')!;
+    const stable = allClear.conditions.find((c) => c.type === 'gpsdo-time-offset-stable')!;
+    const mode = allClear.conditions.find((c) => c.type === 'gpsdo-reference-mode-set')!;
+    expect(stable.mustMaintain).toBe(true);
+    expect(mode.mustMaintain).toBe(true);
+    expect(mode.params!.referenceMode).toBe('gnss');
+    expect(allClear.conditionLogic).toBe('AND');
   });
 });

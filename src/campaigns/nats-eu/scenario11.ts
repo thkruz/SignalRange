@@ -233,7 +233,7 @@ export const natsEuScenario11Data: ScenarioData = {
       id: 'dashboard-sweep',
       nice: ['T0153', 'K0741'],
       title: 'GW-01 Dashboard Sweep',
-      description: 'A new spacecraft starts with a clean board. Confirm the active alarm state on GW-01.',
+      description: 'A new spacecraft starts with the board read. Confirm the active alarm state on GW-01.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['review-mission-brief'],
       timeLimitSeconds: 90,
@@ -252,9 +252,15 @@ export const natsEuScenario11Data: ScenarioData = {
           params: {
             character: Character.SYSTEM,
             question: 'What is the active alarm state on GW-01 as the LEOP card opens?',
-            options: ['No active alarms - all systems nominal', 'GPSDO in holdover', 'LNB reference unlocked', 'Antenna drive fault'],
+            options: [
+              'RX AGC at max gain (weak signal) - empty sky, not a fault; no hardware alarms',
+              'No active alarms - all systems nominal',
+              'GPSDO in holdover',
+              'Antenna drive fault',
+            ],
             correctIndex: 0,
-            explanation: 'Clean board. On a new spacecraft every anomaly will be blamed on the bird first; the board is how you prove it was not the station.',
+            explanation:
+              'The AGC rail is empty sky, not a fault. On a new spacecraft every anomaly will be blamed on the bird first; the board is how you prove it was not the station.',
             pointPenalty: 5,
           },
           mustMaintain: false,

@@ -1,7 +1,7 @@
 import { expect, Page, test } from '@playwright/test';
 import { MissionControlPage } from '../pages/mission-control.page';
 import { domClick, waitForObjectiveComplete } from '../utils/ham-sdr-helpers';
-import { answerSystemQuiz, fillAndChange, setRxModemFrequency } from '../utils/nats-eu-helpers';
+import { answerSystemQuiz, expectDashboardAlarm, fillAndChange, setRxModemFrequency } from '../utils/nats-eu-helpers';
 import { dismissDialogIfPresent, waitForQuizToAppear, waitForSimulationReady } from '../utils/simulation-helpers';
 
 /**
@@ -120,7 +120,8 @@ test.describe('nats-eu time skip', () => {
     test.setTimeout(180000);
     await missionControl.selectGroundStation('GW-01');
     await missionControl.selectTab('dashboard');
-    await answerSystemQuiz(page, 'No active alarms');
+    await expectDashboardAlarm(page, 'AGC at max gain');
+    await answerSystemQuiz(page, 'RX AGC at max gain');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'GW-01 Dashboard Sweep');
 

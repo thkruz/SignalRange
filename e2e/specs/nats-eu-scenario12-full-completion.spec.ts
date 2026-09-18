@@ -9,6 +9,7 @@ import {
   disableHpa,
   enableDopplerComp,
   enableHpa,
+  expectDashboardAlarm,
   fillAndChange,
   parkAntenna,
   programTrack,
@@ -85,10 +86,11 @@ test.describe('nats-eu Scenario 12 Full Completion', () => {
     await waitForObjectiveComplete(missionControl, 'Read the Test Plan');
   });
 
-  test('[dashboard-sweep] confirms a clean board', async () => {
+  test('[dashboard-sweep] reads the board: AGC rail, no faults', async () => {
     await missionControl.selectGroundStation('GW-01');
     await missionControl.selectTab('dashboard');
-    await answerSystemQuiz(page, 'No active alarms');
+    await expectDashboardAlarm(page, 'AGC at max gain');
+    await answerSystemQuiz(page, 'RX AGC at max gain');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'GW-01 Dashboard Sweep');
   });

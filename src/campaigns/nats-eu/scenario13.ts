@@ -258,7 +258,7 @@ export const natsEuScenario13Data: ScenarioData = {
       nice: ['T0431', 'K0740'],
       title: 'GW-01 Pre-Pass Sweep',
       description:
-        'Board, reference and downconversion before the 13:12 pass: no active alarms, GPSDO locked, LNB on the 13100 MHz LO. Note what the LNB panel says while you are there.',
+        'Board, reference and downconversion before the 13:12 pass: nothing on the board but the RX AGC rail, GPSDO locked, LNB on the 13100 MHz LO. Note what the LNB panel says while you are there.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['review-mission-brief'],
       timeLimitSeconds: 2 * 60,

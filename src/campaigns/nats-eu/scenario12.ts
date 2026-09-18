@@ -253,7 +253,7 @@ export const natsEuScenario12Data: ScenarioData = {
       id: 'dashboard-sweep',
       nice: ['T0153', 'K0741'],
       title: 'GW-01 Dashboard Sweep',
-      description: 'Acceptance starts with a clean board. Confirm the active alarm state on GW-01.',
+      description: 'Acceptance starts with the board read. Confirm the active alarm state on GW-01.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['review-mission-brief'],
       timeLimitSeconds: 90,
@@ -272,9 +272,15 @@ export const natsEuScenario12Data: ScenarioData = {
           params: {
             character: Character.SYSTEM,
             question: 'What is the active alarm state on GW-01 as the test card opens?',
-            options: ['No active alarms - all systems nominal', 'HPA over-temperature from the morning passes', 'BUC reference unlocked', 'Payload crypto key expired'],
+            options: [
+              'RX AGC at max gain (weak signal) - empty sky, not a fault; no hardware alarms',
+              'No active alarms - all systems nominal',
+              'HPA over-temperature from the morning passes',
+              'Payload crypto key expired',
+            ],
             correctIndex: 0,
-            explanation: 'Clean board. An acceptance number measured on a station with an open alarm is not an acceptance number; the card would carry the alarm as a qualifier.',
+            explanation:
+              'The AGC rail is empty sky, not a fault, and it clears when the test carrier arrives. An acceptance number measured on a station with an open alarm is not an acceptance number; the card would carry the alarm as a qualifier.',
             pointPenalty: 5,
           },
           mustMaintain: false,

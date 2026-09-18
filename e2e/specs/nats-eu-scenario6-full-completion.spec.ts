@@ -1,7 +1,7 @@
 import { expect, Page, test } from '@playwright/test';
 import { MissionControlPage } from '../pages/mission-control.page';
 import { advanceMissionClockToUtc, domClick, waitForObjectiveComplete } from '../utils/ham-sdr-helpers';
-import { answerSystemQuiz, closeWorkingDocumentIfOpen, fillAndChange, programTrack, setRxModemFrequency } from '../utils/nats-eu-helpers';
+import { answerSystemQuiz, closeWorkingDocumentIfOpen, expectDashboardAlarm, fillAndChange, programTrack, setRxModemFrequency } from '../utils/nats-eu-helpers';
 import { dismissDialogIfPresent, waitForSimulationReady } from '../utils/simulation-helpers';
 
 /**
@@ -70,10 +70,11 @@ test.describe('nats-eu Scenario 6 Full Completion', () => {
     await waitForObjectiveComplete(missionControl, 'Review the Baseline Task');
   });
 
-  test('[dashboard-sweep] confirms a clean board', async () => {
+  test('[dashboard-sweep] reads the board: AGC rail, no faults', async () => {
     await missionControl.selectGroundStation('GW-01');
     await missionControl.selectTab('dashboard');
-    await answerSystemQuiz(page, 'No active alarms');
+    await expectDashboardAlarm(page, 'AGC at max gain');
+    await answerSystemQuiz(page, 'RX AGC at max gain');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'GW-01 Dashboard Sweep');
   });

@@ -250,9 +250,15 @@ export const natsEuScenario9Data: ScenarioData = {
           params: {
             character: Character.SYSTEM,
             question: 'What is the active alarm state on GW-01 at turnover?',
-            options: ['No active alarms - all systems nominal', 'GPSDO in holdover', 'BUC over-temperature', 'Antenna drive fault'],
+            options: [
+              'RX AGC at max gain (weak signal) - empty sky, not a fault; no hardware alarms',
+              'No active alarms - all systems nominal',
+              'GPSDO in holdover',
+              'Antenna drive fault',
+            ],
             correctIndex: 0,
-            explanation: 'Clean board. The evening shift left the hardware healthy and the receiver on the wrong bird; the next three checks find which is which.',
+            explanation:
+              'The AGC rail is empty sky, not a fault. The evening shift left the hardware healthy and the receiver on the wrong bird; the next three checks find which is which.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -479,16 +485,16 @@ export const natsEuScenario9Data: ScenarioData = {
           description: 'Remote Board Read',
           params: {
             character: Character.SYSTEM,
-            question: 'SH-02 shows no active alarms. What does a clean board on a remote site tell you, and what does it not?',
+            question: 'SH-02 shows one warning, the receive AGC at its rail, and nothing else. What does that board on a remote site tell you, and what does it not?',
             options: [
-              'Nothing in the alarm set is tripped; it says nothing about configuration, which is what the next three checks are for',
+              'Nothing in the alarm set is tripped and the AGC rail is empty sky; it says nothing about configuration, which is what the next three checks are for',
               'The site is ready to fly',
               'Fiona has already checked it, so the rest of the sweep can be skipped',
               'The equipment is powered and nothing more',
             ],
             correctIndex: 0,
             explanation:
-              'An alarm is a threshold crossed. A modem on the wrong carrier, an analyzer on the wrong span, an antenna stowed the wrong way - none of those is an alarm, and any of them loses a pass.',
+              'An alarm is a threshold crossed, and an AGC at its rail with nothing in the beam is the threshold behaving. A modem on the wrong carrier, an analyzer on the wrong span, an antenna stowed the wrong way - none of those is an alarm, and any of them loses a pass.',
             pointPenalty: 5,
           },
           mustMaintain: false,

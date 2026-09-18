@@ -208,9 +208,15 @@ export const natsEuScenario5Data: ScenarioData = {
           params: {
             character: Character.SYSTEM,
             question: 'What is the active alarm state on GW-01 at turnover?',
-            options: ['No active alarms - all systems nominal', 'GPSDO in holdover', 'BUC over-temperature', 'Antenna drive fault'],
+            options: [
+              'RX AGC at max gain (weak signal) - empty sky, not a fault; no hardware alarms',
+              'No active alarms - all systems nominal',
+              'GPSDO in holdover',
+              'Antenna drive fault',
+            ],
             correctIndex: 0,
-            explanation: 'Clean board at home. Shetland is the one nobody has swept from this console yet.',
+            explanation:
+              'The AGC rail is the board telling you the antenna is looking at empty sky, not that something broke; it clears on acquisition. Shetland is the one nobody has swept from this console yet.',
             pointPenalty: 5,
           },
           mustMaintain: false,

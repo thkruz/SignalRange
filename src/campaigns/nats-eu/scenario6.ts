@@ -266,9 +266,15 @@ export const natsEuScenario6Data: ScenarioData = {
           params: {
             character: Character.SYSTEM,
             question: 'What is the active alarm state on GW-01 at turnover?',
-            options: ['No active alarms - all systems nominal', 'GPSDO in holdover', 'Security console: unacknowledged anomaly', 'BUC over-temperature'],
+            options: [
+              'RX AGC at max gain (weak signal) - empty sky, not a fault; no hardware alarms',
+              'No active alarms - all systems nominal',
+              'Security console: unacknowledged anomaly',
+              'GPSDO in holdover',
+            ],
             correctIndex: 0,
-            explanation: 'Clean board. The security console does not raise dashboard alarms; that is exactly why somebody has to read it.',
+            explanation:
+              'The only entry is the receive AGC at its rail: empty sky, not a fault. The security console does not raise dashboard alarms; that is exactly why somebody has to read it.',
             pointPenalty: 5,
           },
           mustMaintain: false,

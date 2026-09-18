@@ -195,10 +195,15 @@ export const natsEuScenario7Data: ScenarioData = {
           params: {
             character: Character.SYSTEM,
             question: 'What is the active alarm state on GW-01 at turnover?',
-            options: ['No active alarms - all systems nominal', 'Ephemeris stale on MERIDIAN-SAR-2', 'GPSDO in holdover', 'Antenna drive fault'],
+            options: [
+              'RX AGC at max gain (weak signal) - empty sky, not a fault; no hardware alarms',
+              'No active alarms - all systems nominal',
+              'Ephemeris stale on MERIDIAN-SAR-2',
+              'GPSDO in holdover',
+            ],
             correctIndex: 0,
             explanation:
-              'Clean board, and no stale flag yet: the burn has not happened. When it does, the ephemeris panel on the Pass Schedule tab is where it shows, not the dashboard.',
+              'The AGC rail is empty sky, not a fault, and there is no stale flag yet: the burn has not happened. When it does, the ephemeris panel on the Pass Schedule tab is where it shows, not the dashboard.',
             pointPenalty: 5,
           },
           mustMaintain: false,

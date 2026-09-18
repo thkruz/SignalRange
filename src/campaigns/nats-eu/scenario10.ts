@@ -242,10 +242,15 @@ export const natsEuScenario10Data: ScenarioData = {
           params: {
             character: Character.SYSTEM,
             question: 'What is the active alarm state on GW-01 when the tasking comes in?',
-            options: ['No active alarms - all systems nominal', 'HPA over-temperature', 'BUC reference unlocked', 'GPSDO in holdover'],
+            options: [
+              'RX AGC at max gain (weak signal) - empty sky, not a fault; no hardware alarms',
+              'No active alarms - all systems nominal',
+              'HPA over-temperature',
+              'GPSDO in holdover',
+            ],
             correctIndex: 0,
             explanation:
-              'Clean board. Nothing is tripped; that does not mean the chain is set the way the tasking needs it. The maintenance run this morning left its fingerprints on the BUC and the modem.',
+              'The AGC rail is empty sky, not a fault, and nothing else is tripped; that does not mean the chain is set the way the tasking needs it. The maintenance run this morning left its fingerprints on the BUC and the modem.',
             pointPenalty: 5,
           },
           mustMaintain: false,

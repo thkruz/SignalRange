@@ -185,9 +185,15 @@ export const natsEuScenario1Data: ScenarioData = {
           params: {
             character: Character.SYSTEM,
             question: 'What is the active alarm state on GW-01 at turnover?',
-            options: ['No active alarms - all systems nominal', 'GPSDO in holdover', 'BUC over-temperature', 'LNB reference unlocked'],
+            options: [
+              'RX AGC at max gain (weak signal) - empty sky, not a fault; no hardware alarms',
+              'No active alarms - all systems nominal',
+              'GPSDO in holdover',
+              'LNB reference unlocked',
+            ],
             correctIndex: 0,
-            explanation: 'Clean board. The acceptance crew left the hardware healthy; what they did not leave is a station configured for this pass.',
+            explanation:
+              'One line on the board and it is not a fault: the receive AGC sits at its 10 dB rail because the tracker is stowed and there is nothing in the beam. It clears when the beacon arrives. The acceptance crew left the hardware healthy; what they did not leave is a station configured for this pass.',
             pointPenalty: 5,
           },
           mustMaintain: false,

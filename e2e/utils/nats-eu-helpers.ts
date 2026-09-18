@@ -21,6 +21,16 @@ import { waitForQuizToAppear } from './simulation-helpers';
  * mission together), never advanceSimClock alone.
  */
 
+/**
+ * Assert the Dashboard's Active Alarms card lists an entry containing `text`.
+ * Sweep quizzes are graded against the board the simulation actually shows,
+ * so read the board before answering instead of trusting the quiz's own copy.
+ */
+export async function expectDashboardAlarm(page: Page, text: string): Promise<void> {
+  const entry = page.locator('#alarm-list .alarm-message', { hasText: text });
+  await expect(entry.first()).toBeVisible({ timeout: 15000 });
+}
+
 /** Answer a SYSTEM status-check quiz by option text and dismiss the feedback. */
 export async function answerSystemQuiz(page: Page, answerText: string): Promise<void> {
   await waitForQuizToAppear(page);

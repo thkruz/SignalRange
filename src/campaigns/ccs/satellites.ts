@@ -104,3 +104,67 @@ export const cobalt4Satellite = new OrbitalSatellite(
     ],
   }
 );
+
+/**
+ * TALON-2 - the unit's own X-band MILSATCOM relay (phase 18 E, ccs S3-S5).
+ *
+ * The friendly bird whose 8175-8225 MHz uplink is the protected band in the
+ * EA scenarios. SANDSTORM doubles as its TT&C backup when the primary
+ * MILSATCOM terminal is down: the monitor aperture takes its telemetry, the
+ * TX chain carries its command uplink. Slot 110.0 W (az 166.0 / el 49.6 from
+ * SANDSTORM, holding to 0.05 deg); TLE authored with the COBALT-4 tool at the
+ * 2027-11-08 02:00:00 UTC S3 epoch.
+ *
+ * X-band plan: TT&C uplink 8200 MHz (H-pol, IF 1200 through the 7000 MHz BUC
+ * LO); telemetry / beacon downlink 7300 MHz (V-pol CW carrier, IF 1625
+ * through the 8925 MHz LNB LO). The state-of-health stream itself is
+ * settings.telemetry; the beacon is what the aperture points at.
+ */
+/** TALON-2 element set at the S3 epoch (slot 110.0 W); S5's post-burn set. */
+export const TALON2_TLE = {
+  tle1: '1 90071U 27300A   27312.08333333  .00000010  00000-0  00000-0 0  9991' as TleLine1,
+  tle2: '2 90071   0.0500 147.0000 0001000  90.0000  90.0000  1.00273791123450' as TleLine2,
+};
+
+export const talon2Satellite = new OrbitalSatellite(
+  'TALON-2',
+  90071, // Fictional NORAD ID (friendly)
+  [],
+  [],
+  {
+    ...TALON2_TLE,
+    observer: sandstormObserver,
+    isDopplerEnabled: false,
+  },
+  {
+    rotation: 0 as Degrees,
+    frequencyOffset: 0.9e9 as Hertz,
+    ephemerisErrorAz: 0.05 as Degrees,
+    ephemerisErrorEl: 0.04 as Degrees,
+    transponderConfigs: [
+      {
+        id: 'TP-T1',
+        uplinkCenterFrequency: 8200e6 as RfFrequency, // Passband 8175-8225 MHz (the protected band)
+        bandwidth: 50e6 as Hertz,
+        frequencyOffset: 0.9e9 as Hertz, // Downlink centre: 7300 MHz
+        polarization: 'H',
+        beacon: {
+          frequency: 7300e6 as RfFrequency, // Telemetry carrier (CW)
+          signalId: 'TALON-2-Beacon',
+          serverId: 1,
+          noradId: 90071,
+          power: 6 as dBm,
+          bandwidth: 1e3 as Hertz,
+          modulation: 'CW' as ModulationType,
+          fec: 'null' as FECType,
+          polarization: 'V',
+          feed: '',
+          isDegraded: false,
+          origin: SignalOrigin.TRANSMITTER,
+          noiseFloor: null,
+          gainInPath: 0 as dBi,
+        },
+      } as TransponderConfig,
+    ],
+  }
+);

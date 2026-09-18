@@ -1,6 +1,9 @@
 import type { CampaignData } from '@app/campaigns/campaign-types';
 import { ccsScenario1Data } from '@app/campaigns/ccs/scenario1';
 import { ccsScenario2Data } from '@app/campaigns/ccs/scenario2';
+import { ccsScenario3Data } from '@app/campaigns/ccs/scenario3';
+import { ccsScenario4Data } from '@app/campaigns/ccs/scenario4';
+import { ccsScenario5Data } from '@app/campaigns/ccs/scenario5';
 import { hamSdrSandboxData } from '@app/campaigns/ham-sdr/sandbox';
 import { hamSdrScenario1Data } from '@app/campaigns/ham-sdr/scenario1';
 import { hamSdrScenario2Data } from '@app/campaigns/ham-sdr/scenario2';
@@ -135,7 +138,7 @@ export const ccsCampaignData: CampaignData = {
   description: `This campaign delves into the realm of electronic warfare and counter communications systems. As a specialist in this field, you'll navigate through a series of scenarios that challenge you to identify, analyze, and disrupt hostile communication signals while ensuring the integrity of friendly communications.<br><br>Through these scenarios, you'll develop expertise in signal intelligence, jamming techniques, and electronic countermeasures, all while operating within the constraints of modern electronic warfare environments.`,
   imageUrl: 'ccs/ccs.png',
   difficulty: 'advanced',
-  totalDuration: '25-35 min',
+  totalDuration: '100-140 min',
   campaignType: 'Electronic Warfare',
   headerIdentity: {
     name: 'COUNTER',
@@ -143,9 +146,9 @@ export const ccsCampaignData: CampaignData = {
     icon: 'fa-solid fa-tower-broadcast',
   },
   chromeVariant: 'astro',
-  // Sandbox plus the first scored mission (Failover); the rest of the arc is not authored yet.
+  // Sandbox, Failover, and the spacecraft half (First Shift, State of Health, Ranging Pass).
   releaseStage: 'alpha',
-  scenarios: [ccsScenario1Data, ccsScenario2Data],
+  scenarios: [ccsScenario1Data, ccsScenario2Data, ccsScenario3Data, ccsScenario4Data, ccsScenario5Data],
   isLocked: false,
   isDisabled: false,
 };

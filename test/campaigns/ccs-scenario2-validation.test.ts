@@ -122,7 +122,7 @@ describe('ccs scenario 2: wiring', () => {
     expect(urls.filter((url) => url === ccsScenario2Data.url)).toHaveLength(1);
     expect(new Set(ids).size).toBe(ids.length);
 
-    expect(ccsCampaignData.scenarios.map((s) => s.id)).toEqual(['ccs-scenario1', 'ccs-scenario2']);
+    expect(ccsCampaignData.scenarios.map((s) => s.id)).toEqual(['ccs-scenario1', 'ccs-scenario2', 'ccs-scenario3', 'ccs-scenario4', 'ccs-scenario5']);
   });
 
   it('follows the sandbox as the first scored mission', () => {

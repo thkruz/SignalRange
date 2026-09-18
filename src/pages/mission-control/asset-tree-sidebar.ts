@@ -24,6 +24,7 @@ import { QuizManager } from '@app/modal/quiz-manager';
 import { ObjectivesManager } from '@app/objectives';
 import { OpsLogModal } from '@app/ops-log/ops-log-modal';
 import { ScenarioManager } from '@app/scenario-manager';
+import { CampaignRecordPanel } from '@app/scenarios/campaign-record-panel';
 import { WorkingDocumentManager } from '@app/scenarios/working-document-manager';
 import { SimulationManager } from '@app/simulation/simulation-manager';
 import './asset-tree-sidebar.css';
@@ -200,6 +201,14 @@ export class AssetTreeSidebar extends BaseElement {
     btn.addEventListener('click', () => {
       WorkingDocumentManager.getInstance().open();
     });
+
+    // The campaign record: earlier scenarios' documents, read-only. Shown
+    // when the scenario keeps a working document and there is history to read.
+    const recordBtn = qs('.campaign-record-icon', this.dom_);
+    if (recordBtn && WorkingDocumentManager.isEnabled() && CampaignRecordPanel.hasContent()) {
+      (recordBtn as HTMLElement).style.display = '';
+      recordBtn.addEventListener('click', () => CampaignRecordPanel.getInstance().open());
+    }
   }
 
   private addMissionBriefListener_(): void {
@@ -387,6 +396,12 @@ export class AssetTreeSidebar extends BaseElement {
             <img src="${checklistPng}" alt="Working Document"/>
           </span>
           <span class="flex-fill">Working Doc</span>
+        </a>
+        <a class="list-group-item list-group-item-action d-flex align-items-center campaign-record-icon" data-tooltip="Campaign Record" style="display: none;">
+          <span class="item-icon">
+            <img src="${checklistPng}" alt="Campaign Record"/>
+          </span>
+          <span class="flex-fill">Campaign Record</span>
         </a>
         <a class="list-group-item list-group-item-action d-flex align-items-center dialog-icon" data-tooltip="Dialog History">
           <span class="item-icon">

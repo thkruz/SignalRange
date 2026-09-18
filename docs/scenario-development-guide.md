@@ -585,7 +585,7 @@ right answer in a scenario with a different interference schedule or injected fa
 **Evidence facts** (the only vocabulary `correctWhen` may use): `interference-active`,
 `equipment-fault-active`, `crypto-intact`, `gnss-constellation-healthy`, `timing-drifting`,
 `reference-in-holdover`, `weather-attenuation-dominant`, `audit-anomaly-present`, `config-drifted`,
-`command-window-open`, `uplink-jammed`. Every fact is held for the observation grace period so a
+`command-window-open`, `uplink-jammed`, `evidence-chain-intact`. Every fact is held for the observation grace period so a
 transient frame cannot flip the right answer, and `interference-active` reads the event *envelope*
 (a duty-cycled jammer counts in its off phase too). `uplink-jammed` needs `settings.commanding.uplinkFrequencyHz`
 and a transponder-path interference event on the target bird; TRANSEC hop-sync clears it.
@@ -593,6 +593,22 @@ and a transponder-path interference event on the target bird; TRANSEC hop-sync c
 **Evidence gating.** `evidence` names sibling conditions by their `id`. The options stay clickable
 before those latch, but a correct answer given early scores only `partialCreditUnevidenced`. The
 modal shows the checklist live. Give the sibling conditions an `id` and `requiresObservation`.
+
+### 9.14 Campaign Record
+
+A scenario's Working Document is filed into a campaign-scoped store (`CampaignDocumentStore`,
+localStorage, keyed by campaign id) when the scenario completes, together with any audit-event ids a
+`destroyEvidence` consequence removed during the run. Later scenarios read it back:
+
+| Condition | Description | Key Params |
+|-----------|-------------|------------|
+| `campaign-document-reviewed` | The Campaign Record panel (sidebar, next to Working Doc) has been opened this run | - |
+
+An audit entry can carry evidence forward with `requiresCampaignEvidence: { scenarioId, eventId }`.
+If the record says that evidence was destroyed there, the entry is dropped from this scenario's log at
+load and the `evidence-chain-intact` fact reads false - so a decision can grade "attributable" against
+"unattributable" on what the player actually preserved. Scenarios not completed in this browser show
+their canonical `documentLine`s in the panel, marked "as filed", so a fresh S22 still has S17-S21 to read.
 
 **Consequences** fire on whichever option is chosen, right or wrong — that is the teaching. Keys:
 `inject` (a `FAULT_TEMPLATES` key), `clearFault`, `startInterference` / `stopInterference` (an

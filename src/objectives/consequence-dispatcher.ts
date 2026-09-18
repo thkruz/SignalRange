@@ -12,6 +12,7 @@
 import { FAULT_TEMPLATES, FaultInjector, FaultTemplateKey } from '@app/faults';
 import { InterferenceManager } from '@app/interference/interference-manager';
 import { OpsLogManager } from '@app/ops-log/ops-log-manager';
+import { CampaignDocumentStore } from '@app/scenarios/campaign-document-store';
 import { SecurityConsoleCore } from '@app/security-console/security-console-core';
 import type { DecisionConsequence } from './objective-types';
 import { ObjectivesManager } from './objectives-manager';
@@ -147,6 +148,9 @@ export class ConsequenceDispatcher {
       this.injectedFaultIds_.delete(spec.faultId);
     }
     if (removed) {
+      // Remembered in the campaign record: a later scenario carrying this
+      // evidence forward (requiresCampaignEvidence) finds it gone.
+      if (spec.auditEventId) CampaignDocumentStore.noteDestroyedEvidence(spec.auditEventId);
       result.applied.push('destroyEvidence');
     } else {
       result.skipped.push({ key: 'destroyEvidence', reason: 'nothing matched' });

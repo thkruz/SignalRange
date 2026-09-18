@@ -8,7 +8,13 @@ const faults = { has: false };
 const crypto = { has: false, rx: { decryptionMode: 'ACTIVE', decryptionKeyStatus: 'Valid', decryptionAuthTagVerified: true } };
 const gnss = { initialized: false, exposed: false };
 const weather = { events: [] as { linkMarginDegradation: number }[] };
-const security = { initialized: false, anomaly: false, log: [] as { id: string; category: string; isAnomaly?: boolean }[], acked: new Set<string>() };
+const security = {
+  initialized: false,
+  anomaly: false,
+  log: [] as { id: string; category: string; isAnomaly?: boolean }[],
+  acked: new Set<string>(),
+  dropped: [] as { id: string }[],
+};
 const commanding = { initialized: false, windowOpen: false, jammed: false };
 
 vi.mock('../../src/interference/interference-manager', () => ({
@@ -44,6 +50,9 @@ vi.mock('../../src/security-console/security-console-core', () => ({
       hasUnacknowledgedAnomaly: () => security.anomaly,
       getVisibleLog: () => security.log,
       isEventAcknowledged: (id: string) => security.acked.has(id),
+      get droppedEvidence() {
+        return security.dropped;
+      },
     }),
   },
 }));
@@ -81,7 +90,7 @@ beforeEach(() => {
 describe('evidence facts - resolvers', () => {
   it('reads "nothing wrong" when a subsystem is absent', () => {
     for (const id of EVIDENCE_FACT_IDS) {
-      const expected = id === 'crypto-intact' || id === 'gnss-constellation-healthy';
+      const expected = id === 'crypto-intact' || id === 'gnss-constellation-healthy' || id === 'evidence-chain-intact';
       expect(EVIDENCE_FACTS[id](ctx()), id).toBe(expected);
     }
   });
@@ -143,6 +152,16 @@ describe('evidence facts - resolvers', () => {
     expect(EVIDENCE_FACTS['config-drifted'](ctx())).toBe(true);
     security.acked.add('cfg-1');
     expect(EVIDENCE_FACTS['config-drifted'](ctx())).toBe(false);
+  });
+
+  it('evidence-chain-intact is true without a security console and false once a carried-forward entry was dropped', () => {
+    security.initialized = false;
+    expect(EVIDENCE_FACTS['evidence-chain-intact'](ctx())).toBe(true);
+    security.initialized = true;
+    expect(EVIDENCE_FACTS['evidence-chain-intact'](ctx())).toBe(true);
+    security.dropped = [{ id: 'evt-kg-replay-log' }];
+    expect(EVIDENCE_FACTS['evidence-chain-intact'](ctx())).toBe(false);
+    security.dropped = [];
   });
 
   it('command-window-open and uplink-jammed read the commanding manager', () => {

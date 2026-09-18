@@ -85,6 +85,8 @@ export const EVIDENCE_FACTS: Record<EvidenceFactId, EvidenceFactResolver> = {
 
   'command-window-open': () => CommandingManager.isInitialized() && CommandingManager.getInstance().isWindowOpen(),
 
+  'evidence-chain-intact': () => !SecurityConsoleCore.isInitialized() || SecurityConsoleCore.getInstance().droppedEvidence.length === 0,
+
   'uplink-jammed': () => CommandingManager.isInitialized() && CommandingManager.getInstance().isUplinkJammed(),
 };
 

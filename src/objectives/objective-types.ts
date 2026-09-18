@@ -128,6 +128,8 @@ export type ConditionType =
   | 'gpsdo-reference-mode-set' // The GPSDO reference/discipline mode matches the target
   | 'gpsdo-time-offset-exceeds' // The GNSS-vs-reference timing offset has walked past a threshold
   | 'gpsdo-time-offset-stable' // The timing offset has not moved for a hold period
+  // Campaign record (phase 18 D)
+  | 'campaign-document-reviewed' // The campaign record panel (earlier scenarios' Working Documents) has been opened
   // Campaign 3 SDR receive chain
   | 'receiver-afc-enabled' // RX modem AFC state matches the target (on by default)
   | 'antenna-polarization-set' // Antenna circular handedness matches the target
@@ -152,6 +154,7 @@ export const EVIDENCE_FACT_IDS = [
   'config-drifted', // an unacknowledged config-change anomaly is in the audit log
   'command-window-open', // a TT&C command window is open right now
   'uplink-jammed', // the command carrier is denied by interference on the target's uplink, with no TRANSEC sync
+  'evidence-chain-intact', // no audit entry carried forward from an earlier scenario was lost to a destroyEvidence there
 ] as const;
 
 export type EvidenceFactId = (typeof EVIDENCE_FACT_IDS)[number];

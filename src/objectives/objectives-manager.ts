@@ -24,6 +24,7 @@ import { HintManager } from '@app/modal/hint-manager';
 import { QuizManager } from '@app/modal/quiz-manager';
 import { OpsLogManager } from '@app/ops-log/ops-log-manager';
 import { TabbedCanvas } from '@app/pages/mission-control/tabbed-canvas';
+import { CampaignDocumentStore } from '@app/scenarios/campaign-document-store';
 import { SecurityConsoleCore } from '@app/security-console/security-console-core';
 import { missionNowMs } from '@app/simulation/mission-clock';
 import { SimulationManager } from '@app/simulation/simulation-manager';
@@ -2769,6 +2770,11 @@ export class ObjectivesManager {
         const offsetUs = GnssThreatManager.getInstance().timeOffsetUsFor(gs.state.id);
         this.observe_({ timeOffsetUs: Number(offsetUs.toFixed(1)) });
         return Math.abs(offsetUs) >= minUs;
+      }
+
+      case 'campaign-document-reviewed': {
+        // The campaign record (earlier scenarios' Working Documents) has been opened this run
+        return CampaignDocumentStore.isReviewed;
       }
 
       case 'gpsdo-time-offset-stable': {

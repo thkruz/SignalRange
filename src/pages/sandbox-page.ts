@@ -16,6 +16,7 @@ import { Body } from '@app/pages/layout/body/body';
 import { Equipment } from '@app/pages/sandbox/equipment';
 import { NavigationOptions } from '@app/router';
 import { ScenarioManager } from '@app/scenario-manager';
+import { CampaignRecordPanel } from '@app/scenarios/campaign-record-panel';
 import { ScenarioDialogManager } from '@app/scenarios/scenario-dialog-manager';
 import { WorkingDocumentManager } from '@app/scenarios/working-document-manager';
 import { SecurityConsoleCore } from '@app/security-console/security-console-core';
@@ -185,6 +186,7 @@ export class SandboxPage extends BasePage {
     ObjectivesManager.destroy();
     ScenarioDialogManager.reset();
     WorkingDocumentManager.reset();
+    CampaignRecordPanel.reset();
     WeatherManager.destroy();
     InterferenceManager.destroy();
     ElectronicAttackManager.destroy();

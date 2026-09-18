@@ -15,6 +15,7 @@
  */
 
 import { ScenarioManager } from '@app/scenario-manager';
+import { CampaignDocumentStore, campaignIdOf } from '@app/scenarios/campaign-document-store';
 import { missionNowMs } from '@app/simulation/mission-clock';
 
 export type AccountStatus = 'active' | 'disabled' | 'expired';
@@ -42,6 +43,12 @@ export interface AuditEventConfig {
   severity: AuditSeverity;
   /** True if this entry is an anomaly the operator is expected to flag */
   isAnomaly?: boolean;
+  /**
+   * This entry carries evidence forward from an earlier scenario. If the
+   * campaign record says a decision destroyed that evidence there, the entry
+   * is dropped from this log at load (and evidence-chain-intact reads false).
+   */
+  requiresCampaignEvidence?: { scenarioId: string; eventId: string };
 }
 
 /** settings.security */
@@ -58,10 +65,28 @@ export class SecurityConsoleCore {
   private readonly acknowledged_ = new Set<string>();
   private readonly accountStatus_ = new Map<string, AccountStatus>();
   private reviewed_ = false;
+  /** Entries dropped at load because their carried-forward evidence was destroyed */
+  private readonly droppedEvidence_: AuditEventConfig[] = [];
 
   private constructor() {
-    this.config_ = (ScenarioManager.getInstance().settings.security as SecurityConfig | undefined) ?? { accounts: [], events: [] };
+    const settings = ScenarioManager.getInstance().settings;
+    const configured = (settings.security as SecurityConfig | undefined) ?? { accounts: [], events: [] };
+    const campaignId = campaignIdOf(ScenarioManager.getInstance().data);
+    const kept = configured.events.filter((e) => {
+      const req = e.requiresCampaignEvidence;
+      const destroyed = !!req && CampaignDocumentStore.wasEvidenceDestroyed(campaignId, req.scenarioId, req.eventId);
+      if (destroyed) this.droppedEvidence_.push(e);
+      return !destroyed;
+    });
+    // Copy the list: injectEvent/removeEvent mutate it, and the scenario
+    // definition must stay pristine for a replay.
+    this.config_ = { accounts: configured.accounts, events: kept };
     this.config_.accounts.forEach((a) => this.accountStatus_.set(a.id, a.status));
+  }
+
+  /** Entries this log should have carried forward but could not (evidence destroyed earlier). */
+  get droppedEvidence(): readonly AuditEventConfig[] {
+    return this.droppedEvidence_;
   }
 
   static getInstance(): SecurityConsoleCore {

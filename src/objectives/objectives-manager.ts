@@ -18,6 +18,7 @@ import { EventBus } from '@app/events/event-bus';
 import { DecisionGradedData, DecisionResolvedData, Events, QuizCompletedData, QuizPassedData } from '@app/events/events';
 import { FaultInjector } from '@app/faults';
 import { GnssThreatManager } from '@app/gnss-threat/gnss-threat-manager';
+import { InterferenceManager } from '@app/interference/interference-manager';
 import { LinkBudgetManager } from '@app/link-budget/link-budget-manager';
 import { DecisionManager } from '@app/modal/decision-manager';
 import { HintManager } from '@app/modal/hint-manager';
@@ -2644,6 +2645,23 @@ export class ObjectivesManager {
         const maxErrorKm = condition.params?.maxErrorKm ?? 25;
         const state = GeolocationConsoleCore.getInstance().state;
         return state.fix !== null && state.fixErrorKm !== null && state.fixErrorKm <= maxErrorKm;
+      }
+
+      case 'interference-event-ended': {
+        // The named interference event ran its envelope and stopped
+        if (!InterferenceManager.isInitialized()) return false;
+        const eventId = condition.params?.interferenceEventId;
+        return eventId !== undefined && InterferenceManager.getInstance().hasEventEnded(eventId);
+      }
+
+      case 'geolocation-ellipse-within': {
+        // Converged fix whose 95% error ellipse is no wider than maxSemiMajorKm.
+        // Graded on the ellipse the console reports, not on the hidden truth:
+        // it is the operator's own confidence statement that has to be small.
+        if (!GeolocationConsoleCore.isInitialized()) return false;
+        const maxSemiMajorKm = condition.params?.maxSemiMajorKm ?? 15;
+        const fix = GeolocationConsoleCore.getInstance().state.fix;
+        return fix !== null && fix.isConverged && fix.errorEllipse !== null && fix.errorEllipse.semiMajorKm <= maxSemiMajorKm;
       }
 
       case 'jamming-uplink-active': {

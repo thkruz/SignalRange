@@ -3,7 +3,7 @@ import { EVIDENCE_FACT_IDS, EvidenceFactId } from '../../src/objectives/objectiv
 
 // Every subsystem a fact reads is a singleton with an isInitialized() guard;
 // each mock starts "absent" and a test switches on what it needs.
-const interference = { initialized: false, anyActive: false };
+const interference = { initialized: false, anyActive: false, transponder: false, terrestrial: false };
 const faults = { has: false };
 const crypto = { has: false, rx: { decryptionMode: 'ACTIVE', decryptionKeyStatus: 'Valid', decryptionAuthTagVerified: true } };
 const gnss = { initialized: false, exposed: false };
@@ -28,7 +28,11 @@ vi.mock('../../src/interference/interference-manager', () => ({
   InterferenceManager: {
     isInitialized: () => interference.initialized,
     // The fact reads the envelope (in progress), not the instantaneous radiating state.
-    getInstance: () => ({ isAnyEventInEnvelope: () => interference.anyActive, isAnyEventActive: () => false }),
+    getInstance: () => ({
+      isAnyEventInEnvelope: () => interference.anyActive,
+      isAnyEventInEnvelopeVia: (path: string) => (path === 'terrestrial' ? interference.terrestrial : interference.transponder),
+      isAnyEventActive: () => false,
+    }),
   },
 }));
 vi.mock('../../src/faults', () => ({
@@ -79,6 +83,8 @@ const ctx = (gs: unknown = station()) => ({ gs }) as never;
 beforeEach(() => {
   interference.initialized = false;
   interference.anyActive = false;
+  interference.transponder = false;
+  interference.terrestrial = false;
   faults.has = false;
   crypto.has = false;
   crypto.rx = { decryptionMode: 'ACTIVE', decryptionKeyStatus: 'Valid', decryptionAuthTagVerified: true };
@@ -112,6 +118,19 @@ describe('evidence facts - resolvers', () => {
     expect(EVIDENCE_FACTS['interference-active'](ctx())).toBe(true);
     interference.anyActive = false;
     expect(EVIDENCE_FACTS['interference-active'](ctx())).toBe(false);
+  });
+
+  it('transponder- and terrestrial-interference-active split the envelope read by path', () => {
+    interference.initialized = true;
+    interference.transponder = true;
+    expect(EVIDENCE_FACTS['transponder-interference-active'](ctx())).toBe(true);
+    expect(EVIDENCE_FACTS['terrestrial-interference-active'](ctx())).toBe(false);
+    interference.transponder = false;
+    interference.terrestrial = true;
+    expect(EVIDENCE_FACTS['transponder-interference-active'](ctx())).toBe(false);
+    expect(EVIDENCE_FACTS['terrestrial-interference-active'](ctx())).toBe(true);
+    interference.initialized = false;
+    expect(EVIDENCE_FACTS['terrestrial-interference-active'](ctx())).toBe(false);
   });
 
   it('equipment-fault-active needs a station and a live fault', () => {

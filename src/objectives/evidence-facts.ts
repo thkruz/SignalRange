@@ -1,6 +1,6 @@
 /**
  * @file Evidence facts - the vocabulary a decision is graded in
- * @description Ten pure reads over live simulation state. A decision option's
+ * @description Pure reads over live simulation state. A decision option's
  * `correctWhen` rule is composed from these, so the same option set can have
  * a different right answer in a scenario with a different interference
  * schedule or a different injected fault. Authors never write evaluators.
@@ -43,6 +43,10 @@ const anyGpsdo = (ctx: EvidenceContext, check: (state: GroundStation['rfFrontEnd
  * half minute.
  */
 const interferenceActive = (): boolean => InterferenceManager.isInitialized() && InterferenceManager.getInstance().isAnyEventInEnvelope();
+
+/** Same envelope read, split by how the interferer reaches the player */
+const interferenceActiveVia = (path: 'transponder' | 'terrestrial'): boolean =>
+  InterferenceManager.isInitialized() && InterferenceManager.getInstance().isAnyEventInEnvelopeVia(path);
 
 const faultActive = (ctx: EvidenceContext): boolean => ctx.gs !== null && FaultInjector.getInstance().hasFaults(ctx.gs.state.id);
 
@@ -95,6 +99,10 @@ export const EVIDENCE_FACTS: Record<EvidenceFactId, EvidenceFactResolver> = {
   'telemetry-stale': () => TelemetryManager.isInitialized() && TelemetryManager.getInstance().isStale,
 
   'uplink-jammed': () => CommandingManager.isInitialized() && CommandingManager.getInstance().isUplinkJammed(),
+
+  'transponder-interference-active': () => interferenceActiveVia('transponder'),
+
+  'terrestrial-interference-active': () => interferenceActiveVia('terrestrial'),
 };
 
 /** Evaluate a rule against a fact reader (held reads in production, stubs in tests) */

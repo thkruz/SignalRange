@@ -15,6 +15,9 @@ import { hamSdrScenario7Data } from '@app/campaigns/ham-sdr/scenario7';
 import { hamSdrScenario8Data } from '@app/campaigns/ham-sdr/scenario8';
 import { signalHunterSandboxData } from '@app/campaigns/signal-hunter/sandbox';
 import { signalHunterScenario1Data } from '@app/campaigns/signal-hunter/scenario1';
+import { signalHunterScenario2Data } from '@app/campaigns/signal-hunter/scenario2';
+import { signalHunterScenario3Data } from '@app/campaigns/signal-hunter/scenario3';
+import { signalHunterScenario4Data } from '@app/campaigns/signal-hunter/scenario4';
 import { sandboxData } from './sandbox';
 import { scenario1Data } from './scenario1';
 import { scenario2Data } from './scenario2';
@@ -163,7 +166,7 @@ export const geolocationCampaignData: CampaignData = {
   description: `Someone is jamming allied satellites. As a member of the 22nd Electronic Warfare Squadron, you'll locate the sources of hostile interference using advanced RF geolocation.<br><br>Learn the two-satellite TDOA/FDOA cross-fix technique: an uplink jammer leaks into a neighboring satellite's sidelobes, and correlating the two downlinks lets you draw crossing lines of position over the emitter. Detect, characterize, and geolocate intermittent interference, then hand a fix and error ellipse to the incident response cell.`,
   imageUrl: 'nats/north-atlantic-teleport-services.png',
   difficulty: 'advanced',
-  totalDuration: '30-40 min',
+  totalDuration: '130-170 min',
   campaignType: 'Electronic Warfare',
   headerIdentity: {
     name: 'SIGNAL',
@@ -171,9 +174,9 @@ export const geolocationCampaignData: CampaignData = {
     icon: 'fa-solid fa-crosshairs',
   },
   chromeVariant: 'astro',
-  // Sandbox plus scenario 1 (First Fix) so far - the rest of the arc is still being authored.
+  // Sandbox plus the four-scenario arc: First Fix, Two Carriers, Cold Trail, Prove It.
   releaseStage: 'alpha',
-  scenarios: [signalHunterSandboxData, signalHunterScenario1Data],
+  scenarios: [signalHunterSandboxData, signalHunterScenario1Data, signalHunterScenario2Data, signalHunterScenario3Data, signalHunterScenario4Data],
   isLocked: false,
   isDisabled: false,
 };

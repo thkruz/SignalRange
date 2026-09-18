@@ -586,9 +586,10 @@ right answer in a scenario with a different interference schedule or injected fa
 `equipment-fault-active`, `crypto-intact`, `gnss-constellation-healthy`, `timing-drifting`,
 `reference-in-holdover`, `weather-attenuation-dominant`, `audit-anomaly-present`, `config-drifted`,
 `command-window-open`, `uplink-jammed`, `evidence-chain-intact`, `soh-red-limit`, `soh-yellow-limit`,
-`telemetry-stale`. Every fact is held for the observation grace period so a
+`telemetry-stale`, `transponder-interference-active`, `terrestrial-interference-active`. Every fact is held for the observation grace period so a
 transient frame cannot flip the right answer, and `interference-active` reads the event *envelope*
-(a duty-cycled jammer counts in its off phase too). `uplink-jammed` needs `settings.commanding.uplinkFrequencyHz`
+(a duty-cycled jammer counts in its off phase too); the `transponder-` / `terrestrial-interference-active`
+pair splits that read by `path`, which is the uplink-versus-downlink call. `uplink-jammed` needs `settings.commanding.uplinkFrequencyHz`
 and a transponder-path interference event on the target bird; TRANSEC hop-sync clears it.
 
 **Evidence gating.** `evidence` names sibling conditions by their `id`. The options stay clickable

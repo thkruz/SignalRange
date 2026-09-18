@@ -152,8 +152,31 @@ export class InterferenceManager {
     return elapsed >= event.startTime && elapsed < event.startTime + event.duration;
   }
 
+  /**
+   * Whether an event's envelope has closed: it opened at some point and the
+   * mission clock is now past its end. A forced-on event has not ended.
+   */
+  hasEventEnded(eventId: string): boolean {
+    const event = this.events_.find((e) => e.id === eventId);
+    if (!event) return false;
+    if (this.forced_.get(event.id) === true) return false;
+    const elapsed = (missionNowMs() - this.missionStartTime_) / 1000;
+    return elapsed >= event.startTime + event.duration;
+  }
+
   isAnyEventInEnvelope(): boolean {
     return this.events_.some((event) => this.isEventInEnvelope(event.id));
+  }
+
+  /**
+   * Whether any event reaching the player by `path` is in its envelope. The
+   * transponder / terrestrial split is the uplink-versus-downlink call: a
+   * carrier relayed by the bird is heard by every station under it and the
+   * correlator can fix it; one arriving at the dish directly is a problem
+   * at the receive site and no satellite pair will ever correlate on it.
+   */
+  isAnyEventInEnvelopeVia(path: 'transponder' | 'terrestrial'): boolean {
+    return this.events_.some((event) => (event.path ?? 'transponder') === path && this.isEventInEnvelope(event.id));
   }
 
   /** Every event the scenario declares */

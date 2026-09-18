@@ -99,6 +99,8 @@ export type ConditionType =
   // Geolocation conditions (Campaign 5)
   | 'geolocation-measurements-collected' // >= N TDOA/FDOA captures collected
   | 'geolocation-fix-accuracy' // Computed fix within N km of the emitter truth
+  | 'geolocation-ellipse-within' // Computed fix converged with a 95% error ellipse no wider than N km (semi-major)
+  | 'interference-event-ended' // A scripted interference event's envelope has closed (it ran and stopped)
   // Electronic-attack / SATCOM denial conditions (Campaign 4)
   | 'jamming-uplink-active' // Jam waveform radiating in the target uplink band
   | 'jamming-effective' // J/S at the target transponder meets the denial threshold
@@ -163,6 +165,8 @@ export const EVIDENCE_FACT_IDS = [
   'soh-red-limit', // a telemetry channel reads in its red band with the stream fresh
   'soh-yellow-limit', // a telemetry channel reads yellow or worse with the stream fresh
   'telemetry-stale', // the telemetry stream has no fresh frame (link down)
+  'transponder-interference-active', // an interference event relayed through a satellite transponder is in progress
+  'terrestrial-interference-active', // an interference event arriving at the dish directly from a ground emitter is in progress
 ] as const;
 
 export type EvidenceFactId = (typeof EVIDENCE_FACT_IDS)[number];
@@ -428,7 +432,9 @@ export interface ConditionParams {
   minCount?: number;
   /** For geolocation-fix-accuracy: maximum fix error vs truth, km */
   maxErrorKm?: number;
-  /** For geolocation conditions: restrict to captures against this interference event */
+  /** For geolocation-ellipse-within: maximum 95% error-ellipse semi-major axis, km */
+  maxSemiMajorKm?: number;
+  /** For geolocation conditions and interference-event-ended: the interference event in question */
   interferenceEventId?: string;
 
   // ── nats-eu (Campaign 2) condition parameters ──────────────────────────────

@@ -63,6 +63,10 @@ import { natsEuScenario21Data } from '@app/campaigns/nats-eu/scenario21';
 import { natsEuScenario22Data } from '@app/campaigns/nats-eu/scenario22';
 import { natsEuScenario23Data } from '@app/campaigns/nats-eu/scenario23';
 import { natsEuScenario24Data } from '@app/campaigns/nats-eu/scenario24';
+import { natsEuScenario25Data } from '@app/campaigns/nats-eu/scenario25';
+import { natsEuScenario26Data } from '@app/campaigns/nats-eu/scenario26';
+import { natsEuScenario27Data } from '@app/campaigns/nats-eu/scenario27';
+import { natsEuScenario28Data } from '@app/campaigns/nats-eu/scenario28';
 import { signalHunterSandboxData } from '@app/campaigns/signal-hunter/sandbox';
 import { signalHunterScenario1Data } from '@app/campaigns/signal-hunter/scenario1';
 import { signalHunterScenario2Data } from '@app/campaigns/signal-hunter/scenario2';
@@ -600,6 +604,10 @@ export const SCENARIOS: ScenarioData[] = [
   natsEuScenario22Data,
   natsEuScenario23Data,
   natsEuScenario24Data,
+  natsEuScenario25Data,
+  natsEuScenario26Data,
+  natsEuScenario27Data,
+  natsEuScenario28Data,
   hamSdrSandboxData,
   hamSdrScenario1Data,
   hamSdrScenario2Data,

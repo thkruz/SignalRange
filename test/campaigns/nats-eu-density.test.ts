@@ -28,6 +28,12 @@ const KNOWN_BELOW_FLOOR = new Set<number>([]);
 
 /** Phase 1 = Foundations (S1-S8); Phase 2 = Qualified Operations (S9-S16). */
 const PHASE_1_LAST = 8;
+/**
+ * S25+ are drills (phase 18 G): short single-purpose scenarios that close one
+ * or two curriculum topics each - a knowledge walk, an audit-log event with a
+ * decision. No passes, no voice clips, no timers; 8-11 objectives, 100 points.
+ */
+const DRILLS_FROM = 25;
 /** Evaluations get more room: more objectives, and S8 may run lean on clips. */
 const CAPSTONES = new Set<number>([8, 16]);
 
@@ -45,6 +51,10 @@ interface Floors {
 function floorsFor(number: number): Floors {
   const isPhase1 = number <= PHASE_1_LAST;
   const isCapstone = CAPSTONES.has(number);
+
+  if (number >= DRILLS_FROM) {
+    return { minObjectives: 8, minQuizzes: 4, minClips: 0, maxClips: 2, minTimerFraction: 0, minConditionTypes: 3, minPoints: 80, maxPoints: 120 };
+  }
 
   return {
     minObjectives: isCapstone ? 18 : 15,

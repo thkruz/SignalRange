@@ -194,7 +194,16 @@ export interface DecisionConsequence {
   /** Force a scripted interference event off, regardless of its schedule */
   stopInterference?: string;
   /** Add an entry to the security console audit log */
-  auditEvent?: { id: string; actor: string; action: string; category: 'auth' | 'config' | 'command' | 'access'; severity: 'info' | 'warning' | 'critical'; isAnomaly?: boolean };
+  auditEvent?: {
+    id: string;
+    actor: string;
+    action: string;
+    category: 'auth' | 'config' | 'command' | 'access';
+    severity: 'info' | 'warning' | 'critical';
+    isAnomaly?: boolean;
+    /** Wall-clock label shown in the log (e.g. "08:07 UTC"); defaults to the moment of injection */
+    timestampLabel?: string;
+  };
   /** Remove evidence the player should have preserved (the 13.6 lesson) */
   destroyEvidence?: { auditEventId?: string; faultId?: string };
   /** Activate an objective now, bypassing its prerequisites */

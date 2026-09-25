@@ -13,14 +13,11 @@
  * single `advanceClock(fortyMinutes)` would be one line instead of this file,
  * but nothing scheduled inside the skipped window would ever be evaluated.
  *
- * Two clocks move together, which is the whole reason mission-clock.ts exists:
- *   - the SCENARIO clock (OpsLogManager) - drives SGP4, pass prediction, the UTC
- *     display, and
- *   - the MISSION clock (missionNowMs) - drives every "seconds since mission
- *     start" mechanic: command windows, maneuvers, weather, interference,
- *     scoring elapsed time, COMSEC key age.
- * Advancing one without the other puts the console and the sky in different
- * hours.
+ * It advances the one scenario clock (sim-clock.ts), which drives SGP4, pass
+ * prediction, the UTC display and every "seconds since mission start"
+ * mechanic (command windows, maneuvers, weather, interference, scoring
+ * elapsed time, COMSEC key age) - so the console and the sky cannot end up in
+ * different hours.
  *
  * Opt-in per scenario via settings.timeSkip; campaigns that do not declare it
  * never see the control.
@@ -34,7 +31,7 @@ import { ObjectivesManager } from '@app/objectives/objectives-manager';
 import { OpsLogManager } from '@app/ops-log/ops-log-manager';
 import { ScenarioManager } from '@app/scenario-manager';
 import { PassPlannerService, scenarioMinElevation } from '@app/services/pass-planner-service';
-import { addSkippedTime } from '@app/simulation/mission-clock';
+import { SimClock } from '@app/simulation/sim-clock';
 import { getSimulatedNowMs } from '@app/simulation/sim-time';
 import { SimulationManager } from '@app/simulation/simulation-manager';
 import type { Degrees } from 'ootk';
@@ -273,11 +270,12 @@ export class TimeSkipController {
     if (chunkMs > 0) {
       this.skippedMs_ += chunkMs;
 
-      // Both clocks, same chunk, same frame - see the file header.
+      // One clock: orbits and every mission-elapsed schedule move together
       if (OpsLogManager.isInitialized()) {
         OpsLogManager.getInstance().advanceClock(chunkMs);
+      } else {
+        SimClock.skip(chunkMs);
       }
-      addSkippedTime(chunkMs);
 
       // Countdown timers are decremented state rather than derived from a
       // clock, so they have to be told about the skip explicitly.

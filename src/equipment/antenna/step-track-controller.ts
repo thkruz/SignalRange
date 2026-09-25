@@ -1,4 +1,5 @@
 import { TapPoint } from '@app/equipment/rf-front-end/coupler-module/tap-points';
+import { SimClock } from '@app/simulation/sim-clock';
 import { SimulationManager } from '@app/simulation/simulation-manager';
 import { Hertz } from '@app/types';
 import { Degrees } from 'ootk';
@@ -56,7 +57,7 @@ export class StepTrackController {
   start(): void {
     this.isActive_ = true;
     this.isConverged_ = false;
-    this.startTime_ = Date.now();
+    this.startTime_ = SimClock.runMs();
     this.updateCounter_ = 0;
 
     // Get target satellite's ephemeris error
@@ -134,7 +135,7 @@ export class StepTrackController {
    * Update step-track offsets using smooth interpolation
    */
   private updateOffsets_(): void {
-    const elapsed = Date.now() - this.startTime_;
+    const elapsed = SimClock.runMs() - this.startTime_;
     const progress = Math.min(1, elapsed / this.convergenceDuration_);
 
     // Use easeOutQuad for natural deceleration as it approaches target
@@ -209,7 +210,7 @@ export class StepTrackController {
     isLocked: boolean;
     isLockStable: boolean;
   } {
-    const elapsed = Date.now() - this.startTime_;
+    const elapsed = SimClock.runMs() - this.startTime_;
     const progress = this.isActive_ ? Math.min(1, elapsed / this.convergenceDuration_) : 0;
 
     return {

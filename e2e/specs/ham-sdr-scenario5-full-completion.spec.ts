@@ -1,6 +1,6 @@
 import { expect, Page, test } from '@playwright/test';
 import { MissionControlPage } from '../pages/mission-control.page';
-import { advanceMissionClock, answerRileyQuiz, domClick, waitForObjectiveComplete } from '../utils/ham-sdr-helpers';
+import { advanceClock, answerRileyQuiz, domClick, waitForObjectiveComplete } from '../utils/ham-sdr-helpers';
 import { waitForSimulationReady } from '../utils/simulation-helpers';
 
 /**
@@ -13,7 +13,7 @@ import { waitForSimulationReady } from '../utils/simulation-helpers';
  * defense is the E4 REF control (GPS -> HOLDOVER -> back to GPS).
  *
  * Spoof window is mission-elapsed 420-900 s, so the spec crosses it with
- * advanceMissionClock (jumps BOTH clocks, unlike advanceSimClock). The
+ * advanceClock (the sky and the mission schedule move together). The
  * go-holdover maintain window (60 s) ticks on REAL time and is waited out.
  */
 test.describe('ham-sdr Scenario 5 Full Completion', () => {
@@ -69,7 +69,7 @@ test.describe('ham-sdr Scenario 5 Full Completion', () => {
 
   test('[spot-the-spoofer] the terrestrial L1 carrier appears after the spoof window opens', async () => {
     // Cross the spoofStartS=420 threshold on the mission clock
-    await advanceMissionClock(page, 8);
+    await advanceClock(page, 8);
 
     await missionControl.selectTab('sdr-console');
     await missionControl.dismissDialogIfPresent();
@@ -114,7 +114,7 @@ test.describe('ham-sdr Scenario 5 Full Completion', () => {
 
   test('[all-clear] rides out the spoof, verifies the environment, returns to GPS', async () => {
     // Cross spoofEndS=900: the spoofer leaves the air and the walk stops
-    await advanceMissionClock(page, 8);
+    await advanceClock(page, 8);
     await missionControl.dismissDialogIfPresent();
 
     // Back to GPS (5 s reacquisition inside the GPSDO core)

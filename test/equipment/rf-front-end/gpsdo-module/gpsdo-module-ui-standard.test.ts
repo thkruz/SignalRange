@@ -5,6 +5,7 @@ import { defaultGpsdoState, GPSDOState } from '../../../../src/equipment/rf-fron
 import { RFFrontEndCore } from '../../../../src/equipment/rf-front-end/rf-front-end-core';
 import { EventBus } from '../../../../src/events/event-bus';
 import { Events } from '../../../../src/events/events';
+import { advanceSimTime } from '../../../helpers/sim-time';
 
 // Mock SimulationManager
 vi.mock('../../../../src/simulation/simulation-manager', () => ({
@@ -452,7 +453,7 @@ describe('GPSDOModuleUIStandard', () => {
       gpsdoModule.sync({ temperature: 71 });
 
       // Check if stability monitor started by advancing time
-      vi.advanceTimersByTime(5000);
+      advanceSimTime(5000);
 
       // Lock duration should have increased if monitor is running
       expect(gpsdoModule.state.lockDuration).toBeGreaterThan(0);
@@ -517,7 +518,7 @@ describe('GPSDOModuleUIStandard', () => {
       const initialText = warmupDisplay?.textContent;
 
       // Advance warmup timer
-      vi.advanceTimersByTime(1000);
+      advanceSimTime(1000);
 
       expect(warmupDisplay?.textContent).not.toBe(initialText);
     });
@@ -533,7 +534,7 @@ describe('GPSDOModuleUIStandard', () => {
       const freqAccuracyBefore = gpsdoModule.state.frequencyAccuracy;
 
       // Advance stability monitor
-      vi.advanceTimersByTime(5000);
+      advanceSimTime(5000);
 
       // State should have been updated (lock duration increases)
       expect(gpsdoModule.state.lockDuration).toBeGreaterThan(0);
@@ -551,7 +552,7 @@ describe('GPSDOModuleUIStandard', () => {
       const holdoverDisplay = document.querySelector('.gpsdo-holdover');
 
       // Advance holdover monitor
-      vi.advanceTimersByTime(2000);
+      advanceSimTime(2000);
 
       // Holdover error should have increased
       expect(gpsdoModule.state.holdoverDuration).toBeGreaterThan(0);

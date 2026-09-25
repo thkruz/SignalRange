@@ -1,3 +1,4 @@
+import { SimClock } from '@app/simulation/sim-clock';
 /**
  * @file ElectronicAttackManager - Player-driven SATCOM denial (Campaign 4)
  * @description The offensive counterpart of InterferenceManager. Where that
@@ -269,7 +270,7 @@ export class ElectronicAttackManager {
           groundStationId,
           protectedBandLabel: hit.label,
           jamFrequencyHz: jam.frequency,
-          detectedAt: Date.now(),
+          detectedAt: SimClock.nowMs(),
         };
         EventBus.getInstance().emit(Events.PROTECTED_FREQ_VIOLATION, data);
 

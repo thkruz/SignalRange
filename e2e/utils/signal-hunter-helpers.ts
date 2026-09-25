@@ -15,8 +15,7 @@ import { waitForQuizToAppear } from './simulation-helpers';
  * present at the analyzer" answer, independent of the observation gate, so
  * it works as an ON/OFF probe before and after the objective completes.
  *
- * Off-windows are skipped with window.advanceMissionClock (both clocks jump
- * together, so the interferer schedule, the capture integration clock, and
+ * Off-windows are skipped with window.advanceClock (one clock, so the interferer schedule, the capture integration clock, and
  * the satellite geometry all agree). Jumps happen only BETWEEN captures: the
  * console counts on-time in update ticks across the integration, and a jump
  * inside one would end it with almost no ticks.
@@ -112,21 +111,21 @@ export async function isInterfererOn(page: Page, probeObjectiveId: string): Prom
   return condition.evaluatesNow;
 }
 
-/** Mission-clock now (wall clock plus skipped time) as the page sees it */
+/** Mission-clock now (scenario-elapsed ms) as the page sees it */
 export async function missionNowMs(page: Page): Promise<number> {
   return page.evaluate(() => {
-    const hooks = window as unknown as { missionSkippedMs?: () => number };
-    return Date.now() + (hooks.missionSkippedMs?.() ?? 0);
+    const hooks = window as unknown as { missionElapsedMs?: () => number };
+    return hooks.missionElapsedMs?.() ?? 0;
   });
 }
 
-/** Jump BOTH clocks forward by `deltaMs` and let one update tick run */
+/** Skip the clock forward by `deltaMs` and let one update tick run */
 export async function advanceMissionClockMs(page: Page, deltaMs: number, settleMs = 250): Promise<void> {
   if (deltaMs <= 0) {
     return;
   }
-  await page.waitForFunction(() => typeof (window as any).advanceMissionClock === 'function');
-  await page.evaluate((ms) => (window as any).advanceMissionClock(ms), deltaMs);
+  await page.waitForFunction(() => typeof (window as any).advanceClock === 'function');
+  await page.evaluate((ms) => (window as any).advanceClock(ms), deltaMs);
   await page.waitForTimeout(settleMs);
 }
 

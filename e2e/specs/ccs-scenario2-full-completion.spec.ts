@@ -25,7 +25,7 @@ import { waitForSimulationReady } from '../utils/simulation-helpers';
  * share one BUC/HPA, so every recovery leaves the HPA up and changes strings.
  *
  * Clock handling: the trips fire on the mission clock (missionNowMs), which
- * window.advanceMissionClock jumps, so each trip is brought forward with an
+ * window.advanceClock jumps, so each trip is brought forward with an
  * explicit jump to just past its schedule. The maintain windows (120 / 120 /
  * 180 s) tick on REAL time and are waited out on the EA Assessment tab, which
  * is the observationTab every jamming-effective condition requires. The
@@ -47,7 +47,6 @@ test.describe('ccs Scenario 2 Full Completion', () => {
   let context: import('@playwright/test').BrowserContext;
   let missionControl: MissionControlPage;
   /** Wall-clock stamp of scenario boot, for mission-elapsed estimates */
-  let wallStartMs = 0;
 
   const JAM_A_TRIP_S = 480;
   const JAM_B_TRIP_S = 840;
@@ -65,7 +64,6 @@ test.describe('ccs Scenario 2 Full Completion', () => {
     missionControl = new MissionControlPage(page);
 
     await missionControl.gotoScenario('ccs', 'ccs-scenario2');
-    wallStartMs = Date.now();
     await waitForSimulationReady(page);
     await missionControl.dismissDialogIfPresent();
   });
@@ -127,7 +125,7 @@ test.describe('ccs Scenario 2 Full Completion', () => {
   test('[hold-primary] holds the blackout for 120 s on JAM-A', async () => {
     // The first hold must end before the JAM-A trip at T+480 or the trip
     // lapses it. Budget: elapsed now + 120 s window + slack.
-    const elapsed = await missionElapsedS(page, wallStartMs);
+    const elapsed = await missionElapsedS(page);
     expect(elapsed + 120, 'hold-primary must finish before the T+480 trip').toBeLessThan(JAM_A_TRIP_S - 20);
 
     await missionControl.selectTab('ea-assessment');
@@ -137,7 +135,7 @@ test.describe('ccs Scenario 2 Full Completion', () => {
   });
 
   test('[detect-first-trip] JAM-A trips at T+480 and the lapse is recognised', async () => {
-    await advanceMissionClockToElapsed(page, wallStartMs, JAM_A_TRIP_S);
+    await advanceMissionClockToElapsed(page, JAM_A_TRIP_S);
     await missionControl.dismissDialogIfPresent();
 
     // Still on the EA tab: the badge leaves DENIED once modem 1 stops radiating
@@ -168,7 +166,7 @@ test.describe('ccs Scenario 2 Full Completion', () => {
   });
 
   test('[hold-backup] holds the blackout for 120 s on JAM-B', async () => {
-    const elapsed = await missionElapsedS(page, wallStartMs);
+    const elapsed = await missionElapsedS(page);
     expect(elapsed + 120, 'hold-backup must finish before the T+840 trip').toBeLessThan(JAM_B_TRIP_S - 20);
 
     await missionControl.selectTab('ea-assessment');
@@ -178,7 +176,7 @@ test.describe('ccs Scenario 2 Full Completion', () => {
   });
 
   test('[detect-second-trip] JAM-B trips at T+840', async () => {
-    await advanceMissionClockToElapsed(page, wallStartMs, JAM_B_TRIP_S);
+    await advanceMissionClockToElapsed(page, JAM_B_TRIP_S);
     await missionControl.dismissDialogIfPresent();
 
     await expect(page.locator('#ea-status-badge')).not.toContainText('DENIED', { timeout: 20000 });

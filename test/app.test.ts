@@ -77,11 +77,15 @@ describe('App class', () => {
     SimulationManager.destroy();
 
     const emitSpy = vi.spyOn(EventBus.getInstance(), 'emit');
+    const t0 = performance.now();
     SimulationManager.getInstance();
 
-    // Run a single game-loop tick (the constructor scheduled it via rAF).
+    // Run a single game-loop tick (the constructor scheduled it via rAF), one
+    // 60 fps frame later so the fixed-step loop owes exactly one UPDATE.
     expect(frame).toBeDefined();
+    const nowSpy = vi.spyOn(performance, 'now').mockReturnValue(t0 + 1000 / 60);
     frame?.(0);
+    nowSpy.mockRestore();
 
     const calledEvents = emitSpy.mock.calls.map((c: any[]) => c[0]);
     expect(calledEvents).toEqual(expect.arrayContaining([Events.UPDATE, Events.DRAW]));

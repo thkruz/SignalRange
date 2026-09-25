@@ -1,3 +1,4 @@
+import { SimClock } from '@app/simulation/sim-clock';
 /**
  * @file CryptoModule Core
  * @description Core crypto equipment module for SATCOM ground station simulation.
@@ -32,7 +33,7 @@ export class CryptoModule {
 
   private static readonly KEY_EXPIRY_WARNING_DAYS = 7;
   private static readonly UPDATE_INTERVAL_MS = 1000;
-  private lastUpdateTime_: number = 0;
+  private lastUpdateTime_: number = -Infinity;
 
   // Simulation time scaling (for accelerated key expiration in training)
   private timeScaleFactor_: number = 1; // 1 = real-time, higher = faster
@@ -386,8 +387,8 @@ export class CryptoModule {
    * Periodic update (called on Events.UPDATE)
    */
   private update_(): void {
-    const now = Date.now();
-    if (now - this.lastUpdateTime_ < CryptoModule.UPDATE_INTERVAL_MS) return;
+    const now = SimClock.runMs();
+    if (now >= this.lastUpdateTime_ && now - this.lastUpdateTime_ < CryptoModule.UPDATE_INTERVAL_MS) return;
     this.lastUpdateTime_ = now;
 
     this.updateKeyExpiration_();

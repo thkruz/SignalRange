@@ -4,6 +4,7 @@ import { Transmitter, TransmitterModem, TransmitterState } from '../../../src/eq
 import { EventBus } from '../../../src/events/event-bus';
 import { Events } from '../../../src/events/events';
 import { SignalOrigin } from '../../../src/signal-origin';
+import { advanceSimTime } from '../../helpers/sim-time';
 
 // Mock HTMLMediaElement.prototype.play for jsdom compatibility
 Object.defineProperty(HTMLMediaElement.prototype, 'play', {
@@ -659,7 +660,7 @@ describe('Transmitter class', () => {
       // Power on has 4000ms delay
       expect(transmitter.activeModem.isPowered).toBe(false);
 
-      vi.advanceTimersByTime(4100);
+      advanceSimTime(4100);
 
       expect(transmitter.activeModem.isPowered).toBe(true);
     });
@@ -672,7 +673,7 @@ describe('Transmitter class', () => {
       // Power off has 250ms delay
       expect(transmitter.activeModem.isPowered).toBe(true);
 
-      vi.advanceTimersByTime(300);
+      advanceSimTime(300);
 
       expect(transmitter.activeModem.isPowered).toBe(false);
     });
@@ -703,7 +704,7 @@ describe('Transmitter class', () => {
 
       expect(emitSpy).not.toHaveBeenCalledWith(Events.TX_CONFIG_CHANGED, expect.any(Object));
 
-      vi.advanceTimersByTime(300);
+      advanceSimTime(300);
 
       expect(emitSpy).toHaveBeenCalledWith(Events.TX_CONFIG_CHANGED, expect.any(Object));
 
@@ -733,7 +734,7 @@ describe('Transmitter class', () => {
 
       transmitter.handleFaultReset();
 
-      vi.advanceTimersByTime(300);
+      advanceSimTime(300);
 
       expect(transmitter.activeModem.isFaulted).toBe(false);
       expect(transmitter.activeModem.isFaultSwitchUp).toBe(false);
@@ -745,7 +746,7 @@ describe('Transmitter class', () => {
 
       transmitter.handleFaultReset();
 
-      vi.advanceTimersByTime(300);
+      advanceSimTime(300);
 
       expect(transmitter.activeModem.isFaulted).toBe(true);
     });
@@ -758,7 +759,7 @@ describe('Transmitter class', () => {
       // Should emit immediately
       expect(emitSpy).toHaveBeenCalledWith(Events.TX_CONFIG_CHANGED, expect.any(Object));
 
-      vi.advanceTimersByTime(300);
+      advanceSimTime(300);
 
       // Should emit again after timeout
       expect(emitSpy).toHaveBeenCalledTimes(2);

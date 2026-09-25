@@ -1,8 +1,13 @@
 import { RFFrontEndCore } from '@app/equipment/rf-front-end/rf-front-end-core';
 import { RFFrontEndModule } from '@app/equipment/rf-front-end/rf-front-end-module';
+import { Rng } from '@app/simulation/rng';
+import { SimClock } from '@app/simulation/sim-clock';
 import { SimulationManager } from '@app/simulation/simulation-manager';
 import { clamp } from 'ootk';
 import { defaultGpsdoState, GPSDOState } from './gpsdo-state';
+
+/** Seeded draws for this module (see simulation/rng.ts). */
+const random = (): number => Rng.stream('gpsdo').next();
 
 /**
  * GPSDO Module Core - Business Logic Layer
@@ -73,9 +78,9 @@ export abstract class GPSDOModuleCore extends RFFrontEndModule<GPSDOState> {
 
     if (this.state.isInHoldover) {
       // In holdover: maintain specs with OCXO, but degrade slowly
-      this.state.phaseNoise = -120 + Math.random() * 5; // -120 to -125 dBc/Hz
-      this.state.frequencyAccuracy = 0.5 + Math.random() * 4.5 + this.state.holdoverError * 0.05; // degrade with error
-      this.state.allanDeviation = 0.5 + Math.random() * 4.5 + this.state.holdoverError * 0.05;
+      this.state.phaseNoise = -120 + random() * 5; // -120 to -125 dBc/Hz
+      this.state.frequencyAccuracy = 0.5 + random() * 4.5 + this.state.holdoverError * 0.05; // degrade with error
+      this.state.allanDeviation = 0.5 + random() * 4.5 + this.state.holdoverError * 0.05;
       this.state.utcAccuracy = 0; // No GPS timing
       return;
     }
@@ -83,18 +88,18 @@ export abstract class GPSDOModuleCore extends RFFrontEndModule<GPSDOState> {
     // Phase noise: < -125 dBc/Hz at 10 Hz when locked
     this.state.phaseNoise =
       this.state.gnssSignalPresent && !this.state.isInHoldover
-        ? -125 - Math.random() * 5 // -125 to -130 dBc/Hz when GPS locked
-        : -100 - Math.random() * 10; // -100 to -110 dBc/Hz in holdover
+        ? -125 - random() * 5 // -125 to -130 dBc/Hz when GPS locked
+        : -100 - random() * 10; // -100 to -110 dBc/Hz in holdover
 
     // Frequency accuracy: < 5×10⁻¹¹ at 1s when GPS locked
     if (this.state.gnssSignalPresent && !this.state.isInHoldover) {
-      this.state.frequencyAccuracy = 0.5 + Math.random() * 4.5; // 0.5-5 ×10⁻¹¹
-      this.state.allanDeviation = 0.5 + Math.random() * 4.5;
+      this.state.frequencyAccuracy = 0.5 + random() * 4.5; // 0.5-5 ×10⁻¹¹
+      this.state.allanDeviation = 0.5 + random() * 4.5;
     }
 
     // UTC accuracy: < 100 ns when GPS locked
     if (this.state.gnssSignalPresent) {
-      this.state.utcAccuracy = 20 + Math.random() * 80; // 20-100 ns
+      this.state.utcAccuracy = 20 + random() * 80; // 20-100 ns
     } else {
       this.state.utcAccuracy = 0; // No GPS timing
     }
@@ -157,7 +162,7 @@ export abstract class GPSDOModuleCore extends RFFrontEndModule<GPSDOState> {
   protected startWarmupTimer_(): void {
     if (this.warmupInterval_) return;
 
-    this.warmupInterval_ = window.setInterval(() => {
+    this.warmupInterval_ = SimClock.setInterval(() => {
       if (!this.state.isPowered) {
         this.stopWarmupTimer_();
         return;
@@ -193,7 +198,7 @@ export abstract class GPSDOModuleCore extends RFFrontEndModule<GPSDOState> {
    */
   protected stopWarmupTimer_(): void {
     if (this.warmupInterval_) {
-      clearInterval(this.warmupInterval_);
+      SimClock.clearTimer(this.warmupInterval_);
       this.warmupInterval_ = null;
     }
   }
@@ -216,7 +221,7 @@ export abstract class GPSDOModuleCore extends RFFrontEndModule<GPSDOState> {
   protected startStabilityMonitor_(): void {
     if (this.stabilityInterval_) return;
 
-    this.stabilityInterval_ = window.setInterval(() => {
+    this.stabilityInterval_ = SimClock.setInterval(() => {
       if (!this.state.isPowered || !this.state.isLocked) {
         return;
       }
@@ -231,8 +236,8 @@ export abstract class GPSDOModuleCore extends RFFrontEndModule<GPSDOState> {
       this.addMetricVariations_();
 
       // Satellite count should increase/decrease slightly, staying between 4-12
-      if (this.state.gnssSignalPresent && Math.random() < 0.2) {
-        const satChange = Math.floor(Math.random() * 3) - 1; // -1, 0, or +1
+      if (this.state.gnssSignalPresent && random() < 0.2) {
+        const satChange = Math.floor(random() * 3) - 1; // -1, 0, or +1
         this.state.satelliteCount = clamp(this.state.satelliteCount + satChange, 4, 12);
       }
 
@@ -252,7 +257,7 @@ export abstract class GPSDOModuleCore extends RFFrontEndModule<GPSDOState> {
    */
   protected stopStabilityMonitor_(): void {
     if (this.stabilityInterval_) {
-      clearInterval(this.stabilityInterval_);
+      SimClock.clearTimer(this.stabilityInterval_);
       this.stabilityInterval_ = null;
     }
   }
@@ -264,9 +269,9 @@ export abstract class GPSDOModuleCore extends RFFrontEndModule<GPSDOState> {
     if (!this.state.gnssSignalPresent || this.state.isInHoldover) return;
 
     // Very small variations around target values
-    this.state.frequencyAccuracy = 2 + (Math.random() - 0.5) * 0.5;
-    this.state.allanDeviation = 2 + (Math.random() - 0.5) * 0.5;
-    this.state.phaseNoise = -127 + (Math.random() - 0.5) * 2;
+    this.state.frequencyAccuracy = 2 + (random() - 0.5) * 0.5;
+    this.state.allanDeviation = 2 + (random() - 0.5) * 0.5;
+    this.state.phaseNoise = -127 + (random() - 0.5) * 2;
   }
 
   /**
@@ -276,7 +281,7 @@ export abstract class GPSDOModuleCore extends RFFrontEndModule<GPSDOState> {
     // Only start if not already running
     if (this.holdoverInterval_) return;
 
-    this.holdoverInterval_ = window.setInterval(() => {
+    this.holdoverInterval_ = SimClock.setInterval(() => {
       if (!this.state.isInHoldover || !this.state.isPowered) {
         this.stopHoldoverMonitor_();
         return;
@@ -315,7 +320,7 @@ export abstract class GPSDOModuleCore extends RFFrontEndModule<GPSDOState> {
    */
   protected stopHoldoverMonitor_(): void {
     if (this.holdoverInterval_) {
-      clearInterval(this.holdoverInterval_);
+      SimClock.clearTimer(this.holdoverInterval_);
       this.holdoverInterval_ = null;
     }
   }
@@ -457,7 +462,7 @@ export abstract class GPSDOModuleCore extends RFFrontEndModule<GPSDOState> {
 
     if (this.state.isGnssSwitchUp && this.state.isPowered) {
       this.state.gnssSignalPresent = true;
-      this.state.satelliteCount = 4 + Math.floor(Math.random() * 8); // 4-12 sats
+      this.state.satelliteCount = 4 + Math.floor(random() * 8); // 4-12 sats
       this.state.isInHoldover = false;
       this.state.holdoverError = 0;
       this.updateLockStatus_();
@@ -476,7 +481,7 @@ export abstract class GPSDOModuleCore extends RFFrontEndModule<GPSDOState> {
 
     if (isGnssSwitchUp && this.state.isPowered) {
       this.state.isGnssAcquiringLock = true;
-      setTimeout(() => {
+      SimClock.setTimeout(() => {
         this.state.isGnssAcquiringLock = false;
         // During a staged outage there is no signal to acquire: the switch is
         // up, the count stays at zero, holdover continues.
@@ -487,7 +492,7 @@ export abstract class GPSDOModuleCore extends RFFrontEndModule<GPSDOState> {
         }
         // GNSS acquired - exit holdover
         this.state.gnssSignalPresent = true;
-        this.state.satelliteCount = 4 + Math.floor(Math.random() * 8); // 4-12 sats
+        this.state.satelliteCount = 4 + Math.floor(random() * 8); // 4-12 sats
         this.state.isInHoldover = false;
         this.state.holdoverError = 0;
         this.updateLockStatus_();

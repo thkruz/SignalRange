@@ -40,9 +40,9 @@ const SKIP_CONFIRM = '#time-skip-confirm-btn';
 const SKIP_OVERLAY = '#time-skip-overlay';
 
 /** Jump the scenario clock forward (sim minutes) via the dev hook. */
-async function advanceSimClock(page: Page, minutes: number): Promise<void> {
-  await page.waitForFunction(() => typeof (window as any).advanceSimClock === 'function');
-  await page.evaluate((ms) => (window as any).advanceSimClock(ms), minutes * 60_000);
+async function advanceClock(page: Page, minutes: number): Promise<void> {
+  await page.waitForFunction(() => typeof (window as any).advanceClock === 'function');
+  await page.evaluate((ms) => (window as any).advanceClock(ms), minutes * 60_000);
   await page.waitForTimeout(1500);
 }
 
@@ -154,7 +154,7 @@ test.describe('nats-eu time skip', () => {
   });
 
   test('offers the skip once the sky is empty', async () => {
-    await advanceSimClock(page, 45);
+    await advanceClock(page, 45);
 
     await expect(page.locator(SKIP_BUTTON)).toBeEnabled({ timeout: 15000 });
     await expect(page.locator(SKIP_BUTTON)).toContainText(/Skip \d/);

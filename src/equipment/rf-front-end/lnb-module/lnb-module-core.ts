@@ -1,7 +1,12 @@
 import { RFFrontEndCore } from '@app/equipment/rf-front-end/rf-front-end-core';
 import { RFFrontEndModule, RFFrontEndModuleState } from '@app/equipment/rf-front-end/rf-front-end-module';
 import { SignalOrigin } from '@app/signal-origin';
+import { Rng } from '@app/simulation/rng';
+import { SimClock } from '@app/simulation/sim-clock';
 import { dB, Hertz, IfFrequency, IfSignal, MHz, RfFrequency, RfSignal } from '@app/types';
+
+/** Seeded draws for this module (see simulation/rng.ts). */
+const random = (): number => Rng.stream('lnb').next();
 
 /**
  * Low Noise Block converter module state
@@ -76,7 +81,7 @@ export abstract class LNBModuleCore extends RFFrontEndModule<LNBState> {
 
     // Initialize power-on timestamp if already powered
     if (this.state.isPowered) {
-      this.powerOnTimestamp_ = Date.now();
+      this.powerOnTimestamp_ = SimClock.runMs();
     }
   }
 
@@ -180,7 +185,7 @@ export abstract class LNBModuleCore extends RFFrontEndModule<LNBState> {
     let targetNoiseTemp = nominalNoiseTemp;
 
     if (this.powerOnTimestamp_ !== null) {
-      const timeElapsedMs = Date.now() - this.powerOnTimestamp_;
+      const timeElapsedMs = SimClock.runMs() - this.powerOnTimestamp_;
       const timeElapsedSec = timeElapsedMs / 1000;
       const stabilizationTime = this.state.noiseTemperatureStabilizationTime;
 
@@ -227,7 +232,7 @@ export abstract class LNBModuleCore extends RFFrontEndModule<LNBState> {
       return;
     }
 
-    const timeElapsedMs = Date.now() - this.powerOnTimestamp_;
+    const timeElapsedMs = SimClock.runMs() - this.powerOnTimestamp_;
     const timeElapsedSec = timeElapsedMs / 1000;
     const stabilizationTime = this.state.thermalStabilizationTime;
 
@@ -269,7 +274,7 @@ export abstract class LNBModuleCore extends RFFrontEndModule<LNBState> {
     const tempDriftPpm = tempDeviation * tempCoefficientPpm;
 
     // Add aging drift component: 1-3 ppm
-    const agingDriftPpm = 1 + Math.random() * 2;
+    const agingDriftPpm = 1 + random() * 2;
 
     // Total drift in ppm
     const totalDriftPpm = tempDriftPpm + agingDriftPpm;
@@ -407,7 +412,7 @@ export abstract class LNBModuleCore extends RFFrontEndModule<LNBState> {
 
     // Track power-on time for noise temperature stabilization
     if (this.state.isPowered) {
-      this.powerOnTimestamp_ = Date.now();
+      this.powerOnTimestamp_ = SimClock.runMs();
 
       // Clear sticky fault on power-on (simulates power cycle clearing transient faults)
       if (!wasPowered && this.state.hasRefLockFault) {

@@ -28,6 +28,7 @@ import { TabbedCanvas } from '@app/pages/mission-control/tabbed-canvas';
 import { CampaignDocumentStore } from '@app/scenarios/campaign-document-store';
 import { SecurityConsoleCore } from '@app/security-console/security-console-core';
 import { missionNowMs } from '@app/simulation/mission-clock';
+import { SimClock, STEPS_PER_SECOND } from '@app/simulation/sim-clock';
 import { SimulationManager } from '@app/simulation/simulation-manager';
 import { SpaceEventManager } from '@app/space-events/space-event-manager';
 import { TelemetryManager } from '@app/telemetry/telemetry-manager';
@@ -54,7 +55,9 @@ export class ObjectivesManager {
   private scenarioTimeLimit_: number | null = null;
   private scenarioTimerRunning_: boolean = false;
   private scenarioTimeRemaining_: number = 0;
-  private timerInterval_: number | null = null;
+  /** Unpaused steps since the last countdown tick */
+  private countdownSteps_ = 0;
+  private readonly boundUpdateHandler_ = this.update_.bind(this);
   private scenarioStartTime_: number = 0;
 
   // Quiz pass state - when true, timers are paused and "PASS" should display
@@ -109,7 +112,7 @@ export class ObjectivesManager {
       return {
         objective,
         isActive,
-        activatedAt: isActive ? Date.now() : undefined,
+        activatedAt: isActive ? SimClock.nowMs() : undefined,
         isCompleted: false,
         conditionStates: objective.conditions.map((condition) => ({
           condition,
@@ -129,7 +132,7 @@ export class ObjectivesManager {
     });
 
     // Subscribe to update loop
-    this.eventBus_.on(Events.UPDATE, this.update_.bind(this));
+    this.eventBus_.on(Events.UPDATE, this.boundUpdateHandler_);
 
     // Developer/E2E hook (same pattern as window.advanceSimClock): dump the
     // live per-condition evaluation of one objective. The checklist shows only
@@ -162,9 +165,6 @@ export class ObjectivesManager {
 
     // Subscribe to asset selection events for ground-station-selected condition
     this.eventBus_.on(Events.ASSET_SELECTED, this.boundAssetSelectedHandler_);
-
-    // Start the 1-second timer interval for countdown updates
-    this.startTimerInterval_();
   }
 
   /**
@@ -226,18 +226,12 @@ export class ObjectivesManager {
    */
   static destroy(): void {
     if (ObjectivesManager.instance_) {
-      ObjectivesManager.instance_.eventBus_.off(Events.UPDATE, ObjectivesManager.instance_.update_.bind(ObjectivesManager.instance_));
+      ObjectivesManager.instance_.eventBus_.off(Events.UPDATE, ObjectivesManager.instance_.boundUpdateHandler_);
       ObjectivesManager.instance_.eventBus_.off(Events.QUIZ_PASSED, ObjectivesManager.instance_.boundQuizPassedHandler_);
       ObjectivesManager.instance_.eventBus_.off(Events.QUIZ_COMPLETED, ObjectivesManager.instance_.boundQuizCompletedHandler_);
       ObjectivesManager.instance_.eventBus_.off(Events.DECISION_GRADED, ObjectivesManager.instance_.boundDecisionGradedHandler_);
       ObjectivesManager.instance_.eventBus_.off(Events.DECISION_RESOLVED, ObjectivesManager.instance_.boundDecisionResolvedHandler_);
       ObjectivesManager.instance_.eventBus_.off(Events.ASSET_SELECTED, ObjectivesManager.instance_.boundAssetSelectedHandler_);
-
-      // Clear timer interval
-      if (ObjectivesManager.instance_.timerInterval_) {
-        clearInterval(ObjectivesManager.instance_.timerInterval_);
-        ObjectivesManager.instance_.timerInterval_ = null;
-      }
 
       delete (window as unknown as { debugObjective?: unknown }).debugObjective;
 
@@ -382,13 +376,13 @@ export class ObjectivesManager {
     for (const condState of activeObjective.conditionStates) {
       condState.isSatisfied = true;
       condState.isMaintenanceComplete = true;
-      condState.satisfiedAt = Date.now();
+      condState.satisfiedAt = SimClock.nowMs();
       condState.observed = true; // a force-completed objective counts as observed
     }
 
     // Mark objective as complete
     activeObjective.isCompleted = true;
-    activeObjective.completedAt = Date.now();
+    activeObjective.completedAt = SimClock.nowMs();
     activeObjective.isTimerRunning = false;
 
     // Collapse the objective
@@ -503,18 +497,25 @@ export class ObjectivesManager {
   }
 
   /**
-   * Start the 1-second timer interval for countdown updates
+   * Accumulate one simulation step of scenario time and tick the countdowns
+   * once per whole second of it. Countdowns follow the scenario clock, so
+   * they stop with it (brief freeze, quiz, failure, hidden tab). Skips do not
+   * pass through here; see applyTimeSkip().
    */
-  private startTimerInterval_(): void {
-    if (this.timerInterval_) return;
+  private advanceCountdowns_(): void {
+    if (SimClock.isPaused('scenario')) {
+      return;
+    }
 
-    this.timerInterval_ = window.setInterval(() => {
+    this.countdownSteps_++;
+    if (this.countdownSteps_ >= STEPS_PER_SECOND) {
+      this.countdownSteps_ = 0;
       this.tickTimers_();
-    }, 1000);
+    }
   }
 
   /**
-   * Called every second to update timers
+   * Called every second of scenario time to update timers
    */
   private tickTimers_(): void {
     // Don't tick if OpsLogManager is paused - keep timers in sync with simulated time
@@ -601,7 +602,7 @@ export class ObjectivesManager {
    */
   private failObjective_(state: ObjectiveState, reason: 'timeout'): void {
     state.isFailed = true;
-    state.failedAt = Date.now();
+    state.failedAt = SimClock.nowMs();
 
     // Stop ALL timers when any objective fails
     this.stopAllTimers();
@@ -988,6 +989,8 @@ export class ObjectivesManager {
   private update_(dt: Milliseconds): void {
     const dtSeconds = dt / 1000;
 
+    this.advanceCountdowns_();
+
     for (const objectiveState of this.objectiveStates_) {
       // Skip already completed objectives
       if (objectiveState.isCompleted) {
@@ -1011,7 +1014,7 @@ export class ObjectivesManager {
       const isObjectiveComplete = this.checkObjectiveComplete_(objectiveState);
       if (isObjectiveComplete && !objectiveState.isCompleted) {
         objectiveState.isCompleted = true;
-        objectiveState.completedAt = Date.now();
+        objectiveState.completedAt = SimClock.nowMs();
         objectiveState.isTimerRunning = false; // Stop timer on completion
 
         // Check for time penalty
@@ -1110,7 +1113,7 @@ export class ObjectivesManager {
    * Activate objectives that were waiting for a specific prerequisite
    */
   private activateDependentObjectives_(completedObjectiveId: string): void {
-    const now = Date.now();
+    const now = SimClock.nowMs();
 
     for (const objectiveState of this.objectiveStates_) {
       // Skip already active or completed objectives
@@ -1170,7 +1173,7 @@ export class ObjectivesManager {
   activateObjective(objectiveId: string): boolean {
     const state = this.objectiveStates_.find((s) => s.objective.id === objectiveId);
     if (!state || state.isActive || state.isCompleted) return false;
-    this.activateObjectiveState_(state, Date.now());
+    this.activateObjectiveState_(state, SimClock.nowMs());
     return true;
   }
 
@@ -1291,7 +1294,7 @@ export class ObjectivesManager {
       // Handle condition state changes
       if (isNowSatisfied && !wasSatisfied) {
         // Condition just became satisfied
-        conditionState.satisfiedAt = Date.now();
+        conditionState.satisfiedAt = SimClock.nowMs();
         conditionState.maintainedDuration = 0;
 
         // Mark as complete based on condition type
@@ -1310,7 +1313,7 @@ export class ObjectivesManager {
         conditionState.satisfiedAt = undefined;
         conditionState.maintainedDuration = 0;
         conditionState.lostTimestamps = conditionState.lostTimestamps || [];
-        conditionState.lostTimestamps.push(Date.now());
+        conditionState.lostTimestamps.push(SimClock.nowMs());
 
         // Reset maintenance complete for indefinite-maintenance conditions
         if (conditionState.condition.maintainUntilObjectiveComplete) {
@@ -1414,7 +1417,7 @@ export class ObjectivesManager {
     };
     visit(objectiveId);
 
-    const now = Date.now();
+    const now = SimClock.nowMs();
     const saved: ObjectiveState[] = [...toComplete].map((id) => {
       const state = byId.get(id)!;
       return {

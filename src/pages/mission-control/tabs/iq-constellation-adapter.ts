@@ -2,7 +2,11 @@ import { qs } from '@app/engine/utils/query-selector';
 import { IQSignalInfo, Receiver } from '@app/equipment/receiver/receiver';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
+import { Rng } from '@app/simulation/rng';
 import { ModulationType } from '@app/types';
+
+/** Seeded draws for this module (see simulation/rng.ts). */
+const random = (): number => Rng.stream('display:iq-constellation').next();
 
 /**
  * IQConstellationAdapter - Displays I&Q constellation diagram for receiver signals
@@ -265,8 +269,8 @@ export class IQConstellationAdapter {
   private boxMullerGaussian_(): { z0: number; z1: number } {
     let u1: number, u2: number;
     do {
-      u1 = Math.random();
-      u2 = Math.random();
+      u1 = random();
+      u2 = random();
     } while (u1 <= Number.EPSILON);
 
     const mag = Math.sqrt(-2.0 * Math.log(u1));

@@ -3,6 +3,7 @@ import { vi } from 'vitest';
 import { ANTENNA_CONFIG_KEYS } from '../../../src/equipment/antenna/antenna-config-keys';
 import { AntennaCore, AntennaState } from '../../../src/equipment/antenna/antenna-core';
 import { Hertz } from '../../../src/types';
+import { advanceSimTime } from '../../helpers/sim-time';
 
 // Mock SimulationManager
 vi.mock('../../../src/simulation/simulation-manager', () => ({
@@ -2070,7 +2071,7 @@ describe('AntennaCore', () => {
       // isOperational should not be immediately true
 
       // Fast-forward power-up delay
-      vi.advanceTimersByTime(3100);
+      advanceSimTime(3100);
 
       expect(antenna.state.isOperational).toBe(true);
 

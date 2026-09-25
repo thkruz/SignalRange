@@ -2,7 +2,7 @@ import { vi } from 'vitest';
 import { EventBus } from '../../src/events/event-bus';
 import { Events, TimeSkipEndedData, TimeSkipStartedData } from '../../src/events/events';
 import { OpsLogManager } from '../../src/ops-log/ops-log-manager';
-import { addSkippedTime, getSkippedMs, missionNowMs, resetMissionClock } from '../../src/simulation/mission-clock';
+import { getSkippedMs, missionNowMs, resetMissionClock } from '../../src/simulation/mission-clock';
 import { getSimulatedNowMs } from '../../src/simulation/sim-time';
 import { TimeSkipController } from '../../src/simulation/time-skip-controller';
 
@@ -237,51 +237,5 @@ describe('TimeSkipController', () => {
 
       expect(controller.start(target)).toBe(false);
     });
-  });
-});
-
-describe('mission-clock', () => {
-  beforeEach(() => {
-    resetMissionClock();
-  });
-
-  afterEach(() => {
-    resetMissionClock();
-  });
-
-  it('should equal wall-clock time before any skip', () => {
-    expect(missionNowMs()).toBeCloseTo(Date.now(), -1);
-    expect(getSkippedMs()).toBe(0);
-  });
-
-  it('should run ahead of wall-clock time by the skipped amount', () => {
-    const before = missionNowMs();
-
-    addSkippedTime(600_000);
-
-    expect(getSkippedMs()).toBe(600_000);
-    expect(missionNowMs() - before).toBeGreaterThanOrEqual(600_000);
-  });
-
-  it('should accumulate across several skips', () => {
-    addSkippedTime(60_000);
-    addSkippedTime(30_000);
-
-    expect(getSkippedMs()).toBe(90_000);
-  });
-
-  it('should ignore non-positive and non-finite deltas', () => {
-    addSkippedTime(0);
-    addSkippedTime(-1000);
-    addSkippedTime(NaN);
-
-    expect(getSkippedMs()).toBe(0);
-  });
-
-  it('should reset, so the next scenario does not inherit skipped time', () => {
-    addSkippedTime(600_000);
-    resetMissionClock();
-
-    expect(getSkippedMs()).toBe(0);
   });
 });

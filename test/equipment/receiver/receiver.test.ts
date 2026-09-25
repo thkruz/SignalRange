@@ -4,6 +4,7 @@ import { Receiver, ReceiverModemState, ReceiverState } from '../../../src/equipm
 import { TapPoint } from '../../../src/equipment/rf-front-end/coupler-module/tap-points';
 import { EventBus } from '../../../src/events/event-bus';
 import { Events } from '../../../src/events/events';
+import { advanceSimTime } from '../../helpers/sim-time';
 
 // Mock HTMLMediaElement.prototype.play for jsdom compatibility
 Object.defineProperty(HTMLMediaElement.prototype, 'play', {
@@ -1030,7 +1031,7 @@ describe('Receiver class', () => {
       receiver.handlePowerToggle(false);
 
       // Power off has 250ms delay
-      vi.advanceTimersByTime(300);
+      advanceSimTime(300);
 
       expect(receiver.activeModem.isPowered).toBe(false);
     });
@@ -1039,7 +1040,7 @@ describe('Receiver class', () => {
       const emitSpy = vi.spyOn(receiver, 'emit');
 
       receiver.handlePowerToggle(false);
-      vi.advanceTimersByTime(300);
+      advanceSimTime(300);
 
       expect(emitSpy).toHaveBeenCalledWith(
         Events.RX_CONFIG_CHANGED,

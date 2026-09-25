@@ -4,7 +4,12 @@ import { RotaryKnob } from '@app/components/rotary-knob/rotary-knob';
 import { qs } from '@app/engine/utils/query-selector';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
+import { Rng } from '@app/simulation/rng';
+import { SimClock } from '@app/simulation/sim-clock';
 import { RFFrontEndCore } from './rf-front-end-core';
+
+/** Seeded draws for this module (see simulation/rng.ts). */
+const random = (): number => Rng.stream('rf-front-end').next();
 
 /**
  * Base state interface that all RF modules must implement
@@ -213,8 +218,8 @@ export abstract class RFFrontEndModule<TState extends RFFrontEndModuleState> {
       return;
     }
 
-    const delay = minDelay + Math.random() * (maxDelay - minDelay);
-    setTimeout(() => {
+    const delay = minDelay + random() * (maxDelay - minDelay);
+    SimClock.setTimeout(() => {
       if (this.state.isExtRefLocked !== undefined) {
         this.state.isExtRefLocked = true;
       }

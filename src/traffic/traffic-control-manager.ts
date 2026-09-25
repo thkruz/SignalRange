@@ -1,3 +1,4 @@
+import { SimClock } from '@app/simulation/sim-clock';
 /**
  * @file TrafficControlManager - Manages traffic ownership and handover between ground stations
  * @description Tracks which ground station "owns" traffic to each satellite,
@@ -355,7 +356,7 @@ export class TrafficControlManager {
           satelliteNoradId: satId,
           groundStation1Id: transmittingStations[0],
           groundStation2Id: transmittingStations[1],
-          detectedAt: Date.now(),
+          detectedAt: SimClock.nowMs(),
         });
 
         return; // Only emit once

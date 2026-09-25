@@ -5,6 +5,7 @@ import { EventBus } from '../../../../src/events/event-bus';
 import { Events } from '../../../../src/events/events';
 import { SignalOrigin } from '../../../../src/signal-origin';
 import type { dB, dBm, Hertz, IfSignal, MHz } from '../../../../src/types';
+import { advanceSimTime } from '../../../helpers/sim-time';
 
 // Mock HTMLMediaElement.prototype.play for jsdom compatibility
 Object.defineProperty(HTMLMediaElement.prototype, 'play', {
@@ -362,7 +363,7 @@ describe('BUCModuleCore', () => {
         bucModule.update();
 
         // Fast forward timers to complete lock acquisition
-        vi.advanceTimersByTime(6000);
+        advanceSimTime(6000);
 
         expect(bucModule.state.isExtRefLocked).toBe(true);
       });

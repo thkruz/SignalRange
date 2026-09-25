@@ -1,6 +1,6 @@
 import { expect, Page, test } from '@playwright/test';
 import { MissionControlPage } from '../pages/mission-control.page';
-import { advanceMissionClock, answerRileyQuiz, domClick, engageTrack, rideUntilObjectiveComplete, waitForObjectiveComplete } from '../utils/ham-sdr-helpers';
+import { advanceClock, answerRileyQuiz, domClick, engageTrack, rideUntilObjectiveComplete, waitForObjectiveComplete } from '../utils/ham-sdr-helpers';
 import { waitForSimulationReady } from '../utils/simulation-helpers';
 
 /**
@@ -13,7 +13,7 @@ import { waitForSimulationReady } from '../utils/simulation-helpers';
  * CUBEHOP is tampered at load via spaceEvents[].initialTle (RAAN +60 deg -
  * empty sky all afternoon) and restored by the panel's fetch button.
  *
- * Both jumps use advanceMissionClock (sim + mission clocks together): the
+ * Both jumps use advanceClock (sim + mission clocks together): the
  * WXSAT pass starts at T+10 min and the CUBEHOP pass at T+2:19.
  */
 test.describe('ham-sdr Scenario 6 Full Completion', () => {
@@ -59,7 +59,7 @@ test.describe('ham-sdr Scenario 6 Full Completion', () => {
 
   test('[catch-wxsat] locks the 14:50 weather pass on the QFH', async () => {
     // Jump to just inside the WXSAT pass (AOS T+10 min)
-    await advanceMissionClock(page, 12);
+    await advanceClock(page, 12);
 
     await missionControl.selectGroundStation('BKYD-QFH');
     await missionControl.selectTab('sdr-console');
@@ -95,7 +95,7 @@ test.describe('ham-sdr Scenario 6 Full Completion', () => {
 
   test('[catch-cubehop] tracks and locks the recovered 16:59 pass', async () => {
     // From ~T+13 min to just before the 16:59 AOS (T+139 min)
-    await advanceMissionClock(page, 125);
+    await advanceClock(page, 125);
 
     await missionControl.selectTab('sdr-console');
     await missionControl.dismissDialogIfPresent();

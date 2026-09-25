@@ -1,3 +1,4 @@
+import { SimClock } from '@app/simulation/sim-clock';
 /**
  * @file Fault Injector Service
  * @description Centralized fault injection service for training scenarios.
@@ -154,7 +155,7 @@ export class FaultInjector {
     if (!fault) return false;
 
     // Check expiration
-    if (fault.expiresAt && Date.now() > fault.expiresAt) {
+    if (fault.expiresAt && SimClock.runMs() > fault.expiresAt) {
       this.clear(id);
       return false;
     }
@@ -233,7 +234,7 @@ export class FaultInjector {
    * Clean up expired faults
    */
   private cleanupExpired_(): void {
-    const now = Date.now();
+    const now = SimClock.runMs();
     const toDelete: string[] = [];
 
     this.activeFaults_.forEach((fault, id) => {

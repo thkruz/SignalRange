@@ -7,6 +7,7 @@ import { TapPoint } from '@app/equipment/rf-front-end/coupler-module/tap-points'
 import { RFFrontEndCore } from '@app/equipment/rf-front-end/rf-front-end-core';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
+import { SimClock } from '@app/simulation/sim-clock';
 import { dBm, FECType, Hertz, IfSignal, MHz, ModulationType } from '@app/types';
 import { ADCDegradationResult, calculateADCDegradation } from './adc-degradation';
 import './receiver.css';
@@ -423,7 +424,7 @@ export class Receiver extends BaseEquipment {
   }
 
   private togglePower(isOn: boolean): void {
-    setTimeout(
+    SimClock.setTimeout(
       () => {
         this.activeModem.isPowered = isOn;
 

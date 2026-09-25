@@ -1,7 +1,11 @@
 import { RFFrontEndCore } from '@app/equipment/rf-front-end/rf-front-end-core';
 import { RFFrontEndModule, RFFrontEndModuleState } from '@app/equipment/rf-front-end/rf-front-end-module';
 import { SignalOrigin } from '@app/signal-origin';
+import { Rng } from '@app/simulation/rng';
 import { dB, dBm, Hertz, IfFrequency, IfSignal, MHz, RfFrequency, RfSignal } from '@app/types';
+
+/** Seeded draws for this module (see simulation/rng.ts). */
+const random = (): number => Rng.stream('buc').next();
 
 /**
  * Spurious output from mixer products
@@ -387,8 +391,8 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
     const loFrequencyHz = this.state.loFrequency * 1e6;
     // Simulate drift: ±1-100 ppm (parts per million)
     // Use random walk model for realistic drift behavior
-    const driftPpm = 10 + Math.random() * 90; // 10-100 ppm
-    const driftDirection = Math.random() > 0.5 ? 1 : -1;
+    const driftPpm = 10 + random() * 90; // 10-100 ppm
+    const driftDirection = random() > 0.5 ? 1 : -1;
     this.state.frequencyError = driftDirection * ((loFrequencyHz * driftPpm) / 1e6);
   }
 
@@ -407,14 +411,14 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
     // Typical locked: -100 dBc/Hz @ 10kHz offset
     // Unlocked: -70 to -80 dBc/Hz (degraded)
     this.state.phaseNoise = this.state.isExtRefLocked
-      ? -100 - Math.random() * 5 // -100 to -105 dBc/Hz
-      : -70 - Math.random() * 10; // -70 to -80 dBc/Hz
+      ? -100 - random() * 5 // -100 to -105 dBc/Hz
+      : -70 - random() * 10; // -70 to -80 dBc/Hz
 
     // Group delay variation (phase distortion across bandwidth)
     // Typical: 2-10 ns, increases with temperature and at band edges
     const baseDelay = 3; // ns
     const tempVariation = (this.state.temperature - 25) * 0.1; // 0.1 ns/°C
-    this.state.groupDelay = baseDelay + tempVariation + Math.random() * 2;
+    this.state.groupDelay = baseDelay + tempVariation + random() * 2;
 
     // Calculate spurious mixer products (N×LO ± M×IF)
     this.state.spuriousOutputs = this.calculateSpuriousProducts_();
@@ -440,21 +444,21 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
         // 2×LO - IF (2nd harmonic mixing)
         {
           frequency: (2 * loFreqHz - ifFreqHz) as Hertz,
-          level: -30 - Math.random() * 10, // -30 to -40 dBc
+          level: -30 - random() * 10, // -30 to -40 dBc
           loHarmonic: 2,
           ifHarmonic: -1,
         },
         // 2×LO + IF (2nd harmonic mixing)
         {
           frequency: (2 * loFreqHz + ifFreqHz) as Hertz,
-          level: -35 - Math.random() * 10, // -35 to -45 dBc
+          level: -35 - random() * 10, // -35 to -45 dBc
           loHarmonic: 2,
           ifHarmonic: 1,
         },
         // 3×LO - IF (3rd harmonic)
         {
           frequency: (3 * loFreqHz - ifFreqHz) as Hertz,
-          level: -40 - Math.random() * 15, // -40 to -55 dBc
+          level: -40 - random() * 15, // -40 to -55 dBc
           loHarmonic: 3,
           ifHarmonic: -1,
         }

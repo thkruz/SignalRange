@@ -1,3 +1,4 @@
+import { Rng } from '@app/simulation/rng';
 /**
  * @file GeolocationService - Two-satellite TDOA/FDOA interference geolocation
  * @description Implements the adjacent-satellite geolocation technique used to
@@ -157,7 +158,7 @@ export class GeolocationService {
     this.primary_ = primary;
     this.adjacent_ = adjacent;
     this.stationEcef_ = llaToEcef(station);
-    this.rng_ = options.rng ?? Math.random;
+    this.rng_ = options.rng ?? (() => Rng.stream('geolocation').next());
   }
 
   /** Predicted TDOA (s) for a candidate emitter at the measurement epoch */

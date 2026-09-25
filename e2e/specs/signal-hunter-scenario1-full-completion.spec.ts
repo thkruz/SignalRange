@@ -25,7 +25,7 @@ import { dismissDialogIfPresent, waitForSimulationReady } from '../utils/simulat
  * 40 s on / 90 s off cycle and the correlator integrates for 12 s, so every
  * capture has to start early in an on-window. The helpers track the
  * interferer phase through the window.debugObjective probe and skip the
- * off-windows with window.advanceMissionClock between captures; the clock
+ * off-windows with window.advanceClock between captures; the clock
  * jumps also move the inclined SENTRY pair, which rotates the FDOA lines and
  * tightens the fix the way real cycles would.
  *

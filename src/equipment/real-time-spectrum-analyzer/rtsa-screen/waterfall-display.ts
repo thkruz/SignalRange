@@ -1,7 +1,11 @@
 import { RealTimeSpectrumAnalyzer, RealTimeSpectrumAnalyzerState } from '@app/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer';
 import { SpectrumDataProcessor } from '@app/equipment/real-time-spectrum-analyzer/spectrum-data-processor';
+import { Rng } from '@app/simulation/rng';
 import { Hertz } from '@app/types';
 import { RTSAScreen } from './rtsa-screen';
+
+/** Seeded draws for this module (see simulation/rng.ts). */
+const random = (): number => Rng.stream('display:waterfall').next();
 
 export class WaterfallDisplay extends RTSAScreen {
   private running: boolean = false;
@@ -59,7 +63,7 @@ export class WaterfallDisplay extends RTSAScreen {
 
     setTimeout(() => {
       this.running = true;
-    }, Math.random() * 1000);
+    }, random() * 1000);
   }
 
   private initializeColorCache(): void {

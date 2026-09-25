@@ -6,6 +6,7 @@ import { AlarmStatus, BaseEquipment } from '@app/equipment/base-equipment';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
 import { SignalOrigin } from '@app/signal-origin';
+import { SimClock } from '@app/simulation/sim-clock';
 import { dBi, dBm, FECType, Hertz, IfFrequency, IfSignal, ModulationType } from '@app/types';
 import './transmitter.css';
 
@@ -171,7 +172,7 @@ export class Transmitter extends BaseEquipment {
    * Toggles signal dropout on a ~5 second cycle with variation.
    */
   private updateIntermittentFaultState_(): void {
-    const now = Date.now();
+    const now = SimClock.runMs();
 
     for (const modem of this.state.modems) {
       if (!modem.intermittentFault) {
@@ -181,7 +182,10 @@ export class Transmitter extends BaseEquipment {
       }
 
       // Initialize cycle start if needed
-      modem.intermittentFaultCycleStart ??= now;
+      // Modem state outlives a scenario; run time restarts at 0 with each one
+      if (modem.intermittentFaultCycleStart === undefined || modem.intermittentFaultCycleStart > now) {
+        modem.intermittentFaultCycleStart = now;
+      }
 
       // Compute current dropout state (also stored for UI display)
       modem.isIntermittentDropout = this.computeIntermittentDropout_(modem, now);
@@ -214,7 +218,7 @@ export class Transmitter extends BaseEquipment {
    * Called by RF front-end modules to get real-time dropout status.
    */
   public isModemInIntermittentDropout(modem: TransmitterModem): boolean {
-    const now = Date.now();
+    const now = SimClock.runMs();
     const result = this.computeIntermittentDropout_(modem, now);
 
     // Debug logging (remove after debugging)
@@ -513,7 +517,7 @@ export class Transmitter extends BaseEquipment {
       this.activeModem.isFaulted = false;
     }
 
-    setTimeout(
+    SimClock.setTimeout(
       () => {
         this.activeModem.isPowered = isOn;
         this.emit(Events.TX_CONFIG_CHANGED, {
@@ -625,7 +629,7 @@ export class Transmitter extends BaseEquipment {
     this.activeModem.isFaultSwitchUp = true;
 
     // Wait 3 seconds and then clear fault and reset switch
-    setTimeout(() => {
+    SimClock.setTimeout(() => {
       if (!this.activeModem.isTransmitting) {
         this.activeModem.isFaulted = false;
       }
@@ -788,7 +792,7 @@ export class Transmitter extends BaseEquipment {
       this.activeModem.isFaulted = false;
     }
 
-    setTimeout(
+    SimClock.setTimeout(
       () => {
         this.activeModem.isPowered = isEnabled;
         this.emit(Events.TX_CONFIG_CHANGED, {

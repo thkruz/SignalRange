@@ -8,6 +8,7 @@ import { RFFrontEndCore } from '@app/equipment/rf-front-end/rf-front-end-core';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
 import { Logger } from '@app/logging/logger';
+import { Rng } from '@app/simulation/rng';
 import { dB, Hertz, IfSignal, RfSignal } from '@app/types';
 import { AnalyzerControlBox } from './analyzer-control-box';
 import { defaultSpectrumAnalyzerState } from './defaultSpectrumAnalyzerState';
@@ -15,6 +16,9 @@ import './real-time-spectrum-analyzer.css';
 import { SpectralDensityPlot } from '@app/equipment/real-time-spectrum-analyzer/rtsa-screen/spectral-density-plot';
 import { WaterfallDisplay } from '@app/equipment/real-time-spectrum-analyzer/rtsa-screen/waterfall-display';
 import { SpectrumDataProcessor } from './spectrum-data-processor';
+
+/** Seeded draws for this module (see simulation/rng.ts). */
+const random = (): number => Rng.stream('display:analyzer').next();
 
 type MarkerPoint = { x: number; y: number; signal: number };
 
@@ -521,7 +525,7 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
     // If strongest signal is below the noise floor replace it with a fake signal at noise floor
     if (!strongestSignal || (strongestSignal && strongestSignal.power < this.noiseFloorAndGain)) {
       strongestSignal = {
-        frequency: Math.random() * this.state.span + (this.state.centerFrequency - this.state.span / 2),
+        frequency: random() * this.state.span + (this.state.centerFrequency - this.state.span / 2),
         power: this.noiseFloorAndGain,
         bandwidth: Math.min(this.state.span, 320e6),
       } as IfSignal | RfSignal;

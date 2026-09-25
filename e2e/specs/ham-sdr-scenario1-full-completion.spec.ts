@@ -1,6 +1,6 @@
 import { expect, Page, test } from '@playwright/test';
 import { MissionControlPage } from '../pages/mission-control.page';
-import { advanceSimClock, answerRileyQuiz, domClick, rideUntilObjectiveComplete, waitForObjectiveComplete } from '../utils/ham-sdr-helpers';
+import { advanceClock, answerRileyQuiz, domClick, rideUntilObjectiveComplete, waitForObjectiveComplete } from '../utils/ham-sdr-helpers';
 import { waitForSimulationReady } from '../utils/simulation-helpers';
 
 /**
@@ -68,7 +68,7 @@ test.describe('ham-sdr Scenario 1 Full Completion', () => {
 
   test('[detect-apt] sees the APT downlink appear on the waterfall', async () => {
     // Jump into the pass - well past AOS, toward the strong segment
-    await advanceSimClock(page, 5);
+    await advanceClock(page, 5);
 
     await missionControl.selectTab('sdr-console');
     await missionControl.dismissDialogIfPresent();

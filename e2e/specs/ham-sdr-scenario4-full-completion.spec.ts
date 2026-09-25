@@ -1,6 +1,6 @@
 import { expect, Page, test } from '@playwright/test';
 import { MissionControlPage } from '../pages/mission-control.page';
-import { advanceSimClock, answerRileyQuiz, domClick, engageTrack, rideUntilObjectiveComplete, waitForObjectiveComplete } from '../utils/ham-sdr-helpers';
+import { advanceClock, answerRileyQuiz, domClick, engageTrack, rideUntilObjectiveComplete, waitForObjectiveComplete } from '../utils/ham-sdr-helpers';
 import { waitForSimulationReady } from '../utils/simulation-helpers';
 
 /**
@@ -61,7 +61,7 @@ test.describe('ham-sdr Scenario 4 Full Completion (AFC discovery)', () => {
     await missionControl.selectTab('sdr-console');
     await missionControl.dismissDialogIfPresent();
 
-    await advanceSimClock(page, 3.5);
+    await advanceClock(page, 3.5);
     await engageTrack(page, '63002');
 
     await missionControl.dismissDialogIfPresent();

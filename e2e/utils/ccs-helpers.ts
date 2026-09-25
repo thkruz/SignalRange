@@ -16,8 +16,8 @@ import { waitForQuizToAppear } from './simulation-helpers';
  *   out with the EA Assessment tab selected (requiresObservation conditions
  *   only count while their observationTab is active);
  * - hardwareFaultEvents fire on the MISSION clock (missionNowMs), which
- *   window.advanceMissionClock jumps, so a spec can bring a scheduled trip
- *   forward without waiting wall time.
+ *   window.advanceClock jumps, so a spec can bring a scheduled trip forward
+ *   without waiting wall time.
  *
  * Every click goes through DOM dispatch: the checklist box stays open so the
  * specs can poll it, and it floats over the canvas.
@@ -45,30 +45,28 @@ export async function answerStatusCheck(page: Page, answerText: string): Promise
 }
 
 /**
- * Mission-elapsed seconds as the HardwareFaultManager sees them: wall time
- * since the spec stamped `wallStartMs` plus everything the mission clock has
- * skipped. The stamp is taken a couple of seconds after the scenario booted,
- * so this reads slightly LOW - callers add margin above a threshold.
+ * Mission-elapsed seconds as the HardwareFaultManager sees them (the page's
+ * scenario clock: it pauses for the brief and quizzes, and includes skips).
  */
-export async function missionElapsedS(page: Page, wallStartMs: number): Promise<number> {
-  const skippedMs = await page.evaluate(() => {
-    const hook = (window as unknown as { missionSkippedMs?: () => number }).missionSkippedMs;
+export async function missionElapsedS(page: Page): Promise<number> {
+  const elapsedMs = await page.evaluate(() => {
+    const hook = (window as unknown as { missionElapsedMs?: () => number }).missionElapsedMs;
     return typeof hook === 'function' ? hook() : 0;
   });
-  return (Date.now() - wallStartMs + skippedMs) / 1000;
+  return elapsedMs / 1000;
 }
 
 /**
- * Jump BOTH clocks so mission-elapsed is at least `targetS` (plus `marginS`).
+ * Skip the clock so mission-elapsed is at least `targetS` (plus `marginS`).
  * No-op if already past it. Used to bring a scheduled hardwareFaultEvent
  * forward; the fault fires on the next UPDATE tick.
  */
-export async function advanceMissionClockToElapsed(page: Page, wallStartMs: number, targetS: number, marginS = 10): Promise<void> {
-  await page.waitForFunction(() => typeof (window as any).advanceMissionClock === 'function');
-  const elapsed = await missionElapsedS(page, wallStartMs);
+export async function advanceMissionClockToElapsed(page: Page, targetS: number, marginS = 10): Promise<void> {
+  await page.waitForFunction(() => typeof (window as any).advanceClock === 'function');
+  const elapsed = await missionElapsedS(page);
   const deltaS = targetS + marginS - elapsed;
   if (deltaS > 0) {
-    await page.evaluate((ms) => (window as any).advanceMissionClock(ms), deltaS * 1000);
+    await page.evaluate((ms) => (window as any).advanceClock(ms), deltaS * 1000);
   }
   await page.waitForTimeout(2500);
 }

@@ -31,7 +31,6 @@ test.describe('ccs Scenario 4 Full Completion', () => {
   let page: Page;
   let context: import('@playwright/test').BrowserContext;
   let missionControl: MissionControlPage;
-  let wallStartMs = 0;
 
   const band = (channelId: string) => page.locator(`tr[data-channel-id="${channelId}"] .tlm-band`);
   const readFrames = async (): Promise<number> => parseInt((await page.locator('#tlm-frames').textContent()) ?? '0', 10);
@@ -48,7 +47,6 @@ test.describe('ccs Scenario 4 Full Completion', () => {
 
     missionControl = new MissionControlPage(page);
     await missionControl.gotoScenario('ccs', 'ccs-scenario4');
-    wallStartMs = Date.now();
     await waitForSimulationReady(page);
     await missionControl.dismissDialogIfPresent();
   });
@@ -82,7 +80,7 @@ test.describe('ccs Scenario 4 Full Completion', () => {
   });
 
   test('[the-transient] wheel 1 reads yellow at T+4:00 and is named a transient', async () => {
-    await advanceMissionClockToElapsed(page, wallStartMs, 245, 0);
+    await advanceMissionClockToElapsed(page, 245, 0);
     await missionControl.selectTab('telemetry');
     await expect(band('wheel-rpm')).toHaveText('YELLOW', { timeout: 15000 });
     await page.waitForTimeout(3000);
@@ -92,7 +90,7 @@ test.describe('ccs Scenario 4 Full Completion', () => {
   });
 
   test('[spot-the-trend] the battery reads yellow with the heater ON beside it', async () => {
-    await advanceMissionClockToElapsed(page, wallStartMs, 720, 0);
+    await advanceMissionClockToElapsed(page, 720, 0);
     await missionControl.selectTab('telemetry');
     await expect(band('batt-t')).toHaveText('YELLOW', { timeout: 15000 });
     await expect(band('htr-state')).toHaveText('YELLOW');
@@ -131,7 +129,7 @@ test.describe('ccs Scenario 4 Full Completion', () => {
     await page.waitForTimeout(2500);
     await expect(band('htr-state')).toHaveText('NOMINAL', { timeout: 15000 });
     // The recovery ramp is 240 s of mission time: jump past it.
-    await advanceMissionClockToElapsed(page, wallStartMs, 1100, 0);
+    await advanceMissionClockToElapsed(page, 1100, 0);
     await missionControl.selectTab('telemetry');
     await expect(band('batt-t')).toHaveText('NOMINAL', { timeout: 20000 });
     await page.waitForTimeout(3000);

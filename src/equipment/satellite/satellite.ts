@@ -2,6 +2,9 @@ import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
 import { SignalOrigin } from '@app/signal-origin';
 import { PerlinNoise } from '@app/simulation/perlin-noise';
+import { Rng, type RngStream } from '@app/simulation/rng';
+import { SimClock } from '@app/simulation/sim-clock';
+import { getSimulatedNowMs } from '@app/simulation/sim-time';
 import { dBi, dBm, Hertz, RfFrequency, RfSignal } from '@app/types';
 import { Degrees } from 'ootk';
 
@@ -167,12 +170,17 @@ export class Satellite {
   private readonly frequencyOffset: number;
 
   private readonly randomCache_: Map<string, number> = new Map();
+
+  /** This satellite's random stream for the current run seed */
+  private get rng_(): RngStream {
+    return Rng.stream(`satellite:${this.noradId}`);
+  }
   private readonly boundUpdateHandler_: () => void;
   private isSubscribedToEventBus_ = false;
 
   el: Degrees;
   az: Degrees;
-  rotation: Degrees = (Math.random() * 90 - 45) as Degrees;
+  rotation: Degrees;
   name: string;
 
   /** Ephemeris error in azimuth (degrees) - simulates TLE inaccuracy */
@@ -220,7 +228,8 @@ export class Satellite {
     this.health = 1.0;
     this.az = satelliteState.az;
     this.el = satelliteState.el;
-    this.rotation = satelliteState.rotation ?? this.rotation;
+    // Unauthored skew is a property of the satellite, not of the run: fixed per NORAD id
+    this.rotation = satelliteState.rotation ?? ((Rng.hashUniform(`satellite-rotation:${norad}`) * 90 - 45) as Degrees);
     this.ephemerisErrorAz = satelliteState.ephemerisErrorAz ?? (0 as Degrees);
     this.ephemerisErrorEl = satelliteState.ephemerisErrorEl ?? (0 as Degrees);
 
@@ -358,9 +367,14 @@ export class Satellite {
       return;
     }
 
-    // Throttle position updates
-    const now = Date.now();
+    // Throttle position updates (scenario time: the wobble is sky, and pauses with it)
+    const now = getSimulatedNowMs();
     const elapsed = now - this.lastPositionUpdateTime_;
+    if (elapsed < 0) {
+      // A new scenario started earlier on the calendar; satellites outlive scenarios
+      this.lastPositionUpdateTime_ = now;
+      return;
+    }
     if (elapsed < Satellite.POSITION_UPDATE_INTERVAL_MS) {
       return;
     }
@@ -409,13 +423,12 @@ export class Satellite {
     // We need to create random values for each signal to use in degradation effects
     const allRxSignals = [...this.rxSignal, ...this.externalSignal];
 
+    const rng = this.rng_;
     for (const signal of allRxSignals) {
-      // Power Variation
-      this.randomCache_.set(`${signal.signalId}-powerVariation`, Math.random());
       // Rain Variation
-      this.randomCache_.set(`${signal.signalId}-rain`, Math.random());
-      // Scintillation (pre-cached to avoid Math.random() during degradation)
-      this.randomCache_.set(`${signal.signalId}-scintillation`, Math.random());
+      this.randomCache_.set(`${signal.signalId}-rain`, rng.next());
+      // Scintillation (pre-cached so degradation makes no draws of its own)
+      this.randomCache_.set(`${signal.signalId}-scintillation`, rng.next());
     }
   }
 
@@ -592,18 +605,22 @@ export class Satellite {
    * @returns Updated power level in dBm
    */
   private applyPowerVariation_inPlace(signalId: string, currentPower: dBm): dBm {
-    // Get or create noise generator for this signal
-    if (!this.noiseGenerators.has(signalId)) {
-      this.noiseGenerators.set(signalId, PerlinNoise.getInstance(signalId));
+    // One generator per (run seed, signal); rebuilt when a scenario load re-seeds
+    const noiseSeed = `${Rng.getSeed()}:${this.noradId}:${signalId}`;
+    let noiseGen = this.noiseGenerators.get(signalId);
+    if (noiseGen?.seed !== noiseSeed) {
+      noiseGen = new PerlinNoise(noiseSeed);
+      this.noiseGenerators.set(signalId, noiseGen);
     }
 
-    const noiseGen = this.noiseGenerators.get(signalId);
-    if (!noiseGen) return currentPower;
+    // Slow fading on run time (a physical process, not a scheduled one), with a
+    // per-signal phase so carriers do not fade together
+    const phaseS = Rng.hashUniform(noiseSeed) * 1000;
+    const time = SimClock.runMs() / 1000 + phaseS;
 
-    const randomPowerFactor = this.randomCache_.get(`${signalId}-powerVariation`) ?? 1;
-    const time = Date.now() / 1000 + randomPowerFactor * 1000;
-
-    // Perlin noise returns 0-1, convert to -1 to 1
+    // KNOWN DEVIATION (fixed in Phase 19.2): Perlin output is zero-mean, so
+    // `* 2 - 1` biases every relayed downlink by -powerVariationRange. Kept
+    // until the 19.1 calibration ledger can record the shift.
     const noiseValue = noiseGen.get(time) * 2 - 1;
 
     // Apply variation
@@ -654,12 +671,12 @@ export class Satellite {
   private updateHealth(): void {
     // Gradual health degradation simulation
     // In a real scenario, this could be based on radiation damage, component failures, etc.
-    if (Math.random() < 0.0001) {
+    if (this.rng_.chance(0.0001)) {
       this.health = Math.max(0.5, this.health - 0.01);
     }
 
     // Gradual recovery
-    if (this.health < 1.0 && Math.random() < 0.001) {
+    if (this.health < 1.0 && this.rng_.chance(0.001)) {
       this.health = Math.min(1.0, this.health + 0.01);
     }
   }
@@ -672,7 +689,7 @@ export class Satellite {
       return false;
     }
 
-    return Math.random() < this.degradationConfig.dropoutProbability;
+    return this.rng_.chance(this.degradationConfig.dropoutProbability);
   }
 
   /**

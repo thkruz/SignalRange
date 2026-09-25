@@ -26,7 +26,6 @@ test.describe('ccs Scenario 5 Full Completion', () => {
   let page: Page;
   let context: import('@playwright/test').BrowserContext;
   let missionControl: MissionControlPage;
-  let wallStartMs = 0;
 
   const readFrames = async (): Promise<number> => parseInt((await page.locator('#tlm-frames').textContent()) ?? '0', 10);
   const readRangeCount = async (): Promise<number> => parseInt((await page.locator('#cmd-range-count').textContent()) ?? '0', 10);
@@ -52,7 +51,6 @@ test.describe('ccs Scenario 5 Full Completion', () => {
 
     missionControl = new MissionControlPage(page);
     await missionControl.gotoScenario('ccs', 'ccs-scenario5');
-    wallStartMs = Date.now();
     await waitForSimulationReady(page);
     await missionControl.dismissDialogIfPresent();
   });
@@ -94,7 +92,7 @@ test.describe('ccs Scenario 5 Full Completion', () => {
   });
 
   test('[pre-burn-arc] three tones inside the window before the burn', async () => {
-    await advanceMissionClockToElapsed(page, wallStartMs, 320, 0);
+    await advanceMissionClockToElapsed(page, 320, 0);
     await sendTone();
     await sendTone();
     await sendTone();
@@ -105,7 +103,7 @@ test.describe('ccs Scenario 5 Full Completion', () => {
 
   test('[watch-the-burn] the fourth tone steps by about 1.5 km after 02:14Z', async () => {
     const preBurnKm = await readLastRangeKm();
-    await advanceMissionClockToElapsed(page, wallStartMs, 900, 0);
+    await advanceMissionClockToElapsed(page, 900, 0);
     await sendTone();
     const postBurnKm = await readLastRangeKm();
     const stepKm = Math.abs(postBurnKm - preBurnKm);

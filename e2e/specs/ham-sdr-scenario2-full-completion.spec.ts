@@ -1,6 +1,6 @@
 import { expect, Page, test } from '@playwright/test';
 import { MissionControlPage } from '../pages/mission-control.page';
-import { advanceSimClock, answerRileyQuiz, engageTrack, rideUntilObjectiveComplete, waitForObjectiveComplete } from '../utils/ham-sdr-helpers';
+import { advanceClock, answerRileyQuiz, engageTrack, rideUntilObjectiveComplete, waitForObjectiveComplete } from '../utils/ham-sdr-helpers';
 import { waitForSimulationReady } from '../utils/simulation-helpers';
 
 /**
@@ -63,7 +63,7 @@ test.describe('ham-sdr Scenario 2 Full Completion (live yagi leg)', () => {
     await missionControl.dismissDialogIfPresent();
 
     // Jump close to AOS (T+4.0) - real time has already burned ~1 min
-    await advanceSimClock(page, 2.5);
+    await advanceClock(page, 2.5);
     await engageTrack(page, '63002');
 
     await missionControl.dismissDialogIfPresent();

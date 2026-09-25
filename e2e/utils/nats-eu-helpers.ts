@@ -17,8 +17,7 @@ import { waitForQuizToAppear } from './simulation-helpers';
  * listens for.
  *
  * Clock rule: contact windows, command windows and space events all run on
- * the mission clock, so specs jump with advanceMissionClockToUtc (sim AND
- * mission together), never advanceSimClock alone.
+ * the scenario clock; specs jump with advanceMissionClockToUtc.
  */
 
 /**

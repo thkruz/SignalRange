@@ -23,4 +23,9 @@ export interface ScenarioData {
   };
   /** Optional scenario-wide time limit in seconds */
   timeLimitSeconds?: number;
+  /**
+   * Seed for every random stream in the run. Defaults to FNV-1a of `id`;
+   * `?seed=` in the URL overrides both (see simulation/rng.ts).
+   */
+  seed?: number;
 }

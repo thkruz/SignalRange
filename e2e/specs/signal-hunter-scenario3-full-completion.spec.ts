@@ -55,7 +55,6 @@ test.describe('Signal Hunter Scenario 3 Full Completion', () => {
   let page: Page;
   let context: import('@playwright/test').BrowserContext;
   let missionControl: MissionControlPage;
-  let wallStartMs = 0;
   const phaseA: InterfererPhase = { onStartMs: null };
   const phaseB: InterfererPhase = { onStartMs: null };
   let ctxA: CaptureContext;
@@ -76,7 +75,6 @@ test.describe('Signal Hunter Scenario 3 Full Completion', () => {
     ctxB = { page, phase: phaseB, probeObjectiveId: 'find-carrier-b', duty: DUTY, windowS: CAPTURE_WINDOW_S, log };
 
     await missionControl.gotoScenario(CAMPAIGN_ID, SCENARIO_ID);
-    wallStartMs = Date.now();
     await waitForSimulationReady(page);
     await missionControl.dismissDialogIfPresent();
   });
@@ -137,7 +135,7 @@ test.describe('Signal Hunter Scenario 3 Full Completion', () => {
 
   test('[the-trail-goes-cold] the first carrier stops; the team is held short', async () => {
     // Past the first carrier's envelope: two silent cycles and change
-    await advanceMissionClockToElapsed(page, wallStartMs, FIRST.endsAtS + 250, 0);
+    await advanceMissionClockToElapsed(page, FIRST.endsAtS + 250, 0);
     await missionControl.selectTab('rx-analysis');
     await page.waitForTimeout(1500);
     await answerStatusCheck(page, 'Tell the team to hold short and stand by');
@@ -152,7 +150,7 @@ test.describe('Signal Hunter Scenario 3 Full Completion', () => {
   });
 
   test('[find-carrier-b] observes the new carrier above the service carrier', async () => {
-    await advanceMissionClockToElapsed(page, wallStartMs, SECOND.startsAtS + 2, 0);
+    await advanceMissionClockToElapsed(page, SECOND.startsAtS + 2, 0);
     await missionControl.selectTab('rx-analysis');
     await ensureOnWindowStart(ctxB);
     await missionControl.selectTab('rx-analysis');

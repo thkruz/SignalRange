@@ -1,3 +1,4 @@
+import { Rng } from '@app/simulation/rng';
 /**
  * @file Decision Modal - presents a decision condition to the operator
  * @description Same shell as QuizModal (draggable, non-blocking until answered
@@ -16,6 +17,9 @@ import { Character, CharacterNames, Emotion, getCharacterAvatarUrl } from './cha
 import { DecisionManager } from './decision-manager';
 import './decision-modal.css';
 import './quiz-modal.css';
+
+/** Seeded draws for this module (see simulation/rng.ts). */
+const random = (): number => Rng.stream('ui:decision').next();
 
 export class DecisionModal extends DraggableBox {
   private static instance_: DecisionModal | null = null;
@@ -331,7 +335,7 @@ export class DecisionModal extends DraggableBox {
     const indices = Array.from({ length: this.current_.options.length }, (_, i) => i);
     if (this.current_.preserveOptionOrder || indices.length <= 1) return indices;
     for (let i = indices.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
+      const j = Math.floor(random() * (i + 1));
       [indices[i], indices[j]] = [indices[j], indices[i]];
     }
     return indices;

@@ -37,7 +37,6 @@ test.describe('ccs Scenario 3 Full Completion', () => {
   let page: Page;
   let context: import('@playwright/test').BrowserContext;
   let missionControl: MissionControlPage;
-  let wallStartMs = 0;
 
   const readFrames = async (): Promise<number> => parseInt((await page.locator('#tlm-frames').textContent()) ?? '0', 10);
 
@@ -53,7 +52,6 @@ test.describe('ccs Scenario 3 Full Completion', () => {
 
     missionControl = new MissionControlPage(page);
     await missionControl.gotoScenario('ccs', 'ccs-scenario3');
-    wallStartMs = Date.now();
     await waitForSimulationReady(page);
     await missionControl.dismissDialogIfPresent();
   });
@@ -156,7 +154,7 @@ test.describe('ccs Scenario 3 Full Completion', () => {
   });
 
   test('[housekeeping-dump] HPA up, modem 1 keyed, HK-DUMP ACKs inside the window', async () => {
-    await advanceMissionClockToElapsed(page, wallStartMs, 600);
+    await advanceMissionClockToElapsed(page, 600);
     await setHpaEnabled(page, missionControl, true);
     await keyUpString(page, missionControl, true);
     await sendCommandAndExpectAck(page, missionControl, 'HK-DUMP');

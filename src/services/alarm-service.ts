@@ -2,6 +2,7 @@ import { GroundStation } from '@app/assets/ground-station/ground-station';
 import { AlarmStatus } from '@app/equipment/base-equipment';
 import { EventBus } from '@app/events/event-bus';
 import { AggregatedAlarm, AlarmStateChangedData, Events } from '@app/events/events';
+import { SimClock } from '@app/simulation/sim-clock';
 import { SimulationManager } from '@app/simulation/simulation-manager';
 import { Milliseconds } from 'ootk';
 
@@ -20,7 +21,7 @@ import { Milliseconds } from 'ootk';
 export class AlarmService {
   private static instance_: AlarmService | null = null;
   private previousAlarmsHash_ = '';
-  private lastPollTime_ = 0;
+  private lastPollTime_ = -Infinity;
   private readonly pollInterval_ = 1000; // 1 second
   private readonly boundOnUpdate_: (dt: Milliseconds) => void;
 
@@ -37,8 +38,9 @@ export class AlarmService {
   }
 
   private onUpdate_(_dt: Milliseconds): void {
-    const now = Date.now();
-    if (now - this.lastPollTime_ < this.pollInterval_) return;
+    const now = SimClock.runMs();
+    // Run time restarts at 0 each scenario, so a later stamp is from an earlier run
+    if (now >= this.lastPollTime_ && now - this.lastPollTime_ < this.pollInterval_) return;
     this.lastPollTime_ = now;
     this.pollAndAggregate_();
   }

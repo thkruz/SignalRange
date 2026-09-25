@@ -8,6 +8,8 @@ import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
 import { InterferenceManager } from '@app/interference/interference-manager';
 import { SignalOrigin } from '@app/signal-origin';
+import { Rng } from '@app/simulation/rng';
+import { SimClock } from '@app/simulation/sim-clock';
 import { getSimulatedNowMs } from '@app/simulation/sim-time';
 import { SimulationManager } from '@app/simulation/simulation-manager';
 import { dB, dBm, Hertz, RfSignal } from '@app/types';
@@ -16,6 +18,9 @@ import { ANTENNA_CONFIG_KEYS } from './antenna-config-keys';
 import { AntennaConfig } from './antenna-configs';
 import { type AntennaConfigId, AntennaRegistry } from './antenna-registry';
 import { StepTrackController } from './step-track-controller';
+
+/** Seeded draws for this module (see simulation/rng.ts). */
+const random = (): number => Rng.stream('antenna').next();
 
 /** A satellite's geometry and downlink as seen from one antenna's station. */
 export interface SatelliteView {
@@ -652,7 +657,7 @@ export abstract class AntennaCore extends BaseEquipment {
 
     // Clear any existing timeout to prevent memory leaks
     if (this.lockAcquisitionTimeout_) {
-      clearTimeout(this.lockAcquisitionTimeout_);
+      SimClock.clearTimer(this.lockAcquisitionTimeout_);
       this.lockAcquisitionTimeout_ = null;
     }
 
@@ -682,7 +687,7 @@ export abstract class AntennaCore extends BaseEquipment {
       this.state.targetElevation = view.el;
 
       // Simulate lock acquisition delay with timeout tracking
-      this.lockAcquisitionTimeout_ = window.setTimeout(() => {
+      this.lockAcquisitionTimeout_ = SimClock.setTimeout(() => {
         this.state.isLocked = true;
         this.lockAcquisitionTimeout_ = null;
         this.updateSignals_();
@@ -704,14 +709,14 @@ export abstract class AntennaCore extends BaseEquipment {
 
     // Clear lock acquisition timeout when powering off
     if (!this.state.isPowered && this.lockAcquisitionTimeout_) {
-      clearTimeout(this.lockAcquisitionTimeout_);
+      SimClock.clearTimer(this.lockAcquisitionTimeout_);
       this.lockAcquisitionTimeout_ = null;
     }
 
     // If turning off, also turn off track and locked
     if (this.state.isPowered) {
       // If turning on, ensure operational
-      setTimeout(() => {
+      SimClock.setTimeout(() => {
         this.state.isOperational = true;
         this.notifyStateChange_();
         this.updateSignals_();
@@ -753,7 +758,7 @@ export abstract class AntennaCore extends BaseEquipment {
 
     // Clear any existing lock acquisition timeout
     if (this.lockAcquisitionTimeout_) {
-      clearTimeout(this.lockAcquisitionTimeout_);
+      SimClock.clearTimer(this.lockAcquisitionTimeout_);
       this.lockAcquisitionTimeout_ = null;
     }
 
@@ -2252,7 +2257,7 @@ export abstract class AntennaCore extends BaseEquipment {
    */
   currentDePointing_deg_(wind_mps: number = 0): number {
     const coef = this.config.windDePointingCoef_deg_per_mps ?? 0;
-    const randomJitter = (this.config.pointingSigma_deg ?? 0.01) * (Math.random() * 2 - 1);
+    const randomJitter = (this.config.pointingSigma_deg ?? 0.01) * (random() * 2 - 1);
     return coef * wind_mps + randomJitter;
   }
 

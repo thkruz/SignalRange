@@ -1,6 +1,6 @@
 import { expect, Page, test } from '@playwright/test';
 import { MissionControlPage } from '../pages/mission-control.page';
-import { advanceMissionClock, answerRileyQuiz, domClick, engageTrack, rideUntilObjectiveComplete, waitForObjectiveComplete } from '../utils/ham-sdr-helpers';
+import { advanceClock, answerRileyQuiz, domClick, engageTrack, rideUntilObjectiveComplete, waitForObjectiveComplete } from '../utils/ham-sdr-helpers';
 import { waitForSimulationReady } from '../utils/simulation-helpers';
 
 /**
@@ -10,7 +10,7 @@ import { waitForSimulationReady } from '../utils/simulation-helpers';
  * (435.36 MHz, 1.2 km due east) comes up at T+60 s; the player DFs it with
  * the new MAN AZ control, notches it with the new FILTER section, narrows
  * the IF filter to 100 kHz, and locks CUBEHOP-1 through the 18.4-degree pass
- * (AOS T+20 min, crossed with advanceMissionClock).
+ * (AOS T+20 min, crossed with advanceClock).
  */
 test.describe('ham-sdr Scenario 7 Full Completion', () => {
   test.describe.configure({ mode: 'serial' });
@@ -55,7 +55,7 @@ test.describe('ham-sdr Scenario 7 Full Completion', () => {
 
   test('[hear-the-hash] the terrestrial hash appears on the waterfall', async () => {
     // RFI comes up at T+60 s on the mission clock
-    await advanceMissionClock(page, 2);
+    await advanceClock(page, 2);
 
     await missionControl.selectGroundStation('BKYD-YAGI');
     await missionControl.selectTab('sdr-console');
@@ -84,7 +84,7 @@ test.describe('ham-sdr Scenario 7 Full Completion', () => {
 
   test('[narrow-and-catch] narrows the IF filter and locks the 18-degree pass', async () => {
     // Jump to just before the 15:35 AOS (T+20 min)
-    await advanceMissionClock(page, 15);
+    await advanceClock(page, 15);
 
     await missionControl.selectTab('sdr-console');
     await missionControl.dismissDialogIfPresent();

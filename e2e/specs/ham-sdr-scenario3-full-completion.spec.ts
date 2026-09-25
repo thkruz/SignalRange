@@ -1,6 +1,6 @@
 import { expect, Page, test } from '@playwright/test';
 import { MissionControlPage } from '../pages/mission-control.page';
-import { advanceSimClock, answerRileyQuiz, domClick, engageTrack, readOffsetHz, rideUntilObjectiveComplete, waitForObjectiveComplete } from '../utils/ham-sdr-helpers';
+import { advanceClock, answerRileyQuiz, domClick, engageTrack, readOffsetHz, rideUntilObjectiveComplete, waitForObjectiveComplete } from '../utils/ham-sdr-helpers';
 import { waitForSimulationReady } from '../utils/simulation-helpers';
 
 /**
@@ -64,7 +64,7 @@ test.describe('ham-sdr Scenario 3 Full Completion (handedness diagnosis)', () =>
     // The scenario boots with the feed harness on LHCP
     await expect(page.locator('#sdr-pol-lhcp')).toHaveClass(/active/);
 
-    await advanceSimClock(page, 3);
+    await advanceClock(page, 3);
     await engageTrack(page, '63002');
 
     await missionControl.dismissDialogIfPresent();
@@ -73,7 +73,7 @@ test.describe('ham-sdr Scenario 3 Full Completion (handedness diagnosis)', () =>
 
   test('[fix-the-feed] flips the feed to RHCP and the signal jumps', async () => {
     // Get onto the carrier first so the C/N readout means something
-    await advanceSimClock(page, 2);
+    await advanceClock(page, 2);
     const offsetHz = await readOffsetHz(page);
     if (Number.isFinite(offsetHz)) {
       // A few fine clicks is plenty; the swing is the point here

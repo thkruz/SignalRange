@@ -1,6 +1,7 @@
 import { vi } from 'vitest';
 import { Events, WeatherEventData } from '../../src/events/events';
 import { IceAccumulationConfig, WeatherEventRuntime, WeatherManager } from '../../src/weather/weather-manager';
+import { setScenarioElapsed } from '../helpers/sim-time';
 
 // Mock EventBus
 const mockEventBusInstance = {
@@ -188,7 +189,7 @@ describe('WeatherManager', () => {
       const manager = WeatherManager.getInstance();
 
       // Advance time by 5 seconds
-      vi.setSystemTime(startTime + 5000);
+      setScenarioElapsed(5000);
 
       expect(manager.getElapsedMissionTime()).toBeCloseTo(5, 1);
     });
@@ -229,7 +230,7 @@ describe('WeatherManager', () => {
       const manager = WeatherManager.getInstance();
 
       // Advance time to 15 seconds (past start time)
-      vi.setSystemTime(startTime + 15000);
+      setScenarioElapsed(15000);
       updateHandler(1000);
 
       expect(mockEventBusInstance.emit).toHaveBeenCalledWith(Events.WEATHER_EVENT_STARTED, expect.objectContaining({ id: 'event-1', isActive: true }));
@@ -257,13 +258,13 @@ describe('WeatherManager', () => {
       const manager = WeatherManager.getInstance();
 
       // Activate the event first
-      vi.setSystemTime(startTime + 8000);
+      setScenarioElapsed(8000);
       updateHandler(1000);
 
       expect(mockEventBusInstance.emit).toHaveBeenCalledWith(Events.WEATHER_EVENT_STARTED, expect.objectContaining({ id: 'event-1' }));
 
       // Deactivate the event
-      vi.setSystemTime(startTime + 20000); // Past 5 + 10 = 15 seconds
+      setScenarioElapsed(20000); // Past 5 + 10 = 15 seconds
       updateHandler(1000);
 
       expect(mockEventBusInstance.emit).toHaveBeenCalledWith(Events.WEATHER_EVENT_ENDED, expect.objectContaining({ id: 'event-1', isActive: false }));
@@ -291,14 +292,14 @@ describe('WeatherManager', () => {
       WeatherManager.getInstance();
 
       // Activate
-      vi.setSystemTime(startTime + 10000);
+      setScenarioElapsed(10000);
       updateHandler(1000);
 
       // Clear emit mock
       mockEventBusInstance.emit.mockClear();
 
       // Call update again without state change
-      vi.setSystemTime(startTime + 11000);
+      setScenarioElapsed(11000);
       updateHandler(1000);
 
       expect(mockEventBusInstance.emit).not.toHaveBeenCalled();
@@ -335,19 +336,19 @@ describe('WeatherManager', () => {
       WeatherManager.getInstance();
 
       // Activate first event
-      vi.setSystemTime(startTime + 15000);
+      setScenarioElapsed(15000);
       updateHandler(1000);
 
       expect(mockEventBusInstance.emit).toHaveBeenCalledWith(Events.WEATHER_EVENT_STARTED, expect.objectContaining({ id: 'event-1' }));
 
       // First event ends, second not started yet
-      vi.setSystemTime(startTime + 45000);
+      setScenarioElapsed(45000);
       updateHandler(1000);
 
       expect(mockEventBusInstance.emit).toHaveBeenCalledWith(Events.WEATHER_EVENT_ENDED, expect.objectContaining({ id: 'event-1' }));
 
       // Activate second event
-      vi.setSystemTime(startTime + 55000);
+      setScenarioElapsed(55000);
       updateHandler(1000);
 
       expect(mockEventBusInstance.emit).toHaveBeenCalledWith(Events.WEATHER_EVENT_STARTED, expect.objectContaining({ id: 'event-2' }));
@@ -388,7 +389,7 @@ describe('WeatherManager', () => {
       WeatherManager.getInstance();
 
       // Simulate 60 seconds of ice accumulation
-      vi.setSystemTime(startTime + 5000);
+      setScenarioElapsed(5000);
       updateHandler(5000); // 5 second dt
 
       // Check that updateIceAccumulation was called
@@ -426,7 +427,7 @@ describe('WeatherManager', () => {
 
       WeatherManager.getInstance();
 
-      vi.setSystemTime(startTime + 60000);
+      setScenarioElapsed(60000);
       updateHandler(60000);
 
       // updateIceAccumulation should NOT be called when heater is ON and no existing ice
@@ -455,7 +456,7 @@ describe('WeatherManager', () => {
 
       WeatherManager.getInstance();
 
-      vi.setSystemTime(startTime + 60000);
+      setScenarioElapsed(60000);
       updateHandler(60000);
 
       // updateIceAccumulation should NOT be called for rain
@@ -484,7 +485,7 @@ describe('WeatherManager', () => {
 
       WeatherManager.getInstance();
 
-      vi.setSystemTime(startTime + 10000);
+      setScenarioElapsed(10000);
       updateHandler(10000);
 
       expect(mockAntennas[0].updateIceAccumulation).toHaveBeenCalled();
@@ -512,7 +513,7 @@ describe('WeatherManager', () => {
 
       WeatherManager.getInstance();
 
-      vi.setSystemTime(startTime + 10000);
+      setScenarioElapsed(10000);
       updateHandler(10000);
 
       expect(mockAntennas[0].updateIceAccumulation).toHaveBeenCalled();
@@ -550,13 +551,13 @@ describe('WeatherManager', () => {
       const manager = WeatherManager.getInstance();
 
       // First update
-      vi.setSystemTime(startTime + 10000);
+      setScenarioElapsed(10000);
       updateHandler(10000);
 
       expect(manager.getIceAccumulationTime('antenna-1')).toBe(10);
 
       // Second update
-      vi.setSystemTime(startTime + 25000);
+      setScenarioElapsed(25000);
       updateHandler(15000);
 
       expect(manager.getIceAccumulationTime('antenna-1')).toBe(25);
@@ -588,7 +589,7 @@ describe('WeatherManager', () => {
       WeatherManager.getInstance();
 
       // Simulate 60 seconds (should melt 1 dB)
-      vi.setSystemTime(startTime + 60000);
+      setScenarioElapsed(60000);
       updateHandler(60000);
 
       // Melt rate is 1 dB per minute
@@ -610,7 +611,7 @@ describe('WeatherManager', () => {
       WeatherManager.getInstance();
 
       // Simulate 60 seconds (would melt 1 dB, but only 0.5 available)
-      vi.setSystemTime(startTime + 60000);
+      setScenarioElapsed(60000);
       updateHandler(60000);
 
       expect(mockAntennas[0].updateIceAccumulation).toHaveBeenCalledWith(0);
@@ -629,7 +630,7 @@ describe('WeatherManager', () => {
       const manager = WeatherManager.getInstance();
 
       // Melt all ice
-      vi.setSystemTime(startTime + 60000);
+      setScenarioElapsed(60000);
       updateHandler(60000);
 
       expect(manager.getIceAccumulationTime('antenna-1')).toBe(0);
@@ -667,7 +668,7 @@ describe('WeatherManager', () => {
       const manager = WeatherManager.getInstance();
 
       // Simulate 30 seconds (should melt 0.5 dB, leaving 2.5 dB)
-      vi.setSystemTime(startTime + 30000);
+      setScenarioElapsed(30000);
       updateHandler(30000);
 
       // Ice should be melted by 0.5 dB (30s * 1/60 dB/s)
@@ -732,7 +733,7 @@ describe('WeatherManager', () => {
         const manager = WeatherManager.getInstance();
 
         // Activate events
-        vi.setSystemTime(startTime + 50000);
+        setScenarioElapsed(50000);
         updateHandler(50000);
 
         const gs1Events = manager.getActiveWeatherEvents('gs-1');
@@ -780,7 +781,7 @@ describe('WeatherManager', () => {
 
         const manager = WeatherManager.getInstance();
 
-        vi.setSystemTime(startTime + 10000);
+        setScenarioElapsed(10000);
         updateHandler(10000);
 
         expect(manager.isPrecipitationActive('gs-1')).toBe(true);
@@ -807,7 +808,7 @@ describe('WeatherManager', () => {
 
         const manager = WeatherManager.getInstance();
 
-        vi.setSystemTime(startTime + 10000);
+        setScenarioElapsed(10000);
         updateHandler(10000);
 
         expect(manager.isPrecipitationActive('gs-1')).toBe(true);
@@ -834,7 +835,7 @@ describe('WeatherManager', () => {
 
         const manager = WeatherManager.getInstance();
 
-        vi.setSystemTime(startTime + 10000);
+        setScenarioElapsed(10000);
         updateHandler(10000);
 
         expect(manager.isPrecipitationActive('gs-1')).toBe(true);
@@ -861,7 +862,7 @@ describe('WeatherManager', () => {
 
         const manager = WeatherManager.getInstance();
 
-        vi.setSystemTime(startTime + 10000);
+        setScenarioElapsed(10000);
         updateHandler(10000);
 
         expect(manager.isPrecipitationActive('gs-1')).toBe(true);
@@ -888,7 +889,7 @@ describe('WeatherManager', () => {
 
         const manager = WeatherManager.getInstance();
 
-        vi.setSystemTime(startTime + 10000);
+        setScenarioElapsed(10000);
         updateHandler(10000);
 
         expect(manager.isPrecipitationActive('gs-1')).toBe(false);
@@ -915,7 +916,7 @@ describe('WeatherManager', () => {
 
         const manager = WeatherManager.getInstance();
 
-        vi.setSystemTime(startTime + 10000);
+        setScenarioElapsed(10000);
         updateHandler(10000);
 
         expect(manager.isPrecipitationActive('gs-1')).toBe(false);
@@ -974,7 +975,7 @@ describe('WeatherManager', () => {
 
       WeatherManager.getInstance();
 
-      vi.setSystemTime(startTime + 60000);
+      setScenarioElapsed(60000);
       updateHandler(60000);
 
       // Antenna 1: Should accumulate ice
@@ -1014,7 +1015,7 @@ describe('WeatherManager', () => {
 
       WeatherManager.getInstance();
 
-      vi.setSystemTime(startTime + 60000);
+      setScenarioElapsed(60000);
       updateHandler(60000);
 
       // gs-1 antenna should accumulate ice
@@ -1049,7 +1050,7 @@ describe('WeatherManager', () => {
 
       const manager = WeatherManager.getInstance();
 
-      vi.setSystemTime(startTime + 60000);
+      setScenarioElapsed(60000);
       updateHandler(60000);
 
       expect(manager.getIceAccumulationTime('antenna-1')).toBe(0);
@@ -1077,7 +1078,7 @@ describe('WeatherManager', () => {
       WeatherManager.getInstance();
 
       // Exactly at start time
-      vi.setSystemTime(startTime + 10000);
+      setScenarioElapsed(10000);
       updateHandler(1000);
 
       expect(mockEventBusInstance.emit).toHaveBeenCalledWith(Events.WEATHER_EVENT_STARTED, expect.objectContaining({ id: 'event-1' }));
@@ -1105,11 +1106,11 @@ describe('WeatherManager', () => {
       WeatherManager.getInstance();
 
       // Activate
-      vi.setSystemTime(startTime + 5000);
+      setScenarioElapsed(5000);
       updateHandler(5000);
 
       // Exactly at end time (startTime + duration = 10)
-      vi.setSystemTime(startTime + 10000);
+      setScenarioElapsed(10000);
       updateHandler(5000);
 
       expect(mockEventBusInstance.emit).toHaveBeenCalledWith(Events.WEATHER_EVENT_ENDED, expect.objectContaining({ id: 'event-1' }));
@@ -1137,7 +1138,7 @@ describe('WeatherManager', () => {
       const manager = WeatherManager.getInstance();
 
       // Event should never be active due to zero duration
-      vi.setSystemTime(startTime + 5000);
+      setScenarioElapsed(5000);
       updateHandler(5000);
 
       // Should not emit started event
@@ -1233,12 +1234,12 @@ describe('WeatherManager rain rate (phase 16 E5)', () => {
 
     WeatherManager.getInstance();
 
-    vi.setSystemTime(start + 600_000);
+    setScenarioElapsed(600_000);
     updateHandler(1000);
     expect(wet.updateRainRate).toHaveBeenLastCalledWith(12);
     expect(dry.updateRainRate).not.toHaveBeenCalled();
 
-    vi.setSystemTime(start + 1_300_000);
+    setScenarioElapsed(1_300_000);
     updateHandler(1000);
     expect(wet.updateRainRate).toHaveBeenLastCalledWith(0);
     expect(wet.state.rainRate_mmh).toBe(0);

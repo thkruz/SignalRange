@@ -6,14 +6,17 @@
  */
 
 import { OpsLogManager } from '@app/ops-log/ops-log-manager';
+import { SimClock } from './sim-clock';
 
 /**
  * Get the current simulated time as a Unix timestamp in milliseconds.
- * Uses the scenario clock (OpsLogManager) when initialized, otherwise Date.now().
+ * Uses the scenario clock (SimClock, epoch set by OpsLogManager) when a
+ * scenario is running, otherwise Date.now() (sandboxes without objectives
+ * follow the real sky).
  */
 export function getSimulatedNowMs(): number {
   if (OpsLogManager.isInitialized()) {
-    return OpsLogManager.getInstance().getCurrentTimestampMs();
+    return SimClock.nowMs();
   }
 
   return Date.now();

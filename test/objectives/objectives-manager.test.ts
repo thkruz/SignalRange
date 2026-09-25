@@ -6,7 +6,9 @@ import { DecisionManager } from '../../src/modal/decision-manager';
 import { Objective, ObjectiveState } from '../../src/objectives/objective-types';
 import { ObjectivesManager } from '../../src/objectives/objectives-manager';
 import { TabbedCanvas } from '../../src/pages/mission-control/tabbed-canvas';
-import { addSkippedTime, resetMissionClock } from '../../src/simulation/mission-clock';
+import { resetMissionClock } from '../../src/simulation/mission-clock';
+import { SimClock } from '../../src/simulation/sim-clock';
+import { advanceSimTime } from '../helpers/sim-time';
 
 // Mock equipment state factories
 const createMockAntennaState = (overrides = {}) => ({
@@ -378,7 +380,7 @@ describe('ObjectivesManager', () => {
       expect(manager.getScenarioTimeRemaining()).toBe(60);
 
       // Advance time by 1 second (timer interval)
-      vi.advanceTimersByTime(1000);
+      advanceSimTime(1000, { emitUpdate: true });
 
       expect(manager.getScenarioTimeRemaining()).toBe(59);
     });
@@ -398,7 +400,7 @@ describe('ObjectivesManager', () => {
       ObjectivesManager.initialize(objectives, 60);
 
       // Advance timer past the objective timeout
-      vi.advanceTimersByTime(6000);
+      advanceSimTime(6000, { emitUpdate: true });
 
       expect(failedCallback).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -416,7 +418,7 @@ describe('ObjectivesManager', () => {
       ObjectivesManager.initialize(objectives, 3);
 
       // Advance time past the scenario timeout
-      vi.advanceTimersByTime(4000);
+      advanceSimTime(4000, { emitUpdate: true });
 
       expect(expiredCallback).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -431,7 +433,7 @@ describe('ObjectivesManager', () => {
       const objectives = [createTestObjective()];
       const manager = ObjectivesManager.initialize(objectives, 300);
 
-      vi.advanceTimersByTime(10000); // 10 seconds
+      advanceSimTime(10000, { emitUpdate: true }); // 10 seconds
 
       expect(manager.getElapsedTime()).toBe(10);
     });
@@ -440,8 +442,7 @@ describe('ObjectivesManager', () => {
       const objectives = [createTestObjective()];
       const manager = ObjectivesManager.initialize(objectives);
 
-      const now = Date.now();
-      vi.setSystemTime(now + 15000);
+      advanceSimTime(15000);
 
       expect(manager.getElapsedTime()).toBe(15);
     });
@@ -451,7 +452,7 @@ describe('ObjectivesManager', () => {
       const manager = ObjectivesManager.initialize(objectives);
 
       // Skipped time is time on shift: the operator chose to spend it.
-      addSkippedTime(120_000);
+      SimClock.skip(120_000);
 
       expect(manager.getElapsedTime()).toBe(120);
     });
@@ -534,7 +535,7 @@ describe('ObjectivesManager', () => {
       expect(manager.getScenarioTimeRemaining()).toBe(60);
 
       // Advance 5 seconds
-      vi.advanceTimersByTime(5000);
+      advanceSimTime(5000, { emitUpdate: true });
       expect(manager.getScenarioTimeRemaining()).toBe(55);
 
       // Emit quiz passed event
@@ -547,7 +548,7 @@ describe('ObjectivesManager', () => {
       eventBus.emit(Events.QUIZ_PASSED, quizPassedData);
 
       // Timer should be paused
-      vi.advanceTimersByTime(5000);
+      advanceSimTime(5000, { emitUpdate: true });
       expect(manager.getScenarioTimeRemaining()).toBe(55); // No change
 
       expect(manager.isQuizPassed()).toBe(true);
@@ -566,7 +567,7 @@ describe('ObjectivesManager', () => {
         pointsDeducted: 0,
       });
 
-      vi.advanceTimersByTime(5000);
+      advanceSimTime(5000, { emitUpdate: true });
       const timeAfterPause = manager.getScenarioTimeRemaining();
 
       // Emit quiz completed event
@@ -581,7 +582,7 @@ describe('ObjectivesManager', () => {
       expect(manager.isQuizPassed()).toBe(false);
 
       // Timer should resume
-      vi.advanceTimersByTime(3000);
+      advanceSimTime(3000, { emitUpdate: true });
       expect(manager.getScenarioTimeRemaining()).toBeLessThan(timeAfterPause);
     });
   });
@@ -997,7 +998,7 @@ describe('ObjectivesManager', () => {
 
       const manager = ObjectivesManager.initialize(objectives);
 
-      vi.advanceTimersByTime(5000);
+      advanceSimTime(5000, { emitUpdate: true });
 
       expect(manager.getObjectiveTimeRemaining('timed-obj')).toBe(55);
     });
@@ -1015,7 +1016,7 @@ describe('ObjectivesManager', () => {
       const manager = ObjectivesManager.initialize(objectives, 300);
 
       // Timer should not countdown
-      vi.advanceTimersByTime(5000);
+      advanceSimTime(5000, { emitUpdate: true });
 
       expect(manager.getScenarioTimeRemaining()).toBe(300);
     });
@@ -1062,7 +1063,7 @@ describe('ObjectivesManager', () => {
       ObjectivesManager.initialize(objectives, 300);
 
       // Advance time past threshold
-      vi.advanceTimersByTime(35000);
+      advanceSimTime(35000, { emitUpdate: true });
 
       // Complete the objective
       ObjectivesManager.registerOpenedBox('mission-brief-1');
@@ -1094,7 +1095,7 @@ describe('ObjectivesManager', () => {
       ObjectivesManager.initialize(objectives, 300);
 
       // Advance time but stay under threshold
-      vi.advanceTimersByTime(15000);
+      advanceSimTime(15000, { emitUpdate: true });
 
       // Complete the objective
       ObjectivesManager.registerOpenedBox('mission-brief-1');
@@ -1450,7 +1451,7 @@ describe('ObjectivesManager', () => {
       const manager = ObjectivesManager.initialize(objectives);
 
       // Let the objective timeout
-      vi.advanceTimersByTime(3000);
+      advanceSimTime(3000, { emitUpdate: true });
 
       const html = manager.generateHtmlChecklist();
 
@@ -1514,12 +1515,12 @@ describe('ObjectivesManager', () => {
       const objectives = [createTestObjective()];
       const manager = ObjectivesManager.initialize(objectives, 60);
 
-      vi.advanceTimersByTime(5000);
+      advanceSimTime(5000, { emitUpdate: true });
       expect(manager.getScenarioTimeRemaining()).toBe(55);
 
       manager.stopAllTimers();
 
-      vi.advanceTimersByTime(5000);
+      advanceSimTime(5000, { emitUpdate: true });
       expect(manager.getScenarioTimeRemaining()).toBe(55); // No change
     });
 
@@ -1539,13 +1540,13 @@ describe('ObjectivesManager', () => {
 
       const manager = ObjectivesManager.initialize(objectives);
 
-      vi.advanceTimersByTime(5000);
+      advanceSimTime(5000, { emitUpdate: true });
       expect(manager.getObjectiveTimeRemaining('timed-1')).toBe(55);
       expect(manager.getObjectiveTimeRemaining('timed-2')).toBe(115);
 
       manager.stopAllTimers();
 
-      vi.advanceTimersByTime(5000);
+      advanceSimTime(5000, { emitUpdate: true });
       expect(manager.getObjectiveTimeRemaining('timed-1')).toBe(55);
       expect(manager.getObjectiveTimeRemaining('timed-2')).toBe(115);
     });
@@ -1595,7 +1596,7 @@ describe('ObjectivesManager', () => {
       eventBus.on(Events.OBJECTIVES_ALL_COMPLETED, allCompletedCallback);
 
       const manager = ObjectivesManager.initialize(objectives, 300);
-      vi.advanceTimersByTime(10000);
+      advanceSimTime(10000, { emitUpdate: true });
       expect(manager.getScenarioTimeRemaining()).toBe(290);
 
       // Complete only the two required objectives
@@ -1607,7 +1608,7 @@ describe('ObjectivesManager', () => {
       expect(manager.getObjectiveState('opt-1')?.isCompleted).toBe(false);
 
       // Scenario timer is frozen even though the optional objective is still open
-      vi.advanceTimersByTime(10000);
+      advanceSimTime(10000, { emitUpdate: true });
       expect(manager.getScenarioTimeRemaining()).toBe(290);
     });
 
@@ -1616,7 +1617,7 @@ describe('ObjectivesManager', () => {
 
       const manager = ObjectivesManager.initialize(objectives, 300);
 
-      vi.advanceTimersByTime(10000);
+      advanceSimTime(10000, { emitUpdate: true });
       expect(manager.getScenarioTimeRemaining()).toBe(290);
 
       // Complete the objective
@@ -1624,7 +1625,7 @@ describe('ObjectivesManager', () => {
       eventBus.emit(Events.UPDATE, 16);
 
       // Timer should be stopped
-      vi.advanceTimersByTime(10000);
+      advanceSimTime(10000, { emitUpdate: true });
       expect(manager.getScenarioTimeRemaining()).toBe(290);
     });
   });
@@ -1791,7 +1792,7 @@ describe('ObjectivesManager', () => {
       ObjectivesManager.initialize(objectives);
 
       // Let the objective timeout
-      vi.advanceTimersByTime(3000);
+      advanceSimTime(3000, { emitUpdate: true });
 
       // Try to satisfy conditions after failure
       ObjectivesManager.registerOpenedBox('mission-brief-1');
@@ -1812,7 +1813,7 @@ describe('ObjectivesManager', () => {
       const manager = ObjectivesManager.initialize(objectives);
 
       // Let the objective timeout
-      vi.advanceTimersByTime(3000);
+      advanceSimTime(3000, { emitUpdate: true });
 
       const state = manager.getObjectiveState('failed-obj');
       expect(state?.isFailed).toBe(true);

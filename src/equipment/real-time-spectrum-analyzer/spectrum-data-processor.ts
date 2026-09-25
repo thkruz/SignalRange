@@ -1,3 +1,4 @@
+import { Rng, RngStream } from '@app/simulation/rng';
 import { Hertz, IfSignal, RfSignal } from '@app/types';
 import { RealTimeSpectrumAnalyzer } from './real-time-spectrum-analyzer';
 
@@ -21,6 +22,8 @@ export class SpectrumDataProcessor {
   private minFreq: Hertz = 0 as Hertz;
   private maxFreq: Hertz = 0 as Hertz;
   private width: number;
+  /** Display-noise stream; refreshed in generateData() */
+  private rng_: RngStream = Rng.stream('display:spectrum');
 
   constructor(specA: RealTimeSpectrumAnalyzer, width: number) {
     this.specA = specA;
@@ -45,6 +48,9 @@ export class SpectrumDataProcessor {
    * This should be called once per update cycle
    */
   generateData(): void {
+    // Re-read each cycle: a scenario load re-seeds and replaces the stream
+    this.rng_ = Rng.stream('display:spectrum');
+
     // Generate noise data
     this.generateNoise();
 
@@ -70,12 +76,12 @@ export class SpectrumDataProcessor {
     // Generate multiple noise layers
     for (let x = 0; x < len; x++) {
       // Add randomized phase offsets to prevent coherent patterns
-      const randPhase1 = Math.random() * Math.PI * 2;
-      const randPhase2 = Math.random() * Math.PI * 2;
-      const randPhase3 = Math.random() * Math.PI * 2;
-      const randAmp1 = 0.8 + Math.random() * 0.4;
-      const randAmp2 = 1.2 + Math.random() * 0.6;
-      const randAmp3 = 0.2 + Math.random() * 0.4;
+      const randPhase1 = this.rng_.next() * Math.PI * 2;
+      const randPhase2 = this.rng_.next() * Math.PI * 2;
+      const randPhase3 = this.rng_.next() * Math.PI * 2;
+      const randAmp1 = 0.8 + this.rng_.next() * 0.4;
+      const randAmp2 = 1.2 + this.rng_.next() * 0.6;
+      const randAmp3 = 0.2 + this.rng_.next() * 0.4;
 
       // Layer 1: Gaussian-distributed base noise (natural thermal noise distribution)
       // stdDev of 0.6 dB gives realistic spread - most samples within ±1.2 dB
@@ -94,24 +100,24 @@ export class SpectrumDataProcessor {
 
       // Layer 5: Frequent small random peaks (creates natural "grass" above baseline)
       // ~3% of samples get small bumps
-      if (Math.random() < 0.03) {
-        noise += 0.5 + Math.random() * 1.5;
+      if (this.rng_.next() < 0.03) {
+        noise += 0.5 + this.rng_.next() * 1.5;
       }
 
       // Layer 6: Frequent small random dips (natural variation below baseline)
       // ~3% of samples get small dips
-      if (Math.random() < 0.03) {
-        noise -= 0.3 + Math.random() * 1.0;
+      if (this.rng_.next() < 0.03) {
+        noise -= 0.3 + this.rng_.next() * 1.0;
       }
 
       // Layer 7: Rare larger impulse spikes (fixed amplitude, not scaled by base)
-      if (Math.random() < 0.0001) {
-        noise += 2 + Math.random() * 3;
+      if (this.rng_.next() < 0.0001) {
+        noise += 2 + this.rng_.next() * 3;
       }
 
       // Layer 8: Rare larger dropouts (fixed amplitude)
-      if (Math.random() < 0.0002) {
-        noise -= 1 + Math.random() * 2;
+      if (this.rng_.next() < 0.0002) {
+        noise -= 1 + this.rng_.next() * 2;
       }
 
       // If noise floor is external, add RF front-end gain
@@ -189,13 +195,13 @@ export class SpectrumDataProcessor {
         y += this.gaussianRandom_(0, 0.4);
 
         // Occasional small bumps (like noise "grass")
-        if (Math.random() < 0.05) {
-          y += 0.3 + Math.random() * 0.8;
+        if (this.rng_.next() < 0.05) {
+          y += 0.3 + this.rng_.next() * 0.8;
         }
 
         // Occasional small dips
-        if (Math.random() < 0.05) {
-          y -= 0.2 + Math.random() * 0.6;
+        if (this.rng_.next() < 0.05) {
+          y -= 0.2 + this.rng_.next() * 0.6;
         }
 
         // Very subtle slow variation across the flat top
@@ -223,8 +229,8 @@ export class SpectrumDataProcessor {
       }
 
       // Simulate occasional deep nulls for realism
-      if (Math.random() < 0.001) {
-        y -= 8 + Math.random() * 4;
+      if (this.rng_.next() < 0.001) {
+        y -= 8 + this.rng_.next() * 4;
       }
 
       // NOTE: Signals from agcModule.outputSignals already include all chain gains
@@ -281,8 +287,8 @@ export class SpectrumDataProcessor {
    * Generate Gaussian-distributed random number using Box-Muller transform
    */
   private gaussianRandom_(mean: number, stdDev: number): number {
-    const u1 = Math.random();
-    const u2 = Math.random();
+    const u1 = this.rng_.next();
+    const u2 = this.rng_.next();
     const z = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
     return mean + z * stdDev;
   }

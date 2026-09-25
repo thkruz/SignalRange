@@ -15,6 +15,7 @@ import { Transmitter } from '@app/equipment/transmitter/transmitter';
 import { EventBus } from '@app/events/event-bus';
 import { Events, HpaNoiseAmplificationData } from '@app/events/events';
 import { SignalPathManager } from '@app/simulation/signal-path-manager';
+import { SimClock } from '@app/simulation/sim-clock';
 import { dBm, Hertz, IfFrequency, RfFrequency } from '@app/types';
 
 /**
@@ -175,7 +176,7 @@ export abstract class RFFrontEndCore extends BaseEquipment {
         groundStationId: this.state_.uuid,
         bucMuted,
         bucOff,
-        detectedAt: Date.now(),
+        detectedAt: SimClock.nowMs(),
       };
 
       EventBus.getInstance().emit(Events.HPA_NOISE_AMPLIFICATION, eventData);

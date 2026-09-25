@@ -1,3 +1,4 @@
+import { SimClock } from '@app/simulation/sim-clock';
 /**
  * @file FEC Simulator Module
  * @description Simulates Forward Error Correction (FEC) metrics based on signal quality.
@@ -81,7 +82,7 @@ export class FECSimulator {
   private smoothedViterbi_: number = 0.95;
 
   // Timing for rate calculations
-  private lastUpdateTime_: number = Date.now();
+  private lastUpdateTime_: number = SimClock.runMs();
   private framesPerSecond_: number = 125; // Default frame rate
 
   // Fault injection overrides
@@ -119,8 +120,9 @@ export class FECSimulator {
    * Calculate FEC metrics from signal parameters
    */
   calculate(input: FECSimulatorInput): FECMetrics {
-    const now = Date.now();
-    const deltaTime = now - this.lastUpdateTime_;
+    const now = SimClock.runMs();
+    // Clamped: run time restarts at 0 each scenario
+    const deltaTime = Math.max(0, now - this.lastUpdateTime_);
     this.lastUpdateTime_ = now;
 
     const effectiveCn = input.effectiveCnRatio_dB ?? input.cnRatio_dB;

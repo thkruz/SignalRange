@@ -1,9 +1,13 @@
 import type { TraceMode } from '@app/equipment/real-time-spectrum-analyzer/analyzer-control/ac-trace-btn/ac-trace-btn';
 import { RealTimeSpectrumAnalyzer } from '@app/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer';
 import { SpectrumDataProcessor } from '@app/equipment/real-time-spectrum-analyzer/spectrum-data-processor';
+import { Rng } from '@app/simulation/rng';
 import { SimulationManager } from '@app/simulation/simulation-manager';
 import { Hertz, IfSignal, MHz, RfSignal } from '@app/types';
 import { RTSAScreen } from './rtsa-screen';
+
+/** Seeded draws for this module (see simulation/rng.ts). */
+const random = (): number => Rng.stream('display:spectral-density').next();
 
 /**
  * SpectralDensityPlot - Handles spectral density rendering
@@ -70,7 +74,7 @@ export class SpectralDensityPlot extends RTSAScreen {
     // Start after a random delay to stagger multiple analyzers
     setTimeout(() => {
       this.running = true;
-    }, Math.random() * 1000);
+    }, random() * 1000);
   }
 
   setFrequencyRange(minFreq: Hertz, maxFreq: Hertz): void {
@@ -618,11 +622,11 @@ export class SpectralDensityPlot extends RTSAScreen {
 
     // Main lobe (center region) - add minimal jitter
     if (absDist <= inBandWidth) {
-      y += (Math.random() - 0.5) * 0.4;
+      y += (random() - 0.5) * 0.4;
     }
     // Transition region - slight additional rolloff for realism
     else if (absDist <= outOfBandWidth * 0.7) {
-      y += (Math.random() - 0.5) * 0.6;
+      y += (random() - 0.5) * 0.6;
       // Very subtle side lobe effect (much smaller than before)
       const sideLobeEffect = Math.sin((distance / outOfBandWidth) * Math.PI * 4) * 0.5;
       y += sideLobeEffect;
@@ -630,19 +634,19 @@ export class SpectralDensityPlot extends RTSAScreen {
     // Outer region - more pronounced side lobes and taper
     else if (absDist <= outOfBandWidth) {
       const sideLobeEffect = Math.sin((distance / outOfBandWidth) * Math.PI * 6) * 0.8;
-      y += sideLobeEffect + (Math.random() - 0.5) * 1.0;
+      y += sideLobeEffect + (random() - 0.5) * 1.0;
     }
     // Beyond outOfBandWidth - natural exponential decay
     else {
       const excessDistance = absDist - outOfBandWidth;
       const decayFactor = Math.exp(-excessDistance / (outOfBandWidth * 0.3));
       y += -20 * (1 - decayFactor); // Additional -20 dB taper beyond the main signal
-      y += (Math.random() - 0.5) * 1.5;
+      y += (random() - 0.5) * 1.5;
     }
 
     // Simulate occasional deep nulls for realism
-    if (Math.random() < 0.001) {
-      y -= 10 + Math.random() * 4;
+    if (random() < 0.001) {
+      y -= 10 + random() * 4;
     }
 
     // If noise floor is external, add RF front-end gain to match noise

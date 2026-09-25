@@ -6,6 +6,7 @@ import { EventBus } from '../../../../src/events/event-bus';
 import { Events } from '../../../../src/events/events';
 import { SignalOrigin } from '../../../../src/signal-origin';
 import { dB, dBi, dBm, Hertz, MHz, RfFrequency, RfSignal } from '../../../../src/types';
+import { advanceSimTime } from '../../../helpers/sim-time';
 
 describe('LNBModuleCore', () => {
   let rfFrontEnd: RFFrontEndCore;
@@ -330,7 +331,7 @@ describe('LNBModuleCore', () => {
       lnbModule.handlePowerToggle(true);
 
       // Advance time past stabilization period
-      vi.advanceTimersByTime(200000); // 200 seconds
+      advanceSimTime(200000); // 200 seconds
 
       lnbModule.updateThermalState_();
 

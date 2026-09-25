@@ -1,3 +1,4 @@
+import { SimClock } from '@app/simulation/sim-clock';
 /**
  * @file EventAutoLogger - Auto-logs equipment events to OpsLogManager
  * @description Singleton service that subscribes to equipment events and creates
@@ -154,9 +155,9 @@ export class EventAutoLogger {
 
     // Check time-based throttling
     if (!skipThrottle) {
-      const now = Date.now();
-      const lastTime = this.lastLogTime_.get(event) ?? 0;
-      if (now - lastTime < EventAutoLogger.THROTTLE_MS) {
+      const now = SimClock.runMs();
+      const lastTime = this.lastLogTime_.get(event) ?? -Infinity;
+      if (now >= lastTime && now - lastTime < EventAutoLogger.THROTTLE_MS) {
         return true;
       }
       this.lastLogTime_.set(event, now);

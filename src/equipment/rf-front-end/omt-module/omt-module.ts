@@ -4,8 +4,12 @@ import { RFFrontEndCore } from '@app/equipment/rf-front-end/rf-front-end-core';
 import { RFFrontEndModule } from '@app/equipment/rf-front-end/rf-front-end-module';
 import { Logger } from '@app/logging/logger';
 import { SignalOrigin } from '@app/signal-origin';
+import { Rng } from '@app/simulation/rng';
 import type { dBi, dBm, RfSignal } from '@app/types';
 import { dB } from '@app/types';
+
+/** Seeded draws for this module (see simulation/rng.ts). */
+const random = (): number => Rng.stream('omt').next();
 
 /**
  * Polarization types for OMT/Duplexer
@@ -190,14 +194,14 @@ export class OMTModule extends RFFrontEndModule<OMTState> {
     if (signal) {
       if (signal.polarization === this.state.effectiveRxPol) {
         // Aligned polarization, normal isolation
-        this.state.crossPolIsolation = 30 + Math.random() * 5; // 30-35 dB
+        this.state.crossPolIsolation = 30 + random() * 5; // 30-35 dB
       } else {
         // Misaligned polarization, degraded isolation
-        this.state.crossPolIsolation = 15 + Math.random() * 10; // 15-25 dB
+        this.state.crossPolIsolation = 15 + random() * 10; // 15-25 dB
       }
     } else {
       // No signal, normal isolation
-      this.state.crossPolIsolation = 30 + Math.random() * 5; // 30-35 dB
+      this.state.crossPolIsolation = 30 + random() * 5; // 30-35 dB
     }
 
     // Update fault status

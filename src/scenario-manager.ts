@@ -92,6 +92,7 @@ import { Character, Emotion } from '@app/modal/character-enum';
 import { PreviousShiftLogEntry } from '@app/ops-log/ops-log-types';
 import { SandboxLoadoutService } from '@app/sandbox/sandbox-loadout';
 import { sandboxData } from '@app/scenarios/sandbox';
+import { Rng, resolveScenarioSeed } from '@app/simulation/rng';
 import type { Degrees } from 'ootk';
 import { ScenarioData } from './ScenarioData';
 
@@ -546,6 +547,7 @@ export class ScenarioManager {
       // every other scenario gets its settings object back untouched.
       this.settings = SandboxLoadoutService.getInstance().applyToScenario(scenario);
       this.data = scenario;
+      Rng.setSeed(resolveScenarioSeed(scenario.id, scenario.seed));
     } else {
       throw new Error(`Scenario ${scenarioId} not found`);
     }

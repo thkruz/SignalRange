@@ -2,10 +2,14 @@ import { html } from '@app/engine/utils/development/formatter';
 import { qs } from '@app/engine/utils/query-selector';
 import { RFFrontEndCore } from '@app/equipment/rf-front-end/rf-front-end-core';
 import { RFFrontEndModule } from '@app/equipment/rf-front-end/rf-front-end-module';
+import { Rng } from '@app/simulation/rng';
 import { SignalPathManager } from '@app/simulation/signal-path-manager';
 import { IfFrequency, RfFrequency } from '@app/types';
 import './coupler-module.css';
 import { TapPoint } from './tap-points';
+
+/** Seeded draws for this module (see simulation/rng.ts). */
+const random = (): number => Rng.stream('coupler').next();
 
 /**
  * Spectrum Analyzer coupler module state
@@ -361,7 +365,7 @@ export class CouplerModule extends RFFrontEndModule<CouplerState> {
   private getCouplerOutput_(_tapPoint: TapPoint, couplingFactor: number): { frequency: RfFrequency | IfFrequency; power: number } {
     // Return a random number for now
     return {
-      frequency: (Math.random() * 1000) as RfFrequency | IfFrequency,
+      frequency: (random() * 1000) as RfFrequency | IfFrequency,
       power: -Math.abs(couplingFactor), // Coupled power is negative of coupling factor
     };
   }

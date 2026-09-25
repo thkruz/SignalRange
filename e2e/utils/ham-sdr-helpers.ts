@@ -9,9 +9,9 @@ import { waitForQuizToAppear } from './simulation-helpers';
  * everything an operator does - tuning, rotator, polarization, AFC - happens
  * through the SkyWatcher console selectors here.
  *
- * Timing rule: objective maintain windows (maintainDuration) tick on REAL
- * update deltas, not sim time. advanceSimClock may be used to reach a pass,
- * but never inside a maintain window - a sim jump leaps the Doppler, drops
+ * Timing rule: objective maintain windows (maintainDuration) tick on
+ * simulation steps, not skipped time. advanceClock may be used to reach a
+ * pass, but never inside a maintain window - a jump leaps the Doppler, drops
  * the lock, and resets the window.
  */
 
@@ -28,35 +28,28 @@ export async function answerRileyQuiz(page: Page, answerText: string): Promise<v
   await feedbackContinue.click();
 }
 
-/** Jump the scenario clock forward (sim minutes) and let the sim settle. */
-export async function advanceSimClock(page: Page, minutes: number): Promise<void> {
-  await page.waitForFunction(() => typeof (window as any).advanceSimClock === 'function');
-  await page.evaluate((ms) => (window as any).advanceSimClock(ms), minutes * 60_000);
+/**
+ * Skip the scenario clock forward (minutes) and let the sim settle. One clock
+ * since Phase 19.0: the sky and every mission-elapsed schedule (gnssThreat
+ * spoof windows, interference envelopes) move together. Objective
+ * maintainDuration windows run on simulation steps and are not skipped.
+ */
+export async function advanceClock(page: Page, minutes: number): Promise<void> {
+  await page.waitForFunction(() => typeof (window as any).advanceClock === 'function');
+  await page.evaluate((ms) => (window as any).advanceClock(ms), minutes * 60_000);
   await page.waitForTimeout(3000);
 }
 
 /**
- * Jump BOTH the scenario clock and the mission clock forward (minutes) - the
- * operator-time-skip invariant. Required to cross mission-elapsed thresholds
- * (gnssThreat spoof windows, interference envelopes) without waiting wall
- * time. Objective maintainDuration windows still tick on REAL time.
- */
-export async function advanceMissionClock(page: Page, minutes: number): Promise<void> {
-  await page.waitForFunction(() => typeof (window as any).advanceMissionClock === 'function');
-  await page.evaluate((ms) => (window as any).advanceMissionClock(ms), minutes * 60_000);
-  await page.waitForTimeout(2500);
-}
-
-/**
- * Jump BOTH clocks forward to an absolute scenario UTC time (no-op if already
- * past it). Removes the guesswork of chaining relative jumps across tests
+ * Skip the scenario clock forward to an absolute scenario UTC time (no-op if
+ * already past it). Removes the guesswork of chaining relative jumps across tests
  * whose real-time duration varies (ride loops, quiz timing).
  */
 export async function advanceMissionClockToUtc(page: Page, targetIsoUtc: string): Promise<void> {
-  await page.waitForFunction(() => typeof (window as any).advanceMissionClock === 'function' && typeof (window as any).simClockMs === 'function');
+  await page.waitForFunction(() => typeof (window as any).advanceClock === 'function' && typeof (window as any).simClockMs === 'function');
   await page.evaluate((targetMs) => {
     const deltaMs = targetMs - (window as any).simClockMs();
-    if (deltaMs > 0) (window as any).advanceMissionClock(deltaMs);
+    if (deltaMs > 0) (window as any).advanceClock(deltaMs);
   }, Date.parse(targetIsoUtc));
   await page.waitForTimeout(2500);
 }

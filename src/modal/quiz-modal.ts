@@ -1,3 +1,4 @@
+import { Rng } from '@app/simulation/rng';
 /**
  * @file Quiz Modal - Interactive quiz for status-check objective conditions
  * @description Non-modal draggable box that presents multiple choice questions to verify player understanding
@@ -10,6 +11,9 @@ import { EventBus } from '@app/events/event-bus';
 import { Events, QuizAnsweredData, QuizCompletedData, QuizDismissedData, QuizPassedData, QuizShowData } from '@app/events/events';
 import { Character, CharacterAvatars, CharacterNames, Emotion, getCharacterAvatarUrl } from './character-enum';
 import './quiz-modal.css';
+
+/** Seeded draws for this module (see simulation/rng.ts). */
+const random = (): number => Rng.stream('ui:quiz').next();
 
 /**
  * Singleton non-modal box for presenting status-check quizzes
@@ -512,7 +516,7 @@ export class QuizModal extends DraggableBox {
     if (count === 1 || this.currentQuiz_.preserveOptionOrder) return indices;
 
     for (let i = indices.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
+      const j = Math.floor(random() * (i + 1));
       [indices[i], indices[j]] = [indices[j], indices[i]];
     }
     return indices;

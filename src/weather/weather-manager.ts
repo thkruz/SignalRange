@@ -23,6 +23,11 @@ export interface IceAccumulationConfig {
 export interface WeatherEventRuntime extends WeatherEventData {
   /** Whether the event is currently active */
   isActive: boolean;
+  /**
+   * Waiting for startAfterObjectiveId. While true, startTime still holds the
+   * authored offset; anchoring rewrites it to a mission-elapsed start.
+   */
+  isAwaitingAnchor?: boolean;
 }
 
 /**
@@ -102,7 +107,30 @@ export class WeatherManager {
     this.weatherEvents_ = events.map((e) => ({
       ...e,
       isActive: false,
+      isAwaitingAnchor: e.startAfterObjectiveId !== undefined,
     }));
+  }
+
+  /**
+   * Start the clock on events anchored to an objective once it is active.
+   * Polled rather than driven by OBJECTIVE_ACTIVATED: checkpoint restore sets
+   * objective state without emitting it, and the first objective activates
+   * before this manager exists. A restored-complete anchor also counts, so a
+   * refresh past the anchor still gets its event.
+   */
+  private anchorEvents_(elapsedSeconds: number): void {
+    const objectivesManager = SimulationManager.getInstance().objectivesManager;
+
+    for (const event of this.weatherEvents_) {
+      if (!event.isAwaitingAnchor || !event.startAfterObjectiveId) {
+        continue;
+      }
+      const anchor = objectivesManager?.getObjectiveState(event.startAfterObjectiveId);
+      if (anchor?.isActive || anchor?.isCompleted) {
+        event.startTime = elapsedSeconds + event.startTime;
+        event.isAwaitingAnchor = false;
+      }
+    }
   }
 
   /** Get elapsed mission time in seconds */
@@ -114,6 +142,9 @@ export class WeatherManager {
   private update_(dt: Milliseconds): void {
     const elapsedSeconds = this.getElapsedMissionTime();
     const dtSeconds = dt / 1000;
+
+    // Start objective-anchored events whose objective has come up
+    this.anchorEvents_(elapsedSeconds);
 
     // Update weather event active states
     this.updateWeatherEventStates_(elapsedSeconds);
@@ -209,6 +240,9 @@ export class WeatherManager {
   /** Check and update which weather events are active */
   private updateWeatherEventStates_(elapsedSeconds: number): void {
     for (const event of this.weatherEvents_) {
+      if (event.isAwaitingAnchor) {
+        continue;
+      }
       const wasActive = event.isActive;
       const shouldBeActive = elapsedSeconds >= event.startTime && elapsedSeconds < event.startTime + event.duration;
 

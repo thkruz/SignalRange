@@ -2018,7 +2018,9 @@ export abstract class AntennaCore extends BaseEquipment {
         this.state.polarization
       ),
       atmosLoss_dB: this.calculateAtmosphericLoss_(frequency, elevation),
-      skyTemp_K: this.skyTempK_(elevation),
+      // A sun transit shows here as the operator would read it: the noise the
+      // RX path already carries for it (systemTempK_ models it as feed loss)
+      skyTemp_K: this.skyTempK_(elevation) + this.noiseFromLossK_(this.state.skyNoiseDegradation_dB, this.config.rxPhysTemp_K ?? 290),
       frequency_GHz: frequency / 1e9,
       eirp_dBW,
     };

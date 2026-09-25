@@ -6,7 +6,9 @@ import { answerQuizByText, dismissDialogIfPresent, waitForQuizToAppear, waitForS
  * Scenario 17 - "Solar Event": Sun Transit Outage.
  *
  * Phase 3 opener. A predicted sun transit (weather event type 'sun-transit')
- * raises VT-01's sky noise from T+300s to T+600s with a 12 dB sin^2 peak.
+ * raises VT-01's sky noise for 300 s with a 12 dB sin^2 peak, starting 20 s
+ * after 'observe-onset' activates (startAfterObjectiveId). The slow-player
+ * case lives in scenario17-late-onset.spec.ts.
  * The operator baselines the link, notifies the customer BEFORE the window,
  * holds configuration through the peak (demod loses lock and self-recovers),
  * verifies recovery, and documents predicted-vs-actual.
@@ -14,7 +16,7 @@ import { answerQuizByText, dismissDialogIfPresent, waitForQuizToAppear, waitForS
  * Spec notes:
  *  - 'wait-sky-noise' steps poll the simulation state directly
  *    (skyNoiseDegradation_dB on VT-01's antenna) instead of sleeping.
- *  - Total wall-clock is dominated by the transit timeline (~11 min).
+ *  - Total wall-clock is dominated by the transit timeline (~5 min).
  */
 type ObjectiveType = 'quiz' | 'select-station' | 'click-tab' | 'auto' | 'wait-sky-noise';
 

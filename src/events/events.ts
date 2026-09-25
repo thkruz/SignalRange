@@ -307,6 +307,8 @@ export interface WeatherEventData {
   linkMarginDegradation: number;
   /** rain/storm: peak rain rate in mm/h (default from severity: 4 / 12 / 30) */
   rainRateMmPerHour?: number;
+  /** When set, startTime counts from this objective's activation instead of mission start */
+  startAfterObjectiveId?: string;
 }
 
 export interface WeatherMissionFailureData {

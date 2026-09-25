@@ -40,8 +40,9 @@ import { ses10Satellite, tidemark1Satellite, tidemark2Satellite } from './satell
  * spacecraft-side confirmation. All quizzes SYSTEM. 4 clips.
  *
  * Sim notes:
- *   - weatherEvents 'sun-transit': starts T+300s, 300s duration, 12 dB peak.
- *     Profile sin^2 -> degradation >6 dB roughly T+375..525s, clear by ~T+585s.
+ *   - weatherEvents 'sun-transit': starts 20 s after 'observe-onset' activates
+ *     (startAfterObjectiveId), 300s duration, 12 dB peak. Profile sin^2 ->
+ *     >2 dB from ~A+60s, >6 dB ~A+95..245s, clear (<1 dB) by ~A+292s.
  *   - 12 dB peak takes beacon and carrier C/N below threshold: demod genuinely
  *     unlocks near peak and self-recovers. Uplink is unaffected by design.
  *   - Custom-evaluator conditions read skyNoiseDegradation_dB via the
@@ -92,7 +93,11 @@ export const scenario17Data: ScenarioData = {
         groundStationId: 'VT-01',
         type: 'sun-transit',
         severity: 'severe',
-        startTime: 300, // Window opens 5 minutes into the shift
+        // Anchored to the onset objective: a mission-start schedule ran the
+        // whole transit while slower players were still on the quizzes, and
+        // 'Sky Noise Rising' could never tick
+        startAfterObjectiveId: 'observe-onset',
+        startTime: 20, // Window opens 20 s after the onset objective comes up
         duration: 300, // ~5-minute transit
         linkMarginDegradation: 12, // Peak dB - enough to break demod lock near center
       },
@@ -124,7 +129,7 @@ export const scenario17Data: ScenarioData = {
           description: 'Acknowledge the Window',
           params: {
             character: Character.SYSTEM,
-            question: 'Transit window opens five minutes into the shift. Ready?',
+            question: 'The transit window opens this morning - the pre-event checklist has to be done before it does. Ready?',
             options: ['Acknowledged - prediction sheet reviewed, pre-event checklist starting now.'],
             correctIndex: 0,
             explanation: 'The window does not move for anyone. Everything before it is preparation; everything during it is discipline.',

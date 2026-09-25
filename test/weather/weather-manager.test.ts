@@ -54,10 +54,16 @@ const createMockAntenna = (uuid: string, isHeaterEnabled = false, iceAccumulatio
 let mockAntennas: ReturnType<typeof createMockAntenna>[] = [];
 const mockGroundStations: { state: { id: string }; antennas: typeof mockAntennas }[] = [];
 
+// Objective states the anchored-event path polls (keyed by objective id)
+const mockObjectiveStates = new Map<string, { isActive: boolean; isCompleted: boolean }>();
+
 vi.mock('../../src/simulation/simulation-manager', () => ({
   SimulationManager: {
     getInstance: vi.fn(() => ({
       groundStations: mockGroundStations,
+      objectivesManager: {
+        getObjectiveState: (id: string) => mockObjectiveStates.get(id),
+      },
     })),
   },
 }));
@@ -1243,5 +1249,116 @@ describe('WeatherManager rain rate (phase 16 E5)', () => {
     updateHandler(1000);
     expect(wet.updateRainRate).toHaveBeenLastCalledWith(0);
     expect(wet.state.rainRate_mmh).toBe(0);
+  });
+});
+
+describe('WeatherManager objective-anchored events', () => {
+  let updateHandler: (dt: number) => void;
+
+  beforeEach(() => {
+    WeatherManager.destroy();
+    vi.clearAllMocks();
+    mockScenarioSettings.weatherEvents = [];
+    mockAntennas = [];
+    mockGroundStations.length = 0;
+    mockObjectiveStates.clear();
+    mockEventBusInstance.on.mockImplementation((event: string, handler: any) => {
+      if (event === Events.UPDATE) {
+        updateHandler = handler;
+      }
+    });
+  });
+
+  afterEach(() => {
+    WeatherManager.destroy();
+  });
+
+  // Scenario 17's transit: anchored to 'observe-onset', 20 s after it comes up
+  const setupTransit = () => {
+    mockScenarioSettings.weatherEvents = [
+      {
+        id: 'tm1-sun-transit',
+        groundStationId: 'VT-01',
+        type: 'sun-transit',
+        severity: 'severe',
+        startAfterObjectiveId: 'observe-onset',
+        startTime: 20,
+        duration: 300,
+        linkMarginDegradation: 12,
+      },
+    ];
+    const antenna = createMockAntenna('vt01-ant');
+    mockAntennas = [antenna];
+    mockGroundStations.push({ state: { id: 'VT-01' }, antennas: [antenna] });
+    mockObjectiveStates.set('observe-onset', { isActive: false, isCompleted: false });
+    const manager = WeatherManager.getInstance();
+    return { antenna, manager };
+  };
+
+  const tickAt = (elapsedMs: number) => {
+    setScenarioElapsed(elapsedMs);
+    updateHandler(1000);
+  };
+
+  it('stays dormant however late the player is until the anchor objective activates', () => {
+    const { antenna, manager } = setupTransit();
+
+    // The old mission-start window (T+300..600) passes with the objective not yet up
+    for (const s of [0, 300, 450, 600, 900, 1800]) {
+      tickAt(s * 1000);
+      expect(antenna.state.skyNoiseDegradation_dB).toBe(0);
+    }
+    expect(manager.getActiveWeatherEvents('VT-01')).toHaveLength(0);
+    expect(mockEventBusInstance.emit).not.toHaveBeenCalledWith(Events.WEATHER_EVENT_STARTED, expect.anything());
+  });
+
+  it('starts startTime seconds after the anchor activates and runs its full profile', () => {
+    const { antenna } = setupTransit();
+    tickAt(1_800_000);
+
+    // Player reaches the onset objective 30 minutes in
+    mockObjectiveStates.set('observe-onset', { isActive: true, isCompleted: false });
+    tickAt(1_800_000); // anchors at 1800 s: window 1820..2120
+    tickAt(1_810_000);
+    expect(antenna.state.skyNoiseDegradation_dB).toBe(0);
+
+    tickAt(1_820_000 + 150_000); // mid-window: sin^2 peak
+    expect(antenna.state.skyNoiseDegradation_dB).toBeCloseTo(12, 6);
+    expect(mockEventBusInstance.emit).toHaveBeenCalledWith(Events.WEATHER_EVENT_STARTED, expect.objectContaining({ id: 'tm1-sun-transit', startTime: 1820 }));
+
+    tickAt(2_130_000);
+    expect(antenna.state.skyNoiseDegradation_dB).toBe(0);
+    expect(mockEventBusInstance.emit).toHaveBeenCalledWith(Events.WEATHER_EVENT_ENDED, expect.objectContaining({ id: 'tm1-sun-transit' }));
+  });
+
+  it('anchors only once, even when the objective completes and deactivates', () => {
+    const { antenna } = setupTransit();
+    mockObjectiveStates.set('observe-onset', { isActive: true, isCompleted: false });
+    tickAt(100_000); // window 120..420
+
+    mockObjectiveStates.set('observe-onset', { isActive: false, isCompleted: true });
+    tickAt(270_000);
+    expect(antenna.state.skyNoiseDegradation_dB).toBeCloseTo(12, 6);
+  });
+
+  it('anchors on an objective restored as already complete (checkpoint after a refresh)', () => {
+    const { antenna } = setupTransit();
+    mockObjectiveStates.set('observe-onset', { isActive: false, isCompleted: true });
+    tickAt(500_000); // window 520..820
+    tickAt(670_000);
+    expect(antenna.state.skyNoiseDegradation_dB).toBeCloseTo(12, 6);
+  });
+
+  it('leaves unanchored events on the mission-start schedule', () => {
+    mockScenarioSettings.weatherEvents = [
+      { id: 'plain', groundStationId: 'VT-01', type: 'sun-transit', severity: 'severe', startTime: 300, duration: 300, linkMarginDegradation: 12 },
+    ];
+    const antenna = createMockAntenna('vt01-ant');
+    mockAntennas = [antenna];
+    mockGroundStations.push({ state: { id: 'VT-01' }, antennas: [antenna] });
+    WeatherManager.getInstance();
+
+    tickAt(450_000);
+    expect(antenna.state.skyNoiseDegradation_dB).toBeCloseTo(12, 6);
   });
 });

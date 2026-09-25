@@ -128,8 +128,15 @@ export interface SimulationSettings {
     groundStationId: string;
     type: 'snow' | 'rain' | 'fog' | 'wind' | 'dust' | 'hail' | 'ice' | 'storm' | 'sun-transit';
     severity: 'minor' | 'moderate' | 'severe';
-    /** Seconds since mission start */
+    /** Seconds since mission start, or since startAfterObjectiveId activates */
     startTime: number;
+    /**
+     * Anchor the event to an objective: it stays dormant until that objective
+     * is active (or restored complete), then starts startTime seconds later.
+     * Use it when an objective needs the event in front of the player - a
+     * mission-start schedule is missed by anyone slower than the author.
+     */
+    startAfterObjectiveId?: string;
     /** Duration in seconds */
     duration: number;
     /** dB degradation to link margin (sun-transit peak; informational for rain, whose loss is computed from rain rate) */

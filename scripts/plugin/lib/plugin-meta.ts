@@ -41,6 +41,11 @@ export interface ValidateOptions {
 
 const KEBAB = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
 const PLUGIN_ID = /^[A-Za-z][A-Za-z0-9]*$/u;
+const SEMVER = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/u;
+const CLASS_NAME = /^[A-Za-z_$][A-Za-z0-9_$]*$/u;
+// Plugin-relative path: forward slashes, no segment starting with '.', so no
+// '..' and no absolute path. codegen writes these into generated source.
+const REL_PATH = /^(?:\.\/)?[A-Za-z0-9_-][A-Za-z0-9_.-]*(?:\/[A-Za-z0-9_-][A-Za-z0-9_.-]*)*\/?$/u;
 
 /**
  * Validate a manifest's shape and, when `dir` is given, its consistency with the
@@ -59,14 +64,14 @@ export function validateManifest(manifest: SignalRangePluginManifest, opts: Vali
   if (opts.expectedName && manifest.name !== opts.expectedName) {
     errors.push(`name "${manifest.name}" must equal the install directory name "${opts.expectedName}"`);
   }
-  if (typeof manifest.version !== 'string' || manifest.version.length === 0) {
-    errors.push('version is required (semver string)');
+  if (typeof manifest.version !== 'string' || !SEMVER.test(manifest.version)) {
+    errors.push(`version must be a semver string like "1.2.3" (got ${JSON.stringify(manifest.version)})`);
   }
   if (typeof manifest.engine !== 'string' || manifest.engine.length === 0) {
     errors.push('engine is required (semver range, e.g. ">=1.1.0 <2.0.0")');
   }
-  if (manifest.localesDir !== undefined && (typeof manifest.localesDir !== 'string' || manifest.localesDir.length === 0)) {
-    errors.push('localesDir must be a non-empty string when present');
+  if (manifest.localesDir !== undefined && (typeof manifest.localesDir !== 'string' || !REL_PATH.test(manifest.localesDir))) {
+    errors.push('localesDir must be a relative path inside the plugin (e.g. "locales") when present');
   }
   validateProvides(manifest, errors);
 
@@ -109,11 +114,11 @@ function validateEntry(p: PluginEntry, opts: ValidateOptions, seenIds: Set<strin
 
     return;
   }
-  if (typeof p.className !== 'string' || p.className.length === 0) {
-    errors.push(`[${label}] className is required`);
+  if (typeof p.className !== 'string' || !CLASS_NAME.test(p.className)) {
+    errors.push(`[${label}] className must be a JavaScript class name`);
   }
-  if (typeof p.entry !== 'string' || p.entry.length === 0) {
-    errors.push(`[${label}] entry is required`);
+  if (typeof p.entry !== 'string' || !REL_PATH.test(p.entry)) {
+    errors.push(`[${label}] entry must be a relative path inside the plugin (e.g. "src/plugin.ts")`);
   }
   if (!p.defaultConfig || typeof p.defaultConfig.enabled !== 'boolean') {
     errors.push(`[${label}] defaultConfig.enabled (boolean) is required`);

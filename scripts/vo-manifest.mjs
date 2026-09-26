@@ -73,10 +73,16 @@ function scenarioFiles() {
 }
 
 function stripHtml(html) {
-  return html
-    .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<\/p>/gi, '\n')
-    .replace(/<[^>]+>/g, '')
+  let text = html.replace(/<br\s*\/?>/gi, '\n').replace(/<\/p>/gi, '\n');
+  // One pass can reassemble a tag ('<scr<b>ipt>'); repeat until none remain,
+  // then drop any stray angle bracket
+  let prev;
+  do {
+    prev = text;
+    text = text.replace(/<[^>]*>/g, '');
+  } while (text !== prev);
+  return text
+    .replace(/[<>]/g, '')
     .replace(/&nbsp;/g, ' ')
     .replace(/&amp;/g, '&')
     .replace(/^[ \t]+/gm, '')

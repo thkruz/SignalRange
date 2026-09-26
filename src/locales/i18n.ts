@@ -106,6 +106,10 @@ export function t7e(key: LocaleKey, params?: Record<string, string | number>): s
 
 function deepMerge_(target: Bundle, source: Bundle): void {
   for (const [k, v] of Object.entries(source)) {
+    // Plugin bundles are third-party JSON; JSON.parse makes __proto__ an own key
+    if (k === '__proto__' || k === 'constructor' || k === 'prototype') {
+      continue;
+    }
     const existing = target[k];
 
     if (v !== null && typeof v === 'object' && !Array.isArray(v) && existing !== null && typeof existing === 'object' && !Array.isArray(existing)) {

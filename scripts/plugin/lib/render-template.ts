@@ -1,4 +1,4 @@
-import { copyFileSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { resolveWithin } from './safe-path';
@@ -84,11 +84,12 @@ function targetRelPath(templateRel: string): string {
 }
 
 function renderTree(srcDir: string, destDir: string, vars: TemplateVars, rel = ''): void {
-  for (const name of readdirSync(join(srcDir, rel))) {
-    const childRel = rel ? `${rel}/${name}` : name;
+  // Dirent types come from the directory read itself, so no stat-then-read gap
+  for (const entry of readdirSync(join(srcDir, rel), { withFileTypes: true })) {
+    const childRel = rel ? `${rel}/${entry.name}` : entry.name;
     const abs = join(srcDir, childRel);
 
-    if (statSync(abs).isDirectory()) {
+    if (entry.isDirectory()) {
       renderTree(srcDir, destDir, vars, childRel);
       continue;
     }

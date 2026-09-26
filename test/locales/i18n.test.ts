@@ -82,4 +82,11 @@ describe('i18n', () => {
     expect(hasLocaleKey('plugins.C.z')).toBe(false);
     expect(hasLocaleKey('loadout.title')).toBe(true);
   });
+
+  it('ignores __proto__ in a plugin bundle instead of polluting Object.prototype', () => {
+    addLocaleBundle('en', JSON.parse('{"__proto__": {"polluted": "yes"}, "plugins": {"P": {"__proto__": {"polluted": "yes"}, "ok": "fine"}}}'));
+
+    expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+    expect(t7e('plugins.P.ok')).toBe('fine');
+  });
 });

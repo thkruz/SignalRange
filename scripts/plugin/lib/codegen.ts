@@ -53,9 +53,19 @@ export interface SyncReport {
 
 const IDENTIFIER = /^[A-Za-z_$][A-Za-z0-9_$]*$/u;
 
+// Values come from third-party plugin manifests. JSON.stringify leaves these
+// unescaped; none belongs in an id or path, so escaping them changes nothing
+// for a real plugin and keeps a hostile one from shaping the emitted source.
+const UNSAFE_CHARS: Record<string, string> = {
+  '<': '\\u003C',
+  '>': '\\u003E',
+  '\u2028': '\\u2028',
+  '\u2029': '\\u2029',
+};
+
 /** Quote a string the way Biome's formatter would (single unless that needs more escapes). */
 function quote(value: string): string {
-  const json = JSON.stringify(value);
+  const json = JSON.stringify(value).replace(/[<>\u2028\u2029]/gu, (c) => UNSAFE_CHARS[c]);
   const singles = value.split("'").length - 1;
   const doubles = value.split('"').length - 1;
 

@@ -1,6 +1,6 @@
-import { Logger } from "@app/logging/logger";
-import { AnalyzerControl } from "@app/equipment/real-time-spectrum-analyzer/analyzer-control";
-import { BaseControlButton } from "@app/equipment/real-time-spectrum-analyzer/analyzer-control/base-control-button";
+import { AnalyzerControl } from '@app/equipment/real-time-spectrum-analyzer/analyzer-control';
+import { BaseControlButton } from '@app/equipment/real-time-spectrum-analyzer/analyzer-control/base-control-button';
+import { Logger } from '@app/logging/logger';
 import './ac-mkr-btn.css';
 
 export class ACMkrBtn extends BaseControlButton {
@@ -43,8 +43,7 @@ export class ACMkrBtn extends BaseControlButton {
     }
 
     const numMarkers = this.analyzerControl.specA.state.topMarkers.length;
-    this.analyzerControl.specA.state.markerIndex =
-      (this.analyzerControl.specA.state.markerIndex + delta + numMarkers) % numMarkers;
+    this.analyzerControl.specA.state.markerIndex = (this.analyzerControl.specA.state.markerIndex + delta + numMarkers) % numMarkers;
 
     Logger.info('ACMkrBtn', 'changeMarkerIndex', `Marker index changed to ${this.analyzerControl.specA.state.markerIndex}`);
   }

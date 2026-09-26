@@ -8,13 +8,7 @@ export type HPAModuleUIType = 'standard' | 'basic' | 'headless';
  * Factory function to create HPA module instances
  * Enables switching between UI implementations
  */
-export function createHPA(
-  state: HPAState,
-  rfFrontEnd: RFFrontEndCore,
-  unit: number = 1,
-  parentId: string = '',
-  uiType: HPAModuleUIType = 'standard'
-): HPAModuleCore {
+export function createHPA(state: HPAState, rfFrontEnd: RFFrontEndCore, unit: number = 1, parentId: string = '', uiType: HPAModuleUIType = 'standard'): HPAModuleCore {
   switch (uiType) {
     case 'standard':
       return new HPAModuleUIStandard(state, rfFrontEnd, unit, parentId);

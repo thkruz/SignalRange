@@ -1,11 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { MissionControlPage } from '../pages/mission-control.page';
-import {
-  answerQuizByText,
-  dismissDialogIfPresent,
-  waitForQuizToAppear,
-  waitForSimulationReady,
-} from '../utils/simulation-helpers';
+import { answerQuizByText, dismissDialogIfPresent, waitForQuizToAppear, waitForSimulationReady } from '../utils/simulation-helpers';
 
 /**
  * Scenario 24 - "Constellation Crisis": Campaign Capstone.
@@ -15,16 +10,7 @@ import {
  * board comms. The Working Document is the incident-command log. No new
  * mechanics - this validates the orchestration of everything prior.
  */
-type ObjectiveType =
-  | 'quiz'
-  | 'select-station'
-  | 'click-tab'
-  | 'toggle-switch'
-  | 'configure-buc-gain'
-  | 'repoint-program-track'
-  | 'set-step-track'
-  | 'verify-working-doc'
-  | 'auto';
+type ObjectiveType = 'quiz' | 'select-station' | 'click-tab' | 'toggle-switch' | 'configure-buc-gain' | 'repoint-program-track' | 'set-step-track' | 'verify-working-doc' | 'auto';
 
 interface Scenario24Objective {
   id: string;
@@ -45,15 +31,13 @@ const SCENARIO_24_OBJECTIVES: Scenario24Objective[] = [
     id: 'review-mission-brief',
     title: 'Assume Incident Command',
     type: 'quiz',
-    correctAnswer:
-      'Order the board before touching anything: separate the clocks you do not control (storm ETA, pass window, board deadline) from the trends you can bend (BUC heat, customer confidence), and sequence your attention accordingly',
+    correctAnswer: 'Order the board first: fixed clocks (storm ETA, pass window, board note) versus bendable trends (BUC heat, customer confidence)',
   },
   {
     id: 'sequencing-quiz',
     title: 'Set the Sequence',
     type: 'quiz',
-    correctAnswer:
-      'Protect against the fixed clock first: enable VT-01 heater NOW (one switch, beats the front), then de-rate the ME-02 BUC trend, then set up the AURORA pass before its window - acting on the soonest fixed deadline first, cheap protections before expensive ones',
+    correctAnswer: 'VT-01 heater NOW (one switch, beats the front), then de-rate the ME-02 BUC, then set up the AURORA pass before its 0800 window',
   },
 
   // TRACK 1: VT-01 STORM
@@ -94,8 +78,7 @@ const SCENARIO_24_OBJECTIVES: Scenario24Objective[] = [
     id: 'recognize-buc-signature',
     title: 'Recognize the Signature',
     type: 'quiz',
-    correctAnswer:
-      'The same over-gain thermal trend from before - the swap that never cleared procurement. Fix is the de-rate: gain back to the 23 dB operating value, which cuts the dissipation at the source',
+    correctAnswer: 'The same over-gain thermal trend as before (swap still pending) - fix is the de-rate, gain back to the 23 dB operating value',
   },
   {
     id: 'derate-buc',
@@ -138,8 +121,7 @@ const SCENARIO_24_OBJECTIVES: Scenario24Objective[] = [
     id: 'pass-go-nogo-quiz',
     title: 'Pass Go/No-Go',
     type: 'quiz',
-    correctAnswer:
-      'GO with a caveat: step-track holding, margin thin on an end-of-life beacon; proceed with the pass but flag that AURORA is on its sunset trajectory - and deliver that BEFORE 0800, not mid-pass',
+    correctAnswer: 'GO with a caveat: step-track holding, margin thin on an end-of-life beacon; flag the sunset trajectory to Marcus BEFORE 0800',
   },
 
   // CUSTOMER + BOARD
@@ -147,22 +129,19 @@ const SCENARIO_24_OBJECTIVES: Scenario24Objective[] = [
     id: 'customer-escalation-quiz',
     title: 'Manage the Customer Channel',
     type: 'quiz',
-    correctAnswer:
-      'Per-trunk cause/action/next-update, in thirty seconds each: TM-1 protected ahead of the storm (heater on, holding), TM-2 stabilized (BUC de-rated, no impact) - with a committed next-update time so he stops calling and you keep working',
+    correctAnswer: 'Per-trunk cause/action/next-update, thirty seconds each: TM-1 protected (heater on), TM-2 stabilized (BUC de-rated, no impact)',
   },
   {
     id: 'storm-hold-check',
     title: 'Storm Holding',
     type: 'quiz',
-    correctAnswer:
-      'The feed stays clear as fast as ice tries to form - no accumulation, link holding; the proactive heater turned a potential outage into a non-event you only have to monitor',
+    correctAnswer: 'The feed stays clear as fast as ice tries to form - no accumulation, link holding; the outage never happens, monitor only',
   },
   {
     id: 'board-note-quiz',
     title: 'The Board Note',
     type: 'quiz',
-    correctAnswer:
-      'Posture, exposure, action: both stations stable through a concurrent storm + thermal-trend morning, no customer outage; AURORA pass delivered on a sunsetting beacon (reinforces the migration recommendation); residual risk = the pending ME-02 BUC swap. One paragraph, board-level, no jargon',
+    correctAnswer: 'Posture and exposure: both stations stable, no outage; AURORA pass flown on a sunsetting beacon; residual risk = ME-02 BUC swap',
   },
 
   // Verify command log BEFORE the final quizzes (modal overlays sidebar after)
@@ -177,15 +156,13 @@ const SCENARIO_24_OBJECTIVES: Scenario24Objective[] = [
     id: 'review-command-log',
     title: 'Review the Command Log',
     type: 'quiz',
-    correctAnswer:
-      'It shows the ordered board, the sequence and why, each track\'s action and outcome, the customer and board comms, and the residual risk - someone could pick up your shift cold and know exactly what happened and what is still open',
+    correctAnswer: "It shows the ordered board, the sequence and why, each track's action and outcome, the comms, and the residual risk",
   },
   {
     id: 'log-crisis-closed',
     title: 'Close the Incident',
     type: 'quiz',
-    correctAnswer:
-      'Constellation crisis worked under single-operator incident command: VT-01 storm protected (proactive heater, no ice), ME-02 BUC thermal trend de-rated (no outage), AURORA SeaLink pass delivered on EOL beacon, customers briefed per-trunk, board note filed. Zero customer outage across five concurrent tracks. Residual: ME-02 BUC swap pending. IC closed.',
+    correctAnswer: 'IC closed: VT-01 storm protected, ME-02 BUC de-rated, AURORA pass delivered; zero outage, five tracks; residual = ME-02 BUC swap',
   },
 ];
 
@@ -193,11 +170,7 @@ const SCENARIO_24_OBJECTIVES: Scenario24Objective[] = [
 // Helper Functions
 // ============================================================
 
-async function toggleSwitch(
-  page: import('@playwright/test').Page,
-  switchId: string,
-  desiredState: boolean
-): Promise<void> {
+async function toggleSwitch(page: import('@playwright/test').Page, switchId: string, desiredState: boolean): Promise<void> {
   let switchEl = page.locator(`#${switchId}`);
   if ((await switchEl.count()) === 0) {
     switchEl = page.locator(`[id$="${switchId}"]`);
@@ -216,10 +189,7 @@ async function toggleSwitch(
   await page.waitForTimeout(300);
 }
 
-async function configureBucGain(
-  page: import('@playwright/test').Page,
-  gain: number
-): Promise<void> {
+async function configureBucGain(page: import('@playwright/test').Page, gain: number): Promise<void> {
   const gainInput = page.locator('#buc-gain');
   await expect(gainInput).toBeVisible({ timeout: 5000 });
   await gainInput.fill(gain.toString());
@@ -232,10 +202,7 @@ async function configureBucGain(
   await page.waitForTimeout(400);
 }
 
-async function repointProgramTrack(
-  page: import('@playwright/test').Page,
-  satelliteNoradId: string
-): Promise<void> {
+async function repointProgramTrack(page: import('@playwright/test').Page, satelliteNoradId: string): Promise<void> {
   const modeButton = page.locator('.btn-tracking[data-mode="program-track"]');
   await expect(modeButton).toBeVisible({ timeout: 5000 });
   await modeButton.click();
@@ -262,7 +229,7 @@ async function repointProgramTrack(
           };
         };
       };
-      const gs = w.signalRange?.simulationManager?.groundStations?.find(g => g.state?.id === 'VT-01');
+      const gs = w.signalRange?.simulationManager?.groundStations?.find((g) => g.state?.id === 'VT-01');
       const antennaState = gs?.antennas?.[0]?.state;
       return antennaState ? antennaState.slewing === false && antennaState.isLocked === true : false;
     },
@@ -303,11 +270,7 @@ async function verifyWorkingDocument(page: import('@playwright/test').Page): Pro
   }
 }
 
-async function executeObjective(
-  page: import('@playwright/test').Page,
-  missionControlPage: MissionControlPage,
-  objective: Scenario24Objective
-): Promise<void> {
+async function executeObjective(page: import('@playwright/test').Page, missionControlPage: MissionControlPage, objective: Scenario24Objective): Promise<void> {
   switch (objective.type) {
     case 'quiz':
       await waitForQuizToAppear(page);
@@ -320,6 +283,10 @@ async function executeObjective(
 
     case 'click-tab':
       await missionControlPage.selectTab(objective.tabId!);
+      // Observation-gated conditions latch only after the default dwell on
+      // the tab (DEFAULT_OBSERVATION_DWELL_SECONDS); leaving at once would
+      // reset the read and strand the objective.
+      await page.waitForTimeout(3000);
       break;
 
     case 'toggle-switch':

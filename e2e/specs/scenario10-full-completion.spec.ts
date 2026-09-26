@@ -1,11 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { MissionControlPage } from '../pages/mission-control.page';
-import {
-  answerQuizByText,
-  dismissDialogIfPresent,
-  waitForQuizToAppear,
-  waitForSimulationReady,
-} from '../utils/simulation-helpers';
+import { answerQuizByText, dismissDialogIfPresent, waitForQuizToAppear, waitForSimulationReady } from '../utils/simulation-helpers';
 
 /**
  * Scenario 10 - "Customer Pass": High-Throughput Window on AURORA-7.
@@ -25,13 +20,7 @@ import {
  * - 'set-tracking-mode': Antenna tracking mode change (step-track, no satellite reselect)
  * - 'configure-hpa-backoff': HPA backoff field + Apply button
  */
-type ObjectiveType =
-  | 'quiz'
-  | 'select-station'
-  | 'click-tab'
-  | 'auto'
-  | 'set-tracking-mode'
-  | 'configure-hpa-backoff';
+type ObjectiveType = 'quiz' | 'select-station' | 'click-tab' | 'auto' | 'set-tracking-mode' | 'configure-hpa-backoff';
 
 interface Scenario10Objective {
   id: string;
@@ -82,8 +71,7 @@ const SCENARIO_10_OBJECTIVES: Scenario10Objective[] = [
     id: 'why-step-track',
     title: 'Confirm Tracking Mode for the Pass',
     type: 'quiz',
-    correctAnswer:
-      'Inclined orbit drift will degrade C/N across the pass - step-track holds beacon optimum continuously',
+    correctAnswer: 'Inclined orbit drift will degrade C/N across the pass - step-track holds beacon optimum continuously',
   },
   {
     id: 'enable-step-track-tab',
@@ -145,8 +133,7 @@ const SCENARIO_10_OBJECTIVES: Scenario10Objective[] = [
     id: 'assess-current-backoff',
     title: 'Assess Current HPA Backoff',
     type: 'quiz',
-    correctAnswer:
-      'Safe but conservative - tighter backoff gives the customer more EIRP without breaking the amp',
+    correctAnswer: 'Safe but conservative - tighter backoff gives the customer more EIRP without breaking the amp',
   },
   {
     id: 'optimize-hpa-backoff',
@@ -162,10 +149,9 @@ const SCENARIO_10_OBJECTIVES: Scenario10Objective[] = [
   },
   {
     id: 'imd-tradeoff-check',
-    title: 'Acknowledge the IMD Tradeoff',
+    title: 'Acknowledge the IMD Cost',
     type: 'quiz',
-    correctAnswer:
-      'IMD products rise as the amp moves closer to saturation - monitor for overdrive across the window',
+    correctAnswer: 'IMD products rise as the amp moves closer to saturation - monitor for overdrive across the window',
   },
 
   // ============================================================
@@ -197,15 +183,13 @@ const SCENARIO_10_OBJECTIVES: Scenario10Objective[] = [
     id: 'final-pass-snapshot',
     title: 'Final Pass Disposition',
     type: 'quiz',
-    correctAnswer:
-      'AURORA-7 pass complete - step-track held throughout, C/N margin sustained, no overdrive events, HPA returned to 10 dB',
+    correctAnswer: 'AURORA-7 pass complete - step-track held throughout, C/N margin sustained, no overdrive events, HPA returned to 10 dB',
   },
   {
     id: 'log-customer-pass',
     title: 'Log the Customer Pass',
     type: 'quiz',
-    correctAnswer:
-      'SeaLink 30-min high-priority pass on AURORA-7 - step-track engaged, HPA optimized to 6 dB backoff for window then restored to 10 dB. C/N margin sustained, no link events.',
+    correctAnswer: 'SeaLink pass on AURORA-7 - step-track, HPA 6 dB backoff for the window then restored to 10 dB. Margin held, no link events.',
   },
 ];
 
@@ -219,10 +203,7 @@ const SCENARIO_10_OBJECTIVES: Scenario10Objective[] = [
  * AURORA-7 the satellite selection is already correct from the scenario
  * preconfig, so no target reselection is required.
  */
-async function setTrackingMode(
-  page: import('@playwright/test').Page,
-  trackingMode: string
-): Promise<void> {
+async function setTrackingMode(page: import('@playwright/test').Page, trackingMode: string): Promise<void> {
   // Step-track is an optimization toggle on top of program-track, not a
   // separate mode button (same pattern as the scenario 6 spec).
   if (trackingMode === 'step-track') {
@@ -257,10 +238,7 @@ async function setTrackingMode(
  * Configure HPA backoff to achieve target output power.
  * Lower backoff = higher output power.
  */
-async function configureHpaBackoff(
-  page: import('@playwright/test').Page,
-  backoff: number
-): Promise<void> {
+async function configureHpaBackoff(page: import('@playwright/test').Page, backoff: number): Promise<void> {
   const backoffInput = page.locator('#hpa-backoff');
   await expect(backoffInput).toBeVisible({ timeout: 5000 });
   await backoffInput.fill(backoff.toString());
@@ -276,11 +254,7 @@ async function configureHpaBackoff(
 /**
  * Execute an objective based on its type.
  */
-async function executeObjective(
-  page: import('@playwright/test').Page,
-  missionControlPage: MissionControlPage,
-  objective: Scenario10Objective
-): Promise<void> {
+async function executeObjective(page: import('@playwright/test').Page, missionControlPage: MissionControlPage, objective: Scenario10Objective): Promise<void> {
   switch (objective.type) {
     case 'quiz':
       await waitForQuizToAppear(page);
@@ -293,6 +267,10 @@ async function executeObjective(
 
     case 'click-tab':
       await missionControlPage.selectTab(objective.tabId!);
+      // Observation-gated conditions latch only after the default dwell on
+      // the tab (DEFAULT_OBSERVATION_DWELL_SECONDS); leaving at once would
+      // reset the read and strand the objective.
+      await page.waitForTimeout(3000);
       break;
 
     case 'set-tracking-mode':

@@ -1,13 +1,14 @@
-import { HelpButton } from "@app/components/help-btn/help-btn";
-import { PolarPlot } from "@app/components/polar-plot/polar-plot";
-import { PowerSwitch } from "@app/components/power-switch/power-switch";
-import { RotaryKnob } from "@app/components/rotary-knob/rotary-knob";
-import { ToggleSwitch } from "@app/components/toggle-switch/toggle-switch";
-import { Degrees } from "ootk";
-import { html } from "@app/engine/utils/development/formatter";
-import { qs } from "@app/engine/utils/query-selector";
-import { ANTENNA_CONFIG_KEYS } from "./antenna-config-keys";
-import { AntennaCore, AntennaState } from "./antenna-core";
+import { HelpButton } from '@app/components/help-btn/help-btn';
+import { PolarPlot } from '@app/components/polar-plot/polar-plot';
+import { PowerSwitch } from '@app/components/power-switch/power-switch';
+import { RotaryKnob } from '@app/components/rotary-knob/rotary-knob';
+import { ToggleSwitch } from '@app/components/toggle-switch/toggle-switch';
+import { html } from '@app/engine/utils/development/formatter';
+import { qs } from '@app/engine/utils/query-selector';
+import { Degrees } from 'ootk';
+import { ANTENNA_CONFIG_KEYS } from './antenna-config-keys';
+import { AntennaCore, AntennaState } from './antenna-core';
+import type { AntennaConfigId } from './antenna-registry';
 import './antenna.css';
 
 /**
@@ -33,10 +34,10 @@ export class AntennaUIStandard extends AntennaCore {
 
   constructor(
     parentId: string,
-    configId: ANTENNA_CONFIG_KEYS = ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK,
+    configId: AntennaConfigId = ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK,
     initialState: Partial<AntennaState> = {},
     teamId: number = 1,
-    serverId: number = 1,
+    serverId: number = 1
   ) {
     // Initialize UI components before calling super
     // These need to exist before build() is called
@@ -54,7 +55,7 @@ export class AntennaUIStandard extends AntennaCore {
       isOperational: true,
       isPowered: true,
       rxSignalsIn: [],
-      ...initialState
+      ...initialState,
     };
 
     // Call parent constructor which will call build()
@@ -62,56 +63,19 @@ export class AntennaUIStandard extends AntennaCore {
 
     // Create UI components with temporary IDs (will be updated after super)
     const tempId = `antenna-temp`;
-    this.autoTrackSwitch_ = ToggleSwitch.create(
-      `${tempId}-auto-track`,
-      tempState.isAutoTrackSwitchUp,
-      false
-    );
-    this.powerSwitch_ = PowerSwitch.create(
-      `${tempId}-power-switch`,
-      tempState.isPowered,
-      true,
-      true
-    );
-    this.polarizationKnob_ = RotaryKnob.create(
-      `${tempId}-skew-knob`,
-      tempState.polarization,
-      -90,
-      90,
-      1,
-      (value) => this.handlePolarizationChange(value)
-    );
-    this.azKnob_ = RotaryKnob.create(
-      `${tempId}-az-knob`,
-      tempState.azimuth,
-      -270,
-      270,
-      0.1,
-      (value) => this.handleAzimuthChange(value)
-    );
-    this.elKnob_ = RotaryKnob.create(
-      `${tempId}-el-knob`,
-      tempState.elevation,
-      -5,
-      90,
-      0.1,
-      (value) => this.handleElevationChange(value)
-    );
-    this.loopbackSwitch_ = ToggleSwitch.create(
-      `${tempId}-loopback`,
-      tempState.isLoopback,
-      false
-    );
+    this.autoTrackSwitch_ = ToggleSwitch.create(`${tempId}-auto-track`, tempState.isAutoTrackSwitchUp, false);
+    this.powerSwitch_ = PowerSwitch.create(`${tempId}-power-switch`, tempState.isPowered, true, true);
+    this.polarizationKnob_ = RotaryKnob.create(`${tempId}-skew-knob`, tempState.polarization, -90, 90, 1, (value) => this.handlePolarizationChange(value));
+    this.azKnob_ = RotaryKnob.create(`${tempId}-az-knob`, tempState.azimuth, -270, 270, 0.1, (value) => this.handleAzimuthChange(value));
+    this.elKnob_ = RotaryKnob.create(`${tempId}-el-knob`, tempState.elevation, -5, 90, 0.1, (value) => this.handleElevationChange(value));
+    this.loopbackSwitch_ = ToggleSwitch.create(`${tempId}-loopback`, tempState.isLoopback, false);
     this.helpBtn_ = HelpButton.create(
       `${tempId}-help-btn`,
       'Antenna Control Unit (ACU)',
       null,
       'https://docs.signalrange.space/equipment/antenna-control-unit?content-only=true&dark=true'
     );
-    this.polarPlot_ = PolarPlot.create(
-      `${tempId}-polar-plot`,
-      { width: 550, height: 450, showGrid: true, showLabels: true }
-    );
+    this.polarPlot_ = PolarPlot.create(`${tempId}-polar-plot`, { width: 550, height: 450, showGrid: true, showLabels: true });
 
     super.build(parentId);
 

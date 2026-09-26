@@ -8,13 +8,7 @@ export type LNBModuleUIType = 'standard' | 'basic' | 'headless';
  * Factory function to create LNB module instances
  * Enables switching between UI implementations
  */
-export function createLNB(
-  state: LNBState,
-  rfFrontEnd: RFFrontEndCore,
-  unit: number = 1,
-  parentId: string = '',
-  uiType: LNBModuleUIType = 'standard'
-): LNBModuleCore {
+export function createLNB(state: LNBState, rfFrontEnd: RFFrontEndCore, unit: number = 1, parentId: string = '', uiType: LNBModuleUIType = 'standard'): LNBModuleCore {
   switch (uiType) {
     case 'standard':
       return new LNBModuleUIStandard(state, rfFrontEnd, unit, parentId);

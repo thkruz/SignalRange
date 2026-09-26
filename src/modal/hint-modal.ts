@@ -3,12 +3,12 @@
  * @description Modal that displays condition hints with penalty warning
  */
 
-import { EventBus } from '@app/events/event-bus';
-import { Events, HintShownData } from '@app/events/events';
+import bulbPng from '@app/assets/icons/bulb.png';
 import { DraggableModal } from '@app/engine/ui/draggable-modal';
 import { html } from '@app/engine/utils/development/formatter';
 import { getEl } from '@app/engine/utils/get-el';
-import bulbPng from '@app/assets/icons/bulb.png';
+import { EventBus } from '@app/events/event-bus';
+import { Events, HintShownData } from '@app/events/events';
 import { HintManager } from './hint-manager';
 import './hint-modal.css';
 
@@ -48,13 +48,7 @@ export class HintModal extends DraggableModal {
   /**
    * Show the hint confirmation modal
    */
-  showConfirmation(
-    objectiveId: string,
-    conditionIndex: number,
-    hint: string,
-    penaltyPoints: number,
-    objectiveTitle: string
-  ): void {
+  showConfirmation(objectiveId: string, conditionIndex: number, hint: string, penaltyPoints: number, objectiveTitle: string): void {
     this.currentState_ = {
       objectiveId,
       conditionIndex,
@@ -72,11 +66,7 @@ export class HintModal extends DraggableModal {
   /**
    * Show the hint directly without confirmation (for already-revealed hints)
    */
-  showHintDirectly(
-    objectiveId: string,
-    conditionIndex: number,
-    hint: string
-  ): void {
+  showHintDirectly(objectiveId: string, conditionIndex: number, hint: string): void {
     this.currentState_ = {
       objectiveId,
       conditionIndex,
@@ -171,17 +161,12 @@ export class HintModal extends DraggableModal {
     if (!this.currentState_) return;
 
     // Request the hint through HintManager (this emits HINT_REQUESTED and HINT_SHOWN)
-    HintManager.getInstance().requestHint(
-      this.currentState_.objectiveId,
-      this.currentState_.conditionIndex
-    );
+    HintManager.getInstance().requestHint(this.currentState_.objectiveId, this.currentState_.conditionIndex);
   }
 
   private handleHintShown_(data: HintShownData): void {
     // Update state with revealed hint and show it
-    if (this.currentState_ &&
-      this.currentState_.objectiveId === data.objectiveId &&
-      this.currentState_.conditionIndex === data.conditionIndex) {
+    if (this.currentState_ && this.currentState_.objectiveId === data.objectiveId && this.currentState_.conditionIndex === data.conditionIndex) {
       this.renderHint_();
     }
   }

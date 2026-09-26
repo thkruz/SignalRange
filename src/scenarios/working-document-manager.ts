@@ -13,6 +13,7 @@ import { EventBus } from '@app/events/event-bus';
 import { Events, QuizPassedData } from '@app/events/events';
 import { DraggableHtmlBox } from '@app/modal/draggable-html-box';
 import { ScenarioManager } from '@app/scenario-manager';
+import { CampaignDocumentStore, campaignIdOf } from './campaign-document-store';
 
 interface DocumentEntry {
   section: string;
@@ -27,9 +28,11 @@ export class WorkingDocumentManager {
   private entries_: DocumentEntry[] = [];
   private box_: DraggableHtmlBox | null = null;
   private readonly boundQuizPassedHandler_: (data: QuizPassedData) => void;
+  private readonly boundCompletedHandler_: () => void;
 
   private constructor() {
     this.boundQuizPassedHandler_ = this.handleQuizPassed_.bind(this);
+    this.boundCompletedHandler_ = this.flushToCampaignStore_.bind(this);
   }
 
   static getInstance(): WorkingDocumentManager {
@@ -46,10 +49,32 @@ export class WorkingDocumentManager {
   initialize(): void {
     this.entries_ = [];
     this.box_ = null;
-    EventBus.getInstance().off(Events.QUIZ_PASSED, this.boundQuizPassedHandler_);
+    CampaignDocumentStore.beginRun();
+    const bus = EventBus.getInstance();
+    bus.off(Events.QUIZ_PASSED, this.boundQuizPassedHandler_);
+    bus.off(Events.OBJECTIVES_ALL_COMPLETED, this.boundCompletedHandler_);
     if (WorkingDocumentManager.isEnabled()) {
-      EventBus.getInstance().on(Events.QUIZ_PASSED, this.boundQuizPassedHandler_);
+      bus.on(Events.QUIZ_PASSED, this.boundQuizPassedHandler_);
+      bus.on(Events.OBJECTIVES_ALL_COMPLETED, this.boundCompletedHandler_);
     }
+  }
+
+  /**
+   * Scenario complete: file this shift's document in the campaign record so
+   * later scenarios can read it, with any evidence a decision destroyed.
+   */
+  private flushToCampaignStore_(): void {
+    const scenario = ScenarioManager.getInstance().data;
+    if (!scenario) return;
+    CampaignDocumentStore.upsertRecord(campaignIdOf(scenario), {
+      scenarioId: scenario.id,
+      number: scenario.number ?? 0,
+      title: scenario.title ?? scenario.id,
+      documentTitle: ScenarioManager.getInstance().settings.workingDocument?.title ?? 'Working Document',
+      completedAt: new Date().toISOString(),
+      entries: this.entries_.map((e) => ({ ...e })),
+      destroyedEvidence: [...CampaignDocumentStore.destroyedThisRun],
+    });
   }
 
   /** Open (or create) the document panel. */
@@ -67,7 +92,7 @@ export class WorkingDocumentManager {
 
   private handleQuizPassed_(data: QuizPassedData): void {
     const scenario = ScenarioManager.getInstance().data;
-    const objective = scenario.objectives?.find(o => o.id === data.objectiveId);
+    const objective = scenario.objectives?.find((o) => o.id === data.objectiveId);
     const condition = objective?.conditions?.[data.conditionIndex];
     const line = condition?.params?.documentLine;
     if (!line) return;
@@ -75,7 +100,7 @@ export class WorkingDocumentManager {
     const section = condition?.params?.documentSection ?? DEFAULT_SECTION;
 
     // Idempotence: a re-fired event for the same line must not duplicate it
-    if (this.entries_.some(e => e.line === line && e.section === section)) return;
+    if (this.entries_.some((e) => e.line === line && e.section === section)) return;
 
     const isFirstEntry = this.entries_.length === 0;
     this.entries_.push({ section, line });
@@ -108,14 +133,18 @@ export class WorkingDocumentManager {
       sections.set(entry.section, lines);
     }
 
-    const sectionsHtml = [...sections.entries()].map(([section, lines]) => `
+    const sectionsHtml = [...sections.entries()]
+      .map(
+        ([section, lines]) => `
       <div class="working-doc-section mb-2">
         <div class="fw-bold text-uppercase small" style="opacity:0.7;letter-spacing:0.05em;">${section}</div>
         <ul class="list-unstyled mb-0 font-monospace small" style="line-height:1.6;">
-          ${lines.map(l => `<li>&#x2713; ${l}</li>`).join('')}
+          ${lines.map((l) => `<li>&#x2713; ${l}</li>`).join('')}
         </ul>
       </div>
-    `).join('');
+    `
+      )
+      .join('');
 
     const emptyHtml = `
       <p class="small font-monospace" style="opacity:0.6;">
@@ -135,6 +164,7 @@ export class WorkingDocumentManager {
   static reset(): void {
     if (this.instance_) {
       EventBus.getInstance().off(Events.QUIZ_PASSED, this.instance_.boundQuizPassedHandler_);
+      EventBus.getInstance().off(Events.OBJECTIVES_ALL_COMPLETED, this.instance_.boundCompletedHandler_);
       this.instance_ = null;
     }
   }

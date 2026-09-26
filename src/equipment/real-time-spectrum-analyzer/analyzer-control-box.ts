@@ -1,8 +1,8 @@
-import { DraggableBox } from "@app/engine/ui/draggable-box";
-import { html } from "@app/engine/utils/development/formatter";
-import { getEl } from "@app/engine/utils/get-el";
-import { AnalyzerControl } from "./analyzer-control";
-import { RealTimeSpectrumAnalyzer } from "./real-time-spectrum-analyzer";
+import { DraggableBox } from '@app/engine/ui/draggable-box';
+import { html } from '@app/engine/utils/development/formatter';
+import { getEl } from '@app/engine/utils/get-el';
+import { AnalyzerControl } from './analyzer-control';
+import { RealTimeSpectrumAnalyzer } from './real-time-spectrum-analyzer';
 
 export class AnalyzerControlBox extends DraggableBox {
   private readonly spectrumAnalyzer: RealTimeSpectrumAnalyzer;
@@ -10,15 +10,14 @@ export class AnalyzerControlBox extends DraggableBox {
   private readonly control: AnalyzerControl;
 
   constructor(specA: RealTimeSpectrumAnalyzer) {
-    super(`spec-a-${specA.state.uuid}-control-popup-box`,
-      {
-        title: `Spectrum Analyzer ${specA.state.uuid.split('-')[0]} Control Panel`,
-        width: 'fit-content',
-        boxContentHtml: html`
+    super(`spec-a-${specA.state.uuid}-control-popup-box`, {
+      title: `Spectrum Analyzer ${specA.state.uuid.split('-')[0]} Control Panel`,
+      width: 'fit-content',
+      boxContentHtml: html`
       <div id="spec-a-${specA.state.uuid}-control-popup-content">
       </div>
-    `.trim()
-      });
+    `.trim(),
+    });
 
     this.spectrumAnalyzer = specA;
     this.popupDom = getEl(`spec-a-${this.spectrumAnalyzer.state.uuid}-control-popup-content`)!;

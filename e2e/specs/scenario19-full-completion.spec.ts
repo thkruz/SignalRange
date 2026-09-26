@@ -1,11 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { MissionControlPage } from '../pages/mission-control.page';
-import {
-  answerQuizByText,
-  dismissDialogIfPresent,
-  waitForQuizToAppear,
-  waitForSimulationReady,
-} from '../utils/simulation-helpers';
+import { answerQuizByText, dismissDialogIfPresent, waitForQuizToAppear, waitForSimulationReady } from '../utils/simulation-helpers';
 
 /**
  * Scenario 19 - "Train the New Hire": Producing the Quick-Reference Card.
@@ -16,15 +11,7 @@ import {
  * beacon tune, step-track, verify) interleaved with the card quizzes, then
  * verifies the Working Document panel actually contains the card lines.
  */
-type ObjectiveType =
-  | 'quiz'
-  | 'select-station'
-  | 'click-tab'
-  | 'repoint-program-track'
-  | 'configure-speca'
-  | 'set-step-track'
-  | 'verify-working-doc'
-  | 'auto';
+type ObjectiveType = 'quiz' | 'select-station' | 'click-tab' | 'repoint-program-track' | 'configure-speca' | 'set-step-track' | 'verify-working-doc' | 'auto';
 
 interface Scenario19Objective {
   id: string;
@@ -53,10 +40,9 @@ const SCENARIO_19_OBJECTIVES: Scenario19Objective[] = [
   },
   {
     id: 'card-scope-quiz',
-    title: 'Set the Card\'s Scope',
+    title: "Set the Card's Scope",
     type: 'quiz',
-    correctAnswer:
-      'The numbers someone needs under pressure plus the mistakes with the highest local base rate - one page, taped to the console; the procedure itself stays in the SOP',
+    correctAnswer: 'The numbers needed under pressure plus the highest-base-rate local mistakes - one page; the procedure stays in the SOP',
   },
 
   // PHASE 1: ACQUIRE
@@ -76,8 +62,7 @@ const SCENARIO_19_OBJECTIVES: Scenario19Objective[] = [
     id: 'acquire-callout-quiz',
     title: 'Card Line: Acquisition',
     type: 'quiz',
-    correctAnswer:
-      'Program-track FIRST - it puts you inside beacon capture range. Nominal: Az 190, El 32, but the bird rides a ±3° figure-8',
+    correctAnswer: 'Program-track FIRST - it puts you inside beacon capture range. Nominal Az 190, El 32, but the bird rides a ±3° figure-8',
   },
   {
     id: 'tune-beacon-tab',
@@ -95,15 +80,13 @@ const SCENARIO_19_OBJECTIVES: Scenario19Objective[] = [
     id: 'beacon-formula-quiz',
     title: 'Card Line: the Beacon Number',
     type: 'quiz',
-    correctAnswer:
-      'Beacon IF = LO − RF = 5250 − 4165 = 1085 MHz. Weak CW (aging bird) - use a narrow span, ~2 kHz',
+    correctAnswer: 'Beacon IF = LO − RF = 5250 − 4165 = 1085 MHz. Weak CW (aging bird) - use a narrow span, ~2 kHz',
   },
   {
     id: 'mistake-lo-quiz',
     title: 'Card Line: First Watch-Out',
     type: 'quiz',
-    correctAnswer:
-      'Beacon "missing" at 1085? Check the LNB LO = 5250 - an operator fresh from Maine duty once hunted a healthy beacon for an hour with the LO still at Maine\'s 6080 default',
+    correctAnswer: 'Beacon "missing" at 1085? Check the LNB LO = 5250 - an operator fresh from Maine duty once hunted a healthy beacon for an hour',
   },
 
   // PHASE 2: TRACK
@@ -122,8 +105,7 @@ const SCENARIO_19_OBJECTIVES: Scenario19Objective[] = [
     id: 'step-track-rule-quiz',
     title: 'Card Line: the Engagement Rule',
     type: 'quiz',
-    correctAnswer:
-      'Step-track RIDES program-track - engage it as an optimization on an acquired beacon, never from MANUAL (the loop needs a beacon to optimize)',
+    correctAnswer: 'Step-track RIDES program-track - engage it on an acquired beacon, never from MANUAL (the loop needs a beacon to optimize)',
   },
   {
     id: 'hold-beacon',
@@ -135,15 +117,13 @@ const SCENARIO_19_OBJECTIVES: Scenario19Objective[] = [
     id: 'healthy-track-quiz',
     title: 'Card Line: What Healthy Looks Like',
     type: 'quiz',
-    correctAnswer:
-      'Healthy = beacon C/N steady at its peak while Az/El visibly wander the figure-8. Moving dish + flat C/N is the loop WORKING, not a fault',
+    correctAnswer: 'Healthy = beacon C/N steady at its peak while Az/El wander the figure-8. Moving dish + flat C/N is the loop WORKING',
   },
   {
     id: 'mistake-chase-quiz',
     title: 'Card Line: Second Watch-Out',
     type: 'quiz',
-    correctAnswer:
-      'C/N sagging mid-track? Verify step-track is still ON before touching the axes - hand-chasing the figure-8 is a losing game an operator here once played for twenty minutes',
+    correctAnswer: 'C/N sagging mid-track? Verify step-track is still ON before touching the axes - hand-chasing the figure-8 is a losing game',
   },
 
   // PHASE 3: VERIFY
@@ -163,26 +143,23 @@ const SCENARIO_19_OBJECTIVES: Scenario19Objective[] = [
     id: 'verify-chain-quiz',
     title: 'Card Line: the Proof Chain',
     type: 'quiz',
-    correctAnswer:
-      'Proof chain, in order: beacon at 1085 (pointing + LO) → RX locked at 1422 MHz / 24 MHz (carrier) → C/N ≥ 8 (margin). Each link proves something the others don\'t',
+    correctAnswer: 'Proof chain, in order: beacon at 1085 (pointing + LO) → RX locked at 1422 / 24 MHz (carrier) → C/N ≥ 8 dB (margin)',
   },
   {
     id: 'mistake-span-quiz',
     title: 'Card Line: Third Watch-Out',
     type: 'quiz',
-    correctAnswer:
-      'Carrier "gone" but beacon fine? Widen the span - a 24 MHz carrier is invisible at the 2 kHz span you used for the beacon. (Operator here once declared an outage over this)',
+    correctAnswer: 'Carrier "gone" but beacon fine? Widen the span - a 24 MHz carrier is invisible at the 2 kHz span you used for the beacon',
   },
   {
     id: 'tx-numbers-quiz',
     title: 'Card Line: the TX Number',
     type: 'quiz',
-    correctAnswer:
-      'TX IF = BUC LO − uplink RF = 7500 − 6053 = 1447 MHz. AURORA\'s chain uses BUC LO 7500 - NOT the TIDEMARK 7000',
+    correctAnswer: "TX IF = BUC LO − uplink RF = 7500 − 6053 = 1447 MHz. AURORA's chain uses BUC LO 7500 - NOT the TIDEMARK 7000",
   },
 
   // Verify the card BEFORE the final quizzes (the Mission Complete modal
-  // overlays the sidebar once the last objective lands)
+  // overlays the sidebar once the last objective completes)
   {
     id: 'verify-working-doc',
     title: 'Working Document: card accumulated all lines',
@@ -194,15 +171,13 @@ const SCENARIO_19_OBJECTIVES: Scenario19Objective[] = [
     id: 'card-review-quiz',
     title: 'Editorial Review',
     type: 'quiz',
-    correctAnswer:
-      'Card space is the reader\'s attention under pressure - every line they scan past to find the one they need is time on a degraded link; the card earns trust by containing only what earns its place',
+    correctAnswer: "Card space is the reader's attention under pressure - every line they scan past is time lost on a degraded link",
   },
   {
     id: 'log-handoff',
     title: 'Hand Off the Card',
     type: 'quiz',
-    correctAnswer:
-      'AURORA-7 quick-reference card complete - built against a live procedure run (acquire, step-track, verify, all green). Sections: Acquire / Track / Verify / Numbers / 3x Watch-Out from station history. Delivered to Dana for the new-hire packet.',
+    correctAnswer: 'AURORA-7 card complete - built against a live procedure run, all green; delivered to Dana for the new-hire packet',
   },
 ];
 
@@ -211,10 +186,7 @@ const SCENARIO_19_OBJECTIVES: Scenario19Objective[] = [
 // ============================================================
 
 /** Program-track + select satellite + Move to Target, then wait on sim state. */
-async function repointProgramTrack(
-  page: import('@playwright/test').Page,
-  satelliteNoradId: string
-): Promise<void> {
+async function repointProgramTrack(page: import('@playwright/test').Page, satelliteNoradId: string): Promise<void> {
   const modeButton = page.locator('.btn-tracking[data-mode="program-track"]');
   await expect(modeButton).toBeVisible({ timeout: 5000 });
   await modeButton.click();
@@ -242,7 +214,7 @@ async function repointProgramTrack(
           };
         };
       };
-      const gs = w.signalRange?.simulationManager?.groundStations?.find(g => g.state?.id === 'VT-01');
+      const gs = w.signalRange?.simulationManager?.groundStations?.find((g) => g.state?.id === 'VT-01');
       const antennaState = gs?.antennas?.[0]?.state;
       return antennaState ? antennaState.slewing === false && antennaState.isLocked === true : false;
     },
@@ -252,10 +224,7 @@ async function repointProgramTrack(
   await page.waitForTimeout(1500);
 }
 
-async function configureSpeca(
-  page: import('@playwright/test').Page,
-  centerFrequencyMhz: number
-): Promise<void> {
+async function configureSpeca(page: import('@playwright/test').Page, centerFrequencyMhz: number): Promise<void> {
   const centerFreqInput = page.locator('#sa-center-freq');
   await expect(centerFreqInput).toBeVisible({ timeout: 5000 });
   await centerFreqInput.fill(centerFrequencyMhz.toString());
@@ -296,11 +265,7 @@ async function verifyWorkingDocument(page: import('@playwright/test').Page): Pro
   }
 }
 
-async function executeObjective(
-  page: import('@playwright/test').Page,
-  missionControlPage: MissionControlPage,
-  objective: Scenario19Objective
-): Promise<void> {
+async function executeObjective(page: import('@playwright/test').Page, missionControlPage: MissionControlPage, objective: Scenario19Objective): Promise<void> {
   switch (objective.type) {
     case 'quiz':
       await waitForQuizToAppear(page);
@@ -313,6 +278,10 @@ async function executeObjective(
 
     case 'click-tab':
       await missionControlPage.selectTab(objective.tabId!);
+      // Observation-gated conditions latch only after the default dwell on
+      // the tab (DEFAULT_OBSERVATION_DWELL_SECONDS); leaving at once would
+      // reset the read and strand the objective.
+      await page.waitForTimeout(3000);
       break;
 
     case 'repoint-program-track':

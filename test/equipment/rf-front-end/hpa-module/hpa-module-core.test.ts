@@ -131,11 +131,7 @@ describe('HPAModuleCore', () => {
 
   describe('constructor', () => {
     it('should create instance with default state', () => {
-      hpaModule = new TestHPAModule(
-        HPAModuleCore.getDefaultState(),
-        mockRfFrontEnd,
-        1
-      );
+      hpaModule = new TestHPAModule(HPAModuleCore.getDefaultState(), mockRfFrontEnd, 1);
 
       expect(hpaModule).toBeInstanceOf(HPAModuleCore);
       expect(hpaModule.state.isPowered).toBe(true);
@@ -159,11 +155,7 @@ describe('HPAModuleCore', () => {
     });
 
     it('should generate correct uniqueId', () => {
-      hpaModule = new TestHPAModule(
-        HPAModuleCore.getDefaultState(),
-        mockRfFrontEnd,
-        2
-      );
+      hpaModule = new TestHPAModule(HPAModuleCore.getDefaultState(), mockRfFrontEnd, 2);
 
       expect((hpaModule as any).uniqueId).toBe('rf-fe-hpa-2');
     });
@@ -171,11 +163,7 @@ describe('HPAModuleCore', () => {
 
   describe('update()', () => {
     beforeEach(() => {
-      hpaModule = new TestHPAModule(
-        HPAModuleCore.getDefaultState(),
-        mockRfFrontEnd,
-        1
-      );
+      hpaModule = new TestHPAModule(HPAModuleCore.getDefaultState(), mockRfFrontEnd, 1);
     });
 
     describe('output power calculation', () => {
@@ -319,11 +307,7 @@ describe('HPAModuleCore', () => {
     describe('alarm checking', () => {
       it('should disable HPA if BUC is not powered', () => {
         mockRfFrontEnd = createMockRfFrontEnd({ state: { isPowered: false } as any });
-        hpaModule = new TestHPAModule(
-          { ...HPAModuleCore.getDefaultState(), isPowered: true },
-          mockRfFrontEnd,
-          1
-        );
+        hpaModule = new TestHPAModule({ ...HPAModuleCore.getDefaultState(), isPowered: true }, mockRfFrontEnd, 1);
 
         hpaModule.update();
 
@@ -358,11 +342,7 @@ describe('HPAModuleCore', () => {
         };
 
         (mockRfFrontEnd.bucModule as any).outputSignals = [inputSignal];
-        hpaModule = new TestHPAModule(
-          { ...HPAModuleCore.getDefaultState(), isPowered: true, isHpaEnabled: true },
-          mockRfFrontEnd,
-          1
-        );
+        hpaModule = new TestHPAModule({ ...HPAModuleCore.getDefaultState(), isPowered: true, isHpaEnabled: true }, mockRfFrontEnd, 1);
 
         hpaModule.update();
 
@@ -379,11 +359,7 @@ describe('HPAModuleCore', () => {
         };
 
         (mockRfFrontEnd.bucModule as any).outputSignals = [inputSignal];
-        hpaModule = new TestHPAModule(
-          { ...HPAModuleCore.getDefaultState(), isPowered: true, isHpaEnabled: true, backOff: 10 },
-          mockRfFrontEnd,
-          1
-        );
+        hpaModule = new TestHPAModule({ ...HPAModuleCore.getDefaultState(), isPowered: true, isHpaEnabled: true, backOff: 10 }, mockRfFrontEnd, 1);
 
         hpaModule.update();
 
@@ -393,11 +369,7 @@ describe('HPAModuleCore', () => {
 
       it('should return empty signals when BUC is in loopback mode', () => {
         (mockRfFrontEnd.bucModule as any).state.isLoopback = true;
-        hpaModule = new TestHPAModule(
-          { ...HPAModuleCore.getDefaultState(), isPowered: true, isHpaEnabled: true },
-          mockRfFrontEnd,
-          1
-        );
+        hpaModule = new TestHPAModule({ ...HPAModuleCore.getDefaultState(), isPowered: true, isHpaEnabled: true }, mockRfFrontEnd, 1);
 
         expect(hpaModule.inputSignals).toEqual([]);
       });
@@ -406,11 +378,7 @@ describe('HPAModuleCore', () => {
 
   describe('handlePowerToggle()', () => {
     beforeEach(() => {
-      hpaModule = new TestHPAModule(
-        HPAModuleCore.getDefaultState(),
-        mockRfFrontEnd,
-        1
-      );
+      hpaModule = new TestHPAModule(HPAModuleCore.getDefaultState(), mockRfFrontEnd, 1);
     });
 
     it('should enable power when BUC is powered', () => {
@@ -435,11 +403,7 @@ describe('HPAModuleCore', () => {
 
     it('should not enable power when BUC is not powered', () => {
       mockRfFrontEnd = createMockRfFrontEnd({ state: { isPowered: false } as any });
-      hpaModule = new TestHPAModule(
-        { ...HPAModuleCore.getDefaultState(), isPowered: false },
-        mockRfFrontEnd,
-        1
-      );
+      hpaModule = new TestHPAModule({ ...HPAModuleCore.getDefaultState(), isPowered: false }, mockRfFrontEnd, 1);
       const callback = vi.fn();
 
       hpaModule.handlePowerToggle(true, callback);
@@ -451,11 +415,7 @@ describe('HPAModuleCore', () => {
 
   describe('handleBackOffChange()', () => {
     beforeEach(() => {
-      hpaModule = new TestHPAModule(
-        { ...HPAModuleCore.getDefaultState(), isPowered: true, isHpaEnabled: true },
-        mockRfFrontEnd,
-        1
-      );
+      hpaModule = new TestHPAModule({ ...HPAModuleCore.getDefaultState(), isPowered: true, isHpaEnabled: true }, mockRfFrontEnd, 1);
     });
 
     it('should update back-off value', () => {
@@ -495,11 +455,7 @@ describe('HPAModuleCore', () => {
 
   describe('handleHpaToggle()', () => {
     beforeEach(() => {
-      hpaModule = new TestHPAModule(
-        { ...HPAModuleCore.getDefaultState(), isPowered: true },
-        mockRfFrontEnd,
-        1
-      );
+      hpaModule = new TestHPAModule({ ...HPAModuleCore.getDefaultState(), isPowered: true }, mockRfFrontEnd, 1);
     });
 
     it('should toggle HPA switch state', () => {
@@ -552,11 +508,7 @@ describe('HPAModuleCore', () => {
 
   describe('getAlarms()', () => {
     beforeEach(() => {
-      hpaModule = new TestHPAModule(
-        HPAModuleCore.getDefaultState(),
-        mockRfFrontEnd,
-        1
-      );
+      hpaModule = new TestHPAModule(HPAModuleCore.getDefaultState(), mockRfFrontEnd, 1);
     });
 
     it('should return empty array when no alarms', () => {
@@ -593,17 +545,13 @@ describe('HPAModuleCore', () => {
 
       const alarms = hpaModule.getAlarms();
 
-      expect(alarms.some(a => a.includes('over-temperature'))).toBe(true);
-      expect(alarms.some(a => a.includes('90'))).toBe(true);
+      expect(alarms.some((a) => a.includes('over-temperature'))).toBe(true);
+      expect(alarms.some((a) => a.includes('90'))).toBe(true);
     });
 
     it('should return power sequencing alarm when HPA on without BUC', () => {
       mockRfFrontEnd = createMockRfFrontEnd({ state: { isPowered: false } as any });
-      hpaModule = new TestHPAModule(
-        { ...HPAModuleCore.getDefaultState(), isPowered: true },
-        mockRfFrontEnd,
-        1
-      );
+      hpaModule = new TestHPAModule({ ...HPAModuleCore.getDefaultState(), isPowered: true }, mockRfFrontEnd, 1);
 
       const alarms = hpaModule.getAlarms();
 
@@ -623,11 +571,7 @@ describe('HPAModuleCore', () => {
 
   describe('getTotalGain()', () => {
     beforeEach(() => {
-      hpaModule = new TestHPAModule(
-        HPAModuleCore.getDefaultState(),
-        mockRfFrontEnd,
-        1
-      );
+      hpaModule = new TestHPAModule(HPAModuleCore.getDefaultState(), mockRfFrontEnd, 1);
     });
 
     it('should return -120 when not powered', () => {
@@ -650,11 +594,7 @@ describe('HPAModuleCore', () => {
 
   describe('getOutputPower()', () => {
     beforeEach(() => {
-      hpaModule = new TestHPAModule(
-        { ...HPAModuleCore.getDefaultState(), isPowered: true },
-        mockRfFrontEnd,
-        1
-      );
+      hpaModule = new TestHPAModule({ ...HPAModuleCore.getDefaultState(), isPowered: true }, mockRfFrontEnd, 1);
     });
 
     it('should return -120 when not powered', () => {
@@ -676,11 +616,7 @@ describe('HPAModuleCore', () => {
 
   describe('isOverdriven()', () => {
     beforeEach(() => {
-      hpaModule = new TestHPAModule(
-        HPAModuleCore.getDefaultState(),
-        mockRfFrontEnd,
-        1
-      );
+      hpaModule = new TestHPAModule(HPAModuleCore.getDefaultState(), mockRfFrontEnd, 1);
     });
 
     it('should return true when state.isOverdriven is true', () => {
@@ -698,11 +634,7 @@ describe('HPAModuleCore', () => {
 
   describe('getTemperature()', () => {
     beforeEach(() => {
-      hpaModule = new TestHPAModule(
-        HPAModuleCore.getDefaultState(),
-        mockRfFrontEnd,
-        1
-      );
+      hpaModule = new TestHPAModule(HPAModuleCore.getDefaultState(), mockRfFrontEnd, 1);
     });
 
     it('should return current temperature', () => {
@@ -714,11 +646,7 @@ describe('HPAModuleCore', () => {
 
   describe('getIMDLevel()', () => {
     beforeEach(() => {
-      hpaModule = new TestHPAModule(
-        HPAModuleCore.getDefaultState(),
-        mockRfFrontEnd,
-        1
-      );
+      hpaModule = new TestHPAModule(HPAModuleCore.getDefaultState(), mockRfFrontEnd, 1);
     });
 
     it('should return current IMD level', () => {
@@ -731,27 +659,17 @@ describe('HPAModuleCore', () => {
   describe('inputSignals getter', () => {
     it('should return empty array when BUC is in loopback', () => {
       (mockRfFrontEnd.bucModule as any).state.isLoopback = true;
-      hpaModule = new TestHPAModule(
-        HPAModuleCore.getDefaultState(),
-        mockRfFrontEnd,
-        1
-      );
+      hpaModule = new TestHPAModule(HPAModuleCore.getDefaultState(), mockRfFrontEnd, 1);
 
       expect(hpaModule.inputSignals).toEqual([]);
     });
 
     it('should return BUC output signals when not in loopback', () => {
-      const testSignals: RfSignal[] = [
-        { frequency: 14000e6, power: 10 as dBm, bandwidth: 36e6, origin: SignalOrigin.BUC },
-      ];
+      const testSignals: RfSignal[] = [{ frequency: 14000e6, power: 10 as dBm, bandwidth: 36e6, origin: SignalOrigin.BUC }];
       (mockRfFrontEnd.bucModule as any).state.isLoopback = false;
       (mockRfFrontEnd.bucModule as any).outputSignals = testSignals;
 
-      hpaModule = new TestHPAModule(
-        HPAModuleCore.getDefaultState(),
-        mockRfFrontEnd,
-        1
-      );
+      hpaModule = new TestHPAModule(HPAModuleCore.getDefaultState(), mockRfFrontEnd, 1);
 
       expect(hpaModule.inputSignals).toEqual(testSignals);
     });
@@ -759,11 +677,7 @@ describe('HPAModuleCore', () => {
 
   describe('sync()', () => {
     beforeEach(() => {
-      hpaModule = new TestHPAModule(
-        HPAModuleCore.getDefaultState(),
-        mockRfFrontEnd,
-        1
-      );
+      hpaModule = new TestHPAModule(HPAModuleCore.getDefaultState(), mockRfFrontEnd, 1);
     });
 
     it('should merge partial state', () => {
@@ -782,11 +696,7 @@ describe('HPAModuleCore', () => {
 
   describe('renderPowerMeter_()', () => {
     beforeEach(() => {
-      hpaModule = new TestHPAModule(
-        HPAModuleCore.getDefaultState(),
-        mockRfFrontEnd,
-        1
-      );
+      hpaModule = new TestHPAModule(HPAModuleCore.getDefaultState(), mockRfFrontEnd, 1);
     });
 
     it('should render 5 LED segments', () => {
@@ -828,11 +738,7 @@ describe('HPAModuleCore', () => {
 
   describe('gain calculation', () => {
     beforeEach(() => {
-      hpaModule = new TestHPAModule(
-        { ...HPAModuleCore.getDefaultState(), isPowered: true, isHpaEnabled: true, backOff: 10 },
-        mockRfFrontEnd,
-        1
-      );
+      hpaModule = new TestHPAModule({ ...HPAModuleCore.getDefaultState(), isPowered: true, isHpaEnabled: true, backOff: 10 }, mockRfFrontEnd, 1);
     });
 
     it('should apply max gain limit of 63 dB', () => {

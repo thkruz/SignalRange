@@ -292,7 +292,7 @@ describe('NotchFilterModuleCore', () => {
     it('should update specific notch configuration', () => {
       notchFilterModule.handleNotchChange(0, {
         centerFrequency: 1100 as MHz,
-        depth: 30
+        depth: 30,
       });
 
       expect(notchFilterModule.state.notches[0].centerFrequency).toBe(1100);
@@ -366,7 +366,7 @@ describe('NotchFilterModuleCore', () => {
   describe('sync', () => {
     it('should sync state from external source', () => {
       const newState: Partial<NotchFilterState> = {
-        isPowered: false
+        isPowered: false,
       };
 
       notchFilterModule.sync(newState);

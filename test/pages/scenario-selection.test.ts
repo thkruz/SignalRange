@@ -97,48 +97,46 @@ vi.mock('../../src/utils/asset-url', () => ({
   getAssetUrl: vi.fn((path: string) => path),
 }));
 
-vi.mock('../../src/pages/base-page', () => {
-  return {
-    BasePage: class {
-      protected dom_: HTMLElement | null = null;
-      protected html_ = '';
-      protected navigationOptions_ = {};
-      protected progressSaveManager_ = null;
+vi.mock('../../src/pages/base-page', () => ({
+  BasePage: class {
+    protected dom_: HTMLElement | null = null;
+    protected html_ = '';
+    protected navigationOptions_ = {};
+    protected progressSaveManager_ = null;
 
-      protected init_(rootElementId: string, mode: string): void {
-        const root = global.document.getElementById(rootElementId);
-        if (root && this.html_) {
-          const temp = global.document.createElement('div');
-          temp.innerHTML = this.html_;
-          if (mode === 'add') {
-            while (temp.firstChild) {
-              root.appendChild(temp.firstChild);
-            }
-          } else {
-            root.innerHTML = this.html_;
+    protected init_(rootElementId: string, mode: string): void {
+      const root = global.document.getElementById(rootElementId);
+      if (root && this.html_) {
+        const temp = global.document.createElement('div');
+        temp.innerHTML = this.html_;
+        if (mode === 'add') {
+          while (temp.firstChild) {
+            root.appendChild(temp.firstChild);
           }
-          this.dom_ = root.lastElementChild as HTMLElement;
+        } else {
+          root.innerHTML = this.html_;
         }
+        this.dom_ = root.lastElementChild as HTMLElement;
       }
+    }
 
-      show(): void {
-        if (this.dom_) {
-          this.dom_.style.display = 'flex';
-        }
+    show(): void {
+      if (this.dom_) {
+        this.dom_.style.display = 'flex';
       }
+    }
 
-      hide(): void {
-        if (this.dom_) {
-          this.dom_.style.display = 'none';
-        }
+    hide(): void {
+      if (this.dom_) {
+        this.dom_.style.display = 'none';
       }
+    }
 
-      protected initProgressSaveManager_(): void { }
-      protected disposeProgressSaveManager_(): void { }
-      protected async initializeObjectivesAndDialogs_(): Promise<void> { }
-    },
-  };
-});
+    protected initProgressSaveManager_(): void {}
+    protected disposeProgressSaveManager_(): void {}
+    protected async initializeObjectivesAndDialogs_(): Promise<void> {}
+  },
+}));
 
 vi.mock('../../src/pages/layout/body/body', () => ({
   Body: {
@@ -147,13 +145,13 @@ vi.mock('../../src/pages/layout/body/body', () => ({
 }));
 
 import { CampaignManager } from '../../src/campaigns/campaign-manager';
+// Import after mocks
+import { qs, qsa } from '../../src/engine/utils/query-selector';
 import { Logger } from '../../src/logging/logger';
+import { ScenarioSelectionPage } from '../../src/pages/scenario-selection';
 import { Router } from '../../src/router';
 import { getNextPrerequisiteScenario, isScenarioLocked, SCENARIOS } from '../../src/scenario-manager';
 import { getUserDataService } from '../../src/user-account/user-data-service';
-// Import after mocks
-import { qs, qsa } from '../../src/engine/utils/query-selector';
-import { ScenarioSelectionPage } from '../../src/pages/scenario-selection';
 
 // Setup qs/qsa mock to use actual DOM
 const mockQs = qs as Mock;
@@ -172,7 +170,7 @@ mockQsa.mockImplementation((selector: string, parent?: Element) => {
 // The checkpoint loading involves a dynamic import and multiple awaits, requiring many microtask ticks
 const flushPromises = async () => {
   for (let i = 0; i < 20; i++) {
-    await new Promise(resolve => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 0));
     await Promise.resolve(); // Extra microtask tick
   }
 };
@@ -372,7 +370,6 @@ describe('ScenarioSelectionPage', () => {
     });
 
     afterEach(() => {
-
       (isScenarioLocked as Mock).mockReturnValue(false);
       (getNextPrerequisiteScenario as Mock).mockReturnValue(null);
     });
@@ -777,7 +774,6 @@ describe('ScenarioSelectionPage', () => {
     });
 
     afterEach(() => {
-
       (getUserDataService as Mock).mockReturnValue({
         getAllScenariosProgress: vi.fn(() => Promise.resolve({ scenarios: [] })),
         checkpointExists: vi.fn(() => Promise.resolve(false)),
@@ -832,10 +828,7 @@ describe('ScenarioSelectionPage', () => {
 
       await flushPromises();
 
-      expect(mockNavigate).toHaveBeenCalledWith(
-        '/campaigns/nats/scenarios/scenario1',
-        expect.objectContaining({ forceReplay: true })
-      );
+      expect(mockNavigate).toHaveBeenCalledWith('/campaigns/nats/scenarios/scenario1', expect.objectContaining({ forceReplay: true }));
     });
 
     it('should navigate when continue button is clicked', async () => {
@@ -857,9 +850,7 @@ describe('ScenarioSelectionPage', () => {
 
       // Setup checkpoint exists
       (getUserDataService as Mock).mockReturnValue({
-        getAllScenariosProgress: vi.fn(() =>
-          Promise.resolve({ scenarios: [{ scenarioId: 'scenario1', completedAt: null, score: 0 }] })
-        ),
+        getAllScenariosProgress: vi.fn(() => Promise.resolve({ scenarios: [{ scenarioId: 'scenario1', completedAt: null, score: 0 }] })),
         checkpointExists: vi.fn(() => Promise.resolve(true)),
         deleteCheckpoint: vi.fn(() => Promise.resolve()),
         resetScenarioForReplay: vi.fn(() => Promise.resolve()),
@@ -874,10 +865,7 @@ describe('ScenarioSelectionPage', () => {
       const continueBtn = document.querySelector('.btn-continue') as HTMLElement;
       continueBtn?.click();
 
-      expect(mockNavigate).toHaveBeenCalledWith(
-        '/campaigns/nats/scenarios/scenario1',
-        expect.objectContaining({ continueFromCheckpoint: true })
-      );
+      expect(mockNavigate).toHaveBeenCalledWith('/campaigns/nats/scenarios/scenario1', expect.objectContaining({ continueFromCheckpoint: true }));
 
       // Cleanup
       SCENARIOS.length = 0;
@@ -904,9 +892,7 @@ describe('ScenarioSelectionPage', () => {
 
       const mockDeleteCheckpoint = vi.fn(() => Promise.resolve());
       (getUserDataService as Mock).mockReturnValue({
-        getAllScenariosProgress: vi.fn(() =>
-          Promise.resolve({ scenarios: [{ scenarioId: 'scenario1', completedAt: null, score: 0 }] })
-        ),
+        getAllScenariosProgress: vi.fn(() => Promise.resolve({ scenarios: [{ scenarioId: 'scenario1', completedAt: null, score: 0 }] })),
         checkpointExists: vi.fn(() => Promise.resolve(true)),
         deleteCheckpoint: mockDeleteCheckpoint,
         resetScenarioForReplay: vi.fn(() => Promise.resolve()),
@@ -924,10 +910,7 @@ describe('ScenarioSelectionPage', () => {
       await flushPromises();
 
       expect(mockDeleteCheckpoint).toHaveBeenCalledWith('scenario1');
-      expect(mockNavigate).toHaveBeenCalledWith(
-        '/campaigns/nats/scenarios/scenario1',
-        expect.objectContaining({ forceReplay: true })
-      );
+      expect(mockNavigate).toHaveBeenCalledWith('/campaigns/nats/scenarios/scenario1', expect.objectContaining({ forceReplay: true }));
 
       // Cleanup
       SCENARIOS.length = 0;
@@ -958,16 +941,12 @@ describe('ScenarioSelectionPage', () => {
       await flushPromises();
 
       expect(mockResetScenario).toHaveBeenCalledWith('scenario1');
-      expect(mockNavigate).toHaveBeenCalledWith(
-        '/campaigns/nats/scenarios/scenario1',
-        expect.objectContaining({ forceReplay: true })
-      );
+      expect(mockNavigate).toHaveBeenCalledWith('/campaigns/nats/scenarios/scenario1', expect.objectContaining({ forceReplay: true }));
     });
   });
 
   describe('checkpoint loading', () => {
     it('should load checkpoint data on getInstance', async () => {
-
       const mockGetAllProgress = vi.fn(() =>
         Promise.resolve({
           scenarios: [{ scenarioId: 'scenario1', completedAt: '2024-01-01', score: 50 }],
@@ -1006,13 +985,10 @@ describe('ScenarioSelectionPage', () => {
     });
 
     it('should track scenarios with completedAt for prerequisites', async () => {
-
       (getUserDataService as Mock).mockReturnValue({
         getAllScenariosProgress: vi.fn(() =>
           Promise.resolve({
-            scenarios: [
-              { scenarioId: 'scenario1', completedAt: '2024-01-01', score: 0 },
-            ],
+            scenarios: [{ scenarioId: 'scenario1', completedAt: '2024-01-01', score: 0 }],
           })
         ),
         checkpointExists: vi.fn(() => Promise.resolve(false)),
@@ -1076,17 +1052,13 @@ describe('ScenarioSelectionPage', () => {
         isDisabled: false,
       } as any);
 
-
       const mockDeleteCheckpoint = vi.fn(() => Promise.reject(new Error('Delete failed')));
       (getUserDataService as Mock).mockReturnValue({
-        getAllScenariosProgress: vi.fn(() =>
-          Promise.resolve({ scenarios: [{ scenarioId: 'scenario1', completedAt: null, score: 0 }] })
-        ),
+        getAllScenariosProgress: vi.fn(() => Promise.resolve({ scenarios: [{ scenarioId: 'scenario1', completedAt: null, score: 0 }] })),
         checkpointExists: vi.fn(() => Promise.resolve(true)),
         deleteCheckpoint: mockDeleteCheckpoint,
         resetScenarioForReplay: vi.fn(() => Promise.resolve()),
       });
-
 
       const page = ScenarioSelectionPage.getInstance();
       page.setCampaign('nats');
@@ -1120,7 +1092,6 @@ describe('ScenarioSelectionPage', () => {
         deleteCheckpoint: vi.fn(() => Promise.resolve()),
         resetScenarioForReplay: vi.fn(() => Promise.reject(new Error('Reset failed'))),
       });
-
 
       const mockNavigate = vi.fn();
 
@@ -1169,7 +1140,6 @@ describe('ScenarioSelectionPage', () => {
     });
 
     it('should check checkpoints for all SCENARIOS', async () => {
-
       const mockCheckpointExists = vi.fn(() => Promise.resolve(true));
       (getUserDataService as Mock).mockReturnValue({
         getAllScenariosProgress: vi.fn(() => Promise.resolve({ scenarios: [] })),

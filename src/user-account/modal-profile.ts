@@ -175,12 +175,11 @@ export class ModalProfile extends DraggableModal {
       },
       {
         title: 'Clear All Progress?',
-        message:
-          'Are you sure you want to clear all your progress? This will delete all your saved checkpoints and progress data. This action cannot be undone.',
+        message: 'Are you sure you want to clear all your progress? This will delete all your saved checkpoints and progress data. This action cannot be undone.',
         confirmText: 'Clear Progress',
         cancelText: 'Cancel',
         isDestructive: true,
-      },
+      }
     );
   }
 

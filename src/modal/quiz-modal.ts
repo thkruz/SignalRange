@@ -1,15 +1,19 @@
+import { Rng } from '@app/simulation/rng';
 /**
  * @file Quiz Modal - Interactive quiz for status-check objective conditions
  * @description Non-modal draggable box that presents multiple choice questions to verify player understanding
  */
 
-import { EventBus } from '@app/events/event-bus';
-import { Events, QuizAnsweredData, QuizCompletedData, QuizDismissedData, QuizPassedData, QuizShowData } from '@app/events/events';
 import { DraggableBox } from '@app/engine/ui/draggable-box';
 import { html } from '@app/engine/utils/development/formatter';
 import { getEl, showEl } from '@app/engine/utils/get-el';
+import { EventBus } from '@app/events/event-bus';
+import { Events, QuizAnsweredData, QuizCompletedData, QuizDismissedData, QuizPassedData, QuizShowData } from '@app/events/events';
 import { Character, CharacterAvatars, CharacterNames, Emotion, getCharacterAvatarUrl } from './character-enum';
 import './quiz-modal.css';
+
+/** Seeded draws for this module (see simulation/rng.ts). */
+const random = (): number => Rng.stream('ui:quiz').next();
 
 /**
  * Singleton non-modal box for presenting status-check quizzes
@@ -72,7 +76,9 @@ export class QuizModal extends DraggableBox {
 
     const parentDom = document.getElementsByTagName('body')[0];
 
-    parentDom.insertAdjacentHTML('beforeend', html`
+    parentDom.insertAdjacentHTML(
+      'beforeend',
+      html`
       <div id="${this.boxId}" class="draggable-box quiz-box" style="pointer-events:auto; display:none;">
         <div class="draggable-box__title-bar">
           <div class="draggable-box__title">
@@ -84,7 +90,8 @@ export class QuizModal extends DraggableBox {
           ${this.getBoxContentHtml()}
         </div>
       </div>
-    `);
+    `
+    );
 
     this.domCreated_ = true;
     this.onOpen();
@@ -120,7 +127,7 @@ export class QuizModal extends DraggableBox {
     }
 
     // Center the box
-    this.boxEl.style.top = `${(window.scrollY + (window.innerHeight - this.boxEl.offsetHeight) / 2)}px`;
+    this.boxEl.style.top = `${window.scrollY + (window.innerHeight - this.boxEl.offsetHeight) / 2}px`;
     this.boxEl.style.left = `${(window.innerWidth - this.boxEl.offsetWidth) / 2}px`;
 
     // Bring to front
@@ -308,9 +315,13 @@ export class QuizModal extends DraggableBox {
           <span class="feedback-icon">&#10003;</span>
           <span class="feedback-text">Correct!</span>
         </div>
-        ${this.currentQuiz_.explanation ? html`
+        ${
+          this.currentQuiz_.explanation
+            ? html`
           <p class="feedback-explanation">${this.currentQuiz_.explanation}</p>
-        ` : ''}
+        `
+            : ''
+        }
         <button id="quiz-continue-btn" class="quiz-continue-btn">Continue</button>
       `;
       feedbackEl.style.display = 'block';
@@ -505,7 +516,7 @@ export class QuizModal extends DraggableBox {
     if (count === 1 || this.currentQuiz_.preserveOptionOrder) return indices;
 
     for (let i = indices.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
+      const j = Math.floor(random() * (i + 1));
       [indices[i], indices[j]] = [indices[j], indices[i]];
     }
     return indices;

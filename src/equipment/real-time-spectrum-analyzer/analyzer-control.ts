@@ -1,11 +1,11 @@
+import { BaseElement } from '@app/components/base-element';
 import { ContinuousRotaryKnob } from '@app/components/rotary-knob/continuous-rotary-knob';
+import { html } from '@app/engine/utils/development/formatter';
+import { qs, qsa } from '@app/engine/utils/query-selector';
 import { Logger } from '@app/logging/logger';
 import { Sfx } from '@app/sound/sfx-enum';
 import SoundManager from '@app/sound/sound-manager';
 import { parseLocalizedNumber } from '@app/utils/parse-number';
-import { BaseElement } from '@app/components/base-element';
-import { html } from "@app/engine/utils/development/formatter";
-import { qs, qsa } from "@app/engine/utils/query-selector";
 import './analyzer-control.css';
 import { ACAmptBtn } from '@app/equipment/real-time-spectrum-analyzer/analyzer-control/ac-ampt-btn/ac-ampt-btn';
 import { ACBWBtn } from '@app/equipment/real-time-spectrum-analyzer/analyzer-control/ac-bw-btn/ac-bw-btn';
@@ -92,21 +92,9 @@ export class AnalyzerControl extends BaseElement {
     this.specA = options.spectrumAnalyzer;
     this.dom_ = options.element;
 
-    this.minorAdjKnob = ContinuousRotaryKnob.create(
-      `analyzer-control-selector-knob-${this.specA.state.uuid}`,
-      0,
-      10,
-      this.handleMinorTickChange.bind(this),
-      "Minor Tick",
-    );
+    this.minorAdjKnob = ContinuousRotaryKnob.create(`analyzer-control-selector-knob-${this.specA.state.uuid}`, 0, 10, this.handleMinorTickChange.bind(this), 'Minor Tick');
 
-    this.majorAdjKnob = ContinuousRotaryKnob.create(
-      `analyzer-control-selector-knob-${this.specA.state.uuid}-major`,
-      0,
-      10,
-      this.handleMajorTickChange.bind(this),
-      "Major Tick",
-    );
+    this.majorAdjKnob = ContinuousRotaryKnob.create(`analyzer-control-selector-knob-${this.specA.state.uuid}-major`, 0, 10, this.handleMajorTickChange.bind(this), 'Major Tick');
   }
 
   init_(parentId: string, type: 'add' | 'replace' = 'replace'): void {
@@ -287,7 +275,7 @@ export class AnalyzerControl extends BaseElement {
         </button>
       </div>
     </div>
-    `
+    `;
 
     // Reinitialize DOM with final HTML
     const parentDom = super.initDom_(parentId, type);
@@ -342,7 +330,7 @@ export class AnalyzerControl extends BaseElement {
 
     // Number pad buttons
     const numButtons = qsa<HTMLButtonElement>('.num-button', this.dom_);
-    numButtons.forEach(button => {
+    numButtons.forEach((button) => {
       button.addEventListener('click', () => {
         const value = button.dataset.value;
         if (value) {

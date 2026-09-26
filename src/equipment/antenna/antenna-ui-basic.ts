@@ -1,10 +1,11 @@
-import { PowerSwitch } from "@app/components/power-switch/power-switch";
-import { RotaryKnob } from "@app/components/rotary-knob/rotary-knob";
-import { Degrees } from "ootk";
-import { html } from "@app/engine/utils/development/formatter";
-import { qs } from "@app/engine/utils/query-selector";
-import { ANTENNA_CONFIG_KEYS } from "./antenna-config-keys";
-import { AntennaCore, AntennaState } from "./antenna-core";
+import { PowerSwitch } from '@app/components/power-switch/power-switch';
+import { RotaryKnob } from '@app/components/rotary-knob/rotary-knob';
+import { html } from '@app/engine/utils/development/formatter';
+import { qs } from '@app/engine/utils/query-selector';
+import { Degrees } from 'ootk';
+import { ANTENNA_CONFIG_KEYS } from './antenna-config-keys';
+import { AntennaCore, AntennaState } from './antenna-core';
+import type { AntennaConfigId } from './antenna-registry';
 import './antenna.css';
 
 /**
@@ -29,10 +30,10 @@ export class AntennaUIBasic extends AntennaCore {
 
   constructor(
     parentId: string,
-    configId: ANTENNA_CONFIG_KEYS = ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK,
+    configId: AntennaConfigId = ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK,
     initialState: Partial<AntennaState> = {},
     teamId: number = 1,
-    serverId: number = 1,
+    serverId: number = 1
   ) {
     // Create minimal UI components
     const tempState = {
@@ -49,35 +50,16 @@ export class AntennaUIBasic extends AntennaCore {
       isOperational: true,
       isPowered: true,
       rxSignalsIn: [],
-      ...initialState
+      ...initialState,
     };
 
     // Call parent constructor
     super(configId, initialState, teamId, serverId);
 
     const tempId = `antenna-basic-temp`;
-    this.powerSwitch_ = PowerSwitch.create(
-      `${tempId}-power-switch`,
-      tempState.isPowered,
-      true,
-      true
-    );
-    this.azKnob_ = RotaryKnob.create(
-      `${tempId}-az-knob`,
-      tempState.azimuth,
-      -270,
-      270,
-      0.1,
-      (value) => this.handleAzimuthChange(value)
-    );
-    this.elKnob_ = RotaryKnob.create(
-      `${tempId}-el-knob`,
-      tempState.elevation,
-      -5,
-      90,
-      0.1,
-      (value) => this.handleElevationChange(value)
-    );
+    this.powerSwitch_ = PowerSwitch.create(`${tempId}-power-switch`, tempState.isPowered, true, true);
+    this.azKnob_ = RotaryKnob.create(`${tempId}-az-knob`, tempState.azimuth, -270, 270, 0.1, (value) => this.handleAzimuthChange(value));
+    this.elKnob_ = RotaryKnob.create(`${tempId}-el-knob`, tempState.elevation, -5, 90, 0.1, (value) => this.handleElevationChange(value));
 
     super.build(parentId);
   }

@@ -28,7 +28,7 @@ describe('CouplerModule', () => {
     it('should return correct default state', () => {
       const defaultState = CouplerModule.getDefaultState();
 
-      expect(defaultState.isPowered).toBe(true);  // Always true for passive coupler
+      expect(defaultState.isPowered).toBe(true); // Always true for passive coupler
       expect(defaultState.isEngineeringMode).toBe(false);
       expect(defaultState.tapPointA).toBe(TapPoint.TX_IF);
       expect(defaultState.tapPointB).toBe(TapPoint.RX_IF);
@@ -198,9 +198,14 @@ describe('CouplerModule', () => {
 
       // All 8 tap points should be available in both A and B
       const allTapPoints = [
-        TapPoint.TX_IF, TapPoint.RX_IF,
-        TapPoint.TX_RF_POST_BUC, TapPoint.TX_RF_POST_HPA, TapPoint.TX_RF_POST_OMT,
-        TapPoint.RX_RF_PRE_OMT, TapPoint.RX_RF_POST_OMT, TapPoint.RX_RF_POST_LNA
+        TapPoint.TX_IF,
+        TapPoint.RX_IF,
+        TapPoint.TX_RF_POST_BUC,
+        TapPoint.TX_RF_POST_HPA,
+        TapPoint.TX_RF_POST_OMT,
+        TapPoint.RX_RF_PRE_OMT,
+        TapPoint.RX_RF_POST_OMT,
+        TapPoint.RX_RF_POST_LNA,
       ];
 
       expect(couplerModule.state.availableTapPointsA).toHaveLength(8);
@@ -305,7 +310,7 @@ describe('CouplerModule', () => {
     it('should update state from external source', () => {
       const newState: Partial<CouplerState> = {
         tapPointA: TapPoint.TX_RF_POST_HPA,
-        couplingFactorA: -25
+        couplingFactorA: -25,
       };
 
       couplerModule.sync(newState);

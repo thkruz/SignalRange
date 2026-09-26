@@ -358,18 +358,9 @@ export interface LegacyUserProfile {
  * Type guards
  */
 
-export const isApiErrorResponse = (response: unknown): response is ApiErrorResponse =>
-  typeof response === 'object' && response !== null && 'error' in response;
+export const isApiErrorResponse = (response: unknown): response is ApiErrorResponse => typeof response === 'object' && response !== null && 'error' in response;
 
-export const isUser = (obj: unknown): obj is User =>
-  typeof obj === 'object' && obj !== null && 'id' in obj && 'email' in obj;
+export const isUser = (obj: unknown): obj is User => typeof obj === 'object' && obj !== null && 'id' in obj && 'email' in obj;
 
-export const isFullUserData = (obj: unknown): obj is FullUserData => (
-  typeof obj === 'object' &&
-  obj !== null &&
-  'user' in obj &&
-  'preferences' in obj &&
-  'data' in obj &&
-  'progress' in obj &&
-  'achievements' in obj
-);
+export const isFullUserData = (obj: unknown): obj is FullUserData =>
+  typeof obj === 'object' && obj !== null && 'user' in obj && 'preferences' in obj && 'data' in obj && 'progress' in obj && 'achievements' in obj;

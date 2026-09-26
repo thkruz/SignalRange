@@ -1,9 +1,10 @@
 import { vi } from 'vitest';
 import { GPSDOModuleCore } from '../../../../src/equipment/rf-front-end/gpsdo-module/gpsdo-module-core';
-import { GPSDOState, defaultGpsdoState } from '../../../../src/equipment/rf-front-end/gpsdo-module/gpsdo-state';
+import { defaultGpsdoState, GPSDOState } from '../../../../src/equipment/rf-front-end/gpsdo-module/gpsdo-state';
 import { RFFrontEndCore } from '../../../../src/equipment/rf-front-end/rf-front-end-core';
 import { EventBus } from '../../../../src/events/event-bus';
 import { Events } from '../../../../src/events/events';
+import { advanceSimTime } from '../../../helpers/sim-time';
 
 // Mock SimulationManager
 vi.mock('../../../../src/simulation/simulation-manager', () => ({
@@ -153,11 +154,7 @@ describe('GPSDOModuleCore', () => {
         satelliteCount: 5,
       };
 
-      gpsdoModule = new TestGPSDOModule(
-        { ...defaultGpsdoState, ...customState } as GPSDOState,
-        mockRfFrontEnd,
-        1
-      );
+      gpsdoModule = new TestGPSDOModule({ ...defaultGpsdoState, ...customState } as GPSDOState, mockRfFrontEnd, 1);
 
       expect(gpsdoModule.state.isPowered).toBe(false);
       expect(gpsdoModule.state.temperature).toBe(50);
@@ -166,21 +163,13 @@ describe('GPSDOModuleCore', () => {
     });
 
     it('should start warmup timer if powered with warmup remaining', () => {
-      gpsdoModule = new TestGPSDOModule(
-        { ...defaultGpsdoState, isPowered: true, warmupTimeRemaining: 100 },
-        mockRfFrontEnd,
-        1
-      );
+      gpsdoModule = new TestGPSDOModule({ ...defaultGpsdoState, isPowered: true, warmupTimeRemaining: 100 }, mockRfFrontEnd, 1);
 
       expect(gpsdoModule.getWarmupInterval()).not.toBeNull();
     });
 
     it('should start holdover monitor if powered, warmed up, and not locked', () => {
-      gpsdoModule = new TestGPSDOModule(
-        { ...defaultGpsdoState, isPowered: true, warmupTimeRemaining: 0, isLocked: false },
-        mockRfFrontEnd,
-        1
-      );
+      gpsdoModule = new TestGPSDOModule({ ...defaultGpsdoState, isPowered: true, warmupTimeRemaining: 0, isLocked: false }, mockRfFrontEnd, 1);
 
       expect(gpsdoModule.getHoldoverInterval()).not.toBeNull();
     });
@@ -302,11 +291,7 @@ describe('GPSDOModuleCore', () => {
 
   describe('thermal state updates', () => {
     beforeEach(() => {
-      gpsdoModule = new TestGPSDOModule(
-        { ...defaultGpsdoState, temperature: 50 },
-        mockRfFrontEnd,
-        1
-      );
+      gpsdoModule = new TestGPSDOModule({ ...defaultGpsdoState, temperature: 50 }, mockRfFrontEnd, 1);
     });
 
     it('should cool down when powered off', () => {
@@ -390,11 +375,7 @@ describe('GPSDOModuleCore', () => {
 
   describe('handleGnssToggle()', () => {
     beforeEach(() => {
-      gpsdoModule = new TestGPSDOModule(
-        { ...defaultGpsdoState, isPowered: true, warmupTimeRemaining: 0 },
-        mockRfFrontEnd,
-        1
-      );
+      gpsdoModule = new TestGPSDOModule({ ...defaultGpsdoState, isPowered: true, warmupTimeRemaining: 0 }, mockRfFrontEnd, 1);
     });
 
     it('should set acquiring state when enabling GNSS', () => {
@@ -416,7 +397,7 @@ describe('GPSDOModuleCore', () => {
       gpsdoModule.handleGnssToggle(true, callback);
 
       // Fast-forward 5 seconds
-      vi.advanceTimersByTime(5000);
+      advanceSimTime(5000);
 
       expect(gpsdoModule.state.gnssSignalPresent).toBe(true);
       expect(gpsdoModule.state.isGnssAcquiringLock).toBe(false);
@@ -469,7 +450,7 @@ describe('GPSDOModuleCore', () => {
     it('should decrement warmup time each second', () => {
       gpsdoModule.testStartWarmupTimer();
 
-      vi.advanceTimersByTime(1000);
+      advanceSimTime(1000);
 
       expect(gpsdoModule.state.warmupTimeRemaining).toBe(9);
     });
@@ -478,7 +459,7 @@ describe('GPSDOModuleCore', () => {
       gpsdoModule.testStartWarmupTimer();
       const initialTemp = gpsdoModule.state.temperature;
 
-      vi.advanceTimersByTime(1000);
+      advanceSimTime(1000);
 
       expect(gpsdoModule.state.temperature).toBeGreaterThan(initialTemp);
     });
@@ -487,7 +468,7 @@ describe('GPSDOModuleCore', () => {
       gpsdoModule.state.frequencyAccuracy = 1000;
       gpsdoModule.testStartWarmupTimer();
 
-      vi.advanceTimersByTime(1000);
+      advanceSimTime(1000);
 
       expect(gpsdoModule.state.frequencyAccuracy).toBeLessThan(1000);
     });
@@ -495,7 +476,7 @@ describe('GPSDOModuleCore', () => {
     it('should call onWarmupTick each second', () => {
       gpsdoModule.testStartWarmupTimer();
 
-      vi.advanceTimersByTime(3000);
+      advanceSimTime(3000);
 
       expect(gpsdoModule.warmupTickCount).toBe(3);
     });
@@ -507,11 +488,11 @@ describe('GPSDOModuleCore', () => {
       gpsdoModule.testStartWarmupTimer();
 
       // First tick: decrements warmupTimeRemaining from 1 to 0
-      vi.advanceTimersByTime(1000);
+      advanceSimTime(1000);
       expect(gpsdoModule.state.warmupTimeRemaining).toBe(0);
 
       // Second tick: enters else branch and achieves lock
-      vi.advanceTimersByTime(1000);
+      advanceSimTime(1000);
       expect(gpsdoModule.state.isLocked).toBe(true);
     });
 
@@ -519,7 +500,7 @@ describe('GPSDOModuleCore', () => {
       gpsdoModule.testStartWarmupTimer();
       gpsdoModule.state.isPowered = false;
 
-      vi.advanceTimersByTime(1000);
+      advanceSimTime(1000);
 
       expect(gpsdoModule.getWarmupInterval()).toBeNull();
     });
@@ -555,7 +536,7 @@ describe('GPSDOModuleCore', () => {
     it('should increment lock duration every 5 seconds', () => {
       gpsdoModule.testStartStabilityMonitor();
 
-      vi.advanceTimersByTime(5000);
+      advanceSimTime(5000);
 
       expect(gpsdoModule.state.lockDuration).toBe(5);
     });
@@ -564,7 +545,7 @@ describe('GPSDOModuleCore', () => {
       const initialHours = gpsdoModule.state.operatingHours;
       gpsdoModule.testStartStabilityMonitor();
 
-      vi.advanceTimersByTime(5000);
+      advanceSimTime(5000);
 
       expect(gpsdoModule.state.operatingHours).toBeCloseTo(initialHours + 5 / 3600, 6);
     });
@@ -572,7 +553,7 @@ describe('GPSDOModuleCore', () => {
     it('should call onStabilityTick every 5 seconds', () => {
       gpsdoModule.testStartStabilityMonitor();
 
-      vi.advanceTimersByTime(15000);
+      advanceSimTime(15000);
 
       expect(gpsdoModule.stabilityTickCount).toBe(3);
     });
@@ -583,7 +564,7 @@ describe('GPSDOModuleCore', () => {
 
       // Run multiple times to increase chance of satellite count change
       for (let i = 0; i < 20; i++) {
-        vi.advanceTimersByTime(5000);
+        advanceSimTime(5000);
       }
 
       // Satellite count should stay within bounds
@@ -595,7 +576,7 @@ describe('GPSDOModuleCore', () => {
       gpsdoModule.state.isLocked = false;
       gpsdoModule.testStartStabilityMonitor();
 
-      vi.advanceTimersByTime(5000);
+      advanceSimTime(5000);
 
       expect(gpsdoModule.state.lockDuration).toBe(0);
     });
@@ -629,7 +610,7 @@ describe('GPSDOModuleCore', () => {
     it('should increment holdover duration every second', () => {
       gpsdoModule.testStartHoldoverMonitor();
 
-      vi.advanceTimersByTime(1000);
+      advanceSimTime(1000);
 
       expect(gpsdoModule.state.holdoverDuration).toBe(1);
     });
@@ -638,7 +619,7 @@ describe('GPSDOModuleCore', () => {
       gpsdoModule.testStartHoldoverMonitor();
 
       // 3600 seconds = 1 hour, should have ~1.67 μs error
-      vi.advanceTimersByTime(3600 * 1000);
+      advanceSimTime(3600 * 1000);
 
       expect(gpsdoModule.state.holdoverError).toBeCloseTo(1.67, 1);
     });
@@ -647,7 +628,7 @@ describe('GPSDOModuleCore', () => {
       const initialAccuracy = gpsdoModule.state.frequencyAccuracy;
       gpsdoModule.testStartHoldoverMonitor();
 
-      vi.advanceTimersByTime(1000);
+      advanceSimTime(1000);
 
       expect(gpsdoModule.state.frequencyAccuracy).toBeGreaterThan(initialAccuracy);
     });
@@ -655,7 +636,7 @@ describe('GPSDOModuleCore', () => {
     it('should call onHoldoverTick every second', () => {
       gpsdoModule.testStartHoldoverMonitor();
 
-      vi.advanceTimersByTime(5000);
+      advanceSimTime(5000);
 
       expect(gpsdoModule.holdoverTickCount).toBe(5);
     });
@@ -664,7 +645,7 @@ describe('GPSDOModuleCore', () => {
       gpsdoModule.testStartHoldoverMonitor();
       gpsdoModule.state.isInHoldover = false;
 
-      vi.advanceTimersByTime(1000);
+      advanceSimTime(1000);
 
       expect(gpsdoModule.getHoldoverInterval()).toBeNull();
     });
@@ -673,7 +654,7 @@ describe('GPSDOModuleCore', () => {
       gpsdoModule.testStartHoldoverMonitor();
       gpsdoModule.state.isPowered = false;
 
-      vi.advanceTimersByTime(1000);
+      advanceSimTime(1000);
 
       expect(gpsdoModule.getHoldoverInterval()).toBeNull();
     });
@@ -737,7 +718,7 @@ describe('GPSDOModuleCore', () => {
 
       const alarms = gpsdoModule.getAlarms();
 
-      expect(alarms.some(a => a.includes('GPSDO in holdover'))).toBe(true);
+      expect(alarms.some((a) => a.includes('GPSDO in holdover'))).toBe(true);
     });
 
     it('should alarm when holdover error approaches limit', () => {
@@ -746,7 +727,7 @@ describe('GPSDOModuleCore', () => {
 
       const alarms = gpsdoModule.getAlarms();
 
-      expect(alarms.some(a => a.includes('approaching limit'))).toBe(true);
+      expect(alarms.some((a) => a.includes('approaching limit'))).toBe(true);
     });
 
     it('should alarm when temperature out of range (high)', () => {
@@ -755,7 +736,7 @@ describe('GPSDOModuleCore', () => {
 
       const alarms = gpsdoModule.getAlarms();
 
-      expect(alarms.some(a => a.includes('oven temperature out of range'))).toBe(true);
+      expect(alarms.some((a) => a.includes('oven temperature out of range'))).toBe(true);
     });
 
     it('should alarm when temperature out of range (low)', () => {
@@ -764,7 +745,7 @@ describe('GPSDOModuleCore', () => {
 
       const alarms = gpsdoModule.getAlarms();
 
-      expect(alarms.some(a => a.includes('oven temperature out of range'))).toBe(true);
+      expect(alarms.some((a) => a.includes('oven temperature out of range'))).toBe(true);
     });
 
     it('should alarm when self-test failed', () => {
@@ -1028,5 +1009,78 @@ describe('GPSDOModuleCore', () => {
       // Other properties should remain unchanged
       expect(gpsdoModule.state.isPowered).toBe(true);
     });
+  });
+});
+
+describe('GPSDOModuleCore staged GNSS outage (phase 16 E3)', () => {
+  let gpsdoModule: TestGPSDOModule;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    gpsdoModule = new TestGPSDOModule(
+      { ...defaultGpsdoState, isPowered: true, isLocked: true, isGnssSwitchUp: true, warmupTimeRemaining: 0, satelliteCount: 9 },
+      createMockRfFrontEnd(),
+      1
+    );
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('losing the signal with the switch up puts a locked reference into holdover with zero satellites', () => {
+    gpsdoModule.setGnssSignalPresent(false);
+
+    expect(gpsdoModule.isGnssOutage).toBe(true);
+    expect(gpsdoModule.state.gnssSignalPresent).toBe(false);
+    expect(gpsdoModule.state.satelliteCount).toBe(0);
+    expect(gpsdoModule.state.isInHoldover).toBe(true);
+    expect(gpsdoModule.state.isGnssSwitchUp).toBe(true);
+
+    advanceSimTime(3000);
+    expect(gpsdoModule.state.holdoverDuration).toBe(3);
+    expect(gpsdoModule.holdoverTickCount).toBe(3);
+  });
+
+  it('cycling the switch during an outage does not conjure a signal', () => {
+    gpsdoModule.setGnssSignalPresent(false);
+    const callback = vi.fn();
+
+    gpsdoModule.handleGnssToggle(false, callback);
+    gpsdoModule.handleGnssToggle(true, callback);
+    advanceSimTime(5000);
+
+    expect(callback).toHaveBeenCalled();
+    expect(gpsdoModule.state.gnssSignalPresent).toBe(false);
+    expect(gpsdoModule.state.satelliteCount).toBe(0);
+    expect(gpsdoModule.state.isInHoldover).toBe(true);
+  });
+
+  it('re-locks and leaves holdover when the signal returns with the switch up', () => {
+    gpsdoModule.setGnssSignalPresent(false);
+    advanceSimTime(10_000);
+
+    gpsdoModule.setGnssSignalPresent(true);
+
+    expect(gpsdoModule.isGnssOutage).toBe(false);
+    expect(gpsdoModule.state.gnssSignalPresent).toBe(true);
+    expect(gpsdoModule.state.isInHoldover).toBe(false);
+    expect(gpsdoModule.state.holdoverError).toBe(0);
+    expect(gpsdoModule.state.satelliteCount).toBeGreaterThanOrEqual(4);
+    expect(gpsdoModule.state.isLocked).toBe(true);
+  });
+
+  it('a returning signal does nothing for a switch left down until the operator raises it', () => {
+    gpsdoModule.setGnssSignalPresent(false);
+    gpsdoModule.handleGnssToggle(false, vi.fn());
+
+    gpsdoModule.setGnssSignalPresent(true);
+    expect(gpsdoModule.state.gnssSignalPresent).toBe(false);
+    expect(gpsdoModule.state.isInHoldover).toBe(true);
+
+    gpsdoModule.handleGnssToggle(true, vi.fn());
+    advanceSimTime(5000);
+    expect(gpsdoModule.state.gnssSignalPresent).toBe(true);
+    expect(gpsdoModule.state.isInHoldover).toBe(false);
   });
 });

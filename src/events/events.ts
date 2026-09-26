@@ -1,29 +1,24 @@
-import { GroundStationState } from "@app/assets/ground-station/ground-station-state";
-import { AntennaState } from "@app/equipment/antenna";
-import type { Character } from "@app/modal/character-enum";
-import { RealTimeSpectrumAnalyzerState } from "@app/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer";
-import { AGCState } from "@app/equipment/rf-front-end/agc-module";
-import { BUCState } from "@app/equipment/rf-front-end/buc-module";
-import { CouplerState } from "@app/equipment/rf-front-end/coupler-module/coupler-module";
-import { IfFilterBankState } from "@app/equipment/rf-front-end/filter-module";
-import { NotchFilterState } from "@app/equipment/rf-front-end/notch-filter-module";
-import { GPSDOState } from "@app/equipment/rf-front-end/gpsdo-module";
-import { HPAState } from "@app/equipment/rf-front-end/hpa-module";
-import { LNBState } from "@app/equipment/rf-front-end/lnb-module";
-import { OMTState } from "@app/equipment/rf-front-end/omt-module/omt-module";
-import { RFFrontEndState } from "@app/equipment/rf-front-end/rf-front-end-core";
-import type {
-  CryptoKeyExpiredData,
-  CryptoKeyRotatedData,
-  CryptoStateChangedData,
-  CryptoZeroizedData,
-} from "@app/equipment/crypto/crypto-types";
-import { Milliseconds } from "ootk";
-import { ReceiverModemState } from "@app/equipment/receiver/receiver";
-import { TransmitterModem } from "@app/equipment/transmitter/transmitter";
-import { ConditionState, Objective, ObjectiveState } from "@app/objectives/objective-types";
-import { OpsLogEntry } from "@app/ops-log/ops-log-types";
-import { RfSignal } from "@app/types";
+import { GroundStationState } from '@app/assets/ground-station/ground-station-state';
+import { AntennaState } from '@app/equipment/antenna';
+import type { CryptoKeyExpiredData, CryptoKeyRotatedData, CryptoStateChangedData, CryptoZeroizedData } from '@app/equipment/crypto/crypto-types';
+import { RealTimeSpectrumAnalyzerState } from '@app/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer';
+import { ReceiverModemState } from '@app/equipment/receiver/receiver';
+import { AGCState } from '@app/equipment/rf-front-end/agc-module';
+import { BUCState } from '@app/equipment/rf-front-end/buc-module';
+import { CouplerState } from '@app/equipment/rf-front-end/coupler-module/coupler-module';
+import { IfFilterBankState } from '@app/equipment/rf-front-end/filter-module';
+import { GPSDOState } from '@app/equipment/rf-front-end/gpsdo-module';
+import { HPAState } from '@app/equipment/rf-front-end/hpa-module';
+import { LNBState } from '@app/equipment/rf-front-end/lnb-module';
+import { NotchFilterState } from '@app/equipment/rf-front-end/notch-filter-module';
+import { OMTState } from '@app/equipment/rf-front-end/omt-module/omt-module';
+import { RFFrontEndState } from '@app/equipment/rf-front-end/rf-front-end-core';
+import { TransmitterModem } from '@app/equipment/transmitter/transmitter';
+import type { Character } from '@app/modal/character-enum';
+import { ConditionState, ConditionType, Objective, ObjectiveState } from '@app/objectives/objective-types';
+import { OpsLogEntry } from '@app/ops-log/ops-log-types';
+import { RfSignal } from '@app/types';
+import { Milliseconds } from 'ootk';
 
 // Antenna Event specific interfaces
 export interface AntennaLoopbackChangedData {
@@ -115,6 +110,15 @@ export interface ObjectiveConditionChangedData {
   conditionState: ConditionState;
 }
 
+export interface ObjectiveConditionEvaluatedData {
+  objectiveId: string;
+  conditionIndex: number;
+  type: ConditionType;
+  isSatisfied: boolean;
+  /** The value the check compared against its target (frequency, mode, power...). Undefined for boolean-only checks. */
+  observed: unknown;
+}
+
 export interface ObjectivesAllCompletedData {
   completedObjectives: ObjectiveState[];
   totalTime: number;
@@ -173,6 +177,66 @@ export interface QuizPassedData {
   conditionIndex: number;
   attempts: number;
   pointsDeducted: number;
+}
+
+// ── Decision events (for decision conditions, phase 18) ──────────────────────
+
+/** One evidence latch the decision depends on, as shown to the player */
+export interface DecisionEvidenceStatus {
+  id: string;
+  label: string;
+  ready: boolean;
+}
+
+export interface DecisionShowData {
+  objectiveId: string;
+  conditionIndex: number;
+  prompt: string;
+  /** Option labels only - rules and consequences never reach the UI */
+  options: string[];
+  explanation?: string;
+  pointPenalty: number;
+  character?: Character;
+  preserveOptionOrder?: boolean;
+  evidence: DecisionEvidenceStatus[];
+}
+
+/** Modal -> manager: the player chose an option */
+export interface DecisionAnsweredData {
+  objectiveId: string;
+  conditionIndex: number;
+  optionIndex: number;
+}
+
+/** Manager -> modal: how the chosen option graded (and whether timers should pause) */
+export interface DecisionGradedData {
+  objectiveId: string;
+  conditionIndex: number;
+  optionIndex: number;
+  correct: boolean;
+  evidenced: boolean;
+  missingEvidence: string[];
+  feedback?: string;
+  attempts: number;
+  pointsDeducted: number;
+}
+
+/** Modal -> everyone: Continue pressed after a correct answer */
+export interface DecisionResolvedData {
+  objectiveId: string;
+  conditionIndex: number;
+  totalAttempts: number;
+  totalPointsDeducted: number;
+}
+
+export interface DecisionDismissedData {
+  objectiveId: string;
+  conditionIndex: number;
+}
+
+export interface DecisionPendingData {
+  objectiveId: string;
+  conditionIndex: number;
 }
 
 // Hint Event specific interfaces
@@ -241,6 +305,10 @@ export interface WeatherEventData {
   startTime: number;
   duration: number;
   linkMarginDegradation: number;
+  /** rain/storm: peak rain rate in mm/h (default from severity: 4 / 12 / 30) */
+  rainRateMmPerHour?: number;
+  /** When set, startTime counts from this objective's activation instead of mission start */
+  startAfterObjectiveId?: string;
 }
 
 export interface WeatherMissionFailureData {
@@ -288,12 +356,48 @@ export interface HpaNoiseAmplificationData {
   detectedAt: number;
 }
 
+export interface ProtectedFreqViolationData {
+  groundStationId: string;
+  /** Human-readable protected band that was jammed */
+  protectedBandLabel: string;
+  /** Jam waveform center frequency that overlapped the protected band (Hz) */
+  jamFrequencyHz: number;
+  detectedAt: number;
+}
+
 // Simulated Time Event specific interfaces
 export interface SimulatedTimeTickData {
   /** Military format datetime string, e.g., "15 MAR 2025 22:05:15" */
   timeFormatted: string;
   /** Unix timestamp in milliseconds */
   timestampMs: number;
+}
+
+export interface TimeSkipStartedData {
+  /** Satellite whose AOS the skip is aiming at */
+  satelliteName: string;
+  /** Scenario-clock timestamp the skip stops at, Unix ms */
+  targetMs: number;
+  /** Total scenario time the skip will cover, ms */
+  totalMs: number;
+}
+
+export interface TimeSkipProgressData {
+  /** Fraction of the skip completed, 0..1 */
+  progress: number;
+  /** Scenario-clock time reached so far, Unix ms */
+  simNowMs: number;
+  /** Scenario time skipped so far, ms */
+  skippedMs: number;
+  /** Total scenario time the skip covers, ms */
+  totalMs: number;
+}
+
+export interface TimeSkipEndedData {
+  /** False when the skip aborted early (scenario paused, objective failed) */
+  isCompleted: boolean;
+  /** Scenario time actually skipped, ms */
+  skippedMs: number;
 }
 
 export enum Events {
@@ -312,7 +416,7 @@ export enum Events {
 
   // Receiver events
   RX_CONFIG_CHANGED = 'rx:config:changed',
-  RX_ACTIVE_MODEM_CHANGED = "rx:activeModem:changed",
+  RX_ACTIVE_MODEM_CHANGED = 'rx:activeModem:changed',
   RX_SIGNAL_FOUND = 'rx:signal:found',
   RX_SIGNAL_LOST = 'rx:signal:lost',
 
@@ -321,31 +425,37 @@ export enum Events {
 
   // Router events
   ROUTE_CHANGED = 'route:changed',
-  STORAGE_ERROR = "STORAGE_ERROR",
+  STORAGE_ERROR = 'STORAGE_ERROR',
+
+  // Plugin events
+  /** Every enabled plugin has registered (or failed); fired once per boot */
+  PLUGINS_READY = 'plugins:ready',
 
   // Game loop events
-  DOM_READY = "app:dom-ready",
+  DOM_READY = 'app:dom-ready',
   /** This event is called every simulation update tick */
-  UPDATE = "app:update",
+  UPDATE = 'app:update',
   /** This event is used for canvas rendering */
-  DRAW = "app:draw",
-  SYNC = "app:sync",
-  RF_FE_POWER_CHANGED = "rf-fe:power:changed",
-  RF_FE_BUC_CHANGED = "rf-fe:buc:changed",
-  RF_FE_HPA_CHANGED = "rf-fe:hpa:changed",
-  RF_FE_AGC_CHANGED = "rf-fe:agc:changed",
-  RF_FE_LNB_CHANGED = "rf-fe:lnb:changed",
-  RF_FE_ALARM = "rf-fe:alarm",
-  RF_FE_OMT_CHANGED = "rf-fe:omt:changed",
-  RF_FE_COUPLER_CHANGED = "rf-fe:coupler:changed",
-  RF_FE_FILTER_CHANGED = "rf-fe:filter:changed",
-  RF_FE_NOTCH_FILTER_CHANGED = "rf-fe:notch-filter:changed",
-  RF_FE_GPSDO_CHANGED = "rf-fe:gpsdo:changed",
+  DRAW = 'app:draw',
+  SYNC = 'app:sync',
+  RF_FE_POWER_CHANGED = 'rf-fe:power:changed',
+  RF_FE_BUC_CHANGED = 'rf-fe:buc:changed',
+  RF_FE_HPA_CHANGED = 'rf-fe:hpa:changed',
+  RF_FE_AGC_CHANGED = 'rf-fe:agc:changed',
+  RF_FE_LNB_CHANGED = 'rf-fe:lnb:changed',
+  RF_FE_ALARM = 'rf-fe:alarm',
+  RF_FE_OMT_CHANGED = 'rf-fe:omt:changed',
+  RF_FE_COUPLER_CHANGED = 'rf-fe:coupler:changed',
+  RF_FE_FILTER_CHANGED = 'rf-fe:filter:changed',
+  RF_FE_NOTCH_FILTER_CHANGED = 'rf-fe:notch-filter:changed',
+  RF_FE_GPSDO_CHANGED = 'rf-fe:gpsdo:changed',
 
   // Objectives events
   OBJECTIVE_ACTIVATED = 'objective:activated',
   OBJECTIVE_COMPLETED = 'objective:completed',
   OBJECTIVE_CONDITION_CHANGED = 'objective:condition:changed',
+  /** Dev/authoring telemetry: one event per condition evaluation while enabled (see ObjectivesManager.enableConditionTelemetry). */
+  OBJECTIVE_CONDITION_EVALUATED = 'objective:condition:evaluated',
   OBJECTIVES_ALL_COMPLETED = 'objectives:all:completed',
   OBJECTIVE_FAILED = 'objective:failed',
   SCENARIO_TIME_EXPIRED = 'scenario:time:expired',
@@ -359,6 +469,14 @@ export enum Events {
   QUIZ_DISMISSED = 'quiz:dismissed',
   QUIZ_PENDING = 'quiz:pending',
   QUIZ_PASSED = 'quiz:passed',
+
+  // Decision events (for decision conditions)
+  DECISION_SHOW = 'decision:show',
+  DECISION_ANSWERED = 'decision:answered',
+  DECISION_GRADED = 'decision:graded',
+  DECISION_RESOLVED = 'decision:resolved',
+  DECISION_DISMISSED = 'decision:dismissed',
+  DECISION_PENDING = 'decision:pending',
 
   // Hint events (for condition hints with 50% point penalty)
   HINT_REQUESTED = 'hint:requested',
@@ -394,12 +512,18 @@ export enum Events {
 
   // RF Safety violations
   HPA_NOISE_AMPLIFICATION = 'rf:hpa-noise-amplification',
+  PROTECTED_FREQ_VIOLATION = 'rf:protected-freq-violation',
 
   // Ops Log events
   OPS_LOG_ENTRY_ADDED = 'ops-log:entry:added',
 
   // Simulated Time events
   SIMULATED_TIME_TICK = 'simulated-time:tick',
+
+  // Operator time-skip (fast-forward to the next contact)
+  TIME_SKIP_STARTED = 'time-skip:started',
+  TIME_SKIP_PROGRESS = 'time-skip:progress',
+  TIME_SKIP_ENDED = 'time-skip:ended',
 
   // Scenario lifecycle events
   SCENARIO_CHANGED = 'scenario:changed',
@@ -418,7 +542,7 @@ export interface EventMap {
   [Events.ANTENNA_STATE_CHANGED]: [Partial<AntennaState>];
 
   [Events.GROUND_STATION_STATE_CHANGED]: [Partial<GroundStationState>];
-  [Events.ASSET_SELECTED]: [{ type: 'ground-station' | 'satellite', id: string }];
+  [Events.ASSET_SELECTED]: [{ type: 'ground-station' | 'satellite'; id: string }];
 
   [Events.RF_FE_POWER_CHANGED]: [Partial<RFFrontEndState>];
   [Events.RF_FE_BUC_CHANGED]: [Partial<BUCState>];
@@ -430,10 +554,12 @@ export interface EventMap {
   [Events.RF_FE_FILTER_CHANGED]: [Partial<IfFilterBankState>];
   [Events.RF_FE_NOTCH_FILTER_CHANGED]: [Partial<NotchFilterState>];
   [Events.RF_FE_GPSDO_CHANGED]: [Partial<GPSDOState>];
-  [Events.RF_FE_ALARM]: [{
-    unit: number;
-    alarms: string[];
-  }];
+  [Events.RF_FE_ALARM]: [
+    {
+      unit: number;
+      alarms: string[];
+    },
+  ];
 
   [Events.TX_CONFIG_CHANGED]: [TxConfigChangedData];
   [Events.TX_ACTIVE_MODEM_CHANGED]: [TxActiveModemChangedData];
@@ -451,6 +577,8 @@ export interface EventMap {
 
   [Events.STORAGE_ERROR]: [Error];
 
+  [Events.PLUGINS_READY]: [{ loaded: string[]; failed: string[] }];
+
   [Events.DOM_READY]: [];
   [Events.UPDATE]: [Milliseconds];
   [Events.DRAW]: [Milliseconds];
@@ -459,6 +587,7 @@ export interface EventMap {
   [Events.OBJECTIVE_ACTIVATED]: [ObjectiveActivatedData];
   [Events.OBJECTIVE_COMPLETED]: [ObjectiveCompletedData];
   [Events.OBJECTIVE_CONDITION_CHANGED]: [ObjectiveConditionChangedData];
+  [Events.OBJECTIVE_CONDITION_EVALUATED]: [ObjectiveConditionEvaluatedData];
   [Events.OBJECTIVES_ALL_COMPLETED]: [ObjectivesAllCompletedData];
   [Events.OBJECTIVE_FAILED]: [ObjectiveFailedData];
   [Events.SCENARIO_TIME_EXPIRED]: [ScenarioTimeExpiredData];
@@ -471,6 +600,13 @@ export interface EventMap {
   [Events.QUIZ_DISMISSED]: [QuizDismissedData];
   [Events.QUIZ_PENDING]: [QuizPendingData];
   [Events.QUIZ_PASSED]: [QuizPassedData];
+
+  [Events.DECISION_SHOW]: [DecisionShowData];
+  [Events.DECISION_ANSWERED]: [DecisionAnsweredData];
+  [Events.DECISION_GRADED]: [DecisionGradedData];
+  [Events.DECISION_RESOLVED]: [DecisionResolvedData];
+  [Events.DECISION_DISMISSED]: [DecisionDismissedData];
+  [Events.DECISION_PENDING]: [DecisionPendingData];
 
   [Events.HINT_REQUESTED]: [HintRequestedData];
   [Events.HINT_SHOWN]: [HintShownData];
@@ -502,12 +638,18 @@ export interface EventMap {
 
   // RF Safety violations
   [Events.HPA_NOISE_AMPLIFICATION]: [HpaNoiseAmplificationData];
+  [Events.PROTECTED_FREQ_VIOLATION]: [ProtectedFreqViolationData];
 
   // Ops Log events
   [Events.OPS_LOG_ENTRY_ADDED]: [OpsLogEntry];
 
   // Simulated Time events
   [Events.SIMULATED_TIME_TICK]: [SimulatedTimeTickData];
+
+  // Operator time-skip
+  [Events.TIME_SKIP_STARTED]: [TimeSkipStartedData];
+  [Events.TIME_SKIP_PROGRESS]: [TimeSkipProgressData];
+  [Events.TIME_SKIP_ENDED]: [TimeSkipEndedData];
 
   // Scenario lifecycle events
   [Events.SCENARIO_CHANGED]: [{ scenarioId: string }];

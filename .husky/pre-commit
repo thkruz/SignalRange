@@ -1,0 +1,35 @@
+# Send all normal output to /dev/null
+exec 1>/dev/null
+
+HUSKY_OUTPUT_FOOTER="Signal Range uses pre-commit hooks to run our linting and style checks. \
+We do this to avoid additional hassle during pull request reviews, \
+because all PRs must pass these checks. If you're doing something \
+temporary and want to skip these checks, you can disable this hook \
+with: git commit --no-verify For more details, see https://typicode.github.io/husky/guide.html#bypass-hooks"
+
+# This function is called when there is an error
+onError() {
+  echo "$1" >&2
+  echo "$HUSKY_OUTPUT_FOOTER" >&2
+  exit 1
+}
+
+# Run a check silently, surfacing its full output only on failure.
+runCheck() {
+  label="$1"
+  shift
+  output=$("$@" 2>&1) || {
+    echo "$output" >&2
+    onError "$label failed. Please fix the errors and try again."
+  }
+}
+
+# This function is the entry point for the pre-commit hook.
+main() {
+  runCheck "Linting" pnpm run lint
+  runCheck "Type checking" pnpm run typecheck
+
+  exit 0
+}
+
+main

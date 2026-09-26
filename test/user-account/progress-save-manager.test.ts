@@ -1,4 +1,4 @@
-import { vi, Mock } from 'vitest';
+import { Mock, vi } from 'vitest';
 import packageJson from '../../package.json';
 import { Events } from '../../src/events/events';
 
@@ -70,7 +70,15 @@ vi.mock('@app/logging/logger', () => ({
   },
 }));
 
+vi.mock('../../src/user-account/auth', () => ({
+  __esModule: true,
+  Auth: {
+    getSession: vi.fn(),
+  },
+}));
+
 // Import after mocks are defined
+import { Auth } from '../../src/user-account/auth';
 import { ProgressSaveManager } from '../../src/user-account/progress-save-manager';
 
 describe('ProgressSaveManager', () => {
@@ -78,6 +86,8 @@ describe('ProgressSaveManager', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // Signed in by default; remote saves are skipped entirely when signed out
+    (Auth.getSession as Mock).mockResolvedValue({ access_token: 'test-token' });
     manager = new ProgressSaveManager();
   });
 
@@ -108,6 +118,24 @@ describe('ProgressSaveManager', () => {
     expect((manager as any).isSaving).toBe(false);
   });
 
+  it('skips the checkpoint save entirely when signed out (no error toast spam)', async () => {
+    (Auth.getSession as Mock).mockResolvedValue(null);
+    const saveSpy = vi.spyOn(manager as any, 'saveCheckpoint').mockResolvedValue(undefined);
+
+    await (manager as any).handleObjectiveCompleted();
+
+    expect(saveSpy).not.toHaveBeenCalled();
+    expect(mockToast.showError).not.toHaveBeenCalled();
+  });
+
+  it('skips the completion mark when signed out (funnel handles it)', async () => {
+    (Auth.getSession as Mock).mockResolvedValue(null);
+
+    await (manager as any).handleAllObjectiveCompleted();
+
+    expect(mockUserDataService.updateScenarioProgress).not.toHaveBeenCalled();
+  });
+
   it('saves a checkpoint and replaces any existing one for the scenario', async () => {
     mockSyncManager.getCurrentState.mockReturnValue({ equipment: { foo: 'bar' } });
     mockUserDataService.saveCheckpoint.mockResolvedValue(undefined);
@@ -115,22 +143,16 @@ describe('ProgressSaveManager', () => {
     await manager.saveCheckpoint();
 
     expect(mockToast.showSaving).toHaveBeenCalled();
-    expect(mockEventBus.emit).toHaveBeenCalledWith(
-      Events.PROGRESS_SAVE_START,
-      expect.objectContaining({ timestamp: expect.any(Number) }),
-    );
+    expect(mockEventBus.emit).toHaveBeenCalledWith(Events.PROGRESS_SAVE_START, expect.objectContaining({ timestamp: expect.any(Number) }));
     expect(mockUserDataService.saveCheckpoint).toHaveBeenCalledWith(
       'scenario-123',
       expect.objectContaining({
         version: packageJson.version,
         state: { equipment: { foo: 'bar' } },
-      }),
+      })
     );
     expect(mockToast.showSuccess).toHaveBeenCalled();
-    expect(mockEventBus.emit).toHaveBeenCalledWith(
-      Events.PROGRESS_SAVE_SUCCESS,
-      expect.objectContaining({ checkpointId: 'scenario-123' }),
-    );
+    expect(mockEventBus.emit).toHaveBeenCalledWith(Events.PROGRESS_SAVE_SUCCESS, expect.objectContaining({ checkpointId: 'scenario-123' }));
   });
 
   it('emits an error event when saving a checkpoint fails', async () => {
@@ -139,10 +161,7 @@ describe('ProgressSaveManager', () => {
 
     await expect(manager.saveCheckpoint()).rejects.toThrow('save failed');
     expect(mockToast.showError).toHaveBeenCalled();
-    expect(mockEventBus.emit).toHaveBeenCalledWith(
-      Events.PROGRESS_SAVE_ERROR,
-      expect.objectContaining({ error: expect.any(Error) }),
-    );
+    expect(mockEventBus.emit).toHaveBeenCalledWith(Events.PROGRESS_SAVE_ERROR, expect.objectContaining({ error: expect.any(Error) }));
   });
 
   it('loads a checkpoint when one exists and logs the result', async () => {

@@ -1,7 +1,7 @@
-import { SignalOrigin } from "@app/signal-origin";
-import { dB, dBm, IfSignal, MHz } from '@app/types';
-import { RFFrontEndCore } from "@app/equipment/rf-front-end/rf-front-end-core";
+import { RFFrontEndCore } from '@app/equipment/rf-front-end/rf-front-end-core';
 import { RFFrontEndModule, RFFrontEndModuleState } from '@app/equipment/rf-front-end/rf-front-end-module';
+import { SignalOrigin } from '@app/signal-origin';
+import { dB, dBm, IfSignal, MHz } from '@app/types';
 
 /**
  * Single notch configuration
@@ -33,7 +33,7 @@ export const DEFAULT_NOTCH: NotchConfig = {
   centerFrequency: 1500 as MHz,
   bandwidth: 1 as MHz,
   depth: 20 as dB,
-  enabled: false
+  enabled: false,
 };
 
 /**
@@ -54,8 +54,8 @@ export abstract class NotchFilterModuleCore extends RFFrontEndModule<NotchFilter
       notches: [
         { ...DEFAULT_NOTCH, centerFrequency: 1200 as MHz },
         { ...DEFAULT_NOTCH, centerFrequency: 1500 as MHz },
-        { ...DEFAULT_NOTCH, centerFrequency: 1800 as MHz }
-      ]
+        { ...DEFAULT_NOTCH, centerFrequency: 1800 as MHz },
+      ],
     };
   }
 
@@ -76,25 +76,21 @@ export abstract class NotchFilterModuleCore extends RFFrontEndModule<NotchFilter
   update(): void {
     if (!this.state.isPowered) {
       // Pass through unchanged when powered off
-      this.outputSignals = this.inputSignals.map(sig => ({
+      this.outputSignals = this.inputSignals.map((sig) => ({
         ...sig,
-        origin: SignalOrigin.NOTCH_FILTER
+        origin: SignalOrigin.NOTCH_FILTER,
       }));
       return;
     }
 
-    this.outputSignals = this.inputSignals.map(sig => {
+    this.outputSignals = this.inputSignals.map((sig) => {
       let power = sig.power;
 
       // Check each enabled notch
       for (const notch of this.state.notches) {
         if (!notch.enabled) continue;
 
-        const attenuation = this.calculateNotchAttenuation_(
-          sig.frequency,
-          sig.bandwidth,
-          notch
-        );
+        const attenuation = this.calculateNotchAttenuation_(sig.frequency, sig.bandwidth, notch);
 
         power = (power - attenuation) as dBm;
       }
@@ -102,7 +98,7 @@ export abstract class NotchFilterModuleCore extends RFFrontEndModule<NotchFilter
       return {
         ...sig,
         power,
-        origin: SignalOrigin.NOTCH_FILTER
+        origin: SignalOrigin.NOTCH_FILTER,
       };
     });
   }
@@ -116,11 +112,7 @@ export abstract class NotchFilterModuleCore extends RFFrontEndModule<NotchFilter
    * @param notch - Notch configuration
    * @returns Attenuation in dB
    */
-  private calculateNotchAttenuation_(
-    signalFreqHz: number,
-    signalBwHz: number,
-    notch: NotchConfig
-  ): number {
+  private calculateNotchAttenuation_(signalFreqHz: number, signalBwHz: number, notch: NotchConfig): number {
     const notchCenterHz = notch.centerFrequency * 1e6;
     const notchBwHz = notch.bandwidth * 1e6;
 

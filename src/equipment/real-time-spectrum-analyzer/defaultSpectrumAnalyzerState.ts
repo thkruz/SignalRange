@@ -1,9 +1,9 @@
-import { Hertz, dB } from "@app/types";
-import { RealTimeSpectrumAnalyzerState } from "./real-time-spectrum-analyzer";
+import { dB, Hertz } from '@app/types';
+import { RealTimeSpectrumAnalyzerState } from './real-time-spectrum-analyzer';
 
 export const defaultSpectrumAnalyzerState: Partial<RealTimeSpectrumAnalyzerState> = {
-  isUseTapA: false,  // TX IF - disabled by default to avoid confusion with RX signals
-  isUseTapB: true,   // RX IF - primary tap for receive analysis
+  isUseTapA: false, // TX IF - disabled by default to avoid confusion with RX signals
+  isUseTapB: true, // RX IF - primary tap for receive analysis
   isPaused: false,
   isMaxHold: false,
   isMinHold: false,
@@ -24,7 +24,7 @@ export const defaultSpectrumAnalyzerState: Partial<RealTimeSpectrumAnalyzerState
   hold: false,
   minAmplitude: -100,
   maxAmplitude: -40,
-  scaleDbPerDiv: (-40 + 100) / 10 as dB, // 6 dB/div
+  scaleDbPerDiv: ((-40 + 100) / 10) as dB, // 6 dB/div
   noiseFloorNoGain: -104,
   isSkipLnaGainDuringDraw: true,
   refreshRate: 10,

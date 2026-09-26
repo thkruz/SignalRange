@@ -1,16 +1,16 @@
 import { vi } from 'vitest';
-import { createAntenna } from "../../src/equipment/antenna";
-import { BUCState } from "../../src/equipment/rf-front-end/buc-module/buc-module-core";
-import { TapPoint } from "../../src/equipment/rf-front-end/coupler-module/tap-points";
-import { IfFilterBankState } from "../../src/equipment/rf-front-end/filter-module/filter-module-core";
-import { HPAState } from "../../src/equipment/rf-front-end/hpa-module/hpa-module-core";
-import { LNBState } from "../../src/equipment/rf-front-end/lnb-module/lnb-module-core";
-import { OMTState } from "../../src/equipment/rf-front-end/omt-module/omt-module";
-import { RFFrontEndCore } from "../../src/equipment/rf-front-end/rf-front-end-core";
+import { createAntenna } from '../../src/equipment/antenna';
+import { BUCState } from '../../src/equipment/rf-front-end/buc-module/buc-module-core';
+import { TapPoint } from '../../src/equipment/rf-front-end/coupler-module/tap-points';
+import { IfFilterBankState } from '../../src/equipment/rf-front-end/filter-module/filter-module-core';
+import { HPAState } from '../../src/equipment/rf-front-end/hpa-module/hpa-module-core';
+import { LNBState } from '../../src/equipment/rf-front-end/lnb-module/lnb-module-core';
+import { OMTState } from '../../src/equipment/rf-front-end/omt-module/omt-module';
+import { RFFrontEndCore } from '../../src/equipment/rf-front-end/rf-front-end-core';
 import { createRFFrontEnd } from '../../src/equipment/rf-front-end/rf-front-end-factory';
-import { Transmitter } from "../../src/equipment/transmitter/transmitter";
-import { EventBus } from "../../src/events/event-bus";
-import { Events } from "../../src/events/events";
+import { Transmitter } from '../../src/equipment/transmitter/transmitter';
+import { EventBus } from '../../src/events/event-bus';
+import { Events } from '../../src/events/events';
 
 // Tests for RFFrontEndCore class
 
@@ -190,7 +190,7 @@ describe('RFFrontEndCore class', () => {
     it('should sync OMT state', () => {
       const newOmtState = {
         txPolarization: 'V' as const,
-        rxPolarization: 'H' as const
+        rxPolarization: 'H' as const,
       };
 
       rfFrontEnd.sync({ omt: newOmtState as OMTState });
@@ -202,7 +202,7 @@ describe('RFFrontEndCore class', () => {
     it('should sync BUC state', () => {
       const newBucState = {
         gain: 60,
-        loFrequency: 4500 as any
+        loFrequency: 4500 as any,
       };
 
       rfFrontEnd.sync({ buc: newBucState as BUCState });
@@ -214,7 +214,7 @@ describe('RFFrontEndCore class', () => {
     it('should sync LNB state', () => {
       const newLnbState = {
         gain: 60,
-        lnaNoiseFigure: 0.8
+        lnaNoiseFigure: 0.8,
       };
 
       rfFrontEnd.sync({ lnb: newLnbState as LNBState });
@@ -226,7 +226,7 @@ describe('RFFrontEndCore class', () => {
     it('should sync HPA state', () => {
       const newHpaState = {
         backOff: 3,
-        isPowered: false
+        isPowered: false,
       };
 
       rfFrontEnd.sync({ hpa: newHpaState as HPAState });
@@ -238,7 +238,7 @@ describe('RFFrontEndCore class', () => {
     it('should sync filter state', () => {
       // bandwidthIndex 13 = 40 MHz, insertionLoss 1.8
       const newFilterState = {
-        bandwidthIndex: 13
+        bandwidthIndex: 13,
       };
 
       rfFrontEnd.sync({ filter: newFilterState as IfFilterBankState });

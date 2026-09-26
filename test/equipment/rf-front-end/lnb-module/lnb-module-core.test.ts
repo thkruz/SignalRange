@@ -6,6 +6,7 @@ import { EventBus } from '../../../../src/events/event-bus';
 import { Events } from '../../../../src/events/events';
 import { SignalOrigin } from '../../../../src/signal-origin';
 import { dB, dBi, dBm, Hertz, MHz, RfFrequency, RfSignal } from '../../../../src/types';
+import { advanceSimTime } from '../../../helpers/sim-time';
 
 describe('LNBModuleCore', () => {
   let rfFrontEnd: RFFrontEndCore;
@@ -244,7 +245,7 @@ describe('LNBModuleCore', () => {
 
       const alarms = lnbModule.getAlarms();
 
-      expect(alarms.some(a => a.includes('noise temperature high'))).toBe(true);
+      expect(alarms.some((a) => a.includes('noise temperature high'))).toBe(true);
     });
 
     it('should alarm when noise figure is degraded', () => {
@@ -253,7 +254,7 @@ describe('LNBModuleCore', () => {
 
       const alarms = lnbModule.getAlarms();
 
-      expect(alarms.some(a => a.includes('noise figure degraded'))).toBe(true);
+      expect(alarms.some((a) => a.includes('noise figure degraded'))).toBe(true);
     });
 
     it('should not alarm when all parameters are normal', () => {
@@ -330,7 +331,7 @@ describe('LNBModuleCore', () => {
       lnbModule.handlePowerToggle(true);
 
       // Advance time past stabilization period
-      vi.advanceTimersByTime(200000); // 200 seconds
+      advanceSimTime(200000); // 200 seconds
 
       lnbModule.updateThermalState_();
 
@@ -347,7 +348,7 @@ describe('LNBModuleCore', () => {
         frequency: 10e6 as any,
         power: -10,
         isWarmedUp: true,
-        isEnabled: true
+        isEnabled: true,
       });
       vi.spyOn(lnbModule, 'isExtRefPresent').mockReturnValue(true);
 
@@ -381,7 +382,7 @@ describe('LNBModuleCore', () => {
     it('should sync state from external source', () => {
       const newState: Partial<LNBState> = {
         gain: 60 as dB,
-        loFrequency: 5500 as MHz
+        loFrequency: 5500 as MHz,
       };
 
       lnbModule.sync(newState);

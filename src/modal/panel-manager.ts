@@ -10,7 +10,7 @@ export class PanelManager {
   private activeTitle: string | null = null;
   private onHideCallbacks: Array<() => void> = [];
 
-  private constructor() { }
+  private constructor() {}
 
   static getInstance(): PanelManager {
     if (!PanelManager.instance) {

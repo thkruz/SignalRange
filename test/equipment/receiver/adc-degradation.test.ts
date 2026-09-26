@@ -1,10 +1,6 @@
 import { dB, dBFS, dBm } from '@app/types';
-import {
-  ADCDegradationResult,
-  ADCStatus,
-  calculateADCDegradation,
-} from '../../../src/equipment/receiver/adc-degradation';
 import { ADCConfig, DEFAULT_ADC_CONFIG } from '../../../src/equipment/receiver/adc-constants';
+import { ADCDegradationResult, ADCStatus, calculateADCDegradation } from '../../../src/equipment/receiver/adc-degradation';
 
 describe('adc-degradation', () => {
   describe('calculateADCDegradation', () => {
@@ -121,7 +117,6 @@ describe('adc-degradation', () => {
 
         expect(result.status).toBe('severe-low');
       });
-
     });
 
     describe('total penalty', () => {
@@ -130,9 +125,7 @@ describe('adc-degradation', () => {
         // (though in practice clip takes precedence for status)
         const result = calculateADCDegradation(-30 as dBm);
 
-        expect(result.totalPenalty_dB).toBe(
-          result.clipPenalty_dB + result.quantizationPenalty_dB
-        );
+        expect(result.totalPenalty_dB).toBe(result.clipPenalty_dB + result.quantizationPenalty_dB);
       });
 
       it('should have total penalty equal to clip penalty when clipping', () => {

@@ -1,6 +1,6 @@
-import { TapPoint } from "@app/equipment/rf-front-end/coupler-module/tap-points";
-import { RFFrontEndCore } from "@app/equipment/rf-front-end/rf-front-end-core";
-import { dB, dBm, Hertz, RfSignal } from "@app/types";
+import { TapPoint } from '@app/equipment/rf-front-end/coupler-module/tap-points';
+import { RFFrontEndCore } from '@app/equipment/rf-front-end/rf-front-end-core';
+import { dB, dBm, Hertz, RfSignal } from '@app/types';
 
 /**
  * Manages signal path calculations including cumulative noise floor and gain.
@@ -62,9 +62,7 @@ import { dB, dBm, Hertz, RfSignal } from "@app/types";
  * ```
  */
 export class SignalPathManager {
-  constructor(
-    private readonly rfFrontEnd_: RFFrontEndCore
-  ) {
+  constructor(private readonly rfFrontEnd_: RFFrontEndCore) {
     // No-op
   }
 
@@ -116,7 +114,6 @@ export class SignalPathManager {
     return this.rfFrontEnd_.agcModule.state.currentGain;
   }
 
-
   /** Signals at the point they exit the IF Filter */
   get ifFilterRxSignals(): RfSignal[] {
     const rxSignals = this.rfFrontEnd_.filterModule.outputSignals;
@@ -151,7 +148,7 @@ export class SignalPathManager {
 
     return {
       isInternalNoiseGreater: isInternalNoiseGreater,
-      noiseFloor: (isInternalNoiseGreater ? internalNoiseFloor : (externalNoiseFloor - this.getTotalRxGain())) as dBm
+      noiseFloor: (isInternalNoiseGreater ? internalNoiseFloor : externalNoiseFloor - this.getTotalRxGain()) as dBm,
     };
   }
 
@@ -167,7 +164,10 @@ export class SignalPathManager {
    *   - noiseFloorNoGain: Noise floor in dBm WITHOUT gain applied
    *   - shouldApplyGain: Whether gain should be added during visualization
    */
-  getNoiseFloorAt(tapPoint: TapPoint, bandwidth: Hertz): {
+  getNoiseFloorAt(
+    tapPoint: TapPoint,
+    bandwidth: Hertz
+  ): {
     noiseFloorNoGain: dBm;
     shouldApplyGain: boolean;
   } {
@@ -179,7 +179,7 @@ export class SignalPathManager {
         const noiseFloor = this.getAntennaNoise(antennaFreq, bandwidth);
         return {
           noiseFloorNoGain: noiseFloor as dBm,
-          shouldApplyGain: true // External noise - will need gain applied during visualization
+          shouldApplyGain: true, // External noise - will need gain applied during visualization
         };
       }
 
@@ -191,7 +191,7 @@ export class SignalPathManager {
         const noiseFloor = this.rfFrontEnd_.lnbModule.getNoiseFloor(bandwidth);
         return {
           noiseFloorNoGain: noiseFloor as dBm,
-          shouldApplyGain: true // External noise - gain applied during visualization
+          shouldApplyGain: true, // External noise - gain applied during visualization
         };
       }
 
@@ -214,13 +214,13 @@ export class SignalPathManager {
           // Internal noise dominates - DON'T apply gain (already at spectrum analyzer)
           return {
             noiseFloorNoGain: internalNoiseFloor as dBm,
-            shouldApplyGain: false
+            shouldApplyGain: false,
           };
         } else {
           // External noise dominates - return without gain, will be applied during visualization
           return {
             noiseFloorNoGain: (externalNoiseFloor - this.getTotalGainTo(tapPoint)) as dBm,
-            shouldApplyGain: true
+            shouldApplyGain: true,
           };
         }
       }
@@ -237,7 +237,7 @@ export class SignalPathManager {
         const defaultNoiseFloor = -174 + 10 * Math.log10(bandwidth) + NF;
         return {
           noiseFloorNoGain: defaultNoiseFloor as dBm,
-          shouldApplyGain: true
+          shouldApplyGain: true,
         };
       }
     }
@@ -265,7 +265,7 @@ export class SignalPathManager {
           return Number.NEGATIVE_INFINITY as dB; // No signal if antenna or OMT is unpowered
         }
         // Only OMT loss applied
-        return (-this.omtInsertionLoss_dB) as dB;
+        return -this.omtInsertionLoss_dB as dB;
       }
 
       case TapPoint.RX_RF_POST_LNA: {
@@ -277,7 +277,12 @@ export class SignalPathManager {
       }
 
       case TapPoint.RX_IF: {
-        if (!this.rfFrontEnd_.antenna.state.isPowered || !this.rfFrontEnd_.omtModule.state.isPowered || !this.rfFrontEnd_.lnbModule.state.isPowered || !this.rfFrontEnd_.filterModule.state.isPowered) {
+        if (
+          !this.rfFrontEnd_.antenna.state.isPowered ||
+          !this.rfFrontEnd_.omtModule.state.isPowered ||
+          !this.rfFrontEnd_.lnbModule.state.isPowered ||
+          !this.rfFrontEnd_.filterModule.state.isPowered
+        ) {
           return Number.NEGATIVE_INFINITY as dB; // No signal if any component is unpowered
         }
         // Full RX chain: OMT loss + LNA gain + LNB loss - IF filter insertion loss

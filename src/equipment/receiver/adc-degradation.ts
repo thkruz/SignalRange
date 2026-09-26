@@ -37,10 +37,7 @@ export interface ADCDegradationResult {
  * @param config - ADC configuration (optional, uses defaults)
  * @returns Degradation result with penalties and status
  */
-export function calculateADCDegradation(
-  signalLevel_dBm: dBm,
-  config: ADCConfig = DEFAULT_ADC_CONFIG
-): ADCDegradationResult {
+export function calculateADCDegradation(signalLevel_dBm: dBm, config: ADCConfig = DEFAULT_ADC_CONFIG): ADCDegradationResult {
   const level_dBFS = dBmToDbfs(signalLevel_dBm, config);
 
   let clipPenalty = 0 as dB;
@@ -54,7 +51,7 @@ export function calculateADCDegradation(
     // Exponential degradation above clip threshold
     // Mild overdrive (0-3 dB): 1-4 dB penalty
     // Severe overdrive (>6 dB): 10+ dB penalty
-    clipPenalty = ((Math.pow(2, overdrive / 3) - 1) * 3) as dB;
+    clipPenalty = ((2 ** (overdrive / 3) - 1) * 3) as dB;
 
     status = overdrive > 6 ? 'severe-clipping' : 'clipping';
   }

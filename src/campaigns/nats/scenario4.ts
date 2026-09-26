@@ -1,10 +1,10 @@
+import { createRfFrontEnd } from '@app/campaigns/rf-front-end-factory';
 import { Character, Emotion } from '@app/modal/character-enum';
 import type { Objective } from '@app/objectives/objective-types';
 import type { ScenarioData } from '@app/ScenarioData';
 import type { dBm, Hertz, MHz } from '@app/types';
 import { getAssetUrl } from '@app/utils/asset-url';
 import type { Degrees } from 'ootk';
-import { createRfFrontEnd } from '@app/campaigns/rf-front-end-factory';
 import { maineGroundStation, vermontGroundStation } from './ground-stations';
 import { ses10Satellite, tidemark1Satellite, tidemark2Satellite } from './satellites';
 
@@ -59,13 +59,7 @@ export const scenario4Data: ScenarioData = {
   difficulty: 'beginner',
   missionType: 'Operations Phase',
   description: `ME-02 is maintaining primary communications with TIDEMARK-1. The spacecraft operations team in Halifax has just confirmed that TIDEMARK-2 has completed station-keeping at 45°W and the communications payload is ready for ground operations.<br><br>Your task at VT-01 is to switch from monitoring TIDEMARK-1 to establishing full uplink and downlink with TIDEMARK-2. You'll need to repoint the antenna, acquire the new beacon, reconfigure the modems for the new frequencies, and bring up the transmit path.<br><br>Marcus Chen from Halifax spacecraft ops will confirm payload status. Take your time - ME-02 has primary coverage while you complete the switchover.`,
-  equipment: [
-    '9-meter C-band Antenna',
-    'RF Front End',
-    'Spectrum Analyzer',
-    'RX/TX Modems',
-    'ME-02: Available',
-  ],
+  equipment: ['9-meter C-band Antenna', 'RF Front End', 'Spectrum Analyzer', 'RX/TX Modems', 'ME-02: Available'],
   settings: {
     isSync: true,
     groundStations: [
@@ -83,10 +77,10 @@ export const scenario4Data: ScenarioData = {
             modems: [
               {
                 ...vermontGroundStation.receivers[0].modems[0],
-                fec: "1/2",
+                fec: '1/2',
               },
             ],
-          }
+          },
         ],
         transmitters: [
           {
@@ -97,7 +91,7 @@ export const scenario4Data: ScenarioData = {
                 isTransmitting: false,
               },
             ],
-          }
+          },
         ],
       },
       {
@@ -106,15 +100,11 @@ export const scenario4Data: ScenarioData = {
         name: maineGroundStation.name,
         location: maineGroundStation.location,
         isOperational: true,
-      }
+      },
     ],
     missionBriefUrl: 'https://docs.signalrange.space/campaign-1/scenario-4?content-only=true&dark=true',
     isExtraSatellitesVisible: true,
-    satellites: [
-      tidemark1Satellite,
-      ses10Satellite,
-      tidemark2Satellite
-    ],
+    satellites: [tidemark1Satellite, ses10Satellite, tidemark2Satellite],
   },
   objectives: [
     // ============================================================
@@ -144,9 +134,7 @@ export const scenario4Data: ScenarioData = {
           description: 'Ready to Proceed',
           params: {
             question: 'Have you reviewed the mission brief and are you ready to begin?',
-            options: [
-              'Yes, I have read the mission brief and I am ready to proceed.',
-            ],
+            options: ['Yes, I have read the mission brief and I am ready to proceed.'],
             correctIndex: 0,
             explanation: 'The mission timer has started. Good luck!',
             pointPenalty: 0,
@@ -232,14 +220,10 @@ export const scenario4Data: ScenarioData = {
           description: 'Current Satellite Identified',
           params: {
             question: 'What satellite is VT-01 currently tracking?',
-            options: [
-              'TIDEMARK-1',
-              'TIDEMARK-2',
-              'SES-10',
-              'None - antenna is stowed',
-            ],
+            options: ['TIDEMARK-1', 'TIDEMARK-2', 'SES-10', 'None - antenna is stowed'],
             correctIndex: 0,
-            explanation: 'VT-01 is currently tracking TIDEMARK-1. The antenna is pointed at Az: 161.9°, El: 34.2° with beacon lock confirmed. We need to switch to TIDEMARK-2 at Az: 219.7°, El: 26.3°.',
+            explanation:
+              'VT-01 is currently tracking TIDEMARK-1. The antenna is pointed at Az: 161.9°, El: 34.2° with beacon lock confirmed. We need to switch to TIDEMARK-2 at Az: 219.7°, El: 26.3°.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -280,7 +264,8 @@ export const scenario4Data: ScenarioData = {
               'Stow - the antenna is parked and needs to be unstowed first',
             ],
             correctIndex: 0,
-            explanation: 'The antenna is in program-track mode, following TIDEMARK-1\'s predicted position from ephemeris data. To switch to TIDEMARK-2, we need to command new coordinates. The ACU will calculate the slew path and move the antenna smoothly to the new position.',
+            explanation:
+              "The antenna is in program-track mode, following TIDEMARK-1's predicted position from ephemeris data. To switch to TIDEMARK-2, we need to command new coordinates. The ACU will calculate the slew path and move the antenna smoothly to the new position.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -349,13 +334,14 @@ export const scenario4Data: ScenarioData = {
           params: {
             question: 'The antenna slewed about 58° in azimuth and dropped 8° in elevation. Why such a large change?',
             options: [
-              'TIDEMARK-2 is at a different orbital slot (45°W vs 53°W), requiring different look angles from Vermont',
-              'The antenna was incorrectly pointed at TIDEMARK-1 before',
-              'TIDEMARK-2 has a lower orbit than TIDEMARK-1',
-              'Wind pushed the antenna off-target during the slew',
+              'TIDEMARK-2 sits at a different orbital slot (45°W vs 53°W), so the look angles differ',
+              'The antenna was mispointed at TIDEMARK-1 before (off-peak), so the slew corrected it',
+              'TIDEMARK-2 is in a lower orbit than TIDEMARK-1 (sub-GEO), so it sits lower in the sky',
+              'Wind pushed the antenna off target during the slew (gusts), so it overshot the slot',
             ],
             correctIndex: 0,
-            explanation: 'TIDEMARK-1 sits at 53°W and TIDEMARK-2 is at 45°W - that\'s 8 degrees of orbital separation. From Vermont\'s perspective, this translates to about 58° of azimuth change and 8° of elevation change. Different satellites require different pointing angles even when both are GEO.',
+            explanation:
+              "TIDEMARK-1 sits at 53°W and TIDEMARK-2 is at 45°W - that's 8 degrees of orbital separation. From Vermont's perspective, this translates to about 58° of azimuth change and 8° of elevation change. Different satellites require different pointing angles even when both are GEO.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -418,15 +404,16 @@ export const scenario4Data: ScenarioData = {
           type: 'status-check',
           description: 'Calculate IF Frequency',
           params: {
-            question: 'TIDEMARK-2\'s beacon transmits at 4,180 MHz RF. With the LNB LO at 5,250 MHz, what IF frequency should you see the beacon at?',
+            question: "TIDEMARK-2's beacon transmits at 4,180 MHz RF. With the LNB LO at 5,250 MHz, what IF frequency should you see the beacon at?",
             options: [
               '1,070 MHz (LO minus RF = 5,250 - 4,180)',
               '9,430 MHz (LO plus RF = 5,250 + 4,180)',
-              '4,180 MHz (same as RF)',
-              '1,074.5 MHz (same as TIDEMARK-1 beacon)',
+              '1,074.5 MHz (LO minus RF = 5,250 - 4,175.5)',
+              '2,090 MHz (RF divided by two = 4,180 / 2)',
             ],
             correctIndex: 0,
-            explanation: 'The LNB downconverts by mixing with the local oscillator. IF = LO - RF = 5,250 - 4,180 = 1,070 MHz. Note this is slightly different from TIDEMARK-1\'s beacon at 1,074.5 MHz IF - each satellite has its own beacon frequency.',
+            explanation:
+              "The LNB downconverts by mixing with the local oscillator. IF = LO - RF = 5,250 - 4,180 = 1,070 MHz. Note this is slightly different from TIDEMARK-1's beacon at 1,074.5 MHz IF - each satellite has its own beacon frequency.",
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -552,7 +539,8 @@ export const scenario4Data: ScenarioData = {
               'Neither - beacon is independent of ground equipment',
             ],
             correctIndex: 2,
-            explanation: 'A stable beacon confirms both: (1) the antenna is pointed at the correct satellite, and (2) the LNB LO frequency is set correctly to downconvert the beacon RF to the expected IF. If either were wrong, you would not see the beacon at the expected frequency.',
+            explanation:
+              'A stable beacon confirms both: (1) the antenna is pointed at the correct satellite, and (2) the LNB LO frequency is set correctly to downconvert the beacon RF to the expected IF. If either were wrong, you would not see the beacon at the expected frequency.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -580,13 +568,14 @@ export const scenario4Data: ScenarioData = {
           params: {
             question: 'We verified the beacon on the spectrum analyzer. Why is this important before configuring the receiver modem?',
             options: [
-              'It proves the entire RF path is working - antenna feed, LNB, cables, and signal routing - so we know modem issues would be modem configuration, not upstream problems',
-              'The modem cannot lock without first seeing the beacon',
-              'The beacon automatically configures the modem frequency',
-              'It\'s just a procedural requirement with no technical purpose',
+              'It proves the RF path works - feed, LNB, cables - so a modem fault would be configuration',
+              'The modem needs the beacon to lock - it acquires carrier, then symbol timing from it',
+              'The beacon configures the modem - center frequency, bandwidth are read from the analyzer',
+              'It is a procedural requirement - a checklist step, sign-off - with no technical purpose',
             ],
             correctIndex: 0,
-            explanation: 'Seeing the beacon on the spectrum analyzer validates the entire upstream chain. If the modem fails to lock after this, you know the problem is modem configuration - not antenna pointing, not LNB settings, not cables. This systematic approach eliminates troubleshooting guesswork.',
+            explanation:
+              'Seeing the beacon on the spectrum analyzer validates the entire upstream chain. If the modem fails to lock after this, you know the problem is modem configuration - not antenna pointing, not LNB settings, not cables. This systematic approach eliminates troubleshooting guesswork.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -729,13 +718,14 @@ export const scenario4Data: ScenarioData = {
           params: {
             question: 'The modem shows "Locked" with C/N above 10 dB. Why do we check the C/N value and not just the lock indicator?',
             options: [
-              'Lock can occur at C/N as low as 3-4 dB, but error rates would be high - we need margin for reliable operation',
-              'The lock indicator is unreliable and often shows false positives',
-              '10 dB is required for the modem hardware to function',
-              'The C/N value determines the data rate we can achieve',
+              'Lock can occur at C/N as low as 3-4 dB, but error rates would be high - we need margin',
+              'The lock indicator is unreliable, often showing false positives - we need a second check',
+              '10 dB is the hardware minimum, below it the modem will not run - we need it to function',
+              'The C/N value sets the data rate, higher is faster - we need to know the throughput',
             ],
             correctIndex: 0,
-            explanation: 'QPSK with FEC 3/4 can achieve lock at about 4-5 dB C/N, but bit error rates would be significant. With 10+ dB, we have comfortable margin - the link stays solid even if weather degrades it slightly. Lock without margin is asking for trouble during the first rain fade.',
+            explanation:
+              'QPSK with FEC 3/4 can achieve lock at about 4-5 dB C/N, but bit error rates would be significant. With 10+ dB, we have comfortable margin - the link stays solid even if weather degrades it slightly. Lock without margin is asking for trouble during the first rain fade.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -800,15 +790,16 @@ export const scenario4Data: ScenarioData = {
           type: 'status-check',
           description: 'Verify TX Chain State',
           params: {
-            question: 'What is the current state of VT-01\'s transmit chain?',
+            question: "What is the current state of VT-01's transmit chain?",
             options: [
               'BUC is muted and HPA is disabled - no RF output (safe state for switchover)',
-              'BUC and HPA are active but transmitting to TIDEMARK-1',
-              'TX chain is completely powered off',
-              'TX chain is faulted and needs reset',
+              'BUC and HPA are both active - RF output still going to TIDEMARK-1 (not yet safed)',
+              'BUC and HPA are powered off - no RF output (cold chain, full restart needed)',
+              'BUC and HPA are faulted - no RF output (alarm latched, reset required)',
             ],
             correctIndex: 0,
-            explanation: 'The transmit chain was placed in safe state for the switchover - BUC muted and HPA disabled. This is standard procedure when changing satellites. ME-02 is handling TIDEMARK-1 traffic, so VT-01 doesn\'t need to transmit until we\'re ready for TIDEMARK-2.',
+            explanation:
+              "The transmit chain was placed in safe state for the switchover - BUC muted and HPA disabled. This is standard procedure when changing satellites. ME-02 is handling TIDEMARK-1 traffic, so VT-01 doesn't need to transmit until we're ready for TIDEMARK-2.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -876,13 +867,13 @@ export const scenario4Data: ScenarioData = {
           maintainUntilObjectiveComplete: true,
         },
         {
-          type: "tx-modem-transmitting",
-          description: "TX Modem Set to Transmitting",
+          type: 'tx-modem-transmitting',
+          description: 'TX Modem Set to Transmitting',
           params: {
             transmitting: true,
           },
           maintainUntilObjectiveComplete: true,
-        }
+        },
       ],
       conditionLogic: 'AND',
       points: 15,
@@ -907,13 +898,14 @@ export const scenario4Data: ScenarioData = {
           params: {
             question: 'You need to enable the transmit path. What is the correct sequence and why?',
             options: [
-              'Unmute BUC first, then enable HPA - drive the amplifier chain from input to output to avoid undriven amplifiers',
-              'Enable HPA first, then unmute BUC - warm up the high-power stage before applying signal',
-              'Both can be enabled simultaneously - order doesn\'t matter',
-              'The modem automatically sequences them when you press transmit',
+              'Unmute BUC first, then enable HPA - drive the chain from input to output',
+              'Enable HPA first, then unmute BUC - warm up the high-power stage before drive',
+              'Enable both at once, order is irrelevant - the chain settles either way',
+              'Press transmit on the modem, nothing else - the modem sequences them itself',
             ],
             correctIndex: 0,
-            explanation: 'Always enable the signal chain from input to output: BUC first, then HPA. An enabled HPA with no input signal can oscillate or amplify noise. By unmuting the BUC first, we ensure the HPA sees a proper signal as soon as it\'s enabled. Same principle as any amplifier chain.',
+            explanation:
+              "Always enable the signal chain from input to output: BUC first, then HPA. An enabled HPA with no input signal can oscillate or amplify noise. By unmuting the BUC first, we ensure the HPA sees a proper signal as soon as it's enabled. Same principle as any amplifier chain.",
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -976,13 +968,14 @@ export const scenario4Data: ScenarioData = {
           params: {
             question: 'VT-01 now has both receive and transmit paths active to TIDEMARK-2. What confirms full duplex operation?',
             options: [
-              'Receiver locked with good C/N, HPA enabled with proper backoff, no alarms - bidirectional link established',
-              'The satellite has acknowledged our uplink signal',
-              'Both the TX and RX indicators are green',
-              'The modem shows "Full Duplex" mode',
+              'Receiver locked with good C/N, HPA enabled with backoff, no alarms - both directions up',
+              'Receiver locked with good C/N, satellite ack received, no alarms - uplink confirmed',
+              'TX indicator green, RX indicator green, no alarms - both chains showing active',
+              'Modem showing "Full Duplex", HPA enabled, no alarms - mode confirms the link',
             ],
             correctIndex: 0,
-            explanation: 'Full duplex means simultaneous transmit and receive. We confirm this by: (1) receiver locked with margin - downlink working, (2) HPA enabled with proper backoff - uplink active, (3) no alarms - everything in tolerance. The satellite doesn\'t "acknowledge" uplinks - it\'s a bent-pipe transponder that simply relays what it receives.',
+            explanation:
+              'Full duplex means simultaneous transmit and receive. We confirm this by: (1) receiver locked with margin - downlink working, (2) HPA enabled with proper backoff - uplink active, (3) no alarms - everything in tolerance. The satellite doesn\'t "acknowledge" uplinks - it\'s a bent-pipe transponder that simply relays what it receives.',
             pointPenalty: 5,
           },
           mustMaintain: false,

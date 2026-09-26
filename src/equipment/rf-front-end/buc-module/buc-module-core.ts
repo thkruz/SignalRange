@@ -1,7 +1,11 @@
-import { SignalOrigin } from "@app/signal-origin";
-import { dB, dBm, Hertz, IfFrequency, IfSignal, MHz, RfFrequency, RfSignal } from '@app/types';
-import { RFFrontEndCore } from "@app/equipment/rf-front-end/rf-front-end-core";
+import { RFFrontEndCore } from '@app/equipment/rf-front-end/rf-front-end-core';
 import { RFFrontEndModule, RFFrontEndModuleState } from '@app/equipment/rf-front-end/rf-front-end-module';
+import { SignalOrigin } from '@app/signal-origin';
+import { Rng } from '@app/simulation/rng';
+import { dB, dBm, Hertz, IfFrequency, IfSignal, MHz, RfFrequency, RfSignal } from '@app/types';
+
+/** Seeded draws for this module (see simulation/rng.ts). */
+const random = (): number => Rng.stream('buc').next();
 
 /**
  * Spurious output from mixer products
@@ -76,6 +80,9 @@ export interface BUCState extends RFFrontEndModuleState {
  * Contains RF physics, state management, signal processing, module coupling
  */
 export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
+  /** Staged cooling fault, degC above the normal thermal target (0 = healthy) */
+  private thermalOffsetC_ = 0;
+
   // Signals
   outputSignals: RfSignal[] = [];
 
@@ -98,9 +105,9 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
       phaseLockRange: 10000, // ±10 kHz tracking range
 
       // Output Filter (C-band uplink)
-      filterLowHz: 5.925e9 as Hertz,   // 5.925 GHz
-      filterHighHz: 6.425e9 as Hertz,  // 6.425 GHz
-      filterRejectionDb: -60 as dB,    // Out-of-band rejection
+      filterLowHz: 5.925e9 as Hertz, // 5.925 GHz
+      filterHighHz: 6.425e9 as Hertz, // 6.425 GHz
+      filterRejectionDb: -60 as dB, // Out-of-band rejection
 
       // Gain & Power
       gain: 0 as dB,
@@ -153,14 +160,12 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
     // Bandpass filter rejects out-of-band signals entirely
     const maxOutputPower = this.state.saturationPower + 2; // Hard saturation limit
     this.outputSignals = this.inputSignals
-      .map(sig => {
+      .map((sig) => {
         const rfFreq = this.calculateRfFrequency(sig.frequency);
         const inBand = this.isInPassband_(rfFreq);
-        if (!inBand) return null;  // Reject out-of-band signals
+        if (!inBand) return null; // Reject out-of-band signals
 
-        const gain = !this.state.isMuted
-          ? this.state.gain
-          : -170;
+        const gain = !this.state.isMuted ? this.state.gain : -170;
         const linearPower = sig.power + gain;
         return {
           ...sig,
@@ -205,6 +210,11 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
       alarms.push(`BUC over-temperature (${this.state.temperature.toFixed(1)} °C)`);
     }
 
+    // Cooling fault staged by a scenario (HardwareFaultManager buc-overtemp)
+    if (this.thermalOffsetC_ > 0) {
+      alarms.push('BUC cooling fault - fan/heatsink degraded');
+    }
+
     // High current draw alarm
     if (this.state.currentDraw > 4.5) {
       alarms.push(`BUC high current draw (${this.state.currentDraw.toFixed(2)} A)`);
@@ -227,13 +237,9 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
   // ═══════════════════════════════════════════════════════════════
 
   get inputSignals(): IfSignal[] {
-    return this.rfFrontEnd_.transmitters
-      .flatMap((tx) => tx.state.modems
-        .filter((modem) => modem.isTransmitting
-          && !modem.isFaulted
-          && !modem.isLoopback
-          && !tx.isModemInIntermittentDropout(modem))
-        .map((modem) => modem.ifSignal));
+    return this.rfFrontEnd_.transmitters.flatMap((tx) =>
+      tx.state.modems.filter((modem) => modem.isTransmitting && !modem.isFaulted && !modem.isLoopback && !tx.isModemInIntermittentDropout(modem)).map((modem) => modem.ifSignal)
+    );
   }
 
   /**
@@ -248,13 +254,11 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
     const loFrequencyHz = this.state.loFrequency * 1e6;
 
     // Apply frequency error when not locked to external reference
-    const effectiveLO = (this.state.isExtRefLocked && this.isExtRefWarmedUp())
-      ? loFrequencyHz
-      : loFrequencyHz + this.state.frequencyError;
+    const effectiveLO = this.state.isExtRefLocked && this.isExtRefWarmedUp() ? loFrequencyHz : loFrequencyHz + this.state.frequencyError;
 
     // Mixer produces both sidebands
-    const upperSideband = effectiveLO + ifFrequency;  // LO + IF
-    const lowerSideband = effectiveLO - ifFrequency;  // LO - IF
+    const upperSideband = effectiveLO + ifFrequency; // LO + IF
+    const lowerSideband = effectiveLO - ifFrequency; // LO - IF
 
     // Bandpass filter selects the in-band signal
     const upperInBand = this.isInPassband_(upperSideband);
@@ -274,8 +278,7 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
    * Check if a frequency falls within the output bandpass filter
    */
   private isInPassband_(frequencyHz: number): boolean {
-    return frequencyHz >= this.state.filterLowHz
-      && frequencyHz <= this.state.filterHighHz;
+    return frequencyHz >= this.state.filterLowHz && frequencyHz <= this.state.filterHighHz;
   }
 
   /**
@@ -291,9 +294,9 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
     const upperInBand = this.isInPassband_(loHz + ifFreq);
     const lowerInBand = this.isInPassband_(loHz - ifFreq);
 
-    if (upperInBand) return 'low';   // Low-side injection → USB
-    if (lowerInBand) return 'high';  // High-side injection → LSB
-    return 'none';  // Neither in band
+    if (upperInBand) return 'low'; // Low-side injection → USB
+    if (lowerInBand) return 'high'; // High-side injection → LSB
+    return 'none'; // Neither in band
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -388,9 +391,9 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
     const loFrequencyHz = this.state.loFrequency * 1e6;
     // Simulate drift: ±1-100 ppm (parts per million)
     // Use random walk model for realistic drift behavior
-    const driftPpm = 10 + Math.random() * 90; // 10-100 ppm
-    const driftDirection = Math.random() > 0.5 ? 1 : -1;
-    this.state.frequencyError = driftDirection * (loFrequencyHz * driftPpm / 1e6);
+    const driftPpm = 10 + random() * 90; // 10-100 ppm
+    const driftDirection = random() > 0.5 ? 1 : -1;
+    this.state.frequencyError = driftDirection * ((loFrequencyHz * driftPpm) / 1e6);
   }
 
   /**
@@ -408,14 +411,14 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
     // Typical locked: -100 dBc/Hz @ 10kHz offset
     // Unlocked: -70 to -80 dBc/Hz (degraded)
     this.state.phaseNoise = this.state.isExtRefLocked
-      ? -100 - Math.random() * 5 // -100 to -105 dBc/Hz
-      : -70 - Math.random() * 10; // -70 to -80 dBc/Hz
+      ? -100 - random() * 5 // -100 to -105 dBc/Hz
+      : -70 - random() * 10; // -70 to -80 dBc/Hz
 
     // Group delay variation (phase distortion across bandwidth)
     // Typical: 2-10 ns, increases with temperature and at band edges
     const baseDelay = 3; // ns
     const tempVariation = (this.state.temperature - 25) * 0.1; // 0.1 ns/°C
-    this.state.groupDelay = baseDelay + tempVariation + Math.random() * 2;
+    this.state.groupDelay = baseDelay + tempVariation + random() * 2;
 
     // Calculate spurious mixer products (N×LO ± M×IF)
     this.state.spuriousOutputs = this.calculateSpuriousProducts_();
@@ -434,28 +437,28 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
     const loFreqHz = this.state.loFrequency * 1e6;
 
     // For each input signal, calculate primary spurious products
-    this.inputSignals.forEach(signal => {
+    this.inputSignals.forEach((signal) => {
       const ifFreqHz = signal.frequency;
 
       spurious.push(
         // 2×LO - IF (2nd harmonic mixing)
         {
           frequency: (2 * loFreqHz - ifFreqHz) as Hertz,
-          level: -30 - Math.random() * 10, // -30 to -40 dBc
+          level: -30 - random() * 10, // -30 to -40 dBc
           loHarmonic: 2,
           ifHarmonic: -1,
         },
         // 2×LO + IF (2nd harmonic mixing)
         {
           frequency: (2 * loFreqHz + ifFreqHz) as Hertz,
-          level: -35 - Math.random() * 10, // -35 to -45 dBc
+          level: -35 - random() * 10, // -35 to -45 dBc
           loHarmonic: 2,
           ifHarmonic: 1,
         },
         // 3×LO - IF (3rd harmonic)
         {
           frequency: (3 * loFreqHz - ifFreqHz) as Hertz,
-          level: -40 - Math.random() * 15, // -40 to -55 dBc
+          level: -40 - random() * 15, // -40 to -55 dBc
           loHarmonic: 3,
           ifHarmonic: -1,
         }
@@ -466,6 +469,21 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
   }
 
   /**
+   * Extra degC the BUC settles above its normal thermal target - a degraded fan
+   * or heatsink staged by a scenario (HardwareFaultManager `buc-overtemp`).
+   * With the default 40 degC a driven BUC climbs past the 70 degC alarm and a
+   * muted one settles at 65 degC, so muting is the right first move and
+   * powering off (slower cooling, `buc-temperature-normal` needs power) is not.
+   */
+  setThermalOffset(deltaC: number): void {
+    this.thermalOffsetC_ = Math.max(0, deltaC);
+  }
+
+  get thermalOffsetC(): number {
+    return this.thermalOffsetC_;
+  }
+
+  /**
    * Update thermal and operational state
    */
   private updateThermalState_(): void {
@@ -473,22 +491,21 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
       // Cooling down gradually toward ambient (25°C)
       const ambientTemp = 25;
       const coolRate = 0.00001; // Slow cooling per update
-      this.state.temperature = this.state.temperature +
-        (ambientTemp - this.state.temperature) * coolRate;
+      this.state.temperature += (ambientTemp - this.state.temperature) * coolRate;
       this.state.currentDraw = 0;
       return;
     }
 
-    // Calculate target temperature based on output power
+    // Calculate target temperature based on output power (plus any staged
+    // cooling fault, which lifts the whole curve so the fix is less drive)
     const ambientTemp = 25; // °C
-    const powerDissipation = Math.max(0, this.state.outputPower - (-10));
+    const powerDissipation = Math.max(0, this.state.outputPower - -10);
     const thermalRise = powerDissipation * 0.8; // °C per dBm above reference
-    const targetTemp = ambientTemp + thermalRise;
+    const targetTemp = ambientTemp + thermalRise + this.thermalOffsetC_;
 
     // Simulate gradual heating (thermal inertia)
     const heatRate = 0.00005; // Slow heating per update
-    this.state.temperature = this.state.temperature +
-      (targetTemp - this.state.temperature) * heatRate;
+    this.state.temperature += (targetTemp - this.state.temperature) * heatRate;
 
     // Current draw trends gradually toward target value
     const idleCurrent = 0.5;
@@ -496,8 +513,7 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
     const outputCurrent = Math.max(0, (this.state.outputPower + 10) / 20) * 1.5;
     const targetCurrent = idleCurrent + powerCurrent + outputCurrent;
     const currentRate = 0.1; // Slow current change per update
-    this.state.currentDraw = this.state.currentDraw +
-      (targetCurrent - this.state.currentDraw) * currentRate;
+    this.state.currentDraw += (targetCurrent - this.state.currentDraw) * currentRate;
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -600,7 +616,7 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
     currentDraw: number;
     powerDissipation: number;
   } {
-    const powerOut = Math.pow(10, this.state.outputPower / 10);
+    const powerOut = 10 ** (this.state.outputPower / 10);
     const powerDissipation = this.state.currentDraw * 28 - powerOut; // Assuming 28V supply
 
     return {

@@ -1,9 +1,9 @@
-import { html } from "@app/engine/utils/development/formatter";
-import { qs } from "@app/engine/utils/query-selector";
-import { EventBus } from "@app/events/event-bus";
-import { Events } from "@app/events/events";
-import { Sfx } from "@app/sound/sfx-enum";
-import SoundManager from "@app/sound/sound-manager";
+import { html } from '@app/engine/utils/development/formatter';
+import { qs } from '@app/engine/utils/query-selector';
+import { EventBus } from '@app/events/event-bus';
+import { Events } from '@app/events/events';
+import { Sfx } from '@app/sound/sfx-enum';
+import SoundManager from '@app/sound/sound-manager';
 import './secure-toggle-switch2.css';
 
 export class SecureToggleSwitch2 {

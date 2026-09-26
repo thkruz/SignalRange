@@ -1,3 +1,4 @@
+import { createRfFrontEnd } from '@app/campaigns/rf-front-end-factory';
 import type { AntennaState } from '@app/equipment/antenna';
 import { Character, Emotion } from '@app/modal/character-enum';
 import type { Objective } from '@app/objectives/objective-types';
@@ -6,7 +7,6 @@ import { SignalOrigin } from '@app/signal-origin';
 import type { dB, dBm, FECType, Hertz, IfFrequency, MHz, ModulationType } from '@app/types';
 import { getAssetUrl } from '@app/utils/asset-url';
 import type { Degrees } from 'ootk';
-import { createRfFrontEnd } from '@app/campaigns/rf-front-end-factory';
 import { vermontGroundStation } from './ground-stations';
 import { aurora7Satellite, tidemark1Satellite } from './satellites';
 
@@ -64,12 +64,7 @@ export const scenario8Data: ScenarioData = {
   duration: '30-40 min',
   missionType: 'Final Evaluation',
   description: `It's 2 AM on a Saturday night - your first solo night shift at the Vermont station. Charlie is visiting family out of state. Dana is on-call but sleeping; she's made it clear she only wants to be woken for genuine emergencies.<br><br>A customer reports intermittent connectivity issues on AURORA-7, an aging C-band satellite with an inclined orbit. You'll need to investigate independently, diagnose any equipment issues, verify the link, and handle whatever complications arise.<br><br>This is your graduation exam. Everything you've learned in Scenarios 1-7 comes together here. No one is going to walk you through each step. Make good decisions, work methodically, and prove you're ready for solo operations.`,
-  equipment: [
-    '9-meter C-band Antenna',
-    'RF Front End',
-    'Spectrum Analyzer',
-    'RX/TX Modems',
-  ],
+  equipment: ['9-meter C-band Antenna', 'RF Front End', 'Spectrum Analyzer', 'RX/TX Modems'],
   timeLimitSeconds: 40 * 60, // 40 minutes
   settings: {
     isSync: true,
@@ -149,7 +144,7 @@ export const scenario8Data: ScenarioData = {
                 ...vermontGroundStation.receivers[0].modems[0],
                 frequency: 1422 as MHz, // AURORA-7 downlink RF
                 bandwidth: 24 as MHz,
-              }
+              },
             ],
           },
         ],
@@ -213,9 +208,9 @@ export const scenario8Data: ScenarioData = {
             question: 'Customer reports intermittent connectivity on AURORA-7. You are alone at the station. How will you proceed?',
             options: [
               'Begin systematic troubleshooting - check timing, RX chain, antenna, then TX if needed',
-              'Call Dana immediately to report the issue',
-              'Wait until morning shift to investigate',
-              'Reboot all equipment and hope it fixes itself',
+              'Call Dana now - report the ticket, then hold until she directs the troubleshooting',
+              'Wait for morning shift - log the ticket, keep monitoring, let the day crew investigate',
+              'Power cycle everything - reboot LNB, BUC, HPA and modems, then see if the dropouts stop',
             ],
             correctIndex: 0,
             explanation: 'Systematic troubleshooting is the professional approach. You have the skills to investigate this independently.',
@@ -273,14 +268,10 @@ export const scenario8Data: ScenarioData = {
           params: {
             character: Character.SYSTEM,
             question: 'What alarm is displayed on the Dashboard?',
-            options: [
-              'LNB Reference Unlocked',
-              'BUC Over-Temperature',
-              'HPA Output Fault',
-              'No active alarms',
-            ],
+            options: ['LNB Reference Unlocked', 'BUC Over-Temperature', 'HPA Output Fault', 'No active alarms'],
             correctIndex: 0,
-            explanation: 'The LNB shows a reference unlock condition. This means the LNB is not locked to the GPSDO 10 MHz reference, which can cause frequency drift and degraded receive performance.',
+            explanation:
+              'The LNB shows a reference unlock condition. This means the LNB is not locked to the GPSDO 10 MHz reference, which can cause frequency drift and degraded receive performance.',
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -319,12 +310,13 @@ export const scenario8Data: ScenarioData = {
             question: 'The GPSDO shows locked status. What does this tell you about the LNB reference unlock alarm?',
             options: [
               'The 10 MHz reference is available - the problem is likely the cable or LNB input',
-              'The GPSDO is faulty and causing the LNB problem',
-              'The LNB alarm is a false positive',
-              'We need to restart the GPSDO',
+              'The 10 MHz reference is faulty - the GPSDO lock indicator is masking a bad output',
+              'The LNB alarm is a false positive - a locked GPSDO means the LNB must be locked too',
+              'The GPSDO needs a restart - the LNB will re-lock once the reference is re-acquired',
             ],
             correctIndex: 0,
-            explanation: 'The GPSDO is generating a valid 10 MHz reference. Since the LNB shows unlocked, the issue is downstream - either the reference cable to the LNB or the LNB reference input itself.',
+            explanation:
+              'The GPSDO is generating a valid 10 MHz reference. Since the LNB shows unlocked, the issue is downstream - either the reference cable to the LNB or the LNB reference input itself.',
             pointPenalty: 10,
           },
           maintainUntilObjectiveComplete: true,
@@ -367,12 +359,13 @@ export const scenario8Data: ScenarioData = {
             question: 'The LNB is powered but shows reference unlocked. What is the most likely corrective action?',
             options: [
               'Power cycle the LNB to re-acquire the external reference',
-              'Replace the LNB immediately',
-              'Increase LNB gain to compensate',
-              'Switch to internal oscillator mode',
+              'Replace the LNB since the reference input has failed',
+              'Increase the LNB gain to compensate for the lost reference',
+              'Switch the LNB to its internal oscillator to bypass the reference',
             ],
             correctIndex: 0,
-            explanation: 'Power cycling the LNB will force it to re-acquire the external 10 MHz reference. This is a common fix for reference lock issues, especially after thermal cycling or power glitches.',
+            explanation:
+              'Power cycling the LNB will force it to re-acquire the external 10 MHz reference. This is a common fix for reference lock issues, especially after thermal cycling or power glitches.',
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -463,12 +456,7 @@ export const scenario8Data: ScenarioData = {
           params: {
             character: Character.SYSTEM,
             question: 'AURORA-7 beacon is at 4165 MHz RF. The LNB LO is 5250 MHz. What IF frequency should you tune the spectrum analyzer to?',
-            options: [
-              '1085 MHz',
-              '9415 MHz',
-              '915 MHz',
-              '4165 MHz',
-            ],
+            options: ['1085 MHz', '9415 MHz', '915 MHz', '4165 MHz'],
             correctIndex: 0,
             explanation: 'IF = LO - RF = 5250 - 4165 = 1085 MHz. The LNB downconverts by subtracting the RF frequency from the LO frequency.',
             pointPenalty: 15,
@@ -542,7 +530,7 @@ export const scenario8Data: ScenarioData = {
             rbw: null,
           },
           maintainUntilObjectiveComplete: true,
-        }
+        },
       ],
       conditionLogic: 'AND',
       points: 10,
@@ -575,12 +563,13 @@ export const scenario8Data: ScenarioData = {
             question: 'AURORA-7 is a legacy satellite with an inclined orbit. The antenna is in program-track mode. Why might this cause tracking problems?',
             options: [
               'Inclined orbits require step-track to follow satellite drift - program-track cannot compensate',
-              'Program-track mode is only for LEO satellites',
-              'The antenna motors are too slow for program-track',
-              'Program-track requires manual polarization adjustment',
+              'Program-track is only valid for LEO satellites - a GEO bird needs step-track regardless of orbit',
+              'The antenna motors are too slow for program-track - step-track moves the dish in smaller steps',
+              'Program-track needs manual polarization updates - step-track adjusts polarization on its own',
             ],
             correctIndex: 0,
-            explanation: 'AURORA-7 has stopped north-south station-keeping, causing its orbit to become inclined. This makes the satellite trace a figure-8 pattern in the sky. Program-track follows predicted positions, but step-track actively hunts for peak signal, which is required for drifting satellites.',
+            explanation:
+              'AURORA-7 has stopped north-south station-keeping, causing its orbit to become inclined. This makes the satellite trace a figure-8 pattern in the sky. Program-track follows predicted positions, but step-track actively hunts for peak signal, which is required for drifting satellites.',
             pointPenalty: 15,
           },
           mustMaintain: false,
@@ -671,12 +660,13 @@ export const scenario8Data: ScenarioData = {
             question: 'Weather service reports freezing rain expected in 2 hours. AURORA-7 link is now stable. What is the appropriate action?',
             options: [
               'Enable feed heater now as a precaution, continue monitoring the link',
-              'Immediately stow the antenna to protect it',
-              'Call Dana to report the weather forecast',
-              'Ignore the weather alert - it is 2 hours away',
+              'Stow the antenna now as a precaution, accept the link outage until it passes',
+              'Call Dana now with the forecast, let her decide whether to stow or heat',
+              'Ignore the alert for now since it is 2 hours out, revisit when the rain starts',
             ],
             correctIndex: 0,
-            explanation: 'Enabling the feed heater proactively prevents ice accumulation. The link is stable so there is no need to stow yet, but preparing for weather is good practice. This is not urgent enough to wake Dana at 2 AM.',
+            explanation:
+              'Enabling the feed heater proactively prevents ice accumulation. The link is stable so there is no need to stow yet, but preparing for weather is good practice. This is not urgent enough to wake Dana at 2 AM.',
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -743,12 +733,13 @@ export const scenario8Data: ScenarioData = {
             question: 'The customer still reports intermittent errors. The ACU shows stable step-track with beacon lock. What does this tell you?',
             options: [
               'The antenna is tracking properly - the intermittent issue is not caused by tracking problems',
-              'The beacon frequency is drifting and causing lock instability',
-              'The polarization needs to be adjusted for the inclined orbit',
-              'Step-track mode is inadequate for AURORA-7',
+              'The beacon frequency is drifting - the intermittent issue is caused by lock instability',
+              'The polarization is misaligned - the inclined orbit needs a manual polarization adjustment',
+              'Step-track is inadequate for AURORA-7 - the intermittent issue is the antenna hunting the peak',
             ],
             correctIndex: 0,
-            explanation: 'With stable beacon lock in step-track mode, we can rule out antenna tracking as the cause of intermittent errors. The antenna is correctly following the satellite. We need to look elsewhere.',
+            explanation:
+              'With stable beacon lock in step-track mode, we can rule out antenna tracking as the cause of intermittent errors. The antenna is correctly following the satellite. We need to look elsewhere.',
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -790,15 +781,16 @@ export const scenario8Data: ScenarioData = {
           description: 'RX Path Analysis',
           params: {
             character: Character.SYSTEM,
-            question: 'The receiver shows stable lock with good C/N. What does this indicate about the customer\'s intermittent errors?',
+            question: "The receiver shows stable lock with good C/N. What does this indicate about the customer's intermittent errors?",
             options: [
               'The RX path is healthy - the problem must be in the transmit direction',
-              'The receiver is masking the real problem with AGC',
-              'We need to check the LNB temperature before concluding',
-              'The C/N margin is still too low for reliable service',
+              'The AGC is masking a fault - the problem is still in the receive direction',
+              'The LNB temperature is unknown - the problem cannot be isolated yet',
+              'The C/N margin is still too low - the problem is receive-side noise',
             ],
             correctIndex: 0,
-            explanation: 'With stable receiver lock and good C/N, the downlink (RX) path is working correctly. Since the customer reports bidirectional issues, and RX is healthy, the problem must be in the uplink (TX) direction.',
+            explanation:
+              'With stable receiver lock and good C/N, the downlink (RX) path is working correctly. Since the customer reports bidirectional issues, and RX is healthy, the problem must be in the uplink (TX) direction.',
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -831,12 +823,13 @@ export const scenario8Data: ScenarioData = {
             question: 'When investigating an intermittent TX fault, which indicator would show evidence of the problem?',
             options: [
               'The modem Output Power display - it shows DROPOUT during fault periods',
-              'The HPA reflected power - it increases during modem faults',
-              'The BUC temperature - it spikes during signal dropouts',
-              'The GPSDO holdover counter - it increments during TX faults',
+              'The HPA reflected power readout - it climbs during the modem fault periods',
+              'The BUC temperature readout - it spikes during each signal dropout',
+              'The GPSDO holdover counter - it increments during each TX fault period',
             ],
             correctIndex: 0,
-            explanation: 'The TX modem Output Power display directly indicates when an intermittent hardware fault causes a signal dropout. During fault periods, the display shows "DROPOUT" in red, making it easy to identify the source of the problem.',
+            explanation:
+              'The TX modem Output Power display directly indicates when an intermittent hardware fault causes a signal dropout. During fault periods, the display shows "DROPOUT" in red, making it easy to identify the source of the problem.',
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -891,12 +884,7 @@ export const scenario8Data: ScenarioData = {
           params: {
             character: Character.SYSTEM,
             question: 'AURORA-7 uplink RF is 7100 MHz. The BUC LO is 6053 MHz. What TX IF frequency is required?',
-            options: [
-              '1047 MHz',
-              '13153 MHz',
-              '1043 MHz',
-              '6000 MHz',
-            ],
+            options: ['1047 MHz', '13153 MHz', '1043 MHz', '6000 MHz'],
             correctIndex: 0,
             explanation: 'TX IF = RF - BUC LO = 7100 - 6053 = 1047 MHz. The BUC upconverts by adding the LO frequency to the IF.',
             pointPenalty: 15,
@@ -1014,12 +1002,13 @@ export const scenario8Data: ScenarioData = {
             question: 'Why must BUC loopback be enabled BEFORE starting transmission on a new modem?',
             options: [
               'To prevent accidental RF transmission through the HPA until the new modem is verified',
-              'To reduce power consumption during testing',
-              'To improve signal quality measurements',
-              'To synchronize the modem clock with the BUC',
+              'To reduce power consumption in the BUC and HPA until the new modem is verified',
+              'To give the spectrum analyzer a cleaner signal to measure while the new modem is verified',
+              'To let the new modem clock synchronize to the BUC before the HPA is engaged',
             ],
             correctIndex: 0,
-            explanation: 'Enabling loopback before transmission ensures the signal is routed back to the receiver for testing, rather than going to the HPA and antenna. This prevents accidental RF transmission until the new modem configuration is verified.',
+            explanation:
+              'Enabling loopback before transmission ensures the signal is routed back to the receiver for testing, rather than going to the HPA and antenna. This prevents accidental RF transmission until the new modem configuration is verified.',
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -1063,9 +1052,9 @@ export const scenario8Data: ScenarioData = {
             question: 'What does BUC loopback test that modem loopback does not?',
             options: [
               'The full signal path from modem through BUC, without engaging the HPA',
-              'The HPA output power level',
-              'The antenna pointing accuracy',
-              'The satellite transponder response',
+              'The HPA output stage and its power level, without radiating from the antenna',
+              'The antenna pointing accuracy, without transmitting to the satellite',
+              'The satellite transponder response, without the customer traffic loaded',
             ],
             correctIndex: 0,
             explanation: 'BUC loopback tests the complete modem-to-BUC signal path while keeping the HPA disengaged. This verifies the full low-power TX chain.',
@@ -1081,7 +1070,8 @@ export const scenario8Data: ScenarioData = {
       id: 'configure-lnb-for-loopback',
       nice: ['T0153', 'K0740'],
       title: 'Configure LNB for Loopback Test',
-      description: 'Set the LNB LO to 7000 MHz to view the BUC loopback signal. The BUC LO is 7100 MHz, so the 1047 MHz TX IF becomes 6053 MHz RF, which downconverts to 947 MHz with a 7000 MHz LNB.',
+      description:
+        'Set the LNB LO to 7000 MHz to view the BUC loopback signal. The BUC LO is 7100 MHz, so the 1047 MHz TX IF becomes 6053 MHz RF, which downconverts to 947 MHz with a 7000 MHz LNB.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['test-modem2-loopback'],
       timeLimitSeconds: 2 * 60,
@@ -1139,12 +1129,13 @@ export const scenario8Data: ScenarioData = {
             question: 'What should you observe on the spectrum analyzer at 947 MHz?',
             options: [
               'A 24 MHz wide modulated signal - confirming TX chain is working',
-              'A narrow CW spike like the beacon',
-              'No signal - loopback does not produce visible output',
-              'The AURORA-7 beacon signal',
+              'A narrow CW spike like the beacon - confirming the BUC LO is present',
+              'No signal at all on the display - loopback does not produce visible output',
+              'The AURORA-7 beacon at 947 MHz - confirming the LNB LO change took effect',
             ],
             correctIndex: 0,
-            explanation: 'The loopback signal appears as a 24 MHz wide modulated carrier at 947 MHz (TX IF 1047 MHz upconverted by BUC LO 7100 MHz to 6053 MHz RF, then downconverted by LNB LO 7000 MHz). This confirms Modem 2 and the BUC are working correctly.',
+            explanation:
+              'The loopback signal appears as a 24 MHz wide modulated carrier at 947 MHz (TX IF 1047 MHz upconverted by BUC LO 7100 MHz to 6053 MHz RF, then downconverted by LNB LO 7000 MHz). This confirms Modem 2 and the BUC are working correctly.',
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -1268,14 +1259,10 @@ export const scenario8Data: ScenarioData = {
           params: {
             character: Character.SYSTEM,
             question: 'What indicators confirm the AURORA-7 link is now operational?',
-            options: [
-              'No active alarms on Dashboard',
-              'Antenna in step-track with beacon lock',
-              'HPA enabled and BUC unmuted',
-              'All of the above',
-            ],
+            options: ['No active alarms on Dashboard', 'Antenna in step-track with beacon lock', 'HPA enabled and BUC unmuted', 'All of the above'],
             correctIndex: 3,
-            explanation: 'A fully operational link shows: no Dashboard alarms, antenna tracking with beacon lock (step-track for inclined orbit), and active TX chain (HPA enabled, BUC unmuted). All conditions must be met.',
+            explanation:
+              'A fully operational link shows: no Dashboard alarms, antenna tracking with beacon lock (step-track for inclined orbit), and active TX chain (HPA enabled, BUC unmuted). All conditions must be met.',
             pointPenalty: 10,
             preserveOptionOrder: true,
           },
@@ -1302,13 +1289,14 @@ export const scenario8Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Which summary correctly describes the root cause and resolution?',
             options: [
-              'LNB reference unlock caused RX degradation; program-track inadequate for inclined orbit; TX Modem 1 intermittent fault. Fixed by power cycling LNB, enabling step-track, and switching to Modem 2.',
-              'HPA fault caused TX failure; fixed by replacing the HPA tube.',
-              'Weather degradation caused link loss; handed over to backup station.',
-              'Customer equipment issue; no action required at ground station.',
+              'LNB reference unlock, program-track drift, Modem 1 fault; fixed by LNB power cycle, step-track, Modem 2',
+              'HPA output fault, program-track drift, Modem 1 fault; fixed by HPA tube swap, step-track, Modem 2',
+              'Freezing rain fade, LNB reference unlock, feed icing; fixed by feed heater, LNB power cycle, backup station',
+              'Customer modem fault, program-track drift, GPSDO holdover; fixed by customer reset, step-track, GPSDO restart',
             ],
             correctIndex: 0,
-            explanation: 'The customer intermittent connectivity had three causes: (1) LNB reference unlock degraded receive quality, (2) program-track mode could not follow AURORA-7\'s inclined orbit drift, (3) TX Modem 1 had an intermittent hardware fault. All were resolved without waking Dana or escalating.',
+            explanation:
+              "The customer intermittent connectivity had three causes: (1) LNB reference unlock degraded receive quality, (2) program-track mode could not follow AURORA-7's inclined orbit drift, (3) TX Modem 1 had an intermittent hardware fault. All were resolved without waking Dana or escalating.",
             pointPenalty: 15,
           },
           mustMaintain: false,

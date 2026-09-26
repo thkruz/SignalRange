@@ -1,3 +1,4 @@
+import { createRfFrontEnd } from '@app/campaigns/rf-front-end-factory';
 import type { AntennaState } from '@app/equipment/antenna';
 import { ANTENNA_CONFIG_KEYS } from '@app/equipment/antenna/antenna-config-keys';
 import { Receiver } from '@app/equipment/receiver/receiver';
@@ -7,7 +8,6 @@ import type { ScenarioData } from '@app/ScenarioData';
 import type { dB, dBm, Hertz } from '@app/types';
 import { getAssetUrl } from '@app/utils/asset-url';
 import type { Degrees } from 'ootk';
-import { createRfFrontEnd } from '@app/campaigns/rf-front-end-factory';
 import { vermontGroundStation } from './ground-stations';
 import { ses10Satellite, tidemark1Satellite, tidemark2Satellite } from './satellites';
 
@@ -68,13 +68,7 @@ export const scenario14Data: ScenarioData = {
   difficulty: 'intermediate',
   missionType: 'Weather Contingency',
   description: `Rain front moving over Vermont. Light to moderate, maybe twenty minutes through. The link will fade but it shouldn't black out.<br><br>The customer - James Okafor at SeaLink - has called ahead. Their SLA terms penalize handover events more than they penalize a few dB of margin loss, so he's asked us to hold VT-01 through the weather if we can. ME-02 is busy on TIDEMARK-2 and would have to drop its own customers to take TIDEMARK-1.<br><br>Your job: enable the feed heater, watch AGC headroom, track the beacon C/N, and make the call. Hold or hand off - the right answer is the one the link supports.`,
-  equipment: [
-    '9-meter C-band Antenna',
-    'RF Front End (Feed Heater, AGC)',
-    'Spectrum Analyzer',
-    'RX/TX Modems',
-    'ME-02: Operational (TIDEMARK-2)',
-  ],
+  equipment: ['9-meter C-band Antenna', 'RF Front End (Feed Heater, AGC)', 'Spectrum Analyzer', 'RX/TX Modems', 'ME-02: Operational (TIDEMARK-2)'],
   timeLimitSeconds: 35 * 60, // 35 minutes
   settings: {
     isSync: true,
@@ -115,7 +109,7 @@ export const scenario14Data: ScenarioData = {
         ],
         rfFrontEnds: [
           createRfFrontEnd(vermontGroundStation.rfFrontEnds[0], {
-            // ME-02 mirrors VT-01's LNB LO so TM-2 beacon lands at 1070 MHz IF.
+            // ME-02 mirrors VT-01's LNB LO so TM-2 beacon comes out at 1070 MHz IF.
             // ME-02 TX is active on its own TIDEMARK-2 traffic; player should
             // not touch it during this scenario.
             buc: { isMuted: true },
@@ -146,11 +140,7 @@ export const scenario14Data: ScenarioData = {
         receivers: [Receiver.getDefaultState()],
       },
     ],
-    satellites: [
-      tidemark1Satellite,
-      tidemark2Satellite,
-      ses10Satellite,
-    ],
+    satellites: [tidemark1Satellite, tidemark2Satellite, ses10Satellite],
     weatherEvents: [
       {
         id: 'vermont-rain-front',
@@ -231,12 +221,13 @@ export const scenario14Data: ScenarioData = {
             question: 'James from SeaLink is asking us to hold VT-01 through the rain rather than hand off. What is the operational reason?',
             options: [
               'Their SLA penalizes handover events more heavily than a few dB of margin loss',
-              'ME-02 has not been certified to carry SeaLink traffic',
-              'The handover process always causes a customer outage',
-              'Maine is currently weathered in as well',
+              'Their SLA does not allow ME-02 to carry SeaLink traffic without prior certification',
+              'The handover process always drops their vessel telemetry, so every handover is a logged outage',
+              'ME-02 is busy carrying TIDEMARK-2, so there is no station available to hand over to',
             ],
             correctIndex: 0,
-            explanation: 'SeaLink runs vessel telemetry that survives short C/N dips but logs a hard event on every uplink change. A handover event costs them more contractually than 3 dB of fade does. The customer is telling us what they value - listen.',
+            explanation:
+              'SeaLink runs vessel telemetry that survives short C/N dips but logs a hard event on every uplink change. A handover event costs them more contractually than 3 dB of fade does. The customer is telling us what they value - listen.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -294,9 +285,9 @@ export const scenario14Data: ScenarioData = {
             question: 'What is VT-01 reporting before the front arrives?',
             options: [
               'No active alarms, link healthy - clean baseline to fade from',
-              'BUC over-temperature, do not transmit',
-              'Antenna tracking error',
-              'GPSDO in holdover',
+              'BUC over-temperature alarm - hold transmit until it cools',
+              'Antenna tracking error - beacon lock lost before the front arrived',
+              'GPSDO in holdover - reference alarm, timing at risk',
             ],
             correctIndex: 0,
             explanation: 'Clean baseline. Note the C/N now so you know what "nominal" looks like when the rain starts pulling it down.',
@@ -351,13 +342,14 @@ export const scenario14Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'The heater is doing what for a rain event that is well above freezing?',
             options: [
-              'Keeping water from beading and sheeting on the feed - dry surfaces attenuate less than wet ones',
-              'Heating the LNB to compensate for cold rain',
-              'Preventing ice (rain at 12°C cannot freeze)',
-              'Boosting RF gain through the feed',
+              'Keeping water from sheeting on the feed - dry surfaces attenuate less than wet ones',
+              'Keeping the LNB warm through the cold rain - noise temperature climbs as the LNB cools',
+              'Preventing ice on the feed - the radome cools below air temperature and 12°C rain can freeze',
+              'Raising RF gain through the feed - a warm feed horn passes more of the incoming signal',
             ],
             correctIndex: 0,
-            explanation: 'Standing water on the feed is itself an attenuator. The heater keeps surfaces above dew point so droplets evaporate instead of pooling. Same hardware as the anti-icing case in S3, different mechanism.',
+            explanation:
+              'Standing water on the feed is itself an attenuator. The heater keeps surfaces above dew point so droplets evaporate instead of beading and pooling. Same hardware as the anti-icing case in S3, different mechanism - rain at 12°C is not going to freeze.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -446,12 +438,13 @@ export const scenario14Data: ScenarioData = {
             question: 'Why does noting the baseline C/N matter for this scenario specifically?',
             options: [
               'It defines how much fade the link can absorb before reaching the demodulation threshold',
-              'It tells the customer how much power we are using',
-              'It calibrates the spectrum analyzer for the storm',
-              'It is required by the modem firmware',
+              'It tells the customer how much uplink power we are spending to hold their carrier',
+              'It calibrates the spectrum analyzer reference level before the rain shifts the noise floor',
+              'It is required by the modem firmware before it will hold lock through a fade',
             ],
             correctIndex: 0,
-            explanation: 'Margin = baseline C/N minus demod threshold. With 10+ dB of headroom and 3 dB of expected fade, we are comfortable. Without baseline data, every dip looks scary.',
+            explanation:
+              'Margin = baseline C/N minus demod threshold. With 10+ dB of headroom and 3 dB of expected fade, we are comfortable. Without baseline data, every dip looks scary.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -521,13 +514,14 @@ export const scenario14Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Input level dropped a few dB as the rain hit, but the post-AGC output level is steady. What does that tell you?',
             options: [
-              'AGC is compensating - the demodulator still sees a usable signal, and we still have headroom in the gain stage',
-              'The fade is over and the rain has stopped',
-              'The LNB has automatically raised its gain',
-              'The receiver has switched to a backup carrier',
+              'AGC is compensating - the demodulator still sees a usable signal, and the gain stage still has headroom',
+              'The fade is over - the rain has already passed and the input level will climb back within a minute',
+              'The LNB has raised its own gain - the front end compensates before the signal reaches the receiver',
+              'The receiver has switched to a backup carrier - the steady output is a different signal, not TM-1',
             ],
             correctIndex: 0,
-            explanation: 'AGC absorbs the first several dB of fade transparently. The thing to watch is not the output level (that is what AGC stabilizes) but how much gain the AGC is using. When it approaches its max, you are out of cushion.',
+            explanation:
+              'AGC absorbs the first several dB of fade transparently. The thing to watch is not the output level (that is what AGC stabilizes) but how much gain the AGC is using. When it approaches its max, you are out of cushion.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -554,12 +548,13 @@ export const scenario14Data: ScenarioData = {
             question: 'AGC is currently using ~3 dB of its compensation range. What does that say about the decision to hold?',
             options: [
               'Plenty of headroom remaining - link is comfortable, hold is justified',
-              'AGC at any non-zero value means we should hand over immediately',
-              'AGC compensation has no relationship to handover decisions',
-              'We must reduce HPA backoff to relieve the AGC',
+              'Headroom is already spent - any non-zero AGC value means hand over now',
+              'Headroom is irrelevant - AGC compensation has no bearing on the handover call',
+              'Headroom is shrinking - reduce HPA backoff now to relieve the AGC',
             ],
             correctIndex: 0,
-            explanation: 'AGC near floor = wide cushion. The handover trigger is not AGC active - it is AGC near max with continued fade, or modem unlock. We are nowhere near either.',
+            explanation:
+              'AGC near floor = wide cushion. The handover trigger is not AGC active - it is AGC near max with continued fade, or modem unlock. We are nowhere near either.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -605,18 +600,19 @@ export const scenario14Data: ScenarioData = {
       conditions: [
         {
           type: 'status-check',
-          description: 'Backoff Tradeoff',
+          description: 'Backoff Cost',
           params: {
             character: Character.SYSTEM,
             question: 'The downlink C/N is holding above threshold with AGC headroom to spare. Should you reduce HPA backoff to push more uplink power?',
             options: [
               'No - the link is healthy; trading IMD risk for unused margin is a bad bargain',
-              'Yes - always run the HPA hot during weather',
-              'Yes - the customer requires maximum uplink power during a fade',
-              'No - because the HPA cannot be adjusted while transmitting',
+              'Yes - the fade is active; running the HPA hot during weather is standard practice',
+              'Yes - the customer asked us to hold; maximum uplink power is what holding requires',
+              'No - the HPA is carrying traffic; backoff cannot be adjusted while transmitting',
             ],
             correctIndex: 0,
-            explanation: 'Optimization is not "turn every dial to max." If the link has margin you do not need, the responsible move is to not spend it. Reduced backoff means higher IMD on neighbors and more amplifier stress for no operational benefit here. Keep the configuration nominal.',
+            explanation:
+              'Optimization is not "turn every dial to max." If the link has margin you do not need, the responsible move is to not spend it. Reduced backoff means higher IMD on neighbors and more amplifier stress for no operational benefit here. Keep the configuration nominal.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -679,12 +675,13 @@ export const scenario14Data: ScenarioData = {
             question: 'The customer prefers no handover, but the customer does not get the last word on RF reality. Which condition flips the call to "hand off now"?',
             options: [
               'AGC at max with continued fade, or modem dropping lock',
-              'Any drop in C/N from baseline',
-              'The first raindrop hitting the dish',
-              'When ME-02 reports it would be available',
+              'Any drop in C/N from baseline, or AGC leaving its floor',
+              'Rain reaching the dish, or the first dB of input fade',
+              'ME-02 reporting available, or Dana asking for a status',
             ],
             correctIndex: 0,
-            explanation: 'The customer can ask us to favor "hold." The customer cannot ask us to keep serving on a dead link. The trigger is operational, not contractual: AGC at max and still fading, or actual lock loss.',
+            explanation:
+              'The customer can ask us to favor "hold." The customer cannot ask us to keep serving on a dead link. The trigger is operational, not contractual: AGC at max and still fading, or actual lock loss.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -711,9 +708,9 @@ export const scenario14Data: ScenarioData = {
             question: 'Your call - what are we doing for the rest of this front?',
             options: [
               'Hold VT-01. AGC has headroom, modem locked, customer preference honored. Re-evaluate if state changes.',
-              'Begin immediate handover to ME-02.',
-              'Stow the antenna and accept the outage.',
-              'Reduce HPA backoff to push more uplink power.',
+              'Hand off to ME-02. AGC is active, fade still building, customer told we tried. Re-acquire on VT-01 after.',
+              'Stow VT-01. Rain is heaviest at the peak, feed protected, customer notified. Re-acquire when the front clears.',
+              'Hold VT-01. Reduce HPA backoff 2 dB, push uplink power up, customer preference honored. Restore after the front.',
             ],
             correctIndex: 0,
             explanation: 'Right call. We are holding. State the trigger conditions to yourself so you know when to flip - that is the discipline of holding, not just inertia.',
@@ -789,12 +786,13 @@ export const scenario14Data: ScenarioData = {
             question: 'The rain is clearing. What do you expect to see in the next few minutes?',
             options: [
               'C/N recovers toward baseline; AGC backs its gain down; modem lock unchanged',
-              'C/N stays depressed - the link has been permanently degraded',
-              'AGC stays at max because it cannot reset',
-              'Modem must be manually re-locked',
+              'C/N stays depressed; AGC holds its gain; the wet feed keeps the link degraded',
+              'C/N recovers toward baseline; AGC stays at max until reset; modem lock unchanged',
+              'C/N recovers toward baseline; AGC backs its gain down; modem must be re-locked by hand',
             ],
             correctIndex: 0,
-            explanation: 'Rain fade is transient. The AGC tracks the recovery downward without intervention, and the demod has had lock the whole time. Nothing to do but watch it normalize.',
+            explanation:
+              'Rain fade is transient. The AGC tracks the recovery downward without intervention, and the demod has had lock the whole time. Nothing to do but watch it normalize.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -820,10 +818,10 @@ export const scenario14Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Which entry correctly logs this event for the next shift?',
             options: [
-              'Moderate rain over VT-01, ~3 dB fade. Held TM-1 service per customer SLA preference; AGC max 3 dB, modem lock maintained throughout, no handover.',
-              'Emergency handover to ME-02 due to rain.',
-              'Lost lock on TM-1 during storm; service restored after storm cleared.',
-              'No weather event; routine shift.',
+              'Moderate rain over VT-01, ~3 dB fade. Held TM-1 per customer SLA preference; AGC max 3 dB, modem lock maintained, no handover.',
+              'Moderate rain over VT-01, ~3 dB fade. Handed TM-1 to ME-02 at fade onset; AGC max 3 dB, customer notified, service restored.',
+              'Moderate rain over VT-01, ~3 dB fade. Lost lock on TM-1 near peak; AGC at max, modem re-locked after the front cleared.',
+              'Light rain over VT-01, no measurable fade. Held TM-1 as routine; AGC at floor, modem lock maintained, no customer contact.',
             ],
             correctIndex: 0,
             explanation: 'Log what happened, what you chose, why, and the evidence the choice was correct. Next operator picks up with the trigger thresholds you were watching.',

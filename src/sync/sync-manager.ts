@@ -1,16 +1,16 @@
 import { GroundStation } from '@app/assets/ground-station/ground-station';
 import { GroundStationState } from '@app/assets/ground-station/ground-station-state';
 import { AntennaState } from '@app/equipment/antenna';
-import { RFFrontEndState } from '@app/equipment/rf-front-end/rf-front-end-core';
-import { ObjectiveState } from '@app/objectives';
-import { SimulationManager } from '@app/simulation/simulation-manager';
 import { RealTimeSpectrumAnalyzerState } from '@app/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer';
 import { ReceiverState } from '@app/equipment/receiver/receiver';
+import { RFFrontEndState } from '@app/equipment/rf-front-end/rf-front-end-core';
 import { TransmitterState } from '@app/equipment/transmitter/transmitter';
 import { Logger } from '@app/logging/logger';
+import { ObjectiveState } from '@app/objectives';
 import { OpsLogManager } from '@app/ops-log/ops-log-manager';
 import { OpsLogState } from '@app/ops-log/ops-log-types';
 import type { Equipment } from '@app/pages/sandbox/equipment';
+import { SimulationManager } from '@app/simulation/simulation-manager';
 import type { StorageProvider } from './storage-provider';
 
 /**
@@ -198,14 +198,14 @@ export class SyncManager {
       objectiveStates,
       scenarioTimeRemaining,
       opsLogState,
-      groundStationStates: this.groundStations.map(gs => gs.state),
+      groundStationStates: this.groundStations.map((gs) => gs.state),
       equipment: {
-        spectrumAnalyzersState: this.equipment.spectrumAnalyzers?.map(sa => sa.state),
-        antennasState: this.equipment.antennas?.map(a => a.state),
-        rfFrontEndsState: this.equipment.rfFrontEnds?.map(rf => rf.state),
-        transmittersState: this.equipment.transmitters?.map(tx => tx.state),
-        receiversState: this.equipment.receivers?.map(rx => rx.state),
-      }
+        spectrumAnalyzersState: this.equipment.spectrumAnalyzers?.map((sa) => sa.state),
+        antennasState: this.equipment.antennas?.map((a) => a.state),
+        rfFrontEndsState: this.equipment.rfFrontEnds?.map((rf) => rf.state),
+        transmittersState: this.equipment.transmitters?.map((tx) => tx.state),
+        receiversState: this.equipment.receivers?.map((rx) => rx.state),
+      },
     };
   }
 
@@ -273,13 +273,14 @@ export class SyncManager {
     // Sync Objective States if available
     if (state.objectiveStates && state.objectiveStates.length > 0) {
       try {
+        // Lazy require, not a static import: simulation-manager reaches back here via
+        // progress-save-manager -> storage -> sync-manager, so importing it at module
+        // scope would be a circular import.
+        // biome-ignore lint/style/noCommonJs: breaks a real import cycle; see above.
         const { SimulationManager } = require('../simulation/simulation-manager');
         const sim = SimulationManager.getInstance();
         if (sim?.objectivesManager) {
-          sim.objectivesManager.restoreState(
-            state.objectiveStates,
-            state.scenarioTimeRemaining
-          );
+          sim.objectivesManager.restoreState(state.objectiveStates, state.scenarioTimeRemaining);
         }
       } catch (error) {
         console.debug('ObjectivesManager not available when syncing from storage:', error);

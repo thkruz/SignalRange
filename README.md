@@ -55,8 +55,8 @@ Someone is jamming allied satellites. Find them using geolocation and advanced R
 
 ### Prerequisites
 
-- **Node.js** 18.x or 20.x (LTS recommended)
-- **npm** 9.x or later
+- **Node.js** 24.x (see `.nvmrc`; [Volta](https://volta.sh) picks it up automatically)
+- **pnpm** 10.x — `corepack enable` or `npm install -g pnpm@10`
 
 ### Quick Start
 
@@ -66,17 +66,21 @@ git clone https://github.com/thkruz/SignalRange.git
 cd SignalRange
 
 # 2. Install dependencies
-npm install
+pnpm install
 
 # 3. Set up environment variables
 cp .env.example .env
 
 # 4. Pull campaign assets from R2 (audio/images)
-npm run r2:pull
+pnpm run r2:pull
 
 # 5. Start the development server
-npm run dev
+pnpm run dev
 ```
+
+> **Note:** `src/private` is an optional, private git submodule (plans, design docs and internal
+> notes). Contributors do not need it and the build never reads it. Clone without
+> `--recurse-submodules`, or ignore the "permission denied" from that one submodule if you do.
 
 The app will be available at `http://localhost:3000` (or the port shown in terminal).
 
@@ -99,10 +103,10 @@ Campaign assets (audio files, character images) are stored in Cloudflare R2 and 
 
 ```bash
 # Download assets from R2 (no authentication required)
-npm run r2:pull
+pnpm run r2:pull
 
 # Preview what would be downloaded
-npm run r2:pull:dry
+pnpm run r2:pull:dry
 ```
 
 Assets are downloaded to `public/assets/campaigns/` and `public/assets/characters/`.
@@ -111,24 +115,44 @@ Assets are downloaded to `public/assets/campaigns/` and `public/assets/character
 
 | Command | Description |
 |---------|-------------|
-| `npm run dev` | Start webpack dev server with hot reload |
-| `npm run build` | Production build to `dist/` |
-| `npm run preview` | Preview production build with Wrangler |
-| `npm run r2:pull` | Download campaign assets from R2 |
-| `npm run test` | Run Jest test suite |
-| `npm run type-check` | TypeScript type checking |
-| `npm run lint` | Run ESLint |
+| `pnpm run dev` | Start the rspack dev server with hot reload |
+| `pnpm run build` | Production build to `dist/` |
+| `pnpm run preview` | Preview production build with Wrangler |
+| `pnpm run r2:pull` | Download campaign assets from R2 |
+| `pnpm test` | Run the Vitest suite |
+| `pnpm run typecheck` | Type-check with tsgo (TypeScript 7 native) |
+| `pnpm run typecheck:tsc` | Same check on stock tsc, as a fallback |
+| `pnpm run lint` | Lint and format-check with Biome |
+| `pnpm run lint:fix` | Apply Biome's safe fixes |
+| `pnpm run format` | Format with Biome |
 
 ### Troubleshooting
 
 **Assets not loading?**
-Run `npm run r2:pull` to download campaign audio and images.
+Run `pnpm run r2:pull` to download campaign audio and images.
 
 **TypeScript errors?**
-Run `npm run type-check` to see detailed type errors.
+Run `pnpm run typecheck` to see detailed type errors.
 
 **Port already in use?**
-The dev server defaults to port 3000. Check for other processes or modify `webpack.config.js`.
+The dev server defaults to port 3000. Check for other processes or modify `rspack.config.mts`.
+
+## 🔌 Plugins
+
+Equipment and features can come from plugins: small git repositories that the
+engine compiles into its own bundle. The toolchain mirrors keeptrack-space's.
+
+```bash
+pnpm run plugin -- add https://github.com/thkruz/signal-range-plugin-example   # install one
+pnpm run plugin -- create my-dish                                             # scaffold your own
+pnpm run plugin -- dev signal-range-plugin-my-dish                            # boot with only it enabled
+pnpm run plugin -- list                                                       # what is installed
+```
+
+Installed plugins are recorded in `external-plugins.json` and restored by
+`pnpm run plugin -- restore` (the build runs this for you). Plugin antennas
+appear in every sandbox's **LOADOUT** picker. See
+[docs/plugin-development-guide.md](docs/plugin-development-guide.md).
 
 ## 🌐 Deployment
 
@@ -143,10 +167,10 @@ SignalRange is deployed on Cloudflare Workers with static assets. There are two 
 
 ```bash
 # Deploy to UAT (test changes first)
-npx wrangler deploy --env uat
+pnpm exec wrangler deploy --env uat
 
 # Deploy to Production (after UAT validation)
-npx wrangler deploy --env production
+pnpm exec wrangler deploy --env production
 ```
 
 Always deploy to UAT first to validate changes before promoting to production.

@@ -17,7 +17,7 @@ export default defineConfig({
   },
   use: {
     // 127.0.0.1 (not localhost) so another dev server bound to IPv6 ::1:3000
-    // cannot shadow the webpack server, which binds the IPv4/dual stack.
+    // cannot shadow the rspack server, which binds the IPv4/dual stack.
     baseURL: 'http://127.0.0.1:3000',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
@@ -30,7 +30,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'npm run dev',
+    command: 'pnpm run dev',
     url: 'http://127.0.0.1:3000',
     reuseExistingServer: !process.env.CI,
     timeout: 120000,

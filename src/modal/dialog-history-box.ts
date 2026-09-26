@@ -1,10 +1,10 @@
-import { html } from "@app/engine/utils/development/formatter";
-import { EventBus } from "@app/events/event-bus";
-import { Events } from "@app/events/events";
+import { html } from '@app/engine/utils/development/formatter';
+import { EventBus } from '@app/events/event-bus';
+import { Events } from '@app/events/events';
 import './dialog-history-box.css';
-import { CharacterNames } from "./character-enum";
-import { DialogHistoryManager } from "./dialog-history-manager";
-import { DraggableHtmlBox } from "./draggable-html-box";
+import { CharacterNames } from './character-enum';
+import { DialogHistoryManager } from './dialog-history-manager';
+import { DraggableHtmlBox } from './draggable-html-box';
 
 export class DialogHistoryBox extends DraggableHtmlBox {
   private readonly boundHistoryChangedHandler_: () => void;
@@ -36,9 +36,10 @@ export class DialogHistoryBox extends DraggableHtmlBox {
       `;
     }
 
-    const historyItems = history.map((entry, index) => {
-      const timeStr = new Date(entry.timestamp).toLocaleTimeString();
-      return html`
+    const historyItems = history
+      .map((entry, index) => {
+        const timeStr = new Date(entry.timestamp).toLocaleTimeString();
+        return html`
         <div class="dialog-history-item">
           <div class="dialog-history-item-header">
             <span class="dialog-history-title">${entry.title}</span>
@@ -50,7 +51,8 @@ export class DialogHistoryBox extends DraggableHtmlBox {
           </button>
         </div>
       `;
-    }).join('');
+      })
+      .join('');
 
     return html`
       <div class="dialog-history-container">

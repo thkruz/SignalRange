@@ -23,8 +23,8 @@ This guide covers deploying SignalRange to Cloudflare Workers with R2 asset stor
 - **npm** (comes with Node.js)
 - **Wrangler CLI** (Cloudflare Workers CLI)
   ```bash
-  npm install -g wrangler
-  # Or use npx: npx wrangler
+  pnpm add -g wrangler
+  # Or use pnpm exec: pnpm exec wrangler
   ```
 
 ### Cloudflare Account Setup
@@ -125,7 +125,7 @@ PUBLIC_USER_API_URL=https://user.keeptrack.space
 PUBLIC_ASSETS_BASE_URL=https://assets.signalrange.space
 ```
 
-**Note**: Environment variables are injected at build time via webpack. Make sure `.env.production` is in your `.gitignore`.
+**Note**: Environment variables are injected at build time via rspack. Make sure `.env.production` is in your `.gitignore`.
 
 ### Getting Supabase Credentials
 
@@ -145,7 +145,7 @@ PUBLIC_ASSETS_BASE_URL=https://assets.signalrange.space
 For local testing:
 
 ```bash
-npm run build
+pnpm run build
 ```
 
 This creates a production build in the `dist/` directory without deploying.
@@ -156,7 +156,7 @@ The build process is automatically handled by deployment scripts, but you can bu
 
 ```bash
 # Build for production
-npm run build
+pnpm run build
 
 # Verify build output
 ls -la dist/
@@ -182,13 +182,13 @@ Large audio and image files are stored in Cloudflare R2, not in the Worker bundl
 
 ```bash
 # Preview what would be uploaded (dry run)
-npm run r2:sync:dry
+pnpm run r2:sync:dry
 
 # Upload new/changed files
-npm run r2:sync
+pnpm run r2:sync
 
 # Upload with verbose logging
-npm run r2:sync -- --verbose
+pnpm run r2:sync -- --verbose
 ```
 
 **What Gets Synced**:
@@ -232,12 +232,12 @@ PUBLIC_ASSETS_BASE_URL=https://pub-xxxxx.r2.dev
 Deploy everything in one command:
 
 ```bash
-npm run deploy:full
+pnpm run deploy:full
 ```
 
 This command:
-1. Builds the application (`npm run build`)
-2. Syncs R2 assets (`npm run r2:sync`)
+1. Builds the application (`pnpm run build`)
+2. Syncs R2 assets (`pnpm run r2:sync`)
 3. Deploys to Cloudflare Workers (`wrangler deploy`)
 
 ### Step-by-Step Deploy
@@ -246,13 +246,13 @@ For more control, deploy in steps:
 
 ```bash
 # 1. Build the application
-npm run build
+pnpm run build
 
 # 2. Sync R2 assets (if you have new/changed assets)
-npm run r2:sync
+pnpm run r2:sync
 
 # 3. Deploy to Cloudflare Workers
-npm run deploy
+pnpm run deploy
 ```
 
 ### Dry Run Deployment
@@ -260,7 +260,7 @@ npm run deploy
 Test deployment without actually deploying:
 
 ```bash
-npm run deploy:dry-run
+pnpm run deploy:dry-run
 ```
 
 This builds and validates the deployment without pushing to Cloudflare.
@@ -270,7 +270,7 @@ This builds and validates the deployment without pushing to Cloudflare.
 Test your deployment locally with Wrangler:
 
 ```bash
-npm run preview
+pnpm run preview
 ```
 
 This runs a local Cloudflare Workers environment that mimics production.
@@ -297,7 +297,7 @@ This runs a local Cloudflare Workers environment that mimics production.
 
 3. **Deploy**:
    ```bash
-   npm run deploy:full
+   pnpm run deploy:full
    ```
 
 4. **Verify DNS**:
@@ -315,7 +315,7 @@ If you don't have a custom domain, Cloudflare provides a free subdomain:
 
 1. **Deploy without routes**:
    - Remove or comment out `routes` in `wrangler.jsonc`
-   - Deploy: `npm run deploy`
+   - Deploy: `pnpm run deploy`
    - Your app will be available at: `signal-range.your-subdomain.workers.dev`
 
 2. **Update Supabase Allowed Domains**:
@@ -331,7 +331,7 @@ If you don't have a custom domain, Cloudflare provides a free subdomain:
 **Problem**: Build fails with TypeScript errors
 ```bash
 # Solution: Run type checking first
-npm run type-check
+pnpm run typecheck
 
 # Fix any TypeScript errors before building
 ```
@@ -339,8 +339,8 @@ npm run type-check
 **Problem**: Webpack build fails
 ```bash
 # Solution: Clean and rebuild
-npm run clean
-npm run build
+pnpm run clean
+pnpm run build
 ```
 
 ### Deployment Errors
@@ -348,9 +348,9 @@ npm run build
 **Problem**: `wrangler: command not found`
 ```bash
 # Solution: Install wrangler globally or use npx
-npm install -g wrangler
+pnpm add -g wrangler
 # Or
-npx wrangler deploy
+pnpm exec wrangler deploy
 ```
 
 **Problem**: Authentication errors
@@ -372,8 +372,8 @@ wrangler r2 bucket create signal-range-assets
 **Problem**: Files not uploading
 ```bash
 # Solution: Check file paths and permissions
-npm run r2:sync:dry  # Preview what would be uploaded
-npm run r2:sync -- --verbose  # See detailed output
+pnpm run r2:sync:dry  # Preview what would be uploaded
+pnpm run r2:sync -- --verbose  # See detailed output
 ```
 
 **Problem**: Wrong files being uploaded
@@ -409,7 +409,7 @@ npm run r2:sync -- --verbose  # See detailed output
 - Check R2 bucket region (should be close to users)
 
 **Problem**: Large bundle size
-- Check webpack bundle analyzer
+- Check the rspack bundle analyzer
 - Ensure large assets are in R2, not in bundle
 - Verify tree-shaking is working
 
@@ -422,16 +422,16 @@ Before deploying to production:
 - [ ] All environment variables set in `.env.production`
 - [ ] R2 buckets created and configured
 - [ ] R2 custom domain configured (if using)
-- [ ] Assets synced to R2 (`npm run r2:sync`)
-- [ ] Build succeeds without errors (`npm run build`)
-- [ ] Type checking passes (`npm run type-check`)
-- [ ] Linting passes (`npm run lint`)
-- [ ] Tests pass (`npm test`)
+- [ ] Assets synced to R2 (`pnpm run r2:sync`)
+- [ ] Build succeeds without errors (`pnpm run build`)
+- [ ] Type checking passes (`pnpm run typecheck`)
+- [ ] Linting passes (`pnpm run lint`)
+- [ ] Tests pass (`pnpm test`)
 - [ ] Wrangler authenticated (`wrangler login`)
 - [ ] Routes configured in `wrangler.jsonc`
 - [ ] Domain DNS configured (if using custom domain)
 - [ ] Supabase allowed domains updated
-- [ ] Dry run successful (`npm run deploy:dry-run`)
+- [ ] Dry run successful (`pnpm run deploy:dry-run`)
 
 ---
 
@@ -460,10 +460,10 @@ jobs:
           node-version: '20'
       
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
       
       - name: Build
-        run: npm run build
+        run: pnpm run build
         env:
           PUBLIC_SUPABASE_URL: ${{ secrets.PUBLIC_SUPABASE_URL }}
           PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.PUBLIC_SUPABASE_ANON_KEY }}
@@ -471,12 +471,12 @@ jobs:
           PUBLIC_ASSETS_BASE_URL: ${{ secrets.PUBLIC_ASSETS_BASE_URL }}
       
       - name: Sync R2 Assets
-        run: npm run r2:sync
+        run: pnpm run r2:sync
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       
       - name: Deploy to Cloudflare
-        run: npm run deploy
+        run: pnpm run deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
 ```

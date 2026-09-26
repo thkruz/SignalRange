@@ -1,5 +1,6 @@
 import { Mock, Mocked, vi } from 'vitest';
 import { GroundStation } from '../../../../src/assets/ground-station/ground-station';
+import { FineAdjustControl } from '../../../../src/components/fine-adjust-control/fine-adjust-control';
 import { EventBus } from '../../../../src/events/event-bus';
 import { Events } from '../../../../src/events/events';
 import { ACUControlTab } from '../../../../src/pages/mission-control/tabs/acu-control-tab';
@@ -46,6 +47,7 @@ vi.mock('../../../../src/weather/weather-manager', () => ({
 
 import { SimulationManager } from '../../../../src/simulation/simulation-manager';
 import { WeatherManager } from '../../../../src/weather/weather-manager';
+
 describe('ACUControlTab', () => {
   let mockGroundStation: Mocked<GroundStation>;
   let containerEl: HTMLElement;
@@ -175,17 +177,11 @@ describe('ACUControlTab', () => {
     });
 
     it('should register for UPDATE events', () => {
-      expect(mockEventBus.on).toHaveBeenCalledWith(
-        Events.UPDATE,
-        expect.any(Function)
-      );
+      expect(mockEventBus.on).toHaveBeenCalledWith(Events.UPDATE, expect.any(Function));
     });
 
     it('should register for DRAW events', () => {
-      expect(mockEventBus.on).toHaveBeenCalledWith(
-        Events.DRAW,
-        expect.any(Function)
-      );
+      expect(mockEventBus.on).toHaveBeenCalledWith(Events.DRAW, expect.any(Function));
     });
   });
 
@@ -471,9 +467,7 @@ describe('ACUControlTab', () => {
 
   describe('UPDATE event handler', () => {
     it('should sync UI with antenna state when UPDATE event fires', () => {
-      const updateHandler = mockEventBus.on.mock.calls.find(
-        (call: unknown[]) => call[0] === Events.UPDATE
-      )?.[1];
+      const updateHandler = mockEventBus.on.mock.calls.find((call: unknown[]) => call[0] === Events.UPDATE)?.[1];
       expect(updateHandler).toBeDefined();
 
       // Modify antenna state
@@ -488,18 +482,35 @@ describe('ACUControlTab', () => {
       expect(programSection?.style.display).toBe('block');
     });
 
+    it('does nothing once the tab DOM has been replaced (stale instance after a station switch)', () => {
+      // The canvas replaces the content when the operator selects another
+      // station and only disposes this instance when the tab is next rendered;
+      // meanwhile every tick still reaches its handlers. A throw here would
+      // escape the game loop and freeze the simulation (phase 16, S9).
+      const handlers = mockEventBus.on.mock.calls.filter((call: unknown[]) => call[0] === Events.UPDATE || call[0] === Events.DRAW).map((call: unknown[]) => call[1]);
+      const azFineControl = (FineAdjustControl.create as Mock).mock.results[0].value as { sync: Mock };
+      const syncCallsBefore = azFineControl.sync.mock.calls.length;
+
+      containerEl.innerHTML = '';
+      const antenna = mockGroundStation.antennas[0];
+      antenna.state.azimuth = 143;
+      antenna.state.trackingMode = 'program-track';
+      vi.spyOn(Date, 'now').mockReturnValue(5000);
+
+      expect(() => handlers.forEach((handler) => handler())).not.toThrow();
+      expect(azFineControl.sync.mock.calls).toHaveLength(syncCallsBefore);
+    });
+
     it('should update beacon metrics on throttled UPDATE', () => {
       // Find ALL UPDATE handlers (there are two: antennaStateHandler_ and updateHandler_)
-      const updateHandlers = mockEventBus.on.mock.calls
-        .filter((call: unknown[]) => call[0] === Events.UPDATE)
-        .map((call: unknown[]) => call[1]);
+      const updateHandlers = mockEventBus.on.mock.calls.filter((call: unknown[]) => call[0] === Events.UPDATE).map((call: unknown[]) => call[1]);
 
       const antenna = mockGroundStation.antennas[0];
       antenna.state.beaconCN = 15.5;
       antenna.state.trackingMode = 'manual';
 
       vi.spyOn(Date, 'now').mockReturnValue(2000);
-      updateHandlers.forEach(handler => handler());
+      updateHandlers.forEach((handler) => handler());
 
       const beaconCnEl = document.querySelector(`#${PREFIX}beacon-cn-value`);
       expect(beaconCnEl?.textContent).toBe('15.5 dB');
@@ -508,9 +519,7 @@ describe('ACUControlTab', () => {
 
   describe('DRAW event handler', () => {
     it('should update RF metrics when DRAW event fires', () => {
-      const drawHandler = mockEventBus.on.mock.calls.find(
-        (call: unknown[]) => call[0] === Events.DRAW
-      )?.[1];
+      const drawHandler = mockEventBus.on.mock.calls.find((call: unknown[]) => call[0] === Events.DRAW)?.[1];
       expect(drawHandler).toBeDefined();
 
       // Modify RF metrics
@@ -526,9 +535,7 @@ describe('ACUControlTab', () => {
 
   describe('UI sync with antenna state', () => {
     it('should show fault message when antenna has fault', () => {
-      const updateHandler = mockEventBus.on.mock.calls.find(
-        (call: unknown[]) => call[0] === Events.UPDATE
-      )?.[1];
+      const updateHandler = mockEventBus.on.mock.calls.find((call: unknown[]) => call[0] === Events.UPDATE)?.[1];
 
       const antenna = mockGroundStation.antennas[0];
       antenna.state.hasFault = true;
@@ -543,9 +550,7 @@ describe('ACUControlTab', () => {
     });
 
     it('should update step track toggle when step-track is enabled', () => {
-      const updateHandler = mockEventBus.on.mock.calls.find(
-        (call: unknown[]) => call[0] === Events.UPDATE
-      )?.[1];
+      const updateHandler = mockEventBus.on.mock.calls.find((call: unknown[]) => call[0] === Events.UPDATE)?.[1];
 
       const antenna = mockGroundStation.antennas[0];
       antenna.state.trackingMode = 'program-track';
@@ -559,9 +564,7 @@ describe('ACUControlTab', () => {
     });
 
     it('should update context panel title for program-track mode', () => {
-      const updateHandler = mockEventBus.on.mock.calls.find(
-        (call: unknown[]) => call[0] === Events.UPDATE
-      )?.[1];
+      const updateHandler = mockEventBus.on.mock.calls.find((call: unknown[]) => call[0] === Events.UPDATE)?.[1];
 
       const antenna = mockGroundStation.antennas[0];
       antenna.state.trackingMode = 'program-track';
@@ -575,9 +578,7 @@ describe('ACUControlTab', () => {
     });
 
     it('should update context panel title for program-track with step-track enabled', () => {
-      const updateHandler = mockEventBus.on.mock.calls.find(
-        (call: unknown[]) => call[0] === Events.UPDATE
-      )?.[1];
+      const updateHandler = mockEventBus.on.mock.calls.find((call: unknown[]) => call[0] === Events.UPDATE)?.[1];
 
       const antenna = mockGroundStation.antennas[0];
       antenna.state.trackingMode = 'program-track';
@@ -591,9 +592,7 @@ describe('ACUControlTab', () => {
     });
 
     it('should show warning ACU status LED when not operational', () => {
-      const updateHandler = mockEventBus.on.mock.calls.find(
-        (call: unknown[]) => call[0] === Events.UPDATE
-      )?.[1];
+      const updateHandler = mockEventBus.on.mock.calls.find((call: unknown[]) => call[0] === Events.UPDATE)?.[1];
 
       const antenna = mockGroundStation.antennas[0];
       antenna.state.isPowered = true;
@@ -607,9 +606,7 @@ describe('ACUControlTab', () => {
     });
 
     it('should show off ACU status LED when not powered', () => {
-      const updateHandler = mockEventBus.on.mock.calls.find(
-        (call: unknown[]) => call[0] === Events.UPDATE
-      )?.[1];
+      const updateHandler = mockEventBus.on.mock.calls.find((call: unknown[]) => call[0] === Events.UPDATE)?.[1];
 
       const antenna = mockGroundStation.antennas[0];
       antenna.state.isPowered = false;
@@ -622,9 +619,7 @@ describe('ACUControlTab', () => {
     });
 
     it('should update ice accumulation display', () => {
-      const updateHandler = mockEventBus.on.mock.calls.find(
-        (call: unknown[]) => call[0] === Events.UPDATE
-      )?.[1];
+      const updateHandler = mockEventBus.on.mock.calls.find((call: unknown[]) => call[0] === Events.UPDATE)?.[1];
 
       const antenna = mockGroundStation.antennas[0];
       antenna.state.iceAccumulation_dB = 3.5;
@@ -638,9 +633,7 @@ describe('ACUControlTab', () => {
     });
 
     it('should show danger color for high ice accumulation', () => {
-      const updateHandler = mockEventBus.on.mock.calls.find(
-        (call: unknown[]) => call[0] === Events.UPDATE
-      )?.[1];
+      const updateHandler = mockEventBus.on.mock.calls.find((call: unknown[]) => call[0] === Events.UPDATE)?.[1];
 
       const antenna = mockGroundStation.antennas[0];
       antenna.state.iceAccumulation_dB = 6.0;
@@ -655,9 +648,7 @@ describe('ACUControlTab', () => {
 
   describe('beacon C/N display', () => {
     it('should display null beacon C/N as --', () => {
-      const updateHandler = mockEventBus.on.mock.calls.find(
-        (call: unknown[]) => call[0] === Events.UPDATE
-      )?.[1];
+      const updateHandler = mockEventBus.on.mock.calls.find((call: unknown[]) => call[0] === Events.UPDATE)?.[1];
 
       const antenna = mockGroundStation.antennas[0];
       antenna.state.beaconCN = null;
@@ -672,57 +663,49 @@ describe('ACUControlTab', () => {
 
     it('should show green fill for good beacon C/N', () => {
       // Find ALL UPDATE handlers (there are two: antennaStateHandler_ and updateHandler_)
-      const updateHandlers = mockEventBus.on.mock.calls
-        .filter((call: unknown[]) => call[0] === Events.UPDATE)
-        .map((call: unknown[]) => call[1]);
+      const updateHandlers = mockEventBus.on.mock.calls.filter((call: unknown[]) => call[0] === Events.UPDATE).map((call: unknown[]) => call[1]);
 
       const antenna = mockGroundStation.antennas[0];
       antenna.state.beaconCN = 15.0;
       antenna.state.trackingMode = 'manual';
 
       vi.spyOn(Date, 'now').mockReturnValue(2000);
-      updateHandlers.forEach(handler => handler());
+      updateHandlers.forEach((handler) => handler());
 
       const beaconFillEl = document.querySelector(`#${PREFIX}beacon-strength-fill`) as HTMLElement;
       expect(beaconFillEl?.classList.contains('cn-green')).toBe(true);
     });
 
     it('should show amber fill for medium beacon C/N', () => {
-      const updateHandlers = mockEventBus.on.mock.calls
-        .filter((call: unknown[]) => call[0] === Events.UPDATE)
-        .map((call: unknown[]) => call[1]);
+      const updateHandlers = mockEventBus.on.mock.calls.filter((call: unknown[]) => call[0] === Events.UPDATE).map((call: unknown[]) => call[1]);
 
       const antenna = mockGroundStation.antennas[0];
       antenna.state.beaconCN = 7.0;
       antenna.state.trackingMode = 'manual';
 
       vi.spyOn(Date, 'now').mockReturnValue(2000);
-      updateHandlers.forEach(handler => handler());
+      updateHandlers.forEach((handler) => handler());
 
       const beaconFillEl = document.querySelector(`#${PREFIX}beacon-strength-fill`) as HTMLElement;
       expect(beaconFillEl?.classList.contains('cn-amber')).toBe(true);
     });
 
     it('should show red fill for low beacon C/N', () => {
-      const updateHandlers = mockEventBus.on.mock.calls
-        .filter((call: unknown[]) => call[0] === Events.UPDATE)
-        .map((call: unknown[]) => call[1]);
+      const updateHandlers = mockEventBus.on.mock.calls.filter((call: unknown[]) => call[0] === Events.UPDATE).map((call: unknown[]) => call[1]);
 
       const antenna = mockGroundStation.antennas[0];
       antenna.state.beaconCN = 3.0;
       antenna.state.trackingMode = 'manual';
 
       vi.spyOn(Date, 'now').mockReturnValue(2000);
-      updateHandlers.forEach(handler => handler());
+      updateHandlers.forEach((handler) => handler());
 
       const beaconFillEl = document.querySelector(`#${PREFIX}beacon-strength-fill`) as HTMLElement;
       expect(beaconFillEl?.classList.contains('cn-red')).toBe(true);
     });
 
     it('should show IDLE status for step-track when enabled but not auto-tracking', () => {
-      const updateHandlers = mockEventBus.on.mock.calls
-        .filter((call: unknown[]) => call[0] === Events.UPDATE)
-        .map((call: unknown[]) => call[1]);
+      const updateHandlers = mockEventBus.on.mock.calls.filter((call: unknown[]) => call[0] === Events.UPDATE).map((call: unknown[]) => call[1]);
 
       const antenna = mockGroundStation.antennas[0];
       antenna.state.trackingMode = 'program-track';
@@ -730,16 +713,14 @@ describe('ACUControlTab', () => {
       antenna.state.isAutoTrackEnabled = false;
 
       vi.spyOn(Date, 'now').mockReturnValue(2000);
-      updateHandlers.forEach(handler => handler());
+      updateHandlers.forEach((handler) => handler());
 
       const beaconLockEl = document.querySelector(`#${PREFIX}beacon-lock-status`);
       expect(beaconLockEl?.textContent).toBe('IDLE');
     });
 
     it('should show SEARCHING status for step-track when auto-tracking but not locked', () => {
-      const updateHandlers = mockEventBus.on.mock.calls
-        .filter((call: unknown[]) => call[0] === Events.UPDATE)
-        .map((call: unknown[]) => call[1]);
+      const updateHandlers = mockEventBus.on.mock.calls.filter((call: unknown[]) => call[0] === Events.UPDATE).map((call: unknown[]) => call[1]);
 
       const antenna = mockGroundStation.antennas[0];
       antenna.state.trackingMode = 'program-track';
@@ -748,16 +729,14 @@ describe('ACUControlTab', () => {
       antenna.state.isBeaconLocked = false;
 
       vi.spyOn(Date, 'now').mockReturnValue(2000);
-      updateHandlers.forEach(handler => handler());
+      updateHandlers.forEach((handler) => handler());
 
       const beaconLockEl = document.querySelector(`#${PREFIX}beacon-lock-status`);
       expect(beaconLockEl?.textContent).toBe('SEARCHING');
     });
 
     it('should show LOCKED status for step-track when beacon locked', () => {
-      const updateHandlers = mockEventBus.on.mock.calls
-        .filter((call: unknown[]) => call[0] === Events.UPDATE)
-        .map((call: unknown[]) => call[1]);
+      const updateHandlers = mockEventBus.on.mock.calls.filter((call: unknown[]) => call[0] === Events.UPDATE).map((call: unknown[]) => call[1]);
 
       const antenna = mockGroundStation.antennas[0];
       antenna.state.trackingMode = 'program-track';
@@ -766,7 +745,7 @@ describe('ACUControlTab', () => {
       antenna.state.isBeaconLocked = true;
 
       vi.spyOn(Date, 'now').mockReturnValue(2000);
-      updateHandlers.forEach(handler => handler());
+      updateHandlers.forEach((handler) => handler());
 
       const beaconLockEl = document.querySelector(`#${PREFIX}beacon-lock-status`);
       expect(beaconLockEl?.textContent).toBe('LOCKED');
@@ -779,9 +758,7 @@ describe('ACUControlTab', () => {
         isPrecipitationActive: vi.fn(() => true),
       });
 
-      const updateHandler = mockEventBus.on.mock.calls.find(
-        (call: unknown[]) => call[0] === Events.UPDATE
-      )?.[1];
+      const updateHandler = mockEventBus.on.mock.calls.find((call: unknown[]) => call[0] === Events.UPDATE)?.[1];
 
       vi.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();
@@ -794,11 +771,8 @@ describe('ACUControlTab', () => {
 
   describe('current target display', () => {
     it('should display satellite name when target is active', () => {
-
       SimulationManager.getInstance.mockReturnValue({
-        satellites: [
-          { noradId: 12345, name: 'Test Satellite 1' },
-        ],
+        satellites: [{ noradId: 12345, name: 'Test Satellite 1' }],
         getSatByNoradId: vi.fn(() => null),
       });
 
@@ -816,9 +790,7 @@ describe('ACUControlTab', () => {
       moveBtn.disabled = false;
       moveBtn.click();
 
-      const updateHandler = mockEventBus.on.mock.calls.find(
-        (call: unknown[]) => call[0] === Events.UPDATE
-      )?.[1];
+      const updateHandler = mockEventBus.on.mock.calls.find((call: unknown[]) => call[0] === Events.UPDATE)?.[1];
 
       vi.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();

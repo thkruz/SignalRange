@@ -1,31 +1,32 @@
-import { GroundStation } from "@app/assets/ground-station/ground-station";
-import { WorkingDocumentManager } from '@app/scenarios/working-document-manager';
-import { BaseElement } from "@app/components/base-element";
-import { html } from "@app/engine/utils/development/formatter";
-import { qs } from "@app/engine/utils/query-selector";
-import { Satellite } from "@app/equipment/satellite/satellite";
-import { EventBus } from "@app/events/event-bus";
-import { Events } from "@app/events/events";
-import { DialogHistoryBox } from "@app/modal/dialog-history-box";
-import { DraggableHtmlBox } from "@app/modal/draggable-html-box";
-import { HintManager } from "@app/modal/hint-manager";
-import { HintModal } from "@app/modal/hint-modal";
-import { PendingQuizIndicator } from "@app/modal/pending-quiz-indicator";
-import { QuizManager } from "@app/modal/quiz-manager";
-import { ObjectivesManager } from "@app/objectives";
-import { OpsLogModal } from "@app/ops-log/ops-log-modal";
-import { ScenarioManager } from "@app/scenario-manager";
-import { SimulationManager } from "@app/simulation/simulation-manager";
+import { GroundStation } from '@app/assets/ground-station/ground-station';
 import activityPng from '@app/assets/icons/activity.png';
 import antennaPng from '@app/assets/icons/antenna.png';
-import checklistPng from "@app/assets/icons/checklist.png";
+import checklistPng from '@app/assets/icons/checklist.png';
 import dashboardPng from '@app/assets/icons/dashboard.png';
 import historyPng from '@app/assets/icons/history.png';
 import layoutSidebarLeftCollapsePng from '@app/assets/icons/layout-sidebar-left-collapse.png';
 import layoutSidebarLeftExpandPng from '@app/assets/icons/layout-sidebar-left-expand.png';
-import satelliteOffPng from '@app/assets/icons/satellite-off.png';
 import satellitePng from '@app/assets/icons/satellite.png';
+import satelliteOffPng from '@app/assets/icons/satellite-off.png';
 import targetArrowPng from '@app/assets/icons/target-arrow.png';
+import { BaseElement } from '@app/components/base-element';
+import { html } from '@app/engine/utils/development/formatter';
+import { qs } from '@app/engine/utils/query-selector';
+import { Satellite } from '@app/equipment/satellite/satellite';
+import { EventBus } from '@app/events/event-bus';
+import { Events } from '@app/events/events';
+import { DialogHistoryBox } from '@app/modal/dialog-history-box';
+import { DraggableHtmlBox } from '@app/modal/draggable-html-box';
+import { HintManager } from '@app/modal/hint-manager';
+import { HintModal } from '@app/modal/hint-modal';
+import { PendingQuizIndicator } from '@app/modal/pending-quiz-indicator';
+import { QuizManager } from '@app/modal/quiz-manager';
+import { ObjectivesManager } from '@app/objectives';
+import { OpsLogModal } from '@app/ops-log/ops-log-modal';
+import { ScenarioManager } from '@app/scenario-manager';
+import { CampaignRecordPanel } from '@app/scenarios/campaign-record-panel';
+import { WorkingDocumentManager } from '@app/scenarios/working-document-manager';
+import { SimulationManager } from '@app/simulation/simulation-manager';
 import './asset-tree-sidebar.css';
 
 /**
@@ -155,7 +156,7 @@ export class AssetTreeSidebar extends BaseElement {
 
     // Update UI - remove active from all items and add to the selected one
     const assetItems = this.dom_.querySelectorAll('.list-group-item-action:not(.placeholder-item):not(.mission-brief-icon):not(.checklist-icon):not(.dialog-icon)');
-    assetItems.forEach(item => {
+    assetItems.forEach((item) => {
       const itemId = item.getAttribute('data-asset-id');
       if (itemId === assetId) {
         item.classList.add('active');
@@ -200,6 +201,14 @@ export class AssetTreeSidebar extends BaseElement {
     btn.addEventListener('click', () => {
       WorkingDocumentManager.getInstance().open();
     });
+
+    // The campaign record: earlier scenarios' documents, read-only. Shown
+    // when the scenario keeps a working document and there is history to read.
+    const recordBtn = qs('.campaign-record-icon', this.dom_);
+    if (recordBtn && WorkingDocumentManager.isEnabled() && CampaignRecordPanel.hasContent()) {
+      (recordBtn as HTMLElement).style.display = '';
+      recordBtn.addEventListener('click', () => CampaignRecordPanel.getInstance().open());
+    }
   }
 
   private addMissionBriefListener_(): void {
@@ -282,17 +291,12 @@ export class AssetTreeSidebar extends BaseElement {
             } else {
               // First time - show confirmation with penalty warning
               const penaltyPoints = hintManager.getPenaltyPoints(objectiveId);
-              const objectiveTitle = ObjectivesManager.getInstance()
-                .getObjectiveStates()
-                .find(s => s.objective.id === objectiveId)?.objective.title ?? 'Unknown';
+              const objectiveTitle =
+                ObjectivesManager.getInstance()
+                  .getObjectiveStates()
+                  .find((s) => s.objective.id === objectiveId)?.objective.title ?? 'Unknown';
 
-              HintModal.getInstance().showConfirmation(
-                objectiveId,
-                conditionIndex,
-                hint,
-                penaltyPoints,
-                objectiveTitle
-              );
+              HintModal.getInstance().showConfirmation(objectiveId, conditionIndex, hint, penaltyPoints, objectiveTitle);
             }
           }
         }
@@ -355,8 +359,12 @@ export class AssetTreeSidebar extends BaseElement {
 
     const isMissionOverviewSelected = this.selectedAssetId_ === null;
 
+    // The asset-group-* classes carry no styling in the base theme. They exist
+    // so a chrome variant can reorder the sections with `order` instead of
+    // reordering them here - the DOM sequence stays put, which is what keeps
+    // every existing selector and E2E locator valid.
     const treeHtml = html`
-      <div class="list-group list-group-flush mb-3">
+      <div class="list-group list-group-flush mb-3 asset-group-overview">
         <a class="list-group-item list-group-item-action d-flex align-items-center mission-overview-item ${isMissionOverviewSelected ? 'active' : ''}"
            data-asset-type="mission-overview"
            data-tooltip="Mission Overview">
@@ -367,7 +375,7 @@ export class AssetTreeSidebar extends BaseElement {
         </a>
       </div>
 
-      <div id="mission-icons-section" class="mission-icons-section list-group list-group-flush" style="display: none;">
+      <div id="mission-icons-section" class="mission-icons-section list-group list-group-flush asset-group-mission" style="display: none;">
         <div class="list-group-header">
           <span class="list-group-header-text">Mission</span>
         </div>
@@ -389,6 +397,12 @@ export class AssetTreeSidebar extends BaseElement {
           </span>
           <span class="flex-fill">Working Doc</span>
         </a>
+        <a class="list-group-item list-group-item-action d-flex align-items-center campaign-record-icon" data-tooltip="Campaign Record" style="display: none;">
+          <span class="item-icon">
+            <img src="${checklistPng}" alt="Campaign Record"/>
+          </span>
+          <span class="flex-fill">Campaign Record</span>
+        </a>
         <a class="list-group-item list-group-item-action d-flex align-items-center dialog-icon" data-tooltip="Dialog History">
           <span class="item-icon">
             <img src="${historyPng}" alt="Dialog History"/>
@@ -403,26 +417,27 @@ export class AssetTreeSidebar extends BaseElement {
         </a>
       </div>
 
-      <div class="list-group list-group-flush mb-3">
+      <div class="list-group list-group-flush mb-3 asset-group-stations">
         <div class="list-group-header sticky-top">
           <span class="list-group-header-text">Ground Stations</span>
         </div>
-        ${this.groundStations_.map(gs => this.renderGroundStationNode_(gs)).join('')}
+        ${this.groundStations_.map((gs) => this.renderGroundStationNode_(gs)).join('')}
       </div>
 
-      <div class="list-group list-group-flush">
+      <div class="list-group list-group-flush asset-group-satellites">
         <div class="list-group-header sticky-top">
           <span class="list-group-header-text">Satellites</span>
         </div>
-        ${this.satellites_.length > 0
-        ? this.satellites_.map(sat => this.renderSatelliteNode_(sat)).join('')
-        : `<div class="list-group-item placeholder-item">
+        ${
+          this.satellites_.length > 0
+            ? this.satellites_.map((sat) => this.renderSatelliteNode_(sat)).join('')
+            : `<div class="list-group-item placeholder-item">
               <span class="item-icon">
                 <img src="${satelliteOffPng}" alt="Satellite"/>
               </span>
               <span class="flex-fill">No satellites in scenario</span>
             </div>`
-      }
+        }
       </div>
     `;
 
@@ -479,7 +494,7 @@ export class AssetTreeSidebar extends BaseElement {
   private addTreeEventListeners_(): void {
     const assetItems = this.dom_.querySelectorAll('.list-group-item-action:not(.placeholder-item):not(.mission-brief-icon):not(.checklist-icon):not(.dialog-icon)');
 
-    assetItems.forEach(item => {
+    assetItems.forEach((item) => {
       item.addEventListener('click', (e) => {
         e.preventDefault();
         const type = item.getAttribute('data-asset-type') as 'ground-station' | 'satellite' | 'mission-overview';
@@ -489,7 +504,7 @@ export class AssetTreeSidebar extends BaseElement {
           this.selectedAssetId_ = null;
 
           // Update UI
-          assetItems.forEach(i => i.classList.remove('active'));
+          assetItems.forEach((i) => i.classList.remove('active'));
           item.classList.add('active');
 
           // Emit mission overview selected event
@@ -504,7 +519,7 @@ export class AssetTreeSidebar extends BaseElement {
         this.selectedAssetId_ = id;
 
         // Update UI
-        assetItems.forEach(i => i.classList.remove('active'));
+        assetItems.forEach((i) => i.classList.remove('active'));
         item.classList.add('active');
 
         // Emit asset selected event

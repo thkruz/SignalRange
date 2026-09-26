@@ -1,0 +1,247 @@
+/**
+ * Time Skip - confirmation modal, fast-forward overlay, and the command-bar
+ * control that opens them.
+ *
+ * Only present when the scenario declares settings.timeSkip.
+ */
+
+/* ===== Command bar control ===== */
+
+.time-skip-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-left: 0.75rem;
+  padding: 0.25rem 0.6rem;
+  border: 1px solid var(--mc-border);
+  border-radius: 4px;
+  background: var(--mc-surface-1);
+  color: var(--mc-text-secondary);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  /* The label carries a countdown that grows and shrinks; without this it
+     wraps to a second line and pushes the header clock around. */
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.time-skip-btn:hover:not(:disabled) {
+  background: var(--mc-surface-2);
+  border-color: var(--mc-accent-red);
+  color: var(--mc-text-primary);
+}
+
+/* Disabled is the common case, not an error state - the control is only live
+   during genuine dead time - so it dims rather than shouting. */
+.time-skip-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.time-skip-btn-countdown {
+  font-family: var(--tblr-font-monospace, monospace);
+  letter-spacing: 0;
+}
+
+/* ===== Confirmation modal ===== */
+
+#time-skip-modal-container {
+  z-index: 100000;
+
+  .draggable-box {
+    min-height: auto !important;
+  }
+}
+
+.time-skip-modal-content {
+  padding: 1rem 1.25rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.time-skip-lead {
+  margin: 0;
+  color: var(--mc-text-secondary);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.time-skip-summary {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.35rem 1rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: 4px;
+  border-left: 3px solid var(--mc-accent-red);
+  background: var(--mc-surface-1);
+}
+
+.time-skip-summary dt {
+  color: var(--mc-text-tertiary);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  align-self: center;
+}
+
+.time-skip-summary dd {
+  margin: 0;
+  color: var(--mc-text-primary);
+  font-family: var(--tblr-font-monospace, monospace);
+  font-size: 0.95rem;
+}
+
+.time-skip-note {
+  margin: 0;
+  color: var(--mc-text-tertiary);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.time-skip-warning {
+  margin: 0;
+  padding: 0.5rem 0.7rem;
+  border-radius: 4px;
+  background: rgba(var(--mc-danger-rgb), 0.12);
+  color: var(--mc-text-primary);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.time-skip-buttons {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  margin-top: 0.25rem;
+}
+
+.time-skip-btn-modal {
+  padding: 0.5rem 1.25rem;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.time-skip-btn-cancel {
+  background-color: var(--mc-surface-2);
+  color: var(--mc-text-primary);
+}
+
+.time-skip-btn-cancel:hover {
+  background-color: var(--mc-surface-3);
+}
+
+.time-skip-btn-confirm {
+  background-color: var(--mc-accent-red);
+  color: #fff;
+}
+
+.time-skip-btn-confirm:hover {
+  background-color: var(--mc-accent-red-light);
+}
+
+/* ===== Fast-forward overlay ===== */
+
+.time-skip-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(2px);
+  /* The point of the overlay is that the operator cannot act mid-skip. */
+  cursor: wait;
+}
+
+.time-skip-overlay-card {
+  min-width: 22rem;
+  padding: 1.5rem 2rem;
+  border: 1px solid var(--mc-border);
+  border-radius: 6px;
+  background: var(--mc-surface-0);
+  text-align: center;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+}
+
+.time-skip-overlay-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  color: var(--mc-accent-red-bright);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+/* The chevrons pulse so the card reads as "running", not "frozen mid-load". */
+.time-skip-overlay-label i {
+  animation: time-skip-pulse 0.7s ease-in-out infinite;
+}
+
+@keyframes time-skip-pulse {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 1; }
+}
+
+.time-skip-overlay-clock {
+  margin: 0.6rem 0 0.15rem;
+  color: var(--mc-text-primary);
+  font-family: var(--tblr-font-monospace, monospace);
+  font-size: 2.6rem;
+  font-weight: 600;
+  line-height: 1.1;
+  /* Tabular figures, or the racing digits jitter the whole line. */
+  font-variant-numeric: tabular-nums;
+}
+
+.time-skip-overlay-date {
+  color: var(--mc-text-tertiary);
+  font-family: var(--tblr-font-monospace, monospace);
+  font-size: 0.78rem;
+  letter-spacing: 0.05em;
+}
+
+.time-skip-overlay-bar {
+  height: 4px;
+  margin: 1.1rem 0 0.7rem;
+  border-radius: 2px;
+  background: var(--mc-surface-2);
+  overflow: hidden;
+}
+
+.time-skip-overlay-bar-fill {
+  height: 100%;
+  width: 0;
+  border-radius: 2px;
+  background: var(--mc-accent-red-bright);
+}
+
+.time-skip-overlay-target {
+  color: var(--mc-text-secondary);
+  font-size: 0.82rem;
+}
+
+.time-skip-overlay-target strong {
+  color: var(--mc-text-primary);
+}
+
+/* Respect a reduced-motion preference: the clock still races (that is the
+   information), but the decorative pulse stops. */
+@media (prefers-reduced-motion: reduce) {
+  .time-skip-overlay-label i {
+    animation: none;
+    opacity: 1;
+  }
+}

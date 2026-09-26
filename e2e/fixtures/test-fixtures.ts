@@ -1,7 +1,7 @@
 import { test as base } from '@playwright/test';
 import { CampaignSelectionPage } from '../pages/campaign-selection.page';
-import { ScenarioSelectionPage } from '../pages/scenario-selection.page';
 import { MissionControlPage } from '../pages/mission-control.page';
+import { ScenarioSelectionPage } from '../pages/scenario-selection.page';
 
 /**
  * Custom fixtures for SignalRange e2e tests.

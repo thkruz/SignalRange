@@ -1,11 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { MissionControlPage } from '../pages/mission-control.page';
-import {
-  answerQuizByText,
-  dismissDialogIfPresent,
-  waitForQuizToAppear,
-  waitForSimulationReady,
-} from '../utils/simulation-helpers';
+import { answerQuizByText, dismissDialogIfPresent, waitForQuizToAppear, waitForSimulationReady } from '../utils/simulation-helpers';
 
 /**
  * Scenario 14 - "Rain Fade": Adapt Without Handover.
@@ -23,12 +18,7 @@ import {
  * - 'auto': Auto-satisfied by simulation state (signal locks, HPA nominal,
  *   sustained-monitor objectives whose conditions are already met)
  */
-type ObjectiveType =
-  | 'quiz'
-  | 'select-station'
-  | 'click-tab'
-  | 'toggle-switch'
-  | 'auto';
+type ObjectiveType = 'quiz' | 'select-station' | 'click-tab' | 'toggle-switch' | 'auto';
 
 interface Scenario14Objective {
   id: string;
@@ -59,8 +49,7 @@ const SCENARIO_14_OBJECTIVES: Scenario14Objective[] = [
     id: 'acknowledge-customer-constraint',
     title: 'Customer Constraint',
     type: 'quiz',
-    correctAnswer:
-      'Their SLA penalizes handover events more heavily than a few dB of margin loss',
+    correctAnswer: 'Their SLA penalizes handover events more heavily than a few dB of margin loss',
   },
 
   // ============================================================
@@ -103,8 +92,7 @@ const SCENARIO_14_OBJECTIVES: Scenario14Objective[] = [
     id: 'understand-heater-vs-rain',
     title: 'Heater Purpose for Rain',
     type: 'quiz',
-    correctAnswer:
-      'Keeping water from beading and sheeting on the feed - dry surfaces attenuate less than wet ones',
+    correctAnswer: 'Keeping water from sheeting on the feed - dry surfaces attenuate less than wet ones',
   },
 
   // ============================================================
@@ -125,8 +113,7 @@ const SCENARIO_14_OBJECTIVES: Scenario14Objective[] = [
     id: 'baseline-margin-quiz',
     title: 'Link Margin Baseline',
     type: 'quiz',
-    correctAnswer:
-      'It defines how much fade the link can absorb before reaching the demodulation threshold',
+    correctAnswer: 'It defines how much fade the link can absorb before reaching the demodulation threshold',
   },
 
   // ============================================================
@@ -141,15 +128,13 @@ const SCENARIO_14_OBJECTIVES: Scenario14Objective[] = [
     id: 'agc-behavior-quiz',
     title: 'AGC Behavior in the Fade',
     type: 'quiz',
-    correctAnswer:
-      'AGC is compensating - the demodulator still sees a usable signal, and we still have headroom in the gain stage',
+    correctAnswer: 'AGC is compensating - the demodulator still sees a usable signal, and the gain stage still has headroom',
   },
   {
     id: 'agc-headroom-quiz',
     title: 'AGC Headroom Reading',
     type: 'quiz',
-    correctAnswer:
-      'Plenty of headroom remaining - link is comfortable, hold is justified',
+    correctAnswer: 'Plenty of headroom remaining - link is comfortable, hold is justified',
   },
 
   // ============================================================
@@ -165,8 +150,7 @@ const SCENARIO_14_OBJECTIVES: Scenario14Objective[] = [
     id: 'hpa-backoff-decision-quiz',
     title: 'HPA Backoff Decision',
     type: 'quiz',
-    correctAnswer:
-      'No - the link is healthy; trading IMD risk for unused margin is a bad bargain',
+    correctAnswer: 'No - the link is healthy; trading IMD risk for unused margin is a bad bargain',
   },
   {
     id: 'verify-hpa-still-nominal',
@@ -187,8 +171,7 @@ const SCENARIO_14_OBJECTIVES: Scenario14Objective[] = [
     id: 'decision-hold',
     title: 'Make the Call',
     type: 'quiz',
-    correctAnswer:
-      'Hold VT-01. AGC has headroom, modem locked, customer preference honored. Re-evaluate if state changes.',
+    correctAnswer: 'Hold VT-01. AGC has headroom, modem locked, customer preference honored. Re-evaluate if state changes.',
   },
 
   // ============================================================
@@ -207,15 +190,13 @@ const SCENARIO_14_OBJECTIVES: Scenario14Objective[] = [
     id: 'post-storm-baseline-quiz',
     title: 'Post-Storm Recovery',
     type: 'quiz',
-    correctAnswer:
-      'C/N recovers toward baseline; AGC backs its gain down; modem lock unchanged',
+    correctAnswer: 'C/N recovers toward baseline; AGC backs its gain down; modem lock unchanged',
   },
   {
     id: 'document-handover-avoided',
     title: 'Log the Hold',
     type: 'quiz',
-    correctAnswer:
-      'Moderate rain over VT-01, ~3 dB fade. Held TM-1 service per customer SLA preference; AGC max 3 dB, modem lock maintained throughout, no handover.',
+    correctAnswer: 'Moderate rain over VT-01, ~3 dB fade. Held TM-1 per customer SLA preference; AGC max 3 dB, modem lock maintained, no handover.',
   },
 ];
 
@@ -228,11 +209,7 @@ const SCENARIO_14_OBJECTIVES: Scenario14Objective[] = [
  * Tries exact ID match first, then suffix and substring fallbacks
  * to tolerate prefix variations.
  */
-async function toggleSwitch(
-  page: import('@playwright/test').Page,
-  switchId: string,
-  targetState: boolean
-): Promise<void> {
+async function toggleSwitch(page: import('@playwright/test').Page, switchId: string, targetState: boolean): Promise<void> {
   let switchEl = page.locator(`#${switchId}`);
 
   if ((await switchEl.count()) === 0) {
@@ -246,7 +223,7 @@ async function toggleSwitch(
 
   await expect(switchEl.first()).toBeVisible({ timeout: 5000 });
 
-  // Let the adapter's throttled DOM sync land before reading - the static
+  // Let the adapter's throttled DOM sync settle before reading - the static
   // template can render a stale checked state right after the tab mounts.
   await page.waitForTimeout(1200);
   const isChecked = await switchEl.first().isChecked();
@@ -266,11 +243,7 @@ async function toggleSwitch(
 /**
  * Execute an objective based on its type.
  */
-async function executeObjective(
-  page: import('@playwright/test').Page,
-  missionControlPage: MissionControlPage,
-  objective: Scenario14Objective
-): Promise<void> {
+async function executeObjective(page: import('@playwright/test').Page, missionControlPage: MissionControlPage, objective: Scenario14Objective): Promise<void> {
   switch (objective.type) {
     case 'quiz':
       await waitForQuizToAppear(page);
@@ -283,6 +256,10 @@ async function executeObjective(
 
     case 'click-tab':
       await missionControlPage.selectTab(objective.tabId!);
+      // Observation-gated conditions latch only after the default dwell on
+      // the tab (DEFAULT_OBSERVATION_DWELL_SECONDS); leaving at once would
+      // reset the read and strand the objective.
+      await page.waitForTimeout(3000);
       break;
 
     case 'toggle-switch':
@@ -344,10 +321,7 @@ test.describe('Scenario 14 Full Completion', () => {
     test(`[${objective.id}] ${objective.title}`, async () => {
       // Monitor-during-fade and sustained-monitor wait for the simulation
       // to advance through the rain event. Give them more runway.
-      if (
-        objective.id === 'monitor-during-fade' ||
-        objective.id === 'sustained-monitor'
-      ) {
+      if (objective.id === 'monitor-during-fade' || objective.id === 'sustained-monitor') {
         test.setTimeout(180000);
       }
       await executeObjective(page, missionControlPage, objective);

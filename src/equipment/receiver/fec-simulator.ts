@@ -1,3 +1,4 @@
+import { SimClock } from '@app/simulation/sim-clock';
 /**
  * @file FEC Simulator Module
  * @description Simulates Forward Error Correction (FEC) metrics based on signal quality.
@@ -6,7 +7,7 @@
  * statistics from carrier-to-noise ratio and modulation parameters.
  */
 
-import { ModulationType, FECType } from '@app/types';
+import { FECType, ModulationType } from '@app/types';
 
 /**
  * Input parameters for FEC simulation
@@ -81,7 +82,7 @@ export class FECSimulator {
   private smoothedViterbi_: number = 0.95;
 
   // Timing for rate calculations
-  private lastUpdateTime_: number = Date.now();
+  private lastUpdateTime_: number = SimClock.runMs();
   private framesPerSecond_: number = 125; // Default frame rate
 
   // Fault injection overrides
@@ -95,11 +96,11 @@ export class FECSimulator {
    * Higher order modulations require higher C/N for same BER
    */
   private static readonly MODULATION_OFFSETS: Record<ModulationType, number> = {
-    'BPSK': 0,      // 1 bit/symbol - most robust
-    'QPSK': 3,      // 2 bits/symbol
-    '8QAM': 5.5,    // 3 bits/symbol
-    '16QAM': 7,     // 4 bits/symbol - least robust
-    'null': 0,
+    BPSK: 0, // 1 bit/symbol - most robust
+    QPSK: 3, // 2 bits/symbol
+    '8QAM': 5.5, // 3 bits/symbol
+    '16QAM': 7, // 4 bits/symbol - least robust
+    null: 0,
   };
 
   /**
@@ -107,20 +108,21 @@ export class FECSimulator {
    * Lower rate codes have more redundancy and better correction
    */
   private static readonly FEC_CODING_GAIN: Record<FECType, number> = {
-    '1/2': 5.0,    // 50% redundancy - best correction
-    '2/3': 4.0,    // 33% redundancy
-    '3/4': 3.0,    // 25% redundancy
-    '5/6': 2.0,    // 17% redundancy
-    '7/8': 1.5,    // 12.5% redundancy - least correction
-    'null': 0,
+    '1/2': 5.0, // 50% redundancy - best correction
+    '2/3': 4.0, // 33% redundancy
+    '3/4': 3.0, // 25% redundancy
+    '5/6': 2.0, // 17% redundancy
+    '7/8': 1.5, // 12.5% redundancy - least correction
+    null: 0,
   };
 
   /**
    * Calculate FEC metrics from signal parameters
    */
   calculate(input: FECSimulatorInput): FECMetrics {
-    const now = Date.now();
-    const deltaTime = now - this.lastUpdateTime_;
+    const now = SimClock.runMs();
+    // Clamped: run time restarts at 0 each scenario
+    const deltaTime = Math.max(0, now - this.lastUpdateTime_);
     this.lastUpdateTime_ = now;
 
     const effectiveCn = input.effectiveCnRatio_dB ?? input.cnRatio_dB;
@@ -137,12 +139,7 @@ export class FECSimulator {
     // Determine channel status using SMOOTHED metrics for stability
     // Combined with hysteresis in determineChannelStatus_, this prevents
     // status flickering when signal quality hovers near thresholds
-    const channelStatus = this.determineChannelStatus_(
-      frameSyncLocked,
-      this.smoothedBer_,
-      this.smoothedViterbi_,
-      this.rsUncorrectableRecent_
-    );
+    const channelStatus = this.determineChannelStatus_(frameSyncLocked, this.smoothedBer_, this.smoothedViterbi_, this.rsUncorrectableRecent_);
 
     // Calculate data rate based on modulation and FEC
     const dataRate = this.calculateDataRate_(input.modulation, input.fec);
@@ -243,7 +240,7 @@ export class FECSimulator {
     // Convert C/N to Eb/N0 using modulation offset
     const offset = FECSimulator.MODULATION_OFFSETS[modulation] ?? 0;
     const ebN0_dB = cnRatio_dB - offset;
-    const ebN0_linear = Math.pow(10, ebN0_dB / 10);
+    const ebN0_linear = 10 ** (ebN0_dB / 10);
 
     // BER using erfc approximation
     // erfc(x) ≈ exp(-x²) / (x * sqrt(π)) for large x
@@ -281,7 +278,7 @@ export class FECSimulator {
     x = Math.abs(x);
 
     const t = 1.0 / (1.0 + p * x);
-    const y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.exp(-x * x);
+    const y = 1.0 - ((((a5 * t + a4) * t + a3) * t + a2) * t + a1) * t * Math.exp(-x * x);
 
     return sign === 1 ? 1 - y : 1 + y;
   }
@@ -378,12 +375,7 @@ export class FECSimulator {
    * - Requires crossing threshold by a margin to change status
    * - Prevents flicker when signal is borderline
    */
-  private determineChannelStatus_(
-    frameSyncLocked: boolean,
-    ber: number,
-    viterbiMetric: number,
-    rsUncorrectable: number
-  ): 'Good' | 'Degraded' | 'Critical' | 'No Lock' {
+  private determineChannelStatus_(frameSyncLocked: boolean, ber: number, viterbiMetric: number, rsUncorrectable: number): 'Good' | 'Degraded' | 'Critical' | 'No Lock' {
     // No frame sync = No Lock (no hysteresis needed - binary condition)
     if (!frameSyncLocked) {
       this.lastChannelStatus_ = 'No Lock';
@@ -442,20 +434,14 @@ export class FECSimulator {
   }
 
   /** Check if newStatus is worse than oldStatus */
-  private isWorse_(
-    newStatus: 'Good' | 'Degraded' | 'Critical' | 'No Lock',
-    oldStatus: 'Good' | 'Degraded' | 'Critical' | 'No Lock'
-  ): boolean {
-    const rank = { 'Good': 0, 'Degraded': 1, 'Critical': 2, 'No Lock': 3 };
+  private isWorse_(newStatus: 'Good' | 'Degraded' | 'Critical' | 'No Lock', oldStatus: 'Good' | 'Degraded' | 'Critical' | 'No Lock'): boolean {
+    const rank = { Good: 0, Degraded: 1, Critical: 2, 'No Lock': 3 };
     return rank[newStatus] > rank[oldStatus];
   }
 
   /** Check if newStatus is better than oldStatus */
-  private isBetter_(
-    newStatus: 'Good' | 'Degraded' | 'Critical' | 'No Lock',
-    oldStatus: 'Good' | 'Degraded' | 'Critical' | 'No Lock'
-  ): boolean {
-    const rank = { 'Good': 0, 'Degraded': 1, 'Critical': 2, 'No Lock': 3 };
+  private isBetter_(newStatus: 'Good' | 'Degraded' | 'Critical' | 'No Lock', oldStatus: 'Good' | 'Degraded' | 'Critical' | 'No Lock'): boolean {
+    const rank = { Good: 0, Degraded: 1, Critical: 2, 'No Lock': 3 };
     return rank[newStatus] < rank[oldStatus];
   }
 
@@ -465,11 +451,11 @@ export class FECSimulator {
   private calculateDataRate_(modulation: ModulationType, fec: FECType): string {
     // Bits per symbol
     const bitsPerSymbol: Record<ModulationType, number> = {
-      'BPSK': 1,
-      'QPSK': 2,
+      BPSK: 1,
+      QPSK: 2,
       '8QAM': 3,
       '16QAM': 4,
-      'null': 0,
+      null: 0,
     };
 
     // FEC efficiency (data bits / total bits)
@@ -479,7 +465,7 @@ export class FECSimulator {
       '3/4': 0.75,
       '5/6': 0.833,
       '7/8': 0.875,
-      'null': 1.0,
+      null: 1.0,
     };
 
     // Assume 2.048 Msps symbol rate (common SATCOM)

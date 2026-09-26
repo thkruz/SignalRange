@@ -1,10 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { MissionControlPage } from '../pages/mission-control.page';
-import {
-  answerQuizByText,
-  dismissDialogIfPresent,
-  waitForSimulationReady,
-} from '../utils/simulation-helpers';
+import { answerQuizByText, dismissDialogIfPresent, waitForSimulationReady } from '../utils/simulation-helpers';
 
 /**
  * Scenario 7 objectives - Uplink Validation: Transmit Enable Sequence & Power Verification.
@@ -328,11 +324,7 @@ const SCENARIO_7_OBJECTIVES: Scenario7Objective[] = [
 /**
  * Toggle a switch to a desired state.
  */
-async function toggleSwitch(
-  page: import('@playwright/test').Page,
-  switchId: string,
-  desiredState: boolean
-): Promise<void> {
+async function toggleSwitch(page: import('@playwright/test').Page, switchId: string, desiredState: boolean): Promise<void> {
   const switchEl = page.locator(`#${switchId}`);
   await expect(switchEl).toBeVisible({ timeout: 5000 });
   const isChecked = await switchEl.isChecked();
@@ -354,10 +346,7 @@ async function toggleSwitch(
  * Configure spectrum analyzer settings.
  * Uses same element IDs as scenario3: #sa-center-freq, #sa-span, #sa-min-amp, #sa-max-amp
  */
-async function configureSpectrumAnalyzer(
-  page: import('@playwright/test').Page,
-  config: NonNullable<Scenario7Objective['specaConfig']>
-): Promise<void> {
+async function configureSpectrumAnalyzer(page: import('@playwright/test').Page, config: NonNullable<Scenario7Objective['specaConfig']>): Promise<void> {
   // Center frequency (in MHz)
   if (config.centerFrequency !== undefined) {
     const centerInput = page.locator('#sa-center-freq');
@@ -411,10 +400,7 @@ async function configureSpectrumAnalyzer(
 /**
  * Configure LNB LO frequency.
  */
-async function configureLnbLo(
-  page: import('@playwright/test').Page,
-  loFrequency: number
-): Promise<void> {
+async function configureLnbLo(page: import('@playwright/test').Page, loFrequency: number): Promise<void> {
   const loInput = page.locator('#lnb-lo-frequency');
   await expect(loInput).toBeVisible({ timeout: 5000 });
   await loInput.fill(loFrequency.toString());
@@ -433,10 +419,7 @@ async function configureLnbLo(
 /**
  * Configure TX modem settings.
  */
-async function configureTxModem(
-  page: import('@playwright/test').Page,
-  config: NonNullable<Scenario7Objective['txModemConfig']>
-): Promise<void> {
+async function configureTxModem(page: import('@playwright/test').Page, config: NonNullable<Scenario7Objective['txModemConfig']>): Promise<void> {
   // Frequency (in MHz)
   if (config.frequency !== undefined) {
     const freqInput = page.locator('#tx-frequency-input');
@@ -502,10 +485,7 @@ async function configureTxModem(
 /**
  * Configure BUC gain.
  */
-async function configureBucGain(
-  page: import('@playwright/test').Page,
-  gain: number
-): Promise<void> {
+async function configureBucGain(page: import('@playwright/test').Page, gain: number): Promise<void> {
   const gainInput = page.locator('#buc-gain');
   await expect(gainInput).toBeVisible({ timeout: 5000 });
   await gainInput.fill(gain.toString());
@@ -523,10 +503,7 @@ async function configureBucGain(
  * Configure HPA backoff to achieve target power output.
  * Lower backoff = higher output power.
  */
-async function configureHpaBackoff(
-  page: import('@playwright/test').Page,
-  backoff: number
-): Promise<void> {
+async function configureHpaBackoff(page: import('@playwright/test').Page, backoff: number): Promise<void> {
   const backoffInput = page.locator('#hpa-backoff');
   await expect(backoffInput).toBeVisible({ timeout: 5000 });
   await backoffInput.fill(backoff.toString());
@@ -561,11 +538,7 @@ async function closeQuizModalIfPresent(page: import('@playwright/test').Page): P
 /**
  * Execute an objective based on its type.
  */
-async function executeObjective(
-  page: import('@playwright/test').Page,
-  missionControlPage: MissionControlPage,
-  objective: Scenario7Objective
-): Promise<void> {
+async function executeObjective(page: import('@playwright/test').Page, missionControlPage: MissionControlPage, objective: Scenario7Objective): Promise<void> {
   // For non-quiz objectives, close any blocking quiz modal first
   if (objective.type !== 'quiz') {
     await closeQuizModalIfPresent(page);
@@ -641,6 +614,10 @@ async function executeObjective(
 
     case 'click-tab':
       await missionControlPage.selectTab(objective.tabId!);
+      // Observation-gated conditions latch only after the default dwell on
+      // the tab (DEFAULT_OBSERVATION_DWELL_SECONDS); leaving at once would
+      // reset the read and strand the objective.
+      await page.waitForTimeout(3000);
       break;
 
     case 'toggle-switch':
@@ -732,7 +709,7 @@ test.describe('Scenario 7 Full Completion', () => {
   // ============================================================
 
   test('Objective: Review Mission Brief', async () => {
-    const objective = SCENARIO_7_OBJECTIVES.find(o => o.id === 'review-mission-brief')!;
+    const objective = SCENARIO_7_OBJECTIVES.find((o) => o.id === 'review-mission-brief')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
@@ -741,67 +718,67 @@ test.describe('Scenario 7 Full Completion', () => {
   // ============================================================
 
   test('Objective: Access Vermont Ground Station', async () => {
-    const objective = SCENARIO_7_OBJECTIVES.find(o => o.id === 'select-vermont-station')!;
+    const objective = SCENARIO_7_OBJECTIVES.find((o) => o.id === 'select-vermont-station')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Check Dashboard for Alarms', async () => {
-    const objective = SCENARIO_7_OBJECTIVES.find(o => o.id === 'check-dashboard-status')!;
+    const objective = SCENARIO_7_OBJECTIVES.find((o) => o.id === 'check-dashboard-status')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Identify Active Alarms', async () => {
-    const objective = SCENARIO_7_OBJECTIVES.find(o => o.id === 'check-dashboard-status-quiz')!;
+    const objective = SCENARIO_7_OBJECTIVES.find((o) => o.id === 'check-dashboard-status-quiz')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Diagnose BUC High Current - Navigate to TX Chain', async () => {
-    const objective = SCENARIO_7_OBJECTIVES.find(o => o.id === 'diagnose-buc-high-current')!;
+    const objective = SCENARIO_7_OBJECTIVES.find((o) => o.id === 'diagnose-buc-high-current')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Diagnose BUC High Current - Identify Cause', async () => {
-    const objective = SCENARIO_7_OBJECTIVES.find(o => o.id === 'diagnose-buc-high-current-quiz')!;
+    const objective = SCENARIO_7_OBJECTIVES.find((o) => o.id === 'diagnose-buc-high-current-quiz')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Resolve BUC High Current - Mute BUC', async () => {
-    const objective = SCENARIO_7_OBJECTIVES.find(o => o.id === 'resolve-buc-high-current-mute')!;
+    const objective = SCENARIO_7_OBJECTIVES.find((o) => o.id === 'resolve-buc-high-current-mute')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Resolve BUC High Current - Disable Loopback', async () => {
-    const objective = SCENARIO_7_OBJECTIVES.find(o => o.id === 'resolve-buc-high-current-loopback')!;
+    const objective = SCENARIO_7_OBJECTIVES.find((o) => o.id === 'resolve-buc-high-current-loopback')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Verify Fault Cleared - Navigate to Dashboard', async () => {
-    const objective = SCENARIO_7_OBJECTIVES.find(o => o.id === 'verify-fault-cleared')!;
+    const objective = SCENARIO_7_OBJECTIVES.find((o) => o.id === 'verify-fault-cleared')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Verify Fault Cleared - Confirm Alarm Cleared', async () => {
-    const objective = SCENARIO_7_OBJECTIVES.find(o => o.id === 'verify-fault-cleared-quiz')!;
+    const objective = SCENARIO_7_OBJECTIVES.find((o) => o.id === 'verify-fault-cleared-quiz')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Verify Antenna Status - Navigate to ACU Control', async () => {
-    const objective = SCENARIO_7_OBJECTIVES.find(o => o.id === 'verify-antenna-status')!;
+    const objective = SCENARIO_7_OBJECTIVES.find((o) => o.id === 'verify-antenna-status')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Verify Antenna Status - Confirm Tracking', async () => {
-    const objective = SCENARIO_7_OBJECTIVES.find(o => o.id === 'verify-antenna-status-quiz')!;
+    const objective = SCENARIO_7_OBJECTIVES.find((o) => o.id === 'verify-antenna-status-quiz')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Verify LNB Operational - Navigate to RX Analysis', async () => {
-    const objective = SCENARIO_7_OBJECTIVES.find(o => o.id === 'verify-lnb-operational')!;
+    const objective = SCENARIO_7_OBJECTIVES.find((o) => o.id === 'verify-lnb-operational')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Verify LNB Operational - Noise Temperature Understanding', async () => {
-    const objective = SCENARIO_7_OBJECTIVES.find(o => o.id === 'verify-lnb-operational-quiz')!;
+    const objective = SCENARIO_7_OBJECTIVES.find((o) => o.id === 'verify-lnb-operational-quiz')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
@@ -810,22 +787,22 @@ test.describe('Scenario 7 Full Completion', () => {
   // ============================================================
 
   test('Objective: Acquire Beacon - Configure Spectrum Analyzer', async () => {
-    const objective = SCENARIO_7_OBJECTIVES.find(o => o.id === 'acquire-beacon-speca')!;
+    const objective = SCENARIO_7_OBJECTIVES.find((o) => o.id === 'acquire-beacon-speca')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Acquire Beacon - Beacon Purpose Quiz', async () => {
-    const objective = SCENARIO_7_OBJECTIVES.find(o => o.id === 'acquire-beacon-quiz1')!;
+    const objective = SCENARIO_7_OBJECTIVES.find((o) => o.id === 'acquire-beacon-quiz1')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Acquire Beacon - Beacon Identification Quiz', async () => {
-    const objective = SCENARIO_7_OBJECTIVES.find(o => o.id === 'acquire-beacon-quiz2')!;
+    const objective = SCENARIO_7_OBJECTIVES.find((o) => o.id === 'acquire-beacon-quiz2')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Confirm Beacon IF Frequency', async () => {
-    const objective = SCENARIO_7_OBJECTIVES.find(o => o.id === 'quiz-beacon-frequency')!;
+    const objective = SCENARIO_7_OBJECTIVES.find((o) => o.id === 'quiz-beacon-frequency')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
@@ -834,17 +811,17 @@ test.describe('Scenario 7 Full Completion', () => {
   // ============================================================
 
   test('Objective: Calculate TX IF Frequency', async () => {
-    const objective = SCENARIO_7_OBJECTIVES.find(o => o.id === 'calculate-tx-if')!;
+    const objective = SCENARIO_7_OBJECTIVES.find((o) => o.id === 'calculate-tx-if')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Configure TX Modem - Navigate to TX Chain', async () => {
-    const objective = SCENARIO_7_OBJECTIVES.find(o => o.id === 'configure-tx-modem')!;
+    const objective = SCENARIO_7_OBJECTIVES.find((o) => o.id === 'configure-tx-modem')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Configure TX Modem - Set Parameters', async () => {
-    const objective = SCENARIO_7_OBJECTIVES.find(o => o.id === 'configure-tx-modem-settings')!;
+    const objective = SCENARIO_7_OBJECTIVES.find((o) => o.id === 'configure-tx-modem-settings')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
@@ -853,47 +830,47 @@ test.describe('Scenario 7 Full Completion', () => {
   // ============================================================
 
   test('Objective: Reduce BUC Gain for Loopback', async () => {
-    const objective = SCENARIO_7_OBJECTIVES.find(o => o.id === 'reduce-buc-gain')!;
+    const objective = SCENARIO_7_OBJECTIVES.find((o) => o.id === 'reduce-buc-gain')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Enable BUC Loopback', async () => {
-    const objective = SCENARIO_7_OBJECTIVES.find(o => o.id === 'enable-loopback-switch')!;
+    const objective = SCENARIO_7_OBJECTIVES.find((o) => o.id === 'enable-loopback-switch')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Unmute BUC', async () => {
-    const objective = SCENARIO_7_OBJECTIVES.find(o => o.id === 'enable-loopback-unmute')!;
+    const objective = SCENARIO_7_OBJECTIVES.find((o) => o.id === 'enable-loopback-unmute')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Loopback Mode Understanding', async () => {
-    const objective = SCENARIO_7_OBJECTIVES.find(o => o.id === 'enable-loopback-quiz')!;
+    const objective = SCENARIO_7_OBJECTIVES.find((o) => o.id === 'enable-loopback-quiz')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Verify Loopback Signal - Navigate to RX Analysis', async () => {
-    const objective = SCENARIO_7_OBJECTIVES.find(o => o.id === 'verify-loopback-signal-tab')!;
+    const objective = SCENARIO_7_OBJECTIVES.find((o) => o.id === 'verify-loopback-signal-tab')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Verify Loopback Signal - Set LNB LO', async () => {
-    const objective = SCENARIO_7_OBJECTIVES.find(o => o.id === 'verify-loopback-signal-lnb')!;
+    const objective = SCENARIO_7_OBJECTIVES.find((o) => o.id === 'verify-loopback-signal-lnb')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Verify Loopback Signal - Configure Spectrum Analyzer', async () => {
-    const objective = SCENARIO_7_OBJECTIVES.find(o => o.id === 'verify-loopback-signal-speca')!;
+    const objective = SCENARIO_7_OBJECTIVES.find((o) => o.id === 'verify-loopback-signal-speca')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Verify Loopback Signal - Confirm Signal', async () => {
-    const objective = SCENARIO_7_OBJECTIVES.find(o => o.id === 'verify-loopback-signal-quiz')!;
+    const objective = SCENARIO_7_OBJECTIVES.find((o) => o.id === 'verify-loopback-signal-quiz')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Confirm Loopback Understanding', async () => {
-    const objective = SCENARIO_7_OBJECTIVES.find(o => o.id === 'quiz-loopback-purpose')!;
+    const objective = SCENARIO_7_OBJECTIVES.find((o) => o.id === 'quiz-loopback-purpose')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
@@ -902,22 +879,22 @@ test.describe('Scenario 7 Full Completion', () => {
   // ============================================================
 
   test('Objective: Verify Encryption Status - Navigate to TX Chain', async () => {
-    const objective = SCENARIO_7_OBJECTIVES.find(o => o.id === 'quiz-encryption-status-tab')!;
+    const objective = SCENARIO_7_OBJECTIVES.find((o) => o.id === 'quiz-encryption-status-tab')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Verify Encryption Status', async () => {
-    const objective = SCENARIO_7_OBJECTIVES.find(o => o.id === 'quiz-encryption-status')!;
+    const objective = SCENARIO_7_OBJECTIVES.find((o) => o.id === 'quiz-encryption-status')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Disable Loopback Mode', async () => {
-    const objective = SCENARIO_7_OBJECTIVES.find(o => o.id === 'disable-loopback')!;
+    const objective = SCENARIO_7_OBJECTIVES.find((o) => o.id === 'disable-loopback')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Enable HPA Output', async () => {
-    const objective = SCENARIO_7_OBJECTIVES.find(o => o.id === 'enable-hpa-output')!;
+    const objective = SCENARIO_7_OBJECTIVES.find((o) => o.id === 'enable-hpa-output')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
@@ -926,12 +903,12 @@ test.describe('Scenario 7 Full Completion', () => {
   // ============================================================
 
   test('Objective: Increase HPA Output Power', async () => {
-    const objective = SCENARIO_7_OBJECTIVES.find(o => o.id === 'verify-hpa-power')!;
+    const objective = SCENARIO_7_OBJECTIVES.find((o) => o.id === 'verify-hpa-power')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Final Configuration Verification', async () => {
-    const objective = SCENARIO_7_OBJECTIVES.find(o => o.id === 'final-verification')!;
+    const objective = SCENARIO_7_OBJECTIVES.find((o) => o.id === 'final-verification')!;
     await executeObjective(page, missionControlPage, objective);
   });
 

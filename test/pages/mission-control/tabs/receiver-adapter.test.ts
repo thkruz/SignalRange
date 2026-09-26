@@ -135,22 +135,10 @@ describe('ReceiverAdapter', () => {
     });
 
     it('should register for RX events', () => {
-      expect(mockEventBus.on).toHaveBeenCalledWith(
-        Events.RX_CONFIG_CHANGED,
-        expect.any(Function)
-      );
-      expect(mockEventBus.on).toHaveBeenCalledWith(
-        Events.RX_ACTIVE_MODEM_CHANGED,
-        expect.any(Function)
-      );
-      expect(mockEventBus.on).toHaveBeenCalledWith(
-        Events.SYNC,
-        expect.any(Function)
-      );
-      expect(mockEventBus.on).toHaveBeenCalledWith(
-        Events.UPDATE,
-        expect.any(Function)
-      );
+      expect(mockEventBus.on).toHaveBeenCalledWith(Events.RX_CONFIG_CHANGED, expect.any(Function));
+      expect(mockEventBus.on).toHaveBeenCalledWith(Events.RX_ACTIVE_MODEM_CHANGED, expect.any(Function));
+      expect(mockEventBus.on).toHaveBeenCalledWith(Events.SYNC, expect.any(Function));
+      expect(mockEventBus.on).toHaveBeenCalledWith(Events.UPDATE, expect.any(Function));
     });
   });
 
@@ -281,30 +269,16 @@ describe('ReceiverAdapter', () => {
     it('should unregister from EventBus events', () => {
       adapter.dispose();
 
-      expect(mockEventBus.off).toHaveBeenCalledWith(
-        Events.RX_CONFIG_CHANGED,
-        expect.any(Function)
-      );
-      expect(mockEventBus.off).toHaveBeenCalledWith(
-        Events.RX_ACTIVE_MODEM_CHANGED,
-        expect.any(Function)
-      );
-      expect(mockEventBus.off).toHaveBeenCalledWith(
-        Events.SYNC,
-        expect.any(Function)
-      );
-      expect(mockEventBus.off).toHaveBeenCalledWith(
-        Events.UPDATE,
-        expect.any(Function)
-      );
+      expect(mockEventBus.off).toHaveBeenCalledWith(Events.RX_CONFIG_CHANGED, expect.any(Function));
+      expect(mockEventBus.off).toHaveBeenCalledWith(Events.RX_ACTIVE_MODEM_CHANGED, expect.any(Function));
+      expect(mockEventBus.off).toHaveBeenCalledWith(Events.SYNC, expect.any(Function));
+      expect(mockEventBus.off).toHaveBeenCalledWith(Events.UPDATE, expect.any(Function));
     });
   });
 
   describe('throttled sync via UPDATE event', () => {
     it('should sync when UPDATE event fires past throttle', () => {
-      const updateHandler = mockEventBus.on.mock.calls.find(
-        (call: unknown[]) => call[0] === Events.UPDATE
-      )?.[1];
+      const updateHandler = mockEventBus.on.mock.calls.find((call: unknown[]) => call[0] === Events.UPDATE)?.[1];
 
       vi.spyOn(Date, 'now').mockReturnValue(500);
       updateHandler();
@@ -313,9 +287,7 @@ describe('ReceiverAdapter', () => {
     });
 
     it('should not sync if within throttle interval', () => {
-      const updateHandler = mockEventBus.on.mock.calls.find(
-        (call: unknown[]) => call[0] === Events.UPDATE
-      )?.[1];
+      const updateHandler = mockEventBus.on.mock.calls.find((call: unknown[]) => call[0] === Events.UPDATE)?.[1];
 
       // First call
       vi.spyOn(Date, 'now').mockReturnValue(0);
@@ -332,9 +304,7 @@ describe('ReceiverAdapter', () => {
 
   describe('state change events', () => {
     it('should sync on RX_CONFIG_CHANGED event', () => {
-      const handler = mockEventBus.on.mock.calls.find(
-        (call: unknown[]) => call[0] === Events.RX_CONFIG_CHANGED
-      )?.[1];
+      const handler = mockEventBus.on.mock.calls.find((call: unknown[]) => call[0] === Events.RX_CONFIG_CHANGED)?.[1];
 
       mockReceiver.state.activeModem = 2;
       handler();
@@ -689,7 +659,6 @@ describe('ReceiverAdapter', () => {
       const statusBar = containerEl.querySelector('#status-bar') as HTMLElement;
       expect(statusBar.textContent).toContain('Degraded margin');
     });
-
   });
 
   describe('video monitor', () => {

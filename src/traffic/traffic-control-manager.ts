@@ -1,3 +1,4 @@
+import { SimClock } from '@app/simulation/sim-clock';
 /**
  * @file TrafficControlManager - Manages traffic ownership and handover between ground stations
  * @description Tracks which ground station "owns" traffic to each satellite,
@@ -5,6 +6,7 @@
  */
 
 import { GroundStation } from '@app/assets/ground-station/ground-station';
+import { OrbitalSatellite, observerFromLocation } from '@app/equipment/satellite/orbital-satellite';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
 import { ScenarioManager } from '@app/scenario-manager';
@@ -244,7 +246,7 @@ export class TrafficControlManager {
    */
   checkStationReadiness(groundStationId: string, _satelliteId: number): HandoverReadiness {
     const sim = SimulationManager.getInstance();
-    const gs = sim.groundStations.find(g => g.state.id === groundStationId);
+    const gs = sim.groundStations.find((g) => g.state.id === groundStationId);
 
     if (!gs) {
       return {
@@ -268,7 +270,7 @@ export class TrafficControlManager {
       };
     }
 
-    const activeModem = receiver.state.modems.find(m => m.modemNumber === receiver.state.activeModem);
+    const activeModem = receiver.state.modems.find((m) => m.modemNumber === receiver.state.activeModem);
     if (!activeModem) {
       return {
         groundStationId,
@@ -332,14 +334,16 @@ export class TrafficControlManager {
 
     // Check each tracked satellite
     for (const satId of this.trafficOwnership_.keys()) {
-      const satellite = sim.satellites.find(s => s.noradId === satId);
+      const satellite = sim.satellites.find((s) => s.noradId === satId);
       if (!satellite) continue;
 
       // Find all ground stations transmitting to this satellite
       const transmittingStations: string[] = [];
 
       for (const gs of sim.groundStations) {
-        if (this.isTransmittingToSatellite_(gs, satellite.az, satellite.el)) {
+        // A LEO sits at a different az/el from each site
+        const view = satellite instanceof OrbitalSatellite ? satellite.geometryFor(observerFromLocation(gs.state.location)) : satellite;
+        if (this.isTransmittingToSatellite_(gs, view.az, view.el)) {
           transmittingStations.push(gs.state.id);
         }
       }
@@ -352,7 +356,7 @@ export class TrafficControlManager {
           satelliteNoradId: satId,
           groundStation1Id: transmittingStations[0],
           groundStation2Id: transmittingStations[1],
-          detectedAt: Date.now(),
+          detectedAt: SimClock.nowMs(),
         });
 
         return; // Only emit once
@@ -366,7 +370,7 @@ export class TrafficControlManager {
    */
   private disableTransmission_(groundStationId: string): void {
     const sim = SimulationManager.getInstance();
-    const gs = sim.groundStations.find(g => g.state.id === groundStationId);
+    const gs = sim.groundStations.find((g) => g.state.id === groundStationId);
     if (!gs) return;
 
     const rfFrontEnd = gs.rfFrontEnds[0];
@@ -389,7 +393,7 @@ export class TrafficControlManager {
    */
   private enableTransmission_(groundStationId: string): void {
     const sim = SimulationManager.getInstance();
-    const gs = sim.groundStations.find(g => g.state.id === groundStationId);
+    const gs = sim.groundStations.find((g) => g.state.id === groundStationId);
     if (!gs) return;
 
     const rfFrontEnd = gs.rfFrontEnds[0];
@@ -418,10 +422,7 @@ export class TrafficControlManager {
       if (!ownership.handoverTargetStationId) continue;
 
       // Auto-update target station readiness based on link quality
-      const targetReadiness = this.checkStationReadiness(
-        ownership.handoverTargetStationId,
-        satId
-      );
+      const targetReadiness = this.checkStationReadiness(ownership.handoverTargetStationId, satId);
 
       // Update readiness state
       if (targetReadiness.isReady !== ownership.targetStationReady) {

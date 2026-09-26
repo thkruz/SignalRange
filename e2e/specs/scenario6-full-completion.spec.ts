@@ -1,11 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { MissionControlPage } from '../pages/mission-control.page';
-import {
-  answerQuizByText,
-  dismissDialogIfPresent,
-  waitForQuizToAppear,
-  waitForSimulationReady,
-} from '../utils/simulation-helpers';
+import { answerQuizByText, dismissDialogIfPresent, waitForQuizToAppear, waitForSimulationReady } from '../utils/simulation-helpers';
 
 /**
  * Scenario 6: "Old Faithful" - Step-Track Operations on Inclined Orbit
@@ -27,15 +22,7 @@ import {
  * - 'configure-tx-modem': Configure TX modem frequency
  * - 'enable-tx-path': Unmute BUC and enable HPA
  */
-type ObjectiveType =
-  | 'quiz'
-  | 'set-tracking-mode'
-  | 'wait-beacon-lock'
-  | 'configure-speca'
-  | 'configure-rx-modem'
-  | 'wait-rx-lock'
-  | 'configure-tx-modem'
-  | 'enable-tx-path';
+type ObjectiveType = 'quiz' | 'set-tracking-mode' | 'wait-beacon-lock' | 'configure-speca' | 'configure-rx-modem' | 'wait-rx-lock' | 'configure-tx-modem' | 'enable-tx-path';
 
 interface Scenario6Objective {
   id: string;
@@ -79,8 +66,7 @@ const SCENARIO_6_OBJECTIVES: Scenario6Objective[] = [
     id: 'understand-inclined-orbit',
     title: 'Understand Inclined Orbits',
     type: 'quiz',
-    correctAnswer:
-      'Inclined orbit causes the satellite to drift in az/el; step-track follows the beacon',
+    correctAnswer: 'Inclined orbit causes the satellite to drift in az/el; step-track follows the beacon',
   },
   {
     id: 'recognize-wrong-satellite',
@@ -99,8 +85,7 @@ const SCENARIO_6_OBJECTIVES: Scenario6Objective[] = [
     id: 'quiz-program-track-limitation',
     title: 'Understand Program-Track Limitations',
     type: 'quiz',
-    correctAnswer:
-      "AURORA-7's inclined orbit causes drift - ephemeris predictions aren't accurate enough",
+    correctAnswer: "AURORA-7's inclined orbit causes drift - ephemeris predictions aren't accurate enough",
   },
 
   // ============================================================
@@ -196,8 +181,7 @@ const SCENARIO_6_OBJECTIVES: Scenario6Objective[] = [
     id: 'final-verification',
     title: 'Full Duplex Established',
     type: 'quiz',
-    correctAnswer:
-      'Step-track maintaining lock on beacon, RX at 1422 MHz IF, TX at 1447 MHz IF, AES-256 encrypted',
+    correctAnswer: 'Step-track maintaining lock on beacon, RX at 1422 MHz IF, TX at 1447 MHz IF, AES-256 encrypted',
   },
 ];
 
@@ -210,10 +194,7 @@ const SCENARIO_6_OBJECTIVES: Scenario6Objective[] = [
  * For step-track, toggle the step-track checkbox (requires program-track mode).
  * For program-track, selects AURORA-7 and clicks Move to Target.
  */
-async function setTrackingMode(
-  page: import('@playwright/test').Page,
-  trackingMode: string
-): Promise<void> {
+async function setTrackingMode(page: import('@playwright/test').Page, trackingMode: string): Promise<void> {
   // Step-track is enabled via a toggle checkbox, not a mode button
   if (trackingMode === 'step-track') {
     // The step-track toggle is a checkbox that enables step-track optimization
@@ -265,10 +246,7 @@ async function selectAurora7AndMove(page: import('@playwright/test').Page): Prom
 /**
  * Wait for antenna movement to complete by monitoring position stability.
  */
-async function waitForAntennaMovement(
-  page: import('@playwright/test').Page,
-  timeout = 60000
-): Promise<void> {
+async function waitForAntennaMovement(page: import('@playwright/test').Page, timeout = 60000): Promise<void> {
   const startTime = Date.now();
   let lastPosition = '';
   let stableCount = 0;
@@ -280,9 +258,7 @@ async function waitForAntennaMovement(
     await page.waitForTimeout(1000);
 
     // Get current elevation from the fine-adjust control display
-    let elDisplay = page
-      .locator('.fine-adjust-control', { hasText: 'Elevation' })
-      .locator('.fine-adjust-value-active');
+    let elDisplay = page.locator('.fine-adjust-control', { hasText: 'Elevation' }).locator('.fine-adjust-value-active');
 
     // Fallback: try finding by ID pattern
     if ((await elDisplay.count()) === 0) {
@@ -316,10 +292,7 @@ async function waitForAntennaMovement(
  * Wait for step-track beacon lock to be acquired.
  * The objective requires maintaining lock for 10 seconds.
  */
-async function waitForBeaconLock(
-  page: import('@playwright/test').Page,
-  timeout = 90000
-): Promise<void> {
+async function waitForBeaconLock(page: import('@playwright/test').Page, timeout = 90000): Promise<void> {
   const startTime = Date.now();
 
   while (Date.now() - startTime < timeout) {
@@ -460,10 +433,7 @@ async function configureRxModem(
  * Objective requires 15 seconds of maintained SNR > 8 dB.
  * Uses cn-effective-display element from receiver adapter.
  */
-async function waitForRxLock(
-  page: import('@playwright/test').Page,
-  timeout = 90000
-): Promise<void> {
+async function waitForRxLock(page: import('@playwright/test').Page, timeout = 90000): Promise<void> {
   const startTime = Date.now();
   let lockedTime = 0;
 
@@ -503,11 +473,7 @@ async function waitForRxLock(
  * Configure TX modem frequency.
  * Element IDs: tx-frequency-input, tx-apply-btn
  */
-async function configureTxModem(
-  page: import('@playwright/test').Page,
-  missionControlPage: MissionControlPage,
-  config: { frequency: number }
-): Promise<void> {
+async function configureTxModem(page: import('@playwright/test').Page, missionControlPage: MissionControlPage, config: { frequency: number }): Promise<void> {
   // Navigate to TX Chain tab
   await missionControlPage.selectTab('tx-chain');
   await page.waitForTimeout(300);
@@ -555,11 +521,7 @@ async function enableTransmitPath(page: import('@playwright/test').Page): Promis
 /**
  * Execute an objective based on its type.
  */
-async function executeObjective(
-  page: import('@playwright/test').Page,
-  missionControlPage: MissionControlPage,
-  objective: Scenario6Objective
-): Promise<void> {
+async function executeObjective(page: import('@playwright/test').Page, missionControlPage: MissionControlPage, objective: Scenario6Objective): Promise<void> {
   switch (objective.type) {
     case 'quiz':
       await waitForQuizToAppear(page);
@@ -683,29 +645,29 @@ test.describe('Scenario 6 Full Completion', () => {
   // ============================================================
 
   test('Objective: Review Mission Brief', async () => {
-    const objective = SCENARIO_6_OBJECTIVES.find(o => o.id === 'review-mission-brief')!;
+    const objective = SCENARIO_6_OBJECTIVES.find((o) => o.id === 'review-mission-brief')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Understand Inclined Orbits', async () => {
-    const objective = SCENARIO_6_OBJECTIVES.find(o => o.id === 'understand-inclined-orbit')!;
+    const objective = SCENARIO_6_OBJECTIVES.find((o) => o.id === 'understand-inclined-orbit')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Identify Current Target', async () => {
-    const objective = SCENARIO_6_OBJECTIVES.find(o => o.id === 'recognize-wrong-satellite')!;
+    const objective = SCENARIO_6_OBJECTIVES.find((o) => o.id === 'recognize-wrong-satellite')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Acquire AURORA-7 via Program-Track', async () => {
     // Antenna movement can take up to 90 seconds
     test.setTimeout(120000);
-    const objective = SCENARIO_6_OBJECTIVES.find(o => o.id === 'program-track-aurora7')!;
+    const objective = SCENARIO_6_OBJECTIVES.find((o) => o.id === 'program-track-aurora7')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Understand Program-Track Limitations', async () => {
-    const objective = SCENARIO_6_OBJECTIVES.find(o => o.id === 'quiz-program-track-limitation')!;
+    const objective = SCENARIO_6_OBJECTIVES.find((o) => o.id === 'quiz-program-track-limitation')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
@@ -714,19 +676,19 @@ test.describe('Scenario 6 Full Completion', () => {
   // ============================================================
 
   test('Objective: Verify Beacon Configuration', async () => {
-    const objective = SCENARIO_6_OBJECTIVES.find(o => o.id === 'verify-beacon-config')!;
+    const objective = SCENARIO_6_OBJECTIVES.find((o) => o.id === 'verify-beacon-config')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Enable Step-Track Mode', async () => {
-    const objective = SCENARIO_6_OBJECTIVES.find(o => o.id === 'enable-step-track')!;
+    const objective = SCENARIO_6_OBJECTIVES.find((o) => o.id === 'enable-step-track')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Acquire Beacon Lock', async () => {
     // Beacon lock can take time
     test.setTimeout(120000);
-    const objective = SCENARIO_6_OBJECTIVES.find(o => o.id === 'acquire-beacon-lock')!;
+    const objective = SCENARIO_6_OBJECTIVES.find((o) => o.id === 'acquire-beacon-lock')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
@@ -735,19 +697,19 @@ test.describe('Scenario 6 Full Completion', () => {
   // ============================================================
 
   test('Objective: Configure Spectrum Analyzer for Downlink', async () => {
-    const objective = SCENARIO_6_OBJECTIVES.find(o => o.id === 'configure-speca-downlink')!;
+    const objective = SCENARIO_6_OBJECTIVES.find((o) => o.id === 'configure-speca-downlink')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Configure RX Modem', async () => {
-    const objective = SCENARIO_6_OBJECTIVES.find(o => o.id === 'configure-rx-modem')!;
+    const objective = SCENARIO_6_OBJECTIVES.find((o) => o.id === 'configure-rx-modem')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Verify RX Signal Lock', async () => {
     // RX lock with SNR threshold can take time
     test.setTimeout(120000);
-    const objective = SCENARIO_6_OBJECTIVES.find(o => o.id === 'verify-rx-lock')!;
+    const objective = SCENARIO_6_OBJECTIVES.find((o) => o.id === 'verify-rx-lock')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
@@ -756,7 +718,7 @@ test.describe('Scenario 6 Full Completion', () => {
   // ============================================================
 
   test('Objective: Verify Encryption Understanding', async () => {
-    const objective = SCENARIO_6_OBJECTIVES.find(o => o.id === 'quiz-encryption')!;
+    const objective = SCENARIO_6_OBJECTIVES.find((o) => o.id === 'quiz-encryption')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
@@ -765,17 +727,17 @@ test.describe('Scenario 6 Full Completion', () => {
   // ============================================================
 
   test('Objective: Calculate TX IF Frequency', async () => {
-    const objective = SCENARIO_6_OBJECTIVES.find(o => o.id === 'calculate-tx-if')!;
+    const objective = SCENARIO_6_OBJECTIVES.find((o) => o.id === 'calculate-tx-if')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Configure TX Modem', async () => {
-    const objective = SCENARIO_6_OBJECTIVES.find(o => o.id === 'configure-tx-modem')!;
+    const objective = SCENARIO_6_OBJECTIVES.find((o) => o.id === 'configure-tx-modem')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Enable Transmit Path', async () => {
-    const objective = SCENARIO_6_OBJECTIVES.find(o => o.id === 'enable-transmit-path')!;
+    const objective = SCENARIO_6_OBJECTIVES.find((o) => o.id === 'enable-transmit-path')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
@@ -784,7 +746,7 @@ test.describe('Scenario 6 Full Completion', () => {
   // ============================================================
 
   test('Objective: Full Duplex Established', async () => {
-    const objective = SCENARIO_6_OBJECTIVES.find(o => o.id === 'final-verification')!;
+    const objective = SCENARIO_6_OBJECTIVES.find((o) => o.id === 'final-verification')!;
     await executeObjective(page, missionControlPage, objective);
   });
 

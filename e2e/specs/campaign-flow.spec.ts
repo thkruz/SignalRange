@@ -1,4 +1,4 @@
-import { test, expect } from '../fixtures/test-fixtures';
+import { expect, test } from '../fixtures/test-fixtures';
 
 test.describe('Campaign Flow', () => {
   test.describe('Campaign Selection', () => {
@@ -25,10 +25,7 @@ test.describe('Campaign Flow', () => {
   });
 
   test.describe('Scenario Selection', () => {
-    test('should show scenarios after selecting NATS campaign', async ({
-      campaignSelectionPage,
-      scenarioSelectionPage,
-    }) => {
+    test('should show scenarios after selecting NATS campaign', async ({ campaignSelectionPage, scenarioSelectionPage }) => {
       await campaignSelectionPage.goto();
       await campaignSelectionPage.selectCampaign('nats');
 
@@ -82,10 +79,7 @@ test.describe('Campaign Flow', () => {
   });
 
   test.describe('Scenario Navigation', () => {
-    test('should navigate to mission control when starting scenario', async ({
-      scenarioSelectionPage,
-      page,
-    }) => {
+    test('should navigate to mission control when starting scenario', async ({ scenarioSelectionPage, page }) => {
       await scenarioSelectionPage.gotoCampaign('nats');
       await scenarioSelectionPage.startScenario('nats-scenario1');
 

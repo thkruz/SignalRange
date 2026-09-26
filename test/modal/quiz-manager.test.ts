@@ -32,15 +32,7 @@ describe('QuizManager', () => {
 
   describe('registerQuiz', () => {
     it('should register a new quiz', () => {
-      quizManager.registerQuiz(
-        'objective-1',
-        0,
-        'What is the correct answer?',
-        ['A', 'B', 'C', 'D'],
-        2,
-        'Explanation text',
-        5
-      );
+      quizManager.registerQuiz('objective-1', 0, 'What is the correct answer?', ['A', 'B', 'C', 'D'], 2, 'Explanation text', 5);
 
       expect(quizManager.hasQuiz('objective-1', 0)).toBe(true);
     });
@@ -49,13 +41,7 @@ describe('QuizManager', () => {
       const callback = vi.fn();
       eventBus.on(Events.QUIZ_PENDING, callback);
 
-      quizManager.registerQuiz(
-        'objective-1',
-        0,
-        'Question?',
-        ['A', 'B'],
-        0
-      );
+      quizManager.registerQuiz('objective-1', 0, 'Question?', ['A', 'B'], 0);
 
       expect(callback).toHaveBeenCalledWith({
         objectiveId: 'objective-1',
@@ -180,15 +166,7 @@ describe('QuizManager', () => {
       const callback = vi.fn();
       eventBus.on(Events.QUIZ_SHOW, callback);
 
-      quizManager.registerQuiz(
-        'objective-1',
-        0,
-        'What is 2+2?',
-        ['3', '4', '5', '6'],
-        1,
-        'Basic math',
-        10
-      );
+      quizManager.registerQuiz('objective-1', 0, 'What is 2+2?', ['3', '4', '5', '6'], 1, 'Basic math', 10);
 
       quizManager.showQuiz('objective-1', 0);
 
@@ -208,9 +186,7 @@ describe('QuizManager', () => {
 
       quizManager.showQuiz('non-existent', 0);
 
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('No quiz registered for')
-      );
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('No quiz registered for'));
 
       consoleSpy.mockRestore();
     });

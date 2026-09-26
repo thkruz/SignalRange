@@ -1,5 +1,5 @@
-import { Sfx } from "./sfx-enum";
-import TtsService from "./tts-service";
+import { Sfx } from './sfx-enum';
+import TtsService from './tts-service';
 
 const SFX_FILE_MAP: Record<Sfx, string> = {
   [Sfx.POWER_ON]: '/sfx/startup-sound.mp3',
@@ -25,14 +25,10 @@ const SFX_THROTTLE_MAP: Record<Sfx, number> = {
 };
 
 // Sounds that should restart if already playing (typically longer sounds)
-const SFX_RESTART_ON_PLAY: Set<Sfx> = new Set([
-  Sfx.POWER_ON,
-]);
+const SFX_RESTART_ON_PLAY: Set<Sfx> = new Set([Sfx.POWER_ON]);
 
 // Sounds that should loop until explicitly stopped
-const SFX_LOOP: Set<Sfx> = new Set([
-  Sfx.SMALL_MOTOR,
-]);
+const SFX_LOOP: Set<Sfx> = new Set([Sfx.SMALL_MOTOR]);
 
 class SoundManager {
   private static instance: SoundManager;
@@ -43,7 +39,7 @@ class SoundManager {
   private readonly customAudioCache: Map<string, HTMLAudioElement> = new Map();
   private ttsEnabled_: boolean = false;
 
-  private constructor() { }
+  private constructor() {}
 
   setTtsEnabled(enabled: boolean): void {
     this.ttsEnabled_ = enabled;

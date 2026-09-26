@@ -1,5 +1,5 @@
-import { Logger } from "@app/logging/logger";
-import { EventMap, Events } from "./events";
+import { Logger } from '@app/logging/logger';
+import { EventMap, Events } from './events';
 
 type EventHandlersMap = Partial<Record<Events, Array<(...args: EventMap[Events]) => void>>>;
 
@@ -11,7 +11,7 @@ export class EventBus {
   private static instance: EventBus;
   private readonly events: EventHandlersMap = {};
 
-  private constructor() { }
+  private constructor() {}
 
   static getInstance(): EventBus {
     if (!EventBus.instance) {
@@ -36,7 +36,7 @@ export class EventBus {
   off<T extends Events>(event: T, cb: (...args: EventMap[T]) => void) {
     const callbacks = this.events[event];
     if (callbacks) {
-      this.events[event] = callbacks.filter(fn => fn !== cb);
+      this.events[event] = callbacks.filter((fn) => fn !== cb);
     }
   }
 
@@ -58,8 +58,8 @@ export class EventBus {
   }
 
   /**
- * Emit an event
- */
+   * Emit an event
+   */
   emit<T extends Events>(event: T, ...args: EventMap[T]): void {
     Logger.log(`EventBus: Emitting event '${event}' with args:`, args);
     const callbacks = this.events[event];

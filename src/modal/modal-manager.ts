@@ -8,7 +8,7 @@ export class ModalManager {
   private activeTitle: string | null = null;
   private onHideCallbacks: Array<() => void> = [];
 
-  private constructor() { }
+  private constructor() {}
 
   static getInstance(): ModalManager {
     if (!ModalManager.instance) {

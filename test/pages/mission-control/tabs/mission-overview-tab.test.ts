@@ -41,10 +41,7 @@ vi.mock('../../../../src/simulation/simulation-manager', () => ({
           az: 180,
           el: 45,
           health: 0.95,
-          transponders: [
-            { isActive: true },
-            { isActive: false },
-          ],
+          transponders: [{ isActive: true }, { isActive: false }],
         },
         {
           noradId: 67890,
@@ -183,20 +180,14 @@ describe('MissionOverviewTab', () => {
       const gsCard = document.querySelector('[data-asset-type="ground-station"]') as HTMLElement;
       gsCard?.click();
 
-      expect(mockEventBus.emit).toHaveBeenCalledWith(
-        Events.ASSET_SELECTED,
-        { type: 'ground-station', id: 'GS-001' }
-      );
+      expect(mockEventBus.emit).toHaveBeenCalledWith(Events.ASSET_SELECTED, { type: 'ground-station', id: 'GS-001' });
     });
 
     it('should emit ASSET_SELECTED event when satellite card is clicked', () => {
       const satCard = document.querySelector('[data-asset-type="satellite"]') as HTMLElement;
       satCard?.click();
 
-      expect(mockEventBus.emit).toHaveBeenCalledWith(
-        Events.ASSET_SELECTED,
-        { type: 'satellite', id: 'sat-12345' }
-      );
+      expect(mockEventBus.emit).toHaveBeenCalledWith(Events.ASSET_SELECTED, { type: 'satellite', id: 'sat-12345' });
     });
   });
 

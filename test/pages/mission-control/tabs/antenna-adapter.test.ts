@@ -29,7 +29,7 @@ describe('AntennaAdapter', () => {
       gOverT_dBK: 15.0,
       polLoss_dB: 0.1,
       skyTemp_K: 290,
-    }
+    },
   } as AntennaState;
 
   beforeEach(() => {
@@ -92,17 +92,11 @@ describe('AntennaAdapter', () => {
     });
 
     it('should register for ANTENNA_STATE_CHANGED events', () => {
-      expect(mockEventBus.on).toHaveBeenCalledWith(
-        Events.ANTENNA_STATE_CHANGED,
-        expect.any(Function)
-      );
+      expect(mockEventBus.on).toHaveBeenCalledWith(Events.ANTENNA_STATE_CHANGED, expect.any(Function));
     });
 
     it('should register for DOM_READY events', () => {
-      expect(mockEventBus.on).toHaveBeenCalledWith(
-        Events.DOM_READY,
-        expect.any(Function)
-      );
+      expect(mockEventBus.on).toHaveBeenCalledWith(Events.DOM_READY, expect.any(Function));
     });
   });
 
@@ -259,10 +253,7 @@ describe('AntennaAdapter', () => {
     it('should unregister from EventBus', () => {
       adapter.dispose();
 
-      expect(mockEventBus.off).toHaveBeenCalledWith(
-        Events.ANTENNA_STATE_CHANGED,
-        expect.any(Function)
-      );
+      expect(mockEventBus.off).toHaveBeenCalledWith(Events.ANTENNA_STATE_CHANGED, expect.any(Function));
     });
 
     it('should clear bound handlers', () => {

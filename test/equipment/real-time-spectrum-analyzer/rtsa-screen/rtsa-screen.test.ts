@@ -106,9 +106,7 @@ describe('RTSAScreen', () => {
         height: 0,
       } as unknown as HTMLCanvasElement;
 
-      expect(() => new TestableRTSAScreen(mockCanvas, mockSpecA)).toThrow(
-        'Failed to get canvas 2D context'
-      );
+      expect(() => new TestableRTSAScreen(mockCanvas, mockSpecA)).toThrow('Failed to get canvas 2D context');
     });
 
     it('should store specA reference', () => {

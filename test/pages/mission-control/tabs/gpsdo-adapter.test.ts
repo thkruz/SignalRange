@@ -99,10 +99,7 @@ describe('GPSDOAdapter', () => {
     });
 
     it('should register for UPDATE events', () => {
-      expect(mockEventBus.on).toHaveBeenCalledWith(
-        Events.UPDATE,
-        expect.any(Function)
-      );
+      expect(mockEventBus.on).toHaveBeenCalledWith(Events.UPDATE, expect.any(Function));
     });
   });
 
@@ -260,10 +257,7 @@ describe('GPSDOAdapter', () => {
     it('should unregister from EventBus events', () => {
       adapter.dispose();
 
-      expect(mockEventBus.off).toHaveBeenCalledWith(
-        Events.UPDATE,
-        expect.any(Function)
-      );
+      expect(mockEventBus.off).toHaveBeenCalledWith(Events.UPDATE, expect.any(Function));
     });
   });
 });

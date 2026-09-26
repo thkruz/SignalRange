@@ -1,7 +1,7 @@
-import { DraggableBox } from "@app/engine/ui/draggable-box";
-import { html } from "@app/engine/utils/development/formatter";
-import { getEl } from "@app/engine/utils/get-el";
-import { ObjectivesManager } from "@app/objectives/objectives-manager";
+import { DraggableBox } from '@app/engine/ui/draggable-box';
+import { html } from '@app/engine/utils/development/formatter';
+import { getEl } from '@app/engine/utils/get-el';
+import { ObjectivesManager } from '@app/objectives/objectives-manager';
 import './draggable-html-box.css';
 
 export class DraggableHtmlBox extends DraggableBox {
@@ -10,16 +10,15 @@ export class DraggableHtmlBox extends DraggableBox {
   onClose: () => void;
 
   constructor(title: string, id: string, url?: string, parentId = 'sandbox-page') {
-    super(`draggable-html-box-${id}`,
-      {
-        title,
-        parentId,
-        boxContentHtml: html`
+    super(`draggable-html-box-${id}`, {
+      title,
+      parentId,
+      boxContentHtml: html`
       <div id="draggable-html-box-content-${id}" style="width:100%;height:100%;">
         ${url ? `<iframe src="${url}" style="width:600px;height:600px;max-height:calc(70vh - 5px);border:none;"></iframe>` : ''}
       </div>
-    `.trim()
-      });
+    `.trim(),
+    });
 
     this.popupDom = getEl(`draggable-html-box-content-${id}`);
 

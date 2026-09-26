@@ -1,3 +1,4 @@
+import { SimClock } from '@app/simulation/sim-clock';
 /**
  * @file Fault Injector Service
  * @description Centralized fault injection service for training scenarios.
@@ -10,13 +11,7 @@ import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
 import { RxPayloadState } from '@app/pages/mission-control/tabs/rx-payload-adapter';
 import { TxPayloadState } from '@app/pages/mission-control/tabs/tx-payload-adapter';
-import {
-  FaultDefinition,
-  FaultInput,
-  FaultTarget,
-  FAULT_TEMPLATES,
-  FaultTemplateKey,
-} from './fault-types';
+import { FAULT_TEMPLATES, FaultDefinition, FaultInput, FaultTarget, FaultTemplateKey } from './fault-types';
 
 /**
  * FaultInjector - Centralized fault injection service
@@ -90,11 +85,7 @@ export class FaultInjector {
    * @param overrides Optional state overrides to merge with template
    * @returns Generated fault ID
    */
-  injectTemplate(
-    templateKey: FaultTemplateKey,
-    groundStationId: string,
-    overrides?: Partial<RxPayloadState> | Partial<TxPayloadState>
-  ): string {
+  injectTemplate(templateKey: FaultTemplateKey, groundStationId: string, overrides?: Partial<RxPayloadState> | Partial<TxPayloadState>): string {
     const template = FAULT_TEMPLATES[templateKey];
     const id = `${templateKey}-${++this.faultCounter_}`;
 
@@ -132,12 +123,12 @@ export class FaultInjector {
           toDelete.push(id);
         }
       });
-      toDelete.forEach(id => this.clear(id));
+      toDelete.forEach((id) => this.clear(id));
     } else {
       // Clear all faults
       const ids = Array.from(this.activeFaults_.keys());
       this.activeFaults_.clear();
-      ids.forEach(id => this.emitFaultChanged_(id, 'cleared'));
+      ids.forEach((id) => this.emitFaultChanged_(id, 'cleared'));
     }
   }
 
@@ -153,7 +144,7 @@ export class FaultInjector {
         }
       }
     });
-    toDelete.forEach(id => this.clear(id));
+    toDelete.forEach((id) => this.clear(id));
   }
 
   /**
@@ -164,7 +155,7 @@ export class FaultInjector {
     if (!fault) return false;
 
     // Check expiration
-    if (fault.expiresAt && Date.now() > fault.expiresAt) {
+    if (fault.expiresAt && SimClock.runMs() > fault.expiresAt) {
       this.clear(id);
       return false;
     }
@@ -179,7 +170,7 @@ export class FaultInjector {
     this.cleanupExpired_();
 
     const faults: FaultDefinition[] = [];
-    this.activeFaults_.forEach(fault => {
+    this.activeFaults_.forEach((fault) => {
       if (groundStationId && fault.groundStationId !== groundStationId) return;
       if (target && fault.target !== target) return;
       faults.push({ ...fault });
@@ -195,10 +186,7 @@ export class FaultInjector {
    * Merges all active faults for the target, respecting priority order.
    * Higher priority faults override lower priority for conflicting keys.
    */
-  getComputedState(
-    target: FaultTarget,
-    groundStationId: string
-  ): Partial<RxPayloadState> | Partial<TxPayloadState> {
+  getComputedState(target: FaultTarget, groundStationId: string): Partial<RxPayloadState> | Partial<TxPayloadState> {
     const faults = this.getActiveFaults(groundStationId, target);
 
     // Merge faults in reverse priority order (lowest first)
@@ -246,7 +234,7 @@ export class FaultInjector {
    * Clean up expired faults
    */
   private cleanupExpired_(): void {
-    const now = Date.now();
+    const now = SimClock.runMs();
     const toDelete: string[] = [];
 
     this.activeFaults_.forEach((fault, id) => {
@@ -255,7 +243,7 @@ export class FaultInjector {
       }
     });
 
-    toDelete.forEach(id => this.clear(id));
+    toDelete.forEach((id) => this.clear(id));
   }
 
   /**

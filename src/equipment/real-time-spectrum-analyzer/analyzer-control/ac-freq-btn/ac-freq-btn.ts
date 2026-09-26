@@ -1,8 +1,8 @@
-import { Logger } from "@app/logging/logger";
-import { Hertz } from "@app/types";
-import { parseLocalizedNumber } from "@app/utils/parse-number";
-import { AnalyzerControl } from "@app/equipment/real-time-spectrum-analyzer/analyzer-control";
-import { BaseControlButton } from "@app/equipment/real-time-spectrum-analyzer/analyzer-control/base-control-button";
+import { AnalyzerControl } from '@app/equipment/real-time-spectrum-analyzer/analyzer-control';
+import { BaseControlButton } from '@app/equipment/real-time-spectrum-analyzer/analyzer-control/base-control-button';
+import { Logger } from '@app/logging/logger';
+import { Hertz } from '@app/types';
+import { parseLocalizedNumber } from '@app/utils/parse-number';
 import './ac-freq-btn.css';
 
 export class ACFreqBtn extends BaseControlButton {
@@ -96,17 +96,17 @@ export class ACFreqBtn extends BaseControlButton {
     if (this.subMenuSelected === 'center') {
       newVal = this.analyzerControl.specA.state.centerFrequency + adjustmentInHz;
     } else if (this.subMenuSelected === 'start') {
-      const currentStartFreq = this.analyzerControl.specA.state.centerFrequency - (this.analyzerControl.specA.state.span / 2) as Hertz;
+      const currentStartFreq = (this.analyzerControl.specA.state.centerFrequency - this.analyzerControl.specA.state.span / 2) as Hertz;
       newVal = currentStartFreq + adjustmentInHz;
     } else if (this.subMenuSelected === 'stop') {
-      const currentStopFreq = this.analyzerControl.specA.state.centerFrequency + (this.analyzerControl.specA.state.span / 2) as Hertz;
+      const currentStopFreq = (this.analyzerControl.specA.state.centerFrequency + this.analyzerControl.specA.state.span / 2) as Hertz;
       newVal = currentStopFreq + adjustmentInHz;
     }
 
     // Round to nearest Hertz
     newVal = Math.round(newVal);
 
-    this.adjustValueInHz((newVal as Hertz));
+    this.adjustValueInHz(newVal as Hertz);
   }
 
   onMajorTickChange(value: number): void {

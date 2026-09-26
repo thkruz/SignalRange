@@ -1,11 +1,12 @@
 /**
  * @file InterferenceManager - Scheduled, time-windowed RF interference
- * @description Injects interference signals into a satellite's uplink path on
- * a configurable duty cycle. Because injection happens at the satellite
- * (externalSignal), the transponder relays the interferer to EVERY receiving
- * station - modeling uplink interference/jamming, which is the
- * discrimination-relevant case (local terrestrial interference would appear
- * at one station only).
+ * @description Two delivery paths, selected per event by `path`:
+ * - 'transponder' (default): injects at the satellite's uplink
+ *   (externalSignal), so the transponder relays the interferer to EVERY
+ *   receiving station - uplink interference/jamming.
+ * - 'terrestrial' (Campaign 3+): a ground-based emitter received directly by
+ *   station antennas (bearing + off-axis pattern, no Doppler) - local RFI,
+ *   fake beacons, GPS spoofers. Appears only at stations that can hear it.
  *
  * Scenarios configure via `settings.interferenceEvents`. The windowed on/off
  * pattern is the training signal: deliberate interference has a duty cycle;
@@ -16,22 +17,43 @@ import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
 import { ScenarioManager } from '@app/scenario-manager';
 import { SignalOrigin } from '@app/signal-origin';
+import { missionNowMs } from '@app/simulation/mission-clock';
 import { SimulationManager } from '@app/simulation/simulation-manager';
 import type { dBi, dBm, FECType, Hertz, ModulationType, RfFrequency, RfSignal } from '@app/types';
 import type { Milliseconds } from 'ootk';
 
+/**
+ * Ground-truth location of a terrestrial interference source (Campaign 5+).
+ * Never rendered to the player directly - it drives geolocation measurement
+ * synthesis and objective grading only.
+ */
+export interface EmitterGroundTruth {
+  /** WGS-84 latitude, degrees */
+  latitude: number;
+  /** WGS-84 longitude, degrees */
+  longitude: number;
+  /** Altitude above the WGS-84 ellipsoid, km. Default: 0 */
+  altitudeKm?: number;
+}
+
 export interface InterferenceEventConfig {
   id: string;
-  /** NORAD ID of the satellite whose transponder relays the interferer */
-  satelliteNoradId: number;
+  /**
+   * NORAD ID of the satellite whose transponder relays the interferer.
+   * Required for the (default) transponder path; ignored for terrestrial.
+   */
+  satelliteNoradId?: number;
   /** Interferer RF center frequency (uplink, Hz) */
   frequency: number;
   /** Interferer bandwidth (Hz) */
   bandwidth: number;
-  /** Interferer power at the transponder input (dBm) */
+  /**
+   * Interferer power (dBm). Transponder path: power at the transponder
+   * input. Terrestrial path: the emitter's EIRP.
+   */
   power: number;
-  /** Uplink polarization - must match the victim transponder to route */
-  polarization: 'H' | 'V';
+  /** Polarization. Transponder path must match the victim transponder to route */
+  polarization: 'H' | 'V' | 'RHCP' | 'LHCP';
   /** Seconds since mission start when the event envelope opens */
   startTime: number;
   /** Total envelope duration (s); on/off windows repeat inside it */
@@ -40,6 +62,34 @@ export interface InterferenceEventConfig {
   periodSeconds: number;
   /** Transmit-on time per period (s) */
   onSeconds: number;
+  /**
+   * Opt-in (Campaign 3+): how the interferer reaches the player.
+   * - 'transponder' (default, and the behavior when absent): injected at the
+   *   satellite's uplink and relayed to every receiving station.
+   * - 'terrestrial': a ground-based emitter received DIRECTLY by station
+   *   antennas via great-circle bearing and the antenna's off-axis pattern.
+   *   No Doppler is applied - that absence is a diagnostic tell (a "satellite"
+   *   signal that never drifts is transmitting from the ground). Requires
+   *   `emitter`; `satelliteNoradId` is ignored.
+   */
+  path?: 'transponder' | 'terrestrial';
+  /**
+   * Opt-in (Campaign 5+): where on Earth the interferer transmits from.
+   * For 'transponder' events it only drives geolocation observables; for
+   * 'terrestrial' events it is REQUIRED - it is the physical signal source.
+   */
+  emitter?: EmitterGroundTruth;
+}
+
+/** A terrestrial event currently on the air (consumed by AntennaCore) */
+export interface ActiveTerrestrialEmission {
+  signalId: string;
+  frequencyHz: number;
+  bandwidthHz: number;
+  polarization: 'H' | 'V' | 'RHCP' | 'LHCP';
+  /** Emitter EIRP, dBm */
+  eirpDbm: number;
+  emitter: EmitterGroundTruth;
 }
 
 export class InterferenceManager {
@@ -49,10 +99,12 @@ export class InterferenceManager {
   private missionStartTime_ = 0;
   /** Currently-injected signalIds (subset of events) */
   private readonly activeSignalIds_ = new Set<string>();
+  /** Schedule overrides by event id (see forceEvent) */
+  private readonly forced_ = new Map<string, boolean>();
   private readonly boundUpdateHandler_: (dt: Milliseconds) => void;
 
   private constructor() {
-    this.missionStartTime_ = Date.now();
+    this.missionStartTime_ = missionNowMs();
     this.boundUpdateHandler_ = this.update_.bind(this);
     this.events_ = ScenarioManager.getInstance().settings.interferenceEvents ?? [];
     EventBus.getInstance().on(Events.UPDATE, this.boundUpdateHandler_);
@@ -61,6 +113,10 @@ export class InterferenceManager {
   static getInstance(): InterferenceManager {
     this.instance_ ??= new InterferenceManager();
     return this.instance_;
+  }
+
+  static isInitialized(): boolean {
+    return this.instance_ !== null;
   }
 
   static destroy(): void {
@@ -75,31 +131,140 @@ export class InterferenceManager {
     return this.activeSignalIds_.has(InterferenceManager.signalIdFor(eventId));
   }
 
+  /** Whether any declared interference event is transmitting right now */
+  isAnyEventActive(): boolean {
+    return this.activeSignalIds_.size > 0;
+  }
+
+  /**
+   * Whether an event's envelope contains the current mission time - the
+   * interferer is "in progress" even in the off phase of its duty cycle. A
+   * forced event counts while forced on. This, not the instantaneous
+   * radiating state, is what a decision about interference is graded on: a
+   * jammer that cycles 60 s on / 30 s off is one incident, not thirty.
+   */
+  isEventInEnvelope(eventId: string): boolean {
+    const event = this.events_.find((e) => e.id === eventId);
+    if (!event) return false;
+    const forced = this.forced_.get(event.id);
+    if (forced !== undefined) return forced;
+    const elapsed = (missionNowMs() - this.missionStartTime_) / 1000;
+    return elapsed >= event.startTime && elapsed < event.startTime + event.duration;
+  }
+
+  /**
+   * Whether an event's envelope has closed: it opened at some point and the
+   * mission clock is now past its end. A forced-on event has not ended.
+   */
+  hasEventEnded(eventId: string): boolean {
+    const event = this.events_.find((e) => e.id === eventId);
+    if (!event) return false;
+    if (this.forced_.get(event.id) === true) return false;
+    const elapsed = (missionNowMs() - this.missionStartTime_) / 1000;
+    return elapsed >= event.startTime + event.duration;
+  }
+
+  isAnyEventInEnvelope(): boolean {
+    return this.events_.some((event) => this.isEventInEnvelope(event.id));
+  }
+
+  /**
+   * Whether any event reaching the player by `path` is in its envelope. The
+   * transponder / terrestrial split is the uplink-versus-downlink call: a
+   * carrier relayed by the bird is heard by every station under it and the
+   * correlator can fix it; one arriving at the dish directly is a problem
+   * at the receive site and no satellite pair will ever correlate on it.
+   */
+  isAnyEventInEnvelopeVia(path: 'transponder' | 'terrestrial'): boolean {
+    return this.events_.some((event) => (event.path ?? 'transponder') === path && this.isEventInEnvelope(event.id));
+  }
+
+  /** Every event the scenario declares */
+  getEvents(): readonly InterferenceEventConfig[] {
+    return this.events_;
+  }
+
+  /**
+   * Override an event's schedule: `true` keeps it radiating, `false` keeps it
+   * silent, `null` returns it to its scripted duty cycle. Used by decision
+   * consequences; the next update applies it.
+   */
+  forceEvent(eventId: string, active: boolean | null): void {
+    if (active === null) {
+      this.forced_.delete(eventId);
+    } else {
+      this.forced_.set(eventId, active);
+    }
+  }
+
+  isEventForced(eventId: string): boolean {
+    return this.forced_.has(eventId);
+  }
+
+  /** Event config by id (undefined when the scenario doesn't declare it) */
+  getEvent(eventId: string): InterferenceEventConfig | undefined {
+    return this.events_.find((event) => event.id === eventId);
+  }
+
+  /** All events carrying geolocatable emitter ground truth (Campaign 5+) */
+  getEventsWithEmitters(): InterferenceEventConfig[] {
+    return this.events_.filter((event) => event.emitter !== undefined);
+  }
+
+  /**
+   * Terrestrial events currently on the air (Campaign 3+). AntennaCore sums
+   * these into each station's received spectrum using bearing, distance, and
+   * its own off-axis pattern - so a directional antenna can DF the emitter.
+   */
+  getActiveTerrestrialEmissions(): ActiveTerrestrialEmission[] {
+    return this.events_
+      .filter((event) => (event.path ?? 'transponder') === 'terrestrial' && event.emitter !== undefined && this.activeSignalIds_.has(InterferenceManager.signalIdFor(event.id)))
+      .map((event) => ({
+        signalId: InterferenceManager.signalIdFor(event.id),
+        frequencyHz: event.frequency,
+        bandwidthHz: event.bandwidth,
+        polarization: event.polarization,
+        eirpDbm: event.power,
+        emitter: event.emitter!,
+      }));
+  }
+
   static signalIdFor(eventId: string): string {
     return `INTERFERER-${eventId}`;
   }
 
   private update_(): void {
-    const elapsed = (Date.now() - this.missionStartTime_) / 1000;
+    const elapsed = (missionNowMs() - this.missionStartTime_) / 1000;
     const sim = SimulationManager.getInstance();
 
     for (const event of this.events_) {
       const signalId = InterferenceManager.signalIdFor(event.id);
       const inEnvelope = elapsed >= event.startTime && elapsed < event.startTime + event.duration;
       const phase = (elapsed - event.startTime) % event.periodSeconds;
-      const shouldTransmit = inEnvelope && phase < event.onSeconds;
+      const shouldTransmit = this.forced_.get(event.id) ?? (inEnvelope && phase < event.onSeconds);
       const isInjected = this.activeSignalIds_.has(signalId);
 
       if (shouldTransmit === isInjected) continue;
 
-      const satellite = sim.satellites.find(s => s.noradId === event.satelliteNoradId);
+      // Terrestrial events never touch a satellite - the active set alone
+      // drives reception (AntennaCore polls getActiveTerrestrialEmissions)
+      if ((event.path ?? 'transponder') === 'terrestrial') {
+        if (shouldTransmit) {
+          this.activeSignalIds_.add(signalId);
+        } else {
+          this.activeSignalIds_.delete(signalId);
+        }
+        continue;
+      }
+
+      const satellite = sim.satellites.find((s) => s.noradId === event.satelliteNoradId);
       if (!satellite) continue;
 
       if (shouldTransmit) {
         const signal: RfSignal = {
           signalId,
           serverId: 1,
-          noradId: event.satelliteNoradId,
+          noradId: satellite.noradId,
           frequency: event.frequency as RfFrequency,
           polarization: event.polarization,
           power: event.power as dBm,
@@ -115,7 +280,7 @@ export class InterferenceManager {
         satellite.externalSignal.push(signal);
         this.activeSignalIds_.add(signalId);
       } else {
-        satellite.externalSignal = satellite.externalSignal.filter(s => s.signalId !== signalId);
+        satellite.externalSignal = satellite.externalSignal.filter((s) => s.signalId !== signalId);
         this.activeSignalIds_.delete(signalId);
       }
     }

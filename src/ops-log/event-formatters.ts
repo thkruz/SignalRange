@@ -18,23 +18,17 @@ import type { NotchFilterState } from '@app/equipment/rf-front-end/notch-filter-
 import type { OMTState, PolarizationType } from '@app/equipment/rf-front-end/omt-module/omt-module';
 import type { RFFrontEndState } from '@app/equipment/rf-front-end/rf-front-end-core';
 import type { TransmitterModem } from '@app/equipment/transmitter/transmitter';
-import type {
-  RxActiveModemChangedData,
-  RxConfigChangedData,
-  TxActiveModemChangedData,
-  TxConfigChangedData,
-  TxTransmitChangedData
-} from '@app/events/events';
+import type { RxActiveModemChangedData, RxConfigChangedData, TxActiveModemChangedData, TxConfigChangedData, TxTransmitChangedData } from '@app/events/events';
 
 // ════════════════════════════════════════════════════════════════════════════
 // Antenna Formatters
 // ════════════════════════════════════════════════════════════════════════════
 
 const TRACKING_MODE_LABELS: Record<TrackingMode, string> = {
-  'stow': 'STOW',
-  'maintenance': 'MAINTENANCE',
-  'manual': 'MANUAL',
-  'program-track': 'PROGRAM-TRACK'
+  stow: 'STOW',
+  maintenance: 'MAINTENANCE',
+  manual: 'MANUAL',
+  'program-track': 'PROGRAM-TRACK',
 };
 
 /**
@@ -247,11 +241,11 @@ export function formatFilterEvent(data: Partial<IfFilterBankState>): string | nu
  */
 export function formatNotchFilterEvent(data: Partial<NotchFilterState>): string | null {
   if (data.notches) {
-    const enabled = data.notches.filter(n => n.enabled);
+    const enabled = data.notches.filter((n) => n.enabled);
     if (enabled.length === 0) {
       return 'Notch filters: all disabled';
     }
-    const freqs = enabled.map(n => `${n.centerFrequency} MHz`).join(', ');
+    const freqs = enabled.map((n) => `${n.centerFrequency} MHz`).join(', ');
     return `Notch filter${enabled.length > 1 ? 's' : ''} enabled at ${freqs}`;
   }
   return null;

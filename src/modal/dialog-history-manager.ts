@@ -18,7 +18,7 @@ export class DialogHistoryManager {
   private static instance: DialogHistoryManager;
   private history: DialogHistoryEntry[] = [];
 
-  private constructor() { }
+  private constructor() {}
 
   static getInstance(): DialogHistoryManager {
     if (!DialogHistoryManager.instance) {
@@ -32,7 +32,7 @@ export class DialogHistoryManager {
    */
   addEntry(text: string, character: Character, audioUrl: string, title: string, emotion?: Emotion): void {
     // Don't add the same audioUrl twice
-    const isAlreadyInHistory = this.history.some(entry => entry.audioUrl === audioUrl);
+    const isAlreadyInHistory = this.history.some((entry) => entry.audioUrl === audioUrl);
     if (isAlreadyInHistory) {
       return;
     }
@@ -84,9 +84,7 @@ export class DialogHistoryManager {
     }
 
     // Get completed objectives sorted by completion time
-    const completedStates = objectiveStates
-      .filter(state => state.isCompleted && state.completedAt)
-      .sort((a, b) => (a.completedAt ?? 0) - (b.completedAt ?? 0));
+    const completedStates = objectiveStates.filter((state) => state.isCompleted && state.completedAt).sort((a, b) => (a.completedAt ?? 0) - (b.completedAt ?? 0));
 
     if (completedStates.length === 0) {
       return;
@@ -94,13 +92,7 @@ export class DialogHistoryManager {
 
     // Add intro clip first if it exists
     if (dialogClips.intro) {
-      this.addEntry(
-        dialogClips.intro.text,
-        dialogClips.intro.character,
-        dialogClips.intro.audioUrl,
-        'Introduction',
-        dialogClips.intro.emotion
-      );
+      this.addEntry(dialogClips.intro.text, dialogClips.intro.character, dialogClips.intro.audioUrl, 'Introduction', dialogClips.intro.emotion);
     }
 
     // Add each completed objective's dialog clip in chronological order
@@ -110,16 +102,10 @@ export class DialogHistoryManager {
 
       if (dialogClip) {
         // Find the objective to get its title
-        const objective = objectives.find(obj => obj.id === objectiveId);
+        const objective = objectives.find((obj) => obj.id === objectiveId);
         const title = objective?.title ?? objectiveId;
 
-        this.addEntry(
-          dialogClip.text,
-          dialogClip.character,
-          dialogClip.audioUrl,
-          title,
-          dialogClip.emotion
-        );
+        this.addEntry(dialogClip.text, dialogClip.character, dialogClip.audioUrl, title, dialogClip.emotion);
       }
     }
   }

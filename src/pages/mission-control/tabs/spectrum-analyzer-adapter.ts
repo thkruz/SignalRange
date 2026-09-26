@@ -1,5 +1,5 @@
-import { RealTimeSpectrumAnalyzer } from "@app/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer";
-import { qs } from "@app/engine/utils/query-selector";
+import { qs } from '@app/engine/utils/query-selector';
+import { RealTimeSpectrumAnalyzer } from '@app/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer';
 
 /**
  * SpectrumAnalyzerAdapter - Manages spectrum analyzer canvas in mission control tab

@@ -71,7 +71,7 @@
 
 .header-logo-section img:hover {
   transform: scale(1.08) rotate(-2deg);
-  box-shadow: 0 4px 16px rgba(186, 22, 12, 0.15);
+  box-shadow: 0 4px 16px rgba(var(--mc-accent-red-rgb, 186, 22, 12), 0.15);
 }
 
 .header-title-section {
@@ -118,7 +118,7 @@
 
 .header-icon-button:hover {
   /* subtle hover using a low-opacity primary color */
-  background-color: rgba(186, 22, 12, 0.06);
+  background-color: rgba(var(--mc-accent-red-rgb, 186, 22, 12), 0.06);
 }
 
 .header-icon-button .icon {

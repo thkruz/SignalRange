@@ -1,6 +1,6 @@
-import { html } from "@app/engine/utils/development/formatter";
-import { qs } from "@app/engine/utils/query-selector";
-import { AlarmStatus } from "@app/equipment/base-equipment";
+import { html } from '@app/engine/utils/development/formatter';
+import { qs } from '@app/engine/utils/query-selector';
+import { AlarmStatus } from '@app/equipment/base-equipment';
 import './card-alarm-badge.css';
 
 /**
@@ -74,19 +74,19 @@ export class CardAlarmBadge {
    */
   private getHighestSeverity_(alarms: AlarmStatus[]): string {
     // Filter out 'off' and 'success' for determining if there are actual alarms
-    const activeAlarms = alarms.filter(a => a.severity !== 'off' && a.severity !== 'success');
+    const activeAlarms = alarms.filter((a) => a.severity !== 'off' && a.severity !== 'success');
 
     if (activeAlarms.length === 0) {
       return 'success';
     }
 
-    if (activeAlarms.some(a => a.severity === 'error')) {
+    if (activeAlarms.some((a) => a.severity === 'error')) {
       return 'error';
     }
-    if (activeAlarms.some(a => a.severity === 'warning')) {
+    if (activeAlarms.some((a) => a.severity === 'warning')) {
       return 'warning';
     }
-    if (activeAlarms.some(a => a.severity === 'info')) {
+    if (activeAlarms.some((a) => a.severity === 'info')) {
       return 'info';
     }
 
@@ -97,9 +97,7 @@ export class CardAlarmBadge {
    * Get alarm messages for tooltip
    */
   private getAlarmMessages_(alarms: AlarmStatus[]): string {
-    const activeAlarms = alarms.filter(a =>
-      a.severity !== 'off' && a.severity !== 'success' && a.message
-    );
+    const activeAlarms = alarms.filter((a) => a.severity !== 'off' && a.severity !== 'success' && a.message);
 
     if (activeAlarms.length === 0) {
       return '';
@@ -107,11 +105,9 @@ export class CardAlarmBadge {
 
     // Sort by severity (error first)
     const severityOrder: Record<string, number> = { error: 0, warning: 1, info: 2 };
-    activeAlarms.sort((a, b) =>
-      (severityOrder[a.severity] ?? 3) - (severityOrder[b.severity] ?? 3)
-    );
+    activeAlarms.sort((a, b) => (severityOrder[a.severity] ?? 3) - (severityOrder[b.severity] ?? 3));
 
-    return activeAlarms.map(a => a.message).join('\n');
+    return activeAlarms.map((a) => a.message).join('\n');
   }
 
   dispose(): void {

@@ -1,6 +1,6 @@
-import { dB } from "@app/types";
-import { AnalyzerControl } from "@app/equipment/real-time-spectrum-analyzer/analyzer-control";
-import { BaseControlButton } from "@app/equipment/real-time-spectrum-analyzer/analyzer-control/base-control-button";
+import { AnalyzerControl } from '@app/equipment/real-time-spectrum-analyzer/analyzer-control';
+import { BaseControlButton } from '@app/equipment/real-time-spectrum-analyzer/analyzer-control/base-control-button';
+import { dB } from '@app/types';
 import './ac-ampt-btn.css';
 
 export class ACAmptBtn extends BaseControlButton {
@@ -131,18 +131,18 @@ export class ACAmptBtn extends BaseControlButton {
         break;
       case 'min':
         this.analyzerControl.specA.state.minAmplitude += adjustment;
-        this.analyzerControl.specA.state.scaleDbPerDiv = (this.analyzerControl.specA.state.maxAmplitude - this.analyzerControl.specA.state.minAmplitude) / 10 as dB;
+        this.analyzerControl.specA.state.scaleDbPerDiv = ((this.analyzerControl.specA.state.maxAmplitude - this.analyzerControl.specA.state.minAmplitude) / 10) as dB;
         break;
       case 'max':
         this.analyzerControl.specA.state.maxAmplitude += adjustment;
-        this.analyzerControl.specA.state.scaleDbPerDiv = (this.analyzerControl.specA.state.maxAmplitude - this.analyzerControl.specA.state.minAmplitude) / 10 as dB;
+        this.analyzerControl.specA.state.scaleDbPerDiv = ((this.analyzerControl.specA.state.maxAmplitude - this.analyzerControl.specA.state.minAmplitude) / 10) as dB;
         break;
       case 'dbperdiv':
         {
-          const newScale = this.analyzerControl.specA.state.scaleDbPerDiv + adjustment as dB;
+          const newScale = (this.analyzerControl.specA.state.scaleDbPerDiv + adjustment) as dB;
           this.analyzerControl.specA.state.scaleDbPerDiv = newScale;
           // Adjust min amplitude to keep max amplitude consistent
-          this.analyzerControl.specA.state.minAmplitude = this.analyzerControl.specA.state.maxAmplitude - (newScale * 10) as dB;
+          this.analyzerControl.specA.state.minAmplitude = (this.analyzerControl.specA.state.maxAmplitude - newScale * 10) as dB;
         }
         break;
     }
@@ -163,21 +163,20 @@ export class ACAmptBtn extends BaseControlButton {
           }
         }
         break;
-      case 'min':
-        {
-          const minInputValue = parseFloat(this.analyzerControl.specA.state.inputValue);
-          if (!isNaN(minInputValue)) {
-            this.analyzerControl.specA.state.minAmplitude = minInputValue;
-            this.analyzerControl.specA.state.scaleDbPerDiv = (this.analyzerControl.specA.state.maxAmplitude - this.analyzerControl.specA.state.minAmplitude) / 10 as dB;
-          }
-          break;
+      case 'min': {
+        const minInputValue = parseFloat(this.analyzerControl.specA.state.inputValue);
+        if (!isNaN(minInputValue)) {
+          this.analyzerControl.specA.state.minAmplitude = minInputValue;
+          this.analyzerControl.specA.state.scaleDbPerDiv = ((this.analyzerControl.specA.state.maxAmplitude - this.analyzerControl.specA.state.minAmplitude) / 10) as dB;
         }
+        break;
+      }
       case 'max':
         {
           const maxInputValue = parseFloat(this.analyzerControl.specA.state.inputValue);
           if (!isNaN(maxInputValue)) {
             this.analyzerControl.specA.state.maxAmplitude = maxInputValue;
-            this.analyzerControl.specA.state.scaleDbPerDiv = (this.analyzerControl.specA.state.maxAmplitude - this.analyzerControl.specA.state.minAmplitude) / 10 as dB;
+            this.analyzerControl.specA.state.scaleDbPerDiv = ((this.analyzerControl.specA.state.maxAmplitude - this.analyzerControl.specA.state.minAmplitude) / 10) as dB;
           }
         }
         break;
@@ -188,7 +187,7 @@ export class ACAmptBtn extends BaseControlButton {
             const newScale = scaleInputValue as dB;
             this.analyzerControl.specA.state.scaleDbPerDiv = newScale;
             // Adjust min amplitude to keep max amplitude consistent
-            this.analyzerControl.specA.state.minAmplitude = this.analyzerControl.specA.state.maxAmplitude - (newScale * 10) as dB;
+            this.analyzerControl.specA.state.minAmplitude = (this.analyzerControl.specA.state.maxAmplitude - newScale * 10) as dB;
           }
         }
         break;

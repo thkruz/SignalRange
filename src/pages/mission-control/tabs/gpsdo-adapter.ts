@@ -1,7 +1,8 @@
-import { qs } from "@app/engine/utils/query-selector";
-import { GPSDOModuleCore } from "@app/equipment/rf-front-end/gpsdo-module/gpsdo-module-core";
-import { EventBus } from "@app/events/event-bus";
-import { Events } from "@app/events/events";
+import { qs } from '@app/engine/utils/query-selector';
+import { GPSDOModuleCore } from '@app/equipment/rf-front-end/gpsdo-module/gpsdo-module-core';
+import { EventBus } from '@app/events/event-bus';
+import { Events } from '@app/events/events';
+import { GnssThreatManager } from '@app/gnss-threat/gnss-threat-manager';
 
 /**
  * GPSDOAdapter - Bridges GPSDOModuleCore state to web controls
@@ -17,15 +18,17 @@ export class GPSDOAdapter {
 
   private readonly gpsdoModule: GPSDOModuleCore;
   private readonly containerEl: HTMLElement;
+  private readonly groundStationId_: string;
   private lastStateString_: string = '';
   private lastSyncTime_: number = 0;
   private readonly domCache_: Map<string, HTMLElement> = new Map();
   private readonly boundHandlers: Map<string, EventListener> = new Map();
   private readonly boundUpdateHandler_: () => void;
 
-  constructor(gpsdoModule: GPSDOModuleCore, containerEl: HTMLElement) {
+  constructor(gpsdoModule: GPSDOModuleCore, containerEl: HTMLElement, groundStationId = '') {
     this.gpsdoModule = gpsdoModule;
     this.containerEl = containerEl;
+    this.groundStationId_ = groundStationId;
     this.boundUpdateHandler_ = this.throttledSync_.bind(this);
     this.initialize();
   }
@@ -35,6 +38,26 @@ export class GPSDOAdapter {
     if (now - this.lastSyncTime_ < GPSDOAdapter.UPDATE_INTERVAL_MS) return;
     this.lastSyncTime_ = now;
     this.syncDomWithState_();
+    this.syncTimingOffset_();
+  }
+
+  /**
+   * GNSS vs REF delta-T: the GNSS timing solution against the disciplined
+   * reference (GnssThreatManager, nats-eu M8). Lives outside syncDomWithState_
+   * because the GPSDO's own state does not change while the offset walks -
+   * that is the whole point of the tell.
+   */
+  private syncTimingOffset_(): void {
+    const readout = this.domCache_.get('timeOffset');
+    if (!readout) return;
+    if (!this.gpsdoModule.state.isPowered) {
+      readout.textContent = '-- µs';
+      readout.classList.remove('text-danger');
+      return;
+    }
+    const offsetUs = GnssThreatManager.isInitialized() ? GnssThreatManager.getInstance().timeOffsetUsFor(this.groundStationId_) : 0;
+    readout.textContent = `${offsetUs >= 0 ? '+' : ''}${offsetUs.toFixed(1)} µs`;
+    readout.classList.toggle('text-danger', Math.abs(offsetUs) > 20);
   }
 
   private initialize(): void {
@@ -63,6 +86,9 @@ export class GPSDOAdapter {
     this.domCache_.set('holdoverTtl', qs('#gpsdo-holdover-ttl', this.containerEl));
     this.domCache_.set('satelliteCount', qs('#gpsdo-satellite-count', this.containerEl));
     this.domCache_.set('constellation', qs('#gpsdo-constellation', this.containerEl));
+    // Optional: older fixtures and the SDR console host a GPSDO without this readout.
+    const timeOffset = this.containerEl.querySelector<HTMLElement>('#gpsdo-time-offset');
+    if (timeOffset) this.domCache_.set('timeOffset', timeOffset);
     this.domCache_.set('freqAccuracy', qs('#gpsdo-freq-accuracy', this.containerEl));
     this.domCache_.set('allanDeviation', qs('#gpsdo-allan-deviation', this.containerEl));
     this.domCache_.set('phaseNoise', qs('#gpsdo-phase-noise', this.containerEl));
@@ -79,10 +105,14 @@ export class GPSDOAdapter {
    */
   private getBadgeClass_(ledClass: string): string {
     switch (ledClass) {
-      case 'led-green': return 'status-badge-green';
-      case 'led-red': return 'status-badge-red';
-      case 'led-amber': return 'status-badge-amber';
-      default: return 'status-badge-off';
+      case 'led-green':
+        return 'status-badge-green';
+      case 'led-red':
+        return 'status-badge-red';
+      case 'led-amber':
+        return 'status-badge-amber';
+      default:
+        return 'status-badge-off';
     }
   }
 
@@ -112,6 +142,13 @@ export class GPSDOAdapter {
       this.lastStateString_ = ''; // Force update after GNSS callback
       this.syncDomWithState_();
     });
+
+    // Keep the GPSDO's physical switch and GnssThreatManager's reference mode
+    // coherent (same coupling as the SDR console's REF toggle): switch down is
+    // holdover and clears spoof exposure; switch up is trusting GNSS again.
+    if (GnssThreatManager.isInitialized()) {
+      GnssThreatManager.getInstance().setReferenceMode(isChecked ? 'gnss' : 'holdover');
+    }
   }
 
   update(): void {

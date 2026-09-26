@@ -99,11 +99,7 @@ describe('createAntenna', () => {
 
   describe('config selection', () => {
     it('should use specified antenna config', () => {
-      const antenna = createAntenna(
-        'antenna-container',
-        'headless',
-        ANTENNA_CONFIG_KEYS.KU_BAND_3M
-      );
+      const antenna = createAntenna('antenna-container', 'headless', ANTENNA_CONFIG_KEYS.KU_BAND_3M);
 
       expect(antenna.config.name).toBe('3m Ku-Band');
       expect(antenna.config.band).toBe('Ku');
@@ -135,12 +131,7 @@ describe('createAntenna', () => {
         isPowered: false,
       };
 
-      const antenna = createAntenna(
-        'antenna-container',
-        'headless',
-        ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK,
-        initialState
-      );
+      const antenna = createAntenna('antenna-container', 'headless', ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK, initialState);
 
       expect(antenna.state.azimuth).toBe(180);
       expect(antenna.state.elevation).toBe(45);
@@ -152,12 +143,7 @@ describe('createAntenna', () => {
         azimuth: 90 as Degrees,
       };
 
-      const antenna = createAntenna(
-        'antenna-container',
-        'headless',
-        ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK,
-        initialState
-      );
+      const antenna = createAntenna('antenna-container', 'headless', ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK, initialState);
 
       // Provided value should be used
       expect(antenna.state.azimuth).toBe(90);
@@ -169,26 +155,13 @@ describe('createAntenna', () => {
 
   describe('team and server IDs', () => {
     it('should set teamId correctly', () => {
-      const antenna = createAntenna(
-        'antenna-container',
-        'headless',
-        ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK,
-        {},
-        2
-      );
+      const antenna = createAntenna('antenna-container', 'headless', ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK, {}, 2);
 
       expect(antenna.state.teamId).toBe(2);
     });
 
     it('should set serverId correctly', () => {
-      const antenna = createAntenna(
-        'antenna-container',
-        'headless',
-        ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK,
-        {},
-        1,
-        3
-      );
+      const antenna = createAntenna('antenna-container', 'headless', ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK, {}, 1, 3);
 
       expect(antenna.state.serverId).toBe(3);
     });
@@ -216,44 +189,28 @@ describe('createAntenna', () => {
 
   describe('different bands and configurations', () => {
     it('should create C-band 9m antenna', () => {
-      const antenna = createAntenna(
-        'antenna-container',
-        'headless',
-        ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK
-      );
+      const antenna = createAntenna('antenna-container', 'headless', ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK);
 
       expect(antenna.config.band).toBe('C');
       expect(antenna.config.diameter).toBe(9.0);
     });
 
     it('should create Ku-band 9m antenna', () => {
-      const antenna = createAntenna(
-        'antenna-container',
-        'headless',
-        ANTENNA_CONFIG_KEYS.KU_BAND_9M_LIMIT
-      );
+      const antenna = createAntenna('antenna-container', 'headless', ANTENNA_CONFIG_KEYS.KU_BAND_9M_LIMIT);
 
       expect(antenna.config.band).toBe('Ku');
       expect(antenna.config.diameter).toBe(9.0);
     });
 
     it('should create X-band 3m antenna', () => {
-      const antenna = createAntenna(
-        'antenna-container',
-        'headless',
-        ANTENNA_CONFIG_KEYS.X_BAND_3M_ANTESTAR_RS
-      );
+      const antenna = createAntenna('antenna-container', 'headless', ANTENNA_CONFIG_KEYS.X_BAND_3M_ANTESTAR_RS);
 
       expect(antenna.config.band).toBe('X');
       expect(antenna.config.diameter).toBe(3.0);
     });
 
     it('should create Ka-band 1.8m antenna', () => {
-      const antenna = createAntenna(
-        'antenna-container',
-        'headless',
-        ANTENNA_CONFIG_KEYS.KA_BAND_1M8
-      );
+      const antenna = createAntenna('antenna-container', 'headless', ANTENNA_CONFIG_KEYS.KA_BAND_1M8);
 
       expect(antenna.config.band).toBe('Ka');
       expect(antenna.config.diameter).toBe(1.8);
@@ -262,11 +219,7 @@ describe('createAntenna', () => {
 
   describe('frequency range validation', () => {
     it('should have valid C-band receive frequencies', () => {
-      const antenna = createAntenna(
-        'antenna-container',
-        'headless',
-        ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK
-      );
+      const antenna = createAntenna('antenna-container', 'headless', ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK);
 
       expect(antenna.config.minRxFrequency).toBeLessThan(antenna.config.maxRxFrequency);
       expect(antenna.config.minRxFrequency).toBeGreaterThan(3e9);
@@ -274,11 +227,7 @@ describe('createAntenna', () => {
     });
 
     it('should have valid C-band transmit frequencies', () => {
-      const antenna = createAntenna(
-        'antenna-container',
-        'headless',
-        ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK
-      );
+      const antenna = createAntenna('antenna-container', 'headless', ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK);
 
       expect(antenna.config.minTxFrequency).toBeLessThan(antenna.config.maxTxFrequency);
       expect(antenna.config.minTxFrequency).toBeGreaterThan(5e9);
@@ -286,11 +235,7 @@ describe('createAntenna', () => {
     });
 
     it('should have valid Ku-band receive frequencies', () => {
-      const antenna = createAntenna(
-        'antenna-container',
-        'headless',
-        ANTENNA_CONFIG_KEYS.KU_BAND_3M
-      );
+      const antenna = createAntenna('antenna-container', 'headless', ANTENNA_CONFIG_KEYS.KU_BAND_3M);
 
       expect(antenna.config.minRxFrequency).toBeLessThan(antenna.config.maxRxFrequency);
       expect(antenna.config.minRxFrequency).toBeGreaterThan(10e9);

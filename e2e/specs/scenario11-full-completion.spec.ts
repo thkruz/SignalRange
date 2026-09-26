@@ -1,11 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { MissionControlPage } from '../pages/mission-control.page';
-import {
-  answerQuizByText,
-  dismissDialogIfPresent,
-  waitForQuizToAppear,
-  waitForSimulationReady,
-} from '../utils/simulation-helpers';
+import { answerQuizByText, dismissDialogIfPresent, waitForQuizToAppear, waitForSimulationReady } from '../utils/simulation-helpers';
 
 /**
  * Scenario 11 - "Planned Maintenance: Hand Off": Coordinated Traffic Transfer.
@@ -28,16 +23,7 @@ import {
  * - 'execute-handover': Traffic handover dropdown + execute button
  * - 'auto': Pre-staged state already satisfies the condition
  */
-type ObjectiveType =
-  | 'quiz'
-  | 'select-station'
-  | 'click-tab'
-  | 'toggle-switch'
-  | 'enable-tx-commit'
-  | 'set-tracking-mode'
-  | 'select-satellite'
-  | 'execute-handover'
-  | 'auto';
+type ObjectiveType = 'quiz' | 'select-station' | 'click-tab' | 'toggle-switch' | 'enable-tx-commit' | 'set-tracking-mode' | 'select-satellite' | 'execute-handover' | 'auto';
 
 interface Scenario11Objective {
   id: string;
@@ -64,8 +50,7 @@ const SCENARIO_11_OBJECTIVES: Scenario11Objective[] = [
     id: 'review-mission-brief',
     title: 'Review Shift Brief',
     type: 'quiz',
-    correctAnswer:
-      'TIDEMARK-1 traffic moves to ME-02 for a 2-hour VT-01 maintenance window, then comes back next shift',
+    correctAnswer: 'TIDEMARK-1 traffic moves to ME-02 for a 2-hour VT-01 maintenance window, then comes back next shift',
   },
 
   // ============================================================
@@ -87,8 +72,7 @@ const SCENARIO_11_OBJECTIVES: Scenario11Objective[] = [
     id: 'vt-pre-handover-dashboard',
     title: 'VT-01 Pre-Handover Sweep',
     type: 'quiz',
-    correctAnswer:
-      'A pre-handover snapshot documents what the link looked like healthy, so any post-handover anomaly can be attributed correctly',
+    correctAnswer: 'It records what the link looked like healthy, so any anomaly after the transfer can be attributed',
   },
   {
     id: 'vt-confirm-tm1-locked',
@@ -137,8 +121,7 @@ const SCENARIO_11_OBJECTIVES: Scenario11Objective[] = [
     id: 'understand-commit-point',
     title: 'Understand the Commit Point',
     type: 'quiz',
-    correctAnswer:
-      'Antenna locked, RX carrier with C/N margin, TX chain staged - modem transmitting into a muted BUC, HPA disabled until the transfer swaps RF authority',
+    correctAnswer: 'Antenna locked, RX carrier with C/N margin, TX staged cold - modem on, BUC muted, HPA disabled until the transfer',
   },
 
   // ============================================================
@@ -216,8 +199,7 @@ const SCENARIO_11_OBJECTIVES: Scenario11Objective[] = [
     id: 'vt-final-rf-safety-check',
     title: 'Final RF Safety Check',
     type: 'quiz',
-    correctAnswer:
-      'HPA disabled, BUC muted, antenna at maintenance position - no RF energy on the feed, dish accessible',
+    correctAnswer: 'HPA disabled, BUC muted, antenna at maintenance position - no RF energy on the feed, dish accessible',
   },
 
   // ============================================================
@@ -227,8 +209,7 @@ const SCENARIO_11_OBJECTIVES: Scenario11Objective[] = [
     id: 'log-handover-entry',
     title: 'Log the Handover',
     type: 'quiz',
-    correctAnswer:
-      '1000 - Planned handover TM-1 VT-01 to ME-02 complete. VT-01 RF chain safed, antenna at maintenance position. Crew on-site for HPA waveguide inspection. ME-02 (Vega) carrying traffic. Return to service next shift.',
+    correctAnswer: '1000 - Planned TM-1 handover to ME-02 complete. VT-01 safed, antenna at maintenance position, crew on-site. Return to service next shift.',
   },
 ];
 
@@ -239,14 +220,10 @@ const SCENARIO_11_OBJECTIVES: Scenario11Objective[] = [
 /**
  * Toggle a switch to a desired state.
  */
-async function toggleSwitch(
-  page: import('@playwright/test').Page,
-  switchId: string,
-  desiredState: boolean
-): Promise<void> {
+async function toggleSwitch(page: import('@playwright/test').Page, switchId: string, desiredState: boolean): Promise<void> {
   const switchEl = page.locator(`#${switchId}`);
   await expect(switchEl).toBeVisible({ timeout: 5000 });
-  // Let the adapter's throttled DOM sync land before reading - the static
+  // Let the adapter's throttled DOM sync settle before reading - the static
   // template can render a stale checked state right after the tab mounts.
   await page.waitForTimeout(1200);
   const isChecked = await switchEl.isChecked();
@@ -301,10 +278,7 @@ async function enableTxForHandover(page: import('@playwright/test').Page): Promi
  * Set the antenna tracking mode by clicking the appropriate button.
  * For maintenance and stow modes, also clicks Apply to commit position.
  */
-async function setTrackingMode(
-  page: import('@playwright/test').Page,
-  trackingMode: string
-): Promise<void> {
+async function setTrackingMode(page: import('@playwright/test').Page, trackingMode: string): Promise<void> {
   const modeButton = page.locator(`.btn-tracking[data-mode="${trackingMode}"]`);
   await expect(modeButton).toBeVisible({ timeout: 5000 });
   await modeButton.click();
@@ -323,15 +297,14 @@ async function setTrackingMode(
  * polling the simulation state directly (DOM polling can exit before the slew
  * starts and desync the objective chain).
  */
-async function waitForAntennaMovement(
-  page: import('@playwright/test').Page,
-  timeout = 240000
-): Promise<void> {
+async function waitForAntennaMovement(page: import('@playwright/test').Page, timeout = 240000): Promise<void> {
   await page.waitForFunction(
     () => {
-      const sim = (window as unknown as {
-        signalRange?: { simulationManager?: { groundStations?: Array<{ antennas?: Array<{ state?: { slewing?: boolean; elevation?: number } }> }> } };
-      }).signalRange?.simulationManager;
+      const sim = (
+        window as unknown as {
+          signalRange?: { simulationManager?: { groundStations?: Array<{ antennas?: Array<{ state?: { slewing?: boolean; elevation?: number } }> }> } };
+        }
+      ).signalRange?.simulationManager;
       const antennaState = sim?.groundStations?.[0]?.antennas?.[0]?.state;
       if (!antennaState) return false;
       // Maintenance position is 5° elevation (±1° objective tolerance)
@@ -347,10 +320,7 @@ async function waitForAntennaMovement(
 /**
  * Select a satellite in the asset tree to open its dashboard.
  */
-async function selectSatellite(
-  page: import('@playwright/test').Page,
-  satelliteId: string
-): Promise<void> {
+async function selectSatellite(page: import('@playwright/test').Page, satelliteId: string): Promise<void> {
   const satTreeItem = page.locator(`[data-asset-id="${satelliteId}"]`);
   await expect(satTreeItem).toBeVisible({ timeout: 10000 });
   await satTreeItem.click();
@@ -361,10 +331,7 @@ async function selectSatellite(
 /**
  * Execute traffic handover to target station via the satellite dashboard.
  */
-async function executeTrafficHandover(
-  page: import('@playwright/test').Page,
-  targetStation: string
-): Promise<void> {
+async function executeTrafficHandover(page: import('@playwright/test').Page, targetStation: string): Promise<void> {
   const handoverSelect = page.locator('#sat-handover-target');
   await expect(handoverSelect).toBeVisible({ timeout: 5000 });
   await handoverSelect.selectOption({ value: targetStation });
@@ -381,11 +348,7 @@ async function executeTrafficHandover(
 /**
  * Execute an objective based on its type.
  */
-async function executeObjective(
-  page: import('@playwright/test').Page,
-  missionControlPage: MissionControlPage,
-  objective: Scenario11Objective
-): Promise<void> {
+async function executeObjective(page: import('@playwright/test').Page, missionControlPage: MissionControlPage, objective: Scenario11Objective): Promise<void> {
   switch (objective.type) {
     case 'quiz':
       await waitForQuizToAppear(page);
@@ -398,6 +361,10 @@ async function executeObjective(
 
     case 'click-tab':
       await missionControlPage.selectTab(objective.tabId!);
+      // Observation-gated conditions latch only after the default dwell on
+      // the tab (DEFAULT_OBSERVATION_DWELL_SECONDS); leaving at once would
+      // reset the read and strand the objective.
+      await page.waitForTimeout(3000);
       break;
 
     case 'toggle-switch':

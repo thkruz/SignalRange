@@ -1,4 +1,4 @@
-import { test, expect } from '../fixtures/test-fixtures';
+import { expect, test } from '../fixtures/test-fixtures';
 import { waitForSimulationReady } from '../utils/simulation-helpers';
 
 test.describe('Objective Completion', () => {
@@ -26,9 +26,7 @@ test.describe('Objective Completion', () => {
       await expect(missionControlPage.objectivesChecklist).toBeVisible();
 
       // Look for active objective styling
-      const activeObjective = missionControlPage.objectivesChecklist.locator(
-        '.objective-item.active, .objective-active, [data-active="true"]'
-      );
+      const activeObjective = missionControlPage.objectivesChecklist.locator('.objective-item.active, .objective-active, [data-active="true"]');
 
       // May or may not have an active objective depending on scenario state
       const count = await activeObjective.count();
@@ -87,12 +85,7 @@ test.describe('Objective Completion', () => {
 
 test.describe('Full Scenario Flow', () => {
   // This is a longer test that exercises the full user workflow
-  test('should complete campaign to scenario flow', async ({
-    campaignSelectionPage,
-    scenarioSelectionPage,
-    missionControlPage,
-    page,
-  }) => {
+  test('should complete campaign to scenario flow', async ({ campaignSelectionPage, scenarioSelectionPage, missionControlPage, page }) => {
     // Step 1: Start at campaign selection
     await campaignSelectionPage.goto();
     await expect(campaignSelectionPage.pageTitle).toHaveText('Signal Range Training');

@@ -1,0 +1,83 @@
+import { createAntenna } from '@app/equipment/antenna/antenna-factory';
+import { AntennaRegistry } from '@app/equipment/antenna/antenna-registry';
+import { addLocaleBundle, resetLocales, t7e } from '@app/locales/i18n';
+import type { PluginApi } from '@app/plugins/signal-range-plugin';
+import { vi } from 'vitest';
+import en from '../locales/en.json';
+import { ANTENNA_ID } from '../src/antenna-config';
+import { __CLASS_NAME__ } from '../src/plugin';
+
+// The antenna core subscribes to the simulation loop; stub it like the engine's own antenna tests do.
+vi.mock('@app/simulation/simulation-manager', () => ({
+  SimulationManager: {
+    getInstance: vi.fn(() => ({
+      update: vi.fn(),
+      draw: vi.fn(),
+      sync: vi.fn(),
+      getSatByNoradId: vi.fn(),
+      getSatsByAzEl: () => [],
+      satellites: [],
+    })),
+    destroy: vi.fn(),
+  },
+}));
+
+function fakeApi(): PluginApi {
+  return {
+    engineVersion: '0.0.0-test',
+    isPrivate: false,
+    isAuthoring: false,
+    antennas: AntennaRegistry.getInstance(),
+    t7e,
+    router: null,
+    campaigns: null,
+    settings: null,
+    events: null,
+  } as unknown as PluginApi;
+}
+
+describe('__CLASS_NAME__', () => {
+  beforeEach(() => {
+    AntennaRegistry.destroy();
+    resetLocales();
+    addLocaleBundle('en', en);
+    document.body.innerHTML = '<div id="test-parent"></div>';
+  });
+
+  afterEach(() => {
+    AntennaRegistry.destroy();
+    resetLocales();
+    vi.restoreAllMocks();
+  });
+
+  it('has the id the manifest declares', () => {
+    expect(new __CLASS_NAME__().id).toBe('__PLUGIN_ID__');
+  });
+
+  it('registers its antenna under the plugin source', () => {
+    new __CLASS_NAME__().register(fakeApi());
+
+    const entry = AntennaRegistry.getInstance().find(ANTENNA_ID);
+
+    expect(entry?.source).toBe('plugin:__PLUGIN_ID__');
+    expect(entry?.config.name).toBe(en.plugins.__PLUGIN_ID__.antennaName);
+  });
+
+  it('builds a working headless antenna from the registered config', () => {
+    new __CLASS_NAME__().register(fakeApi());
+
+    const antenna = createAntenna('test-parent', 'headless', ANTENNA_ID);
+
+    expect(antenna.config.band).toBe('Ka');
+    expect(antenna.config.diameter).toBe(4.5);
+  });
+
+  it('removes its antenna on dispose', () => {
+    const plugin = new __CLASS_NAME__();
+
+    plugin.register(fakeApi());
+    plugin.dispose();
+
+    expect(AntennaRegistry.getInstance().has(ANTENNA_ID)).toBe(false);
+  });
+});

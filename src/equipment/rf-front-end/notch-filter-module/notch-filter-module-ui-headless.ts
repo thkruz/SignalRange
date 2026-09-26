@@ -10,11 +10,7 @@ import { NotchFilterModuleCore, NotchFilterState } from './notch-filter-module-c
  */
 export class NotchFilterModuleUIHeadless extends NotchFilterModuleCore {
   constructor(state: NotchFilterState, rfFrontEnd: RFFrontEndCore, unit: number = 1) {
-    super(
-      { ...NotchFilterModuleCore.getDefaultState(), ...state },
-      rfFrontEnd,
-      unit
-    );
+    super({ ...NotchFilterModuleCore.getDefaultState(), ...state }, rfFrontEnd, unit);
   }
 
   /**

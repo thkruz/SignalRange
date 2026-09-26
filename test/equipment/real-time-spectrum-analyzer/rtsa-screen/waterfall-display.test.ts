@@ -227,10 +227,11 @@ describe('WaterfallDisplay', () => {
   });
 
   describe('amplitudeToColorRGB static method', () => {
-    const createState = (minAmplitude: number, maxAmplitude: number): RealTimeSpectrumAnalyzerState => ({
-      minAmplitude,
-      maxAmplitude,
-    } as RealTimeSpectrumAnalyzerState);
+    const createState = (minAmplitude: number, maxAmplitude: number): RealTimeSpectrumAnalyzerState =>
+      ({
+        minAmplitude,
+        maxAmplitude,
+      }) as RealTimeSpectrumAnalyzerState;
 
     // Note: The algorithm applies norm ** 2.5 biasing to compress lower values
     describe('color gradient mapping', () => {
@@ -328,7 +329,7 @@ describe('WaterfallDisplay', () => {
 
         expect(Array.isArray(color)).toBe(true);
         expect(color.length).toBe(3);
-        expect(color.every(c => c >= 0 && c <= 255)).toBe(true);
+        expect(color.every((c) => c >= 0 && c <= 255)).toBe(true);
       });
     });
 

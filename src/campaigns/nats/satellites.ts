@@ -1,6 +1,6 @@
 import { Satellite, TransponderConfig } from '@app/equipment/satellite/satellite';
 import { SignalOrigin } from '@app/signal-origin';
-import type { FECType, Hertz, ModulationType, RfFrequency, dBi, dBm } from '@app/types';
+import type { dBi, dBm, FECType, Hertz, ModulationType, RfFrequency } from '@app/types';
 import type { Degrees } from 'ootk';
 
 export const tidemark1Satellite = new Satellite(
@@ -23,7 +23,7 @@ export const tidemark1Satellite = new Satellite(
       origin: SignalOrigin.SATELLITE_RX,
       noiseFloor: null,
       gainInPath: 0 as dBi,
-    }
+    },
   ],
   [], // Beacons now defined in transponderConfigs
   {
@@ -90,7 +90,7 @@ export const tidemark2Satellite = new Satellite(
       origin: SignalOrigin.SATELLITE_RX,
       noiseFloor: null,
       gainInPath: 0 as dBi,
-    }
+    },
   ],
   [], // Beacons now defined in transponderConfigs
   {
@@ -99,7 +99,7 @@ export const tidemark2Satellite = new Satellite(
     rotation: -25 as Degrees,
     frequencyOffset: 2.225e9 as Hertz, // Legacy fallback
     // Ephemeris error: simulates TLE inaccuracy
-    ephemerisErrorAz: 0.10 as Degrees,
+    ephemerisErrorAz: 0.1 as Degrees,
     ephemerisErrorEl: 0.06 as Degrees,
     transponderConfigs: [
       {
@@ -175,7 +175,7 @@ export const tidemark3Satellite = new Satellite(
       origin: SignalOrigin.SATELLITE_RX,
       noiseFloor: null,
       gainInPath: 0 as dBi,
-    }
+    },
   ],
   [], // Beacons defined in transponderConfigs
   {
@@ -184,7 +184,7 @@ export const tidemark3Satellite = new Satellite(
     rotation: 8 as Degrees,
     frequencyOffset: 2.225e9 as Hertz,
     // Ephemeris error: smallest of the constellation (newest bird, freshest TLE)
-    ephemerisErrorAz: 0.10 as Degrees,
+    ephemerisErrorAz: 0.1 as Degrees,
     ephemerisErrorEl: 0.07 as Degrees,
     transponderConfigs: [
       {
@@ -234,7 +234,7 @@ export const ses10Satellite = new Satellite(
       origin: SignalOrigin.SATELLITE_RX,
       noiseFloor: null,
       gainInPath: 0 as dBi,
-    }
+    },
   ],
   [], // Beacons now defined in transponderConfigs
   {
@@ -244,7 +244,7 @@ export const ses10Satellite = new Satellite(
     frequencyOffset: 2.225e9 as Hertz, // Legacy fallback
     // Ephemeris error: simulates TLE inaccuracy
     ephemerisErrorAz: 0.15 as Degrees,
-    ephemerisErrorEl: 0.10 as Degrees,
+    ephemerisErrorEl: 0.1 as Degrees,
     transponderConfigs: [
       {
         id: 'TP-1',
@@ -322,7 +322,7 @@ export const aurora7Satellite = new Satellite(
       origin: SignalOrigin.SATELLITE_RX,
       noiseFloor: null,
       gainInPath: 0 as dBi,
-    }
+    },
   ],
   [], // Beacons defined in transponderConfigs
   {
@@ -331,7 +331,7 @@ export const aurora7Satellite = new Satellite(
     rotation: 0 as Degrees,
     frequencyOffset: 2.225e9 as Hertz,
     // Ephemeris error: larger for inclined orbit (TLE is harder to predict)
-    ephemerisErrorAz: 0.20 as Degrees,
+    ephemerisErrorAz: 0.2 as Degrees,
     ephemerisErrorEl: 0.15 as Degrees,
     orbitType: 'geosynchronous',
     geosyncConfig: {

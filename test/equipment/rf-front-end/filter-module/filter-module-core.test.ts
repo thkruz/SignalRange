@@ -48,16 +48,14 @@ describe('IfFilterBankModuleCore', () => {
 
     it('should have increasing bandwidth values', () => {
       for (let i = 1; i < FILTER_BANDWIDTH_CONFIGS.length; i++) {
-        expect(FILTER_BANDWIDTH_CONFIGS[i].bandwidth)
-          .toBeGreaterThan(FILTER_BANDWIDTH_CONFIGS[i - 1].bandwidth);
+        expect(FILTER_BANDWIDTH_CONFIGS[i].bandwidth).toBeGreaterThan(FILTER_BANDWIDTH_CONFIGS[i - 1].bandwidth);
       }
     });
 
     it('should have decreasing noise floor with wider bandwidth', () => {
       // Wider bandwidth = more noise = higher (less negative) noise floor
       for (let i = 1; i < FILTER_BANDWIDTH_CONFIGS.length; i++) {
-        expect(FILTER_BANDWIDTH_CONFIGS[i].noiseFloor)
-          .toBeGreaterThanOrEqual(FILTER_BANDWIDTH_CONFIGS[i - 1].noiseFloor);
+        expect(FILTER_BANDWIDTH_CONFIGS[i].noiseFloor).toBeGreaterThanOrEqual(FILTER_BANDWIDTH_CONFIGS[i - 1].noiseFloor);
       }
     });
   });
@@ -184,7 +182,7 @@ describe('IfFilterBankModuleCore', () => {
           polarization: 'H',
           origin: SignalOrigin.LOW_NOISE_BLOCK,
           gainInPath: 0,
-        }
+        },
       ];
 
       vi.spyOn(filterModule, 'inputSignals', 'get').mockReturnValue(mockSignals);
@@ -273,7 +271,7 @@ describe('IfFilterBankModuleCore', () => {
   describe('sync', () => {
     it('should sync state and update filter characteristics', () => {
       const newState: Partial<IfFilterBankState> = {
-        bandwidthIndex: 8 // 1 MHz
+        bandwidthIndex: 8, // 1 MHz
       };
 
       filterModule.sync(newState);

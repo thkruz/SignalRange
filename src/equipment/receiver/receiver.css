@@ -10,11 +10,11 @@
   align-items: center;
   margin-bottom: 16px;
   padding-bottom: 12px;
-  border-bottom: 1px solid #444;
+  border-bottom: 1px solid var(--mc-equip-border-light);
 }
 
 .receiver-title {
-  color: #fff;
+  color: var(--mc-equip-text);
   font-size: 18px;
   font-weight: bold;
 }
@@ -29,26 +29,26 @@
 .status-found,
 .status-signal-found {
   background-color: #4caf50;
-  color: #fff;
+  color: var(--mc-equip-text);
 }
 
 .status-degraded,
 .status-signal-degraded {
   background-color: #ff9800;
-  color: #fff;
+  color: var(--mc-equip-text);
 }
 
 .status-no-power,
 .status-denied,
 .status-signal-denied {
   background-color: #f44336;
-  color: #fff;
+  color: var(--mc-equip-text);
 }
 
 .status-standby,
 .status-no-signal {
-  background-color: #757575;
-  color: #fff;
+  background-color: var(--mc-equip-unlit);
+  color: var(--mc-equip-text);
 }
 
 /* Controls Container - now horizontal layout */
@@ -69,9 +69,9 @@
 
 .btn-modem {
   padding: 12px;
-  background-color: #555;
-  color: #fff;
-  border: 2px solid #777;
+  background-color: var(--mc-equip-control);
+  color: var(--mc-equip-text);
+  border: 2px solid var(--mc-equip-control-lighter);
   border-radius: 4px;
   font-weight: bold;
   font-size: 16px;
@@ -80,7 +80,7 @@
 }
 
 .btn-modem:hover {
-  background-color: #666;
+  background-color: var(--mc-equip-control-light);
   transform: translateX(2px);
 }
 
@@ -135,7 +135,7 @@
   flex-direction: column;
   gap: 5px;
   padding: 12px;
-  background-color: #1a1a1a;
+  background-color: var(--mc-equip-bg);
   border-radius: 8px;
   width: 285px;
   height: 100%;
@@ -150,7 +150,7 @@
 }
 
 .config-row label {
-  color: #fff;
+  color: var(--mc-equip-text);
   font-size: 14px;
   text-align: right;
 }
@@ -158,9 +158,9 @@
 .config-row input,
 .config-row select {
   padding: 5px;
-  background-color: #2a2a2a;
-  color: #fff;
-  border: 1px solid #555;
+  background-color: var(--mc-equip-panel-raised);
+  color: var(--mc-equip-text);
+  border: 1px solid var(--mc-equip-control);
   border-radius: 4px;
   font-size: 14px;
 }
@@ -190,7 +190,7 @@
 .video-monitor {
   padding: 8px;
   background-color: #000;
-  border: 4px solid #333;
+  border: 4px solid var(--mc-equip-border);
   border-radius: 8px;
   box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.8);
   display: flex;
@@ -204,7 +204,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: radial-gradient(ellipse at center, #0a0a0a 0%, #000 100%);
+  background: radial-gradient(ellipse at center, var(--mc-equip-bg-deep) 0%, #000 100%);
   border-radius: 4px;
   position: relative;
   overflow: hidden;
@@ -223,7 +223,7 @@
 }
 
 .monitor-screen.no-power {
-  background: #050505;
+  background: var(--mc-equip-bg-deepest);
 }
 
 .video-feed {
@@ -235,7 +235,7 @@
 }
 
 .no-signal-text {
-  color: #666;
+  color: var(--mc-equip-control-light);
   font-size: 18px;
   font-weight: bold;
   letter-spacing: 2px;
@@ -287,14 +287,14 @@
   gap: 12px;
   margin-top: auto;
   padding-top: 12px;
-  border-top: 1px solid #444;
+  border-top: 1px solid var(--mc-equip-border-light);
 }
 
 .btn-apply {
   flex: 1;
   padding: 12px;
-  background-color: #555;
-  color: #fff;
+  background-color: var(--mc-equip-control);
+  color: var(--mc-equip-text);
   border: none;
   border-radius: 4px;
   font-weight: bold;
@@ -304,7 +304,7 @@
 }
 
 .btn-apply:hover {
-  background-color: #666;
+  background-color: var(--mc-equip-control-light);
   transform: translateY(-1px);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }

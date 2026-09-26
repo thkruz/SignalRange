@@ -1,4 +1,4 @@
-import { Page, Locator, expect } from '@playwright/test';
+import { expect, Locator, Page } from '@playwright/test';
 import { BasePage } from './base.page';
 
 /**
@@ -82,7 +82,7 @@ export class CampaignSelectionPage extends BasePage {
    * Check if the login warning is visible.
    */
   async isLoginWarningVisible(): Promise<boolean> {
-    const display = await this.loginWarning.evaluate(el => getComputedStyle(el).display);
+    const display = await this.loginWarning.evaluate((el) => getComputedStyle(el).display);
     return display !== 'none';
   }
 }

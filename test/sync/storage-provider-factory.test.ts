@@ -1,11 +1,7 @@
 import { vi } from 'vitest';
 import { D1StorageProvider } from '../../src/sync/d1-storage-provider';
 import { LocalStorageProvider } from '../../src/sync/local-storage-provider';
-import {
-  StorageProviderFactory,
-  StorageProviderType,
-  type StorageFactoryConfig,
-} from '../../src/sync/storage-provider-factory';
+import { type StorageFactoryConfig, StorageProviderFactory, StorageProviderType } from '../../src/sync/storage-provider-factory';
 import { WebSocketStorageProvider } from '../../src/sync/websocket-storage-provider';
 
 describe('StorageProviderFactory', () => {
@@ -37,9 +33,7 @@ describe('StorageProviderFactory', () => {
         type: StorageProviderType.WEBSOCKET,
       };
 
-      expect(() => StorageProviderFactory.create(config)).toThrow(
-        'wsUrl is required for WebSocket storage provider'
-      );
+      expect(() => StorageProviderFactory.create(config)).toThrow('wsUrl is required for WebSocket storage provider');
     });
 
     it('creates a D1StorageProvider when type is CLOUDFLARE_D1 with d1ApiEndpoint', () => {
@@ -58,9 +52,7 @@ describe('StorageProviderFactory', () => {
         type: StorageProviderType.CLOUDFLARE_D1,
       };
 
-      expect(() => StorageProviderFactory.create(config)).toThrow(
-        'd1ApiEndpoint is required for D1 storage provider'
-      );
+      expect(() => StorageProviderFactory.create(config)).toThrow('d1ApiEndpoint is required for D1 storage provider');
     });
 
     it('throws for unknown provider type', () => {
@@ -68,9 +60,7 @@ describe('StorageProviderFactory', () => {
         type: 'unknown_type' as StorageProviderType,
       };
 
-      expect(() => StorageProviderFactory.create(config)).toThrow(
-        'Unknown storage provider type: unknown_type'
-      );
+      expect(() => StorageProviderFactory.create(config)).toThrow('Unknown storage provider type: unknown_type');
     });
 
     it('passes config options to LocalStorageProvider', () => {

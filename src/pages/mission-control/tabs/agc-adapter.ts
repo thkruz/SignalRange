@@ -1,9 +1,9 @@
-import { EventBus } from "@app/events/event-bus";
-import { Events } from "@app/events/events";
-import { AGCModuleCore, AGCState } from "@app/equipment/rf-front-end/agc-module/agc-module-core";
-import { qs } from "@app/engine/utils/query-selector";
-import { CardAlarmBadge } from "@app/components/card-alarm-badge/card-alarm-badge";
-import { AlarmStatus } from "@app/equipment/base-equipment";
+import { CardAlarmBadge } from '@app/components/card-alarm-badge/card-alarm-badge';
+import { qs } from '@app/engine/utils/query-selector';
+import { AlarmStatus } from '@app/equipment/base-equipment';
+import { AGCModuleCore, AGCState } from '@app/equipment/rf-front-end/agc-module/agc-module-core';
+import { EventBus } from '@app/events/event-bus';
+import { Events } from '@app/events/events';
 
 /**
  * AGCAdapter - Bridges AGCModuleCore state to web controls
@@ -172,9 +172,9 @@ export class AGCAdapter {
    */
   private getAlarmsFromModule_(): AlarmStatus[] {
     const alarmStrings = this.agcModule.getAlarms();
-    return alarmStrings.map(message => ({
+    return alarmStrings.map((message) => ({
       severity: this.classifySeverity_(message),
-      message
+      message,
     }));
   }
 

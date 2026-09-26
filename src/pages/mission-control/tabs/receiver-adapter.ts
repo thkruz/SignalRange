@@ -1,7 +1,7 @@
 import { CardAlarmBadge } from '@app/components/card-alarm-badge/card-alarm-badge';
 import { qs } from '@app/engine/utils/query-selector';
 import { AlarmStatus } from '@app/equipment/base-equipment';
-import { ValidationError, validateModemFrequency, validateModemBandwidth } from '@app/equipment/modem/modem-constraints';
+import { ValidationError, validateModemBandwidth, validateModemFrequency } from '@app/equipment/modem/modem-constraints';
 import { ADCStatus } from '@app/equipment/receiver/adc-degradation';
 import { IQSignalInfo, Receiver, ReceiverModemState } from '@app/equipment/receiver/receiver';
 import { EventBus } from '@app/events/event-bus';
@@ -327,7 +327,7 @@ export class ReceiverAdapter {
     const activeModem = this.getActiveModem_();
     const visibleSignals = activeModem ? this.receiver.getVisibleSignals(activeModem) : [];
 
-    const modemSignalStatus = this.receiver.state.modems.map(modem => ({
+    const modemSignalStatus = this.receiver.state.modems.map((modem) => ({
       modemNumber: modem.modemNumber,
       hasSignal: this.receiver.hasSignalForModem(modem),
       isDegraded: this.receiver.isSignalDegraded(modem),
@@ -336,7 +336,7 @@ export class ReceiverAdapter {
     }));
 
     // Include visible signals for active modem to detect degradation changes
-    const activeSignalState = visibleSignals.map(s => ({
+    const activeSignalState = visibleSignals.map((s) => ({
       id: s.signalId,
       power: Math.round(s.power * 10) / 10, // Round to avoid floating point noise
       frequency: s.frequency,
@@ -378,9 +378,7 @@ export class ReceiverAdapter {
    */
 
   private getActiveModem_(): ReceiverModemState | undefined {
-    return this.receiver.state.modems.find(
-      m => m.modemNumber === this.receiver.state.activeModem
-    );
+    return this.receiver.state.modems.find((m) => m.modemNumber === this.receiver.state.activeModem);
   }
 
   private updateModemButtons_(): void {
@@ -388,7 +386,7 @@ export class ReceiverAdapter {
       const btn = this.domCache_.get(`modem-btn-${i}`);
       if (!btn) continue;
 
-      const modem = this.receiver.state.modems.find(m => m.modemNumber === i);
+      const modem = this.receiver.state.modems.find((m) => m.modemNumber === i);
       const isActive = i === this.receiver.state.activeModem;
 
       // Update classes
@@ -517,7 +515,7 @@ export class ReceiverAdapter {
     // Get visible signals to determine state
     const visibleSignals = this.receiver.getVisibleSignals(activeModem);
     const hasDecodedSignal = visibleSignals.length > 0;
-    const hasVideoFeed = visibleSignals.some(s => s.feed !== '');
+    const hasVideoFeed = visibleSignals.some((s) => s.feed !== '');
     const isDegraded = this.receiver.isSignalDegraded(activeModem);
 
     if (!hasDecodedSignal) {
@@ -540,22 +538,20 @@ export class ReceiverAdapter {
       }
 
       // Set video feed source
-      const signal = visibleSignals.find(s => s.feed !== '');
+      const signal = visibleSignals.find((s) => s.feed !== '');
       if (signal) {
         // Check if it's an image or video
         if (signal.isImage) {
           const imgElement = videoFeed as HTMLImageElement;
           imgElement.src = signal.isExternal ? signal.feed : `/images/${signal.feed}`;
+        } else if (signal.isExternal) {
+          // For external videos, we might need an iframe
+          // For now, just set the src
+          const videoElement = videoFeed as HTMLVideoElement;
+          videoElement.src = signal.feed;
         } else {
-          if (signal.isExternal) {
-            // For external videos, we might need an iframe
-            // For now, just set the src
-            const videoElement = videoFeed as HTMLVideoElement;
-            videoElement.src = signal.feed;
-          } else {
-            const videoElement = videoFeed as HTMLVideoElement;
-            videoElement.src = `/videos/${signal.feed}`;
-          }
+          const videoElement = videoFeed as HTMLVideoElement;
+          videoElement.src = `/videos/${signal.feed}`;
         }
       }
     }
@@ -636,21 +632,21 @@ export class ReceiverAdapter {
     const cnRawDisplay = this.domCache_.get('cn-raw-display');
     if (cnRawDisplay) {
       const cn = signalInfo.cnRatio_dB;
-      cnRawDisplay.textContent = (hasCarrier && cn > -50) ? `${cn.toFixed(1)} dB` : '-- dB';
+      cnRawDisplay.textContent = hasCarrier && cn > -50 ? `${cn.toFixed(1)} dB` : '-- dB';
     }
 
     // Effective C/N display - only show when we have a carrier
     const cnEffectiveDisplay = this.domCache_.get('cn-effective-display');
     if (cnEffectiveDisplay) {
       const effectiveCn = signalInfo.effectiveCnRatio_dB ?? signalInfo.cnRatio_dB;
-      cnEffectiveDisplay.textContent = (hasCarrier && effectiveCn > -50) ? `${effectiveCn.toFixed(1)} dB` : '-- dB';
+      cnEffectiveDisplay.textContent = hasCarrier && effectiveCn > -50 ? `${effectiveCn.toFixed(1)} dB` : '-- dB';
     }
 
     // Power level display - only show when we have a carrier
     const powerLevelDisplay = this.domCache_.get('power-level-display');
     if (powerLevelDisplay) {
       const power = signalInfo.signalLevel_dBm;
-      powerLevelDisplay.textContent = (hasCarrier && power !== undefined) ? `${power.toFixed(1)} dBm` : '-- dBm';
+      powerLevelDisplay.textContent = hasCarrier && power !== undefined ? `${power.toFixed(1)} dBm` : '-- dBm';
     }
 
     // Noise floor display (for debugging/teaching) - always show if available
@@ -764,34 +760,50 @@ export class ReceiverAdapter {
 
   private getAdcLevelClass_(status: ADCStatus): string {
     switch (status) {
-      case 'optimal': return 'text-success';
+      case 'optimal':
+        return 'text-success';
       case 'clipping':
-      case 'severe-clipping': return 'text-danger';
+      case 'severe-clipping':
+        return 'text-danger';
       case 'low-level':
-      case 'severe-low': return 'text-info';
-      default: return '';
+      case 'severe-low':
+        return 'text-info';
+      default:
+        return '';
     }
   }
 
   private getAdcStatusText_(status: ADCStatus): string {
     switch (status) {
-      case 'optimal': return 'Optimal';
-      case 'clipping': return 'Clipping';
-      case 'severe-clipping': return 'CLIPPING!';
-      case 'low-level': return 'Low Level';
-      case 'severe-low': return 'LOW LEVEL!';
-      default: return '--';
+      case 'optimal':
+        return 'Optimal';
+      case 'clipping':
+        return 'Clipping';
+      case 'severe-clipping':
+        return 'CLIPPING!';
+      case 'low-level':
+        return 'Low Level';
+      case 'severe-low':
+        return 'LOW LEVEL!';
+      default:
+        return '--';
     }
   }
 
   private getAdcStatusBadgeClass_(status: ADCStatus): string {
     switch (status) {
-      case 'optimal': return 'status-badge-good';
-      case 'clipping': return 'status-badge-degraded';
-      case 'severe-clipping': return 'status-badge-error';
-      case 'low-level': return 'status-badge-degraded';
-      case 'severe-low': return 'status-badge-error';
-      default: return 'status-badge-none';
+      case 'optimal':
+        return 'status-badge-good';
+      case 'clipping':
+        return 'status-badge-degraded';
+      case 'severe-clipping':
+        return 'status-badge-error';
+      case 'low-level':
+        return 'status-badge-degraded';
+      case 'severe-low':
+        return 'status-badge-error';
+      default:
+        return 'status-badge-none';
     }
   }
 
@@ -803,9 +815,7 @@ export class ReceiverAdapter {
     if (this.validationErrors_.length > 0) {
       const err = this.validationErrors_[0];
       statusBar.className = 'alert alert-danger mt-3';
-      const hint = err.educationalHint
-        ? '<br><small>' + err.educationalHint + '</small>'
-        : '';
+      const hint = err.educationalHint ? '<br><small>' + err.educationalHint + '</small>' : '';
       statusBar.innerHTML = '<strong>' + err.message + '</strong>' + hint;
       return;
     }
@@ -893,7 +903,7 @@ export class ReceiverAdapter {
 
   private updateValidationError_(field: 'frequency' | 'bandwidth', error: ValidationError | null): void {
     // Remove existing error for this field
-    this.validationErrors_ = this.validationErrors_.filter(e => e.field !== field);
+    this.validationErrors_ = this.validationErrors_.filter((e) => e.field !== field);
 
     // Add new error if present
     if (error) {
@@ -913,11 +923,11 @@ export class ReceiverAdapter {
   private updateValidationDisplay_(): void {
     // Visual feedback on input fields
     const freqInput = this.domCache_.get('frequency-input');
-    const freqError = this.validationErrors_.find(e => e.field === 'frequency');
+    const freqError = this.validationErrors_.find((e) => e.field === 'frequency');
     freqInput?.classList.toggle('is-invalid', !!freqError);
 
     const bwInput = this.domCache_.get('bandwidth-input');
-    const bwError = this.validationErrors_.find(e => e.field === 'bandwidth');
+    const bwError = this.validationErrors_.find((e) => e.field === 'bandwidth');
     bwInput?.classList.toggle('is-invalid', !!bwError);
   }
 

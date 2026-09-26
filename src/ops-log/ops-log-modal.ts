@@ -37,14 +37,8 @@ export class OpsLogModal extends DraggableModal {
 
   static destroy(): void {
     if (OpsLogModal.instance_) {
-      EventBus.getInstance().off(
-        Events.OPS_LOG_ENTRY_ADDED,
-        OpsLogModal.instance_.boundEntryAddedHandler_
-      );
-      EventBus.getInstance().off(
-        Events.SIMULATED_TIME_TICK,
-        OpsLogModal.instance_.boundTimeTickHandler_
-      );
+      EventBus.getInstance().off(Events.OPS_LOG_ENTRY_ADDED, OpsLogModal.instance_.boundEntryAddedHandler_);
+      EventBus.getInstance().off(Events.SIMULATED_TIME_TICK, OpsLogModal.instance_.boundTimeTickHandler_);
       OpsLogModal.instance_.close();
       OpsLogModal.instance_ = null;
     }
@@ -136,7 +130,7 @@ export class OpsLogModal extends DraggableModal {
       // Render entries newest-first
       container.innerHTML = [...entries]
         .reverse()
-        .map(entry => this.renderEntry_(entry))
+        .map((entry) => this.renderEntry_(entry))
         .join('');
     } catch {
       container.innerHTML = '<p class="ops-log-empty">Operations log not available.</p>';

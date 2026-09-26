@@ -1,4 +1,4 @@
-import { vi, Mock } from 'vitest';
+import { Mock, vi } from 'vitest';
 import { EventBus } from '../../../src/events/event-bus';
 import { Events } from '../../../src/events/events';
 
@@ -123,19 +123,19 @@ vi.mock('../../../src/pages/sandbox-page', () => ({
   },
 }));
 
-// Import after mocks
-import { Equipment } from '../../../src/pages/sandbox/equipment';
+import { qs } from '../../../src/engine/utils/query-selector';
 import { AntennaUIBasic } from '../../../src/equipment/antenna';
 import { AntennaUIModern } from '../../../src/equipment/antenna/antenna-ui-modern';
-import { createRFFrontEnd } from '../../../src/equipment/rf-front-end/rf-front-end-factory';
 import { RealTimeSpectrumAnalyzer } from '../../../src/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer';
-import { Transmitter } from '../../../src/equipment/transmitter/transmitter';
 import { Receiver } from '../../../src/equipment/receiver/receiver';
-import { DraggableHtmlBox } from '../../../src/modal/draggable-html-box';
+import { createRFFrontEnd } from '../../../src/equipment/rf-front-end/rf-front-end-factory';
+import { Transmitter } from '../../../src/equipment/transmitter/transmitter';
 import { DialogHistoryBox } from '../../../src/modal/dialog-history-box';
-import { SimulationManager } from '../../../src/simulation/simulation-manager';
+import { DraggableHtmlBox } from '../../../src/modal/draggable-html-box';
+// Import after mocks
+import { Equipment } from '../../../src/pages/sandbox/equipment';
 import { ScenarioManager } from '../../../src/scenario-manager';
-import { qs } from '../../../src/engine/utils/query-selector';
+import { SimulationManager } from '../../../src/simulation/simulation-manager';
 
 // Mock elements for event listener setup
 const mockMissionBriefIcon = { addEventListener: vi.fn() };
@@ -229,10 +229,7 @@ describe('Equipment', () => {
 
     it('should subscribe to ROUTE_CHANGED event', () => {
       new Equipment(createMockSettings());
-      expect(mockEventBus.on).toHaveBeenCalledWith(
-        Events.ROUTE_CHANGED,
-        expect.any(Function)
-      );
+      expect(mockEventBus.on).toHaveBeenCalledWith(Events.ROUTE_CHANGED, expect.any(Function));
     });
   });
 
@@ -322,10 +319,7 @@ describe('Equipment', () => {
     it('should add click listener to mission brief icon', () => {
       new Equipment(createMockSettings());
 
-      expect(mockMissionBriefIcon.addEventListener).toHaveBeenCalledWith(
-        'click',
-        expect.any(Function)
-      );
+      expect(mockMissionBriefIcon.addEventListener).toHaveBeenCalledWith('click', expect.any(Function));
     });
 
     it('should open mission brief box on click', () => {
@@ -340,16 +334,10 @@ describe('Equipment', () => {
       new Equipment(createMockSettings());
 
       // Get the click handler and call it
-      const clickHandler = mockMissionBriefIcon.addEventListener.mock.calls.find(
-        (call: unknown[]) => call[0] === 'click'
-      )?.[1];
+      const clickHandler = mockMissionBriefIcon.addEventListener.mock.calls.find((call: unknown[]) => call[0] === 'click')?.[1];
       clickHandler?.();
 
-      expect(DraggableHtmlBox).toHaveBeenCalledWith(
-        'Mission Brief',
-        'mission-brief',
-        '/mission-brief.html'
-      );
+      expect(DraggableHtmlBox).toHaveBeenCalledWith('Mission Brief', 'mission-brief', '/mission-brief.html');
       expect(mockOpen).toHaveBeenCalled();
     });
   });
@@ -358,10 +346,7 @@ describe('Equipment', () => {
     it('should add click listener to checklist icon', () => {
       new Equipment(createMockSettings());
 
-      expect(mockChecklistIcon.addEventListener).toHaveBeenCalledWith(
-        'click',
-        expect.any(Function)
-      );
+      expect(mockChecklistIcon.addEventListener).toHaveBeenCalledWith('click', expect.any(Function));
     });
 
     it('should update checklist content on open', () => {
@@ -376,9 +361,7 @@ describe('Equipment', () => {
       new Equipment(createMockSettings());
 
       // Get the click handler and call it
-      const clickHandler = mockChecklistIcon.addEventListener.mock.calls.find(
-        (call: unknown[]) => call[0] === 'click'
-      )?.[1];
+      const clickHandler = mockChecklistIcon.addEventListener.mock.calls.find((call: unknown[]) => call[0] === 'click')?.[1];
       clickHandler?.();
 
       expect(mockUpdateContent).toHaveBeenCalled();
@@ -387,10 +370,7 @@ describe('Equipment', () => {
     it('should subscribe to OBJECTIVE_ACTIVATED event', () => {
       new Equipment(createMockSettings());
 
-      expect(mockEventBus.on).toHaveBeenCalledWith(
-        Events.OBJECTIVE_ACTIVATED,
-        expect.any(Function)
-      );
+      expect(mockEventBus.on).toHaveBeenCalledWith(Events.OBJECTIVE_ACTIVATED, expect.any(Function));
     });
   });
 
@@ -398,10 +378,7 @@ describe('Equipment', () => {
     it('should add click listener to dialog icon', () => {
       new Equipment(createMockSettings());
 
-      expect(mockDialogIcon.addEventListener).toHaveBeenCalledWith(
-        'click',
-        expect.any(Function)
-      );
+      expect(mockDialogIcon.addEventListener).toHaveBeenCalledWith('click', expect.any(Function));
     });
 
     it('should open dialog history box on click', () => {
@@ -414,9 +391,7 @@ describe('Equipment', () => {
       new Equipment(createMockSettings());
 
       // Get the click handler and call it
-      const clickHandler = mockDialogIcon.addEventListener.mock.calls.find(
-        (call: unknown[]) => call[0] === 'click'
-      )?.[1];
+      const clickHandler = mockDialogIcon.addEventListener.mock.calls.find((call: unknown[]) => call[0] === 'click')?.[1];
       clickHandler?.();
 
       expect(DialogHistoryBox).toHaveBeenCalled();
@@ -457,19 +432,23 @@ describe('Equipment', () => {
     });
 
     it('should create multiple antennas', () => {
-      new Equipment(createMockSettings({
-        antennas: ['basic-antenna', 'basic-antenna'],
-        rfFrontEnds: ['rf-fe-1', 'rf-fe-2'],
-      }));
+      new Equipment(
+        createMockSettings({
+          antennas: ['basic-antenna', 'basic-antenna'],
+          rfFrontEnds: ['rf-fe-1', 'rf-fe-2'],
+        })
+      );
 
       expect(AntennaUIBasic).toHaveBeenCalledTimes(2);
     });
 
     it('should create RF front end for each antenna', () => {
-      new Equipment(createMockSettings({
-        antennas: ['basic-antenna', 'basic-antenna'],
-        rfFrontEnds: ['rf-fe-1', 'rf-fe-2'],
-      }));
+      new Equipment(
+        createMockSettings({
+          antennas: ['basic-antenna', 'basic-antenna'],
+          rfFrontEnds: ['rf-fe-1', 'rf-fe-2'],
+        })
+      );
 
       expect(createRFFrontEnd).toHaveBeenCalledTimes(2);
     });
@@ -488,9 +467,7 @@ describe('Equipment', () => {
       new Equipment(createMockSettings());
 
       // Get the ROUTE_CHANGED callback
-      const routeChangedCallback = mockEventBus.on.mock.calls.find(
-        call => call[0] === Events.ROUTE_CHANGED
-      )?.[1];
+      const routeChangedCallback = mockEventBus.on.mock.calls.find((call) => call[0] === Events.ROUTE_CHANGED)?.[1];
 
       // Should not throw when callback is called
       expect(() => routeChangedCallback?.()).not.toThrow();

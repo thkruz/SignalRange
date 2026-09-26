@@ -43,9 +43,9 @@ const createMockEquipment = () => ({
   receivers: [{ state: { id: 'rx1' }, sync: vi.fn() }],
 });
 
+import { SimulationManager } from '../../src/simulation/simulation-manager';
 // Import after mocks
 import { SyncManager } from '../../src/sync/sync-manager';
-import { SimulationManager } from '../../src/simulation/simulation-manager';
 
 describe('SyncManager', () => {
   let provider: MockProvider;
@@ -133,7 +133,7 @@ describe('SyncManager', () => {
         equipment: expect.objectContaining({
           antennasState: [equipment.antennas[0].state],
         }),
-      }),
+      })
     );
   });
 

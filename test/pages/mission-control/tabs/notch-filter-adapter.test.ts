@@ -3,7 +3,7 @@ import { NotchConfig, NotchFilterModuleCore, NotchFilterState } from '../../../.
 import { EventBus } from '../../../../src/events/event-bus';
 import { Events } from '../../../../src/events/events';
 import { NotchFilterAdapter } from '../../../../src/pages/mission-control/tabs/notch-filter-adapter';
-import { MHz, dB } from '../../../../src/types';
+import { dB, MHz } from '../../../../src/types';
 
 // Mock dependencies
 vi.mock('../../../../src/events/event-bus');
@@ -23,11 +23,7 @@ describe('NotchFilterAdapter', () => {
 
   const mockState: NotchFilterState = {
     isPowered: true,
-    notches: [
-      { ...defaultNotch },
-      { ...defaultNotch, centerFrequency: 1400 as MHz },
-      { ...defaultNotch, centerFrequency: 1600 as MHz },
-    ],
+    notches: [{ ...defaultNotch }, { ...defaultNotch, centerFrequency: 1400 as MHz }, { ...defaultNotch, centerFrequency: 1600 as MHz }],
   };
 
   beforeEach(() => {
@@ -88,10 +84,7 @@ describe('NotchFilterAdapter', () => {
     });
 
     it('should register for RF_FE_NOTCH_FILTER_CHANGED events', () => {
-      expect(mockEventBus.on).toHaveBeenCalledWith(
-        Events.RF_FE_NOTCH_FILTER_CHANGED,
-        expect.any(Function)
-      );
+      expect(mockEventBus.on).toHaveBeenCalledWith(Events.RF_FE_NOTCH_FILTER_CHANGED, expect.any(Function));
     });
   });
 
@@ -171,10 +164,7 @@ describe('NotchFilterAdapter', () => {
       const applyBtn = containerEl.querySelector('#notch-apply-btn') as HTMLButtonElement;
       applyBtn.click();
 
-      expect(mockNotchModule.handleNotchChange).toHaveBeenCalledWith(
-        0,
-        expect.objectContaining({ enabled: true })
-      );
+      expect(mockNotchModule.handleNotchChange).toHaveBeenCalledWith(0, expect.objectContaining({ enabled: true }));
     });
   });
 
@@ -184,18 +174,9 @@ describe('NotchFilterAdapter', () => {
       applyBtn.click();
 
       expect(mockNotchModule.handleNotchChange).toHaveBeenCalledTimes(3);
-      expect(mockNotchModule.handleNotchChange).toHaveBeenCalledWith(
-        0,
-        expect.objectContaining({ centerFrequency: 1200 })
-      );
-      expect(mockNotchModule.handleNotchChange).toHaveBeenCalledWith(
-        1,
-        expect.objectContaining({ centerFrequency: 1400 })
-      );
-      expect(mockNotchModule.handleNotchChange).toHaveBeenCalledWith(
-        2,
-        expect.objectContaining({ centerFrequency: 1600 })
-      );
+      expect(mockNotchModule.handleNotchChange).toHaveBeenCalledWith(0, expect.objectContaining({ centerFrequency: 1200 }));
+      expect(mockNotchModule.handleNotchChange).toHaveBeenCalledWith(1, expect.objectContaining({ centerFrequency: 1400 }));
+      expect(mockNotchModule.handleNotchChange).toHaveBeenCalledWith(2, expect.objectContaining({ centerFrequency: 1600 }));
     });
   });
 
@@ -224,10 +205,7 @@ describe('NotchFilterAdapter', () => {
     it('should unregister from EventBus events', () => {
       adapter.dispose();
 
-      expect(mockEventBus.off).toHaveBeenCalledWith(
-        Events.RF_FE_NOTCH_FILTER_CHANGED,
-        expect.any(Function)
-      );
+      expect(mockEventBus.off).toHaveBeenCalledWith(Events.RF_FE_NOTCH_FILTER_CHANGED, expect.any(Function));
     });
   });
 });

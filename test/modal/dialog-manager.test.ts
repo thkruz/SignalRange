@@ -10,18 +10,16 @@ const mockStopCustom = vi.fn();
 const mockIsCustomAudioPlaying = vi.fn(() => false);
 
 // Mock SoundManager
-vi.mock('../../src/sound/sound-manager', () => {
-  return {
-    __esModule: true,
-    default: {
-      getInstance: () => ({
-        playCustom: mockPlayCustom,
-        stopCustom: mockStopCustom,
-        isCustomAudioPlaying: mockIsCustomAudioPlaying,
-      }),
-    },
-  };
-});
+vi.mock('../../src/sound/sound-manager', () => ({
+  __esModule: true,
+  default: {
+    getInstance: () => ({
+      playCustom: mockPlayCustom,
+      stopCustom: mockStopCustom,
+      isCustomAudioPlaying: mockIsCustomAudioPlaying,
+    }),
+  },
+}));
 
 // Mock DialogHistoryManager
 vi.mock('../../src/modal/dialog-history-manager', () => ({
@@ -60,11 +58,7 @@ vi.mock('../../src/modal/character-enum', () => ({
 
 // Mock html utility
 vi.mock('../../src/engine/utils/development/formatter', () => ({
-  html: (strings: TemplateStringsArray, ...values: unknown[]) => {
-    return strings.reduce((result, str, i) => {
-      return result + str + (values[i] ?? '');
-    }, '');
-  },
+  html: (strings: TemplateStringsArray, ...values: unknown[]) => strings.reduce((result, str, i) => result + str + (values[i] ?? ''), ''),
 }));
 
 // Mock qs utility - note: can't use document directly in mock factory
@@ -119,24 +113,14 @@ describe('DialogManager', () => {
     it('should create dialog element when showing', () => {
       expect(dialogManager.isShowing()).toBe(false);
 
-      dialogManager.show(
-        'Test message',
-        Character.CHARLIE_BROOKS,
-        '/audio/test.mp3',
-        'Test Dialog'
-      );
+      dialogManager.show('Test message', Character.CHARLIE_BROOKS, '/audio/test.mp3', 'Test Dialog');
 
       expect(dialogManager.isShowing()).toBe(true);
       expect(document.querySelector('.dialog-overlay')).toBeTruthy();
     });
 
     it('should include dialog content elements', () => {
-      dialogManager.show(
-        'Hello world',
-        Character.CHARLIE_BROOKS,
-        '/audio/test.mp3',
-        'Test'
-      );
+      dialogManager.show('Hello world', Character.CHARLIE_BROOKS, '/audio/test.mp3', 'Test');
 
       expect(document.querySelector('.dialog-box')).toBeTruthy();
       expect(document.querySelector('.dialog-content')).toBeTruthy();
@@ -145,22 +129,14 @@ describe('DialogManager', () => {
     });
 
     it('should display the dialog text', () => {
-      dialogManager.show(
-        'This is a test message',
-        Character.CHARLIE_BROOKS,
-        '/audio/test.mp3'
-      );
+      dialogManager.show('This is a test message', Character.CHARLIE_BROOKS, '/audio/test.mp3');
 
       const textElement = document.querySelector('.dialog-text');
       expect(textElement?.textContent).toContain('This is a test message');
     });
 
     it('should add visible class after animation frame', () => {
-      dialogManager.show(
-        'Test',
-        Character.CHARLIE_BROOKS,
-        '/audio/test.mp3'
-      );
+      dialogManager.show('Test', Character.CHARLIE_BROOKS, '/audio/test.mp3');
 
       // Run animation frame
       vi.runAllTimers();
@@ -170,11 +146,7 @@ describe('DialogManager', () => {
     });
 
     it('should set current audio URL', () => {
-      dialogManager.show(
-        'Test',
-        Character.CHARLIE_BROOKS,
-        '/audio/custom.mp3'
-      );
+      dialogManager.show('Test', Character.CHARLIE_BROOKS, '/audio/custom.mp3');
 
       expect(dialogManager.currentAudioUrl).toBe('/audio/custom.mp3');
     });
@@ -183,18 +155,10 @@ describe('DialogManager', () => {
   describe('Dialog Queue', () => {
     it('should queue dialogs when one is already showing', () => {
       // Show first dialog
-      dialogManager.show(
-        'First message',
-        Character.CHARLIE_BROOKS,
-        '/audio/first.mp3'
-      );
+      dialogManager.show('First message', Character.CHARLIE_BROOKS, '/audio/first.mp3');
 
       // Queue second dialog
-      dialogManager.show(
-        'Second message',
-        Character.CATHERINE_VEGA,
-        '/audio/second.mp3'
-      );
+      dialogManager.show('Second message', Character.CATHERINE_VEGA, '/audio/second.mp3');
 
       // Only first dialog should be visible
       const textElement = document.querySelector('.dialog-text');
@@ -203,18 +167,10 @@ describe('DialogManager', () => {
 
     it('should show next dialog when current is hidden', () => {
       // Show first dialog
-      dialogManager.show(
-        'First message',
-        Character.CHARLIE_BROOKS,
-        '/audio/first.mp3'
-      );
+      dialogManager.show('First message', Character.CHARLIE_BROOKS, '/audio/first.mp3');
 
       // Queue second dialog
-      dialogManager.show(
-        'Second message',
-        Character.CATHERINE_VEGA,
-        '/audio/second.mp3'
-      );
+      dialogManager.show('Second message', Character.CATHERINE_VEGA, '/audio/second.mp3');
 
       // Hide first dialog
       dialogManager.hide();
@@ -228,23 +184,11 @@ describe('DialogManager', () => {
 
     it('should clear dialog queue', () => {
       // Show first dialog
-      dialogManager.show(
-        'First message',
-        Character.CHARLIE_BROOKS,
-        '/audio/first.mp3'
-      );
+      dialogManager.show('First message', Character.CHARLIE_BROOKS, '/audio/first.mp3');
 
       // Queue additional dialogs
-      dialogManager.show(
-        'Second message',
-        Character.CATHERINE_VEGA,
-        '/audio/second.mp3'
-      );
-      dialogManager.show(
-        'Third message',
-        Character.CHARLIE_BROOKS,
-        '/audio/third.mp3'
-      );
+      dialogManager.show('Second message', Character.CATHERINE_VEGA, '/audio/second.mp3');
+      dialogManager.show('Third message', Character.CHARLIE_BROOKS, '/audio/third.mp3');
 
       // Clear the queue
       dialogManager.clearQueue();
@@ -260,11 +204,7 @@ describe('DialogManager', () => {
 
   describe('Hide Dialog', () => {
     it('should remove dialog element when hiding', () => {
-      dialogManager.show(
-        'Test',
-        Character.CHARLIE_BROOKS,
-        '/audio/test.mp3'
-      );
+      dialogManager.show('Test', Character.CHARLIE_BROOKS, '/audio/test.mp3');
 
       expect(dialogManager.isShowing()).toBe(true);
 
@@ -278,11 +218,7 @@ describe('DialogManager', () => {
     });
 
     it('should clear current audio URL when hiding', () => {
-      dialogManager.show(
-        'Test',
-        Character.CHARLIE_BROOKS,
-        '/audio/test.mp3'
-      );
+      dialogManager.show('Test', Character.CHARLIE_BROOKS, '/audio/test.mp3');
 
       expect(dialogManager.currentAudioUrl).toBe('/audio/test.mp3');
 
@@ -295,11 +231,7 @@ describe('DialogManager', () => {
       const callback = vi.fn();
       eventBus.on(Events.DIALOG_DISMISSED, callback);
 
-      dialogManager.show(
-        'Test',
-        Character.CHARLIE_BROOKS,
-        '/audio/test.mp3'
-      );
+      dialogManager.show('Test', Character.CHARLIE_BROOKS, '/audio/test.mp3');
 
       dialogManager.hide();
       vi.advanceTimersByTime(350);
@@ -315,11 +247,7 @@ describe('DialogManager', () => {
 
   describe('Hold to Skip', () => {
     it('should attach mouse event listeners', () => {
-      dialogManager.show(
-        'Test',
-        Character.CHARLIE_BROOKS,
-        '/audio/test.mp3'
-      );
+      dialogManager.show('Test', Character.CHARLIE_BROOKS, '/audio/test.mp3');
 
       const overlay = document.querySelector('.dialog-overlay');
       expect(overlay).toBeTruthy();
@@ -332,11 +260,7 @@ describe('DialogManager', () => {
     });
 
     it('should show skip indicator on mousedown', () => {
-      dialogManager.show(
-        'Test',
-        Character.CHARLIE_BROOKS,
-        '/audio/test.mp3'
-      );
+      dialogManager.show('Test', Character.CHARLIE_BROOKS, '/audio/test.mp3');
 
       const overlay = document.querySelector('.dialog-overlay') as HTMLElement;
       const skipIndicator = document.querySelector('.dialog-skip-indicator') as HTMLElement;
@@ -349,11 +273,7 @@ describe('DialogManager', () => {
     });
 
     it('should hide skip indicator on mouseup', () => {
-      dialogManager.show(
-        'Test',
-        Character.CHARLIE_BROOKS,
-        '/audio/test.mp3'
-      );
+      dialogManager.show('Test', Character.CHARLIE_BROOKS, '/audio/test.mp3');
 
       const overlay = document.querySelector('.dialog-overlay') as HTMLElement;
       const skipIndicator = document.querySelector('.dialog-skip-indicator') as HTMLElement;
@@ -366,11 +286,7 @@ describe('DialogManager', () => {
     });
 
     it('should hide skip indicator on mouseleave', () => {
-      dialogManager.show(
-        'Test',
-        Character.CHARLIE_BROOKS,
-        '/audio/test.mp3'
-      );
+      dialogManager.show('Test', Character.CHARLIE_BROOKS, '/audio/test.mp3');
 
       const overlay = document.querySelector('.dialog-overlay') as HTMLElement;
       const skipIndicator = document.querySelector('.dialog-skip-indicator') as HTMLElement;
@@ -387,11 +303,7 @@ describe('DialogManager', () => {
     it('should immediately hide dialog when AUTO_CLOSE_DIALOGS is true', () => {
       window.AUTO_CLOSE_DIALOGS = true;
 
-      dialogManager.show(
-        'Test',
-        Character.CHARLIE_BROOKS,
-        '/audio/test.mp3'
-      );
+      dialogManager.show('Test', Character.CHARLIE_BROOKS, '/audio/test.mp3');
 
       // The hide() would have been called synchronously
       // But since we're in a test, we verify current audio URL is cleared
@@ -402,32 +314,16 @@ describe('DialogManager', () => {
   describe('Emotion Support', () => {
     it('should accept optional emotion parameter', () => {
       expect(() => {
-        dialogManager.show(
-          'Test message with emotion',
-          Character.CHARLIE_BROOKS,
-          '/audio/test.mp3',
-          'Test Dialog',
-          Emotion.HAPPY
-        );
+        dialogManager.show('Test message with emotion', Character.CHARLIE_BROOKS, '/audio/test.mp3', 'Test Dialog', Emotion.HAPPY);
       }).not.toThrow();
 
       expect(dialogManager.isShowing()).toBe(true);
     });
 
     it('should queue dialog with emotion', () => {
-      dialogManager.show(
-        'First',
-        Character.CHARLIE_BROOKS,
-        '/audio/first.mp3'
-      );
+      dialogManager.show('First', Character.CHARLIE_BROOKS, '/audio/first.mp3');
 
-      dialogManager.show(
-        'Second with emotion',
-        Character.CATHERINE_VEGA,
-        '/audio/second.mp3',
-        'Second Dialog',
-        Emotion.ANGRY
-      );
+      dialogManager.show('Second with emotion', Character.CATHERINE_VEGA, '/audio/second.mp3', 'Second Dialog', Emotion.ANGRY);
 
       // Verify dialog was queued (queue is private, so we test behavior)
       dialogManager.hide();

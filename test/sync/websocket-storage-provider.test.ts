@@ -24,7 +24,9 @@ describe('WebSocketStorageProvider', () => {
     };
 
     // Mock WebSocket constructor
-    (global as any).WebSocket = vi.fn(function () { return mockWs; });
+    (global as any).WebSocket = vi.fn(function () {
+      return mockWs;
+    });
     (global as any).WebSocket.OPEN = 1;
     (global as any).WebSocket.CLOSED = 3;
 
@@ -188,9 +190,7 @@ describe('WebSocketStorageProvider', () => {
 
       const readPromise = provider.read();
 
-      expect(mockWs.send).toHaveBeenCalledWith(
-        JSON.stringify({ type: 'GET_STATE' })
-      );
+      expect(mockWs.send).toHaveBeenCalledWith(JSON.stringify({ type: 'GET_STATE' }));
 
       // Simulate response
       const data = { fromServer: true };
@@ -235,9 +235,7 @@ describe('WebSocketStorageProvider', () => {
       const data = { equipment: { updated: true } };
       await provider.write(data);
 
-      expect(mockWs.send).toHaveBeenCalledWith(
-        JSON.stringify({ type: 'UPDATE_STATE', data })
-      );
+      expect(mockWs.send).toHaveBeenCalledWith(JSON.stringify({ type: 'UPDATE_STATE', data }));
     });
 
     it('caches the written state', async () => {
@@ -260,9 +258,7 @@ describe('WebSocketStorageProvider', () => {
 
       mockWs.readyState = (global as any).WebSocket.CLOSED;
 
-      await expect(provider.write({ data: 'test' })).rejects.toThrow(
-        'WebSocket not connected'
-      );
+      await expect(provider.write({ data: 'test' })).rejects.toThrow('WebSocket not connected');
     });
   });
 
@@ -274,9 +270,7 @@ describe('WebSocketStorageProvider', () => {
 
       await provider.clear();
 
-      expect(mockWs.send).toHaveBeenCalledWith(
-        JSON.stringify({ type: 'CLEAR_STATE' })
-      );
+      expect(mockWs.send).toHaveBeenCalledWith(JSON.stringify({ type: 'CLEAR_STATE' }));
     });
 
     it('clears cached state', async () => {
@@ -296,9 +290,7 @@ describe('WebSocketStorageProvider', () => {
       const readPromise = provider.read();
 
       // Should send GET_STATE since cache is cleared
-      expect(mockWs.send).toHaveBeenCalledWith(
-        JSON.stringify({ type: 'GET_STATE' })
-      );
+      expect(mockWs.send).toHaveBeenCalledWith(JSON.stringify({ type: 'GET_STATE' }));
 
       // Advance timers to let the timeout resolve
       vi.advanceTimersByTime(5000);

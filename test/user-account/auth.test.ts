@@ -21,24 +21,24 @@ describe('Auth', () => {
   };
 
   const makeUser = (overrides?: Partial<User>): User =>
-  ({
-    id: 'u1',
-    app_metadata: {},
-    user_metadata: {},
-    aud: 'authenticated',
-    created_at: 'now',
-    ...(overrides ?? {}),
-  } as unknown as User);
+    ({
+      id: 'u1',
+      app_metadata: {},
+      user_metadata: {},
+      aud: 'authenticated',
+      created_at: 'now',
+      ...(overrides ?? {}),
+    }) as unknown as User;
 
   const makeSession = (overrides?: Partial<Session>): Session =>
-  ({
-    access_token: 'access',
-    refresh_token: 'refresh',
-    expires_at: Math.floor(Date.now() / 1000) + 3600,
-    token_type: 'bearer',
-    user: makeUser(),
-    ...(overrides ?? {}),
-  } as unknown as Session);
+    ({
+      access_token: 'access',
+      refresh_token: 'refresh',
+      expires_at: Math.floor(Date.now() / 1000) + 3600,
+      token_type: 'bearer',
+      user: makeUser(),
+      ...(overrides ?? {}),
+    }) as unknown as Session;
 
   beforeEach(() => {
     vi.resetModules();
@@ -613,11 +613,7 @@ describe('Auth', () => {
 
       await new Promise((resolve) => setTimeout(resolve, 10));
 
-      expect(window.open).toHaveBeenCalledWith(
-        '',
-        'Custom Popup',
-        expect.any(String)
-      );
+      expect(window.open).toHaveBeenCalledWith('', 'Custom Popup', expect.any(String));
 
       mockPopup.closed = true;
       await expect(promise).rejects.toThrow();

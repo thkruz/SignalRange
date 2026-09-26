@@ -2,10 +2,13 @@ import { DraggableModal } from '@app/engine/ui/draggable-modal';
 import { html } from '@app/engine/utils/development/formatter';
 import { Logger } from '@app/logging/logger';
 import { Router } from '@app/router';
-import { ScoreCalculator, type ScoreBreakdown } from '@app/scoring/score-calculator';
+import { type ScoreBreakdown, ScoreCalculator } from '@app/scoring/score-calculator';
 import { SimulationManager } from '@app/simulation/simulation-manager';
 import { clearPersistedStore } from '@app/sync/storage';
+import { Auth } from '@app/user-account/auth';
+import { ModalLogin } from '@app/user-account/modal-login';
 import { getUserDataService } from '@app/user-account/user-data-service';
+import type { DecisionRecord } from './decision-manager';
 import { DialogManager } from './dialog-manager';
 import './level-complete-modal.css';
 import { PendingQuizIndicator } from './pending-quiz-indicator';
@@ -16,6 +19,15 @@ interface CompletionModalOptions {
   elapsedTimeSeconds: number;
   campaignId: string;
   scenarioId: string;
+  /**
+   * Whether the player was signed in when the scenario completed. When false
+   * the modal shows the sign-up funnel: progress only persists to an account,
+   * so this is the moment to convert. Omitted (replay flow) = treated as
+   * signed in, no funnel shown.
+   */
+  isAuthenticated?: boolean;
+  /** Decisions made during the scenario, listed under the score breakdown */
+  decisions?: DecisionRecord[];
 }
 
 export class LevelCompleteModal extends DraggableModal {
@@ -29,6 +41,7 @@ export class LevelCompleteModal extends DraggableModal {
       quizPenalties: 0,
       timePenalties: 0,
       hintPenalties: 0,
+      decisionPenalties: 0,
       totalScore: 0,
       objectiveBreakdown: [],
       timeRemainingSeconds: 0,
@@ -40,6 +53,7 @@ export class LevelCompleteModal extends DraggableModal {
 
   private onContinueCallback_: (() => void | Promise<void>) | null = null;
   private isReplayMode_: boolean = false;
+  private authSubscription_: { data: { subscription: { unsubscribe: () => void } } } | null = null;
 
   private constructor() {
     if (LevelCompleteModal.instance_) {
@@ -78,40 +92,70 @@ export class LevelCompleteModal extends DraggableModal {
               <span class="breakdown-value positive">+${score.basePoints}</span>
             </div>
             <div class="breakdown-detail">${this.formatObjectivesDetail_(score.objectiveBreakdown)}</div>
-            ${score.timeBonus > 0 ? `
+            ${
+              score.timeBonus > 0
+                ? `
             <div class="breakdown-row">
               <span class="breakdown-label">Time Bonus</span>
               <span class="breakdown-value positive">+${score.timeBonus}</span>
             </div>
             <div class="breakdown-detail">${score.timeRemainingSeconds} seconds remaining / ${ScoreCalculator.TIME_BONUS_DIVISOR}</div>
-            ` : ''}
-            ${score.quizPenalties > 0 ? `
+            `
+                : ''
+            }
+            ${
+              score.quizPenalties > 0
+                ? `
             <div class="breakdown-row">
               <span class="breakdown-label">Quiz Penalties</span>
               <span class="breakdown-value negative">-${score.quizPenalties}</span>
             </div>
             <div class="breakdown-detail">${score.quizPenalties} points deducted</div>
-            ` : ''}
-            ${score.timePenalties > 0 ? `
+            `
+                : ''
+            }
+            ${
+              score.timePenalties > 0
+                ? `
             <div class="breakdown-row">
               <span class="breakdown-label">Time Penalties</span>
               <span class="breakdown-value negative">-${score.timePenalties}</span>
             </div>
             <div class="breakdown-detail">${score.timePenalties} points deducted</div>
-            ` : ''}
-            ${score.hintPenalties > 0 ? `
+            `
+                : ''
+            }
+            ${
+              score.hintPenalties > 0
+                ? `
             <div class="breakdown-row">
               <span class="breakdown-label">Hint Penalties</span>
               <span class="breakdown-value negative">-${score.hintPenalties}</span>
             </div>
             <div class="breakdown-detail">${score.hintPenalties} points deducted for hints used</div>
-            ` : ''}
+            `
+                : ''
+            }
+            ${
+              score.decisionPenalties > 0
+                ? `
+            <div class="breakdown-row">
+              <span class="breakdown-label">Decision Penalties</span>
+              <span class="breakdown-value negative">-${score.decisionPenalties}</span>
+            </div>
+            <div class="breakdown-detail">${score.decisionPenalties} points deducted for wrong or unevidenced calls</div>
+            `
+                : ''
+            }
           </div>
+          ${this.renderDecisions_()}
         </div>
 
         <div class="complete-modal__time">
           ${this.isReplayMode_ ? 'Previously completed' : `Completed in ${elapsedFormatted}`}
         </div>
+
+        ${this.renderSignUpSection_()}
 
         <div class="complete-modal__actions">
           ${this.isReplayMode_ ? '<button id="play-again-btn" class="btn btn-primary">Play Again</button>' : ''}
@@ -119,6 +163,47 @@ export class LevelCompleteModal extends DraggableModal {
         </div>
       </div>
     `;
+  }
+
+  /**
+   * Sign-up funnel shown when the scenario was completed while signed out.
+   * Progress only persists to an account, so this completion (and the unlock
+   * it earns) is lost unless the player signs in before moving on.
+   */
+  private renderSignUpSection_(): string {
+    if (this.isReplayMode_ || this.options_.isAuthenticated !== false) {
+      return '';
+    }
+
+    return html`
+      <div id="complete-signup-section" class="complete-modal__signup">
+        <div class="complete-modal__signup-text">
+          You're not signed in, so this completion won't be saved and the
+          next scenario stays locked. Create a free account to keep your
+          progress.
+        </div>
+        <button id="signup-save-btn" class="btn btn-primary">Sign Up / Log In</button>
+      </div>
+    `;
+  }
+
+  /** Swap the sign-up prompt for a confirmation once the player signs in */
+  private handleSignedInWhileOpen_(): void {
+    const section = this.boxEl?.querySelector('#complete-signup-section');
+
+    if (section) {
+      section.innerHTML = html`
+        <div class="complete-modal__signup-text complete-modal__signup-text--saved">
+          Signed in - your progress is being saved to your account.
+        </div>
+      `;
+    }
+    this.unsubscribeAuth_();
+  }
+
+  private unsubscribeAuth_(): void {
+    this.authSubscription_?.data.subscription.unsubscribe();
+    this.authSubscription_ = null;
   }
 
   protected override onOpen(): void {
@@ -139,6 +224,9 @@ export class LevelCompleteModal extends DraggableModal {
 
     const playAgainBtn = this.boxEl?.querySelector('#play-again-btn');
     playAgainBtn?.addEventListener('click', () => this.handlePlayAgain_());
+
+    const signUpBtn = this.boxEl?.querySelector('#signup-save-btn');
+    signUpBtn?.addEventListener('click', () => ModalLogin.getInstance().open());
   }
 
   private async handleContinue_(): Promise<void> {
@@ -164,10 +252,7 @@ export class LevelCompleteModal extends DraggableModal {
     // Reset progress (preserves completedAt so prerequisites stay unlocked) and clear checkpoint
     try {
       const userDataService = getUserDataService();
-      await Promise.all([
-        userDataService.resetScenarioForReplay(scenarioId),
-        userDataService.deleteCheckpoint(scenarioId),
-      ]);
+      await Promise.all([userDataService.resetScenarioForReplay(scenarioId), userDataService.deleteCheckpoint(scenarioId)]);
       Logger.info(`Reset progress and cleared checkpoint for Play Again: ${scenarioId}`);
     } catch (error) {
       Logger.error('Failed to reset progress for Play Again:', error);
@@ -185,6 +270,7 @@ export class LevelCompleteModal extends DraggableModal {
    * Actually close the modal (bypasses the override that prevents X/backdrop close)
    */
   private forceClose_(): void {
+    this.unsubscribeAuth_();
     super.close();
   }
 
@@ -226,10 +312,44 @@ export class LevelCompleteModal extends DraggableModal {
    * @param onContinue Callback when Continue button is clicked
    * @param isReplay True if showing for an already-completed scenario (adds Play Again button)
    */
+  /** The judgements the player made, when the scenario had any decisions */
+  private renderDecisions_(): string {
+    const decisions = this.options_.decisions ?? [];
+    if (decisions.length === 0) return '';
+
+    const rows = decisions
+      .map((d) => {
+        let mark = '&#10007;';
+        if (d.resolution.correct) mark = d.resolution.evidenced ? '&#10003;' : '&#10003;&#8202;?';
+        const note = d.resolution.evidenced ? '' : ` <span class="decision-summary-note">(decided before checking: ${d.resolution.missingEvidence.join(', ')})</span>`;
+        const tries = d.attempts > 1 ? ` <span class="decision-summary-note">(${d.attempts} attempts)</span>` : '';
+        return `<li class="decision-summary-item"><span class="decision-summary-mark">${mark}</span>${d.prompt} &rarr; <em>${d.resolution.label}</em>${tries}${note}</li>`;
+      })
+      .join('');
+
+    return `
+      <div class="complete-modal__decisions">
+        <div class="breakdown-label">Judgements</div>
+        <ul class="decision-summary-list">${rows}</ul>
+      </div>
+    `;
+  }
+
   showCompletion(options: CompletionModalOptions, onContinue?: () => void | Promise<void>, isReplay?: boolean): void {
     this.options_ = options;
     this.onContinueCallback_ = onContinue ?? null;
     this.isReplayMode_ = isReplay ?? false;
+
+    // While the sign-up funnel is showing, react to a sign-in immediately
+    // (the actual save is handled by ScenarioCompletionHandler's auth flush)
+    this.unsubscribeAuth_();
+    if (!this.isReplayMode_ && options.isAuthenticated === false) {
+      this.authSubscription_ = Auth.onAuthStateChange((_event, _user, _profile, accessToken) => {
+        if (accessToken) {
+          this.handleSignedInWhileOpen_();
+        }
+      });
+    }
 
     // Close any open popups before showing completion modal
     this.closeAllPopups_();

@@ -1,8 +1,9 @@
-import { EventBus } from '@app/events/event-bus';
-import { Events, AlarmStateChangedData, AggregatedAlarm } from '@app/events/events';
-import { AlarmStatus } from '@app/equipment/base-equipment';
-import { SimulationManager } from '@app/simulation/simulation-manager';
 import { GroundStation } from '@app/assets/ground-station/ground-station';
+import { AlarmStatus } from '@app/equipment/base-equipment';
+import { EventBus } from '@app/events/event-bus';
+import { AggregatedAlarm, AlarmStateChangedData, Events } from '@app/events/events';
+import { SimClock } from '@app/simulation/sim-clock';
+import { SimulationManager } from '@app/simulation/simulation-manager';
 import { Milliseconds } from 'ootk';
 
 /**
@@ -20,7 +21,7 @@ import { Milliseconds } from 'ootk';
 export class AlarmService {
   private static instance_: AlarmService | null = null;
   private previousAlarmsHash_ = '';
-  private lastPollTime_ = 0;
+  private lastPollTime_ = -Infinity;
   private readonly pollInterval_ = 1000; // 1 second
   private readonly boundOnUpdate_: (dt: Milliseconds) => void;
 
@@ -37,8 +38,9 @@ export class AlarmService {
   }
 
   private onUpdate_(_dt: Milliseconds): void {
-    const now = Date.now();
-    if (now - this.lastPollTime_ < this.pollInterval_) return;
+    const now = SimClock.runMs();
+    // Run time restarts at 0 each scenario, so a later stamp is from an earlier run
+    if (now >= this.lastPollTime_ && now - this.lastPollTime_ < this.pollInterval_) return;
     this.lastPollTime_ = now;
     this.pollAndAggregate_();
   }
@@ -72,7 +74,7 @@ export class AlarmService {
             message: alarm.message,
             assetId,
             equipmentType: 'ANT',
-            equipmentIndex: idx
+            equipmentIndex: idx,
           });
         }
       }
@@ -88,7 +90,7 @@ export class AlarmService {
               message: alarm.message,
               assetId,
               equipmentType: 'RF',
-              equipmentIndex: idx
+              equipmentIndex: idx,
             });
           }
         }
@@ -104,7 +106,7 @@ export class AlarmService {
             message: alarm.message,
             assetId,
             equipmentType: 'TX',
-            equipmentIndex: idx
+            equipmentIndex: idx,
           });
         }
       }
@@ -119,7 +121,7 @@ export class AlarmService {
             message: alarm.message,
             assetId,
             equipmentType: 'RX',
-            equipmentIndex: idx
+            equipmentIndex: idx,
           });
         }
       }
@@ -136,13 +138,13 @@ export class AlarmService {
     filtered: AggregatedAlarm[];
     severity: 'error' | 'warning' | 'info' | 'success';
   } {
-    const errors = alarms.filter(a => a.severity === 'error');
+    const errors = alarms.filter((a) => a.severity === 'error');
     if (errors.length > 0) return { filtered: errors, severity: 'error' };
 
-    const warnings = alarms.filter(a => a.severity === 'warning');
+    const warnings = alarms.filter((a) => a.severity === 'warning');
     if (warnings.length > 0) return { filtered: warnings, severity: 'warning' };
 
-    const infos = alarms.filter(a => a.severity === 'info');
+    const infos = alarms.filter((a) => a.severity === 'info');
     if (infos.length > 0) return { filtered: infos, severity: 'info' };
 
     return { filtered: [], severity: 'success' };
@@ -156,7 +158,7 @@ export class AlarmService {
 
     const data: AlarmStateChangedData = {
       alarms: filtered,
-      highestSeverity: severity
+      highestSeverity: severity,
     };
 
     EventBus.getInstance().emit(Events.ALARM_STATE_CHANGED, data);

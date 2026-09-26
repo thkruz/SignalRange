@@ -148,7 +148,7 @@ describe('Analyzer Control Buttons', () => {
       });
 
       it('should reject frequency out of range', () => {
-        vi.spyOn(window, 'alert').mockImplementation(() => { });
+        vi.spyOn(window, 'alert').mockImplementation(() => {});
 
         freqBtn.click();
         mockAnalyzerControl.domCache!['label-select-button-1'].click();
@@ -463,7 +463,7 @@ describe('Analyzer Control Buttons', () => {
       });
 
       it('should reject invalid trace selection via enter', () => {
-        vi.spyOn(window, 'alert').mockImplementation(() => { });
+        vi.spyOn(window, 'alert').mockImplementation(() => {});
 
         traceBtn.click();
         mockAnalyzerControl.domCache!['label-select-button-1'].click();
@@ -499,7 +499,7 @@ describe('Analyzer Control Buttons', () => {
       });
 
       it('should reject trace selection out of bounds via tick', () => {
-        vi.spyOn(window, 'alert').mockImplementation(() => { });
+        vi.spyOn(window, 'alert').mockImplementation(() => {});
         mockState.selectedTrace = 3;
 
         traceBtn.click();

@@ -4,21 +4,19 @@ import { ANTENNA_CONFIG_KEYS } from '../../src/equipment/antenna';
 import { AntennaState } from '../../src/equipment/antenna/antenna-core';
 import { AntennaUIHeadless } from '../../src/equipment/antenna/antenna-ui-headless';
 
-vi.mock('../../src/simulation/simulation-manager', () => {
-  return {
-    SimulationManager: {
-      getInstance: vi.fn(() => ({
-        update: vi.fn(),
-        draw: vi.fn(),
-        sync: vi.fn(),
-        getSatByNoradId: vi.fn(),
-        getSatsByAzEl: () => [],
-        satellites: [],
-      })),
-      destroy: vi.fn(),
-    }
-  };
-});
+vi.mock('../../src/simulation/simulation-manager', () => ({
+  SimulationManager: {
+    getInstance: vi.fn(() => ({
+      update: vi.fn(),
+      draw: vi.fn(),
+      sync: vi.fn(),
+      getSatByNoradId: vi.fn(),
+      getSatsByAzEl: () => [],
+      satellites: [],
+    })),
+    destroy: vi.fn(),
+  },
+}));
 
 describe('AntennaUIHeadless', () => {
   let parentElement: HTMLElement;
@@ -42,33 +40,20 @@ describe('AntennaUIHeadless', () => {
     });
 
     it('should create instance with custom config', () => {
-      const antenna = new AntennaUIHeadless(
-        'test-parent',
-        ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK
-      );
+      const antenna = new AntennaUIHeadless('test-parent', ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK);
 
       expect(antenna).toBeInstanceOf(AntennaUIHeadless);
     });
 
     it('should create instance with initial state', () => {
       const initialState: Partial<AntennaState> = { azimuth: 45 as Degrees, elevation: 30 as Degrees };
-      const antenna = new AntennaUIHeadless(
-        'test-parent',
-        ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK,
-        initialState
-      );
+      const antenna = new AntennaUIHeadless('test-parent', ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK, initialState);
 
       expect(antenna).toBeInstanceOf(AntennaUIHeadless);
     });
 
     it('should create instance with team and server IDs', () => {
-      const antenna = new AntennaUIHeadless(
-        'test-parent',
-        ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK,
-        {},
-        2,
-        3
-      );
+      const antenna = new AntennaUIHeadless('test-parent', ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK, {}, 2, 3);
 
       expect(antenna).toBeInstanceOf(AntennaUIHeadless);
     });
@@ -129,9 +114,7 @@ describe('AntennaUIHeadless', () => {
 
       // Headless antenna appends to document.body, not parentElement
       // Parent should remain empty
-      const visibleElements = Array.from(parentElement.querySelectorAll('*')).filter(
-        el => (el as HTMLElement).style.display !== 'none'
-      );
+      const visibleElements = Array.from(parentElement.querySelectorAll('*')).filter((el) => (el as HTMLElement).style.display !== 'none');
 
       expect(visibleElements.length).toBe(0);
     });

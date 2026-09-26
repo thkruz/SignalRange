@@ -1,4 +1,5 @@
 import { Mock, vi } from 'vitest';
+
 /**
  * Tests for the public storage API (storage.ts)
  *
@@ -66,15 +67,15 @@ Object.defineProperty(globalThis, 'localStorage', {
   writable: true,
 });
 
-vi.spyOn(globalThis, 'addEventListener').mockImplementation(() => { });
-vi.spyOn(globalThis, 'removeEventListener').mockImplementation(() => { });
+vi.spyOn(globalThis, 'addEventListener').mockImplementation(() => {});
+vi.spyOn(globalThis, 'removeEventListener').mockImplementation(() => {});
 
 describe('Storage Public API', () => {
   let storageModule: typeof import('../../src/sync/storage');
 
   beforeEach(() => {
     vi.resetModules();
-    Object.keys(mockStorage).forEach(key => delete mockStorage[key]);
+    Object.keys(mockStorage).forEach((key) => delete mockStorage[key]);
     vi.clearAllMocks();
   });
 
@@ -167,7 +168,7 @@ describe('syncEquipmentWithStore()', () => {
 
   beforeEach(() => {
     vi.resetModules();
-    Object.keys(mockStorage).forEach(key => delete mockStorage[key]);
+    Object.keys(mockStorage).forEach((key) => delete mockStorage[key]);
     vi.clearAllMocks();
     vi.useFakeTimers();
 
@@ -203,12 +204,8 @@ describe('syncEquipmentWithStore()', () => {
 
     await storageModule.syncEquipmentWithStore(mockEquipment as any, []);
 
-    expect(mockEquipment.spectrumAnalyzers[0].sync).toHaveBeenCalledWith(
-      storedState.equipment.spectrumAnalyzersState[0]
-    );
-    expect(mockEquipment.antennas[0].sync).toHaveBeenCalledWith(
-      storedState.equipment.antennasState[0]
-    );
+    expect(mockEquipment.spectrumAnalyzers[0].sync).toHaveBeenCalledWith(storedState.equipment.spectrumAnalyzersState[0]);
+    expect(mockEquipment.antennas[0].sync).toHaveBeenCalledWith(storedState.equipment.antennasState[0]);
   });
 
   it('sets up event listeners for auto-save', async () => {
@@ -225,18 +222,9 @@ describe('syncEquipmentWithStore()', () => {
     await storageModule.syncEquipmentWithStore(mockEquipment as any, []);
 
     // Should register listeners for equipment change events
-    expect(mockEventBusInstance.on).toHaveBeenCalledWith(
-      'GROUND_STATION_STATE_CHANGED',
-      expect.any(Function)
-    );
-    expect(mockEventBusInstance.on).toHaveBeenCalledWith(
-      'SPEC_A_CONFIG_CHANGED',
-      expect.any(Function)
-    );
-    expect(mockEventBusInstance.on).toHaveBeenCalledWith(
-      'ANTENNA_STATE_CHANGED',
-      expect.any(Function)
-    );
+    expect(mockEventBusInstance.on).toHaveBeenCalledWith('GROUND_STATION_STATE_CHANGED', expect.any(Function));
+    expect(mockEventBusInstance.on).toHaveBeenCalledWith('SPEC_A_CONFIG_CHANGED', expect.any(Function));
+    expect(mockEventBusInstance.on).toHaveBeenCalledWith('ANTENNA_STATE_CHANGED', expect.any(Function));
   });
 
   it('debounces save operations', async () => {
@@ -253,9 +241,7 @@ describe('syncEquipmentWithStore()', () => {
     await storageModule.syncEquipmentWithStore(mockEquipment as any, []);
 
     // Get the debounced save handler
-    const antennaChangeHandler = mockEventBusInstance.on.mock.calls.find(
-      (call: any[]) => call[0] === 'ANTENNA_STATE_CHANGED'
-    )?.[1];
+    const antennaChangeHandler = mockEventBusInstance.on.mock.calls.find((call: any[]) => call[0] === 'ANTENNA_STATE_CHANGED')?.[1];
 
     // Clear previous setItem calls
     (localStorage.setItem as Mock).mockClear();
@@ -280,9 +266,7 @@ describe('syncEquipmentWithStore()', () => {
     storageModule = await import('../../src/sync/storage');
 
     // Should not throw
-    await expect(
-      storageModule.syncEquipmentWithStore(null, [])
-    ).resolves.toBeUndefined();
+    await expect(storageModule.syncEquipmentWithStore(null, [])).resolves.toBeUndefined();
   });
 
   it('calls SimulationManager.sync()', async () => {
@@ -319,7 +303,7 @@ describe('swapStorageProvider()', () => {
 
   beforeEach(() => {
     vi.resetModules();
-    Object.keys(mockStorage).forEach(key => delete mockStorage[key]);
+    Object.keys(mockStorage).forEach((key) => delete mockStorage[key]);
     vi.clearAllMocks();
   });
 

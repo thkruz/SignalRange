@@ -1,13 +1,13 @@
-import { GroundStation } from "@app/assets/ground-station/ground-station";
+import { GroundStation } from '@app/assets/ground-station/ground-station';
 import activityPng from '@app/assets/icons/activity.png';
 import heartRateMonitorPng from '@app/assets/icons/heart-rate-monitor.png';
 import powerPng from '@app/assets/icons/power.png';
 import satellitePng from '@app/assets/icons/satellite.png';
 import sharePng from '@app/assets/icons/share.png';
 import temperaturePng from '@app/assets/icons/temperature.png';
-import { BaseElement } from "@app/components/base-element";
-import { html } from "@app/engine/utils/development/formatter";
-import { qs } from "@app/engine/utils/query-selector";
+import { BaseElement } from '@app/components/base-element';
+import { html } from '@app/engine/utils/development/formatter';
+import { qs } from '@app/engine/utils/query-selector';
 import './gps-timing-tab.css';
 import { GPSDOAdapter } from './gpsdo-adapter';
 
@@ -108,9 +108,13 @@ export class GPSTimingTab extends BaseElement {
                 <span class="text-muted small">Constellation:</span>
                 <span id="gpsdo-constellation" class="fw-bold font-monospace">GPS</span>
               </div>
-              <div class="d-flex justify-content-between align-items-center">
+              <div class="d-flex justify-content-between align-items-center mb-2">
                 <span class="text-muted small">UTC Accuracy:</span>
                 <span id="gpsdo-utc-accuracy" class="fw-bold font-monospace">0 ns</span>
+              </div>
+              <div class="d-flex justify-content-between align-items-center" title="GNSS timing solution minus the disciplined reference. A healthy constellation with this walking is a spoof, not an outage.">
+                <span class="text-muted small">GNSS vs REF &Delta;T:</span>
+                <span id="gpsdo-time-offset" class="fw-bold font-monospace">+0.0 &micro;s</span>
               </div>
             </div>
           </div>
@@ -260,7 +264,7 @@ export class GPSTimingTab extends BaseElement {
     }
 
     // Create adapter
-    this.gpsdoAdapter = new GPSDOAdapter(rfFrontEnd.gpsdoModule, this.dom_!);
+    this.gpsdoAdapter = new GPSDOAdapter(rfFrontEnd.gpsdoModule, this.dom_!, this.groundStation.state?.id ?? '');
   }
 
   /**

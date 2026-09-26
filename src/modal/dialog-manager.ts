@@ -40,7 +40,7 @@ export class DialogManager {
   private dialogQueue_: QueuedDialog[] = [];
   private isTtsActive_ = false;
 
-  private constructor() { }
+  private constructor() {}
 
   static getInstance(): DialogManager {
     if (!DialogManager.instance) {

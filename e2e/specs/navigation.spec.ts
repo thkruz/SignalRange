@@ -1,4 +1,4 @@
-import { test, expect } from '../fixtures/test-fixtures';
+import { expect, test } from '../fixtures/test-fixtures';
 
 test.describe('Navigation', () => {
   test('should load campaign selection page at root URL', async ({ campaignSelectionPage }) => {
@@ -17,20 +17,14 @@ test.describe('Navigation', () => {
     await expect(natsCard).not.toHaveClass(/disabled/);
   });
 
-  test('should navigate to scenario selection when campaign is clicked', async ({
-    campaignSelectionPage,
-    page,
-  }) => {
+  test('should navigate to scenario selection when campaign is clicked', async ({ campaignSelectionPage, page }) => {
     await campaignSelectionPage.goto();
     await campaignSelectionPage.selectCampaign('nats');
 
     await expect(page).toHaveURL('/campaigns/nats');
   });
 
-  test('should navigate back to campaigns from scenario selection', async ({
-    scenarioSelectionPage,
-    page,
-  }) => {
+  test('should navigate back to campaigns from scenario selection', async ({ scenarioSelectionPage, page }) => {
     await scenarioSelectionPage.gotoCampaign('nats');
 
     await expect(scenarioSelectionPage.backButton).toBeVisible();

@@ -1,7 +1,7 @@
-import { html } from "@app/engine/utils/development/formatter";
-import { qs } from "@app/engine/utils/query-selector";
-import { EventBus } from "@app/events/event-bus";
-import { Events } from "@app/events/events";
+import { html } from '@app/engine/utils/development/formatter';
+import { qs } from '@app/engine/utils/query-selector';
+import { EventBus } from '@app/events/event-bus';
+import { Events } from '@app/events/events';
 import './continuous-rotary-knob.css';
 
 export class ContinuousRotaryKnob {
@@ -17,13 +17,7 @@ export class ContinuousRotaryKnob {
   private totalRotations: number = 0;
   valueOverride?: string;
 
-  constructor(
-    uniqueId: string,
-    initialAngle: number = 0,
-    step: number = 1,
-    callback?: (delta: number) => void,
-    valueOverride?: string
-  ) {
+  constructor(uniqueId: string, initialAngle: number = 0, step: number = 1, callback?: (delta: number) => void, valueOverride?: string) {
     this.uniqueId = uniqueId;
     this.angle = initialAngle;
     this.step = step;
@@ -150,13 +144,7 @@ export class ContinuousRotaryKnob {
     this.updateDisplay();
   }
 
-  static create(
-    id: string,
-    initialAngle: number = 0,
-    step: number = 1,
-    callback?: (delta: number) => void,
-    valueOverride?: string
-  ): ContinuousRotaryKnob {
+  static create(id: string, initialAngle: number = 0, step: number = 1, callback?: (delta: number) => void, valueOverride?: string): ContinuousRotaryKnob {
     return new ContinuousRotaryKnob(id, initialAngle, step, callback, valueOverride);
   }
 }

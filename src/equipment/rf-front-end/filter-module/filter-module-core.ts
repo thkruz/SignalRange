@@ -1,7 +1,7 @@
-import { SignalOrigin } from "@app/signal-origin";
-import { dBm, Hertz, IfSignal, MHz } from '@app/types';
-import { RFFrontEndCore } from "@app/equipment/rf-front-end/rf-front-end-core";
+import { RFFrontEndCore } from '@app/equipment/rf-front-end/rf-front-end-core';
 import { RFFrontEndModule } from '@app/equipment/rf-front-end/rf-front-end-module';
+import { SignalOrigin } from '@app/signal-origin';
+import { dBm, Hertz, IfSignal, MHz } from '@app/types';
 
 /**
  * Filter bandwidth configuration
@@ -107,13 +107,9 @@ export abstract class IfFilterBankModuleCore extends RFFrontEndModule<IfFilterBa
     // Get signals from LNB (IF Filter is first in the IF chain)
     // Signal path: LNB → IF Filter → Notch Filter → AGC
     const lnbSignals = this.rfFrontEnd_.lnbModule.ifSignals;
-    const txLoopbackSignals = this.rfFrontEnd_.transmitters
-      .flatMap((tx) => tx.state.modems
-        .filter((modem) => modem.isTransmitting
-          && !modem.isFaulted
-          && modem.isLoopback
-          && !tx.isModemInIntermittentDropout(modem))
-        .map((modem) => modem.ifSignal));
+    const txLoopbackSignals = this.rfFrontEnd_.transmitters.flatMap((tx) =>
+      tx.state.modems.filter((modem) => modem.isTransmitting && !modem.isFaulted && modem.isLoopback && !tx.isModemInIntermittentDropout(modem)).map((modem) => modem.ifSignal)
+    );
 
     return [...lnbSignals, ...txLoopbackSignals];
   }

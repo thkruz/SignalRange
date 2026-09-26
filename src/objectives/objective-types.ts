@@ -95,23 +95,142 @@ export type ConditionType =
   | 'tx-key-status' // TX encryption key status matches value
   // Fault injection conditions
   | 'fault-active' // Check if specific fault is currently injected
-  | 'fault-cleared'; // Check if specific fault has been cleared
+  | 'fault-cleared' // Check if specific fault has been cleared
+  // Geolocation conditions (Campaign 5)
+  | 'geolocation-measurements-collected' // >= N TDOA/FDOA captures collected
+  | 'geolocation-fix-accuracy' // Computed fix within N km of the emitter truth
+  | 'geolocation-ellipse-within' // Computed fix converged with a 95% error ellipse no wider than N km (semi-major)
+  | 'interference-event-ended' // A scripted interference event's envelope has closed (it ran and stopped)
+  // Electronic-attack / SATCOM denial conditions (Campaign 4)
+  | 'jamming-uplink-active' // Jam waveform radiating in the target uplink band
+  | 'jamming-effective' // J/S at the target transponder meets the denial threshold
+  // ── nats-eu (Campaign 2 European Operations) mechanics ──────────────────────
+  // M1 Link-budget / EIRP planning console
+  | 'link-budget-computed' // Operator's computed C/N worksheet matches truth within tolerance
+  | 'link-margin-met' // Applied link achieves margin at/above the required threshold
+  // M2 LEO uplink ops (uplink Doppler + TT&C commanding)
+  | 'uplink-doppler-comp-enabled' // Uplink Doppler compensation engaged on the command link
+  | 'command-acknowledged' // A TT&C command was sent inside a valid window and ACKed
+  // M5 Command-link auth / key ops (over the existing crypto model)
+  | 'key-rotation-completed' // A scheduled command-link key rotation has completed
+  | 'zeroize-executed' // The command-link key has been zeroized (emergency destruction)
+  // M3 Multi-station pass scheduling
+  | 'contact-assigned' // A pass/contact has been allocated to a ground station
+  | 'contact-plan-valid' // The contact plan has no conflicts and covers all required passes
+  // M4 Space-domain events (maneuvers / stale TLEs)
+  | 'ephemeris-updated' // Fresh ephemeris (TLE) has been loaded after a maneuver
+  // M6 SOC-lite security console (audit log + access control)
+  | 'audit-log-reviewed' // The station audit log has been opened and reviewed
+  | 'security-event-acknowledged' // A specific audit-log event has been acknowledged/flagged
+  | 'access-control-set' // A station account was moved to the target access state
+  // M7 TRANSEC anti-jam waveform
+  | 'transec-mode-set' // The modem TRANSEC waveform mode matches the target (fixed/hopping)
+  | 'transec-sync-locked' // The TRANSEC hop set is keyed and hop-sync is locked
+  // M8 GNSS spoofing / timing attack
+  | 'gpsdo-reference-mode-set' // The GPSDO reference/discipline mode matches the target
+  | 'gpsdo-time-offset-exceeds' // The GNSS-vs-reference timing offset has walked past a threshold
+  | 'gpsdo-time-offset-stable' // The timing offset has not moved for a hold period
+  // Campaign record (phase 18 D)
+  | 'campaign-document-reviewed' // The campaign record panel (earlier scenarios' Working Documents) has been opened
+  // Spacecraft telemetry and ranging (phase 18 E)
+  | 'telemetry-frames-received' // At least minFrames telemetry frames have arrived from the bird
+  | 'telemetry-channel-in-band' // A telemetry channel reads in the given limit band (green/yellow/red)
+  | 'telemetry-soh-nominal' // Every telemetry channel is green and the stream is fresh
+  | 'ranging-measurements' // At least minCount ranging measurements have been taken through the command path
+  // Campaign 3 SDR receive chain
+  | 'receiver-afc-enabled' // RX modem AFC state matches the target (on by default)
+  | 'antenna-polarization-set' // Antenna circular handedness matches the target
+  // ── D-tier assessment (phase 18) ─────────────────────────────────────────────
+  | 'decision'; // A judgement graded against live evidence facts, with consequences
+
+/**
+ * Evidence facts a `decision` option can be graded against. Each is a pure,
+ * held read over live simulation state - see evidence-facts.ts. The list is
+ * closed on purpose: authors compose rules from these, they never write
+ * evaluators.
+ */
+export const EVIDENCE_FACT_IDS = [
+  'interference-active', // a scripted interference event is in progress (inside its envelope, on or off phase)
+  'equipment-fault-active', // the fault injector has a live fault on this station
+  'crypto-intact', // rx key valid and auth tags verifying (true when crypto is not modelled)
+  'gnss-constellation-healthy', // GNSS present with >= 4 satellites on the GPSDO
+  'timing-drifting', // GNSS spoof active and the station is still trusting GNSS (the tell)
+  'reference-in-holdover', // the GPSDO is in holdover
+  'weather-attenuation-dominant', // an active weather event is the largest degradation present
+  'audit-anomaly-present', // an anomalous audit-log entry is visible and unacknowledged
+  'config-drifted', // an unacknowledged config-change anomaly is in the audit log
+  'command-window-open', // a TT&C command window is open right now
+  'uplink-jammed', // the command carrier is denied by interference on the target's uplink, with no TRANSEC sync
+  'evidence-chain-intact', // no audit entry carried forward from an earlier scenario was lost to a destroyEvidence there
+  'soh-red-limit', // a telemetry channel reads in its red band with the stream fresh
+  'soh-yellow-limit', // a telemetry channel reads yellow or worse with the stream fresh
+  'telemetry-stale', // the telemetry stream has no fresh frame (link down)
+  'transponder-interference-active', // an interference event relayed through a satellite transponder is in progress
+  'terrestrial-interference-active', // an interference event arriving at the dish directly from a ground emitter is in progress
+] as const;
+
+export type EvidenceFactId = (typeof EVIDENCE_FACT_IDS)[number];
+
+/**
+ * A boolean rule over evidence facts. `{ fact, is }` is a leaf; `all` / `any`
+ * combine. Evaluated at the moment the player answers, not when the decision
+ * is authored - the same option set can have a different right answer in a
+ * scenario with a different interference schedule.
+ */
+export type DecisionFactRule = { fact: EvidenceFactId; is: boolean } | { all: DecisionFactRule[] } | { any: DecisionFactRule[] };
+
+/**
+ * What choosing an option does to the simulation. Every key dispatches to a
+ * subsystem that already exists; the consequence is the teaching, so wrong
+ * options usually carry one too. See consequence-dispatcher.ts.
+ */
+export interface DecisionConsequence {
+  /** Inject a fault from FAULT_TEMPLATES on this objective's ground station */
+  inject?: { template: string; id?: string };
+  /** Clear a previously injected fault by id */
+  clearFault?: string;
+  /** Force a scripted interference event on, regardless of its schedule */
+  startInterference?: string;
+  /** Force a scripted interference event off, regardless of its schedule */
+  stopInterference?: string;
+  /** Add an entry to the security console audit log */
+  auditEvent?: {
+    id: string;
+    actor: string;
+    action: string;
+    category: 'auth' | 'config' | 'command' | 'access';
+    severity: 'info' | 'warning' | 'critical';
+    isAnomaly?: boolean;
+    /** Wall-clock label shown in the log (e.g. "08:07 UTC"); defaults to the moment of injection */
+    timestampLabel?: string;
+  };
+  /** Remove evidence the player should have preserved (the 13.6 lesson) */
+  destroyEvidence?: { auditEventId?: string; faultId?: string };
+  /** Activate an objective now, bypassing its prerequisites */
+  activateObjective?: string;
+  /** Deactivate an active objective (and reset its conditions) */
+  deactivateObjective?: string;
+  /** Adjust the decision penalty tally by this many points (negative = award) */
+  pointDelta?: number;
+  /** Line written to the ops log when this option is chosen */
+  log?: string;
+}
+
+export interface DecisionOption {
+  /** Option text. Keep all options in one shape and length band. */
+  label: string;
+  /** When this option is the correct call. Omit for an option that is never correct. */
+  correctWhen?: DecisionFactRule;
+  /** Fired when this option is chosen, right or wrong */
+  consequence?: DecisionConsequence;
+  /** Shown after choosing this option; falls back to the decision's explanation */
+  feedback?: string;
+}
 
 /**
  * Equipment references for condition checking
  */
-export type EquipmentRef =
-  | 'antenna'
-  | 'gpsdo'
-  | 'buc'
-  | 'lnb'
-  | 'hpa'
-  | 'filter'
-  | 'coupler'
-  | 'omt'
-  | 'spectrum-analyzer'
-  | 'transmitter'
-  | 'receiver';
+export type EquipmentRef = 'antenna' | 'gpsdo' | 'buc' | 'lnb' | 'hpa' | 'filter' | 'coupler' | 'omt' | 'spectrum-analyzer' | 'transmitter' | 'receiver';
 
 /**
  * Parameters for different condition types
@@ -167,6 +286,22 @@ export interface ConditionParams {
   maxAmplitudeTolerance?: number;
   /** For custom conditions: custom evaluator function */
   evaluator?: () => boolean;
+
+  // ── decision ─────────────────────────────────────────────────────────────
+  /** For decision: the question put to the operator ("What is this?" / "What do you do?") */
+  prompt?: string;
+  /** For decision: the options, graded against evidence facts when answered */
+  decisionOptions?: DecisionOption[];
+  /**
+   * For decision: ids of requiresObservation conditions in the same objective
+   * that must have latched before an answer counts as evidenced. Answering
+   * before they latch is allowed but scores partialCreditUnevidenced.
+   */
+  evidence?: string[];
+  /** For decision: fraction of full credit for a correct but unevidenced answer (default 0.5) */
+  partialCreditUnevidenced?: number;
+  /** For decision: skip option shuffling (default false) */
+  preserveDecisionOrder?: boolean;
   /** Target specific equipment by index (0-based). If omitted, any equipment satisfies. */
   equipmentIndex?: number;
   /** For filter-bandwidth-set: target bandwidth index (0-12) */
@@ -205,8 +340,31 @@ export interface ConditionParams {
   minOutputPower?: number;
   /** For receiver-signal-locked/receiver-snr-threshold: which modem (1-4), defaults to active modem */
   modemNumber?: number;
+  /** For receiver-afc-enabled: required AFC state (default true; false asserts manual tuning) */
+  afcEnabled?: boolean;
+  /** For antenna-polarization-set: required circular handedness on the antenna feed */
+  circularHandedness?: 'LHCP' | 'RHCP';
   /** For receiver-snr-threshold: minimum C/N ratio in dB */
   minCNRatio?: number;
+  /**
+   * For receiver-snr-threshold: maximum C/N ratio in dB. When set, the
+   * condition passes while the modem's C/N is at or BELOW this value - used to
+   * assert a link has been degraded/denied (e.g. a jammed victim downlink
+   * observed on a monitor receiver). May be combined with minCNRatio to require
+   * a band. Optional; existing scenarios use only minCNRatio.
+   */
+  maxCNRatio?: number;
+  /**
+   * For receiver-snr-threshold: seconds the live C/N must stay inside the
+   * [minCNRatio, maxCNRatio] band continuously before the condition reads
+   * true; a frame outside the band resets the run. Meant for maxCNRatio: the
+   * 1 s satellite position throttle puts one transient low-C/N frame in every
+   * second of a LEO pass, so an unheld "below X dB" latches anywhere in the
+   * pass. Counted in evaluation time like maintainDuration, and applied before
+   * the observation gate so a requiresObservation latch waits for the hold.
+   * Default 0 (latches on the first frame in band).
+   */
+  cnHoldSeconds?: number;
   /** For rx-modem-bandwidth-set: target bandwidth in Hz */
   bandwidth?: number;
   /** For rx-modem-bandwidth-set: bandwidth tolerance in Hz */
@@ -278,6 +436,44 @@ export interface ConditionParams {
   /** For fault-active/fault-cleared: fault ID to check */
   faultId?: string;
 
+  // Geolocation condition parameters (Campaign 5)
+  /** For geolocation-measurements-collected: minimum capture count */
+  minCount?: number;
+  /** For geolocation-fix-accuracy: maximum fix error vs truth, km */
+  maxErrorKm?: number;
+  /** For geolocation-ellipse-within: maximum 95% error-ellipse semi-major axis, km */
+  maxSemiMajorKm?: number;
+  /** For geolocation conditions and interference-event-ended: the interference event in question */
+  interferenceEventId?: string;
+
+  // ── nats-eu (Campaign 2) condition parameters ──────────────────────────────
+  /** For link-budget-computed / link-margin-met: minimum required margin in dB (default 0) */
+  minMarginDb?: number;
+  /** For command-acknowledged: specific command id to require (any acked command if omitted) */
+  commandId?: string;
+  /** For contact-assigned / ephemeris-updated / security-event-acknowledged: target entity id */
+  eventId?: string;
+  /** For contact-assigned: pass/contact id that must be allocated */
+  contactId?: string;
+  /** For access-control-set: station account id to check */
+  accountId?: string;
+  /** For access-control-set: target account access state */
+  accountStatus?: 'active' | 'disabled' | 'expired';
+  /** For transec-mode-set: target TRANSEC waveform mode */
+  transecMode?: 'fixed' | 'hopping';
+  /** For gpsdo-reference-mode-set: target GPSDO reference/discipline mode */
+  referenceMode?: 'gnss' | 'holdover' | 'manual';
+  /** For gpsdo-time-offset-exceeds: |offset| in microseconds that counts as walked off (default 20) */
+  minOffsetUs?: number;
+  /** For gpsdo-time-offset-stable: seconds the offset must have held still (default 30) */
+  holdSeconds?: number;
+  /** For telemetry-frames-received: frames required (default 1) */
+  minFrames?: number;
+  /** For telemetry-channel-in-band: the channel to read */
+  channelId?: string;
+  /** For telemetry-channel-in-band: the band the channel must read (default 'green') */
+  telemetryBand?: 'green' | 'yellow' | 'red';
+
   // Observation-gating parameters
   /**
    * If true, this (typically passive) condition does not count as satisfied
@@ -295,6 +491,15 @@ export interface ConditionParams {
    * 'dashboard'). Matched by exact id or prefix, like the tab-active condition.
    */
   observationTab?: string;
+  /**
+   * For requiresObservation: seconds the value must read true continuously
+   * while the observation tab is active before it latches. Gives the operator
+   * time to actually read the panel instead of the checklist ticking the
+   * instant the tab opens. Leaving the tab or a false frame resets the run.
+   * Counted in evaluation time like maintainDuration. Defaults to
+   * DEFAULT_OBSERVATION_DWELL_SECONDS; 0 latches on the first true frame.
+   */
+  observationDwellSeconds?: number;
 
   /** Additional context-specific parameters */
   [key: string]: unknown;
@@ -315,9 +520,30 @@ export interface TimePenalty {
 /**
  * Single condition that must be satisfied
  */
+/**
+ * Default dwell for requiresObservation conditions (see
+ * ConditionParams.observationDwellSeconds): long enough to read a panel,
+ * short enough not to feel like the checklist is stuck.
+ */
+export const DEFAULT_OBSERVATION_DWELL_SECONDS = 2;
+
+/**
+ * How long a requiresObservation read may go false on the observation tab
+ * before the dwell resets. The 1 s LEO position throttle puts one transient
+ * low frame into every second of a pass; without a grace no C/N dwell could
+ * ever be read on a LEO downlink. Leaving the tab still resets at once.
+ */
+export const OBSERVATION_DWELL_GRACE_SECONDS = 0.5;
+
 export interface Condition {
   /** Type of condition to check */
   type: ConditionType;
+  /**
+   * Optional stable identifier, unique within the objective. A `decision`
+   * condition names the requiresObservation conditions it depends on by this
+   * id (params.evidence), so the player cannot decide before looking.
+   */
+  id?: string;
   /** Human-readable description */
   description: string;
   /** Hint or tip to help achieve the condition (optional) */
@@ -433,4 +659,21 @@ export interface ConditionState {
    * regardless of tab or live value.
    */
   observed?: boolean;
+  /**
+   * For requiresObservation conditions: seconds the value has read true on
+   * the observation tab. Reset to 0 off-tab, or once a false gap outlasts
+   * OBSERVATION_DWELL_GRACE_SECONDS; the condition latches at the dwell.
+   */
+  observedSeconds?: number;
+  /**
+   * For requiresObservation conditions: seconds the value has read false on
+   * the observation tab since it last read true. A gap shorter than the
+   * grace keeps the dwell (one throttled low frame a second on a LEO pass).
+   */
+  observedGapSeconds?: number;
+  /**
+   * For conditions with a cnHoldSeconds hold: seconds the live reading has
+   * been continuously inside the band. Reset to 0 by a frame outside it.
+   */
+  heldSeconds?: number;
 }

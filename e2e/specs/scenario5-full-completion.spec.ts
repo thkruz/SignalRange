@@ -1,11 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { MissionControlPage } from '../pages/mission-control.page';
-import {
-  answerQuizByText,
-  dismissDialogIfPresent,
-  waitForQuizToAppear,
-  waitForSimulationReady,
-} from '../utils/simulation-helpers';
+import { answerQuizByText, dismissDialogIfPresent, waitForQuizToAppear, waitForSimulationReady } from '../utils/simulation-helpers';
 
 /**
  * Scenario 5 objectives - Interference Hunt: Spectrum Analysis and Mitigation
@@ -17,12 +12,7 @@ import {
  * - 'configure-speca': Requires configuring spectrum analyzer settings
  * - 'configure-notch-filter': Requires configuring notch filter settings
  */
-type ObjectiveType =
-  | 'quiz'
-  | 'select-station'
-  | 'click-tab'
-  | 'configure-speca'
-  | 'configure-notch-filter';
+type ObjectiveType = 'quiz' | 'select-station' | 'click-tab' | 'configure-speca' | 'configure-notch-filter';
 
 interface Scenario5Objective {
   id: string;
@@ -92,8 +82,7 @@ const SCENARIO_5_OBJECTIVES: Scenario5Objective[] = [
     id: 'verify-speca-initial-state',
     title: 'Assess Current Configuration',
     type: 'quiz',
-    correctAnswer:
-      "The narrow span only shows the beacon, not our 36 MHz wideband signal where the problem likely exists",
+    correctAnswer: 'The narrow span shows only the beacon, not the 36 MHz wideband carrier with the problem',
   },
   {
     id: 'phase-2-configure-and-locate',
@@ -200,8 +189,7 @@ const SCENARIO_5_OBJECTIVES: Scenario5Objective[] = [
     id: 'document-interference-quiz',
     title: 'Understand Documentation Requirements',
     type: 'quiz',
-    correctAnswer:
-      'Interference frequency, bandwidth, apparent source, time of occurrence, and mitigation applied',
+    correctAnswer: 'Interference frequency, bandwidth, apparent source, time of occurrence, and mitigation applied',
   },
 ];
 
@@ -333,11 +321,7 @@ async function configureNotchFilter(
 /**
  * Execute an objective based on its type.
  */
-async function executeObjective(
-  page: import('@playwright/test').Page,
-  missionControlPage: MissionControlPage,
-  objective: Scenario5Objective
-): Promise<void> {
+async function executeObjective(page: import('@playwright/test').Page, missionControlPage: MissionControlPage, objective: Scenario5Objective): Promise<void> {
   switch (objective.type) {
     case 'quiz':
       // Wait for quiz to appear and answer it
@@ -353,6 +337,10 @@ async function executeObjective(
     case 'click-tab':
       // Click on the specified tab
       await missionControlPage.selectTab(objective.tabId!);
+      // Observation-gated conditions latch only after the default dwell on
+      // the tab (DEFAULT_OBSERVATION_DWELL_SECONDS); leaving at once would
+      // reset the read and strand the objective.
+      await page.waitForTimeout(3000);
       break;
 
     case 'configure-speca':
@@ -425,12 +413,12 @@ test.describe('Scenario 5 Full Completion', () => {
   // ============================================================
 
   test('Objective: Review Mission Brief', async () => {
-    const objective = SCENARIO_5_OBJECTIVES.find(o => o.id === 'review-mission-brief')!;
+    const objective = SCENARIO_5_OBJECTIVES.find((o) => o.id === 'review-mission-brief')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Select Vermont Ground Station', async () => {
-    const objective = SCENARIO_5_OBJECTIVES.find(o => o.id === 'select-vermont-station')!;
+    const objective = SCENARIO_5_OBJECTIVES.find((o) => o.id === 'select-vermont-station')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
@@ -439,17 +427,17 @@ test.describe('Scenario 5 Full Completion', () => {
   // ============================================================
 
   test('Objective: Navigate to Receiver', async () => {
-    const objective = SCENARIO_5_OBJECTIVES.find(o => o.id === 'navigate-rx-analysis')!;
+    const objective = SCENARIO_5_OBJECTIVES.find((o) => o.id === 'navigate-rx-analysis')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Confirm Signal Degradation', async () => {
-    const objective = SCENARIO_5_OBJECTIVES.find(o => o.id === 'phase-1-observe-degradation')!;
+    const objective = SCENARIO_5_OBJECTIVES.find((o) => o.id === 'phase-1-observe-degradation')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Assess Full Impact', async () => {
-    const objective = SCENARIO_5_OBJECTIVES.find(o => o.id === 'verify-receiver-state-quiz')!;
+    const objective = SCENARIO_5_OBJECTIVES.find((o) => o.id === 'verify-receiver-state-quiz')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
@@ -458,12 +446,12 @@ test.describe('Scenario 5 Full Completion', () => {
   // ============================================================
 
   test('Objective: Assess Current Configuration', async () => {
-    const objective = SCENARIO_5_OBJECTIVES.find(o => o.id === 'verify-speca-initial-state')!;
+    const objective = SCENARIO_5_OBJECTIVES.find((o) => o.id === 'verify-speca-initial-state')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Configure Spectrum View', async () => {
-    const objective = SCENARIO_5_OBJECTIVES.find(o => o.id === 'phase-2-configure-and-locate')!;
+    const objective = SCENARIO_5_OBJECTIVES.find((o) => o.id === 'phase-2-configure-and-locate')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
@@ -472,22 +460,22 @@ test.describe('Scenario 5 Full Completion', () => {
   // ============================================================
 
   test('Objective: Identify Interference', async () => {
-    const objective = SCENARIO_5_OBJECTIVES.find(o => o.id === 'phase-4-identify-interference')!;
+    const objective = SCENARIO_5_OBJECTIVES.find((o) => o.id === 'phase-4-identify-interference')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Characterize the Interference', async () => {
-    const objective = SCENARIO_5_OBJECTIVES.find(o => o.id === 'phase-5-characterize-interference')!;
+    const objective = SCENARIO_5_OBJECTIVES.find((o) => o.id === 'phase-5-characterize-interference')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Record Interference Frequency', async () => {
-    const objective = SCENARIO_5_OBJECTIVES.find(o => o.id === 'measure-interference-frequency')!;
+    const objective = SCENARIO_5_OBJECTIVES.find((o) => o.id === 'measure-interference-frequency')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Understand Frequency Domain for Notch Filter', async () => {
-    const objective = SCENARIO_5_OBJECTIVES.find(o => o.id === 'understand-notch-frequency-domain')!;
+    const objective = SCENARIO_5_OBJECTIVES.find((o) => o.id === 'understand-notch-frequency-domain')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
@@ -496,12 +484,12 @@ test.describe('Scenario 5 Full Completion', () => {
   // ============================================================
 
   test('Objective: Understand the Interference Source', async () => {
-    const objective = SCENARIO_5_OBJECTIVES.find(o => o.id === 'phase-6-understand-cause')!;
+    const objective = SCENARIO_5_OBJECTIVES.find((o) => o.id === 'phase-6-understand-cause')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Understand the AGC Impact', async () => {
-    const objective = SCENARIO_5_OBJECTIVES.find(o => o.id === 'phase-7-understand-impact')!;
+    const objective = SCENARIO_5_OBJECTIVES.find((o) => o.id === 'phase-7-understand-impact')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
@@ -510,7 +498,7 @@ test.describe('Scenario 5 Full Completion', () => {
   // ============================================================
 
   test('Objective: Evaluate Mitigation Approaches', async () => {
-    const objective = SCENARIO_5_OBJECTIVES.find(o => o.id === 'understand-mitigation-options')!;
+    const objective = SCENARIO_5_OBJECTIVES.find((o) => o.id === 'understand-mitigation-options')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
@@ -519,7 +507,7 @@ test.describe('Scenario 5 Full Completion', () => {
   // ============================================================
 
   test('Objective: Configure Notch Filter', async () => {
-    const objective = SCENARIO_5_OBJECTIVES.find(o => o.id === 'phase-8-apply-notch-filter')!;
+    const objective = SCENARIO_5_OBJECTIVES.find((o) => o.id === 'phase-8-apply-notch-filter')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
@@ -528,12 +516,12 @@ test.describe('Scenario 5 Full Completion', () => {
   // ============================================================
 
   test('Objective: Verify Spectrum Cleared', async () => {
-    const objective = SCENARIO_5_OBJECTIVES.find(o => o.id === 'verify-spectrum-cleared')!;
+    const objective = SCENARIO_5_OBJECTIVES.find((o) => o.id === 'verify-spectrum-cleared')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Verify Service Restored', async () => {
-    const objective = SCENARIO_5_OBJECTIVES.find(o => o.id === 'phase-9-verify-restoration')!;
+    const objective = SCENARIO_5_OBJECTIVES.find((o) => o.id === 'phase-9-verify-restoration')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
@@ -542,7 +530,7 @@ test.describe('Scenario 5 Full Completion', () => {
   // ============================================================
 
   test('Objective: Understand Documentation Requirements', async () => {
-    const objective = SCENARIO_5_OBJECTIVES.find(o => o.id === 'document-interference-quiz')!;
+    const objective = SCENARIO_5_OBJECTIVES.find((o) => o.id === 'document-interference-quiz')!;
     await executeObjective(page, missionControlPage, objective);
   });
 

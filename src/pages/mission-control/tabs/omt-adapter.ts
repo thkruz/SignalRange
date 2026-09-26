@@ -151,9 +151,7 @@ export class OMTAdapter {
     if (state.isFaulted !== undefined) {
       const statusBadge = this.domCache_.get('statusBadge');
       if (statusBadge) {
-        statusBadge.className = state.isFaulted
-          ? 'status-badge status-badge-red'
-          : 'status-badge status-badge-green';
+        statusBadge.className = state.isFaulted ? 'status-badge status-badge-red' : 'status-badge status-badge-green';
         statusBadge.textContent = state.isFaulted ? 'FAULT' : 'OK';
       }
     }

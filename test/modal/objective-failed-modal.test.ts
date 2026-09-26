@@ -25,15 +25,15 @@ vi.mock('../../src/engine/ui/draggable-modal', () => ({
       this.boxEl = null;
     }
 
-    protected onOpen(): void { }
-    protected getModalContentHtml(): string { return ''; }
+    protected onOpen(): void {}
+    protected getModalContentHtml(): string {
+      return '';
+    }
   },
 }));
 
 vi.mock('../../src/engine/utils/development/formatter', () => ({
-  html: (strings: TemplateStringsArray, ...values: unknown[]) => {
-    return strings.reduce((result, str, i) => result + str + (values[i] ?? ''), '');
-  },
+  html: (strings: TemplateStringsArray, ...values: unknown[]) => strings.reduce((result, str, i) => result + str + (values[i] ?? ''), ''),
 }));
 
 vi.mock('../../src/scenario-manager', () => ({

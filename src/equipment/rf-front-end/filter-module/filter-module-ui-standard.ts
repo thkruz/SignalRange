@@ -1,7 +1,7 @@
 import { HelpButton } from '@app/components/help-btn/help-btn';
-import { RotaryKnob } from "@app/components/rotary-knob/rotary-knob";
-import { html } from "@app/engine/utils/development/formatter";
-import { qs } from "@app/engine/utils/query-selector";
+import { RotaryKnob } from '@app/components/rotary-knob/rotary-knob';
+import { html } from '@app/engine/utils/development/formatter';
+import { qs } from '@app/engine/utils/query-selector';
 import { RFFrontEndCore } from '@app/equipment/rf-front-end/rf-front-end-core';
 import { FILTER_BANDWIDTH_CONFIGS, IfFilterBankModuleCore, IfFilterBankState } from './filter-module-core';
 import './filter-module.css';
@@ -43,7 +43,7 @@ export class IfFilterBankModuleUIStandard extends IfFilterBankModuleCore {
 
     this.helpBtn_ = HelpButton.create(
       `filter-help-${rfFrontEnd.state.uuid}`,
-      "IF Filter Bank",
+      'IF Filter Bank',
       null,
       'https://docs.signalrange.space/equipment/if-filter-bank?content-only=true&dark=true'
     );
@@ -154,7 +154,7 @@ export class IfFilterBankModuleUIStandard extends IfFilterBankModuleCore {
     }
     return {
       bandwidthKnob: this.bandwidthKnob_,
-      helpBtn: this.helpBtn_
+      helpBtn: this.helpBtn_,
     };
   }
 
@@ -165,7 +165,7 @@ export class IfFilterBankModuleUIStandard extends IfFilterBankModuleCore {
   getDisplays() {
     return {
       insertionLoss: () => this.state.insertionLoss.toFixed(1),
-      noiseFloor: () => this.state.noiseFloor.toFixed(0)
+      noiseFloor: () => this.state.noiseFloor.toFixed(0),
     };
   }
 
@@ -175,7 +175,7 @@ export class IfFilterBankModuleUIStandard extends IfFilterBankModuleCore {
    */
   getLEDs() {
     return {
-      insertionLossOpacity: () => this.state.insertionLoss / 3
+      insertionLossOpacity: () => this.state.insertionLoss / 3,
     };
   }
 

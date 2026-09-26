@@ -1,3 +1,4 @@
+import { createRfFrontEnd } from '@app/campaigns/rf-front-end-factory';
 import type { AntennaState } from '@app/equipment/antenna';
 import { ANTENNA_CONFIG_KEYS } from '@app/equipment/antenna/antenna-config-keys';
 import { Character, Emotion } from '@app/modal/character-enum';
@@ -6,7 +7,6 @@ import type { ScenarioData } from '@app/ScenarioData';
 import type { dB, dBm, Hertz, MHz } from '@app/types';
 import { getAssetUrl } from '@app/utils/asset-url';
 import type { Degrees } from 'ootk';
-import { createRfFrontEnd } from '@app/campaigns/rf-front-end-factory';
 import { vermontGroundStation } from './ground-stations';
 import { ses10Satellite, tidemark1Satellite, tidemark2Satellite } from './satellites';
 
@@ -69,13 +69,7 @@ export const scenario12Data: ScenarioData = {
   difficulty: 'intermediate',
   missionType: 'Maintenance Recovery',
   description: `Waveguide gasket inspection is done. Maintenance crew is clear of the antenna and signed out. VT-01 is stowed, RF chain cold, and Catherine is holding TM-1 traffic on ME-02.<br><br>Bring Vermont back the clean way: antenna on target, RX chain validated against the beacon, transmit side swept for any leftovers the maintenance crew left behind, then a coordinated handover return from Maine. Marcus will want to hear from us once SeaLink's link is back where it started.<br><br>No clock pressure. Just do it right.`,
-  equipment: [
-    '9-meter C-band Antenna',
-    'RF Front End',
-    'Spectrum Analyzer',
-    'RX/TX Modems',
-    'ME-02: Holding TM-1 traffic',
-  ],
+  equipment: ['9-meter C-band Antenna', 'RF Front End', 'Spectrum Analyzer', 'RX/TX Modems', 'ME-02: Holding TM-1 traffic'],
   timeLimitSeconds: 35 * 60, // 35 minutes
   settings: {
     isSync: true,
@@ -223,11 +217,7 @@ export const scenario12Data: ScenarioData = {
         ],
       },
     ],
-    satellites: [
-      tidemark1Satellite,
-      tidemark2Satellite,
-      ses10Satellite,
-    ],
+    satellites: [tidemark1Satellite, tidemark2Satellite, ses10Satellite],
     trafficOwnership: [
       {
         satelliteNoradId: 61525, // TIDEMARK-1
@@ -327,7 +317,8 @@ export const scenario12Data: ScenarioData = {
               'All equipment powered down including GPSDO',
             ],
             correctIndex: 0,
-            explanation: 'You parked the dish at maintenance position (5°) for the crew; on sign-out they stowed it at 90° per post-work SOP. Stowed antenna + cold RF chain + GPSDO still up for timing continuity is the expected handback state. Anything else means somebody touched something they should not have.',
+            explanation:
+              'You parked the dish at maintenance position (5°) for the crew; on sign-out they stowed it at 90° per post-work SOP. Stowed antenna + cold RF chain + GPSDO still up for timing continuity is the expected handback state. Anything else means somebody touched something they should not have.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -508,12 +499,13 @@ export const scenario12Data: ScenarioData = {
             question: 'BUC, HPA, and TX modem are all powered off as expected. What is out of operating spec?',
             options: [
               'BUC gain is at 50 dB - testing value left over from maintenance, operating value is 23 dB',
-              'BUC LO is wrong - operating value should be 6,500 MHz, not 7,000 MHz',
-              'HPA backoff is at 10 dB - should be 0 dB for full operation',
-              'Nothing is out of spec - state matches the operating baseline',
+              'BUC LO is at 7,000 MHz - testing value left over from maintenance, operating value is 6,500 MHz',
+              'HPA backoff is at 10 dB - resting value left over from the crew, operating value is 0 dB',
+              'Nothing is out of spec - gain, LO and backoff all match the operating baseline for this chain',
             ],
             correctIndex: 0,
-            explanation: 'The bench-test gain (50 dB) was never dialed back to 23 dB. With BUC powered off this is harmless, but bringing the chain up at this gain would over-drive the HPA the moment loopback or transmit was engaged. Catch it before you energize.',
+            explanation:
+              'The bench-test gain (50 dB) was never dialed back to 23 dB. With BUC powered off this is harmless, but bringing the chain up at this gain would over-drive the HPA the moment loopback or transmit was engaged. Catch it before you energize.',
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -649,7 +641,8 @@ export const scenario12Data: ScenarioData = {
       id: 'verify-tx-staged',
       nice: ['T1567', 'K0645', 'S0421'],
       title: 'Confirm TX Staged Cold',
-      description: 'Confirm the transmit chain is staged for the handover return: modem transmitting into a muted BUC, HPA output disabled. The transfer brings VT-01 RF up as Maine stands down.',
+      description:
+        'Confirm the transmit chain is staged for the handover return: modem transmitting into a muted BUC, HPA output disabled. The transfer brings VT-01 RF up as Maine stands down.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['start-modem-transmitting'],
       timeLimitSeconds: 2 * 60,
@@ -682,15 +675,16 @@ export const scenario12Data: ScenarioData = {
           description: 'Why TX Stays Cold',
           params: {
             character: Character.SYSTEM,
-            question: 'ME-02 is still carrying TIDEMARK-1. Why does VT-01\'s transmit chain stay cold (BUC muted, HPA disabled) until the handover executes?',
+            question: "ME-02 is still carrying TIDEMARK-1. Why does VT-01's transmit chain stay cold (BUC muted, HPA disabled) until the handover executes?",
             options: [
-              'Two stations radiating at the same transponder is dual illumination - the handover swaps RF authority in one coordinated action so only one uplink is ever on the air',
-              'The BUC cannot be unmuted while the antenna is in program-track',
-              'It saves power until the customer confirms the return',
-              'The HPA needs the maintenance crew to re-certify it before it can radiate',
+              'Two uplinks on one transponder is dual illumination - the handover swaps RF authority so only one is ever on the air',
+              'The BUC cannot be unmuted in program-track - the handover switches the ACU to step-track before RF comes up',
+              'Radiating into a muted BUC wastes HPA hours - the handover brings RF up only once the customer confirms the return',
+              'The HPA is not yet re-certified after the gasket work - the handover carries the crew sign-off that unlocks its output',
             ],
             correctIndex: 0,
-            explanation: 'Same rule that protected the S11 hand-off: the satellite must never see two carriers fighting on one transponder. Stage the chain, then let the transfer stand Maine down and bring Vermont up atomically.',
+            explanation:
+              'Same rule that protected the S11 hand-off: the satellite must never see two carriers fighting on one transponder. Stage the chain, then let the transfer stand Maine down and bring Vermont up atomically.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -741,12 +735,13 @@ export const scenario12Data: ScenarioData = {
             question: 'Which combination is required on VT-01 before pulling TM-1 traffic back?',
             options: [
               'Beacon lock + RX modem lock with C/N margin + TX chain staged cold (modem on, BUC muted, HPA disabled)',
-              'BUC unmuted and HPA radiating - the link must be hot before the transfer',
-              'Antenna pointed at TM-1 only - the rest comes up when traffic transfers',
-              'No specific criteria - planned handovers cannot fail',
+              'Beacon lock + RX modem lock with C/N margin + TX chain hot (modem on, BUC unmuted, HPA radiating)',
+              'Antenna pointed at TM-1 + program-track holding + TX chain off (modem off, BUC off, HPA off until transfer)',
+              'Beacon lock + RX modem lock with C/N margin + loopback test passed (modem on, BUC in loopback, HPA disabled)',
             ],
             correctIndex: 0,
-            explanation: 'Symmetric to S11: the receiving station proves its receive side and stages its transmit side cold. The transfer stands Maine down and brings Vermont up in one swap - radiating early would put two carriers on the transponder.',
+            explanation:
+              'Symmetric to S11: the receiving station proves its receive side and stages its transmit side cold. The transfer stands Maine down and brings Vermont up in one swap - radiating early would put two carriers on the transponder.',
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -795,7 +790,7 @@ export const scenario12Data: ScenarioData = {
       id: 'verify-handover-success',
       nice: ['T0153', 'K0741'],
       title: 'Confirm Return Complete',
-      description: 'Verify the handover return landed clean.',
+      description: 'Verify the handover return came back clean.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['execute-handover-return'],
       timeLimitSeconds: 2 * 60,
@@ -825,9 +820,9 @@ export const scenario12Data: ScenarioData = {
             question: 'Traffic ownership has returned to VT-01. What confirms the return was clean?',
             options: [
               'VT-01 owns TM-1 traffic, ME-02 TX stood down, no packet loss reported, no new alarms',
-              'ME-02 antenna automatically stowed',
-              'VT-01 C/N ratio increased after the transfer',
-              'Customer dialed in to manually re-register',
+              'VT-01 owns TM-1 traffic, ME-02 antenna auto-stowed, RX modem re-locked, no new alarms',
+              'VT-01 owns TM-1 traffic, C/N ratio up after the transfer, HPA enabled, no new alarms',
+              'VT-01 owns TM-1 traffic, customer re-registered manually, packet loss cleared, no new alarms',
             ],
             correctIndex: 0,
             explanation: 'Clean return: target station owns the traffic, source station released, no service interruption, no alarms. From the customer side, nothing happened.',
@@ -861,12 +856,13 @@ export const scenario12Data: ScenarioData = {
             question: 'Marcus is waiting for confirmation. What is the right message?',
             options: [
               'VT-01 restored, TM-1 traffic returned to primary station, no service interruption observed.',
-              'Service restored, please rerun all customer health checks on your end.',
-              'Brief outage during handover - apologies, please flag any data loss.',
-              'No notification needed - the link was never down from their perspective.',
+              'VT-01 restored, TM-1 traffic returned to primary station, please rerun all your health checks.',
+              'VT-01 restored, brief outage during the handover return, please flag any data loss to us.',
+              'No message sent, TM-1 traffic never dropped from the customer side, nothing to report.',
             ],
             correctIndex: 0,
-            explanation: 'Notify the spacecraft side of the change in source station and confirm no impact. They do not need to act, but they do need to know where the uplink is coming from now.',
+            explanation:
+              'Notify the spacecraft side of the change in source station and confirm no impact. They do not need to act, but they do need to know where the uplink is coming from now.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -900,9 +896,9 @@ export const scenario12Data: ScenarioData = {
             question: 'Final VT-01 health check after restoration.',
             options: [
               'No active alarms - all systems nominal, TM-1 traffic on primary',
-              'BUC over-temperature',
-              'LNB reference unlocked',
-              'HPA overdriven',
+              'BUC over-temperature - TX chain alarm, TM-1 traffic on primary',
+              'LNB reference unlocked - RX chain alarm, TM-1 traffic degraded',
+              'HPA overdriven - TX chain alarm, TM-1 traffic still held on ME-02',
             ],
             correctIndex: 0,
             explanation: 'Clean restoration. The BUC gain catch earlier is the reason the HPA is not overdriven right now.',
@@ -931,10 +927,10 @@ export const scenario12Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Which entry correctly closes out the S11-S12 maintenance cycle?',
             options: [
-              'VT-01 returned to service post-waveguide-gasket inspection. TM-1 traffic returned from ME-02. Maintenance leftover (BUC gain 50 dB) corrected before energizing. No customer impact.',
-              'VT-01 restored. Customer reported brief outage during handover.',
-              'Maintenance window incomplete - HPA work deferred.',
-              'Traffic transferred to ME-02 for weather event.',
+              'VT-01 back in service after gasket inspection. TM-1 returned from ME-02. BUC gain leftover (50 dB) corrected before energizing. No customer impact.',
+              'VT-01 back in service after gasket inspection. TM-1 returned from ME-02. Customer reported a brief outage during the return. Ticket opened.',
+              'VT-01 maintenance window incomplete. TM-1 still on ME-02. HPA waveguide gasket work deferred to the next window. No customer impact.',
+              'VT-01 back in service after gasket inspection. TM-1 returned from ME-02. Chain energized at the values the crew left, no leftovers found. No customer impact.',
             ],
             correctIndex: 0,
             explanation: 'Logging the leftover is the part that matters. Next shift sees what the maintenance crew did and what we caught - that is how the pattern gets fixed.',

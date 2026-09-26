@@ -1,5 +1,5 @@
-import { WaterfallDisplay } from '../../../src/equipment/real-time-spectrum-analyzer/rtsa-screen/waterfall-display';
 import { RealTimeSpectrumAnalyzerState } from '../../../src/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer';
+import { WaterfallDisplay } from '../../../src/equipment/real-time-spectrum-analyzer/rtsa-screen/waterfall-display';
 
 describe('WaterfallDisplay', () => {
   describe('amplitudeToColorRGB static method', () => {
@@ -238,7 +238,7 @@ describe('WaterfallDisplay', () => {
       it('should produce monotonically increasing warmth as amplitude increases', () => {
         const state = createMockState(-100, -40);
         const amplitudes = [-100, -88, -76, -64, -52, -40];
-        const colors = amplitudes.map(amp => WaterfallDisplay.amplitudeToColorRGB(amp, state));
+        const colors = amplitudes.map((amp) => WaterfallDisplay.amplitudeToColorRGB(amp, state));
 
         // The color gradient goes: dark blue -> blue -> cyan -> green -> yellow -> red
         // Due to the cyan transition, blue peaks in the middle before decreasing

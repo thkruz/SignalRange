@@ -97,17 +97,11 @@ describe('HPAAdapter', () => {
     });
 
     it('should register for RF_FE_HPA_CHANGED events', () => {
-      expect(mockEventBus.on).toHaveBeenCalledWith(
-        Events.RF_FE_HPA_CHANGED,
-        expect.any(Function)
-      );
+      expect(mockEventBus.on).toHaveBeenCalledWith(Events.RF_FE_HPA_CHANGED, expect.any(Function));
     });
 
     it('should register for UPDATE events', () => {
-      expect(mockEventBus.on).toHaveBeenCalledWith(
-        Events.UPDATE,
-        expect.any(Function)
-      );
+      expect(mockEventBus.on).toHaveBeenCalledWith(Events.UPDATE, expect.any(Function));
     });
   });
 
@@ -250,9 +244,7 @@ describe('HPAAdapter', () => {
       const segments = meter.querySelectorAll('.power-segment');
 
       // 44 dBm normalized: (44-30)/(63-30) ≈ 0.424 = 4 segments (rounded)
-      const activeSegments = Array.from(segments).filter(
-        s => !s.className.includes('led-off')
-      );
+      const activeSegments = Array.from(segments).filter((s) => !s.className.includes('led-off'));
       expect(activeSegments.length).toBe(4);
     });
   });
@@ -261,22 +253,14 @@ describe('HPAAdapter', () => {
     it('should unregister from EventBus events', () => {
       adapter.dispose();
 
-      expect(mockEventBus.off).toHaveBeenCalledWith(
-        Events.UPDATE,
-        expect.any(Function)
-      );
-      expect(mockEventBus.off).toHaveBeenCalledWith(
-        Events.RF_FE_HPA_CHANGED,
-        expect.any(Function)
-      );
+      expect(mockEventBus.off).toHaveBeenCalledWith(Events.UPDATE, expect.any(Function));
+      expect(mockEventBus.off).toHaveBeenCalledWith(Events.RF_FE_HPA_CHANGED, expect.any(Function));
     });
   });
 
   describe('throttled sync via UPDATE event', () => {
     it('should sync read-only displays when UPDATE event fires past throttle', () => {
-      const updateHandler = mockEventBus.on.mock.calls.find(
-        (call: unknown[]) => call[0] === Events.UPDATE
-      )?.[1];
+      const updateHandler = mockEventBus.on.mock.calls.find((call: unknown[]) => call[0] === Events.UPDATE)?.[1];
       expect(updateHandler).toBeDefined();
 
       mockHpaModule.state.outputPower = 48;
@@ -293,9 +277,7 @@ describe('HPAAdapter', () => {
     });
 
     it('should not sync if within throttle interval', () => {
-      const updateHandler = mockEventBus.on.mock.calls.find(
-        (call: unknown[]) => call[0] === Events.UPDATE
-      )?.[1];
+      const updateHandler = mockEventBus.on.mock.calls.find((call: unknown[]) => call[0] === Events.UPDATE)?.[1];
 
       mockHpaModule.state.outputPower = 48;
 
@@ -307,9 +289,7 @@ describe('HPAAdapter', () => {
     });
 
     it('should update gain during throttled sync', () => {
-      const updateHandler = mockEventBus.on.mock.calls.find(
-        (call: unknown[]) => call[0] === Events.UPDATE
-      )?.[1];
+      const updateHandler = mockEventBus.on.mock.calls.find((call: unknown[]) => call[0] === Events.UPDATE)?.[1];
 
       mockHpaModule.state.gain = 25;
 
@@ -321,9 +301,7 @@ describe('HPAAdapter', () => {
     });
 
     it('should update IMD during throttled sync', () => {
-      const updateHandler = mockEventBus.on.mock.calls.find(
-        (call: unknown[]) => call[0] === Events.UPDATE
-      )?.[1];
+      const updateHandler = mockEventBus.on.mock.calls.find((call: unknown[]) => call[0] === Events.UPDATE)?.[1];
 
       mockHpaModule.state.imdLevel = -25;
 
@@ -335,9 +313,7 @@ describe('HPAAdapter', () => {
     });
 
     it('should show placeholder values when powered off during throttled sync', () => {
-      const updateHandler = mockEventBus.on.mock.calls.find(
-        (call: unknown[]) => call[0] === Events.UPDATE
-      )?.[1];
+      const updateHandler = mockEventBus.on.mock.calls.find((call: unknown[]) => call[0] === Events.UPDATE)?.[1];
 
       mockHpaModule.state.isPowered = false;
 
@@ -352,9 +328,7 @@ describe('HPAAdapter', () => {
     });
 
     it('should update power meter during throttled sync', () => {
-      const updateHandler = mockEventBus.on.mock.calls.find(
-        (call: unknown[]) => call[0] === Events.UPDATE
-      )?.[1];
+      const updateHandler = mockEventBus.on.mock.calls.find((call: unknown[]) => call[0] === Events.UPDATE)?.[1];
 
       mockHpaModule.state.outputPower = 63; // Max power (63 dBm)
 
@@ -363,18 +337,14 @@ describe('HPAAdapter', () => {
 
       const meter = containerEl.querySelector('#hpa-power-meter') as HTMLElement;
       const segments = meter.querySelectorAll('.power-segment');
-      const activeSegments = Array.from(segments).filter(
-        s => !s.className.includes('led-off')
-      );
+      const activeSegments = Array.from(segments).filter((s) => !s.className.includes('led-off'));
       expect(activeSegments.length).toBe(10);
     });
   });
 
   describe('RF_FE_HPA_CHANGED event handler', () => {
     it('should sync DOM when HPA state changes', () => {
-      const stateHandler = mockEventBus.on.mock.calls.find(
-        (call: unknown[]) => call[0] === Events.RF_FE_HPA_CHANGED
-      )?.[1];
+      const stateHandler = mockEventBus.on.mock.calls.find((call: unknown[]) => call[0] === Events.RF_FE_HPA_CHANGED)?.[1];
       expect(stateHandler).toBeDefined();
 
       const newState: Partial<HPAState> = {
@@ -390,9 +360,7 @@ describe('HPAAdapter', () => {
     });
 
     it('should update power switch from state change', () => {
-      const stateHandler = mockEventBus.on.mock.calls.find(
-        (call: unknown[]) => call[0] === Events.RF_FE_HPA_CHANGED
-      )?.[1];
+      const stateHandler = mockEventBus.on.mock.calls.find((call: unknown[]) => call[0] === Events.RF_FE_HPA_CHANGED)?.[1];
 
       stateHandler({ isPowered: false });
 
@@ -401,9 +369,7 @@ describe('HPAAdapter', () => {
     });
 
     it('should update HPA enable switch from state change', () => {
-      const stateHandler = mockEventBus.on.mock.calls.find(
-        (call: unknown[]) => call[0] === Events.RF_FE_HPA_CHANGED
-      )?.[1];
+      const stateHandler = mockEventBus.on.mock.calls.find((call: unknown[]) => call[0] === Events.RF_FE_HPA_CHANGED)?.[1];
 
       stateHandler({ isHpaEnabled: false });
 
@@ -416,9 +382,7 @@ describe('HPAAdapter', () => {
     it('should classify overdrive alarms as error', () => {
       mockHpaModule.getAlarms.mockReturnValue(['HPA OVERDRIVE']);
 
-      const updateHandler = mockEventBus.on.mock.calls.find(
-        (call: unknown[]) => call[0] === Events.UPDATE
-      )?.[1];
+      const updateHandler = mockEventBus.on.mock.calls.find((call: unknown[]) => call[0] === Events.UPDATE)?.[1];
 
       vi.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();
@@ -429,9 +393,7 @@ describe('HPAAdapter', () => {
     it('should classify temperature alarms as warning', () => {
       mockHpaModule.getAlarms.mockReturnValue(['High Temperature']);
 
-      const updateHandler = mockEventBus.on.mock.calls.find(
-        (call: unknown[]) => call[0] === Events.UPDATE
-      )?.[1];
+      const updateHandler = mockEventBus.on.mock.calls.find((call: unknown[]) => call[0] === Events.UPDATE)?.[1];
 
       vi.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();
@@ -442,9 +404,7 @@ describe('HPAAdapter', () => {
     it('should classify fault alarms as error', () => {
       mockHpaModule.getAlarms.mockReturnValue(['Hardware Fault']);
 
-      const updateHandler = mockEventBus.on.mock.calls.find(
-        (call: unknown[]) => call[0] === Events.UPDATE
-      )?.[1];
+      const updateHandler = mockEventBus.on.mock.calls.find((call: unknown[]) => call[0] === Events.UPDATE)?.[1];
 
       vi.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();

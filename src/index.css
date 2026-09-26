@@ -7,29 +7,33 @@ body {
 }
 
 :root {
-  /* Legacy variables - kept for backward compatibility */
-  --colorTertiary: #4a4a4a !important;
-  --color-dark-background: #1f1f1f !important;
-  --color-dark-border: #3a3a3a !important;
-  --color-dark-text-accent: #dd382f !important;
-  --color-dark-text-muted: #6b6b6b !important;
+  /* Legacy variables - kept for backward compatibility.
+     NOTE: this file loads AFTER tabler-overrides.css, so these declarations
+     win the cascade. They must reference the --mc-* theme variables (with the
+     historical literals as fallbacks) or per-campaign themes cannot re-skin
+     legacy consumers. */
+  --colorTertiary: var(--mc-surface-3, #4a4a4a) !important;
+  --color-dark-background: var(--mc-surface-0, #1f1f1f) !important;
+  --color-dark-border: var(--mc-border, #3a3a3a) !important;
+  --color-dark-text-accent: var(--mc-accent-text-dark, #dd382f) !important;
+  --color-dark-text-muted: var(--mc-text-muted, #6b6b6b) !important;
 
   /* International Orange Engineering - Primary Colors */
-  --color-primary: #ba160c !important;
-  --color-text-accent: #ff2827;
-  --color-primary-light: #e01a0e !important;
-  --color-primary-dark: #860f08 !important;
+  --color-primary: var(--mc-accent-red, #ba160c) !important;
+  --color-text-accent: var(--mc-accent-red-bright, #ff2827);
+  --color-primary-light: var(--mc-accent-red-light, #e01a0e) !important;
+  --color-primary-dark: var(--mc-accent-red-dark, #860f08) !important;
 
   /* Surface Colors - Dark Theme Layers */
-  --color-surface-0: #1f1f1f;
+  --color-surface-0: var(--mc-surface-0, #1f1f1f);
   /* Darkest - main background */
-  --color-surface-1: #292929;
+  --color-surface-1: var(--mc-surface-1, #292929);
   /* Panel background */
-  --color-surface-2: #3a3a3a;
+  --color-surface-2: var(--mc-surface-2, #3a3a3a);
   /* Hover/active states */
-  --color-surface-3: #4a4a4a;
+  --color-surface-3: var(--mc-surface-3, #4a4a4a);
   /* Scrollbar thumb */
-  --color-surface-4: #5a5a5a;
+  --color-surface-4: var(--mc-surface-4, #5a5a5a);
   /* Scrollbar thumb hover */
 
   /* Text Colors */
@@ -41,7 +45,7 @@ body {
   /* Muted text */
 
   /* Border Colors */
-  --color-border: #3a3a3a;
+  --color-border: var(--mc-border, #3a3a3a);
 
   /* Status Colors */
   --color-success: #22c55e;

@@ -1,11 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { MissionControlPage } from '../pages/mission-control.page';
-import {
-  answerQuizByText,
-  dismissDialogIfPresent,
-  waitForQuizToAppear,
-  waitForSimulationReady,
-} from '../utils/simulation-helpers';
+import { answerQuizByText, dismissDialogIfPresent, waitForQuizToAppear, waitForSimulationReady } from '../utils/simulation-helpers';
 
 /**
  * Scenario 9 - "Morning Rounds": Multi-Satellite Health Check.
@@ -22,13 +17,7 @@ import {
  * - 'set-tracking-mode': Antenna tracking mode + satellite selection
  * - 'configure-speca': Spectrum analyzer center frequency tuning
  */
-type ObjectiveType =
-  | 'quiz'
-  | 'select-station'
-  | 'click-tab'
-  | 'auto'
-  | 'set-tracking-mode'
-  | 'configure-speca';
+type ObjectiveType = 'quiz' | 'select-station' | 'click-tab' | 'auto' | 'set-tracking-mode' | 'configure-speca';
 
 interface Scenario9Objective {
   id: string;
@@ -146,15 +135,13 @@ const SCENARIO_9_OBJECTIVES: Scenario9Objective[] = [
     id: 'me-verify-tracking',
     title: 'ME-02 Antenna Tracking Check',
     type: 'quiz',
-    correctAnswer:
-      'GEO satellite holding station - ephemeris is accurate enough; no need to hunt the beacon',
+    correctAnswer: 'GEO satellite holding station - ephemeris is accurate enough; no need to hunt the beacon',
   },
   {
     id: 'me-tx-payload-spot',
     title: 'ME-02 Customer Traffic Indicator',
     type: 'quiz',
-    correctAnswer:
-      'Frame sync locked + CRC valid + FEC engaged (Reed-Solomon active, no uncorrectables)',
+    correctAnswer: 'Frame sync locked + CRC valid + FEC engaged (Reed-Solomon active, no uncorrectables)',
   },
 
   // ============================================================
@@ -198,8 +185,7 @@ const SCENARIO_9_OBJECTIVES: Scenario9Objective[] = [
     id: 'tidemark3-beacon-quality',
     title: 'Interpret TIDEMARK-3 Beacon',
     type: 'quiz',
-    correctAnswer:
-      'Antenna pointing is correct AND LNB LO is set correctly (5250 - 4172 = 1078)',
+    correctAnswer: 'Antenna pointing is correct AND LNB LO is set correctly (5250 - 4172 = 1078)',
   },
   {
     id: 'return-acu-tab',
@@ -243,15 +229,13 @@ const SCENARIO_9_OBJECTIVES: Scenario9Objective[] = [
     id: 'final-alarm-sweep',
     title: 'Final Alarm Sweep',
     type: 'quiz',
-    correctAnswer:
-      'TIDEMARK-1 healthy, TIDEMARK-2 healthy, TIDEMARK-3 beacon verified - all three nominal',
+    correctAnswer: 'TIDEMARK-1 healthy, TIDEMARK-2 healthy, TIDEMARK-3 beacon verified - all three nominal',
   },
   {
     id: 'log-shift-summary',
     title: 'Log Shift Summary',
     type: 'quiz',
-    correctAnswer:
-      '0700 - Morning rounds complete. VT-01/TM-1, ME-02/TM-2, TM-3 beacon verified via VT-01 spot-check. No anomalies.',
+    correctAnswer: '0700 - Morning rounds complete. VT-01/TM-1, ME-02/TM-2, TM-3 beacon verified via VT-01 spot-check. No anomalies.',
   },
 ];
 
@@ -263,10 +247,7 @@ const SCENARIO_9_OBJECTIVES: Scenario9Objective[] = [
  * Set the antenna tracking mode by clicking the appropriate button.
  * ACU control tab must be active before calling this.
  */
-async function setTrackingMode(
-  page: import('@playwright/test').Page,
-  trackingMode: string
-): Promise<void> {
+async function setTrackingMode(page: import('@playwright/test').Page, trackingMode: string): Promise<void> {
   const modeButton = page.locator(`.btn-tracking[data-mode="${trackingMode}"]`);
   await expect(modeButton).toBeVisible({ timeout: 5000 });
   await modeButton.click();
@@ -284,10 +265,7 @@ async function setTrackingMode(
  * Select a target satellite from the dropdown and click Move to Target.
  * Used after setTrackingMode('program-track').
  */
-async function selectSatelliteAndMove(
-  page: import('@playwright/test').Page,
-  satelliteNoradId: string
-): Promise<void> {
+async function selectSatelliteAndMove(page: import('@playwright/test').Page, satelliteNoradId: string): Promise<void> {
   const satelliteSelect = page.locator('select[id$="satellite-select"]');
   await expect(satelliteSelect).toBeVisible({ timeout: 5000 });
   await satelliteSelect.selectOption({ value: satelliteNoradId });
@@ -302,10 +280,7 @@ async function selectSatelliteAndMove(
 /**
  * Wait for antenna movement to complete by watching elevation stability.
  */
-async function waitForAntennaMovement(
-  page: import('@playwright/test').Page,
-  timeout = 90000
-): Promise<void> {
+async function waitForAntennaMovement(page: import('@playwright/test').Page, timeout = 90000): Promise<void> {
   const startTime = Date.now();
   let lastPosition = '';
   let stableCount = 0;
@@ -315,9 +290,7 @@ async function waitForAntennaMovement(
   while (Date.now() - startTime < timeout) {
     await page.waitForTimeout(1000);
 
-    let elDisplay = page
-      .locator('.fine-adjust-control', { hasText: 'Elevation' })
-      .locator('.fine-adjust-value-active');
+    let elDisplay = page.locator('.fine-adjust-control', { hasText: 'Elevation' }).locator('.fine-adjust-value-active');
 
     if ((await elDisplay.count()) === 0) {
       elDisplay = page.locator('[id*="el-fine"][id$="-value"]');
@@ -346,10 +319,7 @@ async function waitForAntennaMovement(
 /**
  * Configure spectrum analyzer center frequency. Span is optional.
  */
-async function configureSpectrumAnalyzer(
-  page: import('@playwright/test').Page,
-  config: { centerFrequency: number; span?: number }
-): Promise<void> {
+async function configureSpectrumAnalyzer(page: import('@playwright/test').Page, config: { centerFrequency: number; span?: number }): Promise<void> {
   const centerFreqInput = page.locator('#sa-center-freq');
   await expect(centerFreqInput).toBeVisible({ timeout: 5000 });
   await centerFreqInput.fill(config.centerFrequency.toString());
@@ -371,11 +341,7 @@ async function configureSpectrumAnalyzer(
 /**
  * Execute an objective based on its type.
  */
-async function executeObjective(
-  page: import('@playwright/test').Page,
-  missionControlPage: MissionControlPage,
-  objective: Scenario9Objective
-): Promise<void> {
+async function executeObjective(page: import('@playwright/test').Page, missionControlPage: MissionControlPage, objective: Scenario9Objective): Promise<void> {
   switch (objective.type) {
     case 'quiz':
       await waitForQuizToAppear(page);
@@ -388,6 +354,10 @@ async function executeObjective(
 
     case 'click-tab':
       await missionControlPage.selectTab(objective.tabId!);
+      // Observation-gated conditions latch only after the default dwell on
+      // the tab (DEFAULT_OBSERVATION_DWELL_SECONDS); leaving at once would
+      // reset the read and strand the objective.
+      await page.waitForTimeout(3000);
       break;
 
     case 'set-tracking-mode':

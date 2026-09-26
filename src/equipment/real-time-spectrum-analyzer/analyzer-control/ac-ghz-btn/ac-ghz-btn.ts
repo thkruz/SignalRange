@@ -1,6 +1,6 @@
-import { parseLocalizedNumber } from "@app/utils/parse-number";
-import { AnalyzerControl } from "@app/equipment/real-time-spectrum-analyzer/analyzer-control";
-import { BaseControlButton } from "@app/equipment/real-time-spectrum-analyzer/analyzer-control/base-control-button";
+import { AnalyzerControl } from '@app/equipment/real-time-spectrum-analyzer/analyzer-control';
+import { BaseControlButton } from '@app/equipment/real-time-spectrum-analyzer/analyzer-control/base-control-button';
+import { parseLocalizedNumber } from '@app/utils/parse-number';
 import './ac-ghz-btn.css';
 
 export class ACGhzBtn extends BaseControlButton {

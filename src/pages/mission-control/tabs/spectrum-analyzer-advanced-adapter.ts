@@ -1,14 +1,11 @@
-import { qs } from "@app/engine/utils/query-selector";
-import { EngineeringModeService } from "@app/engineering-mode/engineering-mode-service";
-import { EventBus } from "@app/events/event-bus";
-import { Events } from "@app/events/events";
-import { parseLocalizedNumber } from "@app/utils/parse-number";
-import {
-  RealTimeSpectrumAnalyzer,
-  RealTimeSpectrumAnalyzerState
-} from "@app/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer";
-import type { TraceMode } from "@app/equipment/real-time-spectrum-analyzer/analyzer-control/ac-trace-btn/ac-trace-btn";
-import type { dB, Hertz } from "@app/types";
+import { qs } from '@app/engine/utils/query-selector';
+import { EngineeringModeService } from '@app/engineering-mode/engineering-mode-service';
+import type { TraceMode } from '@app/equipment/real-time-spectrum-analyzer/analyzer-control/ac-trace-btn/ac-trace-btn';
+import { RealTimeSpectrumAnalyzer, RealTimeSpectrumAnalyzerState } from '@app/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer';
+import { EventBus } from '@app/events/event-bus';
+import { Events } from '@app/events/events';
+import type { dB, Hertz } from '@app/types';
+import { parseLocalizedNumber } from '@app/utils/parse-number';
 
 /**
  * SpectrumAnalyzerAdvancedAdapter - Modern UI controls for spectrum analyzer
@@ -72,21 +69,31 @@ export class SpectrumAnalyzerAdvancedAdapter {
       // Amplitude controls
       'sa-ref-level',
       'sa-scale',
-      'sa-min-amp', 'sa-max-amp',
+      'sa-min-amp',
+      'sa-max-amp',
       // Display controls
       'sa-refresh',
-      'sa-mode-spectral', 'sa-mode-waterfall', 'sa-mode-both',
-      'sa-auto-tune', 'sa-pause',
+      'sa-mode-spectral',
+      'sa-mode-waterfall',
+      'sa-mode-both',
+      'sa-auto-tune',
+      'sa-pause',
       // Engineering controls container
       'sa-engineering-controls',
       // Trace controls
-      'sa-trace-1', 'sa-trace-2', 'sa-trace-3',
-      'sa-trace-visible', 'sa-trace-updating', 'sa-trace-mode',
+      'sa-trace-1',
+      'sa-trace-2',
+      'sa-trace-3',
+      'sa-trace-visible',
+      'sa-trace-updating',
+      'sa-trace-mode',
       // Marker controls
-      'sa-marker-enabled', 'sa-marker-index', 'sa-marker-info'
+      'sa-marker-enabled',
+      'sa-marker-index',
+      'sa-marker-info',
     ];
 
-    ids.forEach(id => {
+    ids.forEach((id) => {
       const el = qs(`#${id}`, this.containerEl);
       if (el) {
         this.domCache_.set(id, el);
@@ -324,7 +331,7 @@ export class SpectrumAnalyzerAdvancedAdapter {
 
   private emitStateChange_(): void {
     EventBus.getInstance().emit(Events.SPEC_A_CONFIG_CHANGED, {
-      ...this.spectrumAnalyzer.state
+      ...this.spectrumAnalyzer.state,
     });
   }
 
@@ -349,7 +356,7 @@ export class SpectrumAnalyzerAdvancedAdapter {
       traces: state.traces,
       isMarkerOn: state.isMarkerOn,
       markerIndex: state.markerIndex,
-      topMarkers: state.topMarkers
+      topMarkers: state.topMarkers,
     };
 
     const stateString = JSON.stringify(relevantState);
@@ -422,7 +429,7 @@ export class SpectrumAnalyzerAdvancedAdapter {
     const waterfallBtn = this.domCache_.get('sa-mode-waterfall');
     const bothBtn = this.domCache_.get('sa-mode-both');
 
-    [spectralBtn, waterfallBtn, bothBtn].forEach(btn => {
+    [spectralBtn, waterfallBtn, bothBtn].forEach((btn) => {
       btn?.classList.remove('active');
     });
 
@@ -444,9 +451,7 @@ export class SpectrumAnalyzerAdvancedAdapter {
     if (pauseBtn) {
       const isPaused = this.spectrumAnalyzer.state.isPaused;
       pauseBtn.textContent = isPaused ? 'Resume' : 'Pause';
-      pauseBtn.className = isPaused
-        ? 'btn btn-success btn-sm'
-        : 'btn btn-warning btn-sm';
+      pauseBtn.className = isPaused ? 'btn btn-success btn-sm' : 'btn btn-warning btn-sm';
     }
   }
 

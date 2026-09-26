@@ -1,11 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { MissionControlPage } from '../pages/mission-control.page';
-import {
-  answerQuizByText,
-  dismissDialogIfPresent,
-  waitForQuizToAppear,
-  waitForSimulationReady,
-} from '../utils/simulation-helpers';
+import { answerQuizByText, dismissDialogIfPresent, waitForQuizToAppear, waitForSimulationReady } from '../utils/simulation-helpers';
 
 /**
  * Scenario 3 objectives - Weather Emergency Handover: Multi-Site Operations.
@@ -127,8 +122,7 @@ const SCENARIO_3_OBJECTIVES: Scenario3Objective[] = [
     id: 'verify-heater-quiz',
     title: 'Understand Feed Heater Consequences',
     type: 'quiz',
-    correctAnswer:
-      'Ice would accumulate on the feed horn and waveguide, causing signal attenuation and potential physical damage',
+    correctAnswer: 'Ice would build up on the feed horn and waveguide and attenuate the signal',
   },
 
   // ============================================================
@@ -144,22 +138,19 @@ const SCENARIO_3_OBJECTIVES: Scenario3Objective[] = [
     id: 'verify-agc-status',
     title: 'Understand AGC Function',
     type: 'quiz',
-    correctAnswer:
-      'The output signal level would drop as weather attenuated the input, eventually causing loss of lock',
+    correctAnswer: 'The output level would fall with the attenuated input until the receiver lost lock',
   },
   {
     id: 'estimate-time-remaining',
     title: 'Understand Time Pressure',
     type: 'quiz',
-    correctAnswer:
-      "Weather degradation is progressive - once AGC runs out of compensation range, the link fails rapidly",
+    correctAnswer: 'Degradation is progressive - once the AGC runs out of range the link fails fast',
   },
   {
     id: 'verify-agc-limits-quiz',
     title: 'Understand AGC Limitations',
     type: 'quiz',
-    correctAnswer:
-      'AGC has a maximum gain limit - once reached, further signal loss cannot be compensated',
+    correctAnswer: 'AGC has a maximum gain limit - once reached, further signal loss cannot be compensated',
   },
 
   // ============================================================
@@ -175,8 +166,7 @@ const SCENARIO_3_OBJECTIVES: Scenario3Objective[] = [
     id: 'verify-multisite-quiz',
     title: 'Understand Multi-Site Operations',
     type: 'quiz',
-    correctAnswer:
-      'Vermont continues operating normally - customers are still being served from VT-01',
+    correctAnswer: 'Vermont continues operating normally - customers are still being served from VT-01',
   },
 
   // ============================================================
@@ -198,8 +188,7 @@ const SCENARIO_3_OBJECTIVES: Scenario3Objective[] = [
     id: 'verify-gpsdo-weather-quiz',
     title: 'Understand Weather Impact on GPSDO',
     type: 'quiz',
-    correctAnswer:
-      'GPS uses L-band frequencies (~1.5 GHz) which are less affected by precipitation than C-band',
+    correctAnswer: 'GPS uses L-band frequencies (~1.5 GHz) which are less affected by precipitation than C-band',
   },
 
   // ============================================================
@@ -222,8 +211,7 @@ const SCENARIO_3_OBJECTIVES: Scenario3Objective[] = [
     id: 'catherine-look-angles',
     title: "Catherine's Sanity Check",
     type: 'quiz',
-    correctAnswer:
-      "Because look angles to a satellite depend on the ground station's geographic location",
+    correctAnswer: "Because look angles to a satellite depend on the ground station's geographic location",
   },
 
   // ============================================================
@@ -248,8 +236,7 @@ const SCENARIO_3_OBJECTIVES: Scenario3Objective[] = [
     id: 'verify-lnb-config-quiz',
     title: 'Verify LNB Configuration',
     type: 'quiz',
-    correctAnswer:
-      'Same LO frequency produces the same IF frequency, so downstream equipment configuration is identical',
+    correctAnswer: 'Same LO gives the same IF, so downstream equipment configuration is identical',
   },
 
   // ============================================================
@@ -275,8 +262,7 @@ const SCENARIO_3_OBJECTIVES: Scenario3Objective[] = [
     id: 'verify-beacon-reason-quiz',
     title: 'Understand Beacon Verification',
     type: 'quiz',
-    correctAnswer:
-      'Beacon confirms the entire receive chain is working - antenna, feed, LNB, cables, and spectrum analyzer',
+    correctAnswer: 'Beacon proves the whole receive chain works - antenna, feed, LNB, cables, analyzer',
   },
 
   // ============================================================
@@ -297,8 +283,7 @@ const SCENARIO_3_OBJECTIVES: Scenario3Objective[] = [
     id: 'verify-modem-match-quiz',
     title: 'Understand Parameter Matching',
     type: 'quiz',
-    correctAnswer:
-      'Both sites are receiving the same satellite carrier - mismatched parameters would fail to demodulate',
+    correctAnswer: 'Both sites receive the same carrier - mismatched parameters would fail to demodulate',
   },
 
   // ============================================================
@@ -313,8 +298,7 @@ const SCENARIO_3_OBJECTIVES: Scenario3Objective[] = [
     id: 'verify-lock-quality-quiz',
     title: 'Understand Lock vs. Quality',
     type: 'quiz',
-    correctAnswer:
-      'Lock can occur at low C/N but with high error rates - we need margin for reliable data',
+    correctAnswer: 'Lock can occur at low C/N but with high error rates - we need margin for reliable data',
   },
 
   // ============================================================
@@ -353,8 +337,7 @@ const SCENARIO_3_OBJECTIVES: Scenario3Objective[] = [
     id: 'understand-handover-quiz',
     title: 'Understand Handover Process',
     type: 'quiz',
-    correctAnswer:
-      "Maine's transmitter activates fully while Vermont's is disabled - avoiding dual uplinks to the satellite",
+    correctAnswer: "Maine's transmitter comes up while Vermont's is disabled - avoiding a dual uplink",
   },
   {
     id: 'execute-handover',
@@ -368,8 +351,7 @@ const SCENARIO_3_OBJECTIVES: Scenario3Objective[] = [
     id: 'verify-handover-success-quiz',
     title: 'Confirm Handover Success',
     type: 'quiz',
-    correctAnswer:
-      'Traffic indicator shows ME-02 as active, VT-01 TX disabled, no alarms, continuous data flow',
+    correctAnswer: 'Traffic indicator shows ME-02 as active, VT-01 TX disabled, no alarms, continuous data flow',
   },
 
   // ============================================================
@@ -398,8 +380,7 @@ const SCENARIO_3_OBJECTIVES: Scenario3Objective[] = [
     id: 'verify-stow-quiz',
     title: 'Understand Stow Position',
     type: 'quiz',
-    correctAnswer:
-      'Minimizes wind loading on the dish and prevents snow from accumulating in the reflector',
+    correctAnswer: 'Minimizes wind loading on the dish and prevents snow from accumulating in the reflector',
   },
   // This is a single objective in the scenario with TWO quiz conditions.
   // The second quiz (Documentation Purpose) appears first in the UI, followed by the first quiz (What to Log).
@@ -428,11 +409,7 @@ const SCENARIO_3_OBJECTIVES: Scenario3Objective[] = [
  * @param switchId The ID of the switch element (without # prefix)
  * @param targetState true = checked/on, false = unchecked/off
  */
-async function toggleSwitch(
-  page: import('@playwright/test').Page,
-  switchId: string,
-  targetState: boolean
-): Promise<void> {
+async function toggleSwitch(page: import('@playwright/test').Page, switchId: string, targetState: boolean): Promise<void> {
   // Try multiple selectors to find the switch
   let switchEl = page.locator(`#${switchId}`);
 
@@ -470,10 +447,7 @@ async function toggleSwitch(
  * ACU control tab must be active before calling this.
  * For maintenance and stow modes, also clicks Apply to commit the position change.
  */
-async function setTrackingMode(
-  page: import('@playwright/test').Page,
-  trackingMode: string
-): Promise<void> {
+async function setTrackingMode(page: import('@playwright/test').Page, trackingMode: string): Promise<void> {
   // Find the tracking mode button with data-mode attribute
   const modeButton = page.locator(`.btn-tracking[data-mode="${trackingMode}"]`);
   await expect(modeButton).toBeVisible({ timeout: 5000 });
@@ -518,10 +492,7 @@ async function selectSatelliteAndMove(page: import('@playwright/test').Page): Pr
  * Wait for antenna movement to complete by monitoring position changes.
  * The antenna moves at ~2-5 deg/sec, so large movements take several seconds.
  */
-async function waitForAntennaMovement(
-  page: import('@playwright/test').Page,
-  timeout = 90000
-): Promise<void> {
+async function waitForAntennaMovement(page: import('@playwright/test').Page, timeout = 90000): Promise<void> {
   const startTime = Date.now();
   let lastPosition = '';
   let stableCount = 0;
@@ -533,9 +504,7 @@ async function waitForAntennaMovement(
     await page.waitForTimeout(1000);
 
     // Get current elevation from the fine-adjust control display
-    let elDisplay = page
-      .locator('.fine-adjust-control', { hasText: 'Elevation' })
-      .locator('.fine-adjust-value-active');
+    let elDisplay = page.locator('.fine-adjust-control', { hasText: 'Elevation' }).locator('.fine-adjust-value-active');
 
     // Fallback: try finding by ID pattern (contains "el-fine")
     if ((await elDisplay.count()) === 0) {
@@ -569,10 +538,7 @@ async function waitForAntennaMovement(
  * Configure LNB with specified settings.
  * Powers on LNB, sets LO frequency and gain, waits for thermal stabilization.
  */
-async function configureLnb(
-  page: import('@playwright/test').Page,
-  config: { loFrequency: number; gain: number }
-): Promise<void> {
+async function configureLnb(page: import('@playwright/test').Page, config: { loFrequency: number; gain: number }): Promise<void> {
   // Power on LNB
   const powerSwitch = page.locator('#lnb-power');
   await expect(powerSwitch).toBeVisible({ timeout: 5000 });
@@ -659,10 +625,7 @@ async function configureSpectrumAnalyzer(
 /**
  * Configure receiver modem settings.
  */
-async function configureRxModem(
-  page: import('@playwright/test').Page,
-  config: { frequency?: number; bandwidth?: number; modulation?: string; fec?: string }
-): Promise<void> {
+async function configureRxModem(page: import('@playwright/test').Page, config: { frequency?: number; bandwidth?: number; modulation?: string; fec?: string }): Promise<void> {
   // Configure frequency (in MHz) if specified
   if (config.frequency !== undefined) {
     const freqInput = page.locator('#frequency-input');
@@ -802,10 +765,7 @@ async function configureTxModem(
 /**
  * Select a satellite by clicking on it in the map or asset tree.
  */
-async function selectSatellite(
-  page: import('@playwright/test').Page,
-  satelliteId: string
-): Promise<void> {
+async function selectSatellite(page: import('@playwright/test').Page, satelliteId: string): Promise<void> {
   // Try clicking on satellite in the asset tree
   const satTreeItem = page.locator(`[data-asset-id="${satelliteId}"]`);
   await expect(satTreeItem).toBeVisible({ timeout: 10000 });
@@ -821,10 +781,7 @@ async function selectSatellite(
 /**
  * Execute traffic handover to target station.
  */
-async function executeTrafficHandover(
-  page: import('@playwright/test').Page,
-  targetStation: string
-): Promise<void> {
+async function executeTrafficHandover(page: import('@playwright/test').Page, targetStation: string): Promise<void> {
   // Select target station in handover dropdown
   const handoverSelect = page.locator('#sat-handover-target');
   await expect(handoverSelect).toBeVisible({ timeout: 5000 });
@@ -844,11 +801,7 @@ async function executeTrafficHandover(
 /**
  * Execute an objective based on its type.
  */
-async function executeObjective(
-  page: import('@playwright/test').Page,
-  missionControlPage: MissionControlPage,
-  objective: Scenario3Objective
-): Promise<void> {
+async function executeObjective(page: import('@playwright/test').Page, missionControlPage: MissionControlPage, objective: Scenario3Objective): Promise<void> {
   switch (objective.type) {
     case 'quiz':
       // Wait for quiz to appear and answer it
@@ -864,6 +817,10 @@ async function executeObjective(
     case 'click-tab':
       // Click on the specified tab
       await missionControlPage.selectTab(objective.tabId!);
+      // Observation-gated conditions latch only after the default dwell on
+      // the tab (DEFAULT_OBSERVATION_DWELL_SECONDS); leaving at once would
+      // reset the read and strand the objective.
+      await page.waitForTimeout(3000);
       break;
 
     case 'toggle-switch':
@@ -980,7 +937,7 @@ test.describe('Scenario 3 Full Completion', () => {
   // ============================================================
 
   test('Objective: Review Mission Brief', async () => {
-    const objective = SCENARIO_3_OBJECTIVES.find(o => o.id === 'review-mission-brief')!;
+    const objective = SCENARIO_3_OBJECTIVES.find((o) => o.id === 'review-mission-brief')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
@@ -989,27 +946,27 @@ test.describe('Scenario 3 Full Completion', () => {
   // ============================================================
 
   test('Objective: Access Vermont Ground Station', async () => {
-    const objective = SCENARIO_3_OBJECTIVES.find(o => o.id === 'select-vermont-station')!;
+    const objective = SCENARIO_3_OBJECTIVES.find((o) => o.id === 'select-vermont-station')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Open ACU Control Tab (VT-01)', async () => {
-    const objective = SCENARIO_3_OBJECTIVES.find(o => o.id === 'navigate-acu-vt01-heater')!;
+    const objective = SCENARIO_3_OBJECTIVES.find((o) => o.id === 'navigate-acu-vt01-heater')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Enable Feed Heater', async () => {
-    const objective = SCENARIO_3_OBJECTIVES.find(o => o.id === 'enable-vt01-heater')!;
+    const objective = SCENARIO_3_OBJECTIVES.find((o) => o.id === 'enable-vt01-heater')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Understand Operational Priorities', async () => {
-    const objective = SCENARIO_3_OBJECTIVES.find(o => o.id === 'understand-prioritization')!;
+    const objective = SCENARIO_3_OBJECTIVES.find((o) => o.id === 'understand-prioritization')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Understand Feed Heater Consequences', async () => {
-    const objective = SCENARIO_3_OBJECTIVES.find(o => o.id === 'verify-heater-quiz')!;
+    const objective = SCENARIO_3_OBJECTIVES.find((o) => o.id === 'verify-heater-quiz')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
@@ -1018,22 +975,22 @@ test.describe('Scenario 3 Full Completion', () => {
   // ============================================================
 
   test('Objective: Open RX Analysis Tab (VT-01)', async () => {
-    const objective = SCENARIO_3_OBJECTIVES.find(o => o.id === 'navigate-rx-vt01-agc')!;
+    const objective = SCENARIO_3_OBJECTIVES.find((o) => o.id === 'navigate-rx-vt01-agc')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Understand AGC Function', async () => {
-    const objective = SCENARIO_3_OBJECTIVES.find(o => o.id === 'verify-agc-status')!;
+    const objective = SCENARIO_3_OBJECTIVES.find((o) => o.id === 'verify-agc-status')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Understand Time Pressure', async () => {
-    const objective = SCENARIO_3_OBJECTIVES.find(o => o.id === 'estimate-time-remaining')!;
+    const objective = SCENARIO_3_OBJECTIVES.find((o) => o.id === 'estimate-time-remaining')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Understand AGC Limitations', async () => {
-    const objective = SCENARIO_3_OBJECTIVES.find(o => o.id === 'verify-agc-limits-quiz')!;
+    const objective = SCENARIO_3_OBJECTIVES.find((o) => o.id === 'verify-agc-limits-quiz')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
@@ -1042,12 +999,12 @@ test.describe('Scenario 3 Full Completion', () => {
   // ============================================================
 
   test('Objective: Access Maine Backup Station', async () => {
-    const objective = SCENARIO_3_OBJECTIVES.find(o => o.id === 'switch-to-maine')!;
+    const objective = SCENARIO_3_OBJECTIVES.find((o) => o.id === 'switch-to-maine')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Understand Multi-Site Operations', async () => {
-    const objective = SCENARIO_3_OBJECTIVES.find(o => o.id === 'verify-multisite-quiz')!;
+    const objective = SCENARIO_3_OBJECTIVES.find((o) => o.id === 'verify-multisite-quiz')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
@@ -1056,17 +1013,17 @@ test.describe('Scenario 3 Full Completion', () => {
   // ============================================================
 
   test('Objective: Open GPS Timing Tab', async () => {
-    const objective = SCENARIO_3_OBJECTIVES.find(o => o.id === 'navigate-gps-timing-maine')!;
+    const objective = SCENARIO_3_OBJECTIVES.find((o) => o.id === 'navigate-gps-timing-maine')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Verify GPSDO Lock Status', async () => {
-    const objective = SCENARIO_3_OBJECTIVES.find(o => o.id === 'verify-maine-gpsdo')!;
+    const objective = SCENARIO_3_OBJECTIVES.find((o) => o.id === 'verify-maine-gpsdo')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Understand Weather Impact on GPSDO', async () => {
-    const objective = SCENARIO_3_OBJECTIVES.find(o => o.id === 'verify-gpsdo-weather-quiz')!;
+    const objective = SCENARIO_3_OBJECTIVES.find((o) => o.id === 'verify-gpsdo-weather-quiz')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
@@ -1075,19 +1032,19 @@ test.describe('Scenario 3 Full Completion', () => {
   // ============================================================
 
   test('Objective: Open ACU Control Tab (Maine)', async () => {
-    const objective = SCENARIO_3_OBJECTIVES.find(o => o.id === 'navigate-acu-maine')!;
+    const objective = SCENARIO_3_OBJECTIVES.find((o) => o.id === 'navigate-acu-maine')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Point Antenna at TIDEMARK-1', async () => {
     // Antenna movement can take up to 90 seconds
     test.setTimeout(120000);
-    const objective = SCENARIO_3_OBJECTIVES.find(o => o.id === 'configure-maine-antenna')!;
+    const objective = SCENARIO_3_OBJECTIVES.find((o) => o.id === 'configure-maine-antenna')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test("Objective: Catherine's Sanity Check", async () => {
-    const objective = SCENARIO_3_OBJECTIVES.find(o => o.id === 'catherine-look-angles')!;
+    const objective = SCENARIO_3_OBJECTIVES.find((o) => o.id === 'catherine-look-angles')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
@@ -1096,17 +1053,17 @@ test.describe('Scenario 3 Full Completion', () => {
   // ============================================================
 
   test('Objective: Open RX Analysis Tab (Maine)', async () => {
-    const objective = SCENARIO_3_OBJECTIVES.find(o => o.id === 'navigate-rx-maine-lnb')!;
+    const objective = SCENARIO_3_OBJECTIVES.find((o) => o.id === 'navigate-rx-maine-lnb')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Power Up LNB', async () => {
-    const objective = SCENARIO_3_OBJECTIVES.find(o => o.id === 'configure-maine-lnb')!;
+    const objective = SCENARIO_3_OBJECTIVES.find((o) => o.id === 'configure-maine-lnb')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Verify LNB Configuration', async () => {
-    const objective = SCENARIO_3_OBJECTIVES.find(o => o.id === 'verify-lnb-config-quiz')!;
+    const objective = SCENARIO_3_OBJECTIVES.find((o) => o.id === 'verify-lnb-config-quiz')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
@@ -1115,17 +1072,17 @@ test.describe('Scenario 3 Full Completion', () => {
   // ============================================================
 
   test('Objective: Configure Spectrum Analyzer', async () => {
-    const objective = SCENARIO_3_OBJECTIVES.find(o => o.id === 'configure-speca-maine')!;
+    const objective = SCENARIO_3_OBJECTIVES.find((o) => o.id === 'configure-speca-maine')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Verify Beacon Signal', async () => {
-    const objective = SCENARIO_3_OBJECTIVES.find(o => o.id === 'verify-beacon-maine')!;
+    const objective = SCENARIO_3_OBJECTIVES.find((o) => o.id === 'verify-beacon-maine')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Understand Beacon Verification', async () => {
-    const objective = SCENARIO_3_OBJECTIVES.find(o => o.id === 'verify-beacon-reason-quiz')!;
+    const objective = SCENARIO_3_OBJECTIVES.find((o) => o.id === 'verify-beacon-reason-quiz')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
@@ -1134,12 +1091,12 @@ test.describe('Scenario 3 Full Completion', () => {
   // ============================================================
 
   test('Objective: Configure Receiver Modem', async () => {
-    const objective = SCENARIO_3_OBJECTIVES.find(o => o.id === 'configure-maine-rx-modem')!;
+    const objective = SCENARIO_3_OBJECTIVES.find((o) => o.id === 'configure-maine-rx-modem')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Understand Parameter Matching', async () => {
-    const objective = SCENARIO_3_OBJECTIVES.find(o => o.id === 'verify-modem-match-quiz')!;
+    const objective = SCENARIO_3_OBJECTIVES.find((o) => o.id === 'verify-modem-match-quiz')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
@@ -1148,12 +1105,12 @@ test.describe('Scenario 3 Full Completion', () => {
   // ============================================================
 
   test('Objective: Confirm Signal Acquisition', async () => {
-    const objective = SCENARIO_3_OBJECTIVES.find(o => o.id === 'verify-maine-lock')!;
+    const objective = SCENARIO_3_OBJECTIVES.find((o) => o.id === 'verify-maine-lock')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Understand Lock vs. Quality', async () => {
-    const objective = SCENARIO_3_OBJECTIVES.find(o => o.id === 'verify-lock-quality-quiz')!;
+    const objective = SCENARIO_3_OBJECTIVES.find((o) => o.id === 'verify-lock-quality-quiz')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
@@ -1162,12 +1119,12 @@ test.describe('Scenario 3 Full Completion', () => {
   // ============================================================
 
   test('Objective: Open TX Chain Tab', async () => {
-    const objective = SCENARIO_3_OBJECTIVES.find(o => o.id === 'navigate-tx-maine')!;
+    const objective = SCENARIO_3_OBJECTIVES.find((o) => o.id === 'navigate-tx-maine')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Configure Transmitter Modem', async () => {
-    const objective = SCENARIO_3_OBJECTIVES.find(o => o.id === 'configure-maine-tx-modem')!;
+    const objective = SCENARIO_3_OBJECTIVES.find((o) => o.id === 'configure-maine-tx-modem')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
@@ -1176,22 +1133,22 @@ test.describe('Scenario 3 Full Completion', () => {
   // ============================================================
 
   test('Objective: Open Satellite Dashboard', async () => {
-    const objective = SCENARIO_3_OBJECTIVES.find(o => o.id === 'navigate-dashboard-handover')!;
+    const objective = SCENARIO_3_OBJECTIVES.find((o) => o.id === 'navigate-dashboard-handover')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Understand Handover Process', async () => {
-    const objective = SCENARIO_3_OBJECTIVES.find(o => o.id === 'understand-handover-quiz')!;
+    const objective = SCENARIO_3_OBJECTIVES.find((o) => o.id === 'understand-handover-quiz')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Execute Traffic Handover', async () => {
-    const objective = SCENARIO_3_OBJECTIVES.find(o => o.id === 'execute-handover')!;
+    const objective = SCENARIO_3_OBJECTIVES.find((o) => o.id === 'execute-handover')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Confirm Handover Success', async () => {
-    const objective = SCENARIO_3_OBJECTIVES.find(o => o.id === 'verify-handover-success-quiz')!;
+    const objective = SCENARIO_3_OBJECTIVES.find((o) => o.id === 'verify-handover-success-quiz')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
@@ -1200,37 +1157,37 @@ test.describe('Scenario 3 Full Completion', () => {
   // ============================================================
 
   test('Objective: Return to Vermont Station', async () => {
-    const objective = SCENARIO_3_OBJECTIVES.find(o => o.id === 'switch-to-vermont-stow')!;
+    const objective = SCENARIO_3_OBJECTIVES.find((o) => o.id === 'switch-to-vermont-stow')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Open ACU Control Tab (Stow)', async () => {
-    const objective = SCENARIO_3_OBJECTIVES.find(o => o.id === 'navigate-acu-vt01-stow')!;
+    const objective = SCENARIO_3_OBJECTIVES.find((o) => o.id === 'navigate-acu-vt01-stow')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Stow Vermont Antenna', async () => {
     // Antenna movement can take up to 90 seconds
     test.setTimeout(120000);
-    const objective = SCENARIO_3_OBJECTIVES.find(o => o.id === 'stow-vermont-antenna')!;
+    const objective = SCENARIO_3_OBJECTIVES.find((o) => o.id === 'stow-vermont-antenna')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Understand Stow Position', async () => {
-    const objective = SCENARIO_3_OBJECTIVES.find(o => o.id === 'verify-stow-quiz')!;
+    const objective = SCENARIO_3_OBJECTIVES.find((o) => o.id === 'verify-stow-quiz')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
   test('Objective: Document Handover Event', async () => {
     // This objective has TWO quiz conditions but they may appear in different order.
     // The second quiz (Purpose) appears first in the UI with letter prefixes.
-    const purposeQuiz = SCENARIO_3_OBJECTIVES.find(o => o.id === 'document-handover-event-quiz1')!;
+    const purposeQuiz = SCENARIO_3_OBJECTIVES.find((o) => o.id === 'document-handover-event-quiz1')!;
     await executeObjective(page, missionControlPage, purposeQuiz);
 
     // The first quiz (What to Log) appears second in the UI without letter prefixes.
     // Check if there's another quiz to answer
     try {
-      const whatToLogQuiz = SCENARIO_3_OBJECTIVES.find(o => o.id === 'document-handover-event-quiz2')!;
+      const whatToLogQuiz = SCENARIO_3_OBJECTIVES.find((o) => o.id === 'document-handover-event-quiz2')!;
       await executeObjective(page, missionControlPage, whatToLogQuiz);
     } catch {
       // Quiz may have already been answered or doesn't appear

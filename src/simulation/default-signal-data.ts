@@ -1,6 +1,6 @@
 // @ts-nocheck
 
-import { FECType, Hertz, ModulationType, RfFrequency, RfSignal } from "@app/types";
+import { FECType, Hertz, ModulationType, RfFrequency, RfSignal } from '@app/types';
 
 const meteoSat9Signals: RfSignal[] = [
   {
@@ -263,6 +263,6 @@ export const defaultSignalData: RfSignal[] = [
     modulation: 'BPSK' as ModulationType,
     fec: '1/4' as FECType,
     feed: 'blue-1.mp4',
-    isDegraded: false
+    isDegraded: false,
   },
 ];

@@ -1,17 +1,21 @@
-import { html } from "@app/engine/utils/development/formatter";
-import { qs } from "@app/engine/utils/query-selector";
-import { SignalPathManager } from "@app/simulation/signal-path-manager";
-import { IfFrequency, RfFrequency } from "@app/types";
-import { RFFrontEndCore } from "@app/equipment/rf-front-end/rf-front-end-core";
+import { html } from '@app/engine/utils/development/formatter';
+import { qs } from '@app/engine/utils/query-selector';
+import { RFFrontEndCore } from '@app/equipment/rf-front-end/rf-front-end-core';
 import { RFFrontEndModule } from '@app/equipment/rf-front-end/rf-front-end-module';
+import { Rng } from '@app/simulation/rng';
+import { SignalPathManager } from '@app/simulation/signal-path-manager';
+import { IfFrequency, RfFrequency } from '@app/types';
 import './coupler-module.css';
-import { TapPoint } from "./tap-points";
+import { TapPoint } from './tap-points';
+
+/** Seeded draws for this module (see simulation/rng.ts). */
+const random = (): number => Rng.stream('coupler').next();
 
 /**
  * Spectrum Analyzer coupler module state
  */
 export interface CouplerState {
-  isPowered: boolean;  // Required by base interface, always true for passive coupler
+  isPowered: boolean; // Required by base interface, always true for passive coupler
   isEngineeringMode: boolean;
   tapPointA: TapPoint;
   tapPointB: TapPoint;
@@ -33,7 +37,7 @@ export class CouplerModule extends RFFrontEndModule<CouplerState> {
    */
   static getDefaultState(): CouplerState {
     return {
-      isPowered: true,  // Always true for passive coupler
+      isPowered: true, // Always true for passive coupler
       isEngineeringMode: false,
       tapPointA: TapPoint.TX_IF,
       tapPointB: TapPoint.RX_IF,
@@ -42,7 +46,7 @@ export class CouplerModule extends RFFrontEndModule<CouplerState> {
       couplingFactorA: -30, // dB
       couplingFactorB: -20, // dB
       isEnabledA: false,
-      isEnabledB: true,  // RX enabled by default
+      isEnabledB: true, // RX enabled by default
       isActiveA: false,
       isActiveB: true,
     };
@@ -61,7 +65,7 @@ export class CouplerModule extends RFFrontEndModule<CouplerState> {
       'POST OMT/PRE ANT TX RF',
       'PRE OMT/POST ANT RX RF',
       'POST OMT/PRE LNA RX RF',
-      'POST LNA RX RF'
+      'POST LNA RX RF',
     ];
 
     this.html_ = html`
@@ -83,13 +87,13 @@ export class CouplerModule extends RFFrontEndModule<CouplerState> {
             <div class="control-group">
               <label>TAP POINT A</label>
               <select class="input-coupler-tap-a" data-param="tapPointA">
-                ${(this.state.availableTapPointsA ?? tapPointOptions).map(tp => `<option value="${tp}"${this.state.tapPointA === tp ? ' selected' : ''}>${tp}</option>`).join('\n')}
+                ${(this.state.availableTapPointsA ?? tapPointOptions).map((tp) => `<option value="${tp}"${this.state.tapPointA === tp ? ' selected' : ''}>${tp}</option>`).join('\n')}
               </select>
             </div>
             <div class="control-group">
               <label>TAP POINT B</label>
               <select class="input-coupler-tap-b" data-param="tapPointB">
-                ${(this.state.availableTapPointsB ?? tapPointOptions).map(tp => `<option value="${tp}"${this.state.tapPointB === tp ? ' selected' : ''}>${tp}</option>`).join('\n')}
+                ${(this.state.availableTapPointsB ?? tapPointOptions).map((tp) => `<option value="${tp}"${this.state.tapPointB === tp ? ' selected' : ''}>${tp}</option>`).join('\n')}
               </select>
             </div>
           </div>
@@ -128,7 +132,7 @@ export class CouplerModule extends RFFrontEndModule<CouplerState> {
       tapPointA: () => this.state.tapPointA,
       tapPointB: () => this.state.tapPointB,
       couplingFactorA: () => this.state.couplingFactorA.toFixed(1),
-      couplingFactorB: () => this.state.couplingFactorB.toFixed(1)
+      couplingFactorB: () => this.state.couplingFactorB.toFixed(1),
     };
   }
 
@@ -138,8 +142,8 @@ export class CouplerModule extends RFFrontEndModule<CouplerState> {
    */
   getLEDs() {
     return {
-      activeA: () => this.state.isActiveA ? 'led-green' : 'led-off',
-      activeB: () => this.state.isActiveB ? 'led-green' : 'led-off'
+      activeA: () => (this.state.isActiveA ? 'led-green' : 'led-off'),
+      activeB: () => (this.state.isActiveB ? 'led-green' : 'led-off'),
     };
   }
 
@@ -235,9 +239,14 @@ export class CouplerModule extends RFFrontEndModule<CouplerState> {
     if (this.state.isEngineeringMode) {
       // All 8 tap points available in both selectors
       const allTapPoints = [
-        TapPoint.TX_IF, TapPoint.RX_IF,
-        TapPoint.TX_RF_POST_BUC, TapPoint.TX_RF_POST_HPA, TapPoint.TX_RF_POST_OMT,
-        TapPoint.RX_RF_PRE_OMT, TapPoint.RX_RF_POST_OMT, TapPoint.RX_RF_POST_LNA
+        TapPoint.TX_IF,
+        TapPoint.RX_IF,
+        TapPoint.TX_RF_POST_BUC,
+        TapPoint.TX_RF_POST_HPA,
+        TapPoint.TX_RF_POST_OMT,
+        TapPoint.RX_RF_PRE_OMT,
+        TapPoint.RX_RF_POST_OMT,
+        TapPoint.RX_RF_POST_LNA,
       ];
       this.state.availableTapPointsA = allTapPoints;
       this.state.availableTapPointsB = allTapPoints;
@@ -251,24 +260,11 @@ export class CouplerModule extends RFFrontEndModule<CouplerState> {
    * Determine if a tap point is active based on signal flow direction
    */
   private isTapPointActive_(tapPoint: TapPoint): boolean {
-    const txTapPoints: TapPoint[] = [
-      TapPoint.TX_IF,
-      TapPoint.TX_RF_POST_BUC,
-      TapPoint.TX_RF_POST_HPA,
-      TapPoint.TX_RF_POST_OMT
-    ];
+    const txTapPoints: TapPoint[] = [TapPoint.TX_IF, TapPoint.TX_RF_POST_BUC, TapPoint.TX_RF_POST_HPA, TapPoint.TX_RF_POST_OMT];
 
-    const rxTapPoints: TapPoint[] = [
-      TapPoint.RX_IF,
-      TapPoint.RX_RF_PRE_OMT,
-      TapPoint.RX_RF_POST_OMT,
-      TapPoint.RX_RF_POST_LNA
-    ];
+    const rxTapPoints: TapPoint[] = [TapPoint.RX_IF, TapPoint.RX_RF_PRE_OMT, TapPoint.RX_RF_POST_OMT, TapPoint.RX_RF_POST_LNA];
 
-    if (
-      txTapPoints.includes(tapPoint) ||
-      rxTapPoints.includes(tapPoint)
-    ) {
+    if (txTapPoints.includes(tapPoint) || rxTapPoints.includes(tapPoint)) {
       return true;
     }
 
@@ -369,8 +365,8 @@ export class CouplerModule extends RFFrontEndModule<CouplerState> {
   private getCouplerOutput_(_tapPoint: TapPoint, couplingFactor: number): { frequency: RfFrequency | IfFrequency; power: number } {
     // Return a random number for now
     return {
-      frequency: Math.random() * 1000 as RfFrequency | IfFrequency,
-      power: - Math.abs(couplingFactor) // Coupled power is negative of coupling factor
+      frequency: (random() * 1000) as RfFrequency | IfFrequency,
+      power: -Math.abs(couplingFactor), // Coupled power is negative of coupling factor
     };
   }
 }

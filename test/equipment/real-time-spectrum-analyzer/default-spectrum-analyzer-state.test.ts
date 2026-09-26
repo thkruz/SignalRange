@@ -1,5 +1,5 @@
 import { defaultSpectrumAnalyzerState } from '../../../src/equipment/real-time-spectrum-analyzer/defaultSpectrumAnalyzerState';
-import { Hertz, dB } from '../../../src/types';
+import { dB, Hertz } from '../../../src/types';
 
 describe('defaultSpectrumAnalyzerState', () => {
   describe('Tap Settings', () => {

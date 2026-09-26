@@ -115,7 +115,7 @@ describe('AGCModuleCore', () => {
           polarization: 'V',
           origin: SignalOrigin.NOTCH_FILTER,
           gainInPath: 0,
-        }
+        },
       ];
 
       vi.spyOn(agcModule, 'inputSignals', 'get').mockReturnValue(mockSignals);
@@ -358,7 +358,7 @@ describe('AGCModuleCore', () => {
     it('should sync state from external source', () => {
       const newState: Partial<AGCState> = {
         targetLevel: -40 as dBm,
-        attackTime: 5
+        attackTime: 5,
       };
 
       agcModule.sync(newState);

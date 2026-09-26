@@ -4,9 +4,11 @@ import type { RFFrontEndState } from '@app/equipment/rf-front-end/rf-front-end-c
  * Recursively makes all properties optional.
  * Allows deep partial overrides for nested state objects.
  */
-export type DeepPartial<T> = T extends object ? {
-  [P in keyof T]?: DeepPartial<T[P]>;
-} : T;
+export type DeepPartial<T> = T extends object
+  ? {
+      [P in keyof T]?: DeepPartial<T[P]>;
+    }
+  : T;
 
 /**
  * RF Front End state without runtime-assigned properties.
@@ -22,10 +24,7 @@ export type RfFrontEndConfig = Omit<RFFrontEndState, 'uuid' | 'teamId' | 'server
  * @param source - Partial object with overrides
  * @returns New object with merged values
  */
-function deepMerge(
-  target: Record<string, unknown>,
-  source: Record<string, unknown>
-): Record<string, unknown> {
+function deepMerge(target: Record<string, unknown>, source: Record<string, unknown>): Record<string, unknown> {
   const result = { ...target };
 
   for (const key of Object.keys(source)) {
@@ -42,10 +41,7 @@ function deepMerge(
         !Array.isArray(targetValue)
       ) {
         // Recursively merge nested objects
-        result[key] = deepMerge(
-          targetValue as Record<string, unknown>,
-          sourceValue as Record<string, unknown>
-        );
+        result[key] = deepMerge(targetValue as Record<string, unknown>, sourceValue as Record<string, unknown>);
       } else {
         // Replace primitives, arrays, and null values
         result[key] = sourceValue;
@@ -76,9 +72,6 @@ function deepMerge(
  *   filter: { bandwidthIndex: 0 }
  * })
  */
-export function createRfFrontEnd(
-  base: Partial<RFFrontEndState>,
-  overrides: DeepPartial<RfFrontEndConfig> = {}
-): Partial<RFFrontEndState> {
+export function createRfFrontEnd(base: Partial<RFFrontEndState>, overrides: DeepPartial<RfFrontEndConfig> = {}): Partial<RFFrontEndState> {
   return deepMerge(base as RfFrontEndConfig, overrides);
 }

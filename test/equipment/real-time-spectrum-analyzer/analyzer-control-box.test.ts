@@ -1,10 +1,10 @@
 import { Mocked, vi } from 'vitest';
-import { AnalyzerControlBox } from '../../../src/equipment/real-time-spectrum-analyzer/analyzer-control-box';
 import { TraceMode } from '../../../src/equipment/real-time-spectrum-analyzer/analyzer-control/ac-trace-btn/ac-trace-btn';
+import { AnalyzerControlBox } from '../../../src/equipment/real-time-spectrum-analyzer/analyzer-control-box';
 import { RealTimeSpectrumAnalyzer, RealTimeSpectrumAnalyzerState } from '../../../src/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer';
 import { EventBus } from '../../../src/events/event-bus';
 import { Events } from '../../../src/events/events';
-import { Hertz, dB } from '../../../src/types';
+import { dB, Hertz } from '../../../src/types';
 
 // Mock HTMLMediaElement.prototype.play for jsdom compatibility
 Object.defineProperty(HTMLMediaElement.prototype, 'play', {
@@ -41,7 +41,9 @@ vi.mock('@app/engine/utils/get-el', () => {
   });
 
   return {
-    getEl: vi.fn(function (id: string) { return mockElement(id); }),
+    getEl: vi.fn(function (id: string) {
+      return mockElement(id);
+    }),
     showEl: vi.fn(),
     hideEl: vi.fn(),
     setInnerHtml: vi.fn(),
@@ -63,12 +65,14 @@ vi.mock('@app/engine/ui/draggable-box', () => {
       this.boxContentHtml = options?.boxContentHtml || '';
     }
 
-    open() { this.isOpen = true; }
+    open() {
+      this.isOpen = true;
+    }
     close(cb?: () => void) {
       this.isOpen = false;
       if (cb) cb();
     }
-    protected onOpen() { }
+    protected onOpen() {}
   }
   return { DraggableBox: MockDraggableBox };
 });
@@ -76,8 +80,8 @@ vi.mock('@app/engine/ui/draggable-box', () => {
 // Mock AnalyzerControl
 vi.mock('@app/equipment/real-time-spectrum-analyzer/analyzer-control', () => ({
   AnalyzerControl: class MockAnalyzerControl {
-    init_() { }
-  }
+    init_() {}
+  },
 }));
 
 describe('AnalyzerControlBox', () => {

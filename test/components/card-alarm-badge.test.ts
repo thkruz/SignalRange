@@ -107,9 +107,7 @@ describe('CardAlarmBadge', () => {
     const badge = new CardAlarmBadge('alarm-badge-7');
     mount(badge);
 
-    badge.update([
-      { severity: 'weird', message: 'Odd Alarm' } as unknown as AlarmStatus,
-    ]);
+    badge.update([{ severity: 'weird', message: 'Odd Alarm' } as unknown as AlarmStatus]);
 
     // Unknown severity is treated as non-alarm for the LED class
     expect(ledEl().className).toBe('card-alarm-led success');
@@ -121,10 +119,7 @@ describe('CardAlarmBadge', () => {
     const badge = new CardAlarmBadge('alarm-badge-8');
     mount(badge);
 
-    badge.update([
-      { severity: 'weird', message: 'Z' } as unknown as AlarmStatus,
-      { severity: 'error', message: 'A' },
-    ]);
+    badge.update([{ severity: 'weird', message: 'Z' } as unknown as AlarmStatus, { severity: 'error', message: 'A' }]);
 
     expect(ledEl().className).toBe('card-alarm-led error');
     expect(ledEl().title).toBe('A\nZ');
@@ -134,10 +129,7 @@ describe('CardAlarmBadge', () => {
     const badge = new CardAlarmBadge('alarm-badge-9');
     mount(badge);
 
-    badge.update([
-      { severity: 'weird', message: 'B' } as unknown as AlarmStatus,
-      { severity: 'strange', message: 'C' } as unknown as AlarmStatus,
-    ]);
+    badge.update([{ severity: 'weird', message: 'B' } as unknown as AlarmStatus, { severity: 'strange', message: 'C' } as unknown as AlarmStatus]);
 
     expect(ledEl().className).toBe('card-alarm-led success');
     const lines = ledEl().title.split('\n').sort();

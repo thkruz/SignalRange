@@ -1,11 +1,11 @@
 import { generateUuid } from '@app/engine/utils/uuid';
-import { EventBus } from '@app/events/event-bus';
-import { EventMap, Events } from '@app/events/events';
-import { AntennaState } from './antenna';
 import { RealTimeSpectrumAnalyzerState } from '@app/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer';
 import { ReceiverState } from '@app/equipment/receiver/receiver';
 import { RFFrontEndState } from '@app/equipment/rf-front-end/rf-front-end-core';
 import { TransmitterState } from '@app/equipment/transmitter/transmitter';
+import { EventBus } from '@app/events/event-bus';
+import { EventMap, Events } from '@app/events/events';
+import { AntennaState } from './antenna';
 
 import './base-equipment.css';
 
@@ -133,12 +133,12 @@ export abstract class BaseEquipment {
       severity: AlarmStatus['severity'];
       statusClass: string;
     }> = [
-        { severity: 'off', statusClass: 'status-off' },
-        { severity: 'error', statusClass: 'status-red' },
-        { severity: 'warning', statusClass: 'status-amber' },
-        { severity: 'info', statusClass: 'status-blue' },
-        { severity: 'success', statusClass: 'status-green' },
-      ];
+      { severity: 'off', statusClass: 'status-off' },
+      { severity: 'error', statusClass: 'status-red' },
+      { severity: 'warning', statusClass: 'status-amber' },
+      { severity: 'info', statusClass: 'status-blue' },
+      { severity: 'success', statusClass: 'status-green' },
+    ];
 
     // Default: No alarms - system normal
     let newText = 'SYSTEM NORMAL';
@@ -146,9 +146,9 @@ export abstract class BaseEquipment {
 
     // Find highest priority alarm and use it
     for (const { severity, statusClass } of priorities) {
-      const matches = alarms.filter(a => a.severity === severity);
+      const matches = alarms.filter((a) => a.severity === severity);
       if (matches.length > 0) {
-        newText = severity === 'off' ? '' : matches.map(a => a.message).join(', ');
+        newText = severity === 'off' ? '' : matches.map((a) => a.message).join(', ');
         newClassName = `bottom-status-bar ${statusClass}`;
         break; // Exit on first match due to priority order
       }
@@ -175,18 +175,18 @@ export abstract class BaseEquipment {
       severity: AlarmStatus['severity'];
       ledClass: string;
     }> = [
-        { severity: 'error', ledClass: 'led led-red' },
-        { severity: 'warning', ledClass: 'led led-amber' },
-        { severity: 'off', ledClass: 'led led-warning' },
-        { severity: 'info', ledClass: 'led led-blue' },
-      ];
+      { severity: 'error', ledClass: 'led led-red' },
+      { severity: 'warning', ledClass: 'led led-amber' },
+      { severity: 'off', ledClass: 'led led-warning' },
+      { severity: 'info', ledClass: 'led led-blue' },
+    ];
 
     // Default: green (system normal)
     let newClassName = 'led led-green';
 
     // Find highest priority alarm and use it
     for (const { severity, ledClass } of priorities) {
-      if (alarms.some(a => a.severity === severity)) {
+      if (alarms.some((a) => a.severity === severity)) {
         newClassName = ledClass;
         break;
       }

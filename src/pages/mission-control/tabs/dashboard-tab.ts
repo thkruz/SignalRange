@@ -1,13 +1,13 @@
-import { GroundStation } from "@app/assets/ground-station/ground-station";
-import { BaseElement } from "@app/components/base-element";
-import { html } from "@app/engine/utils/development/formatter";
-import { qs } from "@app/engine/utils/query-selector";
-import { EventBus } from "@app/events/event-bus";
-import { Events } from "@app/events/events";
+import { GroundStation } from '@app/assets/ground-station/ground-station';
 import antennaPng from '@app/assets/icons/antenna.png';
-import modemPng from '@app/assets/icons/radio.png';
 import receiverPng from '@app/assets/icons/arrow-big-down-lines.png';
 import transmitterPng from '@app/assets/icons/arrow-big-up-lines.png';
+import modemPng from '@app/assets/icons/radio.png';
+import { BaseElement } from '@app/components/base-element';
+import { html } from '@app/engine/utils/development/formatter';
+import { qs } from '@app/engine/utils/query-selector';
+import { EventBus } from '@app/events/event-bus';
+import { Events } from '@app/events/events';
 import './dashboard-tab.css';
 
 interface AlarmEntry {
@@ -375,23 +375,17 @@ export class DashboardTab extends BaseElement {
 
   private getActiveReceivers_(): number {
     // Count powered modems across all receivers
-    return this.groundStation.receivers.reduce((count, rx) => {
-      return count + rx.state.modems.filter(m => m.isPowered).length;
-    }, 0);
+    return this.groundStation.receivers.reduce((count, rx) => count + rx.state.modems.filter((m) => m.isPowered).length, 0);
   }
 
   private getActiveTransmitters_(): number {
     // Count powered modems across all transmitters
-    return this.groundStation.transmitters.reduce((count, tx) => {
-      return count + tx.state.modems.filter(m => m.isPowered).length;
-    }, 0);
+    return this.groundStation.transmitters.reduce((count, tx) => count + tx.state.modems.filter((m) => m.isPowered).length, 0);
   }
 
   private getSignalCount_(): number {
     // Count available signals across receivers
-    return this.groundStation.receivers.reduce((count, rx) => {
-      return count + (rx.state.availableSignals?.length ?? 0);
-    }, 0);
+    return this.groundStation.receivers.reduce((count, rx) => count + (rx.state.availableSignals?.length ?? 0), 0);
   }
 
   private renderAlarmList_(): string {
@@ -404,7 +398,9 @@ export class DashboardTab extends BaseElement {
       `;
     }
 
-    return this.alarms_.map(alarm => html`
+    return this.alarms_
+      .map(
+        (alarm) => html`
       <div class="alarm-item">
         <span class="alarm-icon ${alarm.level}">
           ${alarm.level === 'critical' ? '&#x26A0;' : alarm.level === 'warning' ? '&#x26A0;' : '&#x2139;'}
@@ -412,7 +408,9 @@ export class DashboardTab extends BaseElement {
         <span class="alarm-message">${alarm.message}</span>
         <span class="alarm-time">${this.formatTime_(alarm.timestamp)}</span>
       </div>
-    `).join('');
+    `
+      )
+      .join('');
   }
 
   private formatTime_(date: Date): string {
@@ -422,23 +420,50 @@ export class DashboardTab extends BaseElement {
   private cacheDomElements_(): void {
     const ids = [
       // Existing elements
-      'station-status', 'antenna-count', 'rf-count', 'tx-count', 'rx-count',
-      'active-receivers', 'active-transmitters', 'signal-count', 'alarm-count', 'alarm-list',
+      'station-status',
+      'antenna-count',
+      'rf-count',
+      'tx-count',
+      'rx-count',
+      'active-receivers',
+      'active-transmitters',
+      'signal-count',
+      'alarm-count',
+      'alarm-list',
       // Antenna summary
-      'antenna-fault-led', 'antenna-mode', 'antenna-position', 'antenna-lock', 'antenna-cn',
+      'antenna-fault-led',
+      'antenna-mode',
+      'antenna-position',
+      'antenna-lock',
+      'antenna-cn',
       // GPSDO summary
-      'gpsdo-lock', 'gpsdo-sats', 'gpsdo-status', 'gpsdo-warmup',
+      'gpsdo-lock',
+      'gpsdo-sats',
+      'gpsdo-status',
+      'gpsdo-warmup',
       // RF Chain RX summary
-      'lnb-lock', 'lnb-noise', 'filter-bw', 'lnb-power',
+      'lnb-lock',
+      'lnb-noise',
+      'filter-bw',
+      'lnb-power',
       // RF Chain TX summary
-      'buc-lock', 'buc-output', 'hpa-power', 'hpa-status',
+      'buc-lock',
+      'buc-output',
+      'hpa-power',
+      'hpa-status',
       // Receivers summary
-      'rx-active', 'rx-snr', 'rx-signals', 'rx-quality',
+      'rx-active',
+      'rx-snr',
+      'rx-signals',
+      'rx-quality',
       // Transmitters summary
-      'tx-active', 'tx-status', 'tx-budget', 'tx-fault'
+      'tx-active',
+      'tx-status',
+      'tx-budget',
+      'tx-fault',
     ];
 
-    ids.forEach(id => {
+    ids.forEach((id) => {
       const el = qs(`#${id}`, this.dom_);
       if (el) {
         this.domCache_.set(id, el);
@@ -694,7 +719,7 @@ export class DashboardTab extends BaseElement {
 
     const modems = receiver.state.modems;
     const totalModems = modems.length;
-    const activeModems = modems.filter(m => m.isPowered).length;
+    const activeModems = modems.filter((m) => m.isPowered).length;
 
     // Active modems
     const activeEl = this.domCache_.get('rx-active');
@@ -706,7 +731,7 @@ export class DashboardTab extends BaseElement {
     const snrEl = this.domCache_.get('rx-snr');
     if (snrEl) {
       let bestSnr: number | null = null;
-      modems.forEach(modem => {
+      modems.forEach((modem) => {
         const snr = receiver.getSnrForModem(modem);
         if (snr !== null && (bestSnr === null || snr > bestSnr)) {
           bestSnr = snr;
@@ -726,7 +751,7 @@ export class DashboardTab extends BaseElement {
     const qualityEl = this.domCache_.get('rx-quality');
     if (qualityEl) {
       const signals = receiver.state.availableSignals ?? [];
-      const hasDegraded = signals.some(s => s.isDegraded);
+      const hasDegraded = signals.some((s) => s.isDegraded);
       if (signals.length === 0) {
         qualityEl.className = 'card-alarm-led off';
       } else if (hasDegraded) {
@@ -743,9 +768,9 @@ export class DashboardTab extends BaseElement {
 
     const modems = transmitter.state.modems;
     const totalModems = modems.length;
-    const activeModems = modems.filter(m => m.isPowered).length;
-    const transmittingModems = modems.filter(m => m.isTransmitting).length;
-    const faultedModems = modems.filter(m => m.isFaulted).length;
+    const activeModems = modems.filter((m) => m.isPowered).length;
+    const transmittingModems = modems.filter((m) => m.isTransmitting).length;
+    const faultedModems = modems.filter((m) => m.isFaulted).length;
 
     // Active modems
     const activeEl = this.domCache_.get('tx-active');
@@ -788,12 +813,12 @@ export class DashboardTab extends BaseElement {
       const txAlarms = rfFe.getStatusAlarms(1);
       const rxAlarms = rfFe.getStatusAlarms(2);
 
-      [...txAlarms, ...rxAlarms].forEach(alarm => {
+      [...txAlarms, ...rxAlarms].forEach((alarm) => {
         this.alarms_.push({
           id: `rfFe-${alarm.message}`,
           level: alarm.severity === 'error' ? 'critical' : 'warning',
           message: alarm.message,
-          timestamp: new Date()
+          timestamp: new Date(),
         });
       });
     });
@@ -805,7 +830,7 @@ export class DashboardTab extends BaseElement {
           id: `antenna-fault-${antIdx}`,
           level: 'critical',
           message: `Antenna ${antIdx + 1} has fault`,
-          timestamp: new Date()
+          timestamp: new Date(),
         });
       }
     });
@@ -818,7 +843,7 @@ export class DashboardTab extends BaseElement {
             id: `tx-modem-fault-${txIdx}-${modemIdx}`,
             level: 'warning',
             message: `Transmitter modem ${modemIdx + 1} faulted`,
-            timestamp: new Date()
+            timestamp: new Date(),
           });
         }
       });

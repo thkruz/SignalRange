@@ -104,17 +104,11 @@ describe('BUCAdapter', () => {
     });
 
     it('should register for RF_FE_BUC_CHANGED events', () => {
-      expect(mockEventBus.on).toHaveBeenCalledWith(
-        Events.RF_FE_BUC_CHANGED,
-        expect.any(Function)
-      );
+      expect(mockEventBus.on).toHaveBeenCalledWith(Events.RF_FE_BUC_CHANGED, expect.any(Function));
     });
 
     it('should register for UPDATE events for throttled sync', () => {
-      expect(mockEventBus.on).toHaveBeenCalledWith(
-        Events.UPDATE,
-        expect.any(Function)
-      );
+      expect(mockEventBus.on).toHaveBeenCalledWith(Events.UPDATE, expect.any(Function));
     });
   });
 
@@ -291,14 +285,8 @@ describe('BUCAdapter', () => {
     it('should unregister from EventBus events', () => {
       adapter.dispose();
 
-      expect(mockEventBus.off).toHaveBeenCalledWith(
-        Events.UPDATE,
-        expect.any(Function)
-      );
-      expect(mockEventBus.off).toHaveBeenCalledWith(
-        Events.RF_FE_BUC_CHANGED,
-        expect.any(Function)
-      );
+      expect(mockEventBus.off).toHaveBeenCalledWith(Events.UPDATE, expect.any(Function));
+      expect(mockEventBus.off).toHaveBeenCalledWith(Events.RF_FE_BUC_CHANGED, expect.any(Function));
     });
   });
 
@@ -323,9 +311,7 @@ describe('BUCAdapter', () => {
   describe('throttled sync via UPDATE event', () => {
     it('should sync read-only displays when UPDATE event fires past throttle', () => {
       // Find UPDATE handler
-      const updateHandler = mockEventBus.on.mock.calls.find(
-        (call: unknown[]) => call[0] === Events.UPDATE
-      )?.[1];
+      const updateHandler = mockEventBus.on.mock.calls.find((call: unknown[]) => call[0] === Events.UPDATE)?.[1];
       expect(updateHandler).toBeDefined();
 
       // Update module state - note: output power now comes from outputSignals
@@ -344,9 +330,7 @@ describe('BUCAdapter', () => {
     });
 
     it('should not sync if within throttle interval', () => {
-      const updateHandler = mockEventBus.on.mock.calls.find(
-        (call: unknown[]) => call[0] === Events.UPDATE
-      )?.[1];
+      const updateHandler = mockEventBus.on.mock.calls.find((call: unknown[]) => call[0] === Events.UPDATE)?.[1];
 
       mockBucModule.state.outputPower = 42.5;
 
@@ -360,9 +344,7 @@ describe('BUCAdapter', () => {
     });
 
     it('should update lock status during throttled sync', () => {
-      const updateHandler = mockEventBus.on.mock.calls.find(
-        (call: unknown[]) => call[0] === Events.UPDATE
-      )?.[1];
+      const updateHandler = mockEventBus.on.mock.calls.find((call: unknown[]) => call[0] === Events.UPDATE)?.[1];
 
       mockBucModule.state.isExtRefLocked = false;
 
@@ -375,9 +357,7 @@ describe('BUCAdapter', () => {
     });
 
     it('should update P1dB margin during throttled sync', () => {
-      const updateHandler = mockEventBus.on.mock.calls.find(
-        (call: unknown[]) => call[0] === Events.UPDATE
-      )?.[1];
+      const updateHandler = mockEventBus.on.mock.calls.find((call: unknown[]) => call[0] === Events.UPDATE)?.[1];
 
       mockBucModule.state.outputPower = 38;
       mockBucModule.state.saturationPower = 40;
@@ -390,9 +370,7 @@ describe('BUCAdapter', () => {
     });
 
     it('should update current draw during throttled sync', () => {
-      const updateHandler = mockEventBus.on.mock.calls.find(
-        (call: unknown[]) => call[0] === Events.UPDATE
-      )?.[1];
+      const updateHandler = mockEventBus.on.mock.calls.find((call: unknown[]) => call[0] === Events.UPDATE)?.[1];
 
       mockBucModule.state.currentDraw = 3.25;
 
@@ -404,9 +382,7 @@ describe('BUCAdapter', () => {
     });
 
     it('should update phase noise during throttled sync', () => {
-      const updateHandler = mockEventBus.on.mock.calls.find(
-        (call: unknown[]) => call[0] === Events.UPDATE
-      )?.[1];
+      const updateHandler = mockEventBus.on.mock.calls.find((call: unknown[]) => call[0] === Events.UPDATE)?.[1];
 
       mockBucModule.state.phaseNoise = -85;
 
@@ -418,9 +394,7 @@ describe('BUCAdapter', () => {
     });
 
     it('should show placeholder values when powered off during throttled sync', () => {
-      const updateHandler = mockEventBus.on.mock.calls.find(
-        (call: unknown[]) => call[0] === Events.UPDATE
-      )?.[1];
+      const updateHandler = mockEventBus.on.mock.calls.find((call: unknown[]) => call[0] === Events.UPDATE)?.[1];
 
       mockBucModule.state.isPowered = false;
 
@@ -439,9 +413,7 @@ describe('BUCAdapter', () => {
     it('should show USB for low injection mode', () => {
       mockBucModule.getActiveInjectionMode.mockReturnValue('low');
 
-      const updateHandler = mockEventBus.on.mock.calls.find(
-        (call: unknown[]) => call[0] === Events.UPDATE
-      )?.[1];
+      const updateHandler = mockEventBus.on.mock.calls.find((call: unknown[]) => call[0] === Events.UPDATE)?.[1];
 
       vi.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();
@@ -454,9 +426,7 @@ describe('BUCAdapter', () => {
     it('should show LSB for high injection mode', () => {
       mockBucModule.getActiveInjectionMode.mockReturnValue('high');
 
-      const updateHandler = mockEventBus.on.mock.calls.find(
-        (call: unknown[]) => call[0] === Events.UPDATE
-      )?.[1];
+      const updateHandler = mockEventBus.on.mock.calls.find((call: unknown[]) => call[0] === Events.UPDATE)?.[1];
 
       vi.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();
@@ -469,9 +439,7 @@ describe('BUCAdapter', () => {
     it('should show Out of Band for no valid injection mode', () => {
       mockBucModule.getActiveInjectionMode.mockReturnValue(null);
 
-      const updateHandler = mockEventBus.on.mock.calls.find(
-        (call: unknown[]) => call[0] === Events.UPDATE
-      )?.[1];
+      const updateHandler = mockEventBus.on.mock.calls.find((call: unknown[]) => call[0] === Events.UPDATE)?.[1];
 
       vi.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();
@@ -484,9 +452,7 @@ describe('BUCAdapter', () => {
     it('should show placeholder when powered off', () => {
       mockBucModule.state.isPowered = false;
 
-      const updateHandler = mockEventBus.on.mock.calls.find(
-        (call: unknown[]) => call[0] === Events.UPDATE
-      )?.[1];
+      const updateHandler = mockEventBus.on.mock.calls.find((call: unknown[]) => call[0] === Events.UPDATE)?.[1];
 
       vi.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();
@@ -501,9 +467,7 @@ describe('BUCAdapter', () => {
     it('should classify error alarms correctly', () => {
       mockBucModule.getAlarms.mockReturnValue(['Phase Lock Error']);
 
-      const updateHandler = mockEventBus.on.mock.calls.find(
-        (call: unknown[]) => call[0] === Events.UPDATE
-      )?.[1];
+      const updateHandler = mockEventBus.on.mock.calls.find((call: unknown[]) => call[0] === Events.UPDATE)?.[1];
 
       vi.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();
@@ -515,9 +479,7 @@ describe('BUCAdapter', () => {
     it('should classify warning alarms correctly', () => {
       mockBucModule.getAlarms.mockReturnValue(['Reference not locked']);
 
-      const updateHandler = mockEventBus.on.mock.calls.find(
-        (call: unknown[]) => call[0] === Events.UPDATE
-      )?.[1];
+      const updateHandler = mockEventBus.on.mock.calls.find((call: unknown[]) => call[0] === Events.UPDATE)?.[1];
 
       vi.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();
@@ -528,9 +490,7 @@ describe('BUCAdapter', () => {
     it('should classify fault alarms as error', () => {
       mockBucModule.getAlarms.mockReturnValue(['Hardware Fault']);
 
-      const updateHandler = mockEventBus.on.mock.calls.find(
-        (call: unknown[]) => call[0] === Events.UPDATE
-      )?.[1];
+      const updateHandler = mockEventBus.on.mock.calls.find((call: unknown[]) => call[0] === Events.UPDATE)?.[1];
 
       vi.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();
@@ -541,9 +501,7 @@ describe('BUCAdapter', () => {
     it('should classify saturation alarms as warning', () => {
       mockBucModule.getAlarms.mockReturnValue(['Approaching saturation']);
 
-      const updateHandler = mockEventBus.on.mock.calls.find(
-        (call: unknown[]) => call[0] === Events.UPDATE
-      )?.[1];
+      const updateHandler = mockEventBus.on.mock.calls.find((call: unknown[]) => call[0] === Events.UPDATE)?.[1];
 
       vi.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();
@@ -554,9 +512,7 @@ describe('BUCAdapter', () => {
 
   describe('RF_FE_BUC_CHANGED event handler', () => {
     it('should sync DOM when BUC state changes', () => {
-      const stateHandler = mockEventBus.on.mock.calls.find(
-        (call: unknown[]) => call[0] === Events.RF_FE_BUC_CHANGED
-      )?.[1];
+      const stateHandler = mockEventBus.on.mock.calls.find((call: unknown[]) => call[0] === Events.RF_FE_BUC_CHANGED)?.[1];
       expect(stateHandler).toBeDefined();
 
       const newState: Partial<BUCState> = {
@@ -576,9 +532,7 @@ describe('BUCAdapter', () => {
     });
 
     it('should update power switch from state change', () => {
-      const stateHandler = mockEventBus.on.mock.calls.find(
-        (call: unknown[]) => call[0] === Events.RF_FE_BUC_CHANGED
-      )?.[1];
+      const stateHandler = mockEventBus.on.mock.calls.find((call: unknown[]) => call[0] === Events.RF_FE_BUC_CHANGED)?.[1];
 
       stateHandler({ isPowered: false });
 
@@ -587,9 +541,7 @@ describe('BUCAdapter', () => {
     });
 
     it('should update mute switch from state change', () => {
-      const stateHandler = mockEventBus.on.mock.calls.find(
-        (call: unknown[]) => call[0] === Events.RF_FE_BUC_CHANGED
-      )?.[1];
+      const stateHandler = mockEventBus.on.mock.calls.find((call: unknown[]) => call[0] === Events.RF_FE_BUC_CHANGED)?.[1];
 
       stateHandler({ isMuted: true });
 

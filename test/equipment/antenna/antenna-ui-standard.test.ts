@@ -52,10 +52,7 @@ describe('AntennaUIStandard', () => {
     });
 
     it('should create instance with custom config', () => {
-      const antenna = new AntennaUIStandard(
-        'test-parent',
-        ANTENNA_CONFIG_KEYS.KU_BAND_3M
-      );
+      const antenna = new AntennaUIStandard('test-parent', ANTENNA_CONFIG_KEYS.KU_BAND_3M);
       expect(antenna.config.band).toBe('Ku');
     });
 
@@ -65,24 +62,14 @@ describe('AntennaUIStandard', () => {
         elevation: 45 as Degrees,
         polarization: 15 as Degrees,
       };
-      const antenna = new AntennaUIStandard(
-        'test-parent',
-        ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK,
-        initialState
-      );
+      const antenna = new AntennaUIStandard('test-parent', ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK, initialState);
       expect(antenna.state.azimuth).toBe(180);
       expect(antenna.state.elevation).toBe(45);
       expect(antenna.state.polarization).toBe(15);
     });
 
     it('should create instance with team and server IDs', () => {
-      const antenna = new AntennaUIStandard(
-        'test-parent',
-        ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK,
-        {},
-        2,
-        3
-      );
+      const antenna = new AntennaUIStandard('test-parent', ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK, {}, 2, 3);
       expect(antenna.state.teamId).toBe(2);
       expect(antenna.state.serverId).toBe(3);
     });

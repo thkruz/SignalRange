@@ -31,15 +31,7 @@ describe('RotaryKnob', () => {
     document.body.innerHTML = '';
   });
 
-  const createKnobInDom = (
-    id: string,
-    initialValue = 50,
-    min = 0,
-    max = 100,
-    step = 1,
-    callback?: (value: number) => void,
-    valueOverride?: string
-  ): RotaryKnob => {
+  const createKnobInDom = (id: string, initialValue = 50, min = 0, max = 100, step = 1, callback?: (value: number) => void, valueOverride?: string): RotaryKnob => {
     const knob = new RotaryKnob(id, initialValue, min, max, step, callback, valueOverride);
     container.innerHTML = knob.html;
     return knob;

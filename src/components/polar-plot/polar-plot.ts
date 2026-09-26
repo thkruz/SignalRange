@@ -1,6 +1,6 @@
-import { html } from "@app/engine/utils/development/formatter";
-import { qs } from "@app/engine/utils/query-selector";
-import { Degrees } from "ootk";
+import { html } from '@app/engine/utils/development/formatter';
+import { qs } from '@app/engine/utils/query-selector';
+import { Degrees } from 'ootk';
 import './polar-plot.css';
 
 export interface PolarPlotConfig {
@@ -24,10 +24,7 @@ export class PolarPlot {
   private elevation: Degrees = 0 as Degrees;
   private readonly config: Required<PolarPlotConfig>;
 
-  constructor(
-    uniqueId: string,
-    config: PolarPlotConfig = {}
-  ) {
+  constructor(uniqueId: string, config: PolarPlotConfig = {}) {
     this.uniqueId = uniqueId;
     this.config = {
       width: config.width ?? 200,
@@ -229,10 +226,7 @@ export class PolarPlot {
     return this.dom_;
   }
 
-  static create(
-    id: string,
-    config?: PolarPlotConfig
-  ): PolarPlot {
+  static create(id: string, config?: PolarPlotConfig): PolarPlot {
     return new PolarPlot(id, config);
   }
 }

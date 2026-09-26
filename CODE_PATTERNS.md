@@ -11,6 +11,7 @@ This document outlines the architectural patterns, naming conventions, and best 
 - [Event-Driven Architecture](#event-driven-architecture)
 - [Module Composition](#module-composition)
 - [Testing Patterns](#testing-patterns)
+- [Plugins and Open Registries](#plugins-and-open-registries)
 
 ---
 
@@ -425,7 +426,7 @@ describe('RFFrontEnd class', () => {
   let parentElement: HTMLElement;
 
   beforeEach(() => {
-    jest.resetModules();
+    vi.resetModules();
     document.body.innerHTML = '<div id="test-root"></div>';
     parentElement = document.getElementById('test-root')!;
 
@@ -435,7 +436,7 @@ describe('RFFrontEnd class', () => {
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     document.body.innerHTML = '';
   });
 
@@ -513,7 +514,7 @@ it('works', () => {});
 
 1. **Arrange-Act-Assert**: Structure tests in three clear sections
 2. **One assertion per concept**: Each test should verify one behavior
-3. **Use spies for side effects**: Verify method calls with jest.spyOn()
+3. **Use spies for side effects**: Verify method calls with vi.spyOn()
 4. **Clean up**: Always restore mocks and clear DOM in afterEach
 5. **Test edge cases**: Include boundary conditions and error states
 6. **Use toBeCloseTo()**: For floating-point comparisons
@@ -530,6 +531,72 @@ const nfLinear = Math.pow(10, 0.6 / 10);
 const expectedTemp = 290 * (nfLinear - 1);
 expect(rfFrontEnd.state.lnb.noiseTemperature).toBeCloseTo(expectedTemp, 1);
 ```
+
+---
+
+## Plugins and Open Registries
+
+Phase 17 introduced a plugin system modelled on keeptrack-space. The patterns
+it relies on apply to any future extension point.
+
+### Registries over enums
+
+Equipment identity that a plugin may extend is an open registry seeded from the
+built-in table, not a closed enum. The enum stays for built-ins (and their
+autocomplete); the public id type widens to `Enum | (string & {})`:
+
+```typescript
+// antenna-registry.ts
+export type AntennaConfigId = ANTENNA_CONFIG_KEYS | (string & {});
+
+// antenna-core.ts resolves through the registry, never the record directly
+this.config = AntennaRegistry.getInstance().get(configId);
+```
+
+Rules a registry enforces: built-ins cannot be replaced, a plugin may replace
+only its own ids (hot reload), and an unknown id throws with the list of what
+would have matched. Campaign data is untouched by the widening.
+
+### Guarded private imports
+
+A descriptor in `plugin-manifest.ts` carries `privateImport` behind the
+compile-time flag so the OSS bundle never resolves the path:
+
+```typescript
+{
+  id: 'Authoring',
+  privateImport: __IS_PRIVATE__ ? () => import('@private/index') : undefined,
+  privateClassName: 'AuthoringPlugin',
+  defaultConfig: { enabled: true },
+  alwaysEnabled: true,
+}
+```
+
+Private-edition features register through the same `PluginApi` as external
+plugins. Do not add new `__IS_PRIVATE__` branches elsewhere; add a descriptor.
+
+### Boot order
+
+`App.initDom_()` starts `PluginManager.loadAll()` before `Router.init()`. The
+router keeps handling routes synchronously when the manifest has nothing to
+load (the OSS default) and holds scenario, sandbox, and unknown routes until
+`PluginManager.ready` settles otherwise. Anything a scenario page needs from a
+plugin must therefore be registered inside `register()`, not lazily.
+
+### Strings
+
+New user-facing strings go through `t7e()` (`src/locales/i18n.ts`) with the
+key in `src/locales/en.json`. Plugins keep to `plugins.<id>.*`. Only English is
+bundled; the API is what makes a second language a data change.
+
+### Sandbox equipment is data, scenarios are fixed
+
+`ScenarioManager`'s `scenario` setter passes sandboxes through
+`SandboxLoadoutService.applyToScenario()`, which clones only the stations it
+changes and returns the original settings object otherwise. Scored scenarios
+are never touched. The `?antenna=<id>` query override exists for e2e specs and
+the plugin dev harness; the LOADOUT control in the command bar is the operator
+path and restarts the sandbox from a cleared store.
 
 ---
 

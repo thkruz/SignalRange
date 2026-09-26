@@ -3,8 +3,8 @@ import { EventBus } from '../../src/events/event-bus';
 import { Events, ObjectiveCompletedData } from '../../src/events/events';
 import type { Character, Emotion } from '../../src/modal/character-enum';
 import { DialogManager } from '../../src/modal/dialog-manager';
-import { ScenarioManager } from '../../src/scenario-manager';
 import type { ScenarioData } from '../../src/ScenarioData';
+import { ScenarioManager } from '../../src/scenario-manager';
 import { ScenarioDialogManager } from '../../src/scenarios/scenario-dialog-manager';
 
 vi.mock('../../src/modal/dialog-manager');
@@ -88,19 +88,14 @@ describe('ScenarioDialogManager', () => {
       const manager = ScenarioDialogManager.getInstance();
       manager.initialize();
 
-      expect(onSpy).toHaveBeenCalledWith(
-        Events.OBJECTIVE_COMPLETED,
-        expect.any(Function)
-      );
+      expect(onSpy).toHaveBeenCalledWith(Events.OBJECTIVE_COMPLETED, expect.any(Function));
     });
   });
 
   describe('handleObjectiveCompleted', () => {
     it('should show dialog when objective has dialog clip', () => {
       mockScenarioManager.data = createMockScenarioData({
-        objectives: [
-          { id: 'obj-1', title: 'Find the beacon' } as any,
-        ],
+        objectives: [{ id: 'obj-1', title: 'Find the beacon' } as any],
         dialogClips: {
           objectives: {
             'obj-1': {
@@ -123,20 +118,12 @@ describe('ScenarioDialogManager', () => {
       // Fast-forward the 500ms timeout
       vi.advanceTimersByTime(500);
 
-      expect(mockDialogManager.show).toHaveBeenCalledWith(
-        'Great job finding the beacon!',
-        'alex',
-        'audio/success.mp3',
-        'Find the beacon',
-        'happy'
-      );
+      expect(mockDialogManager.show).toHaveBeenCalledWith('Great job finding the beacon!', 'alex', 'audio/success.mp3', 'Find the beacon', 'happy');
     });
 
     it('should not show dialog when objective has no dialog clip', () => {
       mockScenarioManager.data = createMockScenarioData({
-        objectives: [
-          { id: 'obj-1', title: 'Find the beacon' } as any,
-        ],
+        objectives: [{ id: 'obj-1', title: 'Find the beacon' } as any],
         dialogClips: {
           objectives: {},
         },
@@ -155,9 +142,7 @@ describe('ScenarioDialogManager', () => {
 
     it('should not show dialog when dialogClips is undefined', () => {
       mockScenarioManager.data = createMockScenarioData({
-        objectives: [
-          { id: 'obj-1', title: 'Find the beacon' } as any,
-        ],
+        objectives: [{ id: 'obj-1', title: 'Find the beacon' } as any],
       });
 
       const manager = ScenarioDialogManager.getInstance();
@@ -244,10 +229,7 @@ describe('ScenarioDialogManager', () => {
       manager.initialize();
       manager.destroy();
 
-      expect(offSpy).toHaveBeenCalledWith(
-        Events.OBJECTIVE_COMPLETED,
-        expect.any(Function)
-      );
+      expect(offSpy).toHaveBeenCalledWith(Events.OBJECTIVE_COMPLETED, expect.any(Function));
     });
 
     it('should clear dialog queue', () => {
@@ -340,10 +322,7 @@ describe('ScenarioDialogManager', () => {
 
     it('should handle multiple objective completions', () => {
       mockScenarioManager.data = createMockScenarioData({
-        objectives: [
-          { id: 'obj-1', title: 'First' } as any,
-          { id: 'obj-2', title: 'Second' } as any,
-        ],
+        objectives: [{ id: 'obj-1', title: 'First' } as any, { id: 'obj-2', title: 'Second' } as any],
         dialogClips: {
           objectives: {
             'obj-1': {

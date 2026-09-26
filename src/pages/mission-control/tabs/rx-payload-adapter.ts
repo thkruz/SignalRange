@@ -1,12 +1,12 @@
-import { CardAlarmBadge } from "@app/components/card-alarm-badge/card-alarm-badge";
-import { qs } from "@app/engine/utils/query-selector";
-import { AlarmStatus } from "@app/equipment/base-equipment";
-import { CryptoModule } from "@app/equipment/crypto";
-import { FECSimulator, FECSimulatorInput } from "@app/equipment/receiver/fec-simulator";
-import { Receiver } from "@app/equipment/receiver/receiver";
-import { EventBus } from "@app/events/event-bus";
-import { Events } from "@app/events/events";
-import { FaultInjector } from "@app/faults";
+import { CardAlarmBadge } from '@app/components/card-alarm-badge/card-alarm-badge';
+import { qs } from '@app/engine/utils/query-selector';
+import { AlarmStatus } from '@app/equipment/base-equipment';
+import { CryptoModule } from '@app/equipment/crypto';
+import { FECSimulator, FECSimulatorInput } from '@app/equipment/receiver/fec-simulator';
+import { Receiver } from '@app/equipment/receiver/receiver';
+import { EventBus } from '@app/events/event-bus';
+import { Events } from '@app/events/events';
+import { FaultInjector } from '@app/faults';
 
 /**
  * RX Payload state interface with data integrity metrics
@@ -115,11 +115,7 @@ export class RxPayloadAdapter {
    * @param receiver Optional receiver for dynamic FEC simulation
    * @param groundStationId Ground station ID for fault injection scoping
    */
-  constructor(
-    containerEl: HTMLElement,
-    receiver?: Receiver | null,
-    groundStationId: string = 'default'
-  ) {
+  constructor(containerEl: HTMLElement, receiver?: Receiver | null, groundStationId: string = 'default') {
     this.containerEl_ = containerEl;
     this.receiver_ = receiver ?? null;
     this.groundStationId_ = groundStationId;
@@ -281,9 +277,7 @@ export class RxPayloadAdapter {
     const frameSyncEl = this.domCache_.get('frameSync');
     if (frameSyncEl) {
       frameSyncEl.textContent = state.frameSyncLocked ? 'Locked' : 'Unlocked';
-      frameSyncEl.className = state.frameSyncLocked
-        ? 'status-badge status-badge-green'
-        : 'status-badge status-badge-red';
+      frameSyncEl.className = state.frameSyncLocked ? 'status-badge status-badge-green' : 'status-badge status-badge-red';
     }
 
     this.updateTextContent_('syncPattern', state.frameSyncPattern);
@@ -293,9 +287,7 @@ export class RxPayloadAdapter {
     const crcStatusEl = this.domCache_.get('crcStatus');
     if (crcStatusEl) {
       crcStatusEl.textContent = state.crcValid ? 'Valid' : 'Errors';
-      crcStatusEl.className = state.crcValid
-        ? 'status-badge status-badge-green'
-        : 'status-badge status-badge-red';
+      crcStatusEl.className = state.crcValid ? 'status-badge status-badge-green' : 'status-badge status-badge-red';
     }
 
     this.updateTextContent_('crcErrors', state.crcErrorCount.toLocaleString());
@@ -315,18 +307,14 @@ export class RxPayloadAdapter {
     const rsUncorrectableEl = this.domCache_.get('rsUncorrectable');
     if (rsUncorrectableEl) {
       rsUncorrectableEl.textContent = state.rsUncorrectableBlocks.toLocaleString();
-      rsUncorrectableEl.className = state.rsUncorrectableBlocks > 0
-        ? 'metric-value text-danger fw-bold'
-        : 'metric-value';
+      rsUncorrectableEl.className = state.rsUncorrectableBlocks > 0 ? 'metric-value text-danger fw-bold' : 'metric-value';
     }
 
     // Viterbi section
     const viterbiStatusEl = this.domCache_.get('viterbiStatus');
     if (viterbiStatusEl) {
       viterbiStatusEl.textContent = state.viterbiEnabled ? 'Enabled' : 'Disabled';
-      viterbiStatusEl.className = state.viterbiEnabled
-        ? 'status-badge status-badge-green'
-        : 'status-badge status-badge-yellow';
+      viterbiStatusEl.className = state.viterbiEnabled ? 'status-badge status-badge-green' : 'status-badge status-badge-yellow';
     }
 
     this.updateTextContent_('viterbiCodeRate', state.viterbiCodeRate);
@@ -364,17 +352,13 @@ export class RxPayloadAdapter {
     const decAuthTagEl = this.domCache_.get('decAuthTag');
     if (decAuthTagEl) {
       decAuthTagEl.textContent = state.decryptionAuthTagVerified ? 'Verified' : 'Failed';
-      decAuthTagEl.className = state.decryptionAuthTagVerified
-        ? 'status-badge status-badge-green'
-        : 'status-badge status-badge-red';
+      decAuthTagEl.className = state.decryptionAuthTagVerified ? 'status-badge status-badge-green' : 'status-badge status-badge-red';
     }
 
     const decSuccessEl = this.domCache_.get('decSuccess');
     if (decSuccessEl) {
       decSuccessEl.textContent = state.decryptionSuccess ? 'Success' : 'Failed';
-      decSuccessEl.className = state.decryptionSuccess
-        ? 'status-badge status-badge-green'
-        : 'status-badge status-badge-red';
+      decSuccessEl.className = state.decryptionSuccess ? 'status-badge status-badge-green' : 'status-badge status-badge-red';
     }
 
     // Update alarm badge

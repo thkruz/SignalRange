@@ -30,6 +30,7 @@ vi.mock('../../../src/engine/utils/query-selector', () => ({
 }));
 
 import { ObjectivesManager } from '../../../src/objectives/objectives-manager';
+
 describe('GlobalCommandBar', () => {
   let containerEl: HTMLElement;
   let commandBar: GlobalCommandBar;
@@ -71,10 +72,7 @@ describe('GlobalCommandBar', () => {
     });
 
     it('should subscribe to ALARM_STATE_CHANGED events', () => {
-      expect(mockEventBus.on).toHaveBeenCalledWith(
-        Events.ALARM_STATE_CHANGED,
-        expect.any(Function)
-      );
+      expect(mockEventBus.on).toHaveBeenCalledWith(Events.ALARM_STATE_CHANGED, expect.any(Function));
     });
   });
 
@@ -152,9 +150,7 @@ describe('GlobalCommandBar', () => {
 
   describe('alarm state handling', () => {
     it('should update alarm bar on ALARM_STATE_CHANGED event', () => {
-      const alarmHandler = mockEventBus.on.mock.calls.find(
-        (call: [string, Function]) => call[0] === Events.ALARM_STATE_CHANGED
-      )?.[1];
+      const alarmHandler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.ALARM_STATE_CHANGED)?.[1];
 
       const mockAlarms: AggregatedAlarm[] = [
         {
@@ -180,9 +176,7 @@ describe('GlobalCommandBar', () => {
     });
 
     it('should show healthy state when no alarms', () => {
-      const alarmHandler = mockEventBus.on.mock.calls.find(
-        (call: [string, Function]) => call[0] === Events.ALARM_STATE_CHANGED
-      )?.[1];
+      const alarmHandler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.ALARM_STATE_CHANGED)?.[1];
 
       const alarmData: AlarmStateChangedData = {
         alarms: [],
@@ -196,9 +190,7 @@ describe('GlobalCommandBar', () => {
     });
 
     it('should show warning state for warning severity', () => {
-      const alarmHandler = mockEventBus.on.mock.calls.find(
-        (call: [string, Function]) => call[0] === Events.ALARM_STATE_CHANGED
-      )?.[1];
+      const alarmHandler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.ALARM_STATE_CHANGED)?.[1];
 
       const mockAlarms: AggregatedAlarm[] = [
         {
@@ -222,9 +214,7 @@ describe('GlobalCommandBar', () => {
     });
 
     it('should show info state for info severity', () => {
-      const alarmHandler = mockEventBus.on.mock.calls.find(
-        (call: [string, Function]) => call[0] === Events.ALARM_STATE_CHANGED
-      )?.[1];
+      const alarmHandler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.ALARM_STATE_CHANGED)?.[1];
 
       const mockAlarms: AggregatedAlarm[] = [
         {
@@ -248,9 +238,7 @@ describe('GlobalCommandBar', () => {
     });
 
     it('should render error count badge', () => {
-      const alarmHandler = mockEventBus.on.mock.calls.find(
-        (call: [string, Function]) => call[0] === Events.ALARM_STATE_CHANGED
-      )?.[1];
+      const alarmHandler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.ALARM_STATE_CHANGED)?.[1];
 
       const mockAlarms: AggregatedAlarm[] = [
         {
@@ -284,9 +272,7 @@ describe('GlobalCommandBar', () => {
     });
 
     it('should render warning count badge', () => {
-      const alarmHandler = mockEventBus.on.mock.calls.find(
-        (call: [string, Function]) => call[0] === Events.ALARM_STATE_CHANGED
-      )?.[1];
+      const alarmHandler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.ALARM_STATE_CHANGED)?.[1];
 
       const mockAlarms: AggregatedAlarm[] = [
         {
@@ -311,19 +297,19 @@ describe('GlobalCommandBar', () => {
     });
 
     it('should render max 3 inline alarms', () => {
-      const alarmHandler = mockEventBus.on.mock.calls.find(
-        (call: [string, Function]) => call[0] === Events.ALARM_STATE_CHANGED
-      )?.[1];
+      const alarmHandler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.ALARM_STATE_CHANGED)?.[1];
 
-      const mockAlarms: AggregatedAlarm[] = Array(5).fill(null).map((_, i) => ({
-        alarmId: `error-${i}`,
-        assetId: 'GS-001',
-        equipmentType: 'antenna',
-        equipmentIndex: i,
-        severity: 'error' as const,
-        message: `Error ${i}`,
-        timestamp: Date.now(),
-      }));
+      const mockAlarms: AggregatedAlarm[] = Array(5)
+        .fill(null)
+        .map((_, i) => ({
+          alarmId: `error-${i}`,
+          assetId: 'GS-001',
+          equipmentType: 'antenna',
+          equipmentIndex: i,
+          severity: 'error' as const,
+          message: `Error ${i}`,
+          timestamp: Date.now(),
+        }));
 
       alarmHandler?.({
         alarms: mockAlarms,
@@ -335,19 +321,19 @@ describe('GlobalCommandBar', () => {
     });
 
     it('should show overflow indicator when more than 3 alarms', () => {
-      const alarmHandler = mockEventBus.on.mock.calls.find(
-        (call: [string, Function]) => call[0] === Events.ALARM_STATE_CHANGED
-      )?.[1];
+      const alarmHandler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.ALARM_STATE_CHANGED)?.[1];
 
-      const mockAlarms: AggregatedAlarm[] = Array(5).fill(null).map((_, i) => ({
-        alarmId: `error-${i}`,
-        assetId: 'GS-001',
-        equipmentType: 'antenna',
-        equipmentIndex: i,
-        severity: 'error' as const,
-        message: `Error ${i}`,
-        timestamp: Date.now(),
-      }));
+      const mockAlarms: AggregatedAlarm[] = Array(5)
+        .fill(null)
+        .map((_, i) => ({
+          alarmId: `error-${i}`,
+          assetId: 'GS-001',
+          equipmentType: 'antenna',
+          equipmentIndex: i,
+          severity: 'error' as const,
+          message: `Error ${i}`,
+          timestamp: Date.now(),
+        }));
 
       alarmHandler?.({
         alarms: mockAlarms,
@@ -360,9 +346,7 @@ describe('GlobalCommandBar', () => {
     });
 
     it('should sort alarms by severity (errors first)', () => {
-      const alarmHandler = mockEventBus.on.mock.calls.find(
-        (call: [string, Function]) => call[0] === Events.ALARM_STATE_CHANGED
-      )?.[1];
+      const alarmHandler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.ALARM_STATE_CHANGED)?.[1];
 
       const mockAlarms: AggregatedAlarm[] = [
         {
@@ -436,7 +420,6 @@ describe('GlobalCommandBar', () => {
     });
 
     it('should show scenario time remaining when timer is active', () => {
-
       ObjectivesManager.getInstance.mockReturnValue({
         hasScenarioTimer: vi.fn(() => true),
         getScenarioTimeRemaining: vi.fn(() => 120),
@@ -468,7 +451,6 @@ describe('GlobalCommandBar', () => {
     });
 
     it('should add timer-urgent class when under 60 seconds', () => {
-
       ObjectivesManager.getInstance.mockReturnValue({
         hasScenarioTimer: vi.fn(() => true),
         getScenarioTimeRemaining: vi.fn(() => 30),
@@ -499,7 +481,6 @@ describe('GlobalCommandBar', () => {
     });
 
     it('should show objective timer with active timed objective', () => {
-
       ObjectivesManager.getInstance.mockReturnValue({
         hasScenarioTimer: vi.fn(() => false),
         isQuizPassed: vi.fn(() => false),
@@ -543,7 +524,6 @@ describe('GlobalCommandBar', () => {
     });
 
     it('should show FAIL when objective fails', () => {
-
       ObjectivesManager.getInstance.mockReturnValue({
         hasScenarioTimer: vi.fn(() => false),
         isQuizPassed: vi.fn(() => false),
@@ -586,7 +566,6 @@ describe('GlobalCommandBar', () => {
     });
 
     it('should add objective timer-warning class when under 60 seconds', () => {
-
       ObjectivesManager.getInstance.mockReturnValue({
         hasScenarioTimer: vi.fn(() => false),
         isQuizPassed: vi.fn(() => false),
@@ -626,16 +605,11 @@ describe('GlobalCommandBar', () => {
 
   describe('simulated time handling', () => {
     it('should subscribe to SIMULATED_TIME_TICK events', () => {
-      expect(mockEventBus.on).toHaveBeenCalledWith(
-        Events.SIMULATED_TIME_TICK,
-        expect.any(Function)
-      );
+      expect(mockEventBus.on).toHaveBeenCalledWith(Events.SIMULATED_TIME_TICK, expect.any(Function));
     });
 
     it('should update clock on SIMULATED_TIME_TICK event', () => {
-      const timeTickHandler = mockEventBus.on.mock.calls.find(
-        (call: [string, Function]) => call[0] === Events.SIMULATED_TIME_TICK
-      )?.[1];
+      const timeTickHandler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.SIMULATED_TIME_TICK)?.[1];
 
       timeTickHandler?.({ timeFormatted: '01 Jan 2024 12:34:56' });
 
@@ -646,18 +620,13 @@ describe('GlobalCommandBar', () => {
     it('should unsubscribe from SIMULATED_TIME_TICK on dispose', () => {
       commandBar.dispose();
 
-      expect(mockEventBus.off).toHaveBeenCalledWith(
-        Events.SIMULATED_TIME_TICK,
-        expect.any(Function)
-      );
+      expect(mockEventBus.off).toHaveBeenCalledWith(Events.SIMULATED_TIME_TICK, expect.any(Function));
     });
   });
 
   describe('alarm severity colors and icons', () => {
     it('should apply success color for unknown severity', () => {
-      const alarmHandler = mockEventBus.on.mock.calls.find(
-        (call: [string, Function]) => call[0] === Events.ALARM_STATE_CHANGED
-      )?.[1];
+      const alarmHandler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.ALARM_STATE_CHANGED)?.[1];
 
       const mockAlarms: AggregatedAlarm[] = [
         {
@@ -681,9 +650,7 @@ describe('GlobalCommandBar', () => {
     });
 
     it('should render info count badge', () => {
-      const alarmHandler = mockEventBus.on.mock.calls.find(
-        (call: [string, Function]) => call[0] === Events.ALARM_STATE_CHANGED
-      )?.[1];
+      const alarmHandler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.ALARM_STATE_CHANGED)?.[1];
 
       const mockAlarms: AggregatedAlarm[] = [
         {
@@ -721,10 +688,7 @@ describe('GlobalCommandBar', () => {
     it('should unsubscribe from EventBus events', () => {
       commandBar.dispose();
 
-      expect(mockEventBus.off).toHaveBeenCalledWith(
-        Events.ALARM_STATE_CHANGED,
-        expect.any(Function)
-      );
+      expect(mockEventBus.off).toHaveBeenCalledWith(Events.ALARM_STATE_CHANGED, expect.any(Function));
     });
 
     it('should clear timer interval', () => {

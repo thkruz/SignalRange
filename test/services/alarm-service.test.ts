@@ -90,26 +90,16 @@ describe('AlarmService', () => {
       state: { id: 'alpha', isOperational: true },
       antennas: [
         {
-          getStatusAlarms: vi
-            .fn()
-            .mockReturnValue([alarm('error', 'ANT FAIL'), alarm('success', 'OK')]),
+          getStatusAlarms: vi.fn().mockReturnValue([alarm('error', 'ANT FAIL'), alarm('success', 'OK')]),
         },
       ],
       rfFrontEnds: [
         {
-          getStatusAlarms: vi
-            .fn()
-            .mockImplementation((rfCase: number) =>
-              rfCase === 1 ? [alarm('warning', 'RF WARN')] : [alarm('info', 'RF INFO')]
-            ),
+          getStatusAlarms: vi.fn().mockImplementation((rfCase: number) => (rfCase === 1 ? [alarm('warning', 'RF WARN')] : [alarm('info', 'RF INFO')])),
         },
       ],
-      transmitters: [
-        { getStatusAlarms: vi.fn().mockReturnValue([alarm('info', 'TX INFO')]) },
-      ],
-      receivers: [
-        { getStatusAlarms: vi.fn().mockReturnValue([alarm('warning', 'RX WARN')]) },
-      ],
+      transmitters: [{ getStatusAlarms: vi.fn().mockReturnValue([alarm('info', 'TX INFO')]) }],
+      receivers: [{ getStatusAlarms: vi.fn().mockReturnValue([alarm('warning', 'RX WARN')]) }],
     });
 
     const nonOperational = gs({

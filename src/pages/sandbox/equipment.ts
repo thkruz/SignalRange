@@ -1,21 +1,21 @@
-import { BaseElement } from "@app/components/base-element";
-import { qs } from "@app/engine/utils/query-selector";
-import { ANTENNA_CONFIG_KEYS, AntennaCore, AntennaUIBasic } from "@app/equipment/antenna";
-import { AntennaUIModern } from "@app/equipment/antenna/antenna-ui-modern";
-import { RFFrontEndCore } from "@app/equipment/rf-front-end/rf-front-end-core";
-import { createRFFrontEnd } from "@app/equipment/rf-front-end/rf-front-end-factory";
-import { EventBus } from "@app/events/event-bus";
-import { Events } from "@app/events/events";
-import { DialogHistoryBox } from "@app/modal/dialog-history-box";
-import { DraggableHtmlBox } from "@app/modal/draggable-html-box";
-import { ObjectivesManager } from "@app/objectives";
-import { ScenarioManager, SimulationSettings } from "@app/scenario-manager";
-import { SimulationManager } from "@app/simulation/simulation-manager";
-import { html } from "@app/engine/utils/development/formatter";
+import { BaseElement } from '@app/components/base-element';
+import { html } from '@app/engine/utils/development/formatter';
+import { qs } from '@app/engine/utils/query-selector';
+import { ANTENNA_CONFIG_KEYS, AntennaCore, AntennaUIBasic } from '@app/equipment/antenna';
+import { AntennaUIModern } from '@app/equipment/antenna/antenna-ui-modern';
 import { RealTimeSpectrumAnalyzer } from '@app/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer';
 import { Receiver } from '@app/equipment/receiver/receiver';
+import { RFFrontEndCore } from '@app/equipment/rf-front-end/rf-front-end-core';
+import { createRFFrontEnd } from '@app/equipment/rf-front-end/rf-front-end-factory';
 import { Transmitter } from '@app/equipment/transmitter/transmitter';
-import { SandboxPage } from "@app/pages/sandbox-page";
+import { EventBus } from '@app/events/event-bus';
+import { Events } from '@app/events/events';
+import { DialogHistoryBox } from '@app/modal/dialog-history-box';
+import { DraggableHtmlBox } from '@app/modal/draggable-html-box';
+import { ObjectivesManager } from '@app/objectives';
+import { SandboxPage } from '@app/pages/sandbox-page';
+import { ScenarioManager, SimulationSettings } from '@app/scenario-manager';
+import { SimulationManager } from '@app/simulation/simulation-manager';
 import './equipment.css';
 
 /**
@@ -59,7 +59,6 @@ export class Equipment extends BaseElement {
   }
 
   protected addEventListeners_(): void {
-
     const missionBriefUrl = ScenarioManager.getInstance().settings.missionBriefUrl;
     if (missionBriefUrl) {
       this.addMissionBriefListener_(missionBriefUrl);
@@ -137,7 +136,7 @@ export class Equipment extends BaseElement {
 
   private initEquipment_(settings: SimulationSettings): void {
     // Initialize antennas
-    for (let i = 1; i <= (settings.antennas.length); i++) {
+    for (let i = 1; i <= settings.antennas.length; i++) {
       const antennaConfigId = settings.antennas[i - 1];
       let antenna: AntennaCore;
 

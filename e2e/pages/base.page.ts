@@ -1,4 +1,4 @@
-import { Page, Locator } from '@playwright/test';
+import { Locator, Page } from '@playwright/test';
 
 /**
  * Abstract base class for all page objects.
@@ -46,9 +46,6 @@ export abstract class BasePage {
    * Wait for navigation to complete after an action.
    */
   protected async waitForNavigation(action: () => Promise<void>): Promise<void> {
-    await Promise.all([
-      this.page.waitForURL(/.*/),
-      action(),
-    ]);
+    await Promise.all([this.page.waitForURL(/.*/), action()]);
   }
 }

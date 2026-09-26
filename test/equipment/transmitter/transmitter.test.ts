@@ -4,6 +4,7 @@ import { Transmitter, TransmitterModem, TransmitterState } from '../../../src/eq
 import { EventBus } from '../../../src/events/event-bus';
 import { Events } from '../../../src/events/events';
 import { SignalOrigin } from '../../../src/signal-origin';
+import { advanceSimTime } from '../../helpers/sim-time';
 
 // Mock HTMLMediaElement.prototype.play for jsdom compatibility
 Object.defineProperty(HTMLMediaElement.prototype, 'play', {
@@ -121,19 +122,17 @@ describe('Transmitter class', () => {
 
     it('should merge partial modem overrides by modem number', () => {
       const overrides: Partial<TransmitterState> = {
-        modems: [
-          { modem_number: 2, antenna_id: 2 } as TransmitterModem,
-        ],
+        modems: [{ modem_number: 2, antenna_id: 2 } as TransmitterModem],
       };
 
       transmitter = new Transmitter('test-root', overrides);
 
       // Modem 2 should have overridden values
-      const modem2 = transmitter.state.modems.find(m => m.modem_number === 2);
+      const modem2 = transmitter.state.modems.find((m) => m.modem_number === 2);
       expect(modem2?.antenna_id).toBe(2);
 
       // Other modems should have defaults
-      const modem1 = transmitter.state.modems.find(m => m.modem_number === 1);
+      const modem1 = transmitter.state.modems.find((m) => m.modem_number === 1);
       expect(modem1?.antenna_id).toBe(1);
     });
 
@@ -152,7 +151,7 @@ describe('Transmitter class', () => {
 
       transmitter = new Transmitter('test-root', overrides);
 
-      const modem1 = transmitter.state.modems.find(m => m.modem_number === 1);
+      const modem1 = transmitter.state.modems.find((m) => m.modem_number === 1);
       expect(modem1?.ifSignal.frequency).toBe(1500e6);
       expect(modem1?.ifSignal.power).toBe(-10);
       // Non-overridden values should remain default
@@ -530,8 +529,8 @@ describe('Transmitter class', () => {
       const alarms = transmitter.getStatusAlarms();
 
       // Should have both warning (>90%) and error (>100%) alarms
-      const errorAlarms = alarms.filter(a => a.severity === 'error');
-      expect(errorAlarms.some(a => a.message.includes('Exceeds Max'))).toBe(true);
+      const errorAlarms = alarms.filter((a) => a.severity === 'error');
+      expect(errorAlarms.some((a) => a.message.includes('Exceeds Max'))).toBe(true);
     });
 
     it('should return warning when transmitting modem approaches power budget', () => {
@@ -542,7 +541,7 @@ describe('Transmitter class', () => {
 
       const alarms = transmitter.getStatusAlarms();
 
-      const warningAlarms = alarms.filter(a => a.severity === 'warning');
+      const warningAlarms = alarms.filter((a) => a.severity === 'warning');
       // At 90% threshold, may or may not trigger depending on rounding
       expect(warningAlarms.length).toBeGreaterThanOrEqual(0);
     });
@@ -661,7 +660,7 @@ describe('Transmitter class', () => {
       // Power on has 4000ms delay
       expect(transmitter.activeModem.isPowered).toBe(false);
 
-      vi.advanceTimersByTime(4100);
+      advanceSimTime(4100);
 
       expect(transmitter.activeModem.isPowered).toBe(true);
     });
@@ -674,7 +673,7 @@ describe('Transmitter class', () => {
       // Power off has 250ms delay
       expect(transmitter.activeModem.isPowered).toBe(true);
 
-      vi.advanceTimersByTime(300);
+      advanceSimTime(300);
 
       expect(transmitter.activeModem.isPowered).toBe(false);
     });
@@ -705,7 +704,7 @@ describe('Transmitter class', () => {
 
       expect(emitSpy).not.toHaveBeenCalledWith(Events.TX_CONFIG_CHANGED, expect.any(Object));
 
-      vi.advanceTimersByTime(300);
+      advanceSimTime(300);
 
       expect(emitSpy).toHaveBeenCalledWith(Events.TX_CONFIG_CHANGED, expect.any(Object));
 
@@ -735,7 +734,7 @@ describe('Transmitter class', () => {
 
       transmitter.handleFaultReset();
 
-      vi.advanceTimersByTime(300);
+      advanceSimTime(300);
 
       expect(transmitter.activeModem.isFaulted).toBe(false);
       expect(transmitter.activeModem.isFaultSwitchUp).toBe(false);
@@ -747,7 +746,7 @@ describe('Transmitter class', () => {
 
       transmitter.handleFaultReset();
 
-      vi.advanceTimersByTime(300);
+      advanceSimTime(300);
 
       expect(transmitter.activeModem.isFaulted).toBe(true);
     });
@@ -760,7 +759,7 @@ describe('Transmitter class', () => {
       // Should emit immediately
       expect(emitSpy).toHaveBeenCalledWith(Events.TX_CONFIG_CHANGED, expect.any(Object));
 
-      vi.advanceTimersByTime(300);
+      advanceSimTime(300);
 
       // Should emit again after timeout
       expect(emitSpy).toHaveBeenCalledTimes(2);
@@ -998,7 +997,7 @@ describe('Transmitter class', () => {
     });
 
     it('should show no LED color when no modems are powered', () => {
-      transmitter.state.modems.forEach(m => m.isPowered = false);
+      transmitter.state.modems.forEach((m) => (m.isPowered = false));
       (transmitter as any).lastRenderState = null;
       (transmitter as any).syncDomWithState();
 
@@ -1009,7 +1008,7 @@ describe('Transmitter class', () => {
 
     it('should show green LED when powered but not transmitting', () => {
       transmitter.state.modems[0].isPowered = true;
-      transmitter.state.modems.forEach(m => m.isTransmitting = false);
+      transmitter.state.modems.forEach((m) => (m.isTransmitting = false));
       (transmitter as any).lastRenderState = null;
       (transmitter as any).syncDomWithState();
 

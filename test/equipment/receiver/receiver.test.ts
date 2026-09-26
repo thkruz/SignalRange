@@ -4,6 +4,7 @@ import { Receiver, ReceiverModemState, ReceiverState } from '../../../src/equipm
 import { TapPoint } from '../../../src/equipment/rf-front-end/coupler-module/tap-points';
 import { EventBus } from '../../../src/events/event-bus';
 import { Events } from '../../../src/events/events';
+import { advanceSimTime } from '../../helpers/sim-time';
 
 // Mock HTMLMediaElement.prototype.play for jsdom compatibility
 Object.defineProperty(HTMLMediaElement.prototype, 'play', {
@@ -33,20 +34,17 @@ function createMockIfSignal(overrides: Partial<IfSignal> = {}): IfSignal {
 }
 
 // Helper to create mock RF front-end
-function createMockRfFrontEnd(signals: IfSignal[] = [], options: {
-  externalNoise?: number;
-  totalRxGain?: number;
-  noiseFloorNoGain?: number;
-  agcOutputPower?: number;
-  notchState?: any;
-} = {}) {
-  const {
-    externalNoise = -120,
-    totalRxGain = 60,
-    noiseFloorNoGain = -174,
-    agcOutputPower = -30,
-    notchState = null,
-  } = options;
+function createMockRfFrontEnd(
+  signals: IfSignal[] = [],
+  options: {
+    externalNoise?: number;
+    totalRxGain?: number;
+    noiseFloorNoGain?: number;
+    agcOutputPower?: number;
+    notchState?: any;
+  } = {}
+) {
+  const { externalNoise = -120, totalRxGain = 60, noiseFloorNoGain = -174, agcOutputPower = -30, notchState = null } = options;
 
   return {
     externalNoise,
@@ -158,20 +156,18 @@ describe('Receiver class', () => {
 
     it('should merge partial modem overrides by modem number', () => {
       const overrides: Partial<ReceiverState> = {
-        modems: [
-          { modemNumber: 2, frequency: 1500 as MHz, bandwidth: 36 as MHz } as ReceiverModemState,
-        ],
+        modems: [{ modemNumber: 2, frequency: 1500 as MHz, bandwidth: 36 as MHz } as ReceiverModemState],
       };
 
       receiver = new Receiver('test-root', [], overrides);
 
       // Modem 2 should have overridden values
-      const modem2 = receiver.state.modems.find(m => m.modemNumber === 2);
+      const modem2 = receiver.state.modems.find((m) => m.modemNumber === 2);
       expect(modem2?.frequency).toBe(1500);
       expect(modem2?.bandwidth).toBe(36);
 
       // Other modems should have defaults
-      const modem1 = receiver.state.modems.find(m => m.modemNumber === 1);
+      const modem1 = receiver.state.modems.find((m) => m.modemNumber === 1);
       expect(modem1?.frequency).toBe(1400);
     });
 
@@ -363,9 +359,7 @@ describe('Receiver class', () => {
     });
 
     it('should return info alarm when signals are detected', () => {
-      receiver.state.availableSignals = [
-        { id: 'sig1', feed: 'test.mp4', isDegraded: false },
-      ];
+      receiver.state.availableSignals = [{ id: 'sig1', feed: 'test.mp4', isDegraded: false }];
 
       const alarms = receiver.getStatusAlarms();
 
@@ -888,9 +882,7 @@ describe('Receiver class', () => {
       const mockRfFrontEnd = createMockRfFrontEnd([signal], {
         notchState: {
           isPowered: true,
-          notches: [
-            { enabled: false, centerFrequency: 1400, bandwidth: 5 },
-          ],
+          notches: [{ enabled: false, centerFrequency: 1400, bandwidth: 5 }],
         },
       });
       receiver.connectRfFrontEnd(mockRfFrontEnd as any);
@@ -1039,7 +1031,7 @@ describe('Receiver class', () => {
       receiver.handlePowerToggle(false);
 
       // Power off has 250ms delay
-      vi.advanceTimersByTime(300);
+      advanceSimTime(300);
 
       expect(receiver.activeModem.isPowered).toBe(false);
     });
@@ -1048,7 +1040,7 @@ describe('Receiver class', () => {
       const emitSpy = vi.spyOn(receiver, 'emit');
 
       receiver.handlePowerToggle(false);
-      vi.advanceTimersByTime(300);
+      advanceSimTime(300);
 
       expect(emitSpy).toHaveBeenCalledWith(
         Events.RX_CONFIG_CHANGED,

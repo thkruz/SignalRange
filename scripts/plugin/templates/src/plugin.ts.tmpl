@@ -1,0 +1,28 @@
+/**
+ * __DISPLAY_NAME__: a SignalRange plugin.
+ *
+ * This file is the plugin's entry point. It MUST export a class named
+ * `__CLASS_NAME__` whose `readonly id` equals `__PLUGIN_ID__`; both are declared
+ * in signal-range-plugin.json and the host wires the plugin in by those names.
+ *
+ * The stable surface you can rely on within a major version: the
+ * SignalRangePlugin base class, PluginApi, the antenna registry, the router
+ * and campaign manager it exposes, and t7e. See docs/plugin-development-guide.md.
+ */
+import { AntennaRegistry } from '@app/equipment/antenna/antenna-registry';
+import { type PluginApi, SignalRangePlugin } from '@app/plugins/signal-range-plugin';
+import { ANTENNA_ID, antennaConfig } from './antenna-config';
+
+export class __CLASS_NAME__ extends SignalRangePlugin {
+  readonly id = '__PLUGIN_ID__';
+
+  register(api: PluginApi): void {
+    // Strings live in locales/en.json under plugins.__PLUGIN_ID__ and are
+    // merged before register() runs, so t7e already knows them here.
+    api.antennas.register(ANTENNA_ID, { ...antennaConfig, name: api.t7e('plugins.__PLUGIN_ID__.antennaName') }, { source: `plugin:${this.id}` });
+  }
+
+  dispose(): void {
+    AntennaRegistry.getInstance().unregister(ANTENNA_ID);
+  }
+}

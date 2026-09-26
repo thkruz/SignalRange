@@ -1,8 +1,8 @@
 import { vi } from 'vitest';
-import { App } from "../src/app";
-import { EventBus } from "../src/events/event-bus";
-import { Events } from "../src/events/events";
-import { SimulationManager } from "../src/simulation/simulation-manager";
+import { App } from '../src/app';
+import { EventBus } from '../src/events/event-bus';
+import { Events } from '../src/events/events';
+import { SimulationManager } from '../src/simulation/simulation-manager';
 
 // Tests for App class
 
@@ -16,7 +16,6 @@ describe('App class', () => {
     vi.resetModules();
     App.__resetAll__();
 
-
     // Ensure a clean DOM root for BaseElement.init_ calls
     document.body.innerHTML = '<div id="root"></div>';
 
@@ -25,7 +24,10 @@ describe('App class', () => {
     // records the scheduled callback but never auto-runs it - tests drive the tick
     // manually. Use vi.stubGlobal (not `global.x =`) so the stub overrides the
     // binding jsdom module code actually resolves against.
-    vi.stubGlobal('requestAnimationFrame', vi.fn(() => 1));
+    vi.stubGlobal(
+      'requestAnimationFrame',
+      vi.fn(() => 1)
+    );
   });
 
   afterEach(() => {
@@ -60,10 +62,13 @@ describe('App class', () => {
   it('SimulationManager game loop emits UPDATE and DRAW on a tick', () => {
     // Capture the most recently scheduled frame so we can drive ticks manually.
     let frame: FrameRequestCallback | undefined;
-    vi.stubGlobal('requestAnimationFrame', vi.fn((cb: FrameRequestCallback) => {
-      frame = cb;
-      return 1;
-    }));
+    vi.stubGlobal(
+      'requestAnimationFrame',
+      vi.fn((cb: FrameRequestCallback) => {
+        frame = cb;
+        return 1;
+      })
+    );
 
     // App.create() sets window.signalRange (required by SimulationManager.getInstance)
     // and then the router destroys the init-time simulation. Construct a fresh, live
@@ -72,11 +77,15 @@ describe('App class', () => {
     SimulationManager.destroy();
 
     const emitSpy = vi.spyOn(EventBus.getInstance(), 'emit');
+    const t0 = performance.now();
     SimulationManager.getInstance();
 
-    // Run a single game-loop tick (the constructor scheduled it via rAF).
+    // Run a single game-loop tick (the constructor scheduled it via rAF), one
+    // 60 fps frame later so the fixed-step loop owes exactly one UPDATE.
     expect(frame).toBeDefined();
+    const nowSpy = vi.spyOn(performance, 'now').mockReturnValue(t0 + 1000 / 60);
     frame?.(0);
+    nowSpy.mockRestore();
 
     const calledEvents = emitSpy.mock.calls.map((c: any[]) => c[0]);
     expect(calledEvents).toEqual(expect.arrayContaining([Events.UPDATE, Events.DRAW]));

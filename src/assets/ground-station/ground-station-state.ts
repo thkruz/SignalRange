@@ -1,16 +1,17 @@
-import type { AntennaState } from "@app/equipment/antenna";
-import type { RealTimeSpectrumAnalyzerState } from "@app/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer";
-import type { ReceiverState } from "@app/equipment/receiver/receiver";
-import type { RFFrontEndState } from "@app/equipment/rf-front-end/rf-front-end-core";
-import type { TransmitterState } from "@app/equipment/transmitter/transmitter";
+import type { AntennaState } from '@app/equipment/antenna';
+import type { AntennaConfigId } from '@app/equipment/antenna/antenna-registry';
+import type { RealTimeSpectrumAnalyzerState } from '@app/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer';
+import type { ReceiverState } from '@app/equipment/receiver/receiver';
+import type { RFFrontEndState } from '@app/equipment/rf-front-end/rf-front-end-core';
+import type { TransmitterState } from '@app/equipment/transmitter/transmitter';
 
 /**
  * Ground station location information
  */
 export interface GroundStationLocation {
-  latitude: number;   // degrees
-  longitude: number;  // degrees
-  elevation: number;  // meters above sea level
+  latitude: number; // degrees
+  longitude: number; // degrees
+  elevation: number; // meters above sea level
 }
 
 /**
@@ -29,11 +30,13 @@ export interface GroundStationEquipmentState {
  */
 export interface GroundStationState {
   uuid: string;
-  id: string;                    // "MIA-01"
-  name: string;                  // "Miami Ground Station"
+  id: string; // "MIA-01"
+  name: string; // "Miami Ground Station"
   location: GroundStationLocation;
   isOperational: boolean;
   equipment: Partial<GroundStationEquipmentState>;
+  /** Station class (see GroundStationConfig.stationClass); undefined = professional */
+  stationClass?: 'professional' | 'backyard';
 }
 
 /**
@@ -44,12 +47,24 @@ export interface GroundStationConfig {
   name: string;
   isOperational?: boolean;
   location: GroundStationLocation;
-  antennas: string[];           // Antenna config IDs
-  antennasState?: Partial<AntennaState>[];  // Initial antenna states (parallel to antennas array)
-  rfFrontEnds: Partial<RFFrontEndState>[];           // RF front-end configs
-  spectrumAnalyzers?: Partial<RealTimeSpectrumAnalyzerState>[];    // Spectrum analyzer configs (optional)
+  antennas: string[]; // Antenna config IDs
+  /**
+   * Antenna hardware config actually instantiated by mission control.
+   * Opt-in: when omitted the factory default is used, preserving legacy
+   * campaign behavior (the `antennas` array above is not applied there).
+   */
+  antennaConfigKey?: AntennaConfigId;
+  antennasState?: Partial<AntennaState>[]; // Initial antenna states (parallel to antennas array)
+  rfFrontEnds: Partial<RFFrontEndState>[]; // RF front-end configs
+  spectrumAnalyzers?: Partial<RealTimeSpectrumAnalyzerState>[]; // Spectrum analyzer configs (optional)
   transmitters?: Partial<TransmitterState>[]; // Initial transmitter states (optional, parallel to transmitters)
   receivers?: Partial<ReceiverState>[]; // Initial receiver states (optional, parallel to receivers)
   teamId?: number;
   serverId?: number;
+  /**
+   * Station class. Opt-in: 'backyard' (Campaign 3+) enables the hobbyist SDR
+   * Console tab and hides the TX chain; when omitted the station renders as a
+   * professional site exactly as before.
+   */
+  stationClass?: 'professional' | 'backyard';
 }

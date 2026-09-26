@@ -1,13 +1,5 @@
 import { vi } from 'vitest';
-import {
-  Character,
-  CharacterAvatars,
-  CharacterCompany,
-  CharacterNames,
-  CharacterTitles,
-  Emotion,
-  getCharacterAvatarUrl,
-} from '../../src/modal/character-enum';
+import { Character, CharacterAvatars, CharacterCompany, CharacterNames, CharacterTitles, Emotion, getCharacterAvatarUrl } from '../../src/modal/character-enum';
 
 // Mock getAssetUrl
 vi.mock('../../src/utils/asset-url', () => ({
@@ -104,17 +96,7 @@ describe('character-enum', () => {
     });
 
     it('should work with all emotions', () => {
-      const emotions = [
-        Emotion.HAPPY,
-        Emotion.ANGRY,
-        Emotion.SAD,
-        Emotion.SURPRISED,
-        Emotion.CONCERNED,
-        Emotion.CONFIDENT,
-        Emotion.SKEPTICAL,
-        Emotion.EXCITED,
-        Emotion.FRUSTRATED,
-      ];
+      const emotions = [Emotion.HAPPY, Emotion.ANGRY, Emotion.SAD, Emotion.SURPRISED, Emotion.CONCERNED, Emotion.CONFIDENT, Emotion.SKEPTICAL, Emotion.EXCITED, Emotion.FRUSTRATED];
 
       for (const emotion of emotions) {
         const url = getCharacterAvatarUrl(Character.CHARLIE_BROOKS, emotion);
@@ -123,13 +105,7 @@ describe('character-enum', () => {
     });
 
     it('should work with all characters', () => {
-      const characters = [
-        Character.CHARLIE_BROOKS,
-        Character.CATHERINE_VEGA,
-        Character.JAMES_OKAFOR,
-        Character.FRANCIS_MARTIN,
-        Character.MARCUS_CHEN,
-      ];
+      const characters = [Character.CHARLIE_BROOKS, Character.CATHERINE_VEGA, Character.JAMES_OKAFOR, Character.FRANCIS_MARTIN, Character.MARCUS_CHEN];
 
       for (const character of characters) {
         const url = getCharacterAvatarUrl(character, Emotion.HAPPY);

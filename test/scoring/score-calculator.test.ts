@@ -1,5 +1,5 @@
-import { ScoreCalculator, ScoreBreakdown } from '../../src/scoring/score-calculator';
 import type { ObjectiveState } from '../../src/objectives/objective-types';
+import { ScoreBreakdown, ScoreCalculator } from '../../src/scoring/score-calculator';
 
 /**
  * Creates a minimal ObjectiveState for testing
@@ -35,6 +35,17 @@ describe('ScoreCalculator', () => {
         expect(result.basePoints).toBe(0);
       });
 
+      it('should not award points for an incomplete (skipped optional) objective', () => {
+        const skippedOptional = createObjectiveState(15);
+        skippedOptional.objective.isOptional = true;
+        skippedOptional.isCompleted = false;
+
+        const result = ScoreCalculator.calculate([createObjectiveState(100), createObjectiveState(50), skippedOptional], 0, 0, 0);
+
+        expect(result.basePoints).toBe(150);
+        expect(result.objectiveBreakdown).toHaveLength(2);
+      });
+
       it('should sum points from single objective', () => {
         const objectives = [createObjectiveState(100)];
         const result = ScoreCalculator.calculate(objectives, 0, 0, 0);
@@ -42,30 +53,19 @@ describe('ScoreCalculator', () => {
       });
 
       it('should sum points from multiple objectives', () => {
-        const objectives = [
-          createObjectiveState(100),
-          createObjectiveState(200),
-          createObjectiveState(50),
-        ];
+        const objectives = [createObjectiveState(100), createObjectiveState(200), createObjectiveState(50)];
         const result = ScoreCalculator.calculate(objectives, 0, 0, 0);
         expect(result.basePoints).toBe(350);
       });
 
       it('should treat undefined points as 0', () => {
-        const objectives = [
-          createObjectiveState(100),
-          createObjectiveState(undefined),
-          createObjectiveState(50),
-        ];
+        const objectives = [createObjectiveState(100), createObjectiveState(undefined), createObjectiveState(50)];
         const result = ScoreCalculator.calculate(objectives, 0, 0, 0);
         expect(result.basePoints).toBe(150);
       });
 
       it('should handle all objectives having undefined points', () => {
-        const objectives = [
-          createObjectiveState(undefined),
-          createObjectiveState(undefined),
-        ];
+        const objectives = [createObjectiveState(undefined), createObjectiveState(undefined)];
         const result = ScoreCalculator.calculate(objectives, 0, 0, 0);
         expect(result.basePoints).toBe(0);
       });
@@ -178,29 +178,15 @@ describe('ScoreCalculator', () => {
       });
 
       it('should include points for each objective', () => {
-        const objectives = [
-          createObjectiveState(100),
-          createObjectiveState(50),
-          createObjectiveState(75),
-        ];
+        const objectives = [createObjectiveState(100), createObjectiveState(50), createObjectiveState(75)];
         const result = ScoreCalculator.calculate(objectives, 0, 0, 0);
-        expect(result.objectiveBreakdown).toEqual([
-          { points: 100 },
-          { points: 50 },
-          { points: 75 },
-        ]);
+        expect(result.objectiveBreakdown).toEqual([{ points: 100 }, { points: 50 }, { points: 75 }]);
       });
 
       it('should use 0 for undefined objective points in breakdown', () => {
-        const objectives = [
-          createObjectiveState(100),
-          createObjectiveState(undefined),
-        ];
+        const objectives = [createObjectiveState(100), createObjectiveState(undefined)];
         const result = ScoreCalculator.calculate(objectives, 0, 0, 0);
-        expect(result.objectiveBreakdown).toEqual([
-          { points: 100 },
-          { points: 0 },
-        ]);
+        expect(result.objectiveBreakdown).toEqual([{ points: 100 }, { points: 0 }]);
       });
     });
 
@@ -232,6 +218,7 @@ describe('ScoreCalculator', () => {
           quizPenalties: 10,
           timePenalties: 5,
           hintPenalties: 0,
+          decisionPenalties: 0,
           totalScore: 97, // 100 + 12 - 10 - 5 = 97
           objectiveBreakdown: [{ points: 100 }],
           timeRemainingSeconds: 60,

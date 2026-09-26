@@ -208,41 +208,49 @@ describe('TrafficControlManager', () => {
       mockGroundStations.push({
         state: { id: 'gs-1' },
         antennas: [{ state: { azimuth: 180, elevation: 45 } }],
-        rfFrontEnds: [{
-          hpaModule: {
-            state: { isHpaEnabled: true },
-            handleHpaToggle: vi.fn(),
+        rfFrontEnds: [
+          {
+            hpaModule: {
+              state: { isHpaEnabled: true },
+              handleHpaToggle: vi.fn(),
+            },
+            bucModule: {
+              state: { isMuted: false },
+              handleMuteToggle: vi.fn(),
+            },
           },
-          bucModule: {
-            state: { isMuted: false },
-            handleMuteToggle: vi.fn(),
+        ],
+        receivers: [
+          {
+            state: { activeModem: 1, modems: [] },
+            getSignalsInBandwidth: vi.fn(() => ({ hasLock: false })),
+            getSnrForModem: vi.fn(() => null),
           },
-        }],
-        receivers: [{
-          state: { activeModem: 1, modems: [] },
-          getSignalsInBandwidth: vi.fn(() => ({ hasLock: false })),
-          getSnrForModem: vi.fn(() => null),
-        }],
+        ],
       });
 
       mockGroundStations.push({
         state: { id: 'gs-2' },
         antennas: [{ state: { azimuth: 180, elevation: 45 } }],
-        rfFrontEnds: [{
-          hpaModule: {
-            state: { isHpaEnabled: false, isHpaSwitchEnabled: false },
-            handleHpaToggle: vi.fn(),
+        rfFrontEnds: [
+          {
+            hpaModule: {
+              state: { isHpaEnabled: false, isHpaSwitchEnabled: false },
+              handleHpaToggle: vi.fn(),
+            },
+            bucModule: {
+              state: { isMuted: true },
+              handleMuteToggle: vi.fn(),
+            },
           },
-          bucModule: {
-            state: { isMuted: true },
-            handleMuteToggle: vi.fn(),
+        ],
+        receivers: [
+          {
+            state: { activeModem: 1, modems: [{ modemNumber: 1, isPowered: true }] },
+            getSignalsInBandwidth: vi.fn(() => ({ hasLock: true })),
+            getSnrForModem: vi.fn(() => 15),
           },
-        }],
-        receivers: [{
-          state: { activeModem: 1, modems: [{ modemNumber: 1, isPowered: true }] },
-          getSignalsInBandwidth: vi.fn(() => ({ hasLock: true })),
-          getSnrForModem: vi.fn(() => 15),
-        }],
+        ],
       });
     });
 
@@ -348,14 +356,16 @@ describe('TrafficControlManager', () => {
         state: { id: 'gs-test' },
         antennas: [],
         rfFrontEnds: [],
-        receivers: [{
-          state: {
-            activeModem: 1,
-            modems: [{ modemNumber: 1, isPowered: true }],
+        receivers: [
+          {
+            state: {
+              activeModem: 1,
+              modems: [{ modemNumber: 1, isPowered: true }],
+            },
+            getSignalsInBandwidth: vi.fn(() => ({ hasLock: true })),
+            getSnrForModem: vi.fn(() => 12),
           },
-          getSignalsInBandwidth: vi.fn(() => ({ hasLock: true })),
-          getSnrForModem: vi.fn(() => 12),
-        }],
+        ],
       });
 
       const readiness = manager.checkStationReadiness('gs-test', 12345);
@@ -373,14 +383,16 @@ describe('TrafficControlManager', () => {
         state: { id: 'gs-low-cn' },
         antennas: [],
         rfFrontEnds: [],
-        receivers: [{
-          state: {
-            activeModem: 1,
-            modems: [{ modemNumber: 1, isPowered: true }],
+        receivers: [
+          {
+            state: {
+              activeModem: 1,
+              modems: [{ modemNumber: 1, isPowered: true }],
+            },
+            getSignalsInBandwidth: vi.fn(() => ({ hasLock: true })),
+            getSnrForModem: vi.fn(() => 5), // Below 8 dB threshold
           },
-          getSignalsInBandwidth: vi.fn(() => ({ hasLock: true })),
-          getSnrForModem: vi.fn(() => 5), // Below 8 dB threshold
-        }],
+        ],
       });
 
       const readiness = manager.checkStationReadiness('gs-low-cn', 12345);

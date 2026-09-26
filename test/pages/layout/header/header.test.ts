@@ -11,16 +11,14 @@ vi.mock('../../../../src/router', () => ({
   },
 }));
 
-vi.mock('../../../../src/sound/sound-manager', () => {
-  return {
-    default: {
-      getInstance: vi.fn(() => ({
-        play: vi.fn(),
-      })),
-    },
-    __esModule: true,
-  };
-});
+vi.mock('../../../../src/sound/sound-manager', () => ({
+  default: {
+    getInstance: vi.fn(() => ({
+      play: vi.fn(),
+    })),
+  },
+  __esModule: true,
+}));
 
 vi.mock('../../../../src/sound/sfx-enum', () => ({
   Sfx: {

@@ -3,6 +3,7 @@ import { vi } from 'vitest';
 import { ANTENNA_CONFIG_KEYS } from '../../../src/equipment/antenna/antenna-config-keys';
 import { AntennaCore, AntennaState } from '../../../src/equipment/antenna/antenna-core';
 import { StepTrackController } from '../../../src/equipment/antenna/step-track-controller';
+import { advanceSimTime } from '../../helpers/sim-time';
 
 // Mock SimulationManager
 vi.mock('../../../src/simulation/simulation-manager', () => ({
@@ -14,7 +15,7 @@ vi.mock('../../../src/simulation/simulation-manager', () => ({
       getSatByNoradId: vi.fn((id: number) => ({
         noradId: id,
         ephemerisErrorAz: 0.15 as Degrees,
-        ephemerisErrorEl: 0.10 as Degrees,
+        ephemerisErrorEl: 0.1 as Degrees,
       })),
       getSatsByAzEl: () => [],
       satellites: [],
@@ -41,16 +42,13 @@ vi.mock('../../../src/events/event-bus', () => ({
 class MockAntennaCore extends AntennaCore {
   private mockRfFrontEnd_: any = null;
 
-  constructor(
-    configId: ANTENNA_CONFIG_KEYS = ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK,
-    initialState: Partial<AntennaState> = {}
-  ) {
+  constructor(configId: ANTENNA_CONFIG_KEYS = ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK, initialState: Partial<AntennaState> = {}) {
     super(configId, initialState, 1, 1);
   }
 
-  protected override addListeners_(): void { }
-  syncDomWithState(): void { }
-  draw(): void { }
+  protected override addListeners_(): void {}
+  syncDomWithState(): void {}
+  draw(): void {}
 
   // Override rfFrontEnd getter to return mock
   override get rfFrontEnd() {
@@ -106,7 +104,7 @@ describe('StepTrackController', () => {
       const state = controller.getState();
       // Target should be negative of ephemeris error
       expect(state.targetAzOffset).toBe(-0.15);
-      expect(state.targetElOffset).toBe(-0.10);
+      expect(state.targetElOffset).toBe(-0.1);
     });
 
     it('should reset convergence state on start', () => {
@@ -146,27 +144,19 @@ describe('StepTrackController', () => {
     });
 
     it('should update offsets when active', () => {
-      const originalDateNow = Date.now;
-      let mockTime = 1000000;
-      Date.now = vi.fn(() => mockTime);
+      controller.start();
 
-      try {
-        controller.start();
+      // Advance time a bit (5 seconds)
+      advanceSimTime(5000);
+      controller.update();
 
-        // Advance time a bit (5 seconds)
-        mockTime += 5000;
-        controller.update();
+      // Offsets should have started moving toward target
+      const azOffset = antenna.state.stepTrackAzOffset as number;
+      const elOffset = antenna.state.stepTrackElOffset as number;
 
-        // Offsets should have started moving toward target
-        const azOffset = antenna.state.stepTrackAzOffset as number;
-        const elOffset = antenna.state.stepTrackElOffset as number;
-
-        // Should be non-zero and in the right direction
-        expect(azOffset).toBeLessThan(0); // Moving toward -0.15
-        expect(elOffset).toBeLessThan(0); // Moving toward -0.10
-      } finally {
-        Date.now = originalDateNow;
-      }
+      // Should be non-zero and in the right direction
+      expect(azOffset).toBeLessThan(0); // Moving toward -0.15
+      expect(elOffset).toBeLessThan(0); // Moving toward -0.10
     });
 
     describe('with mock RF front-end', () => {
@@ -277,68 +267,43 @@ describe('StepTrackController', () => {
 
   describe('convergence', () => {
     it('should converge over time', () => {
-      // Mock Date.now to control time
-      const originalDateNow = Date.now;
-      let mockTime = 1000000;
-      Date.now = vi.fn(() => mockTime);
+      controller.start();
+      expect(controller.isConverged).toBe(false);
 
-      try {
-        controller.start();
-        expect(controller.isConverged).toBe(false);
+      // Advance time past convergence duration (25 seconds)
+      advanceSimTime(30000);
+      controller.update();
 
-        // Advance time past convergence duration (25 seconds)
-        mockTime += 30000;
-        controller.update();
-
-        expect(controller.isConverged).toBe(true);
-        expect(controller.getState().progress).toBe(1);
-      } finally {
-        Date.now = originalDateNow;
-      }
+      expect(controller.isConverged).toBe(true);
+      expect(controller.getState().progress).toBe(1);
     });
 
     it('should reach target offsets when converged', () => {
-      const originalDateNow = Date.now;
-      let mockTime = 1000000;
-      Date.now = vi.fn(() => mockTime);
+      controller.start();
 
-      try {
-        controller.start();
+      // Advance time past convergence duration
+      advanceSimTime(30000);
+      controller.update();
 
-        // Advance time past convergence duration
-        mockTime += 30000;
-        controller.update();
-
-        // Should have reached target offsets
-        expect(antenna.state.stepTrackAzOffset).toBeCloseTo(-0.15, 2);
-        expect(antenna.state.stepTrackElOffset).toBeCloseTo(-0.10, 2);
-      } finally {
-        Date.now = originalDateNow;
-      }
+      // Should have reached target offsets
+      expect(antenna.state.stepTrackAzOffset).toBeCloseTo(-0.15, 2);
+      expect(antenna.state.stepTrackElOffset).toBeCloseTo(-0.1, 2);
     });
 
     it('should use easing for smooth convergence', () => {
-      const originalDateNow = Date.now;
-      let mockTime = 1000000;
-      Date.now = vi.fn(() => mockTime);
+      controller.start();
 
-      try {
-        controller.start();
+      // At 50% time, should be more than 50% of the way due to easeOutQuad
+      advanceSimTime(12500); // Half of 25 seconds
+      controller.update();
 
-        // At 50% time, should be more than 50% of the way due to easeOutQuad
-        mockTime += 12500; // Half of 25 seconds
-        controller.update();
+      const progress = controller.getState().progress;
+      expect(progress).toBe(0.5);
 
-        const progress = controller.getState().progress;
-        expect(progress).toBe(0.5);
-
-        // With easeOutQuad, 50% time = 75% progress toward target
-        const azOffset = antenna.state.stepTrackAzOffset as number;
-        // easeOutQuad(0.5) = 1 - (1-0.5)^2 = 1 - 0.25 = 0.75
-        expect(azOffset).toBeCloseTo(-0.15 * 0.75, 2);
-      } finally {
-        Date.now = originalDateNow;
-      }
+      // With easeOutQuad, 50% time = 75% progress toward target
+      const azOffset = antenna.state.stepTrackAzOffset as number;
+      // easeOutQuad(0.5) = 1 - (1-0.5)^2 = 1 - 0.25 = 0.75
+      expect(azOffset).toBeCloseTo(-0.15 * 0.75, 2);
     });
   });
 

@@ -51,6 +51,6 @@ export class EngineeringModeService {
 
   private notifyListeners_(): void {
     const enabled = this.isEnabled();
-    this.callbacks_.forEach(cb => cb(enabled));
+    this.callbacks_.forEach((cb) => cb(enabled));
   }
 }

@@ -1,16 +1,16 @@
-import { generateUuid } from "@app/engine/utils/uuid";
-import { ANTENNA_CONFIG_KEYS, AntennaCore } from "@app/equipment/antenna";
-import { AntennaUIHeadless } from "@app/equipment/antenna/antenna-ui-headless";
-import { RealTimeSpectrumAnalyzer } from "@app/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer";
-import { Receiver } from "@app/equipment/receiver/receiver";
-import { RFFrontEndCore } from "@app/equipment/rf-front-end/rf-front-end-core";
-import { createRFFrontEnd } from "@app/equipment/rf-front-end/rf-front-end-factory";
-import { Transmitter } from "@app/equipment/transmitter/transmitter";
-import { EventBus } from "@app/events/event-bus";
-import { EventMap, Events } from "@app/events/events";
-import { Logger } from "@app/logging/logger";
-import { SimulationManager } from "@app/simulation/simulation-manager";
-import type { GroundStationConfig, GroundStationState } from "./ground-station-state";
+import { generateUuid } from '@app/engine/utils/uuid';
+import { AntennaCore } from '@app/equipment/antenna';
+import { createAntenna } from '@app/equipment/antenna/antenna-factory';
+import { RealTimeSpectrumAnalyzer } from '@app/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer';
+import { Receiver } from '@app/equipment/receiver/receiver';
+import { RFFrontEndCore } from '@app/equipment/rf-front-end/rf-front-end-core';
+import { createRFFrontEnd } from '@app/equipment/rf-front-end/rf-front-end-factory';
+import { Transmitter } from '@app/equipment/transmitter/transmitter';
+import { EventBus } from '@app/events/event-bus';
+import { EventMap, Events } from '@app/events/events';
+import { Logger } from '@app/logging/logger';
+import { SimulationManager } from '@app/simulation/simulation-manager';
+import type { GroundStationConfig, GroundStationState } from './ground-station-state';
 
 /**
  * GroundStation - Manages a complete ground station with all equipment
@@ -43,13 +43,14 @@ export class GroundStation {
       name: config.name,
       location: config.location,
       isOperational: config.isOperational ?? true,
+      stationClass: config.stationClass,
       equipment: {
         antennas: [],
         rfFrontEnds: [],
         spectrumAnalyzers: [],
         transmitters: [],
-        receivers: []
-      }
+        receivers: [],
+      },
     };
 
     // NOTE: Equipment creation deferred until UI containers are ready
@@ -89,39 +90,31 @@ export class GroundStation {
     // Create antennas (headless mode for mission control)
     config.antennas.forEach((antennaConfigId, index) => {
       const initialState = config.antennasState?.[index] ?? {};
-      const antenna = new AntennaUIHeadless(
-        `gs-${this.uuid}-antenna${index + 1}-headless`,
-        antennaConfigId as ANTENNA_CONFIG_KEYS,
-        initialState,
-        config.teamId || 1
-      );
+      // Through the factory so a plugin antenna with its own core class is
+      // honoured; built-ins still get AntennaUIHeadless.
+      const antenna = createAntenna(`gs-${this.uuid}-antenna${index + 1}-headless`, 'headless', antennaConfigId, initialState, config.teamId || 1);
+
+      // Terrestrial-emitter reception (E1) needs the station's geodetic
+      // position; without it the antenna hears ground emitters never
+      antenna.attachStationLocation(config.location.latitude, config.location.longitude, config.location.elevation);
 
       this.antennas.push(antenna);
     });
 
     // Create RF front-ends
     config.rfFrontEnds.forEach((rfConfig, index) => {
-      const rfFrontEnd = createRFFrontEnd(
-        `gs-${this.uuid}-rf-front-end${index + 1}-container`,
-        rfConfig,
-        'standard',
-      );
+      const rfFrontEnd = createRFFrontEnd(`gs-${this.uuid}-rf-front-end${index + 1}-container`, rfConfig, 'standard');
       this.rfFrontEnds.push(rfFrontEnd);
     });
 
     // Create spectrum analyzers (if configured)
     const spectrumAnalyzers = config.spectrumAnalyzers || [null, null, null, null];
     spectrumAnalyzers.forEach((specConfig, index) => {
-      const antennaId = index < 2 ? 0 : 1;  // First two use antenna 1, next two use antenna 2
+      const antennaId = index < 2 ? 0 : 1; // First two use antenna 1, next two use antenna 2
       const rfFrontEnd = this.rfFrontEnds[antennaId];
 
       if (rfFrontEnd) {
-        const specA = new RealTimeSpectrumAnalyzer(
-          `gs-${this.uuid}-specA${index + 1}-container`,
-          rfFrontEnd,
-          specConfig || {},
-          config.teamId || 1
-        );
+        const specA = new RealTimeSpectrumAnalyzer(`gs-${this.uuid}-specA${index + 1}-container`, rfFrontEnd, specConfig || {}, config.teamId || 1);
         this.spectrumAnalyzers.push(specA);
       }
     });
@@ -136,16 +129,13 @@ export class GroundStation {
     // Create receivers
     const receiverCount = config.receivers?.length || 4;
     for (let i = 1; i <= receiverCount; i++) {
-      const rx = new Receiver(
-        `gs-${this.uuid}-rx${i}-container`,
-        this.antennas,
-        config.receivers?.[i - 1],
-        config.teamId || 1
-      );
+      const rx = new Receiver(`gs-${this.uuid}-rx${i}-container`, this.antennas, config.receivers?.[i - 1], config.teamId || 1);
       this.receivers.push(rx);
     }
 
-    Logger.info(`Equipment created: ${this.antennas.length} antennas, ${this.rfFrontEnds.length} RF front-ends, ${this.spectrumAnalyzers.length} spectrum analyzers, ${this.transmitters.length} transmitters, ${this.receivers.length} receivers`);
+    Logger.info(
+      `Equipment created: ${this.antennas.length} antennas, ${this.rfFrontEnds.length} RF front-ends, ${this.spectrumAnalyzers.length} spectrum analyzers, ${this.transmitters.length} transmitters, ${this.receivers.length} receivers`
+    );
   }
 
   /**
@@ -163,7 +153,7 @@ export class GroundStation {
 
     // Wire transmitters to RF front-ends
     this.transmitters.forEach((tx, index) => {
-      const rfIndex = index < 2 ? 0 : 1;  // First two use RF 1, next two use RF 2
+      const rfIndex = index < 2 ? 0 : 1; // First two use RF 1, next two use RF 2
       this.rfFrontEnds[rfIndex]?.connectTransmitter(tx);
     });
 
@@ -176,7 +166,7 @@ export class GroundStation {
 
     // Wire receivers to RF front-ends
     this.receivers.forEach((rx, index) => {
-      const rfIndex = index < 2 ? 0 : 1;  // First two use RF 1, next two use RF 2
+      const rfIndex = index < 2 ? 0 : 1; // First two use RF 1, next two use RF 2
       rx.connectRfFrontEnd(this.rfFrontEnds[rfIndex]);
     });
 
@@ -191,11 +181,11 @@ export class GroundStation {
     // Equipment updates happen automatically via their own EventBus subscriptions
 
     // Aggregate equipment states
-    this.state.equipment.antennas = this.antennas.map(a => a.state);
-    this.state.equipment.rfFrontEnds = this.rfFrontEnds.map(rf => rf.state);
-    this.state.equipment.spectrumAnalyzers = this.spectrumAnalyzers.map(s => s.state);
-    this.state.equipment.transmitters = this.transmitters.map(t => t.state);
-    this.state.equipment.receivers = this.receivers.map(r => r.state);
+    this.state.equipment.antennas = this.antennas.map((a) => a.state);
+    this.state.equipment.rfFrontEnds = this.rfFrontEnds.map((rf) => rf.state);
+    this.state.equipment.spectrumAnalyzers = this.spectrumAnalyzers.map((s) => s.state);
+    this.state.equipment.transmitters = this.transmitters.map((t) => t.state);
+    this.state.equipment.receivers = this.receivers.map((r) => r.state);
 
     // Emit ground station state changed
     if (JSON.stringify(this.state) !== this.lastStateString) {

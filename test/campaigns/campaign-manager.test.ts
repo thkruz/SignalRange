@@ -30,11 +30,7 @@ describe('CampaignManager', () => {
   });
 
   // Mock campaign data factory
-  const createMockCampaign = (
-    id: string,
-    scenarios: ScenarioData[],
-    options: Partial<CampaignData> = {}
-  ): CampaignData => ({
+  const createMockCampaign = (id: string, scenarios: ScenarioData[], options: Partial<CampaignData> = {}): CampaignData => ({
     id,
     title: `Campaign ${id}`,
     subtitle: 'Test Campaign',
@@ -158,11 +154,7 @@ describe('CampaignManager', () => {
     it('should return specific scenario from campaign', () => {
       const manager = CampaignManager.getInstance();
       const scenario = createMockScenario('target-scn', 'Target Scenario');
-      const campaign = createMockCampaign('camp-1', [
-        createMockScenario('scn-1'),
-        scenario,
-        createMockScenario('scn-3'),
-      ]);
+      const campaign = createMockCampaign('camp-1', [createMockScenario('scn-1'), scenario, createMockScenario('scn-3')]);
       manager.registerCampaign(campaign);
 
       const result = manager.getScenario('camp-1', 'target-scn');
@@ -292,6 +284,101 @@ describe('CampaignManager', () => {
 
       expect(result).toBe(true);
     });
+
+    it('should return true when a prerequisite scenario is not completed', () => {
+      const manager = CampaignManager.getInstance();
+      const campaign = createMockCampaign('camp-2', [], {
+        prerequisiteScenarioIds: ['scn-8'],
+      });
+
+      const result = manager.isCampaignLocked(campaign, [], ['scn-7']);
+
+      expect(result).toBe(true);
+    });
+
+    it('should return false once the prerequisite scenario is completed', () => {
+      const manager = CampaignManager.getInstance();
+      const campaign = createMockCampaign('camp-2', [], {
+        prerequisiteScenarioIds: ['scn-8'],
+      });
+
+      const result = manager.isCampaignLocked(campaign, [], ['scn-8']);
+
+      expect(result).toBe(false);
+    });
+
+    it('should not unlock on a scenario prerequisite while a campaign prerequisite is unmet', () => {
+      const manager = CampaignManager.getInstance();
+      const campaign = createMockCampaign('camp-3', [], {
+        prerequisiteCampaignIds: ['camp-1'],
+        prerequisiteScenarioIds: ['scn-8'],
+      });
+
+      const result = manager.isCampaignLocked(campaign, [], ['scn-8']);
+
+      expect(result).toBe(true);
+    });
+
+    it('should lock when scenario prerequisites exist but no completions are passed', () => {
+      const manager = CampaignManager.getInstance();
+      const campaign = createMockCampaign('camp-2', [], {
+        prerequisiteScenarioIds: ['scn-8'],
+      });
+
+      const result = manager.isCampaignLocked(campaign, []);
+
+      expect(result).toBe(true);
+    });
+
+    it('should bypass every lock in developer mode', () => {
+      const manager = CampaignManager.getInstance();
+      const campaign = createMockCampaign('camp-2', [], {
+        prerequisiteCampaignIds: ['camp-1'],
+        prerequisiteScenarioIds: ['scn-8'],
+      });
+
+      window.DEVELOPER_MODE = true;
+      const result = manager.isCampaignLocked(campaign, [], []);
+      window.DEVELOPER_MODE = false;
+
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('getNextPrerequisiteScenarioForCampaign', () => {
+    it('should return the first unmet prerequisite scenario', () => {
+      const manager = CampaignManager.getInstance();
+      const gate = createMockScenario('scn-8', 'Night Shift');
+      manager.registerCampaign(createMockCampaign('camp-1', [gate]));
+      const campaign = createMockCampaign('camp-2', [], {
+        prerequisiteScenarioIds: ['scn-8'],
+      });
+
+      const result = manager.getNextPrerequisiteScenarioForCampaign(campaign, []);
+
+      expect(result?.title).toBe('Night Shift');
+    });
+
+    it('should return undefined once all prerequisite scenarios are completed', () => {
+      const manager = CampaignManager.getInstance();
+      manager.registerCampaign(createMockCampaign('camp-1', [createMockScenario('scn-8')]));
+      const campaign = createMockCampaign('camp-2', [], {
+        prerequisiteScenarioIds: ['scn-8'],
+      });
+
+      const result = manager.getNextPrerequisiteScenarioForCampaign(campaign, ['scn-8']);
+
+      expect(result).toBeUndefined();
+    });
+
+    it('should return undefined when the campaign has no scenario prerequisites', () => {
+      const manager = CampaignManager.getInstance();
+      const campaign = createMockCampaign('camp-2', []);
+
+      const result = manager.getNextPrerequisiteScenarioForCampaign(campaign, []);
+
+      expect(result).toBeUndefined();
+    });
   });
 
   describe('getCampaignProgress', () => {
@@ -311,12 +398,7 @@ describe('CampaignManager', () => {
 
     it('should return correct progress for partial completion', () => {
       const manager = CampaignManager.getInstance();
-      const campaign = createMockCampaign('camp-1', [
-        createMockScenario('scn-1'),
-        createMockScenario('scn-2'),
-        createMockScenario('scn-3'),
-        createMockScenario('scn-4'),
-      ]);
+      const campaign = createMockCampaign('camp-1', [createMockScenario('scn-1'), createMockScenario('scn-2'), createMockScenario('scn-3'), createMockScenario('scn-4')]);
       manager.registerCampaign(campaign);
 
       const progress = manager.getCampaignProgress('camp-1', ['scn-1', 'scn-3']);
@@ -332,10 +414,7 @@ describe('CampaignManager', () => {
 
     it('should return 100% for fully completed campaign', () => {
       const manager = CampaignManager.getInstance();
-      const campaign = createMockCampaign('camp-1', [
-        createMockScenario('scn-1'),
-        createMockScenario('scn-2'),
-      ]);
+      const campaign = createMockCampaign('camp-1', [createMockScenario('scn-1'), createMockScenario('scn-2')]);
       manager.registerCampaign(campaign);
 
       const progress = manager.getCampaignProgress('camp-1', ['scn-1', 'scn-2']);
@@ -346,10 +425,7 @@ describe('CampaignManager', () => {
 
     it('should ignore completed scenarios from other campaigns', () => {
       const manager = CampaignManager.getInstance();
-      const campaign = createMockCampaign('camp-1', [
-        createMockScenario('scn-1'),
-        createMockScenario('scn-2'),
-      ]);
+      const campaign = createMockCampaign('camp-1', [createMockScenario('scn-1'), createMockScenario('scn-2')]);
       manager.registerCampaign(campaign);
 
       const progress = manager.getCampaignProgress('camp-1', ['scn-1', 'other-campaign-scn']);
@@ -360,11 +436,7 @@ describe('CampaignManager', () => {
 
     it('should round percentage correctly', () => {
       const manager = CampaignManager.getInstance();
-      const campaign = createMockCampaign('camp-1', [
-        createMockScenario('scn-1'),
-        createMockScenario('scn-2'),
-        createMockScenario('scn-3'),
-      ]);
+      const campaign = createMockCampaign('camp-1', [createMockScenario('scn-1'), createMockScenario('scn-2'), createMockScenario('scn-3')]);
       manager.registerCampaign(campaign);
 
       const progress = manager.getCampaignProgress('camp-1', ['scn-1']);
@@ -397,10 +469,7 @@ describe('CampaignManager', () => {
       const manager = CampaignManager.getInstance();
       manager.registerCampaign(createMockCampaign('camp-1', [createMockScenario('scn-1')]));
       manager.registerCampaign(createMockCampaign('camp-2', [createMockScenario('scn-2')]));
-      manager.registerCampaign(createMockCampaign('camp-3', [
-        createMockScenario('scn-3'),
-        createMockScenario('scn-4'),
-      ]));
+      manager.registerCampaign(createMockCampaign('camp-3', [createMockScenario('scn-3'), createMockScenario('scn-4')]));
 
       const completed = manager.getCompletedCampaigns(['scn-1', 'scn-2', 'scn-3']);
 
@@ -409,10 +478,7 @@ describe('CampaignManager', () => {
 
     it('should not include partially completed campaigns', () => {
       const manager = CampaignManager.getInstance();
-      manager.registerCampaign(createMockCampaign('camp-1', [
-        createMockScenario('scn-1'),
-        createMockScenario('scn-2'),
-      ]));
+      manager.registerCampaign(createMockCampaign('camp-1', [createMockScenario('scn-1'), createMockScenario('scn-2')]));
 
       const completed = manager.getCompletedCampaigns(['scn-1']);
 

@@ -1,34 +1,39 @@
 {
   "extends": "./tsconfig.performance.json",
   "compilerOptions": {
-    "target": "ES2020",
+    "target": "ES2022",
     "module": "ES2020",
     "lib": [
-      "ES2020",
+      "ES2022",
       "DOM",
       "DOM.Iterable"
     ],
-    "baseUrl": ".",
     "paths": {
       "@app/*": [
-        "src/*"
+        "./src/*"
       ],
       "@engine/*": [
-        "src/engine/*"
+        "./src/engine/*"
+      ],
+      "@private/*": [
+        "./src/private/app/*"
+      ],
+      "@plugins-external/*": [
+        "./src/plugins-external/*"
       ],
     },
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "strict": false,
+    "isolatedModules": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
-    "declaration": true,
-    "declarationMap": true,
-    "sourceMap": true,
-    "outDir": "./dist",
-    "rootDir": "./src",
-    "removeComments": true,
+    // tsgo does not auto-include every package under node_modules/@types the way
+    // tsc does, so the globals this app uses (process, NodeJS) must be declared.
+    "types": [
+      "node"
+    ],
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noImplicitReturns": true,
@@ -37,6 +42,7 @@
   },
   "include": [
     "src/**/*",
+    "scripts/plugin/**/*.ts",
     "test/equipment/antenna-ui-headless.test.ts"
   ],
   "exclude": [
@@ -44,5 +50,8 @@
     "dist",
     "**/*.spec.ts",
     "**/*.test.ts",
+    // Plugin unit tests run through vitest.external.config.mts with vitest globals.
+    "src/plugins-external/**/__tests__/**",
+    "scripts/plugin/templates/**"
   ]
 }

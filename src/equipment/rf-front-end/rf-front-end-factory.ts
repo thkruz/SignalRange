@@ -19,7 +19,7 @@ export function createRFFrontEnd(
   state?: Partial<RFFrontEndState>,
   uiType: RFFrontEndUIType = 'standard',
   teamId: number = 1,
-  serverId: number = 1,
+  serverId: number = 1
 ): RFFrontEndCore {
   switch (uiType) {
     case 'standard':

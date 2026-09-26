@@ -1,7 +1,11 @@
-import { Hertz } from "@app/types";
-import { RealTimeSpectrumAnalyzer, RealTimeSpectrumAnalyzerState } from "@app/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer";
-import { SpectrumDataProcessor } from "@app/equipment/real-time-spectrum-analyzer/spectrum-data-processor";
-import { RTSAScreen } from "./rtsa-screen";
+import { RealTimeSpectrumAnalyzer, RealTimeSpectrumAnalyzerState } from '@app/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer';
+import { SpectrumDataProcessor } from '@app/equipment/real-time-spectrum-analyzer/spectrum-data-processor';
+import { Rng } from '@app/simulation/rng';
+import { Hertz } from '@app/types';
+import { RTSAScreen } from './rtsa-screen';
+
+/** Seeded draws for this module (see simulation/rng.ts). */
+const random = (): number => Rng.stream('display:waterfall').next();
 
 export class WaterfallDisplay extends RTSAScreen {
   private running: boolean = false;
@@ -29,13 +33,7 @@ export class WaterfallDisplay extends RTSAScreen {
   cacheMinDb: number = 0;
   cacheGain: number = 0;
 
-  constructor(
-    canvas: HTMLCanvasElement,
-    specA: RealTimeSpectrumAnalyzer,
-    dataProcessor: SpectrumDataProcessor,
-    width: number,
-    height: number
-  ) {
+  constructor(canvas: HTMLCanvasElement, specA: RealTimeSpectrumAnalyzer, dataProcessor: SpectrumDataProcessor, width: number, height: number) {
     super(canvas, specA, width, height);
 
     // Store reference to shared data processor
@@ -65,7 +63,7 @@ export class WaterfallDisplay extends RTSAScreen {
 
     setTimeout(() => {
       this.running = true;
-    }, Math.random() * 1000);
+    }, random() * 1000);
   }
 
   private initializeColorCache(): void {
@@ -117,7 +115,7 @@ export class WaterfallDisplay extends RTSAScreen {
         row.set(this.dataProcessor.combinedData);
 
         // Scroll buffer DOWN: remove oldest (bottom), add newest (top)
-        this.buffer.pop();      // Remove oldest from bottom
+        this.buffer.pop(); // Remove oldest from bottom
         this.buffer.unshift(row); // Add newest to top
       }
     }
@@ -139,7 +137,7 @@ export class WaterfallDisplay extends RTSAScreen {
         const quarters = [
           [0, Math.floor(this.height / 4)],
           [Math.floor(this.height / 4), Math.floor(this.height / 2)],
-          [Math.floor(this.height / 2), Math.floor((this.height * 3) / 4)]
+          [Math.floor(this.height / 2), Math.floor((this.height * 3) / 4)],
         ];
 
         const renderQuarter = (index: number) => {
@@ -153,7 +151,6 @@ export class WaterfallDisplay extends RTSAScreen {
         requestAnimationFrame(() => renderQuarter(0));
       }
     }
-
   }
 
   private renderWaterfallToImageData(start: number = 0, end: number = this.height): void {
@@ -175,7 +172,7 @@ export class WaterfallDisplay extends RTSAScreen {
       for (let x = 0; x < this.width; x++) {
         // Map amplitude to color cache index
         const norm = Math.max(0, Math.min(1, (rowData[x] - minDb) / range));
-        let cacheIndex = Math.floor(norm * (this.COLOR_CACHE_STEPS - 1));
+        const cacheIndex = Math.floor(norm * (this.COLOR_CACHE_STEPS - 1));
         const color = this.colorCache.get(cacheIndex) || [0, 0, 0];
 
         const pixelOffset = rowOffset + x * 4;
@@ -200,7 +197,7 @@ export class WaterfallDisplay extends RTSAScreen {
     let norm = (amplitude - minDb) / (maxDb - minDb);
     norm = Math.max(0, Math.min(1, norm));
     // Bias towards darker blue to make signals stand out from noise
-    norm = norm ** 2.5;
+    norm **= 2.5;
 
     // Realistic spectrum analyzer gradient: dark blue -> light blue -> yellow -> orange -> red -> dark red
     if (norm < 0.2) {
@@ -210,11 +207,7 @@ export class WaterfallDisplay extends RTSAScreen {
     } else if (norm < 0.4) {
       // Light Blue to Yellow
       const t = (norm - 0.2) / 0.2;
-      return [
-        Math.floor(255 * t),
-        Math.floor(100 + 155 * t),
-        Math.floor(255 * (1 - t))
-      ];
+      return [Math.floor(255 * t), Math.floor(100 + 155 * t), Math.floor(255 * (1 - t))];
     } else if (norm < 0.6) {
       // Yellow to Orange
       const t = (norm - 0.4) / 0.2;

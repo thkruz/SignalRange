@@ -31,9 +31,7 @@ describe('RFFrontEndUIStandard', () => {
   it('updates nested numeric state via data-param on input', () => {
     rfFrontEnd = createRFFrontEnd('test-root');
 
-    const container = document.querySelector(
-      `.equipment-case[data-unit="${rfFrontEnd.state.uuid}"]`,
-    ) as HTMLElement;
+    const container = document.querySelector(`.equipment-case[data-unit="${rfFrontEnd.state.uuid}"]`) as HTMLElement;
     expect(container).toBeTruthy();
 
     const input = document.createElement('input');
@@ -56,9 +54,7 @@ describe('RFFrontEndUIStandard', () => {
   it('updates nested string state via data-param on select', () => {
     rfFrontEnd = createRFFrontEnd('test-root');
 
-    const container = document.querySelector(
-      `.equipment-case[data-unit="${rfFrontEnd.state.uuid}"]`,
-    ) as HTMLElement;
+    const container = document.querySelector(`.equipment-case[data-unit="${rfFrontEnd.state.uuid}"]`) as HTMLElement;
     expect(container).toBeTruthy();
 
     const select = document.createElement('select');
@@ -77,9 +73,7 @@ describe('RFFrontEndUIStandard', () => {
   it('ignores inputs without data-param', () => {
     rfFrontEnd = createRFFrontEnd('test-root');
 
-    const container = document.querySelector(
-      `.equipment-case[data-unit="${rfFrontEnd.state.uuid}"]`,
-    ) as HTMLElement;
+    const container = document.querySelector(`.equipment-case[data-unit="${rfFrontEnd.state.uuid}"]`) as HTMLElement;
     expect(container).toBeTruthy();
 
     const input = document.createElement('input');
@@ -102,9 +96,7 @@ describe('RFFrontEndUIStandard', () => {
   it('does not write state for non 2-part param paths', () => {
     rfFrontEnd = createRFFrontEnd('test-root');
 
-    const container = document.querySelector(
-      `.equipment-case[data-unit="${rfFrontEnd.state.uuid}"]`,
-    ) as HTMLElement;
+    const container = document.querySelector(`.equipment-case[data-unit="${rfFrontEnd.state.uuid}"]`) as HTMLElement;
     expect(container).toBeTruthy();
 
     const input = document.createElement('input');

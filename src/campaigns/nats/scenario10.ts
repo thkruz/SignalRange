@@ -1,3 +1,4 @@
+import { createRfFrontEnd } from '@app/campaigns/rf-front-end-factory';
 import type { AntennaState } from '@app/equipment/antenna';
 import { Character, Emotion } from '@app/modal/character-enum';
 import type { Objective } from '@app/objectives/objective-types';
@@ -6,7 +7,6 @@ import { SignalOrigin } from '@app/signal-origin';
 import type { dB, dBm, FECType, Hertz, IfFrequency, MHz, ModulationType } from '@app/types';
 import { getAssetUrl } from '@app/utils/asset-url';
 import type { Degrees } from 'ootk';
-import { createRfFrontEnd } from '@app/campaigns/rf-front-end-factory';
 import { vermontGroundStation } from './ground-stations';
 import { aurora7Satellite, tidemark1Satellite } from './satellites';
 
@@ -66,12 +66,7 @@ export const scenario10Data: ScenarioData = {
   difficulty: 'intermediate',
   missionType: 'Customer Operations',
   description: `SeaLink has booked a 30-minute high-priority data window on AURORA-7 - a routine maritime synchronization burst Marcus Chen in Halifax is watching live from the spacecraft side. The link is up from the overnight shift on program-track with a conservative 10 dB HPA backoff.<br><br>For a sustained high-throughput window on an inclined-orbit bird, that's not the right configuration. You need step-track to hold beacon stable through the figure-8 drift, and a tighter HPA backoff to give the customer the EIRP margin they're paying for - without overdriving the amp.<br><br>Customer is on the line. Marcus will be watching payload telemetry on his end throughout the pass. Standard work - just don't break the link with a customer watching.`,
-  equipment: [
-    '9-meter C-band Antenna',
-    'RF Front End',
-    'Spectrum Analyzer',
-    'RX/TX Modems',
-  ],
+  equipment: ['9-meter C-band Antenna', 'RF Front End', 'Spectrum Analyzer', 'RX/TX Modems'],
   timeLimitSeconds: 30 * 60,
   settings: {
     isSync: true,
@@ -273,9 +268,9 @@ export const scenario10Data: ScenarioData = {
             question: 'What is the alarm state on VT-01 going into the pass?',
             options: [
               'No active alarms - clean board, link up on AURORA-7',
-              'LNB reference unlocked',
-              'HPA output fault',
-              'GPSDO holdover',
+              'LNB reference unlocked - RX alarm, link degraded on AURORA-7',
+              'HPA output fault - TX alarm, uplink down on AURORA-7',
+              'GPSDO holdover - timing alarm, link at risk on AURORA-7',
             ],
             correctIndex: 0,
             explanation: 'Clean board. Safe to push the link harder for the customer window.',
@@ -305,12 +300,13 @@ export const scenario10Data: ScenarioData = {
             question: 'AURORA-7 is on program-track right now. Why is that wrong for a 30-minute high-throughput window?',
             options: [
               'Inclined orbit drift will degrade C/N across the pass - step-track holds beacon optimum continuously',
-              'Program-track consumes more antenna motor cycles than step-track over a long pass',
-              'Program-track is only certified for TIDEMARK birds, not AURORA',
-              'Step-track is required by the customer contract regardless of orbit type',
+              'Program-track burns more motor cycles over a long pass - step-track moves the dish in fewer, smaller steps',
+              'Program-track is only certified for the TIDEMARK birds - step-track is the approved mode for AURORA-7',
+              'The SeaLink contract requires step-track for every window - orbit type does not enter into the decision',
             ],
             correctIndex: 0,
-            explanation: 'Program-track follows ephemeris and lets the figure-8 drift bleed off C/N. For a sustained pass on an inclined bird, step-track keeps the beacon at peak.',
+            explanation:
+              'Program-track follows ephemeris and lets the figure-8 drift bleed off C/N. For a sustained pass on an inclined bird, step-track keeps the beacon at peak.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -421,9 +417,9 @@ export const scenario10Data: ScenarioData = {
             question: 'Marcus wants confirmation his payload telemetry is clean. Which indicator set proves the data path is healthy end-to-end?',
             options: [
               'Frame sync locked + CRC valid + FEC engaged with no uncorrectables',
-              'Receive power above -70 dBm alone',
-              'Antenna beacon lock alone',
-              'Modem temperature inside spec',
+              'RX power above -70 dBm + AGC in range + C/N above the 8 dB threshold',
+              'Antenna beacon lock + step-track holding + C/N at peak on the analyzer',
+              'Modem temperature inside spec + fans nominal + no hardware alarms shown',
             ],
             correctIndex: 0,
             explanation: 'Beacon lock proves RF. Frame sync + CRC + FEC prove the data path. Different layers, different evidence - the customer cares about the data path.',
@@ -496,9 +492,9 @@ export const scenario10Data: ScenarioData = {
             question: 'HPA is at 10 dB backoff. For a 30-minute customer window with sustained margin requirement, what is the operational reality?',
             options: [
               'Safe but conservative - tighter backoff gives the customer more EIRP without breaking the amp',
-              'Already optimal - never lower backoff below 10 dB for any customer pass',
-              'Too aggressive - raise backoff to 15 dB before the pass',
-              'Backoff is irrelevant; only HPA output power matters',
+              'Already optimal - never take backoff below 10 dB for a customer pass whatever the margin ask',
+              'Too aggressive - raise backoff to 15 dB before the pass so the amp has room for the long window',
+              'Irrelevant - only the HPA output power number matters and backoff is a bench setting for the crew',
             ],
             correctIndex: 0,
             explanation: '10 dB is a quiet-night default. For a paying customer expecting sustained margin, 6-7 dB buys real EIRP - so long as the amp stays linear.',
@@ -560,8 +556,8 @@ export const scenario10Data: ScenarioData = {
     {
       id: 'imd-tradeoff-check',
       nice: ['K0740', 'S0675'],
-      title: 'Acknowledge the IMD Tradeoff',
-      description: 'Confirm the operational tradeoff between EIRP and amplifier linearity.',
+      title: 'Acknowledge the IMD Cost',
+      description: 'Confirm what extra EIRP costs in amplifier linearity.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['verify-no-overdrive'],
       timeLimitSeconds: 2 * 60,
@@ -572,15 +568,16 @@ export const scenario10Data: ScenarioData = {
           description: 'EIRP vs Linearity',
           params: {
             character: Character.SYSTEM,
-            question: 'Lowering backoff from 10 dB to 6 dB increases EIRP. What is the tradeoff to watch during a sustained pass?',
+            question: 'Lowering backoff from 10 dB to 6 dB increases EIRP. What is the cost to watch during a sustained pass?',
             options: [
               'IMD products rise as the amp moves closer to saturation - monitor for overdrive across the window',
-              'Backoff has no effect on intermodulation distortion',
-              'Lower backoff cools the amp because gain is lower',
-              'EIRP and IMD are independent and can be optimized separately',
+              'Backoff has no effect on IMD at this power level - monitor the reflected power across the window',
+              'Lower backoff cools the amp because the gain is lower - monitor the HPA temperature across the window',
+              'EIRP and IMD are independent at 6 dB backoff - monitor the C/N on the return path across the window',
             ],
             correctIndex: 0,
-            explanation: 'Closer to saturation means more IMD. The decision is to spend a small amount of linearity for meaningful EIRP - then watch for overdrive across the window.',
+            explanation:
+              'Closer to saturation means more IMD. The decision is to spend a small amount of linearity for meaningful EIRP - then watch for overdrive across the window.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -687,9 +684,9 @@ export const scenario10Data: ScenarioData = {
             question: 'Which line is the right disposition to give Marcus for the pass?',
             options: [
               'AURORA-7 pass complete - step-track held throughout, C/N margin sustained, no overdrive events, HPA returned to 10 dB',
-              'Pass aborted - step-track failed to acquire',
-              'Pass complete but link was on program-track the whole time',
-              'Pass complete - HPA was overdriven briefly mid-window',
+              'AURORA-7 pass aborted - step-track failed to acquire, C/N margin lost, no overdrive events, HPA returned to 10 dB',
+              'AURORA-7 pass complete - program-track held throughout, C/N margin sustained, no overdrive events, HPA left at 6 dB',
+              'AURORA-7 pass complete - step-track held throughout, C/N margin sustained, one brief overdrive event, HPA returned to 10 dB',
             ],
             correctIndex: 0,
             explanation: 'Clean delivery. That is what the customer is paying for - and what gets logged.',
@@ -718,10 +715,10 @@ export const scenario10Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Which entry correctly records this pass in the operations log?',
             options: [
-              'SeaLink 30-min high-priority pass on AURORA-7 - step-track engaged, HPA optimized to 6 dB backoff for window then restored to 10 dB. C/N margin sustained, no link events.',
-              'AURORA-7 routine monitoring - no customer impact.',
-              'SeaLink pass deferred - link not ready.',
-              'AURORA-7 HPA fault during customer window.',
+              'SeaLink pass on AURORA-7 - step-track, HPA 6 dB backoff for the window then restored to 10 dB. Margin held, no link events.',
+              'AURORA-7 routine monitoring - program-track, HPA 10 dB backoff held throughout the shift. Margin held, no customer impact.',
+              'SeaLink pass on AURORA-7 deferred - step-track engaged, HPA 6 dB backoff staged for the window. Link not ready, customer notified.',
+              'SeaLink pass on AURORA-7 - step-track, HPA 6 dB backoff for the window and left there. Overdrive event, customer notified.',
             ],
             correctIndex: 0,
             explanation: 'Capture what changed (backoff), what was sustained (margin), and what was restored (resting state). Next operator picks up with full context.',

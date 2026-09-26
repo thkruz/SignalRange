@@ -1,3 +1,4 @@
+import { createRfFrontEnd } from '@app/campaigns/rf-front-end-factory';
 import type { AntennaState } from '@app/equipment/antenna';
 import { ANTENNA_CONFIG_KEYS } from '@app/equipment/antenna/antenna-config-keys';
 import { Character, Emotion } from '@app/modal/character-enum';
@@ -7,7 +8,6 @@ import { SignalOrigin } from '@app/signal-origin';
 import type { dB, dBi, dBm, FECType, Hertz, IfFrequency, MHz, ModulationType } from '@app/types';
 import { getAssetUrl } from '@app/utils/asset-url';
 import type { Degrees } from 'ootk';
-import { createRfFrontEnd } from '@app/campaigns/rf-front-end-factory';
 import { vermontGroundStation } from './ground-stations';
 import { ses10Satellite, tidemark1Satellite, tidemark2Satellite, tidemark3Satellite } from './satellites';
 
@@ -67,13 +67,7 @@ export const scenario11Data: ScenarioData = {
   difficulty: 'intermediate',
   missionType: 'Planned Operations',
   description: `Scheduled maintenance window opens at 10:00 for HPA waveguide gasket inspection on VT-01. Two hours of downtime, pre-coordinated with Maine.<br><br>Catherine has ME-02 standing by - already tracking TIDEMARK-1 in parallel, RX hot, waiting on your commit. Your job: verify her receive side, stage ME-02's transmit chain (cold - the transfer swaps RF authority), execute the handover, then safe VT-01 for the maintenance crew.<br><br>No fire, no weather, no surprise. This is procedural work and the grade is cleanliness. Maintenance crew arrives in thirty minutes.`,
-  equipment: [
-    '9-meter C-band Antenna',
-    'RF Front End',
-    'Spectrum Analyzer',
-    'RX/TX Modems',
-    'ME-02: Operational - RX Standing By',
-  ],
+  equipment: ['9-meter C-band Antenna', 'RF Front End', 'Spectrum Analyzer', 'RX/TX Modems', 'ME-02: Operational - RX Standing By'],
   timeLimitSeconds: 30 * 60, // 30 minutes
   settings: {
     isSync: true,
@@ -138,36 +132,40 @@ export const scenario11Data: ScenarioData = {
             selectedTrace: 1,
           },
         ],
-        transmitters: [{
-          activeModem: 1,
-          modems: [{
-            isPowered: true,
-            antenna_id: 1,
-            modem_number: 1,
-            isFaulted: false,
-            isTransmitting: false,
-            isTransmittingSwitchUp: false,
-            isFaultSwitchUp: false,
-            id: 1,
-            isLoopback: false,
-            ifSignal: {
-              signalId: 'TIDEMARK-1-Teleport',
-              serverId: 1,
-              noradId: 61525,
-              polarization: 'V',
-              feed: '',
-              isDegraded: false,
-              origin: SignalOrigin.TRANSMITTER,
-              noiseFloor: null,
-              gainInPath: 0 as dBi,
-              frequency: 1094e6 as IfFrequency,
-              power: -7 as dBm,
-              bandwidth: 36e6 as Hertz,
-              modulation: 'QPSK' as ModulationType,
-              fec: '3/4' as FECType,
-            },
-          }],
-        }],
+        transmitters: [
+          {
+            activeModem: 1,
+            modems: [
+              {
+                isPowered: true,
+                antenna_id: 1,
+                modem_number: 1,
+                isFaulted: false,
+                isTransmitting: false,
+                isTransmittingSwitchUp: false,
+                isFaultSwitchUp: false,
+                id: 1,
+                isLoopback: false,
+                ifSignal: {
+                  signalId: 'TIDEMARK-1-Teleport',
+                  serverId: 1,
+                  noradId: 61525,
+                  polarization: 'V',
+                  feed: '',
+                  isDegraded: false,
+                  origin: SignalOrigin.TRANSMITTER,
+                  noiseFloor: null,
+                  gainInPath: 0 as dBi,
+                  frequency: 1094e6 as IfFrequency,
+                  power: -7 as dBm,
+                  bandwidth: 36e6 as Hertz,
+                  modulation: 'QPSK' as ModulationType,
+                  fec: '3/4' as FECType,
+                },
+              },
+            ],
+          },
+        ],
         receivers: [
           {
             activeModem: 1,
@@ -186,12 +184,7 @@ export const scenario11Data: ScenarioData = {
         ],
       },
     ],
-    satellites: [
-      tidemark1Satellite,
-      tidemark2Satellite,
-      tidemark3Satellite,
-      ses10Satellite,
-    ],
+    satellites: [tidemark1Satellite, tidemark2Satellite, tidemark3Satellite, ses10Satellite],
     trafficOwnership: [
       {
         satelliteNoradId: 61525, // TIDEMARK-1
@@ -228,9 +221,9 @@ export const scenario11Data: ScenarioData = {
             question: 'What is the planned outcome of this shift?',
             options: [
               'TIDEMARK-1 traffic moves to ME-02 for a 2-hour VT-01 maintenance window, then comes back next shift',
-              'TIDEMARK-1 traffic moves to ME-02 permanently and VT-01 is decommissioned',
-              'TIDEMARK-1 is taken out of service for the duration of the maintenance window',
-              'ME-02 takes over all VT-01 satellites for the maintenance window',
+              'TIDEMARK-1 traffic moves to ME-02 permanently after the VT-01 maintenance window, then VT-01 is decommissioned',
+              'TIDEMARK-1 traffic is taken off the air for the 2-hour VT-01 maintenance window, then comes back next shift',
+              'All VT-01 satellites move to ME-02 for the 2-hour VT-01 maintenance window, then come back next shift',
             ],
             correctIndex: 0,
             explanation: 'Planned handover for a maintenance window. ME-02 holds TM-1 while the crew works VT-01. Return to service is the next shift.',
@@ -290,10 +283,10 @@ export const scenario11Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Why does a planned handover start with a baseline check of the source station?',
             options: [
-              'A pre-handover snapshot documents what the link looked like healthy, so any post-handover anomaly can be attributed correctly',
-              'It is required by the satellite operator before they allow a transfer',
-              'It gives the maintenance crew advance notice that work is starting',
-              'It is needed to recover billing data',
+              'It records what the link looked like healthy, so any anomaly after the transfer can be attributed',
+              'It is required by the satellite operator, so the transfer request is approved before the crew arrives',
+              'It gives the maintenance crew advance notice, so they know the work window is about to open',
+              'It captures the billing counters at the switch, so the traffic hours can be recovered afterwards',
             ],
             correctIndex: 0,
             explanation: 'Baseline first. If something looks off on ME-02 after the transfer, you need to know whether it started before or after the handover.',
@@ -448,7 +441,8 @@ export const scenario11Data: ScenarioData = {
       id: 'me-stage-tx-for-handover',
       nice: ['T0129', 'S0421', 'K0770'],
       title: 'Stage ME-02 Transmit',
-      description: 'Enable transmit on Modem 1 so the TX chain is staged - but leave the BUC muted and the HPA disabled. The handover transfer, not the operator, swaps RF authority between stations.',
+      description:
+        'Enable transmit on Modem 1 so the TX chain is staged - but leave the BUC muted and the HPA disabled. The handover transfer, not the operator, swaps RF authority between stations.',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['me-verify-beacon-and-rx'],
       timeLimitSeconds: 4 * 60,
@@ -497,13 +491,14 @@ export const scenario11Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'What makes ME-02 ready to commit to the TIDEMARK-1 handover?',
             options: [
-              'Antenna locked, RX carrier with C/N margin, TX chain staged - modem transmitting into a muted BUC, HPA disabled until the transfer swaps RF authority',
-              'BUC unmuted and HPA enabled now - the station must be radiating before the transfer',
-              'Antenna locked is sufficient - the rest happens during the transfer',
-              'A successful loopback test before the transfer',
+              'Antenna locked, RX carrier with C/N margin, TX staged cold - modem on, BUC muted, HPA disabled until the transfer',
+              'Antenna locked, RX carrier with C/N margin, TX chain hot - modem on, BUC unmuted, HPA enabled before the transfer',
+              'Antenna locked, beacon on the analyzer, TX chain untouched - the RX modem and TX chain come up during the transfer',
+              'Antenna locked, RX carrier with C/N margin, loopback passed - modem on, BUC in loopback, HPA disabled until the transfer',
             ],
             correctIndex: 0,
-            explanation: 'Receive side proves the link works in; transmit side is staged but cold. If both stations radiated at the same transponder, the satellite would see two carriers - dual illumination. The handover stands the source down and brings the target up in one coordinated swap.',
+            explanation:
+              'Receive side proves the link works in; transmit side is staged but cold. If both stations radiated at the same transponder, the satellite would see two carriers - dual illumination. The handover stands the source down and brings the target up in one coordinated swap.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -592,7 +587,7 @@ export const scenario11Data: ScenarioData = {
       id: 'catherine-confirm-hot',
       nice: ['K0718', 'K0741'],
       title: 'Confirm with Catherine',
-      description: 'Acknowledge Catherine\'s confirmation that ME-02 has the link clean.',
+      description: "Acknowledge Catherine's confirmation that ME-02 has the link clean.",
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['verify-me-traffic-owner'],
       timeLimitSeconds: 2 * 60,
@@ -648,7 +643,8 @@ export const scenario11Data: ScenarioData = {
       id: 'vt-safe-tx-chain',
       nice: ['S0421', 'K0770', 'S0593'],
       title: 'Verify VT-01 TX Chain Safed',
-      description: 'The handover stood VT-01\'s transmit down automatically - HPA disabled, BUC muted. Verify it on the panel; never trust an automatic safing you have not looked at.',
+      description:
+        "The handover stood VT-01's transmit down automatically - HPA disabled, BUC muted. Verify it on the panel; never trust an automatic safing you have not looked at.",
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['switch-to-vermont-safing'],
       timeLimitSeconds: 3 * 60,
@@ -731,9 +727,9 @@ export const scenario11Data: ScenarioData = {
             question: 'Which combination of conditions confirms VT-01 is safe for the maintenance crew to begin work?',
             options: [
               'HPA disabled, BUC muted, antenna at maintenance position - no RF energy on the feed, dish accessible',
-              'HPA disabled alone is sufficient - the BUC cannot transmit without HPA',
-              'Antenna stowed at 90° elevation is the correct maintenance position',
-              'Powering off the entire RF rack is required before the crew approaches',
+              'HPA disabled, BUC left unmuted, antenna at maintenance position - the BUC cannot radiate without the HPA',
+              'HPA disabled, BUC muted, antenna stowed at 90° elevation - no RF energy on the feed, dish protected',
+              'RF rack fully powered off, GPSDO off, antenna at maintenance position - nothing energized, dish accessible',
             ],
             correctIndex: 0,
             explanation: 'RF de-energized AND dish in a position the crew can reach. Stow at 90° protects against weather; maintenance at 5° lets a person work the feed.',
@@ -766,10 +762,10 @@ export const scenario11Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Which line correctly records this handover in the operations log?',
             options: [
-              '1000 - Planned handover TM-1 VT-01 to ME-02 complete. VT-01 RF chain safed, antenna at maintenance position. Crew on-site for HPA waveguide inspection. ME-02 (Vega) carrying traffic. Return to service next shift.',
-              '1000 - Emergency handover TM-1 VT-01 to ME-02. Cause unknown. Investigation pending.',
-              '1000 - Maintenance crew arrived. Traffic handover deferred to next shift.',
-              '1000 - TM-1 traffic resumed on VT-01 after maintenance complete.',
+              '1000 - Planned TM-1 handover to ME-02 complete. VT-01 safed, antenna at maintenance position, crew on-site. Return to service next shift.',
+              '1000 - Emergency TM-1 handover to ME-02 complete. VT-01 fault cause unknown, antenna still on TM-1, crew on-site. Investigation pending.',
+              '1000 - Crew on-site for VT-01 HPA waveguide gasket. TM-1 handover to ME-02 deferred, VT-01 still carrying traffic. Return to service next shift.',
+              '1000 - Planned TM-1 handover to ME-02 complete. VT-01 maintenance finished, antenna back on TM-1, crew released. Traffic resumed on VT-01.',
             ],
             correctIndex: 0,
             explanation: 'Who, what, why, where it stands, who has the link. The next operator should be able to pick up the shift without asking a question.',

@@ -1,12 +1,6 @@
 import { vi } from 'vitest';
 import { ScenarioData } from '../src/ScenarioData';
-import {
-  getNextPrerequisiteScenario,
-  getPrerequisiteScenarioNames,
-  isScenarioLocked,
-  ScenarioManager,
-  SCENARIOS,
-} from '../src/scenario-manager';
+import { getNextPrerequisiteScenario, getPrerequisiteScenarioNames, isScenarioLocked, SCENARIOS, ScenarioManager } from '../src/scenario-manager';
 
 // Mock all scenario data imports
 vi.mock('../src/campaigns/nats/scenario1', () => ({
@@ -276,10 +270,7 @@ describe('isScenarioLocked', () => {
     window.DEVELOPER_MODE = false;
   });
 
-  const createTestScenario = (
-    id: string,
-    prereqs?: string[]
-  ): ScenarioData => ({
+  const createTestScenario = (id: string, prereqs?: string[]): ScenarioData => ({
     id,
     number: 1,
     title: `Scenario ${id}`,
@@ -334,10 +325,7 @@ describe('isScenarioLocked', () => {
 });
 
 describe('getNextPrerequisiteScenario', () => {
-  const createTestScenario = (
-    id: string,
-    prereqs?: string[]
-  ): ScenarioData => ({
+  const createTestScenario = (id: string, prereqs?: string[]): ScenarioData => ({
     id,
     number: parseInt(id.replace('scenario-', '')),
     title: `Scenario ${id}`,
@@ -455,7 +443,7 @@ describe('SCENARIOS constant', () => {
   });
 
   it('should include sandbox scenario', () => {
-    const sandbox = SCENARIOS.find(s => s.id === 'sandbox');
+    const sandbox = SCENARIOS.find((s) => s.id === 'sandbox');
     expect(sandbox).toBeDefined();
   });
 });

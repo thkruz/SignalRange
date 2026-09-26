@@ -56,22 +56,13 @@ export const scenario1Data: ScenarioData = {
   difficulty: 'beginner',
   missionType: 'Routine Operations',
   description: `Welcome to your first day at North Atlantic Teleport Services, a commercial satellite ground station facility in rural Vermont. Your company provides ground segment services for the TIDEMARK constellation - SeaLink Global Communications' fleet of GEO satellites providing maritime broadband across the Atlantic.<br><br>TIDEMARK-1 is already online at 53°W, serving customer traffic. Today, Charlie Brooks will walk you through a routine health check. You'll learn what each equipment panel shows, what the indicators mean, and what "normal" looks like.<br><br>No pressure today - just observation and familiarization. Click through each panel and verify the status indicators as Charlie explains them.`,
-  equipment: [
-    '9-meter C-band Antenna',
-    'RF Front End',
-    'Spectrum Analyzer',
-    'RX/TX Modems',
-  ],
+  equipment: ['9-meter C-band Antenna', 'RF Front End', 'Spectrum Analyzer', 'RX/TX Modems'],
   settings: {
     isSync: true,
-    groundStations: [
-      vermontGroundStation,
-    ],
+    groundStations: [vermontGroundStation],
     missionBriefUrl: 'https://docs.signalrange.space/campaign-1/scenario-1?content-only=true&dark=true',
     isExtraSatellitesVisible: true,
-    satellites: [
-      tidemark1Satellite,
-    ]
+    satellites: [tidemark1Satellite],
   },
   timeLimitSeconds: 35 * 60, // 35 minutes
   objectives: [
@@ -100,9 +91,7 @@ export const scenario1Data: ScenarioData = {
           description: 'Ready to Proceed',
           params: {
             question: 'Have you reviewed the mission brief and are you ready to begin?',
-            options: [
-              'Yes, I have read the mission brief and I am ready to proceed.',
-            ],
+            options: ['Yes, I have read the mission brief and I am ready to proceed.'],
             correctIndex: 0,
             explanation: 'The mission timer has started. Good luck!',
             pointPenalty: 0,
@@ -290,7 +279,8 @@ export const scenario1Data: ScenarioData = {
               'No reading - LNB is offline',
             ],
             correctIndex: 0,
-            explanation: 'The LNB noise temperature of 43K is excellent. Lower noise temperature means better receive sensitivity. Anything under 100K is considered good for C-band.',
+            explanation:
+              'The LNB noise temperature of 43K is excellent. Lower noise temperature means better receive sensitivity. Anything under 100K is considered good for C-band.',
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -326,12 +316,13 @@ export const scenario1Data: ScenarioData = {
             question: 'What does the Tap Points card show, and what is its purpose?',
             options: [
               'RX IF selected - monitoring the receive chain after downconversion',
-              'TX IF selected - monitoring the transmit chain',
-              'Both TX and RX IF active - dual monitoring mode',
-              'No tap point selected - spectrum analyzer disabled',
+              'TX IF selected - monitoring the transmit chain before upconversion',
+              'Both TX and RX IF active - monitoring both chains in dual mode',
+              'No tap point selected - spectrum analyzer input is disconnected',
             ],
             correctIndex: 0,
-            explanation: 'The Tap Points card selects where in the signal chain the spectrum analyzer takes its input. RX IF monitors the receive path after the LNB downconverts from RF to IF - this is the standard monitoring point for receive operations.',
+            explanation:
+              'The Tap Points card selects where in the signal chain the spectrum analyzer takes its input. RX IF monitors the receive path after the LNB downconverts from RF to IF - this is the standard monitoring point for receive operations.',
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -385,7 +376,8 @@ export const scenario1Data: ScenarioData = {
               'Flat line at 0 dBm - equipment malfunction',
             ],
             correctIndex: 0,
-            explanation: 'The beacon signal appears as a narrow spike rising above the noise floor. This CW (continuous wave) intermediate frequency signal confirms the satellite is in view and the receive chain is working.',
+            explanation:
+              'The beacon signal appears as a narrow spike rising above the noise floor. This CW (continuous wave) intermediate frequency signal confirms the satellite is in view and the receive chain is working.',
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -419,14 +411,10 @@ export const scenario1Data: ScenarioData = {
           description: 'Verify Spectrum Analyzer Configuration',
           params: {
             question: 'What center frequency and span are set on the spectrum analyzer?',
-            options: [
-              '1074.5 MHz center, 0.002 MHz span',
-              '1532 MHz center, 2 kHz span',
-              '0.002 MHz center, 1074.5 MHz span',
-              '1074.5 MHz center, 2 MHz span',
-            ],
+            options: ['1074.5 MHz center, 0.002 MHz span', '1532 MHz center, 2 kHz span', '0.002 MHz center, 1074.5 MHz span', '1074.5 MHz center, 2 MHz span'],
             correctIndex: 0,
-            explanation: 'The spectrum analyzer is set to 1074.5 MHz (beacon IF frequency for TIDEMARK-1 after LNB downconversion) with a 2 kHz (0.002 MHz) span. This narrow span allows you to clearly see the beacon signal above the noise floor.',
+            explanation:
+              'The spectrum analyzer is set to 1074.5 MHz (beacon IF frequency for TIDEMARK-1 after LNB downconversion) with a 2 kHz (0.002 MHz) span. This narrow span allows you to clearly see the beacon signal above the noise floor.',
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -467,7 +455,8 @@ export const scenario1Data: ScenarioData = {
               '< 3 dB - Below demodulation threshold; no reliable lock',
             ],
             correctIndex: 0,
-            explanation: 'A C/N ratio above 10 dB indicates a healthy link with adequate margin for reliable data reception. This confirms the entire receive chain from antenna to modem is functioning properly.',
+            explanation:
+              'A C/N ratio above 10 dB indicates a healthy link with adequate margin for reliable data reception. This confirms the entire receive chain from antenna to modem is functioning properly.',
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -508,7 +497,8 @@ export const scenario1Data: ScenarioData = {
               'Empty display - no signal lock',
             ],
             correctIndex: 0,
-            explanation: 'The tight clusters at the four QPSK symbol points indicate clean demodulation with good signal-to-noise ratio. Spread or scattered points would indicate noise, interference, or phase problems.',
+            explanation:
+              'The tight clusters at the four QPSK symbol points indicate clean demodulation with good signal-to-noise ratio. Spread or scattered points would indicate noise, interference, or phase problems.',
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -548,12 +538,13 @@ export const scenario1Data: ScenarioData = {
             question: 'What does the Payload Data Integrity card show about the received data?',
             options: [
               'Frame sync locked, CRC valid, Reed-Solomon active - data path healthy',
-              'Frame sync unlocked - no data being received',
-              'CRC errors detected - data corruption',
-              'Viterbi decoder disabled - no error correction',
+              'Frame sync unlocked, CRC failing, Reed-Solomon idle - no data received',
+              'Frame sync locked, CRC errors present, Reed-Solomon active - data corrupted',
+              'Frame sync locked, CRC valid, Viterbi decoder disabled - no error correction',
             ],
             correctIndex: 0,
-            explanation: 'The Payload Data Integrity card confirms the data path is healthy: frame sync is locked (receiving valid frames), CRC checks pass (no corruption), and the Reed-Solomon decoder is actively correcting any bit errors.',
+            explanation:
+              'The Payload Data Integrity card confirms the data path is healthy: frame sync is locked (receiving valid frames), CRC checks pass (no corruption), and the Reed-Solomon decoder is actively correcting any bit errors.',
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -619,14 +610,10 @@ export const scenario1Data: ScenarioData = {
           description: 'Verify HPA Status',
           params: {
             question: 'What is the current state of the HPA (High Power Amplifier)?',
-            options: [
-              'Transmitting with 10 dB backoff',
-              'Powered on but not enabled (safe standby)',
-              'Transmitting at full power',
-              'Powered off completely',
-            ],
+            options: ['Transmitting with 10 dB backoff', 'Powered on but not enabled (safe standby)', 'Transmitting at full power', 'Powered off completely'],
             correctIndex: 0,
-            explanation: 'The HPA is powered on and transmitting with 10 dB backoff, which is a safe condition for routine operations. This reduces stress on the amplifier while still allowing signal transmission.',
+            explanation:
+              'The HPA is powered on and transmitting with 10 dB backoff, which is a safe condition for routine operations. This reduces stress on the amplifier while still allowing signal transmission.',
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -666,12 +653,13 @@ export const scenario1Data: ScenarioData = {
             question: 'What does the TX Payload Data card show about the transmit data path?',
             options: [
               'Source feed active, encryption enabled, buffer healthy - ready to transmit',
-              'Source feed inactive - no data available',
-              'Encryption disabled - transmitting in clear',
-              'Buffer overflow - data loss occurring',
+              'Source feed inactive, encryption enabled, buffer empty - no data to transmit',
+              'Source feed active, encryption disabled, buffer healthy - transmitting in clear',
+              'Source feed active, encryption enabled, buffer overflowing - data loss occurring',
             ],
             correctIndex: 0,
-            explanation: 'The TX Payload Data card shows the transmit path is healthy: source feed is active, encryption is enabled with a valid key, and the buffer utilization is within normal range with no overflows or underruns.',
+            explanation:
+              'The TX Payload Data card shows the transmit path is healthy: source feed is active, encryption is enabled with a valid key, and the buffer utilization is within normal range with no overflows or underruns.',
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -738,13 +726,14 @@ export const scenario1Data: ScenarioData = {
           params: {
             question: 'What tracking mode is the antenna currently using?',
             options: [
-              'Step-track - actively tracking beacon signal',
+              'Step-track - actively tracking the received beacon signal',
               'Program-track - following predicted orbital position',
-              'Manual - operator-controlled pointing',
-              'Stow - antenna in safe position',
+              'Manual - holding operator-commanded azimuth and elevation',
+              'Stow - antenna parked in its protected survival position',
             ],
             correctIndex: 1,
-            explanation: 'Program-track mode follows the predicted orbital position of the satellite based on ephemeris data. This mode is used when the beacon signal is not available, during initial acquisition, or when the satellite is GEO stationary and we don\'t want the ACU to make constant adjustments.',
+            explanation:
+              "Program-track mode follows the predicted orbital position of the satellite based on ephemeris data. This mode is used when the beacon signal is not available, during initial acquisition, or when the satellite is GEO stationary and we don't want the ACU to make constant adjustments.",
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -780,12 +769,13 @@ export const scenario1Data: ScenarioData = {
             question: 'What is the current polarization angle shown on the ACU, and why is it set to that value?',
             options: [
               '14° - matched to TIDEMARK-1 satellite polarization',
-              '0° - default horizontal polarization',
-              '90° - vertical polarization',
-              '45° - circular polarization',
+              '0° - default horizontal polarization for C-band',
+              '90° - vertical polarization for the downlink',
+              '45° - midpoint setting for circular polarization',
             ],
             correctIndex: 0,
-            explanation: 'The polarization is set to 14° to match TIDEMARK-1\'s polarization angle. Proper polarization alignment maximizes signal strength and minimizes cross-pol interference.',
+            explanation:
+              "The polarization is set to 14° to match TIDEMARK-1's polarization angle. Proper polarization alignment maximizes signal strength and minimizes cross-pol interference.",
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -853,12 +843,13 @@ export const scenario1Data: ScenarioData = {
             question: 'What is the current alarm status shown on the dashboard?',
             options: [
               'No active alarms - all systems nominal',
-              'Warning: LNB temperature high',
-              'Error: GPSDO holdover mode',
-              'Critical: Antenna tracking lost',
+              'Warning alarm - LNB temperature high',
+              'Error alarm - GPSDO in holdover mode',
+              'Critical alarm - antenna tracking lost',
             ],
             correctIndex: 0,
-            explanation: 'A clean alarm dashboard with no active alarms confirms all equipment is operating within normal parameters. This is the final confirmation of a healthy ground station.',
+            explanation:
+              'A clean alarm dashboard with no active alarms confirms all equipment is operating within normal parameters. This is the final confirmation of a healthy ground station.',
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -1206,4 +1197,4 @@ export const scenario1Data: ScenarioData = {
       },
     },
   },
-}
+};

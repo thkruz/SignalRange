@@ -1,11 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { MissionControlPage } from '../pages/mission-control.page';
-import {
-  answerQuizByText,
-  dismissDialogIfPresent,
-  waitForQuizToAppear,
-  waitForSimulationReady,
-} from '../utils/simulation-helpers';
+import { answerQuizByText, dismissDialogIfPresent, waitForQuizToAppear, waitForSimulationReady } from '../utils/simulation-helpers';
 
 /**
  * Scenario 21 - "Hostile RF": Suspected Intentional Interference.
@@ -21,13 +16,7 @@ import {
  * crypto checks (ACTIVE/Valid by default), the notch filter, and a
  * post-notch receiver-lock check (the carrier is ~15 dB above the jammer).
  */
-type ObjectiveType =
-  | 'quiz'
-  | 'select-station'
-  | 'click-tab'
-  | 'configure-speca'
-  | 'configure-notch'
-  | 'auto';
+type ObjectiveType = 'quiz' | 'select-station' | 'click-tab' | 'configure-speca' | 'configure-notch' | 'auto';
 
 interface Scenario21Objective {
   id: string;
@@ -46,8 +35,7 @@ const SCENARIO_21_OBJECTIVES: Scenario21Objective[] = [
     id: 'review-mission-brief',
     title: 'Review the Interference Flag',
     type: 'quiz',
-    correctAnswer:
-      'As an interference incident: characterize, discriminate, mitigate, document - and verify the data layer separately. The same evidence resolves an accident or builds the case for deliberate interference',
+    correctAnswer: 'As an interference incident: characterize, discriminate, mitigate, document - and verify the data layer separately',
   },
   {
     id: 'select-maine-station',
@@ -73,22 +61,19 @@ const SCENARIO_21_OBJECTIVES: Scenario21Objective[] = [
     id: 'duty-cycle-quiz',
     title: 'Characterize the Duty Cycle',
     type: 'quiz',
-    correctAnswer:
-      'Against accident, toward deliberation: natural and accidental sources are continuous or random; a clean repeating on/off cadence on the scale of a minute implies a hand on a switch or an automated transmitter, not weather or a stuck oscillator',
+    correctAnswer: 'Against accident, toward deliberation: accidents are continuous or random; a clean minute-scale on/off cadence implies a switch',
   },
   {
     id: 'transponder-vs-local-quiz',
     title: 'Transponder or Local?',
     type: 'quiz',
-    correctAnswer:
-      'It is in the UPLINK - the satellite is relaying it to every receiving station, so the source is transmitting at the bird, not a local terrestrial source at Maine. That rules out radar/5G/our own equipment and points at a misaligned or deliberate uplink',
+    correctAnswer: 'It is in the UPLINK - the satellite relays it to every station, so the source is transmitting at the bird, not local to Maine',
   },
   {
     id: 'signature-shape-quiz',
     title: 'Signature vs the Database',
     type: 'quiz',
-    correctAnswer:
-      'It matches nothing in the coordination database: cross-pol leakage would mirror a known neighbor\'s carrier, an errant uplink would look like a modulated carrier at a coordinated slot - broadband noise shaped to our carrier inside our passband fits neither',
+    correctAnswer: "It matches nothing in the database: cross-pol would mirror a neighbor's carrier, an errant uplink would sit at a known slot",
   },
 
   // PHASE 2: DENIAL VS INTRUSION
@@ -96,8 +81,7 @@ const SCENARIO_21_OBJECTIVES: Scenario21Objective[] = [
     id: 'denial-vs-intrusion-quiz',
     title: 'Denial or Intrusion?',
     type: 'quiz',
-    correctAnswer:
-      'It is a DENIAL attack on the RF layer - it degrades or blocks the signal but does not touch the data, crypto, or keys. The distinction matters because an intrusion (data-layer compromise) has a different escalation path and you must verify which you are facing',
+    correctAnswer: 'A DENIAL attack on the RF layer - it blocks the signal but never touches data, crypto, or keys; intrusion escalates differently',
   },
   {
     id: 'verify-data-layer',
@@ -109,8 +93,7 @@ const SCENARIO_21_OBJECTIVES: Scenario21Objective[] = [
     id: 'data-layer-meaning-quiz',
     title: 'What Intact Crypto Proves',
     type: 'quiz',
-    correctAnswer:
-      'Confirms RF-layer denial only: the link is being degraded, not breached. If crypto state changed or keys went invalid/mismatched mid-incident, it would become a security incident with a different escalation (Dana then security officer; nothing holding keys gets power-cycled)',
+    correctAnswer: 'Confirms RF denial only - degraded, not breached; a crypto change or invalid keys mid-incident flips it to a security incident',
   },
 
   // PHASE 3: MITIGATION
@@ -118,8 +101,7 @@ const SCENARIO_21_OBJECTIVES: Scenario21Objective[] = [
     id: 'mitigation-choice-quiz',
     title: 'Choose Mitigation',
     type: 'quiz',
-    correctAnswer:
-      'Notch filter on the interferer band - excise its energy at the cost of a little SNR in that slice; reversible, customer-preserving, and it does nothing to neighbors',
+    correctAnswer: 'Notch filter on the interferer band - excise its energy for a little SNR in that slice; reversible and customer-preserving',
   },
   {
     id: 'configure-notch',
@@ -137,8 +119,7 @@ const SCENARIO_21_OBJECTIVES: Scenario21Objective[] = [
     id: 'no-burn-through-quiz',
     title: 'Why Not Fight Back',
     type: 'quiz',
-    correctAnswer:
-      'You cannot out-shout an uplink jammer from the ground without violating coordination and degrading every neighbor on the transponder - a power war escalates the incident, harms bystanders, and still loses. Receive-side mitigation plus regulatory action is the path',
+    correctAnswer: 'It breaks coordination and degrades every neighbor on the transponder - a power war escalates the incident and still loses',
   },
 
   // PHASE 4: COORDINATE AND REPORT
@@ -146,22 +127,19 @@ const SCENARIO_21_OBJECTIVES: Scenario21Objective[] = [
     id: 'regulator-package-quiz',
     title: 'Build the Regulator Package',
     type: 'quiz',
-    correctAnswer:
-      'Victim (satellite/transponder/pol/center freq/BW), interferer (center freq, BW, measured duty cycle, first/last seen), spectrum captures at documented settings, cross-station confirmation (transponder vs local), service impact, and mitigation applied - all timestamped',
+    correctAnswer: 'Victim and interferer parameters (freq, BW, duty cycle), spectrum captures, cross-station confirmation, impact - all timestamped',
   },
   {
     id: 'attribution-restraint-quiz',
     title: 'Conclude Carefully',
     type: 'quiz',
-    correctAnswer:
-      '"Signature consistent with deliberate uplink interference" - a confidence-bounded characterization backed by the evidence; attribution and intent are for the regulator to determine, not the ground operator to assert',
+    correctAnswer: '"Signature consistent with deliberate uplink interference" - confidence-bounded; attribution is for the regulator, not us',
   },
   {
     id: 'log-incident',
     title: 'Log the Incident',
     type: 'quiz',
-    correctAnswer:
-      'TM-2 TP-1 interference: broadband noise ~1470 MHz IF, ~90s/60s duty cycle, confirmed uplink (seen VT-01 + Halifax). Data layer intact (crypto ACTIVE, keys Valid) - RF denial, not intrusion. Notch applied, carrier holding. Signature consistent with deliberate interference - regulator package filed. Monitoring; escalate on any data-layer change.',
+    correctAnswer: 'TM-2 TP-1 interference: noise ~1470 MHz IF, 90s/60s duty, uplink-confirmed (VT-01 + Halifax); crypto intact - RF denial, notched',
   },
 ];
 
@@ -169,10 +147,7 @@ const SCENARIO_21_OBJECTIVES: Scenario21Objective[] = [
 // Helper Functions
 // ============================================================
 
-async function configureSpeca(
-  page: import('@playwright/test').Page,
-  config: { centerFrequencyMhz: number; spanMhz: number }
-): Promise<void> {
+async function configureSpeca(page: import('@playwright/test').Page, config: { centerFrequencyMhz: number; spanMhz: number }): Promise<void> {
   const centerFreqInput = page.locator('#sa-center-freq');
   await expect(centerFreqInput).toBeVisible({ timeout: 5000 });
   await centerFreqInput.fill(config.centerFrequencyMhz.toString());
@@ -237,11 +212,7 @@ async function configureNotchFilter(
   await page.waitForTimeout(500);
 }
 
-async function executeObjective(
-  page: import('@playwright/test').Page,
-  missionControlPage: MissionControlPage,
-  objective: Scenario21Objective
-): Promise<void> {
+async function executeObjective(page: import('@playwright/test').Page, missionControlPage: MissionControlPage, objective: Scenario21Objective): Promise<void> {
   switch (objective.type) {
     case 'quiz':
       await waitForQuizToAppear(page);
@@ -254,6 +225,10 @@ async function executeObjective(
 
     case 'click-tab':
       await missionControlPage.selectTab(objective.tabId!);
+      // Observation-gated conditions latch only after the default dwell on
+      // the tab (DEFAULT_OBSERVATION_DWELL_SECONDS); leaving at once would
+      // reset the read and strand the objective.
+      await page.waitForTimeout(3000);
       break;
 
     case 'configure-speca':

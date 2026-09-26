@@ -1,29 +1,41 @@
-import { BaseElement } from "@app/components/base-element";
-import { EventBus } from "@app/events/event-bus";
-import { DualTransmissionViolationData, Events, HpaNoiseAmplificationData, ObjectiveFailedData, ScenarioTimeExpiredData } from "@app/events/events";
-import { Logger } from "@app/logging/logger";
-import { DialogHistoryManager } from "@app/modal/dialog-history-manager";
-import { DialogManager } from "@app/modal/dialog-manager";
-import { LevelCompleteModal } from "@app/modal/level-complete-modal";
-import { ObjectiveFailedModal } from "@app/modal/objective-failed-modal";
-import { QuizModal } from "@app/modal/quiz-modal";
-import { TimePenaltyToast } from "@app/modal/time-penalty-toast";
-import { ObjectivesManager } from "@app/objectives/objectives-manager";
-import { EventAutoLogger } from "@app/ops-log/event-auto-logger";
-import { OpsLogManager } from "@app/ops-log/ops-log-manager";
-import { NavigationOptions, Router } from "@app/router";
-import { ScenarioManager } from "@app/scenario-manager";
-import { ScenarioDialogManager } from "@app/scenarios/scenario-dialog-manager";
-import { WorkingDocumentManager } from "@app/scenarios/working-document-manager";
-import { InterferenceManager } from "@app/interference/interference-manager";
-import { WeatherManager } from "@app/weather/weather-manager";
-import { ScenarioCompletionHandler } from "@app/scoring/scenario-completion-handler";
-import { ScoreCalculator } from "@app/scoring/score-calculator";
-import { SimulationManager } from "@app/simulation/simulation-manager";
-import { AppState } from "@app/sync/storage";
-import { ProgressSaveManager } from "@app/user-account/progress-save-manager";
-import { ScenarioProgressEntry } from "@app/user-account/types";
-import { getUserDataService } from "@app/user-account/user-data-service";
+import { CommandingManager } from '@app/commanding/commanding-manager';
+import { BaseElement } from '@app/components/base-element';
+import { ContactScheduleManager } from '@app/contact-schedule/contact-schedule-manager';
+import { ElectronicAttackManager } from '@app/electronic-attack/electronic-attack-manager';
+import { GeolocationConsoleCore } from '@app/equipment/geolocation-console/geolocation-console-core';
+import { EventBus } from '@app/events/event-bus';
+import { DualTransmissionViolationData, Events, HpaNoiseAmplificationData, ObjectiveFailedData, ProtectedFreqViolationData, ScenarioTimeExpiredData } from '@app/events/events';
+import { HardwareFaultManager } from '@app/faults/hardware-fault-manager';
+import { GnssThreatManager } from '@app/gnss-threat/gnss-threat-manager';
+import { InterferenceManager } from '@app/interference/interference-manager';
+import { LinkBudgetManager } from '@app/link-budget/link-budget-manager';
+import { Logger } from '@app/logging/logger';
+import { DecisionModal } from '@app/modal/decision-modal';
+import { DialogHistoryManager } from '@app/modal/dialog-history-manager';
+import { DialogManager } from '@app/modal/dialog-manager';
+import { LevelCompleteModal } from '@app/modal/level-complete-modal';
+import { ObjectiveFailedModal } from '@app/modal/objective-failed-modal';
+import { QuizModal } from '@app/modal/quiz-modal';
+import { TimePenaltyToast } from '@app/modal/time-penalty-toast';
+import { ObjectivesManager } from '@app/objectives/objectives-manager';
+import { EventAutoLogger } from '@app/ops-log/event-auto-logger';
+import { OpsLogManager } from '@app/ops-log/ops-log-manager';
+import { NavigationOptions, Router } from '@app/router';
+import { ScenarioManager } from '@app/scenario-manager';
+import { ScenarioDialogManager } from '@app/scenarios/scenario-dialog-manager';
+import { WorkingDocumentManager } from '@app/scenarios/working-document-manager';
+import { ScenarioCompletionHandler } from '@app/scoring/scenario-completion-handler';
+import { ScoreCalculator } from '@app/scoring/score-calculator';
+import { SecurityConsoleCore } from '@app/security-console/security-console-core';
+import { SimulationManager } from '@app/simulation/simulation-manager';
+import { SpaceEventManager } from '@app/space-events/space-event-manager';
+import { AppState } from '@app/sync/storage';
+import { TelemetryManager } from '@app/telemetry/telemetry-manager';
+import { TransecManager } from '@app/transec/transec-manager';
+import { ProgressSaveManager } from '@app/user-account/progress-save-manager';
+import { ScenarioProgressEntry } from '@app/user-account/types';
+import { getUserDataService } from '@app/user-account/user-data-service';
+import { WeatherManager } from '@app/weather/weather-manager';
 
 export abstract class BasePage extends BaseElement {
   abstract id: string;
@@ -74,11 +86,7 @@ export abstract class BasePage extends BaseElement {
     }
 
     // Initialize ops log manager (always, for all scenarios)
-    OpsLogManager.initialize(
-      scenario.settings.scenarioStartWallTime,
-      scenario.settings.scenarioStartDate,
-      scenario.settings.previousShiftLogs
-    );
+    OpsLogManager.initialize(scenario.settings.scenarioStartWallTime, scenario.settings.scenarioStartDate, scenario.settings.previousShiftLogs);
 
     // Initialize event auto-logger (logs equipment events for beginner/intermediate)
     EventAutoLogger.getInstance().initialize();
@@ -110,8 +118,54 @@ export abstract class BasePage extends BaseElement {
         InterferenceManager.getInstance();
       }
 
+      // Start the geolocation console engine (Campaign 5). Must come after
+      // InterferenceManager so it can query active emitter events.
+      if (scenario.settings.geolocation) {
+        GeolocationConsoleCore.getInstance();
+      }
+
+      // Start the electronic-attack engine (Campaign 4): a player-driven jam
+      // injector + J/S assessment + own-force deconfliction interlock.
+      if (scenario.settings.electronicAttack) {
+        ElectronicAttackManager.getInstance();
+      }
+
+      // Start scheduled transmit-string hardware faults (Campaign 4 redundancy)
+      if ((scenario.settings.hardwareFaultEvents?.length ?? 0) > 0) {
+        HardwareFaultManager.getInstance();
+      }
+
+      // Start the nats-eu (Campaign 2) opt-in mechanics. Each is gated by its
+      // own settings block, so no other campaign instantiates them.
+      if (scenario.settings.linkBudget) {
+        LinkBudgetManager.getInstance();
+      }
+      if (scenario.settings.commanding) {
+        CommandingManager.getInstance();
+      }
+      if (scenario.settings.contactSchedule) {
+        ContactScheduleManager.getInstance();
+      }
+      if ((scenario.settings.spaceEvents?.length ?? 0) > 0) {
+        SpaceEventManager.getInstance();
+      }
+      if (scenario.settings.security) {
+        SecurityConsoleCore.getInstance();
+      }
+      if (scenario.settings.transec) {
+        TransecManager.getInstance();
+      }
+      if (scenario.settings.gnssThreat) {
+        GnssThreatManager.getInstance();
+      }
+      if (scenario.settings.telemetry) {
+        TelemetryManager.getInstance();
+      }
+
       // Initialize quiz modal for status-check objective conditions
       QuizModal.getInstance();
+      // and the decision modal for decision conditions
+      DecisionModal.getInstance();
 
       // If we're continuing from a checkpoint, restore objective states
       if (this.navigationOptions_.continueFromCheckpoint) {
@@ -144,13 +198,7 @@ export abstract class BasePage extends BaseElement {
     // Show intro dialog if available and not continuing from checkpoint
     const introClip = scenario.data?.dialogClips?.intro;
     if (introClip && !this.navigationOptions_.continueFromCheckpoint) {
-      DialogManager.getInstance().show(
-        introClip.text,
-        introClip.character,
-        introClip.audioUrl,
-        'Introduction',
-        introClip.emotion
-      );
+      DialogManager.getInstance().show(introClip.text, introClip.character, introClip.audioUrl, 'Introduction', introClip.emotion);
     }
   }
 
@@ -195,6 +243,14 @@ export abstract class BasePage extends BaseElement {
         isScenarioTimeout: false,
       });
     });
+
+    eventBus.on(Events.PROTECTED_FREQ_VIOLATION, (data: ProtectedFreqViolationData) => {
+      ObjectiveFailedModal.getInstance().showFailure({
+        title: 'Mission Failed',
+        message: `FRATRICIDE: your jam waveform at ${(data.jamFrequencyHz / 1e6).toFixed(1)} MHz overlaps the protected ${data.protectedBandLabel}. Deconflict the jam frequency against friendly SATCOM before keying the transmitter - own-force interference is a mission-ending error.`,
+        isScenarioTimeout: false,
+      });
+    });
   }
 
   /**
@@ -207,7 +263,7 @@ export abstract class BasePage extends BaseElement {
 
     try {
       const scenario = ScenarioManager.getInstance();
-      const checkpoint = await this.progressSaveManager_.loadCheckpoint(scenario.data.id) as {
+      const checkpoint = (await this.progressSaveManager_.loadCheckpoint(scenario.data.id)) as {
         state: AppState;
       };
 
@@ -221,18 +277,11 @@ export abstract class BasePage extends BaseElement {
 
       if (checkpoint?.state?.objectiveStates) {
         const objectivesManager = ObjectivesManager.getInstance();
-        objectivesManager.restoreState(
-          checkpoint.state.objectiveStates,
-          checkpoint.state.scenarioTimeRemaining
-        );
+        objectivesManager.restoreState(checkpoint.state.objectiveStates, checkpoint.state.scenarioTimeRemaining);
         Logger.info('Objective states restored from checkpoint');
 
         // Reconstruct dialog history from completed objectives
-        DialogHistoryManager.getInstance().reconstructFromCompletedObjectives(
-          scenario.data.dialogClips,
-          checkpoint.state.objectiveStates,
-          scenario.data.objectives ?? []
-        );
+        DialogHistoryManager.getInstance().reconstructFromCompletedObjectives(scenario.data.dialogClips, checkpoint.state.objectiveStates, scenario.data.objectives ?? []);
       }
     } catch (error) {
       Logger.error('Failed to restore objective states from checkpoint:', error);
@@ -277,7 +326,9 @@ export abstract class BasePage extends BaseElement {
         // Swallow the eventual rejection so that when the timeout wins the race
         // the still-pending request (which keeps retrying in the background)
         // does not surface as an unhandled promise rejection.
-        getUserDataService().getScenarioProgress(scenarioId).catch(() => null),
+        getUserDataService()
+          .getScenarioProgress(scenarioId)
+          .catch(() => null),
         new Promise<null>((resolve) => setTimeout(() => resolve(null), COMPLETION_CHECK_TIMEOUT_MS)),
       ]);
 
@@ -316,6 +367,7 @@ export abstract class BasePage extends BaseElement {
           quizPenalties: savedProgress.quizPenalties ?? 0,
           timePenalties: savedProgress.timePenalties ?? 0,
           hintPenalties: savedProgress.hintPenalties ?? 0,
+          decisionPenalties: 0, // folded into quizPenalties in the saved record
           totalScore: savedProgress.score ?? 0,
           objectiveBreakdown: [], // Not saved, show empty for replays
           timeRemainingSeconds: timeBonus * ScoreCalculator.TIME_BONUS_DIVISOR,

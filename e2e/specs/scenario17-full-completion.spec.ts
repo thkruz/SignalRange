@@ -1,17 +1,14 @@
 import { expect, test } from '@playwright/test';
 import { MissionControlPage } from '../pages/mission-control.page';
-import {
-  answerQuizByText,
-  dismissDialogIfPresent,
-  waitForQuizToAppear,
-  waitForSimulationReady,
-} from '../utils/simulation-helpers';
+import { answerQuizByText, dismissDialogIfPresent, waitForQuizToAppear, waitForSimulationReady } from '../utils/simulation-helpers';
 
 /**
  * Scenario 17 - "Solar Event": Sun Transit Outage.
  *
  * Phase 3 opener. A predicted sun transit (weather event type 'sun-transit')
- * raises VT-01's sky noise from T+300s to T+600s with a 12 dB sin^2 peak.
+ * raises VT-01's sky noise for 300 s with a 12 dB sin^2 peak, starting 20 s
+ * after 'observe-onset' activates (startAfterObjectiveId). The slow-player
+ * case lives in scenario17-late-onset.spec.ts.
  * The operator baselines the link, notifies the customer BEFORE the window,
  * holds configuration through the peak (demod loses lock and self-recovers),
  * verifies recovery, and documents predicted-vs-actual.
@@ -19,14 +16,9 @@ import {
  * Spec notes:
  *  - 'wait-sky-noise' steps poll the simulation state directly
  *    (skyNoiseDegradation_dB on VT-01's antenna) instead of sleeping.
- *  - Total wall-clock is dominated by the transit timeline (~11 min).
+ *  - Total wall-clock is dominated by the transit timeline (~5 min).
  */
-type ObjectiveType =
-  | 'quiz'
-  | 'select-station'
-  | 'click-tab'
-  | 'auto'
-  | 'wait-sky-noise';
+type ObjectiveType = 'quiz' | 'select-station' | 'click-tab' | 'auto' | 'wait-sky-noise';
 
 interface Scenario17Objective {
   id: string;
@@ -71,22 +63,19 @@ const SCENARIO_17_OBJECTIVES: Scenario17Objective[] = [
     id: 'baseline-dashboard',
     title: 'Pre-Transit Baseline',
     type: 'quiz',
-    correctAnswer:
-      'Anything abnormal AFTER the window starts will be attributed to the Sun - a fault hiding under the transit would survive unnoticed unless the board was provably clean before',
+    correctAnswer: 'Anything abnormal after window-open gets blamed on the Sun - a hidden fault only shows if the board was provably clean before',
   },
   {
     id: 'transit-geometry-quiz',
     title: 'Transit Geometry',
     type: 'quiz',
-    correctAnswer:
-      'The Sun (a ~20,000 K noise source at C-band) passes through the antenna main beam behind the satellite - system noise temperature soars and C/N collapses, with the signal itself unchanged',
+    correctAnswer: 'The Sun (~20,000 K at C-band) passes through the main beam behind the satellite - noise soars, C/N collapses, signal unchanged',
   },
   {
     id: 'transit-predictability-quiz',
     title: 'Why It Is Predictable',
     type: 'quiz',
-    correctAnswer:
-      'Twice a year near the equinoxes - a few minutes a day for several consecutive days, at a time computable years in advance from the station/satellite geometry',
+    correctAnswer: 'Twice a year near the equinoxes - a few minutes a day for several days, at a time computable years ahead from the geometry',
   },
   {
     id: 'baseline-rx-tab',
@@ -103,15 +92,14 @@ const SCENARIO_17_OBJECTIVES: Scenario17Objective[] = [
     id: 'why-not-handover-quiz',
     title: 'The Handover Question',
     type: 'quiz',
-    correctAnswer:
-      'The outage is brief, predicted, and SLA-excluded with notice - a handover trades that for two transfer events, and ME-02 inherits its own transit on its own schedule anyway',
+    correctAnswer: 'Brief, predicted, SLA-excluded with notice - a handover costs two transfer events, and ME-02 gets its own transit anyway',
   },
   {
     id: 'notify-customer-quiz',
     title: 'Pre-Event Notification',
     type: 'quiz',
     correctAnswer:
-      'Predicted solar transit on TIDEMARK-1 from Vermont, window and peak times attached; expect degraded margin and a possible 1-3 minute carrier interruption near peak; service recovers without intervention; this message constitutes SLA advance notice.',
+      'Predicted solar transit on TIDEMARK-1, window and peak times attached; possible 1-3 minute carrier loss near peak, self-recovering; this is SLA advance notice.',
   },
 
   // ============================================================
@@ -121,8 +109,7 @@ const SCENARIO_17_OBJECTIVES: Scenario17Objective[] = [
     id: 'observe-onset-quiz',
     title: 'Confirm Predicted Onset (quiz)',
     type: 'quiz',
-    correctAnswer:
-      'Confidence this is the predicted transit and not a coincidental fault - the alarm tracking the prediction sheet IS the diagnosis',
+    correctAnswer: 'Confidence this is the predicted transit, not a coincidental fault - the alarm tracking the sheet IS the diagnosis',
   },
   {
     id: 'observe-onset-wait',
@@ -144,8 +131,7 @@ const SCENARIO_17_OBJECTIVES: Scenario17Objective[] = [
     id: 'peak-behavior-quiz',
     title: 'What the Peak Looks Like',
     type: 'quiz',
-    correctAnswer:
-      'The downlink is buried in solar noise at OUR antenna only - the satellite still hears our uplink perfectly, and the demod will relock on its own as the Sun moves off boresight',
+    correctAnswer: 'The downlink is buried in solar noise at OUR antenna only - the uplink is fine, and the demod relocks on its own as the Sun moves off',
   },
 
   // ============================================================
@@ -168,29 +154,26 @@ const SCENARIO_17_OBJECTIVES: Scenario17Objective[] = [
     id: 'post-event-sweep',
     title: 'Post-Event Alarm Sweep',
     type: 'quiz',
-    correctAnswer:
-      'Any alarm that survived the window - the transit excuses exactly five minutes of sky noise and nothing else',
+    correctAnswer: 'Any alarm that survived the window - the transit excuses exactly five minutes of sky noise and nothing else',
   },
   {
     id: 'marcus-confirm',
     title: 'Spacecraft-Side Confirmation',
     type: 'quiz',
-    correctAnswer:
-      'Nothing abnormal on the spacecraft - our uplink steady throughout, vehicle telemetry nominal; the event existed only at our antenna',
+    correctAnswer: 'Nothing abnormal on the spacecraft - our uplink steady, vehicle telemetry nominal; the event existed only at our antenna',
   },
   {
     id: 'document-impact',
     title: 'Impact Documentation',
     type: 'quiz',
-    correctAnswer:
-      'Predicted vs actual window times, peak degradation observed, carrier lock-loss duration, notification timestamp (pre-window), and customer impact statement',
+    correctAnswer: 'Predicted vs actual window times, peak degradation, lock-loss duration, notification timestamp (pre-window), customer impact statement',
   },
   {
     id: 'log-shift-summary',
     title: 'Log the Event',
     type: 'quiz',
     correctAnswer:
-      'Predicted solar transit TM-1/VT-01 executed per SOP-SX-001. Customer notified pre-window. Peak ~12 dB sky noise, brief demod loss near peak, self-recovered to baseline. No operator intervention, no residual alarms. Day 2 of 4 in this transit series - next window tomorrow, ~4 minutes earlier.',
+      'TM-1 transit per SOP-SX-001, customer notified pre-window. Peak ~12 dB, brief demod loss, self-recovered, no residual alarms. Next window tomorrow, ~4 min earlier.',
   },
 ];
 
@@ -199,11 +182,7 @@ const SCENARIO_17_OBJECTIVES: Scenario17Objective[] = [
 // ============================================================
 
 /** Poll VT-01's antenna sky-noise state until the threshold is met. */
-async function waitForSkyNoise(
-  page: import('@playwright/test').Page,
-  condition: { above?: number; below?: number },
-  timeoutSeconds: number
-): Promise<void> {
+async function waitForSkyNoise(page: import('@playwright/test').Page, condition: { above?: number; below?: number }, timeoutSeconds: number): Promise<void> {
   await page.waitForFunction(
     (cond) => {
       const w = window as unknown as {
@@ -216,7 +195,7 @@ async function waitForSkyNoise(
           };
         };
       };
-      const gs = w.signalRange?.simulationManager?.groundStations?.find(g => g.state?.id === 'VT-01');
+      const gs = w.signalRange?.simulationManager?.groundStations?.find((g) => g.state?.id === 'VT-01');
       const sky = gs?.antennas?.[0]?.state?.skyNoiseDegradation_dB ?? 0;
       if (cond.above !== undefined && sky <= cond.above) return false;
       if (cond.below !== undefined && sky >= cond.below) return false;
@@ -229,11 +208,7 @@ async function waitForSkyNoise(
   await page.waitForTimeout(2500);
 }
 
-async function executeObjective(
-  page: import('@playwright/test').Page,
-  missionControlPage: MissionControlPage,
-  objective: Scenario17Objective
-): Promise<void> {
+async function executeObjective(page: import('@playwright/test').Page, missionControlPage: MissionControlPage, objective: Scenario17Objective): Promise<void> {
   switch (objective.type) {
     case 'quiz':
       await waitForQuizToAppear(page);
@@ -246,6 +221,10 @@ async function executeObjective(
 
     case 'click-tab':
       await missionControlPage.selectTab(objective.tabId!);
+      // Observation-gated conditions latch only after the default dwell on
+      // the tab (DEFAULT_OBSERVATION_DWELL_SECONDS); leaving at once would
+      // reset the read and strand the objective.
+      await page.waitForTimeout(3000);
       break;
 
     case 'wait-sky-noise':

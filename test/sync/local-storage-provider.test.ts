@@ -48,20 +48,14 @@ describe('LocalStorageProvider', () => {
     it('uses default storage key when no config provided', async () => {
       await provider.write({ test: true });
 
-      expect(localStorage.setItem).toHaveBeenCalledWith(
-        '__APP_STORE__',
-        expect.any(String)
-      );
+      expect(localStorage.setItem).toHaveBeenCalledWith('__APP_STORE__', expect.any(String));
     });
 
     it('uses custom storage key from config', async () => {
       provider = new LocalStorageProvider({ storageKey: 'custom-key' });
       await provider.write({ test: true });
 
-      expect(localStorage.setItem).toHaveBeenCalledWith(
-        'custom-key',
-        expect.any(String)
-      );
+      expect(localStorage.setItem).toHaveBeenCalledWith('custom-key', expect.any(String));
     });
   });
 
@@ -69,10 +63,7 @@ describe('LocalStorageProvider', () => {
     it('sets up storage event listener', async () => {
       await provider.initialize();
 
-      expect(globalThis.addEventListener).toHaveBeenCalledWith(
-        'storage',
-        expect.any(Function)
-      );
+      expect(globalThis.addEventListener).toHaveBeenCalledWith('storage', expect.any(Function));
     });
 
     it('notifies subscribers when storage event fires for the correct key', async () => {
@@ -85,7 +76,7 @@ describe('LocalStorageProvider', () => {
         key: '__APP_STORE__',
         newValue: JSON.stringify({ updated: true }),
       } as StorageEvent;
-      storageEventListeners.forEach(listener => listener(event));
+      storageEventListeners.forEach((listener) => listener(event));
 
       expect(subscriber).toHaveBeenCalledWith({ updated: true });
     });
@@ -99,7 +90,7 @@ describe('LocalStorageProvider', () => {
         key: 'other-key',
         newValue: JSON.stringify({ other: true }),
       } as StorageEvent;
-      storageEventListeners.forEach(listener => listener(event));
+      storageEventListeners.forEach((listener) => listener(event));
 
       expect(subscriber).not.toHaveBeenCalled();
     });
@@ -114,7 +105,7 @@ describe('LocalStorageProvider', () => {
         key: '__APP_STORE__',
         newValue: 'invalid-json',
       } as StorageEvent;
-      storageEventListeners.forEach(listener => listener(event));
+      storageEventListeners.forEach((listener) => listener(event));
 
       expect(consoleSpy).toHaveBeenCalled();
       expect(onError).toHaveBeenCalled();
@@ -155,10 +146,7 @@ describe('LocalStorageProvider', () => {
     it('writes JSON-serialized data to storage', async () => {
       await provider.write({ key: 'value' });
 
-      expect(localStorage.setItem).toHaveBeenCalledWith(
-        '__APP_STORE__',
-        JSON.stringify({ key: 'value' })
-      );
+      expect(localStorage.setItem).toHaveBeenCalledWith('__APP_STORE__', JSON.stringify({ key: 'value' }));
     });
 
     it('notifies local subscribers after writing', async () => {
@@ -290,10 +278,7 @@ describe('LocalStorageProvider', () => {
 
       await provider.dispose();
 
-      expect(globalThis.removeEventListener).toHaveBeenCalledWith(
-        'storage',
-        expect.any(Function)
-      );
+      expect(globalThis.removeEventListener).toHaveBeenCalledWith('storage', expect.any(Function));
     });
 
     it('clears all subscribers', async () => {

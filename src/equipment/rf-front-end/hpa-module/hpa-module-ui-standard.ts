@@ -2,10 +2,10 @@ import { HelpButton } from '@app/components/help-btn/help-btn';
 import { PowerSwitch } from '@app/components/power-switch/power-switch';
 import { RotaryKnob } from '@app/components/rotary-knob/rotary-knob';
 import { SecureToggleSwitch } from '@app/components/secure-toggle-switch/secure-toggle-switch';
-import { html } from "@app/engine/utils/development/formatter";
-import { qs } from "@app/engine/utils/query-selector";
-import type { dBW } from '@app/types';
+import { html } from '@app/engine/utils/development/formatter';
+import { qs } from '@app/engine/utils/query-selector';
 import { RFFrontEndCore } from '@app/equipment/rf-front-end/rf-front-end-core';
+import type { dBW } from '@app/types';
 import { HPAModuleCore, HPAState } from './hpa-module-core';
 import './hpa-module.css';
 
@@ -22,17 +22,10 @@ export class HPAModuleUIStandard extends HPAModuleCore {
     // Create UI components BEFORE calling super
     const tempId = `rf-fe-hpa-temp-${unit}`;
 
-    const backOffKnob = RotaryKnob.create(
-      `${tempId}-backoff-knob`,
-      state.backOff,
-      0,
-      30,
-      0.5,
-      (value: number) => {
-        // Direct state update - will be synced through event callback
-        state.backOff = value;
-      }
-    );
+    const backOffKnob = RotaryKnob.create(`${tempId}-backoff-knob`, state.backOff, 0, 30, 0.5, (value: number) => {
+      // Direct state update - will be synced through event callback
+      state.backOff = value;
+    });
 
     // Call parent constructor
     super(state, rfFrontEnd, unit);
@@ -41,24 +34,14 @@ export class HPAModuleUIStandard extends HPAModuleCore {
     this.backOffKnob = backOffKnob;
 
     // Create power switch with HPA-specific settings
-    this.powerSwitch_ = PowerSwitch.create(
-      `${this.uniqueId}-power`,
-      this.state.isPowered,
-      true,
-      false,
-    );
+    this.powerSwitch_ = PowerSwitch.create(`${this.uniqueId}-power`, this.state.isPowered, true, false);
 
     // HPA switch needs special handling - create after super() call
-    this.hpaSwitch_ = SecureToggleSwitch.create(
-      `hpa-switch-${rfFrontEnd.state.uuid}`,
-      this.toggleHpa_.bind(this),
-      state.isHpaSwitchEnabled,
-      false
-    );
+    this.hpaSwitch_ = SecureToggleSwitch.create(`hpa-switch-${rfFrontEnd.state.uuid}`, this.toggleHpa_.bind(this), state.isHpaSwitchEnabled, false);
 
     this.helpBtn_ = HelpButton.create(
       `hpa-help-${rfFrontEnd.state.uuid}`,
-      "High Power Amplifier",
+      'High Power Amplifier',
       null,
       'https://docs.signalrange.space/equipment/high-power-amplifier?content-only=true&dark=true'
     );
@@ -182,7 +165,7 @@ export class HPAModuleUIStandard extends HPAModuleCore {
       powerSwitch: this.powerSwitch_,
       backOffKnob: this.backOffKnob,
       hpaSwitch: this.hpaSwitch_,
-      helpBtn: this.helpBtn_
+      helpBtn: this.helpBtn_,
     };
   }
 
@@ -193,7 +176,7 @@ export class HPAModuleUIStandard extends HPAModuleCore {
   getDisplays() {
     return {
       outputPower: () => this.state.outputPower.toFixed(1),
-      imdLevel: () => this.state.imdLevel.toFixed(3)
+      imdLevel: () => this.state.imdLevel.toFixed(3),
     };
   }
 
@@ -203,7 +186,7 @@ export class HPAModuleUIStandard extends HPAModuleCore {
    */
   getLEDs() {
     return {
-      imd: () => this.state.isOverdriven ? 'led-orange' : 'led-off'
+      imd: () => (this.state.isOverdriven ? 'led-orange' : 'led-off'),
     };
   }
 
@@ -213,7 +196,7 @@ export class HPAModuleUIStandard extends HPAModuleCore {
    */
   getPowerMeter() {
     return {
-      render: () => this.renderPowerMeter_((this.state.outputPower - 30) as dBW)
+      render: () => this.renderPowerMeter_((this.state.outputPower - 30) as dBW),
     };
   }
 

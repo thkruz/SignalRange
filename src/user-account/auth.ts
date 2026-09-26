@@ -70,7 +70,7 @@ export class Auth {
   // Sign in with OAuth provider (GitHub, Facebook, Google, LinkedIn)
   static signInWithOAuthProvider(
     provider: 'github' | 'facebook' | 'google' | 'linkedin_oidc' | 'discord',
-    popupName?: string,
+    popupName?: string
   ): Promise<{ user: User | null; error: Error | null }> {
     return new Promise((resolve, reject) => {
       const name = popupName || `${provider}-signin`;
@@ -79,11 +79,7 @@ export class Auth {
       const height = 600;
       const left = window.screenX + (window.outerWidth - width) / 2;
       const top = window.screenY + (window.outerHeight - height) / 2;
-      const popup = window.open(
-        '',
-        name,
-        `width=${width},height=${height},left=${left},top=${top},scrollbars=yes,resizable=yes`,
-      );
+      const popup = window.open('', name, `width=${width},height=${height},left=${left},top=${top},scrollbars=yes,resizable=yes`);
 
       if (!popup) {
         reject(new Error('Popup blocked. Please allow popups for this site.'));
@@ -226,9 +222,7 @@ export class Auth {
   }
 
   // Listen for auth state changes
-  static onAuthStateChange(
-    callback: (event: AuthChangeEvent, user: User | null, profile: UserProfile | null, accessToken: string | null) => void,
-  ) {
+  static onAuthStateChange(callback: (event: AuthChangeEvent, user: User | null, profile: UserProfile | null, accessToken: string | null) => void) {
     return supabase.auth.onAuthStateChange((event, session) => {
       const accessToken = session?.access_token || null;
       const user = session?.user || null;

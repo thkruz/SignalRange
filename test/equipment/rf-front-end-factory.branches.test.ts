@@ -2,13 +2,16 @@ import { vi } from 'vitest';
 import { createRFFrontEnd } from '../../src/equipment/rf-front-end/rf-front-end-factory';
 
 // Mock the RFFrontEndUIStandard to avoid DOM dependencies
-vi.mock('../../src/equipment/rf-front-end/rf-front-end-ui-standard', () => {
-  return {
-    RFFrontEndUIStandard: class {
-      constructor(public rootId: string, public state: any, public param1: any, public param2: any) {}
-    },
-  };
-});
+vi.mock('../../src/equipment/rf-front-end/rf-front-end-ui-standard', () => ({
+  RFFrontEndUIStandard: class {
+    constructor(
+      public rootId: string,
+      public state: any,
+      public param1: any,
+      public param2: any
+    ) {}
+  },
+}));
 
 describe('createRFFrontEnd (factory branches)', () => {
   it('creates standard UI by default and forwards constructor args', () => {
@@ -26,14 +29,10 @@ describe('createRFFrontEnd (factory branches)', () => {
   });
 
   it('throws for uiType=headless', () => {
-    expect(() => createRFFrontEnd('root', undefined, 'headless')).toThrow(
-      'RFFrontEndHeadless not yet implemented',
-    );
+    expect(() => createRFFrontEnd('root', undefined, 'headless')).toThrow('RFFrontEndHeadless not yet implemented');
   });
 
   it('throws for uiType=basic', () => {
-    expect(() => createRFFrontEnd('root', undefined, 'basic')).toThrow(
-      'RFFrontEndUIBasic not yet implemented',
-    );
+    expect(() => createRFFrontEnd('root', undefined, 'basic')).toThrow('RFFrontEndUIBasic not yet implemented');
   });
 });

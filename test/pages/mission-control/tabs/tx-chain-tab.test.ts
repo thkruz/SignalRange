@@ -44,9 +44,7 @@ describe('TxChainTab', () => {
         {
           state: {
             activeModem: 1,
-            modems: [
-              { modem_number: 1, isPowered: true },
-            ],
+            modems: [{ modem_number: 1, isPowered: true }],
           },
         },
       ],

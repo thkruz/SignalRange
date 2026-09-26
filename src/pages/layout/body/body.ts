@@ -1,5 +1,5 @@
-import { BaseElement } from "@app/components/base-element";
-import { html } from "@app/engine/utils/development/formatter";
+import { BaseElement } from '@app/components/base-element';
+import { html } from '@app/engine/utils/development/formatter';
 import './body.css';
 
 /**
@@ -17,7 +17,7 @@ export class Body extends BaseElement {
 
   public static create(rootElementId: string): Body {
     if (Body.instance_) {
-      throw new Error("Body instance already exists.");
+      throw new Error('Body instance already exists.');
     }
 
     Body.instance_ = new Body(rootElementId);
@@ -27,7 +27,7 @@ export class Body extends BaseElement {
 
   public static getInstance(): Body {
     if (!Body.instance_) {
-      throw new Error("Body instance does not exist.");
+      throw new Error('Body instance does not exist.');
     }
 
     return Body.instance_;

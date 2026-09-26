@@ -1,9 +1,9 @@
-import { html } from "@app/engine/utils/development/formatter";
-import { qs } from "@app/engine/utils/query-selector";
-import { EventBus } from "@app/events/event-bus";
-import { Events } from "@app/events/events";
-import { Sfx } from "@app/sound/sfx-enum";
-import SoundManager from "@app/sound/sound-manager";
+import { html } from '@app/engine/utils/development/formatter';
+import { qs } from '@app/engine/utils/query-selector';
+import { EventBus } from '@app/events/event-bus';
+import { Events } from '@app/events/events';
+import { Sfx } from '@app/sound/sfx-enum';
+import SoundManager from '@app/sound/sound-manager';
 import './power-switch.css';
 
 export class PowerSwitch {
@@ -11,7 +11,7 @@ export class PowerSwitch {
   private readonly uniqueId: string;
   private dom_?: HTMLInputElement;
   private isOn_: boolean;
-  private cb_: (isOn: boolean) => void = () => { };
+  private cb_: (isOn: boolean) => void = () => {};
 
   constructor(uniqueId: string, isOn: boolean, isVertical: boolean, isSmall: boolean) {
     this.html_ = html`

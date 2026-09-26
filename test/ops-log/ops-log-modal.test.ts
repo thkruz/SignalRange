@@ -36,9 +36,7 @@ vi.mock('../../src/engine/ui/draggable-modal', () => ({
 
 // Mock html utility
 vi.mock('../../src/engine/utils/development/formatter', () => ({
-  html: (strings: TemplateStringsArray, ...values: unknown[]) => {
-    return strings.reduce((result, str, i) => result + str + (values[i] ?? ''), '');
-  },
+  html: (strings: TemplateStringsArray, ...values: unknown[]) => strings.reduce((result, str, i) => result + str + (values[i] ?? ''), ''),
 }));
 
 // Mock getEl
@@ -213,9 +211,7 @@ describe('OpsLogModal', () => {
     });
 
     it('should render entries when opened', () => {
-      const entries: OpsLogEntry[] = [
-        { timestamp: '12:00:00', message: 'Test entry', category: 'action' },
-      ];
+      const entries: OpsLogEntry[] = [{ timestamp: '12:00:00', message: 'Test entry', category: 'action' }];
       mockManagerInstance.getEntries.mockReturnValue(entries);
 
       modal.open();
@@ -261,9 +257,7 @@ describe('OpsLogModal', () => {
     });
 
     it('should render entry with category class', () => {
-      const entries: OpsLogEntry[] = [
-        { timestamp: '12:00:00', message: 'Alert entry', category: 'alert' },
-      ];
+      const entries: OpsLogEntry[] = [{ timestamp: '12:00:00', message: 'Alert entry', category: 'alert' }];
       mockManagerInstance.getEntries.mockReturnValue(entries);
       const container = mockElements.get('ops-log-entries')!;
 
@@ -273,9 +267,7 @@ describe('OpsLogModal', () => {
     });
 
     it('should render entry with source when provided', () => {
-      const entries: OpsLogEntry[] = [
-        { timestamp: '12:00:00', message: 'System event', category: 'system', source: 'HPA-001' },
-      ];
+      const entries: OpsLogEntry[] = [{ timestamp: '12:00:00', message: 'System event', category: 'system', source: 'HPA-001' }];
       mockManagerInstance.getEntries.mockReturnValue(entries);
       const container = mockElements.get('ops-log-entries')!;
 
@@ -286,9 +278,7 @@ describe('OpsLogModal', () => {
     });
 
     it('should not render source element when source is undefined', () => {
-      const entries: OpsLogEntry[] = [
-        { timestamp: '12:00:00', message: 'No source entry', category: 'action' },
-      ];
+      const entries: OpsLogEntry[] = [{ timestamp: '12:00:00', message: 'No source entry', category: 'action' }];
       mockManagerInstance.getEntries.mockReturnValue(entries);
       const container = mockElements.get('ops-log-entries')!;
 
@@ -580,9 +570,7 @@ describe('OpsLogModal', () => {
       mockManagerInstance.getCurrentTimeFormatted.mockClear();
 
       // Receive log entry event
-      const entries: OpsLogEntry[] = [
-        { timestamp: '12:00:00', message: 'Log entry', category: 'action' },
-      ];
+      const entries: OpsLogEntry[] = [{ timestamp: '12:00:00', message: 'Log entry', category: 'action' }];
       mockManagerInstance.getEntries.mockReturnValue(entries);
       eventBus.emit(Events.OPS_LOG_ENTRY_ADDED, entries[0]);
       expect(mockManagerInstance.getEntries).toHaveBeenCalled();

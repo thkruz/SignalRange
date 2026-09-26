@@ -84,10 +84,7 @@ describe('FilterAdapter', () => {
     });
 
     it('should register for RF_FE_FILTER_CHANGED events', () => {
-      expect(mockEventBus.on).toHaveBeenCalledWith(
-        Events.RF_FE_FILTER_CHANGED,
-        expect.any(Function)
-      );
+      expect(mockEventBus.on).toHaveBeenCalledWith(Events.RF_FE_FILTER_CHANGED, expect.any(Function));
     });
   });
 
@@ -135,10 +132,7 @@ describe('FilterAdapter', () => {
     it('should unregister from EventBus events', () => {
       adapter.dispose();
 
-      expect(mockEventBus.off).toHaveBeenCalledWith(
-        Events.RF_FE_FILTER_CHANGED,
-        expect.any(Function)
-      );
+      expect(mockEventBus.off).toHaveBeenCalledWith(Events.RF_FE_FILTER_CHANGED, expect.any(Function));
     });
   });
 });

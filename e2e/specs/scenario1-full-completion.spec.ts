@@ -1,13 +1,8 @@
-import { test as base, expect, Page, BrowserContext } from '@playwright/test';
+import { BrowserContext, test as base, expect, Page } from '@playwright/test';
 import { CampaignSelectionPage } from '../pages/campaign-selection.page';
-import { ScenarioSelectionPage } from '../pages/scenario-selection.page';
 import { MissionControlPage } from '../pages/mission-control.page';
-import {
-  answerQuizByText,
-  dismissDialogIfPresent,
-  waitForQuizToAppear,
-  waitForSimulationReady,
-} from '../utils/simulation-helpers';
+import { ScenarioSelectionPage } from '../pages/scenario-selection.page';
+import { answerQuizByText, dismissDialogIfPresent, waitForQuizToAppear, waitForSimulationReady } from '../utils/simulation-helpers';
 
 /**
  * Scenario 1 objectives - expanded tutorial with interactive conditions and quizzes.
@@ -161,11 +156,7 @@ const SCENARIO_1_OBJECTIVES: Scenario1Objective[] = [
 /**
  * Helper to complete a single objective
  */
-async function completeObjective(
-  page: Page,
-  missionControlPage: MissionControlPage,
-  objective: Scenario1Objective
-): Promise<void> {
+async function completeObjective(page: Page, missionControlPage: MissionControlPage, objective: Scenario1Objective): Promise<void> {
   switch (objective.type) {
     case 'quiz':
       await waitForQuizToAppear(page);
@@ -178,6 +169,10 @@ async function completeObjective(
 
     case 'click-tab':
       await missionControlPage.selectTab(objective.tabId!);
+      // Observation-gated conditions latch only after the default dwell on
+      // the tab (DEFAULT_OBSERVATION_DWELL_SECONDS); leaving at once would
+      // reset the read and strand the objective.
+      await page.waitForTimeout(3000);
       break;
   }
 

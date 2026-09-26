@@ -1,13 +1,14 @@
-import { BaseElement } from "@app/components/base-element";
-import { html } from "@app/engine/utils/development/formatter";
-import { qs } from "@app/engine/utils/query-selector";
-import { Satellite, Transponder } from "@app/equipment/satellite/satellite";
-import { EventBus } from "@app/events/event-bus";
-import { Events } from "@app/events/events";
-import { ScenarioManager } from "@app/scenario-manager";
-import { SimulationManager } from "@app/simulation/simulation-manager";
-import { TrafficControlManager } from "@app/traffic/traffic-control-manager";
 import satellitePng from '@app/assets/icons/satellite.png';
+import { BaseElement } from '@app/components/base-element';
+import { html } from '@app/engine/utils/development/formatter';
+import { qs } from '@app/engine/utils/query-selector';
+import { Satellite, Transponder } from '@app/equipment/satellite/satellite';
+import { EventBus } from '@app/events/event-bus';
+import { Events } from '@app/events/events';
+import { ScenarioManager } from '@app/scenario-manager';
+import { SimulationManager } from '@app/simulation/simulation-manager';
+import { TrafficControlManager } from '@app/traffic/traffic-control-manager';
+import { formatFrequencyMHz } from '@app/utils/format-number';
 import './satellite-dashboard-tab.css';
 
 /**
@@ -102,7 +103,7 @@ export class SatelliteDashboardTab extends BaseElement {
                 </div>
                 <div class="d-flex justify-content-between align-items-center mb-3">
                   <span class="text-muted small">Active:</span>
-                  <span id="sat-active-transponders" class="fw-bold">${this.satellite.transponders.filter(t => t.isActive).length}</span>
+                  <span id="sat-active-transponders" class="fw-bold">${this.satellite.transponders.filter((t) => t.isActive).length}</span>
                 </div>
                 <hr class="my-2" />
                 <div class="transponder-list">
@@ -162,29 +163,49 @@ export class SatelliteDashboardTab extends BaseElement {
       return html`<div class="text-muted text-center">No transponders configured</div>`;
     }
 
-    return this.satellite.transponders.map((tp: Transponder) => html`
+    return this.satellite.transponders
+      .map(
+        (tp: Transponder) => html`
       <div class="transponder-item">
         <div>
           <div class="transponder-id">${tp.id}</div>
-          <div class="transponder-freq">
-            UL: ${(tp.uplinkFrequency / 1e9).toFixed(3)} GHz
-            / DL: ${(tp.downlinkFrequency / 1e9).toFixed(3)} GHz
-          </div>
+          ${this.renderTransponderFrequencies_(tp)}
         </div>
         <span class="status-badge ${tp.isActive ? 'status-badge-green' : 'status-badge-off'}">
           ${tp.isActive ? 'ON' : 'OFF'}
         </span>
       </div>
-    `).join('');
+    `
+      )
+      .join('');
+  }
+
+  /**
+   * Render the frequency lines for one transponder.
+   *
+   * A transponder with `frequencyOffset === 0` has no translated path - its
+   * "downlink" is just the (unused) uplink slot echoed back, which reads as a
+   * wrong frequency on the dashboard. Those entries carry a beacon instead, so
+   * show the beacon frequency the operator actually tunes.
+   */
+  private renderTransponderFrequencies_(tp: Transponder): string {
+    const lines: string[] = [];
+    const isBeaconOnly = !tp.frequencyOffset && !!tp.beacon;
+
+    if (!isBeaconOnly) {
+      lines.push(`UL: ${formatFrequencyMHz(tp.uplinkFrequency)} MHz / DL: ${formatFrequencyMHz(tp.downlinkFrequency)} MHz`);
+    }
+    if (tp.beacon) {
+      lines.push(`Beacon: ${formatFrequencyMHz(tp.beacon.frequency)} MHz`);
+    }
+
+    return lines.map((line) => html`<div class="transponder-freq">${line}</div>`).join('');
   }
 
   private cacheDomElements_(): void {
-    const ids = [
-      'sat-azimuth', 'sat-elevation', 'sat-rotation',
-      'sat-health-badge', 'sat-active-transponders',
-    ];
+    const ids = ['sat-azimuth', 'sat-elevation', 'sat-rotation', 'sat-health-badge', 'sat-active-transponders'];
 
-    ids.forEach(id => {
+    ids.forEach((id) => {
       const el = qs(`#${id}`, this.dom_);
       if (el) {
         this.domCache_.set(id, el);
@@ -213,7 +234,7 @@ export class SatelliteDashboardTab extends BaseElement {
     }
 
     const activeEl = this.domCache_.get('sat-active-transponders');
-    if (activeEl) activeEl.textContent = String(this.satellite.transponders.filter(t => t.isActive).length);
+    if (activeEl) activeEl.textContent = String(this.satellite.transponders.filter((t) => t.isActive).length);
 
     const rxEl = this.domCache_.get('sat-rx-count');
     if (rxEl) rxEl.textContent = String(this.satellite.rxSignal.length + this.satellite.externalSignal.length);
@@ -259,7 +280,7 @@ export class SatelliteDashboardTab extends BaseElement {
     const trafficOwnership = settings.trafficOwnership;
 
     // Check if this satellite is in traffic ownership config
-    const satOwnership = trafficOwnership?.find(o => o.satelliteNoradId === this.satellite.noradId);
+    const satOwnership = trafficOwnership?.find((o) => o.satelliteNoradId === this.satellite.noradId);
     if (!satOwnership) return;
 
     this.trafficControlEnabled_ = true;
@@ -273,10 +294,8 @@ export class SatelliteDashboardTab extends BaseElement {
     if (targetSelect) {
       const sim = SimulationManager.getInstance();
 
-      targetSelect.innerHTML = '<option value="">-- Select Station --</option>' +
-        sim.groundStations
-          .map(gs => `<option value="${gs.state.id}">${gs.state.id} - ${gs.state.name}</option>`)
-          .join('');
+      targetSelect.innerHTML =
+        '<option value="">-- Select Station --</option>' + sim.groundStations.map((gs) => `<option value="${gs.state.id}">${gs.state.id} - ${gs.state.name}</option>`).join('');
 
       // Handle target selection - initiate handover from current owner to selected target
       targetSelect.addEventListener('change', () => {
@@ -341,9 +360,7 @@ export class SatelliteDashboardTab extends BaseElement {
       }
 
       if (targetCnEl) {
-        targetCnEl.textContent = readiness.cnRatio_dB === null
-          ? '-- dB'
-          : `${readiness.cnRatio_dB.toFixed(1)} dB`;
+        targetCnEl.textContent = readiness.cnRatio_dB === null ? '-- dB' : `${readiness.cnRatio_dB.toFixed(1)} dB`;
       }
     } else {
       if (targetStatusEl) {
@@ -360,9 +377,7 @@ export class SatelliteDashboardTab extends BaseElement {
     // Update execute button state
     const executeBtn = this.domCache_.get('sat-execute-handover') as HTMLButtonElement | undefined;
     if (executeBtn) {
-      const canExecute = ownership?.isHandoverInProgress &&
-        ownership.sourceStationReady &&
-        ownership.targetStationReady;
+      const canExecute = ownership?.isHandoverInProgress && ownership.sourceStationReady && ownership.targetStationReady;
       executeBtn.disabled = !canExecute;
     }
   }

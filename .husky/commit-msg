@@ -1,0 +1,47 @@
+# Validate commit subjects so the history stays readable and machine-parseable.
+#
+# Rules enforced (see CLAUDE.md and the Copilot instructions in .vscode/settings.json):
+#   <type>[(<scope>)][!]: [:<emoji>:] <message>
+# Only the type and the message are required; the scope and the emoji are both
+# optional, and any emoji is accepted (no type/emoji pairing check).
+# Merge/Revert/fixup!/squash! subjects are exempt.
+# Bypass in an emergency with: git commit --no-verify
+
+msg_file="$1"
+
+# First non-comment, non-blank line = the subject.
+subject=$(grep -vE '^\s*#' "$msg_file" | grep -vE '^\s*$' | head -n1)
+
+fail() {
+  echo "commit-msg: $1" >&2
+  echo "  Subject: \"$subject\"" >&2
+  echo "  Expected: type[(scope)]: [:emoji:] message (scope and emoji optional)" >&2
+  echo "  types: feat fix refactor test chore docs style perf i18n build ci revert" >&2
+  echo "  Examples: feat(signal-hunter): :sparkles: add Campaign 5 scenario 2" >&2
+  echo "            fix: stop the timeline resetting on pause" >&2
+  exit 1
+}
+
+# The classic offender is a PowerShell here-string leak (`@'...'@`) where the
+# `@` delimiters bleed into `git commit -m`, leaving the subject as a bare `@`.
+case "$subject" in
+  '@'*)
+    echo "commit-msg: subject line starts with '@': \"$subject\"" >&2
+    echo "  This is almost always a PowerShell here-string (@'...'@) leak." >&2
+    fail "fix the message so the first line is the real conventional-commit summary."
+    ;;
+  '')
+    fail "empty subject line."
+    ;;
+  'Merge '*|'Revert '*|'fixup! '*|'squash! '*)
+    # Git-generated / rework subjects are exempt from the conventional format.
+    exit 0
+    ;;
+esac
+
+# Shape: type[(scope)][!]: [:emoji:] message; scope and emoji are both optional.
+if ! echo "$subject" | grep -qE '^(feat|fix|refactor|test|chore|docs|style|perf|i18n|build|ci|revert)(\([A-Za-z0-9][A-Za-z0-9 .,/_-]*\))?!?: (:[a-z0-9_+-]+: )?[^ ].*'; then
+  fail "subject does not match the conventional-commit format."
+fi
+
+exit 0

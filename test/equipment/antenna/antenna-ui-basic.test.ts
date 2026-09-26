@@ -52,10 +52,7 @@ describe('AntennaUIBasic', () => {
     });
 
     it('should create instance with custom config', () => {
-      const antenna = new AntennaUIBasic(
-        'test-parent',
-        ANTENNA_CONFIG_KEYS.KU_BAND_3M
-      );
+      const antenna = new AntennaUIBasic('test-parent', ANTENNA_CONFIG_KEYS.KU_BAND_3M);
       expect(antenna.config.band).toBe('Ku');
     });
 
@@ -64,23 +61,13 @@ describe('AntennaUIBasic', () => {
         azimuth: 45 as Degrees,
         elevation: 30 as Degrees,
       };
-      const antenna = new AntennaUIBasic(
-        'test-parent',
-        ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK,
-        initialState
-      );
+      const antenna = new AntennaUIBasic('test-parent', ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK, initialState);
       expect(antenna.state.azimuth).toBe(45);
       expect(antenna.state.elevation).toBe(30);
     });
 
     it('should create instance with team and server IDs', () => {
-      const antenna = new AntennaUIBasic(
-        'test-parent',
-        ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK,
-        {},
-        2,
-        3
-      );
+      const antenna = new AntennaUIBasic('test-parent', ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK, {}, 2, 3);
       expect(antenna.state.teamId).toBe(2);
       expect(antenna.state.serverId).toBe(3);
     });
@@ -172,7 +159,7 @@ describe('AntennaUIBasic', () => {
     let consoleSpy: SpyInstance;
 
     beforeEach(() => {
-      consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => { });
+      consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     });
 
     afterEach(() => {
@@ -183,27 +170,21 @@ describe('AntennaUIBasic', () => {
       const antenna = new AntennaUIBasic('test-parent');
       antenna.handleLoopbackToggle(true);
 
-      expect(consoleSpy).toHaveBeenCalledWith(
-        'Loopback control not available in basic antenna UI'
-      );
+      expect(consoleSpy).toHaveBeenCalledWith('Loopback control not available in basic antenna UI');
     });
 
     it('should warn when trying to enable auto-track', () => {
       const antenna = new AntennaUIBasic('test-parent');
       antenna.handleAutoTrackToggle(true);
 
-      expect(consoleSpy).toHaveBeenCalledWith(
-        'Auto-track not available in basic antenna UI'
-      );
+      expect(consoleSpy).toHaveBeenCalledWith('Auto-track not available in basic antenna UI');
     });
 
     it('should warn when trying to change polarization', () => {
       const antenna = new AntennaUIBasic('test-parent');
       antenna.handlePolarizationChange(45);
 
-      expect(consoleSpy).toHaveBeenCalledWith(
-        'Polarization control not available in basic antenna UI'
-      );
+      expect(consoleSpy).toHaveBeenCalledWith('Polarization control not available in basic antenna UI');
     });
 
     it('should not change loopback state', () => {

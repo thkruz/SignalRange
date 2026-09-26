@@ -1,4 +1,4 @@
-import { vi, Mock } from 'vitest';
+import { Mock, vi } from 'vitest';
 import { EventBus } from '../../src/events/event-bus';
 
 // Mock dependencies before imports
@@ -138,17 +138,17 @@ vi.mock('../../src/pages/layout/body/body', () => ({
   },
 }));
 
+import { getEl } from '../../src/engine/utils/get-el';
+import { qs } from '../../src/engine/utils/query-selector';
+import { QuizModal } from '../../src/modal/quiz-modal';
+import { ObjectivesManager } from '../../src/objectives/objectives-manager';
+import { Equipment } from '../../src/pages/sandbox/equipment';
 // Import after mocks
 import { SandboxPage } from '../../src/pages/sandbox-page';
-import { SimulationManager } from '../../src/simulation/simulation-manager';
-import { ObjectivesManager } from '../../src/objectives/objectives-manager';
-import { ScenarioDialogManager } from '../../src/scenarios/scenario-dialog-manager';
-import { QuizModal } from '../../src/modal/quiz-modal';
-import { Equipment } from '../../src/pages/sandbox/equipment';
-import { clearPersistedStore } from '../../src/sync/storage';
-import { qs } from '../../src/engine/utils/query-selector';
-import { getEl } from '../../src/engine/utils/get-el';
 import { ScenarioManager } from '../../src/scenario-manager';
+import { ScenarioDialogManager } from '../../src/scenarios/scenario-dialog-manager';
+import { SimulationManager } from '../../src/simulation/simulation-manager';
+import { clearPersistedStore } from '../../src/sync/storage';
 import { ProgressSaveManager } from '../../src/user-account/progress-save-manager';
 
 // Setup qs mock to use actual DOM

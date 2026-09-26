@@ -1,11 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { MissionControlPage } from '../pages/mission-control.page';
-import {
-  answerQuizByText,
-  dismissDialogIfPresent,
-  waitForQuizToAppear,
-  waitForSimulationReady,
-} from '../utils/simulation-helpers';
+import { answerQuizByText, dismissDialogIfPresent, waitForQuizToAppear, waitForSimulationReady } from '../utils/simulation-helpers';
 
 /**
  * Scenario 4 objectives - New Bird on the Block: Satellite Switchover Operations.
@@ -21,16 +16,7 @@ import {
  * - 'configure-rx-modem': Requires configuring receiver modem
  * - 'configure-tx-modem': Requires configuring transmitter modem
  */
-type ObjectiveType =
-  | 'quiz'
-  | 'select-station'
-  | 'click-tab'
-  | 'auto'
-  | 'toggle-switch'
-  | 'set-tracking-mode'
-  | 'configure-speca'
-  | 'configure-rx-modem'
-  | 'configure-tx-modem';
+type ObjectiveType = 'quiz' | 'select-station' | 'click-tab' | 'auto' | 'toggle-switch' | 'set-tracking-mode' | 'configure-speca' | 'configure-rx-modem' | 'configure-tx-modem';
 
 interface Scenario4Objective {
   id: string;
@@ -98,8 +84,7 @@ const SCENARIO_4_OBJECTIVES: Scenario4Objective[] = [
     id: 'verify-antenna-initial-state',
     title: 'Verify Antenna Configuration',
     type: 'quiz',
-    correctAnswer:
-      'Program-track - the antenna follows ephemeris data and will need new coordinates for TIDEMARK-2',
+    correctAnswer: 'Program-track - the antenna follows ephemeris data and will need new coordinates for TIDEMARK-2',
   },
 
   // ============================================================
@@ -116,8 +101,7 @@ const SCENARIO_4_OBJECTIVES: Scenario4Objective[] = [
     id: 'verify-antenna-slew-quiz',
     title: 'Understand Position Change',
     type: 'quiz',
-    correctAnswer:
-      'TIDEMARK-2 is at a different orbital slot (45°W vs 53°W), requiring different look angles from Vermont',
+    correctAnswer: 'TIDEMARK-2 sits at a different orbital slot (45°W vs 53°W), so the look angles differ',
   },
 
   // ============================================================
@@ -161,8 +145,7 @@ const SCENARIO_4_OBJECTIVES: Scenario4Objective[] = [
     id: 'verify-beacon-chain-quiz',
     title: 'Understand Receive Chain Validation',
     type: 'quiz',
-    correctAnswer:
-      'It proves the entire RF path is working - antenna feed, LNB, cables, and signal routing - so we know modem issues would be modem configuration, not upstream problems',
+    correctAnswer: 'It proves the RF path works - feed, LNB, cables - so a modem fault would be configuration',
   },
 
   // ============================================================
@@ -195,8 +178,7 @@ const SCENARIO_4_OBJECTIVES: Scenario4Objective[] = [
     id: 'verify-rx-margin-quiz',
     title: 'Understand Link Margin',
     type: 'quiz',
-    correctAnswer:
-      'Lock can occur at C/N as low as 3-4 dB, but error rates would be high - we need margin for reliable operation',
+    correctAnswer: 'Lock can occur at C/N as low as 3-4 dB, but error rates would be high - we need margin',
   },
 
   // ============================================================
@@ -231,8 +213,7 @@ const SCENARIO_4_OBJECTIVES: Scenario4Objective[] = [
     id: 'understand-buc-hpa-sequence',
     title: 'Understand TX Sequence',
     type: 'quiz',
-    correctAnswer:
-      'Unmute BUC first, then enable HPA - drive the amplifier chain from input to output to avoid undriven amplifiers',
+    correctAnswer: 'Unmute BUC first, then enable HPA - drive the chain from input to output',
   },
   {
     id: 'enable-transmit-path',
@@ -245,8 +226,7 @@ const SCENARIO_4_OBJECTIVES: Scenario4Objective[] = [
     id: 'verify-full-duplex-quiz',
     title: 'Verify Full Duplex Operation',
     type: 'quiz',
-    correctAnswer:
-      'Receiver locked with good C/N, HPA enabled with proper backoff, no alarms - bidirectional link established',
+    correctAnswer: 'Receiver locked with good C/N, HPA enabled with backoff, no alarms - both directions up',
   },
 ];
 
@@ -259,11 +239,7 @@ const SCENARIO_4_OBJECTIVES: Scenario4Objective[] = [
  * @param switchId The ID of the switch element (without # prefix)
  * @param targetState true = checked/on, false = unchecked/off
  */
-async function toggleSwitch(
-  page: import('@playwright/test').Page,
-  switchId: string,
-  targetState: boolean
-): Promise<void> {
+async function toggleSwitch(page: import('@playwright/test').Page, switchId: string, targetState: boolean): Promise<void> {
   const switchEl = page.locator(`#${switchId}`);
   await expect(switchEl).toBeVisible({ timeout: 5000 });
 
@@ -290,10 +266,7 @@ async function toggleSwitch(
  * Set the antenna tracking mode by clicking the appropriate button.
  * ACU control tab must be active before calling this.
  */
-async function setTrackingMode(
-  page: import('@playwright/test').Page,
-  trackingMode: string
-): Promise<void> {
+async function setTrackingMode(page: import('@playwright/test').Page, trackingMode: string): Promise<void> {
   // Find the tracking mode button with data-mode attribute
   const modeButton = page.locator(`.btn-tracking[data-mode="${trackingMode}"]`);
   await expect(modeButton).toBeVisible({ timeout: 5000 });
@@ -337,10 +310,7 @@ async function selectTidemark2AndMove(page: import('@playwright/test').Page): Pr
  * Wait for antenna movement to complete by monitoring position changes.
  * The antenna moves at ~2-5 deg/sec, so large movements take several seconds.
  */
-async function waitForAntennaMovement(
-  page: import('@playwright/test').Page,
-  timeout = 90000
-): Promise<void> {
+async function waitForAntennaMovement(page: import('@playwright/test').Page, timeout = 90000): Promise<void> {
   const startTime = Date.now();
   let lastPosition = '';
   let stableCount = 0;
@@ -352,9 +322,7 @@ async function waitForAntennaMovement(
     await page.waitForTimeout(1000);
 
     // Get current elevation from the fine-adjust control display
-    let elDisplay = page
-      .locator('.fine-adjust-control', { hasText: 'Elevation' })
-      .locator('.fine-adjust-value-active');
+    let elDisplay = page.locator('.fine-adjust-control', { hasText: 'Elevation' }).locator('.fine-adjust-value-active');
 
     // Fallback: try finding by ID pattern
     if ((await elDisplay.count()) === 0) {
@@ -428,10 +396,7 @@ async function configureSpectrumAnalyzer(
  * Configure receiver modem settings.
  * Element IDs: #frequency-input, #bandwidth-input, #modulation-select, #fec-select, #apply-btn
  */
-async function configureRxModem(
-  page: import('@playwright/test').Page,
-  config: { frequency?: number; bandwidth?: number; modulation?: string; fec?: string }
-): Promise<void> {
+async function configureRxModem(page: import('@playwright/test').Page, config: { frequency?: number; bandwidth?: number; modulation?: string; fec?: string }): Promise<void> {
   // Configure frequency (in MHz) if specified
   if (config.frequency !== undefined) {
     const freqInput = page.locator('#frequency-input');
@@ -606,10 +571,7 @@ async function enableTransmitPath(page: import('@playwright/test').Page): Promis
  * Wait for receiver to lock with good SNR.
  * Element IDs: #signal-status (badge showing lock state), #cn-effective-display (C/N ratio)
  */
-async function waitForRxLock(
-  page: import('@playwright/test').Page,
-  timeout = 30000
-): Promise<void> {
+async function waitForRxLock(page: import('@playwright/test').Page, timeout = 30000): Promise<void> {
   const startTime = Date.now();
 
   while (Date.now() - startTime < timeout) {
@@ -638,11 +600,7 @@ async function waitForRxLock(
 /**
  * Execute an objective based on its type.
  */
-async function executeObjective(
-  page: import('@playwright/test').Page,
-  missionControlPage: MissionControlPage,
-  objective: Scenario4Objective
-): Promise<void> {
+async function executeObjective(page: import('@playwright/test').Page, missionControlPage: MissionControlPage, objective: Scenario4Objective): Promise<void> {
   switch (objective.type) {
     case 'quiz':
       await waitForQuizToAppear(page);
@@ -655,6 +613,10 @@ async function executeObjective(
 
     case 'click-tab':
       await missionControlPage.selectTab(objective.tabId!);
+      // Observation-gated conditions latch only after the default dwell on
+      // the tab (DEFAULT_OBSERVATION_DWELL_SECONDS); leaving at once would
+      // reset the read and strand the objective.
+      await page.waitForTimeout(3000);
       break;
 
     case 'toggle-switch':

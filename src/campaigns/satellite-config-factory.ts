@@ -101,13 +101,10 @@ const DEFAULTS = {
  * @throws Error if transponder not found
  */
 function getTransponder(satellite: Satellite, transponderId: string): Transponder {
-  const transponder = satellite.transponders.find(tp => tp.id === transponderId);
+  const transponder = satellite.transponders.find((tp) => tp.id === transponderId);
   if (!transponder) {
-    const availableIds = satellite.transponders.map(tp => tp.id).join(', ');
-    throw new Error(
-      `Transponder '${transponderId}' not found on satellite ${satellite.name}. ` +
-      `Available transponders: ${availableIds}`
-    );
+    const availableIds = satellite.transponders.map((tp) => tp.id).join(', ');
+    throw new Error(`Transponder '${transponderId}' not found on satellite ${satellite.name}. ` + `Available transponders: ${availableIds}`);
   }
   return transponder;
 }
@@ -161,10 +158,7 @@ function calculateIfFrequency(rfHz: number, loMhz: MHz): number {
  *   buc: { loFrequency: config.bucLoFrequency },
  * });
  */
-export function configureGroundStationForSatellite(
-  satellite: Satellite,
-  options: SatelliteConfigOptions = {}
-): SatelliteConfigResult {
+export function configureGroundStationForSatellite(satellite: Satellite, options: SatelliteConfigOptions = {}): SatelliteConfigResult {
   const transponderId = options.transponderId ?? DEFAULTS.transponderId;
   const lnbLo = options.lnbLoFrequency ?? DEFAULTS.lnbLoFrequency;
 
@@ -263,17 +257,8 @@ export interface ApplyConfigOptions {
  *   satConfig
  * );
  */
-export function applyConfigToGroundStation(
-  groundStation: GroundStationConfig,
-  satConfig: SatelliteConfigResult,
-  options: ApplyConfigOptions = {}
-): GroundStationConfig {
-  const {
-    antennaIndex = 0,
-    rfFrontEndIndex = 0,
-    createTransmitter = true,
-    createReceiver = true,
-  } = options;
+export function applyConfigToGroundStation(groundStation: GroundStationConfig, satConfig: SatelliteConfigResult, options: ApplyConfigOptions = {}): GroundStationConfig {
+  const { antennaIndex = 0, rfFrontEndIndex = 0, createTransmitter = true, createReceiver = true } = options;
 
   // Clone ground station to avoid mutation
   const result = { ...groundStation };
@@ -297,13 +282,10 @@ export function applyConfigToGroundStation(
   // Update RF front-end (BUC LO)
   if (groundStation.rfFrontEnds?.[rfFrontEndIndex]) {
     result.rfFrontEnds = [...groundStation.rfFrontEnds];
-    result.rfFrontEnds[rfFrontEndIndex] = createRfFrontEnd(
-      groundStation.rfFrontEnds[rfFrontEndIndex],
-      {
-        buc: { loFrequency: satConfig.bucLoFrequency },
-        lnb: { loFrequency: satConfig.lnbLoFrequency },
-      }
-    );
+    result.rfFrontEnds[rfFrontEndIndex] = createRfFrontEnd(groundStation.rfFrontEnds[rfFrontEndIndex], {
+      buc: { loFrequency: satConfig.bucLoFrequency },
+      lnb: { loFrequency: satConfig.lnbLoFrequency },
+    });
   }
 
   // Update spectrum analyzer
@@ -320,52 +302,60 @@ export function applyConfigToGroundStation(
     const existingTx = groundStation.transmitters?.[0];
     const existingModem = existingTx?.modems?.[0];
 
-    result.transmitters = [{
-      activeModem: 1,
-      modems: [{
-        isPowered: true,
-        antenna_id: 1,
-        modem_number: 1,
-        isFaulted: false,
-        isTransmitting: existingModem?.isTransmitting ?? false,
-        isTransmittingSwitchUp: existingModem?.isTransmittingSwitchUp ?? false,
-        isFaultSwitchUp: false,
-        id: 1,
-        isLoopback: false,
-        ifSignal: {
-          signalId: `${satConfig.txModem.noradId}-Teleport`,
-          serverId: 1,
-          noradId: satConfig.txModem.noradId,
-          polarization: 'V',
-          feed: '',
-          isDegraded: false,
-          origin: SignalOrigin.TRANSMITTER,
-          noiseFloor: null,
-          gainInPath: 0 as dBi,
-          frequency: satConfig.txModem.frequency,
-          power: satConfig.txModem.power,
-          bandwidth: satConfig.txModem.bandwidth,
-          modulation: satConfig.txModem.modulation,
-          fec: satConfig.txModem.fec,
-        },
-      }],
-    }];
+    result.transmitters = [
+      {
+        activeModem: 1,
+        modems: [
+          {
+            isPowered: true,
+            antenna_id: 1,
+            modem_number: 1,
+            isFaulted: false,
+            isTransmitting: existingModem?.isTransmitting ?? false,
+            isTransmittingSwitchUp: existingModem?.isTransmittingSwitchUp ?? false,
+            isFaultSwitchUp: false,
+            id: 1,
+            isLoopback: false,
+            ifSignal: {
+              signalId: `${satConfig.txModem.noradId}-Teleport`,
+              serverId: 1,
+              noradId: satConfig.txModem.noradId,
+              polarization: 'V',
+              feed: '',
+              isDegraded: false,
+              origin: SignalOrigin.TRANSMITTER,
+              noiseFloor: null,
+              gainInPath: 0 as dBi,
+              frequency: satConfig.txModem.frequency,
+              power: satConfig.txModem.power,
+              bandwidth: satConfig.txModem.bandwidth,
+              modulation: satConfig.txModem.modulation,
+              fec: satConfig.txModem.fec,
+            },
+          },
+        ],
+      },
+    ];
   }
 
   // Update or create receiver
   if (createReceiver) {
-    result.receivers = [{
-      activeModem: 1,
-      modems: [{
-        modemNumber: 1,
-        isPowered: true,
-        frequency: satConfig.rxModem.frequency,
-        bandwidth: satConfig.rxModem.bandwidth,
-        modulation: satConfig.rxModem.modulation,
-        fec: satConfig.rxModem.fec,
-        antenna_id: 1,
-      }],
-    }];
+    result.receivers = [
+      {
+        activeModem: 1,
+        modems: [
+          {
+            modemNumber: 1,
+            isPowered: true,
+            frequency: satConfig.rxModem.frequency,
+            bandwidth: satConfig.rxModem.bandwidth,
+            modulation: satConfig.rxModem.modulation,
+            fec: satConfig.rxModem.fec,
+            antenna_id: 1,
+          },
+        ],
+      },
+    ];
   }
 
   return result;

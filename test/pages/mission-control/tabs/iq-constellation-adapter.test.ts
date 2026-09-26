@@ -108,10 +108,7 @@ describe('IQConstellationAdapter', () => {
     });
 
     it('should register for UPDATE events', () => {
-      expect(mockEventBus.on).toHaveBeenCalledWith(
-        Events.UPDATE,
-        expect.any(Function)
-      );
+      expect(mockEventBus.on).toHaveBeenCalledWith(Events.UPDATE, expect.any(Function));
     });
 
     it('should create canvas element', () => {
@@ -128,9 +125,7 @@ describe('IQConstellationAdapter', () => {
   describe('rendering', () => {
     it('should render constellation when signal is present', () => {
       // Trigger update event
-      const updateHandler = mockEventBus.on.mock.calls.find(
-        call => call[0] === Events.UPDATE
-      )?.[1];
+      const updateHandler = mockEventBus.on.mock.calls.find((call) => call[0] === Events.UPDATE)?.[1];
 
       if (updateHandler) {
         updateHandler();
@@ -141,9 +136,7 @@ describe('IQConstellationAdapter', () => {
     });
 
     it('should get signals in bandwidth from receiver', () => {
-      const updateHandler = mockEventBus.on.mock.calls.find(
-        call => call[0] === Events.UPDATE
-      )?.[1];
+      const updateHandler = mockEventBus.on.mock.calls.find((call) => call[0] === Events.UPDATE)?.[1];
 
       if (updateHandler) {
         updateHandler();
@@ -157,9 +150,7 @@ describe('IQConstellationAdapter', () => {
     it('should handle powered off modem', () => {
       mockReceiver.state.modems[0].isPowered = false;
 
-      const updateHandler = mockEventBus.on.mock.calls.find(
-        call => call[0] === Events.UPDATE
-      )?.[1];
+      const updateHandler = mockEventBus.on.mock.calls.find((call) => call[0] === Events.UPDATE)?.[1];
 
       if (updateHandler) {
         updateHandler();
@@ -177,9 +168,7 @@ describe('IQConstellationAdapter', () => {
         effectiveCnRatio_dB: -100,
       });
 
-      const updateHandler = mockEventBus.on.mock.calls.find(
-        call => call[0] === Events.UPDATE
-      )?.[1];
+      const updateHandler = mockEventBus.on.mock.calls.find((call) => call[0] === Events.UPDATE)?.[1];
 
       if (updateHandler) {
         updateHandler();
@@ -202,9 +191,7 @@ describe('IQConstellationAdapter', () => {
         modulationMismatch: false,
       });
 
-      const updateHandler = mockEventBus.on.mock.calls.find(
-        call => call[0] === Events.UPDATE
-      )?.[1];
+      const updateHandler = mockEventBus.on.mock.calls.find((call) => call[0] === Events.UPDATE)?.[1];
 
       if (updateHandler) {
         updateHandler();
@@ -224,9 +211,7 @@ describe('IQConstellationAdapter', () => {
         modulationMismatch: false,
       });
 
-      const updateHandler = mockEventBus.on.mock.calls.find(
-        call => call[0] === Events.UPDATE
-      )?.[1];
+      const updateHandler = mockEventBus.on.mock.calls.find((call) => call[0] === Events.UPDATE)?.[1];
 
       if (updateHandler) {
         updateHandler();
@@ -246,9 +231,7 @@ describe('IQConstellationAdapter', () => {
         modulationMismatch: true,
       });
 
-      const updateHandler = mockEventBus.on.mock.calls.find(
-        call => call[0] === Events.UPDATE
-      )?.[1];
+      const updateHandler = mockEventBus.on.mock.calls.find((call) => call[0] === Events.UPDATE)?.[1];
 
       if (updateHandler) {
         updateHandler();
@@ -275,9 +258,7 @@ describe('IQConstellationAdapter', () => {
         },
       });
 
-      const updateHandler = mockEventBus.on.mock.calls.find(
-        call => call[0] === Events.UPDATE
-      )?.[1];
+      const updateHandler = mockEventBus.on.mock.calls.find((call) => call[0] === Events.UPDATE)?.[1];
 
       if (updateHandler) {
         updateHandler();
@@ -291,10 +272,7 @@ describe('IQConstellationAdapter', () => {
     it('should unregister from EventBus events', () => {
       adapter.dispose();
 
-      expect(mockEventBus.off).toHaveBeenCalledWith(
-        Events.UPDATE,
-        expect.any(Function)
-      );
+      expect(mockEventBus.off).toHaveBeenCalledWith(Events.UPDATE, expect.any(Function));
     });
 
     it('should remove canvas element', () => {

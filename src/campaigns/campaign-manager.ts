@@ -35,7 +35,7 @@ export class CampaignManager {
    * Get a specific campaign by ID
    */
   getCampaign(campaignId: string): CampaignData | undefined {
-    return this.campaigns_.find(c => c.id === campaignId);
+    return this.campaigns_.find((c) => c.id === campaignId);
   }
 
   /**
@@ -51,36 +51,51 @@ export class CampaignManager {
    */
   getScenario(campaignId: string, scenarioId: string): ScenarioData | undefined {
     const campaign = this.getCampaign(campaignId);
-    return campaign?.scenarios.find(s => s.id === scenarioId);
+    return campaign?.scenarios.find((s) => s.id === scenarioId);
   }
 
   /**
    * Find which campaign contains a specific scenario
    */
   getCampaignForScenario(scenarioId: string): CampaignData | undefined {
-    return this.campaigns_.find(campaign =>
-      campaign.scenarios.some(s => s.id === scenarioId)
-    );
+    return this.campaigns_.find((campaign) => campaign.scenarios.some((s) => s.id === scenarioId));
   }
 
   /**
    * Get all scenarios across all campaigns (flat list)
    */
   getAllScenarios(): ScenarioData[] {
-    return this.campaigns_.flatMap(campaign => campaign.scenarios);
+    return this.campaigns_.flatMap((campaign) => campaign.scenarios);
   }
 
   /**
-   * Check if a campaign is locked based on prerequisites
+   * Check if a campaign is locked based on prerequisites.
+   *
+   * A campaign can be gated on whole campaigns, on individual scenarios, or
+   * both; every prerequisite of either kind has to be satisfied.
    */
-  isCampaignLocked(campaign: CampaignData, completedCampaignIds: string[]): boolean {
-    if (!campaign.prerequisiteCampaignIds || campaign.prerequisiteCampaignIds.length === 0) {
+  isCampaignLocked(campaign: CampaignData, completedCampaignIds: string[], completedScenarioIds: string[] = []): boolean {
+    // Same escape hatch isScenarioLocked() honours - without it a developer
+    // could open a scenario the campaign card still shows as locked.
+    if (window.DEVELOPER_MODE) {
       return false;
     }
 
-    return !campaign.prerequisiteCampaignIds.every(prereqId =>
-      completedCampaignIds.includes(prereqId)
-    );
+    const campaignPrereqsMet = (campaign.prerequisiteCampaignIds ?? []).every((prereqId) => completedCampaignIds.includes(prereqId));
+
+    const scenarioPrereqsMet = (campaign.prerequisiteScenarioIds ?? []).every((prereqId) => completedScenarioIds.includes(prereqId));
+
+    return !campaignPrereqsMet || !scenarioPrereqsMet;
+  }
+
+  /**
+   * First unmet scenario prerequisite for a campaign, so the locked card can
+   * name what the player has to finish instead of just saying "Locked".
+   */
+  getNextPrerequisiteScenarioForCampaign(campaign: CampaignData, completedScenarioIds: string[]): ScenarioData | undefined {
+    const nextId = (campaign.prerequisiteScenarioIds ?? []).find((prereqId) => !completedScenarioIds.includes(prereqId));
+
+    return nextId ? this.getAllScenarios().find((s) => s.id === nextId) : undefined;
   }
 
   /**
@@ -99,16 +114,12 @@ export class CampaignManager {
     }
 
     // Exclude sandbox scenarios from progress tracking
-    const countableScenarios = campaign.scenarios.filter(s => s.missionType !== 'Sandbox');
-    const campaignScenarioIds = countableScenarios.map(s => s.id);
-    const completedInCampaign = completedScenarioIds.filter(id =>
-      campaignScenarioIds.includes(id)
-    );
+    const countableScenarios = campaign.scenarios.filter((s) => s.missionType !== 'Sandbox');
+    const campaignScenarioIds = countableScenarios.map((s) => s.id);
+    const completedInCampaign = completedScenarioIds.filter((id) => campaignScenarioIds.includes(id));
 
     const totalScenarios = countableScenarios.length;
-    const completionPercentage = totalScenarios > 0
-      ? Math.round((completedInCampaign.length / totalScenarios) * 100)
-      : 0;
+    const completionPercentage = totalScenarios > 0 ? Math.round((completedInCampaign.length / totalScenarios) * 100) : 0;
 
     return {
       campaignId,
@@ -124,10 +135,10 @@ export class CampaignManager {
    */
   getCompletedCampaigns(completedScenarioIds: string[]): string[] {
     return this.campaigns_
-      .filter(campaign => {
+      .filter((campaign) => {
         const progress = this.getCampaignProgress(campaign.id, completedScenarioIds);
         return progress.isCompleted;
       })
-      .map(campaign => campaign.id);
+      .map((campaign) => campaign.id);
   }
 }

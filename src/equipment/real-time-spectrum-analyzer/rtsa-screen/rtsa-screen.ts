@@ -1,5 +1,5 @@
-import { Logger } from "@app/logging/logger";
-import { RealTimeSpectrumAnalyzer } from "@app/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer";
+import { RealTimeSpectrumAnalyzer } from '@app/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer';
+import { Logger } from '@app/logging/logger';
 
 export abstract class RTSAScreen {
   // Canvas elements
@@ -30,13 +30,13 @@ export abstract class RTSAScreen {
     return this.width_;
   }
 
-  get height(): number {
-    return this.height_;
-  }
-
   set width(value: number) {
     this.width_ = value;
     Logger.warn('RTSAScreen', 'set width', `Width set to ${value}, resizing canvas`);
+  }
+
+  get height(): number {
+    return this.height_;
   }
 
   set height(value: number) {
@@ -63,14 +63,19 @@ export abstract class RTSAScreen {
    */
 
   static rgb2hex(rgb: number[]): string {
-    return '#' + rgb.map(x => {
-      const hex = x.toString(16);
-      return hex.length === 1 ? '0' + hex : hex;
-    }).join('');
+    return (
+      '#' +
+      rgb
+        .map((x) => {
+          const hex = x.toString(16);
+          return hex.length === 1 ? '0' + hex : hex;
+        })
+        .join('')
+    );
   }
 
   static getRandomRgb(i: number): string {
-    let rgb = [255, 0, 0];
+    const rgb = [255, 0, 0];
     if (i % 3 === 0) {
       rgb[0] = 255;
       rgb[1] = (i * 32) % 255;

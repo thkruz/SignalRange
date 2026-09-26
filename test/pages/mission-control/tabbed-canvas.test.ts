@@ -1,15 +1,40 @@
+import type { Degrees, Kilometers, TleLine1, TleLine2 } from 'ootk';
 import { Mock, vi } from 'vitest';
+import { OrbitalSatellite } from '../../../src/equipment/satellite/orbital-satellite';
 import { EventBus } from '../../../src/events/event-bus';
 import { Events } from '../../../src/events/events';
 import { TabbedCanvas } from '../../../src/pages/mission-control/tabbed-canvas';
 
+/** A genuinely SGP4-propagated satellite, for the instanceof-based tab gates. */
+const ORBITAL_SAT = new OrbitalSatellite('TEST-LEO', 61701, [], [], {
+  tle1: '1 61701U 27015A   27074.58333333  .00001000  00000-0  10000-3 0  9996' as TleLine1,
+  tle2: '2 61701  97.6000  26.0000 0010000  90.0000 294.0000 14.90000000123451' as TleLine2,
+  observer: { lat: 53.27 as Degrees, lon: -9.05 as Degrees, alt: 0.02 as Kilometers },
+});
+
 // Create mock tab factory
 const createMockTab = () => ({
-  get dom() { return global.document.createElement('div'); },
+  get dom() {
+    return global.document.createElement('div');
+  },
   activate: vi.fn(),
   deactivate: vi.fn(),
   dispose: vi.fn(),
 });
+
+/**
+ * Satellites the mocked SimulationManager reports. Mutable so the ground-track
+ * gating tests can swap in a real OrbitalSatellite (the gate is an
+ * `instanceof` check, so a plain object is deliberately not enough).
+ */
+const DEFAULT_SATELLITES = [
+  {
+    noradId: 12345,
+    name: 'GALAXY-19',
+    health: 0.95,
+  },
+];
+let mockSatellites: unknown[] = DEFAULT_SATELLITES;
 
 // Mock dependencies
 vi.mock('../../../src/events/event-bus');
@@ -33,46 +58,52 @@ vi.mock('../../../src/simulation/simulation-manager', () => ({
           ],
         },
       ],
-      satellites: [
-        {
-          noradId: 12345,
-          name: 'GALAXY-19',
-          health: 0.95,
-        },
-      ],
-      getSatByNoradId: vi.fn((id: number) => {
-        if (id === 12345) {
-          return {
-            noradId: 12345,
-            name: 'GALAXY-19',
-            health: 0.95,
-          };
-        }
-        return null;
-      }),
+      get satellites() {
+        return mockSatellites;
+      },
+      getSatByNoradId: vi.fn((id: number) => (mockSatellites as Array<{ noradId: number }>).find((sat) => sat.noradId === id) ?? null),
     })),
   },
 }));
 vi.mock('../../../src/pages/mission-control/tabs/acu-control-tab', () => ({
-  ACUControlTab: vi.fn(function () { return createMockTab(); }),
+  ACUControlTab: vi.fn(function () {
+    return createMockTab();
+  }),
 }));
 vi.mock('../../../src/pages/mission-control/tabs/dashboard-tab', () => ({
-  DashboardTab: vi.fn(function () { return createMockTab(); }),
+  DashboardTab: vi.fn(function () {
+    return createMockTab();
+  }),
 }));
 vi.mock('../../../src/pages/mission-control/tabs/gps-timing-tab', () => ({
-  GPSTimingTab: vi.fn(function () { return createMockTab(); }),
+  GPSTimingTab: vi.fn(function () {
+    return createMockTab();
+  }),
+}));
+vi.mock('../../../src/pages/mission-control/tabs/ground-track-tab', () => ({
+  GroundTrackTab: vi.fn(function () {
+    return createMockTab();
+  }),
 }));
 vi.mock('../../../src/pages/mission-control/tabs/mission-overview-tab', () => ({
-  MissionOverviewTab: vi.fn(function () { return createMockTab(); }),
+  MissionOverviewTab: vi.fn(function () {
+    return createMockTab();
+  }),
 }));
 vi.mock('../../../src/pages/mission-control/tabs/rx-analysis-tab', () => ({
-  RxAnalysisTab: vi.fn(function () { return createMockTab(); }),
+  RxAnalysisTab: vi.fn(function () {
+    return createMockTab();
+  }),
 }));
 vi.mock('../../../src/pages/mission-control/tabs/satellite-dashboard-tab', () => ({
-  SatelliteDashboardTab: vi.fn(function () { return createMockTab(); }),
+  SatelliteDashboardTab: vi.fn(function () {
+    return createMockTab();
+  }),
 }));
 vi.mock('../../../src/pages/mission-control/tabs/tx-chain-tab', () => ({
-  TxChainTab: vi.fn(function () { return createMockTab(); }),
+  TxChainTab: vi.fn(function () {
+    return createMockTab();
+  }),
 }));
 vi.mock('../../../src/engine/utils/query-selector', () => ({
   qs: vi.fn((selector: string, parent?: Element) => {
@@ -84,11 +115,14 @@ vi.mock('../../../src/engine/utils/query-selector', () => ({
 import { ACUControlTab } from '../../../src/pages/mission-control/tabs/acu-control-tab';
 import { DashboardTab } from '../../../src/pages/mission-control/tabs/dashboard-tab';
 import { GPSTimingTab } from '../../../src/pages/mission-control/tabs/gps-timing-tab';
+import { GroundTrackTab } from '../../../src/pages/mission-control/tabs/ground-track-tab';
 import { MissionOverviewTab } from '../../../src/pages/mission-control/tabs/mission-overview-tab';
 import { RxAnalysisTab } from '../../../src/pages/mission-control/tabs/rx-analysis-tab';
 import { SatelliteDashboardTab } from '../../../src/pages/mission-control/tabs/satellite-dashboard-tab';
 import { TxChainTab } from '../../../src/pages/mission-control/tabs/tx-chain-tab';
+import { ScenarioManager, type SimulationSettings } from '../../../src/scenario-manager';
 import { SimulationManager } from '../../../src/simulation/simulation-manager';
+
 describe('TabbedCanvas', () => {
   let containerEl: HTMLElement;
   let tabbedCanvas: TabbedCanvas;
@@ -156,32 +190,21 @@ describe('TabbedCanvas', () => {
 
   describe('event listeners', () => {
     it('should register for ASSET_SELECTED events', () => {
-      expect(mockEventBus.on).toHaveBeenCalledWith(
-        Events.ASSET_SELECTED,
-        expect.any(Function)
-      );
+      expect(mockEventBus.on).toHaveBeenCalledWith(Events.ASSET_SELECTED, expect.any(Function));
     });
 
     it('should register for SWITCH_TAB events', () => {
-      expect(mockEventBus.on).toHaveBeenCalledWith(
-        Events.SWITCH_TAB,
-        expect.any(Function)
-      );
+      expect(mockEventBus.on).toHaveBeenCalledWith(Events.SWITCH_TAB, expect.any(Function));
     });
 
     it('should register for MISSION_OVERVIEW_SELECTED events', () => {
-      expect(mockEventBus.on).toHaveBeenCalledWith(
-        Events.MISSION_OVERVIEW_SELECTED,
-        expect.any(Function)
-      );
+      expect(mockEventBus.on).toHaveBeenCalledWith(Events.MISSION_OVERVIEW_SELECTED, expect.any(Function));
     });
   });
 
   describe('ground station selection', () => {
     it('should render ground station tabs when GS selected', () => {
-      const assetSelectedHandler = mockEventBus.on.mock.calls.find(
-        (call: [string, Function]) => call[0] === Events.ASSET_SELECTED
-      )?.[1];
+      const assetSelectedHandler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.ASSET_SELECTED)?.[1];
 
       assetSelectedHandler?.({ type: 'ground-station', id: 'GS-001' });
 
@@ -190,9 +213,7 @@ describe('TabbedCanvas', () => {
     });
 
     it('should render ACU Control tab', () => {
-      const assetSelectedHandler = mockEventBus.on.mock.calls.find(
-        (call: [string, Function]) => call[0] === Events.ASSET_SELECTED
-      )?.[1];
+      const assetSelectedHandler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.ASSET_SELECTED)?.[1];
 
       assetSelectedHandler?.({ type: 'ground-station', id: 'GS-001' });
 
@@ -201,9 +222,7 @@ describe('TabbedCanvas', () => {
     });
 
     it('should render RX Analysis tab', () => {
-      const assetSelectedHandler = mockEventBus.on.mock.calls.find(
-        (call: [string, Function]) => call[0] === Events.ASSET_SELECTED
-      )?.[1];
+      const assetSelectedHandler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.ASSET_SELECTED)?.[1];
 
       assetSelectedHandler?.({ type: 'ground-station', id: 'GS-001' });
 
@@ -212,9 +231,7 @@ describe('TabbedCanvas', () => {
     });
 
     it('should render TX Chain tab', () => {
-      const assetSelectedHandler = mockEventBus.on.mock.calls.find(
-        (call: [string, Function]) => call[0] === Events.ASSET_SELECTED
-      )?.[1];
+      const assetSelectedHandler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.ASSET_SELECTED)?.[1];
 
       assetSelectedHandler?.({ type: 'ground-station', id: 'GS-001' });
 
@@ -223,9 +240,7 @@ describe('TabbedCanvas', () => {
     });
 
     it('should render GPS Timing tab', () => {
-      const assetSelectedHandler = mockEventBus.on.mock.calls.find(
-        (call: [string, Function]) => call[0] === Events.ASSET_SELECTED
-      )?.[1];
+      const assetSelectedHandler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.ASSET_SELECTED)?.[1];
 
       assetSelectedHandler?.({ type: 'ground-station', id: 'GS-001' });
 
@@ -234,9 +249,7 @@ describe('TabbedCanvas', () => {
     });
 
     it('should switch to dashboard tab by default for ground station', () => {
-      const assetSelectedHandler = mockEventBus.on.mock.calls.find(
-        (call: [string, Function]) => call[0] === Events.ASSET_SELECTED
-      )?.[1];
+      const assetSelectedHandler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.ASSET_SELECTED)?.[1];
 
       assetSelectedHandler?.({ type: 'ground-station', id: 'GS-001' });
 
@@ -246,9 +259,7 @@ describe('TabbedCanvas', () => {
 
   describe('satellite selection', () => {
     it('should render satellite dashboard when satellite selected', () => {
-      const assetSelectedHandler = mockEventBus.on.mock.calls.find(
-        (call: [string, Function]) => call[0] === Events.ASSET_SELECTED
-      )?.[1];
+      const assetSelectedHandler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.ASSET_SELECTED)?.[1];
 
       assetSelectedHandler?.({ type: 'satellite', id: 'sat-12345' });
 
@@ -256,9 +267,7 @@ describe('TabbedCanvas', () => {
     });
 
     it('should render Dashboard tab for satellite', () => {
-      const assetSelectedHandler = mockEventBus.on.mock.calls.find(
-        (call: [string, Function]) => call[0] === Events.ASSET_SELECTED
-      )?.[1];
+      const assetSelectedHandler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.ASSET_SELECTED)?.[1];
 
       assetSelectedHandler?.({ type: 'satellite', id: 'sat-12345' });
 
@@ -267,9 +276,7 @@ describe('TabbedCanvas', () => {
     });
 
     it('should show error for unknown satellite', () => {
-      const assetSelectedHandler = mockEventBus.on.mock.calls.find(
-        (call: [string, Function]) => call[0] === Events.ASSET_SELECTED
-      )?.[1];
+      const assetSelectedHandler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.ASSET_SELECTED)?.[1];
 
       assetSelectedHandler?.({ type: 'satellite', id: 'sat-99999' });
 
@@ -278,22 +285,101 @@ describe('TabbedCanvas', () => {
     });
   });
 
+  /**
+   * The Ground Track tab is gated on the satellite actually being SGP4
+   * propagated - a fixed/GEO-modeled satellite has no sub-point path worth
+   * drawing, so it must not appear for one.
+   */
+  describe('ground track tab gating', () => {
+    const selectSatellite = (id: string): void => {
+      const handler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.ASSET_SELECTED)?.[1];
+
+      handler?.({ type: 'satellite', id });
+    };
+
+    const selectOverview = (): void => {
+      const handler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.MISSION_OVERVIEW_SELECTED)?.[1];
+
+      handler?.();
+    };
+
+    afterEach(() => {
+      mockSatellites = DEFAULT_SATELLITES;
+    });
+
+    it('is absent for a non-orbital satellite', () => {
+      selectSatellite('sat-12345');
+
+      expect(document.querySelector('#tab-bar')?.innerHTML).not.toContain('Ground Track');
+    });
+
+    it('is offered for an SGP4-propagated satellite', () => {
+      mockSatellites = [ORBITAL_SAT];
+      selectSatellite(`sat-${ORBITAL_SAT.noradId}`);
+
+      expect(document.querySelector('#tab-bar')?.innerHTML).toContain('Ground Track');
+    });
+
+    it('constructs the tab focused on the selected satellite when switched to', () => {
+      mockSatellites = [ORBITAL_SAT];
+      selectSatellite(`sat-${ORBITAL_SAT.noradId}`);
+
+      const switchHandler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.SWITCH_TAB)?.[1];
+
+      switchHandler?.({ tabId: 'ground-track' });
+
+      expect(GroundTrackTab).toHaveBeenCalledWith('canvas-content', ORBITAL_SAT);
+    });
+
+    it('adds a World Map tab to mission overview when orbital sats exist', () => {
+      mockSatellites = [ORBITAL_SAT];
+      selectOverview();
+
+      const tabBar = document.querySelector('#tab-bar');
+
+      expect(tabBar?.innerHTML).toContain('World Map');
+      expect(tabBar?.innerHTML).toContain('Overview');
+    });
+
+    it('leaves mission overview tab-less without orbital sats', () => {
+      selectOverview();
+
+      expect(document.querySelector('#tab-bar')?.innerHTML).toBe('');
+    });
+
+    it('marks the overview tab active when returning from an asset', () => {
+      mockSatellites = [ORBITAL_SAT];
+      selectSatellite(`sat-${ORBITAL_SAT.noradId}`);
+      selectOverview();
+
+      expect(document.querySelector('.nav-link.active')?.getAttribute('data-tab-id')).toBe('mission-overview');
+    });
+
+    it('reopens the overview on the World Map when it was left there', () => {
+      mockSatellites = [ORBITAL_SAT];
+      selectOverview();
+
+      const switchHandler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.SWITCH_TAB)?.[1];
+
+      switchHandler?.({ tabId: 'ground-track' });
+      selectSatellite(`sat-${ORBITAL_SAT.noradId}`);
+      selectOverview();
+
+      expect(document.querySelector('.nav-link.active')?.getAttribute('data-tab-id')).toBe('ground-track');
+    });
+  });
+
   describe('mission overview selection', () => {
     it('should return to mission overview when MISSION_OVERVIEW_SELECTED', () => {
       // First select a ground station
-      const assetSelectedHandler = mockEventBus.on.mock.calls.find(
-        (call: [string, Function]) => call[0] === Events.ASSET_SELECTED
-      )?.[1];
+      const assetSelectedHandler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.ASSET_SELECTED)?.[1];
 
       assetSelectedHandler?.({ type: 'ground-station', id: 'GS-001' });
 
       // Then select mission overview
-      const overviewHandler = mockEventBus.on.mock.calls.find(
-        (call: [string, Function]) => call[0] === Events.MISSION_OVERVIEW_SELECTED
-      )?.[1];
+      const overviewHandler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.MISSION_OVERVIEW_SELECTED)?.[1];
 
       overviewHandler?.();
-
 
       // MissionOverviewTab should be called (once in constructor, once after overview selected)
       expect(MissionOverviewTab).toHaveBeenCalled();
@@ -301,16 +387,12 @@ describe('TabbedCanvas', () => {
 
     it('should clear tab bar when returning to mission overview', () => {
       // First select a ground station
-      const assetSelectedHandler = mockEventBus.on.mock.calls.find(
-        (call: [string, Function]) => call[0] === Events.ASSET_SELECTED
-      )?.[1];
+      const assetSelectedHandler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.ASSET_SELECTED)?.[1];
 
       assetSelectedHandler?.({ type: 'ground-station', id: 'GS-001' });
 
       // Then select mission overview
-      const overviewHandler = mockEventBus.on.mock.calls.find(
-        (call: [string, Function]) => call[0] === Events.MISSION_OVERVIEW_SELECTED
-      )?.[1];
+      const overviewHandler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.MISSION_OVERVIEW_SELECTED)?.[1];
 
       overviewHandler?.();
 
@@ -322,17 +404,13 @@ describe('TabbedCanvas', () => {
   describe('tab switching', () => {
     beforeEach(() => {
       // Select a ground station first
-      const assetSelectedHandler = mockEventBus.on.mock.calls.find(
-        (call: [string, Function]) => call[0] === Events.ASSET_SELECTED
-      )?.[1];
+      const assetSelectedHandler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.ASSET_SELECTED)?.[1];
 
       assetSelectedHandler?.({ type: 'ground-station', id: 'GS-001' });
     });
 
     it('should switch tabs on SWITCH_TAB event', () => {
-      const switchTabHandler = mockEventBus.on.mock.calls.find(
-        (call: [string, Function]) => call[0] === Events.SWITCH_TAB
-      )?.[1];
+      const switchTabHandler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.SWITCH_TAB)?.[1];
 
       switchTabHandler?.({ tabId: 'acu-control-0' });
 
@@ -340,9 +418,7 @@ describe('TabbedCanvas', () => {
     });
 
     it('should update active class on tab switch', () => {
-      const switchTabHandler = mockEventBus.on.mock.calls.find(
-        (call: [string, Function]) => call[0] === Events.SWITCH_TAB
-      )?.[1];
+      const switchTabHandler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.SWITCH_TAB)?.[1];
 
       switchTabHandler?.({ tabId: 'rx-analysis' });
 
@@ -354,14 +430,11 @@ describe('TabbedCanvas', () => {
       const acuTab = document.querySelector('[data-tab-id="acu-control-0"]') as HTMLElement;
       acuTab?.click();
 
-
       expect(ACUControlTab).toHaveBeenCalled();
     });
 
     it('should create RxAnalysisTab when switching to rx-analysis', () => {
-      const switchTabHandler = mockEventBus.on.mock.calls.find(
-        (call: [string, Function]) => call[0] === Events.SWITCH_TAB
-      )?.[1];
+      const switchTabHandler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.SWITCH_TAB)?.[1];
 
       switchTabHandler?.({ tabId: 'rx-analysis' });
 
@@ -369,9 +442,7 @@ describe('TabbedCanvas', () => {
     });
 
     it('should create TxChainTab when switching to tx-chain', () => {
-      const switchTabHandler = mockEventBus.on.mock.calls.find(
-        (call: [string, Function]) => call[0] === Events.SWITCH_TAB
-      )?.[1];
+      const switchTabHandler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.SWITCH_TAB)?.[1];
 
       switchTabHandler?.({ tabId: 'tx-chain' });
 
@@ -379,9 +450,7 @@ describe('TabbedCanvas', () => {
     });
 
     it('should create GPSTimingTab when switching to gps-timing', () => {
-      const switchTabHandler = mockEventBus.on.mock.calls.find(
-        (call: [string, Function]) => call[0] === Events.SWITCH_TAB
-      )?.[1];
+      const switchTabHandler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.SWITCH_TAB)?.[1];
 
       switchTabHandler?.({ tabId: 'gps-timing' });
 
@@ -389,9 +458,7 @@ describe('TabbedCanvas', () => {
     });
 
     it('should show unknown tab message for undefined tab', () => {
-      const switchTabHandler = mockEventBus.on.mock.calls.find(
-        (call: [string, Function]) => call[0] === Events.SWITCH_TAB
-      )?.[1];
+      const switchTabHandler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.SWITCH_TAB)?.[1];
 
       switchTabHandler?.({ tabId: 'unknown-tab' });
 
@@ -400,31 +467,93 @@ describe('TabbedCanvas', () => {
     });
   });
 
+  /**
+   * Selecting an asset used to leave the tab bar with no `active` class at all
+   * (the class was stamped from the *previous* asset's tab id), and always
+   * reset the operator to the asset's first tab.
+   */
+  describe('active tab across asset switches', () => {
+    const selectAsset = (type: 'ground-station' | 'satellite', id: string): void => {
+      const handler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.ASSET_SELECTED)?.[1];
+
+      handler?.({ type, id });
+    };
+
+    const switchTab = (tabId: string): void => {
+      const handler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.SWITCH_TAB)?.[1];
+
+      handler?.({ tabId });
+    };
+
+    const activeTabId = (): string | null | undefined => document.querySelector('.nav-link.active')?.getAttribute('data-tab-id');
+
+    it('marks a tab active after switching from a ground station to a satellite', () => {
+      selectAsset('ground-station', 'GS-001');
+      selectAsset('satellite', 'sat-12345');
+
+      expect(activeTabId()).toBe('sat-dashboard');
+    });
+
+    it('marks exactly one tab active', () => {
+      selectAsset('ground-station', 'GS-001');
+      switchTab('tx-chain');
+
+      expect(document.querySelectorAll('.nav-link.active')).toHaveLength(1);
+    });
+
+    it('reopens a ground station on the tab it was left on', () => {
+      selectAsset('ground-station', 'GS-001');
+      switchTab('rx-analysis');
+
+      selectAsset('satellite', 'sat-12345');
+      selectAsset('ground-station', 'GS-001');
+
+      expect(activeTabId()).toBe('rx-analysis');
+      expect(RxAnalysisTab).toHaveBeenCalledTimes(2);
+    });
+
+    it('remembers each asset independently', () => {
+      selectAsset('ground-station', 'GS-001');
+      switchTab('gps-timing');
+
+      // The satellite has its own (unset) memory, so it opens at its default.
+      selectAsset('satellite', 'sat-12345');
+      expect(activeTabId()).toBe('sat-dashboard');
+
+      selectAsset('ground-station', 'GS-001');
+      expect(activeTabId()).toBe('gps-timing');
+    });
+
+    it('falls back to the default tab when the remembered tab is gone', () => {
+      selectAsset('ground-station', 'GS-001');
+      switchTab('rx-analysis');
+
+      // A satellite has no rx-analysis tab; it must not be left with none active.
+      selectAsset('satellite', 'sat-12345');
+
+      expect(activeTabId()).toBe('sat-dashboard');
+      expect(SatelliteDashboardTab).toHaveBeenCalled();
+    });
+  });
+
   describe('tab management', () => {
     it('should create DashboardTab when switching to dashboard', () => {
       // Select ground station
-      const assetSelectedHandler = mockEventBus.on.mock.calls.find(
-        (call: [string, Function]) => call[0] === Events.ASSET_SELECTED
-      )?.[1];
+      const assetSelectedHandler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.ASSET_SELECTED)?.[1];
 
       assetSelectedHandler?.({ type: 'ground-station', id: 'GS-001' });
-
 
       expect(DashboardTab).toHaveBeenCalled();
     });
 
     it('should create ACUControlTab when switching to ACU Control', () => {
       // Select ground station first
-      const assetSelectedHandler = mockEventBus.on.mock.calls.find(
-        (call: [string, Function]) => call[0] === Events.ASSET_SELECTED
-      )?.[1];
+      const assetSelectedHandler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.ASSET_SELECTED)?.[1];
 
       assetSelectedHandler?.({ type: 'ground-station', id: 'GS-001' });
 
       // Switch to ACU control tab
-      const switchTabHandler = mockEventBus.on.mock.calls.find(
-        (call: [string, Function]) => call[0] === Events.SWITCH_TAB
-      )?.[1];
+      const switchTabHandler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.SWITCH_TAB)?.[1];
 
       switchTabHandler?.({ tabId: 'acu-control-0' });
 
@@ -433,9 +562,7 @@ describe('TabbedCanvas', () => {
 
     it('should clear old tabs when selecting new asset', () => {
       // Select first ground station
-      const assetSelectedHandler = mockEventBus.on.mock.calls.find(
-        (call: [string, Function]) => call[0] === Events.ASSET_SELECTED
-      )?.[1];
+      const assetSelectedHandler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.ASSET_SELECTED)?.[1];
 
       assetSelectedHandler?.({ type: 'ground-station', id: 'GS-001' });
 
@@ -445,26 +572,59 @@ describe('TabbedCanvas', () => {
   });
 
   describe('destroy', () => {
+    const registeredHandler = (event: Events): Function | undefined => mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === event)?.[1];
+
     it('should dispose all tab instances', () => {
       // Select ground station to create tabs
-      const assetSelectedHandler = mockEventBus.on.mock.calls.find(
-        (call: [string, Function]) => call[0] === Events.ASSET_SELECTED
-      )?.[1];
+      const assetSelectedHandler = registeredHandler(Events.ASSET_SELECTED);
 
       assetSelectedHandler?.({ type: 'ground-station', id: 'GS-001' });
 
+      const dashboardInstance = (DashboardTab as unknown as Mock).mock.results[0].value;
+
       tabbedCanvas.destroy();
 
-      // Tabs should be disposed - no errors
+      expect(dashboardInstance.dispose).toHaveBeenCalled();
     });
 
     it('should unregister from EventBus', () => {
       tabbedCanvas.destroy();
 
-      expect(mockEventBus.off).toHaveBeenCalledWith(
-        Events.ASSET_SELECTED,
-        expect.any(Function)
-      );
+      expect(mockEventBus.off).toHaveBeenCalledWith(Events.ASSET_SELECTED, expect.any(Function));
+    });
+
+    /**
+     * EventBus.off() matches by function identity, so unsubscribing anything
+     * other than the exact callback that was registered is a silent no-op.
+     */
+    it.each([Events.ASSET_SELECTED, Events.SWITCH_TAB, Events.MISSION_OVERVIEW_SELECTED])('unsubscribes the exact handler it registered for %s', (event) => {
+      const handler = registeredHandler(event);
+
+      expect(handler).toBeDefined();
+
+      tabbedCanvas.destroy();
+
+      expect(mockEventBus.off).toHaveBeenCalledWith(event, handler);
+    });
+
+    it('stops reporting an active tab once destroyed', () => {
+      registeredHandler(Events.ASSET_SELECTED)?.({ type: 'ground-station', id: 'GS-001' });
+      expect(TabbedCanvas.getActiveTab()).toBe('dashboard');
+
+      tabbedCanvas.destroy();
+
+      expect(TabbedCanvas.getActiveTab()).toBeNull();
+    });
+
+    it('does not clear a replacement canvas when an old one is destroyed', () => {
+      const replacement = new TabbedCanvas('tabbed-canvas-container');
+
+      tabbedCanvas.destroy();
+
+      expect(TabbedCanvas.getActiveTab()).toBe('mission-overview');
+
+      // Let afterEach tear the live one down.
+      tabbedCanvas = replacement;
     });
   });
 });
@@ -522,9 +682,7 @@ describe('TabbedCanvas with non-operational ground station', () => {
   });
 
   it('should disable equipment tabs when ground station not operational', () => {
-    const assetSelectedHandler = mockEventBus.on.mock.calls.find(
-      (call: [string, Function]) => call[0] === Events.ASSET_SELECTED
-    )?.[1];
+    const assetSelectedHandler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.ASSET_SELECTED)?.[1];
 
     assetSelectedHandler?.({ type: 'ground-station', id: 'GS-001' });
 
@@ -533,13 +691,106 @@ describe('TabbedCanvas with non-operational ground station', () => {
   });
 
   it('should not disable dashboard tab when ground station not operational', () => {
-    const assetSelectedHandler = mockEventBus.on.mock.calls.find(
-      (call: [string, Function]) => call[0] === Events.ASSET_SELECTED
-    )?.[1];
+    const assetSelectedHandler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.ASSET_SELECTED)?.[1];
 
     assetSelectedHandler?.({ type: 'ground-station', id: 'GS-001' });
 
     const dashboardTab = document.querySelector('[data-tab-id="dashboard"]');
     expect(dashboardTab?.classList.contains('disabled')).toBe(false);
+  });
+
+  it('does not reopen a remembered tab that is now disabled', () => {
+    const assetSelectedHandler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.ASSET_SELECTED)?.[1];
+    const switchTabHandler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.SWITCH_TAB)?.[1];
+
+    assetSelectedHandler?.({ type: 'ground-station', id: 'GS-001' });
+    switchTabHandler?.({ tabId: 'rx-analysis' });
+
+    // Reselecting must not drop the operator back into a disabled console.
+    assetSelectedHandler?.({ type: 'ground-station', id: 'GS-001' });
+
+    expect(document.querySelector('.nav-link.active')?.getAttribute('data-tab-id')).toBe('dashboard');
+  });
+});
+
+describe('TabbedCanvas nats-eu console tab gating', () => {
+  const NATS_EU_TAB_IDS = ['link-budget', 'commanding', 'contact-schedule', 'security-console'];
+
+  let tabbedCanvas: TabbedCanvas;
+  let mockEventBus: { on: Mock; off: Mock; emit: Mock };
+  let savedSettings: SimulationSettings;
+
+  const selectGroundStation = (): void => {
+    const assetSelectedHandler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.ASSET_SELECTED)?.[1];
+
+    assetSelectedHandler?.({ type: 'ground-station', id: 'GS-001' });
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+
+    SimulationManager.getInstance.mockReturnValue({
+      groundStations: [
+        {
+          state: { id: 'GS-001', name: 'Miami Station', isOperational: true },
+          antennas: [{ config: { band: 'C', diameter: 9 } }],
+        },
+      ],
+      satellites: [],
+      getSatByNoradId: vi.fn(() => null),
+    });
+
+    mockEventBus = { on: vi.fn(), off: vi.fn(), emit: vi.fn() };
+    (EventBus.getInstance as Mock).mockReturnValue(mockEventBus);
+
+    savedSettings = ScenarioManager.getInstance().settings;
+
+    const containerEl = document.createElement('div');
+    containerEl.id = 'tabbed-canvas-container';
+    document.body.appendChild(containerEl);
+
+    tabbedCanvas = new TabbedCanvas('tabbed-canvas-container');
+  });
+
+  afterEach(() => {
+    ScenarioManager.getInstance().settings = savedSettings;
+    tabbedCanvas.destroy();
+    document.body.innerHTML = '';
+  });
+
+  it('does not register any nats-eu console tab without its settings block', () => {
+    selectGroundStation();
+
+    NATS_EU_TAB_IDS.forEach((tabId) => {
+      expect(document.querySelector(`[data-tab-id="${tabId}"]`)).toBeNull();
+    });
+  });
+
+  it('registers each console tab when its opt-in settings block is present', () => {
+    ScenarioManager.getInstance().settings = {
+      ...savedSettings,
+      linkBudget: { expectedCNRDb: 14, thresholdCNRDb: 8 },
+      commanding: {},
+      contactSchedule: { contacts: [], stationIds: [] },
+      security: { accounts: [], events: [] },
+    };
+
+    selectGroundStation();
+
+    NATS_EU_TAB_IDS.forEach((tabId) => {
+      expect(document.querySelector(`[data-tab-id="${tabId}"]`)).not.toBeNull();
+    });
+  });
+
+  it('registers the security tab for a transec-only scenario', () => {
+    ScenarioManager.getInstance().settings = {
+      ...savedSettings,
+      transec: {},
+    };
+
+    selectGroundStation();
+
+    expect(document.querySelector('[data-tab-id="security-console"]')).not.toBeNull();
+    expect(document.querySelector('[data-tab-id="link-budget"]')).toBeNull();
   });
 });

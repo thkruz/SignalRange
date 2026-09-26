@@ -1,11 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { MissionControlPage } from '../pages/mission-control.page';
-import {
-  answerQuizByText,
-  dismissDialogIfPresent,
-  waitForQuizToAppear,
-  waitForSimulationReady,
-} from '../utils/simulation-helpers';
+import { answerQuizByText, dismissDialogIfPresent, waitForQuizToAppear, waitForSimulationReady } from '../utils/simulation-helpers';
 
 /**
  * Scenario 13 - "Thermal Anomaly": Reading the Trend.
@@ -23,12 +18,7 @@ import {
  * - 'auto': Auto-satisfied by simulation state (HPA backs off naturally
  *           once BUC drive drops; no user action required)
  */
-type ObjectiveType =
-  | 'quiz'
-  | 'select-station'
-  | 'click-tab'
-  | 'configure-buc-gain'
-  | 'auto';
+type ObjectiveType = 'quiz' | 'select-station' | 'click-tab' | 'configure-buc-gain' | 'auto';
 
 interface Scenario13Objective {
   id: string;
@@ -70,8 +60,7 @@ const SCENARIO_13_OBJECTIVES: Scenario13Objective[] = [
     id: 'confirm-no-active-alarm',
     title: 'Confirm Pre-Alarm State',
     type: 'quiz',
-    correctAnswer:
-      'Pre-alarm - you have time to choose a deliberate action instead of a reflexive one',
+    correctAnswer: 'Pre-alarm - you have time to choose a deliberate action instead of a reflexive one',
   },
   {
     id: 'open-tx-chain',
@@ -89,8 +78,7 @@ const SCENARIO_13_OBJECTIVES: Scenario13Objective[] = [
     id: 'check-current-draw',
     title: 'Cross-Check Current Draw',
     type: 'quiz',
-    correctAnswer:
-      'BUC is dissipating more electrical power - consistent with the thermal rise, not a separate fault',
+    correctAnswer: 'BUC is dissipating more power as heat - consistent with the thermal rise, not a separate fault',
   },
   {
     id: 'cross-check-spectrum-tab',
@@ -107,8 +95,7 @@ const SCENARIO_13_OBJECTIVES: Scenario13Objective[] = [
     id: 'record-baseline-readings',
     title: 'Record Baseline Readings',
     type: 'quiz',
-    correctAnswer:
-      'Time, BUC temperature, BUC current, BUC gain, HPA backoff - so the next operator can rebuild the curve',
+    correctAnswer: 'Time, BUC temperature, BUC current, BUC gain, HPA backoff - the next operator can rebuild the curve',
   },
 
   // ============================================================
@@ -118,22 +105,19 @@ const SCENARIO_13_OBJECTIVES: Scenario13Objective[] = [
     id: 'identify-root-cause',
     title: 'Name the Root Cause',
     type: 'quiz',
-    correctAnswer:
-      'BUC gain is set higher than required - the module is dissipating the excess as heat instead of useful RF',
+    correctAnswer: 'BUC gain is 10 dB above the operating value - the module is dissipating the excess as heat, not RF',
   },
   {
     id: 'evaluate-options',
     title: 'Choose a Course of Action',
     type: 'quiz',
-    correctAnswer:
-      'De-rate now: reduce BUC gain ~10 dB to cut dissipation, monitor the trend reverse, schedule a swap during the next planned window',
+    correctAnswer: 'De-rate now - reduce BUC gain ~10 dB, watch the trend reverse, schedule a swap for the next planned window',
   },
   {
     id: 'confirm-action-plan',
     title: 'Confirm the Sequence',
     type: 'quiz',
-    correctAnswer:
-      'Lower BUC gain ~10 dB, verify HPA still in linear region, verify carrier still nominal, then watch the temperature curve bend',
+    correctAnswer: 'Lower BUC gain ~10 dB, verify HPA still linear, verify carrier still nominal, then watch the temperature curve',
   },
 
   // ============================================================
@@ -160,8 +144,7 @@ const SCENARIO_13_OBJECTIVES: Scenario13Objective[] = [
     id: 'verify-trend-stabilizing',
     title: 'Confirm the Trend Is Bending',
     type: 'quiz',
-    correctAnswer:
-      'Watch 5-10 minutes: temperature slope flattens then trends down, current draw drops toward nominal, carrier still locked downstream',
+    correctAnswer: 'Watch 5-10 minutes: temperature slope flattens then trends down, current drops toward 3.0A, carrier still locked',
   },
 
   // ============================================================
@@ -171,8 +154,7 @@ const SCENARIO_13_OBJECTIVES: Scenario13Objective[] = [
     id: 'schedule-maintenance-ticket',
     title: 'Open the Maintenance Ticket',
     type: 'quiz',
-    correctAnswer:
-      'Trend record (15-min curve), de-rate action taken, current BUC gain/backoff settings, recommendation to swap module during next planned window',
+    correctAnswer: 'Trend record (15-min curve), de-rate action taken, current gain/backoff settings, swap recommended for next planned window',
   },
   {
     id: 'final-dashboard-sweep-tab',
@@ -184,15 +166,13 @@ const SCENARIO_13_OBJECTIVES: Scenario13Objective[] = [
     id: 'final-dashboard-sweep',
     title: 'Final Dashboard Sweep',
     type: 'quiz',
-    correctAnswer:
-      'No active alarms, BUC running de-rated, carrier nominal, swap ticket open against next planned window',
+    correctAnswer: 'No active alarms, BUC running de-rated, carrier nominal, swap ticket open against next planned window',
   },
   {
     id: 'log-shift-summary',
     title: 'Log the Shift Entry',
     type: 'quiz',
-    correctAnswer:
-      '1003 - VT-01 BUC thermal trend (57°C->62°C over 15 min) addressed by 10 dB gain de-rate. Trend reversing. Swap ticket opened for next planned window. Carrier nominal throughout.',
+    correctAnswer: '1003 - VT-01 BUC thermal trend (57->62°C over 15 min) addressed by 10 dB gain de-rate. Trend reversing, swap ticket open, carrier nominal.',
   },
 ];
 
@@ -204,10 +184,7 @@ const SCENARIO_13_OBJECTIVES: Scenario13Objective[] = [
  * Configure BUC gain via the TX Chain adjust control.
  * TX Chain tab must be active before calling this.
  */
-async function configureBucGain(
-  page: import('@playwright/test').Page,
-  gain: number
-): Promise<void> {
+async function configureBucGain(page: import('@playwright/test').Page, gain: number): Promise<void> {
   const gainInput = page.locator('#buc-gain');
   await expect(gainInput).toBeVisible({ timeout: 5000 });
   await gainInput.fill(gain.toString());
@@ -226,11 +203,7 @@ async function configureBucGain(
 /**
  * Execute an objective based on its type.
  */
-async function executeObjective(
-  page: import('@playwright/test').Page,
-  missionControlPage: MissionControlPage,
-  objective: Scenario13Objective
-): Promise<void> {
+async function executeObjective(page: import('@playwright/test').Page, missionControlPage: MissionControlPage, objective: Scenario13Objective): Promise<void> {
   switch (objective.type) {
     case 'quiz':
       await waitForQuizToAppear(page);
@@ -243,6 +216,10 @@ async function executeObjective(
 
     case 'click-tab':
       await missionControlPage.selectTab(objective.tabId!);
+      // Observation-gated conditions latch only after the default dwell on
+      // the tab (DEFAULT_OBSERVATION_DWELL_SECONDS); leaving at once would
+      // reset the read and strand the objective.
+      await page.waitForTimeout(3000);
       break;
 
     case 'configure-buc-gain':

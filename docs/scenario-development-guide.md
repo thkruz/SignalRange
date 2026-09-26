@@ -490,7 +490,7 @@ timePenalty: {
 | Condition | Description | Key Params |
 |-----------|-------------|------------|
 | `receiver-signal-locked` | Demodulation lock | `modemNumber` |
-| `receiver-snr-threshold` | C/N ratio meets threshold | `minCNRatio`, `modemNumber` |
+| `receiver-snr-threshold` | C/N ratio meets threshold (or sits at or below `maxCNRatio`) | `minCNRatio`, `maxCNRatio`, `cnHoldSeconds`, `modemNumber` |
 | `rx-modem-frequency-set` | Center frequency set | `frequency`, `frequencyTolerance` |
 | `rx-modem-bandwidth-set` | Bandwidth set | `bandwidth`, `bandwidthTolerance` |
 | `rx-modem-modulation-set` | Modulation type set | `modulation` |
@@ -540,6 +540,109 @@ timePenalty: {
 |-----------|-------------|------------|
 | `fault-active` | Fault is injected | `faultId` |
 | `fault-cleared` | Fault has been cleared | `faultId` |
+
+### 9.13 Decision Conditions
+
+A `status-check` asks *what is true?* and grades against a fixed correct option. A `decision` asks
+*what do you do?* and grades the chosen option against **evidence facts read from the simulation at
+the moment of the answer** — then does something about it. The same option set has a different
+right answer in a scenario with a different interference schedule or injected fault.
+
+| Condition | Description | Key Params |
+|-----------|-------------|------------|
+| `decision` | Judgement graded on live evidence, with consequences | `prompt`, `decisionOptions`, `evidence`, `pointPenalty`, `partialCreditUnevidenced` |
+
+```typescript
+{
+  type: 'decision',
+  description: 'Call it: fault, interference, or attack',
+  params: {
+    character: Character.PRIYA_SHARMA,
+    prompt: 'C/N on GW-01 has dropped 6 dB and is holding. What is this?',
+    // ids of requiresObservation conditions in this objective the player must latch first
+    evidence: ['cn-read', 'speca-read', 'crypto-read'],
+    decisionOptions: [
+      { label: 'Equipment fault - open a maintenance ticket',
+        correctWhen: { fact: 'equipment-fault-active', is: true } },
+      { label: 'Interference - characterise it and report',
+        correctWhen: { all: [{ fact: 'interference-active', is: true }, { fact: 'crypto-intact', is: true }] },
+        consequence: { activateObjective: 'characterise-event' } },
+      { label: 'Intrusion - escalate to security, hold commanding',
+        correctWhen: { fact: 'crypto-intact', is: false },
+        consequence: { auditEvent: { id: 'op-escalation', actor: 'operator', action: 'Escalated to CSIRT', category: 'access', severity: 'warning' } } },
+      { label: 'Propagation - log it and continue',
+        correctWhen: { fact: 'weather-attenuation-dominant', is: true },
+        consequence: { destroyEvidence: { auditEventId: 'probe-0314' } } },
+    ],
+    explanation: 'Interference with crypto intact is RF denial, not intrusion.',
+    pointPenalty: 10,
+    partialCreditUnevidenced: 0.5,
+  },
+  mustMaintain: false,
+}
+```
+
+**Evidence facts** (the only vocabulary `correctWhen` may use): `interference-active`,
+`equipment-fault-active`, `crypto-intact`, `gnss-constellation-healthy`, `timing-drifting`,
+`reference-in-holdover`, `weather-attenuation-dominant`, `audit-anomaly-present`, `config-drifted`,
+`command-window-open`, `uplink-jammed`, `evidence-chain-intact`, `soh-red-limit`, `soh-yellow-limit`,
+`telemetry-stale`, `transponder-interference-active`, `terrestrial-interference-active`. Every fact is held for the observation grace period so a
+transient frame cannot flip the right answer, and `interference-active` reads the event *envelope*
+(a duty-cycled jammer counts in its off phase too); the `transponder-` / `terrestrial-interference-active`
+pair splits that read by `path`, which is the uplink-versus-downlink call. `uplink-jammed` needs `settings.commanding.uplinkFrequencyHz`
+and a transponder-path interference event on the target bird; TRANSEC hop-sync clears it.
+
+**Evidence gating.** `evidence` names sibling conditions by their `id`. The options stay clickable
+before those latch, but a correct answer given early scores only `partialCreditUnevidenced`. The
+modal shows the checklist live. Give the sibling conditions an `id` and `requiresObservation`.
+
+### 9.14 Spacecraft Telemetry and Ranging
+
+`settings.telemetry` starts `TelemetryManager` and the read-only **Telemetry** tab: channels grouped
+by subsystem with nominal values, noise, yellow/red limit bands and scripted `excursions` on the
+mission clock. Frames flow only while an antenna on the station is locked on the bird
+(`antennaIndex` picks one); a dropped link freezes the last values and the stream reads STALE.
+
+| Condition | Description | Key Params |
+|-----------|-------------|------------|
+| `telemetry-frames-received` | At least `minFrames` frames have arrived | `minFrames` |
+| `telemetry-channel-in-band` | A channel reads in the given band (stale streams never match) | `channelId`, `telemetryBand` |
+| `telemetry-soh-nominal` | Every channel green and the stream fresh | - |
+| `ranging-measurements` | Ranging tones ACKed through the command path | `minCount` |
+
+Facts: `soh-red-limit`, `soh-yellow-limit` (a channel at that band or worse, stream fresh) and
+`telemetry-stale`. Pair the channel read with `requiresObservation` on the `telemetry` tab so a
+state-of-health decision is graded on what the operator looked at.
+
+Ranging is `settings.commanding.ranging: { requiredMeasurements, toneId? }`: the TT&C console gains a
+TONE control; each tone is gated like a command and, when it ACKs, records the true slant range to
+the target. `ranging-measurements` (default `minCount` = `requiredMeasurements`) grades the pass.
+
+### 9.15 Campaign Record
+
+A scenario's Working Document is filed into a campaign-scoped store (`CampaignDocumentStore`,
+localStorage, keyed by campaign id) when the scenario completes, together with any audit-event ids a
+`destroyEvidence` consequence removed during the run. Later scenarios read it back:
+
+| Condition | Description | Key Params |
+|-----------|-------------|------------|
+| `campaign-document-reviewed` | The Campaign Record panel (sidebar, next to Working Doc) has been opened this run | - |
+
+An audit entry can carry evidence forward with `requiresCampaignEvidence: { scenarioId, eventId }`.
+If the record says that evidence was destroyed there, the entry is dropped from this scenario's log at
+load and the `evidence-chain-intact` fact reads false - so a decision can grade "attributable" against
+"unattributable" on what the player actually preserved. Scenarios not completed in this browser show
+their canonical `documentLine`s in the panel, marked "as filed", so a fresh S22 still has S17-S21 to read.
+
+**Consequences** fire on whichever option is chosen, right or wrong — that is the teaching. Keys:
+`inject` (a `FAULT_TEMPLATES` key), `clearFault`, `startInterference` / `stopInterference` (an
+`interferenceEvents` id, overriding its schedule), `auditEvent`, `destroyEvidence`,
+`activateObjective`, `deactivateObjective`, `pointDelta`, `log`. A per-scenario budget (default 2)
+caps live injected faults plus forced interference so wrong answers cannot cascade.
+
+**Option discipline.** The 2026-09-17 uniformity rule applies: every option in one shape and length
+band, the correct one never the most detailed. A wrong answer costs `pointPenalty` and leaves the
+decision open; a wrong option that carries a consequence still fires it.
 
 ---
 

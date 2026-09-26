@@ -49,9 +49,7 @@ vi.mock('../../src/engine/ui/draggable-box', () => ({
 
 // Mock html utility
 vi.mock('../../src/engine/utils/development/formatter', () => ({
-  html: (strings: TemplateStringsArray, ...values: unknown[]) => {
-    return strings.reduce((result, str, i) => result + str + (values[i] ?? ''), '');
-  },
+  html: (strings: TemplateStringsArray, ...values: unknown[]) => strings.reduce((result, str, i) => result + str + (values[i] ?? ''), ''),
 }));
 
 // Mock getEl and showEl
@@ -80,8 +78,7 @@ vi.mock('../../src/modal/character-enum', () => ({
     HAPPY: 'happy',
     CONCERNED: 'concerned',
   },
-  getCharacterAvatarUrl: (character: string, emotion: string) =>
-    `/avatars/${character}_${emotion}.png`,
+  getCharacterAvatarUrl: (character: string, emotion: string) => `/avatars/${character}_${emotion}.png`,
 }));
 
 // Mock CSS import
@@ -365,10 +362,13 @@ describe('QuizModal', () => {
 
       (modal as any).handleOptionClick_(1);
 
-      expect(emitSpy).toHaveBeenCalledWith(Events.QUIZ_PASSED, expect.objectContaining({
-        objectiveId: 'obj-1',
-        conditionIndex: 0,
-      }));
+      expect(emitSpy).toHaveBeenCalledWith(
+        Events.QUIZ_PASSED,
+        expect.objectContaining({
+          objectiveId: 'obj-1',
+          conditionIndex: 0,
+        })
+      );
     });
 
     it('should emit QUIZ_ANSWERED when incorrect answer selected', () => {
@@ -379,11 +379,14 @@ describe('QuizModal', () => {
 
       (modal as any).handleOptionClick_(0); // Wrong answer
 
-      expect(emitSpy).toHaveBeenCalledWith(Events.QUIZ_ANSWERED, expect.objectContaining({
-        objectiveId: 'obj-1',
-        isCorrect: false,
-        selectedIndex: 0,
-      }));
+      expect(emitSpy).toHaveBeenCalledWith(
+        Events.QUIZ_ANSWERED,
+        expect.objectContaining({
+          objectiveId: 'obj-1',
+          isCorrect: false,
+          selectedIndex: 0,
+        })
+      );
     });
 
     it('should not process click when showing feedback', () => {
@@ -618,12 +621,15 @@ describe('QuizModal', () => {
 
       (modal as any).handleContinueClick_();
 
-      expect(emitSpy).toHaveBeenCalledWith(Events.QUIZ_COMPLETED, expect.objectContaining({
-        objectiveId: 'obj-1',
-        conditionIndex: 0,
-        totalAttempts: 2,
-        totalPointsDeducted: 10,
-      }));
+      expect(emitSpy).toHaveBeenCalledWith(
+        Events.QUIZ_COMPLETED,
+        expect.objectContaining({
+          objectiveId: 'obj-1',
+          conditionIndex: 0,
+          totalAttempts: 2,
+          totalPointsDeducted: 10,
+        })
+      );
     });
 
     it('should hide overlay', () => {
@@ -676,10 +682,13 @@ describe('QuizModal', () => {
 
       modal.close();
 
-      expect(emitSpy).toHaveBeenCalledWith(Events.QUIZ_DISMISSED, expect.objectContaining({
-        objectiveId: 'obj-1',
-        conditionIndex: 0,
-      }));
+      expect(emitSpy).toHaveBeenCalledWith(
+        Events.QUIZ_DISMISSED,
+        expect.objectContaining({
+          objectiveId: 'obj-1',
+          conditionIndex: 0,
+        })
+      );
     });
 
     it('should not emit QUIZ_DISMISSED when showing feedback (completed)', () => {

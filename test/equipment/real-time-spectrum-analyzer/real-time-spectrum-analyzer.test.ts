@@ -68,7 +68,9 @@ vi.mock('@app/engine/utils/get-el', () => {
   };
 
   return {
-    getEl: vi.fn(function (id: string) { return mockElement(id); }),
+    getEl: vi.fn(function (id: string) {
+      return mockElement(id);
+    }),
     showEl: vi.fn(),
     hideEl: vi.fn(),
     setInnerHtml: vi.fn(),
@@ -87,41 +89,41 @@ vi.mock('@app/components/help-btn/help-btn', () => ({
 // Mock AnalyzerControlBox
 vi.mock('@app/equipment/real-time-spectrum-analyzer/analyzer-control-box', () => ({
   AnalyzerControlBox: class MockAnalyzerControlBox {
-    open() { }
-    close() { }
-  }
+    open() {}
+    close() {}
+  },
 }));
 
 // Mock DraggableBox
 vi.mock('@app/engine/ui/draggable-box', () => ({
   DraggableBox: class MockDraggableBox {
-    constructor() { }
-    open() { }
-    close() { }
-  }
+    constructor() {}
+    open() {}
+    close() {}
+  },
 }));
 
 // Mock RTSAScreen, SpectralDensityPlot, WaterfallDisplay
 vi.mock('@app/equipment/real-time-spectrum-analyzer/rtsa-screen/spectral-density-plot', () => ({
   SpectralDensityPlot: class MockSpectralDensityPlot {
     canvas = { id: 'mock-spectral-canvas' };
-    setFrequencyRange() { }
-    draw() { }
-    resetMaxHold() { }
-    resetMinHold() { }
-    resetMaxHold_() { }
-    resetMinHold_() { }
-  }
+    setFrequencyRange() {}
+    draw() {}
+    resetMaxHold() {}
+    resetMinHold() {}
+    resetMaxHold_() {}
+    resetMinHold_() {}
+  },
 }));
 
 vi.mock('@app/equipment/real-time-spectrum-analyzer/rtsa-screen/waterfall-display', () => ({
   WaterfallDisplay: class MockWaterfallDisplay {
     canvas = { id: 'mock-waterfall-canvas' };
-    setFrequencyRange() { }
-    draw() { }
-    resetMaxHold() { }
-    resetMinHold() { }
-  }
+    setFrequencyRange() {}
+    draw() {}
+    resetMaxHold() {}
+    resetMinHold() {}
+  },
 }));
 
 describe('RealTimeSpectrumAnalyzer', () => {
@@ -616,10 +618,7 @@ describe('RealTimeSpectrumAnalyzer', () => {
     });
 
     it('should center on strongest signal within span', () => {
-      specA.inputSignals = [
-        { frequency: 600e6, power: -50, bandwidth: 10e6 } as any,
-        { frequency: 620e6, power: -40, bandwidth: 10e6 } as any,
-      ];
+      specA.inputSignals = [{ frequency: 600e6, power: -50, bandwidth: 10e6 } as any, { frequency: 620e6, power: -40, bandwidth: 10e6 } as any];
       specA.state.centerFrequency = 610e6 as Hertz;
       specA.state.span = 100e6 as Hertz;
 
@@ -630,9 +629,7 @@ describe('RealTimeSpectrumAnalyzer', () => {
     });
 
     it('should adjust span to fit signal bandwidth', () => {
-      specA.inputSignals = [
-        { frequency: 600e6, power: -40, bandwidth: 20e6 } as any,
-      ];
+      specA.inputSignals = [{ frequency: 600e6, power: -40, bandwidth: 20e6 } as any];
       specA.state.centerFrequency = 600e6 as Hertz;
       specA.state.span = 100e6 as Hertz;
 
@@ -643,9 +640,7 @@ describe('RealTimeSpectrumAnalyzer', () => {
     });
 
     it('should adjust amplitude range based on signal power', () => {
-      specA.inputSignals = [
-        { frequency: 600e6, power: -35, bandwidth: 10e6 } as any,
-      ];
+      specA.inputSignals = [{ frequency: 600e6, power: -35, bandwidth: 10e6 } as any];
       specA.state.centerFrequency = 600e6 as Hertz;
       specA.state.span = 100e6 as Hertz;
 
@@ -667,9 +662,7 @@ describe('RealTimeSpectrumAnalyzer', () => {
     });
 
     it('should not auto-tune if span is too large', () => {
-      specA.inputSignals = [
-        { frequency: 600e6, power: -40, bandwidth: 10e6 } as any,
-      ];
+      specA.inputSignals = [{ frequency: 600e6, power: -40, bandwidth: 10e6 } as any];
       specA.state.centerFrequency = 600e6 as Hertz;
       specA.state.span = 500e6 as Hertz; // > 320 MHz
 

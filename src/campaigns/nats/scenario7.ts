@@ -1,13 +1,12 @@
+import { createRfFrontEnd } from '@app/campaigns/rf-front-end-factory';
 import { Character, Emotion } from '@app/modal/character-enum';
 import type { Objective } from '@app/objectives/objective-types';
 import type { ScenarioData } from '@app/ScenarioData';
 import { SignalOrigin } from '@app/signal-origin';
 import type { dB, dBi, dBm, Hertz, IfFrequency, MHz } from '@app/types';
 import { getAssetUrl } from '@app/utils/asset-url';
-import { createRfFrontEnd } from '@app/campaigns/rf-front-end-factory';
 import { maineGroundStation, vermontGroundStation } from './ground-stations';
 import { ses10Satellite, tidemark1Satellite } from './satellites';
-
 
 /**
  * NATS Level 7: "Uplink Validation"
@@ -72,13 +71,7 @@ export const scenario7Data: ScenarioData = {
   difficulty: 'beginner',
   missionType: 'Operations Phase',
   description: `The Vermont station completed overnight maintenance on the transmit chain - waveguide inspection and HPA tube replacement. Before resuming normal operations, you need to validate the entire uplink path.<br><br>Charlie is off-site today. Dana Torres, the shift supervisor, is handling paperwork but will check in periodically. You're expected to handle this independently.<br><br>Verify the receive chain, configure the transmitter, use BUC loopback to validate your signal, then bring the uplink online.<br><br>Key lesson: Always validate before you radiate.`,
-  equipment: [
-    '9-meter C-band Antenna',
-    'RF Front End',
-    'Spectrum Analyzer',
-    'RX/TX Modems',
-    'ME-02: Unavailable',
-  ],
+  equipment: ['9-meter C-band Antenna', 'RF Front End', 'Spectrum Analyzer', 'RX/TX Modems', 'ME-02: Unavailable'],
   timeLimitSeconds: 35 * 60,
   settings: {
     isSync: true,
@@ -236,14 +229,10 @@ export const scenario7Data: ScenarioData = {
           description: 'Identify Active Alarms',
           params: {
             question: 'What alarm condition is currently displayed on the Dashboard?',
-            options: [
-              'BUC High Current Draw',
-              'LNB Reference Unlocked',
-              'HPA Output Fault',
-              'No active alarms',
-            ],
+            options: ['BUC High Current Draw', 'LNB Reference Unlocked', 'HPA Output Fault', 'No active alarms'],
             correctIndex: 0,
-            explanation: 'The BUC is drawing too much current. The maintenance crew left it unmuted while in loopback mode, which means it\'s actively processing signal. We need to mute it and disable loopback before proceeding.',
+            explanation:
+              "The BUC is drawing too much current. The maintenance crew left it unmuted while in loopback mode, which means it's actively processing signal. We need to mute it and disable loopback before proceeding.",
             pointPenalty: 10,
             character: Character.DANA_TORRES,
           },
@@ -276,14 +265,10 @@ export const scenario7Data: ScenarioData = {
           description: 'Identify Cause',
           params: {
             question: 'Looking at the BUC panel, what is the likely cause of the high current draw?',
-            options: [
-              'BUC has been on for a few hours and is overheating',
-              'BUC gain is set too high',
-              'External reference is unlocked',
-              'BUC temperature is too low',
-            ],
+            options: ['BUC has been on for a few hours and is overheating', 'BUC gain is set too high', 'External reference is unlocked', 'BUC temperature is too low'],
             correctIndex: 1,
-            explanation: 'The BUC gain is set to 50 dB and since it\'s in loopback mode and unmuted, it\'s actively processing signal, leading to high current draw. The maintenance crew likely forgot to mute it after testing.',
+            explanation:
+              "The BUC gain is set to 50 dB and since it's in loopback mode and unmuted, it's actively processing signal, leading to high current draw. The maintenance crew likely forgot to mute it after testing.",
             pointPenalty: 10,
             character: Character.DANA_TORRES,
           },
@@ -350,9 +335,9 @@ export const scenario7Data: ScenarioData = {
             question: 'What is the current BUC status on the Dashboard?',
             options: [
               'Normal - current draw within limits, no active alarms',
-              'Warning - current still too high',
-              'Fault - BUC offline',
-              'Unknown - BUC not reporting',
+              'Warning - current draw still above limit, alarm latched',
+              'Fault - BUC offline, current draw at zero, alarm active',
+              'Unknown - BUC not reporting, no current or alarm data',
             ],
             correctIndex: 0,
             explanation: 'The BUC has been muted and loopback disabled. The high current alarm has cleared. Always verify alarm resolution on the Dashboard before proceeding.',
@@ -399,12 +384,7 @@ export const scenario7Data: ScenarioData = {
           description: 'Antenna Status Verified',
           params: {
             question: 'What is the current antenna tracking mode and target satellite?',
-            options: [
-              'Program Track - TIDEMARK-1',
-              'Program Track - TIDEMARK-2',
-              'Step Track - TIDEMARK-1',
-              'Maintenance - Stowed',
-            ],
+            options: ['Program Track - TIDEMARK-1', 'Program Track - TIDEMARK-2', 'Step Track - TIDEMARK-1', 'Maintenance - Stowed'],
             correctIndex: 0,
             explanation: 'The antenna is in Program Track mode, locked on TIDEMARK-1.',
             pointPenalty: 5,
@@ -455,13 +435,12 @@ export const scenario7Data: ScenarioData = {
           type: 'status-check',
           description: 'Noise Temperature Understanding',
           params: {
-            question:
-              'What does the LNB noise temperature value indicate about receiver performance?',
+            question: 'What does the LNB noise temperature value indicate about receiver performance?',
             options: [
               'Lower noise temperature means better sensitivity and signal-to-noise ratio',
-              'Higher noise temperature means better sensitivity',
-              'Noise temperature only affects transmit power',
-              'Noise temperature has no impact on signal quality',
+              'Higher noise temperature means better sensitivity and signal-to-noise ratio',
+              'Noise temperature sets the transmit power and has no effect on sensitivity',
+              'Noise temperature has no effect on sensitivity or signal-to-noise ratio',
             ],
             correctIndex: 0,
             explanation:
@@ -541,13 +520,12 @@ export const scenario7Data: ScenarioData = {
           type: 'status-check',
           description: 'Beacon Identification',
           params: {
-            question:
-              'What distinguishes the beacon signal from other signals on the spectrum display?',
+            question: 'What distinguishes the beacon signal from other signals on the spectrum display?',
             options: [
               'Beacon is a narrow CW carrier spike, while data signals have wider bandwidth',
-              'Beacon is wider than data signals',
-              'Beacon has modulation visible in the spectrum shape',
-              'Beacon power level is always exactly -50 dBm',
+              'Beacon is a wide modulated carrier, while data signals show up as narrow CW spikes',
+              'Beacon shows visible modulation, while data signals appear as flat CW lines',
+              'Beacon sits at exactly -50 dBm, while data signals sit lower on the display',
             ],
             correctIndex: 0,
             explanation:
@@ -561,8 +539,7 @@ export const scenario7Data: ScenarioData = {
           type: 'status-check',
           description: 'Beacon Purpose',
           params: {
-            question:
-              'What does successful beacon acquisition confirm about the receive chain?',
+            question: 'What does successful beacon acquisition confirm about the receive chain?',
             options: [
               'Antenna is pointed at the satellite',
               'LNB is functioning and converting RF to IF',
@@ -570,8 +547,7 @@ export const scenario7Data: ScenarioData = {
               'All of the above',
             ],
             correctIndex: 3,
-            explanation:
-              'The beacon validates the entire receive chain: antenna pointing, LNB operation, and signal routing. If any component fails, the beacon disappears.',
+            explanation: 'The beacon validates the entire receive chain: antenna pointing, LNB operation, and signal routing. If any component fails, the beacon disappears.',
             pointPenalty: 5,
             preserveOptionOrder: true,
             character: Character.DANA_TORRES,
@@ -598,12 +574,7 @@ export const scenario7Data: ScenarioData = {
           description: 'Beacon IF Calculation',
           params: {
             question: 'The TIDEMARK-1 beacon is at 4,175.5 MHz RF. With an LNB LO of 5,250 MHz, what IF frequency is the beacon at?',
-            options: [
-              '1,074.5 MHz',
-              '1,174.5 MHz',
-              '9,425.5 MHz',
-              '925.5 MHz',
-            ],
+            options: ['1,074.5 MHz', '1,174.5 MHz', '9,425.5 MHz', '925.5 MHz'],
             correctIndex: 0,
             explanation: 'IF = LO - RF = 5,250 - 4,175.5 = 1,074.5 MHz. The LNB downconverts C-band RF to L-band IF.',
             pointPenalty: 10,
@@ -635,12 +606,7 @@ export const scenario7Data: ScenarioData = {
           description: 'TX IF Frequency Calculated',
           params: {
             question: 'TIDEMARK-1 TP-1 uplink is 5,943 MHz RF. The BUC LO is 7,000 MHz. What TX IF frequency is required?',
-            options: [
-              '1,057 MHz',
-              '12,943 MHz',
-              '957 MHz',
-              '1,157 MHz',
-            ],
+            options: ['1,057 MHz', '12,943 MHz', '957 MHz', '1,157 MHz'],
             correctIndex: 0,
             explanation: 'TX IF = BUC LO - RF = 7,000 - 5,943 = 1,057 MHz. The BUC upconverts IF to RF.',
             pointPenalty: 10,
@@ -713,10 +679,10 @@ export const scenario7Data: ScenarioData = {
           type: 'tx-modem-transmitting',
           description: 'TX Modem Transmitting',
           params: {
-            isTransmitting: true
+            isTransmitting: true,
           },
           maintainUntilObjectiveComplete: true,
-        }
+        },
       ],
       conditionLogic: 'AND',
       points: 15,
@@ -795,7 +761,8 @@ export const scenario7Data: ScenarioData = {
               'Bypasses the HPA to reduce power consumption and improve performance',
             ],
             correctIndex: 0,
-            explanation: 'Loopback mode internally routes the BUC output signal back to the receive chain, allowing you to verify the TX modem and BUC are working without actually transmitting RF power through the antenna.',
+            explanation:
+              'Loopback mode internally routes the BUC output signal back to the receive chain, allowing you to verify the TX modem and BUC are working without actually transmitting RF power through the antenna.',
             pointPenalty: 5,
             character: Character.DANA_TORRES,
           },
@@ -880,13 +847,12 @@ export const scenario7Data: ScenarioData = {
           type: 'status-check',
           description: 'Loopback Signal Verified',
           params: {
-            question:
-              'With the LNB LO at 7000 MHz and spectrum analyzer centered at 1,057 MHz, what do you observe?',
+            question: 'With the LNB LO at 7000 MHz and spectrum analyzer centered at 1,057 MHz, what do you observe?',
             options: [
               'A 36 MHz wide signal centered at 1,057 MHz - the TX modem output via loopback',
-              'No signal visible at 1,057 MHz',
-              'Only the beacon signal at 1,074.5 MHz',
-              'A narrow CW carrier spike',
+              'No signal anywhere near 1,057 MHz - the loopback path is not visible on RX',
+              'Only a narrow CW spike at 1,074.5 MHz - the TIDEMARK-1 beacon, no loopback',
+              'A narrow CW carrier spike at 1,057 MHz - the BUC LO leaking through the loopback',
             ],
             correctIndex: 0,
             explanation:
@@ -918,12 +884,13 @@ export const scenario7Data: ScenarioData = {
             question: 'What does a successful loopback test verify?',
             options: [
               'TX modem output and BUC signal path are functioning',
-              'The satellite transponder is responding',
-              'The HPA is at full power',
-              'The antenna is pointed correctly',
+              'Satellite transponder and downlink path are responding',
+              'HPA output stage and waveguide path are at full power',
+              'Antenna pointing and feed alignment are on the satellite',
             ],
             correctIndex: 0,
-            explanation: 'Loopback testing verifies the low-power transmit chain (modem and BUC) without engaging the HPA or transmitting. This catches configuration errors before they cause interference.',
+            explanation:
+              'Loopback testing verifies the low-power transmit chain (modem and BUC) without engaging the HPA or transmitting. This catches configuration errors before they cause interference.',
             pointPenalty: 5,
             character: Character.DANA_TORRES,
           },
@@ -971,15 +938,9 @@ export const scenario7Data: ScenarioData = {
           description: 'Encryption Status Verified',
           params: {
             question: 'What is the encryption status for this uplink?',
-            options: [
-              'AES-256 Enabled',
-              'AES-128 Enabled',
-              'Encryption Disabled',
-              'Key Expired - Renewal Required',
-            ],
+            options: ['AES-256 Enabled', 'AES-128 Enabled', 'Encryption Disabled', 'Key Expired - Renewal Required'],
             correctIndex: 0,
-            explanation:
-              'Link encryption is AES-256 per the TIDEMARK-1 service agreement. Never transmit without verifying encryption status.',
+            explanation: 'Link encryption is AES-256 per the TIDEMARK-1 service agreement. Never transmit without verifying encryption status.',
             pointPenalty: 10,
             character: Character.DANA_TORRES,
           },
@@ -1058,8 +1019,7 @@ export const scenario7Data: ScenarioData = {
       // K0740: Knowledge of network performance management
       nice: ['T0153', 'K0740'],
       title: 'Increase HPA Output Power',
-      description:
-        'Lower the HPA backoff to reach the minimum output power required for reliable uplink.',
+      description: 'Lower the HPA backoff to reach the minimum output power required for reliable uplink.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['enable-hpa-output'],
       timeLimitSeconds: 2 * 60,

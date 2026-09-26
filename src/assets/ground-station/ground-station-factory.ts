@@ -1,5 +1,5 @@
-import { GroundStation } from "./ground-station";
-import type { GroundStationConfig } from "./ground-station-state";
+import { GroundStation } from './ground-station';
+import type { GroundStationConfig } from './ground-station-state';
 
 /**
  * Factory function to create a GroundStation instance

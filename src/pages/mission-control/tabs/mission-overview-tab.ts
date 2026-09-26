@@ -1,13 +1,13 @@
-import { GroundStation } from "@app/assets/ground-station/ground-station";
-import { BaseElement } from "@app/components/base-element";
-import { html } from "@app/engine/utils/development/formatter";
-import { qs } from "@app/engine/utils/query-selector";
-import { Satellite } from "@app/equipment/satellite/satellite";
-import { EventBus } from "@app/events/event-bus";
-import { Events } from "@app/events/events";
-import { SimulationManager } from "@app/simulation/simulation-manager";
+import { GroundStation } from '@app/assets/ground-station/ground-station';
 import antennaPng from '@app/assets/icons/antenna.png';
 import satellitePng from '@app/assets/icons/satellite.png';
+import { BaseElement } from '@app/components/base-element';
+import { html } from '@app/engine/utils/development/formatter';
+import { qs } from '@app/engine/utils/query-selector';
+import { Satellite } from '@app/equipment/satellite/satellite';
+import { EventBus } from '@app/events/event-bus';
+import { Events } from '@app/events/events';
+import { SimulationManager } from '@app/simulation/simulation-manager';
 import './mission-overview-tab.css';
 
 /**
@@ -44,18 +44,20 @@ export class MissionOverviewTab extends BaseElement {
           <div class="col-12">
             <h3 class="section-title">Ground Stations</h3>
           </div>
-          ${this.groundStations_.length > 0
-            ? this.groundStations_.map(gs => this.renderGroundStationCard_(gs)).join('')
-            : `<div class="col-12"><p class="text-muted">No ground stations in this scenario.</p></div>`
+          ${
+            this.groundStations_.length > 0
+              ? this.groundStations_.map((gs) => this.renderGroundStationCard_(gs)).join('')
+              : `<div class="col-12"><p class="text-muted">No ground stations in this scenario.</p></div>`
           }
 
           <!-- Satellites Section -->
           <div class="col-12 mt-4">
             <h3 class="section-title">Satellites</h3>
           </div>
-          ${this.satellites_.length > 0
-            ? this.satellites_.map(sat => this.renderSatelliteCard_(sat)).join('')
-            : `<div class="col-12"><p class="text-muted">No satellites in this scenario.</p></div>`
+          ${
+            this.satellites_.length > 0
+              ? this.satellites_.map((sat) => this.renderSatelliteCard_(sat)).join('')
+              : `<div class="col-12"><p class="text-muted">No satellites in this scenario.</p></div>`
           }
         </div>
       </div>
@@ -126,7 +128,7 @@ export class MissionOverviewTab extends BaseElement {
     const healthPercent = Math.round(sat.health * 100);
     const isHealthy = sat.health >= 0.9;
     const transponderCount = sat.transponders.length;
-    const activeTransponders = sat.transponders.filter(t => t.isActive).length;
+    const activeTransponders = sat.transponders.filter((t) => t.isActive).length;
 
     return html`
       <div class="col-lg-4 col-md-6">
@@ -179,7 +181,7 @@ export class MissionOverviewTab extends BaseElement {
   private addEventListenersLate_(): void {
     // Add click handlers to asset cards
     const assetCards = this.dom_.querySelectorAll('.asset-card');
-    assetCards.forEach(card => {
+    assetCards.forEach((card) => {
       card.addEventListener('click', () => {
         const type = card.getAttribute('data-asset-type') as 'ground-station' | 'satellite';
         const id = card.getAttribute('data-asset-id');

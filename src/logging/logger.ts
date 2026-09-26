@@ -12,11 +12,16 @@ export class Logger {
 
   private static color(type: LogLevel): string {
     switch (type) {
-      case 'LOG': return 'color: #2196F3';      // Blue
-      case 'INFO': return 'color: #4CAF50';     // Green
-      case 'WARN': return 'color: #FFC107';     // Amber
-      case 'ERROR': return 'color: #F44336';    // Red
-      default: return '';
+      case 'LOG':
+        return 'color: #2196F3'; // Blue
+      case 'INFO':
+        return 'color: #4CAF50'; // Green
+      case 'WARN':
+        return 'color: #FFC107'; // Amber
+      case 'ERROR':
+        return 'color: #F44336'; // Red
+      default:
+        return '';
     }
   }
 

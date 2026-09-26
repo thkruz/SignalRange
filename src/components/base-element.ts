@@ -1,4 +1,3 @@
-
 export abstract class BaseElement {
   protected abstract html_: string;
   protected dom_: HTMLElement | null = null;

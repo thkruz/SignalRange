@@ -6,12 +6,12 @@
  */
 
 import { GroundStation } from '@app/assets/ground-station/ground-station';
-import { SimulationManager } from '@app/simulation/simulation-manager';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
 import type { Equipment } from '@app/pages/sandbox/equipment';
+import { SimulationManager } from '@app/simulation/simulation-manager';
 import { StorageProviderFactory, StorageProviderType } from './storage-provider-factory';
-import { SyncManager, type AppState } from './sync-manager';
+import { type AppState, SyncManager } from './sync-manager';
 import './webpack-hot-module';
 
 // Create the storage provider (can be easily swapped!)
@@ -137,10 +137,7 @@ export function isStorageConnected(): boolean {
  * });
  * ```
  */
-export async function swapStorageProvider(
-  type: StorageProviderType,
-  config: any
-): Promise<void> {
+export async function swapStorageProvider(type: StorageProviderType, config: any): Promise<void> {
   const newProvider = StorageProviderFactory.create({
     type,
     ...config,

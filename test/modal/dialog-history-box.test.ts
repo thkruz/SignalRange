@@ -42,15 +42,13 @@ vi.mock('../../src/modal/draggable-html-box', () => ({
       this._isOpen = false;
     }
 
-    protected onOpen(): void { }
+    protected onOpen(): void {}
   },
 }));
 
 // Mock html utility
 vi.mock('../../src/engine/utils/development/formatter', () => ({
-  html: (strings: TemplateStringsArray, ...values: unknown[]) => {
-    return strings.reduce((result, str, i) => result + str + (values[i] ?? ''), '');
-  },
+  html: (strings: TemplateStringsArray, ...values: unknown[]) => strings.reduce((result, str, i) => result + str + (values[i] ?? ''), ''),
 }));
 
 // Mock DialogHistoryManager

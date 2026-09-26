@@ -132,22 +132,10 @@ describe('TransmitterAdapter', () => {
     });
 
     it('should register for TX events', () => {
-      expect(mockEventBus.on).toHaveBeenCalledWith(
-        Events.TX_CONFIG_CHANGED,
-        expect.any(Function)
-      );
-      expect(mockEventBus.on).toHaveBeenCalledWith(
-        Events.TX_ACTIVE_MODEM_CHANGED,
-        expect.any(Function)
-      );
-      expect(mockEventBus.on).toHaveBeenCalledWith(
-        Events.TX_TRANSMIT_CHANGED,
-        expect.any(Function)
-      );
-      expect(mockEventBus.on).toHaveBeenCalledWith(
-        Events.SYNC,
-        expect.any(Function)
-      );
+      expect(mockEventBus.on).toHaveBeenCalledWith(Events.TX_CONFIG_CHANGED, expect.any(Function));
+      expect(mockEventBus.on).toHaveBeenCalledWith(Events.TX_ACTIVE_MODEM_CHANGED, expect.any(Function));
+      expect(mockEventBus.on).toHaveBeenCalledWith(Events.TX_TRANSMIT_CHANGED, expect.any(Function));
+      expect(mockEventBus.on).toHaveBeenCalledWith(Events.SYNC, expect.any(Function));
     });
   });
 
@@ -302,22 +290,10 @@ describe('TransmitterAdapter', () => {
     it('should unregister from EventBus events', () => {
       adapter.dispose();
 
-      expect(mockEventBus.off).toHaveBeenCalledWith(
-        Events.TX_CONFIG_CHANGED,
-        expect.any(Function)
-      );
-      expect(mockEventBus.off).toHaveBeenCalledWith(
-        Events.TX_ACTIVE_MODEM_CHANGED,
-        expect.any(Function)
-      );
-      expect(mockEventBus.off).toHaveBeenCalledWith(
-        Events.TX_TRANSMIT_CHANGED,
-        expect.any(Function)
-      );
-      expect(mockEventBus.off).toHaveBeenCalledWith(
-        Events.SYNC,
-        expect.any(Function)
-      );
+      expect(mockEventBus.off).toHaveBeenCalledWith(Events.TX_CONFIG_CHANGED, expect.any(Function));
+      expect(mockEventBus.off).toHaveBeenCalledWith(Events.TX_ACTIVE_MODEM_CHANGED, expect.any(Function));
+      expect(mockEventBus.off).toHaveBeenCalledWith(Events.TX_TRANSMIT_CHANGED, expect.any(Function));
+      expect(mockEventBus.off).toHaveBeenCalledWith(Events.SYNC, expect.any(Function));
     });
   });
 });

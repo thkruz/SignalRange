@@ -1,9 +1,9 @@
-import { EventBus } from "@app/events/event-bus";
-import { Events } from "@app/events/events";
-import { NotchFilterModuleCore, NotchFilterState, NotchConfig } from "@app/equipment/rf-front-end/notch-filter-module";
-import { qs } from "@app/engine/utils/query-selector";
-import { MHz, dB } from "@app/types";
-import { parseLocalizedNumber } from "@app/utils/parse-number";
+import { qs } from '@app/engine/utils/query-selector';
+import { NotchConfig, NotchFilterModuleCore, NotchFilterState } from '@app/equipment/rf-front-end/notch-filter-module';
+import { EventBus } from '@app/events/event-bus';
+import { Events } from '@app/events/events';
+import { dB, MHz } from '@app/types';
+import { parseLocalizedNumber } from '@app/utils/parse-number';
 
 /**
  * NotchFilterAdapter - Bridges NotchFilterModuleCore state to web controls
@@ -31,7 +31,7 @@ export class NotchFilterAdapter {
     this.containerEl = containerEl;
 
     // Initialize staged values from current state
-    this.stagedNotches_ = this.notchFilterModule.state.notches.map(n => ({ ...n }));
+    this.stagedNotches_ = this.notchFilterModule.state.notches.map((n) => ({ ...n }));
 
     // Bind state change handler
     this.stateChangeHandler = (state: Partial<NotchFilterState>) => {
@@ -177,22 +177,19 @@ export class NotchFilterAdapter {
 
   private adjustStagedFreq_(index: number, delta: number): void {
     const current = this.stagedNotches_[index].centerFrequency;
-    this.stagedNotches_[index].centerFrequency =
-      Math.max(950, Math.min(2150, current + delta)) as MHz;
+    this.stagedNotches_[index].centerFrequency = Math.max(950, Math.min(2150, current + delta)) as MHz;
     this.updateStagedDisplays_();
   }
 
   private adjustStagedBandwidth_(index: number, delta: number): void {
     const current = this.stagedNotches_[index].bandwidth;
-    this.stagedNotches_[index].bandwidth =
-      Math.max(0.1, Math.min(50, current + delta)) as MHz;
+    this.stagedNotches_[index].bandwidth = Math.max(0.1, Math.min(50, current + delta)) as MHz;
     this.updateStagedDisplays_();
   }
 
   private adjustStagedDepth_(index: number, delta: number): void {
     const current = this.stagedNotches_[index].depth;
-    this.stagedNotches_[index].depth =
-      Math.max(1, Math.min(60, current + delta)) as dB;
+    this.stagedNotches_[index].depth = Math.max(1, Math.min(60, current + delta)) as dB;
     this.updateStagedDisplays_();
   }
 
@@ -235,10 +232,14 @@ export class NotchFilterAdapter {
   private setNotchButtonsEnabled_(index: number, enabled: boolean): void {
     const prefix = `notch-${index}`;
     const buttonKeys = [
-      `${prefix}-freq-dec-coarse`, `${prefix}-freq-dec-fine`,
-      `${prefix}-freq-inc-fine`, `${prefix}-freq-inc-coarse`,
-      `${prefix}-bw-dec`, `${prefix}-bw-inc`,
-      `${prefix}-depth-dec`, `${prefix}-depth-inc`
+      `${prefix}-freq-dec-coarse`,
+      `${prefix}-freq-dec-fine`,
+      `${prefix}-freq-inc-fine`,
+      `${prefix}-freq-inc-coarse`,
+      `${prefix}-bw-dec`,
+      `${prefix}-bw-inc`,
+      `${prefix}-depth-dec`,
+      `${prefix}-depth-inc`,
     ];
     for (const key of buttonKeys) {
       const btn = this.domCache_.get(key) as HTMLButtonElement;
@@ -271,7 +272,7 @@ export class NotchFilterAdapter {
 
     // Update staged values from state
     if (state.notches) {
-      this.stagedNotches_ = state.notches.map(n => ({ ...n }));
+      this.stagedNotches_ = state.notches.map((n) => ({ ...n }));
     }
 
     // Update power switch

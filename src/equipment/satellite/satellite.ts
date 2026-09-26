@@ -1,9 +1,12 @@
-import { EventBus } from "@app/events/event-bus";
-import { Events } from "@app/events/events";
-import { SignalOrigin } from "@app/signal-origin";
-import { PerlinNoise } from "@app/simulation/perlin-noise";
-import { dBi, dBm, Hertz, RfFrequency, RfSignal } from "@app/types";
-import { Degrees } from "ootk";
+import { EventBus } from '@app/events/event-bus';
+import { Events } from '@app/events/events';
+import { SignalOrigin } from '@app/signal-origin';
+import { PerlinNoise } from '@app/simulation/perlin-noise';
+import { Rng, type RngStream } from '@app/simulation/rng';
+import { SimClock } from '@app/simulation/sim-clock';
+import { getSimulatedNowMs } from '@app/simulation/sim-time';
+import { dBi, dBm, Hertz, RfFrequency, RfSignal } from '@app/types';
+import { Degrees } from 'ootk';
 
 /**
  * Configuration for explicitly defining a satellite transponder.
@@ -89,8 +92,13 @@ export interface SignalDegradationConfig {
   interferencePower: dBm;
 }
 
-/** Satellite orbit type determining position behavior */
-export type OrbitType = 'geostationary' | 'geosynchronous';
+/**
+ * Satellite orbit type determining position behavior.
+ * - 'geostationary': fixed az/el (default)
+ * - 'geosynchronous': parametric figure-8 (analemma) pattern
+ * - 'leo': real SGP4-propagated orbit; only valid on OrbitalSatellite subclass
+ */
+export type OrbitType = 'geostationary' | 'geosynchronous' | 'leo';
 
 /**
  * Configuration for geosynchronous (inclined) orbit figure-8 pattern.
@@ -162,12 +170,17 @@ export class Satellite {
   private readonly frequencyOffset: number;
 
   private readonly randomCache_: Map<string, number> = new Map();
+
+  /** This satellite's random stream for the current run seed */
+  private get rng_(): RngStream {
+    return Rng.stream(`satellite:${this.noradId}`);
+  }
   private readonly boundUpdateHandler_: () => void;
   private isSubscribedToEventBus_ = false;
 
   el: Degrees;
   az: Degrees;
-  rotation: Degrees = ((Math.random() * 90) - 45) as Degrees;
+  rotation: Degrees;
   name: string;
 
   /** Ephemeris error in azimuth (degrees) - simulates TLE inaccuracy */
@@ -190,21 +203,23 @@ export class Satellite {
   private phase_: number = 0;
 
   /** Timestamp of last position update (ms) - for throttling */
-  private lastPositionUpdateTime_: number = 0;
+  protected lastPositionUpdateTime_: number = 0;
 
   /** Position update interval (ms) */
-  private static readonly POSITION_UPDATE_INTERVAL_MS = 1000;
+  protected static readonly POSITION_UPDATE_INTERVAL_MS = 1000;
+
+  /**
+   * Slant range from the ground station to the satellite (km).
+   * Null for legacy fixed-telemetry satellites, in which case the antenna
+   * falls back to the nominal GEO slant range for path-loss calculations.
+   * Populated each position update by OrbitalSatellite.
+   */
+  rangeKm: number | null = null;
 
   /** Rate of position change: 0.1 degrees per 30 seconds (peak velocity) */
   private static readonly POSITION_RATE_DEG_PER_MS = 0.1 / 30000;
 
-  constructor(
-    name: string,
-    norad: number,
-    rxSignal: RfSignal[] = [],
-    beaconSignal: RfSignal[] = [],
-    satelliteState: SatelliteState = Satellite.getDefaultState_(),
-  ) {
+  constructor(name: string, norad: number, rxSignal: RfSignal[] = [], beaconSignal: RfSignal[] = [], satelliteState: SatelliteState = Satellite.getDefaultState_()) {
     this.noradId = norad;
     this.externalSignal = rxSignal;
     this.rxSignal = [];
@@ -213,7 +228,8 @@ export class Satellite {
     this.health = 1.0;
     this.az = satelliteState.az;
     this.el = satelliteState.el;
-    this.rotation = satelliteState.rotation ?? this.rotation;
+    // Unauthored skew is a property of the satellite, not of the run: fixed per NORAD id
+    this.rotation = satelliteState.rotation ?? ((Rng.hashUniform(`satellite-rotation:${norad}`) * 90 - 45) as Degrees);
     this.ephemerisErrorAz = satelliteState.ephemerisErrorAz ?? (0 as Degrees);
     this.ephemerisErrorEl = satelliteState.ephemerisErrorEl ?? (0 as Degrees);
 
@@ -228,7 +244,7 @@ export class Satellite {
       powerVariationRange: 1.0 as dBm,
       interference: false,
       interferencePower: -110 as dBm,
-      ...satelliteState.degradationConfig
+      ...satelliteState.degradationConfig,
     };
 
     // Initialize orbit type and configuration
@@ -346,14 +362,19 @@ export class Satellite {
    * Traces a figure-8 (analemma) pattern using parametric equations.
    * Throttled to 1 second intervals to reduce computation.
    */
-  private updatePosition_(): void {
+  protected updatePosition_(): void {
     if (this.orbitType !== 'geosynchronous' || !this.geosyncConfig_) {
       return;
     }
 
-    // Throttle position updates
-    const now = Date.now();
+    // Throttle position updates (scenario time: the wobble is sky, and pauses with it)
+    const now = getSimulatedNowMs();
     const elapsed = now - this.lastPositionUpdateTime_;
+    if (elapsed < 0) {
+      // A new scenario started earlier on the calendar; satellites outlive scenarios
+      this.lastPositionUpdateTime_ = now;
+      return;
+    }
     if (elapsed < Satellite.POSITION_UPDATE_INTERVAL_MS) {
       return;
     }
@@ -365,7 +386,7 @@ export class Satellite {
     this.phase_ += phaseRate * elapsed;
 
     // Wrap phase to [0, 2*PI]
-    this.phase_ = this.phase_ % (2 * Math.PI);
+    this.phase_ %= 2 * Math.PI;
     if (this.phase_ < 0) this.phase_ += 2 * Math.PI;
 
     // Calculate new position using parametric equations:
@@ -402,13 +423,12 @@ export class Satellite {
     // We need to create random values for each signal to use in degradation effects
     const allRxSignals = [...this.rxSignal, ...this.externalSignal];
 
+    const rng = this.rng_;
     for (const signal of allRxSignals) {
-      // Power Variation
-      this.randomCache_.set(`${signal.signalId}-powerVariation`, Math.random());
       // Rain Variation
-      this.randomCache_.set(`${signal.signalId}-rain`, Math.random());
-      // Scintillation (pre-cached to avoid Math.random() during degradation)
-      this.randomCache_.set(`${signal.signalId}-scintillation`, Math.random());
+      this.randomCache_.set(`${signal.signalId}-rain`, rng.next());
+      // Scintillation (pre-cached so degradation makes no draws of its own)
+      this.randomCache_.set(`${signal.signalId}-scintillation`, rng.next());
     }
   }
 
@@ -449,8 +469,10 @@ export class Satellite {
         frequency: txFrequency,
         power: txPower,
         origin: SignalOrigin.SATELLITE_TX,
-        // Reverse polarization for downlink
-        polarization: signal.polarization === 'H' ? 'V' : 'H',
+        // Reverse linear polarization for downlink; circular polarization is
+        // set by the transponder's own antenna and passes through unchanged
+        // (an RHCP uplink must not come back as 'H' - Campaign 3 S8)
+        polarization: signal.polarization === 'H' ? 'V' : signal.polarization === 'V' ? 'H' : signal.polarization,
       };
 
       // Apply degradation effects
@@ -487,11 +509,8 @@ export class Satellite {
    * 1. Signal frequency falling within transponder's passband (uplinkLowEdge to uplinkHighEdge)
    * 2. Signal polarization matching transponder's polarization
    */
-  private findTransponderByUplinkFrequency(
-    frequency: RfFrequency,
-    polarization: 'H' | 'V' | 'LHCP' | 'RHCP' | null
-  ): Transponder | undefined {
-    return this.transponders.find(tp => {
+  private findTransponderByUplinkFrequency(frequency: RfFrequency, polarization: 'H' | 'V' | 'LHCP' | 'RHCP' | null): Transponder | undefined {
+    return this.transponders.find((tp) => {
       // Check if frequency falls within passband
       const inPassband = frequency >= tp.uplinkLowEdge && frequency <= tp.uplinkHighEdge;
       if (!inPassband) return false;
@@ -511,7 +530,7 @@ export class Satellite {
     }
 
     // Soft saturation curve (AM/PM conversion effects)
-    const excessPower = inputPower - saturationPower as dBm;
+    const excessPower = (inputPower - saturationPower) as dBm;
     const compressionFactor = 1 / (1 + excessPower / 10);
 
     return Math.min(saturationPower + excessPower * compressionFactor, maxPower) as dBm;
@@ -529,15 +548,15 @@ export class Satellite {
 
     const k = 1.38e-23;
     const T = 290; // Kelvin
-    const noisePowerWatts = k * T * bandwidth * Math.pow(10, noiseFigure / 10);
+    const noisePowerWatts = k * T * bandwidth * 10 ** (noiseFigure / 10);
     const noisePowerDbm = 10 * Math.log10(noisePowerWatts * 1000);
 
     // Combine signal and noise power (in linear scale)
-    const signalLinear = Math.pow(10, signalPower / 10);
-    const noiseLinear = Math.pow(10, noisePowerDbm / 10);
+    const signalLinear = 10 ** (signalPower / 10);
+    const noiseLinear = 10 ** (noisePowerDbm / 10);
     const totalLinear = signalLinear + noiseLinear;
 
-    return 10 * Math.log10(totalLinear) as dBm;
+    return (10 * Math.log10(totalLinear)) as dBm;
   }
 
   /**
@@ -546,10 +565,7 @@ export class Satellite {
    */
   private applyDegradationEffects(signal: RfSignal): RfSignal {
     // Early exit if all degradation effects are disabled
-    if (!this.degradationConfig.powerVariation &&
-      !this.degradationConfig.atmosphericEffects &&
-      !this.degradationConfig.interference &&
-      this.health >= 1.0) {
+    if (!this.degradationConfig.powerVariation && !this.degradationConfig.atmosphericEffects && !this.degradationConfig.interference && this.health >= 1.0) {
       return signal;
     }
 
@@ -573,7 +589,7 @@ export class Satellite {
 
     // Health degradation
     const healthLossDeb = (1 - this.health) * 10;
-    power = power - healthLossDeb as dBm;
+    power = (power - healthLossDeb) as dBm;
     if (this.health < 0.9 || degradedSignal.isDegraded) {
       degradedSignal.isDegraded = true;
     }
@@ -589,18 +605,22 @@ export class Satellite {
    * @returns Updated power level in dBm
    */
   private applyPowerVariation_inPlace(signalId: string, currentPower: dBm): dBm {
-    // Get or create noise generator for this signal
-    if (!this.noiseGenerators.has(signalId)) {
-      this.noiseGenerators.set(signalId, PerlinNoise.getInstance(signalId));
+    // One generator per (run seed, signal); rebuilt when a scenario load re-seeds
+    const noiseSeed = `${Rng.getSeed()}:${this.noradId}:${signalId}`;
+    let noiseGen = this.noiseGenerators.get(signalId);
+    if (noiseGen?.seed !== noiseSeed) {
+      noiseGen = new PerlinNoise(noiseSeed);
+      this.noiseGenerators.set(signalId, noiseGen);
     }
 
-    const noiseGen = this.noiseGenerators.get(signalId);
-    if (!noiseGen) return currentPower;
+    // Slow fading on run time (a physical process, not a scheduled one), with a
+    // per-signal phase so carriers do not fade together
+    const phaseS = Rng.hashUniform(noiseSeed) * 1000;
+    const time = SimClock.runMs() / 1000 + phaseS;
 
-    const randomPowerFactor = this.randomCache_.get(`${signalId}-powerVariation`) ?? 1;
-    const time = Date.now() / 1000 + randomPowerFactor * 1000;
-
-    // Perlin noise returns 0-1, convert to -1 to 1
+    // KNOWN DEVIATION (fixed in Phase 19.2): Perlin output is zero-mean, so
+    // `* 2 - 1` biases every relayed downlink by -powerVariationRange. Kept
+    // until the 19.1 calibration ledger can record the shift.
     const noiseValue = noiseGen.get(time) * 2 - 1;
 
     // Apply variation
@@ -638,8 +658,8 @@ export class Satellite {
    */
   private applyInterference_inPlace(currentPower: dBm): dBm {
     // Calculate C/I (Carrier-to-Interference ratio)
-    const carrierPowerLinear = Math.pow(10, currentPower / 10);
-    const interferencePowerLinear = Math.pow(10, this.degradationConfig.interferencePower / 10);
+    const carrierPowerLinear = 10 ** (currentPower / 10);
+    const interferencePowerLinear = 10 ** (this.degradationConfig.interferencePower / 10);
     const totalPowerLinear = carrierPowerLinear + interferencePowerLinear;
 
     return (10 * Math.log10(totalPowerLinear)) as dBm;
@@ -651,12 +671,12 @@ export class Satellite {
   private updateHealth(): void {
     // Gradual health degradation simulation
     // In a real scenario, this could be based on radiation damage, component failures, etc.
-    if (Math.random() < 0.0001) {
+    if (this.rng_.chance(0.0001)) {
       this.health = Math.max(0.5, this.health - 0.01);
     }
 
     // Gradual recovery
-    if (this.health < 1.0 && Math.random() < 0.001) {
+    if (this.health < 1.0 && this.rng_.chance(0.001)) {
       this.health = Math.min(1.0, this.health + 0.01);
     }
   }
@@ -669,7 +689,7 @@ export class Satellite {
       return false;
     }
 
-    return Math.random() < this.degradationConfig.dropoutProbability;
+    return this.rng_.chance(this.degradationConfig.dropoutProbability);
   }
 
   /**
@@ -724,7 +744,7 @@ export class Satellite {
    * Set transponder active state.
    */
   setTransponderActive(transponderId: string, active: boolean): void {
-    const transponder = this.transponders.find(tp => tp.id === transponderId);
+    const transponder = this.transponders.find((tp) => tp.id === transponderId);
     if (transponder) {
       transponder.isActive = active;
     }
@@ -736,7 +756,7 @@ export class Satellite {
   configureDegradation(config: Partial<SignalDegradationConfig>): void {
     this.degradationConfig = {
       ...this.degradationConfig,
-      ...config
+      ...config,
     };
   }
 
@@ -744,10 +764,10 @@ export class Satellite {
    * Get carrier-to-noise ratio for a specific signal.
    */
   getCarrierToNoiseRatio(signalId: string): number | null {
-    const signal = this.txSignal.find(s => s.signalId === signalId);
+    const signal = this.txSignal.find((s) => s.signalId === signalId);
     if (!signal) return null;
 
-    const transponderIndex = this.rxSignal.findIndex(s => s.signalId === signalId);
+    const transponderIndex = this.rxSignal.findIndex((s) => s.signalId === signalId);
     if (transponderIndex < 0) return null;
 
     const transponder = this.transponders[transponderIndex];
@@ -755,7 +775,7 @@ export class Satellite {
     // Calculate noise power
     const k = 1.38e-23;
     const T = 290;
-    const noisePowerWatts = k * T * signal.bandwidth * Math.pow(10, transponder.noiseFigure / 10);
+    const noisePowerWatts = k * T * signal.bandwidth * 10 ** (transponder.noiseFigure / 10);
     const noisePowerDbm = 10 * Math.log10(noisePowerWatts * 1000);
 
     return signal.power - noisePowerDbm;

@@ -1,13 +1,14 @@
-import { PowerSwitch } from "@app/components/power-switch/power-switch";
-import { EventBus } from "@app/events/event-bus";
-import { html } from "@app/engine/utils/development/formatter";
-import { qs } from "@app/engine/utils/query-selector";
-import { Events } from "@app/events/events";
-import { dBm, FECType, Hertz, IfSignal, MHz, ModulationType } from "@app/types";
-import { AntennaCore } from "@app/equipment/antenna";
-import { AlarmStatus, BaseEquipment } from "@app/equipment/base-equipment";
-import { TapPoint } from "@app/equipment/rf-front-end/coupler-module/tap-points";
-import { RFFrontEndCore } from "@app/equipment/rf-front-end/rf-front-end-core";
+import { PowerSwitch } from '@app/components/power-switch/power-switch';
+import { html } from '@app/engine/utils/development/formatter';
+import { qs } from '@app/engine/utils/query-selector';
+import { AntennaCore } from '@app/equipment/antenna';
+import { AlarmStatus, BaseEquipment } from '@app/equipment/base-equipment';
+import { TapPoint } from '@app/equipment/rf-front-end/coupler-module/tap-points';
+import { RFFrontEndCore } from '@app/equipment/rf-front-end/rf-front-end-core';
+import { EventBus } from '@app/events/event-bus';
+import { Events } from '@app/events/events';
+import { SimClock } from '@app/simulation/sim-clock';
+import { dBm, FECType, Hertz, IfSignal, MHz, ModulationType } from '@app/types';
 import { ADCDegradationResult, calculateADCDegradation } from './adc-degradation';
 import './receiver.css';
 
@@ -19,6 +20,12 @@ export interface ReceiverModemState {
   modulation: ModulationType;
   fec: FECType;
   isPowered: boolean;
+  /**
+   * Automatic frequency control: when enabled the modem center frequency slews
+   * toward the received carrier (rate-limited), tracking Doppler drift.
+   * Opt-in: when omitted/false tuning is fully manual (legacy behavior).
+   */
+  isAfcEnabled?: boolean;
 }
 
 export interface ReceiverState {
@@ -39,12 +46,12 @@ export interface ReceiverState {
  * Uses relaxed filtering to show signals even when modem config doesn't match.
  */
 export interface IQSignalInfo {
-  hasCarrier: boolean;              // Any RF signal in bandwidth
-  hasLock: boolean;                 // Modem can demodulate (mod + FEC match)
+  hasCarrier: boolean; // Any RF signal in bandwidth
+  hasLock: boolean; // Modem can demodulate (mod + FEC match)
   actualModulation: ModulationType | null;
   configuredModulation: ModulationType;
-  cnRatio_dB: number;               // Carrier-to-noise ratio (raw, before ADC effects)
-  frequencyOffset_Hz: number;       // Offset from center frequency
+  cnRatio_dB: number; // Carrier-to-noise ratio (raw, before ADC effects)
+  frequencyOffset_Hz: number; // Offset from center frequency
   modulationMismatch: boolean;
   fecMismatch: boolean;
   /** ADC degradation result (clipping/quantization effects) */
@@ -96,9 +103,7 @@ export class Receiver extends BaseEquipment {
     const server_id = state?.server_id ?? serverId;
 
     // Merge modem overrides by modemNumber (so callers don't have to provide a full ordered array)
-    const overridesByModemNumber = new Map<number, Partial<ReceiverModemState>>(
-      (state?.modems ?? []).map(m => [m.modemNumber, m])
-    );
+    const overridesByModemNumber = new Map<number, Partial<ReceiverModemState>>((state?.modems ?? []).map((m) => [m.modemNumber, m]));
 
     const modems: ReceiverModemState[] = defaults.modems.map((def) => {
       const override = overridesByModemNumber.get(def.modemNumber);
@@ -154,8 +159,63 @@ export class Receiver extends BaseEquipment {
   }
 
   update(): void {
+    this.updateAfc_();
     this.checkForAlarms_();
     this.syncDomWithState();
+  }
+
+  /** Max AFC retune per update tick (Hz) — slow enough to feel like a tracking loop */
+  private static readonly AFC_MAX_STEP_HZ = 200;
+  /** Offsets below this are considered centered; AFC holds (Hz) */
+  private static readonly AFC_DEADBAND_HZ = 10;
+
+  /**
+   * Automatic frequency control: slew each AFC-enabled modem toward the
+   * carrier it is receiving. Only acts when a carrier is present; opt-in per
+   * modem via isAfcEnabled (absent on all legacy configs).
+   */
+  private updateAfc_(): void {
+    for (const modem of this.state.modems) {
+      if (!modem.isAfcEnabled || !modem.isPowered) continue;
+
+      const info = this.getSignalsInBandwidth(modem);
+      if (!info.hasCarrier) continue;
+
+      const offsetHz = info.frequencyOffset_Hz;
+      if (Math.abs(offsetHz) < Receiver.AFC_DEADBAND_HZ) continue;
+
+      const stepHz = Math.max(-Receiver.AFC_MAX_STEP_HZ, Math.min(Receiver.AFC_MAX_STEP_HZ, offsetHz));
+      modem.frequency = (modem.frequency + stepHz / 1e6) as MHz;
+    }
+  }
+
+  public handleAfcToggle(modemNumber: number, isEnabled: boolean): void {
+    const modem = this.state.modems.find((m) => m.modemNumber === modemNumber);
+    if (modem) {
+      modem.isAfcEnabled = isEnabled;
+    }
+  }
+
+  public handleModemFrequencyChange(modemNumber: number, frequencyMHz: number): void {
+    const modem = this.state.modems.find((m) => m.modemNumber === modemNumber);
+    if (modem) {
+      modem.frequency = frequencyMHz as MHz;
+    }
+  }
+
+  public handleModemConfigChange(modemNumber: number, config: { modulation?: ModulationType; fec?: FECType; bandwidthMHz?: number }): void {
+    const modem = this.state.modems.find((m) => m.modemNumber === modemNumber);
+    if (!modem) return;
+
+    if (config.modulation !== undefined) {
+      modem.modulation = config.modulation;
+    }
+    if (config.fec !== undefined) {
+      modem.fec = config.fec;
+    }
+    if (config.bandwidthMHz !== undefined && config.bandwidthMHz > 0) {
+      modem.bandwidth = config.bandwidthMHz as MHz;
+    }
   }
 
   initialSync(): void {
@@ -185,13 +245,17 @@ export class Receiver extends BaseEquipment {
         <div class="receiver-controls">
           <!-- Modem Selection Buttons -->
           <div class="modem-buttons">
-            ${this.state.modems.map(modem => html`
+            ${this.state.modems
+              .map(
+                (modem) => html`
               <button id="modem-${modem.modemNumber}"
                 class="btn-modem ${modem.modemNumber === this.state.activeModem ? 'active' : ''} ${this.getModemStatusClass(modem)}"
                 data-modem="${modem.modemNumber}">
                 ${modem.modemNumber}
               </button>
-            `).join('')}
+            `
+              )
+              .join('')}
           </div>
 
           <!-- Main content area with config and video side by side -->
@@ -260,12 +324,13 @@ export class Receiver extends BaseEquipment {
             <!-- Video Monitor -->
             <div class="video-monitor">
               <div class="monitor-screen ${feedUrl.length > 0 ? 'signal-found' : 'no-signal'}">
-                ${feedUrl.length > 0
-        ? html`<div class="signal-indicator">
+                ${
+                  feedUrl.length > 0
+                    ? html`<div class="signal-indicator">
                       <video class="video-feed" src="/videos/${feedUrl}" alt="Video Feed" autoplay muted loop />
                     </div>`
-        : html`<span class="no-signal-text">NO SIGNAL</span>`
-      }
+                    : html`<span class="no-signal-text">NO SIGNAL</span>`
+                }
               </div>
             </div>
 
@@ -292,7 +357,7 @@ export class Receiver extends BaseEquipment {
     // Cache frequently used DOM nodes for efficient updates
     this.domCache['parent'] = parentDom;
     this.domCache['led'] = qs('.led', parentDom);
-    this.state.modems.forEach(modem => {
+    this.state.modems.forEach((modem) => {
       this.domCache[`modemButton${modem.modemNumber}`] = qs(`#modem-${modem.modemNumber}`, parentDom);
     });
     this.domCache['inputAntenna'] = qs('.input-rx-antenna', parentDom);
@@ -321,7 +386,7 @@ export class Receiver extends BaseEquipment {
   protected addListeners_(parentDom: HTMLElement): void {
     // Modem selection buttons
     const modemButtons = parentDom.querySelectorAll('.btn-modem');
-    modemButtons.forEach(btn => {
+    modemButtons.forEach((btn) => {
       btn.addEventListener('click', (e) => {
         const modemNum = Number.parseInt((e.target as HTMLElement).dataset.modem || '1');
         this.setActiveModem(modemNum);
@@ -330,7 +395,7 @@ export class Receiver extends BaseEquipment {
 
     // Input changes
     const inputs = parentDom.querySelectorAll('input, select');
-    inputs.forEach(input => {
+    inputs.forEach((input) => {
       input.addEventListener('change', (e) => this.handleInputChange(e));
     });
 
@@ -351,7 +416,7 @@ export class Receiver extends BaseEquipment {
     if (this.state.availableSignals.length > 0) {
       alarms.push({
         message: `Signal(s) Detected`,
-        severity: 'info'
+        severity: 'info',
       });
     }
 
@@ -359,16 +424,19 @@ export class Receiver extends BaseEquipment {
   }
 
   private togglePower(isOn: boolean): void {
-    setTimeout(() => {
-      this.activeModem.isPowered = isOn;
+    SimClock.setTimeout(
+      () => {
+        this.activeModem.isPowered = isOn;
 
-      this.emit(Events.RX_CONFIG_CHANGED, {
-        uuid: this.uuid,
-        modem: this.state.activeModem,
-        config: this.state.modems.find(m => m.modemNumber === this.state.activeModem)
-      });
-      this.syncDomWithState();
-    }, isOn ? 4000 : 250);
+        this.emit(Events.RX_CONFIG_CHANGED, {
+          uuid: this.uuid,
+          modem: this.state.activeModem,
+          config: this.state.modems.find((m) => m.modemNumber === this.state.activeModem),
+        });
+        this.syncDomWithState();
+      },
+      isOn ? 4000 : 250
+    );
   }
 
   protected initialize_(): void {
@@ -409,7 +477,7 @@ export class Receiver extends BaseEquipment {
    */
 
   get activeModem(): ReceiverModemState {
-    return this.state.modems.find(m => m.modemNumber === this.state.activeModem) ?? this.state.modems[0];
+    return this.state.modems.find((m) => m.modemNumber === this.state.activeModem) ?? this.state.modems[0];
   }
 
   get antennas(): AntennaCore[] {
@@ -428,7 +496,7 @@ export class Receiver extends BaseEquipment {
     // Emit event for modem change
     this.emit(Events.RX_ACTIVE_MODEM_CHANGED, {
       uuid: this.uuid,
-      activeModem: modemNumber
+      activeModem: modemNumber,
     });
   }
 
@@ -458,7 +526,7 @@ export class Receiver extends BaseEquipment {
 
   public hasSignalForModem(modem: ReceiverModemState): boolean {
     const visibleSignals = this.getVisibleSignals(modem);
-    return visibleSignals.some(s => s.feed !== '');
+    return visibleSignals.some((s) => s.feed !== '');
   }
 
   public isSignalDegraded(modem: ReceiverModemState): boolean {
@@ -466,7 +534,7 @@ export class Receiver extends BaseEquipment {
     if (visibleSignals.length === 0) return false;
 
     // Check if any signal is degraded
-    return visibleSignals.some(s => s.isDegraded);
+    return visibleSignals.some((s) => s.isDegraded);
   }
 
   /**
@@ -494,7 +562,7 @@ export class Receiver extends BaseEquipment {
 
     // Target signal is the one with the largest bandwidth that fits the modem
     // This distinguishes the actual signal from narrowband interference
-    const targetSignal = visibleSignals.reduce((a, b) => a.bandwidth > b.bandwidth ? a : b, visibleSignals[0]);
+    const targetSignal = visibleSignals.reduce((a, b) => (a.bandwidth > b.bandwidth ? a : b), visibleSignals[0]);
     return targetSignal.power;
   }
 
@@ -529,7 +597,7 @@ export class Receiver extends BaseEquipment {
       }
 
       // Bandwidth must fit
-      if (s.bandwidth > (modem.bandwidth * 1e6 as Hertz)) {
+      if (s.bandwidth > ((modem.bandwidth * 1e6) as Hertz)) {
         return false;
       }
 
@@ -551,18 +619,16 @@ export class Receiver extends BaseEquipment {
     // Find the target signal - the one with the largest bandwidth that fits
     // This distinguishes the actual signal from narrowband interference
     // Among signals with matching modulation/FEC, pick the one with largest bandwidth
-    const modFecMatches = signalsInBand.filter(s =>
-      s.modulation === modem.modulation && s.fec === modem.fec
-    );
+    const modFecMatches = signalsInBand.filter((s) => s.modulation === modem.modulation && s.fec === modem.fec);
 
     // Use mod/FEC matches if available, otherwise all signals in band
     const candidates = modFecMatches.length > 0 ? modFecMatches : signalsInBand;
 
     // Target is the signal with the largest bandwidth
-    const targetSignal = candidates.reduce((a, b) => a.bandwidth > b.bandwidth ? a : b, candidates[0]);
+    const targetSignal = candidates.reduce((a, b) => (a.bandwidth > b.bandwidth ? a : b), candidates[0]);
 
     // Calculate modem bandwidth for noise floor calculation
-    const modemBandwidthHz = modem.bandwidth * 1e6 as Hertz;
+    const modemBandwidthHz = (modem.bandwidth * 1e6) as Hertz;
 
     // Calculate thermal noise floor based on modem bandwidth
     // Narrower bandwidth = lower noise floor, wider bandwidth = higher noise floor
@@ -571,21 +637,16 @@ export class Receiver extends BaseEquipment {
 
     // Calculate interference power within modem bandwidth
     const modemCenterHz = modem.frequency * 1e6;
-    const interferencePower = this.calculateInterferencePower_(
-      targetSignal,
-      signalsInBand,
-      modemBandwidthHz,
-      modemCenterHz
-    );
+    const interferencePower = this.calculateInterferencePower_(targetSignal, signalsInBand, modemBandwidthHz, modemCenterHz);
 
     // Combine thermal noise and interference (linear power addition)
-    const thermalNoiseMw = Math.pow(10, thermalNoiseFloor / 10);
-    const interferenceMw = interferencePower > -Infinity ? Math.pow(10, interferencePower / 10) : 0;
+    const thermalNoiseMw = 10 ** (thermalNoiseFloor / 10);
+    const interferenceMw = interferencePower > -Infinity ? 10 ** (interferencePower / 10) : 0;
     const effectiveNoiseFloor = 10 * Math.log10(thermalNoiseMw + interferenceMw);
 
     // C/N ratio now includes interference
     // Signal from AGC output already includes all chain gains, so don't add totalGain again
-    const signalLevel = targetSignal.power;  // Already includes all chain gains
+    const signalLevel = targetSignal.power; // Already includes all chain gains
     const cnRatio = signalLevel - effectiveNoiseFloor;
 
     // Calculate ADC degradation based on AGC output level
@@ -626,7 +687,7 @@ export class Receiver extends BaseEquipment {
       fecMismatch,
       adcDegradation,
       effectiveCnRatio_dB: effectiveCnRatio,
-      noiseFloor_dBm: effectiveNoiseFloor,  // Now includes interference
+      noiseFloor_dBm: effectiveNoiseFloor, // Now includes interference
       signalLevel_dBm: signalLevel,
       expectedBandwidth_Hz,
       usableBandwidth_Hz,
@@ -652,12 +713,7 @@ export class Receiver extends BaseEquipment {
    * @param modemCenterHz - Modem's center frequency in Hz
    * @returns Total interference power in dBm, or -Infinity if no interference
    */
-  private calculateInterferencePower_(
-    targetSignal: IfSignal,
-    allSignals: IfSignal[],
-    modemBandwidthHz: number,
-    modemCenterHz: number
-  ): dBm {
+  private calculateInterferencePower_(targetSignal: IfSignal, allSignals: IfSignal[], modemBandwidthHz: number, modemCenterHz: number): dBm {
     const modemLow = modemCenterHz - modemBandwidthHz / 2;
     const modemHigh = modemCenterHz + modemBandwidthHz / 2;
 
@@ -680,13 +736,11 @@ export class Receiver extends BaseEquipment {
 
       // Proportional power contribution based on overlap
       const overlapFraction = overlapWidth / signal.bandwidth;
-      const signalPowerMw = Math.pow(10, signal.power / 10);
+      const signalPowerMw = 10 ** (signal.power / 10);
       totalInterferenceMw += signalPowerMw * overlapFraction;
     }
 
-    return (totalInterferenceMw > 0
-      ? 10 * Math.log10(totalInterferenceMw)
-      : -Infinity) as dBm;
+    return (totalInterferenceMw > 0 ? 10 * Math.log10(totalInterferenceMw) : -Infinity) as dBm;
   }
 
   private handleInputChange(e: Event): void {
@@ -699,10 +753,10 @@ export class Receiver extends BaseEquipment {
     // Parse based on parameter type
     switch (param) {
       case 'frequency':
-        this.inputData.frequency = Number.parseFloat(inputValue) as MHz || 0 as MHz;
+        this.inputData.frequency = (Number.parseFloat(inputValue) as MHz) || (0 as MHz);
         break;
       case 'bandwidth':
-        this.inputData.bandwidth = (Number.parseFloat(inputValue) as MHz) || 0 as MHz;
+        this.inputData.bandwidth = (Number.parseFloat(inputValue) as MHz) || (0 as MHz);
         break;
       case 'antenna_id':
         this.inputData.antenna_id = Number.parseInt(inputValue);
@@ -718,7 +772,7 @@ export class Receiver extends BaseEquipment {
 
   public applyChanges(): void {
     const activeModem = this.activeModem;
-    const modemIndex = this.state.modems.findIndex(m => m.modemNumber === this.state.activeModem);
+    const modemIndex = this.state.modems.findIndex((m) => m.modemNumber === this.state.activeModem);
 
     if (!activeModem || modemIndex === -1) return;
 
@@ -733,7 +787,7 @@ export class Receiver extends BaseEquipment {
     this.emit(Events.RX_CONFIG_CHANGED, {
       uuid: this.uuid,
       modem: this.state.activeModem,
-      config: this.state.modems[modemIndex]
+      config: this.state.modems[modemIndex],
     });
 
     this.syncDomWithState();
@@ -791,10 +845,10 @@ export class Receiver extends BaseEquipment {
         return false;
       }
 
-      if (s.frequency + (s.bandwidth * 1e6 as Hertz) / 2 < activeModemData.frequency - activeModemData.bandwidth / 2) {
+      if (s.frequency + ((s.bandwidth * 1e6) as Hertz) / 2 < activeModemData.frequency - activeModemData.bandwidth / 2) {
         return false;
       }
-      if (s.frequency - (s.bandwidth * 1e6 as Hertz) / 2 > activeModemData.frequency + activeModemData.bandwidth / 2) {
+      if (s.frequency - ((s.bandwidth * 1e6) as Hertz) / 2 > activeModemData.frequency + activeModemData.bandwidth / 2) {
         return false;
       }
 
@@ -808,18 +862,17 @@ export class Receiver extends BaseEquipment {
     });
 
     // Only include signals within 50% bandwidth of center frequency
-    const signalsInBand = visibleSignals
-      .filter((s) => {
-        const frequencyMhz = s.frequency / 1e6 as MHz;
-        const freqTolerance50 = activeModemData.bandwidth * 0.5;
-        const lowerBound50 = activeModemData.frequency - freqTolerance50;
-        const upperBound50 = activeModemData.frequency + freqTolerance50;
-        return frequencyMhz >= lowerBound50 && frequencyMhz <= upperBound50;
-      });
+    const signalsInBand = visibleSignals.filter((s) => {
+      const frequencyMhz = (s.frequency / 1e6) as MHz;
+      const freqTolerance50 = activeModemData.bandwidth * 0.5;
+      const lowerBound50 = activeModemData.frequency - freqTolerance50;
+      const upperBound50 = activeModemData.frequency + freqTolerance50;
+      return frequencyMhz >= lowerBound50 && frequencyMhz <= upperBound50;
+    });
 
     // Find the strongest signal - signals significantly weaker (>20dB) are considered
     // suppressed (e.g., by notch filter) and shouldn't count as interference
-    const maxPower = Math.max(...signalsInBand.map(s => s.power));
+    const maxPower = Math.max(...signalsInBand.map((s) => s.power));
     const suppressionThreshold = 20; // dB - notch filters typically provide 20-60dB attenuation
 
     const survivingSignals = signalsInBand.filter((s) => {
@@ -838,7 +891,7 @@ export class Receiver extends BaseEquipment {
           const notchHigh = notch.centerFrequency + notch.bandwidth / 2;
 
           if (signalFreqMHz >= notchLow && signalFreqMHz <= notchHigh) {
-            return false;  // Signal was intentionally notched, don't count as interference
+            return false; // Signal was intentionally notched, don't count as interference
           }
         }
       }
@@ -852,17 +905,14 @@ export class Receiver extends BaseEquipment {
       return [];
     }
 
-    const strongestSignal = survivingSignals.reduce((best, s) =>
-      s.power > best.power ? s : best,
-      survivingSignals[0]
-    );
+    const strongestSignal = survivingSignals.reduce((best, s) => (s.power > best.power ? s : best), survivingSignals[0]);
 
     return [strongestSignal].map((s) => {
       // Reset isDegraded flag before checking conditions
       // (signal objects are shared, so we must reset each time)
       s.isDegraded = false;
 
-      const frequencyMhz = s.frequency / 1e6 as MHz;
+      const frequencyMhz = (s.frequency / 1e6) as MHz;
       const freqTolerance10 = activeModemData.bandwidth * 0.1;
       const lowerBound10 = activeModemData.frequency - freqTolerance10;
       const upperBound10 = activeModemData.frequency + freqTolerance10;
@@ -875,8 +925,10 @@ export class Receiver extends BaseEquipment {
       // Noise floor based on modem bandwidth: narrower BW = lower noise floor
       // Noise floor needs totalGain added to match the reference point
       // Signal from AGC output already includes all chain gains
-      const noiseFloor = this.rfFrontEnd_.couplerModule.signalPathManager.getNoiseFloorAt(TapPoint.RX_IF, expectedBandwidth_Hz as Hertz).noiseFloorNoGain + this.rfFrontEnd_.couplerModule.signalPathManager.getTotalRxGain();
-      const signalLevel = s.power;  // Already includes all chain gains
+      const noiseFloor =
+        this.rfFrontEnd_.couplerModule.signalPathManager.getNoiseFloorAt(TapPoint.RX_IF, expectedBandwidth_Hz as Hertz).noiseFloorNoGain +
+        this.rfFrontEnd_.couplerModule.signalPathManager.getTotalRxGain();
+      const signalLevel = s.power; // Already includes all chain gains
 
       const cn = signalLevel - noiseFloor;
 
@@ -927,21 +979,27 @@ export class Receiver extends BaseEquipment {
    */
   private getMinBandwidthRatioForFec_(fec: FECType): number {
     switch (fec) {
-      case '1/2': return 0.40;
-      case '2/3': return 0.50;
-      case '3/4': return 0.60;
-      case '5/6': return 0.75;
-      case '7/8': return 0.85;
-      default: return 0.60;
+      case '1/2':
+        return 0.4;
+      case '2/3':
+        return 0.5;
+      case '3/4':
+        return 0.6;
+      case '5/6':
+        return 0.75;
+      case '7/8':
+        return 0.85;
+      default:
+        return 0.6;
     }
   }
 
   private getModemStatusClass(modem: ReceiverModemState): string {
     const signals = this.getVisibleSignals(modem);
-    const denied = signals.find(signal => signal.feed.includes('DENIED'));
+    const denied = signals.find((signal) => signal.feed.includes('DENIED'));
     if (denied) return 'modem-denied';
 
-    const degraded = signals.find(signal => signal.feed.includes('DEGRADED'));
+    const degraded = signals.find((signal) => signal.feed.includes('DEGRADED'));
     if (degraded) return 'modem-degraded';
 
     if (signals.length > 0) return 'modem-found';
@@ -950,18 +1008,18 @@ export class Receiver extends BaseEquipment {
   }
 
   syncDomWithState(): void {
-    const visibleSignals = this.getVisibleSignals().map(s => {
+    const visibleSignals = this.getVisibleSignals().map((s) => {
       // Return signal with degraded feed if applicable
       if (s.isDegraded && !s.isImage) {
         return {
           ...s,
-          feed: `degraded-${s.feed.replace(/^degraded-/, '')}`
+          feed: `degraded-${s.feed.replace(/^degraded-/, '')}`,
         };
       }
       return s;
     });
     const feedUrl = visibleSignals[0]?.feed || '';
-    this.state.availableSignals = visibleSignals.map(s => ({ id: s.signalId, feed: s.feed, isDegraded: s.isDegraded || false }));
+    this.state.availableSignals = visibleSignals.map((s) => ({ id: s.signalId, feed: s.feed, isDegraded: s.isDegraded || false }));
 
     // Avoid unnecessary DOM updates by shallow comparing serialized state
     if (JSON.stringify(this.state) === JSON.stringify(this.lastRenderState)) {
@@ -974,13 +1032,13 @@ export class Receiver extends BaseEquipment {
 
     // Update status banner
     const ledColor = this.getLedColor();
-    (this.domCache['led']).className = `led ${ledColor}`;
+    this.domCache['led'].className = `led ${ledColor}`;
 
     // Update modem buttons active & status classes
     const modemButtons = parentDom.querySelectorAll('.btn-modem');
     modemButtons.forEach((btn) => {
       const modemNum = Number((btn as HTMLElement).dataset.modem);
-      const modem = this.state.modems.find(m => m.modemNumber === modemNum);
+      const modem = this.state.modems.find((m) => m.modemNumber === modemNum);
       const isActive = modemNum === this.state.activeModem;
       const statusClass = modem ? this.getModemStatusClass(modem) : '';
       btn.className = `btn-modem ${isActive ? 'active' : ''} ${statusClass}`.trim();
@@ -1002,11 +1060,11 @@ export class Receiver extends BaseEquipment {
     (this.domCache['inputModulation'] as HTMLSelectElement).value = String(this.inputData.modulation ?? activeModem?.modulation ?? '');
     (this.domCache['inputFec'] as HTMLSelectElement).value = String(this.inputData.fec ?? activeModem?.fec ?? '');
 
-    (this.domCache['currentValueAntenna']).textContent = String(activeModem.antenna_id);
-    (this.domCache['currentValueFrequency']).textContent = `${activeModem.frequency} MHz`;
-    (this.domCache['currentValueBandwidth']).textContent = `${activeModem.bandwidth} MHz`;
-    (this.domCache['currentValueModulation']).textContent = String(activeModem.modulation);
-    (this.domCache['currentValueFec']).textContent = String(activeModem.fec);
+    this.domCache['currentValueAntenna'].textContent = String(activeModem.antenna_id);
+    this.domCache['currentValueFrequency'].textContent = `${activeModem.frequency} MHz`;
+    this.domCache['currentValueBandwidth'].textContent = `${activeModem.bandwidth} MHz`;
+    this.domCache['currentValueModulation'].textContent = String(activeModem.modulation);
+    this.domCache['currentValueFec'].textContent = String(activeModem.fec);
 
     // Update power indicator light
     this.domCache['rxActivePowerLight'].className = `indicator-light ${activeModem.isPowered ? 'on' : 'off'}`;
@@ -1047,7 +1105,8 @@ export class Receiver extends BaseEquipment {
         } else {
           // If not in cache, create new media element
           const signal = visibleSignals[0];
-          if (signal.isImage && !signal.isExternal) { // internal image
+          if (signal.isImage && !signal.isExternal) {
+            // internal image
             const img = document.createElement('img');
             img.className = 'image-feed';
             img.src = `/images/${feedUrl}`;
@@ -1061,8 +1120,8 @@ export class Receiver extends BaseEquipment {
               monitor.classList.add('glitch');
               monitor.innerHTML += `<div class="block-glitch"></div>`;
             }
-
-          } else if (signal.isImage && signal.isExternal) { // external image
+          } else if (signal.isImage && signal.isExternal) {
+            // external image
             const img = document.createElement('img');
             img.className = 'external-image-feed';
             img.src = feedUrl;
@@ -1076,8 +1135,8 @@ export class Receiver extends BaseEquipment {
               monitor.classList.add('glitch');
               monitor.innerHTML += `<div class="block-glitch"></div>`;
             }
-
-          } else if (signal.isExternal) { // external video
+          } else if (signal.isExternal) {
+            // external video
             const iframe = document.createElement('iframe');
             iframe.className = 'external-feed';
             iframe.src = feedUrl;
@@ -1085,7 +1144,8 @@ export class Receiver extends BaseEquipment {
             monitor.innerHTML = `<div class="signal-indicator"></div>`;
             monitor.querySelector('.signal-indicator')?.appendChild(iframe);
             this.mediaCache[feedUrl] = iframe;
-          } else { // internal video
+          } else {
+            // internal video
             const video = document.createElement('video');
             video.className = 'video-feed';
             video.src = `/videos/${feedUrl}`;

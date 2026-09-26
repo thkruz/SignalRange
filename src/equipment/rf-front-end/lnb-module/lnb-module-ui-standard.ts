@@ -1,9 +1,9 @@
-import { HelpButton } from "@app/components/help-btn/help-btn";
-import { RotaryKnob } from "@app/components/rotary-knob/rotary-knob";
-import { html } from "@app/engine/utils/development/formatter";
-import { qs } from "@app/engine/utils/query-selector";
-import { IfFrequency } from "@app/types";
-import { RFFrontEndCore } from "@app/equipment/rf-front-end/rf-front-end-core";
+import { HelpButton } from '@app/components/help-btn/help-btn';
+import { RotaryKnob } from '@app/components/rotary-knob/rotary-knob';
+import { html } from '@app/engine/utils/development/formatter';
+import { qs } from '@app/engine/utils/query-selector';
+import { RFFrontEndCore } from '@app/equipment/rf-front-end/rf-front-end-core';
+import { IfFrequency } from '@app/types';
 import { LNBModuleCore, LNBState } from './lnb-module-core';
 import './lnb-module.css';
 
@@ -23,17 +23,10 @@ export class LNBModuleUIStandard extends LNBModuleCore {
     super(state, rfFrontEnd, unit);
 
     // Store components
-    this.loKnob_ = RotaryKnob.create(
-      `${this.uniqueId}-lo-knob`,
-      this.state.loFrequency,
-      5100,
-      6075,
-      10,
-      (value: number) => {
-        // Direct state update - will be synced through event callback
-        this.state.loFrequency = value as IfFrequency;
-      }
-    );
+    this.loKnob_ = RotaryKnob.create(`${this.uniqueId}-lo-knob`, this.state.loFrequency, 5100, 6075, 10, (value: number) => {
+      // Direct state update - will be synced through event callback
+      this.state.loFrequency = value as IfFrequency;
+    });
 
     // Create common UI components using base class methods
     this.createPowerSwitch();
@@ -41,7 +34,7 @@ export class LNBModuleUIStandard extends LNBModuleCore {
 
     this.helpBtn_ = HelpButton.create(
       `lnb-help-${rfFrontEnd.state.uuid}`,
-      "Low Noise Block",
+      'Low Noise Block',
       null,
       'https://docs.signalrange.space/equipment/low-noise-block-downconverter?content-only=true&dark=true'
     );
@@ -198,7 +191,7 @@ export class LNBModuleUIStandard extends LNBModuleCore {
       powerSwitch: this.powerSwitch_,
       gainKnob: this.gainKnob_,
       loKnob: this.loKnob_,
-      helpBtn: this.helpBtn_
+      helpBtn: this.helpBtn_,
     };
   }
 
@@ -211,7 +204,7 @@ export class LNBModuleUIStandard extends LNBModuleCore {
       loFrequency: () => this.state.loFrequency.toString(),
       noiseTemperature: () => this.state.noiseTemperature.toFixed(1),
       temperature: () => this.state.temperature.toFixed(1),
-      frequencyError: () => (this.state.frequencyError / 1e6).toFixed(3)
+      frequencyError: () => (this.state.frequencyError / 1e6).toFixed(3),
     };
   }
 
@@ -222,7 +215,7 @@ export class LNBModuleUIStandard extends LNBModuleCore {
   getLEDs() {
     return {
       lock: () => this.getLockLedStatus(),
-      noiseTempBrightness: () => this.getNoiseTempBrightnessLevel__()
+      noiseTempBrightness: () => this.getNoiseTempBrightnessLevel__(),
     };
   }
 

@@ -1,20 +1,24 @@
-import { HelpButton } from "@app/components/help-btn/help-btn";
-import { qs } from "@app/engine/utils/query-selector";
-import { EventBus } from "@app/events/event-bus";
-import { Logger } from "@app/logging/logger";
-import { html } from "@app/engine/utils/development/formatter";
-import { Events } from "@app/events/events";
-import { dB, Hertz, IfSignal, RfSignal } from "@app/types";
+import { HelpButton } from '@app/components/help-btn/help-btn';
+import { html } from '@app/engine/utils/development/formatter';
+import { qs } from '@app/engine/utils/query-selector';
 import { BaseEquipment } from '@app/equipment/base-equipment';
-import { TapPoint } from "@app/equipment/rf-front-end/coupler-module/tap-points";
-import { RFFrontEndCore } from "@app/equipment/rf-front-end/rf-front-end-core";
-import { AnalyzerControlBox } from "./analyzer-control-box";
-import type { TraceMode } from "@app/equipment/real-time-spectrum-analyzer/analyzer-control/ac-trace-btn/ac-trace-btn";
-import { defaultSpectrumAnalyzerState } from "./defaultSpectrumAnalyzerState";
+import type { TraceMode } from '@app/equipment/real-time-spectrum-analyzer/analyzer-control/ac-trace-btn/ac-trace-btn';
+import { TapPoint } from '@app/equipment/rf-front-end/coupler-module/tap-points';
+import { RFFrontEndCore } from '@app/equipment/rf-front-end/rf-front-end-core';
+import { EventBus } from '@app/events/event-bus';
+import { Events } from '@app/events/events';
+import { Logger } from '@app/logging/logger';
+import { Rng } from '@app/simulation/rng';
+import { dB, Hertz, IfSignal, RfSignal } from '@app/types';
+import { AnalyzerControlBox } from './analyzer-control-box';
+import { defaultSpectrumAnalyzerState } from './defaultSpectrumAnalyzerState';
 import './real-time-spectrum-analyzer.css';
 import { SpectralDensityPlot } from '@app/equipment/real-time-spectrum-analyzer/rtsa-screen/spectral-density-plot';
-import { WaterfallDisplay } from "@app/equipment/real-time-spectrum-analyzer/rtsa-screen/waterfall-display";
-import { SpectrumDataProcessor } from "./spectrum-data-processor";
+import { WaterfallDisplay } from '@app/equipment/real-time-spectrum-analyzer/rtsa-screen/waterfall-display';
+import { SpectrumDataProcessor } from './spectrum-data-processor';
+
+/** Seeded draws for this module (see simulation/rng.ts). */
+const random = (): number => Rng.stream('display:analyzer').next();
 
 type MarkerPoint = { x: number; y: number; signal: number };
 
@@ -22,7 +26,7 @@ export interface RealTimeSpectrumAnalyzerState {
   /** Scale in dB per division */
   scaleDbPerDiv: dB;
   isUseTapB: boolean;
-  isUseTapA: boolean
+  isUseTapA: boolean;
   /** This is the reference level that all dBm values are relative to */
   referenceLevel: number;
   minFrequency: Hertz;
@@ -72,6 +76,11 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
 
   // Data processor - centralized data generation
   private dataProcessor: SpectrumDataProcessor;
+
+  /** Shared spectrum data source (read-only view for campaign UIs like the SDR Console) */
+  get spectrumDataProcessor(): SpectrumDataProcessor {
+    return this.dataProcessor;
+  }
 
   // Screen renderer
   screen: SpectralDensityPlot | WaterfallDisplay | null = null;
@@ -231,36 +240,12 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
     this.dataProcessor = new SpectrumDataProcessor(this, 824);
 
     // Initialize single-mode screens with shared data processor
-    this.spectralDensity = new SpectralDensityPlot(
-      this.domCache['canvas'] as HTMLCanvasElement,
-      this,
-      this.dataProcessor,
-      824,
-      460
-    );
-    this.waterfall = new WaterfallDisplay(
-      this.domCache['canvas'] as HTMLCanvasElement,
-      this,
-      this.dataProcessor,
-      824,
-      460
-    );
+    this.spectralDensity = new SpectralDensityPlot(this.domCache['canvas'] as HTMLCanvasElement, this, this.dataProcessor, 824, 460);
+    this.waterfall = new WaterfallDisplay(this.domCache['canvas'] as HTMLCanvasElement, this, this.dataProcessor, 824, 460);
 
     // Initialize "both" mode screens with their dedicated canvases and shared data processor
-    this.spectralDensityBoth = new SpectralDensityPlot(
-      this.domCache['canvasSpectral'] as HTMLCanvasElement,
-      this,
-      this.dataProcessor,
-      824,
-      230
-    );
-    this.waterfallBoth = new WaterfallDisplay(
-      this.domCache['canvasWaterfall'] as HTMLCanvasElement,
-      this,
-      this.dataProcessor,
-      824,
-      230
-    );
+    this.spectralDensityBoth = new SpectralDensityPlot(this.domCache['canvasSpectral'] as HTMLCanvasElement, this, this.dataProcessor, 824, 230);
+    this.waterfallBoth = new WaterfallDisplay(this.domCache['canvasWaterfall'] as HTMLCanvasElement, this, this.dataProcessor, 824, 230);
 
     // Set initial screen mode
     this.updateScreenVisibility();
@@ -365,7 +350,7 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
     // If rbw is null we are in auto mode so use span as bandwidth
     const bandwidth = this.state.rbw ?? this.state.span;
 
-    let signals: (IfSignal | RfSignal)[] = [];
+    const signals: (IfSignal | RfSignal)[] = [];
 
     const tapPoints = [];
     if (this.state.isUseTapA) {
@@ -385,9 +370,8 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
       signals.push(...this.getSignalsAtTapPoint(tapPoint));
 
       // Get noise floor using SignalPathManager
-      const { noiseFloorNoGain, shouldApplyGain } =
-        this.rfFrontEnd_.couplerModule.signalPathManager.getNoiseFloorAt(tapPoint, bandwidth);
-      const noiseFloorWithGain = noiseFloorNoGain + this.rfFrontEnd_.couplerModule.signalPathManager.getTotalGainTo(tapPoint)
+      const { noiseFloorNoGain, shouldApplyGain } = this.rfFrontEnd_.couplerModule.signalPathManager.getNoiseFloorAt(tapPoint, bandwidth);
+      const noiseFloorWithGain = noiseFloorNoGain + this.rfFrontEnd_.couplerModule.signalPathManager.getTotalGainTo(tapPoint);
 
       // Keep the highest noise floor from both tap points
       if (noiseFloorWithGain > maxNoiseFloorNoGain) {
@@ -396,13 +380,11 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
       }
     }
 
-    // Create copies when clamping bandwidth to avoid mutating original signals
-    signals = signals.map(sig => {
-      if (sig.bandwidth > bandwidth) {
-        return { ...sig, bandwidth };
-      }
-      return sig;
-    });
+    // NOTE: signals are deliberately NOT clamped to the RBW. RBW sets the
+    // display resolution and noise floor, not a signal's occupied bandwidth —
+    // a 2 MHz signal viewed with a 30 kHz RBW still spans 2 MHz on screen.
+    // (The renderer applies the matching PSD correction so wideband signals
+    // show per-bin power, not total power.)
 
     // Update state with the maximum noise floor found
     this.state.noiseFloorNoGain = maxNoiseFloorNoGain;
@@ -531,8 +513,8 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
     for (const signal of this.inputSignals) {
       if (
         this.state.span < 320e6 && // 320 MHz minimum span
-        signal.frequency >= (this.state.centerFrequency - this.state.span / 2) &&
-        signal.frequency <= (this.state.centerFrequency + this.state.span / 2)
+        signal.frequency >= this.state.centerFrequency - this.state.span / 2 &&
+        signal.frequency <= this.state.centerFrequency + this.state.span / 2
       ) {
         if (!strongestSignal || signal.power > strongestSignal.power) {
           strongestSignal = signal;
@@ -543,7 +525,7 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
     // If strongest signal is below the noise floor replace it with a fake signal at noise floor
     if (!strongestSignal || (strongestSignal && strongestSignal.power < this.noiseFloorAndGain)) {
       strongestSignal = {
-        frequency: Math.random() * this.state.span + (this.state.centerFrequency - this.state.span / 2),
+        frequency: random() * this.state.span + (this.state.centerFrequency - this.state.span / 2),
         power: this.noiseFloorAndGain,
         bandwidth: Math.min(this.state.span, 320e6),
       } as IfSignal | RfSignal;
@@ -620,14 +602,14 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
    * Public getters for canvas elements (for adapter access)
    */
   public getCanvas(): HTMLCanvasElement | null {
-    return this.domCache['canvas'] as HTMLCanvasElement || null;
+    return (this.domCache['canvas'] as HTMLCanvasElement) || null;
   }
 
   public getSpectralCanvas(): HTMLCanvasElement | null {
-    return this.domCache['canvasSpectral'] as HTMLCanvasElement || null;
+    return (this.domCache['canvasSpectral'] as HTMLCanvasElement) || null;
   }
 
   public getWaterfallCanvas(): HTMLCanvasElement | null {
-    return this.domCache['canvasWaterfall'] as HTMLCanvasElement || null;
+    return (this.domCache['canvasWaterfall'] as HTMLCanvasElement) || null;
   }
 }

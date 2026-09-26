@@ -1,10 +1,4 @@
-import {
-  LBAND_MODEM_CONSTRAINTS,
-  ValidationError,
-  validateModemFrequency,
-  validateModemBandwidth,
-  validateModemConfig,
-} from '../../../src/equipment/modem/modem-constraints';
+import { LBAND_MODEM_CONSTRAINTS, ValidationError, validateModemBandwidth, validateModemConfig, validateModemFrequency } from '../../../src/equipment/modem/modem-constraints';
 
 describe('modem-constraints', () => {
   describe('LBAND_MODEM_CONSTRAINTS', () => {
@@ -180,8 +174,8 @@ describe('modem-constraints', () => {
       const errors = validateModemConfig(800, 100);
 
       expect(errors).toHaveLength(2);
-      expect(errors.some(e => e.field === 'frequency')).toBe(true);
-      expect(errors.some(e => e.field === 'bandwidth')).toBe(true);
+      expect(errors.some((e) => e.field === 'frequency')).toBe(true);
+      expect(errors.some((e) => e.field === 'bandwidth')).toBe(true);
     });
 
     it('should validate boundary conditions', () => {

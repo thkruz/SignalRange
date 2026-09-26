@@ -8,6 +8,18 @@
 - Branded types (`Hertz`, `dB`, `Degrees`) require explicit casting - check type definitions early
 - State handlers typed as `(state: Partial<T>) => void`, never `Function | null`
 - Don't use bracket notation (`obj['method']()`) to access methods - make them public instead
+- Always use LF line endings, never CRLF (enforced by `.gitattributes` and Biome's `lineEnding: lf`)
+- **Every regex MUST have the `u` flag** (enforced by the custom Biome plugin `biome-plugins/require-unicode-regexp.grit`; the `v` flag is also accepted). This applies everywhere: source code, tests, and e2e specs. It currently reports as a Biome **warning**, so it does not fail the build; the mandate still stands and it is slated to be ratcheted to an error once the existing violations are cleared.
+
+  ```typescript
+  // BAD
+  /[a-z]+/.test(str)
+  name.replace(/\s+/g, '-')
+
+  // GOOD
+  /[a-z]+/u.test(str)
+  name.replace(/\s+/gu, '-')
+  ```
 
 ## CSS/Tabler
 
@@ -153,20 +165,37 @@ new Satellite(
 
 ## TypeScript Type Checking
 
-**Always use the npm script to check for TypeScript errors:**
+**Always use the pnpm script to check for TypeScript errors:**
 
 ```bash
-npm run type-check
+pnpm run typecheck
 ```
 
 **Do NOT run tsc directly on individual files:**
 
 ```bash
 # WRONG - will fail with module resolution errors
-npx tsc --noEmit src/campaigns/nats/scenario5.ts
+pnpm exec tsc --noEmit src/campaigns/nats/scenario5.ts
 ```
 
 This project uses `@app/*` path aliases (e.g., `@app/types`, `@app/equipment/...`) that require the full tsconfig.json configuration. Running tsc on individual files bypasses this and produces false "Cannot find module" errors.
+
+## Build-Time Constants (DefinePlugin)
+
+- rspack `DefinePlugin` in `rspack.config.mts` injects compile-time constants — prefer this over generated files or runtime lookups for any value known at build time
+- Existing constants: `__APP_VERSION__` (from `package.json`), `__GIT_COMMIT_SHA__`, `__IS_PRIVATE__`, `__AUTHORING__`, plus the `process.env.PUBLIC_*` values
+- Always use `JSON.stringify()` when adding values — `DefinePlugin` does textual replacement, so strings must be wrapped as JS string literals
+- To add a new constant, all three must be updated or it breaks in one environment:
+  1. `DefinePlugin` in `rspack.config.mts` (the bundle)
+  2. `define` in `vitest.config.mts` (the tests)
+  3. the ambient declaration in `src/declaration.d.ts` (the type checker)
+
+## Linting and Formatting
+
+- Biome (`biome.json`) is both the linter and the formatter: `pnpm run lint` checks, `pnpm run lint:fix` applies safe fixes, `pnpm run format` formats
+- Only **errors** fail the gate; warnings are a backlog being cleared area by area
+- `src/engine/**` (vendored) and `src/private/**` (submodule) are excluded from linting
+- Biome does not type-check. The unused-code gate is `noUnusedLocals`/`noUnusedParameters` in tsconfig, via `pnpm run typecheck`
 
 ## Git Commits
 
@@ -184,13 +213,32 @@ This project uses `@app/*` path aliases (e.g., `@app/types`, `@app/equipment/...
 
 When you use Plan Mode or create multi-step plans in this repo:
 
-- Store each plan as a Markdown file under `./plans/` in this project.
+- Store each plan as a Markdown file under `src/private/plans/` (the private submodule) in this project.
   - Filename convention: `phase-<n>-<short-topic>-plan.md`
   - Example: `phase-1-auth-refactor-plan.md`
 
 - After completing a phase:
-  - Write a brief retrospective to `./retrospectives/` in this project.
+  - Write a brief retrospective to `src/private/retrospectives/` (the private submodule) in this project.
   - Filename convention: `phase-<n>-<short-topic>-retro.md`
   - Include sections: `What worked`, `What didn’t`, `What to change next time`.
 
 - Never write plans or retrospectives into the home directory; always use project-relative paths.
+
+## Private Content (`src/private` submodule)
+
+`src/private` is the private `thkruz/signal-range-private` submodule. It holds plans, retros,
+sprint docs, the NATS/BOA world bible and working notes. Nothing in the OSS build reads it, and
+contributors without access build and test without it.
+
+- **New plans, retros, sprint notes, content bibles and internal docs are private by default.**
+  Put them under `src/private/`, not in `docs/`, unless Ted says they are there for OSS users.
+  `docs/` is for contributor-facing material only (scenario guide, NICE guide, platform guide, schema).
+- **Two-commit rule.** When committing "all changes", first run `git -C src/private status`. If it
+  is dirty, commit inside the submodule (conventional commits, same as here) and push it, then bump
+  the pointer in this repo with `chore(private): :wrench: update subproject commit reference`.
+  Never commit a pointer to an unpushed submodule commit. Push with
+  `git push --recurse-submodules=on-demand`.
+- The parent `.gitignore` does not reach inside the submodule; add ignore rules to
+  `src/private/.gitignore`.
+- `.gitmodules` uses the SSH URL (CI deploy key). Local checkouts point origin at HTTPS:
+  `git -C src/private remote set-url origin https://github.com/thkruz/signal-range-private.git`.

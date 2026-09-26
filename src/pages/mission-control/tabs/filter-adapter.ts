@@ -1,9 +1,9 @@
-import { EventBus } from "@app/events/event-bus";
-import { Events } from "@app/events/events";
-import { FILTER_BANDWIDTH_CONFIGS, IfFilterBankModuleCore, IfFilterBankState } from "@app/equipment/rf-front-end/filter-module/filter-module-core";
-import { Receiver } from "@app/equipment/receiver/receiver";
-import { ScenarioManager } from "@app/scenario-manager";
-import { qs } from "@app/engine/utils/query-selector";
+import { qs } from '@app/engine/utils/query-selector';
+import { Receiver } from '@app/equipment/receiver/receiver';
+import { FILTER_BANDWIDTH_CONFIGS, IfFilterBankModuleCore, IfFilterBankState } from '@app/equipment/rf-front-end/filter-module/filter-module-core';
+import { EventBus } from '@app/events/event-bus';
+import { Events } from '@app/events/events';
+import { ScenarioManager } from '@app/scenario-manager';
 
 /**
  * FilterAdapter - Bridges IfFilterBankModuleCore state to web controls

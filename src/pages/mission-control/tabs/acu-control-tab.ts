@@ -466,10 +466,7 @@ export class ACUControlTab extends BaseElement {
     this.initPowerControls_(antenna);
 
     // Create and initialize polar plot with unique ID
-    this.polarPlot_ = PolarPlot.create(
-      `polar-plot-${this.groundStation.uuid}-ant${this.antennaIndex_}`,
-      { width: 300, height: 300, showGrid: true, showLabels: true }
-    );
+    this.polarPlot_ = PolarPlot.create(`polar-plot-${this.groundStation.uuid}-ant${this.antennaIndex_}`, { width: 300, height: 300, showGrid: true, showLabels: true });
 
     // Inject polar plot HTML into container
     const polarPlotContainer = this.qs_('polar-plot-container');
@@ -477,8 +474,18 @@ export class ACUControlTab extends BaseElement {
       polarPlotContainer.innerHTML = this.polarPlot_.html;
     }
 
-    // Wire to antenna state changes - store handler for cleanup
+    // Wire to antenna state changes - store handler for cleanup.
+    //
+    // A tab instance outlives its DOM when the operator switches station: the
+    // canvas replaces the content and only disposes the instance when that
+    // tab is next rendered. Until then the handlers still fire every tick, so
+    // each one bails while the DOM is disconnected. Painting a detached tree
+    // is wasted work, and a lookup that throws here (a fine-adjust display
+    // never resolved while the tab was live) escapes the game loop and stops
+    // the simulation - found by the S9 unattended pass, where Galway's pedestal
+    // starts moving while the Shetland console is selected.
     this.antennaStateHandler_ = () => {
+      if (this.isDetached_()) return;
       if (this.polarPlot_) {
         this.polarPlot_.draw(antenna.state.azimuth, antenna.state.elevation);
       }
@@ -489,12 +496,14 @@ export class ACUControlTab extends BaseElement {
 
     // Wire to draw events for continuous RF metrics updates
     this.drawHandler_ = () => {
+      if (this.isDetached_()) return;
       this.syncRfMetrics_(antenna);
     };
     EventBus.getInstance().on(Events.DRAW, this.drawHandler_);
 
     // Wire to update events for beacon C/N updates (throttled to 1Hz like other adapters)
     this.updateHandler_ = () => {
+      if (this.isDetached_()) return;
       const now = Date.now();
       if (now - this.lastBeaconSyncTime_ < ACUControlTab.BEACON_UPDATE_INTERVAL_MS) return;
       this.lastBeaconSyncTime_ = now;
@@ -508,32 +517,22 @@ export class ACUControlTab extends BaseElement {
     this.syncUiWithState_(antenna);
   }
 
-  private initFineAdjustControls_(antenna: typeof this.groundStation.antennas[0]): void {
+  /** True once the canvas has replaced this tab's DOM (stale instance awaiting disposal). */
+  private isDetached_(): boolean {
+    return this.dom_ !== null && !this.dom_.isConnected;
+  }
+
+  private initFineAdjustControls_(antenna: (typeof this.groundStation.antennas)[0]): void {
     const container = this.qs_('fine-adjust-container');
     if (!container) return;
 
     // Create fine adjustment controls with ACTUAL position values
     // Red display shows current position (matches polar plot)
-    this.azFineControl_ = FineAdjustControl.create(
-      `az-fine-${this.groundStation.uuid}-ant${this.antennaIndex_}`,
-      'Azimuth',
-      antenna.state.azimuth,
-      '°'
-    );
+    this.azFineControl_ = FineAdjustControl.create(`az-fine-${this.groundStation.uuid}-ant${this.antennaIndex_}`, 'Azimuth', antenna.state.azimuth, '°');
 
-    this.elFineControl_ = FineAdjustControl.create(
-      `el-fine-${this.groundStation.uuid}-ant${this.antennaIndex_}`,
-      'Elevation',
-      antenna.state.elevation,
-      '°'
-    );
+    this.elFineControl_ = FineAdjustControl.create(`el-fine-${this.groundStation.uuid}-ant${this.antennaIndex_}`, 'Elevation', antenna.state.elevation, '°');
 
-    this.polFineControl_ = FineAdjustControl.create(
-      `pol-fine-${this.groundStation.uuid}-ant${this.antennaIndex_}`,
-      'Polarization',
-      antenna.state.polarization,
-      '°'
-    );
+    this.polFineControl_ = FineAdjustControl.create(`pol-fine-${this.groundStation.uuid}-ant${this.antennaIndex_}`, 'Polarization', antenna.state.polarization, '°');
 
     // Inject HTML
     container.innerHTML = `
@@ -556,7 +555,7 @@ export class ACUControlTab extends BaseElement {
     });
   }
 
-  private initApplyCancelButtons_(antenna: typeof this.groundStation.antennas[0]): void {
+  private initApplyCancelButtons_(antenna: (typeof this.groundStation.antennas)[0]): void {
     const applyBtn = this.qs_<HTMLButtonElement>('apply-changes-btn');
     const cancelBtn = this.qs_<HTMLButtonElement>('discard-changes-btn');
 
@@ -573,7 +572,7 @@ export class ACUControlTab extends BaseElement {
     this.addHandler_('cancel-btn', cancelBtn, 'click', cancelHandler);
   }
 
-  private initTrackingModeSelector_(antenna: typeof this.groundStation.antennas[0]): void {
+  private initTrackingModeSelector_(antenna: (typeof this.groundStation.antennas)[0]): void {
     const buttons = this.qsa_('btn-tracking');
     buttons.forEach((btn, index) => {
       const handler = () => {
@@ -590,7 +589,7 @@ export class ACUControlTab extends BaseElement {
     });
   }
 
-  private initSatelliteDropdown_(antenna: typeof this.groundStation.antennas[0]): void {
+  private initSatelliteDropdown_(antenna: (typeof this.groundStation.antennas)[0]): void {
     const select = this.qs_<HTMLSelectElement>('satellite-select');
     const moveBtn = this.qs_<HTMLButtonElement>('move-to-target-btn');
 
@@ -606,10 +605,7 @@ export class ACUControlTab extends BaseElement {
 
     // Populate satellite dropdown
     const satellites = SimulationManager.getInstance().satellites;
-    select.innerHTML = '<option value="">-- Select Satellite --</option>' +
-      satellites.map(sat =>
-        `<option value="${sat.noradId}">${sat.name}</option>`
-      ).join('');
+    select.innerHTML = '<option value="">-- Select Satellite --</option>' + satellites.map((sat) => `<option value="${sat.noradId}">${sat.name}</option>`).join('');
 
     // Handle selection change
     const selectHandler = () => {
@@ -627,7 +623,7 @@ export class ACUControlTab extends BaseElement {
     this.addHandler_('move-to-target', moveBtn, 'click', moveHandler);
   }
 
-  private initBeaconControls_(antenna: typeof this.groundStation.antennas[0]): void {
+  private initBeaconControls_(antenna: (typeof this.groundStation.antennas)[0]): void {
     const freqInput = this.qs_<HTMLInputElement>('beacon-freq');
     const bwInput = this.qs_<HTMLInputElement>('beacon-search-bw');
 
@@ -674,7 +670,7 @@ export class ACUControlTab extends BaseElement {
     }
   }
 
-  private initEnvironmentalControls_(antenna: typeof this.groundStation.antennas[0]): void {
+  private initEnvironmentalControls_(antenna: (typeof this.groundStation.antennas)[0]): void {
     const heaterSwitch = this.qs_<HTMLInputElement>('heater-switch');
     const blowerSwitch = this.qs_<HTMLInputElement>('blower-switch');
 
@@ -691,7 +687,7 @@ export class ACUControlTab extends BaseElement {
     this.addHandler_('blower-switch', blowerSwitch, 'change', blowerHandler);
   }
 
-  private initPowerControls_(antenna: typeof this.groundStation.antennas[0]): void {
+  private initPowerControls_(antenna: (typeof this.groundStation.antennas)[0]): void {
     const powerSwitch = this.qs_<HTMLInputElement>('power-switch');
     const loopbackSwitch = this.qs_<HTMLInputElement>('loopback-switch');
 
@@ -710,7 +706,7 @@ export class ACUControlTab extends BaseElement {
     }
   }
 
-  private syncUiWithState_(antenna: typeof this.groundStation.antennas[0]): void {
+  private syncUiWithState_(antenna: (typeof this.groundStation.antennas)[0]): void {
     const state = antenna.state;
 
     // Sync ACU identification
@@ -724,7 +720,7 @@ export class ACUControlTab extends BaseElement {
     // servos (manual/stow/maintenance) still work.
     const acuFaulted = state.isAcuAutomationFaulted === true;
     const modeButtons = this.qsa_('btn-tracking');
-    modeButtons.forEach(btn => {
+    modeButtons.forEach((btn) => {
       const mode = (btn as HTMLElement).dataset.mode;
       btn.classList.toggle('active', mode === state.trackingMode);
       if (mode === 'program-track') {
@@ -809,7 +805,7 @@ export class ACUControlTab extends BaseElement {
       const sat = SimulationManager.getInstance().getSatByNoradId(state.targetSatelliteId);
       // Show warning if satellite is LEO (not geostationary/geosynchronous)
       const isLeo = sat && sat.orbitType !== 'geostationary' && sat.orbitType !== 'geosynchronous';
-      leoWarning.style.display = (state.isStepTrackEnabled && isLeo) ? 'block' : 'none';
+      leoWarning.style.display = state.isStepTrackEnabled && isLeo ? 'block' : 'none';
     } else if (leoWarning) {
       leoWarning.style.display = 'none';
     }
@@ -871,8 +867,7 @@ export class ACUControlTab extends BaseElement {
     // Sync move-to-target button disabled state (also disabled under ACU fault)
     const moveToTargetBtn = this.qs_<HTMLButtonElement>('move-to-target-btn');
     if (moveToTargetBtn) {
-      moveToTargetBtn.disabled = acuFaulted ||
-        state.trackingMode !== 'program-track' || state.targetSatelliteId === null;
+      moveToTargetBtn.disabled = acuFaulted || state.trackingMode !== 'program-track' || state.targetSatelliteId === null;
     }
     const satelliteSelectEl = this.qs_<HTMLSelectElement>('satellite-select');
     if (satelliteSelectEl) {
@@ -892,11 +887,7 @@ export class ACUControlTab extends BaseElement {
     // Sync current target display (only shows active target, not dropdown selection)
     const currentTargetDisplay = this.qs_<HTMLInputElement>('current-target-display');
     if (currentTargetDisplay) {
-      const satellite = this.activeTargetSatelliteId_ === null
-        ? null
-        : SimulationManager.getInstance().satellites.find(
-          sat => sat.noradId === this.activeTargetSatelliteId_
-        );
+      const satellite = this.activeTargetSatelliteId_ === null ? null : SimulationManager.getInstance().satellites.find((sat) => sat.noradId === this.activeTargetSatelliteId_);
       currentTargetDisplay.value = satellite?.name ?? 'No Target';
     }
 
@@ -918,7 +909,7 @@ export class ACUControlTab extends BaseElement {
     this.syncRfMetrics_(antenna);
   }
 
-  private syncRfMetrics_(antenna: typeof this.groundStation.antennas[0]): void {
+  private syncRfMetrics_(antenna: (typeof this.groundStation.antennas)[0]): void {
     const metrics = antenna.state.rfMetrics;
     if (!metrics) return;
 
@@ -937,7 +928,7 @@ export class ACUControlTab extends BaseElement {
     if (skyTempEl) skyTempEl.textContent = `${metrics.skyTemp_K.toFixed(0)} K`;
   }
 
-  private syncBeaconMetrics_(antenna: typeof this.groundStation.antennas[0]): void {
+  private syncBeaconMetrics_(antenna: (typeof this.groundStation.antennas)[0]): void {
     const state = antenna.state;
 
     const beaconCnEl = this.qs_('beacon-cn-value');
@@ -979,20 +970,18 @@ export class ACUControlTab extends BaseElement {
           beaconLockEl.textContent = 'SEARCHING';
           beaconLockEl.classList.remove('text-success');
         }
-      } else {
         // Manual/Program-track without step-track: UNLOCKED or LOCKED based on C/N
-        if (state.isBeaconLocked) {
-          beaconLockEl.textContent = 'LOCKED';
-          beaconLockEl.classList.add('text-success');
-        } else {
-          beaconLockEl.textContent = 'UNLOCKED';
-          beaconLockEl.classList.remove('text-success');
-        }
+      } else if (state.isBeaconLocked) {
+        beaconLockEl.textContent = 'LOCKED';
+        beaconLockEl.classList.add('text-success');
+      } else {
+        beaconLockEl.textContent = 'UNLOCKED';
+        beaconLockEl.classList.remove('text-success');
       }
     }
   }
 
-  private syncIceAccumulation_(antenna: typeof this.groundStation.antennas[0]): void {
+  private syncIceAccumulation_(antenna: (typeof this.groundStation.antennas)[0]): void {
     const iceDisplay = this.qs_('ice-accumulation-display');
     if (iceDisplay) {
       const ice = antenna.state.iceAccumulation_dB;

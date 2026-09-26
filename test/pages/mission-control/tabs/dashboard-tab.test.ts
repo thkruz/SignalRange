@@ -111,10 +111,7 @@ describe('DashboardTab', () => {
       receivers: [
         {
           state: {
-            modems: [
-              { isPowered: true },
-              { isPowered: true },
-            ],
+            modems: [{ isPowered: true }, { isPowered: true }],
             availableSignals: [],
           },
           getSnrForModem: vi.fn().mockReturnValue(15),
@@ -159,10 +156,7 @@ describe('DashboardTab', () => {
     });
 
     it('should register for UPDATE events', () => {
-      expect(mockEventBus.on).toHaveBeenCalledWith(
-        Events.UPDATE,
-        expect.any(Function)
-      );
+      expect(mockEventBus.on).toHaveBeenCalledWith(Events.UPDATE, expect.any(Function));
     });
   });
 
@@ -189,10 +183,7 @@ describe('DashboardTab', () => {
       const card = document.querySelector('[data-target-tab="acu-control"]') as HTMLElement;
       card?.click();
 
-      expect(mockEventBus.emit).toHaveBeenCalledWith(
-        Events.SWITCH_TAB,
-        { tabId: 'acu-control' }
-      );
+      expect(mockEventBus.emit).toHaveBeenCalledWith(Events.SWITCH_TAB, { tabId: 'acu-control' });
     });
   });
 
@@ -214,10 +205,7 @@ describe('DashboardTab', () => {
     it('should unregister from UPDATE events', () => {
       tab.dispose();
 
-      expect(mockEventBus.off).toHaveBeenCalledWith(
-        Events.UPDATE,
-        expect.any(Function)
-      );
+      expect(mockEventBus.off).toHaveBeenCalledWith(Events.UPDATE, expect.any(Function));
     });
 
     it('should remove DOM element', () => {

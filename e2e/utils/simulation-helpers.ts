@@ -1,4 +1,4 @@
-import { Page, expect } from '@playwright/test';
+import { expect, Page } from '@playwright/test';
 
 /**
  * Wait for the simulation to initialize and stabilize.
@@ -20,12 +20,7 @@ export async function waitForSimulationReady(page: Page): Promise<void> {
  * Wait for a specific DOM state in the simulation.
  * Useful for waiting on equipment state changes.
  */
-export async function waitForDomState(
-  page: Page,
-  selector: string,
-  expectedText: string,
-  timeout = 30000
-): Promise<void> {
+export async function waitForDomState(page: Page, selector: string, expectedText: string, timeout = 30000): Promise<void> {
   await page.waitForFunction(
     ({ sel, text }) => {
       const element = document.querySelector(sel);
@@ -57,8 +52,11 @@ export async function waitForObjectiveCompleted(page: Page, objectiveId: string)
   await page.waitForFunction(
     (id) => {
       const objective = document.querySelector(`[data-objective-id="${id}"]`);
-      return objective?.classList.contains('completed') ||
-        objective?.querySelector('.completed') !== null;
+      // The element must EXIST before its state means anything: without this
+      // guard a missing objective resolved as `undefined !== null` -> true,
+      // so a typo'd id or an unrendered checklist passed instantly.
+      if (!objective) return false;
+      return objective.classList.contains('completed') || objective.querySelector('.completed') !== null;
     },
     objectiveId,
     { timeout: 30000 }
@@ -246,22 +244,71 @@ export async function answerQuizByText(page: Page, answerText: string): Promise<
 
   if (bestScore !== Number.POSITIVE_INFINITY && bestScore < 0.45) {
     const available = optionTexts.map((t) => `- ${t.trim()}`).join('\n');
-    throw new Error(
-      `Could not match quiz answer.\nAnswer: ${answerText}\nOptions:\n${available}`
-    );
+    throw new Error(`Could not match quiz answer.\nAnswer: ${answerText}\nOptions:\n${available}`);
   }
 
   await optionButtons.nth(bestIndex).click();
 
   // Wait for the continue button to appear and click it
   // Exclude quiz option buttons that might contain text matching "Continue" (e.g., "continues")
-  const continueButton = quizModal.locator(
-    '#quiz-continue-btn, .quiz-continue-btn, .quiz-submit-btn, button:has-text("Continue"):not(.quiz-option-btn)'
-  );
+  const continueButton = quizModal.locator('#quiz-continue-btn, .quiz-continue-btn, .quiz-submit-btn, button:has-text("Continue"):not(.quiz-option-btn)');
   await expect(continueButton.first()).toBeVisible({ timeout: 5000 });
   await continueButton.first().click();
 
   // Wait for quiz to process the answer
+  await page.waitForTimeout(500);
+}
+
+/**
+ * Assert that the open decision modal shows every named evidence item as
+ * latched. Decisions are graded on simulator state, so an e2e that answers
+ * by label without first proving the evidence was in hand proves nothing -
+ * the same rule as expectDashboardAlarm before a sweep quiz.
+ */
+/**
+ * Bring the pending decision modal on screen. Like a quiz, a decision is
+ * registered silently and surfaces through the pending indicator after a
+ * delay, so open it from there when it is not already visible.
+ */
+export async function waitForDecisionToAppear(page: Page, timeout = 30000): Promise<void> {
+  const modal = page.locator('#decision-modal');
+  try {
+    await expect(modal).toBeVisible({ timeout: 3000 });
+    return;
+  } catch {
+    // not open yet - use the indicator
+  }
+  const pendingIndicator = page.locator('.pending-quiz-indicator__open-btn');
+  await expect(pendingIndicator).toBeVisible({ timeout });
+  await pendingIndicator.click();
+  await expect(modal).toBeVisible({ timeout: 10000 });
+}
+
+export async function expectEvidenceLatched(page: Page, labels: string[]): Promise<void> {
+  await waitForDecisionToAppear(page);
+  const modal = page.locator('#decision-modal');
+  for (const label of labels) {
+    const item = modal.locator('.decision-evidence-item.ready', { hasText: label });
+    await expect(item, `evidence "${label}" should be latched before deciding`).toBeVisible({ timeout: 15000 });
+  }
+}
+
+/**
+ * Choose a decision option by its text and press Continue. Refuses to run
+ * until every listed evidence item is latched, so a passing spec cannot be
+ * one that guessed.
+ */
+export async function answerDecision(page: Page, optionText: string, requiredEvidence: string[] = []): Promise<void> {
+  await expectEvidenceLatched(page, requiredEvidence);
+
+  const modal = page.locator('#decision-modal');
+  const option = modal.locator('.quiz-option-btn', { hasText: optionText });
+  await expect(option.first()).toBeVisible({ timeout: 10000 });
+  await option.first().click();
+
+  const continueButton = modal.locator('#decision-continue-btn');
+  await expect(continueButton, `decision option "${optionText}" should grade correct`).toBeVisible({ timeout: 5000 });
+  await continueButton.click();
   await page.waitForTimeout(500);
 }
 

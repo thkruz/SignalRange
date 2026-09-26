@@ -10,28 +10,28 @@
  * Supported encryption algorithms
  */
 export type CryptoAlgorithm =
-  | 'AES-256-GCM'   // AES-256 with Galois/Counter Mode (authenticated)
-  | 'AES-256-CBC'   // AES-256 with Cipher Block Chaining
-  | 'TDES-168'      // Triple DES with 168-bit key (legacy)
-  | 'NONE';         // No encryption (plaintext)
+  | 'AES-256-GCM' // AES-256 with Galois/Counter Mode (authenticated)
+  | 'AES-256-CBC' // AES-256 with Cipher Block Chaining
+  | 'TDES-168' // Triple DES with 168-bit key (legacy)
+  | 'NONE'; // No encryption (plaintext)
 
 /**
  * Crypto operational modes
  */
 export type CryptoMode =
-  | 'ACTIVE'    // Normal operation - encryption/decryption enabled
-  | 'DISABLED'  // Encryption/decryption turned off
+  | 'ACTIVE' // Normal operation - encryption/decryption enabled
+  | 'DISABLED' // Encryption/decryption turned off
   | 'BYPASSED'; // Crypto equipment in bypass mode (for testing)
 
 /**
  * Key validity status
  */
 export type KeyStatus =
-  | 'Valid'             // Key is valid and operational
-  | 'Expired'           // Key has expired and should not be used
-  | 'Pending Rotation'  // Key is valid but approaching expiration
-  | 'Mismatch'          // Key doesn't match far-end (decryption fails)
-  | 'Zeroized';         // Key has been emergency-destroyed
+  | 'Valid' // Key is valid and operational
+  | 'Expired' // Key has expired and should not be used
+  | 'Pending Rotation' // Key is valid but approaching expiration
+  | 'Mismatch' // Key doesn't match far-end (decryption fails)
+  | 'Zeroized'; // Key has been emergency-destroyed
 
 /**
  * Full crypto module state

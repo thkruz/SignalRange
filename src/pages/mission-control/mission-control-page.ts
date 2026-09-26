@@ -1,39 +1,52 @@
-import { App } from "@app/app";
-import { GroundStation } from "@app/assets/ground-station/ground-station";
-import { GroundStationConfig } from "@app/assets/ground-station/ground-station-state";
-import { html } from "@app/engine/utils/development/formatter";
-import { qs } from "@app/engine/utils/query-selector";
-import { EventBus } from "@app/events/event-bus";
-import { Logger } from "@app/logging/logger";
-import { PendingQuizIndicator } from "@app/modal/pending-quiz-indicator";
-import { QuizModal } from "@app/modal/quiz-modal";
-import { ObjectivesManager } from "@app/objectives/objectives-manager";
-import { NavigationOptions } from "@app/router";
-import { ScenarioManager } from "@app/scenario-manager";
-import { ScenarioDialogManager } from "@app/scenarios/scenario-dialog-manager";
-import { WorkingDocumentManager } from "@app/scenarios/working-document-manager";
-import { InterferenceManager } from "@app/interference/interference-manager";
-import { WeatherManager } from "@app/weather/weather-manager";
-import { AlarmService } from "@app/services/alarm-service";
-import { SimulationManager } from "@app/simulation/simulation-manager";
-import { syncEquipmentWithStore } from "@app/sync";
-import { AppState, syncManager } from "@app/sync/storage";
-import { Auth } from "@app/user-account/auth";
-import { BasePage } from "@app/pages/base-page";
-import { Body } from "@app/pages/layout/body/body";
-import { AssetTreeSidebar } from "./asset-tree-sidebar";
-import { GlobalCommandBar } from "./global-command-bar";
+import { App } from '@app/app';
+import { GroundStation } from '@app/assets/ground-station/ground-station';
+import { GroundStationConfig } from '@app/assets/ground-station/ground-station-state';
+import { CommandingManager } from '@app/commanding/commanding-manager';
+import { ContactScheduleManager } from '@app/contact-schedule/contact-schedule-manager';
+import { ElectronicAttackManager } from '@app/electronic-attack/electronic-attack-manager';
+import { html } from '@app/engine/utils/development/formatter';
+import { qs } from '@app/engine/utils/query-selector';
+import { GeolocationConsoleCore } from '@app/equipment/geolocation-console/geolocation-console-core';
+import { EventBus } from '@app/events/event-bus';
+import { HardwareFaultManager } from '@app/faults/hardware-fault-manager';
+import { GnssThreatManager } from '@app/gnss-threat/gnss-threat-manager';
+import { InterferenceManager } from '@app/interference/interference-manager';
+import { LinkBudgetManager } from '@app/link-budget/link-budget-manager';
+import { Logger } from '@app/logging/logger';
+import { DecisionManager } from '@app/modal/decision-manager';
+import { DecisionModal } from '@app/modal/decision-modal';
+import { PendingQuizIndicator } from '@app/modal/pending-quiz-indicator';
+import { QuizModal } from '@app/modal/quiz-modal';
+import { ObjectivesManager } from '@app/objectives/objectives-manager';
+import { BasePage } from '@app/pages/base-page';
+import { Body } from '@app/pages/layout/body/body';
+import { NavigationOptions } from '@app/router';
+import { ScenarioManager } from '@app/scenario-manager';
+import { CampaignRecordPanel } from '@app/scenarios/campaign-record-panel';
+import { ScenarioDialogManager } from '@app/scenarios/scenario-dialog-manager';
+import { WorkingDocumentManager } from '@app/scenarios/working-document-manager';
+import { SecurityConsoleCore } from '@app/security-console/security-console-core';
+import { AlarmService } from '@app/services/alarm-service';
+import { SimulationManager } from '@app/simulation/simulation-manager';
+import { SpaceEventManager } from '@app/space-events/space-event-manager';
+import { syncEquipmentWithStore } from '@app/sync';
+import { AppState, syncManager } from '@app/sync/storage';
+import { TelemetryManager } from '@app/telemetry/telemetry-manager';
+import { TransecManager } from '@app/transec/transec-manager';
+import { Auth } from '@app/user-account/auth';
+import { WeatherManager } from '@app/weather/weather-manager';
+import { AssetTreeSidebar } from './asset-tree-sidebar';
+import { GlobalCommandBar } from './global-command-bar';
 import './mission-control-page.css';
-import { TabbedCanvas } from "./tabbed-canvas";
-import { TimelineDeck } from "./timeline-deck";
-
+import { TabbedCanvas } from './tabbed-canvas';
+import { TimelineDeck } from './timeline-deck';
 
 /**
  * AppShellPage - Mission Control Interface
-*
-* Modern web-based ground station control system
-* Displays asset tree, tabbed canvas for equipment control, and timeline
-*/
+ *
+ * Modern web-based ground station control system
+ * Displays asset tree, tabbed canvas for equipment control, and timeline
+ */
 export class MissionControlPage extends BasePage {
   readonly id = 'app-shell-page';
   static readonly containerId = 'app-shell-page-container';
@@ -41,7 +54,8 @@ export class MissionControlPage extends BasePage {
 
   // Components
   private commandBarCenter_!: GlobalCommandBar;
-  private timelineDeck_!: TimelineDeck;
+  /** Only constructed when the scenario opts in via settings.contactTimeline. */
+  private timelineDeck_: TimelineDeck | null = null;
   private assetTreeSidebar_!: AssetTreeSidebar;
   private tabbedCanvas_!: TabbedCanvas;
 
@@ -50,7 +64,7 @@ export class MissionControlPage extends BasePage {
   private constructor(options?: NavigationOptions) {
     super();
     this.navigationOptions_ = options || {};
-    this.init_()
+    this.init_();
 
     Logger.info(
       `
@@ -65,7 +79,7 @@ export class MissionControlPage extends BasePage {
 
   static create(options?: NavigationOptions): MissionControlPage {
     if (this.instance_) {
-      throw new Error("AppShellPage instance already exists.");
+      throw new Error('AppShellPage instance already exists.');
     }
 
     this.instance_ = new MissionControlPage(options);
@@ -111,7 +125,14 @@ export class MissionControlPage extends BasePage {
 
     this.commandBarCenter_ = new GlobalCommandBar('global-command-bar-container');
 
-    this.timelineDeck_ = new TimelineDeck(this.id);
+    // Opt-in per scenario: campaigns that don't declare settings.contactTimeline
+    // (Campaign 1's GEO work) never mount the deck, so the shell keeps its
+    // original layout.
+    const timelineConfig = ScenarioManager.getInstance().settings.contactTimeline;
+
+    if (timelineConfig) {
+      this.timelineDeck_ = new TimelineDeck(this.id, timelineConfig);
+    }
 
     // Create ground stations BEFORE UI components (they depend on ground stations existing)
     this.createGroundStationsFromScenario_();
@@ -155,7 +176,7 @@ export class MissionControlPage extends BasePage {
     this.groundStations_ = scenario.getScenario().groundStations.map((config: GroundStationConfig) => new GroundStation(config));
 
     // Initialize equipment immediately so AlarmService can poll alarms
-    this.groundStations_.forEach(gs => gs.initializeEquipment());
+    this.groundStations_.forEach((gs) => gs.initializeEquipment());
   }
 
   /**
@@ -190,7 +211,7 @@ export class MissionControlPage extends BasePage {
       const scenario = ScenarioManager.getInstance();
       Logger.info(`loadCheckpointIfExists_: Loading checkpoint for scenario: ${scenario.data.id}`);
 
-      const checkpoint = await this.progressSaveManager_.loadCheckpoint(scenario.data.id) as {
+      const checkpoint = (await this.progressSaveManager_.loadCheckpoint(scenario.data.id)) as {
         state: AppState;
       };
 
@@ -274,9 +295,22 @@ export class MissionControlPage extends BasePage {
       // Clean up progress save manager
       MissionControlPage.instance_.disposeProgressSaveManager_();
 
-      // TODO: Clean up components and ground stations
-      // this.commandBarCenter_.destroy();
-      // this.timelineDeck_.destroy();
+      // The deck subscribes to Events.UPDATE, so it must be torn down or it
+      // keeps predicting passes for a scenario that is gone.
+      MissionControlPage.instance_.timelineDeck_?.dispose();
+      MissionControlPage.instance_.timelineDeck_ = null;
+
+      // The command bar holds a 1 Hz interval and (when the scenario opts into
+      // settings.timeSkip) the fast-forward overlay's EventBus subscriptions,
+      // so leaving it up meant a second scenario stacked a second overlay.
+      MissionControlPage.instance_.commandBarCenter_?.dispose();
+
+      // The canvas owns every open tab, and a tab's dispose() releases things
+      // the EventBus teardown below cannot - GeoMap's canvas pointer/wheel
+      // handlers, detached DOM. Without this the tabs were simply abandoned.
+      MissionControlPage.instance_.tabbedCanvas_?.destroy();
+
+      // TODO: Clean up remaining components and ground stations
       MissionControlPage.instance_ = null;
     }
 
@@ -286,9 +320,23 @@ export class MissionControlPage extends BasePage {
     ObjectivesManager.destroy();
     ScenarioDialogManager.reset();
     WorkingDocumentManager.reset();
+    CampaignRecordPanel.reset();
     WeatherManager.destroy();
     InterferenceManager.destroy();
+    GeolocationConsoleCore.destroy();
+    ElectronicAttackManager.destroy();
+    HardwareFaultManager.destroy();
+    LinkBudgetManager.destroy();
+    CommandingManager.destroy();
+    ContactScheduleManager.destroy();
+    SpaceEventManager.destroy();
+    SecurityConsoleCore.destroy();
+    TransecManager.destroy();
+    GnssThreatManager.destroy();
+    TelemetryManager.destroy();
     QuizModal.destroy();
+    DecisionModal.destroy();
+    DecisionManager.destroy();
     PendingQuizIndicator.destroy();
     EventBus.destroy();
   }

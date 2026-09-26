@@ -73,11 +73,19 @@ vi.mock('../../../src/assets/ground-station/ground-station', () => ({
     };
   }),
 }));
+/**
+ * Scenario settings the page reads. Mutable so a test can opt the scenario in
+ * to the contact-timeline deck (which is otherwise absent by design).
+ */
+let mockSettings: Record<string, unknown> = { missionBriefUrl: null };
+
 vi.mock('../../../src/scenario-manager', () => ({
   ScenarioManager: {
     getInstance: vi.fn(() => ({
       data: { id: 'test-scenario' },
-      settings: { missionBriefUrl: null },
+      get settings() {
+        return mockSettings;
+      },
       getScenario: vi.fn(() => ({
         groundStations: [
           {
@@ -141,6 +149,8 @@ vi.mock('../../../src/sync/storage', () => ({
 vi.mock('../../../src/user-account/auth', () => ({
   Auth: {
     isLoggedIn: vi.fn(() => Promise.resolve(false)),
+    getSession: vi.fn(() => Promise.resolve(null)),
+    onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe: vi.fn() } } })),
   },
 }));
 vi.mock('../../../src/logging/logger', () => ({
@@ -164,6 +174,8 @@ import { QuizModal } from '../../../src/modal/quiz-modal';
 import { ObjectivesManager } from '../../../src/objectives/objectives-manager';
 import { AssetTreeSidebar } from '../../../src/pages/mission-control/asset-tree-sidebar';
 import { GlobalCommandBar } from '../../../src/pages/mission-control/global-command-bar';
+// Import after mocks are set up
+import { MissionControlPage } from '../../../src/pages/mission-control/mission-control-page';
 import { TabbedCanvas } from '../../../src/pages/mission-control/tabbed-canvas';
 import { TimelineDeck } from '../../../src/pages/mission-control/timeline-deck';
 import { ScenarioDialogManager } from '../../../src/scenarios/scenario-dialog-manager';
@@ -171,8 +183,6 @@ import { AlarmService } from '../../../src/services/alarm-service';
 import { SimulationManager } from '../../../src/simulation/simulation-manager';
 import { syncEquipmentWithStore } from '../../../src/sync';
 import { Auth } from '../../../src/user-account/auth';
-// Import after mocks are set up
-import { MissionControlPage } from '../../../src/pages/mission-control/mission-control-page';
 
 describe('MissionControlPage', () => {
   let bodyContainer: HTMLElement;
@@ -283,8 +293,22 @@ describe('MissionControlPage', () => {
       expect(GlobalCommandBar).toHaveBeenCalledWith('global-command-bar-container');
     });
 
-    it('should create TimelineDeck', () => {
-      expect(TimelineDeck).toHaveBeenCalledWith('app-shell-page');
+    it('should NOT create TimelineDeck when the scenario does not opt in', () => {
+      // The deck is opt-in via settings.contactTimeline; campaigns without it
+      // (Campaign 1) keep the original shell layout.
+      expect(TimelineDeck).not.toHaveBeenCalled();
+    });
+
+    it('should create TimelineDeck when the scenario declares contactTimeline', () => {
+      MissionControlPage.destroy();
+      vi.mocked(TimelineDeck).mockClear();
+      mockSettings = { missionBriefUrl: null, contactTimeline: { horizonHours: 2 } };
+
+      MissionControlPage.create();
+
+      expect(TimelineDeck).toHaveBeenCalledWith('app-shell-page', { horizonHours: 2 });
+
+      mockSettings = { missionBriefUrl: null };
     });
 
     it('should create AssetTreeSidebar', () => {
@@ -306,7 +330,6 @@ describe('MissionControlPage', () => {
     });
 
     it('should initialize equipment for each ground station', () => {
-
       const mockGsInstance = GroundStation.mock.results[0]?.value;
       expect(mockGsInstance?.initializeEquipment).toHaveBeenCalled();
     });
@@ -381,14 +404,12 @@ describe('MissionControlPage', () => {
       MissionControlPage.create();
       MissionControlPage.destroy();
 
-
       expect(AlarmService.destroy).toHaveBeenCalled();
     });
 
     it('should destroy SimulationManager', () => {
       MissionControlPage.create();
       MissionControlPage.destroy();
-
 
       expect(SimulationManager.destroy).toHaveBeenCalled();
     });
@@ -445,9 +466,7 @@ describe('MissionControlPage', () => {
       await Promise.resolve();
       vi.advanceTimersByTime(100);
 
-      expect(Logger.info).toHaveBeenCalledWith(
-        expect.stringContaining('Skipping checkpoint load due to forceReplay')
-      );
+      expect(Logger.info).toHaveBeenCalledWith(expect.stringContaining('Skipping checkpoint load due to forceReplay'));
     });
   });
 });
@@ -494,10 +513,7 @@ describe('MissionControlPage with logged in user', () => {
     await Promise.resolve();
     vi.advanceTimersByTime(100);
 
-
-    expect(Logger.info).toHaveBeenCalledWith(
-      expect.stringContaining('Loading checkpoint for scenario')
-    );
+    expect(Logger.info).toHaveBeenCalledWith(expect.stringContaining('Loading checkpoint for scenario'));
   });
 });
 

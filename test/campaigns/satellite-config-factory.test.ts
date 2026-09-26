@@ -1,78 +1,84 @@
-import {
-  configureGroundStationForSatellite,
-  applyConfigToGroundStation,
-  SatelliteConfigOptions,
-  SatelliteConfigResult,
-} from '../../src/campaigns/satellite-config-factory';
-import type { Satellite, Transponder } from '../../src/equipment/satellite/satellite';
-import type { GroundStationConfig } from '../../src/assets/ground-station/ground-station-state';
-import type { Hertz, MHz, dBm, RfFrequency, dBi } from '../../src/types';
 import type { Degrees } from 'ootk';
+import type { GroundStationConfig } from '../../src/assets/ground-station/ground-station-state';
+import { applyConfigToGroundStation, configureGroundStationForSatellite, SatelliteConfigOptions, SatelliteConfigResult } from '../../src/campaigns/satellite-config-factory';
+import type { Satellite, Transponder } from '../../src/equipment/satellite/satellite';
+import type { dBi, dBm, Hertz, MHz, RfFrequency } from '../../src/types';
 
 describe('satellite-config-factory', () => {
   // Mock satellite factory
-  const createMockSatellite = (
-    transponders: Partial<Transponder>[] = [],
-    config: Partial<Satellite> = {}
-  ): Satellite => ({
-    noradId: 12345,
-    name: 'Test Satellite',
-    az: 180 as Degrees,
-    el: 45 as Degrees,
-    rotation: 0 as Degrees,
-    transponders: transponders.map((tp, idx) => ({
-      id: tp.id ?? `TP-${idx + 1}`,
-      uplinkFrequency: (tp.uplinkFrequency ?? 5943e6) as RfFrequency,
-      downlinkFrequency: (tp.downlinkFrequency ?? 3718e6) as RfFrequency,
-      bandwidth: (tp.bandwidth ?? 36e6) as Hertz,
-      beacon: tp.beacon,
-      maxPower: (tp.maxPower ?? 50) as dBm,
-      gain: (tp.gain ?? 36.5) as dBi,
-      noiseFigure: (tp.noiseFigure ?? 3.5) as dBi,
-      saturationPower: (tp.saturationPower ?? 47) as dBm,
-      isActive: tp.isActive ?? true,
-      uplinkLowEdge: (tp.uplinkLowEdge ?? 5925e6) as RfFrequency,
-      uplinkHighEdge: (tp.uplinkHighEdge ?? 5961e6) as RfFrequency,
-      polarization: tp.polarization ?? 'V',
-      frequencyOffset: (tp.frequencyOffset ?? 2.225e9) as Hertz,
-    })),
-    ...config,
-  } as Satellite);
+  const createMockSatellite = (transponders: Partial<Transponder>[] = [], config: Partial<Satellite> = {}): Satellite =>
+    ({
+      noradId: 12345,
+      name: 'Test Satellite',
+      az: 180 as Degrees,
+      el: 45 as Degrees,
+      rotation: 0 as Degrees,
+      transponders: transponders.map((tp, idx) => ({
+        id: tp.id ?? `TP-${idx + 1}`,
+        uplinkFrequency: (tp.uplinkFrequency ?? 5943e6) as RfFrequency,
+        downlinkFrequency: (tp.downlinkFrequency ?? 3718e6) as RfFrequency,
+        bandwidth: (tp.bandwidth ?? 36e6) as Hertz,
+        beacon: tp.beacon,
+        maxPower: (tp.maxPower ?? 50) as dBm,
+        gain: (tp.gain ?? 36.5) as dBi,
+        noiseFigure: (tp.noiseFigure ?? 3.5) as dBi,
+        saturationPower: (tp.saturationPower ?? 47) as dBm,
+        isActive: tp.isActive ?? true,
+        uplinkLowEdge: (tp.uplinkLowEdge ?? 5925e6) as RfFrequency,
+        uplinkHighEdge: (tp.uplinkHighEdge ?? 5961e6) as RfFrequency,
+        polarization: tp.polarization ?? 'V',
+        frequencyOffset: (tp.frequencyOffset ?? 2.225e9) as Hertz,
+      })),
+      ...config,
+    }) as Satellite;
 
   // Mock ground station factory
-  const createMockGroundStation = (): GroundStationConfig => ({
-    id: 'gs-1',
-    name: 'Test Ground Station',
-    antennasState: [{
-      targetSatelliteId: 0,
-      targetAzimuth: 0 as Degrees,
-      targetElevation: 0 as Degrees,
-      targetPolarization: 0 as Degrees,
-      azimuth: 0 as Degrees,
-      elevation: 0 as Degrees,
-      polarization: 0 as Degrees,
-      beaconFrequencyHz: 0 as Hertz,
-    }],
-    rfFrontEnds: [{
-      buc: { loFrequency: 7000 as MHz },
-      lnb: { loFrequency: 5250 as MHz },
-    }],
-    spectrumAnalyzers: [{
-      centerFrequency: 1000e6 as Hertz,
-    }],
-    transmitters: [{
-      activeModem: 1,
-      modems: [{
-        isPowered: false,
-        isTransmitting: false,
-        isTransmittingSwitchUp: false,
-      }],
-    }],
-    receivers: [{
-      activeModem: 1,
-      modems: [],
-    }],
-  } as unknown as GroundStationConfig);
+  const createMockGroundStation = (): GroundStationConfig =>
+    ({
+      id: 'gs-1',
+      name: 'Test Ground Station',
+      antennasState: [
+        {
+          targetSatelliteId: 0,
+          targetAzimuth: 0 as Degrees,
+          targetElevation: 0 as Degrees,
+          targetPolarization: 0 as Degrees,
+          azimuth: 0 as Degrees,
+          elevation: 0 as Degrees,
+          polarization: 0 as Degrees,
+          beaconFrequencyHz: 0 as Hertz,
+        },
+      ],
+      rfFrontEnds: [
+        {
+          buc: { loFrequency: 7000 as MHz },
+          lnb: { loFrequency: 5250 as MHz },
+        },
+      ],
+      spectrumAnalyzers: [
+        {
+          centerFrequency: 1000e6 as Hertz,
+        },
+      ],
+      transmitters: [
+        {
+          activeModem: 1,
+          modems: [
+            {
+              isPowered: false,
+              isTransmitting: false,
+              isTransmittingSwitchUp: false,
+            },
+          ],
+        },
+      ],
+      receivers: [
+        {
+          activeModem: 1,
+          modems: [],
+        },
+      ],
+    }) as unknown as GroundStationConfig;
 
   describe('configureGroundStationForSatellite', () => {
     describe('with default options', () => {
@@ -90,10 +96,12 @@ describe('satellite-config-factory', () => {
       it('should calculate BUC LO frequency', () => {
         // Uplink center at 5943 MHz, target IF around 1100 MHz
         // BUC LO = uplink + targetIF = 5943 + 1100 = 7043 MHz
-        const satellite = createMockSatellite([{
-          id: 'TP-1',
-          uplinkFrequency: 5943e6 as RfFrequency,
-        }]);
+        const satellite = createMockSatellite([
+          {
+            id: 'TP-1',
+            uplinkFrequency: 5943e6 as RfFrequency,
+          },
+        ]);
 
         const result = configureGroundStationForSatellite(satellite);
 
@@ -112,10 +120,12 @@ describe('satellite-config-factory', () => {
         // TX IF = BUC_LO - uplink_center
         // BUC_LO = 7043 MHz, uplink = 5943 MHz
         // TX IF = 7043 - 5943 = 1100 MHz = 1.1e9 Hz
-        const satellite = createMockSatellite([{
-          id: 'TP-1',
-          uplinkFrequency: 5943e6 as RfFrequency,
-        }]);
+        const satellite = createMockSatellite([
+          {
+            id: 'TP-1',
+            uplinkFrequency: 5943e6 as RfFrequency,
+          },
+        ]);
 
         const result = configureGroundStationForSatellite(satellite);
 
@@ -126,10 +136,12 @@ describe('satellite-config-factory', () => {
         // RX IF = LNB_LO - downlink_center
         // LNB_LO = 5250 MHz, downlink = 3718 MHz
         // RX IF = 5250 - 3718 = 1532 MHz
-        const satellite = createMockSatellite([{
-          id: 'TP-1',
-          downlinkFrequency: 3718e6 as RfFrequency,
-        }]);
+        const satellite = createMockSatellite([
+          {
+            id: 'TP-1',
+            downlinkFrequency: 3718e6 as RfFrequency,
+          },
+        ]);
 
         const result = configureGroundStationForSatellite(satellite);
 
@@ -149,10 +161,12 @@ describe('satellite-config-factory', () => {
       });
 
       it('should include transponder bandwidth', () => {
-        const satellite = createMockSatellite([{
-          id: 'TP-1',
-          bandwidth: 36e6 as Hertz,
-        }]);
+        const satellite = createMockSatellite([
+          {
+            id: 'TP-1',
+            bandwidth: 36e6 as Hertz,
+          },
+        ]);
 
         const result = configureGroundStationForSatellite(satellite);
 
@@ -161,11 +175,13 @@ describe('satellite-config-factory', () => {
       });
 
       it('should include calculated frequencies', () => {
-        const satellite = createMockSatellite([{
-          id: 'TP-1',
-          uplinkFrequency: 5943e6 as RfFrequency,
-          downlinkFrequency: 3718e6 as RfFrequency,
-        }]);
+        const satellite = createMockSatellite([
+          {
+            id: 'TP-1',
+            uplinkFrequency: 5943e6 as RfFrequency,
+            downlinkFrequency: 3718e6 as RfFrequency,
+          },
+        ]);
 
         const result = configureGroundStationForSatellite(satellite);
 
@@ -176,13 +192,15 @@ describe('satellite-config-factory', () => {
 
     describe('with beacon', () => {
       it('should include beacon frequency in antenna config', () => {
-        const satellite = createMockSatellite([{
-          id: 'TP-1',
-          beacon: {
-            signalId: 'beacon-1',
-            frequency: 3700e6 as RfFrequency,
-          } as any,
-        }]);
+        const satellite = createMockSatellite([
+          {
+            id: 'TP-1',
+            beacon: {
+              signalId: 'beacon-1',
+              frequency: 3700e6 as RfFrequency,
+            } as any,
+          },
+        ]);
 
         const result = configureGroundStationForSatellite(satellite);
 
@@ -193,13 +211,15 @@ describe('satellite-config-factory', () => {
         // Beacon IF = LNB_LO - beacon_frequency
         // LNB_LO = 5250 MHz, beacon = 3700 MHz
         // Beacon IF = 5250 - 3700 = 1550 MHz = 1.55e9 Hz
-        const satellite = createMockSatellite([{
-          id: 'TP-1',
-          beacon: {
-            signalId: 'beacon-1',
-            frequency: 3700e6 as RfFrequency,
-          } as any,
-        }]);
+        const satellite = createMockSatellite([
+          {
+            id: 'TP-1',
+            beacon: {
+              signalId: 'beacon-1',
+              frequency: 3700e6 as RfFrequency,
+            } as any,
+          },
+        ]);
 
         const result = configureGroundStationForSatellite(satellite);
 
@@ -207,13 +227,15 @@ describe('satellite-config-factory', () => {
       });
 
       it('should set beacon frequency in calculated results', () => {
-        const satellite = createMockSatellite([{
-          id: 'TP-1',
-          beacon: {
-            signalId: 'beacon-1',
-            frequency: 3700e6 as RfFrequency,
-          } as any,
-        }]);
+        const satellite = createMockSatellite([
+          {
+            id: 'TP-1',
+            beacon: {
+              signalId: 'beacon-1',
+              frequency: 3700e6 as RfFrequency,
+            } as any,
+          },
+        ]);
 
         const result = configureGroundStationForSatellite(satellite);
 
@@ -327,10 +349,7 @@ describe('satellite-config-factory', () => {
       });
 
       it('should include available transponders in error message', () => {
-        const satellite = createMockSatellite([
-          { id: 'TP-1' },
-          { id: 'TP-2' },
-        ]);
+        const satellite = createMockSatellite([{ id: 'TP-1' }, { id: 'TP-2' }]);
 
         expect(() => {
           configureGroundStationForSatellite(satellite, {
@@ -447,10 +466,7 @@ describe('satellite-config-factory', () => {
     describe('with custom options', () => {
       it('should use specified antenna index', () => {
         const gs = createMockGroundStation();
-        gs.antennasState = [
-          { ...gs.antennasState![0] },
-          { ...gs.antennasState![0], targetSatelliteId: 99 },
-        ];
+        gs.antennasState = [{ ...gs.antennasState![0] }, { ...gs.antennasState![0], targetSatelliteId: 99 }];
         const satConfig = createSatConfig();
 
         const result = applyConfigToGroundStation(gs, satConfig, {
@@ -463,10 +479,7 @@ describe('satellite-config-factory', () => {
 
       it('should use specified RF front-end index', () => {
         const gs = createMockGroundStation();
-        gs.rfFrontEnds = [
-          { ...gs.rfFrontEnds![0] },
-          { buc: { loFrequency: 6000 as MHz }, lnb: { loFrequency: 4000 as MHz } },
-        ];
+        gs.rfFrontEnds = [{ ...gs.rfFrontEnds![0] }, { buc: { loFrequency: 6000 as MHz }, lnb: { loFrequency: 4000 as MHz } }];
         const satConfig = createSatConfig();
 
         const result = applyConfigToGroundStation(gs, satConfig, {

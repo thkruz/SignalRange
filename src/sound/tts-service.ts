@@ -23,7 +23,7 @@ class TtsService {
 
   private findPreferredVoice_(): void {
     const voices = speechSynthesis.getVoices();
-    this.preferredVoice_ = voices.find(v => v.name === TtsService.PREFERRED_VOICE_NAME) ?? null;
+    this.preferredVoice_ = voices.find((v) => v.name === TtsService.PREFERRED_VOICE_NAME) ?? null;
     if (this.preferredVoice_) {
       console.log(`TTS: Using voice "${this.preferredVoice_.name}"`);
     }

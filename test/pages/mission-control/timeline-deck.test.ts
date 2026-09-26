@@ -1,192 +1,216 @@
-import { vi } from 'vitest';
-import { TimelineDeck } from '../../../src/pages/mission-control/timeline-deck';
+import { OrbitalSatellite } from '@app/equipment/satellite/orbital-satellite';
+import type { Degrees, Kilometers, TleLine1, TleLine2 } from 'ootk';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-// Mock dependencies
-vi.mock('../../../src/engine/utils/query-selector', () => ({
-  qs: vi.fn((selector: string, parent?: Element) => {
-    const root = parent || global.document;
-    return root.querySelector(selector);
-  }),
+/** Scenario clock the test TLEs were authored against: 2027-03-15 14:00:00 UTC */
+const SCENARIO_START_MS = Date.UTC(2027, 2, 15, 14, 0, 0);
+const OBSERVER = { lat: 53.27 as Degrees, lon: -9.05 as Degrees, alt: 0.02 as Kilometers };
+
+/** Same birds the pass-planner suite uses: known passes inside the first hour. */
+const SAT_A = new OrbitalSatellite('TEST-LEO-A', 61701, [], [], {
+  tle1: '1 61701U 27015A   27074.58333333  .00001000  00000-0  10000-3 0  9996' as TleLine1,
+  tle2: '2 61701  97.6000  26.0000 0010000  90.0000 294.0000 14.90000000123451' as TleLine2,
+  observer: OBSERVER,
+});
+const SAT_B = new OrbitalSatellite('TEST-LEO-B', 61702, [], [], {
+  tle1: '1 61702U 27015A   27074.58333333  .00001000  00000-0  10000-3 0  9997' as TleLine1,
+  tle2: '2 61702  98.1000  30.0000 0010000  90.0000 236.0000 14.60000000123456' as TleLine2,
+  observer: OBSERVER,
+});
+
+/** Satellites the mocked SimulationManager reports; swapped per test. */
+let mockSatellites: unknown[] = [SAT_A, SAT_B];
+
+vi.mock('@app/simulation/simulation-manager', () => ({
+  SimulationManager: {
+    getInstance: vi.fn(() => ({
+      get satellites() {
+        return mockSatellites;
+      },
+      groundStations: [],
+    })),
+  },
 }));
 
+vi.mock('@app/simulation/sim-time', () => ({
+  getSimulatedNowMs: vi.fn(() => SCENARIO_START_MS),
+  getSimulatedNow: vi.fn(() => new Date(SCENARIO_START_MS)),
+}));
+
+vi.mock('@app/engine/utils/query-selector', () => ({
+  qs: vi.fn((selector: string, parent?: Element) => (parent ?? global.document).querySelector(selector)),
+}));
+
+import { TimelineDeck } from '@app/pages/mission-control/timeline-deck';
+
+/**
+ * The deck runs against the REAL PassPlannerService and the REAL ground-track
+ * math, so a green test proves the whole chain (SGP4 -> pass prediction ->
+ * lighting -> DOM) rather than just the markup.
+ */
 describe('TimelineDeck', () => {
-  let containerEl: HTMLElement;
-  let timelineDeck: TimelineDeck;
+  let deck: TimelineDeck;
+
+  const mount = (config = {}): TimelineDeck => {
+    const container = document.createElement('div');
+
+    container.id = 'test-container';
+    document.body.appendChild(container);
+
+    return new TimelineDeck('test-container', config);
+  };
 
   beforeEach(() => {
-    vi.clearAllMocks();
-
-    // Setup container
-    containerEl = document.createElement('div');
-    containerEl.id = 'test-container';
-    document.body.appendChild(containerEl);
-
-    timelineDeck = new TimelineDeck('test-container');
-  });
-
-  afterEach(() => {
     document.body.innerHTML = '';
+    mockSatellites = [SAT_A, SAT_B];
   });
 
-  describe('constructor', () => {
-    it('should create instance', () => {
-      expect(timelineDeck).toBeInstanceOf(TimelineDeck);
+  describe('shell', () => {
+    beforeEach(() => {
+      deck = mount();
     });
 
-    it('should set correct id', () => {
-      expect(timelineDeck.id).toBe('timeline-deck-container');
+    it('mounts the deck footer with its stable id', () => {
+      expect(document.querySelector('#timeline-deck-container')).not.toBeNull();
+      expect(deck.id).toBe('timeline-deck-container');
     });
-  });
 
-  describe('HTML rendering', () => {
-    it('should render timeline footer element', () => {
+    it('renders the horizon buttons with the configured one active', () => {
+      const labels = [...document.querySelectorAll('.timeline-zoom-controls button')].map((b) => b.textContent);
+
+      expect(labels).toEqual(['2H', '6H', '24H']);
+      expect(document.querySelector('.timeline-zoom-controls button.active')?.textContent).toBe('6H');
+    });
+
+    it('honours a configured horizon', () => {
+      document.body.innerHTML = '';
+      mount({ horizonHours: 24 });
+
+      expect(document.querySelector('.timeline-zoom-controls button.active')?.textContent).toBe('24H');
+    });
+
+    it('starts collapsed when the scenario asks for it', () => {
+      document.body.innerHTML = '';
+      mount({ startCollapsed: true });
+
+      expect(document.querySelector('#timeline-deck-container')?.classList.contains('collapsed')).toBe(true);
+    });
+
+    it('toggles collapsed state on the collapse button', () => {
       const footer = document.querySelector('#timeline-deck-container');
-      expect(footer).not.toBeNull();
-    });
-
-    it('should render timeline header', () => {
-      const header = document.querySelector('.timeline-header');
-      expect(header).not.toBeNull();
-    });
-
-    it('should render Mission Timeline title', () => {
-      const header = document.querySelector('.timeline-header-left span');
-      expect(header?.textContent).toContain('Mission Timeline');
-    });
-
-    it('should render zoom controls', () => {
-      const zoomControls = document.querySelector('.timeline-zoom-controls');
-      expect(zoomControls).not.toBeNull();
-    });
-
-    it('should render 2H zoom button', () => {
-      const buttons = document.querySelectorAll('.timeline-zoom-controls button');
-      const buttonTexts = Array.from(buttons).map(b => b.textContent);
-      expect(buttonTexts).toContain('2H');
-    });
-
-    it('should render 6H zoom button as active', () => {
-      const activeBtn = document.querySelector('.timeline-zoom-controls button.active');
-      expect(activeBtn?.textContent).toBe('6H');
-    });
-
-    it('should render 24H zoom button', () => {
-      const buttons = document.querySelectorAll('.timeline-zoom-controls button');
-      const buttonTexts = Array.from(buttons).map(b => b.textContent);
-      expect(buttonTexts).toContain('24H');
-    });
-
-    it('should render collapse button', () => {
-      const collapseBtn = document.querySelector('.timeline-collapse-btn');
-      expect(collapseBtn).not.toBeNull();
-    });
-
-    it('should render collapse icon SVG', () => {
-      const collapseSvg = document.querySelector('.timeline-collapse-icon');
-      expect(collapseSvg).not.toBeNull();
-    });
-
-    it('should render timeline content container', () => {
-      const content = document.querySelector('.timeline-content');
-      expect(content).not.toBeNull();
-    });
-
-    it('should render timeline axis', () => {
-      const axis = document.querySelector('.timeline-axis');
-      expect(axis).not.toBeNull();
-    });
-  });
-
-  describe('Gantt placeholder', () => {
-    it('should render timeline grid', () => {
-      const grid = document.querySelector('.timeline-grid');
-      expect(grid).not.toBeNull();
-    });
-
-    it('should render grid lines', () => {
-      const gridLines = document.querySelectorAll('.timeline-grid-line');
-      expect(gridLines.length).toBe(4);
-    });
-
-    it('should render timeline tracks container', () => {
-      const tracks = document.querySelector('.timeline-tracks');
-      expect(tracks).not.toBeNull();
-    });
-
-    it('should render GS VISIBILITY track', () => {
-      const trackLabel = document.querySelector('.timeline-track-label');
-      expect(trackLabel?.textContent).toContain('GS VISIBILITY');
-    });
-
-    it('should render LIGHTING track', () => {
-      const trackLabels = document.querySelectorAll('.timeline-track-label');
-      const labels = Array.from(trackLabels).map(l => l.textContent);
-      expect(labels).toContain('LIGHTING');
-    });
-
-    it('should render SCHEDULE track', () => {
-      const trackLabels = document.querySelectorAll('.timeline-track-label');
-      const labels = Array.from(trackLabels).map(l => l.textContent);
-      expect(labels).toContain('SCHEDULE');
-    });
-
-    it('should render timeline blocks', () => {
-      const blocks = document.querySelectorAll('.timeline-block');
-      expect(blocks.length).toBeGreaterThan(0);
-    });
-
-    it('should render pass-active blocks', () => {
-      const activeBlocks = document.querySelectorAll('.timeline-block.pass-active');
-      expect(activeBlocks.length).toBeGreaterThan(0);
-    });
-
-    it('should render eclipse block', () => {
-      const eclipseBlock = document.querySelector('.timeline-block.eclipse');
-      expect(eclipseBlock).not.toBeNull();
-      expect(eclipseBlock?.textContent).toContain('ECLIPSE');
-    });
-
-    it('should render timeline cursor/playhead', () => {
-      const cursor = document.querySelector('.timeline-cursor');
-      expect(cursor).not.toBeNull();
-    });
-  });
-
-  describe('timeline axis', () => {
-    it('should render time labels', () => {
-      const axis = document.querySelector('.timeline-axis');
-      expect(axis?.innerHTML).toContain('12:00');
-      expect(axis?.innerHTML).toContain('14:00');
-      expect(axis?.innerHTML).toContain('16:00');
-      expect(axis?.innerHTML).toContain('18:00');
-      expect(axis?.innerHTML).toContain('20:00');
-    });
-  });
-
-  describe('collapse/expand behavior', () => {
-    it('should toggle collapsed class on click', () => {
-      const footer = document.querySelector('#timeline-deck-container');
-      const collapseBtn = document.querySelector('.timeline-collapse-btn') as HTMLElement;
+      const button = document.querySelector('.timeline-collapse-btn') as HTMLElement;
 
       expect(footer?.classList.contains('collapsed')).toBe(false);
-
-      collapseBtn?.click();
+      button.click();
       expect(footer?.classList.contains('collapsed')).toBe(true);
-
-      collapseBtn?.click();
+      expect(button.classList.contains('is-rotated')).toBe(true);
+      button.click();
       expect(footer?.classList.contains('collapsed')).toBe(false);
     });
+  });
 
-    it('should toggle is-rotated class on collapse button', () => {
-      const collapseBtn = document.querySelector('.timeline-collapse-btn') as HTMLElement;
+  describe('contact lanes', () => {
+    beforeEach(() => {
+      deck = mount({ horizonHours: 6 });
+    });
 
-      expect(collapseBtn?.classList.contains('is-rotated')).toBe(false);
+    it('renders one lane per orbital satellite, labelled by name', () => {
+      const labels = [...document.querySelectorAll('.timeline-track-label')].map((l) => l.textContent);
 
-      collapseBtn?.click();
-      expect(collapseBtn?.classList.contains('is-rotated')).toBe(true);
+      expect(labels).toEqual(['TEST-LEO-A', 'TEST-LEO-B']);
+    });
 
-      collapseBtn?.click();
-      expect(collapseBtn?.classList.contains('is-rotated')).toBe(false);
+    it('draws real predicted passes as blocks inside the window', () => {
+      const blocks = [...document.querySelectorAll<HTMLElement>('.timeline-block')];
+
+      expect(blocks.length).toBeGreaterThan(0);
+
+      for (const block of blocks) {
+        const left = parseFloat(block.style.left);
+        const width = parseFloat(block.style.width);
+
+        expect(left).toBeGreaterThanOrEqual(0);
+        expect(left + width).toBeLessThanOrEqual(100.001);
+        expect(width).toBeGreaterThan(0);
+      }
+    });
+
+    it('labels each block with its max elevation and an AOS/LOS tooltip', () => {
+      const block = document.querySelector<HTMLElement>('.timeline-block');
+
+      expect(block?.textContent).toMatch(/^\d+°$/);
+      expect(block?.title).toMatch(/AOS \d{2}:\d{2}:\d{2}Z → LOS \d{2}:\d{2}:\d{2}Z/);
+      expect(block?.title).toContain('max el');
+    });
+
+    it('classifies passes by quality', () => {
+      // Both authored birds make high-elevation passes over this observer, so
+      // at least one block must land in the "good" band rather than everything
+      // collapsing to a single class.
+      expect(document.querySelectorAll('.timeline-block').length).toBeGreaterThan(0);
+      expect(document.querySelectorAll('.timeline-block.pass-good').length).toBeGreaterThan(0);
+    });
+
+    it('positions the playhead at the current scenario time', () => {
+      const cursor = document.querySelector<HTMLElement>('.timeline-cursor');
+
+      // The window is anchored at "now", so the playhead starts at the left.
+      expect(cursor).not.toBeNull();
+      expect(parseFloat(cursor!.style.left)).toBeCloseTo(0, 3);
+    });
+
+    it('re-predicts when the horizon changes', () => {
+      const sixHourBlocks = document.querySelectorAll('.timeline-block').length;
+
+      (document.querySelector('[data-horizon="24"]') as HTMLElement).click();
+
+      expect(document.querySelector('.timeline-zoom-controls button.active')?.textContent).toBe('24H');
+      // A 24 h window contains strictly more passes than a 6 h one.
+      expect(document.querySelectorAll('.timeline-block').length).toBeGreaterThan(sixHourBlocks);
+    });
+
+    it('labels the axis in scenario time', () => {
+      const ticks = [...document.querySelectorAll('.timeline-axis span')].map((s) => s.textContent);
+
+      expect(ticks).toHaveLength(5);
+      expect(ticks[0]).toBe('14:00Z');
+      expect(ticks[4]).toBe('20:00Z');
+    });
+  });
+
+  describe('lighting', () => {
+    it('shades sunlit and eclipse spans behind the contacts by default', () => {
+      mount({ horizonHours: 6 });
+
+      expect(document.querySelectorAll('.timeline-lighting.lighting-sun').length).toBeGreaterThan(0);
+      expect(document.querySelectorAll('.timeline-lighting.lighting-eclipse').length).toBeGreaterThan(0);
+    });
+
+    it('omits lighting entirely when the scenario turns it off', () => {
+      mount({ horizonHours: 6, showLighting: false });
+
+      expect(document.querySelectorAll('.timeline-lighting')).toHaveLength(0);
+      // Contacts still render.
+      expect(document.querySelectorAll('.timeline-block').length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('degenerate scenarios', () => {
+    it('says so when the scenario has no orbital satellites', () => {
+      mockSatellites = [{ noradId: 1, name: 'GEO-BIRD' }];
+      mount();
+
+      expect(document.querySelector('.timeline-empty')?.textContent).toContain('No orbital satellites');
+      expect(document.querySelectorAll('.timeline-block')).toHaveLength(0);
+    });
+  });
+
+  describe('dispose', () => {
+    it('removes the deck from the DOM', () => {
+      deck = mount();
+      deck.dispose();
+
+      expect(document.querySelector('#timeline-deck-container')).toBeNull();
     });
   });
 });

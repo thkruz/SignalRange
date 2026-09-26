@@ -1,12 +1,12 @@
 import { HelpButton } from '@app/components/help-btn/help-btn';
 import { PowerSwitch } from '@app/components/power-switch/power-switch';
 import { ToggleSwitch } from '@app/components/toggle-switch/toggle-switch';
-import { html } from "@app/engine/utils/development/formatter";
-import { qs } from "@app/engine/utils/query-selector";
+import { html } from '@app/engine/utils/development/formatter';
+import { qs } from '@app/engine/utils/query-selector';
+import { RFFrontEndCore } from '@app/equipment/rf-front-end/rf-front-end-core';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
 import { GPSDOState } from '.';
-import { RFFrontEndCore } from '@app/equipment/rf-front-end/rf-front-end-core';
 import { GPSDOModuleCore } from './gpsdo-module-core';
 import './gpsdo-module.css';
 
@@ -25,22 +25,13 @@ export class GPSDOModuleUIStandard extends GPSDOModuleCore {
     // Call parent constructor
     super(state, rfFrontEnd, unit);
 
-    this.powerSwitch_ = PowerSwitch.create(
-      `${this.uniqueId}-power`,
-      this.state.isPowered,
-      false,
-      true,
-    );
+    this.powerSwitch_ = PowerSwitch.create(`${this.uniqueId}-power`, this.state.isPowered, false, true);
 
-    this.gnssSwitch_ = ToggleSwitch.create(
-      `${this.uniqueId}-gnss`,
-      this.state.isGnssSwitchUp,
-      false
-    );
+    this.gnssSwitch_ = ToggleSwitch.create(`${this.uniqueId}-gnss`, this.state.isGnssSwitchUp, false);
 
     this.helpBtn_ = HelpButton.create(
       `gpsdo-help-${rfFrontEnd.state.uuid}`,
-      "GPS Disciplined Oscillator",
+      'GPS Disciplined Oscillator',
       null,
       'https://docs.signalrange.space/equipment/gps-disciplined-oscillator?content-only=true&dark=true'
     );
@@ -208,10 +199,20 @@ export class GPSDOModuleUIStandard extends GPSDOModuleCore {
     const outputsElement = qs('.gpsdo-outputs', container);
     const holdoverElement = qs('.gpsdo-holdover', container);
 
-    if (!lockLedElement || !gnssLedElement || !warmLedElement ||
-      !freqAccuracyElement || !stabilityElement || !phaseNoiseElement ||
-      !satsElement || !utcElement || !tempElement || !warmupLedElement ||
-      !outputsElement || !holdoverElement) {
+    if (
+      !lockLedElement ||
+      !gnssLedElement ||
+      !warmLedElement ||
+      !freqAccuracyElement ||
+      !stabilityElement ||
+      !phaseNoiseElement ||
+      !satsElement ||
+      !utcElement ||
+      !tempElement ||
+      !warmupLedElement ||
+      !outputsElement ||
+      !holdoverElement
+    ) {
       throw new Error('GPSDOModule: Cannot initialize DOM cache - one or more elements not found');
     }
 
@@ -243,7 +244,7 @@ export class GPSDOModuleUIStandard extends GPSDOModuleCore {
     return {
       powerSwitch: this.powerSwitch_,
       gnssSwitch: this.gnssSwitch_,
-      helpBtn: this.helpBtn_
+      helpBtn: this.helpBtn_,
     };
   }
 
@@ -261,7 +262,7 @@ export class GPSDOModuleUIStandard extends GPSDOModuleCore {
       temperature: () => this.state.temperature.toFixed(1),
       warmupTime: () => this.formatWarmupTime_(),
       outputs: () => `${this.state.active10MHzOutputs}/${this.state.max10MHzOutputs}`,
-      holdoverError: () => this.state.holdoverError.toFixed(1)
+      holdoverError: () => this.state.holdoverError.toFixed(1),
     };
   }
 
@@ -273,7 +274,7 @@ export class GPSDOModuleUIStandard extends GPSDOModuleCore {
     return {
       lock: () => this.getLockLedStatus_(),
       gnss: () => this.getGnssLedStatus_(),
-      warm: () => this.getWarmupLedStatus_()
+      warm: () => this.getWarmupLedStatus_(),
     };
   }
 
@@ -340,7 +341,7 @@ export class GPSDOModuleUIStandard extends GPSDOModuleCore {
       this.domCache_.warmup.textContent = this.formatWarmupTime_();
       this.domCache_.outputs.textContent = `${this.state.active10MHzOutputs}/${this.state.max10MHzOutputs}`;
 
-      this.domCache_.holdover.textContent = (this.state.holdoverError).toFixed(3);
+      this.domCache_.holdover.textContent = this.state.holdoverError.toFixed(3);
     }
 
     // Sync UI components

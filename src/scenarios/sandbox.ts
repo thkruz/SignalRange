@@ -1,10 +1,10 @@
+import { vermontGroundStation } from '@app/campaigns/nats/ground-stations';
+import { aurora7Satellite, tidemark1Satellite } from '@app/campaigns/nats/satellites';
+import { createRfFrontEnd } from '@app/campaigns/rf-front-end-factory';
 import type { AntennaState } from '@app/equipment/antenna';
 import type { ScenarioData } from '@app/ScenarioData';
 import type { dB, dBm, Hertz, MHz } from '@app/types';
 import type { Degrees } from 'ootk';
-import { createRfFrontEnd } from '@app/campaigns/rf-front-end-factory';
-import { vermontGroundStation } from '@app/campaigns/nats/ground-stations';
-import { aurora7Satellite, tidemark1Satellite } from '@app/campaigns/nats/satellites';
 
 /**
  * Sandbox Mode
@@ -26,13 +26,7 @@ export const sandboxData: ScenarioData = {
   difficulty: 'beginner',
   missionType: 'Sandbox',
   description: `Explore the simulation environment freely without specific objectives. Configure equipment, test signals, and experiment with different setups at your own pace.`,
-  equipment: [
-    '9-meter C-band Antenna',
-    'Complete RF Front End',
-    'Spectrum Analyzer',
-    'RX/TX Modems',
-    'All Control Systems',
-  ],
+  equipment: ['9-meter C-band Antenna', 'Complete RF Front End', 'Spectrum Analyzer', 'RX/TX Modems', 'All Control Systems'],
   settings: {
     isSync: true,
     groundStations: [

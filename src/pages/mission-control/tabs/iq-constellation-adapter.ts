@@ -1,8 +1,12 @@
-import { qs } from "@app/engine/utils/query-selector";
-import { IQSignalInfo, Receiver } from "@app/equipment/receiver/receiver";
-import { EventBus } from "@app/events/event-bus";
-import { Events } from "@app/events/events";
-import { ModulationType } from "@app/types";
+import { qs } from '@app/engine/utils/query-selector';
+import { IQSignalInfo, Receiver } from '@app/equipment/receiver/receiver';
+import { EventBus } from '@app/events/event-bus';
+import { Events } from '@app/events/events';
+import { Rng } from '@app/simulation/rng';
+import { ModulationType } from '@app/types';
+
+/** Seeded draws for this module (see simulation/rng.ts). */
+const random = (): number => Rng.stream('display:iq-constellation').next();
 
 /**
  * IQConstellationAdapter - Displays I&Q constellation diagram for receiver signals
@@ -155,9 +159,9 @@ export class IQConstellationAdapter {
     let cnClass: string;
     const adcStatus = state.adcDegradation?.status;
     if (adcStatus === 'clipping' || adcStatus === 'severe-clipping') {
-      cnClass = 'text-danger';  // Red for clipping
+      cnClass = 'text-danger'; // Red for clipping
     } else if (adcStatus === 'low-level' || adcStatus === 'severe-low') {
-      cnClass = 'text-info';    // Blue for low level
+      cnClass = 'text-info'; // Blue for low level
     } else if (displayCn >= 8) {
       cnClass = 'text-success';
     } else if (displayCn >= 5) {
@@ -265,14 +269,14 @@ export class IQConstellationAdapter {
   private boxMullerGaussian_(): { z0: number; z1: number } {
     let u1: number, u2: number;
     do {
-      u1 = Math.random();
-      u2 = Math.random();
+      u1 = random();
+      u2 = random();
     } while (u1 <= Number.EPSILON);
 
     const mag = Math.sqrt(-2.0 * Math.log(u1));
     return {
       z0: mag * Math.cos(2 * Math.PI * u2),
-      z1: mag * Math.sin(2 * Math.PI * u2)
+      z1: mag * Math.sin(2 * Math.PI * u2),
     };
   }
 
@@ -284,7 +288,7 @@ export class IQConstellationAdapter {
    * < 0 dB: just noise (constellation barely visible)
    */
   private computeNoiseSpread_(cnRatio_dB: number): number {
-    if (cnRatio_dB < 0) return 0.9;     // Just noise - constellation barely visible
+    if (cnRatio_dB < 0) return 0.9; // Just noise - constellation barely visible
     if (cnRatio_dB < 5) {
       // Degraded: lerp from 0.9 at 0 dB to 0.35 at 5 dB
       return 0.9 - (cnRatio_dB / 5) * 0.55;
@@ -313,19 +317,16 @@ export class IQConstellationAdapter {
    * Apply ADC clipping effect to constellation points.
    * Compresses points toward origin when clipping occurs.
    */
-  private applyClippingEffect_(
-    points: { i: number; q: number }[],
-    clipPenalty_dB: number
-  ): { i: number; q: number }[] {
+  private applyClippingEffect_(points: { i: number; q: number }[], clipPenalty_dB: number): { i: number; q: number }[] {
     if (clipPenalty_dB <= 0) return points;
 
     // Compression factor: severe clipping pushes symbols toward origin
     // clipPenalty of 10 dB = ~50% compression
     const compressionFactor = 1 / (1 + clipPenalty_dB / 10);
 
-    return points.map(p => ({
+    return points.map((p) => ({
       i: p.i * compressionFactor,
-      q: p.q * compressionFactor
+      q: p.q * compressionFactor,
     }));
   }
 
@@ -333,10 +334,7 @@ export class IQConstellationAdapter {
    * Apply carrier recovery error when modulation is mismatched.
    * Simulates carrier loop hunting - constellation rotates slowly.
    */
-  private applyCarrierRecoveryError_(
-    points: { i: number; q: number }[],
-    state: IQSignalInfo
-  ): { i: number; q: number }[] {
+  private applyCarrierRecoveryError_(points: { i: number; q: number }[], state: IQSignalInfo): { i: number; q: number }[] {
     if (!state.modulationMismatch) {
       this.carrierRotationPhase_ = 0;
       return points;
@@ -349,14 +347,14 @@ export class IQConstellationAdapter {
     const cos = Math.cos(this.carrierRotationPhase_);
     const sin = Math.sin(this.carrierRotationPhase_);
 
-    return points.map(p => ({
+    return points.map((p) => ({
       i: p.i * cos - p.q * sin,
-      q: p.i * sin + p.q * cos
+      q: p.i * sin + p.q * cos,
     }));
   }
 
   private getMismatchOrderScale_(actual: ModulationType | null, configured: ModulationType): number {
-    const order: Record<string, number> = { 'BPSK': 2, 'QPSK': 4, '8QAM': 8, '16QAM': 16 };
+    const order: Record<string, number> = { BPSK: 2, QPSK: 4, '8QAM': 8, '16QAM': 16 };
     const actualOrder = order[actual ?? 'QPSK'] ?? 4;
     const configuredOrder = order[configured] ?? 4;
     const ratio = actualOrder / configuredOrder;
@@ -367,19 +365,16 @@ export class IQConstellationAdapter {
    * Apply phase rotation from frequency offset.
    * Offset causes constellation to rotate continuously.
    */
-  private applyFrequencyOffset_(
-    points: { i: number; q: number }[],
-    frequencyOffset_Hz: number
-  ): { i: number; q: number }[] {
+  private applyFrequencyOffset_(points: { i: number; q: number }[], frequencyOffset_Hz: number): { i: number; q: number }[] {
     // Scale down frequency offset for visible rotation (avoid spinning too fast)
     const scaledOffset = frequencyOffset_Hz / 1000; // kHz scale
     const phase = 2 * Math.PI * scaledOffset * (Date.now() / 1000);
     const cos = Math.cos(phase);
     const sin = Math.sin(phase);
 
-    return points.map(p => ({
+    return points.map((p) => ({
       i: p.i * cos - p.q * sin,
-      q: p.i * sin + p.q * cos
+      q: p.i * sin + p.q * cos,
     }));
   }
 
@@ -388,7 +383,7 @@ export class IQConstellationAdapter {
       case 'BPSK':
         return [
           { i: -1, q: 0 },
-          { i: 1, q: 0 }
+          { i: 1, q: 0 },
         ];
       case 'QPSK': {
         const qpskVal = 0.707;
@@ -396,7 +391,7 @@ export class IQConstellationAdapter {
           { i: qpskVal, q: qpskVal },
           { i: -qpskVal, q: qpskVal },
           { i: -qpskVal, q: -qpskVal },
-          { i: qpskVal, q: -qpskVal }
+          { i: qpskVal, q: -qpskVal },
         ];
       }
       case '8QAM':
@@ -408,7 +403,7 @@ export class IQConstellationAdapter {
           { i: -1, q: 0 },
           { i: -0.707, q: -0.707 },
           { i: 0, q: -1 },
-          { i: 0.707, q: -0.707 }
+          { i: 0.707, q: -0.707 },
         ];
       case '16QAM': {
         const v = 0.33;
@@ -425,27 +420,18 @@ export class IQConstellationAdapter {
           { i: 0.707, q: 0.707 },
           { i: -0.707, q: 0.707 },
           { i: -0.707, q: -0.707 },
-          { i: 0.707, q: -0.707 }
+          { i: 0.707, q: -0.707 },
         ];
     }
   }
 
-  private drawConstellationRealistic_(
-    ctx: CanvasRenderingContext2D,
-    points: { i: number; q: number }[],
-    cx: number,
-    cy: number,
-    scale: number,
-    state: IQSignalInfo
-  ): void {
+  private drawConstellationRealistic_(ctx: CanvasRenderingContext2D, points: { i: number; q: number }[], cx: number, cy: number, scale: number, state: IQSignalInfo): void {
     // Use effective C/N if available (includes ADC penalty)
     const effectiveCn = state.effectiveCnRatio_dB ?? state.cnRatio_dB;
     const noiseSpread = this.computeNoiseSpread_(effectiveCn);
 
     // Add quantization noise spread if present
-    const quantNoiseSpread = state.adcDegradation
-      ? this.computeQuantizationNoiseSpread_(state.adcDegradation.quantizationPenalty_dB)
-      : 0;
+    const quantNoiseSpread = state.adcDegradation ? this.computeQuantizationNoiseSpread_(state.adcDegradation.quantizationPenalty_dB) : 0;
     const totalNoiseSpread = noiseSpread + quantNoiseSpread;
 
     const samplesPerPoint = this.getSamplesPerPoint_(effectiveCn);
@@ -474,16 +460,17 @@ export class IQConstellationAdapter {
     // Draw ideal constellation reference points
     // Visibility based on signal quality: hidden when noise, dim when degraded
     const cn = state.effectiveCnRatio_dB ?? state.cnRatio_dB;
-    if (cn >= 0) {  // Don't draw reference points for pure noise
+    if (cn >= 0) {
+      // Don't draw reference points for pure noise
       let refColor: string;
       if (cn < 5) {
-        refColor = 'rgba(255, 255, 255, 0.15)';  // Very dim - degraded
+        refColor = 'rgba(255, 255, 255, 0.15)'; // Very dim - degraded
       } else if (cn < 8) {
-        refColor = 'rgba(255, 255, 255, 0.3)';   // Dim - marginal
+        refColor = 'rgba(255, 255, 255, 0.3)'; // Dim - marginal
       } else if (state.hasLock) {
-        refColor = '#00ff80';                    // Bright green - locked, great
+        refColor = '#00ff80'; // Bright green - locked, great
       } else {
-        refColor = 'rgba(255, 255, 255, 0.5)';   // Medium - good but not locked
+        refColor = 'rgba(255, 255, 255, 0.5)'; // Medium - good but not locked
       }
       ctx.fillStyle = refColor;
       for (const point of points) {
@@ -509,43 +496,43 @@ export class IQConstellationAdapter {
 
     // Noise takes priority - always gray when C/N < 0
     if (cn < 0) {
-      return 'rgba(128, 128, 128, 0.4)';    // Gray - just noise
+      return 'rgba(128, 128, 128, 0.4)'; // Gray - just noise
     }
 
     // ADC clipping status (only relevant when there's signal)
     const adcStatus = state.adcDegradation?.status;
     if (adcStatus === 'severe-clipping') {
-      return 'rgba(255, 0, 0, 0.6)';        // Red - severe clipping
+      return 'rgba(255, 0, 0, 0.6)'; // Red - severe clipping
     }
     if (adcStatus === 'clipping') {
-      return 'rgba(255, 100, 0, 0.6)';      // Orange - clipping
+      return 'rgba(255, 100, 0, 0.6)'; // Orange - clipping
     }
 
     if (cn < 5) {
-      return 'rgba(255, 80, 80, 0.6)';      // Red - degraded signal
+      return 'rgba(255, 80, 80, 0.6)'; // Red - degraded signal
     }
     if (cn < 8) {
-      return 'rgba(255, 200, 0, 0.6)';      // Yellow - marginal signal
+      return 'rgba(255, 200, 0, 0.6)'; // Yellow - marginal signal
     }
     // >= 8 dB: great signal
     if (state.hasLock) {
-      return 'rgba(0, 255, 128, 0.6)';      // Green - locked, great signal
+      return 'rgba(0, 255, 128, 0.6)'; // Green - locked, great signal
     }
     if (state.modulationMismatch) {
-      return 'rgba(255, 165, 0, 0.6)';      // Orange - wrong modulation config
+      return 'rgba(255, 165, 0, 0.6)'; // Orange - wrong modulation config
     }
-    return 'rgba(100, 255, 100, 0.6)';      // Light green - good signal, not locked
+    return 'rgba(100, 255, 100, 0.6)'; // Light green - good signal, not locked
   }
 
   private getSamplesPerPoint_(cnRatio_dB: number): number {
     // More samples when C/N is low (to show spread)
     // Fewer when C/N is high (tight clusters visible with fewer points)
-    if (cnRatio_dB < 0) return 50;   // Just noise - many samples
-    if (cnRatio_dB < 5) return 40;   // Degraded
-    if (cnRatio_dB < 8) return 30;   // Marginal
-    if (cnRatio_dB < 12) return 25;  // Good
-    if (cnRatio_dB < 15) return 20;  // Great
-    return 15;                        // Excellent
+    if (cnRatio_dB < 0) return 50; // Just noise - many samples
+    if (cnRatio_dB < 5) return 40; // Degraded
+    if (cnRatio_dB < 8) return 30; // Marginal
+    if (cnRatio_dB < 12) return 25; // Good
+    if (cnRatio_dB < 15) return 20; // Great
+    return 15; // Excellent
   }
 
   public dispose(): void {

@@ -92,7 +92,7 @@ export class LocalStorageProvider implements StorageProvider {
   }
 
   private notifySubscribers(data: any): void {
-    this.subscribers.forEach(callback => {
+    this.subscribers.forEach((callback) => {
       try {
         callback(data);
       } catch (error) {

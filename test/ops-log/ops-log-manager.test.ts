@@ -3,6 +3,7 @@ import { EventBus } from '../../src/events/event-bus';
 import { Events } from '../../src/events/events';
 import { OpsLogManager } from '../../src/ops-log/ops-log-manager';
 import { PreviousShiftLogEntry } from '../../src/ops-log/ops-log-types';
+import { advanceSimTime } from '../helpers/sim-time';
 
 describe('OpsLogManager', () => {
   let eventBus: EventBus;
@@ -28,9 +29,7 @@ describe('OpsLogManager', () => {
     });
 
     it('should throw when getInstance() called before initialize()', () => {
-      expect(() => OpsLogManager.getInstance()).toThrow(
-        'OpsLogManager not initialized. Call initialize() first.'
-      );
+      expect(() => OpsLogManager.getInstance()).toThrow('OpsLogManager not initialized. Call initialize() first.');
     });
 
     it('should return true from isInitialized() after initialize()', () => {
@@ -52,9 +51,7 @@ describe('OpsLogManager', () => {
       OpsLogManager.initialize('10:00:00', '2026-01-01');
       const secondManager = OpsLogManager.initialize('14:00:00', '2026-06-15');
 
-      expect(warnSpy).toHaveBeenCalledWith(
-        'OpsLogManager already initialized. Destroying previous instance.'
-      );
+      expect(warnSpy).toHaveBeenCalledWith('OpsLogManager already initialized. Destroying previous instance.');
       expect(OpsLogManager.getInstance()).toBe(secondManager);
 
       warnSpy.mockRestore();
@@ -239,7 +236,7 @@ describe('OpsLogManager', () => {
       const initialMs = manager.getCurrentTimestampMs();
 
       // Emit UPDATE event (simulating simulation tick)
-      eventBus.emit(Events.UPDATE, 5000); // 5 seconds
+      advanceSimTime(5000, { emitUpdate: true }); // 5 seconds
 
       expect(manager.getCurrentTimestampMs()).toBe(initialMs);
     });
@@ -250,7 +247,7 @@ describe('OpsLogManager', () => {
       const initialMs = manager.getCurrentTimestampMs();
 
       manager.resume();
-      eventBus.emit(Events.UPDATE, 5000); // 5 seconds
+      advanceSimTime(5000, { emitUpdate: true }); // 5 seconds
 
       expect(manager.getCurrentTimestampMs()).toBe(initialMs + 5000);
     });
@@ -265,7 +262,7 @@ describe('OpsLogManager', () => {
 
       manager.resume();
       // Advance by 1.5 seconds (crosses second boundary)
-      eventBus.emit(Events.UPDATE, 1500);
+      advanceSimTime(1500, { emitUpdate: true });
 
       expect(callback).toHaveBeenCalledTimes(1);
       expect(callback).toHaveBeenCalledWith({
@@ -284,7 +281,7 @@ describe('OpsLogManager', () => {
 
       manager.resume();
       // Advance by only 100ms (does not cross second boundary)
-      eventBus.emit(Events.UPDATE, 100);
+      advanceSimTime(100, { emitUpdate: true });
 
       expect(callback).not.toHaveBeenCalled();
     });
@@ -305,9 +302,7 @@ describe('OpsLogManager', () => {
 
   describe('state persistence', () => {
     it('should return serializable state', () => {
-      const previousLogs: PreviousShiftLogEntry[] = [
-        { timestamp: '08:00', entry: 'Shift started' },
-      ];
+      const previousLogs: PreviousShiftLogEntry[] = [{ timestamp: '08:00', entry: 'Shift started' }];
 
       OpsLogManager.initialize('12:00:00', '2026-01-01', previousLogs);
       const manager = OpsLogManager.getInstance();
@@ -414,7 +409,7 @@ describe('OpsLogManager', () => {
       OpsLogManager.destroy();
 
       // Try to advance time after destroy
-      eventBus.emit(Events.UPDATE, 5000);
+      advanceSimTime(5000, { emitUpdate: true });
 
       // Re-initialize to verify the old instance was properly cleaned up
       OpsLogManager.initialize('12:00:00', '2026-01-01');
@@ -440,7 +435,7 @@ describe('OpsLogManager', () => {
       const manager = OpsLogManager.getInstance();
 
       manager.resume();
-      eventBus.emit(Events.UPDATE, 65000); // 65 seconds
+      advanceSimTime(65000, { emitUpdate: true }); // 65 seconds
 
       manager.log('After advancement');
       const entries = manager.getEntries();
@@ -460,7 +455,7 @@ describe('OpsLogManager', () => {
 
       // Simulate multiple rapid updates
       for (let i = 0; i < 10; i++) {
-        eventBus.emit(Events.UPDATE, 100); // 100ms each
+        advanceSimTime(100, { emitUpdate: true }); // 100ms each
       }
 
       // Total: 1000ms = 1 second, should have crossed boundary once

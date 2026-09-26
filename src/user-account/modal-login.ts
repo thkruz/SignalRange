@@ -49,7 +49,7 @@ const oauthButtons = [
     icon: '/images/discord-white.png',
     text: 'Continue with Discord',
     cssClass: 'oauth-btn oauth-btn--discord',
-  }
+  },
 ] as OAuthButton[];
 
 export class ModalLogin extends DraggableModal {
@@ -92,7 +92,7 @@ export class ModalLogin extends DraggableModal {
           <img src="${button.icon}" alt="${button.provider} Logo" class="oauth-btn__icon" />
           <span class="oauth-btn__text">${button.text}</span>
         </button>
-      `,
+      `
       )
       .join('');
   }

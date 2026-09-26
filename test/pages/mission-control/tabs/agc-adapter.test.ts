@@ -74,17 +74,11 @@ describe('AGCAdapter', () => {
     });
 
     it('should register for RF_FE_AGC_CHANGED events', () => {
-      expect(mockEventBus.on).toHaveBeenCalledWith(
-        Events.RF_FE_AGC_CHANGED,
-        expect.any(Function)
-      );
+      expect(mockEventBus.on).toHaveBeenCalledWith(Events.RF_FE_AGC_CHANGED, expect.any(Function));
     });
 
     it('should register for UPDATE events', () => {
-      expect(mockEventBus.on).toHaveBeenCalledWith(
-        Events.UPDATE,
-        expect.any(Function)
-      );
+      expect(mockEventBus.on).toHaveBeenCalledWith(Events.UPDATE, expect.any(Function));
     });
   });
 
@@ -171,14 +165,8 @@ describe('AGCAdapter', () => {
     it('should unregister from EventBus events', () => {
       adapter.dispose();
 
-      expect(mockEventBus.off).toHaveBeenCalledWith(
-        Events.UPDATE,
-        expect.any(Function)
-      );
-      expect(mockEventBus.off).toHaveBeenCalledWith(
-        Events.RF_FE_AGC_CHANGED,
-        expect.any(Function)
-      );
+      expect(mockEventBus.off).toHaveBeenCalledWith(Events.UPDATE, expect.any(Function));
+      expect(mockEventBus.off).toHaveBeenCalledWith(Events.RF_FE_AGC_CHANGED, expect.any(Function));
     });
   });
 });

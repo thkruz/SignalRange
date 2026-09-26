@@ -29,14 +29,7 @@ describe('FineAdjustControl', () => {
     });
 
     it('should create instance with custom parameters', () => {
-      const control = new FineAdjustControl(
-        'custom-control',
-        'Frequency',
-        100,
-        'MHz',
-        [100, 10, 1],
-        3
-      );
+      const control = new FineAdjustControl('custom-control', 'Frequency', 100, 'MHz', [100, 10, 1], 3);
       mountControl(control);
 
       expect(control.html).toContain('id="custom-control"');
@@ -214,7 +207,7 @@ describe('FineAdjustControl', () => {
       const allButtons = container.querySelectorAll('.btn-fine');
       expect(allButtons.length).toBe(6);
 
-      allButtons.forEach(btn => (btn as HTMLButtonElement).click());
+      allButtons.forEach((btn) => (btn as HTMLButtonElement).click());
 
       expect(callback).toHaveBeenCalledTimes(6);
     });
@@ -293,7 +286,7 @@ describe('FineAdjustControl', () => {
       control.setEnabled(false);
 
       const allButtons = container.querySelectorAll('.btn-fine');
-      allButtons.forEach(btn => {
+      allButtons.forEach((btn) => {
         expect((btn as HTMLButtonElement).disabled).toBe(true);
       });
     });
@@ -308,7 +301,7 @@ describe('FineAdjustControl', () => {
       control.setEnabled(true);
 
       const allButtons = container.querySelectorAll('.btn-fine');
-      allButtons.forEach(btn => {
+      allButtons.forEach((btn) => {
         expect((btn as HTMLButtonElement).disabled).toBe(false);
       });
     });
@@ -371,6 +364,41 @@ describe('FineAdjustControl', () => {
 
       expect(decreaseButtons.length).toBe(1);
       expect(increaseButtons.length).toBe(1);
+    });
+  });
+
+  /**
+   * A tab instance can outlive its DOM (the mission-control canvas replaces the
+   * content on a station switch and only disposes the old tab when it is next
+   * rendered), and its EventBus handlers keep calling sync() every tick. A
+   * lookup that throws there escapes the game loop and freezes the simulation
+   * (phase 16, S9 unattended pass). The control must track values silently.
+   */
+  describe('torn-down DOM', () => {
+    it('sync() does not throw when the display was never resolved and the DOM is gone', () => {
+      const control = new FineAdjustControl('stale-control', 'Azimuth', 5, '°', [10, 1], 2);
+      // Never mounted: the value display has never been looked up.
+      expect(() => control.sync(5)).not.toThrow(); // same value: no paint
+      expect(() => control.sync(143.2, 150)).not.toThrow(); // changed value and a pending value: would paint
+    });
+
+    it('sync() keeps painting a mounted control, then goes quiet when its DOM is removed', () => {
+      const control = new FineAdjustControl('live-control', 'Azimuth', 5, '°', [10, 1], 2);
+      mountControl(control);
+      control.sync(12.5);
+      expect(document.getElementById('live-control-value')?.textContent).toBe('12.50°');
+
+      container.innerHTML = '';
+      expect(() => control.sync(99, 100)).not.toThrow();
+    });
+
+    it('setEnabled() does not throw without a DOM', () => {
+      const control = new FineAdjustControl('unmounted-control', 'Elevation', 3, '°', [10, 1], 2);
+      expect(() => control.setEnabled(false)).not.toThrow();
+
+      mountControl(control);
+      control.setEnabled(false);
+      expect(document.getElementById('unmounted-control')?.classList.contains('disabled')).toBe(true);
     });
   });
 });

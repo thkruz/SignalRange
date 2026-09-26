@@ -1,4 +1,4 @@
-import { test, expect } from '../fixtures/test-fixtures';
+import { expect, test } from '../fixtures/test-fixtures';
 import { waitForSimulationReady } from '../utils/simulation-helpers';
 
 test.describe('Equipment Interaction', () => {
@@ -32,9 +32,7 @@ test.describe('Equipment Interaction', () => {
       await missionControlPage.waitForSimulationReady();
 
       // Should have at least one ground station item
-      const gsItems = missionControlPage.assetTreeSidebar.locator(
-        '[data-asset-type="ground-station"], .ground-station-item, .asset-tree-item'
-      );
+      const gsItems = missionControlPage.assetTreeSidebar.locator('[data-asset-type="ground-station"], .ground-station-item, .asset-tree-item');
       await expect(gsItems.first()).toBeVisible();
     });
 
@@ -42,9 +40,7 @@ test.describe('Equipment Interaction', () => {
       await missionControlPage.waitForSimulationReady();
 
       // Look for expand/collapse controls
-      const expandControls = missionControlPage.assetTreeSidebar.locator(
-        '.expand-icon, .collapse-icon, .tree-toggle, [data-expanded]'
-      );
+      const expandControls = missionControlPage.assetTreeSidebar.locator('.expand-icon, .collapse-icon, .tree-toggle, [data-expanded]');
 
       // Should have some expand/collapse functionality
       const count = await expandControls.count();

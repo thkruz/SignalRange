@@ -1,8 +1,8 @@
-import { GroundStation } from "@app/assets/ground-station/ground-station";
-import { BaseElement } from "@app/components/base-element";
-import { html } from "@app/engine/utils/development/formatter";
-import { qs } from "@app/engine/utils/query-selector";
-import { FILTER_BANDWIDTH_CONFIGS } from "@app/equipment/rf-front-end/filter-module/filter-module-core";
+import { GroundStation } from '@app/assets/ground-station/ground-station';
+import { BaseElement } from '@app/components/base-element';
+import { html } from '@app/engine/utils/development/formatter';
+import { qs } from '@app/engine/utils/query-selector';
+import { FILTER_BANDWIDTH_CONFIGS } from '@app/equipment/rf-front-end/filter-module/filter-module-core';
 import { AGCAdapter } from './agc-adapter';
 import { FilterAdapter } from './filter-adapter';
 import { IQConstellationAdapter } from './iq-constellation-adapter';
@@ -368,7 +368,7 @@ export class RxAnalysisTab extends BaseElement {
             <div class="card-body d-flex flex-column" id="spec-analyzer-controls">
               <!-- Primary Action: Auto-Tune -->
               <div class="sa-primary-actions mb-3">
-                <button id="sa-auto-tune" class="btn btn-lg btn-danger w-100">
+                <button id="sa-auto-tune" class="btn btn-lg btn-primary w-100">
                   <strong>AUTO-TUNE</strong>
                 </button>
               </div>
@@ -886,10 +886,12 @@ export class RxAnalysisTab extends BaseElement {
   }
 
   private generateAntennaOptions_(): string {
-    return this.groundStation.antennas.map((_, index) => {
-      const antennaNumber = index + 1;
-      return `<option value="${antennaNumber}">Antenna ${antennaNumber}</option>`;
-    }).join('');
+    return this.groundStation.antennas
+      .map((_, index) => {
+        const antennaNumber = index + 1;
+        return `<option value="${antennaNumber}">Antenna ${antennaNumber}</option>`;
+      })
+      .join('');
   }
 
   private generateNotchSlotHtml_(index: number): string {
@@ -975,19 +977,12 @@ export class RxAnalysisTab extends BaseElement {
 
     // Create advanced spectrum analyzer adapter
     if (spectrumAnalyzer && this.dom_) {
-      this.spectrumAnalyzerAdvancedAdapter = new SpectrumAnalyzerAdvancedAdapter(
-        spectrumAnalyzer,
-        this.dom_
-      );
+      this.spectrumAnalyzerAdvancedAdapter = new SpectrumAnalyzerAdvancedAdapter(spectrumAnalyzer, this.dom_);
     }
 
     // Create tap point adapter
     if (rfFrontEnd.couplerModule && spectrumAnalyzer && this.dom_) {
-      this.tapPointAdapter_ = new TapPointAdapter(
-        rfFrontEnd.couplerModule,
-        spectrumAnalyzer,
-        this.dom_
-      );
+      this.tapPointAdapter_ = new TapPointAdapter(rfFrontEnd.couplerModule, spectrumAnalyzer, this.dom_);
     }
 
     // Create receiver adapter if receiver exists
@@ -1002,11 +997,7 @@ export class RxAnalysisTab extends BaseElement {
 
     // Create RX payload adapter for data integrity display
     if (this.dom_) {
-      this.rxPayloadAdapter_ = new RxPayloadAdapter(
-        this.dom_,
-        receiver,
-        this.groundStation.uuid
-      );
+      this.rxPayloadAdapter_ = new RxPayloadAdapter(this.dom_, receiver, this.groundStation.uuid);
     }
   }
 

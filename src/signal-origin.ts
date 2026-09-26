@@ -1,4 +1,3 @@
-
 export enum SignalOrigin {
   TRANSMITTER,
   BUC,
@@ -13,5 +12,5 @@ export enum SignalOrigin {
   LOW_NOISE_BLOCK,
   AGC,
   NOTCH_FILTER,
-  IF_FILTER_BANK
+  IF_FILTER_BANK,
 }

@@ -52,10 +52,7 @@ describe('AntennaUIModern', () => {
     });
 
     it('should create instance with custom config', () => {
-      const antenna = new AntennaUIModern(
-        'test-parent',
-        ANTENNA_CONFIG_KEYS.KU_BAND_3M
-      );
+      const antenna = new AntennaUIModern('test-parent', ANTENNA_CONFIG_KEYS.KU_BAND_3M);
       expect(antenna.config.band).toBe('Ku');
     });
 
@@ -65,24 +62,14 @@ describe('AntennaUIModern', () => {
         elevation: 60 as Degrees,
         polarization: -30 as Degrees,
       };
-      const antenna = new AntennaUIModern(
-        'test-parent',
-        ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK,
-        initialState
-      );
+      const antenna = new AntennaUIModern('test-parent', ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK, initialState);
       expect(antenna.state.azimuth).toBe(90);
       expect(antenna.state.elevation).toBe(60);
       expect(antenna.state.polarization).toBe(-30);
     });
 
     it('should create instance with team and server IDs', () => {
-      const antenna = new AntennaUIModern(
-        'test-parent',
-        ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK,
-        {},
-        2,
-        3
-      );
+      const antenna = new AntennaUIModern('test-parent', ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK, {}, 2, 3);
       expect(antenna.state.teamId).toBe(2);
       expect(antenna.state.serverId).toBe(3);
     });
@@ -220,7 +207,7 @@ describe('AntennaUIModern', () => {
 
     it('should add powered-off class when not powered', () => {
       const antenna = new AntennaUIModern('test-parent', ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK, {
-        isPowered: true,  // Start powered
+        isPowered: true, // Start powered
       });
       // First sync with powered state
       antenna.syncDomWithState();

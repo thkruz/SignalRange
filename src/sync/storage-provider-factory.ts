@@ -67,20 +67,14 @@ export class StorageProviderFactory {
   /**
    * Create a WebSocket provider with defaults
    */
-  static createWebSocket(
-    wsUrl: string,
-    config?: Partial<StorageProviderConfig>
-  ): StorageProvider {
+  static createWebSocket(wsUrl: string, config?: Partial<StorageProviderConfig>): StorageProvider {
     return new WebSocketStorageProvider(wsUrl, config);
   }
 
   /**
    * Create a Cloudflare D1 provider with defaults
    */
-  static createD1(
-    apiEndpoint: string,
-    config?: Partial<StorageProviderConfig>
-  ): StorageProvider {
+  static createD1(apiEndpoint: string, config?: Partial<StorageProviderConfig>): StorageProvider {
     return new D1StorageProvider(apiEndpoint, config);
   }
 }

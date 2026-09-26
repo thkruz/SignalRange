@@ -1,3 +1,4 @@
+import { createRfFrontEnd } from '@app/campaigns/rf-front-end-factory';
 import type { AntennaState } from '@app/equipment/antenna';
 import { Character, Emotion } from '@app/modal/character-enum';
 import type { Objective } from '@app/objectives/objective-types';
@@ -5,7 +6,6 @@ import type { ScenarioData } from '@app/ScenarioData';
 import type { dB, dBm, Hertz, IfFrequency, MHz } from '@app/types';
 import { getAssetUrl } from '@app/utils/asset-url';
 import type { Degrees } from 'ootk';
-import { createRfFrontEnd } from '@app/campaigns/rf-front-end-factory';
 import { vermontGroundStation } from './ground-stations';
 import { aurora7Satellite, ses10Satellite, tidemark1Satellite } from './satellites';
 
@@ -73,12 +73,7 @@ export const scenario6Data: ScenarioData = {
   difficulty: 'beginner',
   missionType: 'Training Exercise',
   description: `AURORA-7 is a legacy C-band satellite that's been in service for over 15 years. To conserve fuel, the operators stopped north-south station-keeping, so the orbit is now inclined. The satellite traces a figure-8 pattern in the sky - you can't just point and forget.<br><br>This is a training exercise to practice step-track mode. Unlike program-track which follows predicted orbital elements, step-track uses the beacon signal to continuously adjust antenna pointing. It's essential for tracking satellites with inclined orbits.<br><br>Charlie has pre-configured the beacon frequency, encryption, and payload settings. Your job is to acquire the satellite using step-track, establish receive lock, calculate the TX IF frequency, and bring up the transmit path.<br><br>Take your time - this is practice.`,
-  equipment: [
-    '9-meter C-band Antenna',
-    'RF Front End',
-    'Spectrum Analyzer',
-    'RX/TX Modems',
-  ],
+  equipment: ['9-meter C-band Antenna', 'RF Front End', 'Spectrum Analyzer', 'RX/TX Modems'],
   settings: {
     isSync: true,
     groundStations: [
@@ -211,7 +206,7 @@ export const scenario6Data: ScenarioData = {
       // K1032: Knowledge of satellite-based communication systems
       nice: ['K1032'],
       title: 'Understand Inclined Orbits',
-      description: 'Before we start tracking, let\'s make sure you understand why AURORA-7 requires special handling.',
+      description: "Before we start tracking, let's make sure you understand why AURORA-7 requires special handling.",
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['review-mission-brief'],
       timeLimitSeconds: 3 * 60,
@@ -224,12 +219,13 @@ export const scenario6Data: ScenarioData = {
             question: 'Why does AURORA-7 require step-track mode instead of program-track?',
             options: [
               'Inclined orbit causes the satellite to drift in az/el; step-track follows the beacon',
-              'The satellite has a faulty antenna requiring manual adjustment',
-              'Step-track uses less power than program-track',
-              'Program-track only works with newer satellites',
+              'The satellite has a faulty antenna; step-track compensates with manual-style nudges',
+              'Step-track uses less drive power than program-track; the ACU runs cooler on long passes',
+              'Program-track only works with newer satellites; AURORA-7 predates the TLE format',
             ],
             correctIndex: 0,
-            explanation: 'Legacy satellites with inclined orbits drift in a figure-8 pattern as seen from the ground. Step-track uses the beacon signal to continuously adjust antenna pointing, while program-track relies on TLE predictions that assume a fixed geostationary position.',
+            explanation:
+              'Legacy satellites with inclined orbits drift in a figure-8 pattern as seen from the ground. Step-track uses the beacon signal to continuously adjust antenna pointing, while program-track relies on TLE predictions that assume a fixed geostationary position.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -303,7 +299,7 @@ export const scenario6Data: ScenarioData = {
       // K1032: Knowledge of satellite-based communication systems
       nice: ['K1032'],
       title: 'Understand Program-Track Limitations',
-      description: 'Program-track has acquired AURORA-7, but there\'s a problem with inclined-orbit satellites.',
+      description: "Program-track has acquired AURORA-7, but there's a problem with inclined-orbit satellites.",
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['program-track-aurora7'],
       timeLimitSeconds: 2 * 60,
@@ -313,15 +309,16 @@ export const scenario6Data: ScenarioData = {
           type: 'status-check',
           description: 'Program-Track Limitation',
           params: {
-            question: 'Why can\'t we stay in program-track mode for AURORA-7?',
+            question: "Why can't we stay in program-track mode for AURORA-7?",
             options: [
-              'AURORA-7\'s inclined orbit causes drift - ephemeris predictions aren\'t accurate enough',
-              'Program-track consumes more power than step-track',
-              'The antenna hardware doesn\'t support program-track for C-band',
-              'Program-track only works for LEO satellites',
+              "AURORA-7's inclined orbit causes drift - ephemeris predictions aren't accurate enough",
+              "Program-track consumes more drive power than step-track - the ACU can't sustain it",
+              "The antenna hardware doesn't support program-track at C-band - the ACU firmware blocks it",
+              "Program-track only works for LEO satellites - AURORA-7's GEO slot isn't supported",
             ],
             correctIndex: 0,
-            explanation: 'Program-track follows TLE predictions that assume a fixed geostationary position. AURORA-7\'s inclined orbit means it drifts in a figure-8 pattern, so predictions are only accurate for rough pointing. We need step-track to actively follow the beacon.',
+            explanation:
+              "Program-track follows TLE predictions that assume a fixed geostationary position. AURORA-7's inclined orbit means it drifts in a figure-8 pattern, so predictions are only accurate for rough pointing. We need step-track to actively follow the beacon.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -353,11 +350,12 @@ export const scenario6Data: ScenarioData = {
             options: [
               'LNB LO (5250 MHz) minus beacon RF (4165 MHz) = 1085 MHz',
               'Beacon RF (4165 MHz) minus a standard offset (3080 MHz)',
-              'It\'s the satellite\'s default beacon IF setting',
+              "It's the satellite's default beacon IF setting",
               'BUC LO (7500 MHz) minus beacon RF (4165 MHz) = 3355 MHz',
             ],
             correctIndex: 0,
-            explanation: 'The beacon IF is calculated using high-side LO injection: IF = LO - RF = 5250 - 4165 = 1085 MHz. The LNB converts the RF signal down to IF for processing.',
+            explanation:
+              'The beacon IF is calculated using high-side LO injection: IF = LO - RF = 5250 - 4165 = 1085 MHz. The LNB converts the RF signal down to IF for processing.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -575,7 +573,7 @@ export const scenario6Data: ScenarioData = {
       // S0077: Skill in securing network communications
       nice: ['S0077'],
       title: 'Verify Encryption Understanding',
-      description: 'Before we enable transmission, let\'s verify you understand the encryption configuration. Look at the Encryption card on the TX Chain tab.',
+      description: "Before we enable transmission, let's verify you understand the encryption configuration. Look at the Encryption card on the TX Chain tab.",
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['verify-rx-lock'],
       timeLimitSeconds: 3 * 60,
@@ -588,12 +586,13 @@ export const scenario6Data: ScenarioData = {
             question: 'Looking at the Encryption card, what security configuration is active?',
             options: [
               'AES-256-GCM with valid key - ready for secure transmission',
-              'AES-128-CBC with expired key - needs renewal',
-              'Encryption bypassed - transmitting in clear',
-              'Triple-DES with pending key rotation',
+              'AES-128-CBC with expired key - renewal needed before transmit',
+              'Encryption bypassed with no key - transmitting in the clear',
+              'Triple-DES with rotating key - waiting on the key rotation',
             ],
             correctIndex: 0,
-            explanation: 'The Encryption card shows AES-256-GCM active with a valid key. AES-256 provides strong symmetric encryption, and GCM mode adds authenticated encryption to detect tampering. Always verify encryption status before transmitting.',
+            explanation:
+              'The Encryption card shows AES-256-GCM active with a valid key. AES-256 provides strong symmetric encryption, and GCM mode adds authenticated encryption to detect tampering. Always verify encryption status before transmitting.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -610,7 +609,7 @@ export const scenario6Data: ScenarioData = {
       // K0773: Knowledge of telecommunications principles and practices
       nice: ['K0773'],
       title: 'Calculate TX IF Frequency',
-      description: 'AURORA-7\'s uplink is at 6053 MHz RF. Calculate the TX IF frequency using the BUC LO at 7500 MHz.',
+      description: "AURORA-7's uplink is at 6053 MHz RF. Calculate the TX IF frequency using the BUC LO at 7500 MHz.",
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['quiz-encryption'],
       timeLimitSeconds: 3 * 60,
@@ -621,14 +620,10 @@ export const scenario6Data: ScenarioData = {
           description: 'TX IF Calculated',
           params: {
             question: 'What TX IF frequency should you configure to transmit at 6053 MHz RF?',
-            options: [
-              '1447 MHz (7500 - 6053 = 1447)',
-              '13553 MHz (6053 + 7500 = 13553)',
-              '2303 MHz (6053 - 7500 / 2 = 2303)',
-              '755 MHz (7500 - 4170 = 755)',
-            ],
+            options: ['1447 MHz (7500 - 6053 = 1447)', '13553 MHz (6053 + 7500 = 13553)', '2303 MHz (6053 - 7500 / 2 = 2303)', '755 MHz (7500 - 4170 = 755)'],
             correctIndex: 0,
-            explanation: 'For uplink, the BUC upconverts the IF to RF: RF = IF + LO, so IF = LO - RF = 7500 - 6053 = 1447 MHz. This is similar to the downlink calculation because the BUC is also using low-side injection.',
+            explanation:
+              'For uplink, the BUC upconverts the IF to RF: RF = IF + LO, so IF = LO - RF = 7500 - 6053 = 1447 MHz. This is similar to the downlink calculation because the BUC is also using low-side injection.',
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -643,7 +638,7 @@ export const scenario6Data: ScenarioData = {
       // T1567: Equipment configuration happens throughout
       nice: ['S0421', 'T1567'],
       title: 'Configure TX Modem',
-      description: 'Set the TX modem frequency to 1447 MHz to transmit on AURORA-7\'s uplink.',
+      description: "Set the TX modem frequency to 1447 MHz to transmit on AURORA-7's uplink.",
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['calculate-tx-if'],
       timeLimitSeconds: 2 * 60,
@@ -721,7 +716,8 @@ export const scenario6Data: ScenarioData = {
               'Step-track on beacon, RX at 3605 MHz RF, TX at 5830 MHz RF, no encryption',
             ],
             correctIndex: 0,
-            explanation: 'Your link uses step-track mode to maintain pointing on the inclined-orbit AURORA-7 satellite. The receiver is configured for 1422 MHz IF (downlink), transmitter for 1447 MHz IF (uplink), and AES-256-GCM encryption is active.',
+            explanation:
+              'Your link uses step-track mode to maintain pointing on the inclined-orbit AURORA-7 satellite. The receiver is configured for 1422 MHz IF (downlink), transmitter for 1447 MHz IF (uplink), and AES-256-GCM encryption is active.',
             pointPenalty: 5,
           },
           mustMaintain: false,

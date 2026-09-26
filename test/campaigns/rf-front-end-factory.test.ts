@@ -1,5 +1,5 @@
 import { createRfFrontEnd, DeepPartial, RfFrontEndConfig } from '../../src/campaigns/rf-front-end-factory';
-import type { MHz, dB } from '../../src/types';
+import type { dB, MHz } from '../../src/types';
 
 describe('rf-front-end-factory', () => {
   describe('createRfFrontEnd', () => {
@@ -118,12 +118,15 @@ describe('rf-front-end-factory', () => {
             items: ['a', 'b', 'c'],
           },
         };
-        const result = createRfFrontEnd(base as any, {
-          someArray: [4, 5],
-          nested: {
-            items: ['x'],
-          },
-        } as any);
+        const result = createRfFrontEnd(
+          base as any,
+          {
+            someArray: [4, 5],
+            nested: {
+              items: ['x'],
+            },
+          } as any
+        );
 
         expect(result.someArray).toEqual([4, 5]);
         expect((result.nested as any).items).toEqual(['x']);
@@ -136,9 +139,12 @@ describe('rf-front-end-factory', () => {
           omt: { polarization: 'V' },
           buc: { isPowered: true },
         };
-        const result = createRfFrontEnd(base as any, {
-          buc: null,
-        } as any);
+        const result = createRfFrontEnd(
+          base as any,
+          {
+            buc: null,
+          } as any
+        );
 
         expect(result.buc).toBeNull();
       });
@@ -164,12 +170,15 @@ describe('rf-front-end-factory', () => {
             value: 100,
           },
         };
-        const result = createRfFrontEnd(base as any, {
-          topLevelValue: 99,
-          nested: {
-            value: 200,
-          },
-        } as any);
+        const result = createRfFrontEnd(
+          base as any,
+          {
+            topLevelValue: 99,
+            nested: {
+              value: 200,
+            },
+          } as any
+        );
 
         expect(result.topLevelValue).toBe(99);
         expect((result.nested as any).value).toBe(200);
@@ -242,15 +251,18 @@ describe('rf-front-end-factory', () => {
             },
           },
         };
-        const result = createRfFrontEnd(base as any, {
-          level1: {
-            level2: {
-              level3: {
-                value: 'modified',
+        const result = createRfFrontEnd(
+          base as any,
+          {
+            level1: {
+              level2: {
+                level3: {
+                  value: 'modified',
+                },
               },
             },
-          },
-        } as any);
+          } as any
+        );
 
         expect((result.level1 as any).level2.level3.value).toBe('modified');
       });
@@ -259,10 +271,13 @@ describe('rf-front-end-factory', () => {
         const base = {
           existing: { value: 1 },
         };
-        const result = createRfFrontEnd(base as any, {
-          existing: { value: 1, newProp: 'added' },
-          newTopLevel: { data: 'new' },
-        } as any);
+        const result = createRfFrontEnd(
+          base as any,
+          {
+            existing: { value: 1, newProp: 'added' },
+            newTopLevel: { data: 'new' },
+          } as any
+        );
 
         expect((result.existing as any).newProp).toBe('added');
         expect((result as any).newTopLevel).toEqual({ data: 'new' });

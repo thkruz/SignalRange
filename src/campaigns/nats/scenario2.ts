@@ -1,10 +1,10 @@
+import { createRfFrontEnd } from '@app/campaigns/rf-front-end-factory';
 import { Character, Emotion } from '@app/modal/character-enum';
 import type { Objective } from '@app/objectives/objective-types';
 import type { ScenarioData } from '@app/ScenarioData';
 import type { dBm, Hertz, MHz } from '@app/types';
 import { getAssetUrl } from '@app/utils/asset-url';
 import type { Degrees } from 'ootk';
-import { createRfFrontEnd } from '@app/campaigns/rf-front-end-factory';
 import { maineGroundStation, vermontGroundStation } from './ground-stations';
 import { ses10Satellite, tidemark1Satellite } from './satellites';
 
@@ -61,13 +61,7 @@ export const scenario2Data: ScenarioData = {
   difficulty: 'beginner',
   missionType: 'Routine Operations',
   description: `The maintenance crew needs to perform work on the TIDEMARK-1 antenna feed assembly. You'll power down the transmit chain in the proper sequence to ensure safety (don't radiate the maintenance crew), move the antenna to maintenance position for access, then restore service after the maintenance window.<br><br>This is your first time actually controlling the equipment. Charlie will provide all frequency values and configuration settings - you just need to execute the procedures in the correct order.<br><br>Key lesson: Sequence matters. RF safety protocols exist for a reason.`,
-  equipment: [
-    '9-meter C-band Antenna',
-    'RF Front End',
-    'Spectrum Analyzer',
-    'RX/TX Modems',
-    'ME-02: Unavailable',
-  ],
+  equipment: ['9-meter C-band Antenna', 'RF Front End', 'Spectrum Analyzer', 'RX/TX Modems', 'ME-02: Unavailable'],
   timeLimitSeconds: 35 * 60, // 35 minutes
   settings: {
     isSync: true,
@@ -90,10 +84,7 @@ export const scenario2Data: ScenarioData = {
     ],
     missionBriefUrl: 'https://docs.signalrange.space/campaign-1/scenario-2?content-only=true&dark=true',
     isExtraSatellitesVisible: true,
-    satellites: [
-      tidemark1Satellite,
-      ses10Satellite,
-    ],
+    satellites: [tidemark1Satellite, ses10Satellite],
   },
   objectives: [
     // ============================================================
@@ -121,9 +112,7 @@ export const scenario2Data: ScenarioData = {
           description: 'Ready to Proceed',
           params: {
             question: 'Have you reviewed the mission brief and RF safety procedures?',
-            options: [
-              'Yes, I have read the mission brief and I am ready to proceed.',
-            ],
+            options: ['Yes, I have read the mission brief and I am ready to proceed.'],
             correctIndex: 0,
             explanation: 'The mission timer has started. Good luck!',
             pointPenalty: 0,
@@ -152,12 +141,12 @@ export const scenario2Data: ScenarioData = {
           type: 'status-check',
           description: 'RF Safety Briefing Acknowledged',
           params: {
-            question: 'I need you to confirm you understand the RF safety briefing for today\'s maintenance work. Company policy requires verbal acknowledgment before we proceed. Lawyers and such...',
-            options: [
-              'I have received and understood the RF safety briefing for today\'s maintenance work.',
-            ],
+            question:
+              "I need you to confirm you understand the RF safety briefing for today's maintenance work. Company policy requires verbal acknowledgment before we proceed. Lawyers and such...",
+            options: ["I have received and understood the RF safety briefing for today's maintenance work."],
             correctIndex: 0,
-            explanation: 'Acknowledging the RF safety briefing ensures all personnel understand the hazards and procedures before maintenance work begins. An HPA can output several hundred watts - enough to cause serious RF burns.',
+            explanation:
+              'Acknowledging the RF safety briefing ensures all personnel understand the hazards and procedures before maintenance work begins. An HPA can output several hundred watts - enough to cause serious RF burns.',
             pointPenalty: 0,
           },
           mustMaintain: false,
@@ -251,12 +240,13 @@ export const scenario2Data: ScenarioData = {
             question: 'Before we shut down, confirm the current HPA state. What does the HPA panel show?',
             options: [
               'HPA is enabled and transmitting with 10 dB backoff',
-              'HPA is powered on but output is disabled',
-              'HPA is powered off completely',
-              'HPA shows fault condition - red alarm',
+              'HPA is powered on but output is disabled for standby',
+              'HPA is powered off completely and cooling down',
+              'HPA shows a fault condition with a red alarm active',
             ],
             correctIndex: 0,
-            explanation: 'The HPA is currently enabled and transmitting at 10 dB backoff. This confirms there is active RF output that we need to safely shut down before maintenance personnel approach the antenna.',
+            explanation:
+              'The HPA is currently enabled and transmitting at 10 dB backoff. This confirms there is active RF output that we need to safely shut down before maintenance personnel approach the antenna.',
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -322,12 +312,13 @@ export const scenario2Data: ScenarioData = {
             question: 'The HPA output is now disabled. What should you observe on the HPA panel?',
             options: [
               'HPA Enable indicator shows OFF - no RF output, but amplifier still energized',
-              'HPA completely powered down - all indicators off',
-              'HPA still transmitting at reduced power',
-              'HPA showing warning alarm',
+              'HPA Power indicator shows OFF - amplifier de-energized, all indicators dark',
+              'HPA Enable indicator shows ON - reduced RF output, amplifier still energized',
+              'HPA Alarm indicator shows WARNING - output tripped, amplifier still energized',
             ],
             correctIndex: 0,
-            explanation: 'The HPA Enable indicator shows OFF, meaning no RF is being transmitted. However, the amplifier is still powered and components are hot - we need to power it off completely before it\'s safe.',
+            explanation:
+              "The HPA Enable indicator shows OFF, meaning no RF is being transmitted. However, the amplifier is still powered and components are hot - we need to power it off completely before it's safe.",
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -425,9 +416,9 @@ export const scenario2Data: ScenarioData = {
             question: 'The BUC is now powered off. What does the BUC status show?',
             options: [
               'BUC power indicator is OFF - completely de-energized',
-              'BUC is muted but still powered',
-              'BUC still outputting at low power',
-              'BUC reference unlocked',
+              'BUC mute indicator is ON - silenced but still powered',
+              'BUC power indicator is ON - outputting at low power',
+              'BUC reference indicator is UNLOCKED - lost 10 MHz lock',
             ],
             correctIndex: 0,
             explanation: 'The BUC power indicator is OFF - the upconverter is completely de-energized. No RF energy can be generated from this equipment.',
@@ -549,12 +540,13 @@ export const scenario2Data: ScenarioData = {
             question: 'The RF chain should now be completely cold. Which equipment is still powered?',
             options: [
               'GPSDO and control systems only - all RF equipment is off',
-              'LNB is still receiving signals passively',
-              'BUC is still energized but muted',
-              'HPA is still warming up',
+              'GPSDO and LNB only - the receive side still passively powered',
+              'GPSDO and BUC only - the upconverter still energized but muted',
+              'GPSDO and HPA only - the amplifier still warming up on standby',
             ],
             correctIndex: 0,
-            explanation: 'Correct. The GPSDO and control systems remain powered for timing and monitoring, but all RF equipment (LNB, BUC, HPA) is completely de-energized. The antenna is safe for maintenance personnel to approach.',
+            explanation:
+              'Correct. The GPSDO and control systems remain powered for timing and monitoring, but all RF equipment (LNB, BUC, HPA) is completely de-energized. The antenna is safe for maintenance personnel to approach.',
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -667,12 +659,13 @@ export const scenario2Data: ScenarioData = {
             question: 'The antenna is now at maintenance position. Why do we use 5° elevation instead of 0°?',
             options: [
               'Low enough for crew access, high enough to clear obstructions',
-              'Antenna cannot physically reach 0° elevation',
-              'To maintain satellite lock during maintenance',
-              'Required by FCC regulations',
+              'Low enough for crew access, but the mount cannot reach 0° elevation',
+              'High enough to keep satellite lock, low enough for feed access',
+              'Low enough for crew access, and the minimum FCC rules allow',
             ],
             correctIndex: 0,
-            explanation: '5° elevation gives maintenance personnel access to the feed assembly while keeping the antenna clear of any ground-level obstructions. This is the standard maintenance position for this facility.',
+            explanation:
+              '5° elevation gives maintenance personnel access to the feed assembly while keeping the antenna clear of any ground-level obstructions. This is the standard maintenance position for this facility.',
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -709,7 +702,8 @@ export const scenario2Data: ScenarioData = {
               'Request a second maintenance crew for inspection',
             ],
             correctIndex: 0,
-            explanation: 'Before restoring RF power, you must confirm all personnel are clear of the antenna. Never re-energize equipment while people could be in the RF radiation zone.',
+            explanation:
+              'Before restoring RF power, you must confirm all personnel are clear of the antenna. Never re-energize equipment while people could be in the RF radiation zone.',
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -872,7 +866,7 @@ export const scenario2Data: ScenarioData = {
           type: 'status-check',
           description: 'Verify LNB Status',
           params: {
-            question: 'The LNB is now powered and configured. What key indicator confirms it\'s ready for operation?',
+            question: "The LNB is now powered and configured. What key indicator confirms it's ready for operation?",
             options: [
               'Thermal stability indicator shows green - temperature stabilized',
               'LO frequency shows exactly 5250.000 MHz - no drift',
@@ -880,7 +874,8 @@ export const scenario2Data: ScenarioData = {
               'All of the above should be confirmed',
             ],
             correctIndex: 3,
-            explanation: 'All three indicators should be confirmed: thermal stability ensures consistent gain and noise performance, LO frequency accuracy ensures correct downconversion, and reference lock ensures frequency stability from the GPSDO.',
+            explanation:
+              'All three indicators should be confirmed: thermal stability ensures consistent gain and noise performance, LO frequency accuracy ensures correct downconversion, and reference lock ensures frequency stability from the GPSDO.',
             pointPenalty: 10,
             preserveOptionOrder: true,
           },
@@ -965,12 +960,13 @@ export const scenario2Data: ScenarioData = {
             question: 'You see the TIDEMARK-1 beacon at 1,074.5 MHz IF. The RF beacon frequency is 4,175.5 MHz. Which calculation confirms the LNB is set correctly?',
             options: [
               'LO (5,250 MHz) - RF (4,175.5 MHz) = IF (1,074.5 MHz)',
-              'RF (4,175.5 MHz) + IF (1,074.5 MHz) = LO (5,250 MHz)',
-              'IF (1,074.5 MHz) × 4 = RF (4,298 MHz)',
-              'The frequencies are coincidentally correct',
+              'RF (4,175.5 MHz) + LO (5,250 MHz) = IF (9,425.5 MHz)',
+              'RF (4,175.5 MHz) - IF (1,074.5 MHz) = LO (3,101 MHz)',
+              'LO (5,250 MHz) + IF (1,074.5 MHz) = RF (6,324.5 MHz)',
             ],
             correctIndex: 0,
-            explanation: 'The LNB performs downconversion by mixing the incoming RF signal with its Local Oscillator. LO (5,250 MHz) minus RF (4,175.5 MHz) equals IF (1,074.5 MHz). This confirms the LO is set correctly and the receive path is working.',
+            explanation:
+              'The LNB performs downconversion by mixing the incoming RF signal with its Local Oscillator. LO (5,250 MHz) minus RF (4,175.5 MHz) equals IF (1,074.5 MHz). This confirms the LO is set correctly and the receive path is working.',
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -1153,15 +1149,16 @@ export const scenario2Data: ScenarioData = {
           type: 'status-check',
           description: 'Confirm Service Restoration',
           params: {
-            question: 'TIDEMARK-1 should now be back in full service. What\'s the correct sequence for future scheduled maintenance?',
+            question: "TIDEMARK-1 should now be back in full service. What's the correct sequence for future scheduled maintenance?",
             options: [
               'Shutdown: HPA → BUC → Modem TX → LNB → Antenna. Restore: Antenna → LNB → Modem TX → BUC → HPA',
-              'Shutdown: Antenna → LNB → BUC → HPA. Restore: HPA → BUC → LNB → Antenna',
-              'Shutdown: LNB → BUC → HPA → Antenna. Restore: Antenna → HPA → BUC → LNB',
-              'Sequence doesn\'t matter as long as all equipment is powered down',
+              'Shutdown: Antenna → LNB → Modem TX → BUC → HPA. Restore: HPA → BUC → Modem TX → LNB → Antenna',
+              'Shutdown: LNB → Modem TX → BUC → HPA → Antenna. Restore: Antenna → HPA → BUC → Modem TX → LNB',
+              'Shutdown: HPA → BUC → Modem TX → LNB → Antenna. Restore: HPA → BUC → Modem TX → LNB → Antenna',
             ],
             correctIndex: 0,
-            explanation: 'Correct! Shutdown sequence is HPA (high-power) → BUC (low-power) → Modem TX → LNB → Antenna. Restoration is the reverse: Antenna → LNB → Modem TX → BUC → HPA. Always shut down high-power equipment first for safety, and restore low-power equipment first to verify signal before applying high power.',
+            explanation:
+              'Correct! Shutdown sequence is HPA (high-power) → BUC (low-power) → Modem TX → LNB → Antenna. Restoration is the reverse: Antenna → LNB → Modem TX → BUC → HPA. Always shut down high-power equipment first for safety, and restore low-power equipment first to verify signal before applying high power. Restoring in the same order as shutdown would energize the HPA before anything upstream is verified.',
             pointPenalty: 10,
           },
           mustMaintain: false,

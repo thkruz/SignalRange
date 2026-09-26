@@ -1,8 +1,8 @@
-import { EventBus } from "@app/events/event-bus";
-import { Events } from "@app/events/events";
-import { qs } from "@app/engine/utils/query-selector";
-import { CardAlarmBadge } from "@app/components/card-alarm-badge/card-alarm-badge";
-import { AlarmStatus } from "@app/equipment/base-equipment";
+import { CardAlarmBadge } from '@app/components/card-alarm-badge/card-alarm-badge';
+import { qs } from '@app/engine/utils/query-selector';
+import { AlarmStatus } from '@app/equipment/base-equipment';
+import { EventBus } from '@app/events/event-bus';
+import { Events } from '@app/events/events';
 
 /**
  * Payload state interface for future dynamic updates
@@ -122,9 +122,7 @@ export class PayloadAdapter {
     const frameSyncEl = this.domCache_.get('frameSync');
     if (frameSyncEl) {
       frameSyncEl.textContent = state.frameSyncLocked ? 'Locked' : 'Unlocked';
-      frameSyncEl.className = state.frameSyncLocked
-        ? 'status-badge status-badge-green'
-        : 'status-badge status-badge-red';
+      frameSyncEl.className = state.frameSyncLocked ? 'status-badge status-badge-green' : 'status-badge status-badge-red';
     }
 
     const bitErrorsEl = this.domCache_.get('bitErrors');
@@ -164,14 +162,14 @@ export class PayloadAdapter {
     if (state.bitErrors > 0) {
       alarms.push({
         severity: state.bitErrors > 100 ? 'error' : 'warning',
-        message: `${state.bitErrors} bit errors detected`
+        message: `${state.bitErrors} bit errors detected`,
       });
     }
 
     if (state.errors > 0) {
       alarms.push({
         severity: state.errors > 10 ? 'error' : 'warning',
-        message: `${state.errors} transmission errors`
+        message: `${state.errors} transmission errors`,
       });
     }
 

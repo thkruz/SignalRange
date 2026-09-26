@@ -1,8 +1,14 @@
+/*
+ * Fixed height + own scrollbar, matching .scenario-selection-page. With
+ * min-height the whole document grew instead, which pushed the footer off the
+ * bottom of the viewport once there were enough campaign cards to wrap.
+ */
 .campaign-selection-page {
   display: flex;
   flex-direction: column;
   align-items: center;
-  min-height: calc(100vh - 80px);
+  height: calc(100vh - 80px);
+  overflow-y: auto;
   background: linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 100%);
   color: #fff;
   padding: 2rem 1rem;
@@ -160,6 +166,13 @@
 
 .locked-icon {
   font-size: 32px;
+}
+
+.locked-requirement {
+  font-size: 14px;
+  font-weight: normal;
+  text-transform: none;
+  letter-spacing: 0;
 }
 
 .progress-banner {
@@ -328,6 +341,68 @@
 .badge.special {
   background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%);
   color: #fff;
+}
+
+/*
+ * Release-stage badges. Deliberately not red or blue - those are already spoken
+ * for by difficulty-advanced and duration, and an alpha campaign is usually
+ * advanced, so a red-on-red badge row would read as one blob.
+ */
+.badge.release-beta {
+  background: rgba(255, 152, 0, 0.18);
+  border: 1px solid #ff9800;
+  color: #ffb74d;
+}
+
+/* Darker than difficulty-advanced so white text clears 4.5:1, not just 3.7:1. */
+.badge.release-alpha {
+  background: linear-gradient(135deg, #bf360c 0%, #8f2800 100%);
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+/*
+ * Warning strip inside a campaign card. No links in here on purpose - the whole
+ * card is a click target, so an anchor would fire the link and the navigation.
+ */
+.release-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: #ddd;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.release-notice-icon {
+  flex-shrink: 0;
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+.release-notice-beta {
+  background: linear-gradient(135deg, rgba(255, 152, 0, 0.15) 0%, rgba(255, 152, 0, 0.08) 100%);
+  border: 1px solid rgba(255, 152, 0, 0.4);
+}
+
+.release-notice-beta .release-notice-icon,
+.release-notice-beta strong {
+  color: #ffb74d;
+}
+
+.release-notice-alpha {
+  background: linear-gradient(135deg, rgba(230, 81, 0, 0.2) 0%, rgba(230, 81, 0, 0.1) 100%);
+  border: 1px solid rgba(230, 81, 0, 0.55);
+}
+
+.release-notice-alpha .release-notice-icon,
+.release-notice-alpha strong {
+  color: #ff8a3d;
 }
 
 /* Card Body */

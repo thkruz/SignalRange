@@ -221,7 +221,7 @@ export class UserDataService {
       throw new UserDataServiceError(
         `Failed to get checkpoint for scenario ${scenarioId}: ${error instanceof Error ? error.message : 'Unknown error'}`,
         0,
-        'CHECKPOINT_FETCH_ERROR',
+        'CHECKPOINT_FETCH_ERROR'
       );
     }
   }
@@ -257,7 +257,7 @@ export class UserDataService {
       throw new UserDataServiceError(
         `Failed to clear checkpoint for scenario ${scenarioId}: ${error instanceof Error ? error.message : 'Unknown error'}`,
         0,
-        'CHECKPOINT_CLEAR_ERROR',
+        'CHECKPOINT_CLEAR_ERROR'
       );
     }
   }
@@ -270,10 +270,7 @@ export class UserDataService {
    * Get all scenarios progress for the current app
    */
   async getAllScenariosProgress(): Promise<ScenariosProgressResponse> {
-    const response = await this.request<any>(
-      `/api/user/apps/${this.config.appId}/scenarios/progress`,
-      'GET',
-    );
+    const response = await this.request<any>(`/api/user/apps/${this.config.appId}/scenarios/progress`, 'GET');
 
     return this.transformScenariosProgressResponse(response);
   }
@@ -283,10 +280,7 @@ export class UserDataService {
    */
   async getScenarioProgress(scenarioId: string): Promise<ScenarioProgress | null> {
     try {
-      const response = await this.request<any>(
-        `/api/user/apps/${this.config.appId}/scenarios/${scenarioId}/progress`,
-        'GET',
-      );
+      const response = await this.request<any>(`/api/user/apps/${this.config.appId}/scenarios/${scenarioId}/progress`, 'GET');
 
       return this.transformScenarioProgress(response);
     } catch (error) {
@@ -301,10 +295,7 @@ export class UserDataService {
   /**
    * Update progress for a specific scenario (upsert)
    */
-  async updateScenarioProgress(
-    scenarioId: string,
-    updates: UpdateScenarioProgressRequest,
-  ): Promise<ScenarioProgress> {
+  async updateScenarioProgress(scenarioId: string, updates: UpdateScenarioProgressRequest): Promise<ScenarioProgress> {
     // Transform camelCase to snake_case for API
     const apiUpdates: Record<string, unknown> = {};
 
@@ -323,6 +314,12 @@ export class UserDataService {
     if (updates.quizPenalties !== undefined) {
       apiUpdates.quiz_penalties = updates.quizPenalties;
     }
+    if (updates.timePenalties !== undefined) {
+      apiUpdates.time_penalties = updates.timePenalties;
+    }
+    if (updates.hintPenalties !== undefined) {
+      apiUpdates.hint_penalties = updates.hintPenalties;
+    }
     if (updates.completedAt !== undefined) {
       apiUpdates.completed_at = updates.completedAt;
     }
@@ -333,11 +330,7 @@ export class UserDataService {
       apiUpdates.scenario_number = updates.scenarioNumber;
     }
 
-    const response = await this.request<any>(
-      `/api/user/apps/${this.config.appId}/scenarios/${scenarioId}/progress`,
-      'PUT',
-      apiUpdates,
-    );
+    const response = await this.request<any>(`/api/user/apps/${this.config.appId}/scenarios/${scenarioId}/progress`, 'PUT', apiUpdates);
 
     return this.transformScenarioProgress(response);
   }
@@ -346,10 +339,7 @@ export class UserDataService {
    * Delete progress for a specific scenario
    */
   async deleteScenarioProgress(scenarioId: string): Promise<void> {
-    await this.request<void>(
-      `/api/user/apps/${this.config.appId}/scenarios/${scenarioId}/progress`,
-      'DELETE',
-    );
+    await this.request<void>(`/api/user/apps/${this.config.appId}/scenarios/${scenarioId}/progress`, 'DELETE');
   }
 
   /**
@@ -380,10 +370,7 @@ export class UserDataService {
    */
   async getCheckpoint(scenarioId: string): Promise<Checkpoint | null> {
     try {
-      const response = await this.request<any>(
-        `/api/user/apps/${this.config.appId}/scenarios/${scenarioId}/checkpoint`,
-        'GET',
-      );
+      const response = await this.request<any>(`/api/user/apps/${this.config.appId}/scenarios/${scenarioId}/checkpoint`, 'GET');
 
       return this.transformCheckpoint(response);
     } catch (error) {
@@ -399,11 +386,7 @@ export class UserDataService {
    * Save checkpoint for a specific scenario (upsert)
    */
   async saveCheckpoint(scenarioId: string, checkpoint: UpsertCheckpointRequest): Promise<Checkpoint> {
-    const response = await this.request<any>(
-      `/api/user/apps/${this.config.appId}/scenarios/${scenarioId}/checkpoint`,
-      'PUT',
-      checkpoint,
-    );
+    const response = await this.request<any>(`/api/user/apps/${this.config.appId}/scenarios/${scenarioId}/checkpoint`, 'PUT', checkpoint);
 
     return this.transformCheckpoint(response);
   }
@@ -412,10 +395,7 @@ export class UserDataService {
    * Delete checkpoint for a specific scenario
    */
   async deleteCheckpoint(scenarioId: string): Promise<void> {
-    await this.request<void>(
-      `/api/user/apps/${this.config.appId}/scenarios/${scenarioId}/checkpoint`,
-      'DELETE',
-    );
+    await this.request<void>(`/api/user/apps/${this.config.appId}/scenarios/${scenarioId}/checkpoint`, 'DELETE');
   }
 
   /**
@@ -423,10 +403,7 @@ export class UserDataService {
    * This is a bulk operation that clears all scenario_progress and checkpoints
    */
   async deleteAllProgress(): Promise<void> {
-    await this.request<void>(
-      `/api/user/apps/${this.config.appId}/progress`,
-      'DELETE',
-    );
+    await this.request<void>(`/api/user/apps/${this.config.appId}/progress`, 'DELETE');
   }
 
   /**
@@ -434,10 +411,7 @@ export class UserDataService {
    */
   async checkpointExists(scenarioId: string): Promise<boolean> {
     try {
-      await this.request<void>(
-        `/api/user/apps/${this.config.appId}/scenarios/${scenarioId}/checkpoint`,
-        'HEAD',
-      );
+      await this.request<void>(`/api/user/apps/${this.config.appId}/scenarios/${scenarioId}/checkpoint`, 'HEAD');
 
       return true;
     } catch (error) {
@@ -452,10 +426,7 @@ export class UserDataService {
    * Get app-specific preferences
    */
   async getAppPreferences(): Promise<AppPreferences> {
-    const response = await this.request<any>(
-      `/api/user/apps/${this.config.appId}/preferences`,
-      'GET',
-    );
+    const response = await this.request<any>(`/api/user/apps/${this.config.appId}/preferences`, 'GET');
 
     return this.transformAppPreferences(response);
   }
@@ -464,11 +435,7 @@ export class UserDataService {
    * Update app-specific preferences
    */
   async updateAppPreferences(updates: Partial<UserPreferencesData>): Promise<AppPreferences> {
-    const response = await this.request<any>(
-      `/api/user/apps/${this.config.appId}/preferences`,
-      'PUT',
-      { preferences: updates },
-    );
+    const response = await this.request<any>(`/api/user/apps/${this.config.appId}/preferences`, 'PUT', { preferences: updates });
 
     return this.transformAppPreferences(response);
   }
@@ -477,10 +444,7 @@ export class UserDataService {
    * Get app summary (aggregated stats)
    */
   async getAppSummary(): Promise<UserAppSummary> {
-    const response = await this.request<any>(
-      `/api/user/apps/${this.config.appId}/summary`,
-      'GET',
-    );
+    const response = await this.request<any>(`/api/user/apps/${this.config.appId}/summary`, 'GET');
 
     return this.transformUserAppSummary(response);
   }
@@ -489,10 +453,7 @@ export class UserDataService {
    * Get full user data (app-scoped)
    */
   async getFullAppUserData(): Promise<FullAppUserData> {
-    const response = await this.request<any>(
-      `/api/user/apps/${this.config.appId}/full-data`,
-      'GET',
-    );
+    const response = await this.request<any>(`/api/user/apps/${this.config.appId}/full-data`, 'GET');
 
     return {
       user: this.transformUserProfile(response.user || response.profile),
@@ -526,7 +487,7 @@ export class UserDataService {
       throw new UserDataServiceError(
         `Failed to remove completed scenario ${scenarioNumber}: ${error instanceof Error ? error.message : 'Unknown error'}`,
         0,
-        'SCENARIO_REMOVE_ERROR',
+        'SCENARIO_REMOVE_ERROR'
       );
     }
   }
@@ -704,12 +665,7 @@ export class UserDataService {
   /**
    * Internal method to make HTTP requests with retry logic and error handling
    */
-  private async request<T>(
-    endpoint: string,
-    method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'HEAD',
-    body?: unknown,
-    retryCount: number = 0,
-  ): Promise<T> {
+  private async request<T>(endpoint: string, method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'HEAD', body?: unknown, retryCount: number = 0): Promise<T> {
     const url = `${this.config.apiBaseUrl}${endpoint}`;
     const accessToken = this.config.getAccessToken();
 
@@ -768,11 +724,7 @@ export class UserDataService {
         throw error;
       }
 
-      throw new UserDataServiceError(
-        `Request failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        0,
-        'NETWORK_ERROR',
-      );
+      throw new UserDataServiceError(`Request failed: ${error instanceof Error ? error.message : 'Unknown error'}`, 0, 'NETWORK_ERROR');
     }
   }
 

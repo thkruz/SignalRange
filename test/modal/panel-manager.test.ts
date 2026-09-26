@@ -3,11 +3,7 @@ import { PanelManager } from '../../src/modal/panel-manager';
 
 // Mock html utility
 vi.mock('../../src/engine/utils/development/formatter', () => ({
-  html: (strings: TemplateStringsArray, ...values: unknown[]) => {
-    return strings.reduce((result, str, i) => {
-      return result + str + (values[i] ?? '');
-    }, '');
-  },
+  html: (strings: TemplateStringsArray, ...values: unknown[]) => strings.reduce((result, str, i) => result + str + (values[i] ?? ''), ''),
 }));
 
 // Mock qs utility

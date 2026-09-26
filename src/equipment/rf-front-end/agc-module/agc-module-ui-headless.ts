@@ -10,11 +10,7 @@ import { AGCModuleCore, AGCState } from './agc-module-core';
  */
 export class AGCModuleUIHeadless extends AGCModuleCore {
   constructor(state: AGCState, rfFrontEnd: RFFrontEndCore, unit: number = 1) {
-    super(
-      { ...AGCModuleCore.getDefaultState(), ...state },
-      rfFrontEnd,
-      unit
-    );
+    super({ ...AGCModuleCore.getDefaultState(), ...state }, rfFrontEnd, unit);
   }
 
   /**

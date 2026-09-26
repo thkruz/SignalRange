@@ -23,7 +23,7 @@ describe('DraggableHtmlBox', () => {
         'draggable-html-box-test-id',
         expect.objectContaining({
           title: 'Test Title',
-          parentId: 'sandbox-page'
+          parentId: 'sandbox-page',
         })
       );
       expect(box.isOpen).toBe(true);
@@ -35,7 +35,7 @@ describe('DraggableHtmlBox', () => {
       expect(DraggableBox).toHaveBeenCalledWith(
         'draggable-html-box-test-id',
         expect.objectContaining({
-          boxContentHtml: expect.stringContaining('https://example.com')
+          boxContentHtml: expect.stringContaining('https://example.com'),
         })
       );
     });

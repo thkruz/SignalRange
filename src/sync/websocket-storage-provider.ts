@@ -84,10 +84,12 @@ export class WebSocketStorageProvider implements StorageProvider {
 
   async write<T>(data: T): Promise<void> {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify({
-        type: 'UPDATE_STATE',
-        data
-      }));
+      this.ws.send(
+        JSON.stringify({
+          type: 'UPDATE_STATE',
+          data,
+        })
+      );
       this.cachedState = data;
     } else {
       throw new Error('WebSocket not connected');
@@ -144,7 +146,7 @@ export class WebSocketStorageProvider implements StorageProvider {
   }
 
   private notifySubscribers(data: any): void {
-    this.subscribers.forEach(callback => {
+    this.subscribers.forEach((callback) => {
       try {
         callback(data);
       } catch (error) {

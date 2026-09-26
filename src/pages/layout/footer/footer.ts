@@ -1,6 +1,6 @@
-import { BaseElement } from "@app/components/base-element";
-import { qs } from "@app/engine/utils/query-selector";
-import { html } from "@app/engine/utils/development/formatter";
+import { BaseElement } from '@app/components/base-element';
+import { html } from '@app/engine/utils/development/formatter';
+import { qs } from '@app/engine/utils/query-selector';
 import './footer.css';
 
 /**
@@ -17,7 +17,7 @@ export class Footer extends BaseElement {
 
   static create(rootElementId?: string): Footer {
     if (Footer.instance_) {
-      throw new Error("Footer instance already exists.");
+      throw new Error('Footer instance already exists.');
     }
 
     Footer.instance_ = new Footer(rootElementId);
@@ -27,7 +27,7 @@ export class Footer extends BaseElement {
 
   static getInstance(): Footer {
     if (!Footer.instance_) {
-      throw new Error("Footer instance does not exist.");
+      throw new Error('Footer instance does not exist.');
     }
 
     return Footer.instance_;

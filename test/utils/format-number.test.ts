@@ -1,4 +1,4 @@
-import { formatFrequencyMHz, formatBandwidthMHz } from '../../src/utils/format-number';
+import { formatBandwidthMHz, formatFrequencyMHz } from '../../src/utils/format-number';
 
 describe('format-number utilities', () => {
   describe('formatFrequencyMHz', () => {
@@ -118,16 +118,9 @@ describe('format-number utilities', () => {
     // it gets stored (possibly in Hz), and displayed back exactly
 
     it('should preserve user input through storage and display', () => {
-      const testCases = [
-        '950',
-        '1100',
-        '1100.5',
-        '1400.55',
-        '1500.123',
-        '2150',
-      ];
+      const testCases = ['950', '1100', '1100.5', '1400.55', '1500.123', '2150'];
 
-      testCases.forEach(userInput => {
+      testCases.forEach((userInput) => {
         const valueMHz = parseFloat(userInput);
         const storedHz = valueMHz * 1e6;
         const displayed = formatFrequencyMHz(storedHz);

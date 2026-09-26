@@ -1,7 +1,7 @@
-import { SignalOrigin } from "@app/signal-origin";
-import type { dB, dBm, dBW, RfSignal } from '@app/types';
-import { RFFrontEndCore } from "@app/equipment/rf-front-end/rf-front-end-core";
+import { RFFrontEndCore } from '@app/equipment/rf-front-end/rf-front-end-core';
 import { RFFrontEndModule } from '@app/equipment/rf-front-end/rf-front-end-module';
+import { SignalOrigin } from '@app/signal-origin';
+import type { dB, dBm, dBW, RfSignal } from '@app/types';
 
 /**
  * High Power Amplifier module state
@@ -19,6 +19,13 @@ export interface HPAState {
   isHpaEnabled: boolean;
   /** is the HPA switch enabled */
   isHpaSwitchEnabled: boolean;
+  /**
+   * Maximum output power (dBm). Optional config override for small amplifiers
+   * (Campaign 3 backyard ~5 W brick = 37 dBm); absent -> legacy 63 dBm (2 kW).
+   */
+  maxOutputPower?: dBm;
+  /** Output power at 1 dB compression (dBm). Absent -> legacy 59 dBm. */
+  p1db?: dBm;
 }
 
 /**
@@ -27,9 +34,13 @@ export interface HPAState {
  * No UI dependencies
  */
 export abstract class HPAModuleCore extends RFFrontEndModule<HPAState> {
-  // HPA characteristics
-  readonly p1db = 59 as dBm; // dBm (800W) output power at 1dB compression point
-  protected readonly maxOutputPower_ = 63 as dBm; // dBm (2000W) maximum output power
+  // HPA characteristics (config-overridable via HPAState for small amplifiers)
+  get p1db(): dBm {
+    return (this.state.p1db ?? 59) as dBm; // dBm (800W) output power at 1dB compression point
+  }
+  protected get maxOutputPower_(): dBm {
+    return (this.state.maxOutputPower ?? 63) as dBm; // dBm (2000W) maximum output power
+  }
   protected readonly minBackOffDb_ = 0;
   protected readonly maxBackOffDb_ = 30;
   private readonly thermalEfficiency_ = 0.85;
@@ -95,7 +106,7 @@ export abstract class HPAModuleCore extends RFFrontEndModule<HPAState> {
     }
 
     // Calculate output power based on actual input signals (same as processSignals_)
-    const outputPowers = inputs.map(sig => {
+    const outputPowers = inputs.map((sig) => {
       const gain = this.calculateGain_(sig.power);
       return sig.power + gain - this.state.backOff;
     });
@@ -109,11 +120,11 @@ export abstract class HPAModuleCore extends RFFrontEndModule<HPAState> {
   private updateTemperature_(): void {
     if (this.state.isPowered) {
       // Calculate dissipated power based on efficiency, outputPower is in dBm
-      const powerWatts = Math.pow(10, (this.state.outputPower - 30) / 10); // Convert dBm to Watts
+      const powerWatts = 10 ** ((this.state.outputPower - 30) / 10); // Convert dBm to Watts
       const dissipatedPower = powerWatts * (1 - this.thermalEfficiency_);
 
       // Simple thermal model: ambient + thermal rise (0.5°C per Watt dissipated)
-      this.state.temperature = 25 + (dissipatedPower * 0.5);
+      this.state.temperature = 25 + dissipatedPower * 0.5;
     } else {
       this.state.temperature = 25; // Ambient temperature
     }
@@ -126,7 +137,7 @@ export abstract class HPAModuleCore extends RFFrontEndModule<HPAState> {
     if (this.state.isPowered) {
       // IMD improves (becomes more negative) as back-off increases
       // Typical relationship: IMD degrades ~2 dB for every dB reduction in back-off
-      this.state.imdLevel = -30 - (this.state.backOff * 2); // dBc
+      this.state.imdLevel = -30 - this.state.backOff * 2; // dBc
 
       // Update overdrive status
       this.state.isOverdriven = this.state.backOff < 3;
@@ -147,7 +158,7 @@ export abstract class HPAModuleCore extends RFFrontEndModule<HPAState> {
     }
 
     // Apply gain and compression to input signals
-    this.outputSignals = this.inputSignals.map(sig => {
+    this.outputSignals = this.inputSignals.map((sig) => {
       // Apply HPA gain
       const gain = this.calculateGain_(sig.power);
       return {
@@ -158,7 +169,7 @@ export abstract class HPAModuleCore extends RFFrontEndModule<HPAState> {
     });
 
     // Update state.gain to be the max gain applied to any input signal
-    const gains = this.inputSignals.map(sig => this.calculateGain_(sig.power));
+    const gains = this.inputSignals.map((sig) => this.calculateGain_(sig.power));
     this.state.gain = (gains.length > 0 ? Math.max(...gains) : 0) as dB;
   }
 
@@ -185,7 +196,7 @@ export abstract class HPAModuleCore extends RFFrontEndModule<HPAState> {
     // Simple model: reduce gain by 1 dB for every dB input above (P1dB - backOff - 3)
     const compressionThreshold = targetOutputDbm - 3;
     if (inputPowerDbm > compressionThreshold) {
-      linearGain -= (inputPowerDbm - compressionThreshold);
+      linearGain -= inputPowerDbm - compressionThreshold;
     }
 
     // Ensure gain is not negative
@@ -203,7 +214,7 @@ export abstract class HPAModuleCore extends RFFrontEndModule<HPAState> {
     // Power sequencing check
     const bucPowered = this.rfFrontEnd_.state.buc.isPowered;
 
-    if (this.state.isPowered && (!bucPowered)) {
+    if (this.state.isPowered && !bucPowered) {
       // Disable HPA if power conditions not met
       this.state.isPowered = false;
     }
@@ -343,7 +354,7 @@ export abstract class HPAModuleCore extends RFFrontEndModule<HPAState> {
 
   renderPowerMeter_(powerDbW: dBW): string {
     // Convert dBW to percentage (1W = 0 dBW, 10W = 10 dBW for scale)
-    const percentage = Math.max(0, Math.min(100, (powerDbW / (this.maxOutputPower_ - 30) as dBW) * 100));
+    const percentage = Math.max(0, Math.min(100, ((powerDbW / (this.maxOutputPower_ - 30)) as dBW) * 100));
 
     const segments = [];
     for (let i = 0; i < 5; i++) {
@@ -352,9 +363,11 @@ export abstract class HPAModuleCore extends RFFrontEndModule<HPAState> {
 
       let colorClass = 'led-off';
       if (isLit) {
-        if (i < 3) colorClass = 'led-green';      // 0-60%: green
-        else if (i < 4) colorClass = 'led-yellow'; // 60-80%: yellow
-        else colorClass = 'led-red';                // 80-100%: red
+        if (i < 3)
+          colorClass = 'led-green'; // 0-60%: green
+        else if (i < 4)
+          colorClass = 'led-yellow'; // 60-80%: yellow
+        else colorClass = 'led-red'; // 80-100%: red
       }
 
       segments.push(`<div class="led-segment ${colorClass}"></div>`);

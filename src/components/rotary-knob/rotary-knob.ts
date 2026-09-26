@@ -1,10 +1,10 @@
-import { html } from "@app/engine/utils/development/formatter";
-import { qs } from "@app/engine/utils/query-selector";
-import { EventBus } from "@app/events/event-bus";
-import { Events } from "@app/events/events";
-import { Logger } from "@app/logging/logger";
-import { Sfx } from "@app/sound/sfx-enum";
-import SoundManager from "@app/sound/sound-manager";
+import { html } from '@app/engine/utils/development/formatter';
+import { qs } from '@app/engine/utils/query-selector';
+import { EventBus } from '@app/events/event-bus';
+import { Events } from '@app/events/events';
+import { Logger } from '@app/logging/logger';
+import { Sfx } from '@app/sound/sfx-enum';
+import SoundManager from '@app/sound/sound-manager';
 import './rotary-knob.css';
 
 export class RotaryKnob {
@@ -22,15 +22,7 @@ export class RotaryKnob {
   private startValue: number = 0;
   private readonly callback?: (value: number) => void;
 
-  constructor(
-    uniqueId: string,
-    initialValue: number = 0,
-    min: number = 0,
-    max: number = 100,
-    step: number = 1,
-    callback?: (value: number) => void,
-    valueOverride?: string
-  ) {
+  constructor(uniqueId: string, initialValue: number = 0, min: number = 0, max: number = 100, step: number = 1, callback?: (value: number) => void, valueOverride?: string) {
     this.value = initialValue;
     this.min = min;
     this.max = max;
@@ -118,7 +110,6 @@ export class RotaryKnob {
     this.updateAngleFromValue_();
     this.updateDisplay();
 
-
     if (this.callback) {
       this.callback(this.value);
     }
@@ -126,7 +117,7 @@ export class RotaryKnob {
 
   private updateAngleFromValue_(): void {
     const normalized = (this.value - this.min) / (this.max - this.min);
-    this.angle = -135 + (normalized * 270); // -135° to +135°
+    this.angle = -135 + normalized * 270; // -135° to +135°
   }
 
   updateDisplay(): void {
@@ -166,15 +157,7 @@ export class RotaryKnob {
     this.updateDisplay();
   }
 
-  static create(
-    id: string,
-    initialValue: number,
-    min: number,
-    max: number,
-    step: number = 1,
-    callback?: (value: number) => void,
-    valueOverride?: string
-  ): RotaryKnob {
+  static create(id: string, initialValue: number, min: number, max: number, step: number = 1, callback?: (value: number) => void, valueOverride?: string): RotaryKnob {
     return new RotaryKnob(id, initialValue, min, max, step, callback, valueOverride);
   }
 }

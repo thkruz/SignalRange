@@ -46,12 +46,7 @@ describe('HelpButton', () => {
     });
 
     it('should create instance with optional helpUrl', () => {
-      const button = new HelpButton(
-        'help-btn-url',
-        'Help Title',
-        'Content',
-        'https://example.com/help'
-      );
+      const button = new HelpButton('help-btn-url', 'Help Title', 'Content', 'https://example.com/help');
       mountButton(button);
 
       expect(button.html).toContain('id="help-btn-url"');
@@ -99,12 +94,7 @@ describe('HelpButton', () => {
     });
 
     it('should create with optional helpUrl', () => {
-      const button = HelpButton.create(
-        'static-url-btn',
-        'Title',
-        'Content',
-        'https://example.com'
-      );
+      const button = HelpButton.create('static-url-btn', 'Title', 'Content', 'https://example.com');
       mountButton(button);
 
       expect(button).toBeInstanceOf(HelpButton);
@@ -172,19 +162,11 @@ describe('HelpButton', () => {
       const btnEl = container.querySelector('.btn-help') as HTMLButtonElement;
       btnEl.click();
 
-      expect(mockModalManager.show).toHaveBeenCalledWith(
-        'My Help Title',
-        'My help content here'
-      );
+      expect(mockModalManager.show).toHaveBeenCalledWith('My Help Title', 'My help content here');
     });
 
     it('should show modal with iframe when URL provided', () => {
-      const button = new HelpButton(
-        'url-btn',
-        'URL Help',
-        'Fallback content',
-        'https://docs.example.com/help'
-      );
+      const button = new HelpButton('url-btn', 'URL Help', 'Fallback content', 'https://docs.example.com/help');
       mountButton(button);
 
       EventBus.getInstance().emit(Events.DOM_READY);
@@ -192,14 +174,8 @@ describe('HelpButton', () => {
       const btnEl = container.querySelector('.btn-help') as HTMLButtonElement;
       btnEl.click();
 
-      expect(mockModalManager.show).toHaveBeenCalledWith(
-        'URL Help',
-        expect.stringContaining('iframe')
-      );
-      expect(mockModalManager.show).toHaveBeenCalledWith(
-        'URL Help',
-        expect.stringContaining('https://docs.example.com/help')
-      );
+      expect(mockModalManager.show).toHaveBeenCalledWith('URL Help', expect.stringContaining('iframe'));
+      expect(mockModalManager.show).toHaveBeenCalledWith('URL Help', expect.stringContaining('https://docs.example.com/help'));
     });
 
     it('should prevent default event behavior', () => {
@@ -221,12 +197,7 @@ describe('HelpButton', () => {
     });
 
     it('should include correct iframe styling', () => {
-      const button = new HelpButton(
-        'iframe-style-btn',
-        'Styled Help',
-        'Content',
-        'https://example.com'
-      );
+      const button = new HelpButton('iframe-style-btn', 'Styled Help', 'Content', 'https://example.com');
       mountButton(button);
 
       EventBus.getInstance().emit(Events.DOM_READY);
@@ -289,10 +260,7 @@ describe('HelpButton', () => {
       const btnEl = container.querySelector('.btn-help') as HTMLButtonElement;
       btnEl.click();
 
-      expect(mockModalManager.show).toHaveBeenCalledWith(
-        'Help & Info <Guide>',
-        'Content'
-      );
+      expect(mockModalManager.show).toHaveBeenCalledWith('Help & Info <Guide>', 'Content');
     });
   });
 });

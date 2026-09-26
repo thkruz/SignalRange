@@ -47,7 +47,9 @@ describe('SoundManager.getInstance', () => {
         loop: false,
       } as any;
 
-      global.Audio = vi.fn(function() { return mockAudio; }) as any;
+      global.Audio = vi.fn(function () {
+        return mockAudio;
+      }) as any;
       vi.useFakeTimers();
     });
 
@@ -128,7 +130,9 @@ describe('SoundManager.getInstance', () => {
           loop: false,
         } as any;
 
-        global.Audio = vi.fn(function() { return mockAudio; }) as any;
+        global.Audio = vi.fn(function () {
+          return mockAudio;
+        }) as any;
         vi.useFakeTimers();
       });
 

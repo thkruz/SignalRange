@@ -1,19 +1,19 @@
-import { BaseElement } from "@app/components/base-element";
-import { DevMenuBox } from "@app/dev-menu/dev-menu-box";
-import { DevMenuService } from "@app/dev-menu/dev-menu-service";
-import { qs } from "@app/engine/utils/query-selector";
-import { EngineeringModeService } from "@app/engineering-mode/engineering-mode-service";
-import { EventBus } from "@app/events/event-bus";
-import { Events } from "@app/events/events";
-import { Router } from "@app/router";
-import { ScenarioManager } from "@app/scenario-manager";
-import { Auth } from "@app/user-account/auth";
-import { ModalLogin } from "@app/user-account/modal-login";
-import { ModalProfile } from "@app/user-account/modal-profile";
-import { isSupabaseApprovedDomain } from "@app/user-account/supabase-client";
+import { BaseElement } from '@app/components/base-element';
+import { DevMenuBox } from '@app/dev-menu/dev-menu-box';
+import { DevMenuService } from '@app/dev-menu/dev-menu-service';
+import { qs } from '@app/engine/utils/query-selector';
+import { EngineeringModeService } from '@app/engineering-mode/engineering-mode-service';
+import { EventBus } from '@app/events/event-bus';
+import { Events } from '@app/events/events';
+import { Router } from '@app/router';
+import { ScenarioManager } from '@app/scenario-manager';
+import { Auth } from '@app/user-account/auth';
+import { ModalLogin } from '@app/user-account/modal-login';
+import { ModalProfile } from '@app/user-account/modal-profile';
+import { isSupabaseApprovedDomain } from '@app/user-account/supabase-client';
 import '@app/user-account/user-account.css';
-import type { User } from "@supabase/supabase-js";
-import { html } from "@app/engine/utils/development/formatter";
+import { html } from '@app/engine/utils/development/formatter';
+import type { User } from '@supabase/supabase-js';
 import './header.css';
 
 /**
@@ -34,7 +34,7 @@ export class Header extends BaseElement {
 
   static create(rootElementId?: string): Header {
     if (Header.instance_) {
-      throw new Error("Header instance already exists.");
+      throw new Error('Header instance already exists.');
     }
 
     Header.instance_ = new Header(rootElementId);
@@ -44,7 +44,7 @@ export class Header extends BaseElement {
 
   static getInstance(): Header {
     if (!Header.instance_) {
-      throw new Error("Header instance does not exist.");
+      throw new Error('Header instance does not exist.');
     }
 
     return Header.instance_;
@@ -308,7 +308,7 @@ export class Header extends BaseElement {
     const displayName = metadata?.full_name || metadata?.name || user.email || '??';
     const initials = displayName
       .split(' ')
-      .map(word => word.charAt(0).toUpperCase())
+      .map((word) => word.charAt(0).toUpperCase())
       .join('')
       .slice(0, 2);
 

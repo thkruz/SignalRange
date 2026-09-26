@@ -1,12 +1,12 @@
-import { html } from '@app/engine/utils/development/formatter';
+import stopwatchPng from '@app/assets/icons/stopwatch.png';
 import { DraggableModal } from '@app/engine/ui/draggable-modal';
+import { html } from '@app/engine/utils/development/formatter';
 import { ScenarioManager } from '@app/scenario-manager';
 import { clearPersistedStore } from '@app/sync/storage';
 import { ProgressSaveManager } from '@app/user-account/progress-save-manager';
 import { DialogManager } from './dialog-manager';
 import { PendingQuizIndicator } from './pending-quiz-indicator';
 import { QuizModal } from './quiz-modal';
-import stopwatchPng from '@app/assets/icons/stopwatch.png';
 import './objective-failed-modal.css';
 
 interface FailureModalOptions {
@@ -47,9 +47,7 @@ export class ObjectiveFailedModal extends DraggableModal {
   }
 
   protected getModalContentHtml(): string {
-    const checkpointButton = this.hasCheckpoint_
-      ? `<button id="restart-checkpoint-btn" class="btn btn-primary">Restart from Checkpoint</button>`
-      : '';
+    const checkpointButton = this.hasCheckpoint_ ? `<button id="restart-checkpoint-btn" class="btn btn-primary">Restart from Checkpoint</button>` : '';
 
     // Make Restart Scenario primary when it's the only option
     const scenarioButtonClass = this.hasCheckpoint_ ? 'btn btn-secondary' : 'btn btn-primary';

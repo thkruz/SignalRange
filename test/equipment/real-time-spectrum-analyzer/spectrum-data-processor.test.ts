@@ -99,7 +99,7 @@ describe('SpectrumDataProcessor', () => {
       processor.generateData();
 
       // Check that noise data has been populated (not all zeros)
-      const hasNonZero = processor.noiseData.some(v => v !== 0);
+      const hasNonZero = processor.noiseData.some((v) => v !== 0);
       expect(hasNonZero).toBe(true);
     });
 
@@ -107,7 +107,7 @@ describe('SpectrumDataProcessor', () => {
       processor.generateData();
 
       // Combined data should be the max of noise and signal at each point
-      const hasNonZero = processor.combinedData.some(v => v !== 0);
+      const hasNonZero = processor.combinedData.some((v) => v !== 0);
       expect(hasNonZero).toBe(true);
     });
 
@@ -219,9 +219,7 @@ describe('SpectrumDataProcessor', () => {
 
       // At each point, combined should be >= noise and >= signal
       for (let i = 0; i < testWidth; i++) {
-        expect(processor.combinedData[i]).toBeGreaterThanOrEqual(
-          Math.min(processor.noiseData[i], processor.signalData[i])
-        );
+        expect(processor.combinedData[i]).toBeGreaterThanOrEqual(Math.min(processor.noiseData[i], processor.signalData[i]));
       }
     });
   });
@@ -271,8 +269,7 @@ describe('SpectrumDataProcessor', () => {
     it('should add gain when isSkipLnaGainDuringDraw is false', () => {
       mockSpecA.state!.isSkipLnaGainDuringDraw = false;
       const expectedGain = 30;
-      (mockSpecA.rfFrontEnd_!.couplerModule.signalPathManager.getTotalRxGain as Mock)
-        .mockReturnValue(expectedGain);
+      (mockSpecA.rfFrontEnd_!.couplerModule.signalPathManager.getTotalRxGain as Mock).mockReturnValue(expectedGain);
 
       processor.setFrequencyRange(500e6 as Hertz, 600e6 as Hertz);
       processor.generateData();
@@ -292,9 +289,7 @@ describe('SpectrumDataProcessor', () => {
 
     it('should not apply notch when notch filter is not powered', () => {
       mockSpecA.rfFrontEnd_!.notchFilterModule.state.isPowered = false;
-      mockSpecA.rfFrontEnd_!.notchFilterModule.state.notches = [
-        { enabled: true, centerFrequency: 550, bandwidth: 10, depth: 30 },
-      ];
+      mockSpecA.rfFrontEnd_!.notchFilterModule.state.notches = [{ enabled: true, centerFrequency: 550, bandwidth: 10, depth: 30 }];
 
       processor.generateData();
 
@@ -306,9 +301,7 @@ describe('SpectrumDataProcessor', () => {
 
     it('should apply notch when notch filter is powered and enabled', () => {
       mockSpecA.rfFrontEnd_!.notchFilterModule.state.isPowered = true;
-      mockSpecA.rfFrontEnd_!.notchFilterModule.state.notches = [
-        { enabled: true, centerFrequency: 550, bandwidth: 10, depth: 30 },
-      ];
+      mockSpecA.rfFrontEnd_!.notchFilterModule.state.notches = [{ enabled: true, centerFrequency: 550, bandwidth: 10, depth: 30 }];
 
       processor.generateData();
 
@@ -322,9 +315,7 @@ describe('SpectrumDataProcessor', () => {
 
     it('should not apply notch when notch is disabled', () => {
       mockSpecA.rfFrontEnd_!.notchFilterModule.state.isPowered = true;
-      mockSpecA.rfFrontEnd_!.notchFilterModule.state.notches = [
-        { enabled: false, centerFrequency: 550, bandwidth: 10, depth: 30 },
-      ];
+      mockSpecA.rfFrontEnd_!.notchFilterModule.state.notches = [{ enabled: false, centerFrequency: 550, bandwidth: 10, depth: 30 }];
 
       // Get baseline noise
       processor.generateData();

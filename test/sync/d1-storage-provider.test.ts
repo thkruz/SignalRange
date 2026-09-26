@@ -27,7 +27,8 @@ describe('D1StorageProvider', () => {
 
   describe('initialize()', () => {
     it('checks health endpoint and loads initial state', async () => {
-      const mockFetch = vi.fn()
+      const mockFetch = vi
+        .fn()
         .mockResolvedValueOnce({ ok: true }) // health check
         .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ data: 'initial' }) }); // read
       global.fetch = mockFetch;
@@ -61,7 +62,8 @@ describe('D1StorageProvider', () => {
 
     it('starts polling when autoSync is enabled', async () => {
       provider = new D1StorageProvider(API_ENDPOINT, { autoSync: true, syncInterval: 1000 });
-      const mockFetch = vi.fn()
+      const mockFetch = vi
+        .fn()
         .mockResolvedValueOnce({ ok: true })
         .mockResolvedValue({ ok: true, json: () => Promise.resolve({ data: 'state' }) });
       global.fetch = mockFetch;
@@ -97,7 +99,8 @@ describe('D1StorageProvider', () => {
     it('returns cached state on error', async () => {
       // First, successfully read to cache
       const mockData = { cached: true };
-      const mockFetch = vi.fn()
+      const mockFetch = vi
+        .fn()
         .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(mockData) })
         .mockRejectedValueOnce(new Error('Network error'));
       global.fetch = mockFetch;
@@ -281,7 +284,8 @@ describe('D1StorageProvider', () => {
   describe('dispose()', () => {
     it('stops polling', async () => {
       provider = new D1StorageProvider(API_ENDPOINT, { autoSync: true, syncInterval: 1000 });
-      const mockFetch = vi.fn()
+      const mockFetch = vi
+        .fn()
         .mockResolvedValueOnce({ ok: true })
         .mockResolvedValue({ ok: true, json: () => Promise.resolve({}) });
       global.fetch = mockFetch;
@@ -314,7 +318,8 @@ describe('D1StorageProvider', () => {
   describe('polling', () => {
     it('uses default interval of 30 seconds when not specified', async () => {
       provider = new D1StorageProvider(API_ENDPOINT, { autoSync: true });
-      const mockFetch = vi.fn()
+      const mockFetch = vi
+        .fn()
         .mockResolvedValueOnce({ ok: true })
         .mockResolvedValue({ ok: true, json: () => Promise.resolve({}) });
       global.fetch = mockFetch;
@@ -335,7 +340,8 @@ describe('D1StorageProvider', () => {
 
     it('polls the server at the configured interval', async () => {
       provider = new D1StorageProvider(API_ENDPOINT, { autoSync: true, syncInterval: 1000 });
-      const mockFetch = vi.fn()
+      const mockFetch = vi
+        .fn()
         .mockResolvedValueOnce({ ok: true }) // health
         .mockResolvedValue({ ok: true, json: () => Promise.resolve({ data: 'state' }) }); // reads
       global.fetch = mockFetch;

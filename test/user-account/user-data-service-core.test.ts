@@ -1,4 +1,5 @@
 import { Mock, vi } from 'vitest';
+
 // NOTE: jest.setup.js globally mocks user-account modules.
 // These tests explicitly unmock to validate the real implementation.
 
@@ -12,6 +13,7 @@ vi.mock('../../src/engine/utils/errorManager', () => ({
 }));
 
 import { getUserDataService, initUserDataService } from '../../src/user-account/user-data-service';
+
 type MockResponse = {
   ok: boolean;
   status: number;
@@ -20,13 +22,7 @@ type MockResponse = {
   json: () => Promise<any>;
 };
 
-const makeJsonResponse = (opts: {
-  ok: boolean;
-  status?: number;
-  statusText?: string;
-  body?: any;
-  contentLength?: string | null;
-}): MockResponse => {
+const makeJsonResponse = (opts: { ok: boolean; status?: number; statusText?: string; body?: any; contentLength?: string | null }): MockResponse => {
   const status = opts.status ?? (opts.ok ? 200 : 500);
   const statusText = opts.statusText ?? (opts.ok ? 'OK' : 'ERR');
   return {
@@ -48,9 +44,7 @@ describe('UserDataService', () => {
     vi.unmock('../../src/user-account/user-data-service');
     vi.unmock('../../src/user-account/user-data-service-error');
 
-    const { UserDataService, getUserDataService, initUserDataService } = await import(
-      '../../src/user-account/user-data-service'
-    );
+    const { UserDataService, getUserDataService, initUserDataService } = await import('../../src/user-account/user-data-service');
     const { UserDataServiceError } = await import('../../src/user-account/user-data-service-error');
 
     return { UserDataService, getUserDataService, initUserDataService, UserDataServiceError };
@@ -92,7 +86,7 @@ describe('UserDataService', () => {
         method: 'PUT',
         headers: expect.objectContaining({ Authorization: 'Bearer token' }),
         body: JSON.stringify({ a: 1 }),
-      }),
+      })
     );
   });
 
@@ -120,9 +114,7 @@ describe('UserDataService', () => {
     const { UserDataService, UserDataServiceError } = await loadReal();
     const svc = new UserDataService({ apiBaseUrl, getAccessToken: () => 'token', enableRetry: false });
 
-    (globalThis.fetch as Mock).mockResolvedValue(
-      makeJsonResponse({ ok: false, status: 400, statusText: 'Bad', body: { error: 'Nope', code: 'X', details: { a: 1 } } }),
-    );
+    (globalThis.fetch as Mock).mockResolvedValue(makeJsonResponse({ ok: false, status: 400, statusText: 'Bad', body: { error: 'Nope', code: 'X', details: { a: 1 } } }));
 
     await expect((svc as any).request('/x', 'GET')).rejects.toMatchObject({
       name: 'UserDataServiceError',
@@ -164,9 +156,7 @@ describe('UserDataService', () => {
     const svc = new UserDataService({ apiBaseUrl, getAccessToken: () => 'token', maxRetries: 1, retryDelay: 5 });
 
     // 400 should not retry
-    (globalThis.fetch as Mock).mockResolvedValueOnce(
-      makeJsonResponse({ ok: false, status: 400, statusText: 'Bad', body: { error: 'bad' } }),
-    );
+    (globalThis.fetch as Mock).mockResolvedValueOnce(makeJsonResponse({ ok: false, status: 400, statusText: 'Bad', body: { error: 'bad' } }));
 
     await expect((svc as any).request('/bad', 'GET')).rejects.toBeInstanceOf(UserDataServiceError);
     expect(globalThis.fetch).toHaveBeenCalledTimes(1);
@@ -189,9 +179,7 @@ describe('UserDataService', () => {
     const { UserDataService } = await loadReal();
     const svc = new UserDataService({ apiBaseUrl, getAccessToken: () => 'token', enableRetry: false, appId: 'signalrange' });
 
-    (globalThis.fetch as Mock).mockResolvedValueOnce(
-      makeJsonResponse({ ok: false, status: 404, statusText: 'Not Found', body: { error: 'missing' } }),
-    );
+    (globalThis.fetch as Mock).mockResolvedValueOnce(makeJsonResponse({ ok: false, status: 404, statusText: 'Not Found', body: { error: 'missing' } }));
 
     await expect(svc.getScenarioProgress('s1')).resolves.toBeNull();
   });
@@ -217,7 +205,7 @@ describe('UserDataService', () => {
           created_at: 'c',
           updated_at: 'u',
         },
-      }),
+      })
     );
 
     await svc.updateUserProfile({
@@ -244,7 +232,7 @@ describe('UserDataService', () => {
           rank: 'R',
           email_notifications: false,
         }),
-      }),
+      })
     );
   });
 
@@ -257,12 +245,21 @@ describe('UserDataService', () => {
         ok: true,
         body: {
           profile: { id: 'u1', email: 'e', display_name: 'D', email_notifications: true, created_at: 'c', updated_at: 'u' },
-          preferences: { id: 1, user_id: 'u1', isSoundEnabled: true, soundVolume: 0.5, theme: 'dark', autoSaveProgress: true, defaultFrequencyUnits: 'MHz', defaultPowerUnits: 'dBm' },
+          preferences: {
+            id: 1,
+            user_id: 'u1',
+            isSoundEnabled: true,
+            soundVolume: 0.5,
+            theme: 'dark',
+            autoSaveProgress: true,
+            defaultFrequencyUnits: 'MHz',
+            defaultPowerUnits: 'dBm',
+          },
           data: { id: 2, user_id: 'u1', lastPlayedScenario: 1 },
           progress: { id: 3, user_id: 'u1', completedScenarios: [1], totalScore: 10 },
           achievements: [{ id: 'ua1', achievementId: 1, unlockedAt: 't' }],
         },
-      }),
+      })
     );
 
     const result = await svc.getFullUserData();

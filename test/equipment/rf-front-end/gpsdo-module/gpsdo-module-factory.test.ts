@@ -58,13 +58,7 @@ describe('createGPSDO factory', () => {
 
   describe('standard UI type', () => {
     it('should create GPSDOModuleUIStandard instance', () => {
-      const gpsdo = createGPSDO(
-        { ...defaultGpsdoState },
-        mockRfFrontEnd,
-        1,
-        'test-root',
-        'standard'
-      );
+      const gpsdo = createGPSDO({ ...defaultGpsdoState }, mockRfFrontEnd, 1, 'test-root', 'standard');
 
       expect(gpsdo).toBeInstanceOf(GPSDOModuleCore);
       expect(gpsdo).toBeInstanceOf(GPSDOModuleUIStandard);
@@ -77,52 +71,28 @@ describe('createGPSDO factory', () => {
         satelliteCount: 5,
       };
 
-      const gpsdo = createGPSDO(
-        customState,
-        mockRfFrontEnd,
-        1,
-        'test-root',
-        'standard'
-      );
+      const gpsdo = createGPSDO(customState, mockRfFrontEnd, 1, 'test-root', 'standard');
 
       expect(gpsdo.state.temperature).toBe(65);
       expect(gpsdo.state.satelliteCount).toBe(5);
     });
 
     it('should pass rfFrontEnd to the module', () => {
-      const gpsdo = createGPSDO(
-        { ...defaultGpsdoState },
-        mockRfFrontEnd,
-        1,
-        'test-root',
-        'standard'
-      );
+      const gpsdo = createGPSDO({ ...defaultGpsdoState }, mockRfFrontEnd, 1, 'test-root', 'standard');
 
       // Module should be able to query RF front-end reference status
       expect(gpsdo.getReferenceStatus).toBeDefined();
     });
 
     it('should use provided unit number', () => {
-      const gpsdo = createGPSDO(
-        { ...defaultGpsdoState },
-        mockRfFrontEnd,
-        3,
-        'test-root',
-        'standard'
-      ) as GPSDOModuleUIStandard;
+      const gpsdo = createGPSDO({ ...defaultGpsdoState }, mockRfFrontEnd, 3, 'test-root', 'standard') as GPSDOModuleUIStandard;
 
       // The uniqueId should include the unit number
       expect(gpsdo.html).toContain('rf-fe-gpsdo-3');
     });
 
     it('should inject HTML into parentId element', () => {
-      createGPSDO(
-        { ...defaultGpsdoState },
-        mockRfFrontEnd,
-        1,
-        'test-root',
-        'standard'
-      );
+      createGPSDO({ ...defaultGpsdoState }, mockRfFrontEnd, 1, 'test-root', 'standard');
 
       const parent = document.getElementById('test-root');
       expect(parent?.innerHTML).toContain('gpsdo-module');
@@ -132,10 +102,7 @@ describe('createGPSDO factory', () => {
 
   describe('default parameters', () => {
     it('should default to unit 1', () => {
-      const gpsdo = createGPSDO(
-        { ...defaultGpsdoState },
-        mockRfFrontEnd
-      ) as GPSDOModuleUIStandard;
+      const gpsdo = createGPSDO({ ...defaultGpsdoState }, mockRfFrontEnd) as GPSDOModuleUIStandard;
 
       expect(gpsdo.html).toContain('rf-fe-gpsdo-1');
     });
@@ -143,23 +110,13 @@ describe('createGPSDO factory', () => {
     it('should default to empty parentId', () => {
       // When parentId is empty, it should still create the module
       // but not inject into DOM
-      const gpsdo = createGPSDO(
-        { ...defaultGpsdoState },
-        mockRfFrontEnd,
-        1,
-        ''
-      );
+      const gpsdo = createGPSDO({ ...defaultGpsdoState }, mockRfFrontEnd, 1, '');
 
       expect(gpsdo).toBeInstanceOf(GPSDOModuleCore);
     });
 
     it('should default to standard UI type', () => {
-      const gpsdo = createGPSDO(
-        { ...defaultGpsdoState },
-        mockRfFrontEnd,
-        1,
-        'test-root'
-      );
+      const gpsdo = createGPSDO({ ...defaultGpsdoState }, mockRfFrontEnd, 1, 'test-root');
 
       expect(gpsdo).toBeInstanceOf(GPSDOModuleUIStandard);
     });
@@ -168,13 +125,7 @@ describe('createGPSDO factory', () => {
   describe('basic UI type', () => {
     it('should throw error as not implemented', () => {
       expect(() => {
-        createGPSDO(
-          { ...defaultGpsdoState },
-          mockRfFrontEnd,
-          1,
-          'test-root',
-          'basic'
-        );
+        createGPSDO({ ...defaultGpsdoState }, mockRfFrontEnd, 1, 'test-root', 'basic');
       }).toThrow('GPSDOModuleUIBasic not yet implemented');
     });
   });
@@ -182,26 +133,14 @@ describe('createGPSDO factory', () => {
   describe('headless UI type', () => {
     it('should throw error as not implemented', () => {
       expect(() => {
-        createGPSDO(
-          { ...defaultGpsdoState },
-          mockRfFrontEnd,
-          1,
-          'test-root',
-          'headless'
-        );
+        createGPSDO({ ...defaultGpsdoState }, mockRfFrontEnd, 1, 'test-root', 'headless');
       }).toThrow('GPSDOModuleUIHeadless not yet implemented');
     });
   });
 
   describe('unknown UI type', () => {
     it('should default to standard UI type for unknown types', () => {
-      const gpsdo = createGPSDO(
-        { ...defaultGpsdoState },
-        mockRfFrontEnd,
-        1,
-        'test-root',
-        'unknown' as GPSDOModuleUIType
-      );
+      const gpsdo = createGPSDO({ ...defaultGpsdoState }, mockRfFrontEnd, 1, 'test-root', 'unknown' as GPSDOModuleUIType);
 
       expect(gpsdo).toBeInstanceOf(GPSDOModuleUIStandard);
     });
@@ -209,13 +148,7 @@ describe('createGPSDO factory', () => {
 
   describe('return type', () => {
     it('should return GPSDOModuleCore base type for polymorphism', () => {
-      const gpsdo: GPSDOModuleCore = createGPSDO(
-        { ...defaultGpsdoState },
-        mockRfFrontEnd,
-        1,
-        'test-root',
-        'standard'
-      );
+      const gpsdo: GPSDOModuleCore = createGPSDO({ ...defaultGpsdoState }, mockRfFrontEnd, 1, 'test-root', 'standard');
 
       // Should be usable as base type
       expect(gpsdo.state).toBeDefined();

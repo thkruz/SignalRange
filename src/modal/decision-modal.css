@@ -1,0 +1,81 @@
+/* Decision modal - extends the quiz-modal look with an evidence checklist */
+
+.decision-evidence {
+  margin: 0.25rem 0 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--mc-border, rgba(255, 255, 255, 0.12));
+  border-radius: 4px;
+  background: var(--mc-surface-2, rgba(255, 255, 255, 0.03));
+  font-size: 0.85rem;
+}
+
+.decision-evidence-title {
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+  letter-spacing: 0.02em;
+}
+
+.decision-evidence-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.decision-evidence-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.1rem 0;
+}
+
+.decision-evidence-item.missing {
+  opacity: 0.75;
+}
+
+.decision-evidence-mark {
+  display: inline-block;
+  width: 1.1em;
+  text-align: center;
+  font-family: monospace;
+}
+
+.decision-evidence-item.ready .decision-evidence-mark {
+  color: var(--mc-success, #4caf50);
+}
+
+.decision-evidence-item.missing .decision-evidence-mark {
+  color: var(--mc-warning, #ffb300);
+}
+
+.decision-evidence-warning {
+  margin-top: 0.35rem;
+  color: var(--mc-warning, #ffb300);
+  font-size: 0.8rem;
+}
+
+.decision-unevidenced {
+  color: var(--mc-warning, #ffb300);
+  font-size: 0.85rem;
+  margin: 0.4rem 0;
+}
+
+/* Decision box (non-modal draggable box) - the quiz box shape, amber so a call reads differently from a quiz */
+#decision-modal.decision-box {
+  position: absolute;
+  max-width: 570px;
+  background: var(--color-dark-background, #1a1a2e);
+  border: 2px solid var(--mc-warning, #ffb300);
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+#decision-modal .draggable-box__content {
+  max-height: 70vh;
+  overflow-y: auto;
+  border: 0px;
+}
+
+#decision-modal .draggable-box__title-bar {
+  background: rgba(255, 179, 0, 0.1);
+  border-bottom: 1px solid var(--hm-border, #444);
+}

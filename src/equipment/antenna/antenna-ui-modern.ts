@@ -1,10 +1,11 @@
-import { HelpButton } from "@app/components/help-btn/help-btn";
-import { PolarPlot } from "@app/components/polar-plot/polar-plot";
-import { Degrees } from "ootk";
-import { html } from "@app/engine/utils/development/formatter";
-import { qs } from "@app/engine/utils/query-selector";
-import { ANTENNA_CONFIG_KEYS } from "./antenna-config-keys";
-import { AntennaCore, AntennaState } from "./antenna-core";
+import { HelpButton } from '@app/components/help-btn/help-btn';
+import { PolarPlot } from '@app/components/polar-plot/polar-plot';
+import { html } from '@app/engine/utils/development/formatter';
+import { qs } from '@app/engine/utils/query-selector';
+import { Degrees } from 'ootk';
+import { ANTENNA_CONFIG_KEYS } from './antenna-config-keys';
+import { AntennaCore, AntennaState } from './antenna-core';
+import type { AntennaConfigId } from './antenna-registry';
 import './antenna-ui-modern.css';
 
 /**
@@ -24,10 +25,10 @@ export class AntennaUIModern extends AntennaCore {
 
   constructor(
     parentId: string,
-    configId: ANTENNA_CONFIG_KEYS = ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK,
+    configId: AntennaConfigId = ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK,
     initialState: Partial<AntennaState> = {},
     teamId: number = 1,
-    serverId: number = 1,
+    serverId: number = 1
   ) {
     // Call parent constructor which will call build()
     super(configId, initialState, teamId, serverId);
@@ -39,10 +40,7 @@ export class AntennaUIModern extends AntennaCore {
       null,
       'https://docs.signalrange.space/equipment/antenna-control-unit?content-only=true&dark=true'
     );
-    this.polarPlot_ = PolarPlot.create(
-      `polar-plot-${this.state.uuid}`,
-      { width: 550, height: 450, showGrid: true, showLabels: true }
-    );
+    this.polarPlot_ = PolarPlot.create(`polar-plot-${this.state.uuid}`, { width: 550, height: 450, showGrid: true, showLabels: true });
 
     super.build(parentId);
   }
@@ -191,7 +189,10 @@ export class AntennaUIModern extends AntennaCore {
     this.domCache['polValue'].textContent = this.state.polarization.toFixed(1);
 
     // Update switch statuses
-    qs('.form-check.form-switch:has(#autotrack-switch)', this.domCache['parent'] as HTMLElement).classList.toggle('fault', this.state.isAutoTrackSwitchUp && !this.state.isAutoTrackEnabled);
+    qs('.form-check.form-switch:has(#autotrack-switch)', this.domCache['parent'] as HTMLElement).classList.toggle(
+      'fault',
+      this.state.isAutoTrackSwitchUp && !this.state.isAutoTrackEnabled
+    );
 
     // Update RF metrics display
     if (this.state.rfMetrics) {

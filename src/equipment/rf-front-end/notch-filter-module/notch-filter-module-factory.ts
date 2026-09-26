@@ -16,12 +16,7 @@ export type NotchFilterModuleUIType = 'headless';
  * @param uiType - UI type (default 'headless')
  * @returns NotchFilterModuleCore instance
  */
-export function createNotchFilter(
-  state: NotchFilterState,
-  rfFrontEnd: RFFrontEndCore,
-  unit: number = 1,
-  uiType: NotchFilterModuleUIType = 'headless'
-): NotchFilterModuleCore {
+export function createNotchFilter(state: NotchFilterState, rfFrontEnd: RFFrontEndCore, unit: number = 1, uiType: NotchFilterModuleUIType = 'headless'): NotchFilterModuleCore {
   switch (uiType) {
     case 'headless':
     default:

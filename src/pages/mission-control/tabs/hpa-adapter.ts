@@ -1,10 +1,10 @@
-import { CardAlarmBadge } from "@app/components/card-alarm-badge/card-alarm-badge";
-import { qs } from "@app/engine/utils/query-selector";
-import { AlarmStatus } from "@app/equipment/base-equipment";
-import { HPAModuleCore, HPAState } from "@app/equipment/rf-front-end/hpa-module/hpa-module-core";
-import { EventBus } from "@app/events/event-bus";
-import { Events } from "@app/events/events";
-import { parseLocalizedNumber } from "@app/utils/parse-number";
+import { CardAlarmBadge } from '@app/components/card-alarm-badge/card-alarm-badge';
+import { qs } from '@app/engine/utils/query-selector';
+import { AlarmStatus } from '@app/equipment/base-equipment';
+import { HPAModuleCore, HPAState } from '@app/equipment/rf-front-end/hpa-module/hpa-module-core';
+import { EventBus } from '@app/events/event-bus';
+import { Events } from '@app/events/events';
+import { parseLocalizedNumber } from '@app/utils/parse-number';
 
 /**
  * HPAAdapter - Bridges HPAModuleCore state to web controls
@@ -122,7 +122,7 @@ export class HPAAdapter {
     const powerWatts = this.domCache_.get('powerWatts');
     if (powerWatts) {
       if (isPowered) {
-        const watts = Math.pow(10, (state.outputPower - 30) / 10);
+        const watts = 10 ** ((state.outputPower - 30) / 10);
         if (watts >= 1) {
           powerWatts.textContent = `${watts.toFixed(0)} W`;
         } else {
@@ -150,9 +150,7 @@ export class HPAAdapter {
     if (overdriveStatus) {
       if (isPowered) {
         overdriveStatus.textContent = state.isOverdriven ? 'OVERDRIVE' : 'Normal';
-        overdriveStatus.className = state.isOverdriven
-          ? 'status-badge status-badge-warning'
-          : 'status-badge status-badge-good';
+        overdriveStatus.className = state.isOverdriven ? 'status-badge status-badge-warning' : 'status-badge status-badge-good';
       } else {
         overdriveStatus.textContent = '--';
         overdriveStatus.className = 'status-badge status-badge-off';
@@ -180,7 +178,7 @@ export class HPAAdapter {
     const powerMeter = this.domCache_.get('powerMeter');
     if (!powerMeter) return;
     const segments = powerMeter.querySelectorAll('.power-segment');
-    segments.forEach(segment => {
+    segments.forEach((segment) => {
       segment.className = 'power-segment led-off';
     });
   }
@@ -278,10 +276,7 @@ export class HPAAdapter {
   }
 
   private setControlButtonsEnabled_(enabled: boolean): void {
-    const buttonKeys = [
-      'backOffDecCoarse', 'backOffDecFine', 'backOffIncFine', 'backOffIncCoarse',
-      'applyBtn'
-    ];
+    const buttonKeys = ['backOffDecCoarse', 'backOffDecFine', 'backOffIncFine', 'backOffIncCoarse', 'applyBtn'];
     for (const key of buttonKeys) {
       const btn = this.domCache_.get(key) as HTMLButtonElement;
       if (btn) btn.disabled = !enabled;
@@ -372,7 +367,7 @@ export class HPAAdapter {
     const wattsDisplay = this.domCache_.get('powerWatts');
     if (wattsDisplay) {
       if (isPowered && state.outputPower !== undefined) {
-        const watts = Math.pow(10, (state.outputPower - 30) / 10);
+        const watts = 10 ** ((state.outputPower - 30) / 10);
         if (watts >= 1) {
           wattsDisplay.textContent = `${watts.toFixed(0)} W`;
         } else {
@@ -404,9 +399,7 @@ export class HPAAdapter {
     if (overdriveStatus) {
       if (isPowered && state.isOverdriven !== undefined) {
         overdriveStatus.textContent = state.isOverdriven ? 'OVERDRIVE' : 'Normal';
-        overdriveStatus.className = state.isOverdriven
-          ? 'status-badge status-badge-warning'
-          : 'status-badge status-badge-good';
+        overdriveStatus.className = state.isOverdriven ? 'status-badge status-badge-warning' : 'status-badge status-badge-good';
       } else if (!isPowered) {
         overdriveStatus.textContent = '--';
         overdriveStatus.className = 'status-badge status-badge-off';
@@ -475,9 +468,9 @@ export class HPAAdapter {
    */
   private getAlarmsFromModule_(): AlarmStatus[] {
     const alarmStrings = this.hpaModule.getAlarms();
-    return alarmStrings.map(message => ({
+    return alarmStrings.map((message) => ({
       severity: this.classifySeverity_(message),
-      message
+      message,
     }));
   }
 

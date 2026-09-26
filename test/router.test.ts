@@ -1,5 +1,7 @@
 import { vi } from 'vitest';
+import { CampaignManager } from '../src/campaigns/campaign-manager';
 import { EventBus } from '../src/events/event-bus';
+import { Events } from '../src/events/events';
 import { Router } from '../src/router';
 
 // Mock dependencies
@@ -7,12 +9,21 @@ vi.mock('../src/campaigns/campaign-manager', () => ({
   CampaignManager: {
     getInstance: vi.fn(() => ({
       registerCampaign: vi.fn(),
+      // The router reads chromeVariant off the campaign to tag <body>. The
+      // campaign data is mocked away here, so this returns undefined and the
+      // router takes its 'standard' fallback - which is the path worth
+      // exercising anyway (a campaign that declares no variant).
+      getCampaign: vi.fn(() => undefined),
     })),
   },
 }));
 
 vi.mock('../src/campaigns/nats/campaign-data', () => ({
   natsCampaignData: {},
+}));
+
+vi.mock('../src/campaigns/nats-eu/campaign-data', () => ({
+  natsEuCampaignData: {},
 }));
 
 vi.mock('../src/pages/campaign-selection', () => ({
@@ -147,6 +158,59 @@ describe('Router', () => {
     });
   });
 
+  describe('body classes', () => {
+    /**
+     * The chrome variant is what makes two campaigns feel like the same
+     * system. It reaches CSS only through this class, so the tagging is worth
+     * asserting: a wrong or stale class silently renders the wrong console.
+     */
+    const mockActiveCampaign = (campaign: unknown): void => {
+      vi.mocked(CampaignManager.getInstance).mockReturnValue({
+        registerCampaign: vi.fn(),
+        getCampaign: vi.fn(() => campaign),
+      } as unknown as ReturnType<typeof CampaignManager.getInstance>);
+    };
+
+    it('should tag the campaign and its chrome variant', () => {
+      mockActiveCampaign({ id: 'ccs', chromeVariant: 'astro' });
+
+      router.navigate('/campaigns/ccs');
+
+      expect(document.body.classList.contains('campaign-ccs')).toBe(true);
+      expect(document.body.classList.contains('chrome-astro')).toBe(true);
+    });
+
+    it('should fall back to standard chrome when the campaign declares no variant', () => {
+      mockActiveCampaign({ id: 'nats' });
+
+      router.navigate('/campaigns/nats');
+
+      expect(document.body.classList.contains('chrome-standard')).toBe(true);
+    });
+
+    it('should drop the previous campaign and chrome classes on navigation', () => {
+      mockActiveCampaign({ id: 'ccs', chromeVariant: 'astro' });
+      router.navigate('/campaigns/ccs');
+
+      mockActiveCampaign({ id: 'nats', chromeVariant: 'standard' });
+      router.navigate('/campaigns/nats');
+
+      expect(document.body.classList.contains('campaign-ccs')).toBe(false);
+      expect(document.body.classList.contains('chrome-astro')).toBe(false);
+      expect(document.body.classList.contains('chrome-standard')).toBe(true);
+    });
+
+    it('should carry no campaign or chrome class outside a campaign route', () => {
+      mockActiveCampaign({ id: 'ccs', chromeVariant: 'astro' });
+      router.navigate('/campaigns/ccs');
+
+      router.navigate('/sandbox');
+
+      expect([...document.body.classList].some((c) => c.startsWith('campaign-'))).toBe(false);
+      expect([...document.body.classList].some((c) => c.startsWith('chrome-'))).toBe(false);
+    });
+  });
+
   describe('unknown route redirect', () => {
     it('should redirect /student to root path', () => {
       router.navigate('/student');
@@ -254,6 +318,48 @@ describe('Router', () => {
       const instance2 = Router.getInstance();
 
       expect(instance1).not.toBe(instance2);
+    });
+  });
+
+  describe('extra routes (private edition hook)', () => {
+    it('should show a registered route and pass named params', () => {
+      const show = vi.fn();
+      router.addRoute({ pattern: /^\/author\/(?<campaignId>[^/]+)$/, show });
+
+      router.navigate('/author/nats-eu');
+
+      expect(show).toHaveBeenCalledWith({ campaignId: 'nats-eu' }, '/author/nats-eu');
+      expect(router.getCurrentPath()).toBe('/author/nats-eu');
+      // No redirect: pushState called once for the navigation itself
+      expect(pushStateSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('should emit ROUTE_CHANGED for an extra route', () => {
+      const listener = vi.fn();
+      EventBus.getInstance().on(Events.ROUTE_CHANGED, listener);
+      router.addRoute({ pattern: /^\/author$/, show: vi.fn() });
+
+      router.navigate('/author');
+
+      expect(listener).toHaveBeenCalledWith({ path: '/author' });
+    });
+
+    it('should hide an extra route when another route wins', () => {
+      const hide = vi.fn();
+      router.addRoute({ pattern: /^\/author$/, show: vi.fn(), hide });
+
+      router.navigate('/author');
+      router.navigate('/sandbox');
+
+      expect(hide).toHaveBeenCalled();
+    });
+
+    it('should still redirect unknown paths when no extra route matches', () => {
+      router.addRoute({ pattern: /^\/author$/, show: vi.fn() });
+
+      router.navigate('/nowhere');
+
+      expect(router.getCurrentPath()).toBe('/');
     });
   });
 });

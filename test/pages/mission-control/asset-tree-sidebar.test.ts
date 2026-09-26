@@ -98,6 +98,7 @@ import { ObjectivesManager } from '../../../src/objectives';
 import { OpsLogModal } from '../../../src/ops-log/ops-log-modal';
 import { ScenarioManager } from '../../../src/scenario-manager';
 import { SimulationManager } from '../../../src/simulation/simulation-manager';
+
 describe('AssetTreeSidebar', () => {
   let containerEl: HTMLElement;
   let sidebar: AssetTreeSidebar;
@@ -189,7 +190,7 @@ describe('AssetTreeSidebar', () => {
   describe('Ground Stations section', () => {
     it('should render Ground Stations header', () => {
       const headers = document.querySelectorAll('.list-group-header-text');
-      const headerTexts = Array.from(headers).map(h => h.textContent);
+      const headerTexts = Array.from(headers).map((h) => h.textContent);
       expect(headerTexts).toContain('Ground Stations');
     });
 
@@ -224,7 +225,7 @@ describe('AssetTreeSidebar', () => {
   describe('Satellites section', () => {
     it('should render Satellites header', () => {
       const headers = document.querySelectorAll('.list-group-header-text');
-      const headerTexts = Array.from(headers).map(h => h.textContent);
+      const headerTexts = Array.from(headers).map((h) => h.textContent);
       expect(headerTexts).toContain('Satellites');
     });
 
@@ -263,20 +264,14 @@ describe('AssetTreeSidebar', () => {
       const gsItem = document.querySelector('[data-asset-id="GS-001"]') as HTMLElement;
       gsItem?.click();
 
-      expect(mockEventBus.emit).toHaveBeenCalledWith(
-        Events.ASSET_SELECTED,
-        { type: 'ground-station', id: 'GS-001' }
-      );
+      expect(mockEventBus.emit).toHaveBeenCalledWith(Events.ASSET_SELECTED, { type: 'ground-station', id: 'GS-001' });
     });
 
     it('should emit ASSET_SELECTED event when satellite clicked', () => {
       const satItem = document.querySelector('[data-asset-id="sat-12345"]') as HTMLElement;
       satItem?.click();
 
-      expect(mockEventBus.emit).toHaveBeenCalledWith(
-        Events.ASSET_SELECTED,
-        { type: 'satellite', id: 'sat-12345' }
-      );
+      expect(mockEventBus.emit).toHaveBeenCalledWith(Events.ASSET_SELECTED, { type: 'satellite', id: 'sat-12345' });
     });
 
     it('should emit MISSION_OVERVIEW_SELECTED when Mission Overview clicked', () => {
@@ -313,30 +308,19 @@ describe('AssetTreeSidebar', () => {
 
   describe('event listeners', () => {
     it('should register for ROUTE_CHANGED events', () => {
-      expect(mockEventBus.on).toHaveBeenCalledWith(
-        Events.ROUTE_CHANGED,
-        expect.any(Function)
-      );
+      expect(mockEventBus.on).toHaveBeenCalledWith(Events.ROUTE_CHANGED, expect.any(Function));
     });
 
     it('should register for ASSET_SELECTED events', () => {
-      expect(mockEventBus.on).toHaveBeenCalledWith(
-        Events.ASSET_SELECTED,
-        expect.any(Function)
-      );
+      expect(mockEventBus.on).toHaveBeenCalledWith(Events.ASSET_SELECTED, expect.any(Function));
     });
 
     it('should register for SCENARIO_UNLOCKED events', () => {
-      expect(mockEventBus.on).toHaveBeenCalledWith(
-        Events.SCENARIO_UNLOCKED,
-        expect.any(Function)
-      );
+      expect(mockEventBus.on).toHaveBeenCalledWith(Events.SCENARIO_UNLOCKED, expect.any(Function));
     });
 
     it('should update selection UI when ASSET_SELECTED received externally', () => {
-      const assetSelectedHandler = mockEventBus.on.mock.calls.find(
-        (call: [string, Function]) => call[0] === Events.ASSET_SELECTED
-      )?.[1];
+      const assetSelectedHandler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.ASSET_SELECTED)?.[1];
 
       assetSelectedHandler?.({ id: 'GS-002', type: 'ground-station' });
 
@@ -349,9 +333,7 @@ describe('AssetTreeSidebar', () => {
       const sidebarEl = document.querySelector('.asset-tree-sidebar') as HTMLElement;
       sidebarEl?.classList.add('sidebar-locked');
 
-      const unlockHandler = mockEventBus.on.mock.calls.find(
-        (call: [string, Function]) => call[0] === Events.SCENARIO_UNLOCKED
-      )?.[1];
+      const unlockHandler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.SCENARIO_UNLOCKED)?.[1];
 
       unlockHandler?.();
 
@@ -450,7 +432,9 @@ describe('AssetTreeSidebar with mission brief', () => {
   it('should open mission brief box when Mission Brief clicked', () => {
     const mockOpen = vi.fn();
     const mockBox = { open: mockOpen };
-    DraggableHtmlBox.mockImplementation(function () { return mockBox; });
+    DraggableHtmlBox.mockImplementation(function () {
+      return mockBox;
+    });
 
     // Setup SimulationManager to allow assignment
     const simInstance = {
@@ -465,19 +449,16 @@ describe('AssetTreeSidebar with mission brief', () => {
     const missionBriefItem = document.querySelector('.mission-brief-icon') as HTMLElement;
     missionBriefItem?.click();
 
-    expect(DraggableHtmlBox).toHaveBeenCalledWith(
-      'Mission Brief',
-      'mission-brief',
-      '/briefs/test-mission.html',
-      'app-shell-page'
-    );
+    expect(DraggableHtmlBox).toHaveBeenCalledWith('Mission Brief', 'mission-brief', '/briefs/test-mission.html', 'app-shell-page');
     expect(mockOpen).toHaveBeenCalled();
   });
 
   it('should open dialog history box when Dialog History clicked', () => {
     const mockOpen = vi.fn();
     const mockBox = { open: mockOpen };
-    DialogHistoryBox.mockImplementation(function () { return mockBox; });
+    DialogHistoryBox.mockImplementation(function () {
+      return mockBox;
+    });
 
     // Setup SimulationManager to allow assignment
 
@@ -498,7 +479,6 @@ describe('AssetTreeSidebar with mission brief', () => {
   });
 
   it('should open checklist box when Checklist clicked', () => {
-
     const mockOpen = vi.fn();
     const mockUpdateContent = vi.fn();
     DraggableHtmlBox.mockImplementation(function () {
@@ -526,18 +506,13 @@ describe('AssetTreeSidebar with mission brief', () => {
   });
 
   it('should register for DOM_READY events when objectives not loaded', () => {
-    expect(mockEventBus.on).toHaveBeenCalledWith(
-      Events.DOM_READY,
-      expect.any(Function)
-    );
+    expect(mockEventBus.on).toHaveBeenCalledWith(Events.DOM_READY, expect.any(Function));
   });
 
   it('should check and update lock state on DOM_READY', () => {
     ObjectivesManager.isScenarioLocked.mockReturnValue(false);
 
-    const domReadyHandler = mockEventBus.on.mock.calls.find(
-      (call: [string, Function]) => call[0] === Events.DOM_READY
-    )?.[1];
+    const domReadyHandler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.DOM_READY)?.[1];
 
     domReadyHandler?.();
 
@@ -546,10 +521,7 @@ describe('AssetTreeSidebar with mission brief', () => {
   });
 
   it('should register for OBJECTIVE_ACTIVATED events', () => {
-    expect(mockEventBus.on).toHaveBeenCalledWith(
-      Events.OBJECTIVE_ACTIVATED,
-      expect.any(Function)
-    );
+    expect(mockEventBus.on).toHaveBeenCalledWith(Events.OBJECTIVE_ACTIVATED, expect.any(Function));
   });
 
   it('should stop checklist refresh timer on ROUTE_CHANGED', () => {
@@ -568,7 +540,6 @@ describe('AssetTreeSidebar with mission brief', () => {
       };
     });
 
-
     SimulationManager.getInstance.mockReturnValue({
       groundStations: [],
       satellites: [],
@@ -581,9 +552,7 @@ describe('AssetTreeSidebar with mission brief', () => {
     checklistItem?.click();
 
     // Trigger ROUTE_CHANGED
-    const routeChangedHandler = mockEventBus.on.mock.calls.find(
-      (call: [string, Function]) => call[0] === Events.ROUTE_CHANGED
-    )?.[1];
+    const routeChangedHandler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.ROUTE_CHANGED)?.[1];
 
     routeChangedHandler?.();
 

@@ -2,16 +2,17 @@
 vi.mock('@app/engine/ui/draggable-modal', () => ({
   DraggableModal: class MockDraggableModal {
     protected boxEl: HTMLElement | null = null;
-    constructor(_id: string, _options?: unknown) { }
-    protected onOpen(): void { }
-    open(): void { this.onOpen(); }
-    close(): void { }
+    constructor(_id: string, _options?: unknown) {}
+    protected onOpen(): void {}
+    open(): void {
+      this.onOpen();
+    }
+    close(): void {}
   },
 }));
 
 vi.mock('@app/engine/utils/development/formatter', () => ({
-  html: (strings: TemplateStringsArray, ...values: unknown[]) =>
-    strings.reduce((result, str, i) => result + str + (values[i] ?? ''), ''),
+  html: (strings: TemplateStringsArray, ...values: unknown[]) => strings.reduce((result, str, i) => result + str + (values[i] ?? ''), ''),
 }));
 
 vi.mock('@app/engine/utils/errorManager', () => ({
@@ -58,9 +59,7 @@ describe('ModalLogin', () => {
 
     it('should throw when using new after getInstance', () => {
       ModalLogin.getInstance();
-      expect(() => new (ModalLogin as unknown as new () => ModalLogin)()).toThrow(
-        'Use getInstance() instead of new.'
-      );
+      expect(() => new (ModalLogin as unknown as new () => ModalLogin)()).toThrow('Use getInstance() instead of new.');
     });
   });
 

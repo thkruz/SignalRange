@@ -1,7 +1,7 @@
-import { Logger } from "@app/logging/logger";
-import { Hertz } from "@app/types";
-import { AnalyzerControl } from "@app/equipment/real-time-spectrum-analyzer/analyzer-control";
-import { BaseControlButton } from "@app/equipment/real-time-spectrum-analyzer/analyzer-control/base-control-button";
+import { AnalyzerControl } from '@app/equipment/real-time-spectrum-analyzer/analyzer-control';
+import { BaseControlButton } from '@app/equipment/real-time-spectrum-analyzer/analyzer-control/base-control-button';
+import { Logger } from '@app/logging/logger';
+import { Hertz } from '@app/types';
 import './ac-span-btn.css';
 
 export class ACSpanBtn extends BaseControlButton {
@@ -93,7 +93,7 @@ export class ACSpanBtn extends BaseControlButton {
     // Round to nearest Hertz
     newVal = Math.round(newVal);
 
-    this.adjustValueInHz((newVal as Hertz));
+    this.adjustValueInHz(newVal as Hertz);
   }
 
   onMajorTickChange(value: number): void {

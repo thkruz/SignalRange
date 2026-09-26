@@ -1,11 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { MissionControlPage } from '../pages/mission-control.page';
-import {
-  answerQuizByText,
-  dismissDialogIfPresent,
-  waitForQuizToAppear,
-  waitForSimulationReady,
-} from '../utils/simulation-helpers';
+import { answerQuizByText, dismissDialogIfPresent, waitForQuizToAppear, waitForSimulationReady } from '../utils/simulation-helpers';
 
 /**
  * Scenario 22 - "End-of-Life Planning": AURORA-7 Sunset Recommendation.
@@ -16,15 +11,7 @@ import {
  * verifies the report content in the Working Document before the final quizzes
  * (the Mission Complete modal overlays the sidebar afterward).
  */
-type ObjectiveType =
-  | 'quiz'
-  | 'select-station'
-  | 'click-tab'
-  | 'repoint-program-track'
-  | 'set-step-track'
-  | 'configure-speca'
-  | 'verify-working-doc'
-  | 'auto';
+type ObjectiveType = 'quiz' | 'select-station' | 'click-tab' | 'repoint-program-track' | 'set-step-track' | 'configure-speca' | 'verify-working-doc' | 'auto';
 
 interface Scenario22Objective {
   id: string;
@@ -43,8 +30,7 @@ const SCENARIO_22_OBJECTIVES: Scenario22Objective[] = [
     id: 'review-mission-brief',
     title: 'Review the Tasking',
     type: 'quiz',
-    correctAnswer:
-      'A defensible recommendation grounded in measured data and an honest trend, with assumptions labeled - not a single date with false precision',
+    correctAnswer: 'A defensible recommendation grounded in measured data and an honest trend, with assumptions labeled - not a single date',
   },
   {
     id: 'select-vermont-station',
@@ -79,16 +65,15 @@ const SCENARIO_22_OBJECTIVES: Scenario22Objective[] = [
   },
   {
     id: 'measure-beacon',
-    title: 'Measure Today\'s Beacon',
+    title: "Measure Today's Beacon",
     type: 'configure-speca',
     centerFrequencyMhz: 1085,
   },
   {
     id: 'record-data-point-quiz',
-    title: 'Report: Today\'s Measurement',
+    title: "Report: Today's Measurement",
     type: 'quiz',
-    correctAnswer:
-      'Beacon at -4.0 dB relative to the 24-month reference; step-track held lock at this level; carrier C/N still above demod threshold - measured, not estimated',
+    correctAnswer: 'Beacon at -4.0 dB relative to the 24-month reference; step-track held lock at this level; carrier C/N above demod threshold',
   },
 
   // PHASE 2: TREND ANALYSIS
@@ -96,22 +81,19 @@ const SCENARIO_22_OBJECTIVES: Scenario22Objective[] = [
     id: 'trend-slope-quiz',
     title: 'Report: the Trend',
     type: 'quiz',
-    correctAnswer:
-      'Accelerating - the last 6 months lost ~1.6 dB versus ~1.1 dB in the prior 6; a steepening curve, not a straight line, so naive linear extrapolation understates the near-term decline',
+    correctAnswer: 'Accelerating - the last 6 months lost ~1.6 dB against ~1.3 dB in the 6 before; a steepening curve, not a straight line',
   },
   {
     id: 'binding-constraint-quiz',
     title: 'Report: What Fails First',
     type: 'quiz',
-    correctAnswer:
-      'The beacon getting too weak to step-track. AURORA-7 is inclined, so without a trackable beacon every pass becomes manual figure-8 chasing and service quality collapses - the cliff is tracking, not transponder death',
+    correctAnswer: 'The beacon getting too weak to step-track - AURORA-7 is inclined, so without it every pass becomes manual figure-8 chasing',
   },
   {
     id: 'marcus-corroboration-quiz',
     title: 'Report: Vehicle Corroboration',
     type: 'quiz',
-    correctAnswer:
-      'It raises confidence and explains the mechanism: ground-measured beacon decline and spacecraft-reported power loss are the same story from two independent vantage points - the trend is real, not an artifact of our station',
+    correctAnswer: 'It raises confidence: ground-measured beacon decline and spacecraft-reported power loss agree from independent vantage points',
   },
 
   // PHASE 3: RECOMMENDATION
@@ -119,22 +101,19 @@ const SCENARIO_22_OBJECTIVES: Scenario22Objective[] = [
     id: 'sunset-window-quiz',
     title: 'Report: the Recommendation',
     type: 'quiz',
-    correctAnswer:
-      'Begin customer migration now; target sunset in roughly one to two quarters with a hard review at each monthly data point, and a firm decision trigger when the beacon crosses the step-track floor. A window with tripwires, not a date',
+    correctAnswer: 'Begin migration now; sunset in one to two quarters, reviewed monthly, with a firm trigger at the step-track floor',
   },
   {
     id: 'assumptions-quiz',
     title: 'Report: Label the Assumptions',
     type: 'quiz',
-    correctAnswer:
-      'The decline continues or steepens (no recovery), no single-event failure intervenes, and tracking - not the payload - is the binding constraint. If any breaks, the window changes',
+    correctAnswer: 'The decline continues or steepens (no recovery), no single-event failure intervenes, and tracking is the binding constraint',
   },
   {
     id: 'false-precision-quiz',
     title: 'Confidence Discipline',
     type: 'quiz',
-    correctAnswer:
-      'Explicitly: today\'s -4.0 dB and the historical points are measured; the sunset window is a projection from those points under stated assumptions. Label each so the board knows which is which',
+    correctAnswer: "Explicitly: today's -4.0 dB and the historical points are measured; the sunset window is a projection under stated assumptions",
   },
 
   // Verify the report BEFORE the final quizzes (modal overlays the sidebar after)
@@ -149,15 +128,13 @@ const SCENARIO_22_OBJECTIVES: Scenario22Objective[] = [
     id: 'review-report',
     title: 'Review the Assessment',
     type: 'quiz',
-    correctAnswer:
-      'It has data, a trend, the binding-constraint risk, a windowed recommendation with tripwires, and labeled assumptions - a board member can read it, understand the basis, and defend the decision to others',
+    correctAnswer: 'It has data, a trend, the binding-constraint risk, a windowed recommendation with tripwires, and labeled assumptions',
   },
   {
     id: 'log-delivery',
     title: 'Deliver and Log',
     type: 'quiz',
-    correctAnswer:
-      'AURORA-7 EOL assessment delivered to board (Martin). Final data run complete (beacon -4.0 dB, step-track held). Trend accelerating, binding constraint = beacon trackability. Recommendation: begin migration now, sunset ~1-2 quarters, trigger at step-track floor. Assumptions stated. Measured vs projected labeled.',
+    correctAnswer: 'AURORA-7 EOL assessment to board: beacon -4.0 dB, trend accelerating; migrate now, sunset ~1-2 quarters, trigger at tracking floor',
   },
 ];
 
@@ -165,10 +142,7 @@ const SCENARIO_22_OBJECTIVES: Scenario22Objective[] = [
 // Helper Functions
 // ============================================================
 
-async function repointProgramTrack(
-  page: import('@playwright/test').Page,
-  satelliteNoradId: string
-): Promise<void> {
+async function repointProgramTrack(page: import('@playwright/test').Page, satelliteNoradId: string): Promise<void> {
   const modeButton = page.locator('.btn-tracking[data-mode="program-track"]');
   await expect(modeButton).toBeVisible({ timeout: 5000 });
   await modeButton.click();
@@ -195,7 +169,7 @@ async function repointProgramTrack(
           };
         };
       };
-      const gs = w.signalRange?.simulationManager?.groundStations?.find(g => g.state?.id === 'VT-01');
+      const gs = w.signalRange?.simulationManager?.groundStations?.find((g) => g.state?.id === 'VT-01');
       const antennaState = gs?.antennas?.[0]?.state;
       return antennaState ? antennaState.slewing === false && antennaState.isLocked === true : false;
     },
@@ -215,10 +189,7 @@ async function setStepTrack(page: import('@playwright/test').Page): Promise<void
   await page.waitForTimeout(300);
 }
 
-async function configureSpeca(
-  page: import('@playwright/test').Page,
-  centerFrequencyMhz: number
-): Promise<void> {
+async function configureSpeca(page: import('@playwright/test').Page, centerFrequencyMhz: number): Promise<void> {
   const centerFreqInput = page.locator('#sa-center-freq');
   await expect(centerFreqInput).toBeVisible({ timeout: 5000 });
   await centerFreqInput.fill(centerFrequencyMhz.toString());
@@ -247,11 +218,7 @@ async function verifyWorkingDocument(page: import('@playwright/test').Page): Pro
   }
 }
 
-async function executeObjective(
-  page: import('@playwright/test').Page,
-  missionControlPage: MissionControlPage,
-  objective: Scenario22Objective
-): Promise<void> {
+async function executeObjective(page: import('@playwright/test').Page, missionControlPage: MissionControlPage, objective: Scenario22Objective): Promise<void> {
   switch (objective.type) {
     case 'quiz':
       await waitForQuizToAppear(page);
@@ -264,6 +231,10 @@ async function executeObjective(
 
     case 'click-tab':
       await missionControlPage.selectTab(objective.tabId!);
+      // Observation-gated conditions latch only after the default dwell on
+      // the tab (DEFAULT_OBSERVATION_DWELL_SECONDS); leaving at once would
+      // reset the read and strand the objective.
+      await page.waitForTimeout(3000);
       break;
 
     case 'repoint-program-track':

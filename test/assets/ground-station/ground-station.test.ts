@@ -22,6 +22,7 @@ vi.mock('../../../src/equipment/antenna/antenna-ui-headless', () => ({
       state: { uuid: 'mock-antenna-uuid', isPowered: true, ...initialState },
       transmitters: [],
       attachRfFrontEnd: vi.fn(),
+      attachStationLocation: vi.fn(),
       sync: vi.fn(),
       destroy: vi.fn(),
     };
@@ -122,22 +123,10 @@ describe('GroundStation', () => {
         elevation: 5,
       },
       antennas: ['STANDARD_9M', 'STANDARD_9M'],
-      rfFrontEnds: [
-        {},
-        {},
-      ],
-      spectrumAnalyzers: [
-        {},
-        {},
-      ],
-      transmitters: [
-        {},
-        {},
-      ],
-      receivers: [
-        {},
-        {},
-      ],
+      rfFrontEnds: [{}, {}],
+      spectrumAnalyzers: [{}, {}],
+      transmitters: [{}, {}],
+      receivers: [{}, {}],
       teamId: 1,
       serverId: 1,
     };
@@ -321,10 +310,7 @@ describe('GroundStation', () => {
     });
 
     it('should apply initial antenna states if provided', () => {
-      mockConfig.antennasState = [
-        { isPowered: false },
-        { isPowered: true },
-      ];
+      mockConfig.antennasState = [{ isPowered: false }, { isPowered: true }];
       groundStation = new GroundStation(mockConfig);
       groundStation.initializeEquipment();
 
@@ -632,18 +618,8 @@ describe('GroundStation', () => {
 
   describe('Equipment wiring logic', () => {
     beforeEach(() => {
-      mockConfig.transmitters = [
-        {},
-        {},
-        {},
-        {},
-      ];
-      mockConfig.receivers = [
-        {},
-        {},
-        {},
-        {},
-      ];
+      mockConfig.transmitters = [{}, {}, {}, {}];
+      mockConfig.receivers = [{}, {}, {}, {}];
       groundStation = new GroundStation(mockConfig);
       groundStation.initializeEquipment();
     });

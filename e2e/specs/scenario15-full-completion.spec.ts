@@ -1,11 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { MissionControlPage } from '../pages/mission-control.page';
-import {
-  answerQuizByText,
-  dismissDialogIfPresent,
-  waitForQuizToAppear,
-  waitForSimulationReady,
-} from '../utils/simulation-helpers';
+import { answerQuizByText, dismissDialogIfPresent, waitForQuizToAppear, waitForSimulationReady } from '../utils/simulation-helpers';
 
 /**
  * Scenario 15 - "Frequency Coordination": Inter-Operator Spectrum Etiquette.
@@ -27,13 +22,7 @@ import {
  * - 'configure-hpa-backoff': HPA back-off slider/input
  * - 'auto': Auto-satisfied by simulation state (no user action needed)
  */
-type ObjectiveType =
-  | 'quiz'
-  | 'select-station'
-  | 'click-tab'
-  | 'configure-speca'
-  | 'configure-hpa-backoff'
-  | 'auto';
+type ObjectiveType = 'quiz' | 'select-station' | 'click-tab' | 'configure-speca' | 'configure-hpa-backoff' | 'auto';
 
 interface Scenario15Objective {
   id: string;
@@ -94,8 +83,7 @@ const SCENARIO_15_OBJECTIVES: Scenario15Objective[] = [
     id: 'assess-guard-adequacy',
     title: 'Assess Guard Band Adequacy',
     type: 'quiz',
-    correctAnswer:
-      "Verify our TX chain is producing clean spectrum - no spurs or IMD landing in RedSky's band",
+    correctAnswer: "Verify our TX chain is producing clean spectrum - no spurs or IMD falling into RedSky's band",
   },
 
   // ============================================================
@@ -117,15 +105,13 @@ const SCENARIO_15_OBJECTIVES: Scenario15Objective[] = [
     id: 'observe-current-hpa-backoff',
     title: 'Observe HPA Backoff',
     type: 'quiz',
-    correctAnswer:
-      'Operating close to saturation - third-order IMD products will be elevated and extend several MHz beyond the carrier edges',
+    correctAnswer: 'Operating close to saturation - third-order IMD will be elevated and spill several MHz past the carrier edges',
   },
   {
     id: 'understand-imd-mechanism',
     title: 'Understand IMD Mechanism',
     type: 'quiz',
-    correctAnswer:
-      'Nonlinearity in the amplifier mixes spectral components, generating intermodulation products that fall just outside the carrier edges',
+    correctAnswer: 'Amplifier nonlinearity mixes spectral components, generating intermodulation products just outside the carrier edges',
   },
 
   // ============================================================
@@ -135,8 +121,7 @@ const SCENARIO_15_OBJECTIVES: Scenario15Objective[] = [
     id: 'evaluate-mitigation-options',
     title: 'Choose Mitigation',
     type: 'quiz',
-    correctAnswer:
-      'Increase HPA backoff to 10 dB - reduces IMD without dropping the carrier and without requiring customer coordination',
+    correctAnswer: 'Increase HPA backoff to 10 dB - suppresses IMD without dropping the carrier or coordinating with the customer',
   },
 
   // ============================================================
@@ -179,8 +164,7 @@ const SCENARIO_15_OBJECTIVES: Scenario15Objective[] = [
     id: 'confirm-carrier-still-nominal',
     title: 'Confirm Carrier Still Nominal',
     type: 'quiz',
-    correctAnswer:
-      'Wideband carrier still present at slightly reduced power - customer link healthy, IMD skirts dropped well below the adjacent slot noise floor',
+    correctAnswer: 'Wideband carrier still present at slightly lower power - link healthy and IMD skirts below the adjacent noise floor',
   },
   {
     id: 'verify-receiver-locked',
@@ -195,8 +179,7 @@ const SCENARIO_15_OBJECTIVES: Scenario15Objective[] = [
     id: 'confirm-spectrum-clean-for-partner',
     title: 'Draft Confirmation to RedSky',
     type: 'quiz',
-    correctAnswer:
-      'Confirmed clear. TIDEMARK-3 TP-1 carrier holds 5967-6003 MHz H-pol with adjacent-channel emissions well below your planned slot. Proceed with your 5961 MHz V-pol uplink as scheduled.',
+    correctAnswer: 'Confirmed clear. TP-1 carrier 5967-6003 MHz H-pol, adjacent-channel emissions below your slot. Proceed 5961 MHz V-pol as scheduled.',
   },
 
   // ============================================================
@@ -206,8 +189,7 @@ const SCENARIO_15_OBJECTIVES: Scenario15Objective[] = [
     id: 'log-coordination-event',
     title: 'Log Coordination Event',
     type: 'quiz',
-    correctAnswer:
-      '0937 - RedSky coordination notice received and confirmed. TIDEMARK-3 TP-1 HPA backoff raised from 5 to 10 dB to suppress adjacent-channel IMD. Cleared RedSky for 5961 MHz V-pol uplink. SeaLink carrier remains nominal.',
+    correctAnswer: '0937 - RedSky notice confirmed. TP-1 HPA backoff raised 5 to 10 dB to suppress adjacent IMD. RedSky cleared for 5961 MHz V-pol, SeaLink nominal.',
   },
 ];
 
@@ -219,10 +201,7 @@ const SCENARIO_15_OBJECTIVES: Scenario15Objective[] = [
  * Configure spectrum analyzer settings.
  * Element IDs: #sa-center-freq, #sa-span, #sa-min-amp, #sa-max-amp, #sa-rbw
  */
-async function configureSpectrumAnalyzer(
-  page: import('@playwright/test').Page,
-  config: NonNullable<Scenario15Objective['specaConfig']>
-): Promise<void> {
+async function configureSpectrumAnalyzer(page: import('@playwright/test').Page, config: NonNullable<Scenario15Objective['specaConfig']>): Promise<void> {
   if (config.centerFrequency !== undefined) {
     const centerInput = page.locator('#sa-center-freq');
     await expect(centerInput).toBeVisible({ timeout: 5000 });
@@ -270,10 +249,7 @@ async function configureSpectrumAnalyzer(
 /**
  * Configure HPA back-off via input + Apply button.
  */
-async function configureHpaBackoff(
-  page: import('@playwright/test').Page,
-  backoff: number
-): Promise<void> {
+async function configureHpaBackoff(page: import('@playwright/test').Page, backoff: number): Promise<void> {
   const backoffInput = page.locator('#hpa-backoff');
   await expect(backoffInput).toBeVisible({ timeout: 5000 });
   await backoffInput.fill(backoff.toString());
@@ -289,11 +265,7 @@ async function configureHpaBackoff(
 /**
  * Execute an objective based on its type.
  */
-async function executeObjective(
-  page: import('@playwright/test').Page,
-  missionControlPage: MissionControlPage,
-  objective: Scenario15Objective
-): Promise<void> {
+async function executeObjective(page: import('@playwright/test').Page, missionControlPage: MissionControlPage, objective: Scenario15Objective): Promise<void> {
   switch (objective.type) {
     case 'quiz':
       await waitForQuizToAppear(page);
@@ -306,6 +278,10 @@ async function executeObjective(
 
     case 'click-tab':
       await missionControlPage.selectTab(objective.tabId!);
+      // Observation-gated conditions latch only after the default dwell on
+      // the tab (DEFAULT_OBSERVATION_DWELL_SECONDS); leaving at once would
+      // reset the read and strand the objective.
+      await page.waitForTimeout(3000);
       break;
 
     case 'configure-speca':

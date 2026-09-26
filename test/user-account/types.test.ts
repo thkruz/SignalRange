@@ -1,4 +1,4 @@
-import { isApiErrorResponse, isUser, isFullUserData } from '../../src/user-account/types';
+import { isApiErrorResponse, isFullUserData, isUser } from '../../src/user-account/types';
 
 describe('Type Guards', () => {
   describe('isApiErrorResponse', () => {

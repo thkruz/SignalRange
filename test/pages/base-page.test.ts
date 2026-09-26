@@ -1,4 +1,4 @@
-import { vi, Mock } from 'vitest';
+import { Mock, vi } from 'vitest';
 import { EventBus } from '../../src/events/event-bus';
 import { Events } from '../../src/events/events';
 
@@ -156,15 +156,15 @@ vi.mock('../../src/ops-log/ops-log-manager', () => ({
   },
 }));
 
+import { DialogManager } from '../../src/modal/dialog-manager';
+import { LevelCompleteModal } from '../../src/modal/level-complete-modal';
+import { ObjectiveFailedModal } from '../../src/modal/objective-failed-modal';
+import { ObjectivesManager } from '../../src/objectives/objectives-manager';
 // Import after mocks
 import { BasePage } from '../../src/pages/base-page';
-import { ObjectivesManager } from '../../src/objectives/objectives-manager';
-import { DialogManager } from '../../src/modal/dialog-manager';
-import { ObjectiveFailedModal } from '../../src/modal/objective-failed-modal';
-import { ScenarioCompletionHandler } from '../../src/scoring/scenario-completion-handler';
 import { ScenarioManager } from '../../src/scenario-manager';
+import { ScenarioCompletionHandler } from '../../src/scoring/scenario-completion-handler';
 import { ProgressSaveManager } from '../../src/user-account/progress-save-manager';
-import { LevelCompleteModal } from '../../src/modal/level-complete-modal';
 import { getUserDataService } from '../../src/user-account/user-data-service';
 
 // Create a concrete implementation for testing
@@ -290,7 +290,7 @@ describe('BasePage', () => {
     });
 
     it('should initialize ObjectivesManager when scenario has objectives', async () => {
-            ScenarioManager.getInstance.mockReturnValue({
+      ScenarioManager.getInstance.mockReturnValue({
         data: {
           id: 'test-scenario',
           objectives: [{ id: 'obj1', title: 'Test Objective' }],
@@ -306,17 +306,14 @@ describe('BasePage', () => {
 
       await page.testInitializeObjectivesAndDialogs();
 
-      expect(ObjectivesManager.initialize).toHaveBeenCalledWith(
-        [{ id: 'obj1', title: 'Test Objective' }],
-        300
-      );
+      expect(ObjectivesManager.initialize).toHaveBeenCalledWith([{ id: 'obj1', title: 'Test Objective' }], 300);
     });
 
     it('should show intro dialog if available and not continuing from checkpoint', async () => {
       const mockShow = vi.fn();
       (DialogManager.getInstance as Mock).mockReturnValue({ show: mockShow });
 
-            ScenarioManager.getInstance.mockReturnValue({
+      ScenarioManager.getInstance.mockReturnValue({
         data: {
           id: 'test-scenario',
           objectives: [],
@@ -340,20 +337,14 @@ describe('BasePage', () => {
       page.setNavigationOptions({ continueFromCheckpoint: false });
       await page.testInitializeObjectivesAndDialogs();
 
-      expect(mockShow).toHaveBeenCalledWith(
-        'Welcome!',
-        'Charlie',
-        '/audio/intro.mp3',
-        'Introduction',
-        'happy'
-      );
+      expect(mockShow).toHaveBeenCalledWith('Welcome!', 'Charlie', '/audio/intro.mp3', 'Introduction', 'happy');
     });
 
     it('should not show intro dialog when continuing from checkpoint', async () => {
       const mockShow = vi.fn();
       (DialogManager.getInstance as Mock).mockReturnValue({ show: mockShow });
 
-            ScenarioManager.getInstance.mockReturnValue({
+      ScenarioManager.getInstance.mockReturnValue({
         data: {
           id: 'test-scenario',
           objectives: [],
@@ -388,7 +379,7 @@ describe('BasePage', () => {
       };
       (ObjectivesManager.getInstance as Mock).mockReturnValue(mockObjManager);
 
-            ScenarioManager.getInstance.mockReturnValue({
+      ScenarioManager.getInstance.mockReturnValue({
         data: {
           id: 'test-scenario',
           objectives: [{ id: 'obj1', title: 'Test' }],
@@ -417,28 +408,19 @@ describe('BasePage', () => {
     it('should subscribe to OBJECTIVE_FAILED event', () => {
       page.testSubscribeToFailureEvents();
 
-      expect(mockEventBus.on).toHaveBeenCalledWith(
-        Events.OBJECTIVE_FAILED,
-        expect.any(Function)
-      );
+      expect(mockEventBus.on).toHaveBeenCalledWith(Events.OBJECTIVE_FAILED, expect.any(Function));
     });
 
     it('should subscribe to SCENARIO_TIME_EXPIRED event', () => {
       page.testSubscribeToFailureEvents();
 
-      expect(mockEventBus.on).toHaveBeenCalledWith(
-        Events.SCENARIO_TIME_EXPIRED,
-        expect.any(Function)
-      );
+      expect(mockEventBus.on).toHaveBeenCalledWith(Events.SCENARIO_TIME_EXPIRED, expect.any(Function));
     });
 
     it('should subscribe to DUAL_TRANSMISSION_VIOLATION event', () => {
       page.testSubscribeToFailureEvents();
 
-      expect(mockEventBus.on).toHaveBeenCalledWith(
-        Events.DUAL_TRANSMISSION_VIOLATION,
-        expect.any(Function)
-      );
+      expect(mockEventBus.on).toHaveBeenCalledWith(Events.DUAL_TRANSMISSION_VIOLATION, expect.any(Function));
     });
 
     it('should show failure modal on OBJECTIVE_FAILED', () => {
@@ -450,9 +432,7 @@ describe('BasePage', () => {
       page.testSubscribeToFailureEvents();
 
       // Get the callback for OBJECTIVE_FAILED
-      const callback = mockEventBus.on.mock.calls.find(
-        (call: unknown[]) => call[0] === Events.OBJECTIVE_FAILED
-      )?.[1];
+      const callback = mockEventBus.on.mock.calls.find((call: unknown[]) => call[0] === Events.OBJECTIVE_FAILED)?.[1];
 
       callback?.({
         objectiveId: 'obj1',
@@ -476,9 +456,7 @@ describe('BasePage', () => {
       page.testSubscribeToFailureEvents();
 
       // Get the callback for SCENARIO_TIME_EXPIRED
-      const callback = mockEventBus.on.mock.calls.find(
-        (call: unknown[]) => call[0] === Events.SCENARIO_TIME_EXPIRED
-      )?.[1];
+      const callback = mockEventBus.on.mock.calls.find((call: unknown[]) => call[0] === Events.SCENARIO_TIME_EXPIRED)?.[1];
 
       callback?.({ timeLimit: 300 });
 
@@ -497,9 +475,7 @@ describe('BasePage', () => {
 
       page.testSubscribeToFailureEvents();
 
-      const callback = mockEventBus.on.mock.calls.find(
-        (call: unknown[]) => call[0] === Events.SCENARIO_TIME_EXPIRED
-      )?.[1];
+      const callback = mockEventBus.on.mock.calls.find((call: unknown[]) => call[0] === Events.SCENARIO_TIME_EXPIRED)?.[1];
 
       callback?.({ timeLimit: 60 });
 
@@ -519,9 +495,7 @@ describe('BasePage', () => {
       page.testSubscribeToFailureEvents();
 
       // Get the callback for DUAL_TRANSMISSION_VIOLATION
-      const callback = mockEventBus.on.mock.calls.find(
-        (call: unknown[]) => call[0] === Events.DUAL_TRANSMISSION_VIOLATION
-      )?.[1];
+      const callback = mockEventBus.on.mock.calls.find((call: unknown[]) => call[0] === Events.DUAL_TRANSMISSION_VIOLATION)?.[1];
 
       callback?.({
         groundStation1Id: 'GS-001',
@@ -552,12 +526,14 @@ describe('BasePage', () => {
         stopAllTimers: vi.fn(),
       });
 
-      const mockLoadCheckpoint = vi.fn(() => Promise.resolve({
-        state: {
-          objectiveStates: [{ id: 'obj1', status: 'completed' }],
-          scenarioTimeRemaining: 200,
-        },
-      }));
+      const mockLoadCheckpoint = vi.fn(() =>
+        Promise.resolve({
+          state: {
+            objectiveStates: [{ id: 'obj1', status: 'completed' }],
+            scenarioTimeRemaining: 200,
+          },
+        })
+      );
 
       (ProgressSaveManager as Mock).mockImplementation(function (this: any) {
         this.initialize = vi.fn();
@@ -570,10 +546,7 @@ describe('BasePage', () => {
       await page.testRestoreObjectiveStatesFromCheckpoint();
 
       expect(mockLoadCheckpoint).toHaveBeenCalledWith('test-scenario');
-      expect(mockRestoreState).toHaveBeenCalledWith(
-        [{ id: 'obj1', status: 'completed' }],
-        200
-      );
+      expect(mockRestoreState).toHaveBeenCalledWith([{ id: 'obj1', status: 'completed' }], 200);
     });
 
     it('should handle errors gracefully', async () => {
@@ -602,9 +575,11 @@ describe('BasePage', () => {
         stopAllTimers: vi.fn(),
       });
 
-      const mockLoadCheckpoint = vi.fn(() => Promise.resolve({
-        state: {},
-      }));
+      const mockLoadCheckpoint = vi.fn(() =>
+        Promise.resolve({
+          state: {},
+        })
+      );
 
       (ProgressSaveManager as Mock).mockImplementation(function (this: any) {
         this.initialize = vi.fn();
@@ -623,20 +598,22 @@ describe('BasePage', () => {
   describe('initializeObjectivesAndDialogs_ with already complete scenario', () => {
     it('should show completion modal when scenario is already complete', async () => {
       const mockShowCompletion = vi.fn();
-            (LevelCompleteModal.getInstance as Mock).mockReturnValue({
+      (LevelCompleteModal.getInstance as Mock).mockReturnValue({
         showCompletion: mockShowCompletion,
       });
 
-            (getUserDataService as Mock).mockReturnValue({
-        getScenarioProgress: vi.fn(() => Promise.resolve({
-          completedAt: '2024-01-01T00:00:00Z',
-          score: 1000,
-          basePoints: 800,
-          timeBonus: 200,
-          quizPenalties: 0,
-          completedObjectives: ['obj1'],
-          lastPlayed: '2024-01-01T00:00:00Z',
-        })),
+      (getUserDataService as Mock).mockReturnValue({
+        getScenarioProgress: vi.fn(() =>
+          Promise.resolve({
+            completedAt: '2024-01-01T00:00:00Z',
+            score: 1000,
+            basePoints: 800,
+            timeBonus: 200,
+            quizPenalties: 0,
+            completedObjectives: ['obj1'],
+            lastPlayed: '2024-01-01T00:00:00Z',
+          })
+        ),
       });
 
       page.setNavigationOptions({ continueFromCheckpoint: false, forceReplay: false });
@@ -647,15 +624,17 @@ describe('BasePage', () => {
 
     it('should not show completion modal when forceReplay is true', async () => {
       const mockShowCompletion = vi.fn();
-            (LevelCompleteModal.getInstance as Mock).mockReturnValue({
+      (LevelCompleteModal.getInstance as Mock).mockReturnValue({
         showCompletion: mockShowCompletion,
       });
 
-            (getUserDataService as Mock).mockReturnValue({
-        getScenarioProgress: vi.fn(() => Promise.resolve({
-          completedAt: '2024-01-01T00:00:00Z',
-          score: 1000,
-        })),
+      (getUserDataService as Mock).mockReturnValue({
+        getScenarioProgress: vi.fn(() =>
+          Promise.resolve({
+            completedAt: '2024-01-01T00:00:00Z',
+            score: 1000,
+          })
+        ),
       });
 
       page.setNavigationOptions({ forceReplay: true });
@@ -666,7 +645,7 @@ describe('BasePage', () => {
 
     it('should not show completion modal when continueFromCheckpoint is true', async () => {
       const mockShowCompletion = vi.fn();
-            (LevelCompleteModal.getInstance as Mock).mockReturnValue({
+      (LevelCompleteModal.getInstance as Mock).mockReturnValue({
         showCompletion: mockShowCompletion,
       });
 

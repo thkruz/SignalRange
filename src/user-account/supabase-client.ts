@@ -20,9 +20,7 @@ const createResilientStorage = () => {
   const memoryCache = new Map<string, string>();
 
   // Helper: Escape special regex characters in a string
-  const escapeRegExp = (string: string): string => {
-    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  };
+  const escapeRegExp = (string: string): string => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
   // Helper: Get from cookie
   const getCookie = (name: string): string | null => {

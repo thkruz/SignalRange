@@ -32,8 +32,8 @@ Get these values from the [Supabase Dashboard](https://app.supabase.com/project/
 
 ### 2. Webpack Configuration
 
-The webpack configuration has been updated to:
-- Handle environment variables via `webpack.DefinePlugin`
+The rspack configuration has been updated to:
+- Handle environment variables via `rspack.DefinePlugin`
 - Build the OAuth callback handler as a separate entry point
 - Copy the callback HTML to the dist folder
 

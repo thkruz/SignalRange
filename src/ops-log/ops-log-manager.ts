@@ -6,11 +6,20 @@
 
 import { EventBus } from '@app/events/event-bus';
 import { Events, SimulatedTimeTickData } from '@app/events/events';
+import { SimClock } from '@app/simulation/sim-clock';
 import { Milliseconds } from 'ootk';
 import { OpsLogEntry, OpsLogState, PreviousShiftLogEntry } from './ops-log-types';
 
 /** Month abbreviations for military datetime format */
 const MONTH_ABBREVS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+
+/** Developer/E2E clock hooks installed on window while a scenario is loaded. */
+interface SimClockDevHooks {
+  advanceClock?: (deltaMs: number) => void;
+  simClockMs?: () => number;
+  missionElapsedMs?: () => number;
+  missionSkippedMs?: () => number;
+}
 
 /**
  * Manages operations logging for scenario-based simulations
@@ -22,25 +31,16 @@ export class OpsLogManager {
   private readonly eventBus_: EventBus;
   private readonly boundUpdateHandler_: (dt: Milliseconds) => void;
 
-  /** Current simulated time as Unix timestamp in milliseconds */
-  private currentTimestampMs_: number;
-
-  /** Whether simulated time is currently paused (starts paused until scenario unlocks) */
-  private isPaused_: boolean = true;
-
   /** Last whole second value for detecting second boundary crossings */
   private lastWholeSecond_: number = 0;
 
-  private constructor(
-    startWallTime: string = '12:00:00',
-    startDate: string = '2026-01-01',
-    previousShiftLogs: PreviousShiftLogEntry[] = []
-  ) {
+  private constructor(startWallTime: string = '12:00:00', startDate: string = '2026-01-01', previousShiftLogs: PreviousShiftLogEntry[] = []) {
     this.eventBus_ = EventBus.getInstance();
 
-    // Parse date and time into a timestamp
-    this.currentTimestampMs_ = this.parseDateTime_(startDate, startWallTime);
-    this.lastWholeSecond_ = Math.floor(this.currentTimestampMs_ / 1000);
+    // The scenario clock starts at the authored date/time, paused until the
+    // scenario unlocks (ObjectivesManager resumes it)
+    SimClock.startScenario(this.parseDateTime_(startDate, startWallTime));
+    this.lastWholeSecond_ = Math.floor(SimClock.nowMs() / 1000);
 
     // Load previous shift entries
     for (const log of previousShiftLogs) {
@@ -56,6 +56,16 @@ export class OpsLogManager {
     this.boundUpdateHandler_ = this.handleUpdate_.bind(this);
     this.eventBus_.on(Events.UPDATE, this.boundUpdateHandler_);
 
+    // Developer/E2E hooks (see advanceClock JSDoc); same pattern as
+    // window.debugSignalPath in RFFrontEndCore. The readers let a spec assert
+    // that an operator time skip moved the scenario clock.
+    const devHooks = window as unknown as SimClockDevHooks;
+
+    devHooks.advanceClock = this.advanceClock.bind(this);
+    devHooks.simClockMs = () => SimClock.nowMs();
+    devHooks.missionElapsedMs = () => SimClock.scenarioElapsedMs();
+    devHooks.missionSkippedMs = () => SimClock.skippedMs();
+
     // Emit initial time tick
     this.emitTimeTick_();
   }
@@ -66,11 +76,7 @@ export class OpsLogManager {
    * @param startDate Fictional start date in "YYYY-MM-DD" format (default "2025-01-01")
    * @param previousShiftLogs Array of previous shift log entries from scenario
    */
-  static initialize(
-    startWallTime?: string,
-    startDate?: string,
-    previousShiftLogs?: PreviousShiftLogEntry[]
-  ): OpsLogManager {
+  static initialize(startWallTime?: string, startDate?: string, previousShiftLogs?: PreviousShiftLogEntry[]): OpsLogManager {
     if (OpsLogManager.instance_) {
       console.warn('OpsLogManager already initialized. Destroying previous instance.');
       OpsLogManager.destroy();
@@ -101,10 +107,13 @@ export class OpsLogManager {
    */
   static destroy(): void {
     if (OpsLogManager.instance_) {
-      OpsLogManager.instance_.eventBus_.off(
-        Events.UPDATE,
-        OpsLogManager.instance_.boundUpdateHandler_
-      );
+      OpsLogManager.instance_.eventBus_.off(Events.UPDATE, OpsLogManager.instance_.boundUpdateHandler_);
+      const devHooks = window as unknown as SimClockDevHooks;
+
+      delete devHooks.advanceClock;
+      delete devHooks.simClockMs;
+      delete devHooks.missionElapsedMs;
+      delete devHooks.missionSkippedMs;
       OpsLogManager.instance_ = null;
     }
   }
@@ -114,7 +123,7 @@ export class OpsLogManager {
    * Called when quiz is passed, scenario fails, or completes
    */
   pause(): void {
-    this.isPaused_ = true;
+    SimClock.pause('scenario');
   }
 
   /**
@@ -122,14 +131,14 @@ export class OpsLogManager {
    * Called when quiz is completed
    */
   resume(): void {
-    this.isPaused_ = false;
+    SimClock.resume('scenario');
   }
 
   /**
    * Check if simulated time is currently paused
    */
   isPaused(): boolean {
-    return this.isPaused_;
+    return SimClock.isPaused('scenario');
   }
 
   /**
@@ -140,7 +149,7 @@ export class OpsLogManager {
    */
   log(message: string, category: OpsLogEntry['category'] = 'action', source?: string): void {
     const entry: OpsLogEntry = {
-      timestamp: this.formatTimeOnly_(this.currentTimestampMs_),
+      timestamp: this.formatTimeOnly_(SimClock.nowMs()),
       message,
       category,
       source,
@@ -163,14 +172,14 @@ export class OpsLogManager {
    * e.g., "15 MAR 2025 22:05:15"
    */
   getCurrentTimeFormatted(): string {
-    return this.formatMilitaryDateTime_(this.currentTimestampMs_);
+    return this.formatMilitaryDateTime_(SimClock.nowMs());
   }
 
   /**
    * Get current simulated timestamp in milliseconds
    */
   getCurrentTimestampMs(): number {
-    return this.currentTimestampMs_;
+    return SimClock.nowMs();
   }
 
   /**
@@ -179,7 +188,7 @@ export class OpsLogManager {
   getState(): OpsLogState {
     return {
       entries: [...this.entries_],
-      currentTimestampMs: this.currentTimestampMs_,
+      currentTimestampMs: SimClock.nowMs(),
     };
   }
 
@@ -190,29 +199,45 @@ export class OpsLogManager {
   restoreState(state: OpsLogState): void {
     this.entries_.length = 0;
     this.entries_.push(...state.entries);
-    this.currentTimestampMs_ = state.currentTimestampMs;
-    this.lastWholeSecond_ = Math.floor(this.currentTimestampMs_ / 1000);
+    SimClock.setScenarioNowMs(state.currentTimestampMs);
+    this.lastWholeSecond_ = Math.floor(state.currentTimestampMs / 1000);
     // Reset pause state on restore - ObjectivesManager controls pause state
-    this.isPaused_ = false;
+    SimClock.resume('scenario');
 
     // Emit time tick after restore
     this.emitTimeTick_();
   }
 
   /**
-   * Handle simulation update - advance fictional clock
+   * Skip the scenario clock forward by deltaMs in a single step.
+   *
+   * Used by TimeSkipController (in chunks) and exposed as the developer/E2E
+   * hook window.advanceClock: LEO pass scenarios put objectives many
+   * sim-minutes apart, so tests jump the clock instead of waiting. Orbits and
+   * every mission-elapsed schedule move together (one clock); objective
+   * countdowns do not - they are decremented state, see
+   * ObjectivesManager.applyTimeSkip().
    */
-  private handleUpdate_(dt: Milliseconds): void {
-    // Don't advance time if paused
-    if (this.isPaused_) {
+  advanceClock(deltaMs: number): void {
+    if (!Number.isFinite(deltaMs) || deltaMs <= 0) {
       return;
     }
 
-    // Advance timestamp by delta time in milliseconds
-    this.currentTimestampMs_ += dt;
+    SimClock.skip(deltaMs);
 
-    // Check if we've crossed a second boundary
-    const currentWholeSecond = Math.floor(this.currentTimestampMs_ / 1000);
+    const currentWholeSecond = Math.floor(SimClock.nowMs() / 1000);
+    if (currentWholeSecond > this.lastWholeSecond_) {
+      this.lastWholeSecond_ = currentWholeSecond;
+    }
+    this.emitTimeTick_();
+  }
+
+  /**
+   * Handle simulation update - SimulationManager has already stepped the
+   * clock; emit a tick when scenario time crosses a whole second
+   */
+  private handleUpdate_(_dt: Milliseconds): void {
+    const currentWholeSecond = Math.floor(SimClock.nowMs() / 1000);
     if (currentWholeSecond > this.lastWholeSecond_) {
       this.lastWholeSecond_ = currentWholeSecond;
       this.emitTimeTick_();
@@ -224,8 +249,8 @@ export class OpsLogManager {
    */
   private emitTimeTick_(): void {
     const tickData: SimulatedTimeTickData = {
-      timeFormatted: this.formatMilitaryDateTime_(this.currentTimestampMs_),
-      timestampMs: this.currentTimestampMs_,
+      timeFormatted: this.formatMilitaryDateTime_(SimClock.nowMs()),
+      timestampMs: SimClock.nowMs(),
     };
     this.eventBus_.emit(Events.SIMULATED_TIME_TICK, tickData);
   }

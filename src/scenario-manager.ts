@@ -1,7 +1,21 @@
 import { GroundStationConfig } from '@app/assets/ground-station/ground-station-state';
-import { PreviousShiftLogEntry } from '@app/ops-log/ops-log-types';
+import { ccsScenario1Data } from '@app/campaigns/ccs/scenario1';
+import { ccsScenario2Data } from '@app/campaigns/ccs/scenario2';
+import { ccsScenario3Data } from '@app/campaigns/ccs/scenario3';
+import { ccsScenario4Data } from '@app/campaigns/ccs/scenario4';
+import { ccsScenario5Data } from '@app/campaigns/ccs/scenario5';
+import { hamSdrSandboxData } from '@app/campaigns/ham-sdr/sandbox';
+import { hamSdrScenario1Data } from '@app/campaigns/ham-sdr/scenario1';
+import { hamSdrScenario2Data } from '@app/campaigns/ham-sdr/scenario2';
+import { hamSdrScenario3Data } from '@app/campaigns/ham-sdr/scenario3';
+import { hamSdrScenario4Data } from '@app/campaigns/ham-sdr/scenario4';
+import { hamSdrScenario5Data } from '@app/campaigns/ham-sdr/scenario5';
+import { hamSdrScenario6Data } from '@app/campaigns/ham-sdr/scenario6';
+import { hamSdrScenario7Data } from '@app/campaigns/ham-sdr/scenario7';
+import { hamSdrScenario8Data } from '@app/campaigns/ham-sdr/scenario8';
+import { sandboxData as natsSandboxData } from '@app/campaigns/nats/sandbox';
 import { scenario1Data } from '@app/campaigns/nats/scenario1';
-import { scenario2Data } from "@app/campaigns/nats/scenario2";
+import { scenario2Data } from '@app/campaigns/nats/scenario2';
 import { scenario3Data } from '@app/campaigns/nats/scenario3';
 import { scenario4Data } from '@app/campaigns/nats/scenario4';
 import { scenario5Data } from '@app/campaigns/nats/scenario5';
@@ -24,9 +38,43 @@ import { scenario21Data } from '@app/campaigns/nats/scenario21';
 import { scenario22Data } from '@app/campaigns/nats/scenario22';
 import { scenario23Data } from '@app/campaigns/nats/scenario23';
 import { scenario24Data } from '@app/campaigns/nats/scenario24';
-import { sandboxData as natsSandboxData } from '@app/campaigns/nats/sandbox';
+import { natsEuSandboxData } from '@app/campaigns/nats-eu/sandbox';
+import { natsEuScenario1Data } from '@app/campaigns/nats-eu/scenario1';
+import { natsEuScenario2Data } from '@app/campaigns/nats-eu/scenario2';
+import { natsEuScenario3Data } from '@app/campaigns/nats-eu/scenario3';
+import { natsEuScenario4Data } from '@app/campaigns/nats-eu/scenario4';
+import { natsEuScenario5Data } from '@app/campaigns/nats-eu/scenario5';
+import { natsEuScenario6Data } from '@app/campaigns/nats-eu/scenario6';
+import { natsEuScenario7Data } from '@app/campaigns/nats-eu/scenario7';
+import { natsEuScenario8Data } from '@app/campaigns/nats-eu/scenario8';
+import { natsEuScenario9Data } from '@app/campaigns/nats-eu/scenario9';
+import { natsEuScenario10Data } from '@app/campaigns/nats-eu/scenario10';
+import { natsEuScenario11Data } from '@app/campaigns/nats-eu/scenario11';
+import { natsEuScenario12Data } from '@app/campaigns/nats-eu/scenario12';
+import { natsEuScenario13Data } from '@app/campaigns/nats-eu/scenario13';
+import { natsEuScenario14Data } from '@app/campaigns/nats-eu/scenario14';
+import { natsEuScenario15Data } from '@app/campaigns/nats-eu/scenario15';
+import { natsEuScenario16Data } from '@app/campaigns/nats-eu/scenario16';
+import { natsEuScenario17Data } from '@app/campaigns/nats-eu/scenario17';
+import { natsEuScenario18Data } from '@app/campaigns/nats-eu/scenario18';
+import { natsEuScenario19Data } from '@app/campaigns/nats-eu/scenario19';
+import { natsEuScenario20Data } from '@app/campaigns/nats-eu/scenario20';
+import { natsEuScenario21Data } from '@app/campaigns/nats-eu/scenario21';
+import { natsEuScenario22Data } from '@app/campaigns/nats-eu/scenario22';
+import { natsEuScenario23Data } from '@app/campaigns/nats-eu/scenario23';
+import { natsEuScenario24Data } from '@app/campaigns/nats-eu/scenario24';
+import { natsEuScenario25Data } from '@app/campaigns/nats-eu/scenario25';
+import { natsEuScenario26Data } from '@app/campaigns/nats-eu/scenario26';
+import { natsEuScenario27Data } from '@app/campaigns/nats-eu/scenario27';
+import { natsEuScenario28Data } from '@app/campaigns/nats-eu/scenario28';
+import { signalHunterSandboxData } from '@app/campaigns/signal-hunter/sandbox';
+import { signalHunterScenario1Data } from '@app/campaigns/signal-hunter/scenario1';
+import { signalHunterScenario2Data } from '@app/campaigns/signal-hunter/scenario2';
+import { signalHunterScenario3Data } from '@app/campaigns/signal-hunter/scenario3';
+import { signalHunterScenario4Data } from '@app/campaigns/signal-hunter/scenario4';
 import { AntennaState } from '@app/equipment/antenna';
-import { ANTENNA_CONFIG_KEYS } from "@app/equipment/antenna/antenna-config-keys";
+import { ANTENNA_CONFIG_KEYS } from '@app/equipment/antenna/antenna-config-keys';
+import type { AntennaConfigId } from '@app/equipment/antenna/antenna-registry';
 import { defaultSpectrumAnalyzerState } from '@app/equipment/real-time-spectrum-analyzer/defaultSpectrumAnalyzerState';
 import { RealTimeSpectrumAnalyzerState } from '@app/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer';
 import { Receiver, ReceiverState } from '@app/equipment/receiver/receiver';
@@ -41,8 +89,12 @@ import { RFFrontEndState } from '@app/equipment/rf-front-end/rf-front-end-core';
 import { Satellite } from '@app/equipment/satellite/satellite';
 import { Transmitter, TransmitterState } from '@app/equipment/transmitter/transmitter';
 import { Character, Emotion } from '@app/modal/character-enum';
-import { ScenarioData } from './ScenarioData';
+import { PreviousShiftLogEntry } from '@app/ops-log/ops-log-types';
+import { SandboxLoadoutService } from '@app/sandbox/sandbox-loadout';
 import { sandboxData } from '@app/scenarios/sandbox';
+import { Rng, resolveScenarioSeed } from '@app/simulation/rng';
+import type { Degrees } from 'ootk';
+import { ScenarioData } from './ScenarioData';
 
 declare global {
   interface Window {
@@ -60,7 +112,7 @@ export interface DialogClip {
 export interface SimulationSettings {
   isSync: boolean;
   groundStations: GroundStationConfig[];
-  antennas?: ANTENNA_CONFIG_KEYS[];
+  antennas?: AntennaConfigId[];
   antennasState?: Partial<AntennaState>[];
   rfFrontEnds?: Partial<RFFrontEndState>[];
   spectrumAnalyzers?: Partial<RealTimeSpectrumAnalyzerState>[];
@@ -74,26 +126,39 @@ export interface SimulationSettings {
   weatherEvents?: Array<{
     id: string;
     groundStationId: string;
-    type: "snow" | "rain" | "fog" | "wind" | "dust" | "hail" | "ice" | "storm" | "sun-transit";
-    severity: "minor" | "moderate" | "severe";
-    /** Seconds since mission start */
+    type: 'snow' | 'rain' | 'fog' | 'wind' | 'dust' | 'hail' | 'ice' | 'storm' | 'sun-transit';
+    severity: 'minor' | 'moderate' | 'severe';
+    /** Seconds since mission start, or since startAfterObjectiveId activates */
     startTime: number;
+    /**
+     * Anchor the event to an objective: it stays dormant until that objective
+     * is active (or restored complete), then starts startTime seconds later.
+     * Use it when an objective needs the event in front of the player - a
+     * mission-start schedule is missed by anyone slower than the author.
+     */
+    startAfterObjectiveId?: string;
     /** Duration in seconds */
     duration: number;
-    /** dB degradation to link margin */
+    /** dB degradation to link margin (sun-transit peak; informational for rain, whose loss is computed from rain rate) */
     linkMarginDegradation: number;
+    /** rain/storm: peak rain rate in mm/h. Default by severity: minor 4, moderate 12, severe 30 (storm one step heavier) */
+    rainRateMmPerHour?: number;
   }>;
-  /** Scheduled, duty-cycled RF interference injected at a satellite's
-   *  transponder (relayed to all stations - uplink interference). */
+  /** Scheduled, duty-cycled RF interference. Default path injects at a
+   *  satellite's transponder (relayed to all stations - uplink interference);
+   *  path: 'terrestrial' (Campaign 3+) is a ground emitter received directly
+   *  by station antennas (bearing + pattern, no Doppler). Mirror of
+   *  InterferenceEventConfig in interference-manager.ts. */
   interferenceEvents?: Array<{
     id: string;
-    satelliteNoradId: number;
+    /** Required for the (default) transponder path; ignored for terrestrial */
+    satelliteNoradId?: number;
     /** Interferer RF center frequency (uplink, Hz) */
     frequency: number;
     bandwidth: number;
-    /** Power at the transponder input (dBm) */
+    /** Transponder path: power at the transponder input (dBm). Terrestrial: emitter EIRP (dBm) */
     power: number;
-    polarization: 'H' | 'V';
+    polarization: 'H' | 'V' | 'RHCP' | 'LHCP';
     /** Seconds since mission start when the envelope opens */
     startTime: number;
     /** Envelope duration (s); on/off windows repeat inside it */
@@ -102,6 +167,119 @@ export interface SimulationSettings {
     periodSeconds: number;
     /** Transmit-on seconds per period */
     onSeconds: number;
+    /** Delivery path; absent = 'transponder' (bit-identical legacy behavior) */
+    path?: 'transponder' | 'terrestrial';
+    /** Emitter ground truth: geolocation gameplay (C5) or REQUIRED terrestrial source (C3+) */
+    emitter?: {
+      latitude: number;
+      longitude: number;
+      altitudeKm?: number;
+    };
+  }>;
+  /**
+   * Opt-in (Campaign 5+): two-satellite TDOA/FDOA geolocation console.
+   * When present, the Geolocation tab is registered in Mission Control and
+   * the GeolocationConsoleCore singleton is started. Absent in Campaigns 1-4.
+   */
+  geolocation?: {
+    /** NORAD ID of the victim (primary) satellite */
+    primaryNoradId: number;
+    /** NORAD IDs of selectable adjacent (sidelobe-collection) satellites */
+    adjacentNoradIds: number[];
+    /** 1-sigma TDOA measurement noise, seconds (difficulty knob) */
+    tdoaSigmaS: number;
+    /** 1-sigma FDOA measurement noise, Hz (difficulty knob) */
+    fdoaSigmaHz: number;
+    /** Solver search area and map extent */
+    areaOfInterest: { latMin: number; latMax: number; lonMin: number; lonMax: number };
+    /** Correlation integration window, simulated seconds. Default: 10 */
+    captureWindowS?: number;
+  };
+  /**
+   * Opt-in (Campaign 4): offensive electronic-attack / SATCOM denial. When
+   * present, the ElectronicAttackManager is started (a player-driven interferer,
+   * the counterpart of interferenceEvents) and the EA Assessment tab is
+   * registered in Mission Control. Absent in Campaigns 1-3 and 5, so those
+   * campaigns are unaffected.
+   */
+  electronicAttack?: {
+    /** Ground station (by id) that mounts the jam chain */
+    groundStationId: string;
+    /** NORAD ID of the target (adversary) satellite being denied */
+    targetNoradId: number;
+    /** Antenna index that must be trained on the target to radiate the jam (default 0) */
+    jamAntennaIndex?: number;
+    /** Victim service carrier power at the transponder input, dBm (the "S" in J/S) */
+    victimCarrierPowerDbm: number;
+    /** Target transponder uplink passband the jam RF must fall within (Hz) */
+    targetUplinkLowHz: number;
+    /** Target transponder uplink passband upper edge (Hz) */
+    targetUplinkHighHz: number;
+    /** Uplink polarization the jam must match to route through the transponder */
+    targetPolarization: 'H' | 'V';
+    /**
+     * Calibration: dB added to the jam chain HPA output power to yield the
+     * jammer power at the transponder input. Folds uplink path loss + antenna
+     * gain into one term so the scenario stays winnable without a full uplink
+     * budget (mirrors how interferenceEvents specify power at the transponder).
+     */
+    jamPathGainDb: number;
+    /** Pointing tolerance (deg) for the jam antenna vs the target (default 5) */
+    pointingToleranceDeg?: number;
+    /** J/S ratio (dB) at/above which denial is considered effective (default 6) */
+    effectiveJtoSDb?: number;
+  };
+  /**
+   * Opt-in (Campaign 4): scheduled RF-chain / transmit-string hardware faults
+   * for redundancy training. Mirrors interferenceEvents' time trigger. Absent
+   * = no scheduled faults, so legacy campaigns are unaffected.
+   *
+   * `target` picks the equipment (phase 16, E3): 'tx-modem' (default) faults
+   * the transmit modem so the operator fails over; 'buc-overtemp' degrades the
+   * BUC's cooling so it climbs past the alarm while driven; 'gpsdo-gnss-loss'
+   * drops the GNSS signal so the reference enters holdover; 'crypto-key-mismatch'
+   * puts the crypto key into Mismatch until the operator re-keys. `duration`
+   * self-clears the BUC and GNSS faults. See HardwareFaultManager.
+   */
+  hardwareFaultEvents?: Array<{
+    id: string;
+    /** Ground station whose equipment faults */
+    groundStationId: string;
+    /** What trips. Default: 'tx-modem' */
+    target?: 'tx-modem' | 'buc-overtemp' | 'gpsdo-gnss-loss' | 'crypto-key-mismatch';
+    /** Transmitter case index (default 0), tx-modem only */
+    transmitterIndex?: number;
+    /** Modem number (1-4) that faults - the "primary" transmit string (tx-modem only) */
+    modemNumber?: number;
+    /** RF front-end index (default 0), buc-overtemp / gpsdo-gnss-loss */
+    rfFrontEndIndex?: number;
+    /** Seconds since mission start when the fault trips */
+    startTime: number;
+    /** Seconds until a timed fault clears itself; absent = until the operator acts */
+    duration?: number;
+    params?: {
+      /** buc-overtemp: extra degC above the normal thermal target. Default 40 */
+      deltaC?: number;
+      /** buc-overtemp: temperature reading at trip time */
+      startTemperatureC?: number;
+    };
+    /** Written to the ops log when the fault trips (omit to keep it silent) */
+    label?: string;
+  }>;
+  /**
+   * Opt-in (Campaign 4): own-force deconfliction. Radiating a jam waveform that
+   * overlaps any protected friendly range is an instant mission fail
+   * (fratricide), in the spirit of the HPA / dual-transmission RF-safety
+   * invariants. Only armed when electronicAttack is also present; absent = the
+   * interlock never fires.
+   */
+  protectedFrequencies?: Array<{
+    id: string;
+    label: string;
+    /** Protected uplink range lower edge (Hz) that must never be jammed */
+    minHz: number;
+    /** Protected uplink range upper edge (Hz) */
+    maxHz: number;
   }>;
   /** Working Document panel: an in-scenario document that accumulates a line
    *  per passed quiz whose condition declares params.documentLine. */
@@ -122,6 +300,208 @@ export interface SimulationSettings {
   scenarioStartDate?: string;
   /** Previous shift maintenance/ops log entries */
   previousShiftLogs?: PreviousShiftLogEntry[];
+
+  // ── nats-eu (Campaign 2 European Operations) opt-in mechanics ───────────────
+  // Each block, when present, starts a singleton manager and unlocks its
+  // objective conditions. Absent = the mechanic never instantiates, so all other
+  // campaigns are unaffected. Shapes mirror the config interfaces in the
+  // corresponding manager modules (kept inline to avoid an import cycle).
+
+  /** M1: link-budget / EIRP planning console. Starts LinkBudgetManager. */
+  linkBudget?: {
+    label?: string;
+    /** Ground-truth C/N (dB) the correct worksheet must yield */
+    expectedCNRDb: number;
+    /** Tolerance (dB) for accepting the operator's computed C/N (default 1.0) */
+    toleranceDb?: number;
+    /** Demod C/N threshold (dB) the margin is measured against */
+    thresholdCNRDb: number;
+    /** Required margin (dB) above threshold for acceptance (default 3) */
+    requiredMarginDb?: number;
+  };
+
+  /** M2/M5: LEO uplink ops + command-link key ops. Starts CommandingManager. */
+  commanding?: {
+    groundStationId?: string;
+    targetNoradId?: number;
+    /** Command window open/close, seconds since mission start (omit = always open) */
+    windowStartS?: number;
+    windowEndS?: number;
+    /** Require a Valid key for a command to ACK (default true) */
+    requireValidKey?: boolean;
+    /** Require uplink Doppler compensation for a command to ACK (default true) */
+    requireDopplerComp?: boolean;
+    /** Canned TT&C commands the console offers as one-click sends */
+    commands?: Array<{ id: string; label?: string }>;
+    /**
+     * Command carrier RF (Hz). With it set, a transponder-path interference
+     * event on the target bird that overlaps it denies fixed-mode commands
+     * ('uplink-jammed') until TRANSEC is hopping with sync locked.
+     */
+    uplinkFrequencyHz?: number;
+    /**
+     * Phase 18 E: ranging. A RANGE tone through the command path records the
+     * true slant range to the target; requiredMeasurements of them make an
+     * orbit-determination solution (ranging-measurements condition).
+     */
+    ranging?: {
+      requiredMeasurements: number;
+      /** Command id the tone is logged under (default 'RANGE') */
+      toneId?: string;
+    };
+  };
+
+  /** M3: multi-station pass scheduling. Starts ContactScheduleManager. */
+  contactSchedule?: {
+    contacts: Array<{
+      id: string;
+      satelliteNoradId: number;
+      label?: string;
+      priority: number;
+      windowStartS: number;
+      windowEndS: number;
+      /** Site whose horizon the window was propagated for (validated, not enforced) */
+      stationId?: string;
+    }>;
+    stationIds: string[];
+    /** Contacts with priority <= this must all be assigned for a valid plan */
+    requiredPriorityAtOrAbove?: number;
+  };
+
+  /**
+   * Access/contact timeline deck along the bottom of Mission Control.
+   *
+   * Opt-in: when this block is absent the deck is not mounted at all, so
+   * campaigns that predate it (Campaign 1's GEO work, where every link is
+   * permanent and a contact timeline says nothing) keep their original layout.
+   * The operator can still collapse the deck; this only controls whether it
+   * exists.
+   */
+  contactTimeline?: {
+    /** How far ahead the deck plots, in hours. Default 6. */
+    horizonHours?: number;
+    /** Elevation defining AOS/LOS for the contact blocks. Default 5 deg. */
+    minElevation?: Degrees;
+    /** Draw the sunlight/eclipse lane. Default true. */
+    showLighting?: boolean;
+    /** Start the deck collapsed (operator can expand). Default false. */
+    startCollapsed?: boolean;
+  };
+
+  /**
+   * Operator-driven fast-forward to the next contact.
+   *
+   * Opt-in: without this block no skip control is mounted, so scenarios where
+   * the waiting IS the exercise (and every GEO campaign, where nothing ever
+   * rises) are unaffected. Declare it on LEO scenarios that put long dead sky
+   * between the shift starting and the pass the mission is about.
+   */
+  timeSkip?: {
+    /** Stop this many seconds before AOS, so acquisition is still flown. Default 120. */
+    leadTimeS?: number;
+    /** Real-time duration of the fast-forward animation, ms. Default 2500. */
+    animationMs?: number;
+    /** Do not offer a skip for waits shorter than this, in seconds. Default 300. */
+    minSkipS?: number;
+    /** How far ahead to look for the next pass, in hours. Default 12. */
+    horizonHours?: number;
+  };
+
+  /** M4: space-domain events (maneuvers / stale TLEs). Starts SpaceEventManager. */
+  spaceEvents?: Array<{
+    id: string;
+    satelliteNoradId: number;
+    maneuverAtS: number;
+    newTle: { tle1: string; tle2: string };
+    label?: string;
+    /** Opt-in (C3 S6): tampered element set forced onto the bird at scenario load */
+    initialTle?: { tle1: string; tle2: string };
+  }>;
+
+  /** M6: SOC-lite security console (audit log + access control). Starts SecurityConsoleCore. */
+  security?: {
+    accounts: Array<{
+      id: string;
+      name: string;
+      role: string;
+      status: 'active' | 'disabled' | 'expired';
+    }>;
+    events: Array<{
+      id: string;
+      timeS?: number;
+      timestampLabel?: string;
+      actor: string;
+      action: string;
+      category: 'auth' | 'config' | 'command' | 'access';
+      severity: 'info' | 'warning' | 'critical';
+      isAnomaly?: boolean;
+      /**
+       * Evidence carried forward from an earlier scenario. Dropped at load if
+       * the campaign record says a decision destroyed it there.
+       */
+      requiresCampaignEvidence?: { scenarioId: string; eventId: string };
+    }>;
+  };
+
+  /** M7: TRANSEC anti-jam waveform. Starts TransecManager. */
+  transec?: {
+    groundStationId?: string;
+    hopChannelsHz?: number[];
+    /** Whether a hop-set key must be loaded for sync to lock (default true) */
+    requireKey?: boolean;
+  };
+
+  /**
+   * Phase 18 E: read-only spacecraft state-of-health telemetry from one
+   * satellite, with limit bands and scripted excursions. Starts
+   * TelemetryManager and the Telemetry tab. Mirror of TelemetryConfig in
+   * telemetry/telemetry-manager.ts.
+   */
+  telemetry?: {
+    groundStationId: string;
+    satelliteNoradId: number;
+    /** Antenna that must be locked on the bird for frames to flow (default: any) */
+    antennaIndex?: number;
+    /** Frames per second of mission time (default 1) */
+    frameRateHz?: number;
+    /** Seconds without a frame before the stream reads STALE (default 10) */
+    staleAfterS?: number;
+    /** Pointing tolerance (deg) for a manually pointed antenna to count as linked (default 1.5) */
+    pointingToleranceDeg?: number;
+    channels: Array<{
+      id: string;
+      label: string;
+      unit: string;
+      subsystem: string;
+      nominal: number;
+      noise?: number;
+      yellowLow?: number;
+      yellowHigh?: number;
+      redLow?: number;
+      redHigh?: number;
+      decimals?: number;
+    }>;
+    excursions?: Array<{
+      id: string;
+      channelId: string;
+      startTime: number;
+      duration?: number;
+      rampToValue: number;
+      rampSeconds?: number;
+      /** Ends when this command ACKs; recovers over recoverySeconds */
+      endsOnCommandId?: string;
+      recoverySeconds?: number;
+      label?: string;
+    }>;
+  };
+
+  /** M8: GNSS spoofing / timing attack. Starts GnssThreatManager. */
+  gnssThreat?: {
+    groundStationIds?: string[];
+    spoofStartS: number;
+    spoofEndS?: number;
+    offsetDriftUsPerS?: number;
+  };
 }
 
 export class ScenarioManager {
@@ -144,29 +524,21 @@ export class ScenarioManager {
       isSync: false,
       groundStations: [],
       antennas: [ANTENNA_CONFIG_KEYS.C_BAND_3M_ANTESTAR, ANTENNA_CONFIG_KEYS.KU_BAND_3M_ANTESTAR], // TODO: Max 1 for now because only 1 rfFrontEnd is supported
-      rfFrontEnds: [{
-        // Module states managed by their respective classes
-        omt: OMTModule.getDefaultState(),
-        buc: BUCModuleCore.getDefaultState(),
-        hpa: HPAModuleCore.getDefaultState(),
-        filter: IfFilterBankModuleCore.getDefaultState(),
-        lnb: LNBModuleCore.getDefaultState(),
-        coupler: CouplerModule.getDefaultState(),
-        gpsdo: defaultGpsdoState,
-      }],
+      rfFrontEnds: [
+        {
+          // Module states managed by their respective classes
+          omt: OMTModule.getDefaultState(),
+          buc: BUCModuleCore.getDefaultState(),
+          hpa: HPAModuleCore.getDefaultState(),
+          filter: IfFilterBankModuleCore.getDefaultState(),
+          lnb: LNBModuleCore.getDefaultState(),
+          coupler: CouplerModule.getDefaultState(),
+          gpsdo: defaultGpsdoState,
+        },
+      ],
       spectrumAnalyzers: [defaultSpectrumAnalyzerState],
-      transmitters: [
-        Transmitter.getDefaultState(),
-        Transmitter.getDefaultState(),
-        Transmitter.getDefaultState(),
-        Transmitter.getDefaultState()
-      ],
-      receivers: [
-        Receiver.getDefaultState(),
-        Receiver.getDefaultState(),
-        Receiver.getDefaultState(),
-        Receiver.getDefaultState()
-      ],
+      transmitters: [Transmitter.getDefaultState(), Transmitter.getDefaultState(), Transmitter.getDefaultState(), Transmitter.getDefaultState()],
+      receivers: [Receiver.getDefaultState(), Receiver.getDefaultState(), Receiver.getDefaultState(), Receiver.getDefaultState()],
       satellites: [],
     };
   }
@@ -175,12 +547,14 @@ export class ScenarioManager {
     return this.settings;
   }
 
-
   set scenario(scenarioId: string) {
-    const scenario = SCENARIOS.find(s => s.id === scenarioId);
+    const scenario = SCENARIOS.find((s) => s.id === scenarioId);
     if (scenario) {
-      this.settings = scenario.settings;
+      // Sandboxes may override their authored equipment (station loadout);
+      // every other scenario gets its settings object back untouched.
+      this.settings = SandboxLoadoutService.getInstance().applyToScenario(scenario);
       this.data = scenario;
+      Rng.setSeed(resolveScenarioSeed(scenario.id, scenario.seed));
     } else {
       throw new Error(`Scenario ${scenarioId} not found`);
     }
@@ -214,6 +588,54 @@ export const SCENARIOS: ScenarioData[] = [
   scenario22Data,
   scenario23Data,
   scenario24Data,
+  natsEuSandboxData,
+  natsEuScenario1Data,
+  natsEuScenario2Data,
+  natsEuScenario3Data,
+  natsEuScenario4Data,
+  natsEuScenario5Data,
+  natsEuScenario6Data,
+  natsEuScenario7Data,
+  natsEuScenario8Data,
+  natsEuScenario9Data,
+  natsEuScenario10Data,
+  natsEuScenario11Data,
+  natsEuScenario12Data,
+  natsEuScenario13Data,
+  natsEuScenario14Data,
+  natsEuScenario15Data,
+  natsEuScenario16Data,
+  natsEuScenario17Data,
+  natsEuScenario18Data,
+  natsEuScenario19Data,
+  natsEuScenario20Data,
+  natsEuScenario21Data,
+  natsEuScenario22Data,
+  natsEuScenario23Data,
+  natsEuScenario24Data,
+  natsEuScenario25Data,
+  natsEuScenario26Data,
+  natsEuScenario27Data,
+  natsEuScenario28Data,
+  hamSdrSandboxData,
+  hamSdrScenario1Data,
+  hamSdrScenario2Data,
+  hamSdrScenario3Data,
+  hamSdrScenario4Data,
+  hamSdrScenario5Data,
+  hamSdrScenario6Data,
+  hamSdrScenario7Data,
+  hamSdrScenario8Data,
+  signalHunterSandboxData,
+  signalHunterScenario1Data,
+  signalHunterScenario2Data,
+  signalHunterScenario3Data,
+  signalHunterScenario4Data,
+  ccsScenario1Data,
+  ccsScenario2Data,
+  ccsScenario3Data,
+  ccsScenario4Data,
+  ccsScenario5Data,
 ];
 
 export function isScenarioLocked(scenario: ScenarioData, completedScenarioIds: string[]): boolean {
@@ -225,9 +647,7 @@ export function isScenarioLocked(scenario: ScenarioData, completedScenarioIds: s
     return false;
   }
 
-  return !scenario.prerequisiteScenarioIds.every(prereqId =>
-    completedScenarioIds.includes(prereqId)
-  );
+  return !scenario.prerequisiteScenarioIds.every((prereqId) => completedScenarioIds.includes(prereqId));
 }
 
 /** Function finds the next scenario the user needs to complete in order to unlock the provided scenario */
@@ -238,7 +658,7 @@ export function getNextPrerequisiteScenario(scenario: ScenarioData, completedSce
 
   for (const prereqId of scenario.prerequisiteScenarioIds) {
     if (!completedScenarioIds.includes(prereqId)) {
-      const prereqScenario = SCENARIOS.find(s => s.id === prereqId);
+      const prereqScenario = SCENARIOS.find((s) => s.id === prereqId);
       return prereqScenario || null;
     }
   }
@@ -252,8 +672,8 @@ export function getPrerequisiteScenarioNames(scenario: ScenarioData): string[] {
   }
 
   return scenario.prerequisiteScenarioIds
-    .map(prereqId => {
-      const prereqScenario = SCENARIOS.find(s => s.id === prereqId);
+    .map((prereqId) => {
+      const prereqScenario = SCENARIOS.find((s) => s.id === prereqId);
       return prereqScenario ? prereqScenario.title : prereqId;
     })
     .filter(Boolean);

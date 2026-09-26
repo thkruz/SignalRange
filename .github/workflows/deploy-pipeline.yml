@@ -38,21 +38,26 @@ jobs:
       artifact-name: ${{ steps.artifact.outputs.name }}
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
-          submodules: recursive
+          submodules: false
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      # Private submodule (src/private): read-only deploy key on thkruz/signal-range-private.
+      # A deploy key cannot fetch the public repo, so checkout stays on the token and only the
+      # submodule step uses SSH.
+      - name: Set up SSH for private submodule
+        uses: webfactory/ssh-agent@v0.9.0
         with:
-          node-version: '20'
-          cache: 'npm'
+          ssh-private-key: ${{ secrets.PRIVATE_SUBMODULE_DEPLOY_KEY }}
 
-      - name: Install Dependencies
-        run: npm ci --ignore-scripts
+      - name: Update submodules
+        run: git submodule update --init --recursive
+
+      - name: Setup Node Project
+        uses: ./.github/actions/setup-node-project
 
       - name: Build Application
-        run: npm run build
+        run: pnpm run build
 
       - name: Upload Build Artifact
         uses: actions/upload-artifact@v4
@@ -74,7 +79,7 @@ jobs:
       url: https://app.signalrange.space
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Download Build Artifact
         uses: actions/download-artifact@v4
@@ -207,22 +212,27 @@ jobs:
       artifact-name: ${{ steps.artifact.outputs.name }}
     steps:
       - name: Checkout PR Branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ needs.verify-pr-checks.outputs.pr-sha }}
-          submodules: recursive
+          submodules: false
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      # Private submodule (src/private): read-only deploy key on thkruz/signal-range-private.
+      # A deploy key cannot fetch the public repo, so checkout stays on the token and only the
+      # submodule step uses SSH.
+      - name: Set up SSH for private submodule
+        uses: webfactory/ssh-agent@v0.9.0
         with:
-          node-version: '20'
-          cache: 'npm'
+          ssh-private-key: ${{ secrets.PRIVATE_SUBMODULE_DEPLOY_KEY }}
 
-      - name: Install Dependencies
-        run: npm ci --ignore-scripts
+      - name: Update submodules
+        run: git submodule update --init --recursive
+
+      - name: Setup Node Project
+        uses: ./.github/actions/setup-node-project
 
       - name: Build Application
-        run: npm run build
+        run: pnpm run build
 
       - name: Upload Build Artifact
         uses: actions/upload-artifact@v4
@@ -247,7 +257,7 @@ jobs:
       url: https://uat.signalrange.space
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: dev
 

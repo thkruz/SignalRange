@@ -1,7 +1,12 @@
-import { SignalOrigin } from "@app/signal-origin";
-import { dB, Hertz, IfFrequency, IfSignal, MHz, RfFrequency, RfSignal } from '@app/types';
-import { RFFrontEndCore } from "@app/equipment/rf-front-end/rf-front-end-core";
+import { RFFrontEndCore } from '@app/equipment/rf-front-end/rf-front-end-core';
 import { RFFrontEndModule, RFFrontEndModuleState } from '@app/equipment/rf-front-end/rf-front-end-module';
+import { SignalOrigin } from '@app/signal-origin';
+import { Rng } from '@app/simulation/rng';
+import { SimClock } from '@app/simulation/sim-clock';
+import { dB, Hertz, IfFrequency, IfSignal, MHz, RfFrequency, RfSignal } from '@app/types';
+
+/** Seeded draws for this module (see simulation/rng.ts). */
+const random = (): number => Rng.stream('lnb').next();
 
 /**
  * Low Noise Block converter module state
@@ -25,7 +30,18 @@ export interface LNBState extends RFFrontEndModuleState {
    * Clears automatically when LNB is power cycled (OFF then ON).
    */
   hasRefLockFault?: boolean;
+  /**
+   * Direct-sampling mode (SDR front ends): bypasses the mixer so RF passes
+   * through at its original frequency, with a wide SDR passband instead of the
+   * 950-2150 MHz L-band IF filter. Opt-in: when omitted/false the legacy
+   * block-downconversion path is unchanged.
+   */
+  isDirectSampling?: boolean;
 }
+
+/** Direct-sampling (SDR) passband limits, modeled on common RTL-SDR tuners */
+export const DIRECT_SAMPLING_PASSBAND_LOW_HZ = 24e6;
+export const DIRECT_SAMPLING_PASSBAND_HIGH_HZ = 1766e6;
 
 /**
  * LNB Module Core - Business Logic Layer
@@ -65,7 +81,7 @@ export abstract class LNBModuleCore extends RFFrontEndModule<LNBState> {
 
     // Initialize power-on timestamp if already powered
     if (this.state.isPowered) {
-      this.powerOnTimestamp_ = Date.now();
+      this.powerOnTimestamp_ = SimClock.runMs();
     }
   }
 
@@ -89,7 +105,7 @@ export abstract class LNBModuleCore extends RFFrontEndModule<LNBState> {
     this.checkAlarms_();
 
     // Calculate post-LNA signals (apply gain if powered)
-    this.postLNASignals = this.rxSignalsIn.map(sig => {
+    this.postLNASignals = this.rxSignalsIn.map((sig) => {
       const gain = this.state.isPowered ? this.state.gain : -300;
       return {
         ...sig,
@@ -98,21 +114,26 @@ export abstract class LNBModuleCore extends RFFrontEndModule<LNBState> {
       } as RfSignal;
     });
 
-    // Calculate IF signals after LNB based on LO frequency
-    this.ifSignals = this.postLNASignals.map(sig => {
+    // Calculate IF signals after LNB based on LO frequency.
+    // Direct sampling (SDR): RF passes through unmixed with a wide tuner
+    // passband; legacy path applies the 950-2150 MHz L-band IF filter.
+    const passbandLow = this.state.isDirectSampling ? DIRECT_SAMPLING_PASSBAND_LOW_HZ : 950e6;
+    const passbandHigh = this.state.isDirectSampling ? DIRECT_SAMPLING_PASSBAND_HIGH_HZ : 2150e6;
+
+    this.ifSignals = this.postLNASignals.map((sig) => {
       const ifFreq = this.calculateIfFrequency(sig.frequency);
 
-      // If frequency is outside of 950e6 or 2150e6, drop signal 40 dB to simulate the bandpass filters
-      let filteredPower = (ifFreq < 950e6 || ifFreq > 2150e6) ? sig.power - 40 : sig.power;
+      // If frequency is outside the passband, drop signal 40 dB to simulate the bandpass filters
+      let filteredPower = ifFreq < passbandLow || ifFreq > passbandHigh ? sig.power - 40 : sig.power;
 
       // If it is on the edge and the bandwidth causes it to partially roll off, apply partial attenuation
       const halfBw = sig.bandwidth / 2;
-      if (ifFreq - halfBw < 950e6) {
-        const overlapHz = 950e6 - (ifFreq - halfBw);
+      if (ifFreq - halfBw < passbandLow) {
+        const overlapHz = passbandLow - (ifFreq - halfBw);
         const overlapFraction = overlapHz / sig.bandwidth;
         filteredPower -= 40 * overlapFraction;
-      } else if (ifFreq + halfBw > 2150e6) {
-        const overlapHz = (ifFreq + halfBw) - 2150e6;
+      } else if (ifFreq + halfBw > passbandHigh) {
+        const overlapHz = ifFreq + halfBw - passbandHigh;
         const overlapFraction = overlapHz / sig.bandwidth;
         filteredPower -= 40 * overlapFraction;
       }
@@ -128,9 +149,7 @@ export abstract class LNBModuleCore extends RFFrontEndModule<LNBState> {
 
   get rxSignalsIn(): RfSignal[] {
     const omtSignals = this.rfFrontEnd_.omtModule.rxSignalsOut;
-    const bucLoopback = this.rfFrontEnd_.bucModule.state.isLoopback
-      ? this.rfFrontEnd_.bucModule.outputSignals
-      : [];
+    const bucLoopback = this.rfFrontEnd_.bucModule.state.isLoopback ? this.rfFrontEnd_.bucModule.outputSignals : [];
 
     return [...omtSignals, ...bucLoopback];
   }
@@ -152,9 +171,9 @@ export abstract class LNBModuleCore extends RFFrontEndModule<LNBState> {
       return;
     }
 
-    const nfLnaLinear = Math.pow(10, this.state.lnaNoiseFigure / 10);
-    const nfMixerLinear = Math.pow(10, this.state.mixerNoiseFigure / 10);
-    const gainLnaLinear = this.state.gain > 0 ? Math.pow(10, this.state.gain / 10) : 1;
+    const nfLnaLinear = 10 ** (this.state.lnaNoiseFigure / 10);
+    const nfMixerLinear = 10 ** (this.state.mixerNoiseFigure / 10);
+    const gainLnaLinear = this.state.gain > 0 ? 10 ** (this.state.gain / 10) : 1;
 
     // Friis formula for cascaded stages
     const nfTotal = nfLnaLinear + (nfMixerLinear - 1) / gainLnaLinear;
@@ -166,7 +185,7 @@ export abstract class LNBModuleCore extends RFFrontEndModule<LNBState> {
     let targetNoiseTemp = nominalNoiseTemp;
 
     if (this.powerOnTimestamp_ !== null) {
-      const timeElapsedMs = Date.now() - this.powerOnTimestamp_;
+      const timeElapsedMs = SimClock.runMs() - this.powerOnTimestamp_;
       const timeElapsedSec = timeElapsedMs / 1000;
       const stabilizationTime = this.state.noiseTemperatureStabilizationTime;
 
@@ -180,8 +199,7 @@ export abstract class LNBModuleCore extends RFFrontEndModule<LNBState> {
         const initialNoiseTemp = nominalNoiseTemp * 2;
 
         // Target is between initial and nominal based on warmup progress
-        targetNoiseTemp = nominalNoiseTemp +
-          (initialNoiseTemp - nominalNoiseTemp) * stabilizationFactor;
+        targetNoiseTemp = nominalNoiseTemp + (initialNoiseTemp - nominalNoiseTemp) * stabilizationFactor;
       }
     }
 
@@ -191,8 +209,7 @@ export abstract class LNBModuleCore extends RFFrontEndModule<LNBState> {
     const tempDelta = Math.abs(targetNoiseTemp - this.state.noiseTemperature);
     // Fast response (0.1) for large changes, slow (0.005) for small changes
     const smoothingFactor = tempDelta > 100 ? 0.1 : 0.005;
-    this.state.noiseTemperature = this.state.noiseTemperature +
-      (targetNoiseTemp - this.state.noiseTemperature) * smoothingFactor;
+    this.state.noiseTemperature += (targetNoiseTemp - this.state.noiseTemperature) * smoothingFactor;
   }
 
   /**
@@ -215,7 +232,7 @@ export abstract class LNBModuleCore extends RFFrontEndModule<LNBState> {
       return;
     }
 
-    const timeElapsedMs = Date.now() - this.powerOnTimestamp_;
+    const timeElapsedMs = SimClock.runMs() - this.powerOnTimestamp_;
     const timeElapsedSec = timeElapsedMs / 1000;
     const stabilizationTime = this.state.thermalStabilizationTime;
 
@@ -257,7 +274,7 @@ export abstract class LNBModuleCore extends RFFrontEndModule<LNBState> {
     const tempDriftPpm = tempDeviation * tempCoefficientPpm;
 
     // Add aging drift component: 1-3 ppm
-    const agingDriftPpm = 1 + Math.random() * 2;
+    const agingDriftPpm = 1 + random() * 2;
 
     // Total drift in ppm
     const totalDriftPpm = tempDriftPpm + agingDriftPpm;
@@ -268,7 +285,7 @@ export abstract class LNBModuleCore extends RFFrontEndModule<LNBState> {
     // Drift is negative when cold (frequency drops), positive when hot
     const driftDirection = this.state.temperature < nominalTemp ? -1 : 1;
 
-    this.state.frequencyError = driftDirection * (loFrequencyHz * totalDriftPpm / 1e6);
+    this.state.frequencyError = driftDirection * ((loFrequencyHz * totalDriftPpm) / 1e6);
   }
 
   /**
@@ -348,11 +365,16 @@ export abstract class LNBModuleCore extends RFFrontEndModule<LNBState> {
    * @returns IF output frequency in Hz
    */
   calculateIfFrequency(rfFrequency: RfFrequency): IfFrequency {
+    // Direct sampling (SDR): no mixer, RF frequency passes through unchanged
+    if (this.state.isDirectSampling) {
+      return rfFrequency as number as IfFrequency;
+    }
+
     // Apply frequency error to LO (error is 0 when locked and warmed up)
     const effectiveLO = this.state.loFrequency * 1e6 + this.state.frequencyError;
 
     // LNB should be high side injection: IF = LO - RF, TODO: rare models use low side
-    return effectiveLO - rfFrequency as IfFrequency;
+    return (effectiveLO - rfFrequency) as IfFrequency;
   }
 
   /**
@@ -390,7 +412,7 @@ export abstract class LNBModuleCore extends RFFrontEndModule<LNBState> {
 
     // Track power-on time for noise temperature stabilization
     if (this.state.isPowered) {
-      this.powerOnTimestamp_ = Date.now();
+      this.powerOnTimestamp_ = SimClock.runMs();
 
       // Clear sticky fault on power-on (simulates power cycle clearing transient faults)
       if (!wasPowered && this.state.hasRefLockFault) {

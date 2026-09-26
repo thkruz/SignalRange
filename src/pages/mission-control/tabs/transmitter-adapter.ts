@@ -1,5 +1,5 @@
-import { CardAlarmBadge } from "@app/components/card-alarm-badge/card-alarm-badge";
-import { qs } from "@app/engine/utils/query-selector";
+import { CardAlarmBadge } from '@app/components/card-alarm-badge/card-alarm-badge';
+import { qs } from '@app/engine/utils/query-selector';
 import { ValidationError, validateModemBandwidth, validateModemFrequency } from '@app/equipment/modem/modem-constraints';
 import { Transmitter, TransmitterModem, TransmitterState } from '@app/equipment/transmitter/transmitter';
 import { EventBus } from '@app/events/event-bus';
@@ -396,9 +396,7 @@ export class TransmitterAdapter {
    */
 
   private getActiveModem_(): TransmitterModem | undefined {
-    return this.transmitter.state.modems.find(
-      m => m.modem_number === this.transmitter.state.activeModem
-    );
+    return this.transmitter.state.modems.find((m) => m.modem_number === this.transmitter.state.activeModem);
   }
 
   private updateModemButtons_(): void {
@@ -406,7 +404,7 @@ export class TransmitterAdapter {
       const btn = this.domCache_.get(`modem-btn-${i}`);
       if (!btn) continue;
 
-      const modem = this.transmitter.state.modems.find(m => m.modem_number === i);
+      const modem = this.transmitter.state.modems.find((m) => m.modem_number === i);
       const isActive = i === this.transmitter.state.activeModem;
 
       // Update classes
@@ -677,7 +675,7 @@ export class TransmitterAdapter {
 
   private updateValidationError_(field: 'frequency' | 'bandwidth', error: ValidationError | null): void {
     // Remove existing error for this field
-    this.validationErrors_ = this.validationErrors_.filter(e => e.field !== field);
+    this.validationErrors_ = this.validationErrors_.filter((e) => e.field !== field);
 
     // Add new error if present
     if (error) {
@@ -697,11 +695,11 @@ export class TransmitterAdapter {
   private updateValidationDisplay_(): void {
     // Visual feedback on input fields
     const freqInput = this.domCache_.get('frequency-input');
-    const freqError = this.validationErrors_.find(e => e.field === 'frequency');
+    const freqError = this.validationErrors_.find((e) => e.field === 'frequency');
     freqInput?.classList.toggle('is-invalid', !!freqError);
 
     const bwInput = this.domCache_.get('bandwidth-input');
-    const bwError = this.validationErrors_.find(e => e.field === 'bandwidth');
+    const bwError = this.validationErrors_.find((e) => e.field === 'bandwidth');
     bwInput?.classList.toggle('is-invalid', !!bwError);
 
     // Update status bar with validation error (takes priority over normal status)
@@ -710,9 +708,7 @@ export class TransmitterAdapter {
       if (statusBar) {
         const err = this.validationErrors_[0];
         statusBar.className = 'alert alert-danger mt-3';
-        const hint = err.educationalHint
-          ? '<br><small>' + err.educationalHint + '</small>'
-          : '';
+        const hint = err.educationalHint ? '<br><small>' + err.educationalHint + '</small>' : '';
         statusBar.innerHTML = '<strong>' + err.message + '</strong>' + hint;
       }
     } else {

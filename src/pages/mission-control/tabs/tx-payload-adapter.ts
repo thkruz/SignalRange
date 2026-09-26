@@ -1,10 +1,10 @@
-import { EventBus } from "@app/events/event-bus";
-import { Events } from "@app/events/events";
-import { qs } from "@app/engine/utils/query-selector";
-import { CardAlarmBadge } from "@app/components/card-alarm-badge/card-alarm-badge";
-import { AlarmStatus } from "@app/equipment/base-equipment";
-import { CryptoModule } from "@app/equipment/crypto";
-import { FaultInjector } from "@app/faults";
+import { CardAlarmBadge } from '@app/components/card-alarm-badge/card-alarm-badge';
+import { qs } from '@app/engine/utils/query-selector';
+import { AlarmStatus } from '@app/equipment/base-equipment';
+import { CryptoModule } from '@app/equipment/crypto';
+import { EventBus } from '@app/events/event-bus';
+import { Events } from '@app/events/events';
+import { FaultInjector } from '@app/faults';
 
 /**
  * TX Payload state interface
@@ -210,9 +210,7 @@ export class TxPayloadAdapter {
     const encAuthTagEl = this.domCache_.get('encAuthTag');
     if (encAuthTagEl) {
       encAuthTagEl.textContent = state.encryptionAuthTagVerified ? 'Verified' : 'Failed';
-      encAuthTagEl.className = state.encryptionAuthTagVerified
-        ? 'status-badge status-badge-green'
-        : 'status-badge status-badge-red';
+      encAuthTagEl.className = state.encryptionAuthTagVerified ? 'status-badge status-badge-green' : 'status-badge status-badge-red';
     }
 
     // Throughput
@@ -304,15 +302,9 @@ export class TxPayloadAdapter {
   }
 
   private getBufferHealthStatus_(state: TxPayloadState): { text: string; className: string } {
-    const isWarning =
-      state.bufferOverflows > 0 ||
-      state.bufferUnderruns > 0 ||
-      state.bufferUtilization === 0 ||
-      state.bufferUtilization === 100;
+    const isWarning = state.bufferOverflows > 0 || state.bufferUnderruns > 0 || state.bufferUtilization === 0 || state.bufferUtilization === 100;
 
-    return isWarning
-      ? { text: 'Warning', className: 'status-badge status-badge-warning' }
-      : { text: 'Healthy', className: 'status-badge status-badge-good' };
+    return isWarning ? { text: 'Warning', className: 'status-badge status-badge-warning' } : { text: 'Healthy', className: 'status-badge status-badge-good' };
   }
 
   private getAlarms_(): AlarmStatus[] {

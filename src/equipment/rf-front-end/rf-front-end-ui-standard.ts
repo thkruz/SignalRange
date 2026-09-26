@@ -1,17 +1,14 @@
-import { EventBus } from '@app/events/event-bus';
-import { Events } from '@app/events/events';
-import { html } from "@app/engine/utils/development/formatter";
-import { qs } from "@app/engine/utils/query-selector";
+import { html } from '@app/engine/utils/development/formatter';
+import { qs } from '@app/engine/utils/query-selector';
 import { AGCModuleCore, AGCState } from '@app/equipment/rf-front-end/agc-module/agc-module-core';
 import { createAGC } from '@app/equipment/rf-front-end/agc-module/agc-module-factory';
 import { BUCModuleCore, BUCState } from '@app/equipment/rf-front-end/buc-module/buc-module-core';
 import { createBUC } from '@app/equipment/rf-front-end/buc-module/buc-module-factory';
-import { CouplerModule, CouplerState } from "@app/equipment/rf-front-end/coupler-module/coupler-module";
+import { CouplerModule, CouplerState } from '@app/equipment/rf-front-end/coupler-module/coupler-module';
 import { createCoupler } from '@app/equipment/rf-front-end/coupler-module/coupler-module-factory';
 import { IfFilterBankModuleCore, IfFilterBankState } from '@app/equipment/rf-front-end/filter-module/filter-module-core';
 import { createIfFilterBank } from '@app/equipment/rf-front-end/filter-module/filter-module-factory';
 import { IfFilterBankModuleUIStandard } from '@app/equipment/rf-front-end/filter-module/filter-module-ui-standard';
-import { GPSDOModuleCore } from './gpsdo-module';
 import { createGPSDO } from '@app/equipment/rf-front-end/gpsdo-module/gpsdo-module-factory';
 import { GPSDOModuleUIStandard } from '@app/equipment/rf-front-end/gpsdo-module/gpsdo-module-ui-standard';
 import { GPSDOState } from '@app/equipment/rf-front-end/gpsdo-module/gpsdo-state';
@@ -23,8 +20,11 @@ import { createLNB } from '@app/equipment/rf-front-end/lnb-module/lnb-module-fac
 import { LNBModuleUIStandard } from '@app/equipment/rf-front-end/lnb-module/lnb-module-ui-standard';
 import { NotchFilterModuleCore, NotchFilterState } from '@app/equipment/rf-front-end/notch-filter-module/notch-filter-module-core';
 import { createNotchFilter } from '@app/equipment/rf-front-end/notch-filter-module/notch-filter-module-factory';
-import { OMTModule, OMTState } from "@app/equipment/rf-front-end/omt-module/omt-module";
-import { createOMT } from "@app/equipment/rf-front-end/omt-module/omt-module-factory";
+import { OMTModule, OMTState } from '@app/equipment/rf-front-end/omt-module/omt-module';
+import { createOMT } from '@app/equipment/rf-front-end/omt-module/omt-module-factory';
+import { EventBus } from '@app/events/event-bus';
+import { Events } from '@app/events/events';
+import { GPSDOModuleCore } from './gpsdo-module';
 import { RFFrontEndCore, RFFrontEndState } from './rf-front-end-core';
 import './rf-front-end.css';
 
@@ -70,8 +70,8 @@ export class RFFrontEndUIStandard extends RFFrontEndCore {
     this.omtModule = createOMT(this.state.omt, this);
     this.bucModule = createBUC(this.state.buc, this);
     this.hpaModule = createHPA(this.state.hpa, this) as HPAModuleUIStandard;
-    this.agcModule = createAGC(this.state.agc, this);  // Headless - UI in adapter
-    this.notchFilterModule = createNotchFilter(this.state.notchFilter, this);  // Headless - UI in adapter
+    this.agcModule = createAGC(this.state.agc, this); // Headless - UI in adapter
+    this.notchFilterModule = createNotchFilter(this.state.notchFilter, this); // Headless - UI in adapter
     this.filterModule = createIfFilterBank(this.state.filter, this) as IfFilterBankModuleUIStandard;
     this.lnbModule = createLNB(this.state.lnb, this) as LNBModuleUIStandard;
     this.couplerModule = createCoupler(this.state.coupler, this);
@@ -259,7 +259,7 @@ export class RFFrontEndUIStandard extends RFFrontEndCore {
     if (!container) return;
 
     // Input change handlers
-    container.querySelectorAll('input, select').forEach(element => {
+    container.querySelectorAll('input, select').forEach((element) => {
       element.addEventListener('change', this.handleInputChange.bind(this));
       element.addEventListener('input', this.handleInputChange.bind(this));
     });

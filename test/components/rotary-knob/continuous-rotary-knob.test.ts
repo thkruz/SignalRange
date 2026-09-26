@@ -20,13 +20,7 @@ describe('ContinuousRotaryKnob', () => {
     document.body.innerHTML = '';
   });
 
-  const createKnobInDom = (
-    id: string,
-    initialAngle = 0,
-    step = 1,
-    callback?: (delta: number) => void,
-    valueOverride?: string
-  ): ContinuousRotaryKnob => {
+  const createKnobInDom = (id: string, initialAngle = 0, step = 1, callback?: (delta: number) => void, valueOverride?: string): ContinuousRotaryKnob => {
     const knob = new ContinuousRotaryKnob(id, initialAngle, step, callback, valueOverride);
     container.innerHTML = knob.html;
     return knob;
@@ -127,7 +121,15 @@ describe('ContinuousRotaryKnob', () => {
 
       // Verify drag started by triggering mousemove and checking angle change
       vi.spyOn(knob.dom, 'getBoundingClientRect').mockReturnValue({
-        left: 0, top: 0, width: 50, height: 50, right: 50, bottom: 50, x: 0, y: 0, toJSON: () => ({}),
+        left: 0,
+        top: 0,
+        width: 50,
+        height: 50,
+        right: 50,
+        bottom: 50,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
       });
       Object.defineProperty(knob.dom, 'offsetWidth', { value: 50 });
 
@@ -148,7 +150,15 @@ describe('ContinuousRotaryKnob', () => {
       const initialAngle = knob.getAngle();
 
       vi.spyOn(knob.dom, 'getBoundingClientRect').mockReturnValue({
-        left: 0, top: 0, width: 50, height: 50, right: 50, bottom: 50, x: 0, y: 0, toJSON: () => ({}),
+        left: 0,
+        top: 0,
+        width: 50,
+        height: 50,
+        right: 50,
+        bottom: 50,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
       });
       Object.defineProperty(knob.dom, 'offsetWidth', { value: 50 });
 
@@ -169,7 +179,15 @@ describe('ContinuousRotaryKnob', () => {
       const knobBody = knob.dom.querySelector('.knob-body') as HTMLElement;
 
       vi.spyOn(knob.dom, 'getBoundingClientRect').mockReturnValue({
-        left: 0, top: 0, width: 50, height: 50, right: 50, bottom: 50, x: 0, y: 0, toJSON: () => ({}),
+        left: 0,
+        top: 0,
+        width: 50,
+        height: 50,
+        right: 50,
+        bottom: 50,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
       });
       Object.defineProperty(knob.dom, 'offsetWidth', { value: 50 });
 
@@ -205,7 +223,15 @@ describe('ContinuousRotaryKnob', () => {
       const knobBody = knob.dom.querySelector('.knob-body') as HTMLElement;
 
       vi.spyOn(knob.dom, 'getBoundingClientRect').mockReturnValue({
-        left: 0, top: 0, width: 50, height: 50, right: 50, bottom: 50, x: 0, y: 0, toJSON: () => ({}),
+        left: 0,
+        top: 0,
+        width: 50,
+        height: 50,
+        right: 50,
+        bottom: 50,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
       });
       Object.defineProperty(knob.dom, 'offsetWidth', { value: 50 });
 

@@ -11,6 +11,7 @@ on:
       - '**.md'
       - 'docs/**'
       - 'LICENSE'
+      - 'src/private'
   pull_request:
     branches:
       - main
@@ -19,6 +20,7 @@ on:
       - '**.md'
       - 'docs/**'
       - 'LICENSE'
+      - 'src/private'
 
 permissions:
   contents: read
@@ -41,15 +43,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
-          submodules: recursive
+          submodules: false
 
       - name: Setup Node Project
         uses: ./.github/actions/setup-node-project
 
-      - name: Run ESLint
-        run: npm run lint
+      - name: Run Biome
+        run: pnpm run lint
 
       - name: YAML Lint
         uses: ibiqlik/action-yamllint@v3.1.1
@@ -61,22 +63,22 @@ jobs:
       - name: Lint Summary
         run: |
           echo "### Lint Results" >> $GITHUB_STEP_SUMMARY
-          echo "- ESLint: Passed" >> $GITHUB_STEP_SUMMARY
+          echo "- Biome (lint + format): Passed" >> $GITHUB_STEP_SUMMARY
 
   type-check:
     name: Type Check
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
-          submodules: recursive
+          submodules: false
 
       - name: Setup Node Project
         uses: ./.github/actions/setup-node-project
 
       - name: TypeScript Type Check
-        run: npm run type-check
+        run: pnpm run typecheck
 
       - name: Type Check Summary
         run: |
@@ -88,9 +90,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
-          submodules: recursive
+          submodules: false
 
       - name: Setup Node Project
         uses: ./.github/actions/setup-node-project
@@ -101,7 +103,7 @@ jobs:
           timezoneLinux: 'America/New_York'
 
       - name: Run Tests with Coverage
-        run: npm test -- --coverage --coverage.reporter=text --coverage.reporter=lcov
+        run: pnpm test -- --coverage --coverage.reporter=text --coverage.reporter=lcov
              --coverage.reporter=json-summary --coverage.reporter=json
 
       - name: Upload Coverage Artifact
@@ -140,19 +142,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
-          submodules: recursive
+          submodules: false
 
       - name: Setup Node Project
         uses: ./.github/actions/setup-node-project
 
       - name: Install Playwright Browsers
-        run: npx playwright install --with-deps chromium
+        run: pnpm exec playwright install --with-deps chromium
 
       - name: Run E2E Tests
         id: e2e
-        run: npm run test:e2e
+        run: pnpm run test:e2e
 
       - name: Upload Playwright Report
         if: always()
@@ -176,22 +178,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
-          submodules: recursive
+          submodules: false
 
       - name: Setup Node Project
         uses: ./.github/actions/setup-node-project
 
-      - name: NPM Audit (Critical Only)
-        run: npm audit --audit-level=critical
+      - name: Audit (Critical Only)
+        run: pnpm audit --audit-level=critical
         continue-on-error: false
 
-      - name: NPM Audit Report (All Levels)
+      - name: Audit Report (All Levels)
         run: |
           echo "### Security Audit" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-          npm audit --json | jq -r '
+          pnpm audit --json | jq -r '
             "Vulnerabilities: " +
             (.metadata.vulnerabilities | to_entries | map("\(.key): \(.value)") | join(", "))
           ' >> $GITHUB_STEP_SUMMARY 2>/dev/null || echo "No vulnerabilities found" >> $GITHUB_STEP_SUMMARY
@@ -208,15 +210,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
-          submodules: recursive
+          submodules: false
 
       - name: Setup Node Project
         uses: ./.github/actions/setup-node-project
 
+      - name: Verify src/private is absent (OSS build)
+        run: |
+          if [ -n "$(ls -A src/private 2>/dev/null)" ]; then
+            echo "ERROR: OSS build sees src/private contents"; exit 1
+          fi
+
       - name: Build Application
-        run: npm run build
+        run: pnpm run build
 
       - name: Upload Build Artifact
         uses: actions/upload-artifact@v4
@@ -241,7 +249,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -260,7 +268,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v4
@@ -286,7 +294,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Dependency Review
         uses: actions/dependency-review-action@v4

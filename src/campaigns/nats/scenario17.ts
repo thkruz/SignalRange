@@ -40,8 +40,9 @@ import { ses10Satellite, tidemark1Satellite, tidemark2Satellite } from './satell
  * spacecraft-side confirmation. All quizzes SYSTEM. 4 clips.
  *
  * Sim notes:
- *   - weatherEvents 'sun-transit': starts T+300s, 300s duration, 12 dB peak.
- *     Profile sin^2 -> degradation >6 dB roughly T+375..525s, clear by ~T+585s.
+ *   - weatherEvents 'sun-transit': starts 20 s after 'observe-onset' activates
+ *     (startAfterObjectiveId), 300s duration, 12 dB peak. Profile sin^2 ->
+ *     >2 dB from ~A+60s, >6 dB ~A+95..245s, clear (<1 dB) by ~A+292s.
  *   - 12 dB peak takes beacon and carrier C/N below threshold: demod genuinely
  *     unlocks near peak and self-recovers. Uplink is unaffected by design.
  *   - Custom-evaluator conditions read skyNoiseDegradation_dB via the
@@ -60,7 +61,7 @@ const vt01SkyNoise = (): number => {
       };
     };
   };
-  const gs = w.signalRange?.simulationManager?.groundStations?.find(g => g.state?.id === 'VT-01');
+  const gs = w.signalRange?.simulationManager?.groundStations?.find((g) => g.state?.id === 'VT-01');
   return gs?.antennas?.[0]?.state?.skyNoiseDegradation_dB ?? 0;
 };
 
@@ -76,13 +77,7 @@ export const scenario17Data: ScenarioData = {
   difficulty: 'intermediate',
   missionType: 'Environmental Operations',
   description: `The semiannual sun transit window arrives this morning: for about five minutes the Sun passes directly behind TIDEMARK-1 as seen from Vermont, and the antenna stares into a 20,000-kelvin noise source at full gain. The noise floor climbs, the margin collapses, and near the peak the demodulator will lose the carrier.<br><br>Nothing is broken. Nothing can be fixed. The event was predicted to the minute by the ephemeris service, the SLA excuses it with advance notice, and the geometry resolves itself.<br><br>Your job is the discipline: notify the customer before the window, hold the configuration through it, verify the recovery, and document what actually happened. The only way to fail a sun transit is to fight one.`,
-  equipment: [
-    '9-meter C-band Antenna',
-    'RF Front End',
-    'Spectrum Analyzer',
-    'RX/TX Modems',
-    'Sun Transit Prediction Sheet',
-  ],
+  equipment: ['9-meter C-band Antenna', 'RF Front End', 'Spectrum Analyzer', 'RX/TX Modems', 'Sun Transit Prediction Sheet'],
   timeLimitSeconds: 30 * 60,
   settings: {
     isSync: true,
@@ -98,7 +93,11 @@ export const scenario17Data: ScenarioData = {
         groundStationId: 'VT-01',
         type: 'sun-transit',
         severity: 'severe',
-        startTime: 300, // Window opens 5 minutes into the shift
+        // Anchored to the onset objective: a mission-start schedule ran the
+        // whole transit while slower players were still on the quizzes, and
+        // 'Sky Noise Rising' could never tick
+        startAfterObjectiveId: 'observe-onset',
+        startTime: 20, // Window opens 20 s after the onset objective comes up
         duration: 300, // ~5-minute transit
         linkMarginDegradation: 12, // Peak dB - enough to break demod lock near center
       },
@@ -130,7 +129,7 @@ export const scenario17Data: ScenarioData = {
           description: 'Acknowledge the Window',
           params: {
             character: Character.SYSTEM,
-            question: 'Transit window opens five minutes into the shift. Ready?',
+            question: 'The transit window opens this morning - the pre-event checklist has to be done before it does. Ready?',
             options: ['Acknowledged - prediction sheet reviewed, pre-event checklist starting now.'],
             correctIndex: 0,
             explanation: 'The window does not move for anyone. Everything before it is preparation; everything during it is discipline.',
@@ -190,13 +189,14 @@ export const scenario17Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Why does the pre-transit baseline matter more than usual today?',
             options: [
-              'Anything abnormal AFTER the window starts will be attributed to the Sun - a fault hiding under the transit would survive unnoticed unless the board was provably clean before',
-              'The baseline calibrates the prediction sheet',
-              'The SLA requires a baseline screenshot',
-              'It does not - the transit makes the baseline meaningless',
+              'Anything abnormal after window-open gets blamed on the Sun - a hidden fault only shows if the board was provably clean before',
+              'The baseline calibrates the prediction sheet - the peak time only holds if the C/N reading matches the sheet before onset',
+              'The SLA exclusion requires a baseline record - a clean board timestamped before window-open is the contractual proof',
+              'It matters less than usual - the transit resets the noise floor, so the pre-window baseline stops applying at onset',
             ],
             correctIndex: 0,
-            explanation: 'Predictable events make perfect camouflage. Clean board before the window means everything during it is the Sun - and anything still wrong after it is not.',
+            explanation:
+              'Predictable events make perfect camouflage. Clean board before the window means everything during it is the Sun - and anything still wrong after it is not.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -222,13 +222,14 @@ export const scenario17Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'What actually degrades the link during a sun transit?',
             options: [
-              'The Sun (a ~20,000 K noise source at C-band) passes through the antenna main beam behind the satellite - system noise temperature soars and C/N collapses, with the signal itself unchanged',
-              'Solar radiation pressure pushes the satellite off station',
-              'The Sun physically blocks the radio path to the satellite',
-              'Solar heating detunes the LNB local oscillator',
+              'The Sun (~20,000 K at C-band) passes through the main beam behind the satellite - noise soars, C/N collapses, signal unchanged',
+              'Solar radiation pressure (peaking near equinox) pushes the satellite off station - the beam misses it and C/N collapses',
+              'The Sun (behind the satellite) physically blocks the radio path - the carrier is shadowed, noise unchanged, C/N collapses',
+              'Solar heating of the feed (~5 minutes at full sun) detunes the LNB local oscillator - the carrier walks off the demod',
             ],
             correctIndex: 0,
-            explanation: 'The carrier power never changes - the noise under it rises. That is why nothing on the ground or the spacecraft can fix it: the antenna is pointed at the satellite, and the Sun is standing directly behind it.',
+            explanation:
+              'The carrier power never changes - the noise under it rises. That is why nothing on the ground or the spacecraft can fix it: the antenna is pointed at the satellite, and the Sun is standing directly behind it.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -254,13 +255,14 @@ export const scenario17Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'When do sun transits occur for a GEO satellite, and for how long?',
             options: [
-              'Twice a year near the equinoxes - a few minutes a day for several consecutive days, at a time computable years in advance from the station/satellite geometry',
-              'Randomly, whenever solar activity peaks',
-              'Once a year at the summer solstice, for several hours',
-              'Only during solar eclipses',
+              'Twice a year near the equinoxes - a few minutes a day for several days, at a time computable years ahead from the geometry',
+              'Whenever solar activity peaks - a few minutes at a time during a flare, at a time only the space weather feed can call',
+              'Once a year at the summer solstice - several hours around local noon, at a time computable from the station latitude',
+              'Only during solar eclipses - a few minutes while the Moon shadows the satellite, at a time computable years ahead',
             ],
             correctIndex: 0,
-            explanation: 'Pure geometry: the Sun crosses the geostationary arc as seen from your latitude around each equinox. Every teleport publishes its transit calendar - which is why a late customer notification is an operator failure, never a surprise.',
+            explanation:
+              'Pure geometry: the Sun crosses the geostationary arc as seen from your latitude around each equinox. Every teleport publishes its transit calendar - which is why a late customer notification is an operator failure, never a surprise.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -330,13 +332,14 @@ export const scenario17Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'A handover to ME-02 would dodge the transit. Why is riding through still the right call?',
             options: [
-              'The outage is brief, predicted, and SLA-excluded with notice - a handover trades that for two transfer events, and ME-02 inherits its own transit on its own schedule anyway',
-              'ME-02 cannot receive TIDEMARK-1',
-              'Handover during any weather event is prohibited',
-              'It is not - handover is always the safer choice',
+              'Brief, predicted, SLA-excluded with notice - a handover costs two transfer events, and ME-02 gets its own transit anyway',
+              'ME-02 cannot see TIDEMARK-1 at a usable elevation - a handover would swap a five-minute dip for a link with no margin',
+              'Handover during any weather event is prohibited by SOP - the transfer itself is what the SLA counts, not the fade',
+              'It is not the right call - a handover dodges the dip entirely, and two clean transfer events cost less than a lock loss',
             ],
             correctIndex: 0,
-            explanation: 'Same lesson as the S14 rain fade, sharpened: escape has a price, and here the thing escaped costs less than the escape. Every station on the arc takes its transits; the constellation-level answer is notification discipline, not musical chairs.',
+            explanation:
+              'Same lesson as the S14 rain fade, sharpened: escape has a price, and here the thing escaped costs less than the escape. Every station on the arc takes its transits; the constellation-level answer is notification discipline, not musical chairs.',
             pointPenalty: 5,
             preserveOptionOrder: true,
           },
@@ -363,13 +366,14 @@ export const scenario17Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Which notification goes to SeaLink ops right now?',
             options: [
-              'Predicted solar transit on TIDEMARK-1 from Vermont, window and peak times attached; expect degraded margin and a possible 1-3 minute carrier interruption near peak; service recovers without intervention; this message constitutes SLA advance notice.',
-              'TIDEMARK-1 will have an outage today. Will advise.',
-              'No notification - the SLA excludes solar events automatically.',
-              'Notification after the event, with the measured impact attached.',
+              'Predicted solar transit on TIDEMARK-1, window and peak times attached; possible 1-3 minute carrier loss near peak, self-recovering; this is SLA advance notice.',
+              'TIDEMARK-1 will see an outage this morning, times to follow; carrier loss possible, duration unknown; we will advise when it clears.',
+              'No notification before the window; the SLA excludes solar events automatically, so the transit record goes in the monthly report.',
+              'Notification after the window closes, measured impact attached; actual lock-loss duration and peak degradation; this is the SLA record.',
             ],
             correctIndex: 0,
-            explanation: 'Specific, timed, actionable, and BEFORE the event. The SLA exclusion is conditional on advance notice - a notification timestamped after window-open is contractually worthless.',
+            explanation:
+              'Specific, timed, actionable, and BEFORE the event: expect degraded margin, service recovers without intervention. The SLA exclusion is conditional on advance notice - a notification timestamped after window-open is contractually worthless.',
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -407,13 +411,14 @@ export const scenario17Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'The elevated sky-noise alarm is climbing on schedule. What does "on schedule" buy you?',
             options: [
-              'Confidence this is the predicted transit and not a coincidental fault - the alarm tracking the prediction sheet IS the diagnosis',
-              'Nothing - every alarm requires the full fault-isolation procedure',
-              'Permission to mute the transmit chain',
-              'A reason to repoint and check the geometry',
+              'Confidence this is the predicted transit, not a coincidental fault - the alarm tracking the sheet IS the diagnosis',
+              'Nothing - every alarm gets the full fault-isolation procedure, and the sheet only tells you when to start it',
+              'Permission to mute the transmit chain - the sheet says the satellite cannot hear us for the next five minutes',
+              'A reason to repoint and check the geometry - the sheet gives the Sun position, so the dish can step off it',
             ],
             correctIndex: 0,
-            explanation: 'The prediction is the baseline. Onset within a minute of the sheet, profile shaped like the sheet - that is a healthy station experiencing astronomy. Deviation from the sheet is what would demand investigation.',
+            explanation:
+              'The prediction is the baseline. Onset within a minute of the sheet, profile shaped like the sheet - that is a healthy station experiencing astronomy. Deviation from the sheet is what would demand investigation.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -482,13 +487,14 @@ export const scenario17Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Near peak the receiver loses carrier lock. What is true about the link right now?',
             options: [
-              'The downlink is buried in solar noise at OUR antenna only - the satellite still hears our uplink perfectly, and the demod will relock on its own as the Sun moves off boresight',
-              'The link is down in both directions until the transit ends',
-              'The satellite transponder is saturated by solar energy',
-              'The carrier is gone and must be re-acquired manually after the window',
+              'The downlink is buried in solar noise at OUR antenna only - the uplink is fine, and the demod relocks on its own as the Sun moves off',
+              'The link is down in both directions at OUR station only - the uplink is blinded too, and both relock when the Sun moves off',
+              'The transponder is saturated by solar energy at the satellite - every station on TM-1 is down, and it relocks after the peak',
+              'The carrier is gone from the demod - the uplink is fine, but the receiver must be re-acquired by hand after the window',
             ],
             correctIndex: 0,
-            explanation: 'Sun transit is a receive-side event at one station. The uplink never flinched - which is exactly why the transmit chain stays untouched. Anything you "fix" now becomes a real problem you created during a fake one.',
+            explanation:
+              'Sun transit is a receive-side event at one station. The uplink never flinched - which is exactly why the transmit chain stays untouched. Anything you "fix" now becomes a real problem you created during a fake one.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -560,12 +566,13 @@ export const scenario17Data: ScenarioData = {
             question: 'Post-window board check: what are you specifically looking for?',
             options: [
               'Any alarm that survived the window - the transit excuses exactly five minutes of sky noise and nothing else',
-              'Confirmation the sky-noise alarm is latched for the report',
-              'Nothing - recovery was verified at the receiver already',
-              'Elevated BUC temperature from the solar exposure',
+              'Confirmation the sky-noise alarm is latched - the report needs the peak value held on the board for the record',
+              'Nothing new - recovery was verified at the receiver already, and the board only repeats what RX Analysis showed',
+              'Elevated BUC temperature from the solar exposure - five minutes of full sun on the feed heats the whole chain',
             ],
             correctIndex: 0,
-            explanation: 'The window is a clean five-minute box. Healthy before, healthy after, astronomy in between. An alarm that outlives the box was never the Sun - and now is when you catch it.',
+            explanation:
+              'The window is a clean five-minute box. Healthy before, healthy after, astronomy in between. An alarm that outlives the box was never the Sun - and now is when you catch it.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -591,10 +598,10 @@ export const scenario17Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'What should Halifax have seen during our transit window?',
             options: [
-              'Nothing abnormal on the spacecraft - our uplink steady throughout, vehicle telemetry nominal; the event existed only at our antenna',
-              'A matching outage on the spacecraft bus',
-              'Loss of our uplink during the peak minutes',
-              'Elevated transponder temperature',
+              'Nothing abnormal on the spacecraft - our uplink steady, vehicle telemetry nominal; the event existed only at our antenna',
+              'A matching outage on the spacecraft bus - transponder off, bus telemetry flagged for the peak minutes; the event existed at both ends',
+              'Loss of our uplink during the peak minutes - carrier gone at the satellite, vehicle telemetry nominal; the event existed on both legs',
+              'Elevated transponder temperature - the Sun behind the antenna heats the satellite; the event existed on the spacecraft',
             ],
             correctIndex: 0,
             explanation: 'If Halifax saw anything, it was not (only) a transit. Their nominal telemetry is the final cross-check that closes the event as pure geometry.',
@@ -623,13 +630,14 @@ export const scenario17Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Which set of facts belongs in the impact record?',
             options: [
-              'Predicted vs actual window times, peak degradation observed, carrier lock-loss duration, notification timestamp (pre-window), and customer impact statement',
-              'Just "sun transit occurred as predicted"',
-              'The full spectrum analyzer trace history for the day',
-              'Only the lock-loss duration - the rest was predicted anyway',
+              'Predicted vs actual window times, peak degradation, lock-loss duration, notification timestamp (pre-window), customer impact statement',
+              'Event type (sun transit), predicted window times, confirmation it occurred as predicted, and a note that no action was taken',
+              'Full spectrum analyzer trace history for the day, dashboard alarm log, receiver lock log, and the raw sky-noise curve',
+              'Lock-loss duration only, with a pointer to the prediction sheet (pre-window) for the times, peak and customer statement',
             ],
             correctIndex: 0,
-            explanation: 'Predicted-vs-actual is what makes the next prediction trustworthy, the notification timestamp is what makes the SLA exclusion stick, and the impact statement is what the account team quotes. Three audiences, one log entry.',
+            explanation:
+              'Predicted-vs-actual is what makes the next prediction trustworthy, the notification timestamp is what makes the SLA exclusion stick, and the impact statement is what the account team quotes. Three audiences, one log entry.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -655,13 +663,14 @@ export const scenario17Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Which entry correctly records this event?',
             options: [
-              'Predicted solar transit TM-1/VT-01 executed per SOP-SX-001. Customer notified pre-window. Peak ~12 dB sky noise, brief demod loss near peak, self-recovered to baseline. No operator intervention, no residual alarms. Day 2 of 4 in this transit series - next window tomorrow, ~4 minutes earlier.',
-              'TM-1 outage this morning. Resolved.',
-              'Sun transit - no entry needed, event was excused.',
-              'Emergency response to solar interference completed successfully.',
+              'TM-1 transit per SOP-SX-001, customer notified pre-window. Peak ~12 dB, brief demod loss, self-recovered, no residual alarms. Next window tomorrow, ~4 min earlier.',
+              'TM-1 outage this morning, cause solar. Customer notified after recovery. Peak ~12 dB, demod loss ~2 min, self-recovered, no residual alarms. Resolved, series closed.',
+              'TM-1 transit per SOP-SX-001, event SLA-excused. No customer notification required. Peak ~12 dB, brief demod loss, self-recovered. No further entries this series.',
+              'TM-1 solar interference, emergency response per SOP-SX-001. Customer notified pre-window. Uplink muted at peak, demod re-acquired by hand, no residual alarms.',
             ],
             correctIndex: 0,
-            explanation: 'Including tomorrow\'s window in today\'s entry is the mark of someone who understands the series. The next operator walks in pre-briefed.',
+            explanation:
+              "Including tomorrow's window in today's entry is the mark of someone who understands the series - this is day 2 of 4, and no operator intervention was needed. The next operator walks in pre-briefed.",
             pointPenalty: 5,
           },
           mustMaintain: false,

@@ -1,7 +1,5 @@
-/* eslint-disable camelcase */
-/* eslint-disable no-console */
 import { createClient } from '@supabase/supabase-js';
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './supabase-client';
+import { SUPABASE_ANON_KEY, SUPABASE_URL } from './supabase-client';
 
 // Create isolated Supabase client for popup that won't trigger navigation
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
@@ -22,7 +20,7 @@ const handleAuthCallback = async () => {
 
     // Give Supabase a moment to process the OAuth callback automatically
     // With detectSessionInUrl: true, Supabase will parse the hash/query params
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise((resolve) => setTimeout(resolve, 100));
 
     // Now get the session that Supabase created
     const { data, error } = await supabase.auth.getSession();
@@ -32,21 +30,27 @@ const handleAuthCallback = async () => {
 
     if (error) {
       console.error('Session error:', error);
-      window.opener?.postMessage({
-        type: 'SUPABASE_AUTH_ERROR',
-        error: error.message,
-      }, window.location.origin);
+      window.opener?.postMessage(
+        {
+          type: 'SUPABASE_AUTH_ERROR',
+          error: error.message,
+        },
+        window.location.origin
+      );
       window.close();
       return;
     }
 
     if (data.session?.user) {
       console.log('Auth successful:', data.session.user);
-      window.opener?.postMessage({
-        type: 'SUPABASE_AUTH_SUCCESS',
-        user: data.session.user,
-        session: data.session,
-      }, window.location.origin);
+      window.opener?.postMessage(
+        {
+          type: 'SUPABASE_AUTH_SUCCESS',
+          user: data.session.user,
+          session: data.session,
+        },
+        window.location.origin
+      );
       window.close();
       return;
     }
@@ -59,28 +63,36 @@ const handleAuthCallback = async () => {
 
     if (errorParam) {
       console.error('OAuth error:', errorParam, errorDescription);
-      window.opener?.postMessage({
-        type: 'SUPABASE_AUTH_ERROR',
-        error: errorDescription || errorParam,
-      }, window.location.origin);
+      window.opener?.postMessage(
+        {
+          type: 'SUPABASE_AUTH_ERROR',
+          error: errorDescription || errorParam,
+        },
+        window.location.origin
+      );
       window.close();
       return;
     }
 
     // No session and no error - unexpected state
     console.error('No session created and no error found');
-    window.opener?.postMessage({
-      type: 'SUPABASE_AUTH_ERROR',
-      error: 'Authentication did not complete successfully',
-    }, window.location.origin);
+    window.opener?.postMessage(
+      {
+        type: 'SUPABASE_AUTH_ERROR',
+        error: 'Authentication did not complete successfully',
+      },
+      window.location.origin
+    );
     window.close();
-
   } catch (err) {
     console.error('Auth callback error:', err);
-    window.opener?.postMessage({
-      type: 'SUPABASE_AUTH_ERROR',
-      error: `Authentication failed: ${(err as Error).message}`,
-    }, window.location.origin);
+    window.opener?.postMessage(
+      {
+        type: 'SUPABASE_AUTH_ERROR',
+        error: `Authentication failed: ${(err as Error).message}`,
+      },
+      window.location.origin
+    );
     window.close();
   }
 };

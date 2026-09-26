@@ -1,22 +1,32 @@
-import { getEl } from "@app/engine/utils/get-el";
-import { qs } from "@app/engine/utils/query-selector";
-import { EventBus } from "@app/events/event-bus";
-import { Logger } from "@app/logging/logger";
-import { NavigationOptions } from "@app/router";
-import { ScenarioManager } from "@app/scenario-manager";
-import { ScenarioDialogManager } from "@app/scenarios/scenario-dialog-manager";
-import { WorkingDocumentManager } from "@app/scenarios/working-document-manager";
-import { InterferenceManager } from "@app/interference/interference-manager";
-import { WeatherManager } from "@app/weather/weather-manager";
-import { SimulationManager } from "@app/simulation/simulation-manager";
-import { QuizModal } from "@app/modal/quiz-modal";
-import { AppState, syncManager } from "@app/sync/storage";
-import { ObjectivesManager } from "@app/objectives/objectives-manager";
-import { html } from "@app/engine/utils/development/formatter";
-import { clearPersistedStore, syncEquipmentWithStore } from '@app/sync/storage';
-import { BasePage } from "./base-page";
-import { Body } from "@app/pages/layout/body/body";
+import { CommandingManager } from '@app/commanding/commanding-manager';
+import { ContactScheduleManager } from '@app/contact-schedule/contact-schedule-manager';
+import { ElectronicAttackManager } from '@app/electronic-attack/electronic-attack-manager';
+import { html } from '@app/engine/utils/development/formatter';
+import { getEl } from '@app/engine/utils/get-el';
+import { qs } from '@app/engine/utils/query-selector';
+import { EventBus } from '@app/events/event-bus';
+import { HardwareFaultManager } from '@app/faults/hardware-fault-manager';
+import { GnssThreatManager } from '@app/gnss-threat/gnss-threat-manager';
+import { InterferenceManager } from '@app/interference/interference-manager';
+import { LinkBudgetManager } from '@app/link-budget/link-budget-manager';
+import { Logger } from '@app/logging/logger';
+import { QuizModal } from '@app/modal/quiz-modal';
+import { ObjectivesManager } from '@app/objectives/objectives-manager';
+import { Body } from '@app/pages/layout/body/body';
 import { Equipment } from '@app/pages/sandbox/equipment';
+import { NavigationOptions } from '@app/router';
+import { ScenarioManager } from '@app/scenario-manager';
+import { CampaignRecordPanel } from '@app/scenarios/campaign-record-panel';
+import { ScenarioDialogManager } from '@app/scenarios/scenario-dialog-manager';
+import { WorkingDocumentManager } from '@app/scenarios/working-document-manager';
+import { SecurityConsoleCore } from '@app/security-console/security-console-core';
+import { SimulationManager } from '@app/simulation/simulation-manager';
+import { SpaceEventManager } from '@app/space-events/space-event-manager';
+import { AppState, clearPersistedStore, syncEquipmentWithStore, syncManager } from '@app/sync/storage';
+import { TelemetryManager } from '@app/telemetry/telemetry-manager';
+import { TransecManager } from '@app/transec/transec-manager';
+import { WeatherManager } from '@app/weather/weather-manager';
+import { BasePage } from './base-page';
 
 /**
  * Student page implementation
@@ -29,12 +39,12 @@ export class SandboxPage extends BasePage {
   private constructor(options?: NavigationOptions) {
     super();
     this.navigationOptions_ = options || {};
-    this.init_()
+    this.init_();
   }
 
   static create(options?: NavigationOptions): SandboxPage {
     if (this.instance_) {
-      throw new Error("SandboxPage instance already exists.");
+      throw new Error('SandboxPage instance already exists.');
     }
 
     this.instance_ = new SandboxPage(options);
@@ -64,7 +74,6 @@ export class SandboxPage extends BasePage {
     } catch {
       // Ignore errors
     }
-
 
     super.init_(Body.containerId, 'add');
     this.dom_ = qs(`#${this.id}`, parentDom);
@@ -118,9 +127,9 @@ export class SandboxPage extends BasePage {
 
     try {
       const scenario = ScenarioManager.getInstance();
-      const checkpoint = await this.progressSaveManager_.loadCheckpoint(scenario.data.id) as {
+      const checkpoint = (await this.progressSaveManager_.loadCheckpoint(scenario.data.id)) as {
         state: AppState;
-      }
+      };
 
       if (checkpoint) {
         Logger.info(`Loading checkpoint for scenario: ${scenario.data.id}`);
@@ -178,8 +187,19 @@ export class SandboxPage extends BasePage {
     ObjectivesManager.destroy();
     ScenarioDialogManager.reset();
     WorkingDocumentManager.reset();
+    CampaignRecordPanel.reset();
     WeatherManager.destroy();
     InterferenceManager.destroy();
+    ElectronicAttackManager.destroy();
+    HardwareFaultManager.destroy();
+    LinkBudgetManager.destroy();
+    CommandingManager.destroy();
+    ContactScheduleManager.destroy();
+    SpaceEventManager.destroy();
+    SecurityConsoleCore.destroy();
+    TransecManager.destroy();
+    GnssThreatManager.destroy();
+    TelemetryManager.destroy();
     QuizModal.destroy();
     EventBus.destroy();
     const container = getEl(SandboxPage.containerId);

@@ -1,21 +1,22 @@
-import { EventBus } from "@app/events/event-bus";
-import { Events, HpaNoiseAmplificationData } from "@app/events/events";
-import { SignalPathManager } from '@app/simulation/signal-path-manager';
-import { dBm, Hertz, IfFrequency, RfFrequency } from "@app/types";
-import { AntennaCore } from "@app/equipment/antenna";
-import { AlarmStatus, BaseEquipment } from "@app/equipment/base-equipment";
-import { Transmitter } from '@app/equipment/transmitter/transmitter';
+import { AntennaCore } from '@app/equipment/antenna';
+import { AlarmStatus, BaseEquipment } from '@app/equipment/base-equipment';
 import { AGCModuleCore, AGCState } from '@app/equipment/rf-front-end/agc-module/agc-module-core';
 import { BUCModuleCore, BUCState } from '@app/equipment/rf-front-end/buc-module/buc-module-core';
 import { CouplerModule, CouplerState } from '@app/equipment/rf-front-end/coupler-module/coupler-module';
-import { TapPoint } from "@app/equipment/rf-front-end/coupler-module/tap-points";
+import { TapPoint } from '@app/equipment/rf-front-end/coupler-module/tap-points';
 import { IfFilterBankModuleCore, IfFilterBankState } from '@app/equipment/rf-front-end/filter-module/filter-module-core';
 import { GPSDOModuleCore } from '@app/equipment/rf-front-end/gpsdo-module/gpsdo-module-core';
-import { defaultGpsdoState, GPSDOState } from "@app/equipment/rf-front-end/gpsdo-module/gpsdo-state";
+import { defaultGpsdoState, GPSDOState } from '@app/equipment/rf-front-end/gpsdo-module/gpsdo-state';
 import { HPAModuleCore, HPAState } from '@app/equipment/rf-front-end/hpa-module/hpa-module-core';
 import { LNBModuleCore, LNBState } from '@app/equipment/rf-front-end/lnb-module/lnb-module-core';
 import { NotchFilterModuleCore, NotchFilterState } from '@app/equipment/rf-front-end/notch-filter-module/notch-filter-module-core';
 import { OMTModule, OMTState } from '@app/equipment/rf-front-end/omt-module/omt-module';
+import { Transmitter } from '@app/equipment/transmitter/transmitter';
+import { EventBus } from '@app/events/event-bus';
+import { Events, HpaNoiseAmplificationData } from '@app/events/events';
+import { SignalPathManager } from '@app/simulation/signal-path-manager';
+import { SimClock } from '@app/simulation/sim-clock';
+import { dBm, Hertz, IfFrequency, RfFrequency } from '@app/types';
 
 /**
  * Complete RF Front-End state
@@ -88,7 +89,7 @@ export abstract class RFFrontEndCore extends BaseEquipment {
       lnb: LNBModuleCore.getDefaultState(),
       coupler: CouplerModule.getDefaultState(),
       gpsdo: defaultGpsdoState,
-      ...state
+      ...state,
     };
 
     // Subclass creates appropriate module types
@@ -121,7 +122,7 @@ export abstract class RFFrontEndCore extends BaseEquipment {
       lnb: this.lnbModule?.state ?? this.state_.lnb,
       coupler: this.couplerModule?.state ?? this.state_.coupler,
       gpsdo: this.gpsdoModule?.state ?? this.state_.gpsdo,
-    }
+    };
   }
 
   /**
@@ -139,9 +140,9 @@ export abstract class RFFrontEndCore extends BaseEquipment {
     this.bucModule.update();
     this.hpaModule.update();
     this.lnbModule.update();
-    this.filterModule.update();       // After LNB
-    this.notchFilterModule.update();  // After IF Filter
-    this.agcModule.update();          // After Notch Filter (last in RX chain)
+    this.filterModule.update(); // After LNB
+    this.notchFilterModule.update(); // After IF Filter
+    this.agcModule.update(); // After Notch Filter (last in RX chain)
     this.couplerModule.update();
     this.gpsdoModule.update();
 
@@ -175,7 +176,7 @@ export abstract class RFFrontEndCore extends BaseEquipment {
         groundStationId: this.state_.uuid,
         bucMuted,
         bucOff,
-        detectedAt: Date.now(),
+        detectedAt: SimClock.nowMs(),
       };
 
       EventBus.getInstance().emit(Events.HPA_NOISE_AMPLIFICATION, eventData);
@@ -285,10 +286,10 @@ export abstract class RFFrontEndCore extends BaseEquipment {
 
     // HPA temperature calculation based on output power
     if (this.state.hpa.isPowered) {
-      const powerWatts = Math.pow(10, this.state.hpa.outputPower / 10);
+      const powerWatts = 10 ** (this.state.hpa.outputPower / 10);
       const efficiency = 0.5; // 50% typical for SSPA
       const dissipatedPower = powerWatts * (1 - efficiency);
-      this.state.hpa.temperature = 25 + (dissipatedPower * 10); // Rough thermal model
+      this.state.hpa.temperature = 25 + dissipatedPower * 10; // Rough thermal model
     } else {
       this.state.hpa.temperature = 25; // Ambient
     }
@@ -299,7 +300,7 @@ export abstract class RFFrontEndCore extends BaseEquipment {
     // BUC output power calculation
     if (this.state.buc.isPowered && !this.state.buc.isMuted) {
       const inputPower = -10 as dBm; // dBm typical IF input
-      this.state.buc.outputPower = inputPower + this.state.buc.gain as dBm;
+      this.state.buc.outputPower = (inputPower + this.state.buc.gain) as dBm;
     } else {
       this.state.buc.outputPower = -120 as dBm; // Effectively off
     }
@@ -307,10 +308,10 @@ export abstract class RFFrontEndCore extends BaseEquipment {
     // HPA output power and IMD calculation
     if (this.state.hpa.isPowered) {
       const p1db = 50 as dBm; // dBm (100W) typical P1dB
-      this.state.hpa.outputPower = (p1db - this.state.hpa.backOff) / 10 as dBm;
+      this.state.hpa.outputPower = ((p1db - this.state.hpa.backOff) / 10) as dBm;
 
       // IMD increases as back-off decreases
-      this.state.hpa.imdLevel = -30 - (this.state.hpa.backOff * 2); // dBc
+      this.state.hpa.imdLevel = -30 - this.state.hpa.backOff * 2; // dBc
     } else {
       this.state.hpa.outputPower = -90 as dBm; // dBm (effectively off)
       this.state.hpa.imdLevel = -60; // dBc (very clean when off)
@@ -331,14 +332,10 @@ export abstract class RFFrontEndCore extends BaseEquipment {
     this.state.hpa.isOverdriven = this.state.hpa.backOff < 3;
 
     // Collect alarm messages from all modules
-    let moduleAlarms = []
+    let moduleAlarms = [];
 
     if (rfcase === 1) {
-      moduleAlarms = [
-        ...this.omtModule.getAlarms(),
-        ...this.bucModule.getAlarms(),
-        ...this.hpaModule.getAlarms(),
-      ];
+      moduleAlarms = [...this.omtModule.getAlarms(), ...this.bucModule.getAlarms(), ...this.hpaModule.getAlarms()];
     } else if (rfcase === 2) {
       moduleAlarms = [
         ...this.agcModule.getAlarms(),
@@ -355,9 +352,7 @@ export abstract class RFFrontEndCore extends BaseEquipment {
       let severity: AlarmStatus['severity'] = 'warning';
 
       // Upgrade to error for critical conditions
-      if (alarm.toLowerCase().includes('over-temperature') ||
-        alarm.toLowerCase().includes('high current') ||
-        alarm.toLowerCase().includes('not operational')) {
+      if (alarm.toLowerCase().includes('over-temperature') || alarm.toLowerCase().includes('high current') || alarm.toLowerCase().includes('not operational')) {
         severity = 'error';
       }
 
@@ -382,8 +377,8 @@ export abstract class RFFrontEndCore extends BaseEquipment {
   private updateSystemNoiseFigure_(): number {
     // Friis formula for cascaded noise figure
     // F_total = F1 + (F2-1)/G1 + (F3-1)/(G1*G2) + ...\n    // For RX: Filter → LNB
-    const filterNfLinear = Math.pow(10, (this.state.filter.insertionLoss / 10));
-    const lnbNfLinear = Math.pow(10, (this.state.lnb.lnaNoiseFigure / 10));
+    const filterNfLinear = 10 ** (this.state.filter.insertionLoss / 10);
+    const lnbNfLinear = 10 ** (this.state.lnb.lnaNoiseFigure / 10);
     // const lnbGainLinear = Math.pow(10, (this.state.lnb.gain / 10));
 
     const totalNfLinear = filterNfLinear + (lnbNfLinear - 1) / filterNfLinear;
@@ -426,8 +421,7 @@ export abstract class RFFrontEndCore extends BaseEquipment {
 
     // Helper functions
     const formatFreq = (f: number) => (f / 1e6).toFixed(2) + ' MHz';
-    const formatPower = (p: number | undefined) =>
-      p !== undefined ? p.toFixed(2) + ' dBm' : 'N/A';
+    const formatPower = (p: number | undefined) => (p !== undefined ? p.toFixed(2) + ' dBm' : 'N/A');
 
     // Process each signal
     antennaSignals.forEach((sig, i) => {
@@ -438,43 +432,43 @@ export abstract class RFFrontEndCore extends BaseEquipment {
           Stage: 'Antenna In',
           Frequency: formatFreq(sig.frequency),
           Power: formatPower(sig.power),
-          NoiseFloor: 'N/A (external)'
+          NoiseFloor: 'N/A (external)',
         },
         {
           Stage: 'OMT Out',
           Frequency: formatFreq(omtSignals[i]?.frequency),
           Power: formatPower(omtSignals[i]?.power),
-          NoiseFloor: 'N/A'
+          NoiseFloor: 'N/A',
         },
         {
           Stage: 'Post-LNA (RF)',
           Frequency: formatFreq(postLnaSignals[i]?.frequency),
           Power: formatPower(postLnaSignals[i]?.power),
-          NoiseFloor: lnbNoiseFloor.toFixed(2) + ' dBm'
+          NoiseFloor: lnbNoiseFloor.toFixed(2) + ' dBm',
         },
         {
           Stage: 'LNB Out (IF)',
           Frequency: formatFreq(ifSignals[i]?.frequency),
           Power: formatPower(ifSignals[i]?.power),
-          NoiseFloor: lnbNoiseFloor.toFixed(2) + ' dBm'
+          NoiseFloor: lnbNoiseFloor.toFixed(2) + ' dBm',
         },
         {
           Stage: 'IF Filter Out',
           Frequency: formatFreq(postFilterSignals[i]?.frequency),
           Power: formatPower(postFilterSignals[i]?.power),
-          NoiseFloor: filterNoiseFloor.toFixed(2) + ' dBm'
+          NoiseFloor: filterNoiseFloor.toFixed(2) + ' dBm',
         },
         {
           Stage: 'Notch Filter Out',
           Frequency: formatFreq(postNotchSignals[i]?.frequency),
           Power: formatPower(postNotchSignals[i]?.power),
-          NoiseFloor: filterNoiseFloor.toFixed(2) + ' dBm'
+          NoiseFloor: filterNoiseFloor.toFixed(2) + ' dBm',
         },
         {
           Stage: 'AGC Out',
           Frequency: formatFreq(postAgcSignals[i]?.frequency),
           Power: formatPower(postAgcSignals[i]?.power),
-          NoiseFloor: (filterNoiseFloor + this.agcModule.state.currentGain).toFixed(2) + ' dBm'
+          NoiseFloor: (filterNoiseFloor + this.agcModule.state.currentGain).toFixed(2) + ' dBm',
         },
       ]);
 

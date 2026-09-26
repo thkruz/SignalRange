@@ -1,11 +1,11 @@
-import { html } from "@app/engine/utils/development/formatter";
-import { qs } from "@app/engine/utils/query-selector";
-import { EventBus } from "@app/events/event-bus";
-import { Events } from "@app/events/events";
-import { Logger } from "@app/logging/logger";
-import { Sfx } from "@app/sound/sfx-enum";
-import SoundManager from "@app/sound/sound-manager";
-import { AnalyzerControl } from "@app/equipment/real-time-spectrum-analyzer/analyzer-control";
+import { html } from '@app/engine/utils/development/formatter';
+import { qs } from '@app/engine/utils/query-selector';
+import { AnalyzerControl } from '@app/equipment/real-time-spectrum-analyzer/analyzer-control';
+import { EventBus } from '@app/events/event-bus';
+import { Events } from '@app/events/events';
+import { Logger } from '@app/logging/logger';
+import { Sfx } from '@app/sound/sfx-enum';
+import SoundManager from '@app/sound/sound-manager';
 
 export abstract class BaseControlButton {
   private readonly html_: string;
@@ -17,7 +17,7 @@ export abstract class BaseControlButton {
     uniqueId,
     label,
     ariaLabel,
-    classNames = "physical-button control-button",
+    classNames = 'physical-button control-button',
     subtext,
     analyzerControl,
   }: {

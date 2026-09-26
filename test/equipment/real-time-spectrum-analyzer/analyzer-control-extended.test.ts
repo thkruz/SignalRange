@@ -15,7 +15,7 @@ import { TraceMode } from '../../../src/equipment/real-time-spectrum-analyzer/an
 import { RealTimeSpectrumAnalyzer, RealTimeSpectrumAnalyzerState } from '../../../src/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer';
 import { EventBus } from '../../../src/events/event-bus';
 import { Events } from '../../../src/events/events';
-import { Hertz, dB } from '../../../src/types';
+import { dB, Hertz } from '../../../src/types';
 
 // Mock HTMLMediaElement.prototype.play for jsdom compatibility
 Object.defineProperty(HTMLMediaElement.prototype, 'play', {
@@ -362,7 +362,7 @@ describe('Analyzer Control Extended Buttons', () => {
       });
 
       it('should reject RBW below 1 Hz', () => {
-        vi.spyOn(window, 'alert').mockImplementation(() => { });
+        vi.spyOn(window, 'alert').mockImplementation(() => {});
 
         bwBtn.click();
         mockAnalyzerControl.domCache!['label-select-button-1'].click();
@@ -375,7 +375,7 @@ describe('Analyzer Control Extended Buttons', () => {
       });
 
       it('should reject RBW above 300 MHz', () => {
-        vi.spyOn(window, 'alert').mockImplementation(() => { });
+        vi.spyOn(window, 'alert').mockImplementation(() => {});
 
         bwBtn.click();
         mockAnalyzerControl.domCache!['label-select-button-1'].click();

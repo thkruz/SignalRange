@@ -59,15 +59,21 @@ vi.mock('../../../src/equipment/rf-front-end/rf-front-end-factory', () => ({
 }));
 
 vi.mock('../../../src/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer', () => ({
-  RealTimeSpectrumAnalyzer: vi.fn(function () { return mockSpectrumAnalyzerInstance; }),
+  RealTimeSpectrumAnalyzer: vi.fn(function () {
+    return mockSpectrumAnalyzerInstance;
+  }),
 }));
 
 vi.mock('../../../src/equipment/transmitter/transmitter', () => ({
-  Transmitter: vi.fn(function () { return mockTransmitterInstance; }),
+  Transmitter: vi.fn(function () {
+    return mockTransmitterInstance;
+  }),
 }));
 
 vi.mock('../../../src/equipment/receiver/receiver', () => ({
-  Receiver: vi.fn(function () { return mockReceiverInstance; }),
+  Receiver: vi.fn(function () {
+    return mockReceiverInstance;
+  }),
 }));
 
 // Import after mocks
@@ -259,10 +265,7 @@ describe('GroundStation (mission-control)', () => {
 
     it('should emit GROUND_STATION_STATE_CHANGED event', () => {
       groundStation.update();
-      expect(mockEventBus.emit).toHaveBeenCalledWith(
-        Events.GROUND_STATION_STATE_CHANGED,
-        expect.objectContaining({ id: 'GS-001' })
-      );
+      expect(mockEventBus.emit).toHaveBeenCalledWith(Events.GROUND_STATION_STATE_CHANGED, expect.objectContaining({ id: 'GS-001' }));
     });
   });
 
@@ -317,11 +320,13 @@ describe('GroundStation (mission-control)', () => {
 
     it('should handle out of bounds equipment indices gracefully', () => {
       // Should not throw when syncing more equipment than exists
-      expect(() => groundStation.sync({
-        equipment: {
-          antennas: [{}, {}], // More than the 1 antenna that exists
-        },
-      })).not.toThrow();
+      expect(() =>
+        groundStation.sync({
+          equipment: {
+            antennas: [{}, {}], // More than the 1 antenna that exists
+          },
+        })
+      ).not.toThrow();
     });
   });
 

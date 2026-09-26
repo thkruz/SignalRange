@@ -16,12 +16,7 @@ export type AGCModuleUIType = 'headless';
  * @param uiType - UI type (default 'headless')
  * @returns AGCModuleCore instance
  */
-export function createAGC(
-  state: AGCState,
-  rfFrontEnd: RFFrontEndCore,
-  unit: number = 1,
-  uiType: AGCModuleUIType = 'headless'
-): AGCModuleCore {
+export function createAGC(state: AGCState, rfFrontEnd: RFFrontEndCore, unit: number = 1, uiType: AGCModuleUIType = 'headless'): AGCModuleCore {
   switch (uiType) {
     case 'headless':
     default:

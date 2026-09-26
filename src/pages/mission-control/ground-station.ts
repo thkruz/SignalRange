@@ -1,14 +1,14 @@
-import { GroundStationConfig, GroundStationState } from "@app/assets/ground-station/ground-station-state";
-import { html } from "@app/engine/utils/development/formatter";
-import { createAntenna } from "@app/equipment/antenna/antenna-factory";
-import { AntennaUIModern } from "@app/equipment/antenna/antenna-ui-modern";
-import { RealTimeSpectrumAnalyzer } from "@app/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer";
-import { Receiver } from "@app/equipment/receiver/receiver";
-import { RFFrontEndCore } from "@app/equipment/rf-front-end/rf-front-end-core";
-import { createRFFrontEnd } from "@app/equipment/rf-front-end/rf-front-end-factory";
-import { Transmitter } from "@app/equipment/transmitter/transmitter";
-import { EventBus } from "@app/events/event-bus";
-import { Events } from "@app/events/events";
+import { GroundStationConfig, GroundStationState } from '@app/assets/ground-station/ground-station-state';
+import { html } from '@app/engine/utils/development/formatter';
+import { createAntenna } from '@app/equipment/antenna/antenna-factory';
+import { AntennaUIModern } from '@app/equipment/antenna/antenna-ui-modern';
+import { RealTimeSpectrumAnalyzer } from '@app/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer';
+import { Receiver } from '@app/equipment/receiver/receiver';
+import { RFFrontEndCore } from '@app/equipment/rf-front-end/rf-front-end-core';
+import { createRFFrontEnd } from '@app/equipment/rf-front-end/rf-front-end-factory';
+import { Transmitter } from '@app/equipment/transmitter/transmitter';
+import { EventBus } from '@app/events/event-bus';
+import { Events } from '@app/events/events';
 import { v4 as uuidv4 } from 'uuid';
 
 /**
@@ -18,7 +18,7 @@ import { v4 as uuidv4 } from 'uuid';
 export class GroundStation {
   id: string = `ground-station-${uuidv4()}`;
   containerId: string = `ground-station-container-${uuidv4()}`;
-  readonly antennas: (AntennaUIModern)[] = [];
+  readonly antennas: AntennaUIModern[] = [];
   readonly rfFrontEnds: RFFrontEndCore[] = [];
   readonly spectrumAnalyzers: RealTimeSpectrumAnalyzer[] = [];
   readonly transmitters: Transmitter[] = [];
@@ -33,10 +33,10 @@ export class GroundStation {
       name: config.name,
       location: config.location,
       isOperational: true,
-      equipment: {}
+      equipment: {},
     };
 
-    this.createEquipment_();
+    this.createEquipment_(config);
     this.wireEquipment_();
     this.registerWithEventBus_();
   }
@@ -47,8 +47,10 @@ export class GroundStation {
         </div>
       `;
 
-  private createEquipment_(): void {
-    const modernAntenna = createAntenna(this.id, 'modern') as AntennaUIModern;
+  private createEquipment_(config: GroundStationConfig): void {
+    // antennaConfigKey is opt-in (Campaign 2+); omitting it keeps the factory
+    // default so legacy campaigns are unaffected
+    const modernAntenna = (config.antennaConfigKey ? createAntenna(this.id, 'modern', config.antennaConfigKey) : createAntenna(this.id, 'modern')) as AntennaUIModern;
     // Create one of each for now, mirroring `sandbox/equipment.ts`
     this.antennas.push(modernAntenna);
     this.rfFrontEnds.push(createRFFrontEnd(this.id));
@@ -84,11 +86,11 @@ export class GroundStation {
   }
 
   update(): void {
-    this.antennas.forEach(e => e.update());
-    this.rfFrontEnds.forEach(e => e.update());
-    this.spectrumAnalyzers.forEach(e => e.update());
-    this.transmitters.forEach(e => e.update());
-    this.receivers.forEach(e => e.update());
+    this.antennas.forEach((e) => e.update());
+    this.rfFrontEnds.forEach((e) => e.update());
+    this.spectrumAnalyzers.forEach((e) => e.update());
+    this.transmitters.forEach((e) => e.update());
+    this.receivers.forEach((e) => e.update());
 
     this.aggregateEquipmentStates_();
 
@@ -96,11 +98,11 @@ export class GroundStation {
   }
 
   private aggregateEquipmentStates_(): void {
-    this.state.equipment.antennas = this.antennas.map(e => e.state);
-    this.state.equipment.rfFrontEnds = this.rfFrontEnds.map(e => e.state);
-    this.state.equipment.spectrumAnalyzers = this.spectrumAnalyzers.map(e => e.state);
-    this.state.equipment.transmitters = this.transmitters.map(e => e.state);
-    this.state.equipment.receivers = this.receivers.map(e => e.state);
+    this.state.equipment.antennas = this.antennas.map((e) => e.state);
+    this.state.equipment.rfFrontEnds = this.rfFrontEnds.map((e) => e.state);
+    this.state.equipment.spectrumAnalyzers = this.spectrumAnalyzers.map((e) => e.state);
+    this.state.equipment.transmitters = this.transmitters.map((e) => e.state);
+    this.state.equipment.receivers = this.receivers.map((e) => e.state);
   }
 
   sync(data: Partial<GroundStationState>): void {
@@ -118,10 +120,10 @@ export class GroundStation {
   }
 
   syncDomWithState(): void {
-    this.antennas.forEach(e => e.syncDomWithState());
-    this.rfFrontEnds.forEach(e => e.syncDomWithState());
-    this.spectrumAnalyzers.forEach(e => e.syncDomWithState());
-    this.transmitters.forEach(e => e.syncDomWithState());
-    this.receivers.forEach(e => e.syncDomWithState());
+    this.antennas.forEach((e) => e.syncDomWithState());
+    this.rfFrontEnds.forEach((e) => e.syncDomWithState());
+    this.spectrumAnalyzers.forEach((e) => e.syncDomWithState());
+    this.transmitters.forEach((e) => e.syncDomWithState());
+    this.receivers.forEach((e) => e.syncDomWithState());
   }
 }

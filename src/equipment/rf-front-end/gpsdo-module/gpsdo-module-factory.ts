@@ -9,13 +9,7 @@ export type GPSDOModuleUIType = 'standard' | 'basic' | 'headless';
  * Factory function to create GPSDO module instances
  * Enables switching between UI implementations
  */
-export function createGPSDO(
-  state: GPSDOState,
-  rfFrontEnd: RFFrontEndCore,
-  unit: number = 1,
-  parentId: string = '',
-  uiType: GPSDOModuleUIType = 'standard'
-): GPSDOModuleCore {
+export function createGPSDO(state: GPSDOState, rfFrontEnd: RFFrontEndCore, unit: number = 1, parentId: string = '', uiType: GPSDOModuleUIType = 'standard'): GPSDOModuleCore {
   switch (uiType) {
     case 'standard':
       return new GPSDOModuleUIStandard(state, rfFrontEnd, unit, parentId);

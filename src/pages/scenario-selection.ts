@@ -1,17 +1,18 @@
-import { CampaignManager } from "@app/campaigns/campaign-manager";
-import { CampaignData } from "@app/campaigns/campaign-types";
-import { ModalConfirm } from "@app/engine/ui/modal-confirm";
-import { qs, qsa } from "@app/engine/utils/query-selector";
-import { Logger } from "@app/logging/logger";
-import { Router } from "@app/router";
-import { getNextPrerequisiteScenario, getPrerequisiteScenarioNames, isScenarioLocked, SCENARIOS } from "@app/scenario-manager";
+import { CampaignManager } from '@app/campaigns/campaign-manager';
+import { CampaignData } from '@app/campaigns/campaign-types';
+import { getReleaseStage, renderReleaseCallout } from '@app/campaigns/release-stage';
+import { ModalConfirm } from '@app/engine/ui/modal-confirm';
+import { html } from '@app/engine/utils/development/formatter';
+import { qs, qsa } from '@app/engine/utils/query-selector';
+import { Logger } from '@app/logging/logger';
+import { Router } from '@app/router';
 import { ScenarioData } from '@app/ScenarioData';
-import { clearPersistedStore } from "@app/sync/storage";
-import { getUserDataService } from "@app/user-account/user-data-service";
-import { getAssetUrl } from "@app/utils/asset-url";
-import { html } from "@app/engine/utils/development/formatter";
-import { BasePage } from "./base-page";
-import "./scenario-selection.css";
+import { getNextPrerequisiteScenario, getPrerequisiteScenarioNames, isScenarioLocked, SCENARIOS } from '@app/scenario-manager';
+import { clearPersistedStore } from '@app/sync/storage';
+import { getUserDataService } from '@app/user-account/user-data-service';
+import { getAssetUrl } from '@app/utils/asset-url';
+import { BasePage } from './base-page';
+import './scenario-selection.css';
 
 declare global {
   interface Window {
@@ -84,7 +85,7 @@ export class ScenarioSelectionPage extends BasePage {
     this.checkpointsLoaded_ = true;
 
     // Load checkpoints asynchronously and update the UI when ready
-    this.loadCheckpointsAndUpdate_().catch(error => {
+    this.loadCheckpointsAndUpdate_().catch((error) => {
       Logger.error('Failed to initialize checkpoint loading:', error);
     });
   }
@@ -125,7 +126,7 @@ export class ScenarioSelectionPage extends BasePage {
 
         // Check checkpoints for ALL scenarios in parallel (not just ones with progress records)
         // This ensures we detect checkpoints even when no objectives have been completed yet
-        const checkpointChecks = SCENARIOS.map(async scenario => {
+        const checkpointChecks = SCENARIOS.map(async (scenario) => {
           const hasCheckpoint = await userDataService.checkpointExists(scenario.id).catch(() => false);
           return { scenarioId: scenario.id, hasCheckpoint };
         });
@@ -155,7 +156,7 @@ export class ScenarioSelectionPage extends BasePage {
     const scenarios = this.getScenariosToDisplay_();
 
     // Re-render all scenario cards with updated checkpoint data
-    scenarioGrid.innerHTML = scenarios.map(scenario => this.renderScenarioCard_(scenario)).join('');
+    scenarioGrid.innerHTML = scenarios.map((scenario) => this.renderScenarioCard_(scenario)).join('');
 
     // Update header with campaign info
     this.updateHeader_();
@@ -173,14 +174,12 @@ export class ScenarioSelectionPage extends BasePage {
 
     if (this.currentCampaign_) {
       const campaignManager = CampaignManager.getInstance();
-      const progress = campaignManager.getCampaignProgress(
-        this.currentCampaign_.id,
-        this.completedScenarioIds_
-      );
+      const progress = campaignManager.getCampaignProgress(this.currentCampaign_.id, this.completedScenarioIds_);
 
       headerEl.innerHTML = html`
         <h1>${this.currentCampaign_.title}</h1>
         <div class="subtitle">${this.currentCampaign_.subtitle}</div>
+        ${renderReleaseCallout(getReleaseStage(this.currentCampaign_))}
         <div class="progress-and-navigation">
           <div class="campaign-progress">
             ${progress.completedScenarios.length} of ${progress.totalScenarios} scenarios completed
@@ -205,25 +204,25 @@ export class ScenarioSelectionPage extends BasePage {
   private attachScenarioCardListeners_(): void {
     // Add click handlers for Continue buttons
     const continueButtons = qsa('.btn-continue', this.dom_);
-    continueButtons.forEach(btn => {
+    continueButtons.forEach((btn) => {
       btn.addEventListener('click', this.handleContinueScenario_.bind(this));
     });
 
     // Add click handlers for Start Fresh buttons
     const startFreshButtons = qsa('.btn-start-fresh', this.dom_);
-    startFreshButtons.forEach(btn => {
+    startFreshButtons.forEach((btn) => {
       btn.addEventListener('click', this.handleStartFresh_.bind(this));
     });
 
     // Add click handlers for Play Again buttons
     const playAgainButtons = qsa('.btn-play-again', this.dom_);
-    playAgainButtons.forEach(btn => {
+    playAgainButtons.forEach((btn) => {
       btn.addEventListener('click', this.handlePlayAgain_.bind(this));
     });
 
     // Add click handlers for Play Again buttons
     const startButtons = qsa('.btn-start', this.dom_);
-    startButtons.forEach(btn => {
+    startButtons.forEach((btn) => {
       btn.addEventListener('click', this.handlePlayAgain_.bind(this));
     });
   }
@@ -236,7 +235,9 @@ export class ScenarioSelectionPage extends BasePage {
       </div>
 
       <div class="scenario-grid">
-        ${this.getScenariosToDisplay_().map(scenario => this.renderScenarioCard_(scenario)).join('')}
+        ${this.getScenariosToDisplay_()
+          .map((scenario) => this.renderScenarioCard_(scenario))
+          .join('')}
       </div>
     </div>
   `;
@@ -349,11 +350,15 @@ export class ScenarioSelectionPage extends BasePage {
         <div class="scenario-equipment">
         <div class="scenario-equipment-title">Equipment Configuration</div>
         <div class="equipment-list">
-          ${scenario.equipment.map(item => `
+          ${scenario.equipment
+            .map(
+              (item) => `
           <div class="equipment-item">
           <span>${item}</span>
           </div>
-          `).join('')}
+          `
+            )
+            .join('')}
         </div>
         </div>
         </div>
@@ -374,7 +379,7 @@ export class ScenarioSelectionPage extends BasePage {
   show(): void {
     super.show();
     // Refresh scenario data when page is shown to reflect any completion updates
-    this.loadCheckpointsAndUpdate_().catch(error => {
+    this.loadCheckpointsAndUpdate_().catch((error) => {
       Logger.error('Failed to refresh scenario data:', error);
     });
   }
@@ -390,19 +395,19 @@ export class ScenarioSelectionPage extends BasePage {
   protected addEventListeners_(): void {
     // Add click handlers for Continue buttons
     const continueButtons = qsa('.btn-continue', this.dom_);
-    continueButtons.forEach(btn => {
+    continueButtons.forEach((btn) => {
       btn.addEventListener('click', this.handleContinueScenario_.bind(this));
     });
 
     // Add click handlers for Start Fresh buttons
     const startFreshButtons = qsa('.btn-start-fresh', this.dom_);
-    startFreshButtons.forEach(btn => {
+    startFreshButtons.forEach((btn) => {
       btn.addEventListener('click', this.handleStartFresh_.bind(this));
     });
 
     // Add click handlers for Play Again buttons
     const playAgainButtons = qsa('.btn-play-again', this.dom_);
-    playAgainButtons.forEach(btn => {
+    playAgainButtons.forEach((btn) => {
       btn.addEventListener('click', this.handlePlayAgain_.bind(this));
     });
   }
@@ -484,10 +489,10 @@ export class ScenarioSelectionPage extends BasePage {
     const userDataService = getUserDataService();
 
     await Promise.all([
-      userDataService.resetScenarioForReplay(scenarioId).catch(error => {
+      userDataService.resetScenarioForReplay(scenarioId).catch((error) => {
         Logger.warn(`resetScenarioForReplay failed: ${error.message}`);
       }),
-      userDataService.deleteCheckpoint(scenarioId).catch(error => {
+      userDataService.deleteCheckpoint(scenarioId).catch((error) => {
         Logger.warn(`deleteCheckpoint failed (may not exist): ${error.message}`);
       }),
     ]);

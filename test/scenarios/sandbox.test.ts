@@ -1,5 +1,5 @@
-import { sandboxData } from '../../src/scenarios/sandbox';
 import type { ScenarioData } from '../../src/ScenarioData';
+import { sandboxData } from '../../src/scenarios/sandbox';
 
 describe('sandbox scenario', () => {
   describe('sandboxData structure', () => {
@@ -180,48 +180,48 @@ describe('sandbox scenario', () => {
 
   describe('signal configurations', () => {
     it('should have horizontal polarization for all signals', () => {
-      sandboxData.settings.satellites.forEach(sat => {
-        sat.externalSignal.forEach(signal => {
+      sandboxData.settings.satellites.forEach((sat) => {
+        sat.externalSignal.forEach((signal) => {
           expect(signal.polarization).toBe('H');
         });
       });
     });
 
     it('should use QPSK modulation', () => {
-      sandboxData.settings.satellites.forEach(sat => {
-        sat.externalSignal.forEach(signal => {
+      sandboxData.settings.satellites.forEach((sat) => {
+        sat.externalSignal.forEach((signal) => {
           expect(signal.modulation).toBe('QPSK');
         });
       });
     });
 
     it('should use 3/4 FEC rate', () => {
-      sandboxData.settings.satellites.forEach(sat => {
-        sat.externalSignal.forEach(signal => {
+      sandboxData.settings.satellites.forEach((sat) => {
+        sat.externalSignal.forEach((signal) => {
           expect(signal.fec).toBe('3/4');
         });
       });
     });
 
     it('should not be degraded', () => {
-      sandboxData.settings.satellites.forEach(sat => {
-        sat.externalSignal.forEach(signal => {
+      sandboxData.settings.satellites.forEach((sat) => {
+        sat.externalSignal.forEach((signal) => {
           expect(signal.isDegraded).toBe(false);
         });
       });
     });
 
     it('should have zero gain in path', () => {
-      sandboxData.settings.satellites.forEach(sat => {
-        sat.externalSignal.forEach(signal => {
+      sandboxData.settings.satellites.forEach((sat) => {
+        sat.externalSignal.forEach((signal) => {
           expect(signal.gainInPath).toBe(0);
         });
       });
     });
 
     it('should have null noise floor', () => {
-      sandboxData.settings.satellites.forEach(sat => {
-        sat.externalSignal.forEach(signal => {
+      sandboxData.settings.satellites.forEach((sat) => {
+        sat.externalSignal.forEach((signal) => {
           expect(signal.noiseFloor).toBeNull();
         });
       });
@@ -236,22 +236,9 @@ describe('sandbox scenario', () => {
     });
 
     it('should have all required ScenarioData fields', () => {
-      const requiredFields = [
-        'id',
-        'url',
-        'imageUrl',
-        'number',
-        'title',
-        'subtitle',
-        'duration',
-        'difficulty',
-        'missionType',
-        'description',
-        'equipment',
-        'settings',
-      ];
+      const requiredFields = ['id', 'url', 'imageUrl', 'number', 'title', 'subtitle', 'duration', 'difficulty', 'missionType', 'description', 'equipment', 'settings'];
 
-      requiredFields.forEach(field => {
+      requiredFields.forEach((field) => {
         expect(sandboxData).toHaveProperty(field);
       });
     });

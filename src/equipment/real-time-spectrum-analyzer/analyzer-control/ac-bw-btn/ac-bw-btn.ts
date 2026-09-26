@@ -1,7 +1,7 @@
-import { Logger } from "@app/logging/logger";
-import { Hertz } from "@app/types";
-import { AnalyzerControl } from "@app/equipment/real-time-spectrum-analyzer/analyzer-control";
-import { BaseControlButton } from "@app/equipment/real-time-spectrum-analyzer/analyzer-control/base-control-button";
+import { AnalyzerControl } from '@app/equipment/real-time-spectrum-analyzer/analyzer-control';
+import { BaseControlButton } from '@app/equipment/real-time-spectrum-analyzer/analyzer-control/base-control-button';
+import { Logger } from '@app/logging/logger';
+import { Hertz } from '@app/types';
 import './ac-bw-btn.css';
 
 export class ACBWBtn extends BaseControlButton {

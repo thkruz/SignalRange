@@ -1,10 +1,10 @@
-import { EventBus } from "@app/events/event-bus";
-import { Events } from "@app/events/events";
-import { CouplerModule, CouplerState } from "@app/equipment/rf-front-end/coupler-module/coupler-module";
-import { RealTimeSpectrumAnalyzer } from "@app/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer";
-import { qs } from "@app/engine/utils/query-selector";
-import { TapPoint } from "@app/equipment/rf-front-end/coupler-module/tap-points";
-import { EngineeringModeService } from "@app/engineering-mode/engineering-mode-service";
+import { qs } from '@app/engine/utils/query-selector';
+import { EngineeringModeService } from '@app/engineering-mode/engineering-mode-service';
+import { RealTimeSpectrumAnalyzer } from '@app/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer';
+import { CouplerModule, CouplerState } from '@app/equipment/rf-front-end/coupler-module/coupler-module';
+import { TapPoint } from '@app/equipment/rf-front-end/coupler-module/tap-points';
+import { EventBus } from '@app/events/event-bus';
+import { Events } from '@app/events/events';
 
 /**
  * TapPointAdapter - Bridges CouplerModule state to web controls
@@ -30,11 +30,7 @@ export class TapPointAdapter {
   private readonly stateChangeHandler: (state: Partial<CouplerState>) => void;
   private readonly boundUpdateHandler_: () => void;
 
-  constructor(
-    couplerModule: CouplerModule,
-    spectrumAnalyzer: RealTimeSpectrumAnalyzer,
-    containerEl: HTMLElement
-  ) {
+  constructor(couplerModule: CouplerModule, spectrumAnalyzer: RealTimeSpectrumAnalyzer, containerEl: HTMLElement) {
     this.couplerModule = couplerModule;
     this.spectrumAnalyzer = spectrumAnalyzer;
     this.containerEl = containerEl;

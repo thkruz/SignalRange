@@ -42,7 +42,7 @@ CLOUDFLARE_WORKER_NAME=my-signal-range-app
 
 #### Option B: CLI Flag Override
 ```bash
-npm run deploy -- --name my-signal-range-app
+pnpm run deploy -- --name my-signal-range-app
 ```
 
 #### Option C: Package.json Name (Fallback)
@@ -136,7 +136,7 @@ routes = []  # Empty = use workers.dev
    ```json
    // package.json
    "scripts": {
-     "deploy": "npm run build && wrangler deploy --name ${CLOUDFLARE_WORKER_NAME:-signal-range}"
+     "deploy": "pnpm run build && wrangler deploy --name ${CLOUDFLARE_WORKER_NAME:-signal-range}"
    }
    ```
 
@@ -163,7 +163,7 @@ routes = []  # Empty = use workers.dev
 
 3. **Documentation**
    - Clear setup guide in README
-   - Quick start: "Just run `npm run deploy`"
+   - Quick start: "Just run `pnpm run deploy`"
    - Advanced: Custom domain setup guide
 
 ---
@@ -212,7 +212,7 @@ SignalRange/
    ```bash
    git clone <repo>
    cd SignalRange
-   npm install
+   pnpm install
    ```
 
 2. **Set application environment variables**
@@ -223,7 +223,7 @@ SignalRange/
 
 3. **Deploy (uses defaults)**
    ```bash
-   npm run deploy
+   pnpm run deploy
    # Deploys to: https://signal-range.YOUR_SUBDOMAIN.workers.dev
    ```
 
@@ -243,14 +243,14 @@ SignalRange/
 
 2. **Deploy with custom config**
    ```bash
-   npm run deploy
+   pnpm run deploy
    ```
 
 ### One-Off Deployment (CLI Flags)
 
 ```bash
 # Deploy with custom name without editing files
-npm run deploy -- --name my-temp-deployment
+pnpm run deploy -- --name my-temp-deployment
 ```
 
 ---
@@ -315,7 +315,7 @@ execSync(deployCmd, { stdio: 'inherit' });
 
 Update `package.json`:
 ```json
-"deploy": "npm run build && node scripts/deploy.js"
+"deploy": "pnpm run build && node scripts/deploy.js"
 ```
 
 ### 3. Updated R2 Sync Script
@@ -443,7 +443,7 @@ not_found_handling = "single-page-application"
 # 1. Clone and install
 git clone https://github.com/user/SignalRange.git
 cd SignalRange
-npm install
+pnpm install
 
 # 2. Copy environment template
 cp .env.production.example .env.production
@@ -453,7 +453,7 @@ nano .env.production
 # Add: PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY
 
 # 4. Deploy (uses all defaults)
-npm run deploy
+pnpm run deploy
 
 # Output:
 # ✨ Deployed to: https://signal-range.username.workers.dev
@@ -467,10 +467,10 @@ npm run deploy
 ```bash
 # Option 1: Environment variable
 echo "CLOUDFLARE_WORKER_NAME=my-app" >> .env.production
-npm run deploy
+pnpm run deploy
 
 # Option 2: CLI flag (one-time)
-npm run deploy -- --name my-app
+pnpm run deploy -- --name my-app
 ```
 
 ### Scenario: User Has Custom Domain
@@ -479,7 +479,7 @@ npm run deploy -- --name my-app
 # 1. Set up domain in Cloudflare Dashboard
 # 2. Add route to .env.production
 echo "CLOUDFLARE_ROUTES=app.mydomain.com/*" >> .env.production
-npm run deploy
+pnpm run deploy
 ```
 
 ---

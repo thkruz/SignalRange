@@ -132,10 +132,7 @@ describe('SpectrumAnalyzerAdvancedAdapter', () => {
     });
 
     it('should register for SPEC_A_CONFIG_CHANGED events', () => {
-      expect(mockEventBus.on).toHaveBeenCalledWith(
-        Events.SPEC_A_CONFIG_CHANGED,
-        expect.any(Function)
-      );
+      expect(mockEventBus.on).toHaveBeenCalledWith(Events.SPEC_A_CONFIG_CHANGED, expect.any(Function));
     });
 
     it('should sync DOM with initial state', () => {
@@ -309,9 +306,7 @@ describe('SpectrumAnalyzerAdvancedAdapter', () => {
       mockSpectrumAnalyzer.state.centerFrequency = 2000e6;
 
       // Trigger state change event
-      const stateChangeHandler = mockEventBus.on.mock.calls.find(
-        call => call[0] === Events.SPEC_A_CONFIG_CHANGED
-      )?.[1];
+      const stateChangeHandler = mockEventBus.on.mock.calls.find((call) => call[0] === Events.SPEC_A_CONFIG_CHANGED)?.[1];
 
       if (stateChangeHandler) {
         stateChangeHandler({ ...mockSpectrumAnalyzer.state });
@@ -325,9 +320,7 @@ describe('SpectrumAnalyzerAdvancedAdapter', () => {
       const originalValue = (containerEl.querySelector('#sa-center-freq') as HTMLInputElement).value;
 
       // Trigger state change event with different UUID
-      const stateChangeHandler = mockEventBus.on.mock.calls.find(
-        call => call[0] === Events.SPEC_A_CONFIG_CHANGED
-      )?.[1];
+      const stateChangeHandler = mockEventBus.on.mock.calls.find((call) => call[0] === Events.SPEC_A_CONFIG_CHANGED)?.[1];
 
       if (stateChangeHandler) {
         stateChangeHandler({ uuid: 'different-uuid', centerFrequency: 3000e6 });
@@ -344,10 +337,7 @@ describe('SpectrumAnalyzerAdvancedAdapter', () => {
       refLevelInput.value = '-10';
       refLevelInput.dispatchEvent(new Event('input'));
 
-      expect(mockEventBus.emit).toHaveBeenCalledWith(
-        Events.SPEC_A_CONFIG_CHANGED,
-        expect.objectContaining({ referenceLevel: -10 })
-      );
+      expect(mockEventBus.emit).toHaveBeenCalledWith(Events.SPEC_A_CONFIG_CHANGED, expect.objectContaining({ referenceLevel: -10 }));
     });
   });
 
@@ -355,10 +345,7 @@ describe('SpectrumAnalyzerAdvancedAdapter', () => {
     it('should unregister from EventBus events', () => {
       adapter.dispose();
 
-      expect(mockEventBus.off).toHaveBeenCalledWith(
-        Events.SPEC_A_CONFIG_CHANGED,
-        expect.any(Function)
-      );
+      expect(mockEventBus.off).toHaveBeenCalledWith(Events.SPEC_A_CONFIG_CHANGED, expect.any(Function));
     });
   });
 });

@@ -1,10 +1,10 @@
-import { EventBus } from "@app/events/event-bus";
-import { Events } from "@app/events/events";
-import { LNBModuleCore, LNBState } from "@app/equipment/rf-front-end/lnb-module/lnb-module-core";
-import { qs } from "@app/engine/utils/query-selector";
-import { CardAlarmBadge } from "@app/components/card-alarm-badge/card-alarm-badge";
-import { AlarmStatus } from "@app/equipment/base-equipment";
-import { parseLocalizedNumber } from "@app/utils/parse-number";
+import { CardAlarmBadge } from '@app/components/card-alarm-badge/card-alarm-badge';
+import { qs } from '@app/engine/utils/query-selector';
+import { AlarmStatus } from '@app/equipment/base-equipment';
+import { LNBModuleCore, LNBState } from '@app/equipment/rf-front-end/lnb-module/lnb-module-core';
+import { EventBus } from '@app/events/event-bus';
+import { Events } from '@app/events/events';
+import { parseLocalizedNumber } from '@app/utils/parse-number';
 
 /**
  * LNBAdapter - Bridges LNBModuleCore state to web controls
@@ -235,11 +235,7 @@ export class LNBAdapter {
   }
 
   private setControlButtonsEnabled_(enabled: boolean): void {
-    const buttonKeys = [
-      'loDecCoarse', 'loDecFine', 'loIncFine', 'loIncCoarse',
-      'gainDecCoarse', 'gainDecFine', 'gainIncFine', 'gainIncCoarse',
-      'applyBtn'
-    ];
+    const buttonKeys = ['loDecCoarse', 'loDecFine', 'loIncFine', 'loIncCoarse', 'gainDecCoarse', 'gainDecFine', 'gainIncFine', 'gainIncCoarse', 'applyBtn'];
     for (const key of buttonKeys) {
       const btn = this.domCache_.get(key) as HTMLButtonElement;
       if (btn) btn.disabled = !enabled;
@@ -321,9 +317,9 @@ export class LNBAdapter {
    */
   private getAlarmsFromModule_(): AlarmStatus[] {
     const alarmStrings = this.lnbModule.getAlarms();
-    return alarmStrings.map(message => ({
+    return alarmStrings.map((message) => ({
       severity: this.classifySeverity_(message),
-      message
+      message,
     }));
   }
 

@@ -8,13 +8,7 @@ export type BUCModuleUIType = 'standard' | 'basic' | 'headless';
  * Factory function to create BUC module instances
  * Enables switching between UI implementations
  */
-export function createBUC(
-  state: BUCState,
-  rfFrontEnd: RFFrontEndCore,
-  unit: number = 1,
-  parentId: string = '',
-  uiType: BUCModuleUIType = 'standard'
-): BUCModuleCore {
+export function createBUC(state: BUCState, rfFrontEnd: RFFrontEndCore, unit: number = 1, parentId: string = '', uiType: BUCModuleUIType = 'standard'): BUCModuleCore {
   switch (uiType) {
     case 'standard':
       return new BUCModuleUIStandard(state, rfFrontEnd, unit, parentId);

@@ -1,10 +1,5 @@
 import { dB, dBFS, dBm } from '@app/types';
-import {
-  ADCConfig,
-  DEFAULT_ADC_CONFIG,
-  dBmToDbfs,
-  dBfsToDbm,
-} from '../../../src/equipment/receiver/adc-constants';
+import { ADCConfig, DEFAULT_ADC_CONFIG, dBfsToDbm, dBmToDbfs } from '../../../src/equipment/receiver/adc-constants';
 
 describe('adc-constants', () => {
   describe('DEFAULT_ADC_CONFIG', () => {
@@ -18,18 +13,13 @@ describe('adc-constants', () => {
 
     it('should have proper sweet spot relationship', () => {
       // The sweet spot is the range between clip and quantization thresholds
-      const sweetSpotRange =
-        DEFAULT_ADC_CONFIG.clipThreshold_dBFS - DEFAULT_ADC_CONFIG.quantizationThreshold_dBFS;
+      const sweetSpotRange = DEFAULT_ADC_CONFIG.clipThreshold_dBFS - DEFAULT_ADC_CONFIG.quantizationThreshold_dBFS;
       expect(sweetSpotRange).toBe(18); // -2 - (-20) = 18 dB of optimal range
     });
 
     it('should have target level within the sweet spot', () => {
-      expect(DEFAULT_ADC_CONFIG.targetLevel_dBFS).toBeLessThan(
-        DEFAULT_ADC_CONFIG.clipThreshold_dBFS
-      );
-      expect(DEFAULT_ADC_CONFIG.targetLevel_dBFS).toBeGreaterThan(
-        DEFAULT_ADC_CONFIG.quantizationThreshold_dBFS
-      );
+      expect(DEFAULT_ADC_CONFIG.targetLevel_dBFS).toBeLessThan(DEFAULT_ADC_CONFIG.clipThreshold_dBFS);
+      expect(DEFAULT_ADC_CONFIG.targetLevel_dBFS).toBeGreaterThan(DEFAULT_ADC_CONFIG.quantizationThreshold_dBFS);
     });
   });
 

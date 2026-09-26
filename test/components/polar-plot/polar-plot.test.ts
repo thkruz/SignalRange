@@ -15,10 +15,7 @@ describe('PolarPlot', () => {
     document.body.innerHTML = '';
   });
 
-  const createPlotInDom = (
-    id: string,
-    config?: PolarPlotConfig
-  ): PolarPlot => {
+  const createPlotInDom = (id: string, config?: PolarPlotConfig): PolarPlot => {
     const plot = new PolarPlot(id, config);
     container.innerHTML = plot.html;
     return plot;
@@ -358,7 +355,7 @@ describe('PolarPlot', () => {
 
       // Should draw N, E, S, W and elevation labels
       expect(fillTextSpy).toHaveBeenCalled();
-      const calls = fillTextSpy.mock.calls.map(call => call[0]);
+      const calls = fillTextSpy.mock.calls.map((call) => call[0]);
       expect(calls).toContain('N');
       expect(calls).toContain('E');
       expect(calls).toContain('S');
@@ -373,7 +370,7 @@ describe('PolarPlot', () => {
 
       plot.onDomReady();
 
-      const calls = fillTextSpy.mock.calls.map(call => call[0]);
+      const calls = fillTextSpy.mock.calls.map((call) => call[0]);
       expect(calls).toContain('90°');
       expect(calls).toContain('45°');
       expect(calls).toContain('0°');
@@ -521,7 +518,7 @@ describe('PolarPlot', () => {
 
       // At 90° elevation, radius should be 0 (at center)
       // The arc call for antenna position should be near center
-      const antennaArcCall = arcSpy.mock.calls.find(call => call[2] === 6); // radius 6 for antenna
+      const antennaArcCall = arcSpy.mock.calls.find((call) => call[2] === 6); // radius 6 for antenna
       expect(antennaArcCall).toBeDefined();
       if (antennaArcCall) {
         // Should be at center (100, 100 for 200x200 canvas)
@@ -546,7 +543,7 @@ describe('PolarPlot', () => {
       plot.draw(0 as Degrees, 0 as Degrees);
 
       // At 0° elevation, antenna should be at edge
-      const antennaArcCall = arcSpy.mock.calls.find(call => call[2] === 6);
+      const antennaArcCall = arcSpy.mock.calls.find((call) => call[2] === 6);
       expect(antennaArcCall).toBeDefined();
       if (antennaArcCall) {
         // At 0° azimuth (North/up), y should be less than center
@@ -565,7 +562,7 @@ describe('PolarPlot', () => {
       arcSpy.mockClear();
       plot.draw(0 as Degrees, 45 as Degrees);
 
-      const antennaArcCall = arcSpy.mock.calls.find(call => call[2] === 6);
+      const antennaArcCall = arcSpy.mock.calls.find((call) => call[2] === 6);
       expect(antennaArcCall).toBeDefined();
       if (antennaArcCall) {
         // At 0° azimuth, x should be at center, y above center
@@ -585,7 +582,7 @@ describe('PolarPlot', () => {
       arcSpy.mockClear();
       plot.draw(90 as Degrees, 45 as Degrees);
 
-      const antennaArcCall = arcSpy.mock.calls.find(call => call[2] === 6);
+      const antennaArcCall = arcSpy.mock.calls.find((call) => call[2] === 6);
       expect(antennaArcCall).toBeDefined();
       if (antennaArcCall) {
         // At 90° azimuth, x should be right of center, y at center
@@ -605,7 +602,7 @@ describe('PolarPlot', () => {
       arcSpy.mockClear();
       plot.draw(180 as Degrees, 45 as Degrees);
 
-      const antennaArcCall = arcSpy.mock.calls.find(call => call[2] === 6);
+      const antennaArcCall = arcSpy.mock.calls.find((call) => call[2] === 6);
       expect(antennaArcCall).toBeDefined();
       if (antennaArcCall) {
         // At 180° azimuth, x should be at center, y below center
@@ -625,7 +622,7 @@ describe('PolarPlot', () => {
       arcSpy.mockClear();
       plot.draw(270 as Degrees, 45 as Degrees);
 
-      const antennaArcCall = arcSpy.mock.calls.find(call => call[2] === 6);
+      const antennaArcCall = arcSpy.mock.calls.find((call) => call[2] === 6);
       expect(antennaArcCall).toBeDefined();
       if (antennaArcCall) {
         // At 270° azimuth, x should be left of center, y at center

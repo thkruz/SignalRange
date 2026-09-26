@@ -1,8 +1,8 @@
 import { HelpButton } from '@app/components/help-btn/help-btn';
 import { RotaryKnob } from '@app/components/rotary-knob/rotary-knob';
 import { ToggleSwitch } from '@app/components/toggle-switch/toggle-switch';
-import { html } from "@app/engine/utils/development/formatter";
-import { qs } from "@app/engine/utils/query-selector";
+import { html } from '@app/engine/utils/development/formatter';
+import { qs } from '@app/engine/utils/query-selector';
 import { RFFrontEndCore } from '@app/equipment/rf-front-end/rf-front-end-core';
 import { BUCModuleCore, BUCState } from './buc-module-core';
 import './buc-module.css';
@@ -22,30 +22,15 @@ export class BUCModuleUIStandard extends BUCModuleCore {
     const tempId = `rf-fe-buc-temp-${unit}`;
 
     // Initialize components with temp IDs
-    const muteSwitch = ToggleSwitch.create(
-      `${tempId}-mute`,
-      state.isMuted,
-      false
-    );
+    const muteSwitch = ToggleSwitch.create(`${tempId}-mute`, state.isMuted, false);
 
     // Initialize LO knob (callback will be wired through base class event system)
-    const loKnob = RotaryKnob.create(
-      `${tempId}-lo-knob`,
-      state.loFrequency,
-      5850,
-      6425,
-      10,
-      (value: number) => {
-        // Direct state update - will be synced through event callback
-        state.loFrequency = value as any;
-      }
-    );
+    const loKnob = RotaryKnob.create(`${tempId}-lo-knob`, state.loFrequency, 5850, 6425, 10, (value: number) => {
+      // Direct state update - will be synced through event callback
+      state.loFrequency = value as any;
+    });
 
-    const loopbackSwitch = ToggleSwitch.create(
-      `${tempId}-loopback`,
-      state.isLoopback,
-      false
-    );
+    const loopbackSwitch = ToggleSwitch.create(`${tempId}-loopback`, state.isLoopback, false);
 
     // Call parent constructor
     super(state, rfFrontEnd, unit);
@@ -61,7 +46,7 @@ export class BUCModuleUIStandard extends BUCModuleCore {
 
     this.helpBtn_ = HelpButton.create(
       `buc-help-${rfFrontEnd.state.uuid}`,
-      "Block Upconverter",
+      'Block Upconverter',
       null,
       'https://docs.signalrange.space/equipment/block-upconverter?content-only=true&dark=true'
     );
@@ -222,7 +207,7 @@ export class BUCModuleUIStandard extends BUCModuleCore {
       muteSwitch: this.muteSwitch_,
       loKnob: this.loKnob_,
       loopbackSwitch: this.loopbackSwitch_,
-      helpBtn: this.helpBtn_
+      helpBtn: this.helpBtn_,
     };
   }
 
@@ -236,7 +221,7 @@ export class BUCModuleUIStandard extends BUCModuleCore {
       temperature: () => this.state.temperature.toFixed(1),
       currentDraw: () => this.state.currentDraw.toFixed(2),
       frequencyError: () => (this.state.frequencyError / 1000).toFixed(1),
-      outputPower: () => this.state.outputPower.toFixed(1)
+      outputPower: () => this.state.outputPower.toFixed(1),
     };
   }
 
@@ -247,7 +232,7 @@ export class BUCModuleUIStandard extends BUCModuleCore {
   getLEDs() {
     return {
       lock: () => this.getLockLedStatus(),
-      loopback: () => this.getLoopbackLedStatus()
+      loopback: () => this.getLoopbackLedStatus(),
     };
   }
 

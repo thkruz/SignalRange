@@ -2,7 +2,23 @@ import os from 'node:os';
 import path from 'node:path';
 import { defineConfig } from 'vitest/config';
 
+const PRIVATE_STUB_ID = '\0private-stub';
+
 export default defineConfig({
+  plugins: [
+    /*
+     * Tests run as the OSS edition, but Vite's import analysis still resolves
+     * `import('@private/...')` inside the dead `__IS_PRIVATE__` branch. CI has no
+     * private submodule, so point every @private specifier at an empty module
+     * rather than the real directory. Local and CI runs then see the same graph.
+     */
+    {
+      name: 'private-stub',
+      enforce: 'pre',
+      resolveId: (id) => (id === '@private' || id.startsWith('@private/') ? PRIVATE_STUB_ID : null),
+      load: (id) => (id === PRIVATE_STUB_ID ? 'export {};' : null),
+    },
+  ],
   // Build-time flags from rspack DefinePlugin. Tests always run as the OSS edition.
   define: {
     __IS_PRIVATE__: 'false',
@@ -69,7 +85,6 @@ export default defineConfig({
     alias: {
       '@app': path.resolve(__dirname, './src'),
       '@engine': path.resolve(__dirname, './src/engine'),
-      '@private': path.resolve(__dirname, './src/private/app'),
       '@plugins-external': path.resolve(__dirname, './src/plugins-external'),
     },
   },

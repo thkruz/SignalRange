@@ -1,0 +1,139 @@
+{
+  "scenarioId": "nats-scenario13",
+  "title": "Thermal Anomaly",
+  "authored": {
+    "linkBudget": null,
+    "thresholds": [
+      {
+        "objectiveId": "cross-check-spectrum",
+        "condition": "signal-detected",
+        "groundStation": "VT-01",
+        "params": {
+          "minPower": -100
+        }
+      }
+    ]
+  },
+  "stations": [
+    {
+      "stationId": "VT-01",
+      "antennaIndex": 0,
+      "antennaConfig": "C_BAND_9M_VORTEK",
+      "lnbLoMHz": 5250,
+      "lnbNoiseTempK": 42.98,
+      "links": [
+        {
+          "satellite": "TIDEMARK-1",
+          "noradId": 61525,
+          "kind": "fixed",
+          "pass": null,
+          "atPeak": {
+            "elevationDeg": 34.2,
+            "frequencyMHz": 3718,
+            "gainDbi": 48.59,
+            "gOverTDbPerK": 27.15,
+            "tsysK": 139.42
+          },
+          "carriers": [
+            {
+              "signalId": "TIDEMARK-1-TDMA-Composite",
+              "rfMHz": 3718,
+              "ifMHz": 1532,
+              "bandwidthMHz": 36,
+              "modulation": "QPSK",
+              "fec": "3/4",
+              "samples": 5,
+              "peakCnDb": 13.55,
+              "medianCnDb": 13.52,
+              "peakRxIfDbm": -29.56,
+              "noiseIfDbm": -42.58,
+              "lockedSamples": 5
+            },
+            {
+              "signalId": "TIDEMARK-1-Beacon",
+              "rfMHz": 4175.5,
+              "ifMHz": 1074.5,
+              "bandwidthMHz": 0,
+              "modulation": "CW",
+              "fec": "null",
+              "samples": 5,
+              "peakCnDb": 33.29,
+              "medianCnDb": 33.29,
+              "peakRxIfDbm": -55.35,
+              "noiseIfDbm": -88.14,
+              "lockedSamples": 5
+            }
+          ]
+        },
+        {
+          "satellite": "TIDEMARK-2",
+          "noradId": 61526,
+          "kind": "fixed",
+          "pass": null,
+          "atPeak": {
+            "elevationDeg": 26.3,
+            "frequencyMHz": 3792,
+            "gainDbi": 48.76,
+            "gOverTDbPerK": 27.19,
+            "tsysK": 143.7
+          },
+          "carriers": [
+            {
+              "signalId": "TIDEMARK-2-TDMA-Composite",
+              "rfMHz": 3792,
+              "ifMHz": 1458,
+              "bandwidthMHz": 36,
+              "modulation": "QPSK",
+              "fec": "3/4",
+              "samples": 5,
+              "peakCnDb": 14.62,
+              "medianCnDb": 14.47,
+              "peakRxIfDbm": -30.32,
+              "noiseIfDbm": -44.33,
+              "lockedSamples": 5
+            },
+            {
+              "signalId": "TIDEMARK-2-Beacon",
+              "rfMHz": 4180,
+              "ifMHz": 1070,
+              "bandwidthMHz": 0,
+              "modulation": "CW",
+              "fec": "null",
+              "samples": 5,
+              "peakCnDb": 32.64,
+              "medianCnDb": 32.64,
+              "peakRxIfDbm": -57.75,
+              "noiseIfDbm": -89.89,
+              "lockedSamples": 5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "stationId": "ME-02",
+      "antennaIndex": 0,
+      "antennaConfig": "C_BAND_9M_VORTEK",
+      "lnbLoMHz": 6080,
+      "lnbNoiseTempK": 290,
+      "links": [
+        {
+          "satellite": "TIDEMARK-1",
+          "noradId": 61525,
+          "kind": "fixed",
+          "pass": null,
+          "atPeak": null,
+          "carriers": []
+        },
+        {
+          "satellite": "TIDEMARK-2",
+          "noradId": 61526,
+          "kind": "fixed",
+          "pass": null,
+          "atPeak": null,
+          "carriers": []
+        }
+      ]
+    }
+  ]
+}

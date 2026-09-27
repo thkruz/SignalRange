@@ -1,0 +1,177 @@
+{
+  "scenarioId": "ham-sdr-scenario6",
+  "title": "The Network Wants Vermont",
+  "authored": {
+    "linkBudget": null,
+    "thresholds": [
+      {
+        "objectiveId": "catch-wxsat",
+        "condition": "signal-detected",
+        "groundStation": "BKYD-QFH",
+        "params": {
+          "minPower": -130
+        }
+      },
+      {
+        "objectiveId": "catch-cubehop",
+        "condition": "signal-detected",
+        "groundStation": "BKYD-YAGI",
+        "params": {
+          "minPower": -130
+        }
+      }
+    ]
+  },
+  "stations": [
+    {
+      "stationId": "BKYD-QFH",
+      "antennaIndex": 0,
+      "antennaConfig": "VHF_QFH_137",
+      "lnbLoMHz": 0,
+      "lnbNoiseTempK": 75.09,
+      "links": [
+        {
+          "satellite": "WXSAT-19",
+          "noradId": 63001,
+          "kind": "leo",
+          "pass": {
+            "aosS": 682.27,
+            "losS": 1413.52,
+            "maxEl": 35.89
+          },
+          "atPeak": {
+            "elevationDeg": 35.89,
+            "frequencyMHz": 137.1,
+            "gainDbi": 3,
+            "gOverTDbPerK": -21.09,
+            "tsysK": 256.54
+          },
+          "carriers": [
+            {
+              "signalId": "WXSAT-19-APT",
+              "rfMHz": 137.1,
+              "ifMHz": 137.1,
+              "bandwidthMHz": 0.03,
+              "modulation": "BPSK",
+              "fec": "1/2",
+              "samples": 732,
+              "peakCnDb": 35.12,
+              "medianCnDb": 32.13,
+              "peakRxIfDbm": -23.91,
+              "noiseIfDbm": -58.53,
+              "lockedSamples": 732
+            }
+          ]
+        },
+        {
+          "satellite": "CUBEHOP-1",
+          "noradId": 63002,
+          "kind": "leo",
+          "pass": {
+            "aosS": 2816.02,
+            "losS": 3269.77,
+            "maxEl": 14.68
+          },
+          "atPeak": {
+            "elevationDeg": 14.68,
+            "frequencyMHz": 435.26,
+            "gainDbi": 3,
+            "gOverTDbPerK": -21.33,
+            "tsysK": 270.81
+          },
+          "carriers": [
+            {
+              "signalId": "CUBEHOP-1-FM",
+              "rfMHz": 435.26,
+              "ifMHz": 435.26,
+              "bandwidthMHz": 0.02,
+              "modulation": "QPSK",
+              "fec": "1/2",
+              "samples": 454,
+              "peakCnDb": 18.52,
+              "medianCnDb": 17.54,
+              "peakRxIfDbm": -44.07,
+              "noiseIfDbm": -62.08,
+              "lockedSamples": 454
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "stationId": "BKYD-YAGI",
+      "antennaIndex": 0,
+      "antennaConfig": "UHF_CROSSED_YAGI_70CM",
+      "lnbLoMHz": 0,
+      "lnbNoiseTempK": 75.09,
+      "links": [
+        {
+          "satellite": "WXSAT-19",
+          "noradId": 63001,
+          "kind": "leo",
+          "pass": {
+            "aosS": 682.27,
+            "losS": 1413.52,
+            "maxEl": 35.89
+          },
+          "atPeak": {
+            "elevationDeg": 35.89,
+            "frequencyMHz": 137.1,
+            "gainDbi": 12,
+            "gOverTDbPerK": -12.15,
+            "tsysK": 259.81
+          },
+          "carriers": [
+            {
+              "signalId": "WXSAT-19-APT",
+              "rfMHz": 137.1,
+              "ifMHz": 137.1,
+              "bandwidthMHz": 0.03,
+              "modulation": "BPSK",
+              "fec": "1/2",
+              "samples": 732,
+              "peakCnDb": 43.82,
+              "medianCnDb": 40.83,
+              "peakRxIfDbm": -15.21,
+              "noiseIfDbm": -58.53,
+              "lockedSamples": 732
+            }
+          ]
+        },
+        {
+          "satellite": "CUBEHOP-1",
+          "noradId": 63002,
+          "kind": "leo",
+          "pass": {
+            "aosS": 2816.02,
+            "losS": 3269.77,
+            "maxEl": 14.68
+          },
+          "atPeak": {
+            "elevationDeg": 14.68,
+            "frequencyMHz": 435.26,
+            "gainDbi": 12,
+            "gOverTDbPerK": -12.4,
+            "tsysK": 275.17
+          },
+          "carriers": [
+            {
+              "signalId": "CUBEHOP-1-FM",
+              "rfMHz": 435.26,
+              "ifMHz": 435.26,
+              "bandwidthMHz": 0.02,
+              "modulation": "QPSK",
+              "fec": "1/2",
+              "samples": 454,
+              "peakCnDb": 27.21,
+              "medianCnDb": 26.24,
+              "peakRxIfDbm": -35.37,
+              "noiseIfDbm": -62.08,
+              "lockedSamples": 454
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,105 @@
+{
+  "scenarioId": "sandbox",
+  "title": "Free Play",
+  "authored": {
+    "linkBudget": null,
+    "thresholds": []
+  },
+  "stations": [
+    {
+      "stationId": "VT-01",
+      "antennaIndex": 0,
+      "antennaConfig": "C_BAND_9M_VORTEK",
+      "lnbLoMHz": 5250,
+      "lnbNoiseTempK": 42.97,
+      "links": [
+        {
+          "satellite": "AURORA-7",
+          "noradId": 28899,
+          "kind": "fixed",
+          "pass": null,
+          "atPeak": {
+            "elevationDeg": 32,
+            "frequencyMHz": 3828,
+            "gainDbi": 48.84,
+            "gOverTDbPerK": 27.36,
+            "tsysK": 140.76
+          },
+          "carriers": [
+            {
+              "signalId": "AURORA-7-TDMA-Composite",
+              "rfMHz": 3828,
+              "ifMHz": 1422,
+              "bandwidthMHz": 24,
+              "modulation": "QPSK",
+              "fec": "3/4",
+              "samples": 5,
+              "peakCnDb": 10.83,
+              "medianCnDb": 10.75,
+              "peakRxIfDbm": -29.48,
+              "noiseIfDbm": -39.64,
+              "lockedSamples": 5
+            },
+            {
+              "signalId": "AURORA-7-Beacon",
+              "rfMHz": 4165,
+              "ifMHz": 1085,
+              "bandwidthMHz": 0,
+              "modulation": "CW",
+              "fec": "null",
+              "samples": 5,
+              "peakCnDb": 6.1,
+              "medianCnDb": 6.1,
+              "peakRxIfDbm": -77.84,
+              "noiseIfDbm": -83.44,
+              "lockedSamples": 5
+            }
+          ]
+        },
+        {
+          "satellite": "TIDEMARK-1",
+          "noradId": 61525,
+          "kind": "fixed",
+          "pass": null,
+          "atPeak": {
+            "elevationDeg": 34.2,
+            "frequencyMHz": 3718,
+            "gainDbi": 48.59,
+            "gOverTDbPerK": 27.15,
+            "tsysK": 139.42
+          },
+          "carriers": [
+            {
+              "signalId": "TIDEMARK-1-TDMA-Composite",
+              "rfMHz": 3718,
+              "ifMHz": 1532,
+              "bandwidthMHz": 36,
+              "modulation": "QPSK",
+              "fec": "3/4",
+              "samples": 5,
+              "peakCnDb": 14,
+              "medianCnDb": 13.78,
+              "peakRxIfDbm": -29.64,
+              "noiseIfDbm": -42.77,
+              "lockedSamples": 5
+            },
+            {
+              "signalId": "TIDEMARK-1-Beacon",
+              "rfMHz": 4175.5,
+              "ifMHz": 1074.5,
+              "bandwidthMHz": 0,
+              "modulation": "CW",
+              "fec": "null",
+              "samples": 5,
+              "peakCnDb": 33.03,
+              "medianCnDb": 33.03,
+              "peakRxIfDbm": -55.8,
+              "noiseIfDbm": -88.33,
+              "lockedSamples": 5
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

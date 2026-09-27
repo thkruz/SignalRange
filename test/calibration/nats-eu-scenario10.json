@@ -1,0 +1,152 @@
+{
+  "scenarioId": "nats-eu-scenario10",
+  "title": "Priority Tasking",
+  "authored": {
+    "linkBudget": {
+      "label": "Low-elevation collect: SAR-1 downlink at 18 deg",
+      "expectedCNRDb": 8.1,
+      "toleranceDb": 1,
+      "thresholdCNRDb": 6,
+      "requiredMarginDb": 1
+    },
+    "thresholds": [
+      {
+        "objectiveId": "acquire-low",
+        "condition": "signal-detected",
+        "groundStation": "GW-01",
+        "params": {
+          "minPower": -130
+        }
+      },
+      {
+        "objectiveId": "task-the-collect",
+        "condition": "hpa-output-power-set",
+        "groundStation": "GW-01",
+        "params": {
+          "minOutputPower": 0.5
+        }
+      },
+      {
+        "objectiveId": "pull-the-imagery",
+        "condition": "receiver-snr-threshold",
+        "groundStation": "GW-01",
+        "params": {
+          "minCNRatio": 6
+        }
+      },
+      {
+        "objectiveId": "pull-the-imagery",
+        "condition": "link-margin-met",
+        "groundStation": "GW-01",
+        "params": {
+          "minMarginDb": 1
+        }
+      }
+    ]
+  },
+  "stations": [
+    {
+      "stationId": "GW-01",
+      "antennaIndex": 0,
+      "antennaConfig": "KU_BAND_4M_LEO_TRACKER",
+      "lnbLoMHz": 13100,
+      "lnbNoiseTempK": 58.66,
+      "links": [
+        {
+          "satellite": "MERIDIAN-SAR-1",
+          "noradId": 61701,
+          "kind": "leo",
+          "pass": {
+            "aosS": 1096.64,
+            "losS": 1485.7,
+            "maxEl": 17.81
+          },
+          "atPeak": {
+            "elevationDeg": 17.81,
+            "frequencyMHz": 11711.23,
+            "gainDbi": 51.1,
+            "gOverTDbPerK": 27.13,
+            "tsysK": 249.84
+          },
+          "carriers": [
+            {
+              "signalId": "MERIDIAN-SAR-1-Beacon",
+              "rfMHz": 11711.23,
+              "ifMHz": 1388.77,
+              "bandwidthMHz": 0,
+              "modulation": "CW",
+              "fec": "null",
+              "samples": 390,
+              "peakCnDb": 25.69,
+              "medianCnDb": 23.97,
+              "peakRxIfDbm": -58.27,
+              "noiseIfDbm": -78.76,
+              "lockedSamples": 390
+            },
+            {
+              "signalId": "MERIDIAN-SAR-1-VIDEO",
+              "rfMHz": 11686.23,
+              "ifMHz": 1413.77,
+              "bandwidthMHz": 36,
+              "modulation": "QPSK",
+              "fec": "3/4",
+              "samples": 390,
+              "peakCnDb": 8.13,
+              "medianCnDb": 6.42,
+              "peakRxIfDbm": -30.26,
+              "noiseIfDbm": -33.2,
+              "lockedSamples": 390
+            }
+          ]
+        },
+        {
+          "satellite": "MERIDIAN-SAR-2",
+          "noradId": 61702,
+          "kind": "leo",
+          "pass": {
+            "aosS": 4091.02,
+            "losS": 4513.83,
+            "maxEl": 25
+          },
+          "atPeak": {
+            "elevationDeg": 25,
+            "frequencyMHz": 11703.26,
+            "gainDbi": 51.1,
+            "gOverTDbPerK": 27.42,
+            "tsysK": 233.08
+          },
+          "carriers": [
+            {
+              "signalId": "MERIDIAN-SAR-2-Beacon",
+              "rfMHz": 11703.26,
+              "ifMHz": 1396.74,
+              "bandwidthMHz": 0,
+              "modulation": "CW",
+              "fec": "null",
+              "samples": 423,
+              "peakCnDb": 27.83,
+              "medianCnDb": 24.92,
+              "peakRxIfDbm": -58.49,
+              "noiseIfDbm": -79.21,
+              "lockedSamples": 423
+            },
+            {
+              "signalId": "MERIDIAN-SAR-2-VIDEO",
+              "rfMHz": 11730.26,
+              "ifMHz": 1369.74,
+              "bandwidthMHz": 36,
+              "modulation": "QPSK",
+              "fec": "3/4",
+              "samples": 423,
+              "peakCnDb": 10.26,
+              "medianCnDb": 7.35,
+              "peakRxIfDbm": -30.5,
+              "noiseIfDbm": -33.64,
+              "lockedSamples": 423
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

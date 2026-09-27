@@ -1,0 +1,154 @@
+{
+  "scenarioId": "nats-eu-scenario1",
+  "title": "First Light Over Galway",
+  "authored": {
+    "linkBudget": null,
+    "thresholds": [
+      {
+        "objectiveId": "acquire-sar1",
+        "condition": "signal-detected",
+        "groundStation": "GW-01",
+        "params": {
+          "minPower": -130
+        }
+      },
+      {
+        "objectiveId": "lock-the-downlink",
+        "condition": "receiver-snr-threshold",
+        "groundStation": "GW-01",
+        "params": {
+          "minCNRatio": 8
+        }
+      },
+      {
+        "objectiveId": "read-the-culmination",
+        "condition": "receiver-snr-threshold",
+        "groundStation": "GW-01",
+        "params": {
+          "minCNRatio": 9
+        }
+      },
+      {
+        "objectiveId": "acquire-sar2",
+        "condition": "signal-detected",
+        "groundStation": "GW-01",
+        "params": {
+          "minPower": -130
+        }
+      },
+      {
+        "objectiveId": "decode-sar2",
+        "condition": "receiver-snr-threshold",
+        "groundStation": "GW-01",
+        "params": {
+          "minCNRatio": 8
+        }
+      }
+    ]
+  },
+  "stations": [
+    {
+      "stationId": "GW-01",
+      "antennaIndex": 0,
+      "antennaConfig": "KU_BAND_4M_LEO_TRACKER",
+      "lnbLoMHz": 13100,
+      "lnbNoiseTempK": 58.66,
+      "links": [
+        {
+          "satellite": "MERIDIAN-SAR-1",
+          "noradId": 61701,
+          "kind": "leo",
+          "pass": {
+            "aosS": 910.55,
+            "losS": 1338.05,
+            "maxEl": 28.03
+          },
+          "atPeak": {
+            "elevationDeg": 28.03,
+            "frequencyMHz": 11711.26,
+            "gainDbi": 51.1,
+            "gOverTDbPerK": 27.53,
+            "tsysK": 227.64
+          },
+          "carriers": [
+            {
+              "signalId": "MERIDIAN-SAR-1-Beacon",
+              "rfMHz": 11711.26,
+              "ifMHz": 1388.74,
+              "bandwidthMHz": 0,
+              "modulation": "CW",
+              "fec": "null",
+              "samples": 428,
+              "peakCnDb": 28.52,
+              "medianCnDb": 25.14,
+              "peakRxIfDbm": -58.27,
+              "noiseIfDbm": -78.76,
+              "lockedSamples": 428
+            },
+            {
+              "signalId": "MERIDIAN-SAR-1-VIDEO",
+              "rfMHz": 11686.26,
+              "ifMHz": 1413.74,
+              "bandwidthMHz": 36,
+              "modulation": "QPSK",
+              "fec": "3/4",
+              "samples": 428,
+              "peakCnDb": 10.96,
+              "medianCnDb": 7.58,
+              "peakRxIfDbm": -30.26,
+              "noiseIfDbm": -33.2,
+              "lockedSamples": 428
+            }
+          ]
+        },
+        {
+          "satellite": "MERIDIAN-SAR-2",
+          "noradId": 61702,
+          "kind": "leo",
+          "pass": {
+            "aosS": 1842.42,
+            "losS": 2260.55,
+            "maxEl": 24.98
+          },
+          "atPeak": {
+            "elevationDeg": 24.98,
+            "frequencyMHz": 11703.26,
+            "gainDbi": 51.1,
+            "gOverTDbPerK": 27.42,
+            "tsysK": 233.11
+          },
+          "carriers": [
+            {
+              "signalId": "MERIDIAN-SAR-2-Beacon",
+              "rfMHz": 11703.26,
+              "ifMHz": 1396.74,
+              "bandwidthMHz": 0,
+              "modulation": "CW",
+              "fec": "null",
+              "samples": 416,
+              "peakCnDb": 27.82,
+              "medianCnDb": 24.93,
+              "peakRxIfDbm": -58.49,
+              "noiseIfDbm": -79.24,
+              "lockedSamples": 416
+            },
+            {
+              "signalId": "MERIDIAN-SAR-2-VIDEO",
+              "rfMHz": 11730.26,
+              "ifMHz": 1369.74,
+              "bandwidthMHz": 36,
+              "modulation": "QPSK",
+              "fec": "3/4",
+              "samples": 416,
+              "peakCnDb": 10.25,
+              "medianCnDb": 7.36,
+              "peakRxIfDbm": -30.5,
+              "noiseIfDbm": -33.67,
+              "lockedSamples": 416
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

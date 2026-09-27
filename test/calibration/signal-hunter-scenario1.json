@@ -1,0 +1,42 @@
+{
+  "scenarioId": "signal-hunter-scenario1",
+  "title": "First Fix",
+  "authored": {
+    "linkBudget": null,
+    "thresholds": [
+      {
+        "objectiveId": "detect-interference",
+        "condition": "signal-detected",
+        "groundStation": "PA-22",
+        "params": {
+          "minPower": -110
+        }
+      }
+    ]
+  },
+  "stations": [
+    {
+      "stationId": "PA-22",
+      "antennaIndex": 0,
+      "antennaConfig": "C_BAND_9M_VORTEK",
+      "lnbLoMHz": 5150,
+      "lnbNoiseTempK": 42.97,
+      "links": [
+        {
+          "satellite": "SENTRY-7",
+          "noradId": 71001,
+          "kind": "leo",
+          "pass": null,
+          "carriers": []
+        },
+        {
+          "satellite": "SENTRY-9",
+          "noradId": 71002,
+          "kind": "leo",
+          "pass": null,
+          "carriers": []
+        }
+      ]
+    }
+  ]
+}

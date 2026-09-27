@@ -183,8 +183,8 @@ test.describe('nats-eu Scenario 18 Full Completion', () => {
     await waitForObjectiveComplete(missionControl, 'Notch the Carrier', 60000);
   });
 
-  test('[log-the-first-event] records event 1 after LOS', async () => {
-    await advanceMissionClockToUtc(page, '2027-04-14T10:28:00Z');
+  test('[log-the-first-event] records event 1', async () => {
+    // No jump: the countdown is running, and a jump now costs what waiting would (phase 19.0a)
     await answerSystemQuiz(page, '10:23:30 carrier 11726 MHz RF');
     await dismissDialogIfPresent(page);
     await closeWorkingDocumentIfOpen(page);
@@ -224,8 +224,8 @@ test.describe('nats-eu Scenario 18 Full Completion', () => {
     await waitForObjectiveComplete(missionControl, 'It Followed the Plan');
   });
 
-  test('[file-the-regulator-report] assembles the package after LOS', async () => {
-    await advanceMissionClockToUtc(page, '2027-04-14T10:50:00Z');
+  test('[file-the-regulator-report] assembles the package', async () => {
+    // No jump: the countdown is running, and a jump now costs what waiting would (phase 19.0a)
     await answerSystemQuiz(page, 'Victim and interferer parameters');
     await dismissDialogIfPresent(page);
     await closeWorkingDocumentIfOpen(page);

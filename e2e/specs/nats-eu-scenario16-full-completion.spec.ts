@@ -129,8 +129,9 @@ test.describe('nats-eu Scenario 16 Full Completion', () => {
   });
 
   test('[shetland-alarm-sweep] reads the Shetland BUC alarm', async () => {
-    // The SH-02 BUC cooling fault trips at 12:01:30 on the mission clock
-    await advanceMissionClockToUtc(page, '2027-04-09T12:04:00Z');
+    // The SH-02 BUC cooling fault trips at 12:01:30 on the mission clock; the
+    // countdown is running, so jump only just past the trip (phase 19.0a)
+    await advanceMissionClockToUtc(page, '2027-04-09T12:01:45Z');
     await missionControl.selectGroundStation('SH-02');
     await missionControl.selectTab('dashboard');
     await answerSystemQuiz(page, 'The drive. A BUC dissipates heat');

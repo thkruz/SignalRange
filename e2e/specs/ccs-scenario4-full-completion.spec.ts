@@ -1,6 +1,6 @@
 import { expect, Page, test } from '@playwright/test';
 import { MissionControlPage } from '../pages/mission-control.page';
-import { advanceMissionClockToElapsed, answerStatusCheck, expectNoMissionFail, keyUpString, selectTxModem, setHpaEnabled } from '../utils/ccs-helpers';
+import { advanceMissionClockBy, advanceMissionClockToElapsed, answerStatusCheck, expectNoMissionFail, keyUpString, selectTxModem, setHpaEnabled } from '../utils/ccs-helpers';
 import { waitForObjectiveComplete } from '../utils/ham-sdr-helpers';
 import { closeWorkingDocumentIfOpen, sendCommandAndExpectAck } from '../utils/nats-eu-helpers';
 import { answerDecision, dismissDialogIfPresent, waitForSimulationReady } from '../utils/simulation-helpers';
@@ -9,8 +9,9 @@ import { answerDecision, dismissDialogIfPresent, waitForSimulationReady } from '
  * ccs Scenario 4 "State of Health" - full completion (phase 18 E).
  *
  * Second TALON-2 backup contact. Telemetry acquired with the battery green;
- * the wheel transient (T+240..300) read in yellow and named a transient; the
- * battery trend (heater stuck from T+420, yellow from ~T+680) read with the
+ * the wheel transient (20 s into 'the-transient', for 60 s) read in yellow and
+ * named a transient; the battery trend (heater stuck from 200 s into
+ * 'the-transient', yellow about 260 s later) read with the
  * heater state beside it; the DEGRADED call graded on soh-yellow-limit;
  * TCS-HTR-OFF ACKed inside the window; the verification read back in green
  * once the recovery ramp (240 s) has run; safe, log, complete.
@@ -79,8 +80,9 @@ test.describe('ccs Scenario 4 Full Completion', () => {
     await waitForObjectiveComplete(missionControl, 'Acquire Telemetry');
   });
 
-  test('[the-transient] wheel 1 reads yellow at T+4:00 and is named a transient', async () => {
-    await advanceMissionClockToElapsed(page, 245, 0);
+  test('[the-transient] wheel 1 reads yellow and is named a transient', async () => {
+    // Anchored to the objective opening (phase 19.0a): jump relative to now
+    await advanceMissionClockBy(page, 25);
     await missionControl.selectTab('telemetry');
     await expect(band('wheel-rpm')).toHaveText('YELLOW', { timeout: 15000 });
     await page.waitForTimeout(3000);
@@ -90,7 +92,7 @@ test.describe('ccs Scenario 4 Full Completion', () => {
   });
 
   test('[spot-the-trend] the battery reads yellow with the heater ON beside it', async () => {
-    await advanceMissionClockToElapsed(page, 720, 0);
+    await advanceMissionClockBy(page, 470);
     await missionControl.selectTab('telemetry');
     await expect(band('batt-t')).toHaveText('YELLOW', { timeout: 15000 });
     await expect(band('htr-state')).toHaveText('YELLOW');
@@ -129,7 +131,7 @@ test.describe('ccs Scenario 4 Full Completion', () => {
     await page.waitForTimeout(2500);
     await expect(band('htr-state')).toHaveText('NOMINAL', { timeout: 15000 });
     // The recovery ramp is 240 s of mission time: jump past it.
-    await advanceMissionClockToElapsed(page, 1100, 0);
+    await advanceMissionClockBy(page, 250);
     await missionControl.selectTab('telemetry');
     await expect(band('batt-t')).toHaveText('NOMINAL', { timeout: 20000 });
     await page.waitForTimeout(3000);

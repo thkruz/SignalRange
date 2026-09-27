@@ -196,7 +196,10 @@ export const natsEuScenario21Data: ScenarioData = {
         { id: 'evt-svc-poll-0900', timeS: 0, timestampLabel: '09:00 UTC', actor: 'svc-monitor', action: 'Telemetry poll', category: 'config', severity: 'info' },
         {
           id: 'evt-rotterdam-counter',
-          timeS: 1620,
+          // Phase 19.0a: the knock lands 25 s into 'spot-the-knock' (was a fixed
+          // 1620 s), so the replay always follows the operator's own HK-DUMP
+          startAfterObjectiveId: 'spot-the-knock',
+          timeS: 25,
           timestampLabel: '09:27 UTC',
           actor: 'svc-monitor',
           action: 'SAR-2 telemetry: 3 inbound TT&C frames rejected at the spacecraft - authentication counter stale (09:26:41-09:26:55)',
@@ -206,7 +209,8 @@ export const natsEuScenario21Data: ScenarioData = {
         },
         {
           id: 'evt-kg-replay-log',
-          timeS: 1632,
+          startAfterObjectiveId: 'spot-the-knock',
+          timeS: 37,
           timestampLabel: '09:27 UTC',
           actor: 'kg-01',
           action: 'KG-01 unit log: 3 frames observed on the return matching command traffic sent 09:25 (HK-DUMP), counter 0x2F13 stale, source not this station',
@@ -556,8 +560,7 @@ export const natsEuScenario21Data: ScenarioData = {
       id: 'spot-the-knock',
       nice: ['S0648', 'K0946'],
       title: 'Spot the Knock',
-      description:
-        "09:27. Two new lines in the log: Rotterdam's monitoring service and KG-01, ninety seconds after your ACK. Flag the monitoring entry first and read what the bird did.",
+      description: "09:27. Two new lines in the log: Rotterdam's monitoring service and KG-01, moments after your ACK. Flag the monitoring entry first and read what the bird did.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['first-command'],
       conditions: [
@@ -752,7 +755,7 @@ export const natsEuScenario21Data: ScenarioData = {
       id: 'safe-the-uplink',
       nice: ['S0421', 'K0645'],
       title: 'Safe the Uplink',
-      description: 'LOS 09:33:27. Chain down in the mirror order: HPA output off, BUC muted, carrier off.',
+      description: 'Chain down now, in the mirror order: HPA output off, BUC muted, carrier off. No need to wait for LOS (09:33:27).',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['second-command'],
       timeLimitSeconds: 2 * 60,

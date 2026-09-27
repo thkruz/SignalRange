@@ -38,7 +38,8 @@ import { createMeridianSar1, createMeridianSar2, type MeridianTle } from './sate
  * The carrier: settings.interferenceEvents 'gw-ku-carrier', terrestrial path,
  * emitter 22 km south-west of Galway, 11690 MHz (IF 1410, 4 MHz below the
  * SAR-1 video at 1414 and inside its 36 MHz occupied band), 1 MHz wide, on
- * from T+1530 s (02:25:30Z) for 510 s - through LOS to 02:34:00Z. Terrestrial
+ * for 510 s from 20 s after 'characterise-the-carrier' opens - on time, about
+ * 02:25:30Z, so it runs through LOS (phase 19.0a anchor). Terrestrial
  * emissions reach the antenna directly, so it stays on the analyzer after the
  * bird has set, and it never drifts: two diagnostic tells the characterise
  * objective quizzes. Shetland never hears it.
@@ -140,6 +141,10 @@ export const natsEuScenario17Data: ScenarioData = {
     // inside the SAR-1 video band, on from just after culmination through LOS.
     // Terrestrial path: received directly, no Doppler, still there after the
     // bird sets, never heard at Shetland.
+    // Phase 19.0a: it keys up 20 s after 'characterise-the-carrier' opens
+    // instead of at a fixed 1530 s. At 1530 it dented C/N under the 8 dB
+    // decode-sar1 needs, and anyone who reached the carrier objective after
+    // it went off the air (2040 s) was stuck.
     interferenceEvents: [
       {
         id: 'gw-ku-carrier',
@@ -149,7 +154,8 @@ export const natsEuScenario17Data: ScenarioData = {
         // sidelobe puts it near the video's level at the feed: a plain dent.
         power: 60,
         polarization: 'V',
-        startTime: 1530,
+        startAfterObjectiveId: 'characterise-the-carrier',
+        startTime: 20,
         duration: 510,
         periodSeconds: 510,
         onSeconds: 510,
@@ -225,7 +231,10 @@ export const natsEuScenario17Data: ScenarioData = {
         { id: 'evt-svc-poll-0200', timeS: 0, timestampLabel: '02:00 UTC', actor: 'svc-monitor', action: 'Telemetry poll', category: 'config', severity: 'info' },
         {
           id: 'evt-config-export',
-          timeS: 1980,
+          // Phase 19.0a: logged 25 s into 'flag-the-config-export' (was a fixed
+          // 1980 s, which timed out anyone who opened the objective before 1800)
+          startAfterObjectiveId: 'flag-the-config-export',
+          timeS: 25,
           timestampLabel: '02:33 UTC',
           actor: 'svc-legacy',
           action: 'Configuration read: full station configuration exported (antenna, LNB LO, modem plan, contact schedule) - no change ticket',

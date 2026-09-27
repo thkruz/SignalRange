@@ -215,7 +215,17 @@ export const natsEuScenario16Data: ScenarioData = {
         params: { startTemperatureC: 73, deltaC: 30 },
         label: 'SH-02 BUC cooling fan alarm',
       },
-      { id: 'gw-gnss-outage', groundStationId: 'GW-01', target: 'gpsdo-gnss-loss', startTime: 1120, duration: 500 },
+      // Phase 19.0a: the signal returns 45 s after 'confirm-galway-reference-recovered'
+      // opens, not at a fixed 1620 s, which a fast player could time out waiting for
+      {
+        id: 'gw-gnss-outage',
+        groundStationId: 'GW-01',
+        target: 'gpsdo-gnss-loss',
+        startTime: 1120,
+        duration: 500,
+        endAfterObjectiveId: 'confirm-galway-reference-recovered',
+        endOffsetS: 45,
+      },
     ],
   },
   objectives: [

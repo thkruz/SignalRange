@@ -1,5 +1,6 @@
 import { expect, Page, test } from '@playwright/test';
 import { MissionControlPage } from '../pages/mission-control.page';
+import { advanceMissionClockBy } from '../utils/ccs-helpers';
 import { advanceMissionClockToUtc, domClick, waitForObjectiveComplete } from '../utils/ham-sdr-helpers';
 import {
   answerSystemQuiz,
@@ -190,8 +191,8 @@ test.describe('nats-eu Scenario 20 Full Completion', () => {
     await waitForObjectiveComplete(missionControl, 'Report It');
   });
 
-  test('[probe-the-sky] GNSS back up after LOS: the offset resumes walking, switch back down', async () => {
-    await advanceMissionClockToUtc(page, '2027-04-19T05:32:00Z');
+  test('[probe-the-sky] GNSS back up: the offset resumes walking, switch back down', async () => {
+    // No jump: the countdown is running, and a jump now costs what waiting would (phase 19.0a)
     await missionControl.selectTab('gps-timing');
     const frozen = await readOffsetUs();
     await setSwitch(page, '#gpsdo-gnss-switch', true);
@@ -208,8 +209,9 @@ test.describe('nats-eu Scenario 20 Full Completion', () => {
     await expect(page.locator('#gpsdo-holdover-badge').first()).toHaveText('ACTIVE', { timeout: 10000 });
   });
 
-  test('[all-clear] second probe after 05:36: the offset holds still on GNSS, leave it up', async () => {
-    await advanceMissionClockToUtc(page, '2027-04-19T05:37:00Z');
+  test('[all-clear] second probe after the spoof ends: the offset holds still on GNSS, leave it up', async () => {
+    // The spoof ends 150 s after this objective opens (end-anchored, phase 19.0a)
+    await advanceMissionClockBy(page, 160);
     await missionControl.selectTab('gps-timing');
     const frozen = await readOffsetUs();
     await setSwitch(page, '#gpsdo-gnss-switch', true);

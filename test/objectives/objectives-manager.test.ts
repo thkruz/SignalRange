@@ -1,5 +1,6 @@
 import type { Milliseconds } from 'ootk';
 import { vi } from 'vitest';
+import { CommandingManager } from '../../src/commanding/commanding-manager';
 import { EventBus } from '../../src/events/event-bus';
 import { Events, QuizCompletedData, QuizPassedData } from '../../src/events/events';
 import { DecisionManager } from '../../src/modal/decision-manager';
@@ -509,6 +510,25 @@ describe('ObjectivesManager', () => {
       expect(manager.getScenarioTimeRemaining()).toBe(300);
     });
 
+    it('window.advanceClock skips the clock and burns running countdowns, as waiting would', () => {
+      const objectives = [
+        createTestObjective({
+          id: 'timed-obj',
+          timeLimitSeconds: 120,
+          timerStartTrigger: 'on-scenario-load',
+        }),
+      ];
+      const failedCallback = vi.fn();
+      eventBus.on(Events.OBJECTIVE_FAILED, failedCallback);
+      ObjectivesManager.initialize(objectives);
+      const before = SimClock.scenarioElapsedMs();
+
+      (window as unknown as { advanceClock: (ms: number) => void }).advanceClock(4_000_000);
+
+      expect(SimClock.scenarioElapsedMs() - before).toBe(4_000_000);
+      expect(failedCallback).toHaveBeenCalledWith(expect.objectContaining({ objectiveId: 'timed-obj', reason: 'timeout' }));
+    });
+
     it('should report a running objective timer so a skip can be blocked', () => {
       const objectives = [
         createTestObjective({
@@ -524,6 +544,47 @@ describe('ObjectivesManager', () => {
       manager.stopAllTimers();
 
       expect(manager.hasRunningObjectiveTimer()).toBe(false);
+    });
+  });
+
+  describe('command window close', () => {
+    const commandObjective = (id: string) =>
+      createTestObjective({ id, conditions: [{ type: 'command-acknowledged', description: 'HK-DUMP ACK', mustMaintain: false, params: { commandId: 'HK-DUMP' } }] });
+
+    const stubCommanding = (link: { closed: boolean; acked: boolean }) => {
+      vi.spyOn(CommandingManager, 'isInitialized').mockReturnValue(true);
+      vi.spyOn(CommandingManager, 'getInstance').mockReturnValue({
+        hasWindowClosed: () => link.closed,
+        isCommandAcknowledged: () => link.acked,
+      } as unknown as CommandingManager);
+    };
+
+    afterEach(() => vi.restoreAllMocks());
+
+    it('fails a live objective still waiting on a command once the window closes', () => {
+      const link = { closed: false, acked: false };
+      stubCommanding(link);
+      const failedCallback = vi.fn();
+      eventBus.on(Events.OBJECTIVE_FAILED, failedCallback);
+      ObjectivesManager.initialize([commandObjective('first-command')]);
+
+      eventBus.emit(Events.UPDATE, 16);
+      expect(failedCallback).not.toHaveBeenCalled();
+
+      link.closed = true;
+      eventBus.emit(Events.UPDATE, 16);
+      expect(failedCallback).toHaveBeenCalledWith(expect.objectContaining({ objectiveId: 'first-command', reason: 'window-closed' }));
+    });
+
+    it('leaves an objective whose command already ACKed, and objectives that are not live yet', () => {
+      const link = { closed: true, acked: true };
+      stubCommanding(link);
+      const failedCallback = vi.fn();
+      eventBus.on(Events.OBJECTIVE_FAILED, failedCallback);
+      ObjectivesManager.initialize([commandObjective('acked'), { ...commandObjective('later'), prerequisiteObjectiveIds: ['never'] }]);
+
+      eventBus.emit(Events.UPDATE, 16);
+      expect(failedCallback).not.toHaveBeenCalled();
     });
   });
 

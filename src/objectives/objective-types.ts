@@ -96,6 +96,7 @@ export type ConditionType =
   // Fault injection conditions
   | 'fault-active' // Check if specific fault is currently injected
   | 'fault-cleared' // Check if specific fault has been cleared
+  | 'hardware-fault-tripped' // A scheduled hardwareFaultEvents entry has tripped (gate an objective on the event, not the clock)
   // Geolocation conditions (Campaign 5)
   | 'geolocation-measurements-collected' // >= N TDOA/FDOA captures collected
   | 'geolocation-fix-accuracy' // Computed fix within N km of the emitter truth
@@ -451,7 +452,7 @@ export interface ConditionParams {
   minMarginDb?: number;
   /** For command-acknowledged: specific command id to require (any acked command if omitted) */
   commandId?: string;
-  /** For contact-assigned / ephemeris-updated / security-event-acknowledged: target entity id */
+  /** For contact-assigned / ephemeris-updated / security-event-acknowledged / hardware-fault-tripped: target entity id */
   eventId?: string;
   /** For contact-assigned: pass/contact id that must be allocated */
   contactId?: string;

@@ -564,15 +564,18 @@ describe('Campaign 3: scenario registration', () => {
     const settings = hamSdrScenario5Data.settings;
 
     // The gnssThreat clock walk and the spoofer's over-the-air carrier are
-    // the same fiction - their windows must agree
-    expect(settings.gnssThreat?.spoofStartS).toBe(420);
-    expect(settings.gnssThreat?.spoofEndS).toBe(900);
+    // the same fiction - their windows must agree, anchored to the same
+    // objective (phase 19.0a)
+    expect(settings.gnssThreat?.startAfterObjectiveId).toBe('spot-the-spoofer');
+    expect(settings.gnssThreat?.spoofStartS).toBe(10);
+    expect(settings.gnssThreat?.spoofEndS).toBe(490);
 
     const spoofer = settings.interferenceEvents?.[0];
     expect(spoofer?.path).toBe('terrestrial');
     expect(spoofer?.emitter).toBeDefined();
-    expect(spoofer?.startTime).toBe(420);
-    expect((spoofer?.startTime ?? 0) + (spoofer?.duration ?? 0)).toBe(900);
+    expect(spoofer?.startAfterObjectiveId).toBe('spot-the-spoofer');
+    expect(spoofer?.startTime).toBe(10);
+    expect((spoofer?.startTime ?? 0) + (spoofer?.duration ?? 0)).toBe(490);
     // Terrestrial = received over the air, narrow and strong vs the 2 MHz hump
     expect(spoofer?.frequency).toBe(1575.42e6);
     expect(spoofer?.bandwidth).toBeLessThan(2e6);

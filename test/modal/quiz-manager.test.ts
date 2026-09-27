@@ -489,6 +489,29 @@ describe('QuizManager', () => {
     });
   });
 
+  describe('two objectives with quizzes at once', () => {
+    it('points the pending indicator at the other objective once one quiz is done', () => {
+      // Side-by-side objectives (nats-eu S14): the fade's quiz registers after the decode's
+      quizManager.registerQuiz('decode', 2, 'Decode?', ['A', 'B'], 0);
+      quizManager.registerQuiz('fade', 3, 'Fade?', ['A', 'B'], 0);
+
+      eventBus.emit(Events.QUIZ_PASSED, { objectiveId: 'fade', conditionIndex: 3, attempts: 1, pointsDeducted: 0 });
+      eventBus.emit(Events.QUIZ_COMPLETED, { objectiveId: 'fade', conditionIndex: 3, totalAttempts: 1, totalPointsDeducted: 0 });
+
+      expect(quizManager.hasPendingQuiz()).toBe(true);
+      expect(quizManager.getPendingQuizKey()).toBe('decode:2');
+    });
+
+    it('leaves nothing pending when every quiz is done', () => {
+      quizManager.registerQuiz('fade', 3, 'Fade?', ['A', 'B'], 0);
+
+      eventBus.emit(Events.QUIZ_PASSED, { objectiveId: 'fade', conditionIndex: 3, attempts: 1, pointsDeducted: 0 });
+      eventBus.emit(Events.QUIZ_COMPLETED, { objectiveId: 'fade', conditionIndex: 3, totalAttempts: 1, totalPointsDeducted: 0 });
+
+      expect(quizManager.hasPendingQuiz()).toBe(false);
+    });
+  });
+
   describe('Event: QUIZ_DISMISSED', () => {
     it('should keep quiz as pending after dismissal', () => {
       quizManager.registerQuiz('objective-1', 0, 'Question?', ['A', 'B'], 0);

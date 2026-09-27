@@ -270,6 +270,13 @@ export class CommandingManager {
     return this.state_.commands.some((c) => c.status === 'acked');
   }
 
+  /** Whether the command window has closed for good (a window with no end never does) */
+  hasWindowClosed(atElapsedS?: number): boolean {
+    const elapsed = atElapsedS ?? (missionNowMs() - this.missionStartTime_) / 1000;
+
+    return this.config_.windowEndS !== undefined && elapsed > this.config_.windowEndS;
+  }
+
   private isWithinWindow_(elapsedS: number): boolean {
     if (this.config_.windowStartS !== undefined && elapsedS < this.config_.windowStartS) {
       return false;

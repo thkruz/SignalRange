@@ -1,6 +1,6 @@
 import { expect, Page, test } from '@playwright/test';
 import { MissionControlPage } from '../pages/mission-control.page';
-import { advanceMissionClockToElapsed } from '../utils/ccs-helpers';
+import { advanceMissionClockBy } from '../utils/ccs-helpers';
 import {
   answerPendingStatusChecks,
   answerStatusCheck,
@@ -26,9 +26,9 @@ import { dismissDialogIfPresent, waitForSimulationReady } from '../utils/simulat
  *
  * The first carrier (6018 MHz -> 1357 MHz IF, from a site near Clayton NM)
  * is found, captured six times, fixed inside 25 km, and briefed to the team.
- * Its envelope closes at T+1520; the clock is jumped past it, the cold-trail
- * call is made (the objective is gated on interference-event-ended), and at
- * T+1800 the second carrier (6001 MHz -> 1374 MHz IF, ~80 km south-west)
+ * Its envelope closes 60 s after the cold-trail objective opens (anchored,
+ * phase 19.0a); the clock is jumped past it, the cold-trail call is made (the
+ * objective is gated on interference-event-ended), and 280 s after that the second carrier (6001 MHz -> 1374 MHz IF, ~80 km south-west)
  * appears. The console is CLEARed, retuned, the second carrier captured and
  * fixed on its own, and the mobility and current-fix fields are filed.
  *
@@ -44,8 +44,9 @@ const SCENARIO_ID = 'signal-hunter-scenario3';
 
 const DUTY: DutyCycle = { onSeconds: 36, periodSeconds: 120 };
 const CAPTURE_WINDOW_S = 12;
-const FIRST = { uplinkMHz: 6018, bwMHz: 2.5, emitter: { lat: 36.45, lon: -103.18 }, endsAtS: 1520 };
-const SECOND = { uplinkMHz: 6001, bwMHz: 2.5, emitter: { lat: 36.02, lon: -103.9 }, startsAtS: 1800 };
+/** Offsets from 'the-trail-goes-cold' opening: clayton-a ends at +60, clayton-b starts at +340 */
+const FIRST = { uplinkMHz: 6018, bwMHz: 2.5, emitter: { lat: 36.45, lon: -103.18 }, endsAfterTrailS: 60 };
+const SECOND = { uplinkMHz: 6001, bwMHz: 2.5, emitter: { lat: 36.02, lon: -103.9 }, startsAfterTrailS: 340 };
 
 const log = (line: string): void => console.log(`[signal-hunter-3] ${line}`);
 
@@ -134,8 +135,8 @@ test.describe('Signal Hunter Scenario 3 Full Completion', () => {
   });
 
   test('[the-trail-goes-cold] the first carrier stops; the team is held short', async () => {
-    // Past the first carrier's envelope: two silent cycles and change
-    await advanceMissionClockToElapsed(page, FIRST.endsAtS + 250, 0);
+    // Past the first carrier's envelope (the objective just opened)
+    await advanceMissionClockBy(page, FIRST.endsAfterTrailS + 10);
     await missionControl.selectTab('rx-analysis');
     await page.waitForTimeout(1500);
     await answerStatusCheck(page, 'Tell the team to hold short and stand by');
@@ -150,7 +151,8 @@ test.describe('Signal Hunter Scenario 3 Full Completion', () => {
   });
 
   test('[find-carrier-b] observes the new carrier above the service carrier', async () => {
-    await advanceMissionClockToElapsed(page, SECOND.startsAtS + 2, 0);
+    // The previous step left the clock at least FIRST.endsAfterTrailS + 10 past the trail opening
+    await advanceMissionClockBy(page, SECOND.startsAfterTrailS - FIRST.endsAfterTrailS);
     await missionControl.selectTab('rx-analysis');
     await ensureOnWindowStart(ctxB);
     await missionControl.selectTab('rx-analysis');

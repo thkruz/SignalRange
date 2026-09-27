@@ -72,6 +72,17 @@ export async function advanceMissionClockToElapsed(page: Page, targetS: number, 
 }
 
 /**
+ * Skip the clock forward by `deltaS` from now. For events anchored to an
+ * objective (phase 19.0a), whose mission-elapsed time depends on when the
+ * spec reached it. Burns running objective countdowns, as waiting would.
+ */
+export async function advanceMissionClockBy(page: Page, deltaS: number): Promise<void> {
+  await page.waitForFunction(() => typeof (window as any).advanceClock === 'function');
+  await page.evaluate((ms) => (window as any).advanceClock(ms), deltaS * 1000);
+  await page.waitForTimeout(2500);
+}
+
+/**
  * Slew an aperture in MANUAL mode from the ACU tab: click the fine-adjust
  * step buttons to stage the delta, then APPLY. Resolves once the staged
  * change is applied - the pedestal keeps slewing at maxRate_deg_s after that.

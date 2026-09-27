@@ -44,11 +44,14 @@ describe('signal-hunter scenario 3: one emitter, two carriers, two places', () =
   });
 
   it('the first carrier stops, then the second starts elsewhere, far enough that a mixed solve is neither', () => {
-    const firstEnd = first.startTime + first.duration;
+    // Both hinge on the cold-trail objective (phase 19.0a): the first carrier
+    // runs until it opens, the second comes up later relative to the same moment
+    expect(first.endAfterObjectiveId).toBe('the-trail-goes-cold');
+    expect(second.startAfterObjectiveId).toBe('the-trail-goes-cold');
+    const firstEndAfterTrail = first.endOffsetS ?? 0;
 
-    expect(second.startTime).toBeGreaterThan(firstEnd + 2 * first.periodSeconds); // two silent cycles before it returns
-    expect(firstEnd).toBeGreaterThan(20 * 60); // room to detect, capture six, fix, and brief the team
-    expect(second.startTime + second.duration).toBeGreaterThan(90 * 60);
+    expect(second.startTime).toBeGreaterThan(firstEndAfterTrail + 2 * first.periodSeconds); // two silent cycles before it returns
+    expect(second.duration).toBeGreaterThan(90 * 60);
     const displacementKm = greatCircleKm({ lat: first.emitter!.latitude, lon: first.emitter!.longitude }, { lat: second.emitter!.latitude, lon: second.emitter!.longitude });
 
     expect(displacementKm).toBeGreaterThan(60);

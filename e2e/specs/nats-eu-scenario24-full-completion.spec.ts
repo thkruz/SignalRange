@@ -1,5 +1,6 @@
 import { expect, Page, test } from '@playwright/test';
 import { MissionControlPage } from '../pages/mission-control.page';
+import { advanceMissionClockBy } from '../utils/ccs-helpers';
 import { advanceMissionClockToUtc, domClick, waitForObjectiveComplete } from '../utils/ham-sdr-helpers';
 import {
   answerPendingQuizFrom,
@@ -201,13 +202,15 @@ test.describe('nats-eu Scenario 24 Full Completion', () => {
   });
 
   test('[load-the-ephemeris] loads SAR-2 post-burn elements before the Shetland pass', async () => {
-    await advanceMissionClockToUtc(page, '2027-04-27T03:29:40Z');
+    // No jump: the countdown is running, and a jump now costs what waiting would (phase 19.0a)
     await loadEphemeris(page, missionControl, 'SAR2-CAM2');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Load the Post-Burn Elements');
   });
 
   test('[shetland-spot-the-walk] Shetland walking, Galway clean', async () => {
+    // Untimed objective: waiting here for the spoof (from 03:25) is legal
+    await advanceMissionClockToUtc(page, '2027-04-27T03:29:40Z');
     await missionControl.selectGroundStation('SH-02');
     await missionControl.selectTab('gps-timing');
     await expect.poll(readOffsetUs, { timeout: 30000 }).toBeGreaterThan(20);
@@ -280,7 +283,8 @@ test.describe('nats-eu Scenario 24 Full Completion', () => {
   });
 
   test('[call-the-denial] PLD-SAFE NAKs into the jammer; reads console and key; calls the denial', async () => {
-    await advanceMissionClockToUtc(page, '2027-04-27T03:55:20Z');
+    // The jammer keys 10 s after this objective opens (anchored, phase 19.0a)
+    await advanceMissionClockBy(page, 15);
     await sendCommandAndExpectNak(page, missionControl, 'PLD-SAFE', 'Uplink denied - carrier jammed');
     await page.waitForTimeout(3000);
     await missionControl.selectTab('tx-chain');
@@ -302,8 +306,8 @@ test.describe('nats-eu Scenario 24 Full Completion', () => {
     await waitForObjectiveComplete(missionControl, 'Hop and Deliver');
   });
 
-  test('[safe-the-network] chains Galway down after LOS', async () => {
-    await advanceMissionClockToUtc(page, '2027-04-27T04:01:50Z');
+  test('[safe-the-network] chains Galway down', async () => {
+    // No jump: the countdown is running, and a jump now costs what waiting would (phase 19.0a)
     await disableHpa(page, missionControl);
     await setSwitch(page, '#buc-mute', true);
     await setSwitch(page, '#tx-transmit-switch', false);

@@ -15,6 +15,7 @@
 
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
+import { ObjectiveAnchors } from '@app/objectives/objective-anchor';
 import { ScenarioManager } from '@app/scenario-manager';
 import { SignalOrigin } from '@app/signal-origin';
 import { missionNowMs } from '@app/simulation/mission-clock';
@@ -54,8 +55,17 @@ export interface InterferenceEventConfig {
   power: number;
   /** Polarization. Transponder path must match the victim transponder to route */
   polarization: 'H' | 'V' | 'RHCP' | 'LHCP';
-  /** Seconds since mission start when the event envelope opens */
+  /** Seconds since mission start (or since startAfterObjectiveId is live) when the envelope opens */
   startTime: number;
+  /** Anchor the envelope to an objective (see objective-anchor.ts) */
+  startAfterObjectiveId?: string;
+  /**
+   * Close the envelope endOffsetS after this objective is live, instead of
+   * after `duration` (see objective-anchor.ts). Until then it stays open.
+   */
+  endAfterObjectiveId?: string;
+  /** Seconds after endAfterObjectiveId is live that the envelope closes (default 0) */
+  endOffsetS?: number;
   /** Total envelope duration (s); on/off windows repeat inside it */
   duration: number;
   /** Window cycle period (s) */
@@ -97,6 +107,7 @@ export class InterferenceManager {
 
   private events_: InterferenceEventConfig[] = [];
   private missionStartTime_ = 0;
+  private anchors_: ObjectiveAnchors;
   /** Currently-injected signalIds (subset of events) */
   private readonly activeSignalIds_ = new Set<string>();
   /** Schedule overrides by event id (see forceEvent) */
@@ -107,6 +118,7 @@ export class InterferenceManager {
     this.missionStartTime_ = missionNowMs();
     this.boundUpdateHandler_ = this.update_.bind(this);
     this.events_ = ScenarioManager.getInstance().settings.interferenceEvents ?? [];
+    this.anchors_ = new ObjectiveAnchors(this.events_.flatMap((e) => [e.startAfterObjectiveId, e.endAfterObjectiveId]));
     EventBus.getInstance().on(Events.UPDATE, this.boundUpdateHandler_);
   }
 
@@ -148,8 +160,8 @@ export class InterferenceManager {
     if (!event) return false;
     const forced = this.forced_.get(event.id);
     if (forced !== undefined) return forced;
-    const elapsed = (missionNowMs() - this.missionStartTime_) / 1000;
-    return elapsed >= event.startTime && elapsed < event.startTime + event.duration;
+    const elapsed = this.elapsedS_();
+    return elapsed >= this.startS(event) && elapsed < this.endS(event);
   }
 
   /**
@@ -160,8 +172,7 @@ export class InterferenceManager {
     const event = this.events_.find((e) => e.id === eventId);
     if (!event) return false;
     if (this.forced_.get(event.id) === true) return false;
-    const elapsed = (missionNowMs() - this.missionStartTime_) / 1000;
-    return elapsed >= event.startTime + event.duration;
+    return this.elapsedS_() >= this.endS(event);
   }
 
   isAnyEventInEnvelope(): boolean {
@@ -233,14 +244,33 @@ export class InterferenceManager {
     return `INTERFERER-${eventId}`;
   }
 
+  /** Mission-elapsed second the event's envelope opens (Infinity while its anchor waits) */
+  startS(event: InterferenceEventConfig): number {
+    return this.anchors_.atS(event.startTime, event.startAfterObjectiveId);
+  }
+
+  /** Mission-elapsed second the envelope closes (Infinity while an anchor waits) */
+  endS(event: InterferenceEventConfig): number {
+    if (event.endAfterObjectiveId !== undefined) {
+      return this.anchors_.atS(event.endOffsetS ?? 0, event.endAfterObjectiveId);
+    }
+    return this.startS(event) + event.duration;
+  }
+
+  private elapsedS_(): number {
+    return (missionNowMs() - this.missionStartTime_) / 1000;
+  }
+
   private update_(): void {
-    const elapsed = (missionNowMs() - this.missionStartTime_) / 1000;
+    const elapsed = this.elapsedS_();
+    this.anchors_.poll(elapsed);
     const sim = SimulationManager.getInstance();
 
     for (const event of this.events_) {
       const signalId = InterferenceManager.signalIdFor(event.id);
-      const inEnvelope = elapsed >= event.startTime && elapsed < event.startTime + event.duration;
-      const phase = (elapsed - event.startTime) % event.periodSeconds;
+      const start = this.startS(event);
+      const inEnvelope = elapsed >= start && elapsed < this.endS(event);
+      const phase = (elapsed - start) % event.periodSeconds;
       const shouldTransmit = this.forced_.get(event.id) ?? (inEnvelope && phase < event.onSeconds);
       const isInjected = this.activeSignalIds_.has(signalId);
 

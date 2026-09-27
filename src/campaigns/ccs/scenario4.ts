@@ -26,11 +26,14 @@ import { cobalt4Satellite, talon2Satellite } from './satellites';
  * sent outside the window, or to the wrong mnemonic, leaves the channel
  * climbing and the verification unmet.
  *
- * Timeline (mission elapsed): window T+300 .. T+2400. Wheel transient
- * T+240 .. T+300 (step to 5200 rpm, yellow). Battery heater from T+420: 21 to
- * 38 degC over 400 s (yellow at 32 from ~T+680; red at 40 never reached
- * inside the window if the heater is commanded off by ~T+900). Recovery ramps
- * back to nominal over 240 s from the ACK.
+ * Timeline (mission elapsed): window T+300 .. T+2400. Both excursions are
+ * anchored to 'the-transient' (phase 19.0a), so a player who reaches the
+ * Telemetry tab late still sees them, and the heater cannot push batt-t out
+ * of green before 'acquire-telemetry' reads it. Wheel transient 20 s after
+ * the objective opens, for 60 s (step to 5200 rpm, yellow). Battery heater
+ * 200 s after it opens (on time, T+420): 21 to 38 degC over 400 s (yellow at
+ * 32 about 260 s in; red at 40 never reached). Recovery ramps back to nominal
+ * over 240 s from the ACK.
  *
  * NICE Framework Alignment:
  * Primary Codes:
@@ -130,13 +133,31 @@ export const ccsScenario4Data: ScenarioData = {
       channels: TALON2_CHANNELS,
       excursions: [
         // The transient: wheel 1 spikes for a minute and comes back on its own.
-        { id: 'wheel-transient', channelId: 'wheel-rpm', startTime: 240, duration: 60, rampToValue: 5200, label: 'Reaction wheel 1 transient' },
+        {
+          id: 'wheel-transient',
+          channelId: 'wheel-rpm',
+          startAfterObjectiveId: 'the-transient',
+          startTime: 20,
+          duration: 60,
+          rampToValue: 5200,
+          label: 'Reaction wheel 1 transient',
+        },
         // The trend: the eclipse-exit heater stays on until commanded off.
-        { id: 'htr-stuck-state', channelId: 'htr-state', startTime: 420, rampToValue: 1, endsOnCommandId: 'TCS-HTR-OFF', recoverySeconds: 0, label: 'Battery heater ON' },
+        {
+          id: 'htr-stuck-state',
+          channelId: 'htr-state',
+          startAfterObjectiveId: 'the-transient',
+          startTime: 200,
+          rampToValue: 1,
+          endsOnCommandId: 'TCS-HTR-OFF',
+          recoverySeconds: 0,
+          label: 'Battery heater ON',
+        },
         {
           id: 'htr-stuck',
           channelId: 'batt-t',
-          startTime: 420,
+          startAfterObjectiveId: 'the-transient',
+          startTime: 200,
           rampToValue: 38,
           rampSeconds: 400,
           endsOnCommandId: 'TCS-HTR-OFF',
@@ -234,7 +255,7 @@ export const ccsScenario4Data: ScenarioData = {
       id: 'the-transient',
       nice: ['S0648', 'K1032'],
       title: 'Transient on Wheel 1',
-      description: 'At T+4:00 reaction wheel 1 jumps into yellow. Read it on the Telemetry tab while it is there, watch it come back, and say what it was.',
+      description: 'Any moment now reaction wheel 1 jumps into yellow. Read it on the Telemetry tab while it is there, watch it come back, and say what it was.',
       groundStation: 'SS-01',
       prerequisiteObjectiveIds: ['acquire-telemetry'],
       conditions: [
@@ -271,7 +292,8 @@ export const ccsScenario4Data: ScenarioData = {
       id: 'spot-the-trend',
       nice: ['S0648', 'T0431'],
       title: 'Spot the Trend',
-      description: 'From T+7:00 the battery temperature climbs and does not turn over. Read it in yellow on the Telemetry tab, with the heater state channel next to it.',
+      description:
+        'A few minutes after the wheel, the battery temperature climbs and does not turn over. Read it in yellow on the Telemetry tab, with the heater state channel next to it.',
       groundStation: 'SS-01',
       prerequisiteObjectiveIds: ['the-transient'],
       conditions: [

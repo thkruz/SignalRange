@@ -541,7 +541,10 @@ export const natsEuScenario14Data: ScenarioData = {
       description:
         'Select GW-01 while its own SAR-2 pass is still up (until 11:22). The pedestal is program-track locked on the bird; read the C/N the rain has left it and do the arithmetic.',
       groundStation: 'GW-01',
-      prerequisiteObjectiveIds: ['decode-the-collect-from-shetland'],
+      // Phase 19.0a: opens beside the Shetland decode, not after it. Chained,
+      // a player who finished the decode after Galway's LOS (1323 s) had no
+      // pass left to measure the fade on.
+      prerequisiteObjectiveIds: ['acquire-sar2-from-shetland'],
       conditions: [
         {
           type: 'ground-station-selected',
@@ -595,7 +598,7 @@ export const natsEuScenario14Data: ScenarioData = {
       title: 'Log the Collect',
       description: 'Write the collect into the weather log with the decision that made it: which site, why, and what Galway measured in the rain.',
       groundStation: 'GW-01',
-      prerequisiteObjectiveIds: ['observe-the-galway-fade'],
+      prerequisiteObjectiveIds: ['decode-the-collect-from-shetland', 'observe-the-galway-fade'],
       timeLimitSeconds: 2 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [

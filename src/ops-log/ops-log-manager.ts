@@ -216,7 +216,8 @@ export class OpsLogManager {
    * sim-minutes apart, so tests jump the clock instead of waiting. Orbits and
    * every mission-elapsed schedule move together (one clock); objective
    * countdowns do not - they are decremented state, see
-   * ObjectivesManager.applyTimeSkip().
+   * ObjectivesManager.applyTimeSkip(). A scenario with objectives replaces
+   * the hook with one that burns them too (ObjectivesManager constructor).
    */
   advanceClock(deltaMs: number): void {
     if (!Number.isFinite(deltaMs) || deltaMs <= 0) {

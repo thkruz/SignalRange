@@ -1,5 +1,6 @@
 import { expect, Page, test } from '@playwright/test';
 import { MissionControlPage } from '../pages/mission-control.page';
+import { advanceMissionClockBy } from '../utils/ccs-helpers';
 import { advanceMissionClockToUtc, domClick, waitForObjectiveComplete } from '../utils/ham-sdr-helpers';
 import {
   answerSystemQuiz,
@@ -189,7 +190,8 @@ test.describe('nats-eu Scenario 23 Full Completion', () => {
   });
 
   test('[call-the-denial] PLD-SAFE NAKs into the jammer; reads the console and the reference; calls the denial', async () => {
-    await advanceMissionClockToUtc(page, '2027-04-24T21:24:45Z');
+    // The jammer keys 10 s after this objective opens (anchored, phase 19.0a)
+    await advanceMissionClockBy(page, 15);
     await sendCommandAndExpectNak(page, missionControl, 'PLD-SAFE', 'Uplink denied - carrier jammed');
     await page.waitForTimeout(3000); // TT&C console on screen so the read latches
     await missionControl.selectTab('gps-timing');
@@ -219,8 +221,8 @@ test.describe('nats-eu Scenario 23 Full Completion', () => {
     await waitForObjectiveComplete(missionControl, 'Keep the Tasking Alive');
   });
 
-  test('[safe-and-debrief] chains down after LOS, writes the debrief line and completes', async () => {
-    await advanceMissionClockToUtc(page, '2027-04-24T21:31:50Z');
+  test('[safe-and-debrief] chains down, writes the debrief line and completes', async () => {
+    // No jump: the countdown is running, and a jump now costs what waiting would (phase 19.0a)
     await disableHpa(page, missionControl);
     await setSwitch(page, '#buc-mute', true);
     await setSwitch(page, '#tx-transmit-switch', false);

@@ -612,7 +612,7 @@ export const natsEuScenario10Data: ScenarioData = {
       id: 'safe-the-uplink',
       nice: ['S0421', 'K0645', 'S0675'],
       title: 'Safe the Uplink',
-      description: 'LOS 15:44:03. Chain down in the mirror order: HPA output off, BUC muted, carrier off.',
+      description: 'Chain down now, in the mirror order: HPA output off, BUC muted, carrier off. No need to wait for LOS (15:44:03).',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['pull-the-imagery'],
       timeLimitSeconds: 2 * 60,

@@ -161,6 +161,11 @@ export interface SimulationSettings {
     polarization: 'H' | 'V' | 'RHCP' | 'LHCP';
     /** Seconds since mission start when the envelope opens */
     startTime: number;
+    /** Count startTime from this objective going live, not mission start (objective-anchor.ts) */
+    startAfterObjectiveId?: string;
+    /** End endOffsetS after this objective goes live, instead of after duration (objective-anchor.ts) */
+    endAfterObjectiveId?: string;
+    endOffsetS?: number;
     /** Envelope duration (s); on/off windows repeat inside it */
     duration: number;
     /** Window cycle period (s) */
@@ -255,6 +260,11 @@ export interface SimulationSettings {
     rfFrontEndIndex?: number;
     /** Seconds since mission start when the fault trips */
     startTime: number;
+    /** Count startTime from this objective going live, not mission start (objective-anchor.ts) */
+    startAfterObjectiveId?: string;
+    /** End endOffsetS after this objective goes live, instead of after duration (objective-anchor.ts) */
+    endAfterObjectiveId?: string;
+    endOffsetS?: number;
     /** Seconds until a timed fault clears itself; absent = until the operator acts */
     duration?: number;
     params?: {
@@ -429,6 +439,8 @@ export interface SimulationSettings {
     events: Array<{
       id: string;
       timeS?: number;
+      /** Count timeS from this objective going live, not mission start (objective-anchor.ts) */
+      startAfterObjectiveId?: string;
       timestampLabel?: string;
       actor: string;
       action: string;
@@ -485,6 +497,8 @@ export interface SimulationSettings {
       id: string;
       channelId: string;
       startTime: number;
+      /** Count startTime from this objective going live, not mission start (objective-anchor.ts) */
+      startAfterObjectiveId?: string;
       duration?: number;
       rampToValue: number;
       rampSeconds?: number;
@@ -500,6 +514,11 @@ export interface SimulationSettings {
     groundStationIds?: string[];
     spoofStartS: number;
     spoofEndS?: number;
+    /** Count spoofStartS/spoofEndS from this objective going live (objective-anchor.ts) */
+    startAfterObjectiveId?: string;
+    /** End the spoof endOffsetS after this objective goes live, instead of at spoofEndS */
+    endAfterObjectiveId?: string;
+    endOffsetS?: number;
     offsetDriftUsPerS?: number;
   };
 }

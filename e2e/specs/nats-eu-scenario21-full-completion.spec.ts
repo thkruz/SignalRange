@@ -200,8 +200,8 @@ test.describe('nats-eu Scenario 21 Full Completion', () => {
     await waitForObjectiveComplete(missionControl, 'Payload Status Under the New Key');
   });
 
-  test('[safe-the-uplink] chains down in mirror order after LOS', async () => {
-    await advanceMissionClockToUtc(page, '2027-04-21T09:33:40Z');
+  test('[safe-the-uplink] chains down in mirror order', async () => {
+    // No jump: the countdown is running, and a jump now costs what waiting would (phase 19.0a)
     await disableHpa(page, missionControl);
     await setSwitch(page, '#buc-mute', true);
     await setSwitch(page, '#tx-transmit-switch', false);

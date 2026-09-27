@@ -16,6 +16,7 @@
 
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
+import { ObjectiveAnchors } from '@app/objectives/objective-anchor';
 import { ScenarioManager } from '@app/scenario-manager';
 import { missionNowMs } from '@app/simulation/mission-clock';
 import type { Milliseconds } from 'ootk';
@@ -30,6 +31,19 @@ export interface GnssThreatConfig {
   spoofStartS: number;
   /** Elapsed second the spoof ends (omit = runs to scenario end) */
   spoofEndS?: number;
+  /**
+   * Anchor the spoof to an objective (see objective-anchor.ts): spoofStartS
+   * and spoofEndS then count from the moment it is live, so the spoof keeps
+   * its authored length.
+   */
+  startAfterObjectiveId?: string;
+  /**
+   * End the spoof endOffsetS after this objective is live, instead of at
+   * spoofEndS (see objective-anchor.ts). Until then it keeps running.
+   */
+  endAfterObjectiveId?: string;
+  /** Seconds after endAfterObjectiveId is live that the spoof ends (default 0) */
+  endOffsetS?: number;
   /** Timing-offset drift rate while spoofed, microseconds per second (default 5) */
   offsetDriftUsPerS?: number;
 }
@@ -50,10 +64,12 @@ export class GnssThreatManager {
   private lastElapsedS_ = 0;
   /** Elapsed second the timing offset last moved (for gpsdo-time-offset-stable) */
   private lastOffsetChangeElapsedS_ = 0;
+  private readonly anchors_: ObjectiveAnchors;
   private readonly boundUpdateHandler_: (dt: Milliseconds) => void;
 
   private constructor() {
     this.config_ = (ScenarioManager.getInstance().settings.gnssThreat as GnssThreatConfig | undefined) ?? { spoofStartS: 0 };
+    this.anchors_ = new ObjectiveAnchors([this.config_.startAfterObjectiveId, this.config_.endAfterObjectiveId]);
     this.boundUpdateHandler_ = this.update_.bind(this);
     EventBus.getInstance().on(Events.UPDATE, this.boundUpdateHandler_);
   }
@@ -141,9 +157,20 @@ export class GnssThreatManager {
     }
   }
 
+  /** Mission-elapsed second the spoof ends (Infinity = runs on, or an anchor waits) */
+  private endS_(startS: number): number {
+    const { spoofStartS, spoofEndS, endAfterObjectiveId, endOffsetS } = this.config_;
+    if (endAfterObjectiveId !== undefined) {
+      return this.anchors_.atS(endOffsetS ?? 0, endAfterObjectiveId);
+    }
+    return spoofEndS === undefined ? Number.POSITIVE_INFINITY : startS + (spoofEndS - spoofStartS);
+  }
+
   private update_(): void {
     const elapsed = (missionNowMs() - this.missionStartTime_) / 1000;
-    const inWindow = elapsed >= this.config_.spoofStartS && (this.config_.spoofEndS === undefined || elapsed < this.config_.spoofEndS);
+    this.anchors_.poll(elapsed);
+    const start = this.anchors_.atS(this.config_.spoofStartS, this.config_.startAfterObjectiveId);
+    const inWindow = elapsed >= start && elapsed < this.endS_(start);
     this.state_.spoofActive = inWindow;
 
     const deltaS = Math.max(0, elapsed - this.lastElapsedS_);

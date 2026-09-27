@@ -12,8 +12,13 @@
  *
  * Started only when settings.security is present. Log visibility is a pure
  * function of the mission clock, so it is deterministic and unit-testable.
+ * An entry with startAfterObjectiveId counts its timeS from that objective
+ * instead; only then does the core subscribe to UPDATE, to poll the anchor.
  */
 
+import { EventBus } from '@app/events/event-bus';
+import { Events } from '@app/events/events';
+import { ObjectiveAnchors } from '@app/objectives/objective-anchor';
 import { ScenarioManager } from '@app/scenario-manager';
 import { CampaignDocumentStore, campaignIdOf } from '@app/scenarios/campaign-document-store';
 import { missionNowMs } from '@app/simulation/mission-clock';
@@ -35,6 +40,8 @@ export interface AuditEventConfig {
   id: string;
   /** Elapsed second the entry appears (default 0 = present from scenario start) */
   timeS?: number;
+  /** Count timeS from this objective going live (see objective-anchor.ts) */
+  startAfterObjectiveId?: string;
   /** Wall-clock label shown in the log (e.g. "03:14 UTC") */
   timestampLabel?: string;
   actor: string;
@@ -67,6 +74,8 @@ export class SecurityConsoleCore {
   private reviewed_ = false;
   /** Entries dropped at load because their carried-forward evidence was destroyed */
   private readonly droppedEvidence_: AuditEventConfig[] = [];
+  private readonly anchors_: ObjectiveAnchors;
+  private readonly boundUpdateHandler_ = (): void => this.anchors_.poll(this.elapsedS_());
 
   private constructor() {
     const settings = ScenarioManager.getInstance().settings;
@@ -82,6 +91,10 @@ export class SecurityConsoleCore {
     // definition must stay pristine for a replay.
     this.config_ = { accounts: configured.accounts, events: kept };
     this.config_.accounts.forEach((a) => this.accountStatus_.set(a.id, a.status));
+    this.anchors_ = new ObjectiveAnchors(kept.map((e) => e.startAfterObjectiveId));
+    if (this.anchors_.hasAnchors) {
+      EventBus.getInstance().on(Events.UPDATE, this.boundUpdateHandler_);
+    }
   }
 
   /** Entries this log should have carried forward but could not (evidence destroyed earlier). */
@@ -100,6 +113,9 @@ export class SecurityConsoleCore {
   }
 
   static destroy(): void {
+    if (this.instance_?.anchors_.hasAnchors) {
+      EventBus.getInstance().off(Events.UPDATE, this.instance_.boundUpdateHandler_);
+    }
     this.instance_ = null;
   }
 
@@ -114,9 +130,13 @@ export class SecurityConsoleCore {
 
   /** Audit-log entries visible at the given elapsed time (real mission clock if omitted). */
   getVisibleLog(atElapsedS?: number): AuditEventConfig[] {
-    const elapsed = atElapsedS ?? (missionNowMs() - this.missionStartTime_) / 1000;
+    const elapsed = atElapsedS ?? this.elapsedS_();
 
-    return this.config_.events.filter((e) => (e.timeS ?? 0) <= elapsed);
+    return this.config_.events.filter((e) => this.anchors_.atS(e.timeS ?? 0, e.startAfterObjectiveId) <= elapsed);
+  }
+
+  private elapsedS_(): number {
+    return (missionNowMs() - this.missionStartTime_) / 1000;
   }
 
   /** Visible anomaly entries (the ones the operator ought to flag). */
@@ -151,8 +171,7 @@ export class SecurityConsoleCore {
    */
   injectEvent(event: AuditEventConfig): void {
     if (this.config_.events.some((e) => e.id === event.id)) return;
-    const now = (missionNowMs() - this.missionStartTime_) / 1000;
-    this.config_.events.push({ ...event, timeS: event.timeS ?? now });
+    this.config_.events.push({ ...event, timeS: event.timeS ?? this.elapsedS_() });
   }
 
   /**

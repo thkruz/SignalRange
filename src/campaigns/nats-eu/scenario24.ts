@@ -274,7 +274,12 @@ export const natsEuScenario24Data: ScenarioData = {
         bandwidth: 2e6,
         power: 5,
         polarization: 'H',
-        startTime: 3300,
+        // Phase 19.0a: keyed 10 s after 'call-the-denial' opens, not at a fixed 3300 s.
+        // A player whose first command was still unsent when a fixed jam came up
+        // was refused on the fixed carrier before hopping was taught: a deadlock.
+        // Before it, the sleet made "rain fade" the graded answer.
+        startAfterObjectiveId: 'call-the-denial',
+        startTime: 10,
         duration: 400,
         periodSeconds: 400,
         onSeconds: 400,
@@ -1090,7 +1095,7 @@ export const natsEuScenario24Data: ScenarioData = {
       id: 'safe-the-network',
       nice: ['S0421', 'K0645'],
       title: 'Safe the Network',
-      description: 'LOS 04:01:35. Galway: HPA off, BUC muted, carrier off. Shetland stays in holdover until a probe says its sky is honest.',
+      description: 'Chain down now, no need to wait for LOS (04:01:35). Galway: HPA off, BUC muted, carrier off. Shetland stays in holdover until a probe says its sky is honest.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['hop-and-deliver'],
       timeLimitSeconds: 2 * 60,

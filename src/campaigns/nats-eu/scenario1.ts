@@ -408,7 +408,7 @@ export const natsEuScenario1Data: ScenarioData = {
       nice: ['S0421', 'K1032'],
       title: 'Acquire MERIDIAN-SAR-1',
       description:
-        'Set the antenna to program-track on MERIDIAN-SAR-1 and confirm the beacon on RX analysis once the bird is up. The 4 m pedestal slews at 20 deg/s - plenty for a 28 degree pass.',
+        'Set the antenna to program-track on MERIDIAN-SAR-1 and confirm the beacon on RX analysis once the bird is up. The 4 m pedestal slews at 10 deg/s - plenty for a 28 degree pass.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['preposition-for-aos'],
       conditions: [

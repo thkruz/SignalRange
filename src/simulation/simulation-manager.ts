@@ -17,7 +17,7 @@ import { TimeSkipController } from '@app/simulation/time-skip-controller';
 import { RfSignal } from '@app/types';
 import { ProgressSaveManager } from '@app/user-account/progress-save-manager';
 import { UserDataService } from '@app/user-account/user-data-service';
-import { Degrees, Milliseconds } from 'ootk';
+import { Milliseconds } from 'ootk';
 
 export class SimulationManager {
   private static instance_: SimulationManager;
@@ -135,15 +135,6 @@ export class SimulationManager {
 
   getSatByNoradId(noradId: number): Satellite | undefined {
     return this.satellites.find((sat) => sat.noradId === noradId);
-  }
-
-  getSatsByAzEl(az: Degrees, el: Degrees): Satellite[] {
-    return this.satellites.filter((sat) => {
-      // If +/- 2 degrees of az/el, consider it a match since the receive side will have more filtering
-      const azDiff = Math.abs(sat.az - az);
-      const elDiff = Math.abs(sat.el - el);
-      return azDiff <= 2 && elDiff <= 2;
-    });
   }
 
   static destroy(): void {

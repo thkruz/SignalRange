@@ -37,8 +37,8 @@
           "atPeak": {
             "elevationDeg": 34.2,
             "frequencyMHz": 3718,
-            "gainDbi": 48.59,
-            "gOverTDbPerK": 29.08,
+            "gainDbi": 49.7,
+            "gOverTDbPerK": 30.19,
             "tsysK": 80.92
           },
           "carriers": [
@@ -50,10 +50,10 @@
               "modulation": "QPSK",
               "fec": "3/4",
               "samples": 5,
-              "peakCnDb": 13.89,
-              "medianCnDb": 13.89,
-              "peakRxIfDbm": -29.75,
-              "noiseIfDbm": -43.64,
+              "peakCnDb": 14.02,
+              "medianCnDb": 14.02,
+              "peakRxIfDbm": -29.63,
+              "noiseIfDbm": -43.65,
               "lockedSamples": 5
             },
             {
@@ -64,13 +64,14 @@
               "modulation": "CW",
               "fec": "null",
               "samples": 5,
-              "peakCnDb": 30.52,
-              "medianCnDb": 30.52,
-              "peakRxIfDbm": -58.68,
-              "noiseIfDbm": -89.2,
+              "peakCnDb": 32.59,
+              "medianCnDb": 32.59,
+              "peakRxIfDbm": -56.63,
+              "noiseIfDbm": -89.21,
               "lockedSamples": 5
             }
-          ]
+          ],
+          "adjacentCarriers": 0
         }
       ]
     }

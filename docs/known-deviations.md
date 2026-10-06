@@ -41,20 +41,26 @@ input plane where carrier powers are referred. What remains:
 | DEV-XPDR-01 | open | Dish uplinks apply no free-space loss: ground EIRP arrives at the transponder input. | Uplink FSPL ≈ 200 dB at 6 or 14 GHz from GEO. | `antenna-core.ts` `updateTxSignals_` (locked in by `test/equipment/uplink-tx-path.test.ts`) |
 | DEV-XPDR-02 | open | Saturation is applied per carrier to EIRP-sized inputs (soft above 47 dBm, clamp 50 dBm), so HPA backoff has no effect. | A transponder saturates on total input flux density; input backoff sets output backoff and IM. | `satellite.ts` `processSignals` |
 | DEV-XPDR-03 | open | Transponder noise (kTB·NF) is added into the carrier's own power; no uplink C/N, no composite C/N, no C/I or intermod; then +36.5 dB. | (C/N)_total⁻¹ = (C/N)_up⁻¹ + (C/N)_down⁻¹ + (C/I)⁻¹ + (C/IM)⁻¹. | `satellite.ts` |
-| DEV-XPDR-04 | open | GEO range is a fixed 38,000 km; legacy GEO satellites have authored az/el, not look angles from a slot longitude. | Slant range 35,786-41,679 km and look angles follow from station and slot. | `antenna-core.ts` `GEO_SATELLITE_DISTANCE_KM`; `satellite.ts` |
+| DEV-XPDR-04 | open | GEO range is a fixed 38,000 km; legacy GEO satellites have authored az/el, not look angles from an authored slot longitude. Since 19.4 a satellite with a reference station (`lookAnglesFrom`, all of Campaign 1) is seen elsewhere at the authored angles plus the real geometric difference between the sites (slot derived from the authored azimuth; nats-s03-F2), but the authored angles themselves are not always on a real GEO arc (C1's TIDEMARK-2 is "45 W" in the story, 102.8 W by its azimuth). Phase 20.2 replaces them with slots. | Slant range 35,786-41,679 km and look angles follow from station and slot. | `antenna-core.ts` `GEO_SATELLITE_DISTANCE_KM`; `satellite.ts`; `geo-geometry.ts` |
 | DEV-XPDR-05 | open | Beacons and the nats-eu SAR "video" downlinks bypass transponder physics (authored dBm EIRP). Authored satellite powers are tuned to the simulator (NAVSTAR +13 dB for visibility). | Beacon and payload EIRP from the spacecraft's own chain. | `satellite.ts`; `ham-sdr/satellites.ts`; `nats-eu/satellites.ts` |
 
 ## Antenna and pointing (19.4)
 
+Phase 19.4 closed DEV-ANT-01, -02, -03, -05, -06 and -07: the pattern is ITU-R S.580-6 / S.465-6
+under the Appendix 8 near-in pattern (`patternModel` honoured), the main-lobe error is charged
+once, the off-axis angle is the great-circle separation with azimuth wrap, every satellite above
+the horizon in the receive band is heard through the pattern (no acceptance box), program-track
+LOCKED is the servo within 1 dB of beam of its commanded track, step-track is a dither hill-climb
+on the measured beacon on SimClock, the pedestal has rate and acceleration limits per config
+(9 m 0.5 deg/s, 4 m LEO tracker 10 deg/s), wind de-points the beam, and both anchor dishes meet
+their datasheet gain at the flange. What remains:
+
 | ID | Status | Deviation | Reality | Where |
 |---|---|---|---|---|
-| DEV-ANT-01 | open | Beyond 1.2·θ3 the pattern is Gmax − min(32, 25 log(θD/λ)): a floor relative to Gmax. `patternModel` is never read. | ITU-R S.580-6 / S.465: absolute 29 − 25 log θ dBi, −10 dBi beyond 48°. | `antenna-core.ts` `patternGain_dBi_` |
-| DEV-ANT-02 | open | Main-lobe pointing error is charged twice: the pattern already contains 12(θ/θ3)², then `pointingLoss_dB_` subtracts it again (effective beamwidth 0.71·θ3). | One pattern term. | `antenna-core.ts` `applyPropagationEffects_` |
-| DEV-ANT-03 | open | Dish off-axis angle is planar `hypot(Δaz, Δel)` with no cos(el) and no 360° wrap; dishes only accept satellites in a ±1° box, so adjacent-satellite interference cannot occur. | Great-circle angle between boresight and target; every satellite in the sidelobes contributes. | `antenna-core.ts` |
-| DEV-ANT-04 | open | Linear polarization skew is authored (random ±45° when omitted), not geometric. | Skew follows station and slot geometry. | `satellite.ts` |
-| DEV-ANT-05 | open | Step-track eases toward the known ephemeris error instead of hill-climbing. (Since 19.2 it reads the antenna's own beacon receiver, so the ACU, Dashboard and step-track show one beacon C/N; its old copy left the receive gain out of the noise.) | A hill-climb on measured beacon power. | `step-track-controller.ts` |
-| DEV-ANT-06 | open | Servo is constant-rate and fast: C1's 9 m slews 2.5°/s (config notes "REAL: 0.35"), the nats-eu 4 m LEO tracker 20°/s. Wind and pointing σ are computed but unused. | Rate and acceleration limits per pedestal (see `test/reference/anchors.ts`). | `antenna-configs.ts`; `antenna-core.ts` |
-| DEV-ANT-07 | open | Dish efficiencies are authored, not calibrated to a datasheet: the 2.4 m Ku config is 1.0 dB under the Prodelin 1244's 47.4 dBi at 11.725 GHz, and the 9 m C-band config's gain at the feed flange (aperture gain less its 0.44 dB feed loss) is 1.2 dB under CPI's 50.0 dBi. Since 19.2 the noise half of G/T matches both datasheets (antenna temperature at the flange within 15 %), so this gain gap is what keeps G/T 1.2-1.3 dB low. | Aperture efficiency fitted to the anchor datasheets (`test/reference/anchors.ts`). | `antenna-configs.ts` |
+| DEV-ANT-04 | open | Linear polarization skew is geometric only for legacy GEO satellites that name the station their authored look angles belong to (`lookAnglesFrom`, all of Campaign 1): their slot is derived from the authored azimuth there, and other stations get the geometric skew difference. Other campaigns' GEO satellites keep their authored skew (hashed ±45 deg when omitted) at every station. | Skew follows station and slot geometry. | `satellite.ts`; `geo-geometry.ts` |
+| DEV-ANT-08 | kept | Servo limits are class values from the plan (9 m teleport pedestal 0.5 deg/s and 0.5 deg/s²; 4 m Ku LEO tracker 10 deg/s and 5 deg/s²), not a datasheet (no public 4 m tracker datasheet; Ted to confirm). The servo is an ideal rate/acceleration-limited follower with target-rate feed-forward: no structural modes, backlash or overshoot. Wind de-pointing is a deterministic coefficient × wind speed (no gusts), and servo jitter is an RMS angle; both are combined with the off-axis angle in quadrature (their mean loss). | Pedestal datasheets; gust spectra; servo bandwidth. | `antenna-configs.ts`; `AntennaCore.updateSlew_`, `effectiveOffAxisDeg_` |
+| DEV-ANT-09 | open | A satellite in the sidelobes is received (adjacent-satellite interference exists), but the antenna's carrier filter still drops a weaker co-channel carrier outright instead of adding it to the wanted carrier's noise, and the receiver ignores anything under its noise floor. Carriers under −10 dB C/N in their own bandwidth are not carried at all. Sidelobe uplinks into adjacent satellites are not radiated (the legacy TX path stops at the main lobe until 19.3 adds uplink FSPL, DEV-XPDR-01). | C/(N+I) with every co-channel carrier's power, at any level. | `AntennaCore.updateRxSignals_`, `updateTxSignals_`; `receiver.ts` |
+| DEV-ANT-10 | kept | Step-track's beacon measurement has no noise of its own (the beacon is a steady CW carrier against a deterministic noise floor), so the hill-climb never mis-steps on a noisy reading and its floor is the beacon lock threshold (6.5 dB C/N in 1 kHz), not a measurement-statistics limit. | Beacon receivers average against noise; step size and dwell trade against it. | `step-track-controller.ts` |
 
 ## Modem and receiver (19.5)
 
@@ -73,18 +79,18 @@ input plane where carrier powers are referred. What remains:
 | DEV-RF-01 | open | HPA output = Pmax − 2·backoff regardless of drive; `p1db` unused; IMD is a displayed number; the RF front end divides a dBm value by 10. | Output follows drive through the AM/AM curve; IM3 rises 3 dB per dB of drive. | `hpa-module-core.ts`; `rf-front-end-core.ts` |
 | DEV-RF-02 | open | BUC hard-clips at P1dB + 2 dB; unlocked LO drift is fresh uniform ppm each frame; phase noise and spurs are computed but never applied. | Soft compression; drift is a slow random walk; phase noise spreads the carrier. | `buc-module-core.ts` |
 | DEV-RF-03 | open | LNB passband is a 40 dB brick wall with high-side LO; unlocked drift is per-frame white; the IF filter has no centre or skirts. | Real filter responses; drift correlated in time. | `lnb-module-core.ts`; `filter-module-core.ts` |
-| DEV-RF-05 | open | OMT isolation is re-drawn every frame; its 0.5 dB insertion loss is never applied; the coupler returns a random frequency. | Fixed hardware values. | `omt-module.ts`; coupler |
+| DEV-RF-05 | open | OMT insertion loss (0.5 dB) is never applied and the coupler returns a random frequency. (Since 19.4 the OMT's cross-pol isolation is a per-unit constant: the authored spec plus a 0-5 dB build scatter drawn once, not re-drawn every frame.) | Fixed hardware values. | `omt-module.ts`; coupler |
 | DEV-RF-06 | open | GPSDO holdover never affects LO accuracy; Allan deviation and phase noise are display values. | Holdover drift propagates to every LO. | `gpsdo-module-core.ts` |
 
 ## Propagation and geometry (19.7)
 
 | ID | Status | Deviation | Reality | Where |
 |---|---|---|---|---|
-| DEV-PROP-01 | open | Rain uses the 1992 (P.838-1) coefficients although the comment says P.838-3, horizontal polarization only, a fixed 2.5 km rain height, the old horizontal reduction factor and no 0.01 %→p % scaling. The elevation is the antenna's pointing, not the satellite's. | ITU-R P.838-3 with polarization and path tilt; rain height from P.839; P.618-13 §2.2.1.1. | `antenna-core.ts` `rainAttenuation_dB` |
+| DEV-PROP-01 | open | Rain uses the 1992 (P.838-1) coefficients although the comment says P.838-3, horizontal polarization only, a fixed 2.5 km rain height, the old horizontal reduction factor and no 0.01 %→p % scaling. Carriers are charged at their own path elevation (19.4); the rain-fade alarm and the noise model use the antenna's pointing. | ITU-R P.838-3 with polarization and path tilt; rain height from P.839; P.618-13 §2.2.1.1. | `antenna-core.ts` `rainAttenuation_dB` |
 | DEV-PROP-02 | open | No tropospheric scintillation. (19.2 deleted the per-frame random "rain" and ±0.15 dB scintillation that `satellite.ts` added to every transponded carrier in any weather; `SignalDegradationConfig.atmosphericEffects` is now a no-op stub.) | Scintillation as a seeded P.618 §2.4 process (19.7). | `satellite.ts` |
 | DEV-PROP-03 | open | Gas absorption is a piecewise-linear heuristic, not P.676; there is no cloud (P.840) model. | ITU-R P.676-13, P.840. | `antenna-core.ts` `calculateAtmosphericLoss_` |
 | DEV-PROP-04 | open | Sun transit timing and peak are authored (a sin² profile of `linkMarginDegradation` dB). Since 19.2 it is a noise rise (solar antenna temperature at the aperture, through the feed), not a carrier loss; the solar ephemeris cannot place it because legacy GEO satellites have authored look angles (DEV-XPDR-04), and the authored peak (16 dB in C1 S17) is a little under the ~20 dB a quiet Sun gives a 9 m C-band dish. | The timing and the peak follow the solar ephemeris, the beam and the solar flux. | `weather-manager.ts`; `AntennaCore.systemNoise` |
-| DEV-PROP-05 | open | Cloud, fog, dust and wind weather events do nothing. | Cloud and fog attenuate at Ka; wind moves the beam. | `weather-manager.ts` |
+| DEV-PROP-05 | open | Cloud, fog and dust weather events do nothing. (Since 19.4 wind and storm events de-point the beam: `windSpeedMps`, or 8/14/22 m/s by severity, 10/18/26 for a storm, times the antenna's `windDePointingCoef_deg_per_mps`.) | Cloud and fog attenuate at Ka. | `weather-manager.ts` |
 | DEV-PROP-06 | open | The terrestrial path is FSPL only (no horizon, diffraction or clutter); no refraction, light-time or uplink Doppler. | P.452/P.526 for terrestrial paths; uplink Doppler is real on LEO commanding. | `antenna-core.ts`; `orbital-satellite.ts` |
 | DEV-PROP-07 | open | The downlink Doppler factor (ootk `Satellite.dopplerFactor`) disagrees with the range rate implied by ootk's own `rae()` range by up to 0.22 km/s near closest approach (0.7 ppm: ~300 Hz at 437 MHz, ~9 kHz at 12 GHz; 780 km LEO over Galway, found 2026-09-27). Root cause not yet traced; the Earth-rotation term and constant look right. | f_rx/f_tx = 1 − ṙ/c with ṙ the geometric range rate. | `orbital-satellite.ts` → ootk `utils/functions.js` `dopplerFactor` |
 
@@ -115,6 +121,11 @@ its deviation closes:
 - `cnHoldSeconds` and "commit the displayed C/N" in the link-budget tab: workarounds for the old
   1 Hz position step. The hysteresis stays for grading; the comments are stale.
 - Lock-delay timers and the HPA-on-muted-BUC instant fail.
-- The zenith keyhole lesson, partly an artefact of DEV-ANT-03 (planar off-axis angle, ±1° box).
+- The zenith keyhole lesson (C2 S13) was partly an artefact of DEV-ANT-03. Since 19.4 it is the
+  real one: a 10 deg/s, 5 deg/s² azimuth axis cannot follow the azimuth swing of a near-zenith pass,
+  and the beam (true great-circle angle) falls off the spacecraft until the pedestal catches up.
+- Program-track LOCKED means "the pedestal is on its commanded track", as on a real ACU, not "on
+  the satellite": a stale ephemeris reads LOCKED while the beacon is down (C2 S7, C1 S18). Under an
+  ACU automation fault the lock reads UNKNOWN (C1 S23).
 - "Tsys is the LNB noise temperature" was retired in 19.2: Tsys = antenna (sky, spillover, feed)
   + LNB, so an LNB fault costs 10 log((T_ant + T_new) / (T_ant + T_old)), not 10 log(T_new / T_old).

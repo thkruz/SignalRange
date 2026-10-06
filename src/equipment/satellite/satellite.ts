@@ -1,6 +1,7 @@
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
 import { SignalOrigin } from '@app/signal-origin';
+import { type GeoSite, geoLongitudeFromAzimuth, geoLookAngles, geoPolarizationSkewDeg } from '@app/simulation/geo-geometry';
 import { PerlinNoise } from '@app/simulation/perlin-noise';
 import { Rng, type RngStream } from '@app/simulation/rng';
 import { SimClock } from '@app/simulation/sim-clock';
@@ -139,6 +140,21 @@ export interface SatelliteState {
   ephemerisErrorAz?: Degrees;
   /** Elevation error in TLE prediction (degrees). Program-track points to el + this error. */
   ephemerisErrorEl?: Degrees;
+  /**
+   * The station the authored az/el (and rotation) are written for (phase
+   * 19.4). Gives the satellite a slot longitude, so every other station sees
+   * it at the authored angles shifted by the real geometric difference
+   * between the sites, and its linear polarization skew follows the site.
+   * Omitted: one az/el for every station (legacy).
+   */
+  lookAnglesFrom?: GeoSite;
+}
+
+/** Offsets of a legacy GEO satellite's look angles and skew at one station, relative to its reference station */
+export interface StationLookOffsets {
+  dAz: number;
+  dEl: number;
+  dRotation: number;
 }
 
 /**
@@ -190,6 +206,13 @@ export class Satellite {
   /** Ephemeris error in elevation (degrees) - simulates TLE inaccuracy */
   ephemerisErrorEl: Degrees = 0 as Degrees;
 
+  /** Station the authored look angles belong to (see SatelliteState.lookAnglesFrom) */
+  readonly lookAnglesFrom: GeoSite | null;
+  /** Slot longitude (degrees east) derived from the authored azimuth at the reference station; null without one */
+  readonly slotLongitudeDeg: number | null;
+  /** Per-station look-angle offsets, keyed by site */
+  private readonly stationOffsets_ = new Map<string, StationLookOffsets>();
+
   /** Orbit type - geostationary (fixed) or geosynchronous (figure-8 pattern) */
   readonly orbitType: OrbitType;
 
@@ -230,8 +253,17 @@ export class Satellite {
     this.health = 1.0;
     this.az = satelliteState.az;
     this.el = satelliteState.el;
-    // Unauthored skew is a property of the satellite, not of the run: fixed per NORAD id
-    this.rotation = satelliteState.rotation ?? ((Rng.hashUniform(`satellite-rotation:${norad}`) * 90 - 45) as Degrees);
+    this.lookAnglesFrom = satelliteState.lookAnglesFrom ?? null;
+    const centerAz = satelliteState.geosyncConfig ? (satelliteState.geosyncConfig.minAz + satelliteState.geosyncConfig.maxAz) / 2 : satelliteState.az;
+    this.slotLongitudeDeg = this.lookAnglesFrom ? geoLongitudeFromAzimuth(this.lookAnglesFrom, centerAz) : null;
+    // Authored skew wins. Unauthored: the geometric skew at the reference
+    // station when the slot is known, else fixed per NORAD id (a property of
+    // the satellite, not of the run; DEV-ANT-04)
+    this.rotation =
+      satelliteState.rotation ??
+      (this.lookAnglesFrom && this.slotLongitudeDeg !== null
+        ? (geoPolarizationSkewDeg(this.lookAnglesFrom, this.slotLongitudeDeg) as Degrees)
+        : ((Rng.hashUniform(`satellite-rotation:${norad}`) * 90 - 45) as Degrees));
     this.ephemerisErrorAz = satelliteState.ephemerisErrorAz ?? (0 as Degrees);
     this.ephemerisErrorEl = satelliteState.ephemerisErrorEl ?? (0 as Degrees);
 
@@ -455,6 +487,10 @@ export class Satellite {
         frequency: txFrequency,
         power: txPower,
         origin: SignalOrigin.SATELLITE_TX,
+        // A downlink leaves the satellite's antenna at the satellite's own
+        // polarization angle, like its beacon (phase 19.4: relayed carriers
+        // used to arrive at 0 deg whatever the skew)
+        rotation: this.rotation,
         // Reverse linear polarization for downlink; circular polarization is
         // set by the transponder's own antenna and passes through unchanged
         // (an RHCP uplink must not come back as 'H' - Campaign 3 S8)
@@ -684,6 +720,34 @@ export class Satellite {
    */
   get predictedEl(): Degrees {
     return ((this.el as number) + (this.ephemerisErrorEl as number)) as Degrees;
+  }
+
+  /**
+   * Look-angle and skew offsets of this satellite at `site` relative to its
+   * reference station: zero at the reference, the geometric difference
+   * between the sites elsewhere. Null when the satellite has no reference
+   * (one az/el for every station, legacy).
+   */
+  stationOffsets(site: GeoSite): StationLookOffsets | null {
+    if (!this.lookAnglesFrom || this.slotLongitudeDeg === null) {
+      return null;
+    }
+    const key = `${site.latitude},${site.longitude},${site.elevationM ?? 0}`;
+    let offsets = this.stationOffsets_.get(key);
+    if (!offsets) {
+      const ref = geoLookAngles(this.lookAnglesFrom, this.slotLongitudeDeg);
+      const here = geoLookAngles(site, this.slotLongitudeDeg);
+      let dAz = here.az - ref.az;
+      if (dAz > 180) dAz -= 360;
+      if (dAz < -180) dAz += 360;
+      offsets = {
+        dAz,
+        dEl: here.el - ref.el,
+        dRotation: geoPolarizationSkewDeg(site, this.slotLongitudeDeg) - geoPolarizationSkewDeg(this.lookAnglesFrom, this.slotLongitudeDeg),
+      };
+      this.stationOffsets_.set(key, offsets);
+    }
+    return offsets;
   }
 
   /**

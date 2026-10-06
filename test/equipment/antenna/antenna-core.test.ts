@@ -104,8 +104,9 @@ class TestableAntennaCore extends AntennaCore {
     return (this as any).beamwidth3dB_deg_(f_Hz);
   }
 
+  /** Main-lobe pointing loss: the pattern's drop from boresight (phase 19.4: one pattern term) */
   public testPointingLoss(offAxis_deg: number, f_Hz: number): number {
-    return (this as any).pointingLoss_dB_(offAxis_deg, f_Hz);
+    return (this as any).antennaGain_dBi(f_Hz as Hertz) - (this as any).patternGain_dBi_(offAxis_deg, f_Hz);
   }
 
   public testPatternGain(theta_deg: number, f_Hz: number): number {
@@ -126,8 +127,9 @@ class TestableAntennaCore extends AntennaCore {
     return (this as any).systemTempK_(frequency, elevation);
   }
 
-  public testCurrentDePointing(wind_mps?: number): number {
-    return (this as any).currentDePointing_deg_(wind_mps);
+  public testCurrentDePointing(wind_mps = 0): number {
+    this.state.windSpeed_mps = wind_mps;
+    return this.windDePointingDeg;
   }
 
   public testFeedLossAt(f_Hz: number): number {
@@ -422,11 +424,11 @@ describe('AntennaCore', () => {
       expect(antenna.state.trackingMode).toBe('manual');
     });
 
-    it('should set stow mode and stage Az=0, El=90', () => {
+    it('should set stow mode and stage El=90 at the current azimuth', () => {
       antenna.handleTrackingModeChange('stow');
 
       expect(antenna.state.trackingMode).toBe('stow');
-      expect(antenna.state.stagedTargetAzimuth).toBe(0);
+      expect(antenna.state.stagedTargetAzimuth).toBeNull();
       expect(antenna.state.stagedTargetElevation).toBe(90);
       expect(antenna.state.hasStagedChanges).toBe(true);
     });
@@ -1407,9 +1409,9 @@ describe('AntennaCore', () => {
     it('should calculate reasonable gain for C-band', () => {
       const gain = antenna.antennaGain_dBi(4e9 as Hertz);
 
-      // 9m C-band antenna should have ~40+ dBi gain
-      expect(gain).toBeGreaterThan(35);
-      expect(gain).toBeLessThan(50);
+      // 9 m C-band: ~50 dBi (CPI 9.0 m datasheet, phase 19.4 calibration)
+      expect(gain).toBeGreaterThan(49);
+      expect(gain).toBeLessThan(51);
     });
 
     it('should calculate lower gain for lower frequency', () => {
@@ -1429,7 +1431,7 @@ describe('AntennaCore', () => {
       antenna.handleTrackingModeChange('stow');
 
       expect(antenna.state.trackingMode).toBe('stow');
-      expect(antenna.state.stagedTargetAzimuth).toBe(0);
+      expect(antenna.state.stagedTargetAzimuth).toBeNull();
       expect(antenna.state.stagedTargetElevation).toBe(90);
     });
   });
@@ -1654,18 +1656,24 @@ describe('AntennaCore', () => {
   });
 
   describe('currentDePointing_deg_', () => {
-    it('should return small value with no wind', () => {
-      const depoint = antenna.testCurrentDePointing(0);
-      expect(Math.abs(depoint)).toBeLessThan(1); // Jitter only
+    it('should be zero with no wind', () => {
+      expect(antenna.testCurrentDePointing(0)).toBe(0);
     });
 
-    it('should increase with wind speed', () => {
-      // Set wind coefficient on config for testing
+    it('should be the coefficient times the wind speed', () => {
       antenna.config.windDePointingCoef_deg_per_mps = 0.1;
+      expect(antenna.testCurrentDePointing(10)).toBeCloseTo(1, 9);
+    });
 
-      const depoint10mps = antenna.testCurrentDePointing(10);
-      // With 0.1 deg/mps coefficient, 10 m/s wind gives ~1 degree base + jitter
-      expect(Math.abs(depoint10mps)).toBeLessThan(2);
+    it('should cost received power through the pattern', () => {
+      antenna.config.windDePointingCoef_deg_per_mps = 0.01;
+      const bw = antenna.testBeamwidth3dB(4e9);
+      antenna.state.windSpeed_mps = 0;
+      const calm = antenna.pointingLossDb(antenna.normalizedAzimuth, antenna.state.elevation, 4e9);
+      // Wind de-points the beam by half a beamwidth: 3 dB more loss
+      antenna.state.windSpeed_mps = bw / 2 / 0.01;
+      const windy = antenna.pointingLossDb(antenna.normalizedAzimuth, antenna.state.elevation, 4e9);
+      expect(windy - calm).toBeCloseTo(3, 1);
     });
   });
 

@@ -19,7 +19,7 @@ import type { Degrees, Kilometers, TleLine1, TleLine2 } from 'ootk';
  *
  * The geometry pairs a low, strong orbit (mean motion 15.6, ~360 km -> ~760 km
  * slant range at max el, ample C/N margin) with a modest max elevation
- * (~25-28 deg). At the LEO tracker's realistic 20 deg/s slew (see
+ * (~25-28 deg). At the LEO tracker's realistic 10 deg/s slew (see
  * KU_BAND_4M_LEO_TRACKER) the pedestal holds the narrow (~0.45 deg) Ku beam on
  * the bird within the ephemeris-error floor (~0.1 deg) through the whole pass,
  * so C/N peaks at max elevation as expected. A higher or near-zenith pass grows

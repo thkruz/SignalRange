@@ -78,10 +78,10 @@
               "modulation": "CW",
               "fec": "null",
               "samples": 429,
-              "peakCnDb": 25.02,
-              "medianCnDb": 21.6,
-              "peakRxIfDbm": -61.69,
-              "noiseIfDbm": -79.74,
+              "peakCnDb": 25.47,
+              "medianCnDb": 22.01,
+              "peakRxIfDbm": -61.66,
+              "noiseIfDbm": -79.95,
               "lockedSamples": 429
             },
             {
@@ -92,13 +92,14 @@
               "modulation": "QPSK",
               "fec": "3/4",
               "samples": 429,
-              "peakCnDb": 10.77,
-              "medianCnDb": 7.35,
-              "peakRxIfDbm": -30.39,
-              "noiseIfDbm": -34.18,
+              "peakCnDb": 11.22,
+              "medianCnDb": 7.76,
+              "peakRxIfDbm": -30.35,
+              "noiseIfDbm": -34.38,
               "lockedSamples": 429
             }
-          ]
+          ],
+          "adjacentCarriers": 0
         },
         {
           "satellite": "MERIDIAN-SAR-2",
@@ -125,10 +126,10 @@
               "modulation": "CW",
               "fec": "null",
               "samples": 423,
-              "peakCnDb": 24.49,
-              "medianCnDb": 21.46,
-              "peakRxIfDbm": -61.73,
-              "noiseIfDbm": -80.85,
+              "peakCnDb": 24.88,
+              "medianCnDb": 21.83,
+              "peakRxIfDbm": -61.7,
+              "noiseIfDbm": -81.11,
               "lockedSamples": 423
             },
             {
@@ -139,13 +140,14 @@
               "modulation": "QPSK",
               "fec": "3/4",
               "samples": 423,
-              "peakCnDb": 10.22,
-              "medianCnDb": 7.19,
-              "peakRxIfDbm": -30.44,
-              "noiseIfDbm": -35.29,
+              "peakCnDb": 10.61,
+              "medianCnDb": 7.56,
+              "peakRxIfDbm": -30.4,
+              "noiseIfDbm": -35.54,
               "lockedSamples": 423
             }
-          ]
+          ],
+          "adjacentCarriers": 0
         }
       ]
     },
@@ -188,10 +190,10 @@
               "modulation": "CW",
               "fec": "null",
               "samples": 458,
-              "peakCnDb": 29.28,
-              "medianCnDb": 22.66,
-              "peakRxIfDbm": -61.46,
-              "noiseIfDbm": -79.74,
+              "peakCnDb": 29.88,
+              "medianCnDb": 23.08,
+              "peakRxIfDbm": -61.44,
+              "noiseIfDbm": -79.94,
               "lockedSamples": 458
             },
             {
@@ -202,13 +204,14 @@
               "modulation": "QPSK",
               "fec": "3/4",
               "samples": 458,
-              "peakCnDb": 15.02,
-              "medianCnDb": 8.4,
-              "peakRxIfDbm": -30.15,
-              "noiseIfDbm": -34.18,
+              "peakCnDb": 15.62,
+              "medianCnDb": 8.82,
+              "peakRxIfDbm": -30.13,
+              "noiseIfDbm": -34.38,
               "lockedSamples": 458
             }
-          ]
+          ],
+          "adjacentCarriers": 0
         },
         {
           "satellite": "MERIDIAN-SAR-2",
@@ -235,10 +238,10 @@
               "modulation": "CW",
               "fec": "null",
               "samples": 321,
-              "peakCnDb": 20.14,
-              "medianCnDb": 19.35,
-              "peakRxIfDbm": -62.39,
-              "noiseIfDbm": -80.84,
+              "peakCnDb": 20.49,
+              "medianCnDb": 19.71,
+              "peakRxIfDbm": -62.32,
+              "noiseIfDbm": -81.09,
               "lockedSamples": 321
             },
             {
@@ -249,13 +252,14 @@
               "modulation": "QPSK",
               "fec": "3/4",
               "samples": 321,
-              "peakCnDb": 5.87,
-              "medianCnDb": 5.08,
-              "peakRxIfDbm": -31.1,
-              "noiseIfDbm": -35.28,
+              "peakCnDb": 6.22,
+              "medianCnDb": 5.44,
+              "peakRxIfDbm": -31.02,
+              "noiseIfDbm": -35.53,
               "lockedSamples": 321
             }
-          ]
+          ],
+          "adjacentCarriers": 0
         }
       ]
     }

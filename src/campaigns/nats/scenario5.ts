@@ -7,7 +7,7 @@ import type { dBi, dBm, FECType, Hertz, ModulationType, RfFrequency } from '@app
 import { getAssetUrl } from '@app/utils/asset-url';
 import { Degrees } from 'ootk';
 import { maineGroundStation, vermontGroundStation } from './ground-stations';
-import { ses10Satellite, tidemark2Satellite } from './satellites';
+import { ses10Satellite, tidemark2Satellite, VERMONT_LOOK_ANGLE_SITE } from './satellites';
 
 /**
  * NATS Level 5: "Interference Hunt"
@@ -77,7 +77,7 @@ export const scenario5Data: ScenarioData = {
             noradId: 61525,
             frequency: 5943e6 as RfFrequency,
             polarization: 'H',
-            power: 22 as dBm, // +2 dB in Phase 19.2 (real Tsys), as in satellites.ts
+            power: 20 as dBm, // as in satellites.ts (19.2 +2 dB, 19.4 -2 dB)
             bandwidth: 36e6 as Hertz,
             modulation: 'QPSK' as ModulationType,
             fec: '3/4' as FECType,
@@ -114,6 +114,7 @@ export const scenario5Data: ScenarioData = {
           el: 34.2 as Degrees,
           rotation: 14 as Degrees,
           frequencyOffset: 2.225e9 as Hertz, // Legacy fallback
+          lookAnglesFrom: VERMONT_LOOK_ANGLE_SITE,
           transponderConfigs: [
             {
               id: 'TP-1',

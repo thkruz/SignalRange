@@ -89,9 +89,10 @@ export const scenario3Data: ScenarioData = {
         antennas: [ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK],
         antennasState: [
           {
-            // Stowed, needs to be configured
+            // Stowed at zenith where it last pointed (TIDEMARK-1's azimuth
+            // from Maine), needs to be configured
             isPowered: true,
-            azimuth: 0 as Degrees,
+            azimuth: 165.9 as Degrees,
             elevation: 90 as Degrees,
             polarization: 0 as Degrees,
             isTracking: false,
@@ -767,9 +768,11 @@ export const scenario3Data: ScenarioData = {
         },
         {
           type: 'antenna-position',
+          // Maine's look angles (Vermont's are 161.8 / 34.2): phase 19.4
+          // per-station GEO geometry, nats-s03-F2
           description: 'Antenna Pointed at TIDEMARK-1',
           params: {
-            azimuth: 161.8 as Degrees,
+            azimuth: 165.9 as Degrees,
             elevation: 34.2 as Degrees,
             tolerance: 0.5,
           },
@@ -806,7 +809,7 @@ export const scenario3Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              "Each ground station has unique look angles to any given satellite based on its latitude and longitude. Maine is about 150 miles from Vermont, so the azimuth and elevation are slightly different. Program-track mode calculates this automatically, but a common mistake for new operators is manually entering Vermont's angles at Maine.",
+              "Each ground station has unique look angles to any given satellite based on its latitude and longitude. Maine is about 150 miles from Vermont, so TIDEMARK-1 sits about 4 degrees further round in azimuth from there - many beamwidths. Program-track mode calculates this automatically, but a common mistake for new operators is manually entering Vermont's angles at Maine.",
             pointPenalty: 10,
             character: Character.CATHERINE_VEGA,
           },
@@ -1576,9 +1579,9 @@ export const scenario3Data: ScenarioData = {
         },
         {
           type: 'antenna-position',
+          // Stow is zenith at the current azimuth (phase 19.4)
           description: 'Antenna at Stow Position',
           params: {
-            azimuth: 0 as Degrees,
             elevation: 90 as Degrees,
             tolerance: 1,
           },

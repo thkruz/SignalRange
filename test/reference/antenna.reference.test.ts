@@ -1,7 +1,8 @@
 /**
- * Antenna reference cases (phase 19.1): the engine's dish configs against the
- * hardware anchors in `anchors.ts` (datasheet gain, beamwidth, G/T), the ITU-R
- * S.580-6 sidelobe envelope, and the main-lobe pointing loss.
+ * Antenna reference cases (phase 19.1, 19.4): the engine's dish configs
+ * against the hardware anchors in `anchors.ts` (datasheet gain, beamwidth,
+ * G/T), the ITU-R S.580-6 sidelobe envelope, and the main-lobe pointing loss
+ * (one pattern term, true great-circle off-axis angle).
  */
 
 import { vi } from 'vitest';
@@ -13,7 +14,7 @@ import { expectWithinAbs, expectWithinRel, referenceCase } from './reference-hel
 
 vi.mock('../../src/simulation/simulation-manager', () => ({
   SimulationManager: {
-    getInstance: vi.fn(() => ({ getSatByNoradId: vi.fn(), getSatsByAzEl: () => [], satellites: [], isDeveloperMode: false })),
+    getInstance: vi.fn(() => ({ getSatByNoradId: vi.fn(), satellites: [], isDeveloperMode: false })),
     destroy: vi.fn(),
   },
 }));
@@ -31,6 +32,7 @@ vi.mock('../../src/equipment/antenna/step-track-controller', () => ({
 
 type Internals = {
   antennaGain_dBi: (f: number) => number;
+  feedLossAt_: (f: number) => number;
   beamwidth3dB_deg_: (f: number) => number;
   patternGain_dBi_: (theta: number, f: number) => number;
   gOverT_dB_perK_: (f: number, el: number) => number;
@@ -68,22 +70,23 @@ const dish = (key: ANTENNA_CONFIG_KEYS, az = 180, el = 30) => new ReferenceAnten
 const lnaK = (antenna: ReferenceAntenna) => 290 * (10 ** ((antenna.config as { lnaNF_dB?: number }).lnaNF_dB! / 10) - 1);
 
 /**
- * Known gaps per dish. Since phase 19.2 the noise half of G/T meets the
- * datasheets (antenna temperature at the flange); what still fails G/T is the
- * gain at the flange (aperture gain less feed loss), an antenna calibration
- * item (DEV-ANT-07, 19.4).
+ * Both dishes are calibrated to their datasheets since phase 19.4 (the 19.1 dish-gain deviation,
+ * closed): aperture efficiency fitted so the gain at the feed flange is the
+ * datasheet's, which also closes G/T now that the noise half (19.2) matches.
  */
-const DISHES: Array<{ key: ANTENNA_CONFIG_KEYS; anchor: DishAnchor; gainDeviation?: string; gOverTDeviation?: string }> = [
-  { key: ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK, anchor: CPI_9M_C_LINEAR, gOverTDeviation: 'DEV-ANT-07' },
-  { key: ANTENNA_CONFIG_KEYS.KU_BAND_2M4_ANTESTAR, anchor: PRODELIN_1244_KU, gainDeviation: 'DEV-ANT-07', gOverTDeviation: 'DEV-ANT-07' },
+const DISHES: Array<{ key: ANTENNA_CONFIG_KEYS; anchor: DishAnchor }> = [
+  { key: ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK, anchor: CPI_9M_C_LINEAR },
+  { key: ANTENNA_CONFIG_KEYS.KU_BAND_2M4_ANTESTAR, anchor: PRODELIN_1244_KU },
 ];
 
 describe('dish configs against datasheet anchors', () => {
-  for (const { key, anchor, gainDeviation, gOverTDeviation } of DISHES) {
+  for (const { key, anchor } of DISHES) {
     const antenna = dish(key);
 
-    referenceCase(`${key} receive gain within 1 dB of ${anchor.source} (${anchor.rxGainDbi} dBi)`, gainDeviation, () => {
-      expectWithinAbs(antenna.internals.antennaGain_dBi(anchor.rxFrequencyHz), anchor.rxGainDbi, 1);
+    // Datasheet gain is quoted at the feed flange: aperture gain less feed loss
+    referenceCase(`${key} receive gain at the flange within 0.5 dB of ${anchor.source} (${anchor.rxGainDbi} dBi)`, undefined, () => {
+      const f = anchor.rxFrequencyHz;
+      expectWithinAbs(antenna.internals.antennaGain_dBi(f) - antenna.internals.feedLossAt_(f), anchor.rxGainDbi, 0.5);
     });
 
     referenceCase(`${key} -3 dB beamwidth within 15 % of the datasheet (${anchor.hpbwDeg} deg)`, undefined, () => {
@@ -102,7 +105,7 @@ describe('dish configs against datasheet anchors', () => {
 
     // G/T at 20 deg clear sky, from the datasheet's antenna temperature with the
     // engine's own LNA: G - 10 log(T_ant + T_LNA)
-    referenceCase(`${key} G/T at 20 deg within 1 dB of the datasheet gain and antenna temperature`, gOverTDeviation, () => {
+    referenceCase(`${key} G/T at 20 deg within 1 dB of the datasheet gain and antenna temperature`, undefined, () => {
       const reference = anchor.rxGainDbi - 10 * Math.log10(anchor.antennaNoiseK[20] + lnaK(antenna));
       expectWithinAbs(antenna.internals.gOverT_dB_perK_(anchor.rxFrequencyHz, 20), reference, 1);
     });
@@ -116,10 +119,31 @@ describe('dish configs against datasheet anchors', () => {
 
 describe('ITU-R S.580-6 sidelobe envelope', () => {
   const antenna = dish(ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK);
+  const f = 4e9;
 
-  referenceCase('9 m C-band pattern at 2, 10, 30 and 60 deg off axis stays under 29 - 25 log(theta) / -10 dBi', 'DEV-ANT-01', () => {
+  referenceCase('9 m C-band pattern at 2, 10, 30 and 60 deg off axis stays under 29 - 25 log(theta) / -10 dBi', undefined, () => {
     for (const point of S580_ENVELOPE_POINTS) {
-      expect(antenna.internals.patternGain_dBi_(point.thetaDeg, 4e9), `${point.thetaDeg} deg`).toBeLessThanOrEqual(point.maxDbi);
+      expect(antenna.internals.patternGain_dBi_(point.thetaDeg, f), `${point.thetaDeg} deg`).toBeLessThanOrEqual(point.maxDbi + 1e-9);
+    }
+  });
+
+  referenceCase('the envelope is absolute dBi, not a floor under Gmax: 10 deg off a 9 m C-band dish is 4 dBi (+/- 0.1)', undefined, () => {
+    expectWithinAbs(antenna.internals.patternGain_dBi_(10, f), 29 - 25, 0.1);
+  });
+
+  referenceCase('first sidelobe (ITU-R RR Appendix 8): the main lobe gives way to G1 = 2 + 15 log(D/lambda) and never rises again', undefined, () => {
+    const dOverLambda = 9 / (3e8 / f);
+    const g1 = 2 + 15 * Math.log10(dOverLambda);
+    // Beyond the main lobe (1.2 theta3) nothing rises above the first sidelobe
+    const theta3 = antenna.internals.beamwidth3dB_deg_(f);
+    for (let theta = 1.2 * theta3; theta <= 5; theta += 0.01) {
+      expect(antenna.internals.patternGain_dBi_(theta, f), `${theta.toFixed(2)} deg`).toBeLessThanOrEqual(g1 + 1e-9);
+    }
+    let previous = Infinity;
+    for (let theta = 0; theta <= 90; theta += 0.05) {
+      const g = antenna.internals.patternGain_dBi_(theta, f);
+      expect(g, `${theta.toFixed(2)} deg`).toBeLessThanOrEqual(previous + 1e-9);
+      previous = g;
     }
   });
 });
@@ -127,18 +151,27 @@ describe('ITU-R S.580-6 sidelobe envelope', () => {
 describe('main-lobe pointing loss', () => {
   const f = 4e9;
 
-  referenceCase('half a beamwidth off in elevation costs 3 dB (12 (theta/theta3)^2), charged once', 'DEV-ANT-02', () => {
+  referenceCase('half a beamwidth off in elevation costs 3 dB (12 (theta/theta3)^2), charged once', undefined, () => {
     const antenna = dish(ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK, 180, 30);
     const halfBeam = antenna.internals.beamwidth3dB_deg_(f) / 2;
     const loss = antenna.receivedDbm(f, 180, 30) - antenna.receivedDbm(f, 180, 30 + halfBeam);
     expectWithinAbs(loss, 3, 0.1);
   });
 
-  referenceCase('an azimuth offset at 60 deg elevation is worth cos(el) of itself on the sky', 'DEV-ANT-03', () => {
+  referenceCase('an azimuth offset at 60 deg elevation is worth cos(el) of itself on the sky', undefined, () => {
     const antenna = dish(ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK, 180, 60);
     const theta3 = antenna.internals.beamwidth3dB_deg_(f);
     // A full beamwidth of azimuth at 60 deg elevation is half a beamwidth of true angle
     const loss = antenna.receivedDbm(f, 180, 60) - antenna.receivedDbm(f, 180 + theta3, 60);
     expectWithinAbs(loss, 3, 0.2);
+  });
+
+  referenceCase('azimuth wraps: a target 0.2 deg across north costs what 0.2 deg across south does', undefined, () => {
+    const north = dish(ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK, 359.9, 30);
+    const south = dish(ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK, 179.9, 30);
+    const lossNorth = north.receivedDbm(f, 359.9, 30) - north.receivedDbm(f, 0.1, 30);
+    const lossSouth = south.receivedDbm(f, 179.9, 30) - south.receivedDbm(f, 180.1, 30);
+    expectWithinAbs(lossNorth, lossSouth, 1e-6);
+    expect(lossNorth).toBeLessThan(1.5);
   });
 });

@@ -64,11 +64,12 @@
               "samples": 619,
               "peakCnDb": 31.49,
               "medianCnDb": 24.91,
-              "peakRxIfDbm": -26.14,
+              "peakRxIfDbm": -26.15,
               "noiseIfDbm": -57.62,
               "lockedSamples": 619
             }
-          ]
+          ],
+          "adjacentCarriers": 0
         }
       ]
     }

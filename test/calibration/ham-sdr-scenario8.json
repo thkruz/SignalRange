@@ -62,13 +62,14 @@
               "modulation": "QPSK",
               "fec": "1/2",
               "samples": 563,
-              "peakCnDb": 26.25,
-              "medianCnDb": 23.5,
+              "peakCnDb": 26.24,
+              "medianCnDb": 23.49,
               "peakRxIfDbm": -31.38,
               "noiseIfDbm": -57.62,
               "lockedSamples": 563
             }
-          ]
+          ],
+          "adjacentCarriers": 0
         },
         {
           "satellite": "WXSAT-19",
@@ -79,29 +80,9 @@
             "losS": 1175.39,
             "maxEl": 87.84
           },
-          "atPeak": {
-            "elevationDeg": 87.84,
-            "frequencyMHz": 137.1,
-            "gainDbi": 12,
-            "gOverTDbPerK": -16.86,
-            "tsysK": 640.22
-          },
-          "carriers": [
-            {
-              "signalId": "WXSAT-19-APT",
-              "rfMHz": 137.1,
-              "ifMHz": 137.1,
-              "bandwidthMHz": 0.03,
-              "modulation": "BPSK",
-              "fec": "1/2",
-              "samples": 776,
-              "peakCnDb": 43.17,
-              "medianCnDb": 37.46,
-              "peakRxIfDbm": -10.91,
-              "noiseIfDbm": -54.06,
-              "lockedSamples": 776
-            }
-          ]
+          "atPeak": null,
+          "carriers": [],
+          "adjacentCarriers": 0
         }
       ]
     },
@@ -128,29 +109,9 @@
             "losS": 2186.02,
             "maxEl": 28.9
           },
-          "atPeak": {
-            "elevationDeg": 28.9,
-            "frequencyMHz": 435.26,
-            "gainDbi": 3,
-            "gOverTDbPerK": -20.48,
-            "tsysK": 198.45
-          },
-          "carriers": [
-            {
-              "signalId": "CUBEHOP-1-FM",
-              "rfMHz": 435.26,
-              "ifMHz": 435.26,
-              "bandwidthMHz": 0.02,
-              "modulation": "QPSK",
-              "fec": "1/2",
-              "samples": 563,
-              "peakCnDb": 12.67,
-              "medianCnDb": 9.62,
-              "peakRxIfDbm": -40.08,
-              "noiseIfDbm": -52.75,
-              "lockedSamples": 563
-            }
-          ]
+          "atPeak": null,
+          "carriers": [],
+          "adjacentCarriers": 0
         },
         {
           "satellite": "WXSAT-19",
@@ -178,12 +139,13 @@
               "fec": "1/2",
               "samples": 776,
               "peakCnDb": 29.58,
-              "medianCnDb": 21.31,
-              "peakRxIfDbm": -19.62,
+              "medianCnDb": 22.6,
+              "peakRxIfDbm": -19.61,
               "noiseIfDbm": -49.2,
               "lockedSamples": 776
             }
-          ]
+          ],
+          "adjacentCarriers": 0
         }
       ]
     }

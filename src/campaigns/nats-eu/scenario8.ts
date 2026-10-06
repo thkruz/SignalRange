@@ -36,7 +36,7 @@ import { meridianSar1Satellite, meridianSar2Satellite } from './satellites';
  *   telemetry contact, not an imagery one. Galway sees a 5.6 deg graze.
  * - C3 GW-01 MERIDIAN-SAR-2: AOS 04:27:31 az 018, max el 73.1 at 04:31:23
  *   (408 km), LOS 04:35:12 az 192. Peak C/N 16.5 dB, >= 8 dB for 259 s; the
- *   20 deg/s pedestal holds it through the top (no keyhole at 73 deg).
+ *   10 deg/s pedestal holds it through the top (no keyhole at 73 deg).
  *   SH-02 sees a 72.5 deg pass at the same time (04:25:31 .. 04:33:13):
  *   priority 3, one operator, dropped.
  * All numbers measured through the real chain; see
@@ -925,7 +925,7 @@ export const natsEuScenario8Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'C/N peaks near 16.5 dB at 73 degrees, the best number of the night, and the pedestal held it through the top. Why did this one not keyhole?',
             options: [
-              'The azimuth rate at the top of a 73 degree pass is a few degrees a second, inside the 20 deg/s the pedestal can do',
+              'The azimuth rate at the top of a 73 degree pass is a few degrees a second, inside the 10 deg/s the pedestal can do',
               'Program-track disables the azimuth axis above 60 degrees, so the pedestal rides through the top on elevation alone',
               'The bird slowed down at the top of the pass, so the azimuth rate at culmination stayed inside what the pedestal can do',
               'It did keyhole for a few seconds at the top, and the receiver held lock through it on frames stored in the modem buffer',

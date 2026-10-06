@@ -1637,9 +1637,14 @@ export class ObjectivesManager {
               return false;
             }
 
-            // A LEO sits at a different az/el from each site: judge the lock
-            // from the objective's own station.
-            const view = targetSat instanceof OrbitalSatellite ? targetSat.geometryFor(observerFromLocation(gs.state.location)) : targetSat;
+            // A LEO, or a GEO with per-station geometry, sits at a different
+            // az/el from each site: judge the lock from this antenna's station.
+            const view =
+              typeof antenna.viewOf === 'function'
+                ? antenna.viewOf(targetSat)
+                : targetSat instanceof OrbitalSatellite
+                  ? targetSat.geometryFor(observerFromLocation(gs.state.location))
+                  : targetSat;
 
             // Handle 360° wraparound for azimuth
             let azDiff = Math.abs(state.azimuth - view.az);
@@ -2082,7 +2087,15 @@ export class ObjectivesManager {
       }
 
       case 'antenna-beacon-locked': {
-        return this.evaluateEquipment_(gs.antennas, condition.params, (antenna) => antenna.state.isBeaconLocked === true);
+        const minBeaconCn = condition.params?.minBeaconCn;
+        return this.evaluateEquipment_(gs.antennas, condition.params, (antenna) => {
+          if (minBeaconCn === undefined) {
+            return antenna.state.isBeaconLocked === true;
+          }
+          const cn = antenna.state.beaconCN;
+          this.observe_(cn);
+          return antenna.state.isBeaconLocked === true && cn !== null && cn >= minBeaconCn;
+        });
       }
 
       case 'antenna-position': {

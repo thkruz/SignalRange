@@ -100,6 +100,18 @@ export const scenario4Data: ScenarioData = {
         name: maineGroundStation.name,
         location: maineGroundStation.location,
         isOperational: true,
+        // Maine's own look angles to TIDEMARK-1, not Vermont's (phase 19.4)
+        antennasState: [
+          {
+            ...vermontGroundStation.antennasState![0],
+            azimuth: 167.27 as Degrees,
+            elevation: 34.38 as Degrees,
+            polarization: 10.2 as Degrees,
+            targetAzimuth: 167.27 as Degrees,
+            targetElevation: 34.38 as Degrees,
+            targetPolarization: 10.2 as Degrees,
+          },
+        ],
       },
     ],
     missionBriefUrl: 'https://docs.signalrange.space/campaign-1/scenario-4?content-only=true&dark=true',

@@ -41,7 +41,6 @@ vi.mock('@app/simulation/simulation-manager', () => ({
   SimulationManager: {
     getInstance: () => ({
       satellites: simSatellites,
-      getSatsByAzEl: (az: number, el: number) => simSatellites.filter((sat) => Math.abs(sat.az - az) <= 1 && Math.abs(sat.el - el) <= 1),
       getSatByNoradId: (noradId: number) => simSatellites.find((s) => s.noradId === noradId) ?? null,
       isDeveloperMode: false,
       groundStations: [],
@@ -73,6 +72,8 @@ const OUT_DIR = resolve(__dirname, '../../test/calibration');
 const TICK_HZ = 60;
 const LEO_HORIZON_H = 12;
 const LEO_MIN_EL = 5 as Degrees;
+/** Longest a GEO link may take to settle, s (a 9 m pedestal from stow) */
+const GEO_MAX_SETTLE_S = 600;
 /** Condition params that are physical thresholds (dB, dBm, K) */
 const PHYSICAL_PARAMS = ['minCNRatio', 'maxCNRatio', 'cnHoldSeconds', 'minPower', 'maxSignalStrength', 'minMarginDb', 'maxNoiseTemperature', 'minOutputPower', 'maxImdLevel'];
 
@@ -90,6 +91,11 @@ interface CarrierTrack {
   noiseIfDbm: number[];
   locked: number;
   samples: number;
+}
+
+/** Carriers from other satellites the station hears in its sidelobes on this link (phase 19.4) */
+interface AdjacentTrack {
+  signalIds: Set<string>;
 }
 
 interface Settings {
@@ -168,7 +174,7 @@ function agcOnNoise(chain: Chain) {
 
 type Chain = ReturnType<typeof buildChain>;
 
-function sample(chain: Chain, tracks: Map<string, CarrierTrack>): void {
+function sample(chain: Chain, tracks: Map<string, CarrierTrack>, noradId: number, adjacent: AdjacentTrack): void {
   const { antenna, frontEnd, receiver } = chain;
   frontEnd.update();
   const spm = frontEnd.couplerModule.signalPathManager;
@@ -176,6 +182,12 @@ function sample(chain: Chain, tracks: Map<string, CarrierTrack>): void {
   const baseModem = receiver.state.modems[0];
 
   for (const sig of antenna.state.rxSignalsIn as RfSignal[]) {
+    // Since 19.4 the antenna hears satellites in its sidelobes too: the link's
+    // carriers are the target's; the others are counted as adjacent
+    if (sig.noradId !== noradId) {
+      adjacent.signalIds.add(sig.signalId);
+      continue;
+    }
     const ifHz = frontEnd.lnbModule.calculateIfFrequency(sig.frequency as RfFrequency) as number;
     let track = tracks.get(sig.signalId);
     if (!track) {
@@ -232,6 +244,7 @@ function summarise(track: CarrierTrack) {
 function flyLink(chain: Chain, station: GroundStationConfig, sat: Satellite, startMs: number) {
   const { antenna } = chain;
   const tracks = new Map<string, CarrierTrack>();
+  const adjacent: AdjacentTrack = { signalIds: new Set() };
   antenna.handleTrackingModeChange('program-track');
   antenna.handleTargetSatelliteChange(sat.noradId);
 
@@ -250,18 +263,23 @@ function flyLink(chain: Chain, station: GroundStationConfig, sat: Satellite, sta
     for (simNowMs = found.aosMs - 30_000; simNowMs <= found.losMs; simNowMs += tickMs, tick++) {
       for (const s of simSatellites) s.update();
       antenna.update();
-      if (tick % TICK_HZ === 0 && simNowMs >= found.aosMs) sample(chain, tracks);
+      if (tick % TICK_HZ === 0 && simNowMs >= found.aosMs) sample(chain, tracks, sat.noradId, adjacent);
     }
   } else {
     simNowMs = startMs;
-    for (let tick = 0; tick < 30 * TICK_HZ; tick++) {
+    // Settle: at least 30 s, then until the pedestal has been still for 5 s
+    // (a 9 m dish at its real 0.5 deg/s can take minutes to arrive; 19.4)
+    let still = 0;
+    for (let tick = 0; tick < GEO_MAX_SETTLE_S * TICK_HZ; tick++) {
       for (const s of simSatellites) s.update();
       antenna.update();
+      still = antenna.state.isSlewing ? 0 : still + 1;
+      if (tick >= 30 * TICK_HZ && still >= 5 * TICK_HZ) break;
     }
     for (let i = 0; i < 5; i++) {
       for (const s of simSatellites) s.update();
       antenna.update();
-      sample(chain, tracks);
+      sample(chain, tracks, sat.noradId, adjacent);
     }
   }
 
@@ -284,6 +302,7 @@ function flyLink(chain: Chain, station: GroundStationConfig, sat: Satellite, sta
             tsysK: r2(internals.systemTempK_(refHz, peakEl)),
           },
     carriers: [...tracks.values()].map(summarise),
+    adjacentCarriers: adjacent.signalIds.size,
   };
 }
 

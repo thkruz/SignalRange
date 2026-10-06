@@ -3,6 +3,13 @@ import { SignalOrigin } from '@app/signal-origin';
 import type { dBi, dBm, FECType, Hertz, ModulationType, RfFrequency } from '@app/types';
 import type { Degrees } from 'ootk';
 
+/**
+ * The station every authored az/el (and rotation) in this campaign is written
+ * for: VT-01 (ground-stations.ts). Phase 19.4 derives each satellite's slot
+ * from it, so ME-02 sees the real geometric difference (nats-s03-F2).
+ */
+export const VERMONT_LOOK_ANGLE_SITE = { latitude: 44.5588, longitude: -72.5778, elevationM: 2 };
+
 export const tidemark1Satellite = new Satellite(
   'TIDEMARK-1',
   61525,
@@ -14,7 +21,7 @@ export const tidemark1Satellite = new Satellite(
       noradId: 61525,
       frequency: 5943e6 as RfFrequency,
       polarization: 'H',
-      power: 22 as dBm, // +2 dB in Phase 19.2: the real Tsys (sky + feed + LNB, ~81 K) replaced the LNB-only 43 K
+      power: 20 as dBm, // 19.2 raised it 2 dB for the real Tsys; 19.4 took the 2 dB back (dish gain to datasheet, pointing loss charged once)
       bandwidth: 36e6 as Hertz,
       modulation: 'QPSK' as ModulationType,
       fec: '3/4' as FECType,
@@ -34,6 +41,7 @@ export const tidemark1Satellite = new Satellite(
     // Ephemeris error: simulates TLE inaccuracy (~3 dB loss without step-track)
     ephemerisErrorAz: 0.12 as Degrees,
     ephemerisErrorEl: 0.08 as Degrees,
+    lookAnglesFrom: VERMONT_LOOK_ANGLE_SITE,
     transponderConfigs: [
       {
         id: 'TP-1',
@@ -81,7 +89,7 @@ export const tidemark2Satellite = new Satellite(
       noradId: 61526,
       frequency: 6017e6 as RfFrequency,
       polarization: 'H',
-      power: 22 as dBm, // +2 dB in Phase 19.2: the real Tsys (sky + feed + LNB, ~81 K) replaced the LNB-only 43 K
+      power: 20 as dBm, // 19.2 raised it 2 dB for the real Tsys; 19.4 took the 2 dB back (dish gain to datasheet, pointing loss charged once)
       bandwidth: 36e6 as Hertz,
       modulation: 'QPSK' as ModulationType,
       fec: '3/4' as FECType,
@@ -101,6 +109,7 @@ export const tidemark2Satellite = new Satellite(
     // Ephemeris error: simulates TLE inaccuracy
     ephemerisErrorAz: 0.1 as Degrees,
     ephemerisErrorEl: 0.06 as Degrees,
+    lookAnglesFrom: VERMONT_LOOK_ANGLE_SITE,
     transponderConfigs: [
       {
         id: 'TP-1',
@@ -166,7 +175,7 @@ export const tidemark3Satellite = new Satellite(
       noradId: 61527,
       frequency: 5985e6 as RfFrequency,
       polarization: 'H',
-      power: 22 as dBm, // +2 dB in Phase 19.2: the real Tsys (sky + feed + LNB, ~81 K) replaced the LNB-only 43 K
+      power: 20 as dBm, // 19.2 raised it 2 dB for the real Tsys; 19.4 took the 2 dB back (dish gain to datasheet, pointing loss charged once)
       bandwidth: 36e6 as Hertz,
       modulation: 'QPSK' as ModulationType,
       fec: '3/4' as FECType,
@@ -186,6 +195,7 @@ export const tidemark3Satellite = new Satellite(
     // Ephemeris error: smallest of the constellation (newest bird, freshest TLE)
     ephemerisErrorAz: 0.1 as Degrees,
     ephemerisErrorEl: 0.07 as Degrees,
+    lookAnglesFrom: VERMONT_LOOK_ANGLE_SITE,
     transponderConfigs: [
       {
         id: 'TP-1',
@@ -225,7 +235,7 @@ export const ses10Satellite = new Satellite(
       noradId: 42432,
       frequency: 5869e6 as RfFrequency,
       polarization: 'H',
-      power: 25 as dBm, // +2 dB in Phase 19.2: the real Tsys (sky + feed + LNB, ~81 K) replaced the LNB-only 43 K
+      power: 23 as dBm, // 19.2 raised it 2 dB for the real Tsys; 19.4 took the 2 dB back (dish gain to datasheet, pointing loss charged once)
       bandwidth: 36e6 as Hertz,
       modulation: 'QPSK' as ModulationType,
       fec: '3/4' as FECType,
@@ -245,6 +255,7 @@ export const ses10Satellite = new Satellite(
     // Ephemeris error: simulates TLE inaccuracy
     ephemerisErrorAz: 0.15 as Degrees,
     ephemerisErrorEl: 0.1 as Degrees,
+    lookAnglesFrom: VERMONT_LOOK_ANGLE_SITE,
     transponderConfigs: [
       {
         id: 'TP-1',
@@ -313,7 +324,7 @@ export const aurora7Satellite = new Satellite(
       noradId: 28899,
       frequency: 6053e6 as RfFrequency,
       polarization: 'H',
-      power: 20 as dBm, // Slightly lower power for legacy bird; +2 dB in Phase 19.2 (real Tsys)
+      power: 18 as dBm, // Slightly lower power for legacy bird (19.2 +2 dB, 19.4 -2 dB)
       bandwidth: 24e6 as Hertz, // Narrower bandwidth
       modulation: 'QPSK' as ModulationType,
       fec: '3/4' as FECType,
@@ -333,6 +344,7 @@ export const aurora7Satellite = new Satellite(
     // Ephemeris error: larger for inclined orbit (TLE is harder to predict)
     ephemerisErrorAz: 0.2 as Degrees,
     ephemerisErrorEl: 0.15 as Degrees,
+    lookAnglesFrom: VERMONT_LOOK_ANGLE_SITE,
     orbitType: 'geosynchronous',
     geosyncConfig: {
       minAz: 187 as Degrees, // ±3° azimuth drift

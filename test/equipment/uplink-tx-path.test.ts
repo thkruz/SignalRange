@@ -204,22 +204,33 @@ describe('E2: fixed-gain uplink link budget', () => {
     expect(sat.rxSignal.filter((s) => s.signalId === 'tx-1')).toHaveLength(1);
   });
 
-  it('leaves the legacy parabolic TX path bit-identical (no FSPL, 2 deg box)', () => {
+  it('legacy parabolic TX path: no FSPL yet (DEV-XPDR-01), satellites in the TX main lobe only, at the pattern drop', () => {
     const dish = new TestableTxAntenna(ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK, {
       isPowered: true,
       azimuth: 180 as any,
       elevation: 45 as any,
     });
     dish.txFeed = [makeTxSignal({ frequency: 6e9 as RfFrequency, power: 75 as dBm })];
-    const sat = makeSat(180, 45);
-    mockGetSatsByAzEl.mockReturnValue([sat]);
+    // On boresight, a tenth of a degree off, and 2 deg off (inside the old +/-2 deg box)
+    const onAxis = makeSat(180, 45);
+    const nearAxis = makeSat(180, 45.1);
+    const outside = makeSat(182, 45);
+    mockSats.push(onAxis, nearAxis, outside);
 
     dish.runTxUpdate();
 
-    expect(sat.rxSignal).toHaveLength(1);
-    // Exactly the radiated EIRP: no FSPL, no atmosphere, no pol stamp
-    expect(sat.rxSignal[0].power).toBe(75);
-    expect(sat.rxSignal[0].polarization).toBe('H');
+    // On boresight: exactly the radiated EIRP less the servo jitter's mean
+    // loss: no FSPL, no atmosphere, no pol stamp
+    expect(onAxis.rxSignal).toHaveLength(1);
+    expect(onAxis.rxSignal[0].power).toBeGreaterThan(74.95);
+    expect(onAxis.rxSignal[0].power).toBeLessThanOrEqual(75);
+    expect(onAxis.rxSignal[0].polarization).toBe('H');
+    // 0.1 deg off at 6 GHz (theta3 0.39 deg): 12 (0.1/0.39)^2 = 0.8 dB down
+    expect(nearAxis.rxSignal).toHaveLength(1);
+    expect(75 - nearAxis.rxSignal[0].power).toBeCloseTo(0.8, 0);
+    // 2 deg of azimuth at 45 deg el is 1.4 deg on the sky: a sidelobe, not heard
+    expect(outside.rxSignal).toHaveLength(0);
+    mockSats.length = 0;
   });
 });
 

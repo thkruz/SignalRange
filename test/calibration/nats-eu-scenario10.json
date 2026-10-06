@@ -84,10 +84,10 @@
               "modulation": "CW",
               "fec": "null",
               "samples": 390,
-              "peakCnDb": 22.25,
-              "medianCnDb": 20.53,
-              "peakRxIfDbm": -62.01,
-              "noiseIfDbm": -79.74,
+              "peakCnDb": 22.66,
+              "medianCnDb": 20.93,
+              "peakRxIfDbm": -61.95,
+              "noiseIfDbm": -79.95,
               "lockedSamples": 390
             },
             {
@@ -98,13 +98,14 @@
               "modulation": "QPSK",
               "fec": "3/4",
               "samples": 390,
-              "peakCnDb": 8,
-              "medianCnDb": 6.28,
-              "peakRxIfDbm": -30.71,
-              "noiseIfDbm": -34.18,
+              "peakCnDb": 8.4,
+              "medianCnDb": 6.68,
+              "peakRxIfDbm": -30.65,
+              "noiseIfDbm": -34.38,
               "lockedSamples": 390
             }
-          ]
+          ],
+          "adjacentCarriers": 0
         },
         {
           "satellite": "MERIDIAN-SAR-2",
@@ -131,10 +132,10 @@
               "modulation": "CW",
               "fec": "null",
               "samples": 423,
-              "peakCnDb": 24.53,
-              "medianCnDb": 21.48,
-              "peakRxIfDbm": -61.72,
-              "noiseIfDbm": -80.81,
+              "peakCnDb": 24.92,
+              "medianCnDb": 21.85,
+              "peakRxIfDbm": -61.69,
+              "noiseIfDbm": -81.07,
               "lockedSamples": 423
             },
             {
@@ -145,13 +146,14 @@
               "modulation": "QPSK",
               "fec": "3/4",
               "samples": 423,
-              "peakCnDb": 10.26,
-              "medianCnDb": 7.21,
-              "peakRxIfDbm": -30.43,
-              "noiseIfDbm": -35.25,
+              "peakCnDb": 10.65,
+              "medianCnDb": 7.58,
+              "peakRxIfDbm": -30.4,
+              "noiseIfDbm": -35.51,
               "lockedSamples": 423
             }
-          ]
+          ],
+          "adjacentCarriers": 0
         }
       ]
     }

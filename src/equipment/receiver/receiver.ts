@@ -1093,7 +1093,8 @@ export class Receiver extends BaseEquipment {
             const savedTime = this.videoPlayTime[feedUrl] || 0;
             media.currentTime = savedTime;
 
-            media.play().catch(() => {
+            // play() returns undefined where media is not implemented (jsdom)
+            media.play()?.catch(() => {
               // flickering signal will cause failures to play, ignore
             });
           }

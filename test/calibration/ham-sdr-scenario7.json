@@ -55,12 +55,13 @@
               "fec": "1/2",
               "samples": 499,
               "peakCnDb": 23.77,
-              "medianCnDb": 22.35,
-              "peakRxIfDbm": -33.84,
+              "medianCnDb": 22.34,
+              "peakRxIfDbm": -33.85,
               "noiseIfDbm": -57.62,
               "lockedSamples": 499
             }
-          ]
+          ],
+          "adjacentCarriers": 0
         }
       ]
     }

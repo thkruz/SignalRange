@@ -86,10 +86,10 @@
               "modulation": "CW",
               "fec": "null",
               "samples": 430,
-              "peakCnDb": 25.88,
-              "medianCnDb": 21.92,
-              "peakRxIfDbm": -61.63,
-              "noiseIfDbm": -79.77,
+              "peakCnDb": 26.36,
+              "medianCnDb": 22.33,
+              "peakRxIfDbm": -61.6,
+              "noiseIfDbm": -79.97,
               "lockedSamples": 430
             },
             {
@@ -100,13 +100,14 @@
               "modulation": "QPSK",
               "fec": "3/4",
               "samples": 430,
-              "peakCnDb": 11.63,
-              "medianCnDb": 7.67,
-              "peakRxIfDbm": -30.32,
-              "noiseIfDbm": -34.2,
+              "peakCnDb": 12.1,
+              "medianCnDb": 8.08,
+              "peakRxIfDbm": -30.29,
+              "noiseIfDbm": -34.41,
               "lockedSamples": 430
             }
-          ]
+          ],
+          "adjacentCarriers": 0
         },
         {
           "satellite": "MERIDIAN-SAR-2",
@@ -133,10 +134,10 @@
               "modulation": "CW",
               "fec": "null",
               "samples": 315,
-              "peakCnDb": 19.53,
-              "medianCnDb": 18.83,
-              "peakRxIfDbm": -62.54,
-              "noiseIfDbm": -80.84,
+              "peakCnDb": 19.88,
+              "medianCnDb": 19.19,
+              "peakRxIfDbm": -62.45,
+              "noiseIfDbm": -81.09,
               "lockedSamples": 315
             },
             {
@@ -147,13 +148,14 @@
               "modulation": "QPSK",
               "fec": "3/4",
               "samples": 315,
-              "peakCnDb": 5.26,
-              "medianCnDb": 4.56,
-              "peakRxIfDbm": -31.24,
-              "noiseIfDbm": -35.27,
+              "peakCnDb": 5.61,
+              "medianCnDb": 4.93,
+              "peakRxIfDbm": -31.16,
+              "noiseIfDbm": -35.53,
               "lockedSamples": 315
             }
-          ]
+          ],
+          "adjacentCarriers": 0
         },
         {
           "satellite": "MERIDIAN-SAR-3",
@@ -180,10 +182,10 @@
               "modulation": "CW",
               "fec": "null",
               "samples": 433,
-              "peakCnDb": 25.39,
-              "medianCnDb": 21.74,
-              "peakRxIfDbm": -61.66,
-              "noiseIfDbm": -80.67,
+              "peakCnDb": 25.82,
+              "medianCnDb": 22.13,
+              "peakRxIfDbm": -61.63,
+              "noiseIfDbm": -80.91,
               "lockedSamples": 433
             },
             {
@@ -194,13 +196,14 @@
               "modulation": "QPSK",
               "fec": "3/4",
               "samples": 433,
-              "peakCnDb": 11.14,
-              "medianCnDb": 7.48,
-              "peakRxIfDbm": -30.36,
-              "noiseIfDbm": -35.11,
+              "peakCnDb": 11.56,
+              "medianCnDb": 7.87,
+              "peakRxIfDbm": -30.33,
+              "noiseIfDbm": -35.35,
               "lockedSamples": 433
             }
-          ]
+          ],
+          "adjacentCarriers": 0
         }
       ]
     },
@@ -242,12 +245,12 @@
               "bandwidthMHz": 0,
               "modulation": "CW",
               "fec": "null",
-              "samples": 417,
-              "peakCnDb": 24.54,
-              "medianCnDb": 21.46,
-              "peakRxIfDbm": -61.74,
-              "noiseIfDbm": -79.75,
-              "lockedSamples": 417
+              "samples": 418,
+              "peakCnDb": 24.98,
+              "medianCnDb": 21.87,
+              "peakRxIfDbm": -61.7,
+              "noiseIfDbm": -79.96,
+              "lockedSamples": 418
             },
             {
               "signalId": "MERIDIAN-SAR-1-VIDEO",
@@ -256,14 +259,15 @@
               "bandwidthMHz": 36,
               "modulation": "QPSK",
               "fec": "3/4",
-              "samples": 417,
-              "peakCnDb": 10.28,
-              "medianCnDb": 7.2,
-              "peakRxIfDbm": -30.43,
-              "noiseIfDbm": -34.19,
-              "lockedSamples": 417
+              "samples": 418,
+              "peakCnDb": 10.72,
+              "medianCnDb": 7.61,
+              "peakRxIfDbm": -30.39,
+              "noiseIfDbm": -34.4,
+              "lockedSamples": 418
             }
-          ]
+          ],
+          "adjacentCarriers": 0
         },
         {
           "satellite": "MERIDIAN-SAR-2",
@@ -289,12 +293,12 @@
               "bandwidthMHz": 0,
               "modulation": "CW",
               "fec": "null",
-              "samples": 443,
-              "peakCnDb": 26.36,
-              "medianCnDb": 21.96,
-              "peakRxIfDbm": -61.42,
-              "noiseIfDbm": -80.81,
-              "lockedSamples": 443
+              "samples": 424,
+              "peakCnDb": 26.78,
+              "medianCnDb": 22.58,
+              "peakRxIfDbm": -61.52,
+              "noiseIfDbm": -81.07,
+              "lockedSamples": 424
             },
             {
               "signalId": "MERIDIAN-SAR-2-VIDEO",
@@ -303,14 +307,15 @@
               "bandwidthMHz": 36,
               "modulation": "QPSK",
               "fec": "3/4",
-              "samples": 443,
-              "peakCnDb": 12.09,
-              "medianCnDb": 7.69,
-              "peakRxIfDbm": -30.13,
-              "noiseIfDbm": -35.25,
-              "lockedSamples": 443
+              "samples": 423,
+              "peakCnDb": 12.51,
+              "medianCnDb": 8.31,
+              "peakRxIfDbm": -30.22,
+              "noiseIfDbm": -35.5,
+              "lockedSamples": 423
             }
-          ]
+          ],
+          "adjacentCarriers": 0
         },
         {
           "satellite": "MERIDIAN-SAR-3",
@@ -337,10 +342,10 @@
               "modulation": "CW",
               "fec": "null",
               "samples": 458,
-              "peakCnDb": 29.38,
-              "medianCnDb": 22.71,
-              "peakRxIfDbm": -61.45,
-              "noiseIfDbm": -80.67,
+              "peakCnDb": 29.92,
+              "medianCnDb": 23.11,
+              "peakRxIfDbm": -61.43,
+              "noiseIfDbm": -80.91,
               "lockedSamples": 458
             },
             {
@@ -351,13 +356,14 @@
               "modulation": "QPSK",
               "fec": "3/4",
               "samples": 458,
-              "peakCnDb": 15.13,
-              "medianCnDb": 8.46,
-              "peakRxIfDbm": -30.15,
-              "noiseIfDbm": -35.1,
+              "peakCnDb": 15.66,
+              "medianCnDb": 8.85,
+              "peakRxIfDbm": -30.13,
+              "noiseIfDbm": -35.35,
               "lockedSamples": 458
             }
-          ]
+          ],
+          "adjacentCarriers": 0
         }
       ]
     }

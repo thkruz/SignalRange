@@ -5,7 +5,7 @@ import { PolarPlot } from '@app/components/polar-plot/polar-plot';
 import { html } from '@app/engine/utils/development/formatter';
 import { qs } from '@app/engine/utils/query-selector';
 import { TrackingMode } from '@app/equipment/antenna/antenna-core';
-import { trackingModeLabel } from '@app/equipment/antenna/tracking-mode-label';
+import { antennaLockLabel, trackingModeLabel } from '@app/equipment/antenna/tracking-mode-label';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
 import { SimulationManager } from '@app/simulation/simulation-manager';
@@ -737,8 +737,10 @@ export class ACUControlTab extends BaseElement {
     // Update lock status
     const lockDisplay = this.qs_('lock-status-display');
     if (lockDisplay) {
-      lockDisplay.textContent = state.isLocked || state.isBeaconLocked ? 'LOCKED' : 'UNLOCKED';
-      lockDisplay.classList.toggle('text-success', state.isLocked || state.isBeaconLocked);
+      const lock = antennaLockLabel(state);
+      lockDisplay.textContent = lock;
+      lockDisplay.classList.toggle('text-success', lock === 'LOCKED');
+      lockDisplay.classList.toggle('text-warning', lock === 'UNKNOWN');
     }
 
     // Update signals count
@@ -968,7 +970,11 @@ export class ACUControlTab extends BaseElement {
     }
     if (beaconLockEl) {
       // Lock status depends on whether step-track optimization is enabled
-      if (state.isStepTrackEnabled) {
+      if (state.isAcuAutomationFaulted) {
+        // The tracking receiver's lock logic died with the automation (nats-s23-F5)
+        beaconLockEl.textContent = 'UNKNOWN';
+        beaconLockEl.classList.remove('text-success');
+      } else if (state.isStepTrackEnabled) {
         // Step-track enabled: IDLE (tracking off), SEARCHING (tracking on), LOCKED
         if (!state.isAutoTrackEnabled) {
           beaconLockEl.textContent = 'IDLE';

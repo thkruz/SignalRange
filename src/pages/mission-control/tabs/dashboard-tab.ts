@@ -6,7 +6,7 @@ import modemPng from '@app/assets/icons/radio.png';
 import { BaseElement } from '@app/components/base-element';
 import { html } from '@app/engine/utils/development/formatter';
 import { qs } from '@app/engine/utils/query-selector';
-import { trackingModeLabel } from '@app/equipment/antenna/tracking-mode-label';
+import { antennaLockLabel, trackingModeLabel } from '@app/equipment/antenna/tracking-mode-label';
 import { EventBus } from '@app/events/event-bus';
 import { AggregatedAlarm, Events } from '@app/events/events';
 import { AlarmService } from '@app/services/alarm-service';
@@ -584,11 +584,11 @@ export class DashboardTab extends BaseElement {
     // Lock status
     const lockEl = this.domCache_.get('antenna-lock');
     if (lockEl) {
-      const isLocked = state.isLocked || state.isBeaconLocked;
+      const lock = antennaLockLabel(state);
       const led = lockEl.querySelector('.card-alarm-led');
       const text = lockEl.querySelector('.small');
-      if (led) led.className = `card-alarm-led ${isLocked ? 'success' : 'off'}`;
-      if (text) text.textContent = isLocked ? 'LOCKED' : 'UNLOCKED';
+      if (led) led.className = `card-alarm-led ${lock === 'LOCKED' ? 'success' : lock === 'UNKNOWN' ? 'warning' : 'off'}`;
+      if (text) text.textContent = lock;
     }
 
     // Beacon C/N

@@ -71,6 +71,15 @@ export class WeatherManager {
     extreme: 50,
   };
 
+  /**
+   * Sustained wind by severity, m/s, when an event does not name one (phase
+   * 19.4). A storm carries a little more wind than a plain wind event.
+   */
+  static readonly WIND_SPEED_MPS: Record<string, Record<string, number>> = {
+    wind: { minor: 8, moderate: 14, severe: 22 },
+    storm: { minor: 10, moderate: 18, severe: 26 },
+  };
+
   /** Rain ramps in and out over this fraction of the event, capped at 5 min */
   static readonly RAIN_RAMP_FRACTION = 0.15;
   static readonly RAIN_RAMP_MAX_S = 300;
@@ -158,6 +167,49 @@ export class WeatherManager {
 
     // Update the rain rate over each site (phase 16, E5)
     this.updateRain_(elapsedSeconds);
+
+    // Update the wind over each site (phase 19.4: wind de-points the beam)
+    this.updateWind_(elapsedSeconds);
+  }
+
+  /**
+   * Wind speed (m/s) an event produces at `elapsedSeconds`: its authored or
+   * severity-derived speed, ramped in and out like rain.
+   */
+  static windSpeedAt(event: WeatherEventRuntime, elapsedSeconds: number): number {
+    const table = WeatherManager.WIND_SPEED_MPS[event.type];
+    if (!table) {
+      return 0;
+    }
+    const peak = event.windSpeedMps ?? table[event.severity] ?? 0;
+    const sinceStart = elapsedSeconds - event.startTime;
+    const untilEnd = event.startTime + event.duration - elapsedSeconds;
+    if (sinceStart < 0 || untilEnd <= 0) {
+      return 0;
+    }
+    const rampS = Math.min(WeatherManager.RAIN_RAMP_MAX_S, event.duration * WeatherManager.RAIN_RAMP_FRACTION);
+    const envelope = rampS > 0 ? Math.min(1, sinceStart / rampS, untilEnd / rampS) : 1;
+    return peak * envelope;
+  }
+
+  /** Push the site's wind speed to its antennas (0 when calm) */
+  private updateWind_(elapsedSeconds: number): void {
+    const sim = SimulationManager.getInstance();
+
+    for (const gs of sim.groundStations) {
+      let wind = 0;
+      for (const event of this.weatherEvents_) {
+        if (event.groundStationId === gs.state.id && event.isActive) {
+          wind = Math.max(wind, WeatherManager.windSpeedAt(event, elapsedSeconds));
+        }
+      }
+
+      for (const antenna of gs.antennas) {
+        if (antenna.state.windSpeed_mps !== wind && typeof antenna.updateWindSpeed === 'function') {
+          antenna.updateWindSpeed(wind);
+        }
+      }
+    }
   }
 
   /**

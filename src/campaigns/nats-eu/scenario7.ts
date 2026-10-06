@@ -19,13 +19,16 @@ import { meridianSar1Satellite, meridianSar2Satellite } from './satellites';
  * Phase 16: the miss is experienced, not asserted. At `maneuverAtS` the
  * spacecraft moves onto `newTle` while the station's element set stays where
  * it was (OrbitalSatellite.maneuverTo); program-track follows the old set until
- * the operator loads the update (reloadTle). The burn is 0.03 deg of mean
- * anomaly, about 3.5 km along track - a real avoidance burn, not a new orbit.
- * At 828 km that is a third of a degree, which at a 0.45 deg Ku beamwidth is
- * the difference between 10 dB and 4 dB. Measured on the stale set: C/N peaks
- * 4.2 dB at 12 deg elevation and FALLS to -2.6 dB at culmination as the range
- * shortens and the angular error grows; on the loaded set 10.2 dB at 25 deg
- * with 174 s above 8 dB (test/campaigns/nats-eu-phase-b-validation.test.ts).
+ * the operator loads the update (reloadTle). The burn is 0.06 deg of mean
+ * anomaly, about 7.5 km along track - a real avoidance burn, not a new orbit.
+ * At 828 km that is half a degree, which at a 0.45 deg Ku beamwidth costs
+ * ~15 dB. Measured on the stale set: C/N peaks ~3 dB on the rising leg and
+ * FALLS to about -5 dB at culmination as the range shortens and the angular
+ * error grows; on the loaded set ~10.6 dB at 25 deg with 174 s above 8 dB
+ * (test/campaigns/nats-eu-phase-b-validation.test.ts). Phase 19.4 doubled the
+ * burn from 0.03 deg: the old 3.5 km only produced the falling tell because
+ * the engine charged the pointing error twice (DEV-ANT-02); charged once, a
+ * third of a degree left the stale carrier flat at ~6 dB.
  *
  * Clock: sim starts 2027-03-15 13:45:00 UTC. `maneuverAtS` runs on the mission
  * clock: the burn executes at 14:12:00 (T+1620), between the two passes.
@@ -122,7 +125,7 @@ export const natsEuScenario7Data: ScenarioData = {
         label: 'MERIDIAN-SAR-2 conjunction-avoidance manoeuvre executed 14:11Z',
         newTle: {
           tle1: '1 61702U 27015A   27074.58333333  .00001000  00000-0  10000-3 0  9997',
-          tle2: '2 61702  98.4000  42.0000 0010000  90.0000 240.0300 15.60000000123458',
+          tle2: '2 61702  98.4000  42.0000 0010000  90.0000 240.0600 15.60000000123458',
         },
       },
     ],
@@ -548,7 +551,7 @@ export const natsEuScenario7Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'Program-track lock means the pedestal is where it was told to go. It was told wrong. Three and a half kilometres along track is 0.1 deg at 2000 km and 0.25 deg at 828 km: the closer the bird, the worse the miss.',
+              'Program-track lock means the pedestal is where it was told to go. It was told wrong. Seven and a half kilometres along track is 0.2 deg at 2000 km and half a degree at 828 km: the closer the bird, the worse the miss.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -605,7 +608,7 @@ export const natsEuScenario7Data: ScenarioData = {
       id: 'reacquire-sar2',
       nice: ['S0421', 'K1032'],
       title: 'Reacquire MERIDIAN-SAR-2',
-      description: 'Program-track slews the third of a degree to the real bird. Confirm the imagery carrier comes up on RX analysis where the new prediction says it should.',
+      description: 'Program-track slews the half degree to the real bird. Confirm the imagery carrier comes up on RX analysis where the new prediction says it should.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['load-the-ephemeris'],
       conditions: [
@@ -779,7 +782,7 @@ export const natsEuScenario7Data: ScenarioData = {
       'load-the-ephemeris': {
         text: `
         <p>
-          "Epoch on the new set is 14:11:30 - after the burn. The old one is 14:00 and knows nothing about it. Load it and the pedestal will move about a third of a degree, which at this beamwidth is the whole link."
+          "Epoch on the new set is 14:11:30 - after the burn. The old one is 14:00 and knows nothing about it. Load it and the pedestal will move about half a degree, which at this beamwidth is the whole link."
         </p>
         `,
         character: Character.ANNEKE_VISSER,
@@ -789,7 +792,7 @@ export const natsEuScenario7Data: ScenarioData = {
       'reacquire-sar2': {
         text: `
         <p>
-          And there it is. A third of a degree. The bird never moved more than a few kilometres and the station could not see it. Precise antenna, wrong place.
+          And there it is. Half a degree. The bird never moved more than a few kilometres and the station could not see it. Precise antenna, wrong place.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,

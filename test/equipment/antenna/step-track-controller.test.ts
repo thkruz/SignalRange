@@ -3,7 +3,7 @@ import { vi } from 'vitest';
 import { ANTENNA_CONFIG_KEYS } from '../../../src/equipment/antenna/antenna-config-keys';
 import { AntennaCore, AntennaState } from '../../../src/equipment/antenna/antenna-core';
 import { StepTrackController } from '../../../src/equipment/antenna/step-track-controller';
-import { advanceSimTime } from '../../helpers/sim-time';
+import { FIXED_STEP_MS, SimClock } from '../../../src/simulation/sim-clock';
 
 // Mock SimulationManager
 vi.mock('../../../src/simulation/simulation-manager', () => ({
@@ -12,12 +12,7 @@ vi.mock('../../../src/simulation/simulation-manager', () => ({
       update: vi.fn(),
       draw: vi.fn(),
       sync: vi.fn(),
-      getSatByNoradId: vi.fn((id: number) => ({
-        noradId: id,
-        ephemerisErrorAz: 0.15 as Degrees,
-        ephemerisErrorEl: 0.1 as Degrees,
-      })),
-      getSatsByAzEl: () => [],
+      getSatByNoradId: vi.fn(() => undefined),
       satellites: [],
       isDeveloperMode: false,
     })),
@@ -37,356 +32,186 @@ vi.mock('../../../src/events/event-bus', () => ({
 }));
 
 /**
- * Concrete implementation of AntennaCore for testing StepTrackController
+ * Antenna whose beacon receiver reads a synthetic beam: peak C/N at a hidden
+ * az/el offset, falling off as 12 (theta/theta3)^2 with the true
+ * (cross-elevation) angle between the step-track offsets and the peak. The
+ * controller sees only the measured C/N, never the peak.
  */
-class MockAntennaCore extends AntennaCore {
-  private mockRfFrontEnd_: any = null;
+class BeamAntenna extends AntennaCore {
+  peak = { az: -0.15, el: -0.1, cn: 30 };
+  /** Return null (no beacon in the window) */
+  noBeacon = false;
 
-  constructor(configId: ANTENNA_CONFIG_KEYS = ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK, initialState: Partial<AntennaState> = {}) {
-    super(configId, initialState, 1, 1);
+  constructor(initialState: Partial<AntennaState> = {}) {
+    super(ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK, initialState, 1, 1);
   }
 
   protected override addListeners_(): void {}
   syncDomWithState(): void {}
   draw(): void {}
 
-  // Override rfFrontEnd getter to return mock
-  override get rfFrontEnd() {
-    return this.mockRfFrontEnd_;
+  override measureBeaconMetrics(): { power: number | null; cn: number | null } {
+    if (this.noBeacon) {
+      return { power: null, cn: null };
+    }
+    return { power: -60, cn: this.peak.cn - this.lossFromPeak() };
   }
 
-  setMockRfFrontEnd(mock: any): void {
-    this.mockRfFrontEnd_ = mock;
-    // Step-track reads the antenna's own beacon receiver (phase 19.2), which
-    // uses the attached front end
-    this.rfFrontEnd_ = mock;
+  /** Pattern loss between the commanded offsets and the hidden peak, dB */
+  lossFromPeak(): number {
+    const cosEl = Math.cos(((this.state.elevation as number) * Math.PI) / 180);
+    const dAz = ((this.state.stepTrackAzOffset as number) - this.peak.az) * cosEl;
+    const dEl = (this.state.stepTrackElOffset as number) - this.peak.el;
+    return 12 * (Math.hypot(dAz, dEl) / this.beamwidthAtTrackingDeg()) ** 2;
   }
 }
 
-describe('StepTrackController', () => {
-  let antenna: MockAntennaCore;
+describe('StepTrackController (phase 19.4 hill-climb)', () => {
+  let antenna: BeamAntenna;
   let controller: StepTrackController;
 
+  /** Run the controller for `ms` of SimClock run time */
+  const run = (ms: number) => {
+    const steps = Math.round(ms / FIXED_STEP_MS);
+    for (let i = 0; i < steps; i++) {
+      SimClock.step();
+      controller.update();
+    }
+  };
+
   beforeEach(() => {
-    antenna = new MockAntennaCore(ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK, {
+    SimClock.reset();
+    antenna = new BeamAntenna({
       isPowered: true,
       isOperational: true,
       trackingMode: 'program-track',
       isStepTrackEnabled: true,
       stepTrackAzOffset: 0 as Degrees,
       stepTrackElOffset: 0 as Degrees,
-      beaconFrequencyHz: 3_948_000_000,
-      beaconSearchBwHz: 500_000,
-      beaconTrackingBwHz: 1_000,
-      targetAzimuth: 100 as Degrees,
-      targetElevation: 45 as Degrees,
+      beaconFrequencyHz: 4_175_500_000,
+      azimuth: 161.8 as Degrees,
+      elevation: 34.2 as Degrees,
+      targetAzimuth: 161.8 as Degrees,
+      targetElevation: 34.2 as Degrees,
       targetSatelliteId: 12345,
     });
 
-    controller = (antenna as any).stepTrackController_;
+    controller = (antenna as unknown as { stepTrackController_: StepTrackController }).stepTrackController_;
   });
 
-  describe('constructor', () => {
-    it('should create instance', () => {
+  describe('lifecycle', () => {
+    it('is created idle', () => {
       expect(controller).toBeInstanceOf(StepTrackController);
-    });
-
-    it('should not be active by default', () => {
       expect(controller.isActive).toBe(false);
-    });
-  });
-
-  describe('start', () => {
-    it('should set isActive to true', () => {
-      controller.start();
-      expect(controller.isActive).toBe(true);
-    });
-
-    it('should set target offsets from satellite ephemeris error', () => {
-      controller.start();
-      const state = controller.getState();
-      // Target should be negative of ephemeris error
-      expect(state.targetAzOffset).toBe(-0.15);
-      expect(state.targetElOffset).toBe(-0.1);
-    });
-
-    it('should reset convergence state on start', () => {
-      controller.start();
       expect(controller.isConverged).toBe(false);
     });
-  });
 
-  describe('stop', () => {
-    it('should set isActive to false', () => {
+    it('start activates and stop deactivates', () => {
       controller.start();
+      expect(controller.isActive).toBe(true);
       controller.stop();
       expect(controller.isActive).toBe(false);
     });
-  });
 
-  describe('isActive getter', () => {
-    it('should return false when stopped', () => {
-      expect(controller.isActive).toBe(false);
+    it('does nothing while stopped', () => {
+      run(10_000);
+      expect(antenna.state.stepTrackAzOffset).toBe(0);
+      expect(antenna.state.stepTrackElOffset).toBe(0);
     });
 
-    it('should return true when started', () => {
+    it('starts from the offsets the antenna already holds', () => {
+      antenna.state.stepTrackAzOffset = 0.05 as Degrees;
       controller.start();
+      expect(controller.getState().heldAzOffset).toBeCloseTo(0.05, 9);
+    });
+  });
+
+  describe('step size', () => {
+    it('steps a tenth of the beamwidth in elevation and the same angle on the sky in azimuth', () => {
+      const step = antenna.beamwidthAtTrackingDeg() * StepTrackController.STEP_FRACTION;
+      expect(controller.stepDeg('el')).toBeCloseTo(step, 9);
+      expect(controller.stepDeg('az')).toBeCloseTo(step / Math.cos((34.2 * Math.PI) / 180), 9);
+    });
+  });
+
+  describe('hill-climb', () => {
+    it('finds the beacon peak from the measured C/N alone', () => {
+      controller.start();
+      run(120_000);
+      // Within half a step on each axis of the hidden peak
+      expect(Math.abs((antenna.state.stepTrackElOffset as number) - antenna.peak.el)).toBeLessThan(controller.stepDeg('el') * 0.75);
+      expect(antenna.lossFromPeak()).toBeLessThan(0.2);
+      expect(controller.isConverged).toBe(true);
+    });
+
+    it('takes real time: settle and dwell per measurement on SimClock', () => {
+      controller.start();
+      run(5_000);
+      // 0.5 s settle + 1 s dwell per reading: a few readings in 5 s, so at most a step or two
+      expect(antenna.lossFromPeak()).toBeGreaterThan(0.5);
+      run(115_000);
+      const convergedAfter = controller.getState().convergedAfterMs!;
+      expect(convergedAfter).toBeGreaterThan(10_000);
+      expect(convergedAfter).toBeLessThan(120_000);
+    });
+
+    it('keeps dithering after convergence and follows a peak that moves', () => {
+      controller.start();
+      run(120_000);
+      antenna.peak.el += 0.1;
+      run(60_000);
+      expect(antenna.lossFromPeak()).toBeLessThan(0.2);
+    });
+  });
+
+  describe('beacon lock', () => {
+    it('locks when the measured C/N clears 6.5 dB', () => {
+      controller.start();
+      run(3_000);
+      expect(antenna.state.isBeaconLocked).toBe(true);
+      expect(antenna.state.isLocked).toBe(true);
+    });
+
+    it('does not lock on a weak beacon (3-6.5 dB) but keeps climbing', () => {
+      antenna.peak.cn = 6;
+      controller.start();
+      run(3_000);
+      expect(antenna.state.isBeaconLocked).toBe(false);
       expect(controller.isActive).toBe(true);
     });
-  });
 
-  describe('update', () => {
-    it('should not do anything when not active', () => {
-      const initialAzOffset = antenna.state.stepTrackAzOffset;
-      const initialElOffset = antenna.state.stepTrackElOffset;
-
-      controller.update();
-
-      expect(antenna.state.stepTrackAzOffset).toBe(initialAzOffset);
-      expect(antenna.state.stepTrackElOffset).toBe(initialElOffset);
-    });
-
-    it('should update offsets when active', () => {
+    it('gives up when the beacon is not trackable (< 3 dB)', () => {
+      antenna.peak.cn = 2;
+      antenna.state.isAutoTrackEnabled = true;
       controller.start();
-
-      // Advance time a bit (5 seconds)
-      advanceSimTime(5000);
-      controller.update();
-
-      // Offsets should have started moving toward target
-      const azOffset = antenna.state.stepTrackAzOffset as number;
-      const elOffset = antenna.state.stepTrackElOffset as number;
-
-      // Should be non-zero and in the right direction
-      expect(azOffset).toBeLessThan(0); // Moving toward -0.15
-      expect(elOffset).toBeLessThan(0); // Moving toward -0.10
+      run(3_000);
+      expect(controller.isActive).toBe(false);
+      expect(antenna.state.isBeaconLocked).toBe(false);
+      expect(antenna.state.isAutoTrackEnabled).toBe(false);
     });
 
-    describe('with mock RF front-end', () => {
-      let mockRfFrontEnd: any;
-
-      beforeEach(() => {
-        mockRfFrontEnd = {
-          lnbModule: {
-            state: {
-              loFrequency: 5150, // 5150 MHz LO
-              isPowered: true,
-            },
-          },
-          agcModule: {
-            outputSignals: [],
-          },
-          couplerModule: {
-            signalPathManager: {
-              getNoiseFloorAt: vi.fn(() => ({
-                noiseFloorNoGain: -120,
-                shouldApplyGain: false,
-              })),
-            },
-          },
-        };
-        antenna.setMockRfFrontEnd(mockRfFrontEnd);
-      });
-
-      it('should measure beacon power when signals are present', () => {
-        const beaconIfFreq = 5150e6 - 3_948_000_000;
-        mockRfFrontEnd.agcModule.outputSignals = [
-          {
-            frequency: beaconIfFreq,
-            power: -60,
-            bandwidth: 25000,
-          },
-        ];
-
-        controller.start();
-
-        // Run updates to get past rate limiting (60 updates per cycle)
-        for (let i = 0; i < 65; i++) {
-          controller.update();
-        }
-
-        expect(antenna.state.beaconPower).toBe(-60);
-      });
-
-      it('should calculate C/N ratio', () => {
-        const beaconIfFreq = 5150e6 - 3_948_000_000;
-        mockRfFrontEnd.agcModule.outputSignals = [
-          {
-            frequency: beaconIfFreq,
-            power: -60,
-            bandwidth: 25000,
-          },
-        ];
-
-        controller.start();
-
-        for (let i = 0; i < 65; i++) {
-          controller.update();
-        }
-
-        // C/N = signal power (-60) - noise floor (-120) = 60 dB
-        expect(antenna.state.beaconCN).toBeGreaterThan(50);
-      });
-
-      it('should acquire lock when C/N exceeds threshold', () => {
-        const beaconIfFreq = 5150e6 - 3_948_000_000;
-        mockRfFrontEnd.agcModule.outputSignals = [
-          {
-            frequency: beaconIfFreq,
-            power: -50,
-            bandwidth: 25000,
-          },
-        ];
-
-        controller.start();
-
-        for (let i = 0; i < 65; i++) {
-          controller.update();
-        }
-
-        expect(antenna.state.isBeaconLocked).toBe(true);
-      });
-
-      it('reports no beacon (null, not a huge negative C/N) with the LNB unpowered (s02-F7)', () => {
-        mockRfFrontEnd.lnbModule.state.isPowered = false;
-        // An unpowered LNB passes carriers at -300 dB gain
-        mockRfFrontEnd.agcModule.outputSignals = [{ frequency: 5150e6 - 3_948_000_000, power: -387, bandwidth: 25000 }];
-
-        controller.start();
-        for (let i = 0; i < 65; i++) {
-          controller.update();
-        }
-
-        expect(antenna.state.beaconCN).toBeNull();
-        expect(antenna.state.beaconPower).toBeNull();
-        expect(antenna.state.isBeaconLocked).toBe(false);
-      });
-
-      it('reports no beacon when the carrier sits far below the C/N floor', () => {
-        mockRfFrontEnd.agcModule.outputSignals = [{ frequency: 5150e6 - 3_948_000_000, power: -387, bandwidth: 25000 }];
-
-        controller.start();
-        for (let i = 0; i < 65; i++) {
-          controller.update();
-        }
-
-        expect(antenna.state.beaconCN).toBeNull();
-      });
-
-      it('should auto-disable when C/N is too low', () => {
-        const beaconIfFreq = 5150e6 - 3_948_000_000;
-        mockRfFrontEnd.agcModule.outputSignals = [
-          {
-            frequency: beaconIfFreq,
-            power: -125, // Very weak signal
-            bandwidth: 25000,
-          },
-        ];
-
-        controller.start();
-
-        for (let i = 0; i < 65; i++) {
-          controller.update();
-        }
-
-        expect(controller.isActive).toBe(false);
-        expect(antenna.state.isAutoTrackEnabled).toBe(false);
-      });
-    });
-  });
-
-  describe('convergence', () => {
-    it('should converge over time', () => {
+    it('gives up when there is no beacon in the search window', () => {
+      antenna.noBeacon = true;
       controller.start();
-      expect(controller.isConverged).toBe(false);
-
-      // Advance time past convergence duration (25 seconds)
-      advanceSimTime(30000);
-      controller.update();
-
-      expect(controller.isConverged).toBe(true);
-      expect(controller.getState().progress).toBe(1);
-    });
-
-    it('should reach target offsets when converged', () => {
-      controller.start();
-
-      // Advance time past convergence duration
-      advanceSimTime(30000);
-      controller.update();
-
-      // Should have reached target offsets
-      expect(antenna.state.stepTrackAzOffset).toBeCloseTo(-0.15, 2);
-      expect(antenna.state.stepTrackElOffset).toBeCloseTo(-0.1, 2);
-    });
-
-    it('should use easing for smooth convergence', () => {
-      controller.start();
-
-      // At 50% time, should be more than 50% of the way due to easeOutQuad
-      advanceSimTime(12500); // Half of 25 seconds
-      controller.update();
-
-      const progress = controller.getState().progress;
-      expect(progress).toBe(0.5);
-
-      // With easeOutQuad, 50% time = 75% progress toward target
-      const azOffset = antenna.state.stepTrackAzOffset as number;
-      // easeOutQuad(0.5) = 1 - (1-0.5)^2 = 1 - 0.25 = 0.75
-      expect(azOffset).toBeCloseTo(-0.15 * 0.75, 2);
+      run(3_000);
+      expect(controller.isActive).toBe(false);
     });
   });
 
   describe('getState', () => {
-    it('should return current controller state', () => {
-      const state = controller.getState();
-
-      expect(state).toHaveProperty('isActive');
-      expect(state).toHaveProperty('isConverged');
-      expect(state).toHaveProperty('targetAzOffset');
-      expect(state).toHaveProperty('targetElOffset');
-      expect(state).toHaveProperty('progress');
-      expect(state).toHaveProperty('isLocked');
-      expect(state).toHaveProperty('isLockStable');
-    });
-
-    it('should reflect current active state', () => {
-      expect(controller.getState().isActive).toBe(false);
-
+    it('reports the climb for debugging', () => {
       controller.start();
-      expect(controller.getState().isActive).toBe(true);
-
-      controller.stop();
-      expect(controller.getState().isActive).toBe(false);
-    });
-
-    it('should return zero progress when not active', () => {
+      run(3_000);
       const state = controller.getState();
-      expect(state.progress).toBe(0);
-    });
-  });
-
-  describe('isLockStable', () => {
-    it('should return false when C/N is null', () => {
-      antenna.state.beaconCN = null;
-      expect(controller.isLockStable()).toBe(false);
+      expect(state.isActive).toBe(true);
+      expect(state.lastMeasuredCn).not.toBeNull();
+      expect(state.elapsedMs).toBeGreaterThan(0);
+      expect(['az', 'el']).toContain(state.axis);
     });
 
-    it('should return false when C/N is below threshold', () => {
-      antenna.state.beaconCN = 6;
-      expect(controller.isLockStable()).toBe(false);
-    });
-
-    it('should return true when C/N exceeds stable threshold', () => {
-      antenna.state.beaconCN = 10;
-      expect(controller.isLockStable()).toBe(true);
-    });
-  });
-
-  describe('isConverged getter', () => {
-    it('should return false initially', () => {
-      controller.start();
-      expect(controller.isConverged).toBe(false);
+    it('reports zero elapsed time when idle', () => {
+      expect(controller.getState().elapsedMs).toBe(0);
+      expect(controller.getState().isLockStable).toBe(false);
     });
   });
 });

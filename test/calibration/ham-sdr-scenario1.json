@@ -54,13 +54,14 @@
               "modulation": "BPSK",
               "fec": "1/2",
               "samples": 758,
-              "peakCnDb": 28.08,
+              "peakCnDb": 28.1,
               "medianCnDb": 23.55,
-              "peakRxIfDbm": -21.11,
+              "peakRxIfDbm": -21.1,
               "noiseIfDbm": -49.19,
               "lockedSamples": 758
             }
-          ]
+          ],
+          "adjacentCarriers": 0
         },
         {
           "satellite": "CUBEHOP-1",
@@ -71,29 +72,9 @@
             "losS": 1754.3,
             "maxEl": 48.19
           },
-          "atPeak": {
-            "elevationDeg": 48.19,
-            "frequencyMHz": 435.26,
-            "gainDbi": 3,
-            "gOverTDbPerK": -20.47,
-            "tsysK": 198.11
-          },
-          "carriers": [
-            {
-              "signalId": "CUBEHOP-1-FM",
-              "rfMHz": 435.26,
-              "ifMHz": 435.26,
-              "bandwidthMHz": 0.02,
-              "modulation": "QPSK",
-              "fec": "1/2",
-              "samples": 603,
-              "peakCnDb": 15.62,
-              "medianCnDb": 10.89,
-              "peakRxIfDbm": -37.13,
-              "noiseIfDbm": -52.75,
-              "lockedSamples": 603
-            }
-          ]
+          "atPeak": null,
+          "carriers": [],
+          "adjacentCarriers": 0
         }
       ]
     }

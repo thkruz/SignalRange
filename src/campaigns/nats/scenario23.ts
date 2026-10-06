@@ -64,7 +64,7 @@ export const scenario23Data: ScenarioData = {
   duration: '25-30 min',
   difficulty: 'advanced',
   missionType: 'Contingency Operations',
-  description: `The ACU automation processor faulted at 1358. Program-track, move-to-target, and step-track are all offline - the dish is sitting exactly where automation left it, which for now is on TIDEMARK-1. The servos still work; it's the brains that died, not the muscles.<br><br>IT owns the controller and has no ETA. You own the link. TIDEMARK-1 is GEO and well-behaved, so the pointing solution doesn't change - but the ACU lock light still reads LOCKED only because it froze at the moment of the crash. Don't trust it. The beacon on the spectrum is your only proof.<br><br>Get into manual cleanly, prove you're on the bird, hold it there, and do not experiment with the broken automation while IT is mid-diagnosis.`,
+  description: `The ACU automation processor faulted at 1358. Program-track, move-to-target, and step-track are all offline - the dish is sitting exactly where automation left it, which for now is on TIDEMARK-1. The servos still work; it's the brains that died, not the muscles.<br><br>IT owns the controller and has no ETA. You own the link. TIDEMARK-1 is GEO and well-behaved, so the pointing solution doesn't change - but the ACU's lock light and beacon readout died with the processor: lock reads UNKNOWN. The beacon on the spectrum is your only proof.<br><br>Get into manual cleanly, prove you're on the bird, hold it there, and do not experiment with the broken automation while IT is mid-diagnosis.`,
   equipment: ['9-meter C-band Antenna (manual servo control)', 'RF Front End', 'Spectrum Analyzer', 'RX/TX Modems', 'TIDEMARK-1 prediction sheet'],
   timeLimitSeconds: 30 * 60,
   settings: {
@@ -247,7 +247,7 @@ export const scenario23Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'The dangerous assumption is trusting the ACU lock light - it is driven by the failed processor. The spectrum analyzer (beacon at the right IF) is the only pointing truth source that does not depend on the broken thing.',
+              'The dangerous assumption is waiting on the ACU lock light - it is driven by the failed processor and reads UNKNOWN until IT restores it. The spectrum analyzer (beacon at the right IF) is the only pointing truth source that does not depend on the broken thing.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -454,7 +454,7 @@ export const scenario23Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'The ACU lock light is computed by the failed processor - it is exactly the instrument you cannot trust, so never use it. The beacon and receiver lock come from the RF chain, which is healthy. Fly the instruments that still work.',
+              'The ACU lock light is computed by the failed processor - it reads UNKNOWN and would be the instrument you cannot trust even if it came back on its own. The beacon and receiver lock come from the RF chain, which is healthy. Fly the instruments that still work.',
             pointPenalty: 5,
           },
           mustMaintain: false,

@@ -136,7 +136,7 @@ test.describe('nats-eu Scenario 1 Full Completion', () => {
     await jogAxis(page, 'el-fine', 1, 2);
     await domClick(page, '[id$="apply-changes-btn"]');
     await dismissDialogIfPresent(page);
-    // 180 deg at 20 deg/s is nine seconds of slew
+    // 180 deg at 10 deg/s is eighteen seconds of slew
     await waitForObjectiveComplete(missionControl, 'Pre-position for AOS', 60000);
   });
 

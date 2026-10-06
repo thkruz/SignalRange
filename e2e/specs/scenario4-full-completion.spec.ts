@@ -308,7 +308,7 @@ async function selectTidemark2AndMove(page: import('@playwright/test').Page): Pr
 
 /**
  * Wait for antenna movement to complete by monitoring position changes.
- * The antenna moves at ~2-5 deg/sec, so large movements take several seconds.
+ * The 9 m pedestal moves at 0.5 deg/s (phase 19.4), so a large move takes minutes.
  */
 async function waitForAntennaMovement(page: import('@playwright/test').Page, timeout = 90000): Promise<void> {
   const startTime = Date.now();
@@ -329,8 +329,13 @@ async function waitForAntennaMovement(page: import('@playwright/test').Page, tim
       elDisplay = page.locator('[id*="el-fine"][id$="-value"]');
     }
 
+    // Azimuth too: TM-1 -> TM-2 finishes its 8 deg of elevation long before
+    // its 58 deg of azimuth (phase 19.4 servo)
+    const azDisplay = page.locator('.fine-adjust-control', { hasText: 'Azimuth' }).locator('.fine-adjust-value-active');
+
     try {
-      const currentPosition = await elDisplay.first().textContent({ timeout: 2000 });
+      const azText = (await azDisplay.count()) > 0 ? await azDisplay.first().textContent({ timeout: 2000 }) : '';
+      const currentPosition = `${azText}|${await elDisplay.first().textContent({ timeout: 2000 })}`;
 
       if (currentPosition === lastPosition && currentPosition !== '') {
         stableCount++;
@@ -635,7 +640,8 @@ async function executeObjective(page: import('@playwright/test').Page, missionCo
         await selectTidemark2AndMove(page);
       }
       if (objective.waitForAntennaPosition) {
-        await waitForAntennaMovement(page);
+        // TM-1 -> TM-2 is 58 deg of azimuth: ~2 min at the 9 m's 0.5 deg/s (phase 19.4)
+        await waitForAntennaMovement(page, 200000);
       }
       break;
 
@@ -750,8 +756,8 @@ test.describe('Scenario 4 Full Completion', () => {
   // ============================================================
 
   test('Objective: Command Antenna to Track TIDEMARK-2', async () => {
-    // Antenna movement can take up to 90 seconds
-    test.setTimeout(120000);
+    // 58 deg of azimuth at 0.5 deg/s is ~2 minutes of slew (phase 19.4)
+    test.setTimeout(260000);
     const objective = SCENARIO_4_OBJECTIVES.find((o) => o.id === 'command-antenna')!;
     await executeObjective(page, missionControlPage, objective);
   });

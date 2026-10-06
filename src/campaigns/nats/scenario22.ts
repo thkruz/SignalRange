@@ -195,7 +195,8 @@ export const scenario22Data: ScenarioData = {
       id: 'engage-step-track',
       nice: ['S0421', 'K1032'],
       title: 'Step-Track for the Weak Beacon',
-      description: 'Engage step-track - the beacon is 4 dB down from its prime and needs every bit of pointing accuracy.',
+      description:
+        'Engage step-track - the beacon is 4 dB down from its prime and needs every bit of pointing accuracy. Watch the ACU beacon C/N climb from about 7 dB on program-track to about 8.8 dB as step-track finds the peak; the step-track floor is the 6.5 dB beacon lock.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['acquire-aurora'],
       timeLimitSeconds: 2 * 60,
@@ -208,8 +209,11 @@ export const scenario22Data: ScenarioData = {
           mustMaintain: true,
         },
         {
+          // Phase 19.4: a real climb (~40 s of stepping), then a hold above
+          // the floor (nats-s22-F6; nats-step-track-validation.test.ts)
           type: 'antenna-beacon-locked',
-          description: 'Beacon Held',
+          description: 'Beacon Peaked and Held (≥ 8.3 dB)',
+          params: { minBeaconCn: 8.3 },
           mustMaintain: true,
           maintainDuration: 15,
         },

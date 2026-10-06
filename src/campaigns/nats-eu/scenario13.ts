@@ -41,7 +41,7 @@ import { createMeridianSar1, createMeridianSar2, createMeridianSar3, type Meridi
  *
  * The keyhole as the engine renders it: the pedestal's program-track lock and
  * the receiver's carrier are lost for several seconds through the top (the
- * azimuth swing of ~180 deg at 20 deg/s) and come back on the descending leg.
+ * azimuth swing of ~180 deg at 10 deg/s) and come back on the descending leg.
  * The crater objective therefore holds receiver lock for 100 s: activated on
  * the rising leg it cannot finish before the top, the dropout resets it, and
  * it completes on the descending leg. (A `maxCNRatio` reading is not used: the
@@ -324,7 +324,7 @@ export const natsEuScenario13Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'SAR-2 rises at 13:12 from azimuth 163 and sets at 345, passing 89.5 degrees at 13:17. What does the pedestal have to do at the top, and can it?',
             options: [
-              'Swing almost 180 degrees of azimuth in the seconds the bird takes to cross the zenith; at 20 deg/s it cannot',
+              'Swing almost 180 degrees of azimuth in the seconds the bird takes to cross the zenith; at 10 deg/s it cannot',
               'Nothing unusual: elevation goes up to 89.5 and comes back down; azimuth barely moves, so the pedestal holds',
               'Switch to step-track through the top; step-track does not need azimuth, so the pedestal holds the beam',
               'Reverse the elevation axis over the top; the ACU does it automatically, so the pedestal holds the beam',

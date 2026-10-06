@@ -54,10 +54,10 @@
               "modulation": "CW",
               "fec": "null",
               "samples": 428,
-              "peakCnDb": 25.28,
-              "medianCnDb": 21.7,
-              "peakRxIfDbm": -61.67,
-              "noiseIfDbm": -79.74,
+              "peakCnDb": 25.73,
+              "medianCnDb": 22.11,
+              "peakRxIfDbm": -61.64,
+              "noiseIfDbm": -79.94,
               "lockedSamples": 428
             },
             {
@@ -68,13 +68,14 @@
               "modulation": "QPSK",
               "fec": "3/4",
               "samples": 428,
-              "peakCnDb": 11.02,
-              "medianCnDb": 7.44,
-              "peakRxIfDbm": -30.37,
-              "noiseIfDbm": -34.17,
+              "peakCnDb": 11.48,
+              "medianCnDb": 7.85,
+              "peakRxIfDbm": -30.33,
+              "noiseIfDbm": -34.38,
               "lockedSamples": 428
             }
-          ]
+          ],
+          "adjacentCarriers": 0
         },
         {
           "satellite": "MERIDIAN-SAR-2",
@@ -100,12 +101,12 @@
               "bandwidthMHz": 0,
               "modulation": "CW",
               "fec": "null",
-              "samples": 416,
-              "peakCnDb": 24.52,
-              "medianCnDb": 21.49,
-              "peakRxIfDbm": -61.73,
-              "noiseIfDbm": -80.84,
-              "lockedSamples": 416
+              "samples": 417,
+              "peakCnDb": 24.9,
+              "medianCnDb": 21.86,
+              "peakRxIfDbm": -61.7,
+              "noiseIfDbm": -81.09,
+              "lockedSamples": 417
             },
             {
               "signalId": "MERIDIAN-SAR-2-VIDEO",
@@ -115,13 +116,14 @@
               "modulation": "QPSK",
               "fec": "3/4",
               "samples": 416,
-              "peakCnDb": 10.25,
-              "medianCnDb": 7.22,
-              "peakRxIfDbm": -30.43,
-              "noiseIfDbm": -35.27,
+              "peakCnDb": 10.63,
+              "medianCnDb": 7.6,
+              "peakRxIfDbm": -30.4,
+              "noiseIfDbm": -35.53,
               "lockedSamples": 416
             }
-          ]
+          ],
+          "adjacentCarriers": 0
         }
       ]
     }

@@ -367,7 +367,7 @@ async function selectSatelliteAndMove(page: import('@playwright/test').Page): Pr
 
 /**
  * Wait for antenna movement to complete by monitoring position changes.
- * The antenna moves at ~2-5 deg/sec, so large movements take several seconds.
+ * The 9 m pedestal moves at 0.5 deg/s (phase 19.4), so a large move takes minutes.
  */
 async function waitForAntennaMovement(page: import('@playwright/test').Page, timeout = 60000): Promise<void> {
   const startTime = Date.now();

@@ -68,7 +68,8 @@
               "noiseIfDbm": -36.82,
               "lockedSamples": 0
             }
-          ]
+          ],
+          "adjacentCarriers": 0
         }
       ]
     }

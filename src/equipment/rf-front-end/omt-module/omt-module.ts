@@ -51,8 +51,18 @@ export class OMTModule extends RFFrontEndModule<OMTState> {
     };
   }
 
+  /**
+   * This unit's port-to-port cross-pol isolation, dB: the authored spec plus a
+   * per-unit build scatter of 0-5 dB drawn once at construction (phase 19.4;
+   * it used to be re-drawn every frame, DEV-RF-05). Fault injection lowers
+   * `state.crossPolIsolation` below it.
+   */
+  private readonly unitIsolationDb_: number;
+
   constructor(state: OMTState, rfFrontEnd: RFFrontEndCore, unit: number = 1) {
     super(state, rfFrontEnd, 'rf-fe-omt-pol', unit);
+    this.unitIsolationDb_ = (state.crossPolIsolation ?? 28.5) + random() * 5;
+    this.state.crossPolIsolation = this.unitIsolationDb_;
 
     // Create UI components
     this.helpBtn_ = HelpButton.create(
@@ -189,23 +199,12 @@ export class OMTModule extends RFFrontEndModule<OMTState> {
       return;
     }
 
-    // Check polarization of visible signal
-    const signal = this.rfFrontEnd_.antenna.state.rxSignalsIn[0];
-    if (signal) {
-      if (signal.polarization === this.state.effectiveRxPol) {
-        // Aligned polarization, normal isolation
-        this.state.crossPolIsolation = 30 + random() * 5; // 30-35 dB
-      } else {
-        // Misaligned polarization, degraded isolation
-        this.state.crossPolIsolation = 15 + random() * 10; // 15-25 dB
-      }
-    } else {
-      // No signal, normal isolation
-      this.state.crossPolIsolation = 30 + random() * 5; // 30-35 dB
-    }
+    // The unit's isolation is a hardware constant (set at construction); a
+    // fault written into the state is what lowers it
+    this.state.crossPolIsolation = Math.min(this.state.crossPolIsolation, this.unitIsolationDb_);
 
     // Update fault status
-    this.state.isFaulted = this.state.crossPolIsolation < 25;
+    this.state.isFaulted = this.state.crossPolIsolation < 20;
   }
 
   /**

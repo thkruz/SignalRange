@@ -308,6 +308,8 @@ export interface WeatherEventData {
   linkMarginDegradation: number;
   /** rain/storm: peak rain rate in mm/h (default from severity: 4 / 12 / 30) */
   rainRateMmPerHour?: number;
+  /** wind/storm: sustained wind in m/s (default from severity: wind 8 / 14 / 22, storm 10 / 18 / 26); de-points the beam */
+  windSpeedMps?: number;
   /** When set, startTime counts from this objective's activation instead of mission start */
   startAfterObjectiveId?: string;
 }

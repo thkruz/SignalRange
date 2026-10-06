@@ -24,14 +24,20 @@ to show how far the engine is from each reference.
 
 | Quantity | Engine | Implements | Standard / anchor | Reference case | Deviation |
 |---|---|---|---|---|---|
-| Boresight gain | `AntennaCore.antennaGain_dBi` | 10 log(η (πD/λ)²), η with Ruze and blockage | CPI 9.0 m and Prodelin 1244 datasheets (`test/reference/anchors.ts`) | `antenna`: 9 m C passes (±1 dB); 2.4 m Ku 1.0 dB low | DEV-ANT-07 |
+| Boresight gain | `AntennaCore.antennaGain_dBi` | 10 log(η (πD/λ)²), η with Ruze and blockage; efficiencies fitted to the anchors (19.4) | CPI 9.0 m and Prodelin 1244 datasheets (`test/reference/anchors.ts`) | `antenna`: gain at the flange within 0.5 dB for both dishes | |
 | −3 dB beamwidth | `AntennaCore.beamwidth3dB_deg_` | 70 λ/D | datasheets | `antenna`: both dishes within 15 % | |
-| Off-axis pattern | `AntennaCore.patternGain_dBi_` | Gmax − 12(θ/θ3)², then Gmax − min(32, 25 log(θD/λ)) | ITU-R S.580-6 (29 − 25 log θ) | `antenna`: 2/10/30/60° envelope | DEV-ANT-01 |
-| Pointing loss | `AntennaCore.pointingLoss_dB_` + pattern in `applyPropagationEffects_` | 12(θ/θ3)², charged twice | one pattern term | `antenna`: θ3/2 costs 3 dB | DEV-ANT-02 |
-| Off-axis angle | `AntennaCore.applyPropagationEffects_` | planar hypot(Δaz, Δel) | great-circle separation | `antenna`: Δaz at 60° el | DEV-ANT-03 |
-| G/T | `AntennaCore.gOverT_dB_perK_` | (G - feed loss - ice) - 10 log Tsys at the LNA plane, at the pointing elevation | datasheet G - 10 log(T_ant + T_LNA) | `antenna`: 9 m 1.3 dB low, 2.4 m 1.3 dB low (both from gain) | DEV-ANT-07 |
+| Off-axis pattern | `AntennaCore.patternGain_dBi_` | Gmax − 12(θ/θ3)² down to G1 = 2 + 15 log(D/λ), then the sidelobe envelope: S.580-6 (29 − 25 log θ) for D/λ > 50, else S.465-6 (32 − 25 log θ), −10 dBi beyond 48°; `patternModel` overrides; wire antennas: main lobe capped at the front-to-back ratio | ITU-R S.580-6, S.465-6, RR Appendix 8 | `antenna`: S.580 envelope at 2/10/30/60°, 4 dBi at 10°, never above G1 beyond the main lobe | |
+| Pointing loss | `AntennaCore.applyPropagationEffects_` (the pattern only) | one pattern term at the effective off-axis angle | one pattern term | `antenna`: θ3/2 costs 3 dB, charged once | |
+| Off-axis angle | `AntennaCore.effectiveOffAxisDeg_` | great-circle separation (azimuth wrap, cos el), with wind de-pointing and servo jitter in quadrature | spherical geometry | `antenna`: Δaz at 60° el is cos(el) of itself; azimuth wraps through north | DEV-ANT-08 |
+| Satellites heard | `AntennaCore.rxSignals`, `updateRxSignals_` | every satellite above the horizon in the RX band, through the pattern; dropped under −10 dB C/N in its own bandwidth | | (ledger: `adjacentCarriers` per link) | DEV-ANT-09 |
+| Program-track lock | `AntennaCore.checkProgramTrackLock_` | servo error from the commanded track (ephemeris + step-track offsets) costs < 1 dB of beam | ACU "on track" | `pointing`: LOCKED on a stale track, not when driven 1.5 dB off it | |
+| Step-track | `StepTrackController` | dither ±0.1 θ3 per axis (cross-elevation), arrive + 0.5 s settle + 1 s dwell per beacon reading, keep the higher; keeps dithering | hill-climb on beacon power | `pointing`: 5 dB stale ephemeris climbed to < 0.3 dB in 20-120 s; follows a drifting satellite; `nats-step-track-validation` (C1 S18, S22) | DEV-ANT-10 |
+| Servo | `AntennaCore.updateSlew_` | per-axis rate and acceleration limits (`maxRate_deg_s`, `maxAccel_deg_s2`) with target-rate feed-forward; a clock skip is spent at the rate limit | pedestal limits (`LEO_TRACKER_SERVO`) | `pointing`: 20° of elevation in 41 s on the 9 m | DEV-ANT-08 |
+| Wind de-pointing | `AntennaCore.windDePointingDeg` (+ `WeatherManager.windSpeedAt`) | coefficient × wind speed | | `antenna-core` unit tests | DEV-ANT-08 |
+| Polarization skew | `geo-geometry.ts` `geoPolarizationSkewDeg` via `Satellite.stationOffsets`; program-track drives the feed to it | atan(sin Δλ / tan φ) | GEO geometry | `pointing`: zero on the station meridian, sign by side | DEV-ANT-04 |
+| OMT isolation | `OMTModule` | authored spec + 0-5 dB per-unit scatter, drawn once | | `omt-module` unit tests | DEV-RF-05 |
+| G/T | `AntennaCore.gOverT_dB_perK_` | (G - feed loss - ice) - 10 log Tsys at the LNA plane, at the pointing elevation | datasheet G - 10 log(T_ant + T_LNA) | `antenna`: both dishes within 1 dB | |
 | Antenna temperature | `AntennaCore.systemNoise().antennaAtLnaK` | sky + spillover through the feed | datasheet T_ant at 20 deg | `antenna`: both dishes within 15 % | |
-| Servo rate | `antenna-configs.ts` `maxRate` | constant rate | pedestal limits (`LEO_TRACKER_SERVO`) | | DEV-ANT-06 |
 
 ## Noise and link
 
@@ -62,7 +68,7 @@ to show how far the engine is from each reference.
 |---|---|---|---|---|---|
 | Propagation | `OrbitalSatellite` → ootk SGP4 | SGP4 | Vallado et al. 2006 (AIAA 2006-6753) test vectors | `orbit`: 00005 at 0/360/720/1440 min within 5 m | |
 | Look angles, range | `OrbitalSatellite.geometryFor` → ootk `rae` | topocentric az/el/range | | (covered by pass-geometry tests in `test/campaigns`) | |
-| GEO geometry | legacy `Satellite` | authored az/el, fixed 38,000 km | slot longitude → look angles, slant range | | DEV-XPDR-04 |
+| GEO geometry | legacy `Satellite`; `geo-geometry.ts` `geoLookAngles` | authored az/el at a reference station, shifted by the geometric difference at other stations (slot from the authored azimuth); fixed 38,000 km | slot longitude → look angles, slant range | `pointing`: zenith and 30° E cases (Pratt & Bostian ch. 2); reference station sees the authored angles; Maine vs Vermont difference | DEV-XPDR-04 |
 | Doppler | ootk `Satellite.dopplerFactor` | 1 − ṙ/c from ECI state | f_rx/f_tx = 1 − ṙ/c | `orbit`: vs finite-difference range rate; sign convention passes | DEV-PROP-07 |
 
 ## Hardware anchors (plan Q6)
@@ -79,6 +85,8 @@ Sourced 2026-09-27 for Ted's review; see `test/reference/anchors.ts` for every n
 - **4 m Ku LEO tracker:** no public datasheet found. The one cited limit: a 4 °/s azimuth
   pedestal cannot hold a 780 km sun-synchronous pass above ~82° elevation (Microwave Journal,
   "Selecting a Pedestal for Tracking LEO Satellites at Ka Band"). Ted to confirm or substitute.
+  Since 19.4 the engine flies it at 10 °/s and 5 °/s², the 9 m C-band at 0.5 °/s and 0.5 °/s²
+  (plan Q6 classes; DEV-ANT-08).
 
 ## Reference data
 

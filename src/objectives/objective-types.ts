@@ -335,6 +335,12 @@ export interface ConditionParams {
   notchIndex?: number;
   /** For antenna-beacon-frequency-set: beacon frequency in Hz */
   beaconFrequency?: number;
+  /**
+   * For antenna-beacon-locked: the beacon C/N (dB, in the 1 kHz tracking
+   * bandwidth, as the ACU shows it) must also be at least this. Turns "lock
+   * holds" into "the beacon has recovered" (phase 19.4, nats-s18-F3).
+   */
+  minBeaconCn?: number;
   /** For antenna-tracking-mode-set: tracking mode */
   trackingMode?: 'stow' | 'maintenance' | 'manual' | 'step-track' | 'program-track';
   /** For antenna-position: target azimuth in degrees */

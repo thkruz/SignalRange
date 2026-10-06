@@ -78,27 +78,14 @@
               "modulation": "BPSK",
               "fec": "1/2",
               "samples": 758,
-              "peakCnDb": 28.08,
+              "peakCnDb": 28.1,
               "medianCnDb": 23.55,
-              "peakRxIfDbm": -21.11,
+              "peakRxIfDbm": -21.1,
               "noiseIfDbm": -49.19,
               "lockedSamples": 758
-            },
-            {
-              "signalId": "NAVSTAR-77-L1",
-              "rfMHz": 1575.42,
-              "ifMHz": 1575.42,
-              "bandwidthMHz": 2.05,
-              "modulation": "null",
-              "fec": "null",
-              "samples": 758,
-              "peakCnDb": -3.35,
-              "medianCnDb": -7.58,
-              "peakRxIfDbm": -34.75,
-              "noiseIfDbm": -31.4,
-              "lockedSamples": 0
             }
-          ]
+          ],
+          "adjacentCarriers": 0
         },
         {
           "satellite": "CUBEHOP-1",
@@ -109,43 +96,9 @@
             "losS": 1754.3,
             "maxEl": 48.19
           },
-          "atPeak": {
-            "elevationDeg": 48.19,
-            "frequencyMHz": 435.26,
-            "gainDbi": 3,
-            "gOverTDbPerK": -20.47,
-            "tsysK": 198.11
-          },
-          "carriers": [
-            {
-              "signalId": "CUBEHOP-1-FM",
-              "rfMHz": 435.26,
-              "ifMHz": 435.26,
-              "bandwidthMHz": 0.02,
-              "modulation": "QPSK",
-              "fec": "1/2",
-              "samples": 603,
-              "peakCnDb": 15.62,
-              "medianCnDb": 10.89,
-              "peakRxIfDbm": -37.13,
-              "noiseIfDbm": -52.75,
-              "lockedSamples": 603
-            },
-            {
-              "signalId": "NAVSTAR-77-L1",
-              "rfMHz": 1575.42,
-              "ifMHz": 1575.42,
-              "bandwidthMHz": 2.05,
-              "modulation": "null",
-              "fec": "null",
-              "samples": 603,
-              "peakCnDb": -4.52,
-              "medianCnDb": -8.17,
-              "peakRxIfDbm": -35.92,
-              "noiseIfDbm": -31.41,
-              "lockedSamples": 0
-            }
-          ]
+          "atPeak": null,
+          "carriers": [],
+          "adjacentCarriers": 0
         },
         {
           "satellite": "NAVSTAR-77",
@@ -156,57 +109,9 @@
             "losS": 12811.64,
             "maxEl": 89.61
           },
-          "atPeak": {
-            "elevationDeg": 89.61,
-            "frequencyMHz": 1575.42,
-            "gainDbi": 3,
-            "gOverTDbPerK": -19.69,
-            "tsysK": 165.61
-          },
-          "carriers": [
-            {
-              "signalId": "NAVSTAR-77-L1",
-              "rfMHz": 1575.42,
-              "ifMHz": 1575.42,
-              "bandwidthMHz": 2.05,
-              "modulation": "null",
-              "fec": "null",
-              "samples": 12812,
-              "peakCnDb": -3.11,
-              "medianCnDb": -3.82,
-              "peakRxIfDbm": -34.51,
-              "noiseIfDbm": -31.41,
-              "lockedSamples": 0
-            },
-            {
-              "signalId": "WXSAT-19-APT",
-              "rfMHz": 137.1,
-              "ifMHz": 137.1,
-              "bandwidthMHz": 0.03,
-              "modulation": "BPSK",
-              "fec": "1/2",
-              "samples": 1547,
-              "peakCnDb": 26.45,
-              "medianCnDb": 10.73,
-              "peakRxIfDbm": -22.74,
-              "noiseIfDbm": -49.19,
-              "lockedSamples": 1547
-            },
-            {
-              "signalId": "CUBEHOP-1-FM",
-              "rfMHz": 435.26,
-              "ifMHz": 435.26,
-              "bandwidthMHz": 0.02,
-              "modulation": "QPSK",
-              "fec": "1/2",
-              "samples": 1407,
-              "peakCnDb": 14.42,
-              "medianCnDb": -4.34,
-              "peakRxIfDbm": -38.33,
-              "noiseIfDbm": -52.75,
-              "lockedSamples": 1407
-            }
-          ]
+          "atPeak": null,
+          "carriers": [],
+          "adjacentCarriers": 1
         }
       ]
     },
@@ -233,43 +138,9 @@
             "losS": 1012.73,
             "maxEl": 55.05
           },
-          "atPeak": {
-            "elevationDeg": 55.05,
-            "frequencyMHz": 137.1,
-            "gainDbi": 12,
-            "gOverTDbPerK": -16.86,
-            "tsysK": 640.1
-          },
-          "carriers": [
-            {
-              "signalId": "WXSAT-19-APT",
-              "rfMHz": 137.1,
-              "ifMHz": 137.1,
-              "bandwidthMHz": 0.03,
-              "modulation": "BPSK",
-              "fec": "1/2",
-              "samples": 758,
-              "peakCnDb": 41.7,
-              "medianCnDb": 37.11,
-              "peakRxIfDbm": -12.38,
-              "noiseIfDbm": -54.06,
-              "lockedSamples": 758
-            },
-            {
-              "signalId": "NAVSTAR-77-L1",
-              "rfMHz": 1575.42,
-              "ifMHz": 1575.42,
-              "bandwidthMHz": 2.05,
-              "modulation": "null",
-              "fec": "null",
-              "samples": 78,
-              "peakCnDb": -9.62,
-              "medianCnDb": -10.6,
-              "peakRxIfDbm": -45.9,
-              "noiseIfDbm": -36.28,
-              "lockedSamples": 0
-            }
-          ]
+          "atPeak": null,
+          "carriers": [],
+          "adjacentCarriers": 0
         },
         {
           "satellite": "CUBEHOP-1",
@@ -295,28 +166,15 @@
               "bandwidthMHz": 0.02,
               "modulation": "QPSK",
               "fec": "1/2",
-              "samples": 557,
+              "samples": 603,
               "peakCnDb": 29.26,
-              "medianCnDb": 24.91,
+              "medianCnDb": 24.45,
               "peakRxIfDbm": -28.37,
               "noiseIfDbm": -57.62,
-              "lockedSamples": 557
-            },
-            {
-              "signalId": "NAVSTAR-77-L1",
-              "rfMHz": 1575.42,
-              "ifMHz": 1575.42,
-              "bandwidthMHz": 2.05,
-              "modulation": "null",
-              "fec": "null",
-              "samples": 98,
-              "peakCnDb": -4.57,
-              "medianCnDb": -6.96,
-              "peakRxIfDbm": -40.85,
-              "noiseIfDbm": -36.28,
-              "lockedSamples": 0
+              "lockedSamples": 603
             }
-          ]
+          ],
+          "adjacentCarriers": 0
         },
         {
           "satellite": "NAVSTAR-77",
@@ -327,57 +185,9 @@
             "losS": 12811.64,
             "maxEl": 89.61
           },
-          "atPeak": {
-            "elevationDeg": 89.61,
-            "frequencyMHz": 1575.42,
-            "gainDbi": 12,
-            "gOverTDbPerK": -11.33,
-            "tsysK": 178.92
-          },
-          "carriers": [
-            {
-              "signalId": "NAVSTAR-77-L1",
-              "rfMHz": 1575.42,
-              "ifMHz": 1575.42,
-              "bandwidthMHz": 2.05,
-              "modulation": "null",
-              "fec": "null",
-              "samples": 12812,
-              "peakCnDb": 10.47,
-              "medianCnDb": 9.78,
-              "peakRxIfDbm": -25.81,
-              "noiseIfDbm": -36.29,
-              "lockedSamples": 0
-            },
-            {
-              "signalId": "WXSAT-19-APT",
-              "rfMHz": 137.1,
-              "ifMHz": 137.1,
-              "bandwidthMHz": 0.03,
-              "modulation": "BPSK",
-              "fec": "1/2",
-              "samples": 77,
-              "peakCnDb": 21.49,
-              "medianCnDb": 20.41,
-              "peakRxIfDbm": -32.59,
-              "noiseIfDbm": -54.08,
-              "lockedSamples": 77
-            },
-            {
-              "signalId": "CUBEHOP-1-FM",
-              "rfMHz": 435.25,
-              "ifMHz": 435.25,
-              "bandwidthMHz": 0.02,
-              "modulation": "QPSK",
-              "fec": "1/2",
-              "samples": 96,
-              "peakCnDb": 14.06,
-              "medianCnDb": 11.52,
-              "peakRxIfDbm": -43.57,
-              "noiseIfDbm": -57.63,
-              "lockedSamples": 96
-            }
-          ]
+          "atPeak": null,
+          "carriers": [],
+          "adjacentCarriers": 1
         }
       ]
     },
@@ -404,43 +214,9 @@
             "losS": 1012.73,
             "maxEl": 55.05
           },
-          "atPeak": {
-            "elevationDeg": 55.05,
-            "frequencyMHz": 137.1,
-            "gainDbi": 5,
-            "gOverTDbPerK": -23.64,
-            "tsysK": 666.63
-          },
-          "carriers": [
-            {
-              "signalId": "WXSAT-19-APT",
-              "rfMHz": 137.1,
-              "ifMHz": 137.1,
-              "bandwidthMHz": 0.03,
-              "modulation": "BPSK",
-              "fec": "1/2",
-              "samples": 758,
-              "peakCnDb": 36.18,
-              "medianCnDb": 31.61,
-              "peakRxIfDbm": -18.43,
-              "noiseIfDbm": -54.62,
-              "lockedSamples": 758
-            },
-            {
-              "signalId": "NAVSTAR-77-L1",
-              "rfMHz": 1575.42,
-              "ifMHz": 1575.42,
-              "bandwidthMHz": 2.05,
-              "modulation": "null",
-              "fec": "null",
-              "samples": 758,
-              "peakCnDb": null,
-              "medianCnDb": null,
-              "peakRxIfDbm": -32.28,
-              "noiseIfDbm": -36.82,
-              "lockedSamples": 0
-            }
-          ]
+          "atPeak": null,
+          "carriers": [],
+          "adjacentCarriers": 1
         },
         {
           "satellite": "CUBEHOP-1",
@@ -451,43 +227,9 @@
             "losS": 1754.3,
             "maxEl": 48.19
           },
-          "atPeak": {
-            "elevationDeg": 48.19,
-            "frequencyMHz": 435.26,
-            "gainDbi": 5,
-            "gOverTDbPerK": -18.28,
-            "tsysK": 194.22
-          },
-          "carriers": [
-            {
-              "signalId": "CUBEHOP-1-FM",
-              "rfMHz": 435.26,
-              "ifMHz": 435.26,
-              "bandwidthMHz": 0.02,
-              "modulation": "QPSK",
-              "fec": "1/2",
-              "samples": 603,
-              "peakCnDb": 23.68,
-              "medianCnDb": 18.94,
-              "peakRxIfDbm": -34.48,
-              "noiseIfDbm": -58.1,
-              "lockedSamples": 603
-            },
-            {
-              "signalId": "NAVSTAR-77-L1",
-              "rfMHz": 1575.42,
-              "ifMHz": 1575.42,
-              "bandwidthMHz": 2.05,
-              "modulation": "null",
-              "fec": "null",
-              "samples": 603,
-              "peakCnDb": null,
-              "medianCnDb": null,
-              "peakRxIfDbm": -34.53,
-              "noiseIfDbm": -36.75,
-              "lockedSamples": 0
-            }
-          ]
+          "atPeak": null,
+          "carriers": [],
+          "adjacentCarriers": 1
         },
         {
           "satellite": "NAVSTAR-77",
@@ -519,36 +261,9 @@
               "peakRxIfDbm": -31.81,
               "noiseIfDbm": -36.76,
               "lockedSamples": 0
-            },
-            {
-              "signalId": "WXSAT-19-APT",
-              "rfMHz": 137.1,
-              "ifMHz": 137.1,
-              "bandwidthMHz": 0.03,
-              "modulation": "BPSK",
-              "fec": "1/2",
-              "samples": 1217,
-              "peakCnDb": 32.99,
-              "medianCnDb": 12.61,
-              "peakRxIfDbm": -21.63,
-              "noiseIfDbm": -54.62,
-              "lockedSamples": 1217
-            },
-            {
-              "signalId": "CUBEHOP-1-FM",
-              "rfMHz": 435.26,
-              "ifMHz": 435.26,
-              "bandwidthMHz": 0.02,
-              "modulation": "QPSK",
-              "fec": "1/2",
-              "samples": 839,
-              "peakCnDb": 21.35,
-              "medianCnDb": 4.22,
-              "peakRxIfDbm": -36.83,
-              "noiseIfDbm": -58.17,
-              "lockedSamples": 839
             }
-          ]
+          ],
+          "adjacentCarriers": 0
         }
       ]
     }

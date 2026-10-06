@@ -68,7 +68,8 @@
               "noiseIfDbm": -49.19,
               "lockedSamples": 732
             }
-          ]
+          ],
+          "adjacentCarriers": 0
         },
         {
           "satellite": "CUBEHOP-1",
@@ -79,29 +80,9 @@
             "losS": 3269.77,
             "maxEl": 14.68
           },
-          "atPeak": {
-            "elevationDeg": 14.68,
-            "frequencyMHz": 435.26,
-            "gainDbi": 3,
-            "gOverTDbPerK": -20.49,
-            "tsysK": 198.9
-          },
-          "carriers": [
-            {
-              "signalId": "CUBEHOP-1-FM",
-              "rfMHz": 435.26,
-              "ifMHz": 435.26,
-              "bandwidthMHz": 0.02,
-              "modulation": "QPSK",
-              "fec": "1/2",
-              "samples": 454,
-              "peakCnDb": 9.19,
-              "medianCnDb": 8.21,
-              "peakRxIfDbm": -43.57,
-              "noiseIfDbm": -52.75,
-              "lockedSamples": 454
-            }
-          ]
+          "atPeak": null,
+          "carriers": [],
+          "adjacentCarriers": 0
         }
       ]
     },
@@ -128,29 +109,9 @@
             "losS": 1413.52,
             "maxEl": 35.89
           },
-          "atPeak": {
-            "elevationDeg": 35.89,
-            "frequencyMHz": 137.1,
-            "gainDbi": 12,
-            "gOverTDbPerK": -16.86,
-            "tsysK": 639.84
-          },
-          "carriers": [
-            {
-              "signalId": "WXSAT-19-APT",
-              "rfMHz": 137.1,
-              "ifMHz": 137.1,
-              "bandwidthMHz": 0.03,
-              "modulation": "BPSK",
-              "fec": "1/2",
-              "samples": 732,
-              "peakCnDb": 39.36,
-              "medianCnDb": 36.36,
-              "peakRxIfDbm": -14.71,
-              "noiseIfDbm": -54.06,
-              "lockedSamples": 732
-            }
-          ]
+          "atPeak": null,
+          "carriers": [],
+          "adjacentCarriers": 0
         },
         {
           "satellite": "CUBEHOP-1",
@@ -177,13 +138,14 @@
               "modulation": "QPSK",
               "fec": "1/2",
               "samples": 454,
-              "peakCnDb": 22.75,
+              "peakCnDb": 22.74,
               "medianCnDb": 21.77,
               "peakRxIfDbm": -34.87,
               "noiseIfDbm": -57.62,
               "lockedSamples": 454
             }
-          ]
+          ],
+          "adjacentCarriers": 0
         }
       ]
     }

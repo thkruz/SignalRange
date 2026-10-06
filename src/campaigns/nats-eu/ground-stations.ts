@@ -17,7 +17,7 @@ import type { Degrees } from 'ootk';
  *   the beacon sits above the video's 11668-11704 MHz occupied band so the
  *   CW tone is not blocked by the stronger co-channel carrier)
  * - BUC LO 12600 MHz (low-side): 1405 MHz IF -> 14005 MHz Ku uplink
- * - Fast 4m pedestal (KU_BAND_4M_LEO_TRACKER, 20 deg/s) for LEO tracking
+ * - Fast 4m pedestal (KU_BAND_4M_LEO_TRACKER, 10 deg/s) for LEO tracking
  */
 export const galwayGroundStation = {
   id: 'GW-01',

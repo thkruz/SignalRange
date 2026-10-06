@@ -581,7 +581,7 @@ export const natsEuScenario9Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'Range wins, and a site at 60 north gets more of these on a sun-synchronous bird than a site at 53. 73 degrees is still tracking on a 20 deg/s pedestal; the keyhole is the last few degrees to the zenith, and that is a later shift.',
+              'Range wins, and a site at 60 north gets more of these on a sun-synchronous bird than a site at 53. 73 degrees is still tracking on a 10 deg/s pedestal; the keyhole is the last few degrees to the zenith, and that is a later shift.',
             pointPenalty: 5,
           },
           mustMaintain: false,

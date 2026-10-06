@@ -10,7 +10,7 @@ import type { dB, dBi, dBm, FECType, Hertz, IfFrequency, MHz, ModulationType, Rf
 import { getAssetUrl } from '@app/utils/asset-url';
 import type { Degrees } from 'ootk';
 import { vermontGroundStation } from './ground-stations';
-import { ses10Satellite, tidemark1Satellite } from './satellites';
+import { ses10Satellite, tidemark1Satellite, VERMONT_LOOK_ANGLE_SITE } from './satellites';
 
 /**
  * NATS Level 18: "Satellite Anomaly"
@@ -48,8 +48,10 @@ import { ses10Satellite, tidemark1Satellite } from './satellites';
  * Sim notes:
  *   - The drifting TM-2 variant replaces the roster TM-2 for this scenario
  *     only (same NORAD 61526; the canonical satellite is not in the list).
- *   - ephemerisError 0.18/0.12 deg: program-track holds a degraded link
- *     (~5 dB down) - bad enough to read, good enough to acquire from.
+ *   - ephemerisError 0.32/0.26 deg: program-track holds a degraded link
+ *     (beacon ~6 dB, carrier ~5 dB down, under the 12 dB recovery line) -
+ *     bad enough to read, good enough to acquire from. Step-track's
+ *     hill-climb (phase 19.4) takes ~40-60 s to bring both back.
  */
 
 const tidemark2DriftingSatellite = new Satellite(
@@ -62,7 +64,7 @@ const tidemark2DriftingSatellite = new Satellite(
       noradId: 61526,
       frequency: 6017e6 as RfFrequency,
       polarization: 'H',
-      power: 22 as dBm, // +2 dB in Phase 19.2 (real Tsys), as in satellites.ts
+      power: 20 as dBm, // as in satellites.ts (19.2 +2 dB, 19.4 -2 dB)
       bandwidth: 36e6 as Hertz,
       modulation: 'QPSK' as ModulationType,
       fec: '3/4' as FECType,
@@ -80,8 +82,12 @@ const tidemark2DriftingSatellite = new Satellite(
     rotation: -25 as Degrees,
     frequencyOffset: 2.225e9 as Hertz,
     // Stale ephemeris: station-keeping suspended, prediction no longer matches
-    ephemerisErrorAz: 0.18 as Degrees,
-    ephemerisErrorEl: 0.12 as Degrees,
+    // 0.32 / 0.26 deg (0.39 deg on the sky from Maine): program-track loses
+    // ~6 dB of beacon and ~5 dB of carrier, under the recovery threshold;
+    // step-track climbs it back (phase 19.4; test/campaigns/nats-step-track-validation.test.ts)
+    ephemerisErrorAz: 0.32 as Degrees,
+    ephemerisErrorEl: 0.26 as Degrees,
+    lookAnglesFrom: VERMONT_LOOK_ANGLE_SITE,
     orbitType: 'geosynchronous',
     geosyncConfig: {
       minAz: 218.4 as Degrees, // Growing figure-8: ±1.3° and widening daily
@@ -162,17 +168,17 @@ export const scenario18Data: ScenarioData = {
         antennasState: [
           {
             isPowered: true,
-            azimuth: 219.7 as Degrees,
-            elevation: 26.3 as Degrees,
-            polarization: -25 as Degrees,
+            azimuth: 222.66 as Degrees, // Maine sees TM-2 here, not at Vermont's angles (phase 19.4)
+            elevation: 24.44 as Degrees,
+            polarization: -26.3 as Degrees,
             trackingMode: 'program-track',
             isBeaconLocked: true,
             targetSatelliteId: 61526,
-            targetAzimuth: 219.7 as Degrees,
-            targetElevation: 26.3 as Degrees,
-            targetPolarization: -25 as Degrees,
+            targetAzimuth: 222.66 as Degrees,
+            targetElevation: 24.44 as Degrees,
+            targetPolarization: -26.3 as Degrees,
             slewing: false,
-            beaconCN: 7.6 as dB, // Degraded from the usual 10+ - the drift at work
+            beaconCN: null, // measured live since 19.2: ~28 dB on the stale ephemeris, ~34 dB under step-track
             beaconFrequencyHz: 4180e6 as Hertz, // TIDEMARK-2 beacon (RF)
             isLocked: true,
           } as Partial<AntennaState>,
@@ -407,7 +413,7 @@ export const scenario18Data: ScenarioData = {
           description: 'Why the C/N Sags',
           params: {
             character: Character.SYSTEM,
-            question: 'Beacon C/N is several dB below its usual value and wandering. Program-track reports it is exactly on target. Reconcile that.',
+            question: 'Beacon C/N is several dB below its usual value. Program-track reports it is exactly on target. Reconcile that.',
             options: [
               'Program-track IS on the ephemeris target - the satellite is somewhere else, and the gap between prediction and reality is paid in pattern loss',
               'The beacon transmitter is failing on the satellite - pointing is fine, and the wander is the beacon output sagging with the vehicle power bus',
@@ -416,7 +422,7 @@ export const scenario18Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'A 9-meter C-band dish has a half-degree-class beamwidth. A few tenths of a degree of ephemeris error puts the bird on the shoulder of the beam - present, degraded, and wandering with the figure-8.',
+              'A 9-meter C-band dish has a half-degree-class beamwidth. A few tenths of a degree of ephemeris error puts the bird on the shoulder of the beam - present and degraded: 0.4 deg off costs about 6 dB at the beacon. Program-track LOCKED only means the dish is where the ephemeris said.',
             pointPenalty: 5,
             preserveOptionOrder: true,
           },
@@ -493,10 +499,12 @@ export const scenario18Data: ScenarioData = {
     {
       id: 'acquire-stable-beacon',
       nice: ['T0153', 'K1032'],
-      // Beacon is locked from the start, so this is a hold, not a recovery,
-      // until the Phase 19 C/N work makes the ephemeris loss visible (nats-s18-F3)
-      title: 'Beacon Lock Holds Under Step-Track',
-      description: 'Keep beacon lock for 15 s while step-track takes over from the ephemeris - no input needed, just watch the ACU beacon C/N.',
+      // Phase 19.4: step-track is a real hill-climb, so this is a real
+      // recovery: program-track leaves the beacon ~28 dB, step-track climbs it
+      // back to ~34 dB in 40-60 s (nats-s18-F3; nats-step-track-validation.test.ts)
+      title: 'Beacon Recovery',
+      description:
+        'Watch the ACU beacon C/N while step-track hunts: it steps the dish a fraction of a beamwidth at a time and keeps whichever way reads higher. Hold here until the beacon is back to 32 dB or better for 10 s - about a minute of stepping.',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['enable-step-track'],
       timeLimitSeconds: 3 * 60,
@@ -504,9 +512,10 @@ export const scenario18Data: ScenarioData = {
       conditions: [
         {
           type: 'antenna-beacon-locked',
-          description: 'Beacon Lock Sustained',
+          description: 'Beacon C/N Recovered (≥ 32 dB)',
+          params: { minBeaconCn: 32 },
           mustMaintain: true,
-          maintainDuration: 15,
+          maintainDuration: 10,
         },
       ],
       conditionLogic: 'AND',
@@ -516,7 +525,7 @@ export const scenario18Data: ScenarioData = {
       id: 'verify-carrier-recovery',
       nice: ['T0153', 'T1314'],
       title: 'Carrier Recovery',
-      description: 'Open RX Analysis and confirm the customer carrier is locked with C/N at least 9 dB, held for 15 s.',
+      description: 'Open RX Analysis and confirm the customer carrier is back: locked with C/N at least 12 dB, held for 15 s. On the stale ephemeris it sat near 9.',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['acquire-stable-beacon'],
       timeLimitSeconds: 3 * 60,
@@ -537,8 +546,8 @@ export const scenario18Data: ScenarioData = {
         },
         {
           type: 'receiver-snr-threshold',
-          description: 'C/N Recovered (≥ 9 dB)',
-          params: { minCNRatio: 9, requiresObservation: true, observationTab: 'rx-analysis' },
+          description: 'C/N Recovered (≥ 12 dB)',
+          params: { minCNRatio: 12, requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: true,
           maintainDuration: 15,
         },

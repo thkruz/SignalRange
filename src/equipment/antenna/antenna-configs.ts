@@ -61,9 +61,17 @@ export interface AntennaConfig {
   // --- Pattern / Pointing Parameters ---
   /** Beamwidth constant k for HPBW ≈ k*λ/D (degrees), typically 70 */
   kBeamConst?: number;
-  /** Antenna pattern model type */
-  patternModel?: 'ITU465' | 'ParabolicSimple';
-  /** Pointing jitter RMS in degrees (e.g., 0.01-0.03°) */
+  /**
+   * Sidelobe envelope (phase 19.4): 'S580' = ITU-R S.580-6 (29 - 25 log theta),
+   * 'S465' = ITU-R S.465-6 (32 - 25 log theta), both -10 dBi beyond 48 deg,
+   * under the ITU-R RR Appendix 8 near-in pattern. Omitted: S.580 when
+   * D/lambda > 50, else S.465 (plan Q5). Ignored by the fixed gain model.
+   */
+  patternModel?: 'S580' | 'S465';
+  /**
+   * Servo pointing jitter RMS in degrees (e.g., 0.01-0.05). Combined with the
+   * off-axis angle in quadrature, so it costs its mean pointing loss.
+   */
   pointingSigma_deg?: number;
 
   // --- System Noise Parameters (for G/T) ---
@@ -84,10 +92,6 @@ export interface AntennaConfig {
   spilloverK?: number;
   /** Physical temperature for noise calculations in Kelvin */
   rxPhysTemp_K?: number;
-  /** Sky temperature model type */
-  skyTempModel?: 'CbandSimple';
-  /** Atmospheric loss model type */
-  atmosModel?: 'ITU_R_P676_Simple';
 
   // --- Mechanical / Environment Parameters ---
   /** Elevation range in degrees [min, max] */
@@ -96,8 +100,10 @@ export interface AntennaConfig {
   azContinuous?: boolean;
   /** Azimuth range in degrees [min, max] for non-continuous antennas (e.g., [-180, 540] for cable wrap) */
   azRange_deg?: [number, number];
-  /** Maximum slew rate in degrees per second */
+  /** Maximum slew rate in degrees per second, per axis */
   maxRate_deg_s?: number;
+  /** Maximum axis acceleration in degrees per second squared (default: reach maxRate in 1 s) */
+  maxAccel_deg_s2?: number;
   /** De-pointing coefficient: de-pointing ≈ coef * wind(m/s) in degrees */
   windDePointingCoef_deg_per_mps?: number;
 
@@ -117,7 +123,12 @@ export const ANTENNA_CONFIGS: Record<ANTENNA_CONFIG_KEYS, AntennaConfig> = {
   C_BAND_9M_VORTEK: {
     name: 'Vortek / Global Mechanics 9m C-Band',
     diameter: 9.0,
-    efficiency: 0.7, // illumination/spill only; Ruze handled elsewhere
+    // Illumination/spill only; Ruze and blockage are applied separately.
+    // Fitted (phase 19.4, DEV-ANT-07) so the gain at the feed flange (aperture
+    // gain less the 0.44 dB feed loss) is the CPI 9.0 m datasheet's 50.0 dBi at
+    // 4 GHz (test/reference/anchors.ts): 0.83 with 4 % blockage gives 49.9.
+    // Was 0.7 and 8 %, 1.2 dB under the datasheet.
+    efficiency: 0.83,
     band: 'C',
     minRxFrequency: 3.625e9 as Hertz,
     maxRxFrequency: 4.2e9 as Hertz,
@@ -127,27 +138,28 @@ export const ANTENNA_CONFIGS: Record<ANTENNA_CONFIG_KEYS, AntennaConfig> = {
 
     // RF realism (from spec sheets)
     surfaceRms_m: 0.0005, // ≤0.5 mm RMS
-    blockageFraction: 0.08, // cassegrain + struts typical
+    blockageFraction: 0.04, // shaped Cassegrain: subreflector + struts
     xpd_dB: 35, // on-axis (typical)
     polType: 'linear',
     feedLossModel: { a: 0.2, b: 0.1, c: 0.01 },
 
-    // Pattern / pointing
+    // Pattern / pointing: the CPI datasheet prints the S.580-6 envelope
     kBeamConst: 70,
-    patternModel: 'ITU465',
+    patternModel: 'S580',
     pointingSigma_deg: 0.02, // tight EOA pointing
     // Mechanical / environment
     elRange_deg: [5, 90],
     azContinuous: false,
-    maxRate_deg_s: 2.5, //REAL: 0.35,         // conservative jackscrew rate
+    // A full-motion 9 m teleport pedestal: 0.5 deg/s per axis, 0.5 deg/s^2
+    // (phase 19.4, plan Q6 class 0.3-0.5; was 2.5 deg/s for pacing)
+    maxRate_deg_s: 0.5,
+    maxAccel_deg_s2: 0.5,
     windDePointingCoef_deg_per_mps: 0.003,
 
     // System noise (G/T budgeting helpers)
     lnaNF_dB: 0.7,
     rxChainLoss_dB: 0.5,
     rxPhysTemp_K: 290,
-    skyTempModel: 'CbandSimple',
-    atmosModel: 'ITU_R_P676_Simple',
   },
 
   // Based on Antesky Limit-motion 9 m Ku/DBS (covers Ku Tx and high-band DBS Tx)
@@ -169,7 +181,6 @@ export const ANTENNA_CONFIGS: Record<ANTENNA_CONFIG_KEYS, AntennaConfig> = {
     feedLossModel: { a: 0.25, b: 0.1, c: 0.01 },
 
     kBeamConst: 70,
-    patternModel: 'ITU465',
     pointingSigma_deg: 0.021, // spec step-track rms
     elRange_deg: [0, 90],
     azContinuous: false, // two-segment az by spec
@@ -200,7 +211,6 @@ export const ANTENNA_CONFIGS: Record<ANTENNA_CONFIG_KEYS, AntennaConfig> = {
     feedLossModel: { a: 0.2, b: 0.1, c: 0.015 },
 
     kBeamConst: 70,
-    patternModel: 'ITU465',
     pointingSigma_deg: 0.05, // servo position ≤0.05° rms
     elRange_deg: [0, 90],
     azContinuous: true,
@@ -231,7 +241,6 @@ export const ANTENNA_CONFIGS: Record<ANTENNA_CONFIG_KEYS, AntennaConfig> = {
     feedLossModel: { a: 0.2, b: 0.1, c: 0.005 },
 
     kBeamConst: 70,
-    patternModel: 'ITU465',
     pointingSigma_deg: 0.07,
     elRange_deg: [0, 90],
     azContinuous: true,
@@ -264,17 +273,17 @@ export const ANTENNA_CONFIGS: Record<ANTENNA_CONFIG_KEYS, AntennaConfig> = {
     feedLossModel: { a: 0.25, b: 0.1, c: 0.01 },
 
     kBeamConst: 70,
-    patternModel: 'ITU465',
     pointingSigma_deg: 0.05, // servo position rms during rate tracking
     elRange_deg: [0, 90],
     azContinuous: true,
-    // Purpose-built LEO tracker: real Ku LEO pedestals slew ~20-30 deg/s in
-    // azimuth to hold the narrow beam through moderate-to-high passes. At this
-    // rate a ~40 deg pass tracks cleanly; only a near-zenith pass still hits an
-    // azimuth keyhole (rate -> infinity at the zenith), which is reserved as a
-    // dedicated later-scenario lesson. Validated by the real-program-track
-    // assertions in test/campaigns/nats-eu-rf-validation.test.ts.
-    maxRate_deg_s: 20.0,
+    // Purpose-built LEO tracker, 10 deg/s and 5 deg/s^2 per axis (phase 19.4,
+    // plan Q6 class 5-10 deg/s; was 20). Moderate and high passes track
+    // cleanly; a near-zenith pass outruns the azimuth axis at culmination
+    // (the azimuth rate demand goes to infinity at the zenith): the keyhole.
+    // Validated by test/campaigns/nats-eu-rf-validation.test.ts.
+    maxRate_deg_s: 10.0,
+    maxAccel_deg_s2: 5.0,
+    windDePointingCoef_deg_per_mps: 0.002,
 
     lnaNF_dB: 1.0,
     rxChainLoss_dB: 0.6,
@@ -299,7 +308,6 @@ export const ANTENNA_CONFIGS: Record<ANTENNA_CONFIG_KEYS, AntennaConfig> = {
     feedLossModel: { a: 0.25, b: 0.1, c: 0.01 },
 
     kBeamConst: 70,
-    patternModel: 'ITU465',
     pointingSigma_deg: 0.07,
     elRange_deg: [0, 90],
     azContinuous: true,
@@ -330,7 +338,6 @@ export const ANTENNA_CONFIGS: Record<ANTENNA_CONFIG_KEYS, AntennaConfig> = {
     feedLossModel: { a: 0.2, b: 0.1, c: 0.005 },
 
     kBeamConst: 70,
-    patternModel: 'ITU465',
     pointingSigma_deg: 0.08,
     elRange_deg: [0, 90],
     azContinuous: true,
@@ -344,7 +351,10 @@ export const ANTENNA_CONFIGS: Record<ANTENNA_CONFIG_KEYS, AntennaConfig> = {
   KU_BAND_2M4_ANTESTAR: {
     name: 'Antestar 2.4m Ku-Band VSAT',
     diameter: 2.4,
-    efficiency: 0.6,
+    // Fitted (phase 19.4, DEV-ANT-07) to the Prodelin 1244 datasheet's 47.4 dBi
+    // at the flange, 11.725 GHz (offset feed, no blockage). Was 0.6 with 6 %
+    // blockage, 1.3 dB under.
+    efficiency: 0.72,
     band: 'Ku',
     minRxFrequency: 10.95e9 as Hertz,
     maxRxFrequency: 12.75e9 as Hertz,
@@ -353,7 +363,7 @@ export const ANTENNA_CONFIGS: Record<ANTENNA_CONFIG_KEYS, AntennaConfig> = {
     feedLoss: 0.25,
 
     surfaceRms_m: 0.0005,
-    blockageFraction: 0.06,
+    blockageFraction: 0,
     xpd_dB: 35,
     polType: 'linear',
     // 0.29 dB at 11.7 GHz: fitted (Phase 19.2) so the antenna temperature at
@@ -363,7 +373,6 @@ export const ANTENNA_CONFIGS: Record<ANTENNA_CONFIG_KEYS, AntennaConfig> = {
     feedLossModel: { a: 0.1, b: 0.05, c: 0.002 },
 
     kBeamConst: 70,
-    patternModel: 'ITU465',
     pointingSigma_deg: 0.08,
     elRange_deg: [0, 90],
     azContinuous: true,
@@ -393,7 +402,6 @@ export const ANTENNA_CONFIGS: Record<ANTENNA_CONFIG_KEYS, AntennaConfig> = {
     feedLossModel: { a: 0.25, b: 0.1, c: 0.01 },
 
     kBeamConst: 70,
-    patternModel: 'ITU465',
     pointingSigma_deg: 0.1,
     elRange_deg: [1, 80],
     azContinuous: true,
@@ -422,7 +430,6 @@ export const ANTENNA_CONFIGS: Record<ANTENNA_CONFIG_KEYS, AntennaConfig> = {
     feedLossModel: { a: 0.2, b: 0.1, c: 0.005 },
 
     kBeamConst: 70,
-    patternModel: 'ITU465',
     pointingSigma_deg: 0.1,
     elRange_deg: [1, 80],
     azContinuous: true,

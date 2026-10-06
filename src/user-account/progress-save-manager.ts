@@ -6,6 +6,7 @@ import { ScenarioManager } from '@app/scenario-manager';
 import { syncManager } from '@app/sync/storage';
 import packageJson from '../../package.json';
 import { Auth } from './auth';
+import { ReplaySession } from './replay-session';
 import { getUserDataService } from './user-data-service';
 
 /**
@@ -59,6 +60,12 @@ export class ProgressSaveManager {
       return;
     }
 
+    // A replayed player save must never overwrite the developer's own checkpoint
+    if (ReplaySession.isActive()) {
+      Logger.info('Skipping checkpoint save - replay session');
+      return;
+    }
+
     try {
       this.isSaving = true;
       await this.saveCheckpoint();
@@ -74,6 +81,11 @@ export class ProgressSaveManager {
     // sign-up at the Mission Complete modal; it saves after a sign-in
     if (!(await Auth.getSession())) {
       Logger.info('Completion not saved - not signed in (sign-up offered at Mission Complete)');
+      return;
+    }
+
+    if (ReplaySession.isActive()) {
+      Logger.info('Completion not saved - replay session');
       return;
     }
 
@@ -151,6 +163,12 @@ export class ProgressSaveManager {
    * Uses direct API - no need to load all checkpoints
    */
   async loadCheckpoint(scenarioId: string): Promise<any | null> {
+    const replay = ReplaySession.checkpointFor(scenarioId);
+    if (replay) {
+      Logger.info(`Replay checkpoint served for scenario: ${scenarioId} (${replay.label})`);
+      return { state: replay.state };
+    }
+
     try {
       const checkpoint = await this.userDataService.getCheckpoint(scenarioId);
 

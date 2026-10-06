@@ -80,6 +80,7 @@ vi.mock('../../src/user-account/auth', () => ({
 // Import after mocks are defined
 import { Auth } from '../../src/user-account/auth';
 import { ProgressSaveManager } from '../../src/user-account/progress-save-manager';
+import { ReplaySession } from '../../src/user-account/replay-session';
 
 describe('ProgressSaveManager', () => {
   let manager: ProgressSaveManager;
@@ -171,6 +172,34 @@ describe('ProgressSaveManager', () => {
     const result = await manager.loadCheckpoint('scenario-123');
 
     expect(result).toEqual(checkpoint);
+  });
+
+  describe('during a replay session', () => {
+    const replay = { scenarioId: 'scenario-123', state: { objectiveStates: [] }, label: 'player abc' };
+
+    beforeEach(() => ReplaySession.start(replay));
+    afterEach(() => ReplaySession.end());
+
+    it('serves the replayed checkpoint for its scenario without asking the backend', async () => {
+      await expect(manager.loadCheckpoint('scenario-123')).resolves.toEqual({ state: replay.state });
+      expect(mockUserDataService.getCheckpoint).not.toHaveBeenCalled();
+    });
+
+    it('still loads other scenarios from the backend', async () => {
+      mockUserDataService.getCheckpoint.mockResolvedValue(null);
+      await manager.loadCheckpoint('other-scenario');
+      expect(mockUserDataService.getCheckpoint).toHaveBeenCalledWith('other-scenario');
+    });
+
+    it('never saves a checkpoint or marks completion, even when signed in', async () => {
+      const saveSpy = vi.spyOn(manager as any, 'saveCheckpoint').mockResolvedValue(undefined);
+
+      await (manager as any).handleObjectiveCompleted();
+      await (manager as any).handleAllObjectiveCompleted();
+
+      expect(saveSpy).not.toHaveBeenCalled();
+      expect(mockUserDataService.updateScenarioProgress).not.toHaveBeenCalled();
+    });
   });
 
   it('returns null when no checkpoint is found', async () => {

@@ -90,6 +90,24 @@ describe('UserDataService', () => {
     );
   });
 
+  it('refuses every write while a replay session is active, and still reads', async () => {
+    const { UserDataService } = await loadReal();
+    // Same module instance the freshly imported service sees
+    const { ReplaySession } = await import('../../src/user-account/replay-session');
+    const svc = new UserDataService({ apiBaseUrl, getAccessToken: () => 'token' });
+    (globalThis.fetch as Mock).mockResolvedValue(makeJsonResponse({ ok: true, body: { ok: 1 } }));
+    ReplaySession.start({ scenarioId: 's', state: {}, label: 'test' });
+    try {
+      for (const method of ['PUT', 'POST', 'DELETE'] as const) {
+        await expect((svc as any).request('/x', method, {})).rejects.toThrow(`Backend write blocked during replay: ${method} /x`);
+      }
+      expect(globalThis.fetch).not.toHaveBeenCalled();
+      await expect((svc as any).request('/x', 'GET')).resolves.toEqual({ ok: 1 });
+    } finally {
+      ReplaySession.end();
+    }
+  });
+
   it('returns undefined for HEAD and DELETE', async () => {
     const { UserDataService } = await loadReal();
     const svc = new UserDataService({ apiBaseUrl, getAccessToken: () => 'token' });

@@ -702,14 +702,14 @@ export const natsEuScenario9Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'C/N peaks near 11 dB at 06:22:47, 30 degrees, 716 km. Erik will ask whether the frames are "good". What is the technically honest answer?',
             options: [
-              'Decoded with about 5 dB over the QPSK 3/4 threshold: at this margin the frames are clean, with no partly decoded ones',
+              'Decoded with about 7 dB over the QPSK 3/4 threshold: at this margin the frames are clean, with no partly decoded ones',
               'Good but degraded: anything under 12 dB loses detail, so at 11 dB the frames are usable but not at full quality',
               'Unknown until Rotterdam processes them: a C/N figure says the link held, not that the payload data inside is intact',
               'Marginal: 11 dB is close to the 8 dB delivery standard, so the frames are in but a fade would have cost them',
             ],
             correctIndex: 0,
             explanation:
-              'Digital links are a cliff, not a slope. Above threshold the frames are the frames; below it there are none. 8 dB is the delivery standard because it leaves 2 dB for weather and pointing, not because 8 dB frames look different from 11 dB ones.',
+              'Digital links are a cliff, not a slope. Above threshold the frames are the frames; below it there are none. 8 dB is the delivery standard because it leaves nearly 4 dB over the 4.2 dB threshold for weather and pointing, not because 8 dB frames look different from 11 dB ones.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -940,7 +940,7 @@ export const natsEuScenario9Data: ScenarioData = {
               'The collect decoded with margin; both SAR-2 windows were worked, one from each site; the second-orbit contacts are best-effort.',
               'The collect decoded; every contact on the board is committed from Galway alone; the second-orbit contacts are guaranteed.',
               'The collect was captured; the SAR-2 windows were dropped, both sites being busy; the second orbit will cover them.',
-              'The collect decoded at 11 dB C/N; the margin over the QPSK 3/4 threshold was 5 dB; the SAR-2 windows decoded as well.',
+              'The collect decoded at 11 dB C/N; the margin over the QPSK 3/4 threshold was about 7 dB; the SAR-2 windows decoded as well.',
             ],
             correctIndex: 0,
             explanation:

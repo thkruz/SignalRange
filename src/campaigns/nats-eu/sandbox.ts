@@ -76,7 +76,7 @@ export const natsEuSandboxData: ScenarioData = {
       label: 'MERIDIAN-SAR-1 downlink, max-elevation pass',
       expectedCNRDb: 14,
       toleranceDb: 1.5,
-      thresholdCNRDb: 8,
+      thresholdCNRDb: 4.2,
       requiredMarginDb: 3,
     },
 

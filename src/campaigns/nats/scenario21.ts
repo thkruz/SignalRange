@@ -186,10 +186,16 @@ export const scenario21Data: ScenarioData = {
         satelliteNoradId: 61526,
         frequency: 6005e6, // Uplink, inside TM-2 TP-1 passband (5999-6035), H-pol
         bandwidth: 6e6,
-        // dBm at the transponder input. Carrier composite is 20 dBm, so C/I
-        // ~15 dB - visible and degrading, but the carrier keeps demod lock
-        // (the training point is mitigation, not a hard outage).
-        power: 5,
+        // dBm at the transponder input, against the 20 dBm, 36 MHz carrier
+        // composite. Phase 19.5: 12.7 dBm puts the jammer's spectral density
+        // 0.5 dB above the carrier's, so it stands on the analyzer as a ~3 dB
+        // shelf on the carrier's upper edge (at 5 dBm it sat 7 dB under the
+        // carrier and was invisible, nats-s21-F6), and C/I 7.3 dB takes Es/N0
+        // from ~15 to ~6.6 dB: about 1.5 dB of margin while each burst is on, so
+        // the modem flickers into "Degraded margin" as the carrier and the
+        // jammer fade - the training point is mitigation, not a hard outage.
+        // The notch (1470/8/30) takes it 30 dB down.
+        power: 12.7,
         polarization: 'H',
         startTime: 20,
         duration: 3600, // Persists across the scenario

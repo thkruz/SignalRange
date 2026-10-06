@@ -1,15 +1,27 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { FECSimulator, FECSimulatorInput } from '../../../src/equipment/receiver/fec-simulator';
+import { FECSimulator, FECSimulatorInput, rsSymbolErrorRateForPer } from '../../../src/equipment/receiver/fec-simulator';
+import { codedPer, decodedBer, framesPerSecond, modcodFor } from '../../../src/equipment/receiver/modcod';
 import { SimClock } from '../../../src/simulation/sim-clock';
 
-describe('FECSimulator', () => {
+const QPSK34 = modcodFor('QPSK', '3/4');
+if (!QPSK34) throw new Error('QPSK 3/4 missing');
+const THRESHOLD = QPSK34.thresholdEsN0Db; // 5.03 dB
+
+/** A locked 30 Msps QPSK 3/4 carrier at `margin` dB over its threshold */
+const at = (margin: number, extra: Partial<FECSimulatorInput> = {}): FECSimulatorInput => ({
+  cnRatio_dB: 0,
+  effectiveEsN0_dB: THRESHOLD + margin,
+  symbolRate_Hz: 30e6,
+  hasCarrier: true,
+  hasLock: true,
+  modulation: 'QPSK',
+  fec: '3/4',
+  ...extra,
+});
+
+describe('FECSimulator (phase 19.5: metrics from the coded curves)', () => {
   let nowMs = 0;
 
-  const good: FECSimulatorInput = { cnRatio_dB: 18, hasCarrier: true, hasLock: true, modulation: 'QPSK', fec: '1/2' };
-  const bad: FECSimulatorInput = { cnRatio_dB: 2, hasCarrier: true, hasLock: true, modulation: 'QPSK', fec: '1/2' };
-  const lost: FECSimulatorInput = { cnRatio_dB: -5, hasCarrier: true, hasLock: false, modulation: 'QPSK', fec: '1/2' };
-
-  /** Advance the sim clock and take one sample, as the 1 Hz payload adapter does. */
   const sampleAfter = (sim: FECSimulator, input: FECSimulatorInput, dtMs: number) => {
     nowMs += dtMs;
     return sim.calculate(input);
@@ -24,88 +36,145 @@ describe('FECSimulator', () => {
     vi.restoreAllMocks();
   });
 
-  it('reports whole-number RS uncorrectable (CRC error) counts', () => {
-    const sim = new FECSimulator();
-    sim.calculate(bad);
+  describe('curves', () => {
+    it.each([-0.5, -0.3, 0, 0.5, 2, 8])('PER and decoded BER at margin %s dB are the MODCOD curve values', (margin) => {
+      const m = new FECSimulator().calculate(at(margin));
+      expect(m.per).toBeCloseTo(codedPer(THRESHOLD + margin, QPSK34), 15);
+      expect(m.ber).toBeCloseTo(Math.max(1e-12, decodedBer(THRESHOLD + margin, QPSK34)), 15);
+    });
 
-    for (let i = 0; i < 10; i++) {
-      const metrics = sampleAfter(sim, bad, 1000);
-      expect(Number.isInteger(metrics.rsUncorrectableBlocks)).toBe(true);
-      expect(Number.isInteger(metrics.rsCorrectedErrors)).toBe(true);
-    }
+    it('derives Es/N0 from C/N in the carrier bandwidth when the receiver gives none', () => {
+      // C/N in 36 MHz -> Es/N0 in 30 Msps: + 10 log 1.2
+      const m = new FECSimulator().calculate({ cnRatio_dB: THRESHOLD - 10 * Math.log10(1.2), hasCarrier: true, hasLock: true, modulation: 'QPSK', fec: '3/4' });
+      expect(m.per).toBeCloseTo(1e-7, 9);
+    });
 
-    // While the decaying counter clears after recovery, it stays an integer
-    for (let i = 0; i < 10; i++) {
-      const metrics = sampleAfter(sim, good, 1000);
-      expect(Number.isInteger(metrics.rsUncorrectableBlocks)).toBe(true);
-    }
+    it('the RS input symbol-error rate reproduces the PER through the RS(255,223) binomial tail', () => {
+      for (const per of [1e-2, 1e-5, 1e-7]) {
+        const p = rsSymbolErrorRateForPer(per);
+        // Re-derive the tail independently
+        let tail = 0;
+        let logC = 0;
+        for (let k = 0; k <= 255; k++) {
+          if (k > 0) logC += Math.log(255 - k + 1) - Math.log(k);
+          if (k > 16) tail += Math.exp(logC + k * Math.log(p) + (255 - k) * Math.log(1 - p));
+        }
+        expect(Math.abs(Math.log10(tail) - Math.log10(per))).toBeLessThan(0.01);
+      }
+    });
   });
 
-  it('shows a BER rise within a couple of samples', () => {
-    const sim = new FECSimulator();
-    sim.calculate(good);
+  describe('frame sync and channel status', () => {
+    it('is Good with a healthy margin: frame sync, no frame errors', () => {
+      const m = new FECSimulator().calculate(at(5));
+      expect(m.frameSyncLocked).toBe(true);
+      expect(m.channelStatus).toBe('Good');
+      expect(m.rsUncorrectableBlocks).toBe(0);
+    });
 
-    sampleAfter(sim, bad, 1000);
-    const metrics = sampleAfter(sim, bad, 1000);
+    it('is Degraded under 1 dB of margin (the modem says the same), still error-free', () => {
+      const m = new FECSimulator().calculate(at(0.6));
+      expect(m.channelStatus).toBe('Degraded');
+      expect(m.rsUncorrectableBlocks).toBe(0);
+    });
 
-    expect(metrics.ber).toBeGreaterThan(1e-3);
+    it('follows the receiver hysteresis when it is given', () => {
+      expect(new FECSimulator().calculate(at(1.2, { isLowMargin: true })).channelStatus).toBe('Degraded');
+      expect(new FECSimulator().calculate(at(1.2, { isLowMargin: false })).channelStatus).toBe('Good');
+    });
+
+    it('is Critical below threshold while lock holds (frames failing every second)', () => {
+      const m = new FECSimulator().calculate(at(-0.4));
+      expect(m.frameSyncLocked).toBe(true);
+      expect(m.channelStatus).toBe('Critical');
+      expect(m.rsUncorrectableBlocks).toBe(Math.round(codedPer(THRESHOLD - 0.4, QPSK34) * framesPerSecond(30e6, QPSK34)));
+    });
+
+    it('loses frame sync without modem lock, whatever the C/N', () => {
+      const m = new FECSimulator().calculate(at(10, { hasLock: false }));
+      expect(m.frameSyncLocked).toBe(false);
+      expect(m.channelStatus).toBe('No Lock');
+      expect(m.ber).toBe(0.5);
+    });
+
+    it('never locks a label pair with no MODCOD', () => {
+      const m = new FECSimulator().calculate(at(10, { modulation: 'null', fec: 'null' }));
+      expect(m.frameSyncLocked).toBe(false);
+    });
   });
 
-  it('smooths BER on a time constant of a few seconds, not a per-call alpha', () => {
-    const sim = new FECSimulator();
-    sim.calculate(good);
+  describe('frame accounting', () => {
+    it('counts whole uncorrectable frames, PER x frames/s x time, with nothing lost to rounding', () => {
+      const sim = new FECSimulator();
+      sim.calculate(at(-0.3));
+      let last = sim.calculate(at(-0.3));
+      for (let i = 0; i < 10; i++) {
+        last = sampleAfter(sim, at(-0.3), 1000);
+        expect(Number.isInteger(last.rsUncorrectableBlocks)).toBe(true);
+        expect(Number.isInteger(last.rsUncorrectableTotal)).toBe(true);
+        expect(Number.isInteger(last.rsCorrectedErrors)).toBe(true);
+      }
+      const expected = codedPer(THRESHOLD - 0.3, QPSK34) * framesPerSecond(30e6, QPSK34) * 10;
+      expect(Math.abs(last.rsUncorrectableTotal - expected)).toBeLessThanOrEqual(1);
+    });
 
-    // Degrade for a long time so the smoothed BER sits at the bad value
-    for (let i = 0; i < 30; i++) {
-      sampleAfter(sim, bad, 1000);
-    }
+    it('corrects more RS symbols per block as the margin shrinks, never more than 16', () => {
+      const strong = new FECSimulator().calculate(at(6)).rsCorrectedErrors;
+      const weak = new FECSimulator().calculate(at(0)).rsCorrectedErrors;
+      const failing = new FECSimulator().calculate(at(-0.45)).rsCorrectedErrors;
+      expect(strong).toBe(0);
+      expect(weak).toBeGreaterThan(strong);
+      expect(failing).toBeGreaterThanOrEqual(weak);
+      expect(failing).toBeLessThanOrEqual(16);
+    });
 
-    // Recover (lock held throughout, so no reset): within a few tau the BER has cleared
-    let metrics = sim.calculate(good);
-    for (let i = 0; i < 8; i++) {
-      metrics = sampleAfter(sim, good, 1000);
-    }
-
-    expect(FECSimulator.SMOOTHING_TAU_MS).toBeGreaterThanOrEqual(2000);
-    expect(FECSimulator.SMOOTHING_TAU_MS).toBeLessThanOrEqual(3000);
-    expect(metrics.ber).toBeLessThan(1e-5);
-    expect(metrics.rsUncorrectableBlocks).toBe(0);
-    expect(metrics.channelStatus).toBe('Good');
+    it('reports the information rate of the carrier', () => {
+      expect(new FECSimulator().calculate(at(5)).dataRate).toBe('45.000 Mbps');
+      expect(new FECSimulator().calculate(at(5, { symbolRate_Hz: 1e6, modulation: 'BPSK', fec: '1/2' })).dataRate).toBe('500.0 kbps');
+    });
   });
 
-  it('does not move the smoothed BER when no time has passed', () => {
-    const sim = new FECSimulator();
-    const first = sim.calculate(bad);
-    const second = sim.calculate(good);
+  describe('display smoothing', () => {
+    it('shows a BER rise within a couple of samples', () => {
+      const sim = new FECSimulator();
+      sim.calculate(at(5));
+      sampleAfter(sim, at(-0.4), 1000);
+      const metrics = sampleAfter(sim, at(-0.4), 1000);
+      expect(metrics.ber).toBeGreaterThan(1e-5);
+    });
 
-    expect(second.ber / first.ber).toBeCloseTo(1, 9);
-  });
+    it('clears on a time constant of a few seconds once the margin returns', () => {
+      const sim = new FECSimulator();
+      sim.calculate(at(5));
+      for (let i = 0; i < 30; i++) sampleAfter(sim, at(-0.4), 1000);
+      let metrics = sim.calculate(at(5));
+      for (let i = 0; i < 8; i++) metrics = sampleAfter(sim, at(5), 1000);
 
-  it('resets the payload metrics when the modem re-acquires lock', () => {
-    const sim = new FECSimulator();
-    sim.calculate(good);
+      expect(FECSimulator.SMOOTHING_TAU_MS).toBeGreaterThanOrEqual(2000);
+      expect(FECSimulator.SMOOTHING_TAU_MS).toBeLessThanOrEqual(3000);
+      expect(metrics.ber).toBeLessThan(1e-9);
+      expect(metrics.rsUncorrectableBlocks).toBe(0);
+      expect(metrics.channelStatus).toBe('Good');
+    });
 
-    // Lose lock with a dead carrier for a while: BER and uncorrectables pile up
-    let metrics = sim.calculate(lost);
-    for (let i = 0; i < 20; i++) {
-      metrics = sampleAfter(sim, lost, 1000);
-    }
-    expect(metrics.frameSyncLocked).toBe(false);
-    expect(metrics.channelStatus).toBe('No Lock');
+    it('does not move the smoothed BER when no time has passed', () => {
+      const sim = new FECSimulator();
+      const first = sim.calculate(at(-0.4));
+      const second = sim.calculate(at(5));
+      expect(second.ber / first.ber).toBeCloseTo(1, 9);
+    });
 
-    // First sample after re-lock on a clean carrier reads clean immediately
-    metrics = sampleAfter(sim, good, 1000);
+    it('reseeds when the modem re-acquires lock: a fresh lock does not inherit the outage', () => {
+      const sim = new FECSimulator();
+      sim.calculate(at(5));
+      let metrics = sim.calculate(at(-3, { hasLock: false }));
+      for (let i = 0; i < 20; i++) metrics = sampleAfter(sim, at(-3, { hasLock: false }), 1000);
+      expect(metrics.channelStatus).toBe('No Lock');
 
-    expect(metrics.frameSyncLocked).toBe(true);
-    expect(metrics.ber).toBeLessThan(1e-5);
-    expect(metrics.rsUncorrectableBlocks).toBe(0);
-    expect(metrics.channelStatus).toBe('Good');
-  });
-
-  it('seeds a fresh simulator from the current signal on its first sample', () => {
-    const metrics = new FECSimulator().calculate(bad);
-
-    // Raw BER at 2 dB C/N QPSK is far above 1e-3, not 10% of it
-    expect(metrics.ber).toBeGreaterThan(1e-2);
+      metrics = sampleAfter(sim, at(5), 1000);
+      expect(metrics.frameSyncLocked).toBe(true);
+      expect(metrics.ber).toBeLessThan(1e-9);
+      expect(metrics.channelStatus).toBe('Good');
+    });
   });
 });

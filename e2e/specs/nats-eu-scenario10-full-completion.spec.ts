@@ -185,9 +185,9 @@ test.describe('nats-eu Scenario 10 Full Completion', () => {
     // The 30 s maintain window ticks on real time
     await page.waitForTimeout(32000);
 
-    // Max elevation is 15:39:31Z. Commit with the live C/N at least 7 dB
-    // (6 dB threshold + 1 dB required margin).
-    await commitLinkWithMargin(page, missionControl, 7);
+    // Max elevation is 15:39:31Z. Commit with the live C/N at least 7.3 dB
+    // (4.2 dB threshold + 3 dB required margin, plus a little headroom).
+    await commitLinkWithMargin(page, missionControl, 7.3);
     await answerSystemQuiz(page, 'On a low pass the bird never gets close');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Pull the Imagery With the Margin You Have', 60000);

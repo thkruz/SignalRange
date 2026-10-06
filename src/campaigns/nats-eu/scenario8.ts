@@ -32,8 +32,9 @@ import { meridianSar1Satellite, meridianSar2Satellite } from './satellites';
  *   ~00:33:10 .. 00:37:00. Command window 00:31:40 .. 00:38:30.
  *   SH-02 sees the same pass at 17 deg (00:33:31 .. 00:39:56): Fiona's, overlaps.
  * - C2 SH-02 MERIDIAN-SAR-2: AOS 02:54:39 az 042, max el 13.4 at 02:57:34
- *   (1233 km), LOS 03:00:27 az 140. Peak C/N 6.6 dB, >= 5 dB for 228 s: a
- *   telemetry contact, not an imagery one. Galway sees a 5.6 deg graze.
+ *   (1233 km), LOS 03:00:27 az 140. Peak C/N 6.6 dB, >= 5 dB for 228 s: the
+ *   modem locks (threshold 4.2 dB) but never reaches the 8 dB delivery line,
+ *   so it is a telemetry contact, not an imagery one. Galway sees a 5.6 deg graze.
  * - C3 GW-01 MERIDIAN-SAR-2: AOS 04:27:31 az 018, max el 73.1 at 04:31:23
  *   (408 km), LOS 04:35:12 az 192. Peak C/N 16.5 dB, >= 8 dB for 259 s; the
  *   10 deg/s pedestal holds it through the top (no keyhole at 73 deg).
@@ -150,8 +151,8 @@ export const natsEuScenario8Data: ScenarioData = {
       label: 'Night pass: MERIDIAN-SAR-1 downlink at max elevation',
       expectedCNRDb: 13.8,
       toleranceDb: 1.0,
-      thresholdCNRDb: 6,
-      requiredMarginDb: 3,
+      thresholdCNRDb: 4.2,
+      requiredMarginDb: 5,
     },
 
     // M5 - the rotation fell on the night shift, as they always do. Window is
@@ -452,7 +453,7 @@ export const natsEuScenario8Data: ScenarioData = {
       nice: ['T0153', 'T0081', 'K0740'],
       title: 'Prove the Night Link',
       description:
-        'Lock the 1414 MHz imagery downlink, then commit the link in Link Analysis with at least 3 dB of margin over the 6 dB threshold. The strong part of this pass runs 00:33 to 00:37.',
+        'Lock the 1414 MHz imagery downlink, then commit the link in Link Analysis with at least 5 dB of margin over the 4.2 dB threshold. The strong part of this pass runs 00:33 to 00:37.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['acquire-sar1'],
       conditions: [
@@ -464,8 +465,8 @@ export const natsEuScenario8Data: ScenarioData = {
         },
         {
           type: 'link-margin-met',
-          description: 'Measured Margin >= 3 dB',
-          params: { minMarginDb: 3 },
+          description: 'Measured Margin >= 5 dB',
+          params: { minMarginDb: 5 },
           mustMaintain: false,
         },
       ],
@@ -549,7 +550,7 @@ export const natsEuScenario8Data: ScenarioData = {
             pointPenalty: 5,
             documentSection: 'Contacts',
             documentLine:
-              '00:31Z MERIDIAN-SAR-1 GW-01: command key rotated before the window; link committed, predicted 13.8 dB, margin >= 3 dB over 6 dB threshold; REC-PLAYBACK ACK; chain secured HPA-BUC-modem.',
+              '00:31Z MERIDIAN-SAR-1 GW-01: command key rotated before the window; link committed, predicted 13.8 dB, margin >= 5 dB over 4.2 dB threshold; REC-PLAYBACK ACK; chain secured HPA-BUC-modem.',
           },
           mustMaintain: false,
         },
@@ -688,7 +689,7 @@ export const natsEuScenario8Data: ScenarioData = {
       nice: ['T0153', 'K0740', 'K1032'],
       title: 'Work the Telemetry Contact',
       description:
-        'A 13 degree pass at 1233 km will not decode imagery. Hold lock and C/N above 5 dB through culmination (02:57:34) for the state-of-health frames, and read what the geometry did to the number.',
+        'A 13 degree pass at 1233 km will not meet the imagery delivery standard: the modem locks with only a couple of dB over threshold. Hold lock and C/N above 5 dB through culmination (02:57:34) for the state-of-health frames, and read what the geometry did to the number.',
       groundStation: 'SH-02',
       prerequisiteObjectiveIds: ['acquire-sar2-from-shetland'],
       conditions: [
@@ -718,7 +719,7 @@ export const natsEuScenario8Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'The number is what the geometry predicts. A telemetry contact on a low pass is worked for what it can give: lock and frames, not imagery. A site is underperforming only when its number is worse than its geometry.',
+              'The number is what the geometry predicts. A telemetry contact on a low pass is worked for what it can give: a clean lock and state-of-health frames, without the margin imagery delivery needs. A site is underperforming only when its number is worse than its geometry.',
             pointPenalty: 5,
           },
           mustMaintain: false,

@@ -25,6 +25,7 @@
  * - the link disappears again after LOS.
  */
 
+import { SimClock } from '@app/simulation/sim-clock';
 import type { Degrees, Kilometers } from 'ootk';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -155,6 +156,7 @@ describe('nats-eu Campaign 2 RF validation: MERIDIAN over GW-01 (Phase A gate)',
     let tick = 0;
 
     for (simNowMs = startMs; simNowMs <= endMs; simNowMs += tickMs, tick++) {
+      SimClock.step(); // run time for the modem's lock acquisition (phase 19.5)
       // Update orbital truth and antenna together every frame, as the real
       // SimulationManager.update() does.
       for (const s of simSatellites) s.update();

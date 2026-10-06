@@ -150,7 +150,7 @@ test.describe('nats-eu Scenario 2 Full Completion', () => {
   test('[record-measurements] fills in the measurement section', async () => {
     await advanceMissionClockToUtc(page, '2027-03-15T14:10:30Z');
     await closeWorkingDocumentIfOpen(page);
-    await answerSystemQuiz(page, 'margin 4.9 dB over 6 dB');
+    await answerSystemQuiz(page, 'margin 6.7 dB over 4.2 dB');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Record the Measurements');
   });

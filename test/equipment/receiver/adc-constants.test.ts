@@ -8,7 +8,8 @@ describe('adc-constants', () => {
       expect(DEFAULT_ADC_CONFIG.clipThreshold_dBFS).toBe(-2);
       expect(DEFAULT_ADC_CONFIG.quantizationThreshold_dBFS).toBe(-20);
       expect(DEFAULT_ADC_CONFIG.fullScale_dBm).toBe(-22);
-      expect(DEFAULT_ADC_CONFIG.enob).toBe(12);
+      expect(DEFAULT_ADC_CONFIG.enob).toBe(8);
+      expect(DEFAULT_ADC_CONFIG.sampleRate_Hz).toBe(200e6);
     });
 
     it('should have proper sweet spot relationship', () => {
@@ -54,6 +55,7 @@ describe('adc-constants', () => {
         quantizationThreshold_dBFS: -25 as dBFS,
         fullScale_dBm: -15 as dBm, // Different full scale reference
         enob: 14,
+        sampleRate_Hz: 200e6,
       };
 
       // At -15 dBm (custom full scale), dBFS should be 0
@@ -103,6 +105,7 @@ describe('adc-constants', () => {
         quantizationThreshold_dBFS: -25 as dBFS,
         fullScale_dBm: -15 as dBm,
         enob: 14,
+        sampleRate_Hz: 200e6,
       };
 
       expect(dBfsToDbm(0 as dBFS, customConfig)).toBe(-15);
@@ -146,6 +149,7 @@ describe('adc-constants', () => {
         quantizationThreshold_dBFS: -30 as dBFS,
         fullScale_dBm: -18 as dBm,
         enob: 16,
+        sampleRate_Hz: 200e6,
       };
 
       const dBmValue = -35 as dBm;

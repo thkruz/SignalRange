@@ -734,14 +734,14 @@ export const scenario4Data: ScenarioData = {
           params: {
             question: 'The modem shows "Locked" with C/N above 10 dB. Why do we check the C/N value and not just the lock indicator?',
             options: [
-              'Lock can occur at C/N as low as 4-5 dB, but error rates would be high - we need margin',
+              'Lock can occur at C/N as low as about 4.2 dB, with no fade margin left - we need margin',
               'The lock indicator is unreliable, often showing false positives - we need a second check',
               '10 dB is the hardware minimum, below it the modem will not run - we need it to function',
               'The C/N value sets the data rate, higher is faster - we need to know the throughput',
             ],
             correctIndex: 0,
             explanation:
-              'QPSK with FEC 3/4 can achieve lock at about 4-5 dB C/N, but bit error rates would be significant. With 10+ dB, we have comfortable margin - the link stays solid even if weather degrades it slightly. Lock without margin is asking for trouble during the first rain fade.',
+              'QPSK with FEC 3/4 locks at Es/N0 5.0 dB - about 4.2 dB of C/N in the 36 MHz channel (RX Analysis shows it as Required Es/N0). At threshold it still decodes cleanly, but the next 1 dB fade drops lock. With 10+ dB of C/N there is about 6 dB of margin - the link stays solid even if weather degrades it. Lock without margin is asking for trouble during the first rain fade.',
             pointPenalty: 5,
           },
           mustMaintain: false,

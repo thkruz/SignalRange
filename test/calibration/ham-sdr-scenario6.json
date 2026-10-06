@@ -64,6 +64,9 @@
               "samples": 732,
               "peakCnDb": 25.79,
               "medianCnDb": 22.8,
+              "peakEsN0Db": 21.55,
+              "requiredEsN0Db": -1.01,
+              "peakLockMarginDb": 22.56,
               "peakRxIfDbm": -23.41,
               "noiseIfDbm": -49.19,
               "lockedSamples": 732
@@ -140,6 +143,9 @@
               "samples": 454,
               "peakCnDb": 22.74,
               "medianCnDb": 21.77,
+              "peakEsN0Db": 23.49,
+              "requiredEsN0Db": 2,
+              "peakLockMarginDb": 21.49,
               "peakRxIfDbm": -34.87,
               "noiseIfDbm": -57.62,
               "lockedSamples": 454

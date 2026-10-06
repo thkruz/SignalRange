@@ -59,18 +59,24 @@ their datasheet gain at the flange. What remains:
 |---|---|---|---|---|
 | DEV-ANT-04 | open | Linear polarization skew is geometric only for legacy GEO satellites that name the station their authored look angles belong to (`lookAnglesFrom`, all of Campaign 1): their slot is derived from the authored azimuth there, and other stations get the geometric skew difference. Other campaigns' GEO satellites keep their authored skew (hashed ±45 deg when omitted) at every station. | Skew follows station and slot geometry. | `satellite.ts`; `geo-geometry.ts` |
 | DEV-ANT-08 | kept | Servo limits are class values from the plan (9 m teleport pedestal 0.5 deg/s and 0.5 deg/s²; 4 m Ku LEO tracker 10 deg/s and 5 deg/s²), not a datasheet (no public 4 m tracker datasheet; Ted to confirm). The servo is an ideal rate/acceleration-limited follower with target-rate feed-forward: no structural modes, backlash or overshoot. Wind de-pointing is a deterministic coefficient × wind speed (no gusts), and servo jitter is an RMS angle; both are combined with the off-axis angle in quadrature (their mean loss). | Pedestal datasheets; gust spectra; servo bandwidth. | `antenna-configs.ts`; `AntennaCore.updateSlew_`, `effectiveOffAxisDeg_` |
-| DEV-ANT-09 | open | A satellite in the sidelobes is received (adjacent-satellite interference exists), but the antenna's carrier filter still drops a weaker co-channel carrier outright instead of adding it to the wanted carrier's noise, and the receiver ignores anything under its noise floor. Carriers under −10 dB C/N in their own bandwidth are not carried at all. Sidelobe uplinks into adjacent satellites are not radiated (the legacy TX path stops at the main lobe until 19.3 adds uplink FSPL, DEV-XPDR-01). | C/(N+I) with every co-channel carrier's power, at any level. | `AntennaCore.updateRxSignals_`, `updateTxSignals_`; `receiver.ts` |
+| DEV-ANT-09 | open | A satellite in the sidelobes is received (adjacent-satellite interference exists). Since 19.5 the receiver adds every overlapping carrier at the AGC output to N + I at any level, and the antenna's carrier filter compares spectral densities, but that filter still drops a weaker co-channel carrier that shares half its band with a denser one, instead of passing it on as interference. Carriers under −10 dB C/N in their own bandwidth are not carried at all. Sidelobe uplinks into adjacent satellites are not radiated (the legacy TX path stops at the main lobe until 19.3 adds uplink FSPL, DEV-XPDR-01). | C/(N+I) with every co-channel carrier's power, at any level. | `AntennaCore.updateRxSignals_`, `updateTxSignals_` |
 | DEV-ANT-10 | kept | Step-track's beacon measurement has no noise of its own (the beacon is a steady CW carrier against a deterministic noise floor), so the hill-climb never mis-steps on a noisy reading and its floor is the beacon lock threshold (6.5 dB C/N in 1 kHz), not a measurement-statistics limit. | Beacon receivers average against noise; step size and dwell trade against it. | `step-track-controller.ts` |
 
 ## Modem and receiver (19.5)
 
+Phase 19.5 closed DEV-MODEM-01 to -05: the modem locks on Es/N0 (noise in the symbol-rate
+bandwidth, co-channel interference, the ADC's quantization and clipping noise) against its
+MODCOD's DVB-S2 QEF threshold (EN 302 307 Table 13) + 1 dB implementation loss, with ±0.5 dB
+hysteresis and a seeded acquisition time; "degraded" is under 1 dB of margin; frame errors,
+frame sync and the decoded BER come from the coded curve; C/N0 and Es/N0 are on RX Analysis; the
+ADC is a quantization (6.02 N + 1.76 dB over fs/2) and Bussgang clipping model; one carrier
+gate (−10 dB C/N in the carrier's own bandwidth) serves every receive path, in Hz. What remains:
+
 | ID | Status | Deviation | Reality | Where |
 |---|---|---|---|---|
-| DEV-MODEM-01 | open | Lock depends only on modulation/FEC labels and bandwidth ratio, never on C/N. | A demodulator loses lock below its threshold. | `receiver.ts` `hasLock` |
-| DEV-MODEM-02 | open | Required C/N is BPSK 7 / QPSK 10 / 8QAM 13 / 16QAM 16 dB for every code rate. | DVB-S2 QEF Es/N0 by MODCOD (EN 302 307 Table 13: QPSK 3/4 = 4.03 dB), plus implementation loss. | `receiver.ts` `getVisibleSignals` |
-| DEV-MODEM-03 | open | BER is the uncoded BPSK curve with fixed modulation offsets; code rate and symbol rate are ignored; coding gain feeds only a cosmetic sigmoid; noise bandwidth is the modem bandwidth, and there is no C/N0. | Eb/N0 = C/N0 − 10 log Rb; coded BER from the FEC's waterfall. | `fec-simulator.ts` |
-| DEV-MODEM-04 | open | The ADC charges 1 dB of C/N per dB below −20 dBFS. | Quantization noise depends on ENOB and crest factor. | `adc-degradation.ts` |
-| DEV-MODEM-05 | open | Unit and bookkeeping slips: `getVisibleSignals` compares Hz with MHz; the carrier gate adds RX gain to a power that already includes it. | n/a (bugs) | `receiver.ts` |
+| DEV-MODEM-06 | kept | The coded packet-error curve is one representative DVB-S2 waterfall (PER 1e-1 to 1e-7 over 0.6 dB) anchored at each MODCOD's Table 13 point, not a per-MODCOD LDPC simulation. The engine's labels map onto DVB-S2: 8QAM → 8PSK, 16QAM → 16APSK, BPSK → QPSK at the same code rate less 3.01 dB; 7/8 (all), 1/2 (8PSK, 16APSK) are interpolated or extrapolated linearly in code rate. Roll-off is fixed at 0.2. Acquisition time is a formula (0.5 s + 2·10⁶ symbols, clamped 0.5-10 s, ±20 % seeded), not a carrier/timing-loop model. The payload panel shows a concatenated Viterbi + RS(255,223) view whose numbers are derived from the DVB-S2 PER. | Per-MODCOD simulated PER curves; a modem's own acquisition behaviour; LDPC/BCH decoder statistics. | `modcod.ts`; `fec-simulator.ts` |
+| DEV-MODEM-07 | kept | ADC class values (8 bits ENOB, 200 Msps, full scale −22 dBm so the AGC target is −8 dBFS), not a datasheet. The ADC samples the modem's channel (every carrier overlapping the modem bandwidth plus the noise in it) after a tuner IF AGC with 30 dB of gain range and no attenuation, a class model of a satellite demodulator's tuner. The composite is treated as Gaussian, and its clipping distortion is applied to each carrier as white noise at the composite's signal-to-distortion ratio. | The demodulator's own tuner, ADC and AGC loops; distortion spectra that depend on the composite. | `adc-constants.ts`; `adc-degradation.ts` |
+| DEV-MODEM-08 | open | No analog/FM threshold model: Campaign 3's APT/FM payloads still use the digital labels and the DVB-S2 table (the plan's Q4 asks for an FM threshold of about 10 dB C/N in the 34 kHz APT channel). Phase 21/24. | FM threshold and capture effect. | `modcod.ts` |
 
 ## RF modules and the reference chain (19.6)
 
@@ -120,7 +126,12 @@ its deviation closes:
   instead (decision recorded in the phase 19 plan, 19.2 status entry).
 - `cnHoldSeconds` and "commit the displayed C/N" in the link-budget tab: workarounds for the old
   1 Hz position step. The hysteresis stays for grading; the comments are stale.
-- Lock-delay timers and the HPA-on-muted-BUC instant fail.
+- Lock-delay timers and the HPA-on-muted-BUC instant fail. Since 19.5 the receive modem's lock
+  needs Es/N0 over its MODCOD threshold (QPSK 3/4: 5.0 dB, about 4.2 dB of C/N in its channel)
+  held for a seeded acquisition time (~0.6 s at 30 Msps); a carrier under threshold − 0.5 dB
+  reads "no lock" on every surface, and content that quotes a lock or demod threshold quotes
+  that number. Unit-test and headless harnesses must advance `SimClock` (run time) for a modem to
+  lock.
 - The zenith keyhole lesson (C2 S13) was partly an artefact of DEV-ANT-03. Since 19.4 it is the
   real one: a 10 deg/s, 5 deg/s² azimuth axis cannot follow the azimuth swing of a near-zenith pass,
   and the beam (true great-circle angle) falls off the spacecraft until the pedestal catches up.

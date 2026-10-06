@@ -489,7 +489,7 @@ timePenalty: {
 
 | Condition | Description | Key Params |
 |-----------|-------------|------------|
-| `receiver-signal-locked` | Demodulation lock | `modemNumber` |
+| `receiver-signal-locked` | Demodulation lock (labels match and Es/N0 over the MODCOD threshold, e.g. QPSK 3/4 5.0 dB; phase 19.5) | `modemNumber` |
 | `receiver-snr-threshold` | C/N ratio meets threshold (or sits at or below `maxCNRatio`) | `minCNRatio`, `maxCNRatio`, `cnHoldSeconds`, `modemNumber` |
 | `rx-modem-frequency-set` | Center frequency set | `frequency`, `frequencyTolerance` |
 | `rx-modem-bandwidth-set` | Bandwidth set | `bandwidth`, `bandwidthTolerance` |

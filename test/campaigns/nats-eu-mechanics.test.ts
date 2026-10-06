@@ -73,10 +73,10 @@ describe('nats-eu M1 - Link-budget / EIRP console', () => {
 
     // condition link-margin-met reads isMarginMet()
     expect(mgr.isMarginMet()).toBe(false);
-    mgr.commitLink(12); // achieved C/N 12 dB vs threshold 8 -> 4 dB margin >= 3 required
+    mgr.commitLink(12); // achieved C/N 12 dB vs threshold 4.2 -> 7.8 dB margin >= 3 required
     expect(mgr.isMarginMet()).toBe(true);
     // Under-margin commit fails.
-    mgr.commitLink(9); // 1 dB margin < 3
+    mgr.commitLink(6); // 1.8 dB margin < 3
     expect(mgr.isMarginMet()).toBe(false);
   });
 });

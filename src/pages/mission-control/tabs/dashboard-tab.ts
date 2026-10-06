@@ -768,11 +768,11 @@ export class DashboardTab extends BaseElement {
       snrEl.textContent = bestSnr !== null ? `${bestSnr.toFixed(1)} dB` : '-- dB';
     }
 
-    // Signals locked
+    // Modems in demodulator lock (the receiver's lock tracker, phase 19.5)
     const signalsEl = this.domCache_.get('rx-signals');
     if (signalsEl) {
-      const signalCount = receiver.state.availableSignals?.length ?? 0;
-      signalsEl.textContent = `${signalCount} locked`;
+      const lockedCount = modems.filter((m) => m.isPowered && receiver.getSignalsInBandwidth(m).hasLock).length;
+      signalsEl.textContent = `${lockedCount} locked`;
     }
 
     // Quality LED (green if any signal, amber if degraded, red if none)

@@ -52,6 +52,9 @@
               "samples": 5,
               "peakCnDb": 14.67,
               "medianCnDb": 14.67,
+              "peakEsN0Db": 15.45,
+              "requiredEsN0Db": 5.03,
+              "peakLockMarginDb": 10.42,
               "peakRxIfDbm": -29.58,
               "noiseIfDbm": -44.24,
               "lockedSamples": 5
@@ -66,9 +69,12 @@
               "samples": 5,
               "peakCnDb": 32.59,
               "medianCnDb": 32.59,
+              "peakEsN0Db": 32.98,
+              "requiredEsN0Db": null,
+              "peakLockMarginDb": null,
               "peakRxIfDbm": -57.22,
               "noiseIfDbm": -89.81,
-              "lockedSamples": 5
+              "lockedSamples": 0
             }
           ],
           "adjacentCarriers": 0
@@ -96,6 +102,9 @@
               "samples": 5,
               "peakCnDb": 13.87,
               "medianCnDb": 13.87,
+              "peakEsN0Db": 14.65,
+              "requiredEsN0Db": 5.03,
+              "peakLockMarginDb": 9.62,
               "peakRxIfDbm": -30.51,
               "noiseIfDbm": -44.68,
               "lockedSamples": 5
@@ -110,9 +119,12 @@
               "samples": 5,
               "peakCnDb": 33.7,
               "medianCnDb": 33.7,
+              "peakEsN0Db": 33.97,
+              "requiredEsN0Db": null,
+              "peakLockMarginDb": null,
               "peakRxIfDbm": -56.25,
               "noiseIfDbm": -90.24,
-              "lockedSamples": 5
+              "lockedSamples": 0
             }
           ],
           "adjacentCarriers": 0
@@ -140,6 +152,9 @@
               "samples": 5,
               "peakCnDb": 16.29,
               "medianCnDb": 16.29,
+              "peakEsN0Db": 17.07,
+              "requiredEsN0Db": 5.03,
+              "peakLockMarginDb": 12.04,
               "peakRxIfDbm": -29.75,
               "noiseIfDbm": -46.03,
               "lockedSamples": 5
@@ -154,9 +169,12 @@
               "samples": 5,
               "peakCnDb": 33.23,
               "medianCnDb": 33.23,
+              "peakEsN0Db": 33.56,
+              "requiredEsN0Db": null,
+              "peakLockMarginDb": null,
               "peakRxIfDbm": -58.36,
               "noiseIfDbm": -91.6,
-              "lockedSamples": 5
+              "lockedSamples": 0
             }
           ],
           "adjacentCarriers": 0
@@ -200,6 +218,9 @@
               "samples": 5,
               "peakCnDb": 14.66,
               "medianCnDb": 14.66,
+              "peakEsN0Db": 15.45,
+              "requiredEsN0Db": 5.03,
+              "peakLockMarginDb": 10.42,
               "peakRxIfDbm": -27.51,
               "noiseIfDbm": -42.17,
               "lockedSamples": 5
@@ -214,9 +235,12 @@
               "samples": 5,
               "peakCnDb": 32.59,
               "medianCnDb": 32.59,
+              "peakEsN0Db": 32.97,
+              "requiredEsN0Db": null,
+              "peakLockMarginDb": null,
               "peakRxIfDbm": -55.15,
               "noiseIfDbm": -87.73,
-              "lockedSamples": 5
+              "lockedSamples": 0
             }
           ],
           "adjacentCarriers": 0
@@ -244,6 +268,9 @@
               "samples": 5,
               "peakCnDb": 13.84,
               "medianCnDb": 13.84,
+              "peakEsN0Db": 14.62,
+              "requiredEsN0Db": 5.03,
+              "peakLockMarginDb": 9.59,
               "peakRxIfDbm": -30.52,
               "noiseIfDbm": -44.65,
               "lockedSamples": 5
@@ -258,9 +285,12 @@
               "samples": 5,
               "peakCnDb": 33.66,
               "medianCnDb": 33.66,
+              "peakEsN0Db": 33.94,
+              "requiredEsN0Db": null,
+              "peakLockMarginDb": null,
               "peakRxIfDbm": -56.26,
               "noiseIfDbm": -90.22,
-              "lockedSamples": 5
+              "lockedSamples": 0
             }
           ],
           "adjacentCarriers": 0
@@ -288,6 +318,9 @@
               "samples": 5,
               "peakCnDb": 16.29,
               "medianCnDb": 16.29,
+              "peakEsN0Db": 17.07,
+              "requiredEsN0Db": 5.03,
+              "peakLockMarginDb": 12.04,
               "peakRxIfDbm": -29.74,
               "noiseIfDbm": -46.04,
               "lockedSamples": 5
@@ -302,9 +335,12 @@
               "samples": 5,
               "peakCnDb": 33.24,
               "medianCnDb": 33.24,
+              "peakEsN0Db": 33.57,
+              "requiredEsN0Db": null,
+              "peakLockMarginDb": null,
               "peakRxIfDbm": -58.36,
               "noiseIfDbm": -91.6,
-              "lockedSamples": 5
+              "lockedSamples": 0
             }
           ],
           "adjacentCarriers": 0

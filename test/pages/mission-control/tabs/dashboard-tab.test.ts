@@ -119,6 +119,7 @@ describe('DashboardTab', () => {
             availableSignals: [],
           },
           getSnrForModem: vi.fn().mockReturnValue(15),
+          getSignalsInBandwidth: vi.fn().mockReturnValue({ hasCarrier: true, hasLock: true }),
           getStatusAlarms: vi.fn().mockReturnValue([]),
         },
       ],

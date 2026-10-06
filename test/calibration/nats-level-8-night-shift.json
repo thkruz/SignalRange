@@ -60,6 +60,9 @@
               "samples": 5,
               "peakCnDb": 12.01,
               "medianCnDb": 12.01,
+              "peakEsN0Db": 12.8,
+              "requiredEsN0Db": 5.03,
+              "peakLockMarginDb": 7.77,
               "peakRxIfDbm": -28.55,
               "noiseIfDbm": -40.56,
               "lockedSamples": 5
@@ -74,9 +77,12 @@
               "samples": 5,
               "peakCnDb": 7.15,
               "medianCnDb": 7.15,
+              "peakEsN0Db": 7.94,
+              "requiredEsN0Db": null,
+              "peakLockMarginDb": null,
               "peakRxIfDbm": -77.21,
               "noiseIfDbm": -84.36,
-              "lockedSamples": 5
+              "lockedSamples": 0
             }
           ],
           "adjacentCarriers": 0
@@ -104,6 +110,9 @@
               "samples": 5,
               "peakCnDb": 13.92,
               "medianCnDb": 13.92,
+              "peakEsN0Db": 14.7,
+              "requiredEsN0Db": 5.03,
+              "peakLockMarginDb": 9.67,
               "peakRxIfDbm": -29.56,
               "noiseIfDbm": -43.48,
               "lockedSamples": 5
@@ -118,9 +127,12 @@
               "samples": 5,
               "peakCnDb": 32.59,
               "medianCnDb": 32.59,
+              "peakEsN0Db": 32.98,
+              "requiredEsN0Db": null,
+              "peakLockMarginDb": null,
               "peakRxIfDbm": -56.45,
               "noiseIfDbm": -89.04,
-              "lockedSamples": 5
+              "lockedSamples": 0
             }
           ],
           "adjacentCarriers": 0

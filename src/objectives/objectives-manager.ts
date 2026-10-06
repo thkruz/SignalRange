@@ -11,7 +11,7 @@ import { ContactScheduleManager } from '@app/contact-schedule/contact-schedule-m
 import { ElectronicAttackManager } from '@app/electronic-attack/electronic-attack-manager';
 import { CryptoModule } from '@app/equipment/crypto';
 import { GeolocationConsoleCore } from '@app/equipment/geolocation-console/geolocation-console-core';
-import { FECSimulator } from '@app/equipment/receiver/fec-simulator';
+import { FECSimulator, fecInputFromSignal } from '@app/equipment/receiver/fec-simulator';
 import { TapPoint } from '@app/equipment/rf-front-end/coupler-module/tap-points';
 import { OrbitalSatellite, observerFromLocation } from '@app/equipment/satellite/orbital-satellite';
 import { EventBus } from '@app/events/event-bus';
@@ -2643,13 +2643,7 @@ export class ObjectivesManager {
 
         // FECSimulator calculates frame sync from signal conditions
         const fecSim = new FECSimulator();
-        const metrics = fecSim.calculate({
-          cnRatio_dB: signalInfo.cnRatio_dB,
-          hasCarrier: signalInfo.hasCarrier,
-          hasLock: signalInfo.hasLock,
-          modulation: modem.modulation,
-          fec: modem.fec,
-        });
+        const metrics = fecSim.calculate(fecInputFromSignal(signalInfo, modem));
 
         this.observe_(metrics.frameSyncLocked);
         return metrics.frameSyncLocked === expectedLocked;
@@ -2669,13 +2663,7 @@ export class ObjectivesManager {
         const modem = receiver.activeModem;
 
         const fecSim = new FECSimulator();
-        const metrics = fecSim.calculate({
-          cnRatio_dB: signalInfo.cnRatio_dB,
-          hasCarrier: signalInfo.hasCarrier,
-          hasLock: signalInfo.hasLock,
-          modulation: modem.modulation,
-          fec: modem.fec,
-        });
+        const metrics = fecSim.calculate(fecInputFromSignal(signalInfo, modem));
 
         this.observe_(metrics.ber);
         if (comparison === 'below') {
@@ -2696,13 +2684,7 @@ export class ObjectivesManager {
         const modem = receiver.activeModem;
 
         const fecSim = new FECSimulator();
-        const metrics = fecSim.calculate({
-          cnRatio_dB: signalInfo.cnRatio_dB,
-          hasCarrier: signalInfo.hasCarrier,
-          hasLock: signalInfo.hasLock,
-          modulation: modem.modulation,
-          fec: modem.fec,
-        });
+        const metrics = fecSim.calculate(fecInputFromSignal(signalInfo, modem));
 
         this.observe_(metrics.rsUncorrectableBlocks);
         return metrics.rsUncorrectableBlocks > 0;
@@ -2721,13 +2703,7 @@ export class ObjectivesManager {
         const modem = receiver.activeModem;
 
         const fecSim = new FECSimulator();
-        const metrics = fecSim.calculate({
-          cnRatio_dB: signalInfo.cnRatio_dB,
-          hasCarrier: signalInfo.hasCarrier,
-          hasLock: signalInfo.hasLock,
-          modulation: modem.modulation,
-          fec: modem.fec,
-        });
+        const metrics = fecSim.calculate(fecInputFromSignal(signalInfo, modem));
 
         this.observe_(metrics.channelStatus);
         return metrics.channelStatus === expectedStatus;

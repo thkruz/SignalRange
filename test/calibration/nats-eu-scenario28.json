@@ -47,9 +47,12 @@
               "samples": 359,
               "peakCnDb": 21.82,
               "medianCnDb": 20.51,
+              "peakEsN0Db": 22.61,
+              "requiredEsN0Db": null,
+              "peakLockMarginDb": null,
               "peakRxIfDbm": -61.95,
               "noiseIfDbm": -80.02,
-              "lockedSamples": 359
+              "lockedSamples": 0
             },
             {
               "signalId": "MERIDIAN-SAR-1-VIDEO",
@@ -61,9 +64,12 @@
               "samples": 359,
               "peakCnDb": 7.57,
               "medianCnDb": 6.26,
+              "peakEsN0Db": 8.36,
+              "requiredEsN0Db": 5.03,
+              "peakLockMarginDb": 3.33,
               "peakRxIfDbm": -30.65,
               "noiseIfDbm": -34.45,
-              "lockedSamples": 359
+              "lockedSamples": 324
             }
           ],
           "adjacentCarriers": 0
@@ -95,9 +101,12 @@
               "samples": 252,
               "peakCnDb": 19.31,
               "medianCnDb": 18.91,
+              "peakEsN0Db": 20.1,
+              "requiredEsN0Db": null,
+              "peakLockMarginDb": null,
               "peakRxIfDbm": -62.59,
               "noiseIfDbm": -81.05,
-              "lockedSamples": 252
+              "lockedSamples": 0
             },
             {
               "signalId": "MERIDIAN-SAR-2-VIDEO",
@@ -109,9 +118,12 @@
               "samples": 252,
               "peakCnDb": 5.04,
               "medianCnDb": 4.64,
+              "peakEsN0Db": 5.83,
+              "requiredEsN0Db": 5.03,
+              "peakLockMarginDb": 0.8,
               "peakRxIfDbm": -31.3,
               "noiseIfDbm": -35.48,
-              "lockedSamples": 252
+              "lockedSamples": 182
             }
           ],
           "adjacentCarriers": 0

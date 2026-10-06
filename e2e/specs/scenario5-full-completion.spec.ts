@@ -66,7 +66,7 @@ const SCENARIO_5_OBJECTIVES: Scenario5Objective[] = [
     id: 'phase-1-observe-degradation',
     title: 'Confirm Signal Degradation',
     type: 'quiz',
-    correctAnswer: 'C/N is degraded - well below normal operating threshold',
+    correctAnswer: 'C/N is degraded - well below normal, locked with little margin',
   },
   {
     id: 'verify-receiver-state-quiz',
@@ -432,6 +432,11 @@ test.describe('Scenario 5 Full Completion', () => {
   });
 
   test('Objective: Confirm Signal Degradation', async () => {
+    // Phase 19.5 (nats-s05-F1): the interferer leaves the modem degraded, not
+    // down - locked with under 1 dB of margin. Assert it before answering.
+    const statusBar = page.locator('#status-bar');
+    await expect(statusBar).toContainText('Degraded margin', { timeout: 20000 });
+    await expect(page.locator('#signal-status')).toHaveText('Degraded');
     const objective = SCENARIO_5_OBJECTIVES.find((o) => o.id === 'phase-1-observe-degradation')!;
     await executeObjective(page, missionControlPage, objective);
   });

@@ -22,6 +22,7 @@
  *    `spaceEvents` block, or a typo'd contact id.
  */
 
+import { SimClock } from '@app/simulation/sim-clock';
 import type { Degrees } from 'ootk';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -338,6 +339,7 @@ describe('nats-eu Phase B: link budgets are correct and achievable', () => {
     let tick = 0;
 
     for (simNowMs = startMs; simNowMs <= endMs; simNowMs += tickMs, tick++) {
+      SimClock.step(); // run time for the modem's lock acquisition (phase 19.5)
       for (const s of simSatellites) s.update();
       antenna.update();
       if (tick % TICK_HZ === 0) {

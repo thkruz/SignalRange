@@ -1,38 +1,58 @@
 /**
- * @file Shared RX modem signal-quality thresholds.
+ * @file Shared RX modem signal-quality grading (phase 19.5).
  *
- * One table drives the Receiver Modems status bar, its card alarm badge and
- * anything else that grades modem C/N, so the header colour and the status
- * text can never disagree.
+ * One grading drives the Receiver Modems status bar, its card alarm badge,
+ * the modem buttons and the signal badge, so the header colour, the status
+ * text and the lock indicator can never disagree. It reads the receiver's own
+ * lock tracker: lock needs the MODCOD's Es/N0 threshold (DVB-S2 QEF + 1 dB
+ * implementation loss, `modcod.ts`), "degraded" is less than 1 dB of margin.
  */
 
-/** Effective C/N thresholds (dB) for the RX modem quality bands. */
-export const RX_CN_THRESHOLDS = {
-  /** Locked at or above this C/N: good margin. */
-  goodMargin: 8,
-  /** Locked at or above this C/N (and below goodMargin): degraded margin. */
-  degradedMargin: 5,
-  /** At or above this C/N (and below degradedMargin, or unlocked): near threshold. */
-  nearThreshold: 3,
-} as const;
+import type { IQSignalInfo } from './receiver';
 
-export type RxSignalQuality = 'good' | 'degraded' | 'near-threshold' | 'below-threshold';
+export type RxSignalQuality =
+  /** Locked with at least 1 dB of margin */
+  | 'good'
+  /** Locked with less than 1 dB of margin */
+  | 'degraded'
+  /** Above threshold, waiting out the demodulator's acquisition time */
+  | 'acquiring'
+  /** Carrier present but its modulation/FEC labels differ from the modem's */
+  | 'format-mismatch'
+  /** Carrier present but the IF filter has cut it below what the FEC tolerates */
+  | 'bandwidth-clipped'
+  /** Carrier present, labels right, Es/N0 below what lock needs */
+  | 'below-threshold';
 
-/**
- * Grade the modem's signal from its lock state and effective C/N.
- * Unlocked carriers are never better than near-threshold.
- */
-export function classifyRxSignal(hasLock: boolean, effectiveCn_dB: number): RxSignalQuality {
-  if (hasLock && effectiveCn_dB >= RX_CN_THRESHOLDS.goodMargin) {
-    return 'good';
+/** Grade a modem's signal from its measurement (callers check `hasCarrier` first). */
+export function classifyRxSignal(info: IQSignalInfo): RxSignalQuality {
+  if (info.hasLock) {
+    return info.isLowMargin ? 'degraded' : 'good';
   }
-  if (hasLock && effectiveCn_dB >= RX_CN_THRESHOLDS.degradedMargin) {
-    return 'degraded';
+  if (info.formatMismatch) {
+    return 'format-mismatch';
   }
-  if (effectiveCn_dB >= RX_CN_THRESHOLDS.nearThreshold) {
-    return 'near-threshold';
+  if (info.isBandwidthClipped) {
+    return 'bandwidth-clipped';
+  }
+  if (info.lockState === 'acquiring') {
+    return 'acquiring';
   }
   return 'below-threshold';
+}
+
+/** "Es/N0 9.3 dB, need 5.0 dB" for the status texts (or C/N when Es/N0 is unknown). */
+export function describeEsN0(info: IQSignalInfo): string {
+  const esN0 = info.effectiveEsN0_dB;
+  const need = info.requiredEsN0_dB;
+  if (esN0 === undefined || !Number.isFinite(esN0)) {
+    const cn = info.effectiveCnRatio_dB ?? info.cnRatio_dB;
+    return `C/N ${Number.isFinite(cn) ? cn.toFixed(1) : '--'} dB`;
+  }
+  if (need === undefined || !Number.isFinite(need)) {
+    return `Es/N0 ${esN0.toFixed(1)} dB`;
+  }
+  return `Es/N0 ${esN0.toFixed(1)} dB, need ${need.toFixed(1)} dB`;
 }
 
 /** Summary of the payload decoder that the modem status must not contradict. */

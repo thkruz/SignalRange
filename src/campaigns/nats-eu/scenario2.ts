@@ -39,7 +39,8 @@ import { meridianSar1Satellite, meridianSar2Satellite } from './satellites';
  * - EIRP 31.3 dBm, GW-01 4m Ku gain 50.4 dBi (at the LNA flange), Tsys 125 K, BW 36 MHz, misc 1 dB
  * - correct worksheet -> C/N 11.37 dB (expectedCNRDb 11.4, tolerance 1.0)
  * - measured peak through the real chain: 10.93 dB at culmination
- * - threshold 6 dB (QPSK 3/4 demod) + 2 dB required margin -> commit anywhere in
+ * - threshold 4.2 dB C/N (QPSK 3/4 demod: Es/N0 5.0 dB in the 30 Msps carrier)
+ *   + 4 dB required margin -> acceptance at 8.2 dB, commit near culmination in
  *   the window 14:05:10 .. 14:08:20.
  *
  * Staged state (scenario-local clone of GW-01): BUC muted, as a receive-only
@@ -112,8 +113,8 @@ export const natsEuScenario2Data: ScenarioData = {
       label: 'GW-01 acceptance: MERIDIAN-SAR-1 downlink at max elevation',
       expectedCNRDb: 11.4,
       toleranceDb: 1.0,
-      thresholdCNRDb: 6,
-      requiredMarginDb: 2,
+      thresholdCNRDb: 4.2,
+      requiredMarginDb: 4,
     },
   },
   objectives: [
@@ -430,7 +431,7 @@ export const natsEuScenario2Data: ScenarioData = {
       nice: ['T0080', 'K0740'],
       title: 'Measure on the Rising Leg',
       description:
-        'Lock the 1414 MHz carrier and read C/N around 15 degrees on the way up (about 14:04:45). Expect roughly 7 dB: above the 6 dB demodulator threshold, below the acceptance line.',
+        'Lock the 1414 MHz carrier and read C/N around 15 degrees on the way up (about 14:04:45). Expect roughly 7 dB: locked and clear of the 4.2 dB demodulator threshold, below the acceptance line.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['track-for-acceptance'],
       conditions: [
@@ -455,7 +456,7 @@ export const natsEuScenario2Data: ScenarioData = {
       nice: ['T0080', 'K0740', 'S0015'],
       title: 'Measure and Commit the Link',
       description:
-        'With the receiver locked on the 1414 MHz downlink, return to Link Analysis and press Commit Link near culmination (14:05:10 to 14:08:20). Acceptance needs at least 2 dB of margin over the 6 dB demodulator threshold.',
+        'With the receiver locked on the 1414 MHz downlink, return to Link Analysis and press Commit Link near culmination (14:05:10 to 14:08:20). Acceptance needs at least 4 dB of margin over the 4.2 dB demodulator threshold.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['rising-leg'],
       conditions: [
@@ -467,8 +468,8 @@ export const natsEuScenario2Data: ScenarioData = {
         },
         {
           type: 'link-margin-met',
-          description: 'Measured Margin >= 2 dB Over Threshold',
-          params: { minMarginDb: 2 },
+          description: 'Measured Margin >= 4 dB Over Threshold',
+          params: { minMarginDb: 4 },
           mustMaintain: false,
         },
       ],
@@ -533,18 +534,18 @@ export const natsEuScenario2Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'What goes in the measurement section of GW-01-ATP-002?',
             options: [
-              'Predicted 11.0 dB; measured 10.9 dB at 28 deg; margin 4.9 dB over 6 dB; ~7 dB at 15 deg both legs',
+              'Predicted 11.0 dB; measured 10.9 dB at 28 deg; margin 6.7 dB over 4.2 dB; ~7 dB at 15 deg both legs',
               'Predicted 11.0 dB; measured 10.9 dB at 28 deg; margin 0.1 dB under prediction; no shoulder readings',
               'Predicted 11.0 dB; measured 10.9 dB at 28 deg; margin 2.9 dB over 8 dB; ~7 dB at 15 deg both legs',
-              'Predicted 11.0 dB; measurement not required; margin 5.0 dB over 6 dB; shoulders predicted ~7 dB',
+              'Predicted 11.0 dB; measurement not required; margin 6.8 dB over 4.2 dB; shoulders predicted ~7 dB',
             ],
             correctIndex: 0,
             explanation:
-              'Prediction, measurement, margin over the 6 dB demodulator threshold, and the two shoulder readings that prove the curve. Margin is measured against the threshold, not against the prediction and not against the 8 dB service line. A card Rotterdam can check tomorrow against a different pass.',
+              'Prediction, measurement, margin over the 4.2 dB demodulator threshold, and the two shoulder readings that prove the curve. Margin is measured against the threshold, not against the prediction and not against the 8 dB service line. A card Rotterdam can check tomorrow against a different pass.',
             pointPenalty: 5,
             documentSection: 'Measurement',
             documentLine:
-              'MERIDIAN-SAR-1 14:03Z pass: predicted C/N 11.4 dB at culmination; measured 10.9 dB at 28 deg / 761 km; margin over 6 dB demod threshold 4.9 dB; rising leg 15 deg ~7 dB, setting leg 15 deg ~7 dB.',
+              'MERIDIAN-SAR-1 14:03Z pass: predicted C/N 11.4 dB at culmination; measured 10.9 dB at 28 deg / 761 km; margin over 4.2 dB demod threshold 6.7 dB; rising leg 15 deg ~7 dB, setting leg 15 deg ~7 dB.',
           },
           mustMaintain: false,
         },
@@ -650,7 +651,7 @@ export const natsEuScenario2Data: ScenarioData = {
             pointPenalty: 5,
             documentSection: 'Verdict',
             documentLine:
-              'ACCEPTED. Measured within 1 dB of prediction with 4.9 dB margin over threshold. GW-01 cleared for MERIDIAN receive tasking. Signed GW-01 operator; countersigned C. Brooks.',
+              'ACCEPTED. Measured within 1 dB of prediction with 6.7 dB margin over threshold. GW-01 cleared for MERIDIAN receive tasking. Signed GW-01 operator; countersigned C. Brooks.',
           },
           mustMaintain: false,
         },

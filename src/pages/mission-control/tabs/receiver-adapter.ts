@@ -4,7 +4,7 @@ import { AlarmStatus } from '@app/equipment/base-equipment';
 import { ValidationError, validateModemBandwidth, validateModemFrequency } from '@app/equipment/modem/modem-constraints';
 import { ADCStatus } from '@app/equipment/receiver/adc-degradation';
 import { IQSignalInfo, Receiver, ReceiverModemState } from '@app/equipment/receiver/receiver';
-import { classifyRxSignal, describePayloadProblem, RxPayloadStatus } from '@app/equipment/receiver/rx-signal-quality';
+import { classifyRxSignal, describeEsN0, describePayloadProblem, RxPayloadStatus, RxSignalQuality } from '@app/equipment/receiver/rx-signal-quality';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
 import { parseLocalizedNumber } from '@app/utils/parse-number';
@@ -148,6 +148,9 @@ export class ReceiverAdapter {
     // C/N and power level displays
     this.cacheElement_('cn-raw-display');
     this.cacheElement_('cn-effective-display');
+    this.cacheElement_('esn0-display');
+    this.cacheElement_('cn0-display');
+    this.cacheElement_('required-esn0-display');
     this.cacheElement_('power-level-display');
     this.cacheElement_('noise-floor-display');
 
@@ -424,16 +427,16 @@ export class ReceiverAdapter {
     const signalInfo = this.receiver.getSignalsInBandwidth(modem);
     if (!signalInfo.hasCarrier) return '';
 
-    const effectiveCn = signalInfo.effectiveCnRatio_dB ?? signalInfo.cnRatio_dB;
-
-    // Match signal quality thresholds
-    if (signalInfo.hasLock && effectiveCn > 15) {
-      return 'btn-rx-signal-good';
+    // Same grading as the status bar and the alarm badge
+    switch (classifyRxSignal(signalInfo)) {
+      case 'good':
+        return 'btn-rx-signal-good';
+      case 'degraded':
+      case 'acquiring':
+        return 'btn-rx-signal-degraded';
+      default:
+        return 'btn-rx-signal-error';
     }
-    if (effectiveCn > 8) {
-      return 'btn-rx-signal-degraded';
-    }
-    return 'btn-rx-signal-error';
   }
 
   private updateConfigurationInputs_(modem: ReceiverModemState): void {
@@ -617,32 +620,15 @@ export class ReceiverAdapter {
     // Get signal info for C/N and ADC data (only when powered on)
     const signalInfo = this.receiver.getSignalsInBandwidth(activeModem);
 
-    // Signal Quality Status Badge - use actual C/N thresholds matching IQ constellation
+    // Signal Quality Status Badge - the shared grading (lock tracker + MODCOD margin)
     if (signalStatus) {
       if (!signalInfo.hasCarrier) {
         signalStatus.className = 'status-badge status-badge-none';
         signalStatus.textContent = 'None';
       } else {
-        // Use effective C/N (includes ADC penalty) for quality assessment
-        const effectiveCn = signalInfo.effectiveCnRatio_dB ?? signalInfo.cnRatio_dB;
-
-        // Match IQ constellation thresholds:
-        // - Good: C/N >= 8 dB AND locked
-        // - Degraded: 5 <= C/N < 8 dB AND locked OR unlocked with decent C/N
-        // - Poor: C/N < 5 dB
-        if (signalInfo.hasLock && effectiveCn >= 8) {
-          signalStatus.className = 'status-badge status-badge-good';
-          signalStatus.textContent = 'Good';
-        } else if (effectiveCn >= 5) {
-          signalStatus.className = 'status-badge status-badge-degraded';
-          signalStatus.textContent = signalInfo.hasLock ? 'Degraded' : 'Unlocked';
-        } else if (effectiveCn > 0) {
-          signalStatus.className = 'status-badge status-badge-error';
-          signalStatus.textContent = 'Poor';
-        } else {
-          signalStatus.className = 'status-badge status-badge-error';
-          signalStatus.textContent = 'Critical';
-        }
+        const [badgeClass, badgeText] = ReceiverAdapter.QUALITY_BADGES[classifyRxSignal(signalInfo)];
+        signalStatus.className = `status-badge ${badgeClass}`;
+        signalStatus.textContent = badgeText;
       }
     }
 
@@ -661,6 +647,16 @@ export class ReceiverAdapter {
     if (cnEffectiveDisplay) {
       const effectiveCn = signalInfo.effectiveCnRatio_dB ?? signalInfo.cnRatio_dB;
       cnEffectiveDisplay.textContent = hasCarrier && effectiveCn > -50 ? `${effectiveCn.toFixed(1)} dB` : '-- dB';
+    }
+
+    // Es/N0 (after the ADC: what the demodulator locks on), C/N0 and the
+    // MODCOD's requirement - only with a carrier
+    this.setReadout_('esn0-display', hasCarrier ? signalInfo.effectiveEsN0_dB : undefined, 'dB');
+    this.setReadout_('cn0-display', hasCarrier ? signalInfo.cn0_dBHz : undefined, 'dB-Hz');
+    const requiredEl = this.domCache_.get('required-esn0-display');
+    if (requiredEl) {
+      const need = signalInfo.requiredEsN0_dB;
+      requiredEl.textContent = need !== undefined && Number.isFinite(need) ? `${need.toFixed(1)} dB (${signalInfo.modcod?.name ?? '--'})` : '-- dB';
     }
 
     // Power level display - only show when we have a carrier
@@ -745,6 +741,11 @@ export class ReceiverAdapter {
     const cnEffectiveDisplay = this.domCache_.get('cn-effective-display');
     if (cnEffectiveDisplay) cnEffectiveDisplay.textContent = '-- dB';
 
+    this.setReadout_('esn0-display', undefined, 'dB');
+    this.setReadout_('cn0-display', undefined, 'dB-Hz');
+    const requiredEl = this.domCache_.get('required-esn0-display');
+    if (requiredEl) requiredEl.textContent = '-- dB';
+
     // Clear power and noise displays
     const powerLevelDisplay = this.domCache_.get('power-level-display');
     if (powerLevelDisplay) powerLevelDisplay.textContent = '-- dBm';
@@ -770,6 +771,23 @@ export class ReceiverAdapter {
     if (degradationSection) {
       degradationSection.classList.add('d-none');
     }
+  }
+
+  /** Badge class and text for each signal grade */
+  private static readonly QUALITY_BADGES: Record<RxSignalQuality, [string, string]> = {
+    good: ['status-badge-good', 'Good'],
+    degraded: ['status-badge-degraded', 'Degraded'],
+    acquiring: ['status-badge-degraded', 'Acquiring'],
+    'format-mismatch': ['status-badge-error', 'Mismatch'],
+    'bandwidth-clipped': ['status-badge-error', 'Clipped'],
+    'below-threshold': ['status-badge-error', 'No Lock'],
+  };
+
+  /** Write a readout, or "--" when the value is missing or meaningless */
+  private setReadout_(elementId: string, value: number | undefined, unit: string): void {
+    const el = this.domCache_.get(elementId);
+    if (!el) return;
+    el.textContent = value !== undefined && Number.isFinite(value) && value > -100 ? `${value.toFixed(1)} ${unit}` : `-- ${unit}`;
   }
 
   private updatePenaltyDisplay_(elementId: string, penalty: number): void {
@@ -859,28 +877,34 @@ export class ReceiverAdapter {
     }
 
     const effectiveCn = signalInfo.effectiveCnRatio_dB ?? signalInfo.cnRatio_dB;
+    const esN0Text = describeEsN0(signalInfo);
 
-    // QPSK-ish modem-quality thresholds (MVP, no Eb/N0), shared with the alarm badge
-    const quality = classifyRxSignal(signalInfo.hasLock, effectiveCn);
+    // One grading for the status bar, the alarm badge and the signal badge
+    const quality = classifyRxSignal(signalInfo);
     const payloadProblem = quality === 'good' ? this.getPayloadProblem_() : null;
 
     if (quality === 'good' && payloadProblem) {
       statusBar.className = 'alert alert-warning mt-3';
-      statusBar.textContent = `Signal locked - ${payloadProblem} (C/N: ${effectiveCn.toFixed(1)} dB)`;
+      statusBar.textContent = `Signal locked - ${payloadProblem} (${esN0Text})`;
     } else if (quality === 'good') {
       statusBar.className = 'alert alert-success mt-3';
-      statusBar.textContent = `Signal locked - Good margin (C/N: ${effectiveCn.toFixed(1)} dB)`;
+      statusBar.textContent = `Signal locked - Good margin (${esN0Text})`;
     } else if (quality === 'degraded') {
       statusBar.className = 'alert alert-warning mt-3';
-      statusBar.textContent = `Signal locked - Degraded margin (C/N: ${effectiveCn.toFixed(1)} dB)`;
-    } else if (quality === 'near-threshold') {
-      // may flicker lock depending on your sim; treat as near-threshold
-      const lockStatus = signalInfo.hasLock ? 'locked' : 'unlocking';
+      statusBar.textContent = `Signal locked - Degraded margin (${esN0Text})`;
+    } else if (quality === 'acquiring') {
+      statusBar.className = 'alert alert-info mt-3';
+      statusBar.textContent = `Acquiring lock (${esN0Text})`;
+    } else if (quality === 'format-mismatch') {
+      // The carrier is there; the modem's modulation/FEC labels are wrong
       statusBar.className = 'alert alert-danger mt-3';
-      statusBar.textContent = `Signal ${lockStatus} - Near threshold (C/N: ${effectiveCn.toFixed(1)} dB)`;
+      statusBar.textContent = `Carrier present, no lock - Format mismatch: check modulation and FEC (C/N: ${effectiveCn.toFixed(1)} dB)`;
+    } else if (quality === 'bandwidth-clipped') {
+      statusBar.className = 'alert alert-danger mt-3';
+      statusBar.textContent = `Carrier present, no lock - Bandwidth clipped by the IF filter (C/N: ${effectiveCn.toFixed(1)} dB)`;
     } else {
       statusBar.className = 'alert alert-danger mt-3';
-      statusBar.textContent = `Signal no lock - Below threshold (C/N: ${effectiveCn.toFixed(1)} dB)`;
+      statusBar.textContent = `Signal no lock - Below threshold (${esN0Text})`;
     }
   }
 
@@ -905,10 +929,10 @@ export class ReceiverAdapter {
       return alarms;
     }
 
-    const effectiveCn = signalInfo.effectiveCnRatio_dB ?? signalInfo.cnRatio_dB;
+    const esN0Text = describeEsN0(signalInfo);
 
-    // Same quality bands as the status bar (shared threshold table)
-    switch (classifyRxSignal(signalInfo.hasLock, effectiveCn)) {
+    // Same grading as the status bar
+    switch (classifyRxSignal(signalInfo)) {
       case 'good': {
         const payloadProblem = this.getPayloadProblem_();
         if (payloadProblem) {
@@ -917,16 +941,19 @@ export class ReceiverAdapter {
         break;
       }
       case 'degraded':
-        alarms.push({ severity: 'warning', message: `Degraded margin (C/N: ${effectiveCn.toFixed(1)} dB)` });
+        alarms.push({ severity: 'warning', message: `Degraded margin (${esN0Text})` });
         break;
-      case 'near-threshold':
-        alarms.push({
-          severity: 'error',
-          message: signalInfo.hasLock ? `Poor C/N: ${effectiveCn.toFixed(1)} dB` : `Signal unlocked (C/N: ${effectiveCn.toFixed(1)} dB)`,
-        });
+      case 'acquiring':
+        alarms.push({ severity: 'info', message: `Acquiring lock (${esN0Text})` });
+        break;
+      case 'format-mismatch':
+        alarms.push({ severity: 'error', message: 'No lock: format mismatch (modulation/FEC)' });
+        break;
+      case 'bandwidth-clipped':
+        alarms.push({ severity: 'error', message: 'No lock: carrier clipped by the IF filter' });
         break;
       default:
-        alarms.push({ severity: 'error', message: `Critical C/N: ${effectiveCn.toFixed(1)} dB` });
+        alarms.push({ severity: 'error', message: `No lock: below threshold (${esN0Text})` });
         break;
     }
 

@@ -378,10 +378,11 @@ describe('ReceiverAdapter', () => {
       expect(status.className).toContain('status-badge-good');
     });
 
-    it('should show Degraded when C/N >= 5 and locked', () => {
+    it('should show Degraded when locked with under 1 dB of margin', () => {
       mockReceiver.getSignalsInBandwidth.mockReturnValue({
         hasCarrier: true,
         hasLock: true,
+        isLowMargin: true,
         cnRatio_dB: 6,
         effectiveCnRatio_dB: 6,
       });
@@ -392,47 +393,54 @@ describe('ReceiverAdapter', () => {
       expect(status.textContent).toBe('Degraded');
     });
 
-    it('should show Unlocked when C/N >= 5 but not locked', () => {
+    it('should show Acquiring while the demodulator waits out its acquisition time', () => {
       mockReceiver.getSignalsInBandwidth.mockReturnValue({
         hasCarrier: true,
         hasLock: false,
-        cnRatio_dB: 6,
-        effectiveCnRatio_dB: 6,
+        lockState: 'acquiring',
+        cnRatio_dB: 12,
+        effectiveCnRatio_dB: 12,
       });
       (adapter as any).lastStateString = '';
       (adapter as any).syncDomWithState_();
 
       const status = containerEl.querySelector('#signal-status') as HTMLElement;
-      expect(status.textContent).toBe('Unlocked');
+      expect(status.textContent).toBe('Acquiring');
     });
 
-    it('should show Poor when C/N < 5 and > 0', () => {
+    it('should show Mismatch when the modulation/FEC labels differ, whatever the C/N', () => {
       mockReceiver.getSignalsInBandwidth.mockReturnValue({
         hasCarrier: true,
         hasLock: false,
-        cnRatio_dB: 3,
-        effectiveCnRatio_dB: 3,
+        formatMismatch: true,
+        fecMismatch: true,
+        cnRatio_dB: 14,
+        effectiveCnRatio_dB: 14,
       });
       (adapter as any).lastStateString = '';
       (adapter as any).syncDomWithState_();
 
       const status = containerEl.querySelector('#signal-status') as HTMLElement;
-      expect(status.textContent).toBe('Poor');
+      expect(status.textContent).toBe('Mismatch');
       expect(status.className).toContain('status-badge-error');
     });
 
-    it('should show Critical when C/N <= 0', () => {
+    it('should show No Lock below the MODCOD threshold', () => {
       mockReceiver.getSignalsInBandwidth.mockReturnValue({
         hasCarrier: true,
         hasLock: false,
-        cnRatio_dB: 0,
-        effectiveCnRatio_dB: 0,
+        lockState: 'unlocked',
+        cnRatio_dB: 3,
+        effectiveCnRatio_dB: 3,
+        effectiveEsN0_dB: 3.8,
+        requiredEsN0_dB: 5.03,
       });
       (adapter as any).lastStateString = '';
       (adapter as any).syncDomWithState_();
 
       const status = containerEl.querySelector('#signal-status') as HTMLElement;
-      expect(status.textContent).toBe('Critical');
+      expect(status.textContent).toBe('No Lock');
+      expect(status.className).toContain('status-badge-error');
     });
   });
 
@@ -646,10 +654,51 @@ describe('ReceiverAdapter', () => {
       expect(statusBar.textContent).toContain('Good margin');
     });
 
+    it('should show Es/N0, C/N0 and the MODCOD requirement on the RX panel', () => {
+      containerEl.insertAdjacentHTML('beforeend', '<span id="esn0-display"></span><span id="cn0-display"></span><span id="required-esn0-display"></span>');
+      adapter.dispose();
+      adapter = new ReceiverAdapter(mockReceiver, containerEl);
+      mockReceiver.getSignalsInBandwidth.mockReturnValue({
+        hasCarrier: true,
+        hasLock: true,
+        cnRatio_dB: 14.2,
+        effectiveCnRatio_dB: 14.2,
+        effectiveEsN0_dB: 15.0,
+        cn0_dBHz: 89.8,
+        requiredEsN0_dB: 5.03,
+        modcod: { name: 'QPSK 3/4' },
+      });
+      (adapter as any).lastStateString = '';
+      (adapter as any).syncDomWithState_();
+
+      expect(containerEl.querySelector('#esn0-display')?.textContent).toBe('15.0 dB');
+      expect(containerEl.querySelector('#cn0-display')?.textContent).toBe('89.8 dB-Hz');
+      expect(containerEl.querySelector('#required-esn0-display')?.textContent).toBe('5.0 dB (QPSK 3/4)');
+      expect((containerEl.querySelector('#status-bar') as HTMLElement).textContent).toBe('Signal locked - Good margin (Es/N0 15.0 dB, need 5.0 dB)');
+    });
+
+    it('should say Format mismatch, not Near threshold, when the labels differ (nats-s04-F4)', () => {
+      mockReceiver.getSignalsInBandwidth.mockReturnValue({
+        hasCarrier: true,
+        hasLock: false,
+        formatMismatch: true,
+        fecMismatch: true,
+        cnRatio_dB: 13.7,
+        effectiveCnRatio_dB: 13.7,
+      });
+      (adapter as any).lastStateString = '';
+      (adapter as any).syncDomWithState_();
+
+      const statusBar = containerEl.querySelector('#status-bar') as HTMLElement;
+      expect(statusBar.textContent).toContain('Format mismatch');
+      expect(statusBar.textContent).not.toContain('Near threshold');
+    });
+
     it('should show degraded margin message', () => {
       mockReceiver.getSignalsInBandwidth.mockReturnValue({
         hasCarrier: true,
         hasLock: true,
+        isLowMargin: true,
         cnRatio_dB: 6,
         effectiveCnRatio_dB: 6,
       });
@@ -712,6 +761,7 @@ describe('ReceiverAdapter', () => {
       mockReceiver.getSignalsInBandwidth.mockReturnValue({
         hasCarrier: true,
         hasLock: true,
+        isLowMargin: true,
         cnRatio_dB: 6,
         effectiveCnRatio_dB: 6,
       });

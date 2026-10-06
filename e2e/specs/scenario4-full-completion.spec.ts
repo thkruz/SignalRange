@@ -178,7 +178,7 @@ const SCENARIO_4_OBJECTIVES: Scenario4Objective[] = [
     id: 'verify-rx-margin-quiz',
     title: 'Understand Link Margin',
     type: 'quiz',
-    correctAnswer: 'Lock can occur at C/N as low as 4-5 dB, but error rates would be high - we need margin',
+    correctAnswer: 'Lock can occur at C/N as low as about 4.2 dB, with no fade margin left - we need margin',
   },
 
   // ============================================================
@@ -581,11 +581,12 @@ async function waitForRxLock(page: import('@playwright/test').Page, timeout = 30
 
   while (Date.now() - startTime < timeout) {
     try {
-      // Check signal status badge - it shows "Locked" when receiver is locked
+      // Signal status badge: "Good" or "Degraded" only while the modem holds lock
+      // (phase 19.5; "No Lock", "Acquiring" and "Mismatch" are not lock)
       const signalStatus = page.locator('#signal-status');
-      const statusText = await signalStatus.textContent({ timeout: 1000 });
+      const statusText = (await signalStatus.textContent({ timeout: 1000 }))?.trim();
 
-      if (statusText?.toLowerCase().includes('lock')) {
+      if (statusText === 'Good' || statusText === 'Degraded') {
         // Also verify C/N is above threshold (10 dB)
         const cnDisplay = page.locator('#cn-effective-display');
         const cnText = await cnDisplay.textContent({ timeout: 1000 });

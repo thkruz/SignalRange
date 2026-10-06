@@ -1917,15 +1917,24 @@ export abstract class AntennaCore extends BaseEquipment {
 
         if (overlapPercent === 0) continue;
 
-        // Calculate carrier-to-interference ratio
-        const signalPowerLinear = 10 ** (signal.power / 10);
-        const interferencePowerLinear = 10 ** (other.power / 10);
-        const ci_ratio = 10 * Math.log10(signalPowerLinear / interferencePowerLinear);
+        // Carrier-to-interference ratio in the band they share: spectral
+        // densities, not total powers (phase 19.5). A narrowband spike inside a
+        // wideband carrier stands above it when its density is higher, however
+        // much more total power the carrier has; for carriers of equal
+        // bandwidth this is the total-power ratio, as before.
+        const signalDensity = signal.power - 10 * Math.log10(Math.max(1, signal.bandwidth));
+        const otherDensity = other.power - 10 * Math.log10(Math.max(1, other.bandwidth));
+        const ci_ratio = signalDensity - otherDensity;
 
         // If C/I is less than 10 dB and overlap is significant, signal is degraded or blocked
         if (ci_ratio < 10 && overlapPercent >= 50) {
-          if (other.power > signal.power) {
-            // Stronger signal blocks this one
+          // Only a carrier occupying the same slot (sharing at least half of
+          // each one's band) can block another outright; a narrower carrier
+          // inside a wider one always reaches the receiver, which adds it to
+          // the wanted carrier's N + I (phase 19.5, DEV-ANT-09)
+          const otherOverlapPercent = (overlapBandwidth / Math.max(1, other.bandwidth)) * 100;
+          if (ci_ratio < 0 && otherOverlapPercent >= 50) {
+            // A denser co-channel carrier blocks this one
             isBlocked = true;
             break;
           } else {

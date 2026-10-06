@@ -1234,14 +1234,14 @@ export const scenario3Data: ScenarioData = {
           params: {
             question: 'The modem shows "Locked" status. Why do we also verify the C/N ratio is above 10 dB?',
             options: [
-              'Lock can occur at low C/N but with high error rates - we need margin for reliable data',
+              'Lock holds right down to threshold with no fade margin - we need margin for reliable data',
               'The lock indicator stops working below 10 dB C/N - we need it to read the status',
               '10 dB is the minimum for the modem to power on - we need it to keep the modem running',
               'C/N below 10 dB can damage the modem front end - we need margin to protect hardware',
             ],
             correctIndex: 0,
             explanation:
-              'A modem can achieve lock at C/N ratios as low as 3-4 dB for QPSK, but error rates would be high and the link fragile. We want at least 10 dB of margin - that means even if weather degrades the Maine link somewhat, we still have headroom before errors become a problem. Lock without margin is asking for trouble.',
+              'This QPSK 3/4 carrier locks once Es/N0 reaches about 5.0 dB - roughly 4.2 dB of C/N in its 36 MHz channel (the DVB-S2 threshold plus 1 dB of modem implementation loss; RX Analysis shows it as Required Es/N0). Right at threshold it still decodes cleanly, but the next 1 dB fade drops it. At 10 dB of C/N there is nearly 6 dB of margin, so weather can take some of it before errors start. Lock without margin is asking for trouble.',
             pointPenalty: 10,
           },
           mustMaintain: false,

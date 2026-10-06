@@ -165,7 +165,7 @@ test.describe('nats-eu Scenario 9 Full Completion', () => {
   test('[decode-the-standing-collect] decodes the 1414 MHz downlink for Erik', async () => {
     await missionControl.selectTab('rx-analysis');
     await advanceMissionClockToUtc(page, '2027-03-17T06:21:30Z');
-    await answerSystemQuiz(page, 'Decoded with about 5 dB');
+    await answerSystemQuiz(page, 'Decoded with about 7 dB');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Decode the Standing Collect', 60000);
   });

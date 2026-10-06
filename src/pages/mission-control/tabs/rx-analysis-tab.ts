@@ -663,6 +663,24 @@ export class RxAnalysisTab extends BaseElement {
                       </div>
                       <div class="mb-2">
                         <div class="d-flex justify-content-between">
+                          <span class="text-muted small" title="Energy per symbol over noise density: C/N in the symbol-rate bandwidth, after the ADC. The demodulator locks on this.">Es/N0:</span>
+                          <span id="esn0-display" class="fw-bold font-monospace">-- dB</span>
+                        </div>
+                      </div>
+                      <div class="mb-2">
+                        <div class="d-flex justify-content-between">
+                          <span class="text-muted small" title="Carrier to noise density (thermal noise in 1 Hz)">C/N0:</span>
+                          <span id="cn0-display" class="fw-bold font-monospace">-- dB-Hz</span>
+                        </div>
+                      </div>
+                      <div class="mb-2">
+                        <div class="d-flex justify-content-between">
+                          <span class="text-muted small" title="Lock threshold for the modem's MODCOD: DVB-S2 quasi-error-free Es/N0 plus 1 dB implementation loss">Required Es/N0:</span>
+                          <span id="required-esn0-display" class="fw-bold font-monospace">-- dB</span>
+                        </div>
+                      </div>
+                      <div class="mb-2">
+                        <div class="d-flex justify-content-between">
                           <span class="text-muted small">Power Level:</span>
                           <span id="power-level-display" class="fw-bold font-monospace">-- dBm</span>
                         </div>

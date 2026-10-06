@@ -87,6 +87,10 @@ interface CarrierTrack {
   modulation: string;
   fec: string;
   cn: number[];
+  /** Effective Es/N0 (after the ADC), dB (phase 19.5) */
+  esN0: number[];
+  /** The carrier's own MODCOD threshold, dB (null: no MODCOD) */
+  requiredEsN0: number | null;
   rxIfDbm: number[];
   noiseIfDbm: number[];
   locked: number;
@@ -199,6 +203,8 @@ function sample(chain: Chain, tracks: Map<string, CarrierTrack>, noradId: number
         modulation: String(sig.modulation),
         fec: String(sig.fec),
         cn: [],
+        esN0: [],
+        requiredEsN0: null,
         rxIfDbm: [],
         noiseIfDbm: [],
         locked: 0,
@@ -217,9 +223,16 @@ function sample(chain: Chain, tracks: Map<string, CarrierTrack>, noradId: number
     const info = receiver.getSignalsInBandwidth(modem);
     track.samples++;
     track.cn.push(info.cnRatio_dB);
+    track.esN0.push(info.effectiveEsN0_dB ?? Number.NEGATIVE_INFINITY);
+    track.requiredEsN0 = Number.isFinite(info.requiredEsN0_dB ?? Number.NaN) ? (info.requiredEsN0_dB as number) : null;
     track.rxIfDbm.push((sig.power as number) + pathGain);
     track.noiseIfDbm.push(spm.getNoiseFloorAt(TapPoint.RX_IF, sig.bandwidth as Hertz).noiseFloorNoGain + spm.getTotalRxGain());
-    if (info.hasLock) track.locked++;
+    // Since 19.5 lock needs the MODCOD threshold held for an acquisition time
+    // the ledger does not wait out (it samples one carrier after another on
+    // one modem), so "locked" counts samples whose steady state is lock:
+    // labels match (they do, the modem is set from the carrier) and the
+    // effective Es/N0 clears the threshold
+    if (info.hasCarrier && !info.formatMismatch && !info.isBandwidthClipped && (info.lockMargin_dB ?? Number.NEGATIVE_INFINITY) >= 0) track.locked++;
   }
 }
 
@@ -235,6 +248,9 @@ function summarise(track: CarrierTrack) {
     samples: track.samples,
     peakCnDb: r2(finite.at(-1) ?? -Infinity),
     medianCnDb: r2(finite[Math.floor(finite.length / 2)] ?? -Infinity),
+    peakEsN0Db: r2(Math.max(...track.esN0.filter(Number.isFinite), -Infinity)),
+    requiredEsN0Db: track.requiredEsN0 === null ? null : r2(track.requiredEsN0),
+    peakLockMarginDb: track.requiredEsN0 === null ? null : r2(Math.max(...track.esN0.filter(Number.isFinite), -Infinity) - track.requiredEsN0),
     peakRxIfDbm: r2(Math.max(...track.rxIfDbm)),
     noiseIfDbm: r2(track.noiseIfDbm[0] ?? -Infinity),
     lockedSamples: track.locked,

@@ -11,7 +11,7 @@ import { createMeridianSar1, createMeridianSar2 } from './satellites';
  *
  * No new mechanics. The lesson is geometry: everything the operator has done
  * on 28 to 40 deg passes now has to be done on a pass that peaks at 18 deg,
- * where the link budget closes with about two decibels to spare and the uplink
+ * where the link budget closes with under four decibels to spare and the uplink
  * needs 6 dB more EIRP to reach the bird at long range. Erik's vessel of
  * interest is off the Faroes and this is the only MERIDIAN-SAR-1 window that
  * covers it today: the collect is tasked by command on the pass and the
@@ -38,7 +38,8 @@ import { createMeridianSar1, createMeridianSar2 } from './satellites';
  * - EIRP 31.3 dBm, GW-01 4m Ku gain 50.4 dBi (at the LNA flange), Tsys 131 K, BW 36 MHz, misc 1.2 dB
  *   (the extra 0.2 dB over S2/S8 is the longer atmospheric path at 18 deg)
  * - correct worksheet -> C/N 8.26 dB (expectedCNRDb 8.3, tolerance 1.0)
- * - threshold 6 dB (QPSK 3/4 demod) + 1 dB required margin
+ * - threshold 4.2 dB C/N (QPSK 3/4 demod: Es/N0 5.0 dB) + 3 dB required margin
+ *   -> commit at 7.2 dB, only near max elevation
  *
  * Uplink: HPA back-off 10 -> 4 dB is +6 dB EIRP. Below 3 dB the amplifier is
  * overdriven (`isOverdriven`, IMD alarm). The HPA output is drive + gain -
@@ -114,7 +115,7 @@ export const natsEuScenario10Data: ScenarioData = {
   subtitle: 'Urgent Collect, Low Pass',
   duration: '30 min',
   missionType: 'Tasking',
-  description: `15:18 local. Erik Halvorsen at Nordic Maritime Watch has a vessel of interest off the Faroes and needs SAR imagery of it today. The only MERIDIAN-SAR-1 window that covers the box peaks at 18 degrees over Galway, in seventeen minutes.<br><br>The collect has to be tasked by command early in that pass, and the imagery has to come down on the same pass. Anneke at constellation ops has confirmed the bird is available.<br><br>The link budget says the margin at 18 degrees is about two decibels. The uplink needs more EIRP than you have ever run from GW-01, the amplifier has a limit, and the evening shift left the chain in a state you will have to read before you trust it. One pass. Everything else is arithmetic, done before the horizon.`,
+  description: `15:18 local. Erik Halvorsen at Nordic Maritime Watch has a vessel of interest off the Faroes and needs SAR imagery of it today. The only MERIDIAN-SAR-1 window that covers the box peaks at 18 degrees over Galway, in seventeen minutes.<br><br>The collect has to be tasked by command early in that pass, and the imagery has to come down on the same pass. Anneke at constellation ops has confirmed the bird is available.<br><br>The link budget says the margin over the demodulator threshold at 18 degrees is under four decibels, and the commit needs three of them. The uplink needs more EIRP than you have ever run from GW-01, the amplifier has a limit, and the evening shift left the chain in a state you will have to read before you trust it. One pass. Everything else is arithmetic, done before the horizon.`,
   equipment: ['4m Ku-Band LEO Tracking Antenna', 'Ku-Band BUC (12600 MHz LO) + HPA', 'Link Analysis / TT&C Commanding consoles', 'QPSK 3/4 Transmit and Receive Modems'],
   settings: {
     isSync: true,
@@ -153,8 +154,8 @@ export const natsEuScenario10Data: ScenarioData = {
       label: 'Low-elevation collect: SAR-1 downlink at 18 deg',
       expectedCNRDb: 8.3,
       toleranceDb: 1.0,
-      thresholdCNRDb: 6,
-      requiredMarginDb: 1,
+      thresholdCNRDb: 4.2,
+      requiredMarginDb: 3,
     },
 
     // M2 - the tasking command. Window is the SAR-1 pass with 20 s guard
@@ -199,14 +200,14 @@ export const natsEuScenario10Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'This pass peaks at 18 degrees. Against the 28 degree passes you have worked, what changes in the link budget?',
             options: [
-              'Slant range at max elevation is about 1040 km instead of 761 km: nearly 3 dB more path loss, so the margin shrinks to about 2 dB.',
+              'Slant range at max elevation is about 1040 km instead of 761 km: nearly 3 dB more path loss, so the margin shrinks to under 4 dB.',
               'Nothing in the budget changes at 18 degrees: a lower pass is shorter, so the window closes sooner but the numbers hold.',
               'The satellite EIRP drops at low elevation: the bird has to be commanded to full power first, or the margin is gone.',
               'The receive antenna gain falls off at low elevation: the dish has to be re-peaked at AOS, or the margin is gone.',
             ],
             correctIndex: 0,
             explanation:
-              'Nearly 3 dB of extra path loss plus more atmosphere, and the margin over threshold shrinks to about two decibels. Path loss goes as the square of the range, and at 18 degrees the signal crosses several times more atmosphere than it does near the zenith. The receiver will still lock, but only just, and only near max elevation. Seventeen minutes to AOS.',
+              'Nearly 3 dB of extra path loss plus more atmosphere, and the margin over threshold shrinks from nearly seven decibels to under four. Path loss goes as the square of the range, and at 18 degrees the signal crosses several times more atmosphere than it does near the zenith. The receiver will still lock, but the margin the card needs is there only near max elevation. Seventeen minutes to AOS.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -329,7 +330,7 @@ export const natsEuScenario10Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'Clear-sky gaseous loss at 12 GHz is a few hundredths of a dB straight up and scales roughly with one over the sine of the elevation. At 18 degrees that is a few tenths, and on a pass with two decibels of margin a few tenths belong on the card.',
+              'Clear-sky gaseous loss at 12 GHz is a few hundredths of a dB straight up and scales roughly with one over the sine of the elevation. At 18 degrees that is a few tenths, and on a pass with under four decibels of margin a few tenths belong on the card.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -558,7 +559,7 @@ export const natsEuScenario10Data: ScenarioData = {
       nice: ['T0153', 'K0740', 'T0080'],
       title: 'Pull the Imagery With the Margin You Have',
       description:
-        'Lock the 1414 MHz imagery downlink and hold C/N above the 6 dB threshold for 30 seconds, then commit the link in Link Analysis at max elevation (15:39:31) with at least 1 dB over threshold. Commit early and the margin is not there.',
+        'Lock the 1414 MHz imagery downlink and hold C/N above 6 dB for 30 seconds, then commit the link in Link Analysis at max elevation (15:39:31) with at least 3 dB over the 4.2 dB threshold. Commit early and the margin is not there.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['task-the-collect'],
       conditions: [
@@ -577,8 +578,8 @@ export const natsEuScenario10Data: ScenarioData = {
         },
         {
           type: 'link-margin-met',
-          description: 'Measured Margin >= 1 dB',
-          params: { minMarginDb: 1 },
+          description: 'Measured Margin >= 3 dB',
+          params: { minMarginDb: 3 },
           mustMaintain: false,
         },
         {
@@ -707,7 +708,7 @@ export const natsEuScenario10Data: ScenarioData = {
             pointPenalty: 5,
             documentSection: 'Tasking',
             documentLine:
-              '15:35Z MERIDIAN-SAR-1 GW-01, urgent collect NMW-URG-2027-0318: SAR-TASK-URGENT ACK inside the window under Doppler comp and a valid key. EIRP exception: BUC gain restored 18 -> 23 dB, HPA back-off 4 dB for the pass, restored to 10 dB after LOS. Imagery decoded at 18 deg, link committed >= 1 dB over the 6 dB threshold; peak C/N ~8.1 dB against 8.1 predicted.',
+              '15:35Z MERIDIAN-SAR-1 GW-01, urgent collect NMW-URG-2027-0318: SAR-TASK-URGENT ACK inside the window under Doppler comp and a valid key. EIRP exception: BUC gain restored 18 -> 23 dB, HPA back-off 4 dB for the pass, restored to 10 dB after LOS. Imagery decoded at 18 deg, link committed >= 3 dB over the 4.2 dB threshold; peak C/N ~8.1 dB against 8.1 predicted.',
           },
           mustMaintain: false,
         },
@@ -730,7 +731,7 @@ export const natsEuScenario10Data: ScenarioData = {
           description: 'Customer Report Sent',
           params: {
             character: Character.SYSTEM,
-            question: 'The collect decoded at about 8 dB C/N, two decibels over threshold. What do you tell the customer?',
+            question: 'The collect decoded at about 8 dB C/N, nearly four decibels over threshold. What do you tell the customer?',
             options: [
               'Captured and usable, and that this geometry is the floor: anything lower needs the Shetland site or the next orbit.',
               'Captured and repeatable, and that this geometry is routine: GW-01 can take the same box on any pass he likes.',
@@ -739,7 +740,7 @@ export const natsEuScenario10Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'Two decibels over threshold is a clean decode, not a degraded one; the frames are as good as any. What the customer needs to know is that 18 degrees is about the lowest pass this station will close, so the next box further north is a Shetland job or a wait for a better orbit.',
+              'Four decibels over threshold is a clean decode, not a degraded one; the frames are as good as any. What the customer needs to know is that 18 degrees is about the lowest pass this station will close, so the next box further north is a Shetland job or a wait for a better orbit.',
             pointPenalty: 5,
           },
           mustMaintain: false,

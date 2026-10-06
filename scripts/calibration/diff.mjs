@@ -19,6 +19,11 @@
  * carrier and listed when the best flown pass falls more than 1 dB short
  * ("LINK BUDGET OFF").
  *
+ * Lock (phase 19.5): every modulated carrier's best Es/N0 against its MODCOD
+ * threshold (DVB-S2 QEF + 1 dB). "LOCK SHORT" = it cannot lock even at the
+ * peak of the flown pass; "LOCK DEGRADED" = it locks with under 1 dB of
+ * margin (listed with --margins).
+ *
  * Not covered (reported as n/a, never as a failure): a station that receives
  * no carrier in its authored start state (a fault the player is meant to find,
  * a carrier the player must uplink) and scripted interference events, which
@@ -32,7 +37,7 @@ import { join, resolve } from 'node:path';
 const ROOT = resolve(import.meta.dirname, '../..');
 const DIR = join(ROOT, 'test/calibration');
 const THRESHOLD = 0.1;
-const FIELDS = ['peakCnDb', 'medianCnDb', 'peakRxIfDbm', 'noiseIfDbm'];
+const FIELDS = ['peakCnDb', 'medianCnDb', 'peakRxIfDbm', 'noiseIfDbm', 'peakEsN0Db', 'peakLockMarginDb', 'lockedSamples'];
 const PEAK_FIELDS = ['gainDbi', 'gOverTDbPerK', 'tsysK'];
 
 const args = process.argv.slice(2);
@@ -75,6 +80,20 @@ function margins(entry) {
       const heard = carriers.filter((c) => c.peakRxIfDbm !== null);
       const best = Math.max(...heard.map((c) => c.peakRxIfDbm), -Infinity);
       rows.push({ objectiveId: t.objectiveId, what: `IF power >= ${t.params.minPower} dBm`, margin: best - t.params.minPower, covered: heard.length > 0 });
+    }
+  }
+  return rows;
+}
+
+/** Carriers with a MODCOD whose best lock margin is under 1 dB */
+function lockMargins(entry) {
+  const rows = [];
+  for (const station of entry?.stations ?? []) {
+    for (const link of station.links) {
+      for (const c of link.carriers) {
+        if (c.peakLockMarginDb === null || c.peakLockMarginDb === undefined || c.peakLockMarginDb >= 1) continue;
+        rows.push({ key: `${station.stationId}#${station.antennaIndex}/${link.satellite}/${c.signalId}`, margin: c.peakLockMarginDb, need: c.requiredEsN0Db, esN0: c.peakEsN0Db });
+      }
     }
   }
   return rows;
@@ -124,6 +143,7 @@ let changed = 0;
 let failing = 0;
 let uncovered = 0;
 let budgetsOff = 0;
+let lockShort = 0;
 for (const file of readdirSync(DIR).filter((f) => f.endsWith('.json')).sort()) {
   const now = JSON.parse(readFileSync(join(DIR, file), 'utf8'));
   const lines = [];
@@ -178,6 +198,11 @@ for (const file of readdirSync(DIR).filter((f) => f.endsWith('.json')).sort()) {
     }
   }
 
+  for (const l of lockMargins(now)) {
+    if (l.margin < 0) lockShort++;
+    if (marginsOnly) lines.push(`  ${l.margin < 0 ? 'LOCK SHORT' : 'LOCK DEGRADED'} ${l.key}: peak Es/N0 ${fmt(l.esN0)} dB vs ${fmt(l.need)} dB needed (${fmt(l.margin)} dB)`);
+  }
+
   if (lines.length > 0) {
     changed++;
     console.log(`${now.scenarioId}`);
@@ -186,5 +211,5 @@ for (const file of readdirSync(DIR).filter((f) => f.endsWith('.json')).sort()) {
 }
 
 console.log(
-  `\n${changed} scenario(s) listed; ${failing} authored threshold(s) with a negative best-case margin; ${uncovered} not covered by the ledger; ${budgetsOff} authored link budget(s) more than ${LINK_BUDGET_TOLERANCE_DB} dB above the engine.`
+  `\n${changed} scenario(s) listed; ${failing} authored threshold(s) with a negative best-case margin; ${uncovered} not covered by the ledger; ${budgetsOff} authored link budget(s) more than ${LINK_BUDGET_TOLERANCE_DB} dB above the engine; ${lockShort} modulated carrier(s) that cannot lock even at their peak.`
 );

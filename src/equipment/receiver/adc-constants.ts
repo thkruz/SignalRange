@@ -1,42 +1,47 @@
 import { dBFS, dBm } from '@app/types';
 
 /**
- * ADC Sweet Spot Configuration
+ * ADC configuration for the demodulator front end (phase 19.5).
  *
- * The ADC has an optimal operating range (sweet spot) where signal quality is maximized.
- * - Too high: Signals clip, causing hard limiting and intermodulation distortion
- * - Too low: Quantization noise dominates, reducing effective SNR
+ * The ADC samples the AGC output: the composite of every carrier and the
+ * receive noise in the IF filter. Two real impairments come from where that
+ * composite sits against full scale:
+ * - too high: peaks clip, adding distortion (Bussgang: the clipped part is
+ *   uncorrelated noise),
+ * - too low: the fixed quantization noise (6.02 N + 1.76 dB below a
+ *   full-scale sine, spread over the Nyquist band) eats into the carrier.
  *
- * Reference: AGC target level (-30 dBm) maps to -8 dBFS when ADC is at optimal point.
- * ADC full scale (0 dBFS) is 8 dB above the AGC target level.
- *
- * TODO: Make scenario-configurable in the future
+ * Reference: the AGC target (-30 dBm) maps to -8 dBFS, so full scale
+ * (0 dBFS, a full-scale sine) is -22 dBm.
  */
 export interface ADCConfig {
-  /** Target RMS input level for optimal performance */
+  /** Target RMS composite level for optimal performance */
   targetLevel_dBFS: dBFS;
-  /** Level at which ADC begins clipping */
+  /** Composite level above which the clip indicator lights (peaks reach full scale) */
   clipThreshold_dBFS: dBFS;
-  /** Level at which quantization noise becomes significant */
+  /** Composite level below which the level reads low (an advisory; the penalty is computed) */
   quantizationThreshold_dBFS: dBFS;
   /** Reference dBm level that equals 0 dBFS (ADC full scale) */
   fullScale_dBm: dBm;
-  /** Effective number of bits (determines quantization noise floor) */
+  /** Effective number of bits (sets the quantization noise floor) */
   enob: number;
+  /** Sample rate, Hz: quantization noise spreads over fs/2 */
+  sampleRate_Hz: number;
 }
 
 /**
- * Default ADC configuration based on realistic receiver parameters.
- *
- * Sweet spot: -8 dBFS with headroom to -2 dBFS (clip) and floor at -20 dBFS (quantization)
- * Reference: -30 dBm (AGC target) + 8 dB headroom = -22 dBm = 0 dBFS
+ * Default ADC: an 8-bit-ENOB converter at 200 Msps, the class of ADC in an
+ * L-band satellite demodulator. With the AGC holding -8 dBFS the impairments
+ * are negligible; they appear when the drive is ~30 dB low or within a few
+ * dB of full scale (DEV-MODEM-07: class values, not a datasheet).
  */
 export const DEFAULT_ADC_CONFIG: ADCConfig = {
   targetLevel_dBFS: -8 as dBFS,
   clipThreshold_dBFS: -2 as dBFS,
   quantizationThreshold_dBFS: -20 as dBFS,
   fullScale_dBm: -22 as dBm,
-  enob: 12,
+  enob: 8,
+  sampleRate_Hz: 200e6,
 };
 
 /**

@@ -60,7 +60,28 @@ export const scenario5Data: ScenarioData = {
     isSync: true,
     // Vermont-only troubleshooting: ME-02 stays non-operational so its idle
     // GPSDO/AGC alarms don't reach the ticker (nats-s05-F2)
-    groundStations: [vermontGroundStation, maineGroundStation],
+    groundStations: [
+      {
+        ...vermontGroundStation,
+        transmitters: [
+          {
+            ...vermontGroundStation.transmitters[0],
+            modems: [
+              {
+                ...vermontGroundStation.transmitters[0].modems[0],
+                // Receive-only shift (phase 19.5): VT-01's own TP-1 uplink would
+                // loop back co-channel with the TM-1 composite at a far higher
+                // level (no uplink FSPL until 19.3, DEV-XPDR-01), and the modem
+                // would decode our own carrier instead of the customer's
+                isTransmitting: false,
+                isTransmittingSwitchUp: false,
+              },
+            ],
+          },
+        ],
+      },
+      maineGroundStation,
+    ],
     scenarioStartDate: '2026-02-04',
     scenarioStartWallTime: '14:30:00',
     missionBriefUrl: 'https://docs.signalrange.space/campaign-1/scenario-5?content-only=true&dark=true',
@@ -97,7 +118,12 @@ export const scenario5Data: ScenarioData = {
             noradId: 61525,
             frequency: 5960e6 as RfFrequency,
             polarization: 'H',
-            power: 26 as dBm,
+            // Phase 19.5: the modem locks on Es/N0 now, so the spike is set for the
+            // customer's story - degraded, not down: C/(N+I) about 5.5 dB Es/N0,
+            // half a dB over the QPSK 3/4 threshold (5.0 dB), "Degraded margin".
+            // At 26 dBm (before 19.5) it buried the carrier (-5.9 dB) and the
+            // modem would have lost lock outright (nats-s05-F1).
+            power: 13.9 as dBm,
             bandwidth: 1e6 as Hertz, // Narrowband spike
             modulation: 'QPSK' as ModulationType,
             fec: '3/4' as FECType,
@@ -115,6 +141,10 @@ export const scenario5Data: ScenarioData = {
           rotation: 14 as Degrees,
           frequencyOffset: 2.225e9 as Hertz, // Legacy fallback
           lookAnglesFrom: VERMONT_LOOK_ANGLE_SITE,
+          // The spike and the carrier fade independently; at the default +/-1 dB
+          // their ratio would swing the half-dB lock margin across the lock
+          // threshold. A calm +/-0.25 dB keeps the story "degraded, still locked".
+          degradationConfig: { powerVariationRange: 0.25 as dBm },
           transponderConfigs: [
             {
               id: 'TP-1',
@@ -249,13 +279,14 @@ export const scenario5Data: ScenarioData = {
           params: {
             question: 'Looking at the receiver modem, what is the current C/N ratio status?',
             options: [
-              'C/N is degraded - well below normal operating threshold',
-              'C/N is healthy - well above the normal operating threshold',
-              'C/N is marginal - sitting right at the operating threshold',
+              'C/N is degraded - well below normal, locked with little margin',
+              'C/N is healthy - well above normal, locked with wide margin',
+              'C/N is normal - nominal level, locked with the usual margin',
               'No signal lock - receiver is offline with no C/N reading',
             ],
             correctIndex: 0,
-            explanation: 'The C/N ratio is well below the normal operating level. This confirms the customer complaint - something is degrading our signal quality.',
+            explanation:
+              'C/N is around 5.5 dB against a nominal 14+ dB. The modem still holds lock - QPSK 3/4 needs Es/N0 5.0 dB (about 4.2 dB of C/N in the 36 MHz channel) - but with under 1 dB of margin it reads "Degraded margin". That is the customer complaint: degraded, not down. One more dB and the link is gone.',
             pointPenalty: 5,
           },
           mustMaintain: false,

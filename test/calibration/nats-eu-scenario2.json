@@ -6,8 +6,8 @@
       "label": "GW-01 acceptance: MERIDIAN-SAR-1 downlink at max elevation",
       "expectedCNRDb": 11.4,
       "toleranceDb": 1,
-      "thresholdCNRDb": 6,
-      "requiredMarginDb": 2
+      "thresholdCNRDb": 4.2,
+      "requiredMarginDb": 4
     },
     "thresholds": [
       {
@@ -31,7 +31,7 @@
         "condition": "link-margin-met",
         "groundStation": "GW-01",
         "params": {
-          "minMarginDb": 2
+          "minMarginDb": 4
         }
       },
       {
@@ -94,9 +94,12 @@
               "samples": 428,
               "peakCnDb": 25.73,
               "medianCnDb": 22.11,
+              "peakEsN0Db": 26.52,
+              "requiredEsN0Db": null,
+              "peakLockMarginDb": null,
               "peakRxIfDbm": -61.64,
               "noiseIfDbm": -79.94,
-              "lockedSamples": 428
+              "lockedSamples": 0
             },
             {
               "signalId": "MERIDIAN-SAR-1-VIDEO",
@@ -108,9 +111,12 @@
               "samples": 428,
               "peakCnDb": 11.48,
               "medianCnDb": 7.85,
+              "peakEsN0Db": 12.26,
+              "requiredEsN0Db": 5.03,
+              "peakLockMarginDb": 7.23,
               "peakRxIfDbm": -30.33,
               "noiseIfDbm": -34.38,
-              "lockedSamples": 428
+              "lockedSamples": 396
             }
           ],
           "adjacentCarriers": 0
@@ -142,9 +148,12 @@
               "samples": 417,
               "peakCnDb": 24.9,
               "medianCnDb": 21.86,
+              "peakEsN0Db": 25.69,
+              "requiredEsN0Db": null,
+              "peakLockMarginDb": null,
               "peakRxIfDbm": -61.7,
               "noiseIfDbm": -81.09,
-              "lockedSamples": 417
+              "lockedSamples": 0
             },
             {
               "signalId": "MERIDIAN-SAR-2-VIDEO",
@@ -156,9 +165,12 @@
               "samples": 416,
               "peakCnDb": 10.63,
               "medianCnDb": 7.6,
+              "peakEsN0Db": 11.42,
+              "requiredEsN0Db": 5.03,
+              "peakLockMarginDb": 6.39,
               "peakRxIfDbm": -30.4,
               "noiseIfDbm": -35.53,
-              "lockedSamples": 416
+              "lockedSamples": 387
             }
           ],
           "adjacentCarriers": 0

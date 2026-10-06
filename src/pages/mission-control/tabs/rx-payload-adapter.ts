@@ -2,7 +2,7 @@ import { CardAlarmBadge } from '@app/components/card-alarm-badge/card-alarm-badg
 import { qs } from '@app/engine/utils/query-selector';
 import { AlarmStatus } from '@app/equipment/base-equipment';
 import { CryptoModule } from '@app/equipment/crypto';
-import { FECSimulator, FECSimulatorInput } from '@app/equipment/receiver/fec-simulator';
+import { FECSimulator, FECSimulatorInput, fecInputFromSignal } from '@app/equipment/receiver/fec-simulator';
 import { Receiver } from '@app/equipment/receiver/receiver';
 import { RxPayloadStatus } from '@app/equipment/receiver/rx-signal-quality';
 import { EventBus } from '@app/events/event-bus';
@@ -190,14 +190,7 @@ export class RxPayloadAdapter {
     if (!signalInfo) return;
 
     // Build FEC simulator input
-    const input: FECSimulatorInput = {
-      cnRatio_dB: signalInfo.cnRatio_dB ?? 0,
-      effectiveCnRatio_dB: signalInfo.effectiveCnRatio_dB ?? signalInfo.cnRatio_dB ?? 0,
-      hasCarrier: signalInfo.hasCarrier ?? false,
-      hasLock: signalInfo.hasLock ?? false,
-      modulation: modem.modulation ?? 'QPSK',
-      fec: modem.fec ?? '1/2',
-    };
+    const input: FECSimulatorInput = fecInputFromSignal(signalInfo, { modulation: modem.modulation ?? 'QPSK', fec: modem.fec ?? '1/2' });
 
     // Calculate FEC metrics
     const fecMetrics = this.fecSimulator_.calculate(input);

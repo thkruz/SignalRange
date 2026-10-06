@@ -48,7 +48,8 @@ import { createMeridianSar1, createMeridianSar2, createMeridianSar3, MERIDIAN_SA
  * - slant range at max elevation 764 km -> FSPL 171.5 dB at 11760 MHz
  * - EIRP 31.3 dBm, GW-01 4m Ku gain 50.4 dBi (at the LNA flange), Tsys 125 K, BW 36 MHz, misc 1 dB
  * - correct worksheet -> C/N 11.27 dB (expectedCNRDb 11.3, tolerance 1.0)
- * - threshold 6 dB (QPSK 3/4 demod) + 2 dB required margin -> commit near
+ * - threshold 4.2 dB C/N (QPSK 3/4 demod: Es/N0 5.0 dB) + 4 dB required
+ *   margin -> commit at 8.2 dB near
  *   max elevation, roughly 10:09 .. 10:12:30
  * Decode with the uplink SECURED. With the HPA up, SAR-3's TP-CMD returns
  * the station's own 14065 MHz carrier at 11810 MHz (co-pol, in the receive
@@ -173,8 +174,8 @@ export const natsEuScenario12Data: ScenarioData = {
       label: 'SAR-3 acceptance: video downlink at max elevation',
       expectedCNRDb: 11.3,
       toleranceDb: 1.0,
-      thresholdCNRDb: 6,
-      requiredMarginDb: 2,
+      thresholdCNRDb: 4.2,
+      requiredMarginDb: 4,
     },
 
     // M2/M5 - payload command checkout. Window is the SAR-3 pass, AOS T+18.02
@@ -818,7 +819,7 @@ export const natsEuScenario12Data: ScenarioData = {
       nice: ['T1092', 'T0153', 'S0842'],
       title: 'First Imagery Decode',
       description:
-        'Retune modem 1 from 1414 MHz to 1340 MHz (11760 MHz RF), lock the test pattern, hold C/N above 8 dB, and press Commit Link near maximum elevation (10:10:45) with at least 2 dB of margin over the 6 dB threshold. Then put the number on the card beside the prediction.',
+        'Retune modem 1 from 1414 MHz to 1340 MHz (11760 MHz RF), lock the test pattern, hold C/N above 8 dB, and press Commit Link near maximum elevation (10:10:45) with at least 4 dB of margin over the 4.2 dB threshold. Then put the number on the card beside the prediction.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['secure-for-decode'],
       conditions: [
@@ -842,8 +843,8 @@ export const natsEuScenario12Data: ScenarioData = {
         },
         {
           type: 'link-margin-met',
-          description: 'Measured Margin >= 2 dB Over Threshold',
-          params: { minMarginDb: 2 },
+          description: 'Measured Margin >= 4 dB Over Threshold',
+          params: { minMarginDb: 4 },
           mustMaintain: false,
         },
         {
@@ -852,12 +853,12 @@ export const natsEuScenario12Data: ScenarioData = {
           params: {
             character: Character.SYSTEM,
             question:
-              'Payload entry. You predicted 10.9 dB at maximum elevation, the modem locked the pattern on 1340 MHz, and the link committed with at least 2 dB of margin. What goes on the card?',
+              'Payload entry. You predicted 10.9 dB at maximum elevation, the modem locked the pattern on 1340 MHz, and the link committed with at least 4 dB of margin. What goes on the card?',
             options: [
               'The measured C/N beside the 10.9 dB prediction and the difference; agreement within a decibel is the acceptance evidence.',
-              'PASS beside the 6 dB threshold and the margin; clearing the threshold is the acceptance evidence, the number is not.',
+              'PASS beside the 4.2 dB threshold and the margin; clearing the threshold is the acceptance evidence, the number is not.',
               'The peak C/N only, without the prediction; the worksheet was a planning aid and has no place on a test record.',
-              'The committed margin beside the 6 dB threshold; that is what the modem used, so it is the acceptance evidence.',
+              'The committed margin beside the 4.2 dB threshold; that is what the modem used, so it is the acceptance evidence.',
             ],
             correctIndex: 0,
             explanation:
@@ -865,7 +866,7 @@ export const natsEuScenario12Data: ScenarioData = {
             pointPenalty: 5,
             documentSection: 'Payload',
             documentLine:
-              'Payload: test pattern locked on IF 1340 MHz (11760 MHz RF) with the uplink secured. Predicted C/N 11.3 dB at max el (764 km, FSPL 171.5 dB at 11760 MHz); measured within 1 dB of prediction; committed with >= 2 dB margin over the 6 dB QPSK 3/4 threshold.',
+              'Payload: test pattern locked on IF 1340 MHz (11760 MHz RF) with the uplink secured. Predicted C/N 11.3 dB at max el (764 km, FSPL 171.5 dB at 11760 MHz); measured within 1 dB of prediction; committed with >= 4 dB margin over the 4.2 dB QPSK 3/4 threshold.',
           },
           mustMaintain: false,
         },

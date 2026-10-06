@@ -78,7 +78,7 @@ describe('LinkBudgetTab (M1)', () => {
     expect(LinkBudgetManager.getInstance().isBudgetComputedCorrectly()).toBe(true);
     expect(document.getElementById('lb-accept-badge')?.textContent).toBe('IN FAMILY');
 
-    // Live C/N is 12 dB vs threshold 8 -> commit yields 4 dB margin >= 3 required.
+    // Live C/N is 12 dB vs threshold 4.2 -> commit yields 7.8 dB margin >= 3 required.
     const commitBtn = document.getElementById('lb-commit') as HTMLButtonElement;
     expect(commitBtn.disabled).toBe(false);
     click('lb-commit');
@@ -116,7 +116,7 @@ describe('LinkBudgetTab (M1)', () => {
     liveSnrDb = -6; // the throttled low frame arrives under the click
     click('lb-commit');
 
-    expect(LinkBudgetManager.getInstance().state.appliedMarginDb).toBe(4);
+    expect(LinkBudgetManager.getInstance().state.appliedMarginDb).toBeCloseTo(7.8, 6);
     expect(document.getElementById('lb-margin-badge')?.textContent).toBe('LINK GO');
 
     tab.dispose();

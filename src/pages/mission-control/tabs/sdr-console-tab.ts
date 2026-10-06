@@ -482,7 +482,10 @@ export class SdrConsoleTab extends BaseElement {
       this.syncDomWithState_();
     });
 
-    // One-knob hobbyist notch: fixed 300 kHz / 30 dB at the entered center
+    // One-knob hobbyist notch: fixed 100 kHz / 30 dB at the entered center.
+    // (300 kHz until phase 19.5: centred on C3 S7's 80 kHz hash at 435.36 it
+    // also took 30 dB off CUBEHOP-1 at 435.25, which only went unnoticed while
+    // lock ignored C/N)
     const notchEnable = qs<HTMLInputElement>('#sdr-notch-enable', dom);
     const notchFreq = qs<HTMLInputElement>('#sdr-notch-freq', dom);
     const applyNotch = () => {
@@ -492,7 +495,7 @@ export class SdrConsoleTab extends BaseElement {
       this.notch_.handleNotchChange(0, {
         enabled: notchEnable.checked && Number.isFinite(centerMhz) && centerMhz > 0,
         centerFrequency: (Number.isFinite(centerMhz) ? centerMhz : 0) as MHz,
-        bandwidth: 0.3 as MHz,
+        bandwidth: 0.1 as MHz,
         depth: 30 as dB,
       });
       this.syncDomWithState_();
@@ -891,6 +894,11 @@ export class SdrConsoleTab extends BaseElement {
       lockText = 'MODE?';
     } else if (info.hasCarrier && info.isBandwidthClipped) {
       lockText = 'BW TOO WIDE';
+    } else if (info.hasCarrier && info.lockState === 'acquiring') {
+      lockText = 'ACQUIRING';
+    } else if (info.hasCarrier && (info.lockMargin_dB ?? 0) < 0) {
+      // Right mode, right channel: the carrier is just too weak to decode
+      lockText = 'LOW SNR';
     } else if (!info.hasCarrier && passbandExcess.mean > 3) {
       // The whole passband is lifted above the noise, but nothing the modem
       // accepts: the channel is narrower than the signal sitting in it

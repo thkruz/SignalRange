@@ -58,9 +58,15 @@ to show how far the engine is from each reference.
 
 | Quantity | Engine | Implements | Standard | Reference case | Deviation |
 |---|---|---|---|---|---|
-| Degraded threshold | `Receiver.requiredCnDb` | 7/10/13/16 dB by modulation | ETSI EN 302 307 Table 13 + 1 dB implementation loss | `modem`: QPSK 3/4; code-rate span | DEV-MODEM-02 |
-| Lock | `Receiver` `hasLock` | modulation/FEC match + bandwidth ratio | threshold C/N | | DEV-MODEM-01 |
-| Uncoded BER | `FECSimulator.calculateRawBer_` | 0.5 erfc(√(Eb/N0)), A&S 7.1.26 | Pb = Q(√(2Eb/N0)) | `modem`: BPSK and QPSK at 1e-3 to 1e-7, pass | (coded BER: DEV-MODEM-03) |
+| Lock threshold | `modcod.ts` `modcodFor` (+ `Receiver.requiredCnDb` as C/N) | DVB-S2 QEF Es/N0 by MODCOD + 1.0 dB implementation loss; legacy labels mapped onto DVB-S2 | ETSI EN 302 307-1 Table 13 | `modem`: Table 13 for QPSK/8PSK/16APSK 2/3, 3/4, 5/6; QPSK 3/4 = 5.03 dB Es/N0 = 4.24 dB C/N in 36 MHz; code-rate span; BPSK −3.01 dB | DEV-MODEM-06 |
+| Es/N0, C/N0 | `Receiver.getSignalsInBandwidth` | C / (k T Rs + I in the carrier's band), Rs = occupied BW / 1.2; C / kT | matched-filter noise bandwidth | `receiver` unit tests | |
+| Lock | `Receiver.trackLock_` | labels match, carrier fits and is centred, effective Es/N0 ≥ threshold + 0.5 dB for the acquisition time; drops below threshold − 0.5 dB; "degraded" under 1 dB of margin (back to good at 1.5 dB) | | `receiver`: hysteresis, acquisition time, seeding | DEV-MODEM-06 |
+| Carrier detection | `Receiver.clearsReceiveNoise_` | C/N ≥ −10 dB in the carrier's own bandwidth | | `receiver` unit tests | DEV-ANT-09 |
+| Uncoded BER | `modcod.ts` `uncodedBer` | BPSK Q(√(2Es/N0)); QPSK Q(√(Es/N0)); 8PSK (2/3)Q(√(2Es/N0) sin π/8); 16QAM (3/4)Q(√(Es/5N0)); NR `erfcc` | Sklar Fig. 4.25; Proakis Fig. 4.3-8 | `modem`: BPSK and QPSK at 1e-3 to 1e-7; 16QAM at 1e-5 | |
+| Coded PER, decoded BER | `modcod.ts` `codedPer`, `decodedBer` | waterfall table interpolated in log PER, anchored at the practical threshold (PER 1e-7); BER = PER × pre-FEC BER | DVB-S2 QEF definition | `modem`: QEF at threshold, waterfall width, monotonic; `fec-simulator` tests | DEV-MODEM-06 |
+| Frame sync, frame errors | `FECSimulator.calculate` | sync = lock and PER < 0.1; uncorrectable frames = PER × frames/s (64 800-bit FECFRAMEs) | | `fec-simulator` tests | DEV-MODEM-06 |
+| IQ scatter | `IQConstellationAdapter.noiseSpreadForEsN0` | σ = 1/√(2 Es/N0) per axis, unit symbol energy | complex AWGN | `modem`: 10 dB and 0 dB | |
+| ADC | `adc-degradation.ts` (drive from `Receiver.getSignalsInBandwidth`: the modem's channel after a 0-30 dB tuner IF AGC) | SNR_q = 6.02 N + 1.76 dB below a full-scale sine over fs/2 (processing gain to Rs); Bussgang clipping of a Gaussian composite; penalties as added noise | ADI MT-001 | `modem`: SQNR, numerical Bussgang integral, sweet spot | DEV-MODEM-07 |
 
 ## Orbit and geometry
 

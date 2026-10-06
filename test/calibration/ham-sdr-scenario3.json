@@ -64,6 +64,9 @@
               "samples": 614,
               "peakCnDb": 13.16,
               "medianCnDb": 7.27,
+              "peakEsN0Db": 13.95,
+              "requiredEsN0Db": 2,
+              "peakLockMarginDb": 11.95,
               "peakRxIfDbm": -44.47,
               "noiseIfDbm": -57.62,
               "lockedSamples": 614

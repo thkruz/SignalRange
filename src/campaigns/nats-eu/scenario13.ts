@@ -171,8 +171,8 @@ export const natsEuScenario13Data: ScenarioData = {
       label: 'GW-01 SAR-1 downlink at max elevation (survey values)',
       expectedCNRDb: 11.4,
       toleranceDb: 1.0,
-      thresholdCNRDb: 6,
-      requiredMarginDb: 3,
+      thresholdCNRDb: 4.2,
+      requiredMarginDb: 5,
     },
 
     // M3 - the board. Only the priority-1 collect has to be covered for the
@@ -533,7 +533,7 @@ export const natsEuScenario13Data: ScenarioData = {
               'The survey number: the prediction is what a healthy station does at this geometry, and the gap is the finding',
               'The logged 7 dB: a prediction should match what the station actually does, and the worksheet is a record of it',
               'The average of the two: 9 dB splits the difference between the survey and the log, and the gap is halved',
-              'Whichever makes Commit Link pass: the console needs 3 dB of margin, and the worksheet is there to give it one',
+              'Whichever makes Commit Link pass: the console needs 5 dB of margin, and the worksheet is there to give it one',
             ],
             correctIndex: 0,
             explanation:
@@ -601,7 +601,7 @@ export const natsEuScenario13Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Predicted 11.0 dB. Measured about 7 at the top of the pass, on a clean lock. What does the Link Analysis console do if you press Commit Link?',
             options: [
-              'Refuses the commit: 7 dB is 1 dB over the 6 dB threshold and the survey asks for 3 dB of margin',
+              'Refuses the commit: 7 dB is 2.8 dB over the 4.2 dB threshold and the survey asks for 5 dB of margin',
               'Accepts the commit: the modem is locked and decoding at 7 dB, which is what a link is',
               'Accepts the commit once the worksheet is corrected to 7 dB, so the prediction and the measurement agree',
               'Refuses the commit: the prediction was entered wrong, since 11 dB was never going to appear on this station',
@@ -775,14 +775,14 @@ export const natsEuScenario13Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'The collect goes to Shetland. What is the standing rule for Galway until the LNB is replaced?',
             options: [
-              'Derate GW-01 by 4 dB in every budget and put priority collects on SH-02: a 3 dB margin at Galway is now a miss',
+              'Derate GW-01 by 4 dB in every budget and put priority collects on SH-02: a 5 dB margin at Galway is now a miss',
               'Take GW-01 off the board entirely until maintenance signs it off: a station with a 4 dB shortfall flies nothing',
               'Nothing changes at GW-01 and the collects stay where they are: 7 dB still decodes, so the plan is still good',
               'Raise the delivery standard to 11 dB in every budget and keep the collects: the shortfall is then visible on the plan',
             ],
             correctIndex: 0,
             explanation:
-              'A plan that does not know about the derate will book collects the station cannot deliver. A derated site is still a site. It flies routine passes at 7 dB; it does not carry a priority collect on a 3 dB margin it no longer has.',
+              'A plan that does not know about the derate will book collects the station cannot deliver. A derated site is still a site. It flies routine passes at 7 dB; it does not carry a priority collect on a 5 dB margin it no longer has.',
             pointPenalty: 5,
           },
           mustMaintain: false,

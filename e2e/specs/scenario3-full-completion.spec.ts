@@ -298,7 +298,7 @@ const SCENARIO_3_OBJECTIVES: Scenario3Objective[] = [
     id: 'verify-lock-quality-quiz',
     title: 'Understand Lock vs. Quality',
     type: 'quiz',
-    correctAnswer: 'Lock can occur at low C/N but with high error rates - we need margin for reliable data',
+    correctAnswer: 'Lock holds right down to threshold with no fade margin - we need margin for reliable data',
   },
 
   // ============================================================

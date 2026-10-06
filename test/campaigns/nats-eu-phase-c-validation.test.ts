@@ -30,6 +30,7 @@
  *    tempo (S15) and the fault timing (S16) do what the briefs say they do.
  */
 
+import { SimClock } from '@app/simulation/sim-clock';
 import { type Degrees, Tle, type TleLine1, type TleLine2 } from 'ootk';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -38,8 +39,10 @@ const TICK_HZ = 60;
 /**
  * Authoring margin over a receiver-snr-threshold (dB): the settled peak must
  * clear the threshold by this much. An objective that also grades
- * `link-margin-met` is held to its own `minMarginDb` instead, because that
- * number is the scenario's stated design margin (S10 is a 1 dB pass by intent).
+ * `link-margin-met` must additionally reach its acceptance line,
+ * `thresholdCNRDb + minMarginDb` (the margin is measured against the modem's
+ * QPSK 3/4 threshold, not against the objective's own C/N floor), and its C/N
+ * floor is held to the smaller of SNR_MARGIN_DB and that design margin.
  */
 const SNR_MARGIN_DB = 2;
 /** A usable decode window: seconds with lock at threshold + half the margin. */
@@ -615,6 +618,7 @@ function fly(flight: Flight): Sample[] {
   const frameWindow = flight.frameWindowMin;
 
   for (simNowMs = fromMs; simNowMs <= toMs; simNowMs += tickMs, tick++) {
+    SimClock.step(); // run time for the modem's lock acquisition (phase 19.5)
     for (const s of simSatellites) s.update();
     antenna.update();
     const tMinNow = (simNowMs - start) / MINUTE_MS;
@@ -693,7 +697,15 @@ describe('nats-eu Phase C: pass flights meet every receiver threshold', () => {
 
     for (const objective of objectives) {
       const designMargin = (objective.conditions.find((c) => c.type === 'link-margin-met')?.params as { minMarginDb?: number } | undefined)?.minMarginDb;
-      const marginDb = designMargin ?? SNR_MARGIN_DB;
+      const marginDb = designMargin === undefined ? SNR_MARGIN_DB : Math.min(designMargin, SNR_MARGIN_DB);
+
+      if (designMargin !== undefined) {
+        const acceptance = settingsOf(flight.scenario).linkBudget!.thresholdCNRDb + designMargin;
+        const peak = samples.reduce((a, b) => (b.cn > a.cn ? b : a));
+
+        expect(peak.cn, `${objective.id}: peak ${peak.cn.toFixed(2)} dB never reaches the ${acceptance} dB acceptance line`).toBeGreaterThanOrEqual(acceptance);
+        checks++;
+      }
 
       for (const condition of objective.conditions) {
         const params = condition.params as { minCNRatio?: number; maxCNRatio?: number; signalId?: string; minPower?: number };

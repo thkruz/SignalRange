@@ -1,22 +1,35 @@
 import { SimClock } from '@app/simulation/sim-clock';
 /**
  * @file FEC Simulator Module
- * @description Simulates Forward Error Correction (FEC) metrics based on signal quality.
+ * @description Payload decoder metrics from the coded error curves (phase 19.5).
  *
- * Calculates realistic BER, Viterbi decoder metrics, and Reed-Solomon decoder
- * statistics from carrier-to-noise ratio and modulation parameters.
+ * The modem's MODCOD (`modcod.ts`) fixes the frame-error rate at the carrier's
+ * Es/N0: PER from the DVB-S2 waterfall, decoded BER = PER x pre-FEC BER,
+ * frames lost per second = PER x frames/s. Frame sync needs modem lock and a
+ * PER below 0.1. The panel's concatenated-decoder view (an inner "Viterbi"
+ * decoder and an outer RS(255,223)) is a teaching display of those numbers:
+ * an RS block fails when more than 16 of its 255 symbols are wrong, and the
+ * RS input symbol-error rate is the one whose binomial tail equals the PER.
  */
 
 import { FECType, ModulationType } from '@app/types';
+import { codedPer, DEGRADED_MARGIN_DB, DVB_S2_ROLL_OFF, framesPerSecond, informationRateBps, Modcod, modcodFor, uncodedBer } from './modcod';
+import type { IQSignalInfo } from './receiver';
 
 /**
  * Input parameters for FEC simulation
  */
 export interface FECSimulatorInput {
-  /** Carrier-to-noise ratio in dB */
+  /** Carrier-to-noise ratio in dB (in the modem bandwidth) */
   cnRatio_dB: number;
   /** Effective C/N after ADC degradation */
   effectiveCnRatio_dB?: number;
+  /** Es/N0 after the ADC, dB (from the receiver; derived from C/N when absent) */
+  effectiveEsN0_dB?: number;
+  /** Symbol rate of the carrier, Hz (sets frames per second and the data rate) */
+  symbolRate_Hz?: number;
+  /** Locked with less than 1 dB of margin (the receiver's hysteresis); derived when absent */
+  isLowMargin?: boolean;
   /** Carrier present on spectrum */
   hasCarrier: boolean;
   /** Modem has achieved demodulation lock */
@@ -33,15 +46,19 @@ export interface FECSimulatorInput {
 export interface FECMetrics {
   /** Frame synchronization lock status */
   frameSyncLocked: boolean;
-  /** Bit Error Rate (pre-FEC) */
+  /** Decoded (post-FEC) bit error rate, smoothed for display */
   ber: number;
+  /** Channel (pre-FEC) bit error rate at the carrier's Es/N0 */
+  preFecBer: number;
+  /** Frame (packet) error rate from the coded curve */
+  per: number;
   /** Viterbi decoder confidence metric (0.0-1.0) */
   viterbiPathMetric: number;
   /** RS errors corrected in current frame */
   rsCorrectedErrors: number;
   /** RS errors corrected total (session cumulative) */
   rsCorrectedTotal: number;
-  /** RS uncorrectable blocks in recent window (for status determination) */
+  /** RS uncorrectable blocks in the last second (for status determination) */
   rsUncorrectableBlocks: number;
   /** RS uncorrectable blocks total (session cumulative) */
   rsUncorrectableTotal: number;
@@ -64,18 +81,89 @@ export interface FECOverrides {
 }
 
 /**
- * FEC Simulator - Calculates realistic FEC metrics from signal quality
- *
- * Uses theoretical BER curves adjusted for modulation type and FEC coding gain
- * to produce realistic decoder statistics for training simulation.
+ * The decoder input for a modem from the receiver's measurement, so every
+ * reader (payload panel, objective conditions) grades the same numbers.
+ */
+export function fecInputFromSignal(
+  info: Pick<IQSignalInfo, 'cnRatio_dB' | 'effectiveCnRatio_dB' | 'effectiveEsN0_dB' | 'symbolRate_Hz' | 'isLowMargin' | 'hasCarrier' | 'hasLock'>,
+  modem: { modulation: ModulationType; fec: FECType }
+): FECSimulatorInput {
+  return {
+    cnRatio_dB: info.cnRatio_dB,
+    effectiveCnRatio_dB: info.effectiveCnRatio_dB ?? info.cnRatio_dB,
+    effectiveEsN0_dB: info.effectiveEsN0_dB,
+    symbolRate_Hz: info.symbolRate_Hz,
+    isLowMargin: info.hasLock ? (info.isLowMargin ?? false) : undefined,
+    hasCarrier: info.hasCarrier,
+    hasLock: info.hasLock,
+    modulation: modem.modulation,
+    fec: modem.fec,
+  };
+}
+
+/** RS(255,223): symbols per block and correctable symbol errors */
+const RS_N = 255;
+const RS_T = 16;
+
+/** Frame sync holds while fewer than this fraction of frames fail */
+const FRAME_SYNC_MAX_PER = 0.1;
+/** Frame errors at or above this rate make the channel Critical (about one a second or more) */
+const CRITICAL_PER = 1e-3;
+/** Any frame errors at all (QEF is 1e-7) make the channel Degraded */
+const QEF_PER = 1e-7;
+
+/** Symbol rate assumed when the caller does not know the carrier's (2.048 Msps, the old display rate) */
+const DEFAULT_SYMBOL_RATE_HZ = 2.048e6;
+
+/**
+ * Binomial tail P(X > t) for n trials at probability p, summed from t + 1 up
+ * (accurate for tiny tails).
+ */
+function binomialTail(n: number, t: number, p: number): number {
+  if (p <= 0) return 0;
+  if (p >= 1) return 1;
+  const q = 1 - p;
+  // term(k) = C(n,k) p^k q^(n-k); start at k = t + 1 in log space
+  let logC = 0;
+  for (let i = 0; i < t + 1; i++) {
+    logC += Math.log(n - i) - Math.log(i + 1);
+  }
+  let term = Math.exp(logC + (t + 1) * Math.log(p) + (n - t - 1) * Math.log(q));
+  let sum = 0;
+  for (let k = t + 1; k <= n; k++) {
+    sum += term;
+    if (term < sum * 1e-16) break;
+    term *= ((n - k) / (k + 1)) * (p / q);
+  }
+  return Math.min(1, sum);
+}
+
+/** RS input symbol-error rate whose block-failure probability equals `per` (bisection in log p). */
+export function rsSymbolErrorRateForPer(per: number): number {
+  if (per <= 0) return 0;
+  const target = Math.min(per, 0.999);
+  let lo = -15;
+  let hi = Math.log10(0.5);
+  for (let i = 0; i < 60; i++) {
+    const mid = (lo + hi) / 2;
+    if (binomialTail(RS_N, RS_T, 10 ** mid) < target) {
+      lo = mid;
+    } else {
+      hi = mid;
+    }
+  }
+  return 10 ** ((lo + hi) / 2);
+}
+
+/**
+ * FEC Simulator - payload decoder metrics from the modem's MODCOD curves.
  */
 export class FECSimulator {
   // Cumulative counters (persist across updates)
   private rsCorrectedTotal_: number = 0;
   private rsUncorrectableTotal_: number = 0;
-
-  // Recent uncorrectable blocks (decays when signal is good)
-  private rsUncorrectableRecent_: number = 0;
+  /** Fractional uncorrectable blocks carried to the next sample (deterministic counting) */
+  private uncorrectableCarry_: number = 0;
 
   // Smoothing for display stability
   private smoothedBer_: number = 1e-12;
@@ -87,45 +175,15 @@ export class FECSimulator {
 
   /**
    * Time constant (ms) of the BER / Viterbi display smoothing. Time-based so
-   * the readout settles in a few seconds whatever the update rate (the old
-   * per-call alpha of 0.1 at a 1 Hz call rate took 1-2 minutes to clear).
+   * the readout settles in a few seconds whatever the update rate. The
+   * channel status and the frame counts use the instantaneous curve.
    */
   static readonly SMOOTHING_TAU_MS = 2500;
 
-  // Timing for rate calculations
   private lastUpdateTime_: number = SimClock.runMs();
-  private framesPerSecond_: number = 125; // Default frame rate
 
   // Fault injection overrides
   private overrides_: FECOverrides = {};
-
-  // Hysteresis for channel status to prevent oscillation around thresholds
-  private lastChannelStatus_: 'Good' | 'Degraded' | 'Critical' | 'No Lock' = 'Good';
-
-  /**
-   * Modulation offsets for Eb/N0 calculation (dB)
-   * Higher order modulations require higher C/N for same BER
-   */
-  private static readonly MODULATION_OFFSETS: Record<ModulationType, number> = {
-    BPSK: 0, // 1 bit/symbol - most robust
-    QPSK: 3, // 2 bits/symbol
-    '8QAM': 5.5, // 3 bits/symbol
-    '16QAM': 7, // 4 bits/symbol - least robust
-    null: 0,
-  };
-
-  /**
-   * FEC coding gain (dB) - improves effective C/N
-   * Lower rate codes have more redundancy and better correction
-   */
-  private static readonly FEC_CODING_GAIN: Record<FECType, number> = {
-    '1/2': 5.0, // 50% redundancy - best correction
-    '2/3': 4.0, // 33% redundancy
-    '3/4': 3.0, // 25% redundancy
-    '5/6': 2.0, // 17% redundancy
-    '7/8': 1.5, // 12.5% redundancy - least correction
-    null: 0,
-  };
 
   /**
    * Calculate FEC metrics from signal parameters
@@ -136,45 +194,74 @@ export class FECSimulator {
     const deltaTime = Math.max(0, now - this.lastUpdateTime_);
     this.lastUpdateTime_ = now;
 
-    const effectiveCn = input.effectiveCnRatio_dB ?? input.cnRatio_dB;
+    const modcod = modcodFor(input.modulation, input.fec);
+    const symbolRate = input.symbolRate_Hz ?? DEFAULT_SYMBOL_RATE_HZ;
+    const esN0 = FECSimulator.esN0Of_(input);
+    const isDecoding = input.hasCarrier && input.hasLock && modcod !== null;
+
+    const per = isDecoding && modcod ? codedPer(esN0, modcod) : 1;
+    const preFecBer = input.hasCarrier ? uncodedBer(esN0, input.modulation) : 0.5;
+    const rawBer = isDecoding ? Math.max(1e-12, per * preFecBer) : 0.5;
+    const rawViterbi = modcod && input.hasCarrier ? FECSimulator.viterbiMetric_(esN0, modcod) : 0.1;
 
     // On the first sample, or when the modem (re)acquires lock, seed the
     // smoothed metrics from the current signal instead of easing out of a
     // stale history: a fresh lock should not inherit the outage's BER.
     const isLockAcquired = input.hasLock && !this.lastHasLock_;
     this.lastHasLock_ = input.hasLock;
-
     if (this.isFirstSample_ || isLockAcquired) {
       this.isFirstSample_ = false;
-      this.smoothedBer_ = this.calculateRawBer_(effectiveCn, input.modulation);
-      this.smoothedViterbi_ = this.calculateRawViterbiMetric_(effectiveCn, input.fec);
-      this.rsUncorrectableRecent_ = 0;
+      this.smoothedBer_ = rawBer;
+      this.smoothedViterbi_ = rawViterbi;
+      this.uncorrectableCarry_ = 0;
     }
 
-    // Calculate base metrics
-    const frameSyncLocked = this.calculateFrameSync_(input, effectiveCn);
-    // Update smoothed values for display stability
-    this.calculateBer_(effectiveCn, input.modulation, deltaTime);
-    this.calculateViterbiMetric_(effectiveCn, input.fec, deltaTime);
+    this.smoothBer_(rawBer, deltaTime);
+    const alpha = FECSimulator.smoothingAlpha_(deltaTime);
+    this.smoothedViterbi_ = alpha * rawViterbi + (1 - alpha) * this.smoothedViterbi_;
 
-    // Update RS counters (use smoothed BER for realistic accumulation)
-    this.updateReedSolomon_(this.smoothedBer_, deltaTime);
+    const frameSyncLocked = isDecoding && per < FRAME_SYNC_MAX_PER;
 
-    // Determine channel status using SMOOTHED metrics for stability
-    // Combined with hysteresis in determineChannelStatus_, this prevents
-    // status flickering when signal quality hovers near thresholds
-    const rsUncorrectableBlocks = Math.round(this.rsUncorrectableRecent_);
-    const channelStatus = this.determineChannelStatus_(frameSyncLocked, this.smoothedBer_, this.smoothedViterbi_, rsUncorrectableBlocks);
+    // Frame accounting: PER x frames/s, counted deterministically (whole
+    // frames, the fraction carried to the next sample)
+    const fps = modcod ? framesPerSecond(symbolRate, modcod) : 0;
+    const frames = (deltaTime / 1000) * fps;
+    let rsUncorrectableBlocks = 0;
+    let rsCorrectedErrors = 0;
+    if (frameSyncLocked) {
+      this.uncorrectableCarry_ += per * frames;
+      const whole = Math.floor(this.uncorrectableCarry_);
+      this.uncorrectableCarry_ -= whole;
+      this.rsUncorrectableTotal_ += whole;
+      // "Recent" = the expected count over the last second
+      rsUncorrectableBlocks = Math.round(per * fps);
+      const symbolErrorRate = rsSymbolErrorRateForPer(per);
+      rsCorrectedErrors = Math.min(RS_T, Math.round(RS_N * symbolErrorRate));
+      this.rsCorrectedTotal_ += Math.round(RS_N * symbolErrorRate * frames);
+    }
 
-    // Calculate data rate based on modulation and FEC
-    const dataRate = this.calculateDataRate_(input.modulation, input.fec);
+    const isLowMargin = input.isLowMargin ?? (modcod ? esN0 - modcod.thresholdEsN0Db < DEGRADED_MARGIN_DB : false);
+    let channelStatus: FECMetrics['channelStatus'];
+    if (!frameSyncLocked) {
+      channelStatus = 'No Lock';
+    } else if (per >= CRITICAL_PER || rsUncorrectableBlocks > 0) {
+      channelStatus = 'Critical';
+    } else if (per >= QEF_PER || isLowMargin) {
+      channelStatus = 'Degraded';
+    } else {
+      channelStatus = 'Good';
+    }
+
+    const dataRate = FECSimulator.formatRate_(modcod ? informationRateBps(symbolRate, modcod) : 0);
 
     // Apply overrides (fault injection) and return
     return {
       frameSyncLocked: this.overrides_.frameSyncLocked ?? frameSyncLocked,
       ber: this.overrides_.ber ?? this.smoothedBer_,
+      preFecBer,
+      per,
       viterbiPathMetric: this.overrides_.viterbiPathMetric ?? this.smoothedViterbi_,
-      rsCorrectedErrors: this.overrides_.rsCorrectedErrors ?? Math.round(this.smoothedBer_ * 255 * 8),
+      rsCorrectedErrors: this.overrides_.rsCorrectedErrors ?? rsCorrectedErrors,
       rsCorrectedTotal: this.rsCorrectedTotal_,
       rsUncorrectableBlocks: this.overrides_.rsUncorrectableBlocks ?? rsUncorrectableBlocks,
       rsUncorrectableTotal: this.rsUncorrectableTotal_,
@@ -210,61 +297,46 @@ export class FECSimulator {
   reset(): void {
     this.rsCorrectedTotal_ = 0;
     this.rsUncorrectableTotal_ = 0;
-    this.rsUncorrectableRecent_ = 0;
+    this.uncorrectableCarry_ = 0;
     this.smoothedBer_ = 1e-12;
     this.smoothedViterbi_ = 0.95;
     this.isFirstSample_ = true;
     this.lastHasLock_ = false;
     this.overrides_ = {};
-    this.lastChannelStatus_ = 'Good';
+  }
+
+  /** Es/N0 the decoder sees: the receiver's effective value, else C/N in the carrier's bandwidth + 10 log(1 + roll-off). */
+  private static esN0Of_(input: FECSimulatorInput): number {
+    if (input.effectiveEsN0_dB !== undefined && Number.isFinite(input.effectiveEsN0_dB)) {
+      return input.effectiveEsN0_dB;
+    }
+    const cn = input.effectiveCnRatio_dB ?? input.cnRatio_dB;
+    return cn + 10 * Math.log10(1 + DVB_S2_ROLL_OFF);
   }
 
   /**
-   * Calculate frame sync lock status
-   *
-   * Frame sync requires carrier, modem lock, and BER below threshold
-   * for reliable sync pattern detection
+   * Decoder confidence: a logistic in the Es/N0 over the MODCOD's ideal QEF
+   * point (0.69 at the practical threshold, 0.95 at 4 dB over it).
    */
-  private calculateFrameSync_(input: FECSimulatorInput, effectiveCn: number): boolean {
-    // No carrier = no sync
-    if (!input.hasCarrier) return false;
-
-    // No modem lock = no sync
-    if (!input.hasLock) return false;
-
-    // BER too high for reliable sync pattern detection
-    // At BER > 1e-3, 32-bit sync pattern has ~3% chance of bit error
-    const ber = this.calculateRawBer_(effectiveCn, input.modulation);
-    if (ber > 1e-3) return false;
-
-    return true;
+  private static viterbiMetric_(esN0Db: number, modcod: Modcod): number {
+    const x = esN0Db - modcod.idealEsN0Db;
+    const metric = 1 / (1 + Math.exp(-0.8 * x));
+    return Math.max(0.1, Math.min(0.99, metric));
   }
 
   /**
-   * Calculate Bit Error Rate from C/N ratio
-   *
-   * Uses complementary error function (erfc) approximation:
-   * - BPSK: BER = 0.5 * erfc(sqrt(Eb/N0))
-   * - QPSK: Similar for Gray-coded QPSK
-   * - Higher order: Approximated with modulation offset
-   *
-   * Returns smoothed value for display stability
+   * Time-based exponential moving average for smooth display.
+   * Rising BER: linear EMA, so errors show within a sample or two.
+   * Falling BER: EMA in the log domain, so recovery clears in a few tau; a
+   * linear EMA would hold a 4e-2 history above 1e-5 for ~20 s.
    */
-  private calculateBer_(cnRatio_dB: number, modulation: ModulationType, deltaTime_ms: number): number {
-    const rawBer = this.calculateRawBer_(cnRatio_dB, modulation);
-
-    // Time-based exponential moving average for smooth display.
-    // Rising BER: linear EMA, so errors show within a sample or two.
-    // Falling BER: EMA in the log domain, so recovery clears in a few tau; a
-    // linear EMA would hold a 4e-2 history above 1e-5 for ~20 s.
+  private smoothBer_(rawBer: number, deltaTime_ms: number): void {
     const alpha = FECSimulator.smoothingAlpha_(deltaTime_ms);
     if (rawBer >= this.smoothedBer_) {
       this.smoothedBer_ = alpha * rawBer + (1 - alpha) * this.smoothedBer_;
     } else {
       this.smoothedBer_ = 10 ** (alpha * Math.log10(rawBer) + (1 - alpha) * Math.log10(this.smoothedBer_));
     }
-
-    return this.smoothedBer_;
   }
 
   /** EMA weight for a sample taken deltaTime_ms after the previous one. */
@@ -272,255 +344,13 @@ export class FECSimulator {
     return 1 - Math.exp(-Math.max(0, deltaTime_ms) / FECSimulator.SMOOTHING_TAU_MS);
   }
 
-  /**
-   * Calculate raw (unsmoothed) BER
-   */
-  private calculateRawBer_(cnRatio_dB: number, modulation: ModulationType): number {
-    // Convert C/N to Eb/N0 using modulation offset
-    const offset = FECSimulator.MODULATION_OFFSETS[modulation] ?? 0;
-    const ebN0_dB = cnRatio_dB - offset;
-    const ebN0_linear = 10 ** (ebN0_dB / 10);
-
-    // BER using erfc approximation
-    // erfc(x) ≈ exp(-x²) / (x * sqrt(π)) for large x
-    const x = Math.sqrt(ebN0_linear);
-    let ber: number;
-
-    if (x < 0.1) {
-      // Very low C/N - essentially random
-      ber = 0.5;
-    } else if (x > 4) {
-      // High C/N - use approximation to avoid numerical issues
-      ber = Math.exp(-x * x) / (x * Math.sqrt(Math.PI)) / 2;
-    } else {
-      // Normal range - use erfc approximation
-      ber = 0.5 * this.erfc_(x);
+  /** Format an information rate for display */
+  private static formatRate_(bps: number): string {
+    if (bps >= 1e6) {
+      return `${(bps / 1e6).toFixed(3)} Mbps`;
+    } else if (bps >= 1e3) {
+      return `${(bps / 1e3).toFixed(1)} kbps`;
     }
-
-    // Clamp to realistic range
-    return Math.max(1e-12, Math.min(0.5, ber));
-  }
-
-  /**
-   * Complementary error function approximation
-   * Abramowitz and Stegun approximation (7.1.26)
-   */
-  private erfc_(x: number): number {
-    const a1 = 0.254829592;
-    const a2 = -0.284496736;
-    const a3 = 1.421413741;
-    const a4 = -1.453152027;
-    const a5 = 1.061405429;
-    const p = 0.3275911;
-
-    const sign = x < 0 ? -1 : 1;
-    x = Math.abs(x);
-
-    const t = 1.0 / (1.0 + p * x);
-    const y = 1.0 - ((((a5 * t + a4) * t + a3) * t + a2) * t + a1) * t * Math.exp(-x * x);
-
-    return sign === 1 ? 1 - y : 1 + y;
-  }
-
-  /**
-   * Calculate raw (unsmoothed) Viterbi metric for status determination
-   */
-  private calculateRawViterbiMetric_(cnRatio_dB: number, fec: FECType): number {
-    const codingGain = FECSimulator.FEC_CODING_GAIN[fec] ?? 0;
-    const effectiveCn = cnRatio_dB + codingGain;
-    const rawMetric = 1 / (1 + Math.exp(-0.3 * (effectiveCn - 8)));
-    return Math.max(0.1, Math.min(0.99, rawMetric));
-  }
-
-  /**
-   * Calculate Viterbi decoder path metric
-   *
-   * The path metric indicates decoder confidence:
-   * - 1.0: Perfect decoding, high C/N
-   * - 0.8-0.95: Normal operation
-   * - 0.5-0.8: Degraded, decoder working hard
-   * - <0.5: Near failure
-   *
-   * Returns smoothed value for display stability
-   */
-  private calculateViterbiMetric_(cnRatio_dB: number, fec: FECType, deltaTime_ms: number): number {
-    const clampedMetric = this.calculateRawViterbiMetric_(cnRatio_dB, fec);
-
-    // Time-based exponential moving average
-    const alpha = FECSimulator.smoothingAlpha_(deltaTime_ms);
-    this.smoothedViterbi_ = alpha * clampedMetric + (1 - alpha) * this.smoothedViterbi_;
-
-    return this.smoothedViterbi_;
-  }
-
-  /**
-   * Update Reed-Solomon decoder counters
-   *
-   * RS(255,223) can correct up to 16 symbol errors per codeword.
-   * Higher BER = more corrections needed per frame.
-   * When corrections exceed capacity = uncorrectable block.
-   */
-  private updateReedSolomon_(ber: number, deltaTime_ms: number): void {
-    // Symbol error rate is roughly 8x BER for 8-bit symbols
-    const symbolErrorRate = ber * 8;
-
-    // Expected errors per codeword (255 symbols)
-    const errorsPerCodeword = symbolErrorRate * 255;
-
-    // RS(255,223) can correct up to 16 errors
-    const rsCapacity = 16;
-
-    // Calculate frames processed in this interval
-    const frames = Math.max(1, (deltaTime_ms / 1000) * this.framesPerSecond_);
-
-    if (errorsPerCodeword < rsCapacity) {
-      // Normal operation: accumulate corrections
-      const correctionsThisInterval = Math.round(errorsPerCodeword * frames);
-      this.rsCorrectedTotal_ += correctionsThisInterval;
-
-      // "Recent" is a sliding ~1 s window: every good frame pushes an old
-      // block out, so a second of clean signal clears it (the old
-      // proportional decay left thousands of blocks lingering for ~30 s)
-      this.rsUncorrectableRecent_ = Math.max(0, this.rsUncorrectableRecent_ - frames);
-    } else {
-      // Exceeds capacity: uncorrectable blocks occur
-      const excessRate = Math.min(1, (errorsPerCodeword - rsCapacity) / rsCapacity);
-      const uncorrectableThisInterval = Math.round(excessRate * frames);
-
-      // Add to both recent (capped at one window of frames) and total counters
-      this.rsUncorrectableRecent_ = Math.min(this.framesPerSecond_, this.rsUncorrectableRecent_ + uncorrectableThisInterval);
-      this.rsUncorrectableTotal_ += uncorrectableThisInterval;
-
-      // Still accumulate some corrections (up to capacity)
-      this.rsCorrectedTotal_ += Math.round(rsCapacity * frames);
-    }
-  }
-
-  /**
-   * Determine overall channel status from metrics
-   *
-   * Thresholds based on typical SATCOM operational standards:
-   * - Good: BER < 1e-5, strong Viterbi confidence
-   * - Degraded: BER 1e-5 to 1e-3, moderate Viterbi confidence
-   * - Critical: BER > 1e-3, poor Viterbi, or uncorrectable blocks
-   * - No Lock: No frame synchronization
-   *
-   * Uses hysteresis to prevent oscillation around thresholds:
-   * - Requires crossing threshold by a margin to change status
-   * - Prevents flicker when signal is borderline
-   */
-  private determineChannelStatus_(frameSyncLocked: boolean, ber: number, viterbiMetric: number, rsUncorrectable: number): 'Good' | 'Degraded' | 'Critical' | 'No Lock' {
-    // No frame sync = No Lock (no hysteresis needed - binary condition)
-    if (!frameSyncLocked) {
-      this.lastChannelStatus_ = 'No Lock';
-      return 'No Lock';
-    }
-
-    // RS uncorrectable blocks = Critical (no hysteresis - binary condition)
-    if (rsUncorrectable > 0) {
-      this.lastChannelStatus_ = 'Critical';
-      return 'Critical';
-    }
-
-    // Determine raw status without hysteresis
-    let rawStatus: 'Good' | 'Degraded' | 'Critical' | 'No Lock';
-    if (ber > 1e-3 || viterbiMetric < 0.4) {
-      rawStatus = 'Critical';
-    } else if (ber > 1e-5 || viterbiMetric < 0.6) {
-      rawStatus = 'Degraded';
-    } else {
-      rawStatus = 'Good';
-    }
-
-    // Apply hysteresis: require margin to improve status (not worsen)
-    // This prevents oscillation when values hover near thresholds
-    const lastStatus = this.lastChannelStatus_;
-
-    // Worsening always applies immediately
-    if (this.isWorse_(rawStatus, lastStatus)) {
-      this.lastChannelStatus_ = rawStatus;
-      return rawStatus;
-    }
-
-    // Frame sync just came back: there is no prior locked status to hold on to
-    if (lastStatus === 'No Lock') {
-      this.lastChannelStatus_ = rawStatus;
-      return rawStatus;
-    }
-
-    // Improving requires crossing threshold with margin
-    if (this.isBetter_(rawStatus, lastStatus)) {
-      // To go from Degraded → Good: BER must be well below threshold
-      if (lastStatus === 'Degraded' && rawStatus === 'Good') {
-        // Require BER < 5e-6 (half threshold) AND viterbi > 0.65 to improve
-        if (ber < 5e-6 && viterbiMetric > 0.65) {
-          this.lastChannelStatus_ = 'Good';
-          return 'Good';
-        }
-        return 'Degraded'; // Stay degraded until clearly good
-      }
-      // To go from Critical → Degraded: BER must be well below threshold
-      if (lastStatus === 'Critical' && rawStatus !== 'Critical') {
-        if (ber < 5e-4 && viterbiMetric > 0.45) {
-          this.lastChannelStatus_ = rawStatus;
-          return rawStatus;
-        }
-        return 'Critical'; // Stay critical until clearly better
-      }
-    }
-
-    // No change
-    return lastStatus;
-  }
-
-  /** Check if newStatus is worse than oldStatus */
-  private isWorse_(newStatus: 'Good' | 'Degraded' | 'Critical' | 'No Lock', oldStatus: 'Good' | 'Degraded' | 'Critical' | 'No Lock'): boolean {
-    const rank = { Good: 0, Degraded: 1, Critical: 2, 'No Lock': 3 };
-    return rank[newStatus] > rank[oldStatus];
-  }
-
-  /** Check if newStatus is better than oldStatus */
-  private isBetter_(newStatus: 'Good' | 'Degraded' | 'Critical' | 'No Lock', oldStatus: 'Good' | 'Degraded' | 'Critical' | 'No Lock'): boolean {
-    const rank = { Good: 0, Degraded: 1, Critical: 2, 'No Lock': 3 };
-    return rank[newStatus] < rank[oldStatus];
-  }
-
-  /**
-   * Calculate approximate data rate from modulation and FEC
-   */
-  private calculateDataRate_(modulation: ModulationType, fec: FECType): string {
-    // Bits per symbol
-    const bitsPerSymbol: Record<ModulationType, number> = {
-      BPSK: 1,
-      QPSK: 2,
-      '8QAM': 3,
-      '16QAM': 4,
-      null: 0,
-    };
-
-    // FEC efficiency (data bits / total bits)
-    const fecEfficiency: Record<FECType, number> = {
-      '1/2': 0.5,
-      '2/3': 0.667,
-      '3/4': 0.75,
-      '5/6': 0.833,
-      '7/8': 0.875,
-      null: 1.0,
-    };
-
-    // Assume 2.048 Msps symbol rate (common SATCOM)
-    const symbolRate = 2.048e6;
-    const bits = bitsPerSymbol[modulation] ?? 2;
-    const efficiency = fecEfficiency[fec] ?? 0.5;
-
-    const dataRate = symbolRate * bits * efficiency;
-
-    // Format for display
-    if (dataRate >= 1e6) {
-      return `${(dataRate / 1e6).toFixed(3)} Mbps`;
-    } else if (dataRate >= 1e3) {
-      return `${(dataRate / 1e3).toFixed(1)} kbps`;
-    }
-    return `${dataRate.toFixed(0)} bps`;
+    return `${bps.toFixed(0)} bps`;
   }
 }

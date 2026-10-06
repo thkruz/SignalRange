@@ -50,8 +50,8 @@
               "peakEsN0Db": 21.99,
               "requiredEsN0Db": null,
               "peakLockMarginDb": null,
-              "peakRxIfDbm": -62.01,
-              "noiseIfDbm": -79.93,
+              "peakRxIfDbm": -62.07,
+              "noiseIfDbm": -79.99,
               "lockedSamples": 0
             },
             {
@@ -67,12 +67,13 @@
               "peakEsN0Db": 7.71,
               "requiredEsN0Db": 5.03,
               "peakLockMarginDb": 2.68,
-              "peakRxIfDbm": -30.7,
-              "noiseIfDbm": -34.36,
+              "peakRxIfDbm": -30.76,
+              "noiseIfDbm": -34.43,
               "lockedSamples": 307
             }
           ],
-          "adjacentCarriers": 0
+          "adjacentCarriers": 0,
+          "transponders": []
         },
         {
           "satellite": "MERIDIAN-SAR-2",
@@ -126,7 +127,8 @@
               "lockedSamples": 423
             }
           ],
-          "adjacentCarriers": 0
+          "adjacentCarriers": 0,
+          "transponders": []
         }
       ],
       "txChain": {
@@ -150,7 +152,8 @@
         "hpaOutputBackoffDb": null,
         "hpaIm3Dbc": null,
         "hpaAlcAtLimit": null,
-        "hpaTempEqC": 28
+        "hpaTempEqC": 28,
+        "radiated": []
       }
     }
   ]

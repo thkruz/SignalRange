@@ -50,13 +50,13 @@
               "modulation": "QPSK",
               "fec": "3/4",
               "samples": 5,
-              "peakCnDb": 12.76,
-              "medianCnDb": 12.76,
-              "peakEsN0Db": 13.55,
+              "peakCnDb": 12.39,
+              "medianCnDb": 12.39,
+              "peakEsN0Db": 13.17,
               "requiredEsN0Db": 5.03,
-              "peakLockMarginDb": 8.52,
-              "peakRxIfDbm": -29.3,
-              "noiseIfDbm": -42.06,
+              "peakLockMarginDb": 8.14,
+              "peakRxIfDbm": -29.35,
+              "noiseIfDbm": -41.92,
               "lockedSamples": 5
             },
             {
@@ -67,17 +67,33 @@
               "modulation": "CW",
               "fec": "null",
               "samples": 5,
-              "peakCnDb": 7.15,
-              "medianCnDb": 7.15,
-              "peakEsN0Db": 7.94,
+              "peakCnDb": 6.99,
+              "medianCnDb": 6.99,
+              "peakEsN0Db": 7.78,
               "requiredEsN0Db": null,
               "peakLockMarginDb": null,
-              "peakRxIfDbm": -78.72,
-              "noiseIfDbm": -85.86,
+              "peakRxIfDbm": -78.73,
+              "noiseIfDbm": -85.72,
               "lockedSamples": 0
             }
           ],
-          "adjacentCarriers": 0
+          "adjacentCarriers": 0,
+          "transponders": [
+            {
+              "id": "TP-1",
+              "iboDb": 3.04,
+              "oboDb": 0.52,
+              "carrierToImDb": null,
+              "carriers": [
+                {
+                  "signalId": "AURORA-7-TDMA-Composite",
+                  "eirpDbw": 24.47,
+                  "cnUpDbHz": 99.95,
+                  "upstreamCn0DbHz": 99.95
+                }
+              ]
+            }
+          ]
         },
         {
           "satellite": "TIDEMARK-1",
@@ -100,13 +116,13 @@
               "modulation": "QPSK",
               "fec": "3/4",
               "samples": 5,
-              "peakCnDb": 13.24,
-              "medianCnDb": 13.24,
-              "peakEsN0Db": 14.03,
+              "peakCnDb": 12.89,
+              "medianCnDb": 12.89,
+              "peakEsN0Db": 13.67,
               "requiredEsN0Db": 5.03,
-              "peakLockMarginDb": 9,
-              "peakRxIfDbm": -29.82,
-              "noiseIfDbm": -43.08,
+              "peakLockMarginDb": 8.64,
+              "peakRxIfDbm": -29.8,
+              "noiseIfDbm": -43.01,
               "lockedSamples": 5
             },
             {
@@ -117,17 +133,33 @@
               "modulation": "CW",
               "fec": "null",
               "samples": 5,
-              "peakCnDb": 32.59,
-              "medianCnDb": 32.59,
-              "peakEsN0Db": 32.97,
+              "peakCnDb": 32.53,
+              "medianCnDb": 32.53,
+              "peakEsN0Db": 32.92,
               "requiredEsN0Db": null,
               "peakLockMarginDb": null,
-              "peakRxIfDbm": -56.06,
-              "noiseIfDbm": -88.65,
+              "peakRxIfDbm": -56.04,
+              "noiseIfDbm": -88.57,
               "lockedSamples": 0
             }
           ],
-          "adjacentCarriers": 0
+          "adjacentCarriers": 0,
+          "transponders": [
+            {
+              "id": "TP-1",
+              "iboDb": 2.93,
+              "oboDb": 0.49,
+              "carrierToImDb": null,
+              "carriers": [
+                {
+                  "signalId": "TIDEMARK-1-TDMA-Composite",
+                  "eirpDbw": 26.5,
+                  "cnUpDbHz": 100.22,
+                  "upstreamCn0DbHz": 100.22
+                }
+              ]
+            }
+          ]
         },
         {
           "satellite": "SES-10",
@@ -150,13 +182,13 @@
               "modulation": "QPSK",
               "fec": "3/4",
               "samples": 5,
-              "peakCnDb": 16.19,
-              "medianCnDb": 16.19,
-              "peakEsN0Db": 16.97,
+              "peakCnDb": 15.57,
+              "medianCnDb": 15.57,
+              "peakEsN0Db": 16.35,
               "requiredEsN0Db": 5.03,
-              "peakLockMarginDb": 11.94,
+              "peakLockMarginDb": 11.32,
               "peakRxIfDbm": -29.57,
-              "noiseIfDbm": -45.77,
+              "noiseIfDbm": -45.72,
               "lockedSamples": 5
             },
             {
@@ -167,17 +199,33 @@
               "modulation": "CW",
               "fec": "null",
               "samples": 5,
-              "peakCnDb": 33.23,
-              "medianCnDb": 33.23,
-              "peakEsN0Db": 33.56,
+              "peakCnDb": 33.18,
+              "medianCnDb": 33.18,
+              "peakEsN0Db": 33.51,
               "requiredEsN0Db": null,
               "peakLockMarginDb": null,
               "peakRxIfDbm": -58.1,
-              "noiseIfDbm": -91.34,
+              "noiseIfDbm": -91.28,
               "lockedSamples": 0
             }
           ],
-          "adjacentCarriers": 0
+          "adjacentCarriers": 0,
+          "transponders": [
+            {
+              "id": "TP-1",
+              "iboDb": 2.93,
+              "oboDb": 0.49,
+              "carrierToImDb": null,
+              "carriers": [
+                {
+                  "signalId": "SES-10-TDMA-Composite",
+                  "eirpDbw": 29.5,
+                  "cnUpDbHz": 100.32,
+                  "upstreamCn0DbHz": 100.32
+                }
+              ]
+            }
+          ]
         }
       ],
       "txChain": {
@@ -201,7 +249,8 @@
         "hpaOutputBackoffDb": null,
         "hpaIm3Dbc": null,
         "hpaAlcAtLimit": null,
-        "hpaTempEqC": 29.09
+        "hpaTempEqC": 29.09,
+        "radiated": []
       }
     }
   ]

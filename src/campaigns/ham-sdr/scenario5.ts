@@ -6,13 +6,18 @@ import { navstar77Satellite } from './satellites';
 
 /**
  * ham-sdr Scenario 5 - "The Noise Bump" / GPS L1 + spoofing detection
+ * (since phase 19.3 the only bump in the L1 noise is the spoofer: real GPS
+ * never shows on the analyzer)
  *
- * Opens the security half of the campaign. Act 1: find GPS - a signal that
- * lives BELOW the noise floor and can be detected but never locked (spread
- * spectrum). Act 2: a GPS spoofer comes up a few blocks away. The tells are
- * the campaign's first adversarial lesson:
- * - a too-clean, too-strong carrier rises out of the gentle L1 hump
- *   (terrestrial emitter, E1 - and it never Dopplers);
+ * Opens the security half of the campaign. Act 1: look for GPS and see
+ * nothing. NAVSTAR-77 transmits its real L1 EIRP (27 dBW) and arrives about
+ * 8 dB UNDER the receiver's own noise in its 2 MHz (phase 19.3 calibration
+ * ledger: rx IF -44.8 dBm vs noise -36.8 dBm), so the analyzer shows flat
+ * noise with the bird overhead: GPS is below the floor until despread, and
+ * this receiver has no code. Act 2: a GPS spoofer comes up a few blocks away.
+ * The tells are the campaign's first adversarial lesson:
+ * - a carrier stands ~37 dB above the floor on 1575.42, where real L1 never
+ *   shows at all (terrestrial emitter, E1 - and it never Dopplers);
  * - the SDR console's CLK deltaT readout starts walking while the SATS count
  *   stays healthy (a real outage drops satellites; a spoof keeps them).
  * Defense: stop trusting GPS - flip the reference to HOLDOVER and ride the
@@ -42,10 +47,10 @@ export const hamSdrScenario5Data: ScenarioData = {
   difficulty: 'intermediate',
   prerequisiteScenarioIds: ['ham-sdr-scenario4'],
   title: 'The Noise Bump',
-  subtitle: 'Find GPS. Then Stop Trusting It.',
+  subtitle: 'Look for GPS. Then Stop Trusting It.',
   duration: '20-25 min',
   missionType: 'Backyard Session',
-  description: `Riley's newest experiment is a GPS patch antenna hose-clamped to a paint stick. Tonight's first job is humble: find GPS at all. The signal is so weak it lives <em>below</em> the noise floor - what you can see is a gentle two-megahertz bump of extra noise at 1575.42. You can detect it. You can never lock it. That asymmetry is the whole lesson.<br><br>The second job nobody planned. Somewhere in the neighborhood, something starts transmitting on L1 - strong, clean, and wrong. Your clock offset starts walking while the satellite count stays perfect. Riley has been waiting years to show somebody this.<br><br>RF is unauthenticated. Physics is your authentication.`,
+  description: `Riley's newest experiment is a GPS patch antenna hose-clamped to a paint stick. Tonight's first job is humble: look for GPS. You will not see it. A satellite is nearly overhead, transmitting at full power, and the spectrum at 1575.42 is flat noise: GPS reaches you <em>below</em> the noise floor of your own receiver, spread across two megahertz, and only a receiver holding the code can despread it back out. Nothing to see is the whole lesson.<br><br>The second job nobody planned. Somewhere in the neighborhood, something starts transmitting on L1 - and this one you CAN see. Strong, clean, standing above the floor, and wrong. Your clock offset starts walking while the satellite count stays perfect. Riley has been waiting years to show somebody this.<br><br>RF is unauthenticated. Physics is your authentication.`,
   equipment: ['GPS Patch on a Paint-Stick Mast (fixed skyward)', 'RTL-SDR Receiver (Direct Sampling)', 'SkyWatcher SDR Console (GPS-disciplined reference)'],
   settings: {
     isSync: true,
@@ -73,7 +78,10 @@ export const hamSdrScenario5Data: ScenarioData = {
         id: 'l1-spoofer',
         frequency: 1575.42e6,
         bandwidth: 500e3,
-        power: 30, // EIRP dBm - lights up ~25 dB above the real GPS hump
+        // EIRP dBm. 3.3 km away through the patch's horizon pattern it arrives
+        // near -82 dBm in 500 kHz, ~37 dB above the floor; real L1 sits ~8 dB
+        // under the floor, so the spoofer is the only thing visible on L1
+        power: 30,
         polarization: 'RHCP',
         startAfterObjectiveId: 'spot-the-spoofer',
         startTime: 10,
@@ -106,15 +114,15 @@ export const hamSdrScenario5Data: ScenarioData = {
           description: 'Spread Spectrum Understood',
           params: {
             character: Character.RILEY_BROOKS,
-            question: 'GPS arrives ~20 dB BELOW your noise floor, yet a $10 receiver uses it. How?',
+            question: 'GPS arrives BELOW the noise floor of your own receiver, yet a $10 receiver uses it. How?',
             options: [
               'It is spread across 2 MHz by a known code; the receiver correlates against that code and pulls it out of the noise.',
-              'The satellites transmit megawatts from orbit; the receiver sees a strong signal and the 2 MHz bump is its sidebands.',
-              'The receiver cools its own front end; its noise floor drops below the signal and the 2 MHz bump is what shows through.',
+              'The satellites transmit megawatts from orbit; the signal is strong, and the floor you see is a display artifact.',
+              'The receiver cools its own front end; its noise floor drops below the signal and the carrier shows through it.',
             ],
             correctIndex: 0,
             explanation:
-              'Spreading buys processing gain: correlate 2 MHz of "noise" against the right code and a 43-dB gain appears. On a waterfall, all you ever see is a gentle bump of extra noise.',
+              'Spreading buys processing gain: correlate 2 MHz of "noise" against the right code and about 43 dB of gain appears. Without the code there is nothing on the waterfall at all - not a stripe, not a bump.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -126,15 +134,17 @@ export const hamSdrScenario5Data: ScenarioData = {
     {
       id: 'find-the-hump',
       nice: ['S0421', 'K1032'],
-      title: 'Find the Noise Bump',
+      title: 'Look for GPS',
       description:
-        'Watch the waterfall at 1575.42 MHz. NAVSTAR-77 is nearly overhead right now - look for a two-megahertz-wide swelling of the noise floor. That swelling is every GPS fix in the neighborhood.',
+        "Watch the spectrum and waterfall at 1575.42 MHz. NAVSTAR-77 is nearly overhead right now, transmitting at full power, and the trace is flat noise. That is not a fault: GPS reaches this patch under your receiver's own noise, spread over two megahertz. Confirm the bird is there and the band looks empty.",
       groundStation: 'BKYD-GPS',
       prerequisiteObjectiveIds: ['review-mission-brief'],
       conditions: [
         {
+          // The L1 signal reaches the analyzer input (the sim knows it is
+          // there) while the trace shows only noise: ~8 dB under the floor
           type: 'signal-detected',
-          description: 'NAVSTAR-77 L1 Detected',
+          description: 'NAVSTAR-77 L1 Reaching the Antenna',
           params: {
             signalId: 'NAVSTAR-77-L1',
             minPower: -130 as dBm,
@@ -145,18 +155,18 @@ export const hamSdrScenario5Data: ScenarioData = {
         },
         {
           type: 'status-check',
-          description: 'Detect vs Demodulate Understood',
+          description: 'Below the Floor Understood',
           params: {
             character: Character.RILEY_BROOKS,
-            question: 'The bump is plainly there, but the lock indicator will never say LOCKED. Why not?',
+            question: 'NAVSTAR-77 is overhead and transmitting, yet the trace at 1575.42 is flat noise and the lock indicator never says LOCKED. Why?',
             options: [
-              'The demodulator has no despreading code - without it the signal IS noise, so detection never becomes demodulation.',
-              'The channel bandwidth is set too narrow - the 2 MHz bump spills past the edges, so the demodulator never sees all of it.',
-              'The patch antenna has the wrong handedness - GPS is right-hand circular, so the bump arrives too weak to lock on.',
+              'It arrives under your noise floor, spread over 2 MHz, and the receiver has no despreading code - so to you it IS noise.',
+              'The channel bandwidth is set too narrow - the 2 MHz signal spills past the edges, so neither trace nor lock can see it.',
+              'The patch antenna has the wrong handedness - GPS is right-hand circular, so the signal cancels before it reaches you.',
             ],
             correctIndex: 0,
             explanation:
-              'Right. Detection and demodulation are different privileges: you can prove energy exists without being able to read it. Remember that direction: it also means something can TRANSMIT energy you cannot vet. Hold that thought.',
+              'Right. The full power of a GPS satellite reaches this patch and still sits under the noise; only a receiver holding the code despreads it into something usable. Turn that around and you get a rule: on L1, anything you CAN see on a spectrum analyzer is not coming from orbit. Hold that thought.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -170,7 +180,7 @@ export const hamSdrScenario5Data: ScenarioData = {
       nice: ['T0153', 'S0648'],
       title: 'Something New on L1',
       description:
-        'A new signal has appeared inside the GPS band - narrow, strong, and clean. Real L1 is a whisper spread over megahertz. This is a shout. Get it on the waterfall.',
+        'A new signal has risen out of the flat noise inside the GPS band - narrow, strong, and clean. Real L1 never shows on this trace; this one stands far above the floor. That visibility is the tell. Get it on the waterfall.',
       groundStation: 'BKYD-GPS',
       prerequisiteObjectiveIds: ['find-the-hump'],
       conditions: [
@@ -193,7 +203,7 @@ export const hamSdrScenario5Data: ScenarioData = {
       id: 'read-the-tell',
       nice: ['K0752', 'K0684'],
       title: 'Read the Clock',
-      description: 'Check the SOURCE panel: CLK Î”T is walking upward, a few microseconds every second. Now check SATS. Compare the two and name what is happening.',
+      description: 'Check the SOURCE panel: CLK ΔT is walking upward, a few microseconds every second. Now check SATS. Compare the two and name what is happening.',
       groundStation: 'BKYD-GPS',
       prerequisiteObjectiveIds: ['spot-the-spoofer'],
       conditions: [
@@ -244,7 +254,7 @@ export const hamSdrScenario5Data: ScenarioData = {
       nice: ['S0421', 'T0153'],
       title: 'Ride It Out, Then Come Back',
       description:
-        'Stay on holdover until the intruder leaves the band - you will see the carrier vanish from the waterfall and the Î”T freeze. Then, and only then, put the reference back on GPS and let it re-acquire.',
+        'Stay on holdover until the intruder leaves the band - you will see the carrier vanish from the waterfall and the ΔT freeze. Then, and only then, put the reference back on GPS and let it re-acquire.',
       groundStation: 'BKYD-GPS',
       prerequisiteObjectiveIds: ['go-holdover'],
       conditions: [
@@ -296,13 +306,13 @@ export const hamSdrScenario5Data: ScenarioData = {
             character: Character.RILEY_BROOKS,
             question: 'What made the spoofer detectable, given that GPS signals carry no authentication at all?',
             options: [
-              'Its physics were wrong: too strong, too clean, and standing still - legitimate signals must obey orbits.',
+              'Its physics were wrong: visible above the floor, too clean, and standing still - legitimate signals obey orbits.',
               'Its frequency was wrong: a few kilohertz off L1, too narrow, and unmodulated - legitimate signals sit on 1575.42 MHz.',
               'Its identity was wrong: a callsign, no almanac, and no ephemeris - legitimate signals carry a full navigation message.',
             ],
             correctIndex: 0,
             explanation:
-              'RF is unauthenticated; physics is your authentication. Orbits leave fingerprints. A real bird is weak, spread, and moving. Anything else is a claim, not a satellite. The rest of this campaign is that sentence, over and over.',
+              'RF is unauthenticated; physics is your authentication. Orbits leave fingerprints. A real GPS bird is under the noise floor, spread, and moving. Anything else is a claim, not a satellite. The rest of this campaign is that sentence, over and over.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -314,26 +324,26 @@ export const hamSdrScenario5Data: ScenarioData = {
   ],
   dialogClips: {
     intro: {
-      text: `<p>New antenna day! Ignore the paint stick, it is holding the mast up. Tonight we hunt the weakest signal you will ever chase: GPS. It's up there right now, twenty thousand kilometers out, whispering at every device in the neighborhood.</p><p>Fair warning: you will find it and you will never lock it, and understanding WHY is worth more than a hundred easy passes. Read the note.</p>`,
+      text: `<p>New antenna day! Ignore the paint stick, it is holding the mast up. Tonight we hunt the weakest signal you will ever chase: GPS. It's up there right now, twenty thousand kilometers out, whispering at every device in the neighborhood.</p><p>Fair warning: you will not see it at all. Not a stripe, not a bump. Understanding WHY is worth more than a hundred easy passes. Read the note.</p>`,
       character: Character.RILEY_BROOKS,
       emotion: Emotion.EXCITED,
       audioUrl: '',
     },
     objectives: {
       'review-mission-brief': {
-        text: `<p>Below the noise floor, and it works anyway. Spread spectrum is the closest thing radio has to magic, and it's just arithmetic.</p><p>Now go find it. 1575.42. Don't look for a stripe - look for the noise itself getting gently... fatter.</p>`,
+        text: `<p>Below the noise floor, and it works anyway. Spread spectrum is the closest thing radio has to magic, and it's just arithmetic.</p><p>Now go look for it. 1575.42. Spoiler: you will see noise. Just noise. That's the point.</p>`,
         character: Character.RILEY_BROOKS,
         emotion: Emotion.CONFIDENT,
         audioUrl: '',
       },
       'find-the-hump': {
-        text: `<p>THAT'S IT. That soft two-megahertz swell - that's a spacecraft older than you, heard on a patch antenna clamped to a paint stick. Detected, never decoded. Your receiver doesn't have the code, so to you it stays noise-shaped.</p><p>Keep the waterfall up while I get snacks. L1 never does anything interesting anywâ€”</p>`,
+        text: `<p>Flat, right? NAVSTAR-77 is straight over your head, older than you, pointing its full power at this yard - and it arrives under your own noise. Your receiver doesn't have the code, so to you it IS noise. Which gives you a rule for free: real GPS never shows on this trace.</p><p>Keep the waterfall up while I get snacks. L1 never does anything interesting anyw—</p>`,
         character: Character.RILEY_BROOKS,
         emotion: Emotion.HAPPY,
         audioUrl: '',
       },
       'spot-the-spoofer': {
-        text: `<p>...okay. That is NOT GPS. Real L1 is a whisper spread thin across megahertz - this thing is narrow and LOUD. Something in the neighborhood is transmitting in a protected band, and every receiver that can hear it is now listening to IT instead of the sky.</p><p>Check your clock panel. Quickly.</p>`,
+        text: `<p>...okay. That is NOT GPS. You just watched real L1 not show up at all - this thing is standing way above the floor, narrow and LOUD. Something in the neighborhood is transmitting in a protected band, and every receiver that can hear it is now listening to IT instead of the sky.</p><p>Check your clock panel. Quickly.</p>`,
         character: Character.RILEY_BROOKS,
         emotion: Emotion.SKEPTICAL,
         audioUrl: '',
@@ -345,7 +355,7 @@ export const hamSdrScenario5Data: ScenarioData = {
         audioUrl: '',
       },
       'go-holdover': {
-        text: `<p>Î”T frozen. The lie is still on the air but nobody here is listening to it anymore. That's the whole defense: a good clock and the nerve to trust it over the sky.</p><p>Now we wait the intruder out. Watch the waterfall - you'll know the moment they give up.</p>`,
+        text: `<p>ΔT frozen. The lie is still on the air but nobody here is listening to it anymore. That's the whole defense: a good clock and the nerve to trust it over the sky.</p><p>Now we wait the intruder out. Watch the waterfall - you'll know the moment they give up.</p>`,
         character: Character.RILEY_BROOKS,
         emotion: Emotion.CONFIDENT,
         audioUrl: '',

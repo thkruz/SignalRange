@@ -577,7 +577,7 @@ describe('Campaign 3: scenario registration', () => {
     expect(spoofer?.startAfterObjectiveId).toBe('spot-the-spoofer');
     expect(spoofer?.startTime).toBe(10);
     expect((spoofer?.startTime ?? 0) + (spoofer?.duration ?? 0)).toBe(490);
-    // Terrestrial = received over the air, narrow and strong vs the 2 MHz hump
+    // Terrestrial = received over the air, narrow and strong; real L1 (2 MHz) sits under the floor
     expect(spoofer?.frequency).toBe(1575.42e6);
     expect(spoofer?.bandwidth).toBeLessThan(2e6);
   });
@@ -624,7 +624,9 @@ describe('Campaign 3: scenario registration', () => {
     expect(vu?.uplinkFrequency).toBe(435.9e6);
     expect(vu?.downlinkFrequency).toBe(435.29e6);
     expect(vu?.polarization).toBe('RHCP');
-    expect(vu?.gain).toBe(132);
+    // A 1 W SSPA linear transponder (phase 19.3 physics)
+    expect(vu?.physics.amplifier).toBe('sspa');
+    expect(vu?.physics.satEirpDbw).toBe(0);
   });
 
   it('scenario 3 starts the yagi wrong-handed; scenarios 2 and 4 start clean', async () => {

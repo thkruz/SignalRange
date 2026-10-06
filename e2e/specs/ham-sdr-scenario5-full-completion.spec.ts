@@ -6,8 +6,9 @@ import { waitForSimulationReady } from '../utils/simulation-helpers';
 /**
  * ham-sdr Scenario 5 "The Noise Bump" - full completion.
  *
- * Security-half opener on the GPS patch: detect the L1 spread-spectrum hump
- * (NAVSTAR-77 is overhead all scenario - no pass to catch), then survive a
+ * Security-half opener on the GPS patch: look for L1 and see only noise
+ * (NAVSTAR-77 is overhead all scenario at its real EIRP, under the floor
+ * until despread - phase 19.3), then survive a
  * GPS spoofing attack. The spoofer is an E1 terrestrial emitter (narrow strong
  * carrier on 1575.42, no Doppler) paired with the gnssThreat clock walk; the
  * defense is the E4 REF control (GPS -> HOLDOVER -> back to GPS).
@@ -57,14 +58,18 @@ test.describe('ham-sdr Scenario 5 Full Completion', () => {
     await waitForObjectiveComplete(missionControl, "Read Riley's Note");
   });
 
-  test('[find-the-hump] detects L1 on the waterfall and answers the detect-vs-demod quiz', async () => {
+  test('[find-the-hump] L1 is under the floor: no lock, and the below-the-floor quiz', async () => {
     await missionControl.selectGroundStation('BKYD-GPS');
     await missionControl.selectTab('sdr-console');
     await missionControl.dismissDialogIfPresent();
 
+    // The quiz claims the receiver never locks GPS: hold the console to it
+    await expect(page.locator('#sdr-lock-indicator')).toBeVisible();
+    await expect(page.locator('#sdr-lock-indicator')).not.toHaveText('LOCKED');
+
     await answerRileyQuiz(page, 'no despreading code');
     await missionControl.dismissDialogIfPresent();
-    await waitForObjectiveComplete(missionControl, 'Find the Noise Bump', 90000);
+    await waitForObjectiveComplete(missionControl, 'Look for GPS', 90000);
   });
 
   test('[spot-the-spoofer] the terrestrial L1 carrier appears after the spoof window opens', async () => {

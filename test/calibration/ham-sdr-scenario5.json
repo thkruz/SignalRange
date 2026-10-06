@@ -61,18 +61,19 @@
               "bandwidthMHz": 2.05,
               "modulation": "null",
               "fec": "null",
-              "samples": 12074,
+              "samples": 11826,
               "peakCnDb": null,
               "medianCnDb": null,
               "peakEsN0Db": null,
               "requiredEsN0Db": null,
               "peakLockMarginDb": null,
-              "peakRxIfDbm": -31.82,
+              "peakRxIfDbm": -44.82,
               "noiseIfDbm": -36.82,
               "lockedSamples": 0
             }
           ],
-          "adjacentCarriers": 0
+          "adjacentCarriers": 0,
+          "transponders": []
         }
       ],
       "txChain": {
@@ -96,7 +97,8 @@
         "hpaOutputBackoffDb": null,
         "hpaIm3Dbc": null,
         "hpaAlcAtLimit": null,
-        "hpaTempEqC": 25
+        "hpaTempEqC": 25,
+        "radiated": []
       }
     }
   ]

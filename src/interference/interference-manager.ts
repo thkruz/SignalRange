@@ -49,8 +49,10 @@ export interface InterferenceEventConfig {
   /** Interferer bandwidth (Hz) */
   bandwidth: number;
   /**
-   * Interferer power (dBm). Transponder path: power at the transponder
-   * input. Terrestrial path: the emitter's EIRP.
+   * The interferer's EIRP, dBm, on both paths. Transponder path (since Phase
+   * 19.3): uplinked over the satellite's reference slant range into the
+   * transponder (was the power at the transponder input). Terrestrial path:
+   * radiated toward the stations.
    */
   power: number;
   /** Polarization. Transponder path must match the victim transponder to route */

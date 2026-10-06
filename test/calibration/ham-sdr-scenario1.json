@@ -64,7 +64,8 @@
               "lockedSamples": 758
             }
           ],
-          "adjacentCarriers": 0
+          "adjacentCarriers": 0,
+          "transponders": []
         },
         {
           "satellite": "CUBEHOP-1",
@@ -77,7 +78,8 @@
           },
           "atPeak": null,
           "carriers": [],
-          "adjacentCarriers": 0
+          "adjacentCarriers": 0,
+          "transponders": []
         }
       ],
       "txChain": {
@@ -101,7 +103,8 @@
         "hpaOutputBackoffDb": null,
         "hpaIm3Dbc": null,
         "hpaAlcAtLimit": null,
-        "hpaTempEqC": 25
+        "hpaTempEqC": 25,
+        "radiated": []
       }
     }
   ]

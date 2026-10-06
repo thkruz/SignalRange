@@ -56,7 +56,8 @@
         "hpaOutputBackoffDb": null,
         "hpaIm3Dbc": null,
         "hpaAlcAtLimit": null,
-        "hpaTempEqC": 29.09
+        "hpaTempEqC": 29.09,
+        "radiated": []
       }
     },
     {
@@ -109,7 +110,8 @@
         "hpaOutputBackoffDb": null,
         "hpaIm3Dbc": null,
         "hpaAlcAtLimit": null,
-        "hpaTempEqC": 25
+        "hpaTempEqC": 25,
+        "radiated": []
       }
     }
   ]

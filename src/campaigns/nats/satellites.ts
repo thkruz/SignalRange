@@ -1,4 +1,5 @@
 import { Satellite, TransponderConfig } from '@app/equipment/satellite/satellite';
+import type { TransponderPhysics } from '@app/equipment/satellite/transponder-model';
 import { SignalOrigin } from '@app/signal-origin';
 import type { dBi, dBm, FECType, Hertz, ModulationType, RfFrequency } from '@app/types';
 import type { Degrees } from 'ootk';
@@ -9,6 +10,20 @@ import type { Degrees } from 'ootk';
  * from it, so ME-02 sees the real geometric difference (nats-s03-F2).
  */
 export const VERMONT_LOOK_ANGLE_SITE = { latitude: 44.5588, longitude: -72.5778, elevationM: 2 };
+
+/**
+ * Campaign 1 C-band transponder physics (phase 19.3). SFD and G/T are the
+ * same for every TIDEMARK-era bird at the New England contour; the saturated
+ * EIRP toward the region is per satellite, set so each TDMA composite keeps
+ * its pre-19.3 downlink (TIDEMARK 27, SES-10 30, AURORA-7 25 dBW). VT-01's
+ * own carrier at its authored operating point (HPA 50 dBm, 10 dB back-off
+ * from P1dB) arrives about 3 dB under single-carrier saturation, the
+ * operating point the composite stand-ins are uplinked at too.
+ */
+export const C1_SFD_DBW_M2 = -88.5;
+export function c1TransponderPhysics(satEirpDbw: number): Partial<TransponderPhysics> {
+  return { sfdDbwM2: C1_SFD_DBW_M2, gOverTDbK: 0, satEirpDbw, amplifier: 'twta', gainMode: 'fgm' };
+}
 
 export const tidemark1Satellite = new Satellite(
   'TIDEMARK-1',
@@ -21,7 +36,7 @@ export const tidemark1Satellite = new Satellite(
       noradId: 61525,
       frequency: 5943e6 as RfFrequency,
       polarization: 'H',
-      power: 20 as dBm, // 19.2 raised it 2 dB for the real Tsys; 19.4 took the 2 dB back (dish gain to datasheet, pointing loss charged once)
+      power: 101.2 as dBm, // uplink EIRP of the hub carrier this composite stands in for (phase 19.3 migration: was 20 dBm 'at the transponder input'; keeps the 26.5 dBW downlink)
       bandwidth: 36e6 as Hertz,
       modulation: 'QPSK' as ModulationType,
       fec: '3/4' as FECType,
@@ -42,10 +57,12 @@ export const tidemark1Satellite = new Satellite(
     ephemerisErrorAz: 0.12 as Degrees,
     ephemerisErrorEl: 0.08 as Degrees,
     lookAnglesFrom: VERMONT_LOOK_ANGLE_SITE,
+    standIns: { 'TIDEMARK-1-TDMA-Composite': 'TIDEMARK-1-Teleport' }, // the station's own carrier replaces the stand-in (phase 19.3)
     transponderConfigs: [
       {
         id: 'TP-1',
         uplinkCenterFrequency: 5943e6 as RfFrequency, // Passband: 5925-5961 MHz
+        physics: c1TransponderPhysics(27),
         bandwidth: 36e6 as Hertz,
         frequencyOffset: 2.225e9 as Hertz, // Downlink center: 3718 MHz
         polarization: 'H',
@@ -69,6 +86,7 @@ export const tidemark1Satellite = new Satellite(
       {
         id: 'TP-2',
         uplinkCenterFrequency: 5906e6 as RfFrequency, // Passband: 5963-5999 MHz
+        physics: c1TransponderPhysics(27),
         bandwidth: 36e6 as Hertz,
         frequencyOffset: 2.225e9 as Hertz, // Downlink center: 3756 MHz
         polarization: 'H',
@@ -89,7 +107,7 @@ export const tidemark2Satellite = new Satellite(
       noradId: 61526,
       frequency: 6017e6 as RfFrequency,
       polarization: 'H',
-      power: 20 as dBm, // 19.2 raised it 2 dB for the real Tsys; 19.4 took the 2 dB back (dish gain to datasheet, pointing loss charged once)
+      power: 101.2 as dBm, // uplink EIRP of the hub carrier this composite stands in for (phase 19.3 migration: was 20 dBm 'at the transponder input'; keeps the 26.5 dBW downlink)
       bandwidth: 36e6 as Hertz,
       modulation: 'QPSK' as ModulationType,
       fec: '3/4' as FECType,
@@ -110,10 +128,12 @@ export const tidemark2Satellite = new Satellite(
     ephemerisErrorAz: 0.1 as Degrees,
     ephemerisErrorEl: 0.06 as Degrees,
     lookAnglesFrom: VERMONT_LOOK_ANGLE_SITE,
+    standIns: { 'TIDEMARK-2-TDMA-Composite': 'TIDEMARK-2-Teleport' }, // the station's own carrier replaces the stand-in
     transponderConfigs: [
       {
         id: 'TP-1',
         uplinkCenterFrequency: 6017e6 as RfFrequency,
+        physics: c1TransponderPhysics(27),
         bandwidth: 36e6 as Hertz,
         frequencyOffset: 2.225e9 as Hertz,
         polarization: 'H',
@@ -137,6 +157,7 @@ export const tidemark2Satellite = new Satellite(
       {
         id: 'TP-2',
         uplinkCenterFrequency: 5980e6 as RfFrequency,
+        physics: c1TransponderPhysics(27),
         bandwidth: 36e6 as Hertz,
         frequencyOffset: 2.225e9 as Hertz,
         polarization: 'H',
@@ -175,7 +196,7 @@ export const tidemark3Satellite = new Satellite(
       noradId: 61527,
       frequency: 5985e6 as RfFrequency,
       polarization: 'H',
-      power: 20 as dBm, // 19.2 raised it 2 dB for the real Tsys; 19.4 took the 2 dB back (dish gain to datasheet, pointing loss charged once)
+      power: 101.2 as dBm, // uplink EIRP of the hub carrier this composite stands in for (phase 19.3 migration: was 20 dBm 'at the transponder input'; keeps the 26.5 dBW downlink)
       bandwidth: 36e6 as Hertz,
       modulation: 'QPSK' as ModulationType,
       fec: '3/4' as FECType,
@@ -196,10 +217,12 @@ export const tidemark3Satellite = new Satellite(
     ephemerisErrorAz: 0.1 as Degrees,
     ephemerisErrorEl: 0.07 as Degrees,
     lookAnglesFrom: VERMONT_LOOK_ANGLE_SITE,
+    standIns: { 'TIDEMARK-3-TDMA-Composite': 'TIDEMARK-3-Teleport' }, // the station's own carrier replaces the stand-in
     transponderConfigs: [
       {
         id: 'TP-1',
         uplinkCenterFrequency: 5985e6 as RfFrequency,
+        physics: c1TransponderPhysics(27),
         bandwidth: 36e6 as Hertz,
         frequencyOffset: 2.225e9 as Hertz, // Downlink center: 3760 MHz
         polarization: 'H',
@@ -235,7 +258,7 @@ export const ses10Satellite = new Satellite(
       noradId: 42432,
       frequency: 5869e6 as RfFrequency,
       polarization: 'H',
-      power: 23 as dBm, // 19.2 raised it 2 dB for the real Tsys; 19.4 took the 2 dB back (dish gain to datasheet, pointing loss charged once)
+      power: 101.2 as dBm, // uplink EIRP (phase 19.3 migration: was 23 dBm at the transponder input; keeps the 29.5 dBW downlink)
       bandwidth: 36e6 as Hertz,
       modulation: 'QPSK' as ModulationType,
       fec: '3/4' as FECType,
@@ -260,6 +283,7 @@ export const ses10Satellite = new Satellite(
       {
         id: 'TP-1',
         uplinkCenterFrequency: 5869e6 as RfFrequency,
+        physics: c1TransponderPhysics(30),
         bandwidth: 36e6 as Hertz,
         frequencyOffset: 2.225e9 as Hertz,
         polarization: 'H',
@@ -283,6 +307,7 @@ export const ses10Satellite = new Satellite(
       {
         id: 'TP-2',
         uplinkCenterFrequency: 5832e6 as RfFrequency,
+        physics: c1TransponderPhysics(30),
         bandwidth: 36e6 as Hertz,
         frequencyOffset: 2.225e9 as Hertz,
         polarization: 'H',
@@ -324,7 +349,7 @@ export const aurora7Satellite = new Satellite(
       noradId: 28899,
       frequency: 6053e6 as RfFrequency,
       polarization: 'H',
-      power: 18 as dBm, // Slightly lower power for legacy bird (19.2 +2 dB, 19.4 -2 dB)
+      power: 101.2 as dBm, // uplink EIRP of the hub carrier (phase 19.3 migration: was 18 dBm at the transponder input; keeps the 24.5 dBW downlink of this legacy bird)
       bandwidth: 24e6 as Hertz, // Narrower bandwidth
       modulation: 'QPSK' as ModulationType,
       fec: '3/4' as FECType,
@@ -345,6 +370,7 @@ export const aurora7Satellite = new Satellite(
     ephemerisErrorAz: 0.2 as Degrees,
     ephemerisErrorEl: 0.15 as Degrees,
     lookAnglesFrom: VERMONT_LOOK_ANGLE_SITE,
+    standIns: { 'AURORA-7-TDMA-Composite': 'AURORA-7-Uplink' }, // the station's own carrier replaces the stand-in
     orbitType: 'geosynchronous',
     geosyncConfig: {
       minAz: 187 as Degrees, // ±3° azimuth drift
@@ -356,6 +382,7 @@ export const aurora7Satellite = new Satellite(
       {
         id: 'TP-1',
         uplinkCenterFrequency: 6053e6 as RfFrequency,
+        physics: c1TransponderPhysics(25),
         bandwidth: 24e6 as Hertz, // Narrower than TIDEMARK
         frequencyOffset: 2.225e9 as Hertz, // Downlink at 3828 MHz
         polarization: 'H',

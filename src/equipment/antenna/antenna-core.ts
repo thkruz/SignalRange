@@ -8,6 +8,7 @@ import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
 import { InterferenceManager } from '@app/interference/interference-manager';
 import { SignalOrigin } from '@app/signal-origin';
+import { geoSlantRangeKm } from '@app/simulation/geo-geometry';
 import { noiseFigureToK, noiseRiseDb, noiseRiseToK, type SystemNoise, systemNoiseTemperature, thermalNoiseDbm } from '@app/simulation/noise-model';
 import { SimClock } from '@app/simulation/sim-clock';
 import { getSimulatedNowMs } from '@app/simulation/sim-time';
@@ -30,12 +31,18 @@ export interface SatelliteView {
   txSignal: RfSignal[];
   /** Linear polarization angle of the satellite's downlink at this station, degrees (skew) */
   rotation: Degrees;
+  /** Doppler factor for this station's range rate (observed = transmitted × factor); 1 for GEO */
+  dopplerFactor: number;
 }
 
 /**
- * RF Propagation constants for GEO satellite communications
+ * Slant range for path loss, km: the propagated range, or for a legacy GEO
+ * satellite (authored az/el, no range) the geostationary slant range at the
+ * elevation this station sees it (phase 19.3; was a fixed 38,000 km).
  */
-const GEO_SATELLITE_DISTANCE_KM = 38000; // Approximate slant range to GEO satellite (km)
+function slantRangeKm(view: SatelliteView): number {
+  return view.rangeKm ?? geoSlantRangeKm(view.el as number);
+}
 
 /**
  * ACU Tracking Modes
@@ -1674,6 +1681,7 @@ export abstract class AntennaCore extends BaseEquipment {
         predictedEl: predicted.el,
         txSignal: sat.txSignalsFor(this.stationObserver_),
         rotation: sat.rotation,
+        dopplerFactor: g.dopplerFactor,
       };
     }
 
@@ -1690,6 +1698,7 @@ export abstract class AntennaCore extends BaseEquipment {
         txSignal:
           offsets.dRotation === 0 ? sat.txSignal : sat.txSignal.map((sig) => ({ ...sig, rotation: (((sig.rotation ?? sat.rotation) as number) + offsets.dRotation) as Degrees })),
         rotation: ((sat.rotation as number) + offsets.dRotation) as Degrees,
+        dopplerFactor: 1,
       };
     }
 
@@ -1701,6 +1710,7 @@ export abstract class AntennaCore extends BaseEquipment {
       predictedEl: sat.predictedEl,
       txSignal: sat.txSignal,
       rotation: sat.rotation,
+      dopplerFactor: sat instanceof OrbitalSatellite ? sat.dopplerFactor : 1,
     };
   }
 
@@ -2032,68 +2042,36 @@ export abstract class AntennaCore extends BaseEquipment {
     return { bearingDeg, distanceKm };
   }
 
+  /**
+   * Radiate this antenna's uplinks into every satellite that can hear them
+   * (phase 19.3: one physical path for every antenna). What a satellite
+   * receives is the power an isotropic antenna there would collect:
+   * EIRP − FSPL over the slant range − gaseous loss on the path − the
+   * pattern's off-axis drop toward it (rain on the uplink is already in
+   * `txSignalsOut`), at the frequency the satellite sees (uplink Doppler for
+   * a moving satellite). The transponder (`transponder-model.ts`) turns that
+   * into flux against its SFD. Dishes radiate through the whole pattern, so a
+   * neighbour in the sidelobes picks up the uplink at its real level (it was
+   * main-lobe only while the uplink had no path loss, DEV-XPDR-01); wire
+   * antennas keep their half-power beam gate.
+   *
+   * Each antenna withdraws only what it put on a satellite: a yard can hold a
+   * receive-only rig beside a transmitting one, and other stations' carriers
+   * and injected interference (`externalSignal`) are never touched.
+   */
   private updateTxSignals_() {
-    // Legacy (parabolic) path: bit-identical to the original behavior. C1/C2
-    // uplinks are calibrated around no-FSPL EIRP-at-satellite numbers, so the
-    // link-budget branch below is fixed-gain (Campaign 3+) only.
-    if (this.config.gainModel !== 'fixed') {
-      // A satellite hears this dish's uplink while it sits inside the TX main
-      // lobe, at the pattern's off-axis drop (phase 19.4: was a +/-2 deg
-      // az/el box at full EIRP). Sidelobe uplinks into adjacent satellites
-      // wait for 19.3: without uplink FSPL (DEV-XPDR-01) a -40 dB sidelobe
-      // would still saturate a transponder.
-      const txSignals = this.txSignalsOut;
-      const txHz = (txSignals[0]?.frequency as number | undefined) ?? (this.config.minTxFrequency + this.config.maxTxFrequency) / 2;
-      const edge = this.mainLobeEdgeDeg_(txHz);
-      for (const sat of SimulationManager.getInstance().satellites) {
-        const view = this.satView_(sat);
-        if (view.el <= 0) continue;
-        const theta = this.effectiveOffAxisDeg_(view.az, view.el);
-        if (theta > edge) continue;
-
-        // Clear any old signals
-        sat.rxSignal = [];
-        if (this.state.isLoopback) continue;
-
-        for (const sig of txSignals) {
-          const f_Hz = sig.frequency as number;
-          const offAxisDrop = this.antennaGain_dBi(sig.frequency) - this.patternGain_dBi_(theta, f_Hz);
-          sat.rxSignal.push({
-            ...sig,
-            power: (sig.power - offAxisDrop) as dBm,
-            origin: SignalOrigin.ANTENNA_TX,
-          });
-        }
-      }
-      return;
-    }
-
-    // Fixed-gain (wide-beam, Campaign 3) uplink path:
-    // - beam gate is the antenna's own HPBW via true angular separation
-    //   (mirrors rxSignals; the +/-2 deg planar box is meaningless at 40 deg)
-    // - real uplink link budget: FSPL over slant range + atmosphere + off-axis
-    //   pattern rolloff, so the power arriving at the satellite is physical
-    // - circular antennas stamp their handedness on the radiated signal so
-    //   the satellite's polarization-matched transponder can accept it
-    // - stale uplinks are cleared when a satellite leaves the beam (otherwise
-    //   the transponder keeps relaying a signal that is no longer arriving)
-    const beamwidth = this.config.fixedBeamwidth3dB_deg ?? 90;
-    const allSats = SimulationManager.getInstance().satellites;
     const txSignals = this.state.isLoopback ? [] : this.txSignalsOut;
     const fedIds = this.txFedSignalIds_;
+    const isWire = this.config.gainModel === 'fixed';
+    const beamwidth = this.config.fixedBeamwidth3dB_deg ?? 90;
 
-    for (const sat of allSats) {
+    for (const sat of SimulationManager.getInstance().satellites) {
       const view = this.satView_(sat);
-      const inBeam = this.effectiveOffAxisDeg_(view.az, view.el) <= beamwidth;
+      const offAxis_deg = this.effectiveOffAxisDeg_(view.az, view.el);
+      const canHear = view.el > 0 && (!isWire || offAxis_deg <= beamwidth);
       const prevIds = fedIds.get(sat.noradId);
 
-      // Nothing radiating (or out of beam): withdraw only what THIS antenna
-      // put on the satellite. A receive-only rig must never clear the array -
-      // the same yard can hold a wide-beam RX antenna and a transmitting one,
-      // and a blanket clear would delete the other rig's uplink depending on
-      // station update order. Other stations' signals and injected
-      // interference (externalSignal) are never touched.
-      if (!inBeam || txSignals.length === 0) {
+      if (!canHear || txSignals.length === 0) {
         if (prevIds) {
           sat.rxSignal = sat.rxSignal.filter((s) => !prevIds.has(s.signalId));
           fedIds.delete(sat.noradId);
@@ -2104,20 +2082,22 @@ export abstract class AntennaCore extends BaseEquipment {
       // Replace this antenna's previous contribution, keep everything else
       sat.rxSignal = prevIds ? sat.rxSignal.filter((s) => !prevIds.has(s.signalId)) : sat.rxSignal;
       const pushedIds = new Set<string>();
+      const rangeKm = slantRangeKm(view);
+      const pathEl_deg = Math.max(1, view.el as number);
 
       for (const sig of txSignals) {
         const f_Hz = sig.frequency as number;
-        const offAxis_deg = this.effectiveOffAxisDeg_(view.az, view.el);
-        const fspl = this.calculateFreeSpacePathLoss_(f_Hz, view.rangeKm ?? GEO_SATELLITE_DISTANCE_KM);
-        const atmosphericLoss = this.calculateAtmosphericLoss_(f_Hz, Math.max(1, view.el));
+        const fspl = this.calculateFreeSpacePathLoss_(f_Hz, rangeKm);
+        const atmosphericLoss = this.calculateAtmosphericLoss_(f_Hz, pathEl_deg);
         // txSignalsOut already includes boresight gain; charge only the
-        // off-axis rolloff (capped at front-to-back like the RX pattern)
+        // off-axis drop (capped at front-to-back for wire antennas)
         const offAxisDrop = this.antennaGain_dBi(sig.frequency) - this.patternGain_dBi_(offAxis_deg, f_Hz);
 
         sat.rxSignal.push({
           ...sig,
+          frequency: (f_Hz * view.dopplerFactor) as RfFrequency,
           power: (sig.power - fspl - atmosphericLoss - offAxisDrop) as dBm,
-          polarization: this.config.polType === 'circular' ? (this.state.circularHandedness ?? sig.polarization) : sig.polarization,
+          polarization: isWire && this.config.polType === 'circular' ? (this.state.circularHandedness ?? sig.polarization) : sig.polarization,
           origin: SignalOrigin.ANTENNA_TX,
         });
         pushedIds.add(sig.signalId);
@@ -2543,7 +2523,7 @@ export abstract class AntennaCore extends BaseEquipment {
     // Calculate free-space path loss (downlink from satellite to ground).
     // Orbital satellites report true slant range; legacy fixed-telemetry
     // satellites fall back to the nominal GEO slant range.
-    const fspl = this.calculateFreeSpacePathLoss_(signal.frequency, view.rangeKm ?? GEO_SATELLITE_DISTANCE_KM);
+    const fspl = this.calculateFreeSpacePathLoss_(signal.frequency, slantRangeKm(view));
 
     // Calculate atmospheric loss using realistic model
     const atmosphericLoss = this.calculateAtmosphericLoss_(signal.frequency, pathEl_deg);

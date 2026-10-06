@@ -27,6 +27,15 @@
  * number a brief quotes can be checked against the engine. Staged hardware
  * faults are not applied (the equilibrium is the healthy unit's).
  *
+ * Since phase 19.3 the transmit chain is connected before the links are
+ * flown, so a station's own uplink goes through the uplink path and the
+ * transponder like any carrier and shows up in what it receives. `txChain`
+ * records each radiated carrier's EIRP; every link records its satellite's
+ * transponder operating points (input and output back-off, two-tone C/IM3,
+ * per carrier the isotropic input, uplink C/N in its own bandwidth and the
+ * downlink EIRP). Stations are flown one at a time: another station's
+ * uplink is not on the satellite while this one is measured.
+ *
  * Output: test/calibration/<scenario-id>.json (committed). Numbers are
  * rounded to 0.01 so a model change, not float noise, is what diffs.
  */
@@ -234,7 +243,30 @@ function txChainOf(chain: Chain, station: GroundStationConfig, index: number) {
     hpaIm3Dbc: radiating ? r2(hpa.state.imdLevel) : null,
     hpaAlcAtLimit: radiating ? Boolean(hpa.state.isAlcAtLimit) : null,
     hpaTempEqC: r2(hpa.equilibriumTemperatureC()),
+    radiated: chain.antenna.txSignalsOut.map((sig) => ({ signalId: sig.signalId, rfMHz: r2((sig.frequency as number) / 1e6), eirpDbm: r2(sig.power as number) })),
   };
+}
+
+/** The satellite's transponders as last operated (phase 19.3) */
+function transpondersOf(sat: Satellite) {
+  return sat.transponders
+    .map((tp) => ({ tp, point: sat.operatingPoint(tp.id) }))
+    .filter(({ point }) => point !== null)
+    .map(({ tp, point }) => {
+      const p = point as NonNullable<typeof point>;
+      return {
+        id: tp.id,
+        iboDb: r2(p.iboDb),
+        oboDb: r2(p.oboDb),
+        carrierToImDb: r2(p.carrierToImDb),
+        carriers: p.carriers.map((c) => ({
+          signalId: c.signalId,
+          eirpDbw: r2(c.eirpDbm - 30),
+          cnUpDbHz: r2(c.cn0UpDbHz),
+          upstreamCn0DbHz: r2(c.upstreamCn0DbHz),
+        })),
+      };
+    });
 }
 
 function sample(chain: Chain, tracks: Map<string, CarrierTrack>, noradId: number, adjacent: AdjacentTrack): void {
@@ -378,6 +410,7 @@ function flyLink(chain: Chain, station: GroundStationConfig, sat: Satellite, sta
           },
     carriers: [...tracks.values()].map(summarise),
     adjacentCarriers: adjacent.signalIds.size,
+    transponders: transpondersOf(sat),
   };
 }
 
@@ -395,8 +428,10 @@ function snapshot(scenario: ScenarioData) {
     station.antennas.map((_, index) => {
       const chain = buildChain(station, index);
       const agcOnNoiseAlone = agcOnNoise(chain);
-      const links = simSatellites.map((sat) => flyLink(chain, station, sat, startMs));
+      // Only this station's uplink is on the satellites while it is flown
+      for (const sat of simSatellites) sat.rxSignal = [];
       const txChain = txChainOf(chain, station, index);
+      const links = simSatellites.map((sat) => flyLink(chain, station, sat, startMs));
       EventBus.destroy();
       return {
         stationId: station.id,

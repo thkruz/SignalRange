@@ -253,4 +253,46 @@ describe('Antenna attached to a station sees the sky from there', () => {
     expect(sh.rangeKm).not.toBeCloseTo(gw.rangeKm as number, 0);
     expect(sh.txSignal.length).toBeGreaterThan(0);
   });
+
+  it('an uplink reaches a moving satellite Doppler-shifted for the transmitting station (phase 19.3)', () => {
+    simNowMs = START_MS + 600_000; // just after AOS at Shetland: closing fast
+    const sat = createMeridianSar1(SAR1_S9_TLE);
+    simSatellites = [sat];
+    propagate(sat);
+
+    const antenna = new AntennaUIHeadless('sh-tx', ANTENNA_CONFIG_KEYS.KU_BAND_4M_LEO_TRACKER, {}, 1);
+    antenna.attachStationLocation(shetlandGroundStation.location.latitude, shetlandGroundStation.location.longitude, shetlandGroundStation.location.elevation);
+    const view = (antenna as unknown as { satView_(s: OrbitalSatellite): { az: number; el: number } }).satView_(sat);
+    antenna.state.azimuth = view.az as Degrees;
+    antenna.state.elevation = view.el as Degrees;
+    const txHz = 14_005e6;
+    Object.defineProperty(antenna, 'txSignalsOut', {
+      get: () => [
+        {
+          signalId: 'cmd',
+          serverId: 1,
+          noradId: 0,
+          frequency: txHz,
+          power: 80,
+          bandwidth: 2e6,
+          modulation: 'BPSK',
+          fec: '1/2',
+          polarization: 'H',
+          feed: '',
+          isDegraded: false,
+          origin: 'OMT_TX',
+          noiseFloor: null,
+          gainInPath: 0,
+        },
+      ],
+    });
+    (antenna as unknown as { updateTxSignals_(): void }).updateTxSignals_();
+
+    const factor = sat.geometryFor(SHETLAND).dopplerFactor;
+    expect(factor).toBeGreaterThan(1 + 1e-5); // approaching: received high
+    const arrived = sat.rxSignal.find((s) => s.signalId === 'cmd');
+    expect(arrived?.frequency).toBeCloseTo(txHz * factor, 0);
+    // Ku at ~7 km/s of range rate: a couple of hundred kHz
+    expect((arrived?.frequency as number) - txHz).toBeGreaterThan(100e3);
+  });
 });

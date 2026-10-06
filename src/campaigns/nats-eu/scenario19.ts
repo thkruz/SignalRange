@@ -172,7 +172,7 @@ export const natsEuScenario19Data: ScenarioData = {
         satelliteNoradId: 61702,
         frequency: 14035e6,
         bandwidth: 2e6,
-        power: 5,
+        power: 76, // jammer EIRP, dBm: drives the telecommand transponder ~3 dB past saturation from a 740 km slant (phase 19.3; was 5 dBm at the input)
         polarization: 'H',
         // Phase 19.0a: keyed 10 s after 'call-the-nak' opens, not at a fixed 1350 s.
         // A player whose first command was still unsent when a fixed jam came up

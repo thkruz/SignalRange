@@ -156,7 +156,7 @@ export interface SimulationSettings {
     /** Interferer RF center frequency (uplink, Hz) */
     frequency: number;
     bandwidth: number;
-    /** Transponder path: power at the transponder input (dBm). Terrestrial: emitter EIRP (dBm) */
+    /** The emitter's EIRP, dBm (transponder path: uplinked over the satellite's reference range, Phase 19.3) */
     power: number;
     polarization: 'H' | 'V' | 'RHCP' | 'LHCP';
     /** Seconds since mission start when the envelope opens */
@@ -214,7 +214,7 @@ export interface SimulationSettings {
     targetNoradId: number;
     /** Antenna index that must be trained on the target to radiate the jam (default 0) */
     jamAntennaIndex?: number;
-    /** Victim service carrier power at the transponder input, dBm (the "S" in J/S) */
+    /** Victim service carrier's uplink EIRP, dBm (the "S" in J/S; an authored transponder-path uplink since phase 19.3) */
     victimCarrierPowerDbm: number;
     /** Target transponder uplink passband the jam RF must fall within (Hz) */
     targetUplinkLowHz: number;
@@ -224,9 +224,10 @@ export interface SimulationSettings {
     targetPolarization: 'H' | 'V';
     /**
      * Calibration: dB added to the jam chain HPA output power to yield the
-     * jammer power at the transponder input. Folds uplink path loss + antenna
-     * gain into one term so the scenario stays winnable without a full uplink
-     * budget (mirrors how interferenceEvents specify power at the transponder).
+     * jammer's equivalent uplink EIRP, on the same footing as the victim's
+     * (the EA-JAM carrier is injected as an authored uplink, like
+     * interferenceEvents). Folds antenna gain and pointing into one term until
+     * phase 19.8 derives J/S from geometry.
      */
     jamPathGainDb: number;
     /** Pointing tolerance (deg) for the jam antenna vs the target (default 5) */
@@ -324,7 +325,11 @@ export interface SimulationSettings {
   /** M1: link-budget / EIRP planning console. Starts LinkBudgetManager. */
   linkBudget?: {
     label?: string;
-    /** Ground-truth C/N (dB) the correct worksheet must yield; absent = the engine's clear-sky C/N (Phase 19.2) */
+    /**
+     * Ground-truth C/N (dB) the correct worksheet must yield; absent = the engine's clear-sky C/N (Phase 19.2).
+     * When the operator fills in the optional uplink half (Phase 19.3) the composite C/N is graded against it,
+     * so author the composite for a transponded link and the downlink C/N for a direct one.
+     */
     expectedCNRDb?: number;
     /** Tolerance (dB) for accepting the operator's computed C/N (default 1.0) */
     toleranceDb?: number;

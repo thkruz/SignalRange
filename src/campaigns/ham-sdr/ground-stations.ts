@@ -382,12 +382,12 @@ export const backyardGpsStation = {
       isLocked: false,
     } as Partial<AntennaState>,
   ],
-  rfFrontEnds: [makeSdrFrontEnd(10, 5)], // 5 MHz filter for the 2 MHz spread-spectrum hump
+  rfFrontEnds: [makeSdrFrontEnd(10, 5)], // 5 MHz filter: passes all 2 MHz of L1 spread spectrum
   spectrumAnalyzers: [
     {
       referenceLevel: -60 as dBm,
       centerFrequency: 1575.42e6 as Hertz,
-      span: 8e6 as Hertz, // wide: the whole 2 MHz spread-spectrum hump in view
+      span: 8e6 as Hertz, // wide: all 2 MHz of L1 in view (real GPS sits under the floor; the S5 spoofer does not)
       rbw: 30e3 as Hertz,
       minAmplitude: -75 as dBm,
       maxAmplitude: -25 as dBm,

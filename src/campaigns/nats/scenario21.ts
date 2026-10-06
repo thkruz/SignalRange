@@ -186,18 +186,20 @@ export const scenario21Data: ScenarioData = {
         satelliteNoradId: 61526,
         frequency: 6005e6, // Uplink, inside TM-2 TP-1 passband (5999-6035), H-pol
         bandwidth: 6e6,
-        // dBm at the transponder input, against the 20 dBm, 36 MHz carrier
-        // composite. Phase 19.5: 12.7 dBm puts the jammer's spectral density
-        // 0.5 dB above the carrier's, so it stands on the analyzer as a ~3 dB
+        // The hostile uplinker's EIRP, dBm (phase 19.3), against the 101.2 dBm
+        // uplink of the 36 MHz composite. Phase 19.5 (then 12.7 dBm at the
+        // transponder input, now 92.9 dBm EIRP): the jammer's spectral density sits
+        // about the carrier's, so it stands on the analyzer as a ~3 dB
         // shelf on the carrier's upper edge (at 5 dBm it sat 7 dB under the
-        // carrier and was invisible, nats-s21-F6), and C/I 7.3 dB takes Es/N0
-        // from ~15 to ~6.6 dB: about 1.5 dB of margin while each burst is on, so
+        // carrier and was invisible, nats-s21-F6), and C/I takes Es/N0 down to
+        // ~1.5 dB of margin while each burst is on (since 19.3 the jammer also
+        // takes its share of the transponder output and adds IM), so
         // the modem flickers into "Degraded margin" as the carrier and the
         // jammer fade - the training point is mitigation, not a hard outage.
         // The notch (1470/8/30) takes the jammer ~24 dB down and costs the
         // carrier only the energy in that 8 MHz slice (~0.6 dB): lock margin
         // ~1.5 dB with the jammer on -> ~8 dB with the notch (phase 19.6).
-        power: 12.7,
+        power: 92.9, // uplink EIRP, 8.3 dB under the TM-2 composite's uplink (phase 19.3: was 12.7 dBm at the transponder input; a dB lower because it now also takes its share of the transponder output and adds IM)
         polarization: 'H',
         startTime: 20,
         duration: 3600, // Persists across the scenario

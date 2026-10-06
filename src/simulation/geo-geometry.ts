@@ -112,3 +112,24 @@ export function geoPolarizationSkewDeg(site: GeoSite, satLongitudeDeg: number): 
   const lat = site.latitude * D2R;
   return Math.atan2(Math.sin(dLon), Math.tan(lat)) / D2R;
 }
+
+/** Mean Earth radius for the spherical slant-range formula, km */
+const EARTH_MEAN_RADIUS_KM = 6371;
+
+/**
+ * Slant range to a geostationary satellite seen at elevation `elDeg`, km
+ * (spherical Earth, phase 19.3): d = √(r_geo² − (R cos el)²) − R sin el.
+ * 35,786 km at zenith, ~41,670 km on the horizon. Replaces the fixed
+ * 38,000 km a legacy GEO satellite (authored az/el) used for path loss.
+ */
+export function geoSlantRangeKm(elDeg: number): number {
+  return slantRangeKmAt(elDeg, GEO_RADIUS_KM);
+}
+
+/** Slant range to a satellite at orbit radius `orbitRadiusKm` seen at elevation `elDeg`, km (spherical Earth) */
+export function slantRangeKmAt(elDeg: number, orbitRadiusKm: number): number {
+  const el = Math.max(0, elDeg) * D2R;
+  const rCos = EARTH_MEAN_RADIUS_KM * Math.cos(el);
+
+  return Math.sqrt(Math.max(0, orbitRadiusKm * orbitRadiusKm - rCos * rCos)) - EARTH_MEAN_RADIUS_KM * Math.sin(el);
+}

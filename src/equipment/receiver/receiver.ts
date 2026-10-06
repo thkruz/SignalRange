@@ -696,7 +696,11 @@ export class Receiver extends BaseEquipment {
     // any level (a co-channel carrier under the noise still adds to N + I)
     const allSignals = this.rfFrontEnd_.agcModule.outputSignals ?? [];
     const interferencePower = this.calculateInterferencePower_(targetSignal, allSignals, modemBandwidthHz, modemCenterHz);
-    const thermalNoiseMw = 10 ** (thermalNoiseFloor / 10);
+    // What the carrier brought down from the satellite (uplink thermal noise
+    // and transponder IM, phase 19.3): a noise density that rides with it,
+    // C/N0_up below the carrier at every point of the chain
+    const upstreamN0Mw = Receiver.upstreamNoiseDensityMw_(targetSignal);
+    const thermalNoiseMw = 10 ** (thermalNoiseFloor / 10) + upstreamN0Mw * modemBandwidthHz;
     const interferenceMw = interferencePower > -Infinity ? 10 ** (interferencePower / 10) : 0;
     const effectiveNoiseFloor = 10 * Math.log10(thermalNoiseMw + interferenceMw);
     const cnRatio = signalLevel - effectiveNoiseFloor;
@@ -708,8 +712,8 @@ export class Receiver extends BaseEquipment {
     const n0DbmHz = spm.getNoiseFloorAt(TapPoint.RX_IF, 1 as Hertz).noiseFloorNoGain + totalGain;
     const inCarrierInterference = this.calculateInterferencePower_(targetSignal, allSignals, targetSignal.bandwidth, targetSignal.frequency);
     const inCarrierInterferenceMw = inCarrierInterference > -Infinity ? 10 ** (inCarrierInterference / 10) : 0;
-    const esN0 = signalLevel - 10 * Math.log10(10 ** (noiseInRsDbm / 10) + inCarrierInterferenceMw);
-    const cn0 = signalLevel - n0DbmHz;
+    const esN0 = signalLevel - 10 * Math.log10(10 ** (noiseInRsDbm / 10) + upstreamN0Mw * symbolRate + inCarrierInterferenceMw);
+    const cn0 = signalLevel - 10 * Math.log10(10 ** (n0DbmHz / 10) + upstreamN0Mw);
 
     // ADC: the demodulator's tuner filters the modem's channel out of the AGC
     // output and its IF AGC lifts it toward the target level (up to 30 dB of
@@ -784,6 +788,16 @@ export class Receiver extends BaseEquipment {
       lockState: lock.locked ? 'locked' : lock.heldMs > 0 ? 'acquiring' : 'unlocked',
       isLowMargin: lock.locked && lock.lowMargin,
     };
+  }
+
+  /** Noise density (mW/Hz, at the carrier's level here) a relayed carrier brought down from its transponder */
+  private static upstreamNoiseDensityMw_(signal: IfSignal): number {
+    const cn0 = signal.upstreamCn0DbHz;
+    if (cn0 === undefined || cn0 === Number.POSITIVE_INFINITY) {
+      return 0;
+    }
+
+    return 10 ** (((signal.power as number) - cn0) / 10);
   }
 
   /**

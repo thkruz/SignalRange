@@ -122,6 +122,39 @@ describe('LinkBudgetTab (M1)', () => {
     tab.dispose();
   });
 
+  it('grades the composite C/N when the uplink half is filled in (phase 19.3)', () => {
+    const tab = new LinkBudgetTab(stubGroundStation(12), 'canvas-content');
+
+    setInput('lb-eirp', '50');
+    setInput('lb-fspl', '180.7');
+    setInput('lb-rxgain', '44.5');
+    setInput('lb-noisetemp', '120');
+    setInput('lb-bandwidth', '36');
+    setInput('lb-miscloss', '2');
+
+    // A partial uplink half is rejected rather than silently ignored
+    setInput('lb-up-eirp', '60');
+    click('lb-compute');
+    expect(LinkBudgetManager.getInstance().state.computedCNRDb).toBeNull();
+    expect(document.getElementById('lb-worksheet-hint')?.textContent).toContain('Uplink budget incomplete');
+
+    setInput('lb-up-fspl', '200');
+    setInput('lb-up-gt', '0');
+    click('lb-compute');
+
+    const state = LinkBudgetManager.getInstance().state;
+    expect(state.computedUplinkCNRDb).not.toBeNull();
+    expect(state.computedCNRDb).toBe(state.computedCompositeCNRDb);
+    expect(state.computedCNRDb!).toBeLessThan(state.computedDownlinkCNRDb!);
+    expect(document.getElementById('lb-composite-cnr')?.textContent).toBe(`${state.computedCompositeCNRDb!.toFixed(1)} dB`);
+    expect(document.getElementById('lb-computed-cnr')?.textContent).toBe(`${state.computedCompositeCNRDb!.toFixed(1)} dB`);
+    expect(document.getElementById('lb-down-cnr')?.textContent).toBe(`${state.computedDownlinkCNRDb!.toFixed(1)} dB`);
+    // Composite ~10.5 dB vs the sandbox's authored 14 dB direct downlink: out of family
+    expect(document.getElementById('lb-accept-badge')?.textContent).toBe('OUT OF FAMILY');
+
+    tab.dispose();
+  });
+
   it('rejects an incomplete worksheet and blocks commit with no carrier', () => {
     const tab = new LinkBudgetTab(stubGroundStation(null), 'canvas-content');
 

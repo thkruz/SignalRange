@@ -82,7 +82,7 @@ export const signalHunterScenario1Data: ScenarioData = {
         satelliteNoradId: 71001,
         frequency: 6021e6, // Uplink, inside SENTRY-7 TP-1 (5990-6030) -> 3796 MHz downlink, 1354 MHz IF
         bandwidth: 3e6,
-        power: 4, // dBm at transponder input; ~C/I 16 dB against the 20 dBm service carrier
+        power: 76.2, // uplink EIRP, dBm (phase 19.3 migration: was 4 dBm at the transponder input, same downlink)
         polarization: 'H',
         startTime: 20,
         duration: 7200, // Persists across the session

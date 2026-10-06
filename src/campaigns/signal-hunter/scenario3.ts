@@ -81,7 +81,7 @@ export const signalHunterScenario3Data: ScenarioData = {
         satelliteNoradId: 71001,
         frequency: 6018e6, // Uplink, inside SENTRY-7 TP-1 -> 3793 MHz downlink, 1357 MHz IF
         bandwidth: 2.5e6,
-        power: 4,
+        power: 76.2, // uplink EIRP, dBm (phase 19.3 migration: was 4 dBm at the transponder input, same downlink)
         polarization: 'H',
         startTime: 20,
         duration: 1500,
@@ -104,7 +104,7 @@ export const signalHunterScenario3Data: ScenarioData = {
         satelliteNoradId: 71001,
         frequency: 6001e6, // Retuned: -> 3776 MHz downlink, 1374 MHz IF, above the service carrier
         bandwidth: 2.5e6,
-        power: 4,
+        power: 76.2, // uplink EIRP, dBm (phase 19.3 migration: was 4 dBm at the transponder input, same downlink)
         polarization: 'H',
         // Back on the air 280 s after the first carrier stopped - two silent cycles and change
         startAfterObjectiveId: 'the-trail-goes-cold',

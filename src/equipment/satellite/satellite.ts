@@ -1,13 +1,19 @@
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
 import { SignalOrigin } from '@app/signal-origin';
-import { type GeoSite, geoLongitudeFromAzimuth, geoLookAngles, geoPolarizationSkewDeg } from '@app/simulation/geo-geometry';
+import { type GeoSite, geoLongitudeFromAzimuth, geoLookAngles, geoPolarizationSkewDeg, geoSlantRangeKm } from '@app/simulation/geo-geometry';
 import { PerlinNoise } from '@app/simulation/perlin-noise';
 import { Rng, type RngStream } from '@app/simulation/rng';
 import { SimClock } from '@app/simulation/sim-clock';
 import { getSimulatedNowMs } from '@app/simulation/sim-time';
 import { dBi, dBm, Hertz, RfFrequency, RfSignal } from '@app/types';
 import { Degrees } from 'ootk';
+import { DEFAULT_TRANSPONDER_PHYSICS, operateTransponder, type TransponderOperatingPoint, type TransponderPhysics, uplinkNoiseDensityDbmHz } from './transponder-model';
+
+/** Free-space path loss, dB (ITU-R P.525) */
+function freeSpaceLossDb(frequencyHz: number, distanceKm: number): number {
+  return 32.45 + 20 * Math.log10(Math.max(1e-3, distanceKm)) + 20 * Math.log10(frequencyHz / 1e6);
+}
 
 /**
  * Configuration for explicitly defining a satellite transponder.
@@ -27,14 +33,11 @@ export interface TransponderConfig {
   polarization: 'H' | 'V' | 'LHCP' | 'RHCP';
   /** Optional beacon signal for this transponder */
   beacon?: RfSignal;
-  /** Maximum output power (dBm), default 50 */
-  maxPower?: dBm;
-  /** Transponder gain (dBi), default 36.5 */
-  gain?: dBi;
-  /** Noise figure (dBi), default 3.5 */
-  noiseFigure?: dBi;
-  /** Saturation power (dBm), default 47 */
-  saturationPower?: dBm;
+  /**
+   * Transponder physics (Phase 19.3): SFD, G/T, saturated EIRP, amplifier
+   * class and gain mode. Omitted fields take DEFAULT_TRANSPONDER_PHYSICS.
+   */
+  physics?: Partial<TransponderPhysics>;
   /** Whether transponder is initially active, default true */
   isActive?: boolean;
 }
@@ -53,14 +56,8 @@ export interface Transponder {
   beacon?: RfSignal;
   /** Transponder bandwidth (Hz) */
   bandwidth: Hertz;
-  /** Maximum output power */
-  maxPower: dBm;
-  /** Transponder gain */
-  gain: dBi;
-  /** Noise figure */
-  noiseFigure: dBi;
-  /** Non-linear saturation power */
-  saturationPower: dBm;
+  /** SFD, G/T, saturated EIRP, amplifier and gain mode (Phase 19.3) */
+  physics: TransponderPhysics;
   /** Whether the transponder is active */
   isActive: boolean;
   /** Lower edge of uplink passband (uplinkFrequency - bandwidth/2) */
@@ -148,6 +145,15 @@ export interface SatelliteState {
    * Omitted: one az/el for every station (legacy).
    */
   lookAnglesFrom?: GeoSite;
+  /**
+   * Authored carriers that stand in for a ground station's own uplink
+   * (Phase 19.3): authored carrier signalId -> the ground carrier's signalId.
+   * While a station radiates that carrier into the transponder, the station's
+   * carrier is the real thing and the stand-in is not relayed (Campaign 1:
+   * each TDMA composite is the teleport carrier VT-01 or ME-02 uplinks; when
+   * neither radiates, the stand-in keeps the service on the air).
+   */
+  standIns?: Record<string, string>;
 }
 
 /** Offsets of a legacy GEO satellite's look angles and skew at one station, relative to its reference station */
@@ -210,6 +216,10 @@ export class Satellite {
   readonly lookAnglesFrom: GeoSite | null;
   /** Slot longitude (degrees east) derived from the authored azimuth at the reference station; null without one */
   readonly slotLongitudeDeg: number | null;
+  /** Authored carrier -> the ground carrier it stands in for */
+  private readonly standIns_: Record<string, string>;
+  /** Each transponder's operating point from the last update */
+  private readonly operatingPoints_ = new Map<string, TransponderOperatingPoint>();
   /** Per-station look-angle offsets, keyed by site */
   private readonly stationOffsets_ = new Map<string, StationLookOffsets>();
 
@@ -254,6 +264,7 @@ export class Satellite {
     this.az = satelliteState.az;
     this.el = satelliteState.el;
     this.lookAnglesFrom = satelliteState.lookAnglesFrom ?? null;
+    this.standIns_ = satelliteState.standIns ?? {};
     const centerAz = satelliteState.geosyncConfig ? (satelliteState.geosyncConfig.minAz + satelliteState.geosyncConfig.maxAz) / 2 : satelliteState.az;
     this.slotLongitudeDeg = this.lookAnglesFrom ? geoLongitudeFromAzimuth(this.lookAnglesFrom, centerAz) : null;
     // Authored skew wins. Unauthored: the geometric skew at the reference
@@ -353,10 +364,7 @@ export class Satellite {
         downlinkFrequency: downlinkCenter,
         bandwidth: config.bandwidth,
         beacon: config.beacon,
-        maxPower: config.maxPower ?? (50 as dBm),
-        gain: config.gain ?? (36.5 as dBi),
-        noiseFigure: config.noiseFigure ?? (3.5 as dBi),
-        saturationPower: config.saturationPower ?? (47 as dBm),
+        physics: { ...DEFAULT_TRANSPONDER_PHYSICS, ...config.physics },
         isActive: config.isActive ?? true,
         uplinkLowEdge: (config.uplinkCenterFrequency - halfBandwidth) as RfFrequency,
         uplinkHighEdge: (config.uplinkCenterFrequency + halfBandwidth) as RfFrequency,
@@ -379,10 +387,7 @@ export class Satellite {
       beacon: beaconSignals[index],
       downlinkFrequency: this.getDownlinkFromUplink(signal.frequency),
       bandwidth: bandwidth,
-      maxPower: 50 as dBm,
-      gain: 36.5 as dBi,
-      noiseFigure: 3.5 as dBi,
-      saturationPower: 47 as dBm,
+      physics: { ...DEFAULT_TRANSPONDER_PHYSICS },
       isActive: true,
       uplinkLowEdge: (signal.frequency - halfBandwidth) as RfFrequency,
       uplinkHighEdge: (signal.frequency + halfBandwidth) as RfFrequency,
@@ -451,56 +456,91 @@ export class Satellite {
   }
 
   /**
-   * Process received signals through transponders to generate transmitted signals.
-   * Applies realistic RF effects including gain, noise, saturation, and degradation.
+   * Relay what arrives in each transponder's passband (Phase 19.3). Ground
+   * uplinks (`rxSignal`) arrive as isotropic received power, already through
+   * the uplink path; authored third-party carriers and injected interference
+   * (`externalSignal`) are their uplinker's EIRP, put through the free-space
+   * loss from this satellite's reference range (`uplinkReferenceRangeKm`).
+   * Each transponder's carriers are operated together (`operateTransponder`):
+   * shared output power, with uplink noise and IM riding along as
+   * `upstreamCn0DbHz`.
    */
   private processSignals(): RfSignal[] {
     const processedSignals: RfSignal[] = [];
-    const allRxSignals = [...this.rxSignal, ...this.externalSignal];
+    const byTransponder = new Map<Transponder, { signal: RfSignal; isoPowerDbm: number }[]>();
+    const externalRangeKm = this.uplinkReferenceRangeKm();
 
-    for (const signal of allRxSignals) {
-      // Find transponder by passband and polarization matching
+    const accept = (signal: RfSignal, isoPowerDbm: number): void => {
       const transponder = this.findTransponderByUplinkFrequency(signal.frequency, signal.polarization);
-
       if (!transponder?.isActive) {
+        return;
+      }
+      const list = byTransponder.get(transponder) ?? [];
+      list.push({ signal, isoPowerDbm });
+      byTransponder.set(transponder, list);
+    };
+    // One service, one carrier: two stations radiating the same carrier (a
+    // handover partner holding the traffic too) are not a collision; the
+    // stronger arrival is the carrier (DEV-XPDR-07)
+    const strongest = new Map<string, RfSignal>();
+    for (const signal of this.rxSignal) {
+      const prev = strongest.get(signal.signalId);
+      if (!prev || signal.power > prev.power) {
+        strongest.set(signal.signalId, signal);
+      }
+    }
+    const onAir = new Set<string>();
+    for (const signal of strongest.values()) {
+      accept(signal, signal.power);
+      const tp = this.findTransponderByUplinkFrequency(signal.frequency, signal.polarization);
+      if (tp && signal.power - (uplinkNoiseDensityDbmHz(tp.physics.gOverTDbK) + 10 * Math.log10(Math.max(1, signal.bandwidth as number))) >= Satellite.RELAY_FLOOR_CN_DB) {
+        onAir.add(signal.signalId);
+      }
+    }
+    for (const signal of this.externalSignal) {
+      const standsInFor = this.standIns_[signal.signalId];
+      if (standsInFor && onAir.has(standsInFor)) {
         continue;
       }
+      accept(signal, (signal.power as number) - freeSpaceLossDb(signal.frequency as number, externalRangeKm));
+    }
 
-      // Apply transponder gain to received signal
-      let txPower: dBm = signal.power;
+    this.operatingPoints_.clear();
+    for (const [transponder, inputs] of byTransponder) {
+      const point = operateTransponder(
+        transponder.physics,
+        inputs.map(({ signal, isoPowerDbm }) => ({ signalId: signal.signalId, isoPowerDbm, bandwidthHz: signal.bandwidth as number })),
+        transponder.uplinkFrequency as number,
+        transponder.bandwidth as number
+      );
+      this.operatingPoints_.set(transponder.id, point);
 
-      // Apply saturation effects (non-linear power limiting)
-      txPower = this.applySaturation(txPower, transponder.saturationPower, transponder.maxPower);
+      inputs.forEach(({ signal }, i) => {
+        const relayed = point.carriers[i];
+        // Under the uplink noise by more than 10 dB in its own bandwidth: not
+        // a carrier anyone downstream can see (it still loaded the transponder)
+        if (relayed.cn0UpDbHz - 10 * Math.log10(Math.max(1, signal.bandwidth as number)) < Satellite.RELAY_FLOOR_CN_DB) {
+          return;
+        }
 
-      // Add thermal noise based on noise figure
-      txPower = this.addThermalNoise(txPower, transponder.noiseFigure, signal.bandwidth);
+        const txSignal: RfSignal = {
+          ...signal,
+          frequency: (signal.frequency - transponder.frequencyOffset) as RfFrequency,
+          power: relayed.eirpDbm as dBm,
+          upstreamCn0DbHz: relayed.upstreamCn0DbHz,
+          origin: SignalOrigin.SATELLITE_TX,
+          // A downlink leaves the satellite's antenna at the satellite's own
+          // polarization angle, like its beacon (phase 19.4: relayed carriers
+          // used to arrive at 0 deg whatever the skew)
+          rotation: this.rotation,
+          // Reverse linear polarization for downlink; circular polarization is
+          // set by the transponder's own antenna and passes through unchanged
+          // (an RHCP uplink must not come back as 'H' - Campaign 3 S8)
+          polarization: signal.polarization === 'H' ? 'V' : signal.polarization === 'V' ? 'H' : signal.polarization,
+        };
 
-      // Add transponder gain
-      txPower = (txPower + transponder.gain) as dBm;
-
-      // Frequency translation using per-transponder offset
-      const txFrequency = (signal.frequency - transponder.frequencyOffset) as RfFrequency;
-
-      // Create transmitted signal
-      let txSignal: RfSignal = {
-        ...signal,
-        frequency: txFrequency,
-        power: txPower,
-        origin: SignalOrigin.SATELLITE_TX,
-        // A downlink leaves the satellite's antenna at the satellite's own
-        // polarization angle, like its beacon (phase 19.4: relayed carriers
-        // used to arrive at 0 deg whatever the skew)
-        rotation: this.rotation,
-        // Reverse linear polarization for downlink; circular polarization is
-        // set by the transponder's own antenna and passes through unchanged
-        // (an RHCP uplink must not come back as 'H' - Campaign 3 S8)
-        polarization: signal.polarization === 'H' ? 'V' : signal.polarization === 'V' ? 'H' : signal.polarization,
-      };
-
-      // Apply degradation effects
-      txSignal = this.applyDegradationEffects(txSignal);
-
-      processedSignals.push(txSignal);
+        processedSignals.push(this.applyDegradationEffects(txSignal));
+      });
     }
 
     // Add beacon signals if transponder has beacon frequency
@@ -525,6 +565,30 @@ export class Satellite {
     return processedSignals;
   }
 
+  /** A relayed carrier below this C/N in its own bandwidth at the transponder input is not relayed, dB */
+  static readonly RELAY_FLOOR_CN_DB = -10;
+
+  /**
+   * Range (km) over which authored third-party uplinks and injected
+   * interference reach this satellite: the slant range from its reference
+   * station (a legacy GEO satellite's authored elevation is that station's;
+   * an orbital satellite's propagated range from its configured observer).
+   * The uplinker's own site is not modelled (DEV-XPDR-06).
+   */
+  uplinkReferenceRangeKm(): number {
+    return this.rangeKm ?? geoSlantRangeKm(this.el as number);
+  }
+
+  /** The transponder's operating point from the last update (IBO, OBO, C/IM, per-carrier C/N0), or null when nothing is in its passband */
+  operatingPoint(transponderId: string): TransponderOperatingPoint | null {
+    return this.operatingPoints_.get(transponderId) ?? null;
+  }
+
+  /** The transponder whose uplink passband (and polarization) takes a carrier, if any */
+  transponderFor(frequency: RfFrequency, polarization: RfSignal['polarization']): Transponder | undefined {
+    return this.findTransponderByUplinkFrequency(frequency, polarization);
+  }
+
   /**
    * Find a transponder that can process the given signal.
    * Matches based on:
@@ -541,44 +605,6 @@ export class Satellite {
       if (polarization === null) return true;
       return tp.polarization === polarization;
     });
-  }
-
-  /**
-   * Apply saturation effects to limit output power based on transponder characteristics.
-   */
-  private applySaturation(inputPower: dBm, saturationPower: dBm, maxPower: dBm): dBm {
-    if (inputPower <= saturationPower) {
-      return inputPower;
-    }
-
-    // Soft saturation curve (AM/PM conversion effects)
-    const excessPower = (inputPower - saturationPower) as dBm;
-    const compressionFactor = 1 / (1 + excessPower / 10);
-
-    return Math.min(saturationPower + excessPower * compressionFactor, maxPower) as dBm;
-  }
-
-  /**
-   * Add thermal noise to the signal based on noise figure and bandwidth.
-   */
-  private addThermalNoise(signalPower: dBm, noiseFigure: dBi, bandwidth: Hertz): dBm {
-    // Thermal noise power: N = k * T * B * NF
-    // k = Boltzmann constant = 1.38e-23 J/K
-    // T = Temperature (assume 290K)
-    // B = Bandwidth (Hz)
-    // NF = Noise Figure (dB)
-
-    const k = 1.38e-23;
-    const T = 290; // Kelvin
-    const noisePowerWatts = k * T * bandwidth * 10 ** (noiseFigure / 10);
-    const noisePowerDbm = 10 * Math.log10(noisePowerWatts * 1000);
-
-    // Combine signal and noise power (in linear scale)
-    const signalLinear = 10 ** (signalPower / 10);
-    const noiseLinear = 10 ** (noisePowerDbm / 10);
-    const totalLinear = signalLinear + noiseLinear;
-
-    return (10 * Math.log10(totalLinear)) as dBm;
   }
 
   /**
@@ -782,26 +808,5 @@ export class Satellite {
       ...this.degradationConfig,
       ...config,
     };
-  }
-
-  /**
-   * Get carrier-to-noise ratio for a specific signal.
-   */
-  getCarrierToNoiseRatio(signalId: string): number | null {
-    const signal = this.txSignal.find((s) => s.signalId === signalId);
-    if (!signal) return null;
-
-    const transponderIndex = this.rxSignal.findIndex((s) => s.signalId === signalId);
-    if (transponderIndex < 0) return null;
-
-    const transponder = this.transponders[transponderIndex];
-
-    // Calculate noise power
-    const k = 1.38e-23;
-    const T = 290;
-    const noisePowerWatts = k * T * signal.bandwidth * 10 ** (transponder.noiseFigure / 10);
-    const noisePowerDbm = 10 * Math.log10(noisePowerWatts * 1000);
-
-    return signal.power - noisePowerDbm;
   }
 }

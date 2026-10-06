@@ -1,8 +1,12 @@
 import { OrbitalObserver, OrbitalSatellite } from '@app/equipment/satellite/orbital-satellite';
 import { TransponderConfig } from '@app/equipment/satellite/satellite';
+import type { TransponderPhysics } from '@app/equipment/satellite/transponder-model';
 import { SignalOrigin } from '@app/signal-origin';
 import type { dBi, dBm, FECType, Hertz, ModulationType, RfFrequency } from '@app/types';
 import type { Degrees, Kilometers, TleLine1, TleLine2 } from 'ootk';
+
+/** C-band transponder physics for the SENTRY birds (phase 19.3) */
+const SENTRY_C_BAND_TRANSPONDER: Partial<TransponderPhysics> = { sfdDbwM2: -87, gOverTDbK: 0, satEirpDbw: 34, amplifier: 'twta', gainMode: 'fgm' };
 
 /**
  * Campaign 5 (Signal Hunter) satellite roster.
@@ -56,6 +60,7 @@ export const sentry7Satellite = new OrbitalSatellite(
       {
         id: 'TP-1',
         uplinkCenterFrequency: 6010e6 as RfFrequency, // passband 5990-6030 MHz
+        physics: SENTRY_C_BAND_TRANSPONDER,
         bandwidth: 40e6 as Hertz,
         frequencyOffset: 2.225e9 as Hertz, // uplink 6013 -> downlink 3788 (jammer)
         polarization: 'H',
@@ -101,6 +106,7 @@ export const sentry9Satellite = new OrbitalSatellite(
       {
         id: 'TP-1',
         uplinkCenterFrequency: 6250e6 as RfFrequency,
+        physics: SENTRY_C_BAND_TRANSPONDER,
         bandwidth: 36e6 as Hertz,
         frequencyOffset: 2.225e9 as Hertz,
         polarization: 'H',

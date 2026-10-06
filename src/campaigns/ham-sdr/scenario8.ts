@@ -72,7 +72,7 @@ export const hamSdrScenario8Data: ScenarioData = {
         satelliteNoradId: 63002,
         frequency: 435.905e6, // inside the 435.885-915 passband -> downlink 435.295
         bandwidth: 12e3,
-        power: -100, // dBm at the satellite -> ~+32 dBm transponded (beacon is +28)
+        power: 46.1, // the pirate's EIRP, dBm (~40 W): about -100 dBm at the satellite, 5 dB over a backyard uplink (phase 19.3; was the input power itself)
         polarization: 'RHCP',
         startTime: 1200,
         duration: 3600,

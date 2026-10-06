@@ -72,7 +72,8 @@
               "lockedSamples": 563
             }
           ],
-          "adjacentCarriers": 0
+          "adjacentCarriers": 0,
+          "transponders": []
         },
         {
           "satellite": "WXSAT-19",
@@ -85,7 +86,8 @@
           },
           "atPeak": null,
           "carriers": [],
-          "adjacentCarriers": 0
+          "adjacentCarriers": 0,
+          "transponders": []
         }
       ],
       "txChain": {
@@ -109,7 +111,8 @@
         "hpaOutputBackoffDb": null,
         "hpaIm3Dbc": null,
         "hpaAlcAtLimit": null,
-        "hpaTempEqC": 28
+        "hpaTempEqC": 28,
+        "radiated": []
       }
     },
     {
@@ -137,7 +140,8 @@
           },
           "atPeak": null,
           "carriers": [],
-          "adjacentCarriers": 0
+          "adjacentCarriers": 0,
+          "transponders": []
         },
         {
           "satellite": "WXSAT-19",
@@ -174,7 +178,8 @@
               "lockedSamples": 776
             }
           ],
-          "adjacentCarriers": 0
+          "adjacentCarriers": 0,
+          "transponders": []
         }
       ],
       "txChain": {
@@ -198,7 +203,8 @@
         "hpaOutputBackoffDb": null,
         "hpaIm3Dbc": null,
         "hpaAlcAtLimit": null,
-        "hpaTempEqC": 25
+        "hpaTempEqC": 25,
+        "radiated": []
       }
     }
   ]

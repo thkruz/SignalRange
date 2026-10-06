@@ -10,7 +10,7 @@ import './ea-assessment-tab.css';
  * EaAssessmentTab - Electronic-attack / SATCOM denial battle-damage assessment
  * (Campaign 4). Read-only readout of the ElectronicAttackManager's live J/S
  * picture: whether a jam waveform is radiating in the target uplink band, if the
- * jam antenna is on target, the jam/victim powers at the transponder, and the
+ * jam antenna is on target, the jam/victim uplink EIRPs, and the
  * resulting J/S vs the denial threshold. Only registered when the scenario
  * declares settings.electronicAttack, so legacy campaigns never see this tab.
  */
@@ -63,8 +63,8 @@ export class EaAssessmentTab extends BaseElement {
                     <tr><td>Jam radiating in target band</td><td id="ea-radiating" class="text-end"></td></tr>
                     <tr><td>Jam antenna on target</td><td id="ea-ontarget" class="text-end"></td></tr>
                     <tr><td>Pointing error</td><td id="ea-pointing" class="text-end"></td></tr>
-                    <tr><td>Jam power @ transponder (J)</td><td id="ea-jam-power" class="text-end"></td></tr>
-                    <tr><td>Victim carrier @ transponder (S)</td><td id="ea-victim-power" class="text-end"></td></tr>
+                    <tr><td>Jam uplink EIRP (J)</td><td id="ea-jam-power" class="text-end"></td></tr>
+                    <tr><td>Victim uplink EIRP (S)</td><td id="ea-victim-power" class="text-end"></td></tr>
                     <tr class="ea-jts-row"><td>Jam-to-signal ratio (J/S)</td><td id="ea-jts" class="text-end"></td></tr>
                   </tbody>
                 </table>

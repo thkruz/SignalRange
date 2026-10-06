@@ -15,7 +15,8 @@ import { cubehop1Satellite, navstar77Satellite, wxsat19Satellite } from './satel
  * - Circular polarization handedness switch on the crossed yagi
  * - Doppler chasing / AFC on the 70cm FM bird
  * - SatNOGS-style Observations list (pass schedule reskin)
- * - GPS L1 spread-spectrum detection from a MEO bird
+ * - GPS L1 below the noise floor: a MEO bird at its real EIRP that never
+ *   shows on the analyzer (phase 19.3; it needs despreading to be seen)
  *
  * Pass timeline (scenario clock starts 2027-06-19 16:00:00 UTC):
  * - WXSAT-19:   AOS T+3.0 min, max el 55.0 deg T+10.6, LOS T+18.2 min
@@ -148,14 +149,14 @@ export const hamSdrSandboxData: ScenarioData = {
       id: 'gps-detect',
       title: 'Find GPS Under the Noise',
       description:
-        'Switch to the GPS Experiment rig. NAVSTAR-77 is nearly overhead, but you will not see a carrier: GPS L1 is spread-spectrum, a 2 MHz-wide bump barely above the noise floor. That is the whole point - the signal is below the noise until a receiver despreads it. Spot the hump around 1575.42 MHz.',
+        'Switch to the GPS Experiment rig and tune to 1575.42 MHz. NAVSTAR-77 is nearly overhead, and you will see nothing but noise: GPS L1 is spread across 2 MHz and arrives below your noise floor. That is the whole point - the signal stays under the noise until a receiver despreads it with the right code.',
       groundStation: 'BKYD-GPS',
       isOptional: true,
       prerequisiteObjectiveIds: ['check-observations'],
       conditions: [
         {
           type: 'signal-detected',
-          description: 'L1 Spread-Spectrum Energy Detected',
+          description: 'L1 Reaching the Antenna (Under the Floor)',
           params: {
             signalId: 'NAVSTAR-77-L1',
             minPower: -120 as dBm,
@@ -202,7 +203,7 @@ export const hamSdrSandboxData: ScenarioData = {
         audioUrl: '',
       },
       'gps-detect': {
-        text: `<p>There it is - that fat little bump at 1575.42. That's GPS. Notice there's no carrier spike? The signal is spread across two megahertz ON PURPOSE, so it's basically hiding under the noise floor. Your phone digs it out with math - correlation, not muscle.</p><p>Congratulations: you just found the signal that runs the whole world, with a patch antenna taped to a paint stick. Uncle Charlie's dish can't even tune this low. Don't tell him I said that.</p>`,
+        text: `<p>See that? Nothing. That's GPS. NAVSTAR-77 is right overhead and its signal really is reaching the patch - spread across two megahertz ON PURPOSE, so it sits under the noise floor. No spike, no bump. Your phone digs it out with math - correlation, not muscle.</p><p>Congratulations: you just pointed a patch antenna taped to a paint stick at the signal that runs the whole world, and learned why you can't see it. Uncle Charlie's dish can't even tune this low. Don't tell him I said that.</p>`,
         character: Character.RILEY_BROOKS,
         emotion: Emotion.EXCITED,
         audioUrl: '',

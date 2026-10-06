@@ -88,7 +88,8 @@
               "lockedSamples": 758
             }
           ],
-          "adjacentCarriers": 0
+          "adjacentCarriers": 0,
+          "transponders": []
         },
         {
           "satellite": "CUBEHOP-1",
@@ -101,7 +102,8 @@
           },
           "atPeak": null,
           "carriers": [],
-          "adjacentCarriers": 0
+          "adjacentCarriers": 0,
+          "transponders": []
         },
         {
           "satellite": "NAVSTAR-77",
@@ -114,7 +116,8 @@
           },
           "atPeak": null,
           "carriers": [],
-          "adjacentCarriers": 1
+          "adjacentCarriers": 1,
+          "transponders": []
         }
       ],
       "txChain": {
@@ -138,7 +141,8 @@
         "hpaOutputBackoffDb": null,
         "hpaIm3Dbc": null,
         "hpaAlcAtLimit": null,
-        "hpaTempEqC": 25
+        "hpaTempEqC": 25,
+        "radiated": []
       }
     },
     {
@@ -166,7 +170,8 @@
           },
           "atPeak": null,
           "carriers": [],
-          "adjacentCarriers": 0
+          "adjacentCarriers": 0,
+          "transponders": []
         },
         {
           "satellite": "CUBEHOP-1",
@@ -203,7 +208,8 @@
               "lockedSamples": 603
             }
           ],
-          "adjacentCarriers": 0
+          "adjacentCarriers": 0,
+          "transponders": []
         },
         {
           "satellite": "NAVSTAR-77",
@@ -216,7 +222,8 @@
           },
           "atPeak": null,
           "carriers": [],
-          "adjacentCarriers": 1
+          "adjacentCarriers": 1,
+          "transponders": []
         }
       ],
       "txChain": {
@@ -240,7 +247,8 @@
         "hpaOutputBackoffDb": null,
         "hpaIm3Dbc": null,
         "hpaAlcAtLimit": null,
-        "hpaTempEqC": 25
+        "hpaTempEqC": 25,
+        "radiated": []
       }
     },
     {
@@ -268,7 +276,8 @@
           },
           "atPeak": null,
           "carriers": [],
-          "adjacentCarriers": 1
+          "adjacentCarriers": 1,
+          "transponders": []
         },
         {
           "satellite": "CUBEHOP-1",
@@ -281,7 +290,8 @@
           },
           "atPeak": null,
           "carriers": [],
-          "adjacentCarriers": 1
+          "adjacentCarriers": 1,
+          "transponders": []
         },
         {
           "satellite": "NAVSTAR-77",
@@ -307,18 +317,19 @@
               "bandwidthMHz": 2.05,
               "modulation": "null",
               "fec": "null",
-              "samples": 12812,
+              "samples": 12505,
               "peakCnDb": null,
               "medianCnDb": null,
               "peakEsN0Db": null,
               "requiredEsN0Db": null,
               "peakLockMarginDb": null,
-              "peakRxIfDbm": -31.81,
-              "noiseIfDbm": -36.76,
+              "peakRxIfDbm": -44.81,
+              "noiseIfDbm": -36.81,
               "lockedSamples": 0
             }
           ],
-          "adjacentCarriers": 0
+          "adjacentCarriers": 0,
+          "transponders": []
         }
       ],
       "txChain": {
@@ -342,7 +353,8 @@
         "hpaOutputBackoffDb": null,
         "hpaIm3Dbc": null,
         "hpaAlcAtLimit": null,
-        "hpaTempEqC": 25
+        "hpaTempEqC": 25,
+        "radiated": []
       }
     }
   ]

@@ -1,8 +1,12 @@
 import { OrbitalObserver, OrbitalSatellite } from '@app/equipment/satellite/orbital-satellite';
 import { TransponderConfig } from '@app/equipment/satellite/satellite';
+import type { TransponderPhysics } from '@app/equipment/satellite/transponder-model';
 import { SignalOrigin } from '@app/signal-origin';
 import type { dBi, dBm, FECType, Hertz, ModulationType, RfFrequency } from '@app/types';
 import type { Degrees, Kilometers, TleLine1, TleLine2 } from 'ootk';
+
+/** X-band (7/8 GHz) transponder physics (phase 19.3): a representative military-band bent pipe */
+const CCS_X_BAND_TRANSPONDER: Partial<TransponderPhysics> = { sfdDbwM2: -84, gOverTDbK: 2, satEirpDbw: 32, amplifier: 'twta', gainMode: 'fgm' };
 
 /**
  * Campaign 4 (9th EWS / Counter Communications) satellite roster.
@@ -54,7 +58,7 @@ export const cobalt4Satellite = new OrbitalSatellite(
       noradId: 90042,
       frequency: 8125e6 as RfFrequency,
       polarization: 'H',
-      power: 6 as dBm, // At the transponder input (the "S" in J/S)
+      power: 83.2 as dBm, // the service uplinker's EIRP (the "S" in J/S; phase 19.3 migration: was 6 dBm at the transponder input, same 12.5 dBW downlink)
       bandwidth: 5e6 as Hertz,
       modulation: 'QPSK' as ModulationType,
       fec: '3/4' as FECType,
@@ -81,6 +85,7 @@ export const cobalt4Satellite = new OrbitalSatellite(
       {
         id: 'TP-X1',
         uplinkCenterFrequency: 8125e6 as RfFrequency, // Passband 8100-8150 MHz
+        physics: CCS_X_BAND_TRANSPONDER,
         bandwidth: 50e6 as Hertz,
         frequencyOffset: 0.65e9 as Hertz, // Downlink center: 7475 MHz
         polarization: 'H',
@@ -145,6 +150,7 @@ export const talon2Satellite = new OrbitalSatellite(
       {
         id: 'TP-T1',
         uplinkCenterFrequency: 8200e6 as RfFrequency, // Passband 8175-8225 MHz (the protected band)
+        physics: CCS_X_BAND_TRANSPONDER,
         bandwidth: 50e6 as Hertz,
         frequencyOffset: 0.9e9 as Hertz, // Downlink centre: 7300 MHz
         polarization: 'H',

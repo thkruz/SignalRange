@@ -1,8 +1,16 @@
 import { OrbitalObserver, OrbitalSatellite } from '@app/equipment/satellite/orbital-satellite';
 import { TransponderConfig } from '@app/equipment/satellite/satellite';
+import type { TransponderPhysics } from '@app/equipment/satellite/transponder-model';
 import { SignalOrigin } from '@app/signal-origin';
 import type { dBi, dBm, FECType, Hertz, ModulationType, RfFrequency } from '@app/types';
 import type { Degrees, Kilometers, TleLine1, TleLine2 } from 'ootk';
+
+/**
+ * The SAR birds' Ku telecommand transponder (phase 19.3): a low-gain command
+ * receiver whose relayed carrier comes back at roughly beacon level (a
+ * 1 W-class SSPA, 0 dBW), not the payload downlink's.
+ */
+const SAR_COMMAND_TRANSPONDER: Partial<TransponderPhysics> = { sfdDbwM2: -85, gOverTDbK: -5, satEirpDbw: 0, amplifier: 'sspa', gainMode: 'fgm' };
 
 /**
  * NATS Europe satellite roster.
@@ -77,6 +85,7 @@ function sar1Options() {
       {
         id: 'TP-CMD',
         uplinkCenterFrequency: 14005e6 as RfFrequency, // Ku telecommand uplink
+        physics: SAR_COMMAND_TRANSPONDER,
         bandwidth: 36e6 as Hertz,
         frequencyOffset: 2.255e9 as Hertz, // Transponded downlink: 11750 MHz
         polarization: 'H',
@@ -143,6 +152,7 @@ function sar2Options() {
       {
         id: 'TP-CMD',
         uplinkCenterFrequency: 14035e6 as RfFrequency,
+        physics: SAR_COMMAND_TRANSPONDER,
         bandwidth: 36e6 as Hertz,
         frequencyOffset: 2.255e9 as Hertz, // Transponded downlink: 11780 MHz
         polarization: 'H',
@@ -201,6 +211,7 @@ function sar3Options() {
       {
         id: 'TP-CMD',
         uplinkCenterFrequency: MERIDIAN_SAR3_TTC_UPLINK_RF_HZ,
+        physics: SAR_COMMAND_TRANSPONDER,
         bandwidth: 36e6 as Hertz,
         frequencyOffset: 2.255e9 as Hertz, // Transponded downlink: 11810 MHz
         polarization: 'H',

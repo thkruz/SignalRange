@@ -51,20 +51,20 @@
           },
           "carriers": [
             {
-              "signalId": "AURORA-7-TDMA-Composite",
+              "signalId": "AURORA-7-Uplink",
               "rfMHz": 3828,
               "ifMHz": 1422,
               "bandwidthMHz": 24,
               "modulation": "QPSK",
               "fec": "3/4",
               "samples": 5,
-              "peakCnDb": 13.17,
-              "medianCnDb": 13.17,
-              "peakEsN0Db": 13.95,
+              "peakCnDb": 10.15,
+              "medianCnDb": 10.15,
+              "peakEsN0Db": 10.94,
               "requiredEsN0Db": 5.03,
-              "peakLockMarginDb": 8.92,
-              "peakRxIfDbm": -28.26,
-              "noiseIfDbm": -41.42,
+              "peakLockMarginDb": 5.91,
+              "peakRxIfDbm": -29.02,
+              "noiseIfDbm": -39.37,
               "lockedSamples": 5
             },
             {
@@ -75,17 +75,33 @@
               "modulation": "CW",
               "fec": "null",
               "samples": 5,
-              "peakCnDb": 7.29,
-              "medianCnDb": 7.29,
-              "peakEsN0Db": 8.08,
+              "peakCnDb": 7.22,
+              "medianCnDb": 7.22,
+              "peakEsN0Db": 8.01,
               "requiredEsN0Db": null,
               "peakLockMarginDb": null,
-              "peakRxIfDbm": -77.94,
-              "noiseIfDbm": -85.23,
+              "peakRxIfDbm": -75.95,
+              "noiseIfDbm": -83.17,
               "lockedSamples": 0
             }
           ],
-          "adjacentCarriers": 0
+          "adjacentCarriers": 0,
+          "transponders": [
+            {
+              "id": "TP-1",
+              "iboDb": 5.43,
+              "oboDb": 1.6,
+              "carrierToImDb": null,
+              "carriers": [
+                {
+                  "signalId": "AURORA-7-Uplink",
+                  "eirpDbw": 23.39,
+                  "cnUpDbHz": 97.56,
+                  "upstreamCn0DbHz": 97.56
+                }
+              ]
+            }
+          ]
         },
         {
           "satellite": "TIDEMARK-1",
@@ -108,13 +124,13 @@
               "modulation": "QPSK",
               "fec": "3/4",
               "samples": 5,
-              "peakCnDb": 13.53,
-              "medianCnDb": 13.53,
-              "peakEsN0Db": 14.31,
+              "peakCnDb": 13.15,
+              "medianCnDb": 13.15,
+              "peakEsN0Db": 13.94,
               "requiredEsN0Db": 5.03,
-              "peakLockMarginDb": 9.28,
-              "peakRxIfDbm": -29.82,
-              "noiseIfDbm": -43.37,
+              "peakLockMarginDb": 8.91,
+              "peakRxIfDbm": -29.36,
+              "noiseIfDbm": -42.85,
               "lockedSamples": 5
             },
             {
@@ -125,17 +141,33 @@
               "modulation": "CW",
               "fec": "null",
               "samples": 5,
-              "peakCnDb": 32.59,
-              "medianCnDb": 32.59,
-              "peakEsN0Db": 32.97,
+              "peakCnDb": 32.53,
+              "medianCnDb": 32.53,
+              "peakEsN0Db": 32.92,
               "requiredEsN0Db": null,
               "peakLockMarginDb": null,
-              "peakRxIfDbm": -56.35,
-              "noiseIfDbm": -88.93,
+              "peakRxIfDbm": -55.88,
+              "noiseIfDbm": -88.41,
               "lockedSamples": 0
             }
           ],
-          "adjacentCarriers": 0
+          "adjacentCarriers": 0,
+          "transponders": [
+            {
+              "id": "TP-1",
+              "iboDb": 2.93,
+              "oboDb": 0.49,
+              "carrierToImDb": null,
+              "carriers": [
+                {
+                  "signalId": "TIDEMARK-1-TDMA-Composite",
+                  "eirpDbw": 26.5,
+                  "cnUpDbHz": 100.22,
+                  "upstreamCn0DbHz": 100.22
+                }
+              ]
+            }
+          ]
         }
       ],
       "txChain": {
@@ -159,7 +191,14 @@
         "hpaOutputBackoffDb": 10,
         "hpaIm3Dbc": -43.06,
         "hpaAlcAtLimit": false,
-        "hpaTempEqC": 43.61
+        "hpaTempEqC": 43.61,
+        "radiated": [
+          {
+            "signalId": "AURORA-7-Uplink",
+            "rfMHz": 6053,
+            "eirpDbm": 102.88
+          }
+        ]
       }
     }
   ]

@@ -27,6 +27,7 @@
  * like at a 4 m Ku beamwidth.
  */
 
+import { slantRangeKmAt } from '@app/simulation/geo-geometry';
 import { getSimulatedNowMs } from '@app/simulation/sim-time';
 import { Hertz, RfFrequency, RfSignal } from '@app/types';
 import { Degrees, EciVec3, GroundObject, Kilometers, KilometersPerSecond, LlaVec3, Satellite as OotkSatellite, TleLine1, TleLine2, Vec3 } from 'ootk';
@@ -353,6 +354,26 @@ export class OrbitalSatellite extends Satellite {
     this.lastPositionUpdateTime_ = nowMs;
     this.propagateTo_(nowMs);
   }
+
+  /**
+   * Range over which authored third-party uplinks and injected interference
+   * reach an orbital satellite (phase 19.3): the slant range at 30 deg
+   * elevation for its current orbit radius. A stand-in uplinker sees the
+   * satellite at a typical working elevation whatever the canonical observer's
+   * geometry is (a LEO below that observer's horizon is still being uplinked
+   * by someone); for a GEO this is ~37,600 km.
+   */
+  override uplinkReferenceRangeKm(): number {
+    const p = this.eciPosition;
+    if (!p) {
+      return super.uplinkReferenceRangeKm();
+    }
+
+    return slantRangeKmAt(OrbitalSatellite.UPLINK_REFERENCE_ELEVATION_DEG, Math.hypot(p.x, p.y, p.z));
+  }
+
+  /** Elevation of the stand-in uplinker's view of an orbital satellite, degrees */
+  static readonly UPLINK_REFERENCE_ELEVATION_DEG = 30;
 
   /**
    * Update signals like the base class, then apply orbital effects:

@@ -61,9 +61,9 @@ export interface EaAssessment {
   isRadiatingInBand: boolean;
   /** The jam antenna is powered and trained on the target within tolerance */
   isOnTarget: boolean;
-  /** Strongest in-band jam power referred to the transponder input, dBm (null when not radiating) */
+  /** Strongest in-band jam as an equivalent uplink EIRP, dBm (null when not radiating; phase 19.3) */
   jamPowerDbm: number | null;
-  /** Victim service carrier power at the transponder input, dBm */
+  /** Victim service carrier's uplink EIRP, dBm */
   victimPowerDbm: number;
   /** Jam-to-signal ratio, dB (null when not radiating) */
   jToSDb: number | null;

@@ -7,7 +7,7 @@ import type { dBi, dBm, FECType, Hertz, ModulationType, RfFrequency } from '@app
 import { getAssetUrl } from '@app/utils/asset-url';
 import { Degrees } from 'ootk';
 import { maineGroundStation, vermontGroundStation } from './ground-stations';
-import { ses10Satellite, tidemark2Satellite, VERMONT_LOOK_ANGLE_SITE } from './satellites';
+import { c1TransponderPhysics, ses10Satellite, tidemark2Satellite, VERMONT_LOOK_ANGLE_SITE } from './satellites';
 
 /**
  * NATS Level 5: "Interference Hunt"
@@ -69,10 +69,11 @@ export const scenario5Data: ScenarioData = {
             modems: [
               {
                 ...vermontGroundStation.transmitters[0].modems[0],
-                // Receive-only shift (phase 19.5): VT-01's own TP-1 uplink would
-                // loop back co-channel with the TM-1 composite at a far higher
-                // level (no uplink FSPL until 19.3, DEV-XPDR-01), and the modem
-                // would decode our own carrier instead of the customer's
+                // Receive-only shift (phase 19.5): the lesson is the customer's
+                // TM-1 composite under a cross-pol carrier. Since 19.3 VT-01's
+                // own TP-1 carrier would replace that stand-in at about its
+                // level (DEV-XPDR-07), so the shift stays receive-only to keep
+                // the composite the carrier on the air
                 isTransmitting: false,
                 isTransmittingSwitchUp: false,
               },
@@ -98,7 +99,7 @@ export const scenario5Data: ScenarioData = {
             noradId: 61525,
             frequency: 5943e6 as RfFrequency,
             polarization: 'H',
-            power: 20 as dBm, // as in satellites.ts (19.2 +2 dB, 19.4 -2 dB)
+            power: 100.1 as dBm, // uplink EIRP: with the cross-pol carrier on, the 26.5 dBW downlink of satellites.ts (phase 19.3)
             bandwidth: 36e6 as Hertz,
             modulation: 'QPSK' as ModulationType,
             fec: '3/4' as FECType,
@@ -123,7 +124,7 @@ export const scenario5Data: ScenarioData = {
             // half a dB over the QPSK 3/4 threshold (5.0 dB), "Degraded margin".
             // At 26 dBm (before 19.5) it buried the carrier (-5.9 dB) and the
             // modem would have lost lock outright (nats-s05-F1).
-            power: 13.9 as dBm,
+            power: 93.0 as dBm,
             bandwidth: 1e6 as Hertz, // Narrowband spike
             modulation: 'QPSK' as ModulationType,
             fec: '3/4' as FECType,
@@ -141,6 +142,7 @@ export const scenario5Data: ScenarioData = {
           rotation: 14 as Degrees,
           frequencyOffset: 2.225e9 as Hertz, // Legacy fallback
           lookAnglesFrom: VERMONT_LOOK_ANGLE_SITE,
+          standIns: { 'TIDEMARK-1-TDMA-Composite': 'TIDEMARK-1-Teleport' },
           // The spike and the carrier fade independently; at the default +/-1 dB
           // their ratio would swing the half-dB lock margin across the lock
           // threshold. A calm +/-0.25 dB keeps the story "degraded, still locked".
@@ -149,6 +151,7 @@ export const scenario5Data: ScenarioData = {
             {
               id: 'TP-1',
               uplinkCenterFrequency: 5943e6 as RfFrequency, // Passband: 5925-5961 MHz
+              physics: c1TransponderPhysics(28), // a dB more than the roster TM-1: the cross-pol carrier shares the output, the composite keeps its pre-19.3 level
               bandwidth: 36e6 as Hertz,
               frequencyOffset: 2.225e9 as Hertz, // Downlink center: 3718 MHz
               polarization: 'H',
@@ -172,6 +175,7 @@ export const scenario5Data: ScenarioData = {
             {
               id: 'TP-2',
               uplinkCenterFrequency: 5906e6 as RfFrequency, // Passband: 5963-5999 MHz
+              physics: c1TransponderPhysics(27),
               bandwidth: 36e6 as Hertz,
               frequencyOffset: 2.225e9 as Hertz, // Downlink center: 3756 MHz
               polarization: 'H',

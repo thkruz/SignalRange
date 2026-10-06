@@ -4,7 +4,7 @@ import { html } from '@app/engine/utils/development/formatter';
 import { qs } from '@app/engine/utils/query-selector';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
-import { type LinkBudgetInputs, LinkBudgetManager } from '@app/link-budget/link-budget-manager';
+import { type LinkBudgetInputs, LinkBudgetManager, type UplinkBudgetInputs } from '@app/link-budget/link-budget-manager';
 import './link-budget-tab.css';
 
 /**
@@ -14,7 +14,10 @@ import './link-budget-tab.css';
  * budget the operator runs before the pass (cross-checked against the ATP card
  * - "in family" / "out of family"), the MEASURED panel shows the C/N the
  * configured chain actually delivers and lets the operator accept the link
- * against the GO/NO-GO margin criteria. Drives LinkBudgetManager, whose state
+ * against the GO/NO-GO margin criteria. The optional UPLINK panel (Phase 19.3)
+ * adds the ground-to-satellite hop of a transponded link; when it is filled in
+ * the graded prediction is the composite C/N rather than the downlink alone.
+ * Drives LinkBudgetManager, whose state
  * the link-budget-computed / link-margin-met conditions read.
  *
  * Only registered when the scenario declares settings.linkBudget, so legacy
@@ -116,6 +119,7 @@ export class LinkBudgetTab extends BaseElement {
                   </div>
                 </div>
                 <button id="lb-compute" class="btn btn-primary w-100 mt-3">Compute C/N</button>
+                <div class="text-muted small mt-2">For a transponded link, fill in the uplink budget too; the composite C/N is graded.</div>
                 <div id="lb-worksheet-hint" class="text-muted small mt-2"></div>
                 <div class="d-flex justify-content-between align-items-center mt-3 pt-2 lb-result-strip">
                   <span class="text-muted small">Predicted C/N:</span>
@@ -150,6 +154,52 @@ export class LinkBudgetTab extends BaseElement {
               </div>
             </div>
           </div>
+
+          <div class="col-lg-7">
+            <div class="card h-100">
+              <div class="card-header"><h3 class="card-title">Uplink Budget — Predicted</h3></div>
+              <div class="card-body">
+                <div class="text-muted small mb-2">Optional: transponded links only. Leave blank for a direct downlink.</div>
+                <div class="row g-2">
+                  <div class="col-6">
+                    <label class="form-label small" for="lb-up-eirp">Uplink EIRP</label>
+                    <div class="input-group input-group-sm">
+                      <input type="number" id="lb-up-eirp" class="form-control font-monospace" step="0.1" />
+                      <span class="input-group-text">dBW</span>
+                    </div>
+                  </div>
+                  <div class="col-6">
+                    <label class="form-label small" for="lb-up-fspl">Uplink path loss</label>
+                    <div class="input-group input-group-sm">
+                      <input type="number" id="lb-up-fspl" class="form-control font-monospace" step="0.1" />
+                      <span class="input-group-text">dB</span>
+                    </div>
+                  </div>
+                  <div class="col-6">
+                    <label class="form-label small" for="lb-up-gt">Satellite G/T</label>
+                    <div class="input-group input-group-sm">
+                      <input type="number" id="lb-up-gt" class="form-control font-monospace" step="0.1" />
+                      <span class="input-group-text">dB/K</span>
+                    </div>
+                  </div>
+                  <div class="col-6">
+                    <label class="form-label small" for="lb-up-cim">C/IM (optional)</label>
+                    <div class="input-group input-group-sm">
+                      <input type="number" id="lb-up-cim" class="form-control font-monospace" step="0.1" />
+                      <span class="input-group-text">dB</span>
+                    </div>
+                  </div>
+                </div>
+                <table class="table table-sm lb-metrics font-monospace mt-3 mb-0">
+                  <tbody>
+                    <tr><td>C/N uplink</td><td id="lb-up-cnr" class="text-end">—</td></tr>
+                    <tr><td>C/N downlink</td><td id="lb-down-cnr" class="text-end">—</td></tr>
+                    <tr><td>Composite C/N</td><td id="lb-composite-cnr" class="text-end fw-bold">—</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     `;
@@ -173,11 +223,19 @@ export class LinkBudgetTab extends BaseElement {
 
       return;
     }
+    const uplink = this.readUplink_(inputs.bandwidthHz);
+    if (uplink === 'incomplete') {
+      if (hint) {
+        hint.textContent = 'Uplink budget incomplete — fill in EIRP, path loss and G/T, or leave all three blank.';
+      }
+
+      return;
+    }
 
     if (hint) {
       hint.textContent = '';
     }
-    LinkBudgetManager.getInstance().computeCNR(inputs);
+    LinkBudgetManager.getInstance().computeCNR(inputs, uplink);
     this.renderPlanningResult_();
   }
 
@@ -216,6 +274,39 @@ export class LinkBudgetTab extends BaseElement {
       systemNoiseTempK,
       bandwidthHz: bandwidthMHz * 1e6,
       miscLossDb: Number.isNaN(miscLossRaw) ? 0 : miscLossRaw,
+    };
+  }
+
+  /**
+   * Parse the optional uplink half. Null when its required fields are all
+   * blank (a direct downlink), 'incomplete' when only some are filled in.
+   */
+  private readUplink_(bandwidthHz: number): UplinkBudgetInputs | null | 'incomplete' {
+    const read = (id: string): number => {
+      const input = this.dom_?.querySelector<HTMLInputElement>(`#${id}`);
+
+      return input && input.value !== '' ? Number(input.value) : NaN;
+    };
+
+    const uplinkEirpDbw = read('lb-up-eirp');
+    const uplinkFsplDb = read('lb-up-fspl');
+    const satGOverTDbK = read('lb-up-gt');
+    const carrierToImDb = read('lb-up-cim');
+    const required = [uplinkEirpDbw, uplinkFsplDb, satGOverTDbK];
+
+    if (required.every((v) => Number.isNaN(v))) {
+      return null;
+    }
+    if (required.some((v) => Number.isNaN(v))) {
+      return 'incomplete';
+    }
+
+    return {
+      uplinkEirpDbw,
+      uplinkFsplDb,
+      satGOverTDbK,
+      bandwidthHz,
+      ...(Number.isNaN(carrierToImDb) ? {} : { carrierToImDb }),
     };
   }
 
@@ -275,7 +366,11 @@ export class LinkBudgetTab extends BaseElement {
     const mgr = LinkBudgetManager.getInstance();
     const computed = mgr.state.computedCNRDb;
 
-    this.setText_('lb-computed-cnr', computed !== null ? `${computed.toFixed(1)} dB` : '—');
+    const fmt = (v: number | null): string => (v !== null ? `${v.toFixed(1)} dB` : '—');
+    this.setText_('lb-computed-cnr', fmt(computed));
+    this.setText_('lb-up-cnr', fmt(mgr.state.computedUplinkCNRDb));
+    this.setText_('lb-down-cnr', fmt(mgr.state.computedDownlinkCNRDb));
+    this.setText_('lb-composite-cnr', fmt(mgr.state.computedCompositeCNRDb));
 
     const badge = this.cache_('lb-accept-badge');
     if (!badge) {

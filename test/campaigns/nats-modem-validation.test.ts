@@ -210,7 +210,7 @@ describe('C1 modem lessons (phase 19.5)', () => {
       `S21 ME-02 TM-2: clean margin ${clean.meanMargin.toFixed(2)} dB; jammed ${jammed.minMargin.toFixed(2)}..${jammed.maxMargin.toFixed(2)} dB, locked ${(jammed.lockedFraction * 100).toFixed(0)} %; jammer density ${shelfDb.toFixed(2)} dB over the carrier`
     );
 
-    expect(clean.minMargin).toBeGreaterThan(8);
+    expect(clean.minMargin).toBeGreaterThan(7.5); // 19.3: the relayed uplink noise (C/N_up ~24 dB) costs ~0.6 dB
     // On the analyzer the jammed 6 MHz reads carrier + jammer: a shelf of
     // 10 log(1 + 10^(shelf/10)) over the carrier's own level
     expect(10 * Math.log10(1 + 10 ** (shelfDb / 10))).toBeGreaterThan(2);

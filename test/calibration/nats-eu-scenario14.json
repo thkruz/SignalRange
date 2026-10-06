@@ -84,7 +84,7 @@
               "requiredEsN0Db": null,
               "peakLockMarginDb": null,
               "peakRxIfDbm": -61.59,
-              "noiseIfDbm": -79.97,
+              "noiseIfDbm": -80.03,
               "lockedSamples": 0
             },
             {
@@ -101,11 +101,12 @@
               "requiredEsN0Db": 5.03,
               "peakLockMarginDb": 7.6,
               "peakRxIfDbm": -30.29,
-              "noiseIfDbm": -34.41,
+              "noiseIfDbm": -34.47,
               "lockedSamples": 399
             }
           ],
-          "adjacentCarriers": 0
+          "adjacentCarriers": 0,
+          "transponders": []
         },
         {
           "satellite": "MERIDIAN-SAR-2",
@@ -159,7 +160,8 @@
               "lockedSamples": 362
             }
           ],
-          "adjacentCarriers": 0
+          "adjacentCarriers": 0,
+          "transponders": []
         }
       ],
       "txChain": {
@@ -183,7 +185,8 @@
         "hpaOutputBackoffDb": null,
         "hpaIm3Dbc": null,
         "hpaAlcAtLimit": null,
-        "hpaTempEqC": 28
+        "hpaTempEqC": 28,
+        "radiated": []
       }
     },
     {
@@ -231,7 +234,7 @@
               "requiredEsN0Db": null,
               "peakLockMarginDb": null,
               "peakRxIfDbm": -61.37,
-              "noiseIfDbm": -79.96,
+              "noiseIfDbm": -80.02,
               "lockedSamples": 0
             },
             {
@@ -248,11 +251,12 @@
               "requiredEsN0Db": 5.03,
               "peakLockMarginDb": 13.37,
               "peakRxIfDbm": -30.06,
-              "noiseIfDbm": -34.4,
+              "noiseIfDbm": -34.46,
               "lockedSamples": 432
             }
           ],
-          "adjacentCarriers": 0
+          "adjacentCarriers": 0,
+          "transponders": []
         },
         {
           "satellite": "MERIDIAN-SAR-2",
@@ -306,7 +310,8 @@
               "lockedSamples": 412
             }
           ],
-          "adjacentCarriers": 0
+          "adjacentCarriers": 0,
+          "transponders": []
         }
       ],
       "txChain": {
@@ -330,7 +335,8 @@
         "hpaOutputBackoffDb": null,
         "hpaIm3Dbc": null,
         "hpaAlcAtLimit": null,
-        "hpaTempEqC": 28
+        "hpaTempEqC": 28,
+        "radiated": []
       }
     }
   ]

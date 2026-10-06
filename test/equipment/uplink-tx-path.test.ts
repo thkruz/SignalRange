@@ -5,13 +5,14 @@ import { makeCubehop1Satellite } from '../../src/campaigns/ham-sdr/satellites';
 import { ANTENNA_CONFIG_KEYS } from '../../src/equipment/antenna/antenna-config-keys';
 import { AntennaCore, AntennaState } from '../../src/equipment/antenna/antenna-core';
 import { HPAModuleCore, HPAState } from '../../src/equipment/rf-front-end/hpa-module/hpa-module-core';
+import { geoSlantRangeKm } from '../../src/simulation/geo-geometry';
 
 /**
  * E2 (Campaign 3 backyard transmit path) unit tests:
  * - fixed-gain uplink link budget (FSPL + atmosphere + off-axis + handedness)
  * - HPBW beam gate replacing the +/-2 deg planar box (fixed-gain only)
  * - stale-uplink clearing when a satellite leaves the beam
- * - legacy parabolic TX path bit-identical (no FSPL)
+ * - dish uplink through FSPL and the whole pattern (phase 19.3)
  * - config-driven HPA max output power (37 dBm brick vs legacy 63 dBm)
  * - transponder preserves circular polarization on the downlink
  */
@@ -204,32 +205,62 @@ describe('E2: fixed-gain uplink link budget', () => {
     expect(sat.rxSignal.filter((s) => s.signalId === 'tx-1')).toHaveLength(1);
   });
 
-  it('legacy parabolic TX path: no FSPL yet (DEV-XPDR-01), satellites in the TX main lobe only, at the pattern drop', () => {
+  it('dish uplink (phase 19.3): FSPL over the slant range, the whole pattern, so a sidelobe neighbour hears it at its real level', () => {
     const dish = new TestableTxAntenna(ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK, {
       isPowered: true,
       azimuth: 180 as any,
       elevation: 45 as any,
     });
-    dish.txFeed = [makeTxSignal({ frequency: 6e9 as RfFrequency, power: 75 as dBm })];
-    // On boresight, a tenth of a degree off, and 2 deg off (inside the old +/-2 deg box)
-    const onAxis = makeSat(180, 45);
-    const nearAxis = makeSat(180, 45.1);
-    const outside = makeSat(182, 45);
-    mockSats.push(onAxis, nearAxis, outside);
+    dish.txFeed = [makeTxSignal({ frequency: 6e9 as RfFrequency, power: 102 as dBm })];
+    // Legacy GEO satellites (no propagated range): on boresight, a tenth of a
+    // degree off, and 2 deg of azimuth off (1.4 deg on the sky)
+    const onAxis = makeSat(180, 45, null as unknown as number);
+    const nearAxis = makeSat(180, 45.1, null as unknown as number);
+    const sidelobe = makeSat(182, 45, null as unknown as number);
+    mockSats.push(onAxis, nearAxis, sidelobe);
 
     dish.runTxUpdate();
 
-    // On boresight: exactly the radiated EIRP less the servo jitter's mean
-    // loss: no FSPL, no atmosphere, no pol stamp
+    // GEO slant range at 45 deg elevation, then FSPL at 6 GHz (~199.5 dB)
+    const rangeKm = geoSlantRangeKm(45);
+    expect(rangeKm).toBeGreaterThan(37_300);
+    expect(rangeKm).toBeLessThan(37_500);
+    const fspl = 32.45 + 20 * Math.log10(rangeKm) + 20 * Math.log10(6000);
     expect(onAxis.rxSignal).toHaveLength(1);
-    expect(onAxis.rxSignal[0].power).toBeGreaterThan(74.95);
-    expect(onAxis.rxSignal[0].power).toBeLessThanOrEqual(75);
+    // EIRP - FSPL - a few hundredths of gas and servo jitter
+    expect(onAxis.rxSignal[0].power).toBeLessThan(102 - fspl);
+    expect(onAxis.rxSignal[0].power).toBeGreaterThan(102 - fspl - 0.15);
     expect(onAxis.rxSignal[0].polarization).toBe('H');
     // 0.1 deg off at 6 GHz (theta3 0.39 deg): 12 (0.1/0.39)^2 = 0.8 dB down
-    expect(nearAxis.rxSignal).toHaveLength(1);
-    expect(75 - nearAxis.rxSignal[0].power).toBeCloseTo(0.8, 0);
-    // 2 deg of azimuth at 45 deg el is 1.4 deg on the sky: a sidelobe, not heard
-    expect(outside.rxSignal).toHaveLength(0);
+    expect(onAxis.rxSignal[0].power - nearAxis.rxSignal[0].power).toBeCloseTo(0.8, 0);
+    // 1.4 deg on the sky is in the S.580 sidelobes (29 - 25 log 1.41 = 25 dBi
+    // against ~54 dBi on axis): radiated, ~29 dB down (was dropped while the
+    // uplink had no path loss, DEV-XPDR-01)
+    expect(sidelobe.rxSignal).toHaveLength(1);
+    const drop = onAxis.rxSignal[0].power - sidelobe.rxSignal[0].power;
+    expect(drop).toBeGreaterThan(26);
+    expect(drop).toBeLessThan(32);
+    mockSats.length = 0;
+  });
+
+  it('a muted chain withdraws only its own uplink from the satellite', () => {
+    const dish = new TestableTxAntenna(ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK, {
+      isPowered: true,
+      azimuth: 180 as any,
+      elevation: 45 as any,
+    });
+    dish.txFeed = [makeTxSignal({ frequency: 6e9 as RfFrequency, power: 102 as dBm })];
+    const sat = makeSat(180, 45, null as unknown as number);
+    const other = makeTxSignal({ signalId: 'other-station', frequency: 6.01e9 as RfFrequency, power: -100 as dBm });
+    sat.rxSignal.push(other);
+    mockSats.push(sat);
+
+    dish.runTxUpdate();
+    expect(sat.rxSignal.map((s) => s.signalId).sort()).toEqual(['other-station', 'tx-1']);
+
+    dish.txFeed = [];
+    dish.runTxUpdate();
+    expect(sat.rxSignal.map((s) => s.signalId)).toEqual(['other-station']);
     mockSats.length = 0;
   });
 });
@@ -295,7 +326,7 @@ describe('E2: config-driven HPA max output power', () => {
 });
 
 describe('E2: CUBEHOP V/U transponder', () => {
-  it('relays a 435.905 RHCP uplink to 435.295 with +132 dB gain, preserving handedness', () => {
+  it('relays a 435.905 RHCP uplink to 435.295 at about beacon strength, preserving handedness', () => {
     const sat = makeCubehop1Satellite();
     sat.rxSignal.push(
       makeTxSignal({
@@ -312,8 +343,10 @@ describe('E2: CUBEHOP V/U transponder', () => {
 
     expect(relayed).toBeDefined();
     expect(relayed!.frequency).toBeCloseTo(435.295e6, 0);
-    // Book value -105 + 132 = 27 dBm; the stock degradation model then applies
-    // ~+/-1 dB power variation + atmospherics, so assert a window around it
+    // -105 dBm is ~13 dB under the transponder's saturating input (SFD
+    // -118 dBW/m2): about 3 dB of output back-off from its 0 dBW, ~27 dBm
+    // (phase 19.3; the old book value was -105 + 132 dB); the stock
+    // degradation model then applies ~+/-1 dB of fading
     expect(relayed!.power).toBeGreaterThan(23);
     expect(relayed!.power).toBeLessThan(31);
     // Circular polarization passes through (an RHCP uplink must not come back 'H')

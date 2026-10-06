@@ -10,7 +10,7 @@ import type { dB, dBi, dBm, FECType, Hertz, IfFrequency, MHz, ModulationType, Rf
 import { getAssetUrl } from '@app/utils/asset-url';
 import type { Degrees } from 'ootk';
 import { vermontGroundStation } from './ground-stations';
-import { ses10Satellite, tidemark1Satellite, VERMONT_LOOK_ANGLE_SITE } from './satellites';
+import { c1TransponderPhysics, ses10Satellite, tidemark1Satellite, VERMONT_LOOK_ANGLE_SITE } from './satellites';
 
 /**
  * NATS Level 18: "Satellite Anomaly"
@@ -64,7 +64,7 @@ const tidemark2DriftingSatellite = new Satellite(
       noradId: 61526,
       frequency: 6017e6 as RfFrequency,
       polarization: 'H',
-      power: 20 as dBm, // as in satellites.ts (19.2 +2 dB, 19.4 -2 dB)
+      power: 101.2 as dBm, // as in satellites.ts (phase 19.3 uplink EIRP)
       bandwidth: 36e6 as Hertz,
       modulation: 'QPSK' as ModulationType,
       fec: '3/4' as FECType,
@@ -88,6 +88,7 @@ const tidemark2DriftingSatellite = new Satellite(
     ephemerisErrorAz: 0.32 as Degrees,
     ephemerisErrorEl: 0.26 as Degrees,
     lookAnglesFrom: VERMONT_LOOK_ANGLE_SITE,
+    standIns: { 'TIDEMARK-2-TDMA-Composite': 'TIDEMARK-2-Teleport' },
     orbitType: 'geosynchronous',
     geosyncConfig: {
       minAz: 218.4 as Degrees, // Growing figure-8: ±1.3° and widening daily
@@ -99,6 +100,7 @@ const tidemark2DriftingSatellite = new Satellite(
       {
         id: 'TP-1',
         uplinkCenterFrequency: 6017e6 as RfFrequency,
+        physics: { ...c1TransponderPhysics(27), gainMode: 'alc', alcOboDb: 0.5 }, // ALC: the stale-ephemeris uplink fade is levelled (output held), only the uplink C/N suffers (phase 19.3)
         bandwidth: 36e6 as Hertz,
         frequencyOffset: 2.225e9 as Hertz, // Downlink center: 3792 MHz
         polarization: 'H',
@@ -122,6 +124,7 @@ const tidemark2DriftingSatellite = new Satellite(
       {
         id: 'TP-2',
         uplinkCenterFrequency: 5980e6 as RfFrequency,
+        physics: c1TransponderPhysics(27),
         bandwidth: 36e6 as Hertz,
         frequencyOffset: 2.225e9 as Hertz,
         polarization: 'H',

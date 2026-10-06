@@ -156,24 +156,14 @@ appear in every sandbox's **LOADOUT** picker. See
 
 ## 🌐 Deployment
 
-SignalRange is deployed on Cloudflare Workers with static assets. There are two environments:
+SignalRange is deployed on Cloudflare Workers with static assets at
+<https://app.signalrange.space>. A push to `main` deploys it through the Deploy Pipeline workflow.
 
-| Environment    | URL                               | Purpose                                 |
-|----------------|-----------------------------------|-----------------------------------------|
-| **Production** | <https://app.signalrange.space>   | Live user-facing application            |
-| **UAT**        | <https://uat.signalrange.space>   | Pre-production testing and validation   |
-
-### Deploy Commands
+### Manual Deploy
 
 ```bash
-# Deploy to UAT (test changes first)
-pnpm exec wrangler deploy --env uat
-
-# Deploy to Production (after UAT validation)
 pnpm exec wrangler deploy --env production
 ```
-
-Always deploy to UAT first to validate changes before promoting to production.
 
 ## 📄 License
 
